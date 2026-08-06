@@ -37,6 +37,19 @@ Known bugs and features not yet addressed, roughly in priority order.
   surface something like "San Diego City Council" rather than whatever
   string the source page happened to title itself.
 
+- **Source caption quality varies wildly by jurisdiction and isn't
+  detected.** Alexandria VA's captions (clip 6490) are genuinely garbled at
+  the source — confirmed by fetching the raw VTT directly from
+  `alexandria.granicus.com/videos/6490/captions.vtt`: fragments like "test
+  meele first item on t" and "last meeting.Oa", not a parsing bug. Boston's
+  captions (clip 10382), by contrast, are clean full sentences. We currently
+  render whatever we find with no quality check. Need either (a) a
+  heuristic to detect low-quality/garbled captions (e.g. abnormal fragment
+  length, merged-word ratio) and warn the user or fall back to
+  Whisper-generated transcription instead, or (b) at minimum, surface a
+  confidence/quality indicator so users know not to trust a garbled
+  transcript at face value.
+
 ## UX polish (from live review, 2026-08-06)
 
 - Video embed defaults to an oddly short/cramped player size — should look
