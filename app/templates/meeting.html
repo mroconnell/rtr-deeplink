@@ -18,6 +18,10 @@
       <div class="toolbar">
         <button id="linkToCurrentBtn" title="Copy link to current time">Copy link to current time</button>
         <button id="toggleAutoScrollBtn" title="Toggle auto-scroll">Auto-scroll: <span id="autoScrollState">On</span></button>
+        <form id="seekForm" class="seek-form">
+          <input id="seekInput" type="text" inputmode="numeric" placeholder="1:23:45" aria-label="Jump to timestamp">
+          <button type="submit">Go to time</button>
+        </form>
       </div>
       <div id="videoWrapper" class="video-wrapper">
         <video id="meetingVideo" controls playsinline preload="auto"></video>
@@ -31,6 +35,12 @@
     <div id="transcriptSection" class="transcript-section" hidden>
       <h2>Transcript</h2>
       <div id="transcriptWarnings" class="warnings"></div>
+      <div id="transcriptSearch" class="transcript-search">
+        <input id="transcriptSearchInput" type="text" placeholder="Search transcript&hellip;" aria-label="Search transcript">
+        <span id="transcriptSearchCount" class="transcript-search-count"></span>
+        <button id="transcriptSearchPrev" type="button" title="Previous match" aria-label="Previous match">&#9650;</button>
+        <button id="transcriptSearchNext" type="button" title="Next match" aria-label="Next match">&#9660;</button>
+      </div>
       <div id="transcriptList" class="transcript-list"></div>
     </div>
     <div id="transcriptMissing" class="transcript-section" hidden>

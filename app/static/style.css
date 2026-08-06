@@ -66,7 +66,42 @@ body {
 .warnings { color: #b7791f; margin-bottom: 0.75rem; }
 
 .video-section { margin: 1.5rem 0; }
-.toolbar { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; }
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  /* On long transcripts with auto-scroll on, the page keeps scrolling the
+     transcript into view, making it hard to scroll back up to turn
+     auto-scroll off (real complaint from live review). Sticking the
+     toolbar to the top keeps it reachable at all times. */
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--bg);
+  padding: 0.5rem 0;
+}
+.seek-form { display: flex; gap: 0.4rem; margin-left: auto; }
+.seek-form input {
+  width: 6.5rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 0.9rem;
+}
+.seek-form button {
+  padding: 0.5rem 0.8rem;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--fg);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.seek-form button:hover { border-color: var(--accent); color: var(--accent); }
 .video-wrapper {
   position: relative;
   width: 100%;
@@ -108,6 +143,83 @@ video { width: 100%; height: 100%; display: block; }
   margin-right: 0.5rem;
 }
 .segment-timestamp:hover { text-decoration: underline; }
+
+.segment-link-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  width: 1.7rem;
+  height: 1.7rem;
+  margin-right: 0.4rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.1s ease, background 0.1s ease;
+}
+.segment-link-btn svg { width: 17px; height: 17px; }
+.transcript-segment:hover .segment-link-btn,
+.segment-link-btn:focus-visible {
+  opacity: 1;
+}
+.segment-link-btn:hover { color: var(--accent); background: rgba(43, 108, 176, 0.12); }
+.segment-link-btn.copied { opacity: 1; color: #2f855a; }
+
+/* While the video is at rest (paused), gently suggest that the current
+   line is deep-linkable by showing its icon without needing a hover --
+   but only the current line, and only at rest, so it doesn't flicker from
+   segment to segment during normal playback/auto-scroll. */
+body.video-at-rest .transcript-segment.playing .segment-link-btn {
+  opacity: 0.6;
+}
+body.video-at-rest .transcript-segment.playing .segment-link-btn:hover {
+  opacity: 1;
+}
+
+.transcript-search {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+.transcript-search input {
+  flex: 1;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 0.9rem;
+}
+.transcript-search-count {
+  color: var(--muted);
+  font-size: 0.85rem;
+  min-width: 3.5rem;
+  text-align: right;
+}
+.transcript-search button {
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--fg);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  line-height: 1;
+}
+.transcript-search button:hover { border-color: var(--accent); color: var(--accent); }
+
+mark.search-match {
+  background: #fef08a;
+  color: #1a1a1a;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+mark.search-match.current { background: #f97316; color: #fff; }
 
 .calendar-candidate {
   padding: 0.5rem 0;

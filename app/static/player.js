@@ -57,6 +57,8 @@ function highlightSegment(segId, scrollIntoView) {
   }
 }
 
+const LINK_ICON_SVG = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M6.5 9.5a.75.75 0 0 0 1 .06l.06-.06 3-3a.75.75 0 0 0-1-1.12l-.06.06-3 3a.75.75 0 0 0 0 1.06z"/><path fill="currentColor" d="M5.72 11.03a2.5 2.5 0 0 1 0-3.54l1.5-1.5a.75.75 0 0 1 1.06 1.06l-1.5 1.5a1 1 0 0 0 1.42 1.42l1.5-1.5a.75.75 0 1 1 1.06 1.06l-1.5 1.5a2.5 2.5 0 0 1-3.54 0z"/><path fill="currentColor" d="M9.72 4.97a2.5 2.5 0 0 1 3.54 3.54l-1.5 1.5a.75.75 0 1 1-1.06-1.06l1.5-1.5a1 1 0 0 0-1.42-1.42l-1.5 1.5A.75.75 0 1 1 8.22 6.5l1.5-1.5z"/></svg>';
+
 function renderTranscript(segs) {
   const container = document.getElementById('transcriptList');
   container.innerHTML = '';
@@ -66,7 +68,9 @@ function renderTranscript(segs) {
     div.className = 'transcript-segment';
     div.id = segId;
     div.dataset.start = seg.start;
-    div.innerHTML = `<a href="#${segId}" class="segment-timestamp" data-start="${seg.start}" data-seg-id="${segId}">[${formatTime(seg.start)}]</a> <span class="segment-text">${escapeHtml(seg.text)}</span>`;
+    div.innerHTML = `<a href="#${segId}" class="segment-timestamp" data-start="${seg.start}" data-seg-id="${segId}">[${formatTime(seg.start)}]</a>` +
+      `<button class="segment-link-btn" data-start="${seg.start}" data-seg-id="${segId}" title="Copy link to this line" aria-label="Copy link to this line">${LINK_ICON_SVG}</button>` +
+      ` <span class="segment-text">${escapeHtml(seg.text)}</span>`;
     container.appendChild(div);
   });
 
@@ -81,6 +85,101 @@ function renderTranscript(segs) {
       updateUrlParams({ t: start, line: segId });
     });
   });
+
+  // A dedicated "copy link" affordance next to each line -- the timestamp
+  // link already jumps + copies, but that dual behavior wasn't discoverable
+  // (only the timestamp itself was clickable, no visual hint it copies a
+  // link). This button is copy-only, doesn't move playback, so it's safe
+  // to click while listening without interrupting anything.
+  container.querySelectorAll('.segment-link-btn').forEach((btn) => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const start = Number(btn.dataset.start || '0');
+      const segId = btn.dataset.segId;
+      updateUrlParams({ t: start, line: segId });
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        btn.classList.add('copied');
+        setTimeout(() => btn.classList.remove('copied'), 1200);
+      } catch (err) {
+        // clipboard API unavailable; URL is already updated in the address bar
+      }
+    });
+  });
+}
+
+let searchMatches = [];
+let searchMatchIndex = -1;
+let transcriptSearchWired = false;
+
+// Mirrors browser Ctrl+F: highlights every match, cycles through them with
+// Enter/Shift+Enter or the prev/next buttons, shows a "N/M" count.
+function setupTranscriptSearch() {
+  const input = document.getElementById('transcriptSearchInput');
+  const countEl = document.getElementById('transcriptSearchCount');
+  const prevBtn = document.getElementById('transcriptSearchPrev');
+  const nextBtn = document.getElementById('transcriptSearchNext');
+  if (!input || transcriptSearchWired) return;
+  transcriptSearchWired = true;
+
+  function updateCount() {
+    if (!input.value.trim()) { countEl.textContent = ''; return; }
+    countEl.textContent = searchMatches.length ? `${searchMatchIndex + 1}/${searchMatches.length}` : '0 matches';
+  }
+
+  function goToMatch(idx) {
+    if (!searchMatches.length) return;
+    document.querySelectorAll('.search-match.current').forEach((el) => el.classList.remove('current'));
+    searchMatchIndex = ((idx % searchMatches.length) + searchMatches.length) % searchMatches.length;
+    const el = document.getElementById(searchMatches[searchMatchIndex]);
+    if (el) {
+      el.classList.add('current');
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    updateCount();
+  }
+
+  function runSearch() {
+    const query = input.value.trim();
+    searchMatches = [];
+    searchMatchIndex = -1;
+
+    segments.forEach((seg, index) => {
+      const el = document.querySelector(`#seg-${index} .segment-text`);
+      if (!el) return;
+      const text = seg.text || '';
+      if (!query) {
+        el.textContent = text;
+        return;
+      }
+      const lower = text.toLowerCase();
+      const q = query.toLowerCase();
+      let html = '';
+      let pos = 0;
+      let idx;
+      while ((idx = lower.indexOf(q, pos)) !== -1) {
+        html += escapeHtml(text.slice(pos, idx));
+        const matchId = `search-match-${searchMatches.length}`;
+        html += `<mark id="${matchId}" class="search-match">${escapeHtml(text.slice(idx, idx + q.length))}</mark>`;
+        searchMatches.push(matchId);
+        pos = idx + q.length;
+      }
+      html += escapeHtml(text.slice(pos));
+      el.innerHTML = html;
+    });
+
+    updateCount();
+    if (searchMatches.length) goToMatch(0);
+  }
+
+  input.addEventListener('input', runSearch);
+  input.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    if (searchMatches.length) goToMatch(searchMatchIndex + (e.shiftKey ? -1 : 1));
+  });
+  prevBtn.addEventListener('click', () => goToMatch(searchMatchIndex - 1));
+  nextBtn.addEventListener('click', () => goToMatch(searchMatchIndex + 1));
 }
 
 function escapeHtml(text) {
@@ -127,8 +226,12 @@ function initVideo(videoUrl, videoFormat) {
   // it defers to the native controls once playback has started.
   bigPlayBtn.hidden = false;
   bigPlayBtn.addEventListener('click', () => video.play());
-  video.addEventListener('play', () => { bigPlayBtn.hidden = true; });
-  video.addEventListener('pause', () => { bigPlayBtn.hidden = false; });
+  // "video-at-rest" also gently suggests the current transcript line is
+  // deep-linkable (its link icon shows without a hover) when paused --
+  // suppressed during playback so it doesn't flicker from line to line as
+  // the highlighted segment advances.
+  video.addEventListener('play', () => { bigPlayBtn.hidden = true; document.body.classList.remove('video-at-rest'); });
+  video.addEventListener('pause', () => { bigPlayBtn.hidden = false; document.body.classList.add('video-at-rest'); });
 
   // Warm up playback once metadata is available: briefly muted-play-then-
   // pause forces the browser to decode and render the first real frame
@@ -185,7 +288,39 @@ function initVideo(videoUrl, videoFormat) {
     stateSpan.textContent = autoScrollEnabled ? 'On' : 'Off';
   });
 
+  // Deep-linking to an exact moment is this app's primary goal -- the
+  // transcript is a nice-to-have -- so jumping to a timestamp must work
+  // even when there's no transcript to click a line in.
+  const seekForm = document.getElementById('seekForm');
+  const seekInput = document.getElementById('seekInput');
+  seekForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const t = parseTimeInput(seekInput.value);
+    if (t === null) {
+      seekInput.setCustomValidity('Enter a time like 1:23:45, 12:34, or seconds');
+      seekInput.reportValidity();
+      return;
+    }
+    seekInput.setCustomValidity('');
+    video.currentTime = t;
+    const segId = findActiveSegment(t);
+    if (segId) highlightSegment(segId, true);
+    updateUrlParams({ t, line: segId || null });
+  });
+
   applyDeepLink(video);
+}
+
+function parseTimeInput(raw) {
+  const value = (raw || '').trim();
+  if (!value) return null;
+  if (/^\d+$/.test(value)) return Number(value);
+  const parts = value.split(':').map((p) => p.trim());
+  if (parts.length < 2 || parts.length > 3 || parts.some((p) => !/^\d+$/.test(p))) return null;
+  const nums = parts.map(Number);
+  let seconds = 0;
+  for (const n of nums) seconds = seconds * 60 + n;
+  return seconds;
 }
 
 function applyDeepLink(video) {
@@ -300,6 +435,7 @@ async function init() {
     document.getElementById('transcriptWarnings').innerHTML = transcriptWarnings.length
       ? transcriptWarnings.map(escapeHtml).join('<br>') : '';
     renderTranscript(segments);
+    setupTranscriptSearch();
   } else if (transcriptWarnings.length) {
     document.getElementById('transcriptMissing').hidden = false;
     document.getElementById('transcriptMissingWarnings').innerHTML = transcriptWarnings.map(escapeHtml).join('<br>');
