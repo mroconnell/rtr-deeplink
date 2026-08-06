@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>rtr-deeplink</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main class="center-page">
+    <h1>rtr-deeplink</h1>
+    <p class="subtitle">Paste a public meeting URL to view its video and transcript, with clickable deep links to any moment.</p>
+    <form id="urlForm" class="url-form">
+      <input type="url" id="urlInput" placeholder="https://citycouncil.granicus.com/player/clip/1234" required>
+      <button type="submit">Open</button>
+    </form>
+    <p id="formError" class="error" hidden></p>
+  </main>
+  <script>
+    document.getElementById('urlForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const url = document.getElementById('urlInput').value.trim();
+      if (!url) return;
+      window.location.href = '/meeting?url=' + encodeURIComponent(url);
+    });
+  </script>
+</body>
+</html>

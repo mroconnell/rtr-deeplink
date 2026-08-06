@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title id="pageTitle">Meeting | rtr-deeplink</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.4.12/dist/hls.min.js"></script>
+</head>
+<body data-source-url="{{ source_url }}">
+  <main class="meeting-page">
+    <a href="/" class="back-link">&larr; New URL</a>
+    <div id="meta" class="meta"></div>
+
+    <div id="statusMessage" class="status"></div>
+
+    <div id="videoSection" class="video-section" hidden>
+      <div class="toolbar">
+        <button id="linkToCurrentBtn" title="Copy link to current time">Copy link to current time</button>
+        <button id="toggleAutoScrollBtn" title="Toggle auto-scroll">Auto-scroll: <span id="autoScrollState">On</span></button>
+      </div>
+      <video id="meetingVideo" controls playsinline></video>
+      <div id="videoError" class="error" hidden></div>
+    </div>
+
+    <div id="transcriptSection" class="transcript-section" hidden>
+      <h2>Transcript</h2>
+      <div id="transcriptList" class="transcript-list"></div>
+    </div>
+  </main>
+  <script src="/static/player.js"></script>
+</body>
+</html>
