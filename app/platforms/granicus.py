@@ -187,7 +187,8 @@ class GranicusAssetFinder(AssetFinder):
         return "unknown"
 
     async def resolve(self, url: str) -> ResolvedMeeting:
-        warnings: List[str] = []
+        video_warnings: List[str] = []
+        transcript_warnings: List[str] = []
         async with aiohttp.ClientSession() as session:
             html = await self._fetch_page(session, url)
             soup = BeautifulSoup(html, "html.parser")
@@ -205,7 +206,7 @@ class GranicusAssetFinder(AssetFinder):
                         video_url, video_format = candidate, "mp4"
                         break
             if not video_url:
-                warnings.append("No playable video found on this page.")
+                video_warnings.append("No playable video found on this page.")
 
             vtt_urls = [u for u in media_urls if self._media_type(u) == "subtitle" and u.lower().endswith(".vtt")]
 
@@ -225,7 +226,7 @@ class GranicusAssetFinder(AssetFinder):
                 empty_vtt_count = 0
                 for vtt_url, result in zip(vtt_urls, fetched):
                     if isinstance(result, Exception):
-                        warnings.append(f"Failed to fetch captions from {vtt_url}: {result}")
+                        transcript_warnings.append(f"Failed to fetch captions from {vtt_url}: {result}")
                         continue
                     if not result:
                         # A real, fetchable VTT file that Granicus creates as a
@@ -242,7 +243,7 @@ class GranicusAssetFinder(AssetFinder):
                 chosen = target_match or (candidates[0] if candidates else None)
 
                 if not chosen and empty_vtt_count:
-                    warnings.append(
+                    transcript_warnings.append(
                         "Caption file was blank, so we'll have to run this manually "
                         "for a transcript. We can run batches of meetings for "
                         "subscribed users — contact ryan@how-to-adu.com for details."
@@ -253,15 +254,15 @@ class GranicusAssetFinder(AssetFinder):
                     segments = [TranscriptSegment(**cue) for cue in cues]
                     transcript_language = lang
                     if lang and lang != TARGET_LANGUAGE:
-                        warnings.append(
+                        transcript_warnings.append(
                             f"These captions appear to be in '{lang}', not '{TARGET_LANGUAGE}' — "
                             "no matching-language track was found for this meeting."
                         )
                     if len(candidates) > 1 and not target_match:
                         other_langs = sorted({c[2] for c in candidates if c[2]})
-                        warnings.append(f"Multiple caption tracks found ({other_langs}); none matched '{TARGET_LANGUAGE}'.")
+                        transcript_warnings.append(f"Multiple caption tracks found ({other_langs}); none matched '{TARGET_LANGUAGE}'.")
             else:
-                warnings.append("No caption/transcript file found on this page.")
+                transcript_warnings.append("No caption/transcript file found on this page.")
 
             return ResolvedMeeting(
                 platform=self.platform_name,
@@ -273,7 +274,8 @@ class GranicusAssetFinder(AssetFinder):
                 video_url=video_url,
                 video_format=video_format,
                 segments=segments,
-                warnings=warnings,
+                video_warnings=video_warnings,
+                transcript_warnings=transcript_warnings,
             )
 
     @staticmethod

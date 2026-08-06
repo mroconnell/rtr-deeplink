@@ -18,4 +18,8 @@ class ResolvedMeeting(BaseModel):
     video_format: Optional[str] = None  # "m3u8" | "mp4" | None
     segments: List[TranscriptSegment] = []
     transcript_language: Optional[str] = None  # ISO 639-1 code detected from actual caption text
-    warnings: List[str] = []
+    # Split so the frontend can place video issues near the player and
+    # caption/transcript issues near the transcript, instead of dumping
+    # everything into one block above the video regardless of relevance.
+    video_warnings: List[str] = []
+    transcript_warnings: List[str] = []

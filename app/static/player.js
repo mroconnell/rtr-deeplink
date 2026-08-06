@@ -208,13 +208,24 @@ async function init() {
   statusEl.textContent = '';
   document.getElementById('pageTitle').textContent = `${data.title || 'Meeting'} | rtr-deeplink`;
   metaEl.innerHTML = `<h1>${escapeHtml(data.title || 'Meeting')}</h1>` +
-    `<p>${escapeHtml(data.jurisdiction || '')}${data.date ? ' &middot; ' + escapeHtml(data.date) : ''}</p>` +
-    (data.warnings && data.warnings.length ? `<p class="warnings">${data.warnings.map(escapeHtml).join('<br>')}</p>` : '');
+    `<p>${escapeHtml(data.jurisdiction || '')}${data.date ? ' &middot; ' + escapeHtml(data.date) : ''}</p>`;
 
+  const videoWarnings = data.video_warnings || [];
+  if (videoWarnings.length) {
+    document.getElementById('videoError').textContent = videoWarnings.map((w) => w).join(' ');
+    document.getElementById('videoError').hidden = false;
+  }
+
+  const transcriptWarnings = data.transcript_warnings || [];
   segments = data.segments || [];
   if (segments.length) {
     document.getElementById('transcriptSection').hidden = false;
+    document.getElementById('transcriptWarnings').innerHTML = transcriptWarnings.length
+      ? transcriptWarnings.map(escapeHtml).join('<br>') : '';
     renderTranscript(segments);
+  } else if (transcriptWarnings.length) {
+    document.getElementById('transcriptMissing').hidden = false;
+    document.getElementById('transcriptMissingWarnings').innerHTML = transcriptWarnings.map(escapeHtml).join('<br>');
   }
 
   initVideo(data.video_url, data.video_format);
