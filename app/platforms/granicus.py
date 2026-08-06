@@ -222,16 +222,30 @@ class GranicusAssetFinder(AssetFinder):
                 # confirmed via a real Simi Valley meeting (clip 2840) that
                 # a track labeled srclang="en" was actually Spanish content.
                 candidates = []  # (vtt_url, cues, detected_language)
+                empty_vtt_count = 0
                 for vtt_url, result in zip(vtt_urls, fetched):
                     if isinstance(result, Exception):
                         warnings.append(f"Failed to fetch captions from {vtt_url}: {result}")
                         continue
                     if not result:
+                        # A real, fetchable VTT file that Granicus creates as a
+                        # placeholder for every meeting page regardless of
+                        # whether captioning was ever generated — confirmed by
+                        # fetching several directly and finding just "WEBVTT\n\n"
+                        # (8 bytes, zero cues). Distinct from no VTT reference
+                        # existing on the page at all.
+                        empty_vtt_count += 1
                         continue
                     candidates.append((vtt_url, result, self._detect_cue_language(result)))
 
                 target_match = next((c for c in candidates if c[2] == TARGET_LANGUAGE), None)
                 chosen = target_match or (candidates[0] if candidates else None)
+
+                if not chosen and empty_vtt_count:
+                    warnings.append(
+                        "A caption file exists for this meeting but is empty — "
+                        "captioning doesn't appear to have been generated for it."
+                    )
 
                 if chosen:
                     _vtt_url, cues, lang = chosen
