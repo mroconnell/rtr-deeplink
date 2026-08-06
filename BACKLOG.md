@@ -97,6 +97,14 @@ Known bugs and features not yet addressed, roughly in priority order.
   (copy-link / auto-scroll toggle) should float/stick near the top of the
   page on scroll instead of disappearing.
 
+- **CivicClerk's real caption/transcript format is unverified.** The API
+  schema has `EventsMedia.closedCaptionUrl`, `.transcriptionUrl`, and
+  `.closedCaptionTracks`, but every sample meeting checked (Clovis CA,
+  Highland CA, Lino Lakes MN) had these null/empty, so `CivicClerkAssetFinder`
+  currently just shows a "not verified yet" warning when one of those fields
+  is non-null instead of trying to parse it. Needs a real example with
+  populated caption data to build and test that path properly.
+
 ## Platform coverage
 
 - **Legistar adapter** — per the note above, Legistar is generally a
