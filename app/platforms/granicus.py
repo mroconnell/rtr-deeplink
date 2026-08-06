@@ -1,16 +1,16 @@
 import asyncio
-import json
 import random
 import re
 from datetime import datetime
 from typing import List, Optional, Dict, Any
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urlparse
 
 import aiohttp
 from bs4 import BeautifulSoup
 from langdetect import detect as detect_language, LangDetectException
 
 from .base import AssetFinder
+from .media_scan import scan_media_urls, media_type
 from .models import ResolvedMeeting, TranscriptSegment
 from ..utils.vtt_parser import parse_vtt
 
@@ -128,11 +128,9 @@ class GranicusAssetFinder(AssetFinder):
         return None
 
     def _extract_media_urls(self, html: str, page_url: str) -> List[str]:
-        """Find media asset URLs on the page, resolved to absolute URLs.
-
-        Bug fix vs. the original: every match is run through urljoin(page_url, ...)
-        so relative paths (seen in testing, e.g. "/videos/5361/captions.vtt")
-        become fetchable absolute URLs instead of silently failing downstream.
+        """Find media asset URLs on the page: Granicus's own guessed-VTT-path
+        heuristic (its player/clip URLs don't always embed the caption URL
+        directly in HTML) plus the shared generic regex scan.
         """
         media_urls = set()
 
@@ -146,45 +144,11 @@ class GranicusAssetFinder(AssetFinder):
             domain = urlparse(page_url).netloc
             media_urls.add(f"https://{domain}/videos/{video_id}/captions.vtt")
 
-        patterns = [
-            r"https?://[^\"']+\.m3u8[^\"']*",
-            r"https?://[^\"']+\.(?:mp4|mp3|wav|webm|ogg|vtt|srt)[^\"']*",
-            r"src=[\"']([^\"']+\.(?:mp4|mp3|wav|webm|ogg|m3u8|vtt|srt))[\"'&]",
-            r"data-src=[\"']([^\"']+\.(?:mp4|mp3|wav|webm|ogg|m3u8|vtt|srt))[\"'&]",
-        ]
-        for pattern in patterns:
-            for match in re.finditer(pattern, html, re.IGNORECASE):
-                raw = match.group(1) if match.groups() else match.group(0)
-                if raw and not any(x in raw.lower() for x in ("placeholder", "logo", "icon")):
-                    absolute = urljoin(page_url, raw.strip("\"'"))
-                    media_urls.add(absolute)
-
-        try:
-            for json_str in re.findall(r'({[^}]*"sources"\s*:\s*\[[^}]*\][^}]*})', html, re.DOTALL):
-                try:
-                    data = json.loads(json_str)
-                    for source in data.get("sources", []):
-                        if isinstance(source, dict) and "src" in source:
-                            media_urls.add(urljoin(page_url, source["src"]))
-                except json.JSONDecodeError:
-                    continue
-        except Exception:
-            pass
+        media_urls.update(scan_media_urls(html, page_url))
 
         return list(media_urls)
 
-    @staticmethod
-    def _media_type(url: str) -> str:
-        path = urlparse(url).path.lower()
-        if url.endswith(".m3u8"):
-            return "video"
-        if path.endswith((".mp4", ".mov", ".m4v")):
-            return "video"
-        if path.endswith((".mp3", ".wav", ".m4a")):
-            return "audio"
-        if path.endswith((".vtt", ".srt")):
-            return "subtitle"
-        return "unknown"
+    _media_type = staticmethod(media_type)
 
     async def resolve(self, url: str) -> ResolvedMeeting:
         video_warnings: List[str] = []

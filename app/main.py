@@ -9,6 +9,8 @@ from pydantic import BaseModel
 from .platforms.base import detect_platform, get_finder, register, UnsupportedPlatformError
 from .platforms.granicus import GranicusAssetFinder
 from .platforms.civicclerk import CivicClerkAssetFinder
+from .platforms.swagit import SwagitAssetFinder
+from .platforms.escribe import EscribeAssetFinder
 
 APP_DIR = Path(__file__).parent
 
@@ -18,6 +20,8 @@ templates = Jinja2Templates(directory=APP_DIR / "templates")
 
 register(GranicusAssetFinder())
 register(CivicClerkAssetFinder())
+register(SwagitAssetFinder())
+register(EscribeAssetFinder())
 
 
 class ResolveRequest(BaseModel):

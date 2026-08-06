@@ -42,6 +42,16 @@ def detect_platform(url: str) -> str:
         return "civicplus"
     if "primegov.com" in netloc:
         return "primegov"
+    if "swagit.com" in netloc or "swagit-video-player" in path:
+        # The swagit.com-domain case covers direct Swagit URLs. The
+        # path-based check covers city sites that iframe-embed Swagit at
+        # their own domain (e.g. dublin.ca.gov/swagit-video-player) --
+        # detection works for these, but SwagitAssetFinder itself hasn't
+        # been verified against that embed pattern (no live sample found
+        # in testing; see BACKLOG.md).
+        return "swagit"
+    if "escribemeetings.com" in netloc:
+        return "escribe"
     return "unknown"
 
 
