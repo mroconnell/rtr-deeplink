@@ -153,21 +153,25 @@ function applyDeepLink(video) {
   const line = getDeepLinkLine();
   const t = getDeepLinkTime();
 
+  // `t` (exact seconds) always wins for the actual seek position -- `line`
+  // is only used to decide which row to highlight. Previously `line`, when
+  // present, seeked to that segment's *start* and silently discarded a more
+  // precise `t` in the same URL. That was barely noticeable for Granicus's
+  // short (~2-10s) caption lines, but very wrong for CivicClerk's
+  // multi-minute chapter markers: "copy link to current time" partway
+  // through a chapter would jump back to the chapter's start on reload.
+  if (t !== null) {
+    video.currentTime = t;
+    const segId = line || findActiveSegment(t);
+    if (segId) highlightSegment(segId, true);
+    return;
+  }
   if (line) {
     const el = document.getElementById(line);
     if (el) {
       const start = Number(el.dataset.start || '0');
       video.currentTime = Math.max(0, start - (getOffsetSeconds()));
       highlightSegment(line, true);
-      return;
-    }
-  }
-  if (t !== null) {
-    video.currentTime = t;
-    const segId = findActiveSegment(t);
-    if (segId) {
-      highlightSegment(segId, true);
-      updateUrlParams({ t, line: segId });
     }
   }
 }
