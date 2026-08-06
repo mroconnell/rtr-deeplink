@@ -111,9 +111,31 @@ Known bugs and features not yet addressed, roughly in priority order.
   purely a calendar/agenda wrapper, video always redirects via
   `Video.aspx?Mode=Granicus&ID1={id}&Mode2=Video` straight to Granicus.
   See `app/platforms/legistar.py`.
-- **CivicPlus adapter** — similar pattern to Legistar: often links out to
-  Granicus for the actual video, per user's read of the space. Same
-  delegation strategy may apply.
+- **[Done 2026-08-06] CivicPlus adapter** — confirmed and built, same
+  pattern as Legistar: an AgendaCenter listing page (`tr.catAgendaRow`
+  rows) has a direct per-meeting video link in `td.media` when video
+  exists (confirmed real: `ca-westlakevillage.civicplus.com`, 16 real
+  Granicus links across one listing page). No "single meeting" URL shape
+  observed — every AgendaCenter URL is a listing, so >1 video row always
+  raises the calendar pick-list. See `app/platforms/civicplus.py`.
+- **Row-level CC/SRT files in calendar listings — not yet found, keep
+  watching for a real example.** User's instinct: some Legistar/CivicPlus
+  calendar rows might expose a direct caption file link alongside the
+  video link, which could be more reliable than whatever the destination
+  video platform's own page offers (we've seen those come back empty a
+  lot). Checked and found nothing in: Maricopa AZ (Legistar), Westlake
+  Village CA (CivicPlus), and on a hunch from the user, San Diego city,
+  San Diego County, and both `berkeley.legistar.com` and
+  `cityofberkeley.legistar.com` calendars — none had a `.srt`/`.vtt`
+  link in their row markup. Not disproven, just not found yet. When a
+  concrete example turns up, extend `LegistarAssetFinder`/
+  `CivicPlusAssetFinder`'s row-scraping to check for a caption link
+  alongside the video link, and prefer it over (or merge with) whatever
+  the destination platform returns. Separately: user also asked about
+  backfilling captions for a *directly*-submitted media page by checking
+  whether it came from a calendar with a caption file — not worth
+  building; there's no reliable way to know which calendar (if any)
+  originally listed a given direct video URL.
 - **[Done 2026-08-06] CivicClerk, Swagit, eScribe adapters built.**
   BoardDocs deliberately excluded — confirmed across 2 real cities (South
   Portland ME, Taos NM) it's a document/agenda platform with no reliable

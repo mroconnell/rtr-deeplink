@@ -13,6 +13,7 @@ from .platforms.swagit import SwagitAssetFinder
 from .platforms.escribe import EscribeAssetFinder
 from .platforms.ca_legislature import CaliforniaLegislatureAssetFinder
 from .platforms.legistar import LegistarAssetFinder
+from .platforms.civicplus import CivicPlusAssetFinder
 
 APP_DIR = Path(__file__).parent
 
@@ -26,6 +27,7 @@ register(SwagitAssetFinder())
 register(EscribeAssetFinder())
 register(CaliforniaLegislatureAssetFinder())
 register(LegistarAssetFinder())
+register(CivicPlusAssetFinder())
 
 
 class ResolveRequest(BaseModel):
