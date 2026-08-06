@@ -114,5 +114,33 @@ Known bugs and features not yet addressed, roughly in priority order.
 - **CivicPlus adapter** — similar pattern to Legistar: often links out to
   Granicus for the actual video, per user's read of the space. Same
   delegation strategy may apply.
-- **New platforms to test**: CivicClerk, eScribe, BoardDocs, Swagit —
-  sample URLs added to the shared "Watchdog Sample meetings" sheet.
+- **[Done 2026-08-06] CivicClerk, Swagit, eScribe adapters built.**
+  BoardDocs deliberately excluded — confirmed across 2 real cities (South
+  Portland ME, Taos NM) it's a document/agenda platform with no reliable
+  video, despite a site-level `bd.videoservice` flag; not worth a
+  video-resolver adapter. Also confirmed (Taos NM sample) that agendas
+  embedding a live Zoom meeting ID/passcode give no path to a recording —
+  Zoom join links and cloud-recording URLs are unrelated and unguessable
+  from each other, and Zoom's Recordings API requires OAuth credentials
+  tied to the hosting account, not a public lookup. Not building a Zoom
+  integration; if a city happens to separately publish a real
+  `zoom.us/rec/...` link on a page, normal page-scraping would already
+  pick it up like any other link.
+- **Swagit `#transcript-fragments` unverified.** The page's JS references
+  `#transcript-fragments a[data-ts]` for a real free-text transcript
+  feature, but that container was never present in the static HTML across
+  any sample checked (a candidate forum and a full regular meeting) — only
+  the `.playerControl` chapter markers were. `SwagitAssetFinder` checks for
+  it defensively but has never seen it populated. Needs a real example.
+- **Swagit custom-domain embeds unverified** (e.g. `dublin.ca.gov/
+  swagit-video-player?video_id=...`). `detect_platform` recognizes the
+  `swagit-video-player` path pattern, but the one sample URL for this case
+  in the sample sheet 404'd (stale), so `SwagitAssetFinder`'s actual page-
+  parsing has only been verified against real `*.swagit.com` domains, not
+  a city's own iframe-wrapper page. Needs a fresh sample URL.
+- **eScribe caption content-quality unverified.** iSiLIVE's per-language
+  VTT naming convention (`{file}.vtt` = English, `{file}.fr.vtt`, etc.) was
+  confirmed structurally on Richmond, CA, but none were actually populated
+  (all 404) — so `EscribeAssetFinder`'s caption-fetching path is
+  shape-verified only, not content-verified. Needs a real eScribe meeting
+  with actual captions to confirm quality/format end-to-end.
