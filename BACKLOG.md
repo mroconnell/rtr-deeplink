@@ -78,15 +78,20 @@ Known bugs and features not yet addressed, roughly in priority order.
 
 ## UX polish (from live review, 2026-08-06)
 
-- Video embed defaults to an oddly short/cramped player size — should look
-  like a normal video player's proportions, not whatever it's currently
-  defaulting to.
-- The play button isn't obvious enough on the video player.
-- Preload a thumbnail/poster image for the video so there's something to
-  look at before playback starts.
-- There's an awkward pause after clicking play while the video loads.
-  Consider preloading the video, or auto-playing briefly and immediately
-  pausing, to smooth over that gap.
+- **[Done 2026-08-06] Video player sizing, play button, poster, and
+  awkward-pause-on-play.** All four addressed together: the video wrapper
+  now locks a 16:9 aspect-ratio via CSS so it never collapses to a tiny
+  default box; a large, obvious overlay play button replaces the small
+  native control-bar triangle; and a one-time muted-play-then-pause on
+  `loadedmetadata` both renders a real first frame (serving as a poster,
+  no separate thumbnail-fetch needed) and pre-buffers the initial
+  segments, so the user's actual first play click starts instantly instead
+  of visibly waiting to buffer — confirmed this measurably works in
+  testing. Verified in-browser on desktop and mobile widths, and confirmed
+  no regression to deep-link seeking (a real risk: the warm-up's play/pause
+  could have clobbered a pending deep-link seek, since `currentTime` set
+  before metadata loads just queues as the "default playback position" —
+  fixed by capturing and restoring that value instead of resetting to 0).
 - Add a search box next to the transcript that mirrors Ctrl+F — filter/jump
   within the transcript text.
 - Add a deep-link icon next to individual transcript lines — right now
