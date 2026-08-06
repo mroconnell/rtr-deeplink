@@ -17,4 +17,5 @@ class ResolvedMeeting(BaseModel):
     video_url: Optional[str] = None  # m3u8 or mp4, playable by hls.js/<video>
     video_format: Optional[str] = None  # "m3u8" | "mp4" | None
     segments: List[TranscriptSegment] = []
+    transcript_language: Optional[str] = None  # ISO 639-1 code detected from actual caption text
     warnings: List[str] = []

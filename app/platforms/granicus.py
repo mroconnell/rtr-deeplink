@@ -8,10 +8,13 @@ from urllib.parse import urljoin, urlparse
 
 import aiohttp
 from bs4 import BeautifulSoup
+from langdetect import detect as detect_language, LangDetectException
 
 from .base import AssetFinder
 from .models import ResolvedMeeting, TranscriptSegment
 from ..utils.vtt_parser import parse_vtt
+
+TARGET_LANGUAGE = "en"
 
 
 class GranicusAssetFinder(AssetFinder):
@@ -207,24 +210,48 @@ class GranicusAssetFinder(AssetFinder):
             vtt_urls = [u for u in media_urls if self._media_type(u) == "subtitle" and u.lower().endswith(".vtt")]
 
             segments: List[TranscriptSegment] = []
+            transcript_language: Optional[str] = None
             if vtt_urls:
                 fetched = await asyncio.gather(
                     *(self._fetch_vtt(session, u) for u in vtt_urls),
                     return_exceptions=True,
                 )
+
+                # Evaluate every successfully-fetched track's *actual content*
+                # language rather than trusting the page's srclang label —
+                # confirmed via a real Simi Valley meeting (clip 2840) that
+                # a track labeled srclang="en" was actually Spanish content.
+                candidates = []  # (vtt_url, cues, detected_language)
                 for vtt_url, result in zip(vtt_urls, fetched):
                     if isinstance(result, Exception):
                         warnings.append(f"Failed to fetch captions from {vtt_url}: {result}")
                         continue
-                    if result:
-                        segments = [TranscriptSegment(**cue) for cue in result]
-                        break  # first successful caption track wins
+                    if not result:
+                        continue
+                    candidates.append((vtt_url, result, self._detect_cue_language(result)))
+
+                target_match = next((c for c in candidates if c[2] == TARGET_LANGUAGE), None)
+                chosen = target_match or (candidates[0] if candidates else None)
+
+                if chosen:
+                    _vtt_url, cues, lang = chosen
+                    segments = [TranscriptSegment(**cue) for cue in cues]
+                    transcript_language = lang
+                    if lang and lang != TARGET_LANGUAGE:
+                        warnings.append(
+                            f"These captions appear to be in '{lang}', not '{TARGET_LANGUAGE}' — "
+                            "no matching-language track was found for this meeting."
+                        )
+                    if len(candidates) > 1 and not target_match:
+                        other_langs = sorted({c[2] for c in candidates if c[2]})
+                        warnings.append(f"Multiple caption tracks found ({other_langs}); none matched '{TARGET_LANGUAGE}'.")
             else:
                 warnings.append("No caption/transcript file found on this page.")
 
             return ResolvedMeeting(
                 platform=self.platform_name,
                 source_url=url,
+                transcript_language=transcript_language,
                 title=metadata["title"],
                 date=metadata["date"],
                 jurisdiction=metadata["jurisdiction"],
@@ -233,6 +260,19 @@ class GranicusAssetFinder(AssetFinder):
                 segments=segments,
                 warnings=warnings,
             )
+
+    @staticmethod
+    def _detect_cue_language(cues: List[Dict[str, Any]]) -> Optional[str]:
+        """Detect the actual language of caption text — never trust the
+        page's srclang label (it can be wrong; see the resolve() docstring
+        note on Simi Valley clip 2840)."""
+        sample = " ".join(c["text"] for c in cues if c.get("text"))[:2000]
+        if len(sample.strip()) < 20:
+            return None
+        try:
+            return detect_language(sample)
+        except LangDetectException:
+            return None
 
     async def _fetch_vtt(self, session: aiohttp.ClientSession, vtt_url: str) -> Optional[List[Dict[str, Any]]]:
         async with session.get(vtt_url, timeout=aiohttp.ClientTimeout(total=20)) as response:

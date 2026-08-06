@@ -50,6 +50,18 @@ Known bugs and features not yet addressed, roughly in priority order.
   confidence/quality indicator so users know not to trust a garbled
   transcript at face value.
 
+- **[Done 2026-08-06] Caption language detection.** Fixed: found via live
+  review that Simi Valley clip 2840's only caption track is labeled
+  `srclang="en"` on the page but is actually Spanish content (confirmed by
+  fetching the raw VTT). `GranicusAssetFinder` now detects the real
+  language of caption text via `langdetect` rather than trusting the page
+  label, prefers a track matching `TARGET_LANGUAGE` ("en") when multiple
+  tracks exist, and surfaces a warning when the best available track
+  doesn't match. Follow-up not yet built: a UI dropdown to let the user
+  pick between multiple language tracks when more than one exists (the
+  user's original ask) — right now we auto-pick the best match and warn,
+  we don't yet expose the alternates.
+
 ## UX polish (from live review, 2026-08-06)
 
 - Video embed defaults to an oddly short/cramped player size — should look
@@ -66,6 +78,11 @@ Known bugs and features not yet addressed, roughly in priority order.
 - Add a deep-link icon next to individual transcript lines — right now
   only the timestamp itself is clickable, which isn't an obvious
   "copy a link to this line" affordance.
+- On smaller monitors, when auto-scroll is on and the video is playing,
+  the page keeps scrolling the transcript into view, making it hard to
+  scroll back up to the toolbar to turn auto-scroll off. The toolbar
+  (copy-link / auto-scroll toggle) should float/stick near the top of the
+  page on scroll instead of disappearing.
 
 ## Platform coverage
 
