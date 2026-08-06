@@ -62,6 +62,15 @@ Known bugs and features not yet addressed, roughly in priority order.
   user's original ask) — right now we auto-pick the best match and warn,
   we don't yet expose the alternates.
 
+- **San Francisco's captions render in ALL CAPS** (a live-caption source
+  convention, not a bug) — reads as shouting. Consider normalizing to
+  sentence case for display. Spot-checked the other 6 meetings with real
+  transcripts (2026-08-06): 5 of 6 English ones (San Diego, Oakland,
+  Boston, San Francisco, DC) are genuinely readable with only minor rough
+  patches (a few garbled words mid-Boston); Alexandria VA remains the one
+  clear outlier at genuinely unreadable quality — see the caption
+  quality-detection item above.
+
 ## UX polish (from live review, 2026-08-06)
 
 - Video embed defaults to an oddly short/cramped player size — should look
