@@ -5,6 +5,10 @@ A deliberately lean rebuild of the video+transcript+deep-link feature from
 auth, no background job queue — the whole app is stateless: given a meeting
 URL, resolve its video and transcript on demand and render them together.
 
+**See `README.md` for architecture, the resolve flow, supported platforms,
+and frontend features.** This file covers conventions and context specific
+to working on this codebase; don't duplicate README content here.
+
 ## Why this exists
 
 Round 1 (`rtr-transcripts`, private repo at github.com/mroconnell/rtr-transcripts,
@@ -17,47 +21,39 @@ deep-link to a specific timestamp. That feature was already shipped inside
 `rtr-transcripts` (see its `docs/video_embed_deeplink_*.md`), just buried
 under everything else. This repo extracts and fixes just that part.
 
-## Architecture
+## Working conventions established in this repo
 
-- `app/platforms/base.py` — `detect_platform(url)` classifies a meeting URL
-  by hosting platform (Granicus, Legistar, CivicClerk, CivicPlus, PrimeGov),
-  and dispatches to a registered `AssetFinder` for that platform. One adapter
-  per **platform**, not per city — validated empirically: the Granicus
-  adapter worked structurally across 11 of 12 very different Granicus-hosted
-  cities (San Diego, Oakland, Berkeley, Alexandria VA, Boston, SF, etc.) in
-  testing against `rtr-transcripts`. This also mirrors the dispatch pattern
-  used by the `civic-scraper` OSS tool, which solves an adjacent problem
-  (agenda/minutes discovery, not video/transcript resolution).
-- `app/platforms/granicus.py` — the only implemented adapter so far. Ported
-  from `rtr-transcripts/app/services/granicus.py` with two bugs fixed found
-  during cross-city testing: (1) relative media URLs (e.g.
-  `/videos/5361/captions.vtt`) are now resolved with `urljoin()` instead of
-  being left relative and failing to fetch; (2) parsed caption text is
-  returned directly in the API response instead of only being persisted to
-  a database that this app doesn't have.
-- `app/utils/vtt_parser.py` — pure WebVTT parser, ported unchanged (it
-  already worked correctly).
-- No Legistar/CivicClerk/CivicPlus/PrimeGov adapter exists yet. Hitting one
-  of those URLs returns a clean "unsupported platform" response instead of
-  crashing (unlike `rtr-transcripts`, which crashes with a low-level error
-  when handed a non-Granicus URL — see `UnsupportedPlatformError`).
-- No persistence: `/meeting?url=<source>` re-resolves on every load. Deep
-  links encode `?t=<seconds>` or `?line=seg-<n>` and are entirely
-  self-contained — no database record required to reproduce them.
-
-## Known gaps carried over from rtr-transcripts testing (not yet fixed here)
-
-- Metadata extraction (title/date/jurisdiction) is regex/selector-based
-  against static HTML and is unreliable for JS-heavy Granicus clip pages.
-  `civic-scraper`'s Granicus adapter gets cleaner metadata from an RSS feed
-  (`ViewPublisherRSS.php`) instead of scraping the clip page — worth
-  revisiting if metadata quality becomes a blocker.
-- Only the first successful caption track is used per meeting; multiple
-  caption tracks aren't merged.
+- **Never build a platform adapter from assumption — always test against a
+  real, live URL first**, ideally several from different cities on that
+  platform. Every adapter in `app/platforms/` was built by first fetching
+  a real page/API response, reading the actual structure, and only then
+  writing the parser. Sample URLs across platforms live in a shared Google
+  Sheet (see auto-memory: `reference-sample-meetings-sheet`) that the user
+  adds to over time.
+- **Verify in-browser, not just via the API.** UI changes especially need
+  an actual `mcp__Claude_Browser__*` check — several real bugs (duplicate
+  chapter markers, a metadata-extraction ordering bug, a deep-link
+  seek-priority bug) were only caught by looking at the rendered page or
+  driving it, not by reading JSON responses.
+- **New bugs/gaps found while working go in `BACKLOG.md`**, not just
+  mentioned in conversation — it's the durable record. Mark items
+  `[Done YYYY-MM-DD]` in place rather than deleting them, so the reasoning
+  and verification history stays visible.
+- **Don't claim a caption/data path works without a positive example.**
+  Several adapters have fields that are schema-verified but not
+  content-verified (e.g. CivicClerk's `closedCaptionTracks`, Swagit's
+  `#transcript-fragments`) because no real meeting with that data
+  populated has been found yet — these are explicitly flagged as
+  best-effort in code comments and BACKLOG.md, not silently assumed.
+- **When a platform turns out to be a wrapper around another** (confirmed
+  so far: Legistar and CivicPlus both just link out to Granicus), delegate
+  via `resolve_via_platform()` in `base.py` rather than writing a
+  redundant native parser.
 
 ## Related context
 
-Full background — the MVP pivot decision, sample test URLs, and the
-dozen-city test findings against `rtr-transcripts` — lives in this
-project's Claude Code memory (auto-loaded from the `rtr-transcript` working
-directory's memory index), not duplicated here.
+Full background — the MVP pivot decision, why this project exists at all,
+the dozen-city test findings against `rtr-transcripts`, and per-platform
+research notes — lives in this project's Claude Code memory (auto-loaded
+from the `rtr-transcript` working directory's memory index), not
+duplicated here or in README.md.
