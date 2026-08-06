@@ -28,14 +28,19 @@ Known bugs and features not yet addressed, roughly in priority order.
   `civic-scraper`'s Granicus adapter, which parses `ViewPublisherRSS.php`)
   may be more reliable than scraping the clip page directly.
 
-- **Jurisdiction/title metadata needs cleanup.** Jurisdiction is derived by
-  title-casing the URL subdomain (e.g. `sandiego` &rarr; "Sandiego"), which
-  doesn't insert word breaks for multi-word city names — should read "San
-  Diego". Title comes straight from the page's HTML title/og:title (e.g.
-  "Tuesday Agenda Revised Added S500-S504" for a San Diego City Council
-  meeting) and often doesn't include the governing body — should try to
-  surface something like "San Diego City Council" rather than whatever
-  string the source page happened to title itself.
+- **[Done 2026-08-06] Jurisdiction/title metadata cleanup.** Fixed via three
+  tiers: the Granicus RSS channel title (constant per `view_id`, confirmed
+  format `"{Jurisdiction}: {Body} (Videos Feed)"` across 6 cities) is tried
+  first and also used to prepend the governing body to titles that don't
+  already name one; then a "City/County/Town of X" (or reversed "X
+  County") text search across page body *and* meta description (the
+  sdcounty.granicus.com case only had it in `<meta name="description">`,
+  invisible to `soup.get_text()`); then `wordninja`-based subdomain
+  segmentation as a last resort (`sandiego` &rarr; "San Diego" instead of
+  "Sandiego"). Applies to Legistar/CivicPlus too since both delegate to
+  GranicusAssetFinder. One known residual gap: `dc.granicus.com` still
+  resolves to jurisdiction "Dc" — no page-text signal or view_id available
+  to do better, and not worth a DC-specific hardcode for one city.
 
 - **Source caption quality varies wildly by jurisdiction and isn't
   detected.** Alexandria VA's captions (clip 6490) are genuinely garbled at
