@@ -4,17 +4,17 @@ Known bugs and features not yet addressed, roughly in priority order.
 
 ## Bugs
 
-- **Unsupported-platform failure is too blunt.** Right now an unsupported
-  platform (e.g. Legistar) just returns "We don't support 'legistar' meeting
-  pages yet." — but Legistar pages are usually a *calendar* that links out
-  to the actual meeting video, often hosted on Granicus (which we do
-  support). Before giving up, try to find and follow an embedded link to a
-  supported platform on the page. If that still fails, replace the raw
-  message with actual guidance instead of a bare error, e.g.:
-  > "We didn't find a meeting at that URL. A common snafu is pasting a
-  > calendar link instead of the link to the specific page where the video
-  > is embedded. If that's not it, we've logged this and will dig in.
-  > Subscribe for an alert when it's fixed."
+- **[Done 2026-08-06 for Legistar] Unsupported-platform failure is too
+  blunt.** Fixed for Legistar specifically: `LegistarAssetFinder` now finds
+  and delegates to the embedded Granicus link when present, and when given
+  a calendar/listing page instead of one meeting (confirmed real: Maricopa,
+  AZ's Calendar.aspx had 20 video links across 47 rows), returns a
+  dedicated "this is a calendar" response with a pick-list of real
+  meetings (title/date/url) pulled from the page, rather than a bare
+  error. Still generic/unbuilt for platforms with no adapter at all (the
+  plain "We don't support 'x' meeting pages yet." message) — worth
+  applying the same "try to find a supported link, then give real
+  guidance" treatment there too, per the original ask.
 - **5 of the first 12 Granicus test meetings returned zero caption
   segments** (San Diego County, Cupertino, Mountain View, Berkeley,
   Paradise Valley AZ). Not yet confirmed these meetings simply lack
@@ -107,10 +107,10 @@ Known bugs and features not yet addressed, roughly in priority order.
 
 ## Platform coverage
 
-- **Legistar adapter** — per the note above, Legistar is generally a
-  calendar wrapper around an underlying Granicus (or other) video link.
-  Worth trying "find the embedded supported-platform link and delegate"
-  before building a full independent Legistar video/caption parser.
+- **[Done 2026-08-06] Legistar adapter** — confirmed and built: Legistar is
+  purely a calendar/agenda wrapper, video always redirects via
+  `Video.aspx?Mode=Granicus&ID1={id}&Mode2=Video` straight to Granicus.
+  See `app/platforms/legistar.py`.
 - **CivicPlus adapter** — similar pattern to Legistar: often links out to
   Granicus for the actual video, per user's read of the space. Same
   delegation strategy may apply.
