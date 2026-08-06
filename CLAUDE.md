@@ -28,8 +28,10 @@ under everything else. This repo extracts and fixes just that part.
   platform. Every adapter in `app/platforms/` was built by first fetching
   a real page/API response, reading the actual structure, and only then
   writing the parser. Sample URLs across platforms live in a shared Google
-  Sheet (see auto-memory: `reference-sample-meetings-sheet`) that the user
-  adds to over time.
+  Sheet the user maintains and adds to over time: "Watchdog Sample meetings
+  - Red Tape Recordings - public hearings" —
+  https://docs.google.com/spreadsheets/d/1WJvohdOhdUzP0C-0CUfj_pMSjPwYTtMQU3IOeppp54s/edit
+  Check it for a real sample before building or debugging any adapter.
 - **Verify in-browser, not just via the API.** UI changes especially need
   an actual `mcp__Claude_Browser__*` check — several real bugs (duplicate
   chapter markers, a metadata-extraction ordering bug, a deep-link
@@ -52,8 +54,16 @@ under everything else. This repo extracts and fixes just that part.
 
 ## Related context
 
-Full background — the MVP pivot decision, why this project exists at all,
-the dozen-city test findings against `rtr-transcripts`, and per-platform
-research notes — lives in this project's Claude Code memory (auto-loaded
-from the `rtr-transcript` working directory's memory index), not
-duplicated here or in README.md.
+The essentials (why this pivot happened, per-platform findings, known
+gaps) are captured directly in this repo — `README.md`, this file, code
+comments, and `BACKLOG.md` — deliberately, so a session opened straight
+against this repo has what it needs without depending on anything else.
+
+Deeper session narrative (the original round-1 user-testing conversation,
+day-by-day investigation detail) lives in Claude Code auto-memory scoped
+to `~/Documents/rtr-transcript` — the *original* project directory this
+one was spun out of, not this one. A Claude Code session opened at
+`~/Documents/rtr-deeplink` (e.g. from VS Code) will *not* auto-load that
+memory, since memory is scoped per working directory. It's rarely needed
+day to day; if something here references a decision that isn't explained
+in-repo, that's where to look, or just ask the user.
