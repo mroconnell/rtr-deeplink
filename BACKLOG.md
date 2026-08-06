@@ -28,6 +28,32 @@ Known bugs and features not yet addressed, roughly in priority order.
   `civic-scraper`'s Granicus adapter, which parses `ViewPublisherRSS.php`)
   may be more reliable than scraping the clip page directly.
 
+- **Jurisdiction/title metadata needs cleanup.** Jurisdiction is derived by
+  title-casing the URL subdomain (e.g. `sandiego` &rarr; "Sandiego"), which
+  doesn't insert word breaks for multi-word city names — should read "San
+  Diego". Title comes straight from the page's HTML title/og:title (e.g.
+  "Tuesday Agenda Revised Added S500-S504" for a San Diego City Council
+  meeting) and often doesn't include the governing body — should try to
+  surface something like "San Diego City Council" rather than whatever
+  string the source page happened to title itself.
+
+## UX polish (from live review, 2026-08-06)
+
+- Video embed defaults to an oddly short/cramped player size — should look
+  like a normal video player's proportions, not whatever it's currently
+  defaulting to.
+- The play button isn't obvious enough on the video player.
+- Preload a thumbnail/poster image for the video so there's something to
+  look at before playback starts.
+- There's an awkward pause after clicking play while the video loads.
+  Consider preloading the video, or auto-playing briefly and immediately
+  pausing, to smooth over that gap.
+- Add a search box next to the transcript that mirrors Ctrl+F — filter/jump
+  within the transcript text.
+- Add a deep-link icon next to individual transcript lines — right now
+  only the timestamp itself is clickable, which isn't an obvious
+  "copy a link to this line" affordance.
+
 ## Platform coverage
 
 - **Legistar adapter** — per the note above, Legistar is generally a
