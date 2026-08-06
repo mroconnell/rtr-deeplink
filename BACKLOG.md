@@ -87,6 +87,10 @@ Known bugs and features not yet addressed, roughly in priority order.
 - Add a deep-link icon next to individual transcript lines — right now
   only the timestamp itself is clickable, which isn't an obvious
   "copy a link to this line" affordance.
+- Let users type in a specific timestamp to deep-link to, not just click a
+  transcript segment. Deep-linking to an exact moment is the primary goal
+  of this app — the transcript is a nice-to-have — so this should work even
+  when there's no (or poor-quality) transcript available for a meeting.
 - On smaller monitors, when auto-scroll is on and the video is playing,
   the page keeps scrolling the transcript into view, making it hard to
   scroll back up to the toolbar to turn auto-scroll off. The toolbar
