@@ -243,8 +243,9 @@ class GranicusAssetFinder(AssetFinder):
 
                 if not chosen and empty_vtt_count:
                     warnings.append(
-                        "A caption file exists for this meeting but is empty — "
-                        "captioning doesn't appear to have been generated for it."
+                        "Caption file was blank, so we'll have to run this manually "
+                        "for a transcript. We can run batches of meetings for "
+                        "subscribed users — contact ryan@how-to-adu.com for details."
                     )
 
                 if chosen:
