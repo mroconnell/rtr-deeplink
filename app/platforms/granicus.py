@@ -2,10 +2,11 @@ import asyncio
 import random
 import re
 from datetime import datetime
-from typing import List, Optional, Dict, Any
-from urllib.parse import urlparse
+from typing import List, Optional, Dict, Any, Tuple
+from urllib.parse import urlparse, parse_qs
 
 import aiohttp
+import wordninja
 from bs4 import BeautifulSoup
 from langdetect import detect as detect_language, LangDetectException
 
@@ -15,6 +16,19 @@ from .models import ResolvedMeeting, TranscriptSegment
 from ..utils.vtt_parser import parse_vtt
 
 TARGET_LANGUAGE = "en"
+
+# Governing-body keywords used to decide whether the RSS channel title's
+# second half ("City Council", "New View", "All City Dockets", ...) is
+# worth appending to a page-scraped title that doesn't already name a body,
+# versus a generic/unhelpful channel label not worth adding as noise.
+GOVERNING_BODY_KEYWORDS = ("council", "commission", "board", "committee", "hearing")
+
+US_STATE_ABBREVIATIONS = {
+    "al", "ak", "az", "ar", "ca", "co", "ct", "de", "fl", "ga", "hi", "id", "il", "in",
+    "ia", "ks", "ky", "la", "me", "md", "ma", "mi", "mn", "ms", "mo", "mt", "ne", "nv",
+    "nh", "nj", "nm", "ny", "nc", "nd", "oh", "ok", "or", "pa", "ri", "sc", "sd", "tn",
+    "tx", "ut", "vt", "va", "wa", "wv", "wi", "wy", "dc",
+}
 
 
 class GranicusAssetFinder(AssetFinder):
@@ -94,18 +108,73 @@ class GranicusAssetFinder(AssetFinder):
             body_text = soup.get_text(" ", strip=True)[:2000]
             date = self._parse_date_string(body_text)
 
-        jurisdiction = "Unknown Jurisdiction"
+        # "City of San Diego" in the page body is a more reliable jurisdiction
+        # source than guessing from the subdomain -- confirmed present on
+        # multiple real Granicus pages (San Diego, Richmond via eScribe/
+        # iSiLIVE). Preferred over subdomain segmentation; itself overridden
+        # later in resolve() by the RSS channel title when available (see
+        # _fetch_channel_info), which is the most reliable source of all.
+        jurisdiction = None
+        # Include the meta description, not just visible body text -- found
+        # a real case (sdcounty.granicus.com) where "San Diego County" only
+        # appears inside <meta name="description" content="...">, which
+        # soup.get_text() never sees since it only walks text nodes, not
+        # attribute values.
+        page_text = soup.get_text(" ", strip=True) + " " + (meta_content('meta[name="description"]') or "")
+        body_match = re.search(r"\b(City|County|Town) of ([A-Z][A-Za-z .]{1,40})", page_text)
+        if body_match:
+            jurisdiction = f"{body_match.group(1)} of {body_match.group(2).strip()}"
+        else:
+            # Some counties are phrased the other way round on their own
+            # pages ("San Diego County" rather than "County of San Diego") --
+            # confirmed on a real sdcounty.granicus.com page, where the
+            # City-of/County-of pattern above doesn't match at all.
+            reversed_match = re.search(r"\b([A-Z][A-Za-z]+(?: [A-Z][A-Za-z]+){0,2}) (County|Parish)\b", page_text)
+            if reversed_match:
+                jurisdiction = f"{reversed_match.group(1).strip()} {reversed_match.group(2)}"
+
         netloc = urlparse(url).netloc
         domain_parts = netloc.split(".")
-        if len(domain_parts) > 1 and domain_parts[0] not in ("www", "granicus"):
-            candidate = domain_parts[0].replace("-", " ").title()
-            if len(candidate) > 2:
+        if not jurisdiction and len(domain_parts) > 1 and domain_parts[0] not in ("www", "granicus"):
+            candidate = self._humanize_subdomain(domain_parts[0])
+            if candidate:
                 jurisdiction = candidate
+
+        jurisdiction = jurisdiction or "Unknown Jurisdiction"
 
         if not title:
             title = f"{jurisdiction} Meeting" + (f" - {date}" if date else "")
 
         return {"title": title[:500], "date": date, "jurisdiction": jurisdiction[:200]}
+
+    @staticmethod
+    def _humanize_subdomain(subdomain: str) -> Optional[str]:
+        """Turn a concatenated subdomain like "sandiego" or "leaguecitytx"
+        into "San Diego" / "League City, TX" -- word-segmented via wordninja
+        (a lightweight, offline word-frequency segmenter) rather than the
+        previous naive .title() call, which left multi-word city names
+        unreadable (e.g. "sandiego" -> "Sandiego"). Strips a trailing US
+        state abbreviation into a ", ST" suffix, and drops a leading
+        "city of"/"county of"/"town of" since that's redundant once we're
+        about to label this as the jurisdiction.
+        """
+        words = wordninja.split(subdomain)
+        if not words:
+            return None
+
+        state_suffix = None
+        if len(words) > 1 and words[-1].lower() in US_STATE_ABBREVIATIONS:
+            state_suffix = words[-1].upper()
+            words = words[:-1]
+
+        while len(words) > 1 and words[0].lower() in ("city", "county", "town", "of"):
+            words = words[1:]
+
+        if not words:
+            return None
+
+        name = " ".join(w.capitalize() for w in words)
+        return f"{name}, {state_suffix}" if state_suffix else name
 
     @staticmethod
     def _parse_date_string(text: str) -> Optional[str]:
@@ -158,6 +227,23 @@ class GranicusAssetFinder(AssetFinder):
             soup = BeautifulSoup(html, "html.parser")
             metadata = self._extract_metadata(soup, url)
             media_urls = self._extract_media_urls(html, url)
+
+            # The RSS channel title (constant per view_id, distinct from each
+            # meeting's own often-poor-quality title -- confirmed real
+            # examples like San Diego's "Tuesday Agenda Revised Added
+            # S500-S511") is the most reliable source of both jurisdiction
+            # and governing-body name, when it's available at all.
+            channel_jurisdiction, channel_body = await self._fetch_channel_info(session, url)
+            if channel_jurisdiction:
+                metadata["jurisdiction"] = channel_jurisdiction
+            title_has_body = metadata["title"] and any(
+                kw in metadata["title"].lower() for kw in GOVERNING_BODY_KEYWORDS
+            )
+            body_is_meaningful = channel_body and any(
+                kw in channel_body.lower() for kw in GOVERNING_BODY_KEYWORDS
+            )
+            if body_is_meaningful and not title_has_body and metadata["title"]:
+                metadata["title"] = f"{channel_body} — {metadata['title']}"
 
             video_url, video_format = None, None
             for candidate in media_urls:
@@ -261,3 +347,46 @@ class GranicusAssetFinder(AssetFinder):
                 return None
             content = await response.text()
         return parse_vtt(content)
+
+    @staticmethod
+    async def _fetch_channel_info(session: aiohttp.ClientSession, url: str) -> Tuple[Optional[str], Optional[str]]:
+        """Fetch the Granicus RSS feed for this page's view_id and pull the
+        channel-level title, which reliably follows "{Jurisdiction}: {Body}
+        (Videos Feed)" -- e.g. "City of San Diego: City Council Meetings
+        (Videos Feed)", "City of Berkeley: City Council (Videos Feed)".
+        Confirmed across 6 real cities (2026-08-06). Unlike each meeting's
+        own item-level title (which can be as unhelpful as "Tuesday Agenda
+        Revised Added S500-S511" -- the literal title San Diego staff gave
+        one real meeting), the channel title is constant per view_id and
+        doesn't depend on how well that specific meeting was labeled.
+        Returns (None, None) if there's no view_id, the feed is unreachable,
+        or the title doesn't match the expected shape -- callers must treat
+        this as a best-effort enhancement, not a guaranteed source.
+        """
+        query = parse_qs(urlparse(url).query)
+        view_id = query.get("view_id", [None])[0]
+        if not view_id:
+            return None, None
+
+        domain = urlparse(url).netloc
+        rss_url = f"https://{domain}/ViewPublisherRSS.php?view_id={view_id}&mode=video"
+        try:
+            async with session.get(rss_url, timeout=aiohttp.ClientTimeout(total=10)) as response:
+                if response.status != 200:
+                    return None, None
+                xml = await response.text()
+        except Exception:
+            return None, None
+
+        match = re.search(r"<title>([^<]+)</title>", xml)
+        if not match:
+            return None, None
+
+        channel_title = match.group(1).strip()
+        parts = channel_title.split(":", 1)
+        if len(parts) != 2:
+            return None, None
+
+        jurisdiction = parts[0].strip()
+        body = re.sub(r"\s*\(.*?Feed\)\s*$", "", parts[1]).strip()
+        return (jurisdiction or None), (body or None)
