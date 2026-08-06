@@ -93,6 +93,7 @@ function initVideo(videoUrl, videoFormat) {
   const video = document.getElementById('meetingVideo');
   const section = document.getElementById('videoSection');
   const errorEl = document.getElementById('videoError');
+  const bigPlayBtn = document.getElementById('bigPlayButton');
 
   if (!videoUrl) {
     section.hidden = true;
@@ -119,6 +120,44 @@ function initVideo(videoUrl, videoFormat) {
   } catch (e) {
     section.hidden = true;
   }
+
+  // The native <video> control bar's play triangle is small and easy to
+  // miss, especially against a busy poster-frame image (a real complaint
+  // from live review). Show a large, obvious overlay play button instead;
+  // it defers to the native controls once playback has started.
+  bigPlayBtn.hidden = false;
+  bigPlayBtn.addEventListener('click', () => video.play());
+  video.addEventListener('play', () => { bigPlayBtn.hidden = true; });
+  video.addEventListener('pause', () => { bigPlayBtn.hidden = false; });
+
+  // Warm up playback once metadata is available: briefly muted-play-then-
+  // pause forces the browser to decode and render the first real frame
+  // (instead of a blank black box) and pre-buffers the initial segments,
+  // so the *next* play the user actually triggers starts instantly instead
+  // of visibly waiting to buffer -- addresses the "awkward pause after
+  // clicking play" complaint from live review.
+  //
+  // Careful: applyDeepLink() (called below) sets video.currentTime before
+  // metadata is loaded, which per spec just queues it as the "default
+  // playback position" and takes effect once metadata is ready -- so by
+  // the time this fires, currentTime may already reflect a pending
+  // deep-link seek. Capture and restore that value rather than resetting
+  // to 0, or a deep link would get silently clobbered back to the start.
+  video.addEventListener('loadedmetadata', () => {
+    const targetTime = video.currentTime;
+    const wasMuted = video.muted;
+    video.muted = true;
+    const playPromise = video.play();
+    if (playPromise && playPromise.then) {
+      playPromise.then(() => {
+        video.pause();
+        video.currentTime = targetTime;
+        video.muted = wasMuted;
+      }).catch(() => {
+        video.muted = wasMuted; // autoplay blocked -- nothing to undo, just restore mute state
+      });
+    }
+  }, { once: true });
 
   video.addEventListener('timeupdate', () => {
     const segId = findActiveSegment(video.currentTime);
