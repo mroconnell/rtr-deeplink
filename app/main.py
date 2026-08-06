@@ -11,6 +11,7 @@ from .platforms.granicus import GranicusAssetFinder
 from .platforms.civicclerk import CivicClerkAssetFinder
 from .platforms.swagit import SwagitAssetFinder
 from .platforms.escribe import EscribeAssetFinder
+from .platforms.ca_legislature import CaliforniaLegislatureAssetFinder
 
 APP_DIR = Path(__file__).parent
 
@@ -22,6 +23,7 @@ register(GranicusAssetFinder())
 register(CivicClerkAssetFinder())
 register(SwagitAssetFinder())
 register(EscribeAssetFinder())
+register(CaliforniaLegislatureAssetFinder())
 
 
 class ResolveRequest(BaseModel):

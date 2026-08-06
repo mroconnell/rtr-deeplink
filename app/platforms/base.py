@@ -52,6 +52,8 @@ def detect_platform(url: str) -> str:
         return "swagit"
     if "escribemeetings.com" in netloc:
         return "escribe"
+    if "assembly.ca.gov" in netloc or "senate.ca.gov" in netloc:
+        return "ca_legislature"
     return "unknown"
 
 
