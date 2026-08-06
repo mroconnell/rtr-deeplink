@@ -180,6 +180,35 @@ function getOffsetSeconds() {
   return 0; // reserved for future offset calibration, per rtr-transcripts PDR
 }
 
+function renderCalendarPage(data) {
+  const statusEl = document.getElementById('statusMessage');
+  const metaEl = document.getElementById('meta');
+  document.getElementById('pageTitle').textContent = 'This is a calendar, not a meeting | rtr-deeplink';
+  statusEl.textContent = '';
+  metaEl.innerHTML = `<h1>This looks like a calendar page</h1>` +
+    `<p>${escapeHtml(data.message || 'This URL lists multiple meetings rather than pointing to one specific meeting.')}` +
+    ` Pick a meeting below, or paste a link to a specific meeting instead.</p>`;
+
+  const candidates = data.candidates || [];
+  const section = document.getElementById('transcriptSection');
+  section.hidden = false;
+  document.getElementById('transcriptWarnings').innerHTML = '';
+  const list = document.getElementById('transcriptList');
+  document.querySelector('#transcriptSection h2').textContent = 'Meetings found on this page';
+
+  if (!candidates.length) {
+    list.innerHTML = '<p>No individual meeting links could be found on this page.</p>';
+    return;
+  }
+
+  list.innerHTML = candidates.map((c) => {
+    const href = `/meeting?url=${encodeURIComponent(c.url)}`;
+    return `<div class="calendar-candidate"><a href="${href}">${escapeHtml(c.title || 'Untitled meeting')}</a>` +
+      (c.date ? ` <span class="calendar-candidate-date">${escapeHtml(c.date)}</span>` : '') +
+      `</div>`;
+  }).join('');
+}
+
 async function init() {
   const statusEl = document.getElementById('statusMessage');
   const metaEl = document.getElementById('meta');
@@ -201,6 +230,11 @@ async function init() {
     data = await res.json();
   } catch (e) {
     statusEl.textContent = `Failed to reach the resolver: ${e}`;
+    return;
+  }
+
+  if (data.error === 'calendar_page') {
+    renderCalendarPage(data);
     return;
   }
 

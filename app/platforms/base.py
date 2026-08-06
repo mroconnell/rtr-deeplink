@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import List, TypedDict
 from urllib.parse import urlparse
 
 from .models import ResolvedMeeting
@@ -9,6 +10,25 @@ class UnsupportedPlatformError(Exception):
         self.url = url
         self.detected = detected
         super().__init__(f"No asset finder for platform '{detected}' ({url})")
+
+
+class CalendarCandidate(TypedDict):
+    title: str
+    date: str
+    url: str
+
+
+class CalendarPageError(Exception):
+    """Raised when a URL is a calendar/listing page rather than a specific
+    meeting -- e.g. Legistar's Calendar.aspx, which lists many meetings each
+    with their own video link, rather than one meeting's video. Carries
+    enough per-meeting info (title, date, direct URL) for the frontend to
+    show the user a pickable list instead of a bare failure.
+    """
+
+    def __init__(self, message: str, candidates: List[CalendarCandidate]):
+        self.candidates = candidates
+        super().__init__(message)
 
 
 class AssetFinder(ABC):
@@ -68,3 +88,16 @@ def get_finder(platform: str) -> AssetFinder:
     if platform not in _REGISTRY:
         raise UnsupportedPlatformError(url="", detected=platform)
     return _REGISTRY[platform]
+
+
+async def resolve_via_platform(url: str) -> ResolvedMeeting:
+    """Detect a URL's platform and delegate to its registered finder.
+
+    Used by wrapper platforms like Legistar, which don't host video/captions
+    themselves but redirect or link to a platform that does (usually
+    Granicus) -- resolving the linked URL should go through that platform's
+    real adapter, not be treated as a dead end.
+    """
+    platform = detect_platform(url)
+    finder = get_finder(platform)
+    return await finder.resolve(url)

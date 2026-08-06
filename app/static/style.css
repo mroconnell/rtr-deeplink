@@ -86,3 +86,12 @@ video { width: 100%; border-radius: 8px; background: #000; }
   margin-right: 0.5rem;
 }
 .segment-timestamp:hover { text-decoration: underline; }
+
+.calendar-candidate {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.calendar-candidate:last-child { border-bottom: none; }
+.calendar-candidate a { color: var(--accent); text-decoration: none; font-weight: 500; }
+.calendar-candidate a:hover { text-decoration: underline; }
+.calendar-candidate-date { color: var(--muted); margin-left: 0.5rem; }

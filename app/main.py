@@ -6,12 +6,13 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
-from .platforms.base import detect_platform, get_finder, register, UnsupportedPlatformError
+from .platforms.base import detect_platform, get_finder, register, CalendarPageError, UnsupportedPlatformError
 from .platforms.granicus import GranicusAssetFinder
 from .platforms.civicclerk import CivicClerkAssetFinder
 from .platforms.swagit import SwagitAssetFinder
 from .platforms.escribe import EscribeAssetFinder
 from .platforms.ca_legislature import CaliforniaLegislatureAssetFinder
+from .platforms.legistar import LegistarAssetFinder
 
 APP_DIR = Path(__file__).parent
 
@@ -24,6 +25,7 @@ register(CivicClerkAssetFinder())
 register(SwagitAssetFinder())
 register(EscribeAssetFinder())
 register(CaliforniaLegislatureAssetFinder())
+register(LegistarAssetFinder())
 
 
 class ResolveRequest(BaseModel):
@@ -49,6 +51,13 @@ async def resolve(req: ResolveRequest):
 
     try:
         result = await finder.resolve(req.url)
+    except CalendarPageError as e:
+        return {
+            "error": "calendar_page",
+            "platform": platform,
+            "message": str(e),
+            "candidates": e.candidates,
+        }
     except Exception as e:
         return {
             "error": "resolve_failed",
