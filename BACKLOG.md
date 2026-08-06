@@ -92,20 +92,22 @@ Known bugs and features not yet addressed, roughly in priority order.
   could have clobbered a pending deep-link seek, since `currentTime` set
   before metadata loads just queues as the "default playback position" —
   fixed by capturing and restoring that value instead of resetting to 0).
-- Add a search box next to the transcript that mirrors Ctrl+F — filter/jump
-  within the transcript text.
-- Add a deep-link icon next to individual transcript lines — right now
-  only the timestamp itself is clickable, which isn't an obvious
-  "copy a link to this line" affordance.
-- Let users type in a specific timestamp to deep-link to, not just click a
-  transcript segment. Deep-linking to an exact moment is the primary goal
-  of this app — the transcript is a nice-to-have — so this should work even
-  when there's no (or poor-quality) transcript available for a meeting.
-- On smaller monitors, when auto-scroll is on and the video is playing,
-  the page keeps scrolling the transcript into view, making it hard to
-  scroll back up to the toolbar to turn auto-scroll off. The toolbar
-  (copy-link / auto-scroll toggle) should float/stick near the top of the
-  page on scroll instead of disappearing.
+- **[Done 2026-08-06] Transcript search, per-line link icon, manual
+  timestamp entry, sticky toolbar.** All four verified end-to-end against
+  a real 1073-segment Boston meeting. Search mirrors browser Ctrl+F
+  (highlight all matches, "N/M" count, prev/next + Enter/Shift+Enter
+  navigation — confirmed 21 real matches for "sidewalk"). Each transcript
+  line has a chain-link icon that copies a link to that line without
+  moving playback (distinct from clicking the timestamp, which seeks);
+  after a follow-up look it was enlarged (14px&rarr;17px) and now also
+  shows at rest (opacity 0.6) on whichever segment is current when the
+  video is paused, suppressed during playback so it doesn't flicker line
+  to line with auto-scroll. A "Go to time" input (accepts H:MM:SS, M:SS,
+  or seconds) sits in the video toolbar and works even with no transcript,
+  since deep-linking to a moment — not the transcript — is the primary
+  goal. The toolbar itself is now `position: sticky` so it stays reachable
+  when scrolling past it, addressing the original auto-scroll-fights-you
+  complaint.
 
 - **CivicClerk's real caption/transcript format is unverified.** The API
   schema has `EventsMedia.closedCaptionUrl`, `.transcriptionUrl`, and
