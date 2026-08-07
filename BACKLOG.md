@@ -348,9 +348,14 @@ Known bugs and features not yet addressed, roughly in priority order.
 - **Swagit `#transcript-fragments` unverified.** The page's JS references
   `#transcript-fragments a[data-ts]` for a real free-text transcript
   feature, but that container was never present in the static HTML across
-  any sample checked (a candidate forum and a full regular meeting) — only
+  any sample checked (a candidate forum, a full regular meeting, and now
+  Yountville, CA's `yountvilleca.new.swagit.com/videos/394093`) — only
   the `.playerControl` chapter markers were. `SwagitAssetFinder` checks for
   it defensively but has never seen it populated. Needs a real example.
+  Yountville's meeting did confirm the adapter working end-to-end on a
+  fresh city and on the `*.new.swagit.com` subdomain shape (not
+  previously tested) — 7 real chapter markers from `.playerControl`,
+  correct title/date/jurisdiction, video found.
 - **Swagit custom-domain embeds unverified** (e.g. `dublin.ca.gov/
   swagit-video-player?video_id=...`). `detect_platform` recognizes the
   `swagit-video-player` path pattern, but the one sample URL for this case
