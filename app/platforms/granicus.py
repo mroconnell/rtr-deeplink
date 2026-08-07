@@ -347,6 +347,19 @@ class GranicusAssetFinder(AssetFinder):
             else:
                 transcript_warnings.append("No caption/transcript file found on this page.")
 
+            if not segments and clip_id:
+                agenda_items = await self._fetch_agenda_items(session, final_url, clip_id)
+                if agenda_items:
+                    agenda_items.sort(key=lambda item: item[0])
+                    for i, (start, title) in enumerate(agenda_items):
+                        end = agenda_items[i + 1][0] if i + 1 < len(agenda_items) else start
+                        segments.append(TranscriptSegment(start=start, end=max(end, start), text=title))
+                    transcript_warnings.append(
+                        "No transcript/captions available for this meeting — showing "
+                        "agenda-item chapter markers instead, which still deep-link to "
+                        "the right moment."
+                    )
+
             return ResolvedMeeting(
                 platform=self.platform_name,
                 source_url=url,
@@ -381,6 +394,49 @@ class GranicusAssetFinder(AssetFinder):
                 return None
             content = await response.text()
         return parse_vtt(content)
+
+    @staticmethod
+    async def _fetch_agenda_items(
+        session: aiohttp.ClientSession, page_url: str, clip_id: str
+    ) -> List[Tuple[float, str]]:
+        """Best-effort fallback chapter markers for meetings with no usable
+        transcript: Granicus's own agenda-index feature (AgendaViewer.php),
+        when a customer has it turned on, renders each agenda item as
+        `<a name="agenda{id}" onclick="top.SetPlayerPosition('0:{seconds}',
+        null)">{title}</a>` -- confirmed live on Simi Valley and San
+        Francisco (case/whitespace vary by customer template, matched
+        case-insensitively via html.parser's own attribute normalization).
+
+        Not every customer has this on: confirmed Berkeley redirects
+        AgendaViewer.php to their own external site instead (empty
+        cuepoints, no matches here), and Paradise Valley AZ redirects it
+        to a Google Docs PDF preview (also no matches). Both simply
+        return an empty list and the caller keeps its existing "no
+        transcript" warning -- this is purely additive, never worse than
+        not trying.
+
+        Note SetPlayerPosition's argument isn't real H:MM:SS -- Granicus's
+        own JS does `time.replace(':', '')` and parses the result as an
+        integer, so '0:638' means 638 seconds, not 6 minutes 38 seconds.
+        """
+        domain = urlparse(page_url).netloc
+        agenda_url = f"https://{domain}/AgendaViewer.php?clip_id={clip_id}&embedded=1"
+        try:
+            async with session.get(agenda_url, timeout=aiohttp.ClientTimeout(total=15)) as response:
+                if response.status != 200:
+                    return []
+                html = await response.text()
+        except Exception:
+            return []
+
+        soup = BeautifulSoup(html, "html.parser")
+        items = []
+        for a in soup.find_all("a", attrs={"name": re.compile(r"^agenda\d+$")}):
+            match = re.search(r"SetPlayerPosition\('0:(\d+)'", a.get("onclick") or "")
+            title = a.get_text(" ", strip=True)
+            if match and title:
+                items.append((float(match.group(1)), title))
+        return items
 
     @staticmethod
     async def _fetch_channel_info(
