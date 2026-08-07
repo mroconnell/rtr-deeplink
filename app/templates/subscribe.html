@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Subscribe | Red Tape Recordings{% endblock %}
+{% block content %}
+  <main class="center-page">
+    <h1>Get updates</h1>
+    <p class="subtitle">Get notified about new features and tools for finding public meetings.</p>
+    <form id="newsletterForm" class="newsletter-form">
+      <div class="input-group newsletter-input-group">
+        <input type="email" id="newsletterEmail" class="form-control" placeholder="you@example.com" required autofocus>
+        <button type="submit" class="btn btn-primary">Sign up</button>
+      </div>
+      <p id="newsletterMessage" class="newsletter-message" hidden></p>
+    </form>
+  </main>
+{% endblock %}

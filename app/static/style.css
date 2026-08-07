@@ -327,16 +327,17 @@ mark.search-match.current { background: #f97316; color: #fff; }
   border-top: 1px solid var(--border);
   background: var(--bg);
 }
+.footer-subscribe-prompt {
+  max-width: 420px;
+  margin: 0 auto;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
 .newsletter-form {
   max-width: 420px;
   margin: 0 auto;
   text-align: center;
-}
-.newsletter-label {
-  display: block;
-  margin-bottom: 0.6rem;
-  color: var(--muted);
-  font-size: 0.9rem;
 }
 .newsletter-input-group input {
   border: 1px solid var(--border);

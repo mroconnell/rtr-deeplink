@@ -232,6 +232,11 @@ async def about(request: Request):
     return templates.TemplateResponse(request, "about.html", {})
 
 
+@app.get("/subscribe")
+async def subscribe(request: Request):
+    return templates.TemplateResponse(request, "subscribe.html", {})
+
+
 def _admin_token_ok(token: str) -> bool:
     expected = os.environ.get("ADMIN_STATS_TOKEN", "")
     return bool(expected) and secrets.compare_digest(token, expected)

@@ -41,13 +41,4 @@ document.addEventListener('DOMContentLoaded', () => {
     message.hidden = false;
     button.disabled = false;
   });
-
-  // "Get Updates" nav link jumps here via #newsletterForm; focus the
-  // input too so it's not just a scroll -- one less click for someone
-  // who came here specifically to sign up.
-  document.querySelectorAll('a[href="#newsletterForm"]').forEach((link) => {
-    link.addEventListener('click', () => {
-      setTimeout(() => emailInput.focus(), 300);
-    });
-  });
 });
