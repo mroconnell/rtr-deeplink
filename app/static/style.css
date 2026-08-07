@@ -21,14 +21,6 @@ body {
   margin: 0;
 }
 
-/* --- Navbar --- */
-.navbar-cassette-icon {
-  display: inline-flex;
-  align-items: center;
-  margin-right: 0.5rem;
-  height: 22px;
-}
-
 .dymo-label {
   background: #b71c1c;
   color: #fff;
@@ -323,6 +315,10 @@ mark.search-match.current { background: #f97316; color: #fff; }
   line-height: 1.6;
 }
 .about-page h1 { color: var(--primary); }
+.about-page h2 { color: var(--primary); margin-top: 2rem; }
+.about-lede { font-weight: bold; font-size: 1.15rem; }
+.about-actions { padding-left: 1.25rem; }
+.about-actions li { margin-bottom: 0.5rem; }
 
 /* --- Footer / newsletter signup --- */
 .site-footer {
