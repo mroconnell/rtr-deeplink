@@ -143,9 +143,10 @@ platform share the same page/API structure. Detection lives in
 | California Legislature | `ca_legislature.py` | Self-hosted (`stream.{assembly,senate}.ca.gov`), not a vendor platform | Self-hosted `.vtt` at a matching filename; genuinely high quality when present |
 | Legistar | `legistar.py` | Doesn't host video — finds the embedded/redirected link to a platform above (usually Granicus) and delegates via `resolve_via_platform()` | Whatever the delegated platform provides |
 | CivicPlus | `civicplus.py` | Same delegation pattern as Legistar, from AgendaCenter listing rows | Whatever the delegated platform provides |
+| PrimeGov | `primegov.py` | Doesn't host video — the video id is a plain JS variable (`var videoUrl = "..."`) directly in the page HTML; delegates to YouTube, preserving the original PrimeGov URL as `source_url` (unlike the Legistar/CivicPlus delegation pattern) | Whatever YouTube provides |
+| YouTube | `youtube.py` | No direct video file URL exists (unlike every platform above) — playback is an embedded iframe + the YouTube IFrame Player API, not the native `<video>`/hls.js pathway. Handles a direct `youtube.com`/`youtu.be` URL too, not just PrimeGov delegation | yt-dlp (plain HTTP requests to YouTube's caption endpoints are blocked — see BACKLOG.md); prefers a manual/CC track over auto-generated only when its coverage is comparable, since a manual track can start well into the video and skip pre-meeting dead air |
 
-**Not implemented**: PrimeGov (detected but no adapter — hits
-`unsupported_platform`), BoardDocs (deliberately excluded — it's a
+**Not implemented**: BoardDocs (deliberately excluded — it's a
 document/agenda platform with no reliable video, not worth an adapter).
 
 ## Frontend features (`app/static/player.js`)
@@ -154,7 +155,12 @@ document/agenda platform with no reliable video, not worth an adapter).
   locked to a 16:9 box so it never collapses to a tiny default size, with a
   large overlay play button and a warm-up trick (muted play-then-pause on
   `loadedmetadata`) that pre-buffers so the user's real first play starts
-  instantly.
+  instantly. YouTube videos use an embedded iframe + the YouTube IFrame
+  Player API instead (no direct video file URL exists for YouTube) —
+  transcript click-to-seek, "Copy link to current time", "Go to time",
+  and deep-link-on-load all work identically either way, since both are
+  wrapped behind the same `{currentTime, play, pause, addEventListener}`
+  adapter shape (`createNativeAdapter` / `createYouTubeAdapter`).
 - **Transcript**: click a line to seek + highlight; a chain-link icon per
   line (visible on hover, or ambiently on the current line while paused)
   copies a link to that line without disturbing playback.
@@ -190,7 +196,8 @@ app/
     media_scan.py          shared regex-based media-URL scanner
                            (Granicus + Swagit)
     granicus.py, civicclerk.py, swagit.py, escribe.py,
-    ca_legislature.py, legistar.py, civicplus.py
+    ca_legislature.py, legistar.py, civicplus.py,
+    primegov.py, youtube.py
                            one AssetFinder per platform
   utils/vtt_parser.py      pure WebVTT parser
   utils/url_normalize.py   normalize_url() — the cache/log dedup key

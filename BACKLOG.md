@@ -13,17 +13,16 @@ Known bugs and features not yet addressed, roughly in priority order.
   PrimeGov today (detected but unregistered) — investigated whether the
   same "find an embedded supported-platform link, then delegate" pattern
   would help there: checked 3 real PrimeGov cities (Los Angeles, San Jose,
-  Petaluma) and all three embed video via a **YouTube** iframe player
-  (`youtube.com/iframe_api` + a JS-driven show/hide player, video ID not
-  statically present in the page HTML), not a link to any
-  currently-supported vendor platform. Unlike Legistar/CivicPlus (which
-  really are just wrappers around Granicus), PrimeGov is a genuine
-  distinct video host — the "find a supported link" fallback has nothing
-  to find here, so building it as a generic mechanism wouldn't help the
-  one real unsupported case that exists. A real PrimeGov/YouTube adapter
-  is a separate, bigger undertaking (extracting the video ID from page JS,
-  and YouTube captions would need their own fetch path with no equivalent
-  to Granicus's predictable `captions.vtt`) — not attempted this session.
+  Petaluma) and all three embed video via a **YouTube** iframe player,
+  not a link to any currently-supported vendor platform. Unlike
+  Legistar/CivicPlus (which really are just wrappers around Granicus),
+  PrimeGov is a genuine distinct video host — the "find a supported
+  link" fallback had nothing to find here, so a real PrimeGov/YouTube
+  adapter was needed. **[Done 2026-08-07] Built — see the PrimeGov/
+  YouTube entry in Platform coverage below.** (The "video ID not
+  statically present" claim above turned out to be based on checking a
+  PrimeGov URL shape without a video at all -- the shape a real shared
+  link uses does have it, directly in the page HTML.)
 - **[Done 2026-08-06] Zero-caption Granicus meetings — investigated with
   fresh real meetings** (since the original test clip IDs weren't recorded
   anywhere, re-tested against a current real meeting per flagged city:
@@ -350,6 +349,87 @@ Known bugs and features not yet addressed, roughly in priority order.
   (all 404) — so `EscribeAssetFinder`'s caption-fetching path is
   shape-verified only, not content-verified. Needs a real eScribe meeting
   with actual captions to confirm quality/format end-to-end.
+- **[Done 2026-08-07] PrimeGov + standalone YouTube adapters.** Two new
+  platforms, `app/platforms/primegov.py` and `app/platforms/youtube.py`.
+  Confirmed live end-to-end (LA City Council, a real ~100-minute meeting)
+  through the full pipeline: resolve, iframe playback, transcript render,
+  deep-link seek on page load, click-to-seek from a transcript line, and
+  "Copy link to current time" — all working.
+
+  **PrimeGov → YouTube delegation**: confirmed live (`lacity.primegov.com`)
+  that a real shared-link meeting page (`Portal/Meeting?
+  compiledMeetingDocumentFileId=...`) has `var videoUrl = "{11-char-
+  YouTube-id}";` directly in the server-rendered HTML, right next to a
+  `youtube.com/iframe_api` script tag — simple regex extraction, no JS
+  execution needed. (An agenda-only URL shape, `?meetingTemplateId=...`,
+  is what got checked in the original "not statically present"
+  investigation above — that page genuinely has no matching recording.)
+  Unlike Legistar/CivicPlus's delegation, this preserves the *original*
+  PrimeGov URL as `source_url` (calls `YouTubeAssetFinder.
+  resolve_video_id()` directly rather than going through
+  `resolve_via_platform()`), so "View original source" points back to
+  the actual meeting page, not a raw youtube.com URL.
+
+  **YouTube playback**: no direct video file URL exists for YouTube,
+  unlike every other platform here — needs an embedded iframe + the
+  YouTube IFrame Player API, a structurally different control surface
+  (`seekTo()` instead of `currentTime=`, no native `timeupdate` event,
+  async player creation) than the native `<video>`/hls.js pathway.
+  `player.js` now wraps whichever one is active behind a shared
+  `{currentTime get/set, play, pause, addEventListener}` adapter shape
+  (`createNativeAdapter` / `createYouTubeAdapter`) set once as
+  `activeVideoAdapter`, so transcript click-to-seek, "Copy link to
+  current time", "Go to time", and `applyDeepLink()` all work unchanged
+  against either one — verified all of the above live against the real
+  LA meeting, including deep-link seeking on a fresh page load (the
+  trickier async case, gated on the player's `onReady`).
+
+  **YouTube caption download is blocked for plain HTTP requests** —
+  real finding, not assumption: every caption URL YouTube hands out
+  (via the watch page's embedded `ytInitialPlayerResponse` JSON, itself
+  fetched fine with plain HTTP) returned `200 OK` with **0 bytes**
+  across 5 different request shapes tried live: aiohttp/curl, with a
+  real browser User-Agent, cross-origin `fetch()`, same-origin `fetch()`
+  from youtube.com itself, and a freshly-signed same-session URL grabbed
+  via JS on the actual watch page. **yt-dlp works reliably** where all of
+  those failed (confirmed against the real LA meeting: 570KB, ~2000
+  real caption segments) — it evidently has its own way of working
+  around whatever's blocking bare HTTP clients, so caption fetching goes
+  through yt-dlp's `urlopen()` (called via `asyncio.to_thread` since
+  yt-dlp is synchronous), not our own aiohttp session. **Ongoing
+  maintenance risk**: yt-dlp is under active, frequent maintenance
+  specifically because YouTube keeps changing things to block scraping
+  — left unpinned (latest) in `requirements.txt` on purpose; pinning an
+  old version would risk this breaking sooner. If YouTube/PrimeGov
+  resolves start failing, check for a yt-dlp update first.
+
+  **YouTube's caption VTT uses a "roll-up" cue style**, not one cue per
+  line (confirmed on both an auto-generated and, per a different real
+  track on the same video, a manual/CC-sourced track) — each cue repeats
+  the previous settled line and grows the *next* line word-by-word, so
+  treating each cue as its own segment produces massive duplicate text.
+  New `dedupe_rollup_cues()` in `vtt_parser.py` collapses this into real
+  segments — verified against the real 4035-cue/570KB sample: 2004 clean
+  segments, no visible duplication, fully coherent reconstructed text.
+
+  **Manual vs. auto-generated caption track selection**: prefers a
+  manual (non-ASR) track when available, but only when its coverage is
+  comparable to the auto-generated one — real finding on the LA sample:
+  the "manual" CC track only starts at 18:49 into the video (likely a
+  government CART feed that skips pre-meeting dead air), while the
+  auto-generated track covers the full video from :01. A transcript
+  with a 19-minute unlinkable gap at the start is worse for a deep-link
+  tool than a slightly lower-quality but complete one, so manual is only
+  used when it starts within 60s of the auto-generated track's start
+  (`YouTubeAssetFinder._pick_caption_track()`). Confirmed live: correctly
+  fell back to the (complete, auto-generated) track for this video and
+  warned the user it's auto-generated, not human-transcribed.
+
+  Not yet investigated: language handling beyond English (target
+  language is hardcoded "en", matching the rest of the app, not
+  content-verified against a real non-English YouTube meeting); whether
+  the manual-track coverage gap seen here is typical or specific to this
+  one video/jurisdiction.
 
 ## Reporting & caching
 

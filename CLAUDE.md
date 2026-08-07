@@ -53,9 +53,23 @@ under everything else. This repo extracts and fixes just that part.
   populated has been found yet — these are explicitly flagged as
   best-effort in code comments and BACKLOG.md, not silently assumed.
 - **When a platform turns out to be a wrapper around another** (confirmed
-  so far: Legistar and CivicPlus both just link out to Granicus), delegate
-  via `resolve_via_platform()` in `base.py` rather than writing a
-  redundant native parser.
+  so far: Legistar and CivicPlus both just link out to Granicus, and
+  PrimeGov embeds a YouTube video), delegate rather than writing a
+  redundant native parser — usually via `resolve_via_platform()` in
+  `base.py`, though PrimeGov calls `YouTubeAssetFinder.resolve_video_id()`
+  directly instead so it can pass the *original* PrimeGov URL through as
+  `source_url` (Legistar/CivicPlus's delegation ends up with the
+  delegated platform's URL as `source_url`, a known quirk — see
+  BACKLOG.md).
+- **yt-dlp is a different kind of dependency than everything else here**
+  — every other adapter reads a stable public API or a page structure
+  that isn't actively trying to block scraping; YouTube caption fetching
+  specifically is (plain HTTP requests to its caption endpoints return
+  200 OK with 0 bytes — confirmed live, see BACKLOG.md), and yt-dlp only
+  works around that because it's under continuous maintenance chasing
+  YouTube's changes. Left unpinned in `requirements.txt` on purpose. If
+  YouTube/PrimeGov resolves start failing, check for a yt-dlp update
+  before assuming it's a bug in this repo's code.
 - **`app/db/outcomes.py` classifies reporting outcomes by matching specific
   substrings in `transcript_warnings`** (e.g. `_AGENDA_FALLBACK_MARKER`,
   `_GARBLED_MARKER`) rather than a stored enum/boolean, to avoid touching
