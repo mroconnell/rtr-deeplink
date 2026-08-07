@@ -131,6 +131,55 @@ function renderTranscript(segs) {
   });
 }
 
+// Agenda items (chapter markers) get the same click-to-seek + copy-link
+// interactions as transcript lines, reusing the same markup/CSS classes
+// for visual consistency, but deliberately don't participate in
+// findActiveSegment()/highlightSegment()'s "currently playing" tracking
+// or the `line=` deep-link param -- those are transcript-specific
+// (segments are short/fine-grained, agenda items are coarse chapters,
+// less suited to continuous "which one is active right now" tracking),
+// and agenda_items is a separate list from `segments` so id collisions
+// aren't a concern (agenda-N vs seg-N).
+function renderAgenda(items) {
+  const container = document.getElementById('agendaList');
+  container.innerHTML = '';
+  items.forEach((item, index) => {
+    const itemId = `agenda-${index}`;
+    const div = document.createElement('div');
+    div.className = 'transcript-segment';
+    div.id = itemId;
+    div.dataset.start = item.start;
+    div.innerHTML = `<a href="#${itemId}" class="segment-timestamp" data-start="${item.start}">[${formatTime(item.start)}]</a>` +
+      `<button class="segment-link-btn" data-start="${item.start}" title="Copy link to this item" aria-label="Copy link to this item">${LINK_ICON_SVG}</button>` +
+      ` <span class="segment-text">${escapeHtml(item.text)}</span>`;
+    container.appendChild(div);
+  });
+
+  container.querySelectorAll('.segment-timestamp').forEach((a) => {
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      const start = Number(a.dataset.start || '0');
+      if (activeVideoAdapter) activeVideoAdapter.currentTime = Math.max(0, start - 1);
+      updateUrlParams({ t: start });
+    });
+  });
+
+  container.querySelectorAll('.segment-link-btn').forEach((btn) => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const start = Number(btn.dataset.start || '0');
+      updateUrlParams({ t: start });
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        btn.classList.add('copied');
+        setTimeout(() => btn.classList.remove('copied'), 1200);
+      } catch (err) {
+        // clipboard API unavailable; URL is already updated in the address bar
+      }
+    });
+  });
+}
+
 let searchMatches = [];
 let searchMatchIndex = -1;
 let transcriptSearchWired = false;
@@ -611,6 +660,12 @@ async function init() {
   if (videoWarnings.length) {
     document.getElementById('videoError').textContent = videoWarnings.map((w) => w).join(' ');
     document.getElementById('videoError').hidden = false;
+  }
+
+  const agendaItems = data.agenda_items || [];
+  if (agendaItems.length) {
+    document.getElementById('agendaSection').hidden = false;
+    renderAgenda(agendaItems);
   }
 
   const transcriptWarnings = data.transcript_warnings || [];

@@ -347,24 +347,26 @@ class GranicusAssetFinder(AssetFinder):
             else:
                 transcript_warnings.append("No caption/transcript file found on this page.")
 
-            if not segments and clip_id:
-                agenda_items, agenda_fallback_url = await self._fetch_agenda_items(session, final_url, clip_id)
-                if agenda_items:
-                    agenda_items.sort(key=lambda item: item[0])
-                    for i, (start, title) in enumerate(agenda_items):
-                        end = agenda_items[i + 1][0] if i + 1 < len(agenda_items) else start
-                        segments.append(TranscriptSegment(start=start, end=max(end, start), text=title))
-                    transcript_warnings.append(
-                        "No transcript/captions available for this meeting — showing "
-                        "agenda-item chapter markers instead, which still deep-link to "
-                        "the right moment."
-                    )
-                elif agenda_fallback_url:
+            # Agenda is fetched independently of whether a real transcript
+            # was found -- it's useful navigation context either way, not
+            # just a fallback for when there's nothing else. Kept in its
+            # own field (never folded into `segments`) so it's never
+            # mistaken for real transcript content.
+            agenda_items: List[TranscriptSegment] = []
+            if clip_id:
+                raw_items, agenda_fallback_url = await self._fetch_agenda_items(session, final_url, clip_id)
+                if raw_items:
+                    raw_items.sort(key=lambda item: item[0])
+                    for i, (start, item_title) in enumerate(raw_items):
+                        end = raw_items[i + 1][0] if i + 1 < len(raw_items) else start
+                        agenda_items.append(TranscriptSegment(start=start, end=max(end, start), text=item_title))
+                elif not segments and agenda_fallback_url:
                     # No timestamped chapter data (e.g. Berkeley/Paradise Valley AZ,
                     # which redirect AgendaViewer.php to their own external site or a
                     # PDF instead of Granicus's native structure) -- still a real,
                     # fetchable agenda, just not one we can parse into clickable
                     # moments, so link to it directly rather than discarding it.
+                    # Only worth mentioning when there's no real transcript either.
                     transcript_warnings.append(
                         f"We couldn't build clickable chapter markers, but this "
                         f"meeting's agenda is available here: {agenda_fallback_url}"
@@ -381,6 +383,7 @@ class GranicusAssetFinder(AssetFinder):
                 video_url=video_url,
                 video_format=video_format,
                 segments=segments,
+                agenda_items=agenda_items,
                 video_warnings=video_warnings,
                 transcript_warnings=transcript_warnings,
             )

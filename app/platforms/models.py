@@ -18,6 +18,12 @@ class ResolvedMeeting(BaseModel):
     video_url: Optional[str] = None  # m3u8/mp4 URL playable by hls.js/<video>, OR a youtube.com/embed/{id} URL
     video_format: Optional[str] = None  # "m3u8" | "mp4" | "youtube" | None -- "youtube" needs the iframe+Player-API pathway, not <video>
     segments: List[TranscriptSegment] = []
+    # Agenda/chapter markers (Granicus's AgendaViewer.php, CivicClerk's
+    # eventBookmarks, Swagit's .playerControl) -- kept separate from
+    # `segments` so they're never mistaken for a real transcript.
+    # Populated independently of whether a real transcript exists, so a
+    # meeting with both shows both (agenda above transcript on the page).
+    agenda_items: List[TranscriptSegment] = []
     transcript_language: Optional[str] = None  # ISO 639-1 code detected from actual caption text
     # Split so the frontend can place video issues near the player and
     # caption/transcript issues near the transcript, instead of dumping

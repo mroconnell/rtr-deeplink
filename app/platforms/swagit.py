@@ -104,40 +104,41 @@ class SwagitAssetFinder(AssetFinder):
                     segments.append(TranscriptSegment(start=start, end=start, text=text))
 
         if not segments:
-            # Swagit's page renders each agenda-item marker in two separate
-            # DOM copies (a compact video-index list + a detailed agenda
-            # list), both matching this selector with identical (ts, title)
-            # -- confirmed on a real League City meeting, which without
-            # dedup rendered every chapter twice. Dedup on (start, text).
-            chapters = soup.select("a.playerControl[data-ts][data-title]")
-            seen = set()
-            marks = []
-            for a in chapters:
-                ts = a.get("data-ts")
-                title_attr = a.get("data-title")
-                if not ts or not title_attr:
-                    continue
-                try:
-                    start = float(ts)
-                except ValueError:
-                    continue
-                text = title_attr.strip()
-                key = (start, text)
-                if key in seen:
-                    continue
-                seen.add(key)
-                marks.append((start, text))
-            marks.sort(key=lambda m: m[0])
-            for i, (start, text) in enumerate(marks):
-                end = marks[i + 1][0] if i + 1 < len(marks) else start
-                segments.append(TranscriptSegment(start=start, end=max(end, start), text=text))
-            if segments:
-                transcript_warnings.append(
-                    "No transcript available for this event — showing agenda-item "
-                    "chapter markers instead, which still deep-link to the right moment."
-                )
-            else:
-                transcript_warnings.append("No transcript or agenda chapter markers found for this event.")
+            transcript_warnings.append("No transcript found for this event.")
+
+        # Chapter markers are fetched independently of whether a real
+        # transcript was found -- useful navigation context either way,
+        # not just a fallback. Kept in its own field, never folded into
+        # `segments`.
+        #
+        # Swagit's page renders each agenda-item marker in two separate
+        # DOM copies (a compact video-index list + a detailed agenda
+        # list), both matching this selector with identical (ts, title)
+        # -- confirmed on a real League City meeting, which without
+        # dedup rendered every chapter twice. Dedup on (start, text).
+        agenda_items: List[TranscriptSegment] = []
+        chapters = soup.select("a.playerControl[data-ts][data-title]")
+        seen = set()
+        marks = []
+        for a in chapters:
+            ts = a.get("data-ts")
+            title_attr = a.get("data-title")
+            if not ts or not title_attr:
+                continue
+            try:
+                start = float(ts)
+            except ValueError:
+                continue
+            text = title_attr.strip()
+            key = (start, text)
+            if key in seen:
+                continue
+            seen.add(key)
+            marks.append((start, text))
+        marks.sort(key=lambda m: m[0])
+        for i, (start, text) in enumerate(marks):
+            end = marks[i + 1][0] if i + 1 < len(marks) else start
+            agenda_items.append(TranscriptSegment(start=start, end=max(end, start), text=text))
 
         return ResolvedMeeting(
             platform=self.platform_name,
@@ -148,6 +149,7 @@ class SwagitAssetFinder(AssetFinder):
             video_url=video_url,
             video_format=video_format,
             segments=segments,
+            agenda_items=agenda_items,
             video_warnings=video_warnings,
             transcript_warnings=transcript_warnings,
         )

@@ -82,23 +82,21 @@ class CivicClerkAssetFinder(AssetFinder):
                 "this adapter hasn't verified that format yet — not rendered."
             )
         else:
-            bookmarks = media.get("eventBookmarks") or []
-            if bookmarks:
-                sorted_marks = sorted(bookmarks, key=lambda b: b.get("markerTimeStart") or 0)
-                for i, mark in enumerate(sorted_marks):
-                    start = float(mark.get("markerTimeStart") or 0)
-                    end = float(sorted_marks[i + 1].get("markerTimeStart") or start) if i + 1 < len(sorted_marks) else start
-                    text = mark.get("markerTitle") or mark.get("markerText") or ""
-                    if text:
-                        segments.append(TranscriptSegment(start=start, end=max(end, start), text=text))
-                if segments:
-                    transcript_warnings.append(
-                        "No transcript/captions available for this event — showing "
-                        "agenda-item chapter markers instead, which still deep-link "
-                        "to the right moment."
-                    )
-            if not segments:
-                transcript_warnings.append("No caption, transcript, or agenda marker data found for this event.")
+            transcript_warnings.append("No caption or transcript data found for this event.")
+
+        # Agenda is fetched independently of whether a real transcript was
+        # found -- useful navigation context either way, not just a
+        # fallback. Kept in its own field, never folded into `segments`.
+        agenda_items: List[TranscriptSegment] = []
+        bookmarks = media.get("eventBookmarks") or []
+        if bookmarks:
+            sorted_marks = sorted(bookmarks, key=lambda b: b.get("markerTimeStart") or 0)
+            for i, mark in enumerate(sorted_marks):
+                start = float(mark.get("markerTimeStart") or 0)
+                end = float(sorted_marks[i + 1].get("markerTimeStart") or start) if i + 1 < len(sorted_marks) else start
+                text = mark.get("markerTitle") or mark.get("markerText") or ""
+                if text:
+                    agenda_items.append(TranscriptSegment(start=start, end=max(end, start), text=text))
 
         return ResolvedMeeting(
             platform=self.platform_name,
@@ -110,6 +108,7 @@ class CivicClerkAssetFinder(AssetFinder):
             video_url=video_url,
             video_format=video_format,
             segments=segments,
+            agenda_items=agenda_items,
             transcript_language=transcript_language,
             video_warnings=video_warnings,
             transcript_warnings=transcript_warnings,

@@ -228,6 +228,8 @@ video { width: 100%; height: 100%; display: block; }
 .big-play-button svg { display: block; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4)); }
 
 .transcript-section h2 { margin-bottom: 0.5rem; color: var(--primary); }
+.agenda-section { margin-bottom: 1.5rem; }
+.agenda-section h2 { margin-bottom: 0.5rem; color: var(--primary); }
 
 /* Fills the space where the transcript would be when there isn't one --
    a live playhead readout so it's clear we're still tracking the exact
