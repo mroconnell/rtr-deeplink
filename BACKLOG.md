@@ -164,6 +164,20 @@ Known bugs and features not yet addressed, roughly in priority order.
   than the page's own title. `source_url` is a required field on
   `ResolvedMeeting`, so this renders for every successfully-resolved
   meeting regardless of platform.
+- **[Done 2026-08-07] Live playhead timestamp where the transcript
+  would be.** Deep-linking to any moment already worked with zero
+  transcript (`t=` has always been the sole seek-position authority),
+  but nothing signaled that — a meeting with no transcript/agenda
+  previously just showed a warning and a dead end. `#transcriptMissing`
+  now shows a large live-updating timestamp (`updateNoTranscriptTime()`
+  in `player.js`) plus a "Copy link to this moment" button, sharing one
+  click handler with the existing toolbar button. Surfaced and fixed a
+  real gap: the timestamp is now also updated immediately after
+  `applyDeepLink()`, not just on `timeupdate` — for YouTube specifically,
+  `timeupdate` is only polled while actually playing, so a paused/
+  autoplay-blocked load would otherwise show a stale "0:00" instead of
+  the real deep-linked position. Verified live against Paradise Valley
+  AZ's confirmed blank-caption meeting.
 
 - **Newsletter signup box doesn't match the brand.** Built quickly with
   plain Bootstrap (`.btn.btn-primary` blue button, plain `.form-control`
