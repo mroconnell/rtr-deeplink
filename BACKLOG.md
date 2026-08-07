@@ -303,36 +303,42 @@ Known bugs and features not yet addressed, roughly in priority order.
   this redirect-target pattern holds generally across other Granicus
   customers who lack the native agenda index, or is specific to these
   two.
-- **Give the meeting page a dedicated "Agenda" section, structurally
-  separate from "Transcript."** Right now agenda/chapter-marker data
-  (Granicus's `AgendaViewer.php` items, CivicClerk's `eventBookmarks`,
-  Swagit's `.playerControl` markers) gets folded directly into
-  `ResolvedMeeting.segments` as if it were transcript content, only
-  when there's no real transcript at all (`if not segments` in
-  `granicus.py`) — that conflation was a reasonable v1 shortcut but
-  doesn't hold once agenda is meant to be its own thing. Needs: a new
-  field on `ResolvedMeeting` (e.g. `agenda_items`, kept separate from
-  `segments`) populated independently of transcript availability; a new
-  `#agendaSection` in `meeting.html` with its own "Agenda" heading,
-  mirroring the existing transcript section's structure; `player.js`
-  rendering for it (agenda items are start-time-linkable when Granicus's
-  native structure is available, otherwise likely just plain text or
-  the link-out from the item above). This also means revisiting
-  `app/db/outcomes.py`'s `classify_outcome()` — the `agenda_fallback`
-  bucket currently depends on detecting the shared warning-text marker
-  inside `transcript_warnings`/`segments`; once agenda moves to its own
-  field, that detection logic needs to move with it rather than break
-  silently.
-- **Always attempt to load the agenda, even when a real transcript
-  exists.** Depends on the previous item's schema change (agenda as its
-  own field, not conflated with `segments`). Currently
-  `GranicusAssetFinder.resolve()` only calls `_fetch_agenda_items()`
-  inside `if not segments:` — meaning a meeting with a perfectly good
-  transcript never gets its agenda fetched at all. Decouple the two:
-  fetch/attach the agenda regardless of transcript outcome, since it's
-  useful navigation context either way (per the user's ask — agenda
-  section loads under the video, transcript section below that, when
-  both exist).
+- **[Done 2026-08-07] Dedicated "Agenda" section, structurally separate
+  from "Transcript," always loaded regardless of transcript
+  availability.** Agenda/chapter-marker data (Granicus's
+  `AgendaViewer.php` items, CivicClerk's `eventBookmarks`, Swagit's
+  `.playerControl` markers) previously got folded directly into
+  `ResolvedMeeting.segments` as if it were transcript content, and only
+  when there was no real transcript at all — a reasonable v1 shortcut
+  that didn't hold once agenda was meant to be its own thing. Added a
+  new `agenda_items: List[TranscriptSegment]` field on `ResolvedMeeting`
+  (`app/platforms/models.py`), kept structurally separate from
+  `segments` so agenda/chapter data is never mistaken for real
+  transcript content. Granicus, CivicClerk, and Swagit adapters now
+  populate it unconditionally (agenda fetch decoupled from `if not
+  segments:`), so a meeting with both a real transcript and a real
+  agenda shows both simultaneously — verified live on Simi Valley
+  Granicus (394 real transcript segments + 17 agenda items
+  simultaneously). New `#agendaSection` in `meeting.html`, positioned
+  between the video and transcript sections; `player.js`'s
+  `renderAgenda()` reuses the transcript's `.segment-timestamp`/
+  `.segment-link-btn`/`.segment-text` markup for click-to-seek and
+  copy-link, but deliberately doesn't participate in
+  `findActiveSegment()`'s "currently playing" highlighting or the
+  `line=` deep-link param — agenda items are seek-only via `t=`,
+  simpler than transcript's fine-grained tracking. `classify_outcome()`
+  in `app/db/outcomes.py` now checks `resolved_payload.agenda_items`
+  directly instead of inferring the `agenda_fallback` bucket from a
+  warning-text marker (`_AGENDA_FALLBACK_MARKER` removed). Verified
+  live across three real scenarios: Simi Valley Granicus (transcript +
+  agenda both shown), Yountville Swagit (agenda only, 7 items,
+  transcript-missing block shows a plain "No transcript found"
+  message), Paradise Valley AZ Granicus (no agenda section — no
+  timestamped agenda data available — but the existing blank-caption
+  warning and clickable agenda-PDF fallback link still render
+  correctly in the transcript-missing block). YouTube/PrimeGov adapter
+  untouched this round — confirmed it still resolves cleanly with an
+  empty `agenda_items: []` (no crash, no regression).
 - **[Done 2026-08-06] CivicClerk, Swagit, eScribe adapters built.**
   BoardDocs deliberately excluded — confirmed across 2 real cities (South
   Portland ME, Taos NM) it's a document/agenda platform with no reliable

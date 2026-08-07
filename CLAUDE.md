@@ -70,11 +70,15 @@ under everything else. This repo extracts and fixes just that part.
   YouTube's changes. Left unpinned in `requirements.txt` on purpose. If
   YouTube/PrimeGov resolves start failing, check for a yt-dlp update
   before assuming it's a bug in this repo's code.
-- **`app/db/outcomes.py` classifies reporting outcomes by matching specific
-  substrings in `transcript_warnings`** (e.g. `_AGENDA_FALLBACK_MARKER`,
-  `_GARBLED_MARKER`) rather than a stored enum/boolean, to avoid touching
-  every adapter's model for reporting alone. If you change or add a
-  fallback/quality warning message in an adapter, keep the shared marker
+- **`app/db/outcomes.py` classifies reporting outcomes from real signal on
+  the row where one exists, and falls back to substring-matching
+  `transcript_warnings` only where it doesn't.** `agenda_fallback` is
+  decided from `resolved_payload["agenda_items"]` directly (a real field
+  on `ResolvedMeeting`, separate from `segments` — see the "Supported
+  platforms" table in README.md), not warning text. `garbled_transcript`
+  still matches `_GARBLED_MARKER` against `transcript_warnings`, since
+  garbled-ness isn't (yet) a first-class field. If you change or add a
+  quality warning message in an adapter, keep `_GARBLED_MARKER`'s
   substring intact (or update `outcomes.py` to match) — otherwise that
   warning silently stops being classified correctly and falls through to
   a more generic bucket.

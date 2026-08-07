@@ -42,12 +42,17 @@ only if you want to point at a real Postgres instance instead.
 3. The matching `AssetFinder` (one class per platform, all in
    `app/platforms/`) fetches whatever it needs — usually the meeting page's
    HTML, sometimes a small REST API — and returns a `ResolvedMeeting`:
-   title, date, jurisdiction, a playable video URL, and transcript
-   segments (`{start, end, text}`) if any were found.
+   title, date, jurisdiction, a playable video URL, transcript segments
+   (`{start, end, text}`) if any were found, and agenda/chapter-marker
+   items (`agenda_items`, same `{start, end, text}` shape) if any were
+   found — kept as a separate field so agenda data is never mistaken for
+   a real transcript.
 4. `/meeting?url=<source>` (served by `app/templates/meeting.html` +
    `player.js`) calls `/api/resolve` client-side and renders the result:
-   video player (hls.js for `.m3u8`, native `<video>` otherwise) above a
-   clickable transcript.
+   video player (hls.js for `.m3u8`, native `<video>` otherwise), then an
+   Agenda section (if any agenda items were found), then a clickable
+   Transcript section. Agenda is populated independently of transcript
+   availability, so a meeting with both shows both at once.
 
 The rendered page itself is never cached — every page load re-resolves from
 the source URL. What *can* be cached is the resolve result: if a database is
@@ -113,10 +118,13 @@ unreachable database.
   - `resolve_failed` / `calendar_page` / `unsupported_platform` — the
     existing `/api/resolve` error shapes
 
-  A chapter-marker fallback produces non-empty `segments` just like a real
-  transcript does, so it's classified from the shared fallback warning text
-  (`_AGENDA_FALLBACK_MARKER` in `outcomes.py`) checked *before* the
-  found/not-found check — otherwise it would silently count as `success`.
+  Agenda/chapter-marker data lives in its own `ResolvedMeeting.agenda_items`
+  field, separate from `segments` (see "Supported platforms" below), and is
+  fetched regardless of whether a real transcript was also found. So
+  `classify_outcome()` checks `resolved_payload["agenda_items"]` directly to
+  decide `agenda_fallback` vs. `blank_transcript` — only reached when
+  `transcript_found` is false, since a meeting with both a real transcript
+  and agenda data still classifies as `success`.
 
 Two admin endpoints, both gated by `ADMIN_STATS_TOKEN` (`?token=...`,
 returns 404 rather than 401/403 on a missing/wrong token so the route isn't
@@ -134,11 +142,11 @@ One `AssetFinder` per **platform**, not per city — cities on the same
 platform share the same page/API structure. Detection lives in
 `detect_platform()`; adapters are registered in `app/main.py`.
 
-| Platform | File | How video is found | How captions are found |
+| Platform | File | How video is found | How captions/agenda are found |
 |---|---|---|---|
-| Granicus | `granicus.py` | Regex-scan the page HTML for `.m3u8`/`.mp4` URLs (shared `media_scan.py` helper) | Guessed `/videos/{id}/captions.vtt` path + scanned `.vtt` URLs; language verified from actual cue content (not the untrustworthy `srclang` label); RSS channel title (`ViewPublisherRSS.php`) used for reliable jurisdiction/title. When there's no usable transcript, falls back to `AgendaViewer.php`'s agenda-item chapter markers when that customer has Granicus's native agenda index turned on (not universal — some customers redirect it to their own site instead) |
-| CivicClerk | `civicclerk.py` | Public REST API (`<subdomain>.api.civicclerk.com`) — the portal page itself is a client-rendered SPA with nothing to scrape | API's caption fields when populated; falls back to the API's `eventBookmarks` (agenda-item timestamps) as clickable chapters when there's no real transcript |
-| Swagit | `swagit.py` | jwplayer JSON blob embedded in the page (shares Granicus's CDN infra, but a different page shape) | `.playerControl[data-ts]` agenda-item markers, same chapter-fallback role as CivicClerk's bookmarks |
+| Granicus | `granicus.py` | Regex-scan the page HTML for `.m3u8`/`.mp4` URLs (shared `media_scan.py` helper) | Guessed `/videos/{id}/captions.vtt` path + scanned `.vtt` URLs; language verified from actual cue content (not the untrustworthy `srclang` label); RSS channel title (`ViewPublisherRSS.php`) used for reliable jurisdiction/title. Agenda items (`AgendaViewer.php`'s chapter markers) are fetched independently of transcript availability into their own `agenda_items` field, when that customer has Granicus's native agenda index turned on (not universal — some customers redirect it to their own site instead, surfaced as a plain link instead) |
+| CivicClerk | `civicclerk.py` | Public REST API (`<subdomain>.api.civicclerk.com`) — the portal page itself is a client-rendered SPA with nothing to scrape | API's caption fields when populated; the API's `eventBookmarks` (agenda-item timestamps) are fetched independently into `agenda_items` |
+| Swagit | `swagit.py` | jwplayer JSON blob embedded in the page (shares Granicus's CDN infra, but a different page shape) | `.playerControl[data-ts]` agenda-item markers fetched independently into `agenda_items` |
 | eScribe | `escribe.py` | `<div id="isi_player" data-client_id data-stream_name>` when present — video integration varies entirely by city, "no video" is a normal outcome here | iSiLIVE captions, keyed by language suffix in the filename (`{file}.vtt`, `{file}.fr.vtt`, ...) |
 | California Legislature | `ca_legislature.py` | Self-hosted (`stream.{assembly,senate}.ca.gov`), not a vendor platform | Self-hosted `.vtt` at a matching filename; genuinely high quality when present |
 | Legistar | `legistar.py` | Doesn't host video — finds the embedded/redirected link to a platform above (usually Granicus) and delegates via `resolve_via_platform()` | Whatever the delegated platform provides |
@@ -161,6 +169,13 @@ document/agenda platform with no reliable video, not worth an adapter).
   and deep-link-on-load all work identically either way, since both are
   wrapped behind the same `{currentTime, play, pause, addEventListener}`
   adapter shape (`createNativeAdapter` / `createYouTubeAdapter`).
+- **Agenda**: a dedicated section (`renderAgenda()`), shown above the
+  Transcript section whenever agenda/chapter-marker data was found,
+  independent of whether a real transcript also exists. Reuses the
+  transcript's timestamp/link-icon/text markup for visual consistency and
+  click-to-seek + copy-link, but doesn't participate in the transcript's
+  "currently playing" highlighting or the `line=` deep-link param — agenda
+  items are seek-only via `t=`.
 - **Transcript**: click a line to seek + highlight; a chain-link icon per
   line (visible on hover, or ambiently on the current line while paused)
   copies a link to that line without disturbing playback.
