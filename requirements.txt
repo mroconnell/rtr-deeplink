@@ -9,3 +9,4 @@ sqlalchemy[asyncio]>=2.0
 asyncpg>=0.29
 aiosqlite>=0.20
 python-dotenv>=1.0
+yt-dlp

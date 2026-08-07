@@ -198,6 +198,21 @@ body {
 }
 video { width: 100%; height: 100%; display: block; }
 
+.youtube-player-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+/* YT.Player sets explicit pixel width/height attributes on the iframe it
+   creates -- override with !important so it still fills the responsive
+   16:9 wrapper instead of the fixed default size. */
+.youtube-player-container iframe {
+  width: 100% !important;
+  height: 100% !important;
+}
+
 .big-play-button {
   position: absolute;
   top: 50%;

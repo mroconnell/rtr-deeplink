@@ -15,8 +15,8 @@ class ResolvedMeeting(BaseModel):
     title: Optional[str] = None
     date: Optional[str] = None
     jurisdiction: Optional[str] = None
-    video_url: Optional[str] = None  # m3u8 or mp4, playable by hls.js/<video>
-    video_format: Optional[str] = None  # "m3u8" | "mp4" | None
+    video_url: Optional[str] = None  # m3u8/mp4 URL playable by hls.js/<video>, OR a youtube.com/embed/{id} URL
+    video_format: Optional[str] = None  # "m3u8" | "mp4" | "youtube" | None -- "youtube" needs the iframe+Player-API pathway, not <video>
     segments: List[TranscriptSegment] = []
     transcript_language: Optional[str] = None  # ISO 639-1 code detected from actual caption text
     # Split so the frontend can place video issues near the player and

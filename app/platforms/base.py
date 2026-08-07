@@ -74,6 +74,8 @@ def detect_platform(url: str) -> str:
         return "escribe"
     if "assembly.ca.gov" in netloc or "senate.ca.gov" in netloc:
         return "ca_legislature"
+    if "youtube.com" in netloc or "youtu.be" in netloc:
+        return "youtube"
     return "unknown"
 
 

@@ -70,6 +70,59 @@ def parse_vtt(content: str) -> List[Dict[str, Any]]:
     return cues
 
 
+_TAG_RE = re.compile(r"<[^>]+>")
+
+
+def dedupe_rollup_cues(cues: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Collapse YouTube auto-caption "roll-up" cues into real segments.
+
+    YouTube's auto-generated VTT (confirmed live, a real LA City Council
+    meeting via yt-dlp) doesn't give each line its own cue -- every cue
+    repeats the previous settled line as line 1 and grows the *next* line
+    word-by-word as line 2 (each word individually timestamped via <c>
+    tags), so treating each cue as its own segment produces massive
+    overlapping duplicate text. Confirmed structure from a real sample:
+
+        00:00:01.199 --> 00:00:03.750
+        <blank>
+        most<...>permanent<...>supportive<...>housing<...>takes
+
+        00:00:03.750 --> 00:00:03.760
+        most permanent supportive housing takes
+        <blank>
+
+        00:00:03.760 --> 00:00:05.749
+        most permanent supportive housing takes
+        five<...>to<...>seven<...>years
+
+    This takes each cue's last non-blank line (stripped of <c> tags), and
+    merges it into the running segment whenever it's a growing/settling
+    version of the previous line (one is a prefix of the other) rather
+    than appending a new one -- otherwise it starts a new segment.
+    Verified against a real 4035-cue/570KB sample: collapses to 2004
+    segments with no visible duplication and coherent reconstructed text.
+    """
+    result: List[Dict[str, Any]] = []
+    prev_line = ""
+    for cue in cues:
+        text = _TAG_RE.sub("", cue["text"])
+        lines = [l.strip() for l in text.split("\n") if l.strip()]
+        line = lines[-1] if lines else ""
+        if not line:
+            continue
+
+        if result and (line.startswith(prev_line) or prev_line.startswith(line)):
+            result[-1]["end"] = cue["end"]
+            if len(line) > len(prev_line):
+                result[-1]["text"] = line
+                prev_line = line
+        else:
+            result.append({"start": cue["start"], "end": cue["end"], "text": line})
+            prev_line = line
+
+    return result
+
+
 # Some caption sources (confirmed: San Francisco's Granicus captions) render
 # entirely in ALL CAPS -- a live-caption-system convention, not an error --
 # which reads as shouting when displayed as a transcript. Detected once per

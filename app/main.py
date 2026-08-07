@@ -26,6 +26,8 @@ from .platforms.escribe import EscribeAssetFinder
 from .platforms.ca_legislature import CaliforniaLegislatureAssetFinder
 from .platforms.legistar import LegistarAssetFinder
 from .platforms.civicplus import CivicPlusAssetFinder
+from .platforms.youtube import YouTubeAssetFinder
+from .platforms.primegov import PrimeGovAssetFinder
 from .utils.url_normalize import normalize_url
 
 load_dotenv()
@@ -58,6 +60,8 @@ register(EscribeAssetFinder())
 register(CaliforniaLegislatureAssetFinder())
 register(LegistarAssetFinder())
 register(CivicPlusAssetFinder())
+register(YouTubeAssetFinder())
+register(PrimeGovAssetFinder())
 
 
 class ResolveRequest(BaseModel):

@@ -6,6 +6,18 @@ const sourceUrl = document.body.dataset.sourceUrl;
 let autoScrollEnabled = true;
 let segments = [];
 
+// Every other platform hands us a direct m3u8/mp4 URL playable in a plain
+// <video>. YouTube doesn't -- playback needs an embedded iframe + the
+// YouTube IFrame Player API instead, a structurally different control
+// surface (seekTo() instead of currentTime=, no native timeupdate event,
+// async player creation). Rather than branching every call site on video
+// format, initVideo() wraps whichever one is active behind this same
+// {currentTime get/set, play, pause, addEventListener} shape, set once
+// the player exists -- so transcript click-to-seek, "Copy link to
+// current time", "Go to time", and applyDeepLink() all work unchanged
+// against `activeVideoAdapter` regardless of which platform this is.
+let activeVideoAdapter = null;
+
 function getQueryParams() {
   return new URLSearchParams(window.location.search);
 }
@@ -81,8 +93,7 @@ function renderTranscript(segs) {
       e.preventDefault();
       const start = Number(a.dataset.start || '0');
       const segId = a.dataset.segId;
-      const video = document.getElementById('meetingVideo');
-      if (video) video.currentTime = Math.max(0, start - 1);
+      if (activeVideoAdapter) activeVideoAdapter.currentTime = Math.max(0, start - 1);
       highlightSegment(segId, false);
       updateUrlParams({ t: start, line: segId });
     });
@@ -202,16 +213,35 @@ function linkifyWarning(text) {
 }
 
 function initVideo(videoUrl, videoFormat) {
-  const video = document.getElementById('meetingVideo');
   const section = document.getElementById('videoSection');
-  const errorEl = document.getElementById('videoError');
-  const bigPlayBtn = document.getElementById('bigPlayButton');
 
   if (!videoUrl) {
     section.hidden = true;
     return;
   }
   section.hidden = false;
+
+  if (videoFormat === 'youtube') {
+    initYouTubeVideo(videoUrl);
+  } else {
+    initNativeVideo(videoUrl, videoFormat);
+  }
+}
+
+function createNativeAdapter(videoEl) {
+  return {
+    get currentTime() { return videoEl.currentTime; },
+    set currentTime(t) { videoEl.currentTime = t; },
+    play: () => videoEl.play(),
+    pause: () => videoEl.pause(),
+    addEventListener: (evt, handler) => videoEl.addEventListener(evt, handler),
+  };
+}
+
+function initNativeVideo(videoUrl, videoFormat) {
+  const video = document.getElementById('meetingVideo');
+  const errorEl = document.getElementById('videoError');
+  const bigPlayBtn = document.getElementById('bigPlayButton');
 
   try {
     if (videoFormat === 'm3u8' && window.Hls && Hls.isSupported()) {
@@ -230,21 +260,19 @@ function initVideo(videoUrl, videoFormat) {
       video.src = videoUrl;
     }
   } catch (e) {
-    section.hidden = true;
+    document.getElementById('videoSection').hidden = true;
+    return;
   }
 
   // The native <video> control bar's play triangle is small and easy to
   // miss, especially against a busy poster-frame image (a real complaint
   // from live review). Show a large, obvious overlay play button instead;
-  // it defers to the native controls once playback has started.
+  // it defers to the native controls once playback has started. YouTube's
+  // embedded player has its own play button, so this is native-only.
   bigPlayBtn.hidden = false;
   bigPlayBtn.addEventListener('click', () => video.play());
-  // "video-at-rest" also gently suggests the current transcript line is
-  // deep-linkable (its link icon shows without a hover) when paused --
-  // suppressed during playback so it doesn't flicker from line to line as
-  // the highlighted segment advances.
-  video.addEventListener('play', () => { bigPlayBtn.hidden = true; document.body.classList.remove('video-at-rest'); });
-  video.addEventListener('pause', () => { bigPlayBtn.hidden = false; document.body.classList.add('video-at-rest'); });
+  video.addEventListener('play', () => { bigPlayBtn.hidden = true; });
+  video.addEventListener('pause', () => { bigPlayBtn.hidden = false; });
 
   // Warm up playback once metadata is available: briefly muted-play-then-
   // pause forces the browser to decode and render the first real frame
@@ -253,7 +281,7 @@ function initVideo(videoUrl, videoFormat) {
   // of visibly waiting to buffer -- addresses the "awkward pause after
   // clicking play" complaint from live review.
   //
-  // Careful: applyDeepLink() (called below) sets video.currentTime before
+  // Careful: applyDeepLink() (called below) sets currentTime before
   // metadata is loaded, which per spec just queues it as the "default
   // playback position" and takes effect once metadata is ready -- so by
   // the time this fires, currentTime may already reflect a pending
@@ -275,15 +303,129 @@ function initVideo(videoUrl, videoFormat) {
     }
   }, { once: true });
 
-  video.addEventListener('timeupdate', () => {
-    const segId = findActiveSegment(video.currentTime);
+  const adapter = createNativeAdapter(video);
+  activeVideoAdapter = adapter;
+  wireSharedControls(adapter);
+  applyDeepLink(adapter);
+}
+
+// --- YouTube (PrimeGov delegates here too) -- no direct video file URL
+// exists, so playback goes through an embedded iframe + the YouTube
+// IFrame Player API instead of the native <video>/hls.js pathway above.
+let _youtubeApiLoadPromise = null;
+
+function loadYouTubeIframeApi() {
+  if (window.YT && window.YT.Player) return Promise.resolve();
+  if (_youtubeApiLoadPromise) return _youtubeApiLoadPromise;
+  _youtubeApiLoadPromise = new Promise((resolve) => {
+    const previous = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => {
+      if (typeof previous === 'function') previous();
+      resolve();
+    };
+    const tag = document.createElement('script');
+    tag.src = 'https://www.youtube.com/iframe_api';
+    document.head.appendChild(tag);
+  });
+  return _youtubeApiLoadPromise;
+}
+
+function extractYouTubeVideoId(embedUrl) {
+  const match = /\/embed\/([A-Za-z0-9_-]{11})/.exec(embedUrl || '');
+  return match ? match[1] : null;
+}
+
+function createYouTubeAdapter(ytPlayer) {
+  const listeners = { play: [], pause: [], timeupdate: [] };
+  let pollHandle = null;
+  const fire = (name) => listeners[name].forEach((fn) => fn());
+
+  ytPlayer.addEventListener('onStateChange', (e) => {
+    if (e.data === YT.PlayerState.PLAYING) {
+      fire('play');
+      if (!pollHandle) pollHandle = setInterval(() => fire('timeupdate'), 250);
+    } else {
+      fire('pause');
+      if (pollHandle) { clearInterval(pollHandle); pollHandle = null; }
+    }
+  });
+
+  return {
+    get currentTime() { return ytPlayer.getCurrentTime(); },
+    set currentTime(t) { ytPlayer.seekTo(t, true); },
+    play: () => ytPlayer.playVideo(),
+    pause: () => ytPlayer.pauseVideo(),
+    addEventListener: (evt, handler) => { if (listeners[evt]) listeners[evt].push(handler); },
+  };
+}
+
+async function initYouTubeVideo(embedUrl) {
+  const videoId = extractYouTubeVideoId(embedUrl);
+  const container = document.getElementById('youtubePlayerContainer');
+  const errorEl = document.getElementById('videoError');
+  if (!videoId || !container) {
+    errorEl.textContent = 'Could not load this YouTube video.';
+    errorEl.hidden = false;
+    return;
+  }
+
+  document.getElementById('meetingVideo').hidden = true;
+  document.getElementById('bigPlayButton').hidden = true;
+  container.hidden = false;
+
+  try {
+    await loadYouTubeIframeApi();
+  } catch (e) {
+    errorEl.textContent = 'Video failed to load; source link only.';
+    errorEl.hidden = false;
+    return;
+  }
+
+  new YT.Player(container, {
+    videoId,
+    playerVars: { rel: 0, playsinline: 1 },
+    events: {
+      // Unlike the native <video> path (where currentTime can be set,
+      // queued, before metadata loads), the player isn't usable at all
+      // until onReady fires -- the adapter, shared control wiring, and
+      // deep-link seek all wait for it.
+      onReady: (event) => {
+        const adapter = createYouTubeAdapter(event.target);
+        activeVideoAdapter = adapter;
+        wireSharedControls(adapter);
+        applyDeepLink(adapter);
+      },
+      onError: () => {
+        errorEl.textContent = 'Video failed to load; source link only.';
+        errorEl.hidden = false;
+      },
+    },
+  });
+}
+
+// Controls shared by both the native <video> and YouTube adapters --
+// "Copy link to current time", auto-scroll toggle, the "Go to time" box,
+// and highlighting the active transcript line as playback advances. Each
+// initializer builds its own adapter (native wraps <video> directly;
+// YouTube polls getCurrentTime() since there's no native timeupdate
+// event) and calls this once, so this logic only needs to be written once.
+function wireSharedControls(adapter) {
+  // Gently suggests the current transcript line is deep-linkable (its
+  // link icon shows without a hover) when paused -- suppressed during
+  // playback so it doesn't flicker from line to line as the highlighted
+  // segment advances.
+  adapter.addEventListener('play', () => document.body.classList.remove('video-at-rest'));
+  adapter.addEventListener('pause', () => document.body.classList.add('video-at-rest'));
+
+  adapter.addEventListener('timeupdate', () => {
+    const segId = findActiveSegment(adapter.currentTime);
     if (segId) highlightSegment(segId, autoScrollEnabled);
   });
 
   const linkBtn = document.getElementById('linkToCurrentBtn');
   const linkLabel = linkBtn.querySelector('.cassette-label');
   linkBtn.addEventListener('click', async () => {
-    const t = video.currentTime;
+    const t = adapter.currentTime;
     const segId = findActiveSegment(t) || null;
     updateUrlParams({ t, line: segId });
     trackEvent('copy_link_to_time');
@@ -317,13 +459,11 @@ function initVideo(videoUrl, videoFormat) {
       return;
     }
     seekInput.setCustomValidity('');
-    video.currentTime = t;
+    adapter.currentTime = t;
     const segId = findActiveSegment(t);
     if (segId) highlightSegment(segId, true);
     updateUrlParams({ t, line: segId || null });
   });
-
-  applyDeepLink(video);
 }
 
 function parseTimeInput(raw) {
