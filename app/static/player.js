@@ -393,7 +393,7 @@ async function init() {
     return;
   }
 
-  statusEl.textContent = 'Resolving meeting video and transcript...';
+  statusEl.textContent = 'Please wait while we fetch the video and transcript from the government page. This usually takes less than 20 seconds.';
 
   let data;
   try {
