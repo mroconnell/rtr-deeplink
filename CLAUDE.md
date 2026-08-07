@@ -1,9 +1,14 @@
 # rtr-deeplink
 
 A deliberately lean rebuild of the video+transcript+deep-link feature from
-`rtr-transcripts` (the round-1 "Red Tape Recordings" MVP). No database, no
-auth, no background job queue — the whole app is stateless: given a meeting
-URL, resolve its video and transcript on demand and render them together.
+`rtr-transcripts` (the round-1 "Red Tape Recordings" MVP). No accounts, no
+auth, no background job queue — given a meeting URL, resolve its video and
+transcript on demand and render them together. There's now an optional
+database (`app/db/`) for caching resolves and admin reporting, added
+deliberately narrow in scope to avoid reintroducing round 1's auth/Mongo/
+NextAuth complexity — it holds no user-facing state, and the app still works
+with zero persistence if it's unset or unreachable. See README's
+"Caching and reporting" section for how it works.
 
 **See `README.md` for architecture, the resolve flow, supported platforms,
 and frontend features.** This file covers conventions and context specific
@@ -51,6 +56,14 @@ under everything else. This repo extracts and fixes just that part.
   so far: Legistar and CivicPlus both just link out to Granicus), delegate
   via `resolve_via_platform()` in `base.py` rather than writing a
   redundant native parser.
+- **`app/db/outcomes.py` classifies reporting outcomes by matching specific
+  substrings in `transcript_warnings`** (e.g. `_AGENDA_FALLBACK_MARKER`,
+  `_GARBLED_MARKER`) rather than a stored enum/boolean, to avoid touching
+  every adapter's model for reporting alone. If you change or add a
+  fallback/quality warning message in an adapter, keep the shared marker
+  substring intact (or update `outcomes.py` to match) — otherwise that
+  warning silently stops being classified correctly and falls through to
+  a more generic bucket.
 
 ## Related context
 

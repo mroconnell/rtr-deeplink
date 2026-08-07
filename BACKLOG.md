@@ -159,6 +159,12 @@ Known bugs and features not yet addressed, roughly in priority order.
   goal. The toolbar itself is now `position: sticky` so it stays reachable
   when scrolling past it, addressing the original auto-scroll-fights-you
   complaint.
+- **[Done 2026-08-07] "View original source" link on the meeting page.**
+  Links back to the original government meeting page (`data.source_url`)
+  in a new tab, styled small/muted so it reads as an outbound link rather
+  than the page's own title. `source_url` is a required field on
+  `ResolvedMeeting`, so this renders for every successfully-resolved
+  meeting regardless of platform.
 
 - **CivicClerk's real caption/transcript format is unverified.** The API
   schema has `EventsMedia.closedCaptionUrl`, `.transcriptionUrl`, and
@@ -199,6 +205,25 @@ Known bugs and features not yet addressed, roughly in priority order.
   whether it came from a calendar with a caption file — not worth
   building; there's no reliable way to know which calendar (if any)
   originally listed a given direct video URL.
+- **[Done 2026-08-07] Granicus agenda-item chapter-marker fallback,
+  same role as CivicClerk's `eventBookmarks`/Swagit's `.playerControl`.**
+  When there's no usable transcript, `GranicusAssetFinder` now tries
+  `AgendaViewer.php?clip_id={id}&embedded=1` — Granicus's own agenda-index
+  feature, when a customer has it turned on, renders each item as
+  `<a name="agenda{id}" onclick="top.SetPlayerPosition('0:{seconds}',null)">
+  {title}</a>`. Confirmed live: works on Simi Valley (17 items) and San
+  Francisco (82 items). **Does not help either of the two jurisdictions
+  confirmed genuinely blank-caption in the 2026-08-06 zero-caption
+  investigation above**: Berkeley redirects `AgendaViewer.php` to its own
+  external site (`berkeleyca.gov`) instead, with an empty `cuepoints`
+  array on the player page too; Paradise Valley AZ redirects it to a
+  Google Docs PDF preview, and its `cuepoints` array has real
+  timestamps/ids but no titles anywhere to pair them with. Both simply
+  return zero items and fall through to the existing "no transcript"
+  warning, so this is additive, not a regression, for jurisdictions that
+  don't have it. Real ratio of "has native agenda index" vs. "redirects
+  elsewhere" across Granicus's full customer base is unknown — worth
+  revisiting once more jurisdictions are checked.
 - **[Done 2026-08-06] CivicClerk, Swagit, eScribe adapters built.**
   BoardDocs deliberately excluded — confirmed across 2 real cities (South
   Portland ME, Taos NM) it's a document/agenda platform with no reliable
@@ -229,3 +254,34 @@ Known bugs and features not yet addressed, roughly in priority order.
   (all 404) — so `EscribeAssetFinder`'s caption-fetching path is
   shape-verified only, not content-verified. Needs a real eScribe meeting
   with actual captions to confirm quality/format end-to-end.
+
+## Reporting & caching
+
+- **[Done 2026-08-07] Per-adapter reporting log + read-through cache.**
+  New `app/db/` layer (SQLAlchemy async, Postgres via `DATABASE_URL` in
+  prod — Render Postgres, user's choice over Neon/Supabase — local SQLite
+  fallback otherwise). `/api/resolve` now checks for a prior successful
+  resolve of the same normalized URL before fetching live, and logs every
+  attempt (success or failure) unconditionally to `meeting_resolutions`.
+  All DB calls are wrapped so a down/misconfigured database degrades
+  silently rather than breaking resolving — verified live by pointing
+  `DATABASE_URL` at an unreachable host and confirming `/api/resolve`
+  still returned correct results with no 500. Two token-gated endpoints:
+  `GET /admin/stats` (aggregates) and `GET /admin/log` (unaggregated
+  per-URL list, JSON or CSV). Also added `external_id` to `ResolvedMeeting`
+  (populated so far by Granicus and CivicClerk from ids they already
+  extract internally) as a foundation for future dedup.
+- **[Done 2026-08-07] Outcome classification fixed to reflect content
+  quality, not just resolve status.** Real gap found via live testing: a
+  resolve that returns a video with zero transcript segments — or with
+  only chapter-marker fallback data (Granicus/CivicClerk/Swagit) — was
+  counting as `"success"` in the reporting log, since both `status="success"`
+  and `segments` being non-empty (chapter markers still populate
+  `segments`) looked identical to a real transcript from the logging
+  code's point of view. `app/db/outcomes.py`'s `classify_outcome()` now
+  buckets every row into `success` / `agenda_fallback` / `blank_transcript`
+  / `garbled_transcript` / `non_english_transcript` / `no_video`, on top of
+  the existing `resolve_failed` / `calendar_page` / `unsupported_platform`
+  cases — verified against live Simi Valley (garbled Spanish captions),
+  Paradise Valley AZ (genuinely blank, no fallback available), and a
+  synthetic test covering all five content-quality buckets directly.
