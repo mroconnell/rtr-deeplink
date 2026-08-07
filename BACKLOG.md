@@ -312,23 +312,28 @@ Archive synchronously or the Archive pulls/crawls independently is an
 open question, deliberately left for when the Archive is actually being
 scoped.
 
-- **[Done 2026-08-07, pending account setup] Newsletter signup.** A
-  footer signup form (sitewide, in `base.html`) POSTs to
-  `/api/newsletter/signup`, which adds the email to a Resend audience.
-  Chose Resend over Mailchimp specifically because it can also handle
-  the future "email alerts for saved searches" item below (triggered
-  per-user sends) on the same account/API, not just newsletter
-  broadcasts — Mailchimp would need a separate paid add-on (Mandrill)
-  for that later. Degrades gracefully like the DB layer: with no
-  `RESEND_API_KEY`/`RESEND_AUDIENCE_ID` set, signups return a clean
-  "not available right now" message instead of erroring — verified
-  locally, both that path and the invalid-email path. **Not yet live**:
-  needs the user to finish Resend account setup (audience created,
-  `redtaperecordings.com` domain verified via DNS at Namecheap) and set
-  the two env vars in Render before real signups will work.
-- **[Done 2026-08-07, pending account setup] Basic analytics.** Google
-  Analytics 4, per the user's choice. `base.html` conditionally loads
-  `gtag.js` from `GA_MEASUREMENT_ID` and always defines a global
+- **[Done 2026-08-07, live] Newsletter signup.** A footer signup form
+  (sitewide, in `base.html`) POSTs to `/api/newsletter/signup`, which
+  adds the email to a Resend audience. Chose Resend over Mailchimp
+  specifically because it can also handle the future "email alerts for
+  saved searches" item below (triggered per-user sends) on the same
+  account/API, not just newsletter broadcasts — Mailchimp would need a
+  separate paid add-on (Mandrill) for that later. Degrades gracefully
+  like the DB layer: with no `RESEND_API_KEY`/`RESEND_AUDIENCE_ID` set,
+  signups return a clean "not available right now" message instead of
+  erroring. Live on `redtaperecordings.com` (DNS via Namecheap).
+  **Real gotcha hit and fixed**: the first `RESEND_API_KEY` created was
+  scoped to "Sending access" only, which Resend rejects for the
+  audiences/contacts endpoint with `401 restricted_api_key` — Resend API
+  keys need **Full access** to manage audience contacts, not just send
+  mail, and permission level can't be changed on an existing key
+  (create a new one, revoke the old). Confirmed via Render's live logs
+  (the `logger.error("Resend signup failed (%s): %s", ...)` line in
+  `main.py` was what surfaced the exact cause) and a real end-to-end
+  signup afterward.
+- **[Done 2026-08-07, live] Basic analytics.** Google Analytics 4, per
+  the user's choice. `base.html` conditionally loads `gtag.js` from
+  `GA_MEASUREMENT_ID` and always defines a global
   `window.trackEvent(name, params)` — a real call to `gtag('event', ...)`
   when GA is configured, a no-op otherwise — so call sites never need to
   branch on whether GA is set up. Three events wired so far:
@@ -338,12 +343,7 @@ scoped.
   get pasted in as a GA event parameter — that's redundant with the
   per-adapter reporting log above (which already tracks this
   server-side, with outcome detail GA has no equivalent for) and there's
-  no reason to also hand government meeting URLs to Google. Verified
-  locally: renders correctly with GA unset (no script loads, `trackEvent`
-  stub in place) and with a fake measurement ID (script tag/config
-  interpolate correctly); all three event call sites execute without
-  throwing, checked via browser console. **Not yet live**: needs the
-  user to create a GA4 property and set `GA_MEASUREMENT_ID` in Render.
+  no reason to also hand government meeting URLs to Google.
 - **Permanent meeting pages** (the Archive's core feature) — the
   biggest single item below. Needs its own content model: versioned
   transcripts per meeting (to support language variants, edits, a
