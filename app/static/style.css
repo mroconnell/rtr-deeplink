@@ -382,9 +382,35 @@ mark.search-match.current { background: #f97316; color: #fff; }
   text-align: center;
 }
 .newsletter-input-group input {
+  height: 48px;
   border: 1px solid var(--border);
+  border-radius: 7px 0 0 7px;
   background: var(--bg);
   color: var(--fg);
+  font-size: 1.05rem;
+}
+/* A new button, not cassette-btn -- "sign up" isn't a "rewind to a
+   moment" action, so it gets its own but-consistent treatment: same
+   bold mono/chunky-border family, solid navy instead of the reel-icon
+   gimmick, sized to fuse with the input the same way cassette-btn does
+   on the homepage. */
+.newsletter-btn {
+  height: 48px;
+  padding: 0 1.3rem;
+  background: var(--primary);
+  color: #fff;
+  border: 2px solid var(--primary);
+  border-radius: 0 7px 7px 0;
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: background 0.16s, border-color 0.16s;
+}
+.newsletter-btn:hover, .newsletter-btn:focus {
+  background: #1c2a37;
+  border-color: #1c2a37;
 }
 .newsletter-message {
   margin-top: 0.5rem;
@@ -392,3 +418,20 @@ mark.search-match.current { background: #f97316; color: #fff; }
 }
 .newsletter-message-success { color: #2f855a; }
 .newsletter-message-error { color: var(--secondary); }
+
+/* Small brand callback on the dedicated /subscribe page -- reuses the
+   dymo-label motif (otherwise only used for the site wordmark) as a
+   secondary "section tag" rather than introducing a new visual idea
+   just for this one page. */
+.dymo-label-small {
+  background: #b71c1c;
+  color: #fff;
+  font-family: 'Courier New', monospace;
+  font-size: 0.8rem;
+  font-weight: bold;
+  letter-spacing: 0.11em;
+  padding: 0.2em 0.8em;
+  border: 2px solid #a84b00;
+  display: inline-block;
+  margin-bottom: 1rem;
+}
