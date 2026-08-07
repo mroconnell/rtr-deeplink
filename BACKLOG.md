@@ -189,6 +189,15 @@ Known bugs and features not yet addressed, roughly in priority order.
   nav button is meant to be a primary call-to-action, not just a
   shortcut.
 
+- **Spinning cassette-reel animation on the "please wait" fetch
+  message.** Right now `#statusMessage` (`player.js:397`, "Please wait
+  while we fetch the video and transcript...") is plain text with no
+  visual loading indicator. Idea: reuse the existing `.cassette-reel`
+  SVG circles already in `style.css`/the cassette-btn markup (they
+  already have a `reel-spin` keyframe defined for hover) — show two of
+  them spinning like an old cassette tape's reels while the fetch is in
+  flight, on-brand rather than a generic spinner.
+
 - **CivicClerk's real caption/transcript format is unverified.** The API
   schema has `EventsMedia.closedCaptionUrl`, `.transcriptionUrl`, and
   `.closedCaptionTracks`, but every sample meeting checked (Clovis CA,
