@@ -44,6 +44,19 @@ body {
   border: 2px solid #a84b00;
 }
 
+/* Manila-folder-tab style divider between nav links -- reuses the same
+   cream/amber pair as the .warnings pill so it reads as part of the same
+   "manila folder" visual language, not a new color introduced just here. */
+.nav-divider {
+  width: 5px;
+  align-self: stretch;
+  margin: 0.35rem 1rem;
+  background: var(--pill-bg);
+  border: 1px solid var(--pill-fg);
+  border-radius: 2px;
+  opacity: 0.85;
+}
+
 /* --- Cassette buttons --- */
 /* Used on just two buttons (homepage submit, meeting page's "Copy link to
    current time") -- the rewind-to-a-moment metaphor fits those, not every
