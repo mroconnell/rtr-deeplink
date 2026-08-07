@@ -11,6 +11,7 @@ class TranscriptSegment(BaseModel):
 class ResolvedMeeting(BaseModel):
     platform: str
     source_url: str
+    external_id: Optional[str] = None  # namespaced e.g. "granicus:52945"; None until an adapter populates it
     title: Optional[str] = None
     date: Optional[str] = None
     jurisdiction: Optional[str] = None

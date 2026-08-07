@@ -1,0 +1,51 @@
+from datetime import datetime
+from typing import Optional
+
+from sqlalchemy import JSON, Boolean, DateTime, Integer, String, Text, func
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+class MeetingResolution(Base):
+    """One row per real resolve attempt (insert-only) -- doubles as the
+    per-adapter reporting log and, for successful rows, the read-through
+    cache payload. Failed/calendar/unsupported rows are always logged but
+    are never served back as a cache hit -- see app/db/crud.py.
+    """
+
+    __tablename__ = "meeting_resolutions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    input_url: Mapped[str] = mapped_column(Text, nullable=False)
+    input_url_normalized: Mapped[str] = mapped_column(String(2048), nullable=False, index=True)
+    input_platform: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    resolved_platform: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    external_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
+
+    status: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    video_found: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    video_format: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
+    transcript_found: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    transcript_language: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
+    segment_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    video_warnings: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    transcript_warnings: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+
+    title: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    date: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    jurisdiction: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+
+    resolved_payload: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    resolve_duration_ms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    last_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+    hit_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

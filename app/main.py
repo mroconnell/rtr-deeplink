@@ -1,11 +1,19 @@
+import logging
+import os
+import secrets
+import time
+from contextlib import asynccontextmanager
 from pathlib import Path
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
+from .db import crud
+from .db.engine import init_models
 from .platforms.base import detect_platform, get_finder, register, CalendarPageError, UnsupportedPlatformError
 from .platforms.granicus import GranicusAssetFinder
 from .platforms.civicclerk import CivicClerkAssetFinder
@@ -14,10 +22,27 @@ from .platforms.escribe import EscribeAssetFinder
 from .platforms.ca_legislature import CaliforniaLegislatureAssetFinder
 from .platforms.legistar import LegistarAssetFinder
 from .platforms.civicplus import CivicPlusAssetFinder
+from .utils.url_normalize import normalize_url
+
+load_dotenv()
+
+logger = logging.getLogger("rtr_deeplink.db")
 
 APP_DIR = Path(__file__).parent
 
-app = FastAPI(title="rtr-deeplink")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    try:
+        await init_models()
+    except Exception:
+        # A down/misconfigured DB must never stop the app from serving --
+        # it just means caching/reporting silently no-ops (see `safe()`).
+        logger.exception("Failed to initialize DB models at startup; continuing without persistence.")
+    yield
+
+
+app = FastAPI(title="rtr-deeplink", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=APP_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=APP_DIR / "templates")
 
@@ -34,6 +59,17 @@ class ResolveRequest(BaseModel):
     url: str
 
 
+async def safe(fn, *args, **kwargs):
+    """Run a DB-layer call, but never let it take down /api/resolve --
+    the app worked with zero persistence before this feature and adding
+    a DB must never become a new way for it to fail."""
+    try:
+        return await fn(*args, **kwargs)
+    except Exception:
+        logger.exception("DB call %s failed; continuing without it.", getattr(fn, "__name__", fn))
+        return None
+
+
 @app.get("/api/health")
 async def health():
     return {"status": "ok"}
@@ -42,18 +78,40 @@ async def health():
 @app.post("/api/resolve")
 async def resolve(req: ResolveRequest):
     platform = detect_platform(req.url)
+    normalized = normalize_url(req.url)
+
+    cached = await safe(crud.get_cached_resolution, normalized)
+    if cached:
+        return cached
+
     try:
         finder = get_finder(platform)
     except UnsupportedPlatformError:
+        await safe(
+            crud.log_resolution,
+            input_url=req.url,
+            input_url_normalized=normalized,
+            input_platform=platform,
+            status="unsupported_platform",
+        )
         return {
             "error": "unsupported_platform",
             "platform": platform,
             "message": f"We don't support '{platform}' meeting pages yet.",
         }
 
+    start = time.monotonic()
     try:
         result = await finder.resolve(req.url)
     except CalendarPageError as e:
+        await safe(
+            crud.log_resolution,
+            input_url=req.url,
+            input_url_normalized=normalized,
+            input_platform=platform,
+            status="calendar_page",
+            error_message=str(e),
+        )
         return {
             "error": "calendar_page",
             "platform": platform,
@@ -61,13 +119,43 @@ async def resolve(req: ResolveRequest):
             "candidates": e.candidates,
         }
     except Exception as e:
+        await safe(
+            crud.log_resolution,
+            input_url=req.url,
+            input_url_normalized=normalized,
+            input_platform=platform,
+            status="resolve_failed",
+            error_message=str(e),
+        )
         return {
             "error": "resolve_failed",
             "platform": platform,
             "message": str(e),
         }
 
-    return result.model_dump()
+    payload = result.model_dump()
+    await safe(
+        crud.log_resolution,
+        input_url=req.url,
+        input_url_normalized=normalized,
+        input_platform=platform,
+        resolved_platform=result.platform,
+        external_id=result.external_id,
+        status="success",
+        video_found=bool(result.video_url),
+        video_format=result.video_format,
+        transcript_found=bool(result.segments),
+        transcript_language=result.transcript_language,
+        segment_count=len(result.segments),
+        video_warnings=result.video_warnings,
+        transcript_warnings=result.transcript_warnings,
+        title=result.title,
+        date=result.date,
+        jurisdiction=result.jurisdiction,
+        resolved_payload=payload,
+        resolve_duration_ms=int((time.monotonic() - start) * 1000),
+    )
+    return payload
 
 
 @app.get("/")
@@ -89,3 +177,17 @@ async def meeting_redirect(request: Request, url: str = ""):
 @app.get("/about")
 async def about(request: Request):
     return templates.TemplateResponse(request, "about.html", {})
+
+
+@app.get("/admin/stats")
+async def admin_stats(token: str = ""):
+    expected = os.environ.get("ADMIN_STATS_TOKEN", "")
+    # 404, not 401/403 -- the route's existence shouldn't be distinguishable
+    # from a typo'd URL to anyone without the token.
+    if not expected or not secrets.compare_digest(token, expected):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    stats = await safe(crud.get_stats)
+    if stats is None:
+        return JSONResponse({"error": "stats_unavailable"}, status_code=503)
+    return stats

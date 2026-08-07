@@ -350,6 +350,7 @@ class GranicusAssetFinder(AssetFinder):
             return ResolvedMeeting(
                 platform=self.platform_name,
                 source_url=url,
+                external_id=f"granicus:{clip_id}" if clip_id else None,
                 transcript_language=transcript_language,
                 title=metadata["title"],
                 date=metadata["date"],

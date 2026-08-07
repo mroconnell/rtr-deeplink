@@ -103,6 +103,7 @@ class CivicClerkAssetFinder(AssetFinder):
         return ResolvedMeeting(
             platform=self.platform_name,
             source_url=url,
+            external_id=f"civicclerk:{event_id}",
             title=title,
             date=date,
             jurisdiction=jurisdiction,
