@@ -2,6 +2,26 @@ import re
 from typing import List, Dict, Any
 
 
+def decode_vtt_bytes(raw: bytes) -> str:
+    """Decode a fetched VTT file's raw bytes to text.
+
+    Most captions are UTF-8, but some real caption files are not (confirmed
+    live: Simi Valley Granicus clip 2840's Spanish-language captions.vtt is
+    not valid UTF-8 and raises UnicodeDecodeError on strict decode). Fall
+    back to Windows-1252 (a superset of Latin-1 that also covers the common
+    Word-style punctuation vendors sometimes emit) and, failing that,
+    replace undecodable bytes rather than losing the whole transcript.
+    """
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError:
+        pass
+    try:
+        return raw.decode("windows-1252")
+    except UnicodeDecodeError:
+        return raw.decode("utf-8", errors="replace")
+
+
 def parse_vtt(content: str) -> List[Dict[str, Any]]:
     """Parse WebVTT content into a list of cue dicts with 'start', 'end', 'text'.
 

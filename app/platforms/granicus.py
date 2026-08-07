@@ -13,7 +13,7 @@ from langdetect import detect as detect_language, LangDetectException
 from .base import AssetFinder
 from .media_scan import scan_media_urls, media_type
 from .models import ResolvedMeeting, TranscriptSegment
-from ..utils.vtt_parser import parse_vtt, is_likely_garbled
+from ..utils.vtt_parser import parse_vtt, is_likely_garbled, decode_vtt_bytes
 
 TARGET_LANGUAGE = "en"
 
@@ -402,7 +402,8 @@ class GranicusAssetFinder(AssetFinder):
         async with session.get(vtt_url, timeout=aiohttp.ClientTimeout(total=20)) as response:
             if response.status != 200:
                 return None
-            content = await response.text()
+            raw = await response.read()
+        content = decode_vtt_bytes(raw)
         return parse_vtt(content)
 
     @staticmethod

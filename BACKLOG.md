@@ -365,6 +365,18 @@ Known bugs and features not yet addressed, roughly in priority order.
   cases — verified against live Simi Valley (garbled Spanish captions),
   Paradise Valley AZ (genuinely blank, no fallback available), and a
   synthetic test covering all five content-quality buckets directly.
+- **[Done 2026-08-07] Real bug: non-UTF-8 captions.vtt crashed the whole
+  transcript fetch.** `_fetch_vtt` in Granicus/eScribe/CA Legislature all
+  called aiohttp's `response.text()`, which decodes strictly as UTF-8 and
+  raises `UnicodeDecodeError` on anything else — confirmed live on Simi
+  Valley clip 2840, whose real Spanish-language `captions.vtt` isn't valid
+  UTF-8 (`0xf3` at byte 241), producing zero segments and a transcript
+  warning instead of the actual captions. New `decode_vtt_bytes()`
+  (`app/utils/vtt_parser.py`) reads the response as raw bytes and tries
+  UTF-8, then Windows-1252, then finally UTF-8 with `errors="replace"`,
+  shared by all three platforms' `_fetch_vtt`. Verified live: Simi Valley
+  clip 2840 now returns 394 real Spanish-language segments instead of the
+  decode-error warning.
 
 ## Roadmap (from 2026-08-07 product scoping conversation)
 
