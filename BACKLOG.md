@@ -179,18 +179,18 @@ Known bugs and features not yet addressed, roughly in priority order.
   the real deep-linked position. Verified live against Paradise Valley
   AZ's confirmed blank-caption meeting.
 
-- **Newsletter signup box doesn't match the brand.** Built quickly with
-  plain Bootstrap (`.btn.btn-primary` blue button, plain `.form-control`
-  input) rather than the site's actual visual language — no dymo-label/
-  cassette treatment, no Georgia/mono type pairing, doesn't feel like
-  the rest of the page. Needs a real design pass, not just a font swap.
-  Open question worth deciding when picked up: does it get its own
-  cassette-btn-style treatment, or does that stay reserved for the two
-  existing "rewind to a moment" buttons (homepage submit, "Copy link to
-  current time") per the explicit scoping comment already in
-  `style.css` — a signup button isn't really a "rewind" action, so a
-  new-but-consistent treatment may fit better than reusing cassette-btn
-  as-is.
+- **[Done 2026-08-07] Newsletter signup box redesign.** Resolved the
+  open question in favor of a new-but-consistent treatment: `.newsletter-btn`
+  is a sibling to `cassette-btn` (same bold-mono/chunky-border family)
+  but deliberately not `cassette-btn` itself — "sign up" isn't a "rewind
+  to a moment" action, so it's solid navy instead of the reel-icon
+  gimmick, keeping `cassette-btn` reserved for the two buttons its own
+  scoping comment already calls out. Input now matches the homepage's
+  fused-pill sizing (48px height, matching border-radius split) instead
+  of plain unstyled Bootstrap. Added a small dymo-label-style kicker tag
+  ("STAY IN THE LOOP") on the dedicated `/subscribe` page — reuses the
+  wordmark's signature visual element as a secondary section tag.
+  Verified visually and confirmed the submit flow still works unchanged.
 - **[Done 2026-08-07] "Get Updates" link in the site nav pointing at
   the email signup.** Originally shipped as a same-page
   `#newsletterForm` anchor to a footer form; replaced same-day (see the
