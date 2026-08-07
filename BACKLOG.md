@@ -256,6 +256,54 @@ Known bugs and features not yet addressed, roughly in priority order.
   don't have it. Real ratio of "has native agenda index" vs. "redirects
   elsewhere" across Granicus's full customer base is unknown — worth
   revisiting once more jurisdictions are checked.
+- **Surface an agenda link even when there's no timestamped chapter
+  data (Berkeley/Paradise Valley AZ style).** User's observation: even
+  where `AgendaViewer.php` doesn't have Granicus's native
+  timestamped-item structure, an agenda still generally exists in *some*
+  form — it's just that `_fetch_agenda_items()` currently returns an
+  empty list and gives up the moment the native `<a name="agenda...">`
+  structure isn't found. Concretely, for the two confirmed cases:
+  Berkeley's request redirects to a real `berkeleyca.gov` agenda page;
+  Paradise Valley AZ's redirects to a real PDF via Google Docs viewer.
+  Both are genuine, fetchable URLs — capture the post-redirect URL
+  (`response.url` after `AgendaViewer.php`'s redirect, same pattern
+  `_fetch_page` already uses for the main page) and include it as a
+  plain link in the "Caption file was blank..." warning message
+  (`granicus.py`, the `empty_vtt_count` branch) instead of leaving the
+  user with nothing to click through to. Not yet investigated: whether
+  this redirect-target pattern holds generally across other Granicus
+  customers who lack the native agenda index, or is specific to these
+  two.
+- **Give the meeting page a dedicated "Agenda" section, structurally
+  separate from "Transcript."** Right now agenda/chapter-marker data
+  (Granicus's `AgendaViewer.php` items, CivicClerk's `eventBookmarks`,
+  Swagit's `.playerControl` markers) gets folded directly into
+  `ResolvedMeeting.segments` as if it were transcript content, only
+  when there's no real transcript at all (`if not segments` in
+  `granicus.py`) — that conflation was a reasonable v1 shortcut but
+  doesn't hold once agenda is meant to be its own thing. Needs: a new
+  field on `ResolvedMeeting` (e.g. `agenda_items`, kept separate from
+  `segments`) populated independently of transcript availability; a new
+  `#agendaSection` in `meeting.html` with its own "Agenda" heading,
+  mirroring the existing transcript section's structure; `player.js`
+  rendering for it (agenda items are start-time-linkable when Granicus's
+  native structure is available, otherwise likely just plain text or
+  the link-out from the item above). This also means revisiting
+  `app/db/outcomes.py`'s `classify_outcome()` — the `agenda_fallback`
+  bucket currently depends on detecting the shared warning-text marker
+  inside `transcript_warnings`/`segments`; once agenda moves to its own
+  field, that detection logic needs to move with it rather than break
+  silently.
+- **Always attempt to load the agenda, even when a real transcript
+  exists.** Depends on the previous item's schema change (agenda as its
+  own field, not conflated with `segments`). Currently
+  `GranicusAssetFinder.resolve()` only calls `_fetch_agenda_items()`
+  inside `if not segments:` — meaning a meeting with a perfectly good
+  transcript never gets its agenda fetched at all. Decouple the two:
+  fetch/attach the agenda regardless of transcript outcome, since it's
+  useful navigation context either way (per the user's ask — agenda
+  section loads under the video, transcript section below that, when
+  both exist).
 - **[Done 2026-08-06] CivicClerk, Swagit, eScribe adapters built.**
   BoardDocs deliberately excluded — confirmed across 2 real cities (South
   Portland ME, Taos NM) it's a document/agenda platform with no reliable
