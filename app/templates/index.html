@@ -23,6 +23,7 @@
       e.preventDefault();
       const url = document.getElementById('urlInput').value.trim();
       if (!url) return;
+      trackEvent('submit_meeting_url');
       window.location.href = '/meeting?url=' + encodeURIComponent(url);
     });
   </script>

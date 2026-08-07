@@ -273,6 +273,7 @@ function initVideo(videoUrl, videoFormat) {
     const t = video.currentTime;
     const segId = findActiveSegment(t) || null;
     updateUrlParams({ t, line: segId });
+    trackEvent('copy_link_to_time');
     try {
       await navigator.clipboard.writeText(window.location.href);
       linkLabel.textContent = 'Copied!';

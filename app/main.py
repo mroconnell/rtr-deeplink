@@ -49,6 +49,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="rtr-deeplink", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=APP_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=APP_DIR / "templates")
+templates.env.globals["GA_MEASUREMENT_ID"] = os.environ.get("GA_MEASUREMENT_ID", "")
 
 register(GranicusAssetFinder())
 register(CivicClerkAssetFinder())

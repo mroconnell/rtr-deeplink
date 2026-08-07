@@ -17,3 +17,5 @@ services:
         sync: false
       - key: RESEND_AUDIENCE_ID
         sync: false
+      - key: GA_MEASUREMENT_ID
+        sync: false

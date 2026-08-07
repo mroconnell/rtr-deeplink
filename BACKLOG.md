@@ -326,8 +326,24 @@ scoped.
   needs the user to finish Resend account setup (audience created,
   `redtaperecordings.com` domain verified via DNS at Namecheap) and set
   the two env vars in Render before real signups will work.
-- **Basic analytics** (pageviews, button clicks, which URLs get pasted
-  in) — small, one script tag + event hooks. Not yet started.
+- **[Done 2026-08-07, pending account setup] Basic analytics.** Google
+  Analytics 4, per the user's choice. `base.html` conditionally loads
+  `gtag.js` from `GA_MEASUREMENT_ID` and always defines a global
+  `window.trackEvent(name, params)` — a real call to `gtag('event', ...)`
+  when GA is configured, a no-op otherwise — so call sites never need to
+  branch on whether GA is set up. Three events wired so far:
+  `submit_meeting_url` (homepage form), `copy_link_to_time` (the core
+  viral action — someone creating a shareable deep link),
+  `newsletter_signup`. Deliberately did **not** send which meeting URLs
+  get pasted in as a GA event parameter — that's redundant with the
+  per-adapter reporting log above (which already tracks this
+  server-side, with outcome detail GA has no equivalent for) and there's
+  no reason to also hand government meeting URLs to Google. Verified
+  locally: renders correctly with GA unset (no script loads, `trackEvent`
+  stub in place) and with a fake measurement ID (script tag/config
+  interpolate correctly); all three event call sites execute without
+  throwing, checked via browser console. **Not yet live**: needs the
+  user to create a GA4 property and set `GA_MEASUREMENT_ID` in Render.
 - **Permanent meeting pages** (the Archive's core feature) — the
   biggest single item below. Needs its own content model: versioned
   transcripts per meeting (to support language variants, edits, a

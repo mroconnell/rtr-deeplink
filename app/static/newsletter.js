@@ -27,6 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (data.status === 'subscribed' || data.status === 'already_subscribed') {
+      trackEvent('newsletter_signup');
       message.textContent = data.status === 'already_subscribed'
         ? "You're already on the list!"
         : "Thanks — you're on the list!";
