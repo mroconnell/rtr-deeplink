@@ -255,21 +255,22 @@ Known bugs and features not yet addressed, roughly in priority order.
   don't have it. Real ratio of "has native agenda index" vs. "redirects
   elsewhere" across Granicus's full customer base is unknown — worth
   revisiting once more jurisdictions are checked.
-- **Surface an agenda link even when there's no timestamped chapter
-  data (Berkeley/Paradise Valley AZ style).** User's observation: even
-  where `AgendaViewer.php` doesn't have Granicus's native
-  timestamped-item structure, an agenda still generally exists in *some*
-  form — it's just that `_fetch_agenda_items()` currently returns an
-  empty list and gives up the moment the native `<a name="agenda...">`
-  structure isn't found. Concretely, for the two confirmed cases:
-  Berkeley's request redirects to a real `berkeleyca.gov` agenda page;
-  Paradise Valley AZ's redirects to a real PDF via Google Docs viewer.
-  Both are genuine, fetchable URLs — capture the post-redirect URL
-  (`response.url` after `AgendaViewer.php`'s redirect, same pattern
-  `_fetch_page` already uses for the main page) and include it as a
-  plain link in the "Caption file was blank..." warning message
-  (`granicus.py`, the `empty_vtt_count` branch) instead of leaving the
-  user with nothing to click through to. Not yet investigated: whether
+- **[Done 2026-08-07] Surface an agenda link even when there's no
+  timestamped chapter data (Berkeley/Paradise Valley AZ style).**
+  `_fetch_agenda_items()` now returns `(items, fallback_url)` — when
+  the native `<a name="agenda...">` structure isn't found but the
+  request still resolved to a real page, `fallback_url` is that page's
+  URL (`response.url` after `AgendaViewer.php`'s redirect, same pattern
+  `_fetch_page` uses for the main page), and `resolve()` appends a
+  plain "agenda is available here: {url}" warning instead of
+  discarding it. Also fixed to make it *actually* clickable: `player.js`
+  was rendering all transcript warnings through `escapeHtml` (plain
+  text only), so a URL in a warning would've shown as inert text — new
+  `linkifyWarning()` escapes first, then wraps bare URLs in a real
+  `<a target="_blank">`. Verified against live Berkeley and Paradise
+  Valley AZ (both get `fallback_url`, Simi Valley's 17 real items
+  correctly get `None`), and end-to-end in-browser that the rendered
+  warning contains a real anchor tag. Not yet investigated: whether
   this redirect-target pattern holds generally across other Granicus
   customers who lack the native agenda index, or is specific to these
   two.
