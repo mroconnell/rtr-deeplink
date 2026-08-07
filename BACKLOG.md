@@ -179,13 +179,29 @@ Known bugs and features not yet addressed, roughly in priority order.
   new-but-consistent treatment may fit better than reusing cassette-btn
   as-is.
 - **[Done 2026-08-07] "Get Updates" link in the site nav pointing at
-  the email signup.** Went with the footer-anchor approach (no new
-  page): `href="#newsletterForm"` in `base.html`'s nav, plus a small
-  `newsletter.js` enhancement that focuses the email input ~300ms after
-  the click so it's not just a scroll — one less click for someone who
-  came specifically to sign up. Verified in-browser: link renders with
-  the correct href in the collapsed-nav menu, and `document.activeElement`
-  is confirmed to be the email input after clicking it.
+  the email signup.** Originally shipped as a same-page
+  `#newsletterForm` anchor to a footer form; replaced same-day (see the
+  dedicated `/subscribe` page item below) after the user pointed out
+  three real problems with the anchor approach — no visible cue if
+  you're already scrolled to the bottom, breaks Ctrl+click/open-in-new-
+  tab, and a shared link lands people wherever the anchor happens to be
+  rather than a clean destination. The nav link now points at
+  `/subscribe` directly.
+- **[Done 2026-08-07] Dedicated `/subscribe` page, replacing the
+  footer-anchor approach above.** New `GET /subscribe` route +
+  `subscribe.html` holds the actual signup form now (autofocused input,
+  no anchor-jump needed). Nav's "Get Updates" and the About page's
+  "Subscribe to get updates" both link straight to `/subscribe`. The
+  sitewide footer keeps a plain text link to it (`request.url.path`
+  check in `base.html` suppresses that link specifically on
+  `/subscribe` itself, so the page doesn't show the same prompt twice).
+  `newsletter.js`'s anchor-focus workaround was removed since it's no
+  longer needed. Verified: page renders with the email input
+  autofocused, footer link correctly present/absent on the right pages,
+  and the full submit flow still works end-to-end (confirmed the
+  graceful "not available" message renders when Resend isn't
+  configured, via a direct programmatic submit after a manual click
+  raced the screenshot).
 
 - **[Done 2026-08-07] Spinning cassette-reel animation on the "please
   wait" fetch message.** `player.js`'s loading-state line now renders
