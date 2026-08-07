@@ -166,6 +166,8 @@ body {
   margin-bottom: 0.75rem;
 }
 .warnings:empty { display: none; }
+.warnings a { color: inherit; text-decoration: underline; }
+.warnings a:hover { color: var(--accent); }
 
 .video-section { margin: 1.5rem 0; }
 .toolbar {

@@ -190,6 +190,17 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+// Warning messages are plain server-generated text, but some (e.g. a
+// Granicus agenda fallback link) include a bare URL meant to be
+// clickable -- escape first for safety, then linkify on the escaped
+// text so this never introduces raw HTML from warning content itself.
+function linkifyWarning(text) {
+  return escapeHtml(text).replace(
+    /(https?:\/\/[^\s<]+)/g,
+    '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
+  );
+}
+
 function initVideo(videoUrl, videoFormat) {
   const video = document.getElementById('meetingVideo');
   const section = document.getElementById('videoSection');
@@ -442,12 +453,12 @@ async function init() {
   if (segments.length) {
     document.getElementById('transcriptSection').hidden = false;
     document.getElementById('transcriptWarnings').innerHTML = transcriptWarnings.length
-      ? transcriptWarnings.map(escapeHtml).join('<br>') : '';
+      ? transcriptWarnings.map(linkifyWarning).join('<br>') : '';
     renderTranscript(segments);
     setupTranscriptSearch();
   } else if (transcriptWarnings.length) {
     document.getElementById('transcriptMissing').hidden = false;
-    document.getElementById('transcriptMissingWarnings').innerHTML = transcriptWarnings.map(escapeHtml).join('<br>');
+    document.getElementById('transcriptMissingWarnings').innerHTML = transcriptWarnings.map(linkifyWarning).join('<br>');
   }
 
   initVideo(data.video_url, data.video_format);

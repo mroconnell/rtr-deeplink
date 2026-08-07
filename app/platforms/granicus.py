@@ -348,7 +348,7 @@ class GranicusAssetFinder(AssetFinder):
                 transcript_warnings.append("No caption/transcript file found on this page.")
 
             if not segments and clip_id:
-                agenda_items = await self._fetch_agenda_items(session, final_url, clip_id)
+                agenda_items, agenda_fallback_url = await self._fetch_agenda_items(session, final_url, clip_id)
                 if agenda_items:
                     agenda_items.sort(key=lambda item: item[0])
                     for i, (start, title) in enumerate(agenda_items):
@@ -358,6 +358,16 @@ class GranicusAssetFinder(AssetFinder):
                         "No transcript/captions available for this meeting — showing "
                         "agenda-item chapter markers instead, which still deep-link to "
                         "the right moment."
+                    )
+                elif agenda_fallback_url:
+                    # No timestamped chapter data (e.g. Berkeley/Paradise Valley AZ,
+                    # which redirect AgendaViewer.php to their own external site or a
+                    # PDF instead of Granicus's native structure) -- still a real,
+                    # fetchable agenda, just not one we can parse into clickable
+                    # moments, so link to it directly rather than discarding it.
+                    transcript_warnings.append(
+                        f"We couldn't build clickable chapter markers, but this "
+                        f"meeting's agenda is available here: {agenda_fallback_url}"
                     )
 
             return ResolvedMeeting(
@@ -398,7 +408,7 @@ class GranicusAssetFinder(AssetFinder):
     @staticmethod
     async def _fetch_agenda_items(
         session: aiohttp.ClientSession, page_url: str, clip_id: str
-    ) -> List[Tuple[float, str]]:
+    ) -> Tuple[List[Tuple[float, str]], Optional[str]]:
         """Best-effort fallback chapter markers for meetings with no usable
         transcript: Granicus's own agenda-index feature (AgendaViewer.php),
         when a customer has it turned on, renders each agenda item as
@@ -407,13 +417,17 @@ class GranicusAssetFinder(AssetFinder):
         Francisco (case/whitespace vary by customer template, matched
         case-insensitively via html.parser's own attribute normalization).
 
-        Not every customer has this on: confirmed Berkeley redirects
-        AgendaViewer.php to their own external site instead (empty
-        cuepoints, no matches here), and Paradise Valley AZ redirects it
-        to a Google Docs PDF preview (also no matches). Both simply
-        return an empty list and the caller keeps its existing "no
-        transcript" warning -- this is purely additive, never worse than
-        not trying.
+        Returns (items, fallback_url). Not every customer has the native
+        structure on: confirmed Berkeley redirects AgendaViewer.php to its
+        own external site instead (empty cuepoints too), and Paradise
+        Valley AZ redirects it to a Google Docs PDF preview. Both are
+        real, fetchable pages with an actual agenda on them -- just not
+        in a form we can parse into timestamped items -- so when `items`
+        comes back empty but the request still resolved to *something*
+        (any 200 response, even unparseable), `fallback_url` is that
+        final URL, for the caller to surface as a plain link rather than
+        discarding it. `fallback_url` is None when the request itself
+        failed (bad status/exception) -- nothing real to link to.
 
         Note SetPlayerPosition's argument isn't real H:MM:SS -- Granicus's
         own JS does `time.replace(':', '')` and parses the result as an
@@ -424,10 +438,11 @@ class GranicusAssetFinder(AssetFinder):
         try:
             async with session.get(agenda_url, timeout=aiohttp.ClientTimeout(total=15)) as response:
                 if response.status != 200:
-                    return []
+                    return [], None
                 html = await response.text()
+                final_url = str(response.url)
         except Exception:
-            return []
+            return [], None
 
         soup = BeautifulSoup(html, "html.parser")
         items = []
@@ -436,7 +451,8 @@ class GranicusAssetFinder(AssetFinder):
             title = a.get_text(" ", strip=True)
             if match and title:
                 items.append((float(match.group(1)), title))
-        return items
+
+        return items, (None if items else final_url)
 
     @staticmethod
     async def _fetch_channel_info(
