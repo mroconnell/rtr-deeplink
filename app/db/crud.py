@@ -1,10 +1,12 @@
+from collections import Counter
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 
 from .engine import async_session
 from .models import MeetingResolution
+from .outcomes import classify_outcome
 
 
 async def get_cached_resolution(normalized_url: str) -> Optional[dict]:
@@ -89,60 +91,81 @@ async def log_resolution(
 
 
 async def get_stats() -> dict[str, Any]:
+    """Aggregates by *content outcome* (see outcomes.classify_outcome), not
+    just whether resolve() raised -- a row with a video but no transcript
+    is a "blank_transcript" here, not lumped in with real successes.
+
+    Classifies in Python rather than SQL: this table is a personal
+    reporting log, not high-volume analytics, so a full scan per call is
+    fine for now. Revisit (e.g. a stored outcome column, updated at write
+    time) if this table grows large enough for that to matter.
+    """
     async with async_session() as session:
-        by_platform_status = (
-            await session.execute(
-                select(
-                    MeetingResolution.input_platform,
-                    MeetingResolution.status,
-                    func.count().label("count"),
-                ).group_by(MeetingResolution.input_platform, MeetingResolution.status)
-            )
-        ).all()
+        rows = (
+            (await session.execute(select(MeetingResolution).order_by(MeetingResolution.created_at.desc())))
+            .scalars()
+            .all()
+        )
 
-        totals = (
-            await session.execute(
-                select(
-                    func.count().label("total"),
-                    func.sum(func.coalesce(MeetingResolution.hit_count, 0)).label("total_cache_hits"),
-                    func.avg(MeetingResolution.resolve_duration_ms).label("avg_duration_ms"),
-                )
-            )
-        ).one()
+    platform_outcome_counts: Counter = Counter()
+    total_hits = 0
+    durations = []
+    for row in rows:
+        platform_outcome_counts[(row.input_platform, classify_outcome(row))] += 1
+        total_hits += row.hit_count or 0
+        if row.resolve_duration_ms is not None:
+            durations.append(row.resolve_duration_ms)
 
-        recent_failures = (
+    total = len(rows)
+    success_count = sum(count for (_, outcome), count in platform_outcome_counts.items() if outcome == "success")
+
+    recent_problems = [row for row in rows if classify_outcome(row) != "success"][:20]
+
+    return {
+        "total_attempts": total,
+        "success_rate": (success_count / total) if total else None,
+        "total_cache_hits": total_hits,
+        "avg_resolve_duration_ms": (sum(durations) / len(durations)) if durations else None,
+        "by_platform_outcome": [
+            {"platform": platform, "outcome": outcome, "count": count}
+            for (platform, outcome), count in sorted(platform_outcome_counts.items())
+        ],
+        "recent_problems": [
+            {
+                "input_url": row.input_url,
+                "input_platform": row.input_platform,
+                "outcome": classify_outcome(row),
+                "transcript_language": row.transcript_language,
+                "error_message": row.error_message,
+                "created_at": row.created_at.isoformat() if row.created_at else None,
+            }
+            for row in recent_problems
+        ],
+    }
+
+
+async def list_resolutions(limit: int = 200) -> list[dict]:
+    """Unaggregated per-attempt list: one entry per logged URL with its
+    classified outcome, most recent first."""
+    limit = max(1, min(limit, 1000))
+    async with async_session() as session:
+        rows = (
             (
                 await session.execute(
-                    select(MeetingResolution)
-                    .where(MeetingResolution.status != "success")
-                    .order_by(MeetingResolution.created_at.desc())
-                    .limit(20)
+                    select(MeetingResolution).order_by(MeetingResolution.created_at.desc()).limit(limit)
                 )
             )
             .scalars()
             .all()
         )
 
-        total = totals.total or 0
-        success_count = sum(count for _, status, count in by_platform_status if status == "success")
-
-        return {
-            "total_attempts": total,
-            "success_rate": (success_count / total) if total else None,
-            "total_cache_hits": int(totals.total_cache_hits or 0),
-            "avg_resolve_duration_ms": float(totals.avg_duration_ms) if totals.avg_duration_ms is not None else None,
-            "by_platform_status": [
-                {"platform": platform, "status": status, "count": count}
-                for platform, status, count in by_platform_status
-            ],
-            "recent_failures": [
-                {
-                    "input_url": row.input_url,
-                    "input_platform": row.input_platform,
-                    "status": row.status,
-                    "error_message": row.error_message,
-                    "created_at": row.created_at.isoformat() if row.created_at else None,
-                }
-                for row in recent_failures
-            ],
+    return [
+        {
+            "url": row.input_url,
+            "platform": row.input_platform,
+            "outcome": classify_outcome(row),
+            "transcript_language": row.transcript_language,
+            "created_at": row.created_at.isoformat() if row.created_at else None,
         }
+        for row in rows
+    ]

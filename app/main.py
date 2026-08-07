@@ -1,3 +1,5 @@
+import csv
+import io
 import logging
 import os
 import secrets
@@ -6,7 +8,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -179,15 +181,41 @@ async def about(request: Request):
     return templates.TemplateResponse(request, "about.html", {})
 
 
+def _admin_token_ok(token: str) -> bool:
+    expected = os.environ.get("ADMIN_STATS_TOKEN", "")
+    return bool(expected) and secrets.compare_digest(token, expected)
+
+
 @app.get("/admin/stats")
 async def admin_stats(token: str = ""):
-    expected = os.environ.get("ADMIN_STATS_TOKEN", "")
     # 404, not 401/403 -- the route's existence shouldn't be distinguishable
     # from a typo'd URL to anyone without the token.
-    if not expected or not secrets.compare_digest(token, expected):
+    if not _admin_token_ok(token):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
     stats = await safe(crud.get_stats)
     if stats is None:
         return JSONResponse({"error": "stats_unavailable"}, status_code=503)
     return stats
+
+
+@app.get("/admin/log")
+async def admin_log(token: str = "", limit: int = 200, format: str = "json"):
+    if not _admin_token_ok(token):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    rows = await safe(crud.list_resolutions, limit)
+    if rows is None:
+        return JSONResponse({"error": "log_unavailable"}, status_code=503)
+
+    if format == "csv":
+        buf = io.StringIO()
+        writer = csv.writer(buf)
+        writer.writerow(["url", "outcome", "platform", "transcript_language", "created_at"])
+        for row in rows:
+            writer.writerow(
+                [row["url"], row["outcome"], row["platform"], row["transcript_language"], row["created_at"]]
+            )
+        return Response(content=buf.getvalue(), media_type="text/csv")
+
+    return rows
