@@ -120,6 +120,13 @@ body {
 
 .meta h1 { margin-bottom: 0.2rem; color: var(--primary); }
 .meta p { color: var(--muted); margin-top: 0; }
+.source-link { margin: 0.15rem 0; }
+.source-link a {
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+.source-link a:hover { color: var(--accent); text-decoration: underline; }
 
 /* Cream/amber "choose wisely" pill treatment for status & warning
    messages -- the manila-folder half of the red-tape/manila-folder vibe. */

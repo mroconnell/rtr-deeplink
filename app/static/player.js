@@ -421,6 +421,7 @@ async function init() {
   statusEl.textContent = '';
   document.getElementById('pageTitle').textContent = `${data.title || 'Meeting'} | Red Tape Recordings`;
   metaEl.innerHTML = `<h1>${escapeHtml(data.title || 'Meeting')}</h1>` +
+    `<p class="source-link"><a href="${escapeHtml(data.source_url)}" target="_blank" rel="noopener noreferrer">View original source &#8599;</a></p>` +
     `<p>${escapeHtml(data.jurisdiction || '')}${data.date ? ' &middot; ' + escapeHtml(data.date) : ''}</p>`;
 
   const videoWarnings = data.video_warnings || [];
