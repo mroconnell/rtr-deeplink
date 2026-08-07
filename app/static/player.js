@@ -268,14 +268,15 @@ function initVideo(videoUrl, videoFormat) {
   });
 
   const linkBtn = document.getElementById('linkToCurrentBtn');
+  const linkLabel = linkBtn.querySelector('.cassette-label');
   linkBtn.addEventListener('click', async () => {
     const t = video.currentTime;
     const segId = findActiveSegment(t) || null;
     updateUrlParams({ t, line: segId });
     try {
       await navigator.clipboard.writeText(window.location.href);
-      linkBtn.textContent = 'Copied!';
-      setTimeout(() => { linkBtn.textContent = 'Copy link to current time'; }, 1500);
+      linkLabel.textContent = 'Copied!';
+      setTimeout(() => { linkLabel.textContent = 'Copy link to current time'; }, 1500);
     } catch (e) {
       // clipboard API unavailable; URL is already updated in the address bar
     }
@@ -357,7 +358,7 @@ function getOffsetSeconds() {
 function renderCalendarPage(data) {
   const statusEl = document.getElementById('statusMessage');
   const metaEl = document.getElementById('meta');
-  document.getElementById('pageTitle').textContent = 'This is a calendar, not a meeting | rtr-deeplink';
+  document.getElementById('pageTitle').textContent = 'This is a calendar, not a meeting | Red Tape Recordings';
   statusEl.textContent = '';
   metaEl.innerHTML = `<h1>This looks like a calendar page</h1>` +
     `<p>${escapeHtml(data.message || 'This URL lists multiple meetings rather than pointing to one specific meeting.')}` +
@@ -418,7 +419,7 @@ async function init() {
   }
 
   statusEl.textContent = '';
-  document.getElementById('pageTitle').textContent = `${data.title || 'Meeting'} | rtr-deeplink`;
+  document.getElementById('pageTitle').textContent = `${data.title || 'Meeting'} | Red Tape Recordings`;
   metaEl.innerHTML = `<h1>${escapeHtml(data.title || 'Meeting')}</h1>` +
     `<p>${escapeHtml(data.jurisdiction || '')}${data.date ? ' &middot; ' + escapeHtml(data.date) : ''}</p>`;
 

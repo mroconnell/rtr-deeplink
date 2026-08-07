@@ -84,3 +84,8 @@ async def meeting_redirect(request: Request, url: str = ""):
         "meeting.html",
         {"source_url": url},
     )
+
+
+@app.get("/about")
+async def about(request: Request):
+    return templates.TemplateResponse(request, "about.html", {})

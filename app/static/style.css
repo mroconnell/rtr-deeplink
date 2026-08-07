@@ -1,56 +1,115 @@
 :root {
-  color-scheme: light dark;
-  --fg: #1a1a1a;
+  color-scheme: light;
+  --fg: #3f3f3f;
   --bg: #ffffff;
+  --page-bg: #f8f9fa;
   --muted: #666;
   --border: #ddd;
-  --accent: #2b6cb0;
-}
-@media (prefers-color-scheme: dark) {
-  :root { --fg: #eee; --bg: #111; --muted: #aaa; --border: #333; }
+  --primary: #2c3e50;   /* navy: headings, primary accents */
+  --accent: #3498db;    /* blue: links, buttons, focus */
+  --secondary: #e74c3c; /* red: errors/emphasis, used sparingly */
+  --pill-bg: #ffe6a1;   /* cream/amber: status & warning callouts */
+  --pill-fg: #a84b00;
+  --font-body: Georgia, 'Times New Roman', serif;
+  --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-body);
   color: var(--fg);
-  background: var(--bg);
+  background: var(--page-bg);
   margin: 0;
+}
+
+/* --- Navbar --- */
+.navbar-cassette-icon {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 0.5rem;
+  height: 22px;
+}
+
+.dymo-label {
+  background: #b71c1c;
+  color: #fff;
+  border-radius: 0;
+  padding: 0.22em 1.15em 0.18em 1.15em;
+  font-family: 'Courier New', monospace;
+  font-size: 1.22rem;
+  font-weight: bold;
+  letter-spacing: 0.11em;
+  text-shadow: 0 2px 2px #7b1010, 0 -1px 1px #7b1010;
+  display: inline-block;
+  line-height: 1.2;
+  border: 2px solid #a84b00;
+}
+
+/* --- Cassette buttons --- */
+/* Used on just two buttons (homepage submit, meeting page's "Copy link to
+   current time") -- the rewind-to-a-moment metaphor fits those, not every
+   button on the page. */
+.cassette-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  background: #fff;
+  color: #222426;
+  border: 2px solid #222;
+  border-radius: 7px;
+  font-family: 'Courier New', monospace;
+  font-size: 1.13rem;
+  font-weight: bold;
+  padding: 0.54rem 1.3rem;
+  cursor: pointer;
+  transition: background 0.16s, color 0.16s, border 0.16s;
+}
+.cassette-btn:hover, .cassette-btn:focus {
+  background: #f3f3f3;
+  color: #111;
+  border-color: #111;
+}
+.cassette-label {
+  font-family: inherit;
+  font-size: 1.08rem;
+  letter-spacing: 1.5px;
+}
+.cassette-reel {
+  display: flex;
+  align-items: center;
+}
+.cassette-reel circle { transition: filter 0.2s; }
+@keyframes reel-spin { 100% { transform: rotate(360deg); } }
+.cassette-btn:hover .cassette-reel,
+.cassette-btn:active .cassette-reel {
+  animation: reel-spin 0.8s linear infinite;
+  transform-origin: 50% 50%;
+}
+
+/* Input group pairing (URL textbox + cassette submit button fused into
+   one control), matching round-1's real input-group/cassette-btn sizing. */
+.input-group > .form-control,
+.input-group > .cassette-btn {
+  height: 48px;
+  min-height: 48px;
+  font-size: 1.05rem;
+}
+.input-group > .form-control {
+  border-radius: 7px 0 0 7px;
+}
+.input-group > .cassette-btn {
+  border-radius: 0 7px 7px 0;
 }
 
 .center-page {
   max-width: 640px;
-  margin: 15vh auto;
+  margin: 10vh auto;
   padding: 0 1.5rem;
   text-align: center;
 }
 
 .subtitle { color: var(--muted); }
 
-.url-form {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 1.5rem;
-}
-.url-form input {
-  flex: 1;
-  padding: 0.6rem 0.8rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font-size: 1rem;
-  background: var(--bg);
-  color: var(--fg);
-}
-.url-form button, .toolbar button {
-  padding: 0.6rem 1rem;
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: white;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
-}
-
-.error { color: #c53030; }
+.error { color: var(--secondary); }
 .status { color: var(--muted); margin: 1rem 0; }
 
 .meeting-page {
@@ -59,11 +118,21 @@ body {
   padding: 0 1.5rem;
 }
 
-.back-link { color: var(--accent); text-decoration: none; }
-
-.meta h1 { margin-bottom: 0.2rem; }
+.meta h1 { margin-bottom: 0.2rem; color: var(--primary); }
 .meta p { color: var(--muted); margin-top: 0; }
-.warnings { color: #b7791f; margin-bottom: 0.75rem; }
+
+/* Cream/amber "choose wisely" pill treatment for status & warning
+   messages -- the manila-folder half of the red-tape/manila-folder vibe. */
+.warnings {
+  display: inline-block;
+  background: var(--pill-bg);
+  color: var(--pill-fg);
+  border-radius: 7px;
+  padding: 0.35rem 0.85rem;
+  font-weight: bold;
+  margin-bottom: 0.75rem;
+}
+.warnings:empty { display: none; }
 
 .video-section { margin: 1.5rem 0; }
 .toolbar {
@@ -79,7 +148,7 @@ body {
   position: sticky;
   top: 0;
   z-index: 20;
-  background: var(--bg);
+  background: var(--page-bg);
   padding: 0.5rem 0;
 }
 .seek-form { display: flex; gap: 0.4rem; margin-left: auto; }
@@ -92,16 +161,6 @@ body {
   color: var(--fg);
   font-size: 0.9rem;
 }
-.seek-form button {
-  padding: 0.5rem 0.8rem;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--fg);
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
-}
-.seek-form button:hover { border-color: var(--accent); color: var(--accent); }
 .video-wrapper {
   position: relative;
   width: 100%;
@@ -126,20 +185,22 @@ video { width: 100%; height: 100%; display: block; }
 .big-play-button:hover { transform: translate(-50%, -50%) scale(1.08); }
 .big-play-button svg { display: block; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4)); }
 
-.transcript-section h2 { margin-bottom: 0.5rem; }
+.transcript-section h2 { margin-bottom: 0.5rem; color: var(--primary); }
 .transcript-list {
   max-height: 60vh;
   overflow-y: auto;
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 1rem;
+  background: var(--bg);
 }
 .transcript-segment { margin-bottom: 0.75rem; }
-.transcript-segment.playing { background: rgba(43, 108, 176, 0.15); border-radius: 4px; }
+.transcript-segment.playing { background: rgba(52, 152, 219, 0.15); border-radius: 4px; }
 .segment-timestamp {
   color: var(--accent);
   text-decoration: none;
   font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
   margin-right: 0.5rem;
 }
 .segment-timestamp:hover { text-decoration: underline; }
@@ -166,7 +227,7 @@ video { width: 100%; height: 100%; display: block; }
 .segment-link-btn:focus-visible {
   opacity: 1;
 }
-.segment-link-btn:hover { color: var(--accent); background: rgba(43, 108, 176, 0.12); }
+.segment-link-btn:hover { color: var(--accent); background: rgba(52, 152, 219, 0.12); }
 .segment-link-btn.copied { opacity: 1; color: #2f855a; }
 
 /* While the video is at rest (paused), gently suggest that the current
@@ -201,17 +262,6 @@ body.video-at-rest .transcript-segment.playing .segment-link-btn:hover {
   min-width: 3.5rem;
   text-align: right;
 }
-.transcript-search button {
-  padding: 0.4rem 0.55rem;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--fg);
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.75rem;
-  line-height: 1;
-}
-.transcript-search button:hover { border-color: var(--accent); color: var(--accent); }
 
 mark.search-match {
   background: #fef08a;
@@ -229,3 +279,12 @@ mark.search-match.current { background: #f97316; color: #fff; }
 .calendar-candidate a { color: var(--accent); text-decoration: none; font-weight: 500; }
 .calendar-candidate a:hover { text-decoration: underline; }
 .calendar-candidate-date { color: var(--muted); margin-left: 0.5rem; }
+
+/* --- About page --- */
+.about-page {
+  max-width: 640px;
+  margin: 3rem auto;
+  padding: 0 1.5rem;
+  line-height: 1.6;
+}
+.about-page h1 { color: var(--primary); }

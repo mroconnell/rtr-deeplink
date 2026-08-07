@@ -1,21 +1,23 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>rtr-deeplink</title>
-  <link rel="stylesheet" href="/static/style.css">
-</head>
-<body>
+{% extends "base.html" %}
+{% block title %}Red Tape Recordings{% endblock %}
+{% block content %}
   <main class="center-page">
-    <h1>rtr-deeplink</h1>
+    <h1>Deep-link any public meeting</h1>
     <p class="subtitle">Paste a public meeting URL to view its video and transcript, with clickable deep links to any moment.</p>
-    <form id="urlForm" class="url-form">
-      <input type="url" id="urlInput" placeholder="https://citycouncil.granicus.com/player/clip/1234" required>
-      <button type="submit">Open</button>
+    <form id="urlForm" class="mb-3">
+      <div class="input-group">
+        <input type="url" id="urlInput" class="form-control" placeholder="https://citycouncil.granicus.com/player/clip/1234" required>
+        <button type="submit" class="cassette-btn">
+          <span class="cassette-reel"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7" fill="#fff" stroke="#bbb" stroke-width="2"/><circle cx="9" cy="9" r="2.2" fill="#bbb"/></svg></span>
+          <span class="cassette-label">Open</span>
+          <span class="cassette-reel"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7" fill="#fff" stroke="#bbb" stroke-width="2"/><circle cx="9" cy="9" r="2.2" fill="#bbb"/></svg></span>
+        </button>
+      </div>
     </form>
     <p id="formError" class="error" hidden></p>
   </main>
+{% endblock %}
+{% block scripts %}
   <script>
     document.getElementById('urlForm').addEventListener('submit', (e) => {
       e.preventDefault();
@@ -24,5 +26,4 @@
       window.location.href = '/meeting?url=' + encodeURIComponent(url);
     });
   </script>
-</body>
-</html>
+{% endblock %}
