@@ -2,11 +2,13 @@ import csv
 import io
 import logging
 import os
+import re
 import secrets
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import aiohttp
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse, RedirectResponse
@@ -158,6 +160,54 @@ async def resolve(req: ResolveRequest):
         resolve_duration_ms=int((time.monotonic() - start) * 1000),
     )
     return payload
+
+
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+class NewsletterSignupRequest(BaseModel):
+    email: str
+
+
+@app.post("/api/newsletter/signup")
+async def newsletter_signup(req: NewsletterSignupRequest):
+    email = req.email.strip()
+    if not _EMAIL_RE.match(email):
+        return JSONResponse(
+            {"error": "invalid_email", "message": "That doesn't look like a valid email address."},
+            status_code=400,
+        )
+
+    api_key = os.environ.get("RESEND_API_KEY", "")
+    audience_id = os.environ.get("RESEND_AUDIENCE_ID", "")
+    if not api_key or not audience_id:
+        logger.error("Newsletter signup attempted but RESEND_API_KEY/RESEND_AUDIENCE_ID isn't configured.")
+        return JSONResponse(
+            {"error": "signup_unavailable", "message": "Signups aren't available right now — please try again later."},
+            status_code=503,
+        )
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"https://api.resend.com/audiences/{audience_id}/contacts",
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                json={"email": email, "unsubscribed": False},
+                timeout=aiohttp.ClientTimeout(total=10),
+            ) as response:
+                if response.status < 300:
+                    return {"status": "subscribed"}
+                body_text = await response.text()
+                if "already" in body_text.lower():
+                    return {"status": "already_subscribed"}
+                logger.error("Resend signup failed (%s): %s", response.status, body_text)
+    except Exception:
+        logger.exception("Newsletter signup request to Resend failed.")
+
+    return JSONResponse(
+        {"error": "signup_failed", "message": "Something went wrong — please try again."},
+        status_code=502,
+    )
 
 
 @app.get("/")

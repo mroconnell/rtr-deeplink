@@ -308,3 +308,33 @@ mark.search-match.current { background: #f97316; color: #fff; }
   line-height: 1.6;
 }
 .about-page h1 { color: var(--primary); }
+
+/* --- Footer / newsletter signup --- */
+.site-footer {
+  margin-top: 3rem;
+  padding: 2rem 1.5rem;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+.newsletter-form {
+  max-width: 420px;
+  margin: 0 auto;
+  text-align: center;
+}
+.newsletter-label {
+  display: block;
+  margin-bottom: 0.6rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.newsletter-input-group input {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--fg);
+}
+.newsletter-message {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+}
+.newsletter-message-success { color: #2f855a; }
+.newsletter-message-error { color: var(--secondary); }

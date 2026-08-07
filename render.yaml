@@ -13,3 +13,7 @@ services:
         sync: false
       - key: ADMIN_STATS_TOKEN
         sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_AUDIENCE_ID
+        sync: false

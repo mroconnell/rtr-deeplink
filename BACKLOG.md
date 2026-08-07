@@ -312,8 +312,20 @@ Archive synchronously or the Archive pulls/crawls independently is an
 open question, deliberately left for when the Archive is actually being
 scoped.
 
-- **Newsletter signup** — small, fully decoupled from everything else.
-  Just an email-capture form + an ESP API call. In progress.
+- **[Done 2026-08-07, pending account setup] Newsletter signup.** A
+  footer signup form (sitewide, in `base.html`) POSTs to
+  `/api/newsletter/signup`, which adds the email to a Resend audience.
+  Chose Resend over Mailchimp specifically because it can also handle
+  the future "email alerts for saved searches" item below (triggered
+  per-user sends) on the same account/API, not just newsletter
+  broadcasts — Mailchimp would need a separate paid add-on (Mandrill)
+  for that later. Degrades gracefully like the DB layer: with no
+  `RESEND_API_KEY`/`RESEND_AUDIENCE_ID` set, signups return a clean
+  "not available right now" message instead of erroring — verified
+  locally, both that path and the invalid-email path. **Not yet live**:
+  needs the user to finish Resend account setup (audience created,
+  `redtaperecordings.com` domain verified via DNS at Namecheap) and set
+  the two env vars in Render before real signups will work.
 - **Basic analytics** (pageviews, button clicks, which URLs get pasted
   in) — small, one script tag + event hooks. Not yet started.
 - **Permanent meeting pages** (the Archive's core feature) — the
