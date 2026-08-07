@@ -285,3 +285,71 @@ Known bugs and features not yet addressed, roughly in priority order.
   cases — verified against live Simi Valley (garbled Spanish captions),
   Paradise Valley AZ (genuinely blank, no fallback available), and a
   synthetic test covering all five content-quality buckets directly.
+
+## Roadmap (from 2026-08-07 product scoping conversation)
+
+Not yet built — captured here so the sizing/sequencing reasoning survives
+past the conversation it came from, per the "durable record" convention
+above. Roughly grouped by how self-contained each piece is, not strict
+priority order.
+
+**Architectural call made in that conversation, applies to everything
+below that touches permanent content:** grow a **separate app** ("the
+Archive") for anything that's about content/audience rather than
+resolving — permanent public meeting pages, search, accounts + token
+billing, email alerts, the transcription crawler — rather than growing
+this app into that. Reasoning: round 1 (`rtr-transcripts`) coupled
+resolving, accounts, auth, and content into one codebase, and that
+coupling is exactly what made it slow to work on. This app (the
+"Deeplink" resolver) stays single-purpose: no accounts, no public
+content pages, ever. The two apps would talk over a small API — likely
+the resolver checking/publishing to the Archive instead of (or in
+addition to) its own local `meeting_resolutions` cache once the Archive
+exists; `get_cached_resolution`/`log_resolution` in `app/db/crud.py` are
+deliberately the seam where that swap would happen, so this isn't
+blocked by anything already built. Whether the resolver pushes to the
+Archive synchronously or the Archive pulls/crawls independently is an
+open question, deliberately left for when the Archive is actually being
+scoped.
+
+- **Newsletter signup** — small, fully decoupled from everything else.
+  Just an email-capture form + an ESP API call. In progress.
+- **Basic analytics** (pageviews, button clicks, which URLs get pasted
+  in) — small, one script tag + event hooks. Not yet started.
+- **Permanent meeting pages** (the Archive's core feature) — the
+  biggest single item below. Needs its own content model: versioned
+  transcripts per meeting (to support language variants, edits, a
+  future manual/higher-quality re-transcription, speaker diarization
+  later), slugs, SEO/crawlability (server-rendered, sitemap). Video is
+  never self-hosted, only embedded — matches this app's existing
+  principle. Not sized in detail yet; do that when it's actually next.
+- **Transcription crawler** (fetch audio/video for meetings with no
+  captions, run our own transcription, store the result permanently) —
+  separate from the Archive architecturally but only useful once the
+  Archive exists to store results in. Some prior scar tissue to reuse:
+  a "bad Whisper model" bug was already found and fixed once in round 1.
+- **Search over permanent pages** — genuinely easy once the Archive
+  exists; Postgres full-text search is enough at this scale, no need
+  for Algolia/Elasticsearch.
+- **Accounts + token billing** — the one piece of round 1's complexity
+  being deliberately reintroduced, and only on the Archive, not here.
+  Needed for: paid/subscribed features (already alluded to in several
+  adapter warning messages — "contact ryan@how-to-adu.com" for manual
+  transcription), and as a prerequisite for email alerts below. Not
+  sized in detail yet.
+- **Email alerts for saved searches** — depends on both accounts *and*
+  search existing first, so it's downstream of both above.
+- **On-demand / scheduled crawl requests** (let someone ask us to crawl
+  a specific meeting or series, or schedule a recurring one) — depends
+  on the Archive existing; shared here now mainly because it may affect
+  the Archive's architecture even though it's not being built yet.
+- **Video highlight clips ("Highlights") + algorithmic feed** — distant
+  future per the user's own framing. Flagged tension worth resolving
+  before scoping further: this app's "never host video, only embed"
+  principle directly conflicts with hosting/serving clip segments,
+  which a highlights feed would require.
+
+The "Reporting & caching" section above is the one piece of this roadmap
+already built — per-adapter success/failure reporting was pulled forward
+ahead of everything else here because it was the smallest real step and
+directly informs adapter-fix priority for the existing platforms.
