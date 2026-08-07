@@ -9,7 +9,7 @@ from langdetect import detect as detect_language, LangDetectException
 
 from .base import AssetFinder
 from .models import ResolvedMeeting, TranscriptSegment
-from ..utils.vtt_parser import parse_vtt
+from ..utils.vtt_parser import parse_vtt, is_likely_garbled
 
 TARGET_LANGUAGE = "en"
 # eScribe/iSiLIVE encodes caption language in the filename itself, unlike
@@ -98,6 +98,13 @@ class EscribeAssetFinder(AssetFinder):
                         transcript_warnings.append(
                             f"These captions appear to be in '{lang}', not '{TARGET_LANGUAGE}' -- "
                             "no matching-language track was found for this meeting."
+                        )
+                    if is_likely_garbled(cues):
+                        transcript_warnings.append(
+                            "This transcript looks garbled at the source (not a parsing "
+                            "bug on our end) -- treat it as approximate. We can run a "
+                            "higher-quality manual transcription for subscribed users -- "
+                            "contact ryan@how-to-adu.com for details."
                         )
                 else:
                     transcript_warnings.append(

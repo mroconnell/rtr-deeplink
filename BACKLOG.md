@@ -4,29 +4,69 @@ Known bugs and features not yet addressed, roughly in priority order.
 
 ## Bugs
 
-- **[Done 2026-08-06 for Legistar] Unsupported-platform failure is too
-  blunt.** Fixed for Legistar specifically: `LegistarAssetFinder` now finds
-  and delegates to the embedded Granicus link when present, and when given
-  a calendar/listing page instead of one meeting (confirmed real: Maricopa,
-  AZ's Calendar.aspx had 20 video links across 47 rows), returns a
-  dedicated "this is a calendar" response with a pick-list of real
-  meetings (title/date/url) pulled from the page, rather than a bare
-  error. Still generic/unbuilt for platforms with no adapter at all (the
-  plain "We don't support 'x' meeting pages yet." message) — worth
-  applying the same "try to find a supported link, then give real
-  guidance" treatment there too, per the original ask.
-- **5 of the first 12 Granicus test meetings returned zero caption
-  segments** (San Diego County, Cupertino, Mountain View, Berkeley,
-  Paradise Valley AZ). Not yet confirmed these meetings simply lack
-  captions vs. a caption file existing elsewhere on the page that current
-  extraction patterns miss. Needs investigation before assuming "no
-  captions available" is the right conclusion.
-- **Date extraction still fails for some meetings** even after the title
-  extraction fix (San Diego, Berkeley, Alexandria VA, San Francisco, DC in
-  initial testing). Scraping the clip page's static HTML is unreliable for
-  JS-heavy Granicus pages; an RSS-feed-based metadata source (per
-  `civic-scraper`'s Granicus adapter, which parses `ViewPublisherRSS.php`)
-  may be more reliable than scraping the clip page directly.
+- **[Done 2026-08-06 for Legistar/CivicPlus; investigated for PrimeGov —
+  not applicable] Unsupported-platform failure is too blunt.** Fixed for
+  Legistar and CivicPlus specifically: both delegate to the embedded
+  Granicus link when present, and a calendar/listing page returns a
+  pick-list of real meetings rather than a bare error (see Platform
+  coverage section below). The remaining "no adapter at all" case is only
+  PrimeGov today (detected but unregistered) — investigated whether the
+  same "find an embedded supported-platform link, then delegate" pattern
+  would help there: checked 3 real PrimeGov cities (Los Angeles, San Jose,
+  Petaluma) and all three embed video via a **YouTube** iframe player
+  (`youtube.com/iframe_api` + a JS-driven show/hide player, video ID not
+  statically present in the page HTML), not a link to any
+  currently-supported vendor platform. Unlike Legistar/CivicPlus (which
+  really are just wrappers around Granicus), PrimeGov is a genuine
+  distinct video host — the "find a supported link" fallback has nothing
+  to find here, so building it as a generic mechanism wouldn't help the
+  one real unsupported case that exists. A real PrimeGov/YouTube adapter
+  is a separate, bigger undertaking (extracting the video ID from page JS,
+  and YouTube captions would need their own fetch path with no equivalent
+  to Granicus's predictable `captions.vtt`) — not attempted this session.
+- **[Done 2026-08-06] Zero-caption Granicus meetings — investigated with
+  fresh real meetings** (since the original test clip IDs weren't recorded
+  anywhere, re-tested against a current real meeting per flagged city:
+  Cupertino, Mountain View, Berkeley, Paradise Valley AZ, San Diego city).
+  Findings: Cupertino and San Diego now resolve real captions fine
+  (2191 and 7349 segments) — the original zero-caption cases were likely
+  specific to those particular old meetings, not a systemic bug. Berkeley
+  and Paradise Valley AZ have a genuinely blank source `captions.vtt`
+  (confirmed by fetching it directly — the standard 8-byte
+  `"WEBVTT\n\n"` placeholder Granicus creates whether or not captioning
+  was ever generated) — already correctly detected and warned about, not
+  a bug. Mountain View uncovered a real bug, now fixed (see below).
+- **[Done 2026-08-06] Real bug: caption/video-ID guessing used the
+  pre-redirect URL, so `MediaPlayer.php?clip_id=...` links (how Granicus's
+  own UI shares a link) never got their captions.vtt path guessed at
+  all.** Found via the Mountain View investigation above: its page has no
+  `<track>` tag (Flowplayer-based UI, not native HTML5 captions), so the
+  guessed-path heuristic in `_extract_media_urls` was the *only* way to
+  find its captions.vtt — but that heuristic pattern-matched against
+  `granicus.com/player/clip/` or `granicus.com/videos/`, which a
+  `MediaPlayer.php?view_id=&clip_id=` URL never matches even though it
+  redirects to `/player/clip/{id}` immediately. Fixed: `_fetch_page` now
+  returns the post-redirect URL alongside the HTML, and all URL-shape
+  matching (`_extract_clip_id`, media guessing, RSS view_id/clip_id
+  lookup) runs against that instead of the originally-submitted URL.
+  Confirmed via real Mountain View, San Francisco, and DC
+  `MediaPlayer.php` links — jurisdiction/date/captions all resolve
+  correctly now where they silently wouldn't have before.
+- **[Done 2026-08-06] Date extraction fixed via RSS `pubDateParts`.**
+  `_fetch_channel_info` (renamed in spirit, same function) now also
+  matches the resolved meeting's `clip_id` against the
+  `ViewPublisherRSS.php` feed's `<item>` entries and reads the structured
+  `<gran:pubDateParts yr= mo= day=>` attributes — confirmed live against 3
+  of the originally-failing cities: San Francisco (clip 52945, page has
+  no date signal anywhere — title is just "Board of Supervisors - Regular
+  Meeting" — RSS gives 2026-07-28 correctly), DC (clip 10801 → 2026-07-14),
+  Mountain View (clip 5389 → 2026-07-09). San Diego and Cupertino's fresh
+  test meetings already had dates in their titles, so weren't a live
+  reproduction of the original bug, but the RSS path is exercised for
+  them too. **Alexandria VA remains unfixed** — confirmed its meeting
+  page has no `view_id` in the URL at all (so no RSS feed to match
+  against) and no date signal anywhere in the page body either; no
+  further fallback source identified.
 
 - **[Done 2026-08-06] Jurisdiction/title metadata cleanup.** Fixed via three
   tiers: the Granicus RSS channel title (constant per `view_id`, confirmed
@@ -42,18 +82,19 @@ Known bugs and features not yet addressed, roughly in priority order.
   resolves to jurisdiction "Dc" — no page-text signal or view_id available
   to do better, and not worth a DC-specific hardcode for one city.
 
-- **Source caption quality varies wildly by jurisdiction and isn't
-  detected.** Alexandria VA's captions (clip 6490) are genuinely garbled at
-  the source — confirmed by fetching the raw VTT directly from
-  `alexandria.granicus.com/videos/6490/captions.vtt`: fragments like "test
-  meele first item on t" and "last meeting.Oa", not a parsing bug. Boston's
-  captions (clip 10382), by contrast, are clean full sentences. We currently
-  render whatever we find with no quality check. Need either (a) a
-  heuristic to detect low-quality/garbled captions (e.g. abnormal fragment
-  length, merged-word ratio) and warn the user or fall back to
-  Whisper-generated transcription instead, or (b) at minimum, surface a
-  confidence/quality indicator so users know not to trust a garbled
-  transcript at face value.
+- **[Done 2026-08-06] Caption quality heuristic.** `is_likely_garbled()`
+  (`app/utils/vtt_parser.py`, shared by Granicus/eScribe/CA Legislature)
+  flags a transcript as likely-garbled-at-the-source when >6% of its
+  words are short junk fragments (≤2 letters, not a real short English
+  word like "a"/"to"/"is"). Threshold calibrated against real samples:
+  Alexandria VA's confirmed-garbled captions (clip 6490 — fragments like
+  "test meele first item on t", "last meeting.Oa") sit at ~17%, while four
+  independently-confirmed clean real sources (Boston, San Diego, DC, San
+  Francisco) all sit under 2% — comfortable margin on both sides. Live
+  re-verified after implementation: Alexandria correctly gets the new
+  warning message (with the same manual-transcription contact CTA as the
+  blank-VTT case), Boston/SF/DC/San Diego/Cupertino all resolve with zero
+  false positives.
 
 - **[Done 2026-08-06] Caption language detection.** Fixed: found via live
   review that Simi Valley clip 2840's only caption track is labeled
@@ -67,14 +108,24 @@ Known bugs and features not yet addressed, roughly in priority order.
   user's original ask) — right now we auto-pick the best match and warn,
   we don't yet expose the alternates.
 
-- **San Francisco's captions render in ALL CAPS** (a live-caption source
-  convention, not a bug) — reads as shouting. Consider normalizing to
-  sentence case for display. Spot-checked the other 6 meetings with real
-  transcripts (2026-08-06): 5 of 6 English ones (San Diego, Oakland,
-  Boston, San Francisco, DC) are genuinely readable with only minor rough
-  patches (a few garbled words mid-Boston); Alexandria VA remains the one
-  clear outlier at genuinely unreadable quality — see the caption
-  quality-detection item above.
+- **[Done 2026-08-06] San Francisco's ALL CAPS captions normalized.**
+  `_normalize_shouting_caption()` (`app/utils/vtt_parser.py`, runs inside
+  `parse_vtt` so every platform benefits) detects a track as
+  all-caps-at-the-source (essentially zero lowercase letters across a
+  40+-letter sample) and re-cases it to sentence case, capitalizing after
+  real sentence punctuation across cue boundaries (cues are joined with a
+  placeholder before casing, so a sentence split mid-cue isn't treated as
+  two separate sentence starts) rather than per-cue. Confirmed live: a
+  real San Francisco Board of Supervisors meeting (clip 52945) that was
+  genuinely ALL CAPS at the source now renders as normal sentence-case
+  text (e.g. "the july 28th 2026 regular meeting of the san francisco
+  board of supervisors. Madam clerk, please call the roll."). Spot-checked
+  the other 6 meetings with real transcripts (2026-08-06): 5 of 6 English
+  ones (San Diego, Oakland, Boston, San Francisco, DC) are genuinely
+  readable with only minor rough patches (a few garbled words
+  mid-Boston); Alexandria VA remains the one clear outlier at genuinely
+  unreadable quality — now caught by the caption quality-detection item
+  above.
 
 ## UX polish (from live review, 2026-08-06)
 

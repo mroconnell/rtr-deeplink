@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 from .base import AssetFinder
 from .media_scan import scan_media_urls, media_type
 from .models import ResolvedMeeting, TranscriptSegment
-from ..utils.vtt_parser import parse_vtt
+from ..utils.vtt_parser import parse_vtt, is_likely_garbled
 
 
 class CaliforniaLegislatureAssetFinder(AssetFinder):
@@ -93,6 +93,11 @@ class CaliforniaLegislatureAssetFinder(AssetFinder):
                 cues = await self._fetch_vtt(session, vtt_urls[0])
                 if cues:
                     segments = [TranscriptSegment(**cue) for cue in cues]
+                    if is_likely_garbled(cues):
+                        transcript_warnings.append(
+                            "This transcript looks garbled at the source (not a parsing "
+                            "bug on our end) -- treat it as approximate."
+                        )
                 else:
                     transcript_warnings.append(
                         "A caption file is referenced for this meeting but could not "

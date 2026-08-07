@@ -13,7 +13,7 @@ from langdetect import detect as detect_language, LangDetectException
 from .base import AssetFinder
 from .media_scan import scan_media_urls, media_type
 from .models import ResolvedMeeting, TranscriptSegment
-from ..utils.vtt_parser import parse_vtt
+from ..utils.vtt_parser import parse_vtt, is_likely_garbled
 
 TARGET_LANGUAGE = "en"
 
@@ -59,7 +59,17 @@ class GranicusAssetFinder(AssetFinder):
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         }
 
-    async def _fetch_page(self, session: aiohttp.ClientSession, url: str, max_retries: int = 3) -> str:
+    async def _fetch_page(self, session: aiohttp.ClientSession, url: str, max_retries: int = 3) -> Tuple[str, str]:
+        """Returns (html, final_url) -- final_url is the post-redirect URL,
+        which matters because a real MediaPlayer.php?clip_id=... URL (how
+        Granicus's own UI shares links) always redirects to /player/clip/{id}
+        before we ever see it. Callers that pattern-match on URL shape (see
+        _extract_clip_id) must use final_url, not the originally-submitted
+        one, or that matching silently never fires -- confirmed via a real
+        Mountain View meeting submitted as a MediaPlayer.php URL, where the
+        old code (matching against the pre-redirect url) never guessed the
+        captions.vtt path at all.
+        """
         last_error = None
         for attempt in range(max_retries):
             try:
@@ -69,7 +79,7 @@ class GranicusAssetFinder(AssetFinder):
                 ) as response:
                     if response.status >= 400:
                         raise aiohttp.ClientError(f"HTTP {response.status} for {url}")
-                    return await response.text()
+                    return await response.text(), str(response.url)
             except (aiohttp.ClientError, asyncio.TimeoutError) as e:
                 last_error = e
                 if attempt == max_retries - 1:
@@ -196,6 +206,20 @@ class GranicusAssetFinder(AssetFinder):
                         continue
         return None
 
+    @staticmethod
+    def _extract_clip_id(page_url: str) -> Optional[str]:
+        """Pull the numeric clip id out of any of Granicus's URL shapes:
+        path-based /player/clip/{id}, path-based /videos/{id}/, or
+        query-based ?clip_id={id} (MediaPlayer.php). Must be called with the
+        post-redirect URL -- see _fetch_page's docstring.
+        """
+        if "granicus.com/player/clip/" in page_url:
+            return page_url.split("/player/clip/")[1].split("?")[0].split("/")[0]
+        if "granicus.com/videos/" in page_url:
+            return page_url.split("/videos/")[1].split("/")[0]
+        query = parse_qs(urlparse(page_url).query)
+        return query.get("clip_id", [None])[0]
+
     def _extract_media_urls(self, html: str, page_url: str) -> List[str]:
         """Find media asset URLs on the page: Granicus's own guessed-VTT-path
         heuristic (its player/clip URLs don't always embed the caption URL
@@ -203,12 +227,7 @@ class GranicusAssetFinder(AssetFinder):
         """
         media_urls = set()
 
-        video_id = None
-        if "granicus.com/player/clip/" in page_url:
-            video_id = page_url.split("/player/clip/")[1].split("?")[0].split("/")[0]
-        elif "granicus.com/videos/" in page_url:
-            video_id = page_url.split("/videos/")[1].split("/")[0]
-
+        video_id = self._extract_clip_id(page_url)
         if video_id:
             domain = urlparse(page_url).netloc
             media_urls.add(f"https://{domain}/videos/{video_id}/captions.vtt")
@@ -223,19 +242,26 @@ class GranicusAssetFinder(AssetFinder):
         video_warnings: List[str] = []
         transcript_warnings: List[str] = []
         async with aiohttp.ClientSession() as session:
-            html = await self._fetch_page(session, url)
+            html, final_url = await self._fetch_page(session, url)
             soup = BeautifulSoup(html, "html.parser")
-            metadata = self._extract_metadata(soup, url)
-            media_urls = self._extract_media_urls(html, url)
+            metadata = self._extract_metadata(soup, final_url)
+            media_urls = self._extract_media_urls(html, final_url)
+            clip_id = self._extract_clip_id(final_url)
 
             # The RSS channel title (constant per view_id, distinct from each
             # meeting's own often-poor-quality title -- confirmed real
             # examples like San Diego's "Tuesday Agenda Revised Added
             # S500-S511") is the most reliable source of both jurisdiction
-            # and governing-body name, when it's available at all.
-            channel_jurisdiction, channel_body = await self._fetch_channel_info(session, url)
+            # and governing-body name, when it's available at all. The RSS
+            # item matched by clip_id is likewise the most reliable date
+            # source when the page itself has none -- confirmed real (San
+            # Francisco Board of Supervisors, clip 52945: no date anywhere
+            # on the page, but a real RSS pubDate).
+            channel_jurisdiction, channel_body, item_date = await self._fetch_channel_info(session, final_url, clip_id)
             if channel_jurisdiction:
                 metadata["jurisdiction"] = channel_jurisdiction
+            if not metadata["date"] and item_date:
+                metadata["date"] = item_date
             title_has_body = metadata["title"] and any(
                 kw in metadata["title"].lower() for kw in GOVERNING_BODY_KEYWORDS
             )
@@ -311,6 +337,13 @@ class GranicusAssetFinder(AssetFinder):
                     if len(candidates) > 1 and not target_match:
                         other_langs = sorted({c[2] for c in candidates if c[2]})
                         transcript_warnings.append(f"Multiple caption tracks found ({other_langs}); none matched '{TARGET_LANGUAGE}'.")
+                    if is_likely_garbled(cues):
+                        transcript_warnings.append(
+                            "This transcript looks garbled at the source (not a parsing "
+                            "bug on our end) — treat it as approximate. We can run a "
+                            "higher-quality manual transcription for subscribed users — "
+                            "contact ryan@how-to-adu.com for details."
+                        )
             else:
                 transcript_warnings.append("No caption/transcript file found on this page.")
 
@@ -349,44 +382,75 @@ class GranicusAssetFinder(AssetFinder):
         return parse_vtt(content)
 
     @staticmethod
-    async def _fetch_channel_info(session: aiohttp.ClientSession, url: str) -> Tuple[Optional[str], Optional[str]]:
-        """Fetch the Granicus RSS feed for this page's view_id and pull the
-        channel-level title, which reliably follows "{Jurisdiction}: {Body}
-        (Videos Feed)" -- e.g. "City of San Diego: City Council Meetings
-        (Videos Feed)", "City of Berkeley: City Council (Videos Feed)".
-        Confirmed across 6 real cities (2026-08-06). Unlike each meeting's
-        own item-level title (which can be as unhelpful as "Tuesday Agenda
-        Revised Added S500-S511" -- the literal title San Diego staff gave
-        one real meeting), the channel title is constant per view_id and
-        doesn't depend on how well that specific meeting was labeled.
-        Returns (None, None) if there's no view_id, the feed is unreachable,
-        or the title doesn't match the expected shape -- callers must treat
+    async def _fetch_channel_info(
+        session: aiohttp.ClientSession, url: str, clip_id: Optional[str]
+    ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+        """Fetch the Granicus RSS feed for this page's view_id and pull:
+        (1) the channel-level title, which reliably follows "{Jurisdiction}:
+        {Body} (Videos Feed)" -- e.g. "City of San Diego: City Council
+        Meetings (Videos Feed)". Confirmed across 6 real cities (2026-08-06).
+        Unlike each meeting's own item-level title (which can be as
+        unhelpful as "Tuesday Agenda Revised Added S500-S511" -- the literal
+        title San Diego staff gave one real meeting), the channel title is
+        constant per view_id and doesn't depend on how well that specific
+        meeting was labeled.
+        (2) this specific meeting's date, by matching clip_id against the
+        feed's <item> entries and reading <gran:pubDateParts yr= mo= day=>
+        -- confirmed via a real San Francisco Board of Supervisors meeting
+        (clip_id=52945) where the page itself has no parseable date
+        anywhere (title "Board of Supervisors - Regular Meeting", no
+        article:published_time meta) but the RSS item has an exact
+        structured date. Falls back to parsing the item's free-text
+        <pubDate> if pubDateParts is missing.
+        Returns (None, None, None) if there's no view_id, the feed is
+        unreachable, or nothing matches -- callers must treat every part of
         this as a best-effort enhancement, not a guaranteed source.
         """
         query = parse_qs(urlparse(url).query)
         view_id = query.get("view_id", [None])[0]
         if not view_id:
-            return None, None
+            return None, None, None
 
         domain = urlparse(url).netloc
         rss_url = f"https://{domain}/ViewPublisherRSS.php?view_id={view_id}&mode=video"
         try:
             async with session.get(rss_url, timeout=aiohttp.ClientTimeout(total=10)) as response:
                 if response.status != 200:
-                    return None, None
+                    return None, None, None
                 xml = await response.text()
         except Exception:
-            return None, None
+            return None, None, None
 
-        match = re.search(r"<title>([^<]+)</title>", xml)
-        if not match:
-            return None, None
+        jurisdiction = body = None
+        title_match = re.search(r"<title>([^<]+)</title>", xml)
+        if title_match:
+            parts = title_match.group(1).strip().split(":", 1)
+            if len(parts) == 2:
+                jurisdiction = parts[0].strip() or None
+                body = re.sub(r"\s*\(.*?Feed\)\s*$", "", parts[1]).strip() or None
 
-        channel_title = match.group(1).strip()
-        parts = channel_title.split(":", 1)
-        if len(parts) != 2:
-            return None, None
+        item_date = None
+        if clip_id:
+            # The RSS <link> HTML-entity-encodes its query string ("&amp;
+            # clip_id=..."), so match on "clip_id=" directly rather than
+            # requiring a raw "?"/"&" separator before it.
+            item_match = re.search(
+                rf"<item>(?:(?!</item>).)*?clip_id={re.escape(clip_id)}\b(?:(?!</item>).)*?</item>",
+                xml, re.DOTALL,
+            )
+            if item_match:
+                item_xml = item_match.group(0)
+                parts_tag = re.search(r"<gran:pubDateParts\b[^>]*/?>", item_xml)
+                if parts_tag:
+                    tag = parts_tag.group(0)
+                    yr = re.search(r"yr=['\"](\d{4})['\"]", tag)
+                    mo = re.search(r"mo=['\"](\d{1,2})['\"]", tag)
+                    day = re.search(r"day=['\"](\d{1,2})['\"]", tag)
+                    if yr and mo and day:
+                        item_date = f"{int(yr.group(1)):04d}-{int(mo.group(1)):02d}-{int(day.group(1)):02d}"
+                if not item_date:
+                    pubdate_match = re.search(r"<pubDate>([^<]+)</pubDate>", item_xml)
+                    if pubdate_match:
+                        item_date = GranicusAssetFinder._parse_date_string(pubdate_match.group(1))
 
-        jurisdiction = parts[0].strip()
-        body = re.sub(r"\s*\(.*?Feed\)\s*$", "", parts[1]).strip()
-        return (jurisdiction or None), (body or None)
+        return jurisdiction, body, item_date
