@@ -97,6 +97,19 @@ body {
   animation: reel-spin 0.8s linear infinite;
   transform-origin: 50% 50%;
 }
+/* Ambient loading state (the "please wait" fetch message) -- slower
+   than the hover flourish above since this can run for up to ~20s and
+   a quick 0.8s spin reads frantic sustained that long. */
+.cassette-reel.spinning {
+  animation: reel-spin 1.6s linear infinite;
+  transform-origin: 50% 50%;
+}
+
+.status-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
 
 /* Input group pairing (URL textbox + cassette submit button fused into
    one control), matching round-1's real input-group/cassette-btn sizing. */

@@ -178,25 +178,24 @@ Known bugs and features not yet addressed, roughly in priority order.
   `style.css` — a signup button isn't really a "rewind" action, so a
   new-but-consistent treatment may fit better than reusing cassette-btn
   as-is.
-- **Add a "Get Updates" link in the site nav pointing at the email
-  signup.** Right now the newsletter form only lives in the sitewide
-  footer (easy to miss, especially on the homepage where there's very
-  little scroll). Open question worth deciding when picked up: a nav
-  link that jumps to the existing footer form (`#newsletterForm`
-  anchor, no new page needed), vs. its own dedicated `/subscribe` page
-  — the footer-anchor version is far less work and keeps signup a single
-  form to maintain, but a dedicated page reads more intentional if the
-  nav button is meant to be a primary call-to-action, not just a
-  shortcut.
+- **[Done 2026-08-07] "Get Updates" link in the site nav pointing at
+  the email signup.** Went with the footer-anchor approach (no new
+  page): `href="#newsletterForm"` in `base.html`'s nav, plus a small
+  `newsletter.js` enhancement that focuses the email input ~300ms after
+  the click so it's not just a scroll — one less click for someone who
+  came specifically to sign up. Verified in-browser: link renders with
+  the correct href in the collapsed-nav menu, and `document.activeElement`
+  is confirmed to be the email input after clicking it.
 
-- **Spinning cassette-reel animation on the "please wait" fetch
-  message.** Right now `#statusMessage` (`player.js:397`, "Please wait
-  while we fetch the video and transcript...") is plain text with no
-  visual loading indicator. Idea: reuse the existing `.cassette-reel`
-  SVG circles already in `style.css`/the cassette-btn markup (they
-  already have a `reel-spin` keyframe defined for hover) — show two of
-  them spinning like an old cassette tape's reels while the fetch is in
-  flight, on-brand rather than a generic spinner.
+- **[Done 2026-08-07] Spinning cassette-reel animation on the "please
+  wait" fetch message.** `player.js`'s loading-state line now renders
+  two `.cassette-reel` SVGs (reusing the existing icon markup) with a
+  new `.spinning` modifier class — a slower 1.6s spin than the 0.8s
+  hover flourish elsewhere, since this can run for up to ~20s and a
+  quick spin reads frantic sustained that long. Verified the animation
+  is actually wired (not just present in markup) via computed style —
+  `animationName: "reel-spin", animationDuration: "1.6s"` — after
+  confirming a byte-fresh fetch of `style.css` contains the rule.
 
 - **CivicClerk's real caption/transcript format is unverified.** The API
   schema has `EventsMedia.closedCaptionUrl`, `.transcriptionUrl`, and

@@ -59,6 +59,8 @@ function highlightSegment(segId, scrollIntoView) {
 
 const LINK_ICON_SVG = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M6.5 9.5a.75.75 0 0 0 1 .06l.06-.06 3-3a.75.75 0 0 0-1-1.12l-.06.06-3 3a.75.75 0 0 0 0 1.06z"/><path fill="currentColor" d="M5.72 11.03a2.5 2.5 0 0 1 0-3.54l1.5-1.5a.75.75 0 0 1 1.06 1.06l-1.5 1.5a1 1 0 0 0 1.42 1.42l1.5-1.5a.75.75 0 1 1 1.06 1.06l-1.5 1.5a2.5 2.5 0 0 1-3.54 0z"/><path fill="currentColor" d="M9.72 4.97a2.5 2.5 0 0 1 3.54 3.54l-1.5 1.5a.75.75 0 1 1-1.06-1.06l1.5-1.5a1 1 0 0 0-1.42-1.42l-1.5 1.5A.75.75 0 1 1 8.22 6.5l1.5-1.5z"/></svg>';
 
+const CASSETTE_REEL_SVG = '<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7" fill="#fff" stroke="#bbb" stroke-width="2"/><circle cx="9" cy="9" r="2.2" fill="#bbb"/></svg>';
+
 function renderTranscript(segs) {
   const container = document.getElementById('transcriptList');
   container.innerHTML = '';
@@ -394,7 +396,11 @@ async function init() {
     return;
   }
 
-  statusEl.textContent = 'Please wait while we fetch the video and transcript from the government page. This usually takes less than 20 seconds.';
+  statusEl.innerHTML = '<span class="status-loading">' +
+    `<span class="cassette-reel spinning">${CASSETTE_REEL_SVG}</span>` +
+    `<span class="cassette-reel spinning">${CASSETTE_REEL_SVG}</span>` +
+    '<span>Please wait while we fetch the video and transcript from the government page. This usually takes less than 20 seconds.</span>' +
+    '</span>';
 
   let data;
   try {
