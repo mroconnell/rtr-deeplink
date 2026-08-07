@@ -228,6 +228,33 @@ video { width: 100%; height: 100%; display: block; }
 .big-play-button svg { display: block; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4)); }
 
 .transcript-section h2 { margin-bottom: 0.5rem; color: var(--primary); }
+
+/* Fills the space where the transcript would be when there isn't one --
+   a live playhead readout so it's clear we're still tracking the exact
+   moment, not just a dead end, plus a prominent way to grab a link to
+   it (the toolbar's "Copy link to current time" does the same thing,
+   but easy to miss when there's nothing else to look at down here). */
+.no-transcript-timestamp {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+.no-transcript-hint {
+  color: var(--muted);
+  max-width: 32rem;
+  margin: 0 auto 1.25rem;
+}
+.no-transcript-time {
+  font-family: var(--font-mono);
+  font-size: 3.5rem;
+  font-weight: bold;
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  margin-bottom: 1.25rem;
+}
 .transcript-list {
   max-height: 60vh;
   overflow-y: auto;

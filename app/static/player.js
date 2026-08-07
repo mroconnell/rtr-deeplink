@@ -52,6 +52,16 @@ function formatTime(seconds) {
   return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
 }
 
+// Live playhead readout shown where the transcript would be, for
+// meetings with no transcript/agenda to click through -- makes clear
+// we're still tracking the exact moment even with nothing to scan.
+// A no-op when #noTranscriptTime doesn't exist (transcript present, or
+// not on the meeting page at all), so callers don't need to guard.
+function updateNoTranscriptTime(adapter) {
+  const el = document.getElementById('noTranscriptTime');
+  if (el) el.textContent = formatTime(adapter.currentTime);
+}
+
 function findActiveSegment(currentTime) {
   for (let i = segments.length - 1; i >= 0; i--) {
     if (segments[i].start <= currentTime) return `seg-${i}`;
@@ -420,23 +430,38 @@ function wireSharedControls(adapter) {
   adapter.addEventListener('timeupdate', () => {
     const segId = findActiveSegment(adapter.currentTime);
     if (segId) highlightSegment(segId, autoScrollEnabled);
+    updateNoTranscriptTime(adapter);
   });
 
-  const linkBtn = document.getElementById('linkToCurrentBtn');
-  const linkLabel = linkBtn.querySelector('.cassette-label');
-  linkBtn.addEventListener('click', async () => {
-    const t = adapter.currentTime;
-    const segId = findActiveSegment(t) || null;
-    updateUrlParams({ t, line: segId });
-    trackEvent('copy_link_to_time');
-    try {
-      await navigator.clipboard.writeText(window.location.href);
-      linkLabel.textContent = 'Copied!';
-      setTimeout(() => { linkLabel.textContent = 'Copy link to current time'; }, 1500);
-    } catch (e) {
-      // clipboard API unavailable; URL is already updated in the address bar
-    }
-  });
+  // Two buttons do the exact same "copy a link to right now" action --
+  // the toolbar one (always present) and a second, more prominent one
+  // filling the space where the transcript would otherwise be, for
+  // meetings with nothing to click through. Same handler for both.
+  [document.getElementById('linkToCurrentBtn'), document.getElementById('noTranscriptLinkBtn')]
+    .filter(Boolean)
+    .forEach((btn) => {
+      const label = btn.querySelector('.cassette-label');
+      const defaultText = label.textContent;
+      btn.addEventListener('click', async () => {
+        const t = adapter.currentTime;
+        const segId = findActiveSegment(t) || null;
+        updateUrlParams({ t, line: segId });
+        trackEvent('copy_link_to_time');
+        try {
+          await navigator.clipboard.writeText(window.location.href);
+          label.textContent = 'Copied!';
+          setTimeout(() => { label.textContent = defaultText; }, 1500);
+        } catch (e) {
+          // clipboard API unavailable; URL is already updated in the address bar
+        }
+      });
+    });
+
+  // Reflects the initial position immediately (deep-linked or not),
+  // rather than waiting for the first timeupdate -- matters most for
+  // YouTube, where timeupdate is only polled while actually playing, so
+  // a paused/autoplay-blocked load would otherwise show a stale "0:00".
+  updateNoTranscriptTime(adapter);
 
   const toggleBtn = document.getElementById('toggleAutoScrollBtn');
   const stateSpan = document.getElementById('autoScrollState');
