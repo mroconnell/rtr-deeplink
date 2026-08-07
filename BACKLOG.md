@@ -166,6 +166,29 @@ Known bugs and features not yet addressed, roughly in priority order.
   `ResolvedMeeting`, so this renders for every successfully-resolved
   meeting regardless of platform.
 
+- **Newsletter signup box doesn't match the brand.** Built quickly with
+  plain Bootstrap (`.btn.btn-primary` blue button, plain `.form-control`
+  input) rather than the site's actual visual language — no dymo-label/
+  cassette treatment, no Georgia/mono type pairing, doesn't feel like
+  the rest of the page. Needs a real design pass, not just a font swap.
+  Open question worth deciding when picked up: does it get its own
+  cassette-btn-style treatment, or does that stay reserved for the two
+  existing "rewind to a moment" buttons (homepage submit, "Copy link to
+  current time") per the explicit scoping comment already in
+  `style.css` — a signup button isn't really a "rewind" action, so a
+  new-but-consistent treatment may fit better than reusing cassette-btn
+  as-is.
+- **Add a "Get Updates" link in the site nav pointing at the email
+  signup.** Right now the newsletter form only lives in the sitewide
+  footer (easy to miss, especially on the homepage where there's very
+  little scroll). Open question worth deciding when picked up: a nav
+  link that jumps to the existing footer form (`#newsletterForm`
+  anchor, no new page needed), vs. its own dedicated `/subscribe` page
+  — the footer-anchor version is far less work and keeps signup a single
+  form to maintain, but a dedicated page reads more intentional if the
+  nav button is meant to be a primary call-to-action, not just a
+  shortcut.
+
 - **CivicClerk's real caption/transcript format is unverified.** The API
   schema has `EventsMedia.closedCaptionUrl`, `.transcriptionUrl`, and
   `.closedCaptionTracks`, but every sample meeting checked (Clovis CA,
