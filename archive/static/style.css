@@ -445,22 +445,6 @@ mark.search-match.current { background: #f97316; color: #fff; }
 }
 
 /* --- Archive-only additions (permanent meeting pages) --- */
-.archive-nav {
-  background: var(--primary);
-  padding: 0.75rem 1.5rem;
-  display: flex;
-  gap: 1.5rem;
-  align-items: center;
-}
-.archive-nav a {
-  color: #fff;
-  text-decoration: none;
-  font-family: var(--font-mono);
-  font-weight: bold;
-  letter-spacing: 0.05em;
-}
-.archive-nav a:hover { text-decoration: underline; }
-
 .version-picker {
   margin-bottom: 0.75rem;
   font-size: 0.9rem;
