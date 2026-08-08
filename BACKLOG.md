@@ -137,6 +137,68 @@ where relevant.
   request feature and report-a-problem feature were each deliberately
   duplicated into both.
 
+## Player UX
+
+- **The transcript's auto-scroll is too aggressive — big, jarring jumps
+  between the video and wherever the transcript's active line is.**
+  Reported directly by the user (2026-08-08): watching via the playhead
+  jerks the page down to the active transcript line, and clicking a
+  transcript timestamp jerks it back up — often crossing the whole
+  Agenda section in between, since that sits between the video and the
+  transcript in the DOM. Traced to the real cause in
+  `app/static/player.js`, not guessed: clicking a `.segment-timestamp`
+  itself does *not* scroll (`highlightSegment(segId, false)` — already
+  deliberately no-scroll on click). The actual jerk comes from the
+  `timeupdate`-driven side: every tick during normal playback calls
+  `highlightSegment(currentSegId, autoScrollEnabled)`, which runs
+  `scrollIntoView({behavior: 'smooth', block: 'center'})` on whatever
+  line is now active — firing continuously throughout playback, so
+  scrolling away to read the agenda or transcript elsewhere gets
+  overridden and snapped back down as soon as the video keeps playing.
+  An "Auto-scroll: On/Off" toggle already exists
+  (`#toggleAutoScrollBtn`), but it's all-or-nothing and easy to miss/
+  forget about.
+
+  User brainstormed four directions: reduce/remove auto-scroll (some or
+  all cases), keep the video sticky/floating near the top of the page on
+  desktop so it never scrolls off-screen, shrink the video when scrolled
+  away from it, or a Picture-in-Picture display.
+
+  **Recommended fix, not yet built:**
+  - **Rule out real Picture-in-Picture.** This app renders video two
+    different ways depending on platform — a native `<video>` element
+    for direct files, a YouTube iframe for YouTube sources (see
+    `activeVideoAdapter`'s two implementations in `player.js`). The
+    browser's real PiP API only works cleanly against a native
+    `<video>` element; it doesn't apply the same way to an embedded
+    YouTube iframe, so real PiP would behave inconsistently depending on
+    which platform a given meeting came from — not a good foundation for
+    a feature meant to feel uniform.
+  - **Sticky/floating video on desktop is the strongest fix**, because
+    it removes the *reason* half the jerking happens at all: if the
+    video never scrolls out of view, there's nothing to jump back up to
+    when a timestamp is clicked or when someone wants to check the
+    frame. `position: sticky` (or `fixed`) on the video's container,
+    above some desktop-width breakpoint (matches the user's own framing
+    — "especially appropriate on desktop... where we have a lot of
+    space" — a phone-width layout doesn't have room to dedicate to a
+    permanently visible video alongside a readable transcript column).
+  - **Don't remove the follow-along auto-scroll entirely** — it's a
+    real, useful feature (watch the transcript track playback
+    hands-free), the problem is how *forcefully* it moves, not that it
+    exists. Soften it instead: `block: 'nearest'` instead of `block:
+    'center'` (only scrolls when the active line is actually out of
+    view, not every tick even when it's already visible), and/or only
+    invoke `scrollIntoView` when the active line has actually left the
+    viewport rather than unconditionally on every `timeupdate` — cheap
+    changes to the same `highlightSegment()` call site, no new
+    architecture needed.
+  - Shrinking the video on scroll-away is a reasonable variant of the
+    sticky idea (still keeps it visible, just smaller/less obtrusive)
+    but is more CSS complexity for not much more benefit than simply
+    pinning it — worth only if a plain sticky video turns out to feel
+    too large/dominant once actually built and tried.
+
 ## Deep links
 
 The `t`/`line` scheme itself is sound and hasn't changed since the initial
