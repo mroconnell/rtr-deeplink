@@ -388,30 +388,55 @@ one item below is resolved as a result.
   service to `runtime: docker`; `worker/Dockerfile` is now a *confirmed-
   working* reference for the `apt-get install ffmpeg` step, unlike when
   this bullet was first written.
-- **~~Render worker plan sizing is a guess.~~ Partially resolved, real
-  numbers now exist.** First real deploy OOM-killed on `plan: starter`
-  (512MB) loading the original `"small"` model default — confirmed live
-  2026-08-08, see [BACKLOG_DONE.md](BACKLOG_DONE.md). Switched the default
-  to `"tiny"` (`worker/transcription_engine.py`), chosen from real local
-  measurement (isolated venv matching `worker/requirements.txt` exactly,
-  one model per process): baseline ~67MB, `"tiny"` ~382MB, `"base"` ~489MB
-  — `"base"` was tried first but rejected as too close to 512MB to trust
-  once Render's real container overhead is added on top. Still genuinely
-  open: `"tiny"`'s real transcription *quality* against actual meeting
-  audio hasn't been assessed yet (only verified against short synthetic
-  speech) — worth a real check once a live job completes, and worth
-  revisiting the model size upward only alongside an actual plan upgrade
-  with real RAM headroom, not by guessing again.
-- **Resend's contact-lookup-by-email endpoint (`GET /audiences/{id}/
-  contacts/{email}`) is unverified.** `archive/utils/email.py`'s
-  `check_audience_membership()` was written against Resend's documented
-  REST convention, not confirmed live against a real account/API key —
-  same "don't claim a path works without a positive example" gap this
-  repo already flags elsewhere for genuinely untested integrations. Fails
-  safe today (any error is treated as "not a member," i.e. "require
-  confirmation" — the safer direction to be wrong in) so this degrades
-  gracefully even if the endpoint shape turns out to be wrong, but worth
-  confirming for real.
+- **~~Render worker plan sizing is a guess.~~ Resolved for real 2026-08-08,
+  after two live crashes, not one.** First real deploy OOM-killed on
+  `plan: starter` (512MB) loading the original `"small"` model default.
+  Switched to `"tiny"`, sized from local measurement -- but that
+  measurement was only against a ~9-second synthetic clip (~382MB), and
+  the **second** real deploy OOM-killed too, on a genuine 900-second
+  (15-minute) real meeting chunk. Real lesson, not just a bigger number:
+  `faster-whisper`'s memory usage scales substantially with audio
+  *duration*, not just model size -- a short-clip measurement was
+  actively misleading. Real curve, measured directly against real
+  Fountain Valley clip 607 audio, `"tiny"` model, one duration per
+  process:
+
+  | duration | peak RSS |
+  |---|---|
+  | 0s (imports only, no model) | ~67MB |
+  | ~9s (synthetic) | ~382MB |
+  | 60s | ~454MB |
+  | 180s | ~615MB |
+  | 300s | ~814MB |
+  | 900s (the real chunk size that crashed) | ~1421MB |
+
+  Even 60s only clears 512MB by ~58MB -- too thin to trust, and shrinking
+  further toward "safe" starts costing a full adapter re-resolve (RSS
+  feed, agenda viewer, etc.) every ~30-45 seconds of audio, which is both
+  slow and a real risk of getting rate-limited by the government source
+  for hammering it that often. **Resolution: upgraded the worker's Render
+  plan to Standard (2GB RAM, $25/mo)**, not shrinking chunks further --
+  `900s` chunks at ~1421MB fit that with real (~600MB) margin, confirmed
+  by the measurement above, not another guess. `TRANSCRIPTION_CHUNK_SIZE_
+  SECONDS` (`app/main.py`) never needed to change once the plan did.
+
+  Still genuinely open: `"tiny"`'s real transcription *quality* against
+  actual meeting audio hasn't been assessed yet (only verified against
+  short synthetic speech) -- worth a real check once a live job
+  completes. `"base"`'s real memory curve at realistic chunk durations
+  (as opposed to the same misleadingly-short 9s clip that under-predicted
+  `"tiny"`'s real cost) is still unmeasured -- deliberately not attempted
+  in the same pass as the plan upgrade, to change one variable at a time
+  after two live crashes. Worth a real `"base"`-at-900s measurement as
+  its own follow-up once `"tiny"` is confirmed working end-to-end on the
+  new plan, not stacked on top of an unconfirmed fix.
+- **~~Resend's contact-lookup-by-email endpoint is unverified.~~ Confirmed
+  live 2026-08-08.** A real request from an existing newsletter subscriber
+  (`mroconnell@gmail.com`) correctly skipped the confirm-by-email step and
+  went straight to `queued` — proof `archive/utils/email.py`'s
+  `check_audience_membership()` and Resend's `GET /audiences/{id}/
+  contacts/{email}` endpoint shape both work as written, not just
+  degrading safely on failure.
 - **An unconfirmed `pending_confirmation` job blocks new requests for that
   meeting indefinitely — no expiry.** Noted directly in
   `archive/db/crud.py`'s own comment above `ACTIVE_JOB_STATUSES`. Fine to
@@ -425,3 +450,38 @@ one item below is resolved as a result.
   existing behavior), but if a meeting is bilingual or the detection is
   simply wrong, there's no way to fix or override it after the fact short
   of a database edit.
+- **Set up an `HF_TOKEN` for the worker.** Every model download logs
+  `"You are sending unauthenticated requests to the HF Hub. Please set
+  HF_TOKEN to enable higher rate limits and faster downloads."` — harmless
+  today (downloads have succeeded every time so far), but worth doing
+  before this is under real load, since an unauthenticated Hugging Face
+  Hub rate limit hit mid-deploy would block the worker from ever loading
+  its model at all. A free Hugging Face account + access token, set as
+  `HF_TOKEN` on the `rtr-transcription-worker` service, is all this needs
+  — no code change, `huggingface_hub` (a `faster-whisper` dependency)
+  already reads that env var itself.
+- **"Transcribe this meeting from audio" is too easy to miss.** Currently
+  a small `.link-button` text link (`app/templates/meeting.html` /
+  `archive/templates/meeting_page.html`, styled identically to "Report a
+  problem with this meeting" — same class, same treatment) tucked up in
+  the page's meta section. Wants to be a real, obvious button, not a text
+  link easy to scroll past. Also worth reconsidering *where* it lives:
+  probably more discoverable placed alongside/near the transcript-quality
+  warning messages (`.warnings`/`#transcriptWarnings`, e.g. the "Caption
+  file was blank, so we'll have to run this manually for a transcript..."
+  message in `app/platforms/granicus.py:384` and similar messages in
+  other adapters) — that's exactly the moment a viewer would already be
+  looking at the page and wondering why there's no real transcript,
+  rather than a generic link sitting near "Report a problem" regardless
+  of whether this meeting even needs it.
+- **Transcribe UI's styling doesn't match the rest of the page.** Inherited
+  wholesale from `.report-problem-status`'s ad hoc styling (`.transcribe-
+  status.success`/`.error` in both `app/static/style.css` and `archive/
+  static/style.css`): a hardcoded green (`#2f855a`) for success, a small
+  `font-size: 0.85rem` throughout — neither matches the page's existing
+  typography/color system (`--fg`/`--accent`/`--muted`, the `.warnings`
+  amber-pill treatment already used elsewhere for transcript-quality
+  messages). Note this styling issue isn't unique to the new transcribe
+  UI — `.report-problem-status` has the exact same ad hoc colors/sizing
+  it was copied from, so fixing this well might mean fixing both
+  together rather than just the newer one.

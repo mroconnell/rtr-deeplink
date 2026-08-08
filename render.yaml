@@ -73,12 +73,13 @@ services:
     runtime: docker
     dockerfilePath: worker/Dockerfile
     dockerContext: .
-    # UNVERIFIED, size before deploying: faster-whisper needs meaningfully
-    # more CPU/RAM than Render's cheapest paid tier once a real model is
-    # loaded -- confirm actual memory usage for the chosen model size
-    # (worker/transcription_engine.py's model_size default) before
-    # committing to a specific plan here.
-    plan: starter
+    # `starter` (512MB) OOM-crashed twice in real production, 2026-08-08 --
+    # once loading the original "small" model default, and again (after
+    # switching to "tiny") on a real 900s meeting chunk (~1421MB measured,
+    # see BACKLOG.md's "Render worker plan sizing" entry for the full real
+    # memory curve). `standard` (2GB) gives real, measured margin for that
+    # same 900s/"tiny" combination -- not a guess this time.
+    plan: standard
     envVars:
       - key: DATABASE_URL
         sync: false  # MUST be the exact same value as rtr-deeplink-archive's DATABASE_URL above -- not a separate database
