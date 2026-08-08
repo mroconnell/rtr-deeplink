@@ -208,6 +208,20 @@ second. Leaving `ARCHIVE_BASE_URL` unset disables the integration entirely
 — `/api/resolve` just always live-resolves, same as before this feature
 existed.
 
+**Discoverability**: `GET /meetings` (proxied like `/m/*`) is a paginated,
+server-rendered index of every permanent page (`crud.list_pages()`,
+20/page) with a keyword search box and jurisdiction/date-range/language
+filters — all plain GET params, so results are shareable/bookmarkable URLs
+with no JS required. `GET /sitemap.xml` and `GET /robots.txt` (the latter
+lives on the resolver, not proxied, since `robots.txt` has to be at the
+domain root) give search engines an actual crawl path to `/m/{slug}` pages,
+which previously had none — `robots.txt` also disallows `/meeting` (the
+ephemeral resolver page) so it doesn't compete with the permanent version
+of the same content once one exists. v1 keyword search covers title and
+jurisdiction only, via a portable `.ilike()` — not full transcript-body
+text, which needs a materialized search column and is tracked as a
+follow-up in `BACKLOG.md`.
+
 ## Supported platforms
 
 One `AssetFinder` per **platform**, not per city — cities on the same
@@ -268,7 +282,8 @@ document/agenda platform with no reliable video, not worth an adapter).
 app/
   main.py                 FastAPI app: routes, adapter registration,
                            /api/resolve's cache-check + logging, /admin/*,
-                           the /m/* and /archive-static/* Archive proxy
+                           /robots.txt, and the /m/*, /archive-static/*,
+                           /meetings, /sitemap.xml Archive proxy routes
   archive_client.py        lookup()/push() to the Archive + proxy_get()
   db/
     engine.py              DATABASE_URL (falls back to local SQLite) +
@@ -305,7 +320,8 @@ own deploy) for permanent pages — see
 ```
 archive/
   main.py                 FastAPI app: /internal/lookup, /internal/ingest
-                           (both token-gated), /m/{slug}, /api/health
+                           (both token-gated), /m/{slug}, /meetings,
+                           /sitemap.xml, /api/health
   db/
     engine.py              own DATABASE_URL resolution + local SQLite
                            fallback (archive_dev.db -- never shares the
@@ -313,17 +329,22 @@ archive/
     models.py               MeetingPage, TranscriptVersion,
                            MeetingPageUrlAlias
     crud.py                  identity matching/dedup, slug generation,
-                           content-hash version dedup
+                           content-hash version dedup, list_pages()
+                           (paginated + filtered, backs /meetings),
+                           list_all_page_slugs() (backs /sitemap.xml)
   utils/
     slugify.py               slug generation
     url_normalize.py         deliberate duplicate of
                            app/utils/url_normalize.py -- kept in sync
                            manually so the two services stay
                            deploy-independent
-  templates/meeting_page.html  SSR permanent page + transcript-version
+  templates/
+    meeting_page.html        SSR permanent page + transcript-version
                            picker (real content on first byte, for
                            crawlability -- not client-fetched JSON like
                            app/templates/meeting.html)
+    meeting_list.html         paginated index + search/filter form
+    sitemap.xml.jinja         sitemap.xml template
   static/style.css          duplicated from app/static/style.css
   static/meeting_page.js    trimmed port of player.js's seek/highlight
                            logic, wired onto already-rendered DOM
@@ -331,7 +352,9 @@ archive/
 
 ## Known limitations
 
-See `BACKLOG.md` for the full, up-to-date list — caption quality varies a
-lot by source and isn't detected, a few caption paths are shape-verified
-but not content-verified pending a real example, and PrimeGov has no
-adapter yet.
+See `BACKLOG.md` for the full, up-to-date list of open issues (completed
+fixes and their verification history have moved to `BACKLOG_DONE.md`,
+linked from there) — a few caption paths are shape-verified but not
+content-verified pending a real example, some metadata (Alexandria VA
+dates) can't be extracted at all, and there's no UI yet to pick between
+multiple caption language tracks when more than one exists.
