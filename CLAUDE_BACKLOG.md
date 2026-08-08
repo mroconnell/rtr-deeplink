@@ -7,30 +7,28 @@ suggestions list, not a committed roadmap. Once an item is accepted, move it
 into `BACKLOG.md` proper (in that file's style) rather than marking it done
 here.
 
+**Status (2026-08-08):** 6 of the original 12 items are done — test suite,
+rate limiting, schema.org markup, transcript export, RSS feed, and
+report-a-problem all shipped, each with real bugs caught along the way (see
+`BACKLOG_DONE.md`'s entries dated 2026-08-07/08 for the full writeups). This
+file now holds only the 6 still-open ones.
+
 ## Reliability / engineering health
 
-- **Fixture-based regression test suite.** Save real HTML/VTT responses per
-  platform (Granicus, Legistar, CivicPlus, CivicClerk, Swagit, eScribe,
-  PrimeGov/YouTube, CA Legislature) as test fixtures and write pytest tests
-  against them. Right now every adapter change gets re-verified by manually
-  hitting live government sites each session — slow, and it doesn't protect
-  against silent regressions between sessions (e.g. a later change to
-  `_extract_media_urls` breaking Mountain View's fix without anyone noticing
-  until a user hits it). Confirmed live: there is no test suite anywhere in
-  the repo today (only third-party package tests under `.venv`).
 - **Adapter health canary / synthetic monitoring.** A scheduled job that
   re-resolves ~1 known-good sample URL per platform on a timer and alerts
   (email to Ryan, or a Slack webhook) on failure. Given how many real
   breakages have already surfaced this way — Mountain View's redirect bug,
   YouTube's caption-fetch blocking, yt-dlp being an unpinned moving target —
-  better to find out from a canary than from a user's dead link.
+  better to find out from a canary than from a user's dead link. Still the
+  highest-value remaining item: the test suite protects against
+  *regressions* on known-good cases, but won't catch a government site
+  changing its page structure out from under a working adapter, which is how
+  every real breakage so far has actually been found.
 - **Error monitoring (Sentry or similar)** in both the resolver and Archive,
   beyond the current `logger.error` calls — production exceptions currently
-  only surface if someone happens to check Render logs.
-- **Rate limiting on `/api/resolve`.** It's a public, unauthenticated
-  endpoint that fans out to scrape government sites — worth throttling both
-  to be a good citizen toward those sites and to protect the Render bill
-  from abuse/bots.
+  only surface if someone happens to check Render logs. A smaller,
+  complementary piece of the same reliability gap as the canary above.
 
 ## Growth mechanics
 
@@ -48,11 +46,6 @@ items).
   generate a shareable image/card of that quote + timestamp + a link back
   to that exact moment — a much stronger viral unit than a bare link, and
   journalists/advocates already do this manually with screenshots.
-- **schema.org `VideoObject`/`Event` structured data** on permanent pages,
-  for potential rich-result eligibility in Google search. Distinct from the
-  `sitemap.xml` item already in `BACKLOG.md` — that's discovery, this is
-  presentation once discovered. Confirmed live: no `application/ld+json`
-  anywhere in the repo today.
 
 ## Utility for the actual audience
 
@@ -60,20 +53,11 @@ Journalists, watchdog orgs, researchers — the people `BACKLOG.md`'s "manual
 transcription" contact CTAs and the civic-scraper research were already
 oriented toward.
 
-- **Transcript export** (TXT/SRT/PDF download) from a resolved or archived
-  meeting page — a standard ask for anyone doing real research or reporting
-  off a meeting.
-- **RSS/Atom feed of newly-archived meetings**, optionally filterable by
-  jurisdiction — lets a local watchdog group or reporter subscribe instead
-  of checking back manually.
 - **Read-only public API with API keys**, sitting on top of the Archive
   once search/filters exist (per `BACKLOG.md`'s roadmap). Civic-tech orgs —
   the `civic-scraper`/OpenGov community already evaluated for this project —
   are a natural audience to build on top of resolved data rather than
   duplicate the scraping work themselves.
-- **"Report a problem with this meeting" feedback control** on resolved/
-  archived pages — crowdsourced signal pointing at specific adapter
-  failures, cheaper than manually re-testing a dozen cities per session.
 
 ## Reach
 
@@ -82,14 +66,3 @@ oriented toward.
   doesn't require the full accounts+billing system already scoped in
   `BACKLOG.md`'s roadmap — much smaller than that item and could ship well
   before it.
-- **Mobile installability (PWA manifest).** Civic engagement around a
-  specific meeting is often a mobile, in-the-moment action; making the site
-  "Add to Home Screen"-able is cheap relative to a native app.
-
-## Suggested priority
-
-Test suite and canary monitoring rank highest — the app's core value is
-"scraping keeps working across dozens of independently-changing government
-platforms," and every session so far has found real breakage by hand rather
-than by any automated signal. Everything else here is a genuine feature gap,
-not a structural risk.

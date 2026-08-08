@@ -84,6 +84,17 @@ under everything else. This repo extracts and fixes just that part.
   YouTube's changes. Left unpinned in `requirements.txt` on purpose. If
   YouTube/PrimeGov resolves start failing, check for a yt-dlp update
   before assuming it's a bug in this repo's code.
+- **A pytest suite exists now (`tests/`, see README's "Running tests")** —
+  run it (`pytest`) before/after touching `app/utils/vtt_parser.py`,
+  `app/platforms/media_scan.py`, `app/platforms/base.py`, or the
+  Granicus/Legistar/CivicPlus/CivicClerk adapters, since those are the
+  ones with real coverage today. It doesn't replace live-testing a new
+  adapter or a genuinely new real-world case (see the first bullet above)
+  — it exists to catch a *previously-covered* case silently regressing
+  between sessions, which live-testing alone doesn't protect against.
+  When you fix a bug found via live testing, consider adding a fixture-
+  backed regression test for it in the same pass, the way the Simi Valley
+  Spanish-caption and blank-VTT cases already are.
 - **`app/db/outcomes.py` classifies reporting outcomes from real signal on
   the row where one exists, and falls back to substring-matching
   `transcript_warnings` only where it doesn't.** `agenda_fallback` is

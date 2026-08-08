@@ -37,6 +37,27 @@ No further setup needed — with no `.env`, the app uses a local SQLite file
 for caching/reporting. Copy `.env.example` to `.env` and fill in `DATABASE_URL`
 only if you want to point at a real Postgres instance instead.
 
+## Running tests
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+`tests/` covers the platform-independent utilities (`app/utils/vtt_parser.py`,
+`app/platforms/media_scan.py`, `app/platforms/base.py`'s `detect_platform`)
+directly, and exercises Granicus/Legistar/CivicPlus/CivicClerk end-to-end
+against real fixture files saved under `tests/fixtures/` (fetched live from
+real government sites, not synthetic — see each fixture directory for
+where it came from; `tests/fixtures/civicplus/README.md` explains the one
+exception, hand-built to match a real site's confirmed structure since
+that live site has since changed). HTTP calls are mocked via a small
+in-repo `tests/aiohttp_mock.py`, not `aioresponses` — its latest release
+doesn't support the aiohttp version this project's unpinned `aiohttp>=3.9`
+resolves to today. The remaining adapters (Swagit, eScribe, CA Legislature,
+PrimeGov/YouTube) don't have test coverage yet — a good next place to
+extend this suite.
+
 ## How it works
 
 ### The resolve flow
@@ -231,7 +252,7 @@ platform share the same page/API structure. Detection lives in
 | Platform | File | How video is found | How captions/agenda are found |
 |---|---|---|---|
 | Granicus | `granicus.py` | Regex-scan the page HTML for `.m3u8`/`.mp4` URLs (shared `media_scan.py` helper) | Guessed `/videos/{id}/captions.vtt` path + scanned `.vtt` URLs; language verified from actual cue content (not the untrustworthy `srclang` label); RSS channel title (`ViewPublisherRSS.php`) used for reliable jurisdiction/title. Agenda items (`AgendaViewer.php`'s chapter markers) are fetched independently of transcript availability into their own `agenda_items` field, when that customer has Granicus's native agenda index turned on (not universal — some customers redirect it to their own site instead, surfaced as a plain link instead) |
-| CivicClerk | `civicclerk.py` | Public REST API (`<subdomain>.api.civicclerk.com`) — the portal page itself is a client-rendered SPA with nothing to scrape | API's caption fields when populated; the API's `eventBookmarks` (agenda-item timestamps) are fetched independently into `agenda_items` |
+| CivicClerk | `civicclerk.py` | Public REST API (`<subdomain>.api.civicclerk.com`) — the portal page itself is a client-rendered SPA with nothing to scrape | `closedCaptionTracks`/`closedCaptionUrl` when populated — real format is **SRT**, not VTT (confirmed live); language verified from actual cue content, same distrust-the-label approach as Granicus. The API's `eventBookmarks` (agenda-item timestamps) are fetched independently into `agenda_items` |
 | Swagit | `swagit.py` | jwplayer JSON blob embedded in the page (shares Granicus's CDN infra, but a different page shape) | `.playerControl[data-ts]` agenda-item markers fetched independently into `agenda_items` |
 | eScribe | `escribe.py` | `<div id="isi_player" data-client_id data-stream_name>` when present — video integration varies entirely by city, "no video" is a normal outcome here | iSiLIVE captions, keyed by language suffix in the filename (`{file}.vtt`, `{file}.fr.vtt`, ...) |
 | California Legislature | `ca_legislature.py` | Self-hosted (`stream.{assembly,senate}.ca.gov`), not a vendor platform | Self-hosted `.vtt` at a matching filename; genuinely high quality when present |
@@ -242,6 +263,20 @@ platform share the same page/API structure. Detection lives in
 
 **Not implemented**: BoardDocs (deliberately excluded — it's a
 document/agenda platform with no reliable video, not worth an adapter).
+
+**Caption format handling** is centralized in
+`app/utils/vtt_parser.py`'s `parse_captions_by_extension()`, used by
+Granicus/CA Legislature/Swagit/CivicClerk (the four adapters that ever
+fetch a caption file) instead of each reimplementing its own format
+detection. VTT and SRT are real, structurally-parsed formats, confirmed
+against real samples on multiple platforms. TTML/DFXP/ITT also get a real
+structured parser, but — unlike VTT/SRT — that's verified against the
+W3C spec only, not any real captured sample (see `BACKLOG.md`). SBV/SUB/
+SMI/SAMI/plain-`.txt` get a generic best-effort text extraction with no
+per-line timing (`t=` deep-linking to the video never depended on
+transcript timing anyway). SCC/STL (binary/encoded broadcast formats) are
+detected but link out rather than attempting to display content, since
+nothing can be extracted without real codec-level decoding.
 
 ## Frontend features (`app/static/player.js`)
 
@@ -275,22 +310,37 @@ document/agenda platform with no reliable video, not worth an adapter).
 - **Language mismatch handling**: if the best available caption track
   isn't in the target language, it's used anyway but flagged with a
   warning rather than silently presented as if correct.
+- **Transcript export**: "Text"/"SRT" download buttons above the
+  transcript. Built client-side from the in-memory `segments` array (no
+  server round-trip — this page has no persistence to download from); the
+  Archive's permanent pages get a real server-side equivalent instead
+  (`GET /m/{slug}/transcript.{txt,srt}`, since that data actually persists
+  there).
+- **Report a problem**: a small form (wrong video, bad transcript, wrong
+  metadata, or other) that POSTs to `/api/report-problem`, visible on both
+  a successful resolve and a failed one. Same control exists on the
+  Archive's permanent pages. Reports land in the resolver's DB, viewable
+  via the token-gated `GET /admin/problem-reports`.
 
 ## Project structure
 
 ```
 app/
   main.py                 FastAPI app: routes, adapter registration,
-                           /api/resolve's cache-check + logging, /admin/*,
-                           /robots.txt, and the /m/*, /archive-static/*,
-                           /meetings, /sitemap.xml Archive proxy routes
+                           /api/resolve's cache-check + logging (rate
+                           limited via slowapi), /api/report-problem,
+                           /admin/*, /robots.txt, and the /m/*,
+                           /archive-static/*, /meetings, /sitemap.xml,
+                           /feed.xml Archive proxy routes
   archive_client.py        lookup()/push() to the Archive + proxy_get()
   db/
     engine.py              DATABASE_URL (falls back to local SQLite) +
                            async engine/session
-    models.py              MeetingResolution (the cache/log table)
+    models.py              MeetingResolution (the cache/log table) +
+                           ProblemReport (viewer-submitted issue reports)
     crud.py                 get_cached_resolution, log_resolution,
-                           get_stats, list_resolutions
+                           get_stats, list_resolutions,
+                           log_problem_report, list_problem_reports
     outcomes.py             classify_outcome() — content-quality bucketing
   platforms/
     base.py               detect_platform(), AssetFinder ABC, the
@@ -298,19 +348,28 @@ app/
                            resolve_via_platform()
     models.py              ResolvedMeeting / TranscriptSegment
     media_scan.py          shared regex-based media-URL scanner
-                           (Granicus + Swagit)
+                           (Granicus + Swagit + CA Legislature), including
+                           caption-file detection across VTT/SRT/TTML/DFXP/
+                           ITT/SCC/STL/SBV/SUB/SMI/SAMI/keyword-gated XML/TXT
     granicus.py, civicclerk.py, swagit.py, escribe.py,
     ca_legislature.py, legistar.py, civicplus.py,
     primegov.py, youtube.py
                            one AssetFinder per platform
-  utils/vtt_parser.py      pure WebVTT parser
+  utils/vtt_parser.py      WebVTT/SRT/TTML/DFXP/ITT parsers, a generic
+                           best-effort text fallback for other caption
+                           formats, and parse_captions_by_extension() --
+                           the single dispatch point every caption-
+                           fetching adapter goes through (see "Supported
+                           platforms"'s "Caption format handling" note)
   utils/url_normalize.py   normalize_url() — the cache/log dedup key
-  templates/base.html      shared layout (nav, brand)
+  templates/base.html      shared layout (nav, brand, manifest/favicon link)
   templates/index.html     URL input page
   templates/meeting.html   video + transcript page shell
   templates/about.html     about page
   static/player.js         all client-side behavior
   static/style.css
+  static/manifest.json     PWA manifest (Add to Home Screen)
+  static/icon.svg          app icon referenced by the manifest + favicon
 ```
 
 `archive/` is a second, independent FastAPI app (own `requirements.txt`,
@@ -320,8 +379,9 @@ own deploy) for permanent pages — see
 ```
 archive/
   main.py                 FastAPI app: /internal/lookup, /internal/ingest
-                           (both token-gated), /m/{slug}, /meetings,
-                           /sitemap.xml, /api/health
+                           (both token-gated), /m/{slug},
+                           /m/{slug}/transcript.{txt,srt}, /meetings,
+                           /sitemap.xml, /feed.xml, /api/health
   db/
     engine.py              own DATABASE_URL resolution + local SQLite
                            fallback (archive_dev.db -- never shares the
@@ -331,9 +391,12 @@ archive/
     crud.py                  identity matching/dedup, slug generation,
                            content-hash version dedup, list_pages()
                            (paginated + filtered, backs /meetings),
-                           list_all_page_slugs() (backs /sitemap.xml)
+                           list_all_page_slugs() (backs /sitemap.xml),
+                           list_recent_pages_for_feed() (backs /feed.xml)
   utils/
     slugify.py               slug generation
+    transcript_export.py     to_txt()/to_srt() formatters, backs
+                           /m/{slug}/transcript.{txt,srt}
     url_normalize.py         deliberate duplicate of
                            app/utils/url_normalize.py -- kept in sync
                            manually so the two services stay
@@ -342,9 +405,13 @@ archive/
     meeting_page.html        SSR permanent page + transcript-version
                            picker (real content on first byte, for
                            crawlability -- not client-fetched JSON like
-                           app/templates/meeting.html)
-    meeting_list.html         paginated index + search/filter form
+                           app/templates/meeting.html); also carries the
+                           schema.org VideoObject JSON-LD block and the
+                           "Report a problem" form
+    meeting_list.html         paginated index + search/filter form, plus
+                           an RSS autodiscovery link
     sitemap.xml.jinja         sitemap.xml template
+    feed.xml.jinja            feed.xml (RSS) template
   static/style.css          duplicated from app/static/style.css
   static/meeting_page.js    trimmed port of player.js's seek/highlight
                            logic, wired onto already-rendered DOM
