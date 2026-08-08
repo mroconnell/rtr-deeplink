@@ -38,7 +38,7 @@ services:
         sync: false
 
   - type: web
-    name: rtr-archive
+    name: rtr-deeplink-archive
     runtime: python
     plan: free  # upgrade before /m/* links are publicly shared/indexed --
                 # free services spin down after 15min idle (~30-60s cold
@@ -81,7 +81,7 @@ services:
     plan: starter
     envVars:
       - key: DATABASE_URL
-        sync: false  # MUST be the exact same value as rtr-archive's DATABASE_URL above -- not a separate database
+        sync: false  # MUST be the exact same value as rtr-deeplink-archive's DATABASE_URL above -- not a separate database
       - key: PUBLIC_BASE_URL
         sync: false
       - key: RESEND_API_KEY
