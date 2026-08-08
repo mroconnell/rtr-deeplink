@@ -7,6 +7,79 @@ where relevant.
 
 ## Bugs
 
+- **Real bug, confirmed live (2026-08-08): a permanent Archive page can be
+  stuck showing no transcript even after the underlying code is fixed to
+  find one, with no way to refresh it besides waiting.**
+  `redtaperecordings.com/m/emporia-ks-2026-07-22-commission-meeting`
+  (CivicClerk event 585) was pushed to the Archive before today's SRT
+  caption fix (see [BACKLOG_DONE.md](BACKLOG_DONE.md)'s "CivicClerk closed
+  captions" entry), so it archived agenda-only, no transcript. The source
+  still has everything needed today — fetched
+  `emporiaks.api.civicclerk.com/v1/EventsMedia/585` live and confirmed
+  `closedCaptionTracks` still points at a real, fetchable 272KB `.srt`
+  file with 3,677 real cues, and the video URL still resolves — so a fresh
+  resolve right now would find the transcript fine. But nothing triggers
+  one: `/api/resolve` ([app/main.py:161](app/main.py:161)) checks the
+  Archive *before* ever calling the CivicClerk adapter, and once a
+  permanent page exists, every repeat visit to the same URL just
+  redirects straight to it (confirmed live — re-pasting the URL bounced
+  back to the stale page instantly). The only refresh path is the
+  30-day `ARCHIVE_RECHECK_AFTER` background recheck
+  ([app/main.py:110](app/main.py:110)), which hasn't elapsed for this page
+  yet. Net effect: any adapter bug fix (this one, or a future one) only
+  reaches *existing* permanent pages after up to 30 days, with no way to
+  force it sooner.
+
+  **On-demand fix built, not yet verified live:** `GET
+  /admin/recheck-archive-page?token=&url=` ([app/main.py](app/main.py))
+  reuses `_recheck_archived_page()` (now returns a summary dict instead of
+  firing silently) to resolve + push synchronously, so a stale page can be
+  refreshed immediately instead of waiting on the passive 30-day window.
+  Passes locally (84/84 tests, plus a direct local call against the real
+  Emporia meeting reproducing the expected 3,677 segments / 26 agenda
+  items) but hasn't yet been hit against the deployed production Archive
+  to confirm the Emporia page itself actually updates — do that once
+  deployed, then move this bug entry to `BACKLOG_DONE.md`.
+
+  **Still open — proposed automatic cadence (design agreed, not built):**
+  the manual endpoint above covers "fix it now," but the *passive* recheck
+  cadence should also depend on transcript quality, not just page age. A page missing a real
+  transcript (blank/agenda-only/garbled) has real upside in rechecking
+  often, since the source may catch up at any time (government caption
+  pipelines lag, per the existing comment on `ARCHIVE_RECHECK_AFTER`); a
+  page that already has a good transcript doesn't need frequent
+  rechecking. Concretely: keep the existing 30-day cadence for pages with
+  a good transcript, but use a **1-hour** cadence for pages missing one.
+  Needs two pieces: (1) `/internal/lookup`'s response
+  (`archive/db/crud.py`'s `lookup_page_for_url()`, currently just
+  `{slug, url, updated_at}`) gains a quality signal — e.g. `has_transcript`
+  derived from whether the page's active `TranscriptVersion` has
+  non-empty segments and no blank/garbled/no-transcript-type warning; (2)
+  `app/main.py`'s recheck condition (`_recheck_archived_page` gate at
+  line ~171) branches on that flag instead of always comparing against
+  the same 30-day window. Still needs *some* floor even at 1 hour (not
+  "every hit") so a popular page whose source will just never add
+  captions doesn't get scraped on every visit — impolite to the
+  government site, same reasoning the 30-day window was originally built
+  on.
+- **Emporia, KS's CivicClerk `eventBookmarks` all report
+  `markerTimeStart: 0`, so every agenda item on that page (and any other
+  Emporia meeting) deep-links to the very start of the video regardless
+  of the item's real position.** Confirmed live (2026-08-08) directly
+  against `emporiaks.api.civicclerk.com/v1/EventsMedia/585` — all 26
+  bookmarks have `markerTimeStart: 0`/`markerTimeHHMMSSFormat:
+  "00:00:00"`, genuinely from the source, not a parsing bug in
+  `civicclerk.py`. Right now `CivicClerkAssetFinder.resolve()` renders
+  these as normal clickable `[0:00]` agenda links with no indication
+  they're not real per-item times — misleading, since the item text
+  ("PROCLAMATIONS", "NEW BUSINESS", etc.) implies real navigation.
+  Unknown yet whether this is Emporia-specific or a wider CivicClerk
+  pattern (only one CivicClerk city has real bookmark data confirmed at
+  all so far — see [BACKLOG_DONE.md](BACKLOG_DONE.md)). Worth deciding:
+  detect all-zero bookmark times and either suppress the Agenda section's
+  per-item links (fall back to a plain outline, no false deep-links) or
+  surface a warning explaining the timestamps aren't real, rather than
+  presenting them as reliable.
 - **Alexandria VA meeting dates can't be extracted.** No `view_id` in the
   URL (so no RSS feed to cross-reference, unlike the rest of Granicus — see
   [BACKLOG_DONE.md](BACKLOG_DONE.md)) and no date signal anywhere in the
@@ -48,6 +121,51 @@ where relevant.
   what's already permanently archived). `archive/templates/base.html`
   mirrors the same nav markup (see the earlier nav-consistency fix) and
   needs the same two changes to stay in sync.
+
+## Deep links
+
+The `t`/`line` scheme itself is sound and hasn't changed since the initial
+scaffold (`t`, raw seconds, always wins the actual seek; `line=seg-N` is
+display-only highlighting — see the comment above `applyDeepLink()` in
+`app/static/player.js` and the precedence-bug fix in
+[BACKLOG_DONE.md](BACKLOG_DONE.md)). That's already the "robust, won't
+shift under us" design a deep-link contract needs. Three real gaps found
+auditing it (2026-08-08), code-verified but not all live-triggered yet:
+
+- **An Archive permanent page's `line=seg-N` can point at the wrong line
+  if that page's default `TranscriptVersion` ever changes.** `/m/{slug}`
+  renders whichever version is currently `is_default` unless an explicit
+  `?version=` is given (`archive/main.py`'s `_pick_active_version()`), and
+  `crud.push_resolution()` can attach a new `TranscriptVersion` to an
+  existing page when a re-resolve finds different content. Deep-link URLs
+  from `updateUrlParams()` never include `version=` — only `t`/`line`. So
+  a bookmarked `/m/some-meeting?t=630&line=seg-42` could, after that
+  meeting's transcript is later improved/replaced, highlight a completely
+  different line at index 42 in the new version — `t=630` still seeks the
+  video correctly (unaffected), so this is a wrong-highlight bug, not a
+  broken link. Not yet triggered live (no permanent page has had a second
+  version pushed yet), but the code path for it already exists. Fix
+  options: match `seg-N` by start-time proximity instead of raw index
+  when it's out of range for the rendered version, or carry the version
+  id the link was copied from into the URL so `line=` is only ever
+  interpreted against the transcript it was generated from.
+- **`app/static/player.js` and `archive/static/meeting_page.js` are two
+  independent copies of the same `t`/`line`/`seg-N` logic**, kept in sync
+  only by a comment (`archive/static/meeting_page.js:6-8`) saying they're
+  intentionally matched, not by shared code. A future fix to one (like the
+  seek-precedence fix already made once) could land in only one file and
+  silently desync deep-link behavior between `/meeting` and `/m/{slug}`.
+  Worth extracting the shared parse/apply logic into one file both pages
+  load, or at minimum flagging it explicitly in both files' comments as a
+  place that needs a matching edit.
+- **No automated test coverage pins the `t`/`line` URL contract.** No JS
+  test framework exists in this repo; every verification of deep-link
+  behavior, including the precedence fix above, has been manual/in-browser.
+  A regression (`line` regaining precedence over `t`, `seg-N` generation
+  changing) would only be caught by live-testing — the same gap the
+  pytest suite already closed on the Python side. Lower priority than the
+  two items above since it needs JS test infra from scratch, but worth
+  flagging given deep-linking is the entire reason this repo exists.
 
 ## Platform coverage — open questions
 

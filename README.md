@@ -154,13 +154,21 @@ unreachable database.
   `transcript_found` is false, since a meeting with both a real transcript
   and agenda data still classifies as `success`.
 
-Two admin endpoints, both gated by `ADMIN_STATS_TOKEN` (`?token=...`,
-returns 404 rather than 401/403 on a missing/wrong token so the route isn't
+Admin endpoints, all gated by `ADMIN_STATS_TOKEN` (`?token=...`, returns 404
+rather than 401/403 on a missing/wrong token so the route isn't
 distinguishable from a typo):
 - `GET /admin/stats` — aggregates: totals, success rate, cache hits, average
   resolve duration, counts by platform × outcome, recent non-success rows.
 - `GET /admin/log?limit=&format=json|csv` — the unaggregated per-attempt
   list (URL, platform, outcome, language, timestamp), most recent first.
+- `GET /admin/problem-reports?limit=` — user-submitted "something's wrong
+  with this meeting" reports, most recent first.
+- `GET /admin/recheck-archive-page?url=` — force an immediate re-resolve +
+  Archive push for one meeting, instead of waiting for the passive 30-day
+  `ARCHIVE_RECHECK_AFTER` recheck. For when a permanent page needs a fix
+  (e.g. an adapter bug fix, or a source that's since added captions) to
+  land sooner. Returns what it found (segment/agenda counts, warnings,
+  whether anything was pushed) synchronously, unlike the passive recheck.
 
 See `.env.example` for the two env vars (`DATABASE_URL`, `ADMIN_STATS_TOKEN`).
 

@@ -123,24 +123,36 @@ def _parse_updated_at(raw: str):
     return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
-async def _recheck_archived_page(url: str, normalized: str, platform: str) -> None:
-    """Best-effort background re-resolve for a permanent page that hasn't
-    been touched in ARCHIVE_RECHECK_AFTER -- fires on a lookup hit, never
-    blocks the redirect response the user is waiting on. Reuses the same
-    finder + push path as a fresh resolve; a failure here just means the
-    page stays as it was, same as not re-checking at all, so it's logged
-    rather than raised."""
+async def _recheck_archived_page(url: str, normalized: str, platform: str) -> dict:
+    """Re-resolve a permanent page and push if it finds real content. Used
+    two ways: fired via BackgroundTasks on a lookup hit that's gone stale
+    (ARCHIVE_RECHECK_AFTER, return value discarded -- a failure there just
+    means the page stays as it was, so it's logged rather than raised), and
+    called directly + awaited by /admin/recheck-archive-page below, which
+    does want the outcome to show the caller what happened."""
     try:
         finder = get_finder(platform)
     except UnsupportedPlatformError:
-        return
+        return {"error": "unsupported_platform", "platform": platform}
     try:
         result = await finder.resolve(url)
-    except Exception:
+    except Exception as e:
         logger.exception("Archive re-check resolve failed for %s", url)
-        return
-    if result.segments or result.agenda_items:
+        return {"error": "resolve_failed", "message": str(e)}
+
+    pushed = bool(result.segments or result.agenda_items)
+    if pushed:
         await archive_client.push(result.model_dump(), normalized)
+
+    return {
+        "pushed": pushed,
+        "platform": result.platform,
+        "title": result.title,
+        "segment_count": len(result.segments),
+        "agenda_item_count": len(result.agenda_items),
+        "transcript_warnings": result.transcript_warnings,
+        "video_warnings": result.video_warnings,
+    }
 
 
 @app.get("/api/health")
@@ -503,3 +515,23 @@ async def admin_problem_reports(token: str = "", limit: int = 200):
     if rows is None:
         return JSONResponse({"error": "reports_unavailable"}, status_code=503)
     return rows
+
+
+@app.get("/admin/recheck-archive-page")
+async def admin_recheck_archive_page(token: str = "", url: str = ""):
+    """On-demand version of the ARCHIVE_RECHECK_AFTER background recheck --
+    for when a permanent page needs refreshing sooner than 30 days (e.g. an
+    adapter bug fix that should reach an already-archived page now, not on
+    its next stale-lookup hit). Synchronous, not a BackgroundTask -- the
+    caller is explicitly waiting to see the outcome, unlike the passive
+    recheck this reuses."""
+    if not _admin_token_ok(token):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    if not url:
+        return JSONResponse(
+            {"error": "missing_url", "message": "Pass ?url=<the meeting's source URL>."}, status_code=400
+        )
+
+    platform = detect_platform(url)
+    normalized = normalize_url(url)
+    return await _recheck_archived_page(url, normalized, platform)
