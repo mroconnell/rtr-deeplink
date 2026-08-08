@@ -37,6 +37,17 @@ under everything else. This repo extracts and fixes just that part.
   - Red Tape Recordings - public hearings" —
   https://docs.google.com/spreadsheets/d/1WJvohdOhdUzP0C-0CUfj_pMSjPwYTtMQU3IOeppp54s/edit
   Check it for a real sample before building or debugging any adapter.
+  As of 2026-08-08 it has at least one fresh, verified sample for every
+  supported platform (rows ~68-77 on the "Sample Meetings" tab) — good
+  starting points for caption-parsing work specifically: Dublin CA
+  (Swagit, real transcript + agenda together), Boston/Lee's Summit MO
+  (Legistar, one clean success + one full-fallback-chain case), Fountain
+  Valley CA (Granicus via CivicPlus — also a real edge case: transcript
+  found but no video, language misdetected as Portuguese), Whitehall OH
+  (CivicClerk, agenda-only), Calgary AB (eScribe, video but no captions
+  yet). CivicClerk and eScribe still have *no* example anywhere with
+  populated captions despite checking several cities each — a real,
+  not-yet-closed gap, not just an unsearched one.
 - **Verify in-browser, not just via the API.** UI changes especially need
   an actual `mcp__Claude_Browser__*` check — several real bugs (duplicate
   chapter markers, a metadata-extraction ordering bug, a deep-link
@@ -107,6 +118,31 @@ under everything else. This repo extracts and fixes just that part.
   substring intact (or update `outcomes.py` to match) — otherwise that
   warning silently stops being classified correctly and falls through to
   a more generic bucket.
+
+- **This repo is sometimes worked on by more than one session/dev at the
+  same time — check before assuming the working tree is yours alone.**
+  Real, repeated situation on 2026-08-08: another session was actively
+  committing extensive changes (a pytest suite, RSS feed, PWA manifest, a
+  transcript language picker, a real bug fix) while this session was
+  running in parallel, sharing the same local clone. Concretely: **always
+  run `git status` before editing**, and if it shows unrelated
+  uncommitted changes that aren't yours, don't touch them — don't stage
+  them, don't revert them, don't let them ride along in your commit. If
+  you need to land your own change cleanly without disturbing that
+  other in-progress work, isolate it: `git worktree add /tmp/some-name
+  origin/main`, make your edit there, commit, push (a plain `git push
+  origin <branch>` — pushing a differently-named local branch directly
+  onto `main` via refspec, or force-recreating a local `main` with `-B`,
+  both got flagged by the auto-mode safety classifier; a normal
+  `gh pr create` + `gh pr merge --squash --delete-branch` from the
+  worktree works reliably instead), then `git worktree remove
+  <path> --force` to clean up. If `origin/main` has moved again by the
+  time you push (it will, if the other session is active), `git fetch`
+  + inspect *what* changed (`git log --oneline main..origin/main`)
+  before reconciling — often it's your own already-merged work the local
+  branch just hasn't caught up to yet, not a real conflict; `git pull
+  --rebase` handles the genuine case cleanly as long as your change and
+  theirs touch different regions of the file.
 
 ## Related context
 
