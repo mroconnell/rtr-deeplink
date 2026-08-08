@@ -1,6 +1,8 @@
 import re
 import xml.etree.ElementTree as ET
-from typing import List, Dict, Any, Optional
+from typing import Iterable, List, Dict, Any, Optional
+
+from langdetect import detect as _detect_language, LangDetectException
 
 
 def decode_vtt_bytes(raw: bytes) -> str:
@@ -369,6 +371,26 @@ def is_likely_garbled(cues: List[Dict[str, Any]]) -> bool:
 
     junk = sum(1 for w in alpha_words if len(w) <= 2 and w.lower() not in _COMMON_SHORT_WORDS)
     return (junk / len(alpha_words)) > _GARBLED_JUNK_RATIO_MAX
+
+
+def detect_language_from_texts(texts: Iterable[str]) -> Optional[str]:
+    """Best-effort language detection from real transcript content -- never
+    trust a source-provided language label (a Granicus track labeled
+    srclang="en" turned out to genuinely be Spanish content on a real Simi
+    Valley meeting, clip 2840). Shared by every adapter that fetches real
+    caption/transcript text (Granicus, CivicClerk originally; Swagit and CA
+    Legislature added 2026-08-08 after a missing 'en' tag on the /meetings
+    listing for real English transcripts on both surfaced the gap -- see
+    BACKLOG_DONE.md). Requires at least 20 non-whitespace characters before
+    attempting detection, since langdetect guesses wildly on tiny samples.
+    """
+    sample = " ".join(t for t in texts if t)[:2000]
+    if len(sample.strip()) < 20:
+        return None
+    try:
+        return _detect_language(sample)
+    except LangDetectException:
+        return None
 
 
 def _parse_timestamp(timestamp: str) -> float:

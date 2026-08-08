@@ -1,15 +1,15 @@
 import re
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 from urllib.parse import urlparse
 
 import aiohttp
-from langdetect import detect as detect_language, LangDetectException
 
 from .base import AssetFinder
 from .models import AlternateTranscript, ResolvedMeeting, TranscriptSegment
 from ..utils.vtt_parser import (
     STRUCTURED_CAPTION_PARSERS,
     decode_vtt_bytes,
+    detect_language_from_texts,
     is_likely_garbled,
     parse_captions_by_extension,
 )
@@ -106,7 +106,7 @@ class CivicClerkAssetFinder(AssetFinder):
                 for caption_url in caption_urls:
                     cues, fallback_text = await self._fetch_captions(session, caption_url)
                     if cues:
-                        candidates.append((caption_url, cues, self._detect_cue_language(cues)))
+                        candidates.append((caption_url, cues, detect_language_from_texts(c.get("text") for c in cues)))
                     elif fallback_text:
                         text_fallback_candidates.append((caption_url, fallback_text))
                     elif caption_url.lower().split("?")[0].rsplit(".", 1)[-1] not in STRUCTURED_CAPTION_PARSERS:
@@ -209,16 +209,6 @@ class CivicClerkAssetFinder(AssetFinder):
             return None, None
         content = decode_vtt_bytes(raw)
         return parse_captions_by_extension(caption_url, content)
-
-    @staticmethod
-    def _detect_cue_language(cues: List[Dict[str, Any]]) -> Optional[str]:
-        sample = " ".join(c["text"] for c in cues if c.get("text"))[:2000]
-        if len(sample.strip()) < 20:
-            return None
-        try:
-            return detect_language(sample)
-        except LangDetectException:
-            return None
 
     @staticmethod
     async def _fetch_json_pair(session: aiohttp.ClientSession, url_a: str, url_b: str):

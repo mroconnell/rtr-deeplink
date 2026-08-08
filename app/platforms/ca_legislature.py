@@ -10,6 +10,7 @@ from .models import ResolvedMeeting, TranscriptSegment
 from ..utils.vtt_parser import (
     STRUCTURED_CAPTION_PARSERS,
     decode_vtt_bytes,
+    detect_language_from_texts,
     is_likely_garbled,
     parse_captions_by_extension,
 )
@@ -95,10 +96,12 @@ class CaliforniaLegislatureAssetFinder(AssetFinder):
             ]
 
             segments: List[TranscriptSegment] = []
+            transcript_language: Optional[str] = None
             if caption_urls:
                 cues, fallback_text = await self._fetch_captions(session, caption_urls[0])
                 if cues:
                     segments = [TranscriptSegment(**cue) for cue in cues]
+                    transcript_language = detect_language_from_texts(c.get("text") for c in cues)
                     if is_likely_garbled(cues):
                         transcript_warnings.append(
                             "This transcript looks garbled at the source (not a parsing "
@@ -114,6 +117,7 @@ class CaliforniaLegislatureAssetFinder(AssetFinder):
                         TranscriptSegment(start=0.0, end=0.0, text=line)
                         for line in fallback_text.split("\n") if line.strip()
                     ]
+                    transcript_language = detect_language_from_texts(s.text for s in segments)
                     transcript_warnings.append(
                         "This meeting has captions, but in a format we can only show "
                         "as plain text, not a clickable per-line transcript."
@@ -140,6 +144,7 @@ class CaliforniaLegislatureAssetFinder(AssetFinder):
             video_url=video_url,
             video_format=video_format,
             segments=segments,
+            transcript_language=transcript_language,
             video_warnings=video_warnings,
             transcript_warnings=transcript_warnings,
         )

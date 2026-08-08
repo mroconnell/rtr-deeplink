@@ -9,7 +9,12 @@ from bs4 import BeautifulSoup
 from .base import AssetFinder
 from .media_scan import scan_media_urls, media_type
 from .models import ResolvedMeeting, TranscriptSegment
-from ..utils.vtt_parser import STRUCTURED_CAPTION_PARSERS, decode_vtt_bytes, parse_captions_by_extension
+from ..utils.vtt_parser import (
+    STRUCTURED_CAPTION_PARSERS,
+    decode_vtt_bytes,
+    detect_language_from_texts,
+    parse_captions_by_extension,
+)
 
 
 class SwagitAssetFinder(AssetFinder):
@@ -136,6 +141,19 @@ class SwagitAssetFinder(AssetFinder):
         if not segments:
             transcript_warnings.append("No transcript found for this event.")
 
+        # Never previously detected -- every real segment source above
+        # (#transcript-fragments DOM text, a caption file) is real prose,
+        # so it's worth running the same content-based detection every
+        # other adapter that fetches real transcript text already does.
+        # Confirmed live 2026-08-08: a real Dublin CA meeting (clip
+        # 372020) had a genuine 36,085-segment English #transcript-fragments
+        # transcript -- the first real confirmation that DOM path is ever
+        # actually populated (previously unverified, see BACKLOG.md) -- but
+        # showed no language at all on the /meetings listing since this was
+        # never set, silently masked on the meeting page itself by that
+        # page's own `page_lang` "or en" fallback (archive/main.py).
+        transcript_language = detect_language_from_texts(s.text for s in segments) if segments else None
+
         # Chapter markers are fetched independently of whether a real
         # transcript was found -- useful navigation context either way,
         # not just a fallback. Kept in its own field, never folded into
@@ -180,6 +198,7 @@ class SwagitAssetFinder(AssetFinder):
             video_format=video_format,
             segments=segments,
             agenda_items=agenda_items,
+            transcript_language=transcript_language,
             video_warnings=video_warnings,
             transcript_warnings=transcript_warnings,
         )

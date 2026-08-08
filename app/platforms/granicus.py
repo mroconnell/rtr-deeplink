@@ -2,13 +2,12 @@ import asyncio
 import random
 import re
 from datetime import datetime
-from typing import List, Optional, Dict, Any, Tuple
+from typing import List, Optional, Dict, Tuple
 from urllib.parse import urlparse, parse_qs
 
 import aiohttp
 import wordninja
 from bs4 import BeautifulSoup
-from langdetect import detect as detect_language, LangDetectException
 
 from .base import AssetFinder
 from .media_scan import scan_media_urls, media_type
@@ -16,6 +15,7 @@ from .models import AlternateTranscript, ResolvedMeeting, TranscriptSegment
 from ..utils.vtt_parser import (
     STRUCTURED_CAPTION_PARSERS,
     decode_vtt_bytes,
+    detect_language_from_texts,
     is_likely_garbled,
     parse_captions_by_extension,
 )
@@ -355,7 +355,7 @@ class GranicusAssetFinder(AssetFinder):
                         continue
                     cues, fallback_text = result
                     if cues:
-                        candidates.append((caption_url, cues, self._detect_cue_language(cues)))
+                        candidates.append((caption_url, cues, detect_language_from_texts(c.get("text") for c in cues)))
                     elif fallback_text:
                         text_fallback_candidates.append((caption_url, fallback_text))
                     elif caption_url.lower().split("?")[0].rsplit(".", 1)[-1] in STRUCTURED_CAPTION_PARSERS:
@@ -486,19 +486,6 @@ class GranicusAssetFinder(AssetFinder):
                 video_warnings=video_warnings,
                 transcript_warnings=transcript_warnings,
             )
-
-    @staticmethod
-    def _detect_cue_language(cues: List[Dict[str, Any]]) -> Optional[str]:
-        """Detect the actual language of caption text — never trust the
-        page's srclang label (it can be wrong; see the resolve() docstring
-        note on Simi Valley clip 2840)."""
-        sample = " ".join(c["text"] for c in cues if c.get("text"))[:2000]
-        if len(sample.strip()) < 20:
-            return None
-        try:
-            return detect_language(sample)
-        except LangDetectException:
-            return None
 
     @staticmethod
     async def _fetch_caption_file(session: aiohttp.ClientSession, caption_url: str):

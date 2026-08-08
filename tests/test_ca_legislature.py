@@ -59,6 +59,33 @@ async def test_resolve_links_out_when_caption_format_is_unreadable():
     assert any("can't read" in w and "captions.scc" in w for w in result.transcript_warnings)
 
 
+async def test_resolve_detects_language_from_real_captions():
+    # Real bug (2026-08-08): CaliforniaLegislatureAssetFinder never called
+    # language detection at all, so /meetings' "· en" listing indicator
+    # was always blank even for a real Senate floor session (2026-08-06)
+    # with a genuine 3,084-cue English transcript -- see BACKLOG_DONE.md.
+    vtt = (
+        "WEBVTT\n\n"
+        "00:00:32.000 --> 00:00:34.000\nSecretary will call the roll.\n\n"
+        "00:01:11.000 --> 00:01:14.000\nA quorum is present with the members and our guests.\n\n"
+        "00:01:16.000 --> 00:01:19.000\nPlease rise for the pledge of allegiance to the flag.\n"
+    )
+    html = BASE_HTML.format(
+        captions_tag='<track src="https://vod.senate.ca.gov/captions.vtt">'
+    )
+
+    routes = {
+        PAGE_URL: FakeResponse(status=200, text=html, url=PAGE_URL),
+        "https://vod.senate.ca.gov/captions.vtt": FakeResponse(status=200, text=vtt),
+    }
+
+    with mock_session(routes):
+        result = await CaliforniaLegislatureAssetFinder().resolve(PAGE_URL)
+
+    assert len(result.segments) == 3
+    assert result.transcript_language == "en"
+
+
 async def test_resolve_excludes_thumbnail_sprite_vtt_even_with_wider_detection():
     # Real trap documented in the class docstring: a masterVTT.vtt under
     # /thumbnails/ is a scrubber sprite sheet, not a transcript -- must
