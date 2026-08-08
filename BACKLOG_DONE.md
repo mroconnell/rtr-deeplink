@@ -1117,3 +1117,79 @@ changelog of task titles.
   `eventBookmarks` all reporting `markerTimeStart: 0` (a separate, real
   source-data quirk noticed during this same investigation, unrelated to
   the missing-transcript bug) is still unaddressed.
+
+- **[Done 2026-08-08] Granicus: video missing on cities whose
+  `MediaPlayer.php` only embeds a legacy Flash player, fixed with a
+  fallback to Granicus's newer `/videos/{id}/player` page.** Found via a
+  user-reported real meeting,
+  `redtaperecordings.com/m/city-of-fountain-valley-city-council-meeting-jun-16th-2026`
+  (source: `fountainvalley.granicus.com/MediaPlayer.php?clip_id=607`),
+  which showed no video at all. Root cause, confirmed directly against
+  the live page: `MediaPlayer.php`'s HTML embeds only a `modernplayer.swf`
+  Flash object whose `VideoUrl` param points at `ASX.php?...&stream_type=
+  rtmp` — RTMP, unplayable in any modern browser, not a bug in our
+  scanner correctly ignoring it. `GranicusAssetFinder` only ever fetched
+  the originally-submitted page, so for a city on this legacy template
+  there was never any `.m3u8`/`.mp4` to find. Separately confirmed
+  Granicus does have a real, working HLS stream for the same clip, just
+  on a page this adapter never fetched:
+  `fountainvalley.granicus.com/videos/607/player`, which loads `hls.js`
+  against a genuine `archive-stream.granicus.com/.../playlist.m3u8`.
+
+  **Fix** (`app/platforms/granicus.py`): extracted the existing
+  m3u8-preferred/mp4-fallback selection logic into a new
+  `_pick_video_url()` staticmethod (previously inlined in `resolve()`),
+  and added `_fetch_video_from_player_page()` — only called when the main
+  page's candidates yield no video, so cities where it's already found
+  there (the common case) pay no extra request. Single-attempt, not
+  `_fetch_page`'s retry-with-backoff (matching `_fetch_caption_file`'s
+  style) — this is an opportunistic fallback probe, not the one request
+  the whole resolve depends on, so a slow/dead player page fails cheap
+  rather than costing multiple retries with exponential backoff on every
+  affected city.
+
+  **Verified live end-to-end, twice**: first against Granicus's own
+  `/videos/607/player` page directly in-browser (`readyState: 4`,
+  i.e. fully loaded and playable, confirmed by actually calling
+  `.play()` and watching `currentTime` advance) — ruling out that the
+  discovered stream URL itself was somehow dead despite existing (a real
+  risk: a bare `curl` to the same m3u8 URL got a 403 from Granicus's CDN,
+  almost certainly hotlink/bot protection rather than a broken stream,
+  since the real browser fetch succeeded fine). Then against this
+  resolver's *own* frontend, run locally (`uvicorn app.main:app --port
+  8010`) against `/meeting?url=<the real clip 607 URL>` — confirmed the
+  video element reaches `readyState: 4` and visibly renders the real
+  Fountain Valley council chamber footage (screenshot: title card "City
+  Council Study Session Meeting, June 16, 2026", duration 7:31:13
+  matching the stream's real `duration: 27073.36`s), ruling out a
+  same-origin-only quirk (Granicus's own domain vs. a cross-origin
+  `hls.js` fetch from `redtaperecordings.com` could plausibly have hit a
+  different CORS/referrer outcome — it didn't).
+
+  Incidentally, this is the same meeting CLAUDE.md already flagged as a
+  useful caption-parsing sample ("language misdetected as Portuguese")
+  — separately confirmed during this same investigation to be genuinely
+  garbled at the source: fetched the real `.vtt` directly from Granicus,
+  it's structurally valid WebVTT (correct header/timestamps) but the cue
+  *text* is garbage (`###...@@@@@@@kkIkkkkk~kkkkkkkook?Ek?E?E?E`) —
+  Granicus's own captioning pipeline failing for this meeting, not a
+  decoding bug on our end. `langdetect` calling that noise `'pt'` is
+  expected garbage-in/garbage-out behavior; the system already handles
+  it correctly (`is_likely_garbled` fires, the "looks garbled at the
+  source... treat it as approximate" warning shows). Nothing to fix
+  there — CLAUDE.md's sample-list entry updated to describe it
+  accurately (garbled-hence-misdetected, not just misdetected) and to
+  note the video gap is now fixed.
+
+  **New test coverage**: `tests/test_granicus.py::
+  test_resolve_falls_back_to_player_page_for_video_when_mediaplayer_has_none`,
+  backed by three new real fixtures (`fountainvalley_clip607_mediaplayer.html`,
+  `fountainvalley_clip607_player.html`, `fountainvalley_clip607_captions.vtt`,
+  all fetched live 2026-08-08) — pins the exact real m3u8 URL, `m3u8`
+  format, zero video warnings, 146 real (garbled) segments, and the
+  `'pt'`/garbled transcript warnings together, so this exact case can't
+  silently regress. The three existing synthetic caption-fallback tests
+  (blank-guessed-captions, unstructured-text-fallback, unreadable-format)
+  needed a `/videos/{id}/player` 404 route added to their existing mocks,
+  since none of their fixtures have a video either and would otherwise
+  now trigger the new fallback request unmocked.

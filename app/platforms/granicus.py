@@ -243,6 +243,47 @@ class GranicusAssetFinder(AssetFinder):
 
     _media_type = staticmethod(media_type)
 
+    @staticmethod
+    def _pick_video_url(media_urls: List[str]) -> Tuple[Optional[str], Optional[str]]:
+        """m3u8 preferred over a bare mp4 when both are present -- HLS gets
+        adaptive bitrate via hls.js, a direct mp4 doesn't."""
+        for candidate in media_urls:
+            if media_type(candidate) == "video" and candidate.lower().endswith(".m3u8"):
+                return candidate, "m3u8"
+        for candidate in media_urls:
+            if media_type(candidate) == "video":
+                return candidate, "mp4"
+        return None, None
+
+    @staticmethod
+    async def _fetch_video_from_player_page(
+        session: aiohttp.ClientSession, domain: str, clip_id: str
+    ) -> Tuple[Optional[str], Optional[str]]:
+        """Fallback video discovery for cities whose MediaPlayer.php still
+        embeds the legacy Flash player object (a `stream_type=rtmp` URL --
+        unplayable in any modern browser, Flash is gone) instead of a
+        scannable HLS/mp4 reference. Confirmed real via Fountain Valley CA
+        (clip 607, user-reported 2026-08-08): MediaPlayer.php's HTML has
+        zero .m3u8/.mp4 anywhere, only that Flash embed -- but Granicus's
+        newer `/videos/{id}/player` page for the same clip loads hls.js
+        against a real, working .m3u8 stream. Only called when the main
+        page scan already found nothing, so cities where the video's
+        already on the main page (the common case) pay no extra request.
+        Single-attempt, not `_fetch_page`'s retry-with-backoff -- this is an
+        opportunistic probe on top of an already-successful resolve, not
+        the one request the whole resolve depends on, so it fails cheap
+        and fast the same way `_fetch_caption_file` does.
+        """
+        player_url = f"https://{domain}/videos/{clip_id}/player"
+        try:
+            async with session.get(player_url, timeout=aiohttp.ClientTimeout(total=20)) as response:
+                if response.status != 200:
+                    return None, None
+                html = await response.text()
+        except (aiohttp.ClientError, asyncio.TimeoutError):
+            return None, None
+        return GranicusAssetFinder._pick_video_url(scan_media_urls(html, player_url))
+
     async def resolve(self, url: str) -> ResolvedMeeting:
         video_warnings: List[str] = []
         transcript_warnings: List[str] = []
@@ -276,16 +317,10 @@ class GranicusAssetFinder(AssetFinder):
             if body_is_meaningful and not title_has_body and metadata["title"]:
                 metadata["title"] = f"{channel_body} — {metadata['title']}"
 
-            video_url, video_format = None, None
-            for candidate in media_urls:
-                if self._media_type(candidate) == "video" and candidate.lower().endswith(".m3u8"):
-                    video_url, video_format = candidate, "m3u8"
-                    break
-            if not video_url:
-                for candidate in media_urls:
-                    if self._media_type(candidate) == "video":
-                        video_url, video_format = candidate, "mp4"
-                        break
+            video_url, video_format = self._pick_video_url(media_urls)
+            if not video_url and clip_id:
+                domain = urlparse(final_url).netloc
+                video_url, video_format = await self._fetch_video_from_player_page(session, domain, clip_id)
             if not video_url:
                 video_warnings.append("No playable video found on this page.")
 

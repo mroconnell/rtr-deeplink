@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="stylesheet" href="//d1rw50yn65615p.cloudfront.net/e63f2e6ccaf23fe952f771fb2af3aa7e9dcad7e0/assets/flowplayer/skin/skin.css" />
+  <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet" integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" crossorigin="anonymous">
+  <script src="https://code.jquery.com/jquery-3.4.1.min.js" crossorigin="anonymous"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/0.10.1/hls.light.min.js"></script>
+    <script type="text/javascript" src="//d1rw50yn65615p.cloudfront.net/e63f2e6ccaf23fe952f771fb2af3aa7e9dcad7e0/assets/flowplayer/flowplayer.js"></script>
+  <script type="text/javascript" src="//d1rw50yn65615p.cloudfront.net/e63f2e6ccaf23fe952f771fb2af3aa7e9dcad7e0/assets/flowplayer/custom-flowplayer-event-listeners.js"></script>
+  <style>
+    html,body {
+      overflow: hidden;
+      margin: 0;
+      padding: 0;
+      width:100%;
+      height:100%;
+    }
+
+    body {
+      font: 12px "Myriad Pro", "Lucida Grande", "Helvetica Neue", sans-serif;
+      text-align: center;
+      color: #999;
+      background-color: #333333;
+    }
+
+    .flowplayer {
+      width: 100%;
+      height: 100%;
+      background-color: #222;
+      background-size: cover;
+    }
+
+    a.fp-airplay.fp-icon {
+      display: none;
+    }
+
+    a.fp-chromecast.fp-icon{
+      display: none;
+    }
+  </style>
+
+  <script>
+    var seek = 0;
+
+    // fpEngine = ((/NT 6/i.test(navigator.userAgent)) &&
+    //             (/rv:11.0/i.test(navigator.userAgent))) ? "flash" : "html5";
+  fpEngine = ((/NT 6/i.test(navigator.userAgent)) && (/rv:11.0/i.test(navigator.userAgent))) ? "flash" : /iPhone|iPad|iPod|Macintosh/i.test(navigator.userAgent) ? "html5" : "hlsjs";
+
+    window.flowplayer = flowplayer;
+
+    window.autoPlay = true;
+
+    window.splash_image = window.autoPlay ? false : "";
+
+    flowplayer.conf = {
+            engine: fpEngine,
+      swf: "//d1rw50yn65615p.cloudfront.net/e63f2e6ccaf23fe952f771fb2af3aa7e9dcad7e0/assets/flowplayer/flowplayer.swf",
+      swfHls: "//d1rw50yn65615p.cloudfront.net/e63f2e6ccaf23fe952f771fb2af3aa7e9dcad7e0/assets/flowplayer/flowplayerhls.swf",
+      hlsjs: {
+        safari: true,
+        chrome: true
+      },
+      autoplay: window.autoPlay,
+      mutedAutoplay: false,
+      fullscreen: true,
+      native_fullscreen: true,
+      share: false,
+      splash: window.splash_image,
+            cuepoints: []
+    };
+
+    flowplayer(function (api, root) {
+      var rewindIntervalId = null;
+      var fastForwardIntervalId = null;
+      var rewindDelay = 500;
+      var rewindAmount = 1;
+      var fastforwardDelay = 1000;
+      var fastforwardAmount = 2;
+      var startRewinding = function() {
+        if(!rewindIntervalId) {
+          var currentTime =  api.video.time;
+          rewindIntervalId = setInterval(function() {
+            currentTime -= rewindAmount;
+            if(currentTime < 1) {
+              stopRewinding();
+              $rewindButton.removeClass('active');
+            } else {
+              api.seek(currentTime);
+            }
+          }, rewindDelay);
+        }
+      };
+
+      var stopRewinding = function() {
+        if(rewindIntervalId) {
+          clearInterval(rewindIntervalId);
+          rewindIntervalId = null;
+        }
+      };
+
+      var stopFastforwarding = function() {
+        api.speed(1);
+      };
+
+      var startFastforwarding = function() {
+        api.speed(2);
+        if(!api.playing) {
+          api.play();
+        }
+      };
+
+      var rewind = function() {
+        $fastForwardButton.removeClass('active');
+        stopFastforwarding();
+        startRewinding();
+      };
+
+      var fastforward = function() {
+        $rewindButton.removeClass('active');
+        stopRewinding();
+        startFastforwarding();
+      }
+
+      var resumeNormalPlayback = function() {
+        $rewindButton.removeClass('active');
+        stopRewinding();
+        $fastForwardButton.removeClass('active');
+        stopFastforwarding();
+      };
+
+      api.on("cuepoint", function (e, api, cuepoint) {
+        if(api.playing && api.ready) {
+          $('body,html').css('height', '100%');
+        }
+      }).on("ready", function () {
+        if(seek > 0) {
+          api.seek(seek);
+        }
+      });
+
+      if(parent && window['postMessage']) {
+        setInterval(function() {
+          if(api.ready) {
+            parent['postMessage']( { time: api.video.time }, '*');
+          }
+        },500);
+
+        parent['postMessage']( { cuepoints: flowplayer.conf.cuepoints }, '*');
+
+        window.addEventListener('message', function(event) {
+          if(event.data && event.data.command) {
+            switch(event.data.command.toLowerCase()) {
+              case 'play':
+                api.play();
+                break;
+              case 'pause':
+                api.pause();
+                break;
+              case 'stop':
+                api.stop();
+                break;
+              case 'seek':
+                api.seek(event.data.time);
+                break;
+            }
+          }
+        });
+      }
+    });
+  </script>
+  <title>City Council Meeting - 2026-06-16</title>
+</head>
+<body>
+          <div class="flowplayer fp-full fp-edgy fp-mute"
+    
+       data-key="$256026924867230"
+       data-title="City Council Meeting - 2026-06-16">
+    <video>
+              <source type="application/x-mpegurl" src="https://archive-stream.granicus.com/OnDemand/_definst_/mp4:archive/fountainvalley/fountainvalley_237a7820-457b-404b-ad93-3eaaec3f0330.mp4/playlist.m3u8">
+      
+          </video>
+  </div>
+  <div id="granicus-controls">
+    <div class="seek-backward">
+      <i class="fa fa-backward" aria-hidden="true"></i>
+    </div>
+    <div class="seek-forward">
+      <i class="fa fa-forward" aria-hidden="true"></i>
+    </div>
+    <i class="fa fa-expand" aria-hidden="true"></i>
+  </div>
+</body>
+</html>

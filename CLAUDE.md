@@ -43,7 +43,10 @@ under everything else. This repo extracts and fixes just that part.
   (Swagit, real transcript + agenda together), Boston/Lee's Summit MO
   (Legistar, one clean success + one full-fallback-chain case), Fountain
   Valley CA (Granicus via CivicPlus — also a real edge case: transcript
-  found but no video, language misdetected as Portuguese), Whitehall OH
+  genuinely garbled at the source, language misdetected as Portuguese as
+  a result; video was missing until the 2026-08-08 fix for
+  MediaPlayer.php pages that only embed a legacy Flash/RTMP player — see
+  BACKLOG_DONE.md), Whitehall OH
   (CivicClerk, agenda-only), Calgary AB (eScribe, video but no captions
   yet). CivicClerk and eScribe still have *no* example anywhere with
   populated captions despite checking several cities each — a real,

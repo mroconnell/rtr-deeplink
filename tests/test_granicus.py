@@ -30,6 +30,49 @@ async def test_resolve_real_blank_caption_meeting():
     assert any("blank" in w.lower() for w in result.transcript_warnings)
 
 
+async def test_resolve_falls_back_to_player_page_for_video_when_mediaplayer_has_none():
+    # Real Fountain Valley CA clip 607 (user-reported 2026-08-08):
+    # MediaPlayer.php's HTML embeds only a legacy Flash player object
+    # (VideoUrl=...&stream_type=rtmp -- unplayable in any modern browser),
+    # zero .m3u8/.mp4 anywhere in that page. The real, working HLS stream
+    # only exists on Granicus's newer /videos/{id}/player page for the
+    # same clip. Also incidentally the real sample CLAUDE.md already flags
+    # for garbled/mislabeled captions -- real WEBVTT structure, but the
+    # cue text itself is garbage at the source, and langdetect calls it
+    # 'pt' on that noise. Both fixed together since they're the same
+    # meeting: this pins the video fallback; the garbled/pt warnings
+    # assertions guard against that separate, already-correct behavior
+    # regressing silently.
+    url = "https://fountainvalley.granicus.com/MediaPlayer.php?clip_id=607"
+    html = load_fixture("granicus", "fountainvalley_clip607_mediaplayer.html")
+    player_html = load_fixture("granicus", "fountainvalley_clip607_player.html")
+    captions = load_fixture_bytes("granicus", "fountainvalley_clip607_captions.vtt")
+
+    routes = {
+        url: FakeResponse(status=200, text=html, url=url),
+        "https://fountainvalley.granicus.com/videos/607/captions.vtt":
+            FakeResponse(status=200, raw=captions),
+        "https://fountainvalley.granicus.com/videos/607/player":
+            FakeResponse(status=200, text=player_html),
+        "https://fountainvalley.granicus.com/AgendaViewer.php?clip_id=607&embedded=1":
+            FakeResponse(status=404),
+    }
+
+    with mock_session(routes):
+        result = await GranicusAssetFinder().resolve(url)
+
+    assert result.video_url == (
+        "https://archive-stream.granicus.com/OnDemand/_definst_/mp4:archive/"
+        "fountainvalley/fountainvalley_237a7820-457b-404b-ad93-3eaaec3f0330.mp4/playlist.m3u8"
+    )
+    assert result.video_format == "m3u8"
+    assert result.video_warnings == []
+    assert len(result.segments) == 146
+    assert result.transcript_language == "pt"
+    assert any("garbled" in w.lower() for w in result.transcript_warnings)
+    assert any("'pt'" in w for w in result.transcript_warnings)
+
+
 async def test_resolve_real_meeting_with_spanish_captions():
     # Real Simi Valley clip 2840 -- the exact meeting BACKLOG_DONE.md
     # documents as real Spanish-language content mislabeled srclang="en"
@@ -95,6 +138,7 @@ async def test_resolve_guessed_captions_url_404s_treated_as_blank():
     routes = {
         url: FakeResponse(status=200, text=html, url=url),
         "https://example.granicus.com/videos/999/captions.vtt": FakeResponse(status=404),
+        "https://example.granicus.com/videos/999/player": FakeResponse(status=404),
         "https://example.granicus.com/AgendaViewer.php?clip_id=999&embedded=1": FakeResponse(status=404),
     }
 
@@ -125,6 +169,7 @@ async def test_resolve_text_fallback_when_only_unstructured_caption_format_found
     routes = {
         url: FakeResponse(status=200, text=html, url=url),
         "https://example.granicus.com/videos/42/captions.vtt": FakeResponse(status=404),
+        "https://example.granicus.com/videos/42/player": FakeResponse(status=404),
         "https://example.granicus.com/captions.sbv": FakeResponse(status=200, text=sbv_content),
         "https://example.granicus.com/AgendaViewer.php?clip_id=42&embedded=1": FakeResponse(status=404),
     }
@@ -150,6 +195,7 @@ async def test_resolve_links_out_when_caption_format_is_unreadable():
     routes = {
         url: FakeResponse(status=200, text=html, url=url),
         "https://example.granicus.com/videos/43/captions.vtt": FakeResponse(status=404),
+        "https://example.granicus.com/videos/43/player": FakeResponse(status=404),
         "https://example.granicus.com/captions.scc":
             FakeResponse(status=200, text="Scenarist_SCC V1.0\n\n00:00:01:00 9420 9420"),
         "https://example.granicus.com/AgendaViewer.php?clip_id=43&embedded=1": FakeResponse(status=404),
