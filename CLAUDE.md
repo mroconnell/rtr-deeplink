@@ -98,14 +98,28 @@ under everything else. This repo extracts and fixes just that part.
 - **A pytest suite exists now (`tests/`, see README's "Running tests")** —
   run it (`pytest`) before/after touching `app/utils/vtt_parser.py`,
   `app/platforms/media_scan.py`, `app/platforms/base.py`, or the
-  Granicus/Legistar/CivicPlus/CivicClerk adapters, since those are the
-  ones with real coverage today. It doesn't replace live-testing a new
-  adapter or a genuinely new real-world case (see the first bullet above)
-  — it exists to catch a *previously-covered* case silently regressing
-  between sessions, which live-testing alone doesn't protect against.
-  When you fix a bug found via live testing, consider adding a fixture-
-  backed regression test for it in the same pass, the way the Simi Valley
-  Spanish-caption and blank-VTT cases already are.
+  Granicus/Legistar/CivicPlus/CivicClerk/CA Legislature/Swagit adapters,
+  since those are the ones with real coverage today (84 tests as of
+  2026-08-08). **eScribe, PrimeGov, and YouTube still have zero test
+  coverage** — the one gap actually worth closing next if you're touching
+  any of those three, since right now a regression there would only ever
+  be caught by live-testing, same as before this suite existed. It
+  doesn't replace live-testing a new adapter or a genuinely new
+  real-world case (see the first bullet above) — it exists to catch a
+  *previously-covered* case silently regressing between sessions, which
+  live-testing alone doesn't protect against. When you fix a bug found
+  via live testing, consider adding a fixture-backed regression test for
+  it in the same pass, the way the Simi Valley Spanish-caption and
+  blank-VTT cases already are.
+- **New SQLAlchemy models need no manual migration** — `init_models()`
+  in both `app/db/engine.py` and `archive/db/engine.py` runs
+  `Base.metadata.create_all()` on every startup, so a new table (e.g.
+  `ProblemReport`, added 2026-08-08) just appears in prod Postgres the
+  next time the service restarts/deploys. No migration framework in this
+  repo on purpose, matching the "no accounts, no auth, no background job
+  queue" minimalism — revisit only if a real schema *change* (not just
+  addition) is ever needed, since `create_all` can't alter existing
+  tables.
 - **`app/db/outcomes.py` classifies reporting outcomes from real signal on
   the row where one exists, and falls back to substring-matching
   `transcript_warnings` only where it doesn't.** `agenda_fallback` is

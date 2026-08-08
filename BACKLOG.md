@@ -51,6 +51,15 @@ where relevant.
 
 ## Platform coverage — open questions
 
+- **eScribe, PrimeGov, and YouTube adapters have zero test coverage.**
+  Granicus/Legistar/CivicPlus/CivicClerk/CA Legislature/Swagit all have
+  real fixture-backed tests (`tests/`, 84 as of 2026-08-08 — see
+  `BACKLOG_DONE.md`'s "Testing infrastructure" entry); these three don't,
+  so a regression in any of them would currently only ever be caught by
+  live-testing, not automatically. YouTube in particular has real,
+  documented complexity worth pinning down in tests (roll-up cue dedup,
+  manual-vs-auto-generated track selection, yt-dlp as the caption-fetch
+  path) — a good first target if picking just one.
 - **TTML/DFXP/ITT caption parsing (`app/utils/vtt_parser.py`'s
   `parse_ttml()`) is spec-verified only, not sample-verified.** Built
   against the W3C TTML spec's documented shape after the CivicClerk SRT
