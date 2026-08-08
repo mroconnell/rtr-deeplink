@@ -39,6 +39,12 @@ logger = logging.getLogger("rtr_worker")
 # built from for why that's the ~$/mo tradeoff already accepted).
 POLL_INTERVAL_SECONDS = 5
 EMPTY_POLL_BACKOFF_SECONDS = 15
+# Real gap this closes: originally an empty poll logged nothing at all, so
+# "no new log lines" was ambiguous between "nothing queued" and "silently
+# stuck" -- confirmed confusing in practice (2026-08-08). Logged only every
+# Nth empty poll (~5 min at EMPTY_POLL_BACKOFF_SECONDS=15s), not every poll,
+# so this stays a liveness signal rather than log spam.
+EMPTY_POLL_HEARTBEAT_EVERY = 20
 
 # Excerpt length for the completion email -- plain character count, not
 # trying to break on a sentence boundary; good enough for "here's a taste,
@@ -62,6 +68,9 @@ async def process_next_chunk(engine: TranscriptionEngine) -> bool:
     platform = claim["platform"]
     chunk_size = claim["chunk_size_seconds"]
     total_duration = claim["probed_duration_seconds"]
+    total_chunks = claim["total_chunks"]
+
+    logger.info("Claimed job %s: chunk %s/%s", job_id, chunk_index + 1, total_chunks)
 
     start = chunk_start(chunk_index, chunk_size)
     duration = chunk_duration(chunk_index, chunk_size, total_duration)
@@ -91,20 +100,26 @@ async def process_next_chunk(engine: TranscriptionEngine) -> bool:
             media_url, start=start, duration=duration, source_page_url=source_url, out_path=audio_path,
         )
         if not extracted:
+            logger.warning("Job %s: ffmpeg extraction failed for chunk %s", job_id, chunk_index)
             await crud.report_chunk_result(job_id, success=False, error="ffmpeg extraction failed")
             return True
 
         try:
             raw_segments = await engine.transcribe_chunk(audio_path)
         except Exception as e:
-            logger.exception("Transcription failed for job %s chunk %s", job_id, chunk_index)
+            logger.exception("Job %s: transcription failed for chunk %s", job_id, chunk_index)
             await crud.report_chunk_result(job_id, success=False, error=str(e))
             return True
 
     shifted = shift_segments(raw_segments, start)
     result = await crud.report_chunk_result(job_id, success=True, shifted_segments=shifted)
+    logger.info(
+        "Job %s: chunk %s/%s done (%s segments), job status now %s",
+        job_id, chunk_index + 1, total_chunks, len(shifted), result.get("status"),
+    )
 
     if result.get("status") == "completed":
+        logger.info("Job %s completed -> transcript_version %s", job_id, result.get("transcript_version_id"))
         await _send_completion_email(job_id)
 
     return True
@@ -141,12 +156,21 @@ async def run_forever() -> None:
     engine = build_default_engine()
     logger.info("Model loaded. Entering poll loop.")
 
+    empty_polls = 0
     while True:
         try:
             processed = await process_next_chunk(engine)
         except Exception:
             logger.exception("Unhandled error in worker loop iteration.")
             processed = False
+
+        if processed:
+            empty_polls = 0
+        else:
+            empty_polls += 1
+            if empty_polls % EMPTY_POLL_HEARTBEAT_EVERY == 0:
+                logger.info("Still polling, nothing queued (checked %s times since last job).", empty_polls)
+
         await asyncio.sleep(POLL_INTERVAL_SECONDS if processed else EMPTY_POLL_BACKOFF_SECONDS)
 
 
