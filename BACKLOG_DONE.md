@@ -1472,3 +1472,36 @@ changelog of task titles.
   against actual deployed Render infrastructure yet**, only locally and
   against real external services (Granicus's CDN, Apple's test stream,
   Hugging Face's model hub) from a local/sandboxed environment.
+
+- **[Done 2026-08-08] First real deploy of the transcription worker
+  crash-looped: `worker/requirements.txt` was missing `pydantic`.** Real
+  production failure, confirmed from Render's own logs immediately after
+  the entry above shipped:
+  `ModuleNotFoundError: No module named 'pydantic'` at `worker/main.py`'s
+  very first import (`app.platforms.base` → `app.platforms.models`,
+  which imports `pydantic` directly) — `worker/Dockerfile`'s image built
+  fine (a real, useful data point: the un-build-tested-locally risk
+  flagged above turned out fine), but the container crashed on every
+  start, Render restarting it in a loop.
+
+  **Root cause of why local testing missed this**: every local
+  verification of `worker/main.py` (BACKLOG_DONE.md's entry above lists
+  several) ran inside this repo's one shared dev `.venv`, which already
+  had `app/`'s full `requirements.txt` (including `pydantic`, via
+  `fastapi`) installed alongside `worker/requirements.txt`'s packages —
+  so a genuinely missing entry in `worker/requirements.txt` specifically
+  was invisible no matter how thoroughly the *code* was exercised.
+  **Fix, and the methodology lesson that matters more than the one-line
+  diff**: added `pydantic>=2.0` to `worker/requirements.txt`, then
+  re-verified all three services — not just the worker — each in a
+  freshly created, genuinely isolated venv containing *only* that
+  service's own `requirements.txt` (`python3 -m venv ...` +
+  `pip install -r .../requirements.txt` + a plain import, nothing
+  borrowed from the shared dev environment). `app/`, `archive/`, and
+  `worker/` all now confirmed to import cleanly on their own declared
+  dependencies alone. Worth remembering for any future change that
+  touches more than one of these three services: a shared local dev venv
+  is fine for iterating quickly, but the *last* check before pushing
+  anything that adds a new cross-file import needs to happen against
+  each service's real, isolated dependency set, or a missing-package bug
+  like this one won't surface until it's already live and crash-looping.

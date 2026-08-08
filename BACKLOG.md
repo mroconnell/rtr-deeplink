@@ -370,26 +370,24 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 ## On-demand transcription — real gaps left open
 
 Built 2026-08-08, see [BACKLOG_DONE.md](BACKLOG_DONE.md) for the full
-build/verification detail. Everything below was verified locally
-(including real ffmpeg/faster-whisper runs against real meeting audio and
-real HTTP round-trips between all three services) but **never against
-actual deployed Render infrastructure** — nothing about this feature
-should be considered production-confirmed until it's been exercised live.
+build/verification detail. First real deploy attempt (also 2026-08-08)
+immediately crash-looped on a missing `pydantic` dependency in
+`worker/requirements.txt` — fixed, and see that same file's follow-up
+entry for the methodology lesson (a shared local dev venv can hide a
+missing-package bug that only surfaces once a service is actually
+deployed with its own real, isolated dependency set). Confirmed by that
+same deploy: `worker/Dockerfile` **does** build successfully on Render —
+one item below is resolved as a result.
 
-- **ffmpeg/ffprobe availability on the resolver service is unverified.**
-  `app/main.py`'s `/api/transcription/check-feasibility` now shells out to
-  `ffprobe` (`app/platforms/media_probe.py`), a system binary the
-  resolver's plain `runtime: python` Render buildpack has never needed
-  before and isn't confirmed to include — flagged inline in `render.yaml`.
-  If a deploy shows this endpoint failing, switch that service to
-  `runtime: docker`; `worker/Dockerfile` is a working reference for the
-  `apt-get install ffmpeg` step (its own build also hasn't been tested —
-  see below).
-- **`worker/Dockerfile` has never actually been built.** No Docker daemon
-  was available in the environment this was built in, so the image was
-  reviewed by hand, not built-and-run. Build and deploy it once, watching
-  for anything Debian-slim-specific that might be missing, before trusting
-  it works as-is.
+- **ffmpeg/ffprobe availability on the resolver service is still
+  unverified.** `app/main.py`'s `/api/transcription/check-feasibility`
+  now shells out to `ffprobe` (`app/platforms/media_probe.py`), a system
+  binary the resolver's plain `runtime: python` Render buildpack has
+  never needed before and isn't confirmed to include — flagged inline in
+  `render.yaml`. If a deploy shows this endpoint failing, switch that
+  service to `runtime: docker`; `worker/Dockerfile` is now a *confirmed-
+  working* reference for the `apt-get install ffmpeg` step, unlike when
+  this bullet was first written.
 - **Render worker plan sizing is a guess.** `render.yaml`'s
   `rtr-transcription-worker` service is set to `plan: starter` with an
   explicit "unverified, size before deploying" comment —
