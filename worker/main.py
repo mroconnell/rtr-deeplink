@@ -100,14 +100,20 @@ async def process_next_chunk(engine: TranscriptionEngine) -> bool:
             media_url, start=start, duration=duration, source_page_url=source_url, out_path=audio_path,
         )
         if not extracted:
-            logger.warning("Job %s: ffmpeg extraction failed for chunk %s", job_id, chunk_index)
+            logger.warning(
+                "Job %s: ffmpeg extraction failed for chunk %s/%s (will retry on next poll)",
+                job_id, chunk_index + 1, total_chunks,
+            )
             await crud.report_chunk_result(job_id, success=False, error="ffmpeg extraction failed")
             return True
 
         try:
             raw_segments = await engine.transcribe_chunk(audio_path)
         except Exception as e:
-            logger.exception("Job %s: transcription failed for chunk %s", job_id, chunk_index)
+            logger.exception(
+                "Job %s: transcription failed for chunk %s/%s (will retry on next poll)",
+                job_id, chunk_index + 1, total_chunks,
+            )
             await crud.report_chunk_result(job_id, success=False, error=str(e))
             return True
 

@@ -192,17 +192,43 @@ function renderTranscript(segs) {
 function renderAgenda(items) {
   const container = document.getElementById('agendaList');
   container.innerHTML = '';
+
+  // Some sources (confirmed: several CivicClerk cities' eventBookmarks)
+  // report every agenda item at the exact same instant -- 26 different
+  // items can't all genuinely start at 0:00. Rendering those as normal
+  // clickable [0:00] links falsely implies real per-item navigation, so
+  // fall back to a plain, unlinked outline instead. A single item at
+  // 0:00 is normal (the first topic starting at the top of the video) --
+  // only suppress when there's more than one item and they're all
+  // identical.
+  const unreliableTimestamps = items.length > 1 && items.every((item) => item.start === items[0].start);
+
+  if (unreliableTimestamps) {
+    const note = document.createElement('p');
+    note.className = 'subtitle';
+    note.textContent = "This source doesn't provide real per-item timestamps, so these agenda items aren't clickable.";
+    container.appendChild(note);
+  }
+
   items.forEach((item, index) => {
     const itemId = `agenda-${index}`;
     const div = document.createElement('div');
     div.className = 'transcript-segment';
     div.id = itemId;
-    div.dataset.start = item.start;
-    div.innerHTML = `<a href="#${itemId}" class="segment-timestamp" data-start="${item.start}">[${formatTime(item.start)}]</a>` +
-      `<button class="segment-link-btn" data-start="${item.start}" title="Copy link to this item" aria-label="Copy link to this item">${LINK_ICON_SVG}</button>` +
-      ` <span class="segment-text">${escapeHtml(item.text)}</span>`;
+    if (unreliableTimestamps) {
+      div.innerHTML = `<span class="segment-text">${escapeHtml(item.text)}</span>`;
+    } else {
+      div.dataset.start = item.start;
+      div.innerHTML = `<a href="#${itemId}" class="segment-timestamp" data-start="${item.start}">[${formatTime(item.start)}]</a>` +
+        `<button class="segment-link-btn" data-start="${item.start}" title="Copy link to this item" aria-label="Copy link to this item">${LINK_ICON_SVG}</button>` +
+        ` <span class="segment-text">${escapeHtml(item.text)}</span>`;
+    }
     container.appendChild(div);
   });
+
+  if (unreliableTimestamps) {
+    return;
+  }
 
   container.querySelectorAll('.segment-timestamp').forEach((a) => {
     a.addEventListener('click', (e) => {

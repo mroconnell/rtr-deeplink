@@ -73,24 +73,6 @@ where relevant.
   captions doesn't get scraped on every visit — impolite to the
   government site, same reasoning the 30-day window was originally built
   on.
-- **Emporia, KS's CivicClerk `eventBookmarks` all report
-  `markerTimeStart: 0`, so every agenda item on that page (and any other
-  Emporia meeting) deep-links to the very start of the video regardless
-  of the item's real position.** Confirmed live (2026-08-08) directly
-  against `emporiaks.api.civicclerk.com/v1/EventsMedia/585` — all 26
-  bookmarks have `markerTimeStart: 0`/`markerTimeHHMMSSFormat:
-  "00:00:00"`, genuinely from the source, not a parsing bug in
-  `civicclerk.py`. Right now `CivicClerkAssetFinder.resolve()` renders
-  these as normal clickable `[0:00]` agenda links with no indication
-  they're not real per-item times — misleading, since the item text
-  ("PROCLAMATIONS", "NEW BUSINESS", etc.) implies real navigation.
-  Unknown yet whether this is Emporia-specific or a wider CivicClerk
-  pattern (only one CivicClerk city has real bookmark data confirmed at
-  all so far — see [BACKLOG_DONE.md](BACKLOG_DONE.md)). Worth deciding:
-  detect all-zero bookmark times and either suppress the Agenda section's
-  per-item links (fall back to a plain outline, no false deep-links) or
-  surface a warning explaining the timestamps aren't real, rather than
-  presenting them as reliable.
 - **Alexandria VA meeting dates can't be extracted.** No `view_id` in the
   URL (so no RSS feed to cross-reference, unlike the rest of Granicus — see
   [BACKLOG_DONE.md](BACKLOG_DONE.md)) and no date signal anywhere in the
@@ -271,6 +253,61 @@ auditing it (2026-08-08), code-verified but not all live-triggered yet:
   swagit-video-player?video_id=...`). `detect_platform` recognizes the URL
   shape, but the one sample URL 404'd — parsing has only been verified
   against real `*.swagit.com` domains. Needs a fresh sample URL.
+- **A real Dublin, CA Archive page
+  (`/m/dublin-ca-2026-01-13-jan-13-2026-city-council`) shows no language on
+  `/meetings` despite having a real English transcript.** Confirmed live
+  (2026-08-08): its default `TranscriptVersion.language` is empty (the
+  `/meetings` row shows "Dublin, CA · 2026-01-13" with no `· en`, unlike
+  a second Dublin page — `/m/dublin-ca-city-council-regular-meeting` —
+  which correctly shows "· en"). Root cause understood, not just
+  observed: `app/platforms/swagit.py`'s language detection
+  (`detect_language_from_texts()` on `#transcript-fragments` text) was
+  only added today, 2026-08-08 (see that file's inline comment, and
+  `app/utils/vtt_parser.py`'s `detect_language_from_texts()` docstring)
+  — this specific page's version was ingested *before* that fix existed,
+  so it's frozen with `language=None` from whenever it was first pushed.
+  Running `/admin/recheck-archive-page` against it would very likely set
+  `transcript_language="en"` on a fresh resolve, **but that alone
+  probably still won't fix the `/meetings` listing**: `ingest_resolution()`
+  (`archive/db/crud.py`) only marks a new version `is_default=True` when
+  `any_version is None` — since a version already exists here (the
+  null-language one), a recheck's fresh push would add a *second*,
+  correctly-labeled version without promoting it over the stale
+  default, the same general gap noted elsewhere in this file about
+  `ingest_resolution()` never calling `promote_transcript_version()`
+  the way the transcription-job completion path does. Two real fixes
+  bundled in one root cause: (1) confirm whether a recheck actually
+  behaves as predicted above (untested — needs `ADMIN_STATS_TOKEN`),
+  (2) decide whether `ingest_resolution()`'s recheck path should also
+  promote when the fresh version has a real improvement (a language
+  where there was none, real segments where there were none) over the
+  current default — the same open design question already raised for
+  the Yountville stale-transcript bug above, worth solving once for
+  both rather than twice.
+- **Swagit's `#transcript-fragments` transcript is unreadable — one word
+  per line, not phrases.** Confirmed with real data (2026-08-08) on the
+  same Dublin, CA meeting above: consecutive segments read `[0:04] GOOD`,
+  `[0:04] EVENING`, `[0:04] AND`, `[0:05] HAPPY`, `[0:05] NEW`,
+  `[0:05] YEAR` — six separate clickable lines for one six-word phrase
+  spoken in under two seconds. Root cause: `swagit.py`'s
+  `#transcript-fragments` parsing (`app/platforms/swagit.py` ~line 110)
+  creates one `TranscriptSegment` per DOM fragment with `start == end`
+  (a true instant, not a real cue range) — this is genuinely how Swagit
+  emits this data (one `<a data-ts>` per word), not a parsing bug. Every
+  other adapter's segments come from real VTT/SRT cues, which are
+  already authored in readable multi-word phrases, so this is Swagit-
+  specific. **Wanted**: group consecutive word-level fragments into
+  readable lines — a few seconds or a handful of words per line, segment
+  `start` = the *first* word's timestamp in the group (not each word's
+  own), `end` = the last word's. Needs a decision on the grouping rule
+  before building: a rolling time window (e.g. ~3-5s per line), a fixed
+  word count (e.g. 8-12 words), or something sentence-aware — complicated
+  by these fragments apparently carrying no punctuation at all (`"GOOD
+  EVENING AND HAPPY NEW YEAR"`, all-caps, no periods), so a
+  punctuation-based grouper isn't available the way it might be for
+  prose captions. A pure post-processing step over `segments` once
+  collected, before they're returned in `ResolvedMeeting` — doesn't need
+  to touch the DOM-scraping logic itself.
 - **eScribe caption content-quality unverified.** The per-language VTT
   naming convention was confirmed structurally on Richmond, CA, but none
   were populated (all 404) — shape-verified only, not content-verified.
@@ -481,6 +518,49 @@ one item below is resolved as a result.
   `check_audience_membership()` and Resend's `GET /audiences/{id}/
   contacts/{email}` endpoint shape both work as written, not just
   degrading safely on failure.
+- **The transcription-complete email is bare — wants real copy, brand,
+  and a share/support ask.** `archive/utils/email.py`'s
+  `send_completion_email()` today is three unstyled `<p>` tags: a
+  one-line "your transcript is ready," a plain `<blockquote>` excerpt
+  (first 500 chars of the transcript — `EMAIL_EXCERPT_CHARS` in
+  `worker/main.py`, already there, not missing), and a bare link to the
+  page. No color, no logo, no font, nothing that reads as "Red Tape
+  Recordings" rather than a generic system notification, and no ask of
+  the recipient at all (share it, follow/subscribe, support the
+  project). Real open questions before building this, not just a styling
+  pass:
+  - **No logo/brand image asset exists anywhere in this repo yet** —
+    confirmed, `archive/static/` has no logo/icon file, and this is the
+    same underlying gap already flagged in `CLAUDE_BACKLOG.md`'s
+    og:image note (no thumbnail generation either). An email with real
+    brand elements needs at least a wordmark image hosted somewhere
+    email clients can fetch it from (most strip inline SVG) — this
+    likely can't be built until that asset exists.
+  - **Email HTML can't use the site's actual CSS** (`--primary` navy
+    `#2c3e50`, `--accent` blue `#3498db`, the Georgia serif body font,
+    etc., all in `archive/static/style.css`) — most email clients strip
+    `<style>` blocks and CSS variables outright, so real "brand
+    elements" here means hand-inlining hex values and font-family
+    strings directly on each tag, a different (uglier, more
+    maintenance-prone) discipline than the rest of this codebase's CSS.
+  - **No "support us" mechanism exists yet to link to** — the only
+    existing calls-to-action anywhere on the site are `/subscribe` (the
+    newsletter) and `/about`; there's no donation/membership page. Worth
+    deciding whether "support us" here just means "subscribe for
+    updates" (cheap, reuses what exists) or implies building a real
+    support mechanism first (bigger, a prerequisite, not a copy change).
+  - **Share copy needs an actual mechanism to share** — a plain "share
+    this with a friend" line plus the existing `page_url` might be
+    enough (no code needed beyond copy), or this could mean real share
+    buttons (pre-filled tweet/email text, etc.) — worth deciding which
+    before writing copy that promises more than what's built.
+  - **Excerpt selection is naive** — literally the transcript's first
+    500 characters, which for a typical meeting is procedural
+    throat-clearing (roll call, approving prior minutes), not the most
+    shareable/interesting moment. Worth a real pick-a-better-excerpt
+    pass (e.g. skip past a "procedural" first N seconds, or pick the
+    longest/most substantive-looking segment) if the goal is content
+    someone would actually want to share.
 - **No language-track picker for a transcribed version yet** — a
   transcribed `TranscriptVersion`'s language is detected from its own text
   (`archive/utils/language.py`, mirroring every scraped-caption adapter's

@@ -1534,3 +1534,43 @@ changelog of task titles.
   directly): a fresh request after expiry gets a new job id, and the old
   token no longer confirms. Full suite green (115 tests) after the
   change.
+
+- **[Done 2026-08-08] All-zero agenda timestamps (Emporia, KS's CivicClerk
+  `eventBookmarks`) no longer render as false clickable `[0:00]` links.**
+  User picked the "suppress + plain outline" option over "keep the links
+  with a warning" — a link that looks actionable but silently does
+  nothing is worse than no link at all. Implemented generically (not
+  CivicClerk-specific) since the root pattern — "more than one agenda
+  item, all sharing the exact same start time" — could show up on any
+  platform, not just this one: `app/static/player.js`'s `renderAgenda()`
+  and `archive/templates/meeting_page.html`'s agenda block (mirroring
+  each other, same pattern as the rest of this codebase's duplicated
+  frontend logic) both detect `items.length > 1 and every item.start ===
+  items[0].start`, and when true render a plain unlinked outline with a
+  one-line note ("This source doesn't provide real per-item timestamps,
+  so these agenda items aren't clickable.") instead of the normal
+  clickable-timestamp treatment. A single item at `0:00` is deliberately
+  *not* suppressed — that's the normal case of the first agenda topic
+  starting at the top of the video. Verified: full pytest suite green
+  (116 tests) plus a direct Jinja-render check of all three cases
+  (all-zero, normal distinct times, single item at 0:00) confirming the
+  right branch renders in each.
+
+- **[Done 2026-08-08] Worker's chunk-failure log now uses the same
+  1-indexed chunk numbering as the claim-success log.** Found while
+  investigating a real production timeout (`worker/main.py`'s ffmpeg
+  extraction hit `_SUBPROCESS_TIMEOUT_SECONDS` on one chunk of a real
+  job): the claim log used `chunk_index + 1` (1-indexed, e.g. "chunk
+  11/12") while the two failure logs used the raw 0-indexed `chunk_index`
+  directly, so a failure and its immediate retry looked like two
+  *different* chunks in the logs (off by one) even though
+  `report_chunk_result()`'s failure path never advances
+  `chunks_completed`, meaning the same chunk really was retried
+  correctly with no data loss. Confirmed via the actual production log:
+  "ffmpeg extraction failed for chunk 11" (0-indexed = the 12th/last
+  chunk) immediately followed by "Claimed job 2: chunk 12/12" (1-indexed
+  = the same chunk) — genuinely confusing to read together, not a real
+  bug in the retry logic itself. Fixed both failure log lines to use
+  `chunk_index + 1, total_chunks` and spell out "(will retry on next
+  poll)" explicitly, so a future read of these logs doesn't need this
+  same investigation to know the outcome.
