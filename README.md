@@ -4,9 +4,9 @@ Paste the URL of a public government meeting recording. Get back the video
 and its transcript, side by side, with every line clickable — and a URL you
 can share that lands someone at that exact moment.
 
-No accounts, no background jobs. Given a meeting URL, the app resolves its
-video and transcript on demand and renders them. Deep-linking to an exact
-moment is the primary goal; the transcript is a nice-to-have on top of that.
+No background jobs. Given a meeting URL, the app resolves its video and
+transcript on demand and renders them. Deep-linking to an exact moment is
+the primary goal; the transcript is a nice-to-have on top of that.
 
 There's an optional database (see [Caching and reporting](#caching-and-reporting)
 below) that caches resolved meetings and logs every resolve attempt for
@@ -18,7 +18,7 @@ behavior rather than failing.
 Permanent, publicly shareable meeting pages (with multiple transcript
 versions/languages) live in a separate app, `archive/` — see
 [Permanent pages (the Archive)](#permanent-pages-the-archive) below. This
-resolver itself still never hosts accounts or public content pages; that's
+resolver itself still never hosts public content pages directly; that's
 the whole reason the Archive is a separate app rather than a feature bolted
 onto this one.
 
@@ -46,21 +46,28 @@ pytest
 
 `tests/` covers the platform-independent utilities (`app/utils/vtt_parser.py`,
 `app/platforms/media_scan.py`, `app/platforms/base.py`'s `detect_platform`)
-directly, and exercises Granicus/Legistar/CivicPlus/CivicClerk end-to-end
-against real fixture files saved under `tests/fixtures/` (fetched live from
-real government sites, not synthetic — see each fixture directory for
-where it came from; `tests/fixtures/civicplus/README.md` explains the one
-exception, hand-built to match a real site's confirmed structure since
-that live site has since changed). HTTP calls are mocked via a small
-in-repo `tests/aiohttp_mock.py`, not `aioresponses` — its latest release
-doesn't support the aiohttp version this project's unpinned `aiohttp>=3.9`
-resolves to today. The remaining adapters (Swagit, eScribe, CA Legislature,
-PrimeGov/YouTube) don't have test coverage yet — a good next place to
-extend this suite.
+directly, and exercises Granicus/Legistar/CivicPlus/CivicClerk/Swagit/
+CA Legislature end-to-end against real fixture files saved under
+`tests/fixtures/` (fetched live from real government sites, not synthetic
+— see each fixture directory for where it came from; `tests/fixtures/
+civicplus/README.md` explains the one exception, hand-built to match a
+real site's confirmed structure since that live site has since changed).
+HTTP calls are mocked via a small in-repo `tests/aiohttp_mock.py`, not
+`aioresponses` — its latest release doesn't support the aiohttp version
+this project's unpinned `aiohttp>=3.9` resolves to today. Also covers
+`archive/utils/search.py`'s exact/fuzzy matching logic directly (pure
+functions, no DB or mocking needed —
+`tests/test_archive_search.py`). eScribe and PrimeGov/YouTube don't have
+test coverage yet — a good next place to extend this suite.
 
 ## How it works
 
 ### The resolve flow
+
+When you paste a meeting URL, the app has to figure out which government
+video platform it's looking at, fetch the video and transcript from that
+platform's own site, and hand back something the page can render — all in
+the few seconds you're waiting. Here's that path in detail:
 
 1. The frontend (`app/static/player.js`) POSTs the pasted URL to
    `/api/resolve`.
@@ -91,6 +98,12 @@ the government source. Reloading a deep link re-runs the resolve either way
 
 ### Three response shapes from `/api/resolve`
 
+Not every pasted URL is a clean win — sometimes it points at a list of
+meetings instead of one specific meeting, and sometimes it's a platform
+this app doesn't know how to read yet. `/api/resolve` always returns one
+of these three shapes, so the frontend knows exactly how to react instead
+of guessing from an error string:
+
 - **A resolved meeting** — the normal case: a `ResolvedMeeting` JSON blob
   (see `app/platforms/models.py`).
 - **`{"error": "calendar_page", "candidates": [...]}`** — the URL was a
@@ -104,6 +117,10 @@ the government source. Reloading a deep link re-runs the resolve either way
 
 ### Deep links
 
+Linking someone straight to the exact moment in a meeting — not just the
+video in general — is the entire reason this app exists. That link is
+just a couple of URL query parameters, read back out on page load:
+
 A URL like `/meeting?url=<source>&t=630&line=seg-42` means: seek the video
 to 630 seconds and highlight transcript segment 42. `t` always wins for the
 actual seek position; `line` is only used to decide which row to highlight
@@ -116,6 +133,13 @@ link icon, "Copy link to current time", the manual "Go to time" box) goes
 through the same `updateUrlParams()` helper, so all four stay consistent.
 
 ## Caching and reporting
+
+Re-scraping a government site every single time someone revisits the same
+meeting is wasteful and slow, and nobody can tell what's actually working
+across hundreds of different city websites without some kind of record of
+every attempt. `app/db/` solves both, optionally: `/api/resolve` can skip
+the live fetch when it's already resolved a URL successfully before, and
+every attempt — success or failure — gets logged for later review.
 
 `app/db/` adds an optional Postgres-backed (SQLite locally) layer with two
 jobs: a read-through cache in front of the live resolve, and a log of every
@@ -174,13 +198,20 @@ See `.env.example` for the two env vars (`DATABASE_URL`, `ADMIN_STATS_TOKEN`).
 
 ## Permanent pages (the Archive)
 
+The resolver above is deliberately disposable — it re-fetches from
+scratch every time and remembers nothing public. But some meetings
+deserve a permanent, linkable, search-engine-indexed page of their own,
+the way a news article does — so a second, separate app (`archive/`)
+takes a successfully resolved meeting and gives it a real, permanent home
+at `redtaperecordings.com/m/{slug}`.
+
 This resolver stays deliberately stateless per meeting — the `meeting_resolutions`
 table above is a private cache/log, not a public archive. Permanent,
 SEO-indexed meeting pages live in a **separate app**, `archive/` (its own
 FastAPI service, own database, own deploy) — not grown into this resolver,
-so this app keeps its single job: no accounts, no public content pages,
-ever. See `archive/` for that app's own structure; this section covers only
-the handoff between the two.
+so this app keeps its single job: resolving, not hosting public content
+pages. See `archive/` for that app's own structure; this section covers
+only the handoff between the two.
 
 **Domain**: permanent pages are reachable at `redtaperecordings.com/m/{slug}`
 — same domain as everything else, for SEO and sharing consistency. This
@@ -239,19 +270,50 @@ existed.
 
 **Discoverability**: `GET /meetings` (proxied like `/m/*`) is a paginated,
 server-rendered index of every permanent page (`crud.list_pages()`,
-20/page) with a keyword search box and jurisdiction/date-range/language
-filters — all plain GET params, so results are shareable/bookmarkable URLs
-with no JS required. `GET /sitemap.xml` and `GET /robots.txt` (the latter
-lives on the resolver, not proxied, since `robots.txt` has to be at the
-domain root) give search engines an actual crawl path to `/m/{slug}` pages,
-which previously had none — `robots.txt` also disallows `/meeting` (the
-ephemeral resolver page) so it doesn't compete with the permanent version
-of the same content once one exists. v1 keyword search covers title and
-jurisdiction only, via a portable `.ilike()` — not full transcript-body
-text, which needs a materialized search column and is tracked as a
-follow-up in `BACKLOG.md`.
+20/page) with a search box and jurisdiction/date-range/has-transcript/
+has-agenda filters — all plain GET params, so results are
+shareable/bookmarkable URLs with no JS required. `GET /sitemap.xml` and
+`GET /robots.txt` (the latter lives on the resolver, not proxied, since
+`robots.txt` has to be at the domain root) give search engines an actual
+crawl path to `/m/{slug}` pages, which previously had none —
+`robots.txt` also disallows `/meeting` (the ephemeral resolver page) so
+it doesn't compete with the permanent version of the same content once
+one exists.
+
+**Search** covers title, jurisdiction, agenda item text, and the default
+transcript version's segment text — not just title/jurisdiction like the
+original v1. Two modes, chosen by an "exact"/"fuzzy" checkbox in the UI
+(`fuzzy=true` query param), exact by default:
+- **Exact** (default, faster): a plain case-insensitive substring match
+  against everything above, concatenated. No per-word computation, so
+  this is the cheap path a search that doesn't need typo tolerance should
+  use.
+- **Fuzzy**: tokenizes that same text into words and matches each query
+  term against real transcript words within a small edit-distance
+  (typo tolerance) — so a query for "traffic" still finds a transcript
+  that says "trafic" or "traffiq" (real transcription errors, not
+  hypothetical), where exact substring search would silently miss it.
+
+Both modes run entirely in Python, at query time, over whatever
+`list_pages()`'s own DB query already returned — see `archive/utils/
+search.py` and the docstring on `list_pages()` for the full reasoning.
+Deliberately **not** what this eventually needs at real scale: a
+materialized/indexed search column (e.g. Postgres trigram search over a
+`tsvector`-style column, populated at ingest time) instead of scanning
+every candidate meeting's JSON on every search request. Fine today at a
+few dozen meetings; tracked as a real follow-up (not a hypothetical one)
+in `BACKLOG.md`, including what populating that column would look like
+without adding a job queue (piggybacking on the ingest write that's
+already backgrounded via FastAPI's `BackgroundTasks`, not blocking
+`/api/resolve`'s response — see "Push, after resolving" above) and what a
+one-time backfill for already-archived meetings would need.
 
 ## Supported platforms
+
+Most local governments don't build their own video/meeting-minutes
+website — they buy one from a handful of vendors, so a fairly small
+number of platforms cover a huge number of cities and counties. This app
+supports a platform once, and every city on that platform works.
 
 One `AssetFinder` per **platform**, not per city — cities on the same
 platform share the same page/API structure. Detection lives in
@@ -287,6 +349,8 @@ detected but link out rather than attempting to display content, since
 nothing can be extracted without real codec-level decoding.
 
 ## Frontend features (`app/static/player.js`)
+
+What you can actually do once a meeting page has loaded:
 
 - **Video player**: hls.js for `.m3u8` (Safari falls back to native HLS),
   locked to a 16:9 box so it never collapses to a tiny default size, with a
@@ -331,6 +395,10 @@ nothing can be extracted without real codec-level decoding.
   via the token-gated `GET /admin/problem-reports`.
 
 ## Project structure
+
+A map of the codebase, for orientation — two independent apps
+(`app/`, the resolver, and `archive/`, permanent pages), each with its
+own routes, database, and frontend.
 
 ```
 app/
@@ -403,6 +471,9 @@ archive/
                            list_recent_pages_for_feed() (backs /feed.xml)
   utils/
     slugify.py               slug generation
+    search.py                 keyword matching for list_pages() -- exact
+                           (substring) and fuzzy (bounded edit-distance
+                           per word) search, see "Search" above
     transcript_export.py     to_txt()/to_srt() formatters, backs
                            /m/{slug}/transcript.{txt,srt}
     url_normalize.py         deliberate duplicate of
@@ -427,7 +498,9 @@ archive/
 
 ## Known limitations
 
-See `BACKLOG.md` for the full, up-to-date list of open issues (completed
+Nothing here is finished — this is a fast-moving project with real,
+tracked gaps rather than silently-assumed correctness. See `BACKLOG.md`
+for the full, up-to-date list of open issues (completed
 fixes and their verification history have moved to `BACKLOG_DONE.md`,
 linked from there) — a few caption paths are shape-verified but not
 content-verified pending a real example, some metadata (Alexandria VA

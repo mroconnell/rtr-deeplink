@@ -1,14 +1,18 @@
 # rtr-deeplink
 
 A deliberately lean rebuild of the video+transcript+deep-link feature from
-`rtr-transcripts` (the round-1 "Red Tape Recordings" MVP). No accounts, no
-auth, no background job queue — given a meeting URL, resolve its video and
-transcript on demand and render them together. There's now an optional
-database (`app/db/`) for caching resolves and admin reporting, added
-deliberately narrow in scope to avoid reintroducing round 1's auth/Mongo/
-NextAuth complexity — it holds no user-facing state, and the app still works
+`rtr-transcripts` (the round-1 "Red Tape Recordings" MVP). No background
+job queue — given a meeting URL, resolve its video and transcript on
+demand and render them together. There's now an optional database
+(`app/db/`) for caching resolves and admin reporting, added deliberately
+narrow in scope to avoid reintroducing round 1's Mongo/NextAuth
+complexity — it holds no user-facing state today, and the app still works
 with zero persistence if it's unset or unreachable. See README's
-"Caching and reporting" section for how it works.
+"Caching and reporting" section for how it works. Accounts are on the
+roadmap (see BACKLOG.md's "Archive roadmap" section) — round 1's mistake
+was building full auth/accounts before validating the core deep-link
+feature, not that accounts themselves were wrong, so revisit this
+section's framing once that work actually starts.
 
 **See `README.md` for architecture, the resolve flow, supported platforms,
 and frontend features.** This file covers conventions and context specific
@@ -119,10 +123,13 @@ under everything else. This repo extracts and fixes just that part.
   `Base.metadata.create_all()` on every startup, so a new table (e.g.
   `ProblemReport`, added 2026-08-08) just appears in prod Postgres the
   next time the service restarts/deploys. No migration framework in this
-  repo on purpose, matching the "no accounts, no auth, no background job
-  queue" minimalism — revisit only if a real schema *change* (not just
-  addition) is ever needed, since `create_all` can't alter existing
-  tables.
+  repo on purpose, matching its overall minimalism so far — revisit once
+  a real schema *change* (not just addition) is actually needed, since
+  `create_all` can't alter existing tables. Accounts (see BACKLOG.md's
+  "Archive roadmap") and a materialized search column (see BACKLOG.md's
+  "Search" entry) are the two known future changes that will actually
+  force this — not hypothetical, worth picking a real migration tool
+  (e.g. Alembic) before either lands rather than working around it again.
 - **`app/db/outcomes.py` classifies reporting outcomes from real signal on
   the row where one exists, and falls back to substring-matching
   `transcript_warnings` only where it doesn't.** `agenda_fallback` is

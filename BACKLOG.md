@@ -7,6 +7,47 @@ where relevant.
 
 ## Bugs
 
+- **Real bug, confirmed live (2026-08-08): a permanent Archive page can be
+  permanently stuck with a stale, wrong-shaped `TranscriptVersion` from a
+  since-removed code path, and `/admin/recheck-archive-page` can't fix it.**
+  `redtaperecordings.com/m/yountville-ca-2026-04-21-apr-21-2026-town-council-budget-workshop`
+  shows a "Transcript" section containing 10 rows that are actually a copy
+  of the meeting's agenda items, with the warning "No transcript available
+  for this event — showing agenda-item chapter markers instead, which
+  still deep-link to the right moment." Neither that message nor the
+  "copy agenda into segments" behavior it implies exist anywhere in the
+  current codebase — confirmed via `git log --all -S"showing agenda-item
+  chapter markers instead"`, which only finds it in two commits on the
+  `claude-backlog/round-1` branch, the second of which (`231c5fc`, "Add
+  dedicated Agenda section, separate from transcript") replaced it with
+  today's design: `agenda_items` kept in its own field, *never* folded
+  into `segments` (every current adapter's resolve() comments say this
+  explicitly). So this page was pushed by an old version of the resolver,
+  before that refactor, and has sat unrefreshed since.
+
+  Unlike the Emporia/Fountain Valley cases in
+  [BACKLOG_DONE.md](BACKLOG_DONE.md), `/admin/recheck-archive-page` can't
+  fix this one: `ingest_resolution()` (`archive/db/crud.py`) only ever
+  *adds* a new `TranscriptVersion` `if segments:` — a fresh resolve today
+  correctly finds real `agenda_items` but empty `segments` for this
+  meeting (matching current, correct behavior), so nothing about the
+  existing bad default version ever gets touched, updated, or demoted.
+  The stale version is permanently stuck as `is_default=True` until
+  something explicitly deals with it.
+
+  Needs a decision, not just a mechanical fix: should a recheck that
+  finds real `agenda_items` but no `segments` actively demote/replace an
+  existing default `TranscriptVersion` that also has no real segments
+  (i.e., was itself never a genuine transcript)? That's a real behavior
+  change to `ingest_resolution()`, not just a bug fix, since today it's
+  deliberately append-only / never-delete for transcript history. Simpler
+  alternative: a narrow one-off admin action to directly delete/demote a
+  specific bad `TranscriptVersion` row by id, without generalizing the
+  ingest logic at all — smaller blast radius, doesn't touch the
+  version-history-preservation design for the (presumably rare) legacy-
+  data case. No other page has been checked for the same stale-shape
+  issue; worth a quick audit across all 12 current permanent pages before
+  deciding which fix is worth building.
 - **Archive passive recheck cadence should depend on transcript quality,
   not just page age.** Now that `GET /admin/recheck-archive-page` exists
   for fixing a stale page on demand (see
@@ -204,11 +245,6 @@ auditing it (2026-08-08), code-verified but not all live-triggered yet:
   custom-domain instance like this one gets detected, (2) figure out
   the Telerik modal's actual target URL pattern and whether
   `LegistarAssetFinder` needs a second video-discovery strategy for it.
-- **Swagit `#transcript-fragments` unverified.** The page JS references it
-  for a real free-text transcript feature, but it's never been populated in
-  any sample checked (only `.playerControl` chapter markers were present).
-  `SwagitAssetFinder` handles it defensively but it's unverified. Needs a
-  real example.
 - **Swagit custom-domain embeds unverified** (e.g. `dublin.ca.gov/
   swagit-video-player?video_id=...`). `detect_platform` recognizes the URL
   shape, but the one sample URL 404'd — parsing has only been verified
@@ -295,3 +331,37 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 - **Video highlight clips + algorithmic feed** — distant future. Flagged
   tension: this app's "never host video, only embed" principle directly
   conflicts with hosting/serving clip segments.
+- **Search: move to a materialized/indexed column once the Archive
+  outgrows a Python-side scan.** Built 2026-08-08 (see
+  [BACKLOG_DONE.md](BACKLOG_DONE.md)): `/meetings` search (title,
+  jurisdiction, agenda text, transcript text — exact and fuzzy/typo-
+  tolerant modes, see `archive/utils/search.py`) currently works by
+  reading each candidate meeting's already-stored JSON and matching in
+  Python at query time, deliberately, to avoid two things: a schema
+  change (this repo has no migration tool — `Base.metadata.create_all()`
+  only creates *new* tables, never alters an existing one, so adding a
+  column to the already-live `MeetingPage`/`TranscriptVersion` tables in
+  production needs either introducing real migration tooling, e.g.
+  Alembic, or one carefully-run manual `ALTER TABLE`) and a Postgres-only
+  extension (trigram search needs `pg_trgm`, which the local SQLite dev
+  fallback has no equivalent for — would make dev and prod behave
+  differently for the same query, which this codebase avoids on
+  principle elsewhere too).
+
+  Fine at today's scale (dozens of meetings); the real fix once the
+  Archive grows into the hundreds/thousands is a materialized, indexed
+  search column — a `tsvector`-backed column with a GIN trigram index on
+  Postgres, populated at ingest time instead of recomputed per search
+  request. Two things worth deciding when that becomes real, not before:
+  - **No new job queue needed to populate it.** `archive_client.push()`
+    already runs via FastAPI's `BackgroundTasks`, fired after
+    `/api/resolve`'s response goes back to the browser (see "Push, after
+    resolving" in README.md) — computing and storing the search column
+    would just be one more step inside that same already-backgrounded
+    DB write, not a new async system.
+  - **Existing archived meetings would need a one-time backfill script**
+    to populate the new column retroactively (nothing populates it for
+    meetings ingested before the column existed) — a single one-off run,
+    not an ongoing concern, similar in spirit to
+    `/admin/recheck-archive-page`'s existing per-meeting refresh but
+    needing to run once across every page rather than on demand for one.

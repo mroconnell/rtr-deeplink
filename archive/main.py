@@ -166,15 +166,19 @@ async def meetings_index(
     jurisdiction: Optional[str] = None,
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
-    language: Optional[str] = None,
+    fuzzy: bool = False,
+    has_agenda: Optional[bool] = None,
+    has_transcript: Optional[bool] = None,
 ):
     result = await crud.list_pages(
         page=page,
         jurisdiction=jurisdiction,
         date_from=date_from,
         date_to=date_to,
-        language=language,
+        has_agenda=has_agenda,
+        has_transcript=has_transcript,
         keyword=q,
+        fuzzy=fuzzy,
     )
     return templates.TemplateResponse(
         request,
@@ -185,7 +189,9 @@ async def meetings_index(
             "jurisdiction": jurisdiction or "",
             "date_from": date_from or "",
             "date_to": date_to or "",
-            "language": language or "",
+            "fuzzy": fuzzy,
+            "has_agenda": has_agenda,
+            "has_transcript": has_transcript,
         },
     )
 

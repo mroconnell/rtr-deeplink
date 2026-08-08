@@ -2,8 +2,9 @@ import hashlib
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, select
 
+from ..utils.search import build_corpus, matches, tokenize
 from ..utils.slugify import build_base_slug, random_suffix
 from ..utils.url_normalize import normalize_url
 from .engine import async_session
@@ -242,19 +243,32 @@ async def list_pages(
     jurisdiction: Optional[str] = None,
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
-    language: Optional[str] = None,
+    has_agenda: Optional[bool] = None,
+    has_transcript: Optional[bool] = None,
     keyword: Optional[str] = None,
+    fuzzy: bool = False,
 ) -> dict:
     """Paginated listing for the /meetings index page. Filters and the
     keyword search box narrow this same query rather than being a separate
     feature (per the backlog note this was scoped from).
 
-    v1 keyword search covers title and jurisdiction only, via a portable
-    .ilike() (works on both Postgres and the local SQLite fallback) --
-    deliberately not full transcript-body text search. `segments` live as
-    JSON per TranscriptVersion, not a plain searchable column, so matching
-    inside transcript content is a real follow-up (materialized tsvector or
-    similar), not something to silently half-implement here.
+    Keyword search covers title, jurisdiction, agenda item text, and the
+    default transcript version's segment text -- see
+    `archive/utils/search.py`. No search index, no materialized column:
+    matching runs in Python, at query time, over whatever this function's
+    own SQL query already returned -- deliberately not the "real" fix
+    (Postgres trigram search + a materialized/indexed text column) that
+    full transcript-body search eventually needs at real scale. Fine for
+    the Archive's current size (dozens of meetings); see BACKLOG.md
+    ("Search: move to a materialized/indexed column at scale") for what
+    outgrowing this looks like and why it isn't built that way now.
+    `jurisdiction`/`date_from`/`date_to`/`has_transcript` still filter in
+    SQL first (cheap, and `has_transcript` needs no JSON at all), so a
+    keyword-less, agenda-less browse of the page never fetches transcript
+    JSON it doesn't need. `has_agenda` and `keyword` can only be evaluated
+    once agenda/transcript content is in hand, so pagination for those
+    happens in Python, over the SQL-filtered candidate set, not via
+    LIMIT/OFFSET.
 
     `date` is stored as an ISO "YYYY-MM-DD" string, not a Date column --
     lexicographic comparison on that format matches chronological order, so
@@ -270,49 +284,77 @@ async def list_pages(
         conditions.append(MeetingPage.date >= date_from)
     if date_to:
         conditions.append(MeetingPage.date <= date_to)
-    if keyword:
-        pattern = f"%{keyword}%"
-        conditions.append(or_(MeetingPage.title.ilike(pattern), MeetingPage.jurisdiction.ilike(pattern)))
+    if has_transcript is True:
+        conditions.append(TranscriptVersion.id.is_not(None))
+    elif has_transcript is False:
+        conditions.append(TranscriptVersion.id.is_(None))
 
-    def _apply_filters(stmt):
-        # Always outer-joined (not just when `language` is set) since the
-        # listing also displays each page's default transcript language --
-        # one query serves both the filter and the display data.
-        stmt = stmt.outerjoin(
+    # segments only ever pulled from the DB when a keyword search is
+    # actually running -- otherwise a plain browse/filter of the listing
+    # would drag every meeting's full transcript JSON over the wire for
+    # nothing (Dublin's real 36k-segment transcript alone is well over a
+    # megabyte of JSON).
+    columns = [MeetingPage, TranscriptVersion.language, TranscriptVersion.id]
+    if keyword:
+        columns.append(TranscriptVersion.segments)
+
+    stmt = (
+        select(*columns)
+        .outerjoin(
             TranscriptVersion,
             and_(TranscriptVersion.meeting_page_id == MeetingPage.id, TranscriptVersion.is_default.is_(True)),
         )
-        if conditions:
-            stmt = stmt.where(and_(*conditions))
-        if language:
-            stmt = stmt.where(TranscriptVersion.language == language)
-        return stmt
+        .order_by(MeetingPage.created_at.desc())
+    )
+    if conditions:
+        stmt = stmt.where(and_(*conditions))
 
     async with async_session() as session:
-        count_stmt = _apply_filters(select(func.count(MeetingPage.id.distinct())))
-        total = (await session.execute(count_stmt)).scalar_one()
+        rows = (await session.execute(stmt)).all()
 
-        list_stmt = (
-            _apply_filters(select(MeetingPage, TranscriptVersion.language, TranscriptVersion.id))
-            .order_by(MeetingPage.created_at.desc())
-            .limit(page_size)
-            .offset((page - 1) * page_size)
+    def _matches_page(mp: MeetingPage, segments: Optional[list]) -> bool:
+        if has_agenda is True and not mp.agenda_items:
+            return False
+        if has_agenda is False and mp.agenda_items:
+            return False
+        if not keyword:
+            return True
+        corpus = build_corpus(
+            mp.title or "",
+            mp.jurisdiction or "",
+            " ".join(item.get("text", "") for item in (mp.agenda_items or [])),
+            " ".join(seg.get("text", "") for seg in (segments or [])),
         )
-        rows = (await session.execute(list_stmt)).all()
+        return matches(keyword, corpus, tokenize(corpus) if fuzzy else set(), fuzzy)
 
+    filtered = []
+    for row in rows:
+        if keyword:
+            mp, lang, version_id, segments = row
+        else:
+            mp, lang, version_id = row
+            segments = None
+        if _matches_page(mp, segments):
+            filtered.append({"mp": mp, "lang": lang, "version_id": version_id})
+
+    total = len(filtered)
     total_pages = max(1, (total + page_size - 1) // page_size)
+    start = (page - 1) * page_size
+    page_rows = filtered[start:start + page_size]
+
     return {
         "pages": [
             {
-                "slug": mp.slug,
-                "title": mp.title,
-                "date": mp.date,
-                "jurisdiction": mp.jurisdiction,
-                "platform": mp.platform,
-                "language": lang,
-                "has_transcript": version_id is not None,
+                "slug": r["mp"].slug,
+                "title": r["mp"].title,
+                "date": r["mp"].date,
+                "jurisdiction": r["mp"].jurisdiction,
+                "platform": r["mp"].platform,
+                "language": r["lang"],
+                "has_transcript": r["version_id"] is not None,
+                "has_agenda": bool(r["mp"].agenda_items),
             }
-            for mp, lang, version_id in rows
+            for r in page_rows
         ],
         "total": total,
         "page": page,

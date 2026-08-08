@@ -1193,3 +1193,120 @@ changelog of task titles.
   needed a `/videos/{id}/player` 404 route added to their existing mocks,
   since none of their fixtures have a video either and would otherwise
   now trigger the new fallback request unmocked.
+
+- **[Done 2026-08-08] Swagit and CA Legislature never ran language
+  detection, so real English transcripts showed no "en" on the
+  `/meetings` listing.** User-reported from the Browse Meetings page:
+  "Jan 13, 2026 City Council" (Dublin, CA, Swagit) showed a bare
+  jurisdiction/date with no language and no "agenda only" tag despite
+  clearly having a real transcript. Root cause, confirmed by reading
+  every adapter: Granicus and CivicClerk both call content-based language
+  detection (never trusting a source `srclang` label — see the Simi
+  Valley Spanish-mislabeled-`en` finding elsewhere in this file) and pass
+  `transcript_language` through; `SwagitAssetFinder` and
+  `CaliforniaLegislatureAssetFinder` never called it at all, leaving the
+  field permanently `None` for every meeting on either platform,
+  regardless of transcript quality. Masked on each individual meeting
+  page because `archive/main.py`'s `page_lang` defaults to `"en"` when
+  the stored value is falsy (`(active_version["language"] if
+  active_version else None) or "en"`) — correct for the `<html lang>`
+  attribute's own purpose, but it meant the gap was invisible anywhere
+  except the `/meetings` list, which shows the raw stored value with no
+  such fallback.
+
+  Incidentally confirms a previously-"unverified" path for real: Dublin's
+  Jan 13, 2026 meeting (Swagit clip 372020) has a genuine 36,072-cue
+  English transcript via `#transcript-fragments a[data-ts]` (one word per
+  cue) — `SwagitAssetFinder`'s class docstring and
+  [BACKLOG.md](BACKLOG.md) both said this DOM path had "never been
+  populated in any sample checked." It's real; that unverified note is
+  removed. Separately confirmed a real Senate floor session
+  (`senate.ca.gov/media/senate-floor-session-20260806`, 3,084 cues) has
+  the same missing-language gap on the CA Legislature side.
+
+  **Fix**: extracted the two byte-identical `_detect_cue_language`
+  copies already duplicated across `granicus.py` and `civicclerk.py` into
+  one shared `detect_language_from_texts()` in `app/utils/vtt_parser.py`
+  (took a plain `Iterable[str]` rather than a cue-dict shape, since
+  Swagit/CA Legislature's segments are already `TranscriptSegment`
+  objects, not raw dicts, at the point language needs detecting) — three-
+  strikes-you-extract, not premature, since this was about to become a
+  fourth copy. `swagit.py` now detects language once from whichever real
+  segments it found (`#transcript-fragments` or the caption-file
+  fallback); `ca_legislature.py` detects it for both its structured-cue
+  and unstructured-text-fallback paths.
+
+  **Verified live end-to-end** against both real meetings that surfaced
+  the gap: Dublin clip 372020 (`transcript_language: "en"`, 36,072
+  segments) and the Senate floor session (`transcript_language: "en"`,
+  3,084 segments, real `.m3u8` video URL too). 87/87 tests pass (85
+  existing + 2 new: `test_swagit.py::
+  test_resolve_detects_language_from_transcript_fragments` and
+  `test_ca_legislature.py::test_resolve_detects_language_from_real_captions`,
+  both synthetic — coherent English sentences fed through the same
+  `#transcript-fragments`/caption-file code paths, pinning that language
+  detection actually fires and gets wired through to
+  `ResolvedMeeting.transcript_language`). Only fixes future resolves —
+  the two real meetings' existing permanent Archive pages still need the
+  same `/admin/recheck-archive-page` treatment as Emporia/Fountain Valley
+  before this shows up live on `/meetings`.
+
+  While auditing the `/meetings` listing for this, found a third,
+  structurally different bug on the same page (a permanent page frozen
+  with output from a since-removed code path, not fixable by a recheck at
+  all) — kept as its own open item in [BACKLOG.md](BACKLOG.md) rather than
+  folded in here, since the fix shape is completely different.
+
+- **[Done 2026-08-08] `/meetings` search now covers transcript/agenda
+  text, with an exact/fuzzy toggle, replacing the old title/jurisdiction-
+  only keyword box.** User-requested: transcription errors mean a
+  literal word like "traffic" can show up in a real transcript as
+  "trafic" or "traffiq", so a plain substring search would silently miss
+  real matches. Also dropped the `language` text-filter field per the
+  request and added `has_transcript`/`has_agenda` checkboxes instead —
+  more directly useful than a free-text language guess, and fixes real
+  cases already found in this session (Yountville's stale/misleading
+  transcript-shaped agenda, the Emporia/Fountain Valley pages before
+  their admin-recheck refresh) being invisible to filter on before.
+
+  **Design decision, made deliberately, not a placeholder:** no schema
+  change, no Postgres-only extension. `archive/utils/search.py` does
+  exact (plain substring) and fuzzy (bounded Levenshtein per word,
+  threshold scaled by word length: 0 for <=4 chars, 1 for 5-7, 2 for 8+)
+  matching in pure Python, over text read from the same JSON columns
+  that already exist — no new column, so nothing to migrate. Exact is
+  the default (per the user's explicit ask, "that way when searches run,
+  they'll default to the faster one") since it skips per-word distance
+  computation entirely. This is a real, acknowledged scale limit, not an
+  oversight — see the new "Search: move to a materialized/indexed
+  column" entry in [BACKLOG.md](BACKLOG.md) for what outgrowing it looks
+  like and why it isn't built that way yet.
+
+  **`archive/db/crud.py`'s `list_pages()` rewritten**: `has_transcript`
+  still filters in SQL (cheap, no JSON involved — it's just "does a
+  default `TranscriptVersion` row exist"). Transcript `segments` are only
+  ever pulled from the DB when a keyword search is actually running,
+  so a plain filter-only browse of `/meetings` never drags every
+  meeting's full transcript JSON over the wire for nothing (Dublin's
+  real 36k-segment transcript alone is over a megabyte of JSON — see the
+  Swagit language-detection entry above). `has_agenda` and keyword
+  matching can only be evaluated once content is in hand, so pagination
+  for those runs in Python over the SQL-filtered candidate set instead
+  of `LIMIT`/`OFFSET` — a real behavior change from before, fine at
+  today's scale, called out explicitly in the function's own docstring
+  for whoever touches this next.
+
+  **Verified**: `tests/test_archive_search.py` (5 new tests, pure
+  functions, no DB/mocking needed) pins the exact-vs-fuzzy behavior
+  directly, including the motivating "traffic"/"trafic"/"traffiq"
+  example and that short words (<=4 chars) require an exact token match
+  rather than fuzzing into unrelated words ("cat" must not match "car").
+  End-to-end verified live against a local archive service + seeded
+  SQLite data (not synthetic-only): exact search for "traffic" found a
+  real transcript containing it, the same search for the typo "trafic"
+  correctly found nothing in exact mode and correctly found it in fuzzy
+  mode, `has_agenda`/`has_transcript` checkboxes correctly filtered a
+  two-meeting seed set, and the rendered `/meetings` page (screenshotted)
+  showed both checkboxes, the language/​"agenda only" badges, and
+  filter-state persistence through a real "Apply filters" submit — not
+  just checked via the Python API. 92/92 tests pass.

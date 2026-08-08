@@ -13,13 +13,18 @@
     </p>
 
     <form method="get" action="/meetings" class="meeting-search-form">
-      <input type="text" name="q" value="{{ q }}" placeholder="Search title or jurisdiction&hellip;" aria-label="Search meetings">
+      <input type="text" name="q" value="{{ q }}" placeholder="Search title, jurisdiction, agenda, or transcript&hellip;" aria-label="Search meetings">
+      <label class="fuzzy-toggle">
+        <input type="checkbox" name="fuzzy" value="true"{% if fuzzy %} checked{% endif %}>
+        Fuzzy (tolerates transcript typos, slower)
+      </label>
       <button type="submit" class="cassette-btn">Search</button>
     </form>
-    <details class="meeting-filters"{% if jurisdiction or date_from or date_to or language %} open{% endif %}>
+    <details class="meeting-filters"{% if jurisdiction or date_from or date_to or has_agenda or has_transcript %} open{% endif %}>
       <summary>Filters</summary>
       <form method="get" action="/meetings" class="meeting-filters-form">
         <input type="hidden" name="q" value="{{ q }}">
+        {% if fuzzy %}<input type="hidden" name="fuzzy" value="true">{% endif %}
         <label>Jurisdiction
           <input type="text" name="jurisdiction" value="{{ jurisdiction }}" placeholder="e.g. San Diego">
         </label>
@@ -29,11 +34,16 @@
         <label>To
           <input type="date" name="date_to" value="{{ date_to }}">
         </label>
-        <label>Language
-          <input type="text" name="language" value="{{ language }}" placeholder="e.g. en" maxlength="10">
+        <label class="checkbox-filter">
+          <input type="checkbox" name="has_transcript" value="true"{% if has_transcript %} checked{% endif %}>
+          Has transcript
+        </label>
+        <label class="checkbox-filter">
+          <input type="checkbox" name="has_agenda" value="true"{% if has_agenda %} checked{% endif %}>
+          Has agenda
         </label>
         <button type="submit" class="cassette-btn">Apply filters</button>
-        {% if jurisdiction or date_from or date_to or language or q %}
+        {% if jurisdiction or date_from or date_to or has_agenda or has_transcript or q %}
         <a href="/meetings" class="clear-filters">Clear all</a>
         {% endif %}
       </form>
@@ -48,14 +58,14 @@
           {%- if m.jurisdiction %}{{ m.jurisdiction }}{% endif -%}
           {%- if m.date %} &middot; {{ m.date }}{% endif -%}
           {%- if m.language %} &middot; {{ m.language }}{% endif -%}
-          {%- if not m.has_transcript %} &middot; agenda only{% endif -%}
+          {%- if not m.has_transcript and m.has_agenda %} &middot; agenda only{% endif -%}
         </span>
       </div>
       {% endfor %}
     </div>
 
     <nav class="pagination" aria-label="Pagination">
-      {% set qs = "q=%s&jurisdiction=%s&date_from=%s&date_to=%s&language=%s"|format(q, jurisdiction, date_from, date_to, language) %}
+      {% set qs = "q=%s&jurisdiction=%s&date_from=%s&date_to=%s&fuzzy=%s&has_agenda=%s&has_transcript=%s"|format(q, jurisdiction, date_from, date_to, fuzzy|string if fuzzy else "", has_agenda|string if has_agenda else "", has_transcript|string if has_transcript else "") %}
       {% if page > 1 %}
       <a href="/meetings?page={{ page - 1 }}&{{ qs }}">&larr; Previous</a>
       {% endif %}

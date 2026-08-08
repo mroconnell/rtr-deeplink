@@ -558,6 +558,30 @@ mark.search-match.current { background: #f97316; color: #fff; }
   color: var(--fg);
   font-size: 0.9rem;
 }
+.meeting-filters-form label.checkbox-filter {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+}
+.meeting-filters-form input[type="checkbox"] {
+  width: auto;
+  padding: 0;
+  border: none;
+  accent-color: var(--accent);
+}
+.meeting-search-form .fuzzy-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: none;
+  font-size: 0.8rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.meeting-search-form .fuzzy-toggle input[type="checkbox"] {
+  width: auto;
+  accent-color: var(--accent);
+}
 .clear-filters {
   color: var(--muted);
   font-size: 0.85rem;
