@@ -7,7 +7,7 @@ from typing import List, Optional
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Header, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -120,5 +120,49 @@ async def meeting_page(request: Request, slug: str, version: Optional[int] = Non
         {
             "page": page,
             "active_version": active_version,
+            # The <html lang> attribute should reflect what's actually on
+            # the page, not always English -- a transcript's real language
+            # comes from its TranscriptVersion, not a sitewide constant.
+            "page_lang": (active_version["language"] if active_version else None) or "en",
         },
     )
+
+
+@app.get("/meetings")
+async def meetings_index(
+    request: Request,
+    page: int = 1,
+    q: Optional[str] = None,
+    jurisdiction: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    language: Optional[str] = None,
+):
+    result = await crud.list_pages(
+        page=page,
+        jurisdiction=jurisdiction,
+        date_from=date_from,
+        date_to=date_to,
+        language=language,
+        keyword=q,
+    )
+    return templates.TemplateResponse(
+        request,
+        "meeting_list.html",
+        {
+            **result,
+            "q": q or "",
+            "jurisdiction": jurisdiction or "",
+            "date_from": date_from or "",
+            "date_to": date_to or "",
+            "language": language or "",
+        },
+    )
+
+
+@app.get("/sitemap.xml")
+async def sitemap():
+    base = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
+    entries = await crud.list_all_page_slugs()
+    body = templates.get_template("sitemap.xml.jinja").render(base_url=base, entries=entries)
+    return Response(content=body, media_type="application/xml")

@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Browse meetings | Red Tape Recordings{% endblock %}
+{% block meta %}
+  <meta name="description" content="Browse {{ total }} archived public meetings with video and transcript.">
+{% endblock %}
+{% block content %}
+  <main class="meeting-list-page">
+    <h1>Browse meetings</h1>
+    <p class="subtitle">{{ total }} archived meeting{{ "s" if total != 1 else "" }}</p>
+
+    <form method="get" action="/meetings" class="meeting-search-form">
+      <input type="text" name="q" value="{{ q }}" placeholder="Search title or jurisdiction&hellip;" aria-label="Search meetings">
+      <button type="submit" class="cassette-btn">Search</button>
+    </form>
+    <details class="meeting-filters"{% if jurisdiction or date_from or date_to or language %} open{% endif %}>
+      <summary>Filters</summary>
+      <form method="get" action="/meetings" class="meeting-filters-form">
+        <input type="hidden" name="q" value="{{ q }}">
+        <label>Jurisdiction
+          <input type="text" name="jurisdiction" value="{{ jurisdiction }}" placeholder="e.g. San Diego">
+        </label>
+        <label>From
+          <input type="date" name="date_from" value="{{ date_from }}">
+        </label>
+        <label>To
+          <input type="date" name="date_to" value="{{ date_to }}">
+        </label>
+        <label>Language
+          <input type="text" name="language" value="{{ language }}" placeholder="e.g. en" maxlength="10">
+        </label>
+        <button type="submit" class="cassette-btn">Apply filters</button>
+        {% if jurisdiction or date_from or date_to or language or q %}
+        <a href="/meetings" class="clear-filters">Clear all</a>
+        {% endif %}
+      </form>
+    </details>
+
+    {% if pages %}
+    <div class="meeting-list">
+      {% for m in pages %}
+      <div class="calendar-candidate">
+        <a href="/m/{{ m.slug }}">{{ m.title or "Untitled meeting" }}</a>
+        <span class="calendar-candidate-date">
+          {%- if m.jurisdiction %}{{ m.jurisdiction }}{% endif -%}
+          {%- if m.date %} &middot; {{ m.date }}{% endif -%}
+          {%- if m.language %} &middot; {{ m.language }}{% endif -%}
+          {%- if not m.has_transcript %} &middot; agenda only{% endif -%}
+        </span>
+      </div>
+      {% endfor %}
+    </div>
+
+    <nav class="pagination" aria-label="Pagination">
+      {% set qs = "q=%s&jurisdiction=%s&date_from=%s&date_to=%s&language=%s"|format(q, jurisdiction, date_from, date_to, language) %}
+      {% if page > 1 %}
+      <a href="/meetings?page={{ page - 1 }}&{{ qs }}">&larr; Previous</a>
+      {% endif %}
+      <span class="pagination-status">Page {{ page }} of {{ total_pages }}</span>
+      {% if page < total_pages %}
+      <a href="/meetings?page={{ page + 1 }}&{{ qs }}">Next &rarr;</a>
+      {% endif %}
+    </nav>
+    {% else %}
+    <p class="subtitle">No meetings match those filters.</p>
+    {% endif %}
+  </main>
+{% endblock %}

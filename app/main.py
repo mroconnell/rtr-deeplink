@@ -299,6 +299,30 @@ async def archive_static_asset(path: str, request: Request):
     return await _proxy_to_archive(f"static/{path}", str(request.query_params))
 
 
+@app.get("/meetings")
+async def archive_meetings_index(request: Request):
+    return await _proxy_to_archive("meetings", str(request.query_params))
+
+
+@app.get("/sitemap.xml")
+async def archive_sitemap():
+    return await _proxy_to_archive("sitemap.xml", "")
+
+
+@app.get("/robots.txt")
+async def robots():
+    # /meeting (singular) is the ephemeral resolver page -- once a URL is
+    # archived, /m/{slug} is the canonical version, so keeping /meeting?url=
+    # variants out of the index avoids thin/duplicate-content pages
+    # competing with the permanent ones for the same query.
+    lines = [
+        "User-agent: *",
+        "Disallow: /meeting",
+        "Sitemap: https://redtaperecordings.com/sitemap.xml",
+    ]
+    return Response(content="\n".join(lines) + "\n", media_type="text/plain")
+
+
 @app.get("/about")
 async def about(request: Request):
     return templates.TemplateResponse(request, "about.html", {})

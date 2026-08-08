@@ -1,7 +1,7 @@
 import hashlib
 from typing import Any, Optional
 
-from sqlalchemy import select
+from sqlalchemy import and_, func, or_, select
 
 from ..utils.slugify import build_base_slug, random_suffix
 from ..utils.url_normalize import normalize_url
@@ -220,3 +220,101 @@ async def get_page_by_slug(slug: str) -> Optional[dict]:
                 for v in versions
             ],
         }
+
+
+async def list_pages(
+    *,
+    page: int = 1,
+    page_size: int = 20,
+    jurisdiction: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    language: Optional[str] = None,
+    keyword: Optional[str] = None,
+) -> dict:
+    """Paginated listing for the /meetings index page. Filters and the
+    keyword search box narrow this same query rather than being a separate
+    feature (per the backlog note this was scoped from).
+
+    v1 keyword search covers title and jurisdiction only, via a portable
+    .ilike() (works on both Postgres and the local SQLite fallback) --
+    deliberately not full transcript-body text search. `segments` live as
+    JSON per TranscriptVersion, not a plain searchable column, so matching
+    inside transcript content is a real follow-up (materialized tsvector or
+    similar), not something to silently half-implement here.
+
+    `date` is stored as an ISO "YYYY-MM-DD" string, not a Date column --
+    lexicographic comparison on that format matches chronological order, so
+    plain >=/<= works for the date-range filter without a schema change.
+    """
+    page = max(1, page)
+    page_size = max(1, min(page_size, 100))
+
+    conditions = []
+    if jurisdiction:
+        conditions.append(MeetingPage.jurisdiction.ilike(f"%{jurisdiction}%"))
+    if date_from:
+        conditions.append(MeetingPage.date >= date_from)
+    if date_to:
+        conditions.append(MeetingPage.date <= date_to)
+    if keyword:
+        pattern = f"%{keyword}%"
+        conditions.append(or_(MeetingPage.title.ilike(pattern), MeetingPage.jurisdiction.ilike(pattern)))
+
+    def _apply_filters(stmt):
+        # Always outer-joined (not just when `language` is set) since the
+        # listing also displays each page's default transcript language --
+        # one query serves both the filter and the display data.
+        stmt = stmt.outerjoin(
+            TranscriptVersion,
+            and_(TranscriptVersion.meeting_page_id == MeetingPage.id, TranscriptVersion.is_default.is_(True)),
+        )
+        if conditions:
+            stmt = stmt.where(and_(*conditions))
+        if language:
+            stmt = stmt.where(TranscriptVersion.language == language)
+        return stmt
+
+    async with async_session() as session:
+        count_stmt = _apply_filters(select(func.count(MeetingPage.id.distinct())))
+        total = (await session.execute(count_stmt)).scalar_one()
+
+        list_stmt = (
+            _apply_filters(select(MeetingPage, TranscriptVersion.language, TranscriptVersion.id))
+            .order_by(MeetingPage.created_at.desc())
+            .limit(page_size)
+            .offset((page - 1) * page_size)
+        )
+        rows = (await session.execute(list_stmt)).all()
+
+    total_pages = max(1, (total + page_size - 1) // page_size)
+    return {
+        "pages": [
+            {
+                "slug": mp.slug,
+                "title": mp.title,
+                "date": mp.date,
+                "jurisdiction": mp.jurisdiction,
+                "platform": mp.platform,
+                "language": lang,
+                "has_transcript": version_id is not None,
+            }
+            for mp, lang, version_id in rows
+        ],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": total_pages,
+    }
+
+
+async def list_all_page_slugs() -> list[dict]:
+    """Every page's slug + updated_at, unpaginated -- for sitemap.xml.
+    Fine as a single query at hundreds/thousands of rows; revisit (batching,
+    a sitemap index + sub-sitemaps) only once actually approaching the
+    ~50k-URL point where Google expects that split."""
+    async with async_session() as session:
+        rows = (
+            await session.execute(select(MeetingPage.slug, MeetingPage.updated_at).order_by(MeetingPage.updated_at.desc()))
+        ).all()
+    return [{"slug": slug, "updated_at": updated_at} for slug, updated_at in rows]
