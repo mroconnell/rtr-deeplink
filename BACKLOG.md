@@ -702,3 +702,68 @@ one item below is resolved as a result.
   UI — `.report-problem-status` has the exact same ad hoc colors/sizing
   it was copied from, so fixing this well might mean fixing both
   together rather than just the newer one.
+- **Job priority — needed before the worker can auto-generate its own
+  jobs (see the next item).** Right now `claim_next_chunk()`
+  (`archive/db/crud.py`) claims strictly oldest-first: `.order_by(
+  TranscriptionJob.created_at.asc())`, no other ordering signal exists.
+  That's fine while every job comes from a real person clicking
+  "Transcribe this meeting," but breaks down the moment anything else
+  can create jobs (self-generated batch jobs, see below) — a real
+  visitor's request would land at the back of the queue behind however
+  much auto-generated work got queued first, which is exactly backwards.
+  **Plan**: add a `priority` column to `TranscriptionJob`
+  (`archive/db/models.py`), and have `claim_next_chunk()` order by
+  `priority.desc(), created_at.asc()` instead of `created_at.asc()`
+  alone — higher number claimed first, FIFO within the same priority
+  tier. Two tiers to start (see the two items below): `PRIORITY_LOW` for
+  self-generated idle work, `PRIORITY_MEDIUM` for real user requests —
+  named constants, not raw numbers scattered through the code, with
+  room to add a higher tier later without a schema change (the column's
+  just an int).
+
+  **Real blocker worth flagging now, not discovered later**:
+  `transcription_jobs` is already a live table in production Postgres
+  (real rows exist from real jobs already processed) — adding a new
+  column to an *existing* table is exactly the kind of schema change
+  `Base.metadata.create_all()` does **not** handle (per this repo's own
+  documented convention — see CLAUDE.md and BACKLOG.md's "Search: move
+  to a materialized/indexed column" entry for the other two cases that
+  already flagged this same wall). This needs either a manual one-off
+  `ALTER TABLE transcription_jobs ADD COLUMN priority INTEGER NOT NULL
+  DEFAULT 50` run directly against prod, or finally adopting a real
+  migration tool (Alembic) — worth deciding which before writing any
+  model code, not after.
+- **Let the worker auto-generate transcription jobs during genuinely
+  idle time**, so the Archive can fill in missing transcripts without
+  someone manually clicking "Transcribe" on every meeting one at a time.
+  `worker/main.py`'s `run_forever()` already polls continuously and
+  currently just sleeps (`EMPTY_POLL_BACKOFF_SECONDS`) when
+  `claim_next_chunk()` finds nothing — that idle branch is the natural
+  place to add "look for a `MeetingPage` missing a good transcript
+  (reusing `archive/db/crud.py`'s `_has_good_transcript()`, already
+  built for the Archive recheck cadence) and create a job for it."
+  **Must only run when the queue is completely empty** (no
+  `queued`/`in_progress` jobs at all) — not on every single empty poll,
+  and not just whenever the worker happens to be between chunks of a
+  real job. Depends on job priority (above) existing first: even with
+  the empty-queue guard, a newly-created auto job would otherwise be
+  indistinguishable in claim order from a real user's next request; a
+  self-generated job here should always use `PRIORITY_LOW`. Needs a
+  real decision on job creation itself before building, not just the
+  scheduling: which candidate to pick when several pages qualify (oldest
+  meeting first? most recently added to the Archive? random?), a
+  cooldown so a page that just failed transcription doesn't get
+  auto-retried forever, and reusing the same feasibility-check logic
+  `app/main.py`'s `/api/transcription/check-feasibility` already has
+  (probe duration, plausible-length check) rather than assuming every
+  candidate is actually transcribable.
+- **User-submitted (self-serve) transcription requests should be
+  `PRIORITY_MEDIUM`** — the real, immediate case a live visitor is
+  waiting on, and needs to always claim ahead of any `PRIORITY_LOW`
+  self-generated batch work sitting in the queue. This is the
+  straightforward half of the priority rollout: `POST
+  /internal/transcription/create-job` (`archive/main.py`) →
+  `create_transcription_job()` (`archive/db/crud.py`) already has
+  exactly one call site creating a real job from a real request: it just
+  needs to set `priority=PRIORITY_MEDIUM` explicitly once the column
+  exists, no new logic beyond that.
