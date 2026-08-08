@@ -91,3 +91,5 @@ services:
         sync: false
       - key: RESEND_FROM_ADDRESS
         sync: false
+      - key: HF_TOKEN
+        sync: false  # optional -- unauthenticated Hugging Face Hub requests work fine today, just at a lower rate limit; see BACKLOG.md
