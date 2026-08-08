@@ -14,10 +14,7 @@
 
     <form method="get" action="/meetings" class="meeting-search-form">
       <input type="text" name="q" value="{{ q }}" placeholder="Search title, jurisdiction, agenda, or transcript&hellip;" aria-label="Search meetings">
-      <label class="fuzzy-toggle">
-        <input type="checkbox" name="fuzzy" value="true"{% if fuzzy %} checked{% endif %}>
-        Fuzzy (tolerates transcript typos, slower)
-      </label>
+      {% if fuzzy %}<input type="hidden" name="fuzzy" value="true">{% endif %}
       <button type="submit" class="cassette-btn">Search</button>
     </form>
     <details class="meeting-filters"{% if jurisdiction or date_from or date_to or has_agenda or has_transcript %} open{% endif %}>

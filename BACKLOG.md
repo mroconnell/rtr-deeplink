@@ -35,19 +35,32 @@ where relevant.
   The stale version is permanently stuck as `is_default=True` until
   something explicitly deals with it.
 
-  Needs a decision, not just a mechanical fix: should a recheck that
-  finds real `agenda_items` but no `segments` actively demote/replace an
-  existing default `TranscriptVersion` that also has no real segments
-  (i.e., was itself never a genuine transcript)? That's a real behavior
-  change to `ingest_resolution()`, not just a bug fix, since today it's
-  deliberately append-only / never-delete for transcript history. Simpler
-  alternative: a narrow one-off admin action to directly delete/demote a
-  specific bad `TranscriptVersion` row by id, without generalizing the
-  ingest logic at all — smaller blast radius, doesn't touch the
-  version-history-preservation design for the (presumably rare) legacy-
-  data case. No other page has been checked for the same stale-shape
-  issue; worth a quick audit across all 12 current permanent pages before
-  deciding which fix is worth building.
+  **Decided 2026-08-08, not yet built: the general fix, not a one-off.**
+  Chosen over a narrow per-page admin action — same underlying question
+  as the Dublin language/promotion gap below, worth solving once for
+  both rather than twice. Real design has two distinct halves, since
+  this page's specific failure mode (a fresh recheck also finds nothing)
+  differs from Dublin's (a fresh recheck finds something genuinely
+  better):
+  - **Dublin-style (a fresh resolve finds real, better content)**:
+    `ingest_resolution()` should call `promote_transcript_version()` on
+    the newly-created version when it's a real improvement over the
+    current default (has segments where the default had none, has a
+    language where the default had none, etc.) — same mechanism the
+    transcription-job completion path already uses, just not currently
+    wired into the plain resolve/recheck path at all.
+  - **Yountville-style (a fresh resolve finds nothing, but the existing
+    default was never real either)**: no new `TranscriptVersion` gets
+    created in this case (`ingest_resolution()` only creates one `if
+    segments:`), so there's nothing to promote — the fix here is
+    recognizing that the *existing* default is itself not genuine
+    content (e.g. empty segments, or a known-bad marker) and demoting/
+    clearing it even without a replacement, rather than leaving it stuck
+    as `is_default=True` forever.
+  No other page has been checked for the same stale-shape issue; worth a
+  quick audit across all 12 current permanent pages once this is built,
+  to confirm nothing else needs the same fix applied retroactively via a
+  recheck.
 - **Archive passive recheck cadence should depend on transcript quality,
   not just page age.** Now that `GET /admin/recheck-archive-page` exists
   for fixing a stale page on demand (see
@@ -92,10 +105,13 @@ where relevant.
   actually-removed video, anything — and the caller (`resolve_video_id()`)
   reports all of those identically as "removed, private, or blocked."
   That message is asserting something it hasn't actually verified. Real
-  cause here is unconfirmed (this exact video should be a good repro to
-  debug against); fix likely needs either `ignoreerrors: False` so the
-  real yt-dlp exception surfaces, or explicitly checking `info.get(
-  "availability")` / a similar signal before assuming removal.
+  cause here is still unconfirmed (this exact video should be a good
+  repro to debug against). **Decided 2026-08-08: `ignoreerrors: False`**,
+  not the `info.get("availability")` alternative — lets whatever yt-dlp's
+  real exception is surface directly, rather than depending on yt-dlp
+  returning usable partial info on failure (unconfirmed it even does).
+  Whatever the real cause turns out to be, the error message becomes
+  honest about it instead of always guessing "removed."
 
   Also corrects an assumption from the original PrimeGov/YouTube build
   (see [BACKLOG_DONE.md](BACKLOG_DONE.md)): a `?meetingTemplateId=...`
@@ -164,7 +180,8 @@ where relevant.
   desktop so it never scrolls off-screen, shrink the video when scrolled
   away from it, or a Picture-in-Picture display.
 
-  **Recommended fix, not yet built:**
+  **Confirmed 2026-08-08 — building the recommendation below as-is, not
+  yet built:**
   - **Rule out real Picture-in-Picture.** This app renders video two
     different ways depending on platform — a native `<video>` element
     for direct files, a YouTube iframe for YouTube sources (see
@@ -221,20 +238,28 @@ auditing it (2026-08-08), code-verified but not all live-triggered yet:
   different line at index 42 in the new version — `t=630` still seeks the
   video correctly (unaffected), so this is a wrong-highlight bug, not a
   broken link. Not yet triggered live (no permanent page has had a second
-  version pushed yet), but the code path for it already exists. Fix
-  options: match `seg-N` by start-time proximity instead of raw index
-  when it's out of range for the rendered version, or carry the version
-  id the link was copied from into the URL so `line=` is only ever
-  interpreted against the transcript it was generated from.
+  version pushed yet), but the code path for it already exists.
+  **Decided 2026-08-08: carry the version id into the URL as the primary
+  fix, with time-proximity matching as a fallback.** `updateUrlParams()`
+  should include the version id the link was generated from (not just
+  `t`/`line`); when a `line=seg-N` is resolved against a URL whose
+  version id doesn't match the page's current version (or is missing —
+  old already-shared links won't have it), fall back to matching `seg-N`
+  by start-time proximity instead of raw index rather than failing or
+  highlighting the wrong line outright. Gives exact correctness for new
+  links and graceful degradation for old ones already shared before this
+  fix existed.
 - **`app/static/player.js` and `archive/static/meeting_page.js` are two
   independent copies of the same `t`/`line`/`seg-N` logic**, kept in sync
   only by a comment (`archive/static/meeting_page.js:6-8`) saying they're
   intentionally matched, not by shared code. A future fix to one (like the
   seek-precedence fix already made once) could land in only one file and
   silently desync deep-link behavior between `/meeting` and `/m/{slug}`.
-  Worth extracting the shared parse/apply logic into one file both pages
-  load, or at minimum flagging it explicitly in both files' comments as a
-  place that needs a matching edit.
+  **Decided 2026-08-08: extract the shared parse/apply logic into one
+  file both pages load**, rather than just strengthening the
+  cross-reference comment — removes the desync risk instead of just
+  documenting it. Natural to build alongside the version-id fix above,
+  since both touch the same parse/apply code path.
 - **No automated test coverage pins the `t`/`line` URL contract.** No JS
   test framework exists in this repo; every verification of deep-link
   behavior, including the precedence fix above, has been manual/in-browser.
@@ -307,10 +332,27 @@ auditing it (2026-08-08), code-verified but not all live-triggered yet:
   `OpenTelerikWindow` actually opens (untraced so far — worth a closer
   look via browser devtools, not just static HTML scraping). Worth
   fixing both, given NYC is about as high-profile a jurisdiction as this
-  tool could support: (1) loosen/extend the Legistar domain check so a
-  custom-domain instance like this one gets detected, (2) figure out
-  the Telerik modal's actual target URL pattern and whether
-  `LegistarAssetFinder` needs a second video-discovery strategy for it.
+  tool could support: **(1) decided 2026-08-08 — hardcode `nyc.gov` as a
+  known Legistar exception** alongside the `legistar.com` check, rather
+  than trying to infer a general page-structure signature from this one
+  example. Generalizing detection is deliberately deferred until more
+  custom-domain Legistar cities turn up — see the new "collect custom
+  domains" item in this same section, and the `collect-edge-case-urls`
+  Claude Code memory this session added specifically to make that habit
+  durable across sessions. (2) The Telerik modal's actual target URL
+  pattern is still untraced — real investigation needed, not a decision,
+  before knowing whether `LegistarAssetFinder` needs a second
+  video-discovery strategy for it.
+- **New: collect custom-domain examples for popular platforms as they're
+  found, into the existing shared sample sheet** ("Watchdog Sample
+  meetings," linked in `CLAUDE.md`) — not a code change, a standing
+  habit. Motivated directly by the NYC Legistar case above: rather than
+  guessing a general "detect by page structure" rule from a single
+  custom-domain example, log each new one as it's found (custom domain,
+  unusual URL shape, anything that could recur across other cities) and
+  only build a general detection rule once several real examples exist
+  to generalize from. Applies beyond Legistar — the same principle now
+  also shapes the multi-video-detection decision below.
 - **Swagit custom-domain embeds unverified** (e.g. `dublin.ca.gov/
   swagit-video-player?video_id=...`). `detect_platform` recognizes the URL
   shape, but the one sample URL 404'd — parsing has only been verified
@@ -340,12 +382,13 @@ auditing it (2026-08-08), code-verified but not all live-triggered yet:
   the way the transcription-job completion path does. Two real fixes
   bundled in one root cause: (1) confirm whether a recheck actually
   behaves as predicted above (untested — needs `ADMIN_STATS_TOKEN`),
-  (2) decide whether `ingest_resolution()`'s recheck path should also
-  promote when the fresh version has a real improvement (a language
-  where there was none, real segments where there were none) over the
-  current default — the same open design question already raised for
-  the Yountville stale-transcript bug above, worth solving once for
-  both rather than twice.
+  (2) **decided 2026-08-08, same fix as Yountville's entry above**:
+  `ingest_resolution()`'s recheck path should call
+  `promote_transcript_version()` when the fresh version is a real
+  improvement (a language where there was none, real segments where
+  there were none) over the current default — this is exactly the
+  Dublin-style half of that shared fix, solved once for both bugs
+  rather than twice.
 - **Swagit's `#transcript-fragments` transcript is unreadable — one word
   per line, not phrases.** Confirmed with real data (2026-08-08) on the
   same Dublin, CA meeting above: consecutive segments read `[0:04] GOOD`,
@@ -361,15 +404,15 @@ auditing it (2026-08-08), code-verified but not all live-triggered yet:
   specific. **Wanted**: group consecutive word-level fragments into
   readable lines — a few seconds or a handful of words per line, segment
   `start` = the *first* word's timestamp in the group (not each word's
-  own), `end` = the last word's. Needs a decision on the grouping rule
-  before building: a rolling time window (e.g. ~3-5s per line), a fixed
-  word count (e.g. 8-12 words), or something sentence-aware — complicated
-  by these fragments apparently carrying no punctuation at all (`"GOOD
-  EVENING AND HAPPY NEW YEAR"`, all-caps, no periods), so a
-  punctuation-based grouper isn't available the way it might be for
-  prose captions. A pure post-processing step over `segments` once
-  collected, before they're returned in `ResolvedMeeting` — doesn't need
-  to touch the DOM-scraping logic itself.
+  own), `end` = the last word's. **Decided 2026-08-08: a rolling time
+  window (~3-5s per line)**, not a fixed word count or sentence-aware
+  grouping — naturally adapts to speaking pace rather than an arbitrary
+  cutoff, and sentence-aware grouping isn't really available here anyway
+  (these fragments carry no punctuation at all — `"GOOD EVENING AND
+  HAPPY NEW YEAR"`, all-caps, no periods). A pure post-processing step
+  over `segments` once collected, before they're returned in
+  `ResolvedMeeting` — doesn't need to touch the DOM-scraping logic
+  itself.
 - **eScribe caption content-quality unverified.** The per-language VTT
   naming convention was confirmed structurally on Richmond, CA, but none
   were populated (all 404) — shape-verified only, not content-verified.
@@ -403,32 +446,36 @@ auditing it (2026-08-08), code-verified but not all live-triggered yet:
   discoverability: nothing tells a user this is possible, or that the
   page they submitted has other videos worth grabbing individually.
 
-  **Possible single approach for both cases** (worth deciding, not
-  built): when a resolve detects more than one distinct video on the
-  submitted page, return the *same* `{"error": "calendar_page",
-  "candidates": [...]}` shape the calendar-listing flow already uses,
-  instead of silently picking one — reusing the existing frontend
-  pick-list UI (`renderCalendarPage()` in `player.js`) rather than
-  inventing a second interaction pattern for what is, from the user's
-  side, the same kind of choice ("here's more than one meeting/video at
-  this URL, pick one"). Open questions before building this:
-  - **Detection is the hard part, not the picker.** A calendar page is
-    detected structurally (many `<tr>` rows, one per meeting) by each
-    platform's own adapter. A recap page like SLC's is just an arbitrary
-    city webpage with multiple `youtube.com` links in the body — not
-    tied to any of our 8 supported platforms, so this likely needs a
-    new, generic "scan any page for multiple distinct video links"
-    fallback rather than a tweak to one existing adapter. Scope that
-    generic scan broadly (any unrecognized page) or narrowly (only when
-    a known platform's page structurally contains >1 video)?
-  - Does reusing the exact `calendar_page` shape/label read right to a
-    user for this case, or does "here's several videos on one page"
-    deserve its own distinct message/shape even if the underlying
-    pick-list UI is shared?
-  - Should the "just paste the individual video link instead" escape
-    hatch be surfaced explicitly (e.g. as a `video_warnings` message
-    listing the other video URLs found) even before/instead of building
-    the full picker — cheaper, and covers the gap today?
+  **Decided 2026-08-08, three real decisions, not built yet:**
+  - **Reuse the existing `calendar_page` shape** (`{"error":
+    "calendar_page", "candidates": [...]}`, `renderCalendarPage()`'s
+    pick-list UI) rather than inventing a second, distinct interaction
+    pattern — from the user's side this is the same kind of choice
+    ("here's more than one thing at this URL, pick one"), whether it's
+    several meetings on a calendar or several videos on one recap page.
+  - **Start with detection scoped narrowly to known platforms only**,
+    not a generic "scan any unrecognized page for multiple videos"
+    fallback — same reasoning as the NYC Legistar domain-detection
+    decision above and the new `collect-edge-case-urls` habit: a broad
+    scanner built from one example (SLC) risks real false positives,
+    specifically flagged by the user: a page with several video/audio
+    *files* that are actually the same content (different quality
+    renditions, mirrors) shouldn't trigger the multi-video picker just
+    because there's more than one `<video>`/`<a>` tag. **Real signal
+    worth building into detection once this gets generalized**: file
+    *duration* similarity — several long files of nearly the same
+    duration are more likely renditions of the same recording than
+    genuinely distinct videos; genuinely distinct meeting videos
+    wouldn't be expected to coincidentally share a duration. Until
+    then: log real examples of pages with genuinely multiple distinct
+    videos (via the sample sheet, same habit as the domain-collection
+    item) and only build the general pattern once several exist.
+  - **The narrow start effectively defers the "build the full picker
+    now vs. just surface an escape-hatch message" question** — with
+    detection scoped to known platforms only, there's no real SLC-style
+    case being handled yet either way; revisit this specific question
+    once enough logged examples justify actually building detection for
+    a real case.
 
 ## Archive roadmap
 
@@ -487,6 +534,23 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     not an ongoing concern, similar in spirit to
     `/admin/recheck-archive-page`'s existing per-meeting refresh but
     needing to run once across every page rather than on demand for one.
+- **New: show a matched snippet in `/meetings` search results**, not
+  just the meeting title/date/jurisdiction — e.g. "...traffic calming
+  measures on **Elm Street** were discussed..." with the matched term in
+  context, the way most real search UIs work. Checked the actual code:
+  buildable, not blocked on anything. `archive/utils/search.py`'s
+  `matches()` is a pure boolean predicate today — it returns whether a
+  query matched, not *where*. Would need `matches()` (or a sibling
+  function) to also report which field matched (title vs. agenda vs.
+  transcript text) and a character offset into it, so `list_pages()` can
+  extract a window of surrounding text; `meeting_list.html` then renders
+  that instead of (or alongside) the existing jurisdiction/date/language
+  line. Fuzzy-mode matches are a real wrinkle worth deciding on before
+  building: a fuzzy match's "matched span" is a typo'd word, not the
+  query term itself (e.g. query `traffic` fuzzy-matching transcript text
+  `trafic`) — snippet text should probably show the *actual* transcript
+  wording around the match, not the query term, so the snippet reads as
+  real quoted content rather than something that looks doctored.
 
 ## On-demand transcription — real gaps left open
 
@@ -589,40 +653,38 @@ one item below is resolved as a result.
   page. No color, no logo, no font, nothing that reads as "Red Tape
   Recordings" rather than a generic system notification, and no ask of
   the recipient at all (share it, follow/subscribe, support the
-  project). Real open questions before building this, not just a styling
-  pass:
-  - **No logo/brand image asset exists anywhere in this repo yet** —
-    confirmed, `archive/static/` has no logo/icon file, and this is the
-    same underlying gap already flagged in `CLAUDE_BACKLOG.md`'s
-    og:image note (no thumbnail generation either). An email with real
-    brand elements needs at least a wordmark image hosted somewhere
-    email clients can fetch it from (most strip inline SVG) — this
-    likely can't be built until that asset exists.
-  - **Email HTML can't use the site's actual CSS** (`--primary` navy
-    `#2c3e50`, `--accent` blue `#3498db`, the Georgia serif body font,
-    etc., all in `archive/static/style.css`) — most email clients strip
-    `<style>` blocks and CSS variables outright, so real "brand
-    elements" here means hand-inlining hex values and font-family
-    strings directly on each tag, a different (uglier, more
-    maintenance-prone) discipline than the rest of this codebase's CSS.
-  - **No "support us" mechanism exists yet to link to** — the only
-    existing calls-to-action anywhere on the site are `/subscribe` (the
-    newsletter) and `/about`; there's no donation/membership page. Worth
-    deciding whether "support us" here just means "subscribe for
-    updates" (cheap, reuses what exists) or implies building a real
-    support mechanism first (bigger, a prerequisite, not a copy change).
-  - **Share copy needs an actual mechanism to share** — a plain "share
-    this with a friend" line plus the existing `page_url` might be
-    enough (no code needed beyond copy), or this could mean real share
-    buttons (pre-filled tweet/email text, etc.) — worth deciding which
-    before writing copy that promises more than what's built.
-  - **Excerpt selection is naive** — literally the transcript's first
-    500 characters, which for a typical meeting is procedural
-    throat-clearing (roll call, approving prior minutes), not the most
-    shareable/interesting moment. Worth a real pick-a-better-excerpt
-    pass (e.g. skip past a "procedural" first N seconds, or pick the
-    longest/most substantive-looking segment) if the goal is content
-    someone would actually want to share.
+  project). **All four open questions decided 2026-08-08, not built
+  yet:**
+  - **Brand-lite for now, not a logo asset.** No logo/wordmark image
+    exists anywhere in this repo yet (confirmed — `archive/static/` has
+    no logo/icon file, same underlying gap as `CLAUDE_BACKLOG.md`'s
+    og:image note), and building one is its own scoped design task, not
+    a prerequisite for shipping this. Instead, hand-inline the site's
+    real colors/font directly in the email HTML (`--primary` navy
+    `#2c3e50`, `--accent` blue `#3498db`, Georgia serif) — most email
+    clients strip `<style>` blocks and CSS variables outright, so this
+    means literal hex values and font-family strings on each tag, a
+    different (uglier, more maintenance-prone) discipline than the rest
+    of this codebase's CSS, but ships the real-brand-colors improvement
+    now without waiting on a logo.
+  - **No "support us" ask — reframed as "share this" instead.** Rather
+    than asking for support the site can't yet accept (no donation/
+    membership mechanism exists, only `/subscribe` and `/about`), the
+    email should ask the recipient to share the tool or forward the
+    email to friends who might find it useful — real ask, nothing to
+    build. **New, separate item**: revisit a real "support us" CTA once
+    the site has more to actually point to — account registration,
+    referrals, or payments are all still pre-roadmap (see "Archive
+    roadmap" below) — don't build a support ask against nothing.
+  - **Plain "forward this" line, no real share buttons.** Just a short
+    line plus the existing `page_url` — no new code, ships as part of
+    the copy pass. Real share buttons (pre-filled tweet/email text)
+    would be their own small feature; not worth it for this pass.
+  - **Keep the naive first-500-characters excerpt for now.** Already
+    built, ships today. Revisit with a smarter picker (skip past
+    procedural throat-clearing, pick the most substantive segment) only
+    if it turns out to be a real recurring complaint once more
+    completion emails actually go out.
 - **No language-track picker for a transcribed version yet** — a
   transcribed `TranscriptVersion`'s language is detected from its own text
   (`archive/utils/language.py`, mirroring every scraped-caption adapter's
@@ -689,8 +751,11 @@ one item below is resolved as a result.
   out of the four adapter warning messages that used to carry it
   (`app/platforms/granicus.py` x2, `civicclerk.py`, `escribe.py`), since
   the self-serve button sitting right there now does what that pitch
-  used to ask people to email in for. Still open: the visual
-  treatment itself — it's still a plain text link, not a real button.
+  used to ask people to email in for. Still open: the visual treatment
+  itself — it's still a plain text link, not a real button. **Decided
+  2026-08-08: bundle this with the `.report-problem-status` styling
+  cleanup below into one pass**, not two separate changes — see that
+  item.
 - **Transcribe UI's styling doesn't match the rest of the page.** Inherited
   wholesale from `.report-problem-status`'s ad hoc styling (`.transcribe-
   status.success`/`.error` in both `app/static/style.css` and `archive/
@@ -698,10 +763,13 @@ one item below is resolved as a result.
   `font-size: 0.85rem` throughout — neither matches the page's existing
   typography/color system (`--fg`/`--accent`/`--muted`, the `.warnings`
   amber-pill treatment already used elsewhere for transcript-quality
-  messages). Note this styling issue isn't unique to the new transcribe
-  UI — `.report-problem-status` has the exact same ad hoc colors/sizing
-  it was copied from, so fixing this well might mean fixing both
-  together rather than just the newer one.
+  messages). This styling issue isn't unique to the new transcribe UI —
+  `.report-problem-status` has the exact same ad hoc colors/sizing it
+  was copied from. **Decided 2026-08-08: fix both together, in one
+  pass** (this styling cleanup + making the transcribe link a real
+  button, per the item above) — they share the exact same inherited
+  problem, so fixing one without the other would leave a visible
+  inconsistency between the two.
 - **Job priority — needed before the worker can auto-generate its own
   jobs (see the next item).** Right now `claim_next_chunk()`
   (`archive/db/crud.py`) claims strictly oldest-first: `.order_by(
@@ -728,11 +796,24 @@ one item below is resolved as a result.
   `Base.metadata.create_all()` does **not** handle (per this repo's own
   documented convention — see CLAUDE.md and BACKLOG.md's "Search: move
   to a materialized/indexed column" entry for the other two cases that
-  already flagged this same wall). This needs either a manual one-off
-  `ALTER TABLE transcription_jobs ADD COLUMN priority INTEGER NOT NULL
-  DEFAULT 50` run directly against prod, or finally adopting a real
-  migration tool (Alembic) — worth deciding which before writing any
-  model code, not after.
+  already flagged this same wall). **Decided 2026-08-08: adopt Alembic**
+  as the real fix, rather than another one-off manual `ALTER TABLE` —
+  but deliberately **left as its own backlog item, not bundled into
+  building priority itself**, since other schema changes are already
+  piling up against this same wall (the materialized search column, this
+  priority column, possibly accounts down the line) and adopting
+  migration tooling is worth doing once, deliberately, not rushed
+  alongside the first feature that happens to need it.
+- **New: adopt Alembic for the Archive's Postgres schema.** Decided
+  2026-08-08 (see the job-priority item above) as the real fix for the
+  migration-tool gap this repo has deliberately not had — three real
+  schema changes are now piling up against `Base.metadata.create_all()`'s
+  "new tables only, never alters existing ones" limitation: this
+  priority column, the materialized/indexed search column ("Archive
+  roadmap" section below), and eventually accounts. Left as its own
+  item deliberately, not bundled into building priority — worth doing
+  once, properly, not rushed alongside whichever feature happens to
+  need it first.
 - **Let the worker auto-generate transcription jobs during genuinely
   idle time**, so the Archive can fill in missing transcripts without
   someone manually clicking "Transcribe" on every meeting one at a time.
@@ -748,15 +829,21 @@ one item below is resolved as a result.
   real job. Depends on job priority (above) existing first: even with
   the empty-queue guard, a newly-created auto job would otherwise be
   indistinguishable in claim order from a real user's next request; a
-  self-generated job here should always use `PRIORITY_LOW`. Needs a
-  real decision on job creation itself before building, not just the
-  scheduling: which candidate to pick when several pages qualify (oldest
-  meeting first? most recently added to the Archive? random?), a
-  cooldown so a page that just failed transcription doesn't get
-  auto-retried forever, and reusing the same feasibility-check logic
-  `app/main.py`'s `/api/transcription/check-feasibility` already has
-  (probe duration, plausible-length check) rather than assuming every
-  candidate is actually transcribable.
+  self-generated job here should always use `PRIORITY_LOW`. Real
+  decisions on job creation itself needed before building, not just the
+  scheduling — one decided, one still open:
+  - **Decided 2026-08-08: pick the oldest archived meeting first** among
+    qualifying candidates — processes the Archive's backlog roughly in
+    the order meetings were added, predictable and easy to reason about,
+    over "most recently archived" (favors freshness/traffic) or a random
+    pick.
+  - **Still open**: how long to cool down after a failed transcription
+    before a page becomes an auto-candidate again, so a page that just
+    failed doesn't get auto-retried forever. Also needs the same
+    feasibility-check logic `app/main.py`'s
+    `/api/transcription/check-feasibility` already has (probe duration,
+    plausible-length check) reused rather than assuming every candidate
+    is actually transcribable.
 - **User-submitted (self-serve) transcription requests should be
   `PRIORITY_MEDIUM`** — the real, immediate case a live visitor is
   waiting on, and needs to always claim ahead of any `PRIORITY_LOW`
