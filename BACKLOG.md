@@ -115,6 +115,57 @@ where relevant.
   real LA sample (see [BACKLOG_DONE.md](BACKLOG_DONE.md)) is typical or
   specific to that video.
 
+- **Design question: what happens when one submitted URL contains more
+  than one video?** Real example: SLC publishes meeting recap pages
+  (e.g. `slc.gov/council/may-5-2026-meeting-recap/`) that embed several
+  direct YouTube links on one page — not a PrimeGov page at all, just
+  the city's own site. Right now nothing in this app has a concept of
+  "one URL, several distinct videos" — every adapter assumes one URL =
+  one video. If we just picked one video to auto-resolve (as today's
+  adapters would try to), a user would have no way to deep-link into
+  video #2 or #3 through that recap URL — the exact problem the user
+  flagged. Possibly the same underlying shape shows up on calendar-style
+  pages too (NYC's Legistar calendar was raised as a similar case,
+  though that one is already a step removed — see the NYC Legistar item
+  above — since a Legistar calendar's *rows* are already handled by the
+  existing `calendar_page` pick-list; the open question here is really
+  about a single row/URL that itself resolves to more than one video).
+
+  **What already works today, no code change needed:** a user can just
+  copy the direct YouTube link for video #2 or #3 off the recap page
+  and paste *that* into the tool — `YouTubeAssetFinder` resolves a
+  standalone `youtube.com`/`youtu.be` URL on its own, with no PrimeGov
+  or recap-page involvement at all. The real gap isn't capability, it's
+  discoverability: nothing tells a user this is possible, or that the
+  page they submitted has other videos worth grabbing individually.
+
+  **Possible single approach for both cases** (worth deciding, not
+  built): when a resolve detects more than one distinct video on the
+  submitted page, return the *same* `{"error": "calendar_page",
+  "candidates": [...]}` shape the calendar-listing flow already uses,
+  instead of silently picking one — reusing the existing frontend
+  pick-list UI (`renderCalendarPage()` in `player.js`) rather than
+  inventing a second interaction pattern for what is, from the user's
+  side, the same kind of choice ("here's more than one meeting/video at
+  this URL, pick one"). Open questions before building this:
+  - **Detection is the hard part, not the picker.** A calendar page is
+    detected structurally (many `<tr>` rows, one per meeting) by each
+    platform's own adapter. A recap page like SLC's is just an arbitrary
+    city webpage with multiple `youtube.com` links in the body — not
+    tied to any of our 8 supported platforms, so this likely needs a
+    new, generic "scan any page for multiple distinct video links"
+    fallback rather than a tweak to one existing adapter. Scope that
+    generic scan broadly (any unrecognized page) or narrowly (only when
+    a known platform's page structurally contains >1 video)?
+  - Does reusing the exact `calendar_page` shape/label read right to a
+    user for this case, or does "here's several videos on one page"
+    deserve its own distinct message/shape even if the underlying
+    pick-list UI is shared?
+  - Should the "just paste the individual video link instead" escape
+    hatch be surfaced explicitly (e.g. as a `video_warnings` message
+    listing the other video URLs found) even before/instead of building
+    the full picker — cheaper, and covers the gap today?
+
 ## Archive roadmap
 
 **Architectural context:** anything about content/audience rather than
