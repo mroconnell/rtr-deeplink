@@ -640,14 +640,52 @@ scoped.
   "always re-check" — that could turn a cheap redirect into a slow
   request again for no benefit on a page that's already maxed out on
   quality.
+- **A browsable index page listing all permanent meeting pages** — right
+  now a `MeetingPage` is only reachable if you already know its `/m/{slug}`
+  URL; there's no way to discover what's been archived. Needs a new
+  `archive/` route (e.g. `GET /meetings?page=N`), a `crud.list_pages(page,
+  page_size=20)` query against `MeetingPage` (paginated — `LIMIT 20 OFFSET
+  ...`, ordered by date or `created_at` descending — this will realistically
+  be hundreds to thousands of rows soon, so no unpaginated "load everything"
+  version), a new template listing title/jurisdiction/date per row linking
+  to each `/m/{slug}`, and prev/next (or numbered) pagination controls. Also
+  needs a matching proxy route added to `app/main.py` alongside the
+  existing `/m/*`/`/archive-static/*` ones so it's reachable at
+  `redtaperecordings.com/meetings` like everything else. Should be a plain
+  server-rendered page (same reasoning as `/m/{slug}` itself) so it's
+  crawlable — this index doubles as the main way search engines (and
+  humans) discover the full set of archived meetings, not just a UI
+  nicety. Related but distinct idea, not required for this: a real
+  `sitemap.xml` for machine discovery specifically, which could reuse the
+  same underlying paginated query but serve XML instead of HTML.
 - **Transcription crawler** (fetch audio/video for meetings with no
   captions, run our own transcription, store the result permanently) —
   separate from the Archive architecturally but only useful once the
   Archive exists to store results in. Some prior scar tissue to reuse:
   a "bad Whisper model" bug was already found and fixed once in round 1.
-- **Search over permanent pages** — genuinely easy once the Archive
-  exists; Postgres full-text search is enough at this scale, no need
-  for Algolia/Elasticsearch.
+- **Keyword search + filters over permanent pages, living at the top of
+  the index page above.** User's spec: a search box for free-text keyword
+  search across meeting content, plus filters for jurisdiction "and all
+  the other variables you'd expect" — reading that against the actual
+  `MeetingPage`/`TranscriptVersion` schema, the obvious filter set is
+  jurisdiction, a date range, and transcript language (from the default
+  `TranscriptVersion.language`); `platform` could be exposed too but is
+  more of an internal/QA filter than something a visitor would reach for.
+  Not a separate feature from the index page — filters narrow the same
+  paginated `list_pages()` query, search box included in the same
+  request. Postgres full-text search (`tsvector`/`tsquery`) is enough at
+  this scale, no need for Algolia/Elasticsearch.
+
+  One real implementation decision, not just plumbing: transcript
+  `segments` are stored as JSON per `TranscriptVersion`, not as a plain
+  searchable text column, so matching *inside* transcript content (not
+  just title/jurisdiction/agenda text) needs either a generated/
+  materialized `tsvector` column built from the concatenated segment
+  text at ingest time (kept in sync in `crud.ingest_resolution()`
+  whenever a version is added), or scoping v1 search to
+  title/jurisdiction/agenda text only and treating full transcript-body
+  search as a deliberate follow-up rather than assuming it's free. Worth
+  deciding which scope v1 actually covers before starting.
 - **Accounts + token billing** — the one piece of round 1's complexity
   being deliberately reintroduced, and only on the Archive, not here.
   Needed for: paid/subscribed features (already alluded to in several
