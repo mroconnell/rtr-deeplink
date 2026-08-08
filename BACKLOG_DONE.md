@@ -1505,3 +1505,12 @@ changelog of task titles.
   anything that adds a new cross-file import needs to happen against
   each service's real, isolated dependency set, or a missing-package bug
   like this one won't surface until it's already live and crash-looping.
+
+- **[Done 2026-08-08] Set up `HF_TOKEN` for the worker.** No code change
+  needed — `huggingface_hub` (a `faster-whisper` dependency) already
+  reads `HF_TOKEN` from the environment on its own; this was purely an
+  infra step. `render.yaml` updated to document the (optional) env var
+  slot on `rtr-transcription-worker`. User created a free Hugging Face
+  account, generated a read-only access token, and added it to the
+  worker's environment in Render — future model-load logs should stop
+  showing the "sending unauthenticated requests" warning.

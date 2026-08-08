@@ -450,16 +450,6 @@ one item below is resolved as a result.
   existing behavior), but if a meeting is bilingual or the detection is
   simply wrong, there's no way to fix or override it after the fact short
   of a database edit.
-- **Set up an `HF_TOKEN` for the worker.** Every model download logs
-  `"You are sending unauthenticated requests to the HF Hub. Please set
-  HF_TOKEN to enable higher rate limits and faster downloads."` — harmless
-  today (downloads have succeeded every time so far), but worth doing
-  before this is under real load, since an unauthenticated Hugging Face
-  Hub rate limit hit mid-deploy would block the worker from ever loading
-  its model at all. A free Hugging Face account + access token, set as
-  `HF_TOKEN` on the `rtr-transcription-worker` service, is all this needs
-  — no code change, `huggingface_hub` (a `faster-whisper` dependency)
-  already reads that env var itself.
 - **"Transcribe this meeting from audio" is too easy to miss.** Currently
   a small `.link-button` text link (`app/templates/meeting.html` /
   `archive/templates/meeting_page.html`, styled identically to "Report a
