@@ -12,8 +12,13 @@ from langdetect import detect as detect_language, LangDetectException
 
 from .base import AssetFinder
 from .media_scan import scan_media_urls, media_type
-from .models import ResolvedMeeting, TranscriptSegment
-from ..utils.vtt_parser import parse_vtt, is_likely_garbled, decode_vtt_bytes
+from .models import AlternateTranscript, ResolvedMeeting, TranscriptSegment
+from ..utils.vtt_parser import (
+    STRUCTURED_CAPTION_PARSERS,
+    decode_vtt_bytes,
+    is_likely_garbled,
+    parse_captions_by_extension,
+)
 
 TARGET_LANGUAGE = "en"
 
@@ -284,13 +289,20 @@ class GranicusAssetFinder(AssetFinder):
             if not video_url:
                 video_warnings.append("No playable video found on this page.")
 
-            vtt_urls = [u for u in media_urls if self._media_type(u) == "subtitle" and u.lower().endswith(".vtt")]
+            # No longer .vtt-only: media_type() now classifies a wider set
+            # of caption-shaped extensions as "subtitle" (see
+            # media_scan.CAPTION_EXTENSIONS) -- .srt is structurally
+            # parseable the same way .vtt is (see parse_captions_by_extension),
+            # and the rest at least get a best-effort text fallback or a
+            # direct link instead of being silently invisible.
+            caption_urls = [u for u in media_urls if self._media_type(u) == "subtitle"]
 
             segments: List[TranscriptSegment] = []
             transcript_language: Optional[str] = None
-            if vtt_urls:
+            alternate_transcripts: List[AlternateTranscript] = []
+            if caption_urls:
                 fetched = await asyncio.gather(
-                    *(self._fetch_vtt(session, u) for u in vtt_urls),
+                    *(self._fetch_caption_file(session, u) for u in caption_urls),
                     return_exceptions=True,
                 )
 
@@ -298,27 +310,41 @@ class GranicusAssetFinder(AssetFinder):
                 # language rather than trusting the page's srclang label —
                 # confirmed via a real Simi Valley meeting (clip 2840) that
                 # a track labeled srclang="en" was actually Spanish content.
-                candidates = []  # (vtt_url, cues, detected_language)
-                empty_vtt_count = 0
-                for vtt_url, result in zip(vtt_urls, fetched):
+                candidates = []  # (url, cues, detected_language) -- structured formats only
+                text_fallback_candidates = []  # (url, text) -- no real timing available
+                unreadable_urls = []  # fetched fine, but format has no extractable content at all
+                empty_or_failed_count = 0
+                for caption_url, result in zip(caption_urls, fetched):
                     if isinstance(result, Exception):
-                        transcript_warnings.append(f"Failed to fetch captions from {vtt_url}: {result}")
+                        transcript_warnings.append(f"Failed to fetch captions from {caption_url}: {result}")
                         continue
-                    if not result:
-                        # A real, fetchable VTT file that Granicus creates as a
-                        # placeholder for every meeting page regardless of
-                        # whether captioning was ever generated — confirmed by
-                        # fetching several directly and finding just "WEBVTT\n\n"
-                        # (8 bytes, zero cues). Distinct from no VTT reference
-                        # existing on the page at all.
-                        empty_vtt_count += 1
-                        continue
-                    candidates.append((vtt_url, result, self._detect_cue_language(result)))
+                    cues, fallback_text = result
+                    if cues:
+                        candidates.append((caption_url, cues, self._detect_cue_language(cues)))
+                    elif fallback_text:
+                        text_fallback_candidates.append((caption_url, fallback_text))
+                    elif caption_url.lower().split("?")[0].rsplit(".", 1)[-1] in STRUCTURED_CAPTION_PARSERS:
+                        # A real, fetchable file in a format we DO understand
+                        # structurally, but it came back with zero cues --
+                        # Granicus's own real placeholder case for .vtt
+                        # (confirmed: an 8-byte "WEBVTT\n\n" every meeting
+                        # gets whether or not captioning was ever generated),
+                        # not an unsupported-format problem.
+                        empty_or_failed_count += 1
+                    else:
+                        # A format with no structured parser and nothing
+                        # extractable even as best-effort text (binary
+                        # formats like .scc/.stl, or a text-based one that
+                        # happened to come back empty) -- surface the link
+                        # directly rather than silently dropping it, same
+                        # reasoning as the AgendaViewer fallback-link case
+                        # below.
+                        unreadable_urls.append(caption_url)
 
                 target_match = next((c for c in candidates if c[2] == TARGET_LANGUAGE), None)
                 chosen = target_match or (candidates[0] if candidates else None)
 
-                if not chosen and empty_vtt_count:
+                if not chosen and not text_fallback_candidates and empty_or_failed_count:
                     transcript_warnings.append(
                         "Caption file was blank, so we'll have to run this manually "
                         "for a transcript. We can run batches of meetings for "
@@ -344,6 +370,43 @@ class GranicusAssetFinder(AssetFinder):
                             "higher-quality manual transcription for subscribed users — "
                             "contact ryan@how-to-adu.com for details."
                         )
+                    # Every other real (non-blank) track that was fetched but
+                    # not chosen -- carried through with full segments (not
+                    # just a language label) so the frontend can offer a
+                    # switcher without a second round-trip.
+                    alternate_transcripts = [
+                        AlternateTranscript(
+                            language=lang,
+                            segments=[TranscriptSegment(**cue) for cue in candidate_cues],
+                        )
+                        for candidate_vtt_url, candidate_cues, lang in candidates
+                        if candidate_vtt_url != _vtt_url
+                    ]
+                elif text_fallback_candidates:
+                    # No structured (timed) transcript available anywhere,
+                    # but real caption text exists in a format with no
+                    # parser here (e.g. SBV/SUB/SMI) -- shown as a single
+                    # untimed block rather than discarded. Deep-linking to
+                    # the video's playhead via `t=` never depended on
+                    # transcript timing (works with zero transcript at
+                    # all), so this is still real added value even without
+                    # per-line clickability. Never verified against a real
+                    # sample from any platform this app supports -- see
+                    # BACKLOG.md.
+                    fallback_url, fallback_text = text_fallback_candidates[0]
+                    segments = [
+                        TranscriptSegment(start=0.0, end=0.0, text=line)
+                        for line in fallback_text.split("\n") if line.strip()
+                    ]
+                    transcript_warnings.append(
+                        "This meeting has captions, but in a format we can only show "
+                        "as plain text, not a clickable per-line transcript."
+                    )
+                elif unreadable_urls:
+                    transcript_warnings.append(
+                        "This meeting has a caption file, but in a format we can't "
+                        f"read at all yet — you can view it directly: {unreadable_urls[0]}"
+                    )
             else:
                 transcript_warnings.append("No caption/transcript file found on this page.")
 
@@ -384,6 +447,7 @@ class GranicusAssetFinder(AssetFinder):
                 video_format=video_format,
                 segments=segments,
                 agenda_items=agenda_items,
+                alternate_transcripts=alternate_transcripts,
                 video_warnings=video_warnings,
                 transcript_warnings=transcript_warnings,
             )
@@ -401,13 +465,16 @@ class GranicusAssetFinder(AssetFinder):
         except LangDetectException:
             return None
 
-    async def _fetch_vtt(self, session: aiohttp.ClientSession, vtt_url: str) -> Optional[List[Dict[str, Any]]]:
-        async with session.get(vtt_url, timeout=aiohttp.ClientTimeout(total=20)) as response:
+    @staticmethod
+    async def _fetch_caption_file(session: aiohttp.ClientSession, caption_url: str):
+        """Returns (cues, fallback_text) via parse_captions_by_extension --
+        (None, None) on a fetch failure or a genuinely unparseable format."""
+        async with session.get(caption_url, timeout=aiohttp.ClientTimeout(total=20)) as response:
             if response.status != 200:
-                return None
+                return None, None
             raw = await response.read()
         content = decode_vtt_bytes(raw)
-        return parse_vtt(content)
+        return parse_captions_by_extension(caption_url, content)
 
     @staticmethod
     async def _fetch_agenda_items(

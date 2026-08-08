@@ -8,6 +8,17 @@ class TranscriptSegment(BaseModel):
     text: str
 
 
+class AlternateTranscript(BaseModel):
+    """A caption track that was found and fetched but not chosen as the
+    primary transcript (see `ResolvedMeeting.alternate_transcripts`) --
+    typically a different language than TARGET_LANGUAGE. Carries full
+    segments (not just a language label) so the frontend can switch the
+    displayed transcript client-side with no extra round-trip."""
+
+    language: Optional[str] = None  # ISO 639-1 code detected from actual caption text, same as transcript_language
+    segments: List[TranscriptSegment] = []
+
+
 class ResolvedMeeting(BaseModel):
     platform: str
     source_url: str
@@ -25,6 +36,11 @@ class ResolvedMeeting(BaseModel):
     # meeting with both shows both (agenda above transcript on the page).
     agenda_items: List[TranscriptSegment] = []
     transcript_language: Optional[str] = None  # ISO 639-1 code detected from actual caption text
+    # Other real caption tracks found on the page but not chosen as
+    # `segments` -- lets the frontend offer a language switcher instead of
+    # silently discarding every track but the best-matching one. Empty
+    # when only one usable track was found (the common case).
+    alternate_transcripts: List[AlternateTranscript] = []
     # Split so the frontend can place video issues near the player and
     # caption/transcript issues near the transcript, instead of dumping
     # everything into one block above the video regardless of relevance.

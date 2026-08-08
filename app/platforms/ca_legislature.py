@@ -7,7 +7,12 @@ from bs4 import BeautifulSoup
 from .base import AssetFinder
 from .media_scan import scan_media_urls, media_type
 from .models import ResolvedMeeting, TranscriptSegment
-from ..utils.vtt_parser import parse_vtt, is_likely_garbled, decode_vtt_bytes
+from ..utils.vtt_parser import (
+    STRUCTURED_CAPTION_PARSERS,
+    decode_vtt_bytes,
+    is_likely_garbled,
+    parse_captions_by_extension,
+)
 
 
 class CaliforniaLegislatureAssetFinder(AssetFinder):
@@ -82,15 +87,16 @@ class CaliforniaLegislatureAssetFinder(AssetFinder):
             if not video_url:
                 video_warnings.append("No playable video found on this page.")
 
-            # Exclude the scrubber-thumbnail sprite VTT -- see class docstring.
-            vtt_urls = [
+            # No longer .vtt-only (see media_scan.CAPTION_EXTENSIONS); still
+            # excludes the scrubber-thumbnail sprite VTT -- see class docstring.
+            caption_urls = [
                 u for u in media_urls
-                if media_type(u) == "subtitle" and u.lower().endswith(".vtt") and "/thumbnails/" not in u.lower()
+                if media_type(u) == "subtitle" and "/thumbnails/" not in u.lower()
             ]
 
             segments: List[TranscriptSegment] = []
-            if vtt_urls:
-                cues = await self._fetch_vtt(session, vtt_urls[0])
+            if caption_urls:
+                cues, fallback_text = await self._fetch_captions(session, caption_urls[0])
                 if cues:
                     segments = [TranscriptSegment(**cue) for cue in cues]
                     if is_likely_garbled(cues):
@@ -98,10 +104,29 @@ class CaliforniaLegislatureAssetFinder(AssetFinder):
                             "This transcript looks garbled at the source (not a parsing "
                             "bug on our end) -- treat it as approximate."
                         )
-                else:
+                elif fallback_text:
+                    # No real timing available for this format -- see
+                    # Granicus's resolve() for the same fallback reasoning.
+                    # Never verified against a real CA Legislature sample
+                    # (both chambers have only ever been observed using
+                    # .vtt); see BACKLOG.md.
+                    segments = [
+                        TranscriptSegment(start=0.0, end=0.0, text=line)
+                        for line in fallback_text.split("\n") if line.strip()
+                    ]
+                    transcript_warnings.append(
+                        "This meeting has captions, but in a format we can only show "
+                        "as plain text, not a clickable per-line transcript."
+                    )
+                elif caption_urls[0].lower().split("?")[0].rsplit(".", 1)[-1] in STRUCTURED_CAPTION_PARSERS:
                     transcript_warnings.append(
                         "A caption file is referenced for this meeting but could not "
                         "be fetched or was empty."
+                    )
+                else:
+                    transcript_warnings.append(
+                        "This meeting has a caption file, but in a format we can't "
+                        f"read at all yet — you can view it directly: {caption_urls[0]}"
                     )
             else:
                 transcript_warnings.append("No caption file found for this meeting.")
@@ -120,16 +145,17 @@ class CaliforniaLegislatureAssetFinder(AssetFinder):
         )
 
     @staticmethod
-    async def _fetch_vtt(session: aiohttp.ClientSession, vtt_url: str):
+    async def _fetch_captions(session: aiohttp.ClientSession, caption_url: str):
+        """Returns (cues, fallback_text) via parse_captions_by_extension."""
         try:
-            async with session.get(vtt_url, timeout=aiohttp.ClientTimeout(total=20)) as response:
+            async with session.get(caption_url, timeout=aiohttp.ClientTimeout(total=20)) as response:
                 if response.status != 200:
-                    return None
+                    return None, None
                 raw = await response.read()
         except Exception:
-            return None
+            return None, None
         content = decode_vtt_bytes(raw)
-        return parse_vtt(content) or None
+        return parse_captions_by_extension(caption_url, content)
 
     @staticmethod
     def _extract_metadata(soup: BeautifulSoup):
