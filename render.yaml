@@ -11,6 +11,14 @@ services:
     # infra here, not an arbitrary client that could spoof the header.
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips='*'
     healthCheckPath: /api/health
+    # UNVERIFIED, check before relying on it: /api/transcription/check-
+    # feasibility (app/main.py) now shells out to ffprobe (see
+    # app/platforms/media_probe.py), a system binary this plain `runtime:
+    # python` buildpack has never needed before and may not include. If a
+    # deploy shows that endpoint failing (ffprobe: command not found in
+    # logs), switch this service to `runtime: docker` -- worker/Dockerfile
+    # is a working reference for the apt-get install ffmpeg step, just
+    # swap its CMD for this service's uvicorn startCommand above.
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.3
@@ -46,4 +54,39 @@ services:
       - key: ARCHIVE_INGEST_TOKEN
         sync: false
       - key: PUBLIC_BASE_URL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_AUDIENCE_ID
+        sync: false
+      - key: RESEND_FROM_ADDRESS
+        sync: false
+
+  # On-demand transcription's background processor (see worker/main.py's
+  # module docstring for why this reaches into archive/db directly rather
+  # than going through the token-gated /internal/* HTTP pattern the two
+  # services above use with each other). No free tier for a Render
+  # Background Worker -- real, ongoing cost, a deliberate tradeoff (see
+  # BACKLOG_DONE.md) over a more complex free cron/poll-nudge design.
+  - type: worker
+    name: rtr-transcription-worker
+    runtime: docker
+    dockerfilePath: worker/Dockerfile
+    dockerContext: .
+    # UNVERIFIED, size before deploying: faster-whisper needs meaningfully
+    # more CPU/RAM than Render's cheapest paid tier once a real model is
+    # loaded -- confirm actual memory usage for the chosen model size
+    # (worker/transcription_engine.py's model_size default) before
+    # committing to a specific plan here.
+    plan: starter
+    envVars:
+      - key: DATABASE_URL
+        sync: false  # MUST be the exact same value as rtr-archive's DATABASE_URL above -- not a separate database
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_AUDIENCE_ID
+        sync: false
+      - key: RESEND_FROM_ADDRESS
         sync: false

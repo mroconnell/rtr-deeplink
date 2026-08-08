@@ -1,0 +1,65 @@
+"""Speech-to-text engine used by the transcription worker.
+
+A small interface (`TranscriptionEngine`) so the concrete implementation
+is swappable later without touching worker/main.py's job loop. v1 default
+is self-hosted `faster-whisper` (CPU, CTranslate2-based) rather than a
+hosted API -- the worker is already a persistent paid process, so this
+avoids a second, per-minute-metered vendor on top of it, and it's the same
+base WhisperX later builds real diarization on top of (via
+pyannote.audio), so this choice doesn't need revisiting to add that --
+just extending. No diarization in v1: every segment's `speaker` stays
+None.
+"""
+
+from abc import ABC, abstractmethod
+from pathlib import Path
+from typing import Any, Dict, List
+
+
+class TranscriptionEngine(ABC):
+    @abstractmethod
+    async def transcribe_chunk(self, audio_path: Path) -> List[Dict[str, Any]]:
+        """Returns chunk-relative segments ({start, end, text}, seconds
+        from 0 at this chunk's own start) -- caller shifts them to
+        full-meeting-relative via segment_utils.shift_segments()."""
+        raise NotImplementedError
+
+
+class FasterWhisperEngine(TranscriptionEngine):
+    """Loads the model once at construction (worker/main.py instantiates
+    this a single time at process startup, reused across every job's every
+    chunk) -- reloading a multi-GB-class model per chunk would dominate
+    runtime otherwise.
+
+    `model_size` favors speed over chasing the largest/most-accurate model:
+    per the product framing behind this feature, most viewers want to
+    Ctrl-F to a topic in an otherwise-uncaptioned meeting, not a
+    publication-grade transcript -- "small" is a reasonable default,
+    tune later once real runtimes/quality are observed against real
+    meetings. `compute_type="int8"` keeps CPU memory/time reasonable
+    without a GPU, at some accuracy cost versus float16/float32.
+    """
+
+    def __init__(self, model_size: str = "small", compute_type: str = "int8"):
+        # Imported lazily so importing this module (e.g. from tests) never
+        # requires the real model weights to be downloaded/available.
+        from faster_whisper import WhisperModel
+
+        self._model = WhisperModel(model_size, device="cpu", compute_type=compute_type)
+
+    async def transcribe_chunk(self, audio_path: Path) -> List[Dict[str, Any]]:
+        import asyncio
+
+        return await asyncio.to_thread(self._transcribe_sync, audio_path)
+
+    def _transcribe_sync(self, audio_path: Path) -> List[Dict[str, Any]]:
+        segments, _info = self._model.transcribe(str(audio_path), beam_size=5)
+        return [
+            {"start": seg.start, "end": seg.end, "text": seg.text.strip(), "speaker": None}
+            for seg in segments
+            if seg.text.strip()
+        ]
+
+
+def build_default_engine() -> TranscriptionEngine:
+    return FasterWhisperEngine()

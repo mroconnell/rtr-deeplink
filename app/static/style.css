@@ -188,6 +188,36 @@ body {
 .report-problem-status.success { color: #2f855a; }
 .report-problem-status.error { color: var(--secondary); }
 
+.transcribe-toggle { margin: 0.4rem 0 0; }
+.transcribe-form {
+  margin: 0.75rem 0 1.5rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  max-width: 420px;
+}
+.transcribe-form label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 0.75rem;
+}
+.transcribe-form input[type="email"] {
+  display: block;
+  width: 100%;
+  margin-top: 0.3rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+.transcribe-status { margin: 0.6rem 0 0; font-size: 0.85rem; }
+.transcribe-status.success { color: #2f855a; }
+.transcribe-status.error { color: var(--secondary); }
+
 /* Cream/amber "choose wisely" pill treatment for status & warning
    messages -- the manila-folder half of the red-tape/manila-folder vibe. */
 .warnings {

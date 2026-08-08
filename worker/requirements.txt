@@ -1,0 +1,20 @@
+# Needs both app/'s adapter-fetch deps (worker/main.py imports
+# app.platforms directly, to re-resolve a fresh media URL before each
+# chunk) and archive/'s DB deps (worker/main.py imports archive.db and
+# archive.utils.email directly -- see worker/main.py's module docstring
+# for why that's a deliberate exception to the app/archive separation).
+# No fastapi/uvicorn/jinja2/slowapi here -- this process never serves
+# HTTP, so none of those are needed.
+aiohttp>=3.9
+beautifulsoup4>=4.12
+langdetect>=1.0.9
+wordninja>=2.0.0
+yt-dlp
+sqlalchemy[asyncio]>=2.0
+asyncpg>=0.29
+aiosqlite>=0.20
+python-dotenv>=1.0
+
+# Self-hosted speech-to-text (see worker/transcription_engine.py) --
+# CTranslate2-based, no torch/GPU dependency, real CPU inference.
+faster-whisper

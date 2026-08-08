@@ -15,6 +15,11 @@ logger = logging.getLogger("rtr_deeplink.archive")
 LOOKUP_TIMEOUT = aiohttp.ClientTimeout(total=5)
 PUSH_TIMEOUT = aiohttp.ClientTimeout(total=65)
 PROXY_TIMEOUT = aiohttp.ClientTimeout(total=65)
+# Same reasoning as LOOKUP_TIMEOUT -- these three block a real user-facing
+# resolver request/response (not fired via BackgroundTasks), so they need
+# a bound that fails fast rather than making a viewer wait out a slow/cold
+# Archive.
+TRANSCRIPTION_TIMEOUT = aiohttp.ClientTimeout(total=15)
 
 _HOP_BY_HOP_HEADERS = {"connection", "transfer-encoding", "keep-alive", "content-encoding", "content-length"}
 
@@ -76,6 +81,91 @@ async def push(payload: dict[str, Any], input_url_normalized: str) -> None:
                     logger.error("Archive ingest failed (%s): %s", response.status, text)
     except Exception:
         logger.exception("Archive ingest request failed.")
+
+
+async def request_transcription_job(
+    *,
+    payload: dict[str, Any],
+    input_url_normalized: str,
+    requester_email: str,
+    media_url: str,
+    media_kind: str,
+    probed_duration_seconds: float,
+    chunk_size_seconds: int,
+) -> Optional[dict]:
+    """Ask the Archive to create (or return the existing active) on-demand
+    transcription job for this meeting. Returns None if the Archive is
+    unreachable/unconfigured or the call otherwise fails -- the caller
+    (app/main.py's /api/transcription/submit) turns that into a clean
+    user-facing error rather than a raw exception, same pattern as
+    lookup()."""
+    base = _base_url()
+    if not base:
+        return None
+
+    body = {
+        "payload": payload,
+        "input_url_normalized": input_url_normalized,
+        "requester_email": requester_email,
+        "media_url": media_url,
+        "media_kind": media_kind,
+        "probed_duration_seconds": probed_duration_seconds,
+        "chunk_size_seconds": chunk_size_seconds,
+    }
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{base}/internal/transcription/create-job",
+                json=body,
+                headers=_headers(),
+                timeout=TRANSCRIPTION_TIMEOUT,
+            ) as response:
+                if response.status == 200:
+                    return await response.json()
+                logger.error("Archive transcription create-job failed (%s): %s", response.status, await response.text())
+                return None
+    except Exception:
+        logger.exception("Archive transcription create-job request failed.")
+        return None
+
+
+async def confirm_transcription_job(token: str) -> Optional[dict]:
+    base = _base_url()
+    if not base:
+        return None
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{base}/internal/transcription/confirm",
+                json={"token": token},
+                headers=_headers(),
+                timeout=TRANSCRIPTION_TIMEOUT,
+            ) as response:
+                if response.status == 200:
+                    return await response.json()
+                return None
+    except Exception:
+        logger.exception("Archive transcription confirm request failed.")
+        return None
+
+
+async def get_transcription_status(job_id: int) -> Optional[dict]:
+    base = _base_url()
+    if not base:
+        return None
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                f"{base}/internal/transcription/status/{job_id}",
+                headers=_headers(),
+                timeout=TRANSCRIPTION_TIMEOUT,
+            ) as response:
+                if response.status == 200:
+                    return await response.json()
+                return None
+    except Exception:
+        logger.exception("Archive transcription status request failed.")
+        return None
 
 
 async def proxy_get(path: str, query_string: str):

@@ -65,4 +65,37 @@ oriented toward.
   magic-link-style "notify me when a new X meeting is archived" that
   doesn't require the full accounts+billing system already scoped in
   `BACKLOG.md`'s roadmap — much smaller than that item and could ship well
-  before it.
+  before it. Its core mechanism (email address, confirm once via a
+  clicked link, frictionless after that) is now proven out for real —
+  on-demand transcription (built 2026-08-08, see `BACKLOG_DONE.md`) uses
+  exactly this pattern for its own email step, so building this would
+  mostly mean reusing `archive/utils/email.py`'s confirmation-email/
+  audience-membership functions for a different trigger, not inventing
+  the mechanism from scratch.
+
+## On-demand transcription follow-ups
+
+Both raised directly by the user alongside the original transcription
+request, deliberately not built as part of it — see `BACKLOG_DONE.md`'s
+2026-08-08 entry for the full feature this extends.
+
+- **Speaker diarization + a UI to map detected speakers to real names.**
+  The transcription pipeline already uses self-hosted `faster-whisper`
+  specifically because it's the same base model WhisperX builds real
+  diarization on top of (via `pyannote.audio`) — and `TranscriptSegment`
+  (`app/platforms/models.py`) already carries an unused `speaker` field
+  for exactly this, added cheaply now rather than needing a schema touch
+  later. Real work still needed: running the diarization pass itself
+  (a real compute/latency cost on top of transcription — size it before
+  committing), and a UI for someone to label "Speaker 1" as an actual
+  name (per meeting, or per recurring seat/role if a jurisdiction's
+  council composition is known) — no design started on that UI yet.
+- **Compare the finished transcript against the meeting's agenda for
+  topic-coverage accuracy.** E.g. flag agenda items that don't seem to
+  have been discussed, or roughly locate where each agenda item's
+  discussion starts in the transcript beyond what the source's own
+  chapter markers (when present) already provide. No design started —
+  open questions include what "coverage" even means precisely (exact
+  phrase match against agenda text would miss most real discussion,
+  which paraphrases rather than reads the agenda aloud) and whether this
+  needs an LLM pass over the transcript or something simpler.

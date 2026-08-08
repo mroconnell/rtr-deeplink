@@ -8,6 +8,7 @@ import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Optional
 
 import aiohttp
 from dotenv import load_dotenv
@@ -23,16 +24,9 @@ from slowapi.util import get_remote_address
 from . import archive_client
 from .db import crud
 from .db.engine import init_models
-from .platforms.base import detect_platform, get_finder, register, CalendarPageError, UnsupportedPlatformError
-from .platforms.granicus import GranicusAssetFinder
-from .platforms.civicclerk import CivicClerkAssetFinder
-from .platforms.swagit import SwagitAssetFinder
-from .platforms.escribe import EscribeAssetFinder
-from .platforms.ca_legislature import CaliforniaLegislatureAssetFinder
-from .platforms.legistar import LegistarAssetFinder
-from .platforms.civicplus import CivicPlusAssetFinder
-from .platforms.youtube import YouTubeAssetFinder
-from .platforms.primegov import PrimeGovAssetFinder
+from .platforms import register_all_finders
+from .platforms.base import detect_platform, get_finder, CalendarPageError, UnsupportedPlatformError
+from .platforms.media_probe import is_plausible_meeting_duration, probe_duration
 from .utils.url_normalize import normalize_url
 
 load_dotenv()
@@ -74,15 +68,7 @@ app.mount("/static", StaticFiles(directory=APP_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=APP_DIR / "templates")
 templates.env.globals["GA_MEASUREMENT_ID"] = os.environ.get("GA_MEASUREMENT_ID", "")
 
-register(GranicusAssetFinder())
-register(CivicClerkAssetFinder())
-register(SwagitAssetFinder())
-register(EscribeAssetFinder())
-register(CaliforniaLegislatureAssetFinder())
-register(LegistarAssetFinder())
-register(CivicPlusAssetFinder())
-register(YouTubeAssetFinder())
-register(PrimeGovAssetFinder())
+register_all_finders()
 
 
 class ResolveRequest(BaseModel):
@@ -366,6 +352,161 @@ async def report_problem(request: Request, req: ReportProblemRequest):
             status_code=502,
         )
     return {"status": "received"}
+
+
+# On-demand transcription -------------------------------------------------
+#
+# Checkpoint granularity for the worker service, not an external API's
+# file-size ceiling (self-hosted faster-whisper has none) -- see the plan
+# this was built from for why. Frozen onto the TranscriptionJob row at
+# creation, so changing this constant later never affects an in-flight job.
+TRANSCRIPTION_CHUNK_SIZE_SECONDS = 900
+
+
+class TranscriptionFeasibilityRequest(BaseModel):
+    url: str
+
+
+def _media_kind(video_format: Optional[str]) -> str:
+    return "audio" if (video_format or "") in ("mp3", "wav") else "video"
+
+
+@app.post("/api/transcription/check-feasibility")
+@limiter.limit("5/hour")
+async def transcription_check_feasibility(request: Request, req: TranscriptionFeasibilityRequest):
+    """Live-resolves the meeting fresh (never the cache -- a stale/expired
+    media URL would fail every chunk hours into a real job) and probes its
+    real duration. Read-only: never touches the Archive, never spends a
+    transcription request -- this is the client-side toggle-reveal step
+    (see app/static/player.js), safe to run on every "Transcribe this
+    meeting" click.
+    """
+    platform = detect_platform(req.url)
+    try:
+        finder = get_finder(platform)
+    except UnsupportedPlatformError:
+        return {"ok": False, "message": f"We don't support '{platform}' meeting pages yet."}
+
+    try:
+        result = await finder.resolve(req.url)
+    except Exception as e:
+        return {"ok": False, "message": f"Couldn't resolve this meeting: {e}"}
+
+    if not result.video_url:
+        return {"ok": False, "message": "No usable audio or video source was found for this meeting."}
+
+    duration = await probe_duration(result.video_url, source_page_url=req.url)
+    if duration is None:
+        return {"ok": False, "message": "We found a media source but couldn't read it -- it may be unavailable."}
+    if not is_plausible_meeting_duration(duration):
+        return {
+            "ok": False,
+            "message": "The media we found doesn't look like a full meeting recording (unusual duration).",
+        }
+
+    return {
+        "ok": True,
+        "duration_seconds": duration,
+        "media_kind": _media_kind(result.video_format),
+        "message": None,
+    }
+
+
+class TranscriptionSubmitRequest(BaseModel):
+    url: str
+    email: str
+
+
+@app.post("/api/transcription/submit")
+@limiter.limit("5/hour")
+async def transcription_submit(request: Request, req: TranscriptionSubmitRequest):
+    """Re-runs the entire feasibility check server-side rather than trusting
+    a client-supplied "it passed" flag -- this is the step that actually
+    creates a job (and, for a first-time email, sends a real message), so
+    a bad/missing media URL must never get this far on a forged request.
+    """
+    email = req.email.strip()
+    if not _EMAIL_RE.match(email):
+        return JSONResponse(
+            {"error": "invalid_email", "message": "That doesn't look like a valid email address."},
+            status_code=400,
+        )
+
+    platform = detect_platform(req.url)
+    try:
+        finder = get_finder(platform)
+    except UnsupportedPlatformError:
+        return JSONResponse(
+            {"error": "unsupported_platform", "message": f"We don't support '{platform}' meeting pages yet."},
+            status_code=400,
+        )
+
+    try:
+        result = await finder.resolve(req.url)
+    except Exception as e:
+        return JSONResponse({"error": "resolve_failed", "message": str(e)}, status_code=400)
+
+    if not result.video_url:
+        return JSONResponse(
+            {"error": "no_media", "message": "No usable audio or video source was found for this meeting."},
+            status_code=400,
+        )
+
+    duration = await probe_duration(result.video_url, source_page_url=req.url)
+    if duration is None or not is_plausible_meeting_duration(duration):
+        return JSONResponse(
+            {"error": "infeasible", "message": "We couldn't verify a usable media source for this meeting."},
+            status_code=400,
+        )
+
+    normalized = normalize_url(req.url)
+    job = await archive_client.request_transcription_job(
+        payload=result.model_dump(),
+        input_url_normalized=normalized,
+        requester_email=email,
+        media_url=result.video_url,
+        media_kind=_media_kind(result.video_format),
+        probed_duration_seconds=duration,
+        chunk_size_seconds=TRANSCRIPTION_CHUNK_SIZE_SECONDS,
+    )
+    if job is None:
+        return JSONResponse(
+            {
+                "error": "archive_unavailable",
+                "message": "Transcription requests aren't available right now — please try again later.",
+            },
+            status_code=503,
+        )
+    if job.get("error") == "too_many_active_jobs":
+        return JSONResponse(
+            {
+                "error": "too_many_active_jobs",
+                "message": "We're at capacity for transcription requests right now — please try again later.",
+            },
+            status_code=429,
+        )
+
+    job.pop("requester_email", None)  # never echo a viewer's own email back into a public JSON response
+    return job
+
+
+@app.get("/api/transcription/status")
+async def transcription_status(job_id: int):
+    job = await archive_client.get_transcription_status(job_id)
+    if job is None:
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    job.pop("requester_email", None)
+    return job
+
+
+@app.get("/confirm-transcription")
+async def confirm_transcription(request: Request, token: str = ""):
+    job = await archive_client.confirm_transcription_job(token) if token else None
+    return templates.TemplateResponse(
+        request,
+        "confirm_transcription.html",
+        {"confirmed": job is not None, "meeting_page_slug": job.get("meeting_page_slug") if job else None},
+    )
 
 
 @app.get("/")

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Confirm transcription request | Red Tape Recordings{% endblock %}
+{% block content %}
+  <main class="about-page">
+    {% if confirmed %}
+      <h1>You're confirmed.</h1>
+      <p>We'll email you when the transcript is ready. This can take a while for long meetings.</p>
+      {% if meeting_page_slug %}
+        <p><a href="/m/{{ meeting_page_slug }}">Go to the meeting page</a></p>
+      {% endif %}
+    {% else %}
+      <h1>That link isn't valid.</h1>
+      <p>It may have already been used, or it's expired. If you still want a transcript, go back to the meeting page and request it again.</p>
+    {% endif %}
+  </main>
+{% endblock %}

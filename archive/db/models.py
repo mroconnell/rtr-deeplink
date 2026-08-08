@@ -66,6 +66,72 @@ class TranscriptVersion(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
+class TranscriptionJob(Base):
+    """An on-demand "transcribe this meeting from audio" request and its
+    progress -- created when a viewer asks for our own transcription
+    because the source's own captions are missing/garbled/absent. One row
+    per request; a meeting can accumulate several over time (each producing
+    its own TranscriptVersion, source="transcribed"), but only one may be
+    active (queued/in_progress) per MeetingPage at once -- see
+    crud.create_transcription_job()'s duplicate-lock check.
+
+    Processed by the worker/ service in chunks (see worker/main.py) so a
+    multi-hour job survives a worker restart/redeploy losing at most one
+    in-flight chunk -- chunks_completed/partial_segments are the durable
+    checkpoint, not anything held in the worker process's own memory.
+    """
+
+    __tablename__ = "transcription_jobs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    meeting_page_id: Mapped[int] = mapped_column(ForeignKey("meeting_pages.id"), nullable=False, index=True)
+
+    requester_email: Mapped[str] = mapped_column(String(255), nullable=False)
+    # Set only while status == "pending_confirmation"; cleared once
+    # confirmed. Not reused across jobs -- a fresh token per request.
+    confirmation_token: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+
+    # "pending_confirmation" -> "queued" -> "in_progress" -> "completed" | "failed"
+    # A requester already in the Resend audience skips straight to
+    # "queued" (see archive/utils/email.py's check_audience_membership) --
+    # "pending_confirmation" only applies to a first-time email address.
+    status: Mapped[str] = mapped_column(String(24), nullable=False, default="pending_confirmation", index=True)
+
+    # Frozen at submit time for the feasibility-checked URL, but the worker
+    # re-resolves the adapter fresh before every chunk rather than trusting
+    # this indefinitely -- HLS/signed URLs can go stale over a job that
+    # sits queued a while or runs long. Kept here mainly for the record and
+    # as a fallback if a fresh re-resolve ever fails outright.
+    media_url: Mapped[str] = mapped_column(Text, nullable=False)
+    media_kind: Mapped[str] = mapped_column(String(10), nullable=False)  # "audio" | "video"
+    probed_duration_seconds: Mapped[float] = mapped_column(nullable=False)
+
+    chunk_size_seconds: Mapped[int] = mapped_column(Integer, nullable=False)
+    total_chunks: Mapped[int] = mapped_column(Integer, nullable=False)
+    chunks_completed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Already timestamp-shifted (worker/segment_utils.shift_segments) to be
+    # full-meeting-relative, same {start,end,text,speaker} shape as
+    # TranscriptVersion.segments -- written there directly on completion,
+    # no separate merge step.
+    partial_segments: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+
+    # Stale-claim safety net against a crashed/restarted worker process,
+    # not a multi-worker race (only one worker process is planned) --
+    # belt-and-suspenders, not load-bearing.
+    claimed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    consecutive_chunk_failures: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    transcript_version_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("transcript_versions.id"), nullable=True
+    )
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
 class MeetingPageUrlAlias(Base):
     """Every normalized input URL that has ever successfully pushed to a
     given MeetingPage. Exists specifically so /internal/lookup -- which only

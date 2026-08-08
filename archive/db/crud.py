@@ -1,14 +1,17 @@
 import hashlib
-from datetime import datetime, timezone
+import math
+import secrets
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from sqlalchemy import and_, select
 
+from ..utils.language import detect_language_from_texts
 from ..utils.search import build_corpus, matches, tokenize
 from ..utils.slugify import build_base_slug, random_suffix
 from ..utils.url_normalize import normalize_url
 from .engine import async_session
-from .models import MeetingPage, MeetingPageUrlAlias, TranscriptVersion
+from .models import MeetingPage, MeetingPageUrlAlias, TranscriptionJob, TranscriptVersion
 
 
 def _content_hash(segments: list) -> str:
@@ -96,6 +99,70 @@ async def _unique_slug(session, base: str) -> str:
     return f"{base}-{random_suffix(12)}"
 
 
+async def _find_or_create_page(session, payload: dict[str, Any], input_url_normalized: str) -> MeetingPage:
+    """Shared by ingest_resolution() and create_transcription_job() -- both
+    need "find this meeting's permanent page, or create one if this is the
+    first thing that's ever landed for it" from the same resolver-payload
+    shape. Extracted 2026-08-08 when the transcription feature needed the
+    exact same logic ingest_resolution() already had inline.
+    """
+    platform = payload["platform"]
+    external_id = payload.get("external_id")
+    source_url_normalized = normalize_url(payload["source_url"])
+
+    page = await _find_existing_page(
+        session,
+        platform=platform,
+        external_id=external_id,
+        source_url_normalized=source_url_normalized,
+        input_url_normalized=input_url_normalized,
+    )
+
+    if page is None:
+        base_slug = build_base_slug(payload.get("jurisdiction") or "", payload.get("date") or "", payload.get("title") or "")
+        slug = await _unique_slug(session, base_slug)
+        page = MeetingPage(
+            slug=slug,
+            platform=platform,
+            external_id=external_id,
+            source_url_normalized=source_url_normalized,
+            title=payload.get("title"),
+            date=payload.get("date"),
+            jurisdiction=payload.get("jurisdiction"),
+            video_url=payload.get("video_url"),
+            video_format=payload.get("video_format"),
+            agenda_items=payload.get("agenda_items") or [],
+        )
+        session.add(page)
+        await session.flush()  # assigns page.id
+    else:
+        # Keep page-level fields fresh (title/video/agenda can improve
+        # on a later, better resolve) without touching the slug.
+        page.title = payload.get("title") or page.title
+        page.date = payload.get("date") or page.date
+        page.jurisdiction = payload.get("jurisdiction") or page.jurisdiction
+        page.video_url = payload.get("video_url") or page.video_url
+        page.video_format = payload.get("video_format") or page.video_format
+        if payload.get("agenda_items"):
+            page.agenda_items = payload["agenda_items"]
+        # Reassigning a column to its *current* value doesn't dirty it
+        # for SQLAlchemy's purposes, so `onupdate=func.now()` silently
+        # never fires on a re-ingest whose content is byte-identical to
+        # what's already stored -- the common case for a re-check that
+        # finds nothing new. That left `updated_at` permanently stuck on
+        # a stale page (confirmed live: a backdated page stayed "stale"
+        # forever, re-triggering the opportunistic re-check in
+        # app/main.py on every single hit instead of once per
+        # ARCHIVE_RECHECK_AFTER window). Touch it explicitly so
+        # `updated_at` always means "last time this page was actually
+        # checked," independent of whether anything changed.
+        page.updated_at = datetime.now(timezone.utc)
+
+    await _ensure_alias(session, input_url_normalized, page.id)
+    await _ensure_alias(session, source_url_normalized, page.id)
+    return page
+
+
 async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) -> dict:
     """Create a MeetingPage (or attach a new TranscriptVersion to an
     existing one) from a resolver push. `payload` is the resolver's
@@ -103,62 +170,10 @@ async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) 
     title, date, jurisdiction, video_url, video_format, segments,
     agenda_items, transcript_language, transcript_warnings.
     """
-    platform = payload["platform"]
-    external_id = payload.get("external_id")
-    source_url_normalized = normalize_url(payload["source_url"])
     segments = payload.get("segments") or []
 
     async with async_session() as session:
-        page = await _find_existing_page(
-            session,
-            platform=platform,
-            external_id=external_id,
-            source_url_normalized=source_url_normalized,
-            input_url_normalized=input_url_normalized,
-        )
-
-        if page is None:
-            base_slug = build_base_slug(payload.get("jurisdiction") or "", payload.get("date") or "", payload.get("title") or "")
-            slug = await _unique_slug(session, base_slug)
-            page = MeetingPage(
-                slug=slug,
-                platform=platform,
-                external_id=external_id,
-                source_url_normalized=source_url_normalized,
-                title=payload.get("title"),
-                date=payload.get("date"),
-                jurisdiction=payload.get("jurisdiction"),
-                video_url=payload.get("video_url"),
-                video_format=payload.get("video_format"),
-                agenda_items=payload.get("agenda_items") or [],
-            )
-            session.add(page)
-            await session.flush()  # assigns page.id
-        else:
-            # Keep page-level fields fresh (title/video/agenda can improve
-            # on a later, better resolve) without touching the slug.
-            page.title = payload.get("title") or page.title
-            page.date = payload.get("date") or page.date
-            page.jurisdiction = payload.get("jurisdiction") or page.jurisdiction
-            page.video_url = payload.get("video_url") or page.video_url
-            page.video_format = payload.get("video_format") or page.video_format
-            if payload.get("agenda_items"):
-                page.agenda_items = payload["agenda_items"]
-            # Reassigning a column to its *current* value doesn't dirty it
-            # for SQLAlchemy's purposes, so `onupdate=func.now()` silently
-            # never fires on a re-ingest whose content is byte-identical to
-            # what's already stored -- the common case for a re-check that
-            # finds nothing new. That left `updated_at` permanently stuck on
-            # a stale page (confirmed live: a backdated page stayed "stale"
-            # forever, re-triggering the opportunistic re-check in
-            # app/main.py on every single hit instead of once per
-            # ARCHIVE_RECHECK_AFTER window). Touch it explicitly so
-            # `updated_at` always means "last time this page was actually
-            # checked," independent of whether anything changed.
-            page.updated_at = datetime.now(timezone.utc)
-
-        await _ensure_alias(session, input_url_normalized, page.id)
-        await _ensure_alias(session, source_url_normalized, page.id)
+        page = await _find_or_create_page(session, payload, input_url_normalized)
 
         if segments:
             language = payload.get("transcript_language")
@@ -398,3 +413,274 @@ async def list_recent_pages_for_feed(*, jurisdiction: Optional[str] = None, limi
         }
         for mp in rows
     ]
+
+
+# --- On-demand transcription -------------------------------------------
+#
+# A job moves pending_confirmation -> queued -> in_progress -> completed |
+# failed. pending_confirmation and queued/in_progress are both "active" for
+# the purposes of blocking a duplicate request against the same page, but
+# only queued/in_progress count toward MAX_CONCURRENT_TRANSCRIPTION_JOBS --
+# an unconfirmed request isn't spending any worker/transcription time yet.
+#
+# Known gap, not solved here: a pending_confirmation job that's never
+# confirmed blocks new requests for that page indefinitely (no expiry).
+# Fine to leave for now given how new this feature is; worth a cleanup pass
+# (e.g. treat pending_confirmation older than 48h as abandoned) once this
+# has been live long enough to know if it's a real problem. Tracked in
+# BACKLOG.md.
+
+ACTIVE_JOB_STATUSES = ("pending_confirmation", "queued", "in_progress")
+SPENDING_JOB_STATUSES = ("queued", "in_progress")
+MAX_CONCURRENT_TRANSCRIPTION_JOBS = 3
+STALE_CLAIM_AFTER = timedelta(minutes=10)
+MAX_CONSECUTIVE_CHUNK_FAILURES = 3
+
+
+async def promote_transcript_version(session, page_id: int, version_id: int) -> None:
+    """Make `version_id` the one /m/{slug} renders by default, demoting
+    whichever version held that spot before -- never deletes anything, the
+    demoted version stays reachable via the existing `?version=` picker.
+    Real gap this closes: previously only the very first TranscriptVersion
+    a page ever got was set is_default, and nothing later ever promoted a
+    subsequent one (see BACKLOG_DONE.md). Caller must be inside an existing
+    session/transaction (this doesn't commit) -- both call sites below
+    (finalize) already are.
+    """
+    versions = (
+        await session.execute(select(TranscriptVersion).where(TranscriptVersion.meeting_page_id == page_id))
+    ).scalars().all()
+    for v in versions:
+        v.is_default = v.id == version_id
+
+
+async def create_transcription_job(
+    *,
+    payload: dict[str, Any],
+    input_url_normalized: str,
+    requester_email: str,
+    media_url: str,
+    media_kind: str,
+    probed_duration_seconds: float,
+    chunk_size_seconds: int,
+    skip_confirmation: bool,
+) -> dict:
+    """Find-or-create the MeetingPage (a request can be the very first thing
+    that ever creates a permanent page for a meeting -- the ephemeral
+    resolver page doesn't require one to exist first), then create the job
+    -- unless one's already active for this page, in which case that
+    existing job's status is returned instead of creating a duplicate.
+
+    `skip_confirmation` is decided by the caller (archive/main.py, after
+    checking Resend audience membership) -- this function doesn't reach out
+    to Resend itself, keeping external API calls out of the DB layer.
+    """
+    async with async_session() as session:
+        page = await _find_or_create_page(session, payload, input_url_normalized)
+
+        existing = (
+            await session.execute(
+                select(TranscriptionJob)
+                .where(TranscriptionJob.meeting_page_id == page.id, TranscriptionJob.status.in_(ACTIVE_JOB_STATUSES))
+                .order_by(TranscriptionJob.created_at.desc())
+            )
+        ).scalars().first()
+        if existing:
+            await session.commit()  # persist the page if it was just created, even though no job was
+            return _job_dict(existing, page)
+
+        active_spend_count = (
+            await session.execute(
+                select(TranscriptionJob).where(TranscriptionJob.status.in_(SPENDING_JOB_STATUSES))
+            )
+        ).scalars().all()
+        if len(active_spend_count) >= MAX_CONCURRENT_TRANSCRIPTION_JOBS:
+            await session.commit()
+            return {"error": "too_many_active_jobs", "slug": page.slug}
+
+        total_chunks = math.ceil(probed_duration_seconds / chunk_size_seconds)
+        job = TranscriptionJob(
+            meeting_page_id=page.id,
+            requester_email=requester_email,
+            confirmation_token=None if skip_confirmation else secrets.token_urlsafe(32),
+            status="queued" if skip_confirmation else "pending_confirmation",
+            media_url=media_url,
+            media_kind=media_kind,
+            probed_duration_seconds=probed_duration_seconds,
+            chunk_size_seconds=chunk_size_seconds,
+            total_chunks=total_chunks,
+        )
+        session.add(job)
+        await session.commit()
+        return _job_dict(job, page)
+
+
+async def confirm_transcription_job(token: str) -> Optional[dict]:
+    """Flips a first-time requester's job from pending_confirmation to
+    queued once they click the link in their confirmation email. Returns
+    None if the token doesn't match any job still awaiting confirmation
+    (already confirmed, or never existed) -- the caller shows a generic
+    "link invalid or already used" message either way, not distinguishing
+    which, same reasoning as the admin/internal routes' 404-not-401
+    pattern elsewhere in this codebase."""
+    async with async_session() as session:
+        job = (
+            await session.execute(
+                select(TranscriptionJob).where(
+                    TranscriptionJob.confirmation_token == token,
+                    TranscriptionJob.status == "pending_confirmation",
+                )
+            )
+        ).scalars().first()
+        if job is None:
+            return None
+        job.status = "queued"
+        job.confirmation_token = None
+        page = await session.get(MeetingPage, job.meeting_page_id)
+        await session.commit()
+        return _job_dict(job, page)
+
+
+async def claim_next_chunk() -> Optional[dict]:
+    """Atomically claims the oldest queued/in_progress job with no live
+    claim, marking it in_progress and stamping claimed_at so a second
+    concurrent caller won't also pick it up. The staleness window
+    (STALE_CLAIM_AFTER) exists for a crashed/restarted worker process, not
+    a multi-worker race -- only one worker process is planned (see the
+    plan this was built from), so this is a safety net, not load-bearing
+    concurrency control. Returns everything the worker needs to process
+    one chunk, or None if nothing's claimable right now.
+    """
+    now = datetime.now(timezone.utc)
+    stale_before = now - STALE_CLAIM_AFTER
+
+    async with async_session() as session:
+        job = (
+            await session.execute(
+                select(TranscriptionJob)
+                .where(
+                    TranscriptionJob.status.in_(("queued", "in_progress")),
+                    (TranscriptionJob.claimed_at.is_(None)) | (TranscriptionJob.claimed_at < stale_before),
+                )
+                .order_by(TranscriptionJob.created_at.asc())
+                .limit(1)
+            )
+        ).scalars().first()
+        if job is None:
+            return None
+
+        job.status = "in_progress"
+        job.claimed_at = now
+        page = await session.get(MeetingPage, job.meeting_page_id)
+        await session.commit()
+
+        return {
+            "job_id": job.id,
+            "meeting_page_id": job.meeting_page_id,
+            "source_url": page.source_url_normalized if page else None,
+            "platform": page.platform if page else None,
+            "media_url": job.media_url,
+            "chunk_index": job.chunks_completed,  # next chunk to process
+            "total_chunks": job.total_chunks,
+            "chunk_size_seconds": job.chunk_size_seconds,
+            "probed_duration_seconds": job.probed_duration_seconds,
+        }
+
+
+async def report_chunk_result(
+    job_id: int,
+    *,
+    success: bool,
+    shifted_segments: Optional[list] = None,
+    error: Optional[str] = None,
+) -> dict:
+    """Called by the worker after attempting one chunk. On success, appends
+    already-offset segments and advances progress; if that was the last
+    chunk, finalizes the job (writes the TranscriptVersion, promotes it,
+    caller -- archive/main.py -- sends the completion email afterward using
+    this function's returned `completed`/`transcript_version_id`). On
+    failure, counts toward MAX_CONSECUTIVE_CHUNK_FAILURES before giving up
+    on the whole job -- a single flaky chunk (transient network blip)
+    shouldn't fail an otherwise-fine multi-hour job.
+    """
+    async with async_session() as session:
+        job = await session.get(TranscriptionJob, job_id)
+        if job is None:
+            return {"error": "job_not_found"}
+
+        job.claimed_at = None  # release the claim regardless of outcome
+
+        if not success:
+            job.consecutive_chunk_failures += 1
+            job.error_message = error
+            if job.consecutive_chunk_failures >= MAX_CONSECUTIVE_CHUNK_FAILURES:
+                job.status = "failed"
+            await session.commit()
+            return {"status": job.status, "consecutive_chunk_failures": job.consecutive_chunk_failures}
+
+        job.consecutive_chunk_failures = 0
+        job.partial_segments = [*job.partial_segments, *(shifted_segments or [])]
+        job.chunks_completed += 1
+
+        if job.chunks_completed >= job.total_chunks:
+            language = detect_language_from_texts(s["text"] for s in job.partial_segments)
+            version = TranscriptVersion(
+                meeting_page_id=job.meeting_page_id,
+                language=language,
+                source="transcribed",
+                is_default=False,  # promote_transcript_version sets the real default below
+                segments=sorted(job.partial_segments, key=lambda s: s["start"]),
+                transcript_warnings=[],
+                content_hash=_content_hash(job.partial_segments),
+            )
+            session.add(version)
+            await session.flush()  # assigns version.id
+            await promote_transcript_version(session, job.meeting_page_id, version.id)
+            job.transcript_version_id = version.id
+            job.status = "completed"
+            page = await session.get(MeetingPage, job.meeting_page_id)
+            await session.commit()
+            return {
+                "status": "completed",
+                "transcript_version_id": version.id,
+                "meeting_page_slug": page.slug if page else None,
+                "meeting_page_title": page.title if page else None,
+            }
+
+        await session.commit()
+        return {"status": "in_progress", "chunks_completed": job.chunks_completed, "total_chunks": job.total_chunks}
+
+
+def _job_dict(job: TranscriptionJob, page: Optional[MeetingPage]) -> dict:
+    return {
+        "job_id": job.id,
+        "status": job.status,
+        "chunks_completed": job.chunks_completed,
+        "total_chunks": job.total_chunks,
+        "meeting_page_slug": page.slug if page else None,
+        "meeting_page_title": page.title if page else None,
+        "error_message": job.error_message,
+        # Only meaningful to internal (token-gated) callers -- app/main.py's
+        # public status-poll proxy strips this before it ever reaches a
+        # browser, no reason to echo a viewer's own email back to them.
+        "requester_email": job.requester_email,
+    }
+
+
+async def get_transcription_job_status(job_id: int) -> Optional[dict]:
+    async with async_session() as session:
+        job = await session.get(TranscriptionJob, job_id)
+        if job is None:
+            return None
+        page = await session.get(MeetingPage, job.meeting_page_id)
+        return _job_dict(job, page)
+
+
+async def get_confirmation_token(job_id: int) -> Optional[str]:
+    """Deliberately separate from _job_dict() (which never includes the
+    token) -- the only caller is archive/main.py's create-job endpoint,
+    immediately after creating a pending_confirmation job, solely to build
+    the emailed confirm link. Never returned to any other caller."""
+    async with async_session() as session:
+        job = await session.get(TranscriptionJob, job_id)
+        return job.confirmation_token if job else None

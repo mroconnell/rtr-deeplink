@@ -16,6 +16,7 @@ from pydantic import BaseModel
 
 from .db import crud
 from .db.engine import init_models
+from .utils import email as email_utils
 from .utils.transcript_export import to_srt, to_txt
 from .utils.url_normalize import normalize_url
 
@@ -75,6 +76,12 @@ class TranscriptSegmentIn(BaseModel):
     start: float
     end: float
     text: str
+    # Unused today (see app/platforms/models.py's TranscriptSegment for
+    # why it exists at all) -- declared here too so it round-trips through
+    # ingest instead of Pydantic silently dropping an unrecognized field,
+    # which would otherwise quietly break a future diarization pass that
+    # assumes this value survives the resolver -> Archive boundary.
+    speaker: Optional[str] = None
 
 
 class IngestRequest(BaseModel):
@@ -101,6 +108,100 @@ async def internal_ingest(req: IngestRequest, authorization: Optional[str] = Hea
     payload = req.model_dump(exclude={"input_url_normalized"})
     result = await crud.ingest_resolution(payload, req.input_url_normalized)
     return result
+
+
+class ResolvedMeetingIn(BaseModel):
+    """Same shape as IngestRequest minus input_url_normalized (that's a
+    sibling field on the request models below, not part of the resolved-
+    meeting payload itself) -- kept separate rather than reused so this
+    can evolve independently (e.g. dropping a field IngestRequest still
+    needs) without a shared-model coupling."""
+
+    platform: str
+    source_url: str
+    external_id: Optional[str] = None
+    title: Optional[str] = None
+    date: Optional[str] = None
+    jurisdiction: Optional[str] = None
+    video_url: Optional[str] = None
+    video_format: Optional[str] = None
+    segments: List[TranscriptSegmentIn] = []
+    agenda_items: List[TranscriptSegmentIn] = []
+    transcript_language: Optional[str] = None
+    transcript_warnings: List[str] = []
+
+
+class TranscriptionCreateJobRequest(BaseModel):
+    payload: ResolvedMeetingIn
+    input_url_normalized: str
+    requester_email: str
+    media_url: str
+    media_kind: str
+    probed_duration_seconds: float
+    chunk_size_seconds: int
+
+
+@app.post("/internal/transcription/create-job")
+async def internal_transcription_create_job(
+    req: TranscriptionCreateJobRequest, authorization: Optional[str] = Header(None)
+):
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    skip_confirmation = await email_utils.check_audience_membership(req.requester_email)
+
+    job = await crud.create_transcription_job(
+        payload=req.payload.model_dump(),
+        input_url_normalized=req.input_url_normalized,
+        requester_email=req.requester_email,
+        media_url=req.media_url,
+        media_kind=req.media_kind,
+        probed_duration_seconds=req.probed_duration_seconds,
+        chunk_size_seconds=req.chunk_size_seconds,
+        skip_confirmation=skip_confirmation,
+    )
+
+    if job.get("status") == "pending_confirmation":
+        # The token itself lives server-side only (crud never returns it in
+        # a job dict) -- fetched separately so it's never logged/returned
+        # to the resolver, only ever emailed directly to the requester.
+        token = await crud.get_confirmation_token(job["job_id"])
+        base = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
+        confirm_url = f"{base}/confirm-transcription?token={token}"
+        await email_utils.send_confirmation_email(req.requester_email, confirm_url)
+
+    return job
+
+
+class TranscriptionConfirmRequest(BaseModel):
+    token: str
+
+
+@app.post("/internal/transcription/confirm")
+async def internal_transcription_confirm(req: TranscriptionConfirmRequest, authorization: Optional[str] = Header(None)):
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    job = await crud.confirm_transcription_job(req.token)
+    if job is None:
+        return JSONResponse({"error": "invalid_or_used_token"}, status_code=404)
+
+    # Confirming implicitly opts them into the audience -- every request
+    # after their first is frictionless from here on, same as a newsletter
+    # subscriber (see archive/utils/email.py's upsert_audience_contact).
+    await email_utils.upsert_audience_contact(job["requester_email"])
+    return job
+
+
+@app.get("/internal/transcription/status/{job_id}")
+async def internal_transcription_status(job_id: int, authorization: Optional[str] = Header(None)):
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    job = await crud.get_transcription_job_status(job_id)
+    if job is None:
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    return job
 
 
 def _pick_active_version(page: dict, version: Optional[int]) -> Optional[dict]:

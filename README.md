@@ -56,9 +56,16 @@ HTTP calls are mocked via a small in-repo `tests/aiohttp_mock.py`, not
 `aioresponses` — its latest release doesn't support the aiohttp version
 this project's unpinned `aiohttp>=3.9` resolves to today. Also covers
 `archive/utils/search.py`'s exact/fuzzy matching logic directly (pure
-functions, no DB or mocking needed —
-`tests/test_archive_search.py`). eScribe and PrimeGov/YouTube don't have
-test coverage yet — a good next place to extend this suite.
+functions, no DB or mocking needed — `tests/test_archive_search.py`) and
+`worker/segment_utils.py` + `app/platforms/media_probe.py`'s duration-
+plausibility check the same way (`tests/test_worker_segment_utils.py`,
+`tests/test_media_probe.py`). `tests/test_transcription_jobs.py` is a
+different shape — real integration tests against an isolated SQLite file
+(set up once per test session by `tests/conftest.py`, not mocked), since
+the transcription job lifecycle is genuinely DB-state-machine logic
+(claim/report/finalize/promote) that a pure-function test can't exercise
+honestly. eScribe and PrimeGov/YouTube don't have test coverage yet — a
+good next place to extend this suite.
 
 ## How it works
 
@@ -308,6 +315,79 @@ already backgrounded via FastAPI's `BackgroundTasks`, not blocking
 `/api/resolve`'s response — see "Push, after resolving" above) and what a
 one-time backfill for already-archived meetings would need.
 
+## On-demand transcription
+
+Sometimes the government site's own captions are missing, garbled, or in
+the wrong language — this app can't fix that at the source, but a viewer
+can ask for a real transcript made from the meeting's own audio instead.
+Click "Transcribe this meeting from audio" on any meeting page (ephemeral
+or permanent), and — once a couple of quick checks pass — leave an email
+address to be notified when it's ready. It's added to the permanent page
+alongside the original, not instead of it, so nothing is ever silently
+replaced.
+
+**Why this needs a third service.** Transcribing a multi-hour meeting is
+real, sustained work — nothing like the sub-second checks the resolver and
+Archive web services already handle per request. Neither of those is a
+place to run something that might take hours, so a third, persistent
+service (`worker/`, a Render Background Worker — the first paid, always-on
+piece of infrastructure this project has needed) exists just to grind
+through transcription jobs in the background.
+
+**The flow, end to end:**
+1. **Feasibility check** (`POST /api/transcription/check-feasibility`,
+   `app/main.py`) — live-resolves the meeting fresh, then probes the
+   discovered media URL's real duration via `ffprobe`
+   (`app/platforms/media_probe.py`). Rejects anything implausibly short
+   (under 5 minutes — almost certainly the wrong asset, not a real
+   meeting) or implausibly long (over 14 hours). This is also what makes
+   the button itself real friction against abuse: nothing past this point
+   happens for a meeting with no usable source.
+2. **Submit** (`POST /api/transcription/submit`) — re-runs the entire
+   feasibility check server-side (never trusts a client-supplied "it
+   passed" flag) and asks the Archive to create a job
+   (`POST /internal/transcription/create-job`, token-gated like every
+   other resolver↔Archive call). The Archive checks whether this email is
+   already a newsletter audience member: if so, the job is queued
+   immediately; if it's a first-time address, the job waits at
+   `pending_confirmation` until a confirmation-email link is clicked
+   (`GET /confirm-transcription` on the resolver) — one click, once, ever,
+   per address, since confirming also opts them into the audience.
+3. **Processing** (`worker/main.py`) — a persistent loop: claim the oldest
+   pending chunk (`archive/db/crud.py`'s `claim_next_chunk()`/
+   `report_chunk_result()` — the worker reaches into the Archive's
+   database directly here, the one deliberate exception to the
+   resolver↔Archive HTTP-only rule, since this process *is* Archive
+   backend logic, just running in a process shape the Archive's own web
+   dyno can't offer), extract that chunk's audio with `ffmpeg` (re-
+   resolving a fresh media URL first — HLS/signed URLs can go stale over
+   a long-running job), transcribe it with a self-hosted `faster-whisper`
+   model (loaded once at process startup, reused for every job), shift
+   its timestamps from chunk-relative to full-meeting-relative seconds
+   (`worker/segment_utils.py`'s `shift_segments()` — the same `{start,
+   end, text}` convention every adapter's real segments already use, so
+   the existing deep-link/seek logic needs no changes to work on a
+   transcribed transcript), and persist the result before moving to the
+   next chunk. Checkpointed after every chunk specifically so a worker
+   restart or redeploy loses at most one in-flight chunk, never the whole
+   job.
+4. **Completion** — the finished transcript becomes a new
+   `TranscriptVersion` (`source="transcribed"`, language detected from its
+   own real text the same way every scraped-caption adapter already does)
+   and is promoted to the page's default (closing a real, previously-
+   unaddressed gap: earlier, only a page's *very first* transcript version
+   ever became default — see `BACKLOG_DONE.md`). Nothing is deleted — the
+   original scraped version (if any) stays reachable through the existing
+   version picker. An email goes out with an excerpt and a link to the
+   permanent page.
+
+**Speaker labels aren't built yet, on purpose.** `TranscriptSegment` (`app/
+platforms/models.py`) already carries an optional `speaker` field, unused
+by every path today (including this one) — added now, cheaply, so a future
+diarization pass (self-hosted `faster-whisper` is the same base WhisperX
+already builds real diarization on top of, via `pyannote.audio`) doesn't
+need its own schema change later.
+
 ## Supported platforms
 
 Most local governments don't build their own video/meeting-minutes
@@ -454,21 +534,25 @@ own deploy) for permanent pages — see
 
 ```
 archive/
-  main.py                 FastAPI app: /internal/lookup, /internal/ingest
-                           (both token-gated), /m/{slug},
-                           /m/{slug}/transcript.{txt,srt}, /meetings,
-                           /sitemap.xml, /feed.xml, /api/health
+  main.py                 FastAPI app: /internal/lookup, /internal/ingest,
+                           /internal/transcription/* (all token-gated),
+                           /m/{slug}, /m/{slug}/transcript.{txt,srt},
+                           /meetings, /sitemap.xml, /feed.xml, /api/health
   db/
     engine.py              own DATABASE_URL resolution + local SQLite
                            fallback (archive_dev.db -- never shares the
                            resolver's dev.db)
     models.py               MeetingPage, TranscriptVersion,
-                           MeetingPageUrlAlias
+                           MeetingPageUrlAlias, TranscriptionJob (see "On-
+                           demand transcription" above)
     crud.py                  identity matching/dedup, slug generation,
                            content-hash version dedup, list_pages()
                            (paginated + filtered, backs /meetings),
                            list_all_page_slugs() (backs /sitemap.xml),
-                           list_recent_pages_for_feed() (backs /feed.xml)
+                           list_recent_pages_for_feed() (backs /feed.xml),
+                           the TranscriptionJob lifecycle (create/claim/
+                           report/confirm/finalize) and
+                           promote_transcript_version()
   utils/
     slugify.py               slug generation
     search.py                 keyword matching for list_pages() -- exact
@@ -480,6 +564,16 @@ archive/
                            app/utils/url_normalize.py -- kept in sync
                            manually so the two services stay
                            deploy-independent
+    language.py              same deliberate-duplicate pattern, of
+                           app/utils/vtt_parser.py's
+                           detect_language_from_texts() -- used to detect
+                           a transcribed version's language (see "On-
+                           demand transcription" above)
+    email.py                  Resend integration: transactional sends
+                           (confirmation + transcription-complete) and an
+                           audience-membership check, neither of which
+                           existed before this feature -- see "On-demand
+                           transcription" above
   templates/
     meeting_page.html        SSR permanent page + transcript-version
                            picker (real content on first byte, for
@@ -494,6 +588,39 @@ archive/
   static/style.css          duplicated from app/static/style.css
   static/meeting_page.js    trimmed port of player.js's seek/highlight
                            logic, wired onto already-rendered DOM
+```
+
+`worker/` is a third, independent service (own `requirements.txt`, own
+Docker-based deploy — see "On-demand transcription" above) for processing
+transcription jobs. Unlike the resolver/Archive split, it deliberately
+imports from both of the other two: `archive.db`/`archive.utils.email`
+directly (it *is* Archive backend logic, just in a process shape the
+Archive's own web dyno can't offer) and `app.platforms` (read-only, to
+re-resolve a fresh media URL before each chunk).
+
+```
+worker/
+  main.py                  the poll-claim-process loop; loads the
+                           transcription model once at startup, reused
+                           for every job/chunk after that
+  transcription_engine.py   TranscriptionEngine interface + the real v1
+                           implementation, self-hosted faster-whisper
+  media_probe.py            -- lives in app/platforms/, not here, so
+                           app/main.py's feasibility check can use it too
+                           without app/ depending on worker/; see that
+                           file's own docstring
+  segment_utils.py          pure, dependency-free chunk math + timestamp
+                           shifting (shift_segments()) -- kept apart from
+                           the two files above specifically so it stays
+                           trivially unit-testable
+  requirements.txt          app/'s adapter-fetch deps + archive/'s DB
+                           deps + faster-whisper -- no fastapi/uvicorn/
+                           jinja2/slowapi, this process never serves HTTP
+  Dockerfile                installs ffmpeg (a system binary, not a pip
+                           package) explicitly -- see render.yaml's
+                           comment on the resolver service for why plain
+                           `runtime: python` is a real, unverified risk
+                           there too
 ```
 
 ## Known limitations

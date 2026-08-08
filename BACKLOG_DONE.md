@@ -1310,3 +1310,165 @@ changelog of task titles.
   showed both checkboxes, the language/​"agenda only" badges, and
   filter-state persistence through a real "Apply filters" submit — not
   just checked via the Python API. 92/92 tests pass.
+
+- **[Done 2026-08-08] On-demand transcription from audio — a viewer can
+  request our own transcript when the source's own captions are missing,
+  garbled, or wrong-language.** User-designed feature, planned in detail
+  before building (job execution infra, transcription engine, and
+  email-verification strictness were all explicit decisions the user made
+  rather than defaults picked silently). Real product goals stated
+  alongside the request, intentionally not built now but designed around:
+  speaker diarization + a name-mapping UI, and comparing the finished
+  transcript against the agenda for topic coverage — both moved to
+  `CLAUDE_BACKLOG.md`.
+
+  **Architecture: a third service.** Neither the resolver nor the Archive
+  web service can run something that might take hours, so a new
+  `worker/` — a persistent, paid Render Background Worker (the first
+  paid, always-on infrastructure this project has needed; no free tier
+  exists for this) — processes jobs in the background. Deliberately
+  breaks the resolver/Archive HTTP-only separation in one direction only:
+  the worker imports `archive.db`/`archive.utils.email` directly (it *is*
+  Archive backend logic, just in a process shape the Archive's own web
+  dyno can't offer) and `app.platforms` directly (read-only, to re-resolve
+  a fresh media URL before each chunk — HLS/signed URLs can go stale over
+  a long job). `app/platforms/media_probe.py`'s ffmpeg/ffprobe wrapper and
+  the adapter-registration helper (`app/platforms/__init__.py`'s new
+  `register_all_finders()`, extracted from what used to be nine inline
+  `register()` calls in `app/main.py`) both live under `app/platforms/`
+  specifically so `app/main.py`'s synchronous feasibility-check endpoint
+  and `worker/main.py`'s chunk processing can share them without `app/`
+  ever depending on `worker/`.
+
+  **The flow**: feasibility check (`POST /api/transcription/check-
+  feasibility` — live-resolves, then `ffprobe`s the real duration, reject
+  under 5min/over 14h) → submit (`POST /api/transcription/submit`,
+  re-checks feasibility server-side, never trusts a client flag) → the
+  Archive creates a `TranscriptionJob`
+  (`POST /internal/transcription/create-job`) → **email-verification
+  rule, exactly as specified**: if the address is already in the Resend
+  newsletter audience, the job queues immediately; a first-time address
+  requires one confirmation-email click
+  (`GET /confirm-transcription` on the resolver →
+  `POST /internal/transcription/confirm`), which also opts them into the
+  audience so every request after their first is frictionless → the
+  worker loops claiming one chunk at a time
+  (`archive/db/crud.py`'s `claim_next_chunk()`), extracting that chunk's
+  audio with `ffmpeg` (re-resolved media URL, realistic User-Agent/
+  Referer headers — see the Fountain Valley 403 workaround below),
+  transcribing it with self-hosted `faster-whisper` (model loaded once at
+  worker startup, reused for every job/chunk after that — **exactly the
+  "free service that won't suck" the user asked for**, since the worker's
+  cost is already fixed regardless of how much gets transcribed, no
+  per-minute API meter on top), shifting timestamps from chunk-relative to
+  full-meeting-relative seconds (`worker/segment_utils.py`'s
+  `shift_segments()`), and persisting the result
+  (`report_chunk_result()`) before moving on — checkpointed after every
+  chunk specifically so a worker restart/redeploy loses at most one
+  in-flight chunk, never the whole job. On the last chunk: a new
+  `TranscriptVersion(source="transcribed")` is created, its language
+  detected from its own real text
+  (`archive/utils/language.py`, a deliberate duplicate of `app/utils/
+  vtt_parser.py`'s `detect_language_from_texts()` — same reasoning as the
+  existing `url_normalize.py` duplicate, keeps the Archive's web service
+  from gaining a dependency on `app/`), and — closing a real,
+  independently-confirmed gap — promoted to the page's default via new
+  `promote_transcript_version()`.
+
+  **Real, previously-existing bug fixed as part of this**: before this
+  build, only the very first `TranscriptVersion` a `MeetingPage` ever got
+  was set `is_default=True` — nothing later ever promoted a subsequent
+  one, an unresolved question already flagged in this file's own Archive-
+  build entry above. `promote_transcript_version()` closes it: demotes
+  the previous default, promotes the new one, never deletes anything (the
+  demoted version stays reachable through the existing `?version=`
+  picker).
+
+  **Schema, deliberately minimal**: new `TranscriptionJob` table
+  (`archive/db/models.py`) — status machine `pending_confirmation` →
+  `queued` → `in_progress` → `completed`/`failed`, `partial_segments`
+  accumulated as the durable per-chunk checkpoint, `confirmation_token`.
+  No migration needed (`create_all()` handles a new table, per this
+  repo's existing convention). One shared-code addition to a model that's
+  used everywhere: `TranscriptSegment` (`app/platforms/models.py`) gained
+  an optional `speaker` field, unused by every path today including this
+  one — added now, cheaply, since it's free and saves a schema touch when
+  diarization is actually built (the same base `faster-whisper` model
+  WhisperX already builds real diarization on top of via
+  `pyannote.audio`, so this wasn't a speculative guess at the eventual
+  design).
+
+  **`ingest_resolution()` refactored**: its inline find-or-create-
+  `MeetingPage` logic was extracted into `_find_or_create_page()`, since
+  `create_transcription_job()` needed the exact same "find this meeting's
+  permanent page, or create one" behavior (a transcription request can be
+  the very first thing that ever creates a page for a meeting, same as a
+  normal resolve).
+
+  **Verified live, not just unit-tested, at every layer**:
+  - `app/platforms/media_probe.py`'s `ffprobe`/`ffmpeg` wrappers against a
+    real public HLS stream (Apple's bipbop test stream, 1800.00059s probed
+    duration matching the stream's actual real length) — and, the
+    motivating case — the **exact** Granicus CDN URL that returned a bare
+    403 earlier this session (Fountain Valley clip 607, `BACKLOG_DONE.md`
+    entry above): with the realistic-headers workaround, `ffprobe`
+    correctly returned `27073.362074`s, matching the `7:31:13` observed
+    in-browser in that earlier entry exactly.
+  - `worker/transcription_engine.py`'s `FasterWhisperEngine` against real
+    speech (macOS `say` → `ffmpeg`-converted audio): produced an accurate
+    transcript with correct per-segment timestamps; chained with
+    `shift_segments()` at a simulated chunk-3 offset (2700s) and confirmed
+    the shifted timestamps were exactly right.
+  - The full `TranscriptionJob` lifecycle against a real (file-based,
+    isolated) SQLite session — creation, the per-page duplicate-job lock,
+    the global concurrent-job cap, chunk-by-chunk claim/report,
+    finalization, promotion, and the confirm-token flow (including that a
+    used/wrong token correctly fails) — both by hand and as 8 real pytest
+    integration tests (`tests/test_transcription_jobs.py`, using a new
+    session-scoped isolated-SQLite-file fixture in `tests/conftest.py`
+    added specifically for this, since no archive/db test infra existed
+    before this feature).
+  - Every new HTTP endpoint over real HTTP (not just direct Python calls):
+    `archive/main.py`'s new `/internal/transcription/*` routes (including
+    confirming the 404-not-401 auth pattern holds, and that a
+    validly-shaped-but-unauthenticated request is correctly rejected) and
+    `app/main.py`'s new `/api/transcription/*` routes, run together as two
+    live local services — feasibility check and submit both verified
+    against the real Fountain Valley meeting, including the real
+    `pending_confirmation` → confirm-link → `queued` transition and the
+    correctly-stripped `requester_email` in every public-facing response.
+  - `worker/main.py`'s actual `process_next_chunk()` end-to-end against a
+    real seeded job (real bipbop audio, real `faster-whisper` "tiny"
+    model, graceful fallback when the platform re-resolve legitimately
+    fails, graceful degradation when Resend isn't configured for the
+    completion email) — and separately, the real `run_forever()` polling
+    loop (not just the underlying function) driven end-to-end with the
+    actual default `"small"` model, confirming the full production
+    startup → model-load → poll → claim → process → complete path works,
+    not just its pieces in isolation.
+  - The full frontend flow (toggle → feasibility check → email step →
+    submit → correct success/error messaging) on **both** the resolver's
+    ephemeral `/meeting` page and the Archive's permanent `/m/{slug}`
+    page, screenshotted, against the real Fountain Valley meeting on both.
+  - `render.yaml` validated as parseable YAML with the expected structure;
+    `worker/Dockerfile` reviewed by hand but **not** build-tested (no
+    Docker daemon available in the build environment) — flagged as a real
+    gap in `BACKLOG.md`, not silently assumed to work.
+  - 111/111 tests pass (was 92 before this feature; +19 new: 5
+    `test_worker_segment_utils.py`, 1 `test_media_probe.py`, 8
+    `test_transcription_jobs.py` covering the DB lifecycle including the
+    new language-detection-on-completion behavior, plus the
+    `TranscriptSegment.speaker` field addition needed no new test since
+    it's a passive schema addition with no behavior to verify yet).
+
+  Real gaps intentionally left open (see `BACKLOG.md`'s "On-demand
+  transcription" section for the full list): ffmpeg availability on the
+  resolver service is unverified (may need a Docker runtime switch, same
+  as the worker), the worker's Render plan sizing for `faster-whisper` is
+  a guess pending real memory profiling, Resend's contact-lookup-by-email
+  endpoint shape is unverified against a real account, an unconfirmed
+  `pending_confirmation` job blocks new requests for that meeting with no
+  expiry, and — most importantly — **nothing here has been exercised
+  against actual deployed Render infrastructure yet**, only locally and
+  against real external services (Granicus's CDN, Apple's test stream,
+  Hugging Face's model hub) from a local/sandboxed environment.

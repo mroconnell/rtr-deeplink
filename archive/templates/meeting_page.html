@@ -91,6 +91,22 @@
         </div>
         <p id="reportProblemStatus" class="report-problem-status" role="status"></p>
       </form>
+
+      <p class="transcribe-toggle"><button type="button" id="transcribeToggle" class="link-button">Transcribe this meeting from audio</button></p>
+      <form id="transcribeForm" class="transcribe-form" data-url="{{ page.source_url }}" hidden>
+        <p id="transcribeCheckStatus" class="transcribe-status" role="status"></p>
+        <div id="transcribeEmailStep" hidden>
+          <label>
+            Email address
+            <input type="email" id="transcribeEmail" required placeholder="you@example.com">
+          </label>
+          <div class="report-problem-actions">
+            <button type="submit" class="cassette-btn"><span class="cassette-label">Request transcript</span></button>
+            <button type="button" id="transcribeCancel" class="link-button">Cancel</button>
+          </div>
+        </div>
+        <p id="transcribeStatus" class="transcribe-status" role="status"></p>
+      </form>
     </div>
 
     {% if page.video_url %}

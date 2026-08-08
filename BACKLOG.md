@@ -318,12 +318,13 @@ resolver — see [BACKLOG_DONE.md](BACKLOG_DONE.md) for the full reasoning.
 The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 `app/db/crud.py` plus `archive_client.lookup()`/`.push()`.
 
-- **Transcription crawler** — fetch audio/video for meetings with no
-  captions, run our own transcription, store permanently via the Archive.
-  Separate architecturally but only useful once the Archive exists.
 - **Accounts + token billing** — needed for paid features (already alluded
   to in adapter warning messages) and as a prerequisite for email alerts
-  below. Not sized in detail yet.
+  below. Not sized in detail yet. On-demand transcription (built
+  2026-08-08, see [BACKLOG_DONE.md](BACKLOG_DONE.md)) deliberately doesn't
+  wait on this — it uses the same lightweight, email-only, confirm-once
+  pattern as the "Lightweight jurisdiction follow" idea in
+  `CLAUDE_BACKLOG.md`, not real accounts.
 - **Email alerts for saved searches** — depends on accounts and search
   both existing first.
 - **On-demand / scheduled crawl requests** — depends on the Archive
@@ -365,3 +366,57 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     not an ongoing concern, similar in spirit to
     `/admin/recheck-archive-page`'s existing per-meeting refresh but
     needing to run once across every page rather than on demand for one.
+
+## On-demand transcription — real gaps left open
+
+Built 2026-08-08, see [BACKLOG_DONE.md](BACKLOG_DONE.md) for the full
+build/verification detail. Everything below was verified locally
+(including real ffmpeg/faster-whisper runs against real meeting audio and
+real HTTP round-trips between all three services) but **never against
+actual deployed Render infrastructure** — nothing about this feature
+should be considered production-confirmed until it's been exercised live.
+
+- **ffmpeg/ffprobe availability on the resolver service is unverified.**
+  `app/main.py`'s `/api/transcription/check-feasibility` now shells out to
+  `ffprobe` (`app/platforms/media_probe.py`), a system binary the
+  resolver's plain `runtime: python` Render buildpack has never needed
+  before and isn't confirmed to include — flagged inline in `render.yaml`.
+  If a deploy shows this endpoint failing, switch that service to
+  `runtime: docker`; `worker/Dockerfile` is a working reference for the
+  `apt-get install ffmpeg` step (its own build also hasn't been tested —
+  see below).
+- **`worker/Dockerfile` has never actually been built.** No Docker daemon
+  was available in the environment this was built in, so the image was
+  reviewed by hand, not built-and-run. Build and deploy it once, watching
+  for anything Debian-slim-specific that might be missing, before trusting
+  it works as-is.
+- **Render worker plan sizing is a guess.** `render.yaml`'s
+  `rtr-transcription-worker` service is set to `plan: starter` with an
+  explicit "unverified, size before deploying" comment —
+  `faster-whisper`'s real CPU/RAM needs for the chosen model size
+  (`worker/transcription_engine.py`'s `model_size` default, currently
+  `"small"`) haven't been profiled against any real Render plan's actual
+  resources.
+- **Resend's contact-lookup-by-email endpoint (`GET /audiences/{id}/
+  contacts/{email}`) is unverified.** `archive/utils/email.py`'s
+  `check_audience_membership()` was written against Resend's documented
+  REST convention, not confirmed live against a real account/API key —
+  same "don't claim a path works without a positive example" gap this
+  repo already flags elsewhere for genuinely untested integrations. Fails
+  safe today (any error is treated as "not a member," i.e. "require
+  confirmation" — the safer direction to be wrong in) so this degrades
+  gracefully even if the endpoint shape turns out to be wrong, but worth
+  confirming for real.
+- **An unconfirmed `pending_confirmation` job blocks new requests for that
+  meeting indefinitely — no expiry.** Noted directly in
+  `archive/db/crud.py`'s own comment above `ACTIVE_JOB_STATUSES`. Fine to
+  leave until this feature has been live long enough to know whether it's
+  a real problem in practice; if it is, the fix is a straightforward
+  age-based cleanup pass (e.g. treat `pending_confirmation` older than 48h
+  as abandoned and let a fresh request supersede it).
+- **No language-track picker for a transcribed version yet** — a
+  transcribed `TranscriptVersion`'s language is detected from its own text
+  (`archive/utils/language.py`, mirroring every scraped-caption adapter's
+  existing behavior), but if a meeting is bilingual or the detection is
+  simply wrong, there's no way to fix or override it after the fact short
+  of a database edit.

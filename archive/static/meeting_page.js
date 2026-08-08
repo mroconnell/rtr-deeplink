@@ -215,6 +215,98 @@ function wireSeekAndCopyClicks() {
   });
 }
 
+function wireTranscribeForm() {
+  const toggle = document.getElementById('transcribeToggle');
+  const form = document.getElementById('transcribeForm');
+  const checkStatusEl = document.getElementById('transcribeCheckStatus');
+  const emailStep = document.getElementById('transcribeEmailStep');
+  const cancelBtn = document.getElementById('transcribeCancel');
+  const statusEl = document.getElementById('transcribeStatus');
+  if (!toggle || !form) return;
+
+  let feasibilityOk = false;
+
+  function resetForm() {
+    form.hidden = true;
+    toggle.hidden = false;
+    checkStatusEl.textContent = '';
+    checkStatusEl.className = 'transcribe-status';
+    emailStep.hidden = true;
+    statusEl.textContent = '';
+    statusEl.className = 'transcribe-status';
+    feasibilityOk = false;
+  }
+
+  // Friction is intentional (see BACKLOG.md's abuse-control notes): the
+  // feasibility check always fires immediately on toggle, before any email
+  // field appears, so a request that can't actually be transcribed never
+  // gets that far.
+  toggle.addEventListener('click', async () => {
+    form.hidden = false;
+    toggle.hidden = true;
+    emailStep.hidden = true;
+    checkStatusEl.textContent = 'Checking for a usable audio or video source…';
+    checkStatusEl.className = 'transcribe-status';
+
+    try {
+      const res = await fetch('/api/transcription/check-feasibility', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: form.dataset.url || window.location.href }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        feasibilityOk = true;
+        checkStatusEl.textContent = '';
+        emailStep.hidden = false;
+      } else {
+        checkStatusEl.textContent = data.message || "We couldn't find a usable audio or video source for this meeting.";
+        checkStatusEl.className = 'transcribe-status error';
+      }
+    } catch (err) {
+      checkStatusEl.textContent = 'Something went wrong — please try again.';
+      checkStatusEl.className = 'transcribe-status error';
+    }
+  });
+
+  cancelBtn.addEventListener('click', resetForm);
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!feasibilityOk) return;
+    const email = document.getElementById('transcribeEmail').value;
+    const submitBtn = form.querySelector('button[type="submit"]');
+
+    submitBtn.disabled = true;
+    statusEl.textContent = '';
+    statusEl.className = 'transcribe-status';
+
+    try {
+      const res = await fetch('/api/transcription/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: form.dataset.url || window.location.href, email }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        emailStep.hidden = true;
+        statusEl.className = 'transcribe-status success';
+        statusEl.textContent = data.status === 'pending_confirmation'
+          ? 'Check your email to confirm — first-time requests need one click.'
+          : `Request received — we'll email you at ${email} when it's ready. This can take a while for long meetings.`;
+      } else {
+        statusEl.textContent = data.message || 'Something went wrong — please try again.';
+        statusEl.className = 'transcribe-status error';
+      }
+    } catch (err) {
+      statusEl.textContent = 'Something went wrong — please try again.';
+      statusEl.className = 'transcribe-status error';
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+}
+
 function wireReportProblemForm() {
   const toggle = document.getElementById('reportProblemToggle');
   const form = document.getElementById('reportProblemForm');
@@ -277,6 +369,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   wireSeekAndCopyClicks();
   wireReportProblemForm();
+  wireTranscribeForm();
 
   const wrapper = document.getElementById('videoWrapper');
   if (!wrapper) return;

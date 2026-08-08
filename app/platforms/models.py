@@ -6,6 +6,10 @@ class TranscriptSegment(BaseModel):
     start: float
     end: float
     text: str
+    # Unused by every adapter today (always None) -- forward-compat for a
+    # future diarization pass over on-demand-transcribed audio, so that
+    # feature won't need another schema touch when it's actually built.
+    speaker: Optional[str] = None
 
 
 class AlternateTranscript(BaseModel):
