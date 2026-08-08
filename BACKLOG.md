@@ -620,6 +620,26 @@ scoped.
   `(language, source)` with different content should replace that
   version in place or add a new one and flip which is default — flagged
   for a follow-up decision, not blocking.
+- **On a permanent-page hit, opportunistically re-check for a better
+  transcript instead of always just redirecting.** Today, once
+  `/internal/lookup` finds a match, `/api/resolve` redirects immediately
+  and never re-resolves — so a permanent page's transcript is frozen at
+  whatever quality it had the first time it was ever pushed, even if the
+  government source later adds/improves captions (e.g. a meeting first
+  archived with only agenda data, or with garbled/blank captions, later
+  gets real captions uploaded). The `TranscriptVersion` table already
+  supports multiple versions per page, so the storage side is ready —
+  what's missing is the trigger: either (a) still redirect immediately
+  for a fast user-facing response, but fire a background re-resolve +
+  re-ingest anyway (same `BackgroundTasks` pattern as the initial push,
+  just triggered by a lookup hit instead of a fresh resolve) so the
+  archived version quietly improves over time, or (b) something more
+  deliberate like only re-checking pages older than some age, to avoid
+  hammering source sites on every repeat visit to a popular meeting.
+  Needs a real decision on cadence/triggering before building, not just
+  "always re-check" — that could turn a cheap redirect into a slow
+  request again for no benefit on a page that's already maxed out on
+  quality.
 - **Transcription crawler** (fetch audio/video for meetings with no
   captions, run our own transcription, store the result permanently) —
   separate from the Archive architecturally but only useful once the
