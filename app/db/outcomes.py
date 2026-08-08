@@ -25,7 +25,7 @@ def classify_outcome(row: MeetingResolution) -> str:
     warning text anymore.
     """
     if row.status != "success":
-        return row.status  # resolve_failed | calendar_page | unsupported_platform
+        return row.status  # resolve_failed | calendar_page | unsupported_platform | archive_redirect
 
     if not row.video_found:
         return "no_video"

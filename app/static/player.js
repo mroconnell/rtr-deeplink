@@ -640,6 +640,19 @@ async function init() {
     return;
   }
 
+  // This meeting already has a permanent Archive page -- send the browser
+  // there instead of rendering here, preserving any deep-link params so a
+  // shared /meeting?...&t=630&line=seg-4 link still lands on the right
+  // moment. .replace() (not .href) so this transient page doesn't sit in
+  // back-history between the referrer and the permanent page.
+  if (data.redirect_url) {
+    const params = getQueryParams();
+    params.delete('url');
+    const target = params.toString() ? `${data.redirect_url}?${params.toString()}` : data.redirect_url;
+    window.location.replace(target);
+    return;
+  }
+
   if (data.error === 'calendar_page') {
     renderCalendarPage(data);
     return;

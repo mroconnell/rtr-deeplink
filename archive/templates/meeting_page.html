@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}{{ page.title or "Meeting" }}{% if page.jurisdiction %} — {{ page.jurisdiction }}{% endif %}{% if page.date %} ({{ page.date }}){% endif %} | Red Tape Recordings{% endblock %}
+{% block meta %}
+  {% set description = (page.title or "A public meeting") ~ (page.jurisdiction and (" in " ~ page.jurisdiction) or "") ~ (page.date and (" on " ~ page.date) or "") ~ ", with video and transcript." %}
+  <meta name="description" content="{{ description }}">
+  {% if public_base_url %}
+  <link rel="canonical" href="{{ public_base_url }}/m/{{ page.slug }}">
+  <meta property="og:url" content="{{ public_base_url }}/m/{{ page.slug }}">
+  {% endif %}
+  <meta property="og:title" content="{{ page.title or 'Meeting' }}">
+  <meta property="og:description" content="{{ description }}">
+  <meta property="og:type" content="video.other">
+{% endblock %}
+{% block head_extra %}
+  {% if page.video_format == "m3u8" %}
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.4.12/dist/hls.min.js"></script>
+  {% elif page.video_format == "youtube" %}
+  <script src="https://www.youtube.com/iframe_api"></script>
+  {% endif %}
+{% endblock %}
+{% block content %}
+  <main class="meeting-page">
+    <div class="meta">
+      <h1>{{ page.title or "Untitled meeting" }}</h1>
+      <p>
+        {%- if page.jurisdiction %}{{ page.jurisdiction }}{% endif -%}
+        {%- if page.date %}{% if page.jurisdiction %} &middot; {% endif %}{{ page.date }}{% endif -%}
+      </p>
+      {% if page.source_url %}
+      <p class="source-link"><a href="{{ page.source_url }}" target="_blank" rel="noopener noreferrer">View original source &rarr;</a></p>
+      {% endif %}
+    </div>
+
+    {% if page.video_url %}
+    <div id="videoSection" class="video-section">
+      <div class="toolbar">
+        <button id="linkToCurrentBtn" class="cassette-btn" title="Copy link to current time">
+          <span class="cassette-reel"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7" fill="#fff" stroke="#bbb" stroke-width="2"/><circle cx="9" cy="9" r="2.2" fill="#bbb"/></svg></span>
+          <span class="cassette-label">Copy link to current time</span>
+          <span class="cassette-reel"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7" fill="#fff" stroke="#bbb" stroke-width="2"/><circle cx="9" cy="9" r="2.2" fill="#bbb"/></svg></span>
+        </button>
+      </div>
+      <div id="videoWrapper" class="video-wrapper" data-video-url="{{ page.video_url }}" data-video-format="{{ page.video_format }}">
+        {% if page.video_format == "youtube" %}
+        <div id="youtubePlayerContainer" class="youtube-player-container"></div>
+        {% else %}
+        <video id="meetingVideo" controls playsinline preload="auto"></video>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if page.agenda_items %}
+    <div class="agenda-section">
+      <h2>Agenda</h2>
+      <div class="transcript-list">
+        {% for item in page.agenda_items %}
+        <div class="transcript-segment" id="agenda-{{ loop.index0 }}" data-start="{{ item.start }}">
+          <a href="#agenda-{{ loop.index0 }}" class="segment-timestamp" data-start="{{ item.start }}">[{{ "%d:%02d"|format(item.start // 60, item.start % 60) }}]</a>
+          <button class="segment-link-btn" data-start="{{ item.start }}" title="Copy link to this item" aria-label="Copy link to this item"><svg width="17" height="17" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M7.5 10.5a2.5 2.5 0 0 0 3.54 0l2-2a2.5 2.5 0 0 0-3.54-3.54l-.71.71" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M10.5 7.5a2.5 2.5 0 0 0-3.54 0l-2 2a2.5 2.5 0 0 0 3.54 3.54l.71-.71" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
+          <span class="segment-text">{{ item.text }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if page.versions|length > 1 %}
+    <div class="version-picker">
+      Transcript version:
+      {% for v in page.versions %}
+        {% if active_version and v.id == active_version.id %}
+        <span class="version-active">{{ v.language or "unknown" }} ({{ v.source }})</span>
+        {% else %}
+        <a href="?version={{ v.id }}">{{ v.language or "unknown" }} ({{ v.source }})</a>
+        {% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if active_version and active_version.segments %}
+    <div class="transcript-section">
+      <h2>Transcript</h2>
+      {% if active_version.transcript_warnings %}
+      <div class="warnings">{{ active_version.transcript_warnings|join(" ") }}</div>
+      {% endif %}
+      <div class="transcript-list">
+        {% for seg in active_version.segments %}
+        <div class="transcript-segment" id="seg-{{ loop.index0 }}" data-start="{{ seg.start }}">
+          <a href="#seg-{{ loop.index0 }}" class="segment-timestamp" data-start="{{ seg.start }}">[{{ "%d:%02d"|format(seg.start // 60, seg.start % 60) }}]</a>
+          <button class="segment-link-btn" data-start="{{ seg.start }}" data-line="seg-{{ loop.index0 }}" title="Copy link to this line" aria-label="Copy link to this line"><svg width="17" height="17" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M7.5 10.5a2.5 2.5 0 0 0 3.54 0l2-2a2.5 2.5 0 0 0-3.54-3.54l-.71.71" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M10.5 7.5a2.5 2.5 0 0 0-3.54 0l-2 2a2.5 2.5 0 0 0 3.54 3.54l.71-.71" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
+          <span class="segment-text">{{ seg.text }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% elif not page.agenda_items %}
+    <div class="transcript-section">
+      <h2>Transcript</h2>
+      <p class="subtitle">No transcript available for this meeting.</p>
+    </div>
+    {% endif %}
+  </main>
+{% endblock %}
+{% block scripts %}
+  <script src="/archive-static/meeting_page.js"></script>
+{% endblock %}

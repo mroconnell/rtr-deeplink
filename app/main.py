@@ -10,12 +10,13 @@ from pathlib import Path
 
 import aiohttp
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request, Response
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi import BackgroundTasks, FastAPI, Request, Response
+from fastapi.responses import JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
+from . import archive_client
 from .db import crud
 from .db.engine import init_models
 from .platforms.base import detect_platform, get_finder, register, CalendarPageError, UnsupportedPlatformError
@@ -85,9 +86,24 @@ async def health():
 
 
 @app.post("/api/resolve")
-async def resolve(req: ResolveRequest):
+async def resolve(req: ResolveRequest, background_tasks: BackgroundTasks):
     platform = detect_platform(req.url)
     normalized = normalize_url(req.url)
+
+    # Check the Archive before anything else -- if this meeting already has
+    # a permanent page, that's the canonical version (potentially a better
+    # transcript than a fresh scrape) and the one we want traffic/sharing to
+    # land on, so redirect there instead of re-resolving from scratch.
+    archived = await safe(archive_client.lookup, normalized)
+    if archived:
+        await safe(
+            crud.log_resolution,
+            input_url=req.url,
+            input_url_normalized=normalized,
+            input_platform=platform,
+            status="archive_redirect",
+        )
+        return {"redirect_url": archived["url"]}
 
     cached = await safe(crud.get_cached_resolution, normalized)
     if cached:
@@ -164,6 +180,15 @@ async def resolve(req: ResolveRequest):
         resolved_payload=payload,
         resolve_duration_ms=int((time.monotonic() - start) * 1000),
     )
+
+    # Only push resolves with real content -- a transcript or agenda data --
+    # so test pastes and broken URLs don't create junk permanent pages.
+    # Fired via BackgroundTasks (not a bare asyncio.create_task) so it can't
+    # be garbage-collected mid-flight and ties into the response lifecycle
+    # properly; never blocks the response the user is waiting on.
+    if result.segments or result.agenda_items:
+        background_tasks.add_task(archive_client.push, payload, normalized)
+
     return payload
 
 
@@ -229,6 +254,49 @@ async def meeting_redirect(request: Request, url: str = ""):
         "meeting.html",
         {"source_url": url},
     )
+
+
+async def _proxy_to_archive(internal_path: str, query_string: str) -> Response:
+    """Reverse-proxies a GET request to the Archive service so its permanent
+    pages are reachable at redtaperecordings.com/m/{slug} instead of a
+    separate subdomain -- keeps SEO authority on one domain. These are
+    public, potentially-indexed pages, so a clean failure (503 + message)
+    matters more here than for /api/resolve; never let a raw exception or a
+    hang reach the browser.
+    """
+    try:
+        session, response = await archive_client.proxy_get(internal_path, query_string)
+    except Exception:
+        logger.exception("Archive proxy request failed for %s", internal_path)
+        return Response(
+            content="This page is temporarily unavailable — please try again shortly.",
+            status_code=503,
+            media_type="text/plain",
+        )
+
+    async def body_iterator():
+        try:
+            async for chunk in response.content.iter_chunked(65536):
+                yield chunk
+        finally:
+            await session.close()
+
+    return StreamingResponse(
+        body_iterator(),
+        status_code=response.status,
+        media_type=response.headers.get("Content-Type"),
+        headers=archive_client.filter_proxy_headers(response.headers),
+    )
+
+
+@app.get("/m/{path:path}")
+async def archive_meeting_page(path: str, request: Request):
+    return await _proxy_to_archive(f"m/{path}", str(request.query_params))
+
+
+@app.get("/archive-static/{path:path}")
+async def archive_static_asset(path: str, request: Request):
+    return await _proxy_to_archive(f"static/{path}", str(request.query_params))
 
 
 @app.get("/about")
