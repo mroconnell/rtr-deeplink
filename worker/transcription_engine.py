@@ -31,16 +31,25 @@ class FasterWhisperEngine(TranscriptionEngine):
     chunk) -- reloading a multi-GB-class model per chunk would dominate
     runtime otherwise.
 
-    `model_size` favors speed over chasing the largest/most-accurate model:
-    per the product framing behind this feature, most viewers want to
-    Ctrl-F to a topic in an otherwise-uncaptioned meeting, not a
-    publication-grade transcript -- "small" is a reasonable default,
-    tune later once real runtimes/quality are observed against real
-    meetings. `compute_type="int8"` keeps CPU memory/time reasonable
-    without a GPU, at some accuracy cost versus float16/float32.
+    `model_size` favors speed/memory over chasing the largest/most-accurate
+    model: per the product framing behind this feature, most viewers want
+    to Ctrl-F to a topic in an otherwise-uncaptioned meeting, not a
+    publication-grade transcript. Originally defaulted to "small", but the
+    first real deploy OOM-killed on Render's `starter` worker plan (512MB)
+    loading it -- confirmed live 2026-08-08, not a hypothetical concern.
+    Measured peak RSS locally (isolated venv matching worker/requirements.txt
+    exactly, one model per process): "tiny" ~382MB, "base" ~489MB, against a
+    67MB baseline with no model loaded at all. "base" was tried first but
+    rejected -- only ~23MB of headroom under 512MB locally is too close to
+    trust once Render's real container overhead and a different CPU
+    architecture are added on top. "tiny" is the real default, with real
+    margin (~130MB). Revisit upward only alongside a plan upgrade with
+    actual RAM to spare, not by guessing again. `compute_type="int8"` keeps
+    CPU memory/time reasonable without a GPU, at some accuracy cost versus
+    float16/float32.
     """
 
-    def __init__(self, model_size: str = "small", compute_type: str = "int8"):
+    def __init__(self, model_size: str = "tiny", compute_type: str = "int8"):
         # Imported lazily so importing this module (e.g. from tests) never
         # requires the real model weights to be downloaded/available.
         from faster_whisper import WhisperModel

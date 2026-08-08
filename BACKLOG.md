@@ -388,13 +388,20 @@ one item below is resolved as a result.
   service to `runtime: docker`; `worker/Dockerfile` is now a *confirmed-
   working* reference for the `apt-get install ffmpeg` step, unlike when
   this bullet was first written.
-- **Render worker plan sizing is a guess.** `render.yaml`'s
-  `rtr-transcription-worker` service is set to `plan: starter` with an
-  explicit "unverified, size before deploying" comment —
-  `faster-whisper`'s real CPU/RAM needs for the chosen model size
-  (`worker/transcription_engine.py`'s `model_size` default, currently
-  `"small"`) haven't been profiled against any real Render plan's actual
-  resources.
+- **~~Render worker plan sizing is a guess.~~ Partially resolved, real
+  numbers now exist.** First real deploy OOM-killed on `plan: starter`
+  (512MB) loading the original `"small"` model default — confirmed live
+  2026-08-08, see [BACKLOG_DONE.md](BACKLOG_DONE.md). Switched the default
+  to `"tiny"` (`worker/transcription_engine.py`), chosen from real local
+  measurement (isolated venv matching `worker/requirements.txt` exactly,
+  one model per process): baseline ~67MB, `"tiny"` ~382MB, `"base"` ~489MB
+  — `"base"` was tried first but rejected as too close to 512MB to trust
+  once Render's real container overhead is added on top. Still genuinely
+  open: `"tiny"`'s real transcription *quality* against actual meeting
+  audio hasn't been assessed yet (only verified against short synthetic
+  speech) — worth a real check once a live job completes, and worth
+  revisiting the model size upward only alongside an actual plan upgrade
+  with real RAM headroom, not by guessing again.
 - **Resend's contact-lookup-by-email endpoint (`GET /audiences/{id}/
   contacts/{email}`) is unverified.** `archive/utils/email.py`'s
   `check_audience_membership()` was written against Resend's documented
