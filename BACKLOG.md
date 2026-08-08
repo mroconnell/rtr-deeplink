@@ -38,6 +38,16 @@ where relevant.
   `var videoUrl = "VNMQYICdQvs"` on a `meetingTemplateId` page — video
   presence isn't determined by the URL shape after all, at least not
   uniformly across cities.
+- **`/meetings` (the Archive's browsable index) is missing from the site
+  nav.** It's only reachable if you already know the URL — confirmed live
+  on `redtaperecordings.com`, no nav link points at it anywhere. Add it
+  to `app/templates/base.html`'s navbar as **"Search Meetings"**, and
+  while touching that nav, rename the existing **"Look Up a Meeting"**
+  link to **"Add Meeting"** (clearer contrast against the new "Search
+  Meetings" link — one submits a new URL to resolve, the other searches
+  what's already permanently archived). `archive/templates/base.html`
+  mirrors the same nav markup (see the earlier nav-consistency fix) and
+  needs the same two changes to stay in sync.
 
 ## Platform coverage — open questions
 
