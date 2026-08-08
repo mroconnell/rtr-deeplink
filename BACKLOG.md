@@ -53,6 +53,28 @@ where relevant.
   CA, San Diego city/county, both Berkeley Legistar calendars — none had
   one. Not disproven, just not found yet; extend `LegistarAssetFinder`/
   `CivicPlusAssetFinder`'s row-scraping when a real example turns up.
+- **NYC Council's Legistar (`legistar.council.nyc.gov`) isn't detected as
+  Legistar at all, and its video access is structurally different from
+  every Legistar city seen so far.** Confirmed live (2026-08-08):
+  `detect_platform()` only checks for `"legistar.com"` in the netloc, but
+  NYC's instance is hosted on its own `nyc.gov` domain — `/api/resolve`
+  against `https://legistar.council.nyc.gov/Calendar.aspx` returns
+  `unsupported_platform`, never even reaching `LegistarAssetFinder`.
+  Separately, once detected, the actual video links on that calendar
+  page (87 of them, one per row) don't behave like every other Legistar
+  city checked so far (Boston, Lee's Summit MO, Maricopa AZ, Berkeley —
+  all a plain `<a href>` to `Video.aspx?Mode=Granicus&ID1=...` or similar,
+  straight to the destination platform). NYC's "Video" links instead call
+  `onclick="OpenTelerikWindow(...)"` — a Telerik `RadWindow` JS modal —
+  so the real video destination is never a plain href in the static HTML;
+  reaching it needs either executing that JS or reverse-engineering what
+  `OpenTelerikWindow` actually opens (untraced so far — worth a closer
+  look via browser devtools, not just static HTML scraping). Worth
+  fixing both, given NYC is about as high-profile a jurisdiction as this
+  tool could support: (1) loosen/extend the Legistar domain check so a
+  custom-domain instance like this one gets detected, (2) figure out
+  the Telerik modal's actual target URL pattern and whether
+  `LegistarAssetFinder` needs a second video-discovery strategy for it.
 - **Swagit `#transcript-fragments` unverified.** The page JS references it
   for a real free-text transcript feature, but it's never been populated in
   any sample checked (only `.playerControl` chapter markers were present).
