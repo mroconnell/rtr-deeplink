@@ -1,0 +1,24 @@
+{#- select_autoescape() keys off the template's real file extension, which
+   for a "*.xml.jinja" name is ".jinja" -- not one of the extensions it
+   auto-escapes -- so every value below is escaped explicitly with `|e`
+   rather than relying on that. Confirmed by testing: a real meeting title
+   containing a bare "&" or "<" renders as invalid, unparseable XML without
+   this (same latent gap exists in sitemap.xml.jinja, harmless there only
+   because it interpolates slug/date, not free-text titles). -#}
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+<channel>
+  <title>Red Tape Recordings{% if jurisdiction %} — {{ jurisdiction|e }}{% endif %}</title>
+  <link>{{ base_url|e }}/meetings</link>
+  <description>Newly archived public government meetings{% if jurisdiction %} for "{{ jurisdiction|e }}"{% endif %}, with video and transcript.</description>
+  <atom:link xmlns:atom="http://www.w3.org/2005/Atom" href="{{ feed_url|e }}" rel="self" type="application/rss+xml"/>
+{%- for entry in entries %}
+  <item>
+    <title>{{ (entry.title or "Meeting")|e }}{% if entry.jurisdiction %} — {{ entry.jurisdiction|e }}{% endif %}{% if entry.date %} ({{ entry.date|e }}){% endif %}</title>
+    <link>{{ base_url|e }}/m/{{ entry.slug|e }}</link>
+    <guid isPermaLink="true">{{ base_url|e }}/m/{{ entry.slug|e }}</guid>
+    <pubDate>{{ entry.created_at.strftime('%a, %d %b %Y %H:%M:%S %z') }}</pubDate>
+  </item>
+{%- endfor %}
+</channel>
+</rss>

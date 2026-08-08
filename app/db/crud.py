@@ -5,8 +5,10 @@ from typing import Any, Optional
 from sqlalchemy import select
 
 from .engine import async_session
-from .models import MeetingResolution
+from .models import MeetingResolution, ProblemReport
 from .outcomes import classify_outcome
+
+VALID_ISSUE_TYPES = {"wrong_video", "bad_transcript", "wrong_metadata", "other"}
 
 
 async def get_cached_resolution(normalized_url: str) -> Optional[dict]:
@@ -165,6 +167,40 @@ async def list_resolutions(limit: int = 200) -> list[dict]:
             "platform": row.input_platform,
             "outcome": classify_outcome(row),
             "transcript_language": row.transcript_language,
+            "created_at": row.created_at.isoformat() if row.created_at else None,
+        }
+        for row in rows
+    ]
+
+
+async def log_problem_report(*, url: str, issue_type: str, details: Optional[str]) -> bool:
+    # Returns True (not None) on success -- the caller uses safe(), which
+    # itself returns None on a genuine DB failure, so this function
+    # returning None on success too would make the two indistinguishable.
+    async with async_session() as session:
+        session.add(ProblemReport(url=url, issue_type=issue_type, details=details))
+        await session.commit()
+    return True
+
+
+async def list_problem_reports(limit: int = 200) -> list[dict]:
+    limit = max(1, min(limit, 1000))
+    async with async_session() as session:
+        rows = (
+            (
+                await session.execute(
+                    select(ProblemReport).order_by(ProblemReport.created_at.desc()).limit(limit)
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+    return [
+        {
+            "url": row.url,
+            "issue_type": row.issue_type,
+            "details": row.details,
             "created_at": row.created_at.isoformat() if row.created_at else None,
         }
         for row in rows

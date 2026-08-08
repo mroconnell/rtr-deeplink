@@ -1,4 +1,5 @@
 import hashlib
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 from sqlalchemy import and_, func, or_, select
@@ -32,7 +33,7 @@ async def lookup_page_for_url(url_normalized: str) -> Optional[dict]:
         if alias:
             page = await session.get(MeetingPage, alias.meeting_page_id)
             if page:
-                return {"slug": page.slug, "url": f"/m/{page.slug}"}
+                return {"slug": page.slug, "url": f"/m/{page.slug}", "updated_at": page.updated_at.isoformat()}
 
         page = (
             await session.execute(
@@ -40,7 +41,7 @@ async def lookup_page_for_url(url_normalized: str) -> Optional[dict]:
             )
         ).scalars().first()
         if page:
-            return {"slug": page.slug, "url": f"/m/{page.slug}"}
+            return {"slug": page.slug, "url": f"/m/{page.slug}", "updated_at": page.updated_at.isoformat()}
 
     return None
 
@@ -142,6 +143,18 @@ async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) 
             page.video_format = payload.get("video_format") or page.video_format
             if payload.get("agenda_items"):
                 page.agenda_items = payload["agenda_items"]
+            # Reassigning a column to its *current* value doesn't dirty it
+            # for SQLAlchemy's purposes, so `onupdate=func.now()` silently
+            # never fires on a re-ingest whose content is byte-identical to
+            # what's already stored -- the common case for a re-check that
+            # finds nothing new. That left `updated_at` permanently stuck on
+            # a stale page (confirmed live: a backdated page stayed "stale"
+            # forever, re-triggering the opportunistic re-check in
+            # app/main.py on every single hit instead of once per
+            # ARCHIVE_RECHECK_AFTER window). Touch it explicitly so
+            # `updated_at` always means "last time this page was actually
+            # checked," independent of whether anything changed.
+            page.updated_at = datetime.now(timezone.utc)
 
         await _ensure_alias(session, input_url_normalized, page.id)
         await _ensure_alias(session, source_url_normalized, page.id)
@@ -318,3 +331,28 @@ async def list_all_page_slugs() -> list[dict]:
             await session.execute(select(MeetingPage.slug, MeetingPage.updated_at).order_by(MeetingPage.updated_at.desc()))
         ).all()
     return [{"slug": slug, "updated_at": updated_at} for slug, updated_at in rows]
+
+
+async def list_recent_pages_for_feed(*, jurisdiction: Optional[str] = None, limit: int = 50) -> list[dict]:
+    """Most-recently-archived pages for feed.xml -- a separate, deliberately
+    simple query rather than reusing list_pages()'s pagination/multi-filter
+    machinery, since a feed only ever wants "the last N, optionally scoped
+    to one jurisdiction," newest first, with no page number to track."""
+    limit = max(1, min(limit, 100))
+    stmt = select(MeetingPage).order_by(MeetingPage.created_at.desc()).limit(limit)
+    if jurisdiction:
+        stmt = stmt.where(MeetingPage.jurisdiction.ilike(f"%{jurisdiction}%"))
+
+    async with async_session() as session:
+        rows = (await session.execute(stmt)).scalars().all()
+
+    return [
+        {
+            "slug": mp.slug,
+            "title": mp.title,
+            "date": mp.date,
+            "jurisdiction": mp.jurisdiction,
+            "created_at": mp.created_at,
+        }
+        for mp in rows
+    ]

@@ -8,6 +8,29 @@
   <main class="meeting-page">
     <div id="meta" class="meta"></div>
 
+    <p class="report-problem-toggle" id="reportProblemToggleWrap" hidden><button type="button" id="reportProblemToggle" class="link-button">Report a problem with this meeting</button></p>
+    <form id="reportProblemForm" class="report-problem-form" hidden>
+      <label>
+        What's wrong?
+        <select id="reportProblemType" required>
+          <option value="">Choose one&hellip;</option>
+          <option value="wrong_video">Wrong or broken video</option>
+          <option value="bad_transcript">Transcript is missing or garbled</option>
+          <option value="wrong_metadata">Title, date, or jurisdiction is wrong</option>
+          <option value="other">Something else</option>
+        </select>
+      </label>
+      <label>
+        Details (optional)
+        <textarea id="reportProblemDetails" rows="3" maxlength="2000"></textarea>
+      </label>
+      <div class="report-problem-actions">
+        <button type="submit" class="cassette-btn"><span class="cassette-label">Send report</span></button>
+        <button type="button" id="reportProblemCancel" class="link-button">Cancel</button>
+      </div>
+      <p id="reportProblemStatus" class="report-problem-status" role="status"></p>
+    </form>
+
     <div id="statusMessage" class="status"></div>
 
     <div id="videoSection" class="video-section" hidden>
@@ -39,7 +62,18 @@
     </div>
 
     <div id="transcriptSection" class="transcript-section" hidden>
-      <h2>Transcript</h2>
+      <div class="transcript-heading-row">
+        <h2>Transcript</h2>
+        <label id="transcriptLanguagePicker" class="transcript-language-picker" hidden>
+          Language:
+          <select id="transcriptLanguageSelect" aria-label="Transcript language"></select>
+        </label>
+        <span class="transcript-export">
+          Download:
+          <button type="button" id="exportTxtBtn" class="btn btn-sm btn-outline-secondary">Text</button>
+          <button type="button" id="exportSrtBtn" class="btn btn-sm btn-outline-secondary">SRT</button>
+        </span>
+      </div>
       <div id="transcriptWarnings" class="warnings"></div>
       <div id="transcriptSearch" class="transcript-search">
         <input id="transcriptSearchInput" type="text" placeholder="Search transcript&hellip;" aria-label="Search transcript">

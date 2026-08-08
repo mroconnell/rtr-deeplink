@@ -10,6 +10,46 @@
   <meta property="og:title" content="{{ page.title or 'Meeting' }}">
   <meta property="og:description" content="{{ description }}">
   <meta property="og:type" content="video.other">
+  {% if page.video_url %}
+  {#- schema.org VideoObject for search-engine rich-result eligibility.
+     No thumbnailUrl -- this app doesn't generate one (see CLAUDE_BACKLOG.md's
+     og:image note, the same underlying gap) -- so this is unlikely to
+     actually earn a video rich snippet yet, but the structured data is
+     still valid and machine-readable without one. contentUrl is used for a
+     direct playable file (mp4/m3u8, this app's normal case); embedUrl is
+     used for YouTube instead, since that video_url is an iframe-embed URL,
+     not a raw media file, and schema.org distinguishes the two. #}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "VideoObject",
+    "name": {{ (page.title or "Meeting")|tojson }},
+    "description": {{ description|tojson }},
+    {% if page.video_format == "youtube" -%}
+    "embedUrl": {{ page.video_url|tojson }},
+    {% else -%}
+    "contentUrl": {{ page.video_url|tojson }},
+    {% endif -%}
+    {% if public_base_url -%}
+    "url": {{ (public_base_url ~ "/m/" ~ page.slug)|tojson }},
+    {% endif -%}
+    {% if page.date -%}
+    "uploadDate": {{ page.date|tojson }},
+    {% endif -%}
+    {% if active_version and active_version.language -%}
+    "inLanguage": {{ active_version.language|tojson }},
+    {% endif -%}
+    {% if active_version and active_version.segments -%}
+    {% set total_seconds = active_version.segments[-1].end|int -%}
+    "duration": "PT{{ total_seconds // 3600 }}H{{ (total_seconds % 3600) // 60 }}M{{ total_seconds % 60 }}S",
+    {% endif -%}
+    "publisher": {
+      "@type": "Organization",
+      "name": "Red Tape Recordings"
+    }
+  }
+  </script>
+  {% endif %}
 {% endblock %}
 {% block head_extra %}
   {% if page.video_format == "m3u8" %}
@@ -29,6 +69,28 @@
       {% if page.source_url %}
       <p class="source-link"><a href="{{ page.source_url }}" target="_blank" rel="noopener noreferrer">View original source &rarr;</a></p>
       {% endif %}
+      <p class="report-problem-toggle"><button type="button" id="reportProblemToggle" class="link-button">Report a problem with this meeting</button></p>
+      <form id="reportProblemForm" class="report-problem-form" data-url="{{ page.source_url }}" hidden>
+        <label>
+          What's wrong?
+          <select id="reportProblemType" required>
+            <option value="">Choose one&hellip;</option>
+            <option value="wrong_video">Wrong or broken video</option>
+            <option value="bad_transcript">Transcript is missing or garbled</option>
+            <option value="wrong_metadata">Title, date, or jurisdiction is wrong</option>
+            <option value="other">Something else</option>
+          </select>
+        </label>
+        <label>
+          Details (optional)
+          <textarea id="reportProblemDetails" rows="3" maxlength="2000"></textarea>
+        </label>
+        <div class="report-problem-actions">
+          <button type="submit" class="cassette-btn"><span class="cassette-label">Send report</span></button>
+          <button type="button" id="reportProblemCancel" class="link-button">Cancel</button>
+        </div>
+        <p id="reportProblemStatus" class="report-problem-status" role="status"></p>
+      </form>
     </div>
 
     {% if page.video_url %}
@@ -81,6 +143,12 @@
     {% if active_version and active_version.segments %}
     <div class="transcript-section">
       <h2>Transcript</h2>
+      <p class="transcript-export">
+        Download:
+        <a href="/m/{{ page.slug }}/transcript.txt?version={{ active_version.id }}">Text</a>
+        &middot;
+        <a href="/m/{{ page.slug }}/transcript.srt?version={{ active_version.id }}">SRT</a>
+      </p>
       {% if active_version.transcript_warnings %}
       <div class="warnings">{{ active_version.transcript_warnings|join(" ") }}</div>
       {% endif %}

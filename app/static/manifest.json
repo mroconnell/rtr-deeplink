@@ -1,0 +1,18 @@
+{
+  "name": "Red Tape Recordings",
+  "short_name": "Red Tape",
+  "description": "Paste a public government meeting URL, get its video and transcript together, with shareable deep links to any moment.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2c3e50",
+  "icons": [
+    {
+      "src": "/static/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

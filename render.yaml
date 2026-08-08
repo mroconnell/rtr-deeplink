@@ -4,7 +4,12 @@ services:
     runtime: python
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    # --proxy-headers --forwarded-allow-ips='*' makes uvicorn trust Render's
+    # X-Forwarded-For so request.client.host (and therefore per-IP rate
+    # limiting on /api/resolve, see app/main.py) reflects the real caller
+    # instead of Render's own edge-proxy IP. Render's proxy is trusted
+    # infra here, not an arbitrary client that could spoof the header.
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips='*'
     healthCheckPath: /api/health
     envVars:
       - key: PYTHON_VERSION

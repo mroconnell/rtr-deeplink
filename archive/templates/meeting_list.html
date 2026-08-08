@@ -2,11 +2,15 @@
 {% block title %}Browse meetings | Red Tape Recordings{% endblock %}
 {% block meta %}
   <meta name="description" content="Browse {{ total }} archived public meetings with video and transcript.">
+  <link rel="alternate" type="application/rss+xml" title="Red Tape Recordings — newly archived meetings" href="/feed.xml{% if jurisdiction %}?jurisdiction={{ jurisdiction|urlencode }}{% endif %}">
 {% endblock %}
 {% block content %}
   <main class="meeting-list-page">
     <h1>Browse meetings</h1>
-    <p class="subtitle">{{ total }} archived meeting{{ "s" if total != 1 else "" }}</p>
+    <p class="subtitle">
+      {{ total }} archived meeting{{ "s" if total != 1 else "" }}
+      &middot; <a href="/feed.xml{% if jurisdiction %}?jurisdiction={{ jurisdiction|urlencode }}{% endif %}">RSS feed</a>
+    </p>
 
     <form method="get" action="/meetings" class="meeting-search-form">
       <input type="text" name="q" value="{{ q }}" placeholder="Search title or jurisdiction&hellip;" aria-label="Search meetings">

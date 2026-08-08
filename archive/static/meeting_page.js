@@ -215,12 +215,68 @@ function wireSeekAndCopyClicks() {
   });
 }
 
+function wireReportProblemForm() {
+  const toggle = document.getElementById('reportProblemToggle');
+  const form = document.getElementById('reportProblemForm');
+  const cancelBtn = document.getElementById('reportProblemCancel');
+  if (!toggle || !form) return;
+
+  toggle.addEventListener('click', () => {
+    form.hidden = false;
+    toggle.hidden = true;
+  });
+  cancelBtn.addEventListener('click', () => {
+    form.hidden = true;
+    toggle.hidden = false;
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const statusEl = document.getElementById('reportProblemStatus');
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const issueType = document.getElementById('reportProblemType').value;
+    if (!issueType) return;
+
+    submitBtn.disabled = true;
+    statusEl.textContent = '';
+    statusEl.className = 'report-problem-status';
+
+    try {
+      const res = await fetch('/api/report-problem', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: form.dataset.url || window.location.href,
+          issue_type: issueType,
+          details: document.getElementById('reportProblemDetails').value,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        statusEl.textContent = 'Thanks — we’ll take a look.';
+        statusEl.className = 'report-problem-status success';
+        form.reset();
+        setTimeout(() => { form.hidden = true; toggle.hidden = false; }, 2000);
+      } else {
+        statusEl.textContent = data.message || 'Something went wrong — please try again.';
+        statusEl.className = 'report-problem-status error';
+      }
+    } catch (err) {
+      statusEl.textContent = 'Something went wrong — please try again.';
+      statusEl.className = 'report-problem-status error';
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   segments = Array.from(document.querySelectorAll('.transcript-section .transcript-segment[data-start]')).map(
     (el) => ({ start: Number(el.dataset.start || '0') })
   );
 
   wireSeekAndCopyClicks();
+  wireReportProblemForm();
 
   const wrapper = document.getElementById('videoWrapper');
   if (!wrapper) return;

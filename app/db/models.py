@@ -49,3 +49,23 @@ class MeetingResolution(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
     hit_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
+class ProblemReport(Base):
+    """A viewer-submitted "something's wrong with this meeting" report --
+    crowdsourced signal pointing at a specific adapter failure, cheaper
+    than manually re-testing sample cities every session. Deliberately its
+    own table rather than a column on MeetingResolution: a report can come
+    in from either the ephemeral resolver page or a permanent Archive page,
+    and isn't tied to any one resolve attempt.
+    """
+
+    __tablename__ = "problem_reports"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    url: Mapped[str] = mapped_column(Text, nullable=False)
+    issue_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    details: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
