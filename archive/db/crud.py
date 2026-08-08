@@ -433,7 +433,14 @@ async def list_recent_pages_for_feed(*, jurisdiction: Optional[str] = None, limi
 ACTIVE_JOB_STATUSES = ("pending_confirmation", "queued", "in_progress")
 SPENDING_JOB_STATUSES = ("queued", "in_progress")
 MAX_CONCURRENT_TRANSCRIPTION_JOBS = 3
-STALE_CLAIM_AFTER = timedelta(minutes=10)
+# Was 10 minutes; shortened live 2026-08-08 after a real OOM-crash-loop
+# meant the countdown kept resetting (each auto-restart re-claimed the
+# job, pushing "stale" 10 more minutes out every time) -- annoying to
+# wait out mid-debugging. 5 minutes is still comfortably longer than a
+# single chunk should ever legitimately take with the "tiny" model, and
+# the only real instance of this repo's single worker process, so there's
+# no concurrent-worker race this protects against, just crash detection.
+STALE_CLAIM_AFTER = timedelta(minutes=5)
 MAX_CONSECUTIVE_CHUNK_FAILURES = 3
 
 
