@@ -1,5 +1,6 @@
 import re
-from typing import List, Dict, Any
+import xml.etree.ElementTree as ET
+from typing import List, Dict, Any, Optional
 
 
 def decode_vtt_bytes(raw: bytes) -> str:
@@ -68,6 +69,181 @@ def parse_vtt(content: str) -> List[Dict[str, Any]]:
 
     _normalize_shouting_caption(cues)
     return cues
+
+
+def parse_srt(content: str) -> List[Dict[str, Any]]:
+    """Parse SRT content into the same cue-dict shape as parse_vtt.
+
+    SRT differs from WebVTT only in that each cue is preceded by a
+    standalone sequence-number line (e.g. "1", "2", ...) and has no
+    "WEBVTT" header -- feeding raw SRT text into parse_vtt directly is
+    unsafe, not just formally wrong: once the first cue is open,
+    parse_vtt's loop has no way to recognize a later sequence-number line
+    as anything other than more cue text (it only recognizes timestamp
+    lines and blank lines specially), so every cue after the first ends up
+    with the next cue's index number silently appended to its end.
+    Confirmed via a real caption file (Emporia, KS, CivicClerk event 585,
+    3677 real cues) -- stripping sequence-number lines first, then
+    reusing parse_vtt, produces clean output with no corruption.
+    """
+    stripped = re.sub(r"(?m)^\d+\r?\n(?=\d{2}:\d{2}:\d{2}[,.]\d{3} -->)", "", content)
+    return parse_vtt(stripped)
+
+
+def _ttml_time_to_seconds(value: Optional[str]) -> Optional[float]:
+    """Convert a TTML/DFXP timeExpression to seconds.
+
+    Only handles the two forms an actual web captioning vendor is likely
+    to emit: clock-time ("HH:MM:SS.mmm", comma decimal tolerated too) and
+    offset-time in seconds/milliseconds ("1.5s" / "1500ms") -- these are
+    what professional captioning vendors (3Play, Rev, Verbit, etc.)
+    typically use for web delivery, per the TTML spec's own examples.
+    Frame-based ("40f") or tick-based ("2t") expressions need a frame
+    rate/tick rate this function has no way to know, so those return None
+    -- callers skip a cue it can't time rather than guess a rate.
+    """
+    if not value:
+        return None
+    value = value.strip()
+    match = re.match(r"^(\d{2,}):(\d{2}):(\d{2})[.,](\d+)$", value)
+    if match:
+        h, m, s, frac = match.groups()
+        frac = (frac + "000")[:3]
+        return int(h) * 3600 + int(m) * 60 + int(s) + int(frac) / 1000
+    match = re.match(r"^(\d{2,}):(\d{2}):(\d{2})$", value)
+    if match:
+        h, m, s = match.groups()
+        return int(h) * 3600 + int(m) * 60 + int(s)
+    match = re.match(r"^([\d.]+)ms$", value)
+    if match:
+        return float(match.group(1)) / 1000
+    match = re.match(r"^([\d.]+)s$", value)
+    if match:
+        return float(match.group(1))
+    return None
+
+
+def parse_ttml(content: str) -> List[Dict[str, Any]]:
+    """Parse TTML/DFXP/ITT (all XML, "<p begin=... end=...>text</p>" cues
+    under the covers) into the same cue-dict shape as parse_vtt.
+
+    Not yet verified against a real captured file from any platform this
+    app supports -- no CivicClerk/Granicus/etc. sample has ever used this
+    format, unlike SRT (see parse_srt's real Emporia, KS fixture). Built
+    against the W3C TTML spec's own documented shape instead, and
+    deliberately conservative: an element that isn't well-formed XML, or a
+    cue whose begin/end can't be confidently converted to seconds
+    (_ttml_time_to_seconds), is skipped rather than guessed at. ITT
+    (Apple's iTunes Timed Text) is TTML-profiled closely enough that this
+    is expected to work for it too, but that's an inference from the
+    spec, not something confirmed live either.
+    """
+    try:
+        root = ET.fromstring(content)
+    except ET.ParseError:
+        return []
+
+    cues = []
+    for el in root.iter():
+        # Namespace-agnostic tag match -- ElementTree renders a namespaced
+        # tag as "{uri}p", and different vendors use different TTML
+        # namespace URIs/prefixes for the same "p" (paragraph/cue) element.
+        if el.tag.rsplit("}", 1)[-1] != "p":
+            continue
+        start = _ttml_time_to_seconds(el.get("begin"))
+        end = _ttml_time_to_seconds(el.get("end"))
+        if start is None or end is None:
+            continue
+        text = re.sub(r"\s+", " ", "".join(el.itertext())).strip()
+        if text:
+            cues.append({"start": start, "end": end, "text": text})
+
+    _normalize_shouting_caption(cues)
+    return cues
+
+
+_MARKUP_TAG_RE = re.compile(r"<[^>]+>")
+_TIMING_LINE_RE = re.compile(
+    r"^\d{1,2}:\d{2}(:\d{2})?[.,]\d{1,3}\s*(-->|,)\s*\d{1,2}:\d{2}(:\d{2})?[.,]\d{1,3}$"
+)
+_MICRODVD_FRAME_RE = re.compile(r"^\{\d+\}\{\d+\}")
+
+
+def strip_unknown_caption_markup(content: str) -> str:
+    """Best-effort, format-agnostic text extraction for a caption file in
+    a format with no real structured parser here (SBV, SUB, SMI/SAMI, or
+    a plain .txt a city is calling captions). Deliberately not trying to
+    be a real per-format parser -- these formats are detected but not
+    individually implemented (see BACKLOG.md), and precise per-line
+    timing isn't required: `t=` deep-linking to the video's playhead has
+    never depended on transcript timing (confirmed working with zero
+    transcript at all, see the no-transcript-playhead feature), so an
+    unstructured wall of real caption text is still strictly better than
+    silence. Strips XML/HTML-ish tags (SAMI's <SYNC>/<P>), MicroDVD-style
+    "{123}{456}" frame markers, and SRT/SBV-style timing lines, then
+    drops blank lines and bare sequence numbers.
+    """
+    text = _MARKUP_TAG_RE.sub(" ", content)
+    lines = []
+    for raw_line in text.splitlines():
+        line = _MICRODVD_FRAME_RE.sub("", raw_line).strip()
+        if not line:
+            continue
+        if re.fullmatch(r"\d+", line):
+            continue
+        if _TIMING_LINE_RE.match(line):
+            continue
+        lines.append(line)
+    return "\n".join(lines).strip()
+
+
+# Extensions with a real structured (start/end/text) parser above.
+STRUCTURED_CAPTION_PARSERS = {
+    "vtt": parse_vtt,
+    "srt": parse_srt,
+    "ttml": parse_ttml,
+    "dfxp": parse_ttml,
+    "itt": parse_ttml,
+}
+# Text-based formats with no structured parser -- strip_unknown_caption_markup
+# gives real (if unstructured/untimed) text instead of nothing.
+TEXT_FALLBACK_CAPTION_EXTENSIONS = {"sbv", "sub", "smi", "sami", "txt", "xml"}
+# Binary/encoded formats (EIA-608, EBU STL) -- no text can be extracted
+# without real codec-level decoding, so these are link-only; callers
+# should surface the URL itself rather than attempt to display "content".
+
+
+def parse_captions_by_extension(url: str, content: str):
+    """Single dispatch point every adapter should go through once it has
+    a caption URL + its already-decoded text content, instead of each
+    adapter re-implementing its own extension-sniffing. Returns
+    (cues, fallback_text): exactly one is populated on success (`cues` a
+    real structured transcript, `fallback_text` an unstructured text
+    block for a format with no structured parser), or both are
+    empty/None for a format this can't extract anything from at all
+    (binary formats like .scc/.stl -- caller should fall back to linking
+    the URL directly rather than trying to display "content").
+    """
+    ext = url.lower().split("?")[0].rsplit(".", 1)[-1]
+    parser = STRUCTURED_CAPTION_PARSERS.get(ext)
+    if parser:
+        cues = parser(content)
+        if cues:
+            return cues, None
+    elif ext == "xml":
+        # A bare ".xml" extension doesn't say which schema -- some vendors
+        # export real TTML/DFXP with a plain .xml extension rather than
+        # .ttml/.dfxp. Try structured TTML parsing first (parse_ttml
+        # returns [] cleanly on non-TTML-shaped XML or a parse error, so
+        # this is a safe probe, not a guess that corrupts anything) before
+        # falling through to the generic text fallback below.
+        cues = parse_ttml(content)
+        if cues:
+            return cues, None
+    if ext in TEXT_FALLBACK_CAPTION_EXTENSIONS:
+        text = strip_unknown_caption_markup(content)
+        return None, (text or None)
+    return None, None
 
 
 _TAG_RE = re.compile(r"<[^>]+>")

@@ -9,6 +9,7 @@ from bs4 import BeautifulSoup
 from .base import AssetFinder
 from .media_scan import scan_media_urls, media_type
 from .models import ResolvedMeeting, TranscriptSegment
+from ..utils.vtt_parser import STRUCTURED_CAPTION_PARSERS, decode_vtt_bytes, parse_captions_by_extension
 
 
 class SwagitAssetFinder(AssetFinder):
@@ -103,6 +104,35 @@ class SwagitAssetFinder(AssetFinder):
                 if text:
                     segments.append(TranscriptSegment(start=start, end=start, text=text))
 
+        # A real caption *file* (as opposed to #transcript-fragments' DOM
+        # elements above) has never been observed on any Swagit sample
+        # either -- every meeting checked only had .m3u8/.mp4 in
+        # scan_media_urls's results. Tried anyway now that media_scan.py
+        # recognizes a wider set of caption extensions, purely defensive:
+        # costs nothing when absent (the common case), and Swagit runs on
+        # Granicus's own CDN infrastructure, so a caption file isn't
+        # implausible even though none has turned up yet. See BACKLOG.md.
+        if not segments:
+            caption_urls = [u for u in media_urls if media_type(u) == "subtitle"]
+            if caption_urls:
+                cues, fallback_text = await self._fetch_captions(caption_urls[0])
+                if cues:
+                    segments = [TranscriptSegment(**cue) for cue in cues]
+                elif fallback_text:
+                    segments = [
+                        TranscriptSegment(start=0.0, end=0.0, text=line)
+                        for line in fallback_text.split("\n") if line.strip()
+                    ]
+                    transcript_warnings.append(
+                        "This meeting has captions, but in a format we can only show "
+                        "as plain text, not a clickable per-line transcript."
+                    )
+                elif caption_urls[0].lower().split("?")[0].rsplit(".", 1)[-1] not in STRUCTURED_CAPTION_PARSERS:
+                    transcript_warnings.append(
+                        "This meeting has a caption file, but in a format we can't "
+                        f"read at all yet — you can view it directly: {caption_urls[0]}"
+                    )
+
         if not segments:
             transcript_warnings.append("No transcript found for this event.")
 
@@ -153,6 +183,23 @@ class SwagitAssetFinder(AssetFinder):
             video_warnings=video_warnings,
             transcript_warnings=transcript_warnings,
         )
+
+    @staticmethod
+    async def _fetch_captions(caption_url: str):
+        """Returns (cues, fallback_text) via parse_captions_by_extension.
+        Opens its own short-lived session -- unlike Granicus/CA Legislature,
+        Swagit's page-fetch session is already closed by the time this
+        (new, speculative) path runs."""
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(caption_url, timeout=aiohttp.ClientTimeout(total=20)) as response:
+                    if response.status != 200:
+                        return None, None
+                    raw = await response.read()
+        except Exception:
+            return None, None
+        content = decode_vtt_bytes(raw)
+        return parse_captions_by_extension(caption_url, content)
 
     @staticmethod
     def _extract_metadata(soup: BeautifulSoup):

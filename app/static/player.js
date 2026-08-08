@@ -5,6 +5,10 @@
 const sourceUrl = document.body.dataset.sourceUrl;
 let autoScrollEnabled = true;
 let segments = [];
+// Every caption track that was actually fetched (the chosen one plus any
+// alternates -- see ResolvedMeeting.alternate_transcripts), so the language
+// picker can switch `segments` client-side with no second /api/resolve call.
+let transcriptTracks = [];
 
 // Every other platform hands us a direct m3u8/mp4 URL playable in a plain
 // <video>. YouTube doesn't -- playback needs an embedded iframe + the
@@ -82,6 +86,51 @@ function highlightSegment(segId, scrollIntoView) {
 const LINK_ICON_SVG = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M6.5 9.5a.75.75 0 0 0 1 .06l.06-.06 3-3a.75.75 0 0 0-1-1.12l-.06.06-3 3a.75.75 0 0 0 0 1.06z"/><path fill="currentColor" d="M5.72 11.03a2.5 2.5 0 0 1 0-3.54l1.5-1.5a.75.75 0 0 1 1.06 1.06l-1.5 1.5a1 1 0 0 0 1.42 1.42l1.5-1.5a.75.75 0 1 1 1.06 1.06l-1.5 1.5a2.5 2.5 0 0 1-3.54 0z"/><path fill="currentColor" d="M9.72 4.97a2.5 2.5 0 0 1 3.54 3.54l-1.5 1.5a.75.75 0 1 1-1.06-1.06l1.5-1.5a1 1 0 0 0-1.42-1.42l-1.5 1.5A.75.75 0 1 1 8.22 6.5l1.5-1.5z"/></svg>';
 
 const CASSETTE_REEL_SVG = '<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7" fill="#fff" stroke="#bbb" stroke-width="2"/><circle cx="9" cy="9" r="2.2" fill="#bbb"/></svg>';
+
+// data.transcript_language / alternate_transcripts[].language are ISO
+// 639-1 codes (e.g. "es"), not display names -- Intl.DisplayNames gives a
+// real language name in the browser's own locale; falls back to the raw
+// code on an unrecognized/unsupported one rather than throwing.
+function languageDisplayName(code) {
+  if (!code) return 'Unknown language';
+  try {
+    return new Intl.DisplayNames([navigator.language || 'en'], { type: 'language' }).of(code) || code;
+  } catch (e) {
+    return code;
+  }
+}
+
+// Builds the "Language: [ ]" picker next to the Transcript heading from
+// the chosen track plus any alternates the resolver found but didn't pick
+// (see ResolvedMeeting.alternate_transcripts) -- hidden entirely when
+// there's nothing to switch between, the common case.
+function setupTranscriptLanguagePicker(primaryLanguage, primarySegments, alternates) {
+  transcriptTracks = [{ language: primaryLanguage, segments: primarySegments }, ...alternates];
+  const picker = document.getElementById('transcriptLanguagePicker');
+  const select = document.getElementById('transcriptLanguageSelect');
+  if (transcriptTracks.length < 2) {
+    picker.hidden = true;
+    return;
+  }
+
+  select.innerHTML = transcriptTracks
+    .map((track, index) => `<option value="${index}">${escapeHtml(languageDisplayName(track.language))}</option>`)
+    .join('');
+  select.value = '0';
+  picker.hidden = false;
+
+  select.onchange = () => {
+    const track = transcriptTracks[Number(select.value)];
+    segments = track.segments;
+    renderTranscript(segments);
+    // Old matches belong to the DOM this just replaced; let the user
+    // re-search rather than showing a stale count against the new track.
+    const searchInput = document.getElementById('transcriptSearchInput');
+    const searchCount = document.getElementById('transcriptSearchCount');
+    if (searchInput) searchInput.value = '';
+    if (searchCount) searchCount.textContent = '';
+  };
+}
 
 function renderTranscript(segs) {
   const container = document.getElementById('transcriptList');
@@ -269,6 +318,108 @@ function linkifyWarning(text) {
     /(https?:\/\/[^\s<]+)/g,
     '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
   );
+}
+
+// Mirrors archive/utils/transcript_export.py's to_srt()/to_txt() -- this
+// page has no server-side persistence to download from (no accounts/DB is
+// the whole point of the resolver, per README), so export has to happen
+// client-side from the `segments` array already in memory.
+let currentMeetingTitle = 'meeting';
+
+function srtTimestamp(seconds) {
+  const totalMs = Math.round(seconds * 1000);
+  const hours = Math.floor(totalMs / 3600000);
+  const minutes = Math.floor((totalMs % 3600000) / 60000);
+  const secs = Math.floor((totalMs % 60000) / 1000);
+  const ms = totalMs % 1000;
+  const pad = (n, len) => String(n).padStart(len, '0');
+  return `${pad(hours, 2)}:${pad(minutes, 2)}:${pad(secs, 2)},${pad(ms, 3)}`;
+}
+
+function segmentsToSrt(segs) {
+  return segs.map((seg, i) =>
+    `${i + 1}\n${srtTimestamp(seg.start)} --> ${srtTimestamp(seg.end)}\n${seg.text}\n`
+  ).join('\n');
+}
+
+function segmentsToTxt(segs) {
+  return segs.map((seg) => `[${formatTime(seg.start)}] ${seg.text}`).join('\n');
+}
+
+function downloadTranscript(format) {
+  if (!segments.length) return;
+  const body = format === 'srt' ? segmentsToSrt(segments) : segmentsToTxt(segments);
+  const slug = currentMeetingTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'meeting';
+  const blob = new Blob([body], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${slug}.${format}`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function wireTranscriptExport() {
+  document.getElementById('exportTxtBtn').addEventListener('click', () => downloadTranscript('txt'));
+  document.getElementById('exportSrtBtn').addEventListener('click', () => downloadTranscript('srt'));
+}
+
+function wireReportProblemForm() {
+  const toggleWrap = document.getElementById('reportProblemToggleWrap');
+  const toggle = document.getElementById('reportProblemToggle');
+  const form = document.getElementById('reportProblemForm');
+  const cancelBtn = document.getElementById('reportProblemCancel');
+  if (!toggle || !form) return;
+
+  toggle.addEventListener('click', () => {
+    form.hidden = false;
+    toggleWrap.hidden = true;
+  });
+  cancelBtn.addEventListener('click', () => {
+    form.hidden = true;
+    toggleWrap.hidden = false;
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const statusEl = document.getElementById('reportProblemStatus');
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const issueType = document.getElementById('reportProblemType').value;
+    if (!issueType) return;
+
+    submitBtn.disabled = true;
+    statusEl.textContent = '';
+    statusEl.className = 'report-problem-status';
+
+    try {
+      const res = await fetch('/api/report-problem', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: sourceUrl,
+          issue_type: issueType,
+          details: document.getElementById('reportProblemDetails').value,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        statusEl.textContent = 'Thanks — we’ll take a look.';
+        statusEl.className = 'report-problem-status success';
+        form.reset();
+        setTimeout(() => { form.hidden = true; toggleWrap.hidden = false; }, 2000);
+      } else {
+        statusEl.textContent = data.message || 'Something went wrong — please try again.';
+        statusEl.className = 'report-problem-status error';
+      }
+    } catch (err) {
+      statusEl.textContent = 'Something went wrong — please try again.';
+      statusEl.className = 'report-problem-status error';
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
 }
 
 function initVideo(videoUrl, videoFormat) {
@@ -621,6 +772,9 @@ async function init() {
     return;
   }
 
+  wireTranscriptExport();
+  wireReportProblemForm();
+
   statusEl.innerHTML = '<span class="status-loading">' +
     `<span class="cassette-reel spinning">${CASSETTE_REEL_SVG}</span>` +
     `<span class="cassette-reel spinning">${CASSETTE_REEL_SVG}</span>` +
@@ -660,10 +814,16 @@ async function init() {
 
   if (data.error) {
     statusEl.textContent = data.message || 'This meeting could not be resolved.';
+    // Still worth letting someone report this -- "it wouldn't resolve at
+    // all" is itself a useful signal, arguably more so than a report on a
+    // meeting that resolved fine.
+    document.getElementById('reportProblemToggleWrap').hidden = false;
     return;
   }
 
   statusEl.textContent = '';
+  currentMeetingTitle = data.title || 'meeting';
+  document.getElementById('reportProblemToggleWrap').hidden = false;
   document.getElementById('pageTitle').textContent = `${data.title || 'Meeting'} | Red Tape Recordings`;
   metaEl.innerHTML = `<h1>${escapeHtml(data.title || 'Meeting')}</h1>` +
     `<p class="source-link"><a href="${escapeHtml(data.source_url)}" target="_blank" rel="noopener noreferrer">View original source &#8599;</a></p>` +
@@ -687,6 +847,7 @@ async function init() {
     document.getElementById('transcriptSection').hidden = false;
     document.getElementById('transcriptWarnings').innerHTML = transcriptWarnings.length
       ? transcriptWarnings.map(linkifyWarning).join('<br>') : '';
+    setupTranscriptLanguagePicker(data.transcript_language, segments, data.alternate_transcripts || []);
     renderTranscript(segments);
     setupTranscriptSearch();
   } else if (transcriptWarnings.length) {

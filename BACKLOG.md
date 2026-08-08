@@ -7,45 +7,40 @@ where relevant.
 
 ## Bugs
 
-- **A URL already cached in the resolver's local `meeting_resolutions`
-  table never gets backfilled into the Archive.** `/api/resolve` checks
-  the Archive first, then that local cache, then does a live resolve —
-  but the "push to the Archive" step only runs on a *fresh live resolve*
-  (see `app/main.py`). If a URL was already successfully cached locally
-  before the Archive integration existed (or while its env vars were
-  misconfigured — this happened for real, see
-  [BACKLOG_DONE.md](BACKLOG_DONE.md)), every future resolve of that exact
-  URL just serves the local cache and permanently never reaches the
-  push step, so it can never become a permanent page on its own.
-  Confirmed live via `psql`: Simi Valley's `meeting_resolutions` row has
-  `hit_count: 3` and predates the Archive integration being wired up
-  correctly. Not hypothetical — a real, silent gap for any URL resolved
-  during this project's own bring-up period, and it'll recur for any
-  future URL resolved while the Archive happens to be down. Needs either
-  a one-time backfill pass (walk `meeting_resolutions`, push every
-  `status="success"` row with real content to the Archive) or a change
-  to the resolve flow so a local-cache hit can also opportunistically
-  trigger a push if the Archive doesn't already have it — related to,
-  but distinct from, the "opportunistic re-check on a permanent-page
-  hit" item below (that's about refreshing an *existing* Archive page;
-  this is about a page that never got created in the first place).
-- **CivicClerk real caption/transcript format is unverified.** The API
-  schema has `EventsMedia.closedCaptionUrl`, `.transcriptionUrl`, and
-  `.closedCaptionTracks`, but every sample checked (Clovis CA, Highland CA,
-  Lino Lakes MN) had these null/empty — `CivicClerkAssetFinder` just shows a
-  "not verified yet" warning instead of parsing them. Needs a real example
-  with populated caption data.
 - **Alexandria VA meeting dates can't be extracted.** No `view_id` in the
   URL (so no RSS feed to cross-reference, unlike the rest of Granicus — see
   [BACKLOG_DONE.md](BACKLOG_DONE.md)) and no date signal anywhere in the
   page body either. No fallback source identified yet.
-- **No UI to pick between multiple caption language tracks.** Language
-  detection/selection auto-picks the best match and warns when it's not
-  English (see [BACKLOG_DONE.md](BACKLOG_DONE.md)), but there's no way for
-  a user to see or choose an alternate track when more than one exists.
 
 ## Platform coverage — open questions
 
+- **TTML/DFXP/ITT caption parsing (`app/utils/vtt_parser.py`'s
+  `parse_ttml()`) is spec-verified only, not sample-verified.** Built
+  against the W3C TTML spec's documented shape after the CivicClerk SRT
+  finding below prompted a broader look at caption format assumptions —
+  no CivicClerk/Granicus/Swagit/CA Legislature sample has ever actually
+  used TTML/DFXP/ITT (every real populated caption seen so far is VTT or
+  SRT). Handles clock-time and offset-time (seconds/ms) timeExpressions;
+  frame-based ("40f") and tick-based ("2t") are explicitly unsupported
+  (no frame rate available to convert with — skips that cue rather than
+  guessing). If a real TTML/DFXP sample turns up, verify against it and
+  update this note.
+- **SBV/SUB/SMI/SAMI/plain-.txt captions get a generic best-effort text
+  fallback (`strip_unknown_caption_markup()`), not real per-format
+  parsing.** No per-line timing, since these formats were never actually
+  observed either — the fallback exists so real caption text isn't
+  silently dropped (per-line clickability isn't required; `t=`
+  deep-linking to the video's playhead never depended on transcript
+  timing). Wired into Granicus, CA Legislature, Swagit, and CivicClerk.
+  If any of these turns out to be common on a real platform, worth a real
+  structured parser instead of the generic strip.
+- **SCC/STL captions are detected but not readable at all.** Both are
+  binary/encoded (EIA-608 line-21 data, EBU subtitle format) — no text
+  can be extracted without real codec-level decoding, so these just
+  surface as a direct link ("you can view it directly: {url}") rather
+  than attempted content. Genuinely low-probability for a small city's
+  web captioning vendor (these are broadcast-editing interchange
+  formats), so not worth building unless a real example turns up.
 - **Row-level CC/SRT files in Legistar/CivicPlus calendar listings** —
   user's instinct that a calendar row might expose a direct caption file
   link alongside the video link, more reliable than what the destination
@@ -102,12 +97,6 @@ resolver — see [BACKLOG_DONE.md](BACKLOG_DONE.md) for the full reasoning.
 The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 `app/db/crud.py` plus `archive_client.lookup()`/`.push()`.
 
-- **Opportunistic re-check on a permanent-page hit.** Right now a
-  permanent page's transcript is frozen at whatever quality it had on first
-  push, even if the source later adds/improves captions. `TranscriptVersion`
-  already supports multiple versions per page; what's missing is the
-  trigger — background re-resolve on every hit vs. only for pages older
-  than some age. Needs a cadence decision before building.
 - **Transcription crawler** — fetch audio/video for meetings with no
   captions, run our own transcription, store permanently via the Archive.
   Separate architecturally but only useful once the Archive exists.

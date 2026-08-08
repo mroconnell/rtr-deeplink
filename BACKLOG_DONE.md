@@ -8,6 +8,99 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-08] `media_scan.scan_media_urls`'s "sources" JSON-blob
+  branch was dead code — removed rather than fixed.** The regex
+  `r'({[^}]*"sources"\s*:\s*\[[^}]*\][^}]*})'` used `[^}]*` to span from
+  the array's `[` to its closing `]`, but that character class excludes
+  `}` entirely — so it could never match past the closing `}` of an
+  object *inside* the array, meaning it never matched any real
+  JWPlayer-style config blob. Confirmed dead via a unit test
+  (`tests/test_media_scan.py`) before touching it. Deleted the branch and
+  its now-unused `json` import rather than writing a fixed JSON-aware
+  version, since a "fixed" version would still be unverified against any
+  real page — exactly the kind of unverified parsing path this project's
+  own convention avoids shipping (see the "never build from assumption"
+  rule above). Both adapters that call `scan_media_urls` (Granicus,
+  Swagit) already get every real media URL they've ever needed from the
+  plain regex patterns tried first in the same function. Verified: full
+  `pytest` suite green after the change (including an updated version of
+  the pinning test, renamed to `..._was_removed_as_dead_code` and
+  re-documented rather than left describing code that no longer exists),
+  and live against a real Simi Valley Granicus meeting — video URL and
+  394 real transcript segments still resolve correctly with the branch
+  gone.
+- **[Done 2026-08-07] Caption language track picker.** Follow-up from the
+  caption language detection fix (below) — `GranicusAssetFinder` already
+  detected the real language of every fetched caption track internally
+  (the `candidates` list in `app/platforms/granicus.py`) but only ever
+  exposed the one it chose, silently discarding any others. Added a new
+  `AlternateTranscript {language, segments}` model and
+  `ResolvedMeeting.alternate_transcripts` field (`app/platforms/models.py`);
+  Granicus's `resolve()` now populates it from every fetched, non-blank
+  candidate track other than the chosen one, full segments included (not
+  just a language label), so the frontend can switch client-side with no
+  second `/api/resolve` round-trip. Frontend: a "Language: [ ]" `<select>`
+  next to the Transcript heading (`#transcriptLanguagePicker` in
+  `meeting.html`), hidden whenever there's nothing to switch between (the
+  common single-track case). `player.js`'s `setupTranscriptLanguagePicker()`
+  builds its options from the chosen track + alternates, using
+  `Intl.DisplayNames` for a real language name (e.g. "Spanish") rather than
+  showing a raw ISO code, and falling back to the code itself if the
+  browser can't resolve it; switching reassigns the module-level `segments`
+  array and calls the existing `renderTranscript()`, so search/highlighting/
+  auto-scroll all keep working against whichever track is active without
+  separate wiring.
+
+  No real multi-caption-track meeting has been found live yet (every
+  sample checked so far, like Simi Valley clip 2840, turned out to have
+  exactly one track, just sometimes mislabeled) — confirmed live against
+  Simi Valley that the field correctly stays `[]` and the picker stays
+  hidden in that case, no regression. The actual multi-track code path
+  was verified with a mocked `resolve()` (two synthetic VTT tracks, one
+  English one Spanish): correctly chose English (matches
+  `TARGET_LANGUAGE`) and carried the Spanish track through
+  `alternate_transcripts` with its full 20 segments intact. The frontend
+  switcher was verified in a real browser (`mcp__Claude_Browser__*`) by
+  injecting synthetic two-track data into a live-rendered meeting page and
+  driving the actual shipped `setupTranscriptLanguagePicker()`/
+  `renderTranscript()` functions: the picker showed "English"/"Spanish"
+  options, selecting "Spanish" correctly swapped the rendered transcript
+  text and the global `segments` state, and the heading-row layout
+  (`.transcript-heading-row` flex, `justify-content: space-between`) placed
+  the picker at the row's right edge with no overlap against the "Transcript"
+  heading. Confirmed the new field round-trips harmlessly through
+  `archive_client.push()` — the Archive's `IngestRequest` schema
+  (`archive/main.py`) has no `alternate_transcripts` field and Pydantic
+  ignores unrecognized fields by default, so it's silently dropped there;
+  deliberately resolver-only, since the Archive already has its own
+  separate mechanism for multiple languages (`TranscriptVersion` rows,
+  its own version picker).
+- **[Done 2026-08-07] Real bug: a URL already cached locally never got
+  backfilled into the Archive.** `/api/resolve`'s local-cache-hit branch
+  (`app/main.py`) returned the cached payload directly without ever
+  reaching the "push to the Archive" step, which only ran on a fresh live
+  resolve — so any URL cached before the Archive integration existed, or
+  while `ARCHIVE_BASE_URL` was unset/misconfigured, could never become a
+  permanent page on its own, since every future resolve of that exact URL
+  just kept serving the local cache. Confirmed live via `psql` on Simi
+  Valley's `meeting_resolutions` row (`hit_count: 3`, predating the Archive
+  integration). Fixed by making the local-cache-hit branch opportunistic:
+  if the cached payload has real content (`segments` or `agenda_items`)
+  and the Archive lookup at the top of `resolve()` already came back empty
+  for this URL, fire the same `archive_client.push()` background task the
+  fresh-resolve path uses. Verified live end-to-end with two local uvicorn
+  processes (resolver + Archive, SQLite fallback): resolved a real Simi
+  Valley meeting (clip 2840, 394 segments + 17 agenda items) with
+  `ARCHIVE_BASE_URL` unset to reproduce a pre-Archive cached row, then
+  restarted the resolver with the Archive wired up and re-resolved the
+  same URL — `/internal/lookup` 404'd (Archive genuinely didn't have it
+  yet), the local cache served the response, and the new opportunistic
+  push fired and succeeded (`/internal/ingest` 200), after which
+  `/internal/lookup` for that URL correctly returned a real `/m/{slug}`.
+  Didn't build the one-time backfill pass (the other option raised in the
+  original item) — the code fix closes the gap going forward for every
+  URL as it's next resolved, which covers the real-world case without a
+  separate one-off script.
 - **[Done 2026-08-06 for Legistar/CivicPlus; investigated for PrimeGov —
   not applicable] Unsupported-platform failure is too blunt.** Fixed for
   Legistar and CivicPlus specifically: both delegate to the embedded
@@ -106,8 +199,8 @@ changelog of task titles.
   label, prefers a track matching `TARGET_LANGUAGE` ("en") when multiple
   tracks exist, and surfaces a warning when the best available track
   doesn't match. Follow-up (UI dropdown to let the user pick between
-  multiple language tracks when more than one exists) not yet built — see
-  [BACKLOG.md](BACKLOG.md).
+  multiple language tracks when more than one exists) built 2026-08-07 —
+  see the "Caption language track picker" entry above.
 
 - **[Done 2026-08-06] San Francisco's ALL CAPS captions normalized.**
   `_normalize_shouting_caption()` (`app/utils/vtt_parser.py`, runs inside
@@ -595,3 +688,375 @@ changelog of task titles.
   code as the locally-verified build, so the fix itself isn't in doubt,
   but this exposed a real backfill gap — see the new "Bugs" entry in
   [BACKLOG.md](BACKLOG.md).
+- **[Done 2026-08-08] Opportunistic re-check on a permanent-page hit.**
+  Cadence decision made and built: a hit on an existing Archive page
+  triggers a background re-resolve + re-push only if the page hasn't been
+  touched in `ARCHIVE_RECHECK_AFTER` (30 days, `app/main.py` — not derived
+  from measured data, a reasonable middle ground between "government
+  caption pipelines can take weeks to catch up" and "don't hammer the
+  source site on every visit to a popular meeting"). `GET /internal/lookup`
+  (`archive/main.py`) now returns the page's `updated_at`; the resolver's
+  `archived`-hit branch in `resolve()` parses it (`_parse_updated_at()`,
+  treating a naive timestamp as UTC — SQLite doesn't enforce tz-awareness
+  the way Postgres does, so which shape comes back depends on which DB the
+  Archive happens to be running against) and fires
+  `_recheck_archived_page()` via `BackgroundTasks` when stale, never
+  blocking the redirect response. Reuses the same finder + `archive_client.
+  push()` path as a fresh resolve.
+
+  **Real bug found and fixed while verifying this**: `MeetingPage.
+  updated_at`'s `onupdate=func.now()` (`archive/db/models.py`) only fires
+  when SQLAlchemy actually detects a changed attribute — but
+  `ingest_resolution`'s existing-page branch (`archive/db/crud.py`)
+  reassigns `page.title`/`.date`/etc. to values that are usually identical
+  to what's already stored, which doesn't dirty the row. Confirmed live
+  with an isolated script: backdating `updated_at` and re-ingesting the
+  exact same payload left it unchanged, meaning a re-check that found no
+  new content would never stop being "stale" and would re-fire on *every*
+  subsequent hit — precisely the hammering problem this feature exists to
+  prevent. Fixed by having `ingest_resolution` explicitly set
+  `page.updated_at = datetime.now(timezone.utc)` on every existing-page
+  ingest, regardless of whether any field actually changed, so it reliably
+  means "last time this page was checked."
+
+  Verified live end-to-end with two local uvicorn processes (resolver +
+  Archive, isolated ports/SQLite files to avoid colliding with other local
+  activity against the conventional 8010/8020 dev ports): pushed a real
+  Simi Valley meeting, backdated its `updated_at` to simulate a stale page,
+  then resolved the same URL twice in a row. First hit: fast redirect
+  response plus exactly one background `POST /internal/ingest` (the
+  re-check). Second hit, immediately after: redirect only, no re-check —
+  confirming the now-fresh `updated_at` correctly suppressed a repeat
+  trigger. Ran the project's existing `pytest` suite (`tests/`, added
+  concurrently by another session working this same backlog) before and
+  after — all passing, no regressions from either change.
+
+## Testing infrastructure
+
+- **[Done 2026-08-07] Fixture-based pytest suite, from Claude's own
+  suggested backlog (`CLAUDE_BACKLOG.md`).** 47 tests across
+  `tests/test_vtt_parser.py`, `test_media_scan.py`, `test_base.py`, and
+  end-to-end adapter tests for Granicus/Legistar/CivicPlus/CivicClerk.
+  Built on branch `claude-backlog/round-1`.
+
+  Real fixtures, not synthetic, wherever a live fetch was possible during
+  this session (2026-08-07): Granicus — Napa City clip 3450 (genuinely
+  blank captions.vtt, the real 8-byte placeholder) and Simi Valley clip
+  2840 (the exact real Spanish-caption meeting `BACKLOG_DONE.md` already
+  documents above); Legistar — a real `maricopa.legistar.com/Calendar.aspx`
+  page (confirms the calendar pick-list against real markup); CivicClerk —
+  real `clovisca.api.civicclerk.com` API responses for two real events (20:
+  direct mp4 + 31 real agenda bookmarks; 17: `externalVideoUrl`/YouTube
+  fallback, zero bookmarks). CivicPlus is the one exception: the real site
+  this adapter was originally verified against
+  (`ca-westlakevillage.civicplus.com`) has since been restructured (302s to
+  a JS-redirect stub, no `AgendaCenter` markup) and the plain
+  `civicplus.com` subdomain no longer resolves at all — that fixture is
+  hand-built to match the exact real markup shape `civicplus.py`'s own
+  docstring documents as confirmed live on 2026-08-06, not a guess (see
+  `tests/fixtures/civicplus/README.md`).
+
+  **Real tooling finding**: `aioresponses` (latest release, 0.7.9) doesn't
+  support the aiohttp version this project's unpinned `aiohttp>=3.9`
+  requirement resolves to today (3.14.3) — its `_build_response` omits the
+  now-required `stream_writer` kwarg to `ClientResponse.__init__`, a hard
+  `TypeError` on every mocked request. Rather than pin the app's real
+  dependency down just to satisfy a test-only library, wrote a small
+  self-contained `tests/aiohttp_mock.py` that monkeypatches
+  `aiohttp.ClientSession.get` directly — a `FakeResponse`
+  (status/text/read/json/raise_for_status) plus a `mock_session({url:
+  FakeResponse})` context manager, exact-URL-keyed. Same "actively
+  maintained dependency chasing a moving target" risk category as yt-dlp
+  (see the working-conventions note in `CLAUDE.md`) — worth rechecking
+  whether `aioresponses` has caught up next time this suite needs
+  extending.
+
+  **Two real bugs found while building this, unrelated to the feature
+  being tested**:
+  1. `media_scan.scan_media_urls`'s `"sources"` JSON-blob regex branch was
+     dead code — confirmed via a unit test that its `[^}]*\]` could never
+     span the closing `}` of an object inside the array, so no input shape
+     that would produce a `source["src"]`-consumable dict could ever
+     match. Not a live bug (both callers, Granicus and Swagit, already get
+     real URLs from the plain regex patterns tried first) — flagged as a
+     live `BACKLOG.md` item first, then removed outright (rather than
+     fixed) the same day, since a "working" JSON-aware replacement would
+     still be unverified against any real page. The regression test was
+     renamed to `test_scan_media_urls_sources_json_branch_was_removed_as_
+     dead_code` and still asserts the same input yields no URLs, now
+     because the branch is gone rather than because it never matched.
+  2. A test-writing mistake that would have hidden a **real fixture bug**
+     if not caught: an early draft of the CivicClerk "externalVideoUrl
+     fallback" test reused event 20's real `Events/20` JSON with only the
+     `id` field patched to 17 — but event 20's `mediaStreamPath`/
+     `mediaSourcePathMp4` fields are themselves populated with event 20's
+     real direct mp4 URL, so the test would have silently asserted against
+     the wrong video source (the shadowing field, not the fallback path it
+     claimed to test) had the assertion not been checked against the real
+     API response first. Fixed by fetching and saving event 17's own real
+     `Events`/`EventsMedia` JSON instead of hand-editing a different
+     event's — a reminder that even a "real fixture" test can lie if it's
+     assembled from mismatched real pieces.
+
+  Not yet covered: Swagit, eScribe, CA Legislature, PrimeGov/YouTube
+  adapters (no test files yet — README's "Running tests" section flags
+  this as the natural next extension), and the `app/db/` and `archive/`
+  layers (no fixtures or tests for either). `requirements-dev.txt` and
+  `pytest.ini` (`asyncio_mode = auto`) added; see README's new "Running
+  tests" section for how to run it.
+
+- **[Done 2026-08-08] Six more items from `CLAUDE_BACKLOG.md`, all on
+  branch `claude-backlog/round-1`.** Verified live against real running
+  instances of both services (not just unit tests) for every item below.
+
+  **PWA manifest.** `app/static/manifest.json` + a new `app/static/icon.svg`
+  (a square 192x192 SVG in the site's existing dymo-label red/navy, "RTR"
+  monogram — SVG-only, no PNG fallback generated, so pre-maskable-icon
+  Android/iOS install flows may not pick it up; a real gap, not silently
+  claimed to be complete). Linked from both `app/templates/base.html` and
+  `archive/templates/base.html` (`/static/manifest.json` is reachable from
+  Archive-served pages too since `/static/` is mounted on the resolver,
+  same-origin regardless of which service rendered the HTML).
+
+  **schema.org `VideoObject` JSON-LD** on `archive/templates/meeting_page.html`,
+  gated on `page.video_url` existing. `contentUrl` for a direct file
+  (mp4/m3u8), `embedUrl` for YouTube (schema.org distinguishes the two).
+  `duration` computed for real from the active transcript's last segment
+  end time when one exists. No `thumbnailUrl` (this app doesn't generate
+  one — same underlying gap as the missing `og:image`), so this likely
+  isn't rich-result-eligible yet, just valid structured data. Verified via
+  a standalone Jinja render (both a real-data case and a no-video case
+  that correctly emits no `<script>` block at all).
+
+  **Rate limiting on `/api/resolve`** via `slowapi`, keyed by client IP
+  (`get_remote_address`), 20/minute. Verified live: 21 rapid requests
+  against a real local server returned `200` x20 then `429` with
+  `{"error":"Rate limit exceeded: 20 per 1 minute"}`. Real production
+  correctness issue caught and fixed in the same pass: Render's edge
+  proxy means `request.client.host` would otherwise show Render's own
+  proxy IP for every request (making the limiter either a no-op shared
+  across all real users, or a way one heavy caller starves everyone else)
+  — `render.yaml`'s `startCommand` for the resolver now passes uvicorn
+  `--proxy-headers --forwarded-allow-ips='*'` so `X-Forwarded-For` is
+  trusted from Render's proxy specifically, a standard pattern for
+  PaaS-hosted uvicorn. In-memory limiter storage (slowapi's default) is
+  fine for the current single-instance free-tier deploy; would need a
+  shared backend (Redis) to stay correct across multiple instances.
+
+  **Transcript export (TXT/SRT).** Two different implementations for two
+  different architectures, deliberately not shared code: the Archive's
+  permanent pages get real server-side download endpoints
+  (`GET /m/{slug}/transcript.{txt,srt}` in `archive/main.py`, formatting
+  via new `archive/utils/transcript_export.py`, covered by
+  `tests/test_transcript_export.py`) since the data is actually persisted
+  there; the ephemeral resolver page (`app/templates/meeting.html`) has no
+  server-side persistence at all (that's the whole point of this app per
+  README), so its "Text"/"SRT" buttons build the file **client-side** in
+  `app/static/player.js` from the `segments` array already in memory, via
+  a `Blob` + synthetic download link. Verified live end-to-end: real HTTP
+  downloads from the Archive endpoint (content-disposition header and
+  body both correct, against a real 394-segment Simi Valley transcript),
+  and the resolver's client-side path exercised directly in-browser
+  (`downloadTranscript('txt')` triggered with no errors, output format
+  confirmed to match the server-side formatter byte-for-byte in
+  structure).
+
+  **RSS feed of newly-archived meetings**, `GET /feed.xml` on the Archive
+  (optionally `?jurisdiction=`), proxied through the resolver the same
+  way `/sitemap.xml` already is. New `crud.list_recent_pages_for_feed()`
+  (deliberately separate from the `/meetings` index's `list_pages()` —
+  a feed just wants "last N, optionally scoped to one jurisdiction," no
+  pagination). Autodiscovery `<link rel="alternate">` plus a visible "RSS
+  feed" link added to `/meetings`. **Real bug found and fixed before
+  shipping**: `feed.xml.jinja`'s name ends in `.jinja`, not `.xml` —
+  `jinja2.select_autoescape()` keys off the literal extension, so
+  autoescape was silently OFF for this template (same latent gap already
+  present in `sitemap.xml.jinja`, harmless there only because it
+  interpolates slug/date, not free-text titles). A real meeting title
+  containing a bare `&` or `<` produced invalid, unparseable XML —
+  confirmed via `xml.etree.ElementTree.fromstring()` failing on the
+  unescaped output. Fixed by explicitly `|e`-escaping every interpolated
+  value rather than relying on filename-based autoescape detection;
+  `tests/test_feed.py` pins this down as a regression test. Also fixed:
+  the feed's own `atom:link[rel=self]` initially built itself from
+  `str(request.url)`, which — since this service is only ever reached
+  through the resolver's proxy — reflected the Archive's own internal
+  host:port, not the public one; switched to the same `PUBLIC_BASE_URL`-based
+  `base_url` already used for canonical/OpenGraph URLs elsewhere in this
+  app. Verified live through the real proxy chain (resolver → Archive →
+  real SQLite-backed `MeetingPage` row), both unfiltered and with a real
+  `?jurisdiction=` filter.
+
+  **"Report a problem" feedback control**, on both the resolver's
+  ephemeral page and the Archive's permanent pages. New `ProblemReport`
+  table (`app/db/models.py`) + `POST /api/report-problem` (rate-limited,
+  10/minute) + a token-gated `GET /admin/problem-reports`, mirroring the
+  existing `/admin/log` pattern. Deliberately lives only on the resolver's
+  DB (not a second table on the Archive) — reports from an Archive page
+  reach it via a same-origin `fetch()`, since `/api/*` isn't part of the
+  Archive proxy and Archive pages are served from the same public domain
+  either way. **Real bug caught before shipping, not just after**: the
+  first version wrapped `crud.log_problem_report()` in the existing
+  `safe()` helper and checked `if result is None` to detect a storage
+  failure — but `log_problem_report` itself returned `None` on *success*
+  too (a bare `-> None` function), making success and failure
+  indistinguishable and the error path effectively unreachable. Fixed by
+  having it return `True` on success before ever running it live. Also
+  corrected mid-build: an initial draft only treated `result is None` as
+  a failure when `DATABASE_URL` was set, based on a false assumption that
+  no-`DATABASE_URL` meant "no database" — this app always has *some*
+  database (local SQLite fallback, per `engine.py`), so that condition
+  would have silently swallowed real write failures in local/no-Postgres
+  setups. Verified live end-to-end in-browser on both surfaces: a real
+  submission from the resolver's `/meeting` page (filled form, submitted,
+  "Thanks — we'll take a look." shown) confirmed to actually land in the
+  DB via `GET /admin/problem-reports`; the Archive page's toggle/form
+  confirmed to reveal correctly too. `.cassette-btn` reused for the
+  submit button — technically outside the "just two buttons" scope
+  `app/static/style.css`'s own comment claims, but consistent with
+  `archive/templates/meeting_list.html`'s pre-existing "Search"/"Apply
+  filters" buttons already extending past that scope; not re-litigated
+  here, just noted.
+
+- **[Done 2026-08-08] CivicClerk closed captions, previously unverified,
+  now implemented from a real user-supplied example.** The user found a
+  real CivicClerk event with populated captions —
+  `emporiaks.portal.civicclerk.com/event/585/media` (Emporia, KS) —
+  after 8 sampled cities across two sessions had all come back with null
+  caption fields (`BACKLOG.md` had accumulated a theory that captioning
+  is an opt-in add-on most customers don't turn on; this doesn't disprove
+  that, just confirms it's real and working when a city does).
+
+  **Real format finding, not assumed**: the caption file is **SRT, not
+  VTT** — `closedCaptionTracks[].file` is a `.srt` URL
+  (`cpmedia.azureedge.net/emporiaks/ClosedCaption/....srt`). This
+  codebase had no SRT parser at all before this (`app/utils/vtt_parser.py`
+  was VTT-only). New `parse_srt()` added there.
+
+  **Real bug caught before shipping**: SRT differs from VTT in that each
+  cue is preceded by a standalone sequence-number line ("1", "2", ...).
+  Feeding raw SRT text into the existing `parse_vtt()` directly is unsafe
+  — once the first cue is open, a later sequence-number line doesn't
+  match the timestamp regex, so `parse_vtt`'s loop treats it as more cue
+  *text*, silently appending the next cue's index number to the end of
+  the current cue. Confirmed on the real 3677-cue Emporia file before the
+  fix (every cue but the last corrupted); `parse_srt()` strips
+  sequence-number lines first (only when immediately followed by a
+  timestamp line, so a caption that's legitimately just a number is never
+  touched) before reusing `parse_vtt`'s cue-accumulation logic.
+  `tests/test_vtt_parser.py` pins this down with both a minimal synthetic
+  case and the real fixture, asserting no cue's text is left over as a
+  bare number.
+
+  `app/platforms/civicclerk.py`'s `resolve()` rewritten to actually fetch
+  and parse captions instead of showing a "not verified yet" warning:
+  tries `closedCaptionTracks` first (richer — supports multiple language
+  tracks, mirroring Granicus/eScribe's real-content-language-detection
+  pattern rather than trusting any `label` field), falls back to a bare
+  `closedCaptionUrl`/`transcriptionUrl` when there's no tracks array
+  (matching the fallback order in the reference implementation the user
+  supplied). Dispatches VTT vs. SRT parsing by the caption URL's file
+  extension, since there's no other signal available. Verified live
+  end-to-end against the real Emporia event: 3677 real segments, English
+  correctly detected from content (not a label), zero transcript
+  warnings, real title/date/jurisdiction/video/26 real agenda items — and
+  in-browser, confirming the transcript actually renders on the page with
+  no console errors. `tests/test_civicclerk.py` gained a third real-fixture
+  test (`Events/585` + `EventsMedia/585` + the real 272KB `.srt` file) for
+  this exact case, and `BACKLOG.md`'s "unverified" bug item was removed
+  since it's now a positively-confirmed, tested, working path.
+
+- **[Done 2026-08-08] Generalized the CivicClerk SRT lesson across every
+  caption-fetching adapter: wider format *detection* everywhere, real
+  *parsing* for TTML/DFXP/ITT, best-effort text fallback for the rest.**
+  Directly prompted by discussing what the SRT fix implied more broadly —
+  the same "assumed VTT because that's what everything else uses" mistake
+  was a live risk on Granicus and CA Legislature specifically, which both
+  filtered caption candidates to `.endswith(".vtt")` even though the
+  shared page scanner already recognized `.srt` as a subtitle URL and
+  would have silently skipped one if a customer ever linked to it.
+
+  **New in `app/utils/vtt_parser.py`**: `parse_ttml()` (real structured
+  parser for TTML/DFXP/ITT — XML `<p begin= end=>` cues, namespace-agnostic
+  tag matching since vendors vary on `tt:p` vs. a default namespace,
+  clock-time and offset-time timeExpression support, frame/tick-based
+  timing explicitly skipped rather than guessed at since there's no frame
+  rate available to convert with); `strip_unknown_caption_markup()` (a
+  deliberately generic, format-agnostic best-effort text extractor for
+  SBV/SUB/SMI/SAMI/plain-.txt — strips markup tags, MicroDVD-style
+  `{123}{456}` frame markers, and SRT/SBV-style timing lines, keeps
+  whatever real text remains, no per-line timestamps); and
+  `parse_captions_by_extension(url, content)`, a single dispatch point
+  every adapter now goes through instead of each reimplementing its own
+  extension-sniffing — returns `(cues, fallback_text)`, exactly one
+  populated on success, both empty for a genuinely unreadable format
+  (`.scc`/`.stl`, real binary/encoded formats with nothing extractable
+  without real codec decoding). A bare `.xml` extension is ambiguous
+  (some vendors export real TTML with a plain `.xml` extension rather
+  than `.ttml`), so that case probes `parse_ttml()` first — a safe probe
+  since it returns `[]` cleanly on non-TTML-shaped input, not a guess
+  that could corrupt anything — before falling through to the generic
+  text fallback.
+
+  **`app/platforms/media_scan.py`** (the shared scanner Granicus/Swagit/CA
+  Legislature all use) now recognizes `.ttml`/`.dfxp`/`.itt`/`.scc`/
+  `.stl`/`.sbv`/`.sub`/`.smi`/`.sami` unconditionally, plus `.xml`/`.txt`
+  only when the URL path also looks caption-related (`caption`,
+  `subtitle`, `transcript`, or `/cc[_./-]`) — those two extensions are too
+  generic to match unconditionally (would also catch sitemap references,
+  analytics config, any random text file on the page); confirmed via a
+  real test that a real `sitemap.xml` correctly stays unmatched while a
+  `ClosedCaption/....srt`-shaped URL correctly matches. `media_type()`
+  applies the same keyword gate independently (not just relying on
+  callers to have already gone through the gated scanner), since it's a
+  general classifier some caller might run on an un-scanned URL (e.g. a
+  caption URL straight from an API field, as CivicClerk does).
+
+  **Adapter changes** (Granicus, CA Legislature, Swagit, CivicClerk — the
+  four that ever fetch a caption file): each now tries every detected
+  caption URL through `parse_captions_by_extension`. Structured results
+  (`cues`) go through the exact same language-detection/best-track/
+  garbled-check logic as before (Granicus/CivicClerk's multi-track
+  selection was untouched, just fed from a wider candidate pool).
+  Unstructured `fallback_text` becomes `segments` with every non-blank
+  line as its own pseudo-cue at `start=0.0, end=0.0` (deliberately not a
+  new model field — reuses the existing transcript-list rendering path
+  for free, and a click still seeks to a valid position, just not a
+  precise one), with a warning explaining the format limitation. Neither
+  produced anything (binary formats, or a text-based one that came back
+  genuinely empty) surfaces a direct "you can view it directly: {url}"
+  warning instead of silence, mirroring the existing `AgendaViewer.php`
+  fallback-link pattern. Swagit gained an entirely new code path here —
+  it previously only ever tried `#transcript-fragments` (a DOM mechanism,
+  still unverified per BACKLOG.md) and never looked at `media_urls` for a
+  real caption *file* at all.
+
+  **Everything re-verified live against the real meetings already used to
+  build these adapters, confirming zero regressions**: Simi Valley
+  (Granicus, 394 Spanish segments, same warnings, same language
+  detection), Napa City (Granicus, blank-caption case, same "blank"
+  message + agenda fallback link), Yountville CA (Swagit, 7 agenda items,
+  same video resolution), Emporia KS (CivicClerk, 3677 SRT segments, zero
+  warnings) — all byte-for-byte identical output to before this change.
+  CA Legislature's real hearing samples from earlier sessions couldn't be
+  re-located (no ID was ever recorded, and a live search for a current
+  hearing with a populated caption track didn't turn one up in a
+  reasonable amount of searching) — covered instead by new synthetic
+  tests, including one confirming the real `/thumbnails/` scrubber-sprite
+  VTT exclusion still holds under the wider extension list.
+
+  **New test coverage**: 31 tests in `tests/test_vtt_parser.py` (up from
+  14) covering `parse_ttml` (clock-time, offset-time, namespace prefixes,
+  nested markup, frame-based-time skipping, malformed XML),
+  `strip_unknown_caption_markup` (SBV/MicroDVD/SAMI shapes), and
+  `parse_captions_by_extension`'s full dispatch tree; `test_media_scan.py`
+  gained detection tests for every new extension plus the xml/txt
+  keyword-gate (both positive and negative cases); Granicus/CivicClerk
+  gained synthetic (not real — no non-VTT/SRT caption file has ever been
+  observed on either platform) tests for both the text-fallback and
+  link-only paths; and **CA Legislature and Swagit each got their first
+  test file ever** (`test_ca_legislature.py`, `test_swagit.py`), scoped
+  to the new caption-fallback logic specifically rather than full adapter
+  coverage — the broader gap (no coverage of these two adapters' core
+  resolve() flow at all) is still open, noted in the "Testing
+  infrastructure" entry above.

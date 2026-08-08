@@ -6,6 +6,7 @@ import re
 import secrets
 import time
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import aiohttp
@@ -15,6 +16,9 @@ from fastapi.responses import JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 from . import archive_client
 from .db import crud
@@ -50,6 +54,22 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="rtr-deeplink", lifespan=lifespan)
+
+# /api/resolve is public and unauthenticated, and every call fans out to
+# fetch a real government meeting site -- rate limiting protects both that
+# site (being a good citizen about how hard we hit it) and this app's own
+# Render bill from a scripted/abusive caller. Keyed by client IP via
+# get_remote_address, which reads request.client.host -- only trustworthy
+# in production because render.yaml's startCommand passes uvicorn
+# --proxy-headers --forwarded-allow-ips='*' (Render's edge proxy is
+# trusted infra, not an arbitrary client that could spoof the header
+# itself). In-memory storage (slowapi's default) is fine for the current
+# single-instance free-tier deploy; would need a shared backend (e.g.
+# Redis) to stay correct across multiple instances.
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 app.mount("/static", StaticFiles(directory=APP_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=APP_DIR / "templates")
 templates.env.globals["GA_MEASUREMENT_ID"] = os.environ.get("GA_MEASUREMENT_ID", "")
@@ -80,13 +100,57 @@ async def safe(fn, *args, **kwargs):
         return None
 
 
+# How long a permanent Archive page can go untouched before a hit on it
+# opportunistically triggers a background re-resolve. Government caption
+# pipelines can take weeks to catch up (a meeting first archived blank,
+# garbled, or agenda-only may get real captions added to the source
+# later), but re-scraping on every visit to a popular meeting would be
+# wasteful and impolite to the government site being scraped -- 30 days
+# is a middle ground between those, not derived from any measured data.
+ARCHIVE_RECHECK_AFTER = timedelta(days=30)
+
+
+def _parse_updated_at(raw: str):
+    """MeetingPage.updated_at.isoformat() is tz-aware on Postgres (prod)
+    but SQLite (local dev) doesn't enforce tz-awareness, so a naive string
+    can come back from either side depending on where the Archive is
+    running -- treat a naive timestamp as UTC rather than letting the
+    aware/naive subtraction below raise."""
+    try:
+        dt = datetime.fromisoformat(raw)
+    except (TypeError, ValueError):
+        return None
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+
+async def _recheck_archived_page(url: str, normalized: str, platform: str) -> None:
+    """Best-effort background re-resolve for a permanent page that hasn't
+    been touched in ARCHIVE_RECHECK_AFTER -- fires on a lookup hit, never
+    blocks the redirect response the user is waiting on. Reuses the same
+    finder + push path as a fresh resolve; a failure here just means the
+    page stays as it was, same as not re-checking at all, so it's logged
+    rather than raised."""
+    try:
+        finder = get_finder(platform)
+    except UnsupportedPlatformError:
+        return
+    try:
+        result = await finder.resolve(url)
+    except Exception:
+        logger.exception("Archive re-check resolve failed for %s", url)
+        return
+    if result.segments or result.agenda_items:
+        await archive_client.push(result.model_dump(), normalized)
+
+
 @app.get("/api/health")
 async def health():
     return {"status": "ok"}
 
 
 @app.post("/api/resolve")
-async def resolve(req: ResolveRequest, background_tasks: BackgroundTasks):
+@limiter.limit("20/minute")
+async def resolve(request: Request, req: ResolveRequest, background_tasks: BackgroundTasks):
     platform = detect_platform(req.url)
     normalized = normalize_url(req.url)
 
@@ -103,10 +167,21 @@ async def resolve(req: ResolveRequest, background_tasks: BackgroundTasks):
             input_platform=platform,
             status="archive_redirect",
         )
+        updated_at = _parse_updated_at(archived.get("updated_at"))
+        if updated_at and (datetime.now(timezone.utc) - updated_at) > ARCHIVE_RECHECK_AFTER:
+            background_tasks.add_task(_recheck_archived_page, req.url, normalized, platform)
         return {"redirect_url": archived["url"]}
 
     cached = await safe(crud.get_cached_resolution, normalized)
     if cached:
+        # The Archive lookup above already came back empty for this URL, so
+        # a locally-cached resolve with real content is a page that's never
+        # been pushed -- opportunistically push it now instead of only ever
+        # pushing on a fresh live resolve (a real gap: any URL cached before
+        # the Archive integration existed, or while it was down/misconfigured,
+        # would otherwise never become a permanent page on its own).
+        if cached.get("segments") or cached.get("agenda_items"):
+            background_tasks.add_task(archive_client.push, cached, normalized)
         return cached
 
     try:
@@ -240,6 +315,47 @@ async def newsletter_signup(req: NewsletterSignupRequest):
     )
 
 
+class ReportProblemRequest(BaseModel):
+    url: str
+    issue_type: str
+    details: str = ""
+
+
+@app.post("/api/report-problem")
+@limiter.limit("10/minute")
+async def report_problem(request: Request, req: ReportProblemRequest):
+    if req.issue_type not in crud.VALID_ISSUE_TYPES:
+        return JSONResponse(
+            {"error": "invalid_issue_type", "message": "Unrecognized issue type."},
+            status_code=400,
+        )
+    if not req.url.strip():
+        return JSONResponse(
+            {"error": "missing_url", "message": "No meeting URL was given."},
+            status_code=400,
+        )
+
+    # Unlike caching/reporting (which degrade silently -- see `safe()`),
+    # this is a direct response to a user action, so a storage failure
+    # must say so rather than falsely claiming the report was received.
+    # There's no "unconfigured" state to distinguish here, unlike Resend/GA
+    # -- this app always has some database (SQLite fallback or Postgres,
+    # see engine.py) -- so safe() returning None here always means a real
+    # write failure.
+    result = await safe(
+        crud.log_problem_report,
+        url=req.url.strip(),
+        issue_type=req.issue_type,
+        details=req.details.strip()[:2000] or None,
+    )
+    if result is None:
+        return JSONResponse(
+            {"error": "report_failed", "message": "Something went wrong — please try again."},
+            status_code=502,
+        )
+    return {"status": "received"}
+
+
 @app.get("/")
 async def index(request: Request):
     return templates.TemplateResponse(request, "index.html", {})
@@ -309,6 +425,11 @@ async def archive_sitemap():
     return await _proxy_to_archive("sitemap.xml", "")
 
 
+@app.get("/feed.xml")
+async def archive_feed(request: Request):
+    return await _proxy_to_archive("feed.xml", str(request.query_params))
+
+
 @app.get("/robots.txt")
 async def robots():
     # /meeting (singular) is the ephemeral resolver page -- once a URL is
@@ -370,4 +491,15 @@ async def admin_log(token: str = "", limit: int = 200, format: str = "json"):
             )
         return Response(content=buf.getvalue(), media_type="text/csv")
 
+    return rows
+
+
+@app.get("/admin/problem-reports")
+async def admin_problem_reports(token: str = "", limit: int = 200):
+    if not _admin_token_ok(token):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    rows = await safe(crud.list_problem_reports, limit)
+    if rows is None:
+        return JSONResponse({"error": "reports_unavailable"}, status_code=503)
     return rows
