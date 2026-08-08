@@ -142,12 +142,13 @@ async def _send_completion_email(job_id: int) -> None:
 
     base = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
     page_url = f"{base}/m/{status['meeting_page_slug']}"
-    await email_utils.send_completion_email(
+    sent = await email_utils.send_completion_email(
         status["requester_email"],
         meeting_title=status.get("meeting_page_title") or "your meeting",
         excerpt=excerpt,
         page_url=page_url,
     )
+    logger.info("Job %s: completion email to Resend %s", job_id, "accepted" if sent else "FAILED (see prior log line)")
 
 
 async def run_forever() -> None:
