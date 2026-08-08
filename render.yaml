@@ -11,14 +11,12 @@ services:
     # infra here, not an arbitrary client that could spoof the header.
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips='*'
     healthCheckPath: /api/health
-    # UNVERIFIED, check before relying on it: /api/transcription/check-
-    # feasibility (app/main.py) now shells out to ffprobe (see
-    # app/platforms/media_probe.py), a system binary this plain `runtime:
-    # python` buildpack has never needed before and may not include. If a
-    # deploy shows that endpoint failing (ffprobe: command not found in
-    # logs), switch this service to `runtime: docker` -- worker/Dockerfile
-    # is a working reference for the apt-get install ffmpeg step, just
-    # swap its CMD for this service's uvicorn startCommand above.
+    # ffprobe availability confirmed live 2026-08-08: a real POST to
+    # /api/transcription/check-feasibility (app/main.py, shells out to
+    # ffprobe via app/platforms/media_probe.py) against a live Granicus URL
+    # returned {"ok": true, "duration_seconds": 27073.36, ...} -- Render's
+    # plain `runtime: python` buildpack for this service already has
+    # ffprobe on PATH, no Docker switch needed after all.
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.3

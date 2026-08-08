@@ -4,7 +4,7 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, or_, select
 
 from ..utils.language import detect_language_from_texts
 from ..utils.search import build_corpus, matches, tokenize
@@ -17,6 +17,34 @@ from .models import MeetingPage, MeetingPageUrlAlias, TranscriptionJob, Transcri
 def _content_hash(segments: list) -> str:
     joined = "\n".join(seg.get("text", "") for seg in segments)
     return hashlib.sha256(joined.encode("utf-8")).hexdigest()
+
+
+# Substring shared with app/db/outcomes.py's _GARBLED_MARKER -- keep them
+# matching if either message ever changes (see CLAUDE.md's note on that
+# file about why this isn't accidental duplication).
+_GARBLED_MARKER = "looks garbled at the source"
+
+
+async def _has_good_transcript(session, meeting_page_id: int) -> bool:
+    """True if this page's default TranscriptVersion has real, non-garbled
+    content -- used to pick the Archive recheck cadence (see
+    ARCHIVE_RECHECK_AFTER's has_transcript branch in app/main.py): a page
+    missing a real transcript benefits from being rechecked often, since
+    the government source's own captions may catch up at any time; a page
+    that already has a good one doesn't."""
+    version = (
+        await session.execute(
+            select(TranscriptVersion).where(
+                and_(
+                    TranscriptVersion.meeting_page_id == meeting_page_id,
+                    TranscriptVersion.is_default.is_(True),
+                )
+            )
+        )
+    ).scalars().first()
+    if version is None or not version.segments:
+        return False
+    return not any(_GARBLED_MARKER in w for w in (version.transcript_warnings or []))
 
 
 async def lookup_page_for_url(url_normalized: str) -> Optional[dict]:
@@ -37,7 +65,12 @@ async def lookup_page_for_url(url_normalized: str) -> Optional[dict]:
         if alias:
             page = await session.get(MeetingPage, alias.meeting_page_id)
             if page:
-                return {"slug": page.slug, "url": f"/m/{page.slug}", "updated_at": page.updated_at.isoformat()}
+                return {
+                    "slug": page.slug,
+                    "url": f"/m/{page.slug}",
+                    "updated_at": page.updated_at.isoformat(),
+                    "has_transcript": await _has_good_transcript(session, page.id),
+                }
 
         page = (
             await session.execute(
@@ -45,7 +78,12 @@ async def lookup_page_for_url(url_normalized: str) -> Optional[dict]:
             )
         ).scalars().first()
         if page:
-            return {"slug": page.slug, "url": f"/m/{page.slug}", "updated_at": page.updated_at.isoformat()}
+            return {
+                "slug": page.slug,
+                "url": f"/m/{page.slug}",
+                "updated_at": page.updated_at.isoformat(),
+                "has_transcript": await _has_good_transcript(session, page.id),
+            }
 
     return None
 
@@ -267,8 +305,12 @@ async def list_pages(
     keyword search box narrow this same query rather than being a separate
     feature (per the backlog note this was scoped from).
 
-    Keyword search covers title, jurisdiction, agenda item text, and the
-    default transcript version's segment text -- see
+    Keyword search covers title, jurisdiction, agenda item text, and
+    *every* transcript version's segment text for the page -- not just the
+    default one, so a version that's been demoted (e.g. a garbled scraped
+    caption superseded by a later AI transcript, or vice versa) is still
+    findable even though the listing itself only ever displays the
+    default version's language/has_transcript badge. See
     `archive/utils/search.py`. No search index, no materialized column:
     matching runs in Python, at query time, over whatever this function's
     own SQL query already returned -- deliberately not the "real" fix
@@ -304,17 +346,11 @@ async def list_pages(
     elif has_transcript is False:
         conditions.append(TranscriptVersion.id.is_(None))
 
-    # segments only ever pulled from the DB when a keyword search is
-    # actually running -- otherwise a plain browse/filter of the listing
-    # would drag every meeting's full transcript JSON over the wire for
-    # nothing (Dublin's real 36k-segment transcript alone is well over a
-    # megabyte of JSON).
-    columns = [MeetingPage, TranscriptVersion.language, TranscriptVersion.id]
-    if keyword:
-        columns.append(TranscriptVersion.segments)
-
+    # The display-facing columns (language/has_transcript badge) still
+    # come from the default version only, via this same outerjoin as
+    # before -- only the *matching* corpus below expands to every version.
     stmt = (
-        select(*columns)
+        select(MeetingPage, TranscriptVersion.language, TranscriptVersion.id)
         .outerjoin(
             TranscriptVersion,
             and_(TranscriptVersion.meeting_page_id == MeetingPage.id, TranscriptVersion.is_default.is_(True)),
@@ -327,7 +363,28 @@ async def list_pages(
     async with async_session() as session:
         rows = (await session.execute(stmt)).all()
 
-    def _matches_page(mp: MeetingPage, segments: Optional[list]) -> bool:
+        # Every version's segment text, not just the default's -- pulled
+        # in one extra query, only when a keyword search is actually
+        # running (same "don't drag transcript JSON over the wire for a
+        # plain browse" reasoning as before), keyed by page so a demoted
+        # version's text still counts toward a match even though it's
+        # never the one displayed.
+        transcript_text_by_page: dict[int, str] = {}
+        if keyword:
+            page_ids = [mp.id for mp, _lang, _vid in rows]
+            if page_ids:
+                version_rows = (
+                    await session.execute(
+                        select(TranscriptVersion.meeting_page_id, TranscriptVersion.segments).where(
+                            TranscriptVersion.meeting_page_id.in_(page_ids)
+                        )
+                    )
+                ).all()
+                for page_id, segments in version_rows:
+                    text = " ".join(seg.get("text", "") for seg in (segments or []))
+                    transcript_text_by_page[page_id] = f"{transcript_text_by_page.get(page_id, '')} {text}"
+
+    def _matches_page(mp: MeetingPage) -> bool:
         if has_agenda is True and not mp.agenda_items:
             return False
         if has_agenda is False and mp.agenda_items:
@@ -338,18 +395,13 @@ async def list_pages(
             mp.title or "",
             mp.jurisdiction or "",
             " ".join(item.get("text", "") for item in (mp.agenda_items or [])),
-            " ".join(seg.get("text", "") for seg in (segments or [])),
+            transcript_text_by_page.get(mp.id, ""),
         )
         return matches(keyword, corpus, tokenize(corpus) if fuzzy else set(), fuzzy)
 
     filtered = []
-    for row in rows:
-        if keyword:
-            mp, lang, version_id, segments = row
-        else:
-            mp, lang, version_id = row
-            segments = None
-        if _matches_page(mp, segments):
+    for mp, lang, version_id in rows:
+        if _matches_page(mp):
             filtered.append({"mp": mp, "lang": lang, "version_id": version_id})
 
     total = len(filtered)
@@ -423,14 +475,17 @@ async def list_recent_pages_for_feed(*, jurisdiction: Optional[str] = None, limi
 # only queued/in_progress count toward MAX_CONCURRENT_TRANSCRIPTION_JOBS --
 # an unconfirmed request isn't spending any worker/transcription time yet.
 #
-# Known gap, not solved here: a pending_confirmation job that's never
-# confirmed blocks new requests for that page indefinitely (no expiry).
-# Fine to leave for now given how new this feature is; worth a cleanup pass
-# (e.g. treat pending_confirmation older than 48h as abandoned) once this
-# has been live long enough to know if it's a real problem. Tracked in
-# BACKLOG.md.
+# A pending_confirmation job older than PENDING_CONFIRMATION_EXPIRY is
+# treated as abandoned: it no longer blocks a fresh request for the same
+# page (create_transcription_job), and a stale confirmation-email link for
+# it no longer works (confirm_transcription_job) -- both need to agree,
+# otherwise a late click on an abandoned link could resurrect a job after
+# a newer one already superseded it, leaving two active jobs for the same
+# page. The row itself is left as-is (still pending_confirmation forever,
+# never flipped to some new "expired" status) -- it's dead weight, not
+# correctness-affecting, since both read paths already skip it by age.
 
-ACTIVE_JOB_STATUSES = ("pending_confirmation", "queued", "in_progress")
+PENDING_CONFIRMATION_EXPIRY = timedelta(hours=48)
 SPENDING_JOB_STATUSES = ("queued", "in_progress")
 MAX_CONCURRENT_TRANSCRIPTION_JOBS = 3
 # Was 10 minutes; shortened live 2026-08-08 after a real OOM-crash-loop
@@ -485,10 +540,17 @@ async def create_transcription_job(
     async with async_session() as session:
         page = await _find_or_create_page(session, payload, input_url_normalized)
 
+        not_expired_pending = or_(
+            TranscriptionJob.status.in_(SPENDING_JOB_STATUSES),
+            and_(
+                TranscriptionJob.status == "pending_confirmation",
+                TranscriptionJob.created_at >= datetime.now(timezone.utc) - PENDING_CONFIRMATION_EXPIRY,
+            ),
+        )
         existing = (
             await session.execute(
                 select(TranscriptionJob)
-                .where(TranscriptionJob.meeting_page_id == page.id, TranscriptionJob.status.in_(ACTIVE_JOB_STATUSES))
+                .where(TranscriptionJob.meeting_page_id == page.id, not_expired_pending)
                 .order_by(TranscriptionJob.created_at.desc())
             )
         ).scalars().first()
@@ -526,16 +588,17 @@ async def confirm_transcription_job(token: str) -> Optional[dict]:
     """Flips a first-time requester's job from pending_confirmation to
     queued once they click the link in their confirmation email. Returns
     None if the token doesn't match any job still awaiting confirmation
-    (already confirmed, or never existed) -- the caller shows a generic
-    "link invalid or already used" message either way, not distinguishing
-    which, same reasoning as the admin/internal routes' 404-not-401
-    pattern elsewhere in this codebase."""
+    (already confirmed, expired, or never existed) -- the caller shows a
+    generic "link invalid or already used" message either way, not
+    distinguishing which, same reasoning as the admin/internal routes'
+    404-not-401 pattern elsewhere in this codebase."""
     async with async_session() as session:
         job = (
             await session.execute(
                 select(TranscriptionJob).where(
                     TranscriptionJob.confirmation_token == token,
                     TranscriptionJob.status == "pending_confirmation",
+                    TranscriptionJob.created_at >= datetime.now(timezone.utc) - PENDING_CONFIRMATION_EXPIRY,
                 )
             )
         ).scalars().first()

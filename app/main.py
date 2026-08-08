@@ -94,6 +94,17 @@ async def safe(fn, *args, **kwargs):
 # wasteful and impolite to the government site being scraped -- 30 days
 # is a middle ground between those, not derived from any measured data.
 ARCHIVE_RECHECK_AFTER = timedelta(days=30)
+# A page missing a good transcript has real upside in being rechecked much
+# sooner than a page that already has one -- the source may add real
+# captions at any time, and there's nothing to lose by looking again.
+# Still has a floor (not "every hit") so a popular page whose source will
+# just never add captions doesn't get scraped on every visit -- same
+# politeness reasoning ARCHIVE_RECHECK_AFTER was built on, just a shorter
+# window. `has_transcript` comes from archive_client.lookup() (backed by
+# archive/db/crud.py's _has_good_transcript()) -- absent on a lookup
+# response from an Archive too old to have started sending it, in which
+# case this falls back to the same 30-day cadence as before.
+ARCHIVE_RECHECK_AFTER_NO_TRANSCRIPT = timedelta(hours=1)
 
 
 def _parse_updated_at(raw: str):
@@ -166,7 +177,12 @@ async def resolve(request: Request, req: ResolveRequest, background_tasks: Backg
             status="archive_redirect",
         )
         updated_at = _parse_updated_at(archived.get("updated_at"))
-        if updated_at and (datetime.now(timezone.utc) - updated_at) > ARCHIVE_RECHECK_AFTER:
+        recheck_after = (
+            ARCHIVE_RECHECK_AFTER_NO_TRANSCRIPT
+            if archived.get("has_transcript") is False
+            else ARCHIVE_RECHECK_AFTER
+        )
+        if updated_at and (datetime.now(timezone.utc) - updated_at) > recheck_after:
             background_tasks.add_task(_recheck_archived_page, req.url, normalized, platform)
         return {"redirect_url": archived["url"]}
 

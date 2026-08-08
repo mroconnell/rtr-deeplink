@@ -401,15 +401,12 @@ deployed with its own real, isolated dependency set). Confirmed by that
 same deploy: `worker/Dockerfile` **does** build successfully on Render —
 one item below is resolved as a result.
 
-- **ffmpeg/ffprobe availability on the resolver service is still
-  unverified.** `app/main.py`'s `/api/transcription/check-feasibility`
-  now shells out to `ffprobe` (`app/platforms/media_probe.py`), a system
-  binary the resolver's plain `runtime: python` Render buildpack has
-  never needed before and isn't confirmed to include — flagged inline in
-  `render.yaml`. If a deploy shows this endpoint failing, switch that
-  service to `runtime: docker`; `worker/Dockerfile` is now a *confirmed-
-  working* reference for the `apt-get install ffmpeg` step, unlike when
-  this bullet was first written.
+- **~~ffmpeg/ffprobe availability on the resolver service is
+  unverified.~~ Confirmed live 2026-08-08.** A real `POST` to
+  `/api/transcription/check-feasibility` against a live Granicus URL
+  returned `{"ok": true, "duration_seconds": 27073.36, ...}` — the plain
+  `runtime: python` Render buildpack already has `ffprobe` on `PATH`, no
+  `runtime: docker` switch needed after all.
 - **~~Render worker plan sizing is a guess.~~ Resolved for real 2026-08-08,
   after two live crashes, not one.** First real deploy OOM-killed on
   `plan: starter` (512MB) loading the original `"small"` model default.
@@ -442,10 +439,35 @@ one item below is resolved as a result.
   by the measurement above, not another guess. `TRANSCRIPTION_CHUNK_SIZE_
   SECONDS` (`app/main.py`) never needed to change once the plan did.
 
-  Still genuinely open: `"tiny"`'s real transcription *quality* against
-  actual meeting audio hasn't been assessed yet (only verified against
-  short synthetic speech) -- worth a real check once a live job
-  completes. `"base"`'s real memory curve at realistic chunk durations
+  **`"tiny"`'s real quality against actual meeting audio: assessed
+  2026-08-08, real errors found, not just "approximate but fine."** Job 1
+  (Cupertino, 2 chunks) completed successfully end-to-end and was mostly
+  accurate on substance (real terms like "Form 8038-G" came through
+  correctly), but a full read-through of the transcript found two
+  distinct real problems, not hypothetical ones:
+  - **A meaning-changing mistranscription**, not just noise: `"Okay, so
+    that, that is this meeting, this meeting is a joke."` at 25:28 --
+    almost certainly "this meeting is adjourned," misheard as "a joke."
+    Puts a fabricated sentence in a real named official's mouth on a
+    permanent public page — a real reputational-risk failure mode, not
+    just lower search-match quality.
+  - **A hallucination loop**: `"If it doesn't jump."` repeated five times
+    in a row at 22:34-22:43 — a known Whisper failure mode where the
+    model free-associates on quiet/unclear audio instead of stopping,
+    not a real utterance at all.
+
+  Two fixes made in response (2026-08-08): (1) a visible disclaimer now
+  renders on any `source="transcribed"` version (`archive/templates/
+  meeting_page.html`) — previously **no UI anywhere distinguished a
+  self-transcribed version from a real scraped caption**, so a
+  hallucinated sentence like the one above read exactly as authoritative
+  as an official caption; (2) `worker/transcription_engine.py` now passes
+  a short government-meeting-vocabulary `initial_prompt` to
+  `faster-whisper` (explicitly includes "adjourned"), aimed at exactly
+  this failure mode. Neither fix is a guarantee — worth re-checking
+  quality on the next real job now that the prompt's in place, same as
+  this check was itself the first real one. `"base"`'s real memory curve
+  at realistic chunk durations
   (as opposed to the same misleadingly-short 9s clip that under-predicted
   `"tiny"`'s real cost) is still unmeasured -- deliberately not attempted
   in the same pass as the plan upgrade, to change one variable at a time
@@ -459,33 +481,74 @@ one item below is resolved as a result.
   `check_audience_membership()` and Resend's `GET /audiences/{id}/
   contacts/{email}` endpoint shape both work as written, not just
   degrading safely on failure.
-- **An unconfirmed `pending_confirmation` job blocks new requests for that
-  meeting indefinitely — no expiry.** Noted directly in
-  `archive/db/crud.py`'s own comment above `ACTIVE_JOB_STATUSES`. Fine to
-  leave until this feature has been live long enough to know whether it's
-  a real problem in practice; if it is, the fix is a straightforward
-  age-based cleanup pass (e.g. treat `pending_confirmation` older than 48h
-  as abandoned and let a fresh request supersede it).
 - **No language-track picker for a transcribed version yet** — a
   transcribed `TranscriptVersion`'s language is detected from its own text
   (`archive/utils/language.py`, mirroring every scraped-caption adapter's
   existing behavior), but if a meeting is bilingual or the detection is
   simply wrong, there's no way to fix or override it after the fact short
   of a database edit.
-- **"Transcribe this meeting from audio" is too easy to miss.** Currently
-  a small `.link-button` text link (`app/templates/meeting.html` /
+- **~~A non-default `TranscriptVersion` is invisible to internal
+  search~~ — fixed 2026-08-08.** Confirmed by reading the actual code,
+  prompted by asking whether a scraped caption and an AI transcript
+  could both be shown/found once a meeting has both. The version-picker
+  UI already existed for *viewing* both (`archive/templates/
+  meeting_page.html`'s `.version-picker`, a `?version=` link list, not JS
+  tabs — `promote_transcript_version()` never deletes the version it
+  demotes), but `archive/db/crud.py`'s `list_pages()` (the `/meetings`
+  search backing) used to join `TranscriptVersion` filtered to
+  `is_default.is_(True)` only, so a demoted version's text was never
+  matched by a keyword search. Fixed: `list_pages()` now runs a second
+  query (only when a keyword search is active, same as before) pulling
+  *every* version's segments per candidate page, and matches against the
+  concatenation of all of them — still one result row per page, not one
+  per version, since a viewer searching `/meetings` wants to find the
+  meeting, not pick a version from search results. The display-facing
+  columns (language/has_transcript badge) are unchanged, still sourced
+  from the default version only. Verified with a new test
+  (`tests/test_list_pages_search.py`, real DB: ingest a version with a
+  unique keyword, promote a second version over it demoting the first,
+  confirm `list_pages(keyword=...)` still finds the page). Full suite
+  green (116 tests).
+
+  **External search is still open.** The deliberate one-canonical-URL
+  choice is right and shouldn't change (indexing `?version=1`,
+  `?version=2`, etc. as separately-ranked pages would just be
+  duplicate-content spam against ourselves). The real fix is rendering
+  *all* versions' transcript text into the canonical page's own HTML,
+  not just the active one — e.g. every version's segments present in the
+  DOM, client-side-toggled visibility (real JS tabs replacing today's
+  full-reload `?version=` link list) rather than server-side picking-one.
+  Google's own guidance is that content inside JS-toggled tabs/accordions
+  still gets crawled and indexed as long as it's actually present in the
+  initial DOM, not injected only on click — so this isn't a hack, it's
+  the documented-correct way to get a crawler to see supplementary
+  content without duplicate-URL risk. Real cost to weigh before building:
+  page HTML size grows with every version's full transcript (Dublin's
+  real transcript alone is over a megabyte of JSON per BACKLOG.md's
+  search-scale note) — fine for a typical 1-2-version page, worth a size
+  check before assuming it's fine for a page with several. This also
+  happens to be the actual "tabbed content" UI asked about earlier, so
+  building it kills both asks with one change — worth its own scoped
+  task given it touches `.version-picker`, `meeting_page.js`, and the
+  template's rendering of `active_version` throughout.
+- **"Transcribe this meeting from audio" is too easy to miss.** Still a
+  small `.link-button` text link (`app/templates/meeting.html` /
   `archive/templates/meeting_page.html`, styled identically to "Report a
-  problem with this meeting" — same class, same treatment) tucked up in
-  the page's meta section. Wants to be a real, obvious button, not a text
-  link easy to scroll past. Also worth reconsidering *where* it lives:
-  probably more discoverable placed alongside/near the transcript-quality
-  warning messages (`.warnings`/`#transcriptWarnings`, e.g. the "Caption
-  file was blank, so we'll have to run this manually for a transcript..."
-  message in `app/platforms/granicus.py:384` and similar messages in
-  other adapters) — that's exactly the moment a viewer would already be
-  looking at the page and wondering why there's no real transcript,
-  rather than a generic link sitting near "Report a problem" regardless
-  of whether this meeting even needs it.
+  problem with this meeting" — same class, same treatment) — wants to be
+  a real, obvious button, not a text link easy to scroll past. **The
+  *placement* half of this is now fixed (2026-08-08)**: it's been moved
+  off the top meta section and now renders directly next to the
+  transcript-quality warnings on both pages — right after
+  `#transcriptWarnings`/`#transcriptMissingWarnings` on the resolver,
+  and inside both the has-a-garbled-transcript branch (after
+  `active_version.transcript_warnings`) and the no-transcript branch on
+  the Archive page (`archive/templates/meeting_page.html`) — plus the
+  obsolete "contact ryan@how-to-adu.com for details" pitch was trimmed
+  out of the four adapter warning messages that used to carry it
+  (`app/platforms/granicus.py` x2, `civicclerk.py`, `escribe.py`), since
+  the self-serve button sitting right there now does what that pitch
+  used to ask people to email in for. Still open: the visual
+  treatment itself — it's still a plain text link, not a real button.
 - **Transcribe UI's styling doesn't match the rest of the page.** Inherited
   wholesale from `.report-problem-status`'s ad hoc styling (`.transcribe-
   status.success`/`.error` in both `app/static/style.css` and `archive/

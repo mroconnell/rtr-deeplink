@@ -119,6 +119,45 @@ async def test_confirm_flips_status_and_clears_token():
     await _drain_job(confirmed["job_id"], confirmed["total_chunks"])
 
 
+async def test_expired_pending_confirmation_is_superseded_and_unconfirmable():
+    from datetime import datetime, timedelta, timezone
+
+    from sqlalchemy import select
+
+    from archive.db.engine import async_session
+    from archive.db.models import TranscriptionJob
+
+    url = "https://example.granicus.com/player/clip/tj-expiry"
+    payload = _payload("granicus:tj-expiry", url)
+    old_job = await crud.create_transcription_job(
+        payload=payload, input_url_normalized=url, requester_email="stale@example.com",
+        media_url="https://example.com/v.m3u8", media_kind="video",
+        probed_duration_seconds=600, chunk_size_seconds=900, skip_confirmation=False,
+    )
+    assert old_job["status"] == "pending_confirmation"
+
+    async with async_session() as session:
+        job_row = await session.get(TranscriptionJob, old_job["job_id"])
+        token = job_row.confirmation_token
+        job_row.created_at = datetime.now(timezone.utc) - timedelta(hours=49)
+        await session.commit()
+
+    # A fresh request for the same page should NOT see the expired job as
+    # blocking -- it should create a brand new one instead of returning it.
+    new_job = await crud.create_transcription_job(
+        payload=payload, input_url_normalized=url, requester_email="fresh@example.com",
+        media_url="https://example.com/v.m3u8", media_kind="video",
+        probed_duration_seconds=600, chunk_size_seconds=900, skip_confirmation=True,
+    )
+    assert new_job["job_id"] != old_job["job_id"]
+    assert new_job["status"] == "queued"
+
+    # The old job's confirmation link should no longer work.
+    assert await crud.confirm_transcription_job(token) is None
+
+    await _drain_job(new_job["job_id"], new_job["total_chunks"])
+
+
 async def test_full_chunk_lifecycle_promotes_transcribed_version():
     url = "https://example.granicus.com/player/clip/tj-5"
     job = await crud.create_transcription_job(

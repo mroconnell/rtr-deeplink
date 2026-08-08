@@ -102,9 +102,8 @@ class EscribeAssetFinder(AssetFinder):
                     if is_likely_garbled(cues):
                         transcript_warnings.append(
                             "This transcript looks garbled at the source (not a parsing "
-                            "bug on our end) -- treat it as approximate. We can run a "
-                            "higher-quality manual transcription for subscribed users -- "
-                            "contact ryan@how-to-adu.com for details."
+                            "bug on our end) -- treat it as approximate. You can request "
+                            "a fresh transcript generated from the audio below."
                         )
                 else:
                     transcript_warnings.append(

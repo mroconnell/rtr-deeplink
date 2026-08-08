@@ -1514,3 +1514,23 @@ changelog of task titles.
   account, generated a read-only access token, and added it to the
   worker's environment in Render — future model-load logs should stop
   showing the "sending unauthenticated requests" warning.
+
+- **[Done 2026-08-08] Unconfirmed `pending_confirmation` transcription
+  jobs now expire instead of blocking a page forever.** Was: an
+  unconfirmed first-time request had no expiry, so it would block any
+  new request for that meeting indefinitely. Fixed exactly as previously
+  scoped: `archive/db/crud.py` gained `PENDING_CONFIRMATION_EXPIRY =
+  timedelta(hours=48)`; `create_transcription_job()`'s duplicate-request
+  check now treats a `pending_confirmation` job older than that as not
+  blocking (a fresh request creates a new job instead of returning the
+  stale one); `confirm_transcription_job()` was updated to match — a
+  stale confirmation-email link for an expired job now returns `None`
+  (same "invalid or already used" response as an unknown token) rather
+  than being able to resurrect an abandoned job after a newer one may
+  have already superseded it. The now-unused `ACTIVE_JOB_STATUSES`
+  constant was removed rather than left dead. Verified with new tests
+  (`tests/test_transcription_jobs.py::test_expired_pending_confirmation_
+  is_superseded_and_unconfirmable`, backdating a real row's `created_at`
+  directly): a fresh request after expiry gets a new job id, and the old
+  token no longer confirms. Full suite green (115 tests) after the
+  change.

@@ -15,6 +15,20 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Dict, List
 
+# Whisper's initial_prompt biases decoding toward this vocabulary --
+# real motivation: a live job on a Cupertino meeting (2026-08-08)
+# transcribed "this meeting is adjourned" as "this meeting is a joke",
+# a meaning-changing error, not a cosmetic one (see BACKLOG.md). Applied
+# fresh to every chunk (not just the first), since each chunk is its own
+# transcribe() call -- keeps it short and representative rather than a
+# full script, since an overly long/suggestive prompt risks the model
+# leaning on it past where it's actually relevant.
+MEETING_VOCABULARY_PROMPT = (
+    "Local government meeting. Common terms: roll call, public comment, "
+    "motion, second, aye, nay, abstain, quorum, agenda item, ordinance, "
+    "resolution, city council, public hearing, minutes, adjourned."
+)
+
 
 class TranscriptionEngine(ABC):
     @abstractmethod
@@ -62,7 +76,9 @@ class FasterWhisperEngine(TranscriptionEngine):
         return await asyncio.to_thread(self._transcribe_sync, audio_path)
 
     def _transcribe_sync(self, audio_path: Path) -> List[Dict[str, Any]]:
-        segments, _info = self._model.transcribe(str(audio_path), beam_size=5)
+        segments, _info = self._model.transcribe(
+            str(audio_path), beam_size=5, initial_prompt=MEETING_VOCABULARY_PROMPT
+        )
         return [
             {"start": seg.start, "end": seg.end, "text": seg.text.strip(), "speaker": None}
             for seg in segments

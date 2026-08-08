@@ -381,9 +381,9 @@ class GranicusAssetFinder(AssetFinder):
 
                 if not chosen and not text_fallback_candidates and empty_or_failed_count:
                     transcript_warnings.append(
-                        "Caption file was blank, so we'll have to run this manually "
-                        "for a transcript. We can run batches of meetings for "
-                        "subscribed users — contact ryan@how-to-adu.com for details."
+                        "Caption file was blank, so we don't have a transcript for "
+                        "this meeting yet — you can request one be generated from "
+                        "the audio below."
                     )
 
                 if chosen:
@@ -401,9 +401,8 @@ class GranicusAssetFinder(AssetFinder):
                     if is_likely_garbled(cues):
                         transcript_warnings.append(
                             "This transcript looks garbled at the source (not a parsing "
-                            "bug on our end) — treat it as approximate. We can run a "
-                            "higher-quality manual transcription for subscribed users — "
-                            "contact ryan@how-to-adu.com for details."
+                            "bug on our end) — treat it as approximate. You can request "
+                            "a fresh transcript generated from the audio below."
                         )
                     # Every other real (non-blank) track that was fetched but
                     # not chosen -- carried through with full segments (not
