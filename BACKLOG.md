@@ -7,50 +7,20 @@ where relevant.
 
 ## Bugs
 
-- **Real bug, confirmed live (2026-08-08): a permanent Archive page can be
-  stuck showing no transcript even after the underlying code is fixed to
-  find one, with no way to refresh it besides waiting.**
-  `redtaperecordings.com/m/emporia-ks-2026-07-22-commission-meeting`
-  (CivicClerk event 585) was pushed to the Archive before today's SRT
-  caption fix (see [BACKLOG_DONE.md](BACKLOG_DONE.md)'s "CivicClerk closed
-  captions" entry), so it archived agenda-only, no transcript. The source
-  still has everything needed today — fetched
-  `emporiaks.api.civicclerk.com/v1/EventsMedia/585` live and confirmed
-  `closedCaptionTracks` still points at a real, fetchable 272KB `.srt`
-  file with 3,677 real cues, and the video URL still resolves — so a fresh
-  resolve right now would find the transcript fine. But nothing triggers
-  one: `/api/resolve` ([app/main.py:161](app/main.py:161)) checks the
-  Archive *before* ever calling the CivicClerk adapter, and once a
-  permanent page exists, every repeat visit to the same URL just
-  redirects straight to it (confirmed live — re-pasting the URL bounced
-  back to the stale page instantly). The only refresh path is the
-  30-day `ARCHIVE_RECHECK_AFTER` background recheck
-  ([app/main.py:110](app/main.py:110)), which hasn't elapsed for this page
-  yet. Net effect: any adapter bug fix (this one, or a future one) only
-  reaches *existing* permanent pages after up to 30 days, with no way to
-  force it sooner.
-
-  **On-demand fix built, not yet verified live:** `GET
-  /admin/recheck-archive-page?token=&url=` ([app/main.py](app/main.py))
-  reuses `_recheck_archived_page()` (now returns a summary dict instead of
-  firing silently) to resolve + push synchronously, so a stale page can be
-  refreshed immediately instead of waiting on the passive 30-day window.
-  Passes locally (84/84 tests, plus a direct local call against the real
-  Emporia meeting reproducing the expected 3,677 segments / 26 agenda
-  items) but hasn't yet been hit against the deployed production Archive
-  to confirm the Emporia page itself actually updates — do that once
-  deployed, then move this bug entry to `BACKLOG_DONE.md`.
-
-  **Still open — proposed automatic cadence (design agreed, not built):**
-  the manual endpoint above covers "fix it now," but the *passive* recheck
-  cadence should also depend on transcript quality, not just page age. A page missing a real
-  transcript (blank/agenda-only/garbled) has real upside in rechecking
+- **Archive passive recheck cadence should depend on transcript quality,
+  not just page age.** Now that `GET /admin/recheck-archive-page` exists
+  for fixing a stale page on demand (see
+  [BACKLOG_DONE.md](BACKLOG_DONE.md)'s "permanent Archive page stuck
+  showing no transcript" entry), the remaining gap is the *passive*
+  30-day `ARCHIVE_RECHECK_AFTER` cadence, which applies uniformly
+  regardless of whether a page already has a good transcript. A page
+  missing one (blank/agenda-only/garbled) has real upside in rechecking
   often, since the source may catch up at any time (government caption
   pipelines lag, per the existing comment on `ARCHIVE_RECHECK_AFTER`); a
-  page that already has a good transcript doesn't need frequent
-  rechecking. Concretely: keep the existing 30-day cadence for pages with
-  a good transcript, but use a **1-hour** cadence for pages missing one.
-  Needs two pieces: (1) `/internal/lookup`'s response
+  page with a good transcript already doesn't need frequent rechecking.
+  **Design agreed, not built:** keep the existing 30-day cadence for
+  pages with a good transcript, use a **1-hour** cadence for pages
+  missing one. Needs two pieces: (1) `/internal/lookup`'s response
   (`archive/db/crud.py`'s `lookup_page_for_url()`, currently just
   `{slug, url, updated_at}`) gains a quality signal — e.g. `has_transcript`
   derived from whether the page's active `TranscriptVersion` has

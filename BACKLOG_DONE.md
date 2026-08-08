@@ -1060,3 +1060,60 @@ changelog of task titles.
   coverage — the broader gap (no coverage of these two adapters' core
   resolve() flow at all) is still open, noted in the "Testing
   infrastructure" entry above.
+
+- **[Done 2026-08-08] Permanent Archive page stuck showing no transcript
+  after an adapter fix, with no way to refresh it besides waiting up to
+  30 days — fixed with an on-demand admin recheck endpoint.** Found while
+  investigating why `redtaperecordings.com/m/emporia-ks-2026-07-22-commission-meeting`
+  (CivicClerk event 585) showed no transcript despite the SRT caption fix
+  above being able to find one: that page had been pushed to the Archive
+  *before* the fix landed, and `/api/resolve` checks the Archive before
+  ever calling the adapter again ([app/main.py](app/main.py)) — so once a
+  permanent page exists, every repeat visit just redirects to it,
+  confirmed live by re-pasting the source URL and watching it bounce
+  straight back with no new resolve. The only existing refresh path,
+  `ARCHIVE_RECHECK_AFTER` (a 30-day passive background recheck on a stale
+  lookup hit), hadn't elapsed for this page.
+
+  **Fix**: `_recheck_archived_page()` (the function the passive recheck
+  already used) changed from a fire-and-forget `-> None` to returning a
+  summary dict (`pushed`, `platform`, `title`, `segment_count`,
+  `agenda_item_count`, `transcript_warnings`, `video_warnings`) — the
+  passive `BackgroundTasks` caller still discards it, unaffected. New
+  `GET /admin/recheck-archive-page?token=&url=` calls it directly and
+  awaits it synchronously (unlike the passive path, the caller here is
+  explicitly waiting to see the outcome), gated by the same
+  `ADMIN_STATS_TOKEN` pattern as the other `/admin/*` routes (404 on a
+  bad/missing token, not 401/403, so it's not distinguishable from a
+  typo).
+
+  An earlier version of this fix was a one-off shell script
+  (`scripts/refresh_archive_page.py`) meant to be run from a Render
+  Shell, written before discovering the production plan doesn't have
+  Shell access. Removed once the HTTP endpoint made it unnecessary — no
+  reason to maintain two ways to do the same thing, and the endpoint
+  works from anywhere (browser, curl, no Render access needed at all)
+  rather than only from a shell on that one service.
+
+  **Verified live end-to-end**: 84/84 tests still pass locally after the
+  refactor. Once deployed, `curl
+  ".../admin/recheck-archive-page?token=$ADMIN_STATS_TOKEN&url=https://emporiaks.portal.civicclerk.com/event/585/media"`
+  (run from the user's own Render Shell, token substituted from that
+  container's own env — never typed/pasted anywhere) returned
+  `{"pushed":true,"platform":"civicclerk","title":"Commission
+  Meeting","segment_count":3677,"agenda_item_count":26,
+  "transcript_warnings":[],"video_warnings":[]}`. Reloading the permanent
+  page immediately after confirmed the Transcript section now renders (a
+  `<h2>Transcript</h2>` heading present, 3703 `.transcript-segment`
+  elements — 3677 transcript lines + 26 agenda items, both reusing the
+  same CSS class per the Agenda section's markup-reuse design — with the
+  first three real lines: "CALL MEETING TO ORDER", "MEMBERS PRESENT",
+  "PROCLAMATIONS").
+
+  Residual gaps intentionally left open, split back out into
+  [BACKLOG.md](BACKLOG.md): the *passive* 30-day recheck cadence still
+  doesn't vary by transcript quality (this fix only added the on-demand
+  manual path, not a smarter automatic one), and Emporia's own
+  `eventBookmarks` all reporting `markerTimeStart: 0` (a separate, real
+  source-data quirk noticed during this same investigation, unrelated to
+  the missing-transcript bug) is still unaddressed.
