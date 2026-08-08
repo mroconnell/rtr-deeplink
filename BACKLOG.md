@@ -557,13 +557,69 @@ scoped.
   per-adapter reporting log above (which already tracks this
   server-side, with outcome detail GA has no equivalent for) and there's
   no reason to also hand government meeting URLs to Google.
-- **Permanent meeting pages** (the Archive's core feature) — the
-  biggest single item below. Needs its own content model: versioned
-  transcripts per meeting (to support language variants, edits, a
-  future manual/higher-quality re-transcription, speaker diarization
-  later), slugs, SEO/crawlability (server-rendered, sitemap). Video is
-  never self-hosted, only embedded — matches this app's existing
-  principle. Not sized in detail yet; do that when it's actually next.
+- **[Done 2026-08-07] Permanent meeting pages** (the Archive's core
+  feature). Built as a genuinely separate app, `archive/` — own FastAPI
+  service, own database (same Render Postgres server as the resolver,
+  but a separate logical database), own deploy — reachable at
+  `redtaperecordings.com/m/{slug}` via a reverse-proxy in the resolver's
+  `app/main.py` (`/m/*` and `/archive-static/*`), so the custom domain
+  stays consolidated for SEO/sharing even though it's two services.
+  Content model: `MeetingPage` (one per real-world meeting, identity via
+  `(platform, external_id)` or normalized URL) + `TranscriptVersion`
+  (many per page — language/source variants, deduped by a content hash
+  of the segment text) + `MeetingPageUrlAlias` (every input URL that's
+  ever pushed, so a lookup keyed on a wrapper-platform URL like Legistar
+  still short-circuits even though its real identity lives on the
+  platform it delegates to). Pages are fully server-rendered (real
+  transcript/agenda content on first byte, not client-fetched JSON) for
+  actual crawlability. Handoff: the resolver checks the Archive *before*
+  resolving (`archive_client.lookup()`) and redirects to the permanent
+  page if one exists, preserving `t=`/`line=`; after a live resolve
+  with real content (transcript or agenda — never for blank/failed
+  resolves), it pushes via `archive_client.push()` on a `BackgroundTasks`
+  callback (not a bare `asyncio.create_task`, which risked the task
+  being garbage-collected mid-flight). Both directions degrade silently
+  through the same `safe()` pattern as the existing DB calls — a down
+  Archive never breaks `/api/resolve`, and the resolver's `/m/*` proxy
+  returns a clean 503 rather than hanging.
+
+  Verified live end-to-end locally (two uvicorn processes): a real
+  content-bearing resolve (Simi Valley Granicus, 394 segments + 17
+  agenda items) correctly created a `MeetingPage`; re-pasting the same
+  URL returned `{"redirect_url": "/m/{slug}"}` in ~20ms instead of
+  re-scraping; the alias table correctly short-circuited a
+  wrapper-platform-shaped URL pointed at the same `external_id`; deep
+  links (`t=630&line=seg-4`) survived the redirect and correctly seeked
+  + highlighted on the permanent page; a second transcript version
+  (different language) correctly appeared in the version picker
+  (`?version={id}`, full page reload) without disturbing the first; an
+  identical re-push correctly did not create a duplicate version
+  (content-hash dedup); a blank/no-content resolve (Paradise Valley AZ)
+  correctly never reached the Archive at all; and killing the Archive
+  process confirmed `/api/resolve` kept resolving live with no 500 while
+  `/m/{slug}` degraded to a clean 503.
+
+  Operational notes for when this goes live: Render's free web services
+  spin down after 15 min idle (~30-60s cold start) — fine during
+  testing, but the Archive service should move to a paid plan before
+  `/m/*` links are actually shared or submitted for indexing, since a
+  Googlebot fetch regularly eating that latency is a real crawl-health
+  risk, not just a stray-visitor annoyance. Free Render web services can
+  send private-network requests but not receive them, so the proxy
+  targets the Archive's public `.onrender.com` URL for now — switching
+  to Render's internal hostname once the Archive is paid is a one-line
+  env var change. The second Postgres database
+  (`CREATE DATABASE rtr_archive;` on the existing instance) and the
+  second Render web service both still need to be provisioned by the
+  user themselves before this is live in production.
+
+  Explicitly not built in this pass (still gated on the Archive
+  existing, per the roadmap below): the transcription crawler, search,
+  accounts/billing, email alerts, on-demand crawl requests, video
+  highlights. Also not resolved: whether a genuine re-scrape of the same
+  `(language, source)` with different content should replace that
+  version in place or add a new one and flip which is default — flagged
+  for a follow-up decision, not blocking.
 - **Transcription crawler** (fetch audio/video for meetings with no
   captions, run our own transcription, store the result permanently) —
   separate from the Archive architecturally but only useful once the

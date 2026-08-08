@@ -15,6 +15,13 @@ set, the app falls back to a local SQLite file, and if the database is ever
 unreachable, `/api/resolve` degrades silently to its original zero-persistence
 behavior rather than failing.
 
+Permanent, publicly shareable meeting pages (with multiple transcript
+versions/languages) live in a separate app, `archive/` — see
+[Permanent pages (the Archive)](#permanent-pages-the-archive) below. This
+resolver itself still never hosts accounts or public content pages; that's
+the whole reason the Archive is a separate app rather than a feature bolted
+onto this one.
+
 ## Quick start
 
 ```bash
@@ -136,6 +143,71 @@ distinguishable from a typo):
 
 See `.env.example` for the two env vars (`DATABASE_URL`, `ADMIN_STATS_TOKEN`).
 
+## Permanent pages (the Archive)
+
+This resolver stays deliberately stateless per meeting — the `meeting_resolutions`
+table above is a private cache/log, not a public archive. Permanent,
+SEO-indexed meeting pages live in a **separate app**, `archive/` (its own
+FastAPI service, own database, own deploy) — not grown into this resolver,
+so this app keeps its single job: no accounts, no public content pages,
+ever. See `archive/` for that app's own structure; this section covers only
+the handoff between the two.
+
+**Domain**: permanent pages are reachable at `redtaperecordings.com/m/{slug}`
+— same domain as everything else, for SEO and sharing consistency. This
+resolver's service holds the custom domain, so it reverse-proxies `/m/*`
+and `/archive-static/*` through to the Archive's own Render service
+(`app/archive_client.py`'s `proxy_get()`, wired up in `app/main.py`). A
+failure to reach the Archive here returns a clean 503, not a hang or a raw
+exception — these are public, potentially-indexed pages.
+
+**Lookup, before resolving**: `/api/resolve` calls `archive_client.lookup()`
+*before* checking its own local cache or doing a live resolve. If a
+permanent page already exists for the normalized input URL, the response is
+`{"redirect_url": "/m/{slug}"}` instead of a `ResolvedMeeting` — `player.js`
+sends the browser there (preserving `?t=`/`?line=` from the current URL),
+consolidating traffic and sharing on the canonical permanent URL rather than
+re-scraping. This lookup only has the raw pasted URL to go on, which is why
+the Archive keeps a `MeetingPageUrlAlias` table recording every URL that's
+ever successfully pushed — without it, a Legistar/CivicPlus/PrimeGov URL
+(whose real identity lives on the platform it delegates to, not the URL the
+user pasted) would never match on a repeat paste.
+
+**Push, after resolving**: after a live resolve succeeds with real content
+(`segments` or `agenda_items` non-empty — blank/failed resolves are never
+pushed, so test pastes and broken URLs don't create junk permanent pages),
+`/api/resolve` fires `archive_client.push()` via FastAPI's `BackgroundTasks`
+(not a bare `asyncio.create_task`, which risks the task being
+garbage-collected mid-flight). The Archive matches the push against an
+existing `MeetingPage` by `(platform, external_id)` when available, else by
+the resolved URL, and either creates a new page or attaches a new
+`TranscriptVersion` to an existing one (deduped by a content hash, so
+re-pushing an unchanged meeting doesn't pile up duplicate versions). Both
+`lookup()` and `push()` are wrapped in the same `safe()` pattern as the DB
+calls above — a down/misconfigured Archive degrades silently, never breaks
+`/api/resolve`.
+
+**Redirect hits are logged too** — `status="archive_redirect"` — so
+`/admin/stats`' totals don't develop a blind spot as more traffic migrates
+to Archive-redirects over time; `classify_outcome()` in `app/db/outcomes.py`
+returns it directly (any non-`"success"` `status` passes through as-is).
+
+Local dev runs both services side by side:
+
+```bash
+# terminal 1
+uvicorn app.main:app --reload --port 8010
+# terminal 2
+ARCHIVE_INGEST_TOKEN=devtoken uvicorn archive.main:app --reload --port 8020
+```
+
+With `ARCHIVE_BASE_URL=http://localhost:8020` and a matching
+`ARCHIVE_INGEST_TOKEN` set for the resolver (see `.env.example`), pasting a
+URL twice will resolve live the first time and redirect to `/m/{slug}` the
+second. Leaving `ARCHIVE_BASE_URL` unset disables the integration entirely
+— `/api/resolve` just always live-resolves, same as before this feature
+existed.
+
 ## Supported platforms
 
 One `AssetFinder` per **platform**, not per city — cities on the same
@@ -195,7 +267,9 @@ document/agenda platform with no reliable video, not worth an adapter).
 ```
 app/
   main.py                 FastAPI app: routes, adapter registration,
-                           /api/resolve's cache-check + logging, /admin/*
+                           /api/resolve's cache-check + logging, /admin/*,
+                           the /m/* and /archive-static/* Archive proxy
+  archive_client.py        lookup()/push() to the Archive + proxy_get()
   db/
     engine.py              DATABASE_URL (falls back to local SQLite) +
                            async engine/session
@@ -222,6 +296,37 @@ app/
   templates/about.html     about page
   static/player.js         all client-side behavior
   static/style.css
+```
+
+`archive/` is a second, independent FastAPI app (own `requirements.txt`,
+own deploy) for permanent pages — see
+[Permanent pages (the Archive)](#permanent-pages-the-archive) above.
+
+```
+archive/
+  main.py                 FastAPI app: /internal/lookup, /internal/ingest
+                           (both token-gated), /m/{slug}, /api/health
+  db/
+    engine.py              own DATABASE_URL resolution + local SQLite
+                           fallback (archive_dev.db -- never shares the
+                           resolver's dev.db)
+    models.py               MeetingPage, TranscriptVersion,
+                           MeetingPageUrlAlias
+    crud.py                  identity matching/dedup, slug generation,
+                           content-hash version dedup
+  utils/
+    slugify.py               slug generation
+    url_normalize.py         deliberate duplicate of
+                           app/utils/url_normalize.py -- kept in sync
+                           manually so the two services stay
+                           deploy-independent
+  templates/meeting_page.html  SSR permanent page + transcript-version
+                           picker (real content on first byte, for
+                           crawlability -- not client-fetched JSON like
+                           app/templates/meeting.html)
+  static/style.css          duplicated from app/static/style.css
+  static/meeting_page.js    trimmed port of player.js's seek/highlight
+                           logic, wired onto already-rendered DOM
 ```
 
 ## Known limitations
