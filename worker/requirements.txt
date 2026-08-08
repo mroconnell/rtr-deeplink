@@ -10,6 +10,7 @@ beautifulsoup4>=4.12
 langdetect>=1.0.9
 wordninja>=2.0.0
 yt-dlp
+pydantic>=2.0
 sqlalchemy[asyncio]>=2.0
 asyncpg>=0.29
 aiosqlite>=0.20
