@@ -43,9 +43,23 @@ under everything else. This repo extracts and fixes just that part.
   seek-priority bug) were only caught by looking at the rendered page or
   driving it, not by reading JSON responses.
 - **New bugs/gaps found while working go in `BACKLOG.md`**, not just
-  mentioned in conversation — it's the durable record. Mark items
-  `[Done YYYY-MM-DD]` in place rather than deleting them, so the reasoning
-  and verification history stays visible.
+  mentioned in conversation — it's the durable record. `BACKLOG.md` holds
+  only live/open items, kept short on purpose; once an item is actually
+  fixed/built and verified, move its entry (marked `[Done YYYY-MM-DD]`,
+  full reasoning and verification detail intact) into `BACKLOG_DONE.md`
+  rather than marking it done in place — that keeps `BACKLOG.md` fast to
+  read while still preserving the investigation history. If a completed
+  item left behind a real residual gap (a follow-up not yet built, an
+  edge case still unfixed), split that part back out as its own live
+  entry in `BACKLOG.md`, cross-linking to `BACKLOG_DONE.md` for context.
+- **`CLAUDE_BACKLOG.md` is a separate, unreviewed suggestions list**,
+  distinct from `BACKLOG.md`. When asked to brainstorm improvements/
+  features rather than record a bug or gap found while working, write them
+  there instead of directly into `BACKLOG.md` — it holds ideas the user
+  hasn't triaged yet, so they don't get mixed in with `BACKLOG.md`'s
+  verified, live-tested findings. Once the user accepts an item from it,
+  move it into `BACKLOG.md` proper (in that file's style, with real
+  verification) rather than marking it done in place.
 - **Don't claim a caption/data path works without a positive example.**
   Several adapters have fields that are schema-verified but not
   content-verified (e.g. CivicClerk's `closedCaptionTracks`, Swagit's
@@ -87,8 +101,10 @@ under everything else. This repo extracts and fixes just that part.
 
 The essentials (why this pivot happened, per-platform findings, known
 gaps) are captured directly in this repo — `README.md`, this file, code
-comments, and `BACKLOG.md` — deliberately, so a session opened straight
-against this repo has what it needs without depending on anything else.
+comments, and `BACKLOG.md` (plus `BACKLOG_DONE.md` for completed items and
+`CLAUDE_BACKLOG.md` for unreviewed, Claude-proposed ideas) — deliberately,
+so a session opened straight against this repo has what it needs without
+depending on anything else.
 
 Deeper session narrative (the original round-1 user-testing conversation,
 day-by-day investigation detail) lives in Claude Code auto-memory scoped
