@@ -11,6 +11,33 @@ where relevant.
   URL (so no RSS feed to cross-reference, unlike the rest of Granicus — see
   [BACKLOG_DONE.md](BACKLOG_DONE.md)) and no date signal anywhere in the
   page body either. No fallback source identified yet.
+- **Real bug: a genuinely public, working YouTube video gets misreported
+  as "removed, private, or blocked."** Confirmed live (2026-08-08) via
+  `https://toaks.primegov.com/Portal/Meeting?meetingTemplateId=9446`
+  (Thousand Oaks, CA) — the page has a real embedded video id
+  (`VNMQYICdQvs`), and YouTube's own oEmbed API confirms that video is
+  genuinely public (title "Thousand Oaks City Council Meeting - July 7,
+  2026", channel "CTO Meetings", real thumbnail). `/api/resolve` still
+  fails with `"YouTube video VNMQYICdQvs could not be resolved (removed,
+  private, or blocked)."` Root cause: `YouTubeAssetFinder._extract_info()`
+  (`app/platforms/youtube.py`) sets `"ignoreerrors": True` on yt-dlp, so
+  `ydl.extract_info()` returns `None` on *any* failure — network hiccup,
+  an anti-bot block on our server's IP, yt-dlp needing an update, an
+  actually-removed video, anything — and the caller (`resolve_video_id()`)
+  reports all of those identically as "removed, private, or blocked."
+  That message is asserting something it hasn't actually verified. Real
+  cause here is unconfirmed (this exact video should be a good repro to
+  debug against); fix likely needs either `ignoreerrors: False` so the
+  real yt-dlp exception surfaces, or explicitly checking `info.get(
+  "availability")` / a similar signal before assuming removal.
+
+  Also corrects an assumption from the original PrimeGov/YouTube build
+  (see [BACKLOG_DONE.md](BACKLOG_DONE.md)): a `?meetingTemplateId=...`
+  PrimeGov URL was believed to never have video, based on one LA sample
+  that genuinely had none. This Thousand Oaks sample has a real
+  `var videoUrl = "VNMQYICdQvs"` on a `meetingTemplateId` page — video
+  presence isn't determined by the URL shape after all, at least not
+  uniformly across cities.
 
 ## Platform coverage — open questions
 
