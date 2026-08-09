@@ -17,13 +17,14 @@ import asyncio
 import logging
 import os
 import tempfile
+import time
 from pathlib import Path
 
 from dotenv import load_dotenv
 
 from app.platforms import register_all_finders
 from app.platforms.base import UnsupportedPlatformError, get_finder
-from app.platforms.media_probe import extract_chunk_audio
+from app.platforms.media_probe import extract_chunk_audio, is_plausible_meeting_duration, probe_duration
 from archive.db import crud
 from archive.utils import email as email_utils
 from worker.segment_utils import chunk_duration, chunk_start, shift_segments
@@ -50,6 +51,99 @@ EMPTY_POLL_HEARTBEAT_EVERY = 20
 # trying to break on a sentence boundary; good enough for "here's a taste,
 # click through for the rest."
 EMAIL_EXCERPT_CHARS = 500
+
+# Must match app/main.py's TRANSCRIPTION_CHUNK_SIZE_SECONDS -- duplicated
+# rather than imported across the app/worker service boundary (same
+# reasoning as archive/utils/language.py's deliberate duplicate-of-app's-
+# own detect_language_from_texts()).
+AUTO_TRANSCRIPTION_CHUNK_SIZE_SECONDS = 900
+
+# How often to even check for an auto-generation candidate, separate from
+# the much shorter poll/backoff cadence above -- checking on literally
+# every empty poll (every 15s) would be wasteful (a full-table scan plus a
+# live re-resolve + feasibility probe against a real source, not a cheap
+# DB-only check). 5 minutes is frequent enough that a freshly-archived,
+# transcript-less meeting doesn't sit idle for long once the queue is
+# otherwise empty.
+AUTO_GENERATION_CHECK_INTERVAL_SECONDS = 300
+
+# Auto-generated jobs need *some* requester_email (the column is required,
+# and the worker emails it on completion -- see _send_completion_email) --
+# decided 2026-08-09 to use a real person's address as a lightweight
+# activity digest rather than building a new "skip the email" code path or
+# a dedicated no-reply mailbox. Auto-generation is simply disabled
+# (maybe_generate_auto_job() always returns False) if this isn't set,
+# rather than guessing at a placeholder address.
+AUTO_TRANSCRIPTION_REQUESTER_EMAIL = os.environ.get("AUTO_TRANSCRIPTION_REQUESTER_EMAIL", "")
+
+
+def _auto_media_kind(video_format) -> str:
+    return "audio" if (video_format or "") in ("mp3", "wav") else "video"
+
+
+async def maybe_generate_auto_job() -> bool:
+    """Looks for a MeetingPage missing a good transcript and, if one
+    exists and isn't in cooldown, creates a low-priority self-generated
+    transcription job for it -- see BACKLOG_DONE.md's auto-idle-time entry.
+    Caller (run_forever()) is responsible for only calling this when the
+    job queue is confirmed empty and the check interval has elapsed.
+    Returns True if a job (real or feasibility-failed) was created, so the
+    caller can treat that the same as "did work" for polling-cadence
+    purposes -- False means there was nothing to do (or auto-generation
+    isn't configured), not that something went wrong.
+    """
+    if not AUTO_TRANSCRIPTION_REQUESTER_EMAIL:
+        return False
+
+    candidate = await crud.find_auto_transcription_candidate()
+    if candidate is None:
+        return False
+
+    slug = candidate["slug"]
+    source_url = candidate["source_url"]
+    platform = candidate["platform"]
+    logger.info("Auto-generation: trying candidate %s (%s)", slug, source_url)
+
+    async def _fail(reason: str) -> None:
+        logger.info("Auto-generation: %s not feasible (%s)", slug, reason)
+        await crud.create_failed_auto_transcription_job(
+            meeting_page_id=candidate["meeting_page_id"],
+            requester_email=AUTO_TRANSCRIPTION_REQUESTER_EMAIL,
+            error_message=reason,
+        )
+
+    try:
+        finder = get_finder(platform)
+        result = await finder.resolve(source_url)
+    except Exception as e:
+        await _fail(f"Re-resolve failed: {e}")
+        return True
+
+    if not result.video_url:
+        await _fail("No usable audio or video source was found.")
+        return True
+
+    duration = await probe_duration(result.video_url, source_page_url=source_url)
+    if duration is None:
+        await _fail("Found a media source but couldn't read it.")
+        return True
+    if not is_plausible_meeting_duration(duration):
+        await _fail("Media duration doesn't look like a full meeting recording.")
+        return True
+
+    job = await crud.create_transcription_job(
+        payload=result.model_dump(),
+        input_url_normalized=source_url,
+        requester_email=AUTO_TRANSCRIPTION_REQUESTER_EMAIL,
+        media_url=result.video_url,
+        media_kind=_auto_media_kind(result.video_format),
+        probed_duration_seconds=duration,
+        chunk_size_seconds=AUTO_TRANSCRIPTION_CHUNK_SIZE_SECONDS,
+        skip_confirmation=True,
+        priority=crud.PRIORITY_LOW,
+    )
+    logger.info("Auto-generation: created job %s for %s", job.get("job_id"), slug)
+    return True
 
 
 async def process_next_chunk(engine: TranscriptionEngine) -> bool:
@@ -164,6 +258,7 @@ async def run_forever() -> None:
     logger.info("Model loaded. Entering poll loop.")
 
     empty_polls = 0
+    last_auto_check = 0.0
     while True:
         try:
             processed = await process_next_chunk(engine)
@@ -177,6 +272,22 @@ async def run_forever() -> None:
             empty_polls += 1
             if empty_polls % EMPTY_POLL_HEARTBEAT_EVERY == 0:
                 logger.info("Still polling, nothing queued (checked %s times since last job).", empty_polls)
+
+            # process_next_chunk() returning False means claim_next_chunk()
+            # found no queued/in_progress job at all -- with only ever one
+            # worker process (see claim_next_chunk()'s own docstring), that
+            # already IS "the queue is completely empty", not just "nothing
+            # claimable right now". Gated separately by
+            # AUTO_GENERATION_CHECK_INTERVAL_SECONDS so this doesn't run on
+            # every single empty poll.
+            now = time.monotonic()
+            if now - last_auto_check >= AUTO_GENERATION_CHECK_INTERVAL_SECONDS:
+                last_auto_check = now
+                try:
+                    if await maybe_generate_auto_job():
+                        empty_polls = 0
+                except Exception:
+                    logger.exception("Unhandled error in auto-generation check.")
 
         await asyncio.sleep(POLL_INTERVAL_SECONDS if processed else EMPTY_POLL_BACKOFF_SECONDS)
 

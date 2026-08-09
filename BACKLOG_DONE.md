@@ -8,6 +8,77 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-09] Built auto-idle-time transcription job generation**,
+  closing the last open piece of the on-demand-transcription feature —
+  the worker no longer sits fully idle when the job queue is empty; it
+  looks for a `MeetingPage` missing a good transcript and creates a
+  self-generated job for it, so the Archive's transcript coverage grows
+  passively instead of only when someone manually clicks "Transcribe."
+  Design decided via a real interview (three questions: cooldown
+  strategy after a failure, what `requester_email` an auto-job should
+  use given the column is required and the worker emails it on
+  completion, whether a separate volume cap is needed beyond the
+  existing priority system) — landed on: escalating backoff (each
+  consecutive failure for the same page doubles the cooldown, capped at
+  30 days, matching `ARCHIVE_RECHECK_AFTER`'s existing precedent — a flat
+  cooldown or a permanent give-up-after-N-failures cap were the two
+  alternatives considered and rejected), a real configured email address
+  (`AUTO_TRANSCRIPTION_REQUESTER_EMAIL`) doubling as a lightweight
+  completion-email activity digest rather than a new no-email code path
+  or a dedicated mailbox, and no separate cap — `PRIORITY_LOW` already
+  means a real visitor's request always jumps ahead of self-generated
+  work, so a growing backlog of auto-jobs can never block one.
+
+  New pieces: `archive/db/crud.py`'s `find_auto_transcription_candidate()`
+  (oldest-archived-first, skips pages with a good transcript or in
+  cooldown — a full Python-side scan, deliberately, fine at today's scale
+  same reasoning as `/meetings`' own search scan),
+  `_in_auto_transcription_cooldown()` (the escalating-backoff math, walking
+  back from the most recent job counting *consecutive* failures — an older
+  failure before a later "completed" job is stale history, not part of
+  the current streak), `create_failed_auto_transcription_job()` (records
+  a re-resolve/feasibility failure as a real, already-`failed`
+  `TranscriptionJob` row so it enters the same cooldown mechanism a real
+  chunk-processing failure uses, rather than a separate "skip list" that
+  would need its own schema), and `create_transcription_job()` gained a
+  `priority` parameter (previously hardcoded to `PRIORITY_MEDIUM` — the
+  only call site until now). `worker/main.py`'s `maybe_generate_auto_job()`
+  reuses the exact feasibility-check logic `app/main.py`'s
+  `/api/transcription/check-feasibility` has (`probe_duration`,
+  `is_plausible_meeting_duration`, both already imported by the worker
+  for its own chunk-processing path) rather than duplicating it, and is
+  gated in `run_forever()`'s idle branch by both "the queue is completely
+  empty" (implied for free once `claim_next_chunk()` returns nothing,
+  since this repo runs exactly one worker process — see that function's
+  own docstring) and a separate `AUTO_GENERATION_CHECK_INTERVAL_SECONDS`
+  (5 minutes) so it doesn't re-scan the whole Archive on every single
+  15-second empty poll.
+
+  Verified end-to-end live (not just unit tests): created two real
+  archived pages missing a transcript (one with a deliberately fake,
+  unresolvable URL; one a real, live PrimeGov meeting confirmed
+  resolvable earlier this session) and called `maybe_generate_auto_job()`
+  directly against the real Archive DB. Confirmed correct oldest-first
+  ordering, confirmed the fake-URL candidate correctly recorded a
+  re-resolve failure, confirmed the real candidate's feasibility check ran
+  for real (found a real video URL; `probe_duration` itself came back
+  unreadable from this dev sandbox specifically — the same known
+  environment-specific network limitation already diagnosed for other
+  media URLs this session, not a bug in this feature), confirmed both
+  landed in the DB with `priority=0` and the configured digest email as
+  `requester_email`, and confirmed both were correctly excluded from
+  candidacy immediately afterward (cooldown). 19 new tests: 15 crud-level
+  in `tests/test_transcription_jobs.py` (including one that directly
+  exercises the escalation math with backdated timestamps — 2 consecutive
+  failures 36 hours ago must still be in cooldown under doubling, which
+  would already have cleared a flat 1-day rule) and 4 in the new
+  `tests/test_worker_auto_generation.py` covering the parts of
+  `maybe_generate_auto_job()`'s control flow that don't need mocking a
+  live resolve. Full suite (207 tests) passing. New env var
+  `AUTO_TRANSCRIPTION_REQUESTER_EMAIL` documented in `.env.example` —
+  auto-generation is simply disabled (not guessing a placeholder address)
+  when it's unset.
+
 - **[Done 2026-08-09] Built a language-track correction flow: "public
   report, admin fixes."** Real gap closed: a `TranscriptVersion`'s
   `language` was set once (langdetect's guess for a self-transcribed

@@ -592,31 +592,3 @@ one item below is resolved as a result.
   building it kills both asks with one change — worth its own scoped
   task given it touches `.version-picker`, `meeting_page.js`, and the
   template's rendering of `active_version` throughout.
-- **Let the worker auto-generate transcription jobs during genuinely
-  idle time**, so the Archive can fill in missing transcripts without
-  someone manually clicking "Transcribe" on every meeting one at a time.
-  `worker/main.py`'s `run_forever()` already polls continuously and
-  currently just sleeps (`EMPTY_POLL_BACKOFF_SECONDS`) when
-  `claim_next_chunk()` finds nothing — that idle branch is the natural
-  place to add "look for a `MeetingPage` missing a good transcript
-  (reusing `archive/db/crud.py`'s `_has_good_transcript()`, already
-  built for the Archive recheck cadence) and create a job for it."
-  **Must only run when the queue is completely empty** (no
-  `queued`/`in_progress` jobs at all) — not on every single empty poll,
-  and not just whenever the worker happens to be between chunks of a
-  real job. Job priority now exists (2026-08-09, see BACKLOG_DONE.md),
-  so a self-generated job here just needs to use the already-built
-  `PRIORITY_LOW` constant — the real decisions left are about job
-  creation itself, not the scheduling — one decided, one still open:
-  - **Decided 2026-08-08: pick the oldest archived meeting first** among
-    qualifying candidates — processes the Archive's backlog roughly in
-    the order meetings were added, predictable and easy to reason about,
-    over "most recently archived" (favors freshness/traffic) or a random
-    pick.
-  - **Still open**: how long to cool down after a failed transcription
-    before a page becomes an auto-candidate again, so a page that just
-    failed doesn't get auto-retried forever. Also needs the same
-    feasibility-check logic `app/main.py`'s
-    `/api/transcription/check-feasibility` already has (probe duration,
-    plausible-length check) reused rather than assuming every candidate
-    is actually transcribable.

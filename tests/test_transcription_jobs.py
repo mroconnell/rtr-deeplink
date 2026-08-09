@@ -84,26 +84,14 @@ async def test_claim_next_chunk_prefers_higher_priority_over_older_job():
     # column (see BACKLOG_DONE.md): claim_next_chunk() must order by
     # priority first, not just created_at -- a real visitor's own request
     # (PRIORITY_MEDIUM) should never sit behind older self-generated
-    # PRIORITY_LOW batch work (not built yet, but the ordering needs to
-    # be correct now regardless). create_transcription_job() itself
-    # always sets PRIORITY_MEDIUM (the only real call site today), so the
-    # low-priority job here is inserted directly, mirroring how
-    # test_list_pages_search.py reaches into the DB directly for a
-    # scenario the public API doesn't expose on its own.
-    from archive.db.engine import async_session
-    from archive.db.models import TranscriptionJob
-
+    # PRIORITY_LOW batch work.
     old_url = "https://example.granicus.com/player/clip/tj-priority-old"
     old_job = await crud.create_transcription_job(
         payload=_payload("granicus:tj-priority-old", old_url), input_url_normalized=old_url,
         requester_email="old@example.com", media_url="https://example.com/v.m3u8",
         media_kind="video", probed_duration_seconds=600, chunk_size_seconds=900,
-        skip_confirmation=True,
+        skip_confirmation=True, priority=crud.PRIORITY_LOW,
     )
-    async with async_session() as session:
-        job = await session.get(TranscriptionJob, old_job["job_id"])
-        job.priority = crud.PRIORITY_LOW
-        await session.commit()
 
     new_url = "https://example.granicus.com/player/clip/tj-priority-new"
     new_job = await crud.create_transcription_job(
@@ -286,3 +274,186 @@ async def test_chunk_failures_fail_the_job_after_budget_exhausted():
 
     # a failed job no longer shows up to claim_next_chunk
     assert await crud.claim_next_chunk() is None
+
+
+# --- Auto-idle-time job generation (built 2026-08-09, see BACKLOG_DONE.md) ---
+
+
+async def test_find_auto_transcription_candidate_skips_page_with_good_transcript():
+    url = "https://example.granicus.com/player/clip/auto-good-transcript"
+    await crud.ingest_resolution(
+        {
+            "platform": "granicus", "source_url": url, "external_id": "granicus:auto-good-transcript",
+            "title": "T", "date": "2026-01-01", "jurisdiction": "City of Test",
+            "video_url": "https://example.com/v.m3u8", "video_format": "m3u8",
+            "segments": [{"start": 0, "end": 1, "text": "hello there"}], "agenda_items": [],
+            "transcript_language": "en", "transcript_warnings": [],
+        },
+        url,
+    )
+    slug = (await crud.lookup_page_for_url(url))["slug"]
+
+    candidate = await crud.find_auto_transcription_candidate()
+    # Some other test's page could legitimately come back first (oldest-
+    # first across the whole shared fixture DB) -- the real assertion is
+    # that *this* page specifically is never returned, not that nothing is.
+    assert candidate is None or candidate["slug"] != slug
+
+
+async def test_find_auto_transcription_candidate_returns_page_missing_transcript():
+    # The shared fixture DB (see conftest.py) accumulates pages from every
+    # other test in the whole session, including plenty of other
+    # transcript-less ones -- asserting *this* page comes back first would
+    # be fragile against test execution order. Test the underlying
+    # eligibility directly instead: the same helpers
+    # find_auto_transcription_candidate() itself calls per-page.
+    from archive.db.engine import async_session
+    from archive.db.models import MeetingPage
+    from sqlalchemy import select
+
+    url = "https://example.granicus.com/player/clip/auto-no-transcript"
+    await crud.ingest_resolution(
+        {
+            "platform": "granicus", "source_url": url, "external_id": "granicus:auto-no-transcript",
+            "title": "T", "date": "2026-01-01", "jurisdiction": "City of Test",
+            "video_url": "https://example.com/v.m3u8", "video_format": "m3u8",
+            "segments": [], "agenda_items": [], "transcript_language": None, "transcript_warnings": [],
+        },
+        url,
+    )
+    slug = (await crud.lookup_page_for_url(url))["slug"]
+
+    async with async_session() as session:
+        page = (await session.execute(select(MeetingPage).where(MeetingPage.slug == slug))).scalars().first()
+        assert await crud._has_good_transcript(session, page.id) is False
+        assert await crud._in_auto_transcription_cooldown(session, page.id) is False
+
+    # And a real end-to-end call returns *some* legitimate candidate, not
+    # nothing -- there's at least one qualifying page in the DB right now
+    # (the one just created above, if nothing else).
+    assert await crud.find_auto_transcription_candidate() is not None
+
+
+async def test_find_auto_transcription_candidate_skips_page_in_cooldown():
+    from archive.db.engine import async_session
+    from archive.db.models import MeetingPage
+    from sqlalchemy import select
+
+    url = "https://example.granicus.com/player/clip/auto-cooldown"
+    await crud.ingest_resolution(
+        {
+            "platform": "granicus", "source_url": url, "external_id": "granicus:auto-cooldown",
+            "title": "T", "date": "2026-01-01", "jurisdiction": "City of Test",
+            "video_url": "https://example.com/v.m3u8", "video_format": "m3u8",
+            "segments": [], "agenda_items": [], "transcript_language": None, "transcript_warnings": [],
+        },
+        url,
+    )
+    slug = (await crud.lookup_page_for_url(url))["slug"]
+
+    job = await crud.create_transcription_job(
+        payload=_payload("granicus:auto-cooldown", url), input_url_normalized=url,
+        requester_email="auto@example.com", media_url="https://example.com/v.m3u8",
+        media_kind="video", probed_duration_seconds=900, chunk_size_seconds=900,
+        skip_confirmation=True, priority=crud.PRIORITY_LOW,
+    )
+    for _ in range(crud.MAX_CONSECUTIVE_CHUNK_FAILURES):
+        claim = await crud.claim_next_chunk()
+        assert claim["job_id"] == job["job_id"]
+        await crud.report_chunk_result(job["job_id"], success=False, error="simulated failure")
+
+    status = await crud.get_transcription_job_status(job["job_id"])
+    assert status["status"] == "failed"
+
+    # Freshly failed -- still well within the 1-day base cooldown.
+    async with async_session() as session:
+        page = (await session.execute(select(MeetingPage).where(MeetingPage.slug == slug))).scalars().first()
+        assert await crud._in_auto_transcription_cooldown(session, page.id) is True
+
+
+async def test_create_failed_auto_transcription_job_is_immediately_failed():
+    url = "https://example.granicus.com/player/clip/auto-fail-direct"
+    await crud.ingest_resolution(
+        {
+            "platform": "granicus", "source_url": url, "external_id": "granicus:auto-fail-direct",
+            "title": "T", "date": "2026-01-01", "jurisdiction": "City of Test",
+            "video_url": "https://example.com/v.m3u8", "video_format": "m3u8",
+            "segments": [], "agenda_items": [], "transcript_language": None, "transcript_warnings": [],
+        },
+        url,
+    )
+    slug = (await crud.lookup_page_for_url(url))["slug"]
+    page = await crud.get_page_by_slug(slug)
+
+    # get_page_by_slug()'s dict doesn't carry the raw MeetingPage.id, so
+    # look it up the same way find_auto_transcription_candidate() would.
+    from archive.db.engine import async_session
+    from archive.db.models import MeetingPage
+    from sqlalchemy import select
+
+    async with async_session() as session:
+        row = (await session.execute(select(MeetingPage).where(MeetingPage.slug == slug))).scalars().first()
+        page_id = row.id
+
+    result = await crud.create_failed_auto_transcription_job(
+        meeting_page_id=page_id, requester_email="auto@example.com", error_message="No usable media source found.",
+    )
+    status = await crud.get_transcription_job_status(result["job_id"])
+    assert status["status"] == "failed"
+    assert status["error_message"] == "No usable media source found."
+    # Never claimable -- it was never queued in the first place.
+    assert await crud.claim_next_chunk() is None or (await crud.claim_next_chunk())["job_id"] != result["job_id"]
+
+
+async def test_in_auto_transcription_cooldown_escalates_with_consecutive_failures():
+    # Directly exercises the escalation math (crud._in_auto_transcription_
+    # cooldown) rather than waiting on real time to pass: a page with two
+    # consecutive failed jobs, the most recent one 36 hours ago, must still
+    # be in cooldown under the doubling rule (2nd failure => 2-day cooldown)
+    # even though 36 hours would already clear a flat 1-day cooldown.
+    from datetime import datetime, timedelta, timezone
+
+    from archive.db.engine import async_session
+    from archive.db.models import MeetingPage, TranscriptionJob
+    from sqlalchemy import select
+
+    url = "https://example.granicus.com/player/clip/auto-escalation"
+    await crud.ingest_resolution(
+        {
+            "platform": "granicus", "source_url": url, "external_id": "granicus:auto-escalation",
+            "title": "T", "date": "2026-01-01", "jurisdiction": "City of Test",
+            "video_url": "https://example.com/v.m3u8", "video_format": "m3u8",
+            "segments": [], "agenda_items": [], "transcript_language": None, "transcript_warnings": [],
+        },
+        url,
+    )
+    slug = (await crud.lookup_page_for_url(url))["slug"]
+
+    async with async_session() as session:
+        page = (await session.execute(select(MeetingPage).where(MeetingPage.slug == slug))).scalars().first()
+        page_id = page.id
+
+        old_failure = TranscriptionJob(
+            meeting_page_id=page_id, requester_email="auto@example.com", status="failed",
+            media_url="", media_kind="video", probed_duration_seconds=0, chunk_size_seconds=1, total_chunks=1,
+        )
+        session.add(old_failure)
+        await session.commit()
+
+        recent_failure = TranscriptionJob(
+            meeting_page_id=page_id, requester_email="auto@example.com", status="failed",
+            media_url="", media_kind="video", probed_duration_seconds=0, chunk_size_seconds=1, total_chunks=1,
+        )
+        session.add(recent_failure)
+        await session.commit()
+        # Backdate both -- created_at ordering must put recent_failure last
+        # (it's the one _in_auto_transcription_cooldown should key off of).
+        old_failure.created_at = datetime.now(timezone.utc) - timedelta(hours=48)
+        old_failure.updated_at = old_failure.created_at
+        recent_failure.created_at = datetime.now(timezone.utc) - timedelta(hours=36)
+        recent_failure.updated_at = recent_failure.created_at
+        await session.commit()
+
+        in_cooldown = await crud._in_auto_transcription_cooldown(session, page_id)
+
+    assert in_cooldown is True  # 2 consecutive failures => 2-day cooldown, 36h in is still inside it

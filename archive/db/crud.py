@@ -619,6 +619,18 @@ PRIORITY_MEDIUM = 10  # every real user-submitted request today
 STALE_CLAIM_AFTER = timedelta(minutes=5)
 MAX_CONSECUTIVE_CHUNK_FAILURES = 3
 
+# Escalating backoff for auto-generated transcription jobs (worker/main.py's
+# idle-time candidate search) -- decided 2026-08-09 over a flat cooldown or
+# a hard give-up-forever cap: each consecutive failure for the same page
+# doubles the wait before it's tried again, capped at
+# AUTO_TRANSCRIPTION_MAX_COOLDOWN (matches ARCHIVE_RECHECK_AFTER's existing
+# 30-day precedent) rather than escalating forever -- a page that's failed
+# many times still gets retried eventually, on the theory that a broken
+# source might work again later (a transient outage, an adapter bug fixed
+# in a later deploy), just far less often than a page that's never failed.
+AUTO_TRANSCRIPTION_BASE_COOLDOWN = timedelta(days=1)
+AUTO_TRANSCRIPTION_MAX_COOLDOWN = timedelta(days=30)
+
 
 async def promote_transcript_version(session, page_id: int, version_id: int) -> None:
     """Make `version_id` the one /m/{slug} renders by default, demoting
@@ -689,6 +701,7 @@ async def create_transcription_job(
     probed_duration_seconds: float,
     chunk_size_seconds: int,
     skip_confirmation: bool,
+    priority: int = PRIORITY_MEDIUM,
 ) -> dict:
     """Find-or-create the MeetingPage (a request can be the very first thing
     that ever creates a permanent page for a meeting -- the ephemeral
@@ -699,6 +712,9 @@ async def create_transcription_job(
     `skip_confirmation` is decided by the caller (archive/main.py, after
     checking Resend audience membership) -- this function doesn't reach out
     to Resend itself, keeping external API calls out of the DB layer.
+    `priority` defaults to PRIORITY_MEDIUM (every real user-submitted
+    request) -- worker/main.py's auto-generation path is the one real
+    caller that passes PRIORITY_LOW instead.
     """
     async with async_session() as session:
         page = await _find_or_create_page(session, payload, input_url_normalized)
@@ -741,14 +757,113 @@ async def create_transcription_job(
             probed_duration_seconds=probed_duration_seconds,
             chunk_size_seconds=chunk_size_seconds,
             total_chunks=total_chunks,
-            # The one real call site today -- a live visitor's own request,
-            # always PRIORITY_MEDIUM. PRIORITY_LOW is reserved for
-            # self-generated idle-time batch work, not built yet.
-            priority=PRIORITY_MEDIUM,
+            priority=priority,
         )
         session.add(job)
         await session.commit()
         return _job_dict(job, page)
+
+
+def _aware(dt: datetime) -> datetime:
+    """SQLite (local dev) doesn't enforce tz-awareness on a DateTime(timezone=True)
+    column, so a naive datetime can come back even though Postgres (prod)
+    always returns an aware one -- treat a naive value as UTC rather than
+    letting an aware-vs-naive subtraction raise. Same convention as
+    app/main.py's _parse_updated_at()."""
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+
+async def _in_auto_transcription_cooldown(session, meeting_page_id: int) -> bool:
+    """True if this page has failed auto/manual transcription recently
+    enough that it shouldn't be tried again yet -- see
+    AUTO_TRANSCRIPTION_BASE_COOLDOWN's docstring for the escalating-backoff
+    reasoning. Counts *consecutive* failures walking back from the most
+    recent job, stopping at the first non-"failed" one (a "completed" job
+    means this page already has what it needs; an older failure before a
+    completed one is stale history, not part of the current streak)."""
+    jobs = (
+        await session.execute(
+            select(TranscriptionJob)
+            .where(TranscriptionJob.meeting_page_id == meeting_page_id)
+            .order_by(TranscriptionJob.created_at.desc())
+        )
+    ).scalars().all()
+
+    consecutive_failures = 0
+    most_recent_failed_at = None
+    for job in jobs:
+        if job.status != "failed":
+            break
+        consecutive_failures += 1
+        if most_recent_failed_at is None:
+            most_recent_failed_at = job.updated_at
+
+    if consecutive_failures == 0:
+        return False
+
+    cooldown = min(
+        AUTO_TRANSCRIPTION_BASE_COOLDOWN * (2 ** (consecutive_failures - 1)),
+        AUTO_TRANSCRIPTION_MAX_COOLDOWN,
+    )
+    return datetime.now(timezone.utc) < _aware(most_recent_failed_at) + cooldown
+
+
+async def find_auto_transcription_candidate() -> Optional[dict]:
+    """Oldest-archived-first MeetingPage missing a good transcript and not
+    in escalating-failure cooldown, for worker/main.py's idle-time
+    auto-generation. Caller is responsible for confirming the job queue is
+    completely empty before calling this -- this function only picks a
+    candidate, it doesn't check that itself.
+
+    Full Python-side scan over every page, deliberately -- fine at today's
+    scale (dozens of meetings) and only ever called at most once every
+    AUTO_GENERATION_CHECK_INTERVAL_SECONDS (see worker/main.py), same
+    "acceptable now, revisit at real scale" reasoning as /meetings' own
+    search scan (BACKLOG.md's materialized-search-column entry).
+    """
+    async with async_session() as session:
+        pages = (await session.execute(select(MeetingPage).order_by(MeetingPage.created_at.asc()))).scalars().all()
+
+        for page in pages:
+            if await _has_good_transcript(session, page.id):
+                continue
+            if await _in_auto_transcription_cooldown(session, page.id):
+                continue
+            return {
+                "meeting_page_id": page.id,
+                "slug": page.slug,
+                "source_url": page.source_url_normalized,
+                "platform": page.platform,
+            }
+    return None
+
+
+async def create_failed_auto_transcription_job(
+    *, meeting_page_id: int, requester_email: str, error_message: str
+) -> dict:
+    """Records a failed auto-generation attempt (re-resolve failed, no
+    media found, or the feasibility check itself failed) as a real, already-
+    failed TranscriptionJob row -- deliberately reuses the exact same table
+    and escalating-cooldown mechanism a real chunk-processing failure uses,
+    rather than a separate "skip list", so a candidate that can't actually
+    be transcribed doesn't get re-probed on every single auto-generation
+    check until its cooldown catches up too."""
+    async with async_session() as session:
+        job = TranscriptionJob(
+            meeting_page_id=meeting_page_id,
+            requester_email=requester_email,
+            status="failed",
+            media_url="",
+            media_kind="video",
+            probed_duration_seconds=0,
+            chunk_size_seconds=1,
+            total_chunks=1,
+            error_message=error_message,
+            priority=PRIORITY_LOW,
+        )
+        session.add(job)
+        await session.commit()
+        return {"job_id": job.id, "status": job.status}
 
 
 async def confirm_transcription_job(token: str) -> Optional[dict]:
