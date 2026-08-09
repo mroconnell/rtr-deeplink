@@ -3,23 +3,31 @@ services:
     name: rtr-deeplink
     runtime: python
     plan: free
-    # `playwright install --with-deps chromium` -- **confirmed broken in
-    # production 2026-08-09**: a real user hit `BrowserType.launch:
-    # Executable doesn't exist at /opt/render/.cache/ms-playwright/...`
-    # on a real Minneapolis LIMS resolve, meaning this build step did not
-    # leave a working browser binary where the running service looks for
-    # it. Root cause still unconfirmed -- check Render's actual build
-    # logs for this service directly (does this buildCommand even run?
-    # is `--with-deps`'s apt-get step failing silently on permissions? is
-    # this service actually Blueprint-synced to this render.yaml at all,
-    # or does its dashboard have its own separately-configured build
-    # command that this file's edits never reached?) rather than
-    # continuing to guess from the repo alone. `app/platforms/
-    # headless_browser.py`'s `_get_browser()` now self-heals at runtime
-    # (installs Chromium in-process on first failure) as a safety net,
-    # but that's not a substitute for fixing this build step -- see that
-    # module's docstring and BACKLOG.md for the full incident.
-    buildCommand: pip install -r requirements.txt && playwright install --with-deps chromium
+    # Real incident, 2026-08-09, two real failures in sequence, not one:
+    # (1) the ORIGINAL `playwright install --with-deps chromium` build
+    # step left a real user seeing `BrowserType.launch: Executable
+    # doesn't exist...` in production -- the binary was never actually
+    # installed. (2) The very next attempt at fixing that (this same
+    # commit, unchanged) made the *build itself* fail outright ("Exited
+    # with status 1 while building your code") -- strong evidence
+    # `--with-deps` was the real culprit both times: it shells out to
+    # `apt-get install` for Chromium's system libraries (libnss3,
+    # libatk-bridge2.0-0, libgtk-3-0, ...), which needs root/sudo Render's
+    # build sandbox almost certainly doesn't grant, so the whole chained
+    # `&&` build command failed. Switched to plain `playwright install
+    # chromium` (browser binary only, no system-package install attempt)
+    # -- if Render's base image already has the needed shared libraries
+    # (unconfirmed, but plausible: ffprobe turned out to already be
+    # present too, see the comment below), this should be enough on its
+    # own. `app/platforms/headless_browser.py`'s `_get_browser()` still
+    # self-heals a missing-binary failure at runtime as a safety net, and
+    # now also surfaces a clean (not raw-crash) error if Chromium's
+    # binary exists but fails to *launch* due to a missing shared
+    # library specifically -- that specific failure mode still isn't
+    # actually fixed if it turns out to be the real one, just no longer
+    # ugly. `runtime: docker` (like worker/'s own Dockerfile) is the real
+    # fallback if a plain binary download isn't enough -- see BACKLOG.md.
+    buildCommand: pip install -r requirements.txt && playwright install chromium
     # --proxy-headers --forwarded-allow-ips='*' makes uvicorn trust Render's
     # X-Forwarded-For so request.client.host (and therefore per-IP rate
     # limiting on /api/resolve, see app/main.py) reflects the real caller

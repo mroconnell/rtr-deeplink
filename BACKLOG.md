@@ -30,20 +30,28 @@ where relevant.
   directly, which is fine for every other adapter's normal-sized
   exceptions, not for this one).
 
-  **Root cause of the missing binary itself is still unconfirmed** — the
-  self-heal is a real safety net, not a substitute for actually fixing
-  the build step, and needs a real check against Render's own build logs
-  for the `rtr-deeplink` service specifically (not guessable from the
-  repo alone): does `buildCommand` even run as written — is this service
-  actually Blueprint-synced to this repo's `render.yaml`, or does its
-  Render dashboard have its own separately-configured build command that
-  a `render.yaml` edit alone never reaches? Is `--with-deps`'s apt-get
-  step failing silently on permissions in Render's build environment? Is
-  there a build-time-vs-runtime `$HOME`/cache-path mismatch? **Remove
-  this item once the real Minneapolis/SLC URLs have been retried in
-  production and confirmed working** (either the self-heal alone
-  resolved it, or the actual build-command root cause was found and
-  fixed) — not yet confirmed as of this writing.
+  **That fix's own deploy then failed outright** ("Exited with status 1
+  while building your code") — real evidence pointing at `--with-deps`
+  specifically: it shells out to `apt-get install` for Chromium's system
+  libraries, which needs root/sudo Render's build sandbox almost
+  certainly doesn't grant, failing the whole chained build command
+  before `pip install`'s own success even mattered. Switched to plain
+  `playwright install chromium` (browser binary only, no system-package
+  install attempt) — see `render.yaml`'s own comment for the full
+  reasoning and the `runtime: docker` fallback if a plain binary download
+  turns out not to be enough (Chromium still needs certain shared
+  libraries to actually *launch*, separate from just having the binary
+  present — unconfirmed whether Render's base image already has them,
+  though ffprobe turned out to already be present too, a real precedent
+  for "maybe fine," not a guarantee).
+
+  **Remove this item once the real Minneapolis/SLC URLs have been
+  retried in production and confirmed working** — not yet confirmed as
+  of this writing. If this build also fails or the runtime launch still
+  errors, the real next step is checking Render's actual build/deploy
+  logs directly (not guessable from the repo alone) for the exact
+  failure text, and considering `runtime: docker` before trying a third
+  variation blind.
 
 ## UX polish
 

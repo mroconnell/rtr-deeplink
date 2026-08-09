@@ -26,6 +26,7 @@ from .db import crud
 from .db.engine import init_models
 from .platforms import register_all_finders
 from .platforms.base import detect_platform, get_finder, CalendarPageError, UnsupportedPlatformError
+from .platforms.headless_browser import warm_up as warm_up_headless_browser
 from .platforms.media_probe import is_plausible_meeting_duration, probe_duration
 from .utils.url_normalize import normalize_url
 
@@ -44,6 +45,17 @@ async def lifespan(app: FastAPI):
         # A down/misconfigured DB must never stop the app from serving --
         # it just means caching/reporting silently no-ops (see `safe()`).
         logger.exception("Failed to initialize DB models at startup; continuing without persistence.")
+    try:
+        # Launches (and, if needed, self-heals) the shared Chromium
+        # instance Minneapolis LIMS/SLC's adapters use, once, at startup
+        # -- so the real ~1-2s cold-launch cost (and a broken install)
+        # land in deploy logs before any real visitor hits it, not on a
+        # random future request. Same "log and keep serving" pattern as
+        # init_models() above -- these two platforms failing to warm up
+        # must never stop the other ~10 platforms from working.
+        await warm_up_headless_browser()
+    except Exception:
+        logger.exception("Failed to warm up the headless browser at startup; continuing without it.")
     yield
 
 

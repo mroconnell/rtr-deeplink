@@ -143,6 +143,23 @@ async def _get_browser() -> Browser:
         return _browser
 
 
+async def warm_up() -> None:
+    """Launches the shared browser (including the runtime self-heal
+    install if the binary is missing) once, at app startup, instead of
+    waiting for the first real Cloudflare-gated resolve to pay that cost.
+    Two real reasons this matters, not just tidiness: (1) a cold Chromium
+    launch is real, measured latency (~1-2s) -- without this, whichever
+    real visitor happens to be the first to hit Minneapolis LIMS or SLC
+    after each deploy/restart eats that delay live; (2) a broken install
+    (this repo's own real 2026-08-09 incident) now fails loudly in
+    startup/deploy logs, where it's actually visible, instead of silently
+    waiting to surface as a raw error on some future visitor's page.
+    Caller (app/main.py's lifespan) is expected to catch and log any
+    exception here, matching how `init_models()` failing doesn't stop the
+    app from serving everything else it doesn't depend on."""
+    await _get_browser()
+
+
 async def fetch_via_browser(url: str, *, wait_ms: int = DEFAULT_WAIT_MS) -> str:
     """Loads `url` in a real (headless) Chromium tab and returns the
     rendered HTML -- for a source that returns a Cloudflare JS challenge
