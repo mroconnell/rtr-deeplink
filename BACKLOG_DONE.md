@@ -2277,3 +2277,23 @@ changelog of task titles.
   positive-case test confirming a keyword matching the *current* default
   version still produces a real snippet as before. Full suite green (153
   tests — 1 new, on top of the demoted-version test's new assertion).
+
+- **[Done 2026-08-08] Archive passive recheck cadence now depends on
+  transcript quality, not just page age — built earlier this session,
+  documented retroactively here after its BACKLOG.md entry was found
+  still marked open despite the code already existing.** Exactly the
+  two-piece design BACKLOG.md described: (1) `lookup_page_for_url()`
+  (`archive/db/crud.py`) now returns a `has_transcript` field alongside
+  `{slug, url, updated_at}`, via a new `_has_good_transcript()` helper —
+  true only when the page's default `TranscriptVersion` has real,
+  non-empty, non-garbled segments (same signal `/meetings`' quality-aware
+  badge already uses); (2) `app/main.py` gained
+  `ARCHIVE_RECHECK_AFTER_NO_TRANSCRIPT = timedelta(hours=1)` alongside the
+  existing 30-day `ARCHIVE_RECHECK_AFTER`, and `/api/resolve`'s
+  archive-redirect path picks between them based on the looked-up page's
+  `has_transcript` flag — missing/falsy defaults to the shorter window
+  (including the case where the Archive being talked to predates this
+  field entirely, so an old deployed Archive doesn't accidentally get a
+  30-day-only viewer stuck rechecking too rarely). Covered by
+  `tests/test_lookup_has_transcript.py` (3 tests: real transcript → true,
+  no version at all → false, garbled version → false).

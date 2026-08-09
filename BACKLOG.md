@@ -36,31 +36,6 @@ where relevant.
   already do (see `unreliable_timestamps` handling in both
   `player.js`/`meeting_page.html`) — worth confirming against the actual
   element attributes before building, not assumed from this first look.
-- **Archive passive recheck cadence should depend on transcript quality,
-  not just page age.** Now that `GET /admin/recheck-archive-page` exists
-  for fixing a stale page on demand (see
-  [BACKLOG_DONE.md](BACKLOG_DONE.md)'s "permanent Archive page stuck
-  showing no transcript" entry), the remaining gap is the *passive*
-  30-day `ARCHIVE_RECHECK_AFTER` cadence, which applies uniformly
-  regardless of whether a page already has a good transcript. A page
-  missing one (blank/agenda-only/garbled) has real upside in rechecking
-  often, since the source may catch up at any time (government caption
-  pipelines lag, per the existing comment on `ARCHIVE_RECHECK_AFTER`); a
-  page with a good transcript already doesn't need frequent rechecking.
-  **Design agreed, not built:** keep the existing 30-day cadence for
-  pages with a good transcript, use a **1-hour** cadence for pages
-  missing one. Needs two pieces: (1) `/internal/lookup`'s response
-  (`archive/db/crud.py`'s `lookup_page_for_url()`, currently just
-  `{slug, url, updated_at}`) gains a quality signal — e.g. `has_transcript`
-  derived from whether the page's active `TranscriptVersion` has
-  non-empty segments and no blank/garbled/no-transcript-type warning; (2)
-  `app/main.py`'s recheck condition (`_recheck_archived_page` gate at
-  line ~171) branches on that flag instead of always comparing against
-  the same 30-day window. Still needs *some* floor even at 1 hour (not
-  "every hit") so a popular page whose source will just never add
-  captions doesn't get scraped on every visit — impolite to the
-  government site, same reasoning the 30-day window was originally built
-  on.
 - **Alexandria VA meeting dates can't be extracted.** No `view_id` in the
   URL (so no RSS feed to cross-reference, unlike the rest of Granicus — see
   [BACKLOG_DONE.md](BACKLOG_DONE.md)) and no date signal anywhere in the
