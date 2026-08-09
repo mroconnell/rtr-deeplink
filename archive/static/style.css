@@ -431,6 +431,13 @@ mark.search-match.current { background: #f97316; color: #fff; }
 .calendar-candidate a { color: var(--accent); text-decoration: none; font-weight: 500; }
 .calendar-candidate a:hover { text-decoration: underline; }
 .calendar-candidate-date { color: var(--muted); margin-left: 0.5rem; }
+/* Replaces a raw language code ("· en") on /meetings results -- not
+   intuitive at a glance, and language-specific anyway when the real
+   question a viewer has is just "does this have a transcript." Quality-
+   aware (archive/db/crud.py's list_pages() only sets has_transcript=True
+   for a non-garbled default version), so this badge is a real signal,
+   not just "a TranscriptVersion row exists." */
+.has-transcript-badge { color: var(--accent); font-weight: 600; }
 
 /* --- About page --- */
 .about-page {

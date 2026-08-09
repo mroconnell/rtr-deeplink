@@ -411,8 +411,12 @@ async def list_pages(
     # The display-facing columns (language/has_transcript badge) still
     # come from the default version only, via this same outerjoin as
     # before -- only the *matching* corpus below expands to every version.
+    # transcript_warnings is pulled here (not just when a keyword search
+    # is active, unlike segments) since it's needed for every row's
+    # has_transcript badge below, not just search matching -- cheap, a
+    # short warnings list, not the full transcript JSON.
     stmt = (
-        select(MeetingPage, TranscriptVersion.language, TranscriptVersion.id)
+        select(MeetingPage, TranscriptVersion.language, TranscriptVersion.id, TranscriptVersion.transcript_warnings)
         .outerjoin(
             TranscriptVersion,
             and_(TranscriptVersion.meeting_page_id == MeetingPage.id, TranscriptVersion.is_default.is_(True)),
@@ -433,7 +437,7 @@ async def list_pages(
         # never the one displayed.
         transcript_text_by_page: dict[int, str] = {}
         if keyword:
-            page_ids = [mp.id for mp, _lang, _vid in rows]
+            page_ids = [mp.id for mp, _lang, _vid, _warnings in rows]
             if page_ids:
                 version_rows = (
                     await session.execute(
@@ -462,9 +466,9 @@ async def list_pages(
         return matches(keyword, corpus, tokenize(corpus) if fuzzy else set(), fuzzy)
 
     filtered = []
-    for mp, lang, version_id in rows:
+    for mp, lang, version_id, warnings in rows:
         if _matches_page(mp):
-            filtered.append({"mp": mp, "lang": lang, "version_id": version_id})
+            filtered.append({"mp": mp, "lang": lang, "version_id": version_id, "warnings": warnings})
 
     total = len(filtered)
     total_pages = max(1, (total + page_size - 1) // page_size)
@@ -480,7 +484,20 @@ async def list_pages(
                 "jurisdiction": r["mp"].jurisdiction,
                 "platform": r["mp"].platform,
                 "language": r["lang"],
-                "has_transcript": r["version_id"] is not None,
+                # Quality-aware, not just "a version exists" -- a garbled
+                # transcript shouldn't earn the same "Transcript" badge as
+                # a real one. Language-independent on purpose (any
+                # language counts, per explicit request) -- only quality
+                # is gated. Same _GARBLED_MARKER check as
+                # _has_good_transcript() above, inlined here rather than
+                # calling it (that function does its own DB query per
+                # page; this loop already has transcript_warnings from
+                # the single batch query above, so re-querying per row
+                # would be a real N+1).
+                "has_transcript": (
+                    r["version_id"] is not None
+                    and not any(_GARBLED_MARKER in w for w in (r["warnings"] or []))
+                ),
                 "has_agenda": bool(r["mp"].agenda_items),
             }
             for r in page_rows

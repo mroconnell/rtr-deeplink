@@ -1735,3 +1735,27 @@ changelog of task titles.
     just "approximate."
   Verified with Jinja render checks (both templates) and the full pytest
   suite (127 tests, unaffected — template/CSS/email-copy changes only).
+
+- **[Done 2026-08-08] `/meetings` search results now show a "✓
+  Transcript" badge instead of a raw language code, and it's
+  quality-aware, not just presence-aware.** Was: the listing showed
+  `· en` (or `· es`, etc.) — not intuitive at a glance, per direct
+  feedback, and beside the point anyway since the real question a viewer
+  has is just "does this meeting have a transcript," not which language
+  it's in. Replaced with a `✓ Transcript` badge, shown regardless of
+  language (per explicit follow-up: language-independent, but *only* for
+  quality transcripts) — `archive/db/crud.py`'s `list_pages()` used to
+  set `has_transcript` from bare row presence (`version_id is not
+  None`), which would badge a genuinely garbled transcript the same as a
+  clean one. Now reuses the same `_GARBLED_MARKER` signal
+  `_has_good_transcript()` already uses (built earlier this session for
+  the Archive recheck cadence), inlined directly in `list_pages()`'s row
+  loop rather than calling that function per row -- it does its own DB
+  query per page, which would be a real N+1 across a results page;
+  `transcript_warnings` is now pulled in the same single batched query
+  `list_pages()` already runs, cheap since it's a short list unlike full
+  segment JSON. Styled with `.has-transcript-badge` (`--accent` blue,
+  no new hardcoded color). Verified with a new real-DB test
+  (`tests/test_list_pages_search.py::test_has_transcript_badge_is_quality_aware_not_just_presence`,
+  a garbled page and a clean page in the same query, asserting the badge
+  differs) plus a Jinja render check. Full suite green (128 tests).

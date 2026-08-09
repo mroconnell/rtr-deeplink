@@ -61,7 +61,7 @@
         <span class="calendar-candidate-date">
           {%- if m.jurisdiction %}{{ m.jurisdiction }}{% endif -%}
           {%- if m.date %} &middot; {{ m.date }}{% endif -%}
-          {%- if m.language %} &middot; {{ m.language }}{% endif -%}
+          {%- if m.has_transcript %} &middot; <span class="has-transcript-badge">&#10003; Transcript</span>{% endif -%}
           {%- if not m.has_transcript and m.has_agenda %} &middot; agenda only{% endif -%}
         </span>
       </div>

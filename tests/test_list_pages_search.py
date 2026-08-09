@@ -13,7 +13,7 @@ from archive.db.engine import async_session
 from archive.db.models import MeetingPage, TranscriptVersion
 
 
-def _payload(external_id: str, source_url: str, *, segments) -> dict:
+def _payload(external_id: str, source_url: str, *, segments, transcript_warnings=None) -> dict:
     return {
         "platform": "granicus",
         "source_url": source_url,
@@ -26,7 +26,7 @@ def _payload(external_id: str, source_url: str, *, segments) -> dict:
         "segments": segments,
         "agenda_items": [],
         "transcript_language": "en",
-        "transcript_warnings": [],
+        "transcript_warnings": transcript_warnings or [],
     }
 
 
@@ -64,3 +64,31 @@ async def test_search_finds_keyword_in_demoted_non_default_version():
 
     result = await crud.list_pages(keyword="zzyzxquokka", page_size=50)
     assert any(p["slug"] == page.slug for p in result["pages"])
+
+
+async def test_has_transcript_badge_is_quality_aware_not_just_presence():
+    # A garbled default version shouldn't earn the same "Transcript"
+    # badge on /meetings as a real one -- has_transcript must check
+    # quality (the same _GARBLED_MARKER signal _has_good_transcript()
+    # uses), not just "a TranscriptVersion row exists."
+    garbled_url = "https://example.granicus.com/player/clip/list-garbled"
+    await crud.ingest_resolution(
+        _payload(
+            "granicus:list-garbled", garbled_url,
+            segments=[{"start": 0, "end": 1, "text": "??? garbled nonsense ???"}],
+            transcript_warnings=["This transcript looks garbled at the source (not a parsing bug on our end)."],
+        ),
+        garbled_url,
+    )
+
+    good_url = "https://example.granicus.com/player/clip/list-good"
+    await crud.ingest_resolution(_payload("granicus:list-good", good_url, segments=[{"start": 0, "end": 1, "text": "a real clean transcript"}]), good_url)
+
+    result = await crud.list_pages(page_size=200)
+    garbled_slug = (await crud.lookup_page_for_url(garbled_url))["slug"]
+    good_slug = (await crud.lookup_page_for_url(good_url))["slug"]
+
+    garbled_row = next(p for p in result["pages"] if p["slug"] == garbled_slug)
+    good_row = next(p for p in result["pages"] if p["slug"] == good_slug)
+    assert garbled_row["has_transcript"] is False
+    assert good_row["has_transcript"] is True
