@@ -181,6 +181,15 @@ comments, and `BACKLOG.md` (plus `BACKLOG_DONE.md` for completed items and
 so a session opened straight against this repo has what it needs without
 depending on anything else.
 
+**Business context lives outside this repo, on purpose.** Admin, planning,
+strategy, research, and marketing for Red Tape Recordings are worked on in
+`~/Documents/rtr-business` (its own CLAUDE.md, task backlog, and topic
+folders, plus a linked Claude.ai Project). Product *roadmap* items still
+live here in `BACKLOG.md`'s "Archive roadmap" section, next to the
+constraints that shape them — that workspace reads them rather than
+duplicating them. Keep code work in this repo and business work there; don't
+let either drift into the other.
+
 Deeper session narrative (the original round-1 user-testing conversation,
 day-by-day investigation detail) lives in Claude Code auto-memory scoped
 to `~/Documents/rtr-transcript` — the *original* project directory this
