@@ -7,6 +7,21 @@ where relevant.
 
 ## Bugs
 
+- **⚠️ Production incident, active as of 2026-08-09: the worker is
+  crash-looping on every `claim_next_chunk()` call with `column
+  transcription_jobs.priority does not exist`.** Root cause: this
+  session's own `archive/alembic/README.md` said `alembic stamp head`
+  for the one-time production-adoption step — correct when written, but
+  a second migration (the priority column) landed in the same session
+  before anyone ran it against production, so "`head`" silently became
+  the wrong target. Fix commands given directly to the user (not run by
+  this session — no production `DATABASE_URL` access):
+  `alembic stamp a8dc5aad7eff` then `alembic upgrade head`, from
+  `archive/` with the real production `DATABASE_URL` set. README fixed
+  to reference the specific revision id instead of the word `head`, and
+  to explain why that word is unsafe here. **Remove this item once
+  confirmed the worker is healthy again** — not yet confirmed as of this
+  writing.
 - **PrimeGov's date/jurisdiction come entirely from YouTube's own
   metadata, which is measurably worse than what's already sitting on the
   PrimeGov page itself.** Confirmed live (2026-08-08) via
