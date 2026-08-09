@@ -16,6 +16,8 @@
   --secondary: #e74c3c; /* red: errors/emphasis, used sparingly */
   --pill-bg: #ffe6a1;   /* cream/amber: status & warning callouts */
   --pill-fg: #a84b00;
+  --success-bg: #d7f0e0; /* soft green: positive status badges (e.g. "has a transcript") */
+  --success-fg: #1e7d4f;
   --font-body: Georgia, 'Times New Roman', serif;
   --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
 }
@@ -431,13 +433,63 @@ mark.search-match.current { background: #f97316; color: #fff; }
 .calendar-candidate a { color: var(--accent); text-decoration: none; font-weight: 500; }
 .calendar-candidate a:hover { text-decoration: underline; }
 .calendar-candidate-date { color: var(--muted); margin-left: 0.5rem; }
+/* /meetings-listing-only layout: title+meta on the left, a fixed badge
+   column on the right, so the badge always lands in the same vertical
+   line of sight regardless of how long a given row's title/date/
+   jurisdiction text runs. A modifier alongside .calendar-candidate
+   (not a change to that class itself) -- it's also used, unmodified,
+   by the resolver's calendar-picker list (renderCalendarPage() in
+   player.js), which doesn't have this two-level title/badge structure
+   and would misrender if .calendar-candidate itself became a flex
+   container here. */
+.meeting-result-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.calendar-candidate-main { min-width: 0; }
 /* Replaces a raw language code ("· en") on /meetings results -- not
    intuitive at a glance, and language-specific anyway when the real
    question a viewer has is just "does this have a transcript." Quality-
    aware (archive/db/crud.py's list_pages() only sets has_transcript=True
    for a non-garbled default version), so this badge is a real signal,
-   not just "a TranscriptVersion row exists." */
-.has-transcript-badge { color: var(--accent); font-weight: 600; }
+   not just "a TranscriptVersion row exists."
+
+   Styled as a real pill badge (small icon-like check + small-caps-ish
+   label, soft green success color, own background/border) rather than
+   colored inline text -- per direct design feedback: the label only
+   needs to be read once before a viewer recognizes it purely by shape/
+   color afterward, so it can run small; a pill keeps it on one line and
+   visually distinct from plain body text; pinned to its own column on
+   the right (via .meeting-result-row above) instead of inline after a
+   variable-length middot-separated meta string, so it lands in the same
+   place on every row.
+
+   A little rubber-stamp flavor -- slight rotation, monospace caps, a
+   flat 2px border instead of a soft pill -- fits the site's existing
+   "Red Tape Recordings" government-document motifs (the dymo-label
+   wordmark, cassette buttons) instead of a generic modern badge.
+   Deliberately restrained: no texture/grunge image, no ink-bleed
+   filter, just enough tilt to read as "stamped," not silly. */
+.transcript-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  flex: none;
+  white-space: nowrap;
+  background: var(--success-bg);
+  color: var(--success-fg);
+  border: 2px solid var(--success-fg);
+  border-radius: 4px;
+  padding: 0.15em 0.6em;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  transform: rotate(-4deg);
+}
 
 /* --- About page --- */
 .about-page {

@@ -1759,3 +1759,41 @@ changelog of task titles.
   (`tests/test_list_pages_search.py::test_has_transcript_badge_is_quality_aware_not_just_presence`,
   a garbled page and a clean page in the same query, asserting the badge
   differs) plus a Jinja render check. Full suite green (128 tests).
+
+- **[Done 2026-08-08] "✓ Transcript" restyled as a real pill badge, pinned
+  to a fixed right-hand column, with a light rubber-stamp treatment.**
+  Direct design feedback on the badge added earlier the same session:
+  the word "Transcript" only needs reading once before a viewer
+  recognizes it by shape/color afterward, so it can run small; making it
+  a real graphic element keeps it on one line; and it should land in the
+  same vertical line of sight on every row regardless of how long that
+  row's title/jurisdiction/date text happens to be, which inline
+  middot-separated text can't guarantee.
+  - Layout: `archive/templates/meeting_list.html`'s row markup split
+    into `.calendar-candidate-main` (title + meta, grows/wraps
+    naturally) and the badge as a sibling, with a new `.meeting-result-
+    row` modifier class (`display:flex; justify-content:space-between`)
+    added *alongside* the existing `.calendar-candidate` class rather
+    than changing that class's own rules — `.calendar-candidate` is
+    also used unmodified by the resolver's calendar-picker list
+    (`renderCalendarPage()` in `player.js`), which doesn't have this
+    two-level structure and would have misrendered if the base class
+    itself became a flex container.
+  - Visual: new `--success-bg`/`--success-fg` CSS variables (soft
+    green), following the same paired-token pattern the existing
+    `--pill-bg`/`--pill-fg` amber warning color already established,
+    rather than a one-off hardcoded hex. Styled as a small stamped-
+    looking pill — 2px border (not the soft pill-radius look), monospace
+    uppercase text, a slight `rotate(-4deg)` tilt — matching the site's
+    existing "Red Tape Recordings" government-document motifs (the
+    dymo-label wordmark, cassette buttons) per an explicit "make it a
+    tiny bit rubber-stamped, government aesthetic, don't overdo it"
+    request. No texture/grunge image, just typography + a small rotation.
+  Verified live in-browser (not just rendered HTML) against a real local
+  resolver+Archive pair (matching production's reverse-proxy shape) with
+  seeded real pages — checked both desktop and mobile widths: the badge
+  stays pinned to the right/top-right as titles wrap, the filters
+  dropdown (fuzzy toggle + rows) renders as intended, and the resolver's
+  separate calendar-picker list is unaffected. Full suite green (128
+  tests, no test changes needed — this was a pure CSS/template layout
+  pass on already-tested data).
