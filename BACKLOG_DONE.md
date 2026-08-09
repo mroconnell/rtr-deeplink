@@ -2108,3 +2108,52 @@ changelog of task titles.
   before this pass; not re-tested here through the YouTube adapter, since
   that would just be redundant coverage of the same pure function. Full
   suite green (149 tests — 15 new).
+
+- **[Done 2026-08-08] Real bug found and fixed via the first-ever eScribe
+  sample with actually-populated captions: `parse_vtt()` was silently
+  corrupting every single cue's text with the *next* cue's number.**
+  User-found live sample:
+  `https://pub-bakersfield.escribemeetings.com/Meeting.aspx?Id=981f78d7-8211-4b4b-b066-5f93b4fd5e74`
+  (Bakersfield, CA) — resolved cleanly end-to-end (video, 174 real
+  English caption segments, no warnings) except every segment's text
+  ended with a stray trailing number: `"...City Council\n2"`,
+  `"...pleasure to\n3"`, etc. This closes BACKLOG.md's long-standing
+  "eScribe caption content-quality unverified... none were populated"
+  gap — the per-language VTT filename convention (confirmed structurally
+  on Richmond, CA) turns out to work as designed once a city's captions
+  are actually populated.
+
+  Root cause, confirmed by fetching the real raw `.vtt` file directly:
+  Bakersfield's captions number every cue on its own line immediately
+  before the timestamp line — e.g. `1\n00:26:21.932 --> 00:26:24.711\n
+  The 330 p.m. meeting...`. This is spec-legal WebVTT (section 4.1
+  explicitly allows an optional cue-identifier line, the same convention
+  SRT uses for its sequence numbers), but `app/utils/vtt_parser.py`'s
+  `parse_vtt()` only ever recognized `WEBVTT` and blank lines as
+  non-text lines — any other non-blank, non-timestamp line got appended
+  as trailing text onto whichever cue was still open, which for an
+  identifier line is always the *previous* cue (the one that just closed,
+  not the one about to start).
+
+  Fixed with a one-line lookahead: rewrote the line-by-line loop to check
+  whether the *next* line matches the timestamp regex before deciding a
+  non-timestamp line is real cue text — if the next line is a timestamp,
+  the current line is a cue identifier and gets skipped instead of
+  appended. Deliberately lookahead-based rather than "skip any line that
+  looks like a bare number," so a genuinely short real cue (e.g. "Yes.")
+  is never mistaken for an identifier just because it's short (pinned by
+  its own test). No other real fixture (Granicus/YouTube/CivicClerk/CA
+  Legislature/Swagit-via-caption-file) showed this contamination symptom
+  before or after the fix, so this was a pure correctness fix, not a
+  behavior change for any already-passing case.
+
+  Three new tests in `tests/test_vtt_parser.py`: the exact minimal repro
+  (numbered identifier lines swallowing the wrong cue's text), a
+  guard against the short-real-cue false positive, and a real trimmed
+  25-cue fixture (`tests/fixtures/escribe/bakersfield_ccm330_captions.vtt`,
+  the actual Bakersfield file's first 25 cues) pinning the live bug and
+  its fix together. Verified live in-browser too, not just via
+  `resolve()`/unit tests: the actual `/meeting?url=...` page renders the
+  full clean transcript with correct clickable `[26:21]`-style timestamps
+  and no stray trailing digits anywhere. Full suite green (152 tests — 3
+  new here, on top of the prior PrimeGov/YouTube entry's 15).

@@ -50,6 +50,62 @@ def test_parse_vtt_real_simi_valley_fixture():
     assert "llamar esta junta a la orden" in cues[0]["text"]
 
 
+def test_parse_vtt_skips_standalone_cue_identifier_line():
+    # Real bug (2026-08-08), confirmed live on a real Bakersfield, CA
+    # eScribe/iSiLIVE meeting: this file numbers its cues on their own
+    # line before each timestamp, the same convention SRT uses (WebVTT's
+    # spec section 4.1 explicitly allows this as an optional cue
+    # identifier). Before this fix, every number was silently absorbed as
+    # trailing text onto the *previous* cue ("Hello there.\n2") since
+    # parse_vtt only ever recognized "WEBVTT" and blank lines as
+    # non-cue-text lines.
+    content = (
+        "WEBVTT\n\n"
+        "1\n"
+        "00:00:01.000 --> 00:00:02.500\n"
+        "Hello there.\n\n"
+        "2\n"
+        "00:00:02.500 --> 00:00:04.000\n"
+        "Second line."
+    )
+    cues = parse_vtt(content)
+    assert len(cues) == 2
+    assert cues[0]["text"] == "Hello there."
+    assert cues[1]["text"] == "Second line."
+
+
+def test_parse_vtt_does_not_mistake_real_short_text_for_an_identifier():
+    # A genuinely short cue's text ("Yes.") must not be swallowed just
+    # because it's a single short line -- it's only treated as a cue
+    # identifier when the *very next* line is itself a real timestamp
+    # line, not just any short line.
+    content = (
+        "WEBVTT\n\n"
+        "00:00:01.000 --> 00:00:02.000\n"
+        "Yes.\n\n"
+        "00:00:02.000 --> 00:00:03.000\n"
+        "No."
+    )
+    cues = parse_vtt(content)
+    assert [c["text"] for c in cues] == ["Yes.", "No."]
+
+
+def test_parse_vtt_real_bakersfield_fixture_with_numbered_cues():
+    # Real captions.vtt fetched live from a Bakersfield, CA eScribe
+    # meeting (Meeting.aspx?Id=981f78d7-8211-4b4b-b066-5f93b4fd5e74),
+    # trimmed to its first 25 cues -- this is the first real eScribe
+    # sample ever found with actually-populated captions (see BACKLOG.md's
+    # prior "content-quality unverified" note) and it's exactly what
+    # exposed the numbered-cue-identifier bug above.
+    content = load_fixture("escribe", "bakersfield_ccm330_captions.vtt")
+    cues = parse_vtt(content)
+    assert len(cues) == 25
+    assert cues[0]["text"] == "The 330 p. m. meeting of the Bakersfield City Council"
+    # None of the real cue text should have a stray trailing number from
+    # the next cue's identifier line leaking in.
+    assert not any(re.search(r"\n\d+$", c["text"]) for c in cues)
+
+
 def test_decode_vtt_bytes_real_blank_placeholder():
     # Real 8-byte "WEBVTT\n\n" placeholder Granicus serves when a meeting
     # was never captioned -- fetched live from napacity.granicus.com's

@@ -25,6 +25,11 @@ def decode_vtt_bytes(raw: bytes) -> str:
         return raw.decode("utf-8", errors="replace")
 
 
+_TIMESTAMP_LINE_RE = re.compile(
+    r"(\d{2}:\d{2}:\d{2}[\.\,]\d{3}) --> ((\d{2}:\d{2}:\d{2}[\.\,]\d{3}).*)"
+)
+
+
 def parse_vtt(content: str) -> List[Dict[str, Any]]:
     """Parse WebVTT content into a list of cue dicts with 'start', 'end', 'text'.
 
@@ -33,20 +38,20 @@ def parse_vtt(content: str) -> List[Dict[str, Any]]:
     """
     content = content.lstrip("﻿")
     lines = content.splitlines()
+    n = len(lines)
 
     cues = []
     current_cue = None
 
-    for line in lines:
-        line = line.strip()
+    i = 0
+    while i < n:
+        line = lines[i].strip()
 
         if not line or line == "WEBVTT":
+            i += 1
             continue
 
-        timestamp_match = re.match(
-            r"(\d{2}:\d{2}:\d{2}[\.\,]\d{3}) --> ((\d{2}:\d{2}:\d{2}[\.\,]\d{3}).*)",
-            line,
-        )
+        timestamp_match = _TIMESTAMP_LINE_RE.match(line)
 
         if timestamp_match:
             if current_cue:
@@ -60,11 +65,30 @@ def parse_vtt(content: str) -> List[Dict[str, Any]]:
                 "end": _parse_timestamp(end),
                 "text": "",
             }
-        elif current_cue is not None:
+            i += 1
+            continue
+
+        # A standalone cue-identifier line -- WebVTT's spec (section 4.1)
+        # allows an optional line immediately before the timestamp line,
+        # the same convention SRT uses for its numbering. Confirmed live
+        # on a real Bakersfield, CA eScribe/iSiLIVE meeting: every cue was
+        # numbered this way, and without this check each number was
+        # silently absorbed as trailing text onto the *previous* cue
+        # ("...City Council\n2", "...pleasure to\n3", ...). Detected by
+        # lookahead -- only actually an identifier if the very next line
+        # is a real timestamp line, not just any short line that happens
+        # to be genuine cue text.
+        next_line = lines[i + 1].strip() if i + 1 < n else ""
+        if _TIMESTAMP_LINE_RE.match(next_line):
+            i += 1
+            continue
+
+        if current_cue is not None:
             if current_cue["text"]:
                 current_cue["text"] += "\n" + line
             else:
                 current_cue["text"] = line
+        i += 1
 
     if current_cue:
         cues.append(current_cue)

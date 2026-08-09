@@ -358,10 +358,6 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   swagit-video-player?video_id=...`). `detect_platform` recognizes the URL
   shape, but the one sample URL 404'd — parsing has only been verified
   against real `*.swagit.com` domains. Needs a fresh sample URL.
-- **eScribe caption content-quality unverified.** The per-language VTT
-  naming convention was confirmed structurally on Richmond, CA, but none
-  were populated (all 404) — shape-verified only, not content-verified.
-  Needs a real eScribe meeting with actual captions.
 - **YouTube/PrimeGov: non-English captions untested**, and it's unknown
   whether the manual-vs-auto-generated track coverage gap seen on the one
   real LA sample (see [BACKLOG_DONE.md](BACKLOG_DONE.md)) is typical or
