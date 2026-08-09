@@ -7,6 +7,35 @@ where relevant.
 
 ## Bugs
 
+- **`EscribeAssetFinder` silently returns `jurisdiction=None` when the
+  page doesn't literally phrase it as "City of X."** Confirmed live
+  (2026-08-08) on the same Bakersfield, CA sample that surfaced the
+  `parse_vtt()` cue-identifier bug (see BACKLOG_DONE.md). `_extract_metadata()`
+  (`app/platforms/escribe.py`) matches jurisdiction via `re.search(r"City
+  of ([A-Za-z .]+)", ...)` — Bakersfield's page text has "Caucus Room 1501
+  Truxtun Ave Bakersfield, CA 93301" (an address, no "City of" phrase
+  anywhere), so the regex just never matches and jurisdiction silently
+  comes back `None` rather than falling back to anything. Not yet fixed
+  — worth a second real eScribe city with jurisdiction before deciding
+  the right fallback (address-line city/state extraction? the `pub-
+  {city}.escribemeetings.com` subdomain itself, same idea already used
+  elsewhere for jurisdiction fallbacks?), rather than guessing from one
+  sample.
+- **`EscribeAssetFinder` never extracts `agenda_items` at all — not a
+  bug, a feature that was simply never built, and the real Bakersfield
+  page has exactly the structured markup needed for it.** Confirmed live
+  (2026-08-08): the page has 10 real `.AgendaItem` elements with clean
+  per-item structure (`.AgendaItemCounter` for the number, `.AgendaItemTitle`
+  for the text — e.g. "1. ROLL CALL", "2. PUBLIC STATEMENTS", with nested
+  "a."/"b." sub-items), the same kind of DOM this app already parses for
+  other platforms. No per-item start-time attribute spotted in a first
+  pass, though — unlike Minneapolis's LIMS platform (see the "New
+  platform found" entry below), eScribe's own agenda items may not carry
+  real timestamps at all, in which case they'd render the same
+  unreliable-timestamp way CivicClerk's identical-start-time agenda items
+  already do (see `unreliable_timestamps` handling in both
+  `player.js`/`meeting_page.html`) — worth confirming against the actual
+  element attributes before building, not assumed from this first look.
 - **Three real live pages are confirmed stuck on stale pre-fix data and
   need an actual `/admin/recheck-archive-page` run — the code fixes are
   built and verified, this session just doesn't have `ADMIN_STATS_TOKEN`
