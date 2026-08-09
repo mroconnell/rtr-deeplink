@@ -8,6 +8,40 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-09] `/meetings` pagination threw a real 422 in production
+  whenever a filter checkbox was left unset.** Reported live by the user
+  with the exact broken URL: clicking "Next" on
+  `https://redtaperecordings.com/meetings?page=2&q=&jurisdiction=&
+  date_from=&date_to=&fuzzy=&has_agenda=&has_transcript=` returned a raw
+  FastAPI validation error instead of the next page. Root cause:
+  `archive/templates/meeting_list.html`'s pagination link always emitted
+  all seven filter params via a `%`-format string, substituting `""` for
+  any unset one — e.g. `...&fuzzy=&has_agenda=&has_transcript=`. FastAPI's
+  bool-typed query params (`fuzzy: bool`, `has_agenda: Optional[bool]`,
+  `has_transcript: Optional[bool]`) reject an empty string outright (422
+  `bool_parsing`) rather than treating it as "not provided" — only an
+  *omitted* param does that.
+
+  Fixed both ends, not just the one that caused this specific report:
+  the template now builds the querystring from a list of only the params
+  that actually have a value (also fixes an adjacent, previously-unnoticed
+  bug — a search query containing `&` or `#` would have corrupted the
+  pagination link's other params, since the old format string never
+  URL-encoded anything); and `archive/main.py`'s route itself now accepts
+  `fuzzy`/`has_agenda`/`has_transcript` as plain strings and parses them
+  tolerantly (`_parse_optional_bool()`), so URLs already bookmarked/shared
+  with the old broken shape — including the exact one just reported —
+  keep working instead of 404ing/500ing forever. First HTTP-level route
+  test added to this suite (`tests/test_meetings_route.py`, via
+  `fastapi.testclient.TestClient`) — every other test here exercises
+  `crud`/pure functions directly, which never touches FastAPI's own
+  query-param parsing layer where this bug actually lived. Verified live
+  against a local server with the exact reported URL (confirmed 200, was
+  422) and by rendering the fixed template logic directly against mock
+  filter state (confirmed a clean `page=2` with no filters set, and
+  correct `%26`-encoding of a query containing `&`). Full suite (190
+  tests) passing.
+
 - **[Done 2026-08-09] Added a static citymeetings.nyc cross-link to NYC
   Council meeting pages, and caught a real, unrelated bug while verifying
   it live: `archive/db/crud.py`'s `get_page_by_slug()` silently dropped
