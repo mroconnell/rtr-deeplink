@@ -138,6 +138,17 @@ class YouTubeAssetFinder(AssetFinder):
             "skip_download": True,
             "quiet": True,
             "no_warnings": True,
+            # Confirmed live 2026-08-09: YouTube's "Sign in to confirm
+            # you're not a bot" anti-bot check hit our Render server IP
+            # (yt-dlp was already current at the time, 2026.7.4 -- not a
+            # stale-extractor issue). That check is tied to yt-dlp's
+            # default "web" internal client, which requires a PO token we
+            # don't have. android/ios/tv are yt-dlp's other internal
+            # clients and have historically not enforced that same check
+            # -- try them first, falling back to web only if none of them
+            # returns anything usable. Not a guaranteed permanent fix
+            # (YouTube tightens this periodically) -- see BACKLOG.md.
+            "extractor_args": {"youtube": {"player_client": ["android", "ios", "tv", "web"]}},
             # False (not the original True) so a real failure raises a
             # real yt_dlp.utils.DownloadError instead of silently
             # returning None -- see resolve_video_id's try/except, and
