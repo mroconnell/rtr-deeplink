@@ -6,8 +6,9 @@ returned, at query time -- fine at the Archive's current scale (dozens of
 meetings), not meant to scale past a few hundred.
 """
 
+import html
 import re
-from typing import Iterable
+from typing import Iterable, Optional
 
 _WORD_RE = re.compile(r"[a-z0-9']+")
 
@@ -83,3 +84,66 @@ def matches(query: str, corpus: str, corpus_words: set, fuzzy: bool) -> bool:
         return any(word == term or _levenshtein(term, word, threshold) <= threshold for word in corpus_words)
 
     return all(_term_matches(term) for term in terms)
+
+
+def _find_span(term: str, text_lower: str, fuzzy: bool) -> Optional[tuple]:
+    """Character (start, end) of the first match for `term` in
+    `text_lower` (already-lowercased), or None. Exact mode is a plain
+    substring search; fuzzy mode walks the real words in the text and
+    returns the span of the first one within the term's edit-distance
+    threshold -- deliberately the *actual* word found (e.g. "trafic"),
+    not the query term itself, so a caller building a snippet quotes
+    what the source text really says rather than something that'd read
+    as silently doctored.
+    """
+    if not fuzzy:
+        idx = text_lower.find(term)
+        return (idx, idx + len(term)) if idx != -1 else None
+
+    threshold = _fuzzy_threshold(term)
+    for m in _WORD_RE.finditer(text_lower):
+        word = m.group(0)
+        if word == term or _levenshtein(term, word, threshold) <= threshold:
+            return (m.start(), m.end())
+    return None
+
+
+def find_snippet(query: str, texts: Iterable[str], fuzzy: bool, window: int = 50) -> Optional[str]:
+    """A short HTML excerpt around the first matching term, for
+    `/meetings` search results -- e.g. "...traffic calming measures on
+    <mark>Elm Street</mark> were discussed..." so a result reads like a
+    real search hit, not just a bare title.
+
+    `texts` should be the searchable body text *other than* the title/
+    jurisdiction, which already render directly above any snippet on
+    `/meetings` -- repeating them here would just be noise. Checks each
+    text in order and returns on the first match; None if none of these
+    specific texts matched (e.g. the query only matched the title).
+
+    Returned string already has its plain-text portions HTML-escaped,
+    with only the deliberately-inserted <mark> tag left raw -- callers
+    should render it with a "safe"/no-further-escaping filter.
+    """
+    terms = [t for t in query.lower().split() if t]
+    if not terms:
+        return None
+
+    for text in texts:
+        if not text:
+            continue
+        text_lower = text.lower()
+        for term in terms:
+            span = _find_span(term, text_lower, fuzzy)
+            if not span:
+                continue
+            start, end = span
+            win_start = max(0, start - window)
+            win_end = min(len(text), end + window)
+            prefix = "…" if win_start > 0 else ""
+            suffix = "…" if win_end < len(text) else ""
+            before = html.escape(text[win_start:start])
+            matched = html.escape(text[start:end])
+            after = html.escape(text[end:win_end])
+            return f"{prefix}{before}<mark class=\"search-match\">{matched}</mark>{after}{suffix}"
+
+    return None

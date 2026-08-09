@@ -2013,3 +2013,50 @@ changelog of task titles.
   link, and forward-this line all render as intended. Full suite green
   (128 tests, unaffected — no tests assert on this function's HTML
   content).
+
+- **[Done 2026-08-08] Matched-context snippet under each `/meetings`
+  search result**, e.g. "...5.4 City <mark>Council</mark> Participation
+  in the 2026 St. Patrick's Day Parad..." — real quoted excerpt from the
+  meeting's own agenda/transcript text, not just the bare title/date/
+  jurisdiction row. New `find_snippet()` in `archive/utils/search.py`
+  (alongside the existing `matches()`/`tokenize()`/`build_corpus()`):
+  given a query and an ordered list of body texts, returns the first
+  match with ~50 chars of surrounding context on each side (ellipsis
+  only where the text was actually truncated), the matched span wrapped
+  in `<mark class="search-match">` — reusing the exact highlight class
+  the in-page transcript search already uses, rather than inventing a
+  second visual language for "this is a matched term." Fuzzy mode
+  matters here specifically: a fuzzy match's span is the *real* word
+  found in the source text (e.g. a transcript's actual typo "trafic"),
+  never the query term itself, so a snippet always quotes what the
+  source genuinely says — the alternative (splicing the query term into
+  someone else's sentence) would read as silently doctored. Non-matched
+  portions of the snippet are HTML-escaped; only the deliberately
+  inserted `<mark>` tag is left raw, so the caller can render with a
+  `safe` filter without reopening any injection risk from scraped or
+  AI-transcribed source text.
+
+  `archive/db/crud.py`'s `list_pages()` calls `find_snippet()` per
+  *displayed* row only (not every filtered match — a snippet nobody's
+  about to see costs nothing to skip), passing `[transcript_text,
+  agenda_text]` — deliberately excluding title/jurisdiction, which
+  already render directly above any snippet in `meeting_list.html`, so
+  a title-only match (e.g. searching "Council" against "Jan 13, 2026
+  City Council") correctly shows no redundant snippet, falling through
+  to whichever other field actually matched instead (confirmed live:
+  that exact query surfaced the agenda's "5.4 City Council
+  Participation..." line, not a repeat of the title). New `.search-
+  snippet` CSS in `archive/static/style.css` (Archive-only, like the
+  rest of `/meetings`' layout — the resolver has no keyword search over
+  transcripts).
+
+  Verified with 6 new unit tests (`tests/test_archive_search.py`):
+  exact-match context extraction, fuzzy match quoting the real
+  misspelled word rather than the query term, multi-text ordering/empty-
+  text skipping, no-match returns `None`, HTML-escaping of surrounding
+  text while leaving the inserted `<mark>` tag raw, and ellipsis only
+  appearing where truncation actually happened. Also verified live
+  in-browser against the real seeded Dublin, CA sample through the
+  resolver's proxy: an agenda-body match ("fireworks"), a transcript-
+  body match ("pledge"), and the title-suppression case ("Council")
+  above. Full suite green (134 tests — 6 new).

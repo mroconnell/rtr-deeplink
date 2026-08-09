@@ -407,24 +407,6 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     not an ongoing concern, similar in spirit to
     `/admin/recheck-archive-page`'s existing per-meeting refresh but
     needing to run once across every page rather than on demand for one.
-- **New: show a matched snippet in `/meetings` search results**, not
-  just the meeting title/date/jurisdiction — e.g. "...traffic calming
-  measures on **Elm Street** were discussed..." with the matched term in
-  context, the way most real search UIs work. Checked the actual code:
-  buildable, not blocked on anything. `archive/utils/search.py`'s
-  `matches()` is a pure boolean predicate today — it returns whether a
-  query matched, not *where*. Would need `matches()` (or a sibling
-  function) to also report which field matched (title vs. agenda vs.
-  transcript text) and a character offset into it, so `list_pages()` can
-  extract a window of surrounding text; `meeting_list.html` then renders
-  that instead of (or alongside) the existing jurisdiction/date/language
-  line. Fuzzy-mode matches are a real wrinkle worth deciding on before
-  building: a fuzzy match's "matched span" is a typo'd word, not the
-  query term itself (e.g. query `traffic` fuzzy-matching transcript text
-  `trafic`) — snippet text should probably show the *actual* transcript
-  wording around the match, not the query term, so the snippet reads as
-  real quoted content rather than something that looks doctored.
-
 ## On-demand transcription — real gaps left open
 
 Built 2026-08-08, see [BACKLOG_DONE.md](BACKLOG_DONE.md) for the full

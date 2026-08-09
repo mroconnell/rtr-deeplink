@@ -564,6 +564,20 @@ mark.search-match.current { background: #f97316; color: #fff; }
   gap: 0.75rem;
 }
 .calendar-candidate-main { min-width: 0; }
+/* Matched-context excerpt under a search result (crud.py's list_pages(),
+   via utils/search.py's find_snippet()) -- reuses mark.search-match's
+   existing highlight color (already used by the in-page transcript
+   search) rather than introducing a second one, so "this is a matched
+   term" reads the same way everywhere on the site. Only ever present
+   when a keyword search is active and matched outside the title/
+   jurisdiction (already shown directly above), so it's real added
+   context, not a repeat of what's already on the row. */
+.search-snippet {
+  margin: 0.3rem 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
 /* Replaces a raw language code ("· en") on /meetings results -- not
    intuitive at a glance, and language-specific anyway when the real
    question a viewer has is just "does this have a transcript." Quality-

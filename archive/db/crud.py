@@ -7,7 +7,7 @@ from typing import Any, Optional
 from sqlalchemy import and_, or_, select
 
 from ..utils.language import detect_language_from_texts
-from ..utils.search import build_corpus, matches, tokenize
+from ..utils.search import build_corpus, find_snippet, matches, tokenize
 from ..utils.slugify import build_base_slug, random_suffix
 from ..utils.url_normalize import normalize_url
 from .engine import async_session
@@ -475,6 +475,18 @@ async def list_pages(
     start = (page - 1) * page_size
     page_rows = filtered[start:start + page_size]
 
+    def _snippet_for(mp: MeetingPage) -> Optional[str]:
+        # Only computed for the page of rows actually being returned, not
+        # every filtered match -- a snippet nobody's about to see costs
+        # nothing to skip. Deliberately excludes title/jurisdiction (see
+        # find_snippet()'s own docstring) since those already render
+        # directly above this in meeting_list.html.
+        if not keyword:
+            return None
+        agenda_text = " ".join(item.get("text", "") for item in (mp.agenda_items or []))
+        transcript_text = transcript_text_by_page.get(mp.id, "")
+        return find_snippet(keyword, [transcript_text, agenda_text], fuzzy)
+
     return {
         "pages": [
             {
@@ -499,6 +511,7 @@ async def list_pages(
                     and not any(_GARBLED_MARKER in w for w in (r["warnings"] or []))
                 ),
                 "has_agenda": bool(r["mp"].agenda_items),
+                "snippet": _snippet_for(r["mp"]),
             }
             for r in page_rows
         ],

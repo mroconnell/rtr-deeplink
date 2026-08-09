@@ -64,6 +64,9 @@
             {%- if m.date %} &middot; {{ m.date }}{% endif -%}
             {%- if not m.has_transcript and m.has_agenda %} &middot; agenda only{% endif -%}
           </span>
+          {% if m.snippet %}
+          <p class="search-snippet">{{ m.snippet | safe }}</p>
+          {% endif %}
         </div>
         {% if m.has_transcript %}
         <span class="transcript-badge" title="A transcript is available for this meeting">&#10003; Transcript</span>
