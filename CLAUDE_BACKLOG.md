@@ -91,17 +91,26 @@ Both raised directly by the user alongside the original transcription
 request, deliberately not built as part of it — see `BACKLOG_DONE.md`'s
 2026-08-08 entry for the full feature this extends.
 
-- **Speaker diarization + a UI to map detected speakers to real names.**
-  The transcription pipeline already uses self-hosted `faster-whisper`
-  specifically because it's the same base model WhisperX builds real
-  diarization on top of (via `pyannote.audio`) — and `TranscriptSegment`
-  (`app/platforms/models.py`) already carries an unused `speaker` field
-  for exactly this, added cheaply now rather than needing a schema touch
-  later. Real work still needed: running the diarization pass itself
-  (a real compute/latency cost on top of transcription — size it before
-  committing), and a UI for someone to label "Speaker 1" as an actual
-  name (per meeting, or per recurring seat/role if a jurisdiction's
-  council composition is known) — no design started on that UI yet.
+- **Speaker diarization + a UI to map detected speakers to real names —
+  confirmed 2026-08-09 as a good future feature, journalistic-value
+  framing added.** For journalistic use, an unattributed quote is much
+  weaker than one that can be cited as "Councilmember X said..." — this
+  is the difference between a transcript being a navigation aid and being
+  a citable source. The transcription pipeline already uses self-hosted
+  `faster-whisper` specifically because it's the same base model WhisperX
+  builds real diarization on top of (via `pyannote.audio`) — and
+  `TranscriptSegment` (`app/platforms/models.py`) already carries an
+  unused `speaker` field for exactly this, added cheaply now rather than
+  needing a schema touch later, so this is additive to the existing data
+  model, not a redesign. Real work still needed: running the diarization
+  pass itself (a real compute/latency cost on top of transcription — size
+  it before committing), and a UI for someone to label "Speaker 1" as an
+  actual name (per meeting, or per recurring seat/role if a
+  jurisdiction's council composition is known) — no design started on
+  that UI yet. Real name resolution is the harder, longer-term half of
+  this — worth explicitly sequencing unlabeled diarization first (ship
+  "Speaker 1 vs. Speaker 2" attribution on its own) rather than blocking
+  the whole feature on solving name-mapping too.
 - **Compare the finished transcript against the meeting's agenda for
   topic-coverage accuracy.** E.g. flag agenda items that don't seem to
   have been discussed, or roughly locate where each agenda item's

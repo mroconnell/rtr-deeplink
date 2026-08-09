@@ -340,10 +340,77 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   wait on this — it uses the same lightweight, email-only, confirm-once
   pattern as the "Lightweight jurisdiction follow" idea in
   `CLAUDE_BACKLOG.md`, not real accounts.
-- **Email alerts for saved searches** — depends on accounts and search
-  both existing first.
-- **On-demand / scheduled crawl requests** — depends on the Archive
-  existing; noted now because it may affect the Archive's architecture.
+- **Email alerts for saved searches — confirmed 2026-08-09 as the most
+  concrete "worth paying for" feature identified so far.** Depends on
+  accounts and search both existing first (search already live; accounts
+  is not). This is what turns a one-time lookup into something a
+  journalist keeps coming back to for an ongoing beat — it converts
+  passive search into active monitoring, the actual job-to-be-done for
+  someone covering the same story across dozens of jurisdictions over
+  time. Also directly benefits from the crawler re-prioritization below
+  (more corpus = more useful alerts).
+- **Proactive transcription crawler — re-prioritized 2026-08-09 to
+  precede accounts/billing, not just "noted now because it may affect
+  the Archive's architecture."** Cross-archive keyword search on
+  `/meetings` is already live (built 2026-08-08), and its value is
+  directly proportional to corpus size — a national-beat journalist
+  searching "Flock" only gets real value once enough jurisdictions have
+  actually been resolved and transcribed. Today the corpus only grows
+  when someone happens to paste a URL, a slow, demand-driven way to fill
+  an archive meant to support discovery. This reframes the crawler from
+  "nice to have" to "the thing that makes the flagship search feature
+  actually good." No new dependencies beyond what already exists
+  (adapters, Archive schema, transcription worker are all already
+  built) — this is a re-prioritization question, not a new build: worth
+  deciding whether it jumps ahead of accounts/billing given it doesn't
+  require them.
+- **Batch lookup — accept multiple meeting URLs at once (paste-list,
+  CSV, etc.) instead of one at a time.** Removes the main friction point
+  for a journalist working many jurisdictions at once — pasting dozens
+  of URLs one-by-one doesn't match how someone actually works a
+  multi-city story. Worth sequencing after accounts even though it
+  doesn't strictly require them: a batch endpoint is a natural abuse
+  vector (someone queuing hundreds of transcription jobs at once), and
+  the transcription worker's real per-job compute cost (see "On-demand
+  transcription" below — a measured real dollar figure, not a
+  hypothetical one) means unmetered batch access could get expensive
+  fast. Rate-limiting or account-gating this is worth deciding before
+  shipping it, not after.
+- **Coverage page — a public, sortable/filterable table of every
+  jurisdiction/platform combination successfully resolved so far**
+  (columns: jurisdiction, platform, an example meeting URL, outcome
+  bucket — real transcript / agenda-only / blank / garbled /
+  wrong-language / no-video, per `app/db/outcomes.py`'s existing
+  `classify_outcome()` — last-verified date, and whether the transcript
+  came from the source's own captions vs. the on-demand transcription
+  worker). Directly addresses a real gap: today, a user only learns
+  whether their city is supported by pasting a URL and seeing what
+  happens — costly for someone checking many jurisdictions one at a
+  time. Also doubles as a trust/credibility signal ("look how much we
+  already cover") and light SEO surface area — exactly the kind of page
+  other people link to and cite. Mostly a front-end exposure task, not
+  new backend work — `/admin/stats` already tracks resolve outcomes by
+  platform and quality bucket (see "Caching and reporting" in
+  README.md); this needs a *public* (non-admin) read path into that same
+  data, a rule for picking a representative example URL per
+  jurisdiction/platform pair (e.g. most recent successful resolve), and
+  the sort/filter UI itself.
+- **Companion "known gaps" page — same table shape, listing
+  jurisdictions/platforms that don't resolve cleanly yet** (attempted but
+  blocked, partially working, or simply not yet built), separate from
+  the coverage page above. Turns "it didn't work" from a dead end into a
+  visible, honest roadmap, sets expectations for a journalist checking a
+  specific city before investing time, and doubles as a natural intake
+  signal — anyone whose city shows up as a known gap has a concrete
+  reason to check back or flag interest instead of silently bouncing.
+  Partially self-populating: failed/low-quality resolve attempts are
+  already logged by the same `meeting_resolutions` system the coverage
+  page above would read from. The real open question is distinguishing
+  "known gap actively being worked on" from "just hasn't been tried
+  yet" — those read very differently to a visitor, and probably need a
+  manual status field rather than being purely derived from logs. Could
+  ship after or alongside the coverage page, reusing the same table
+  component.
 - **Video highlight clips + algorithmic feed** — distant future. Flagged
   tension: this app's "never host video, only embed" principle directly
   conflicts with hosting/serving clip segments.
