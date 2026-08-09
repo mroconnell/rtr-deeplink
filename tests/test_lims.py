@@ -141,7 +141,7 @@ async def test_resolve_still_works_when_youtube_metadata_fetch_fails(monkeypatch
     assert result.video_url == f"https://www.youtube.com/embed/{REAL_VIDEO_ID}"
     assert len(result.agenda_items) == 3  # LIMS's own JSON data, untouched by the YouTube failure
     assert result.segments == []
-    assert any("blocking automated requests" in w for w in result.video_warnings)
+    assert any("blocking automated caption requests" in w for w in result.video_warnings)
 
 
 def test_extract_page_meta_parses_real_title_shape():

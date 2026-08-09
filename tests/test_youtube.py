@@ -145,7 +145,7 @@ async def test_resolve_video_id_degrades_to_playable_meeting_on_download_error(m
     assert result.video_format == "youtube"
     assert result.title is None
     assert result.segments == []
-    assert any("blocking automated requests" in w for w in result.video_warnings)
+    assert any("blocking automated caption requests" in w for w in result.video_warnings)
     assert any("No transcript available" in w for w in result.transcript_warnings)
 
 

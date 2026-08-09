@@ -102,11 +102,14 @@ class YouTubeAssetFinder(AssetFinder):
                 video_url=video_url,
                 video_format="youtube",
                 video_warnings=[
-                    "We couldn't fetch this video's title or captions from YouTube directly right "
-                    "now (YouTube is currently blocking automated requests from our server) — but "
-                    "the video itself should still play below."
+                    "YouTube is currently blocking automated caption requests from our server, so "
+                    "no transcript is available for this video — but it should still play fine "
+                    "above."
                 ],
-                transcript_warnings=["No transcript available — see the note above the video."],
+                transcript_warnings=[
+                    "No transcript available — YouTube is currently blocking caption requests from "
+                    "our server."
+                ],
             )
         if not info:
             raise ValueError(f"YouTube video {video_id} could not be resolved (no info returned by yt-dlp).")
