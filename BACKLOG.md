@@ -90,6 +90,40 @@ where relevant.
   `var videoUrl = "VNMQYICdQvs"` on a `meetingTemplateId` page — video
   presence isn't determined by the URL shape after all, at least not
   uniformly across cities.
+- **PrimeGov's date/jurisdiction come entirely from YouTube's own
+  metadata, which is measurably worse than what's already sitting on the
+  PrimeGov page itself.** Confirmed live (2026-08-08) via
+  `https://okc.primegov.com/Portal/Meeting?meetingTemplateId=68482`
+  (Oklahoma City) — video and transcript resolve cleanly (3503 real
+  English auto-caption segments, no warnings beyond the standard
+  auto-caption disclaimer), but:
+  - `date` resolved to `2026-08-05`, one day off from the real meeting.
+    The PrimeGov page has an embedded agenda document titled `"City
+    Council - 8/4/2026 1:30:00 PM"` and body text saying `"August 4,
+    2026"` — the *video's own title* even says "Oklahoma City Council
+    Meeting - August 4, 2026". Root cause: `PrimeGovAssetFinder.resolve()`
+    (`app/platforms/primegov.py`) extracts only the YouTube video id from
+    the page HTML and discards everything else, delegating entirely to
+    `YouTubeAssetFinder.resolve_video_id()` — which sets `date` from
+    yt-dlp's `upload_date` (`app/platforms/youtube.py` line ~80), i.e.
+    when the video was *posted to YouTube*, not the real meeting date.
+    Plausible mismatch for any meeting uploaded the next morning after an
+    evening session.
+  - `jurisdiction` resolved to `"cityofokc"` — YouTube's raw `uploader`
+    field (the channel handle), not a real jurisdiction string like
+    "Oklahoma City, OK".
+  Only affects PrimeGov pages that actually have video (the common case
+  per the item above) — agenda-only PrimeGov pages never hit
+  `YouTubeAssetFinder` at all. Not yet fixed: `PrimeGovAssetFinder`
+  would need to parse the page's own embedded meeting-date text (real,
+  present, confirmed above) and pass it through as an override to
+  whatever `resolve_video_id()` returns, rather than trusting YouTube's
+  upload date/uploader wholesale — same "delegate video, keep the
+  wrapper's own better metadata" shape as the `source_url` fix already
+  built for this same function, just for `date`/`jurisdiction` instead.
+  Worth checking on a couple more real PrimeGov-with-video samples before
+  building, to see how consistently the page's own embedded date text is
+  actually present/parseable across cities.
 - **`/meetings` (the Archive's browsable index) is missing from the site
   nav.** It's only reachable if you already know the URL — confirmed live
   on `redtaperecordings.com`, no nav link points at it anywhere. Add it
