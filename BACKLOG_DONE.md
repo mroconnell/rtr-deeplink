@@ -2191,3 +2191,46 @@ changelog of task titles.
   `find_snippet()` searches across every `TranscriptVersion`'s
   concatenated text (including demoted ones) without distinguishing
   which version actually matched.
+
+- **[Done 2026-08-08] Archive permanent pages now have the resolver's
+  "no transcript yet" live-playhead + copy-link feature.** Ported
+  `app/templates/meeting.html`'s `#transcriptMissing` block and
+  `app/static/player.js`'s `updateNoTranscriptTime()`/`noTranscriptLinkBtn`
+  wiring into `archive/templates/meeting_page.html` and
+  `archive/static/meeting_page.js` — same pattern as the transcribe-
+  request and report-a-problem features, each deliberately duplicated
+  into both services rather than shared, since Archive's page is
+  server-rendered while the resolver's is built from JSON client-side.
+
+  One deliberate adaptation, not a straight copy: the live-timestamp
+  block only renders when `page.video_url` is present (`{% if
+  page.video_url %}` inside the new `#transcriptMissing` branch) — a
+  real Archive-only case the resolver doesn't need to handle the same
+  way, since a server-rendered page can genuinely have no video *and*
+  no transcript at once (e.g. an eScribe page with only a live Vimeo
+  stream, no archive — see `EscribeAssetFinder`'s own docstring), where
+  "tracking the playhead" wouldn't make sense with nothing to play. That
+  case still falls back to the original plain "No transcript available
+  for this meeting" text. `updateNoTranscriptTime()`/`noTranscriptLinkBtn`
+  wiring lives inside `wireSharedControls()` (the same function that
+  already drives `linkToCurrentBtn`'s live label), since both need the
+  same `adapter` — `noTranscriptLinkBtn` keeps the resolver's simpler
+  swap-the-label-text-to-"Copied!" behavior (not the dynamic-label
+  version `linkToCurrentBtn` needed, since this button's label isn't
+  itself dynamic), and — being Archive-only — doesn't call the
+  resolver's `trackEvent()`, which doesn't exist on this service at all
+  (confirmed: no analytics setup anywhere in `archive/templates/base.html`).
+
+  Verified live against two freshly-seeded real Archive pages through
+  the resolver's proxy (the established correct way to test Archive
+  pages — hitting Archive's own port directly skips `/archive-static/*`
+  and breaks styling, a lesson from earlier this session): a video-
+  present/no-transcript page, where seeking the video and dispatching a
+  real `timeupdate` event moved `#noTranscriptTime` from "0:00" to
+  "0:45" in sync with the video's own displayed time, and a direct
+  `.click()` on `#noTranscriptLinkBtn` correctly appended `?t=45` (no
+  `line=`, since there are no segments to match) to the URL; and a
+  no-video/no-transcript page, confirmed still falling back to the
+  original plain "No transcript available for this meeting" text
+  unchanged. Full suite green (152 tests, unaffected — template/JS
+  change only, no existing Jinja-render tests cover this template).

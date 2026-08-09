@@ -226,9 +226,24 @@
       </div>
     </div>
     {% else %}
-    <div class="transcript-section">
+    <div class="transcript-section" id="transcriptMissing">
       <h2>Transcript</h2>
+      {% if active_version and active_version.transcript_warnings %}
+      <div class="warnings">{{ active_version.transcript_warnings|join(" ") }}</div>
+      {% endif %}
+      {% if page.video_url %}
+      <div class="no-transcript-timestamp">
+        <p class="no-transcript-hint">No transcript to click through, but you can still link to any moment. We're tracking the playhead below &mdash; it updates as the video plays.</p>
+        <div id="noTranscriptTime" class="no-transcript-time">0:00</div>
+        <button id="noTranscriptLinkBtn" class="cassette-btn" title="Copy link to current time">
+          <span class="cassette-reel"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7" fill="#fff" stroke="#bbb" stroke-width="2"/><circle cx="9" cy="9" r="2.2" fill="#bbb"/></svg></span>
+          <span class="cassette-label">Copy link to this moment</span>
+          <span class="cassette-reel"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7" fill="#fff" stroke="#bbb" stroke-width="2"/><circle cx="9" cy="9" r="2.2" fill="#bbb"/></svg></span>
+        </button>
+      </div>
+      {% else %}
       <p class="subtitle">No transcript available for this meeting.</p>
+      {% endif %}
     </div>
     {% endif %}
     </div>

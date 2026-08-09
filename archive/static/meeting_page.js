@@ -21,6 +21,17 @@ function formatTime(seconds) {
   return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
 }
 
+// Live playhead readout shown where the transcript would be, for
+// meetings with no transcript/agenda to click through -- makes clear
+// we're still tracking the exact moment even with nothing to scan.
+// A no-op when #noTranscriptTime doesn't exist (transcript present, or
+// this page has no video either). Mirrors app/static/player.js's
+// identical helper.
+function updateNoTranscriptTime(adapter) {
+  const el = document.getElementById('noTranscriptTime');
+  if (el) el.textContent = formatTime(adapter.currentTime);
+}
+
 function createNativeAdapter(videoEl) {
   return {
     get currentTime() { return videoEl.currentTime; },
@@ -117,8 +128,10 @@ function wireSharedControls(adapter) {
   adapter.addEventListener('timeupdate', () => {
     const segId = findActiveSegment(adapter.currentTime);
     if (segId) highlightSegment(segId, true, 'nearest');
+    updateNoTranscriptTime(adapter);
     if (linkToCurrentLabel) linkToCurrentLabel.textContent = `Share video at ${formatTime(adapter.currentTime)}`;
   });
+  updateNoTranscriptTime(adapter);
   if (linkToCurrentLabel) linkToCurrentLabel.textContent = `Share video at ${formatTime(adapter.currentTime)}`;
 
   const linkBtn = document.getElementById('linkToCurrentBtn');
@@ -137,6 +150,24 @@ function wireSharedControls(adapter) {
           clearTimeout(toastTimer);
           toastTimer = setTimeout(() => toast.classList.remove('visible'), 5000);
         }
+      } catch (e) {
+        // clipboard API unavailable; URL is already updated in the address bar
+      }
+    });
+  }
+
+  const noTranscriptLinkBtn = document.getElementById('noTranscriptLinkBtn');
+  if (noTranscriptLinkBtn) {
+    const label = noTranscriptLinkBtn.querySelector('.cassette-label');
+    const defaultText = label.textContent;
+    noTranscriptLinkBtn.addEventListener('click', async () => {
+      const t = adapter.currentTime;
+      const segId = findActiveSegment(t) || null;
+      updateUrlParams({ t, line: segId });
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        label.textContent = 'Copied!';
+        setTimeout(() => { label.textContent = defaultText; }, 1500);
       } catch (e) {
         // clipboard API unavailable; URL is already updated in the address bar
       }

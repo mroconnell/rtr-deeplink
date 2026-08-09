@@ -143,28 +143,6 @@ where relevant.
   Worth checking on a couple more real PrimeGov-with-video samples before
   building, to see how consistently the page's own embedded date text is
   actually present/parseable across cities.
-- **Archive permanent pages have no equivalent of the resolver's "no
-  transcript yet" live-playhead + copy-link feature.** Confirmed live
-  (2026-08-08) against a real no-transcript/no-agenda Archive page
-  (`redtaperecordings.com/m/city-of-cupertino-2024-11-18-city-council-
-  public-facilities-corporation-meeting`, before its transcription job
-  completed). The resolver's `app/templates/meeting.html` has a
-  `#transcriptMissing` block — a live-updating `#noTranscriptTime` readout
-  plus a `#noTranscriptLinkBtn` "copy link to this moment" button, driven
-  by `updateNoTranscriptTime()` in `app/static/player.js` — shown whenever
-  a resolve comes back with no transcript. `archive/templates/
-  meeting_page.html` has no equivalent markup at all: when a page has
-  neither transcript nor agenda it just renders a static "No transcript
-  available for this meeting." paragraph (`meeting_page.html:181-185`),
-  and `archive/static/meeting_page.js` has zero references to
-  `transcriptMissing`/`noTranscriptTime`/`noTranscriptLinkBtn` anywhere —
-  this looks like a feature that was simply never ported when the
-  Archive's meeting page was built, not a regression. Fix would mean
-  porting the resolver's `#transcriptMissing` block + `updateNoTranscriptTime()`
-  logic into the Archive's template/JS pair, the same way the transcribe-
-  request feature and report-a-problem feature were each deliberately
-  duplicated into both.
-
 ## Deep links
 
 The `t`/`line` scheme itself is sound and hasn't changed since the initial
