@@ -11,3 +11,4 @@ aiosqlite>=0.20
 python-dotenv>=1.0
 yt-dlp
 slowapi>=0.1.9
+playwright>=1.62

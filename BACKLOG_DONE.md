@@ -700,6 +700,106 @@ changelog of task titles.
 
 ## Platform coverage
 
+- **[Done 2026-08-09] Two new platforms shipped — Minneapolis LIMS and
+  Salt Lake City's council meeting-recap pages — both previously
+  completely unsupported, both needing this repo's first genuinely new
+  kind of dependency: a real headless browser.** Real production
+  impact: pasting either city's real URL into the app today returns a
+  plain `unsupported_platform` error with zero results — confirmed by
+  testing both against the live, unmodified app immediately before this
+  work started, specifically so "does this actually work now" could be
+  answered against a real before/after, not just a mockup.
+
+  **The path here started from a live mockup** (see the "SLC multi-video"
+  entry earlier the same day) that proved the UI needed zero frontend
+  changes for this data shape, but used a hand-picked video id to
+  sidestep the real blocker (Cloudflare) rather than solve it. This
+  entry is that blocker actually getting solved for real.
+
+  **`app/platforms/headless_browser.py`** — a shared, lazily-launched,
+  reused Playwright Chromium instance (`fetch_via_browser(url) -> html`).
+  The real fix that worked is much smaller than a full "stealth" setup,
+  confirmed by isolating each variable independently rather than
+  combining guesses: a plain headless launch still gets served the
+  Cloudflare challenge page (Playwright's default context sends a
+  User-Agent that identifies itself as headless — an easy signal for
+  Cloudflare's bot detection); `--disable-blink-features=
+  AutomationControlled` alone didn't fix it; extra wait time alone
+  didn't fix it; **a normal desktop Chrome User-Agent + a real viewport,
+  alone, did** — confirmed against both real sites independently before
+  combining. Also confirmed and ruled out as easier alternatives:
+  client-side `fetch()` from a real visitor's own browser (blocked by
+  CORS on both sites, no `Access-Control-Allow-Origin`), and iframing
+  the government's own page from a different origin (works for SLC, real
+  content renders; blank for Minneapolis LIMS despite the site loading
+  fine at the top level — a genuine difference between the two, not
+  pursued further as a real feature once headless-browser fetching
+  itself was confirmed to work for both).
+
+  **`app/platforms/lims.py`** — Minneapolis's own "Legislative
+  Information Management System"
+  (`lims.minneapolismn.gov/MarkedAgenda/CI/{id}`). Two headless fetches
+  per resolve (confirmed the JSON data isn't embedded in the agenda
+  page's own HTML, so there's no way to get both from one fetch): the
+  agenda page for title/date/jurisdiction (parsed from its own `<title>`
+  tag, e.g. `"Climate & Infrastructure Committee Agenda 8/6/2026 1:30 PM
+  - City of Minneapolis"`), and `GET /MeetingYoutubeVideo/{id}` (same
+  numeric id) for the real video + `SerializedVideoTimestamps` — a
+  genuinely richer signal than most already-supported platforms give:
+  real per-agenda-item start times, not just a title. That JSON is a
+  category → item tree, not a flat list (a "Discussion" category can
+  itself have a real timestamp *and* contain several individually-
+  timestamped items) — `_flatten_timestamps()` surfaces every entry with
+  a real timestamp at any nesting level, confirmed live this matters (a
+  real sample's "Consent" category has its own timestamp and no files,
+  which a leaves-only flatten would have dropped entirely). Delegates to
+  `YouTubeAssetFinder` for the video itself and real captions.
+
+  **`app/platforms/slc.py`** — Salt Lake City's `slc.gov/council/
+  *-meeting-recap/` pages. Built directly on the corrected finding from
+  the same day's earlier mockup work: these pages do **not** embed
+  multiple distinct videos (the original assumption) — every real page
+  checked has exactly one video with several `t=`-timestamp links into
+  it. Extracts every "(Watch)"-style link's timestamp (handles both real
+  `t=1441` and `t=2455s` formats, confirmed mixed on the very same page)
+  plus its nearest containing paragraph's own text as the topic, turning
+  each into an `agenda_items` entry the same shape LIMS's structured
+  data produces. One real, known gap found while building, not chased
+  further: a page's single "highlight" story uses a different HTML
+  pattern (a "Learn More"/"Watch the Briefing" promo box, not the plain
+  "{topic}. (Watch)" shape every other item uses) and gets silently
+  skipped rather than parsed — a safe failure mode (no garbage text),
+  logged as an open follow-up in BACKLOG.md rather than risking a
+  fragile heading-guessing heuristic.
+
+  **`detect_platform()`** gained two new narrow rules —
+  `lims.minneapolismn.gov` (exact domain) and `*.slc.gov` scoped
+  specifically to the `-meeting-recap` path pattern confirmed across
+  real pages, not the whole domain (most of `slc.gov` is ordinary city
+  content this app has no reason to try to resolve).
+
+  Verified end-to-end live, not just via unit tests: both real URLs
+  against the real, unmodified local app (before: `unsupported_platform`
+  for both) and after (real video, real jurisdiction/date, real agenda
+  chapters, real transcript) — then in-browser for both, including
+  clicking a real agenda-item chapter and confirming the video actually
+  seeks (Minneapolis: 53:00 chapter → video jumped to 53:05, transcript
+  auto-scrolled to the matching real moment). 15 new tests
+  (`tests/test_lims.py`, `tests/test_slc.py`, plus two new
+  `detect_platform()` cases in `tests/test_base.py`), all mocking
+  `fetch_via_browser` rather than launching a real browser during the
+  suite. Full suite (226 tests) passing.
+
+  **Real, deliberately not fully resolved before shipping**: whether the
+  new `playwright install --with-deps chromium` build step actually
+  works on Render's plain `python` buildpack is unverified — Chromium
+  needs real system shared libraries ffprobe never did, and this session
+  has no real Render deploy access to test it. Documented prominently in
+  `render.yaml`'s own comment and flagged as a live BACKLOG.md item,
+  expecting a real possible failure the way the transcription worker's
+  own first two deploys hit real OOM crashes, not assumed to work on the
+  first try.
+
 - **[Done 2026-08-06] Legistar adapter** — confirmed and built: Legistar is
   purely a calendar/agenda wrapper, video always redirects via
   `Video.aspx?Mode=Granicus&ID1={id}&Mode2=Video` straight to Granicus.

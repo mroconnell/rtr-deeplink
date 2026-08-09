@@ -7,6 +7,49 @@ where relevant.
 
 ## UX polish
 
+- **Some transcripts show a raw `&gt;&gt;` encoding artifact instead of a
+  clean speaker-change marker.** Confirmed root cause 2026-08-09, not a
+  bug in this app's own escaping: YouTube's own raw auto-caption VTT
+  source contains the *literal* 8-character string `&gt;&gt;` as real
+  cue text (not an actual `>` character that we're mis-escaping) —
+  confirmed by downloading the raw VTT for a real video directly (69
+  cues out of one ~43-minute meeting had it, always at the start of a
+  new speaker's first cue, e.g. `&gt;&gt; Welcome everyone. Today is
+  March the 3rd...`). This app's rendering is doing the technically
+  correct, safe thing with that literal text (escaping the `&` for safe
+  HTML output, which is why it displays as `&gt;&gt;` rather than either
+  `>>` or a raw unescaped `&` that could be a real security problem) —
+  the ugliness is a display/polish gap, not a correctness or security
+  bug, and the fix must stay narrowly scoped to avoid becoming one:
+  broadly HTML-unescaping *all* transcript text would be a real risk if
+  a caption ever legitimately contains an ampersand or literal
+  angle-bracket-like text spoken aloud (e.g. someone reading a web
+  address or discussing HTML markup in a meeting) — that content must
+  reach the page as plain, inert text, not get a second, unintended
+  round of interpretation.
+  - **Recommended narrow fix**: in `app/utils/vtt_parser.py`'s
+    `parse_vtt()` (or a small new post-processing pass alongside
+    `dedupe_rollup_cues()`/`normalize_shouting_caption()`), detect
+    specifically the literal substring `&gt;&gt;` at the start of a cue
+    (this exact shape, not a general entity-decoding pass) and either
+    strip it or replace it with a real, safe-to-render Unicode marker
+    (e.g. `»`, U+00BB — not an HTML metacharacter, so it can't
+    round-trip into another escaping issue) — genuinely preserves the
+    source's own "new speaker" signal rather than discarding real
+    information, without broadening what gets decoded. Also worth
+    considering whether this is the moment to finally populate the
+    already-unused `speaker` field (`TranscriptSegment.speaker`,
+    currently always `None` — see the diarization entry in
+    `CLAUDE_BACKLOG.md`) with a generic, un-named "new speaker" boundary
+    marker instead of/alongside a text symbol, though that's a bigger
+    scope than the display fix alone needs.
+  - **Not yet checked**: whether this same literal-entity pattern shows
+    up in any non-YouTube source (Granicus/CivicClerk/Swagit/eScribe VTT
+    or SRT files) — only confirmed against a real YouTube auto-caption
+    file so far. If it turns out to be YouTube-specific, the fix could
+    live in `youtube.py`'s own caption-handling instead of the shared
+    `vtt_parser.py`; if it shows up elsewhere too, the shared parser is
+    the right place. Check before deciding where to put the fix.
 - **`/meetings` results would read more cleanly with a line break between
   the meeting title and its jurisdiction/date line.** Currently
   `archive/templates/meeting_list.html`'s `.calendar-candidate-main` runs
@@ -125,73 +168,54 @@ auditing it (2026-08-08) — two fixed since, one still open below:
 
 ## Platform coverage — open questions
 
-- **New platform found: Minneapolis's own "LIMS" (Legislative Information
-  Management System), `lims.minneapolismn.gov/MarkedAgenda/CI/{id}` —
-  genuinely richer source data than most platforms already supported, but
-  blocked by a real Cloudflare JS challenge, not just a missing header.
-  Confirmed 2026-08-09 to be the exact same blocker class as SLC's own
-  meeting-recap pages (see the consolidated entry below) — this is no
-  longer an isolated one-off, it's a real, recurring category.**
-  Confirmed live (2026-08-08) via
-  `https://lims.minneapolismn.gov/MarkedAgenda/CI/6133`. Doesn't match any
-  existing `detect_platform()` rule — a real new platform, not a variant
-  of one already handled.
-  - **What's there, and it's good**: the page's "Meeting Video" modal
-    loads `GET /MeetingYoutubeVideo/{id}` (same numeric id as the URL),
-    which returns clean structured JSON: a real YouTube URL
-    (`https://youtube.com/watch?v=YgAu_4xWvGU` for this sample) plus
-    `SerializedVideoTimestamps` — a nested category → item tree with real
-    **per-agenda-item start times in seconds** (e.g. `{"id": 144258,
-    "title": "Sidewalk repair and construction assessments",
-    "timeInSeconds": "298"}`). That's better agenda-timestamp data than
-    Legistar/CivicPlus/most-Granicus-cities give us today, where agenda
-    items mostly have no real per-item start time at all. Video itself
-    would delegate to `YouTubeAssetFinder` (same wrapper shape as
-    PrimeGov — see the item above about keeping the *original* LIMS URL
-    as `source_url` rather than the delegated YouTube one).
-  - **The real blocker**: confirmed both the page itself and that JSON
-    endpoint return a genuine Cloudflare "Just a moment…" JS challenge
-    (403) to a plain `curl`/aiohttp-style request — realistic
-    User-Agent/headers alone don't get through, unlike Granicus's
-    simpler 403 (a plain missing-Referer check, already worked around).
-    A real JS-executing browser (tested via this session's own Browser
-    tool) passes it fine. Every adapter in this repo today is a plain
-    `aiohttp.ClientSession.get()` — none needs a JS-capable fetch.
-    Building this adapter for real would mean either adding a
-    headless-browser dependency (Playwright, etc. — a genuinely new kind
-    of dependency for this repo, more invasive than yt-dlp's "under
-    active maintenance" caveat since it needs a real browser binary, not
-    just a Python package) or some other Cloudflare-bypass approach —
-    worth deciding deliberately before building, not a default "just add
-    the parsing code" case like most new-platform work has been so far.
-    **Confirmed 2026-08-09: deliberately delayed, marked as major work,
-    not a quick pickup** — a headless-browser dependency is a real
-    architecture decision (new system-level dependency, not just a
-    Python package), not something to default into alongside routine
-    platform-adapter work.
-  - **Also confirmed 2026-08-09: client-side fetch (from a real visitor's
-    own browser, which already passes Cloudflare fine) is blocked by
-    CORS** — `fetch('https://lims.minneapolismn.gov/...', {mode: 'cors'})`
-    from a different origin fails outright, since the site sets no
-    `Access-Control-Allow-Origin` header. Rules out a "scrape client-side
-    instead of server-side" shortcut as a way to avoid the headless-
-    browser decision above.
-  - **Also confirmed 2026-08-09: iframing the real page (from a real
-    visitor's browser, in a test harness on a different origin) renders
-    blank** — unlike SLC (see below), whose page renders fully inside a
-    cross-origin iframe. Either `X-Frame-Options`/`frame-ancestors`, or
-    Cloudflare's own challenge refusing to complete inside an iframe
-    context specifically (both plausible, not yet distinguished). Net
-    effect either way: **the "iframe the government's own site" fallback
-    (see the consolidated entry below) does not work for Minneapolis —
-    this platform has no viable near-term workaround, full stop, until
-    the headless-browser decision is actually made.**
-  - Not yet checked: whether "LIMS" is a white-labeled product used by
-    other cities under different domains (would matter for whether a
-    general detection rule is worth building at all, vs. this being a
+- **Headless-browser adapters (Minneapolis LIMS, SLC meeting recaps) —
+  built and shipped 2026-08-09, see BACKLOG_DONE.md for the full build.
+  Real, still-open follow-ups:**
+  - **Not yet checked: whether "LIMS" is a white-labeled product used by
+    other cities under different domains** (would matter for whether a
+    general detection rule is worth building, vs. this staying a
     Minneapolis-specific one-off) — no search attempted yet, per this
     repo's own convention of building from real found examples rather
     than speculation.
+  - **SLC's `_nearest_topic_text()` silently drops one real item per
+    page it's been checked against** — a page's single "highlight" story
+    (e.g. "Fraud Risk Assessment for Salt Lake City" on the March 3,
+    2026 page) uses a different HTML shape (a "Learn More" / "Watch the
+    Briefing" promo box, topic text as a preceding heading rather than in
+    the same paragraph as the link) than the plain "{topic}. (Watch)"
+    pattern the other items use — confirmed live, that item's timestamp
+    (`t=2455`) never becomes an `agenda_items` entry. Safe failure mode
+    (silently skipped, not garbage text) but a real, known gap — fixing
+    it would need walking up to a preceding heading when the same-
+    container text comes back empty, deliberately not attempted yet
+    given the risk of a fragile heuristic picking up the wrong heading on
+    a page shaped differently again.
+  - **Real Render deployment of the new `playwright install --with-deps
+    chromium` build step is genuinely unverified** — see `render.yaml`'s
+    own comment and `headless_browser.py`'s docstring. Chromium needs
+    real system-level shared libraries Render's plain `python` buildpack
+    has never been confirmed to have (a much bigger ask than ffprobe's
+    single binary, which *did* turn out to already be present). May need
+    `runtime: docker` instead if `--with-deps` can't install what it
+    needs in Render's build environment. Needs a real deploy attempt,
+    expecting a real possible failure the way the worker's own first two
+    deploys hit real OOM crashes — not assumed to work on the first try.
+  - **Headless-browser fetches are real, meaningfully slower than every
+    other adapter here** — a real resolve for LIMS needs *two* sequential
+    fetches (agenda page for title/date, JSON endpoint for video/
+    timestamps), each with its own page-load + Cloudflare-challenge wait.
+    No caching or performance work done yet; worth watching real-world
+    resolve latency for these two platforms once deployed, not assumed
+    fine because it worked acceptably in manual live-testing.
+  - **Given Tier 1 (direct video embed via a real headless browser) now
+    confirmed working for both real Cloudflare-gated cases found so
+    far, the Tier 2 (iframe the government's own page) / Tier 3
+    (explanatory fallback message) design questions raised alongside
+    this work are lower priority than they looked before this was
+    built** — not deleted, since a future Cloudflare-gated platform
+    could in principle resist even a realistic-UA headless fetch (untested
+    against a third real case), just no longer the default assumption
+    for "what happens when we hit Cloudflare next."
 - **TTML/DFXP/ITT caption parsing (`app/utils/vtt_parser.py`'s
   `parse_ttml()`) is spec-verified only, not sample-verified.** Built
   against the W3C TTML spec's documented shape after the CivicClerk SRT
@@ -288,103 +312,6 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   whether the manual-vs-auto-generated track coverage gap seen on the one
   real LA sample (see [BACKLOG_DONE.md](BACKLOG_DONE.md)) is typical or
   specific to that video.
-
-- **⚠️ Corrected 2026-08-09, real finding that overturns the original
-  premise below: SLC's meeting recap pages do NOT embed multiple
-  distinct videos — confirmed across four real pages (May 5, June 2,
-  March 3, July 21, 2026), every single one has exactly ONE video, with
-  several manually-curated `t=`-timestamp links into that one video for
-  different agenda topics.** E.g. March 3, 2026
-  (`slc.gov/council/march-3-2026-meeting-recap/`) has 5 "(Watch)" links,
-  all pointing at `youtube.com/live/IxqEGR5x_1M`, just with different
-  `t=` values (1086, 1441, 1451, 2455, 3034 seconds) — not 5 different
-  videos. This isn't a "which of several videos do you want" picker
-  problem at all; it's a **"the city already hand-curated real topic ↔
-  timestamp chapter markers into one video, and this app has no way to
-  surface them"** problem — a much smaller, more valuable, and more
-  directly buildable gap than the original multi-video-picker framing
-  assumed. (The `calendar_page` pick-list decisions below are now
-  superseded by this correction — kept for the record, not because
-  they're still the plan.)
-
-  **Also discovered while checking this live: SLC's own site is behind
-  the exact same Cloudflare "Just a moment…" JS challenge as Minneapolis
-  LIMS above** — confirmed via a direct `curl` 403 to
-  `slc.gov/council/march-3-2026-meeting-recap/`. This is no longer two
-  unrelated platform gaps; it's one real, recurring blocker class hitting
-  at least two independent real cities, with a shared underlying shape
-  once past it (one real video + real topic-labeled timestamps → this
-  app's existing `agenda_items`).
-
-  **Confirmed live: the underlying YouTube video has real, usable
-  captions** — `IxqEGR5x_1M` has real English auto-generated captions
-  (1142 segments), so a real SLC adapter would delegate to
-  `YouTubeAssetFinder` for video+captions (same wrapper shape as
-  PrimeGov/Legistar) and only need to additionally parse the recap
-  page's own "(Watch)" links into `agenda_items` — captions aren't a
-  separate problem to solve.
-
-  **Built and verified a full working mockup 2026-08-09** (not shipped —
-  a temporary, unregistered `AssetFinder` in a scratch script, no repo
-  files touched) using the real March 3, 2026 data end-to-end through
-  the actual, unmodified `app/templates/meeting.html`/`player.js`: real
-  video (via real `YouTubeAssetFinder` delegation, real captions
-  included), real jurisdiction/date, the 5 real topics rendered through
-  the existing `agenda_items` chapter-list UI, and real deep-linking
-  confirmed by clicking a chapter and watching the video actually seek
-  (18:06 → video jumped to 18:12, "Share video at 18:12" updated
-  correctly). **Proves the existing UI needs zero frontend changes** for
-  this pattern — it was already built for other platforms' agenda
-  markers. The only real remaining work, once Cloudflare access is
-  solved: the parsing logic itself (extract topic+timestamp pairs from
-  the reachable page into `agenda_items`), which is genuinely blocked on
-  the same headless-browser decision as Minneapolis LIMS, not a separate
-  problem.
-
-  **Real fallback-strategy findings, tested empirically 2026-08-09** (the
-  user's own proposed three-tier ladder — embed the video directly, else
-  iframe the government's own page, else a clear explanatory message —
-  checked against both real cases rather than assumed):
-  - **Tier 1 (embed the real video directly): blocked for both SLC and
-    Minneapolis**, and there's no shortcut around the headless-browser
-    decision for either. Confirmed client-side `fetch()` (from a real
-    visitor's own browser, which passes Cloudflare fine) is blocked by
-    CORS on both sites — ruling out "scrape client-side instead of
-    server-side" as a way to dodge the headless-browser question.
-  - **Tier 2 (iframe the government's own live page): works for SLC,
-    confirmed by actually loading it in a cross-origin iframe — real
-    page content rendered fully, no `X-Frame-Options` blocking.**
-    **Does not work for Minneapolis LIMS** — confirmed blank in the same
-    test, despite the site loading fine at the top level (see the
-    Minneapolis entry above for detail). This is a genuine, real
-    difference between the two cases, not a shared fate: **SLC has a
-    real near-term path that doesn't require the deferred
-    headless-browser investment at all — Minneapolis does not.**
-  - **Tier 3 (clear explanatory fallback message, e.g. "this city
-    doesn't let us embed video here, but you can still use this page's
-    other tools — go back to the source to watch/share the real
-    video"): always available, no blockers, for any platform where 1
-    and 2 both fail.**
-  - **Not yet decided or built**: whether to actually build the Tier-2
-    iframe fallback (as a real feature — which would need its own
-    design: how does an adapter signal "I found the source but can't
-    embed the video, iframe the page instead"? does the existing
-    `video_warnings`/`ResolvedMeeting` shape need a new field for this,
-    or a new `video_format` value like `"iframe_fallback"`? what does
-    losing `t=`/`line=` deep-linking mean for a page reached this way,
-    given the whole point of this app is deep-linking?), and whether
-    Tier 3's message is worth writing now even without Tier 2, given
-    Minneapolis specifically has no path but Tier 3 today. Both are real
-    next decisions, not yet made.
-
-  ~~**Decided 2026-08-08, three real decisions, not built yet:**~~
-  (superseded by the correction above — the premise these were built on,
-  "SLC pages have multiple distinct videos," turned out not to hold on
-  real inspection)
-  - ~~Reuse the existing `calendar_page` shape~~
-  - ~~Start with detection scoped narrowly to known platforms only~~
-  - ~~The narrow start effectively defers the picker-vs-escape-hatch
-    question~~
 
 ## Archive roadmap
 

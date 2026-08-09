@@ -15,7 +15,9 @@ def register_all_finders() -> None:
     from .escribe import EscribeAssetFinder
     from .granicus import GranicusAssetFinder
     from .legistar import LegistarAssetFinder
+    from .lims import LimsAssetFinder
     from .primegov import PrimeGovAssetFinder
+    from .slc import SlcAssetFinder
     from .swagit import SwagitAssetFinder
     from .viebit import ViebitAssetFinder
     from .youtube import YouTubeAssetFinder
@@ -30,3 +32,5 @@ def register_all_finders() -> None:
     register(YouTubeAssetFinder())
     register(PrimeGovAssetFinder())
     register(ViebitAssetFinder())
+    register(LimsAssetFinder())
+    register(SlcAssetFinder())

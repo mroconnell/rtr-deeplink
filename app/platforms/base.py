@@ -97,6 +97,24 @@ def detect_platform(url: str) -> str:
         # whether any city links to Viebit directly rather than through a
         # Legistar wrapper.
         return "viebit"
+    if "lims.minneapolismn.gov" in netloc:
+        # Minneapolis's own "Legislative Information Management System" --
+        # confirmed live 2026-08-09 to need a real headless-browser fetch
+        # (see headless_browser.py), not the plain aiohttp GET every other
+        # adapter here uses. Not yet confirmed whether "LIMS" is a white-
+        # labeled product other cities use under different domains -- see
+        # BACKLOG.md.
+        return "lims"
+    if netloc.endswith("slc.gov") and "-meeting-recap" in path:
+        # Salt Lake City's own council meeting-recap pages -- confirmed
+        # live 2026-08-09 to also need a real headless-browser fetch (same
+        # Cloudflare-challenge blocker as Minneapolis LIMS above, a real
+        # recurring platform-coverage gap, not two unrelated ones -- see
+        # BACKLOG.md). Scoped to the specific "-meeting-recap" path
+        # pattern confirmed across four real pages, not the whole
+        # slc.gov domain, since most of that site is ordinary city-
+        # government content this app has no reason to try to resolve.
+        return "slc"
     return "unknown"
 
 

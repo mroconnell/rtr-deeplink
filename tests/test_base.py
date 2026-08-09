@@ -24,6 +24,14 @@ from app.platforms.base import (
         ("https://senate.ca.gov/media/2026", "ca_legislature"),
         ("https://www.youtube.com/watch?v=abc123", "youtube"),
         ("https://youtu.be/abc123", "youtube"),
+        ("https://lims.minneapolismn.gov/MarkedAgenda/CI/6133", "lims"),
+        ("https://www.slc.gov/council/march-3-2026-meeting-recap/", "slc"),
+        ("https://slc.gov/council/may-5-2026-meeting-recap/", "slc"),
+        # slc.gov's own non-recap pages are ordinary city-government
+        # content this app has no reason to try to resolve -- confirmed
+        # scoped to the "-meeting-recap" path pattern only, not the whole
+        # domain.
+        ("https://www.slc.gov/council/agendas/", "unknown"),
         ("https://example.com/some/random/page", "unknown"),
     ],
 )

@@ -3,7 +3,25 @@ services:
     name: rtr-deeplink
     runtime: python
     plan: free
-    buildCommand: pip install -r requirements.txt
+    # `playwright install --with-deps chromium` is a real, unverified
+    # deployment risk, not a routine addition -- see headless_browser.py's
+    # own docstring and BACKLOG.md for the full context (Minneapolis
+    # LIMS/SLC's Cloudflare-gated pages, confirmed live 2026-08-09 to need
+    # a real headless Chromium fetch). ffprobe turned out to already be on
+    # Render's plain python buildpack (see the comment below) -- that was
+    # a pleasant surprise, not a guarantee this will be too. Chromium
+    # needs real shared-library system dependencies (libnss3,
+    # libatk-bridge2.0-0, libgtk-3-0, and more), a much bigger ask than
+    # ffprobe's single binary -- `--with-deps` attempts to apt-get install
+    # those automatically, which needs the build step to have the
+    # necessary permissions in Render's build environment; genuinely
+    # unconfirmed whether that works here, and `runtime: docker` (like
+    # worker/'s own Dockerfile) may turn out to be required instead if it
+    # doesn't. Needs a real Render deploy to actually verify -- do that
+    # deliberately, expecting a real possible failure the way the
+    # worker's own first two real deploys hit real OOM crashes (see
+    # BACKLOG_DONE.md), not assuming this works on the first try.
+    buildCommand: pip install -r requirements.txt && playwright install --with-deps chromium
     # --proxy-headers --forwarded-allow-ips='*' makes uvicorn trust Render's
     # X-Forwarded-For so request.client.host (and therefore per-IP rate
     # limiting on /api/resolve, see app/main.py) reflects the real caller
