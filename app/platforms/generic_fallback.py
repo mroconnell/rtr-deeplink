@@ -15,25 +15,24 @@ _YOUTUBE_EMBED_RE = re.compile(r"(?:youtube\.com/(?:embed/|watch\?v=)|youtu\.be/
 _AGENDA_TEXT_RE = re.compile(r"agenda", re.IGNORECASE)
 
 _BEST_EFFORT_VIDEO_WARNING = (
-    "We don't officially support this website yet, but found a video on the page and did our "
-    "best. Deep-linking to a specific moment may not work as reliably as it does on a supported "
-    "platform — you can still try the \"Go to time\" / \"Share video at\" tools below, but if it "
-    "doesn't land exactly right, going back to the original source is the more reliable way to "
-    "watch or share this meeting."
+    "This city isn't officially supported yet, so we're trying our best — we think we found the "
+    "video below. Deep-linking to a specific moment might work here, or it might not — feel free "
+    "to try the \"Go to time\" / \"Share video at\" tools, but if a link doesn't land right, going "
+    "back to the original source is the safer bet."
 )
 _NO_VIDEO_FOUND_WARNING = (
-    "We don't officially support this website yet, and couldn't automatically find a video on "
-    "this page. You can still try to request a transcript from the audio, or view the original "
-    "source directly."
+    "This city isn't officially supported yet, so we're trying our best — but we couldn't find a "
+    "video on this page automatically. You can try to request a transcript from the audio, or go "
+    "straight to the original source."
 )
 _NO_TRANSCRIPT_WARNING = (
-    "No transcript was found automatically for this unsupported platform — you can request a "
-    "transcript from the audio instead."
+    "We didn't automatically find a transcript here — this city isn't officially supported yet — "
+    "but you can try to request one from the audio instead."
 )
 
 
 def _agenda_link_message(agenda_link: str) -> str:
-    return f"We also found what looks like a link to the agenda on this page: {agenda_link}"
+    return f"We think we also found a link to the agenda on this page: {agenda_link}"
 
 
 class GenericFallbackAssetFinder(AssetFinder):

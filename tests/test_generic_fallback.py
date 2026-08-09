@@ -50,7 +50,7 @@ async def test_resolve_delegates_to_youtube_when_embed_found(monkeypatch):
 
     assert result.platform == "youtube"  # delegated finder's own platform name, unchanged -- real dedup identity
     assert result.video_url == f"https://www.youtube.com/embed/{REAL_VIDEO_ID}"
-    assert any("don't officially support" in w for w in result.video_warnings)
+    assert any("isn't officially supported" in w for w in result.video_warnings)
 
 
 async def test_resolve_finds_direct_media_and_captions(monkeypatch):
@@ -67,7 +67,7 @@ async def test_resolve_finds_direct_media_and_captions(monkeypatch):
     assert result.video_format == "m3u8"
     assert len(result.segments) == 2
     assert result.segments[0].text == "Hello and welcome."
-    assert any("don't officially support" in w for w in result.video_warnings)
+    assert any("isn't officially supported" in w for w in result.video_warnings)
 
 
 async def test_resolve_returns_honest_no_video_message_when_nothing_found():
@@ -79,8 +79,8 @@ async def test_resolve_returns_honest_no_video_message_when_nothing_found():
     assert result.platform == "unknown"
     assert result.video_url is None
     assert result.segments == []
-    assert any("couldn't automatically find a video" in w for w in result.video_warnings)
-    assert any("No transcript was found" in w for w in result.transcript_warnings)
+    assert any("couldn't find a video on this page automatically" in w for w in result.video_warnings)
+    assert any("didn't automatically find a transcript" in w for w in result.transcript_warnings)
 
 
 async def test_resolve_handles_page_fetch_failure_cleanly():
@@ -106,7 +106,7 @@ async def test_resolve_finds_media_without_captions(monkeypatch):
     assert result.video_url == "https://cdn.example.gov/videos/meeting.mp4"
     assert result.video_format == "mp4"
     assert result.segments == []
-    assert any("No transcript was found" in w for w in result.transcript_warnings)
+    assert any("didn't automatically find a transcript" in w for w in result.transcript_warnings)
 
 
 async def test_resolve_surfaces_agenda_pdf_link_alongside_youtube_video(monkeypatch):

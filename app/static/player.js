@@ -955,9 +955,9 @@ async function init() {
     const hint = document.querySelector('#transcriptMissing .no-transcript-hint');
     if (hint && data.platform === 'unknown') {
       hint.textContent = 'No transcript to click through, but you can still link to any moment. ' +
-        'We’re tracking the playhead below — it updates as the video plays. Since this site ' +
-        'isn’t one we officially support yet, deep-linking to a specific moment may or may not ' +
-        'actually land there when someone opens the link — it’s still worth trying.';
+        'We’re tracking the playhead below — it updates as the video plays. Sometimes deep-linking ' +
+        'to a specific moment works on a site we don’t officially support yet, and sometimes it ' +
+        'doesn’t — still worth trying.';
     }
   }
 
