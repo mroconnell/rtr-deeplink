@@ -13,6 +13,7 @@ from app.platforms.base import (
     [
         ("https://sandiego.granicus.com/player/clip/123", "granicus"),
         ("https://maricopa.legistar.com/MeetingDetail.aspx?ID=1", "legistar"),
+        ("https://legistar.council.nyc.gov/Calendar.aspx", "legistar"),
         ("https://clovisca.portal.civicclerk.com/event/20/media", "civicclerk"),
         ("https://ca-westlakevillage.civicplus.com/AgendaCenter", "civicplus"),
         ("https://lacity.primegov.com/Portal/Meeting?id=1", "primegov"),

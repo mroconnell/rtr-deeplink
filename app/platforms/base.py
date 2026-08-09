@@ -56,6 +56,19 @@ def detect_platform(url: str) -> str:
         return "granicus"
     if "legistar.com" in netloc:
         return "legistar"
+    if "legistar.council.nyc.gov" in netloc:
+        # NYC Council runs Legistar on its own nyc.gov domain rather than
+        # *.legistar.com -- confirmed live 2026-08-08, real 87-row
+        # calendar page, same underlying Legistar software. Hardcoded
+        # rather than detecting by page structure since this is the only
+        # confirmed custom-domain Legistar instance so far -- see
+        # BACKLOG.md and the collect-edge-case-urls memory for why this
+        # isn't generalized from one example. NYC's video links use a
+        # Telerik JS modal (`onclick="OpenTelerikWindow(...)"`), not a
+        # plain href like every other Legistar city -- LegistarAssetFinder
+        # doesn't handle that yet, so detection alone doesn't make NYC's
+        # video fully resolvable (still open, see BACKLOG.md).
+        return "legistar"
     if "civicclerk.com" in netloc:
         return "civicclerk"
     if "civicplus.com" in netloc or "civicplus" in netloc:

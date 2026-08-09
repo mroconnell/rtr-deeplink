@@ -60,9 +60,19 @@ class YouTubeAssetFinder(AssetFinder):
     async def resolve_video_id(cls, video_id: str, source_url: str) -> ResolvedMeeting:
         """Shared entry point for both a direct YouTube URL and a
         delegating platform that already extracted the video id."""
-        info = await asyncio.to_thread(cls._extract_info, video_id)
+        try:
+            info = await asyncio.to_thread(cls._extract_info, video_id)
+        except yt_dlp.utils.DownloadError as e:
+            # ignoreerrors=False (see _extract_info) lets yt-dlp's real
+            # failure reason surface here -- previously every failure
+            # (network blip, an anti-bot block on our IP, yt-dlp needing
+            # an update, an actually-removed video) was swallowed into an
+            # identical, often-wrong "removed, private, or blocked"
+            # message. Confirmed live 2026-08-08 against a genuinely
+            # public video that message misreported -- see BACKLOG.md.
+            raise ValueError(f"YouTube video {video_id} could not be resolved: {e}") from e
         if not info:
-            raise ValueError(f"YouTube video {video_id} could not be resolved (removed, private, or blocked).")
+            raise ValueError(f"YouTube video {video_id} could not be resolved (no info returned by yt-dlp).")
 
         video_warnings: List[str] = []
         transcript_warnings: List[str] = []
@@ -128,7 +138,12 @@ class YouTubeAssetFinder(AssetFinder):
             "skip_download": True,
             "quiet": True,
             "no_warnings": True,
-            "ignoreerrors": True,
+            # False (not the original True) so a real failure raises a
+            # real yt_dlp.utils.DownloadError instead of silently
+            # returning None -- see resolve_video_id's try/except, and
+            # BACKLOG.md for why "always guess removed/private/blocked"
+            # was wrong.
+            "ignoreerrors": False,
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
