@@ -76,13 +76,32 @@
     </div>
 
     <nav class="pagination" aria-label="Pagination">
-      {% set qs = "q=%s&jurisdiction=%s&date_from=%s&date_to=%s&fuzzy=%s&has_agenda=%s&has_transcript=%s"|format(q, jurisdiction, date_from, date_to, fuzzy|string if fuzzy else "", has_agenda|string if has_agenda else "", has_transcript|string if has_transcript else "") %}
+      {#- Real bug fixed 2026-08-09: this used to always emit all seven
+         params, substituting "" for an unset one (e.g. "...&fuzzy=&
+         has_agenda=&has_transcript="). FastAPI's bool-typed query params
+         (fuzzy/has_agenda/has_transcript) reject an empty string outright
+         (422 bool_parsing) rather than treating it as "not provided" --
+         only an *omitted* param does that. String params were never
+         technically broken this way, but building the querystring by
+         omitting empty values entirely (rather than a raw %-format with
+         empty-string fallbacks) fixes both that and a related bug: an
+         unescaped q/jurisdiction/date value containing "&" or "#" would
+         have silently corrupted the pagination link's other params. #}
+      {% set qs_parts = [] %}
+      {% if q %}{% set _ = qs_parts.append("q=" + q|urlencode) %}{% endif %}
+      {% if jurisdiction %}{% set _ = qs_parts.append("jurisdiction=" + jurisdiction|urlencode) %}{% endif %}
+      {% if date_from %}{% set _ = qs_parts.append("date_from=" + date_from|urlencode) %}{% endif %}
+      {% if date_to %}{% set _ = qs_parts.append("date_to=" + date_to|urlencode) %}{% endif %}
+      {% if fuzzy %}{% set _ = qs_parts.append("fuzzy=true") %}{% endif %}
+      {% if has_agenda %}{% set _ = qs_parts.append("has_agenda=true") %}{% endif %}
+      {% if has_transcript %}{% set _ = qs_parts.append("has_transcript=true") %}{% endif %}
+      {% set qs = qs_parts|join("&") %}
       {% if page > 1 %}
-      <a href="/meetings?page={{ page - 1 }}&{{ qs }}">&larr; Previous</a>
+      <a href="/meetings?page={{ page - 1 }}{% if qs %}&{{ qs }}{% endif %}">&larr; Previous</a>
       {% endif %}
       <span class="pagination-status">Page {{ page }} of {{ total_pages }}</span>
       {% if page < total_pages %}
-      <a href="/meetings?page={{ page + 1 }}&{{ qs }}">Next &rarr;</a>
+      <a href="/meetings?page={{ page + 1 }}{% if qs %}&{{ qs }}{% endif %}">Next &rarr;</a>
       {% endif %}
     </nav>
     {% else %}

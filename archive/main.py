@@ -50,6 +50,17 @@ templates = Jinja2Templates(directory=APP_DIR / "templates")
 templates.env.globals["public_base_url"] = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
 
 
+def _parse_optional_bool(value: Optional[str]) -> Optional[bool]:
+    """Tolerant tri-state parse for a query param that means "unset" (None,
+    filter not applied) vs. explicitly true/false -- unlike fuzzy's plain
+    `== "true"` (which only ever needs true/false, never "unset"), a missing
+    has_agenda/has_transcript must stay None so crud.list_pages() doesn't
+    filter on it at all. Treats "" the same as missing, not as False."""
+    if not value:
+        return None
+    return value == "true"
+
+
 def _token_ok(authorization: Optional[str]) -> bool:
     expected = os.environ.get("ARCHIVE_INGEST_TOKEN", "")
     if not expected or not authorization or not authorization.startswith("Bearer "):
@@ -283,19 +294,30 @@ async def meetings_index(
     jurisdiction: Optional[str] = None,
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
-    fuzzy: bool = False,
-    has_agenda: Optional[bool] = None,
-    has_transcript: Optional[bool] = None,
+    # Real bug fixed 2026-08-09: these three used to be bool/Optional[bool],
+    # which FastAPI rejects with a 422 (bool_parsing) on an empty string --
+    # not just missing, an explicit "?fuzzy=" (present, empty value). A
+    # since-fixed template bug (meeting_list.html's pagination links) used
+    # to generate exactly that shape, and existing bookmarked/shared links
+    # built before that fix still have it -- accepting a plain string here
+    # and parsing it tolerantly means those old links keep working instead
+    # of 404ing/500ing forever.
+    fuzzy: Optional[str] = None,
+    has_agenda: Optional[str] = None,
+    has_transcript: Optional[str] = None,
 ):
+    fuzzy_bool = fuzzy == "true"
+    has_agenda_bool = _parse_optional_bool(has_agenda)
+    has_transcript_bool = _parse_optional_bool(has_transcript)
     result = await crud.list_pages(
         page=page,
         jurisdiction=jurisdiction,
         date_from=date_from,
         date_to=date_to,
-        has_agenda=has_agenda,
-        has_transcript=has_transcript,
+        has_agenda=has_agenda_bool,
+        has_transcript=has_transcript_bool,
         keyword=q,
-        fuzzy=fuzzy,
+        fuzzy=fuzzy_bool,
     )
     return templates.TemplateResponse(
         request,
@@ -306,9 +328,9 @@ async def meetings_index(
             "jurisdiction": jurisdiction or "",
             "date_from": date_from or "",
             "date_to": date_to or "",
-            "fuzzy": fuzzy,
-            "has_agenda": has_agenda,
-            "has_transcript": has_transcript,
+            "fuzzy": fuzzy_bool,
+            "has_agenda": has_agenda_bool,
+            "has_transcript": has_transcript_bool,
         },
     )
 
