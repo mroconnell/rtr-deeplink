@@ -138,6 +138,101 @@ Every interaction that produces a link (clicking a timestamp, the per-line
 link icon, "Copy link to current time", the manual "Go to time" box) goes
 through the same `updateUrlParams()` helper, so all four stay consistent.
 
+## Database architecture, in plain English
+
+Skip this if you're already comfortable with SQLAlchemy/Alembic — it's
+here because it's easy to lose track of which database is which, and what
+actually happens when a new table or column shows up, once there are two
+separate apps each with their own database plus a migration tool layered
+on top of one of them.
+
+**There are two separate databases, one per app, and they don't talk to
+each other directly:**
+
+- **`app/db/`** — the resolver's own database. Two tables:
+  `meeting_resolutions` (a log of every URL anyone's ever tried to
+  resolve, success or failure — powers the cache and the `/admin/stats`
+  reporting) and `problem_reports` (the "something's wrong with this
+  meeting" form submissions). See "Caching and reporting" below.
+- **`archive/db/`** — the Archive's own database, holding the actual
+  permanent-page content. Four tables: `meeting_pages` (one row per
+  permanent `/m/{slug}` page), `transcript_versions` (a page can have
+  several — original scrape, a self-transcribed replacement, etc.),
+  `transcription_jobs` (the on-demand-transcription queue, see below),
+  and `meeting_page_url_aliases` (every URL that's ever successfully
+  matched to a page, so a repeat paste of a Legistar link finds the same
+  page even though its real identity lives on Granicus). See "Permanent
+  pages" below.
+- **`worker/`** (the background transcription service) doesn't have its
+  own database at all — it reaches directly into the Archive's database
+  using the same models as `archive/db/`, since it's really just Archive
+  logic that needs a long-running process instead of a web request.
+
+**How a table gets created in the first place: `create_all()`, no
+migration needed.** Every app startup calls `Base.metadata.create_all()`
+(`app/db/engine.py`'s and `archive/db/engine.py`'s `init_models()`), which
+looks at every model class defined in `models.py` and runs `CREATE TABLE
+IF NOT EXISTS` for each one. So adding a brand-new table is genuinely
+zero-friction: write the class, deploy, and the table just appears in
+production the next time the service restarts. `ProblemReport` and
+`TranscriptionJob` both shipped this way.
+
+**Where that stops working: changing a table that already has real rows
+in it.** `create_all()` only ever adds tables it doesn't see yet — it has
+no idea how to add a column to a table that already exists, so if you add
+a field to an existing model and just redeploy, nothing happens to
+production at all; the app will start throwing "column does not exist"
+errors the moment it tries to use that field. This actually happened
+twice in this project's life (a materialized search column, then a
+`priority` column on `transcription_jobs`) before Alembic was adopted for
+exactly this reason.
+
+**What Alembic actually does, without the jargon:**
+- A **migration** is a small Python file that says how to change the
+  schema one step at a time — "add this column," "rename that table" —
+  each with matching instructions to undo itself. They're generated
+  automatically (`alembic revision --autogenerate`) by diffing the real
+  models against whatever the database currently looks like, though
+  autogenerate is a first draft, not gospel — always read the file before
+  committing it.
+- Migrations chain together in a straight line, oldest to newest, like a
+  numbered list. The most recent one is called **`head`**.
+- The database keeps exactly one row, in a table Alembic manages itself
+  (`alembic_version`), recording which migration it's currently at. That
+  one row is Alembic's *entire* memory of what's already been applied —
+  it never inspects the actual table structure to guess.
+- **`alembic upgrade head`** is the "do the work" command: it looks at
+  that one row, then actually runs every migration between there and the
+  latest one — real `ALTER TABLE` statements against the real database.
+- **`alembic stamp <revision>`** is the "just update the bookkeeping"
+  command: it overwrites that one row directly and runs *no* SQL at all.
+  This only exists for bootstrapping — telling Alembic "trust me, this
+  database already matches this point in the history" for a database that
+  had tables before Alembic was ever introduced (which was every table in
+  this project, since they all started life via `create_all()`).
+
+**The real incident this caused (2026-08-09), as a concrete example:**
+production had four tables, all created by `create_all()`, with real rows
+in them, and had never been stamped at all. The plan was `alembic stamp
+head` as a one-time step to say "you're already caught up, nothing to
+run." That was true for about twenty minutes — right up until a second
+migration (the `priority` column) was added to the history afterward.
+"`head`" isn't a fixed point, it's *whichever migration is newest right
+now* — so running `stamp head` after that second migration existed
+incorrectly told production "you already have the priority column" when
+it didn't, and the deployed app immediately started failing every query
+with `column transcription_jobs.priority does not exist`. The fix was to
+stamp the *specific* baseline revision id instead of the word `head`
+(`alembic stamp a8dc5aad7eff`), then actually run the real migration on
+top of that (`alembic upgrade head`) — see `archive/alembic/README.md`
+for the exact recovery sequence, and `BACKLOG_DONE.md` for how this was
+confirmed fixed.
+
+One more practical note: Alembic's config lives entirely under
+`archive/` (`archive/alembic.ini`, `archive/alembic/`), so every `alembic`
+command has to be run from inside that directory — running it from the
+repo root fails with `No 'script_location' key found in configuration`.
+
 ## Caching and reporting
 
 Re-scraping a government site every single time someone revisits the same
