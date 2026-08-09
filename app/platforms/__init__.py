@@ -13,6 +13,7 @@ def register_all_finders() -> None:
     from .civicclerk import CivicClerkAssetFinder
     from .civicplus import CivicPlusAssetFinder
     from .escribe import EscribeAssetFinder
+    from .generic_fallback import GenericFallbackAssetFinder
     from .granicus import GranicusAssetFinder
     from .legistar import LegistarAssetFinder
     from .lims import LimsAssetFinder
@@ -34,3 +35,8 @@ def register_all_finders() -> None:
     register(ViebitAssetFinder())
     register(LimsAssetFinder())
     register(SlcAssetFinder())
+    # Registered under "unknown" -- the exact string detect_platform()
+    # already returns for anything unmatched -- so get_finder("unknown")
+    # finds this instead of raising UnsupportedPlatformError. Keep this
+    # registration last: it's the true fallback, not a real platform.
+    register(GenericFallbackAssetFinder())

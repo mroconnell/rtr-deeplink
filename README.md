@@ -508,6 +508,21 @@ platform share the same page/API structure. Detection lives in
 | Minneapolis LIMS | `lims.py` | **The one adapter that isn't plain `aiohttp`** — both the agenda page and its `/MeetingYoutubeVideo/{id}` JSON endpoint return a genuine Cloudflare JS challenge to a normal HTTP request, so this uses `headless_browser.py`'s real (headless) Chromium fetch instead. Delegates to YouTube for the video itself | Whatever YouTube provides, via delegation. Real per-agenda-item timestamps from the JSON endpoint's `SerializedVideoTimestamps` tree — genuinely richer than most platforms above, since most don't have real per-item start times at all |
 | Salt Lake City meeting recaps | `slc.py` | Also Cloudflare-gated (same `headless_browser.py` fetch as LIMS above) — scoped to `slc.gov/council/*-meeting-recap/` pages specifically. **Not multiple distinct videos per page** (confirmed live across four real pages, see BACKLOG_DONE.md) — one video, several manually-curated `t=` timestamp links into it, turned into `agenda_items` the same way LIMS's structured data is | Whatever YouTube provides, via delegation |
 
+**Every URL `detect_platform()` doesn't recognize** goes to
+`generic_fallback.py`'s `GenericFallbackAssetFinder`, registered under
+`platform_name = "unknown"` — a real, honest best-effort attempt instead
+of an immediate "we don't support this yet": a plain fetch (not the
+headless-browser path above, reserved for known Cloudflare-gated
+platforms), looking for an embedded/linked YouTube video first
+(delegates to `YouTubeAssetFinder` for real video + captions when
+found), then falling back to `media_scan.py`'s generic `.m3u8`/`.mp4`
+scanner (the same one Granicus/Swagit use) plus any caption-shaped URL
+found alongside it. No agenda-item detection — there's no reliable
+generic pattern the way there is for media URLs, so items are just
+absent rather than guessed badly. Every outcome (found nothing / found a
+video / found a video and a transcript) gets an honest, specific message
+rather than a flat error.
+
 **Not implemented**: BoardDocs (deliberately excluded — it's a
 document/agenda platform with no reliable video, not worth an adapter).
 

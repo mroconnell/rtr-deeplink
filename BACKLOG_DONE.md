@@ -700,6 +700,61 @@ changelog of task titles.
 
 ## Platform coverage
 
+- **[Done 2026-08-09] Built a generic "try our best" fallback for any
+  URL `detect_platform()` doesn't recognize**, directly from the user's
+  own request and mockup layout: today, pasting an unsupported city's
+  URL got a flat `unsupported_platform` error with zero attempt made,
+  every time. `app/platforms/generic_fallback.py`'s
+  `GenericFallbackAssetFinder` is registered under `platform_name =
+  "unknown"` — the exact string `detect_platform()` already returns for
+  anything unmatched — so `get_finder("unknown")` now finds this instead
+  of raising, with no changes needed anywhere else in the dispatch path.
+
+  Reuses existing infrastructure almost entirely rather than building new
+  parsing from scratch: a plain (non-headless-browser — that's reserved
+  for known Cloudflare-gated platforms specifically) fetch, checked first
+  for an embedded/linked YouTube video (a huge share of small-city sites
+  just embed a YouTube video with no dedicated platform at all) —
+  delegates to `YouTubeAssetFinder` for real video + real captions when
+  found, the best possible outcome here. Falls back to `media_scan.py`'s
+  existing generic `.m3u8`/`.mp4` scanner (the same one Granicus/Swagit
+  already use, not reimplemented) plus any caption-shaped URL found in
+  the same scan, parsed via the same `parse_captions_by_extension()`
+  dispatch every real adapter goes through. Deliberately does **not**
+  attempt agenda-item detection — every other adapter's agenda parsing is
+  tied to that platform's own known page structure, and there's no
+  reliable generic pattern to reuse the way there is for media URLs;
+  guessing badly would be worse than agenda items just being absent
+  (which the existing UI already handles fine everywhere it's optional).
+
+  **Zero frontend changes needed** — `initVideo()` already handles any
+  `video_url`/`video_format` combo generically, and the no-transcript
+  live-playhead deep-link tracker (built earlier, see this same file)
+  already covers "no transcript, but you can still link to a moment" for
+  any video, not just ones from a known platform. Every outcome (nothing
+  found / video found / video + transcript found) gets an honest,
+  specific warning message instead of a flat error, matching the user's
+  own requested copy fairly closely.
+
+  Verified end-to-end through the real, unmodified running app (not just
+  fixture tests) using a local test page standing in for a genuinely
+  unrecognized small-city site with an embedded YouTube iframe — resolved
+  correctly via real YouTube delegation with real auto-generated
+  captions, rendered with the honest "we don't officially support this
+  website yet, but found a video and did our best" message directly under
+  the video, and the deep-link/live-playhead tools worked identically to
+  every other platform. 5 new fixture-backed tests
+  (`tests/test_generic_fallback.py`) covering the YouTube-embed path,
+  direct-media-plus-captions path, no-video-found path, and a page fetch
+  failure. Full suite (235 tests) passing.
+
+  **Real architecture note, deliberate**: this makes the
+  `unsupported_platform` error branch in `app/main.py`'s `/api/resolve`
+  (and its matching outcome bucket in `app/db/outcomes.py`) effectively
+  unreachable going forward — every URL now resolves to *something*.
+  Left in place rather than removed, a conservative choice: `get_finder()`
+  could still raise for a genuinely different reason later.
+
 - **[Done 2026-08-09] Two new platforms shipped — Minneapolis LIMS and
   Salt Lake City's council meeting-recap pages — both previously
   completely unsupported, both needing this repo's first genuinely new
