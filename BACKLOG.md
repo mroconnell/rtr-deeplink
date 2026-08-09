@@ -31,16 +31,40 @@ where relevant.
     "Oklahoma City, OK".
   Only affects PrimeGov pages that actually have video (the common case
   per the item above) — agenda-only PrimeGov pages never hit
-  `YouTubeAssetFinder` at all. Not yet fixed: `PrimeGovAssetFinder`
-  would need to parse the page's own embedded meeting-date text (real,
-  present, confirmed above) and pass it through as an override to
-  whatever `resolve_video_id()` returns, rather than trusting YouTube's
-  upload date/uploader wholesale — same "delegate video, keep the
-  wrapper's own better metadata" shape as the `source_url` fix already
-  built for this same function, just for `date`/`jurisdiction` instead.
-  Worth checking on a couple more real PrimeGov-with-video samples before
-  building, to see how consistently the page's own embedded date text is
-  actually present/parseable across cities.
+  `YouTubeAssetFinder` at all.
+
+  **Tried building the "parse the page's own embedded date" fix
+  2026-08-09, per the note above to check a second sample first — glad
+  it was checked, since the second sample actively disproved it, not
+  just failed to confirm it.** Found a real, consistent embedded-date
+  signal on *both* OKC and a second sample, Thousand Oaks
+  (`https://toaks.primegov.com/Portal/Meeting?meetingTemplateId=9446`):
+  a nested agenda-document `<title>...- M/D/YYYY H:MM:SS AM/PM</title>`,
+  distinct from the outer page's own generic `<title>Meeting</title>`
+  (OKC: `"City Council - 8/4/2026 1:30:00 PM"`; Thousand Oaks:
+  `"Thousand Oaks City Council Regular Meeting (Closed Session) -
+  7/8/2026 12:00:00 AM"`). Built and initially verified against OKC
+  (correctly produced `2026-08-04`, matching the video's own title,
+  the page body text, and the docket title all agreeing) — but checking
+  the *second* sample as planned caught a real problem before shipping:
+  Thousand Oaks's embedded title gives **July 8**, while the video's own
+  title says **"...Meeting - July 7, 2026"**. Cross-checked against
+  yt-dlp's real `upload_date` for that video (`20260708`) — the embedded
+  "July 8" exactly matches the *upload* date, not the real meeting date,
+  meaning this specific page's embedded agenda document (labeled
+  "Closed Session") is dated by when *it* was processed/logged, not
+  necessarily the same date as the open session actually captured on
+  video. Building this fix would have silently replaced one
+  upload-lag-shaped bug with another, harder-to-notice one (both
+  produce a plausible, only-one-day-off wrong date) rather than
+  actually fixing it. **Reverted, not shipped** — the "page's own
+  embedded date is more reliable than YouTube's" premise doesn't hold
+  up as a general rule; a third real sample, or a way to independently
+  corroborate the embedded date against the video's own title text
+  before trusting it, would be needed before trying again.
+  `jurisdiction` remains unfixed too — the embedded title only
+  reliably includes a city name on some cities (Thousand Oaks yes, OKC
+  no), so there's nothing consistent to extract there either.
 ## Deep links
 
 The `t`/`line` scheme itself is sound and hasn't changed since the initial
