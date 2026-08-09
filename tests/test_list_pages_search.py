@@ -63,7 +63,31 @@ async def test_search_finds_keyword_in_demoted_non_default_version():
         assert old_version.is_default is False
 
     result = await crud.list_pages(keyword="zzyzxquokka", page_size=50)
-    assert any(p["slug"] == page.slug for p in result["pages"])
+    row = next(p for p in result["pages"] if p["slug"] == page.slug)
+
+    # Real bug fixed 2026-08-08: the page is still found (matching runs
+    # across every version, demoted or not), but the search-result
+    # *snippet* must never surface the demoted version's stale text --
+    # a viewer clicking through would never actually see it, since the
+    # page itself only ever renders the current default version.
+    assert row["snippet"] is None
+
+
+async def test_search_snippet_comes_from_the_current_default_version():
+    url = "https://example.granicus.com/player/clip/search-snippet-default"
+    await crud.ingest_resolution(
+        _payload(
+            "granicus:search-snippet-default", url,
+            segments=[{"start": 0, "end": 1, "text": "a real quokka sighting downtown"}],
+        ),
+        url,
+    )
+
+    result = await crud.list_pages(keyword="quokka", page_size=50)
+    slug = (await crud.lookup_page_for_url(url))["slug"]
+    row = next(p for p in result["pages"] if p["slug"] == slug)
+    assert row["snippet"] is not None
+    assert "quokka" in row["snippet"]
 
 
 async def test_has_transcript_badge_is_quality_aware_not_just_presence():

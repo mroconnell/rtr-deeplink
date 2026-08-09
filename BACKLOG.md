@@ -36,20 +36,6 @@ where relevant.
   already do (see `unreliable_timestamps` handling in both
   `player.js`/`meeting_page.html`) — worth confirming against the actual
   element attributes before building, not assumed from this first look.
-- **Search-result snippets on `/meetings` can surface stale text from a
-  demoted `TranscriptVersion`, even when the page's current default
-  version is already fixed/clean.** Noticed live (2026-08-08) checking
-  the Dublin recheck fix below: the meeting page itself now renders a
-  clean, de-shouted transcript, but its `/meetings` search snippet still
-  showed the old ALL-CAPS text. Root cause: `find_snippet()`
-  (`archive/utils/search.py`) is handed `transcript_text_by_page`, which
-  `list_pages()` builds by concatenating *every* `TranscriptVersion`'s
-  segments for the page — intentional for matching (so a query that only
-  matches an old demoted version's text still finds the page), but the
-  snippet picker doesn't distinguish "matched in the current version" from
-  "matched in an old one," so it can surface pre-fix text even though the
-  page itself would never show it. Minor/cosmetic (the page itself is
-  correct, just the search-result preview), not yet fixed.
 - **Archive passive recheck cadence should depend on transcript quality,
   not just page age.** Now that `GET /admin/recheck-archive-page` exists
   for fixing a stale page on demand (see

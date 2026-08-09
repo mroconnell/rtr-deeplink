@@ -433,22 +433,35 @@ async def list_pages(
         # in one extra query, only when a keyword search is actually
         # running (same "don't drag transcript JSON over the wire for a
         # plain browse" reasoning as before), keyed by page so a demoted
-        # version's text still counts toward a match even though it's
-        # never the one displayed.
+        # version's text still counts toward a *match* even though it's
+        # never the one displayed. Separately, default_transcript_text_by_page
+        # tracks only the currently-displayed version's text -- used for
+        # the search-result *snippet* (below), not the match check. Real
+        # bug fixed 2026-08-08: a query that only matched an old, demoted
+        # version's text (e.g. pre-fix ALL-CAPS content superseded by a
+        # later re-transcription) still correctly found the page, but the
+        # snippet shown for it displayed that stale text -- confusing,
+        # since the page itself never shows it. Snippet text should only
+        # ever come from what a viewer would actually see on the page.
         transcript_text_by_page: dict[int, str] = {}
+        default_transcript_text_by_page: dict[int, str] = {}
         if keyword:
             page_ids = [mp.id for mp, _lang, _vid, _warnings in rows]
             if page_ids:
                 version_rows = (
                     await session.execute(
-                        select(TranscriptVersion.meeting_page_id, TranscriptVersion.segments).where(
-                            TranscriptVersion.meeting_page_id.in_(page_ids)
-                        )
+                        select(
+                            TranscriptVersion.meeting_page_id,
+                            TranscriptVersion.segments,
+                            TranscriptVersion.is_default,
+                        ).where(TranscriptVersion.meeting_page_id.in_(page_ids))
                     )
                 ).all()
-                for page_id, segments in version_rows:
+                for page_id, segments, is_default in version_rows:
                     text = " ".join(seg.get("text", "") for seg in (segments or []))
                     transcript_text_by_page[page_id] = f"{transcript_text_by_page.get(page_id, '')} {text}"
+                    if is_default:
+                        default_transcript_text_by_page[page_id] = text
 
     def _matches_page(mp: MeetingPage) -> bool:
         if has_agenda is True and not mp.agenda_items:
@@ -480,11 +493,16 @@ async def list_pages(
         # every filtered match -- a snippet nobody's about to see costs
         # nothing to skip. Deliberately excludes title/jurisdiction (see
         # find_snippet()'s own docstring) since those already render
-        # directly above this in meeting_list.html.
+        # directly above this in meeting_list.html. Uses only the
+        # *default* version's text (not transcript_text_by_page's
+        # all-versions blob used for matching above) -- if the query only
+        # matched an old demoted version, the page still correctly shows
+        # up in results, just with no snippet, rather than a misleading
+        # excerpt of text the page itself never displays.
         if not keyword:
             return None
         agenda_text = " ".join(item.get("text", "") for item in (mp.agenda_items or []))
-        transcript_text = transcript_text_by_page.get(mp.id, "")
+        transcript_text = default_transcript_text_by_page.get(mp.id, "")
         return find_snippet(keyword, [transcript_text, agenda_text], fuzzy)
 
     return {

@@ -2247,3 +2247,33 @@ changelog of task titles.
   the specific value (only a docstring comment referenced the constant
   by name), so nothing else needed updating. Full suite green (152
   tests, unaffected).
+
+- **[Done 2026-08-08] Fixed `/meetings` search-result snippets surfacing
+  stale text from a demoted `TranscriptVersion`.** Found while verifying
+  the Dublin recheck fix earlier the same day: the meeting page itself
+  rendered a clean, de-shouted transcript, but its search-result snippet
+  still showed the old ALL-CAPS text. `list_pages()` (`archive/db/
+  crud.py`) already builds `transcript_text_by_page` by concatenating
+  *every* version's segments (needed so a query matching only a demoted
+  version's text still finds the page), but `_snippet_for()` was reusing
+  that same all-versions blob for the *displayed* excerpt too, with no
+  way to tell "matched in the current version" from "matched in an old
+  one."
+
+  Fixed by tracking a second dict, `default_transcript_text_by_page`,
+  populated only from the version with `is_default=True` (one extra
+  column, `TranscriptVersion.is_default`, added to the existing
+  per-version query rather than a new query) — `_snippet_for()` now
+  builds its excerpt only from that. `_matches_page()`'s boolean check is
+  untouched, still searching every version, so the page still correctly
+  shows up in results even when the only match is in demoted text — it
+  just shows no snippet in that case, rather than a misleading one, since
+  a viewer clicking through would never actually see that text on the
+  page itself.
+
+  Two new tests in `tests/test_list_pages_search.py`: extended the
+  existing demoted-version test to assert `snippet is None` once the
+  matching keyword only exists in the demoted version, and added a new
+  positive-case test confirming a keyword matching the *current* default
+  version still produces a real snippet as before. Full suite green (153
+  tests — 1 new, on top of the demoted-version test's new assertion).
