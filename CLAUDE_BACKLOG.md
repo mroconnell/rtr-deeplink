@@ -46,6 +46,18 @@ items).
   generate a shareable image/card of that quote + timestamp + a link back
   to that exact moment — a much stronger viral unit than a bare link, and
   journalists/advocates already do this manually with screenshots.
+- **Newsletter subscribe copy is generic — could be more specific about
+  what a subscriber actually gets.** Current copy (`app/templates/
+  subscribe.html`, `app/templates/base.html`'s footer prompt): "Get
+  notified about new features and tools for finding public meetings."
+  Inspiration flagged by the user (2026-08-09): Vikram Oberoi's
+  citymeetings.nyc (see BACKLOG.md's NYC/Viebit entries for how this came
+  up) uses "Highlights of meeting moments and curious claims every 1-2
+  weeks" — concrete, content-focused, and sets a real cadence expectation,
+  vs. our vague "new features" framing. Worth rewriting once there's
+  actually a recurring content cadence to describe honestly (a newsletter
+  promising specific content needs to actually deliver it) — not just a
+  copy swap today.
 
 ## Utility for the actual audience
 

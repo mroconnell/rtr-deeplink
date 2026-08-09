@@ -261,6 +261,7 @@ body {
 .transcribe-status.error { background: var(--error-bg); color: var(--secondary); }
 
 .transcribe-toggle { margin: 0.4rem 0 0; }
+.nyc-crosslink { margin: 0.75rem 0 0; font-size: 0.9rem; }
 .transcribe-form {
   margin-top: 0.75rem;
   padding: 1rem;

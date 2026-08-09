@@ -8,6 +8,47 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-09] Added a static citymeetings.nyc cross-link to NYC
+  Council meeting pages, and caught a real, unrelated bug while verifying
+  it live: `archive/db/crud.py`'s `get_page_by_slug()` silently dropped
+  `platform` from its returned dict entirely.** User pointed to Vikram
+  Oberoi's citymeetings.nyc (an independent, AI-chapter-summary tool
+  specifically for NYC Council meetings, covering ~80 meetings as of his
+  own talk) as worth a mention on NYC pages — confirmed live first
+  (`mcp__Claude_Browser__*` against a real citymeetings.nyc chapter
+  permalink) that clicking a chapter there does *not* auto-seek the video
+  either (`currentTime` stayed 0 through page load, only advanced normally
+  once `.play()` was called directly — same deep-link gap this app exists
+  to close), so this is a genuinely complementary link, not a
+  better-alternative one. Decided against automated per-meeting
+  cross-linking (his coverage isn't guaranteed to include any given
+  meeting we resolve, and mapping meetings across two independent slug
+  schemes would couple our reliability to his site's uptime) — a static
+  note instead, shown whenever `platform == "viebit"` (confirmed Viebit is
+  NYC-Council-only so far, see ViebitAssetFinder's docstring). Added to
+  both `app/templates/meeting.html`/`app/static/player.js` (client-JS
+  toggle, matching the resolver's render-after-`/api/resolve` pattern) and
+  `archive/templates/meeting_page.html` (server-side Jinja2 conditional).
+
+  **The Archive side silently failed on first live-verification pass** —
+  the DB row genuinely had `platform="viebit"` (confirmed via direct
+  sqlite3 query), but the rendered page never showed the note. Root cause:
+  `get_page_by_slug()` builds and returns a hand-constructed dict (not the
+  ORM object) for template consumption, and that dict's field list simply
+  never included `platform` — Jinja2's `page.platform == "viebit"` on a
+  dict without that key silently evaluates to `Undefined == "viebit"`
+  (`False`), no exception, no missing-key error, just quietly wrong. Fixed
+  by adding `"platform": page.platform,` to the returned dict. Real
+  example of this repo's "verify in-browser, not just via the API"
+  convention catching something a DB-level check alone would have missed
+  — see `CLAUDE.md`. Added `test_get_page_by_slug_includes_platform` to
+  `tests/test_ingest_promotion.py` as a regression guard (this dict has no
+  other test asserting its exact key set, so this bug could otherwise
+  recur silently for any future field). Verified end-to-end against a real
+  live-resolved NYC meeting pushed through both local services together
+  (resolver + Archive), confirmed absent on a non-Viebit Archive page
+  (Dublin, CA) as a regression check. Full suite (187 tests) passing.
+
 - **[Done 2026-08-09] NYC Legistar meetings delegated to Viebit showed
   Viebit's own raw uploaded filename as the meeting title
   ("NYCC-250-8-2_251218-120823.mp4") instead of anything human-readable.**

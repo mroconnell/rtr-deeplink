@@ -148,6 +148,17 @@
         <p id="transcribeStatus" class="transcribe-status" role="status"></p>
       </form>
       {% endif %}
+
+      {% if page.platform == "viebit" %}
+      {#- Viebit is confirmed (2026-08-08) to only be reached via NYC
+         Council's Legistar instance so far -- see ViebitAssetFinder's own
+         docstring. A cheap, accurate-enough signal for "this is an NYC
+         Council meeting" without needing a real per-meeting cross-link to
+         citymeetings.nyc, whose own coverage isn't guaranteed to include
+         this specific meeting (self-reported backlog during budget
+         season). #}
+      <p class="subtitle nyc-crosslink">Looking for deeper coverage of this meeting? <a href="https://citymeetings.nyc" target="_blank" rel="noopener noreferrer">citymeetings.nyc</a> — an independent project by Vikram Oberoi — publishes AI-generated chapter summaries for New York City Council meetings.</p>
+      {% endif %}
     </div>
 
     <div id="transcriptColumn">

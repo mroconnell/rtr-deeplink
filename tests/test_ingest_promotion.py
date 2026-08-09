@@ -30,6 +30,23 @@ def _payload(
     }
 
 
+async def test_get_page_by_slug_includes_platform():
+    # Real bug fixed 2026-08-09: get_page_by_slug()'s returned dict never
+    # included a "platform" key at all, so a template referencing
+    # page.platform silently evaluated to Jinja2's Undefined (never an
+    # error, never equal to anything) instead of a KeyError -- caught only
+    # by live-rendering the page and diffing the actual HTML output
+    # against the DB row, not by any earlier check. See BACKLOG_DONE.md's
+    # citymeetings.nyc cross-link entry.
+    url = "https://example.granicus.com/player/clip/promo-platform-key"
+    external_id = "granicus:promo-platform-key"
+
+    await crud.ingest_resolution(_payload(external_id, url), url)
+
+    page = await crud.get_page_by_slug((await crud.lookup_page_for_url(url))["slug"])
+    assert page["platform"] == "granicus"
+
+
 async def test_dublin_style_promotes_when_language_detected_later():
     url = "https://example.granicus.com/player/clip/promo-dublin"
     external_id = "granicus:promo-dublin"

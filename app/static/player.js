@@ -902,6 +902,12 @@ async function init() {
   currentMeetingTitle = data.title || 'meeting';
   document.getElementById('reportProblemToggleWrap').hidden = false;
   document.getElementById('transcribeToggleWrap').hidden = false;
+  // Viebit is confirmed (2026-08-08) to only be reached via NYC Council's
+  // Legistar instance so far -- see ViebitAssetFinder's docstring. A cheap,
+  // accurate-enough signal for "this is an NYC Council meeting" without
+  // needing a real per-meeting cross-link to citymeetings.nyc (whose own
+  // coverage isn't guaranteed to include this specific meeting).
+  document.getElementById('nycCrosslink').hidden = data.platform !== 'viebit';
   document.getElementById('pageTitle').textContent = `${data.title || 'Meeting'} | Red Tape Recordings`;
   metaEl.innerHTML = `<h1>${escapeHtml(data.title || 'Meeting')}</h1>` +
     `<p class="source-link"><a href="${escapeHtml(data.source_url)}" target="_blank" rel="noopener noreferrer">View original source &#8599;</a></p>` +

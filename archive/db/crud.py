@@ -330,6 +330,7 @@ async def get_page_by_slug(slug: str) -> Optional[dict]:
 
         return {
             "slug": page.slug,
+            "platform": page.platform,
             "title": page.title,
             "date": page.date,
             "jurisdiction": page.jurisdiction,
