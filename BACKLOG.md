@@ -517,47 +517,15 @@ one item below is resolved as a result.
   `check_audience_membership()` and Resend's `GET /audiences/{id}/
   contacts/{email}` endpoint shape both work as written, not just
   degrading safely on failure.
-- **The transcription-complete email is bare — wants real copy, brand,
-  and a share/support ask.** `archive/utils/email.py`'s
-  `send_completion_email()` today is three unstyled `<p>` tags: a
-  one-line "your transcript is ready," a plain `<blockquote>` excerpt
-  (first 500 chars of the transcript — `EMAIL_EXCERPT_CHARS` in
-  `worker/main.py`, already there, not missing), and a bare link to the
-  page. No color, no logo, no font, nothing that reads as "Red Tape
-  Recordings" rather than a generic system notification, and no ask of
-  the recipient at all (share it, follow/subscribe, support the
-  project). **All four open questions decided 2026-08-08, not built
-  yet:**
-  - **Brand-lite for now, not a logo asset.** No logo/wordmark image
-    exists anywhere in this repo yet (confirmed — `archive/static/` has
-    no logo/icon file, same underlying gap as `CLAUDE_BACKLOG.md`'s
-    og:image note), and building one is its own scoped design task, not
-    a prerequisite for shipping this. Instead, hand-inline the site's
-    real colors/font directly in the email HTML (`--primary` navy
-    `#2c3e50`, `--accent` blue `#3498db`, Georgia serif) — most email
-    clients strip `<style>` blocks and CSS variables outright, so this
-    means literal hex values and font-family strings on each tag, a
-    different (uglier, more maintenance-prone) discipline than the rest
-    of this codebase's CSS, but ships the real-brand-colors improvement
-    now without waiting on a logo.
-  - **No "support us" ask — reframed as "share this" instead.** Rather
-    than asking for support the site can't yet accept (no donation/
-    membership mechanism exists, only `/subscribe` and `/about`), the
-    email should ask the recipient to share the tool or forward the
-    email to friends who might find it useful — real ask, nothing to
-    build. **New, separate item**: revisit a real "support us" CTA once
-    the site has more to actually point to — account registration,
-    referrals, or payments are all still pre-roadmap (see "Archive
-    roadmap" below) — don't build a support ask against nothing.
-  - **Plain "forward this" line, no real share buttons.** Just a short
-    line plus the existing `page_url` — no new code, ships as part of
-    the copy pass. Real share buttons (pre-filled tweet/email text)
-    would be their own small feature; not worth it for this pass.
-  - **Keep the naive first-500-characters excerpt for now.** Already
-    built, ships today. Revisit with a smarter picker (skip past
-    procedural throat-clearing, pick the most substantive segment) only
-    if it turns out to be a real recurring complaint once more
-    completion emails actually go out.
+- **Completion email's "share this" ask has no real "support us" CTA
+  behind it — deliberately deferred, not forgotten.** The completion
+  email now asks the recipient to forward it / share the link (see
+  BACKLOG_DONE.md's 2026-08-08 entry), but the site has nothing to point
+  a real support ask at yet — no donation/membership mechanism exists,
+  only `/subscribe` and `/about`. Revisit once the site has something
+  concrete to offer (account registration, referrals, or payments — all
+  still pre-roadmap, see "Archive roadmap" below); don't build a support
+  ask against nothing.
 - **No language-track picker for a transcribed version yet** — a
   transcribed `TranscriptVersion`'s language is detected from its own text
   (`archive/utils/language.py`, mirroring every scraped-caption adapter's

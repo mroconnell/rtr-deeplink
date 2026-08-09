@@ -138,13 +138,46 @@ async def send_completion_email(to: str, *, meeting_title: str, excerpt: str, pa
     # versions, which can also show a real scraped caption). Same wording
     # as the on-page disclaimer (archive/templates/meeting_page.html) --
     # keep them matching if either ever changes.
-    html = (
-        f"<p>Your requested transcript for <strong>{meeting_title}</strong> is ready.</p>"
-        "<p style=\"color:#a84b00;\"><strong>AI transcript:</strong> generated automatically "
-        "from audio and hasn't been reviewed by a person -- it can contain mistakes, "
-        "including plausible-sounding sentences that were never actually said. Treat it "
-        "as a starting point, not a verbatim record.</p>"
-        f"<blockquote>{excerpt}&hellip;</blockquote>"
-        f'<p><a href="{page_url}">Read the full transcript</a></p>'
-    )
+    #
+    # "Brand-lite" per the decided scope in BACKLOG.md: no logo asset
+    # exists in this repo yet, and building one is its own task -- so
+    # this hand-inlines the site's real colors/font (--primary navy
+    # #2c3e50, --accent blue #3498db, the amber warning-pill pair
+    # #ffe6a1/#a84b00, Georgia serif) as literal hex/font-family values
+    # on each tag, since most email clients strip <style> blocks and CSS
+    # variables outright -- a different, uglier discipline than the rest
+    # of this codebase's CSS, but the only one that reliably renders.
+    # A single outer table (not just divs) for the page background,
+    # since Outlook desktop's Word rendering engine handles table-based
+    # layouts far more predictably than div/CSS ones.
+    html = f"""\
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f8f9fa;padding:24px 0;">
+<tr><td align="center">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border:1px solid #ddd;">
+<tr><td style="background:#b71c1c;padding:14px 24px;">
+<span style="font-family:'Courier New',monospace;font-weight:bold;letter-spacing:0.11em;font-size:15px;color:#ffffff;border:2px solid #a84b00;padding:4px 14px;display:inline-block;">RED TAPE RECORDINGS</span>
+</td></tr>
+<tr><td style="padding:28px 24px 8px;">
+<p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:17px;color:#2c3e50;">Your requested transcript for <strong>{meeting_title}</strong> is ready.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="background:#ffe6a1;border-radius:6px;margin:0 0 20px;">
+<tr><td style="padding:12px 16px;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#a84b00;">
+<strong>AI transcript:</strong> generated automatically from audio and hasn't been reviewed by a person &mdash; it can contain mistakes, including plausible-sounding sentences that were never actually said. Treat it as a starting point, not a verbatim record.
+</td></tr>
+</table>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px;">
+<tr><td style="border-left:3px solid #ddd;padding:2px 0 2px 16px;font-family:Georgia,'Times New Roman',serif;font-size:15px;font-style:italic;color:#666;">
+{excerpt}&hellip;
+</td></tr>
+</table>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
+<tr><td style="background:#ffffff;border:2px solid #222;">
+<a href="{page_url}" style="display:inline-block;padding:10px 22px;font-family:'Courier New',monospace;font-weight:bold;font-size:15px;letter-spacing:0.5px;color:#222426;text-decoration:none;">Read the full transcript &rarr;</a>
+</td></tr>
+</table>
+<p style="margin:0 0 24px;font-family:Georgia,'Times New Roman',serif;font-size:13px;color:#666;">Know someone else who'd find this useful? Forward this email, or share the link directly: <a href="{page_url}" style="color:#3498db;">{page_url}</a></p>
+</td></tr>
+</table>
+</td></tr>
+</table>
+"""
     return await _send(to, f'Transcript ready: "{meeting_title}"', html)

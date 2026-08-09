@@ -1979,3 +1979,37 @@ changelog of task titles.
   button, agenda visibly shorter with "Transcript" on-screen without
   scrolling. Full suite green (128 tests, unaffected — template/CSS/JS
   layout change only).
+
+- **[Done 2026-08-08] Transcription-complete email: brand-lite styling +
+  a "forward this" ask, per the four open questions decided the same
+  day (see prior BACKLOG.md entry, now removed).** `archive/utils/
+  email.py`'s `send_completion_email()` was three unstyled `<p>` tags;
+  rewritten as a table-based HTML email (a single outer `<table>`, not
+  just divs, since Outlook desktop's Word rendering engine handles
+  table layouts far more predictably) with the site's real colors/font
+  hand-inlined as literal hex/font-family values on each tag — `--primary`
+  navy `#2c3e50`, the amber warning-pill pair `#ffe6a1`/`#a84b00`, Georgia
+  serif — since most email clients strip `<style>` blocks and CSS
+  variables outright. No logo asset exists in this repo yet (confirmed,
+  same gap as `CLAUDE_BACKLOG.md`'s og:image note) so the "brand" header
+  is a plain red bar with the wordmark as styled monospace text, not an
+  image. The AI-transcript disclaimer keeps its exact existing wording
+  (matches the on-page/on-export versions) but now renders in the same
+  amber-pill visual language as `.warnings`/`.ai-disclaimer` instead of
+  plain colored text. The excerpt gets a left-border blockquote treatment;
+  "Read the full transcript" is now a real button-styled link (white bg,
+  2px black border, monospace bold — same visual family as `.cassette-btn`,
+  hand-inlined since email clients can't load the real stylesheet). Per
+  the decided scope: no "support us" ask (site has nothing concrete to
+  point it at yet — split back out as its own live BACKLOG.md entry for
+  later), reframed as a plain one-line "forward this email, or share the
+  link" ask instead — no new share-button code, just copy; the naive
+  first-500-characters excerpt was left unchanged (already built, no
+  known complaints yet to justify a smarter picker). Verified by
+  rendering the real function's output (monkeypatched `_send()` to
+  capture the HTML instead of calling Resend) with real sample content
+  and viewing it live in-browser — confirmed the header bar, navy
+  heading, amber disclaimer pill, italic bordered excerpt, button-styled
+  link, and forward-this line all render as intended. Full suite green
+  (128 tests, unaffected — no tests assert on this function's HTML
+  content).
