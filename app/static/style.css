@@ -316,8 +316,19 @@ body {
   margin-bottom: 0.75rem;
 }
 .warnings:empty { display: none; }
-.warnings a { color: inherit; text-decoration: underline; }
-.warnings a:hover { color: var(--accent); }
+.warnings a, .error a { color: inherit; text-decoration: underline; }
+.warnings a:hover, .error a:hover { color: var(--accent); }
+.transcribe-inline-trigger {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.transcribe-inline-trigger:hover { color: var(--accent); }
 
 .video-section { margin: 1.5rem 0; }
 .toolbar {

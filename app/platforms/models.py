@@ -39,6 +39,13 @@ class ResolvedMeeting(BaseModel):
     # Populated independently of whether a real transcript exists, so a
     # meeting with both shows both (agenda above transcript on the page).
     agenda_items: List[TranscriptSegment] = []
+    # Informational messages about the agenda that aren't structured items
+    # with real timestamps -- e.g. generic_fallback.py's best-effort
+    # "found a link to what looks like the agenda" message. Kept separate
+    # from agenda_items so it's never mistaken for a real per-item list
+    # (which the frontend renders as a clickable timestamp table), the
+    # same reasoning that already separates agenda_items from segments.
+    agenda_warnings: List[str] = []
     transcript_language: Optional[str] = None  # ISO 639-1 code detected from actual caption text
     # Other real caption tracks found on the page but not chosen as
     # `segments` -- lets the frontend offer a language switcher instead of

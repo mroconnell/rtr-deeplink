@@ -23,12 +23,12 @@ _BEST_EFFORT_VIDEO_WARNING = (
 )
 _NO_VIDEO_FOUND_WARNING = (
     "We don't officially support this website yet, and couldn't automatically find a video on "
-    "this page. You can still try requesting a transcript from audio, or view the original source "
-    "directly."
+    "this page. You can still try to request a transcript from the audio, or view the original "
+    "source directly."
 )
 _NO_TRANSCRIPT_WARNING = (
-    "No transcript was found automatically for this unsupported platform — you can request one "
-    "from the audio instead."
+    "No transcript was found automatically for this unsupported platform — you can request a "
+    "transcript from the audio instead."
 )
 
 
@@ -128,12 +128,13 @@ class GenericFallbackAssetFinder(AssetFinder):
 
         agenda_link = self._find_agenda_link(html, url)
 
+        agenda_warnings = [_agenda_link_message(agenda_link)] if agenda_link else []
+
         youtube_match = _YOUTUBE_EMBED_RE.search(html)
         if youtube_match:
             resolved = await YouTubeAssetFinder.resolve_video_id(youtube_match.group(1), source_url=url)
             resolved.video_warnings = [_BEST_EFFORT_VIDEO_WARNING, *resolved.video_warnings]
-            if agenda_link:
-                resolved.transcript_warnings.append(_agenda_link_message(agenda_link))
+            resolved.agenda_warnings = agenda_warnings
             return resolved
 
         media_urls = scan_media_urls(html, url)
@@ -149,8 +150,6 @@ class GenericFallbackAssetFinder(AssetFinder):
                 transcript_language = detect_language_from_texts(c["text"] for c in cues)
 
         transcript_warnings = [] if segments else [_NO_TRANSCRIPT_WARNING]
-        if agenda_link:
-            transcript_warnings.append(_agenda_link_message(agenda_link))
 
         return ResolvedMeeting(
             platform=self.platform_name,
@@ -161,6 +160,7 @@ class GenericFallbackAssetFinder(AssetFinder):
             transcript_language=transcript_language,
             video_warnings=[_BEST_EFFORT_VIDEO_WARNING if video_url else _NO_VIDEO_FOUND_WARNING],
             transcript_warnings=transcript_warnings,
+            agenda_warnings=agenda_warnings,
         )
 
     @staticmethod

@@ -112,7 +112,7 @@ class EscribeAssetFinder(AssetFinder):
                         transcript_warnings.append(
                             "This transcript looks garbled at the source (not a parsing "
                             "bug on our end) -- treat it as approximate. You can request "
-                            "a fresh transcript generated from the audio below."
+                            "a transcript from the audio instead."
                         )
                 else:
                     transcript_warnings.append(

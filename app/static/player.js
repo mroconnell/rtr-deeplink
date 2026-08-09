@@ -913,33 +913,73 @@ async function init() {
     `<p class="source-link"><a href="${escapeHtml(data.source_url)}" target="_blank" rel="noopener noreferrer">View original source &#8599;</a></p>` +
     `<p>${escapeHtml(data.jurisdiction || '')}${data.date ? ' &middot; ' + escapeHtml(data.date) : ''}</p>`;
 
+  // #videoError (inside #videoSection, below the player) is where this
+  // rendered when a video exists -- kept exactly as-is for that case. But
+  // #videoSection gets hidden entirely when there's no video_url (initVideo()
+  // below), which previously took this message down with it even though it
+  // exists specifically to explain *why* there's no video -- #videoWarnings
+  // (a sibling, always independently visible) is only for that no-video
+  // case. #videoError itself stays reserved as before for genuine native-
+  // <video>/HLS playback failures on top of that, a narrower case set later
+  // by initVideo() where a video legitimately exists but failed to load.
   const videoWarnings = data.video_warnings || [];
   if (videoWarnings.length) {
-    document.getElementById('videoError').textContent = videoWarnings.map((w) => w).join(' ');
-    document.getElementById('videoError').hidden = false;
+    const target = document.getElementById(data.video_url ? 'videoError' : 'videoWarnings');
+    renderWarnings(target, videoWarnings);
   }
 
   const agendaItems = data.agenda_items || [];
-  if (agendaItems.length) {
+  const agendaWarnings = data.agenda_warnings || [];
+  if (agendaItems.length || agendaWarnings.length) {
     document.getElementById('agendaSection').hidden = false;
-    renderAgenda(agendaItems);
+    if (agendaWarnings.length) renderWarnings(document.getElementById('agendaWarnings'), agendaWarnings);
+    if (agendaItems.length) renderAgenda(agendaItems);
   }
 
   const transcriptWarnings = data.transcript_warnings || [];
   segments = data.segments || [];
   if (segments.length) {
     document.getElementById('transcriptSection').hidden = false;
-    document.getElementById('transcriptWarnings').innerHTML = transcriptWarnings.length
-      ? transcriptWarnings.map(linkifyWarning).join('<br>') : '';
+    renderWarnings(document.getElementById('transcriptWarnings'), transcriptWarnings);
     setupTranscriptLanguagePicker(data.transcript_language, segments, data.alternate_transcripts || []);
     renderTranscript(segments);
     setupTranscriptSearch();
   } else if (transcriptWarnings.length) {
     document.getElementById('transcriptMissing').hidden = false;
-    document.getElementById('transcriptMissingWarnings').innerHTML = transcriptWarnings.map(linkifyWarning).join('<br>');
+    renderWarnings(document.getElementById('transcriptMissingWarnings'), transcriptWarnings);
+    // Deep-linking to a specific moment relies on the source site behaving
+    // predictably (seek support, stable timestamps) the way a supported
+    // platform is confirmed to -- an unrecognized platform (the generic
+    // fallback) hasn't been confirmed either way, so say so rather than
+    // implying the same reliability a real adapter has earned.
+    const hint = document.querySelector('#transcriptMissing .no-transcript-hint');
+    if (hint && data.platform === 'unknown') {
+      hint.textContent = 'No transcript to click through, but you can still link to any moment. ' +
+        'We’re tracking the playhead below — it updates as the video plays. Since this site ' +
+        'isn’t one we officially support yet, deep-linking to a specific moment may or may not ' +
+        'actually land there when someone opens the link — it’s still worth trying.';
+    }
   }
 
   initVideo(data.video_url, data.video_format);
+}
+
+// Some warning messages (video, agenda, or transcript) mention requesting a
+// transcript from the audio -- makes that phrase itself a real trigger for
+// the same "Request Transcript from Audio" action, instead of leaving it as
+// dead text next to a button elsewhere on the page the reader has to go
+// find themselves.
+const _TRANSCRIBE_PHRASE_RE = /request a transcript from the audio/i;
+
+function renderWarnings(container, warnings) {
+  container.innerHTML = warnings.map(linkifyWarning).map((html) => html.replace(
+    _TRANSCRIBE_PHRASE_RE,
+    (match) => `<button type="button" class="transcribe-inline-trigger">${match}</button>`
+  )).join('<br>');
+  container.hidden = false;
+  container.querySelectorAll('.transcribe-inline-trigger').forEach((btn) => {
+    btn.addEventListener('click', () => document.getElementById('transcribeToggle').click());
+  });
 }
 
 init();

@@ -125,7 +125,7 @@ async def test_resolve_surfaces_agenda_pdf_link_alongside_youtube_video(monkeypa
         result = await GenericFallbackAssetFinder().resolve(PAGE_URL)
 
     expected_link = "https://some-city.example.gov/docs/2026-01-01-agenda.pdf"
-    assert any(expected_link in w for w in result.transcript_warnings)
+    assert any(expected_link in w for w in result.agenda_warnings)
     # The plain-text "Agenda: Item 1..." paragraph must not be picked up as
     # if it were structured agenda items -- this adapter never populates
     # agenda_items, only a plain link message.
@@ -138,7 +138,7 @@ async def test_resolve_ignores_plain_text_agenda_mention_with_no_link():
     with mock_session(routes):
         result = await GenericFallbackAssetFinder().resolve(PAGE_URL)
 
-    assert not any("agenda" in w.lower() for w in result.transcript_warnings)
+    assert result.agenda_warnings == []
 
 
 async def test_resolve_prefers_pdf_agenda_link_over_html_agenda_page():
@@ -154,4 +154,4 @@ async def test_resolve_prefers_pdf_agenda_link_over_html_agenda_page():
     with mock_session(routes):
         result = await GenericFallbackAssetFinder().resolve(PAGE_URL)
 
-    assert any("2026-01-01-agenda.pdf" in w for w in result.transcript_warnings)
+    assert any("2026-01-01-agenda.pdf" in w for w in result.agenda_warnings)
