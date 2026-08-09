@@ -36,30 +36,20 @@ where relevant.
   already do (see `unreliable_timestamps` handling in both
   `player.js`/`meeting_page.html`) — worth confirming against the actual
   element attributes before building, not assumed from this first look.
-- **Three real live pages are confirmed stuck on stale pre-fix data and
-  need an actual `/admin/recheck-archive-page` run — the code fixes are
-  built and verified, this session just doesn't have `ADMIN_STATS_TOKEN`
-  to trigger them.** All three would pick up already-shipped fixes on a
-  fresh recheck (promotion logic, language detection, word-grouping, and/
-  or shouting-caps normalization, depending on the page):
-  - `redtaperecordings.com/m/yountville-ca-2026-04-21-apr-21-2026-town-council-budget-workshop`
-    — stuck showing agenda-copied-into-segments as a fake transcript; the
-    new demotion logic should clear it.
-  - `redtaperecordings.com/m/dublin-ca-2026-01-13-jan-13-2026-city-council`
-    — confirmed live (2026-08-08) still showing no `· en` on `/meetings`
-    *and* still rendering the old 36,085-word-fragment, ALL-CAPS
-    transcript (`"GOOD" "EVENING" "AND"...` as separate lines) — this one
-    row alone should pick up three separate fixes at once on a recheck:
-    language detection, word-grouping, and shouting-caps normalization,
-    none of which existed when this row was first ingested.
-  - `redtaperecordings.com/m/california-state-senate-2026-08-06-senate-floor-session`
-    — confirmed live (2026-08-08), same missing-`· en` symptom as
-    Dublin, same root cause (`ca_legislature.py`'s language detection
-    already exists in code, this row just predates it).
-
-  Once confirmed working on these three, worth the originally-planned
-  audit across all current permanent pages for the same stale-shape
-  issue, now that there's a real fix to apply if any others turn up.
+- **Search-result snippets on `/meetings` can surface stale text from a
+  demoted `TranscriptVersion`, even when the page's current default
+  version is already fixed/clean.** Noticed live (2026-08-08) checking
+  the Dublin recheck fix below: the meeting page itself now renders a
+  clean, de-shouted transcript, but its `/meetings` search snippet still
+  showed the old ALL-CAPS text. Root cause: `find_snippet()`
+  (`archive/utils/search.py`) is handed `transcript_text_by_page`, which
+  `list_pages()` builds by concatenating *every* `TranscriptVersion`'s
+  segments for the page — intentional for matching (so a query that only
+  matches an old demoted version's text still finds the page), but the
+  snippet picker doesn't distinguish "matched in the current version" from
+  "matched in an old one," so it can surface pre-fix text even though the
+  page itself would never show it. Minor/cosmetic (the page itself is
+  correct, just the search-result preview), not yet fixed.
 - **Archive passive recheck cadence should depend on transcript quality,
   not just page age.** Now that `GET /admin/recheck-archive-page` exists
   for fixing a stale page on demand (see
@@ -153,17 +143,6 @@ where relevant.
   Worth checking on a couple more real PrimeGov-with-video samples before
   building, to see how consistently the page's own embedded date text is
   actually present/parseable across cities.
-- **`/meetings` (the Archive's browsable index) is missing from the site
-  nav.** It's only reachable if you already know the URL — confirmed live
-  on `redtaperecordings.com`, no nav link points at it anywhere. Add it
-  to `app/templates/base.html`'s navbar as **"Search Meetings"**, and
-  while touching that nav, rename the existing **"Look Up a Meeting"**
-  link to **"Add Meeting"** (clearer contrast against the new "Search
-  Meetings" link — one submits a new URL to resolve, the other searches
-  what's already permanently archived). `archive/templates/base.html`
-  mirrors the same nav markup (see the earlier nav-consistency fix) and
-  needs the same two changes to stay in sync.
-
 - **Archive permanent pages have no equivalent of the resolver's "no
   transcript yet" live-playhead + copy-link feature.** Confirmed live
   (2026-08-08) against a real no-transcript/no-agenda Archive page

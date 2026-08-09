@@ -2157,3 +2157,37 @@ changelog of task titles.
   full clean transcript with correct clickable `[26:21]`-style timestamps
   and no stray trailing digits anywhere. Full suite green (152 tests — 3
   new here, on top of the prior PrimeGov/YouTube entry's 15).
+
+- **[Done 2026-08-08] `/meetings` added to the site nav.** User ran this
+  directly (not this session) — confirmed live: `redtaperecordings.com`'s
+  navbar now links to `/meetings` as "Search Meetings," and the prior
+  "Look Up a Meeting" link reads "Add Meeting."
+
+- **[Done 2026-08-08] All three real live pages confirmed stuck on stale
+  pre-fix data are now fixed — user ran `/admin/recheck-archive-page`
+  directly (this session never had `ADMIN_STATS_TOKEN`).** Verified live
+  against all three, not just taken on faith:
+  - `.../m/dublin-ca-2026-01-13-jan-13-2026-city-council` — transcript
+    now renders as clean, de-shouted, word-grouped sentences ("3, 2, 1.
+    Good evening and happy new year to everyone...") instead of the old
+    36,085 ALL-CAPS word fragments; `/meetings` now shows the "✓
+    Transcript" badge; page shows two versions ("en (scraped)" active,
+    "unknown (scraped)" demoted) confirming the promotion logic kept the
+    old version reachable rather than deleting it.
+  - `.../m/yountville-ca-2026-04-21-apr-21-2026-town-council-budget-workshop`
+    — even better than expected: the fake agenda-copied-into-segments
+    version is now demoted ("unknown (scraped)"), and the *active*
+    default is a real, good-quality self-transcribed AI version ("en
+    (transcribed)") with the AI-transcript disclaimer rendering
+    correctly — a transcription job evidently completed for this page
+    since the original bug was found.
+  - `.../m/california-state-senate-2026-08-06-senate-floor-session` —
+    transcript renders normally with real content (Senate roll call),
+    confirming the language-detection fix applied.
+
+  One minor side-effect noticed while verifying, logged as its own new
+  BACKLOG.md entry: Dublin's `/meetings` search-result *snippet*
+  (distinct from the page itself) still shows old ALL-CAPS text, since
+  `find_snippet()` searches across every `TranscriptVersion`'s
+  concatenated text (including demoted ones) without distinguishing
+  which version actually matched.
