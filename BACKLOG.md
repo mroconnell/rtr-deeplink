@@ -7,18 +7,30 @@ where relevant.
 
 ## Bugs
 
-- **Yountville's stale page needs an actual recheck run against it, and
-  all 12 permanent pages need a one-time audit for the same stale-shape
-  issue.** The general fix landed and is verified (see
-  [BACKLOG_DONE.md](BACKLOG_DONE.md)), but the *specific* live page
-  (`redtaperecordings.com/m/yountville-ca-2026-04-21-apr-21-2026-town-council-budget-workshop`)
-  hasn't actually been rechecked yet — needs `GET
-  /admin/recheck-archive-page` run against it (needs
-  `ADMIN_STATS_TOKEN`, which this session doesn't have) to confirm the
-  new demotion logic actually fires on the real stale row, not just in
-  tests. Once confirmed, worth the originally-planned audit across all
-  12 current permanent pages for the same issue, now that there's a real
-  fix to apply if any others turn up.
+- **Three real live pages are confirmed stuck on stale pre-fix data and
+  need an actual `/admin/recheck-archive-page` run — the code fixes are
+  built and verified, this session just doesn't have `ADMIN_STATS_TOKEN`
+  to trigger them.** All three would pick up already-shipped fixes on a
+  fresh recheck (promotion logic, language detection, word-grouping, and/
+  or shouting-caps normalization, depending on the page):
+  - `redtaperecordings.com/m/yountville-ca-2026-04-21-apr-21-2026-town-council-budget-workshop`
+    — stuck showing agenda-copied-into-segments as a fake transcript; the
+    new demotion logic should clear it.
+  - `redtaperecordings.com/m/dublin-ca-2026-01-13-jan-13-2026-city-council`
+    — confirmed live (2026-08-08) still showing no `· en` on `/meetings`
+    *and* still rendering the old 36,085-word-fragment, ALL-CAPS
+    transcript (`"GOOD" "EVENING" "AND"...` as separate lines) — this one
+    row alone should pick up three separate fixes at once on a recheck:
+    language detection, word-grouping, and shouting-caps normalization,
+    none of which existed when this row was first ingested.
+  - `redtaperecordings.com/m/california-state-senate-2026-08-06-senate-floor-session`
+    — confirmed live (2026-08-08), same missing-`· en` symptom as
+    Dublin, same root cause (`ca_legislature.py`'s language detection
+    already exists in code, this row just predates it).
+
+  Once confirmed working on these three, worth the originally-planned
+  audit across all current permanent pages for the same stale-shape
+  issue, now that there's a real fix to apply if any others turn up.
 - **Archive passive recheck cadence should depend on transcript quality,
   not just page age.** Now that `GET /admin/recheck-archive-page` exists
   for fixing a stale page on demand (see
@@ -337,15 +349,6 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   swagit-video-player?video_id=...`). `detect_platform` recognizes the URL
   shape, but the one sample URL 404'd — parsing has only been verified
   against real `*.swagit.com` domains. Needs a fresh sample URL.
-- **The real Dublin, CA Archive page
-  (`/m/dublin-ca-2026-01-13-jan-13-2026-city-council`) still needs an
-  actual recheck run against it.** The promotion fix that makes a
-  recheck actually pick up the now-correct language is built and
-  verified (see [BACKLOG_DONE.md](BACKLOG_DONE.md) and the Yountville
-  entry above), but this specific live page hasn't been rechecked yet —
-  needs `GET /admin/recheck-archive-page` (needs `ADMIN_STATS_TOKEN`,
-  which this session doesn't have) to confirm the `/meetings` listing
-  actually starts showing "· en" for it.
 - **eScribe caption content-quality unverified.** The per-language VTT
   naming convention was confirmed structurally on Richmond, CA, but none
   were populated (all 404) — shape-verified only, not content-verified.

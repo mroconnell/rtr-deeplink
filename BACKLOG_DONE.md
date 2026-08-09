@@ -1656,3 +1656,82 @@ changelog of task titles.
   the originally-planned audit of all 12 permanent pages for the same
   stale-shape issue, now that there's a real fix to apply if any others
   turn up. See BACKLOG.md.
+
+- **[Done 2026-08-08] Swagit's ALL-CAPS `#transcript-fragments` text now
+  gets re-cased for readability, reusing the existing shouting-caption
+  standard instead of inventing a second one.** Confirmed live on the
+  real Dublin, CA meeting: the grouped word-fragments (see the grouping
+  entry above) were still genuinely ALL CAPS at the source ("GOOD EVENING
+  AND HAPPY NEW YEAR..."), reading as shouting even once grouped into
+  real lines. `app/utils/vtt_parser.py` already had exactly this problem
+  solved for Granicus's VTT captions (confirmed real on San Francisco's
+  all-caps live captions) via `normalize_shouting_caption()` (renamed
+  from `_normalize_shouting_caption` to make it importable — no other
+  behavior change) + `_sentence_case()`: detects roughly-all-uppercase
+  content (not per-cue, so a normal transcript with a few capitalized
+  acronyms is never touched) and re-cases it. `swagit.py`'s
+  `#transcript-fragments` branch now calls the same function on its
+  grouped segments (converted to the dict shape the function expects,
+  written back onto the `TranscriptSegment` objects afterward) right
+  after grouping — reuses the exact tested detection/casing logic rather
+  than a second Swagit-specific implementation, and correctly no-ops on
+  a hypothetical future Swagit deployment that turns out to emit
+  normal-case text. Verified with a new integration test
+  (`tests/test_swagit.py::test_resolve_normalizes_all_caps_transcript_fragments`)
+  using the real all-caps Dublin wording end-to-end through `resolve()`.
+  Full suite green (127 tests).
+
+- **[Done 2026-08-08] `/meetings`' fuzzy/exact search toggle moved into
+  the filters dropdown; filters laid out in deliberate rows; a real
+  "Clear all filters" button added.** The fuzzy checkbox had been hidden
+  entirely in an earlier pass (per an explicit request, based on a
+  mistaken belief it was already inside the filters dropdown when it was
+  actually in the main search bar) — real regression, since that left it
+  reachable only via a raw `?fuzzy=true` URL param with no UI control at
+  all. Restored into `archive/templates/meeting_list.html`'s actual
+  filters `<form>` this time, alongside "Has transcript"/"Has agenda."
+  Also fixed the messy layout the user flagged: the filters form used to
+  be one flat `flex-wrap` container, so narrow checkboxes landed on
+  whatever row had leftover horizontal space next to unrelated text/date
+  fields — accidental grouping, not deliberate. Now three explicit
+  `.filters-row` groups (fields / checkboxes / actions) stacked in a
+  column, each wrapping independently. "Clear all" already existed as a
+  plain muted text link shown only when a filter was active (an existing,
+  easy-to-miss `.clear-filters` class matching this session's recurring
+  "small text link, easy to miss" pattern) — now a real always-visible
+  `.cassette-btn-outline` button (a new, visually lighter sibling to the
+  existing bold `.cassette-btn`, so it doesn't compete with "Apply
+  filters" for attention) next to "Apply filters." Verified with a Jinja
+  render check; no backend changes needed (`fuzzy: bool = False` in
+  `archive/main.py` already parsed the checkbox correctly, same
+  convention as the existing `has_agenda`/`has_transcript` checkboxes).
+
+- **[Done 2026-08-08] The AI-transcript disclaimer now appears everywhere
+  an AI-generated transcript is actually shown, not just the meeting
+  page, and has real visual identity.** Audited every surface: the
+  on-page disclaimer (`archive/templates/meeting_page.html`) was the
+  *only* place it existed — the `.txt` transcript export
+  (`/m/{slug}/transcript.txt`) and the transcription-completion email
+  (`archive/utils/email.py`) both quoted/exported AI-generated text with
+  zero indication it might be wrong. Fixed:
+  - `.txt` export: the same disclaimer text prepended when
+    `active_version.source == "transcribed"`. Deliberately *not* added to
+    the `.srt` export — SRT is a strict cue format meant for subtitle
+    players, and a fake cue at 00:00 would visually overlay the video as
+    if it were spoken dialogue, competing with the real first line;
+    plain text has no such constraint.
+  - Completion email: added unconditionally (every completion email is,
+    by definition, about an AI-transcribed version — `send_completion_
+    email()` only ever gets called from the transcription-job completion
+    path), matching the on-page wording.
+  - Styling: the on-page disclaimer moved off the plain amber `.warnings`
+    pill every other transcript-quality message uses, onto a new
+    `.ai-disclaimer` treatment that reuses the site's `.dymo-label-small`
+    motif (the same "label-maker tag" look as the site wordmark and the
+    `/subscribe` page's section tag) as a real visual flag — a small
+    "AI TRANSCRIPT" badge next to the text, per an explicit request to
+    give this one more identity than a generic warning, since it's
+    telling a reader the text might contain fabricated sentences, not
+    just "approximate."
+  Verified with Jinja render checks (both templates) and the full pytest
+  suite (127 tests, unaffected — template/CSS/email-copy changes only).

@@ -175,7 +175,10 @@
         <a href="/m/{{ page.slug }}/transcript.srt?version={{ active_version.id }}">SRT</a>
       </p>
       {% if active_version.source == "transcribed" %}
-      <div class="warnings">This transcript was generated automatically from audio using AI and hasn't been reviewed by a person — it can contain mistakes, including plausible-sounding sentences that were never actually said. Treat it as a starting point, not a verbatim record.</div>
+      <div class="ai-disclaimer">
+        <span class="dymo-label-small">AI TRANSCRIPT</span>
+        <p>This transcript was generated automatically from audio using AI and hasn't been reviewed by a person — it can contain mistakes, including plausible-sounding sentences that were never actually said. Treat it as a starting point, not a verbatim record.</p>
+      </div>
       {% endif %}
       {% if active_version.transcript_warnings %}
       <div class="warnings">{{ active_version.transcript_warnings|join(" ") }}</div>

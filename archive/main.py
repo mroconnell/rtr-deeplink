@@ -255,6 +255,18 @@ async def meeting_transcript_export(slug: str, ext: str, version: Optional[int] 
         return JSONResponse({"detail": "No transcript available for this meeting."}, status_code=404)
 
     body = to_srt(active_version["segments"]) if ext == "srt" else to_txt(active_version["segments"])
+    if ext == "txt" and active_version["source"] == "transcribed":
+        # Prepended, not injected into the .srt -- SRT is a strict cue
+        # format meant for subtitle players, and a fake cue at 00:00
+        # would visually overlay the video as if it were spoken dialogue,
+        # competing with the real first line. Plain text has no such
+        # constraint.
+        body = (
+            "[This transcript was generated automatically from audio using AI and hasn't "
+            "been reviewed by a person -- it can contain mistakes, including "
+            "plausible-sounding sentences that were never actually said. Treat it as a "
+            "starting point, not a verbatim record.]\n\n"
+        ) + body
     filename = f"{slug}.{ext}"
     return Response(
         content=body,

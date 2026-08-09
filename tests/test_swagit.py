@@ -113,6 +113,37 @@ def test_group_word_fragments_single_word():
     assert grouped[0].end == 1.0
 
 
+async def test_resolve_normalizes_all_caps_transcript_fragments():
+    # Real bug (2026-08-08): the same Dublin, CA meeting's
+    # #transcript-fragments text is genuinely ALL CAPS at the source
+    # ("GOOD EVENING AND HAPPY NEW YEAR..."), which reads as shouting once
+    # grouped into real lines. Reuses vtt_parser.normalize_shouting_caption
+    # (already used by Granicus's VTT parsing for the identical real
+    # problem on San Francisco's captions) rather than a second casing
+    # standard -- pins that it actually gets called for this DOM path too.
+    words = (
+        "GOOD EVENING AND HAPPY NEW YEAR TO EVERYONE TODAY IS TUESDAY "
+        "JANUARY THIRTEENTH WE WILL NOW CALL THIS REGULAR MEETING TO "
+        "ORDER AND BEGIN WITH THE PLEDGE OF ALLEGIANCE TO THE FLAG"
+    ).split()
+    fragments = "".join(f'<a data-ts="{i}">{w}</a>' for i, w in enumerate(words))
+    html = (
+        '<html><head><title>Jan 13, 2026 City Council - Example, CA</title></head><body>'
+        '<script>var playlist = [{"file": "https://archive-stream.granicus.com/x/playlist.m3u8"}];</script>'
+        f'<div id="transcript-fragments">{fragments}</div>'
+        '</body></html>'
+    )
+
+    routes = {PAGE_URL: FakeResponse(status=200, text=html, url=PAGE_URL)}
+
+    with mock_session(routes):
+        result = await SwagitAssetFinder().resolve(PAGE_URL)
+
+    full_text = " ".join(s.text for s in result.segments)
+    assert full_text != full_text.upper(), "transcript should no longer be all-uppercase"
+    assert "good" in full_text.lower()  # content preserved, just re-cased
+
+
 def test_group_word_fragments_respects_window_boundary():
     # A gap larger than the window starts a new line even mid-otherwise-
     # continuous speech.

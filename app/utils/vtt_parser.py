@@ -69,7 +69,7 @@ def parse_vtt(content: str) -> List[Dict[str, Any]]:
     if current_cue:
         cues.append(current_cue)
 
-    _normalize_shouting_caption(cues)
+    normalize_shouting_caption(cues)
     return cues
 
 
@@ -160,7 +160,7 @@ def parse_ttml(content: str) -> List[Dict[str, Any]]:
         if text:
             cues.append({"start": start, "end": end, "text": text})
 
-    _normalize_shouting_caption(cues)
+    normalize_shouting_caption(cues)
     return cues
 
 
@@ -312,7 +312,7 @@ _SHOUT_LOWERCASE_RATIO_MAX = 0.02
 _CUE_JOIN = "␞"  # record-separator symbol; won't appear in real captions
 
 
-def _normalize_shouting_caption(cues: List[Dict[str, Any]]) -> None:
+def normalize_shouting_caption(cues: List[Dict[str, Any]]) -> None:
     if not cues:
         return
 

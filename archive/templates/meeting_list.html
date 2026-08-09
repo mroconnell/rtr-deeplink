@@ -21,28 +21,35 @@
       <summary>Filters</summary>
       <form method="get" action="/meetings" class="meeting-filters-form">
         <input type="hidden" name="q" value="{{ q }}">
-        {% if fuzzy %}<input type="hidden" name="fuzzy" value="true">{% endif %}
-        <label>Jurisdiction
-          <input type="text" name="jurisdiction" value="{{ jurisdiction }}" placeholder="e.g. San Diego">
-        </label>
-        <label>From
-          <input type="date" name="date_from" value="{{ date_from }}">
-        </label>
-        <label>To
-          <input type="date" name="date_to" value="{{ date_to }}">
-        </label>
-        <label class="checkbox-filter">
-          <input type="checkbox" name="has_transcript" value="true"{% if has_transcript %} checked{% endif %}>
-          Has transcript
-        </label>
-        <label class="checkbox-filter">
-          <input type="checkbox" name="has_agenda" value="true"{% if has_agenda %} checked{% endif %}>
-          Has agenda
-        </label>
-        <button type="submit" class="cassette-btn">Apply filters</button>
-        {% if jurisdiction or date_from or date_to or has_agenda or has_transcript or q %}
-        <a href="/meetings" class="clear-filters">Clear all</a>
-        {% endif %}
+        <div class="filters-row">
+          <label>Jurisdiction
+            <input type="text" name="jurisdiction" value="{{ jurisdiction }}" placeholder="e.g. San Diego">
+          </label>
+          <label>From
+            <input type="date" name="date_from" value="{{ date_from }}">
+          </label>
+          <label>To
+            <input type="date" name="date_to" value="{{ date_to }}">
+          </label>
+        </div>
+        <div class="filters-row filters-row-toggles">
+          <label class="checkbox-filter">
+            <input type="checkbox" name="has_transcript" value="true"{% if has_transcript %} checked{% endif %}>
+            Has transcript
+          </label>
+          <label class="checkbox-filter">
+            <input type="checkbox" name="has_agenda" value="true"{% if has_agenda %} checked{% endif %}>
+            Has agenda
+          </label>
+          <label class="checkbox-filter">
+            <input type="checkbox" name="fuzzy" value="true"{% if fuzzy %} checked{% endif %}>
+            Fuzzy search (tolerates transcript typos, slower)
+          </label>
+        </div>
+        <div class="filters-row filters-row-actions">
+          <button type="submit" class="cassette-btn">Apply filters</button>
+          <a href="/meetings" class="cassette-btn cassette-btn-outline">Clear all filters</a>
+        </div>
       </form>
     </details>
 

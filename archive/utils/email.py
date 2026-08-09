@@ -131,8 +131,19 @@ async def send_confirmation_email(to: str, confirm_url: str) -> bool:
 
 
 async def send_completion_email(to: str, *, meeting_title: str, excerpt: str, page_url: str) -> bool:
+    # Every completion email is, by definition, about an AI-transcribed
+    # version -- this function only ever gets called from the
+    # transcription-job completion path -- so the disclaimer applies
+    # unconditionally, no source check needed (unlike the on-page/export
+    # versions, which can also show a real scraped caption). Same wording
+    # as the on-page disclaimer (archive/templates/meeting_page.html) --
+    # keep them matching if either ever changes.
     html = (
         f"<p>Your requested transcript for <strong>{meeting_title}</strong> is ready.</p>"
+        "<p style=\"color:#a84b00;\"><strong>AI transcript:</strong> generated automatically "
+        "from audio and hasn't been reviewed by a person -- it can contain mistakes, "
+        "including plausible-sounding sentences that were never actually said. Treat it "
+        "as a starting point, not a verbatim record.</p>"
         f"<blockquote>{excerpt}&hellip;</blockquote>"
         f'<p><a href="{page_url}">Read the full transcript</a></p>'
     )

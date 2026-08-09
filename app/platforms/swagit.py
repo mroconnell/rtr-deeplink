@@ -13,6 +13,7 @@ from ..utils.vtt_parser import (
     STRUCTURED_CAPTION_PARSERS,
     decode_vtt_bytes,
     detect_language_from_texts,
+    normalize_shouting_caption,
     parse_captions_by_extension,
 )
 
@@ -162,6 +163,21 @@ class SwagitAssetFinder(AssetFinder):
             # proper multi-word cues; grouping those could incorrectly
             # merge separate real cues together).
             segments = _group_word_fragments(word_segments)
+
+            # Confirmed on that same Dublin meeting: #transcript-fragments
+            # text is ALL CAPS ("GOOD EVENING AND HAPPY NEW YEAR"), which
+            # reads as shouting once grouped into real lines. Reuses the
+            # same shouting-detection + sentence-casing utility Granicus's
+            # VTT parsing already uses for the identical real problem (San
+            # Francisco's all-caps live captions) rather than inventing a
+            # second casing standard -- it only rewrites text when the
+            # sample is genuinely ~all-uppercase, so a Swagit deployment
+            # that turns out to emit normal-case text (unconfirmed either
+            # way, no second sample yet) would pass through untouched.
+            cue_dicts = [{"start": s.start, "end": s.end, "text": s.text} for s in segments]
+            normalize_shouting_caption(cue_dicts)
+            for seg, cue in zip(segments, cue_dicts):
+                seg.text = cue["text"]
 
         # A real caption *file* (as opposed to #transcript-fragments' DOM
         # elements above) has never been observed on any Swagit sample

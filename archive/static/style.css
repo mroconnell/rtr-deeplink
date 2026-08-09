@@ -537,6 +537,31 @@ mark.search-match.current { background: #f97316; color: #fff; }
   margin-right: 0.75rem;
 }
 
+/* AI-transcribed-version disclaimer -- reuses the dymo-label-small motif
+   as a real visual flag rather than blending into the plain amber
+   .warnings pill treatment every other transcript-quality message uses.
+   This one specifically needs to stand out: it's telling a reader the
+   text they're about to read might contain fabricated sentences. */
+.ai-disclaimer {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  margin-bottom: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--pill-bg);
+  border: 1px solid var(--pill-fg);
+  border-radius: 6px;
+}
+.ai-disclaimer .dymo-label-small {
+  flex: none;
+  margin-bottom: 0;
+}
+.ai-disclaimer p {
+  margin: 0;
+  color: var(--pill-fg);
+  font-size: 0.9rem;
+}
+
 .meeting-list-page {
   max-width: 720px;
   margin: 2rem auto;
@@ -568,10 +593,20 @@ mark.search-match.current { background: #f97316; color: #fff; }
 }
 .meeting-filters-form {
   display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding-top: 0.5rem;
+}
+/* Each logical group (text/date fields, checkboxes, actions) is its own
+   row -- previously one flat flex-wrap container let a narrow checkbox
+   land on whatever row had leftover space next to unrelated fields,
+   which read as messy/unintentional grouping rather than a deliberate
+   layout. */
+.filters-row {
+  display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
   align-items: end;
-  padding-top: 0.5rem;
 }
 .meeting-filters-form label {
   display: flex;
@@ -599,23 +634,30 @@ mark.search-match.current { background: #f97316; color: #fff; }
   border: none;
   accent-color: var(--accent);
 }
-.meeting-search-form .fuzzy-toggle {
-  display: flex;
+.filters-row-actions { align-items: center; }
+/* Lighter-weight sibling to .cassette-btn for a secondary action ("Clear
+   all filters") sitting right next to the primary "Apply filters" button
+   -- same shape/font so it still reads as a real button, not a link easy
+   to miss, but visually quieter so it doesn't compete with the primary
+   action. */
+.cassette-btn-outline {
+  display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  flex: none;
-  font-size: 0.8rem;
+  background: transparent;
   color: var(--muted);
-  white-space: nowrap;
+  border: 2px solid var(--border);
+  border-radius: 7px;
+  font-family: 'Courier New', monospace;
+  font-size: 1rem;
+  font-weight: bold;
+  padding: 0.5rem 1.1rem;
+  text-decoration: none;
+  transition: background 0.16s, color 0.16s, border 0.16s;
 }
-.meeting-search-form .fuzzy-toggle input[type="checkbox"] {
-  width: auto;
-  accent-color: var(--accent);
-}
-.clear-filters {
-  color: var(--muted);
-  font-size: 0.85rem;
-  align-self: center;
+.cassette-btn-outline:hover, .cassette-btn-outline:focus {
+  color: var(--fg);
+  border-color: var(--muted);
+  background: var(--page-bg);
 }
 
 .meeting-list { margin-top: 1rem; }
