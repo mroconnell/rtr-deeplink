@@ -1574,3 +1574,25 @@ changelog of task titles.
   `chunk_index + 1, total_chunks` and spell out "(will retry on next
   poll)" explicitly, so a future read of these logs doesn't need this
   same investigation to know the outcome.
+
+- **[Done 2026-08-08] Swagit's `#transcript-fragments` word-level
+  segments now get grouped into readable multi-word lines.** Was: real
+  data confirmed on a Dublin, CA meeting — six separate clickable
+  `[0:04]`/`[0:05]` lines for the single six-word phrase "GOOD EVENING
+  AND HAPPY NEW YEAR," spoken in under two seconds, since Swagit's
+  `#transcript-fragments` DOM emits one `<a data-ts>` per word
+  (`start == end`, a true instant) rather than real multi-word VTT/SRT
+  cues like every other adapter. Fixed with a new pure function,
+  `_group_word_fragments()` (`app/platforms/swagit.py`), applied only to
+  the `#transcript-fragments` DOM path (not the real-caption-file path,
+  which already has proper cues and shouldn't be re-merged) — a rolling
+  4-second time window per line, chosen over a fixed word count or
+  sentence-aware grouping (these fragments carry no punctuation at all
+  to key off of). Each group's `start` is its first word's real
+  timestamp, `end` its last word's. Verified against the exact real
+  Dublin timestamps from the bug report
+  (`tests/test_swagit.py::test_group_word_fragments_merges_real_dublin_example`)
+  plus three more unit tests (empty input, single word, window-boundary
+  behavior) and an updated integration test confirming the existing
+  language-detection test still passes with grouped (not one-per-word)
+  segments. Full suite green (121 tests).

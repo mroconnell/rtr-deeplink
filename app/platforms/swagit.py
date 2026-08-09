@@ -16,6 +16,46 @@ from ..utils.vtt_parser import (
     parse_captions_by_extension,
 )
 
+# Rolling time window for grouping #transcript-fragments' word-level
+# segments into readable lines -- decided over a fixed word count since
+# it naturally adapts to speaking pace (a fast talker gets more words per
+# line, a slow one fewer), and over sentence-aware grouping since these
+# fragments carry no punctuation at all to key off of. Not derived from
+# measured data, just a reasonable reading-line length.
+WORD_GROUPING_WINDOW_SECONDS = 4.0
+
+
+def _group_word_fragments(
+    word_segments: List[TranscriptSegment], window_seconds: float = WORD_GROUPING_WINDOW_SECONDS
+) -> List[TranscriptSegment]:
+    """Merges consecutive single-word segments (as emitted by Swagit's
+    #transcript-fragments DOM, one <a data-ts> per word) into multi-word
+    lines. A new line starts once the gap between the current group's
+    first word and the next word exceeds `window_seconds`. Pure function,
+    no I/O -- easy to unit test independent of the DOM-scraping code
+    that produces its input.
+    """
+    if not word_segments:
+        return []
+
+    grouped: List[TranscriptSegment] = []
+    group_words: List[str] = []
+    group_start = word_segments[0].start
+    group_end = word_segments[0].end
+
+    for seg in word_segments:
+        if group_words and seg.start - group_start > window_seconds:
+            grouped.append(TranscriptSegment(start=group_start, end=group_end, text=" ".join(group_words)))
+            group_words = []
+            group_start = seg.start
+        group_words.append(seg.text)
+        group_end = seg.end
+
+    if group_words:
+        grouped.append(TranscriptSegment(start=group_start, end=group_end, text=" ".join(group_words)))
+
+    return grouped
+
 
 class SwagitAssetFinder(AssetFinder):
     """Resolves video + chapter markers for a Swagit meeting page.
@@ -97,9 +137,11 @@ class SwagitAssetFinder(AssetFinder):
 
         fragments = soup.select("#transcript-fragments a[data-ts]")
         if fragments:
-            # Unverified path: never observed populated in testing (see
-            # class docstring). Handled in case some Swagit deployment has
-            # this enabled with real transcript text.
+            # Confirmed live 2026-08-08 against a real Dublin, CA meeting
+            # (clip 372020, 36,085 fragments) -- this DOM path is real,
+            # not just a defensive fallback (see the language-detection
+            # comment below for the same confirmation).
+            word_segments: List[TranscriptSegment] = []
             for a in fragments:
                 try:
                     start = float(a.get("data-ts") or 0)
@@ -107,7 +149,19 @@ class SwagitAssetFinder(AssetFinder):
                     continue
                 text = a.get_text(strip=True)
                 if text:
-                    segments.append(TranscriptSegment(start=start, end=start, text=text))
+                    word_segments.append(TranscriptSegment(start=start, end=start, text=text))
+            # #transcript-fragments is one DOM element per *word*, each
+            # with start == end (a true instant) -- confirmed live on that
+            # same Dublin meeting: "GOOD"/"EVENING"/"AND"/"HAPPY"/"NEW"/
+            # "YEAR" each rendered as a separate clickable line a fraction
+            # of a second apart, unreadable as a transcript. Every other
+            # adapter's segments come from real VTT/SRT cues, already
+            # authored in multi-word phrases, so this grouping step is
+            # Swagit-specific -- only applied to this DOM-fragment path,
+            # not the real-caption-file path below (which already has
+            # proper multi-word cues; grouping those could incorrectly
+            # merge separate real cues together).
+            segments = _group_word_fragments(word_segments)
 
         # A real caption *file* (as opposed to #transcript-fragments' DOM
         # elements above) has never been observed on any Swagit sample

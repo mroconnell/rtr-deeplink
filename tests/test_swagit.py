@@ -1,4 +1,5 @@
-from app.platforms.swagit import SwagitAssetFinder
+from app.platforms.models import TranscriptSegment
+from app.platforms.swagit import SwagitAssetFinder, _group_word_fragments
 
 from aiohttp_mock import FakeResponse, mock_session
 
@@ -65,8 +66,63 @@ async def test_resolve_detects_language_from_transcript_fragments():
     with mock_session(routes):
         result = await SwagitAssetFinder().resolve(PAGE_URL)
 
-    assert len(result.segments) == len(words)
+    # Word-level fragments (one per second here) get grouped into
+    # multi-word lines (see _group_word_fragments's own tests below) --
+    # fewer segments than words, but every word still present somewhere.
+    assert 0 < len(result.segments) < len(words)
+    assert " ".join(s.text for s in result.segments).split() == words
     assert result.transcript_language == "en"
+
+
+def test_group_word_fragments_merges_real_dublin_example():
+    # Real bug (2026-08-08): Swagit's #transcript-fragments emits one
+    # TranscriptSegment per word with start == end (a true instant) --
+    # confirmed live on a real Dublin, CA meeting: "GOOD"/"EVENING"/
+    # "AND"/"HAPPY"/"NEW"/"YEAR" each rendered as a separate clickable
+    # line a fraction of a second apart. These are that meeting's real
+    # timestamps (see BACKLOG.md), not synthetic.
+    words = [
+        TranscriptSegment(start=0.295, end=0.295, text="3, 2, 1."),
+        TranscriptSegment(start=4.065, end=4.065, text="GOOD"),
+        TranscriptSegment(start=4.355, end=4.355, text="EVENING"),
+        TranscriptSegment(start=4.935, end=4.935, text="AND"),
+        TranscriptSegment(start=5.155, end=5.155, text="HAPPY"),
+        TranscriptSegment(start=5.535, end=5.535, text="NEW"),
+        TranscriptSegment(start=5.755, end=5.755, text="YEAR"),
+    ]
+    grouped = _group_word_fragments(words, window_seconds=4.0)
+
+    assert len(grouped) < len(words)
+    assert " ".join(g.text for g in grouped) == "3, 2, 1. GOOD EVENING AND HAPPY NEW YEAR"
+    # Each group's start is its first word's timestamp, not a later one.
+    assert grouped[0].start == 0.295
+    # Each group's end is its last word's timestamp, not start == end.
+    assert grouped[-1].end == 5.755
+
+
+def test_group_word_fragments_empty_input():
+    assert _group_word_fragments([]) == []
+
+
+def test_group_word_fragments_single_word():
+    words = [TranscriptSegment(start=1.0, end=1.0, text="Hello")]
+    grouped = _group_word_fragments(words)
+    assert len(grouped) == 1
+    assert grouped[0].text == "Hello"
+    assert grouped[0].start == 1.0
+    assert grouped[0].end == 1.0
+
+
+def test_group_word_fragments_respects_window_boundary():
+    # A gap larger than the window starts a new line even mid-otherwise-
+    # continuous speech.
+    words = [
+        TranscriptSegment(start=0.0, end=0.0, text="one"),
+        TranscriptSegment(start=1.0, end=1.0, text="two"),
+        TranscriptSegment(start=10.0, end=10.0, text="three"),
+    ]
+    grouped = _group_word_fragments(words, window_seconds=4.0)
+    assert [g.text for g in grouped] == ["one two", "three"]
 
 
 async def test_resolve_no_caption_file_falls_through_to_no_transcript_warning():

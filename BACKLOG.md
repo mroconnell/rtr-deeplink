@@ -389,30 +389,6 @@ auditing it (2026-08-08), code-verified but not all live-triggered yet:
   there were none) over the current default — this is exactly the
   Dublin-style half of that shared fix, solved once for both bugs
   rather than twice.
-- **Swagit's `#transcript-fragments` transcript is unreadable — one word
-  per line, not phrases.** Confirmed with real data (2026-08-08) on the
-  same Dublin, CA meeting above: consecutive segments read `[0:04] GOOD`,
-  `[0:04] EVENING`, `[0:04] AND`, `[0:05] HAPPY`, `[0:05] NEW`,
-  `[0:05] YEAR` — six separate clickable lines for one six-word phrase
-  spoken in under two seconds. Root cause: `swagit.py`'s
-  `#transcript-fragments` parsing (`app/platforms/swagit.py` ~line 110)
-  creates one `TranscriptSegment` per DOM fragment with `start == end`
-  (a true instant, not a real cue range) — this is genuinely how Swagit
-  emits this data (one `<a data-ts>` per word), not a parsing bug. Every
-  other adapter's segments come from real VTT/SRT cues, which are
-  already authored in readable multi-word phrases, so this is Swagit-
-  specific. **Wanted**: group consecutive word-level fragments into
-  readable lines — a few seconds or a handful of words per line, segment
-  `start` = the *first* word's timestamp in the group (not each word's
-  own), `end` = the last word's. **Decided 2026-08-08: a rolling time
-  window (~3-5s per line)**, not a fixed word count or sentence-aware
-  grouping — naturally adapts to speaking pace rather than an arbitrary
-  cutoff, and sentence-aware grouping isn't really available here anyway
-  (these fragments carry no punctuation at all — `"GOOD EVENING AND
-  HAPPY NEW YEAR"`, all-caps, no periods). A pure post-processing step
-  over `segments` once collected, before they're returned in
-  `ResolvedMeeting` — doesn't need to touch the DOM-scraping logic
-  itself.
 - **eScribe caption content-quality unverified.** The per-language VTT
   naming convention was confirmed structurally on Richmond, CA, but none
   were populated (all 404) — shape-verified only, not content-verified.
