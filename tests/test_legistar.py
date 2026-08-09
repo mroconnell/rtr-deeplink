@@ -143,6 +143,134 @@ def test_is_legistar_domain_recognizes_nyc_custom_domain():
     assert not LegistarAssetFinder._is_legistar_domain("https://councilnyc.viebit.com/embed/vod?v=x")
 
 
+async def test_nyc_meeting_title_overrides_viebits_raw_filename_title():
+    # Real bug fixed 2026-08-09: ViebitAssetFinder's own title comes from
+    # Viebit's `video.title` field, confirmed live to just be the raw
+    # uploaded filename ("NYCC-250-8-2_251218-120823.mp4") -- not a human
+    # title. The NYC MeetingDetail.aspx page's own <title> tag has real
+    # info ("The New York City Council - Meeting of Committee on Finance
+    # on 12/18/2025 at 11:30 AM"), confirmed live on two real samples --
+    # this should now be preferred whenever the delegated title looks like
+    # a raw filename.
+    meeting_url = "https://legistar.council.nyc.gov/MeetingDetail.aspx?ID=1362373"
+    video_aspx = (
+        "https://legistar.council.nyc.gov/Video.aspx?Mode=Auto&URL="
+        "aHR0cHM6Ly9jb3VuY2lsbnljLnZpZWJpdC5jb20vdm9kLz9zPXRydWUmdj1OWUND"
+        "LTI1MC04LTFfMjYwNzIyLTExMDYzNi5tcDQ%3d&Mode2=Video"
+    )
+    viebit_url = "https://councilnyc.viebit.com/embed/vod?v=hFWIQkuFLuWGb0mw&s=true&d=false"
+    vtt_url = "https://vbfast-vod.viebit.com/counciln/hFWIQkuFLuWGb0mw/NYCC-250-8-1_260722-110636.vtt"
+
+    meeting_html = (
+        "<html><head><title>The New York City Council - Meeting of "
+        "Committee on Finance on 12/18/2025 at 11:30 AM</title></head>"
+        '<body><table><tr><td>Video</td></tr></table>'
+        f'<a class="videolink" onclick="OpenTelerikWindow(\'{video_aspx}\','
+        '\'video\');return false;">Video</a></body></html>'
+    )
+    viebit_html = load_fixture("viebit", "nycc_vod_page.html")
+    vtt = load_fixture("viebit", "nycc_captions.vtt")
+
+    routes = {
+        meeting_url: FakeResponse(status=200, text=meeting_html, url=meeting_url),
+        video_aspx: FakeResponse(status=200, text="", url=viebit_url),
+        viebit_url: FakeResponse(status=200, text=viebit_html, url=viebit_url),
+        vtt_url: FakeResponse(status=200, text=vtt, url=vtt_url),
+    }
+
+    with mock_session(routes):
+        result = await LegistarAssetFinder().resolve(meeting_url)
+
+    # Confirm the fixture's own delegated title really is the raw-filename
+    # shape this override exists for, not some other unrelated value.
+    assert result.title == "Committee on Finance"
+    assert result.jurisdiction == "New York City Council"
+    # date is NOT overridden here -- Viebit's own dateCreated (2026-07-22,
+    # baked into this fixture) already resolved successfully, so the page
+    # title's date (12/18/2025, from this test's deliberately mismatched
+    # meeting_html) is only ever a fallback for a missing date, never a
+    # silent replacement for one that's already there.
+    assert result.date == "2026-07-22"
+
+
+async def test_nyc_meeting_without_page_title_keeps_viebits_title_unchanged():
+    # No <title> tag on the source page (matches every other existing
+    # fixture in this file) -- _extract_page_meeting_info() returns None,
+    # so the delegated platform's own title/jurisdiction/date pass through
+    # completely unchanged, even if it's the same raw-filename shape.
+    meeting_url = "https://legistar.council.nyc.gov/MeetingDetail.aspx?ID=1"
+    video_aspx = (
+        "https://legistar.council.nyc.gov/Video.aspx?Mode=Auto&URL="
+        "aHR0cHM6Ly9jb3VuY2lsbnljLnZpZWJpdC5jb20vdm9kLz9zPXRydWUmdj1OWUND"
+        "LTI1MC04LTFfMjYwNzIyLTExMDYzNi5tcDQ%3d&Mode2=Video"
+    )
+    viebit_url = "https://councilnyc.viebit.com/embed/vod?v=hFWIQkuFLuWGb0mw&s=true&d=false"
+    vtt_url = "https://vbfast-vod.viebit.com/counciln/hFWIQkuFLuWGb0mw/NYCC-250-8-1_260722-110636.vtt"
+
+    meeting_html = (
+        '<html><body><table><tr><td>Video</td></tr></table>'
+        f'<a class="videolink" onclick="OpenTelerikWindow(\'{video_aspx}\','
+        '\'video\');return false;">Video</a></body></html>'
+    )
+    viebit_html = load_fixture("viebit", "nycc_vod_page.html")
+    vtt = load_fixture("viebit", "nycc_captions.vtt")
+
+    routes = {
+        meeting_url: FakeResponse(status=200, text=meeting_html, url=meeting_url),
+        video_aspx: FakeResponse(status=200, text="", url=viebit_url),
+        viebit_url: FakeResponse(status=200, text=viebit_html, url=viebit_url),
+        vtt_url: FakeResponse(status=200, text=vtt, url=vtt_url),
+    }
+
+    with mock_session(routes):
+        result = await LegistarAssetFinder().resolve(meeting_url)
+
+    assert result.title == "NYCC-250-8-1_260722-110636.mp4"
+    assert result.jurisdiction is None
+
+
+def test_extract_page_meeting_info_parses_real_nyc_title_shapes():
+    from bs4 import BeautifulSoup
+
+    committee_soup = BeautifulSoup(
+        "<title>The New York City Council - Meeting of Committee on Finance "
+        "on 12/18/2025 at 11:30 AM</title>",
+        "html.parser",
+    )
+    assert LegistarAssetFinder._extract_page_meeting_info(committee_soup) == {
+        "title": "Committee on Finance",
+        "jurisdiction": "New York City Council",
+        "date": "2025-12-18",
+    }
+
+    full_council_soup = BeautifulSoup(
+        "<title>The New York City Council - Meeting of City Council "
+        "on 12/18/2025 at 1:30 PM</title>",
+        "html.parser",
+    )
+    assert LegistarAssetFinder._extract_page_meeting_info(full_council_soup) == {
+        "title": "City Council",
+        "jurisdiction": "New York City Council",
+        "date": "2025-12-18",
+    }
+
+
+def test_extract_page_meeting_info_returns_none_without_matching_title():
+    from bs4 import BeautifulSoup
+
+    no_title_soup = BeautifulSoup("<body>No title tag here.</body>", "html.parser")
+    assert LegistarAssetFinder._extract_page_meeting_info(no_title_soup) is None
+
+    unrelated_title_soup = BeautifulSoup("<title>Meeting</title>", "html.parser")
+    assert LegistarAssetFinder._extract_page_meeting_info(unrelated_title_soup) is None
+
+
+def test_looks_like_raw_filename_matches_real_viebit_title():
+    assert LegistarAssetFinder._looks_like_raw_filename("NYCC-250-8-2_251218-120823.mp4")
+    assert not LegistarAssetFinder._looks_like_raw_filename("Committee on Finance")
+    assert not LegistarAssetFinder._looks_like_raw_filename(None)
+
+
 async def test_no_video_link_returns_warning_not_crash():
     url = "https://maricopa.legistar.com/MeetingDetail.aspx?ID=2"
     html = "<html><body>No video for this one.</body></html>"

@@ -9,6 +9,22 @@ from bs4 import BeautifulSoup
 from .base import AssetFinder, CalendarPageError, resolve_via_platform
 from .models import ResolvedMeeting
 
+# Confirmed live (2026-08-09) on two real NYC MeetingDetail.aspx pages: the
+# outer page's own <title> reliably gives "{jurisdiction} - Meeting of
+# {body} on {M}/{D}/{YYYY} at {time}" -- e.g. "The New York City Council -
+# Meeting of Committee on Finance on 12/18/2025 at 11:30 AM". Used as a
+# fallback when the delegated platform's own title is bad (see
+# _looks_like_raw_filename below) -- confirmed real bug: ViebitAssetFinder
+# (the platform underneath NYC's Legistar instance) has no better title of
+# its own to offer, since Viebit's own `video.title` field is just the
+# raw uploaded filename ("NYCC-250-8-2_251218-120823.mp4"), not a human
+# title -- see BACKLOG.md.
+_PAGE_TITLE_RE = re.compile(
+    r"^(.*?)\s*-\s*Meeting of\s+(.+?)\s+on\s+(\d{1,2})/(\d{1,2})/(\d{4})\s+at\s+.+$",
+    re.IGNORECASE,
+)
+_RAW_FILENAME_RE = re.compile(r"\.(mp4|mov|wmv|avi|mkv|m4v)$", re.IGNORECASE)
+
 
 class LegistarAssetFinder(AssetFinder):
     """Resolves a Legistar URL by finding and delegating to the real video
@@ -74,9 +90,15 @@ class LegistarAssetFinder(AssetFinder):
                     candidates=video_links,
                 )
 
+            page_info = self._extract_page_meeting_info(soup)
             target_final_url, _ = await self._fetch(session, video_links[0]["url"])
             if not self._is_legistar_domain(target_final_url):
-                return await resolve_via_platform(target_final_url)
+                resolved = await resolve_via_platform(target_final_url)
+                if page_info and self._looks_like_raw_filename(resolved.title):
+                    resolved.title = page_info["title"]
+                    resolved.jurisdiction = resolved.jurisdiction or page_info["jurisdiction"]
+                    resolved.date = resolved.date or page_info["date"]
+                return resolved
 
             return ResolvedMeeting(
                 platform=self.platform_name,
@@ -133,6 +155,27 @@ class LegistarAssetFinder(AssetFinder):
             if len(cells) > 1 and cells[1]:
                 date = LegistarAssetFinder._parse_date(cells[1]) or cells[1]
         return title, date
+
+    @staticmethod
+    def _extract_page_meeting_info(soup: BeautifulSoup) -> Optional[dict]:
+        if not soup.title:
+            return None
+        match = _PAGE_TITLE_RE.match(soup.title.get_text(" ", strip=True))
+        if not match:
+            return None
+        jurisdiction = match.group(1).strip()
+        if jurisdiction.lower().startswith("the "):
+            jurisdiction = jurisdiction[4:]
+        month, day, year = int(match.group(3)), int(match.group(4)), match.group(5)
+        return {
+            "title": match.group(2).strip(),
+            "jurisdiction": jurisdiction,
+            "date": f"{year}-{month:02d}-{day:02d}",
+        }
+
+    @staticmethod
+    def _looks_like_raw_filename(title: Optional[str]) -> bool:
+        return bool(title) and bool(_RAW_FILENAME_RE.search(title))
 
     @staticmethod
     def _parse_date(text: str) -> Optional[str]:

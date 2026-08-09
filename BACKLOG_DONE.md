@@ -8,6 +8,54 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-09] NYC Legistar meetings delegated to Viebit showed
+  Viebit's own raw uploaded filename as the meeting title
+  ("NYCC-250-8-2_251218-120823.mp4") instead of anything human-readable.**
+  Reported by the user against a real production URL
+  (`legistar.council.nyc.gov/MeetingDetail.aspx?ID=1362373...`). Root
+  cause: `LegistarAssetFinder._find_video_links()` already extracts a
+  `title`/`date` per candidate via `_extract_row_info()` — but that
+  extraction is shaped for *calendar* rows (each `<tr>` has a title cell
+  and a date cell), and on a single-meeting `MeetingDetail.aspx` page the
+  video link's parent `<tr>` is just a one-cell "Video" row, so the
+  extracted title was always "Untitled meeting"/discarded, and the
+  single-video-link resolve path threw the whole `video_links[0]` dict
+  away anyway once it had the URL, delegating to `resolve_via_platform()`
+  with nothing to fall back on. `ViebitAssetFinder` (the platform
+  underneath NYC's Legistar instance) has no better title of its own —
+  confirmed live, Viebit's own `video.title` field is just the raw
+  uploaded filename, not a human title.
+
+  Fix: confirmed live on two real NYC `MeetingDetail.aspx` pages that the
+  outer page's own `<title>` tag reliably gives
+  `"{jurisdiction} - Meeting of {body} on {M}/{D}/{YYYY} at {time}"` —
+  e.g. `"The New York City Council - Meeting of Committee on Finance on
+  12/18/2025 at 11:30 AM"` and `"...Meeting of City Council on
+  12/18/2025 at 1:30 PM"`. Added `LegistarAssetFinder._extract_page_meeting_info()`
+  (regex-parses that shape into `title`/`jurisdiction`/`date`) and
+  `_looks_like_raw_filename()` (matches a trailing video file extension —
+  `.mp4`/`.mov`/`.wmv`/`.avi`/`.mkv`/`.m4v`). After delegating, `resolve()`
+  now overrides the delegated result's `title` only when it looks like a
+  raw filename, and fills `jurisdiction`/`date` only when those are
+  missing entirely — never silently replacing an already-good value from
+  a platform that has its own real metadata (e.g. Granicus). Verified
+  against both real live URLs end-to-end (direct `resolve_via_platform()`
+  call and the real `/api/resolve` endpoint) — `ID=1362373` now resolves
+  `title="Committee on Finance"`, `jurisdiction="New York City Council"`,
+  `date="2025-12-18"` (previously the raw filename, `None`, and a
+  coincidentally-correct date respectively). 6 new tests added to
+  `tests/test_legistar.py` (11 total, up from 5) covering the override,
+  the no-`<title>`-tag passthrough case (existing behavior unchanged), and
+  both helper functions directly; full suite (186 tests) passing.
+
+  **Separately reported in the same message: Viebit video playback itself
+  is also broken in production ("Video failed to load; source link
+  only.").** This is a real, larger, confirmed-but-deferred bug — see the
+  live entry in `BACKLOG.md` for the full root-cause investigation
+  (Referer/Origin-gated CDN, confirmed via direct browser testing) and why
+  the fix (switching to an iframe embed of Viebit's own player, matching
+  the YouTube precedent) isn't being built yet.
+
 - **[Done 2026-08-09] Production incident: the worker was crash-looping on
   every `claim_next_chunk()` call with `column transcription_jobs.priority
   does not exist`.** Root cause: this session's own
