@@ -8,6 +8,94 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-10] Live-tested the generic fallback against a real,
+  never-before-seen city (Aurora, CO's auroratv.org) and fixed three real
+  bugs it surfaced.** First real end-to-end test of `generic_fallback.py`
+  (built 2026-08-09) against a genuinely unsupported site, per the user's
+  own request ("let's test the fallback page you made") — found via a
+  live check of the shared sample sheet's "50 cities" tab (BoardDocs
+  entries there are explicitly documented as never getting a dedicated
+  adapter, guaranteeing the fallback path), then Aurora came from the
+  user's own follow-up test.
+
+  **Real bug #1**: Aurora genuinely has a playable video (a real .mp4)
+  and real captions (a real .vtt) on the page, but the resolver reported
+  neither. Root cause: `media_scan.py`'s `MEDIA_URL_PATTERNS` all require
+  a literal `https?://`, but both URLs live inside an inline `<script>`
+  JSON blob (a JW Player config) with every `/` written as a JSON-escaped
+  backslash-slash — confirmed by fetching the real raw HTML directly.
+  Fixed by de-escaping before scanning (see `media_scan.py`'s own
+  docstring for the full reasoning on why a blanket replace is safe).
+  Verified against the real page: `video_url` now resolves to the real
+  `vod.mp4`, and 5310 real transcript segments load from the real .vtt.
+
+  **Real bug #2**: `video_warnings` was silently invisible whenever no
+  video was found at all — confirmed live via a real BoardDocs page
+  (Accomack County, VA) that genuinely has no video. Root cause:
+  `#videoError` (where the warning rendered) is a child of `#videoSection`,
+  which itself gets `hidden = true` whenever there's no `video_url` —
+  taking the warning down with it even though the warning exists
+  specifically to explain *why* there's no video. Fixed by splitting into
+  a new, independently-visible `#videoWarnings` for the no-video case;
+  `#videoError` stays reserved for genuine native-video/HLS playback
+  failures where a video legitimately exists (a real, narrower, different
+  case). A prior fix earlier in the same session (the YouTube IP-block
+  degrade-gracefully change) had already exercised this exact code path
+  with a video present — masking this bug, since it only reproduces when
+  there's no video at all.
+
+  **Design gap, not exactly a bug**: the agenda-link message (built
+  2026-08-09) was nested under the Transcript heading via
+  `transcript_warnings`, which the user correctly flagged as misleading
+  (an agenda link isn't transcript-related). Added
+  `ResolvedMeeting.agenda_warnings`, a new field mirroring the existing
+  `video_warnings`/`transcript_warnings` pattern, rendered under its own
+  Agenda heading regardless of whether real `agenda_items` exist.
+
+  **UX improvements, from direct user feedback on a live screenshot**:
+  messages mentioning requesting a transcript from the audio were plain
+  dead text next to the real button elsewhere on the page — standardized
+  the phrasing to a single matchable substring across `generic_fallback.py`
+  and the three other adapters with a similar message
+  (`civicclerk.py`/`escribe.py`/`granicus.py`'s garbled-transcript case),
+  and made that exact phrase a real inline `<button>` triggering the same
+  action (`document.getElementById('transcribeToggle').click()`). The
+  no-transcript live-playhead panel's hint text now adds a caveat when
+  `platform === 'unknown'`, since deep-link reliability there genuinely
+  isn't confirmed the way it is on a supported platform.
+
+  Also answered a real design question the user raised: does the
+  "Request Transcript from Audio" flow re-check for video/captions
+  independently, in case the initial page scan misses something?
+  Confirmed yes already, structurally — `/api/transcription/
+  check-feasibility` calls the exact same `get_finder(platform).resolve()`
+  path as the main resolve, so fixing the shared `media_scan.py` bug
+  above fixed both at once; no separate mechanism was needed.
+
+  **Follow-up correction, same session**: the copy shipped in all of the
+  above read as confident/declarative ("You can still...", matter-of-fact
+  instructions) rather than the open-ended, tentative "hey, we're trying
+  our best, this might not work" tone the user had originally specified
+  for this exact feature (from the original request that led to building
+  `generic_fallback.py` in the first place). Rewrote all four
+  `generic_fallback.py` messages and the platform-specific deep-link
+  caveat to match: "we think we found...", "might work, or it might
+  not...", "we're trying our best" rather than definitive statements —
+  caught only because the user asked directly whether their original
+  copy suggestion had been dropped, a real reminder that copy tone from
+  earlier in a long session can get lost across many intervening fixes.
+
+  **Known residual gap, not yet addressed**: `archive/templates/
+  meeting_page.html` and `archive/static/meeting_page.js` render the same
+  video/agenda/transcript sections server-side (Jinja2, not this same JS
+  render path) and likely have the identical underlying issues (warnings
+  nested under the wrong heading, no equivalent of the new
+  `agenda_warnings` field) — not yet mirrored, since no `platform="unknown"`
+  meeting has ever actually been pushed to the Archive (confirmed via a
+  real audit of all 22 archived meetings, see the YouTube-captions
+  investigation entry above/nearby). Worth doing before the first such
+  meeting actually gets archived, not urgent before then.
+
 - **[Done 2026-08-09] Fixed production incident: Minneapolis LIMS (and
   likely SLC, same underlying cause) resolves failing with Playwright's
   own raw error text shown on the page.** Reported live by the user:

@@ -7,6 +7,19 @@ where relevant.
 
 ## Bugs
 
+- **Archive's `meeting_page.html`/`meeting_page.js` likely have the same
+  fallback-page UI bugs just fixed on the resolver side, unmirrored.**
+  2026-08-10 live-testing (see BACKLOG_DONE.md's "Live-tested the
+  generic fallback" entry) fixed several real bugs in the resolver's
+  `app/templates/meeting.html`/`app/static/player.js` (an invisible
+  video_warnings message when no video is found, an agenda link nested
+  under the wrong heading, dead non-clickable "request from audio" text).
+  The Archive renders the same three sections server-side via Jinja2, a
+  genuinely different code path, and hasn't been checked or updated —
+  not urgent since no `platform="unknown"` meeting has ever actually been
+  pushed to the Archive yet (confirmed via a real audit of all 22
+  archived meetings), but worth fixing before the first one is.
+
 - **⚠️ Production incident, active as of 2026-08-09: the `worker`
   service crashed outright at startup** (`Exited with status 1 while
   running your code`, `ModuleNotFoundError: No module named
