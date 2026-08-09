@@ -7,6 +7,44 @@ where relevant.
 
 ## Bugs
 
+- **⚠️ Production incident, active as of 2026-08-09: the `worker`
+  service crashed outright at startup** (`Exited with status 1 while
+  running your code`, `ModuleNotFoundError: No module named
+  'playwright'` — a real Render worker crash log, not a hypothetical).
+  Cause: `worker/main.py` imports `app.platforms` for fresh `video_url`
+  re-resolution before each transcription chunk, which registers every
+  adapter including `LimsAssetFinder`/`SlcAssetFinder` — both import
+  `app/platforms/headless_browser.py`, which had a top-level `from
+  playwright.async_api import ...`. `playwright` is deliberately absent
+  from `worker/requirements.txt` (kept lean on purpose, per that file's
+  own comment) — this app/worker requirements split predates the
+  playwright-dependent LIMS/SLC adapters, and wasn't reconciled when
+  they were added, so just importing `app.platforms` took down the
+  *entire* worker process, not just LIMS/SLC-related jobs.
+
+  Fix shipped (`app/platforms/headless_browser.py`): made the playwright
+  import lazy (`try`/`except ImportError`, sentinel `None`), so
+  `register_all_finders()` always succeeds regardless of whether
+  playwright is installed — only a resolve that actually needs a real
+  browser now fails, with the same clean `HeadlessBrowserUnavailable`
+  message as the missing-binary case, not a whole-service outage.
+  Verified by simulating a playwright-less import environment locally
+  (blocking the import, confirming `register_all_finders()` succeeds and
+  a LIMS resolve raises the clean error instead of crashing) — **not yet
+  confirmed against the real worker deploy**. **Remove this item once
+  the worker service has redeployed and stayed up.**
+
+  **Real, deliberately unresolved follow-up**: the worker still can't
+  itself do a Cloudflare-gated re-resolve (LIMS/SLC) mid-transcription-
+  job, since playwright genuinely isn't installed there — a transcription
+  job for one of those two platforms will now fail cleanly instead of
+  crashing the service, but it will still fail. Whether to add playwright
+  + Chromium to `worker/Dockerfile` (real image-size/build-time cost,
+  though the Dockerfile already has apt-get/root access, unlike the main
+  app's plain Python buildpack) hasn't been decided — no known real
+  transcription request has hit this yet, so it's not urgent, but worth
+  deciding deliberately rather than by accident.
+
 - **⚠️ Production incident, active as of 2026-08-09: real Minneapolis
   LIMS video resolves failing at the YouTube step with "Sign in to
   confirm you're not a bot."** Reported live by the user re-testing
