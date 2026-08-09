@@ -8,6 +8,44 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-09] Built a language-track correction flow: "public
+  report, admin fixes."** Real gap closed: a `TranscriptVersion`'s
+  `language` was set once (langdetect's guess for a self-transcribed
+  version, or the source's own label for a scraped one) and never
+  correctable afterward short of a raw database edit. Design decided via
+  a real interview (three questions: who can invoke the correction, does
+  it need to handle genuine bilingual content, does it apply to any
+  version or only self-transcribed ones) — landed on: public report via
+  the existing "Report a problem" form (new `wrong_language` issue type,
+  added to `VALID_ISSUE_TYPES` in `app/db/crud.py` and the dropdown in
+  both `app/templates/meeting.html` and
+  `archive/templates/meeting_page.html`), a human (Ryan) reviews via the
+  existing `/admin/problem-reports` list and applies the fix, no
+  bilingual/mixed-content support attempted, and any version can be
+  corrected — not just self-transcribed ones.
+
+  New pieces: `archive/db/crud.py`'s `correct_transcript_version_language()`
+  (targets the page's current default version when no `version_id` is
+  given, since that's what a reporter was actually looking at);
+  `archive/main.py`'s token-gated `POST /internal/transcript-version/
+  correct-language`; `app/archive_client.py`'s `correct_transcript_language()`
+  proxy function; and `app/main.py`'s `GET /admin/correct-transcript-
+  language?token=&url=&language=&version_id=`, which takes the reported
+  meeting's raw source URL (same shape as the existing
+  `/admin/recheck-archive-page`) and looks up the matching Archive page
+  the same way a repeat paste would, rather than requiring the admin to
+  already know the internal slug. Verified end-to-end against a real
+  live-archived NYC meeting: submitted a real `wrong_language` report via
+  `/api/report-problem`, confirmed it appeared in `/admin/problem-
+  reports`, applied the correction via `/admin/correct-transcript-
+  language`, confirmed the change actually rendered on the permanent
+  page's `schema.org inLanguage` field, then reverted it back to the
+  real correct value. 8 new tests (4 crud-level in
+  `tests/test_ingest_promotion.py`, 4 HTTP-level in the new
+  `tests/test_correct_language_endpoint.py` covering token gating and
+  the not-found path, which live entirely in the route layer and aren't
+  reachable from a crud-level test). Full suite (198 tests) passing.
+
 - **[Done 2026-08-09] `/meetings` pagination threw a real 422 in production
   whenever a filter checkbox was left unset.** Reported live by the user
   with the exact broken URL: clicking "Next" on

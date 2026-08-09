@@ -637,6 +637,48 @@ async def promote_transcript_version(session, page_id: int, version_id: int) -> 
         v.is_default = v.id == version_id
 
 
+async def correct_transcript_version_language(
+    *, slug: str, language: str, version_id: Optional[int] = None
+) -> Optional[dict]:
+    """Admin correction for a wrong/mis-detected TranscriptVersion.language
+    -- the "public report, admin fixes" flow decided 2026-08-09 (see
+    BACKLOG_DONE.md's language-picker entry). Applies to any version's
+    source, not just self-transcribed ones: a scraped caption's
+    source-provided language can be just as wrong as langdetect's guess.
+
+    Targets the page's current default version when version_id isn't
+    given, since that's almost always what a reporter was actually
+    looking at when they filed the report -- correcting a specific
+    non-default version needs its id looked up first (e.g. via
+    get_page_by_slug()'s versions list). Manages its own session/commit,
+    unlike promote_transcript_version() -- this is always a standalone
+    top-level admin action, never chained inside another write.
+    """
+    async with async_session() as session:
+        page = (await session.execute(select(MeetingPage).where(MeetingPage.slug == slug))).scalars().first()
+        if page is None:
+            return None
+
+        if version_id is not None:
+            version = await session.get(TranscriptVersion, version_id)
+            if version is None or version.meeting_page_id != page.id:
+                return None
+        else:
+            version = (
+                await session.execute(
+                    select(TranscriptVersion).where(
+                        TranscriptVersion.meeting_page_id == page.id, TranscriptVersion.is_default.is_(True)
+                    )
+                )
+            ).scalars().first()
+            if version is None:
+                return None
+
+        version.language = language
+        await session.commit()
+        return {"slug": slug, "version_id": version.id, "language": version.language}
+
+
 async def create_transcription_job(
     *,
     payload: dict[str, Any],

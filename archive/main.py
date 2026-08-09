@@ -219,6 +219,27 @@ async def internal_transcription_status(job_id: int, authorization: Optional[str
     return job
 
 
+class CorrectLanguageRequest(BaseModel):
+    slug: str
+    language: str
+    version_id: Optional[int] = None
+
+
+@app.post("/internal/transcript-version/correct-language")
+async def internal_correct_language(req: CorrectLanguageRequest, authorization: Optional[str] = Header(None)):
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    result = await crud.correct_transcript_version_language(
+        slug=req.slug, language=req.language, version_id=req.version_id
+    )
+    if result is None:
+        return JSONResponse(
+            {"error": "not_found", "message": "No matching meeting page/version."}, status_code=404
+        )
+    return result
+
+
 def _pick_active_version(page: dict, version: Optional[int]) -> Optional[dict]:
     versions = page["versions"]
     if not versions:

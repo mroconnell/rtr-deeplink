@@ -190,3 +190,35 @@ async def proxy_get(path: str, query_string: str):
 
 def filter_proxy_headers(headers) -> dict:
     return {k: v for k, v in headers.items() if k.lower() not in _HOP_BY_HOP_HEADERS}
+
+
+async def correct_transcript_language(slug: str, language: str, version_id: Optional[int] = None) -> Optional[dict]:
+    """Admin correction for a wrong TranscriptVersion.language -- see
+    app/main.py's /admin/correct-transcript-language and BACKLOG_DONE.md's
+    language-picker entry. Returns None on any failure, same pattern as
+    every other call here."""
+    base = _base_url()
+    if not base:
+        return None
+
+    body: dict[str, Any] = {"slug": slug, "language": language}
+    if version_id is not None:
+        body["version_id"] = version_id
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{base}/internal/transcript-version/correct-language",
+                json=body,
+                headers=_headers(),
+                timeout=TRANSCRIPTION_TIMEOUT,
+            ) as response:
+                if response.status == 200:
+                    return await response.json()
+                logger.error(
+                    "Archive correct-language failed (%s): %s", response.status, await response.text()
+                )
+                return None
+    except Exception:
+        logger.exception("Archive correct-language request failed.")
+        return None

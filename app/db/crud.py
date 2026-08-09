@@ -8,7 +8,7 @@ from .engine import async_session
 from .models import MeetingResolution, ProblemReport
 from .outcomes import classify_outcome
 
-VALID_ISSUE_TYPES = {"wrong_video", "bad_transcript", "wrong_metadata", "other"}
+VALID_ISSUE_TYPES = {"wrong_video", "bad_transcript", "wrong_metadata", "wrong_language", "other"}
 
 
 async def get_cached_resolution(normalized_url: str) -> Optional[dict]:

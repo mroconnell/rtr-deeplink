@@ -548,12 +548,6 @@ one item below is resolved as a result.
   concrete to offer (account registration, referrals, or payments — all
   still pre-roadmap, see "Archive roadmap" below); don't build a support
   ask against nothing.
-- **No language-track picker for a transcribed version yet** — a
-  transcribed `TranscriptVersion`'s language is detected from its own text
-  (`archive/utils/language.py`, mirroring every scraped-caption adapter's
-  existing behavior), but if a meeting is bilingual or the detection is
-  simply wrong, there's no way to fix or override it after the fact short
-  of a database edit.
 - **~~A non-default `TranscriptVersion` is invisible to internal
   search~~ — fixed 2026-08-08.** Confirmed by reading the actual code,
   prompted by asking whether a scraped caption and an AI transcript

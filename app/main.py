@@ -696,3 +696,34 @@ async def admin_recheck_archive_page(token: str = "", url: str = ""):
     platform = detect_platform(url)
     normalized = normalize_url(url)
     return await _recheck_archived_page(url, normalized, platform)
+
+
+@app.get("/admin/correct-transcript-language")
+async def admin_correct_transcript_language(token: str = "", url: str = "", language: str = "", version_id: Optional[int] = None):
+    """Applies a "wrong_language" problem report's correction -- the
+    "public report, admin fixes" flow decided 2026-08-09 (see
+    BACKLOG_DONE.md). Takes the reported meeting's raw source URL (same
+    shape as /admin/recheck-archive-page above) rather than an Archive
+    slug directly, since that's all a ProblemReport row actually has --
+    looks up the matching permanent page the same way a repeat paste
+    would. Targets the page's current default transcript version unless a
+    specific version_id is given."""
+    if not _admin_token_ok(token):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    if not url or not language:
+        return JSONResponse(
+            {"error": "missing_params", "message": "Pass ?url=<the meeting's source URL>&language=<ISO 639-1 code>."},
+            status_code=400,
+        )
+
+    normalized = normalize_url(url)
+    lookup_result = await archive_client.lookup(normalized)
+    if lookup_result is None:
+        return JSONResponse(
+            {"error": "not_found", "message": "No archived permanent page matches that URL."}, status_code=404
+        )
+
+    result = await archive_client.correct_transcript_language(lookup_result["slug"], language, version_id)
+    if result is None:
+        return JSONResponse({"error": "correction_failed", "message": "Could not apply the correction."}, status_code=502)
+    return result

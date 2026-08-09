@@ -47,6 +47,74 @@ async def test_get_page_by_slug_includes_platform():
     assert page["platform"] == "granicus"
 
 
+async def test_correct_transcript_version_language_fixes_default_version():
+    # Real feature built 2026-08-09: "public report, admin fixes" flow for
+    # a wrong transcript-language label -- see BACKLOG_DONE.md.
+    url = "https://example.granicus.com/player/clip/promo-language-fix"
+    external_id = "granicus:promo-language-fix"
+
+    await crud.ingest_resolution(
+        _payload(external_id, url, segments=[{"start": 0, "end": 1, "text": "hola"}], transcript_language="es"),
+        url,
+    )
+    slug = (await crud.lookup_page_for_url(url))["slug"]
+
+    result = await crud.correct_transcript_version_language(slug=slug, language="en")
+    assert result is not None
+    assert result["language"] == "en"
+
+    page = await crud.get_page_by_slug(slug)
+    assert page["versions"][0]["language"] == "en"
+
+
+async def test_correct_transcript_version_language_targets_specific_version():
+    url = "https://example.granicus.com/player/clip/promo-language-specific"
+    external_id = "granicus:promo-language-specific"
+
+    # Two distinct-content versions (different segment text => different
+    # content_hash => both get created, not deduped) -- only the non-
+    # default one should be touched.
+    await crud.ingest_resolution(
+        _payload(external_id, url, segments=[{"start": 0, "end": 1, "text": "hello"}], transcript_language="en"),
+        url,
+    )
+    await crud.ingest_resolution(
+        _payload(external_id, url, segments=[{"start": 0, "end": 1, "text": "bonjour"}], transcript_language="es"),
+        url,
+    )
+    slug = (await crud.lookup_page_for_url(url))["slug"]
+    page = await crud.get_page_by_slug(slug)
+    assert len(page["versions"]) == 2
+    target = next(v for v in page["versions"] if not v["is_default"])
+    untouched_id = next(v["id"] for v in page["versions"] if v["id"] != target["id"])
+    untouched_original_language = next(v["language"] for v in page["versions"] if v["id"] == untouched_id)
+
+    result = await crud.correct_transcript_version_language(slug=slug, language="fr", version_id=target["id"])
+    assert result is not None
+
+    page = await crud.get_page_by_slug(slug)
+    fixed = next(v for v in page["versions"] if v["id"] == target["id"])
+    untouched = next(v for v in page["versions"] if v["id"] == untouched_id)
+    assert fixed["language"] == "fr"
+    assert untouched["language"] == untouched_original_language  # the other version is unaffected
+
+
+async def test_correct_transcript_version_language_returns_none_for_unknown_slug():
+    result = await crud.correct_transcript_version_language(slug="no-such-slug-at-all", language="en")
+    assert result is None
+
+
+async def test_correct_transcript_version_language_returns_none_for_mismatched_version_id():
+    url = "https://example.granicus.com/player/clip/promo-language-mismatch"
+    external_id = "granicus:promo-language-mismatch"
+    await crud.ingest_resolution(_payload(external_id, url, segments=[{"start": 0, "end": 1, "text": "hi"}]), url)
+    slug = (await crud.lookup_page_for_url(url))["slug"]
+
+    # A version_id that exists but doesn't belong to this page.
+    result = await crud.correct_transcript_version_language(slug=slug, language="en", version_id=999999999)
+    assert result is None
+
+
 async def test_dublin_style_promotes_when_language_detected_later():
     url = "https://example.granicus.com/player/clip/promo-dublin"
     external_id = "granicus:promo-dublin"
