@@ -5,6 +5,49 @@ investigation detail behind each fix — lives in
 [BACKLOG_DONE.md](BACKLOG_DONE.md); items below link back to it for context
 where relevant.
 
+## UX polish
+
+- **`/meetings` results would read more cleanly with a line break between
+  the meeting title and its jurisdiction/date line.** Currently
+  `archive/templates/meeting_list.html`'s `.calendar-candidate-main` runs
+  the title link and the jurisdiction/date `<span>` together inline with
+  no line break, so skimming down the page for city+date means visually
+  parsing past a variable-length title on every row first. Making that
+  span its own line (`display: block`, or an explicit `<br>`) would let a
+  reader's eye track straight down one left-aligned jurisdiction/date
+  column instead.
+- **Transcript rows on permanent meeting pages (and the resolver's
+  ephemeral pages — same `.transcript-segment` shape in both stylesheets)
+  are hard to read once a line wraps, because the wrapped text falls back
+  to the far-left margin (under the timestamp) instead of aligning under
+  where the text itself started.** `.transcript-segment`
+  (`archive/static/style.css` / `app/static/style.css`) lays out the
+  timestamp link, copy-link button, and text as plain inline content in
+  one block — no fixed-width timestamp column exists today. A CSS
+  grid/flex layout (fixed-width timestamp+button column, text column
+  taking the remaining width with normal word-wrap) would keep every
+  wrapped line's left edge aligned under the first line's text instead of
+  falling back under the timestamp. Same fix needed in both stylesheets,
+  matching the "shared markup/CSS pattern, kept in sync manually" note at
+  the top of `archive/static/style.css`.
+- **Viebit/NYCC meetings resolve `jurisdiction` to "New York City
+  Council" (a legislative body name), not "New York City, NY" (the
+  city+state format most other platforms use, e.g. Swagit's
+  `f"{city}, {state}"`, PrimeGov's recent "City of X" fix).** Not wrong,
+  exactly — `LegistarAssetFinder._extract_page_meeting_info()`
+  (2026-08-09, see BACKLOG_DONE.md) deliberately extracts the real
+  legislative body name from the page's own `<title>` tag, just a
+  different shape than the convention used elsewhere. Worth deciding: try
+  to fix generally (would need a real second, non-NYC Viebit sample to
+  know whether "extract the city name, not the body name" is even a valid
+  general rule — Viebit is currently confirmed used only by NYC Council,
+  per `ViebitAssetFinder`'s own docstring, so there's nothing to
+  generalize from yet), or just hardcode `"New York City, NY"` for this
+  one confirmed-single-jurisdiction platform rather than over-generalizing
+  from a single example — matching this repo's established "narrow fix
+  until real examples exist" convention (see the
+  `collect_edge_case_urls` memory).
+
 ## Deep links
 
 The `t`/`line` scheme itself is sound and hasn't changed since the initial
