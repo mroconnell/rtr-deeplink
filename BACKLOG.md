@@ -128,7 +128,10 @@ auditing it (2026-08-08) — two fixed since, one still open below:
 - **New platform found: Minneapolis's own "LIMS" (Legislative Information
   Management System), `lims.minneapolismn.gov/MarkedAgenda/CI/{id}` —
   genuinely richer source data than most platforms already supported, but
-  blocked by a real Cloudflare JS challenge, not just a missing header.**
+  blocked by a real Cloudflare JS challenge, not just a missing header.
+  Confirmed 2026-08-09 to be the exact same blocker class as SLC's own
+  meeting-recap pages (see the consolidated entry below) — this is no
+  longer an isolated one-off, it's a real, recurring category.**
   Confirmed live (2026-08-08) via
   `https://lims.minneapolismn.gov/MarkedAgenda/CI/6133`. Doesn't match any
   existing `detect_platform()` rule — a real new platform, not a variant
@@ -166,6 +169,23 @@ auditing it (2026-08-08) — two fixed since, one still open below:
     architecture decision (new system-level dependency, not just a
     Python package), not something to default into alongside routine
     platform-adapter work.
+  - **Also confirmed 2026-08-09: client-side fetch (from a real visitor's
+    own browser, which already passes Cloudflare fine) is blocked by
+    CORS** — `fetch('https://lims.minneapolismn.gov/...', {mode: 'cors'})`
+    from a different origin fails outright, since the site sets no
+    `Access-Control-Allow-Origin` header. Rules out a "scrape client-side
+    instead of server-side" shortcut as a way to avoid the headless-
+    browser decision above.
+  - **Also confirmed 2026-08-09: iframing the real page (from a real
+    visitor's browser, in a test harness on a different origin) renders
+    blank** — unlike SLC (see below), whose page renders fully inside a
+    cross-origin iframe. Either `X-Frame-Options`/`frame-ancestors`, or
+    Cloudflare's own challenge refusing to complete inside an iframe
+    context specifically (both plausible, not yet distinguished). Net
+    effect either way: **the "iframe the government's own site" fallback
+    (see the consolidated entry below) does not work for Minneapolis —
+    this platform has no viable near-term workaround, full stop, until
+    the headless-browser decision is actually made.**
   - Not yet checked: whether "LIMS" is a white-labeled product used by
     other cities under different domains (would matter for whether a
     general detection rule is worth building at all, vs. this being a
@@ -269,60 +289,102 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   real LA sample (see [BACKLOG_DONE.md](BACKLOG_DONE.md)) is typical or
   specific to that video.
 
-- **Design question: what happens when one submitted URL contains more
-  than one video?** Real example: SLC publishes meeting recap pages
-  (e.g. `slc.gov/council/may-5-2026-meeting-recap/`) that embed several
-  direct YouTube links on one page — not a PrimeGov page at all, just
-  the city's own site. Right now nothing in this app has a concept of
-  "one URL, several distinct videos" — every adapter assumes one URL =
-  one video. If we just picked one video to auto-resolve (as today's
-  adapters would try to), a user would have no way to deep-link into
-  video #2 or #3 through that recap URL — the exact problem the user
-  flagged. Possibly the same underlying shape shows up on calendar-style
-  pages too (NYC's Legistar calendar was raised as a similar case,
-  though that one is already a step removed — see the NYC Legistar item
-  above — since a Legistar calendar's *rows* are already handled by the
-  existing `calendar_page` pick-list; the open question here is really
-  about a single row/URL that itself resolves to more than one video).
+- **⚠️ Corrected 2026-08-09, real finding that overturns the original
+  premise below: SLC's meeting recap pages do NOT embed multiple
+  distinct videos — confirmed across four real pages (May 5, June 2,
+  March 3, July 21, 2026), every single one has exactly ONE video, with
+  several manually-curated `t=`-timestamp links into that one video for
+  different agenda topics.** E.g. March 3, 2026
+  (`slc.gov/council/march-3-2026-meeting-recap/`) has 5 "(Watch)" links,
+  all pointing at `youtube.com/live/IxqEGR5x_1M`, just with different
+  `t=` values (1086, 1441, 1451, 2455, 3034 seconds) — not 5 different
+  videos. This isn't a "which of several videos do you want" picker
+  problem at all; it's a **"the city already hand-curated real topic ↔
+  timestamp chapter markers into one video, and this app has no way to
+  surface them"** problem — a much smaller, more valuable, and more
+  directly buildable gap than the original multi-video-picker framing
+  assumed. (The `calendar_page` pick-list decisions below are now
+  superseded by this correction — kept for the record, not because
+  they're still the plan.)
 
-  **What already works today, no code change needed:** a user can just
-  copy the direct YouTube link for video #2 or #3 off the recap page
-  and paste *that* into the tool — `YouTubeAssetFinder` resolves a
-  standalone `youtube.com`/`youtu.be` URL on its own, with no PrimeGov
-  or recap-page involvement at all. The real gap isn't capability, it's
-  discoverability: nothing tells a user this is possible, or that the
-  page they submitted has other videos worth grabbing individually.
+  **Also discovered while checking this live: SLC's own site is behind
+  the exact same Cloudflare "Just a moment…" JS challenge as Minneapolis
+  LIMS above** — confirmed via a direct `curl` 403 to
+  `slc.gov/council/march-3-2026-meeting-recap/`. This is no longer two
+  unrelated platform gaps; it's one real, recurring blocker class hitting
+  at least two independent real cities, with a shared underlying shape
+  once past it (one real video + real topic-labeled timestamps → this
+  app's existing `agenda_items`).
 
-  **Decided 2026-08-08, three real decisions, not built yet:**
-  - **Reuse the existing `calendar_page` shape** (`{"error":
-    "calendar_page", "candidates": [...]}`, `renderCalendarPage()`'s
-    pick-list UI) rather than inventing a second, distinct interaction
-    pattern — from the user's side this is the same kind of choice
-    ("here's more than one thing at this URL, pick one"), whether it's
-    several meetings on a calendar or several videos on one recap page.
-  - **Start with detection scoped narrowly to known platforms only**,
-    not a generic "scan any unrecognized page for multiple videos"
-    fallback — same reasoning as the NYC Legistar domain-detection
-    decision above and the new `collect-edge-case-urls` habit: a broad
-    scanner built from one example (SLC) risks real false positives,
-    specifically flagged by the user: a page with several video/audio
-    *files* that are actually the same content (different quality
-    renditions, mirrors) shouldn't trigger the multi-video picker just
-    because there's more than one `<video>`/`<a>` tag. **Real signal
-    worth building into detection once this gets generalized**: file
-    *duration* similarity — several long files of nearly the same
-    duration are more likely renditions of the same recording than
-    genuinely distinct videos; genuinely distinct meeting videos
-    wouldn't be expected to coincidentally share a duration. Until
-    then: log real examples of pages with genuinely multiple distinct
-    videos (via the sample sheet, same habit as the domain-collection
-    item) and only build the general pattern once several exist.
-  - **The narrow start effectively defers the "build the full picker
-    now vs. just surface an escape-hatch message" question** — with
-    detection scoped to known platforms only, there's no real SLC-style
-    case being handled yet either way; revisit this specific question
-    once enough logged examples justify actually building detection for
-    a real case.
+  **Confirmed live: the underlying YouTube video has real, usable
+  captions** — `IxqEGR5x_1M` has real English auto-generated captions
+  (1142 segments), so a real SLC adapter would delegate to
+  `YouTubeAssetFinder` for video+captions (same wrapper shape as
+  PrimeGov/Legistar) and only need to additionally parse the recap
+  page's own "(Watch)" links into `agenda_items` — captions aren't a
+  separate problem to solve.
+
+  **Built and verified a full working mockup 2026-08-09** (not shipped —
+  a temporary, unregistered `AssetFinder` in a scratch script, no repo
+  files touched) using the real March 3, 2026 data end-to-end through
+  the actual, unmodified `app/templates/meeting.html`/`player.js`: real
+  video (via real `YouTubeAssetFinder` delegation, real captions
+  included), real jurisdiction/date, the 5 real topics rendered through
+  the existing `agenda_items` chapter-list UI, and real deep-linking
+  confirmed by clicking a chapter and watching the video actually seek
+  (18:06 → video jumped to 18:12, "Share video at 18:12" updated
+  correctly). **Proves the existing UI needs zero frontend changes** for
+  this pattern — it was already built for other platforms' agenda
+  markers. The only real remaining work, once Cloudflare access is
+  solved: the parsing logic itself (extract topic+timestamp pairs from
+  the reachable page into `agenda_items`), which is genuinely blocked on
+  the same headless-browser decision as Minneapolis LIMS, not a separate
+  problem.
+
+  **Real fallback-strategy findings, tested empirically 2026-08-09** (the
+  user's own proposed three-tier ladder — embed the video directly, else
+  iframe the government's own page, else a clear explanatory message —
+  checked against both real cases rather than assumed):
+  - **Tier 1 (embed the real video directly): blocked for both SLC and
+    Minneapolis**, and there's no shortcut around the headless-browser
+    decision for either. Confirmed client-side `fetch()` (from a real
+    visitor's own browser, which passes Cloudflare fine) is blocked by
+    CORS on both sites — ruling out "scrape client-side instead of
+    server-side" as a way to dodge the headless-browser question.
+  - **Tier 2 (iframe the government's own live page): works for SLC,
+    confirmed by actually loading it in a cross-origin iframe — real
+    page content rendered fully, no `X-Frame-Options` blocking.**
+    **Does not work for Minneapolis LIMS** — confirmed blank in the same
+    test, despite the site loading fine at the top level (see the
+    Minneapolis entry above for detail). This is a genuine, real
+    difference between the two cases, not a shared fate: **SLC has a
+    real near-term path that doesn't require the deferred
+    headless-browser investment at all — Minneapolis does not.**
+  - **Tier 3 (clear explanatory fallback message, e.g. "this city
+    doesn't let us embed video here, but you can still use this page's
+    other tools — go back to the source to watch/share the real
+    video"): always available, no blockers, for any platform where 1
+    and 2 both fail.**
+  - **Not yet decided or built**: whether to actually build the Tier-2
+    iframe fallback (as a real feature — which would need its own
+    design: how does an adapter signal "I found the source but can't
+    embed the video, iframe the page instead"? does the existing
+    `video_warnings`/`ResolvedMeeting` shape need a new field for this,
+    or a new `video_format` value like `"iframe_fallback"`? what does
+    losing `t=`/`line=` deep-linking mean for a page reached this way,
+    given the whole point of this app is deep-linking?), and whether
+    Tier 3's message is worth writing now even without Tier 2, given
+    Minneapolis specifically has no path but Tier 3 today. Both are real
+    next decisions, not yet made.
+
+  ~~**Decided 2026-08-08, three real decisions, not built yet:**~~
+  (superseded by the correction above — the premise these were built on,
+  "SLC pages have multiple distinct videos," turned out not to hold on
+  real inspection)
+  - ~~Reuse the existing `calendar_page` shape~~
+  - ~~Start with detection scoped narrowly to known platforms only~~
+  - ~~The narrow start effectively defers the picker-vs-escape-hatch
+    question~~
 
 ## Archive roadmap
 
