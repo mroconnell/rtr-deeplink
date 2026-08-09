@@ -106,7 +106,7 @@ async function initYouTubeVideo(embedUrl) {
 function wireSharedControls(adapter) {
   adapter.addEventListener('timeupdate', () => {
     const segId = findActiveSegment(adapter.currentTime);
-    if (segId) highlightSegment(segId, true);
+    if (segId) highlightSegment(segId, true, 'nearest');
   });
 
   const linkBtn = document.getElementById('linkToCurrentBtn');

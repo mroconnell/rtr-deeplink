@@ -1817,3 +1817,66 @@ changelog of task titles.
   visually close) and desktop width (font-size unchanged at 19.52px,
   confirming the media query doesn't affect wider viewports). Full suite
   green (128 tests, unaffected — pure CSS change).
+
+- **[Done 2026-08-08] Transcript auto-scroll softened; video pinned in a
+  sticky column on desktop — the two fixes decided together for the
+  jarring-jump complaint.** Was: watching via the playhead jerked the
+  page down to the transcript continuously (a `timeupdate`-driven
+  `highlightSegment()` call ran `scrollIntoView({block: 'center'})` on
+  every tick, even when the active line was already visible), and
+  because the video wasn't pinned, there was nothing to jump back up
+  *to* once it scrolled away. Built exactly as decided (Picture-in-
+  Picture ruled out: this app renders video two different ways — native
+  `<video>` vs. a YouTube iframe — and PiP only works cleanly against
+  the former, so it'd behave inconsistently by platform):
+  - **Softened auto-scroll**: `highlightSegment()`
+    (`shared_static/deep_link.js`) gained an optional third parameter,
+    `scrollBlock`, defaulting to `'center'`. The continuous
+    `timeupdate`-driven call sites (`app/static/player.js` and
+    `archive/static/meeting_page.js`, both `wireSharedControls()`) now
+    pass `'nearest'` — a real no-op per the `scrollIntoView` spec when
+    the target is already visible, so it only moves the page when the
+    active line has genuinely scrolled out of view, and moves it the
+    minimum distance rather than forcefully recentering every tick.
+    Every *deliberate* one-time jump (`applyDeepLink()` on page load, a
+    "Go to time" submit, a transcript-line click) was left on the
+    default `'center'` — those are cases where firmly centering the
+    target is exactly what was asked for, so only the passive
+    follow-along behavior needed softening, not `highlightSegment()`
+    itself.
+  - **Sticky video on desktop**: a genuine two-column CSS Grid layout,
+    not just a `position: sticky` bolted onto the existing single-column
+    page — a full-width sticky video would have been impractically tall
+    on wide screens (16:9 scales with width), leaving little room to
+    read the transcript beneath it. Deliberately narrow (`minmax(220px,
+    300px)`), per direct product framing: most viewers here are
+    deep-linking to a specific moment and just need audio plus a visual
+    confirmation of who's speaking, not a large frame for reading
+    slides — someone who genuinely needs to read a presentation would
+    open the source video fullscreen directly rather than use this
+    tool's transcript view. `app/templates/meeting.html` and
+    `archive/templates/meeting_page.html` both gained a new
+    `#transcriptColumn` wrapper around the agenda/transcript sections
+    (no ID changes to existing elements, so no JS changes needed beyond
+    the scroll-block fix above) — sharing one grid cell/row with
+    `#videoSection` in the other column gives the sticky video real
+    vertical room to move within, bounded by that row's full height
+    rather than just the video's own short natural height. `#meta` and
+    the report-problem/transcribe forms stay full-width via `grid-column:
+    1 / -1`, above/below the two-column area. The pre-existing `.toolbar`
+    sticky-to-viewport-top rule (a prior, narrower fix for the same
+    underlying complaint) is now redundant once the whole `#videoSection`
+    sticks as one unit, and would otherwise nest two independent sticky
+    contexts against each other — set to `position: static` specifically
+    within the new desktop breakpoint, left untouched (still doing its
+    original job) below it. Below `900px` (comfortably above
+    `.meeting-page`'s own 860px max content width + padding) everything
+    stays single-column, matching mobile's prior behavior unchanged.
+  Verified live in-browser on both pages (not just rendered HTML) against
+  real local resolver+Archive pairs with seeded multi-line transcripts,
+  at a genuine 1280px desktop width: confirmed the video's on-screen
+  position is pixel-identical across two screenshots taken before and
+  after scrolling the transcript column, and confirmed it naturally
+  scrolls away once its shared row's content is exhausted (correct
+  sticky behavior, not a bug) rather than floating forever. Full suite
+  green (128 tests, unaffected — template/CSS/JS layout change only).

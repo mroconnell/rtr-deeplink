@@ -148,6 +148,58 @@ body {
   padding: 0 1.5rem;
 }
 
+/* Desktop-only: video pinned in a narrow sticky left column, transcript
+   scrolling in a wider right column -- so the video never has to be
+   scrolled back up to, without needing to scroll a full-width video off
+   past the transcript to read it. Deliberately narrow, not a large
+   video column: most viewers here are deep-linking to a specific
+   moment and just need audio plus a visual confirmation of who's
+   speaking, not a large frame for reading slides -- someone who does
+   need to read a presentation would open the source video fullscreen
+   directly rather than use this tool's transcript view at all. Below
+   this breakpoint (comfortably above .meeting-page's own 860px max
+   width + padding, so it only activates when there's real room to
+   spare) everything stays single-column/stacked, matching mobile's
+   existing behavior unchanged.
+
+   #transcriptColumn wraps #agendaSection/#transcriptSection/
+   #transcriptMissing so the whole stack shares one grid cell/row height
+   -- #videoSection, in the *other* column of that same row, then has
+   real vertical room to visually stick within (a sticky element can
+   only "stick" as far as its own grid row extends). #meta, the report-
+   problem/transcribe forms, and #statusMessage all stay full-width,
+   above/below the two-column area, via grid-column: 1 / -1. */
+@media (min-width: 900px) {
+  .meeting-page {
+    display: grid;
+    grid-template-columns: minmax(220px, 300px) 1fr;
+    column-gap: 1.75rem;
+    align-items: start;
+  }
+  #meta,
+  .report-problem-toggle,
+  #reportProblemForm,
+  #statusMessage,
+  .transcribe-toggle,
+  #transcribeForm {
+    grid-column: 1 / -1;
+  }
+  #videoSection {
+    grid-column: 1;
+    position: sticky;
+    top: 1rem;
+  }
+  /* The toolbar's own independent sticky-to-top-of-viewport (below) was
+     built for the single-column mobile layout, where the video scrolls
+     away but the controls above the transcript shouldn't. Here the
+     *entire* #videoSection (toolbar + video together) already sticks as
+     one unit, so the toolbar keeping its own separate sticky positioning
+     would nest two independent sticky contexts and fight/jitter against
+     each other. */
+  .toolbar { position: static; }
+  #transcriptColumn { grid-column: 2; }
+}
+
 .meta h1 { margin-bottom: 0.2rem; color: var(--primary); }
 .meta p { color: var(--muted); margin-top: 0; }
 .source-link { margin: 0.15rem 0; }

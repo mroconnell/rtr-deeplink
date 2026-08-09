@@ -156,6 +156,32 @@ body {
   padding: 0 1.5rem;
 }
 
+/* Desktop-only: video pinned in a narrow sticky left column, transcript
+   scrolling in a wider right column -- see app/static/style.css's
+   identical block (kept in sync manually) for the full reasoning: the
+   video can stay genuinely narrow/small since most viewers here just
+   need audio plus a visual confirmation of who's speaking, not a large
+   frame for reading slides, and #transcriptColumn wraps the agenda/
+   transcript sections so the sticky video has real vertical room to
+   move within (bounded by its own grid row, which spans the same
+   height as that wrapped column). */
+@media (min-width: 900px) {
+  .meeting-page {
+    display: grid;
+    grid-template-columns: minmax(220px, 300px) 1fr;
+    column-gap: 1.75rem;
+    align-items: start;
+  }
+  .meta { grid-column: 1 / -1; }
+  #videoSection {
+    grid-column: 1;
+    position: sticky;
+    top: 1rem;
+  }
+  .toolbar { position: static; }
+  #transcriptColumn { grid-column: 2; }
+}
+
 .meta h1 { margin-bottom: 0.2rem; color: var(--primary); }
 .meta p { color: var(--muted); margin-top: 0; }
 .source-link { margin: 0.15rem 0; }

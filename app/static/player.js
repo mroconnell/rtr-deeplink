@@ -707,7 +707,7 @@ function wireSharedControls(adapter) {
 
   adapter.addEventListener('timeupdate', () => {
     const segId = findActiveSegment(adapter.currentTime);
-    if (segId) highlightSegment(segId, autoScrollEnabled);
+    if (segId) highlightSegment(segId, autoScrollEnabled, 'nearest');
     updateNoTranscriptTime(adapter);
   });
 

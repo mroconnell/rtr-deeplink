@@ -66,13 +66,24 @@ function findActiveSegment(currentTime) {
   return null;
 }
 
-function highlightSegment(segId, scrollIntoView) {
+function highlightSegment(segId, scrollIntoView, scrollBlock = 'center') {
   document.querySelectorAll('.transcript-segment.playing').forEach((el) => el.classList.remove('playing'));
   const el = document.getElementById(segId);
   if (!el) return;
   el.classList.add('playing');
   if (scrollIntoView && autoScrollEnabled) {
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // 'center' (the default) is for deliberate one-time jumps -- a
+    // deep-link on page load, a "Go to time" submit, a transcript-line
+    // click -- where recentering the target is exactly what was asked
+    // for. The continuous timeupdate-driven "follow along as it plays"
+    // callers pass 'nearest' instead: a real no-op when the active line
+    // is already visible (per the scrollIntoView spec), so it stops
+    // firing a forceful re-center on every tick and only moves the page
+    // when the line has genuinely scrolled out of view. Real complaint
+    // (2026-08-08): 'center' on every tick made the page jerk down to
+    // the transcript continuously during normal playback, even when the
+    // reader had deliberately scrolled elsewhere to read the agenda.
+    el.scrollIntoView({ behavior: 'smooth', block: scrollBlock });
   }
 }
 

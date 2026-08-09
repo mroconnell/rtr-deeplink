@@ -56,44 +56,46 @@
       <div id="videoError" class="error" hidden></div>
     </div>
 
-    <div id="agendaSection" class="agenda-section" hidden>
-      <h2>Agenda</h2>
-      <div id="agendaList" class="transcript-list"></div>
-    </div>
+    <div id="transcriptColumn">
+      <div id="agendaSection" class="agenda-section" hidden>
+        <h2>Agenda</h2>
+        <div id="agendaList" class="transcript-list"></div>
+      </div>
 
-    <div id="transcriptSection" class="transcript-section" hidden>
-      <div class="transcript-heading-row">
+      <div id="transcriptSection" class="transcript-section" hidden>
+        <div class="transcript-heading-row">
+          <h2>Transcript</h2>
+          <label id="transcriptLanguagePicker" class="transcript-language-picker" hidden>
+            Language:
+            <select id="transcriptLanguageSelect" aria-label="Transcript language"></select>
+          </label>
+          <span class="transcript-export">
+            Download:
+            <button type="button" id="exportTxtBtn" class="btn btn-sm btn-outline-secondary">Text</button>
+            <button type="button" id="exportSrtBtn" class="btn btn-sm btn-outline-secondary">SRT</button>
+          </span>
+        </div>
+        <div id="transcriptWarnings" class="warnings"></div>
+        <div id="transcriptSearch" class="transcript-search">
+          <input id="transcriptSearchInput" type="text" placeholder="Search transcript&hellip;" aria-label="Search transcript">
+          <span id="transcriptSearchCount" class="transcript-search-count"></span>
+          <button id="transcriptSearchPrev" type="button" class="btn btn-sm btn-outline-secondary" title="Previous match" aria-label="Previous match">&#9650;</button>
+          <button id="transcriptSearchNext" type="button" class="btn btn-sm btn-outline-secondary" title="Next match" aria-label="Next match">&#9660;</button>
+        </div>
+        <div id="transcriptList" class="transcript-list"></div>
+      </div>
+      <div id="transcriptMissing" class="transcript-section" hidden>
         <h2>Transcript</h2>
-        <label id="transcriptLanguagePicker" class="transcript-language-picker" hidden>
-          Language:
-          <select id="transcriptLanguageSelect" aria-label="Transcript language"></select>
-        </label>
-        <span class="transcript-export">
-          Download:
-          <button type="button" id="exportTxtBtn" class="btn btn-sm btn-outline-secondary">Text</button>
-          <button type="button" id="exportSrtBtn" class="btn btn-sm btn-outline-secondary">SRT</button>
-        </span>
-      </div>
-      <div id="transcriptWarnings" class="warnings"></div>
-      <div id="transcriptSearch" class="transcript-search">
-        <input id="transcriptSearchInput" type="text" placeholder="Search transcript&hellip;" aria-label="Search transcript">
-        <span id="transcriptSearchCount" class="transcript-search-count"></span>
-        <button id="transcriptSearchPrev" type="button" class="btn btn-sm btn-outline-secondary" title="Previous match" aria-label="Previous match">&#9650;</button>
-        <button id="transcriptSearchNext" type="button" class="btn btn-sm btn-outline-secondary" title="Next match" aria-label="Next match">&#9660;</button>
-      </div>
-      <div id="transcriptList" class="transcript-list"></div>
-    </div>
-    <div id="transcriptMissing" class="transcript-section" hidden>
-      <h2>Transcript</h2>
-      <div id="transcriptMissingWarnings" class="warnings"></div>
-      <div class="no-transcript-timestamp">
-        <p class="no-transcript-hint">No transcript to click through, but you can still link to any moment. We're tracking the playhead below &mdash; it updates as the video plays.</p>
-        <div id="noTranscriptTime" class="no-transcript-time">0:00</div>
-        <button id="noTranscriptLinkBtn" class="cassette-btn" title="Copy link to current time">
-          <span class="cassette-reel"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7" fill="#fff" stroke="#bbb" stroke-width="2"/><circle cx="9" cy="9" r="2.2" fill="#bbb"/></svg></span>
-          <span class="cassette-label">Copy link to this moment</span>
-          <span class="cassette-reel"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7" fill="#fff" stroke="#bbb" stroke-width="2"/><circle cx="9" cy="9" r="2.2" fill="#bbb"/></svg></span>
-        </button>
+        <div id="transcriptMissingWarnings" class="warnings"></div>
+        <div class="no-transcript-timestamp">
+          <p class="no-transcript-hint">No transcript to click through, but you can still link to any moment. We're tracking the playhead below &mdash; it updates as the video plays.</p>
+          <div id="noTranscriptTime" class="no-transcript-time">0:00</div>
+          <button id="noTranscriptLinkBtn" class="cassette-btn" title="Copy link to current time">
+            <span class="cassette-reel"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7" fill="#fff" stroke="#bbb" stroke-width="2"/><circle cx="9" cy="9" r="2.2" fill="#bbb"/></svg></span>
+            <span class="cassette-label">Copy link to this moment</span>
+            <span class="cassette-reel"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7" fill="#fff" stroke="#bbb" stroke-width="2"/><circle cx="9" cy="9" r="2.2" fill="#bbb"/></svg></span>
+          </button>
+        </div>
       </div>
     </div>
 
