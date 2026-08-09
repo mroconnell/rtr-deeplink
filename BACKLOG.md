@@ -7,51 +7,34 @@ where relevant.
 
 ## Bugs
 
-- **⚠️ Production incident, active as of 2026-08-09: Minneapolis LIMS
-  (and likely SLC too, same underlying cause, not yet independently
-  reported) resolves failed in production with Playwright's own raw
-  error text shown on the page.** Reported live by the user: pasting a
-  real Minneapolis meeting URL showed `BrowserType.launch: Executable
-  doesn't exist at /opt/render/.cache/ms-playwright/...` verbatim,
-  including Playwright's multi-line ASCII-art box — confirms the exact
-  deployment risk flagged (but not yet verified) when these adapters
-  shipped: `render.yaml`'s `playwright install --with-deps chromium`
-  build step did not leave a working browser binary where the running
-  service looks for it.
+- **⚠️ Production incident, active as of 2026-08-09: real Minneapolis
+  LIMS video resolves failing at the YouTube step with "Sign in to
+  confirm you're not a bot."** Reported live by the user re-testing
+  Minneapolis after the Playwright deploy fix landed (see
+  BACKLOG_DONE.md) — a real, different failure signature than the
+  earlier Playwright launch error, which itself is now confirmed fixed
+  (this new error happens *after* Playwright successfully launches,
+  scrapes the LIMS agenda page, and hands a real YouTube video ID
+  downstream). Root cause: YouTube's anti-bot check on yt-dlp's default
+  "web" internal client, which requires a PO token this app doesn't
+  have — hit our Render server's IP specifically (already-current
+  yt-dlp, 2026.7.4, ruled out as a stale-extractor issue).
 
-  Two real fixes shipped immediately: `app/platforms/
-  headless_browser.py`'s `_get_browser()` now self-heals (runs
-  `playwright install chromium` in-process on first launch failure, then
-  retries once) so a broken/incomplete build step doesn't leave this
-  permanently down until a redeploy; and `fetch_via_browser()` now raises
-  a short, clean `HeadlessBrowserUnavailable` message instead of letting
-  Playwright's own raw error text reach a real visitor's page (`app/
-  main.py`'s generic `/api/resolve` exception handler shows `str(e)`
-  directly, which is fine for every other adapter's normal-sized
-  exceptions, not for this one).
-
-  **That fix's own deploy then failed outright** ("Exited with status 1
-  while building your code") — real evidence pointing at `--with-deps`
-  specifically: it shells out to `apt-get install` for Chromium's system
-  libraries, which needs root/sudo Render's build sandbox almost
-  certainly doesn't grant, failing the whole chained build command
-  before `pip install`'s own success even mattered. Switched to plain
-  `playwright install chromium` (browser binary only, no system-package
-  install attempt) — see `render.yaml`'s own comment for the full
-  reasoning and the `runtime: docker` fallback if a plain binary download
-  turns out not to be enough (Chromium still needs certain shared
-  libraries to actually *launch*, separate from just having the binary
-  present — unconfirmed whether Render's base image already has them,
-  though ffprobe turned out to already be present too, a real precedent
-  for "maybe fine," not a guarantee).
-
-  **Remove this item once the real Minneapolis/SLC URLs have been
-  retried in production and confirmed working** — not yet confirmed as
-  of this writing. If this build also fails or the runtime launch still
-  errors, the real next step is checking Render's actual build/deploy
-  logs directly (not guessable from the repo alone) for the exact
-  failure text, and considering `runtime: docker` before trying a third
-  variation blind.
+  Fix shipped (`app/platforms/youtube.py`'s `_extract_info()`): added
+  `extractor_args: {"youtube": {"player_client": ["android", "ios",
+  "tv", "web"]}}` — those three internal clients have historically not
+  enforced the same PO-token check "web" does, falling back to "web"
+  last. Verified locally against the exact real failing video
+  (`YgAu_4xWvGU`) both for metadata and a full caption download (1564
+  real segments) — but **not yet confirmed against production**, since
+  YouTube's own anti-bot rules shift periodically and this is
+  inherently an ongoing arms race, not a one-time fix (same framing
+  `youtube.py`'s existing docstring already gives for why yt-dlp is
+  left unpinned). **Remove this item once Minneapolis (or any other
+  YouTube-delegating unsupported-city page) has been retried in
+  production and confirmed working.** If this specific client list
+  stops working later, check yt-dlp's own issue tracker for the
+  currently-recommended `player_client` values before re-guessing.
 
 ## UX polish
 

@@ -8,6 +8,45 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-09] Fixed production incident: Minneapolis LIMS (and
+  likely SLC, same underlying cause) resolves failing with Playwright's
+  own raw error text shown on the page.** Reported live by the user:
+  pasting a real Minneapolis meeting URL showed `BrowserType.launch:
+  Executable doesn't exist at /opt/render/.cache/ms-playwright/...`
+  verbatim, including Playwright's multi-line ASCII-art box — confirmed
+  the exact deployment risk flagged (but not yet verified) when these
+  adapters shipped: `render.yaml`'s `playwright install --with-deps
+  chromium` build step did not leave a working browser binary where the
+  running service looks for it.
+
+  Two real fixes shipped immediately: `app/platforms/
+  headless_browser.py`'s `_get_browser()` now self-heals (runs
+  `playwright install chromium` in-process on first launch failure, then
+  retries once) so a broken/incomplete build step doesn't leave this
+  permanently down until a redeploy; and `fetch_via_browser()` now raises
+  a short, clean `HeadlessBrowserUnavailable` message instead of letting
+  Playwright's own raw error text reach a real visitor's page.
+
+  **That fix's own deploy then failed outright** ("Exited with status 1
+  while building your code") — real evidence pointing at `--with-deps`
+  specifically: it shells out to `apt-get install` for Chromium's system
+  libraries, which needs root/sudo Render's build sandbox almost
+  certainly doesn't grant, failing the whole chained build command
+  before `pip install`'s own success even mattered. Switched to plain
+  `playwright install chromium` (browser binary only, no system-package
+  install attempt) — see `render.yaml`'s own comment for the full
+  reasoning and the `runtime: docker` fallback if a plain binary download
+  turns out not to be enough.
+
+  **Confirmed working 2026-08-09**: the user retested a real Minneapolis
+  meeting in production and Playwright launched/scraped successfully —
+  the resolve got all the way through the LIMS agenda page and handed
+  off a real YouTube video ID before hitting a *different*, later-stage
+  failure (YouTube's own anti-bot check, logged as a new active incident
+  in BACKLOG.md). That later failure signature is itself the proof this
+  fix worked — it couldn't have been reached if Playwright were still
+  failing to launch.
+
 - **[Done 2026-08-09] Built auto-idle-time transcription job generation**,
   closing the last open piece of the on-demand-transcription feature —
   the worker no longer sits fully idle when the job queue is empty; it

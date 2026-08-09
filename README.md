@@ -517,11 +517,16 @@ platforms), looking for an embedded/linked YouTube video first
 (delegates to `YouTubeAssetFinder` for real video + captions when
 found), then falling back to `media_scan.py`'s generic `.m3u8`/`.mp4`
 scanner (the same one Granicus/Swagit use) plus any caption-shaped URL
-found alongside it. No agenda-item detection — there's no reliable
-generic pattern the way there is for media URLs, so items are just
-absent rather than guessed badly. Every outcome (found nothing / found a
-video / found a video and a transcript) gets an honest, specific message
-rather than a flat error.
+found alongside it. Also looks for a plain link to an agenda document —
+any `<a>` tag whose text or href contains "agenda", preferring a
+PDF-looking one (agendas are frequently standalone PDF downloads on
+small-city sites) — surfaced as a plain linkified message, not forced
+into `agenda_items`, since that field implies real per-item timestamps
+this doesn't have. No structured agenda-*item* detection — there's no
+reliable generic pattern the way there is for media URLs or a single
+link, so items are just absent rather than guessed badly. Every outcome
+(found nothing / found a video / found a video and a transcript) gets an
+honest, specific message rather than a flat error.
 
 **Not implemented**: BoardDocs (deliberately excluded — it's a
 document/agenda platform with no reliable video, not worth an adapter).
