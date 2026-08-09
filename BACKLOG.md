@@ -56,9 +56,10 @@ where relevant.
   plan was sized. **Decision (2026-08-09): leave the gap as-is** — a
   transcription job for a LIMS/SLC meeting fails cleanly (no browser
   available) rather than risking a third OOM crash for a platform combo
-  no real request has hit yet. Revisit with a real plan-tier bump if/when
-  an actual transcription request for one of these two platforms comes
-  in.
+  no real request has hit yet. Per the user: revisit as a natural
+  follow-on next time the worker's Render plan is upgraded anyway (for
+  this or any other reason) — not worth a dedicated plan bump on its own
+  just for this.
 
 - **⚠️ Production incident, active as of 2026-08-09: real Minneapolis
   LIMS video resolves failing at the YouTube step with "Sign in to
