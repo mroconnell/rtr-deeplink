@@ -340,11 +340,10 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   tolerant modes, see `archive/utils/search.py`) currently works by
   reading each candidate meeting's already-stored JSON and matching in
   Python at query time, deliberately, to avoid two things: a schema
-  change (this repo has no migration tool — `Base.metadata.create_all()`
-  only creates *new* tables, never alters an existing one, so adding a
-  column to the already-live `MeetingPage`/`TranscriptVersion` tables in
-  production needs either introducing real migration tooling, e.g.
-  Alembic, or one carefully-run manual `ALTER TABLE`) and a Postgres-only
+  change (adding a column to the already-live `MeetingPage`/
+  `TranscriptVersion` tables — no longer blocked on migration tooling
+  itself now that Alembic's adopted, see BACKLOG_DONE.md, but still a
+  real production schema change to run deliberately) and a Postgres-only
   extension (trigram search needs `pg_trgm`, which the local SQLite dev
   fallback has no equivalent for — would make dev and prod behave
   differently for the same query, which this codebase avoids on
@@ -537,31 +536,13 @@ one item below is resolved as a result.
   room to add a higher tier later without a schema change (the column's
   just an int).
 
-  **Real blocker worth flagging now, not discovered later**:
-  `transcription_jobs` is already a live table in production Postgres
-  (real rows exist from real jobs already processed) — adding a new
-  column to an *existing* table is exactly the kind of schema change
-  `Base.metadata.create_all()` does **not** handle (per this repo's own
-  documented convention — see CLAUDE.md and BACKLOG.md's "Search: move
-  to a materialized/indexed column" entry for the other two cases that
-  already flagged this same wall). **Decided 2026-08-08: adopt Alembic**
-  as the real fix, rather than another one-off manual `ALTER TABLE` —
-  but deliberately **left as its own backlog item, not bundled into
-  building priority itself**, since other schema changes are already
-  piling up against this same wall (the materialized search column, this
-  priority column, possibly accounts down the line) and adopting
-  migration tooling is worth doing once, deliberately, not rushed
-  alongside the first feature that happens to need it.
-- **New: adopt Alembic for the Archive's Postgres schema.** Decided
-  2026-08-08 (see the job-priority item above) as the real fix for the
-  migration-tool gap this repo has deliberately not had — three real
-  schema changes are now piling up against `Base.metadata.create_all()`'s
-  "new tables only, never alters existing ones" limitation: this
-  priority column, the materialized/indexed search column ("Archive
-  roadmap" section below), and eventually accounts. Left as its own
-  item deliberately, not bundled into building priority — worth doing
-  once, properly, not rushed alongside whichever feature happens to
-  need it first.
+  **Tooling blocker resolved 2026-08-09 — Alembic adopted** (see
+  BACKLOG_DONE.md), so this no longer needs a one-off manual
+  `ALTER TABLE` to ship safely. Still not built: adding the actual
+  `priority` column is now a normal `alembic revision --autogenerate`
+  once it's added to `TranscriptionJob` in `archive/db/models.py`, same
+  as any future schema change — the real remaining work here is the
+  column/ordering logic itself, not the migration mechanics.
 - **Let the worker auto-generate transcription jobs during genuinely
   idle time**, so the Archive can fill in missing transcripts without
   someone manually clicking "Transcribe" on every meeting one at a time.

@@ -118,18 +118,22 @@ under everything else. This repo extracts and fixes just that part.
   via live testing, consider adding a fixture-backed regression test for
   it in the same pass, the way the Simi Valley Spanish-caption and
   blank-VTT cases already are.
-- **New SQLAlchemy models need no manual migration** — `init_models()`
+- **A brand-new table still needs no manual migration** — `init_models()`
   in both `app/db/engine.py` and `archive/db/engine.py` runs
-  `Base.metadata.create_all()` on every startup, so a new table (e.g.
-  `ProblemReport`, added 2026-08-08) just appears in prod Postgres the
-  next time the service restarts/deploys. No migration framework in this
-  repo on purpose, matching its overall minimalism so far — revisit once
-  a real schema *change* (not just addition) is actually needed, since
-  `create_all` can't alter existing tables. Accounts (see BACKLOG.md's
-  "Archive roadmap") and a materialized search column (see BACKLOG.md's
-  "Search" entry) are the two known future changes that will actually
-  force this — not hypothetical, worth picking a real migration tool
-  (e.g. Alembic) before either lands rather than working around it again.
+  `Base.metadata.create_all()` unconditionally on every startup, so a new
+  table (e.g. `ProblemReport`, added 2026-08-08) just appears in prod
+  Postgres the next time the service restarts/deploys. **Altering an
+  existing table is a different story** — `create_all` can't do that,
+  and this repo hit that wall for real (the job-priority column, the
+  materialized search column), which is why `archive/` adopted Alembic
+  2026-08-09 (`archive/alembic/`, see BACKLOG_DONE.md) as the real
+  source of truth for *that* kind of change going forward. `init_models()`
+  itself wasn't touched and still runs the same way — Alembic is
+  additive, not a replacement for the zero-friction `create_all()` path
+  fresh local/test databases use. See `archive/alembic/README.md` for
+  how to write a new migration and the one-time production-adoption step
+  (`alembic stamp head`) that hasn't been run yet — needs real production
+  `DATABASE_URL` access this session doesn't have.
 - **`app/db/outcomes.py` classifies reporting outcomes from real signal on
   the row where one exists, and falls back to substring-matching
   `transcript_warnings` only where it doesn't.** `agenda_fallback` is

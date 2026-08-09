@@ -37,6 +37,20 @@ async_session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncS
 
 
 async def init_models() -> None:
+    """Still the whole story for local dev/tests -- a fresh SQLite file
+    with no migration history just works, zero config. Adopted Alembic
+    2026-08-09 (`archive/alembic/`) as the real source of truth for
+    *production* schema changes going forward, since `create_all()`
+    can only ever add new tables, never alter an existing one (the wall
+    this repo hit three separate times before adopting real migration
+    tooling -- see BACKLOG_DONE.md). This still runs unconditionally on
+    every startup (`create_all` is a safe no-op against tables that
+    already exist, whichever way they got created), so an Alembic
+    migration that only adds a new table doesn't strictly need
+    `init_models()` touched at all -- but any migration that *alters* an
+    existing table (the actual reason Alembic exists now) needs a real
+    `alembic upgrade head` run, this function can't do that part.
+    """
     from .models import Base
 
     async with engine.begin() as conn:

@@ -2478,3 +2478,59 @@ changelog of task titles.
   `/meeting?url=...` page (`"City of Alexandria · 2025-04-02"` in the
   meta line) against the real clip 6490 URL. Full suite green (170
   tests — 3 new).
+
+- **[Done 2026-08-09] Adopted Alembic for the Archive's Postgres
+  schema** — the real fix, decided 2026-08-08, for a wall this repo hit
+  three separate times: `Base.metadata.create_all()` (still run
+  unconditionally on every startup, unchanged) can only ever *add new
+  tables*, never alter an existing one, and the job-priority column and
+  the materialized search column both need exactly that.
+
+  New `archive/alembic/` (async template, `alembic init -t async`) +
+  `archive/alembic.ini`. `env.py` doesn't hardcode a database URL or a
+  placeholder metadata object — it imports the real
+  `archive.db.engine.DATABASE_URL` (same resolution the app itself uses,
+  so dev/test/prod all naturally point at the right database with
+  nothing to keep in sync) and `archive.db.models.Base.metadata` (so
+  `alembic revision --autogenerate` diffs against the real
+  `MeetingPage`/`TranscriptVersion`/`TranscriptionJob`/
+  `MeetingPageUrlAlias` models directly, not a stub).
+
+  Generated the baseline migration
+  (`archive/alembic/versions/..._baseline_schema.py`) by autogenerating
+  against a genuinely empty SQLite database (not the local dev DB, which
+  already has these tables and would've diffed as "no changes") —
+  `CREATE TABLE` for all four tables plus every index/foreign key.
+  Verified locally: `alembic upgrade head` against a fresh empty SQLite
+  file produces a schema that diffs identical to `create_all()`'s own
+  output (only real difference: the `alembic_version` bookkeeping table
+  itself, plus a cosmetic `(CURRENT_TIMESTAMP)` vs `CURRENT_TIMESTAMP`
+  default-clause rendering quirk — same value, just how SQLite's own
+  introspection reports a `server_default` either way); `alembic
+  downgrade base` cleanly drops everything back out. **Not verified
+  against real Postgres** — this sandboxed dev environment has Postgres
+  *client* tools (`psql`/`initdb`/`pg_ctl` via Homebrew) but no server
+  binary, and installing one felt like more system-level footprint than
+  this check warranted; flagged honestly in `archive/alembic/README.md`
+  as worth a real check before the first production `stamp head`, since
+  Postgres's own type/default rendering can differ from SQLite's.
+
+  `archive/db/engine.py`'s `init_models()` gained a doc comment
+  explaining the new split responsibility rather than being changed
+  itself — it stays exactly as it was (unconditional `create_all()` on
+  every startup) since that's still the right zero-friction behavior for
+  fresh local/test databases; Alembic is additive, the real source of
+  truth for *production* schema changes specifically, not a replacement
+  for `create_all()` everywhere.
+
+  **Deliberately not run against production** — this session has no
+  production `DATABASE_URL` access, and the one-time adoption step
+  (`alembic stamp head`, telling production "you're already at the
+  baseline, don't try to `CREATE TABLE` over existing rows") is exactly
+  the kind of real, hard-to-reverse production-database action that
+  needs the person who actually has that access to run it deliberately,
+  not something to do on their behalf. Full instructions, including the
+  exact one-time command, written into `archive/alembic/README.md`
+  rather than left to be reconstructed later. Full suite green (170
+  tests, unaffected — new tooling/config only, no application code
+  changed).
