@@ -38,6 +38,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="rtr-archive", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=APP_DIR / "static"), name="static")
+# Deep-link JS shared with the resolver service (app/main.py mounts the
+# same top-level directory identically) -- see shared_static/deep_link.js's
+# own header comment for why this exists.
+app.mount("/shared-static", StaticFiles(directory=APP_DIR.parent / "shared_static"), name="shared_static")
 templates = Jinja2Templates(directory=APP_DIR / "templates")
 # Used only for <link rel="canonical">/OpenGraph tags -- the public domain
 # these pages are actually reached at (via the resolver's /m/* proxy), not

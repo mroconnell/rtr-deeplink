@@ -221,45 +221,67 @@ where relevant.
 The `t`/`line` scheme itself is sound and hasn't changed since the initial
 scaffold (`t`, raw seconds, always wins the actual seek; `line=seg-N` is
 display-only highlighting — see the comment above `applyDeepLink()` in
-`app/static/player.js` and the precedence-bug fix in
+`shared_static/deep_link.js` and the precedence-bug fix in
 [BACKLOG_DONE.md](BACKLOG_DONE.md)). That's already the "robust, won't
 shift under us" design a deep-link contract needs. Three real gaps found
-auditing it (2026-08-08), code-verified but not all live-triggered yet:
+auditing it (2026-08-08) — two fixed since, one still open below:
 
-- **An Archive permanent page's `line=seg-N` can point at the wrong line
-  if that page's default `TranscriptVersion` ever changes.** `/m/{slug}`
-  renders whichever version is currently `is_default` unless an explicit
-  `?version=` is given (`archive/main.py`'s `_pick_active_version()`), and
-  `crud.push_resolution()` can attach a new `TranscriptVersion` to an
-  existing page when a re-resolve finds different content. Deep-link URLs
-  from `updateUrlParams()` never include `version=` — only `t`/`line`. So
-  a bookmarked `/m/some-meeting?t=630&line=seg-42` could, after that
-  meeting's transcript is later improved/replaced, highlight a completely
-  different line at index 42 in the new version — `t=630` still seeks the
-  video correctly (unaffected), so this is a wrong-highlight bug, not a
-  broken link. Not yet triggered live (no permanent page has had a second
-  version pushed yet), but the code path for it already exists.
-  **Decided 2026-08-08: carry the version id into the URL as the primary
-  fix, with time-proximity matching as a fallback.** `updateUrlParams()`
-  should include the version id the link was generated from (not just
-  `t`/`line`); when a `line=seg-N` is resolved against a URL whose
-  version id doesn't match the page's current version (or is missing —
-  old already-shared links won't have it), fall back to matching `seg-N`
-  by start-time proximity instead of raw index rather than failing or
-  highlighting the wrong line outright. Gives exact correctness for new
-  links and graceful degradation for old ones already shared before this
-  fix existed.
-- **`app/static/player.js` and `archive/static/meeting_page.js` are two
-  independent copies of the same `t`/`line`/`seg-N` logic**, kept in sync
-  only by a comment (`archive/static/meeting_page.js:6-8`) saying they're
-  intentionally matched, not by shared code. A future fix to one (like the
-  seek-precedence fix already made once) could land in only one file and
-  silently desync deep-link behavior between `/meeting` and `/m/{slug}`.
-  **Decided 2026-08-08: extract the shared parse/apply logic into one
-  file both pages load**, rather than just strengthening the
-  cross-reference comment — removes the desync risk instead of just
-  documenting it. Natural to build alongside the version-id fix above,
-  since both touch the same parse/apply code path.
+- **~~Two independent copies of `t`/`line`/`seg-N` logic, and
+  `line=seg-N` could point at the wrong line after a version change~~ —
+  both fixed 2026-08-08.** Was: `app/static/player.js` and
+  `archive/static/meeting_page.js` duplicated the exact same deep-link
+  parsing/apply logic, kept in sync only by a comment; separately, a
+  bookmarked `/m/some-meeting?t=630&line=seg-42` could highlight the
+  wrong line if that page's default `TranscriptVersion` was ever
+  replaced (`t=630` would still seek correctly — a wrong-highlight bug,
+  not a broken link). Fixed together, since both touched the same
+  parse/apply code: the shared logic (`getQueryParams`,
+  `getDeepLinkTime/Line/Version`, `updateUrlParams`, `findActiveSegment`,
+  `highlightSegment`, `applyDeepLink`, the `segments`/`autoScrollEnabled`
+  module state) now lives in one new file, `shared_static/deep_link.js`
+  — a new top-level directory mounted identically by both `app/main.py`
+  and `archive/main.py` at `/shared-static` (one file on disk, two
+  independent `StaticFiles` mounts, so either service serves it whether
+  reached directly or through the resolver's reverse proxy). Loaded
+  before `player.js`/`meeting_page.js` in each page's `{% block scripts
+  %}`, both of which had their duplicate copies deleted. `updateUrlParams`
+  now automatically tags every generated link with the Archive's current
+  `TranscriptVersion.id` (read from a new `data-version-id` attribute on
+  `archive/templates/meeting_page.html`'s `<body>`, via a `body_attrs`
+  block added to `archive/templates/base.html` matching the resolver's
+  existing pattern) — automatic per call site, not something a future
+  new "copy link" button could forget to pass. `applyDeepLink` trusts
+  `line` only when the URL's `version` matches the page's current one
+  (or either side has no version info at all — an old pre-fix link, or
+  the resolver's page, which has no version concept); on a real
+  mismatch it falls back to `findActiveSegment(t)` (time-proximity
+  matching) instead of highlighting a possibly-wrong index.
+
+  Verified three ways, no JS test framework existing in this repo (see
+  the item below): (1) a real behavioral difference caught and
+  preserved during the merge — `player.js`'s `highlightSegment` respected
+  an `autoScrollEnabled` toggle the Archive page doesn't have; folded
+  into the shared file so the Archive page (which never toggles it)
+  behaves identically to before. (2) A one-off Node `vm.runInContext`
+  script (not a permanent test) simulating real multi-`<script>`-tag
+  scoping — critically *not* a plain `eval()`, which was tried first and
+  gave misleading results because direct eval creates its own nested
+  lexical scope, unlike separate classic `<script>` tags which genuinely
+  share top-level `let`/`const` bindings — covering version-match,
+  version-mismatch-fallback, no-version-old-link, resolver-page (no
+  version), and the URL-tagging behavior of `updateUrlParams` itself: 9
+  cases, all passing. (3) Real local servers (resolver proxying to a
+  real local Archive instance, matching production's reverse-proxy
+  shape exactly) with a seeded real page, checked live in-browser —
+  `/shared-static/deep_link.js` loads with no console errors, all
+  shared functions (`applyDeepLink`, `findActiveSegment`,
+  `updateUrlParams`, `highlightSegment`) are defined and callable from
+  both `player.js` and `meeting_page.js`, `segments` populated by one
+  script is correctly visible to functions defined in the other
+  (confirming real cross-script-tag `let` sharing, not just the Node
+  simulation), and `data-version-id` renders correctly. Full Python
+  suite green throughout (121 tests, unaffected -- this was a pure
+  frontend change).
 - **No automated test coverage pins the `t`/`line` URL contract.** No JS
   test framework exists in this repo; every verification of deep-link
   behavior, including the precedence fix above, has been manual/in-browser.

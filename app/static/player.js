@@ -1,10 +1,11 @@
-// Deep-link mechanics ported from rtr-transcripts/app/static/transcript.js
-// (query param parsing, hls.js setup, click-to-seek, auto-scroll highlighting),
-// rewritten lean without the auth/archive/multi-tab-transcript machinery.
+// hls.js setup, click-to-seek, and everything else specific to the
+// resolver's ephemeral page -- t/line/version deep-link mechanics
+// (getQueryParams, updateUrlParams, findActiveSegment, highlightSegment,
+// applyDeepLink, segments, autoScrollEnabled, etc.) now live in
+// /shared-static/deep_link.js, loaded before this file (see meeting.html),
+// shared with the Archive's meeting_page.js.
 
 const sourceUrl = document.body.dataset.sourceUrl;
-let autoScrollEnabled = true;
-let segments = [];
 // Every caption track that was actually fetched (the chosen one plus any
 // alternates -- see ResolvedMeeting.alternate_transcripts), so the language
 // picker can switch `segments` client-side with no second /api/resolve call.
@@ -21,31 +22,6 @@ let transcriptTracks = [];
 // current time", "Go to time", and applyDeepLink() all work unchanged
 // against `activeVideoAdapter` regardless of which platform this is.
 let activeVideoAdapter = null;
-
-function getQueryParams() {
-  return new URLSearchParams(window.location.search);
-}
-
-function getDeepLinkTime() {
-  const t = getQueryParams().get('t');
-  return t !== null ? Number(t) : null;
-}
-
-function getDeepLinkLine() {
-  const raw = getQueryParams().get('line');
-  if (!raw) return null;
-  if (/^seg-\d+$/.test(raw)) return raw;
-  if (/^\d+$/.test(raw)) return `seg-${raw}`;
-  return null;
-}
-
-function updateUrlParams({ t = null, line = null }) {
-  const params = getQueryParams();
-  if (t !== null) params.set('t', String(Math.floor(t)));
-  if (line !== null) params.set('line', line);
-  const newUrl = `${window.location.pathname}?${params.toString()}`;
-  window.history.replaceState({}, '', newUrl);
-}
 
 function formatTime(seconds) {
   seconds = Math.floor(seconds || 0);
@@ -64,23 +40,6 @@ function formatTime(seconds) {
 function updateNoTranscriptTime(adapter) {
   const el = document.getElementById('noTranscriptTime');
   if (el) el.textContent = formatTime(adapter.currentTime);
-}
-
-function findActiveSegment(currentTime) {
-  for (let i = segments.length - 1; i >= 0; i--) {
-    if (segments[i].start <= currentTime) return `seg-${i}`;
-  }
-  return null;
-}
-
-function highlightSegment(segId, scrollIntoView) {
-  document.querySelectorAll('.transcript-segment.playing').forEach((el) => el.classList.remove('playing'));
-  const el = document.getElementById(segId);
-  if (!el) return;
-  el.classList.add('playing');
-  if (scrollIntoView && autoScrollEnabled) {
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }
 }
 
 const LINK_ICON_SVG = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M6.5 9.5a.75.75 0 0 0 1 .06l.06-.06 3-3a.75.75 0 0 0-1-1.12l-.06.06-3 3a.75.75 0 0 0 0 1.06z"/><path fill="currentColor" d="M5.72 11.03a2.5 2.5 0 0 1 0-3.54l1.5-1.5a.75.75 0 0 1 1.06 1.06l-1.5 1.5a1 1 0 0 0 1.42 1.42l1.5-1.5a.75.75 0 1 1 1.06 1.06l-1.5 1.5a2.5 2.5 0 0 1-3.54 0z"/><path fill="currentColor" d="M9.72 4.97a2.5 2.5 0 0 1 3.54 3.54l-1.5 1.5a.75.75 0 1 1-1.06-1.06l1.5-1.5a1 1 0 0 0-1.42-1.42l-1.5 1.5A.75.75 0 1 1 8.22 6.5l1.5-1.5z"/></svg>';
@@ -820,37 +779,6 @@ function parseTimeInput(raw) {
   let seconds = 0;
   for (const n of nums) seconds = seconds * 60 + n;
   return seconds;
-}
-
-function applyDeepLink(video) {
-  const line = getDeepLinkLine();
-  const t = getDeepLinkTime();
-
-  // `t` (exact seconds) always wins for the actual seek position -- `line`
-  // is only used to decide which row to highlight. Previously `line`, when
-  // present, seeked to that segment's *start* and silently discarded a more
-  // precise `t` in the same URL. That was barely noticeable for Granicus's
-  // short (~2-10s) caption lines, but very wrong for CivicClerk's
-  // multi-minute chapter markers: "copy link to current time" partway
-  // through a chapter would jump back to the chapter's start on reload.
-  if (t !== null) {
-    video.currentTime = t;
-    const segId = line || findActiveSegment(t);
-    if (segId) highlightSegment(segId, true);
-    return;
-  }
-  if (line) {
-    const el = document.getElementById(line);
-    if (el) {
-      const start = Number(el.dataset.start || '0');
-      video.currentTime = Math.max(0, start - (getOffsetSeconds()));
-      highlightSegment(line, true);
-    }
-  }
-}
-
-function getOffsetSeconds() {
-  return 0; // reserved for future offset calibration, per rtr-transcripts PDR
 }
 
 function renderCalendarPage(data) {

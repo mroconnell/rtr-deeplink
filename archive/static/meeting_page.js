@@ -1,54 +1,16 @@
-// Trimmed port of app/static/player.js's video-adapter/seek/highlight logic
-// for the Archive's permanent pages. Not a straight copy: the resolver's
+// Trimmed port of app/static/player.js's video-adapter logic for the
+// Archive's permanent pages. Not a straight copy: the resolver's
 // player.js fetches JSON and builds the transcript DOM from scratch; here
 // the transcript/agenda are already server-rendered into the page (that's
 // the whole point -- real content on first byte, for crawlability), so this
-// only wires interactivity onto DOM that already exists. Deep-link params
-// (`t`, `line`) and the segment-id scheme (`seg-N`) intentionally match the
-// resolver's so a shared link behaves the same on either page.
+// only wires interactivity onto DOM that already exists. t/line/version
+// deep-link mechanics (getQueryParams, updateUrlParams, findActiveSegment,
+// highlightSegment, applyDeepLink, segments, etc.) live in
+// /shared-static/deep_link.js, loaded before this file (see
+// meeting_page.html) -- the same file the resolver's player.js loads, so
+// the two pages can no longer silently desync on this logic.
 
 let activeVideoAdapter = null;
-let segments = [];
-
-function getQueryParams() {
-  return new URLSearchParams(window.location.search);
-}
-
-function getDeepLinkTime() {
-  const t = getQueryParams().get('t');
-  return t !== null ? Number(t) : null;
-}
-
-function getDeepLinkLine() {
-  const raw = getQueryParams().get('line');
-  if (!raw) return null;
-  if (/^seg-\d+$/.test(raw)) return raw;
-  if (/^\d+$/.test(raw)) return `seg-${raw}`;
-  return null;
-}
-
-function updateUrlParams({ t = null, line = null }) {
-  const params = getQueryParams();
-  if (t !== null) params.set('t', String(Math.floor(t)));
-  if (line !== null) params.set('line', line);
-  const newUrl = `${window.location.pathname}?${params.toString()}`;
-  window.history.replaceState({}, '', newUrl);
-}
-
-function findActiveSegment(currentTime) {
-  for (let i = segments.length - 1; i >= 0; i--) {
-    if (segments[i].start <= currentTime) return `seg-${i}`;
-  }
-  return null;
-}
-
-function highlightSegment(segId, scrollIntoView) {
-  document.querySelectorAll('.transcript-segment.playing').forEach((el) => el.classList.remove('playing'));
-  const el = document.getElementById(segId);
-  if (!el) return;
-  el.classList.add('playing');
-  if (scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
 
 function createNativeAdapter(videoEl) {
   return {
@@ -163,28 +125,6 @@ function wireSharedControls(adapter) {
         // clipboard API unavailable; URL is already updated in the address bar
       }
     });
-  }
-}
-
-function applyDeepLink(adapter) {
-  const line = getDeepLinkLine();
-  const t = getDeepLinkTime();
-
-  // `t` (exact seconds) always wins for the actual seek position -- `line`
-  // only decides which row to highlight. Matches player.js's rule.
-  if (t !== null) {
-    adapter.currentTime = t;
-    const segId = line || findActiveSegment(t);
-    if (segId) highlightSegment(segId, true);
-    return;
-  }
-  if (line) {
-    const el = document.getElementById(line);
-    if (el) {
-      const start = Number(el.dataset.start || '0');
-      adapter.currentTime = start;
-      highlightSegment(line, true);
-    }
   }
 }
 

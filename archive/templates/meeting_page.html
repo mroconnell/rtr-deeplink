@@ -1,5 +1,11 @@
 {% extends "base.html" %}
 {% block title %}{{ page.title or "Meeting" }}{% if page.jurisdiction %} — {{ page.jurisdiction }}{% endif %}{% if page.date %} ({{ page.date }}){% endif %} | Red Tape Recordings{% endblock %}
+{# data-version-id: read by /shared-static/deep_link.js so a line=seg-N
+   deep link is only trusted when it was generated from this exact
+   TranscriptVersion -- empty when there's no active_version at all
+   (no-transcript pages), which the shared JS also treats as "no version
+   info, trust line as-is" same as an old pre-this-fix link. #}
+{% block body_attrs %} data-version-id="{{ active_version.id if active_version else '' }}"{% endblock %}
 {% block meta %}
   {% set description = (page.title or "A public meeting") ~ (page.jurisdiction and (" in " ~ page.jurisdiction) or "") ~ (page.date and (" on " ~ page.date) or "") ~ ", with video and transcript." %}
   <meta name="description" content="{{ description }}">
@@ -225,5 +231,6 @@
   </main>
 {% endblock %}
 {% block scripts %}
+  <script src="/shared-static/deep_link.js"></script>
   <script src="/archive-static/meeting_page.js"></script>
 {% endblock %}

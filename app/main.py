@@ -65,6 +65,10 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.mount("/static", StaticFiles(directory=APP_DIR / "static"), name="static")
+# Deep-link JS shared with the Archive service (archive/main.py mounts the
+# same top-level directory identically) -- see shared_static/deep_link.js's
+# own header comment for why this exists.
+app.mount("/shared-static", StaticFiles(directory=APP_DIR.parent / "shared_static"), name="shared_static")
 templates = Jinja2Templates(directory=APP_DIR / "templates")
 templates.env.globals["GA_MEASUREMENT_ID"] = os.environ.get("GA_MEASUREMENT_ID", "")
 
