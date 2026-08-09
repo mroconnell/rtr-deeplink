@@ -8,6 +8,32 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-09] Production incident: the worker was crash-looping on
+  every `claim_next_chunk()` call with `column transcription_jobs.priority
+  does not exist`.** Root cause: this session's own
+  `archive/alembic/README.md` said `alembic stamp head` for the one-time
+  production-adoption step — correct when written (only the baseline
+  migration existed), but a second migration (`8e7cf3b20f86`, the priority
+  column) landed in the same session before anyone ran it against
+  production, so "`head`" silently became the wrong target the moment that
+  second migration was committed. README fixed to reference the specific
+  revision id (`a8dc5aad7eff`) instead of the word `head`, with an explicit
+  "why `head` is unsafe here" paragraph — see `archive/alembic/README.md`.
+
+  **Confirmed fixed by the user, run from a Render shell into the
+  `archive` service** (note: `alembic` must be run from inside `archive/`
+  — running it from the repo root fails with `FAILED: No 'script_location'
+  key found in configuration`, since `alembic.ini` lives under
+  `archive/`). `alembic current` before the fix printed nothing (production
+  had genuinely never been stamped, matching the README's prediction);
+  `alembic stamp a8dc5aad7eff` then `alembic upgrade head` ran clean, and
+  a final `alembic current` confirmed `8e7cf3b20f86 (head)`. This confirms
+  the database schema now has the `priority` column, which removes the
+  root cause of the crash-loop — the running worker process's own recovery
+  (whether it needed a restart, or picked this up on its next poll cycle)
+  wasn't independently checked this session, since neither Render logs nor
+  process state were available to it.
+
 - **[Done 2026-08-09] PrimeGov's date/jurisdiction fixed for real, using the
   page's own visible "FORMAL AGENDA"/"REGULAR MEETING" header text — a
   different, more reliable signal than the embedded sub-document `<title>`
