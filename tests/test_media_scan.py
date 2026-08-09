@@ -84,6 +84,29 @@ def test_scan_media_urls_detects_wider_caption_formats():
     assert "https://city.example.com/transcript.txt" in urls
 
 
+def test_scan_media_urls_finds_json_escaped_urls():
+    # Real bug, confirmed live 2026-08-10 against Aurora, CO's auroratv.org
+    # (found via the generic fallback adapter): a real playable .mp4 and a
+    # real .vtt caption file were both genuinely on the page, but inside an
+    # inline <script> JSON blob (a JW Player config) with every "/" written
+    # as a JSON-escaped "\/" -- none of the plain https:// patterns matched
+    # that literal backslash. Fixture mirrors the real shape (field names,
+    # escaping) rather than a simplified stand-in.
+    html = (
+        '{"video_caption":"\\/home\\/atowntv\\/public_html\\/sites\\/default\\/files\\/'
+        'video-captions-70037.vtt","jw_data":{"caption_file_path":"https:\\/\\/'
+        'www.auroratv.org\\/sites\\/default\\/files\\/video-captions-70037.vtt",'
+        '"mp4_url":"https:\\/\\/reflect-aurora.cablecast.tv\\/store-4\\/'
+        '13040-EDITED-Regular-Meeting-of-v2\\/vod.mp4"}}'
+    )
+    urls = scan_media_urls(html, "https://www.auroratv.org/video/regular-meeting")
+    assert "https://reflect-aurora.cablecast.tv/store-4/13040-EDITED-Regular-Meeting-of-v2/vod.mp4" in urls
+    assert "https://www.auroratv.org/sites/default/files/video-captions-70037.vtt" in urls
+    # The filesystem path (no scheme, backslash-escaped or not) must never
+    # be picked up as if it were a fetchable URL.
+    assert not any("/home/atowntv" in u for u in urls)
+
+
 def test_scan_media_urls_does_not_pick_up_unrelated_xml_or_txt():
     html = (
         '<a href="https://city.example.com/sitemap.xml">sitemap</a>'

@@ -39,7 +39,21 @@ def scan_media_urls(html: str, page_url: str) -> List[str]:
     SwagitAssetFinder since both embed real media URLs as plain strings
     somewhere in server-rendered HTML/inline <script> content, just in
     different surrounding structures.
+
+    Also de-escapes JSON-style backslash-escaped slashes before matching --
+    confirmed live 2026-08-10 against a real small-city site (Aurora, CO's
+    auroratv.org, found via the generic fallback adapter): a real playable
+    .mp4 and a real .vtt caption file were both genuinely on the page, just
+    inside an inline <script> JSON blob (a JW Player config object) with
+    every forward slash backslash-escaped, e.g.
+    "https:" + chr(92) + "/" + chr(92) + "/reflect-aurora.cablecast.tv/.../vod.mp4"
+    in the raw HTML, which none of MEDIA_URL_PATTERNS matches since they
+    all require a literal "https?://". A backslash immediately before a
+    forward slash is never legitimate outside of this exact JSON/JS escape
+    convention, so a blanket replace is safe -- it can only ever recover a
+    real URL, never invent content that wasn't already there.
     """
+    html = html.replace("\\/", "/")
     media_urls = set()
 
     for pattern in MEDIA_URL_PATTERNS:
