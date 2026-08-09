@@ -107,3 +107,51 @@ async def test_resolve_finds_media_without_captions(monkeypatch):
     assert result.video_format == "mp4"
     assert result.segments == []
     assert any("No transcript was found" in w for w in result.transcript_warnings)
+
+
+async def test_resolve_surfaces_agenda_pdf_link_alongside_youtube_video(monkeypatch):
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _fake_extract_info)
+    page = f"""
+    <html><body>
+    <iframe src="https://www.youtube.com/embed/{REAL_VIDEO_ID}"></iframe>
+    <p>Agenda: Item 1, Item 2, Item 3.</p>
+    <a href="/docs/2026-01-01-agenda.pdf">View Agenda (PDF)</a>
+    <a href="/minutes/2026-01-01.pdf">Minutes</a>
+    </body></html>
+    """
+    routes = {PAGE_URL: FakeResponse(status=200, text=page, url=PAGE_URL)}
+
+    with mock_session(routes):
+        result = await GenericFallbackAssetFinder().resolve(PAGE_URL)
+
+    expected_link = "https://some-city.example.gov/docs/2026-01-01-agenda.pdf"
+    assert any(expected_link in w for w in result.transcript_warnings)
+    # The plain-text "Agenda: Item 1..." paragraph must not be picked up as
+    # if it were structured agenda items -- this adapter never populates
+    # agenda_items, only a plain link message.
+    assert result.agenda_items == []
+
+
+async def test_resolve_ignores_plain_text_agenda_mention_with_no_link():
+    routes = {PAGE_URL: FakeResponse(status=200, text=PAGE_WITH_NOTHING, url=PAGE_URL)}
+
+    with mock_session(routes):
+        result = await GenericFallbackAssetFinder().resolve(PAGE_URL)
+
+    assert not any("agenda" in w.lower() for w in result.transcript_warnings)
+
+
+async def test_resolve_prefers_pdf_agenda_link_over_html_agenda_page():
+    page = """
+    <html><body>
+    <video src="https://cdn.example.gov/videos/meeting.mp4"></video>
+    <a href="/meetings/2026-01-01/agenda">Agenda</a>
+    <a href="/docs/2026-01-01-agenda.pdf">Agenda (PDF)</a>
+    </body></html>
+    """
+    routes = {PAGE_URL: FakeResponse(status=200, text=page, url=PAGE_URL)}
+
+    with mock_session(routes):
+        result = await GenericFallbackAssetFinder().resolve(PAGE_URL)
+
+    assert any("2026-01-01-agenda.pdf" in w for w in result.transcript_warnings)

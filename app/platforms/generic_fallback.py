@@ -1,7 +1,9 @@
 import re
 from typing import List, Optional, Tuple
+from urllib.parse import urljoin
 
 import aiohttp
+from bs4 import BeautifulSoup
 
 from .base import AssetFinder
 from .media_scan import media_type, scan_media_urls
@@ -10,6 +12,7 @@ from .youtube import YouTubeAssetFinder
 from ..utils.vtt_parser import decode_vtt_bytes, detect_language_from_texts, parse_captions_by_extension
 
 _YOUTUBE_EMBED_RE = re.compile(r"(?:youtube\.com/(?:embed/|watch\?v=)|youtu\.be/)([\w-]{11})")
+_AGENDA_TEXT_RE = re.compile(r"agenda", re.IGNORECASE)
 
 _BEST_EFFORT_VIDEO_WARNING = (
     "We don't officially support this website yet, but found a video on the page and did our "
@@ -27,6 +30,10 @@ _NO_TRANSCRIPT_WARNING = (
     "No transcript was found automatically for this unsupported platform — you can request one "
     "from the audio instead."
 )
+
+
+def _agenda_link_message(agenda_link: str) -> str:
+    return f"We also found what looks like a link to the agenda on this page: {agenda_link}"
 
 
 class GenericFallbackAssetFinder(AssetFinder):
@@ -56,13 +63,24 @@ class GenericFallbackAssetFinder(AssetFinder):
        informative) outcome than today's blunt "we don't support this
        platform yet," which never attempted anything.
 
-    Deliberately NOT attempted: agenda-item detection. Every other
-    adapter's agenda parsing is tied to that platform's own known page
-    structure (Granicus's AgendaViewer.php, CivicClerk's eventBookmarks,
-    ...) -- there's no reliable generic pattern to reuse the way there is
-    for media URLs, and guessing badly here would be worse than agenda
-    items just being absent (which the existing `agenda_items` UI already
-    handles fine, it's optional everywhere it's rendered).
+    4. A plain link to an agenda document -- any <a> tag whose visible
+       text or href contains "agenda" (case-insensitive), preferring one
+       that looks like a PDF if more than one matches (per the user's
+       real experience triaging many small-city sites, an agenda is very
+       often a standalone PDF download rather than part of the page
+       itself). Deliberately NOT attempted: structured agenda-ITEM
+       detection (per-topic entries with real timestamps). Every other
+       adapter's item-level agenda parsing is tied to that platform's own
+       known page structure (Granicus's AgendaViewer.php, CivicClerk's
+       eventBookmarks, ...) -- there's no reliable generic pattern to
+       reuse the way there is for media URLs or a single link, and
+       guessing badly at *items* would be worse than them just being
+       absent. A found agenda link is surfaced as a plain message (with
+       the URL, auto-linkified by player.js's existing linkifyWarning())
+       rather than forced into the `agenda_items` field, since that field
+       implies real per-item timestamps this doesn't have -- the user's
+       own framing: "they don't need to be clickable timestamps for this
+       fallback mode."
 
     No frontend changes needed for any of this -- `initVideo()` already
     handles any `video_url`/`video_format` combo generically, and the
@@ -108,10 +126,14 @@ class GenericFallbackAssetFinder(AssetFinder):
                 ],
             )
 
+        agenda_link = self._find_agenda_link(html, url)
+
         youtube_match = _YOUTUBE_EMBED_RE.search(html)
         if youtube_match:
             resolved = await YouTubeAssetFinder.resolve_video_id(youtube_match.group(1), source_url=url)
             resolved.video_warnings = [_BEST_EFFORT_VIDEO_WARNING, *resolved.video_warnings]
+            if agenda_link:
+                resolved.transcript_warnings.append(_agenda_link_message(agenda_link))
             return resolved
 
         media_urls = scan_media_urls(html, url)
@@ -126,6 +148,10 @@ class GenericFallbackAssetFinder(AssetFinder):
                 segments = [TranscriptSegment(**c) for c in cues]
                 transcript_language = detect_language_from_texts(c["text"] for c in cues)
 
+        transcript_warnings = [] if segments else [_NO_TRANSCRIPT_WARNING]
+        if agenda_link:
+            transcript_warnings.append(_agenda_link_message(agenda_link))
+
         return ResolvedMeeting(
             platform=self.platform_name,
             source_url=url,
@@ -134,8 +160,31 @@ class GenericFallbackAssetFinder(AssetFinder):
             segments=segments,
             transcript_language=transcript_language,
             video_warnings=[_BEST_EFFORT_VIDEO_WARNING if video_url else _NO_VIDEO_FOUND_WARNING],
-            transcript_warnings=[] if segments else [_NO_TRANSCRIPT_WARNING],
+            transcript_warnings=transcript_warnings,
         )
+
+    @staticmethod
+    def _find_agenda_link(html: str, page_url: str) -> Optional[str]:
+        """Best-effort: a single <a> tag whose visible text or href
+        contains "agenda" (case-insensitive). Doesn't attempt to extract
+        agenda *items* -- see class docstring. Prefers a PDF-looking href
+        (the common real-world shape) over an HTML page, since a PDF is
+        the more specific, less-likely-to-be-a-false-positive signal."""
+        soup = BeautifulSoup(html, "html.parser")
+        candidates = []
+        for a in soup.find_all("a", href=True):
+            href = a["href"].strip()
+            if not href or href.startswith("#") or href.lower().startswith("javascript:"):
+                continue
+            text = a.get_text(" ", strip=True)
+            if _AGENDA_TEXT_RE.search(text) or _AGENDA_TEXT_RE.search(href):
+                candidates.append(urljoin(page_url, href))
+        if not candidates:
+            return None
+        for candidate in candidates:
+            if candidate.lower().split("?")[0].endswith(".pdf"):
+                return candidate
+        return candidates[0]
 
     @staticmethod
     def _pick_video_url(media_urls: List[str]) -> Tuple[Optional[str], Optional[str]]:
