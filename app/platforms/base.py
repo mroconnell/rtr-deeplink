@@ -64,10 +64,11 @@ def detect_platform(url: str) -> str:
         # confirmed custom-domain Legistar instance so far -- see
         # BACKLOG.md and the collect-edge-case-urls memory for why this
         # isn't generalized from one example. NYC's video links use a
-        # Telerik JS modal (`onclick="OpenTelerikWindow(...)"`), not a
-        # plain href like every other Legistar city -- LegistarAssetFinder
-        # doesn't handle that yet, so detection alone doesn't make NYC's
-        # video fully resolvable (still open, see BACKLOG.md).
+        # Telerik JS modal (`onclick="OpenTelerikWindow(...)"`) rather
+        # than a plain href/window.open like every other Legistar city --
+        # LegistarAssetFinder recognizes that onclick shape too now, and
+        # its server-side redirect chain lands on a Viebit URL, delegated
+        # to ViebitAssetFinder below.
         return "legistar"
     if "civicclerk.com" in netloc:
         return "civicclerk"
@@ -89,6 +90,13 @@ def detect_platform(url: str) -> str:
         return "ca_legislature"
     if "youtube.com" in netloc or "youtu.be" in netloc:
         return "youtube"
+    if "viebit.com" in netloc:
+        # The real video platform underneath NYC Council's Legistar
+        # instance, reached by delegation (see the legistar.council.nyc.gov
+        # case above) -- confirmed live 2026-08-08. Not yet confirmed
+        # whether any city links to Viebit directly rather than through a
+        # Legistar wrapper.
+        return "viebit"
     return "unknown"
 
 

@@ -2297,3 +2297,94 @@ changelog of task titles.
   30-day-only viewer stuck rechecking too rarely). Covered by
   `tests/test_lookup_has_transcript.py` (3 tests: real transcript → true,
   no version at all → false, garbled version → false).
+
+- **[Done 2026-08-08] New platform: Viebit, the real video platform
+  underneath NYC Council's Legistar instance — a real second gap fixed
+  along the way (NYC's own domain was never actually reachable through
+  `LegistarAssetFinder.resolve()` at all, a bug in the fix that was
+  believed done), plus real, populated, correctly-parsed transcript
+  captions for NYC Council meetings (a first).** Fully traced live from
+  the NYC Legistar calendar page down to real caption content, entirely
+  via plain HTTP — no headless browser needed anywhere in the chain,
+  despite Minneapolis's LIMS platform (found the same day) needing one
+  for a structurally similar-looking problem.
+
+  **The trace**: NYC's video links (`a.videolink[onclick]`, confirmed on
+  a real 40-video-link calendar page) call `OpenTelerikWindow('Video.aspx
+  ?Mode=Auto&URL={base64}&Mode2=Video', 'video')` instead of every other
+  Legistar city's plain `window.open('Video.aspx?Mode=Granicus&ID1=...')`
+  — but `Video.aspx?Mode=Auto&...` itself does a real server-side 302
+  redirect chain straight through to a Viebit `/embed/vod?v={id}` URL
+  (confirmed via `curl -I -L`), so no base64-decoding is needed in this
+  repo's own code at all — `LegistarAssetFinder`'s existing
+  `allow_redirects=True` fetch already lands there directly once it
+  recognizes the onclick shape. The landed page's plain HTML (confirmed
+  identical whether fetched via the outer `/vod/?v=...` URL the base64
+  decodes to, or the `/embed/vod?v=...` URL it redirects to) contains a
+  `var pageConfig = {...};` JS object with everything needed: a real HLS
+  `master.m3u8` URL, a real populated VTT caption URL (1748 raw cues on
+  the real sample checked), and a title.
+
+  **Real second bug found and fixed**: `LegistarAssetFinder.resolve()`'s
+  own domain check (`"legistar.com" not in netloc`) was a bare substring
+  check that evaluates `True` (i.e. "not Legistar") for NYC's actual
+  `legistar.council.nyc.gov` pages too, since that string doesn't contain
+  "legistar.com" as a substring — meaning even after `detect_platform()`
+  was taught to route nyc.gov to `LegistarAssetFinder` (the earlier
+  2026-08-08 fix, believed complete), `resolve()` itself would have sent
+  NYC's own domain straight back into `resolve_via_platform()`, which
+  re-detects "legistar" and would have recursed on the exact same URL
+  rather than ever reaching `_find_video_links()`. Fixed by extracting a
+  shared `_is_legistar_domain()` static method (used at both of the two
+  call sites that previously duplicated the buggy check), matching
+  `detect_platform()`'s own domain list instead of drifting from it.
+
+  **Build**: new `app/platforms/viebit.py` (`ViebitAssetFinder`) — parses
+  `pageConfig` via a small regex + `json.loads`, builds the m3u8 URL from
+  `video.src[0].storage + .url`, and reuses existing shared utilities
+  rather than writing new caption-format logic: `dedupe_rollup_cues()`
+  (built for YouTube's differently-shaped growing-word rollup) turns out
+  to already correctly collapse Viebit's two-line rolling-caption shape
+  too — confirmed empirically (1748 raw cues → 876 clean segments) — since
+  an exact-duplicate-text cue is just the trivial case of that function's
+  existing prefix-matching merge logic, no new dedup code needed; and
+  `normalize_shouting_caption` (already called inside `parse_vtt`)
+  handles the source's ALL-CAPS text. Registered in
+  `app/platforms/__init__.py`; `"viebit.com"` added to `detect_platform()`.
+  `LegistarAssetFinder._find_video_links()`'s onclick regex extended to
+  match `OpenTelerikWindow(...)` alongside the existing `window.open(...)`
+  pattern (same `a.videolink` selector for both).
+
+  **Real, disprove-not-just-unverified finding, documented honestly, not
+  swept under a "should work" assumption**: fetching the real
+  `master.m3u8` from this session's own sandboxed dev environment gets a
+  403 from a Varnish-fronted CDN (`vbfast-vod.viebit.com`) even with
+  realistic Referer/Origin/User-Agent headers, while a real browser (this
+  session's own Browser tool) loads the identical URL successfully with
+  no errors. Checked several hypotheses (Referer, Origin, a `vv=` token
+  from the page's own `vod-check-in` POST) without finding the real
+  gating mechanism — left as an open BACKLOG.md item to recheck from
+  production rather than guessed at further. Transcript/caption fetching
+  is a completely different, ungated path on the same CDN domain and is
+  unaffected either way — confirmed via the real 876-segment result
+  rendering correctly on the actual `/meeting?url=...` page, live, not
+  just via `resolve()`.
+
+  **Tests**: `tests/test_viebit.py` (4 tests, using real fixtures —
+  `tests/fixtures/viebit/nycc_vod_page.html` and `nycc_captions.vtt`,
+  both fetched live from the real sample) covering the full happy path
+  (title/date/video_url/segment-count/language/de-shouting all pinned
+  together against real data), a missing-`pageConfig` page returning a
+  warning not a crash, a page with no caption track, and `_format_date`'s
+  edge cases. Three new tests added to `tests/test_legistar.py`: the real
+  40-candidate NYC calendar page (`tests/fixtures/legistar/
+  nyc_council_calendar.html`) raising a proper pick-list via the
+  `OpenTelerikWindow` onclick shape, a single NYC meeting delegating all
+  the way through to a real Viebit result, and a direct pin of the
+  `_is_legistar_domain()` fix (NYC's domain now correctly recognized,
+  Viebit's correctly rejected). Verified live end-to-end via a real local
+  resolver: `/api/resolve` and the rendered `/meeting?url=...` page both
+  confirmed against the actual NYC URL, not just the mocked tests — the
+  transcript renders with correct clickable timestamps and clean,
+  de-shouted text; the video element shows a load failure, consistent
+  with the CDN-403 finding above. Full suite green (160 tests — 7 new).

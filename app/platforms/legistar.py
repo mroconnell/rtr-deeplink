@@ -52,7 +52,7 @@ class LegistarAssetFinder(AssetFinder):
         async with aiohttp.ClientSession(headers=self.headers) as session:
             final_url, html = await self._fetch(session, url)
 
-            if "legistar.com" not in urlparse(final_url).netloc.lower():
+            if not self._is_legistar_domain(final_url):
                 return await resolve_via_platform(final_url)
 
             soup = BeautifulSoup(html, "html.parser")
@@ -75,7 +75,7 @@ class LegistarAssetFinder(AssetFinder):
                 )
 
             target_final_url, _ = await self._fetch(session, video_links[0]["url"])
-            if "legistar.com" not in urlparse(target_final_url).netloc.lower():
+            if not self._is_legistar_domain(target_final_url):
                 return await resolve_via_platform(target_final_url)
 
             return ResolvedMeeting(
@@ -83,6 +83,19 @@ class LegistarAssetFinder(AssetFinder):
                 source_url=url,
                 video_warnings=["Found a video link, but it didn't lead to a supported platform."],
             )
+
+    @staticmethod
+    def _is_legistar_domain(url: str) -> bool:
+        # Real bug fixed 2026-08-08: this used to be a bare "legistar.com"
+        # substring check, which -- for NYC's custom nyc.gov domain --
+        # incorrectly evaluated False even on NYC's own Legistar pages,
+        # sending final_url straight back into resolve_via_platform()
+        # (detect_platform() maps it to "legistar" again, so this would
+        # have recursed on the exact same URL rather than ever reaching
+        # _find_video_links). Kept in one place, matching detect_platform()
+        # (base.py)'s own hardcoded domain list, rather than drifting.
+        netloc = urlparse(url).netloc.lower()
+        return "legistar.com" in netloc or "legistar.council.nyc.gov" in netloc
 
     @staticmethod
     async def _fetch(session: aiohttp.ClientSession, url: str):
@@ -94,7 +107,13 @@ class LegistarAssetFinder(AssetFinder):
         candidates = []
         for a in soup.select("a.videolink"):
             onclick = a.get("onclick") or ""
-            match = re.search(r"window\.open\('([^']+)'", onclick)
+            # Two real onclick shapes seen so far, both on a.videolink:
+            # plain window.open(...) (Maricopa AZ and every other Legistar
+            # city checked), and NYC's OpenTelerikWindow(...) Telerik modal
+            # -- confirmed live 2026-08-08, same a.videolink selector and
+            # Video.aspx target underneath, just a different JS call
+            # wrapping it.
+            match = re.search(r"(?:window\.open|OpenTelerikWindow)\('([^']+)'", onclick)
             if not match or "Video.aspx" not in match.group(1):
                 continue
             absolute = urljoin(page_url, match.group(1).replace("&amp;", "&"))

@@ -40,36 +40,6 @@ where relevant.
   URL (so no RSS feed to cross-reference, unlike the rest of Granicus — see
   [BACKLOG_DONE.md](BACKLOG_DONE.md)) and no date signal anywhere in the
   page body either. No fallback source identified yet.
-- **Real bug: a genuinely public, working YouTube video gets misreported
-  as "removed, private, or blocked."** Confirmed live (2026-08-08) via
-  `https://toaks.primegov.com/Portal/Meeting?meetingTemplateId=9446`
-  (Thousand Oaks, CA) — the page has a real embedded video id
-  (`VNMQYICdQvs`), and YouTube's own oEmbed API confirms that video is
-  genuinely public (title "Thousand Oaks City Council Meeting - July 7,
-  2026", channel "CTO Meetings", real thumbnail). `/api/resolve` still
-  fails with `"YouTube video VNMQYICdQvs could not be resolved (removed,
-  private, or blocked)."` Root cause: `YouTubeAssetFinder._extract_info()`
-  (`app/platforms/youtube.py`) sets `"ignoreerrors": True` on yt-dlp, so
-  `ydl.extract_info()` returns `None` on *any* failure — network hiccup,
-  an anti-bot block on our server's IP, yt-dlp needing an update, an
-  actually-removed video, anything — and the caller (`resolve_video_id()`)
-  reports all of those identically as "removed, private, or blocked."
-  That message is asserting something it hasn't actually verified. Real
-  cause here is still unconfirmed (this exact video should be a good
-  repro to debug against). **Decided 2026-08-08: `ignoreerrors: False`**,
-  not the `info.get("availability")` alternative — lets whatever yt-dlp's
-  real exception is surface directly, rather than depending on yt-dlp
-  returning usable partial info on failure (unconfirmed it even does).
-  Whatever the real cause turns out to be, the error message becomes
-  honest about it instead of always guessing "removed."
-
-  Also corrects an assumption from the original PrimeGov/YouTube build
-  (see [BACKLOG_DONE.md](BACKLOG_DONE.md)): a `?meetingTemplateId=...`
-  PrimeGov URL was believed to never have video, based on one LA sample
-  that genuinely had none. This Thousand Oaks sample has a real
-  `var videoUrl = "VNMQYICdQvs"` on a `meetingTemplateId` page — video
-  presence isn't determined by the URL shape after all, at least not
-  uniformly across cities.
 - **PrimeGov's date/jurisdiction come entirely from YouTube's own
   metadata, which is measurably worse than what's already sitting on the
   PrimeGov page itself.** Confirmed live (2026-08-08) via
@@ -262,35 +232,24 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   CA, San Diego city/county, both Berkeley Legistar calendars — none had
   one. Not disproven, just not found yet; extend `LegistarAssetFinder`/
   `CivicPlusAssetFinder`'s row-scraping when a real example turns up.
-- **NYC Council's Legistar (`legistar.council.nyc.gov`) isn't detected as
-  Legistar at all, and its video access is structurally different from
-  every Legistar city seen so far.** Confirmed live (2026-08-08):
-  `detect_platform()` only checks for `"legistar.com"` in the netloc, but
-  NYC's instance is hosted on its own `nyc.gov` domain — `/api/resolve`
-  against `https://legistar.council.nyc.gov/Calendar.aspx` returns
-  `unsupported_platform`, never even reaching `LegistarAssetFinder`.
-  Separately, once detected, the actual video links on that calendar
-  page (87 of them, one per row) don't behave like every other Legistar
-  city checked so far (Boston, Lee's Summit MO, Maricopa AZ, Berkeley —
-  all a plain `<a href>` to `Video.aspx?Mode=Granicus&ID1=...` or similar,
-  straight to the destination platform). NYC's "Video" links instead call
-  `onclick="OpenTelerikWindow(...)"` — a Telerik `RadWindow` JS modal —
-  so the real video destination is never a plain href in the static HTML;
-  reaching it needs either executing that JS or reverse-engineering what
-  `OpenTelerikWindow` actually opens (untraced so far — worth a closer
-  look via browser devtools, not just static HTML scraping). Worth
-  fixing both, given NYC is about as high-profile a jurisdiction as this
-  tool could support: **(1) decided 2026-08-08 — hardcode `nyc.gov` as a
-  known Legistar exception** alongside the `legistar.com` check, rather
-  than trying to infer a general page-structure signature from this one
-  example. Generalizing detection is deliberately deferred until more
-  custom-domain Legistar cities turn up — see the new "collect custom
-  domains" item in this same section, and the `collect-edge-case-urls`
-  Claude Code memory this session added specifically to make that habit
-  durable across sessions. (2) The Telerik modal's actual target URL
-  pattern is still untraced — real investigation needed, not a decision,
-  before knowing whether `LegistarAssetFinder` needs a second
-  video-discovery strategy for it.
+- **Viebit video playback (NYC Council's real video platform, reached via
+  Legistar delegation) is unverified from this dev environment — recheck
+  from production before trusting it.** Full chain built and verified
+  2026-08-08 (see BACKLOG_DONE.md): NYC's Telerik-modal video links now
+  resolve real video URLs, real titles/dates, and — most importantly —
+  real, populated, correctly-parsed transcript captions (876 clean
+  segments confirmed on a real meeting). The one piece not confirmed:
+  fetching the actual `master.m3u8` from this session's sandboxed
+  environment gets a 403 from a Varnish-fronted CDN
+  (`vbfast-vod.viebit.com`) even with realistic Referer/Origin/User-Agent
+  headers, while a real browser loads the identical URL successfully.
+  Unlike Granicus's already-solved Referer-only 403, the real gating
+  mechanism here is unconfirmed — a session cookie from the page's own
+  `vod-check-in` POST, an IP allowlist that only this sandbox's egress IP
+  fails, or something else. Transcript/caption access goes through a
+  different, ungated path on the same CDN domain, so it's unaffected
+  either way. Needs a real check from Render's actual production IP
+  before trusting video playback works for real users.
 - **New: collect custom-domain examples for popular platforms as they're
   found, into the existing shared sample sheet** ("Watchdog Sample
   meetings," linked in `CLAUDE.md`) — not a code change, a standing

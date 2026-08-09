@@ -47,7 +47,7 @@ pytest
 `tests/` covers the platform-independent utilities (`app/utils/vtt_parser.py`,
 `app/platforms/media_scan.py`, `app/platforms/base.py`'s `detect_platform`)
 directly, and exercises Granicus/Legistar/CivicPlus/CivicClerk/Swagit/
-CA Legislature end-to-end against real fixture files saved under
+CA Legislature/PrimeGov/YouTube/Viebit end-to-end against real fixture files saved under
 `tests/fixtures/` (fetched live from real government sites, not synthetic
 — see each fixture directory for where it came from; `tests/fixtures/
 civicplus/README.md` explains the one exception, hand-built to match a
@@ -64,8 +64,8 @@ different shape — real integration tests against an isolated SQLite file
 (set up once per test session by `tests/conftest.py`, not mocked), since
 the transcription job lifecycle is genuinely DB-state-machine logic
 (claim/report/finalize/promote) that a pure-function test can't exercise
-honestly. eScribe and PrimeGov/YouTube don't have test coverage yet — a
-good next place to extend this suite.
+honestly. eScribe doesn't have test coverage yet — a good next place to
+extend this suite.
 
 ## How it works
 
@@ -410,6 +410,7 @@ platform share the same page/API structure. Detection lives in
 | CivicPlus | `civicplus.py` | Same delegation pattern as Legistar, from AgendaCenter listing rows | Whatever the delegated platform provides |
 | PrimeGov | `primegov.py` | Doesn't host video — the video id is a plain JS variable (`var videoUrl = "..."`) directly in the page HTML; delegates to YouTube, preserving the original PrimeGov URL as `source_url` (unlike the Legistar/CivicPlus delegation pattern) | Whatever YouTube provides |
 | YouTube | `youtube.py` | No direct video file URL exists (unlike every platform above) — playback is an embedded iframe + the YouTube IFrame Player API, not the native `<video>`/hls.js pathway. Handles a direct `youtube.com`/`youtu.be` URL too, not just PrimeGov delegation | yt-dlp (plain HTTP requests to YouTube's caption endpoints are blocked — see BACKLOG.md); prefers a manual/CC track over auto-generated only when its coverage is comparable, since a manual track can start well into the video and skip pre-meeting dead air |
+| Viebit | `viebit.py` | Reached via Legistar delegation (confirmed so far only under NYC Council's instance) — a `var pageConfig = {...}` JS object embedded in plain HTML gives a real HLS `master.m3u8` URL, no JS execution needed. **Video playback itself is unverified from this dev environment** — a CDN-level 403 on the m3u8 URL, mechanism unconfirmed, see BACKLOG.md | Real, populated VTT captions from the same `pageConfig`; two-line rolling-caption shape, collapsed by the existing `dedupe_rollup_cues()` (built for YouTube, confirmed to also handle this shape correctly) |
 
 **Not implemented**: BoardDocs (deliberately excluded — it's a
 document/agenda platform with no reliable video, not worth an adapter).
