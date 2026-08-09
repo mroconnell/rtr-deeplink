@@ -5,6 +5,46 @@ investigation detail behind each fix — lives in
 [BACKLOG_DONE.md](BACKLOG_DONE.md); items below link back to it for context
 where relevant.
 
+## Bugs
+
+- **⚠️ Production incident, active as of 2026-08-09: Minneapolis LIMS
+  (and likely SLC too, same underlying cause, not yet independently
+  reported) resolves failed in production with Playwright's own raw
+  error text shown on the page.** Reported live by the user: pasting a
+  real Minneapolis meeting URL showed `BrowserType.launch: Executable
+  doesn't exist at /opt/render/.cache/ms-playwright/...` verbatim,
+  including Playwright's multi-line ASCII-art box — confirms the exact
+  deployment risk flagged (but not yet verified) when these adapters
+  shipped: `render.yaml`'s `playwright install --with-deps chromium`
+  build step did not leave a working browser binary where the running
+  service looks for it.
+
+  Two real fixes shipped immediately: `app/platforms/
+  headless_browser.py`'s `_get_browser()` now self-heals (runs
+  `playwright install chromium` in-process on first launch failure, then
+  retries once) so a broken/incomplete build step doesn't leave this
+  permanently down until a redeploy; and `fetch_via_browser()` now raises
+  a short, clean `HeadlessBrowserUnavailable` message instead of letting
+  Playwright's own raw error text reach a real visitor's page (`app/
+  main.py`'s generic `/api/resolve` exception handler shows `str(e)`
+  directly, which is fine for every other adapter's normal-sized
+  exceptions, not for this one).
+
+  **Root cause of the missing binary itself is still unconfirmed** — the
+  self-heal is a real safety net, not a substitute for actually fixing
+  the build step, and needs a real check against Render's own build logs
+  for the `rtr-deeplink` service specifically (not guessable from the
+  repo alone): does `buildCommand` even run as written — is this service
+  actually Blueprint-synced to this repo's `render.yaml`, or does its
+  Render dashboard have its own separately-configured build command that
+  a `render.yaml` edit alone never reaches? Is `--with-deps`'s apt-get
+  step failing silently on permissions in Render's build environment? Is
+  there a build-time-vs-runtime `$HOME`/cache-path mismatch? **Remove
+  this item once the real Minneapolis/SLC URLs have been retried in
+  production and confirmed working** (either the self-heal alone
+  resolved it, or the actual build-command root cause was found and
+  fixed) — not yet confirmed as of this writing.
+
 ## UX polish
 
 - **Some transcripts show a raw `&gt;&gt;` encoding artifact instead of a
