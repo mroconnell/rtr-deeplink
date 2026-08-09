@@ -7,60 +7,18 @@ where relevant.
 
 ## Bugs
 
-- **Real bug, confirmed live (2026-08-08): a permanent Archive page can be
-  permanently stuck with a stale, wrong-shaped `TranscriptVersion` from a
-  since-removed code path, and `/admin/recheck-archive-page` can't fix it.**
-  `redtaperecordings.com/m/yountville-ca-2026-04-21-apr-21-2026-town-council-budget-workshop`
-  shows a "Transcript" section containing 10 rows that are actually a copy
-  of the meeting's agenda items, with the warning "No transcript available
-  for this event — showing agenda-item chapter markers instead, which
-  still deep-link to the right moment." Neither that message nor the
-  "copy agenda into segments" behavior it implies exist anywhere in the
-  current codebase — confirmed via `git log --all -S"showing agenda-item
-  chapter markers instead"`, which only finds it in two commits on the
-  `claude-backlog/round-1` branch, the second of which (`231c5fc`, "Add
-  dedicated Agenda section, separate from transcript") replaced it with
-  today's design: `agenda_items` kept in its own field, *never* folded
-  into `segments` (every current adapter's resolve() comments say this
-  explicitly). So this page was pushed by an old version of the resolver,
-  before that refactor, and has sat unrefreshed since.
-
-  Unlike the Emporia/Fountain Valley cases in
-  [BACKLOG_DONE.md](BACKLOG_DONE.md), `/admin/recheck-archive-page` can't
-  fix this one: `ingest_resolution()` (`archive/db/crud.py`) only ever
-  *adds* a new `TranscriptVersion` `if segments:` — a fresh resolve today
-  correctly finds real `agenda_items` but empty `segments` for this
-  meeting (matching current, correct behavior), so nothing about the
-  existing bad default version ever gets touched, updated, or demoted.
-  The stale version is permanently stuck as `is_default=True` until
-  something explicitly deals with it.
-
-  **Decided 2026-08-08, not yet built: the general fix, not a one-off.**
-  Chosen over a narrow per-page admin action — same underlying question
-  as the Dublin language/promotion gap below, worth solving once for
-  both rather than twice. Real design has two distinct halves, since
-  this page's specific failure mode (a fresh recheck also finds nothing)
-  differs from Dublin's (a fresh recheck finds something genuinely
-  better):
-  - **Dublin-style (a fresh resolve finds real, better content)**:
-    `ingest_resolution()` should call `promote_transcript_version()` on
-    the newly-created version when it's a real improvement over the
-    current default (has segments where the default had none, has a
-    language where the default had none, etc.) — same mechanism the
-    transcription-job completion path already uses, just not currently
-    wired into the plain resolve/recheck path at all.
-  - **Yountville-style (a fresh resolve finds nothing, but the existing
-    default was never real either)**: no new `TranscriptVersion` gets
-    created in this case (`ingest_resolution()` only creates one `if
-    segments:`), so there's nothing to promote — the fix here is
-    recognizing that the *existing* default is itself not genuine
-    content (e.g. empty segments, or a known-bad marker) and demoting/
-    clearing it even without a replacement, rather than leaving it stuck
-    as `is_default=True` forever.
-  No other page has been checked for the same stale-shape issue; worth a
-  quick audit across all 12 current permanent pages once this is built,
-  to confirm nothing else needs the same fix applied retroactively via a
-  recheck.
+- **Yountville's stale page needs an actual recheck run against it, and
+  all 12 permanent pages need a one-time audit for the same stale-shape
+  issue.** The general fix landed and is verified (see
+  [BACKLOG_DONE.md](BACKLOG_DONE.md)), but the *specific* live page
+  (`redtaperecordings.com/m/yountville-ca-2026-04-21-apr-21-2026-town-council-budget-workshop`)
+  hasn't actually been rechecked yet — needs `GET
+  /admin/recheck-archive-page` run against it (needs
+  `ADMIN_STATS_TOKEN`, which this session doesn't have) to confirm the
+  new demotion logic actually fires on the real stale row, not just in
+  tests. Once confirmed, worth the originally-planned audit across all
+  12 current permanent pages for the same issue, now that there's a real
+  fix to apply if any others turn up.
 - **Archive passive recheck cadence should depend on transcript quality,
   not just page age.** Now that `GET /admin/recheck-archive-page` exists
   for fixing a stale page on demand (see
@@ -379,38 +337,15 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   swagit-video-player?video_id=...`). `detect_platform` recognizes the URL
   shape, but the one sample URL 404'd — parsing has only been verified
   against real `*.swagit.com` domains. Needs a fresh sample URL.
-- **A real Dublin, CA Archive page
-  (`/m/dublin-ca-2026-01-13-jan-13-2026-city-council`) shows no language on
-  `/meetings` despite having a real English transcript.** Confirmed live
-  (2026-08-08): its default `TranscriptVersion.language` is empty (the
-  `/meetings` row shows "Dublin, CA · 2026-01-13" with no `· en`, unlike
-  a second Dublin page — `/m/dublin-ca-city-council-regular-meeting` —
-  which correctly shows "· en"). Root cause understood, not just
-  observed: `app/platforms/swagit.py`'s language detection
-  (`detect_language_from_texts()` on `#transcript-fragments` text) was
-  only added today, 2026-08-08 (see that file's inline comment, and
-  `app/utils/vtt_parser.py`'s `detect_language_from_texts()` docstring)
-  — this specific page's version was ingested *before* that fix existed,
-  so it's frozen with `language=None` from whenever it was first pushed.
-  Running `/admin/recheck-archive-page` against it would very likely set
-  `transcript_language="en"` on a fresh resolve, **but that alone
-  probably still won't fix the `/meetings` listing**: `ingest_resolution()`
-  (`archive/db/crud.py`) only marks a new version `is_default=True` when
-  `any_version is None` — since a version already exists here (the
-  null-language one), a recheck's fresh push would add a *second*,
-  correctly-labeled version without promoting it over the stale
-  default, the same general gap noted elsewhere in this file about
-  `ingest_resolution()` never calling `promote_transcript_version()`
-  the way the transcription-job completion path does. Two real fixes
-  bundled in one root cause: (1) confirm whether a recheck actually
-  behaves as predicted above (untested — needs `ADMIN_STATS_TOKEN`),
-  (2) **decided 2026-08-08, same fix as Yountville's entry above**:
-  `ingest_resolution()`'s recheck path should call
-  `promote_transcript_version()` when the fresh version is a real
-  improvement (a language where there was none, real segments where
-  there were none) over the current default — this is exactly the
-  Dublin-style half of that shared fix, solved once for both bugs
-  rather than twice.
+- **The real Dublin, CA Archive page
+  (`/m/dublin-ca-2026-01-13-jan-13-2026-city-council`) still needs an
+  actual recheck run against it.** The promotion fix that makes a
+  recheck actually pick up the now-correct language is built and
+  verified (see [BACKLOG_DONE.md](BACKLOG_DONE.md) and the Yountville
+  entry above), but this specific live page hasn't been rechecked yet —
+  needs `GET /admin/recheck-archive-page` (needs `ADMIN_STATS_TOKEN`,
+  which this session doesn't have) to confirm the `/meetings` listing
+  actually starts showing "· en" for it.
 - **eScribe caption content-quality unverified.** The per-language VTT
   naming convention was confirmed structurally on Richmond, CA, but none
   were populated (all 404) — shape-verified only, not content-verified.

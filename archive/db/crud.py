@@ -201,17 +201,72 @@ async def _find_or_create_page(session, payload: dict[str, Any], input_url_norma
     return page
 
 
+def _is_real_improvement(current_default: TranscriptVersion, new_language: Optional[str]) -> bool:
+    """True if a freshly-created TranscriptVersion (which always has real
+    segments -- ingest_resolution() only creates one `if segments:`) is a
+    genuine improvement over the page's current default, and should be
+    promoted over it. Narrowly scoped to the two confirmed real cases
+    (see BACKLOG_DONE.md): the default had no real segments at all, or it
+    had segments but no detected language and the fresh one has one
+    (exactly the Dublin, CA bug -- a Swagit page ingested before language
+    detection was wired up for that adapter). Deliberately *not* a
+    blanket "always promote the newest" rule -- if the current default
+    already has both real segments and a language, a fresh duplicate-ish
+    version isn't confidently better, so it's left alone rather than
+    flip-flopping the default unpredictably.
+    """
+    if not current_default.segments:
+        return True
+    return not current_default.language and bool(new_language)
+
+
+def _default_looks_like_copied_agenda(current_default: TranscriptVersion, agenda_items: list) -> bool:
+    """True if the page's current default TranscriptVersion is actually
+    just a copy of the meeting's agenda items, not a genuine transcript --
+    a real, confirmed historical bug (see BACKLOG_DONE.md's Yountville
+    entry) from a since-removed code path that briefly folded
+    `agenda_items` into `segments`. Detected structurally (same count,
+    identical text in the same order) against the *freshly resolved*
+    agenda_items in this ingest's own payload, rather than by matching
+    old warning-message text -- a structural check generalizes to any
+    page with the same underlying data shape, not just the one page this
+    bug was first found on.
+    """
+    seg_texts = [s.get("text") for s in (current_default.segments or [])]
+    agenda_texts = [a.get("text") for a in (agenda_items or [])]
+    return bool(seg_texts) and seg_texts == agenda_texts
+
+
 async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) -> dict:
     """Create a MeetingPage (or attach a new TranscriptVersion to an
     existing one) from a resolver push. `payload` is the resolver's
     ResolvedMeeting.model_dump() shape: platform, source_url, external_id,
     title, date, jurisdiction, video_url, video_format, segments,
     agenda_items, transcript_language, transcript_warnings.
+
+    Also handles promoting/demoting the page's default TranscriptVersion
+    when warranted -- see _is_real_improvement() and
+    _default_looks_like_copied_agenda() above, and BACKLOG_DONE.md for
+    the two real bugs (Dublin, Yountville) this closes. Only ever touches
+    an *existing* default; a brand-new page's first version is already
+    is_default=True from creation, nothing more to do.
     """
     segments = payload.get("segments") or []
+    agenda_items = payload.get("agenda_items") or []
 
     async with async_session() as session:
         page = await _find_or_create_page(session, payload, input_url_normalized)
+
+        current_default = (
+            await session.execute(
+                select(TranscriptVersion).where(
+                    TranscriptVersion.meeting_page_id == page.id,
+                    TranscriptVersion.is_default.is_(True),
+                )
+            )
+        ).scalars().first()
+
+        new_version_id = None
 
         if segments:
             language = payload.get("transcript_language")
@@ -234,17 +289,24 @@ async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) 
                         select(TranscriptVersion).where(TranscriptVersion.meeting_page_id == page.id)
                     )
                 ).scalars().first()
-                session.add(
-                    TranscriptVersion(
-                        meeting_page_id=page.id,
-                        language=language,
-                        source="scraped",
-                        is_default=any_version is None,
-                        segments=segments,
-                        transcript_warnings=payload.get("transcript_warnings") or [],
-                        content_hash=content_hash,
-                    )
+                version = TranscriptVersion(
+                    meeting_page_id=page.id,
+                    language=language,
+                    source="scraped",
+                    is_default=any_version is None,
+                    segments=segments,
+                    transcript_warnings=payload.get("transcript_warnings") or [],
+                    content_hash=content_hash,
                 )
+                session.add(version)
+                await session.flush()  # assigns version.id
+                new_version_id = version.id
+
+        if current_default is not None:
+            if new_version_id is not None and _is_real_improvement(current_default, payload.get("transcript_language")):
+                await promote_transcript_version(session, page.id, new_version_id)
+            elif new_version_id is None and _default_looks_like_copied_agenda(current_default, agenda_items):
+                current_default.is_default = False
 
         await session.commit()
         return {"slug": page.slug, "url": f"/m/{page.slug}"}

@@ -1596,3 +1596,63 @@ changelog of task titles.
   behavior) and an updated integration test confirming the existing
   language-detection test still passes with grouped (not one-per-word)
   segments. Full suite green (121 tests).
+
+- **[Done 2026-08-08] `ingest_resolution()` now promotes/demotes a
+  page's default `TranscriptVersion` when warranted — the general fix
+  for both the Yountville stale-transcript bug and the Dublin
+  missing-language bug.** Was: a recheck could never improve a page's
+  displayed default — `ingest_resolution()` (`archive/db/crud.py`) only
+  ever *added* a new version `if segments:`, and only the very first
+  version a page ever got was `is_default=True`; nothing later ever
+  promoted or demoted anything. Two confirmed real bugs from this: a
+  Yountville page permanently stuck showing 10 fake "transcript" rows
+  that were actually a copy of the agenda (from a since-removed code
+  path), and a Dublin page permanently stuck showing no language on
+  `/meetings` even after `swagit.py`'s language-detection fix landed,
+  because a fresh recheck would only ever add a *second*,
+  correctly-labeled version without promoting it over the stale one.
+
+  Fixed with two new helper functions plus a new `current_default`
+  lookup at the top of `ingest_resolution()`, before any version is
+  created:
+  - `_is_real_improvement(current_default, new_language)` — narrowly
+    scoped to the two confirmed real cases, not a blanket "always
+    promote the newest": true if the current default has no real
+    segments at all, or has segments but no detected language while the
+    fresh version has one. If the current default already has both real
+    segments and a language, a fresh duplicate-ish version isn't
+    confidently better and is left alone — avoids flip-flopping the
+    default unpredictably. When true and a new version was actually
+    created this ingest, `promote_transcript_version()` (already built
+    for the transcription-job completion path) is called on it — the
+    Dublin-style half.
+  - `_default_looks_like_copied_agenda(current_default, agenda_items)`
+    — true if the current default's segment texts are structurally
+    identical, in order, to the *freshly resolved* agenda_items in this
+    same ingest. Detects the Yountville failure mode generally (any
+    page with that same data shape), not by matching old warning-message
+    text, which would only ever catch that one historical bug. When true
+    and no new version was created this ingest (nothing better found
+    either), the stale default is demoted (`is_default = False`) even
+    without a replacement, rather than staying stuck forever.
+  Both checks only ever run when a `current_default` already exists — a
+  brand-new page's first version keeps its existing simple
+  `is_default=True`-on-creation behavior unchanged.
+
+  Verified with 5 new real-DB integration tests
+  (`tests/test_ingest_promotion.py`): the Dublin case (promotes a newly
+  language-detected version over a language-less default), the
+  Yountville case (demotes a copied-agenda default when a recheck finds
+  real agenda but no segments), a stability check (no promotion when the
+  default already has both segments and a language), a brand-new-page
+  sanity check (no crash with no existing default), and a negative case
+  for the agenda-copy detector (a default with real, non-agenda-matching
+  segments is correctly left alone). Full suite green (126 tests).
+
+  Not yet done, left as a residual live item: actually running
+  `/admin/recheck-archive-page` against the two real motivating pages
+  (Yountville, Dublin) to confirm this fires correctly outside of tests
+  too — needs `ADMIN_STATS_TOKEN`, which this session doesn't have — and
+  the originally-planned audit of all 12 permanent pages for the same
+  stale-shape issue, now that there's a real fix to apply if any others
+  turn up. See BACKLOG.md.
