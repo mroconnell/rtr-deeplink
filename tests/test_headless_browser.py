@@ -117,6 +117,25 @@ async def test_get_browser_reraises_unrelated_errors_without_attempting_install(
     assert install_calls == []  # never even tried to self-heal for an unrelated error
 
 
+async def test_get_browser_raises_clean_error_when_playwright_package_missing(monkeypatch):
+    """Real 2026-08-09 incident: worker/requirements.txt deliberately
+    doesn't include playwright (kept lean on purpose), but worker/main.py
+    imports app.platforms, which registers LimsAssetFinder/SlcAssetFinder,
+    which import this module -- a top-level `from playwright.async_api
+    import ...` meant that alone crashed the *entire* worker process with
+    ModuleNotFoundError. async_playwright is None here to simulate that
+    environment (this module's own try/except ImportError sets it to None
+    when the package isn't installed)."""
+    _reset_module_state()
+    monkeypatch.setattr(hb, "async_playwright", None)
+
+    try:
+        await _get_browser()
+        assert False, "expected HeadlessBrowserUnavailable"
+    except HeadlessBrowserUnavailable as e:
+        assert len(str(e)) < 200
+
+
 def test_install_chromium_only_attempts_once(monkeypatch):
     _reset_module_state()
 

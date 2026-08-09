@@ -58,6 +58,25 @@ triggers it after each process start, and won't survive a restart on a
 host with an ephemeral filesystem. `fetch_via_browser()` also now raises
 a short, clean message instead of letting Playwright's own multi-line
 error text reach a real visitor's page.
+
+**Real production incident, 2026-08-09: `worker/main.py` imports
+`app.platforms` (for fresh video_url re-resolution before each
+transcription chunk -- see its module docstring), which registers every
+adapter including this one -- but `playwright` is deliberately absent
+from `worker/requirements.txt` (kept lean on purpose, see that file's
+own comment). A top-level `from playwright.async_api import ...` here
+meant just importing this module crashed the *entire* worker process at
+startup with `ModuleNotFoundError`, taking down every job (not just
+LIMS/SLC ones) -- confirmed live from a real Render worker crash log.
+Made the import lazy/optional below so `register_all_finders()` always
+succeeds regardless of whether playwright is installed; only a resolve
+that actually needs a real browser (LIMS/SLC specifically) fails, with
+the same clean `HeadlessBrowserUnavailable` message as the
+missing-binary case above -- not a whole-service outage. The worker
+still can't itself do a Cloudflare-gated re-resolve until playwright is
+added to its own requirements/Dockerfile too (a real, separate
+decision, given the image-size/build-time cost of a full Chromium
+install -- not made here, see BACKLOG.md).
 """
 
 import asyncio
@@ -66,7 +85,11 @@ import subprocess
 import sys
 from typing import Optional
 
-from playwright.async_api import Browser, async_playwright
+try:
+    from playwright.async_api import Browser, async_playwright
+except ImportError:
+    Browser = None  # type: ignore[assignment,misc]
+    async_playwright = None
 
 logger = logging.getLogger("rtr_deeplink.headless_browser")
 
@@ -125,6 +148,10 @@ def _install_chromium() -> bool:
 
 async def _get_browser() -> Browser:
     global _browser, _playwright_cm
+    if async_playwright is None:
+        raise HeadlessBrowserUnavailable(
+            "This meeting needs a real browser to load, and it isn't available right now."
+        )
     if _browser is not None:
         return _browser
     async with _browser_lock:
