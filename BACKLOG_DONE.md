@@ -2060,3 +2060,51 @@ changelog of task titles.
   resolver's proxy: an agenda-body match ("fireworks"), a transcript-
   body match ("pledge"), and the title-suppression case ("Council")
   above. Full suite green (134 tests — 6 new).
+
+- **[Done 2026-08-08] Real pytest coverage for the PrimeGov and YouTube
+  adapters — both previously at zero, per BACKLOG.md's "zero test
+  coverage" note.** Prompted directly by a user-found real sample
+  (`https://okc.primegov.com/Portal/Meeting?meetingTemplateId=68482`,
+  Oklahoma City) resolved live against the actual adapters first — real
+  video (delegates to a YouTube embed), 3503 real English auto-caption
+  segments — which also surfaced the separate date/jurisdiction gap
+  logged as its own live BACKLOG.md entry.
+
+  New `tests/test_youtube.py` (11 tests) and `tests/test_primegov.py` (5
+  tests), both using the exact real video id/title/uploader/upload_date
+  from that OKC sample as fixture data rather than synthetic values.
+  YouTube's real dependency, yt-dlp, stays genuinely untouched/unmocked
+  — these monkeypatch `YouTubeAssetFinder._extract_info()` instead (a
+  plain staticmethod, the exact seam `resolve_video_id()` calls through),
+  so only *yt-dlp's result* is stubbed, not the library itself. Covers:
+  `extract_video_id()`'s regex across every real URL shape (watch,
+  youtu.be, embed, shorts, live); the full `resolve_video_id()` happy
+  path (title/date/jurisdiction/video_url/segments all pinned against
+  the real OKC values, including the *current, imperfect* upload_date-
+  derived date — see the companion BACKLOG.md entry, this test
+  deliberately pins today's real behavior rather than the eventually-
+  fixed one); manual-vs-auto-generated caption warning; non-English
+  caption warning; no-captions-available warning; a missing `upload_date`
+  correctly leaving `date` as `None`; and the 2026-08-08
+  `ignoreerrors: False` fix specifically — a `yt_dlp.utils.DownloadError`
+  now surfaces its real message through the raised `ValueError` instead
+  of a generic guess (see that same day's YouTube removed/blocked bug
+  fix in this file).
+
+  `test_primegov.py` covers `PrimeGovAssetFinder`'s own scraping/
+  delegation logic (using `aiohttp_mock`'s existing `FakeResponse`/
+  `mock_session` pattern for the page fetch, same as every other
+  fixture-backed adapter test): extracting the real `var videoUrl =
+  "..."` shape and delegating to `YouTubeAssetFinder`; the documented
+  `source_url` quirk (stays the original PrimeGov URL, not the delegated
+  YouTube one — pinned directly, since this is the one behavior this
+  class exists to provide over a plain Legistar/CivicPlus-style
+  delegation); and the no-video-found case (agenda-only
+  `meetingTemplateId` page) returning a warning instead of raising.
+
+  eScribe is now the only adapter of the original three still at zero
+  coverage — narrowed BACKLOG.md's entry accordingly. `dedupe_rollup_cues`
+  itself already had direct unit tests in `tests/test_vtt_parser.py`
+  before this pass; not re-tested here through the YouTube adapter, since
+  that would just be redundant coverage of the same pure function. Full
+  suite green (149 tests — 15 new).
