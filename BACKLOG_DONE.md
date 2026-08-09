@@ -2234,3 +2234,16 @@ changelog of task titles.
   original plain "No transcript available for this meeting" text
   unchanged. Full suite green (152 tests, unaffected — template/JS
   change only, no existing Jinja-render tests cover this template).
+
+- **[Done 2026-08-08] `MAX_CONCURRENT_TRANSCRIPTION_JOBS` raised from 3
+  to 15, per direct request.** `archive/db/crud.py`'s
+  `create_transcription_job()` — a plain constant, no other logic
+  touched. Note for later: raising this widens the *queue* (more
+  requests get accepted into `queued`/`in_progress` instead of a 429
+  "at capacity" rejection), it doesn't speed up processing — the single
+  worker process still claims and processes one chunk at a time,
+  serially (`worker/main.py`'s `run_forever()`), so a deeper queue means
+  longer real wait times per job, not more throughput. No test asserted
+  the specific value (only a docstring comment referenced the constant
+  by name), so nothing else needed updating. Full suite green (152
+  tests, unaffected).

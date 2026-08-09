@@ -579,7 +579,7 @@ async def list_recent_pages_for_feed(*, jurisdiction: Optional[str] = None, limi
 
 PENDING_CONFIRMATION_EXPIRY = timedelta(hours=48)
 SPENDING_JOB_STATUSES = ("queued", "in_progress")
-MAX_CONCURRENT_TRANSCRIPTION_JOBS = 3
+MAX_CONCURRENT_TRANSCRIPTION_JOBS = 15  # was 3; raised 2026-08-08, see BACKLOG_DONE.md
 # Was 10 minutes; shortened live 2026-08-08 after a real OOM-crash-loop
 # meant the countdown kept resetting (each auto-restart re-claimed the
 # job, pushing "stale" 10 more minutes out every time) -- annoying to
