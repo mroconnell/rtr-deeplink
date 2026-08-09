@@ -1,7 +1,8 @@
+import json
 import re
 from datetime import datetime
-from typing import List, Optional
-from urllib.parse import quote
+from typing import Dict, List, Optional
+from urllib.parse import quote, urlparse
 
 import aiohttp
 from bs4 import BeautifulSoup
@@ -19,6 +20,13 @@ TARGET_LANGUAGE = "en"
 # that specific meeting (all 404), so the *shape* is confirmed but not the
 # content quality.
 KNOWN_LANGUAGE_SUFFIXES = [None, "fr", "es", "zh", "zh-hant", "tl"]
+
+_SELECT_ITEM_ID_RE = re.compile(r"SelectItem\((\d+)")
+# Non-greedy up to the first "]" is safe here specifically because the
+# array's own contents are flat objects (no nested "[") -- confirmed
+# against the real Bakersfield sample this was built from.
+_BOOKMARKS_ARRAY_RE = re.compile(r"Bookmarks\s*:\s*(\[.*?\])\s*,", re.S)
+_SUBDOMAIN_RE = re.compile(r"pub-([a-z0-9-]+)\.escribemeetings\.com")
 
 
 class EscribeAssetFinder(AssetFinder):
@@ -60,7 +68,8 @@ class EscribeAssetFinder(AssetFinder):
                 html = await response.text()
 
             soup = BeautifulSoup(html, "html.parser")
-            title, date, jurisdiction = self._extract_metadata(soup)
+            title, date, jurisdiction = self._extract_metadata(soup, url)
+            agenda_items = self._extract_agenda_items(soup, html)
 
             player = soup.select_one("#isi_player[data-client_id][data-stream_name]")
             video_url, video_format = None, None
@@ -121,6 +130,7 @@ class EscribeAssetFinder(AssetFinder):
             video_url=video_url,
             video_format=video_format,
             segments=segments,
+            agenda_items=agenda_items,
             transcript_language=transcript_language,
             video_warnings=video_warnings,
             transcript_warnings=transcript_warnings,
@@ -150,7 +160,7 @@ class EscribeAssetFinder(AssetFinder):
             return None
 
     @staticmethod
-    def _extract_metadata(soup: BeautifulSoup):
+    def _extract_metadata(soup: BeautifulSoup, url: str):
         raw_title = soup.title.get_text(strip=True) if soup.title else ""
         title, date = raw_title or None, None
         if " - " in raw_title:
@@ -167,5 +177,86 @@ class EscribeAssetFinder(AssetFinder):
         city_match = re.search(r"City of ([A-Za-z .]+)", soup.get_text(" ", strip=True))
         if city_match:
             jurisdiction = city_match.group(1).strip()
+        if not jurisdiction:
+            # Real gap fixed 2026-08-08: the "City of X" phrasing above
+            # isn't universal -- Bakersfield, CA's page just has a plain
+            # address ("...Bakersfield, CA 93301"), no "City of" anywhere,
+            # so jurisdiction silently came back None. Every eScribe page
+            # does reliably carry its city in the subdomain
+            # (`pub-{city}.escribemeetings.com`), a real signal independent
+            # of body wording.
+            jurisdiction = EscribeAssetFinder._jurisdiction_from_subdomain(url)
 
         return title, date, jurisdiction
+
+    @staticmethod
+    def _jurisdiction_from_subdomain(url: str) -> Optional[str]:
+        match = _SUBDOMAIN_RE.match(urlparse(url).netloc.lower())
+        if not match:
+            return None
+        name = match.group(1).replace("-", " ").strip()
+        return name.title() or None
+
+    @staticmethod
+    def _extract_agenda_items(soup: BeautifulSoup, html: str) -> List[TranscriptSegment]:
+        """Real per-item video timestamps, when present, come from a
+        `video.Bookmarks` JS array embedded in the page (confirmed live on
+        a real Bakersfield, CA meeting) -- entries shaped like
+        `{"AgendaItemId": N, "TimeStart": milliseconds, "TimeEnd":
+        milliseconds}`, keyed by the same numeric id each `.AgendaItem`
+        div's title link passes to `SelectItem(N)`.
+
+        Not every agenda item gets a bookmark -- confirmed live: only 4 of
+        10 real items did, apparently only substantive/voted-on items, not
+        procedural ones like "ROLL CALL". Rather than fabricate a start
+        time for items with none, which would both be a real, unverified
+        claim and risk several items sharing an identical made-up
+        timestamp (tripping the frontend's "unreliable timestamps"
+        all-identical heuristic and losing clickability for the items that
+        *do* have a real one), items without a real bookmark are simply
+        omitted rather than included with a guessed time.
+        """
+        bookmarks_match = _BOOKMARKS_ARRAY_RE.search(html)
+        if not bookmarks_match:
+            return []
+        try:
+            bookmarks = json.loads(bookmarks_match.group(1))
+        except json.JSONDecodeError:
+            return []
+
+        # Earliest bookmark per agenda item id -- an item can have more
+        # than one discrete video segment (confirmed: item 3 in the real
+        # sample had two, presumably discussed then revisited later); use
+        # the first/earliest as "when this item starts".
+        earliest_by_id: Dict[int, dict] = {}
+        for b in bookmarks:
+            item_id = b.get("AgendaItemId")
+            time_start = b.get("TimeStart")
+            time_end = b.get("TimeEnd")
+            if item_id is None or time_start is None or time_end is None:
+                continue
+            if item_id not in earliest_by_id or time_start < earliest_by_id[item_id]["TimeStart"]:
+                earliest_by_id[item_id] = b
+
+        items: List[TranscriptSegment] = []
+        for div in soup.select(".AgendaItem"):
+            title_link = div.select_one(".AgendaItemTitle a")
+            if not title_link:
+                continue
+            id_match = _SELECT_ITEM_ID_RE.search(title_link.get("href") or "")
+            if not id_match:
+                continue
+            bookmark = earliest_by_id.get(int(id_match.group(1)))
+            if not bookmark:
+                continue
+            text = title_link.get_text(strip=True)
+            if not text:
+                continue
+            items.append(
+                TranscriptSegment(
+                    start=bookmark["TimeStart"] / 1000,
+                    end=bookmark["TimeEnd"] / 1000,
+                    text=text,
+                )
+            )
+        return items

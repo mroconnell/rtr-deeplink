@@ -47,7 +47,7 @@ pytest
 `tests/` covers the platform-independent utilities (`app/utils/vtt_parser.py`,
 `app/platforms/media_scan.py`, `app/platforms/base.py`'s `detect_platform`)
 directly, and exercises Granicus/Legistar/CivicPlus/CivicClerk/Swagit/
-CA Legislature/PrimeGov/YouTube/Viebit end-to-end against real fixture files saved under
+CA Legislature/PrimeGov/YouTube/Viebit/eScribe end-to-end against real fixture files saved under
 `tests/fixtures/` (fetched live from real government sites, not synthetic
 — see each fixture directory for where it came from; `tests/fixtures/
 civicplus/README.md` explains the one exception, hand-built to match a
@@ -64,8 +64,7 @@ different shape — real integration tests against an isolated SQLite file
 (set up once per test session by `tests/conftest.py`, not mocked), since
 the transcription job lifecycle is genuinely DB-state-machine logic
 (claim/report/finalize/promote) that a pure-function test can't exercise
-honestly. eScribe doesn't have test coverage yet — a good next place to
-extend this suite.
+honestly. Every adapter now has real fixture-backed test coverage.
 
 ## How it works
 
@@ -404,7 +403,7 @@ platform share the same page/API structure. Detection lives in
 | Granicus | `granicus.py` | Regex-scan the page HTML for `.m3u8`/`.mp4` URLs (shared `media_scan.py` helper) | Guessed `/videos/{id}/captions.vtt` path + scanned `.vtt` URLs; language verified from actual cue content (not the untrustworthy `srclang` label); RSS channel title (`ViewPublisherRSS.php`) used for reliable jurisdiction/title. Agenda items (`AgendaViewer.php`'s chapter markers) are fetched independently of transcript availability into their own `agenda_items` field, when that customer has Granicus's native agenda index turned on (not universal — some customers redirect it to their own site instead, surfaced as a plain link instead) |
 | CivicClerk | `civicclerk.py` | Public REST API (`<subdomain>.api.civicclerk.com`) — the portal page itself is a client-rendered SPA with nothing to scrape | `closedCaptionTracks`/`closedCaptionUrl` when populated — real format is **SRT**, not VTT (confirmed live); language verified from actual cue content, same distrust-the-label approach as Granicus. The API's `eventBookmarks` (agenda-item timestamps) are fetched independently into `agenda_items` |
 | Swagit | `swagit.py` | jwplayer JSON blob embedded in the page (shares Granicus's CDN infra, but a different page shape) | `.playerControl[data-ts]` agenda-item markers fetched independently into `agenda_items` |
-| eScribe | `escribe.py` | `<div id="isi_player" data-client_id data-stream_name>` when present — video integration varies entirely by city, "no video" is a normal outcome here | iSiLIVE captions, keyed by language suffix in the filename (`{file}.vtt`, `{file}.fr.vtt`, ...) |
+| eScribe | `escribe.py` | `<div id="isi_player" data-client_id data-stream_name>` when present — video integration varies entirely by city, "no video" is a normal outcome here | iSiLIVE captions, keyed by language suffix in the filename (`{file}.vtt`, `{file}.fr.vtt`, ...). Real per-item agenda timestamps from an embedded `video.Bookmarks` JS array, when present — not every item gets one, so items without a match are omitted rather than guessed. `jurisdiction` falls back to the `pub-{city}.escribemeetings.com` subdomain when the page body has no "City of X" phrase |
 | California Legislature | `ca_legislature.py` | Self-hosted (`stream.{assembly,senate}.ca.gov`), not a vendor platform | Self-hosted `.vtt` at a matching filename; genuinely high quality when present |
 | Legistar | `legistar.py` | Doesn't host video — finds the embedded/redirected link to a platform above (usually Granicus) and delegates via `resolve_via_platform()` | Whatever the delegated platform provides |
 | CivicPlus | `civicplus.py` | Same delegation pattern as Legistar, from AgendaCenter listing rows | Whatever the delegated platform provides |

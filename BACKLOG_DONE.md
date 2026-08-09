@@ -2388,3 +2388,58 @@ changelog of task titles.
   transcript renders with correct clickable timestamps and clean,
   de-shouted text; the video element shows a load failure, consistent
   with the CDN-403 finding above. Full suite green (160 tests — 7 new).
+
+- **[Done 2026-08-09] eScribe: real per-item agenda timestamps and a
+  jurisdiction fallback, both built from the same real Bakersfield, CA
+  sample the `parse_vtt()` cue-identifier fix used, plus the last of the
+  original three zero-coverage adapters now has real tests.** Investigated
+  further than the original "no start-time attribute spotted" note in
+  BACKLOG.md (written from a first look at just the `.AgendaItem` DOM) —
+  a deeper look at the full page source found a `var video = {
+  Bookmarks: [...] }` JS array with real per-item timestamps
+  (`{"AgendaItemId": N, "TimeStart": ms, "TimeEnd": ms}`), keyed by the
+  same numeric id each `.AgendaItem`'s title link passes to
+  `SelectItem(N)`.
+
+  Not every agenda item gets a bookmark — confirmed live: only 4 of the
+  real page's 10 items did (apparently only substantive/voted-on items,
+  not procedural ones like "ROLL CALL"). Rather than fabricate a start
+  time for the other 6 (a real, unverified claim, and risky besides:
+  `TranscriptSegment.start` is a required field, and several items
+  sharing a made-up identical timestamp would likely trip the frontend's
+  existing "unreliable timestamps" all-identical heuristic and cost the
+  4 real ones their clickability too), `_extract_agenda_items()`
+  (`app/platforms/escribe.py`) simply omits items with no matching
+  bookmark rather than guessing. An item with more than one bookmark
+  (confirmed: one real item had two, presumably discussed then revisited
+  later) uses its earliest occurrence.
+
+  Separately, `jurisdiction` fixed the same way BACKLOG.md's open
+  question framed it: Bakersfield's page body has no "City of X" phrase
+  (just a plain address), so a new `_jurisdiction_from_subdomain()`
+  fallback derives it from the reliable `pub-{city}.escribemeetings.com`
+  subdomain instead, used only when the body-text regex doesn't match.
+
+  New `tests/test_escribe.py` (7 tests, closing the last gap of the
+  original three zero-coverage adapters — PrimeGov/YouTube closed
+  2026-08-08): the real Bakersfield sample end-to-end (title/date/
+  jurisdiction/video_url/segment-count all pinned, plus all 4 real
+  agenda items' text and timestamps), the subdomain-fallback helper
+  directly, malformed/missing-Bookmarks-array handling, an item
+  correctly skipped when it has no matching bookmark, and the two
+  existing no-video/no-caption warning paths (previously entirely
+  unverified by any test). New fixtures: `tests/fixtures/escribe/
+  bakersfield_ccm330_page.html` (the full real page) alongside the
+  already-existing trimmed captions fixture from the `parse_vtt()` fix.
+
+  Verified live end-to-end through a real local resolver, not just the
+  mocked tests: `/api/resolve` and the rendered `/meeting?url=...` page
+  both confirmed against the actual Bakersfield URL — "Bakersfield ·
+  2026-07-15" renders in the meta line, and a real clickable 4-item
+  Agenda section renders with correct `[29:13]`/`[1:08:36]`/`[1:48:40]`/
+  `[2:09:36]` timestamps. (Hit a stale local dev-cache red herring
+  first — `/api/resolve` returned 0 agenda items even after the fix was
+  confirmed correct via direct Python calls; turned out to be `dev.db`
+  caching a resolution from earlier the same session, before this fix
+  existed — cleared by deleting the local cache file, not a bug in the
+  new code.) Full suite green (167 tests — 7 new).
