@@ -125,18 +125,28 @@ async def test_resolve_video_id_missing_upload_date_leaves_date_none(monkeypatch
     assert result.date is None
 
 
-async def test_resolve_video_id_raises_honest_error_on_download_error(monkeypatch):
-    # Real bug (2026-08-08, see BACKLOG.md): ignoreerrors=False now lets
-    # yt-dlp's real failure surface instead of always guessing "removed,
-    # private, or blocked" -- pins that the underlying exception message
-    # actually makes it into the raised ValueError.
+async def test_resolve_video_id_degrades_to_playable_meeting_on_download_error(monkeypatch):
+    # Real production incident, 2026-08-09 (see BACKLOG.md): YouTube's
+    # anti-bot check blocks Render's server IP outright, regardless of
+    # which internal yt-dlp client is used. Previously any DownloadError
+    # here raised and killed the whole resolve -- now it degrades to a
+    # real, playable ResolvedMeeting instead, since embedding only ever
+    # needed the video id, never yt-dlp. This also lets a delegating
+    # adapter's own metadata (e.g. lims.py) still get used -- resolve_
+    # video_id() failing outright previously threw that away too.
     def _raise(video_id):
         raise yt_dlp.utils.DownloadError("Sign in to confirm you're not a bot")
 
     monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _raise)
 
-    with pytest.raises(ValueError, match="Sign in to confirm you're not a bot"):
-        await YouTubeAssetFinder.resolve_video_id(REAL_VIDEO_ID, source_url="https://example.com")
+    result = await YouTubeAssetFinder.resolve_video_id(REAL_VIDEO_ID, source_url="https://example.com")
+
+    assert result.video_url == f"https://www.youtube.com/embed/{REAL_VIDEO_ID}"
+    assert result.video_format == "youtube"
+    assert result.title is None
+    assert result.segments == []
+    assert any("blocking automated requests" in w for w in result.video_warnings)
+    assert any("No transcript available" in w for w in result.transcript_warnings)
 
 
 async def test_resolve_video_id_raises_when_no_info_returned(monkeypatch):

@@ -114,6 +114,36 @@ async def test_resolve_returns_no_video_warning_when_video_missing(monkeypatch):
     assert any("no video" in w.lower() for w in result.video_warnings)
 
 
+async def test_resolve_still_works_when_youtube_metadata_fetch_fails(monkeypatch):
+    # Real production incident, 2026-08-09: YouTube's anti-bot check
+    # blocked Render's server IP entirely, so YouTubeAssetFinder._extract_
+    # info() raised for every video, including this real Minneapolis one
+    # (YgAu_4xWvGU). Before youtube.py's resolve_video_id() was made to
+    # degrade gracefully instead of raising, this killed the whole LIMS
+    # resolve -- even though LIMS never needed YouTube for title/date/
+    # jurisdiction (its own agenda page) or for the video id/agenda items
+    # (its own JSON endpoint) in the first place. Confirms the real fix:
+    # the meeting still resolves with LIMS's own real data and a playable
+    # video, missing only the transcript.
+    import yt_dlp
+
+    def _raise(video_id):
+        raise yt_dlp.utils.DownloadError("Sign in to confirm you're not a bot")
+
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _raise)
+    monkeypatch.setattr("app.platforms.lims.fetch_via_browser", _fake_fetch_via_browser)
+
+    result = await LimsAssetFinder().resolve(MEETING_URL)
+
+    assert result.title == "Climate & Infrastructure Committee"
+    assert result.date == "2026-08-06"
+    assert result.jurisdiction == "City of Minneapolis"
+    assert result.video_url == f"https://www.youtube.com/embed/{REAL_VIDEO_ID}"
+    assert len(result.agenda_items) == 3  # LIMS's own JSON data, untouched by the YouTube failure
+    assert result.segments == []
+    assert any("blocking automated requests" in w for w in result.video_warnings)
+
+
 def test_extract_page_meta_parses_real_title_shape():
     title, date, jurisdiction = LimsAssetFinder._extract_page_meta(AGENDA_PAGE_HTML)
     assert title == "Climate & Infrastructure Committee"

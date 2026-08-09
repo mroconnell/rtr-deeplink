@@ -66,29 +66,57 @@ where relevant.
   confirm you're not a bot."** Reported live by the user re-testing
   Minneapolis after the Playwright deploy fix landed (see
   BACKLOG_DONE.md) — a real, different failure signature than the
-  earlier Playwright launch error, which itself is now confirmed fixed
-  (this new error happens *after* Playwright successfully launches,
-  scrapes the LIMS agenda page, and hands a real YouTube video ID
-  downstream). Root cause: YouTube's anti-bot check on yt-dlp's default
-  "web" internal client, which requires a PO token this app doesn't
-  have — hit our Render server's IP specifically (already-current
-  yt-dlp, 2026.7.4, ruled out as a stale-extractor issue).
+  earlier Playwright launch error, which itself is confirmed fixed
+  (this happens *after* Playwright successfully launches, scrapes the
+  LIMS agenda page, and hands a real YouTube video ID downstream).
 
-  Fix shipped (`app/platforms/youtube.py`'s `_extract_info()`): added
+  **First attempted fix (client-switching) confirmed NOT to work, via a
+  real test run from Render's own shell, not just locally**: added
   `extractor_args: {"youtube": {"player_client": ["android", "ios",
-  "tv", "web"]}}` — those three internal clients have historically not
-  enforced the same PO-token check "web" does, falling back to "web"
-  last. Verified locally against the exact real failing video
-  (`YgAu_4xWvGU`) both for metadata and a full caption download (1564
-  real segments) — but **not yet confirmed against production**, since
-  YouTube's own anti-bot rules shift periodically and this is
-  inherently an ongoing arms race, not a one-time fix (same framing
-  `youtube.py`'s existing docstring already gives for why yt-dlp is
-  left unpinned). **Remove this item once Minneapolis (or any other
-  YouTube-delegating unsupported-city page) has been retried in
-  production and confirmed working.** If this specific client list
-  stops working later, check yt-dlp's own issue tracker for the
-  currently-recommended `player_client` values before re-guessing.
+  "tv", "web"]}}` to `_extract_info()` on the theory that YouTube's
+  anti-bot check was tied to yt-dlp's default "web" client's PO-token
+  requirement specifically. Worked locally against the real failing
+  video (`YgAu_4xWvGU`), but the user re-ran the identical script
+  directly from a Render shell and got the same "Sign in to confirm
+  you're not a bot" error, with the traceback showing all four clients
+  exhausted (`raise_no_formats`) — **this is IP-reputation-based
+  blocking on Render's server IP, not a client-selection problem**;
+  which internal client yt-dlp impersonates doesn't matter if the IP
+  itself is flagged. A real lesson in this repo's own "verify against
+  the real thing" convention: a fix that worked from a home IP proved
+  nothing about a datacenter IP's reputation.
+
+  **Real fix, per the user's own idea**: decouple video *playback* from
+  yt-dlp entirely, the same way `slc.py`/`lims.py` already decouple
+  their own agenda/metadata parsing from it. Playback was already
+  iframe-embed-only (see `youtube.py`'s docstring — no direct file URL
+  ever existed for YouTube), and the embed URL is pure string
+  formatting from the video id, no network call needed — so there was
+  no real reason a yt-dlp metadata/caption failure needed to take down
+  the *entire* resolve. `YouTubeAssetFinder.resolve_video_id()` now
+  degrades: on a `DownloadError`, it returns a real, playable
+  `ResolvedMeeting` (video embed works) with no title/date/captions and
+  an honest warning, instead of raising. This has an especially strong
+  effect for LIMS specifically: `lims.py` already parses Minneapolis's
+  own agenda page for title/date/jurisdiction and its own JSON endpoint
+  for the video id + real per-item timestamps — none of that ever
+  touched YouTube — so a Minneapolis meeting page now renders nearly
+  fully (correct title/date/jurisdiction, real agenda items, playable
+  video) even with yt-dlp completely blocked; only the transcript is
+  genuinely lost. Same benefit applies to PrimeGov's delegation and any
+  standalone/generic-fallback YouTube link, just without a second
+  metadata source to fall back on for those.
+
+  **Remove this item once Minneapolis has been retried in production
+  and the page renders correctly (video + LIMS's own metadata/agenda,
+  transcript genuinely absent with a clear message)** — not yet
+  confirmed against the real deploy as of this writing. The underlying
+  IP-block itself is NOT fixed by this (metadata/captions are still
+  genuinely unavailable) — real options for that (cookies-based auth,
+  a PO-token-provider plugin, a proxy) all have real cost/maintenance/
+  risk tradeoffs not evaluated yet; not attempted here since the
+  degrade-gracefully fix already recovers most of the real value
+  without any of those tradeoffs.
 
 ## UX polish
 

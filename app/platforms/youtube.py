@@ -41,6 +41,19 @@ class YouTubeAssetFinder(AssetFinder):
     - YouTube's auto-generated (and, per a real sample, also its manual/
       CC-sourced) VTT uses a "roll-up" cue style, not one cue per line --
       see `dedupe_rollup_cues()` in vtt_parser.py.
+    - **yt-dlp can fail entirely** (confirmed live 2026-08-09: YouTube's
+      anti-bot check blocking Render's server IP outright, independent
+      of which internal client is used) **without losing the video
+      itself** -- `resolve_video_id()` degrades to a playable-but-no-
+      metadata/no-captions `ResolvedMeeting` rather than raising, since
+      embedding only ever needed the video id (a plain string, no
+      network call), never yt-dlp. This is also why a delegating
+      adapter with its own metadata (`lims.py` parses Minneapolis's own
+      agenda page for title/date/jurisdiction, and its own JSON endpoint
+      for the video id and real per-item timestamps -- none of that
+      touches YouTube at all) still works close to fully even when
+      yt-dlp itself is completely blocked -- only the transcript is
+      genuinely unavailable in that case.
     """
 
     platform_name = "youtube"
@@ -60,17 +73,41 @@ class YouTubeAssetFinder(AssetFinder):
     async def resolve_video_id(cls, video_id: str, source_url: str) -> ResolvedMeeting:
         """Shared entry point for both a direct YouTube URL and a
         delegating platform that already extracted the video id."""
+        video_url = f"https://www.youtube.com/embed/{video_id}"
+
         try:
             info = await asyncio.to_thread(cls._extract_info, video_id)
         except yt_dlp.utils.DownloadError as e:
-            # ignoreerrors=False (see _extract_info) lets yt-dlp's real
-            # failure reason surface here -- previously every failure
-            # (network blip, an anti-bot block on our IP, yt-dlp needing
-            # an update, an actually-removed video) was swallowed into an
-            # identical, often-wrong "removed, private, or blocked"
-            # message. Confirmed live 2026-08-08 against a genuinely
-            # public video that message misreported -- see BACKLOG.md.
-            raise ValueError(f"YouTube video {video_id} could not be resolved: {e}") from e
+            # Real production incident, 2026-08-09: YouTube's anti-bot
+            # check ("Sign in to confirm you're not a bot") blocks
+            # Render's server IP outright, regardless of which internal
+            # yt-dlp client is used (confirmed live -- see BACKLOG.md,
+            # the player_client workaround in _extract_info() below
+            # didn't help). Previously this raised and killed the whole
+            # resolve -- but playback itself needs *nothing* from yt-dlp,
+            # just this video id (the embed URL above is pure string
+            # formatting, no network call) -- the same insight behind
+            # this repo's whole "no direct video file URL, playback is
+            # always an iframe embed" design. Degrade instead: return a
+            # real, playable ResolvedMeeting with no title/date/captions
+            # rather than no meeting at all. This also means a delegating
+            # adapter with its own metadata (e.g. lims.py's own agenda-
+            # page parsing) still gets to use it -- resolve_video_id()
+            # failing outright previously threw that away too, even when
+            # the caller already had it in hand.
+            return ResolvedMeeting(
+                platform=cls.platform_name,
+                source_url=source_url,
+                external_id=f"youtube:{video_id}",
+                video_url=video_url,
+                video_format="youtube",
+                video_warnings=[
+                    "We couldn't fetch this video's title or captions from YouTube directly right "
+                    "now (YouTube is currently blocking automated requests from our server) — but "
+                    "the video itself should still play below."
+                ],
+                transcript_warnings=["No transcript available — see the note above the video."],
+            )
         if not info:
             raise ValueError(f"YouTube video {video_id} could not be resolved (no info returned by yt-dlp).")
 
@@ -111,8 +148,6 @@ class YouTubeAssetFinder(AssetFinder):
                     )
         if not segments:
             transcript_warnings.append("No captions found on this video.")
-
-        video_url = f"https://www.youtube.com/embed/{video_id}"
 
         return ResolvedMeeting(
             platform=cls.platform_name,
