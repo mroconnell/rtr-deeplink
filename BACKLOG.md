@@ -34,16 +34,31 @@ where relevant.
   confirmed against the real worker deploy**. **Remove this item once
   the worker service has redeployed and stayed up.**
 
-  **Real, deliberately unresolved follow-up**: the worker still can't
-  itself do a Cloudflare-gated re-resolve (LIMS/SLC) mid-transcription-
-  job, since playwright genuinely isn't installed there — a transcription
-  job for one of those two platforms will now fail cleanly instead of
-  crashing the service, but it will still fail. Whether to add playwright
-  + Chromium to `worker/Dockerfile` (real image-size/build-time cost,
-  though the Dockerfile already has apt-get/root access, unlike the main
-  app's plain Python buildpack) hasn't been decided — no known real
-  transcription request has hit this yet, so it's not urgent, but worth
-  deciding deliberately rather than by accident.
+  **Real, deliberate decision, not an accident: the worker will NOT get
+  playwright/Chromium added, for now.** The obvious next question —
+  "just add it to `worker/Dockerfile` too" — was checked for real
+  tradeoffs rather than assumed safe, matching how the plan's own memory
+  sizing above was resolved (measured, not guessed). Measured directly
+  (real Playwright launch + a real fetch of the actual Minneapolis LIMS
+  Cloudflare-challenge page): Chromium's *own subprocess tree* (separate
+  from the Python process, purely additive to total container memory)
+  uses ~266MB just launched with no page loaded, ~535MB after actually
+  loading that real page. `headless_browser.py` keeps one shared browser
+  alive for the whole process lifetime (launched once, reused) — fine for
+  the resolver web service, but on this worker the whisper model is
+  *also* loaded for the whole process lifetime (see the memory table
+  above), so that ~266MB becomes a permanent tax on top of it, and a
+  LIMS/SLC job's per-chunk re-resolve overlapping with active whisper
+  inference on `standard`'s 2GB plan works out to roughly `1421MB
+  (whisper, 900s chunk) + 535MB (Chromium mid-fetch) ≈ 1956MB` — only
+  ~92MB under the ceiling, a thinner margin than the ~600MB that was
+  already proven too tight once (two real OOM crashes) before this same
+  plan was sized. **Decision (2026-08-09): leave the gap as-is** — a
+  transcription job for a LIMS/SLC meeting fails cleanly (no browser
+  available) rather than risking a third OOM crash for a platform combo
+  no real request has hit yet. Revisit with a real plan-tier bump if/when
+  an actual transcription request for one of these two platforms comes
+  in.
 
 - **⚠️ Production incident, active as of 2026-08-09: real Minneapolis
   LIMS video resolves failing at the YouTube step with "Sign in to
