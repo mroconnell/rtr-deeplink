@@ -2443,3 +2443,38 @@ changelog of task titles.
   caching a resolution from earlier the same session, before this fix
   existed — cleared by deleting the local cache file, not a bug in the
   new code.) Full suite green (167 tests — 7 new).
+
+- **[Done 2026-08-09] Alexandria VA's "meeting dates can't be extracted"
+  gap closed — the real cause was one specific attribute-value blind
+  spot, not a genuinely dateless page.** The original BACKLOG.md entry
+  said "no date signal anywhere in the page body" — true for *visible
+  text* specifically (confirmed live: Alexandria's real Granicus pages
+  are thin client-rendered shells, no `og:title`, no `<h1>`, under 700
+  characters of body text total, and no `view_id` to cross-reference an
+  RSS feed either), but a closer look found the page's Agenda/Minutes
+  document links are still server-rendered as plain `data-url="...pdf"`
+  attributes — invisible to every existing date source here since none
+  of them ever look at attribute values, only `soup.get_text()`. Those
+  filenames follow a real, consistent Legistar-hosted-Granicus
+  convention: `..._YY-MM-DD_Docket.pdf` (confirmed live on clip 6490's
+  real Agenda *and* Minutes links both landing on the same
+  `_25-04-02_` date fragment).
+
+  New `GranicusAssetFinder._extract_date_from_document_links()`
+  (`app/platforms/granicus.py`) scans every `[data-url]` element for that
+  pattern, converting the 2-digit year to `20XX`. Wired in as a true
+  last resort in `resolve()` — after page-text extraction *and* the RSS
+  fallback have both already failed — preserving the file's existing
+  documented priority order (page's own signals > RSS > this new
+  fallback) rather than risking it preempting a more authoritative
+  source on some other city's page.
+
+  New tests in `tests/test_granicus.py` (3 tests, using a new real
+  fixture `tests/fixtures/granicus/alexandria_clip6490.html`): the full
+  resolve path landing on `date == "2025-04-02"` with the real fixture,
+  plus two direct unit tests of the extraction helper (a real match, and
+  a document link with no date pattern returning `None`). Verified live
+  end-to-end: both a direct `resolve()` call and the actual rendered
+  `/meeting?url=...` page (`"City of Alexandria · 2025-04-02"` in the
+  meta line) against the real clip 6490 URL. Full suite green (170
+  tests — 3 new).

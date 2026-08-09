@@ -7,10 +7,6 @@ where relevant.
 
 ## Bugs
 
-- **Alexandria VA meeting dates can't be extracted.** No `view_id` in the
-  URL (so no RSS feed to cross-reference, unlike the rest of Granicus — see
-  [BACKLOG_DONE.md](BACKLOG_DONE.md)) and no date signal anywhere in the
-  page body either. No fallback source identified yet.
 - **PrimeGov's date/jurisdiction come entirely from YouTube's own
   metadata, which is measurably worse than what's already sitting on the
   PrimeGov page itself.** Confirmed live (2026-08-08) via

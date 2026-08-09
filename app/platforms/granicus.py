@@ -211,6 +211,37 @@ class GranicusAssetFinder(AssetFinder):
                         continue
         return None
 
+    _DOCKET_DATE_RE = re.compile(r"_(\d{2})-(\d{2})-(\d{2})_")
+
+    @staticmethod
+    def _extract_date_from_document_links(soup: BeautifulSoup) -> Optional[str]:
+        """Last-resort date fallback, tried only after both page text and
+        the RSS feed have failed -- confirmed real and needed on
+        Alexandria, VA's Granicus pages (clip 6490), which are thin
+        client-rendered shells with almost no static visible text (no
+        og:title, no h1, under 700 characters of body text total) and no
+        view_id to cross-reference against an RSS feed either.
+
+        Agenda/Minutes document links are still server-rendered as plain
+        `data-url="...pdf"` attributes even on a page this thin -- missed
+        by every text-based source above since attribute values aren't
+        visible text -- and Legistar-hosted Granicus cities name those
+        files with a "_YY-MM-DD_" fragment, e.g.
+        "..._25-04-02_Docket.pdf" for an April 2, 2025 meeting (confirmed
+        consistent across that same real meeting's Agenda and Minutes
+        links both).
+        """
+        for el in soup.select("[data-url]"):
+            match = GranicusAssetFinder._DOCKET_DATE_RE.search(el.get("data-url") or "")
+            if not match:
+                continue
+            yy, mm, dd = match.groups()
+            try:
+                return datetime.strptime(f"20{yy}-{mm}-{dd}", "%Y-%m-%d").strftime("%Y-%m-%d")
+            except ValueError:
+                continue
+        return None
+
     @staticmethod
     def _extract_clip_id(page_url: str) -> Optional[str]:
         """Pull the numeric clip id out of any of Granicus's URL shapes:
@@ -308,6 +339,13 @@ class GranicusAssetFinder(AssetFinder):
                 metadata["jurisdiction"] = channel_jurisdiction
             if not metadata["date"] and item_date:
                 metadata["date"] = item_date
+            if not metadata["date"]:
+                # True last resort, tried only once page text and RSS have
+                # both failed -- confirmed real and needed on Alexandria,
+                # VA's Granicus pages (clip 6490), thin client-rendered
+                # shells with almost no static visible text and no view_id
+                # to cross-reference against an RSS feed either.
+                metadata["date"] = self._extract_date_from_document_links(soup)
             title_has_body = metadata["title"] and any(
                 kw in metadata["title"].lower() for kw in GOVERNING_BODY_KEYWORDS
             )

@@ -30,6 +30,50 @@ async def test_resolve_real_blank_caption_meeting():
     assert any("blank" in w.lower() for w in result.transcript_warnings)
 
 
+async def test_resolve_falls_back_to_docket_pdf_date_when_page_and_rss_have_none():
+    # Real Alexandria, VA clip 6490, fetched live 2026-08-09 -- a thin
+    # client-rendered shell with no og:title, no h1, under 700 chars of
+    # visible body text, and no view_id (so no RSS date either). The only
+    # real date signal on the whole page is inside a data-url="...pdf"
+    # attribute pointing at a Legistar-style docket filename
+    # ("..._25-04-02_Docket.pdf") -- confirmed this is what
+    # BACKLOG.md's long-standing "Alexandria VA meeting dates can't be
+    # extracted" gap was actually missing, not a genuinely dateless page.
+    url = "https://alexandria.granicus.com/player/clip/6490"
+    html = load_fixture("granicus", "alexandria_clip6490.html")
+
+    routes = {
+        url: FakeResponse(status=200, text=html, url=url),
+        "https://alexandria.granicus.com/videos/6490/captions.vtt": FakeResponse(status=404),
+        "https://alexandria.granicus.com/AgendaViewer.php?clip_id=6490&embedded=1": FakeResponse(status=404),
+    }
+
+    with mock_session(routes):
+        result = await GranicusAssetFinder().resolve(url)
+
+    assert result.date == "2025-04-02"
+    assert result.jurisdiction == "City of Alexandria"
+
+
+def test_extract_date_from_document_links_direct():
+    from bs4 import BeautifulSoup
+
+    html = (
+        '<a data-url="https://legistar.granicus.com/alexandria/meetings/2025/4/'
+        '2616_A_Board_of_Architectural_Review_25-04-02_Docket.pdf">Agenda</a>'
+    )
+    soup = BeautifulSoup(html, "html.parser")
+    assert GranicusAssetFinder._extract_date_from_document_links(soup) == "2025-04-02"
+
+
+def test_extract_date_from_document_links_returns_none_when_no_match():
+    from bs4 import BeautifulSoup
+
+    html = '<a data-url="https://example.com/some-file-with-no-date.pdf">Agenda</a>'
+    soup = BeautifulSoup(html, "html.parser")
+    assert GranicusAssetFinder._extract_date_from_document_links(soup) is None
+
+
 async def test_resolve_falls_back_to_player_page_for_video_when_mediaplayer_has_none():
     # Real Fountain Valley CA clip 607 (user-reported 2026-08-08):
     # MediaPlayer.php's HTML embeds only a legacy Flash player object
