@@ -517,32 +517,6 @@ one item below is resolved as a result.
   building it kills both asks with one change — worth its own scoped
   task given it touches `.version-picker`, `meeting_page.js`, and the
   template's rendering of `active_version` throughout.
-- **Job priority — needed before the worker can auto-generate its own
-  jobs (see the next item).** Right now `claim_next_chunk()`
-  (`archive/db/crud.py`) claims strictly oldest-first: `.order_by(
-  TranscriptionJob.created_at.asc())`, no other ordering signal exists.
-  That's fine while every job comes from a real person clicking
-  "Transcribe this meeting," but breaks down the moment anything else
-  can create jobs (self-generated batch jobs, see below) — a real
-  visitor's request would land at the back of the queue behind however
-  much auto-generated work got queued first, which is exactly backwards.
-  **Plan**: add a `priority` column to `TranscriptionJob`
-  (`archive/db/models.py`), and have `claim_next_chunk()` order by
-  `priority.desc(), created_at.asc()` instead of `created_at.asc()`
-  alone — higher number claimed first, FIFO within the same priority
-  tier. Two tiers to start (see the two items below): `PRIORITY_LOW` for
-  self-generated idle work, `PRIORITY_MEDIUM` for real user requests —
-  named constants, not raw numbers scattered through the code, with
-  room to add a higher tier later without a schema change (the column's
-  just an int).
-
-  **Tooling blocker resolved 2026-08-09 — Alembic adopted** (see
-  BACKLOG_DONE.md), so this no longer needs a one-off manual
-  `ALTER TABLE` to ship safely. Still not built: adding the actual
-  `priority` column is now a normal `alembic revision --autogenerate`
-  once it's added to `TranscriptionJob` in `archive/db/models.py`, same
-  as any future schema change — the real remaining work here is the
-  column/ordering logic itself, not the migration mechanics.
 - **Let the worker auto-generate transcription jobs during genuinely
   idle time**, so the Archive can fill in missing transcripts without
   someone manually clicking "Transcribe" on every meeting one at a time.
@@ -555,12 +529,10 @@ one item below is resolved as a result.
   **Must only run when the queue is completely empty** (no
   `queued`/`in_progress` jobs at all) — not on every single empty poll,
   and not just whenever the worker happens to be between chunks of a
-  real job. Depends on job priority (above) existing first: even with
-  the empty-queue guard, a newly-created auto job would otherwise be
-  indistinguishable in claim order from a real user's next request; a
-  self-generated job here should always use `PRIORITY_LOW`. Real
-  decisions on job creation itself needed before building, not just the
-  scheduling — one decided, one still open:
+  real job. Job priority now exists (2026-08-09, see BACKLOG_DONE.md),
+  so a self-generated job here just needs to use the already-built
+  `PRIORITY_LOW` constant — the real decisions left are about job
+  creation itself, not the scheduling — one decided, one still open:
   - **Decided 2026-08-08: pick the oldest archived meeting first** among
     qualifying candidates — processes the Archive's backlog roughly in
     the order meetings were added, predictable and easy to reason about,
@@ -573,13 +545,3 @@ one item below is resolved as a result.
     `/api/transcription/check-feasibility` already has (probe duration,
     plausible-length check) reused rather than assuming every candidate
     is actually transcribable.
-- **User-submitted (self-serve) transcription requests should be
-  `PRIORITY_MEDIUM`** — the real, immediate case a live visitor is
-  waiting on, and needs to always claim ahead of any `PRIORITY_LOW`
-  self-generated batch work sitting in the queue. This is the
-  straightforward half of the priority rollout: `POST
-  /internal/transcription/create-job` (`archive/main.py`) →
-  `create_transcription_job()` (`archive/db/crud.py`) already has
-  exactly one call site creating a real job from a real request: it just
-  needs to set `priority=PRIORITY_MEDIUM` explicitly once the column
-  exists, no new logic beyond that.

@@ -97,6 +97,14 @@ class TranscriptionJob(Base):
     # "pending_confirmation" only applies to a first-time email address.
     status: Mapped[str] = mapped_column(String(24), nullable=False, default="pending_confirmation", index=True)
 
+    # Higher claimed first (claim_next_chunk() orders by priority.desc(),
+    # created_at.asc() -- FIFO within the same tier), so a real visitor's
+    # request never lands behind self-generated batch work in the queue.
+    # A plain int, not an enum, so a future higher tier needs no schema
+    # change -- see PRIORITY_LOW/PRIORITY_MEDIUM in crud.py for the named
+    # constants every call site should use instead of a raw number.
+    priority: Mapped[int] = mapped_column(Integer, nullable=False, default=10, server_default="10")
+
     # Frozen at submit time for the feasibility-checked URL, but the worker
     # re-resolves the adapter fresh before every chunk rather than trusting
     # this indefinitely -- HLS/signed URLs can go stale over a job that

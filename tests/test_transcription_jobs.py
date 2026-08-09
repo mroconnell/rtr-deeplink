@@ -79,6 +79,53 @@ async def test_duplicate_submit_returns_existing_job_not_a_new_one():
     await _drain_job(job1["job_id"], job1["total_chunks"])
 
 
+async def test_claim_next_chunk_prefers_higher_priority_over_older_job():
+    # Real feature built 2026-08-09 once Alembic unblocked adding the
+    # column (see BACKLOG_DONE.md): claim_next_chunk() must order by
+    # priority first, not just created_at -- a real visitor's own request
+    # (PRIORITY_MEDIUM) should never sit behind older self-generated
+    # PRIORITY_LOW batch work (not built yet, but the ordering needs to
+    # be correct now regardless). create_transcription_job() itself
+    # always sets PRIORITY_MEDIUM (the only real call site today), so the
+    # low-priority job here is inserted directly, mirroring how
+    # test_list_pages_search.py reaches into the DB directly for a
+    # scenario the public API doesn't expose on its own.
+    from archive.db.engine import async_session
+    from archive.db.models import TranscriptionJob
+
+    old_url = "https://example.granicus.com/player/clip/tj-priority-old"
+    old_job = await crud.create_transcription_job(
+        payload=_payload("granicus:tj-priority-old", old_url), input_url_normalized=old_url,
+        requester_email="old@example.com", media_url="https://example.com/v.m3u8",
+        media_kind="video", probed_duration_seconds=600, chunk_size_seconds=900,
+        skip_confirmation=True,
+    )
+    async with async_session() as session:
+        job = await session.get(TranscriptionJob, old_job["job_id"])
+        job.priority = crud.PRIORITY_LOW
+        await session.commit()
+
+    new_url = "https://example.granicus.com/player/clip/tj-priority-new"
+    new_job = await crud.create_transcription_job(
+        payload=_payload("granicus:tj-priority-new", new_url), input_url_normalized=new_url,
+        requester_email="new@example.com", media_url="https://example.com/v.m3u8",
+        media_kind="video", probed_duration_seconds=600, chunk_size_seconds=900,
+        skip_confirmation=True,
+    )
+
+    # The older, low-priority job was created first, so a naive
+    # created_at-only ordering would claim it first -- priority must win.
+    # Both jobs have exactly one chunk (ceil(600 / 900) == 1), so this one
+    # claim_next_chunk() call already claimed new_job's only chunk --
+    # report it directly rather than re-claiming via _drain_job.
+    assert old_job["total_chunks"] == 1 and new_job["total_chunks"] == 1
+    claim = await crud.claim_next_chunk()
+    assert claim["job_id"] == new_job["job_id"]
+    await crud.report_chunk_result(new_job["job_id"], success=True, shifted_segments=[])
+
+    await _drain_job(old_job["job_id"], old_job["total_chunks"])
+
+
 async def test_confirm_unknown_token_returns_none():
     assert await crud.confirm_transcription_job("definitely-not-a-real-token") is None
 

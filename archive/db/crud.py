@@ -598,6 +598,16 @@ async def list_recent_pages_for_feed(*, jurisdiction: Optional[str] = None, limi
 PENDING_CONFIRMATION_EXPIRY = timedelta(hours=48)
 SPENDING_JOB_STATUSES = ("queued", "in_progress")
 MAX_CONCURRENT_TRANSCRIPTION_JOBS = 15  # was 3; raised 2026-08-08, see BACKLOG_DONE.md
+
+# claim_next_chunk() orders by priority.desc() first -- higher claimed
+# first, FIFO within the same tier. Named constants, not raw numbers
+# scattered through call sites, with room for a higher tier later without
+# a schema change (the column's just an int). PRIORITY_MEDIUM's value
+# must match TranscriptionJob.priority's model-level default/server_default
+# in models.py (kept as a literal there, not imported, to avoid a
+# models->crud import cycle) -- update both together if this ever changes.
+PRIORITY_LOW = 0  # reserved for future self-generated/idle-time batch work
+PRIORITY_MEDIUM = 10  # every real user-submitted request today
 # Was 10 minutes; shortened live 2026-08-08 after a real OOM-crash-loop
 # meant the countdown kept resetting (each auto-restart re-claimed the
 # job, pushing "stale" 10 more minutes out every time) -- annoying to
@@ -688,6 +698,10 @@ async def create_transcription_job(
             probed_duration_seconds=probed_duration_seconds,
             chunk_size_seconds=chunk_size_seconds,
             total_chunks=total_chunks,
+            # The one real call site today -- a live visitor's own request,
+            # always PRIORITY_MEDIUM. PRIORITY_LOW is reserved for
+            # self-generated idle-time batch work, not built yet.
+            priority=PRIORITY_MEDIUM,
         )
         session.add(job)
         await session.commit()
@@ -742,7 +756,7 @@ async def claim_next_chunk() -> Optional[dict]:
                     TranscriptionJob.status.in_(("queued", "in_progress")),
                     (TranscriptionJob.claimed_at.is_(None)) | (TranscriptionJob.claimed_at < stale_before),
                 )
-                .order_by(TranscriptionJob.created_at.asc())
+                .order_by(TranscriptionJob.priority.desc(), TranscriptionJob.created_at.asc())
                 .limit(1)
             )
         ).scalars().first()
