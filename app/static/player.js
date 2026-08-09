@@ -705,41 +705,70 @@ function wireSharedControls(adapter) {
   adapter.addEventListener('play', () => document.body.classList.remove('video-at-rest'));
   adapter.addEventListener('pause', () => document.body.classList.add('video-at-rest'));
 
+  const linkToCurrentLabel = document.getElementById('linkToCurrentLabel');
   adapter.addEventListener('timeupdate', () => {
     const segId = findActiveSegment(adapter.currentTime);
     if (segId) highlightSegment(segId, autoScrollEnabled, 'nearest');
     updateNoTranscriptTime(adapter);
+    // Live "Share video at X:XX" -- reads more naturally than a static
+    // "Copy link to current time" label, and doubles as a real-time
+    // playhead readout even before anyone clicks it.
+    if (linkToCurrentLabel) linkToCurrentLabel.textContent = `Share video at ${formatTime(adapter.currentTime)}`;
   });
 
-  // Two buttons do the exact same "copy a link to right now" action --
-  // the toolbar one (always present) and a second, more prominent one
-  // filling the space where the transcript would otherwise be, for
-  // meetings with nothing to click through. Same handler for both.
-  [document.getElementById('linkToCurrentBtn'), document.getElementById('noTranscriptLinkBtn')]
-    .filter(Boolean)
-    .forEach((btn) => {
-      const label = btn.querySelector('.cassette-label');
-      const defaultText = label.textContent;
-      btn.addEventListener('click', async () => {
-        const t = adapter.currentTime;
-        const segId = findActiveSegment(t) || null;
-        updateUrlParams({ t, line: segId });
-        trackEvent('copy_link_to_time');
-        try {
-          await navigator.clipboard.writeText(window.location.href);
-          label.textContent = 'Copied!';
-          setTimeout(() => { label.textContent = defaultText; }, 1500);
-        } catch (e) {
-          // clipboard API unavailable; URL is already updated in the address bar
+  // linkToCurrentBtn's label is now a live timestamp (above), so it can't
+  // also be borrowed for "Copied!" text the way it used to be -- a
+  // separate fading toast confirms the copy instead. noTranscriptLinkBtn
+  // has no live label to protect, so it keeps the simpler swap-the-text
+  // behavior unchanged.
+  const linkToCurrentBtn = document.getElementById('linkToCurrentBtn');
+  if (linkToCurrentBtn) {
+    const toast = document.getElementById('linkToCurrentToast');
+    let toastTimer = null;
+    linkToCurrentBtn.addEventListener('click', async () => {
+      const t = adapter.currentTime;
+      const segId = findActiveSegment(t) || null;
+      updateUrlParams({ t, line: segId });
+      trackEvent('copy_link_to_time');
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        if (toast) {
+          toast.textContent = 'Copied to clipboard';
+          toast.classList.add('visible');
+          clearTimeout(toastTimer);
+          toastTimer = setTimeout(() => toast.classList.remove('visible'), 5000);
         }
-      });
+      } catch (e) {
+        // clipboard API unavailable; URL is already updated in the address bar
+      }
     });
+  }
+
+  const noTranscriptLinkBtn = document.getElementById('noTranscriptLinkBtn');
+  if (noTranscriptLinkBtn) {
+    const label = noTranscriptLinkBtn.querySelector('.cassette-label');
+    const defaultText = label.textContent;
+    noTranscriptLinkBtn.addEventListener('click', async () => {
+      const t = adapter.currentTime;
+      const segId = findActiveSegment(t) || null;
+      updateUrlParams({ t, line: segId });
+      trackEvent('copy_link_to_time');
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        label.textContent = 'Copied!';
+        setTimeout(() => { label.textContent = defaultText; }, 1500);
+      } catch (e) {
+        // clipboard API unavailable; URL is already updated in the address bar
+      }
+    });
+  }
 
   // Reflects the initial position immediately (deep-linked or not),
   // rather than waiting for the first timeupdate -- matters most for
   // YouTube, where timeupdate is only polled while actually playing, so
   // a paused/autoplay-blocked load would otherwise show a stale "0:00".
   updateNoTranscriptTime(adapter);
+  if (linkToCurrentLabel) linkToCurrentLabel.textContent = `Share video at ${formatTime(adapter.currentTime)}`;
 
   const toggleBtn = document.getElementById('toggleAutoScrollBtn');
   const stateSpan = document.getElementById('autoScrollState');

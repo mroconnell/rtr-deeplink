@@ -12,6 +12,15 @@
 
 let activeVideoAdapter = null;
 
+function formatTime(seconds) {
+  seconds = Math.floor(seconds || 0);
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  const pad = (n) => String(n).padStart(2, '0');
+  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+}
+
 function createNativeAdapter(videoEl) {
   return {
     get currentTime() { return videoEl.currentTime; },
@@ -104,23 +113,30 @@ async function initYouTubeVideo(embedUrl) {
 }
 
 function wireSharedControls(adapter) {
+  const linkToCurrentLabel = document.getElementById('linkToCurrentLabel');
   adapter.addEventListener('timeupdate', () => {
     const segId = findActiveSegment(adapter.currentTime);
     if (segId) highlightSegment(segId, true, 'nearest');
+    if (linkToCurrentLabel) linkToCurrentLabel.textContent = `Share video at ${formatTime(adapter.currentTime)}`;
   });
+  if (linkToCurrentLabel) linkToCurrentLabel.textContent = `Share video at ${formatTime(adapter.currentTime)}`;
 
   const linkBtn = document.getElementById('linkToCurrentBtn');
   if (linkBtn) {
-    const label = linkBtn.querySelector('.cassette-label');
-    const defaultText = label.textContent;
+    const toast = document.getElementById('linkToCurrentToast');
+    let toastTimer = null;
     linkBtn.addEventListener('click', async () => {
       const t = adapter.currentTime;
       const segId = findActiveSegment(t) || null;
       updateUrlParams({ t, line: segId });
       try {
         await navigator.clipboard.writeText(window.location.href);
-        label.textContent = 'Copied!';
-        setTimeout(() => { label.textContent = defaultText; }, 1500);
+        if (toast) {
+          toast.textContent = 'Copied to clipboard';
+          toast.classList.add('visible');
+          clearTimeout(toastTimer);
+          toastTimer = setTimeout(() => toast.classList.remove('visible'), 5000);
+        }
       } catch (e) {
         // clipboard API unavailable; URL is already updated in the address bar
       }

@@ -65,6 +65,14 @@
   {% endif %}
 {% endblock %}
 {% block content %}
+  {#- Whether to offer the transcribe-from-audio CTA at all -- true unless
+     the page is already showing our own self-transcribed version (in which
+     case re-requesting one wouldn't accomplish anything). Hoisted out of
+     the two places that used to each duplicate this logic (the "has a
+     transcript" and "no transcript" branches below) now that the CTA lives
+     once, in the video column, rather than inline with whichever
+     transcript-section branch happened to render. #}
+  {% set show_transcribe_cta = not (active_version and active_version.segments and active_version.source == "transcribed") %}
   <main class="meeting-page">
     <div class="meta">
       <h1>{{ page.title or "Untitled meeting" }}</h1>
@@ -75,6 +83,31 @@
       {% if page.source_url %}
       <p class="source-link"><a href="{{ page.source_url }}" target="_blank" rel="noopener noreferrer">View original source &rarr;</a></p>
       {% endif %}
+    </div>
+
+    <div id="videoColumn" class="video-column">
+      {% if page.video_url %}
+      <div id="videoSection" class="video-section">
+        <div class="toolbar">
+          <span class="copy-control">
+            <span id="linkToCurrentToast" class="copy-toast" role="status" aria-live="polite"></span>
+            <button id="linkToCurrentBtn" class="cassette-btn" title="Copy a link to this exact moment">
+              <span class="cassette-reel"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7" fill="#fff" stroke="#bbb" stroke-width="2"/><circle cx="9" cy="9" r="2.2" fill="#bbb"/></svg></span>
+              <span class="cassette-label" id="linkToCurrentLabel">Share video at 0:00</span>
+              <span class="cassette-reel"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7" fill="#fff" stroke="#bbb" stroke-width="2"/><circle cx="9" cy="9" r="2.2" fill="#bbb"/></svg></span>
+            </button>
+          </span>
+        </div>
+        <div id="videoWrapper" class="video-wrapper" data-video-url="{{ page.video_url }}" data-video-format="{{ page.video_format }}">
+          {% if page.video_format == "youtube" %}
+          <div id="youtubePlayerContainer" class="youtube-player-container"></div>
+          {% else %}
+          <video id="meetingVideo" controls playsinline preload="auto"></video>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
       <p class="report-problem-toggle"><button type="button" id="reportProblemToggle" class="link-button">Report a problem with this meeting</button></p>
       <form id="reportProblemForm" class="report-problem-form" data-url="{{ page.source_url }}" hidden>
         <label>
@@ -98,26 +131,24 @@
         <p id="reportProblemStatus" class="report-problem-status" role="status"></p>
       </form>
 
+      {% if show_transcribe_cta %}
+      <p class="transcribe-toggle"><button type="button" id="transcribeToggle" class="cassette-btn"><span class="cassette-label">Request Transcript from Audio</span></button></p>
+      <form id="transcribeForm" class="transcribe-form" data-url="{{ page.source_url }}" hidden>
+        <p id="transcribeCheckStatus" class="transcribe-status" role="status"></p>
+        <div id="transcribeEmailStep" hidden>
+          <label>
+            Email address
+            <input type="email" id="transcribeEmail" required placeholder="you@example.com">
+          </label>
+          <div class="report-problem-actions">
+            <button type="submit" class="cassette-btn"><span class="cassette-label">Request transcript</span></button>
+            <button type="button" id="transcribeCancel" class="link-button">Cancel</button>
+          </div>
+        </div>
+        <p id="transcribeStatus" class="transcribe-status" role="status"></p>
+      </form>
+      {% endif %}
     </div>
-
-    {% if page.video_url %}
-    <div id="videoSection" class="video-section">
-      <div class="toolbar">
-        <button id="linkToCurrentBtn" class="cassette-btn" title="Copy link to current time">
-          <span class="cassette-reel"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7" fill="#fff" stroke="#bbb" stroke-width="2"/><circle cx="9" cy="9" r="2.2" fill="#bbb"/></svg></span>
-          <span class="cassette-label">Copy link to current time</span>
-          <span class="cassette-reel"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7" fill="#fff" stroke="#bbb" stroke-width="2"/><circle cx="9" cy="9" r="2.2" fill="#bbb"/></svg></span>
-        </button>
-      </div>
-      <div id="videoWrapper" class="video-wrapper" data-video-url="{{ page.video_url }}" data-video-format="{{ page.video_format }}">
-        {% if page.video_format == "youtube" %}
-        <div id="youtubePlayerContainer" class="youtube-player-container"></div>
-        {% else %}
-        <video id="meetingVideo" controls playsinline preload="auto"></video>
-        {% endif %}
-      </div>
-    </div>
-    {% endif %}
 
     <div id="transcriptColumn">
     {% if page.agenda_items %}
@@ -184,23 +215,6 @@
       {% if active_version.transcript_warnings %}
       <div class="warnings">{{ active_version.transcript_warnings|join(" ") }}</div>
       {% endif %}
-      {% if active_version.source != "transcribed" %}
-      <p class="transcribe-toggle"><button type="button" id="transcribeToggle" class="link-button">Transcribe this meeting from audio</button></p>
-      <form id="transcribeForm" class="transcribe-form" data-url="{{ page.source_url }}" hidden>
-        <p id="transcribeCheckStatus" class="transcribe-status" role="status"></p>
-        <div id="transcribeEmailStep" hidden>
-          <label>
-            Email address
-            <input type="email" id="transcribeEmail" required placeholder="you@example.com">
-          </label>
-          <div class="report-problem-actions">
-            <button type="submit" class="cassette-btn"><span class="cassette-label">Request transcript</span></button>
-            <button type="button" id="transcribeCancel" class="link-button">Cancel</button>
-          </div>
-        </div>
-        <p id="transcribeStatus" class="transcribe-status" role="status"></p>
-      </form>
-      {% endif %}
       <div class="transcript-list">
         {% for seg in active_version.segments %}
         <div class="transcript-segment" id="seg-{{ loop.index0 }}" data-start="{{ seg.start }}">
@@ -215,21 +229,6 @@
     <div class="transcript-section">
       <h2>Transcript</h2>
       <p class="subtitle">No transcript available for this meeting.</p>
-      <p class="transcribe-toggle"><button type="button" id="transcribeToggle" class="link-button">Transcribe this meeting from audio</button></p>
-      <form id="transcribeForm" class="transcribe-form" data-url="{{ page.source_url }}" hidden>
-        <p id="transcribeCheckStatus" class="transcribe-status" role="status"></p>
-        <div id="transcribeEmailStep" hidden>
-          <label>
-            Email address
-            <input type="email" id="transcribeEmail" required placeholder="you@example.com">
-          </label>
-          <div class="report-problem-actions">
-            <button type="submit" class="cassette-btn"><span class="cassette-label">Request transcript</span></button>
-            <button type="button" id="transcribeCancel" class="link-button">Cancel</button>
-          </div>
-        </div>
-        <p id="transcribeStatus" class="transcribe-status" role="status"></p>
-      </form>
     </div>
     {% endif %}
     </div>

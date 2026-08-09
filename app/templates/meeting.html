@@ -8,52 +8,75 @@
   <main class="meeting-page">
     <div id="meta" class="meta"></div>
 
-    <p class="report-problem-toggle" id="reportProblemToggleWrap" hidden><button type="button" id="reportProblemToggle" class="link-button">Report a problem with this meeting</button></p>
-    <form id="reportProblemForm" class="report-problem-form" hidden>
-      <label>
-        What's wrong?
-        <select id="reportProblemType" required>
-          <option value="">Choose one&hellip;</option>
-          <option value="wrong_video">Wrong or broken video</option>
-          <option value="bad_transcript">Transcript is missing or garbled</option>
-          <option value="wrong_metadata">Title, date, or jurisdiction is wrong</option>
-          <option value="other">Something else</option>
-        </select>
-      </label>
-      <label>
-        Details (optional)
-        <textarea id="reportProblemDetails" rows="3" maxlength="2000"></textarea>
-      </label>
-      <div class="report-problem-actions">
-        <button type="submit" class="cassette-btn"><span class="cassette-label">Send report</span></button>
-        <button type="button" id="reportProblemCancel" class="link-button">Cancel</button>
-      </div>
-      <p id="reportProblemStatus" class="report-problem-status" role="status"></p>
-    </form>
-
     <div id="statusMessage" class="status"></div>
 
-    <div id="videoSection" class="video-section" hidden>
-      <div class="toolbar">
-        <button id="linkToCurrentBtn" class="cassette-btn" title="Copy link to current time">
-          <span class="cassette-reel"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7" fill="#fff" stroke="#bbb" stroke-width="2"/><circle cx="9" cy="9" r="2.2" fill="#bbb"/></svg></span>
-          <span class="cassette-label">Copy link to current time</span>
-          <span class="cassette-reel"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7" fill="#fff" stroke="#bbb" stroke-width="2"/><circle cx="9" cy="9" r="2.2" fill="#bbb"/></svg></span>
-        </button>
-        <button id="toggleAutoScrollBtn" class="btn btn-outline-secondary" title="Toggle auto-scroll">Auto-scroll: <span id="autoScrollState">On</span></button>
-        <form id="seekForm" class="seek-form">
-          <input id="seekInput" type="text" inputmode="numeric" placeholder="1:23:45" aria-label="Jump to timestamp">
-          <button type="submit" class="btn btn-outline-secondary">Go to time</button>
-        </form>
+    <div id="videoColumn" class="video-column">
+      <div id="videoSection" class="video-section" hidden>
+        <div class="toolbar">
+          <span class="copy-control">
+            <span id="linkToCurrentToast" class="copy-toast" role="status" aria-live="polite"></span>
+            <button id="linkToCurrentBtn" class="cassette-btn" title="Copy a link to this exact moment">
+              <span class="cassette-reel"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7" fill="#fff" stroke="#bbb" stroke-width="2"/><circle cx="9" cy="9" r="2.2" fill="#bbb"/></svg></span>
+              <span class="cassette-label" id="linkToCurrentLabel">Share video at 0:00</span>
+              <span class="cassette-reel"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7" fill="#fff" stroke="#bbb" stroke-width="2"/><circle cx="9" cy="9" r="2.2" fill="#bbb"/></svg></span>
+            </button>
+          </span>
+        </div>
+        <div id="videoWrapper" class="video-wrapper">
+          <video id="meetingVideo" controls playsinline preload="auto"></video>
+          <div id="youtubePlayerContainer" class="youtube-player-container" hidden></div>
+          <button id="bigPlayButton" class="big-play-button" aria-label="Play video" hidden>
+            <svg viewBox="0 0 68 68" width="68" height="68" aria-hidden="true"><circle cx="34" cy="34" r="34" fill="rgba(0,0,0,0.55)"/><path d="M27 20 L48 34 L27 48 Z" fill="#fff"/></svg>
+          </button>
+        </div>
+        <div id="videoError" class="error" hidden></div>
+        <div class="video-subtoolbar">
+          <button id="toggleAutoScrollBtn" class="btn btn-outline-secondary" title="Toggle auto-scroll">Auto-scroll: <span id="autoScrollState">On</span></button>
+          <form id="seekForm" class="seek-form">
+            <input id="seekInput" type="text" inputmode="numeric" placeholder="1:23:45" aria-label="Jump to timestamp">
+            <button type="submit" class="btn btn-outline-secondary">Go to time</button>
+          </form>
+        </div>
       </div>
-      <div id="videoWrapper" class="video-wrapper">
-        <video id="meetingVideo" controls playsinline preload="auto"></video>
-        <div id="youtubePlayerContainer" class="youtube-player-container" hidden></div>
-        <button id="bigPlayButton" class="big-play-button" aria-label="Play video" hidden>
-          <svg viewBox="0 0 68 68" width="68" height="68" aria-hidden="true"><circle cx="34" cy="34" r="34" fill="rgba(0,0,0,0.55)"/><path d="M27 20 L48 34 L27 48 Z" fill="#fff"/></svg>
-        </button>
-      </div>
-      <div id="videoError" class="error" hidden></div>
+
+      <p class="report-problem-toggle" id="reportProblemToggleWrap" hidden><button type="button" id="reportProblemToggle" class="link-button">Report a problem with this meeting</button></p>
+      <form id="reportProblemForm" class="report-problem-form" hidden>
+        <label>
+          What's wrong?
+          <select id="reportProblemType" required>
+            <option value="">Choose one&hellip;</option>
+            <option value="wrong_video">Wrong or broken video</option>
+            <option value="bad_transcript">Transcript is missing or garbled</option>
+            <option value="wrong_metadata">Title, date, or jurisdiction is wrong</option>
+            <option value="other">Something else</option>
+          </select>
+        </label>
+        <label>
+          Details (optional)
+          <textarea id="reportProblemDetails" rows="3" maxlength="2000"></textarea>
+        </label>
+        <div class="report-problem-actions">
+          <button type="submit" class="cassette-btn"><span class="cassette-label">Send report</span></button>
+          <button type="button" id="reportProblemCancel" class="link-button">Cancel</button>
+        </div>
+        <p id="reportProblemStatus" class="report-problem-status" role="status"></p>
+      </form>
+
+      <p class="transcribe-toggle" id="transcribeToggleWrap" hidden><button type="button" id="transcribeToggle" class="cassette-btn"><span class="cassette-label">Request Transcript from Audio</span></button></p>
+      <form id="transcribeForm" class="transcribe-form" hidden>
+        <p id="transcribeCheckStatus" class="transcribe-status" role="status"></p>
+        <div id="transcribeEmailStep" hidden>
+          <label>
+            Email address
+            <input type="email" id="transcribeEmail" required placeholder="you@example.com">
+          </label>
+          <div class="report-problem-actions">
+            <button type="submit" class="cassette-btn"><span class="cassette-label">Request transcript</span></button>
+            <button type="button" id="transcribeCancel" class="link-button">Cancel</button>
+          </div>
+        </div>
+        <p id="transcribeStatus" class="transcribe-status" role="status"></p>
+      </form>
     </div>
 
     <div id="transcriptColumn">
@@ -98,22 +121,6 @@
         </div>
       </div>
     </div>
-
-    <p class="transcribe-toggle" id="transcribeToggleWrap" hidden><button type="button" id="transcribeToggle" class="link-button">Transcribe this meeting from audio</button></p>
-    <form id="transcribeForm" class="transcribe-form" hidden>
-      <p id="transcribeCheckStatus" class="transcribe-status" role="status"></p>
-      <div id="transcribeEmailStep" hidden>
-        <label>
-          Email address
-          <input type="email" id="transcribeEmail" required placeholder="you@example.com">
-        </label>
-        <div class="report-problem-actions">
-          <button type="submit" class="cassette-btn"><span class="cassette-label">Request transcript</span></button>
-          <button type="button" id="transcribeCancel" class="link-button">Cancel</button>
-        </div>
-      </div>
-      <p id="transcribeStatus" class="transcribe-status" role="status"></p>
-    </form>
   </main>
 {% endblock %}
 {% block scripts %}

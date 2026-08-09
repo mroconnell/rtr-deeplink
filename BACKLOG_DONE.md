@@ -1880,3 +1880,102 @@ changelog of task titles.
   scrolls away once its shared row's content is exhausted (correct
   sticky behavior, not a bug) rather than floating forever. Full suite
   green (128 tests, unaffected — template/CSS/JS layout change only).
+
+- **[Done 2026-08-08] Real transcribe button styling + a full round of
+  live-review feedback on the sticky video column above, on both
+  `app/templates/meeting.html` and `archive/templates/meeting_page.html`
+  (kept in sync, per convention).** Started as a small styling pass
+  (`.link-button` → `.cassette-btn` on the "Transcribe this meeting from
+  audio" toggle; `.report-problem-status`/`.transcribe-status` rewritten
+  from hardcoded `#2f855a` green into a shared pill treatment using new
+  `--success-bg`/`--success-fg`/`--error-bg` CSS variable pairs, matching
+  `.warnings`' existing amber-pill language), then substantially expanded
+  after live testing surfaced a real layout bug plus several rounds of
+  direct feedback:
+  - **`#reportProblemForm`/`#reportProblemToggleWrap` and
+    `#toggleAutoScrollBtn`/`#seekForm` overlapping the sticky video on
+    scroll (real bug).** These started as separate grid items sharing
+    `#videoSection`'s grid row via explicit `grid-row` line numbers — but
+    a sticky element's "stick range" is bounded by its own row, and two
+    independently-sized sticky-adjacent siblings in the same row fought/
+    rode over each other as the page scrolled. Fixed by wrapping
+    `#videoSection` together with the report-problem toggle/form *and*
+    the transcribe-request toggle/form into one new `#videoColumn`
+    container, made sticky as a single unit — removes the whole class of
+    problem (one sticky box, sized to its own real content) and lets
+    `#videoColumn`/`#transcriptColumn` use plain column-only grid
+    auto-placement again, no more explicit row numbering needed. On
+    Archive specifically, this also required hoisting the
+    "should the transcribe CTA show at all" condition (`not
+    (active_version and active_version.segments and active_version.source
+    == "transcribed")`) out of two duplicated inline conditionals (one in
+    the "has a transcript" transcript-section branch, one in the "no
+    transcript" branch) into a single `show_transcribe_cta` template
+    variable computed once, since the CTA now lives in one place instead
+    of inline with whichever branch happened to render.
+  - **Auto-scroll toggle + "Go to time" moved below the video** (resolver
+    only — Archive never had these), into a new `.video-subtoolbar` div,
+    per direct feedback ("let's move those to below the video," after an
+    initial too-narrow assumption that only the seek form needed to
+    move). Found and fixed a real CSS bug in the same pass: a blanket
+    `.video-subtoolbar .btn { width: 100% }` rule also matched the seek
+    form's own submit button (it carries `.btn` too), fighting the seek
+    form's flex layout and squashing the timestamp input to ~21px while
+    pushing the button past the column's right edge. Narrowed to
+    `#toggleAutoScrollBtn` specifically; both controls now stack full-
+    width (`flex-direction: column; align-items: stretch`) so their
+    left/right edges always align regardless of column width — confirmed
+    via `getBoundingClientRect()` (both rows: left 234px, right 534px,
+    exact match) after a follow-up request to align them.
+  - **"Copy Link to Current Time" → live "Share video at X:XX" label +
+    fading toast.** The toolbar button's label now updates every
+    `timeupdate` tick (`Share video at ${formatTime(...)}`, mirroring the
+    existing `updateNoTranscriptTime()` pattern), so a click can no longer
+    swap the label to "Copied!" the way it used to — a separate
+    `#linkToCurrentToast` element handles that instead. Iterated twice
+    more per feedback: text changed to "Copied to clipboard", duration
+    5s (was 2s), and repositioned from beside/below the button to
+    floating *above* it — implemented as a `position: absolute` overlay
+    (`bottom: 100%`, centered, its own pill background/shadow) inside a
+    new `.copy-control` positioning wrapper around just the button (not
+    the whole `.toolbar`, whose own `position` flips between sticky/
+    static across the desktop breakpoint and would've made an
+    inconsistent containing block).
+  - **Transcribe button relocated + relabeled.** Moved into the new
+    `#videoColumn` (previously lived at the bottom of the transcript
+    column) so it sits directly under the video alongside "Report a
+    problem," and renamed from "Transcribe this meeting from audio" to
+    "Request Transcript from Audio" per direct feedback.
+  - **Tighter meta-block spacing.** `.meta p` had no `margin-bottom`
+    override on either stylesheet, so the browser's ~1em default
+    paragraph spacing (not `.source-link`'s own already-tight margin) was
+    the real cause of "too much space" between the jurisdiction/date line
+    and "View original source" below it. Fixed with `margin: 0 0
+    0.25rem`.
+  - **Always-visible transcript scrollbar.** `.transcript-list` gained
+    `scrollbar-width: thin` + `scrollbar-color` (Firefox) and styled
+    `::-webkit-scrollbar*` rules (Chrome/Safari/Edge — merely styling
+    `::-webkit-scrollbar` switches these browsers from invisible overlay
+    scrollbars to always-reserved-space classic ones), so the box reads
+    as a scrollable window at a glance instead of looking like a hard
+    content cutoff.
+  - **Shorter agenda box.** A long agenda was pushing the "Transcript"
+    heading below the fold. `.agenda-section .transcript-list` now caps
+    at `max-height: 220px` (vs. the main transcript list's `60vh`) — the
+    agenda is secondary/reference material here, not the primary content.
+  Verified live in-browser against a real local resolver+Archive pair
+  (seeded Dublin, CA sample data, genuine 1280px desktop width) —
+  discovered mid-verification that hitting the Archive dev server
+  directly on its own port skips the resolver's `/archive-static/*`
+  proxy route entirely (Archive's `base.html` references
+  `/archive-static/...`, but Archive itself only mounts `/static`; the
+  resolver's `app/main.py` has the actual `/archive-static/{path}` proxy
+  route), silently serving an unstyled page — not a real bug, just a
+  reminder to always test Archive pages through the resolver
+  (`ARCHIVE_BASE_URL` pointed at the local Archive instance) rather than
+  Archive's own port directly. Confirmed on both pages: no overlap
+  scrolling all the way to the page bottom, seek-form/auto-scroll edges
+  pixel-aligned, toast reads "Copied to clipboard" and floats above the
+  button, agenda visibly shorter with "Transcript" on-screen without
+  scrolling. Full suite green (128 tests, unaffected — template/CSS/JS
+  layout change only).

@@ -608,41 +608,6 @@ one item below is resolved as a result.
   building it kills both asks with one change — worth its own scoped
   task given it touches `.version-picker`, `meeting_page.js`, and the
   template's rendering of `active_version` throughout.
-- **"Transcribe this meeting from audio" is too easy to miss.** Still a
-  small `.link-button` text link (`app/templates/meeting.html` /
-  `archive/templates/meeting_page.html`, styled identically to "Report a
-  problem with this meeting" — same class, same treatment) — wants to be
-  a real, obvious button, not a text link easy to scroll past. **The
-  *placement* half of this is now fixed (2026-08-08)**: it's been moved
-  off the top meta section and now renders directly next to the
-  transcript-quality warnings on both pages — right after
-  `#transcriptWarnings`/`#transcriptMissingWarnings` on the resolver,
-  and inside both the has-a-garbled-transcript branch (after
-  `active_version.transcript_warnings`) and the no-transcript branch on
-  the Archive page (`archive/templates/meeting_page.html`) — plus the
-  obsolete "contact ryan@how-to-adu.com for details" pitch was trimmed
-  out of the four adapter warning messages that used to carry it
-  (`app/platforms/granicus.py` x2, `civicclerk.py`, `escribe.py`), since
-  the self-serve button sitting right there now does what that pitch
-  used to ask people to email in for. Still open: the visual treatment
-  itself — it's still a plain text link, not a real button. **Decided
-  2026-08-08: bundle this with the `.report-problem-status` styling
-  cleanup below into one pass**, not two separate changes — see that
-  item.
-- **Transcribe UI's styling doesn't match the rest of the page.** Inherited
-  wholesale from `.report-problem-status`'s ad hoc styling (`.transcribe-
-  status.success`/`.error` in both `app/static/style.css` and `archive/
-  static/style.css`): a hardcoded green (`#2f855a`) for success, a small
-  `font-size: 0.85rem` throughout — neither matches the page's existing
-  typography/color system (`--fg`/`--accent`/`--muted`, the `.warnings`
-  amber-pill treatment already used elsewhere for transcript-quality
-  messages). This styling issue isn't unique to the new transcribe UI —
-  `.report-problem-status` has the exact same ad hoc colors/sizing it
-  was copied from. **Decided 2026-08-08: fix both together, in one
-  pass** (this styling cleanup + making the transcribe link a real
-  button, per the item above) — they share the exact same inherited
-  problem, so fixing one without the other would leave a visible
-  inconsistency between the two.
 - **Job priority — needed before the worker can auto-generate its own
   jobs (see the next item).** Right now `claim_next_chunk()`
   (`archive/db/crud.py`) claims strictly oldest-first: `.order_by(

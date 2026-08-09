@@ -18,6 +18,7 @@
   --pill-fg: #a84b00;
   --success-bg: #d7f0e0; /* soft green: positive status badges (e.g. "has a transcript") */
   --success-fg: #1e7d4f;
+  --error-bg: #fbe2e0;   /* soft red: paired with --secondary for error messages */
   --font-body: Georgia, 'Times New Roman', serif;
   --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
 }
@@ -161,10 +162,14 @@ body {
    identical block (kept in sync manually) for the full reasoning: the
    video can stay genuinely narrow/small since most viewers here just
    need audio plus a visual confirmation of who's speaking, not a large
-   frame for reading slides, and #transcriptColumn wraps the agenda/
-   transcript sections so the sticky video has real vertical room to
-   move within (bounded by its own grid row, which spans the same
-   height as that wrapped column). */
+   frame for reading slides.
+
+   #videoColumn wraps #videoSection together with the report-problem and
+   transcribe-request toggles/forms into a single sticky unit -- these
+   used to be separate grid items sharing #videoSection's row, which let
+   one sticky element overlap the other as the page scrolled (real bug
+   from live review). One sticky box, sized to its own real content,
+   removes that whole class of problem. */
 @media (min-width: 900px) {
   .meeting-page {
     display: grid;
@@ -173,7 +178,7 @@ body {
     align-items: start;
   }
   .meta { grid-column: 1 / -1; }
-  #videoSection {
+  #videoColumn {
     grid-column: 1;
     position: sticky;
     top: 1rem;
@@ -183,7 +188,11 @@ body {
 }
 
 .meta h1 { margin-bottom: 0.2rem; color: var(--primary); }
-.meta p { color: var(--muted); margin-top: 0; }
+/* margin-bottom wasn't overridden here before -- the browser's default
+   paragraph spacing (~1em) was the real cause of "too much space"
+   between the jurisdiction/date line and "View original source" below
+   it, not .source-link's own (already tight) margin. */
+.meta p { color: var(--muted); margin: 0 0 0.25rem; }
 .source-link { margin: 0.15rem 0; }
 .source-link a {
   color: var(--muted);
@@ -230,9 +239,26 @@ body {
   font-size: 0.9rem;
 }
 .report-problem-actions { display: flex; align-items: center; gap: 1rem; }
-.report-problem-status { margin: 0.6rem 0 0; font-size: 0.85rem; }
-.report-problem-status.success { color: #2f855a; }
-.report-problem-status.error { color: var(--secondary); }
+/* Status message pill -- matches .warnings' shape/weight (below) instead
+   of a smaller, plain-colored-text treatment, so a "your report was
+   sent" confirmation reads as part of the same status-message visual
+   language as everything else on the page, not a separate smaller
+   system. Empty by default (no text yet), so no visible pill until a
+   real status message is set. */
+.report-problem-status,
+.transcribe-status {
+  display: inline-block;
+  border-radius: 7px;
+  padding: 0.35rem 0.85rem;
+  font-weight: bold;
+  margin: 0.6rem 0 0;
+}
+.report-problem-status:empty,
+.transcribe-status:empty { display: none; }
+.report-problem-status.success,
+.transcribe-status.success { background: var(--success-bg); color: var(--success-fg); }
+.report-problem-status.error,
+.transcribe-status.error { background: var(--error-bg); color: var(--secondary); }
 
 .transcribe-toggle { margin: 0.4rem 0 0; }
 .transcribe-form {
@@ -260,9 +286,6 @@ body {
   font-family: inherit;
   font-size: 0.9rem;
 }
-.transcribe-status { margin: 0.6rem 0 0; font-size: 0.85rem; }
-.transcribe-status.success { color: #2f855a; }
-.transcribe-status.error { color: var(--secondary); }
 
 /* Cream/amber "choose wisely" pill treatment for status & warning
    messages -- the manila-folder half of the red-tape/manila-folder vibe. */
@@ -306,6 +329,40 @@ body {
   color: var(--fg);
   font-size: 0.9rem;
 }
+/* Positioning context for the floating .copy-toast bubble below --
+   wraps just the button (not the whole .toolbar, whose own position
+   flips between sticky/static across breakpoints) so the toast always
+   anchors to the button itself regardless of layout. */
+.copy-control {
+  position: relative;
+  display: inline-block;
+}
+/* Small fading confirmation that floats above the share button (real
+   feedback: below/beside it went unnoticed or crowded the row) --
+   replaces the previous behavior of swapping the button's own label
+   text to "Copied!", since the label now shows a live timestamp instead.
+   An absolutely-positioned overlay, not in-flow, so it never shifts
+   surrounding layout when it appears. Shown via a .visible class
+   (opacity transition), removed by JS after a few seconds. */
+.copy-toast {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 0.5rem;
+  white-space: nowrap;
+  background: var(--success-bg);
+  color: var(--success-fg);
+  border-radius: 6px;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.8rem;
+  font-weight: bold;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+.copy-toast.visible { opacity: 1; }
 .video-wrapper {
   position: relative;
   width: 100%;
@@ -351,6 +408,11 @@ video { width: 100%; height: 100%; display: block; }
 .transcript-export a:hover { color: var(--accent); text-decoration: underline; }
 .agenda-section { margin-bottom: 1.5rem; }
 .agenda-section h2 { margin-bottom: 0.5rem; color: var(--primary); }
+/* Shorter than the main transcript list's 60vh -- real feedback: a long
+   agenda pushed the "Transcript" heading below the fold. The agenda is
+   secondary/reference material here, so it gets its own scrollable box
+   rather than claiming the same generous height as the transcript. */
+.agenda-section .transcript-list { max-height: 220px; }
 
 /* Fills the space where the transcript would be when there isn't one --
    a live playhead readout so it's clear we're still tracking the exact
@@ -385,7 +447,22 @@ video { width: 100%; height: 100%; display: block; }
   border-radius: 8px;
   padding: 1rem;
   background: var(--bg);
+  /* Always-visible scrollbar, not just on hover/scroll -- real feedback:
+     this box not obviously reading as "a scrollable window" (most
+     modern OS/browser combos use invisible-until-interacted overlay
+     scrollbars by default). Firefox: */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) var(--bg);
 }
+/* Chrome/Safari/Edge: styling ::-webkit-scrollbar at all switches these
+   browsers from overlay to always-reserved-space classic scrollbars. */
+.transcript-list::-webkit-scrollbar { width: 10px; }
+.transcript-list::-webkit-scrollbar-track { background: var(--bg); }
+.transcript-list::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 5px;
+}
+.transcript-list::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 .transcript-segment { margin-bottom: 0.75rem; }
 .transcript-segment.playing { background: rgba(52, 152, 219, 0.15); border-radius: 4px; }
 .segment-timestamp {

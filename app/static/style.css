@@ -10,6 +10,9 @@
   --secondary: #e74c3c; /* red: errors/emphasis, used sparingly */
   --pill-bg: #ffe6a1;   /* cream/amber: status & warning callouts */
   --pill-fg: #a84b00;
+  --success-bg: #d7f0e0; /* soft green: positive status badges/messages */
+  --success-fg: #1e7d4f;
+  --error-bg: #fbe2e0;   /* soft red: paired with --secondary for error messages */
   --font-body: Georgia, 'Times New Roman', serif;
   --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
 }
@@ -162,13 +165,19 @@ body {
    spare) everything stays single-column/stacked, matching mobile's
    existing behavior unchanged.
 
-   #transcriptColumn wraps #agendaSection/#transcriptSection/
-   #transcriptMissing so the whole stack shares one grid cell/row height
-   -- #videoSection, in the *other* column of that same row, then has
-   real vertical room to visually stick within (a sticky element can
-   only "stick" as far as its own grid row extends). #meta, the report-
-   problem/transcribe forms, and #statusMessage all stay full-width,
-   above/below the two-column area, via grid-column: 1 / -1. */
+   #videoColumn wraps #videoSection together with the report-problem and
+   transcribe-request toggles/forms into a single sticky unit -- these
+   used to be separate grid items sharing #videoSection's grid row via
+   explicit row-span tricks, but a sticky element's "stick range" is
+   bounded by its own row, and two independently-sized sticky siblings
+   in the same row fought/overlapped each other as the page scrolled
+   (real bug from live review: the report-problem block would ride up
+   and crash over the video). Wrapping everything in one element removes
+   that whole class of problem -- there's only one sticky box now, sized
+   to its own real content, and simple column-only auto-placement (no
+   explicit grid-row numbers needed) is enough since #videoColumn and
+   #transcriptColumn are just two plain siblings in the same implicit
+   row. */
 @media (min-width: 900px) {
   .meeting-page {
     display: grid;
@@ -176,32 +185,30 @@ body {
     column-gap: 1.75rem;
     align-items: start;
   }
-  #meta,
-  .report-problem-toggle,
-  #reportProblemForm,
-  #statusMessage,
-  .transcribe-toggle,
-  #transcribeForm {
-    grid-column: 1 / -1;
-  }
-  #videoSection {
+  #meta { grid-column: 1 / -1; }
+  #statusMessage { grid-column: 1 / -1; }
+  #videoColumn {
     grid-column: 1;
     position: sticky;
     top: 1rem;
   }
+  #transcriptColumn { grid-column: 2; }
   /* The toolbar's own independent sticky-to-top-of-viewport (below) was
      built for the single-column mobile layout, where the video scrolls
      away but the controls above the transcript shouldn't. Here the
-     *entire* #videoSection (toolbar + video together) already sticks as
-     one unit, so the toolbar keeping its own separate sticky positioning
-     would nest two independent sticky contexts and fight/jitter against
-     each other. */
+     *entire* #videoColumn (toolbar + video + report-problem + transcribe
+     request, together) already sticks as one unit, so the toolbar
+     keeping its own separate sticky positioning would nest two
+     independent sticky contexts and fight/jitter against each other. */
   .toolbar { position: static; }
-  #transcriptColumn { grid-column: 2; }
 }
 
 .meta h1 { margin-bottom: 0.2rem; color: var(--primary); }
-.meta p { color: var(--muted); margin-top: 0; }
+/* margin-bottom wasn't overridden here before -- the browser's default
+   paragraph spacing (~1em) was the real cause of "too much space"
+   between the jurisdiction/date line and "View original source" below
+   it, not .source-link's own (already tight) margin. */
+.meta p { color: var(--muted); margin: 0 0 0.25rem; }
 .source-link { margin: 0.15rem 0; }
 .source-link a {
   color: var(--muted);
@@ -248,9 +255,26 @@ body {
   font-size: 0.9rem;
 }
 .report-problem-actions { display: flex; align-items: center; gap: 1rem; }
-.report-problem-status { margin: 0.6rem 0 0; font-size: 0.85rem; }
-.report-problem-status.success { color: #2f855a; }
-.report-problem-status.error { color: var(--secondary); }
+/* Status message pill -- matches .warnings' shape/weight (below) instead
+   of a smaller, plain-colored-text treatment, so a "your report was
+   sent" confirmation reads as part of the same status-message visual
+   language as everything else on the page, not a separate smaller
+   system. Empty by default (no text yet), so no visible pill until a
+   real status message is set. */
+.report-problem-status,
+.transcribe-status {
+  display: inline-block;
+  border-radius: 7px;
+  padding: 0.35rem 0.85rem;
+  font-weight: bold;
+  margin: 0.6rem 0 0;
+}
+.report-problem-status:empty,
+.transcribe-status:empty { display: none; }
+.report-problem-status.success,
+.transcribe-status.success { background: var(--success-bg); color: var(--success-fg); }
+.report-problem-status.error,
+.transcribe-status.error { background: var(--error-bg); color: var(--secondary); }
 
 .transcribe-toggle { margin: 0.4rem 0 0; }
 .transcribe-form {
@@ -278,9 +302,6 @@ body {
   font-family: inherit;
   font-size: 0.9rem;
 }
-.transcribe-status { margin: 0.6rem 0 0; font-size: 0.85rem; }
-.transcribe-status.success { color: #2f855a; }
-.transcribe-status.error { color: var(--secondary); }
 
 /* Cream/amber "choose wisely" pill treatment for status & warning
    messages -- the manila-folder half of the red-tape/manila-folder vibe. */
@@ -314,9 +335,36 @@ body {
   background: var(--page-bg);
   padding: 0.5rem 0;
 }
-.seek-form { display: flex; gap: 0.4rem; margin-left: auto; }
+/* Auto-scroll toggle + "Go to time" -- moved below the video (real
+   feedback: cramming these into the same narrow toolbar row as the
+   share button, in a ~220-300px sticky column, left them squeezed/hard
+   to notice). A plain wrapping row, not sticky itself -- only the share
+   button above needs to stay reachable at all times.
+
+   Stacked (not side-by-side) and stretched to the column's full width --
+   in the narrow sticky video column these two controls wrapped
+   unevenly when laid out as a wrapping row, leaving their left/right
+   edges misaligned depending on how much text/space each happened to
+   take. Stretching both to 100% width guarantees their edges always
+   line up, regardless of column width. */
+.video-subtoolbar {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+/* Target the auto-scroll toggle specifically, not .btn generally -- the
+   seek-form's own submit button also carries the .btn class, and a
+   blanket ".video-subtoolbar .btn { width: 100% }" rule fought with the
+   seek-form's flex layout (button demanding 100% width on top of
+   flex-shrink: 0 squashed the input to almost nothing and pushed the
+   form past the column's right edge). */
+#toggleAutoScrollBtn { width: 100%; }
+.seek-form { display: flex; width: 100%; gap: 0.4rem; }
 .seek-form input {
-  width: 6.5rem;
+  flex: 1;
+  min-width: 0;
   padding: 0.5rem 0.6rem;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -324,6 +372,41 @@ body {
   color: var(--fg);
   font-size: 0.9rem;
 }
+.seek-form button { flex-shrink: 0; }
+/* Positioning context for the floating .copy-toast bubble below --
+   wraps just the button (not the whole .toolbar, whose own position
+   flips between sticky/static across breakpoints) so the toast always
+   anchors to the button itself regardless of layout. */
+.copy-control {
+  position: relative;
+  display: inline-block;
+}
+/* Small fading confirmation that floats above the share button (real
+   feedback: below/beside it went unnoticed or crowded the row) --
+   replaces the previous behavior of swapping the button's own label
+   text to "Copied!", since the label now shows a live timestamp instead.
+   An absolutely-positioned overlay, not in-flow, so it never shifts
+   surrounding layout when it appears. Shown via a .visible class
+   (opacity transition), removed by JS after a few seconds. */
+.copy-toast {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 0.5rem;
+  white-space: nowrap;
+  background: var(--success-bg);
+  color: var(--success-fg);
+  border-radius: 6px;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.8rem;
+  font-weight: bold;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+.copy-toast.visible { opacity: 1; }
 .video-wrapper {
   position: relative;
   width: 100%;
@@ -366,6 +449,11 @@ video { width: 100%; height: 100%; display: block; }
 .transcript-section h2 { margin-bottom: 0.5rem; color: var(--primary); }
 .agenda-section { margin-bottom: 1.5rem; }
 .agenda-section h2 { margin-bottom: 0.5rem; color: var(--primary); }
+/* Shorter than the main transcript list's 60vh -- real feedback: a long
+   agenda pushed the "Transcript" heading below the fold. The agenda is
+   secondary/reference material here, so it gets its own scrollable box
+   rather than claiming the same generous height as the transcript. */
+.agenda-section .transcript-list { max-height: 220px; }
 
 .transcript-heading-row {
   display: flex;
@@ -431,7 +519,22 @@ video { width: 100%; height: 100%; display: block; }
   border-radius: 8px;
   padding: 1rem;
   background: var(--bg);
+  /* Always-visible scrollbar, not just on hover/scroll -- real feedback:
+     this box not obviously reading as "a scrollable window" (most
+     modern OS/browser combos use invisible-until-interacted overlay
+     scrollbars by default). Firefox: */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) var(--bg);
 }
+/* Chrome/Safari/Edge: styling ::-webkit-scrollbar at all switches these
+   browsers from overlay to always-reserved-space classic scrollbars. */
+.transcript-list::-webkit-scrollbar { width: 10px; }
+.transcript-list::-webkit-scrollbar-track { background: var(--bg); }
+.transcript-list::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 5px;
+}
+.transcript-list::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 .transcript-segment { margin-bottom: 0.75rem; }
 .transcript-segment.playing { background: rgba(52, 152, 219, 0.15); border-radius: 4px; }
 .segment-timestamp {
