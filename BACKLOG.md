@@ -22,64 +22,7 @@ where relevant.
   to explain why that word is unsafe here. **Remove this item once
   confirmed the worker is healthy again** — not yet confirmed as of this
   writing.
-- **PrimeGov's date/jurisdiction come entirely from YouTube's own
-  metadata, which is measurably worse than what's already sitting on the
-  PrimeGov page itself.** Confirmed live (2026-08-08) via
-  `https://okc.primegov.com/Portal/Meeting?meetingTemplateId=68482`
-  (Oklahoma City) — video and transcript resolve cleanly (3503 real
-  English auto-caption segments, no warnings beyond the standard
-  auto-caption disclaimer), but:
-  - `date` resolved to `2026-08-05`, one day off from the real meeting.
-    The PrimeGov page has an embedded agenda document titled `"City
-    Council - 8/4/2026 1:30:00 PM"` and body text saying `"August 4,
-    2026"` — the *video's own title* even says "Oklahoma City Council
-    Meeting - August 4, 2026". Root cause: `PrimeGovAssetFinder.resolve()`
-    (`app/platforms/primegov.py`) extracts only the YouTube video id from
-    the page HTML and discards everything else, delegating entirely to
-    `YouTubeAssetFinder.resolve_video_id()` — which sets `date` from
-    yt-dlp's `upload_date` (`app/platforms/youtube.py` line ~80), i.e.
-    when the video was *posted to YouTube*, not the real meeting date.
-    Plausible mismatch for any meeting uploaded the next morning after an
-    evening session.
-  - `jurisdiction` resolved to `"cityofokc"` — YouTube's raw `uploader`
-    field (the channel handle), not a real jurisdiction string like
-    "Oklahoma City, OK".
-  Only affects PrimeGov pages that actually have video (the common case
-  per the item above) — agenda-only PrimeGov pages never hit
-  `YouTubeAssetFinder` at all.
 
-  **Tried building the "parse the page's own embedded date" fix
-  2026-08-09, per the note above to check a second sample first — glad
-  it was checked, since the second sample actively disproved it, not
-  just failed to confirm it.** Found a real, consistent embedded-date
-  signal on *both* OKC and a second sample, Thousand Oaks
-  (`https://toaks.primegov.com/Portal/Meeting?meetingTemplateId=9446`):
-  a nested agenda-document `<title>...- M/D/YYYY H:MM:SS AM/PM</title>`,
-  distinct from the outer page's own generic `<title>Meeting</title>`
-  (OKC: `"City Council - 8/4/2026 1:30:00 PM"`; Thousand Oaks:
-  `"Thousand Oaks City Council Regular Meeting (Closed Session) -
-  7/8/2026 12:00:00 AM"`). Built and initially verified against OKC
-  (correctly produced `2026-08-04`, matching the video's own title,
-  the page body text, and the docket title all agreeing) — but checking
-  the *second* sample as planned caught a real problem before shipping:
-  Thousand Oaks's embedded title gives **July 8**, while the video's own
-  title says **"...Meeting - July 7, 2026"**. Cross-checked against
-  yt-dlp's real `upload_date` for that video (`20260708`) — the embedded
-  "July 8" exactly matches the *upload* date, not the real meeting date,
-  meaning this specific page's embedded agenda document (labeled
-  "Closed Session") is dated by when *it* was processed/logged, not
-  necessarily the same date as the open session actually captured on
-  video. Building this fix would have silently replaced one
-  upload-lag-shaped bug with another, harder-to-notice one (both
-  produce a plausible, only-one-day-off wrong date) rather than
-  actually fixing it. **Reverted, not shipped** — the "page's own
-  embedded date is more reliable than YouTube's" premise doesn't hold
-  up as a general rule; a third real sample, or a way to independently
-  corroborate the embedded date against the video's own title text
-  before trusting it, would be needed before trying again.
-  `jurisdiction` remains unfixed too — the embedded title only
-  reliably includes a city name on some cities (Thousand Oaks yes, OKC
-  no), so there's nothing consistent to extract there either.
 ## Deep links
 
 The `t`/`line` scheme itself is sound and hasn't changed since the initial
@@ -193,6 +136,11 @@ auditing it (2026-08-08) — two fixed since, one still open below:
     just a Python package) or some other Cloudflare-bypass approach —
     worth deciding deliberately before building, not a default "just add
     the parsing code" case like most new-platform work has been so far.
+    **Confirmed 2026-08-09: deliberately delayed, marked as major work,
+    not a quick pickup** — a headless-browser dependency is a real
+    architecture decision (new system-level dependency, not just a
+    Python package), not something to default into alongside routine
+    platform-adapter work.
   - Not yet checked: whether "LIMS" is a white-labeled product used by
     other cities under different domains (would matter for whether a
     general detection rule is worth building at all, vs. this being a

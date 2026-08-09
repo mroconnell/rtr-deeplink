@@ -8,6 +8,125 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-09] PrimeGov's date/jurisdiction fixed for real, using the
+  page's own visible "FORMAL AGENDA"/"REGULAR MEETING" header text — a
+  different, more reliable signal than the embedded sub-document `<title>`
+  approach tried and reverted earlier in this same investigation (see the
+  entry directly below this one).** Real bug: `PrimeGovAssetFinder.resolve()`
+  (`app/platforms/primegov.py`) delegated entirely to
+  `YouTubeAssetFinder.resolve_video_id()`, which sets `date` from yt-dlp's
+  `upload_date` and `jurisdiction` from the raw YouTube `uploader` handle.
+  Confirmed live against both real samples that both were wrong: OKC's
+  `upload_date` (`20260805`) and Thousand Oaks's (`20260708`) were each one
+  day *after* the real meeting (both uploaded the morning after an evening
+  session), and Thousand Oaks's `uploader` ("CTO Meetings") carries no
+  identifiable city name at all (OKC's "cityofokc" is barely usable).
+
+  Per the user's own suggestion — "look for the date and jurisdiction on
+  the page/row that is linking off to that youtube URL... probably the
+  most accurate and dependable solution" — checked the PrimeGov page's own
+  rendered text (`mcp__Claude_Browser__get_page_text` first, then a plain
+  `curl`/`aiohttp` fetch to confirm it's in the *raw static HTML*, no
+  headless browser needed): both real samples have a plain, prominent
+  agenda header giving the correct date —
+  `https://okc.primegov.com/Portal/Meeting?meetingTemplateId=68482`: "THE
+  CITY OF OKLAHOMA CITY / FORMAL AGENDA / CITY COUNCIL / August 4, 2026";
+  `https://toaks.primegov.com/Portal/Meeting?meetingTemplateId=9446`:
+  "City Council / REGULAR MEETING / Tuesday, July 07, 2026". Both dates
+  match the video's own title exactly (`"...Meeting - August 4, 2026"`,
+  `"...Meeting - July 7, 2026"`) — unlike the reverted embedded-`<title>`
+  approach, which for Thousand Oaks picked up an unrelated "Closed
+  Session" sub-document's date (July 8, coincidentally matching the wrong
+  `upload_date` instead).
+
+  Built `PrimeGovAssetFinder._extract_date()` (first full-month-name date —
+  `(Monday|...|Sunday)?, Month D(D), YYYY` — found within the first 2000
+  chars of `BeautifulSoup(...).get_text()`, converted to ISO) and
+  `_extract_jurisdiction()` (`(city|county|town) of X` bounded by an HTML
+  tag or punctuation, with a second-line-of-defense cap that stops
+  collecting words at the first one that doesn't start with a capital
+  letter). The tag/punctuation bound was necessary, not cosmetic: a naive
+  `city of` regex run against Thousand Oaks's flattened page text matched
+  clear across an unrelated mission-statement sentence ("...City of
+  Thousand Oaks that all employees are to be treated with respect and
+  dignity...") because nothing but a lowercase word follows the real city
+  name there; OKC's all-caps table-cell header ("OKLAHOMA CITY" then
+  "FORMAL AGENDA" then "CITY COUNCIL" with no punctuation between them
+  once tags are stripped) needed the opposite fix, a tag-boundary stop
+  instead of a punctuation one. `resolve()` now overrides
+  `YouTubeAssetFinder`'s `date`/`jurisdiction` only when a real page match
+  is found, otherwise keeps YouTube's better-than-nothing values (covered
+  by a dedicated fallback test).
+
+  Verified against both real live URLs end-to-end (not just the extraction
+  methods) via a direct `resolve()` call and the real `/api/resolve`
+  endpoint, then in-browser on the rendered meeting page — confirmed the
+  page actually shows "City of Thousand Oaks · 2026-07-07" for the
+  Thousand Oaks sample. 8 new unit tests + 3 new `resolve()`-level tests
+  added to `tests/test_primegov.py` (15 total, up from 5), full suite
+  (181 tests) passing.
+
+- **[Done 2026-08-09, reverted before shipping — see the entry above for
+  the fix that actually landed] PrimeGov's date/jurisdiction come entirely
+  from YouTube's own metadata, which is measurably worse than what's
+  already sitting on the PrimeGov page itself.** Confirmed live
+  (2026-08-08) via
+  `https://okc.primegov.com/Portal/Meeting?meetingTemplateId=68482`
+  (Oklahoma City) — video and transcript resolve cleanly (3503 real
+  English auto-caption segments, no warnings beyond the standard
+  auto-caption disclaimer), but:
+  - `date` resolved to `2026-08-05`, one day off from the real meeting.
+    The PrimeGov page has an embedded agenda document titled `"City
+    Council - 8/4/2026 1:30:00 PM"` and body text saying `"August 4,
+    2026"` — the *video's own title* even says "Oklahoma City Council
+    Meeting - August 4, 2026". Root cause: `PrimeGovAssetFinder.resolve()`
+    (`app/platforms/primegov.py`) extracts only the YouTube video id from
+    the page HTML and discards everything else, delegating entirely to
+    `YouTubeAssetFinder.resolve_video_id()` — which sets `date` from
+    yt-dlp's `upload_date` (`app/platforms/youtube.py` line ~80), i.e.
+    when the video was *posted to YouTube*, not the real meeting date.
+    Plausible mismatch for any meeting uploaded the next morning after an
+    evening session.
+  - `jurisdiction` resolved to `"cityofokc"` — YouTube's raw `uploader`
+    field (the channel handle), not a real jurisdiction string like
+    "Oklahoma City, OK".
+  Only affects PrimeGov pages that actually have video (the common case
+  per the item above) — agenda-only PrimeGov pages never hit
+  `YouTubeAssetFinder` at all.
+
+  **Tried building the "parse the page's own embedded date" fix
+  2026-08-09, per the note above to check a second sample first — glad
+  it was checked, since the second sample actively disproved it, not
+  just failed to confirm it.** Found a real, consistent embedded-date
+  signal on *both* OKC and a second sample, Thousand Oaks
+  (`https://toaks.primegov.com/Portal/Meeting?meetingTemplateId=9446`):
+  a nested agenda-document `<title>...- M/D/YYYY H:MM:SS AM/PM</title>`,
+  distinct from the outer page's own generic `<title>Meeting</title>`
+  (OKC: `"City Council - 8/4/2026 1:30:00 PM"`; Thousand Oaks:
+  `"Thousand Oaks City Council Regular Meeting (Closed Session) -
+  7/8/2026 12:00:00 AM"`). Built and initially verified against OKC
+  (correctly produced `2026-08-04`, matching the video's own title,
+  the page body text, and the docket title all agreeing) — but checking
+  the *second* sample as planned caught a real problem before shipping:
+  Thousand Oaks's embedded title gives **July 8**, while the video's own
+  title says **"...Meeting - July 7, 2026"**. Cross-checked against
+  yt-dlp's real `upload_date` for that video (`20260708`) — the embedded
+  "July 8" exactly matches the *upload* date, not the real meeting date,
+  meaning this specific page's embedded agenda document (labeled
+  "Closed Session") is dated by when *it* was processed/logged, not
+  necessarily the same date as the open session actually captured on
+  video. Building this fix would have silently replaced one
+  upload-lag-shaped bug with another, harder-to-notice one (both
+  produce a plausible, only-one-day-off wrong date) rather than
+  actually fixing it. **Reverted, not shipped** — the "page's own
+  embedded date is more reliable than YouTube's" premise doesn't hold
+  up as a general rule; a third real sample, or a way to independently
+  corroborate the embedded date against the video's own title text
+  before trusting it, would be needed before trying again.
+  `jurisdiction` remains unfixed too — the embedded title only
+  reliably includes a city name on some cities (Thousand Oaks yes, OKC
+  no), so there's nothing consistent to extract there either.
+
 - **[Done 2026-08-08] `media_scan.scan_media_urls`'s "sources" JSON-blob
   branch was dead code — removed rather than fixed.** The regex
   `r'({[^}]*"sources"\s*:\s*\[[^}]*\][^}]*})'` used `[^}]*` to span from
