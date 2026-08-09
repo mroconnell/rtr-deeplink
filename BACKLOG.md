@@ -234,6 +234,48 @@ auditing it (2026-08-08) — two fixed since, one still open below:
 
 ## Platform coverage — open questions
 
+- **New platform found: Minneapolis's own "LIMS" (Legislative Information
+  Management System), `lims.minneapolismn.gov/MarkedAgenda/CI/{id}` —
+  genuinely richer source data than most platforms already supported, but
+  blocked by a real Cloudflare JS challenge, not just a missing header.**
+  Confirmed live (2026-08-08) via
+  `https://lims.minneapolismn.gov/MarkedAgenda/CI/6133`. Doesn't match any
+  existing `detect_platform()` rule — a real new platform, not a variant
+  of one already handled.
+  - **What's there, and it's good**: the page's "Meeting Video" modal
+    loads `GET /MeetingYoutubeVideo/{id}` (same numeric id as the URL),
+    which returns clean structured JSON: a real YouTube URL
+    (`https://youtube.com/watch?v=YgAu_4xWvGU` for this sample) plus
+    `SerializedVideoTimestamps` — a nested category → item tree with real
+    **per-agenda-item start times in seconds** (e.g. `{"id": 144258,
+    "title": "Sidewalk repair and construction assessments",
+    "timeInSeconds": "298"}`). That's better agenda-timestamp data than
+    Legistar/CivicPlus/most-Granicus-cities give us today, where agenda
+    items mostly have no real per-item start time at all. Video itself
+    would delegate to `YouTubeAssetFinder` (same wrapper shape as
+    PrimeGov — see the item above about keeping the *original* LIMS URL
+    as `source_url` rather than the delegated YouTube one).
+  - **The real blocker**: confirmed both the page itself and that JSON
+    endpoint return a genuine Cloudflare "Just a moment…" JS challenge
+    (403) to a plain `curl`/aiohttp-style request — realistic
+    User-Agent/headers alone don't get through, unlike Granicus's
+    simpler 403 (a plain missing-Referer check, already worked around).
+    A real JS-executing browser (tested via this session's own Browser
+    tool) passes it fine. Every adapter in this repo today is a plain
+    `aiohttp.ClientSession.get()` — none needs a JS-capable fetch.
+    Building this adapter for real would mean either adding a
+    headless-browser dependency (Playwright, etc. — a genuinely new kind
+    of dependency for this repo, more invasive than yt-dlp's "under
+    active maintenance" caveat since it needs a real browser binary, not
+    just a Python package) or some other Cloudflare-bypass approach —
+    worth deciding deliberately before building, not a default "just add
+    the parsing code" case like most new-platform work has been so far.
+  - Not yet checked: whether "LIMS" is a white-labeled product used by
+    other cities under different domains (would matter for whether a
+    general detection rule is worth building at all, vs. this being a
+    Minneapolis-specific one-off) — no search attempted yet, per this
+    repo's own convention of building from real found examples rather
+    than speculation.
 - **eScribe, PrimeGov, and YouTube adapters have zero test coverage.**
   Granicus/Legistar/CivicPlus/CivicClerk/CA Legislature/Swagit all have
   real fixture-backed tests (`tests/`, 84 as of 2026-08-08 — see
