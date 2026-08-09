@@ -35,6 +35,18 @@ body {
   line-height: 1.2;
   border: 2px solid #a84b00;
 }
+/* Narrow enough that the full-size wordmark plus the navbar-toggler
+   hamburger no longer fit on one line -- confirmed live at 375px width,
+   where the label alone (312px) left the toggler (56px) no room and
+   wrapped to a second row. Smaller font/padding/letter-spacing only
+   below this width; unchanged everywhere wider, including tablet. */
+@media (max-width: 576px) {
+  .navbar-brand .dymo-label {
+    padding: 0.2em 0.6em 0.16em 0.6em;
+    font-size: 0.92rem;
+    letter-spacing: 0.05em;
+  }
+}
 
 /* Manila-folder-tab style divider between nav links -- reuses the same
    cream/amber pair as the .warnings pill so it reads as part of the same

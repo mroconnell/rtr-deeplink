@@ -1797,3 +1797,23 @@ changelog of task titles.
   separate calendar-picker list is unaffected. Full suite green (128
   tests, no test changes needed — this was a pure CSS/template layout
   pass on already-tested data).
+
+- **[Done 2026-08-08] The "Red Tape Recordings" dymo-label wordmark no
+  longer forces the navbar hamburger onto a second line on mobile.**
+  Confirmed live at 375px width (a real iPhone-class viewport): the
+  full-size label alone measured 312px wide, leaving the 56px toggler no
+  room in the 351px available (375px viewport minus the navbar
+  container's own padding) — it wrapped to its own row below the
+  wordmark. Added the codebase's first `@media` query (none existed in
+  either stylesheet before this) to both `app/static/style.css` and
+  `archive/static/style.css` (kept in sync manually, per that file's own
+  header comment): below 576px, `.navbar-brand .dymo-label` gets a
+  smaller font-size/padding/letter-spacing, scoped to the navbar
+  wordmark specifically so the desktop-size `.dymo-label` used for the
+  `/subscribe` page's larger heading elsewhere is unaffected. Verified
+  live in-browser at both 375px (label now 203px, ~91px of real margin
+  before the toggler, confirmed via `getBoundingClientRect()` that both
+  elements' vertical ranges genuinely overlap on one row, not just
+  visually close) and desktop width (font-size unchanged at 19.52px,
+  confirming the media query doesn't affect wider viewports). Full suite
+  green (128 tests, unaffected — pure CSS change).
