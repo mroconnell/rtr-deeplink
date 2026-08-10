@@ -366,6 +366,30 @@ re-pushing an unchanged meeting doesn't pile up duplicate versions). Both
 calls above — a down/misconfigured Archive degrades silently, never breaks
 `/api/resolve`.
 
+**Checking the Archive's real production schema**: `GET /internal/schema-info`
+(token-gated the same way as every other `/internal/*` route — a bearer
+token matching `ARCHIVE_INGEST_TOKEN`, 404 rather than 401/403 on a
+missing/wrong token) reflects the *actual* live columns on every table via
+SQLAlchemy's `Inspector` against a real connection, next to what
+`archive/db/models.py`'s `Base.metadata` currently expects, and reports
+any mismatch directly (`mismatched_tables`, `schema_matches_models`) —
+plus whatever `alembic_version` currently says, as context only, not as
+the source of truth. Exists specifically so confirming production's real
+schema state doesn't require someone with `DATABASE_URL` access to run
+`psql`/`alembic` commands by hand and paste the output back — added
+2026-08-10 after a stale doc's account of "production has never been
+stamped" turned out to be wrong and caused a real (contained) Alembic
+mistake; see `archive/alembic/README.md` and `BACKLOG_DONE.md` for that
+incident. Note this hits the Archive service's own base URL directly
+(the same one `ARCHIVE_BASE_URL` points at) — `/internal/*` is
+deliberately not one of the paths `redtaperecordings.com` proxies
+through (only `/m/*` and `/archive-static/*` are, see "Domain" above),
+so it isn't reachable at the public custom domain. Example:
+
+```bash
+curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" "$ARCHIVE_BASE_URL/internal/schema-info"
+```
+
 **Redirect hits are logged too** — `status="archive_redirect"` — so
 `/admin/stats`' totals don't develop a blind spot as more traffic migrates
 to Archive-redirects over time; `classify_outcome()` in `app/db/outcomes.py`

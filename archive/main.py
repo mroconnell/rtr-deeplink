@@ -73,6 +73,61 @@ async def health():
     return {"status": "ok"}
 
 
+@app.get("/internal/schema-info")
+async def internal_schema_info(authorization: Optional[str] = Header(None)):
+    """Read-only DB introspection, so confirming production's real schema
+    state doesn't require someone with DATABASE_URL access to run psql/
+    alembic commands and paste output back by hand -- see BACKLOG_DONE.md's
+    2026-08-10 Alembic incident, where trusting a doc's stale account of
+    "what production's state is" instead of checking it directly caused a
+    real (contained) mistake.
+
+    Compares actual reflected columns (via SQLAlchemy's Inspector against
+    a live connection -- the real, current truth) against what
+    `archive/db/models.py`'s `Base.metadata` currently expects. That
+    comparison is the signal that actually matters here -- whether
+    they match -- independent of whatever `alembic_version`'s own
+    bookkeeping row claims, which is exactly the value that went stale
+    and caused the incident above. `alembic_version` is still reported
+    too (useful context), just not treated as ground truth on its own.
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    from sqlalchemy import inspect as sa_inspect, text
+
+    from .db.engine import engine
+    from .db.models import Base
+
+    async with engine.connect() as conn:
+        actual_columns = await conn.run_sync(
+            lambda sync_conn: {
+                table_name: sorted(col["name"] for col in sa_inspect(sync_conn).get_columns(table_name))
+                for table_name in sa_inspect(sync_conn).get_table_names()
+            }
+        )
+        alembic_version = None
+        if "alembic_version" in actual_columns:
+            result = await conn.execute(text("SELECT version_num FROM alembic_version"))
+            row = result.first()
+            alembic_version = row[0] if row else None
+
+    expected_columns = {
+        table.name: sorted(col.name for col in table.columns) for table in Base.metadata.sorted_tables
+    }
+    mismatched_tables = [
+        name for name, cols in expected_columns.items() if actual_columns.get(name) != cols
+    ]
+
+    return {
+        "alembic_version": alembic_version,
+        "expected_columns": expected_columns,
+        "actual_columns": actual_columns,
+        "mismatched_tables": mismatched_tables,
+        "schema_matches_models": not mismatched_tables,
+    }
+
+
 @app.get("/internal/lookup")
 async def internal_lookup(normalized_url: str, authorization: Optional[str] = Header(None)):
     # 404, not 401/403 -- this is a private endpoint, its existence
