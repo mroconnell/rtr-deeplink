@@ -138,12 +138,23 @@ async def _send(to: str, subject: str, html: str) -> bool:
     # on remembering to add it correctly at each new email built later.
     html = html + _unsubscribe_footer_html(to)
 
+    payload = {"from": from_address, "to": [to], "subject": subject, "html": html}
+    # RESEND_FROM_ADDRESS lives on ally.redtaperecordings.com, a subdomain
+    # dedicated to Resend's own sending DNS (SPF/DKIM/bounce MX) -- it has
+    # no real inbox behind it. reply_to points replies at the root domain
+    # instead, which Namecheap's free forwarding *can* manage cleanly
+    # (unlike the ally subdomain, whose existing Resend MX record blocks
+    # Namecheap's forwarding wizard -- see BACKLOG_DONE.md).
+    reply_to = os.environ.get("RESEND_REPLY_TO_ADDRESS", "")
+    if reply_to:
+        payload["reply_to"] = reply_to
+
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(
                 "https://api.resend.com/emails",
                 headers=_headers(),
-                json={"from": from_address, "to": [to], "subject": subject, "html": html},
+                json=payload,
                 timeout=_TIMEOUT,
             ) as response:
                 if response.status < 300:

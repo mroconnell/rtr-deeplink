@@ -80,12 +80,64 @@ changelog of task titles.
   `ally.redtaperecordings.com` has any MX record today, and that the
   domain's nameservers are Namecheap's default
   (`dns1/dns2.registrar-servers.com`) — matching the user's own
-  "not sure, I think it's just resend" read when asked. See BACKLOG.md's
-  "Email deliverability" section for the remaining action items this
-  surfaced that only the user can complete (the matching Render
-  dashboard env var change on both `rtr-deeplink-archive` and
-  `rtr-transcription-worker`, since that var is `sync: false`; and
-  setting up real mail forwarding via Namecheap for the new address).
+  "not sure, I think it's just resend" read when asked.
+
+  Follow-up the same day: the user asked directly who a reply to a
+  Resend email would reach, and asked for it to forward to
+  `ryan@how-to-adu.com`. `ally.redtaperecordings.com` itself turned out
+  to have no MX of its own — the only MX in that zone was on
+  `send.ally.redtaperecordings.com` (`feedback-smtp.us-east-1.amazonses.com`),
+  Resend's own SES bounce-handling record, unrelated to receiving real
+  mail. That record is what made Namecheap's simplified "Redirect Email"
+  widget report "Your domain is using other email service" when the
+  user first tried it directly on `ally` — a false positive from a
+  record one host down, not a real conflict, but confirmed live that
+  Namecheap's wizard doesn't distinguish. Switching Namecheap's
+  domain-wide "Mail Settings" dropdown to "Email Forwarding" was also
+  ruled out live: the preview after switching showed only a bare SPF TXT
+  record and no MX at all, meaning `send.ally`'s existing MX had already
+  dropped out of view pre-save — too risky to save blind given it could
+  have deleted Resend's real bounce-handling record for the whole zone,
+  not just added forwarding.
+
+  Landed on two changes instead, both confirmed working live, not just
+  in theory:
+  1. **Code**: `_send()` (`archive/utils/email.py`) now sends a
+     `reply_to` field (confirmed via Resend's own API docs that this is
+     a real supported field, string or array) read from a new
+     `RESEND_REPLY_TO_ADDRESS` env var, independent of
+     `RESEND_FROM_ADDRESS`. Lets the visible From stay on `ally` (the
+     subdomain Resend has actually verified for sending — its DNS was
+     never touched) while replies route to the root domain instead. 2
+     new tests (`tests/test_email_unsubscribe.py`) confirm `reply_to` is
+     included when configured and omitted when not. Added to both
+     `.env.example` files and `render.yaml` (`sync: false`, matching
+     `RESEND_FROM_ADDRESS`'s existing pattern) for both
+     `rtr-deeplink-archive` and `rtr-transcription-worker`.
+  2. **DNS**: rather than Namecheap's own forwarding wizard, set up free
+     forwarding via **ImprovMX** instead — a decoupled service that only
+     needs 2 MX records + 1 SPF TXT record added manually (while staying
+     in Namecheap's "Custom MX" mode the whole time), so the existing
+     `send.ally` MX record was never at risk. Records added at host `@`
+     on `redtaperecordings.com`: `MX mx1.improvmx.com` (priority 10),
+     `MX mx2.improvmx.com` (priority 20), `TXT "v=spf1
+     include:spf.improvmx.com -all"`. Discovered mid-setup that
+     Namecheap splits Advanced DNS into two separate sections — MX
+     records go under "Mail Settings" (grayed out for other types while
+     Custom MX is selected), while the TXT record needed the separate
+     general-purpose "Host Records" section instead. `ryan@redtaperecordings.com`
+     → `ryan@how-to-adu.com` set up as an alias in ImprovMX (plus a
+     wildcard catch-all ImprovMX created by default). Verified twice,
+     independently: once in ImprovMX's own dashboard (all three DNS
+     checks green/"Active"), and again directly via `dig MX`/`dig TXT
+     redtaperecordings.com` from this session, confirming the exact
+     records live in real DNS, not just ImprovMX's cached view of them.
+
+  Remaining action is user-only and Render-dashboard-only now — see
+  BACKLOG.md's "Email deliverability" section for the two env vars
+  still needing to be set there (`RESEND_FROM_ADDRESS`,
+  `RESEND_REPLY_TO_ADDRESS`), both already correct locally and already
+  DNS-verified.
 
 ## Bugs
 

@@ -83,6 +83,8 @@ services:
         sync: false
       - key: RESEND_FROM_ADDRESS
         sync: false
+      - key: RESEND_REPLY_TO_ADDRESS
+        sync: false
 
   # On-demand transcription's background processor (see worker/main.py's
   # module docstring for why this reaches into archive/db directly rather
@@ -112,6 +114,8 @@ services:
       - key: RESEND_AUDIENCE_ID
         sync: false
       - key: RESEND_FROM_ADDRESS
+        sync: false
+      - key: RESEND_REPLY_TO_ADDRESS
         sync: false
       - key: HF_TOKEN
         sync: false  # optional -- unauthenticated Hugging Face Hub requests work fine today, just at a lower rate limit; see BACKLOG.md

@@ -100,39 +100,24 @@ anything) to build against it.
 
 Prompted by the user asking for an unsubscribe link on all Resend emails,
 and separately asking to stop sending from `noreply@` per Resend's own
-deliverability guidance. Both landed in code (see BACKLOG_DONE.md for the
-full build/verification); what's left below is action only the user can
-take — Render env vars and DNS aren't reachable from here.
+deliverability guidance. Everything is built, tested, and DNS-verified
+(see BACKLOG_DONE.md for the full build). **One step left, user-only: two
+Render dashboard env var changes** (both `sync: false` in `render.yaml`,
+so the real values only live in Render's dashboard and can't be set from
+here) — on both `rtr-deeplink-archive` and `rtr-transcription-worker`:
 
-- **Unsubscribe footer + `/unsubscribe` route: fully built, tested (12 new
-  tests), and verified live against the real Resend API** — no action
-  needed. One side effect worth knowing about: live-verifying the route
-  made a real POST that added `ryan@example.com` (a fake test address,
-  not a real subscriber) to the real production Resend audience as
-  unsubscribed. Harmless, but worth knowing it's in there if the audience
-  list is ever manually reviewed.
-- **`RESEND_FROM_ADDRESS` changed locally (`.env`) from
-  `noreply@ally.redtaperecordings.com` to `ryan@ally.redtaperecordings.com`,
-  per Resend's guidance against `noreply@` addresses. Still needs the same
-  change made in Render's dashboard for both `rtr-deeplink-archive` and
-  `rtr-transcription-worker` services** — that env var is `sync: false`
-  in `render.yaml`, meaning the real value only lives in Render's
-  dashboard and can't be changed from here. New value:
-  `Ryan <ryan@ally.redtaperecordings.com>`.
-- **"Set up that email address" (make `ryan@ally.redtaperecordings.com` a
-  real receiving mailbox) — not yet done, needs the user's own DNS
-  access.** Confirmed via a real DNS lookup: no MX records exist on
-  either `redtaperecordings.com` or `ally.redtaperecordings.com` today
-  (matches the user's own read — "not sure, I think it's just resend").
-  The nameservers (`dns1/dns2.registrar-servers.com`) are Namecheap's
-  default, so the domain is very likely registered there. **User
-  confirmed the destination: forward to `ryan@how-to-adu.com`.**
-  Recommended path: Namecheap's free "Redirect Email" forwarding
-  (Advanced DNS tab for the domain) pointing
-  `ryan@ally.redtaperecordings.com` → `ryan@how-to-adu.com` — no new
-  mailbox needed, and it won't touch Resend's existing sending DNS
-  records (SPF/DKIM) for that subdomain. Needs the user's own Namecheap
-  access to set up; I can't reach their registrar/DNS panel directly.
+```
+RESEND_FROM_ADDRESS=Ryan <ryan@ally.redtaperecordings.com>
+RESEND_REPLY_TO_ADDRESS=ryan@redtaperecordings.com
+```
+
+Both already set correctly in local `.env`, already live in the
+codebase's `.env.example` files, and already DNS-verified end-to-end
+(confirmed live via `dig`: `redtaperecordings.com` now has real MX/SPF
+records for ImprovMX, which is actively forwarding
+`ryan@redtaperecordings.com` → `ryan@how-to-adu.com`, verified both in
+ImprovMX's own dashboard and independently via `dig`). Nothing else is
+needed once these two Render vars are set.
 
 ## Bugs
 
