@@ -73,9 +73,11 @@ where relevant.
   - **Whisper fallback for YouTube videos with no captions at all**
     (analysis option 8): extend the same local script to yt-dlp the
     *audio* (works from residential IPs) for queue entries whose
-    caption fetch finds nothing, then feed the existing transcription
-    pipeline. Not built — needs a decision on where the audio goes
-    (local faster-whisper vs. uploading to the worker).
+    caption fetch finds nothing, then feed local `faster-whisper` directly
+    — **decided 2026-08-10: local, not the worker**, and deliberately
+    **lower priority than everything else** in this backlog (most YouTube
+    videos already have real captions; this only covers the rarer
+    no-captions case). Not yet built.
   - **Human/source-side option (analysis option 9), user-side**: for
     big cities, ask the clerk for the caption file directly, or
     manually export from YouTube Studio-visible sources — the user is
@@ -368,13 +370,64 @@ resolver — see [BACKLOG_DONE.md](BACKLOG_DONE.md) for the full reasoning.
 The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 `app/db/crud.py` plus `archive_client.lookup()`/`.push()`.
 
-- **Accounts + token billing** — needed for paid features (already alluded
-  to in adapter warning messages) and as a prerequisite for email alerts
-  below. Not sized in detail yet. On-demand transcription (built
-  2026-08-08, see [BACKLOG_DONE.md](BACKLOG_DONE.md)) deliberately doesn't
-  wait on this — it uses the same lightweight, email-only, confirm-once
-  pattern as the "Lightweight jurisdiction follow" idea in
-  `CLAUDE_BACKLOG.md`, not real accounts.
+- **Accounts + token billing — scoping started 2026-08-10, per the
+  user's explicit go-ahead ("start scoping," not "start building").**
+  Needed for paid features (already alluded to in adapter warning
+  messages) and as a prerequisite for email alerts below. Real design
+  below, not a placeholder — but nothing here is built yet, and none of
+  it should be started without a further explicit go-ahead per section.
+
+  **Proposed auth mechanism: passwordless, email-only — not round 1's
+  Google OAuth/JWT.** `archive/utils/email.py` already has a working,
+  live-verified confirm-by-email pattern (`send_confirmation_email()` +
+  `TranscriptionJob.confirmation_token`, built for on-demand
+  transcription) — accounts should extend this exact mechanism (a magic
+  link, one-time token, no password ever stored) rather than
+  introducing a second, heavier auth system. Matches `CLAUDE.md`'s own
+  framing of round 1's real mistake: building full auth/accounts before
+  validating the core feature, not that accounts themselves were wrong
+  — the fix isn't "build auth more carefully," it's "build the smallest
+  auth that actually works," and this app already has proof that
+  pattern works (Resend audience-membership skip-confirmation is
+  already live and confirmed working end-to-end). Session: a signed,
+  httponly cookie holding an opaque session id checked against a new
+  `AccountSession` row — no JWT needed, since this is one service
+  issuing and checking its own sessions, not a distributed multi-service
+  handoff.
+
+  **Proposed data model** (new tables in `archive/db/models.py`, via a
+  real Alembic migration — this table doesn't exist yet, so it's a new
+  table + `create_all()` is enough for the table itself, but see the
+  `app/db` Alembic item above for why *this* repo now takes schema
+  tooling seriously everywhere, not just where it's already been
+  proven necessary): `Account` (email, created_at, no password column
+  at all), `AccountSession` (session id, account id, expires_at),
+  `SavedSearch` (account id, query params matching `/meetings`' own
+  filter shape, created_at) for the email-alerts feature below.
+
+  **Proposed phased plan, deliberately not one big build:**
+  1. Passwordless accounts (magic link, session cookie) + saved
+     searches — no billing yet, could ship as a free feature. Unlocks
+     email alerts (below) on its own.
+  2. Batch lookup, gated by account (rate-limited per-account instead
+     of fully anonymous) — still no payment required, just removes the
+     anonymous-abuse-vector concern the batch-lookup item below already
+     flags.
+  3. Billing (Stripe is the obvious default — standard, well-documented
+     webhook/subscription model) layered on only once there's a real
+     paid tier to sell against — e.g. unlimited batch lookups, higher
+     alert frequency, priority transcription queue position (the
+     existing `TranscriptionJob.priority` column already supports a
+     higher tier with zero schema change, per its own docstring).
+
+  **Real open questions, not decided yet — need the user's call before
+  building past phase 1:** what's actually free vs. paid (the phased
+  plan above is a sequencing proposal, not a pricing decision); whether
+  "token billing" specifically means a metered credit system (buy N
+  tokens, spend on transcriptions/batch lookups) vs. flat subscription
+  tiers, or both; whether Stripe is the intended/preferred provider or
+  just this write-up's default assumption; free tier size for saved
+  searches/alerts before hitting a paywall.
 - **Email alerts for saved searches — confirmed 2026-08-09 as the most
   concrete "worth paying for" feature identified so far.** Depends on
   accounts and search both existing first (search already live; accounts
@@ -385,8 +438,13 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   time. Also directly benefits from the crawler re-prioritization below
   (more corpus = more useful alerts).
 - **Proactive transcription crawler — re-prioritized 2026-08-09 to
-  precede accounts/billing, not just "noted now because it may affect
-  the Archive's architecture."** Cross-archive keyword search on
+  precede accounts/billing, then explicitly held back again 2026-08-10
+  ("not yet — keep prioritizing bugs/gaps").** The reasoning below for
+  *why* it matters still stands; the decision is about sequencing, not
+  value — real reliability work (Alembic gaps, the Archive schema items
+  above, Viebit) still takes priority over a bigger, more speculative
+  build right now. Revisit once that work settles down. Cross-archive
+  keyword search on
   `/meetings` is already live (built 2026-08-08), and its value is
   directly proportional to corpus size — a national-beat journalist
   searching "Flock" only gets real value once enough jurisdictions have
