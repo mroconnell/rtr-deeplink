@@ -98,21 +98,6 @@ anything) to build against it.
 
 ## Bugs
 
-- **`app/db/alembic/` is built and verified locally (2026-08-10), but
-  production still needs the one-time `stamp` step before it's real
-  there too.** See BACKLOG_DONE.md for the full build. `alembic>=1.13`
-  added to the root `requirements.txt` (the resolver's own deploy never
-  had it — only `archive/requirements.txt` did). One command left, from
-  the `rtr-deeplink` (resolver) service's Render Shell — bookkeeping
-  only, no DDL, since production's schema already matches this baseline
-  exactly (confirmed via the earlier manual `ALTER TABLE` fix):
-  ```bash
-  cd app
-  alembic current   # confirm it prints nothing first, per app/alembic/README.md
-  alembic stamp ee8f7ff76fb3
-  alembic current   # confirm it now shows ee8f7ff76fb3 (head)
-  ```
-
 - **`MeetingPage` has no `video_warnings`/`agenda_warnings`/`agenda_link`
   columns, so the Archive can't store or render the resolver's real,
   specific per-meeting messages for those cases — a generic static

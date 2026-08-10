@@ -8,7 +8,7 @@ changelog of task titles.
 
 ## Bugs
 
-- **[Done 2026-08-10, local verification complete] Built `app/alembic/`,
+- **[Done 2026-08-10, confirmed in production] Built `app/alembic/`,
   mirroring `archive/alembic/`'s existing structure and conventions
   exactly, closing the gap that caused the same day's earlier
   `/admin/stats` production incident.** `env.py`/`script.py.mako` are
@@ -43,13 +43,19 @@ changelog of task titles.
   machine's copy; a fresh clone starts from a genuinely empty `dev.db`
   via `create_all()`, which needs no migration at all.
 
-  **`app/alembic/README.md`'s one-time production-adoption section is
-  written but not yet executed** — unlike `archive/alembic`'s original
-  adoption (which needed a real `stamp` + `upgrade` because production
-  was missing a whole table), this one only ever needs `stamp`, since
-  production's schema already matches this baseline exactly (fixed by
-  hand earlier the same day). Left as a live `BACKLOG.md` item with the
-  exact command rather than executed blind — matches this repo's
+  **Production adoption completed the same day**, via the user's own
+  Render Shell run of `app/alembic/README.md`'s documented sequence:
+  `alembic current` printed nothing first (confirming the expected
+  "schema correct, bookkeeping never started" state, not assumed),
+  then `alembic stamp ee8f7ff76fb3` — bookkeeping-only, no DDL, since
+  production's schema already matched this baseline exactly (fixed by
+  hand earlier the same day) — brought it to `ee8f7ff76fb3 (head)`.
+  Independently re-confirmed via `GET /admin/stats` against real
+  production immediately after: `pending_archive_pushes: 0`, no error,
+  same clean state as before the stamp. Unlike `archive/alembic`'s
+  original adoption (which needed a real `stamp` + `upgrade` because
+  production was genuinely missing a whole table), this one only ever
+  needed the bookkeeping-only `stamp` — matches this repo's
   now-twice-learned lesson (Archive's own Alembic incident, then this
   same day's `app/db` one) to verify real current state before trusting
   any account of it, including this one.
