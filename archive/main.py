@@ -9,11 +9,13 @@ from urllib.parse import quote
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Header, Request
+from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from markupsafe import Markup
 from pydantic import BaseModel
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .db import crud
 from .db.engine import init_models
@@ -56,6 +58,20 @@ templates.env.globals["public_base_url"] = os.environ.get("PUBLIC_BASE_URL", "")
 # would otherwise silently re-escape real markup this filter already
 # produced correctly).
 templates.env.filters["warnings_html"] = lambda warnings: Markup(render_warnings_html(warnings or []))
+
+
+@app.exception_handler(StarletteHTTPException)
+async def not_found_handler(request: Request, exc: StarletteHTTPException):
+    # Only genuinely unmatched routes raise this -- every 404 this app
+    # returns deliberately (API/internal endpoints, and /m/{slug}'s own
+    # explicit not_found.html render below) is a plain response, not a
+    # raised HTTPException, so this never intercepts those. A real signal
+    # for broken inbound links (old bookmarks, stale references from other
+    # sites) that was previously invisible.
+    if exc.status_code == 404:
+        logger.warning("404: %s (referer=%s)", request.url.path, request.headers.get("referer", ""))
+        return templates.TemplateResponse(request, "not_found.html", {}, status_code=404)
+    return await http_exception_handler(request, exc)
 
 
 def _parse_optional_bool(value: Optional[str]) -> Optional[bool]:
@@ -338,6 +354,7 @@ def _pick_active_version(page: dict, version: Optional[int]) -> Optional[dict]:
 async def meeting_page(request: Request, slug: str, version: Optional[int] = None):
     page = await crud.get_page_by_slug(slug)
     if page is None:
+        logger.warning("404: /m/%s (referer=%s)", slug, request.headers.get("referer", ""))
         return templates.TemplateResponse(request, "not_found.html", {}, status_code=404)
 
     active_version = _pick_active_version(page, version)

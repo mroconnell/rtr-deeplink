@@ -1,8 +1,18 @@
+# This is a Render Blueprint -- Render treats it as the source of truth
+# and reconciles every service (including its `plan:`) to match this file
+# on every Blueprint sync, which fires automatically on every push to
+# `main`. Confirmed live 2026-08-10: the user manually upgraded
+# rtr-deeplink/rtr-deeplink-archive to a paid plan from Render's
+# dashboard, and a later push silently reverted both back to `free` --
+# not a Render bug, just this file being out of date with a decision made
+# outside it. Keep every `plan:` below in sync with whatever's actually
+# been decided (in chat or in Render's dashboard) -- a plan change made
+# only in the dashboard WILL get silently undone by the next push.
 services:
   - type: web
     name: rtr-deeplink
     runtime: python
-    plan: free
+    plan: starter
     # Real incident, 2026-08-09, two real failures in sequence, not one:
     # (1) the ORIGINAL `playwright install --with-deps chromium` build
     # step left a real user seeing `BrowserType.launch: Executable
@@ -62,9 +72,11 @@ services:
   - type: web
     name: rtr-deeplink-archive
     runtime: python
-    plan: free  # upgrade before /m/* links are publicly shared/indexed --
-                # free services spin down after 15min idle (~30-60s cold
-                # start), which is a real risk to crawl/index health here.
+    plan: starter  # was free -- upgraded 2026-08-10 (see the top-of-file
+                   # note on keeping this synced with real decisions).
+                   # Free services spin down after 15min idle (~30-60s
+                   # cold start), a real risk to crawl/index health for
+                   # these public, potentially-indexed /m/* pages.
     buildCommand: pip install -r archive/requirements.txt
     startCommand: uvicorn archive.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health

@@ -13,9 +13,11 @@ from typing import Optional
 import aiohttp
 from dotenv import load_dotenv
 from fastapi import BackgroundTasks, FastAPI, Request, Response
+from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from pydantic import BaseModel
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -85,6 +87,19 @@ app.mount("/static", StaticFiles(directory=APP_DIR / "static"), name="static")
 app.mount("/shared-static", StaticFiles(directory=APP_DIR.parent / "shared_static"), name="shared_static")
 templates = Jinja2Templates(directory=APP_DIR / "templates")
 templates.env.globals["GA_MEASUREMENT_ID"] = os.environ.get("GA_MEASUREMENT_ID", "")
+
+
+@app.exception_handler(StarletteHTTPException)
+async def not_found_handler(request: Request, exc: StarletteHTTPException):
+    # Only genuinely unmatched routes raise this -- every 404 this app
+    # returns deliberately (API/internal endpoints) is a plain JSONResponse,
+    # not a raised HTTPException, so this never intercepts those. A real
+    # signal for broken inbound links (old bookmarks, stale references from
+    # other sites) that was previously invisible.
+    if exc.status_code == 404:
+        logger.warning("404: %s (referer=%s)", request.url.path, request.headers.get("referer", ""))
+        return templates.TemplateResponse(request, "not_found.html", {}, status_code=404)
+    return await http_exception_handler(request, exc)
 
 register_all_finders()
 

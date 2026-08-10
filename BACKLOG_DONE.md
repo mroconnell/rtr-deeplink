@@ -6,6 +6,50 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Site polish
+
+- **[Done 2026-08-10] Built a branded 404 page on both services, plus
+  logging when one is hit — the "custom 404 / not-found page, plus an
+  error log when it gets hit" ask.** Confirmed neither service had one
+  before: every unmatched route fell through to FastAPI's default
+  plain-JSON 404, and the one existing branded case (Archive's
+  `/m/{slug}` for an unknown meeting page, already using its own
+  `not_found.html`) logged nothing.
+
+  Registered a `StarletteHTTPException` handler on both `app/main.py`
+  and `archive/main.py` (`not_found_handler`) that intercepts only
+  genuinely unmatched routes — confirmed via `grep` that neither service
+  ever explicitly `raise`s `HTTPException`, so every existing deliberate
+  404 (API/internal endpoints) is a plain `JSONResponse` return, not a
+  raised exception, and never reaches this handler; verified this
+  directly with a test hitting `/admin/stats` with no token (a real,
+  network-free JSON-404 example) and confirming it stays JSON, not the
+  new HTML page. For a real 404, both services now log
+  `logger.warning("404: %s (referer=%s)", ...)` (the referer is exactly
+  the "old bookmark / stale external link" signal that was invisible
+  before) and render a matching `not_found.html` — reused the Archive's
+  existing template as-is, added a new equivalent for the resolver
+  (`app/templates/not_found.html`, linking back to `/`, the resolver's
+  actual primary action). Also added the same logging to the Archive's
+  existing `/m/{slug}` not-found path, previously silent.
+
+  5 new tests (`tests/test_404_handling.py`): branded-page rendering on
+  both services, the warning log firing with the right path/referer,
+  the existing API-404 JSON path staying unaffected, and the Archive's
+  `/m/{slug}` case now logging too. Full suite: 326 passed (321 + 5 new).
+  Live-verified in-browser against local dev servers (resolver proxying
+  to a real local Archive instance, matching production's reverse-proxy
+  shape): a genuinely unmatched resolver path, a bad `/m/{slug}` proxied
+  through to the Archive's own page, and a real valid `/m/{slug}` (to
+  confirm the happy path wasn't accidentally caught by the new handler)
+  — all three rendered exactly as expected, and both dev server logs
+  showed the new warning line firing (including, as a bonus real-world
+  confirmation, a genuine browser-requested `/favicon.ico` correctly
+  triggering the resolver's handler too).
+
+  Sitemap and the site footer (the other two "site polish" asks from the
+  same message) are still open — see BACKLOG.md.
+
 ## Email deliverability
 
 - **[Done 2026-08-10, verified live against the real Resend API] Built a
@@ -150,6 +194,82 @@ changelog of task titles.
   (not urgent) — Render only applies env var changes on the next
   deploy/restart, so the old `noreply@` value is still what's actually
   in use by the Archive/worker processes until that happens next.
+
+## Incidents
+
+- **[Resolved 2026-08-10] Live production outage: `/meetings` 500ing on
+  both services, caused by the pending `video_warnings`/`agenda_link`
+  migration (see "Bugs" below) never having been applied — no longer
+  hypothetical once a fresh Archive deploy actually ran the code
+  expecting those columns.** Reported directly by the user ("our
+  /meetings page is currently not loading"). Confirmed root cause before
+  touching anything: `curl`ing the Archive service directly (not through
+  the resolver's proxy) also 500'd while `/api/health` stayed fine,
+  isolating it to `MeetingPage` queries specifically;
+  `archive/db/models.py` confirmed to declare `video_warnings`/
+  `agenda_link` as real ORM-mapped columns (added in `fb9ae9e`, before
+  this session's current thread) — any query against that model,
+  including `list_pages()` (which backs `/meetings`), was always going
+  to try selecting columns that didn't exist yet in the real production
+  table.
+
+  Real mistake caught mid-fix, no actual harm done: initially believed
+  local `.env`'s `DATABASE_URL` could be used to run the migration
+  directly against Archive's real production database (having real
+  production credentials sitting in a local, gitignored `.env` for
+  exactly this kind of local-dev-against-prod work is this repo's
+  established pattern) — but a direct query confirmed that database only
+  has `alembic_version`/`meeting_resolutions`/`problem_reports` (the
+  *resolver's* own `app/db` tables), no `meeting_pages` at all. The
+  resolver and Archive use two separate real production Postgres
+  instances, each with its own `DATABASE_URL` set independently in
+  Render's dashboard (`sync: false` in `render.yaml` for both) — local
+  `.env` only ever had the resolver's. Caught before any write was
+  attempted (only read-only `alembic current` and an
+  `information_schema` query were run against the wrong database) — an
+  initial hypothesis about the two services sharing one physical
+  database and clobbering each other's `alembic_version` tracking was
+  raised, then retracted once this was confirmed: they're genuinely
+  separate databases, so that specific risk doesn't actually exist.
+
+  Real fix: user ran the exact commands already drafted in BACKLOG.md
+  from the `rtr-deeplink-archive` service's own Render Shell (real
+  prod credentials, no separate URL needed) — `alembic current`
+  confirmed `8e7cf3b20f86` first, `alembic upgrade head` ran the real
+  `ALTER TABLE meeting_pages ADD COLUMN` DDL
+  (`8e7cf3b20f86 -> 76a4a2820a2b`), `alembic current` confirmed
+  `76a4a2820a2b (head)`. Verified independently, not just trusting the
+  Shell output: `curl`ed both `https://rtr-deeplink-archive.onrender.com/
+  meetings` and `https://redtaperecordings.com/meetings` directly,
+  confirmed 200 on both.
+
+- **[Resolved 2026-08-10] Root-caused a real, recurring problem the user
+  had separately noticed: Render service plans kept silently reverting
+  to `free` after being manually upgraded in Render's dashboard.**
+  `render.yaml` is a Render Blueprint, and Render reconciles every
+  Blueprint-managed service (including its `plan:`) to match this file
+  on every Blueprint sync — which fires automatically on every push to
+  `main` by default. `render.yaml` had `plan: free` hardcoded for both
+  `rtr-deeplink` and `rtr-deeplink-archive`
+  (`rtr-transcription-worker`'s `plan: standard` was already correct and
+  unaffected), so any manual dashboard upgrade survived only until the
+  next push — and this session alone had already pushed 5 commits by the
+  time this came up, meaning it had almost certainly been reverting
+  repeatedly and recently, not as a one-off. Not a Render bug — the file
+  genuinely was out of date with a decision that had only ever been made
+  in Render's dashboard, never reflected back into the repo.
+
+  Fixed by declaring the real intended plan (`starter`) for both
+  services directly in `render.yaml`, and added a top-of-file comment
+  explaining the Blueprint-sync mechanism and instructing that every
+  `plan:` (and, implicitly, anything else Blueprint-managed) needs to
+  stay in sync with decisions made in chat or the dashboard — a
+  dashboard-only change will keep getting silently undone otherwise.
+  User independently re-upgraded `rtr-deeplink-archive` in the dashboard
+  first in order to get Shell access to run the migration above (real
+  evidence that Render's Shell feature itself may require a paid plan,
+  not available on `free`) — the `render.yaml` fix here is what stops
+  that specific service from reverting again on the next push.
 
 ## Bugs
 

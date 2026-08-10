@@ -98,22 +98,6 @@ anything) to build against it.
 
 ## Bugs
 
-- **`video_warnings`/`agenda_link` support is built and verified locally
-  (2026-08-10), but production still needs the real migration applied.**
-  See BACKLOG_DONE.md for the full build. One command left, from the
-  `rtr-deeplink-archive` service's Render Shell:
-  ```bash
-  cd archive
-  alembic current   # confirm it prints 8e7cf3b20f86 (head) first, per archive/alembic/README.md
-  alembic upgrade head
-  alembic current   # confirm it now shows 76a4a2820a2b (head)
-  ```
-  This one runs real DDL (`ALTER TABLE meeting_pages ADD COLUMN ...`),
-  unlike the `app/db` Alembic adoption earlier the same day (see
-  BACKLOG_DONE.md) which only ever needed a bookkeeping-only `stamp` —
-  always re-check `alembic current`'s actual output first, not just
-  this note.
-
 - **YouTube-backed meetings' transcripts run through
   `scripts/fetch_youtube_transcripts.py` on a daily `launchd` schedule
   now (both shipped 2026-08-10, see BACKLOG_DONE.md) — real remaining
@@ -692,15 +676,6 @@ here.
   there before building — not yet clear which page(s) get a footer
   (resolver only? Archive too, given it already has its own
   `archive/static/style.css`?) or what the "other links" actually are.
-- **Custom 404 / not-found page, plus an error log when it gets hit.**
-  Today this is presumably FastAPI's default plain-JSON 404 on both
-  services — not yet confirmed which routes/services are missing a real
-  branded page. The "log when it gets hit" half is the more interesting
-  part: a real signal for broken inbound links (old bookmarks, other
-  sites linking to a since-renamed slug) that's currently invisible.
-  Worth deciding where that log surfaces (existing `/admin/stats`-style
-  reporting vs. just structured log lines) before building.
-
 ## On-demand transcription — real gaps left open
 
 Built 2026-08-08, see [BACKLOG_DONE.md](BACKLOG_DONE.md) for the full
