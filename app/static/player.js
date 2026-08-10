@@ -288,23 +288,6 @@ function setupTranscriptSearch() {
   nextBtn.addEventListener('click', () => goToMatch(searchMatchIndex + 1));
 }
 
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text || '';
-  return div.innerHTML;
-}
-
-// Warning messages are plain server-generated text, but some (e.g. a
-// Granicus agenda fallback link) include a bare URL meant to be
-// clickable -- escape first for safety, then linkify on the escaped
-// text so this never introduces raw HTML from warning content itself.
-function linkifyWarning(text) {
-  return escapeHtml(text).replace(
-    /(https?:\/\/[^\s<]+)/g,
-    '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
-  );
-}
-
 // Mirrors archive/utils/transcript_export.py's to_srt()/to_txt() -- this
 // page has no server-side persistence to download from (no accounts/DB is
 // the whole point of the resolver, per README), so export has to happen
@@ -397,7 +380,7 @@ function wireTranscribeForm() {
         checkStatusEl.textContent = '';
         emailStep.hidden = false;
       } else {
-        checkStatusEl.textContent = data.message || "We couldn't find a usable audio or video source for this meeting.";
+        checkStatusEl.innerHTML = linkifyWarning(data.message || "We couldn't find a usable audio or video source for this meeting.");
         checkStatusEl.className = 'transcribe-status error';
       }
     } catch (err) {

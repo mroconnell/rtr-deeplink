@@ -43,6 +43,27 @@ describe('buildYouTubePlayerVars', () => {
   });
 });
 
+describe('escapeHtml / linkifyWarning', () => {
+  test('escapes HTML metacharacters', () => {
+    const window = makeWindow('http://localhost/m/x');
+    assert.equal(window.escapeHtml('<script>alert(1)</script>'), '&lt;script&gt;alert(1)&lt;/script&gt;');
+  });
+
+  test('linkifies a bare URL into a real anchor', () => {
+    const window = makeWindow('http://localhost/m/x');
+    const result = window.linkifyWarning('Open it on YouTube: https://www.youtube.com/watch?v=YgAu_4xWvGU');
+    assert.ok(result.includes('<a href="https://www.youtube.com/watch?v=YgAu_4xWvGU"'));
+    assert.ok(result.includes('rel="noopener noreferrer"'));
+  });
+
+  test('escapes first, so message content can never inject raw HTML', () => {
+    const window = makeWindow('http://localhost/m/x');
+    const result = window.linkifyWarning('<img src=x onerror=alert(1)> https://example.gov/agenda');
+    assert.ok(!result.includes('<img'));
+    assert.ok(result.includes('<a href="https://example.gov/agenda"'));
+  });
+});
+
 describe('getDeepLinkLine', () => {
   test('accepts a bare segment index and normalizes to seg-N', () => {
     const window = makeWindow('http://localhost/m/x?line=42');

@@ -254,7 +254,7 @@ function wireTranscribeForm() {
         checkStatusEl.textContent = '';
         emailStep.hidden = false;
       } else {
-        checkStatusEl.textContent = data.message || "We couldn't find a usable audio or video source for this meeting.";
+        checkStatusEl.innerHTML = linkifyWarning(data.message || "We couldn't find a usable audio or video source for this meeting.");
         checkStatusEl.className = 'transcribe-status error';
       }
     } catch (err) {

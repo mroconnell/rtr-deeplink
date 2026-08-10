@@ -153,3 +153,27 @@ function applyDeepLink(video) {
   // leave playback at its default start rather than jumping to a possibly
   // wrong old index.
 }
+
+// Moved here from player.js (2026-08-10) -- meeting_page.js needed the same
+// safe-linkify behavior for /api/transcription/check-feasibility's message
+// (a real bug: a delegated-YouTube meeting's copy now includes a real
+// clickable watch-on-YouTube link, previously rendered as inert plain text
+// via .textContent), so this belongs here rather than being duplicated a
+// second time.
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text || '';
+  return div.innerHTML;
+}
+
+// Warning/status messages are plain server-generated text, but some (e.g. a
+// Granicus agenda fallback link, or the YouTube-delegated unreadable-media
+// message) include a bare URL meant to be clickable -- escape first for
+// safety, then linkify on the escaped text so this never introduces raw
+// HTML from message content itself.
+function linkifyWarning(text) {
+  return escapeHtml(text).replace(
+    /(https?:\/\/[^\s<]+)/g,
+    '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
+  );
+}

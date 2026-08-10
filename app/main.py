@@ -29,6 +29,7 @@ from .platforms.base import detect_platform, get_finder, CalendarPageError, Unsu
 from .platforms.headless_browser import warm_up as warm_up_headless_browser
 from .platforms.media_probe import is_plausible_meeting_duration, probe_duration
 from .platforms.models import ResolvedMeeting
+from .platforms.youtube import YouTubeAssetFinder
 from .utils.url_normalize import normalize_url
 
 load_dotenv()
@@ -410,6 +411,20 @@ _YOUTUBE_UNREADABLE_MEDIA_MESSAGE = (
     "the YouTube player above."
 )
 
+# For a platform that delegates to YouTube behind its own branded page (LIMS,
+# PrimeGov) -- same structural "can't read an iframe-embed page" cause as
+# above, but deliberately doesn't name YouTube as the visited site (see the
+# docstring below). Still tells the visitor exactly where the real video
+# lives, real clickable link included -- confirmed with the user this reads
+# as empowering rather than confusing, since the video player they're
+# already looking at genuinely is that same YouTube embed.
+_YOUTUBE_DELEGATED_UNREADABLE_MEDIA_MESSAGE_TEMPLATE = (
+    "This meeting's video is hosted through a service we can't pull audio from to transcribe "
+    "here — but you may still be able to turn on captions and jump to specific timestamps "
+    "directly in the video player above. You can open it directly on YouTube for more options "
+    "as well: {youtube_watch_url}"
+)
+
 
 def _unreadable_media_message(result: ResolvedMeeting, requested_platform: str) -> str:
     # video_url for a YouTube result is an iframe-embed page
@@ -429,6 +444,19 @@ def _unreadable_media_message(result: ResolvedMeeting, requested_platform: str) 
     # other branded identity and the video genuinely is youtube.com.
     if result.video_format == "youtube" and (requested_platform == "youtube" or result.best_effort):
         return _YOUTUBE_UNREADABLE_MEDIA_MESSAGE
+    # The delegated case (LIMS/PrimeGov) previously fell all the way
+    # through to the generic message below, which reads as "maybe
+    # transient, try again" -- wrong for a permanent, structural
+    # limitation. Real bug reported live 2026-08-10. video_id is always
+    # extractable here since video_url is always the youtube.com/embed/{id}
+    # shape this app itself builds (see youtube.py) whenever
+    # video_format == "youtube".
+    if result.video_format == "youtube":
+        video_id = YouTubeAssetFinder.extract_video_id(result.video_url or "")
+        if video_id:
+            return _YOUTUBE_DELEGATED_UNREADABLE_MEDIA_MESSAGE_TEMPLATE.format(
+                youtube_watch_url=f"https://www.youtube.com/watch?v={video_id}"
+            )
     return "We found a media source but couldn't read it -- it may be unavailable."
 
 
