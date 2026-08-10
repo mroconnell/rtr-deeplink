@@ -94,6 +94,7 @@ def parse_vtt(content: str) -> List[Dict[str, Any]]:
         cues.append(current_cue)
 
     normalize_shouting_caption(cues)
+    normalize_speaker_change_marker(cues)
     return cues
 
 
@@ -361,6 +362,25 @@ def _sentence_case(text: str) -> str:
     text = re.sub(r"(^|[.!?]\s+|\n)([a-z])", lambda m: m.group(1) + m.group(2).upper(), text)
     text = re.sub(r"\bi\b", "I", text)
     return text
+
+
+# YouTube's own raw auto-caption VTT source contains the literal 8-character
+# string "&gt;&gt;" as real cue text at the start of a new speaker's first
+# cue (confirmed live -- not an actual ">" character this app is
+# mis-escaping). HTML-escaping that literal text for safe display is
+# technically correct but renders as a raw entity artifact, so swap it for
+# a real, inert Unicode marker instead. Deliberately narrow: matches only
+# this exact literal prefix, not a general entity-decoding pass -- broadly
+# unescaping transcript text would be a real risk if a caption ever
+# legitimately contains "&" or literal angle-bracket text (e.g. someone
+# reading a web address aloud), which must reach the page as plain,
+# un-reinterpreted text.
+_SPEAKER_CHANGE_MARKER_RE = re.compile(r"^&gt;&gt;\s*")
+
+
+def normalize_speaker_change_marker(cues: List[Dict[str, Any]]) -> None:
+    for cue in cues:
+        cue["text"] = _SPEAKER_CHANGE_MARKER_RE.sub("» ", cue["text"])
 
 
 # Words genuinely fine at length <= 2 -- everything else that short (e.g.

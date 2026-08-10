@@ -133,49 +133,6 @@ where relevant.
 
 ## UX polish
 
-- **Some transcripts show a raw `&gt;&gt;` encoding artifact instead of a
-  clean speaker-change marker.** Confirmed root cause 2026-08-09, not a
-  bug in this app's own escaping: YouTube's own raw auto-caption VTT
-  source contains the *literal* 8-character string `&gt;&gt;` as real
-  cue text (not an actual `>` character that we're mis-escaping) —
-  confirmed by downloading the raw VTT for a real video directly (69
-  cues out of one ~43-minute meeting had it, always at the start of a
-  new speaker's first cue, e.g. `&gt;&gt; Welcome everyone. Today is
-  March the 3rd...`). This app's rendering is doing the technically
-  correct, safe thing with that literal text (escaping the `&` for safe
-  HTML output, which is why it displays as `&gt;&gt;` rather than either
-  `>>` or a raw unescaped `&` that could be a real security problem) —
-  the ugliness is a display/polish gap, not a correctness or security
-  bug, and the fix must stay narrowly scoped to avoid becoming one:
-  broadly HTML-unescaping *all* transcript text would be a real risk if
-  a caption ever legitimately contains an ampersand or literal
-  angle-bracket-like text spoken aloud (e.g. someone reading a web
-  address or discussing HTML markup in a meeting) — that content must
-  reach the page as plain, inert text, not get a second, unintended
-  round of interpretation.
-  - **Recommended narrow fix**: in `app/utils/vtt_parser.py`'s
-    `parse_vtt()` (or a small new post-processing pass alongside
-    `dedupe_rollup_cues()`/`normalize_shouting_caption()`), detect
-    specifically the literal substring `&gt;&gt;` at the start of a cue
-    (this exact shape, not a general entity-decoding pass) and either
-    strip it or replace it with a real, safe-to-render Unicode marker
-    (e.g. `»`, U+00BB — not an HTML metacharacter, so it can't
-    round-trip into another escaping issue) — genuinely preserves the
-    source's own "new speaker" signal rather than discarding real
-    information, without broadening what gets decoded. Also worth
-    considering whether this is the moment to finally populate the
-    already-unused `speaker` field (`TranscriptSegment.speaker`,
-    currently always `None` — see the diarization entry in
-    `CLAUDE_BACKLOG.md`) with a generic, un-named "new speaker" boundary
-    marker instead of/alongside a text symbol, though that's a bigger
-    scope than the display fix alone needs.
-  - **Not yet checked**: whether this same literal-entity pattern shows
-    up in any non-YouTube source (Granicus/CivicClerk/Swagit/eScribe VTT
-    or SRT files) — only confirmed against a real YouTube auto-caption
-    file so far. If it turns out to be YouTube-specific, the fix could
-    live in `youtube.py`'s own caption-handling instead of the shared
-    `vtt_parser.py`; if it shows up elsewhere too, the shared parser is
-    the right place. Check before deciding where to put the fix.
 - **Viebit/NYCC meetings resolve `jurisdiction` to "New York City
   Council" (a legislative body name), not "New York City, NY" (the
   city+state format most other platforms use, e.g. Swagit's

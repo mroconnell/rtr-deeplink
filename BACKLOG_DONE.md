@@ -8,6 +8,39 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-10] Transcripts no longer show a raw `&gt;&gt;` encoding
+  artifact in place of a clean speaker-change marker.** Confirmed root
+  cause 2026-08-09: YouTube's own raw auto-caption VTT source contains
+  the *literal* 8-character string `&gt;&gt;` as real cue text at the
+  start of a new speaker's first cue (not an actual `>` character this
+  app was mis-escaping) — this app's rendering was doing the technically
+  correct, safe thing with that literal text (escaping the `&` for safe
+  HTML output), the ugliness was a display/polish gap, not a correctness
+  or security bug. New `normalize_speaker_change_marker()` in
+  `app/utils/vtt_parser.py`, called from `parse_vtt()` right after the
+  existing `normalize_shouting_caption()` call — matches only the exact
+  literal `^&gt;&gt;\s*` prefix (anchored to the very start of a cue's
+  text, deliberately not a general entity-decoding pass) and replaces it
+  with a real, inert Unicode marker (`»`, U+00BB) instead of stripping
+  the "new speaker" signal outright. Placed in the shared `parse_vtt()`
+  (used by every platform that funnels through it, not just YouTube's
+  own adapter) rather than `youtube.py` specifically, which also settles
+  the live item's open "not yet checked whether this shows up on a
+  non-YouTube source" question — since the fix lives in the shared
+  parser, any source that happens to hit the same artifact is already
+  covered without needing a second confirmed sample first. `parse_ttml()`
+  deliberately left untouched — TTML/XML text goes through
+  `ElementTree.itertext()`, which already resolves real XML entities
+  during parsing, so a literal `&gt;&gt;` artifact can't arise there the
+  same way. Two new regression tests in `tests/test_vtt_parser.py`: one
+  end-to-end through `parse_vtt()` confirming the real YouTube-shaped
+  input renders as `» Welcome everyone...`, one directly against
+  `normalize_speaker_change_marker()` confirming a mid-text `&gt;&gt;`
+  (not at the very start of a cue) is deliberately left untouched, so a
+  caption that legitimately mentions an ampersand or angle bracket
+  elsewhere never gets a second, unintended round of interpretation.
+  Full suite green (264 tests, up from 262).
+
 - **[Done 2026-08-10] `/meetings` results now break the jurisdiction/date
   onto its own line under the title, instead of running inline right
   after it.** `archive/templates/meeting_list.html`'s

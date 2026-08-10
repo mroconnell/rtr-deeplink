@@ -4,6 +4,7 @@ from app.utils.vtt_parser import (
     decode_vtt_bytes,
     dedupe_rollup_cues,
     is_likely_garbled,
+    normalize_speaker_change_marker,
     parse_captions_by_extension,
     parse_srt,
     parse_ttml,
@@ -186,6 +187,34 @@ def test_normalize_shouting_caption_leaves_normal_case_alone():
     )
     cues = parse_vtt(content)
     assert cues[0]["text"].startswith("The meeting will now come to order")
+
+
+def test_parse_vtt_replaces_literal_speaker_change_entity_with_marker():
+    # Real structure confirmed live: YouTube's own raw auto-caption VTT
+    # contains the literal 8-character string "&gt;&gt;" as real cue text
+    # at a new speaker's first cue, not an actual ">" character this app
+    # is mis-escaping.
+    content = (
+        "WEBVTT\n\n"
+        "00:00:00.000 --> 00:00:02.000\n"
+        "&gt;&gt; Welcome everyone. Today is March the 3rd."
+    )
+    cues = parse_vtt(content)
+    assert cues[0]["text"] == "» Welcome everyone. Today is March the 3rd."
+
+
+def test_normalize_speaker_change_marker_only_matches_literal_prefix():
+    cues = [
+        {"start": 0, "end": 1, "text": "&gt;&gt; Next item on the agenda."},
+        {"start": 1, "end": 2, "text": "Please see &gt;&gt; the linked agenda."},
+        {"start": 2, "end": 3, "text": "No marker here at all."},
+    ]
+    normalize_speaker_change_marker(cues)
+    assert cues[0]["text"] == "» Next item on the agenda."
+    # Not at the very start of the cue -- left untouched, matching a real
+    # ampersand/angle-bracket mention elsewhere in a caption staying inert.
+    assert cues[1]["text"] == "Please see &gt;&gt; the linked agenda."
+    assert cues[2]["text"] == "No marker here at all."
 
 
 def test_dedupe_rollup_cues_collapses_youtube_style_rollup():
