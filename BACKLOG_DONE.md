@@ -8,6 +8,112 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-10] Added `GET /internal/schema-info` (`archive/main.py`)
+  so confirming the Archive's real production DB schema no longer
+  requires someone with `DATABASE_URL` access to run `psql`/`alembic`
+  commands by hand and paste the output back.** Directly prompted by the
+  Alembic incident just above/nearby: a stale doc's account of
+  "production has never been stamped" turned out to be wrong, and acting
+  on it without checking first caused a real (contained) mistake. This
+  endpoint gives a way to check the real, live state directly instead.
+  Token-gated the same way as every other `/internal/*` route (bearer
+  token matching `ARCHIVE_INGEST_TOKEN`, 404 not 401/403 on a missing/
+  wrong token). Reflects actual live columns per table via SQLAlchemy's
+  `Inspector` against a real connection, next to what `archive/db/
+  models.py`'s `Base.metadata` currently expects, and reports any
+  mismatch directly (`mismatched_tables`, `schema_matches_models`) --
+  deliberately treats the *actual reflected schema* as ground truth, not
+  `alembic_version`'s own bookkeeping row (still reported, as context
+  only), since it was exactly that bookkeeping row going stale that
+  caused the incident this exists to prevent a repeat of. Three new
+  tests (`tests/test_schema_info_endpoint.py`, matching the existing
+  `test_correct_language_endpoint.py`'s pattern): missing-token and
+  wrong-token both 404, and a real call against the test suite's own
+  isolated SQLite DB confirms `mismatched_tables == []` /
+  `schema_matches_models is True` when the DB genuinely matches the
+  models (which it always does in a `create_all()`-built test DB).
+  Documented in `README.md`'s "Permanent pages" section, including that
+  this route is deliberately not one of the paths `redtaperecordings.com`
+  proxies through (only `/m/*`/`/archive-static/*` are) -- it's only
+  reachable at the Archive service's own base URL directly.
+
+- **[Done 2026-08-10] Minneapolis LIMS URLs for any committee other than
+  City Council failed with "Could not find a meeting id in this LIMS
+  URL," never reaching video/agenda resolution at all.** Reported live
+  by the user with a real URL: `https://lims.minneapolismn.gov/
+  MarkedAgenda/BHZ/6105` (Business, Housing & Zoning committee). Root
+  cause: `app/platforms/lims.py`'s `_ID_RE = re.compile(r"/MarkedAgenda/
+  CI/(\d+)")` hardcoded the literal committee code `CI` (City Council --
+  the only committee the adapter had been built/tested against, matching
+  `tests/test_lims.py`'s own fixture URL) instead of treating that path
+  segment as a variable. Confirmed the numeric id is the only part any
+  downstream step actually uses -- `json_url = f".../MeetingYoutubeVideo/
+  {meeting_id}"` takes just the number, no committee code at all -- so
+  the fix is a general `[A-Za-z]+` match on that segment (`_ID_RE =
+  re.compile(r"/MarkedAgenda/[A-Za-z]+/(\d+)")`) rather than trying to
+  enumerate every real Minneapolis committee code. New regression test
+  (`test_resolve_works_for_a_non_ci_committee_code`) resolves the real
+  reported BHZ URL end-to-end through the existing mocked fixtures,
+  confirming it now succeeds the same way the CI case always did. Could
+  not get a fresh live fetch of the real BHZ page directly during this
+  session (LIMS's Cloudflare protection blocked a plain `curl`, and the
+  in-session browser tool was intermittently unavailable) -- confidence
+  here instead comes from the user's own real report (the exact URL and
+  exact failure message), plus the fact that no downstream code path
+  touches the committee-code letters at all, so broadening the match is
+  safe by construction, not a guess.
+
+- **[Done 2026-08-10, confirmed in production] Production incident: the
+  `worker` service crashed outright at startup** (`Exited with status 1
+  while running your code`, `ModuleNotFoundError: No module named
+  'playwright'` — a real Render worker crash log, not a hypothetical).
+  Cause: `worker/main.py` imports `app.platforms` for fresh `video_url`
+  re-resolution before each transcription chunk, which registers every
+  adapter including `LimsAssetFinder`/`SlcAssetFinder` — both import
+  `app/platforms/headless_browser.py`, which had a top-level `from
+  playwright.async_api import ...`. `playwright` is deliberately absent
+  from `worker/requirements.txt` (kept lean on purpose, per that file's
+  own comment) — this app/worker requirements split predates the
+  playwright-dependent LIMS/SLC adapters, and wasn't reconciled when
+  they were added, so just importing `app.platforms` took down the
+  *entire* worker process, not just LIMS/SLC-related jobs.
+
+  Fix (`app/platforms/headless_browser.py`): made the playwright import
+  lazy (`try`/`except ImportError`, sentinel `None`), so
+  `register_all_finders()` always succeeds regardless of whether
+  playwright is installed — only a resolve that actually needs a real
+  browser now fails, with the same clean `HeadlessBrowserUnavailable`
+  message as the missing-binary case, not a whole-service outage.
+  Verified locally at the time by simulating a playwright-less import
+  environment; **confirmed against the real production deploy 2026-08-10
+  per the user** ("worker looks like it was running great all night") —
+  no crash-loop, stayed up overnight.
+
+  **Real, deliberate decision, not an accident: the worker will NOT get
+  playwright/Chromium added, for now.** The obvious next question —
+  "just add it to `worker/Dockerfile` too" — was checked for real
+  tradeoffs rather than assumed safe. Measured directly (real Playwright
+  launch + a real fetch of the actual Minneapolis LIMS Cloudflare-
+  challenge page): Chromium's *own subprocess tree* (separate from the
+  Python process, purely additive to total container memory) uses
+  ~266MB just launched with no page loaded, ~535MB after actually
+  loading that real page. `headless_browser.py` keeps one shared browser
+  alive for the whole process lifetime (launched once, reused) — fine
+  for the resolver web service, but on this worker the whisper model is
+  *also* loaded for the whole process lifetime, so that ~266MB becomes a
+  permanent tax on top of it, and a LIMS/SLC job's per-chunk re-resolve
+  overlapping with active whisper inference on `standard`'s 2GB plan
+  works out to roughly `1421MB (whisper, 900s chunk) + 535MB (Chromium
+  mid-fetch) ≈ 1956MB` — only ~92MB under the ceiling, a thinner margin
+  than the ~600MB that was already proven too tight once (two real OOM
+  crashes) before this same plan was sized. **Decision (2026-08-09):
+  leave the gap as-is** — a transcription job for a LIMS/SLC meeting
+  fails cleanly (no browser available) rather than risking a third OOM
+  crash for a platform combo no real request has hit yet. Per the user:
+  revisit as a natural follow-on next time the worker's Render plan is
+  upgraded anyway (for this or any other reason) — not worth a dedicated
+  plan bump on its own just for this.
+
 - **[Done 2026-08-10] Added the first automated test coverage for
   `shared_static/deep_link.js`'s `t`/`line`/`version` contract — deep
   linking is the entire reason this repo exists, and it had zero

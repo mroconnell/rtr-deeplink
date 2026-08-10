@@ -19,10 +19,19 @@ where relevant.
   fields). Properly fixing this needs a real Alembic migration
   (`archive/alembic/`, adopted 2026-08-09 specifically for this class of
   change — `create_all()` can add a new table but this is new *columns*
-  on an existing one) plus the one-time production `alembic stamp head`
-  step, which per `archive/alembic/README.md` hasn't been run yet and
-  needs real production `DATABASE_URL` access no session has had so far.
-  Once the columns exist: store the real values in `crud.ingest_resolution()`,
+  on an existing one). **Update 2026-08-10**: production turned out to
+  already be correctly stamped at head (the old "never been stamped"
+  assumption below was stale) — see `archive/alembic/README.md`'s
+  incident note and BACKLOG_DONE.md for the full story of an incorrect
+  stamp+upgrade attempt and its correction. Once that correction is
+  confirmed, this item is no longer blocked on the one-time adoption
+  step specifically — still needs someone with production
+  `DATABASE_URL` access to write and apply the actual new migration for
+  these columns, and to run `alembic upgrade head` against production
+  afterward (per `archive/alembic/README.md`, always re-check `alembic
+  current` first rather than assuming any doc's account of prod's state
+  is still accurate). Once the columns exist: store the real values in
+  `crud.ingest_resolution()`,
   render `video_warnings` in `meeting_page.html`'s no-video case (replacing
   the generic "No video available for this meeting." stand-in), add the
   agenda-link case (an `agenda_warnings`-driven message, own heading, not
@@ -31,60 +40,6 @@ where relevant.
   now do. Still not urgent — no `platform="unknown"` meeting has ever
   actually been pushed to the Archive (confirmed via a real audit of all
   22 archived meetings) — but worth doing before the first one is.
-
-- **⚠️ Production incident, active as of 2026-08-09: the `worker`
-  service crashed outright at startup** (`Exited with status 1 while
-  running your code`, `ModuleNotFoundError: No module named
-  'playwright'` — a real Render worker crash log, not a hypothetical).
-  Cause: `worker/main.py` imports `app.platforms` for fresh `video_url`
-  re-resolution before each transcription chunk, which registers every
-  adapter including `LimsAssetFinder`/`SlcAssetFinder` — both import
-  `app/platforms/headless_browser.py`, which had a top-level `from
-  playwright.async_api import ...`. `playwright` is deliberately absent
-  from `worker/requirements.txt` (kept lean on purpose, per that file's
-  own comment) — this app/worker requirements split predates the
-  playwright-dependent LIMS/SLC adapters, and wasn't reconciled when
-  they were added, so just importing `app.platforms` took down the
-  *entire* worker process, not just LIMS/SLC-related jobs.
-
-  Fix shipped (`app/platforms/headless_browser.py`): made the playwright
-  import lazy (`try`/`except ImportError`, sentinel `None`), so
-  `register_all_finders()` always succeeds regardless of whether
-  playwright is installed — only a resolve that actually needs a real
-  browser now fails, with the same clean `HeadlessBrowserUnavailable`
-  message as the missing-binary case, not a whole-service outage.
-  Verified by simulating a playwright-less import environment locally
-  (blocking the import, confirming `register_all_finders()` succeeds and
-  a LIMS resolve raises the clean error instead of crashing) — **not yet
-  confirmed against the real worker deploy**. **Remove this item once
-  the worker service has redeployed and stayed up.**
-
-  **Real, deliberate decision, not an accident: the worker will NOT get
-  playwright/Chromium added, for now.** The obvious next question —
-  "just add it to `worker/Dockerfile` too" — was checked for real
-  tradeoffs rather than assumed safe, matching how the plan's own memory
-  sizing above was resolved (measured, not guessed). Measured directly
-  (real Playwright launch + a real fetch of the actual Minneapolis LIMS
-  Cloudflare-challenge page): Chromium's *own subprocess tree* (separate
-  from the Python process, purely additive to total container memory)
-  uses ~266MB just launched with no page loaded, ~535MB after actually
-  loading that real page. `headless_browser.py` keeps one shared browser
-  alive for the whole process lifetime (launched once, reused) — fine for
-  the resolver web service, but on this worker the whisper model is
-  *also* loaded for the whole process lifetime (see the memory table
-  above), so that ~266MB becomes a permanent tax on top of it, and a
-  LIMS/SLC job's per-chunk re-resolve overlapping with active whisper
-  inference on `standard`'s 2GB plan works out to roughly `1421MB
-  (whisper, 900s chunk) + 535MB (Chromium mid-fetch) ≈ 1956MB` — only
-  ~92MB under the ceiling, a thinner margin than the ~600MB that was
-  already proven too tight once (two real OOM crashes) before this same
-  plan was sized. **Decision (2026-08-09): leave the gap as-is** — a
-  transcription job for a LIMS/SLC meeting fails cleanly (no browser
-  available) rather than risking a third OOM crash for a platform combo
-  no real request has hit yet. Per the user: revisit as a natural
-  follow-on next time the worker's Render plan is upgraded anyway (for
-  this or any other reason) — not worth a dedicated plan bump on its own
-  just for this.
 
 - **⚠️ Production incident, active as of 2026-08-09: real Minneapolis
   LIMS video resolves failing at the YouTube step with "Sign in to

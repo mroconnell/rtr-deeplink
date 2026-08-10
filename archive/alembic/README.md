@@ -71,24 +71,54 @@ looks like right now**, never the word `head`, unless you've confirmed
 `head` and that revision are still the same thing.
 
 **This needs to be run once, deliberately, by whoever has production
-`DATABASE_URL` access** (this session doesn't) -- from a real shell with
-that env var set to the production Postgres URL. As of this migration
-history, production needs *two* commands, not one -- it was never
-stamped at all yet, so it also needs to actually pick up every migration
-that landed after the baseline:
+`DATABASE_URL` access** -- from a real shell with that env var set to the
+production Postgres URL.
+
+**Always run `alembic current` first and read its actual output before
+running anything else here.** An earlier version of this section said
+production "was never stamped at all yet" and told the reader to run a
+fixed stamp+upgrade sequence unconditionally. That claim went stale
+without this file being updated: a real 2026-08-10 run showed
+`alembic current` printing `8e7cf3b20f86 (head)` *before* any command in
+that stale sequence ran -- production had already been correctly
+migrated at some earlier point (almost certainly as part of recovering
+from the 2026-08-09 incident described above), just without this doc
+being corrected to match. Blindly running the old recipe anyway
+force-stamped production backward to the baseline revision, then
+`alembic upgrade head` correctly failed with `DuplicateColumnError`
+(the `priority` column already existed) -- caught immediately rather
+than silently, but it still left the bookkeeping row one step behind
+reality until a follow-up `alembic stamp 8e7cf3b20f86` corrected it.
+**The lesson: this file's account of "what production's state is" is a
+snapshot from whenever it was last written, not a live fact -- verify
+against a real `alembic current` before trusting it, every time**, the
+same "verify against the real thing" convention this repo applies
+everywhere else (adapters, sample data, etc.).
 
 ```bash
 cd archive
-alembic current          # see what production thinks its state is, if anything
-alembic stamp a8dc5aad7eff   # tell it: tables already exist, matching the baseline
-alembic upgrade head         # actually run every migration after that (currently: just the priority column)
-alembic current           # confirm it now shows the real head revision
+alembic current   # ALWAYS run this first -- don't assume this doc's account of prod's state is still accurate
 ```
 
-This exact sequence is safe to run even if `stamp head` was already run
-by mistake -- `stamp` only overwrites the bookkeeping row, it runs no DDL,
-so re-pointing it at the correct revision first and then upgrading is a
-clean recovery either way.
+- If it prints the real current head revision already: production is
+  fine, nothing else to do.
+- If it prints nothing / an empty history: production has genuinely
+  never been touched by Alembic. Run:
+  ```bash
+  alembic stamp a8dc5aad7eff   # tell it: tables already exist, matching the baseline
+  alembic upgrade head         # run every migration after that
+  alembic current              # confirm it now shows the real head revision
+  ```
+- If it prints something else (a stale/wrong revision, as happened
+  2026-08-10): don't run `upgrade` blindly. First confirm what the
+  database's real schema actually has (e.g. `\d transcription_jobs` in
+  `psql`, or just try the upgrade and read the error -- `DuplicateColumnError`
+  means the target already has that migration's changes, `column ...
+  does not exist` means it doesn't), then `alembic stamp <revision
+  matching what's really there>` to correct the bookkeeping -- `stamp`
+  only overwrites that one bookkeeping row, it runs no DDL, so this is
+  always a safe, non-destructive correction regardless of which
+  direction the mismatch runs.
 
 Verified locally (2026-08-09): a fresh `alembic upgrade head` against an
 empty SQLite database creates a schema that diffs identical to
@@ -98,6 +128,6 @@ default-clause rendering difference SQLite's own introspection reports
 either way); `alembic downgrade base` cleanly drops everything back out.
 The priority-column migration was also verified against a real
 pre-existing row, confirming the backfill (`server_default`) actually
-works, not just that the DDL runs. Not yet verified against a real
-Postgres database specifically -- worth a real check there too, since
-Postgres's own type/default rendering can differ from SQLite's.
+works, not just that the DDL runs. Confirmed against real production
+Postgres too as of the 2026-08-10 incident above -- the column exists
+there, backfilled correctly, no reported query failures since.
