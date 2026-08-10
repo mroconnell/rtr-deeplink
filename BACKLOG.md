@@ -448,30 +448,96 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   issuing and checking its own sessions, not a distributed multi-service
   handoff.
 
-  **Proposed data model** (new tables in `archive/db/models.py`, via a
-  real Alembic migration — this table doesn't exist yet, so it's a new
-  table + `create_all()` is enough for the table itself, but see the
-  `app/db` Alembic item above for why *this* repo now takes schema
-  tooling seriously everywhere, not just where it's already been
-  proven necessary): `Account` (email, created_at, no password column
-  at all), `AccountSession` (session id, account id, expires_at),
-  `SavedSearch` (account id, query params matching `/meetings`' own
-  filter shape, created_at) for the email-alerts feature below.
+  **Expanded scope, per user request 2026-08-10 — a real social/content
+  layer, not just accounts + saved searches.** The user wants, in their
+  own words: a profile page (public or private) made of notes (posts or
+  notifications, each independently public/private); saving a meeting to
+  a profile as a note (public/private per note); saving a search to a
+  profile as a note (public/private per note); subscribing to
+  in-profile/notification alerts for a search, separately from
+  subscribing to email alerts for the same search; reposting anything as
+  a new note carrying a user-written message, linking back to the
+  original (a quote-repost, not a plain retweet-with-no-comment);
+  eventually attaching clips/screenshots/PDFs/other media to notes;
+  eventually sorting/filtering `/meetings` search results by how many
+  people saved a given meeting (a popularity signal). This materially
+  reshapes the data model below from the original accounts+SavedSearch
+  sketch — capturing it now since it changes what "phase 1" even means,
+  not committing to build any of it yet.
 
-  **Proposed phased plan, deliberately not one big build:**
-  1. Passwordless accounts (magic link, session cookie) + saved
-     searches — no billing yet, could ship as a free feature. Unlocks
-     email alerts (below) on its own.
-  2. Batch lookup, gated by account (rate-limited per-account instead
+  **Revised proposed data model**, replacing the original
+  `Account`/`AccountSession`/`SavedSearch` sketch's third table: a single
+  polymorphic **`Note`** table instead of a separate `SavedSearch` table,
+  since "saved search," "saved meeting," "post," and "repost" all turn
+  out to be the same underlying shape (an account, a visibility flag, an
+  optional reference, optional user-written text) rather than four
+  independent features:
+  - `Account` (email, created_at, no password column) and
+    `AccountSession` (session id, account id, expires_at) — unchanged
+    from the original sketch.
+  - `Note` (account_id, `note_type` — `saved_meeting` / `saved_search` /
+    `post` / `repost` — `visibility`: public or private, **set per note,
+    not per account or globally**; `meeting_page_id` nullable FK, set
+    only for `saved_meeting`/some `repost`s; `search_params` nullable
+    JSON, set only for `saved_search`; `parent_note_id` nullable
+    self-referential FK, set only for `repost` (the note being reposted —
+    reposting a repost should probably chain to the *original*, not
+    nest indefinitely, an open question); `body_text` nullable, the
+    user-written message on a `post` or `repost`; `created_at`). A
+    profile page is then just "this account's notes, filtered to public
+    ones unless the viewer is the account owner."
+  - `NoteSubscription` (account_id, `search_params` JSON matching a
+    saved search's shape, `notify_in_profile` bool, `notify_by_email`
+    bool) — the two subscription channels the user described are
+    independent toggles on the same row, not two separate features;
+    `notify_by_email` is what the already-planned "Email alerts for
+    saved searches" item below actually becomes once accounts exist,
+    not a separate build.
+  - Media attachments (clips/screenshots/PDFs) on notes: flagged
+    "eventually" by the user, and a real new category of infrastructure
+    for this app — there is currently **zero file-upload/object-storage
+    capability anywhere in this codebase** (every existing asset is
+    either scraped-and-linked, not hosted, or a static file checked into
+    the repo). Would need real new decisions (S3/R2/Cloudflare Images or
+    similar, upload size limits, moderation) not touched by anything
+    else in this scoping pass — deliberately not designed further until
+    the base Note model ships and this becomes concretely next.
+  - Popularity-based sort/filter on `/meetings`: also flagged
+    "eventually" by the user. Cheapest real implementation once `Note`
+    exists: a `saved_meeting_count` column on `MeetingPage`, updated
+    on save/unsave (or computed via a `COUNT(*)` on `Note WHERE
+    note_type='saved_meeting'` at query time, matching this repo's
+    existing "don't add a materialized column until the naive version
+    actually gets slow" pattern from the search-scaling item below) —
+    genuinely deferred until saving meetings itself exists and has real
+    usage to rank by.
+
+  **Proposed phased plan, revised — deliberately still not one big
+  build:**
+  1. Passwordless accounts (magic link, session cookie) + the base
+     `Note` model, covering just `saved_meeting` and `saved_search`
+     (no `post`/`repost` yet, no profile page yet) — no billing yet,
+     could ship as a free feature.
+  2. Public/private profile pages rendering an account's own notes;
+     `NoteSubscription` (both notify channels) for saved searches —
+     this is what actually unlocks "email alerts," not a separate
+     build from it.
+  3. `post`/`repost` note types, making the profile a real lightweight
+     feed rather than just a saved-items list.
+  4. Batch lookup, gated by account (rate-limited per-account instead
      of fully anonymous) — still no payment required, just removes the
      anonymous-abuse-vector concern the batch-lookup item below already
      flags.
-  3. Billing (Stripe is the obvious default — standard, well-documented
+  5. Billing (Stripe is the obvious default — standard, well-documented
      webhook/subscription model) layered on only once there's a real
      paid tier to sell against — e.g. unlimited batch lookups, higher
      alert frequency, priority transcription queue position (the
      existing `TranscriptionJob.priority` column already supports a
      higher tier with zero schema change, per its own docstring).
+  6. Media attachments on notes, and popularity-based search
+     sort/filter — both explicitly "eventually" per the user, sequenced
+     last since both need real usage of the earlier phases to be worth
+     building against.
 
   **Real open questions, not decided yet — need the user's call before
   building past phase 1:** what's actually free vs. paid (the phased
@@ -480,7 +546,15 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   tokens, spend on transcriptions/batch lookups) vs. flat subscription
   tiers, or both; whether Stripe is the intended/preferred provider or
   just this write-up's default assumption; free tier size for saved
-  searches/alerts before hitting a paywall.
+  searches/alerts before hitting a paywall; whether a `repost` of a
+  `repost` should chain to the original note or nest (product decision,
+  not just a schema one); moderation for public notes/profiles in
+  general, not just future media attachments — public+free-text (`post`,
+  `repost` messages) is real new user-generated-content surface area
+  this app has never had before, worth its own look before phase 3
+  ships, not assumed fine because `ProblemReport` already covers the
+  Trust & safety section's narrower "is this a real government meeting"
+  concern above.
 - **Email alerts for saved searches — confirmed 2026-08-09 as the most
   concrete "worth paying for" feature identified so far.** Depends on
   accounts and search both existing first (search already live; accounts
@@ -489,7 +563,13 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   passive search into active monitoring, the actual job-to-be-done for
   someone covering the same story across dozens of jurisdictions over
   time. Also directly benefits from the crawler re-prioritization below
-  (more corpus = more useful alerts).
+  (more corpus = more useful alerts). **As of the expanded accounts scope
+  above (2026-08-10), this is no longer a separate build** — it's the
+  `notify_by_email` toggle on `NoteSubscription`, phase 2 of that plan,
+  alongside the equivalent in-profile `notify_in_profile` toggle the
+  user also asked for. Kept as its own bullet here since it's still the
+  concrete "worth paying for" signal that justifies building that phase
+  at all, not because it's architecturally separate anymore.
 - **Proactive transcription crawler — re-prioritized 2026-08-09 to
   precede accounts/billing, then explicitly held back again 2026-08-10
   ("not yet — keep prioritizing bugs/gaps").** The reasoning below for
