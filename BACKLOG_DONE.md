@@ -8,6 +8,91 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-10, found and fixed against real production data]
+  `get_pending_archive_pushes()`'s sweep query could silently miss real
+  candidates.** Found while manually clearing the pending-push backlog
+  the schema-fix incident (entry above) left behind — not a hypothetical,
+  a real production symptom: `/admin/sweep-pending-pushes` returned `0`
+  retried while `/admin/stats`' unfiltered `pending_archive_pushes` count
+  still showed `10`. Root cause: the query over-fetched with
+  `.limit(limit * 3)` at the SQL level, then filtered by
+  `_worth_pushing()` (checks `resolved_payload["agenda_items"]`, JSON,
+  not filterable portably at the SQL level) in Python afterward.
+  Production genuinely has plenty of `status="success"` rows with no
+  real content (`blank_transcript`/`no_video` outcomes are still
+  `"success"` at the DB-status level) — when enough of those sit ahead
+  of a real candidate in `created_at` order, the fixed-size over-fetch
+  window can exhaust itself on non-candidates before ever reaching a
+  row actually worth pushing, silently. Fixed by dropping the SQL-level
+  limit entirely and filtering the full matching set in Python before
+  slicing to the caller's `limit` — same "personal reporting log, a full
+  scan per call is fine for now" reasoning `get_stats()` already uses
+  for this table (per that function's own docstring). New regression
+  test (`test_pending_pushes_finds_a_real_candidate_behind_many_
+  content_free_rows`) reproduces the exact shape (15 content-free rows
+  ahead of one real candidate) and was confirmed to actually fail
+  against the pre-fix code (temporarily reintroduced the old `.limit(limit
+  * 3)`, watched the test fail with the real candidate missing, restored
+  the fix) before trusting it as a real regression guard. Verified
+  against production itself, not just the test: re-ran the sweep after
+  deploying the fix, found and successfully retried all 10 previously-
+  hidden rows, confirmed `pending_archive_pushes` reached a genuine `0`.
+
+- **[Done 2026-08-10, fixed live in production] Deploying the durable-push
+  fix (entry below) itself broke production `/admin/stats` for a real,
+  avoidable reason: `app/db` has no migration tooling, and this was its
+  first-ever schema change that wasn't a brand-new table.** Real
+  incident, not a hypothetical: added two new columns to the existing
+  `meeting_resolutions` table, verified thoroughly against fresh local
+  SQLite databases (where `create_all()` correctly creates a table with
+  every current column, since there's no pre-existing schema to
+  reconcile against) — but never against a database that already had the
+  *old* schema, which is exactly production's situation. `create_all()`
+  can only ever add new tables, never alter an existing one — the exact
+  same wall `archive/db` hit three times before adopting Alembic
+  (2026-08-09, see this file's earlier entries), just never hit by
+  `app/db` before because it had never needed an `ALTER` until now.
+  `/admin/stats` returned 503 in production (`get_stats()`'s full-table
+  scan touches the new columns on every row via the ORM, failing on
+  "column does not exist"); `/api/resolve` itself kept working (confirmed
+  live, twice) because `log_resolution()`'s `INSERT` failure was already
+  caught by the existing `safe()` wrapper, silently degrading to the old
+  bare-`archive_client.push` fallback exactly as that fallback was
+  designed to do — the *feature* was inert, not the *site*.
+
+  Fixed live: gave the user a one-off `ALTER TABLE meeting_resolutions
+  ADD COLUMN IF NOT EXISTS ...` (both new columns), run via the
+  `rtr-deeplink` (resolver) service's Render Shell — same "Python
+  one-liner via SQLAlchemy" pattern as the day's earlier Baltimore/
+  Memphis one-off DB corrections, adapted to `app/db.engine` instead of
+  `archive/db`. Confirmed fixed: `/admin/stats` returns 200 with the new
+  `pending_archive_pushes` field.
+
+  That field then read `30` — alarming at first glance, but explainable
+  and not a new bug: every pre-existing row got `archive_pushed_at =
+  NULL` by definition when the column was added (Postgres can't
+  retroactively know an old push already succeeded), so every
+  successful resolve from *before* this session's fix showed up as
+  "pending" even though most were already real Archive pages. Manually
+  triggered `/admin/sweep-pending-pushes` repeatedly to clear the
+  backlog rather than waiting on organic traffic — which surfaced a
+  second real bug (`get_pending_archive_pushes()`'s `limit * 3`
+  over-fetch heuristic silently missing real candidates behind a run of
+  content-free rows, fixed in its own entry above/nearby) before the
+  count finally reached a genuine `0`.
+
+  **Real lesson, not just this one incident**: "verified end-to-end"
+  against a fresh local database is not the same claim as "verified
+  against production's actual current schema" — this repo already knew
+  that in the abstract (it's the whole reason `archive/db` has Alembic),
+  but the lesson hadn't yet been generalized to `app/db`, which uses the
+  identical `create_all()`-only mechanism and was always going to hit
+  the same wall on its first real `ALTER`. Worth deciding whether
+  `app/db` should get its own Alembic setup now, matching
+  `archive/db/alembic/`, so a future column addition here doesn't need
+  another live production incident to catch it — logged as its own live
+  item in `BACKLOG.md`.
+
 - **[Done 2026-08-10, verified end-to-end] Built the real fix for the
   silent-Archive-push-loss bug: durable push tracking plus an
   opportunistic retry sweep, instead of trusting a bare fire-and-forget
