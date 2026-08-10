@@ -7,18 +7,30 @@ where relevant.
 
 ## Bugs
 
-- **Archive's `meeting_page.html`/`meeting_page.js` likely have the same
-  fallback-page UI bugs just fixed on the resolver side, unmirrored.**
-  2026-08-10 live-testing (see BACKLOG_DONE.md's "Live-tested the
-  generic fallback" entry) fixed several real bugs in the resolver's
-  `app/templates/meeting.html`/`app/static/player.js` (an invisible
-  video_warnings message when no video is found, an agenda link nested
-  under the wrong heading, dead non-clickable "request from audio" text).
-  The Archive renders the same three sections server-side via Jinja2, a
-  genuinely different code path, and hasn't been checked or updated —
-  not urgent since no `platform="unknown"` meeting has ever actually been
-  pushed to the Archive yet (confirmed via a real audit of all 22
-  archived meetings), but worth fixing before the first one is.
+- **`MeetingPage` has no `video_warnings`/`agenda_warnings`/`agenda_link`
+  columns, so the Archive can't store or render the resolver's real,
+  specific per-meeting messages for those cases — a generic static
+  stand-in shipped instead (2026-08-10, see BACKLOG_DONE.md), not the
+  real fix.** The resolver's `ResolvedMeeting` has had these fields for a
+  while (`video_warnings`, `agenda_warnings`, `agenda_link`), but
+  `archive/db/models.py`'s `MeetingPage` was never given matching
+  columns, and `archive/main.py`'s `IngestRequest`/`crud.ingest_resolution()`
+  silently drop them on every ingest today (Pydantic ignores unmodeled
+  fields). Properly fixing this needs a real Alembic migration
+  (`archive/alembic/`, adopted 2026-08-09 specifically for this class of
+  change — `create_all()` can add a new table but this is new *columns*
+  on an existing one) plus the one-time production `alembic stamp head`
+  step, which per `archive/alembic/README.md` hasn't been run yet and
+  needs real production `DATABASE_URL` access no session has had so far.
+  Once the columns exist: store the real values in `crud.ingest_resolution()`,
+  render `video_warnings` in `meeting_page.html`'s no-video case (replacing
+  the generic "No video available for this meeting." stand-in), add the
+  agenda-link case (an `agenda_warnings`-driven message, own heading, not
+  nested under Transcript), and standardize the "request transcript from
+  audio" phrasing/button the same way `generic_fallback.py` and friends
+  now do. Still not urgent — no `platform="unknown"` meeting has ever
+  actually been pushed to the Archive (confirmed via a real audit of all
+  22 archived meetings) — but worth doing before the first one is.
 
 - **⚠️ Production incident, active as of 2026-08-09: the `worker`
   service crashed outright at startup** (`Exited with status 1 while

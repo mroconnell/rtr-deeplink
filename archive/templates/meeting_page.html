@@ -106,6 +106,17 @@
           {% endif %}
         </div>
       </div>
+      {% else %}
+      {#- Partial mirror of the resolver's #videoWarnings fix (2026-08-10,
+         see BACKLOG_DONE.md) -- MeetingPage has no video_warnings column
+         yet (that part needs a real Alembic migration + a production
+         `alembic stamp head` this session doesn't have credentials for,
+         see archive/alembic/README.md), so this can't show the real,
+         specific per-meeting reason yet. Still strictly better than the
+         previous behavior of showing nothing at all when there's no
+         video -- a reader was left to guess whether that was a bug or
+         expected. #}
+      <div class="warnings">No video available for this meeting.</div>
       {% endif %}
 
       <p class="report-problem-toggle"><button type="button" id="reportProblemToggle" class="link-button">Report a problem with this meeting</button></p>

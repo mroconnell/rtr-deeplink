@@ -8,6 +8,32 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-10, partial] Archive's `meeting_page.html` no longer
+  shows a silent empty gap when a meeting has no video at all.** One of
+  three real bugs the resolver-side "Live-tested the generic fallback"
+  entry (below) found and fixed was an invisible `video_warnings`
+  message when no video was found — this mirrors that fix's *spirit*
+  server-side, not the full fix. When `page.video_url` is falsy, the
+  video column now shows a plain `<div class="warnings">No video
+  available for this meeting.</div>` instead of rendering nothing at
+  all between the title and the "Report a problem"/"Request Transcript"
+  buttons, which previously left a reader guessing whether that gap was
+  a bug. **Deliberately not the real fix** — the resolver shows the
+  actual, specific per-meeting reason (e.g. "No video link found on this
+  Legistar page." or one of `generic_fallback.py`'s tentative "we think
+  we found..." messages); the Archive can't yet, because `MeetingPage`
+  has no column to store that text in and reaching that requires a real
+  Alembic migration + a production DB-access step this session doesn't
+  have (split back out as its own live item in BACKLOG.md, along with
+  the still-unaddressed agenda-link and transcribe-button-phrasing parts
+  of the same original gap). Verified live against the local archive dev
+  server (port 8020): POSTed a real `/internal/ingest` payload with no
+  `video_url` but real `agenda_items`, confirmed the fallback message
+  renders correctly in-browser with no crash, both `#videoColumn`'s
+  layout and the existing "Report a problem"/"Request Transcript"
+  buttons unaffected. Full suite green (264 tests, no Python logic
+  touched — template-only change).
+
 - **[Done 2026-08-10] Viebit/NYCC meetings now resolve `jurisdiction` to
   "New York City, NY" (the city+state format most other platforms use),
   not "New York City Council" (a legislative body name).** Not a
