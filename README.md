@@ -393,6 +393,15 @@ real install/test/uninstall commands in its own header comment; installed
 copy lives at `~/Library/LaunchAgents/`, logs at `~/Library/Logs/
 fetch-youtube-transcripts.log`.
 
+Every real (non-dry-run) run emails a report to `YOUTUBE_FETCH_REPORT_EMAIL`
+(default `ryan@how-to-adu.com`) via the Archive's existing Resend
+integration (`archive/utils/email.py`, same `RESEND_API_KEY`/
+`RESEND_FROM_ADDRESS` the Archive service already uses) — every transcript
+actually added, with a real clickable link, even an empty report, so
+silence itself is a signal the job stopped firing. A run that fails to
+complete at all (an IP-level block, or any unhandled exception) sends a
+different, explicitly-flagged failure email instead.
+
 **Checking the Archive's real production schema**: `GET /internal/schema-info`
 (token-gated the same way as every other `/internal/*` route — a bearer
 token matching `ARCHIVE_INGEST_TOKEN`, 404 rather than 401/403 on a

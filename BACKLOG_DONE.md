@@ -8,6 +8,40 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-10] `scripts/fetch_youtube_transcripts.py` now emails a
+  report after every real run — every transcript actually added, plus
+  a distinctly different alert if the run fails to complete.** Reuses
+  the Archive's existing Resend integration (`archive/utils/email.py`)
+  rather than building a second one-off implementation — same
+  `RESEND_API_KEY`/`RESEND_FROM_ADDRESS` the Archive service already
+  has. Two new functions there: `send_youtube_transcript_report()`
+  (lists every ingested meeting with a real clickable link built from
+  `PUBLIC_BASE_URL`, not the Archive's own internal `ARCHIVE_BASE_URL`
+  — plus skipped/failed counts — sent on *every* normal completion,
+  even an empty one, so silence itself becomes a signal the daily
+  `launchd` job stopped firing rather than reading as "nothing new
+  today") and `send_youtube_transcript_failure()` (a different subject/
+  shape, sent when the run doesn't complete normally at all — an
+  IP-level block aborting mid-run, missing `ARCHIVE_BASE_URL`/
+  `ARCHIVE_INGEST_TOKEN`, or any unhandled exception). Recipient
+  defaults to `ryan@how-to-adu.com`, overridable via
+  `YOUTUBE_FETCH_REPORT_EMAIL`. Titles/slugs/error text are
+  `html.escape()`d before insertion, since they ultimately trace back
+  to scraped government page content. `--dry-run` sends no email
+  either way, matching its existing "preview only" contract.
+
+  The whole body of `main()` now runs under one try/except specifically
+  so every real failure mode reaches the alert path, not just the
+  already-handled IP-block case — confirmed no regression to the
+  existing per-video "failed" vs. fatal-abort distinction (an
+  individual video failing to fetch still just shows up in the normal
+  report's failed list; only a run that can't complete at all triggers
+  the separate alert). Verified for real, not just via the return
+  value: called both new email functions directly with real
+  `RESEND_API_KEY`, confirmed `True` from both, and a real end-to-end
+  script run (fresh local Archive, one queued page, non-dry-run) that
+  successfully sent the report as its very last step with no exception.
+
 - **[Done 2026-08-10] `scripts/fetch_youtube_transcripts.py` runs
   automatically once a day now, via a `launchd` job on the user's Mac
   (`scripts/com.redtaperecordings.fetch-youtube-transcripts.plist`,

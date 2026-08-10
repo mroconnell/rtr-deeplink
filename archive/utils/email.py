@@ -15,6 +15,7 @@ exists in the resolver's service env -- the Archive service needs its own
 copy added too (see the render.yaml task this was built alongside).
 """
 
+import html
 import logging
 import os
 
@@ -181,3 +182,53 @@ async def send_completion_email(to: str, *, meeting_title: str, excerpt: str, pa
 </table>
 """
     return await _send(to, f'Transcript ready: "{meeting_title}"', html)
+
+
+async def send_youtube_transcript_report(to: str, *, ingested: list, skipped: list, failed: list) -> bool:
+    """Daily report for scripts/fetch_youtube_transcripts.py's launchd
+    run -- every meeting a transcript was actually added to, plus a
+    quick summary of anything skipped or failed along the way. Sent on
+    every normal completion, even an empty one, so silence itself
+    becomes a signal something's wrong (the launchd job not firing at
+    all) rather than being indistinguishable from "nothing new today."
+
+    An internal ops notification, not a public-facing email -- plain
+    HTML, not the branded template send_completion_email() above uses.
+    Titles/slugs/error details are escaped since they ultimately trace
+    back to scraped government page content, not hand-typed text.
+    """
+    if ingested:
+        rows = "".join(
+            f'<li><a href="{html.escape(item["page_url"])}">{html.escape(item["title"])}</a>'
+            f" &mdash; {item['segment_count']} segments</li>"
+            for item in ingested
+        )
+        body = f"<p><strong>{len(ingested)} transcript(s) added:</strong></p><ul>{rows}</ul>"
+    else:
+        body = "<p>No new transcripts today.</p>"
+
+    if failed:
+        rows = "".join(f"<li>{html.escape(item['slug'])}: {html.escape(item['detail'])}</li>" for item in failed)
+        body += f"<p><strong>{len(failed)} failed:</strong></p><ul>{rows}</ul>"
+    if skipped:
+        rows = "".join(f"<li>{html.escape(item['slug'])}: {html.escape(item['detail'])}</li>" for item in skipped)
+        body += f"<p>{len(skipped)} skipped:</p><ul>{rows}</ul>"
+
+    subject = f"YouTube transcripts: {len(ingested)} added" if ingested else "YouTube transcripts: none new today"
+    return await _send(to, subject, body)
+
+
+async def send_youtube_transcript_failure(to: str, *, error_message: str) -> bool:
+    """The "different alert" for when the daily fetch didn't just find
+    zero/some failed videos but failed to complete a normal run at all
+    (an IP-level block aborting mid-run, or an unhandled exception) --
+    deliberately a different subject/shape from the report above so it
+    reads as urgent rather than routine.
+    """
+    body = (
+        "<p>The daily YouTube transcript fetch failed to complete.</p>"
+        f"<p><strong>Error:</strong> {html.escape(error_message)}</p>"
+        "<p>Check <code>~/Library/Logs/fetch-youtube-transcripts.log</code> on the machine "
+        "running the launchd job for the full detail.</p>"
+    )
+    return await _send(to, "⚠️ YouTube transcript fetch failed", body)

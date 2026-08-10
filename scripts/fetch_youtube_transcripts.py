@@ -26,6 +26,17 @@ Requires ARCHIVE_BASE_URL and ARCHIVE_INGEST_TOKEN in the repo's local
 requirements-dev.txt` for youtube-transcript-api -- deliberately a dev
 requirement, not a deploy one, since it's useless from the server's own
 blocked IP.
+
+On every real (non-dry-run) completion, emails a report to
+YOUTUBE_FETCH_REPORT_EMAIL (default ryan@how-to-adu.com) via the
+Archive's existing Resend integration (archive/utils/email.py) --
+RESEND_API_KEY/RESEND_FROM_ADDRESS, same env vars the Archive service
+already uses. Lists every transcript actually added, even an empty
+report, so silence is itself a signal the daily launchd job stopped
+firing rather than being indistinguishable from "nothing new today".
+A run that fails to complete at all (an IP-level block, or any
+unhandled exception) sends a different, explicitly-flagged failure
+email instead of the routine report.
 """
 
 import argparse
@@ -44,12 +55,23 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.platforms.youtube import YouTubeAssetFinder  # noqa: E402
 from app.utils.vtt_parser import normalize_shouting_caption  # noqa: E402
+from archive.utils.email import send_youtube_transcript_failure, send_youtube_transcript_report  # noqa: E402
 
 # Gentler than bulk_ingest.py's 1.5s -- every request here hits YouTube
 # from the operator's own home IP, and youtube-transcript-api's docs warn
 # that too many requests get even residential IPs temporarily blocked.
 REQUEST_DELAY_SECONDS = 5.0
 INGEST_TIMEOUT = aiohttp.ClientTimeout(total=65)  # matches archive_client.PUSH_TIMEOUT -- tolerates a Render cold start
+
+# Not the Archive's own internal ARCHIVE_BASE_URL (its Render URL) --
+# emailed links need the real public domain, same distinction
+# archive/main.py's own PUBLIC_BASE_URL usage makes for confirm/canonical
+# links. Reuses the Archive's existing Resend integration
+# (archive/utils/email.py) rather than a second one-off implementation --
+# same RESEND_API_KEY/RESEND_FROM_ADDRESS already in the repo's local
+# .env for other dev-time email testing.
+PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "https://redtaperecordings.com").rstrip("/")
+REPORT_EMAIL_TO = os.environ.get("YOUTUBE_FETCH_REPORT_EMAIL", "ryan@how-to-adu.com")
 
 
 def _base_url() -> str:
@@ -175,11 +197,30 @@ async def process_one(session: aiohttp.ClientSession, page: dict, *, dry_run: bo
         "transcript_language": language,
     }
     response = await _ingest(session, payload, page["source_url_normalized"])
+    page_url = response.get("url", "")
     return {
         "slug": slug,
         "status": "ingested",
-        "detail": f"{len(segments)} segments (language={language}) -> {response.get('url', '?')}",
+        "detail": f"{len(segments)} segments (language={language}) -> {page_url}",
+        # Only meaningful for status=="ingested" -- consumed by
+        # send_youtube_transcript_report() to build the email's list,
+        # kept out of "detail" (the console/log string) since a plain
+        # string is all that needs.
+        "title": page.get("title") or slug,
+        "page_url": f"{PUBLIC_BASE_URL}{page_url}" if page_url else PUBLIC_BASE_URL,
+        "segment_count": len(segments),
     }
+
+
+async def _notify_failure(dry_run: bool, error_message: str) -> None:
+    print(f"\nABORTING: {error_message}", file=sys.stderr)
+    if dry_run:
+        return
+    # Best-effort -- send_youtube_transcript_failure() already catches and
+    # logs its own errors rather than raising (see archive/utils/email.py's
+    # _send()), so a Resend outage on top of everything else still just
+    # falls through to the log file, not a second crash.
+    await send_youtube_transcript_failure(REPORT_EMAIL_TO, error_message=error_message)
 
 
 async def main() -> None:
@@ -189,61 +230,79 @@ async def main() -> None:
     args = parser.parse_args()
 
     if not _base_url():
-        print("ERROR: ARCHIVE_BASE_URL is not set (check the repo's .env).", file=sys.stderr)
+        await _notify_failure(args.dry_run, "ARCHIVE_BASE_URL is not set (check the repo's .env).")
         sys.exit(1)
     if not os.environ.get("ARCHIVE_INGEST_TOKEN"):
-        print("ERROR: ARCHIVE_INGEST_TOKEN is not set (check the repo's .env).", file=sys.stderr)
+        await _notify_failure(args.dry_run, "ARCHIVE_INGEST_TOKEN is not set (check the repo's .env).")
         sys.exit(1)
 
-    async with aiohttp.ClientSession() as session:
-        pages = await _get_wanted(session)
-        if args.limit is not None:
-            pages = pages[: args.limit]
-        if not pages:
-            print("Transcript-wanted queue is empty -- nothing to do.")
-            return
+    # Everything past this point can fail in ways worth a real alert --
+    # the Archive being unreachable, an unexpected exception, or (via the
+    # `raise` in process_one() below) an IP-level block -- so the whole
+    # body runs under one try/except rather than letting any of those
+    # surface only as a silent non-zero exit in a log file nobody's
+    # watching live.
+    try:
+        async with aiohttp.ClientSession() as session:
+            pages = await _get_wanted(session)
+            if args.limit is not None:
+                pages = pages[: args.limit]
+            if not pages:
+                print("Transcript-wanted queue is empty -- nothing to do.")
+                if not args.dry_run:
+                    await send_youtube_transcript_report(REPORT_EMAIL_TO, ingested=[], skipped=[], failed=[])
+                return
 
-        print(f"{'[DRY RUN] ' if args.dry_run else ''}{len(pages)} page(s) wanting transcripts on {_base_url()}...\n")
+            print(f"{'[DRY RUN] ' if args.dry_run else ''}{len(pages)} page(s) wanting transcripts on {_base_url()}...\n")
 
-        # Wall-clock timestamps on each line matter here specifically
-        # because this is meant to run unattended (see the launchd job in
-        # scripts/com.redtaperecordings.fetch-youtube-transcripts.plist) --
-        # the only way to see *when* something happened is the log file,
-        # not someone watching the terminal live. Per-item timing exists
-        # to answer a real question asked before this was built: fetching
-        # an already-generated caption track is one API call, not audio
-        # processing, so run time is independent of the meeting's actual
-        # length -- these numbers are the actual proof of that, not an
-        # estimate.
-        run_start = time.monotonic()
-        results = []
-        for i, page in enumerate(pages):
-            item_start = time.monotonic()
-            try:
-                result = await process_one(session, page, dry_run=args.dry_run)
-            except Exception as e:
-                print(f"\nABORTING: {type(e).__name__}: {str(e)[:300]}", file=sys.stderr)
-                print("(An IP-level block means further requests would all fail too -- try again later.)", file=sys.stderr)
-                break
-            elapsed = time.monotonic() - item_start
-            results.append(result)
-            timestamp = datetime.now().strftime("%H:%M:%S")
+            # Wall-clock timestamps on each line matter here specifically
+            # because this is meant to run unattended (see the launchd job
+            # in scripts/com.redtaperecordings.fetch-youtube-transcripts.plist)
+            # -- the only way to see *when* something happened is the log
+            # file, not someone watching the terminal live. Per-item timing
+            # exists to answer a real question asked before this was
+            # built: fetching an already-generated caption track is one
+            # API call, not audio processing, so run time is independent
+            # of the meeting's actual length -- these numbers are the
+            # actual proof of that, not an estimate.
+            run_start = time.monotonic()
+            results = []
+            for i, page in enumerate(pages):
+                item_start = time.monotonic()
+                try:
+                    result = await process_one(session, page, dry_run=args.dry_run)
+                except Exception as e:
+                    await _notify_failure(
+                        args.dry_run,
+                        f"{type(e).__name__}: {str(e)[:300]} "
+                        "(An IP-level block means further requests would all fail too -- try again later.)",
+                    )
+                    sys.exit(1)
+                elapsed = time.monotonic() - item_start
+                results.append(result)
+                timestamp = datetime.now().strftime("%H:%M:%S")
+                print(
+                    f"[{timestamp}] [{result['status'].upper():8}] {result['slug']} ({elapsed:.1f}s)\n"
+                    f"           {result['detail']}"
+                )
+                if i < len(pages) - 1:
+                    await asyncio.sleep(REQUEST_DELAY_SECONDS)
+
+            total_elapsed = time.monotonic() - run_start
+            ingested = [r for r in results if r["status"] == "ingested"]
+            skipped = [r for r in results if r["status"] == "skipped"]
+            failed = [r for r in results if r["status"] == "failed"]
+            avg = f", {total_elapsed / len(results):.1f}s/page average" if results else ""
             print(
-                f"[{timestamp}] [{result['status'].upper():8}] {result['slug']} ({elapsed:.1f}s)\n"
-                f"           {result['detail']}"
+                f"\n{len(ingested)} ingested, {len(skipped)} skipped, {len(failed)} failed (of {len(pages)} queued) "
+                f"in {total_elapsed:.1f}s{avg}."
             )
-            if i < len(pages) - 1:
-                await asyncio.sleep(REQUEST_DELAY_SECONDS)
 
-        total_elapsed = time.monotonic() - run_start
-        ingested = [r for r in results if r["status"] == "ingested"]
-        skipped = [r for r in results if r["status"] == "skipped"]
-        failed = [r for r in results if r["status"] == "failed"]
-        avg = f", {total_elapsed / len(results):.1f}s/page average" if results else ""
-        print(
-            f"\n{len(ingested)} ingested, {len(skipped)} skipped, {len(failed)} failed (of {len(pages)} queued) "
-            f"in {total_elapsed:.1f}s{avg}."
-        )
+            if not args.dry_run:
+                await send_youtube_transcript_report(REPORT_EMAIL_TO, ingested=ingested, skipped=skipped, failed=failed)
+    except Exception as e:
+        await _notify_failure(args.dry_run, f"{type(e).__name__}: {str(e)[:300]}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
