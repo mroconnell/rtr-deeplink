@@ -7,6 +7,46 @@ where relevant.
 
 ## Bugs
 
+- **A successful resolve with real content can silently never get pushed
+  to the Archive, with zero log trace of the loss.** Reported live by
+  the user 2026-08-10: a real LA PrimeGov/YouTube meeting
+  (`lacity.primegov.com/Portal/Meeting?meetingTemplateId=156373...`)
+  resolved perfectly (3,101 real segments, confirmed by re-running the
+  exact resolve locally) and the ephemeral page rendered fine, but the
+  meeting never appeared in `/meetings` or in a direct `/internal/lookup`
+  check — the push to the Archive genuinely never landed. Manually
+  re-running the identical push against production succeeded cleanly
+  (200 OK, real page created), so this isn't a reproducible code bug in
+  the push logic itself — `app/main.py`'s `/api/resolve` route was read
+  through carefully and the `if result.segments or result.agenda_items:
+  background_tasks.add_task(archive_client.push, ...)` gate is correct.
+
+  **Leading theory, not confirmed** (no server log access this session):
+  `BackgroundTasks` aren't durable. If the resolver process restarts
+  (a deploy, a crash) between the response being sent and the background
+  task actually executing, the task is lost silently — no exception, no
+  log line, nothing to alert on, since the process that would have
+  logged the failure is the one that got killed. Six separate deploys
+  landed in rapid succession during the same session as this report;
+  a request landing mid-rollout is a plausible, if unconfirmed,
+  explanation. Directly connects to `CLAUDE_BACKLOG.md`'s existing
+  "Error monitoring (Sentry or similar)" item — this exact failure mode
+  wouldn't even produce something for Sentry to catch under the current
+  fire-and-forget design, so real error monitoring alone wouldn't fully
+  close this gap.
+
+  **Worth deciding, not yet built**: a real fix needs the push to survive
+  a process restart -- e.g. a durable queue/outbox row written
+  synchronously before the response returns, with a periodic sweep
+  retrying anything still unconfirmed, rather than trusting an
+  in-process `BackgroundTasks` callback alone. Smaller mitigation
+  worth considering on its own: `/admin/recheck-archive-page` (already
+  built, README.md's "Caching and reporting" section) already gives a
+  manual "force re-push this one URL" escape hatch for exactly this
+  symptom when a user reports it — the real gap is *detecting* the
+  loss happened in the first place, not just fixing one instance by hand
+  once reported.
+
 - **`MeetingPage` has no `video_warnings`/`agenda_warnings`/`agenda_link`
   columns, so the Archive can't store or render the resolver's real,
   specific per-meeting messages for those cases — a generic static
