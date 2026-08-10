@@ -41,62 +41,37 @@ where relevant.
   actually been pushed to the Archive (confirmed via a real audit of all
   22 archived meetings) — but worth doing before the first one is.
 
-- **⚠️ Production incident, active as of 2026-08-09: real Minneapolis
-  LIMS video resolves failing at the YouTube step with "Sign in to
-  confirm you're not a bot."** Reported live by the user re-testing
-  Minneapolis after the Playwright deploy fix landed (see
-  BACKLOG_DONE.md) — a real, different failure signature than the
-  earlier Playwright launch error, which itself is confirmed fixed
-  (this happens *after* Playwright successfully launches, scrapes the
-  LIMS agenda page, and hands a real YouTube video ID downstream).
-
-  **First attempted fix (client-switching) confirmed NOT to work, via a
-  real test run from Render's own shell, not just locally**: added
-  `extractor_args: {"youtube": {"player_client": ["android", "ios",
-  "tv", "web"]}}` to `_extract_info()` on the theory that YouTube's
-  anti-bot check was tied to yt-dlp's default "web" client's PO-token
-  requirement specifically. Worked locally against the real failing
-  video (`YgAu_4xWvGU`), but the user re-ran the identical script
-  directly from a Render shell and got the same "Sign in to confirm
-  you're not a bot" error, with the traceback showing all four clients
-  exhausted (`raise_no_formats`) — **this is IP-reputation-based
-  blocking on Render's server IP, not a client-selection problem**;
-  which internal client yt-dlp impersonates doesn't matter if the IP
-  itself is flagged. A real lesson in this repo's own "verify against
-  the real thing" convention: a fix that worked from a home IP proved
-  nothing about a datacenter IP's reputation.
-
-  **Real fix, per the user's own idea**: decouple video *playback* from
-  yt-dlp entirely, the same way `slc.py`/`lims.py` already decouple
-  their own agenda/metadata parsing from it. Playback was already
-  iframe-embed-only (see `youtube.py`'s docstring — no direct file URL
-  ever existed for YouTube), and the embed URL is pure string
-  formatting from the video id, no network call needed — so there was
-  no real reason a yt-dlp metadata/caption failure needed to take down
-  the *entire* resolve. `YouTubeAssetFinder.resolve_video_id()` now
-  degrades: on a `DownloadError`, it returns a real, playable
-  `ResolvedMeeting` (video embed works) with no title/date/captions and
-  an honest warning, instead of raising. This has an especially strong
-  effect for LIMS specifically: `lims.py` already parses Minneapolis's
-  own agenda page for title/date/jurisdiction and its own JSON endpoint
-  for the video id + real per-item timestamps — none of that ever
-  touched YouTube — so a Minneapolis meeting page now renders nearly
-  fully (correct title/date/jurisdiction, real agenda items, playable
-  video) even with yt-dlp completely blocked; only the transcript is
-  genuinely lost. Same benefit applies to PrimeGov's delegation and any
-  standalone/generic-fallback YouTube link, just without a second
-  metadata source to fall back on for those.
-
-  **Remove this item once Minneapolis has been retried in production
-  and the page renders correctly (video + LIMS's own metadata/agenda,
-  transcript genuinely absent with a clear message)** — not yet
-  confirmed against the real deploy as of this writing. The underlying
-  IP-block itself is NOT fixed by this (metadata/captions are still
-  genuinely unavailable) — real options for that (cookies-based auth,
-  a PO-token-provider plugin, a proxy) all have real cost/maintenance/
-  risk tradeoffs not evaluated yet; not attempted here since the
-  degrade-gracefully fix already recovers most of the real value
-  without any of those tradeoffs.
+- **YouTube-backed meetings' transcripts now depend on someone actually
+  running `scripts/fetch_youtube_transcripts.py` from a residential
+  connection — the tooling shipped 2026-08-10 (see BACKLOG_DONE.md's
+  experiment + build entry), but nothing runs it automatically yet.**
+  The server structurally cannot fetch these itself: confirmed live that
+  yt-dlp, plain timedtext requests, *and* youtube-transcript-api (a
+  different InnerTube recipe, tested 2026-08-10 specifically to close
+  this question) are all blocked from Render's cloud IP, while the same
+  library works perfectly from a home connection. The Archive now
+  exposes `GET /internal/transcript-wanted` (every YouTube-backed page
+  with no default transcript) and the script drains it through the
+  normal ingest path. Open follow-ups, in rough order:
+  - **Run the script for real against production** — as of this writing
+    the queue has real pages waiting (the Minneapolis LIMS meetings,
+    Baltimore's council hearing). Verified end-to-end locally against a
+    real YouTube fetch; not yet run against the production Archive.
+  - **Automate the run** — a launchd/cron timer on the user's own
+    machine (the fetcher must be on a residential IP, so this can't be
+    a Render cron job). Until then it's a manual "run it every so
+    often" chore, same posture as `bulk_ingest.py` batches.
+  - **Whisper fallback for YouTube videos with no captions at all**
+    (analysis option 8): extend the same local script to yt-dlp the
+    *audio* (works from residential IPs) for queue entries whose
+    caption fetch finds nothing, then feed the existing transcription
+    pipeline. Not built — needs a decision on where the audio goes
+    (local faster-whisper vs. uploading to the worker).
+  - **Human/source-side option (analysis option 9), user-side**: for
+    big cities, ask the clerk for the caption file directly, or
+    manually export from YouTube Studio-visible sources — the user is
+    pursuing this angle themselves; `bulk_ingest.py`-style manual
+    pushes can carry whatever comes back.
 
 ## Deep links
 

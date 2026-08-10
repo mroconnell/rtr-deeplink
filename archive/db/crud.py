@@ -312,6 +312,56 @@ async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) 
         return {"slug": page.slug, "url": f"/m/{page.slug}"}
 
 
+async def list_youtube_pages_missing_transcripts() -> list[dict]:
+    """Every archived YouTube-backed meeting page with no default
+    transcript -- the "transcript wanted" queue consumed by
+    scripts/fetch_youtube_transcripts.py. YouTube-only because that's the
+    one platform whose captions this service structurally can't fetch
+    itself: confirmed live 2026-08-10 that even youtube-transcript-api
+    (a different endpoint/recipe from the already-blocked yt-dlp and
+    timedtext paths) gets IpBlocked from Render's cloud IP while working
+    fine from a residential one, so fetching happens off-server and gets
+    pushed back through the normal /internal/ingest path.
+
+    "Missing" means no is_default=True TranscriptVersion, not merely zero
+    version rows -- a page whose only version was demoted for being a
+    copied agenda (_default_looks_like_copied_agenda) genuinely shows "no
+    transcript" and should be re-fetchable too.
+
+    Returns exactly the identity fields a push needs for
+    _find_or_create_page() to match the existing page rather than
+    creating a duplicate: platform, external_id, source_url_normalized.
+    """
+    async with async_session() as session:
+        default_exists = (
+            select(TranscriptVersion.id)
+            .where(
+                TranscriptVersion.meeting_page_id == MeetingPage.id,
+                TranscriptVersion.is_default.is_(True),
+            )
+            .exists()
+        )
+        pages = (
+            await session.execute(
+                select(MeetingPage)
+                .where(MeetingPage.video_format == "youtube", ~default_exists)
+                .order_by(MeetingPage.created_at.asc())
+            )
+        ).scalars().all()
+
+        return [
+            {
+                "slug": page.slug,
+                "title": page.title,
+                "platform": page.platform,
+                "external_id": page.external_id,
+                "source_url_normalized": page.source_url_normalized,
+                "video_url": page.video_url,
+            }
+            for page in pages
+        ]
+
+
 async def get_page_by_slug(slug: str) -> Optional[dict]:
     async with async_session() as session:
         page = (

@@ -85,6 +85,38 @@ oriented toward.
   audience-membership functions for a different trigger, not inventing
   the mechanism from scratch.
 
+## YouTube transcript acquisition — further-out ideas
+
+From the 2026-08-10 analysis session that produced the transcript-wanted
+queue + local fetcher (see BACKLOG_DONE.md); these are the not-chosen
+options worth remembering if the local-script approach ever stops
+scaling.
+
+- **A visitor-powered "contribute this transcript" bookmarklet.** A
+  plain button on our page *cannot* fetch YouTube captions from the
+  visitor's browser — CORS blocks cross-origin reads regardless of IP.
+  But a bookmarklet clicked *while on the youtube.com watch page itself*
+  runs same-origin: it could call the same InnerTube endpoints the
+  page's own "Show transcript" panel uses (visitor's residential IP,
+  visitor's session) and POST the result to a new Archive endpoint.
+  Flow: meeting page says "no transcript yet — help us get it" → deep
+  link to the video on YouTube → visitor clicks the (once-installed)
+  bookmarklet → transcript lands in the Archive. Real challenges before
+  building: an inbound public submission endpoint needs real abuse
+  hardening (validate segment monotonicity/density against the video's
+  known duration, land as a non-default version pending review, rate
+  limit), bookmarklets are a power-user ask, and browser CSP handling of
+  `javascript:` URLs varies. A browser extension is the heavier,
+  more-legitimate version of the same idea. Neither is worth building
+  while one person running one script covers the volume.
+- **Residential-proxy or third-party transcript API fallbacks** (Bright
+  Data-style proxies for server-side yt-dlp; Supadata/SearchAPI-style
+  paid transcript APIs). Both work without any local machine, both cost
+  real money per month/call, and both outsource a ToS-gray dependency.
+  The decision record and per-option tradeoffs live in BACKLOG_DONE.md's
+  2026-08-10 experiment entry; revisit only if the local script becomes
+  the bottleneck.
+
 ## On-demand transcription follow-ups
 
 Both raised directly by the user alongside the original transcription

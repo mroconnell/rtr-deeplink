@@ -366,6 +366,23 @@ re-pushing an unchanged meeting doesn't pile up duplicate versions). Both
 calls above — a down/misconfigured Archive degrades silently, never breaks
 `/api/resolve`.
 
+**YouTube transcripts — fetched locally, not server-side**: YouTube
+blocks caption requests from cloud-provider IPs (confirmed live
+2026-08-10: yt-dlp, plain timedtext requests, and `youtube-transcript-api`
+all fail from Render's IP while the same calls work from a residential
+connection — see `BACKLOG_DONE.md`'s experiment entry). So YouTube-backed
+pages get their transcripts through a two-part loop instead:
+`GET /internal/transcript-wanted` (token-gated like every `/internal/*`
+route) lists every YouTube-backed page with no default transcript, and
+`scripts/fetch_youtube_transcripts.py` — run locally, from a residential
+connection, same `.env` setup as `scripts/bulk_ingest.py` plus
+`pip install -r requirements-dev.txt` — drains that queue via
+`youtube-transcript-api` and pushes results back through the normal
+`POST /internal/ingest` (idempotent, content-hash-deduped, matched to
+the existing page). Supports `--dry-run` and `--limit`; aborts the whole
+run on an IP-level block rather than failing every queue entry
+identically.
+
 **Checking the Archive's real production schema**: `GET /internal/schema-info`
 (token-gated the same way as every other `/internal/*` route — a bearer
 token matching `ARCHIVE_INGEST_TOKEN`, 404 rather than 401/403 on a

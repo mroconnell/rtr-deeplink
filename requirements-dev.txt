@@ -1,3 +1,11 @@
 -r requirements.txt
 pytest>=8.0
 pytest-asyncio>=0.24
+# Local tooling only (scripts/fetch_youtube_transcripts.py), deliberately
+# NOT in requirements.txt: YouTube blocks caption requests from cloud IPs
+# (confirmed live 2026-08-10 -- IpBlocked from Render's shell, works from
+# a residential connection), so this library is useless on the deployed
+# services and only ever runs from a local machine. Unpinned for the same
+# reason yt-dlp is (see requirements.txt): it only works because it's
+# actively maintained against YouTube's changes.
+youtube-transcript-api

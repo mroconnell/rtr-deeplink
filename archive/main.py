@@ -128,6 +128,21 @@ async def internal_schema_info(authorization: Optional[str] = Header(None)):
     }
 
 
+@app.get("/internal/transcript-wanted")
+async def internal_transcript_wanted(authorization: Optional[str] = Header(None)):
+    """The "transcript wanted" queue: every archived YouTube-backed page
+    with no default transcript. Consumed by
+    scripts/fetch_youtube_transcripts.py, which fetches captions from a
+    residential IP (this service's own cloud IP is confirmed blocked by
+    YouTube -- see the crud function's docstring) and pushes them back
+    through the normal /internal/ingest path.
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    return {"pages": await crud.list_youtube_pages_missing_transcripts()}
+
+
 @app.get("/internal/lookup")
 async def internal_lookup(normalized_url: str, authorization: Optional[str] = Header(None)):
     # 404, not 401/403 -- this is a private endpoint, its existence

@@ -8,6 +8,79 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-10, verified end-to-end] Built the YouTube transcript
+  recovery pipeline: a "transcript wanted" queue on the Archive plus a
+  local residential-IP fetcher script — after a deliberate experiment
+  killed the last hope of fetching server-side.** Closes out the
+  2026-08-09 "Minneapolis LIMS resolves failing at the YouTube step"
+  production incident (degrade-gracefully fix confirmed working in
+  production 2026-08-10: the user's own BHZ/6105→6073 tests rendered
+  video + LIMS's real metadata/agenda with the transcript honestly
+  absent) and replaces that item's open "options for the IP block not
+  yet evaluated" tail with a decided, built answer.
+
+  **The experiment (analysis option b5)**: before building anything,
+  tested whether YouTube's InnerTube `get_transcript` endpoint — a
+  genuinely different endpoint from the already-blocked timedtext URLs
+  and yt-dlp's player API — escapes the cloud-IP block. Hand-rolled
+  calls failed `FAILED_PRECONDITION` even from a residential IP with
+  the watch page's own full `INNERTUBE_CONTEXT`, cookies, and the
+  page-embedded `params` (extracted from a real watch page's
+  `ytInitialData`); rather than reverse-engineer further, switched to
+  `youtube-transcript-api` (the maintained library that already solves
+  the current attestation recipe): **locally it works perfectly** —
+  1,556 real segments for the real Minneapolis video `YgAu_4xWvGU`,
+  including the *human-typed* CC1 track (real `>>` speaker markers),
+  not just auto-captions — **and from Render's shell the identical
+  call raises `IpBlocked`** (the library's own cloud-provider-IP error,
+  run by the user directly). Also re-confirmed in passing:
+  `get_video_info` (the classic StackOverflow-era trick) returns HTTP
+  410 Gone, and the official Data API's `captions.download` requires
+  the video owner's OAuth — neither is a path. Conclusion: fetching
+  must happen off-server, full stop.
+
+  **The build**: `crud.list_youtube_pages_missing_transcripts()` +
+  token-gated `GET /internal/transcript-wanted` on the Archive — every
+  YouTube-backed `MeetingPage` with no `is_default=True`
+  `TranscriptVersion` ("no default" rather than "no rows," so a page
+  whose only version was demoted as a copied agenda is re-fetchable
+  too), returning exactly the identity fields `_find_or_create_page()`
+  needs to match the existing page on push (platform, external_id,
+  source_url_normalized). `scripts/fetch_youtube_transcripts.py`
+  (same shape as `bulk_ingest.py`: local `.env`, `--dry-run`,
+  `--limit`, per-item results + totals) drains the queue via
+  `youtube-transcript-api` and pushes through the normal
+  `/internal/ingest` — idempotent by the existing content-hash dedupe.
+  Conversion details that came from the real data: blank timing-padding
+  snippets dropped; leading real `>>` becomes the site's `»` marker
+  (the existing `normalize_speaker_change_marker()` handles the
+  *literal-entity* `&gt;&gt;` case, a different artifact); the whole
+  track reuses `normalize_shouting_caption()` for ALL-CAPS CC tracks,
+  plus an explicit capitalize-after-`»` pass since sentence-casing
+  can't see through the marker prefix. 5s inter-video delay (gentler
+  than bulk_ingest's 1.5s — these hit YouTube from the operator's own
+  home IP, which the library warns can also get temporarily blocked);
+  an `IpBlocked`/`RequestBlocked` aborts the whole run instead of
+  burning the queue on identical failures. `youtube-transcript-api`
+  added to `requirements-dev.txt` only, deliberately not
+  `requirements.txt` — useless on the deployed services' blocked IPs.
+
+  **Verification**: 12 new tests (`tests/test_transcript_wanted.py`:
+  queue includes a transcriptless YouTube page / excludes one with a
+  transcript / excludes non-YouTube pages / route token-gating;
+  `tests/test_fetch_youtube_transcripts.py`: snippet conversion incl.
+  blank-drop, marker replacement, de-shout, mid-text `>>` untouched),
+  plus a real end-to-end run against a local Archive: ingested a
+  transcriptless YouTube page, confirmed it appeared in the queue, ran
+  the script for real (real YouTube fetch, 1,555 segments), confirmed
+  the transcript landed on the same page (no duplicate), the queue
+  drained to empty, and the rendered page shows clean de-shouted text
+  with `»` markers — visibly better output than the pre-block scraped
+  version of the same video (which has rolling-duplicate lines and raw
+  `&gt;&gt;` artifacts). Follow-ups (actually running it against
+  production, automating it, the no-captions Whisper fallback) tracked
+  as a live BACKLOG.md item.
+
 - **[Done 2026-08-10, verified live] YouTube-embedded meetings' `t=`
   deep link silently landed at 0:00 instead of the requested moment.**
   Reported live by the user on a real Minneapolis LIMS/YouTube meeting
