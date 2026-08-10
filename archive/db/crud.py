@@ -170,6 +170,8 @@ async def _find_or_create_page(session, payload: dict[str, Any], input_url_norma
             video_url=payload.get("video_url"),
             video_format=payload.get("video_format"),
             agenda_items=payload.get("agenda_items") or [],
+            video_warnings=payload.get("video_warnings") or [],
+            agenda_link=payload.get("agenda_link"),
         )
         session.add(page)
         await session.flush()  # assigns page.id
@@ -183,6 +185,17 @@ async def _find_or_create_page(session, payload: dict[str, Any], input_url_norma
         page.video_format = payload.get("video_format") or page.video_format
         if payload.get("agenda_items"):
             page.agenda_items = payload["agenda_items"]
+        # Same truthy-gated pattern as agenda_items just above, not an
+        # unconditional overwrite -- a partial ingest payload that omits
+        # these fields entirely (e.g. scripts/fetch_youtube_transcripts.py's
+        # transcript-only push) defaults to []/None via Pydantic, and an
+        # unconditional overwrite would silently wipe a real warning/link
+        # a fuller earlier resolve had found. Same accepted tradeoff
+        # agenda_items already has: a warning that's since been resolved
+        # won't auto-clear until a fuller re-resolve explicitly says so.
+        if payload.get("video_warnings"):
+            page.video_warnings = payload["video_warnings"]
+        page.agenda_link = payload.get("agenda_link") or page.agenda_link
         # Reassigning a column to its *current* value doesn't dirty it
         # for SQLAlchemy's purposes, so `onupdate=func.now()` silently
         # never fires on a re-ingest whose content is byte-identical to
@@ -387,6 +400,8 @@ async def get_page_by_slug(slug: str) -> Optional[dict]:
             "video_url": page.video_url,
             "video_format": page.video_format,
             "agenda_items": page.agenda_items or [],
+            "video_warnings": page.video_warnings or [],
+            "agenda_link": page.agenda_link,
             "source_url": page.source_url_normalized,
             "versions": [
                 {

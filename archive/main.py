@@ -12,11 +12,13 @@ from fastapi import FastAPI, Header, Request
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from markupsafe import Markup
 from pydantic import BaseModel
 
 from .db import crud
 from .db.engine import init_models
 from .utils import email as email_utils
+from .utils.render_warnings import render_warnings_html
 from .utils.transcript_export import to_srt, to_txt
 from .utils.url_normalize import normalize_url
 
@@ -48,6 +50,12 @@ templates = Jinja2Templates(directory=APP_DIR / "templates")
 # this service's own onrender.com URL. Empty locally, where there's no
 # real public domain to canonicalize against.
 templates.env.globals["public_base_url"] = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
+# Server-side equivalent of shared_static/deep_link.js's linkifyWarning()
+# -- wraps render_warnings_html()'s already-escaped output in Markup so a
+# template call site doesn't also need `|safe` (a forgotten `|safe`
+# would otherwise silently re-escape real markup this filter already
+# produced correctly).
+templates.env.filters["warnings_html"] = lambda warnings: Markup(render_warnings_html(warnings or []))
 
 
 def _parse_optional_bool(value: Optional[str]) -> Optional[bool]:
@@ -182,6 +190,11 @@ class IngestRequest(BaseModel):
     agenda_items: List[TranscriptSegmentIn] = []
     transcript_language: Optional[str] = None
     transcript_warnings: List[str] = []
+    # Mirrors ResolvedMeeting (app/platforms/models.py) -- previously
+    # silently dropped by Pydantic on every ingest since MeetingPage had
+    # no matching columns (fixed 2026-08-10, see BACKLOG_DONE.md).
+    video_warnings: List[str] = []
+    agenda_link: Optional[str] = None
     input_url_normalized: str
 
 

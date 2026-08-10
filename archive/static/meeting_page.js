@@ -356,6 +356,22 @@ function wireReportProblemForm() {
   });
 }
 
+// Warnings (video_warnings, transcript_warnings) are rendered server-side
+// via Jinja2's warnings_html filter (archive/utils/render_warnings.py,
+// 2026-08-10), which already turns the standardized "request a transcript
+// from the audio" phrase into a real <button class="transcribe-inline-
+// trigger"> -- present in the initial DOM, not dynamically inserted, so
+// this wires up clicks once at page load rather than per-insertion the
+// way player.js's renderWarnings() does for its own JS-inserted version
+// of the same markup. Called before the early `if (!wrapper) return`
+// below on purpose -- the no-video case (no #videoWrapper at all) is
+// exactly the case most likely to have this button in its warning text.
+function wireTranscribeInlineTriggers() {
+  document.querySelectorAll('.transcribe-inline-trigger').forEach((btn) => {
+    btn.addEventListener('click', () => document.getElementById('transcribeToggle').click());
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   segments = Array.from(document.querySelectorAll('.transcript-section .transcript-segment[data-start]')).map(
     (el) => ({ start: Number(el.dataset.start || '0') })
@@ -364,6 +380,7 @@ document.addEventListener('DOMContentLoaded', () => {
   wireSeekAndCopyClicks();
   wireReportProblemForm();
   wireTranscribeForm();
+  wireTranscribeInlineTriggers();
 
   const wrapper = document.getElementById('videoWrapper');
   if (!wrapper) return;

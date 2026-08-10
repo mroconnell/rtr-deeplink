@@ -98,39 +98,21 @@ anything) to build against it.
 
 ## Bugs
 
-- **`MeetingPage` has no `video_warnings`/`agenda_warnings`/`agenda_link`
-  columns, so the Archive can't store or render the resolver's real,
-  specific per-meeting messages for those cases — a generic static
-  stand-in shipped instead (2026-08-10, see BACKLOG_DONE.md), not the
-  real fix.** The resolver's `ResolvedMeeting` has had these fields for a
-  while (`video_warnings`, `agenda_warnings`, `agenda_link`), but
-  `archive/db/models.py`'s `MeetingPage` was never given matching
-  columns, and `archive/main.py`'s `IngestRequest`/`crud.ingest_resolution()`
-  silently drop them on every ingest today (Pydantic ignores unmodeled
-  fields). Properly fixing this needs a real Alembic migration
-  (`archive/alembic/`, adopted 2026-08-09 specifically for this class of
-  change — `create_all()` can add a new table but this is new *columns*
-  on an existing one). The one-time production Alembic adoption step is
-  confirmed done as of 2026-08-10 — `GET /internal/schema-info` against
-  real production shows `alembic_version: "8e7cf3b20f86"` (head) and
-  `schema_matches_models: true` — see BACKLOG_DONE.md for the full story
-  (an earlier stale doc caused an incorrect stamp+upgrade attempt, since
-  corrected). This item is no longer blocked on that step specifically —
-  still needs someone with production `DATABASE_URL` access to write and
-  apply the actual new migration for these columns, and to run `alembic
-  upgrade head` against production afterward (per `archive/alembic/
-  README.md`, always re-check `alembic current` first rather than
-  assuming any doc's account of prod's state is still accurate — or now,
-  just call `/internal/schema-info` directly). Once the columns exist:
-  store the real values in `crud.ingest_resolution()`,
-  render `video_warnings` in `meeting_page.html`'s no-video case (replacing
-  the generic "No video available for this meeting." stand-in), add the
-  agenda-link case (an `agenda_warnings`-driven message, own heading, not
-  nested under Transcript), and standardize the "request transcript from
-  audio" phrasing/button the same way `generic_fallback.py` and friends
-  now do. Still not urgent — no `platform="unknown"` meeting has ever
-  actually been pushed to the Archive (confirmed via a real audit of all
-  22 archived meetings) — but worth doing before the first one is.
+- **`video_warnings`/`agenda_link` support is built and verified locally
+  (2026-08-10), but production still needs the real migration applied.**
+  See BACKLOG_DONE.md for the full build. One command left, from the
+  `rtr-deeplink-archive` service's Render Shell:
+  ```bash
+  cd archive
+  alembic current   # confirm it prints 8e7cf3b20f86 (head) first, per archive/alembic/README.md
+  alembic upgrade head
+  alembic current   # confirm it now shows 76a4a2820a2b (head)
+  ```
+  This one runs real DDL (`ALTER TABLE meeting_pages ADD COLUMN ...`),
+  unlike the `app/db` Alembic adoption earlier the same day (see
+  BACKLOG_DONE.md) which only ever needed a bookkeeping-only `stamp` —
+  always re-check `alembic current`'s actual output first, not just
+  this note.
 
 - **YouTube-backed meetings' transcripts run through
   `scripts/fetch_youtube_transcripts.py` on a daily `launchd` schedule

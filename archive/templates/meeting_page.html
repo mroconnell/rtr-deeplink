@@ -107,16 +107,18 @@
         </div>
       </div>
       {% else %}
-      {#- Partial mirror of the resolver's #videoWarnings fix (2026-08-10,
-         see BACKLOG_DONE.md) -- MeetingPage has no video_warnings column
-         yet (that part needs a real Alembic migration + a production
-         `alembic stamp head` this session doesn't have credentials for,
-         see archive/alembic/README.md), so this can't show the real,
-         specific per-meeting reason yet. Still strictly better than the
-         previous behavior of showing nothing at all when there's no
-         video -- a reader was left to guess whether that was a bug or
-         expected. #}
+      {#- Real fix, 2026-08-10 (see BACKLOG_DONE.md) -- MeetingPage now has
+         a video_warnings column, so this shows the resolver's actual,
+         specific per-meeting reason (e.g. "No video link found on this
+         Legistar page.") instead of the earlier generic stand-in message
+         that shipped before the migration existed. Falls back to that
+         same generic line only on an old/partial ingest that genuinely
+         has no video_warnings recorded at all. #}
+      {% if page.video_warnings %}
+      <div class="warnings">{{ page.video_warnings|warnings_html }}</div>
+      {% else %}
       <div class="warnings">No video available for this meeting.</div>
+      {% endif %}
       {% endif %}
 
       <p class="report-problem-toggle"><button type="button" id="reportProblemToggle" class="link-button">Report a problem with this meeting</button></p>
@@ -174,7 +176,7 @@
     </div>
 
     <div id="transcriptColumn">
-    {% if page.agenda_items %}
+    {% if page.agenda_items or page.agenda_link %}
     {#- Some sources (confirmed: several CivicClerk cities' eventBookmarks)
        report every agenda item at the exact same instant -- e.g. 26
        different items can't all genuinely start at 0:00. Rendering those
@@ -186,6 +188,17 @@
     {% set unreliable_timestamps = page.agenda_items|length > 1 and (page.agenda_items|map(attribute='start')|unique|list|length == 1) %}
     <div class="agenda-section">
       <h2>Agenda</h2>
+      {#- agenda_link (2026-08-10, see BACKLOG_DONE.md): generic_fallback.py's
+         best-effort "found a link that looks like the agenda" result --
+         its own line under this heading, not nested under Transcript
+         (the original, user-flagged-as-misleading location). Shown
+         alongside real agenda_items when both exist -- a resolve can
+         have real per-item timestamps *and* a separate raw agenda
+         document link, and both are worth surfacing. #}
+      {% if page.agenda_link %}
+      <p class="source-guess">We think we found an agenda here: <a href="{{ page.agenda_link }}" target="_blank" rel="noopener noreferrer">{{ page.agenda_link }}</a></p>
+      {% endif %}
+      {% if page.agenda_items %}
       {% if unreliable_timestamps %}
       <p class="subtitle">This source doesn't provide real per-item timestamps, so these agenda items aren't clickable.</p>
       {% endif %}
@@ -204,6 +217,7 @@
         {% endif %}
         {% endfor %}
       </div>
+      {% endif %}
     </div>
     {% endif %}
 
@@ -236,7 +250,7 @@
       </div>
       {% endif %}
       {% if active_version.transcript_warnings %}
-      <div class="warnings">{{ active_version.transcript_warnings|join(" ") }}</div>
+      <div class="warnings">{{ active_version.transcript_warnings|warnings_html }}</div>
       {% endif %}
       <div class="transcript-list">
         {% for seg in active_version.segments %}
@@ -252,7 +266,7 @@
     <div class="transcript-section" id="transcriptMissing">
       <h2>Transcript</h2>
       {% if active_version and active_version.transcript_warnings %}
-      <div class="warnings">{{ active_version.transcript_warnings|join(" ") }}</div>
+      <div class="warnings">{{ active_version.transcript_warnings|warnings_html }}</div>
       {% endif %}
       {% if page.video_url %}
       <div class="no-transcript-timestamp">

@@ -34,6 +34,17 @@ class MeetingPage(Base):
     video_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     video_format: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
     agenda_items: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    # Both mirror ResolvedMeeting fields (app/platforms/models.py) that
+    # never had a matching column here -- silently dropped by
+    # crud.ingest_resolution() on every push until 2026-08-10 (see
+    # BACKLOG_DONE.md). NOT `agenda_warnings`: that field existed only
+    # briefly in an earlier session and was deliberately replaced by
+    # `agenda_link` (a raw URL, not a pre-formatted sentence) before
+    # anything else in the codebase started depending on it -- an earlier
+    # BACKLOG.md entry describing this gap was stale on exactly this
+    # point, corrected the same day this column was added.
+    video_warnings: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    agenda_link: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(

@@ -303,6 +303,15 @@ body {
 .warnings a { color: inherit; text-decoration: underline; }
 .warnings a:hover { color: var(--accent); }
 
+/* Plain "we think we found this: <link>" lines (agenda_link, 2026-08-10)
+   -- deliberately normal weight/color, not the bold-on-tinted-background
+   .warnings treatment, since nothing here is confirmed the way a real
+   warning is. Mirrored from app/static/style.css, including the
+   long-URL-overflow fix confirmed live there. */
+.source-guess { color: var(--fg); margin: 0 0 1rem; overflow-wrap: break-word; }
+.source-guess a { color: inherit; text-decoration: underline; overflow-wrap: break-word; }
+.source-guess a:hover { color: var(--accent); }
+
 .video-section { margin: 1.5rem 0; }
 .toolbar {
   display: flex;

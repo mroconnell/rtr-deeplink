@@ -8,6 +8,109 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-10, verified end-to-end locally] Built real
+  `video_warnings`/`agenda_link` support on the Archive, replacing the
+  generic stand-in message shipped earlier the same day.** Corrected a
+  real mistake in this item's own earlier BACKLOG.md phrasing along the
+  way: it referenced `agenda_warnings`, a field that existed only
+  briefly in an earlier session and was deliberately replaced by
+  `agenda_link` (a raw URL, not a pre-formatted sentence) before
+  anything else in the codebase started depending on it — confirmed via
+  a real grep (zero occurrences of `agenda_warnings` anywhere in the
+  current code) before building anything, not assumed from the stale
+  note.
+
+  Two new nullable columns on `MeetingPage`
+  (`archive/db/models.py`): `video_warnings` (JSON list) and
+  `agenda_link` (text). `IngestRequest` (`archive/main.py`) gained both
+  fields (previously silently dropped by Pydantic on every ingest,
+  since `MeetingPage` had nowhere to put them).
+  `crud._find_or_create_page()` stores them with the same truthy-gated
+  "keep fresh, don't blindly overwrite" semantic `agenda_items` already
+  uses — deliberately not an unconditional overwrite, since a partial
+  ingest payload that omits these fields entirely (e.g.
+  `scripts/fetch_youtube_transcripts.py`'s transcript-only push)
+  defaults to `[]`/`None` via Pydantic, and an unconditional overwrite
+  would silently wipe a real warning/link a fuller earlier resolve had
+  found.
+
+  New `archive/utils/render_warnings.py` (`render_warnings_html()`) is
+  the server-side Jinja2 equivalent of `shared_static/deep_link.js`'s
+  `linkifyWarning()` + `player.js`'s `renderWarnings()` phrase-button
+  behavior — the Archive renders warnings server-side, not via client
+  JS, so it needed its own version, registered as a `warnings_html`
+  Jinja2 filter (`archive/main.py`, wrapped in `Markup` so a template
+  call site doesn't also need `|safe`). Applied to the existing
+  `transcript_warnings` spots (previously plain `|join(" ")`, no
+  linkify/button behavior at all) and the new `video_warnings` spot
+  (replacing the "No video available for this meeting." stand-in when
+  real warnings exist, falling back to it only when they genuinely
+  don't). `agenda_link` renders as its own "We think we found an agenda
+  here: `<link>`" line under the Agenda heading — the section's own
+  gating condition changed from `page.agenda_items` alone to `(page.
+  agenda_items or page.agenda_link)`, so the heading now appears even
+  for a meeting with only a link and no real per-item timestamps,
+  matching the original design intent ("own heading, not nested under
+  Transcript"). `.source-guess` CSS (the deliberately-not-`.warnings`-
+  styled treatment for "we think we found this" lines) mirrored from
+  `app/static/style.css` into `archive/static/style.css` — didn't exist
+  there before, since the Archive never had this kind of line at all.
+  `archive/static/meeting_page.js` gained `wireTranscribeInlineTriggers()`,
+  called before the early `if (!wrapper) return` in its
+  `DOMContentLoaded` handler on purpose — the no-video case (no
+  `#videoWrapper` at all) is exactly the case most likely to have the
+  transcribe-request phrase in its warning text, and that early return
+  would otherwise skip wiring it entirely.
+
+  7 new tests (`tests/test_render_warnings.py`): escaping, linkifying,
+  the transcribe-button wrap (case-insensitive), multi-warning joining,
+  empty-list handling, and a real defense-in-depth check (escape-then-
+  linkify order means injected markup in a warning string can never
+  smuggle a fake link past the escaping). Migration
+  (`76a4a2820a2b_add_video_warnings_and_agenda_link_to_.py`) generated
+  correctly by diffing against a database first brought to the *current*
+  head (`8e7cf3b20f86`), not a fresh empty one — confirms it's a real
+  incremental `ALTER TABLE`, not an accidental second baseline. Verified
+  upgrade/downgrade both work cleanly, and diffed the resulting schema
+  against a fresh `create_all()` build: identical except column
+  order (SQLite's `ALTER TABLE ADD COLUMN` always appends at the end
+  regardless of where the model declares a field — a real, harmless,
+  already-established pattern from every previous migration in this
+  session, not a new concern). Local `archive_dev.db` (the repo-root
+  file, not `create_all()`-built) stamped at `8e7cf3b20f86` then
+  upgraded for real to pick up both new columns, confirmed real existing
+  data (1 row) survived intact.
+
+  **Caught two of my own mistakes while doing this, both self-corrected
+  before they became real problems**: (1) generating the migration
+  against a fresh empty database first, which would have produced a
+  second incorrect baseline instead of an incremental diff — caught by
+  reviewing the generated file by hand before trusting it, redone
+  correctly against a database first brought to head. (2) Running
+  `alembic` commands from inside `archive/` without an explicit
+  `DATABASE_URL` twice in a row, which resolves the default relative
+  `./archive_dev.db` path relative to *that* directory instead of the
+  repo root — created a stray empty `archive/archive_dev.db` file (and,
+  separately, an `app/dev.db` one from earlier `app/alembic` testing);
+  both caught by checking file sizes/schemas before trusting them,
+  neither ever touched the real data.
+
+  Full live end-to-end verification, not just unit tests: ingested a
+  real test meeting with both fields populated against a local Archive,
+  viewed the rendered page through the resolver's proxy (port 8010, not
+  the Archive directly on 8020 — hitting it directly 404s on
+  `/archive-static/*`, the same pre-existing quirk noted earlier this
+  session) — confirmed the real `video_warnings` text renders (not the
+  generic stand-in), the real `agenda_link` renders as an actual
+  `<a target="_blank">` under its own Agenda heading, and — the part a
+  pure server-render check can't prove — clicking the inline transcribe
+  phrase actually reveals the transcribe form (`form.hidden` flips from
+  `true` to `false`), confirming `wireTranscribeInlineTriggers()`'s
+  click wiring genuinely works, not just that the button element exists
+  in the DOM. Full suite green throughout (307 tests, up from 300).
+  Production still needs the real migration applied — left as a live
+  `BACKLOG.md` item with the exact command, not run blind.
+
 - **[Done 2026-08-10, confirmed in production] Built `app/alembic/`,
   mirroring `archive/alembic/`'s existing structure and conventions
   exactly, closing the gap that caused the same day's earlier
