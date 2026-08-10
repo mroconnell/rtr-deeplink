@@ -28,6 +28,7 @@ from .platforms import register_all_finders
 from .platforms.base import detect_platform, get_finder, CalendarPageError, UnsupportedPlatformError
 from .platforms.headless_browser import warm_up as warm_up_headless_browser
 from .platforms.media_probe import is_plausible_meeting_duration, probe_duration
+from .platforms.models import ResolvedMeeting
 from .utils.url_normalize import normalize_url
 
 load_dotenv()
@@ -403,6 +404,34 @@ def _media_kind(video_format: Optional[str]) -> str:
     return "audio" if (video_format or "") in ("mp3", "wav") else "video"
 
 
+_YOUTUBE_UNREADABLE_MEDIA_MESSAGE = (
+    "This meeting is hosted on YouTube, which doesn't make it easy for us to pull audio to "
+    "transcribe here — but you can turn on captions and jump to specific timestamps directly in "
+    "the YouTube player above."
+)
+
+
+def _unreadable_media_message(result: ResolvedMeeting, requested_platform: str) -> str:
+    # video_url for a YouTube result is an iframe-embed page
+    # (youtube.com/embed/{id}), never a real media file -- ffprobe can
+    # never read it, a structural mismatch rather than "unavailable"
+    # (see BACKLOG.md for the full trace, including why the real fix is
+    # coupled to the separate, already-known YouTube IP-block issue).
+    #
+    # Deliberately NOT just `result.video_format == "youtube"` -- that's
+    # also true for LIMS/PrimeGov, which delegate to YouTube behind a
+    # *different* jurisdiction's own branded page (source_url stays
+    # lims.minneapolismn.gov, never youtube.com). Telling that visitor
+    # "hosted on YouTube" would be a confusing claim about a URL they
+    # never saw. Only say it when the video is YouTube *and* either the
+    # visitor's own URL was directly youtube.com/youtu.be, or this is a
+    # generic_fallback result (best_effort) where the page itself has no
+    # other branded identity and the video genuinely is youtube.com.
+    if result.video_format == "youtube" and (requested_platform == "youtube" or result.best_effort):
+        return _YOUTUBE_UNREADABLE_MEDIA_MESSAGE
+    return "We found a media source but couldn't read it -- it may be unavailable."
+
+
 @app.post("/api/transcription/check-feasibility")
 @limiter.limit("5/hour")
 async def transcription_check_feasibility(request: Request, req: TranscriptionFeasibilityRequest):
@@ -429,7 +458,7 @@ async def transcription_check_feasibility(request: Request, req: TranscriptionFe
 
     duration = await probe_duration(result.video_url, source_page_url=req.url)
     if duration is None:
-        return {"ok": False, "message": "We found a media source but couldn't read it -- it may be unavailable."}
+        return {"ok": False, "message": _unreadable_media_message(result, platform)}
     if not is_plausible_meeting_duration(duration):
         return {
             "ok": False,

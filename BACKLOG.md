@@ -707,3 +707,33 @@ one item below is resolved as a result.
   building it kills both asks with one change — worth its own scoped
   task given it touches `.version-picker`, `meeting_page.js`, and the
   template's rendering of `active_version` throughout.
+
+- **[Big, low priority] "Request Transcript from Audio" doesn't work for
+  YouTube-hosted meetings.** Confirmed live 2026-08-10: clicking it on a
+  YouTube meeting returns "We found a media source but couldn't read it
+  — it may be unavailable." Root cause traced precisely, not guessed:
+  `app/main.py`'s `check-feasibility` route runs `ffprobe -i
+  <result.video_url>` (`app/platforms/media_probe.py`'s
+  `probe_duration()`) to measure duration before allowing a job —
+  but for YouTube, `result.video_url` is `https://www.youtube.com/
+  embed/{video_id}` (`youtube.py`), an HTML iframe-embed *page* for the
+  browser player, never a real media file. `ffprobe` can never read
+  that, regardless of any blocking — this specific failure would happen
+  even from a totally unblocked IP.
+
+  **Real coupling to the still-open YouTube IP-block issue (see
+  BACKLOG_DONE.md's "degrade gracefully" entries)**: the actual fix
+  isn't just "point ffprobe somewhere else" — YouTube has no direct
+  media-file URL by design (same reason playback needs the iframe
+  Player API, not `<video>`), so getting a real downloadable stream URL
+  requires yt-dlp's own extraction (the same internal pipeline already
+  confirmed blocked by YouTube's anti-bot check on Render's IP for
+  metadata/captions). Building real stream extraction here without
+  first solving that IP block would very likely just trade one failure
+  message for the same underlying block under a different one — worth
+  confirming which is genuinely true (a totally separate, unblocked
+  extraction step, or the same wall) before investing real build time.
+  Real options for the underlying block itself (cookies-based auth, a
+  PO-token-provider plugin, a proxy) were already surfaced and
+  deliberately not attempted, given real cost/maintenance/risk
+  tradeoffs none of them have been evaluated against yet.
