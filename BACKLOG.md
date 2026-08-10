@@ -5,6 +5,97 @@ investigation detail behind each fix — lives in
 [BACKLOG_DONE.md](BACKLOG_DONE.md); items below link back to it for context
 where relevant.
 
+## Trust & safety — real gaps, threat-modeled 2026-08-10
+
+Prompted directly by the user asking "should I be worried about prompt
+injection or people submitting fake government websites or people
+submitting websites that aren't government at all" — a real think-through,
+not a hypothetical checklist. Nothing here is built yet; this section
+exists to make the actual risk shape visible before deciding what (if
+anything) to build against it.
+
+- **Prompt injection: not a live product risk today, because no LLM sits
+  in the deployed serving path at all.** Every adapter parses scraped
+  page content with deterministic regex/BeautifulSoup/JSON extraction —
+  nothing reads a page's text and *acts* on instructions found in it.
+  `worker/`'s `faster-whisper` transcribes audio to text; it doesn't
+  interpret or follow spoken instructions either. The one place this
+  already matters for real: **when I (Claude, during development) fetch
+  and read a real government page's raw content directly** — that's
+  already covered by the same instruction-source-boundary rule I operate
+  under generally (fetched content is data, not commands), not something
+  new to build. **Where this stops being true**: the moment any feature
+  reads scraped page content *through* an LLM in the live serving path —
+  an "AI summary," topic classification, semantic re-ranking, anything
+  like that — a malicious page's own content becomes a real injection
+  vector against that feature specifically. Nothing like that is planned
+  today; worth re-reading this section before building the first one
+  that is.
+
+- **Fake/spoofed "government" pages and non-government content getting
+  archived as if it were official: a real, currently wide-open gap, not
+  a hypothetical one.** Confirmed by reading the actual code: nothing
+  verifies a submitted URL's site is a genuine government body before
+  archiving it. Platform detection is pure URL-shape pattern matching
+  (`detect_platform()`), and `jurisdiction`/`title`/`date` are extracted
+  *from the submitted page's own content* with zero cross-check against
+  any independent government registry — a malicious actor could claim
+  any jurisdiction name they want. `generic_fallback.py` (built
+  specifically to catch anything that doesn't match a known platform) is
+  the widest-open path: it best-effort-scans *any* page for a video +
+  agenda-shaped text, with no domain restriction of any kind — a
+  `.gov`/known-city check would be the obvious first mitigation, but
+  most real, already-working platforms (`lacity.primegov.com`,
+  `dallastx.new.swagit.com`, etc.) aren't `.gov` domains themselves
+  either, so a naive TLD allowlist would break most of what currently
+  works, not just block abuse.
+
+  **Real consequences if this got exploited, not just abstract risk:**
+  fabricated "official" video/transcript content published as a
+  seemingly-legitimate, SEO-indexed permanent page under a real-sounding
+  jurisdiction name (disinformation/astroturfing risk); a real named
+  official's words fabricated or altered under the appearance of an
+  authoritative civic record (defamation-adjacent risk, sharper than the
+  already-flagged Whisper-hallucination risk in the on-demand
+  transcription section below, since *that* risk at least starts from
+  real audio); the Archive used as free SEO-boosted hosting for
+  unrelated spam/harassment content via `generic_fallback`; reputational/
+  trust erosion for the whole site if any of the above became public.
+
+  **What already exists as a real, if reactive, mitigation**: the
+  "Report a problem with this meeting" flow (`ProblemReport`,
+  `app/db/models.py`) already gives any third party a path to flag a
+  suspicious page — genuinely built, not aspirational, just reactive
+  (after publication) rather than preventive.
+
+  **Mitigation options worth weighing, not yet decided or built:**
+  - **noindex generic_fallback/`best_effort` pages by default** —
+    confirmed via a direct code check: there is currently *no* per-page
+    `noindex`, only a site-wide `robots.txt`. The highest-risk pathway
+    (unverified, non-standard pages) is exactly the one getting full
+    search-engine amplification today. Narrowest, cheapest mitigation
+    on this list — doesn't block anything, just stops amplifying the
+    least-verified content until a human's looked at it.
+  - **Manual review before a brand-new jurisdiction goes live/indexed**
+    — especially for `generic_fallback`/`best_effort` results. Real cost:
+    turns part of the pipeline from fully automatic into something
+    needing a human in the loop, at least for first-time jurisdictions.
+  - **Platform-based trust tiers** instead of domain allowlisting — the
+    named-vendor adapters (Granicus, Legistar, CivicClerk, Swagit,
+    PrimeGov, etc.) all target products specifically sold to local
+    governments, which is real (if imperfect) signal a naive domain
+    check can't get from a URL shape alone; `generic_fallback` results
+    would sit in a lower-trust tier by default under this framing.
+  - **A curated known-jurisdiction list**, grown deliberately over time
+    as real cities get manually confirmed — ties naturally into the
+    already-planned "Coverage page" (Archive roadmap, below), which
+    could double as this list's public face rather than being a second,
+    separate thing to maintain.
+
+  Deliberately not prioritized/sequenced yet — this section exists to
+  make the shape of the risk visible, not to commit to a fix, per the
+  user's own framing ("at some point").
+
 ## Bugs
 
 - **`app/db/alembic/` is built and verified locally (2026-08-10), but
