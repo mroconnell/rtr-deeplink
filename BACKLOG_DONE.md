@@ -8,6 +8,83 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-10, verified end-to-end] Built the real fix for the
+  silent-Archive-push-loss bug: durable push tracking plus an
+  opportunistic retry sweep, instead of trusting a bare fire-and-forget
+  `BackgroundTasks` call alone.** Closes out the item logged earlier the
+  same day (a real LA PrimeGov/YouTube meeting that resolved with 3,101
+  real segments but never reached the Archive, leading theory being a
+  resolver process restart losing the in-flight background task with
+  zero log trace).
+
+  **Design**: reused `app/db/models.py`'s existing `MeetingResolution`
+  table (already stores the full resolved payload for every successful
+  resolve) rather than a new outbox table — added `archive_pushed_at`
+  (null until a push actually succeeds) and `archive_push_attempts`.
+  `crud.log_resolution()` now returns the new row's id (`flush()` before
+  `commit()`); a new `_push_and_track(resolution_id, payload,
+  normalized)` in `app/main.py` wraps `archive_client.push()` (which now
+  returns `bool` instead of bare `None`) and marks the row pushed on
+  success or records a failed attempt otherwise. Both places that fire a
+  background push — the fresh-resolve success path and the cache-hit
+  opportunistic-push path — now go through this wrapper instead of
+  calling `archive_client.push` directly (the fresh-resolve path falls
+  back to the old bare-push behavior only if `log_resolution` itself
+  failed, i.e. `resolution_id is None`, since there's nothing to track
+  against in that case). `crud.get_cached_resolution()`'s return shape
+  changed from a bare payload dict to `{"resolution_id", "payload"}` so
+  the cache-hit path has an id to track against too; both call sites in
+  `app/main.py` updated.
+
+  **The actual retry mechanism**: `crud.get_pending_archive_pushes(min_age_minutes,
+  limit)` finds rows with real content (`transcript_found` or
+  `resolved_payload["agenda_items"]`), `status == "success"`,
+  `archive_pushed_at IS NULL`, under `MAX_ARCHIVE_PUSH_ATTEMPTS` (5,
+  after which a permanently-broken payload stops being retried but stays
+  visible), older than a grace period (default 5 minutes — deliberately
+  excludes a just-created row, so the sweep never races the normal fast
+  path seconds after a response returns). This app has no background job
+  queue by design (per CLAUDE.md), so the sweep isn't a real scheduler:
+  `_maybe_schedule_push_sweep()` is an in-memory time-gated check fired
+  opportunistically at the top of every `/api/resolve` call, the same
+  pattern `ARCHIVE_RECHECK_AFTER`'s stale-page recheck already uses —
+  fine for a single-instance deploy, not a distributed-lock guarantee.
+  New `GET /admin/sweep-pending-pushes` (token-gated, matching
+  `/admin/recheck-archive-page`'s shape) triggers and awaits the same
+  sweep synchronously, for checking on or forcing it directly.
+  `crud.get_stats()` gained a `pending_archive_pushes` count (no
+  age/attempts filtering, unlike the retry-candidate query — a
+  visibility count should still surface a row past the retry cap) so
+  `/admin/stats` finally has something to show for this failure mode,
+  directly closing the "even monitoring wouldn't catch this" gap the
+  original report identified.
+
+  **Verification**: `tests/conftest.py` now also initializes `app/db`'s
+  schema (it shares `DATABASE_URL` with `archive/db`, just never had its
+  own tables created in the test fixture before). 18 new tests across
+  `tests/test_app_db_crud.py` (grace period, content-free/agenda-only/
+  non-success exclusions, max-attempts cutoff, the cache shape change,
+  the stats count) and `tests/test_archive_push_tracking.py`
+  (`_push_and_track`/`_sweep_pending_archive_pushes` success and failure
+  paths via a monkeypatched `archive_client.push`, the admin endpoint's
+  token gating and real behavior, the sweep gate not double-scheduling).
+  Then a full live end-to-end run, not just unit tests: started the
+  resolver pointed at a deliberately unreachable Archive URL, resolved
+  the real Baltimore meeting from the original report — confirmed the
+  push failure was correctly recorded (`pending_archive_pushes: 1`,
+  `attempts: 1`) — pointed the resolver at a real local Archive,
+  backdated the row past the grace period, called `/admin/sweep-pending-
+  pushes` for real, and confirmed the retry succeeded: the pending count
+  dropped to 0 and the meeting genuinely appeared in the local Archive's
+  `/meetings` search. Full suite green throughout (299 tests, up from
+  281); also fixed the same `load_dotenv()`-as-import-side-effect test
+  flake found earlier the same day (see the entry below), this time
+  triggered by the new push-tracking test file importing `app.main` —
+  moved both `ARCHIVE_INGEST_TOKEN` and `ADMIN_STATS_TOKEN` test
+  defaults into `conftest.py` itself (guaranteed to run before any test
+  module's own import), a permanent fix rather than patching each
+  affected file's import order individually.
+
 - **[Done 2026-08-10] `scripts/fetch_youtube_transcripts.py` now emails a
   report after every real run — every transcript actually added, plus
   a distinctly different alert if the run fails to complete.** Reuses

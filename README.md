@@ -312,6 +312,25 @@ distinguishable from a typo):
   (e.g. an adapter bug fix, or a source that's since added captions) to
   land sooner. Returns what it found (segment/agenda counts, warnings,
   whether anything was pushed) synchronously, unlike the passive recheck.
+- `GET /admin/sweep-pending-pushes` — on-demand version of the durable
+  Archive-push retry mechanism (below), for checking on or forcing it
+  directly. Returns exactly which resolutions it found and retried.
+
+**Durable Archive pushes**: a successful resolve's push to the Archive is
+fired via `BackgroundTasks`, so a resolver process restart (a deploy, a
+crash) between the response returning and the task actually running could
+previously lose the push silently — no exception, no log line, since the
+process that would have logged it is the one that got killed (real
+incident, see `BACKLOG_DONE.md`'s 2026-08-10 entry). `MeetingResolution`
+now tracks `archive_pushed_at`/`archive_push_attempts`, and an
+opportunistic sweep (fired from `/api/resolve` itself, at most once every
+few minutes — this app has no background job queue by design, so this
+isn't a real scheduler, just the same pattern `ARCHIVE_RECHECK_AFTER`'s
+stale-page recheck already uses) retries any row with real content that's
+stayed unpushed past a grace period. `/admin/stats`' `pending_archive_pushes`
+count and the `/admin/sweep-pending-pushes` endpoint above give direct
+visibility into this instead of relying on someone happening to notice a
+meeting missing from `/meetings`.
 
 See `.env.example` for the two env vars (`DATABASE_URL`, `ADMIN_STATS_TOKEN`).
 

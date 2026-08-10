@@ -125,6 +125,70 @@ ARCHIVE_RECHECK_AFTER = timedelta(days=30)
 ARCHIVE_RECHECK_AFTER_NO_TRANSCRIPT = timedelta(hours=1)
 
 
+# Real bug found 2026-08-10: the BackgroundTasks push to the Archive can
+# be silently lost if this process restarts (a deploy, a crash) between
+# the response being sent and the task actually running -- zero log
+# trace of the loss, since the process that would have logged it is the
+# one that got killed. A push worth retrying gets a grace period first
+# (ARCHIVE_PUSH_RETRY_AFTER_MINUTES) so the sweep doesn't race the normal
+# fast path seconds after a response returns; the sweep itself only runs
+# this often (ARCHIVE_PUSH_SWEEP_INTERVAL), a simple in-memory gate --
+# fine for a single-instance free-tier deploy, same reasoning the rate
+# limiter's own module comment already gives for in-memory state. See
+# BACKLOG_DONE.md for the full incident this closes.
+ARCHIVE_PUSH_RETRY_AFTER_MINUTES = 5
+ARCHIVE_PUSH_SWEEP_INTERVAL = timedelta(minutes=5)
+_last_push_sweep_at: Optional[datetime] = None
+
+
+async def _push_and_track(resolution_id: int, payload: dict, normalized: str) -> None:
+    """Wraps archive_client.push() with durable tracking
+    (MeetingResolution.archive_pushed_at/archive_push_attempts in
+    app/db) -- fired via BackgroundTasks so it never blocks a response,
+    same as a bare archive_client.push() call did before this existed.
+    On success, marks the row pushed so it's never treated as pending
+    again; on failure, records the attempt so
+    crud.get_pending_archive_pushes() can find and retry it later (via
+    the sweep below or the admin endpoint)."""
+    ok = await archive_client.push(payload, normalized)
+    if ok:
+        await safe(crud.mark_archive_pushed, resolution_id)
+    else:
+        await safe(crud.record_archive_push_failure, resolution_id)
+
+
+async def _sweep_pending_archive_pushes() -> list[dict]:
+    """Finds resolutions with real content that never got a confirmed
+    Archive push and retries each one -- the actual fix for the silent-
+    loss bug (the other half is _push_and_track() marking success/
+    failure so this has something accurate to query). Returns what it
+    found, for the admin endpoint below to report back synchronously;
+    the passive opportunistic caller in /api/resolve ignores it."""
+    pending = await safe(crud.get_pending_archive_pushes, min_age_minutes=ARCHIVE_PUSH_RETRY_AFTER_MINUTES)
+    if not pending:
+        return []
+    for item in pending:
+        await _push_and_track(item["resolution_id"], item["payload"], item["input_url_normalized"])
+    return pending
+
+
+def _maybe_schedule_push_sweep(background_tasks: BackgroundTasks) -> None:
+    """Opportunistic, not a real scheduler -- this app deliberately has no
+    background job queue (see CLAUDE.md), so the sweep only ever runs as
+    a side effect of real traffic hitting /api/resolve, the same pattern
+    ARCHIVE_RECHECK_AFTER's stale-page recheck already uses. The
+    in-memory time gate (not persisted, resets on every restart) keeps a
+    burst of concurrent requests from all triggering redundant sweeps at
+    once -- good enough for a single-instance deploy, not a distributed-
+    lock-grade guarantee."""
+    global _last_push_sweep_at
+    now = datetime.now(timezone.utc)
+    if _last_push_sweep_at is not None and (now - _last_push_sweep_at) < ARCHIVE_PUSH_SWEEP_INTERVAL:
+        return
+    _last_push_sweep_at = now
+    background_tasks.add_task(_sweep_pending_archive_pushes)
+
+
 def _parse_updated_at(raw: str):
     """MeetingPage.updated_at.isoformat() is tz-aware on Postgres (prod)
     but SQLite (local dev) doesn't enforce tz-awareness, so a naive string
@@ -181,6 +245,11 @@ async def resolve(request: Request, req: ResolveRequest, background_tasks: Backg
     platform = detect_platform(req.url)
     normalized = normalize_url(req.url)
 
+    # Opportunistic, cheap on every call (in-memory time gate) -- see
+    # _maybe_schedule_push_sweep()'s own docstring for why this lives here
+    # rather than a real scheduler.
+    _maybe_schedule_push_sweep(background_tasks)
+
     # Check the Archive before anything else -- if this meeting already has
     # a permanent page, that's the canonical version (potentially a better
     # transcript than a fresh scrape) and the one we want traffic/sharing to
@@ -212,9 +281,14 @@ async def resolve(request: Request, req: ResolveRequest, background_tasks: Backg
         # pushing on a fresh live resolve (a real gap: any URL cached before
         # the Archive integration existed, or while it was down/misconfigured,
         # would otherwise never become a permanent page on its own).
-        if cached.get("segments") or cached.get("agenda_items"):
-            background_tasks.add_task(archive_client.push, cached, normalized)
-        return cached
+        # _push_and_track (not a bare archive_client.push) so this path gets
+        # the same durable tracking/retry the fresh-resolve path below does
+        # -- get_cached_resolution() returns resolution_id alongside the
+        # payload specifically for this.
+        cached_payload = cached["payload"]
+        if cached_payload.get("segments") or cached_payload.get("agenda_items"):
+            background_tasks.add_task(_push_and_track, cached["resolution_id"], cached_payload, normalized)
+        return cached_payload
 
     try:
         finder = get_finder(platform)
@@ -266,7 +340,7 @@ async def resolve(request: Request, req: ResolveRequest, background_tasks: Backg
         }
 
     payload = result.model_dump()
-    await safe(
+    resolution_id = await safe(
         crud.log_resolution,
         input_url=req.url,
         input_url_normalized=normalized,
@@ -293,8 +367,20 @@ async def resolve(request: Request, req: ResolveRequest, background_tasks: Backg
     # Fired via BackgroundTasks (not a bare asyncio.create_task) so it can't
     # be garbage-collected mid-flight and ties into the response lifecycle
     # properly; never blocks the response the user is waiting on.
+    #
+    # _push_and_track, not a bare archive_client.push -- real bug found
+    # 2026-08-10: that fire-and-forget call could be silently lost if this
+    # process restarted between the response returning and the task
+    # actually running, with zero trace of the loss (see
+    # BACKLOG_DONE.md). resolution_id can be None if the DB call above
+    # itself failed (safe() swallows it) -- nothing to track against in
+    # that case, so this falls back to the old best-effort behavior
+    # rather than crashing on a None id.
     if result.segments or result.agenda_items:
-        background_tasks.add_task(archive_client.push, payload, normalized)
+        if resolution_id is not None:
+            background_tasks.add_task(_push_and_track, resolution_id, payload, normalized)
+        else:
+            background_tasks.add_task(archive_client.push, payload, normalized)
 
     return payload
 
@@ -765,6 +851,28 @@ async def admin_recheck_archive_page(token: str = "", url: str = ""):
     platform = detect_platform(url)
     normalized = normalize_url(url)
     return await _recheck_archived_page(url, normalized, platform)
+
+
+@app.get("/admin/sweep-pending-pushes")
+async def admin_sweep_pending_pushes(token: str = ""):
+    """On-demand version of the opportunistic push-retry sweep
+    (_maybe_schedule_push_sweep, fired passively from /api/resolve) --
+    for checking on or forcing the durable-push retry mechanism directly
+    rather than waiting for real traffic to trigger it. Synchronous, not
+    a BackgroundTask, so the caller sees exactly what was found and
+    retried. See BACKLOG_DONE.md's silent-push-loss entry for why this
+    mechanism exists at all."""
+    if not _admin_token_ok(token):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    retried = await _sweep_pending_archive_pushes()
+    return {
+        "retried_count": len(retried),
+        "retried": [
+            {"resolution_id": item["resolution_id"], "url": item["input_url_normalized"], "attempts": item["attempts"]}
+            for item in retried
+        ],
+    }
 
 
 @app.get("/admin/correct-transcript-language")

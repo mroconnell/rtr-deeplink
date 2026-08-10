@@ -7,10 +7,6 @@ residential IP because Render's cloud IP is confirmed blocked by YouTube
 (see BACKLOG_DONE.md's 2026-08-10 experiment entry).
 """
 
-import os
-
-os.environ.setdefault("ARCHIVE_INGEST_TOKEN", "test-token")
-
 from fastapi.testclient import TestClient
 
 import archive.main

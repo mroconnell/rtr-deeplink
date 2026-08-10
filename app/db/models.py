@@ -50,6 +50,17 @@ class MeetingResolution(Base):
     )
     hit_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
+    # Durable push tracking -- real bug found 2026-08-10: the fire-and-
+    # forget BackgroundTasks push to the Archive can be silently lost if
+    # this process restarts (a deploy, a crash) between the response
+    # being sent and the task actually running, with zero log trace of
+    # the loss. archive_pushed_at is null until a push actually succeeds;
+    # a periodic sweep (app/main.py) retries any row with real content
+    # that's stayed null past a grace period, instead of relying on the
+    # background task alone. See BACKLOG_DONE.md for the full incident.
+    archive_pushed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    archive_push_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
 
 class ProblemReport(Base):
     """A viewer-submitted "something's wrong with this meeting" report --

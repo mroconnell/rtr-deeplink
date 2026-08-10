@@ -55,15 +55,21 @@ async def lookup(normalized_url: str) -> Optional[dict]:
             return None
 
 
-async def push(payload: dict[str, Any], input_url_normalized: str) -> None:
+async def push(payload: dict[str, Any], input_url_normalized: str) -> bool:
     """Push a completed resolve to the Archive to create a permanent page
     or attach a new transcript version to an existing one. Fire-and-forget
-    from the caller's perspective (see app/main.py's BackgroundTasks use) --
-    failures are logged, never raised.
+    from most callers' perspective (see app/main.py's BackgroundTasks use)
+    -- failures are logged, never raised.
+
+    Returns True/False (success or not) rather than the previous bare
+    None -- app/main.py's _push_and_track() needs this to know whether to
+    mark_archive_pushed() or record_archive_push_failure() (see
+    BACKLOG_DONE.md's silent-push-loss entry for why that tracking
+    exists). A caller that doesn't care can still ignore the return value.
     """
     base = _base_url()
     if not base:
-        return
+        return False
 
     body = dict(payload)
     body["input_url_normalized"] = input_url_normalized
@@ -79,8 +85,11 @@ async def push(payload: dict[str, Any], input_url_normalized: str) -> None:
                 if response.status >= 300:
                     text = await response.text()
                     logger.error("Archive ingest failed (%s): %s", response.status, text)
+                    return False
+                return True
     except Exception:
         logger.exception("Archive ingest request failed.")
+        return False
 
 
 async def request_transcription_job(

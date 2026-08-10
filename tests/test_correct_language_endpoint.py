@@ -6,10 +6,6 @@ crud.correct_transcript_version_language() itself (covered directly in
 tests/test_ingest_promotion.py).
 """
 
-import os
-
-os.environ.setdefault("ARCHIVE_INGEST_TOKEN", "test-token")
-
 from fastapi.testclient import TestClient
 
 import archive.main

@@ -5,10 +5,6 @@ commands and paste output back by hand. See BACKLOG_DONE.md's 2026-08-10
 Alembic incident for why this exists.
 """
 
-import os
-
-os.environ.setdefault("ARCHIVE_INGEST_TOKEN", "test-token")
-
 from fastapi.testclient import TestClient
 
 import archive.main
