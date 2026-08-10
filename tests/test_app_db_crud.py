@@ -88,6 +88,26 @@ async def test_pending_pushes_includes_agenda_only_resolutions():
     assert resolution_id in [p["resolution_id"] for p in pending]
 
 
+async def test_pending_pushes_finds_a_real_candidate_behind_many_content_free_rows():
+    # Real bug found live 2026-08-10 against production: an earlier
+    # version over-fetched with an arbitrary multiplier (.limit(limit*3))
+    # before filtering by _worth_pushing() in Python. Production had many
+    # "success" rows with no real content (blank_transcript/no_video
+    # outcomes) mixed in with real ones -- if the oldest fetched batch was
+    # mostly content-free, a real candidate further down the
+    # created_at-ascending order was silently never found, even though
+    # /admin/stats' unfiltered pending count still showed it. This
+    # reproduces that shape directly: 15 content-free rows (comfortably
+    # more than a small limit*multiplier would have over-fetched) logged
+    # before one real candidate.
+    for i in range(15):
+        await _log(f"content-free-{i}", transcript_found=False, resolved_payload={"segments": [], "agenda_items": []})
+    resolution_id = await _log("real-candidate-behind-the-noise", transcript_found=True)
+
+    pending = await crud.get_pending_archive_pushes(min_age_minutes=0, limit=5)
+    assert resolution_id in [p["resolution_id"] for p in pending]
+
+
 async def test_pending_pushes_excludes_non_success_status():
     resolution_id = await _log("resolve-failed", status="resolve_failed", transcript_found=False)
     pending = await crud.get_pending_archive_pushes(min_age_minutes=0)

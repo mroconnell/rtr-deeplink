@@ -153,7 +153,17 @@ async def get_pending_archive_pushes(*, min_age_minutes: int = 5, limit: int = 1
                 MeetingResolution.created_at < cutoff,
             )
             .order_by(MeetingResolution.created_at.asc())
-            .limit(limit * 3)  # over-fetch since _worth_pushing() filters in Python (agenda_items lives in JSON)
+            # No SQL-level LIMIT here -- _worth_pushing() runs in Python
+            # afterward (agenda_items lives in JSON, not filtered at the
+            # SQL level), and a real bug found live 2026-08-10 shows why an
+            # over-fetch multiplier (this used to be .limit(limit * 3))
+            # isn't safe: production has plenty of "success" rows with no
+            # real content (blank_transcript/no_video outcomes) mixed in
+            # with real ones, so if most of the oldest N*multiplier SQL
+            # matches aren't worth pushing, real candidates further down
+            # the list are silently never found. Same "personal reporting
+            # log, a full scan per call is fine" reasoning get_stats()
+            # already uses for this table.
         )
         rows = (await session.execute(stmt)).scalars().all()
 
