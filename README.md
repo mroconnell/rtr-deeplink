@@ -246,10 +246,16 @@ top of that (`alembic upgrade head`) — see `archive/alembic/README.md`
 for the exact recovery sequence, and `BACKLOG_DONE.md` for how this was
 confirmed fixed.
 
-One more practical note: Alembic's config lives entirely under
-`archive/` (`archive/alembic.ini`, `archive/alembic/`), so every `alembic`
-command has to be run from inside that directory — running it from the
-repo root fails with `No 'script_location' key found in configuration`.
+One more practical note: each service that has real rows to protect keeps
+its **own** Alembic config, not a single shared one — `archive/`
+(`archive/alembic.ini`, `archive/alembic/`) for `archive/db`, and `app/`
+(`app/alembic.ini`, `app/alembic/`, added 2026-08-10 after `app/db` hit
+this exact same wall for the first time — see `BACKLOG_DONE.md`) for the
+resolver's own `app/db`. Every `alembic` command has to be run from
+inside the matching directory (`cd archive` or `cd app`) — running it
+from the repo root fails with `No 'script_location' key found in
+configuration`, and running it from the wrong service's directory would
+point at the wrong models/database entirely.
 
 ## Caching and reporting
 

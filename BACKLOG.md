@@ -7,25 +7,20 @@ where relevant.
 
 ## Bugs
 
-- **`app/db` (the resolver's own optional caching/reporting DB) has no
-  migration tooling — a real production incident 2026-08-10 (see
-  BACKLOG_DONE.md) hit the exact wall `archive/db` already solved with
-  Alembic, just for the first time.** `create_all()` (still what
-  `app/db/engine.py`'s `init_models()` runs on every startup) can only
-  ever add new tables, never alter an existing one — fine for every
-  change `app/db` has needed so far (new tables only), until the
-  durable-Archive-push-tracking fix needed two new columns on the
-  already-live `meeting_resolutions` table. Deploying it broke
-  `/admin/stats` in production (503) until a one-off manual `ALTER
-  TABLE` fixed it live via Render's shell — the same class of incident
-  `archive/db` hit three times before adopting real migration tooling.
-  Worth setting up `app/db/alembic/` now, mirroring `archive/alembic/`'s
-  existing structure/conventions (including its own hard-learned lesson:
-  always verify the real current state via a direct query before
-  trusting any doc's account of it, not just here) — so the next `app/db`
-  schema change doesn't need another live incident to catch it. Not
-  urgent today (the immediate incident is already fixed), but a real,
-  now-proven gap, not a hypothetical one.
+- **`app/db/alembic/` is built and verified locally (2026-08-10), but
+  production still needs the one-time `stamp` step before it's real
+  there too.** See BACKLOG_DONE.md for the full build. `alembic>=1.13`
+  added to the root `requirements.txt` (the resolver's own deploy never
+  had it — only `archive/requirements.txt` did). One command left, from
+  the `rtr-deeplink` (resolver) service's Render Shell — bookkeeping
+  only, no DDL, since production's schema already matches this baseline
+  exactly (confirmed via the earlier manual `ALTER TABLE` fix):
+  ```bash
+  cd app
+  alembic current   # confirm it prints nothing first, per app/alembic/README.md
+  alembic stamp ee8f7ff76fb3
+  alembic current   # confirm it now shows ee8f7ff76fb3 (head)
+  ```
 
 - **`MeetingPage` has no `video_warnings`/`agenda_warnings`/`agenda_link`
   columns, so the Archive can't store or render the resolver's real,

@@ -8,6 +8,52 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-10, local verification complete] Built `app/alembic/`,
+  mirroring `archive/alembic/`'s existing structure and conventions
+  exactly, closing the gap that caused the same day's earlier
+  `/admin/stats` production incident.** `env.py`/`script.py.mako` are
+  near-identical adaptations (s/archive/app/ throughout — same
+  `DATABASE_URL`-from-the-app's-own-engine pattern, no separate config to
+  keep in sync). Generated the baseline migration
+  (`ee8f7ff76fb3_baseline_schema.py`) by autogenerating against a
+  genuinely empty SQLite database, same method `archive/alembic`'s own
+  baseline used — correctly includes both existing tables
+  (`meeting_resolutions`, `problem_reports`) with every current column,
+  including the two (`archive_pushed_at`, `archive_push_attempts`) that
+  caused the incident this closes.
+
+  `alembic>=1.13` was missing from the root `requirements.txt` entirely
+  — only `archive/requirements.txt` had it, since only the Archive
+  service's own deploy had ever needed to run `alembic` commands from
+  its Render Shell before. Added to the resolver's own `requirements.txt`
+  too, or `app/alembic/` would exist in the repo but not actually be
+  runnable in the resolver's production shell.
+
+  Verified locally, same method `archive/alembic/README.md` already
+  established: `alembic upgrade head` against a fresh empty SQLite
+  database, diffed against a separate `create_all()`-built database —
+  identical except the `alembic_version` bookkeeping table itself and
+  the same cosmetic `(CURRENT_TIMESTAMP)` vs `CURRENT_TIMESTAMP`
+  default-clause rendering difference already documented as harmless on
+  the Archive side; `alembic downgrade base` cleanly drops both tables
+  back to just `alembic_version`. Also stamped the local `dev.db` file
+  at this new baseline (it already had the correct schema from the same
+  day's earlier manual `ALTER TABLE` fix, confirmed before stamping, not
+  assumed) — `dev.db` is gitignored, so this only fixes this one
+  machine's copy; a fresh clone starts from a genuinely empty `dev.db`
+  via `create_all()`, which needs no migration at all.
+
+  **`app/alembic/README.md`'s one-time production-adoption section is
+  written but not yet executed** — unlike `archive/alembic`'s original
+  adoption (which needed a real `stamp` + `upgrade` because production
+  was missing a whole table), this one only ever needs `stamp`, since
+  production's schema already matches this baseline exactly (fixed by
+  hand earlier the same day). Left as a live `BACKLOG.md` item with the
+  exact command rather than executed blind — matches this repo's
+  now-twice-learned lesson (Archive's own Alembic incident, then this
+  same day's `app/db` one) to verify real current state before trusting
+  any account of it, including this one.
+
 - **[Done 2026-08-10, found and fixed against real production data]
   `get_pending_archive_pushes()`'s sweep query could silently miss real
   candidates.** Found while manually clearing the pending-push backlog
