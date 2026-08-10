@@ -98,6 +98,49 @@ anything) to build against it.
 
 ## Bugs
 
+- **Quoted phrase search on `/meetings` is broken, not just unsupported
+  — reported directly by the user 2026-08-10, confirmed against the real
+  code, not guessed.** `archive/utils/search.py`'s `matches()` splits a
+  query on whitespace with no quote-awareness at all
+  (`query.lower().split()`), so `"data center"` becomes two literal
+  terms, `"data` and `center"`, quote characters glued on. Since real
+  transcript/agenda text never has a literal `"` character stuck against
+  a word, the match is guaranteed to fail — confirmed directly:
+  `matches('"data center"', ...)` on a corpus containing "a new data
+  center project" returns `False`, while `matches('data center', ...)`
+  (no quotes) on the same corpus returns `True`. Quoting doesn't
+  degrade gracefully to "ignored"; it actively guarantees zero results.
+
+  Also worth being precise about, since the user's own description was
+  close but not quite exact: unquoted multi-word search
+  (`matches(query, ...)` → `all(term in corpus for term in terms)`) is
+  **AND**, not OR — confirmed directly that a corpus missing either word
+  entirely returns `False`. It just doesn't require the words to be
+  *adjacent*, which is what likely read as looser/OR-like — a match
+  where "data" is in the title and "center" is three paragraphs into
+  the transcript is still a hit today.
+
+  **Proposed fix, not yet built** (deliberately scoped narrow — see the
+  user's own "advanced search operators" question, answered no for now):
+  detect a `"quoted substring"` in the query, require it as one
+  continuous adjacent match (a plain substring check against the
+  corpus, same mechanism single-word exact matching already uses, just
+  applied to the whole phrase) rather than splitting it into
+  independent AND'd words; treat any remaining unquoted words in the
+  same query with the existing per-word AND behavior. Should probably
+  always be exact-substring even in fuzzy mode — phrase-level fuzzy
+  matching (an adjacent run of near-matching words) is a meaningfully
+  harder problem than single-word fuzzy matching and not what was asked
+  for here; quoting can reasonably mean "match this literally" even
+  when the fuzzy toggle is on. A full advanced-search query language
+  (explicit AND/OR/NEAR operators) was also asked about and explicitly
+  decided against for now — `search.py`'s own docstring already flags
+  this whole approach as deliberately naive, "fine at today's scale...
+  not meant to scale past a few hundred [meetings]," and a real
+  boolean-operator grammar is more machinery than that scale justifies;
+  the phrase-quote fix alone covers the concrete case that was actually
+  hit.
+
 - **YouTube-backed meetings' transcripts run through
   `scripts/fetch_youtube_transcripts.py` on a daily `launchd` schedule
   now (both shipped 2026-08-10, see BACKLOG_DONE.md) — real remaining
