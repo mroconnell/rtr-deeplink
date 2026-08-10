@@ -59,6 +59,27 @@ items).
   promising specific content needs to actually deliver it) — not just a
   copy swap today.
 
+- **A real example URL under the paste box on the landing page.**
+  Proposed by the user (2026-08-10): plain text (deliberately not a
+  clickable link — the point is to model "paste this into the box
+  above," not tempt a visitor to click through and leave), e.g. "For
+  example: paste this into the box above:
+  `https://jaxcityc.granicus.com/player/clip/7447?redirect=true&view_id=1`".
+  A first-time visitor landing on a bare paste box with no context has
+  to already know what kind of URL this tool wants — a real, working
+  example removes that guesswork immediately, and ties directly into
+  the growth mechanism this section is about (a visitor who
+  successfully resolves something on their first try is far more likely
+  to share the result). Open questions before building: one fixed
+  example vs. rotating through a few (a rotating set could double as
+  implicit "look how many platforms we support," but adds real
+  complexity — a template pick, cache-busting concerns — for a first
+  pass); whether it should link to a currently-live, well-known meeting
+  (Jacksonville) or something more universally recognizable; and whether
+  copy should explicitly say what the visitor will get (video + real
+  transcript) so the example also sets expectations, not just
+  demonstrates the paste action.
+
 ## Utility for the actual audience
 
 Journalists, watchdog orgs, researchers — the people `BACKLOG.md`'s "manual
