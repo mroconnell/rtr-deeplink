@@ -8,6 +8,65 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-10] Redesigned the generic-fallback meeting page per a
+  detailed user spec, given directly against a real screenshot.** The
+  previous pass (see the "Live-tested the generic fallback" entry just
+  below) fixed real bugs but kept the declarative/warning-box tone; the
+  user wanted the whole unsupported-platform experience to read as
+  openly tentative instead. Concrete changes, all in `app/templates/
+  meeting.html` / `app/static/player.js` / `app/static/style.css`:
+
+  - A full-width banner ("This government website isn't supported yet,
+    so we're going to try our best.") above both columns, plain weight/
+    color (reuses `#meta`'s existing `<p>` styling, already full-width
+    via `grid-column: 1 / -1`).
+  - Left column: the old bold-on-yellow video warning box replaced with
+    a plain "We think the video is here: `<link>`" line (or
+    "[No video found]"), the "Request Transcript from Audio" button
+    unchanged below it.
+  - Right column: an "Agenda" heading now always shows for a best-effort
+    result (previously only when something was found), with a plain
+    "We think we found an agenda here: `<link>`" line (or
+    "[No agenda found]") — above "Transcript", not nested under it.
+  - Transcript section: the "No transcript to click through... we're
+    tracking the playhead" copy (which implied a certainty the app
+    doesn't have) replaced with just "Sometimes deep-linking to a
+    specific moment works on a site we don't officially support yet, and
+    sometimes it doesn't — still worth trying." The live-tracking "0:00"
+    readout (which was frozen forever anyway when no video existed to
+    track — a real latent bug this replacement also fixes) is replaced
+    with a manual timestamp text input + a "Copy link to this moment"
+    button that reads the typed value instead of a video adapter's
+    current time, wired independently so it works even with zero video.
+
+  **Real design fix caught mid-implementation**: gating all of this on
+  `platform === 'unknown'` (the approach used in the previous pass) is
+  wrong — `generic_fallback.py` delegates to `YouTubeAssetFinder` when it
+  finds an embedded YouTube video (the single most common real outcome),
+  and that finder's own `platform` field stays `"youtube"` regardless of
+  caller. Added `ResolvedMeeting.best_effort: bool`, set `True` on every
+  result this adapter produces (delegated or not), and switched all of
+  the new UI's gating to that instead — the previous pass's deep-link
+  caveat (built one session earlier) had this exact same latent flaw and
+  got fixed retroactively in the same change.
+
+  Also replaced `agenda_warnings: List[str]` (a sentence, added the
+  previous session) with `agenda_link: Optional[str]` (a raw URL) — the
+  new plain-line UI needed just the link, not a pre-formatted sentence,
+  and nothing else in the codebase had started depending on the old
+  field yet.
+
+  Verified live against both real test cities from the previous pass:
+  Aurora, CO (real video + real agenda link, both lines populated
+  correctly, video still plays) and Accomack County, VA's BoardDocs (no
+  video/agenda found, both correctly show the bracketed fallback text,
+  manual timestamp entry copies a real working deep link). A real CSS
+  gap caught in the same pass: `#agendaSection` showing unconditionally
+  now exposed `#agendaList`'s empty container as a stray bordered box
+  when there were no real `agenda_items` — fixed with `.transcript-list:
+  empty { display: none; }`, matching `.warnings:empty`'s existing
+  pattern.
+
 - **[Done 2026-08-10] Live-tested the generic fallback against a real,
   never-before-seen city (Aurora, CO's auroratv.org) and fixed three real
   bugs it surfaced.** First real end-to-end test of `generic_fallback.py`

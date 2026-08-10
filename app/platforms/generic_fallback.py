@@ -31,10 +31,6 @@ _NO_TRANSCRIPT_WARNING = (
 )
 
 
-def _agenda_link_message(agenda_link: str) -> str:
-    return f"We think we also found a link to the agenda on this page: {agenda_link}"
-
-
 class GenericFallbackAssetFinder(AssetFinder):
     """Best-effort handling for any URL `detect_platform()` doesn't
     recognize -- registered under `platform_name = "unknown"`, the exact
@@ -74,18 +70,26 @@ class GenericFallbackAssetFinder(AssetFinder):
        eventBookmarks, ...) -- there's no reliable generic pattern to
        reuse the way there is for media URLs or a single link, and
        guessing badly at *items* would be worse than them just being
-       absent. A found agenda link is surfaced as a plain message (with
-       the URL, auto-linkified by player.js's existing linkifyWarning())
-       rather than forced into the `agenda_items` field, since that field
-       implies real per-item timestamps this doesn't have -- the user's
-       own framing: "they don't need to be clickable timestamps for this
-       fallback mode."
+       absent. A found agenda link goes into `ResolvedMeeting.agenda_link`
+       (a single raw URL) rather than forced into `agenda_items`, since
+       that field implies real per-item timestamps this doesn't have --
+       the user's own framing: "they don't need to be clickable
+       timestamps for this fallback mode." The frontend renders it as a
+       plain "we think we found an agenda here: <link>" line.
 
-    No frontend changes needed for any of this -- `initVideo()` already
-    handles any `video_url`/`video_format` combo generically, and the
-    no-transcript live-playhead deep-link tracker (built earlier, see
-    BACKLOG_DONE.md) already covers "no transcript, but you can still
-    link to a moment" for any video, not just ones from known platforms.
+    `best_effort=True` on every result this adapter produces (see
+    `ResolvedMeeting.best_effort`'s own docstring for why `platform ==
+    "unknown"` alone isn't a reliable enough signal for the frontend to
+    key off of) drives a dedicated, deliberately tentative UI on the
+    meeting page (built 2026-08-10, live-tested against real
+    never-before-seen cities -- see BACKLOG_DONE.md): a full-width "we're
+    trying our best" banner, plain (non-alarmed) "we think the video/
+    agenda is here: <link>" lines instead of the video/agenda_link
+    fields being silently invisible or looking like a real warning, and
+    a manual timestamp-entry box in place of the live-tracking playhead
+    reader other platforms get (deep-linking reliability isn't confirmed
+    here the way it is on a supported platform, so there's no adapter-
+    driven "current time" to honestly display).
 
     Real, deliberate architecture note: this makes the `unsupported_
     platform` error branch in `app/main.py`'s `/api/resolve` (and its
@@ -123,17 +127,23 @@ class GenericFallbackAssetFinder(AssetFinder):
                     "We don't recognize this website's platform, and couldn't even load the page "
                     "to look for a video."
                 ],
+                best_effort=True,
             )
 
         agenda_link = self._find_agenda_link(html, url)
-
-        agenda_warnings = [_agenda_link_message(agenda_link)] if agenda_link else []
 
         youtube_match = _YOUTUBE_EMBED_RE.search(html)
         if youtube_match:
             resolved = await YouTubeAssetFinder.resolve_video_id(youtube_match.group(1), source_url=url)
             resolved.video_warnings = [_BEST_EFFORT_VIDEO_WARNING, *resolved.video_warnings]
-            resolved.agenda_warnings = agenda_warnings
+            resolved.agenda_link = agenda_link
+            # YouTubeAssetFinder.resolve_video_id() always returns
+            # platform="youtube" (its own identity, unchanged, regardless
+            # of caller) -- best_effort is the frontend's real signal for
+            # "this came from the fallback," since checking platform ==
+            # "unknown" alone would silently miss this, the *most* common
+            # real outcome (a small city just embeds a YouTube video).
+            resolved.best_effort = True
             return resolved
 
         media_urls = scan_media_urls(html, url)
@@ -159,7 +169,8 @@ class GenericFallbackAssetFinder(AssetFinder):
             transcript_language=transcript_language,
             video_warnings=[_BEST_EFFORT_VIDEO_WARNING if video_url else _NO_VIDEO_FOUND_WARNING],
             transcript_warnings=transcript_warnings,
-            agenda_warnings=agenda_warnings,
+            agenda_link=agenda_link,
+            best_effort=True,
         )
 
     @staticmethod

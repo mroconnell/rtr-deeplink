@@ -12,6 +12,7 @@
 
     <div id="videoColumn" class="video-column">
       <div id="videoWarnings" class="warnings" hidden></div>
+      <p id="videoSourceGuess" class="source-guess" hidden></p>
       <div id="videoSection" class="video-section" hidden>
         <div class="toolbar">
           <span class="copy-control">
@@ -87,6 +88,7 @@
       <div id="agendaSection" class="agenda-section" hidden>
         <h2>Agenda</h2>
         <div id="agendaWarnings" class="warnings" hidden></div>
+        <p id="agendaGuess" class="source-guess" hidden></p>
         <div id="agendaList" class="transcript-list"></div>
       </div>
 
@@ -115,10 +117,19 @@
       <div id="transcriptMissing" class="transcript-section" hidden>
         <h2>Transcript</h2>
         <div id="transcriptMissingWarnings" class="warnings"></div>
-        <div class="no-transcript-timestamp">
+        <div id="noTranscriptLive" class="no-transcript-timestamp">
           <p class="no-transcript-hint">No transcript to click through, but you can still link to any moment. We're tracking the playhead below &mdash; it updates as the video plays.</p>
           <div id="noTranscriptTime" class="no-transcript-time">0:00</div>
           <button id="noTranscriptLinkBtn" class="cassette-btn" title="Copy link to current time">
+            <span class="cassette-reel"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7" fill="#fff" stroke="#bbb" stroke-width="2"/><circle cx="9" cy="9" r="2.2" fill="#bbb"/></svg></span>
+            <span class="cassette-label">Copy link to this moment</span>
+            <span class="cassette-reel"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7" fill="#fff" stroke="#bbb" stroke-width="2"/><circle cx="9" cy="9" r="2.2" fill="#bbb"/></svg></span>
+          </button>
+        </div>
+        <div id="noTranscriptManual" class="no-transcript-timestamp" hidden>
+          <p class="no-transcript-hint">Sometimes deep-linking to a specific moment works on a site we don't officially support yet, and sometimes it doesn't &mdash; still worth trying.</p>
+          <input id="noTranscriptManualInput" type="text" inputmode="numeric" class="no-transcript-manual-input" placeholder="1:23:45" aria-label="Timestamp to link to">
+          <button id="noTranscriptManualLinkBtn" class="cassette-btn" title="Copy link to this moment">
             <span class="cassette-reel"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7" fill="#fff" stroke="#bbb" stroke-width="2"/><circle cx="9" cy="9" r="2.2" fill="#bbb"/></svg></span>
             <span class="cassette-label">Copy link to this moment</span>
             <span class="cassette-reel"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7" fill="#fff" stroke="#bbb" stroke-width="2"/><circle cx="9" cy="9" r="2.2" fill="#bbb"/></svg></span>

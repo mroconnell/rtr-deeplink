@@ -851,6 +851,7 @@ async function init() {
   wireTranscriptExport();
   wireReportProblemForm();
   wireTranscribeForm();
+  wireNoTranscriptManualLink();
 
   statusEl.innerHTML = '<span class="status-loading">' +
     `<span class="cassette-reel spinning">${CASSETTE_REEL_SVG}</span>` +
@@ -909,31 +910,52 @@ async function init() {
   // coverage isn't guaranteed to include this specific meeting).
   document.getElementById('nycCrosslink').hidden = data.platform !== 'viebit';
   document.getElementById('pageTitle').textContent = `${data.title || 'Meeting'} | Red Tape Recordings`;
+
+  // Not data.platform === 'unknown' -- a best-effort result that delegated
+  // to YouTubeAssetFinder carries platform: "youtube" (that finder's own
+  // identity, unchanged regardless of caller), which is actually the most
+  // common real outcome here. best_effort is the backend's real signal for
+  // "nothing on this page is guaranteed" -- see ResolvedMeeting's own
+  // docstring.
+  const bestEffort = !!data.best_effort;
+
   metaEl.innerHTML = `<h1>${escapeHtml(data.title || 'Meeting')}</h1>` +
     `<p class="source-link"><a href="${escapeHtml(data.source_url)}" target="_blank" rel="noopener noreferrer">View original source &#8599;</a></p>` +
+    (bestEffort ? `<p>This government website isn't supported yet, so we're going to try our best.</p>` : '') +
     `<p>${escapeHtml(data.jurisdiction || '')}${data.date ? ' &middot; ' + escapeHtml(data.date) : ''}</p>`;
 
-  // #videoError (inside #videoSection, below the player) is where this
-  // rendered when a video exists -- kept exactly as-is for that case. But
-  // #videoSection gets hidden entirely when there's no video_url (initVideo()
-  // below), which previously took this message down with it even though it
-  // exists specifically to explain *why* there's no video -- #videoWarnings
-  // (a sibling, always independently visible) is only for that no-video
-  // case. #videoError itself stays reserved as before for genuine native-
-  // <video>/HLS playback failures on top of that, a narrower case set later
-  // by initVideo() where a video legitimately exists but failed to load.
-  const videoWarnings = data.video_warnings || [];
-  if (videoWarnings.length) {
-    const target = document.getElementById(data.video_url ? 'videoError' : 'videoWarnings');
-    renderWarnings(target, videoWarnings);
+  if (bestEffort) {
+    // Plain, tentative "here's what we think we found" line instead of a
+    // declarative warning box -- nothing here is confirmed on a platform
+    // we don't actually support, so the framing shouldn't imply otherwise.
+    renderSourceGuess('videoSourceGuess', 'We think the video is here: ', data.video_url, '[No video found]');
+  } else {
+    // #videoError (inside #videoSection, below the player) is where this
+    // rendered when a video exists -- kept exactly as-is for that case. But
+    // #videoSection gets hidden entirely when there's no video_url (initVideo()
+    // below), which previously took this message down with it even though it
+    // exists specifically to explain *why* there's no video -- #videoWarnings
+    // (a sibling, always independently visible) is only for that no-video
+    // case. #videoError itself stays reserved as before for genuine native-
+    // <video>/HLS playback failures on top of that, a narrower case set later
+    // by initVideo() where a video legitimately exists but failed to load.
+    const videoWarnings = data.video_warnings || [];
+    if (videoWarnings.length) {
+      const target = document.getElementById(data.video_url ? 'videoError' : 'videoWarnings');
+      renderWarnings(target, videoWarnings);
+    }
   }
 
   const agendaItems = data.agenda_items || [];
-  const agendaWarnings = data.agenda_warnings || [];
-  if (agendaItems.length || agendaWarnings.length) {
+  if (bestEffort) {
+    // Always shown for a best-effort result, even with nothing found --
+    // an honest "[No agenda found]" beats silently omitting the heading.
     document.getElementById('agendaSection').hidden = false;
-    if (agendaWarnings.length) renderWarnings(document.getElementById('agendaWarnings'), agendaWarnings);
+    renderSourceGuess('agendaGuess', 'We think we found an agenda here: ', data.agenda_link, '[No agenda found]');
     if (agendaItems.length) renderAgenda(agendaItems);
+  } else if (agendaItems.length) {
+    document.getElementById('agendaSection').hidden = false;
+    renderAgenda(agendaItems);
   }
 
   const transcriptWarnings = data.transcript_warnings || [];
@@ -946,22 +968,60 @@ async function init() {
     setupTranscriptSearch();
   } else if (transcriptWarnings.length) {
     document.getElementById('transcriptMissing').hidden = false;
-    renderWarnings(document.getElementById('transcriptMissingWarnings'), transcriptWarnings);
-    // Deep-linking to a specific moment relies on the source site behaving
-    // predictably (seek support, stable timestamps) the way a supported
-    // platform is confirmed to -- an unrecognized platform (the generic
-    // fallback) hasn't been confirmed either way, so say so rather than
-    // implying the same reliability a real adapter has earned.
-    const hint = document.querySelector('#transcriptMissing .no-transcript-hint');
-    if (hint && data.platform === 'unknown') {
-      hint.textContent = 'No transcript to click through, but you can still link to any moment. ' +
-        'We’re tracking the playhead below — it updates as the video plays. Sometimes deep-linking ' +
-        'to a specific moment works on a site we don’t officially support yet, and sometimes it ' +
-        'doesn’t — still worth trying.';
+    if (bestEffort) {
+      // No live playhead to honestly show here -- deep-link reliability
+      // isn't confirmed on an unsupported platform, and there may be no
+      // video at all to track in the first place. Let the reader type
+      // the moment they want instead of implying we're tracking one.
+      document.getElementById('noTranscriptLive').hidden = true;
+      document.getElementById('noTranscriptManual').hidden = false;
+    } else {
+      renderWarnings(document.getElementById('transcriptMissingWarnings'), transcriptWarnings);
     }
   }
 
   initVideo(data.video_url, data.video_format);
+}
+
+// Renders "<label><a>url</a>" or "<label>[fallback]" into #<id> -- the
+// shared shape behind both the video and agenda "we think we found this"
+// lines on a best-effort result page.
+function renderSourceGuess(id, label, url, fallbackText) {
+  const el = document.getElementById(id);
+  el.innerHTML = escapeHtml(label) + (url
+    ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a>`
+    : escapeHtml(fallbackText));
+  el.hidden = false;
+}
+
+// The live-tracking "Copy link to this moment" (wireSharedControls, wired
+// only when a real video adapter exists) has a manual-entry counterpart
+// for best-effort results, wired unconditionally here since it must work
+// even when no video was found at all (no adapter to read a time from).
+function wireNoTranscriptManualLink() {
+  const btn = document.getElementById('noTranscriptManualLinkBtn');
+  const input = document.getElementById('noTranscriptManualInput');
+  if (!btn || !input) return;
+  const label = btn.querySelector('.cassette-label');
+  const defaultText = label.textContent;
+  btn.addEventListener('click', async () => {
+    const t = parseTimeInput(input.value);
+    if (t === null) {
+      input.setCustomValidity('Enter a time like 1:23:45, 12:34, or seconds');
+      input.reportValidity();
+      return;
+    }
+    input.setCustomValidity('');
+    updateUrlParams({ t, line: null });
+    trackEvent('copy_link_to_time');
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      label.textContent = 'Copied!';
+      setTimeout(() => { label.textContent = defaultText; }, 1500);
+    } catch (e) {
+      // clipboard API unavailable; URL is already updated in the address bar
+    }
+  });
 }
 
 // Some warning messages (video, agenda, or transcript) mention requesting a

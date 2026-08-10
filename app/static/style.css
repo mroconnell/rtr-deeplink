@@ -524,6 +524,32 @@ video { width: 100%; height: 100%; display: block; }
   line-height: 1.1;
   margin-bottom: 1.25rem;
 }
+.no-transcript-manual-input {
+  display: block;
+  width: 12rem;
+  margin: 0 auto 1.25rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 1.5rem;
+  text-align: center;
+}
+
+/* Plain "we think we found this: <link>" lines on a best-effort result
+   page -- deliberately normal weight/color, not the bold-on-tinted-
+   background .warnings treatment, since nothing here is confirmed the
+   way a real warning is. */
+.source-guess { color: var(--fg); margin: 0 0 1rem; }
+.source-guess a { color: inherit; text-decoration: underline; }
+.source-guess a:hover { color: var(--accent); }
+/* #agendaList stays empty when a best-effort result has no real
+   agenda_items -- #agendaSection itself is now shown unconditionally
+   for those results (see player.js), so an un-hidden empty box would
+   otherwise render right below the agenda-guess line for nothing. */
+.transcript-list:empty { display: none; }
 .transcript-list {
   max-height: 60vh;
   overflow-y: auto;

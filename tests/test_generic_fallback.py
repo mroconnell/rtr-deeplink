@@ -51,6 +51,10 @@ async def test_resolve_delegates_to_youtube_when_embed_found(monkeypatch):
     assert result.platform == "youtube"  # delegated finder's own platform name, unchanged -- real dedup identity
     assert result.video_url == f"https://www.youtube.com/embed/{REAL_VIDEO_ID}"
     assert any("isn't officially supported" in w for w in result.video_warnings)
+    # best_effort must be True even though platform says "youtube" -- the
+    # frontend can't rely on platform alone to detect this is a fallback
+    # result, since this delegated case is the most common real outcome.
+    assert result.best_effort is True
 
 
 async def test_resolve_finds_direct_media_and_captions(monkeypatch):
@@ -125,7 +129,7 @@ async def test_resolve_surfaces_agenda_pdf_link_alongside_youtube_video(monkeypa
         result = await GenericFallbackAssetFinder().resolve(PAGE_URL)
 
     expected_link = "https://some-city.example.gov/docs/2026-01-01-agenda.pdf"
-    assert any(expected_link in w for w in result.agenda_warnings)
+    assert result.agenda_link == expected_link
     # The plain-text "Agenda: Item 1..." paragraph must not be picked up as
     # if it were structured agenda items -- this adapter never populates
     # agenda_items, only a plain link message.
@@ -138,7 +142,7 @@ async def test_resolve_ignores_plain_text_agenda_mention_with_no_link():
     with mock_session(routes):
         result = await GenericFallbackAssetFinder().resolve(PAGE_URL)
 
-    assert result.agenda_warnings == []
+    assert result.agenda_link is None
 
 
 async def test_resolve_prefers_pdf_agenda_link_over_html_agenda_page():
@@ -154,4 +158,4 @@ async def test_resolve_prefers_pdf_agenda_link_over_html_agenda_page():
     with mock_session(routes):
         result = await GenericFallbackAssetFinder().resolve(PAGE_URL)
 
-    assert any("2026-01-01-agenda.pdf" in w for w in result.agenda_warnings)
+    assert "2026-01-01-agenda.pdf" in result.agenda_link

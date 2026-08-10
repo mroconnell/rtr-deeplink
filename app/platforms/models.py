@@ -39,13 +39,13 @@ class ResolvedMeeting(BaseModel):
     # Populated independently of whether a real transcript exists, so a
     # meeting with both shows both (agenda above transcript on the page).
     agenda_items: List[TranscriptSegment] = []
-    # Informational messages about the agenda that aren't structured items
-    # with real timestamps -- e.g. generic_fallback.py's best-effort
-    # "found a link to what looks like the agenda" message. Kept separate
-    # from agenda_items so it's never mistaken for a real per-item list
-    # (which the frontend renders as a clickable timestamp table), the
-    # same reasoning that already separates agenda_items from segments.
-    agenda_warnings: List[str] = []
+    # A single raw agenda-document URL (not a sentence) -- e.g.
+    # generic_fallback.py's best-effort "found a link that looks like the
+    # agenda" result. Kept separate from agenda_items (a real per-item
+    # timestamp list) so it's never mistaken for one; the frontend renders
+    # it as a plain "we think we found an agenda here: <link>" line rather
+    # than the clickable timestamp table agenda_items gets.
+    agenda_link: Optional[str] = None
     transcript_language: Optional[str] = None  # ISO 639-1 code detected from actual caption text
     # Other real caption tracks found on the page but not chosen as
     # `segments` -- lets the frontend offer a language switcher instead of
@@ -57,3 +57,11 @@ class ResolvedMeeting(BaseModel):
     # everything into one block above the video regardless of relevance.
     video_warnings: List[str] = []
     transcript_warnings: List[str] = []
+    # True only for generic_fallback.py's best-effort results (whether or
+    # not it delegated to YouTubeAssetFinder, whose own `platform` field
+    # is "youtube", not "unknown" -- checking `platform == "unknown"`
+    # alone would silently miss the delegated case, which is actually the
+    # *most* common real outcome here). The frontend uses this, not
+    # `platform`, to decide whether to show the "we're trying our best,
+    # nothing here is guaranteed" framing (see meeting.html/player.js).
+    best_effort: bool = False

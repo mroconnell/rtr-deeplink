@@ -520,13 +520,22 @@ scanner (the same one Granicus/Swagit use) plus any caption-shaped URL
 found alongside it. Also looks for a plain link to an agenda document —
 any `<a>` tag whose text or href contains "agenda", preferring a
 PDF-looking one (agendas are frequently standalone PDF downloads on
-small-city sites) — surfaced as a plain linkified message, not forced
-into `agenda_items`, since that field implies real per-item timestamps
-this doesn't have. No structured agenda-*item* detection — there's no
-reliable generic pattern the way there is for media URLs or a single
-link, so items are just absent rather than guessed badly. Every outcome
-(found nothing / found a video / found a video and a transcript) gets an
-honest, specific message rather than a flat error.
+small-city sites) — into `ResolvedMeeting.agenda_link` (a single raw
+URL), not forced into `agenda_items`, since that field implies real
+per-item timestamps this doesn't have. No structured agenda-*item*
+detection — there's no reliable generic pattern the way there is for
+media URLs or a single link, so items are just absent rather than
+guessed badly.
+
+Every result from this adapter (including when it delegates to
+`YouTubeAssetFinder`, whose own `platform` field stays `"youtube"`) sets
+`ResolvedMeeting.best_effort = True`, which drives a dedicated, openly
+tentative UI on the meeting page (`app/static/player.js`): a full-width
+"we're trying our best" banner, plain "we think the video/agenda is
+here: `<link>`" lines instead of a declarative warning box, and a manual
+timestamp-entry box in place of the live playhead-tracking reader other
+platforms get (deep-link reliability isn't confirmed here, so there's no
+adapter-driven "current time" to honestly display).
 
 **Not implemented**: BoardDocs (deliberately excluded — it's a
 document/agenda platform with no reliable video, not worth an adapter).
