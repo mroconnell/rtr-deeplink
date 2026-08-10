@@ -515,9 +515,15 @@ of an immediate "we don't support this yet": a plain fetch (not the
 headless-browser path above, reserved for known Cloudflare-gated
 platforms), looking for an embedded/linked YouTube video first
 (delegates to `YouTubeAssetFinder` for real video + captions when
-found), then falling back to `media_scan.py`'s generic `.m3u8`/`.mp4`
-scanner (the same one Granicus/Swagit use) plus any caption-shaped URL
-found alongside it. Also looks for a plain link to an agenda document —
+found), then for a plain link to any OTHER platform this app already
+fully supports (`<a href>`/`<iframe src>`/`<video src>`/`<source src>`,
+run through the same `detect_platform()` every URL gets classified by —
+confirmed live 2026-08-10: Austin, TX's own council pages don't embed
+video at all, they link out to their Swagit-hosted recording as a plain
+`<a href>`, which `SwagitAssetFinder` already resolves correctly), then
+falling back to `media_scan.py`'s generic `.m3u8`/`.mp4` scanner (the
+same one Granicus/Swagit use) plus any caption-shaped URL found
+alongside it. Also looks for a plain link to an agenda document —
 any `<a>` tag whose text or href contains "agenda", preferring a
 PDF-looking one (agendas are frequently standalone PDF downloads on
 small-city sites) — into `ResolvedMeeting.agenda_link` (a single raw

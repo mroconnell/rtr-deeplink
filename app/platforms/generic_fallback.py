@@ -5,7 +5,7 @@ from urllib.parse import urljoin
 import aiohttp
 from bs4 import BeautifulSoup
 
-from .base import AssetFinder
+from .base import AssetFinder, detect_platform, get_finder
 from .media_scan import media_type, scan_media_urls
 from .models import ResolvedMeeting, TranscriptSegment
 from .youtube import YouTubeAssetFinder
@@ -13,6 +13,11 @@ from ..utils.vtt_parser import decode_vtt_bytes, detect_language_from_texts, par
 
 _YOUTUBE_EMBED_RE = re.compile(r"(?:youtube\.com/(?:embed/|watch\?v=)|youtu\.be/)([\w-]{11})")
 _AGENDA_TEXT_RE = re.compile(r"agenda", re.IGNORECASE)
+# Excludes "unknown" (not a real delegation target) and "youtube" (already
+# handled above by a tighter, iframe/video-ID-specific regex -- a bare
+# youtube.com/user/... channel link, e.g. a "Watch us on YouTube" footer
+# icon confirmed on a real site, would otherwise false-positive here).
+_DELEGATABLE_LINK_TAGS = ("a", "iframe", "video", "source")
 
 _BEST_EFFORT_VIDEO_WARNING = (
     "This city isn't officially supported yet, so we're trying our best — we think we found the "
@@ -47,18 +52,29 @@ class GenericFallbackAssetFinder(AssetFinder):
        for real video + real captions, the best possible outcome here
        since a huge share of small-city sites just embed a YouTube
        video with no dedicated platform at all.
-    2. A direct playable media URL (`.m3u8`/`.mp4`) found by
+    2. A link to any OTHER platform this app already fully supports --
+       `_try_delegate_to_known_platform()` scans every `<a href>`/
+       `<iframe src>`/`<video src>`/`<source src>` on the page through
+       the same `detect_platform()` every URL gets classified by, and
+       delegates to that adapter's real `resolve()` if one matches.
+       Confirmed live 2026-08-10: Austin, TX's own council meeting pages
+       (`austintexas.gov/council/{date}-reg`) don't embed video at all --
+       they link out to `austintx.swagit.com/play/{id}/0/` as a plain
+       `<a href>`, which `SwagitAssetFinder` already resolves correctly
+       on its own. No reason to guess at a generic media-URL scan when a
+       real, already-tested adapter is one link away.
+    3. A direct playable media URL (`.m3u8`/`.mp4`) found by
        `media_scan.scan_media_urls()` -- the same generic scanner
        Granicus/Swagit already use, reused here rather than
        reimplemented. A caption-shaped URL (`.vtt`/`.srt`/etc.) found in
        the same scan is fetched and parsed via the same
        `parse_captions_by_extension()` dispatch every real adapter uses.
-    3. Nothing found at all -- returns a real, honest "we tried and
+    4. Nothing found at all -- returns a real, honest "we tried and
        couldn't find anything" message, a genuinely different (more
        informative) outcome than today's blunt "we don't support this
        platform yet," which never attempted anything.
 
-    4. A plain link to an agenda document -- any <a> tag whose visible
+    5. A plain link to an agenda document -- any <a> tag whose visible
        text or href contains "agenda" (case-insensitive), preferring one
        that looks like a PDF if more than one matches (per the user's
        real experience triaging many small-city sites, an agenda is very
@@ -146,6 +162,11 @@ class GenericFallbackAssetFinder(AssetFinder):
             resolved.best_effort = True
             return resolved
 
+        delegated = await self._try_delegate_to_known_platform(html, url)
+        if delegated:
+            delegated.agenda_link = delegated.agenda_link or agenda_link
+            return delegated
+
         media_urls = scan_media_urls(html, url)
         video_url, video_format = self._pick_video_url(media_urls)
 
@@ -172,6 +193,53 @@ class GenericFallbackAssetFinder(AssetFinder):
             agenda_link=agenda_link,
             best_effort=True,
         )
+
+    @staticmethod
+    async def _try_delegate_to_known_platform(html: str, page_url: str) -> Optional[ResolvedMeeting]:
+        """Scans every <a href>/<iframe src>/<video src>/<source src> on the
+        page for a link to a platform this app already fully supports, and
+        delegates to that adapter's own real resolve() -- e.g. a city page
+        that just links out to its Swagit-hosted video as a plain <a href>
+        rather than embedding it, confirmed live 2026-08-10 (Austin, TX:
+        austintexas.gov/council/{date}-reg links to austintx.swagit.com/
+        play/{id}/0/, a real, already-correctly-working SwagitAssetFinder
+        target -- no reason to guess at a generic media-URL scan when a
+        real, tested adapter is right there).
+
+        Deliberately excludes "youtube" -- already handled above by a
+        tighter regex scoped to real embed/watch-URL shapes specifically,
+        since detect_platform()'s broader "youtube.com" in netloc check
+        would also match a bare channel/user link (a real false-positive
+        confirmed live: Aurora, CO's footer "Watch Us on YouTube" icon).
+
+        Any failure (a bad match that doesn't actually resolve, a
+        CalendarPageError from e.g. a Legistar calendar link, network
+        errors) is swallowed and treated as "no delegation possible" --
+        this is a bonus attempt on top of the existing fallback logic, not
+        allowed to replace an honest "found nothing" with a crash.
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        for tag in soup.find_all(_DELEGATABLE_LINK_TAGS):
+            value = tag.get("href") or tag.get("src")
+            if not value:
+                continue
+            candidate = urljoin(page_url, value.strip())
+            platform = detect_platform(candidate)
+            if platform in ("unknown", "youtube"):
+                continue
+            try:
+                finder = get_finder(platform)
+                resolved = await finder.resolve(candidate)
+            except Exception:
+                # Covers CalendarPageError (e.g. a Legistar calendar link
+                # rather than one specific meeting) same as any other
+                # resolve failure -- see this method's own docstring.
+                continue
+            resolved.source_url = page_url
+            resolved.video_warnings = [_BEST_EFFORT_VIDEO_WARNING, *resolved.video_warnings]
+            resolved.best_effort = True
+            return resolved
+        return None
 
     @staticmethod
     def _find_agenda_link(html: str, page_url: str) -> Optional[str]:

@@ -159,3 +159,94 @@ async def test_resolve_prefers_pdf_agenda_link_over_html_agenda_page():
         result = await GenericFallbackAssetFinder().resolve(PAGE_URL)
 
     assert "2026-01-01-agenda.pdf" in result.agenda_link
+
+
+# --- Delegation to an already-supported platform, found as a plain link ---
+# Built 2026-08-10 directly from a real user finding: Austin, TX's own
+# council meeting pages (austintexas.gov/council/{date}-reg) don't embed
+# video at all -- they link out to austintx.swagit.com/play/{id}/0/ as a
+# plain <a href>, which SwagitAssetFinder already resolves correctly on its
+# own. No reason to guess at a generic media-URL scan when a real, already-
+# tested adapter is one link away.
+
+PAGE_WITH_SWAGIT_LINK = """
+<html><body>
+<a class="edims" href="http://cityname.swagit.com/play/395511/0/">Video</a>
+</body></html>
+"""
+
+
+class _FakeSwagitFinder:
+    platform_name = "swagit"
+
+    async def resolve(self, url):
+        from app.platforms.models import ResolvedMeeting
+        return ResolvedMeeting(
+            platform="swagit",
+            source_url=url,
+            video_url="https://archive-stream.granicus.com/OnDemand/fake.mp4/playlist.m3u8",
+            video_format="m3u8",
+            title="Real City Council Meeting",
+            date="2026-08-06",
+        )
+
+
+async def test_resolve_delegates_to_swagit_link_found_on_page(monkeypatch):
+    monkeypatch.setattr("app.platforms.generic_fallback.detect_platform", lambda url: (
+        "swagit" if "swagit.com" in url else "unknown"
+    ))
+    monkeypatch.setattr("app.platforms.generic_fallback.get_finder", lambda platform: _FakeSwagitFinder())
+    routes = {PAGE_URL: FakeResponse(status=200, text=PAGE_WITH_SWAGIT_LINK, url=PAGE_URL)}
+
+    with mock_session(routes):
+        result = await GenericFallbackAssetFinder().resolve(PAGE_URL)
+
+    assert result.platform == "swagit"  # the delegated finder's own identity, unchanged
+    assert result.video_url == "https://archive-stream.granicus.com/OnDemand/fake.mp4/playlist.m3u8"
+    assert result.title == "Real City Council Meeting"
+    # source_url stays the ORIGINAL page the visitor actually submitted,
+    # not the swagit.com URL found on it -- matches how LIMS/PrimeGov
+    # already preserve their own source_url through a YouTube delegation.
+    assert result.source_url == PAGE_URL
+    assert result.best_effort is True
+    assert any("trying our best" in w for w in result.video_warnings)
+
+
+async def test_resolve_does_not_delegate_to_a_bare_youtube_channel_link(monkeypatch):
+    # Real false-positive confirmed live: Aurora, CO's footer has a "Watch
+    # Us on YouTube" link straight to a channel page, not a specific video
+    # -- detect_platform() would call this "youtube" too, but it's
+    # deliberately excluded from the delegation scan since the narrower
+    # _YOUTUBE_EMBED_RE regex (checked first) already owns real YouTube
+    # video links specifically.
+    page = """
+    <html><body>
+    <a href="https://www.youtube.com/user/somecitychannel">Watch Us on YouTube</a>
+    </body></html>
+    """
+    routes = {PAGE_URL: FakeResponse(status=200, text=page, url=PAGE_URL)}
+
+    with mock_session(routes):
+        result = await GenericFallbackAssetFinder().resolve(PAGE_URL)
+
+    assert result.platform == "unknown"
+    assert result.video_url is None
+
+
+async def test_resolve_falls_through_when_delegation_raises(monkeypatch):
+    class _RaisingFinder:
+        async def resolve(self, url):
+            raise ValueError("simulated real failure")
+
+    monkeypatch.setattr("app.platforms.generic_fallback.detect_platform", lambda url: (
+        "swagit" if "swagit.com" in url else "unknown"
+    ))
+    monkeypatch.setattr("app.platforms.generic_fallback.get_finder", lambda platform: _RaisingFinder())
+    routes = {PAGE_URL: FakeResponse(status=200, text=PAGE_WITH_SWAGIT_LINK, url=PAGE_URL)}
+
+    with mock_session(routes):
+        result = await GenericFallbackAssetFinder().resolve(PAGE_URL)
+
+    # Falls back to the honest "nothing found" outcome rather than crashing.
+    assert result.platform == "unknown"
+    assert result.video_url is None

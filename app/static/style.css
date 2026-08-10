@@ -542,8 +542,12 @@ video { width: 100%; height: 100%; display: block; }
    page -- deliberately normal weight/color, not the bold-on-tinted-
    background .warnings treatment, since nothing here is confirmed the
    way a real warning is. */
-.source-guess { color: var(--fg); margin: 0 0 1rem; }
-.source-guess a { color: inherit; text-decoration: underline; }
+/* A real long media URL (no natural break points, e.g. a Swagit m3u8
+   playlist link) confirmed live 2026-08-10 to overflow its column and
+   visually collide with the Agenda column's text next to it -- neither
+   .source-guess nor the <a> inside it wrapped without this. */
+.source-guess { color: var(--fg); margin: 0 0 1rem; overflow-wrap: break-word; }
+.source-guess a { color: inherit; text-decoration: underline; overflow-wrap: break-word; }
 .source-guess a:hover { color: var(--accent); }
 /* #agendaList stays empty when a best-effort result has no real
    agenda_items -- #agendaSection itself is now shown unconditionally

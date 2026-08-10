@@ -8,6 +8,58 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-10] Generic fallback now delegates to any other
+  platform this app already supports, found as a plain link on the
+  page.** Real user finding: Austin, TX's own council meeting pages
+  (`austintexas.gov/council/{date}-reg`) don't embed video at all —
+  they link out to their Swagit-hosted recording
+  (`austintx.swagit.com/play/{id}/0/`) as a plain `<a href>`, which
+  `SwagitAssetFinder` already resolves correctly on its own (confirmed
+  directly: real video URL, real title, real date, all correct). Added
+  `_try_delegate_to_known_platform()`: scans every `<a href>`/`<iframe
+  src>`/`<video src>`/`<source src>` on the page through the same
+  `detect_platform()` every URL gets classified by, and delegates to
+  that adapter's real `resolve()` on the first match. Checked before
+  `media_scan.py`'s generic media-URL scan (a full, real adapter's
+  result is strictly richer than a raw `.m3u8`/`.mp4` guess) but after
+  the existing YouTube-embed regex (kept as-is, first priority).
+
+  Deliberately excludes `"youtube"` from the delegation scan — already
+  handled by the narrower, embed/watch-URL-specific regex checked first;
+  `detect_platform()`'s broader `"youtube.com" in netloc` check would
+  otherwise also match a bare channel/user link (a real false positive
+  confirmed live on Aurora, CO: a footer "Watch Us on YouTube" icon
+  pointing at a channel page, not a specific video — would have raised
+  inside the delegated `YouTubeAssetFinder.resolve()` since no 11-char
+  video ID exists in a channel URL). Any delegation failure (a bad
+  match, a `CalendarPageError` from e.g. a Legistar calendar link,
+  network errors) is swallowed and treated as "no delegation possible,"
+  never allowed to turn an honest "found nothing" into a crash.
+  `source_url` is overridden back to the ORIGINAL page after a
+  successful delegation (not the delegated platform's own URL), matching
+  how LIMS/PrimeGov already preserve their own source_url through a
+  YouTube delegation — a visitor who came from `austintexas.gov` should
+  never see `swagit.com` as "the source."
+
+  **Real CSS bug caught during live verification, not from a unit
+  test**: `.source-guess` (the "we think the video/agenda is here:
+  `<link>`" lines, added the previous session) had no `overflow-wrap`.
+  A real long unbroken media URL (Swagit's own `archive-stream.
+  granicus.com/.../playlist.m3u8` link, no natural break points) rendered
+  595px wide inside a 300px-wide left column, visually overflowing 267px
+  into the right column and colliding with the Agenda heading's own text
+  — confirmed via `getBoundingClientRect()` on the actual rendered anchor
+  (`right: 829`, while the right column starts at `left: 562`), not just
+  eyeballed from a screenshot. Fixed with `overflow-wrap: break-word` on
+  both `.source-guess` and `.source-guess a`.
+
+  Verified live end-to-end against the real Austin URL: real video plays
+  (real Austin City Council branding, real 4:51:27 duration), real
+  agenda_items with real timestamps render (Swagit's own agenda-viewer
+  data, not a guessed link), `source_url` stays the original
+  austintexas.gov page, and the long-URL overflow no longer collides
+  with the Agenda column after the CSS fix.
+
 - **[Done 2026-08-10] Redesigned the generic-fallback meeting page per a
   detailed user spec, given directly against a real screenshot.** The
   previous pass (see the "Live-tested the generic fallback" entry just
