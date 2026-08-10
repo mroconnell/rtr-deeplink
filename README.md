@@ -381,7 +381,17 @@ connection, same `.env` setup as `scripts/bulk_ingest.py` plus
 `POST /internal/ingest` (idempotent, content-hash-deduped, matched to
 the existing page). Supports `--dry-run` and `--limit`; aborts the whole
 run on an IP-level block rather than failing every queue entry
-identically.
+identically. Prints per-item timing (wall-clock timestamp + elapsed
+seconds) and a final total/average — fetching an already-generated
+caption track is one API call, so run time is independent of how long
+the actual meeting is.
+
+Runs automatically once a day via `launchd` on the user's own Mac (must
+be that machine specifically — the residential IP is the whole point).
+`scripts/com.redtaperecordings.fetch-youtube-transcripts.plist` has the
+real install/test/uninstall commands in its own header comment; installed
+copy lives at `~/Library/LaunchAgents/`, logs at `~/Library/Logs/
+fetch-youtube-transcripts.log`.
 
 **Checking the Archive's real production schema**: `GET /internal/schema-info`
 (token-gated the same way as every other `/internal/*` route — a bearer

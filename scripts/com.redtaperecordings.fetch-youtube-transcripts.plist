@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  launchd job: runs scripts/fetch_youtube_transcripts.py once a day.
+
+  Must run on a residential IP (this Mac), not Render -- see that
+  script's own docstring and BACKLOG_DONE.md's 2026-08-10 entry for why
+  the fetch can't happen server-side (YouTube blocks caption requests
+  from cloud-provider IPs, confirmed live).
+
+  Install (one-time):
+    cp scripts/com.redtaperecordings.fetch-youtube-transcripts.plist \
+      ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.redtaperecordings.fetch-youtube-transcripts.plist
+
+  Runs daily at 9:00am -- only fires while the Mac is awake; if asleep at
+  that time, macOS runs it soon after the next wake rather than skipping
+  it outright. Change StartCalendarInterval below and re-run `launchctl
+  unload` + `launchctl load` to pick a different time.
+
+  Test it immediately without waiting for the schedule:
+    launchctl start com.redtaperecordings.fetch-youtube-transcripts
+
+  Check the log:
+    tail -f ~/Library/Logs/fetch-youtube-transcripts.log
+
+  Uninstall:
+    launchctl unload ~/Library/LaunchAgents/com.redtaperecordings.fetch-youtube-transcripts.plist
+    rm ~/Library/LaunchAgents/com.redtaperecordings.fetch-youtube-transcripts.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.redtaperecordings.fetch-youtube-transcripts</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/mroconnell/Documents/rtr-deeplink/.venv/bin/python3</string>
+        <string>/Users/mroconnell/Documents/rtr-deeplink/scripts/fetch_youtube_transcripts.py</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/mroconnell/Documents/rtr-deeplink</string>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>9</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <!-- Only fires on the schedule above, not also on every login/reboot
+         (LaunchAgents in this directory auto-load at login) -- avoids
+         extra runs beyond the intended once-a-day cadence. -->
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/mroconnell/Library/Logs/fetch-youtube-transcripts.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/mroconnell/Library/Logs/fetch-youtube-transcripts.log</string>
+</dict>
+</plist>

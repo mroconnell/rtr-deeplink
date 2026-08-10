@@ -41,26 +41,15 @@ where relevant.
   actually been pushed to the Archive (confirmed via a real audit of all
   22 archived meetings) — but worth doing before the first one is.
 
-- **YouTube-backed meetings' transcripts now depend on someone actually
-  running `scripts/fetch_youtube_transcripts.py` from a residential
-  connection — the tooling shipped 2026-08-10 (see BACKLOG_DONE.md's
-  experiment + build entry), but nothing runs it automatically yet.**
-  The server structurally cannot fetch these itself: confirmed live that
-  yt-dlp, plain timedtext requests, *and* youtube-transcript-api (a
-  different InnerTube recipe, tested 2026-08-10 specifically to close
-  this question) are all blocked from Render's cloud IP, while the same
-  library works perfectly from a home connection. The Archive now
-  exposes `GET /internal/transcript-wanted` (every YouTube-backed page
-  with no default transcript) and the script drains it through the
-  normal ingest path. Open follow-ups, in rough order:
-  - **Run the script for real against production** — as of this writing
-    the queue has real pages waiting (the Minneapolis LIMS meetings,
-    Baltimore's council hearing). Verified end-to-end locally against a
-    real YouTube fetch; not yet run against the production Archive.
-  - **Automate the run** — a launchd/cron timer on the user's own
-    machine (the fetcher must be on a residential IP, so this can't be
-    a Render cron job). Until then it's a manual "run it every so
-    often" chore, same posture as `bulk_ingest.py` batches.
+- **YouTube-backed meetings' transcripts run through
+  `scripts/fetch_youtube_transcripts.py` on a daily `launchd` schedule
+  now (both shipped 2026-08-10, see BACKLOG_DONE.md) — real remaining
+  gaps below, not "nothing runs automatically yet."** The server
+  structurally cannot fetch these itself: confirmed live that yt-dlp,
+  plain timedtext requests, *and* youtube-transcript-api (a different
+  InnerTube recipe, tested specifically to close this question) are all
+  blocked from Render's cloud IP, while the same library works perfectly
+  from a home connection. Open follow-ups, in rough order:
   - **Whisper fallback for YouTube videos with no captions at all**
     (analysis option 8): extend the same local script to yt-dlp the
     *audio* (works from residential IPs) for queue entries whose

@@ -8,6 +8,33 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-10] `scripts/fetch_youtube_transcripts.py` runs
+  automatically once a day now, via a `launchd` job on the user's Mac
+  (`scripts/com.redtaperecordings.fetch-youtube-transcripts.plist`,
+  checked into the repo for documentation/reinstall, actually installed
+  at `~/Library/LaunchAgents/`).** Must run on the user's own machine,
+  not Render — the whole reason this script exists is that YouTube
+  blocks caption fetches from Render's cloud IP (see the entry below).
+  Daily at 9:00am, `RunAtLoad` deliberately `false` so it only fires on
+  the schedule (LaunchAgents auto-load at every login, which would
+  otherwise add extra runs beyond the intended cadence); if the Mac is
+  asleep at the scheduled time, macOS runs it after the next wake rather
+  than skipping it. Output goes to `~/Library/Logs/fetch-youtube-
+  transcripts.log`. Verified for real: `launchctl load`, then `launchctl
+  start` to fire it immediately without waiting for the schedule,
+  confirmed the log file was written with the script's real output
+  ("Transcript-wanted queue is empty -- nothing to do," correct since
+  the one real queued page had just been drained manually). The plist's
+  own header comment documents install/test/uninstall commands so this
+  doesn't depend on tribal knowledge.
+
+  Also ran the script for real against production for the first time
+  (prompted by verifying the new timing output below): the queue had
+  exactly one real page waiting — Minneapolis's BHZ committee meeting —
+  fetched and pushed successfully, 3,377 real segments with clean
+  speaker markers, now live at `/m/city-of-minneapolis-2026-07-07-
+  business-housing-zoning-committee`.
+
 - **[Done 2026-08-10] Per-video timing added to `scripts/fetch_youtube_transcripts.py`,
   which surfaced and fixed a real, order-dependent test flake.** User
   asked how long a run would take for several long meetings -- answer
