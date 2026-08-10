@@ -6,8 +6,9 @@ from urllib.parse import urljoin, urlparse
 import aiohttp
 from bs4 import BeautifulSoup
 
-from .base import AssetFinder, CalendarPageError, resolve_via_platform
+from .base import AssetFinder, CalendarPageError, find_platform_link, get_finder, resolve_via_platform
 from .models import ResolvedMeeting
+from .youtube import YouTubeAssetFinder
 
 # Confirmed live (2026-08-09) on two real NYC MeetingDetail.aspx pages: the
 # outer page's own <title> reliably gives "{jurisdiction} - Meeting of
@@ -52,6 +53,16 @@ class LegistarAssetFinder(AssetFinder):
          Raise CalendarPageError with per-meeting title/date/url pulled
          from each row, so the frontend can offer a pick-list instead of
          guessing which meeting the user meant.
+
+    If no `a.videolink` is found at all, `_try_fallback_video_link()`
+    (added 2026-08-10) tries a broader scan before giving up -- confirmed
+    live on Baltimore's Legistar instance: its "Recording" link (a real
+    full meeting recording on YouTube) lives in a plain attachments
+    table, not the `a.videolink` shape every other case here assumes.
+    Same fallback chain `generic_fallback.py` uses for the identical
+    problem on a non-Legistar page (a real YouTube link anywhere on the
+    page first, then `base.find_platform_link()` for any other already-
+    supported platform), reused rather than duplicated.
     """
 
     platform_name = "legistar"
@@ -75,6 +86,10 @@ class LegistarAssetFinder(AssetFinder):
             video_links = self._find_video_links(soup, final_url)
 
             if not video_links:
+                fallback = await self._try_fallback_video_link(html, final_url, soup)
+                if fallback:
+                    fallback.source_url = url
+                    return fallback
                 return ResolvedMeeting(
                     platform=self.platform_name,
                     source_url=url,
@@ -105,6 +120,46 @@ class LegistarAssetFinder(AssetFinder):
                 source_url=url,
                 video_warnings=["Found a video link, but it didn't lead to a supported platform."],
             )
+
+    @staticmethod
+    async def _try_fallback_video_link(html: str, page_url: str, soup: BeautifulSoup) -> Optional[ResolvedMeeting]:
+        """Real gap confirmed live 2026-08-10: Baltimore's Legistar instance
+        puts its video link in an attachments table as a plain
+        `<a href="https://youtu.be/...">Recording</a>`, not the
+        `a.videolink[onclick="window.open(...)"]` shape `_find_video_links()`
+        looks for -- that pattern is Legistar's own system-generated markup
+        for the "Video" button specifically, confirmed across Maricopa AZ
+        and NYC, but doesn't cover a jurisdiction manually attaching a link
+        to its own separately-hosted recording.
+
+        Tries a real YouTube link anywhere on the page first (tighter,
+        video-ID-validated -- `YouTubeAssetFinder.extract_video_id()`),
+        then `find_platform_link()` for any other platform this app
+        already supports (same fallback chain `generic_fallback.py` uses
+        for the same class of problem on a non-Legistar page). Returns
+        None on no match or any resolve failure, letting the caller fall
+        back to the existing honest "No video link found" message.
+        """
+        video_id = YouTubeAssetFinder.extract_video_id(html)
+        if video_id:
+            resolved = await YouTubeAssetFinder.resolve_video_id(video_id, source_url=page_url)
+        else:
+            match = find_platform_link(html, page_url, exclude=frozenset({"youtube"}))
+            if not match:
+                return None
+            candidate, platform = match
+            try:
+                resolved = await get_finder(platform).resolve(candidate)
+            except Exception:
+                return None
+
+        page_info = LegistarAssetFinder._extract_page_meeting_info(soup)
+        if page_info:
+            if LegistarAssetFinder._looks_like_raw_filename(resolved.title) or not resolved.title:
+                resolved.title = page_info["title"]
+            resolved.jurisdiction = resolved.jurisdiction or page_info["jurisdiction"]
+            resolved.date = resolved.date or page_info["date"]
+        return resolved
 
     @staticmethod
     def _is_legistar_domain(url: str) -> bool:

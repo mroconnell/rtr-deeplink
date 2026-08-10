@@ -4,6 +4,7 @@ from app.platforms.base import CalendarPageError, register
 from app.platforms.granicus import GranicusAssetFinder
 from app.platforms.legistar import LegistarAssetFinder
 from app.platforms.viebit import ViebitAssetFinder
+from app.platforms.youtube import YouTubeAssetFinder
 
 from aiohttp_mock import FakeResponse, mock_session
 from conftest import load_fixture
@@ -282,3 +283,59 @@ async def test_no_video_link_returns_warning_not_crash():
 
     assert result.platform == "legistar"
     assert any("no video" in w.lower() for w in result.video_warnings)
+
+
+async def test_falls_back_to_a_plain_youtube_link_when_no_videolink_found(monkeypatch):
+    # Real gap confirmed live 2026-08-10: Baltimore's Legistar instance
+    # (baltimore.legistar.com) has no a.videolink at all -- its real
+    # recording is a plain <a href="https://youtu.be/...">Recording</a>
+    # in an attachments table. _find_video_links() correctly finds
+    # nothing there; the new fallback should still find the real video.
+    url = "https://baltimore.legistar.com/MeetingDetail.aspx?ID=1"
+    html = (
+        "<html><body><table><tr><td>Attachments</td></tr></table>"
+        '<a href="https://youtu.be/dQw4w9WgXcQ">Recording</a></body></html>'
+    )
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    def _fake_extract_info(video_id):
+        return {"title": "City Council Hearing", "uploader": "CharmTV", "upload_date": "20251020"}
+
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _fake_extract_info)
+
+    with mock_session(routes):
+        result = await LegistarAssetFinder().resolve(url)
+
+    assert result.platform == "youtube"
+    assert result.video_url == "https://www.youtube.com/embed/dQw4w9WgXcQ"
+    # source_url stays the original Legistar page, not youtu.be -- same
+    # convention every other delegation in this file already follows.
+    assert result.source_url == url
+
+
+async def test_falls_back_to_a_plain_granicus_link_when_no_videolink_found():
+    # Same real class of gap as the YouTube case above, but for any OTHER
+    # platform this app already supports -- proves the fallback isn't
+    # YouTube-specific, it's the same base.find_platform_link()
+    # generic_fallback.py already uses for Austin, TX's Swagit link.
+    url = "https://somecity.legistar.com/MeetingDetail.aspx?ID=1"
+    granicus_url = "https://cityofmaricopa.granicus.com/player/clip/1504"
+    html = (
+        "<html><body><table><tr><td>Attachments</td></tr></table>"
+        f'<a href="{granicus_url}">Watch the recording</a></body></html>'
+    )
+    granicus_html = load_fixture("granicus", "napacity_clip3450.html")
+
+    routes = {
+        url: FakeResponse(status=200, text=html, url=url),
+        granicus_url: FakeResponse(status=200, text=granicus_html, url=granicus_url),
+        "https://cityofmaricopa.granicus.com/videos/1504/captions.vtt": FakeResponse(status=404),
+        "https://cityofmaricopa.granicus.com/AgendaViewer.php?clip_id=1504&embedded=1": FakeResponse(status=404),
+    }
+
+    with mock_session(routes):
+        result = await LegistarAssetFinder().resolve(url)
+
+    assert result.platform == "granicus"
+    assert result.external_id == "granicus:1504"
+    assert result.source_url == url

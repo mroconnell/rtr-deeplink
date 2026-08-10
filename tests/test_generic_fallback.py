@@ -192,7 +192,7 @@ class _FakeSwagitFinder:
 
 
 async def test_resolve_delegates_to_swagit_link_found_on_page(monkeypatch):
-    monkeypatch.setattr("app.platforms.generic_fallback.detect_platform", lambda url: (
+    monkeypatch.setattr("app.platforms.base.detect_platform", lambda url: (
         "swagit" if "swagit.com" in url else "unknown"
     ))
     monkeypatch.setattr("app.platforms.generic_fallback.get_finder", lambda platform: _FakeSwagitFinder())
@@ -238,7 +238,7 @@ async def test_resolve_falls_through_when_delegation_raises(monkeypatch):
         async def resolve(self, url):
             raise ValueError("simulated real failure")
 
-    monkeypatch.setattr("app.platforms.generic_fallback.detect_platform", lambda url: (
+    monkeypatch.setattr("app.platforms.base.detect_platform", lambda url: (
         "swagit" if "swagit.com" in url else "unknown"
     ))
     monkeypatch.setattr("app.platforms.generic_fallback.get_finder", lambda platform: _RaisingFinder())

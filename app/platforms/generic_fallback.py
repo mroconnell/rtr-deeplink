@@ -5,19 +5,13 @@ from urllib.parse import urljoin
 import aiohttp
 from bs4 import BeautifulSoup
 
-from .base import AssetFinder, detect_platform, get_finder
+from .base import AssetFinder, find_platform_link, get_finder
 from .media_scan import media_type, scan_media_urls
 from .models import ResolvedMeeting, TranscriptSegment
 from .youtube import YouTubeAssetFinder
 from ..utils.vtt_parser import decode_vtt_bytes, detect_language_from_texts, parse_captions_by_extension
 
-_YOUTUBE_EMBED_RE = re.compile(r"(?:youtube\.com/(?:embed/|watch\?v=)|youtu\.be/)([\w-]{11})")
 _AGENDA_TEXT_RE = re.compile(r"agenda", re.IGNORECASE)
-# Excludes "unknown" (not a real delegation target) and "youtube" (already
-# handled above by a tighter, iframe/video-ID-specific regex -- a bare
-# youtube.com/user/... channel link, e.g. a "Watch us on YouTube" footer
-# icon confirmed on a real site, would otherwise false-positive here).
-_DELEGATABLE_LINK_TAGS = ("a", "iframe", "video", "source")
 
 _BEST_EFFORT_VIDEO_WARNING = (
     "This city isn't officially supported yet, so we're trying our best — we think we found the "
@@ -148,9 +142,9 @@ class GenericFallbackAssetFinder(AssetFinder):
 
         agenda_link = self._find_agenda_link(html, url)
 
-        youtube_match = _YOUTUBE_EMBED_RE.search(html)
-        if youtube_match:
-            resolved = await YouTubeAssetFinder.resolve_video_id(youtube_match.group(1), source_url=url)
+        youtube_video_id = YouTubeAssetFinder.extract_video_id(html)
+        if youtube_video_id:
+            resolved = await YouTubeAssetFinder.resolve_video_id(youtube_video_id, source_url=url)
             resolved.video_warnings = [_BEST_EFFORT_VIDEO_WARNING, *resolved.video_warnings]
             resolved.agenda_link = agenda_link
             # YouTubeAssetFinder.resolve_video_id() always returns
@@ -196,21 +190,21 @@ class GenericFallbackAssetFinder(AssetFinder):
 
     @staticmethod
     async def _try_delegate_to_known_platform(html: str, page_url: str) -> Optional[ResolvedMeeting]:
-        """Scans every <a href>/<iframe src>/<video src>/<source src> on the
-        page for a link to a platform this app already fully supports, and
-        delegates to that adapter's own real resolve() -- e.g. a city page
-        that just links out to its Swagit-hosted video as a plain <a href>
-        rather than embedding it, confirmed live 2026-08-10 (Austin, TX:
-        austintexas.gov/council/{date}-reg links to austintx.swagit.com/
-        play/{id}/0/, a real, already-correctly-working SwagitAssetFinder
-        target -- no reason to guess at a generic media-URL scan when a
-        real, tested adapter is right there).
+        """Uses `base.find_platform_link()` to look for a link to a
+        platform this app already fully supports, and delegates to that
+        adapter's own real resolve() -- e.g. a city page that just links
+        out to its Swagit-hosted video as a plain <a href> rather than
+        embedding it, confirmed live 2026-08-10 (Austin, TX: austintexas.
+        gov/council/{date}-reg links to austintx.swagit.com/play/{id}/0/,
+        a real, already-correctly-working SwagitAssetFinder target -- no
+        reason to guess at a generic media-URL scan when a real, tested
+        adapter is right there).
 
-        Deliberately excludes "youtube" -- already handled above by a
-        tighter regex scoped to real embed/watch-URL shapes specifically,
-        since detect_platform()'s broader "youtube.com" in netloc check
-        would also match a bare channel/user link (a real false-positive
-        confirmed live: Aurora, CO's footer "Watch Us on YouTube" icon).
+        Excludes "youtube" -- already handled above by
+        `YouTubeAssetFinder.extract_video_id()`, a tighter, video-ID-
+        validated check; see `find_platform_link()`'s own docstring for
+        why its broader `detect_platform()`-based match would otherwise
+        false-positive on a bare channel/user link.
 
         Any failure (a bad match that doesn't actually resolve, a
         CalendarPageError from e.g. a Legistar calendar link, network
@@ -218,28 +212,22 @@ class GenericFallbackAssetFinder(AssetFinder):
         this is a bonus attempt on top of the existing fallback logic, not
         allowed to replace an honest "found nothing" with a crash.
         """
-        soup = BeautifulSoup(html, "html.parser")
-        for tag in soup.find_all(_DELEGATABLE_LINK_TAGS):
-            value = tag.get("href") or tag.get("src")
-            if not value:
-                continue
-            candidate = urljoin(page_url, value.strip())
-            platform = detect_platform(candidate)
-            if platform in ("unknown", "youtube"):
-                continue
-            try:
-                finder = get_finder(platform)
-                resolved = await finder.resolve(candidate)
-            except Exception:
-                # Covers CalendarPageError (e.g. a Legistar calendar link
-                # rather than one specific meeting) same as any other
-                # resolve failure -- see this method's own docstring.
-                continue
-            resolved.source_url = page_url
-            resolved.video_warnings = [_BEST_EFFORT_VIDEO_WARNING, *resolved.video_warnings]
-            resolved.best_effort = True
-            return resolved
-        return None
+        match = find_platform_link(html, page_url, exclude=frozenset({"youtube"}))
+        if not match:
+            return None
+        candidate, platform = match
+        try:
+            finder = get_finder(platform)
+            resolved = await finder.resolve(candidate)
+        except Exception:
+            # Covers CalendarPageError (e.g. a Legistar calendar link
+            # rather than one specific meeting) same as any other resolve
+            # failure -- see this method's own docstring.
+            return None
+        resolved.source_url = page_url
+        resolved.video_warnings = [_BEST_EFFORT_VIDEO_WARNING, *resolved.video_warnings]
+        resolved.best_effort = True
+        return resolved
 
     @staticmethod
     def _find_agenda_link(html: str, page_url: str) -> Optional[str]:

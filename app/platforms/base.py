@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import List, TypedDict
-from urllib.parse import urlparse
+from typing import FrozenSet, List, Optional, Tuple, TypedDict
+from urllib.parse import urljoin, urlparse
+
+from bs4 import BeautifulSoup
 
 from .models import ResolvedMeeting
 
@@ -142,3 +144,44 @@ async def resolve_via_platform(url: str) -> ResolvedMeeting:
     platform = detect_platform(url)
     finder = get_finder(platform)
     return await finder.resolve(url)
+
+
+_DELEGATABLE_LINK_TAGS = ("a", "iframe", "video", "source")
+
+
+def find_platform_link(
+    html: str, page_url: str, *, exclude: FrozenSet[str] = frozenset()
+) -> Optional[Tuple[str, str]]:
+    """Scans every <a href>/<iframe src>/<video src>/<source src> on a page
+    for a link to a platform `detect_platform()` recognizes, returning
+    `(absolute_url, platform)` for the first match, or None.
+
+    Built 2026-08-10 for `generic_fallback.py`'s delegation to an
+    already-supported platform found as a plain link (e.g. Austin, TX's
+    council pages linking out to their Swagit-hosted video). Reused by
+    `legistar.py` for the same real gap on a different page shape:
+    Baltimore's Legistar instance puts its video link in an attachments
+    table as a plain `<a>Recording</a>` pointing at YouTube, not the
+    `a.videolink` shape `_find_video_links()` looks for -- Legistar's own
+    adapter claims the domain and gives up before generic_fallback.py ever
+    gets a chance to run its own version of this same scan.
+
+    `exclude` matters specifically for "youtube": `detect_platform()`'s
+    broad `"youtube.com" in netloc` check also matches a bare channel/user
+    link (a real false positive confirmed live on Aurora, CO's "Watch Us
+    on YouTube" footer icon) -- callers that already have a tighter,
+    video-ID-validated YouTube check of their own (both `generic_fallback.
+    py` and `legistar.py` do, via `YouTubeAssetFinder.extract_video_id()`)
+    should exclude "youtube" here and rely on that instead.
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    for tag in soup.find_all(_DELEGATABLE_LINK_TAGS):
+        value = tag.get("href") or tag.get("src")
+        if not value:
+            continue
+        candidate = urljoin(page_url, value.strip())
+        platform = detect_platform(candidate)
+        if platform == "unknown" or platform in exclude:
+            continue
+        return candidate, platform
+    return None

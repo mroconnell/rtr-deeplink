@@ -8,6 +8,51 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-10] Legistar now falls back to a broader link scan when
+  its own `a.videolink` pattern finds nothing, extracted into a shared,
+  reusable function alongside the generic fallback's identical need.**
+  Real user finding: Baltimore's Legistar instance
+  (`baltimore.legistar.com`) has no `a.videolink` at all for a real
+  meeting — its actual recording is a plain `<a href="https://youtu.be/
+  ...">Recording</a>` link sitting in an attachments table, a completely
+  different shape than the `a.videolink[onclick="window.open(...)"]`/
+  `OpenTelerikWindow(...)` pattern confirmed across Maricopa AZ and NYC.
+  Legistar's own adapter claims the domain and gave up with "No video
+  link found," never reaching `generic_fallback.py`'s own delegation
+  logic (built earlier the same day for the identical class of problem
+  on Austin, TX's non-Legistar page).
+
+  Extracted the shared scanning core into `app/platforms/base.py`'s new
+  `find_platform_link(html, page_url, *, exclude=frozenset())` — scans
+  every `<a href>`/`<iframe src>`/`<video src>`/`<source src>` through
+  `detect_platform()`, returning `(url, platform)` for the first real
+  match. `generic_fallback.py`'s own `_try_delegate_to_known_platform()`
+  now calls this instead of duplicating the scan; `legistar.py` gained a
+  new `_try_fallback_video_link()` called only when `_find_video_links()`
+  finds nothing, trying a real YouTube link first (`YouTubeAssetFinder.
+  extract_video_id(html)` — turns out this already works directly
+  against raw HTML text, not just a URL, since it's a `.search()` not
+  `.match()`; no new YouTube-specific function needed), then
+  `find_platform_link()` for anything else, applying the same page-title
+  metadata override (`_extract_page_meeting_info()`) real video-link
+  delegation already uses.
+
+  Both callers exclude `"youtube"` from the general scan and rely on
+  their own tighter, video-ID-validated check instead —
+  `detect_platform()`'s broad `"youtube.com" in netloc` match would
+  otherwise false-positive on a bare channel/user link (the real case
+  that motivated this exact split when `generic_fallback.py` was first
+  built: Aurora, CO's "Watch Us on YouTube" footer icon).
+
+  Verified live end-to-end against the real Baltimore meeting: real
+  video plays (YouTube embed), real title/date/jurisdiction
+  ("City Council Hearing; October 20, 2025", 2025-10-20, CharmTV
+  Citizens' Hub — Baltimore's own Legistar page title didn't match the
+  `_PAGE_TITLE_RE` pattern NYC's does, so this correctly fell back to
+  YouTube's own real metadata rather than leaving anything blank), and
+  2587 real transcript segments, replacing what was previously a page
+  with no video and no transcript at all.
+
 - **[Done 2026-08-10] Generic fallback now delegates to any other
   platform this app already supports, found as a plain link on the
   page.** Real user finding: Austin, TX's own council meeting pages
