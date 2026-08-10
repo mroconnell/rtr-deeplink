@@ -8,6 +8,55 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-10] Added the first automated test coverage for
+  `shared_static/deep_link.js`'s `t`/`line`/`version` contract — deep
+  linking is the entire reason this repo exists, and it had zero
+  regression protection before this.** Every prior verification of this
+  file's behavior, including the version-mismatch precedence fix itself,
+  was manual/in-browser or a throwaway one-off Node script (see the
+  deep-link versioning entry above/nearby) — a real regression (`line`
+  regaining precedence over `t`, the version-mismatch fallback silently
+  breaking) would only ever have been caught by live-testing, same gap
+  the Python `pytest` suite already closed on that side.
+
+  New `package.json` (repo root, `type: "commonjs"`) + `tests_js/` — the
+  first JS tooling this repo has needed. Uses Node's built-in test runner
+  (`node --test`, no test-framework dependency) plus `jsdom` (the one
+  real devDependency, needed for `document`/`window`/`URLSearchParams`/
+  `history.replaceState`, all of which `deep_link.js` uses directly).
+  `tests_js/helpers.js`'s `makeWindow()` loads the real file into a fresh
+  `jsdom` window as an actual appended `<script>` element, not
+  `vm.runInContext` or `eval()` — deliberately reproducing the same
+  "separate classic `<script>` tags share top-level `let`/`const`
+  bindings" behavior that mattered when this file was first split out of
+  `player.js`/`meeting_page.js` (a plain `eval()` creates its own nested
+  lexical scope and would silently misrepresent this). Function
+  declarations (`getDeepLinkTime`, `applyDeepLink`, etc.) land on
+  `window` this way and are called directly in tests; the module-level
+  `let segments` does not (per spec, unlike function declarations,
+  `let`/`const` never become properties of the global object) —
+  `setSegments()` reaches it the same way real callers do, via a second
+  appended `<script>` doing a bare (no `let`/`const`) assignment into the
+  shared scope.
+
+  23 tests across `getDeepLinkTime`/`getDeepLinkLine`/`getDeepLinkVersion`/
+  `updateUrlParams`/`findActiveSegment`/`highlightSegment`, plus the full
+  `applyDeepLink` contract: the same 9 cases originally checked manually
+  (t-always-wins-the-seek with a trustworthy line present, version-match,
+  version-mismatch-with-t falling back to time-proximity not the stale
+  line, version-mismatch-with-no-t leaving playback untouched, no-version-
+  on-either-side trusting `line` — including the resolver's page
+  specifically, which has no version concept at all even if a shared URL
+  happens to carry a stray `version` param). Sanity-checked the suite is
+  real, not tautological: temporarily short-circuited the `t`-always-wins
+  branch in `deep_link.js`, confirmed exactly the 2 tests exercising it
+  failed (21/23 still passing), reverted, confirmed clean 23/23 again.
+  `README.md`'s "Running tests" section documents `npm install && npm
+  test` alongside the existing `pytest` instructions. `node_modules/`
+  added to `.gitignore`; `package-lock.json` committed for reproducible
+  installs. Full Python suite unaffected (264 tests, pure test-only
+  addition, no application code touched).
+
 - **[Done 2026-08-10, partial] Archive's `meeting_page.html` no longer
   shows a silent empty gap when a meeting has no video at all.** One of
   three real bugs the resolver-side "Live-tested the generic fallback"

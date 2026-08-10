@@ -209,15 +209,6 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   simulation), and `data-version-id` renders correctly. Full Python
   suite green throughout (121 tests, unaffected -- this was a pure
   frontend change).
-- **No automated test coverage pins the `t`/`line` URL contract.** No JS
-  test framework exists in this repo; every verification of deep-link
-  behavior, including the precedence fix above, has been manual/in-browser.
-  A regression (`line` regaining precedence over `t`, `seg-N` generation
-  changing) would only be caught by live-testing — the same gap the
-  pytest suite already closed on the Python side. Lower priority than the
-  two items above since it needs JS test infra from scratch, but worth
-  flagging given deep-linking is the entire reason this repo exists.
-
 ## Platform coverage — open questions
 
 - **Chicago's City Clerk ELMS (`chicityclerkelms.chicago.gov`) is a real,

@@ -1,0 +1,12 @@
+{
+  "name": "rtr-deeplink-js-tests",
+  "private": true,
+  "type": "commonjs",
+  "description": "Regression coverage for shared_static/deep_link.js -- the t/line/version deep-link contract both app/static/player.js and archive/static/meeting_page.js depend on. No app build step exists; this is test-only tooling.",
+  "scripts": {
+    "test": "node --test tests_js/*.test.js"
+  },
+  "devDependencies": {
+    "jsdom": "^30.0.1"
+  }
+}

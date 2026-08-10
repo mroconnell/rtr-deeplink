@@ -66,6 +66,24 @@ the transcription job lifecycle is genuinely DB-state-machine logic
 (claim/report/finalize/promote) that a pure-function test can't exercise
 honestly. Every adapter now has real fixture-backed test coverage.
 
+`shared_static/deep_link.js` (the `t`/`line`/`version` deep-link contract
+both `app/static/player.js` and `archive/static/meeting_page.js` depend
+on) has its own separate JS suite, since it's the one piece of this repo
+with no Python equivalent:
+
+```bash
+npm install
+npm test
+```
+
+`tests_js/helpers.js` loads the real file into a fresh `jsdom` window as
+an actual `<script>` element per test (not `vm.runInContext` or `eval`) so
+top-level `let`/`function` declarations land in real global script scope
+— the same behavior two separate classic `<script>` tags share in an
+actual browser, which matters here since `player.js`/`meeting_page.js`
+both assign into `deep_link.js`'s module-level `segments` variable this
+same way in production.
+
 ## How it works
 
 ### The resolve flow
