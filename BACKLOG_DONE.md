@@ -8,6 +8,28 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-10] `/meetings` results now break the jurisdiction/date
+  onto its own line under the title, instead of running inline right
+  after it.** `archive/templates/meeting_list.html`'s
+  `.calendar-candidate-main` renders the title `<a>` and a
+  `.calendar-candidate-date` `<span>` back to back with no separator
+  markup — the fix is CSS-only. `.calendar-candidate-date`
+  (`archive/static/style.css`) changed from `margin-left: 0.5rem` (an
+  inline sibling) to `display: block; margin-top: 0.15rem`, so a reader
+  scanning down the page gets one consistent left-aligned jurisdiction/
+  date column instead of hunting for it after a variable-length title.
+  Deliberately scoped to `archive/static/style.css` only, not mirrored
+  into `app/static/style.css` — the resolver's own use of the same
+  `.calendar-candidate`/`.calendar-candidate-date` classes
+  (`renderCalendarPage()` in `app/static/player.js`) is a different,
+  more compact UI (an ambiguous-URL disambiguation dropdown, not a
+  spacious search-results page) that the original complaint wasn't
+  about; forcing it onto two lines there would just make that dropdown
+  taller for no benefit. Verified visually in-browser with a static test
+  harness reusing the real stylesheet against the local archive dev
+  server (port 8020) — confirmed the date line now sits directly under
+  the title on its own line for both a short and a long/wrapping title.
+
 - **[Done 2026-08-10] Transcript/agenda rows now keep a wrapped line's
   left edge aligned under the first line's text, instead of falling back
   to the far-left margin under the timestamp.** User-reported: "do we

@@ -568,7 +568,7 @@ mark.search-match.current { background: #f97316; color: #fff; }
 .calendar-candidate:last-child { border-bottom: none; }
 .calendar-candidate a { color: var(--accent); text-decoration: none; font-weight: 500; }
 .calendar-candidate a:hover { text-decoration: underline; }
-.calendar-candidate-date { color: var(--muted); margin-left: 0.5rem; }
+.calendar-candidate-date { color: var(--muted); display: block; margin-top: 0.15rem; }
 /* /meetings-listing-only layout: title+meta on the left, a fixed badge
    column on the right, so the badge always lands in the same vertical
    line of sight regardless of how long a given row's title/date/

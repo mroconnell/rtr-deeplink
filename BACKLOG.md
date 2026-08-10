@@ -176,15 +176,6 @@ where relevant.
     live in `youtube.py`'s own caption-handling instead of the shared
     `vtt_parser.py`; if it shows up elsewhere too, the shared parser is
     the right place. Check before deciding where to put the fix.
-- **`/meetings` results would read more cleanly with a line break between
-  the meeting title and its jurisdiction/date line.** Currently
-  `archive/templates/meeting_list.html`'s `.calendar-candidate-main` runs
-  the title link and the jurisdiction/date `<span>` together inline with
-  no line break, so skimming down the page for city+date means visually
-  parsing past a variable-length title on every row first. Making that
-  span its own line (`display: block`, or an explicit `<br>`) would let a
-  reader's eye track straight down one left-aligned jurisdiction/date
-  column instead.
 - **Viebit/NYCC meetings resolve `jurisdiction` to "New York City
   Council" (a legislative body name), not "New York City, NY" (the
   city+state format most other platforms use, e.g. Swagit's
