@@ -185,20 +185,6 @@ where relevant.
   span its own line (`display: block`, or an explicit `<br>`) would let a
   reader's eye track straight down one left-aligned jurisdiction/date
   column instead.
-- **Transcript rows on permanent meeting pages (and the resolver's
-  ephemeral pages — same `.transcript-segment` shape in both stylesheets)
-  are hard to read once a line wraps, because the wrapped text falls back
-  to the far-left margin (under the timestamp) instead of aligning under
-  where the text itself started.** `.transcript-segment`
-  (`archive/static/style.css` / `app/static/style.css`) lays out the
-  timestamp link, copy-link button, and text as plain inline content in
-  one block — no fixed-width timestamp column exists today. A CSS
-  grid/flex layout (fixed-width timestamp+button column, text column
-  taking the remaining width with normal word-wrap) would keep every
-  wrapped line's left edge aligned under the first line's text instead of
-  falling back under the timestamp. Same fix needed in both stylesheets,
-  matching the "shared markup/CSS pattern, kept in sync manually" note at
-  the top of `archive/static/style.css`.
 - **Viebit/NYCC meetings resolve `jurisdiction` to "New York City
   Council" (a legislative body name), not "New York City, NY" (the
   city+state format most other platforms use, e.g. Swagit's

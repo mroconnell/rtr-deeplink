@@ -8,6 +8,40 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-10] Transcript/agenda rows now keep a wrapped line's
+  left edge aligned under the first line's text, instead of falling back
+  to the far-left margin under the timestamp.** User-reported: "do we
+  have a backlog item about transcript styling? The fact that the text of
+  the captions doesn't all left align to the same margin make it very
+  hard to read." `.transcript-segment` (both `app/static/style.css` and
+  `archive/static/style.css` — kept in sync manually per the note at the
+  top of the latter) switched from plain inline flow to
+  `display: grid; grid-template-columns: auto auto 1fr; column-gap:
+  0.4rem; align-items: start;` — fixed-width timestamp/button columns
+  (`white-space: nowrap` on `.segment-timestamp`, since the grid no
+  longer needs a manual `margin-right`), text taking the remaining `1fr`
+  column with `min-width: 0` so it wraps within its own column instead of
+  overflowing.
+  Found and fixed a real edge case while implementing: `renderAgenda()`
+  (`app/static/player.js`) and `archive/templates/meeting_page.html`
+  both have a second, *single-child* `.transcript-segment` shape — just
+  a bare `<span class="segment-text">`, no timestamp/button — used when
+  a source (confirmed: several CivicClerk cities' eventBookmarks) reports
+  every agenda item at the identical timestamp, since rendering those as
+  real clickable per-item links would be misleading. Under the naive
+  3-column grid, that lone child would've landed in the first
+  auto-sized column (squeezed to a narrow box) instead of the full row.
+  Fixed with `.transcript-segment > .segment-text:only-child { grid-column:
+  1 / -1; }` in both stylesheets, scoped narrowly enough it doesn't touch
+  the normal 3-child case (real `:only-child` check, not a class toggle).
+  Verified visually in-browser (`mcp__Claude_Browser__*`, local resolver
+  dev server) with a static test harness reusing the real
+  `app/static/style.css` covering both shapes side by side: a long
+  wrapped transcript line (confirmed second line aligns under "This",
+  not under "[12:34]") and a single-child agenda item (confirmed it
+  spans the full row width, not squeezed left). Full `pytest` suite
+  (262 tests) still green — pure CSS change, no Python logic touched.
+
 - **[Done 2026-08-10] Fixed two real, user-caught data-quality bugs from
   the bulk-ingest batches: a wrong Legistar jurisdiction and a wrong
   Granicus date, plus a genuinely new date source (Granicus's own

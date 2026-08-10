@@ -464,25 +464,45 @@ video { width: 100%; height: 100%; display: block; }
   border-radius: 5px;
 }
 .transcript-list::-webkit-scrollbar-thumb:hover { background: var(--muted); }
-.transcript-segment { margin-bottom: 0.75rem; }
+/* Grid, not plain inline flow -- a wrapped line of .segment-text
+   previously fell back to the container's far-left edge (under the
+   timestamp) instead of aligning under where the text itself started,
+   confirmed hard to read on any real multi-line cue. Fixed-width
+   timestamp/button columns (auto-sized, never wrap) plus a remaining-
+   width text column (wraps within its own column only) keeps every
+   wrapped line's left edge aligned under the first line's text. Kept in
+   sync with app/static/style.css's identical fix, same "shared markup/
+   CSS pattern" note at the top of this file. */
+.transcript-segment {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  column-gap: 0.4rem;
+  align-items: start;
+  margin-bottom: 0.75rem;
+}
 .transcript-segment.playing { background: rgba(52, 152, 219, 0.15); border-radius: 4px; }
 .segment-timestamp {
   color: var(--accent);
   text-decoration: none;
   font-variant-numeric: tabular-nums;
   font-family: var(--font-mono);
-  margin-right: 0.5rem;
+  white-space: nowrap;
 }
 .segment-timestamp:hover { text-decoration: underline; }
+.segment-text { min-width: 0; }
+/* meeting_page.html's unreliable_timestamps case renders .segment-text as
+   the sole child (no timestamp/button) when a source reports every agenda
+   item at the same instant -- without this, the 3-column grid would
+   confine that lone child to the first auto-sized column instead of the
+   full row width. */
+.transcript-segment > .segment-text:only-child { grid-column: 1 / -1; }
 
 .segment-link-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  vertical-align: middle;
   width: 1.7rem;
   height: 1.7rem;
-  margin-right: 0.4rem;
   padding: 0;
   border: none;
   background: transparent;
