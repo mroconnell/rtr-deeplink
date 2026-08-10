@@ -48,7 +48,24 @@ changelog of task titles.
   triggering the resolver's handler too).
 
   Sitemap and the site footer (the other two "site polish" asks from the
-  same message) are still open — see BACKLOG.md.
+  same message) were still open at the time this was written.
+
+- **[Found already done 2026-08-10] Sitemap turned out to already exist
+  — the BACKLOG.md entry describing it as unbuilt was stale, not a real
+  gap.** Went looking to scope it as its own task and found `GET
+  /sitemap.xml` already fully built on the Archive
+  (`archive/main.py`/`archive/templates/sitemap.xml.jinja`, backed by
+  `crud.list_all_page_slugs()`), proxied through the resolver at the
+  same path (matching the `/m/*`/`/archive-static/*`/`/feed.xml`
+  pattern, keeping SEO authority on `redtaperecordings.com`), and
+  already referenced in the resolver's dynamically-generated
+  `robots.txt` (`Sitemap: https://redtaperecordings.com/sitemap.xml`).
+  Confirmed live in production, not just in code: `curl`ed
+  `https://redtaperecordings.com/sitemap.xml` directly and got a real
+  200 with real `<loc>`/`<lastmod>` entries for actual archived
+  meetings, and confirmed `robots.txt` really does point at it. No work
+  needed — removed the stale bullet from BACKLOG.md rather than leaving
+  a "not yet built" note describing something that already works.
 
 ## Email deliverability
 

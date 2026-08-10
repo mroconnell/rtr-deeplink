@@ -660,22 +660,12 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 
 ## Site polish — new asks, 2026-08-10
 
-Three separate asks from the user, logged together since they were raised
-in the same message; not investigated or scoped yet beyond what's noted
-here.
-
-- **Sitemap.** Most likely belongs on the Archive service (`archive/`),
-  since that's where the public, permanent, meant-to-be-indexed `/m/*`
-  pages live — the resolver's own pages are mostly interactive
-  (paste-a-URL) rather than content pages worth listing. Needs deciding:
-  static vs. generated-on-request, and whether it should reuse the same
-  underlying page list the planned Coverage page (see "Archive roadmap"
-  above) will need anyway.
 - **Site footer** with a sitemap link plus "some other links that aren't
   in the site nav." Needs the user's input on exactly which links belong
   there before building — not yet clear which page(s) get a footer
   (resolver only? Archive too, given it already has its own
   `archive/static/style.css`?) or what the "other links" actually are.
+
 ## On-demand transcription — real gaps left open
 
 Built 2026-08-08, see [BACKLOG_DONE.md](BACKLOG_DONE.md) for the full
