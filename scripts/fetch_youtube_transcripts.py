@@ -30,7 +30,10 @@ blocked IP.
 
 import argparse
 import asyncio
+import os
 import sys
+import time
+from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
@@ -38,10 +41,6 @@ import aiohttp
 from dotenv import load_dotenv
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-load_dotenv()
-
-import os  # noqa: E402 -- after load_dotenv() so ARCHIVE_* are populated by the time _base_url()/_headers() below read them
 
 from app.platforms.youtube import YouTubeAssetFinder  # noqa: E402
 from app.utils.vtt_parser import normalize_shouting_caption  # noqa: E402
@@ -206,24 +205,53 @@ async def main() -> None:
 
         print(f"{'[DRY RUN] ' if args.dry_run else ''}{len(pages)} page(s) wanting transcripts on {_base_url()}...\n")
 
+        # Wall-clock timestamps on each line matter here specifically
+        # because this is meant to run unattended (see the launchd job in
+        # scripts/com.redtaperecordings.fetch-youtube-transcripts.plist) --
+        # the only way to see *when* something happened is the log file,
+        # not someone watching the terminal live. Per-item timing exists
+        # to answer a real question asked before this was built: fetching
+        # an already-generated caption track is one API call, not audio
+        # processing, so run time is independent of the meeting's actual
+        # length -- these numbers are the actual proof of that, not an
+        # estimate.
+        run_start = time.monotonic()
         results = []
         for i, page in enumerate(pages):
+            item_start = time.monotonic()
             try:
                 result = await process_one(session, page, dry_run=args.dry_run)
             except Exception as e:
                 print(f"\nABORTING: {type(e).__name__}: {str(e)[:300]}", file=sys.stderr)
                 print("(An IP-level block means further requests would all fail too -- try again later.)", file=sys.stderr)
                 break
+            elapsed = time.monotonic() - item_start
             results.append(result)
-            print(f"[{result['status'].upper():8}] {result['slug']}\n           {result['detail']}")
+            timestamp = datetime.now().strftime("%H:%M:%S")
+            print(
+                f"[{timestamp}] [{result['status'].upper():8}] {result['slug']} ({elapsed:.1f}s)\n"
+                f"           {result['detail']}"
+            )
             if i < len(pages) - 1:
                 await asyncio.sleep(REQUEST_DELAY_SECONDS)
 
+        total_elapsed = time.monotonic() - run_start
         ingested = [r for r in results if r["status"] == "ingested"]
         skipped = [r for r in results if r["status"] == "skipped"]
         failed = [r for r in results if r["status"] == "failed"]
-        print(f"\n{len(ingested)} ingested, {len(skipped)} skipped, {len(failed)} failed (of {len(pages)} queued).")
+        avg = f", {total_elapsed / len(results):.1f}s/page average" if results else ""
+        print(
+            f"\n{len(ingested)} ingested, {len(skipped)} skipped, {len(failed)} failed (of {len(pages)} queued) "
+            f"in {total_elapsed:.1f}s{avg}."
+        )
 
 
 if __name__ == "__main__":
+    # Deliberately not called at module level -- this file is also
+    # imported for snippets_to_segments() alone (tests/test_fetch_
+    # youtube_transcripts.py), and load_dotenv() firing as an import side
+    # effect raced against other test files' own os.environ.setdefault()
+    # calls for ARCHIVE_INGEST_TOKEN, depending on pytest's collection
+    # order -- a real, confirmed flake (see BACKLOG_DONE.md).
+    load_dotenv()
     asyncio.run(main())

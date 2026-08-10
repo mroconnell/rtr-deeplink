@@ -8,6 +8,38 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-10] Per-video timing added to `scripts/fetch_youtube_transcripts.py`,
+  which surfaced and fixed a real, order-dependent test flake.** User
+  asked how long a run would take for several long meetings -- answer
+  ("seconds each, independent of meeting length, since this fetches an
+  already-generated caption track in one API call rather than processing
+  audio") is now printed directly (wall-clock timestamp + per-item
+  elapsed + a final total/average) instead of just asserted. While
+  verifying the new output, `tests/test_transcript_wanted.py::
+  test_transcript_wanted_route_returns_queue` started failing, but only
+  when run alongside `tests/test_fetch_youtube_transcripts.py` --
+  isolated, it passed. Root cause: that new test file imports
+  `snippets_to_segments` from the script for pure-function testing, and
+  the script had a module-level `load_dotenv()` call as an import side
+  effect -- when pytest happened to collect that file first (alphabetical
+  order put `test_fetch_...` before `test_transcript_...`), it loaded the
+  repo's real local `.env` (including the real `ARCHIVE_INGEST_TOKEN`)
+  into the environment before `test_transcript_wanted.py`'s own
+  `os.environ.setdefault("ARCHIVE_INGEST_TOKEN", "test-token")` line ever
+  ran -- `setdefault()` is a no-op once a real value already won the
+  race, so the test's requests using `Bearer test-token` got a real 404
+  against the real token instead of the isolated test one. Fixed by
+  moving `load_dotenv()` out of module scope and into the `if __name__ ==
+  "__main__":` guard -- the only code path that actually needs real env
+  vars (`main()`'s `_base_url()`/`_headers()` calls) already lives behind
+  that same guard, so this is a pure side-effect removal, not a behavior
+  change for real script runs (re-verified: `--dry-run` against
+  production still resolves `ARCHIVE_BASE_URL`/`ARCHIVE_INGEST_TOKEN`
+  correctly). `scripts/bulk_ingest.py` has the identical top-level
+  `load_dotenv()` pattern but has never been imported by a test file, so
+  it was never exposed to this same race -- worth keeping in mind if it
+  ever becomes importable too.
+
 - **[Done 2026-08-10, verified end-to-end] Built the YouTube transcript
   recovery pipeline: a "transcript wanted" queue on the Archive plus a
   local residential-IP fetcher script — after a deliberate experiment
