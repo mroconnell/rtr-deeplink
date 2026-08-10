@@ -19,19 +19,19 @@ where relevant.
   fields). Properly fixing this needs a real Alembic migration
   (`archive/alembic/`, adopted 2026-08-09 specifically for this class of
   change — `create_all()` can add a new table but this is new *columns*
-  on an existing one). **Update 2026-08-10**: production turned out to
-  already be correctly stamped at head (the old "never been stamped"
-  assumption below was stale) — see `archive/alembic/README.md`'s
-  incident note and BACKLOG_DONE.md for the full story of an incorrect
-  stamp+upgrade attempt and its correction. Once that correction is
-  confirmed, this item is no longer blocked on the one-time adoption
-  step specifically — still needs someone with production
-  `DATABASE_URL` access to write and apply the actual new migration for
-  these columns, and to run `alembic upgrade head` against production
-  afterward (per `archive/alembic/README.md`, always re-check `alembic
-  current` first rather than assuming any doc's account of prod's state
-  is still accurate). Once the columns exist: store the real values in
-  `crud.ingest_resolution()`,
+  on an existing one). The one-time production Alembic adoption step is
+  confirmed done as of 2026-08-10 — `GET /internal/schema-info` against
+  real production shows `alembic_version: "8e7cf3b20f86"` (head) and
+  `schema_matches_models: true` — see BACKLOG_DONE.md for the full story
+  (an earlier stale doc caused an incorrect stamp+upgrade attempt, since
+  corrected). This item is no longer blocked on that step specifically —
+  still needs someone with production `DATABASE_URL` access to write and
+  apply the actual new migration for these columns, and to run `alembic
+  upgrade head` against production afterward (per `archive/alembic/
+  README.md`, always re-check `alembic current` first rather than
+  assuming any doc's account of prod's state is still accurate — or now,
+  just call `/internal/schema-info` directly). Once the columns exist:
+  store the real values in `crud.ingest_resolution()`,
   render `video_warnings` in `meeting_page.html`'s no-video case (replacing
   the generic "No video available for this meeting." stand-in), add the
   agenda-link case (an `agenda_warnings`-driven message, own heading, not

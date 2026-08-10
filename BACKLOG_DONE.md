@@ -8,6 +8,46 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-10, confirmed in production] Alembic one-time production
+  adoption incident: my own instructions, based on a stale doc, pushed
+  production's migration bookkeeping backward instead of forward.**
+  `archive/alembic/README.md` claimed production had never been stamped
+  and gave a fixed recovery recipe (`stamp a8dc5aad7eff` then `upgrade
+  head`) to run unconditionally. That claim had gone stale without the
+  doc being updated — a real `alembic current` run in the user's Render
+  shell showed production was *already* correctly at `8e7cf3b20f86`
+  (head) before any of that recipe ran, almost certainly because someone
+  had already recovered from the original 2026-08-09 stamp-head incident
+  (see that entry) without updating this doc to match. Following the
+  stale recipe anyway force-stamped production backward to the baseline
+  revision, then the redundant `alembic upgrade head` correctly failed
+  with `DuplicateColumnError` on `transcription_jobs.priority` (it
+  already existed) — caught immediately, not silently, and no DDL
+  actually ran (transactional, rolled back cleanly) — but it left the
+  bookkeeping row one step behind reality until corrected.
+
+  Real fix, in two parts: (1) `archive/alembic/README.md`'s one-time
+  adoption section rewritten to require running `alembic current` first
+  and branching on its actual output, instead of presenting a fixed
+  narrative as fact — the doc itself now says explicitly not to trust
+  its own account of "what production's state is" without checking.
+  (2) The user ran the actual correction from the Render shell:
+  `alembic stamp 8e7cf3b20f86` (bookkeeping-only, no DDL) followed by
+  `alembic current`, confirming `8e7cf3b20f86 (head)`. Independently
+  re-confirmed via the new `GET /internal/schema-info` endpoint (see
+  below) hit directly against real production: `alembic_version:
+  "8e7cf3b20f86"`, `mismatched_tables: []`, `schema_matches_models:
+  true` — the real schema and the bookkeeping now agree, checked two
+  different ways.
+
+  **The broader lesson, not just this one file**: a doc's account of
+  live infrastructure state is a snapshot from whenever it was last
+  written, not a live fact — verify against the real thing before acting
+  on it, the same "verify against the real thing" convention this repo
+  already applies to adapters and sample data. Directly prompted building
+  `/internal/schema-info` (below) so that verification is a real API call
+  going forward, not a manual command someone has to run and paste back.
+
 - **[Done 2026-08-10] Added `GET /internal/schema-info` (`archive/main.py`)
   so confirming the Archive's real production DB schema no longer
   requires someone with `DATABASE_URL` access to run `psql`/`alembic`
