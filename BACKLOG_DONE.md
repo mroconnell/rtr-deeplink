@@ -133,11 +133,23 @@ changelog of task titles.
      redtaperecordings.com` from this session, confirming the exact
      records live in real DNS, not just ImprovMX's cached view of them.
 
-  Remaining action is user-only and Render-dashboard-only now — see
-  BACKLOG.md's "Email deliverability" section for the two env vars
-  still needing to be set there (`RESEND_FROM_ADDRESS`,
-  `RESEND_REPLY_TO_ADDRESS`), both already correct locally and already
-  DNS-verified.
+  **Closed out 2026-08-10, same day**: user set both env vars
+  (`RESEND_FROM_ADDRESS=Ryan <ryan@ally.redtaperecordings.com>`,
+  `RESEND_REPLY_TO_ADDRESS=ryan@redtaperecordings.com`) on all three
+  Render services — `rtr-deeplink-archive` and `rtr-transcription-worker`
+  as expected, plus `rtr-deeplink` (the resolver) too. The last one was a
+  real surprise: `rtr-deeplink`'s code never reads
+  `RESEND_FROM_ADDRESS` (confirmed via grep — it only calls Resend's
+  audience-contacts endpoint, which needs no From address) and the var
+  isn't declared in that service's `render.yaml` block either, so
+  assumed it wasn't configured there — but the user had it set directly
+  in Render's dashboard anyway (real drift between the manifest and
+  actual dashboard state, from whenever they first set the resolver's
+  Resend vars up). Updated there too for consistency, harmless either
+  way since it's unused in that service's code. Saved without a redeploy
+  (not urgent) — Render only applies env var changes on the next
+  deploy/restart, so the old `noreply@` value is still what's actually
+  in use by the Archive/worker processes until that happens next.
 
 ## Bugs
 

@@ -96,29 +96,6 @@ anything) to build against it.
   make the shape of the risk visible, not to commit to a fix, per the
   user's own framing ("at some point").
 
-## Email deliverability — Resend action items, built 2026-08-10
-
-Prompted by the user asking for an unsubscribe link on all Resend emails,
-and separately asking to stop sending from `noreply@` per Resend's own
-deliverability guidance. Everything is built, tested, and DNS-verified
-(see BACKLOG_DONE.md for the full build). **One step left, user-only: two
-Render dashboard env var changes** (both `sync: false` in `render.yaml`,
-so the real values only live in Render's dashboard and can't be set from
-here) — on both `rtr-deeplink-archive` and `rtr-transcription-worker`:
-
-```
-RESEND_FROM_ADDRESS=Ryan <ryan@ally.redtaperecordings.com>
-RESEND_REPLY_TO_ADDRESS=ryan@redtaperecordings.com
-```
-
-Both already set correctly in local `.env`, already live in the
-codebase's `.env.example` files, and already DNS-verified end-to-end
-(confirmed live via `dig`: `redtaperecordings.com` now has real MX/SPF
-records for ImprovMX, which is actively forwarding
-`ryan@redtaperecordings.com` → `ryan@how-to-adu.com`, verified both in
-ImprovMX's own dashboard and independently via `dig`). Nothing else is
-needed once these two Render vars are set.
-
 ## Bugs
 
 - **`video_warnings`/`agenda_link` support is built and verified locally
