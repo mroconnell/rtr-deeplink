@@ -18,6 +18,16 @@
       <button type="submit" class="cassette-btn">Search</button>
     </form>
     <p class="subtitle search-hint">Tip: put a phrase in "quotes" to match it exactly, e.g. "data center".</p>
+    {% if active_account %}
+    <p class="save-search-toggle">
+      <button type="button" id="saveSearchBtn" class="cassette-btn-outline"
+        data-q="{{ q }}" data-jurisdiction="{{ jurisdiction }}" data-date-from="{{ date_from }}"
+        data-date-to="{{ date_to }}" data-has-agenda="{{ 'true' if has_agenda else '' }}"
+        data-has-transcript="{{ 'true' if has_transcript else '' }}" data-fuzzy="{{ 'true' if fuzzy else '' }}"
+      >Save this search</button>
+      <span id="saveSearchStatus" role="status"></span>
+    </p>
+    {% endif %}
     <details class="meeting-filters"{% if jurisdiction or date_from or date_to or has_agenda or has_transcript %} open{% endif %}>
       <summary>Filters</summary>
       <form method="get" action="/meetings" class="meeting-filters-form">
@@ -109,4 +119,7 @@
     <p class="subtitle">No meetings match those filters.</p>
     {% endif %}
   </main>
+{% endblock %}
+{% block scripts %}
+  <script src="/archive-static/meeting_list.js"></script>
 {% endblock %}

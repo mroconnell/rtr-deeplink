@@ -177,12 +177,122 @@ async def get_transcription_status(job_id: int) -> Optional[dict]:
         return None
 
 
-async def proxy_get(path: str, query_string: str):
+async def save_meeting(clerk_user_id: str, slug: str) -> Optional[dict]:
+    base = _base_url()
+    if not base:
+        return None
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{base}/internal/account/save-meeting",
+                json={"clerk_user_id": clerk_user_id, "slug": slug},
+                headers=_headers(),
+                timeout=TRANSCRIPTION_TIMEOUT,
+            ) as response:
+                if response.status == 200:
+                    return await response.json()
+                return None
+    except Exception:
+        logger.exception("Archive save-meeting request failed.")
+        return None
+
+
+async def unsave_meeting(clerk_user_id: str, slug: str) -> Optional[dict]:
+    base = _base_url()
+    if not base:
+        return None
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{base}/internal/account/unsave-meeting",
+                json={"clerk_user_id": clerk_user_id, "slug": slug},
+                headers=_headers(),
+                timeout=TRANSCRIPTION_TIMEOUT,
+            ) as response:
+                if response.status == 200:
+                    return await response.json()
+                return None
+    except Exception:
+        logger.exception("Archive unsave-meeting request failed.")
+        return None
+
+
+async def save_search(clerk_user_id: str, search_params: dict) -> Optional[dict]:
+    base = _base_url()
+    if not base:
+        return None
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{base}/internal/account/save-search",
+                json={"clerk_user_id": clerk_user_id, "search_params": search_params},
+                headers=_headers(),
+                timeout=TRANSCRIPTION_TIMEOUT,
+            ) as response:
+                if response.status == 200:
+                    return await response.json()
+                return None
+    except Exception:
+        logger.exception("Archive save-search request failed.")
+        return None
+
+
+async def unsave_search(clerk_user_id: str, saved_item_id: int) -> Optional[dict]:
+    base = _base_url()
+    if not base:
+        return None
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{base}/internal/account/unsave-search",
+                json={"clerk_user_id": clerk_user_id, "saved_item_id": saved_item_id},
+                headers=_headers(),
+                timeout=TRANSCRIPTION_TIMEOUT,
+            ) as response:
+                if response.status == 200:
+                    return await response.json()
+                return None
+    except Exception:
+        logger.exception("Archive unsave-search request failed.")
+        return None
+
+
+async def delete_account_data(clerk_user_id: str) -> Optional[dict]:
+    """Called only from the Clerk user.deleted webhook handler -- see
+    archive/db/crud.py's delete_account_data() for what this actually
+    removes and why that's the entire right-to-deletion story on our
+    side."""
+    base = _base_url()
+    if not base:
+        return None
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{base}/internal/account/delete-data",
+                json={"clerk_user_id": clerk_user_id},
+                headers=_headers(),
+                timeout=TRANSCRIPTION_TIMEOUT,
+            ) as response:
+                if response.status == 200:
+                    return await response.json()
+                return None
+    except Exception:
+        logger.exception("Archive delete-account-data request failed.")
+        return None
+
+
+async def proxy_get(path: str, query_string: str, cookie_header: Optional[str] = None):
     """Forward a GET request to the Archive service and return the raw
     aiohttp response (caller streams it back to the client). Raises on
     connection failure/timeout -- app/main.py's proxy routes decide how to
     present that to the browser, since these are public pages and want a
     clean branded failure, not a raw exception.
+
+    cookie_header, when given, is forwarded as-is so Archive can verify
+    the visitor's Clerk session itself (see archive/utils/clerk_auth.py) --
+    only the handful of call sites that render auth-aware content pass
+    one (see app/main.py's proxy routes); static assets/sitemap/feed don't
+    need it and don't send it.
     """
     base = _base_url()
     if not base:
@@ -192,8 +302,9 @@ async def proxy_get(path: str, query_string: str):
     if query_string:
         url = f"{url}?{query_string}"
 
+    headers = {"Cookie": cookie_header} if cookie_header else None
     session = aiohttp.ClientSession(timeout=PROXY_TIMEOUT)
-    response = await session.get(url)
+    response = await session.get(url, headers=headers)
     return session, response
 
 

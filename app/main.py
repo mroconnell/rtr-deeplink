@@ -22,6 +22,7 @@ from pydantic import BaseModel
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
+from svix.webhooks import Webhook
 
 from . import archive_client
 from .db import crud
@@ -32,6 +33,7 @@ from .platforms.headless_browser import warm_up as warm_up_headless_browser
 from .platforms.media_probe import is_plausible_meeting_duration, probe_duration
 from .platforms.models import ResolvedMeeting
 from .platforms.youtube import YouTubeAssetFinder
+from .utils.clerk_auth import clerk_frontend_api_url, get_clerk_user_id
 from .utils.url_normalize import normalize_url
 
 load_dotenv()
@@ -87,6 +89,8 @@ app.mount("/static", StaticFiles(directory=APP_DIR / "static"), name="static")
 app.mount("/shared-static", StaticFiles(directory=APP_DIR.parent / "shared_static"), name="shared_static")
 templates = Jinja2Templates(directory=APP_DIR / "templates")
 templates.env.globals["GA_MEASUREMENT_ID"] = os.environ.get("GA_MEASUREMENT_ID", "")
+templates.env.globals["CLERK_PUBLISHABLE_KEY"] = os.environ.get("CLERK_PUBLISHABLE_KEY", "")
+templates.env.globals["CLERK_FRONTEND_API_URL"] = clerk_frontend_api_url(os.environ.get("CLERK_PUBLISHABLE_KEY", ""))
 
 
 @app.exception_handler(StarletteHTTPException)
@@ -479,6 +483,53 @@ async def unsubscribe(request: Request, email: str = ""):
     return templates.TemplateResponse(request, "unsubscribed.html", {"unsubscribed": ok, "email": email})
 
 
+@app.post("/api/clerk/webhook")
+async def clerk_webhook(request: Request):
+    """Clerk notifies us of account lifecycle events here -- the glue for
+    two product decisions: account creation auto-subscribes to the
+    newsletter (user.created), and deleting a Clerk account purges the
+    account's saved_items on our side (user.deleted, the right-to-deletion
+    cascade -- see archive/db/crud.py's delete_account_data()).
+
+    Verified via svix before trusting anything in the body -- an
+    unverifiable payload gets a 400 and no side effects at all. Handlers
+    are naturally idempotent (Resend upsert, a DELETE that's a no-op if
+    already gone), so a Svix retry on a non-2xx response is harmless to
+    replay, no separate dedup needed.
+    """
+    signing_secret = os.environ.get("CLERK_WEBHOOK_SIGNING_SECRET", "")
+    if not signing_secret:
+        logger.error("Clerk webhook received but CLERK_WEBHOOK_SIGNING_SECRET isn't configured.")
+        return JSONResponse({"error": "not_configured"}, status_code=503)
+
+    body = await request.body()
+    try:
+        event = Webhook(signing_secret).verify(body, dict(request.headers))
+    except Exception:
+        logger.warning("Clerk webhook signature verification failed.")
+        return JSONResponse({"error": "invalid_signature"}, status_code=400)
+
+    event_type = event.get("type", "")
+    data = event.get("data", {})
+
+    if event_type == "user.created":
+        primary_id = data.get("primary_email_address_id")
+        email = next(
+            (e.get("email_address") for e in data.get("email_addresses", []) if e.get("id") == primary_id),
+            None,
+        )
+        if email:
+            await _resend_audience_upsert(email, unsubscribed=False)
+        else:
+            logger.warning("Clerk user.created webhook had no resolvable primary email for user %s.", data.get("id"))
+    elif event_type == "user.deleted":
+        clerk_user_id = data.get("id")
+        if clerk_user_id:
+            await archive_client.delete_account_data(clerk_user_id)
+
+    return {"status": "ok"}
+
+
 class ReportProblemRequest(BaseModel):
     url: str
     issue_type: str
@@ -518,6 +569,68 @@ async def report_problem(request: Request, req: ReportProblemRequest):
             status_code=502,
         )
     return {"status": "received"}
+
+
+# Saved meetings/searches (accounts phase 1, Clerk-backed) ----------------
+#
+# A real 401, not the /internal/* 404-disguise convention -- these are
+# genuinely public routes, so "you're not logged in" is honest information
+# to return, not something worth hiding the route's existence over.
+_NOT_LOGGED_IN = JSONResponse({"error": "not_logged_in", "message": "Sign in to save meetings and searches."}, status_code=401)
+
+
+class SaveMeetingApiRequest(BaseModel):
+    slug: str
+
+
+@app.post("/api/account/save-meeting")
+async def api_save_meeting(request: Request, req: SaveMeetingApiRequest):
+    clerk_user_id = get_clerk_user_id(request)
+    if clerk_user_id is None:
+        return _NOT_LOGGED_IN
+    result = await archive_client.save_meeting(clerk_user_id, req.slug)
+    if result is None:
+        return JSONResponse({"error": "not_found", "message": "No meeting with that slug."}, status_code=404)
+    return result
+
+
+@app.post("/api/account/unsave-meeting")
+async def api_unsave_meeting(request: Request, req: SaveMeetingApiRequest):
+    clerk_user_id = get_clerk_user_id(request)
+    if clerk_user_id is None:
+        return _NOT_LOGGED_IN
+    result = await archive_client.unsave_meeting(clerk_user_id, req.slug)
+    return result if result is not None else {"removed": False}
+
+
+class SaveSearchApiRequest(BaseModel):
+    search_params: dict
+
+
+@app.post("/api/account/save-search")
+async def api_save_search(request: Request, req: SaveSearchApiRequest):
+    clerk_user_id = get_clerk_user_id(request)
+    if clerk_user_id is None:
+        return _NOT_LOGGED_IN
+    result = await archive_client.save_search(clerk_user_id, req.search_params)
+    if result is None:
+        return JSONResponse(
+            {"error": "save_failed", "message": "Something went wrong — please try again."}, status_code=502
+        )
+    return result
+
+
+class UnsaveSearchApiRequest(BaseModel):
+    saved_item_id: int
+
+
+@app.post("/api/account/unsave-search")
+async def api_unsave_search(request: Request, req: UnsaveSearchApiRequest):
+    clerk_user_id = get_clerk_user_id(request)
+    if clerk_user_id is None:
+        return _NOT_LOGGED_IN
+    result = await archive_client.unsave_search(clerk_user_id, req.saved_item_id)
+    return result if result is not None else {"removed": False}
 
 
 # On-demand transcription -------------------------------------------------
@@ -756,16 +869,22 @@ async def coverage(request: Request):
     return templates.TemplateResponse(request, "coverage.html", {})
 
 
-async def _proxy_to_archive(internal_path: str, query_string: str) -> Response:
+async def _proxy_to_archive(internal_path: str, query_string: str, cookie_header: Optional[str] = None) -> Response:
     """Reverse-proxies a GET request to the Archive service so its permanent
     pages are reachable at redtaperecordings.com/m/{slug} instead of a
     separate subdomain -- keeps SEO authority on one domain. These are
     public, potentially-indexed pages, so a clean failure (503 + message)
     matters more here than for /api/resolve; never let a raw exception or a
     hang reach the browser.
+
+    cookie_header is forwarded only by the few call sites that render
+    auth-aware content (see archive_meeting_page/archive_meetings_index/
+    account_saved below) -- passing it lets Archive verify the visitor's
+    Clerk session itself with one local check, no separate internal HTTP
+    round-trip needed (see app/utils/clerk_auth.py / archive/utils/clerk_auth.py).
     """
     try:
-        session, response = await archive_client.proxy_get(internal_path, query_string)
+        session, response = await archive_client.proxy_get(internal_path, query_string, cookie_header)
     except Exception:
         logger.exception("Archive proxy request failed for %s", internal_path)
         return Response(
@@ -791,7 +910,7 @@ async def _proxy_to_archive(internal_path: str, query_string: str) -> Response:
 
 @app.get("/m/{path:path}")
 async def archive_meeting_page(path: str, request: Request):
-    return await _proxy_to_archive(f"m/{path}", str(request.query_params))
+    return await _proxy_to_archive(f"m/{path}", str(request.query_params), request.headers.get("cookie"))
 
 
 @app.get("/archive-static/{path:path}")
@@ -801,7 +920,12 @@ async def archive_static_asset(path: str, request: Request):
 
 @app.get("/meetings")
 async def archive_meetings_index(request: Request):
-    return await _proxy_to_archive("meetings", str(request.query_params))
+    return await _proxy_to_archive("meetings", str(request.query_params), request.headers.get("cookie"))
+
+
+@app.get("/account/saved")
+async def account_saved(request: Request):
+    return await _proxy_to_archive("account/saved", str(request.query_params), request.headers.get("cookie"))
 
 
 @app.get("/sitemap.xml")

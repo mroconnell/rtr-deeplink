@@ -58,6 +58,14 @@ services:
         sync: false
       - key: ADMIN_STATS_TOKEN
         sync: false
+      # New here 2026-08-10 -- the resolver never needed its own public
+      # origin before (Archive/worker already had this for confirm-link/
+      # canonical-tag building), but Clerk's authorized_parties check
+      # needs to know the real public domain to reject a session token
+      # replayed from a different origin. Same value as Archive's own
+      # PUBLIC_BASE_URL: https://redtaperecordings.com.
+      - key: PUBLIC_BASE_URL
+        sync: false
       - key: RESEND_API_KEY
         sync: false
       - key: RESEND_AUDIENCE_ID
@@ -67,6 +75,14 @@ services:
       - key: ARCHIVE_BASE_URL
         sync: false
       - key: ARCHIVE_INGEST_TOKEN
+        sync: false
+      - key: CLERK_PUBLISHABLE_KEY
+        sync: false
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: CLERK_JWT_KEY
+        sync: false
+      - key: CLERK_WEBHOOK_SIGNING_SECRET
         sync: false
 
   - type: web
@@ -96,6 +112,12 @@ services:
       - key: RESEND_FROM_ADDRESS
         sync: false
       - key: RESEND_REPLY_TO_ADDRESS
+        sync: false
+      - key: CLERK_PUBLISHABLE_KEY
+        sync: false
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: CLERK_JWT_KEY
         sync: false
 
   # On-demand transcription's background processor (see worker/main.py's

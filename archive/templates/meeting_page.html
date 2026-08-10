@@ -121,6 +121,10 @@
       {% endif %}
       {% endif %}
 
+      {% if active_account %}
+      <p class="save-meeting-toggle"><button type="button" id="saveMeetingBtn" class="cassette-btn-outline" data-slug="{{ page.slug }}" data-saved="{{ 'true' if meeting_saved else 'false' }}">{{ "Saved ✓ (click to unsave)" if meeting_saved else "Save this meeting" }}</button></p>
+      {% endif %}
+
       <p class="report-problem-toggle"><button type="button" id="reportProblemToggle" class="link-button">Report a problem with this meeting</button></p>
       <form id="reportProblemForm" class="report-problem-form" data-url="{{ page.source_url }}" hidden>
         <label>

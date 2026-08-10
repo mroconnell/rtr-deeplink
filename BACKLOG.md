@@ -408,13 +408,71 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 `app/db/crud.py` plus `archive_client.lookup()`/`.push()`.
 
 - **Accounts + token billing — scoping started 2026-08-10, per the
-  user's explicit go-ahead ("start scoping," not "start building").**
-  Needed for paid features (already alluded to in adapter warning
-  messages) and as a prerequisite for email alerts below. Real design
-  below, not a placeholder — but nothing here is built yet, and none of
-  it should be started without a further explicit go-ahead per section.
+  user's explicit go-ahead ("start scoping," not "start building").
+  Phase 1 build actually started the same day, on a dedicated branch
+  (`accounts-clerk-phase1`) — see below.** Needed for paid features
+  (already alluded to in adapter warning messages) and as a
+  prerequisite for email alerts below.
 
-  **Proposed auth mechanism: passwordless, email-only — not round 1's
+  **Auth pivot, same day: Clerk, not a hand-rolled internal auth
+  system.** The paragraph below (passwordless magic-link + a
+  self-issued `AccountSession` cookie) was the original design and is
+  now **superseded** — the user explicitly weighed the tradeoff
+  ("I'm kind of leaning away from becoming a security expert") and
+  chose a third-party auth provider instead. Real reasons, not just
+  preference: Clerk gives prebuilt login UI, session handling, and
+  built-in account-deletion flows for free; it keeps user email/PII
+  entirely off this app's own database (a real privacy-posture
+  improvement — the new `SavedItem` table is keyed only by Clerk's
+  opaque user id, never an email); and its session JWT can be verified
+  **locally by both services independently** (no shared signing secret
+  to manage, no internal HTTP round-trip needed to check "is this
+  visitor logged in" on the hot-path pages), which turned out to be a
+  *simpler* fit for this app's two-separate-databases architecture than
+  the original self-issued-cookie design, not just a safer one. Stripe
+  (for billing, phase 5 below) and Resend (email) are unchanged.
+
+  **Phase 1 scope, decided via direct questions, unchanged by the Clerk
+  pivot:** accounts + saving meetings/searches to your own account
+  only — no public profile pages, no visibility toggles, no posts/
+  reposts, no subscriptions/notifications, no billing yet. Account
+  creation auto-subscribes to the existing Resend newsletter audience
+  (via a `user.created` Clerk webhook). A **non-goal, explicitly
+  designed and tested for**: nothing existing is gated behind login —
+  every route works identically for an anonymous visitor; the only
+  changes are purely additive "Save this meeting"/"Save this search"
+  buttons that appear if (and only if) a real session is present.
+
+  New table: `SavedItem` (`clerk_user_id`, `item_type` —
+  `saved_meeting`/`saved_search` — `meeting_page_id` nullable FK,
+  `search_params` nullable JSON, `created_at`) in `archive/db/models.py`
+  — stays in Archive's DB (not `app/db`) since it needs a real
+  same-database FK to `MeetingPage.id`. No `Account`/`AccountSession`
+  tables at all anymore — Clerk owns that state entirely.
+
+  **Status as of 2026-08-10: code complete on the branch, not yet
+  merged or deployed.** All routes/tables/webhook/frontend wiring
+  built, 50 new tests passing (391 total), verified live in the browser
+  against local dev for every path that doesn't need real Clerk
+  credentials (anonymous regression, Clerk-unconfigured degradation,
+  and — via a deliberately-malformed test key — confirmed the
+  Frontend-API-URL derivation algorithm is correct against Clerk's real
+  infrastructure). **Still needed before merge, per the user's own
+  "test thoroughly before prod" instruction:** the user creating a real
+  Clerk application (dashboard checklist already given), a manual
+  staging Render deploy (two throwaway services + a fresh DB, tracking
+  the feature branch), and a real end-to-end click-through — sign-up,
+  save/unsave, webhook-driven Resend subscribe, and the
+  account-deletion cascade — none of which are testable without real
+  Clerk keys the user hasn't provided yet.
+
+  **Original design below, kept for its still-valid parts.** The auth-
+  mechanism paragraph immediately following this one is superseded (see
+  above); the `Note`/`NoteSubscription` social-layer design, the phased
+  plan, and the open questions still describe the real plan for phases
+  2+ once phase 1 ships.
+
+  ~~**Proposed auth mechanism: passwordless, email-only — not round 1's
   Google OAuth/JWT.** `archive/utils/email.py` already has a working,
   live-verified confirm-by-email pattern (`send_confirmation_email()` +
   `TranscriptionJob.confirmation_token`, built for on-demand
@@ -430,7 +488,7 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   httponly cookie holding an opaque session id checked against a new
   `AccountSession` row — no JWT needed, since this is one service
   issuing and checking its own sessions, not a distributed multi-service
-  handoff.
+  handoff.~~ Superseded by the Clerk pivot above.
 
   **Expanded scope, per user request 2026-08-10 — a real social/content
   layer, not just accounts + saved searches.** The user wants, in their

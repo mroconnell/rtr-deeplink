@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}My saved items | Red Tape Recordings{% endblock %}
+{% block meta %}
+  <meta name="robots" content="noindex">
+{% endblock %}
+{% block content %}
+  <main class="meeting-list-page saved-items-page">
+    <h1>My saved items</h1>
+
+    {% if not active_account %}
+      <p class="subtitle">Sign in to save meetings and searches to your account.</p>
+      <div id="clerk-sign-in"></div>
+    {% else %}
+      <h2>Saved meetings</h2>
+      {% if items.meetings %}
+        <div class="meeting-list">
+          {% for m in items.meetings %}
+          <div class="calendar-candidate meeting-result-row" data-saved-item-id="{{ m.id }}">
+            <div class="calendar-candidate-main">
+              <a href="/m/{{ m.slug }}">{{ m.title or "Untitled meeting" }}</a>
+              <span class="calendar-candidate-date">
+                {%- if m.jurisdiction %}{{ m.jurisdiction }}{% endif -%}
+                {%- if m.date %} &middot; {{ m.date }}{% endif -%}
+              </span>
+            </div>
+            <button type="button" class="cassette-btn-outline unsave-meeting-btn" data-slug="{{ m.slug }}">Unsave</button>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="subtitle">No saved meetings yet -- look for the "Save this meeting" button on any meeting page.</p>
+      {% endif %}
+
+      <h2>Saved searches</h2>
+      {% if items.searches %}
+        <div class="meeting-list">
+          {% for s in items.searches %}
+          {% set sp = s.search_params %}
+          <div class="calendar-candidate meeting-result-row" data-saved-item-id="{{ s.id }}">
+            <div class="calendar-candidate-main">
+              <a href="/meetings?{% if sp.q %}q={{ sp.q|urlencode }}&{% endif %}{% if sp.jurisdiction %}jurisdiction={{ sp.jurisdiction|urlencode }}&{% endif %}{% if sp.date_from %}date_from={{ sp.date_from }}&{% endif %}{% if sp.date_to %}date_to={{ sp.date_to }}&{% endif %}{% if sp.has_agenda %}has_agenda=true&{% endif %}{% if sp.has_transcript %}has_transcript=true&{% endif %}{% if sp.fuzzy %}fuzzy=true{% endif %}">
+                {%- if sp.q %}&ldquo;{{ sp.q }}&rdquo;{% else %}All meetings{% endif -%}
+              </a>
+              <span class="calendar-candidate-date">
+                {%- if sp.jurisdiction %}{{ sp.jurisdiction }}{% endif -%}
+                {%- if sp.date_from or sp.date_to %} &middot; {{ sp.date_from or "any" }}&ndash;{{ sp.date_to or "any" }}{% endif -%}
+              </span>
+            </div>
+            <button type="button" class="cassette-btn-outline unsave-search-btn" data-saved-item-id="{{ s.id }}">Unsave</button>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="subtitle">No saved searches yet -- look for the "Save this search" button on <a href="/meetings">/meetings</a>.</p>
+      {% endif %}
+    {% endif %}
+  </main>
+{% endblock %}
+{% block scripts %}
+  <script src="/archive-static/saved_items.js"></script>
+{% endblock %}

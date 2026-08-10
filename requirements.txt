@@ -13,3 +13,11 @@ yt-dlp
 slowapi>=0.1.9
 playwright>=1.62
 alembic>=1.13
+# Auth (2026-08-10): Clerk, chosen specifically so this app never has to
+# hand-roll session/cookie/password security -- see BACKLOG.md's
+# "Accounts + token billing" section. clerk-backend-api verifies the
+# Clerk session cookie locally (no network call per request); svix
+# verifies the webhook signature Clerk uses to notify us of account
+# create/delete events.
+clerk-backend-api>=6.0
+svix>=1.99
