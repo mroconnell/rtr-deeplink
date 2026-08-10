@@ -294,6 +294,70 @@ auditing it (2026-08-08) — two fixed since, one still open below:
 
 ## Platform coverage — open questions
 
+- **Chicago's City Clerk ELMS (`chicityclerkelms.chicago.gov`) is a real,
+  strong dedicated-adapter candidate — found 2026-08-10 while confirming
+  the generic fallback correctly caught it (it did, as an "unsupported
+  gate," per user testing).** The video (a real Vimeo link) never showed
+  up because the page injects it client-side from a separate API call
+  (`data.videoLink`) — the raw server HTML has zero mention of "vimeo,"
+  confirmed directly (a real curl of the meeting page, then grepping for
+  the string, found nothing; the JS embedding it references
+  `data.videoLink.forEach(...)`). Traced the real API the JS calls:
+  `https://api.chicityclerkelms.chicago.gov/meeting-agenda/{meetingId}`
+  — a genuine public, unauthenticated, no-headless-browser-needed JSON
+  endpoint (confirmed live via plain `curl`, real response), returning:
+  `videoLink` (the real Vimeo URL), `agenda.groups[].items[]` (real
+  structured items — matter title, action taken, vote type — but **no
+  timestamps**, so still not clickable-to-a-moment agenda_items the way
+  LIMS's are), `files[]` (real PDF attachments including a real
+  "Agenda"-typed one), `date`, `body` (jurisdiction), `attendance`.
+
+  **Real, two-part reason this isn't a quick fix**: (1) building
+  `chicago_elms.py` itself is straightforward (a plain `aiohttp` GET
+  against that API, same shape as LIMS's JSON-endpoint step, no
+  Cloudflare/headless-browser complication found so far); but (2) this
+  app has **zero existing Vimeo playback support** — no adapter, and no
+  frontend logic for it at all. YouTube's iframe-embed + Player API
+  integration was itself a real, distinct piece of work (see
+  `app/static/player.js`'s `initYouTubeVideo()`); Vimeo would need its
+  own equivalent (Vimeo's own Player SDK/iframe embed — a showcase URL
+  like `vimeo.com/showcase/citycouncil?video={id}` is not a raw file any
+  more than a YouTube link is). Building the adapter without the
+  playback piece would just produce a `video_url` nothing can actually
+  embed. Whether Vimeo captions are even fetchable at all is also
+  unconfirmed — no positive example checked yet, same "don't claim a
+  caption path works without a positive example" convention as every
+  other adapter here.
+
+- **Phoenix's Legistar instance (`phoenix.legistar.com`) — one real
+  meeting has no video link in the shape our parser expects; unclear
+  yet whether that's Phoenix-wide or specific to this meeting.** Domain
+  routing itself is confirmed correct (`phoenix.legistar.com` matches
+  `_is_legistar_domain()`, so `LegistarAssetFinder` claims it as
+  intended, not a routing bug). Checked live 2026-08-10
+  (`MeetingDetail.aspx?ID=1425831...`): the real page's `a.videolink`
+  anchor has `class="videolink audioDownloadNotAvailableLink"` and
+  `data-running-text="In progress"`, with no `onclick` attribute at all
+  — `_find_video_links()`'s regex requires `onclick="window.open(...)"`.
+  or `OpenTelerikWindow(...)`, confirmed working on Maricopa AZ and
+  NYC's Legistar instances, so finds nothing here and correctly falls
+  back to Legistar's own honest "No video link found" message (not a
+  crash, not silently wrong — the existing fallback behavior is doing
+  its job). The meeting itself is dated 7/1/2026 (over a month before
+  this check), so "In progress" is almost certainly stale leftover UI
+  state, not a genuine live-meeting signal — meaning either this
+  specific meeting never got a recording published, or Phoenix's
+  Legistar instance uses a different video-link mechanism entirely from
+  every other Legistar city confirmed so far. **Needs a second Phoenix
+  meeting, ideally one confirmed to have a real published recording,
+  before writing any fix** — building against one ambiguous sample risks
+  exactly the kind of unverified-guess parsing this repo's whole
+  adapter convention exists to avoid. Also worth noting while checking:
+  Legistar's own adapter never attempts agenda-item parsing at all (by
+  design, it only ever delegates to the underlying video platform for
+  that), so a Legistar page never showing agenda items is expected
+  behavior, not a second bug to chase.
+
 - **Headless-browser adapters (Minneapolis LIMS, SLC meeting recaps) —
   built and shipped 2026-08-09, see BACKLOG_DONE.md for the full build.
   Real, still-open follow-ups:**
