@@ -17,6 +17,7 @@
       {% if fuzzy %}<input type="hidden" name="fuzzy" value="true">{% endif %}
       <button type="submit" class="cassette-btn">Search</button>
     </form>
+    <p class="subtitle search-hint">Tip: put a phrase in "quotes" to match it exactly, e.g. "data center".</p>
     <details class="meeting-filters"{% if jurisdiction or date_from or date_to or has_agenda or has_transcript %} open{% endif %}>
       <summary>Filters</summary>
       <form method="get" action="/meetings" class="meeting-filters-form">

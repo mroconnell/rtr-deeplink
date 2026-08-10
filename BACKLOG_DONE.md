@@ -195,6 +195,113 @@ changelog of task titles.
   deploy/restart, so the old `noreply@` value is still what's actually
   in use by the Archive/worker processes until that happens next.
 
+## Search
+
+- **[Done 2026-08-10] Fixed quoted phrase search on `/meetings` —
+  reported directly by the user, confirmed against the real code before
+  fixing, not guessed.** `archive/utils/search.py`'s `matches()` used to
+  split a query on whitespace with no quote-awareness at all, so
+  `"data center"` became two literal terms, `"data` and `center"`,
+  quote characters glued on — since real transcript/agenda text never
+  has a literal `"` stuck against a word, this guaranteed zero results,
+  not a graceful "quotes ignored" fallback. Confirmed directly before
+  building anything: `matches('"data center"', ...)` on a corpus
+  containing "a new data center project" returned `False`, while
+  `matches('data center', ...)` (no quotes) on the same corpus returned
+  `True`.
+
+  Also clarified something the user's own description was close on but
+  not quite exact about: unquoted multi-word search
+  (`all(term in corpus for term in terms)`) was, and still is, **AND**,
+  not OR — a corpus missing either word entirely returns `False`. It
+  just never required the words to be *adjacent*, which is what likely
+  read as looser/OR-like (a match where "data" is in the title and
+  "center" is three paragraphs into the transcript was, and remains, a
+  hit for the unquoted case).
+
+  New `_parse_query()` splits a query into `(phrases, words)` —
+  `"quoted phrases"` (`_PHRASE_RE = re.compile(r'"([^"]*)"')`) are
+  extracted first and required as one continuous adjacent substring
+  match (reusing the same plain-substring mechanism single-word exact
+  matching already used, just applied to the whole phrase); the
+  remainder is split into words as before, each still required
+  independently (AND). Phrases are **always** matched as an exact
+  literal substring, even when `fuzzy=True` — phrase-level fuzzy
+  matching (an adjacent run of near-matching words) is a meaningfully
+  harder problem than what was asked for, and quoting is itself a
+  reasonable signal the caller wants a literal match. `find_snippet()`
+  checks phrases before unquoted words within each candidate text, so a
+  phrase match wins the highlighted snippet when both would otherwise
+  match. An unclosed quote (e.g. `"data center` with no closing mark)
+  isn't a syntax error — `_PHRASE_RE` simply doesn't match it, so the
+  stray `"` character rides along as part of whatever word it's glued
+  to, same "that one term won't match" behavior as before this fix,
+  just scoped to the single malformed term instead of guaranteeing the
+  whole query returns nothing.
+
+  Deliberately did **not** build a full advanced-search query language
+  (explicit AND/OR/NEAR operators) — also asked about directly by the
+  user, and explicitly declined for now: `search.py`'s own docstring
+  already flags this whole approach as deliberately naive, "fine at
+  today's scale... not meant to scale past a few hundred [meetings],"
+  and a real boolean-operator grammar is more machinery than that scale
+  justifies. The phrase-quote fix alone covers the concrete case that
+  was actually hit.
+
+  Added a small `.subtitle` hint line under the search box on
+  `/meetings` (`archive/templates/meeting_list.html`) — `Tip: put a
+  phrase in "quotes" to match it exactly, e.g. "data center".` — since
+  the feature would otherwise be entirely undiscoverable; no existing
+  UI anywhere mentioned quote support.
+
+  14 new tests (`tests/test_archive_search.py`, 21 total in that file):
+  adjacent-vs-non-adjacent phrase matching, unquoted behavior unchanged,
+  a phrase combined with an unquoted word, a missing phrase failing even
+  when its individual words are both present, case-insensitivity, the
+  unclosed-quote fallback (doesn't crash), an empty `""` phrase being
+  ignored rather than becoming a stray literal token, snippet
+  highlighting the full phrase, phrase-over-word snippet precedence, and
+  phrase matching staying exact even with `fuzzy=True`. Full suite: 336
+  passed (326 + 14 new, plus 4 pre-existing search tests already
+  covered exact/fuzzy word behavior unaffected by this change). One
+  real near-miss caught while writing tests, not left in: the regex
+  originally required `[^"]+` (one or more chars), so a literal `""`
+  (empty quotes) didn't match the phrase pattern at all and fell through
+  as a stray 2-character literal token instead of being cleanly ignored
+  — switched to `[^"]*` (zero or more) so it's captured and filtered by
+  the existing `if p.strip()` check like any other whitespace-only
+  phrase would be.
+
+  Live-verified end-to-end in the browser, not just via unit tests:
+  ingested a real test meeting locally with two segments — one with
+  "data center" adjacent, one with "data" and "center" both present but
+  *not* adjacent ("...the data collected showed the community center
+  needs repairs") — through the actual `/internal/ingest` endpoint (not
+  a direct DB write), then drove the real `/meetings` search UI through
+  the resolver's proxy (matching production's reverse-proxy shape).
+  Confirmed `q="data center"` finds the meeting and highlights exactly
+  `<mark class="search-match">data center</mark>` (the phrase, not just
+  one word), and that `q="community data"` (present but non-adjacent in
+  the seeded text) correctly returns zero results — the phrase
+  requirement is real, not just passing in isolated unit tests.
+
+  Caught and corrected a real mistake mid-verification, no lasting
+  harm: initially started the local Archive dev server without
+  overriding `DATABASE_URL`, which fell back to the real production
+  Postgres URL from `.env` — but that's the *resolver's* production
+  database (confirmed earlier the same day during the `/meetings`
+  outage investigation above), not Archive's. `init_models()` runs
+  `create_all()` unconditionally on startup, so this could in principle
+  have tried creating Archive's tables in the wrong production
+  database — confirmed via a direct `information_schema` query,
+  immediately after noticing the mistake, that the table list was
+  unchanged (still just `alembic_version`/`meeting_resolutions`/
+  `problem_reports`, no `meeting_pages` or anything else new). No
+  writes occurred; the only request made before catching this was a
+  read-only `/api/health` check. Restarted with an explicit absolute
+  `DATABASE_URL=sqlite+aiosqlite:///<repo-root>/archive_dev.db` before
+  doing anything further.
+
 ## Incidents
 
 - **[Resolved 2026-08-10] Live production outage: `/meetings` 500ing on

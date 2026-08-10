@@ -11,6 +11,7 @@ import re
 from typing import Iterable, Optional
 
 _WORD_RE = re.compile(r"[a-z0-9']+")
+_PHRASE_RE = re.compile(r'"([^"]*)"')
 
 
 def build_corpus(*texts: str) -> str:
@@ -60,21 +61,49 @@ def _fuzzy_threshold(word: str) -> int:
     return 2
 
 
+def _parse_query(query: str) -> tuple:
+    """Splits a query into (phrases, words) -- a `"quoted phrase"` is
+    required as one continuous adjacent match; everything outside quotes
+    is split into independent words as before, each required separately
+    (AND, not OR -- a meeting must contain every word/phrase, though
+    unquoted words don't need to be adjacent to each other or to a
+    phrase). An unclosed quote isn't a syntax error -- `_PHRASE_RE`
+    simply doesn't match it, so the stray `"` character just rides along
+    as part of whatever word it's stuck to, same as it did before phrase
+    support existed (that word then just won't match anything, which is
+    the same "quoting made it worse, not ignored" behavior this whole fix
+    is otherwise closing -- but only for that one malformed term, not the
+    entire query).
+    """
+    phrases = [p.lower() for p in _PHRASE_RE.findall(query) if p.strip()]
+    remainder = _PHRASE_RE.sub(" ", query)
+    words = [t for t in remainder.lower().split() if t]
+    return phrases, words
+
+
 def matches(query: str, corpus: str, corpus_words: set, fuzzy: bool) -> bool:
-    """True if every whitespace-separated term in `query` matches
-    somewhere in this meeting's searchable text.
+    """True if every `"quoted phrase"` and every unquoted word in `query`
+    matches somewhere in this meeting's searchable text.
 
     Exact mode: plain case-insensitive substring match against the raw
     corpus (Python's `in` on a lowercased string -- fast, and the
     intentional default since it needs no per-word distance computation).
-    Fuzzy mode: each query term must equal, or be within
+    Fuzzy mode: each unquoted word must equal, or be within
     `_fuzzy_threshold()` edits of, at least one real word in the meeting's
     tokenized text -- catches transcription typos ("trafic", "traffiq" for
-    "traffic") that a substring search would silently miss.
+    "traffic") that a substring search would silently miss. Quoted
+    phrases are always matched as an exact adjacent substring, even in
+    fuzzy mode -- phrase-level fuzzy matching (an adjacent run of
+    near-matching words) is a meaningfully harder problem than this
+    solves, and quoting a phrase is itself a reasonable signal the caller
+    wants a literal match.
     """
-    terms = [t for t in query.lower().split() if t]
-    if not terms:
+    phrases, terms = _parse_query(query)
+    if not phrases and not terms:
         return True
+
+    if not all(phrase in corpus for phrase in phrases):
+        return False
 
     if not fuzzy:
         return all(term in corpus for term in terms)
@@ -108,6 +137,18 @@ def _find_span(term: str, text_lower: str, fuzzy: bool) -> Optional[tuple]:
     return None
 
 
+def _build_snippet(text: str, span: tuple, window: int) -> str:
+    start, end = span
+    win_start = max(0, start - window)
+    win_end = min(len(text), end + window)
+    prefix = "…" if win_start > 0 else ""
+    suffix = "…" if win_end < len(text) else ""
+    before = html.escape(text[win_start:start])
+    matched = html.escape(text[start:end])
+    after = html.escape(text[end:win_end])
+    return f"{prefix}{before}<mark class=\"search-match\">{matched}</mark>{after}{suffix}"
+
+
 def find_snippet(query: str, texts: Iterable[str], fuzzy: bool, window: int = 50) -> Optional[str]:
     """A short HTML excerpt around the first matching term, for
     `/meetings` search results -- e.g. "...traffic calming measures on
@@ -119,31 +160,30 @@ def find_snippet(query: str, texts: Iterable[str], fuzzy: bool, window: int = 50
     `/meetings` -- repeating them here would just be noise. Checks each
     text in order and returns on the first match; None if none of these
     specific texts matched (e.g. the query only matched the title).
+    Quoted phrases are checked before unquoted words within each text,
+    so a phrase match wins the snippet when both would otherwise match --
+    it's the more specific, more relevant hit.
 
     Returned string already has its plain-text portions HTML-escaped,
     with only the deliberately-inserted <mark> tag left raw -- callers
     should render it with a "safe"/no-further-escaping filter.
     """
-    terms = [t for t in query.lower().split() if t]
-    if not terms:
+    phrases, terms = _parse_query(query)
+    if not phrases and not terms:
         return None
 
     for text in texts:
         if not text:
             continue
         text_lower = text.lower()
+        for phrase in phrases:
+            # Always exact, even in fuzzy mode -- see matches()'s docstring.
+            span = _find_span(phrase, text_lower, fuzzy=False)
+            if span:
+                return _build_snippet(text, span, window)
         for term in terms:
             span = _find_span(term, text_lower, fuzzy)
-            if not span:
-                continue
-            start, end = span
-            win_start = max(0, start - window)
-            win_end = min(len(text), end + window)
-            prefix = "…" if win_start > 0 else ""
-            suffix = "…" if win_end < len(text) else ""
-            before = html.escape(text[win_start:start])
-            matched = html.escape(text[start:end])
-            after = html.escape(text[end:win_end])
-            return f"{prefix}{before}<mark class=\"search-match\">{matched}</mark>{after}{suffix}"
+            if span:
+                return _build_snippet(text, span, window)
 
     return None

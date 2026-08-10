@@ -91,3 +91,71 @@ def test_find_snippet_adds_ellipsis_only_when_text_is_truncated():
     snippet2 = find_snippet("traffic", [long_text], fuzzy=False, window=20)
     assert snippet2 is not None
     assert snippet2.count("…") == 2
+
+
+def test_quoted_phrase_requires_adjacent_match():
+    corpus = build_corpus("City Council Meeting", "Anytown, USA", "the city discussed a new data center project")
+    assert matches('"data center"', corpus, set(), fuzzy=False)
+    # Same two words present, but not adjacent -- must not match as a phrase.
+    corpus2 = build_corpus("", "", "the data we collected pointed to the community center")
+    assert not matches('"data center"', corpus2, set(), fuzzy=False)
+
+
+def test_unquoted_multiword_search_is_still_and_not_phrase():
+    # Confirms the fix didn't change existing unquoted behavior: both
+    # words required, but not necessarily adjacent.
+    corpus = build_corpus("", "", "the data we collected pointed to the community center")
+    assert matches("data center", corpus, set(), fuzzy=False)
+
+
+def test_quoted_phrase_combined_with_unquoted_word():
+    corpus = build_corpus("", "", "the city approved a new data center near downtown parking")
+    assert matches('"data center" parking', corpus, set(), fuzzy=False)
+    assert not matches('"data center" airport', corpus, set(), fuzzy=False)
+
+
+def test_quoted_phrase_missing_entirely_fails_even_if_words_present():
+    corpus = build_corpus("", "", "data was presented near the new community center today")
+    assert not matches('"data center"', corpus, set(), fuzzy=False)
+
+
+def test_quoted_phrase_is_case_insensitive():
+    corpus = build_corpus("", "", "plans for a new Data Center were approved")
+    assert matches('"data center"', corpus, set(), fuzzy=False)
+
+
+def test_unclosed_quote_does_not_crash_and_falls_back_to_word_match():
+    corpus = build_corpus("", "", "the council discussed data center plans")
+    # No closing quote -- treated as a literal, unmatched word (same
+    # "quoting made it worse" behavior as before this fix, but scoped to
+    # just that one malformed term rather than the whole query).
+    assert not matches('"data center', corpus, set(), fuzzy=False)
+
+
+def test_empty_quoted_phrase_is_ignored():
+    corpus = build_corpus("", "", "the council discussed budget items")
+    assert matches('""', corpus, set(), fuzzy=False)
+
+
+def test_find_snippet_matches_quoted_phrase():
+    text = "The council approved a new data center project downtown after debate."
+    snippet = find_snippet('"data center"', [text], fuzzy=False)
+    assert snippet is not None
+    assert '<mark class="search-match">data center</mark>' in snippet
+
+
+def test_find_snippet_prefers_phrase_match_over_word_match_in_same_text():
+    text = "Data was reviewed. Later, the new community center was approved."
+    snippet = find_snippet('center "data center"', [text], fuzzy=False)
+    assert snippet is not None
+    # Should find the (non-adjacent) phrase nowhere in this text and fall
+    # back cleanly rather than mis-highlighting "center" alone as if it
+    # were the phrase.
+    assert '<mark class="search-match">center</mark>' in snippet
+
+
+def test_find_snippet_phrase_is_exact_even_in_fuzzy_mode():
+    text = "the council discussed a new data center project today"
+    # A near-miss phrase (typo'd word inside quotes) should NOT match even
+    # with fuzzy=True -- phrases are always literal.
+    assert find_snippet('"data centre"', [text], fuzzy=True) is None
