@@ -144,6 +144,25 @@ async def test_resolve_still_works_when_youtube_metadata_fetch_fails(monkeypatch
     assert any("blocking automated caption requests" in w for w in result.video_warnings)
 
 
+async def test_resolve_works_for_a_non_ci_committee_code(monkeypatch):
+    # Real bug reported live 2026-08-10: a real user-submitted URL,
+    # https://lims.minneapolismn.gov/MarkedAgenda/BHZ/6105 (Business,
+    # Housing & Zoning committee, not City Council), failed with "Could
+    # not find a meeting id in this LIMS URL" -- _ID_RE used to hardcode
+    # the literal "CI" segment. The numeric id is what every downstream
+    # step actually uses (the JSON endpoint URL is built from it alone),
+    # so any committee code should resolve exactly the same way.
+    bhz_url = "https://lims.minneapolismn.gov/MarkedAgenda/BHZ/6105"
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _fake_extract_info)
+    monkeypatch.setattr("app.platforms.lims.fetch_via_browser", _fake_fetch_via_browser)
+
+    result = await LimsAssetFinder().resolve(bhz_url)
+
+    assert result.platform == "youtube"
+    assert result.video_url == f"https://www.youtube.com/embed/{REAL_VIDEO_ID}"
+    assert not any("could not find a meeting id" in w.lower() for w in result.video_warnings)
+
+
 def test_extract_page_meta_parses_real_title_shape():
     title, date, jurisdiction = LimsAssetFinder._extract_page_meta(AGENDA_PAGE_HTML)
     assert title == "Climate & Infrastructure Committee"

@@ -8,7 +8,7 @@ from .headless_browser import fetch_via_browser
 from .models import ResolvedMeeting, TranscriptSegment
 from .youtube import YouTubeAssetFinder
 
-_ID_RE = re.compile(r"/MarkedAgenda/CI/(\d+)")
+_ID_RE = re.compile(r"/MarkedAgenda/[A-Za-z]+/(\d+)")
 _PRE_RE = re.compile(r"<pre[^>]*>(.*?)</pre>", re.S)
 _TITLE_RE = re.compile(r"^(.+?)\s+Agenda\s+\d{1,2}/\d{1,2}/\d{4}\s+.+?-\s*(.+)$")
 _TITLE_DATE_RE = re.compile(r"Agenda\s+(\d{1,2})/(\d{1,2})/(\d{4})")
@@ -16,7 +16,16 @@ _TITLE_DATE_RE = re.compile(r"Agenda\s+(\d{1,2})/(\d{1,2})/(\d{4})")
 
 class LimsAssetFinder(AssetFinder):
     """Minneapolis's own "LIMS" (Legislative Information Management
-    System), `lims.minneapolismn.gov/MarkedAgenda/CI/{id}`.
+    System), `lims.minneapolismn.gov/MarkedAgenda/{body}/{id}` -- `{body}`
+    is a per-committee code (e.g. "CI" for City Council, "BHZ" for
+    Business, Housing & Zoning -- real bug found 2026-08-10: `_ID_RE` used
+    to hardcode `CI` literally, so any other committee's URL failed with
+    "Could not find a meeting id in this LIMS URL" before even reaching
+    the real resolve logic below). The numeric id is what actually
+    matters -- it's the only part reused downstream (the
+    `/MeetingYoutubeVideo/{id}` JSON endpoint takes just the number, no
+    body code at all) -- so the fix is a general `[A-Za-z]+` match on that
+    segment rather than trying to enumerate every real committee code.
 
     Confirmed live 2026-08-09: both the agenda page and its
     `/MeetingYoutubeVideo/{id}` JSON endpoint (same numeric id) return a
