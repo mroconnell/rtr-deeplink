@@ -61,18 +61,26 @@ class ViebitAssetFinder(AssetFinder):
     `normalize_shouting_caption` (already called inside `parse_vtt`)
     handles the ALL-CAPS de-shouting.
 
-    No jurisdiction available at this level -- Viebit's own metadata has
-    no city/agency field, and the real value ("New York City Council")
-    would need to come from the Legistar calendar row instead, which this
-    adapter never sees (same "destination platform's own metadata wins,
-    not the wrapper's" shape every other Legistar-delegated resolve
-    already has -- see LegistarAssetFinder's docstring). `date` comes from
-    `dateCreated`, a Unix upload timestamp like YouTube's `upload_date` --
-    same real caveat: it's when the file was processed, not necessarily
-    the exact meeting date.
+    Viebit's own metadata has no city/agency field to read a jurisdiction
+    from (Legistar's calendar row has it, but this adapter never sees that
+    page). Rather than leave it blank or let a Legistar-delegated resolve
+    fall back to the calendar row's legislative-body name ("New York City
+    Council" -- a real body name, not the city+state format other
+    platforms use, e.g. Swagit's `f"{city}, {state}"`), hardcode
+    `_JURISDICTION` below: Viebit is confirmed used only by NYC Council
+    (see ViebitAssetFinder's own class name/history), so there's no other
+    real jurisdiction this could be yet. Matches this repo's "narrow fix
+    until real examples exist" convention -- revisit if a second,
+    non-NYC Viebit sample ever turns up. `date` comes from `dateCreated`,
+    a Unix upload timestamp like YouTube's `upload_date` -- same real
+    caveat: it's when the file was processed, not necessarily the exact
+    meeting date.
     """
 
     platform_name = "viebit"
+    # See the jurisdiction paragraph above -- confirmed single-jurisdiction
+    # platform, not a generalizable "extract the city" rule.
+    _JURISDICTION = "New York City, NY"
 
     def __init__(self):
         self.headers = {
@@ -133,6 +141,7 @@ class ViebitAssetFinder(AssetFinder):
             platform=self.platform_name,
             source_url=url,
             title=title,
+            jurisdiction=self._JURISDICTION,
             date=date,
             video_url=video_url,
             video_format="m3u8" if video_url else None,

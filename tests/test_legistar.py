@@ -185,7 +185,13 @@ async def test_nyc_meeting_title_overrides_viebits_raw_filename_title():
     # Confirm the fixture's own delegated title really is the raw-filename
     # shape this override exists for, not some other unrelated value.
     assert result.title == "Committee on Finance"
-    assert result.jurisdiction == "New York City Council"
+    # jurisdiction is NOT overridden here either, same "already have a real
+    # answer" shape as date below -- ViebitAssetFinder now hardcodes its
+    # own confirmed-correct "New York City, NY" (2026-08-10, see
+    # BACKLOG_DONE.md), so the page title's "New York City Council" (a
+    # legislative-body name, not the city+state format used elsewhere)
+    # never gets a chance to fill in what's already a real, better value.
+    assert result.jurisdiction == "New York City, NY"
     # date is NOT overridden here -- Viebit's own dateCreated (2026-07-22,
     # baked into this fixture) already resolved successfully, so the page
     # title's date (12/18/2025, from this test's deliberately mismatched
@@ -197,8 +203,10 @@ async def test_nyc_meeting_title_overrides_viebits_raw_filename_title():
 async def test_nyc_meeting_without_page_title_keeps_viebits_title_unchanged():
     # No <title> tag on the source page (matches every other existing
     # fixture in this file) -- _extract_page_meeting_info() returns None,
-    # so the delegated platform's own title/jurisdiction/date pass through
-    # completely unchanged, even if it's the same raw-filename shape.
+    # so the delegated platform's own title/date pass through completely
+    # unchanged, even if title is the same raw-filename shape. jurisdiction
+    # was never sourced from page_info here anyway -- ViebitAssetFinder
+    # sets its own directly (2026-08-10).
     meeting_url = "https://legistar.council.nyc.gov/MeetingDetail.aspx?ID=1"
     video_aspx = (
         "https://legistar.council.nyc.gov/Video.aspx?Mode=Auto&URL="
@@ -227,7 +235,9 @@ async def test_nyc_meeting_without_page_title_keeps_viebits_title_unchanged():
         result = await LegistarAssetFinder().resolve(meeting_url)
 
     assert result.title == "NYCC-250-8-1_260722-110636.mp4"
-    assert result.jurisdiction is None
+    # jurisdiction still comes through even with no page_info to fall back
+    # on -- ViebitAssetFinder now sets it directly (2026-08-10).
+    assert result.jurisdiction == "New York City, NY"
 
 
 def test_extract_page_meeting_info_parses_real_nyc_title_shapes():

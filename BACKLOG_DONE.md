@@ -8,6 +8,32 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-10] Viebit/NYCC meetings now resolve `jurisdiction` to
+  "New York City, NY" (the city+state format most other platforms use),
+  not "New York City Council" (a legislative body name).** Not a
+  correctness bug exactly — `LegistarAssetFinder._extract_page_meeting_
+  info()` was deliberately extracting the real legislative body name from
+  the Legistar page's own `<title>` tag — but the wrong shape for this
+  app's convention (Swagit's `f"{city}, {state}"`, PrimeGov's "City of X"
+  fix). Took the hardcode option the live item laid out rather than
+  trying to generalize "extract the city, not the body name" from a
+  single confirmed sample: `ViebitAssetFinder` (`app/platforms/viebit.py`)
+  is confirmed used only by NYC Council, so a `_JURISDICTION = "New York
+  City, NY"` class constant, set directly on every `ResolvedMeeting` it
+  returns, is the narrow, accurate fix — matches this repo's "narrow fix
+  until real examples exist" convention (see the `collect_edge_case_urls`
+  memory). Setting it in `viebit.py` itself (not `legistar.py`) also fixes the
+  Legistar-delegated path for free: `legistar.py`'s primary override
+  path does `resolved.jurisdiction = resolved.jurisdiction or
+  page_info["jurisdiction"]`, so once Viebit's own resolve() always
+  returns a truthy jurisdiction, the Legistar page title's "New York City
+  Council" never gets a chance to overwrite it via that `or`. Two
+  existing `tests/test_legistar.py` assertions (`result.jurisdiction ==
+  "New York City Council"` and `is None`) updated to the new, correct
+  expected value; `tests/test_viebit.py`'s real end-to-end NYC Council
+  fixture test gained a `result.jurisdiction == "New York City, NY"`
+  assertion. Full suite green (264 tests).
+
 - **[Done 2026-08-10] Transcripts no longer show a raw `&gt;&gt;` encoding
   artifact in place of a clean speaker-change marker.** Confirmed root
   cause 2026-08-09: YouTube's own raw auto-caption VTT source contains

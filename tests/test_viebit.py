@@ -27,6 +27,7 @@ async def test_resolve_real_nyc_council_meeting():
 
     assert result.platform == "viebit"
     assert result.title == "NYCC-250-8-1_260722-110636.mp4"
+    assert result.jurisdiction == "New York City, NY"
     assert result.date == "2026-07-22"
     assert result.video_url == (
         "https://vbfast-vod.viebit.com/otfp/counciln/hFWIQkuFLuWGb0mw/"
