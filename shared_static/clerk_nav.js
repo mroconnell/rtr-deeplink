@@ -47,8 +47,20 @@
   function renderNavAuthState() {
     const signInLink = document.getElementById("clerk-sign-in-link");
     const userButtonEl = document.getElementById("clerk-user-button");
+    // "Get Updates" just points at the newsletter signup -- someone with
+    // a real account can already get updates (see the account+newsletter
+    // auto-subscribe decision in BACKLOG.md), so the link is redundant
+    // once signed in. Its divider is hidden alongside it so removing the
+    // item doesn't leave an orphaned "|" with nothing after it.
+    const getUpdatesItem = document.getElementById("nav-get-updates");
+    const getUpdatesDivider = document.getElementById("nav-get-updates-divider");
+    const signedIn = !!(window.Clerk && window.Clerk.user);
+
+    if (getUpdatesItem) getUpdatesItem.hidden = signedIn;
+    if (getUpdatesDivider) getUpdatesDivider.hidden = signedIn;
+
     if (!signInLink || !userButtonEl) return;
-    if (window.Clerk && window.Clerk.user) {
+    if (signedIn) {
       signInLink.hidden = true;
       userButtonEl.hidden = false;
       if (!userButtonEl.dataset.mounted) {

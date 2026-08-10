@@ -792,6 +792,31 @@ mark.search-match.current { background: #f97316; color: #fff; }
   gap: 0.5rem;
   margin: 1.25rem 0 0.75rem;
 }
+/* Deliberately reuses .cassette-btn (the same prominent style as the
+   Search button above it), not .cassette-btn-outline -- the muted
+   "secondary action" style read as disregarded/hard to see against the
+   page's grey background. Centered so it doesn't sit left-aligned in
+   otherwise-empty horizontal space. */
+.save-search-toggle { text-align: center; margin: 1.25rem 0; }
+.bookmark-icon { fill: currentColor; }
+
+/* Bookmark toggle icon next to the meeting title (meeting_page.html) --
+   outline by default, fills in once saved, mirroring #saveMeetingBtn's
+   own text below it (kept in sync by meeting_page.js). */
+.bookmark-icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 0 0.1rem 0.4rem;
+  vertical-align: middle;
+  color: var(--muted);
+  line-height: 1;
+}
+.bookmark-icon-btn:hover { color: var(--primary); }
+.bookmark-icon-btn .bookmark-icon { fill: none; }
+.bookmark-icon-btn[data-saved="true"] { color: var(--primary); }
+.bookmark-icon-btn[data-saved="true"] .bookmark-icon { fill: currentColor; }
+
 .meeting-search-form input {
   flex: 1;
   padding: 0.5rem 0.7rem;
@@ -915,3 +940,33 @@ mark.search-match.current { background: #f97316; color: #fff; }
 }
 .footer-links a { color: var(--muted); }
 .footer-links a:hover { color: var(--fg); }
+
+/* --- My saved items (/account/saved) --- */
+/* Every section heading gets the same divider + breathing room above it
+   (separates it from whatever came before -- the page title, or the
+   previous section's list) and a small gap below (keeps it visually
+   bonded to its own content) -- same asymmetric spacing convention
+   .about-page h2 already uses elsewhere on this site. */
+.saved-items-page h2 {
+  margin: 2rem 0 0.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  color: var(--primary);
+}
+.saved-item-list { margin-top: 0.5rem; }
+.saved-item-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.saved-item-row:last-child { border-bottom: none; }
+.saved-item-main { min-width: 0; }
+.saved-item-main a { color: var(--accent); text-decoration: none; font-weight: 500; }
+.saved-item-main a:hover { text-decoration: underline; }
+/* Sits immediately left of the title/meta, same fixed gap on every row
+   regardless of how long the title is -- not pushed to the far edge of
+   the page via space-between, which is what made the old layout feel
+   disconnected on short titles. */
+.unsave-btn { flex-shrink: 0; }

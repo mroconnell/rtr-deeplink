@@ -20,11 +20,14 @@
     <p class="subtitle search-hint">Tip: put a phrase in "quotes" to match it exactly, e.g. "data center".</p>
     {% if active_account %}
     <p class="save-search-toggle">
-      <button type="button" id="saveSearchBtn" class="cassette-btn-outline"
+      <button type="button" id="saveSearchBtn" class="cassette-btn"
         data-q="{{ q }}" data-jurisdiction="{{ jurisdiction }}" data-date-from="{{ date_from }}"
         data-date-to="{{ date_to }}" data-has-agenda="{{ 'true' if has_agenda else '' }}"
         data-has-transcript="{{ 'true' if has_transcript else '' }}" data-fuzzy="{{ 'true' if fuzzy else '' }}"
-      >Save this search</button>
+      >
+        <svg class="bookmark-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg>
+        <span class="cassette-label">Save this search</span>
+      </button>
       <span id="saveSearchStatus" role="status"></span>
     </p>
     {% endif %}
