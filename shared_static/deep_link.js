@@ -28,6 +28,26 @@ function getDeepLinkTime() {
   return t !== null ? Number(t) : null;
 }
 
+// Builds playerVars for a YouTube IFrame Player embed, folding in the
+// current deep-link time (if any) as `start` -- shared by player.js's and
+// meeting_page.js's initYouTubeVideo(), previously duplicated logic in
+// both. Real bug confirmed live 2026-08-10: a Minneapolis LIMS/YouTube
+// meeting's `t=` deep link silently landed at 0:00 instead of the
+// requested moment, because the player was only ever cued at 0 by the
+// plain videoId constructor call, and a seekTo() issued right after
+// onReady (applyDeepLink()'s job, still needed for the line-only case and
+// for highlighting) doesn't reliably stick before any buffering/user
+// interaction has happened -- a well-known YouTube IFrame API race.
+// `start` makes YouTube treat the requested position as part of the
+// initial load itself, which is reliable even before the player has been
+// touched.
+function buildYouTubePlayerVars(baseVars) {
+  const playerVars = Object.assign({}, baseVars);
+  const deepLinkTime = getDeepLinkTime();
+  if (deepLinkTime !== null) playerVars.start = Math.max(0, Math.floor(deepLinkTime));
+  return playerVars;
+}
+
 function getDeepLinkLine() {
   const raw = getQueryParams().get('line');
   if (!raw) return null;

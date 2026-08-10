@@ -16,6 +16,33 @@ describe('getDeepLinkTime', () => {
   });
 });
 
+describe('buildYouTubePlayerVars', () => {
+  test('folds a real t param in as start, rounded down', () => {
+    const window = makeWindow('http://localhost/m/x?t=1168.7');
+    const result = window.buildYouTubePlayerVars({ rel: 0, playsinline: 1 });
+    assert.equal(result.start, 1168);
+    // Real bug this guards against: a bare seekTo() call after onReady
+    // silently landed at 0:00 instead of the requested moment (a known
+    // YouTube IFrame API race) -- start avoids that by folding the
+    // position into the initial player construction instead.
+    assert.equal(result.rel, 0);
+    assert.equal(result.playsinline, 1);
+  });
+
+  test('omits start entirely when there is no t param', () => {
+    const window = makeWindow('http://localhost/m/x');
+    const result = window.buildYouTubePlayerVars({ rel: 0, playsinline: 1 });
+    assert.equal('start' in result, false);
+  });
+
+  test('does not mutate the base playerVars object passed in', () => {
+    const window = makeWindow('http://localhost/m/x?t=42');
+    const base = { rel: 0, playsinline: 1 };
+    window.buildYouTubePlayerVars(base);
+    assert.equal('start' in base, false);
+  });
+});
+
 describe('getDeepLinkLine', () => {
   test('accepts a bare segment index and normalizes to seg-N', () => {
     const window = makeWindow('http://localhost/m/x?line=42');

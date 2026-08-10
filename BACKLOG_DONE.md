@@ -8,6 +8,52 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-10, verified live] YouTube-embedded meetings' `t=`
+  deep link silently landed at 0:00 instead of the requested moment.**
+  Reported live by the user on a real Minneapolis LIMS/YouTube meeting
+  (`.../meeting?url=https://lims.minneapolismn.gov/MarkedAgenda/BHZ/6073&t=1168`),
+  alongside a UX question about whether the "no transcript, but we're
+  tracking the playhead" copy was overpromising given the seek didn't
+  actually work. Root cause: both `initYouTubeVideo()` (`app/static/
+  player.js` and `archive/static/meeting_page.js`) constructed the
+  `YT.Player` bare (just `videoId`, cued at 0), then called
+  `applyDeepLink()` in `onReady`, which sets `video.currentTime = t` ->
+  `ytPlayer.seekTo(t, true)`. That's a well-known YouTube IFrame API
+  race: a `seekTo()` issued immediately after `onReady`, before any
+  buffering or user interaction, doesn't reliably stick.
+
+  Fix: a new shared `buildYouTubePlayerVars(baseVars)` in
+  `shared_static/deep_link.js` folds the current deep-link time in as
+  `playerVars.start` (rounded down) at player *construction* time, which
+  YouTube treats as part of the initial load/cue itself rather than a
+  race-y follow-up call -- both `player.js` and `meeting_page.js` now
+  call it instead of duplicating the same inline logic (matches this
+  file's whole reason for existing: shared deep-link mechanics kept in
+  one place, not copy-pasted twice). `applyDeepLink()` still runs
+  unchanged in `onReady` for the line-only case (no `t`) and for
+  highlighting the matching transcript/agenda row -- its own `seekTo()`
+  call in the `t`-present case is now redundant but harmless, since the
+  position is already correctly cued by then.
+
+  Verified two ways: (1) three new `tests_js/deep_link.test.js` cases
+  for `buildYouTubePlayerVars` (folds `t` in as `start`, rounds down;
+  omits `start` entirely with no `t`; doesn't mutate the caller's base
+  object) -- sanity-checked real by temporarily disabling the fix and
+  confirming exactly 1 test fails, 25/26 still passing. (2) Live in a
+  real browser against local dev servers for *both* pages: the
+  resolver's ephemeral `/meeting` page (a fresh, never-archived
+  `youtube.com/watch?v=YgAu_4xWvGU` resolve) and the Archive's permanent
+  `/m/{slug}` page (a locally-ingested test meeting, reached through the
+  resolver's proxy so `/archive-static/*` resolves correctly -- hitting
+  the Archive service directly 404s on that path, a known pre-existing
+  quirk, not new). Both real rendered `<iframe>` `src` attributes
+  contained the requested `start=` value exactly
+  (`.../embed/YgAu_4xWvGU?...&start=1168...` and `...&start=2500...`
+  respectively) -- direct proof YouTube received the correct starting
+  position at construction time, not just a passing unit test. Full
+  Python suite unaffected (268 tests, no Python code touched); full JS
+  suite green (26 tests, up from 23).
+
 - **[Done 2026-08-10, confirmed in production] Alembic one-time production
   adoption incident: my own instructions, based on a stale doc, pushed
   production's migration bookkeeping backward instead of forward.**

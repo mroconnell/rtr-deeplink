@@ -671,7 +671,14 @@ async function initYouTubeVideo(embedUrl) {
 
   new YT.Player(container, {
     videoId,
-    playerVars: { rel: 0, playsinline: 1 },
+    // buildYouTubePlayerVars() (shared_static/deep_link.js) folds in the
+    // deep-link time as `start` -- see its own comment for why this
+    // matters. applyDeepLink() below still runs in onReady regardless --
+    // still needed for the line-only case (no t) and for highlighting
+    // the matching transcript row -- its own seekTo() call in the
+    // t-present case is now redundant but harmless (the position is
+    // already correctly cued by then).
+    playerVars: buildYouTubePlayerVars({ rel: 0, playsinline: 1 }),
     events: {
       // Unlike the native <video> path (where currentTime can be set,
       // queued, before metadata loads), the player isn't usable at all
