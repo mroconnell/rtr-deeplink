@@ -746,6 +746,16 @@ async def meeting_redirect(request: Request, url: str = ""):
     )
 
 
+@app.get("/coverage")
+async def coverage(request: Request):
+    # Placeholder for the real public jurisdiction/platform coverage table
+    # (see BACKLOG.md's "Archive roadmap" -- reads from /admin/stats's
+    # underlying data, which lives here on the resolver, not the Archive).
+    # noindex'd via head_extra in the template: thin placeholder content
+    # isn't worth indexing until the real page replaces it.
+    return templates.TemplateResponse(request, "coverage.html", {})
+
+
 async def _proxy_to_archive(internal_path: str, query_string: str) -> Response:
     """Reverse-proxies a GET request to the Archive service so its permanent
     pages are reachable at redtaperecordings.com/m/{slug} instead of a

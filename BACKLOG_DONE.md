@@ -67,6 +67,66 @@ changelog of task titles.
   needed — removed the stale bullet from BACKLOG.md rather than leaving
   a "not yet built" note describing something that already works.
 
+- **[Done 2026-08-10] Built a universal site footer with Sitemap/RSS/
+  Coverage/Contact links, closing out the last open "site polish" ask.**
+  Clarified scope with the user first (real ambiguity, not guessed):
+  both services get it (not just the resolver, which already had a
+  minimal one), the existing subscribe prompt gets folded into the same
+  footer rather than staying a lone paragraph, and the extra links are
+  specifically RSS feed, Coverage, and Contact/report-a-problem (the
+  user didn't pick "About," so it wasn't added).
+
+  The resolver (`app/templates/base.html`) already had a `<footer>`
+  with just the subscribe prompt, conditionally hidden on `/subscribe`
+  itself; restructured it into a `.footer-links` nav row (always shown)
+  plus the subscribe prompt (still conditionally hidden there). The
+  Archive (`archive/templates/base.html`) had no footer at all —
+  added the identical structure, matching this codebase's existing
+  precedent of deliberately duplicating shared markup/CSS across the
+  two services' independent templates (see `archive/static/style.css`'s
+  own header comment) rather than building new cross-service template
+  sharing infra just for this. CSS (`.site-footer`/`.footer-links`/
+  `.footer-subscribe-prompt`) added to both stylesheets identically.
+
+  Contact links to `mailto:ryan@redtaperecordings.com` rather than a
+  new contact form or the existing per-meeting "Report a problem" flow
+  (which needs a specific meeting URL to POST against, so isn't a good
+  fit for a global footer link) — reuses the real forwarding mailbox
+  set up earlier the same day (see "Email deliverability" above) rather
+  than building new infrastructure.
+
+  Coverage links to a new placeholder page (`GET /coverage`,
+  `app/templates/coverage.html`) rather than a dead link — the user
+  asked for it in the footer despite the real Coverage page (a public
+  sortable jurisdiction/platform table, see "Archive roadmap") not
+  being built yet. Built on the **resolver**, not the Archive: the real
+  future version will read from `/admin/stats`'s underlying data, which
+  lives in `app/db` on the resolver, not `archive/db` — confirmed by
+  checking where `/admin/stats` itself is actually defined before
+  picking a home for the stub, rather than assuming Archive because
+  that's where the sitemap/feed live. `noindex`'d via `head_extra`
+  (`<meta name="robots" content="noindex">`) since thin placeholder
+  content isn't worth indexing until the real page replaces it.
+
+  5 new tests (`tests/test_footer_and_coverage.py`): the coverage page
+  renders and is noindexed, both services' footers carry all four
+  links, and `/subscribe` still hides the redundant prompt while
+  keeping the footer links. Full suite: 341 passed (336 + 5 new).
+
+  Live-verified in the browser on both services through the resolver's
+  proxy (matching production's reverse-proxy shape): screenshotted the
+  homepage footer, clicked through to the real Coverage stub and
+  confirmed its own noindex tag via `javascript_tool`, confirmed a real
+  Archive `/m/{slug}` page (proxied) renders the same footer, and
+  confirmed `/subscribe` correctly drops the redundant prompt while
+  keeping all four links. One real tooling mixup caught immediately, no
+  lasting effect: a first screenshot attempt landed on a stray
+  `file://` tab the edit-preview hook had auto-opened for one of the
+  edited templates, not the actual local dev server — caught from the
+  tab context (`file://.../base.html`, raw unrendered Jinja syntax
+  visible) and corrected by explicitly re-selecting the real
+  `localhost:8010` tab before continuing.
+
 ## Email deliverability
 
 - **[Done 2026-08-10, verified live against the real Resend API] Built a

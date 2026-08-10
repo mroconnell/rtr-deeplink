@@ -58,13 +58,19 @@
     </div>
   </nav>
   {% block content %}{% endblock %}
-  {% if request.url.path != '/subscribe' %}
   <footer class="site-footer">
     <div class="container-fluid">
+      <nav class="footer-links" aria-label="Footer">
+        <a href="/sitemap.xml">Sitemap</a>
+        <a href="/feed.xml">RSS Feed</a>
+        <a href="/coverage">Coverage</a>
+        <a href="mailto:ryan@redtaperecordings.com">Contact</a>
+      </nav>
+      {% if request.url.path != '/subscribe' %}
       <p class="footer-subscribe-prompt">Get notified about new features and tools for finding public meetings &mdash; <a href="/subscribe">sign up for updates</a>.</p>
+      {% endif %}
     </div>
   </footer>
-  {% endif %}
   {% block scripts %}{% endblock %}
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="/static/newsletter.js"></script>
