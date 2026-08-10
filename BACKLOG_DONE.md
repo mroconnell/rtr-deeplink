@@ -6,6 +6,87 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Email deliverability
+
+- **[Done 2026-08-10, verified live against the real Resend API] Built a
+  real one-click unsubscribe mechanism across every email
+  `archive/utils/email.py` sends, and started the `noreply@` →
+  `ryan@` sender-address migration.** Prompted directly by the user: "can
+  we add an unsub link to the footer of all our resend emails?" plus,
+  separately, a link to Resend's own deliverability docs flagging
+  `noreply@` addresses as a real sender-reputation risk.
+
+  `archive/utils/email.py` gained `_unsubscribe_footer_html(to)`, which
+  builds a real link to a new `GET /unsubscribe` route — injected
+  centrally inside `_send()` (`html = html + _unsubscribe_footer_html(to)`)
+  so all four existing `send_*()` functions get it automatically, rather
+  than each one needing to remember to add it. Returns `""` (no footer)
+  when `PUBLIC_BASE_URL` isn't set, since local dev has no real public
+  URL to build a working link from.
+
+  The actual unsubscribe route lives on the **resolver**
+  (`app/main.py`), not the Archive — matching `/confirm-transcription`'s
+  existing precedent, since the resolver owns the public domain a plain
+  email-link click needs to work from, and already has its own Resend
+  credentials (`/api/newsletter/signup`). Refactored that route's inline
+  POST logic into a shared `_resend_audience_upsert(email, *,
+  unsubscribed)` helper, reused by the new `GET /unsubscribe` route (new
+  template `app/templates/unsubscribed.html`). No login or confirmation
+  step, matching CAN-SPAM's one-click requirement.
+
+  Initially added a mirror-image `unsubscribe_contact()` function
+  directly to `archive/utils/email.py`, then recognized it would never
+  actually be called (the real unsubscribe write happens via the
+  resolver's own `_resend_audience_upsert()`, a separate service with
+  its own credentials) — removed before it became dead code, and
+  `_unsubscribe_footer_html()`'s docstring was corrected to describe
+  where the real route actually lives.
+
+  Testing needed new ground: `tests/aiohttp_mock.py`'s existing
+  `mock_session()` only ever patched `.get()`, and a grep of the whole
+  suite found no existing `.post()`-mocking pattern at all — every
+  Resend call in this codebase (`_send()`, `_resend_audience_upsert()`,
+  `upsert_audience_contact()`) is a POST. Rather than extend the shared
+  mock helper, each new test file (`tests/test_email_unsubscribe.py`,
+  `tests/test_unsubscribe_route.py`) monkeypatches a small local fake
+  `aiohttp.ClientSession` directly, scoped to just that test — simpler
+  than generalizing a shared helper for a pattern used in exactly two
+  files so far. 12 new tests total: footer generation (empty when
+  unconfigured, real link when configured, trailing-slash and
+  special-character URL handling), `_send()`'s footer-injection
+  guarantee (verified by capturing the real POST payload), the
+  `/unsubscribe` route's full matrix (missing/malformed email, Resend
+  success/failure/unconfigured), and `_resend_audience_upsert()`'s own
+  HTTP-calling logic directly. Full suite: 319 passed (307 pre-existing
+  + 12 new), no regressions.
+
+  Live-verified end-to-end, not just via mocks: started the resolver's
+  dev server locally against the real (gitignored) `.env`, which holds
+  real production `RESEND_API_KEY`/`RESEND_AUDIENCE_ID` credentials (the
+  user's own established local-dev-against-prod workflow, confirmed
+  pre-existing, not something started this session) and hit
+  `GET /unsubscribe?email=ryan@example.com` in the browser — confirmed
+  the real page renders ("You're unsubscribed", the email echoed back)
+  and that it made a real Resend API call (see BACKLOG.md's note on the
+  resulting test contact left in the real audience — harmless, flagged
+  for visibility). The footer-injection guarantee inside `_send()` was
+  verified via a mocked-POST unit test rather than sending a real email
+  to a real inbox, to avoid live-spamming anyone during verification.
+
+  Changed local `.env`'s `RESEND_FROM_ADDRESS` from
+  `Ryan <noreply@ally.redtaperecordings.com>` to
+  `Ryan <ryan@ally.redtaperecordings.com>`. Confirmed via a real DNS
+  lookup (`dig MX`/`dig NS`) that neither `redtaperecordings.com` nor
+  `ally.redtaperecordings.com` has any MX record today, and that the
+  domain's nameservers are Namecheap's default
+  (`dns1/dns2.registrar-servers.com`) — matching the user's own
+  "not sure, I think it's just resend" read when asked. See BACKLOG.md's
+  "Email deliverability" section for the remaining action items this
+  surfaced that only the user can complete (the matching Render
+  dashboard env var change on both `rtr-deeplink-archive` and
+  `rtr-transcription-worker`, since that var is `sync: false`; and
+  setting up real mail forwarding via Namecheap for the new address).
+
 ## Bugs
 
 - **[Done 2026-08-10, verified end-to-end locally] Built real

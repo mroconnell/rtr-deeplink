@@ -96,6 +96,44 @@ anything) to build against it.
   make the shape of the risk visible, not to commit to a fix, per the
   user's own framing ("at some point").
 
+## Email deliverability — Resend action items, built 2026-08-10
+
+Prompted by the user asking for an unsubscribe link on all Resend emails,
+and separately asking to stop sending from `noreply@` per Resend's own
+deliverability guidance. Both landed in code (see BACKLOG_DONE.md for the
+full build/verification); what's left below is action only the user can
+take — Render env vars and DNS aren't reachable from here.
+
+- **Unsubscribe footer + `/unsubscribe` route: fully built, tested (12 new
+  tests), and verified live against the real Resend API** — no action
+  needed. One side effect worth knowing about: live-verifying the route
+  made a real POST that added `ryan@example.com` (a fake test address,
+  not a real subscriber) to the real production Resend audience as
+  unsubscribed. Harmless, but worth knowing it's in there if the audience
+  list is ever manually reviewed.
+- **`RESEND_FROM_ADDRESS` changed locally (`.env`) from
+  `noreply@ally.redtaperecordings.com` to `ryan@ally.redtaperecordings.com`,
+  per Resend's guidance against `noreply@` addresses. Still needs the same
+  change made in Render's dashboard for both `rtr-deeplink-archive` and
+  `rtr-transcription-worker` services** — that env var is `sync: false`
+  in `render.yaml`, meaning the real value only lives in Render's
+  dashboard and can't be changed from here. New value:
+  `Ryan <ryan@ally.redtaperecordings.com>`.
+- **"Set up that email address" (make `ryan@ally.redtaperecordings.com` a
+  real receiving mailbox) — not yet done, needs the user's own DNS
+  access.** Confirmed via a real DNS lookup: no MX records exist on
+  either `redtaperecordings.com` or `ally.redtaperecordings.com` today
+  (matches the user's own read — "not sure, I think it's just resend").
+  The nameservers (`dns1/dns2.registrar-servers.com`) are Namecheap's
+  default, so the domain is very likely registered there. **User
+  confirmed the destination: forward to `ryan@how-to-adu.com`.**
+  Recommended path: Namecheap's free "Redirect Email" forwarding
+  (Advanced DNS tab for the domain) pointing
+  `ryan@ally.redtaperecordings.com` → `ryan@how-to-adu.com` — no new
+  mailbox needed, and it won't touch Resend's existing sending DNS
+  records (SPF/DKIM) for that subdomain. Needs the user's own Namecheap
+  access to set up; I can't reach their registrar/DNS panel directly.
+
 ## Bugs
 
 - **`video_warnings`/`agenda_link` support is built and verified locally
@@ -593,6 +631,34 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     not an ongoing concern, similar in spirit to
     `/admin/recheck-archive-page`'s existing per-meeting refresh but
     needing to run once across every page rather than on demand for one.
+
+## Site polish — new asks, 2026-08-10
+
+Three separate asks from the user, logged together since they were raised
+in the same message; not investigated or scoped yet beyond what's noted
+here.
+
+- **Sitemap.** Most likely belongs on the Archive service (`archive/`),
+  since that's where the public, permanent, meant-to-be-indexed `/m/*`
+  pages live — the resolver's own pages are mostly interactive
+  (paste-a-URL) rather than content pages worth listing. Needs deciding:
+  static vs. generated-on-request, and whether it should reuse the same
+  underlying page list the planned Coverage page (see "Archive roadmap"
+  above) will need anyway.
+- **Site footer** with a sitemap link plus "some other links that aren't
+  in the site nav." Needs the user's input on exactly which links belong
+  there before building — not yet clear which page(s) get a footer
+  (resolver only? Archive too, given it already has its own
+  `archive/static/style.css`?) or what the "other links" actually are.
+- **Custom 404 / not-found page, plus an error log when it gets hit.**
+  Today this is presumably FastAPI's default plain-JSON 404 on both
+  services — not yet confirmed which routes/services are missing a real
+  branded page. The "log when it gets hit" half is the more interesting
+  part: a real signal for broken inbound links (old bookmarks, other
+  sites linking to a since-renamed slug) that's currently invisible.
+  Worth deciding where that log surfaces (existing `/admin/stats`-style
+  reporting vs. just structured log lines) before building.
+
 ## On-demand transcription — real gaps left open
 
 Built 2026-08-08, see [BACKLOG_DONE.md](BACKLOG_DONE.md) for the full

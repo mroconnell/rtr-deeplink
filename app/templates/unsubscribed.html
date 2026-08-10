@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Unsubscribed | Red Tape Recordings{% endblock %}
+{% block content %}
+  <main class="about-page">
+    {% if unsubscribed %}
+      <h1>You're unsubscribed.</h1>
+      <p>{{ email }} won't receive future emails from us. If this was a mistake, you can re-subscribe any time from the <a href="/subscribe">Get Updates</a> page.</p>
+    {% else %}
+      <h1>Something went wrong.</h1>
+      <p>We couldn't process that unsubscribe request right now — please try again shortly, or reply to any of our emails and we'll take care of it directly.</p>
+    {% endif %}
+  </main>
+{% endblock %}

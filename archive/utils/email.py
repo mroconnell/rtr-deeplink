@@ -18,6 +18,7 @@ copy added too (see the render.yaml task this was built alongside).
 import html
 import logging
 import os
+from urllib.parse import quote
 
 import aiohttp
 
@@ -36,6 +37,33 @@ def _audience_id() -> str:
 
 def _headers() -> dict:
     return {"Authorization": f"Bearer {_api_key()}", "Content-Type": "application/json"}
+
+
+def _unsubscribe_footer_html(to: str) -> str:
+    """Real, working one-click unsubscribe link on every email this module
+    sends -- per Resend's own deliverability guidance (a missing opt-out
+    path hurts sender reputation across *all* sends from a domain, not
+    just "true" marketing ones), added 2026-08-10 alongside switching
+    RESEND_FROM_ADDRESS off a noreply@ address for the same reason (see
+    that guidance's own "don't use noreply" section). Points at a new
+    GET /unsubscribe route on the *resolver* (app/main.py, not this
+    service) -- matches /confirm-transcription's existing precedent of
+    living there rather than here, since the resolver owns the public
+    domain this link needs to work from a plain email click, and already
+    has its own direct Resend credentials (see /api/newsletter/signup).
+    No login, no confirmation step, matching CAN-SPAM's one-click
+    requirement. Returns "" (no footer at all) when
+    PUBLIC_BASE_URL isn't set -- local dev has no real public URL to
+    build a working link from.
+    """
+    base = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
+    if not base:
+        return ""
+    unsubscribe_url = f"{base}/unsubscribe?email={quote(to)}"
+    return (
+        f'<p style="margin-top:24px;font-size:12px;color:#999;">'
+        f'<a href="{unsubscribe_url}" style="color:#999;">Unsubscribe</a> from future emails.</p>'
+    )
 
 
 async def is_configured() -> bool:
@@ -103,6 +131,12 @@ async def _send(to: str, subject: str, html: str) -> bool:
     if not api_key or not from_address:
         logger.error("Transactional email send attempted but RESEND_API_KEY/RESEND_FROM_ADDRESS isn't configured.")
         return False
+
+    # Appended centrally, once, here -- rather than at each of the four
+    # send_*() call sites below -- so "every email this module sends gets
+    # a real unsubscribe link" is guaranteed structurally, not dependent
+    # on remembering to add it correctly at each new email built later.
+    html = html + _unsubscribe_footer_html(to)
 
     try:
         async with aiohttp.ClientSession() as session:

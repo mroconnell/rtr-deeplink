@@ -392,6 +392,38 @@ class NewsletterSignupRequest(BaseModel):
     email: str
 
 
+async def _resend_audience_upsert(email: str, *, unsubscribed: bool) -> Optional[bool]:
+    """Shared POST to Resend's audience-contacts endpoint (upserts by
+    email) -- used for both newsletter signup (unsubscribed=False) and
+    the /unsubscribe route below (unsubscribed=True), which is where the
+    footer link every archive/utils/email.py send now includes actually
+    lands (that module builds the link but has no Resend-write call of
+    its own for it -- this is the only place the actual unsubscribe
+    write happens). Returns True/False on a real response, None if
+    Resend isn't configured at all (caller decides how to surface that).
+    """
+    api_key = os.environ.get("RESEND_API_KEY", "")
+    audience_id = os.environ.get("RESEND_AUDIENCE_ID", "")
+    if not api_key or not audience_id:
+        return None
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"https://api.resend.com/audiences/{audience_id}/contacts",
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                json={"email": email, "unsubscribed": unsubscribed},
+                timeout=aiohttp.ClientTimeout(total=10),
+            ) as response:
+                if response.status < 300:
+                    return True
+                logger.error("Resend audience upsert failed (%s): %s", response.status, await response.text())
+                return False
+    except Exception:
+        logger.exception("Resend audience upsert request failed.")
+        return False
+
+
 @app.post("/api/newsletter/signup")
 async def newsletter_signup(req: NewsletterSignupRequest):
     email = req.email.strip()
@@ -401,36 +433,35 @@ async def newsletter_signup(req: NewsletterSignupRequest):
             status_code=400,
         )
 
-    api_key = os.environ.get("RESEND_API_KEY", "")
-    audience_id = os.environ.get("RESEND_AUDIENCE_ID", "")
-    if not api_key or not audience_id:
+    ok = await _resend_audience_upsert(email, unsubscribed=False)
+    if ok is None:
         logger.error("Newsletter signup attempted but RESEND_API_KEY/RESEND_AUDIENCE_ID isn't configured.")
         return JSONResponse(
             {"error": "signup_unavailable", "message": "Signups aren't available right now — please try again later."},
             status_code=503,
         )
-
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                f"https://api.resend.com/audiences/{audience_id}/contacts",
-                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-                json={"email": email, "unsubscribed": False},
-                timeout=aiohttp.ClientTimeout(total=10),
-            ) as response:
-                if response.status < 300:
-                    return {"status": "subscribed"}
-                body_text = await response.text()
-                if "already" in body_text.lower():
-                    return {"status": "already_subscribed"}
-                logger.error("Resend signup failed (%s): %s", response.status, body_text)
-    except Exception:
-        logger.exception("Newsletter signup request to Resend failed.")
+    if ok:
+        return {"status": "subscribed"}
 
     return JSONResponse(
         {"error": "signup_failed", "message": "Something went wrong — please try again."},
         status_code=502,
     )
+
+
+@app.get("/unsubscribe")
+async def unsubscribe(request: Request, email: str = ""):
+    """One-click unsubscribe link, no login/confirmation step (CAN-SPAM's
+    requirement) -- appended to every email archive/utils/email.py sends
+    as of 2026-08-10, per Resend's own deliverability guidance flagging a
+    missing opt-out path as a real sender-reputation risk. GET, not POST,
+    since this is meant to work from a plain email link click.
+    """
+    ok = False
+    if email and _EMAIL_RE.match(email):
+        result = await _resend_audience_upsert(email, unsubscribed=True)
+        ok = bool(result)
+    return templates.TemplateResponse(request, "unsubscribed.html", {"unsubscribed": ok, "email": email})
 
 
 class ReportProblemRequest(BaseModel):
