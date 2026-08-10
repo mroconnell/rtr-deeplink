@@ -157,7 +157,15 @@ class LegistarAssetFinder(AssetFinder):
         if page_info:
             if LegistarAssetFinder._looks_like_raw_filename(resolved.title) or not resolved.title:
                 resolved.title = page_info["title"]
-            resolved.jurisdiction = resolved.jurisdiction or page_info["jurisdiction"]
+            # Prefers page_info's jurisdiction outright here, not just as a
+            # fallback for an empty one (unlike the primary a.videolink
+            # delegation path above, left as-is) -- real bug confirmed live
+            # 2026-08-10 (Baltimore): a delegated YouTube video's own
+            # `uploader` field ("CharmTV Citizens' Hub", a TV station/
+            # channel name) is real data, not empty, but still the wrong
+            # answer to "what jurisdiction is this" -- Legistar's own page
+            # is the more authoritative source whenever it has one.
+            resolved.jurisdiction = page_info["jurisdiction"] or resolved.jurisdiction
             resolved.date = resolved.date or page_info["date"]
         return resolved
 
@@ -213,9 +221,21 @@ class LegistarAssetFinder(AssetFinder):
 
     @staticmethod
     def _extract_page_meeting_info(soup: BeautifulSoup) -> Optional[dict]:
-        if not soup.title:
+        text = soup.title.get_text(" ", strip=True) if soup.title else None
+        if not text or not _PAGE_TITLE_RE.match(text):
+            # Real gap confirmed live 2026-08-10: Baltimore's Legistar
+            # instance leaves <title> completely empty, unlike NYC's --
+            # but the identical "{jurisdiction} - Meeting of {body} on
+            # {date} at {time}" text is still present in the page's own
+            # RSS <link> tag, a standard Legistar template element
+            # (confirmed present regardless of whether <title> itself is
+            # populated), not something NYC-specific.
+            rss_link = soup.select_one('link[rel="alternate"][type="application/rss+xml"]')
+            if rss_link and rss_link.get("title"):
+                text = rss_link["title"]
+        if not text:
             return None
-        match = _PAGE_TITLE_RE.match(soup.title.get_text(" ", strip=True))
+        match = _PAGE_TITLE_RE.match(text)
         if not match:
             return None
         jurisdiction = match.group(1).strip()

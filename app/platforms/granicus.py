@@ -22,6 +22,27 @@ from ..utils.vtt_parser import (
 
 TARGET_LANGUAGE = "en"
 
+# Real bug confirmed live 2026-08-10 (Memphis, TN, clip 9789): the page's
+# own body text has no date for *this* meeting anywhere, but does have
+# "V. APPROVAL OF PREVIOUS MEETING MINUTES (December 5, 2023)" -- a
+# standard agenda item referencing the *prior* meeting's date, which the
+# body-text date scan below previously grabbed as if it were this
+# meeting's own date (wrong by 14 days: the real date was December 19,
+# 2023). A wrong date is worse than a missing one, so this is stripped
+# out before date-parsing gets a chance to match inside it -- confirmed
+# via the same real page that no OTHER date-shaped text exists there at
+# all, so the fix correctly turns a wrong date into an honest missing one
+# (matching how a different real Memphis clip with no date-shaped text
+# anywhere, 10031, already came through with date=None), not a different
+# wrong guess. Deliberately scoped to a parenthetical right after
+# "previous/prior/last meeting" (the exact real shape confirmed) rather
+# than a loose N-character window -- a wider window risks eating a real,
+# unrelated date that happens to follow shortly after on some other
+# page's differently-worded text.
+_PREVIOUS_MEETING_DATE_RE = re.compile(
+    r"(?:previous|prior|last)\s+meeting[^()]{0,40}\([^)]{0,40}\)", re.IGNORECASE
+)
+
 # Governing-body keywords used to decide whether the RSS channel title's
 # second half ("City Council", "New View", "All City Dockets", ...) is
 # worth appending to a page-scraped title that doesn't already name a body,
@@ -121,6 +142,7 @@ class GranicusAssetFinder(AssetFinder):
             date = self._parse_date_string(title)
         if not date:
             body_text = soup.get_text(" ", strip=True)[:2000]
+            body_text = _PREVIOUS_MEETING_DATE_RE.sub("", body_text)
             date = self._parse_date_string(body_text)
 
         # "City of San Diego" in the page body is a more reliable jurisdiction
@@ -339,12 +361,23 @@ class GranicusAssetFinder(AssetFinder):
                 metadata["jurisdiction"] = channel_jurisdiction
             if not metadata["date"] and item_date:
                 metadata["date"] = item_date
+            if not metadata["date"] and clip_id:
+                # Real gap confirmed live 2026-08-10 (Memphis, TN clip
+                # 10031, "Parks & Environment"): no date anywhere on the
+                # page itself and not in the RSS feed either (an old-
+                # enough or otherwise-excluded item), but Granicus's own
+                # published Minutes document has the real date right at
+                # the top. Tried before the document-link-filename last
+                # resort below since this is real structured content, not
+                # a filename guess.
+                metadata["date"] = await self._fetch_minutes_date(session, final_url, clip_id)
             if not metadata["date"]:
-                # True last resort, tried only once page text and RSS have
-                # both failed -- confirmed real and needed on Alexandria,
-                # VA's Granicus pages (clip 6490), thin client-rendered
-                # shells with almost no static visible text and no view_id
-                # to cross-reference against an RSS feed either.
+                # True last resort, tried only once page text, RSS, and
+                # published minutes have all failed -- confirmed real and
+                # needed on Alexandria, VA's Granicus pages (clip 6490),
+                # thin client-rendered shells with almost no static
+                # visible text and no view_id to cross-reference against
+                # an RSS feed either.
                 metadata["date"] = self._extract_date_from_document_links(soup)
             title_has_body = metadata["title"] and any(
                 kw in metadata["title"].lower() for kw in GOVERNING_BODY_KEYWORDS
@@ -583,6 +616,52 @@ class GranicusAssetFinder(AssetFinder):
                 items.append((float(match.group(1)), title))
 
         return items, (None if items else final_url)
+
+    @staticmethod
+    async def _fetch_minutes_date(
+        session: aiohttp.ClientSession, page_url: str, clip_id: str
+    ) -> Optional[str]:
+        """Granicus's own Minutes-viewer feature (MinutesViewer.php), when a
+        customer has published minutes for this specific meeting, is a
+        real, plain HTTP-fetchable page (no headless browser needed --
+        unlike the player page's own "Minutes" tab, which loads this same
+        content into an iframe via JS the user has to click, confirmed
+        live 2026-08-10) with the real meeting date right at the top.
+        Confirmed on a real Memphis, TN clip (10031, "Parks & Environment")
+        that had no date-shaped text anywhere else at all: MinutesViewer.
+        php's own text opens with "MINUTES / COUNCIL COMMITTEE MEETING /
+        CITY OF MEMPHIS / July 23, 2024".
+
+        Requires both clip_id and view_id (unlike AgendaViewer.php, which
+        only needs clip_id) -- matches the query string Granicus's own
+        player page uses to embed this content.
+
+        `allow_redirects=False` deliberately -- confirmed live on a
+        second real Memphis clip (9789) with no published minutes: this
+        endpoint 302-redirects to a raw scanned PDF (binary content, not
+        real HTML text) rather than 404ing. Treating a redirect the same
+        as any other failure (no minutes available) avoids ever handing
+        binary PDF bytes to BeautifulSoup.
+        """
+        query = parse_qs(urlparse(page_url).query)
+        view_id = query.get("view_id", [None])[0]
+        if not view_id:
+            return None
+        domain = urlparse(page_url).netloc
+        minutes_url = f"https://{domain}/MinutesViewer.php?clip_id={clip_id}&view_id={view_id}&embedded=1"
+        try:
+            async with session.get(
+                minutes_url, timeout=aiohttp.ClientTimeout(total=15), allow_redirects=False
+            ) as response:
+                if response.status != 200:
+                    return None
+                html = await response.text()
+        except Exception:
+            return None
+
+        text = BeautifulSoup(html, "html.parser").get_text(" ", strip=True)[:1000]
+        text = _PREVIOUS_MEETING_DATE_RE.sub("", text)
+        return GranicusAssetFinder._parse_date_string(text)
 
     @staticmethod
     async def _fetch_channel_info(

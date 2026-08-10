@@ -1,3 +1,5 @@
+from bs4 import BeautifulSoup
+
 from app.platforms.granicus import GranicusAssetFinder
 
 from aiohttp_mock import FakeResponse, mock_session
@@ -261,3 +263,94 @@ def test_extract_clip_id_handles_all_url_shapes():
     assert extract("https://city.granicus.com/videos/5361/") == "5361"
     assert extract("https://city.granicus.com/MediaPlayer.php?clip_id=789&view_id=1") == "789"
     assert extract("https://city.granicus.com/AboutUs.php") is None
+
+
+def test_extract_metadata_ignores_previous_meeting_date_reference():
+    # Real bug confirmed live 2026-08-10: Memphis, TN clip 9789. The
+    # page's own body text has no date for *this* meeting anywhere, but
+    # does have "V. APPROVAL OF PREVIOUS MEETING MINUTES (December 5,
+    # 2023)" -- a standard agenda item referencing the *prior* meeting's
+    # date. Body-text date parsing previously grabbed that as if it were
+    # this meeting's own date -- wrong by 14 days (the real date was
+    # December 19, 2023, confirmed by the user directly; it isn't present
+    # anywhere in this page's own text at all, so the fix here is an
+    # honest missing date, not a different guess).
+    html = (
+        "<html><body><h1>City Council Full Meeting</h1>"
+        "<div>V. APPROVAL OF PREVIOUS MEETING MINUTES (December 5, 2023)</div>"
+        "</body></html>"
+    )
+    soup = BeautifulSoup(html, "html.parser")
+    metadata = GranicusAssetFinder()._extract_metadata(soup, "https://memphis.granicus.com/player/clip/9789")
+    assert metadata["date"] is None
+
+
+def test_extract_metadata_still_finds_a_real_date_elsewhere_on_the_page():
+    # Confirms the previous-meeting exclusion doesn't just blanket-suppress
+    # every date on the page -- a real, unrelated date elsewhere should
+    # still be found normally.
+    html = (
+        "<html><body><h1>City Council Full Meeting</h1>"
+        "<div>V. APPROVAL OF PREVIOUS MEETING MINUTES (December 5, 2023)</div>"
+        "<div>Meeting held on December 19, 2023</div>"
+        "</body></html>"
+    )
+    soup = BeautifulSoup(html, "html.parser")
+    metadata = GranicusAssetFinder()._extract_metadata(soup, "https://memphis.granicus.com/player/clip/9789")
+    assert metadata["date"] == "2023-12-19"
+
+
+async def test_resolve_finds_date_from_minutes_viewer_when_nothing_else_has_one():
+    # Real gap confirmed live 2026-08-10: Memphis, TN clip 10031 ("Parks &
+    # Environment") has no date anywhere on the page itself and none in
+    # the RSS feed either, but Granicus's own published Minutes document
+    # (MinutesViewer.php) -- a real, plain HTTP-fetchable page, no
+    # headless browser needed -- has the real date right at the top:
+    # "MINUTES / COUNCIL COMMITTEE MEETING / CITY OF MEMPHIS / July 23,
+    # 2024".
+    url = "https://memphis.granicus.com/player/clip/10031?view_id=6&redirect=true"
+    html = load_fixture("granicus", "napacity_clip3450.html").replace(
+        "Bicycle and Pedestrian Advisory Commission", "Parks & Environment"
+    )
+    minutes_url = "https://memphis.granicus.com/MinutesViewer.php?clip_id=10031&view_id=6&embedded=1"
+    minutes_html = (
+        "<html><body>MINUTES COUNCIL COMMITTEE MEETING CITY OF MEMPHIS July 23, 2024 "
+        "ROLLCALL: Easter-Thomas, Ford</body></html>"
+    )
+
+    routes = {
+        url: FakeResponse(status=200, text=html, url=url),
+        minutes_url: FakeResponse(status=200, text=minutes_html, url=minutes_url),
+        "https://memphis.granicus.com/videos/10031/captions.vtt": FakeResponse(status=404),
+        "https://memphis.granicus.com/AgendaViewer.php?clip_id=10031&embedded=1": FakeResponse(status=404),
+    }
+
+    with mock_session(routes):
+        result = await GranicusAssetFinder().resolve(url)
+
+    assert result.date == "2024-07-23"
+
+
+async def test_resolve_minutes_viewer_redirect_treated_as_no_minutes_not_crash():
+    # Real case confirmed live 2026-08-10: a different real Memphis clip
+    # (9789) with no published minutes -- MinutesViewer.php 302-redirects
+    # to a raw scanned PDF (binary content) rather than 404ing.
+    # allow_redirects=False means this comes back as a 302 to the mock,
+    # never actually fetching or trying to parse the PDF as HTML.
+    url = "https://memphis.granicus.com/player/clip/9789?view_id=6&redirect=true"
+    html = load_fixture("granicus", "napacity_clip3450.html").replace(
+        "Bicycle and Pedestrian Advisory Commission", "City Council Full Meeting"
+    )
+    minutes_url = "https://memphis.granicus.com/MinutesViewer.php?clip_id=9789&view_id=6&embedded=1"
+
+    routes = {
+        url: FakeResponse(status=200, text=html, url=url),
+        minutes_url: FakeResponse(status=302, text="", url=minutes_url),
+        "https://memphis.granicus.com/videos/9789/captions.vtt": FakeResponse(status=404),
+        "https://memphis.granicus.com/AgendaViewer.php?clip_id=9789&embedded=1": FakeResponse(status=404),
+    }
+
+    with mock_session(routes):
+        result = await GranicusAssetFinder().resolve(url)
+
+    assert result.date is None

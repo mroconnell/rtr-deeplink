@@ -8,6 +8,75 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-10] Fixed two real, user-caught data-quality bugs from
+  the bulk-ingest batches: a wrong Legistar jurisdiction and a wrong
+  Granicus date, plus a genuinely new date source (Granicus's own
+  Minutes documents).**
+
+  **Legistar jurisdiction**: Baltimore showed "CharmTV Citizens' Hub"
+  (a YouTube channel/uploader name) instead of "City of Baltimore".
+  Root cause was two separate bugs stacked: (1) `_extract_page_meeting_
+  info()` only ever checked `<title>`, empty on Baltimore's page (unlike
+  NYC's, which has the real info there) — but the identical "{jurisdiction}
+  - Meeting of {body} on {date} at {time}" text is present in the page's
+  own RSS `<link rel="alternate" type="application/rss+xml">` tag, a
+  standard Legistar template element, confirmed present regardless of
+  whether `<title>` itself is populated. (2) Even once found, the
+  fallback path's jurisdiction override (`resolved.jurisdiction or
+  page_info["jurisdiction"]`) only ever filled in an *empty* value —
+  YouTube's uploader field wasn't empty, just wrong, so it never lost to
+  page_info. Flipped the priority in the fallback path specifically
+  (`page_info["jurisdiction"] or resolved.jurisdiction` — page_info wins
+  outright when available) since Legistar's own official page is more
+  authoritative than an arbitrary delegated platform's guess; left the
+  primary, long-established `a.videolink` delegation path's own priority
+  order untouched, out of caution.
+
+  **Granicus date, wrong not missing**: a real Memphis, TN meeting
+  (clip 9789) showed 2023-12-05 when the real date was 2023-12-19 (confirmed
+  directly by the user). Root cause: the page's own body text has "V.
+  APPROVAL OF PREVIOUS MEETING MINUTES (December 5, 2023)" — a standard
+  agenda item referencing the *prior* meeting's date — which body-text
+  date parsing grabbed as if it were this meeting's own. Fixed by
+  stripping any `(previous|prior|last) meeting ... (parenthetical date)`
+  match before date-parsing gets a chance to match inside it (scoped
+  tightly to a parenthetical right after the phrase, not a loose
+  character window, after an early version's test caught it eating a
+  second, legitimate date too broadly). Confirmed via the real page that
+  no other date-shaped text exists there at all, so the fix correctly
+  turns a wrong date into an honest missing one, not a different wrong
+  guess.
+
+  **New date source found live**: investigating a second real Memphis
+  clip (10031, "Parks & Environment", date silently missing rather than
+  wrong) led to discovering Granicus's own Minutes-viewer feature
+  (`MinutesViewer.php?clip_id=...&view_id=...`) — a real, plain HTTP-
+  fetchable page (no headless browser needed, unlike the player page's
+  own JS-driven "Minutes" tab click) with the real meeting date right at
+  the top when a customer has published minutes for that meeting. Added
+  `_fetch_minutes_date()`, tried after RSS but before the document-link-
+  filename last resort. `allow_redirects=False` deliberately — confirmed
+  live that clip 9789 (no published minutes) 302-redirects this same
+  endpoint to a raw scanned PDF rather than 404ing; treating any redirect
+  as "no minutes available" avoids ever handing binary PDF bytes to
+  BeautifulSoup.
+
+  **Real gap in the fix-and-forget flow, caught mid-correction**: neither
+  bug's already-published Archive page got fixed by simply re-resolving
+  the URL — `archive/db/crud.py`'s "keep page fields fresh" update logic
+  (`page.date = payload.get("date") or page.date`) only ever *fills in* a
+  previously-empty field, deliberately never clears/overwrites an
+  existing (even if wrong) one, to protect against a later bad resolve
+  erasing good data. Correcting Memphis's already-wrong date needed a
+  direct one-off database correction (run by the user via Render's
+  Postgres shell for the `rtr-deeplink-archive` service specifically);
+  Baltimore turned out not to need one at all, since the original blank-
+  page visit (before the Legistar fix existed) never found a video, so
+  nothing had met the "worth archiving" bar to get pushed in the first
+  place. The Parks & Environment page's previously-empty date *did* get
+  filled in correctly by a normal re-ingest, once `_fetch_minutes_date()`
+  gave it something to find.
+
 - **[Done 2026-08-10] Legistar now falls back to a broader link scan when
   its own `a.videolink` pattern finds nothing, extracted into a shared,
   reusable function alongside the generic fallback's identical need.**

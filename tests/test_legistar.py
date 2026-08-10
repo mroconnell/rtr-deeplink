@@ -266,6 +266,22 @@ def test_extract_page_meeting_info_returns_none_without_matching_title():
     assert LegistarAssetFinder._extract_page_meeting_info(unrelated_title_soup) is None
 
 
+def test_extract_page_meeting_info_falls_back_to_rss_link_when_title_empty():
+    from bs4 import BeautifulSoup
+
+    # Real shape confirmed live 2026-08-10: Baltimore's Legistar instance.
+    soup = BeautifulSoup(
+        '<head><title></title><link rel="alternate" type="application/rss+xml" '
+        'title="City of Baltimore - Meeting of Baltimore City Council on 10/20/2025 at 5:00 PM" /></head>',
+        "html.parser",
+    )
+    assert LegistarAssetFinder._extract_page_meeting_info(soup) == {
+        "title": "Baltimore City Council",
+        "jurisdiction": "City of Baltimore",
+        "date": "2025-10-20",
+    }
+
+
 def test_looks_like_raw_filename_matches_real_viebit_title():
     assert LegistarAssetFinder._looks_like_raw_filename("NYCC-250-8-2_251218-120823.mp4")
     assert not LegistarAssetFinder._looks_like_raw_filename("Committee on Finance")
@@ -311,6 +327,41 @@ async def test_falls_back_to_a_plain_youtube_link_when_no_videolink_found(monkey
     # source_url stays the original Legistar page, not youtu.be -- same
     # convention every other delegation in this file already follows.
     assert result.source_url == url
+
+
+async def test_fallback_extracts_jurisdiction_from_empty_title_via_rss_link(monkeypatch):
+    # Real bug confirmed live 2026-08-10: Baltimore's Legistar instance
+    # leaves <title> completely empty (unlike NYC's, which has the real
+    # info directly in <title>) -- but the identical "{jurisdiction} -
+    # Meeting of {body} on {date} at {time}" text is present in the
+    # page's own RSS <link> tag, a standard Legistar template element.
+    # Without this, jurisdiction fell through to YouTube's own uploader
+    # field ("CharmTV Citizens' Hub", a real but wrong answer to "what
+    # jurisdiction is this").
+    url = "https://baltimore.legistar.com/MeetingDetail.aspx?ID=1"
+    html = (
+        '<html><head><title></title>'
+        '<link rel="alternate" type="application/rss+xml" '
+        'title="City of Baltimore - Meeting of Baltimore City Council on 10/20/2025 at 5:00 PM" />'
+        "</head><body><table><tr><td>Attachments</td></tr></table>"
+        '<a href="https://youtu.be/dQw4w9WgXcQ">Recording</a></body></html>'
+    )
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    def _fake_extract_info(video_id):
+        return {"title": "City Council Hearing", "uploader": "CharmTV Citizens' Hub", "upload_date": "20251020"}
+
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _fake_extract_info)
+
+    with mock_session(routes):
+        result = await LegistarAssetFinder().resolve(url)
+
+    # Legistar's own page wins over YouTube's real-but-wrong uploader
+    # field, even though that field wasn't empty -- the fallback path's
+    # jurisdiction override is unconditional when page_info has one,
+    # unlike the primary a.videolink delegation path.
+    assert result.jurisdiction == "City of Baltimore"
+    assert result.date == "2025-10-20"
 
 
 async def test_falls_back_to_a_plain_granicus_link_when_no_videolink_found():
