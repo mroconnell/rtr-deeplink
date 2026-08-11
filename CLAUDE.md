@@ -8,11 +8,22 @@ demand and render them together. There's now an optional database
 narrow in scope to avoid reintroducing round 1's Mongo/NextAuth
 complexity — it holds no user-facing state today, and the app still works
 with zero persistence if it's unset or unreachable. See README's
-"Caching and reporting" section for how it works. Accounts are on the
-roadmap (see BACKLOG.md's "Archive roadmap" section) — round 1's mistake
-was building full auth/accounts before validating the core deep-link
-feature, not that accounts themselves were wrong, so revisit this
-section's framing once that work actually starts.
+"Caching and reporting" section for how it works.
+
+**Accounts shipped 2026-08-11 and are live in production** — Clerk-based
+sign-in plus saving meetings/searches to your own account, see README's
+"Accounts (Clerk)" section for the full architecture. Round 1's mistake
+was building full auth/accounts *before validating the core deep-link
+feature*, not that accounts themselves were wrong — this repo's own
+phase-1 accounts work only started once the core resolve/transcript/
+Archive features were already built, tested, and live, and even then
+stayed deliberately narrow (accounts + saved items only, via Clerk rather
+than a hand-rolled session system, holding zero user PII in this app's
+own database). See `BACKLOG.md`'s "Accounts + token billing" section for
+what's still ahead (profiles, saved-search alert emails, billing) and
+`BACKLOG_DONE.md`'s "Clerk production cutover" entry for the real
+incidents hit switching from a Clerk development instance to production —
+worth reading before ever touching Clerk env vars/DNS again.
 
 **See `README.md` for architecture, the resolve flow, supported platforms,
 and frontend features.** This file covers conventions and context specific

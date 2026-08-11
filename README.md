@@ -585,6 +585,122 @@ diarization pass (self-hosted `faster-whisper` is the same base WhisperX
 already builds real diarization on top of, via `pyannote.audio`) doesn't
 need its own schema change later.
 
+## Accounts (Clerk)
+
+Shipped 2026-08-11, phase 1: sign in and save meetings/searches to your
+own account. Deliberately narrow scope — no public profile pages, no
+posts/reposts, no billing yet (see `BACKLOG.md`'s "Accounts + token
+billing" section for what's still ahead). A hard non-goal, tested for:
+**nothing that worked anonymously before this shipped requires an account
+now** — browsing, searching, watching a meeting, and reading a transcript
+are all completely unaffected by whether you're signed in. The only new,
+purely additive things a signed-in visitor sees are a "Save this
+meeting"/"Save this search" button, a bookmark icon by the meeting title,
+a "My Saved Items" nav link, and a user avatar.
+
+**Why Clerk, not a hand-rolled session system.** The user explicitly chose
+a third-party auth provider over building/maintaining login, sessions, and
+password security by hand ("I'm kind of leaning away from becoming a
+security expert" — see `BACKLOG.md` for the full tradeoff discussion).
+Clerk also gives a real privacy-posture improvement as a side effect: this
+app's own database **never stores an email address, name, or any other
+PII for an account** — only Clerk's opaque user id (e.g. `user_2abc...`).
+Clerk holds the actual identity data; this app just remembers what that id
+saved.
+
+**Architecture.** Clerk issues a signed session JWT in a `__session`
+cookie on the shared public domain. Both services verify it **locally and
+independently** — no session table, no per-request DB lookup, no
+cross-service "who owns this session" problem:
+- `app/utils/clerk_auth.py` / `archive/utils/clerk_auth.py` (deliberately
+  duplicated, same reasoning as this repo's other cross-service
+  duplication) — `get_clerk_user_id(request)` returns the signed-in
+  visitor's Clerk user id or `None`, never raises, and returns `None`
+  immediately (no verification work at all) whenever `CLERK_SECRET_KEY`
+  isn't set or there's no session cookie/Authorization header present —
+  so a Clerk outage or missing config degrades to "everyone looks signed
+  out," never a broken page. `clerk_frontend_api_url(publishable_key)`
+  derives Clerk's per-account "Frontend API" domain from the publishable
+  key itself (matching Clerk's own `@clerk/shared` `parsePublishableKey`),
+  so the ClerkJS script tag can be built without a hand-copied snippet.
+- `shared_static/clerk_nav.js` — loads ClerkJS via a CDN script tag (using
+  that derived Frontend API domain), mounts the nav's sign-in link/user
+  avatar, and exposes `window.RTRClerk` for other page scripts. Entirely
+  client-side and entirely optional: if `CLERK_PUBLISHABLE_KEY` isn't set,
+  this does nothing at all, no script load attempted.
+- **Cookie forwarding through the reverse proxy**: `/meetings`, `/m/*`,
+  and `/account/saved` are all rendered by the Archive service but
+  reached through the resolver's proxy (see "Permanent pages (the
+  Archive)" above) — `app/archive_client.py`'s `proxy_get()` forwards the
+  incoming request's raw `Cookie` header to Archive on exactly these three
+  routes (not static assets/sitemap/feed, which don't need it), so Archive
+  can verify the session itself with zero extra network round-trip.
+
+**Data model.** One new table, `SavedItem` (`archive/db/models.py`) — it
+lives in Archive's database (not the resolver's), since it needs a real
+same-database foreign key to `MeetingPage.id`. Columns: `clerk_user_id`
+(indexed, opaque — never an email), `item_type` (`saved_meeting` /
+`saved_search`), `meeting_page_id` (nullable FK, set only for
+`saved_meeting`), `search_params` (nullable JSON — the same filter dict
+`/meetings` already accepts, set only for `saved_search`), `created_at`.
+Unsaving is a hard delete; no soft-delete/undo.
+
+**Routes:**
+- Resolver: `POST /api/account/save-meeting` / `unsave-meeting` /
+  `save-search` / `unsave-search` (public, 401 `not_logged_in` if no
+  valid session) — each verifies the session locally, then calls a
+  bearer-gated `/internal/account/*` route on Archive with the
+  **already-verified** `clerk_user_id`, the same trust pattern every other
+  resolver→Archive internal call already uses. `POST /api/clerk/webhook`
+  handles Clerk's `user.created` (auto-subscribes the address to the
+  Resend newsletter audience, sends the "Thanks" email — see "Lifecycle
+  emails" below) and `user.deleted` (purges the account's `SavedItem` rows
+  — the right-to-deletion story on this app's side, since it stores no
+  other PII for an account at all). Verified via `svix` before trusting
+  anything in the payload.
+- Archive: the bearer-gated `/internal/account/*` counterparts, plus
+  `GET /account/saved` (the "My Saved Items" page — a friendly "sign in to
+  save things" state for an anonymous visitor, not an error).
+
+**Lifecycle emails.** Five of the six emails from rtr-business's
+`marketing/LIFECYCLE_EMAILS.md` (approved copy/voice) are live: "Thanks"
+(account created), "Welcome" (newsletter-only signup), "Goodbye for now"
+(unsubscribed), a branded "Your transcript's ready" (rewrite of the
+existing completion email, keeping its AI-transcript disclaimer), and "We
+couldn't cook this one" (new — fires when a transcription job gives up
+after repeated chunk failures). The resolver gained its own transactional
+Resend-send capability for this (`app/main.py`'s `_resend_send()` +
+branded template, duplicated from `archive/utils/email.py`'s equivalent)
+— previously it only ever upserted Resend audience contacts. **Not yet
+built**: saved-search alert emails (the doc's sixth entry, "People are
+talking about…") — a real new feature (match detection + a per-alert
+unsubscribe token), tracked separately in `BACKLOG.md`.
+
+**Env vars** — see `.env.example` / `archive/.env.example` for the full,
+current list and setup notes. `CLERK_PUBLISHABLE_KEY` + `CLERK_SECRET_KEY`
+on both services; `CLERK_JWT_KEY` (optional — **leave it blank unless you
+have a specific reason not to**, see the env file's comment for why a
+malformed value here is strictly worse than an absent one);
+`CLERK_WEBHOOK_SIGNING_SECRET` on the resolver only;
+`RESEND_FROM_ADDRESS`/`RESEND_REPLY_TO_ADDRESS` newly needed on the
+resolver as of this feature.
+
+**Real incidents from the production cutover** (dev instance → real
+Clerk production instance, custom-domain DNS, a new webhook) — all found
+live and now fixed, full writeup in `BACKLOG_DONE.md`'s "Clerk production
+cutover" entry: a base64-padding bug in `clerk_frontend_api_url()` that
+disabled Clerk site-wide, a CSS-specificity bug that left a stray nav
+divider visible when signed in, and a malformed `CLERK_JWT_KEY` that
+silently made every signed-in visitor look signed out server-side while
+looking completely normal client-side. Worth reading in full before
+touching Clerk env vars/DNS again.
+
+**Deliberately deferred, not yet verified end to end**: the
+`user.deleted` webhook → `SavedItem` purge (the right-to-deletion
+cascade) has unit test coverage but has never actually been fired for
+real against a deleted Clerk account. See `BACKLOG.md` for the user's
+explicit call on this.
+
 ## Supported platforms
 
 Most local governments don't build their own video/meeting-minutes
@@ -720,10 +836,17 @@ app/
   main.py                 FastAPI app: routes, adapter registration,
                            /api/resolve's cache-check + logging (rate
                            limited via slowapi), /api/report-problem,
-                           /admin/*, /robots.txt, and the /m/*,
-                           /archive-static/*, /meetings, /sitemap.xml,
-                           /feed.xml Archive proxy routes
+                           /admin/*, /robots.txt, the /m/*,
+                           /archive-static/*, /meetings, /account/saved,
+                           /sitemap.xml, /feed.xml Archive proxy routes,
+                           /api/newsletter/signup, /unsubscribe, the
+                           accounts routes (/api/account/*,
+                           /api/clerk/webhook) and their three
+                           lifecycle-triggered emails -- see "Accounts
+                           (Clerk)" above
   archive_client.py        lookup()/push() to the Archive + proxy_get()
+                           (cookie-forwarding for auth-aware pages) +
+                           the /internal/account/* wrappers
   db/
     engine.py              DATABASE_URL (falls back to local SQLite) +
                            async engine/session
@@ -753,7 +876,11 @@ app/
                            fetching adapter goes through (see "Supported
                            platforms"'s "Caption format handling" note)
   utils/url_normalize.py   normalize_url() — the cache/log dedup key
-  templates/base.html      shared layout (nav, brand, manifest/favicon link)
+  utils/clerk_auth.py      get_clerk_user_id()/clerk_frontend_api_url() --
+                           see "Accounts (Clerk)" above; deliberately
+                           duplicated in archive/utils/clerk_auth.py
+  templates/base.html      shared layout (nav, brand, manifest/favicon
+                           link, Clerk sign-in link/nav slot)
   templates/index.html     URL input page
   templates/meeting.html   video + transcript page shell
   templates/about.html     about page
@@ -772,22 +899,29 @@ archive/
   main.py                 FastAPI app: /internal/lookup, /internal/ingest,
                            /internal/transcription/* (all token-gated),
                            /m/{slug}, /m/{slug}/transcript.{txt,srt},
-                           /meetings, /sitemap.xml, /feed.xml, /api/health
+                           /meetings, /sitemap.xml, /feed.xml, /api/health,
+                           /account/saved, and the token-gated
+                           /internal/account/* routes -- see "Accounts
+                           (Clerk)" above
   db/
     engine.py              own DATABASE_URL resolution + local SQLite
                            fallback (archive_dev.db -- never shares the
                            resolver's dev.db)
     models.py               MeetingPage, TranscriptVersion,
                            MeetingPageUrlAlias, TranscriptionJob (see "On-
-                           demand transcription" above)
+                           demand transcription" above), SavedItem (see
+                           "Accounts (Clerk)" above)
     crud.py                  identity matching/dedup, slug generation,
                            content-hash version dedup, list_pages()
                            (paginated + filtered, backs /meetings),
                            list_all_page_slugs() (backs /sitemap.xml),
                            list_recent_pages_for_feed() (backs /feed.xml),
                            the TranscriptionJob lifecycle (create/claim/
-                           report/confirm/finalize) and
-                           promote_transcript_version()
+                           report/confirm/finalize),
+                           promote_transcript_version(), and the saved-
+                           items functions (save/unsave meeting/search,
+                           list_saved_items, delete_account_data -- the
+                           right-to-deletion cascade)
   utils/
     slugify.py               slug generation
     search.py                 keyword matching for list_pages() -- exact
@@ -805,24 +939,48 @@ archive/
                            a transcribed version's language (see "On-
                            demand transcription" above)
     email.py                  Resend integration: transactional sends
-                           (confirmation + transcription-complete) and an
-                           audience-membership check, neither of which
-                           existed before this feature -- see "On-demand
-                           transcription" above
+                           (confirmation, transcription-complete,
+                           transcription-failed) and an
+                           audience-membership check -- see "On-demand
+                           transcription" and "Accounts (Clerk)" above
+    clerk_auth.py             deliberate duplicate of
+                           app/utils/clerk_auth.py -- see "Accounts
+                           (Clerk)" above
   templates/
     meeting_page.html        SSR permanent page + transcript-version
                            picker (real content on first byte, for
                            crawlability -- not client-fetched JSON like
                            app/templates/meeting.html); also carries the
-                           schema.org VideoObject JSON-LD block and the
-                           "Report a problem" form
-    meeting_list.html         paginated index + search/filter form, plus
-                           an RSS autodiscovery link
+                           schema.org VideoObject JSON-LD block, the
+                           "Report a problem" form, and the "Save this
+                           meeting" button/bookmark icon
+    meeting_list.html         paginated index + search/filter form, an
+                           RSS autodiscovery link, and the "Save this
+                           search" button
+    saved_items.html          "My Saved Items" page -- see "Accounts
+                           (Clerk)" above
     sitemap.xml.jinja         sitemap.xml template
     feed.xml.jinja            feed.xml (RSS) template
   static/style.css          duplicated from app/static/style.css
   static/meeting_page.js    trimmed port of player.js's seek/highlight
-                           logic, wired onto already-rendered DOM
+                           logic, wired onto already-rendered DOM, plus
+                           the Save-this-meeting toggle
+  static/saved_items.js     unsave-button handlers on the saved-items page
+```
+
+`shared_static/` holds the handful of JS files identical between the
+resolver and Archive — both services mount it at `/shared-static` and
+serve the exact same files, rather than each keeping its own copy:
+
+```
+shared_static/
+  deep_link.js              the t=/line=/version= deep-link contract both
+                           app/static/player.js and
+                           archive/static/meeting_page.js depend on --
+                           see "Running tests" above for its own JS suite
+  clerk_nav.js               loads ClerkJS, mounts the nav sign-in
+                           link/user avatar, exposes window.RTRClerk --
+                           see "Accounts (Clerk)" above
 ```
 
 `worker/` is a third, independent service (own `requirements.txt`, own
@@ -866,5 +1024,8 @@ for the full, up-to-date list of open issues (completed
 fixes and their verification history have moved to `BACKLOG_DONE.md`,
 linked from there) — a few caption paths are shape-verified but not
 content-verified pending a real example, some metadata (Alexandria VA
-dates) can't be extracted at all, and there's no UI yet to pick between
-multiple caption language tracks when more than one exists.
+dates) can't be extracted at all, there's no UI yet to pick between
+multiple caption language tracks when more than one exists, and the
+account-deletion webhook's `SavedItem`-purge cascade has unit coverage
+but has never been fired against a real deleted Clerk account (see
+"Accounts (Clerk)" above).
