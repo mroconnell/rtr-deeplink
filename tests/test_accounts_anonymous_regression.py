@@ -79,6 +79,29 @@ def test_nav_has_no_clerk_elements_when_unconfigured(monkeypatch):
     assert 'id="clerk-sign-in-link"' not in response.text
 
 
+def test_nav_shows_signed_in_state_immediately_when_active_account_present(monkeypatch):
+    # Real bug fixed 2026-08-11, reported by the user against
+    # /account/saved: the nav used to always server-render "Sign in"
+    # regardless of a real server-side session, flashing it on every full
+    # page load before shared_static/clerk_nav.js corrected it client-side.
+    # active_account is already computed by every route base.html's nav
+    # now reads it from -- confirms the *initial* HTML picks the right
+    # state without needing any client-side JS to run first.
+    monkeypatch.setattr(archive.main, "get_clerk_user_id", lambda request: "user_test_nav")
+    response = archive_client_.get("/account/saved")
+    assert response.status_code == 200
+    assert '<a class="nav-link" href="#" id="clerk-sign-in-link" hidden>Sign in</a>' in response.text
+    assert '<span id="clerk-user-button"></span>' in response.text
+
+
+def test_nav_shows_signed_out_state_when_no_active_account(monkeypatch):
+    monkeypatch.setattr(archive.main, "get_clerk_user_id", lambda request: None)
+    response = archive_client_.get("/account/saved")
+    assert response.status_code == 200
+    assert '<a class="nav-link" href="#" id="clerk-sign-in-link">Sign in</a>' in response.text
+    assert '<span id="clerk-user-button" hidden></span>' in response.text
+
+
 def test_proxy_forwards_cookie_only_to_auth_aware_routes(monkeypatch):
     """The resolver's reverse proxy must pass the visitor's Cookie header
     through to Archive on /meetings and /m/{slug} (so Archive can verify

@@ -48,8 +48,25 @@
           </li>
           <li class="nav-divider d-none d-lg-block" aria-hidden="true"></li>
           <li class="nav-item">
-            <a class="nav-link" href="#" id="clerk-sign-in-link">Sign in</a>
-            <span id="clerk-user-button" hidden></span>
+            {#- Real bug fixed 2026-08-11, reported by the user against
+               /account/saved: this used to always server-render "Sign in"
+               visible-by-default regardless of active_account, so an
+               already-signed-in visitor saw a flash of "Sign in" on every
+               full page load/navigation until shared_static/clerk_nav.js
+               finished loading ClerkJS and corrected it client-side.
+               active_account (a real server-side Clerk session check via
+               get_clerk_user_id()) is already computed and passed into
+               context by every route that extends this template
+               (archive/main.py's meeting_page/meetings_index/
+               account_saved) -- picking the nav's *initial* rendered
+               state from it removes the flash for those routes entirely;
+               clerk_nav.js's own client-side check is left in place
+               unchanged, now only correcting a real sign-in/out
+               transition *after* load (or a route that doesn't pass
+               active_account at all, which still behaves exactly as
+               before). #}
+            <a class="nav-link" href="#" id="clerk-sign-in-link"{% if active_account %} hidden{% endif %}>Sign in</a>
+            <span id="clerk-user-button"{% if not active_account %} hidden{% endif %}></span>
           </li>
           {% endif %}
         </ul>
