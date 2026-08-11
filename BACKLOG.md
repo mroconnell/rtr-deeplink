@@ -472,29 +472,25 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   timing). Wired into Granicus, CA Legislature, Swagit, and CivicClerk.
   If any of these turns out to be common on a real platform, worth a real
   structured parser instead of the generic strip.
-- **ALL-CAPS transcript display — reported by the user 2026-08-11, but
-  this is only a partial gap, not a missing feature.** A real fix already
-  exists: `app/utils/vtt_parser.py:340-364`'s
+- **ALL-CAPS transcript display — reported by the user 2026-08-11.
+  Partial gap, not a missing feature; the fallback-format sub-gap is
+  fixed 2026-08-11 (see BACKLOG_DONE.md), one residual question left
+  open.** A real fix exists: `app/utils/vtt_parser.py`'s
   `normalize_shouting_caption()` re-cases an entire VTT/SRT/TTML track to
   sentence case, but only when its own "is this shouting" heuristic
   triggers (samples ≥40 alphabetic chars across the whole track, requires
-  a ≤2% lowercase ratio) — called from `parse_vtt()` (line 96, also
-  covers SRT via `parse_srt()`'s delegation to it) and `parse_ttml()`
-  (line 188). Rendering itself (`archive/templates/meeting_page.html:276`,
-  `{{ seg.text }}`) and storage (`archive/db/crud.py:267,310`, segments
-  stored verbatim into `TranscriptVersion.segments`) apply no casing
-  transform of their own — whatever `vtt_parser.py` already normalized is
-  exactly what's stored and shown, so this was always meant to be a
-  parse-time fix, not a template/CSS one, and largely already is one.
-  **The real, still-open gap**: `strip_unknown_caption_markup()`
-  (`vtt_parser.py:199-224` — the SBV/SUB/SMI/SAMI/plain-.txt fallback
-  described just above) never calls `normalize_shouting_caption()` at
-  all, so an ALL-CAPS transcript from one of those formats stays ALL
-  CAPS unconditionally. A real VTT/SRT/TTML track could also in principle
-  still slip through if it's shouting but doesn't clear the detection
-  heuristic's thresholds (mixed-case enough, or under the 40-letter
-  sample minimum) — worth checking against the specific transcript the
-  user actually saw before assuming which case this is.
+  a ≤2% lowercase ratio) — called from `parse_vtt()` (also covers SRT via
+  `parse_srt()`'s delegation to it) and `parse_ttml()`; as of 2026-08-11
+  the same check (factored into a shared `_normalize_shouting_text()`
+  helper) also runs on `strip_unknown_caption_markup()`'s
+  SBV/SUB/SMI/SAMI/plain-.txt fallback text, closing the gap this entry
+  originally flagged. **Still open**: a real VTT/SRT/TTML track could in
+  principle still slip through if it's shouting but doesn't clear the
+  detection heuristic's thresholds (mixed-case enough, or under the
+  40-letter sample minimum) — worth checking against the specific
+  transcript the user actually saw before assuming this is fully closed
+  for them; no report yet confirms which case (if either) their transcript
+  actually was.
 - **Literal `&gt;&gt;` (etc.) sometimes rendering as visible text instead
   of `>>` — reported by the user 2026-08-11; confirmed as a real,
   structurally-understood double-escaping bug, narrower than it might

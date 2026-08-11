@@ -457,6 +457,25 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-11] Applied ALL-CAPS re-casing to the
+  SBV/SUB/SMI/plain-.txt caption fallback, closing half of the
+  "ALL-CAPS transcript display" report (see BACKLOG.md for the still-open
+  half).** `normalize_shouting_caption()` (`app/utils/vtt_parser.py`)
+  only ever ran on structured (VTT/SRT/TTML) cue lists via
+  `parse_vtt()`/`parse_srt()`/`parse_ttml()` — `strip_unknown_caption_
+  markup()` (the SBV/SUB/SMI/SAMI/plain-.txt fallback) never called it at
+  all, so an ALL-CAPS track from one of those formats stayed ALL CAPS
+  unconditionally. Fix: extracted the shared shouting-detection/re-casing
+  check into a new `_normalize_shouting_text(text: str) -> str` helper
+  (same 40-letter-sample/≤2%-lowercase-ratio heuristic, same
+  `_sentence_case()`), called from both `normalize_shouting_caption()`
+  (cue-list callers, refactored to use it internally) and
+  `strip_unknown_caption_markup()`'s own plain-text return. Verified with
+  two new fixture-backed tests in `tests/test_vtt_parser.py`: a real
+  ALL-CAPS SBV-style sample correctly re-cases; a short (under the
+  40-letter minimum) ALL-CAPS sample stays untouched, matching
+  `normalize_shouting_caption()`'s own threshold behavior. Full suite
+  green (420 tests).
 - **[Done 2026-08-11] Fixed completion emails always rendering an empty
   transcript excerpt — a real bug hitting every single send.**
   `_job_dict()` (`archive/db/crud.py`) never included
