@@ -171,6 +171,24 @@ under everything else. This repo extracts and fixes just that part.
   branch just hasn't caught up to yet, not a real conflict; `git pull
   --rebase` handles the genuine case cleanly as long as your change and
   theirs touch different regions of the file.
+- **Never `grep`/`cat`/`Read` a gitignored file (`.env`, credentials,
+  anything matching `.gitignore`) with a pattern broad enough that a
+  secret's plaintext value could end up echoed into the conversation.**
+  Real incident, 2026-08-11: a `grep -n "DATABASE_URL\|ARCHIVE"` intended
+  to check whether `DATABASE_URL` was set also matched `.env`'s
+  `ARCHIVE_INGEST_TOKEN=...` line and printed its real value verbatim —
+  the sed redaction in place only masked `user:pass@host`-shaped DB URLs,
+  not an arbitrary token. Required rotating that token in all 3 places it
+  lives (both Render services' dashboards + local `.env`) after the fact.
+  If a specific env var's value is genuinely needed, ask the user for it
+  directly rather than reading it out of `.env` yourself; if only
+  *presence* matters, use a check that doesn't print the value at all
+  (e.g. `grep -q '^SOME_KEY=' .env && echo set || echo unset`, or `python
+  -c "import os; print(bool(os.environ.get('SOME_KEY')))"` for an
+  already-loaded process). Application code loading `.env` via
+  `load_dotenv()` at runtime (as `app/main.py`/`archive/main.py` already
+  do) is fine — the risk is specifically a shell command whose *output*
+  lands in the conversation.
 
 ## Related context
 
