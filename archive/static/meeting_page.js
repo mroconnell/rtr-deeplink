@@ -357,7 +357,11 @@ function wireTranscribeForm() {
           const signInBtn = document.getElementById('transcribeSignInPrompt');
           if (signInBtn) signInBtn.addEventListener('click', () => {
             markPendingSignIn();
-            window.Clerk.openSignIn();
+            // forceRedirectUrl here, not just Clerk.load()'s global
+            // signInForceRedirectUrl (shared_static/clerk_nav.js) -- see
+            // that file's matching comment, the global default alone
+            // wasn't enough, confirmed live.
+            window.Clerk.openSignIn({ forceRedirectUrl: window.location.href });
           });
           emailStep.hidden = false;
         } else {

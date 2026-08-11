@@ -171,7 +171,17 @@
     if (signInLink) {
       signInLink.addEventListener("click", (e) => {
         e.preventDefault();
-        if (window.Clerk && typeof window.Clerk.openSignIn === "function") window.Clerk.openSignIn();
+        // Real bug fixed 2026-08-11: the global signInForceRedirectUrl
+        // passed to Clerk.load() above wasn't enough on its own -- still
+        // dropped the visitor on the homepage after a real sign-in on
+        // staging, confirmed live (not a caching false-alarm; the fixed
+        // code was verified actually deployed). Clerk's docs distinguish
+        // a global default (Clerk.load()'s signInForceRedirectUrl) from
+        // this call's own forceRedirectUrl (SignInProps) -- passing it
+        // explicitly here is the more direct, per-call guarantee.
+        if (window.Clerk && typeof window.Clerk.openSignIn === "function") {
+          window.Clerk.openSignIn({ forceRedirectUrl: window.location.href });
+        }
       });
     }
     // Inline sign-in mount point (used by saved_items.html's logged-out
