@@ -99,5 +99,14 @@ def get_clerk_user_id(request: Request) -> Optional[str]:
         return None
 
     if not state.is_signed_in or not state.payload:
+        # See archive/utils/clerk_auth.py's matching comment -- only
+        # logged when a real session cookie was present but verification
+        # still failed (added 2026-08-11 to debug a real production case
+        # with no other visible signal).
+        if "__session" in request.cookies:
+            logger.warning(
+                "Clerk session cookie present but verification failed: %s",
+                getattr(state, "message", None) or getattr(state, "reason", None),
+            )
         return None
     return state.payload.get("sub")
