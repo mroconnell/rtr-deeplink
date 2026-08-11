@@ -70,6 +70,28 @@ body {
   opacity: 0.85;
 }
 
+/* Real gap fixed 2026-08-11: base.html now picks the nav's initial state
+   from active_account, so a signed-in visitor's "Sign in" flash is gone
+   -- but #clerk-user-button starts as a genuinely empty <span> until
+   ClerkJS finishes loading and mounts the real avatar into it, so
+   everything to its right (nothing today, but any future nav item) would
+   still visibly shift once the avatar pops in. :not([hidden]) only
+   matches once base.html has already un-hidden this span server-side
+   (a signed-in visitor) -- never overrides the real `hidden` attribute
+   for a signed-out one, which stays governed by the UA stylesheet as
+   before. A same-size neutral circle placeholder (roughly Clerk's own
+   default avatar dimensions) reserves the space immediately; Clerk's
+   real avatar renders inside this same span once mounted and simply
+   covers it, no JS-side cleanup needed. */
+#clerk-user-button:not([hidden]) {
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  vertical-align: middle;
+}
+
 /* --- Cassette buttons --- */
 /* Used on just two buttons (homepage submit, meeting page's "Copy link to
    current time") -- the rewind-to-a-moment metaphor fits those, not every

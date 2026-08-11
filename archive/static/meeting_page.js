@@ -435,11 +435,25 @@ function wireTranscribeInlineTriggers() {
 // BACKLOG.md. Removes-then-re-adds the class (with a forced reflow in
 // between) so a second click re-triggers the animation even if it's
 // still settling from the first.
+//
+// User feedback 2026-08-11: the plain #transcribeToggle anchor's native
+// jump-scrolled every click, even when the button was already fully on
+// screen -- jarring on a typical desktop viewport where the two-column
+// layout usually keeps it in view already. preventDefault() replaces
+// that with a real visibility check: only scrolls when the button isn't
+// already fully within the viewport, the glow alone otherwise.
 function wireSourceDisclaimerPointer() {
   const link = document.getElementById('sourceDisclaimerPointer');
   const toggle = document.getElementById('transcribeToggle');
   if (!link || !toggle) return;
-  link.addEventListener('click', () => {
+  link.addEventListener('click', (e) => {
+    e.preventDefault();
+    const rect = toggle.getBoundingClientRect();
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+    const fullyVisible = rect.top >= 0 && rect.bottom <= viewportHeight;
+    if (!fullyVisible) {
+      toggle.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
     toggle.classList.remove('pointed-to');
     void toggle.offsetWidth;
     toggle.classList.add('pointed-to');
