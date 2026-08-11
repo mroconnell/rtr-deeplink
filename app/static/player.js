@@ -357,49 +357,26 @@ function wireTranscribeForm() {
     feasibilityOk = false;
   }
 
-  // Friction is intentional (see BACKLOG.md's abuse-control notes): the
-  // feasibility check always fires immediately on toggle, before any email
-  // field appears, so a request that can't actually be transcribed never
-  // gets that far.
-  toggle.addEventListener('click', async () => {
-    form.hidden = false;
-    toggleWrap.hidden = true;
-    emailStep.hidden = true;
-    checkStatusEl.textContent = 'Checking for a usable audio or video source…';
-    checkStatusEl.className = 'transcribe-status';
-
-    try {
-      const res = await fetch('/api/transcription/check-feasibility', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: sourceUrl }),
-      });
-      const data = await res.json();
-      if (data.ok) {
-        feasibilityOk = true;
-        checkStatusEl.textContent = '';
-        emailStep.hidden = false;
-      } else {
-        checkStatusEl.innerHTML = linkifyWarning(data.message || "We couldn't find a usable audio or video source for this meeting.");
-        checkStatusEl.className = 'transcribe-status error';
-      }
-    } catch (err) {
-      checkStatusEl.textContent = 'Something went wrong — please try again.';
-      checkStatusEl.className = 'transcribe-status error';
-    }
-  });
-
-  cancelBtn.addEventListener('click', resetForm);
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (!feasibilityOk) return;
-    const email = document.getElementById('transcribeEmail').value;
+  // Shared by both the manual email-form submit handler and (previously)
+  // an auto-submit path for signed-in visitors -- kept as its own
+  // function since it's still the one real submit path.
+  async function submitRequest(email) {
     const submitBtn = form.querySelector('button[type="submit"]');
-
-    submitBtn.disabled = true;
-    statusEl.textContent = '';
+    if (submitBtn) submitBtn.disabled = true;
     statusEl.className = 'transcribe-status';
+    // Real gap fixed 2026-08-11: this request re-runs the whole
+    // feasibility check server-side (see /api/transcription/submit's own
+    // docstring -- never trusts a client-supplied "it passed" flag), so
+    // it can genuinely take several seconds on a real meeting, not the
+    // instant round-trip the previous blank statusEl implied. Reuses the
+    // same spinning-reel loading state init() already shows during the
+    // real resolve fetch, so a long-running request reads as "working,"
+    // not "hung."
+    statusEl.innerHTML = '<span class="status-loading">' +
+      `<span class="cassette-reel spinning">${CASSETTE_REEL_SVG}</span>` +
+      `<span class="cassette-reel spinning">${CASSETTE_REEL_SVG}</span>` +
+      '<span>Requesting your transcript — this can take a few seconds.</span>' +
+      '</span>';
 
     try {
       const res = await fetch('/api/transcription/submit', {
@@ -422,8 +399,60 @@ function wireTranscribeForm() {
       statusEl.textContent = 'Something went wrong — please try again.';
       statusEl.className = 'transcribe-status error';
     } finally {
-      submitBtn.disabled = false;
+      if (submitBtn) submitBtn.disabled = false;
     }
+  }
+
+  // User request 2026-08-11: dropped the "sign in to skip re-entering
+  // your email" shortcut from this specific spot after Clerk's own
+  // sign-in redirect proved unreliable here across several attempts
+  // (see git history for the full saga) -- always just capture an
+  // email instead. Redundant for an already-signed-in visitor (they
+  // type an email that's often their own account's), but harmless; the
+  // backend still skips the confirm-by-email step for them regardless
+  // (see /api/transcription/submit's clerk_verified check, unrelated to
+  // and unaffected by any of this -- pure server-side session check).
+  //
+  // Friction is intentional (see BACKLOG.md's abuse-control notes): the
+  // feasibility check always fires immediately on toggle, before any email
+  // field appears, so a request that can't actually be transcribed never
+  // gets that far.
+  async function runFeasibilityCheck() {
+    form.hidden = false;
+    toggleWrap.hidden = true;
+    emailStep.hidden = true;
+    checkStatusEl.textContent = 'Checking for a usable audio or video source…';
+    checkStatusEl.className = 'transcribe-status';
+
+    try {
+      const res = await fetch('/api/transcription/check-feasibility', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: sourceUrl }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        feasibilityOk = true;
+        checkStatusEl.textContent = 'We found a workable audio file — share your email so we can notify you when the transcript is complete.';
+        emailStep.hidden = false;
+      } else {
+        checkStatusEl.innerHTML = linkifyWarning(data.message || "We couldn't find a usable audio or video source for this meeting.");
+        checkStatusEl.className = 'transcribe-status error';
+      }
+    } catch (err) {
+      checkStatusEl.textContent = 'Something went wrong — please try again.';
+      checkStatusEl.className = 'transcribe-status error';
+    }
+  }
+
+  toggle.addEventListener('click', runFeasibilityCheck);
+
+  cancelBtn.addEventListener('click', resetForm);
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!feasibilityOk) return;
+    await submitRequest(document.getElementById('transcribeEmail').value);
   });
 }
 

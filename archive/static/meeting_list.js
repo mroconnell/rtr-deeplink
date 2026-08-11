@@ -39,6 +39,35 @@ function wireSaveSearchButton() {
   });
 }
 
+// Search tips icon: hover/keyboard-focus already reveal the panel via CSS
+// alone (see .search-hint:hover/:focus-within in style.css) -- this only
+// adds click-to-toggle, since touch devices have no hover state at all.
+function wireSearchHelpIcon() {
+  const icon = document.getElementById('searchHelpIcon');
+  const panel = document.getElementById('searchHelpPanel');
+  if (!icon || !panel) return;
+
+  const close = () => {
+    panel.classList.remove('is-open');
+    icon.setAttribute('aria-expanded', 'false');
+  };
+
+  icon.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const willOpen = !panel.classList.contains('is-open');
+    panel.classList.toggle('is-open', willOpen);
+    icon.setAttribute('aria-expanded', String(willOpen));
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!panel.contains(e.target) && e.target !== icon) close();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') close();
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   wireSaveSearchButton();
+  wireSearchHelpIcon();
 });

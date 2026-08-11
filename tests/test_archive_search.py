@@ -159,3 +159,37 @@ def test_find_snippet_phrase_is_exact_even_in_fuzzy_mode():
     # A near-miss phrase (typo'd word inside quotes) should NOT match even
     # with fuzzy=True -- phrases are always literal.
     assert find_snippet('"data centre"', [text], fuzzy=True) is None
+
+
+def test_minus_prefix_excludes_meetings_containing_the_word():
+    corpus = build_corpus("City Council Meeting", "Dublin, CA", "discussion of traffic signals and parking")
+    assert matches("traffic", corpus, set(), fuzzy=False)
+    assert not matches("traffic -parking", corpus, set(), fuzzy=False)
+
+
+def test_minus_prefix_excludes_meetings_containing_the_phrase():
+    corpus = build_corpus("", "", "the council approved a new data center project")
+    assert not matches('-"data center"', corpus, set(), fuzzy=False)
+    corpus2 = build_corpus("", "", "the council approved a new budget item")
+    assert matches('-"data center"', corpus2, set(), fuzzy=False)
+
+
+def test_minus_exclusion_is_exact_even_in_fuzzy_mode():
+    # The corpus contains a near-miss ("trafic", not "traffic") -- an exact
+    # exclusion should not treat that as a match, so this meeting should
+    # still be included.
+    corpus = build_corpus("", "", "the council discussed trafic calming near downtown")
+    words = tokenize(corpus)
+    assert matches("downtown -traffic", corpus, words, fuzzy=True)
+
+
+def test_plus_prefix_is_a_no_op_since_words_are_already_required():
+    corpus = build_corpus("City Council Meeting", "Dublin, CA", "discussion of traffic signals downtown")
+    assert matches("+traffic +downtown", corpus, set(), fuzzy=False)
+    assert not matches("+traffic +uptown", corpus, set(), fuzzy=False)
+
+
+def test_bare_and_ampersand_are_no_ops():
+    corpus = build_corpus("City Council Meeting", "Dublin, CA", "discussion of traffic signals downtown")
+    assert matches("traffic AND downtown", corpus, set(), fuzzy=False)
+    assert matches("traffic & downtown", corpus, set(), fuzzy=False)

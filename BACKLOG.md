@@ -68,14 +68,17 @@ anything) to build against it.
   suspicious page — genuinely built, not aspirational, just reactive
   (after publication) rather than preventive.
 
-  **Mitigation options worth weighing, not yet decided or built:**
-  - **noindex generic_fallback/`best_effort` pages by default** —
-    confirmed via a direct code check: there is currently *no* per-page
-    `noindex`, only a site-wide `robots.txt`. The highest-risk pathway
-    (unverified, non-standard pages) is exactly the one getting full
-    search-engine amplification today. Narrowest, cheapest mitigation
-    on this list — doesn't block anything, just stops amplifying the
-    least-verified content until a human's looked at it.
+  **Mitigation options worth weighing, not yet decided or built (except
+  the first, built 2026-08-11 — see BACKLOG_DONE.md):**
+  - ~~**noindex generic_fallback/`best_effort` pages by default**~~ Built
+    2026-08-11: `archive/templates/meeting_page.html`'s meta block now
+    renders `<meta name="robots" content="noindex">` whenever
+    `page.platform == "unknown"` (the exact string `generic_fallback.py`
+    registers under). The narrowest, cheapest mitigation on this list —
+    doesn't block anything, just stops amplifying the least-verified
+    content until a human's looked at it. The rest of this section's
+    threat model (fake-jurisdiction risk, curated-list idea, trust tiers)
+    is still open.
   - **Manual review before a brand-new jurisdiction goes live/indexed**
     — especially for `generic_fallback`/`best_effort` results. Real cost:
     turns part of the pipeline from fully automatic into something
@@ -120,6 +123,124 @@ anything) to build against it.
     manually export from YouTube Studio-visible sources — the user is
     pursuing this angle themselves; `bulk_ingest.py`-style manual
     pushes can carry whatever comes back.
+
+## `/meetings` search & saved items — UI gaps found 2026-08-11
+
+- **"Save this search" can silently save the wrong search, and gives no
+  feedback that it's already been saved.** Reported by the user via two
+  concrete scenarios: (1) type a query but don't hit Search, then click
+  "Save this search" — nothing stops this, and what gets saved is
+  whatever the *last-applied* search was (e.g. "All meetings" if none
+  yet), not the just-typed, unsubmitted text; (2) search "Cameras", hit
+  Search, hit Save, then type "Flock" without hitting Search again, hit
+  Save again — silently re-saves "Cameras," not "Flock." Confirmed by
+  reading the code: `archive/templates/meeting_list.html`'s Save button
+  (`#saveSearchBtn`, lines 23-30) gets its `data-q`/`data-jurisdiction`/
+  etc. (lines 24-26) from the *server-rendered, already-applied* `q`/
+  `jurisdiction`/etc. template variables — i.e. whatever `/meetings` was
+  last loaded with — not a live read of the search box's current DOM
+  value. `archive/static/meeting_list.js`'s `wireSaveSearchButton()`
+  (lines 6-44) then POSTs exactly those baked-in `data-*` values to
+  `/api/account/save-search` on click (confirmed via
+  `app/main.py:775-780` → `app/archive_client.py:220-236` →
+  `archive/main.py:373-377` → `crud.save_search`,
+  `archive/db/crud.py:1194`) — so the button's actual behavior is "save
+  the search currently showing on this page," which only matches user
+  intent if Search was just clicked. The label also never changes: it
+  always reads "Save this search" regardless of whether this exact
+  search was already saved (there's no "Saved"/"Unsave" state on this
+  page — confirmed via the JS file's own header comment, which notes
+  unsaving only exists on `/account/saved`, wired separately by
+  `saved_items.js`), so a user also gets no cue they're about to create
+  a duplicate.
+
+  **User's own brainstormed fixes, not decided/built — worth weighing
+  together since they overlap:** turn "Save this search" into "Unsave
+  search" immediately after a successful save, reverting to "Save this
+  search" the moment the query box or any filter changes; give the
+  Search button itself a visual "ready to click" cue (glow/color) when
+  the box/filters differ from what's currently applied, clearing once
+  Search is clicked; conversely have the Save button/its bookmark icon
+  light up once a search *has* been applied and is save-able. A
+  "depressed vs. popped-up" (tape-deck button) visual metaphor was also
+  floated for the same cue, matching the page's existing cassette-deck
+  styling (`cassette-btn` class already used by both buttons, line 18 and
+  the outline variant in `saved_items.html`). All riffing, not a chosen
+  design — needs a real decision before building.
+
+- **Meeting title/jurisdiction display has no consistent formatting
+  convention — long names aren't truncated, casing varies row to row, and
+  US states appear as both full names and two-letter abbreviations.**
+  Reported by the user from real `/meetings` results (screenshot,
+  2026-08-11). Confirmed there is currently **no centralized
+  normalization at all** — no shared `app/utils/` helper for
+  jurisdiction/title formatting exists (that directory only has
+  `clerk_auth.py`, `url_normalize.py`, `vtt_parser.py`). What exists
+  instead is ad hoc and per-platform: `app/platforms/granicus.py`'s
+  `_humanize_subdomain()` (lines 187-214) title-cases and uppercases a
+  trailing state code, but only as a last-resort fallback when its
+  primary body-text regex extraction fails, and only for Granicus;
+  `escribe.py`'s `_jurisdiction_from_subdomain()` (lines 192-198) does a
+  blunt `.title()` with no state handling at all; `primegov.py`'s
+  `_extract_jurisdiction()` (lines 128-146) only fixes all-caps headers
+  (`"OKLAHOMA CITY"` → `"Oklahoma City"`) via `core.title() if
+  core.isupper() else core`, leaving already-mixed-case text alone; every
+  other adapter (`swagit.py:303`, `civicclerk.py:78`, `legistar.py:241`,
+  `lims.py:108-112`) stores whatever casing/state form the source page
+  used, unchanged. `title` gets no formatting treatment anywhere except
+  an incidental `title[:500]` byte-cap in `granicus.py:185` (a
+  storage-safety truncation, not a display one). None of this amounts to
+  a real, consistent convention, and no adapter converts between full
+  state names and abbreviations in either direction.
+
+  **Open question, not yet decided: normalize at capture time (when a
+  meeting is resolved/ingested) or at display time (formatting applied
+  only when rendering search results)?** Scale differs sharply by field,
+  which likely means different answers for each:
+  - **State**: a closed set of ~50 values (already partially enumerated
+    in `granicus.py`'s `US_STATE_ABBREVIATIONS`, lines 52-57) — cheap and
+    safe to normalize once at capture time to a single canonical form
+    (e.g. always store the 2-letter code). Low risk of ever mangling
+    something.
+  - **City/county/meeting-body names**: effectively unbounded (tens of
+    thousands of real values), with real edge cases a blind
+    `.title()`/casing rule gets wrong (acronyms like "MTA"/"ZBA", multi-
+    word or apostrophe'd city names) — capture-time normalization risks
+    silently and permanently corrupting a name with no easy undo.
+    Display-time formatting (CSS `text-transform`, or a Jinja filter
+    applied only at render) is non-destructive by comparison: the raw
+    scraped value stays intact in the DB, and the formatting rule itself
+    can be revised later without a backfill.
+  - **Truncation**: almost certainly display-only regardless (CSS
+    `text-overflow: ellipsis` or a length-capped Jinja filter) — capture-
+    time truncation would permanently and needlessly lose data for no
+    display-layer reason.
+
+  Also relevant to any proposed fix: `jurisdiction` is confirmed to be a
+  single free-text `VARCHAR(200)` column (`archive/db/models.py:33`,
+  `app/db/models.py:42`) — there's no separate city/state columns
+  anywhere in either schema, so a "convert full state name to
+  abbreviation" rule would need to operate on the trailing portion of an
+  opaque string (e.g. after the last comma), not a structured field.
+
+## Accounts (Clerk) UI gaps found 2026-08-11
+
+- **The Clerk sign-out flow lands the user on a bare page with no RTR
+  nav/footer at all — root cause confirmed live 2026-08-11, fix built and
+  pushed the same day, not yet confirmed working.** Root cause: the user
+  tested a real sign-out on staging at Claude's request and landed on
+  `guided-bedbug-18.accounts.dev/sign-in` — Clerk's own generic hosted
+  Account Portal page (real screenshot: no RTR branding/nav/footer at
+  all), confirming the theory below exactly. `mountUserButton()`
+  (`shared_static/clerk_nav.js`) was invoked with no options at all, so
+  its built-in "Sign out" menu item used Clerk's own default post-sign-out
+  destination instead of anything on this site. Fix: `window.Clerk.load()`
+  now passes `afterSignOutUrl` pointing back at the homepage — inferred
+  from Clerk's documented API surface, not checked against live docs this
+  pass. **Still needs**: a real sign-out on staging (after this fix
+  deploys) to confirm the redirect itself actually lands on this site
+  instead of Clerk's page, same "don't claim a fix without a positive
+  example" convention as everywhere else in this file.
 
 ## Deep links
 
@@ -321,6 +442,63 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   timing). Wired into Granicus, CA Legislature, Swagit, and CivicClerk.
   If any of these turns out to be common on a real platform, worth a real
   structured parser instead of the generic strip.
+- **ALL-CAPS transcript display — reported by the user 2026-08-11.
+  Partial gap, not a missing feature; the fallback-format sub-gap is
+  fixed 2026-08-11 (see BACKLOG_DONE.md), one residual question left
+  open.** A real fix exists: `app/utils/vtt_parser.py`'s
+  `normalize_shouting_caption()` re-cases an entire VTT/SRT/TTML track to
+  sentence case, but only when its own "is this shouting" heuristic
+  triggers (samples ≥40 alphabetic chars across the whole track, requires
+  a ≤2% lowercase ratio) — called from `parse_vtt()` (also covers SRT via
+  `parse_srt()`'s delegation to it) and `parse_ttml()`; as of 2026-08-11
+  the same check (factored into a shared `_normalize_shouting_text()`
+  helper) also runs on `strip_unknown_caption_markup()`'s
+  SBV/SUB/SMI/SAMI/plain-.txt fallback text, closing the gap this entry
+  originally flagged. **Still open**: a real VTT/SRT/TTML track could in
+  principle still slip through if it's shouting but doesn't clear the
+  detection heuristic's thresholds (mixed-case enough, or under the
+  40-letter sample minimum) — worth checking against the specific
+  transcript the user actually saw before assuming this is fully closed
+  for them; no report yet confirms which case (if either) their transcript
+  actually was.
+- **Literal `&gt;&gt;` (etc.) sometimes rendering as visible text instead
+  of `>>` — reported by the user 2026-08-11; confirmed as a real,
+  structurally-understood double-escaping bug, narrower than it might
+  look.** `archive/templates/meeting_page.html:276` renders `{{ seg.text
+  }}` with Jinja's default autoescaping on (`archive/main.py:50`'s
+  `Jinja2Templates`, confirmed via Starlette's own
+  `autoescape=True` default) — correct and necessary for real `<`/`>`/`&`
+  characters in transcript text. The bug: if a caption source's *raw*
+  text already contains the literal 8-character string `&gt;&gt;`
+  (already-HTML-escaped text embedded directly in the source, not a real
+  `>` character — confirmed present in raw YouTube auto-caption VTT) and
+  nothing unescapes it once during parsing, Jinja's autoescape then
+  escapes the `&` a second time (`&` → `&amp;`), producing `&amp;gt;&amp;gt;`
+  in the actual HTML response, which a browser correctly renders back as
+  the literal text `&gt;&gt;` on screen — a classic double-escape, not a
+  missing-escape bug.
+
+  **What's already fixed, narrowly, on purpose**: `vtt_parser.py:367-383`'s
+  `normalize_speaker_change_marker()` (called from `parse_vtt()` line 97
+  — VTT/SRT only, not TTML) matches *exactly* `&gt;&gt;` **anchored to the
+  start of a cue** and converts it to a real `»` character — a
+  deliberately narrow fix (see `BACKLOG_DONE.md:1269-1300` for the
+  original reasoning and its regression test), not general HTML-entity
+  unescaping; a real `html.unescape()` call doesn't exist anywhere in
+  `vtt_parser.py` (confirmed via grep — the repo's only `html.unescape()`
+  calls are in `app/platforms/lims.py`, unrelated). **What's still
+  genuinely unhandled**: the same `&gt;&gt;` string appearing mid-cue
+  rather than at the very start; any other HTML entity (`&amp;`, `&#39;`,
+  `&lt;`, `&quot;`, `&nbsp;`, etc.) arriving pre-escaped in source caption
+  text; and the entire `strip_unknown_caption_markup()` fallback path
+  (SBV/SUB/SMI/SAMI/plain-.txt), which has no cue-level text normalization
+  of any kind. TTML doesn't need this fix — its text comes from
+  `ElementTree`'s own `itertext()` (line 184), which already resolves
+  real XML entities during parsing, so this specific artifact can't arise
+  there. A general fix would need a real (not narrowly-anchored)
+  `html.unescape()` pass at the same point in the pipeline where
+  `normalize_speaker_change_marker()` already runs, careful not to
+  double-unescape text that was never double-escaped in the first place.
 - **SCC/STL captions are detected but not readable at all.** Both are
   binary/encoded (EIA-608 line-21 data, EBU subtitle format) — no text
   can be extracted without real codec-level decoding, so these just
@@ -466,6 +644,18 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   (nav, button sizing/prominence, `/account/saved` layout, a bookmark
   icon next to the meeting title) landed the same day as the merge,
   live-verified locally first.
+
+  **Second round, same day: a large backlog-cleanup pass surfaced
+  several more real UI/UX bugs and a sign-in/sign-out redirect saga**
+  (nav "Sign in"/"Get Updates" flash-on-load, saved-search filter
+  display, meeting-row title wrap, a source-transcript disclaimer with
+  a pop/glow pointer, and — after three rounds of Clerk's own
+  documented redirect options proved unreliable live — a client-side
+  forced-return safety net in `shared_static/clerk_nav.js`, plus
+  dropping the transcribe-form's inline sign-in shortcut entirely per
+  the user's call once that saga made clear it wasn't worth the
+  complexity there specifically). See BACKLOG_DONE.md for the full
+  detail on each. 425 tests passing.
 
   **Explicitly deferred, by the user's own call: the `user.deleted`
   webhook → `saved_items` purge (the right-to-deletion cascade) has
@@ -658,15 +848,16 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     OAuth) — "Hi there," is the documented fallback either way, so a
     missing field degrades gracefully, but the "Hi [First Name]," path
     itself hasn't been seen fire for real yet.
-  - **Split off, not built this pass**: "People are talking about…"
-    (saved-search alert emails, the doc's #5) — a real new feature (match
-    detection + a per-alert one-click unsubscribe token), not just a
-    template wired into an existing event. See the "Email alerts for
-    saved searches" entry directly below, which is the same feature.
-    The doc's own "Digest variant of #5" (batching multiple alerts into
-    one email) is explicitly flagged there too as later-still: Resend has
-    no built-in batching, so a digest needs its own accumulation +
-    scheduled-or-event-driven send logic, not just copy.
+- **Lifecycle email bugs found by the user 2026-08-11 — three of the four
+  fixed 2026-08-11, see BACKLOG_DONE.md for the full root-cause detail on
+  each.** The fourth, "People are talking about…" (saved-search alert
+  emails, `marketing/LIFECYCLE_EMAILS.md`'s #5), was always a real new
+  feature rather than a bug in this batch — see the "Email alerts for
+  saved searches" entry directly below, which is the same feature. That
+  doc's own "Digest variant of #5" (batching multiple alerts into one
+  email) is flagged there too as later-still: Resend has no built-in
+  batching, so a digest needs its own accumulation + scheduled-or-
+  event-driven send logic, not just copy.
 - **Email alerts for saved searches — confirmed 2026-08-09 as the most
   concrete "worth paying for" feature identified so far.** Depends on
   accounts and search both existing first (search already live; accounts
@@ -729,24 +920,60 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   fast. Rate-limiting or account-gating this is worth deciding before
   shipping it, not after.
 - **Coverage page — a public, sortable/filterable table of every
-  jurisdiction/platform combination successfully resolved so far**
-  (columns: jurisdiction, platform, an example meeting URL, outcome
-  bucket — real transcript / agenda-only / blank / garbled /
-  wrong-language / no-video, per `app/db/outcomes.py`'s existing
-  `classify_outcome()` — last-verified date, and whether the transcript
-  came from the source's own captions vs. the on-demand transcription
-  worker). Directly addresses a real gap: today, a user only learns
-  whether their city is supported by pasting a URL and seeing what
+  jurisdiction/platform combination successfully resolved so far.**
+  Currently a real, live, `noindex`'d placeholder, not vaporware: `/coverage`
+  (`app/main.py:1027-1033`) renders `app/templates/coverage.html`, whose
+  entire content today is "Coming soon: a public, sortable list of every
+  city and platform we already support," pointing visitors at pasting a
+  URL or `/meetings` search in the meantime.
+
+  **Concrete column spec from the user, 2026-08-11** — one row per
+  successfully-added city/jurisdiction, with columns:
+  - Video embeds (yes/no)
+  - Agenda embedded (yes/no)
+  - Instant transcript from the source itself (yes/no) — i.e. the
+    platform's own captions, not this app's transcription
+  - Transcript from audio possible (yes/no) — i.e. the on-demand
+    Whisper transcription path (see "On-demand transcription" below)
+  - **Provider, split into two columns, not one** — e.g. "Detail page:
+    Granicus; Video: Granicus," "Detail page: Swagit; Video: YouTube,"
+    "Detail page: Custom; Video: Vimeo." This directly reflects a real,
+    already-documented fact about this codebase (see `CLAUDE.md`'s
+    "when a platform turns out to be a wrapper around another" bullet):
+    Legistar/CivicPlus both delegate to Granicus for video, and PrimeGov
+    embeds a YouTube video — so "platform" isn't actually one value per
+    meeting today, and a single "platform" column (the original spec
+    below) would hide that real, useful distinction. Maps onto
+    `detect_platform()` (detail-page platform) vs. the resolved
+    `video_format`/video source (video platform) — worth checking
+    against the existing `source_url` delegation quirk noted in
+    `CLAUDE.md` (Legistar/CivicPlus delegation ends up with the
+    *delegated* platform's URL as `source_url`) since that same
+    delegation shapes what "detail page" even means for those rows.
+
+  (Minor ambiguity to resolve when building, not blocking the write-up:
+  the user's phrasing was "a column for each city" — read here as "a row
+  per city, with the columns above," since a literal column-per-city
+  table would be unusably wide at any real scale; worth a quick confirm
+  before building.)
+
+  **Original spec, still relevant, folds in above:** also include an
+  example meeting URL per row, an outcome bucket (real transcript /
+  agenda-only / blank / garbled / wrong-language / no-video, per
+  `app/db/outcomes.py`'s existing `classify_outcome()`), and a
+  last-verified date. Directly addresses a real gap: today, a user only
+  learns whether their city is supported by pasting a URL and seeing what
   happens — costly for someone checking many jurisdictions one at a
   time. Also doubles as a trust/credibility signal ("look how much we
   already cover") and light SEO surface area — exactly the kind of page
-  other people link to and cite. Mostly a front-end exposure task, not
-  new backend work — `/admin/stats` already tracks resolve outcomes by
-  platform and quality bucket (see "Caching and reporting" in
-  README.md); this needs a *public* (non-admin) read path into that same
-  data, a rule for picking a representative example URL per
-  jurisdiction/platform pair (e.g. most recent successful resolve), and
-  the sort/filter UI itself.
+  other people link to and cite (worth removing the current `noindex`
+  once the real table replaces the placeholder). Mostly a front-end
+  exposure task, not new backend work — `/admin/stats` already tracks
+  resolve outcomes by platform and quality bucket (see "Caching and
+  reporting" in README.md); this needs a *public* (non-admin) read path
+  into that same data, a rule for picking a representative example URL
+  per jurisdiction/platform pair (e.g. most recent successful resolve),
+  and the sort/filter UI itself.
 - **Companion "known gaps" page — same table shape, listing
   jurisdictions/platforms that don't resolve cleanly yet** (attempted but
   blocked, partially working, or simply not yet built), separate from
@@ -799,6 +1026,47 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     not an ongoing concern, similar in spirit to
     `/admin/recheck-archive-page`'s existing per-meeting refresh but
     needing to run once across every page rather than on demand for one.
+- **Search bar has no explicit boolean operators (AND/OR/NOT/`-`/`+`/`&`)
+  today — user request 2026-08-11.** Confirmed via
+  `archive/utils/search.py`: `_parse_query()` (lines 64-77) splits a query
+  into quoted phrases (`_PHRASE_RE`, line 14 — each required as an exact
+  adjacent substring) and unquoted words (split on whitespace, line 76) —
+  every phrase and every word is independently required, an **implicit
+  AND with no way to express OR, an explicit AND, exclusion (NOT/`-`), or
+  a literal `&`.** `matches()` (lines 84-107) enforces this directly:
+  `all(phrase in corpus for phrase in phrases)` and (non-fuzzy)
+  `all(term in corpus for term in terms)` — there's no code path anywhere
+  that treats two terms as alternatives or excludes one. This is a
+  hand-built Python scanner, not a real query-language parser or an
+  indexed engine's query syntax (the module's own docstring: "no search
+  index... fine at the Archive's current scale, not meant to scale past a
+  few hundred") — so operator support has to be added by hand to
+  `_parse_query`/`matches`, not inherited for free the way Postgres
+  `tsquery` would give it.
+
+  **Per-operator feasibility, not yet decided/built:**
+  - **`-term` (exclusion/NOT)** — the most tractable addition: mark a
+    term prefixed with `-` as "must not match," then require
+    `term not in corpus` (or the fuzzy equivalent) instead of `in`. Small,
+    contained change to `_parse_query`'s word-splitting and one new
+    branch in `matches()`.
+  - **`+term` / explicit `AND`** — effectively already the default
+    behavior for every unquoted word today; would just need `+`/`AND` to
+    be stripped as a no-op synonym rather than treated as a literal
+    search term (right now a literal `+flock` or the word `AND` would be
+    searched for verbatim, which is itself a minor rough edge worth
+    fixing alongside real operator support).
+  - **`&`** — same as above: redundant with implicit AND, so this is
+    about *not* treating it as a literal character to match, not a new
+    capability to build.
+  - **`OR`** — the one genuinely hard part: `_parse_query` currently
+    returns two flat lists that all get ANDed together with no concept of
+    grouping — supporting `a OR b` (let alone mixed precedence like `a OR
+    b AND c`) needs a real expression tree, not just a new token type.
+    Worth deciding whether full boolean-expression parsing is actually
+    needed, or whether `-exclude` plus no-op `+`/`AND`/`&` covers most of
+    the practical value a journalist would want, at a fraction of the
+    parser complexity.
 
 ## On-demand transcription — real gaps left open
 
@@ -885,6 +1153,52 @@ one item below is resolved as a result.
   after two live crashes. Worth a real `"base"`-at-900s measurement as
   its own follow-up once `"tiny"` is confirmed working end-to-end on the
   new plan, not stacked on top of an unconfirmed fix.
+- **Per-meeting `initial_prompt` seeded with real council-member names,
+  from the agenda — user idea, 2026-08-11, real proper-noun accuracy
+  motivation (their example: "Council Member Rashi Kesarwani, Council
+  Member Rigel Robinson").** Today's `MEETING_VOCABULARY_PROMPT`
+  (`worker/transcription_engine.py:26-30`) is one fixed, generic
+  constant, reused verbatim for every job's every chunk — real
+  people's names (especially non-Anglicized or less-common ones, exactly
+  where Whisper is most likely to mishear/misspell) aren't in it at all,
+  and can't be with a single static prompt shared across every
+  jurisdiction.
+
+  **Real gap confirmed, not assumed**: nothing in this codebase currently
+  extracts attendee/council-member names from anywhere — confirmed via
+  grep across every `app/platforms/*.py` adapter, no hits for
+  attendance/council_member/attendee/roster. `ResolvedMeeting.agenda_items`
+  (`app/platforms/models.py:41`) holds agenda *topic* text (e.g. "Item 1:
+  Approve minutes..."), not a roster of who's on the body — so this would
+  be new extraction work, not a matter of wiring up an existing field.
+  Whether that roster is even reliably available per-platform is itself
+  unconfirmed — some agenda pages/PDFs list attendees or a member roster,
+  some may not, and this hasn't been checked against a real sample yet
+  (same "verify against a real example before building" convention as
+  every adapter in this repo).
+
+  **Plumbing gap, separate from the extraction gap**: even with names in
+  hand, today's engine has no path to use them per-job.
+  `FasterWhisperEngine` (`worker/transcription_engine.py:42-86`) is
+  constructed once at worker process startup and reused across every
+  job's every chunk (`worker/main.py:205`,
+  `engine.transcribe_chunk(audio_path)` — no per-job context passed in
+  at all). Making the prompt per-meeting would need `transcribe_chunk()`'s
+  signature to accept extra per-job terms, threaded through from
+  wherever the worker's job loop can look up that job's `meeting_page_id`
+  and its (new) extracted names.
+
+  **Real constraint worth weighing before building**: Whisper's
+  `initial_prompt` is a soft bias with a real length ceiling, not an
+  unlimited instruction list — the existing comment
+  (`transcription_engine.py:21-24`) already warns that an overly long or
+  suggestive prompt risks the model leaning on it past where it's
+  actually relevant. Appending a growing per-meeting names list to the
+  existing generic vocabulary needs some care not to dilute or overflow
+  it, and — per this repo's "verify with a real example" convention
+  throughout — would need a real before/after check against an actual
+  meeting with known misspelled names, not assumed to help just because
+  it's plausible.
 - **~~Resend's contact-lookup-by-email endpoint is unverified.~~ Confirmed
   live 2026-08-08.** A real request from an existing newsletter subscriber
   (`mroconnell@gmail.com`) correctly skipped the confirm-by-email step and
@@ -945,6 +1259,22 @@ one item below is resolved as a result.
   building it kills both asks with one change — worth its own scoped
   task given it touches `.version-picker`, `meeting_page.js`, and the
   template's rendering of `active_version` throughout.
+
+  **User independently re-requested this exact UI, 2026-08-11**: real
+  tabs above the transcript pane, near where "Download Text/SRT"
+  currently sits, to switch between multiple transcript versions for the
+  same meeting (their concrete example: choosing the government's own
+  captions over this app's AI-generated transcript even when the AI
+  version happens to be the current default/surfaced one). This is the
+  same feature as the JS-tabs redesign above, not a new one — the
+  existing `.version-picker` (`archive/templates/meeting_page.html`,
+  `?version=` link list, full page reload) already lets a visitor pick a
+  non-default version, just not as inline tabs; this request is really
+  about that picker's *placement and interaction style* specifically
+  (tabs, positioned by the download links) rather than new underlying
+  capability. Bumps this from "worth building for SEO reasons" to also
+  "a real user-requested UX improvement," which may be worth weighing
+  when prioritizing against everything else in this file.
 
 - **[Big, low priority] "Request Transcript from Audio" doesn't work for
   YouTube-hosted meetings.** Confirmed live 2026-08-10: clicking it on a

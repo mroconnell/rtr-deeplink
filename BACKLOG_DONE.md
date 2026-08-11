@@ -537,6 +537,170 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-11] Fixed the nav flashing "Sign in" on every full page
+  load for an already-signed-in visitor — reported by the user against
+  `/account/saved`.** `archive/templates/base.html`'s nav always
+  server-rendered "Sign in" visible-by-default regardless of a real
+  server-side session; the swap to the account button only happened once
+  `shared_static/clerk_nav.js` finished loading ClerkJS and checked
+  `window.Clerk.user` client-side, flashing on every full navigation.
+  `active_account` (`get_clerk_user_id(request)`) was already computed
+  and passed into context by every route that extends this template
+  (`meeting_page`/`meetings_index`/`account_saved` in `archive/main.py`)
+  — the nav's initial rendered state now reads it directly (`hidden` on
+  whichever element doesn't match) instead of always defaulting to
+  signed-out. `clerk_nav.js` itself is unchanged, now only correcting a
+  real client-side sign-in/out transition after load. Verified two ways:
+  new regression tests (`tests/test_accounts_anonymous_regression.py`)
+  confirming the initial HTML for both states via a monkeypatched
+  `get_clerk_user_id`, and live in-browser against the anonymous case.
+  Full suite green (422 tests).
+- **[Done 2026-08-11] Built (not yet live-confirmed) a fix for the Clerk
+  sign-out flow landing on Clerk's own bare hosted page instead of this
+  site.** Root cause confirmed live: at Claude's request, the user
+  signed out on staging and landed on
+  `guided-bedbug-18.accounts.dev/sign-in` (a real screenshot showed
+  Clerk's own generic branding, no RTR nav/footer at all) — exactly the
+  theory `BACKLOG.md` had flagged (`mountUserButton()` called with no
+  `afterSignOutUrl` option, so Clerk's built-in "Sign out" menu item used
+  its own default destination). Fix: `shared_static/clerk_nav.js`'s
+  `window.Clerk.load()` call now passes `afterSignOutUrl` pointing back
+  at the homepage. Inferred from Clerk's documented API surface, not
+  checked against live docs this pass — pushed to
+  `accounts-clerk-phase1` for the user to confirm with a real sign-out
+  once staging redeploys, same "don't claim a fix without a positive
+  example" convention as everywhere else. **Kept live in BACKLOG.md, not
+  moved fully here, until that confirmation lands.**
+- **[Done 2026-08-11] Made the source-transcript disclaimer's pointer to
+  the real "Request Transcript from Audio" button more obvious — user
+  feedback the same day the disclaimer itself shipped.** The original
+  plain `<a href="#transcribeToggle">here</a>` just anchor-scrolled,
+  which wasn't obvious enough that the real button lives in the other
+  column. Copy now reads "...with the button to the left", and clicking
+  it pops/glows `#transcribeToggle` via a new `.pointed-to` CSS animation
+  (`archive/static/style.css`) wired from `meeting_page.js`'s new
+  `wireSourceDisclaimerPointer()` — the "depressed vs. popped-up"
+  tape-deck cue floated for the search/save-search buttons in
+  `BACKLOG.md`, first real use of it. Deliberately does *not* auto-click
+  the real button the way the existing `.transcribe-inline-trigger`
+  warnings-text pattern does, since that would silently fire the
+  feasibility check's real network request just from reading the
+  disclaimer — undermining `wireTranscribeForm()`'s own deliberate
+  friction. Also fixed a real pre-existing gap found while touching this:
+  `archive/static/style.css` was missing `.transcribe-inline-trigger`
+  entirely (present in `app/static/style.css`, the file it's supposed to
+  stay in sync with), so every transcribe-inline-trigger this service
+  already rendered in warnings text was unstyled. Verified live
+  in-browser: clicking the link visibly lifts the button with a glowing
+  border, and confirmed programmatically that the `pointed-to` class is
+  added on click.
+- **[Done 2026-08-11] Applied ALL-CAPS re-casing to the
+  SBV/SUB/SMI/plain-.txt caption fallback, closing half of the
+  "ALL-CAPS transcript display" report (see BACKLOG.md for the still-open
+  half).** `normalize_shouting_caption()` (`app/utils/vtt_parser.py`)
+  only ever ran on structured (VTT/SRT/TTML) cue lists via
+  `parse_vtt()`/`parse_srt()`/`parse_ttml()` — `strip_unknown_caption_
+  markup()` (the SBV/SUB/SMI/SAMI/plain-.txt fallback) never called it at
+  all, so an ALL-CAPS track from one of those formats stayed ALL CAPS
+  unconditionally. Fix: extracted the shared shouting-detection/re-casing
+  check into a new `_normalize_shouting_text(text: str) -> str` helper
+  (same 40-letter-sample/≤2%-lowercase-ratio heuristic, same
+  `_sentence_case()`), called from both `normalize_shouting_caption()`
+  (cue-list callers, refactored to use it internally) and
+  `strip_unknown_caption_markup()`'s own plain-text return. Verified with
+  two new fixture-backed tests in `tests/test_vtt_parser.py`: a real
+  ALL-CAPS SBV-style sample correctly re-cases; a short (under the
+  40-letter minimum) ALL-CAPS sample stays untouched, matching
+  `normalize_shouting_caption()`'s own threshold behavior. Full suite
+  green (420 tests).
+- **[Done 2026-08-11] Fixed completion emails always rendering an empty
+  transcript excerpt — a real bug hitting every single send.**
+  `_job_dict()` (`archive/db/crud.py`) never included
+  `transcript_version_id` in its returned dict, even though
+  `TranscriptionJob.transcript_version_id` is set on completion
+  (`report_chunk_result()`). `worker/main.py`'s `_send_completion_email()`
+  looked it up via `status.get("transcript_version_id")`, always got
+  `None`, and the excerpt silently stayed `""`, rendering as bare
+  `&hellip;` in the email. Fix: add
+  `"transcript_version_id": job.transcript_version_id,` to `_job_dict()`'s
+  return dict — the data already existed on the model, it just never
+  surfaced through this function. Verified by extending
+  `tests/test_transcription_jobs.py`'s existing
+  `test_full_chunk_lifecycle_promotes_transcribed_version` (a real,
+  non-mocked completion lifecycle) with an assertion that
+  `get_transcription_job_status()`'s returned `transcript_version_id`
+  matches the real one — the existing mocked worker tests wouldn't have
+  caught this, since they bypass `_job_dict()` entirely.
+- **[Done 2026-08-11] Fixed the lifecycle email header's contrast and
+  linked both "Red Tape Recordings" occurrences.** `_branded_wrapper()`
+  (`archive/utils/email.py`) had the outer `<td>` in the label's own red
+  (`#b71c1c`) with the inner `<span>` unstyled (just a border) — the
+  reverse of the real on-site `.dymo-label` look, where a red label sits
+  *inside* a separately-dark navbar and reads as a label specifically
+  because of that contrast. Fix: outer cell now a dark shade matching
+  `bg-dark` (`#212529`), inner span carries its own explicit `#b71c1c`
+  background, and the text is real Title Case ("Red Tape Recordings")
+  instead of hardcoded `RED TAPE RECORDINGS`. Both `_branded_wrapper()`
+  and `_signoff_html()` now accept a `base_url` param
+  (`PUBLIC_BASE_URL`), wrapping the wordmark and sign-off line in a real
+  `<a href>` — both were previously plain unlinked text. Verified by
+  rendering a real `send_completion_email()` call to a local HTML file
+  and viewing it in-browser (no live Resend send available this
+  session) — dark bar with a contrasting red label inside, both "Red
+  Tape Recordings" occurrences confirmed as real `<a href>` links via
+  `document.querySelectorAll('a')`. The missing `text-shadow` emboss
+  effect from the real `.dymo-label` is still absent — left alone per
+  the original finding, since text-shadow support across email clients
+  is notoriously unreliable and not worth chasing without a client-safe
+  alternative.
+- **[Done 2026-08-11] Added the missing nav divider between "My Saved
+  Items" and "Sign in"** — the one gap in `archive/templates/base.html`'s
+  otherwise consistent divider-between-every-nav-item pattern. One-line
+  fix, verified live in-browser.
+- **[Done 2026-08-11] Saved-searches list now shows `has_agenda`/
+  `has_transcript`/`fuzzy` alongside jurisdiction/date.**
+  `archive/templates/saved_items.html`'s summary line previously only
+  showed `sp.jurisdiction` and the date range, even though the saved
+  link itself already correctly encoded all the filters — a viewer
+  scanning their saved searches had no way to tell, at a glance, that an
+  entry was (for example) filtered to "has transcript only." Display-only
+  fix, verified via a `TestClient` request against a seeded `SavedItem`
+  row with all three filters set (`"Testville · has transcript · has
+  agenda · fuzzy"` rendered correctly), since no live Clerk session was
+  available this session to click through the real page.
+- **[Done 2026-08-11] Fixed `/meetings` row title wrapping wider on
+  agenda-only rows than rows with a transcript badge.** The
+  `.transcript-badge` span was only rendered `{% if m.has_transcript %}`,
+  so an agenda-only row had no second flex child reserving that column's
+  width and `.calendar-candidate-main` (and its title) expanded to fill
+  the row. Fix: `meeting_list.html` now always renders the badge markup;
+  a new `.transcript-badge-placeholder` class (`visibility: hidden`,
+  same box dimensions) hides it visually when there's no transcript
+  instead of omitting the element. Verified live in-browser, both rows'
+  titles now wrap at the same right margin.
+- **[Done 2026-08-11] Added a parallel disclaimer for source-provided
+  (non-AI) transcripts, per direct user request.** Only
+  `source="transcribed"` versions got the existing amber "AI TRANSCRIPT"
+  disclaimer; `source="scraped"` (the actual value for every
+  platform-provided caption) got none, despite also being unreviewed
+  third-party content. Added an `{% elif active_version.source ==
+  "scraped" %}` branch in `meeting_page.html` with the user's own copy, a
+  distinct "SOURCE TRANSCRIPT" label, and a blue-tinted `.source-disclaimer`
+  style (vs. the AI box's amber) so the two stay visually distinguishable
+  at a glance — links to the existing `#transcribeToggle` button rather
+  than duplicating its behavior. Verified live in-browser against a
+  meeting page with a real `source="scraped"` version.
+- **[Done 2026-08-11] Built the first mitigation from the Trust & safety
+  threat-model section: per-page `noindex` on `generic_fallback` pages.**
+  `archive/templates/meeting_page.html`'s meta block now renders
+  `<meta name="robots" content="noindex">` whenever `page.platform ==
+  "unknown"` (the exact `platform_name` `generic_fallback.py` registers
+  under, confirmed the only adapter using that value) — stops
+  search-engine amplification of the least-verified, most-open resolve
+  path without blocking or gating anything. Verified live in-browser
+  against both an `unknown`-platform page (noindex present) and a
+  `granicus`-platform page (no robots meta at all), confirming the gate
+  is real, not a blanket noindex.
 - **[Done 2026-08-11] Fixed `GranicusAssetFinder._fetch_agenda_items()`
   silently discarding its own PDF-fallback link when `AgendaViewer.php`
   redirects to a *raw binary* PDF, instead of the HTML/Google-Docs-preview

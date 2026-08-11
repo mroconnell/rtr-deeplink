@@ -216,6 +216,10 @@ async def test_full_chunk_lifecycle_promotes_transcribed_version():
     status = await crud.get_transcription_job_status(job["job_id"])
     assert status["status"] == "completed"
     assert status["chunks_completed"] == 3
+    # Real bug fixed 2026-08-11: _job_dict() never included this key, so
+    # worker/main.py's completion-email excerpt lookup always got None
+    # and rendered empty -- see crud.py's _job_dict() for the fix.
+    assert status["transcript_version_id"] == result["transcript_version_id"]
 
     page = await crud.get_page_by_slug(job["meeting_page_slug"])
     transcribed = [v for v in page["versions"] if v["source"] == "transcribed"]

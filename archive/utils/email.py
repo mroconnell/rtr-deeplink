@@ -169,7 +169,7 @@ async def _send(to: str, subject: str, html: str, *, cc: str = "") -> bool:
         return False
 
 
-def _branded_wrapper(body_html: str) -> str:
+def _branded_wrapper(body_html: str, base_url: str = "") -> str:
     """Shared branded skeleton (RTR header bar + white content card) behind
     every warmer, first-person-from-Ryan email this module sends -- see
     rtr-business's marketing/LIFECYCLE_EMAILS.md for the approved copy/
@@ -184,13 +184,27 @@ def _branded_wrapper(body_html: str) -> str:
     outer table (not just divs) for the page background, since Outlook
     desktop's Word rendering engine handles table-based layouts far more
     predictably than div/CSS ones.
+
+    Real bug fixed 2026-08-11: this used to have the outer cell itself in
+    the label's own red (#b71c1c) with the inner span unstyled (just a
+    border) -- the reverse of the real on-site .dymo-label look, where a
+    red label sits *inside* a separately-dark navbar (bg-dark) and reads
+    as a label specifically because of that contrast. Outer cell is now a
+    dark shade matching bg-dark, with the inner span carrying its own
+    explicit red background -- and the text is real Title Case ("Red Tape
+    Recordings", matching base.html's actual markup) instead of hardcoded
+    ALL CAPS. base_url (when set) also makes the wordmark a real link back
+    to the site, matching _signoff_html()'s sign-off line below.
     """
+    wordmark = "Red Tape Recordings"
+    if base_url:
+        wordmark = f'<a href="{base_url}" style="color:#ffffff;text-decoration:none;">{wordmark}</a>'
     return f"""\
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f8f9fa;padding:24px 0;">
 <tr><td align="center">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border:1px solid #ddd;">
-<tr><td style="background:#b71c1c;padding:14px 24px;">
-<span style="font-family:'Courier New',monospace;font-weight:bold;letter-spacing:0.11em;font-size:15px;color:#ffffff;border:2px solid #a84b00;padding:4px 14px;display:inline-block;">RED TAPE RECORDINGS</span>
+<tr><td style="background:#212529;padding:14px 24px;">
+<span style="background:#b71c1c;font-family:'Courier New',monospace;font-weight:bold;letter-spacing:0.11em;font-size:15px;color:#ffffff;border:2px solid #a84b00;padding:4px 14px;display:inline-block;">{wordmark}</span>
 </td></tr>
 <tr><td style="padding:28px 24px 8px;">
 {body_html}
@@ -201,12 +215,17 @@ def _branded_wrapper(body_html: str) -> str:
 """
 
 
-def _signoff_html() -> str:
+def _signoff_html(base_url: str = "") -> str:
     # Matches the house-style sign-off in marketing/LIFECYCLE_EMAILS.md,
-    # used on every lifecycle email built from that doc.
+    # used on every lifecycle email built from that doc. base_url (when
+    # set) links "Red Tape Recordings" back to the site -- real bug fixed
+    # 2026-08-11, this was plain unlinked text before.
+    name = "Red Tape Recordings"
+    if base_url:
+        name = f'<a href="{base_url}" style="color:#2c3e50;">{name}</a>'
     return (
         '<p style="margin:24px 0 0;font-family:Georgia,\'Times New Roman\',serif;'
-        'font-size:14px;color:#2c3e50;">Signing out,<br>Ryan<br>Red Tape Recordings</p>'
+        f'font-size:14px;color:#2c3e50;">Signing out,<br>Ryan<br>{name}</p>'
     )
 
 
@@ -237,6 +256,7 @@ async def send_completion_email(
     # No first_name is ever actually available yet: nothing in the
     # transcription-request flow (confirm-by-email only) collects a name.
     # "Hi there," is the documented fallback for exactly this case.
+    base_url = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
     greeting_name = html.escape(first_name) if first_name else "there"
     title = html.escape(meeting_title)
     body_html = f"""\
@@ -260,8 +280,8 @@ async def send_completion_email(
 <p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#2c3e50;">Click any line to jump to that moment in the video. When you find the part that matters, copy the "deep link," and it should take whoever you send it to right to that second.</p>
 <p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#2c3e50;">Thanks for using Red Tape Recordings.</p>
 """
-    body_html += _signoff_html()
-    return await _send(to, "Your transcript's ready", _branded_wrapper(body_html))
+    body_html += _signoff_html(base_url)
+    return await _send(to, "Your transcript's ready", _branded_wrapper(body_html, base_url))
 
 
 async def send_transcription_failed_email(
@@ -274,6 +294,7 @@ async def send_transcription_failed_email(
     send in this module already routes replies to) so failures get seen
     and can be followed up on personally, matching the doc's own note.
     """
+    base_url = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
     greeting_name = html.escape(first_name) if first_name else "there"
     title = html.escape(meeting_title)
     body_html = f"""\
@@ -282,9 +303,9 @@ async def send_transcription_failed_email(
 <p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#2c3e50;">A couple of things worth trying: <a href="{page_url}" style="color:#3498db;">check that the link still plays</a>, or reply to this email with the page you found it on and we'll take a look.</p>
 <p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#2c3e50;">Sorry it wasn't ready. Thank you for your patience, and for helping keep the record open.</p>
 """
-    body_html += _signoff_html()
+    body_html += _signoff_html(base_url)
     cc = os.environ.get("RESEND_REPLY_TO_ADDRESS", "")
-    return await _send(to, "We hit a snag on your transcript", _branded_wrapper(body_html), cc=cc)
+    return await _send(to, "We hit a snag on your transcript", _branded_wrapper(body_html, base_url), cc=cc)
 
 
 async def send_youtube_transcript_report(to: str, *, ingested: list, skipped: list, failed: list) -> bool:

@@ -11,7 +11,8 @@ import re
 from typing import Iterable, Optional
 
 _WORD_RE = re.compile(r"[a-z0-9']+")
-_PHRASE_RE = re.compile(r'"([^"]*)"')
+_PHRASE_RE = re.compile(r'(-?)"([^"]*)"')
+_NOOP_WORDS = {"and", "&"}
 
 
 def build_corpus(*texts: str) -> str:
@@ -62,28 +63,60 @@ def _fuzzy_threshold(word: str) -> int:
 
 
 def _parse_query(query: str) -> tuple:
-    """Splits a query into (phrases, words) -- a `"quoted phrase"` is
-    required as one continuous adjacent match; everything outside quotes
-    is split into independent words as before, each required separately
-    (AND, not OR -- a meeting must contain every word/phrase, though
-    unquoted words don't need to be adjacent to each other or to a
-    phrase). An unclosed quote isn't a syntax error -- `_PHRASE_RE`
-    simply doesn't match it, so the stray `"` character just rides along
-    as part of whatever word it's stuck to, same as it did before phrase
-    support existed (that word then just won't match anything, which is
-    the same "quoting made it worse, not ignored" behavior this whole fix
-    is otherwise closing -- but only for that one malformed term, not the
-    entire query).
+    """Splits a query into (phrases, words, excluded_phrases, excluded_words).
+
+    A `"quoted phrase"` is required as one continuous adjacent match;
+    everything outside quotes is split into independent words as before,
+    each required separately (AND, not OR -- a meeting must contain every
+    word/phrase, though unquoted words don't need to be adjacent to each
+    other or to a phrase). An unclosed quote isn't a syntax error --
+    `_PHRASE_RE` simply doesn't match it, so the stray `"` character just
+    rides along as part of whatever word it's stuck to, same as it did
+    before phrase support existed (that word then just won't match
+    anything, which is the same "quoting made it worse, not ignored"
+    behavior this whole fix is otherwise closing -- but only for that one
+    malformed term, not the entire query).
+
+    Basic operators, Google-style: a leading `-` on a word or `-"phrase"`
+    excludes meetings containing it (NOT) -- collected separately here and
+    checked first in `matches()`, since a meeting failing an exclusion
+    should never fall through to (and get overridden by) the positive
+    AND checks. A leading `+`, a bare `&`, or the bare word `AND` are all
+    treated as no-ops: every unquoted word is already required by default,
+    so these exist only so someone typing them doesn't get a literal (and
+    always-failing, since real transcript text is very unlikely to contain
+    a bare "+" or "&" character) search term instead of the AND they meant.
+    No OR support -- that needs real expression-tree parsing (grouping/
+    precedence), which this flat list-based return value can't represent;
+    see BACKLOG.md.
     """
-    phrases = [p.lower() for p in _PHRASE_RE.findall(query) if p.strip()]
+    phrases = []
+    excluded_phrases = []
+    for neg, phrase in _PHRASE_RE.findall(query):
+        phrase = phrase.strip().lower()
+        if not phrase:
+            continue
+        (excluded_phrases if neg else phrases).append(phrase)
+
     remainder = _PHRASE_RE.sub(" ", query)
-    words = [t for t in remainder.lower().split() if t]
-    return phrases, words
+    words = []
+    excluded_words = []
+    for token in remainder.lower().split():
+        if token.startswith("-") and len(token) > 1:
+            excluded_words.append(token[1:])
+        elif token.startswith("+") and len(token) > 1:
+            words.append(token[1:])
+        elif token in ("+", "-") or token in _NOOP_WORDS:
+            continue
+        else:
+            words.append(token)
+    return phrases, words, excluded_phrases, excluded_words
 
 
 def matches(query: str, corpus: str, corpus_words: set, fuzzy: bool) -> bool:
     """True if every `"quoted phrase"` and every unquoted word in `query`
-    matches somewhere in this meeting's searchable text.
+    matches somewhere in this meeting's searchable text, and no excluded
+    (`-term`/`-"phrase"`) term does.
 
     Exact mode: plain case-insensitive substring match against the raw
     corpus (Python's `in` on a lowercased string -- fast, and the
@@ -96,11 +129,20 @@ def matches(query: str, corpus: str, corpus_words: set, fuzzy: bool) -> bool:
     fuzzy mode -- phrase-level fuzzy matching (an adjacent run of
     near-matching words) is a meaningfully harder problem than this
     solves, and quoting a phrase is itself a reasonable signal the caller
-    wants a literal match.
+    wants a literal match. Exclusions are always checked as an exact
+    substring too, regardless of `fuzzy` -- a fuzzy exclusion risks
+    dropping a meeting that doesn't actually contain the excluded term,
+    just something near it, which is a worse failure mode than an
+    exclusion occasionally missing a typo'd instance of the excluded word.
     """
-    phrases, terms = _parse_query(query)
-    if not phrases and not terms:
+    phrases, terms, excluded_phrases, excluded_terms = _parse_query(query)
+    if not phrases and not terms and not excluded_phrases and not excluded_terms:
         return True
+
+    if any(phrase in corpus for phrase in excluded_phrases):
+        return False
+    if any(term in corpus for term in excluded_terms):
+        return False
 
     if not all(phrase in corpus for phrase in phrases):
         return False
@@ -168,7 +210,7 @@ def find_snippet(query: str, texts: Iterable[str], fuzzy: bool, window: int = 50
     with only the deliberately-inserted <mark> tag left raw -- callers
     should render it with a "safe"/no-further-escaping filter.
     """
-    phrases, terms = _parse_query(query)
+    phrases, terms, _excluded_phrases, _excluded_terms = _parse_query(query)
     if not phrases and not terms:
         return None
 

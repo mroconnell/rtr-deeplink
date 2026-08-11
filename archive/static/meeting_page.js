@@ -12,6 +12,11 @@
 
 let activeVideoAdapter = null;
 
+// Kept in sync with app/static/player.js's identical constant (this
+// file's own header comment) -- used by wireTranscribeForm()'s loading
+// state below.
+const CASSETTE_REEL_SVG = '<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7" fill="#fff" stroke="#bbb" stroke-width="2"/><circle cx="9" cy="9" r="2.2" fill="#bbb"/></svg>';
+
 function formatTime(seconds) {
   seconds = Math.floor(seconds || 0);
   const h = Math.floor(seconds / 3600);
@@ -231,49 +236,26 @@ function wireTranscribeForm() {
     feasibilityOk = false;
   }
 
-  // Friction is intentional (see BACKLOG.md's abuse-control notes): the
-  // feasibility check always fires immediately on toggle, before any email
-  // field appears, so a request that can't actually be transcribed never
-  // gets that far.
-  toggle.addEventListener('click', async () => {
-    form.hidden = false;
-    toggle.hidden = true;
-    emailStep.hidden = true;
-    checkStatusEl.textContent = 'Checking for a usable audio or video source…';
-    checkStatusEl.className = 'transcribe-status';
-
-    try {
-      const res = await fetch('/api/transcription/check-feasibility', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: form.dataset.url || window.location.href }),
-      });
-      const data = await res.json();
-      if (data.ok) {
-        feasibilityOk = true;
-        checkStatusEl.textContent = '';
-        emailStep.hidden = false;
-      } else {
-        checkStatusEl.innerHTML = linkifyWarning(data.message || "We couldn't find a usable audio or video source for this meeting.");
-        checkStatusEl.className = 'transcribe-status error';
-      }
-    } catch (err) {
-      checkStatusEl.textContent = 'Something went wrong — please try again.';
-      checkStatusEl.className = 'transcribe-status error';
-    }
-  });
-
-  cancelBtn.addEventListener('click', resetForm);
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (!feasibilityOk) return;
-    const email = document.getElementById('transcribeEmail').value;
+  // Shared by both the manual email-form submit handler and (previously)
+  // an auto-submit path for signed-in visitors -- kept as its own
+  // function since it's still the one real submit path.
+  async function submitRequest(email) {
     const submitBtn = form.querySelector('button[type="submit"]');
-
-    submitBtn.disabled = true;
-    statusEl.textContent = '';
+    if (submitBtn) submitBtn.disabled = true;
     statusEl.className = 'transcribe-status';
+    // Real gap fixed 2026-08-11: this request re-runs the whole
+    // feasibility check server-side (see /api/transcription/submit's own
+    // docstring -- never trusts a client-supplied "it passed" flag), so
+    // it can genuinely take several seconds on a real meeting, not the
+    // instant round-trip the previous blank statusEl implied. Reuses the
+    // same spinning-reel loading state init() already shows during the
+    // real resolve fetch, so a long-running request reads as "working,"
+    // not "hung."
+    statusEl.innerHTML = '<span class="status-loading">' +
+      `<span class="cassette-reel spinning">${CASSETTE_REEL_SVG}</span>` +
+      `<span class="cassette-reel spinning">${CASSETTE_REEL_SVG}</span>` +
+      '<span>Requesting your transcript — this can take a few seconds.</span>' +
+      '</span>';
 
     try {
       const res = await fetch('/api/transcription/submit', {
@@ -296,8 +278,60 @@ function wireTranscribeForm() {
       statusEl.textContent = 'Something went wrong — please try again.';
       statusEl.className = 'transcribe-status error';
     } finally {
-      submitBtn.disabled = false;
+      if (submitBtn) submitBtn.disabled = false;
     }
+  }
+
+  // User request 2026-08-11: dropped the "sign in to skip re-entering
+  // your email" shortcut from this specific spot after Clerk's own
+  // sign-in redirect proved unreliable here across several attempts
+  // (see git history for the full saga) -- always just capture an
+  // email instead. Redundant for an already-signed-in visitor (they
+  // type an email that's often their own account's), but harmless; the
+  // backend still skips the confirm-by-email step for them regardless
+  // (see /api/transcription/submit's clerk_verified check, unrelated to
+  // and unaffected by any of this -- pure server-side session check).
+  //
+  // Friction is intentional (see BACKLOG.md's abuse-control notes): the
+  // feasibility check always fires immediately on toggle, before any email
+  // field appears, so a request that can't actually be transcribed never
+  // gets that far.
+  async function runFeasibilityCheck() {
+    form.hidden = false;
+    toggle.hidden = true;
+    emailStep.hidden = true;
+    checkStatusEl.textContent = 'Checking for a usable audio or video source…';
+    checkStatusEl.className = 'transcribe-status';
+
+    try {
+      const res = await fetch('/api/transcription/check-feasibility', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: form.dataset.url || window.location.href }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        feasibilityOk = true;
+        checkStatusEl.textContent = 'We found a workable audio file — share your email so we can notify you when the transcript is complete.';
+        emailStep.hidden = false;
+      } else {
+        checkStatusEl.innerHTML = linkifyWarning(data.message || "We couldn't find a usable audio or video source for this meeting.");
+        checkStatusEl.className = 'transcribe-status error';
+      }
+    } catch (err) {
+      checkStatusEl.textContent = 'Something went wrong — please try again.';
+      checkStatusEl.className = 'transcribe-status error';
+    }
+  }
+
+  toggle.addEventListener('click', runFeasibilityCheck);
+
+  cancelBtn.addEventListener('click', resetForm);
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!feasibilityOk) return;
+    await submitRequest(document.getElementById('transcribeEmail').value);
   });
 }
 
@@ -414,8 +448,49 @@ function wireSaveMeetingButton() {
 // below on purpose -- the no-video case (no #videoWrapper at all) is
 // exactly the case most likely to have this button in its warning text.
 function wireTranscribeInlineTriggers() {
-  document.querySelectorAll('.transcribe-inline-trigger').forEach((btn) => {
+  // :not(#sourceDisclaimerPointer) -- that one link reuses this class for
+  // its link-styled look only, not this auto-click behavior; it's wired
+  // separately below by wireSourceDisclaimerPointer(), deliberately
+  // *not* auto-clicking the real button (see that function's comment).
+  document.querySelectorAll('.transcribe-inline-trigger:not(#sourceDisclaimerPointer)').forEach((btn) => {
     btn.addEventListener('click', () => document.getElementById('transcribeToggle').click());
+  });
+}
+
+// The source-transcript disclaimer's "button to the left" link (user
+// request 2026-08-11, meeting_page.html) -- unlike the warnings-text
+// .transcribe-inline-trigger buttons above, this deliberately does NOT
+// auto-click #transcribeToggle (that would silently fire the feasibility
+// check's real network request just from reading the disclaimer,
+// working against wireTranscribeForm()'s own deliberate friction). Just
+// draws the eye to the real button: a brief pop/glow via the
+// .pointed-to animation (style.css), the same "depressed vs. popped-up"
+// tape-deck cue floated for the search/save-search buttons in
+// BACKLOG.md. Removes-then-re-adds the class (with a forced reflow in
+// between) so a second click re-triggers the animation even if it's
+// still settling from the first.
+//
+// User feedback 2026-08-11: the plain #transcribeToggle anchor's native
+// jump-scrolled every click, even when the button was already fully on
+// screen -- jarring on a typical desktop viewport where the two-column
+// layout usually keeps it in view already. preventDefault() replaces
+// that with a real visibility check: only scrolls when the button isn't
+// already fully within the viewport, the glow alone otherwise.
+function wireSourceDisclaimerPointer() {
+  const link = document.getElementById('sourceDisclaimerPointer');
+  const toggle = document.getElementById('transcribeToggle');
+  if (!link || !toggle) return;
+  link.addEventListener('click', (e) => {
+    e.preventDefault();
+    const rect = toggle.getBoundingClientRect();
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+    const fullyVisible = rect.top >= 0 && rect.bottom <= viewportHeight;
+    if (!fullyVisible) {
+      toggle.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    toggle.classList.remove('pointed-to');
+    void toggle.offsetWidth;
+    toggle.classList.add('pointed-to');
   });
 }
 
@@ -428,6 +503,7 @@ document.addEventListener('DOMContentLoaded', () => {
   wireReportProblemForm();
   wireTranscribeForm();
   wireTranscribeInlineTriggers();
+  wireSourceDisclaimerPointer();
   wireSaveMeetingButton();
 
   const wrapper = document.getElementById('videoWrapper');

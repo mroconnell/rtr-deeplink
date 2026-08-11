@@ -390,6 +390,32 @@ def test_strip_unknown_caption_markup_drops_srt_style_sequence_numbers_too():
     assert strip_unknown_caption_markup(content) == "Bare number test."
 
 
+def test_strip_unknown_caption_markup_recases_all_caps_track():
+    # Real gap fixed 2026-08-11: normalize_shouting_caption() only ever
+    # ran on structured (VTT/SRT/TTML) cue lists -- an ALL-CAPS SBV/SUB/
+    # SMI/plain-.txt track stayed ALL CAPS unconditionally, unlike every
+    # other caption format. Same shouting heuristic, applied via the
+    # shared _normalize_shouting_text() helper.
+    content = (
+        "0:00:01.500,0:00:03.200\n"
+        "THE JULY MEETING OF THE CITY COUNCIL WILL NOW COME TO ORDER "
+        "PLEASE STAND FOR THE PLEDGE OF ALLEGIANCE TO THE FLAG.\n\n"
+        "0:00:03.200,0:00:05.000\n"
+        "MADAM CLERK PLEASE CALL THE ROLL FOR ALL MEMBERS PRESENT.\n"
+    )
+    result = strip_unknown_caption_markup(content)
+    assert result != result.upper()
+    assert result.startswith("The july meeting")
+
+
+def test_strip_unknown_caption_markup_leaves_short_all_caps_alone():
+    # Under the shouting heuristic's 40-letter sample minimum -- stays
+    # untouched rather than guessing off too little signal, matching
+    # normalize_shouting_caption()'s own threshold behavior.
+    content = "0:00:01.000,0:00:02.000\nHELLO.\n"
+    assert strip_unknown_caption_markup(content) == "HELLO."
+
+
 # --- parse_captions_by_extension ---------------------------------------
 
 def test_parse_captions_by_extension_structured_formats():

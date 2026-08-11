@@ -1082,6 +1082,12 @@ def _job_dict(job: TranscriptionJob, page: Optional[MeetingPage]) -> dict:
         # public status-poll proxy strips this before it ever reaches a
         # browser, no reason to echo a viewer's own email back to them.
         "requester_email": job.requester_email,
+        # Real bug fixed 2026-08-11: this was missing entirely, so
+        # worker/main.py's _send_completion_email() always looked up
+        # None and every completion email's transcript excerpt rendered
+        # empty -- the data already exists on the model (set in
+        # report_chunk_result() above), it just never got surfaced here.
+        "transcript_version_id": job.transcript_version_id,
     }
 
 

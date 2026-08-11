@@ -70,6 +70,28 @@ body {
   opacity: 0.85;
 }
 
+/* Real gap fixed 2026-08-11: base.html now picks the nav's initial state
+   from active_account, so a signed-in visitor's "Sign in" flash is gone
+   -- but #clerk-user-button starts as a genuinely empty <span> until
+   ClerkJS finishes loading and mounts the real avatar into it, so
+   everything to its right (nothing today, but any future nav item) would
+   still visibly shift once the avatar pops in. :not([hidden]) only
+   matches once base.html has already un-hidden this span server-side
+   (a signed-in visitor) -- never overrides the real `hidden` attribute
+   for a signed-out one, which stays governed by the UA stylesheet as
+   before. A same-size neutral circle placeholder (roughly Clerk's own
+   default avatar dimensions) reserves the space immediately; Clerk's
+   real avatar renders inside this same span once mounted and simply
+   covers it, no JS-side cleanup needed. */
+#clerk-user-button:not([hidden]) {
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  vertical-align: middle;
+}
+
 /* --- Cassette buttons --- */
 /* Used on just two buttons (homepage submit, meeting page's "Copy link to
    current time") -- the rewind-to-a-moment metaphor fits those, not every
@@ -116,6 +138,22 @@ body {
 .cassette-reel.spinning {
   animation: reel-spin 1.6s linear infinite;
   transform-origin: 50% 50%;
+}
+
+/* "Pop up and glow" attention cue -- user request 2026-08-11, meeting_page.js's
+   wireSourceDisclaimerPointer(). Same "depressed vs. popped-up" tape-deck
+   button metaphor floated for the search/save-search buttons in
+   BACKLOG.md (not built there yet), first real use of it here: a real
+   button momentarily lifts and glows to draw the eye across the column,
+   then settles back to normal, rather than a static color change that's
+   easy to miss on a button already in the viewport. */
+@keyframes cassette-btn-pop {
+  0% { transform: translateY(0); box-shadow: none; border-color: #222; }
+  35% { transform: translateY(-6px); box-shadow: 0 8px 16px rgba(52, 152, 219, 0.45); border-color: var(--accent); }
+  100% { transform: translateY(0); box-shadow: none; border-color: #222; }
+}
+.cassette-btn.pointed-to {
+  animation: cassette-btn-pop 900ms ease;
 }
 
 .status-loading {
@@ -302,6 +340,24 @@ body {
 .warnings:empty { display: none; }
 .warnings a { color: inherit; text-decoration: underline; }
 .warnings a:hover { color: var(--accent); }
+/* Real gap fixed 2026-08-11: app/static/style.css (the file this one is
+   deliberately kept in sync with, see this file's own header comment)
+   already had this rule; it never got copied over here, so every
+   .transcribe-inline-trigger this service renders (render_warnings.py's
+   warnings-text buttons, and meeting_page.html's own
+   #sourceDisclaimerPointer link) rendered as an unstyled default button/
+   link instead of the intended plain-link look. */
+.transcribe-inline-trigger {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.transcribe-inline-trigger:hover { color: var(--accent); }
 
 /* Plain "we think we found this: <link>" lines (agenda_link, 2026-08-10)
    -- deliberately normal weight/color, not the bold-on-tinted-background
@@ -649,6 +705,15 @@ mark.search-match.current { background: #f97316; color: #fff; }
   letter-spacing: 0.06em;
   transform: rotate(-4deg);
 }
+/* Real bug fixed 2026-08-11: an agenda-only row used to omit
+   .transcript-badge entirely, leaving .calendar-candidate-main as the
+   row's only flex child -- it then expanded to fill the row, wrapping
+   the title wider than a row with a badge reserving that column's
+   width. meeting_list.html now always renders the badge markup, just
+   invisible (same box, same dimensions) when there's no transcript. */
+.transcript-badge-placeholder {
+  visibility: hidden;
+}
 
 /* --- About page --- */
 .about-page {
@@ -779,6 +844,24 @@ mark.search-match.current { background: #f97316; color: #fff; }
   color: var(--pill-fg);
   font-size: 0.9rem;
 }
+/* Parallel disclaimer for source-provided (non-AI) transcripts, user
+   request 2026-08-11 -- see BACKLOG.md and meeting_page.html. A
+   different background/border/text color than .ai-disclaimer's amber
+   (blue, matching --accent) so the two read as visually distinct boxes
+   at a glance, not just distinguishable by reading the copy -- the
+   shared .dymo-label-small pill stays its usual red, but its own text
+   ("SOURCE TRANSCRIPT" vs "AI TRANSCRIPT") already differs. */
+.source-disclaimer {
+  background: #dceefb;
+  border-color: var(--accent);
+}
+.source-disclaimer p {
+  color: #1c5d85;
+}
+.source-disclaimer a {
+  color: inherit;
+  text-decoration: underline;
+}
 
 .meeting-list-page {
   max-width: 720px;
@@ -825,6 +908,77 @@ mark.search-match.current { background: #f97316; color: #fff; }
   background: var(--bg);
   color: var(--fg);
   font-size: 0.95rem;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Search tips: was a plain always-visible sentence, replaced with a "?"
+   icon + popover (2026-08-11) once the tip grew a real operator list --
+   too long to sit inline under the search box on every page load. Shown
+   on hover/keyboard-focus via CSS alone; also click-toggled via
+   meeting_list.js (`.is-open`) since touch devices have no hover state. */
+.search-hint { display: flex; align-items: center; gap: 0.4rem; position: relative; }
+.search-help-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 50%;
+  border: 1px solid var(--muted);
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+.search-help-icon:hover, .search-help-icon:focus { color: var(--accent); border-color: var(--accent); }
+.search-help-panel {
+  position: absolute;
+  z-index: 5;
+  top: 1.6rem;
+  left: 0;
+  width: max-content;
+  max-width: 22rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  padding: 0.75rem 0.9rem;
+  font-size: 0.85rem;
+  color: var(--fg);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+}
+.search-hint:hover .search-help-panel,
+.search-hint:focus-within .search-help-panel,
+.search-help-panel.is-open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+.search-help-panel ul { margin: 0.4rem 0 0; padding-left: 1.1rem; }
+.search-help-panel li { margin-bottom: 0.35rem; }
+.search-help-panel li:last-child { margin-bottom: 0; }
+.search-help-panel code {
+  font-family: var(--font-mono);
+  background: var(--page-bg);
+  border-radius: 3px;
+  padding: 0.05rem 0.3rem;
+  font-size: 0.82em;
 }
 
 .meeting-filters { margin-bottom: 1.5rem; }

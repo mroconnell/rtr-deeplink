@@ -101,13 +101,21 @@ async def request_transcription_job(
     media_kind: str,
     probed_duration_seconds: float,
     chunk_size_seconds: int,
+    clerk_verified: bool = False,
 ) -> Optional[dict]:
     """Ask the Archive to create (or return the existing active) on-demand
     transcription job for this meeting. Returns None if the Archive is
     unreachable/unconfigured or the call otherwise fails -- the caller
     (app/main.py's /api/transcription/submit) turns that into a clean
     user-facing error rather than a raw exception, same pattern as
-    lookup()."""
+    lookup().
+
+    clerk_verified: real result of get_clerk_user_id(request) in the
+    caller, not a client-asserted flag -- lets Archive skip the
+    confirm-by-email step for an already-signed-in visitor the same way
+    an existing newsletter subscriber's email already does (user request
+    2026-08-11).
+    """
     base = _base_url()
     if not base:
         return None
@@ -120,6 +128,7 @@ async def request_transcription_job(
         "media_kind": media_kind,
         "probed_duration_seconds": probed_duration_seconds,
         "chunk_size_seconds": chunk_size_seconds,
+        "clerk_verified": clerk_verified,
     }
     try:
         async with aiohttp.ClientSession() as session:
