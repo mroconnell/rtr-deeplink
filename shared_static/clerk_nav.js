@@ -111,7 +111,20 @@
       // actually causing Clerk.load() to fail, not a bad key as its own
       // generic error message suggested. Clerk's default built-in UI
       // works fine without it.
-      await window.Clerk.load();
+      //
+      // afterSignOutUrl: real bug fixed 2026-08-11, confirmed live by the
+      // user on staging -- with no options object at all, sign-out (via
+      // the mounted user button's own menu) left the visitor on Clerk's
+      // own generic hosted Account Portal page (a real screenshot showed
+      // "guided-bedbug-18.accounts.dev/sign-in", no RTR nav/footer at
+      // all) instead of anywhere on this site. Sends them back to the
+      // homepage instead. Inferred from Clerk's general documented API
+      // surface, not checked against live docs this pass (same caveat as
+      // everywhere else this is noted) -- needs a real sign-out on
+      // staging to confirm this actually redirects correctly, same
+      // "don't claim a fix without a positive example" convention as
+      // everywhere else in this repo.
+      await window.Clerk.load({ afterSignOutUrl: window.location.origin + "/" });
     } catch (e) {
       console.error("ClerkJS failed to load -- accounts features unavailable, rest of the site unaffected.", e);
       window.RTRClerk = { isSignedIn: () => false, getUserId: () => null };
