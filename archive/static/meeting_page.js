@@ -356,6 +356,53 @@ function wireReportProblemForm() {
   });
 }
 
+// Save this meeting -- two controls that toggle the same saved/unsaved
+// state together: the text button below the video (#saveMeetingBtn) and
+// the bookmark icon next to the title (#saveMeetingIconBtn), both tagged
+// with the shared .save-meeting-control class. No reveal-form needed
+// (unlike wireReportProblemForm/wireTranscribeForm above, this needs no
+// extra input from the visitor). Server-rendered with the correct
+// initial saved/unsaved state (see archive/main.py's meeting_page()
+// route, is_meeting_saved()) so there's no flash of the wrong state on
+// load; this only handles the click.
+function wireSaveMeetingButton() {
+  const controls = Array.from(document.querySelectorAll('.save-meeting-control'));
+  if (!controls.length) return;
+
+  function applyState(saved) {
+    controls.forEach((el) => {
+      el.dataset.saved = saved ? 'true' : 'false';
+      const label = el.querySelector('.cassette-label');
+      if (label) label.textContent = saved ? 'Saved ✓ (click to unsave)' : 'Save this meeting';
+      if (el.id === 'saveMeetingIconBtn') {
+        el.title = saved ? 'Click to unsave this meeting' : 'Click to save this meeting on your account profile';
+      }
+    });
+  }
+
+  controls.forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const saved = btn.dataset.saved === 'true';
+      const endpoint = saved ? '/api/account/unsave-meeting' : '/api/account/save-meeting';
+      controls.forEach((el) => { el.disabled = true; });
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ slug: btn.dataset.slug }),
+        });
+        if (res.ok) applyState(!saved);
+        // A 401 (session expired mid-visit) or any other failure leaves the
+        // controls exactly as they were -- no misleading state flip on failure.
+      } catch (err) {
+        // Network error -- same "leave state alone" reasoning as above.
+      } finally {
+        controls.forEach((el) => { el.disabled = false; });
+      }
+    });
+  });
+}
+
 // Warnings (video_warnings, transcript_warnings) are rendered server-side
 // via Jinja2's warnings_html filter (archive/utils/render_warnings.py,
 // 2026-08-10), which already turns the standardized "request a transcript
@@ -381,6 +428,7 @@ document.addEventListener('DOMContentLoaded', () => {
   wireReportProblemForm();
   wireTranscribeForm();
   wireTranscribeInlineTriggers();
+  wireSaveMeetingButton();
 
   const wrapper = document.getElementById('videoWrapper');
   if (!wrapper) return;

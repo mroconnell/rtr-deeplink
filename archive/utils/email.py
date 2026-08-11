@@ -18,6 +18,7 @@ copy added too (see the render.yaml task this was built alongside).
 import html
 import logging
 import os
+from typing import Optional
 from urllib.parse import quote
 
 import aiohttp
@@ -125,7 +126,7 @@ async def upsert_audience_contact(email: str) -> bool:
         return False
 
 
-async def _send(to: str, subject: str, html: str) -> bool:
+async def _send(to: str, subject: str, html: str, *, cc: str = "") -> bool:
     api_key = _api_key()
     from_address = os.environ.get("RESEND_FROM_ADDRESS", "")
     if not api_key or not from_address:
@@ -139,6 +140,8 @@ async def _send(to: str, subject: str, html: str) -> bool:
     html = html + _unsubscribe_footer_html(to)
 
     payload = {"from": from_address, "to": [to], "subject": subject, "html": html}
+    if cc:
+        payload["cc"] = [cc]
     # RESEND_FROM_ADDRESS lives on ally.redtaperecordings.com, a subdomain
     # dedicated to Resend's own sending DNS (SPF/DKIM/bounce MX) -- it has
     # no real inbox behind it. reply_to points replies at the root domain
@@ -166,37 +169,23 @@ async def _send(to: str, subject: str, html: str) -> bool:
         return False
 
 
-async def send_confirmation_email(to: str, confirm_url: str) -> bool:
-    html = (
-        "<p>Someone (hopefully you) asked Red Tape Recordings to transcribe a public "
-        "meeting from its audio, and used this email address for the first time.</p>"
-        f'<p><a href="{confirm_url}">Confirm this request</a> to start the transcription.</p>'
-        "<p>If you didn't request this, you can ignore this email.</p>"
-    )
-    return await _send(to, "Confirm your transcription request", html)
-
-
-async def send_completion_email(to: str, *, meeting_title: str, excerpt: str, page_url: str) -> bool:
-    # Every completion email is, by definition, about an AI-transcribed
-    # version -- this function only ever gets called from the
-    # transcription-job completion path -- so the disclaimer applies
-    # unconditionally, no source check needed (unlike the on-page/export
-    # versions, which can also show a real scraped caption). Same wording
-    # as the on-page disclaimer (archive/templates/meeting_page.html) --
-    # keep them matching if either ever changes.
-    #
-    # "Brand-lite" per the decided scope in BACKLOG.md: no logo asset
-    # exists in this repo yet, and building one is its own task -- so
-    # this hand-inlines the site's real colors/font (--primary navy
-    # #2c3e50, --accent blue #3498db, the amber warning-pill pair
-    # #ffe6a1/#a84b00, Georgia serif) as literal hex/font-family values
-    # on each tag, since most email clients strip <style> blocks and CSS
-    # variables outright -- a different, uglier discipline than the rest
-    # of this codebase's CSS, but the only one that reliably renders.
-    # A single outer table (not just divs) for the page background,
-    # since Outlook desktop's Word rendering engine handles table-based
-    # layouts far more predictably than div/CSS ones.
-    html = f"""\
+def _branded_wrapper(body_html: str) -> str:
+    """Shared branded skeleton (RTR header bar + white content card) behind
+    every warmer, first-person-from-Ryan email this module sends -- see
+    rtr-business's marketing/LIFECYCLE_EMAILS.md for the approved copy/
+    voice these build on. "Brand-lite" per the decided scope in
+    BACKLOG.md: no logo asset exists in this repo yet, and building one is
+    its own task -- so this hand-inlines the site's real colors/font
+    (--primary navy #2c3e50, --accent blue #3498db, the amber warning-pill
+    pair #ffe6a1/#a84b00, Georgia serif) as literal hex/font-family values
+    on each tag, since most email clients strip <style> blocks and CSS
+    variables outright -- a different, uglier discipline than the rest of
+    this codebase's CSS, but the only one that reliably renders. A single
+    outer table (not just divs) for the page background, since Outlook
+    desktop's Word rendering engine handles table-based layouts far more
+    predictably than div/CSS ones.
+    """
+    return f"""\
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f8f9fa;padding:24px 0;">
 <tr><td align="center">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border:1px solid #ddd;">
@@ -204,29 +193,98 @@ async def send_completion_email(to: str, *, meeting_title: str, excerpt: str, pa
 <span style="font-family:'Courier New',monospace;font-weight:bold;letter-spacing:0.11em;font-size:15px;color:#ffffff;border:2px solid #a84b00;padding:4px 14px;display:inline-block;">RED TAPE RECORDINGS</span>
 </td></tr>
 <tr><td style="padding:28px 24px 8px;">
-<p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:17px;color:#2c3e50;">Your requested transcript for <strong>{meeting_title}</strong> is ready.</p>
-<table role="presentation" cellpadding="0" cellspacing="0" style="background:#ffe6a1;border-radius:6px;margin:0 0 20px;">
-<tr><td style="padding:12px 16px;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#a84b00;">
-<strong>AI transcript:</strong> generated automatically from audio and hasn't been reviewed by a person &mdash; it can contain mistakes, including plausible-sounding sentences that were never actually said. Treat it as a starting point, not a verbatim record.
-</td></tr>
-</table>
-<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px;">
-<tr><td style="border-left:3px solid #ddd;padding:2px 0 2px 16px;font-family:Georgia,'Times New Roman',serif;font-size:15px;font-style:italic;color:#666;">
-{excerpt}&hellip;
-</td></tr>
-</table>
-<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
-<tr><td style="background:#ffffff;border:2px solid #222;">
-<a href="{page_url}" style="display:inline-block;padding:10px 22px;font-family:'Courier New',monospace;font-weight:bold;font-size:15px;letter-spacing:0.5px;color:#222426;text-decoration:none;">Read the full transcript &rarr;</a>
-</td></tr>
-</table>
-<p style="margin:0 0 24px;font-family:Georgia,'Times New Roman',serif;font-size:13px;color:#666;">Know someone else who'd find this useful? Forward this email, or share the link directly: <a href="{page_url}" style="color:#3498db;">{page_url}</a></p>
+{body_html}
 </td></tr>
 </table>
 </td></tr>
 </table>
 """
-    return await _send(to, f'Transcript ready: "{meeting_title}"', html)
+
+
+def _signoff_html() -> str:
+    # Matches the house-style sign-off in marketing/LIFECYCLE_EMAILS.md,
+    # used on every lifecycle email built from that doc.
+    return (
+        '<p style="margin:24px 0 0;font-family:Georgia,\'Times New Roman\',serif;'
+        'font-size:14px;color:#2c3e50;">Signing out,<br>Ryan<br>Red Tape Recordings</p>'
+    )
+
+
+async def send_confirmation_email(to: str, confirm_url: str) -> bool:
+    body_html = (
+        "<p>Someone (hopefully you) asked Red Tape Recordings to transcribe a public "
+        "meeting from its audio, and used this email address for the first time.</p>"
+        f'<p><a href="{confirm_url}">Confirm this request</a> to start the transcription.</p>'
+        "<p>If you didn't request this, you can ignore this email.</p>"
+    )
+    return await _send(to, "Confirm your transcription request", body_html)
+
+
+async def send_completion_email(
+    to: str, *, meeting_title: str, excerpt: str, page_url: str, first_name: Optional[str] = None
+) -> bool:
+    # "Your pizza is ready" per marketing/LIFECYCLE_EMAILS.md #4. Every
+    # completion email is, by definition, about an AI-transcribed version
+    # -- this function only ever gets called from the transcription-job
+    # completion path -- so the disclaimer box below applies
+    # unconditionally, no source check needed (unlike the on-page/export
+    # versions, which can also show a real scraped caption). Same wording
+    # as the on-page disclaimer (archive/templates/meeting_page.html) --
+    # keep them matching if either ever changes. Kept deliberately even
+    # though the approved copy doc doesn't mention it -- a real standing
+    # accuracy-expectation warning, not just legal cover.
+    #
+    # No first_name is ever actually available yet: nothing in the
+    # transcription-request flow (confirm-by-email only) collects a name.
+    # "Hi there," is the documented fallback for exactly this case.
+    greeting_name = html.escape(first_name) if first_name else "there"
+    title = html.escape(meeting_title)
+    body_html = f"""\
+<p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:17px;color:#2c3e50;">Hi {greeting_name},</p>
+<p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#2c3e50;">Your transcript for <strong>{title}</strong> is ready whenever you are.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px;">
+<tr><td style="background:#ffffff;border:2px solid #222;">
+<a href="{page_url}" style="display:inline-block;padding:10px 22px;font-family:'Courier New',monospace;font-weight:bold;font-size:15px;letter-spacing:0.5px;color:#222426;text-decoration:none;">Open it up &rarr;</a>
+</td></tr>
+</table>
+<table role="presentation" cellpadding="0" cellspacing="0" style="background:#ffe6a1;border-radius:6px;margin:0 0 20px;">
+<tr><td style="padding:12px 16px;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#a84b00;">
+<strong>AI transcript:</strong> generated automatically from audio and hasn't been reviewed by a person, and it can contain mistakes, including plausible-sounding sentences that were never actually said. Treat it as a starting point, not a verbatim record.
+</td></tr>
+</table>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px;">
+<tr><td style="border-left:3px solid #ddd;padding:2px 0 2px 16px;font-family:Georgia,'Times New Roman',serif;font-size:15px;font-style:italic;color:#666;">
+{html.escape(excerpt)}&hellip;
+</td></tr>
+</table>
+<p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#2c3e50;">Click any line to jump to that moment in the video. When you find the part that matters, copy the "deep link," and it should take whoever you send it to right to that second.</p>
+<p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#2c3e50;">Thanks for using Red Tape Recordings.</p>
+"""
+    body_html += _signoff_html()
+    return await _send(to, "Your transcript's ready", _branded_wrapper(body_html))
+
+
+async def send_transcription_failed_email(
+    to: str, *, meeting_title: str, page_url: str, first_name: Optional[str] = None
+) -> bool:
+    """"We couldn't cook this one" -- the sad-path twin to
+    send_completion_email() above, per marketing/LIFECYCLE_EMAILS.md's
+    "Bonus" entry ("A failure with no email just reads as broken"). CC's
+    RESEND_REPLY_TO_ADDRESS (Ryan's real inbox, same address every other
+    send in this module already routes replies to) so failures get seen
+    and can be followed up on personally, matching the doc's own note.
+    """
+    greeting_name = html.escape(first_name) if first_name else "there"
+    title = html.escape(meeting_title)
+    body_html = f"""\
+<p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:17px;color:#2c3e50;">Hi {greeting_name},</p>
+<p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#2c3e50;">We tried to pull a transcript for <strong>{title}</strong> and couldn't get it done this time. Usually that means the video URL moved, the stream came down, or the file was in a format we couldn't read yet.</p>
+<p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#2c3e50;">A couple of things worth trying: <a href="{page_url}" style="color:#3498db;">check that the link still plays</a>, or reply to this email with the page you found it on and we'll take a look.</p>
+<p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#2c3e50;">Sorry it wasn't ready. Thank you for your patience, and for helping keep the record open.</p>
+"""
+    body_html += _signoff_html()
+    cc = os.environ.get("RESEND_REPLY_TO_ADDRESS", "")
+    return await _send(to, "We hit a snag on your transcript", _branded_wrapper(body_html), cc=cc)
 
 
 async def send_youtube_transcript_report(to: str, *, ingested: list, skipped: list, failed: list) -> bool:

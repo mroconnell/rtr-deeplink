@@ -8,3 +8,7 @@ asyncpg>=0.29
 aiosqlite>=0.20
 python-dotenv>=1.0
 alembic>=1.13
+# Auth (2026-08-10): Clerk -- verifies the session cookie locally, no
+# network call per request. See requirements.txt's matching comment; no
+# svix here since webhook handling lives on the resolver only.
+clerk-backend-api>=6.0

@@ -20,6 +20,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from .db import crud
 from .db.engine import init_models
 from .utils import email as email_utils
+from .utils.clerk_auth import clerk_frontend_api_url, get_clerk_user_id
 from .utils.render_warnings import render_warnings_html
 from .utils.transcript_export import to_srt, to_txt
 from .utils.url_normalize import normalize_url
@@ -52,6 +53,8 @@ templates = Jinja2Templates(directory=APP_DIR / "templates")
 # this service's own onrender.com URL. Empty locally, where there's no
 # real public domain to canonicalize against.
 templates.env.globals["public_base_url"] = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
+templates.env.globals["CLERK_PUBLISHABLE_KEY"] = os.environ.get("CLERK_PUBLISHABLE_KEY", "")
+templates.env.globals["CLERK_FRONTEND_API_URL"] = clerk_frontend_api_url(os.environ.get("CLERK_PUBLISHABLE_KEY", ""))
 # Server-side equivalent of shared_static/deep_link.js's linkifyWarning()
 # -- wraps render_warnings_html()'s already-escaped output in Markup so a
 # template call site doesn't also need `|safe` (a forgotten `|safe`
@@ -339,6 +342,76 @@ async def internal_correct_language(req: CorrectLanguageRequest, authorization: 
     return result
 
 
+class SaveMeetingRequest(BaseModel):
+    clerk_user_id: str
+    slug: str
+
+
+@app.post("/internal/account/save-meeting")
+async def internal_save_meeting(req: SaveMeetingRequest, authorization: Optional[str] = Header(None)):
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    item = await crud.save_meeting(req.clerk_user_id, req.slug)
+    if item is None:
+        return JSONResponse({"error": "not_found", "message": "No meeting with that slug."}, status_code=404)
+    return item
+
+
+@app.post("/internal/account/unsave-meeting")
+async def internal_unsave_meeting(req: SaveMeetingRequest, authorization: Optional[str] = Header(None)):
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    removed = await crud.unsave_meeting(req.clerk_user_id, req.slug)
+    return {"removed": removed}
+
+
+class SaveSearchRequest(BaseModel):
+    clerk_user_id: str
+    search_params: dict
+
+
+@app.post("/internal/account/save-search")
+async def internal_save_search(req: SaveSearchRequest, authorization: Optional[str] = Header(None)):
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    return await crud.save_search(req.clerk_user_id, req.search_params)
+
+
+class UnsaveItemRequest(BaseModel):
+    clerk_user_id: str
+    saved_item_id: int
+
+
+@app.post("/internal/account/unsave-search")
+async def internal_unsave_search(req: UnsaveItemRequest, authorization: Optional[str] = Header(None)):
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    removed = await crud.unsave_item(req.clerk_user_id, req.saved_item_id)
+    return {"removed": removed}
+
+
+@app.get("/internal/account/saved")
+async def internal_list_saved_items(clerk_user_id: str, authorization: Optional[str] = Header(None)):
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    return await crud.list_saved_items(clerk_user_id)
+
+
+class DeleteAccountDataRequest(BaseModel):
+    clerk_user_id: str
+
+
+@app.post("/internal/account/delete-data")
+async def internal_delete_account_data(req: DeleteAccountDataRequest, authorization: Optional[str] = Header(None)):
+    """The right-to-deletion cascade, triggered by app/main.py's Clerk
+    user.deleted webhook handler -- see crud.delete_account_data()'s own
+    docstring for why this one call is the entire story on our side."""
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    count = await crud.delete_account_data(req.clerk_user_id)
+    return {"deleted": count}
+
+
 def _pick_active_version(page: dict, version: Optional[int]) -> Optional[dict]:
     versions = page["versions"]
     if not versions:
@@ -358,6 +431,12 @@ async def meeting_page(request: Request, slug: str, version: Optional[int] = Non
         return templates.TemplateResponse(request, "not_found.html", {}, status_code=404)
 
     active_version = _pick_active_version(page, version)
+    active_account = get_clerk_user_id(request)
+    # is_meeting_saved() only runs for a real verified session -- an
+    # anonymous visitor never pays this extra query, matching the
+    # "nothing existing gets gated, nothing extra costs anonymous
+    # traffic" design note.
+    meeting_saved = await crud.is_meeting_saved(active_account, page["id"]) if active_account else False
 
     return templates.TemplateResponse(
         request,
@@ -369,6 +448,15 @@ async def meeting_page(request: Request, slug: str, version: Optional[int] = Non
             # the page, not always English -- a transcript's real language
             # comes from its TranscriptVersion, not a sitewide constant.
             "page_lang": (active_version["language"] if active_version else None) or "en",
+            # Truthy only for a real, verified Clerk session -- the cookie
+            # is forwarded through the resolver's reverse proxy (see
+            # app/archive_client.py's proxy_get()), so this is a single
+            # local check, no internal HTTP round-trip. None for every
+            # anonymous visitor; nothing else on this page is conditional
+            # on it (see this feature's "nothing existing gets gated"
+            # design note).
+            "active_account": active_account,
+            "meeting_saved": meeting_saved,
         },
     )
 
@@ -452,7 +540,19 @@ async def meetings_index(
             "fuzzy": fuzzy_bool,
             "has_agenda": has_agenda_bool,
             "has_transcript": has_transcript_bool,
+            "active_account": get_clerk_user_id(request),
         },
+    )
+
+
+@app.get("/account/saved")
+async def account_saved(request: Request):
+    clerk_user_id = get_clerk_user_id(request)
+    items = await crud.list_saved_items(clerk_user_id) if clerk_user_id else None
+    return templates.TemplateResponse(
+        request,
+        "saved_items.html",
+        {"active_account": clerk_user_id, "items": items},
     )
 
 

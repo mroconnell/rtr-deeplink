@@ -75,7 +75,14 @@
   {% set show_transcribe_cta = not (active_version and active_version.segments and active_version.source == "transcribed") %}
   <main class="meeting-page">
     <div class="meta">
-      <h1>{{ page.title or "Untitled meeting" }}</h1>
+      <h1>
+        {{ page.title or "Untitled meeting" }}
+        {% if active_account %}
+        <button type="button" id="saveMeetingIconBtn" class="bookmark-icon-btn save-meeting-control" data-slug="{{ page.slug }}" data-saved="{{ 'true' if meeting_saved else 'false' }}" title="{{ 'Click to unsave this meeting' if meeting_saved else 'Click to save this meeting on your account profile' }}">
+          <svg class="bookmark-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" stroke="currentColor" stroke-width="2"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg>
+        </button>
+        {% endif %}
+      </h1>
       <p>
         {%- if page.jurisdiction %}{{ page.jurisdiction }}{% endif -%}
         {%- if page.date %}{% if page.jurisdiction %} &middot; {% endif %}{{ page.date }}{% endif -%}
@@ -119,6 +126,15 @@
       {% else %}
       <div class="warnings">No video available for this meeting.</div>
       {% endif %}
+      {% endif %}
+
+      {% if active_account %}
+      <p class="save-meeting-toggle">
+        <button type="button" id="saveMeetingBtn" class="cassette-btn save-meeting-control" data-slug="{{ page.slug }}" data-saved="{{ 'true' if meeting_saved else 'false' }}">
+          <svg class="bookmark-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg>
+          <span class="cassette-label">{{ "Saved ✓ (click to unsave)" if meeting_saved else "Save this meeting" }}</span>
+        </button>
+      </p>
       {% endif %}
 
       <p class="report-problem-toggle"><button type="button" id="reportProblemToggle" class="link-button">Report a problem with this meeting</button></p>

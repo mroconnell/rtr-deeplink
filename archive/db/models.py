@@ -167,3 +167,43 @@ class MeetingPageUrlAlias(Base):
     meeting_page_id: Mapped[int] = mapped_column(ForeignKey("meeting_pages.id"), nullable=False, index=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class SavedItem(Base):
+    """A meeting or a search saved to someone's account -- phase 1 of the
+    accounts feature (see BACKLOG.md's "Accounts + token billing" section
+    and the plan this was built from). Auth itself is entirely external
+    (Clerk, chosen 2026-08-10 specifically so this app doesn't have to
+    hand-roll session/cookie security) -- `clerk_user_id` is Clerk's own
+    stable user id (e.g. "user_2abc..."), never an email address. This
+    table deliberately stores **no PII at all**: Clerk holds the email,
+    we hold only an opaque id plus what was saved, so an account-deletion
+    webhook (see app/main.py's /api/clerk/webhook) only ever needs one
+    `DELETE ... WHERE clerk_user_id = ...` to fully satisfy a right-to-
+    deletion request on our side.
+
+    Unsave is a hard delete, not a status flip -- unlike TranscriptVersion
+    (never deleted, just demoted), nothing else ever references a
+    SavedItem row, so there's no history worth preserving.
+    """
+
+    __tablename__ = "saved_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    clerk_user_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+    # "saved_meeting" | "saved_search" -- plain String, not a SQL enum,
+    # matching TranscriptionJob.status's existing convention.
+    item_type: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+
+    # Set only for item_type == "saved_meeting".
+    meeting_page_id: Mapped[Optional[int]] = mapped_column(ForeignKey("meeting_pages.id"), nullable=True, index=True)
+
+    # Set only for item_type == "saved_search" -- the exact query-param
+    # shape /meetings already accepts (q, jurisdiction, date_from, date_to,
+    # has_agenda, has_transcript, fuzzy), stored verbatim so "run this
+    # saved search" is just crud.list_pages(**search_params) and "show its
+    # link" is just building /meetings?<the same dict>.
+    search_params: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

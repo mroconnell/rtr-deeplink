@@ -221,6 +221,9 @@ async def process_next_chunk(engine: TranscriptionEngine) -> bool:
     if result.get("status") == "completed":
         logger.info("Job %s completed -> transcript_version %s", job_id, result.get("transcript_version_id"))
         await _send_completion_email(job_id)
+    elif result.get("status") == "failed":
+        logger.info("Job %s gave up after %s consecutive chunk failures", job_id, result.get("consecutive_chunk_failures"))
+        await _send_failure_email(job_id)
 
     return True
 
@@ -249,6 +252,31 @@ async def _send_completion_email(job_id: int) -> None:
         page_url=page_url,
     )
     logger.info("Job %s: completion email to Resend %s", job_id, "accepted" if sent else "FAILED (see prior log line)")
+
+
+async def _send_failure_email(job_id: int) -> None:
+    # Mirrors _send_completion_email()'s shape exactly -- same status
+    # lookup, same "no resolvable meeting page, nothing to email" bail-out
+    # (shouldn't happen in practice: a job always belongs to an existing
+    # MeetingPage, but matches the defensive style already used above).
+    # Deliberately no auto-transcription filtering here, same as the
+    # completion path: AUTO_TRANSCRIPTION_REQUESTER_EMAIL jobs already
+    # get treated as a real "requester" throughout this module (see that
+    # constant's own docstring -- it doubles as Ryan's activity digest
+    # address), so a failed auto-job reaching him as this same branded
+    # email is existing behavior, not a new side effect of adding this.
+    status = await crud.get_transcription_job_status(job_id)
+    if status is None or not status.get("meeting_page_slug"):
+        return
+
+    base = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
+    page_url = f"{base}/m/{status['meeting_page_slug']}"
+    sent = await email_utils.send_transcription_failed_email(
+        status["requester_email"],
+        meeting_title=status.get("meeting_page_title") or "your meeting",
+        page_url=page_url,
+    )
+    logger.info("Job %s: failure email to Resend %s", job_id, "accepted" if sent else "FAILED (see prior log line)")
 
 
 async def run_forever() -> None:

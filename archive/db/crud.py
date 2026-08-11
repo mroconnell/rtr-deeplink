@@ -11,7 +11,7 @@ from ..utils.search import build_corpus, find_snippet, matches, tokenize
 from ..utils.slugify import build_base_slug, random_suffix
 from ..utils.url_normalize import normalize_url
 from .engine import async_session
-from .models import MeetingPage, MeetingPageUrlAlias, TranscriptionJob, TranscriptVersion
+from .models import MeetingPage, MeetingPageUrlAlias, SavedItem, TranscriptionJob, TranscriptVersion
 
 
 def _content_hash(segments: list) -> str:
@@ -392,6 +392,7 @@ async def get_page_by_slug(slug: str) -> Optional[dict]:
         ).scalars().all()
 
         return {
+            "id": page.id,
             "slug": page.slug,
             "platform": page.platform,
             "title": page.title,
@@ -1101,3 +1102,183 @@ async def get_confirmation_token(job_id: int) -> Optional[str]:
     async with async_session() as session:
         job = await session.get(TranscriptionJob, job_id)
         return job.confirmation_token if job else None
+
+
+# --- Saved meetings/searches (accounts phase 1, Clerk-backed) ----------
+#
+# clerk_user_id is Clerk's own stable user id -- this module never sees or
+# stores an email address for accounts; Clerk holds that. See
+# app/utils/clerk_auth.py / archive/utils/clerk_auth.py for verification,
+# and app/main.py's /api/clerk/webhook for the account-deletion cascade
+# that makes delete_account_data() below the entire right-to-deletion
+# story on our side.
+
+
+async def is_meeting_saved(clerk_user_id: str, meeting_page_id: int) -> bool:
+    """For the correct initial "Save this meeting" vs. "Saved" button
+    state on page load -- called only when a request already has a
+    verified Clerk session (see archive/main.py's meeting_page() route),
+    so an anonymous visitor never pays this query at all."""
+    async with async_session() as session:
+        existing = (
+            await session.execute(
+                select(SavedItem.id).where(
+                    SavedItem.clerk_user_id == clerk_user_id,
+                    SavedItem.item_type == "saved_meeting",
+                    SavedItem.meeting_page_id == meeting_page_id,
+                )
+            )
+        ).scalars().first()
+        return existing is not None
+
+
+async def save_meeting(clerk_user_id: str, slug: str) -> Optional[dict]:
+    """Saves a meeting to this account, keyed by its slug. Returns the
+    saved item as a dict, or None if no meeting with that slug exists (the
+    route turns that into a 404). Idempotent -- saving an already-saved
+    meeting just returns the existing row, never creates a second one."""
+    async with async_session() as session:
+        meeting_page_id = (
+            await session.execute(select(MeetingPage.id).where(MeetingPage.slug == slug))
+        ).scalars().first()
+        if meeting_page_id is None:
+            return None
+
+        existing = (
+            await session.execute(
+                select(SavedItem).where(
+                    SavedItem.clerk_user_id == clerk_user_id,
+                    SavedItem.item_type == "saved_meeting",
+                    SavedItem.meeting_page_id == meeting_page_id,
+                )
+            )
+        ).scalars().first()
+        if existing:
+            item = existing
+        else:
+            item = SavedItem(clerk_user_id=clerk_user_id, item_type="saved_meeting", meeting_page_id=meeting_page_id)
+            session.add(item)
+            await session.commit()
+            await session.refresh(item)
+
+        return {"id": item.id, "item_type": item.item_type, "meeting_page_id": item.meeting_page_id}
+
+
+async def unsave_meeting(clerk_user_id: str, slug: str) -> bool:
+    """True if a saved-meeting row existed and was removed; False if there
+    was nothing to remove (not an error -- unsaving something already
+    unsaved is a no-op, same as save_meeting's own idempotence)."""
+    async with async_session() as session:
+        meeting_page_id = (
+            await session.execute(select(MeetingPage.id).where(MeetingPage.slug == slug))
+        ).scalars().first()
+        if meeting_page_id is None:
+            return False
+
+        existing = (
+            await session.execute(
+                select(SavedItem).where(
+                    SavedItem.clerk_user_id == clerk_user_id,
+                    SavedItem.item_type == "saved_meeting",
+                    SavedItem.meeting_page_id == meeting_page_id,
+                )
+            )
+        ).scalars().first()
+        if existing is None:
+            return False
+        await session.delete(existing)
+        await session.commit()
+        return True
+
+
+async def save_search(clerk_user_id: str, search_params: dict) -> dict:
+    """Saves a search to this account. Dedup is a Python-side exact-dict
+    comparison against this user's existing saved searches (not a SQL
+    JSON-equality query, which is dialect-fragile) -- fine at the scale
+    one account's saved-search list will ever reach, same "keep it simple
+    at this scale" reasoning archive/utils/search.py's own docstring
+    already applies elsewhere in this file."""
+    async with async_session() as session:
+        existing_rows = (
+            await session.execute(
+                select(SavedItem).where(
+                    SavedItem.clerk_user_id == clerk_user_id, SavedItem.item_type == "saved_search"
+                )
+            )
+        ).scalars().all()
+        for row in existing_rows:
+            if row.search_params == search_params:
+                return {"id": row.id, "item_type": row.item_type, "search_params": row.search_params}
+
+        item = SavedItem(clerk_user_id=clerk_user_id, item_type="saved_search", search_params=search_params)
+        session.add(item)
+        await session.commit()
+        await session.refresh(item)
+        return {"id": item.id, "item_type": item.item_type, "search_params": item.search_params}
+
+
+async def unsave_item(clerk_user_id: str, saved_item_id: int) -> bool:
+    """Removes any saved item (meeting or search) by id -- scoped to
+    clerk_user_id so one account can never delete another's row even if
+    it somehow guessed a valid id."""
+    async with async_session() as session:
+        item = await session.get(SavedItem, saved_item_id)
+        if item is None or item.clerk_user_id != clerk_user_id:
+            return False
+        await session.delete(item)
+        await session.commit()
+        return True
+
+
+async def list_saved_items(clerk_user_id: str) -> dict:
+    """Everything saved to this account, newest first -- for GET
+    /account/saved. Saved meetings are joined against MeetingPage for
+    display fields (title/date/jurisdiction/slug) in the same pass, since
+    the page needs those regardless."""
+    async with async_session() as session:
+        rows = (
+            await session.execute(
+                select(SavedItem)
+                .where(SavedItem.clerk_user_id == clerk_user_id)
+                .order_by(SavedItem.created_at.desc())
+            )
+        ).scalars().all()
+
+        meeting_ids = [r.meeting_page_id for r in rows if r.item_type == "saved_meeting" and r.meeting_page_id]
+        pages_by_id = {}
+        if meeting_ids:
+            page_rows = (
+                await session.execute(
+                    select(MeetingPage.id, MeetingPage.slug, MeetingPage.title, MeetingPage.date, MeetingPage.jurisdiction).where(
+                        MeetingPage.id.in_(meeting_ids)
+                    )
+                )
+            ).all()
+            pages_by_id = {pid: {"slug": slug, "title": title, "date": date, "jurisdiction": jurisdiction} for pid, slug, title, date, jurisdiction in page_rows}
+
+    meetings, searches = [], []
+    for row in rows:
+        if row.item_type == "saved_meeting":
+            page = pages_by_id.get(row.meeting_page_id)
+            if page is None:
+                continue  # meeting page was deleted out from under a saved item -- skip, don't crash
+            meetings.append({"id": row.id, "created_at": row.created_at, **page})
+        elif row.item_type == "saved_search":
+            searches.append({"id": row.id, "created_at": row.created_at, "search_params": row.search_params or {}})
+
+    return {"meetings": meetings, "searches": searches}
+
+
+async def delete_account_data(clerk_user_id: str) -> int:
+    """Hard-deletes every SavedItem for this Clerk account -- the entire
+    right-to-deletion story on our side of the app.main.py user.deleted
+    webhook handler, since this table stores no other PII to clean up.
+    Returns the number of rows removed (for the webhook handler's own
+    logging, not load-bearing)."""
+    async with async_session() as session:
+        rows = (await session.execute(select(SavedItem).where(SavedItem.clerk_user_id == clerk_user_id))).scalars().all()
+        count = len(rows)
+        for row in rows:
+            await session.delete(row)
+        await session.commit()
+        return count

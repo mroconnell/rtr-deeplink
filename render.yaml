@@ -58,15 +58,40 @@ services:
         sync: false
       - key: ADMIN_STATS_TOKEN
         sync: false
+      # New here 2026-08-10 -- the resolver never needed its own public
+      # origin before (Archive/worker already had this for confirm-link/
+      # canonical-tag building), but Clerk's authorized_parties check
+      # needs to know the real public domain to reject a session token
+      # replayed from a different origin. Same value as Archive's own
+      # PUBLIC_BASE_URL: https://redtaperecordings.com.
+      - key: PUBLIC_BASE_URL
+        sync: false
       - key: RESEND_API_KEY
         sync: false
       - key: RESEND_AUDIENCE_ID
+        sync: false
+      # New here 2026-08-11, alongside LIFECYCLE_EMAILS.md's "Thanks"/
+      # "Welcome"/"Goodbye for now" emails -- this service previously only
+      # ever upserted Resend audience contacts, never sent a transactional
+      # email itself (that lived solely in archive/utils/email.py). Same
+      # values as rtr-deeplink-archive's copies below.
+      - key: RESEND_FROM_ADDRESS
+        sync: false
+      - key: RESEND_REPLY_TO_ADDRESS
         sync: false
       - key: GA_MEASUREMENT_ID
         sync: false
       - key: ARCHIVE_BASE_URL
         sync: false
       - key: ARCHIVE_INGEST_TOKEN
+        sync: false
+      - key: CLERK_PUBLISHABLE_KEY
+        sync: false
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: CLERK_JWT_KEY
+        sync: false
+      - key: CLERK_WEBHOOK_SIGNING_SECRET
         sync: false
 
   - type: web
@@ -96,6 +121,12 @@ services:
       - key: RESEND_FROM_ADDRESS
         sync: false
       - key: RESEND_REPLY_TO_ADDRESS
+        sync: false
+      - key: CLERK_PUBLISHABLE_KEY
+        sync: false
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: CLERK_JWT_KEY
         sync: false
 
   # On-demand transcription's background processor (see worker/main.py's
@@ -131,3 +162,5 @@ services:
         sync: false
       - key: HF_TOKEN
         sync: false  # optional -- unauthenticated Hugging Face Hub requests work fine today, just at a lower rate limit; see BACKLOG.md
+      - key: AUTO_TRANSCRIPTION_REQUESTER_EMAIL
+        sync: false  # optional -- idle-time auto-generation (worker/main.py) is silently disabled when unset; set to receive its completion-email activity digest
