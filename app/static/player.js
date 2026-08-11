@@ -357,9 +357,9 @@ function wireTranscribeForm() {
     feasibilityOk = false;
   }
 
-  // Shared by both the auto-submit-for-a-signed-in-visitor path below and
-  // the manual email-form submit handler -- same request, same
-  // success/error handling, just a different source for `email`.
+  // Shared by both the manual email-form submit handler and (previously)
+  // an auto-submit path for signed-in visitors -- kept as its own
+  // function since it's still the one real submit path.
   async function submitRequest(email) {
     const submitBtn = form.querySelector('button[type="submit"]');
     if (submitBtn) submitBtn.disabled = true;
@@ -403,34 +403,16 @@ function wireTranscribeForm() {
     }
   }
 
-  // Real bug fixed 2026-08-11 (matching change in archive/static/
-  // meeting_page.js -- see that file's comment for the full reasoning):
-  // Clerk's own sign-in redirect performs a real full-page navigation
-  // back to this URL once sign-in completes, wiping feasibilityOk and
-  // the checking/email-step UI state. sessionStorage survives the
-  // reload; consumed once on the next load of this exact page.
-  const PENDING_KEY = 'rtrPendingTranscribeUrl';
-
-  function markPendingSignIn() {
-    try {
-      sessionStorage.setItem(PENDING_KEY, sourceUrl);
-    } catch (e) {
-      // Private-browsing/storage-disabled: sign-in still works, this
-      // visitor just won't get the auto-resume.
-    }
-  }
-
-  function consumePendingSignIn() {
-    let pending = null;
-    try {
-      pending = sessionStorage.getItem(PENDING_KEY);
-      sessionStorage.removeItem(PENDING_KEY);
-    } catch (e) {
-      return false;
-    }
-    return pending === sourceUrl;
-  }
-
+  // User request 2026-08-11: dropped the "sign in to skip re-entering
+  // your email" shortcut from this specific spot after Clerk's own
+  // sign-in redirect proved unreliable here across several attempts
+  // (see git history for the full saga) -- always just capture an
+  // email instead. Redundant for an already-signed-in visitor (they
+  // type an email that's often their own account's), but harmless; the
+  // backend still skips the confirm-by-email step for them regardless
+  // (see /api/transcription/submit's clerk_verified check, unrelated to
+  // and unaffected by any of this -- pure server-side session check).
+  //
   // Friction is intentional (see BACKLOG.md's abuse-control notes): the
   // feasibility check always fires immediately on toggle, before any email
   // field appears, so a request that can't actually be transcribed never
@@ -451,37 +433,8 @@ function wireTranscribeForm() {
       const data = await res.json();
       if (data.ok) {
         feasibilityOk = true;
-        // User request 2026-08-11 (matching change in archive/static/
-        // meeting_page.js -- see that file's comment for the full
-        // reasoning): a signed-in visitor already has a real,
-        // Clerk-verified email -- skip the manual email step entirely
-        // and submit with it directly.
-        const clerkEmail = window.RTRClerk && window.RTRClerk.isSignedIn() && window.Clerk.user && window.Clerk.user.primaryEmailAddress
-          ? window.Clerk.user.primaryEmailAddress.emailAddress
-          : null;
-        if (clerkEmail) {
-          checkStatusEl.textContent = '';
-          await submitRequest(clerkEmail);
-        } else if (window.RTRClerk && window.Clerk) {
-          checkStatusEl.innerHTML = 'We found a workable audio file — please <button type="button" id="transcribeSignInPrompt" class="transcribe-inline-trigger">sign in</button> or share your email so we can notify you when the transcript is complete.';
-          const signInBtn = document.getElementById('transcribeSignInPrompt');
-          if (signInBtn) signInBtn.addEventListener('click', () => {
-            markPendingSignIn();
-            // forceRedirectUrl/signInForceRedirectUrl both confirmed live
-            // to still not reliably return here -- shared_static/
-            // clerk_nav.js's markSignInReturnUrl()/maybeForceSignInReturn()
-            // is the real, deterministic fix (see that file's comment);
-            // this call's own forceRedirectUrl is left in place too since
-            // it's harmless and documented-correct even though it hasn't
-            // been sufficient alone in this environment.
-            if (window.rtrMarkSignInReturn) window.rtrMarkSignInReturn();
-            window.Clerk.openSignIn({ forceRedirectUrl: window.location.href });
-          });
-          emailStep.hidden = false;
-        } else {
-          checkStatusEl.textContent = 'We found a workable audio file — share your email so we can notify you when the transcript is complete.';
-          emailStep.hidden = false;
-        }
+        checkStatusEl.textContent = 'We found a workable audio file — share your email so we can notify you when the transcript is complete.';
+        emailStep.hidden = false;
       } else {
         checkStatusEl.innerHTML = linkifyWarning(data.message || "We couldn't find a usable audio or video source for this meeting.");
         checkStatusEl.className = 'transcribe-status error';
@@ -500,16 +453,6 @@ function wireTranscribeForm() {
     e.preventDefault();
     if (!feasibilityOk) return;
     await submitRequest(document.getElementById('transcribeEmail').value);
-  });
-
-  // Auto-resume after the sign-in round-trip above -- rtr-clerk-ready
-  // (shared_static/clerk_nav.js) fires once ClerkJS has finished loading
-  // on this fresh page load, success or failure, so this never hangs
-  // waiting for an event that won't come.
-  document.addEventListener('rtr-clerk-ready', () => {
-    if (consumePendingSignIn() && window.RTRClerk && window.RTRClerk.isSignedIn()) {
-      runFeasibilityCheck();
-    }
   });
 }
 
