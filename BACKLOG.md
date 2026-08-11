@@ -450,19 +450,22 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   same-database FK to `MeetingPage.id`. No `Account`/`AccountSession`
   tables at all anymore — Clerk owns that state entirely.
 
-  **Status as of 2026-08-10: deployed to staging and live-verified by
-  the user with their own real Clerk account, not yet merged to
-  main/prod.** All routes/tables/webhook/frontend wiring built, 391
-  tests passing. Live-verified on `rtr-deeplink-staging`/
-  `rtr-deeplink-archive-staging`: real Google-OAuth sign-in via Clerk,
-  "Save this meeting"/"Save this search" round-tripping to
-  `/account/saved` and back, and the `user.created` webhook
-  (Clerk's own delivery log showed "Successful Attempts: 1, Failed
-  Attempts: 0" against `/api/clerk/webhook`, wired to the existing
-  Resend auto-subscribe). A follow-up UI polish pass (nav, button
-  sizing/prominence, `/account/saved` layout, a bookmark icon next to
-  the meeting title) landed the same day, also live-verified locally
-  and pushed to the branch.
+  **Status as of 2026-08-11: merged to `main` and live in production**
+  (PR #5), on a real Clerk **production** instance (custom-domain DNS
+  verified in Namecheap, Google OAuth credentials configured) rather
+  than the development instance staging used. Getting production
+  actually working surfaced three real bugs, all found via live
+  production debugging and now fixed — see BACKLOG_DONE.md's
+  "Clerk production cutover" entry for the full incident writeup
+  (base64 padding, a CSS specificity bug, and a malformed
+  `CLERK_JWT_KEY`). All routes/tables/webhook/frontend wiring built,
+  413 tests passing. Live-verified end to end on production with the
+  user's own real account: sign-up (both Google OAuth and email-code),
+  session verification, and `/account/saved` correctly showing saved
+  items instead of the signed-out prompt. A follow-up UI polish pass
+  (nav, button sizing/prominence, `/account/saved` layout, a bookmark
+  icon next to the meeting title) landed the same day as the merge,
+  live-verified locally first.
 
   **Explicitly deferred, by the user's own call: the `user.deleted`
   webhook → `saved_items` purge (the right-to-deletion cascade) has
