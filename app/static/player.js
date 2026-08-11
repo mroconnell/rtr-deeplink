@@ -363,8 +363,20 @@ function wireTranscribeForm() {
   async function submitRequest(email) {
     const submitBtn = form.querySelector('button[type="submit"]');
     if (submitBtn) submitBtn.disabled = true;
-    statusEl.textContent = '';
     statusEl.className = 'transcribe-status';
+    // Real gap fixed 2026-08-11: this request re-runs the whole
+    // feasibility check server-side (see /api/transcription/submit's own
+    // docstring -- never trusts a client-supplied "it passed" flag), so
+    // it can genuinely take several seconds on a real meeting, not the
+    // instant round-trip the previous blank statusEl implied. Reuses the
+    // same spinning-reel loading state init() already shows during the
+    // real resolve fetch, so a long-running request reads as "working,"
+    // not "hung."
+    statusEl.innerHTML = '<span class="status-loading">' +
+      `<span class="cassette-reel spinning">${CASSETTE_REEL_SVG}</span>` +
+      `<span class="cassette-reel spinning">${CASSETTE_REEL_SVG}</span>` +
+      '<span>Requesting your transcript — this can take a few seconds.</span>' +
+      '</span>';
 
     try {
       const res = await fetch('/api/transcription/submit', {
@@ -391,11 +403,39 @@ function wireTranscribeForm() {
     }
   }
 
+  // Real bug fixed 2026-08-11 (matching change in archive/static/
+  // meeting_page.js -- see that file's comment for the full reasoning):
+  // Clerk's own sign-in redirect performs a real full-page navigation
+  // back to this URL once sign-in completes, wiping feasibilityOk and
+  // the checking/email-step UI state. sessionStorage survives the
+  // reload; consumed once on the next load of this exact page.
+  const PENDING_KEY = 'rtrPendingTranscribeUrl';
+
+  function markPendingSignIn() {
+    try {
+      sessionStorage.setItem(PENDING_KEY, sourceUrl);
+    } catch (e) {
+      // Private-browsing/storage-disabled: sign-in still works, this
+      // visitor just won't get the auto-resume.
+    }
+  }
+
+  function consumePendingSignIn() {
+    let pending = null;
+    try {
+      pending = sessionStorage.getItem(PENDING_KEY);
+      sessionStorage.removeItem(PENDING_KEY);
+    } catch (e) {
+      return false;
+    }
+    return pending === sourceUrl;
+  }
+
   // Friction is intentional (see BACKLOG.md's abuse-control notes): the
   // feasibility check always fires immediately on toggle, before any email
   // field appears, so a request that can't actually be transcribed never
   // gets that far.
-  toggle.addEventListener('click', async () => {
+  async function runFeasibilityCheck() {
     form.hidden = false;
     toggleWrap.hidden = true;
     emailStep.hidden = true;
@@ -425,7 +465,10 @@ function wireTranscribeForm() {
         } else if (window.RTRClerk && window.Clerk) {
           checkStatusEl.innerHTML = 'We found a workable audio file — please <button type="button" id="transcribeSignInPrompt" class="transcribe-inline-trigger">sign in</button> or share your email so we can notify you when the transcript is complete.';
           const signInBtn = document.getElementById('transcribeSignInPrompt');
-          if (signInBtn) signInBtn.addEventListener('click', () => window.Clerk.openSignIn());
+          if (signInBtn) signInBtn.addEventListener('click', () => {
+            markPendingSignIn();
+            window.Clerk.openSignIn();
+          });
           emailStep.hidden = false;
         } else {
           checkStatusEl.textContent = 'We found a workable audio file — share your email so we can notify you when the transcript is complete.';
@@ -439,7 +482,9 @@ function wireTranscribeForm() {
       checkStatusEl.textContent = 'Something went wrong — please try again.';
       checkStatusEl.className = 'transcribe-status error';
     }
-  });
+  }
+
+  toggle.addEventListener('click', runFeasibilityCheck);
 
   cancelBtn.addEventListener('click', resetForm);
 
@@ -447,6 +492,16 @@ function wireTranscribeForm() {
     e.preventDefault();
     if (!feasibilityOk) return;
     await submitRequest(document.getElementById('transcribeEmail').value);
+  });
+
+  // Auto-resume after the sign-in round-trip above -- rtr-clerk-ready
+  // (shared_static/clerk_nav.js) fires once ClerkJS has finished loading
+  // on this fresh page load, success or failure, so this never hangs
+  // waiting for an event that won't come.
+  document.addEventListener('rtr-clerk-ready', () => {
+    if (consumePendingSignIn() && window.RTRClerk && window.RTRClerk.isSignedIn()) {
+      runFeasibilityCheck();
+    }
   });
 }
 

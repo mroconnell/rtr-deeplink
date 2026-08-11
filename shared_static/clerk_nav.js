@@ -124,7 +124,29 @@
       // staging to confirm this actually redirects correctly, same
       // "don't claim a fix without a positive example" convention as
       // everywhere else in this repo.
-      await window.Clerk.load({ afterSignOutUrl: window.location.origin + "/" });
+      //
+      // signInForceRedirectUrl/signUpForceRedirectUrl: real bug fixed
+      // 2026-08-11, reported live by the user -- signing in via the
+      // modal opened from the meeting page's own "sign in" prompt
+      // (transcribe-form's signed-out copy) dropped them on the
+      // homepage afterward, with no confirmation the sign-in (or the
+      // transcript request that prompted it) actually worked. Root
+      // cause: Clerk's own documented default post-sign-in destination
+      // (signInFallbackRedirectUrl) is "/" when nothing else is set --
+      // this wasn't a bad guess like the earlier caching false-alarm,
+      // it's Clerk's real default, confirmed against current docs.
+      // window.location.href at Clerk.load() time is wherever the
+      // visitor actually started (the meeting page itself, not "/"),
+      // so this keeps them there regardless of which page loaded Clerk.
+      // "Force" (not "fallback") is deliberate: this app has no
+      // Clerk-managed post-auth redirect_url query param flow to defer
+      // to, so always redirecting back to the start page is correct in
+      // every case, not just the no-redirect_url fallback case.
+      await window.Clerk.load({
+        afterSignOutUrl: window.location.origin + "/",
+        signInForceRedirectUrl: window.location.href,
+        signUpForceRedirectUrl: window.location.href,
+      });
     } catch (e) {
       console.error("ClerkJS failed to load -- accounts features unavailable, rest of the site unaffected.", e);
       window.RTRClerk = { isSignedIn: () => false, getUserId: () => null };

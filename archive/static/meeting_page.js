@@ -12,6 +12,11 @@
 
 let activeVideoAdapter = null;
 
+// Kept in sync with app/static/player.js's identical constant (this
+// file's own header comment) -- used by wireTranscribeForm()'s loading
+// state below.
+const CASSETTE_REEL_SVG = '<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7" fill="#fff" stroke="#bbb" stroke-width="2"/><circle cx="9" cy="9" r="2.2" fill="#bbb"/></svg>';
+
 function formatTime(seconds) {
   seconds = Math.floor(seconds || 0);
   const h = Math.floor(seconds / 3600);
@@ -237,8 +242,20 @@ function wireTranscribeForm() {
   async function submitRequest(email) {
     const submitBtn = form.querySelector('button[type="submit"]');
     if (submitBtn) submitBtn.disabled = true;
-    statusEl.textContent = '';
     statusEl.className = 'transcribe-status';
+    // Real gap fixed 2026-08-11: this request re-runs the whole
+    // feasibility check server-side (see /api/transcription/submit's own
+    // docstring -- never trusts a client-supplied "it passed" flag), so
+    // it can genuinely take several seconds on a real meeting, not the
+    // instant round-trip the previous blank statusEl implied. Reuses the
+    // same spinning-reel loading state init() already shows during the
+    // real resolve fetch, so a long-running request reads as "working,"
+    // not "hung."
+    statusEl.innerHTML = '<span class="status-loading">' +
+      `<span class="cassette-reel spinning">${CASSETTE_REEL_SVG}</span>` +
+      `<span class="cassette-reel spinning">${CASSETTE_REEL_SVG}</span>` +
+      '<span>Requesting your transcript — this can take a few seconds.</span>' +
+      '</span>';
 
     try {
       const res = await fetch('/api/transcription/submit', {
@@ -265,11 +282,46 @@ function wireTranscribeForm() {
     }
   }
 
+  // Real bug fixed 2026-08-11, reported live by the user: clicking "sign
+  // in" from the signed-out copy below opens Clerk's modal, but Clerk's
+  // own sign-in redirect (see clerk_nav.js's signInForceRedirectUrl fix)
+  // still performs a real full-page navigation back to this URL once
+  // sign-in completes -- it doesn't just close the modal in place. That
+  // reload wipes feasibilityOk and the whole "checking/email step" UI
+  // state, which is what made it look like sign-in silently did nothing.
+  // sessionStorage survives the reload (same-tab, same origin) -- set
+  // right before opening the modal, consumed once on the *next* load of
+  // this exact page, and cleared either way so it never lingers into an
+  // unrelated later visit.
+  const PENDING_KEY = 'rtrPendingTranscribeUrl';
+  const thisUrl = form.dataset.url || window.location.href;
+
+  function markPendingSignIn() {
+    try {
+      sessionStorage.setItem(PENDING_KEY, thisUrl);
+    } catch (e) {
+      // Private-browsing/storage-disabled: sign-in still works, this
+      // visitor just won't get the auto-resume -- same as before this
+      // fix existed, not a new failure mode.
+    }
+  }
+
+  function consumePendingSignIn() {
+    let pending = null;
+    try {
+      pending = sessionStorage.getItem(PENDING_KEY);
+      sessionStorage.removeItem(PENDING_KEY);
+    } catch (e) {
+      return false;
+    }
+    return pending === thisUrl;
+  }
+
   // Friction is intentional (see BACKLOG.md's abuse-control notes): the
   // feasibility check always fires immediately on toggle, before any email
   // field appears, so a request that can't actually be transcribed never
   // gets that far.
-  toggle.addEventListener('click', async () => {
+  async function runFeasibilityCheck() {
     form.hidden = false;
     toggle.hidden = true;
     emailStep.hidden = true;
@@ -303,7 +355,10 @@ function wireTranscribeForm() {
           // alongside the manual field rather than just mentioning it.
           checkStatusEl.innerHTML = 'We found a workable audio file — please <button type="button" id="transcribeSignInPrompt" class="transcribe-inline-trigger">sign in</button> or share your email so we can notify you when the transcript is complete.';
           const signInBtn = document.getElementById('transcribeSignInPrompt');
-          if (signInBtn) signInBtn.addEventListener('click', () => window.Clerk.openSignIn());
+          if (signInBtn) signInBtn.addEventListener('click', () => {
+            markPendingSignIn();
+            window.Clerk.openSignIn();
+          });
           emailStep.hidden = false;
         } else {
           // Clerk isn't configured on this deploy at all -- same message
@@ -319,7 +374,9 @@ function wireTranscribeForm() {
       checkStatusEl.textContent = 'Something went wrong — please try again.';
       checkStatusEl.className = 'transcribe-status error';
     }
-  });
+  }
+
+  toggle.addEventListener('click', runFeasibilityCheck);
 
   cancelBtn.addEventListener('click', resetForm);
 
@@ -327,6 +384,16 @@ function wireTranscribeForm() {
     e.preventDefault();
     if (!feasibilityOk) return;
     await submitRequest(document.getElementById('transcribeEmail').value);
+  });
+
+  // Auto-resume after the sign-in round-trip above -- rtr-clerk-ready
+  // (shared_static/clerk_nav.js) fires once ClerkJS has finished loading
+  // on this fresh page load, success or failure, so this never hangs
+  // waiting for an event that won't come.
+  document.addEventListener('rtr-clerk-ready', () => {
+    if (consumePendingSignIn() && window.RTRClerk && window.RTRClerk.isSignedIn()) {
+      runFeasibilityCheck();
+    }
   });
 }
 
