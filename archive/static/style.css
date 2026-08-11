@@ -788,6 +788,24 @@ mark.search-match.current { background: #f97316; color: #fff; }
   color: var(--pill-fg);
   font-size: 0.9rem;
 }
+/* Parallel disclaimer for source-provided (non-AI) transcripts, user
+   request 2026-08-11 -- see BACKLOG.md and meeting_page.html. A
+   different background/border/text color than .ai-disclaimer's amber
+   (blue, matching --accent) so the two read as visually distinct boxes
+   at a glance, not just distinguishable by reading the copy -- the
+   shared .dymo-label-small pill stays its usual red, but its own text
+   ("SOURCE TRANSCRIPT" vs "AI TRANSCRIPT") already differs. */
+.source-disclaimer {
+  background: #dceefb;
+  border-color: var(--accent);
+}
+.source-disclaimer p {
+  color: #1c5d85;
+}
+.source-disclaimer a {
+  color: inherit;
+  text-decoration: underline;
+}
 
 .meeting-list-page {
   max-width: 720px;

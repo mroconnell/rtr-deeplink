@@ -273,6 +273,20 @@
         <span class="dymo-label-small">AI TRANSCRIPT</span>
         <p>This transcript was generated automatically from audio using AI and hasn't been reviewed by a person — it can contain mistakes, including plausible-sounding sentences that were never actually said. Treat it as a starting point, not a verbatim record.</p>
       </div>
+      {% elif active_version.source == "scraped" %}
+      {#- User request 2026-08-11: a parallel disclaimer for source-provided
+         (non-AI) transcripts, since they're also unreviewed third-party
+         content -- see BACKLOG.md. "here" points at the existing
+         #transcribeToggle button (rendered in .meta above, always present
+         on this branch since show_transcribe_cta is true whenever the
+         active version isn't "transcribed") rather than duplicating its
+         behavior. Distinct label from AI TRANSCRIPT so the two stay
+         visually distinguishable at a glance, not just by reading the
+         copy. #}
+      <div class="ai-disclaimer source-disclaimer">
+        <span class="dymo-label-small">SOURCE TRANSCRIPT</span>
+        <p>This transcript is downloaded from the source you provided but we haven't reviewed it for accuracy. Treat it as a starting point, not a verbatim record. You can request an AI-transcription of the audio file by clicking <a href="#transcribeToggle">here</a>.</p>
+      </div>
       {% endif %}
       {% if active_version.transcript_warnings %}
       <div class="warnings">{{ active_version.transcript_warnings|warnings_html }}</div>
