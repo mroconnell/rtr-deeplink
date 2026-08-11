@@ -17,7 +17,22 @@
       {% if fuzzy %}<input type="hidden" name="fuzzy" value="true">{% endif %}
       <button type="submit" class="cassette-btn">Search</button>
     </form>
-    <p class="subtitle search-hint">Tip: put a phrase in "quotes" to match it exactly, e.g. "data center".</p>
+    <div class="subtitle search-hint">
+      Search tips
+      <button type="button" class="search-help-icon" id="searchHelpIcon" aria-describedby="searchHelpPanel" aria-expanded="false">
+        <span aria-hidden="true">?</span>
+        <span class="sr-only">Show search tips</span>
+      </button>
+      <div id="searchHelpPanel" class="search-help-panel" role="tooltip">
+        <strong>Search tips</strong>
+        <ul>
+          <li>Put a phrase in <code>"quotes"</code> to match it exactly, e.g. <code>"data center"</code>.</li>
+          <li>Every word is required by default &mdash; <code>traffic downtown</code> finds meetings with both.</li>
+          <li>Put <code>-</code> in front of a word or phrase to exclude it &mdash; <code>traffic -parking</code> or <code>-"data center"</code>.</li>
+          <li><code>+</code>, <code>&amp;</code>, and <code>AND</code> are also understood, but don't change anything &mdash; every word's already required.</li>
+        </ul>
+      </div>
+    </div>
     {% if active_account %}
     <p class="save-search-toggle">
       <button type="button" id="saveSearchBtn" class="cassette-btn"
