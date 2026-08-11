@@ -221,7 +221,11 @@ def strip_unknown_caption_markup(content: str) -> str:
         if _TIMING_LINE_RE.match(line):
             continue
         lines.append(line)
-    return "\n".join(lines).strip()
+    # Real gap fixed 2026-08-11: this fallback path never applied the
+    # same ALL-CAPS re-casing every structured-format parser already
+    # does (see _normalize_shouting_text()'s docstring), so an ALL-CAPS
+    # SBV/SUB/SMI/plain-.txt track stayed ALL CAPS unconditionally.
+    return _normalize_shouting_text("\n".join(lines).strip())
 
 
 # Extensions with a real structured (start/end/text) parser above.
@@ -337,6 +341,24 @@ _SHOUT_LOWERCASE_RATIO_MAX = 0.02
 _CUE_JOIN = "␞"  # record-separator symbol; won't appear in real captions
 
 
+def _normalize_shouting_text(text: str) -> str:
+    """Shared shouting-detection/re-casing check behind both
+    normalize_shouting_caption() (structured cue-list callers) and
+    strip_unknown_caption_markup()'s own plain-text fallback path (real
+    gap fixed 2026-08-11 -- the fallback path never called this at all,
+    so an ALL-CAPS SBV/SUB/SMI/plain-.txt track stayed ALL CAPS
+    unconditionally, unlike every VTT/SRT/TTML track). Returns `text`
+    unchanged when the shouting heuristic doesn't trigger.
+    """
+    letters = [ch for ch in text if ch.isalpha()]
+    if len(letters) < _SHOUT_SAMPLE_MIN_LETTERS:
+        return text
+    lowercase_ratio = sum(1 for ch in letters if ch.islower()) / len(letters)
+    if lowercase_ratio > _SHOUT_LOWERCASE_RATIO_MAX:
+        return text
+    return _sentence_case(text)
+
+
 def normalize_shouting_caption(cues: List[Dict[str, Any]]) -> None:
     if not cues:
         return
@@ -345,14 +367,9 @@ def normalize_shouting_caption(cues: List[Dict[str, Any]]) -> None:
     # sentence-boundary detection sees the real punctuation flow across cue
     # breaks instead of treating every cue as its own sentence start.
     joined = _CUE_JOIN.join(c["text"] for c in cues)
-    letters = [ch for ch in joined if ch.isalpha()]
-    if len(letters) < _SHOUT_SAMPLE_MIN_LETTERS:
+    normalized = _normalize_shouting_text(joined)
+    if normalized == joined:
         return
-    lowercase_ratio = sum(1 for ch in letters if ch.islower()) / len(letters)
-    if lowercase_ratio > _SHOUT_LOWERCASE_RATIO_MAX:
-        return
-
-    normalized = _sentence_case(joined)
     for cue, text in zip(cues, normalized.split(_CUE_JOIN)):
         cue["text"] = text
 
