@@ -381,6 +381,86 @@ changelog of task titles.
 
 ## Incidents
 
+- **[Resolved 2026-08-11] Clerk production cutover surfaced three real
+  bugs, none caught by the extensive test suite or staging verification
+  — all found live, in production, while switching from Clerk's
+  development instance to a real production instance.** Staging had
+  used a Clerk dev instance the whole time; moving to production meant a
+  new `pk_live_.../sk_live_...` key pair, real DNS verification
+  (5 CNAME records added in Namecheap), a fresh Google OAuth SSO
+  connection, and a new production webhook — each of these surfaced a
+  bug the dev-instance path had never exercised.
+
+  **Bug 1 — `clerk_frontend_api_url()` broke site-wide immediately after
+  the key swap (PR #6).** The function decoded the publishable key's
+  base64 segment without padding it first. Real Clerk keys omit
+  base64's trailing `=` padding, so `base64.b64decode()` only worked
+  before by *coincidence*: the dev-instance key's encoded segment
+  happened to already be a multiple of 4 characters (48 chars, no
+  padding needed), while the new production key's segment (38 chars)
+  wasn't. The exception got swallowed by the function's own broad
+  `except Exception: return None`, producing an empty Frontend API URL
+  that made `shared_static/clerk_nav.js`'s own configured-vs-not guard
+  disable Clerk entirely, client-side, for every visitor — caught within
+  minutes by comparing what the live site was actually serving
+  (`curl`ing for `data-clerk-publishable-key`/`data-clerk-fapi-url`)
+  against the expected new key, not by any error surfacing on its own.
+  Fixed by re-padding the base64 segment before decoding, in both
+  `app/utils/clerk_auth.py` and `archive/utils/clerk_auth.py`
+  (deliberately duplicated, see that module's own docstring) — with a
+  regression test using the *exact* real production key value, unpadded,
+  rather than a helper-encoded (and therefore always-correctly-padded)
+  fake, which is exactly what let the original bug ship untested.
+
+  **Bug 2 — nav divider stayed visible when signed in (PR #7), caught by
+  a real user click-through, not automated tests.** The "Get Updates"
+  divider `<li>` carries Bootstrap's `d-none d-lg-block` utility classes
+  (`display: block !important` at the `lg` breakpoint), which beat the
+  plain `hidden` attribute `clerk_nav.js` was setting to hide it (not
+  `!important`) — so the divider never actually disappeared at desktop
+  widths even though the "Get Updates" link itself correctly did,
+  leaving two adjacent dividers with nothing between them. Fixed by
+  setting the inline `display` style directly (also `!important`)
+  instead of relying on the `hidden` attribute for that one element.
+
+  **Bug 3 — the real blocker: `/account/saved` and the Save
+  buttons silently treated a genuinely signed-in visitor as signed out
+  (no PR of its own — an env var fix, but got a diagnostics PR, #8).**
+  Confusing to debug because the symptom was asymmetric: the nav avatar
+  rendered correctly (proof of a valid session) since that's driven
+  entirely client-side by `window.Clerk.user`, while `active_account` —
+  computed server-side on Archive via `get_clerk_user_id()`, gating the
+  Save buttons and `/account/saved`'s real content — kept coming back
+  `None`. Confirmed via Clerk's own dashboard Logs (not guessed) that a
+  real `session.created` event existed for the production instance
+  (`is_development_instance: false`), ruling out anything client-side or
+  Clerk-side. `get_clerk_user_id()` was deliberately silent on every
+  failure path (so a plain anonymous visitor — the overwhelming common
+  case — generates zero log noise), which meant there was *no visible
+  signal at all* for a real, failed verification attempt either. Added
+  diagnostic logging (PR #8) gated specifically on "a `__session` cookie
+  was present but verification still failed" — anonymous traffic stays
+  exactly as silent as before, but a real failure now surfaces Clerk
+  SDK's own `state.reason`/`state.message`. That immediately named the
+  cause: `JWK_FAILED_TO_RESOLVE`, "Public Key is not in the proper
+  format." `CLERK_JWT_KEY` (an optional local-verification optimization
+  holding a PEM public key) had gotten mangled pasting a multi-line
+  value into Render's env var UI — a very easy way for a PEM key
+  specifically to break (dropped newlines, a missing header/footer
+  line). Fix needed no code change at all: `CLERK_JWT_KEY` was simply
+  deleted from both services' env vars, falling back to the SDK's
+  normal networked JWKS fetch (which self-caches after the first
+  request, so this costs approximately nothing) — confirmed working
+  immediately after that redeploy.
+
+  **Takeaway for next time a Clerk instance switch happens** (e.g. if
+  this app ever needs a second production-like instance): re-verify the
+  publishable-key decode against the *specific* new key value (not just
+  "some dev-shaped key"), and treat `CLERK_JWT_KEY` as an optional,
+  easy-to-mangle optimization worth leaving unset unless there's a
+  measured reason to need networkless verification from the very first
+  request.
+
 - **[Resolved 2026-08-10] Live production outage: `/meetings` 500ing on
   both services, caused by the pending `video_warnings`/`agenda_link`
   migration (see "Bugs" below) never having been applied — no longer
