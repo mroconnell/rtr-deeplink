@@ -16,11 +16,18 @@ import aiohttp
 
 
 class FakeResponse:
-    def __init__(self, status: int = 200, text: str = "", raw: bytes = None, url: str = None):
+    def __init__(
+        self, status: int = 200, text: str = "", raw: bytes = None, url: str = None,
+        text_raises: Exception = None,
+    ):
         self.status = status
         self._text = text
         self._raw = raw if raw is not None else text.encode("utf-8")
         self.url = url if url is not None else ""
+        # Simulates a 200 response whose body isn't decodable as text (e.g.
+        # a redirect straight to a binary PDF) -- real aiohttp raises
+        # UnicodeDecodeError from .text() in that case, not from .get().
+        self._text_raises = text_raises
 
     async def __aenter__(self):
         return self
@@ -29,6 +36,8 @@ class FakeResponse:
         return False
 
     async def text(self):
+        if self._text_raises:
+            raise self._text_raises
         return self._text
 
     async def read(self):

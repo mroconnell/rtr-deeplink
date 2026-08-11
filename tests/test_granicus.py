@@ -32,6 +32,38 @@ async def test_resolve_real_blank_caption_meeting():
     assert any("blank" in w.lower() for w in result.transcript_warnings)
 
 
+async def test_agenda_viewer_redirect_to_raw_pdf_surfaces_as_fallback_link():
+    # Real Napa City Council clip 3470 (view_id=12), fetched live
+    # 2026-08-11 -- AgendaViewer.php redirects straight to a *raw* binary
+    # PDF (unlike Berkeley's HTML redirect or Paradise Valley AZ's Google
+    # Docs PDF *preview*, both still text-decodable). Real aiohttp raises
+    # UnicodeDecodeError from response.text() in this case; previously
+    # that was caught by the surrounding blanket `except Exception` and
+    # silently discarded the fallback URL along with it instead of
+    # putting it in `ResolvedMeeting.agenda_link` (the same structured
+    # field generic_fallback.py's own best-effort agenda link uses).
+    url = "https://napacity.granicus.com/player/clip/3470?view_id=12"
+    html = load_fixture("granicus", "napacity_clip3450.html").replace("3450", "3470")
+    pdf_url = (
+        "https://napacity.legistar1.com/napacity/meetings/2026/8/"
+        "2042_A_CITY_COUNCIL_OF_THE_CITY_OF_NAPA_26-08-04_Regular_Meeting_Agenda.pdf"
+    )
+
+    routes = {
+        url: FakeResponse(status=200, text=html, url=url),
+        "https://napacity.granicus.com/videos/3470/captions.vtt": FakeResponse(status=404),
+        "https://napacity.granicus.com/AgendaViewer.php?clip_id=3470&embedded=1": FakeResponse(
+            status=200, url=pdf_url, text_raises=UnicodeDecodeError("utf-8", b"\xe2", 0, 1, "invalid continuation byte")
+        ),
+    }
+
+    with mock_session(routes):
+        result = await GranicusAssetFinder().resolve(url)
+
+    assert result.agenda_items == []
+    assert result.agenda_link == pdf_url
+
+
 async def test_resolve_falls_back_to_docket_pdf_date_when_page_and_rss_have_none():
     # Real Alexandria, VA clip 6490, fetched live 2026-08-09 -- a thin
     # client-rendered shell with no og:title, no h1, under 700 chars of
