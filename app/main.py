@@ -967,6 +967,7 @@ async def transcription_submit(request: Request, req: TranscriptionSubmitRequest
         media_kind=_media_kind(result.video_format),
         probed_duration_seconds=duration,
         chunk_size_seconds=TRANSCRIPTION_CHUNK_SIZE_SECONDS,
+        clerk_verified=bool(get_clerk_user_id(request)),
     )
     if job is None:
         return JSONResponse(

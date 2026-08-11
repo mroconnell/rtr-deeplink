@@ -256,6 +256,17 @@ class TranscriptionCreateJobRequest(BaseModel):
     media_kind: str
     probed_duration_seconds: float
     chunk_size_seconds: int
+    # Real server-side Clerk session check (get_clerk_user_id(request)
+    # against the visitor's own cookie), done by the resolver -- the only
+    # one of the two services with that cookie on this request path (see
+    # tests/test_accounts_anonymous_regression.py's own docstring on
+    # which routes the proxy forwards Cookie to). Trusted here the same
+    # way every other resolver->Archive call already is: a bearer-token-
+    # gated internal call, not a client-asserted flag. User request
+    # 2026-08-11: a signed-in visitor's email is already Clerk-verified,
+    # so it should skip the confirm-by-email step the same way an
+    # existing newsletter subscriber's email already does below.
+    clerk_verified: bool = False
 
 
 @app.post("/internal/transcription/create-job")
@@ -265,7 +276,7 @@ async def internal_transcription_create_job(
     if not _token_ok(authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
-    skip_confirmation = await email_utils.check_audience_membership(req.requester_email)
+    skip_confirmation = req.clerk_verified or await email_utils.check_audience_membership(req.requester_email)
 
     job = await crud.create_transcription_job(
         payload=req.payload.model_dump(),

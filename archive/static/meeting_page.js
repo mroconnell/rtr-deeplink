@@ -231,47 +231,12 @@ function wireTranscribeForm() {
     feasibilityOk = false;
   }
 
-  // Friction is intentional (see BACKLOG.md's abuse-control notes): the
-  // feasibility check always fires immediately on toggle, before any email
-  // field appears, so a request that can't actually be transcribed never
-  // gets that far.
-  toggle.addEventListener('click', async () => {
-    form.hidden = false;
-    toggle.hidden = true;
-    emailStep.hidden = true;
-    checkStatusEl.textContent = 'Checking for a usable audio or video source…';
-    checkStatusEl.className = 'transcribe-status';
-
-    try {
-      const res = await fetch('/api/transcription/check-feasibility', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: form.dataset.url || window.location.href }),
-      });
-      const data = await res.json();
-      if (data.ok) {
-        feasibilityOk = true;
-        checkStatusEl.textContent = '';
-        emailStep.hidden = false;
-      } else {
-        checkStatusEl.innerHTML = linkifyWarning(data.message || "We couldn't find a usable audio or video source for this meeting.");
-        checkStatusEl.className = 'transcribe-status error';
-      }
-    } catch (err) {
-      checkStatusEl.textContent = 'Something went wrong — please try again.';
-      checkStatusEl.className = 'transcribe-status error';
-    }
-  });
-
-  cancelBtn.addEventListener('click', resetForm);
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (!feasibilityOk) return;
-    const email = document.getElementById('transcribeEmail').value;
+  // Shared by both the auto-submit-for-a-signed-in-visitor path below and
+  // the manual email-form submit handler -- same request, same
+  // success/error handling, just a different source for `email`.
+  async function submitRequest(email) {
     const submitBtn = form.querySelector('button[type="submit"]');
-
-    submitBtn.disabled = true;
+    if (submitBtn) submitBtn.disabled = true;
     statusEl.textContent = '';
     statusEl.className = 'transcribe-status';
 
@@ -296,8 +261,72 @@ function wireTranscribeForm() {
       statusEl.textContent = 'Something went wrong — please try again.';
       statusEl.className = 'transcribe-status error';
     } finally {
-      submitBtn.disabled = false;
+      if (submitBtn) submitBtn.disabled = false;
     }
+  }
+
+  // Friction is intentional (see BACKLOG.md's abuse-control notes): the
+  // feasibility check always fires immediately on toggle, before any email
+  // field appears, so a request that can't actually be transcribed never
+  // gets that far.
+  toggle.addEventListener('click', async () => {
+    form.hidden = false;
+    toggle.hidden = true;
+    emailStep.hidden = true;
+    checkStatusEl.textContent = 'Checking for a usable audio or video source…';
+    checkStatusEl.className = 'transcribe-status';
+
+    try {
+      const res = await fetch('/api/transcription/check-feasibility', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: form.dataset.url || window.location.href }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        feasibilityOk = true;
+        // User request 2026-08-11: a signed-in visitor already has a
+        // real, Clerk-verified email -- skip the manual email step
+        // entirely and submit with it directly. primaryEmailAddress can
+        // be null (phone-only or some OAuth-only sign-ups), so this
+        // still falls back to the manual step rather than submitting a
+        // blank email in that case.
+        const clerkEmail = window.RTRClerk && window.RTRClerk.isSignedIn() && window.Clerk.user && window.Clerk.user.primaryEmailAddress
+          ? window.Clerk.user.primaryEmailAddress.emailAddress
+          : null;
+        if (clerkEmail) {
+          checkStatusEl.textContent = '';
+          await submitRequest(clerkEmail);
+        } else if (window.RTRClerk && window.Clerk) {
+          // Clerk is configured but this visitor isn't signed in (or has
+          // no email on file) -- offer the real sign-in shortcut
+          // alongside the manual field rather than just mentioning it.
+          checkStatusEl.innerHTML = 'We found a workable audio file — please <button type="button" id="transcribeSignInPrompt" class="transcribe-inline-trigger">sign in</button> or share your email so we can notify you when the transcript is complete.';
+          const signInBtn = document.getElementById('transcribeSignInPrompt');
+          if (signInBtn) signInBtn.addEventListener('click', () => window.Clerk.openSignIn());
+          emailStep.hidden = false;
+        } else {
+          // Clerk isn't configured on this deploy at all -- same message
+          // minus the sign-in option, which wouldn't do anything.
+          checkStatusEl.textContent = 'We found a workable audio file — share your email so we can notify you when the transcript is complete.';
+          emailStep.hidden = false;
+        }
+      } else {
+        checkStatusEl.innerHTML = linkifyWarning(data.message || "We couldn't find a usable audio or video source for this meeting.");
+        checkStatusEl.className = 'transcribe-status error';
+      }
+    } catch (err) {
+      checkStatusEl.textContent = 'Something went wrong — please try again.';
+      checkStatusEl.className = 'transcribe-status error';
+    }
+  });
+
+  cancelBtn.addEventListener('click', resetForm);
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!feasibilityOk) return;
+    await submitRequest(document.getElementById('transcribeEmail').value);
   });
 }
 
