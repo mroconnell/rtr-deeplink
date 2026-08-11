@@ -25,10 +25,12 @@ logger = logging.getLogger("rtr_archive.clerk")
 def clerk_frontend_api_url(publishable_key: str) -> Optional[str]:
     """See app/utils/clerk_auth.py's matching function -- identical here,
     deliberately duplicated rather than shared (same reasoning as the rest
-    of this module)."""
+    of this module). Includes that function's 2026-08-11 base64-padding
+    fix (Clerk's real keys omit trailing "=" padding)."""
     try:
         _, _, encoded = publishable_key.split("_", 2)
-        decoded = base64.b64decode(encoded).decode()
+        padded = encoded + "=" * (-len(encoded) % 4)
+        decoded = base64.b64decode(padded).decode()
         if not decoded.endswith("$"):
             return None
         return decoded[:-1]
@@ -76,5 +78,22 @@ def get_clerk_user_id(request: Request) -> Optional[str]:
         return None
 
     if not state.is_signed_in or not state.payload:
+        # Only worth logging when a real session cookie was actually
+        # present -- the overwhelmingly common case (a plain anonymous
+        # visitor, no cookie at all) stays silent, matching this
+        # function's "anonymous traffic pays nothing" design. When a
+        # cookie WAS present but verification still failed, state.reason
+        # names exactly why (TOKEN_INVALID_SIGNATURE/JWK_KID_MISMATCH ->
+        # CLERK_SECRET_KEY/CLERK_JWT_KEY don't match the instance that
+        # issued the token; TOKEN_INVALID_AUTHORIZED_PARTIES ->
+        # PUBLIC_BASE_URL/authorized_parties mismatch) -- added
+        # 2026-08-11 to debug a real production case where the
+        # client-side session was valid but this kept silently returning
+        # None with no visible signal why.
+        if "__session" in request.cookies:
+            logger.warning(
+                "Clerk session cookie present but verification failed: %s",
+                getattr(state, "message", None) or getattr(state, "reason", None),
+            )
         return None
     return state.payload.get("sub")

@@ -31,6 +31,21 @@ def test_clerk_frontend_api_url_decodes_a_real_shaped_key(mod):
 
 
 @pytest.mark.parametrize("mod", MODULES)
+def test_clerk_frontend_api_url_decodes_unpadded_key(mod):
+    # Real incident, 2026-08-11: Clerk's actual keys omit base64's trailing
+    # "=" padding, so b64decode() only worked before by coincidence -- only
+    # when a key's encoded segment happened to already be a multiple of 4
+    # characters. "some-app-12.clerk.accounts.dev$" (33 bytes) -> 44
+    # padded base64 chars (a multiple of 4, no bug exposed); this repo's
+    # real production key's domain segment needed real padding and broke
+    # site-wide in production before this fix. Exercises the exact
+    # production key value, unpadded, the way Clerk actually issues it --
+    # not a helper-encoded (thus always-correctly-padded) fake.
+    key = "pk_live_Y2xlcmsucmVkdGFwZXJlY29yZGluZ3MuY29tJA"
+    assert mod.clerk_frontend_api_url(key) == "clerk.redtaperecordings.com"
+
+
+@pytest.mark.parametrize("mod", MODULES)
 def test_clerk_frontend_api_url_returns_none_for_empty_key(mod):
     assert mod.clerk_frontend_api_url("") is None
 
