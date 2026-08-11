@@ -1,4 +1,5 @@
 import csv
+import html
 import io
 import logging
 import os
@@ -9,6 +10,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
+from urllib.parse import quote
 
 import aiohttp
 from dotenv import load_dotenv
@@ -238,7 +240,7 @@ async def _recheck_archived_page(url: str, normalized: str, platform: str) -> di
         logger.exception("Archive re-check resolve failed for %s", url)
         return {"error": "resolve_failed", "message": str(e)}
 
-    pushed = bool(result.segments or result.agenda_items)
+    pushed = bool(result.segments or result.agenda_items or result.agenda_link)
     if pushed:
         await archive_client.push(result.model_dump(), normalized)
 
@@ -305,7 +307,7 @@ async def resolve(request: Request, req: ResolveRequest, background_tasks: Backg
         # -- get_cached_resolution() returns resolution_id alongside the
         # payload specifically for this.
         cached_payload = cached["payload"]
-        if cached_payload.get("segments") or cached_payload.get("agenda_items"):
+        if cached_payload.get("segments") or cached_payload.get("agenda_items") or cached_payload.get("agenda_link"):
             background_tasks.add_task(_push_and_track, cached["resolution_id"], cached_payload, normalized)
         return cached_payload
 
@@ -395,7 +397,7 @@ async def resolve(request: Request, req: ResolveRequest, background_tasks: Backg
     # itself failed (safe() swallows it) -- nothing to track against in
     # that case, so this falls back to the old best-effort behavior
     # rather than crashing on a None id.
-    if result.segments or result.agenda_items:
+    if result.segments or result.agenda_items or result.agenda_link:
         if resolution_id is not None:
             background_tasks.add_task(_push_and_track, resolution_id, payload, normalized)
         else:
@@ -443,6 +445,163 @@ async def _resend_audience_upsert(email: str, *, unsubscribed: bool) -> Optional
         return False
 
 
+# --- Lifecycle-triggered transactional sends (rtr-business's
+# marketing/LIFECYCLE_EMAILS.md, approved copy/voice) -----------------
+#
+# A resolver-side counterpart to archive/utils/email.py's _send() --
+# duplicated rather than called cross-service, same reasoning as
+# get_clerk_user_id()/_resend_audience_upsert() already being duplicated
+# here: these three emails (Thanks/Welcome/Goodbye) are triggered by
+# routes that already live in this file (the Clerk webhook, newsletter
+# signup, /unsubscribe), and a plain HTTPS call to Resend's own API needs
+# no round trip through Archive. RESEND_FROM_ADDRESS/RESEND_REPLY_TO_ADDRESS
+# are new env vars on this service specifically for this (previously only
+# RESEND_API_KEY/RESEND_AUDIENCE_ID were needed here, for audience-upsert
+# only) -- see render.yaml.
+
+
+def _unsubscribe_footer_html(to: str) -> str:
+    """Mirrors archive/utils/email.py's helper of the same name exactly --
+    see that module's docstring for the deliverability reasoning. Returns
+    "" (no footer) when PUBLIC_BASE_URL isn't set."""
+    base = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
+    if not base:
+        return ""
+    unsubscribe_url = f"{base}/unsubscribe?email={quote(to)}"
+    return (
+        f'<p style="margin-top:24px;font-size:12px;color:#999;">'
+        f'<a href="{unsubscribe_url}" style="color:#999;">Unsubscribe</a> from future emails.</p>'
+    )
+
+
+def _branded_email_html(body_html: str) -> str:
+    """Mirrors archive/utils/email.py's _branded_wrapper() exactly, same
+    hand-inlined colors/font, so an email sent from this service looks
+    identical to one sent from Archive/worker -- see that function's
+    docstring for the full reasoning."""
+    return f"""\
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f8f9fa;padding:24px 0;">
+<tr><td align="center">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border:1px solid #ddd;">
+<tr><td style="background:#b71c1c;padding:14px 24px;">
+<span style="font-family:'Courier New',monospace;font-weight:bold;letter-spacing:0.11em;font-size:15px;color:#ffffff;border:2px solid #a84b00;padding:4px 14px;display:inline-block;">RED TAPE RECORDINGS</span>
+</td></tr>
+<tr><td style="padding:28px 24px 8px;">
+{body_html}
+</td></tr>
+</table>
+</td></tr>
+</table>
+"""
+
+
+def _email_signoff_html() -> str:
+    return (
+        '<p style="margin:24px 0 0;font-family:Georgia,\'Times New Roman\',serif;'
+        'font-size:14px;color:#2c3e50;">Signing out,<br>Ryan<br>Red Tape Recordings</p>'
+    )
+
+
+async def _resend_send(to: str, subject: str, body_html: str, *, cc: str = "", skip_unsubscribe_footer: bool = False) -> bool:
+    api_key = os.environ.get("RESEND_API_KEY", "")
+    from_address = os.environ.get("RESEND_FROM_ADDRESS", "")
+    if not api_key or not from_address:
+        logger.error("Transactional email send attempted but RESEND_API_KEY/RESEND_FROM_ADDRESS isn't configured.")
+        return False
+
+    if not skip_unsubscribe_footer:
+        body_html = body_html + _unsubscribe_footer_html(to)
+
+    payload = {"from": from_address, "to": [to], "subject": subject, "html": body_html}
+    if cc:
+        payload["cc"] = [cc]
+    reply_to = os.environ.get("RESEND_REPLY_TO_ADDRESS", "")
+    if reply_to:
+        payload["reply_to"] = reply_to
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                "https://api.resend.com/emails",
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                json=payload,
+                timeout=aiohttp.ClientTimeout(total=10),
+            ) as response:
+                if response.status < 300:
+                    return True
+                logger.error("Resend transactional send failed (%s): %s", response.status, await response.text())
+                return False
+    except Exception:
+        logger.exception("Resend transactional send request failed.")
+        return False
+
+
+async def _send_account_created_email(to: str, *, first_name: Optional[str]) -> bool:
+    """"Thanks" -- LIFECYCLE_EMAILS.md #1. Fires once, from the Clerk
+    user.created webhook, instead of also sending "Welcome" -- account
+    creation already auto-subscribes the address to the newsletter (see
+    that webhook handler below), so sending both back to back would be
+    two emails for one action. first_name comes straight from Clerk's
+    webhook payload (data.get("first_name")) -- not yet live-verified
+    that Clerk always populates it (e.g. an email-code signup with no
+    OAuth profile might not); "Hi there," is the documented fallback.
+    """
+    greeting_name = html.escape(first_name) if first_name else "there"
+    base = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/") or "https://redtaperecordings.com"
+    body_html = f"""\
+<p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:17px;color:#2c3e50;">Hi {greeting_name},</p>
+<p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#2c3e50;">You're in.</p>
+<p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#2c3e50;">Red Tape Recordings creates power tools for the most effective grassroots advocates &mdash; so important government decisions don't stay locked inside a five-hour video nobody has time to watch.</p>
+<p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#2c3e50;">With your new account you can drop in the URL of a public meeting recording and get the video and a full transcript, side by side.</p>
+<p style="margin:0 0 20px;font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#2c3e50;">Click any line to jump to that moment. Grab a "deep link" that you can share with colleagues so they land at that exact second in the video.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px;">
+<tr><td style="background:#ffffff;border:2px solid #222;">
+<a href="{base}/" style="display:inline-block;padding:10px 22px;font-family:'Courier New',monospace;font-weight:bold;font-size:15px;letter-spacing:0.5px;color:#222426;text-decoration:none;">Paste your first URL &rarr;</a>
+</td></tr>
+</table>
+"""
+    body_html += _email_signoff_html()
+    return await _resend_send(to, "Congrats on the new library card :)", _branded_email_html(body_html))
+
+
+async def _send_newsletter_welcome_email(to: str) -> bool:
+    """"Welcome" -- LIFECYCLE_EMAILS.md #2, joining the free list via the
+    standalone /subscribe form (never a name field, so always "Hi
+    there,"). Includes an inline unsubscribe mention as part of the
+    approved copy itself, on top of the standard footer link every send
+    here gets -- deliberate per the doc's own voice, not an oversight.
+    """
+    base = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/") or "https://redtaperecordings.com"
+    unsubscribe_url = f"{base}/unsubscribe?email={quote(to)}"
+    body_html = f"""\
+<p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:17px;color:#2c3e50;">Hi there,</p>
+<p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#2c3e50;">Thank you so much for using Red Tape Recordings.</p>
+<p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#2c3e50;">We really appreciate early adopters like you. Please let us know what should be improved.</p>
+<p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#2c3e50;">We'll send you an email here and there when there are important updates or things we think are genuinely useful to the majority of the advocates, journalists, and other grassroots action-takers who use the tools.</p>
+<p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#2c3e50;">Honestly, I used to write sales emails for a living and I sort of hate them. So I promise I will only write to you when I think it's really worth getting out of bed. And naturally, one click and you're out, anytime: <a href="{unsubscribe_url}" style="color:#3498db;">unsubscribe</a>.</p>
+<p style="margin:0 0 20px;font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#2c3e50;">But hopefully, you think the tools are cool and they save you a lot of time.</p>
+"""
+    body_html += _email_signoff_html()
+    return await _resend_send(to, "You're on the list", _branded_email_html(body_html))
+
+
+async def _send_unsubscribed_email(to: str) -> bool:
+    """"Goodbye for now" -- LIFECYCLE_EMAILS.md #3. Deliberately skips the
+    standard unsubscribe-footer link (skip_unsubscribe_footer=True): this
+    email IS the unsubscribe confirmation, so a second "click here to
+    unsubscribe" link right under it would read as a bug, not a courtesy.
+    """
+    base = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/") or "https://redtaperecordings.com"
+    body_html = f"""\
+<p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:17px;color:#2c3e50;">Hi there,</p>
+<p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#2c3e50;">Done. You're off the email list, and we won't send any more. A quiet inbox is a fair thing to want, and we're grateful for the time you gave us.</p>
+<p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#2c3e50;">The tool is still yours whenever you need it. The record isn't going anywhere, and neither are we: <a href="{base}/" style="color:#3498db;">redtaperecordings.com</a></p>
+<p style="margin:0 0 20px;font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#2c3e50;">If you ever want back in, you're welcome anytime.</p>
+"""
+    body_html += _email_signoff_html()
+    return await _resend_send(to, "Goodbye for now", _branded_email_html(body_html), skip_unsubscribe_footer=True)
+
+
 @app.post("/api/newsletter/signup")
 async def newsletter_signup(req: NewsletterSignupRequest):
     email = req.email.strip()
@@ -460,6 +619,7 @@ async def newsletter_signup(req: NewsletterSignupRequest):
             status_code=503,
         )
     if ok:
+        await _send_newsletter_welcome_email(email)
         return {"status": "subscribed"}
 
     return JSONResponse(
@@ -480,22 +640,26 @@ async def unsubscribe(request: Request, email: str = ""):
     if email and _EMAIL_RE.match(email):
         result = await _resend_audience_upsert(email, unsubscribed=True)
         ok = bool(result)
+        if ok:
+            await _send_unsubscribed_email(email)
     return templates.TemplateResponse(request, "unsubscribed.html", {"unsubscribed": ok, "email": email})
 
 
 @app.post("/api/clerk/webhook")
 async def clerk_webhook(request: Request):
     """Clerk notifies us of account lifecycle events here -- the glue for
-    two product decisions: account creation auto-subscribes to the
-    newsletter (user.created), and deleting a Clerk account purges the
+    three product decisions: account creation auto-subscribes to the
+    newsletter and sends the "Thanks" welcome email (user.created,
+    LIFECYCLE_EMAILS.md #1), and deleting a Clerk account purges the
     account's saved_items on our side (user.deleted, the right-to-deletion
     cascade -- see archive/db/crud.py's delete_account_data()).
 
     Verified via svix before trusting anything in the body -- an
     unverifiable payload gets a 400 and no side effects at all. Handlers
     are naturally idempotent (Resend upsert, a DELETE that's a no-op if
-    already gone), so a Svix retry on a non-2xx response is harmless to
-    replay, no separate dedup needed.
+    already gone, an email send with no dedup but harmless to repeat), so
+    a Svix retry on a non-2xx response is harmless to replay, no separate
+    dedup needed.
     """
     signing_secret = os.environ.get("CLERK_WEBHOOK_SIGNING_SECRET", "")
     if not signing_secret:
@@ -520,6 +684,7 @@ async def clerk_webhook(request: Request):
         )
         if email:
             await _resend_audience_upsert(email, unsubscribed=False)
+            await _send_account_created_email(email, first_name=data.get("first_name"))
         else:
             logger.warning("Clerk user.created webhook had no resolvable primary email for user %s.", data.get("id"))
     elif event_type == "user.deleted":

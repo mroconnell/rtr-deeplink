@@ -70,6 +70,15 @@ services:
         sync: false
       - key: RESEND_AUDIENCE_ID
         sync: false
+      # New here 2026-08-11, alongside LIFECYCLE_EMAILS.md's "Thanks"/
+      # "Welcome"/"Goodbye for now" emails -- this service previously only
+      # ever upserted Resend audience contacts, never sent a transactional
+      # email itself (that lived solely in archive/utils/email.py). Same
+      # values as rtr-deeplink-archive's copies below.
+      - key: RESEND_FROM_ADDRESS
+        sync: false
+      - key: RESEND_REPLY_TO_ADDRESS
+        sync: false
       - key: GA_MEASUREMENT_ID
         sync: false
       - key: ARCHIVE_BASE_URL
@@ -153,3 +162,5 @@ services:
         sync: false
       - key: HF_TOKEN
         sync: false  # optional -- unauthenticated Hugging Face Hub requests work fine today, just at a lower rate limit; see BACKLOG.md
+      - key: AUTO_TRANSCRIPTION_REQUESTER_EMAIL
+        sync: false  # optional -- idle-time auto-generation (worker/main.py) is silently disabled when unset; set to receive its completion-email activity digest
