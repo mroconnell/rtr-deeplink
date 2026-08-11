@@ -403,15 +403,16 @@ function wireTranscribeForm() {
     }
   }
 
-  // User request 2026-08-11: dropped the "sign in to skip re-entering
-  // your email" shortcut from this specific spot after Clerk's own
-  // sign-in redirect proved unreliable here across several attempts
-  // (see git history for the full saga) -- always just capture an
-  // email instead. Redundant for an already-signed-in visitor (they
-  // type an email that's often their own account's), but harmless; the
-  // backend still skips the confirm-by-email step for them regardless
-  // (see /api/transcription/submit's clerk_verified check, unrelated to
-  // and unaffected by any of this -- pure server-side session check).
+  // User request 2026-08-11, corrected same day: the sign-in *prompt*
+  // (a button that opened Clerk's modal from this spot) is gone for good
+  // -- that's the part that proved unreliable across several rounds of
+  // fixing Clerk's own redirect behavior. But a visitor who's *already*
+  // signed in when they click the toggle should still skip re-entering
+  // their email entirely, same as before that whole redirect saga --
+  // this was never meant to go, only the modal-opening shortcut was.
+  // primaryEmailAddress can be null (phone-only or some OAuth-only
+  // sign-ups), so this still falls back to the manual field rather than
+  // submitting a blank email in that case.
   //
   // Friction is intentional (see BACKLOG.md's abuse-control notes): the
   // feasibility check always fires immediately on toggle, before any email
@@ -433,8 +434,16 @@ function wireTranscribeForm() {
       const data = await res.json();
       if (data.ok) {
         feasibilityOk = true;
-        checkStatusEl.textContent = 'We found a workable audio file — share your email so we can notify you when the transcript is complete.';
-        emailStep.hidden = false;
+        const clerkEmail = window.RTRClerk && window.RTRClerk.isSignedIn() && window.Clerk.user && window.Clerk.user.primaryEmailAddress
+          ? window.Clerk.user.primaryEmailAddress.emailAddress
+          : null;
+        if (clerkEmail) {
+          checkStatusEl.textContent = '';
+          await submitRequest(clerkEmail);
+        } else {
+          checkStatusEl.textContent = 'We found a workable audio file — share your email so we can notify you when the transcript is complete.';
+          emailStep.hidden = false;
+        }
       } else {
         checkStatusEl.innerHTML = linkifyWarning(data.message || "We couldn't find a usable audio or video source for this meeting.");
         checkStatusEl.className = 'transcribe-status error';
