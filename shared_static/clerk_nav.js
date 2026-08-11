@@ -57,7 +57,22 @@
     const signedIn = !!(window.Clerk && window.Clerk.user);
 
     if (getUpdatesItem) getUpdatesItem.hidden = signedIn;
-    if (getUpdatesDivider) getUpdatesDivider.hidden = signedIn;
+    // getUpdatesDivider carries Bootstrap's "d-none d-lg-block" utility
+    // classes, which set `display: block !important` at the lg
+    // breakpoint -- that beats the plain `hidden` attribute (not
+    // !important), so the divider stayed visible even when "hidden" even
+    // though Get Updates itself correctly disappeared, leaving two
+    // dividers with nothing between them. Setting the inline style
+    // directly (also !important) wins regardless of viewport width;
+    // removing the inline style on sign-out lets Bootstrap's own
+    // responsive classes resume control.
+    if (getUpdatesDivider) {
+      if (signedIn) {
+        getUpdatesDivider.style.setProperty("display", "none", "important");
+      } else {
+        getUpdatesDivider.style.removeProperty("display");
+      }
+    }
 
     if (!signInLink || !userButtonEl) return;
     if (signedIn) {
