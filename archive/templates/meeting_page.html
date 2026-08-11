@@ -9,6 +9,15 @@
 {% block meta %}
   {% set description = (page.title or "A public meeting") ~ (page.jurisdiction and (" in " ~ page.jurisdiction) or "") ~ (page.date and (" on " ~ page.date) or "") ~ ", with video and transcript." %}
   <meta name="description" content="{{ description }}">
+  {% if page.platform == "unknown" %}
+  {#- generic_fallback.py registers under platform_name = "unknown" -- the
+     only adapter that does, and the widest-open path in the trust &
+     safety backlog section (no domain restriction, best-effort scan of
+     any page). noindex stops search-engine amplification of the
+     least-verified content without blocking or gating anything -- see
+     BACKLOG.md. #}
+  <meta name="robots" content="noindex">
+  {% endif %}
   {% if public_base_url %}
   <link rel="canonical" href="{{ public_base_url }}/m/{{ page.slug }}">
   <meta property="og:url" content="{{ public_base_url }}/m/{{ page.slug }}">
