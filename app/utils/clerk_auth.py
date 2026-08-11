@@ -31,10 +31,21 @@ def clerk_frontend_api_url(publishable_key: str) -> Optional[str]:
     after the second underscore is base64, decoding to "{domain}$" --
     strip the trailing "$". Returns None on anything malformed (also
     covers publishable_key == "", i.e. Clerk not configured at all).
+
+    Real incident, 2026-08-11: Clerk's actual publishable keys omit
+    trailing "=" padding, so b64decode() only worked by coincidence
+    whenever a given key's encoded segment happened to already be a
+    multiple of 4 characters long -- true for the dev-instance key this
+    was first tested against, false for the production key, which
+    silently broke Clerk site-wide in production (empty FAPI URL ->
+    shared_static/clerk_nav.js's own guard disables everything) until
+    caught by comparing the live site's rendered attribute against what
+    was expected. Re-padding before decoding fixes both.
     """
     try:
         _, _, encoded = publishable_key.split("_", 2)
-        decoded = base64.b64decode(encoded).decode()
+        padded = encoded + "=" * (-len(encoded) % 4)
+        decoded = base64.b64decode(padded).decode()
         if not decoded.endswith("$"):
             return None
         return decoded[:-1]
