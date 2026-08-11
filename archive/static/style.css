@@ -118,6 +118,22 @@ body {
   transform-origin: 50% 50%;
 }
 
+/* "Pop up and glow" attention cue -- user request 2026-08-11, meeting_page.js's
+   wireSourceDisclaimerPointer(). Same "depressed vs. popped-up" tape-deck
+   button metaphor floated for the search/save-search buttons in
+   BACKLOG.md (not built there yet), first real use of it here: a real
+   button momentarily lifts and glows to draw the eye across the column,
+   then settles back to normal, rather than a static color change that's
+   easy to miss on a button already in the viewport. */
+@keyframes cassette-btn-pop {
+  0% { transform: translateY(0); box-shadow: none; border-color: #222; }
+  35% { transform: translateY(-6px); box-shadow: 0 8px 16px rgba(52, 152, 219, 0.45); border-color: var(--accent); }
+  100% { transform: translateY(0); box-shadow: none; border-color: #222; }
+}
+.cassette-btn.pointed-to {
+  animation: cassette-btn-pop 900ms ease;
+}
+
 .status-loading {
   display: inline-flex;
   align-items: center;
@@ -302,6 +318,24 @@ body {
 .warnings:empty { display: none; }
 .warnings a { color: inherit; text-decoration: underline; }
 .warnings a:hover { color: var(--accent); }
+/* Real gap fixed 2026-08-11: app/static/style.css (the file this one is
+   deliberately kept in sync with, see this file's own header comment)
+   already had this rule; it never got copied over here, so every
+   .transcribe-inline-trigger this service renders (render_warnings.py's
+   warnings-text buttons, and meeting_page.html's own
+   #sourceDisclaimerPointer link) rendered as an unstyled default button/
+   link instead of the intended plain-link look. */
+.transcribe-inline-trigger {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.transcribe-inline-trigger:hover { color: var(--accent); }
 
 /* Plain "we think we found this: <link>" lines (agenda_link, 2026-08-10)
    -- deliberately normal weight/color, not the bold-on-tinted-background

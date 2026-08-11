@@ -414,8 +414,35 @@ function wireSaveMeetingButton() {
 // below on purpose -- the no-video case (no #videoWrapper at all) is
 // exactly the case most likely to have this button in its warning text.
 function wireTranscribeInlineTriggers() {
-  document.querySelectorAll('.transcribe-inline-trigger').forEach((btn) => {
+  // :not(#sourceDisclaimerPointer) -- that one link reuses this class for
+  // its link-styled look only, not this auto-click behavior; it's wired
+  // separately below by wireSourceDisclaimerPointer(), deliberately
+  // *not* auto-clicking the real button (see that function's comment).
+  document.querySelectorAll('.transcribe-inline-trigger:not(#sourceDisclaimerPointer)').forEach((btn) => {
     btn.addEventListener('click', () => document.getElementById('transcribeToggle').click());
+  });
+}
+
+// The source-transcript disclaimer's "button to the left" link (user
+// request 2026-08-11, meeting_page.html) -- unlike the warnings-text
+// .transcribe-inline-trigger buttons above, this deliberately does NOT
+// auto-click #transcribeToggle (that would silently fire the feasibility
+// check's real network request just from reading the disclaimer,
+// working against wireTranscribeForm()'s own deliberate friction). Just
+// draws the eye to the real button: a brief pop/glow via the
+// .pointed-to animation (style.css), the same "depressed vs. popped-up"
+// tape-deck cue floated for the search/save-search buttons in
+// BACKLOG.md. Removes-then-re-adds the class (with a forced reflow in
+// between) so a second click re-triggers the animation even if it's
+// still settling from the first.
+function wireSourceDisclaimerPointer() {
+  const link = document.getElementById('sourceDisclaimerPointer');
+  const toggle = document.getElementById('transcribeToggle');
+  if (!link || !toggle) return;
+  link.addEventListener('click', () => {
+    toggle.classList.remove('pointed-to');
+    void toggle.offsetWidth;
+    toggle.classList.add('pointed-to');
   });
 }
 
@@ -428,6 +455,7 @@ document.addEventListener('DOMContentLoaded', () => {
   wireReportProblemForm();
   wireTranscribeForm();
   wireTranscribeInlineTriggers();
+  wireSourceDisclaimerPointer();
   wireSaveMeetingButton();
 
   const wrapper = document.getElementById('videoWrapper');
