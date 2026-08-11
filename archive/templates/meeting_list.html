@@ -99,6 +99,15 @@
         </div>
         {% if m.has_transcript %}
         <span class="transcript-badge" title="A transcript is available for this meeting">&#10003; Transcript</span>
+        {% else %}
+        {#- Real bug fixed 2026-08-11: omitting this element entirely (rather
+           than just hiding it) left .calendar-candidate-main with no second
+           flex child reserving this column's width, so an agenda-only row's
+           title wrapped wider than a row with a badge. Same markup/classes
+           as the real badge (so it reserves identical space), just
+           visibility:hidden and aria-hidden -- see the .transcript-badge-
+           placeholder rule in style.css. #}
+        <span class="transcript-badge transcript-badge-placeholder" aria-hidden="true">&#10003; Transcript</span>
         {% endif %}
       </div>
       {% endfor %}

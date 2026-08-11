@@ -649,6 +649,15 @@ mark.search-match.current { background: #f97316; color: #fff; }
   letter-spacing: 0.06em;
   transform: rotate(-4deg);
 }
+/* Real bug fixed 2026-08-11: an agenda-only row used to omit
+   .transcript-badge entirely, leaving .calendar-candidate-main as the
+   row's only flex child -- it then expanded to fill the row, wrapping
+   the title wider than a row with a badge reserving that column's
+   width. meeting_list.html now always renders the badge markup, just
+   invisible (same box, same dimensions) when there's no transcript. */
+.transcript-badge-placeholder {
+  visibility: hidden;
+}
 
 /* --- About page --- */
 .about-page {
