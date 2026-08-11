@@ -68,14 +68,17 @@ anything) to build against it.
   suspicious page — genuinely built, not aspirational, just reactive
   (after publication) rather than preventive.
 
-  **Mitigation options worth weighing, not yet decided or built:**
-  - **noindex generic_fallback/`best_effort` pages by default** —
-    confirmed via a direct code check: there is currently *no* per-page
-    `noindex`, only a site-wide `robots.txt`. The highest-risk pathway
-    (unverified, non-standard pages) is exactly the one getting full
-    search-engine amplification today. Narrowest, cheapest mitigation
-    on this list — doesn't block anything, just stops amplifying the
-    least-verified content until a human's looked at it.
+  **Mitigation options worth weighing, not yet decided or built (except
+  the first, built 2026-08-11 — see BACKLOG_DONE.md):**
+  - ~~**noindex generic_fallback/`best_effort` pages by default**~~ Built
+    2026-08-11: `archive/templates/meeting_page.html`'s meta block now
+    renders `<meta name="robots" content="noindex">` whenever
+    `page.platform == "unknown"` (the exact string `generic_fallback.py`
+    registers under). The narrowest, cheapest mitigation on this list —
+    doesn't block anything, just stops amplifying the least-verified
+    content until a human's looked at it. The rest of this section's
+    threat model (fake-jurisdiction risk, curated-list idea, trust tiers)
+    is still open.
   - **Manual review before a brand-new jurisdiction goes live/indexed**
     — especially for `generic_fallback`/`best_effort` results. Real cost:
     turns part of the pipeline from fully automatic into something
@@ -121,28 +124,6 @@ anything) to build against it.
     pursuing this angle themselves; `bulk_ingest.py`-style manual
     pushes can carry whatever comes back.
 
-- **`/meetings` search-result rows wrap the title text at a different
-  right margin depending on whether the row has a transcript badge.**
-  Reported by the user via screenshot 2026-08-11. Root cause confirmed by
-  reading the code: `archive/templates/meeting_list.html` (lines 73-88)
-  renders each row as `.calendar-candidate.meeting-result-row`, a two-
-  child flexbox (`.calendar-candidate-main` + an optional
-  `.transcript-badge` span) using `justify-content: space-between`
-  (`archive/static/style.css` lines 590-651) to push the badge to the
-  right. The badge's `{% if m.has_transcript %}` (line 85) omits the
-  `<span>` entirely when false, rather than rendering an empty/invisible
-  placeholder of the same width — so on agenda-only rows,
-  `.calendar-candidate-main` (and the unconstrained title `<a>` inside it)
-  expands to fill the full row, wrapping wider than rows with a badge
-  present. The CSS comment directly above (`style.css` lines 581-589)
-  already describes the *intended* design ("a fixed badge column on the
-  right... so the badge always lands in the same vertical line of
-  sight") — the implementation just doesn't reserve that column's width
-  when the badge is absent. Fix needs either a fixed `width`/`flex-basis`
-  on `.transcript-badge` with the span always rendered (empty/invisible
-  when no transcript), or an equivalent `flex-basis`/`max-width` on
-  `.calendar-candidate-main` sized to leave the same room regardless.
-
 ## `/meetings` search & saved items — UI gaps found 2026-08-11
 
 - **"Save this search" can silently save the wrong search, and gives no
@@ -186,22 +167,6 @@ anything) to build against it.
   styling (`cassette-btn` class already used by both buttons, line 18 and
   the outline variant in `saved_items.html`). All riffing, not a chosen
   design — needs a real decision before building.
-
-- **The saved-searches list on `/account/saved` doesn't display every
-  filter that's actually saved, even though the underlying link does
-  carry them.** Confirmed via `archive/templates/saved_items.html` lines
-  38-48: the visible label only ever shows `sp.q` (as a quoted string, or
-  "All meetings" if blank, line 43) plus `sp.jurisdiction` and
-  `date_from`/`date_to` if set (lines 46-47) — `has_agenda`,
-  `has_transcript`, and `fuzzy` are never rendered anywhere in the row,
-  even though the `<a href>` right above (line 42) does correctly encode
-  all of them into the `/meetings?...` query string. So clicking through
-  re-applies the full saved search correctly, but a user scanning their
-  saved-searches list has no way to tell, at a glance, that a given entry
-  is (for example) filtered to "has transcript only" vs. not — the list
-  under-describes its own entries. Fix is display-only: extend lines
-  46-47's summary line to also surface `sp.has_agenda`/`sp.has_transcript`/
-  `sp.fuzzy` when set (e.g. as extra `&middot;`-separated badges).
 
 - **Meeting title/jurisdiction display has no consistent formatting
   convention — long names aren't truncated, casing varies row to row, and
@@ -260,16 +225,6 @@ anything) to build against it.
 
 ## Accounts (Clerk) UI gaps found 2026-08-11
 
-- **Missing nav divider between "My Saved Items" and "Sign in"** —
-  reported by the user via screenshot. Confirmed via
-  `archive/templates/base.html:44-53`: a `<li class="nav-divider ...">`
-  sits before "My Saved Items" (line 45, matching the divider pattern
-  used between every other nav item), but there's no equivalent divider
-  between the "My Saved Items" `<li>` (46-48) and the "Sign in"/user-button
-  `<li>` (49-52) — the one gap in an otherwise consistent
-  divider-between-every-item pattern. One-line fix: add the same
-  `<li class="nav-divider d-none d-lg-block" aria-hidden="true"></li>`
-  between those two list items.
 - **The nav briefly shows "Sign in" (then swaps to the account button)
   on every full page load, even for an already-signed-in visitor —
   reported by the user via "My Saved Items," which is a plain full-page
@@ -912,85 +867,16 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     OAuth) — "Hi there," is the documented fallback either way, so a
     missing field degrades gracefully, but the "Hi [First Name]," path
     itself hasn't been seen fire for real yet.
-- **Lifecycle email bugs found by the user 2026-08-11, real live example
-  seen ("Your transcript's ready" via Gmail) — four separate issues, one
-  of them root-caused to a precise one-line fix, not just "the excerpt
-  looks off":**
-  - **The transcript excerpt in the completion email is *always* empty
-    (renders as just "…"), for every email, unconditionally — root cause
-    fully traced, not guessed.** `worker/main.py:231-253`'s
-    `_send_completion_email()` looks up the excerpt via `status.get(
-    "transcript_version_id")` (line 240) to find the matching version in
-    `page["versions"]`, then joins that version's segment text (line
-    244). But `status` comes from `crud.get_transcription_job_status()`
-    (`archive/db/crud.py:1088-1094`), which returns `_job_dict(job, page)`
-    (line 1072-1085) — and **`_job_dict()`'s returned dict has no
-    `transcript_version_id` key at all**, even though the job row itself
-    does carry a real one (`job.transcript_version_id`, set at line 1057
-    in `report_chunk_result()` once the job completes). So `status.get(
-    "transcript_version_id")` in the worker always evaluates to `None`,
-    the generator matching `v["id"] == None` against real integer version
-    ids never matches anything, `version` stays `None`, and `excerpt`
-    never leaves its `""` initial value (`worker/main.py:236`) — which
-    then renders as bare `&hellip;` in `archive/utils/email.py:257`
-    (`{html.escape(excerpt)}&hellip;`). This isn't an occasional or
-    edge-case failure — every single completion email hits this same
-    path and fails the same way, always. **Fix is a one-line addition**:
-    add `"transcript_version_id": job.transcript_version_id,` to
-    `_job_dict()`'s returned dict (`archive/db/crud.py:1072-1085`) — the
-    data already exists on the model, it's just never surfaced through
-    this function.
-  - **The email header doesn't match the site nav's actual "dymo label"
-    look, for two compounding reasons, not one.** Confirmed via
-    `archive/static/style.css:33-46`'s real `.dymo-label` rule: real
-    background `#b71c1c` (red), text **not** uppercased in CSS at all
-    (no `text-transform`) — the *HTML source* itself is already Title
-    Case (`archive/templates/base.html:22`, `Red Tape Recordings`), and a
-    real `text-shadow: 0 2px 2px #7b1010, 0 -1px 1px #7b1010` emboss
-    effect. Critically, on the actual site this red label sits *inside* a
-    separately-dark navbar (`<nav class="navbar ... bg-dark">`, Bootstrap's
-    near-black navbar background) — the red label reads as a label
-    precisely because it contrasts against that dark bar. The email's
-    header (`archive/utils/email.py:188-201`) gets this backwards: the
-    *outer* `<td>` itself is set to the label's own red
-    (`background:#b71c1c`, line 192), while the inner `<span>` (line 193)
-    has no background of its own, just a border — so in the email, the
-    "label" is really just an amber-outlined box sitting on a background
-    of its own same color, with no contrasting dark bar at all, and the
-    text is hardcoded ALL CAPS (`RED TAPE RECORDINGS`) rather than the
-    site's real Title Case. **Fix needs both changed together**, not just
-    one: the outer `<td>` background should become a dark/near-black
-    shade (matching `bg-dark`) instead of red, *and* the inner `<span>`
-    needs its own explicit `background:#b71c1c` added (since it currently
-    only shows red by inheriting the outer cell's color — removing that
-    without adding the span's own background would leave a black box with
-    no red label inside at all); text should change to `Red Tape
-    Recordings`. The missing emboss (`text-shadow`) is very likely a real
-    HTML-email-client limitation, not a bug to chase — text-shadow support
-    across email clients (Gmail included) is notoriously unreliable, so
-    the user's own guess ("might be my email client") is probably right;
-    not worth spending effort on unless a client-safe alternative (e.g. a
-    tiny background image) is deliberately chosen later.
-  - **Neither "Red Tape Recordings" occurrence (header, and the sign-off
-    at the bottom) is a clickable link to the site.** Confirmed via
-    `archive/utils/email.py`: the header `<span>` (line 193) and
-    `_signoff_html()`'s `<p>` (lines 204-210, "Red Tape Recordings" as
-    the last line) are both plain, unlinked text. Straightforward fix —
-    wrap both in `<a href="{base}">`, where `base` is
-    `os.environ.get("PUBLIC_BASE_URL", "")`, already read this exact way
-    elsewhere in the same file (line 60) — but note neither
-    `_branded_wrapper()` (line 172) nor `_signoff_html()` (line 204)
-    currently accepts a URL parameter, so both signatures would need to
-    grow one (and every call site updated to pass it through).
-  - **Split off, not built this pass**: "People are talking about…"
-    (saved-search alert emails, the doc's #5) — a real new feature (match
-    detection + a per-alert one-click unsubscribe token), not just a
-    template wired into an existing event. See the "Email alerts for
-    saved searches" entry directly below, which is the same feature.
-    The doc's own "Digest variant of #5" (batching multiple alerts into
-    one email) is explicitly flagged there too as later-still: Resend has
-    no built-in batching, so a digest needs its own accumulation +
-    scheduled-or-event-driven send logic, not just copy.
+- **Lifecycle email bugs found by the user 2026-08-11 — three of the four
+  fixed 2026-08-11, see BACKLOG_DONE.md for the full root-cause detail on
+  each.** The fourth, "People are talking about…" (saved-search alert
+  emails, `marketing/LIFECYCLE_EMAILS.md`'s #5), was always a real new
+  feature rather than a bug in this batch — see the "Email alerts for
+  saved searches" entry directly below, which is the same feature. That
+  doc's own "Digest variant of #5" (batching multiple alerts into one
+  email) is flagged there too as later-still: Resend has no built-in
+  batching, so a digest needs its own accumulation + scheduled-or-
+  event-driven send logic, not just copy.
 - **Email alerts for saved searches — confirmed 2026-08-09 as the most
   concrete "worth paying for" feature identified so far.** Depends on
   accounts and search both existing first (search already live; accounts
@@ -1286,36 +1172,6 @@ one item below is resolved as a result.
   after two live crashes. Worth a real `"base"`-at-900s measurement as
   its own follow-up once `"tiny"` is confirmed working end-to-end on the
   new plan, not stacked on top of an unconfirmed fix.
-- **A parallel disclaimer for source-provided (non-AI) transcripts —
-  user request 2026-08-11, liked the existing AI-transcript disclaimer
-  and wants an equivalent for the other case.** Confirmed via
-  `archive/templates/meeting_page.html:262-267`: the amber "AI
-  TRANSCRIPT" disclaimer box (`.ai-disclaimer`, `.dymo-label-small`) only
-  renders `{% if active_version.source == "transcribed" %}` — a
-  source-scraped transcript (`source="scraped"`, set at
-  `archive/db/crud.py:308`, the actual value for every platform-provided
-  caption) gets **no disclaimer at all** today, even though it's also
-  unreviewed-for-accuracy content pulled from a third party, exactly the
-  gap the user's asking to close. Their suggested copy: "This transcript
-  is downloaded from the source you provided but we haven't reviewed it
-  for accuracy. Treat it as a starting point, not a verbatim record. You
-  can request an AI-transcription of the audio file by clicking here."
-
-  Straightforward to build, and the CTA piece is nearly free: the
-  "Request Transcript from Audio" button already exists and already
-  appears on exactly these pages — `show_transcribe_cta`
-  (`meeting_page.html:75`) is `True` precisely when the active version
-  isn't a `"transcribed"` one, and the button itself renders right above
-  the transcript at line 164-165 (`id="transcribeToggle"`). So the new
-  disclaimer's "click here" doesn't need new plumbing, just an in-page
-  anchor/JS trigger pointing at that existing button rather than
-  duplicating its behavior. Implementation shape: add an `{% elif
-  active_version.source == "scraped" %}` branch alongside the existing
-  `{% if ... == "transcribed" %}` at line 262, with its own label/copy
-  (worth a distinct color or label text from "AI TRANSCRIPT" — e.g.
-  "SOURCE TRANSCRIPT" — so the two disclaimers stay visually
-  distinguishable at a glance, not just distinguishable by reading the
-  copy).
 - **Per-meeting `initial_prompt` seeded with real council-member names,
   from the agenda — user idea, 2026-08-11, real proper-noun accuracy
   motivation (their example: "Council Member Rashi Kesarwani, Council
