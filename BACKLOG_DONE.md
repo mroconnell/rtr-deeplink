@@ -537,6 +537,39 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-11] Fixed `GranicusAssetFinder._fetch_agenda_items()`
+  silently discarding its own PDF-fallback link when `AgendaViewer.php`
+  redirects to a *raw binary* PDF, instead of the HTML/Google-Docs-preview
+  PDF the existing Berkeley/Paradise Valley AZ fallback path was built
+  for.** Found live while bulk-ingesting Napa's City Council/Housing
+  Authority/Measure G Granicus channel (`view_id=12`, clip 3470 and 34
+  others) via `scripts/bulk_ingest.py` — every single one came back with
+  `agenda_items=0` and no fallback warning either, unlike Napa's Planning
+  Commission channel (`view_id=2`) resolved earlier the same session,
+  which got real agenda items. Root cause: `response.text()` on a raw PDF
+  raises `UnicodeDecodeError`, which was being caught by the same blanket
+  `except Exception: return [], None` guarding real request failures
+  (bad status/connection error) — so a 200 response with a real,
+  fetchable agenda on it was treated identically to "the request itself
+  failed," discarding `final_url` along with it. Fix (`app/platforms/
+  granicus.py`): capture `final_url` before attempting the text read, and
+  catch `UnicodeDecodeError`/`LookupError` from `response.text()`
+  separately, returning `([], final_url)` — the same fallback shape the
+  Berkeley/Paradise Valley case already produces. Verified live against
+  the real Napa clip (agenda_items still `[]`, since there's genuinely no
+  timestamped structure to parse, but `transcript_warnings` now correctly
+  links the real PDF instead of saying nothing) and added a
+  fixture-backed regression test (`tests/test_granicus.py`,
+  `test_agenda_viewer_redirect_to_raw_pdf_surfaces_as_fallback_link`,
+  using a new `FakeResponse(text_raises=...)` param in `tests/
+  aiohttp_mock.py`) so this doesn't silently regress. Does **not** change
+  whether these 35 meetings get ingested — they still have no transcript
+  (blank captions) and no parseable chapter data, so `/api/resolve` and
+  `bulk_ingest.py`'s existing "only push real content" gate correctly
+  skips them either way; this only fixes what gets surfaced to a user who
+  resolves one of these URLs directly instead of losing the agenda link
+  entirely.
+
 - **[Done 2026-08-10, verified end-to-end locally] Built real
   `video_warnings`/`agenda_link` support on the Archive, replacing the
   generic stand-in message shipped earlier the same day.** Corrected a

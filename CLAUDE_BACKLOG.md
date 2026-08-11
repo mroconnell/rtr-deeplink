@@ -138,6 +138,92 @@ scaling.
   2026-08-10 experiment entry; revisit only if the local script becomes
   the bottleneck.
 
+## Agenda/minutes PDF text extraction
+
+Proposed by the user (2026-08-11), right after `agenda_link` (a raw URL,
+no extracted content) shipped for Granicus meetings whose `AgendaViewer.php`
+redirects to a plain agenda PDF instead of Granicus's native timestamped
+agenda-index — see `BACKLOG_DONE.md`'s 2026-08-11 entry. No PDF
+text-extraction library exists anywhere in this codebase today (checked
+`requirements.txt` and grepped for `pdfplumber`/`pypdf`/`pdfminer`/`fitz` —
+nothing), so this is new infrastructure, not a tweak to the existing
+`agenda_link` fallback.
+
+- **Extract and display the actual text of the agenda/minutes PDF**, not
+  just a link to it, in the meeting page's Agenda section. The user's
+  framing for why this matters beyond just "nice to have": these PDFs
+  routinely carry two things the transcript pipeline gets wrong or
+  misses entirely --
+  - **Speaker names.** Names are spoken aloud in the audio but are a
+    common Whisper mis-transcription target (unusual surnames, names
+    that sound like other words). A PDF with a real roster/attendee list
+    is a much more reliable source than trying to get the ASR to spell
+    them right.
+  - **The actual agenda content/topic list**, for meetings where no
+    parseable per-item chapter data exists at all (exactly today's
+    Napa City Council/Housing Authority case) -- right now those
+    meetings have literally nothing describing what was discussed
+    beyond the raw video and a bare link.
+  - Meeting **date** is a third, lower-stakes but still useful field
+    these PDFs usually carry near the top, and a few existing adapters
+    already lean on that today in a narrower form (Granicus's own
+    `_fetch_minutes_date()`, and the Alexandria docket-PDF-filename date
+    fallback in `granicus.py` -- see `BACKLOG_DONE.md`) -- this would
+    generalize that pattern rather than inventing something new.
+  - **No timestamps expected from these PDFs, and that's fine** --
+    unlike `agenda_items` (real per-item chapter markers with start
+    times), this would be plain extracted text, the same "not
+    clickable, just readable" treatment already used elsewhere for
+    caption formats we can't parse into a clickable transcript.
+
+  **Which document to use, when there's more than one.** A single
+  meeting often has multiple candidate PDFs -- an original agenda, a
+  later "updated agenda," and eventually minutes -- and per the user,
+  which one most closely matches the actual meeting order is
+  unpredictable case by case (an updated agenda is usually closer to
+  what actually happened than the original, but not reliably so, and
+  minutes may or may not exist yet depending on how soon after the
+  meeting this runs). Proposed approach: try candidates in some
+  descending priority order (e.g. minutes, if published > updated
+  agenda > original agenda) and use the first one that resolves,
+  rather than trying to merge/reconcile multiple documents.
+
+  **How to classify a given PDF at all** (agenda vs. minutes vs. some
+  unrelated attachment): the user's proposed default heuristic is
+  simply checking whether the extracted text says "agenda" (or
+  "minutes") near the top of the document, rather than trying to
+  identify it from the URL/filename alone -- filenames vary too much
+  across jurisdictions to rely on (this repo's own adapters already
+  each parse differently-shaped Legistar-style filenames per city).
+
+  Open questions before building: which PDF library to add (scanned
+  government PDFs with no real text layer are a real, likely-common
+  failure mode any choice needs to degrade gracefully on -- same
+  "some will look great, others garbled or empty" risk flagged when
+  this was first discussed in conversation); where extracted text lives
+  (`ResolvedMeeting.agenda_link` is a single URL field today, so this
+  likely needs a new field, e.g. `agenda_text`, not a repurposing of
+  the existing one, so a direct link is never lost even when extraction
+  partially fails); the matching Archive-side schema change (a new
+  `MeetingPage` column needs an Alembic migration, per this repo's
+  established convention for altering an existing table -- see
+  `archive/alembic/README.md`); and whether this is Granicus-specific
+  at first (today's real, confirmed-live motivating case) or worth
+  generalizing to every adapter that can produce an `agenda_link`
+  (`generic_fallback.py` also produces one, for a differently-shaped
+  problem -- best-effort unknown-platform sites, not Granicus's
+  PDF-redirect case specifically).
+
+  Per the user (2026-08-11) and consistent with this repo's established
+  "test against a real, live URL first, ideally several from different
+  cities" convention (see this file's header note and `CLAUDE.md`):
+  before/while building, pull real agenda and minutes PDFs from a
+  handful of cities -- Napa (today's motivating case) plus a few others
+  already in the sample sheet -- to see how extraction quality actually
+  varies across real government PDF layouts (text-layer vs. scanned,
+  single- vs. multi-column, tables) rather than assuming one city's
+  PDFs are representative.
+
 ## On-demand transcription follow-ups
 
 Both raised directly by the user alongside the original transcription

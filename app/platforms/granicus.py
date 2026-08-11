@@ -521,6 +521,7 @@ class GranicusAssetFinder(AssetFinder):
             # own field (never folded into `segments`) so it's never
             # mistaken for real transcript content.
             agenda_items: List[TranscriptSegment] = []
+            agenda_link: Optional[str] = None
             if clip_id:
                 raw_items, agenda_fallback_url = await self._fetch_agenda_items(session, final_url, clip_id)
                 if raw_items:
@@ -528,17 +529,17 @@ class GranicusAssetFinder(AssetFinder):
                     for i, (start, item_title) in enumerate(raw_items):
                         end = raw_items[i + 1][0] if i + 1 < len(raw_items) else start
                         agenda_items.append(TranscriptSegment(start=start, end=max(end, start), text=item_title))
-                elif not segments and agenda_fallback_url:
+                elif agenda_fallback_url:
                     # No timestamped chapter data (e.g. Berkeley/Paradise Valley AZ,
                     # which redirect AgendaViewer.php to their own external site or a
                     # PDF instead of Granicus's native structure) -- still a real,
                     # fetchable agenda, just not one we can parse into clickable
-                    # moments, so link to it directly rather than discarding it.
-                    # Only worth mentioning when there's no real transcript either.
-                    transcript_warnings.append(
-                        f"We couldn't build clickable chapter markers, but this "
-                        f"meeting's agenda is available here: {agenda_fallback_url}"
-                    )
+                    # moments. `agenda_link` (not a transcript_warnings sentence --
+                    # matches generic_fallback.py's own best-effort agenda link, same
+                    # field, same "we think we found an agenda here: <link>" frontend
+                    # treatment in player.js/meeting_page.html) so it renders as real
+                    # structured content rather than being buried in a warning string.
+                    agenda_link = agenda_fallback_url
 
             return ResolvedMeeting(
                 platform=self.platform_name,
@@ -552,6 +553,7 @@ class GranicusAssetFinder(AssetFinder):
                 video_format=video_format,
                 segments=segments,
                 agenda_items=agenda_items,
+                agenda_link=agenda_link,
                 alternate_transcripts=alternate_transcripts,
                 video_warnings=video_warnings,
                 transcript_warnings=transcript_warnings,
@@ -583,14 +585,17 @@ class GranicusAssetFinder(AssetFinder):
         Returns (items, fallback_url). Not every customer has the native
         structure on: confirmed Berkeley redirects AgendaViewer.php to its
         own external site instead (empty cuepoints too), and Paradise
-        Valley AZ redirects it to a Google Docs PDF preview. Both are
-        real, fetchable pages with an actual agenda on them -- just not
-        in a form we can parse into timestamped items -- so when `items`
-        comes back empty but the request still resolved to *something*
-        (any 200 response, even unparseable), `fallback_url` is that
-        final URL, for the caller to surface as a plain link rather than
-        discarding it. `fallback_url` is None when the request itself
-        failed (bad status/exception) -- nothing real to link to.
+        Valley AZ redirects it to a Google Docs PDF preview (HTML, still
+        text-decodable). Napa (confirmed live 2026-08-11, City Council/
+        Housing Authority/Measure G clips) redirects straight to a *raw*
+        binary PDF instead -- `response.text()` raises `UnicodeDecodeError`
+        on that, which must be caught separately from real request
+        failures (bad status/connection error): those still return
+        `fallback_url=None` (nothing real to link to), but a 200 response
+        that simply isn't decodable as text is exactly the "real,
+        fetchable agenda, just not parseable" case this fallback exists
+        for, so `final_url` -- captured before the read, since the read
+        itself is what can fail -- is still returned as `fallback_url`.
 
         Note SetPlayerPosition's argument isn't real H:MM:SS -- Granicus's
         own JS does `time.replace(':', '')` and parses the result as an
@@ -602,8 +607,11 @@ class GranicusAssetFinder(AssetFinder):
             async with session.get(agenda_url, timeout=aiohttp.ClientTimeout(total=15)) as response:
                 if response.status != 200:
                     return [], None
-                html = await response.text()
                 final_url = str(response.url)
+                try:
+                    html = await response.text()
+                except (UnicodeDecodeError, LookupError):
+                    return [], final_url
         except Exception:
             return [], None
 

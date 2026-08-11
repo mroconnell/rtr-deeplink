@@ -17,9 +17,14 @@ action, not the case that limit exists to guard against.
 Usage (from the repo root, with the venv active):
     python scripts/bulk_ingest.py urls.txt
     python scripts/bulk_ingest.py urls.txt --dry-run
+    python scripts/bulk_ingest.py --playlist "https://www.youtube.com/playlist?list=..."
 
 urls.txt: one URL per line; blank lines and lines starting with # are
-ignored.
+ignored. A line that's itself a YouTube playlist/watch?list= URL is
+expanded to its member video URLs at run time (via yt-dlp's flat
+extraction -- confirmed live 2026-08-11 against a real 66-video "Town
+Council Meetings" playlist), so a playlist URL can also just be dropped
+into the file directly instead of using --playlist.
 
 Requires ARCHIVE_BASE_URL and ARCHIVE_INGEST_TOKEN in the repo's local
 .env (or already exported in the environment) -- the real Render values
@@ -31,8 +36,10 @@ import asyncio
 import sys
 from pathlib import Path
 from typing import List, Optional
+from urllib.parse import parse_qs, urlparse
 
 import aiohttp
+import yt_dlp
 from dotenv import load_dotenv
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -67,6 +74,47 @@ def _read_urls(path: str) -> List[str]:
     return urls
 
 
+def _playlist_id(url: str) -> Optional[str]:
+    """Returns the `list=` query param if present -- covers both a bare
+    playlist URL (youtube.com/playlist?list=...) and a single video's URL
+    when it was copied from within a playlist (watch?v=...&list=...).
+    Either shape means "expand this to every video in the playlist", not
+    just the one video."""
+    query = parse_qs(urlparse(url).query)
+    values = query.get("list")
+    return values[0] if values else None
+
+
+def _expand_playlist(playlist_id: str) -> List[str]:
+    """Flat-extracts a YouTube playlist's member video URLs via yt-dlp,
+    without downloading anything. Confirmed live 2026-08-11 against a
+    real 66-video "Town Council Meetings" playlist -- ordinary
+    extract_flat, no special options needed the way single-video
+    resolves in app/platforms/youtube.py do (that file's player_client
+    workaround is for the anti-bot check on actual caption/format
+    extraction, which flat playlist listing never touches)."""
+    opts = {"extract_flat": True, "quiet": True, "no_warnings": True, "skip_download": True}
+    with yt_dlp.YoutubeDL(opts) as ydl:
+        info = ydl.extract_info(f"https://www.youtube.com/playlist?list={playlist_id}", download=False)
+    entries = (info or {}).get("entries") or []
+    return [e["url"] for e in entries if e.get("url")]
+
+
+def _expand_urls(urls: List[str]) -> List[str]:
+    """Replaces any playlist/in-playlist URL in the list with its member
+    video URLs, preserving order and leaving every other URL untouched."""
+    expanded: List[str] = []
+    for url in urls:
+        playlist_id = _playlist_id(url)
+        if not playlist_id:
+            expanded.append(url)
+            continue
+        video_urls = _expand_playlist(playlist_id)
+        print(f"[PLAYLIST] {url}\n           expanded to {len(video_urls)} video(s)")
+        expanded.extend(video_urls)
+    return expanded
+
+
 async def _ingest(session: aiohttp.ClientSession, payload: dict, input_url_normalized: str) -> Optional[dict]:
     body = dict(payload)
     body["input_url_normalized"] = input_url_normalized
@@ -96,11 +144,11 @@ async def process_one(session: aiohttp.ClientSession, url: str, *, dry_run: bool
 
     # Same gate app/main.py's /api/resolve already uses to decide whether a
     # resolve is worth pushing to the Archive at all.
-    if not (result.segments or result.agenda_items):
+    if not (result.segments or result.agenda_items or result.agenda_link):
         return {
             "url": url,
             "status": "skipped",
-            "detail": f"platform={result.platform}, no transcript or agenda items found",
+            "detail": f"platform={result.platform}, no transcript, agenda items, or agenda link found",
         }
 
     normalized = normalize_url(url)
@@ -125,7 +173,16 @@ async def process_one(session: aiohttp.ClientSession, url: str, *, dry_run: bool
 
 async def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("urls_file", help="Path to a text file with one meeting URL per line")
+    parser.add_argument(
+        "urls_file", nargs="?", help="Path to a text file with one meeting URL per line (omit if using --playlist alone)"
+    )
+    parser.add_argument(
+        "--playlist",
+        action="append",
+        default=[],
+        metavar="URL",
+        help="A YouTube playlist (or in-playlist video) URL to expand and ingest; repeatable",
+    )
     parser.add_argument("--dry-run", action="store_true", help="Resolve and report, but don't actually ingest")
     args = parser.parse_args()
 
@@ -136,9 +193,18 @@ async def main() -> None:
         print("ERROR: ARCHIVE_INGEST_TOKEN is not set (check the repo's .env).", file=sys.stderr)
         sys.exit(1)
 
-    urls = _read_urls(args.urls_file)
-    if not urls:
+    if not args.urls_file and not args.playlist:
+        print("ERROR: pass a urls_file, --playlist, or both.", file=sys.stderr)
+        sys.exit(1)
+
+    raw_urls = (_read_urls(args.urls_file) if args.urls_file else []) + list(args.playlist)
+    if not raw_urls:
         print(f"No URLs found in {args.urls_file}.", file=sys.stderr)
+        sys.exit(1)
+
+    urls = _expand_urls(raw_urls)
+    if not urls:
+        print("No URLs left after playlist expansion.", file=sys.stderr)
         sys.exit(1)
 
     register_all_finders()
