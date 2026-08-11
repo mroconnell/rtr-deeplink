@@ -457,6 +457,63 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-11] Fixed the nav flashing "Sign in" on every full page
+  load for an already-signed-in visitor — reported by the user against
+  `/account/saved`.** `archive/templates/base.html`'s nav always
+  server-rendered "Sign in" visible-by-default regardless of a real
+  server-side session; the swap to the account button only happened once
+  `shared_static/clerk_nav.js` finished loading ClerkJS and checked
+  `window.Clerk.user` client-side, flashing on every full navigation.
+  `active_account` (`get_clerk_user_id(request)`) was already computed
+  and passed into context by every route that extends this template
+  (`meeting_page`/`meetings_index`/`account_saved` in `archive/main.py`)
+  — the nav's initial rendered state now reads it directly (`hidden` on
+  whichever element doesn't match) instead of always defaulting to
+  signed-out. `clerk_nav.js` itself is unchanged, now only correcting a
+  real client-side sign-in/out transition after load. Verified two ways:
+  new regression tests (`tests/test_accounts_anonymous_regression.py`)
+  confirming the initial HTML for both states via a monkeypatched
+  `get_clerk_user_id`, and live in-browser against the anonymous case.
+  Full suite green (422 tests).
+- **[Done 2026-08-11] Built (not yet live-confirmed) a fix for the Clerk
+  sign-out flow landing on Clerk's own bare hosted page instead of this
+  site.** Root cause confirmed live: at Claude's request, the user
+  signed out on staging and landed on
+  `guided-bedbug-18.accounts.dev/sign-in` (a real screenshot showed
+  Clerk's own generic branding, no RTR nav/footer at all) — exactly the
+  theory `BACKLOG.md` had flagged (`mountUserButton()` called with no
+  `afterSignOutUrl` option, so Clerk's built-in "Sign out" menu item used
+  its own default destination). Fix: `shared_static/clerk_nav.js`'s
+  `window.Clerk.load()` call now passes `afterSignOutUrl` pointing back
+  at the homepage. Inferred from Clerk's documented API surface, not
+  checked against live docs this pass — pushed to
+  `accounts-clerk-phase1` for the user to confirm with a real sign-out
+  once staging redeploys, same "don't claim a fix without a positive
+  example" convention as everywhere else. **Kept live in BACKLOG.md, not
+  moved fully here, until that confirmation lands.**
+- **[Done 2026-08-11] Made the source-transcript disclaimer's pointer to
+  the real "Request Transcript from Audio" button more obvious — user
+  feedback the same day the disclaimer itself shipped.** The original
+  plain `<a href="#transcribeToggle">here</a>` just anchor-scrolled,
+  which wasn't obvious enough that the real button lives in the other
+  column. Copy now reads "...with the button to the left", and clicking
+  it pops/glows `#transcribeToggle` via a new `.pointed-to` CSS animation
+  (`archive/static/style.css`) wired from `meeting_page.js`'s new
+  `wireSourceDisclaimerPointer()` — the "depressed vs. popped-up"
+  tape-deck cue floated for the search/save-search buttons in
+  `BACKLOG.md`, first real use of it. Deliberately does *not* auto-click
+  the real button the way the existing `.transcribe-inline-trigger`
+  warnings-text pattern does, since that would silently fire the
+  feasibility check's real network request just from reading the
+  disclaimer — undermining `wireTranscribeForm()`'s own deliberate
+  friction. Also fixed a real pre-existing gap found while touching this:
+  `archive/static/style.css` was missing `.transcribe-inline-trigger`
+  entirely (present in `app/static/style.css`, the file it's supposed to
+  stay in sync with), so every transcribe-inline-trigger this service
+  already rendered in warnings text was unstyled. Verified live
+  in-browser: clicking the link visibly lifts the button with a glowing
+  border, and confirmed programmatically that the `pointed-to` class is
+  added on click.
 - **[Done 2026-08-11] Applied ALL-CAPS re-casing to the
   SBV/SUB/SMI/plain-.txt caption fallback, closing half of the
   "ALL-CAPS transcript display" report (see BACKLOG.md for the still-open

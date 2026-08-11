@@ -225,52 +225,22 @@ anything) to build against it.
 
 ## Accounts (Clerk) UI gaps found 2026-08-11
 
-- **The nav briefly shows "Sign in" (then swaps to the account button)
-  on every full page load, even for an already-signed-in visitor —
-  reported by the user via "My Saved Items," which is a plain full-page
-  `<a href>` navigation, so it re-triggers the flash on every click.**
-  Root cause confirmed by reading the code: `archive/templates/base.html`
-  (lines 44-53) always server-renders `<a ... id="clerk-sign-in-link">
-  Sign in</a>` visible-by-default (no `hidden` attribute) alongside a
-  `hidden` account-button placeholder — the swap only happens once
-  `shared_static/clerk_nav.js` finishes loading ClerkJS asynchronously
-  and calls `renderNavAuthState()` (lines 47-84), which checks
-  `window.Clerk.user` client-side. There's no server-side fast path: this
-  app *does* already have a working server-side session check —
-  `get_clerk_user_id(request)` (`archive/utils/clerk_auth.py`) — used to
-  set `active_account` in template context on specific routes
-  (`archive/main.py:434`, `543`, `550`), but `base.html`'s nav block
-  never references `active_account` at all, so even on a route that
-  already computed it, the nav still starts from the "signed out" state
-  and waits on client JS to correct itself. Fix would be picking the
-  nav's *initial* rendered state from `active_account` (when present in
-  context) instead of always defaulting to "Sign in," with the existing
-  JS listener left in place only to handle a real client-side sign-in/out
-  transition after page load, not to cover for every full navigation.
-
 - **The Clerk sign-out flow lands the user on a bare page with no RTR
-  nav/footer at all — reported live by the user.** Root cause not yet
-  code-confirmed by testing a real sign-out (no live Clerk session
-  available this session), but strongly indicated by the code: Clerk's
-  `mountUserButton()` call in `shared_static/clerk_nav.js` (line 82) is
-  invoked with no options object at all —
-  `window.Clerk.mountUserButton(userButtonEl)` — so its built-in "Sign
-  out" menu item uses Clerk's own default post-sign-out destination
-  rather than anything on this site. **Answering the user's direct
-  question: yes, Clerk supports this** — `mountUserButton()` (and/or
-  `Clerk.load()`) accepts an `afterSignOutUrl` option that redirects back
-  to a real in-app URL (e.g. `/`) instead of Clerk's own default/hosted
-  page once sign-out completes; Clerk does not offer a way to reskin its
-  *own* hosted sign-out page itself (nor is that needed here — the fix is
-  redirecting away from it immediately, not styling it). Needs: (1) a
-  real live sign-out to confirm this is actually where the "bare page"
-  comes from (same "don't claim a fix without a positive example"
-  convention as everywhere else in this file), (2) passing
-  `afterSignOutUrl` (worth checking whether it belongs on the
-  `mountUserButton()` call specifically or on `Clerk.load()`/the `new
-  Clerk(pubKey)` constructor instead — Clerk's exact current API surface
-  for this wasn't verified against live docs this pass, only inferred
-  from general Clerk knowledge).
+  nav/footer at all — root cause confirmed live 2026-08-11, fix built and
+  pushed the same day, not yet confirmed working.** Root cause: the user
+  tested a real sign-out on staging at Claude's request and landed on
+  `guided-bedbug-18.accounts.dev/sign-in` — Clerk's own generic hosted
+  Account Portal page (real screenshot: no RTR branding/nav/footer at
+  all), confirming the theory below exactly. `mountUserButton()`
+  (`shared_static/clerk_nav.js`) was invoked with no options at all, so
+  its built-in "Sign out" menu item used Clerk's own default post-sign-out
+  destination instead of anything on this site. Fix: `window.Clerk.load()`
+  now passes `afterSignOutUrl` pointing back at the homepage — inferred
+  from Clerk's documented API surface, not checked against live docs this
+  pass. **Still needs**: a real sign-out on staging (after this fix
+  deploys) to confirm the redirect itself actually lands on this site
+  instead of Clerk's page, same "don't claim a fix without a positive
+  example" convention as everywhere else in this file.
 
 ## Deep links
 
