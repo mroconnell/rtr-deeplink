@@ -92,6 +92,12 @@ def test_nav_shows_signed_in_state_immediately_when_active_account_present(monke
     assert response.status_code == 200
     assert '<a class="nav-link" href="#" id="clerk-sign-in-link" hidden>Sign in</a>' in response.text
     assert '<span id="clerk-user-button"></span>' in response.text
+    # Real bug fixed 2026-08-11, reported right after the above: Get
+    # Updates had the exact same flash (a signed-in visitor briefly saw a
+    # newsletter-signup link they already don't need), just less
+    # noticeable until the Sign in flash stopped competing with it.
+    assert 'id="nav-get-updates" hidden' in response.text
+    assert 'id="nav-get-updates-divider" style="display: none !important;"' in response.text
 
 
 def test_nav_shows_signed_out_state_when_no_active_account(monkeypatch):
@@ -100,6 +106,8 @@ def test_nav_shows_signed_out_state_when_no_active_account(monkeypatch):
     assert response.status_code == 200
     assert '<a class="nav-link" href="#" id="clerk-sign-in-link">Sign in</a>' in response.text
     assert '<span id="clerk-user-button" hidden></span>' in response.text
+    assert 'id="nav-get-updates">' in response.text
+    assert 'id="nav-get-updates-divider">' in response.text
 
 
 def test_proxy_forwards_cookie_only_to_auth_aware_routes(monkeypatch):

@@ -37,8 +37,20 @@
           <li class="nav-item">
             <a class="nav-link" href="/about">About</a>
           </li>
-          <li class="nav-divider d-none d-lg-block" aria-hidden="true" id="nav-get-updates-divider"></li>
-          <li class="nav-item" id="nav-get-updates">
+          {#- Real bug fixed 2026-08-11, reported by the user right after
+             the "Sign in" flash fix above shipped: Get Updates had the
+             exact same flash, just less noticeable until the more
+             prominent Sign in flash stopped competing with it for
+             attention. Same fix, same active_account source. The divider
+             needs an inline !important style rather than a plain hidden
+             attribute -- it carries Bootstrap's d-lg-block utility class
+             (display:block !important at the lg breakpoint), which beats
+             a plain hidden attribute the same way it beat clerk_nav.js's
+             own `.hidden = true` before that was fixed (see this file's
+             matching JS-side comment); nav-get-updates itself has no such
+             class, so a plain hidden attribute is enough there. #}
+          <li class="nav-divider d-none d-lg-block" aria-hidden="true" id="nav-get-updates-divider"{% if active_account %} style="display: none !important;"{% endif %}></li>
+          <li class="nav-item" id="nav-get-updates"{% if active_account %} hidden{% endif %}>
             <a class="nav-link" href="/subscribe">Get Updates</a>
           </li>
           {% if CLERK_PUBLISHABLE_KEY %}
