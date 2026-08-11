@@ -45,6 +45,9 @@
               <span class="calendar-candidate-date">
                 {%- if sp.jurisdiction %}{{ sp.jurisdiction }}{% endif -%}
                 {%- if sp.date_from or sp.date_to %} &middot; {{ sp.date_from or "any" }}&ndash;{{ sp.date_to or "any" }}{% endif -%}
+                {%- if sp.has_transcript %} &middot; has transcript{% endif -%}
+                {%- if sp.has_agenda %} &middot; has agenda{% endif -%}
+                {%- if sp.fuzzy %} &middot; fuzzy{% endif -%}
               </span>
             </div>
           </div>
