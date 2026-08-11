@@ -25,10 +25,12 @@ logger = logging.getLogger("rtr_archive.clerk")
 def clerk_frontend_api_url(publishable_key: str) -> Optional[str]:
     """See app/utils/clerk_auth.py's matching function -- identical here,
     deliberately duplicated rather than shared (same reasoning as the rest
-    of this module)."""
+    of this module). Includes that function's 2026-08-11 base64-padding
+    fix (Clerk's real keys omit trailing "=" padding)."""
     try:
         _, _, encoded = publishable_key.split("_", 2)
-        decoded = base64.b64decode(encoded).decode()
+        padded = encoded + "=" * (-len(encoded) % 4)
+        decoded = base64.b64decode(padded).decode()
         if not decoded.endswith("$"):
             return None
         return decoded[:-1]
