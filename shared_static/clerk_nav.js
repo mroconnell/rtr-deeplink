@@ -21,6 +21,49 @@
     document.dispatchEvent(new CustomEvent("rtr-clerk-ready"));
   }
 
+  // Real bug fixed 2026-08-11: three rounds of Clerk's own documented
+  // redirect options (Clerk.load()'s signInForceRedirectUrl/
+  // afterSignOutUrl, openSignIn()'s own forceRedirectUrl, and a Clerk
+  // Dashboard Component-paths fix) were all confirmed live on staging to
+  // still drop the visitor on the homepage after sign-in, for both email
+  // and Google -- not a caching false-alarm each time; each fix was
+  // verified actually deployed and live-tested. Rather than keep trusting
+  // Clerk's internal redirect resolution (whatever is overriding it
+  // wasn't identified), this takes control directly with plain JS:
+  // markSignInReturnUrl() stashes the current URL in sessionStorage right
+  // before any sign-in trigger opens the modal; renderNavAuthState()
+  // below checks for it on every Clerk state change (not just the
+  // triggering page's own transition into signed-in, but also a fresh
+  // page load if Clerk's own navigation won the race and landed
+  // somewhere else first) and forces the browser back with
+  // window.location.replace() if it's not already there. Self-clearing
+  // (removed on read) so it only ever fires once per sign-in.
+  const SIGNIN_RETURN_KEY = "rtrSignInReturnUrl";
+
+  function markSignInReturnUrl() {
+    try {
+      sessionStorage.setItem(SIGNIN_RETURN_KEY, window.location.href);
+    } catch (e) {
+      // Private-browsing/storage-disabled: sign-in still works, just
+      // without the forced-return safety net.
+    }
+  }
+  window.rtrMarkSignInReturn = markSignInReturnUrl;
+
+  function maybeForceSignInReturn(signedIn) {
+    if (!signedIn) return false;
+    let returnUrl = null;
+    try {
+      returnUrl = sessionStorage.getItem(SIGNIN_RETURN_KEY);
+      sessionStorage.removeItem(SIGNIN_RETURN_KEY);
+    } catch (e) {
+      return false;
+    }
+    if (!returnUrl || returnUrl === window.location.href) return false;
+    window.location.replace(returnUrl);
+    return true;
+  }
+
   const pubKey = document.body.dataset.clerkPublishableKey || "";
   const fapiUrl = document.body.dataset.clerkFapiUrl || "";
   if (!pubKey || !fapiUrl) {
@@ -45,6 +88,9 @@
   }
 
   function renderNavAuthState() {
+    const signedIn = !!(window.Clerk && window.Clerk.user);
+    if (maybeForceSignInReturn(signedIn)) return; // navigating away -- nothing else to do
+
     const signInLink = document.getElementById("clerk-sign-in-link");
     const userButtonEl = document.getElementById("clerk-user-button");
     // "Get Updates" just points at the newsletter signup -- someone with
@@ -54,7 +100,6 @@
     // item doesn't leave an orphaned "|" with nothing after it.
     const getUpdatesItem = document.getElementById("nav-get-updates");
     const getUpdatesDivider = document.getElementById("nav-get-updates-divider");
-    const signedIn = !!(window.Clerk && window.Clerk.user);
 
     if (getUpdatesItem) getUpdatesItem.hidden = signedIn;
     // getUpdatesDivider carries Bootstrap's "d-none d-lg-block" utility
@@ -179,6 +224,13 @@
         // a global default (Clerk.load()'s signInForceRedirectUrl) from
         // this call's own forceRedirectUrl (SignInProps) -- passing it
         // explicitly here is the more direct, per-call guarantee.
+        //
+        // Still not enough on its own even combined with the above (see
+        // maybeForceSignInReturn() above) -- markSignInReturnUrl() is the
+        // real, deterministic fix; forceRedirectUrl is left in place too
+        // since it's harmless and documented-correct even though it
+        // hasn't been sufficient alone in this environment.
+        markSignInReturnUrl();
         if (window.Clerk && typeof window.Clerk.openSignIn === "function") {
           window.Clerk.openSignIn({ forceRedirectUrl: window.location.href });
         }
@@ -186,10 +238,15 @@
     }
     // Inline sign-in mount point (used by saved_items.html's logged-out
     // state) -- mounted once Clerk is ready and only if still signed out.
+    // Marks the return URL up front (this page, /account/saved) since
+    // there's no separate click to hook -- the form is already on-screen.
     const inlineSignIn = document.getElementById("clerk-sign-in");
     if (inlineSignIn) {
       document.addEventListener("rtr-clerk-ready", () => {
-        if (window.Clerk && !window.Clerk.user) window.Clerk.mountSignIn(inlineSignIn);
+        if (window.Clerk && !window.Clerk.user) {
+          markSignInReturnUrl();
+          window.Clerk.mountSignIn(inlineSignIn, { forceRedirectUrl: window.location.href });
+        }
       });
     }
   });

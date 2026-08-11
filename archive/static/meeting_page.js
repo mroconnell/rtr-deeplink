@@ -357,10 +357,14 @@ function wireTranscribeForm() {
           const signInBtn = document.getElementById('transcribeSignInPrompt');
           if (signInBtn) signInBtn.addEventListener('click', () => {
             markPendingSignIn();
-            // forceRedirectUrl here, not just Clerk.load()'s global
-            // signInForceRedirectUrl (shared_static/clerk_nav.js) -- see
-            // that file's matching comment, the global default alone
-            // wasn't enough, confirmed live.
+            // forceRedirectUrl/signInForceRedirectUrl both confirmed live
+            // to still not reliably return here -- shared_static/
+            // clerk_nav.js's markSignInReturnUrl()/maybeForceSignInReturn()
+            // is the real, deterministic fix (see that file's comment);
+            // this call's own forceRedirectUrl is left in place too since
+            // it's harmless and documented-correct even though it hasn't
+            // been sufficient alone in this environment.
+            if (window.rtrMarkSignInReturn) window.rtrMarkSignInReturn();
             window.Clerk.openSignIn({ forceRedirectUrl: window.location.href });
           });
           emailStep.hidden = false;
