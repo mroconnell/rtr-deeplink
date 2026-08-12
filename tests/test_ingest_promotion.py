@@ -115,6 +115,55 @@ async def test_correct_transcript_version_language_returns_none_for_mismatched_v
     assert result is None
 
 
+async def test_manually_promote_transcript_version_makes_it_default():
+    # Real gap fixed 2026-08-12, found fixing a real stale ALL-CAPS
+    # transcript (Minneapolis City Council): a manually-pushed replacement
+    # has no automatic promotion path once the default already has
+    # segments+language, since _is_real_improvement() only covers
+    # no-segments/no-language cases -- see BACKLOG_DONE.md.
+    url = "https://example.granicus.com/player/clip/promo-manual-promote"
+    external_id = "granicus:promo-manual-promote"
+
+    await crud.ingest_resolution(
+        _payload(external_id, url, segments=[{"start": 0, "end": 1, "text": "OLD BAD TEXT"}], transcript_language="en"),
+        url,
+    )
+    await crud.ingest_resolution(
+        _payload(external_id, url, segments=[{"start": 0, "end": 1, "text": "New good text"}], transcript_language="en"),
+        url,
+    )
+    slug = (await crud.lookup_page_for_url(url))["slug"]
+    page = await crud.get_page_by_slug(slug)
+    assert len(page["versions"]) == 2
+    replacement = next(v for v in page["versions"] if not v["is_default"])
+    original = next(v for v in page["versions"] if v["is_default"])
+
+    result = await crud.manually_promote_transcript_version(slug=slug, version_id=replacement["id"])
+    assert result is not None
+    assert result["promoted_version_id"] == replacement["id"]
+
+    page = await crud.get_page_by_slug(slug)
+    now_default = next(v for v in page["versions"] if v["is_default"])
+    now_demoted = next(v for v in page["versions"] if v["id"] == original["id"])
+    assert now_default["id"] == replacement["id"]
+    assert not now_demoted["is_default"]
+
+
+async def test_manually_promote_transcript_version_returns_none_for_unknown_slug():
+    result = await crud.manually_promote_transcript_version(slug="no-such-slug-at-all", version_id=1)
+    assert result is None
+
+
+async def test_manually_promote_transcript_version_returns_none_for_mismatched_version_id():
+    url = "https://example.granicus.com/player/clip/promo-manual-mismatch"
+    external_id = "granicus:promo-manual-mismatch"
+    await crud.ingest_resolution(_payload(external_id, url, segments=[{"start": 0, "end": 1, "text": "hi"}]), url)
+    slug = (await crud.lookup_page_for_url(url))["slug"]
+
+    result = await crud.manually_promote_transcript_version(slug=slug, version_id=999999999)
+    assert result is None
+
+
 async def test_dublin_style_promotes_when_language_detected_later():
     url = "https://example.granicus.com/player/clip/promo-dublin"
     external_id = "granicus:promo-dublin"
