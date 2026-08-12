@@ -2880,6 +2880,48 @@ changelog of task titles.
 
 ## Platform coverage
 
+- **[Done 2026-08-12] New adapter: CivicWeb (iCompass, a Diligent brand),
+  resolving the Wave 2 research's open question — confirmed live it's a
+  YouTube-delegating platform, not a new video host.** The research had
+  found CivicWeb hosting Dallas County, TX's meeting calendar but
+  flagged the actual video-embed shape as JS-rendered/unconfirmed. Live
+  browser inspection (Claude in Chrome, since the in-app Browser tool was
+  down) of a real meeting's "Video" tab found the real network call: a
+  plain, unauthenticated JSON API,
+  `{origin}/api/videolink/{meetingId}`, returning `YouTubeEventId`
+  directly — same delegation shape as PrimeGov (calls
+  `YouTubeAssetFinder.resolve_video_id()` directly with the original
+  CivicWeb URL preserved as `source_url`, not the Legistar/CivicPlus
+  pattern where `source_url` ends up being the delegated platform's own
+  URL).
+
+  **Real bug found and fixed mid-build**: `/api/videolink/{id}`
+  specifically double-encodes its JSON — the raw response body is a JSON
+  *string literal* (`"[{...}]"`, quotes included) containing the real
+  array as text, not the array directly — a WCF/`.svc`-family quirk,
+  confirmed live via a direct `aiohttp` call showing `response.json()`
+  returns a Python `str`, not a list. The separate `meetingData` endpoint
+  (used for the title) doesn't have this quirk. `_fetch_json()` now
+  parses a second time whenever the first pass still yields a string, so
+  the same helper handles both endpoints' shapes correctly.
+
+  Title comes from `MeetingsService.svc/meetings/{id}/meetingData`'s
+  `Name` field, date from the videolink API's own `MeetingDate`,
+  jurisdiction parsed from the page's own `<title>{Jurisdiction} -
+  Meeting Information</title>` pattern. Confirmed live end-to-end: real
+  title ("Commissioners Court - Aug 04 2026"), correct date, jurisdiction
+  ("Dallas County"), and an 8,144-segment real transcript via YouTube
+  delegation. Real per-item deep-linking data exists in the same schema
+  (`IndexPoints`/`LocalIndexPoints`, matching a camera-icon UI seen on
+  the page) but was empty on this one real meeting — not built, per this
+  repo's "don't claim a data path works without a positive example"
+  convention; flagged in BACKLOG.md if a populated example ever turns
+  up.
+
+  New `app/platforms/civicweb.py`, registered in `detect_platform()`
+  under the `civicweb.net` domain. 5 new tests
+  (`tests/test_civicweb.py`). Full suite green (466 tests, up from 461).
+
 - **[Done 2026-08-12] New adapter: Aurora, CO's own council video site
   (auroratv.org), found in a Wave 2 platform-coverage pass and confirmed
   buildable via direct live research.** A Drupal 10 site whose every
