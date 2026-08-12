@@ -122,6 +122,14 @@ def detect_platform(url: str) -> str:
         # slc.gov domain, since most of that site is ordinary city-
         # government content this app has no reason to try to resolve.
         return "slc"
+    if "cablecast.tv" in netloc and "/internetchannel/show/" in path:
+        # Detroit, MI's Cablecast video portal -- confirmed live
+        # 2026-08-12, see cablecast.py's own module docstring for why
+        # this is scoped to this specific URL shape (a Remix.js portal
+        # template) rather than any *.cablecast.tv domain -- Charlotte,
+        # NC's confirmed Cablecast site uses a visibly different template
+        # this adapter doesn't handle.
+        return "cablecast"
     if "auroratv.org" in netloc:
         # Aurora, CO's own Drupal-built council video site -- confirmed
         # live 2026-08-12, found during a Wave 2 platform-coverage pass
