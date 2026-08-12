@@ -305,30 +305,90 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   caption path works without a positive example" convention as every
   other adapter here.
 
-- **Phoenix's Legistar instance (`phoenix.legistar.com`) — one real
-  meeting has no video link in the shape our parser expects; unclear
-  yet whether that's Phoenix-wide or specific to this meeting.** Domain
-  routing itself is confirmed correct (`phoenix.legistar.com` matches
+  **Update 2026-08-11 (Wave 2 survey): the API/data half is now fully
+  unblocked with three fresh confirmed real examples**, meetingId
+  confirmed to be a GUID (not a plain integer as the shape above might
+  imply) — `?meetingId=9DB35AFF-9811-ED11-82E3-001DD80682F6` (2020-09-09
+  City Council), `?meetingId=DCB45AFF-9811-ED11-82E3-001DD80682F6`
+  (2021-10-14 City Council), `?meetingId=0852FF86-2DF4-ED11-A7C6-001DD806AE67`
+  (2023-05-15 City Council) — all three confirmed via the real API to
+  have a populated `videoLink` (Vimeo). **`transcriptLink` is present in
+  the API schema but empty on all three samples** — still no positive
+  caption example *from Chicago's own ELMS API* for this platform,
+  consistent with the "don't claim a caption path works without a
+  positive example" note above. Part (2), Vimeo playback support, is
+  unchanged and still the real blocker.
+
+  **Update 2026-08-11 (part 2): "are Vimeo captions fetchable at all"
+  is now answered — yes, confirmed live — via a different city, not
+  Chicago's own ELMS instance.** Chicago is also not a one-off: at least
+  four other real US city council channels host meeting video directly
+  on Vimeo, confirmed live via `vimeo.com/{account}` channel pages —
+  **Salisbury, NC** (`vimeo.com/channels/coscouncil`), **Rockland, ME**
+  (`vimeo.com/rocklandmaine`), **Spokane, WA**
+  (`vimeo.com/spokanecitycouncil`), **Corvallis, OR**
+  (`vimeo.com/cityofcorvallis`), and **Wilson, NC** (`vimeo.com/wilsonnc`)
+  — so a general Vimeo playback+caption adapter would have more than one
+  beneficiary. Salisbury's real 7/21/2026 meeting
+  (`vimeo.com/1212025580`) has a live "CC/subtitles" toggle in the
+  player; toggling it (confirmed via real browser, not a plain HTTP
+  client — see below) triggers a request to a signed
+  `captions.vimeo.com/captions/{id}.vtt?expires=...&sig=...` URL that
+  returns **real, populated, correctly-timed English WEBVTT** — genuine
+  per-cue dialogue ("I'll go ahead and call the special meeting to order
+  on July 21st, 2026...."), not placeholder or blank content.
+
+  **Real caveat this surfaces**: that signed caption URL is only
+  discoverable through the player's own client-side config — a plain
+  `aiohttp`/WebFetch request to `player.vimeo.com/video/{id}/config`
+  (where that URL would normally be found) returns a **403**, and
+  `vimeo.com/{id}` itself sometimes serves a real Cloudflare "Verify you
+  are human" checkbox challenge (hit live on the Spokane sample this
+  same check) — this app must never attempt to auto-solve that. So
+  fetching Vimeo captions server-side, whenever a real example is
+  eventually built against, likely needs the same real-headless-browser
+  approach `headless_browser.py` already built for Minneapolis LIMS/SLC
+  (a real Chromium render to let the player load and capture the signed
+  URL it requests), not a plain HTTP client the way Granicus/Swagit/
+  CivicClerk captions are fetched today — and even then, may not work
+  100% of the time if the Cloudflare challenge is probabilistic rather
+  than consistent. Unconfirmed whether Chicago's own ELMS-embedded Vimeo
+  player behaves the same way as these channels' pages, or whether the
+  showcase-embed shape it uses (`vimeo.com/showcase/.../video/...`)
+  differs.
+
+- **Phoenix's Legistar instance (`phoenix.legistar.com`) — root cause
+  now confirmed structural, not one ambiguous sample.** Domain routing
+  itself is confirmed correct (`phoenix.legistar.com` matches
   `_is_legistar_domain()`, so `LegistarAssetFinder` claims it as
-  intended, not a routing bug). Checked live 2026-08-10
-  (`MeetingDetail.aspx?ID=1425831...`): the real page's `a.videolink`
-  anchor has `class="videolink audioDownloadNotAvailableLink"` and
-  `data-running-text="In progress"`, with no `onclick` attribute at all
-  — `_find_video_links()`'s regex requires `onclick="window.open(...)"`.
-  or `OpenTelerikWindow(...)`, confirmed working on Maricopa AZ and
-  NYC's Legistar instances, so finds nothing here and correctly falls
-  back to Legistar's own honest "No video link found" message (not a
-  crash, not silently wrong — the existing fallback behavior is doing
-  its job). The meeting itself is dated 7/1/2026 (over a month before
-  this check), so "In progress" is almost certainly stale leftover UI
-  state, not a genuine live-meeting signal — meaning either this
-  specific meeting never got a recording published, or Phoenix's
-  Legistar instance uses a different video-link mechanism entirely from
-  every other Legistar city confirmed so far. **Needs a second Phoenix
-  meeting, ideally one confirmed to have a real published recording,
-  before writing any fix** — building against one ambiguous sample risks
-  exactly the kind of unverified-guess parsing this repo's whole
-  adapter convention exists to avoid. Also worth noting while checking:
+  intended, not a routing bug). Original check (2026-08-10,
+  `MeetingDetail.aspx?ID=1425831...`) found a `videolink` anchor with no
+  `onclick` at all, `data-running-text="In progress"` despite being over
+  a month stale — ambiguous at the time. **A 2026-08-11 Wave 2 survey
+  resolved the ambiguity: 18 real Phoenix Legistar meetings checked
+  (Formal Meetings, Policy Sessions, a Subcommittee), spanning
+  2020–2026, every single one server-renders
+  `class="audioDownloadNotAvailableLink"` / "Not Available" for video —
+  and the original ID=1425831 URL now 410 Gones entirely.** This is
+  Phoenix-wide, not one meeting's quirk. The real recordings exist and
+  are public — just never linked from Legistar's own page — on Phoenix's
+  own YouTube channel instead (e.g. `youtube.com/watch?v=srjuXI5vGuw`,
+  confirmed live, "Phoenix City Council Formal Meeting July 1, 2026",
+  matching the same meeting ID=1425831 was for). **Independently, the
+  same symptom — Legistar video column always empty, real recording
+  only on a separate city YouTube channel — was also found on
+  Philadelphia (`phila.legistar.com`) and Albuquerque
+  (`cabq.legistar.com`'s "GOV TV" channel)** during the same survey, so
+  this may be a general "Legistar city with a non-Granicus video vendor"
+  case worth handling once, not three separate one-offs. **The fix is
+  not a Legistar parser change** (there is nothing in the page to parse
+  differently — the video link genuinely isn't there) **but a
+  YouTube-channel search/match fallback** for Legistar cities where the
+  video link is absent: given a known channel + the meeting's date/title,
+  find the matching upload. Needs a product decision on how that channel
+  gets configured per city (hardcoded per the size/political-importance
+  of Phoenix specifically, per the user's own suggestion, vs. a general
+  mechanism) before writing it. Also worth noting while checking:
   Legistar's own adapter never attempts agenda-item parsing at all (by
   design, it only ever delegates to the underlying video platform for
   that), so a Legistar page never showing agenda items is expected
@@ -402,25 +462,67 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   timing). Wired into Granicus, CA Legislature, Swagit, and CivicClerk.
   If any of these turns out to be common on a real platform, worth a real
   structured parser instead of the generic strip.
-- **ALL-CAPS transcript display — reported by the user 2026-08-11.
-  Partial gap, not a missing feature; the fallback-format sub-gap is
-  fixed 2026-08-11 (see BACKLOG_DONE.md), one residual question left
-  open.** A real fix exists: `app/utils/vtt_parser.py`'s
-  `normalize_shouting_caption()` re-cases an entire VTT/SRT/TTML track to
-  sentence case, but only when its own "is this shouting" heuristic
-  triggers (samples ≥40 alphabetic chars across the whole track, requires
-  a ≤2% lowercase ratio) — called from `parse_vtt()` (also covers SRT via
-  `parse_srt()`'s delegation to it) and `parse_ttml()`; as of 2026-08-11
-  the same check (factored into a shared `_normalize_shouting_text()`
-  helper) also runs on `strip_unknown_caption_markup()`'s
-  SBV/SUB/SMI/SAMI/plain-.txt fallback text, closing the gap this entry
-  originally flagged. **Still open**: a real VTT/SRT/TTML track could in
-  principle still slip through if it's shouting but doesn't clear the
-  detection heuristic's thresholds (mixed-case enough, or under the
-  40-letter sample minimum) — worth checking against the specific
-  transcript the user actually saw before assuming this is fully closed
-  for them; no report yet confirms which case (if either) their transcript
-  actually was.
+- **ALL-CAPS transcript display — real sample checked 2026-08-12
+  (Minneapolis City Council, 2026-07-16, LIMS→YouTube). Root cause is
+  almost certainly stale pre-fix data, not a heuristic gap — pending the
+  user running an admin recheck to confirm.** Checked the user's own
+  reported page (`redtaperecordings.com/m/city-of-minneapolis-2026-07-16-
+  city-council`) directly: the transcript is genuinely, fully ALL CAPS
+  ("GOOD MORNING EVERYONE. MY NAME IS ELLIOT PAYNE..."), but the *same*
+  transcript also still shows the raw, pre-fix `&amp;gt;&amp;gt;`
+  double-escape artifact (see BACKLOG_DONE.md's 2026-08-12 general-unescape
+  entry) right next to a correctly `»`-converted duplicate of the same
+  line — and that narrower marker fix shipped 2026-08-10. A page still
+  showing pre-2026-08-10 artifacts means its stored `TranscriptVersion`
+  predates *all* of the shouting-detection/marker/unescape fixes and has
+  simply never been reprocessed — the same "old pages don't retroactively
+  benefit from a parsing fix" pattern already hit and fixed for Dublin/
+  Yountville (see BACKLOG_DONE.md). `normalize_shouting_caption()`'s
+  heuristic (≥40 letters, ≤2% lowercase ratio) should trip easily on a
+  genuinely fully-ALL-CAPS real meeting transcript this long — no reason
+  yet to believe the thresholds themselves are the problem.
+
+  **Two real, previously-undocumented gaps found while trying to force a
+  recheck, not yet fixed:**
+  - **Re-submitting an already-archived URL through the normal public
+    `/api/resolve` flow does *not* refresh stale content.** Confirmed
+    live: POSTing the Minneapolis source URL returned only
+    `{"redirect_url": "/m/..."}` — `archive_client.lookup()` runs *before*
+    any live resolve (see README's "Lookup, before resolving") and
+    short-circuits straight to the existing page the moment a permanent
+    page is found, so a live re-resolve never even starts. The only real
+    ways to force a refresh are `/admin/recheck-archive-page` (token-gated),
+    the passive 30-day `ARCHIVE_RECHECK_AFTER` cycle, or (for a
+    YouTube-delegated page specifically) the daily transcript-wanted
+    script below — there is currently no public, no-token way for anyone
+    (including the user, without pulling `ADMIN_STATS_TOKEN` out of a
+    deployed env) to force one specific stale page to refresh sooner.
+  - **`scripts/fetch_youtube_transcripts.py`'s queue
+    (`GET /internal/transcript-wanted`) only ever returns YouTube-backed
+    pages with *no* default transcript at all** — a page with an
+    existing-but-bad transcript (stale, ALL-CAPS, pre-fix artifacts, or
+    otherwise low quality) never qualifies as "wanted," so the daily
+    script will never pick it up and re-fetch it, no matter how long it
+    runs. This means any YouTube-delegated page ingested before a future
+    caption-quality fix ships will stay stale indefinitely unless someone
+    notices and manually reruns `/admin/recheck-archive-page` (which
+    still won't refetch YouTube captions server-side anyway, per the
+    IP-block — recheck would need to go through this same script's path,
+    which the queue endpoint doesn't currently support for an
+    already-has-a-transcript page). Worth deciding whether the queue
+    should also surface low-quality-flagged pages, not just missing ones.
+  - Separately, worth noting: `scripts/fetch_youtube_transcripts.py`'s own
+    `snippets_to_segments()` calls `normalize_shouting_caption()` directly
+    but never calls the new `unescape_caption_entities()`
+    (`app/utils/vtt_parser.py`, added 2026-08-12) — since this script
+    bypasses `parse_vtt()` entirely (works from `youtube-transcript-api`
+    snippets, not raw VTT text), any future double-escape artifact in a
+    fetched snippet would still slip through this path even after
+    today's general fix. Not confirmed whether `youtube-transcript-api`
+    snippets ever actually contain pre-escaped entities in practice (this
+    script's own docstring only describes literal `>>` characters, not
+    escaped ones) — worth adding the same call there for consistency
+    regardless, low cost either way.
 - **SCC/STL captions are detected but not readable at all.** Both are
   binary/encoded (EIA-608 line-21 data, EBU subtitle format) — no text
   can be extracted without real codec-level decoding, so these just
@@ -493,10 +595,116 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   swagit-video-player?video_id=...`). `detect_platform` recognizes the URL
   shape, but the one sample URL 404'd — parsing has only been verified
   against real `*.swagit.com` domains. Needs a fresh sample URL.
+  **Re-checked live 2026-08-11 (Wave 2 survey): still a hard 404, not
+  fixed or superseded.** A broad survey of large-city Swagit usage
+  turned up plenty of fresh `*.new.swagit.com`/`*.swagit.com` samples
+  (Houston, Dallas, Austin, San Antonio, Long Beach, League City TX,
+  Yountville CA) but zero examples of this specific
+  `cityname.gov/swagit-video-player?video_id=...` shape working
+  anywhere. The closest related case found — Dallas's
+  `dallascityhall.com` embedding Swagit video via a plain `<iframe
+  src="https://dallastx.swagit.com/...">` — is a different shape
+  (generic fallback's existing "look for a link/iframe to a platform we
+  support" logic already resolves it, since the iframe `src` is a real
+  `*.swagit.com` URL) and doesn't substitute for a real sample of
+  Dublin's self-contained custom-domain player. Genuinely still open.
 - **YouTube/PrimeGov: non-English captions untested**, and it's unknown
   whether the manual-vs-auto-generated track coverage gap seen on the one
   real LA sample (see [BACKLOG_DONE.md](BACKLOG_DONE.md)) is typical or
-  specific to that video.
+  specific to that video. Two tangential non-English-caption leads found
+  2026-08-11 (see below), neither on YouTube/PrimeGov itself: Riverside
+  County CA runs a parallel `board-supervisors-meeting-videos-spanish`
+  page, and a third-party Internet Archive mirror of Virginia Beach
+  council meetings (`archive.org/details/covbva-*`) carries real
+  `.es.asr.srt` files alongside the English ones.
+
+- **New platform-vendor gaps found 2026-08-11, via a Wave 2 survey of
+  the largest US cities/counties** (see BACKLOG roadmap doc for the full
+  survey; full data compiled to an artifact, not saved in-repo). None of
+  these were previously tracked here — real gaps, not yet-fixed known
+  ones:
+  - **Cablecast** (a government-access-TV VOD vendor, unrelated to
+    anything currently supported) — confirmed as the actual video host
+    for two large cities: **Charlotte, NC** (965k, delegated from its
+    Legistar calendar — `charlotte.cablecast.tv/internetchannel/?site=1`)
+    and **Detroit, MI** (649k, delegated from *both* its Legistar and
+    eScribe calendars simultaneously —
+    `detroit-vod.cablecast.tv/CablecastPublicSite/`). The clearest new-
+    adapter candidate by population reach of anything found this pass.
+    Detroit's eScribe side is also worth checking for populated captions
+    while there — no eScribe example anywhere has one confirmed yet.
+  - **IQM2** — a Granicus-family product (footer: `support@granicus.com`)
+    with a distinct UI/URL shape from the classic ViewPublisher/
+    MediaPlayer this app already parses. Confirmed on **Atlanta, GA**
+    (`atlantacityga.iqm2.com/Citizens/`, one of three parallel systems
+    Atlanta runs) and **Santa Clara County, CA**
+    (`sccgov.iqm2.com/citizens/default.aspx?frame=no` — the county
+    briefly moved to PrimeGov in Jan 2024, then reverted back to IQM2
+    "until further notice"; video links render as unresolved `#`
+    placeholders server-side, unconfirmed whether real video is
+    reachable without JS execution).
+  - **CivicWeb** (iCompass, a Diligent brand — footer-confirmed, and a
+    genuinely different vendor from eScribe despite both being Canadian
+    civic-meeting platforms) — confirmed as **Dallas County, TX**'s
+    (2.6M) meeting-video host: `dallascounty.civicweb.net/Portal/
+    Video.aspx`. Page is JS-rendered; WebFetch only ever saw "Loading…"
+    placeholders, so the real video-embed shape is still unconfirmed —
+    needs a live-browser check before any adapter work, not just a
+    positive ID of the vendor.
+  - **A new, unified Granicus product** (`webcontent.granicusops.com`,
+    a different URL/UI shape from classic ViewPublisher/MediaPlayer)
+    confirmed on **two** cities independently via a Legistar-calendar
+    redirect — **Fresno, CA** and **Colorado Springs, CO** — which makes
+    it a real trend, not a one-off sample. **Worth treating as a
+    possible forward-compatibility risk to the existing Granicus/
+    Legistar adapters, not just a new-city opportunity**: if Granicus is
+    migrating existing customers onto this product over time, cities
+    this app already resolves correctly today could start silently
+    failing later. Worth a closer look sooner than the rest of this
+    list, specifically to check whether `granicus.py`/`legistar.py`'s
+    parsing still works against this new shape at all.
+  - **A "decoupled transcript service" pattern** — a real transcript
+    hosted entirely separately from the video, cross-referenced by
+    meeting rather than embedded on the same page — found independently
+    twice: **Tampa, FL**'s own "CTTV" webapp
+    (`apps.tampagov.net/cttv_cc_webapp/`, real structured per-meeting
+    transcripts; a third-party mirror at `meetings.tampamonitor.com`
+    already builds a synced, clickable version worth studying as a
+    reference implementation) and a "Transcript Room" service
+    (`transcriptroom.org`) that **Philadelphia**'s Legistar committee-
+    hearing pages link out to. Not a vendor to build one adapter for —
+    a shape worth keeping in mind if either city (or another one like
+    them) becomes a real adapter target.
+  - **Maricopa County, AZ — a real correction to a standing assumption**:
+    `maricopa.legistar.com` is **not** the county's Board of Supervisors
+    system — live navigation confirms it's actually the small **City of
+    Maricopa**'s calendar (title "City of Maricopa - Calendar", no Board
+    of Supervisors content at all). The county's real system is a
+    CivicPlus AgendaCenter (`maricopa.gov/324/Board-of-Supervisors-
+    Meeting-Information`) linking directly to YouTube. If anything here
+    special-cases Maricopa as Legistar, it's wrong.
+  - **Tarrant County, TX** (2.1M) — confirmed migrated off Granicus to a
+    direct YouTube channel; the old `tarrantcounty.granicus.com` archive
+    is explicitly marked "(NOT IN USE)" on the site itself. A real
+    platform-migration case, same shape as Long Beach's move off
+    Legistar→Granicus to a custom "OneMeeting"→Swagit setup and Santa
+    Clara County's PrimeGov-then-back-to-IQM2 flip — worth remembering
+    that a city/county's platform isn't assumed stable once confirmed
+    once.
+  - **Riverside County, CA** (2.5M) — `rivco*.org` domains return a
+    plain HTTP 403 (Cloudflare/WAF) to non-browser fetches, the same
+    class of problem `headless_browser.py` was already built to solve
+    for Minneapolis LIMS and Salt Lake City meeting recaps. Likely just
+    needs the existing solution pointed at a new domain rather than new
+    engineering, but unconfirmed — the in-session browser tool was also
+    down for this check.
+  - **Broward County, FL** — a real, confirmed **positive** two-tier
+    Granicus captions example (`broward.granicus.com/ViewPublisher.php?
+    view_id=15`): a live "CC" toggle plus a separate on-demand
+    "enhanced/easier to read" captions link under a "Captioned" column.
+    Worth checking against `granicus.py`'s existing caption-detection
+    logic directly, since most other Granicus instances checked this
+    pass showed no caption UI at all.
 
 ## Archive roadmap
 

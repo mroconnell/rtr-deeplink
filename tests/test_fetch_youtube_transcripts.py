@@ -63,3 +63,11 @@ def test_normal_case_track_left_alone():
         _snippet("The meeting will now come to order, please stand for the pledge of allegiance.", 0.0),
     ])
     assert segments[0]["text"] == "The meeting will now come to order, please stand for the pledge of allegiance."
+
+
+def test_pre_escaped_entity_in_snippet_gets_unescaped():
+    # Real gap fixed 2026-08-12: this conversion bypasses parse_vtt()
+    # entirely, so it never picked up unescape_caption_entities() when
+    # that general double-escaping fix was added there.
+    segments = snippets_to_segments([_snippet("Smith &amp; Jones, LLC", 0.0)])
+    assert segments[0]["text"] == "Smith & Jones, LLC"
