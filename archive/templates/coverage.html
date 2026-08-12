@@ -1,12 +1,13 @@
 {% extends "base.html" %}
 {% block title %}Coverage | Red Tape Recordings{% endblock %}
 {% block meta %}
-  <meta name="description" content="Every video platform Red Tape Recordings already supports, with a real archived meeting as proof.">
+  <meta name="description" content="Cities, counties, and states we've covered so far, with a real archived meeting as proof.">
 {% endblock %}
 {% block content %}
   <main class="about-page">
     <h1>Coverage</h1>
-    <p class="about-lede">We support a platform once, and every city or county on it works. Here's a real archived meeting as proof, both by government and by the platform behind it.</p>
+    <p class="about-lede">As you use this tool, you help us cover more government agencies more efficiently and more accurately.</p>
+    <p>This is a list of cities, counties, states, and so on that we have covered so far and successfully transcribed.</p>
     <p>Don't see your city below? <a href="/">Paste a meeting link</a> and see what comes back — if it's on a platform we already know, it'll just work.</p>
 
     <h2>Every place we've covered</h2>
@@ -37,7 +38,7 @@
     </div>
 
     <h2 style="margin-top: 2.5rem;">By platform</h2>
-    <p>We support a platform once, and every city or county on it works — here's every platform we already read video and transcripts from.</p>
+    <p>The same list, grouped by the platform we read video and transcripts from — helpful if you already know your city's vendor.</p>
     <div class="meeting-list">
       {% for row in coverage.direct %}
       <div class="calendar-candidate meeting-result-row">
@@ -62,8 +63,8 @@
       {% endfor %}
     </div>
 
-    <h2 style="margin-top: 2rem;">Custom</h2>
-    <p class="subtitle">Not a shared vendor product — a scraper we built for one specific government site each.</p>
+    <h2 style="margin-top: 2rem;">Custom Platforms</h2>
+    <p>Many cities, counties, and states have built internal tools or unique combinations of vendors, and we sort of have to handle them uniquely. Examples include:</p>
     <div class="meeting-list">
       {% for row in coverage.custom %}
       <div class="calendar-candidate meeting-result-row">
@@ -88,7 +89,8 @@
       {% endfor %}
     </div>
 
-    <p class="subtitle" style="margin-top: 1.5rem;">Some cities use a calendar/agenda tool (Legistar, CivicPlus, PrimeGov, CivicWeb) that itself just points at one of the platforms above rather than hosting video directly — those work too, they just aren't their own row here.</p>
+    <h2 style="margin-top: 2.5rem;">What about Platform XYZ?</h2>
+    <p>Some cities use a calendar/agenda tool (Legistar, CivicPlus, PrimeGov, CivicWeb) that itself just points at one of the platforms above rather than hosting video directly — those work too, they just aren't their own row here.</p>
 
     <h2 style="margin-top: 2.5rem;">What about YouTube?</h2>
     <p>A lot of government agencies host their recordings on YouTube, which actually does a good job with transcripts and deep links already. If you're in a hurry working with a YouTube-embedded hearing, we encourage you to use YouTube's own built-in transcript and deep-link features — that's why YouTube isn't listed as its own platform above. Where a government page embeds or links a YouTube video (like the "Custom" platforms above), we'll happily read it for you; for a video pasted straight from youtube.com, YouTube's own tools are usually the faster path.</p>
