@@ -560,6 +560,44 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-12] Fixed YouTube's `upload_date` off-by-one at the root
+  (`app/platforms/youtube.py`), found while researching Columbus, OH for
+  Wave 2 platform coverage.** Columbus's own `columbus.legistar.com`
+  meeting pages have no video link at all (confirmed live: 0
+  `a.videolink` elements, same "Legistar with no video column" pattern
+  already documented for Phoenix/Philadelphia) — real recordings live
+  only on the city's YouTube channel/playlist, with no link back from
+  Legistar at all. Rather than build a risky Legistar→YouTube matching
+  feature (fuzzy title/date search across a channel, real chance of
+  picking the wrong meeting's video), confirmed live that pasting the
+  YouTube URL directly already resolves correctly today via the existing
+  `YouTubeAssetFinder` — real title, jurisdiction, and an 8,037-segment
+  transcript, zero new code needed. **Not worth building the matching
+  feature at all**: the core deep-link value (video + transcript) is
+  already complete for Columbus as long as someone pastes the YouTube
+  link instead of the Legistar one; matching to the Legistar record
+  would only add polish (an official agenda link, jurisdiction
+  cross-check), a real but low-value, not-yet-built enhancement.
+
+  **Real bug found in the process**: the resolved date came back one day
+  off (`2026-06-23` instead of the real `2026-06-22`) — the same
+  previously-known `upload_date`-is-when-posted-not-when-it-happened gap
+  `primegov.py` already works around at its own layer (see its
+  `_extract_date()`/BACKLOG_DONE.md's PrimeGov entry), but never fixed at
+  the root in `youtube.py` itself, so every other path that delegates to
+  `YouTubeAssetFinder` (direct YouTube URLs, SLC, LIMS, Mesa/Albuquerque's
+  Legistar delegation) still had it. Root cause confirmed via yt-dlp
+  directly on two independent real, livestreamed-then-archived samples
+  (Columbus and the already-documented OKC PrimeGov case): `upload_date`
+  reflects when the VOD finished processing (one day late on both), while
+  `release_date` — the live broadcast's own start date, present whenever
+  `was_live=True` — matched the real meeting date exactly on both. Fixed:
+  `resolve_video_id()` now prefers `release_date`, falling back to
+  `upload_date` only when a video was never live (`release_date` absent).
+  1 new test with real OKC values pins the fix; the existing "imperfect
+  date" test still pins the honest fallback-only case. Full suite green
+  (461 tests, up from 460).
+
 - **[Done 2026-08-12] Fixed a real Legistar bug found independently while
   verifying a Wave 2 platform-coverage research pass — Charlotte, NC (and
   likely any other Legistar instance with the same audio-download feature)

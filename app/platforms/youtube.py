@@ -117,10 +117,24 @@ class YouTubeAssetFinder(AssetFinder):
         video_warnings: List[str] = []
         transcript_warnings: List[str] = []
 
-        upload_date = info.get("upload_date")  # YYYYMMDD or None
+        # Real bug fixed 2026-08-12: yt-dlp's "upload_date" is consistently
+        # one day late for a government meeting streamed live and archived
+        # (confirmed on two independent real samples -- Columbus, OH and
+        # Oklahoma City, both was_live=True -- see BACKLOG_DONE.md) since it
+        # reflects when the VOD finished processing, not when the meeting
+        # actually happened. "release_date" (the live broadcast's own start
+        # date) matched the real meeting date on both samples instead --
+        # preferred here, falling back to upload_date for a plain
+        # never-live upload where release_date isn't set at all. This was
+        # previously worked around per-adapter (see primegov.py's own page-
+        # text date extraction) rather than fixed at the root; this fix
+        # benefits every adapter that delegates to YouTubeAssetFinder
+        # (direct YouTube URLs, SLC, LIMS, Mesa/Albuquerque's Legistar
+        # delegation), not just PrimeGov.
+        raw_date = info.get("release_date") or info.get("upload_date")  # YYYYMMDD or None
         date = None
-        if upload_date and len(upload_date) == 8:
-            date = f"{upload_date[:4]}-{upload_date[4:6]}-{upload_date[6:8]}"
+        if raw_date and len(raw_date) == 8:
+            date = f"{raw_date[:4]}-{raw_date[4:6]}-{raw_date[6:8]}"
 
         segments: List[TranscriptSegment] = []
         transcript_language: Optional[str] = None
@@ -203,6 +217,7 @@ class YouTubeAssetFinder(AssetFinder):
                 "title": info.get("title"),
                 "uploader": info.get("uploader"),
                 "upload_date": info.get("upload_date"),
+                "release_date": info.get("release_date"),
             }
             chosen = YouTubeAssetFinder._pick_caption_track(ydl, info)
             if chosen:
