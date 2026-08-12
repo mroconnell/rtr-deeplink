@@ -22,6 +22,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+load_dotenv()
+
 from app.platforms import register_all_finders
 from app.platforms.base import UnsupportedPlatformError, get_finder
 from app.platforms.media_probe import extract_chunk_audio, is_plausible_meeting_duration, probe_duration
@@ -30,7 +32,6 @@ from archive.utils import email as email_utils
 from worker.segment_utils import chunk_duration, chunk_start, shift_segments
 from worker.transcription_engine import TranscriptionEngine, build_default_engine
 
-load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("rtr_worker")
 

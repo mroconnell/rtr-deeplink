@@ -26,6 +26,8 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 from svix.webhooks import Webhook
 
+load_dotenv()
+
 from . import archive_client
 from .db import crud
 from .db.engine import init_models
@@ -37,8 +39,6 @@ from .platforms.models import ResolvedMeeting
 from .platforms.youtube import YouTubeAssetFinder
 from .utils.clerk_auth import clerk_frontend_api_url, get_clerk_user_id
 from .utils.url_normalize import normalize_url
-
-load_dotenv()
 
 logger = logging.getLogger("rtr_deeplink.db")
 
