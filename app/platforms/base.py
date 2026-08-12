@@ -88,6 +88,11 @@ def detect_platform(url: str) -> str:
         return "swagit"
     if "escribemeetings.com" in netloc:
         return "escribe"
+    if "civicweb.net" in netloc:
+        # iCompass/CivicWeb (a Diligent brand) -- confirmed live 2026-08-12
+        # to be a YouTube-delegating platform, not a video host of its own
+        # -- see civicweb.py's own module docstring.
+        return "civicweb"
     if "assembly.ca.gov" in netloc or "senate.ca.gov" in netloc:
         return "ca_legislature"
     if "youtube.com" in netloc or "youtu.be" in netloc:
