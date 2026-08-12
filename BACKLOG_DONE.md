@@ -560,6 +560,51 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-12] Fixed a real Legistar bug found independently while
+  verifying a Wave 2 platform-coverage research pass — Charlotte, NC (and
+  likely any other Legistar instance with the same audio-download feature)
+  was misclassified as a calendar page on every single-meeting URL.**
+  `LegistarAssetFinder._find_video_links()` selects every `a.videolink`
+  element and requires only that its onclick target contain the substring
+  `"Video.aspx"` — true of all three anchors some Legistar instances render
+  per real video (`Mode2=Video`, `Mode2=Audio`, `Mode2=AudioDownload`), not
+  just the real video link. A single real Charlotte meeting page
+  (`MeetingDetail.aspx?ID=1365278`) was therefore counted as 3 "video
+  links," tripping the `len(video_links) > 1` calendar-page heuristic and
+  raising `CalendarPageError` on a genuine single-meeting URL — confirmed
+  live via a direct resolve before fixing. Maricopa, AZ (the original
+  reference case this heuristic was built and tested against) only ever
+  emits the `Mode2=Video` anchor per row, which is why this shape was never
+  caught before.
+
+  Fix: skip any candidate whose onclick target contains `Mode2=Audio`
+  (matches both `Mode2=Audio` and `Mode2=AudioDownload` as a substring) —
+  confirmed via a direct call against the real fetched Charlotte page that
+  this correctly drops from 3 candidates to the 1 real `Mode2=Video` link.
+  Maricopa's calendar page re-checked after the fix still correctly returns
+  21 distinct candidates, confirming the calendar-vs-single-meeting
+  distinction itself is unaffected. New fixture
+  `tests/fixtures/legistar/charlotte_meeting_audio_download.html` (a real
+  fetched page) plus 2 new tests: a minimal synthetic case isolating the
+  three-anchor shape, and an end-to-end resolve against the real fixture
+  confirming it now delegates to Granicus instead of raising
+  `CalendarPageError`. Full suite green (455 tests, up from 453).
+
+  **Real, previously-uncertain consequence this closes**: a Wave 2 research
+  pass had flagged Charlotte as needing a new Cablecast adapter, based on
+  a `charlotte.cablecast.tv` URL found independently of the city's own
+  Legistar calendar. Live-checking Charlotte's actual calendar rows found
+  they delegate to classic Granicus instead
+  (`charlottenc.granicus.com/player/clip/{id}`, this app's existing,
+  already-supported path) — the Cablecast site is very likely a separate
+  secondary channel, not what a real pasted Legistar URL hits. With this
+  bug fixed, Charlotte should already resolve correctly today without a
+  new adapter; worth confirming with a real end-to-end `/api/resolve` call
+  once deployed, and worth checking whether any of the *other* three
+  Cablecast cities found in that pass (Detroit, Columbus, Aurora) hit this
+  exact same audio-download-link shape before assuming they genuinely need
+  a new adapter too.
+
 - **[Done 2026-08-12] Fixed a real ALL-CAPS transcript on a live production
   page (Minneapolis City Council, 2026-07-16) — root-caused to stale
   pre-fix data, not a shouting-heuristic gap, and closed by building a

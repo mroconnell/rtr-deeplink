@@ -201,6 +201,18 @@ class LegistarAssetFinder(AssetFinder):
             match = re.search(r"(?:window\.open|OpenTelerikWindow)\('([^']+)'", onclick)
             if not match or "Video.aspx" not in match.group(1):
                 continue
+            # Real bug fixed 2026-08-12, confirmed live on Charlotte, NC:
+            # some Legistar instances render three separate a.videolink
+            # anchors per real video -- Mode2=Video, Mode2=Audio, and
+            # Mode2=AudioDownload -- all three sharing the same "Video.aspx"
+            # substring the check above requires, so a single real meeting
+            # was miscounted as multiple video links and misclassified as a
+            # calendar page (CalendarPageError below). Maricopa's rows only
+            # ever emit the Mode2=Video anchor, which is why this wasn't
+            # caught by the original confirmed-against-Maricopa testing --
+            # only Mode2=Video is a real distinct video worth a candidate.
+            if "Mode2=Audio" in match.group(1):
+                continue
             absolute = urljoin(page_url, match.group(1).replace("&amp;", "&"))
             title, date = self._extract_row_info(a)
             candidates.append({"title": title, "date": date, "url": absolute})
