@@ -647,7 +647,29 @@ mark.search-match.current { background: #f97316; color: #fff; }
 .calendar-candidate:last-child { border-bottom: none; }
 .calendar-candidate a { color: var(--accent); text-decoration: none; font-weight: 500; }
 .calendar-candidate a:hover { text-decoration: underline; }
-.calendar-candidate-date { color: var(--muted); display: block; margin-top: 0.15rem; }
+.calendar-candidate-date {
+  color: var(--muted);
+  display: block;
+  margin-top: 0.15rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Real bug fixed 2026-08-11: a long title or jurisdiction on /meetings
+   results used to wrap freely, breaking the row's compact one-line-per-
+   meeting rhythm. .calendar-candidate-main already has min-width:0 (see
+   the comment above .meeting-result-row) so ellipsis truncation actually
+   has room to kick in inside the flex row instead of the text just
+   overflowing its container. Title truncation is scoped to this specific
+   row layout (.calendar-candidate-main), not .calendar-candidate itself,
+   since that class is also reused unmodified by the resolver's
+   calendar-picker list (renderCalendarPage() in player.js). */
+.calendar-candidate-main a {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 /* /meetings-listing-only layout: title+meta on the left, a fixed badge
    column on the right, so the badge always lands in the same vertical
    line of sight regardless of how long a given row's title/date/

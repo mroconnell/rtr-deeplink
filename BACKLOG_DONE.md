@@ -560,6 +560,45 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-11] Fixed two of the three real gaps in `/meetings`'
+  title/jurisdiction formatting — state abbreviations and truncation;
+  casing consistency deliberately left open (see BACKLOG.md).** Reported
+  by the user from a real `/meetings` screenshot: long names weren't
+  truncated, casing varied row to row, and US states appeared as both
+  full names and 2-letter abbreviations, with no centralized
+  normalization anywhere in the codebase.
+
+  **State abbreviation**: new `archive/utils/jurisdiction_format.py`'s
+  `normalize_state_suffix()` canonicalizes a trailing full state name to
+  its 2-letter code (`"San Diego, California"` → `"San Diego, CA"`),
+  wired into `archive/db/crud.py`'s `_find_or_create_page()` — the single
+  choke point every ingest (from every adapter) already passes through
+  before a `MeetingPage` row is created or updated, so this needed no
+  per-adapter changes. Deliberately narrow: only the text after the
+  *last* comma is ever treated as a state candidate, so it can't misfire
+  on a jurisdiction string that itself contains a comma (e.g. "Winston-
+  Salem, Forsyth County, North Carolina" → "Winston-Salem, Forsyth
+  County, NC", not touching "Forsyth County"). Already-abbreviated or
+  state-less jurisdictions pass through byte-for-byte unchanged. 9 new
+  tests (`tests/test_jurisdiction_format.py`).
+
+  **Truncation**: `/meetings` row title and jurisdiction/date line both
+  now truncate with a CSS ellipsis (`.calendar-candidate-main a` /
+  `.calendar-candidate-date` in `archive/static/style.css`) instead of
+  wrapping — scoped to that specific row layout, not `.calendar-
+  candidate` itself, since that class is also reused unmodified by the
+  resolver's calendar-picker list. Live-verified in-browser: injected a
+  real long title/jurisdiction row and confirmed both ellipsis-truncate
+  on one line instead of wrapping.
+
+  **Deliberately not touched**: city/county/meeting-body name casing.
+  Unlike state (~50 closed values), city/body names are effectively
+  unbounded with real edge cases a blind `.title()` call gets wrong
+  (acronyms, apostrophes, multi-word names) — capture-time normalization
+  there risks silently and permanently corrupting a real name with no
+  easy undo, so it's left as its own open item in BACKLOG.md rather than
+  guessed at this pass. Full suite green (438 tests, 429 + 9 new).
+
 - **[Done 2026-08-11] Fixed the nav flashing "Sign in" on every full page
   load for an already-signed-in visitor — reported by the user against
   `/account/saved`.** `archive/templates/base.html`'s nav always

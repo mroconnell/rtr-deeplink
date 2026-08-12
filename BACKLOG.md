@@ -168,60 +168,26 @@ anything) to build against it.
   the outline variant in `saved_items.html`). All riffing, not a chosen
   design — needs a real decision before building.
 
-- **Meeting title/jurisdiction display has no consistent formatting
-  convention — long names aren't truncated, casing varies row to row, and
-  US states appear as both full names and two-letter abbreviations.**
-  Reported by the user from real `/meetings` results (screenshot,
-  2026-08-11). Confirmed there is currently **no centralized
-  normalization at all** — no shared `app/utils/` helper for
-  jurisdiction/title formatting exists (that directory only has
-  `clerk_auth.py`, `url_normalize.py`, `vtt_parser.py`). What exists
-  instead is ad hoc and per-platform: `app/platforms/granicus.py`'s
-  `_humanize_subdomain()` (lines 187-214) title-cases and uppercases a
-  trailing state code, but only as a last-resort fallback when its
-  primary body-text regex extraction fails, and only for Granicus;
-  `escribe.py`'s `_jurisdiction_from_subdomain()` (lines 192-198) does a
-  blunt `.title()` with no state handling at all; `primegov.py`'s
-  `_extract_jurisdiction()` (lines 128-146) only fixes all-caps headers
-  (`"OKLAHOMA CITY"` → `"Oklahoma City"`) via `core.title() if
-  core.isupper() else core`, leaving already-mixed-case text alone; every
-  other adapter (`swagit.py:303`, `civicclerk.py:78`, `legistar.py:241`,
-  `lims.py:108-112`) stores whatever casing/state form the source page
-  used, unchanged. `title` gets no formatting treatment anywhere except
-  an incidental `title[:500]` byte-cap in `granicus.py:185` (a
-  storage-safety truncation, not a display one). None of this amounts to
-  a real, consistent convention, and no adapter converts between full
-  state names and abbreviations in either direction.
-
-  **Open question, not yet decided: normalize at capture time (when a
-  meeting is resolved/ingested) or at display time (formatting applied
-  only when rendering search results)?** Scale differs sharply by field,
-  which likely means different answers for each:
-  - **State**: a closed set of ~50 values (already partially enumerated
-    in `granicus.py`'s `US_STATE_ABBREVIATIONS`, lines 52-57) — cheap and
-    safe to normalize once at capture time to a single canonical form
-    (e.g. always store the 2-letter code). Low risk of ever mangling
-    something.
-  - **City/county/meeting-body names**: effectively unbounded (tens of
-    thousands of real values), with real edge cases a blind
-    `.title()`/casing rule gets wrong (acronyms like "MTA"/"ZBA", multi-
-    word or apostrophe'd city names) — capture-time normalization risks
-    silently and permanently corrupting a name with no easy undo.
-    Display-time formatting (CSS `text-transform`, or a Jinja filter
-    applied only at render) is non-destructive by comparison: the raw
-    scraped value stays intact in the DB, and the formatting rule itself
-    can be revised later without a backfill.
-  - **Truncation**: almost certainly display-only regardless (CSS
-    `text-overflow: ellipsis` or a length-capped Jinja filter) — capture-
-    time truncation would permanently and needlessly lose data for no
-    display-layer reason.
-
-  Also relevant to any proposed fix: `jurisdiction` is confirmed to be a
-  single free-text `VARCHAR(200)` column (`archive/db/models.py:33`,
-  `app/db/models.py:42`) — there's no separate city/state columns
-  anywhere in either schema, so a "convert full state name to
-  abbreviation" rule would need to operate on the trailing portion of an
-  opaque string (e.g. after the last comma), not a structured field.
+- **Meeting title/jurisdiction display: casing still inconsistent row to
+  row — the state-abbreviation and truncation parts of this gap shipped
+  2026-08-11, see BACKLOG_DONE.md.** State names are now normalized to
+  their 2-letter abbreviation at Archive ingest time
+  (`archive/utils/jurisdiction_format.py`'s `normalize_state_suffix()`,
+  wired into `archive/db/crud.py`'s `_find_or_create_page()`), and long
+  titles/jurisdiction lines now truncate with an ellipsis on `/meetings`
+  (`.calendar-candidate-main a` / `.calendar-candidate-date` in
+  `style.css`) instead of wrapping. **Still open, deliberately not
+  touched**: city/county/meeting-body name casing itself. That's
+  effectively unbounded (tens of thousands of real values) with real
+  edge cases a blind `.title()`/casing rule gets wrong (acronyms like
+  "MTA"/"ZBA", multi-word or apostrophe'd city names) — every adapter
+  still stores whatever casing the source page used, unchanged, and
+  fixing that safely would need either a real per-value dictionary/
+  exception list or a narrower heuristic (e.g. something like
+  `vtt_parser.py`'s existing `normalize_shouting_caption()` ALL-CAPS
+  detector, which only re-cases when its own heuristic is confident,
+  rather than a blanket `.title()`) — not attempted this pass, since a
+  wrong guess here silently corrupts a real name with no easy undo.
 
 ## Deep links
 
