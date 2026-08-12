@@ -588,10 +588,11 @@ async def account_saved(request: Request):
 @app.get("/coverage")
 async def coverage(request: Request):
     coverage_rows = await crud.get_platform_coverage()
+    jurisdictions = await crud.get_jurisdiction_coverage()
     return templates.TemplateResponse(
         request,
         "coverage.html",
-        {"coverage": coverage_rows, "active_account": get_clerk_user_id(request)},
+        {"coverage": coverage_rows, "jurisdictions": jurisdictions, "active_account": get_clerk_user_id(request)},
     )
 
 
