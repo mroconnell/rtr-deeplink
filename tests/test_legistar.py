@@ -70,6 +70,64 @@ async def test_single_meeting_delegates_to_granicus():
     assert result.external_id == "granicus:1504"
 
 
+def test_find_video_links_ignores_audio_only_variants():
+    # Real bug fixed 2026-08-12, confirmed live on Charlotte, NC: some
+    # Legistar instances render three separate a.videolink anchors per real
+    # video (Mode2=Video, Mode2=Audio, Mode2=AudioDownload), all sharing
+    # the same "Video.aspx" substring the onclick check requires -- a
+    # single real meeting was miscounted as 3 video links and misclassified
+    # as a calendar page. Maricopa (the original reference case) only ever
+    # emits the Mode2=Video anchor, which is why this wasn't caught earlier.
+    from bs4 import BeautifulSoup
+
+    html = (
+        '<html><body><table><tr><td>City Council Business Meeting</td>'
+        '<td>6/22/2026</td></tr></table>'
+        '<a class="videolink" onclick="window.open(\'Video.aspx?Mode=Granicus&ID1=3692&Mode2=Video\',\'video\');return false;">Video</a>'
+        '<a class="videolink" onclick="window.open(\'Video.aspx?Mode=Granicus&ID1=3692&Mode2=Audio\',\'video\');return false;">Audio</a>'
+        '<a class="videolink" onclick="window.open(\'Video.aspx?Mode=Granicus&ID1=3692&Mode2=AudioDownload\',\'video\');return false;">Audio Download</a>'
+        '</body></html>'
+    )
+    soup = BeautifulSoup(html, "html.parser")
+
+    links = LegistarAssetFinder()._find_video_links(soup, "https://charlottenc.legistar.com/MeetingDetail.aspx?ID=1")
+
+    assert len(links) == 1
+    assert "Mode2=Video" in links[0]["url"]
+
+
+async def test_charlotte_single_meeting_with_audio_links_delegates_to_granicus():
+    # Same bug as above, end-to-end against the real fetched Charlotte
+    # page (tests/fixtures/legistar/charlotte_meeting_audio_download.html)
+    # -- confirms the fix holds against real markup, not just a synthetic
+    # minimal case.
+    meeting_url = (
+        "https://charlottenc.legistar.com/MeetingDetail.aspx?ID=1365278"
+        "&GUID=E6E474AC-A2A9-4CE4-BCF0-5B118522E3BE&Options=info|"
+    )
+    video_aspx = "https://charlottenc.legistar.com/Video.aspx?Mode=Granicus&ID1=3692&Mode2=Video"
+    granicus_url = "https://charlottenc.granicus.com/player/clip/3692"
+
+    meeting_html = load_fixture("legistar", "charlotte_meeting_audio_download.html")
+    granicus_html = load_fixture("granicus", "napacity_clip3450.html")
+
+    routes = {
+        meeting_url: FakeResponse(status=200, text=meeting_html, url=meeting_url),
+        video_aspx: FakeResponse(status=200, text="", url=granicus_url),
+        granicus_url: FakeResponse(status=200, text=granicus_html, url=granicus_url),
+        "https://charlottenc.granicus.com/videos/3692/captions.vtt": FakeResponse(status=404),
+        "https://charlottenc.granicus.com/AgendaViewer.php?clip_id=3692&embedded=1": FakeResponse(status=404),
+    }
+
+    with mock_session(routes):
+        result = await LegistarAssetFinder().resolve(meeting_url)
+
+    # Real bug this regresses against: without the fix, this raised
+    # CalendarPageError instead of ever reaching a real resolve.
+    assert result.platform == "granicus"
+    assert result.external_id == "granicus:3692"
+
+
 async def test_nyc_calendar_page_raises_pick_list_via_telerik_onclick():
     # Real legistar.council.nyc.gov/Calendar.aspx, fetched live 2026-08-08.
     # NYC's video links use onclick="OpenTelerikWindow('Video.aspx?Mode=
