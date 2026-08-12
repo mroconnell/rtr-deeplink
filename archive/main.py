@@ -17,6 +17,8 @@ from markupsafe import Markup
 from pydantic import BaseModel
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+load_dotenv()
+
 from .db import crud
 from .db.engine import init_models
 from .utils import email as email_utils
@@ -24,8 +26,6 @@ from .utils.clerk_auth import clerk_frontend_api_url, get_clerk_user_id
 from .utils.render_warnings import render_warnings_html
 from .utils.transcript_export import to_srt, to_txt
 from .utils.url_normalize import normalize_url
-
-load_dotenv()
 
 logger = logging.getLogger("rtr_archive")
 
