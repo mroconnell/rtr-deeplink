@@ -124,6 +124,45 @@ anything) to build against it.
     pursuing this angle themselves; `bulk_ingest.py`-style manual
     pushes can carry whatever comes back.
 
+- **PrimeGov's `_extract_jurisdiction()` regex isn't scoped to the page
+  header, so it can pick up an unrelated city name mentioned in agenda
+  body text.** Reported by the user 2026-08-12 with two real examples on
+  `slc.primegov.com` (Salt Lake City's own PrimeGov portal): a real Salt
+  Lake City Council meeting
+  (`https://slc.primegov.com/Portal/Meeting?meetingTemplateId=3853`) got
+  jurisdiction "Holladay" instead — Holladay was only mentioned as one
+  agenda item (its addition to the Central Wasatch Commission), and
+  `app/platforms/primegov.py`'s `_JURISDICTION_RE` (`\b(city|county|town)
+  of\s+...`) does a plain `.search()` over the *entire* page HTML, so the
+  first "City of Holladay"/"Town of Holladay"-shaped phrase anywhere in
+  the agenda body wins over the page's real header. A second, different
+  meeting got "SLC Live Meetings" as its jurisdiction instead — that one
+  never matched the regex at all (no "City/County/Town of X" phrase found
+  on that page), so `PrimeGovAssetFinder.resolve()` left
+  `YouTubeAssetFinder.resolve_video_id()`'s own `jurisdiction=info.get
+  ("uploader")` (the YouTube channel name) in place uncorrected — a real,
+  different failure mode from the Holladay case, not the same bug twice.
+  Not yet fixed — a real fix likely means scoping `_JURISDICTION_RE` to
+  just the page's header/title area (matching `_extract_date()`'s own
+  `[:2000]`-character-prefix approach) rather than searching the whole
+  page, plus deciding what `PrimeGovAssetFinder` should do when its own
+  extraction finds nothing at all (right now it silently trusts YouTube's
+  uploader name, which is not a jurisdiction).
+- **Jurisdiction display is verbose and inconsistent site-wide — "City of
+  Napa, CA" everywhere reads as redundant since almost everything archived
+  is a city.** User request 2026-08-12: consider dropping "City of"/
+  "City" entirely from display (e.g. just "Napa, CA" or "Napa (City)"),
+  reserving an explicit label for the actual exception — counties (and
+  states, e.g. California State Legislature). Not yet scoped: this is a
+  display-only change in spirit, but `jurisdiction` is stored pre-
+  formatted at ingest time (`normalize_state_suffix()` in
+  `archive/db/crud.py`, called from `_find_or_create_page()`) rather than
+  formatted at render time, and is used as free text in several places
+  (page titles, `<title>` tags, JSON-LD, the /coverage jurisdiction table
+  added 2026-08-12) — worth deciding whether this becomes a real display-
+  time formatter (Jinja filter) applied everywhere `jurisdiction` renders,
+  versus changing what gets stored, before building it.
+
 ## `/meetings` search & saved items — UI gaps found 2026-08-11
 
 - **"Save this search" can silently save the wrong search, and gives no
@@ -903,6 +942,18 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     OAuth) — "Hi there," is the documented fallback either way, so a
     missing field degrades gracefully, but the "Hi [First Name]," path
     itself hasn't been seen fire for real yet.
+- **`ryan@redtaperecordings.com` and `ally@redtaperecordings.com` don't
+  actually receive email yet.** User request 2026-08-12. Real, not
+  hypothetical: `RESEND_REPLY_TO_ADDRESS` already points transactional-
+  email replies at one of these (see the "We couldn't cook this one"
+  bullet above), and `ryan@redtaperecordings.com` is the footer's
+  `mailto:` Contact link on every page (`base.html`, both services) — if
+  neither address has a real mailbox behind it, replies and contact
+  emails go nowhere silently. This is domain/DNS/mailbox-provider setup
+  (e.g. Google Workspace, or forwarding through whatever registrar/DNS
+  host `redtaperecordings.com` uses), not a code change — needs the user
+  to do it directly (this session has no access to DNS or a mailbox
+  provider account), not something to build here.
 - **Lifecycle email bugs found by the user 2026-08-11 — three of the four
   fixed 2026-08-11, see BACKLOG_DONE.md for the full root-cause detail on
   each.** The fourth, "People are talking about…" (saved-search alert
