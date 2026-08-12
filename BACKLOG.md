@@ -1007,47 +1007,16 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     not an ongoing concern, similar in spirit to
     `/admin/recheck-archive-page`'s existing per-meeting refresh but
     needing to run once across every page rather than on demand for one.
-- **Search bar has no explicit boolean operators (AND/OR/NOT/`-`/`+`/`&`)
-  today — user request 2026-08-11.** Confirmed via
-  `archive/utils/search.py`: `_parse_query()` (lines 64-77) splits a query
-  into quoted phrases (`_PHRASE_RE`, line 14 — each required as an exact
-  adjacent substring) and unquoted words (split on whitespace, line 76) —
-  every phrase and every word is independently required, an **implicit
-  AND with no way to express OR, an explicit AND, exclusion (NOT/`-`), or
-  a literal `&`.** `matches()` (lines 84-107) enforces this directly:
-  `all(phrase in corpus for phrase in phrases)` and (non-fuzzy)
-  `all(term in corpus for term in terms)` — there's no code path anywhere
-  that treats two terms as alternatives or excludes one. This is a
-  hand-built Python scanner, not a real query-language parser or an
-  indexed engine's query syntax (the module's own docstring: "no search
-  index... fine at the Archive's current scale, not meant to scale past a
-  few hundred") — so operator support has to be added by hand to
-  `_parse_query`/`matches`, not inherited for free the way Postgres
-  `tsquery` would give it.
-
-  **Per-operator feasibility, not yet decided/built:**
-  - **`-term` (exclusion/NOT)** — the most tractable addition: mark a
-    term prefixed with `-` as "must not match," then require
-    `term not in corpus` (or the fuzzy equivalent) instead of `in`. Small,
-    contained change to `_parse_query`'s word-splitting and one new
-    branch in `matches()`.
-  - **`+term` / explicit `AND`** — effectively already the default
-    behavior for every unquoted word today; would just need `+`/`AND` to
-    be stripped as a no-op synonym rather than treated as a literal
-    search term (right now a literal `+flock` or the word `AND` would be
-    searched for verbatim, which is itself a minor rough edge worth
-    fixing alongside real operator support).
-  - **`&`** — same as above: redundant with implicit AND, so this is
-    about *not* treating it as a literal character to match, not a new
-    capability to build.
-  - **`OR`** — the one genuinely hard part: `_parse_query` currently
-    returns two flat lists that all get ANDed together with no concept of
-    grouping — supporting `a OR b` (let alone mixed precedence like `a OR
-    b AND c`) needs a real expression tree, not just a new token type.
-    Worth deciding whether full boolean-expression parsing is actually
-    needed, or whether `-exclude` plus no-op `+`/`AND`/`&` covers most of
-    the practical value a journalist would want, at a fraction of the
-    parser complexity.
+- **Search bar has no `OR` support.** `-exclude`/`-"phrase"` and no-op
+  `+`/`&`/`AND` shipped 2026-08-11 (see BACKLOG_DONE.md) — this entry now
+  covers only the one operator still genuinely missing. `_parse_query()`
+  (`archive/utils/search.py`) returns flat phrase/word lists that all get
+  ANDed together with no concept of grouping — supporting `a OR b` (let
+  alone mixed precedence like `a OR b AND c`) needs a real expression
+  tree, not just a new token type. Worth deciding whether full
+  boolean-expression parsing is actually needed, or whether `-exclude`
+  plus no-op `+`/`AND`/`&` already covers most of the practical value a
+  journalist would want, at a fraction of the parser complexity.
 
 ## On-demand transcription — real gaps left open
 

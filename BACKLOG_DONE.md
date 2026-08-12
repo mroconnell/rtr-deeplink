@@ -379,6 +379,29 @@ changelog of task titles.
   `DATABASE_URL=sqlite+aiosqlite:///<repo-root>/archive_dev.db` before
   doing anything further.
 
+- **[Done 2026-08-11] Added Google-style `-exclude`/`-"phrase"` search
+  operators plus no-op `+`/`&`/`AND`, closing most of the "no boolean
+  operators" gap `BACKLOG.md` had flagged** (commit `0cf48bf`; `OR`
+  remains genuinely open — see BACKLOG.md, it needs real expression-tree
+  parsing this flat list-based `_parse_query()` can't represent).
+  `_parse_query()` now also collects `excluded_phrases`/`excluded_words`
+  from any `-`-prefixed phrase/word; `matches()` checks those first and
+  fails immediately on a hit, before the positive AND checks run, so an
+  exclusion always wins over a coincidental positive match elsewhere in
+  the same corpus. Exclusions are always checked as an exact substring,
+  even in fuzzy mode — a fuzzy exclusion risks dropping a meeting that
+  only *resembles* the excluded term, a worse failure mode than an
+  exclusion occasionally missing a typo'd instance. `+term`, a bare `&`,
+  and the bare word `AND` are stripped as no-ops (previously would have
+  been searched for as literal, always-failing tokens). The `?` search-
+  tips popover on `/meetings` (`meeting_list.html`) replaced the old
+  static one-line hint, since the growing operator list no longer fit
+  inline. 5 new tests in `tests/test_archive_search.py` cover word/phrase
+  exclusion, exclusion staying exact under fuzzy mode, and both no-op
+  forms. *(Note: this entry was written up after the fact, 2026-08-11,
+  during a backlog-cleanup pass — the actual build predates it; see
+  `CLAUDE.md`'s note on more than one session sharing this repo.)*
+
 ## Incidents
 
 - **[Resolved 2026-08-11] Clerk production cutover surfaced three real
