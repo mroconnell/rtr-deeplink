@@ -2,7 +2,7 @@ from collections import Counter
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from .engine import async_session
 from .models import MeetingResolution, ProblemReport
@@ -178,6 +178,20 @@ async def get_pending_archive_pushes(*, min_age_minutes: int = 5, limit: int = 1
         }
         for row in candidates
     ]
+
+
+async def count_recent_resolutions(hours: int = 24) -> int:
+    """How many resolve attempts landed in the last `hours` -- unlike
+    get_stats()/list_resolutions() below, this needs no row objects (no
+    classify_outcome() call), so a plain SQL COUNT is simpler and cheaper
+    than a full scan-into-Python just to len() a filtered list.
+    """
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+    async with async_session() as session:
+        result = await session.execute(
+            select(func.count()).select_from(MeetingResolution).where(MeetingResolution.created_at >= cutoff)
+        )
+        return result.scalar_one()
 
 
 async def get_stats() -> dict[str, Any]:
