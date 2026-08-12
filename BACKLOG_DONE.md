@@ -2842,6 +2842,52 @@ changelog of task titles.
 
 ## Platform coverage
 
+- **[Done 2026-08-12] New adapter: Aurora, CO's own council video site
+  (auroratv.org), found in a Wave 2 platform-coverage pass and confirmed
+  buildable via direct live research.** A Drupal 10 site whose every
+  video page embeds its JW Player config as a plain top-level object
+  inside Drupal's own `drupalSettings` JSON blob
+  (`<script type="application/json" data-drupal-selector="drupal-
+  settings-json">`), server-rendered — no JS execution needed, unlike
+  most other JW-Player sites. That blob's `mp4_url` is a real, direct,
+  unauthenticated file served via CloudFront in front of Cablecast's
+  storage (Aurora happens to use Cablecast as its underlying video host
+  — the same vendor found independently on Charlotte/Detroit/Columbus,
+  OH — see BACKLOG.md), and confirmed live to already work with zero
+  frontend changes: `ResolvedMeeting.video_format="mp4"` already gets
+  native `<video>` playback via `player.js`'s existing `initNativeVideo()`
+  path.
+
+  **Real gap found and fixed mid-build, not assumed correct from the
+  schema**: the blob's top-level `video_caption` key looks like it should
+  be the caption URL, but is actually a server filesystem path
+  (`/home/atowntv/public_html/sites/default/files/...`), not fetchable —
+  only `jw_data.caption_file_path` is the real `https://` URL. Caught by
+  actually resolving a real meeting and seeing the caption count come
+  back 0 despite a direct `curl` of that same file succeeding — not
+  discovered by reading the schema alone. Confirmed live end-to-end
+  against `auroratv.org/video/regular-meeting-aurora-city-council-
+  june-22-2026`: real 5,310-segment English transcript, real title/date
+  parsed from `<title>`, jurisdiction hardcoded to "Aurora, CO" (a
+  single-city custom site, same pattern as `slc.py`).
+
+  **Genuinely unconfirmed, flagged rather than assumed**: whether
+  `auroratv.org` or the CloudFront-fronted Cablecast storage blocks
+  requests from Render's cloud IP the way YouTube/Riverside County/
+  Minneapolis LIMS/SLC do — no Cloudflare/WAF signature was found in
+  either host's response headers during development (plain Apache +
+  CloudFront, same shape already confirmed working for a different
+  Cablecast city's files), but that's not proof against an IP-based
+  block specifically, which wouldn't show up in headers at all. Needs a
+  real live-production resolve to confirm — not yet done as of this
+  entry.
+
+  New `app/platforms/aurora.py`, registered in `detect_platform()`
+  (`base.py`) under the `auroratv.org` domain and in
+  `register_all_finders()`. 5 new tests (`tests/test_aurora.py`) against
+  two real fixtures (the video page + its real VTT captions). Full suite
+  green (460 tests, up from 455).
+
 - **[Done 2026-08-09] Built a generic "try our best" fallback for any
   URL `detect_platform()` doesn't recognize**, directly from the user's
   own request and mockup layout: today, pasting an unsupported city's

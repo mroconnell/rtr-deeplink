@@ -117,6 +117,14 @@ def detect_platform(url: str) -> str:
         # slc.gov domain, since most of that site is ordinary city-
         # government content this app has no reason to try to resolve.
         return "slc"
+    if "auroratv.org" in netloc:
+        # Aurora, CO's own Drupal-built council video site -- confirmed
+        # live 2026-08-12, found during a Wave 2 platform-coverage pass
+        # (see BACKLOG.md). Plain aiohttp GET works (no Cloudflare
+        # challenge like the two cases above), but its underlying video/
+        # caption hosts' response to Render's specific cloud IP is
+        # genuinely unconfirmed -- see aurora.py's own module docstring.
+        return "aurora_tv"
     return "unknown"
 
 
