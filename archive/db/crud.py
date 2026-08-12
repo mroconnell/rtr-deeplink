@@ -717,6 +717,33 @@ async def promote_transcript_version(session, page_id: int, version_id: int) -> 
         v.is_default = v.id == version_id
 
 
+async def manually_promote_transcript_version(*, slug: str, version_id: int) -> Optional[dict]:
+    """Admin action: make `version_id` this page's default TranscriptVersion.
+    Real gap this closes -- found 2026-08-12 fixing a real stale ALL-CAPS
+    transcript (Minneapolis City Council): `promote_transcript_version()`
+    only ever fires automatically from inside `ingest_resolution()`'s own
+    `_is_real_improvement()` check (no segments yet, or no language yet on
+    the current default), which doesn't cover "a fresh push is simply
+    better-quality than what's already there" -- a manually-pushed
+    replacement for an already-has-segments-and-language default has no
+    path to become the default at all without this. Standalone
+    session/commit, same "always a top-level admin action" reasoning as
+    `correct_transcript_version_language()` right below.
+    """
+    async with async_session() as session:
+        page = (await session.execute(select(MeetingPage).where(MeetingPage.slug == slug))).scalars().first()
+        if page is None:
+            return None
+
+        version = await session.get(TranscriptVersion, version_id)
+        if version is None or version.meeting_page_id != page.id:
+            return None
+
+        await promote_transcript_version(session, page.id, version_id)
+        await session.commit()
+        return {"slug": slug, "promoted_version_id": version_id}
+
+
 async def correct_transcript_version_language(
     *, slug: str, language: str, version_id: Optional[int] = None
 ) -> Optional[dict]:

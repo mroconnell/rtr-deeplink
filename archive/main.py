@@ -332,6 +332,24 @@ async def internal_transcription_status(job_id: int, authorization: Optional[str
     return job
 
 
+class PromoteVersionRequest(BaseModel):
+    slug: str
+    version_id: int
+
+
+@app.post("/internal/transcript-version/promote")
+async def internal_promote_version(req: PromoteVersionRequest, authorization: Optional[str] = Header(None)):
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    result = await crud.manually_promote_transcript_version(slug=req.slug, version_id=req.version_id)
+    if result is None:
+        return JSONResponse(
+            {"error": "not_found", "message": "No matching meeting page/version."}, status_code=404
+        )
+    return result
+
+
 class CorrectLanguageRequest(BaseModel):
     slug: str
     language: str

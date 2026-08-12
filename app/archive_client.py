@@ -321,6 +321,34 @@ def filter_proxy_headers(headers) -> dict:
     return {k: v for k, v in headers.items() if k.lower() not in _HOP_BY_HOP_HEADERS}
 
 
+async def promote_transcript_version(slug: str, version_id: int) -> Optional[dict]:
+    """Admin action: make `version_id` this page's default TranscriptVersion
+    -- see app/main.py's /admin/promote-transcript-version and
+    BACKLOG_DONE.md's 2026-08-12 stale-transcript entry. Returns None on
+    any failure, same pattern as every other call here."""
+    base = _base_url()
+    if not base:
+        return None
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{base}/internal/transcript-version/promote",
+                json={"slug": slug, "version_id": version_id},
+                headers=_headers(),
+                timeout=TRANSCRIPTION_TIMEOUT,
+            ) as response:
+                if response.status == 200:
+                    return await response.json()
+                logger.error(
+                    "Archive promote-version failed (%s): %s", response.status, await response.text()
+                )
+                return None
+    except Exception:
+        logger.exception("Archive promote-version request failed.")
+        return None
+
+
 async def correct_transcript_language(slug: str, language: str, version_id: Optional[int] = None) -> Optional[dict]:
     """Admin correction for a wrong TranscriptVersion.language -- see
     app/main.py's /admin/correct-transcript-language and BACKLOG_DONE.md's

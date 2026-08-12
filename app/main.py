@@ -1249,6 +1249,37 @@ async def admin_sweep_pending_pushes(token: str = ""):
     }
 
 
+@app.get("/admin/promote-transcript-version")
+async def admin_promote_transcript_version(token: str = "", url: str = "", version_id: Optional[int] = None):
+    """Manually makes a specific TranscriptVersion a page's default --
+    for the real gap found 2026-08-12 fixing a stale ALL-CAPS transcript
+    (Minneapolis City Council): a manually-pushed replacement transcript
+    has no automatic path to become the default once the page already
+    has a with-segments-and-language default (see crud.py's
+    manually_promote_transcript_version() and
+    BACKLOG_DONE.md). Same url-lookup shape as
+    /admin/correct-transcript-language above."""
+    if not _admin_token_ok(token):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    if not url or version_id is None:
+        return JSONResponse(
+            {"error": "missing_params", "message": "Pass ?url=<the meeting's source URL>&version_id=<id>."},
+            status_code=400,
+        )
+
+    normalized = normalize_url(url)
+    lookup_result = await archive_client.lookup(normalized)
+    if lookup_result is None:
+        return JSONResponse(
+            {"error": "not_found", "message": "No archived permanent page matches that URL."}, status_code=404
+        )
+
+    result = await archive_client.promote_transcript_version(lookup_result["slug"], version_id)
+    if result is None:
+        return JSONResponse({"error": "promotion_failed", "message": "Could not promote that version."}, status_code=502)
+    return result
+
+
 @app.get("/admin/correct-transcript-language")
 async def admin_correct_transcript_language(token: str = "", url: str = "", language: str = "", version_id: Optional[int] = None):
     """Applies a "wrong_language" problem report's correction -- the
