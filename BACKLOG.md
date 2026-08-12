@@ -1337,43 +1337,40 @@ one item below is resolved as a result.
   confirm `list_pages(keyword=...)` still finds the page). Full suite
   green (116 tests).
 
-  **External search is still open.** The deliberate one-canonical-URL
-  choice is right and shouldn't change (indexing `?version=1`,
-  `?version=2`, etc. as separately-ranked pages would just be
-  duplicate-content spam against ourselves). The real fix is rendering
-  *all* versions' transcript text into the canonical page's own HTML,
-  not just the active one — e.g. every version's segments present in the
-  DOM, client-side-toggled visibility (real JS tabs replacing today's
-  full-reload `?version=` link list) rather than server-side picking-one.
-  Google's own guidance is that content inside JS-toggled tabs/accordions
-  still gets crawled and indexed as long as it's actually present in the
-  initial DOM, not injected only on click — so this isn't a hack, it's
-  the documented-correct way to get a crawler to see supplementary
-  content without duplicate-URL risk. Real cost to weigh before building:
-  page HTML size grows with every version's full transcript (Dublin's
-  real transcript alone is over a megabyte of JSON per BACKLOG.md's
-  search-scale note) — fine for a typical 1-2-version page, worth a size
-  check before assuming it's fine for a page with several. This also
-  happens to be the actual "tabbed content" UI asked about earlier, so
-  building it kills both asks with one change — worth its own scoped
-  task given it touches `.version-picker`, `meeting_page.js`, and the
-  template's rendering of `active_version` throughout.
+  **The UX half shipped 2026-08-12, per the user's own simpler call —
+  the SEO/external-search half is explicitly still open, by choice.**
+  The user re-requested a real placement/interaction change (a picker
+  near the Download Text/SRT links, not a separate block above the whole
+  transcript section) and, when offered the bigger all-versions-in-DOM
+  JS-tabs redesign originally proposed here, explicitly opted out of it:
+  alternate versions don't need to be independently searchable, and
+  don't need to track playback live without a reload. What shipped
+  instead: `.version-picker` is now a `<select>` dropdown (a macro,
+  `version_picker()`, in `meeting_page.html`) positioned inline with the
+  Download line, submitting a plain GET form to `?version={id}` — the
+  same full-page-reload-per-version mechanism as the old link list, just
+  restyled and repositioned, so `data-version-id`/deep-link
+  time-tracking against the newly active version work unchanged (no
+  changes needed to `shared_static/deep_link.js` at all). Verified live:
+  seeded a real two-version test page, confirmed the dropdown shows both
+  versions, selecting the non-default one reloads to `?version=2` with
+  that version's own segments, download links, and `data-version-id` all
+  updating together. Full suite green (440 tests).
 
-  **User independently re-requested this exact UI, 2026-08-11**: real
-  tabs above the transcript pane, near where "Download Text/SRT"
-  currently sits, to switch between multiple transcript versions for the
-  same meeting (their concrete example: choosing the government's own
-  captions over this app's AI-generated transcript even when the AI
-  version happens to be the current default/surfaced one). This is the
-  same feature as the JS-tabs redesign above, not a new one — the
-  existing `.version-picker` (`archive/templates/meeting_page.html`,
-  `?version=` link list, full page reload) already lets a visitor pick a
-  non-default version, just not as inline tabs; this request is really
-  about that picker's *placement and interaction style* specifically
-  (tabs, positioned by the download links) rather than new underlying
-  capability. Bumps this from "worth building for SEO reasons" to also
-  "a real user-requested UX improvement," which may be worth weighing
-  when prioritizing against everything else in this file.
+  **Still genuinely open, deliberately not attempted**: external search
+  only ever indexes the canonical `/m/{slug}` URL's single active-version
+  HTML — a demoted version's transcript text is still invisible to
+  Google (though already findable via this site's *own* `/meetings`
+  search, per the fix above). The real fix would still be rendering every
+  version's segments into the DOM with JS-toggled visibility (Google's
+  documented-correct pattern for tabbed content), which needs its own
+  scoped work — deep-link segment IDs would need to be scoped per version
+  (`seg-{version_id}-{n}`, not today's bare `seg-{n}`) to avoid collisions
+  once multiple versions' segments coexist in the same page, and Dublin's
+  real transcript alone is over a megabyte of JSON, so page-size cost for
+  a multi-version page needs a real check before committing to it. Not
+  prioritized — revisit only if the SEO angle specifically becomes worth
+  it later.
 
 - **[Big, low priority] "Request Transcript from Audio" doesn't work for
   YouTube-hosted meetings.** Confirmed live 2026-08-10: clicking it on a

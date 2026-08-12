@@ -839,21 +839,24 @@ mark.search-match.current { background: #f97316; color: #fff; }
 }
 
 /* --- Archive-only additions (permanent meeting pages) --- */
+/* A dropdown, not the original plain link list -- user request 2026-08-11,
+   see meeting_page.html's version_picker() macro comment. Inline, since
+   it now sits inline with the "Download: Text · SRT" line rather than as
+   its own block above the whole transcript section. */
 .version-picker {
-  margin-bottom: 0.75rem;
-  font-size: 0.9rem;
-  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
 }
-.version-picker a {
-  color: var(--accent);
-  text-decoration: none;
-  margin-right: 0.75rem;
-}
-.version-picker a:hover { text-decoration: underline; }
-.version-picker .version-active {
+.version-picker label { color: var(--muted); }
+.version-picker select {
+  font-family: inherit;
+  font-size: 0.85rem;
   color: var(--fg);
-  font-weight: bold;
-  margin-right: 0.75rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.15rem 0.4rem;
 }
 
 /* AI-transcribed-version disclaimer -- reuses the dymo-label-small motif
