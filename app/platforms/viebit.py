@@ -2,6 +2,7 @@ import json
 import re
 from datetime import datetime, timezone
 from typing import List, Optional
+from urllib.parse import urlparse
 
 import aiohttp
 
@@ -36,20 +37,33 @@ class ViebitAssetFinder(AssetFinder):
     textTracks[0].src` (a real, populated VTT caption URL -- 1748 real
     cues confirmed on a real NYC Council meeting), and `video.title`.
 
-    **Video playback itself is unverified from this dev environment --
-    don't assume it works in production without rechecking.** The
-    `master.m3u8` URL built here is exactly what a real browser's video.js
-    player loads successfully (confirmed live), but a direct fetch of that
-    same URL from this session's own sandboxed environment gets a 403 from
-    a Varnish-fronted CDN (`vbfast-vod.viebit.com`) even with realistic
-    Referer/Origin/User-Agent headers -- unlike Granicus's simpler,
-    already-solved Referer-only 403 (see BACKLOG_DONE.md), the real gating
-    mechanism here is unconfirmed (session cookie from the page's own
-    `vod-check-in` POST? an IP allowlist that only this sandbox's egress
-    IP fails? something else?). Transcript/caption access is unaffected
-    either way (a completely different, ungated `vbfast-vod.viebit.com`
-    path). See BACKLOG.md for the open item to recheck this from a real
-    deployed environment before trusting video playback here.
+    **Video playback: iframe-embedded, not native `<video>`/hls.js --
+    confirmed 2026-08-09 that the raw `master.m3u8` is CDN-gated and 403s
+    even with realistic Referer/Origin/User-Agent headers (confirmed live
+    against production too, not just this dev sandbox -- see
+    BACKLOG_DONE.md), unlike Granicus's simpler, already-solved
+    Referer-only 403.** Real fix, 2026-08-12: Viebit's own embed page
+    (`{origin}/embed/vod?v={id}`) has no `X-Frame-Options`/
+    `frame-ancestors` restricting it from being iframed, and its real
+    player bundle (confirmed by pulling `lgx-videojs-plugins-*.js` and
+    `vod-embedded-*.js` directly) reads a `?t={seconds}` query param on
+    load and seeks there once playback starts -- the same mechanism
+    YouTube's own `?start=` uses, just load-time-only (no live
+    `postMessage` seek API exists in either bundle at all). `video_url`
+    here is always rebuilt as that confirmed-safe `/embed/vod?v={id}`
+    path (not whatever URL the fetch happened to land on, which the
+    redirect chain from a Legistar delegation may or may not already be),
+    and `video_format="viebit"` tells the frontend to iframe it with
+    reload-based seeking rather than attempt native/hls.js playback --
+    see `player.js`'s/`meeting_page.js`'s `createViebitAdapter()`. Real
+    consequence of "load-time-only, no live API": there's no way to read
+    the iframe's actual current playback position from outside it, so
+    "currently playing" transcript highlighting and "copy link to
+    current time" are deliberately disabled for this platform
+    specifically (`wireSharedControls(adapter, { liveTracking: false })`)
+    rather than showing a stale/wrong position -- click-to-seek (which
+    only ever needs a known target time, not a read) still works fully,
+    via an iframe reload.
 
     Captions are ALL-CAPS, two-line rolling/roll-up style (each spoken
     phrase appears in two consecutive cues -- once as the new bottom line,
@@ -107,7 +121,7 @@ class ViebitAssetFinder(AssetFinder):
                 )
 
             video = config.get("video") or {}
-            video_url = self._build_video_url(video)
+            video_url = self._build_embed_url(str(response.url), video.get("id"))
             title = video.get("title")
             date = self._format_date(video.get("dateCreated"))
 
@@ -144,7 +158,7 @@ class ViebitAssetFinder(AssetFinder):
             jurisdiction=self._JURISDICTION,
             date=date,
             video_url=video_url,
-            video_format="m3u8" if video_url else None,
+            video_format="viebit" if video_url else None,
             segments=segments,
             transcript_language=transcript_language,
             transcript_warnings=transcript_warnings,
@@ -161,15 +175,19 @@ class ViebitAssetFinder(AssetFinder):
             return None
 
     @staticmethod
-    def _build_video_url(video: dict) -> Optional[str]:
-        sources = video.get("src") or []
-        source = next(
-            (s for s in sources if s.get("type") == "application/x-mpegurl"),
-            sources[0] if sources else None,
-        )
-        if not source or not source.get("storage") or not source.get("url"):
+    def _build_embed_url(fetched_url: str, video_id: Optional[str]) -> Optional[str]:
+        """Always rebuilds the confirmed-safe-to-iframe `/embed/vod?v={id}`
+        path from the fetched page's own origin, rather than reusing
+        `fetched_url` as-is -- a Legistar delegation's redirect chain may
+        land on either the outer `/vod/?v=...` page or `/embed/vod?v=...`
+        directly (both serve the same `pageConfig`, but only the latter is
+        confirmed to have no X-Frame-Options restriction)."""
+        if not video_id:
             return None
-        return source["storage"] + source["url"]
+        parsed = urlparse(fetched_url)
+        if not parsed.scheme or not parsed.netloc:
+            return None
+        return f"{parsed.scheme}://{parsed.netloc}/embed/vod?v={video_id}"
 
     @staticmethod
     def _format_date(unix_ts) -> Optional[str]:

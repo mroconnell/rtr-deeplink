@@ -2420,6 +2420,63 @@ changelog of task titles.
   the fix (switching to an iframe embed of Viebit's own player, matching
   the YouTube precedent) isn't being built yet.
 
+  **[Done 2026-08-12] Fixed for real: Viebit now plays via an iframe
+  embed, with reload-based deep-link seeking.** Two real questions were
+  blocking this since 2026-08-09: whether Viebit's embed page has any
+  cross-frame seek API, and whether iframing it is even viable given
+  that uncertainty. Answered by pulling Viebit's own real player bundles
+  directly (`lgx-videojs-plugins-*.js`, `vod-embedded-*.js`, from a live
+  NYC Council video): no `postMessage` API exists anywhere in either
+  file, but the embed page itself reads a `?t={seconds}` query param on
+  load and seeks there once playback starts — the same mechanism
+  YouTube's own `?start=` uses, just load-time-only.
+
+  **Real, unavoidable consequence of "load-time-only, no live API"**:
+  there's no way to read the iframe's actual current playback position
+  from outside it. Rather than fake it (a "copy link to current time"
+  or "currently playing" highlight based on the last-clicked position
+  would silently go stale the moment playback continues past it), both
+  are deliberately disabled for this platform specifically — the user's
+  own explicit call between three options (honest degradation vs. fake
+  tracking vs. load-time-only with no click-to-seek at all). Explicit
+  seeks (a transcript-line click, "Go to time") still work fully, since
+  those only ever need a known target time, never a read.
+
+  **Build**: `viebit.py`'s `video_url` is now always rebuilt as the
+  confirmed-safe-to-iframe `/embed/vod?v={id}` path on the fetched
+  page's own origin (not whatever URL a Legistar delegation's redirect
+  chain happened to land on, nor the raw `master.m3u8`), with a new
+  `video_format="viebit"`. New `createViebitAdapter()` /
+  `initViebitVideo()` in both `app/static/player.js` and
+  `archive/static/meeting_page.js` (duplicated, matching this repo's
+  existing convention for these two files) — the adapter's
+  `currentTime` setter rebuilds the iframe `src` with the new `t=` and
+  reassigns it (a real reload, not an instant seek); `play()`/`pause()`
+  are no-ops and `addEventListener()` never fires, since neither is
+  possible from outside the iframe either. `wireSharedControls()` in
+  both files gained a `{ liveTracking: false }` option that hides (not
+  just leaves silently non-functional) the "copy link to current
+  time"/"copy link to this moment" controls, while leaving auto-scroll
+  toggle and the "Go to time" box wired normally. New `<iframe
+  id="viebitFrame">` element alongside the existing native-`<video>`/
+  YouTube containers in both `meeting.html` and `meeting_page.html`,
+  with matching CSS in both services' `style.css`.
+
+  Verified live end-to-end on both pages (not just unit tests): the
+  resolver's `/meeting` page with a real NYC Council embed URL
+  (`councilnyc.viebit.com/embed/vod?v=...`) — the real Video.js player
+  renders correctly (title, NYC seal, play button) after a brief native-
+  `<video>`-fallback flash during its own load; "Go to time" correctly
+  reloads the iframe with `t=` and updates the shareable URL;
+  "copy link to current time" confirmed hidden. Then the Archive's
+  `/m/{slug}` page with a real seeded `video_format="viebit"` page: same
+  correct rendering, a real transcript-line click correctly reloads the
+  iframe (`&t=10`) and updates the URL with `t=10&line=seg-1&version=1`.
+  9 Python tests updated/added in `tests/test_viebit.py` (URL-shape
+  changes plus a new `_build_embed_url()` unit test); `tests/
+  test_legistar.py`'s NYC delegation test needed no changes (its
+  assertions were already loose enough). Full suite green (467 tests).
+
 - **[Done 2026-08-09] Production incident: the worker was crash-looping on
   every `claim_next_chunk()` call with `column transcription_jobs.priority
   does not exist`.** Root cause: this session's own

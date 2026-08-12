@@ -532,6 +532,8 @@ function initVideo(videoUrl, videoFormat) {
 
   if (videoFormat === 'youtube') {
     initYouTubeVideo(videoUrl);
+  } else if (videoFormat === 'viebit') {
+    initViebitVideo(videoUrl);
   } else {
     initNativeVideo(videoUrl, videoFormat);
   }
@@ -719,13 +721,84 @@ async function initYouTubeVideo(embedUrl) {
   });
 }
 
+// Viebit (NYC Council, via Legistar delegation) -- iframe-embedded, not
+// native <video>/hls.js (see viebit.py's module docstring for why: the
+// raw master.m3u8 is CDN-gated). Genuinely no cross-frame API exists on
+// Viebit's embed page at all (confirmed by pulling its real player
+// bundle directly -- no postMessage, nothing) -- the *only* control
+// available is the `?t={seconds}` query param the embed page itself
+// reads once on load, seeking there after playback starts. That means
+// "seeking" here is really "reload the iframe with a new t=", and
+// there's no way to read the iframe's actual current playback position
+// from outside it -- see wireSharedControls' liveTracking option, which
+// this adapter is built to be used with as `{ liveTracking: false }`.
+function createViebitAdapter(iframeEl, baseEmbedUrl) {
+  // Tracks only "the last position we explicitly told the iframe to seek
+  // to", never real playback position -- correct for the getter's one
+  // legitimate use (the initial "Share video at" label before
+  // wireSharedControls hides that control entirely for liveTracking:false),
+  // and irrelevant everywhere else since nothing else reads it.
+  let lastSetTime = 0;
+  return {
+    get currentTime() { return lastSetTime; },
+    set currentTime(t) {
+      lastSetTime = Math.max(0, Math.floor(t));
+      const url = new URL(baseEmbedUrl);
+      url.searchParams.set('t', String(lastSetTime));
+      iframeEl.src = url.toString();
+    },
+    // No cross-frame control exists for either -- iframe playback can
+    // only be paused/played via its own visible native controls.
+    play: () => {},
+    pause: () => {},
+    // No events are observable from outside the iframe either -- a
+    // silent no-op rather than throwing, so wireSharedControls' calls
+    // (harmless, liveTracking:false skips the ones that would matter)
+    // don't need their own Viebit-specific guard.
+    addEventListener: () => {},
+  };
+}
+
+function initViebitVideo(embedUrl) {
+  const iframe = document.getElementById('viebitFrame');
+  const errorEl = document.getElementById('videoError');
+  if (!iframe) {
+    errorEl.textContent = 'Could not load this video.';
+    errorEl.hidden = false;
+    return;
+  }
+
+  document.getElementById('meetingVideo').hidden = true;
+  document.getElementById('bigPlayButton').hidden = true;
+  iframe.hidden = false;
+  iframe.src = embedUrl;
+
+  const adapter = createViebitAdapter(iframe, embedUrl);
+  activeVideoAdapter = adapter;
+  wireSharedControls(adapter, { liveTracking: false });
+  // Still needed for the initial seek (applyDeepLink sets adapter.currentTime,
+  // which reloads the iframe with ?t=) and the one-time highlight of the
+  // matching transcript line -- neither depends on live position reading.
+  applyDeepLink(adapter);
+}
+
 // Controls shared by both the native <video> and YouTube adapters --
 // "Copy link to current time", auto-scroll toggle, the "Go to time" box,
 // and highlighting the active transcript line as playback advances. Each
 // initializer builds its own adapter (native wraps <video> directly;
 // YouTube polls getCurrentTime() since there's no native timeupdate
 // event) and calls this once, so this logic only needs to be written once.
-function wireSharedControls(adapter) {
+// liveTracking=false (Viebit only, see createViebitAdapter -- there's no
+// cross-frame API of any kind, so adapter.currentTime can't reflect real
+// playback position once playback has moved past whatever time it was
+// last explicitly set to) skips every affordance that would read
+// adapter.currentTime to construct or display a link -- "currently
+// playing" transcript highlighting, the live playhead readout, and
+// "copy link to current time"/"copy link to this moment" -- rather than
+// silently showing/copying a stale position. Explicit seeks (a
+// transcript-line click, "Go to time") still work fully either way,
+// since those only ever need a known target time, never a read.
+function wireSharedControls(adapter, { liveTracking = true } = {}) {
   // Gently suggests the current transcript line is deep-linkable (its
   // link icon shows without a hover) when paused -- suppressed during
   // playback so it doesn't flicker from line to line as the highlighted
@@ -734,69 +807,78 @@ function wireSharedControls(adapter) {
   adapter.addEventListener('pause', () => document.body.classList.add('video-at-rest'));
 
   const linkToCurrentLabel = document.getElementById('linkToCurrentLabel');
-  adapter.addEventListener('timeupdate', () => {
-    const segId = findActiveSegment(adapter.currentTime);
-    if (segId) highlightSegment(segId, autoScrollEnabled, 'nearest');
-    updateNoTranscriptTime(adapter);
-    // Live "Share video at X:XX" -- reads more naturally than a static
-    // "Copy link to current time" label, and doubles as a real-time
-    // playhead readout even before anyone clicks it.
-    if (linkToCurrentLabel) linkToCurrentLabel.textContent = `Share video at ${formatTime(adapter.currentTime)}`;
-  });
-
-  // linkToCurrentBtn's label is now a live timestamp (above), so it can't
-  // also be borrowed for "Copied!" text the way it used to be -- a
-  // separate fading toast confirms the copy instead. noTranscriptLinkBtn
-  // has no live label to protect, so it keeps the simpler swap-the-text
-  // behavior unchanged.
   const linkToCurrentBtn = document.getElementById('linkToCurrentBtn');
-  if (linkToCurrentBtn) {
-    const toast = document.getElementById('linkToCurrentToast');
-    let toastTimer = null;
-    linkToCurrentBtn.addEventListener('click', async () => {
-      const t = adapter.currentTime;
-      const segId = findActiveSegment(t) || null;
-      updateUrlParams({ t, line: segId });
-      trackEvent('copy_link_to_time');
-      try {
-        await navigator.clipboard.writeText(window.location.href);
-        if (toast) {
-          toast.textContent = 'Copied to clipboard';
-          toast.classList.add('visible');
-          clearTimeout(toastTimer);
-          toastTimer = setTimeout(() => toast.classList.remove('visible'), 5000);
-        }
-      } catch (e) {
-        // clipboard API unavailable; URL is already updated in the address bar
-      }
-    });
-  }
-
   const noTranscriptLinkBtn = document.getElementById('noTranscriptLinkBtn');
-  if (noTranscriptLinkBtn) {
-    const label = noTranscriptLinkBtn.querySelector('.cassette-label');
-    const defaultText = label.textContent;
-    noTranscriptLinkBtn.addEventListener('click', async () => {
-      const t = adapter.currentTime;
-      const segId = findActiveSegment(t) || null;
-      updateUrlParams({ t, line: segId });
-      trackEvent('copy_link_to_time');
-      try {
-        await navigator.clipboard.writeText(window.location.href);
-        label.textContent = 'Copied!';
-        setTimeout(() => { label.textContent = defaultText; }, 1500);
-      } catch (e) {
-        // clipboard API unavailable; URL is already updated in the address bar
-      }
-    });
-  }
 
-  // Reflects the initial position immediately (deep-linked or not),
-  // rather than waiting for the first timeupdate -- matters most for
-  // YouTube, where timeupdate is only polled while actually playing, so
-  // a paused/autoplay-blocked load would otherwise show a stale "0:00".
-  updateNoTranscriptTime(adapter);
-  if (linkToCurrentLabel) linkToCurrentLabel.textContent = `Share video at ${formatTime(adapter.currentTime)}`;
+  if (!liveTracking) {
+    // Hide rather than wire-but-disable -- a visible-but-broken "Share
+    // video at 0:00" that never updates would look like a bug, not a
+    // deliberate limitation.
+    if (linkToCurrentBtn) linkToCurrentBtn.hidden = true;
+    if (noTranscriptLinkBtn) noTranscriptLinkBtn.hidden = true;
+  } else {
+    adapter.addEventListener('timeupdate', () => {
+      const segId = findActiveSegment(adapter.currentTime);
+      if (segId) highlightSegment(segId, autoScrollEnabled, 'nearest');
+      updateNoTranscriptTime(adapter);
+      // Live "Share video at X:XX" -- reads more naturally than a static
+      // "Copy link to current time" label, and doubles as a real-time
+      // playhead readout even before anyone clicks it.
+      if (linkToCurrentLabel) linkToCurrentLabel.textContent = `Share video at ${formatTime(adapter.currentTime)}`;
+    });
+
+    // linkToCurrentBtn's label is now a live timestamp (above), so it can't
+    // also be borrowed for "Copied!" text the way it used to be -- a
+    // separate fading toast confirms the copy instead. noTranscriptLinkBtn
+    // has no live label to protect, so it keeps the simpler swap-the-text
+    // behavior unchanged.
+    if (linkToCurrentBtn) {
+      const toast = document.getElementById('linkToCurrentToast');
+      let toastTimer = null;
+      linkToCurrentBtn.addEventListener('click', async () => {
+        const t = adapter.currentTime;
+        const segId = findActiveSegment(t) || null;
+        updateUrlParams({ t, line: segId });
+        trackEvent('copy_link_to_time');
+        try {
+          await navigator.clipboard.writeText(window.location.href);
+          if (toast) {
+            toast.textContent = 'Copied to clipboard';
+            toast.classList.add('visible');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => toast.classList.remove('visible'), 5000);
+          }
+        } catch (e) {
+          // clipboard API unavailable; URL is already updated in the address bar
+        }
+      });
+    }
+
+    if (noTranscriptLinkBtn) {
+      const label = noTranscriptLinkBtn.querySelector('.cassette-label');
+      const defaultText = label.textContent;
+      noTranscriptLinkBtn.addEventListener('click', async () => {
+        const t = adapter.currentTime;
+        const segId = findActiveSegment(t) || null;
+        updateUrlParams({ t, line: segId });
+        trackEvent('copy_link_to_time');
+        try {
+          await navigator.clipboard.writeText(window.location.href);
+          label.textContent = 'Copied!';
+          setTimeout(() => { label.textContent = defaultText; }, 1500);
+        } catch (e) {
+          // clipboard API unavailable; URL is already updated in the address bar
+        }
+      });
+    }
+
+    // Reflects the initial position immediately (deep-linked or not),
+    // rather than waiting for the first timeupdate -- matters most for
+    // YouTube, where timeupdate is only polled while actually playing, so
+    // a paused/autoplay-blocked load would otherwise show a stale "0:00".
+    updateNoTranscriptTime(adapter);
+    if (linkToCurrentLabel) linkToCurrentLabel.textContent = `Share video at ${formatTime(adapter.currentTime)}`;
+  }
 
   const toggleBtn = document.getElementById('toggleAutoScrollBtn');
   const stateSpan = document.getElementById('autoScrollState');

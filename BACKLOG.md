@@ -506,50 +506,6 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   CA, San Diego city/county, both Berkeley Legistar calendars — none had
   one. Not disproven, just not found yet; extend `LegistarAssetFinder`/
   `CivicPlusAssetFinder`'s row-scraping when a real example turns up.
-- **⚠️ Viebit video playback is confirmed broken in production, not just
-  unverified from the sandbox — this is now a real, live bug, not a
-  risk.** Reported by the user 2026-08-09 against a real NYC Council
-  meeting (`legistar.council.nyc.gov/MeetingDetail.aspx?ID=1362373...`):
-  the deployed page shows "Video failed to load; source link only." and
-  the browser console logs a real `403` on the `master.m3u8` request —
-  confirmed live via `mcp__Claude_Browser__*` against
-  `redtaperecordings.com` itself (the same 403 previously only seen from
-  this dev sandbox, per the original entry this replaces). Root cause is
-  now also confirmed, not just theorized: navigating directly to Viebit's
-  own embed page (`councilnyc.viebit.com/embed/vod?v=...`) plays the exact
-  same video successfully, and that same origin has no
-  `X-Frame-Options`/`frame-ancestors` header restricting it from being
-  iframed — meaning Viebit's CDN gates the raw `master.m3u8` on
-  Referer/Origin (same *class* of issue as Granicus's already-solved
-  Referer-only 403, but confirmed to need more than matching Referer/
-  Origin/User-Agent headers alone — see BACKLOG_DONE.md for what was
-  already ruled out), while a same-origin `<iframe>` embed of Viebit's own
-  player page would sidestep that gating entirely, the same way this app
-  already handles YouTube (`video_format="youtube"` → IFrame Player API,
-  not a raw `<video>`/hls.js load).
-
-  **Not built yet — this is a real architecture decision, not a quick
-  fix, so it's being deliberately deferred rather than rushed.** The
-  YouTube iframe pathway works today because YouTube's IFrame Player API
-  exposes a real, documented `seekTo()` postMessage call, which is what
-  lets deep links (`?t=`/`?line=`) actually work through an iframe.
-  Whether Viebit's own embed player (Video.js-based, confirmed via its
-  `vod-embedded-*.js`/`lgx-videojs-plugins-*.js` bundle) exposes anything
-  equivalent is genuinely unconfirmed — a quick grep of the small
-  entry-point bundle found no `postMessage`/`seekTo` calls, but the real
-  player logic is very likely in the larger, webpack-bundled
-  `lgx-videojs-plugins-*.js` file, not yet actually inspected. Building
-  the iframe switch without confirming that first risks silently breaking
-  deep-linking (this app's actual core feature, per `CLAUDE.md`) for
-  every Viebit meeting — worse than the current honest "source link only"
-  fallback. Needs: (1) check whether `lgx-videojs-plugins-*.js` exposes a
-  seek API reachable via `postMessage` from a parent frame, (2) if not,
-  decide whether "no deep-link seeking, but a working embedded video" is
-  an acceptable degradation for Viebit specifically, vs. leaving today's
-  "source link only" behavior in place. Title/jurisdiction bug from the
-  same report (`LegistarAssetFinder` discarding a good page-derived title
-  in favor of Viebit's own raw-filename `video.title`) was a real, unrelated,
-  much smaller bug — fixed separately, see BACKLOG_DONE.md.
 - **New: collect custom-domain examples for popular platforms as they're
   found, into the existing shared sample sheet** ("Watchdog Sample
   meetings," linked in `CLAUDE.md`) — not a code change, a standing
