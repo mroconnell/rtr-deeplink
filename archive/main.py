@@ -585,6 +585,16 @@ async def account_saved(request: Request):
     )
 
 
+@app.get("/coverage")
+async def coverage(request: Request):
+    coverage_rows = await crud.get_platform_coverage()
+    return templates.TemplateResponse(
+        request,
+        "coverage.html",
+        {"coverage": coverage_rows, "active_account": get_clerk_user_id(request)},
+    )
+
+
 @app.get("/sitemap.xml")
 async def sitemap():
     base = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")

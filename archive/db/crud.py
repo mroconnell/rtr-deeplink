@@ -609,6 +609,84 @@ async def list_pages(
     }
 
 
+# Real, distinct video-hosting platforms only -- ordered to match
+# README.md's "Supported platforms" table. Deliberately excludes Legistar/
+# CivicPlus/PrimeGov/CivicWeb: those are calendar-tool detection routers
+# that delegate to one of the platforms below via resolve_via_platform()
+# (or, for CivicWeb, a direct YouTubeAssetFinder call) -- on every real,
+# successfully-ingested push the delegated finder's own ResolvedMeeting
+# is returned as-is, so MeetingPage.platform ends up "granicus"/"youtube"/
+# etc., never "legistar"/"civicplus"/"primegov"/"civicweb" (confirmed by
+# reading each adapter's resolve() -- platform=self.platform_name only
+# ever appears on their error-path returns, which are never pushed to the
+# Archive since a push requires real segments/agenda_items). Listing them
+# here would mean every one of those rows stays permanently exampleless,
+# not because nothing's supported but because the label itself never
+# occurs -- coverage.html adds a short note about these wrapper platforms
+# instead of a row that can never have a demo.
+PLATFORM_LABELS: dict[str, str] = {
+    "granicus": "Granicus",
+    "civicclerk": "CivicClerk",
+    "swagit": "Swagit",
+    "escribe": "eScribe",
+    "ca_legislature": "California Legislature",
+    "youtube": "YouTube",
+    "viebit": "Viebit",
+    "lims": "Minneapolis LIMS",
+    "slc": "Salt Lake City meeting recaps",
+    "aurora_tv": "Aurora, CO (auroratv.org)",
+    "cablecast": "Cablecast (Detroit, MI)",
+}
+
+
+async def get_platform_coverage() -> list[dict]:
+    """One row per real, distinct video-hosting platform for the public
+    /coverage page -- a real example permanent page (preferring one with
+    a good transcript, for a more convincing demo) plus a transcript-
+    availability checkmark, not aggregate stats.
+
+    Every key in PLATFORM_LABELS is returned even with zero live examples
+    ("example": None) -- an honest "no example live yet" beats silently
+    omitting a platform this app genuinely supports in code but hasn't
+    happened to resolve a real meeting on yet, per CLAUDE.md's "don't
+    claim a data path works without a positive example" convention (the
+    thing being demonstrated here is "does a real page exist," not "is
+    this code path exercised" -- those are different claims).
+    """
+    async with async_session() as session:
+        stmt = select(MeetingPage, TranscriptVersion.id, TranscriptVersion.transcript_warnings).outerjoin(
+            TranscriptVersion,
+            and_(TranscriptVersion.meeting_page_id == MeetingPage.id, TranscriptVersion.is_default.is_(True)),
+        )
+        rows = (await session.execute(stmt)).all()
+
+    by_platform: dict[str, list[dict]] = {}
+    for mp, version_id, warnings in rows:
+        has_transcript = version_id is not None and not any(_GARBLED_MARKER in w for w in (warnings or []))
+        by_platform.setdefault(mp.platform, []).append(
+            {
+                "slug": mp.slug,
+                "title": mp.title,
+                "jurisdiction": mp.jurisdiction,
+                "has_transcript": has_transcript,
+            }
+        )
+
+    coverage = []
+    for platform, label in PLATFORM_LABELS.items():
+        examples = by_platform.get(platform, [])
+        example = next((e for e in examples if e["has_transcript"]), examples[0] if examples else None)
+        coverage.append(
+            {
+                "platform": platform,
+                "label": label,
+                "example": example,
+                "page_count": len(examples),
+            }
+        )
+    return coverage
+
+
 async def list_all_page_slugs() -> list[dict]:
     """Every page's slug + updated_at, unpaginated -- for sitemap.xml.
     Fine as a single query at hundreds/thousands of rows; revisit (batching,

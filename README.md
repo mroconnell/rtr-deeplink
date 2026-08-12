@@ -484,6 +484,24 @@ crawl path to `/m/{slug}` pages, which previously had none —
 it doesn't compete with the permanent version of the same content once
 one exists.
 
+**`GET /coverage`** (proxied like `/meetings`, replacing a 2026-08-10
+placeholder) is a public, per-platform table — one row per real,
+distinct video-hosting platform (`archive/db/crud.py`'s
+`get_platform_coverage()` + `PLATFORM_LABELS`), each linking to a real
+`/m/{slug}` permanent page as proof when one exists, with the same
+rubber-stamp "Transcript" badge `/meetings` uses. Deliberately excludes
+calendar-tool detection routers that only ever delegate (Legistar,
+CivicPlus, PrimeGov, CivicWeb) — on a real successful resolve their own
+`ResolvedMeeting.platform` is always the *delegated* platform's, never
+their own (see the "Supported platforms" table above), so a row for one
+of them could never have a real example; a one-line note on the page
+covers them instead of a permanently-empty row. Every platform is listed
+even with zero live examples yet ("Supported, but no example archived
+yet") rather than silently omitted, per this file's "don't claim a data
+path works without a positive example" convention — the thing being
+shown here is "does a real page exist," not "is this code path
+exercised," which are different claims.
+
 **Search** covers title, jurisdiction, agenda item text, and the default
 transcript version's segment text — not just title/jurisdiction like the
 original v1. Two modes, chosen by an "exact"/"fuzzy" checkbox in the UI
@@ -723,9 +741,12 @@ platform share the same page/API structure. Detection lives in
 | CivicPlus | `civicplus.py` | Same delegation pattern as Legistar, from AgendaCenter listing rows | Whatever the delegated platform provides |
 | PrimeGov | `primegov.py` | Doesn't host video — the video id is a plain JS variable (`var videoUrl = "..."`) directly in the page HTML; delegates to YouTube, preserving the original PrimeGov URL as `source_url` (unlike the Legistar/CivicPlus delegation pattern) | Whatever YouTube provides |
 | YouTube | `youtube.py` | No direct video file URL exists (unlike every platform above) — playback is an embedded iframe + the YouTube IFrame Player API, not the native `<video>`/hls.js pathway. Handles a direct `youtube.com`/`youtu.be` URL too, not just PrimeGov delegation | yt-dlp (plain HTTP requests to YouTube's caption endpoints are blocked — see BACKLOG.md); prefers a manual/CC track over auto-generated only when its coverage is comparable, since a manual track can start well into the video and skip pre-meeting dead air |
-| Viebit | `viebit.py` | Reached via Legistar delegation (confirmed so far only under NYC Council's instance) — a `var pageConfig = {...}` JS object embedded in plain HTML gives a real HLS `master.m3u8` URL, no JS execution needed. **Video playback itself is unverified from this dev environment** — a CDN-level 403 on the m3u8 URL, mechanism unconfirmed, see BACKLOG.md | Real, populated VTT captions from the same `pageConfig`; two-line rolling-caption shape, collapsed by the existing `dedupe_rollup_cues()` (built for YouTube, confirmed to also handle this shape correctly) |
+| Viebit | `viebit.py` | Reached via Legistar delegation (confirmed so far only under NYC Council's instance) — a `var pageConfig = {...}` JS object embedded in plain HTML gives a real HLS `master.m3u8` URL, no JS execution needed for discovery. **Playback is an iframe embed** (`/embed/vod?v={id}&t={seconds}`), not the native `<video>`/hls.js pathway every other platform above uses — confirmed live 2026-08-12 that the raw `master.m3u8` 403s from a CDN-level Referer/Origin check, and that no `postMessage`-reachable seek API exists in Viebit's own player bundle (`lgx-videojs-plugins-*.js`/`vod-embedded-*.js`, pulled and read directly). `t=` is read by the iframe only at load time, so "seeking" after playback has started means reloading the iframe with a new `t=` — `wireSharedControls(adapter, { liveTracking: false })` degrades live-position-dependent UI (playhead tracking, "currently playing" highlight, play/pause control) honestly instead of faking it, a deliberate, user-confirmed tradeoff | Real, populated VTT captions from the same `pageConfig`; two-line rolling-caption shape, collapsed by the existing `dedupe_rollup_cues()` (built for YouTube, confirmed to also handle this shape correctly) |
 | Minneapolis LIMS | `lims.py` | **The one adapter that isn't plain `aiohttp`** — both the agenda page and its `/MeetingYoutubeVideo/{id}` JSON endpoint return a genuine Cloudflare JS challenge to a normal HTTP request, so this uses `headless_browser.py`'s real (headless) Chromium fetch instead. Delegates to YouTube for the video itself | Whatever YouTube provides, via delegation. Real per-agenda-item timestamps from the JSON endpoint's `SerializedVideoTimestamps` tree — genuinely richer than most platforms above, since most don't have real per-item start times at all |
 | Salt Lake City meeting recaps | `slc.py` | Also Cloudflare-gated (same `headless_browser.py` fetch as LIMS above) — scoped to `slc.gov/council/*-meeting-recap/` pages specifically. **Not multiple distinct videos per page** (confirmed live across four real pages, see BACKLOG_DONE.md) — one video, several manually-curated `t=` timestamp links into it, turned into `agenda_items` the same way LIMS's structured data is | Whatever YouTube provides, via delegation |
+| Aurora, CO (auroratv.org) | `aurora.py` | Confirmed live 2026-08-12. Parses the page's own embedded Drupal `<script data-drupal-selector="drupal-settings-json">` blob for `jw_data`'s real `mp4_url` — already-supported `video_format="mp4"`, no frontend changes needed. A real early mistake worth flagging: the blob's top-level `video_caption` field looks like the caption URL but is actually a server filesystem path (`/home/atowntv/public_html/...`); only found by resolving and seeing 0 segments despite the real file curling fine directly, not by reading the schema | `jw_data.caption_file_path`, a real fetchable URL unlike the sibling field above |
+| CivicWeb (iCompass/Diligent) | `civicweb.py` | Confirmed live 2026-08-12 to be a YouTube-delegating platform, not a video host of its own — its "Video" tab embeds a plain YouTube iframe. Delegates straight to `YouTubeAssetFinder.resolve_video_id()` (the PrimeGov pattern: original CivicWeb URL preserved as `source_url`, `platform` stays `"youtube"`) | Whatever YouTube provides. One real gotcha: `/api/videolink/{id}` is **double-JSON-encoded** — a first `.json()` parse yields a Python `str`, not the list it looks like; `_fetch_json()` re-parses if that happens |
+| Cablecast (Detroit, MI) | `cablecast.py` | Confirmed live 2026-08-12, scoped narrowly to Detroit's own Cablecast portal template (a Remix.js SSR app; all data, including a ~35-item "related shows" carousel, embedded in one `window.__remixContext` JSON blob) — **deliberately not a general `*.cablecast.tv` rule**, since Charlotte, NC's confirmed Cablecast site uses a visibly different template (a plain "DOWNLOADS" tab exposing direct `vod.mp4`/`transcript.en.txt` files) this adapter doesn't handle. Real quirk: the portal's own HTTPS hangs indefinitely for the whole domain (15s+ confirmed via direct curl) — `resolve()` always fetches over plain HTTP regardless of the scheme pasted, matching how Detroit's own city site (detroitmi.gov) actually links it. The real video is a direct, unauthenticated `.m3u8` on a separate `reflect-detroit-vod.cablecast.tv` subdomain (HTTPS works fine there), already fully supported by the existing hls.js pathway | `vodTranscripts` is a real schema field but was empty on every one of 36 real shows checked on the one fixture page — no extraction attempted, per this file's "don't claim a data path works without a positive example" convention; only whether it's non-empty is checked |
 
 **Every URL `detect_platform()` doesn't recognize** goes to
 `generic_fallback.py`'s `GenericFallbackAssetFinder`, registered under
@@ -778,6 +799,32 @@ per-line timing (`t=` deep-linking to the video never depended on
 transcript timing anyway). SCC/STL (binary/encoded broadcast formats) are
 detected but link out rather than attempting to display content, since
 nothing can be extracted without real codec-level decoding.
+
+**Platform coverage research**: this app supports a platform once and
+every city on it works, so the actual bottleneck to growing coverage is
+finding real, live samples of platforms it doesn't handle yet — per
+this file's own "never build an adapter from assumption" convention.
+A 2026-08-11 survey of the largest US cities/counties by population
+(cross-checked against what's already live in the Archive) produced a
+[filterable results table](https://claude.ai/code/artifact/2951935f-c5ca-4caa-b74e-b2ac2b7a6d1c)
+of every jurisdiction checked — platform, rough population, and sample
+URLs, split into "real coverage gap" vs. "already-supported pattern,
+just not yet resolved." It's hosted as a private Claude artifact, not
+version-controlled with the rest of this repo, so treat it as a
+point-in-time research snapshot rather than a durable source of truth —
+the concrete, actionable findings that came out of it (Phoenix's
+Legistar-never-has-video pattern, Chicago ELMS's now-unblocked API
+samples, new unsupported vendors like Cablecast/IQM2/CivicWeb, etc.)
+were folded into `BACKLOG.md`'s "Platform coverage — open questions"
+section at the same time, which is the actual durable record to check
+before starting adapter work. Four of that survey's items (Cablecast/
+Detroit, Aurora, CivicWeb, Viebit) were picked up and actually shipped
+2026-08-12 — see the "Supported platforms" table above for what's real
+in code today, and the artifact's own "Shipped since this survey"
+section (added the same day) for two real corrections the
+implementation work turned up in the original research (Cablecast isn't
+one uniform template across cities; Detroit's own portal domain hangs
+over HTTPS but works over plain HTTP).
 
 ## Frontend features (`app/static/player.js`)
 
@@ -899,8 +946,8 @@ archive/
   main.py                 FastAPI app: /internal/lookup, /internal/ingest,
                            /internal/transcription/* (all token-gated),
                            /m/{slug}, /m/{slug}/transcript.{txt,srt},
-                           /meetings, /sitemap.xml, /feed.xml, /api/health,
-                           /account/saved, and the token-gated
+                           /meetings, /coverage, /sitemap.xml, /feed.xml,
+                           /api/health, /account/saved, and the token-gated
                            /internal/account/* routes -- see "Accounts
                            (Clerk)" above
   db/
@@ -914,6 +961,7 @@ archive/
     crud.py                  identity matching/dedup, slug generation,
                            content-hash version dedup, list_pages()
                            (paginated + filtered, backs /meetings),
+                           get_platform_coverage() (backs /coverage),
                            list_all_page_slugs() (backs /sitemap.xml),
                            list_recent_pages_for_feed() (backs /feed.xml),
                            the TranscriptionJob lifecycle (create/claim/
@@ -959,6 +1007,8 @@ archive/
                            search" button
     saved_items.html          "My Saved Items" page -- see "Accounts
                            (Clerk)" above
+    coverage.html              per-platform table + real example page
+                           links, backs /coverage
     sitemap.xml.jinja         sitemap.xml template
     feed.xml.jinja            feed.xml (RSS) template
   static/style.css          duplicated from app/static/style.css
