@@ -1602,6 +1602,43 @@ changelog of task titles.
   elsewhere never gets a second, unintended round of interpretation.
   Full suite green (264 tests, up from 262).
 
+- **[Done 2026-08-12] Generalized the double-escaping fix above to every
+  remaining case it deliberately left open — mid-cue `&gt;&gt;`, any
+  other pre-escaped HTML entity, and the entire text-fallback caption
+  path.** The narrow fix's own docstring flagged exactly what it wasn't
+  covering: `&gt;&gt;` appearing mid-cue rather than at cue start; other
+  entities (`&amp;`, `&#39;`, `&lt;`, `&quot;`, `&nbsp;`) arriving
+  pre-escaped in source caption text; and `strip_unknown_caption_markup()`
+  (the SBV/SUB/SMI/SAMI/plain-.txt fallback), which had no cue-level text
+  normalization of any kind. New `unescape_caption_entities()` in
+  `app/utils/vtt_parser.py` runs a real `html.unescape()` pass, called
+  last in `parse_vtt()` — after `normalize_speaker_change_marker()`, so
+  the start-of-cue case still becomes the real `»` glyph exactly as
+  before, and only whatever's left (mid-cue occurrences, other entities)
+  gets the general unescape — and last in `strip_unknown_caption_markup()`
+  too, deliberately *after* its tag-stripping regex runs, so a caption
+  that legitimately meant an already-escaped fake tag as literal text
+  (e.g. `&lt;i&gt;`) can't unescape into something that regex would then
+  wrongly strip.
+
+  Confirmed safe against the original narrow fix's own stated risk
+  (broadly unescaping could misfire on a caption that legitimately
+  contains a bare `&`/`<`/`>`): `html.unescape()` only ever converts text
+  already shaped like a real entity reference (`&name;`, `&#NNN;`, or the
+  handful of legacy semicolon-less named entities HTML5 still
+  recognizes) — a literal, non-entity `&` (e.g. "Bed & Breakfast") isn't
+  that shape and passes through untouched; a new test asserts exactly
+  this. Whatever comes out still goes through Jinja's normal autoescape
+  before reaching the page, so a real `<`/`>`/`&` this surfaces displays
+  as safe literal text, never interpreted as markup.
+
+  6 new tests in `tests/test_vtt_parser.py`: mid-cue `&gt;&gt;` plus
+  `&amp;`/`&quot;`/`&#39;` all unescaping correctly; a literal ampersand
+  staying untouched; the start-of-cue-marker-then-mid-cue-entity case
+  end-to-end through `parse_vtt()`; the fallback path unescaping
+  `&amp;`/`&quot;`; and the tag-stripping-order safety case above. Full
+  suite green (443 tests, up from 438).
+
 - **[Done 2026-08-10] `/meetings` results now break the jurisdiction/date
   onto its own line under the title, instead of running inline right
   after it.** `archive/templates/meeting_list.html`'s

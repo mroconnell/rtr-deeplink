@@ -10,6 +10,7 @@ from app.utils.vtt_parser import (
     parse_ttml,
     parse_vtt,
     strip_unknown_caption_markup,
+    unescape_caption_entities,
 )
 
 from conftest import load_fixture, load_fixture_bytes
@@ -217,6 +218,46 @@ def test_normalize_speaker_change_marker_only_matches_literal_prefix():
     assert cues[2]["text"] == "No marker here at all."
 
 
+def test_unescape_caption_entities_handles_mid_cue_and_other_entities():
+    # Real gap fixed 2026-08-11: the start-anchored marker regex above only
+    # ever catches "&gt;&gt;" at the very start of a cue -- a mid-cue
+    # occurrence, or any other pre-escaped entity, used to double-escape
+    # through Jinja's autoescape into a visible "&gt;&gt;"/"&amp;"-style
+    # artifact on the page instead of the real character.
+    cues = [
+        {"start": 0, "end": 1, "text": "Please see &gt;&gt; the linked agenda."},
+        {"start": 1, "end": 2, "text": "Smith &amp; Jones, LLC"},
+        {"start": 2, "end": 3, "text": "She said &quot;hello&quot; and &#39;goodbye&#39;."},
+    ]
+    unescape_caption_entities(cues)
+    assert cues[0]["text"] == "Please see >> the linked agenda."
+    assert cues[1]["text"] == "Smith & Jones, LLC"
+    assert cues[2]["text"] == 'She said "hello" and \'goodbye\'.'
+
+
+def test_unescape_caption_entities_leaves_literal_ampersand_alone():
+    # A caption that legitimately contains a bare "&" (not a real entity
+    # pattern) must pass through unchanged -- this is the exact risk the
+    # narrow marker-only fix was originally scoped around avoiding.
+    cues = [{"start": 0, "end": 1, "text": "Bed & Breakfast on Main St."}]
+    unescape_caption_entities(cues)
+    assert cues[0]["text"] == "Bed & Breakfast on Main St."
+
+
+def test_parse_vtt_unescapes_mid_cue_entity_after_marker_fix_runs():
+    # End-to-end through parse_vtt: the start-of-cue "&gt;&gt;" still
+    # becomes the real "»" marker (unaffected by the general fix running
+    # after it), while an unrelated mid-cue entity in the same track gets
+    # unescaped too.
+    content = (
+        "WEBVTT\n\n"
+        "00:00:00.000 --> 00:00:02.000\n"
+        "&gt;&gt; Welcome. Smith &amp; Jones will present next."
+    )
+    cues = parse_vtt(content)
+    assert cues[0]["text"] == "» Welcome. Smith & Jones will present next."
+
+
 def test_dedupe_rollup_cues_collapses_youtube_style_rollup():
     # Real structure confirmed live against a YouTube auto-caption track
     # (documented in vtt_parser.py's dedupe_rollup_cues docstring).
@@ -414,6 +455,24 @@ def test_strip_unknown_caption_markup_leaves_short_all_caps_alone():
     # normalize_shouting_caption()'s own threshold behavior.
     content = "0:00:01.000,0:00:02.000\nHELLO.\n"
     assert strip_unknown_caption_markup(content) == "HELLO."
+
+
+def test_strip_unknown_caption_markup_unescapes_entities():
+    # Real gap fixed 2026-08-11: the fallback path (SBV/SUB/SMI/plain-.txt)
+    # had no cue-level text normalization of any kind before this -- a
+    # pre-escaped entity here would double-escape through Jinja the same
+    # way an unfixed VTT/SRT cue would.
+    content = "0:00:01.000,0:00:02.000\nSmith &amp; Jones &quot;LLC&quot;\n"
+    assert strip_unknown_caption_markup(content) == 'Smith & Jones "LLC"'
+
+
+def test_strip_unknown_caption_markup_unescape_does_not_resurrect_stripped_tags():
+    # A caption source that legitimately meant an already-escaped fake tag
+    # as literal text (not a real HTML tag) shouldn't have that text
+    # silently deleted -- unescaping only happens *after* tag-stripping
+    # here, so this content is never re-interpreted as a tag to strip.
+    content = "0:00:01.000,0:00:02.000\nShe wrote &lt;i&gt;in italics&lt;/i&gt; on the form.\n"
+    assert strip_unknown_caption_markup(content) == "She wrote <i>in italics</i> on the form."
 
 
 # --- parse_captions_by_extension ---------------------------------------

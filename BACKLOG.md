@@ -189,6 +189,19 @@ anything) to build against it.
   rather than a blanket `.title()`) — not attempted this pass, since a
   wrong guess here silently corrupts a real name with no easy undo.
 
+  **Also flagged by the user 2026-08-12, real and separate from the above:
+  some jurisdictions never had a state at all to begin with** —
+  `normalize_state_suffix()` only fires on a trailing `", <State>"`
+  suffix, so a jurisdiction with no state component (e.g. a bare city
+  name some adapter extracted with nothing after it, or a body name like
+  "Illinois General Assembly" that names a state *without* a
+  comma-separated suffix) just passes through untouched, same as before
+  this fix — not normalized, not flagged, not distinguishable from "this
+  adapter never captures state at all" without checking per-platform.
+  Worth a real audit of which adapters/jurisdictions actually produce a
+  no-state value and why, before deciding whether/how to backfill it —
+  not attempted yet.
+
 ## Deep links
 
 The `t`/`line` scheme itself is sound and hasn't changed since the initial
@@ -408,44 +421,6 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   transcript the user actually saw before assuming this is fully closed
   for them; no report yet confirms which case (if either) their transcript
   actually was.
-- **Literal `&gt;&gt;` (etc.) sometimes rendering as visible text instead
-  of `>>` — reported by the user 2026-08-11; confirmed as a real,
-  structurally-understood double-escaping bug, narrower than it might
-  look.** `archive/templates/meeting_page.html:276` renders `{{ seg.text
-  }}` with Jinja's default autoescaping on (`archive/main.py:50`'s
-  `Jinja2Templates`, confirmed via Starlette's own
-  `autoescape=True` default) — correct and necessary for real `<`/`>`/`&`
-  characters in transcript text. The bug: if a caption source's *raw*
-  text already contains the literal 8-character string `&gt;&gt;`
-  (already-HTML-escaped text embedded directly in the source, not a real
-  `>` character — confirmed present in raw YouTube auto-caption VTT) and
-  nothing unescapes it once during parsing, Jinja's autoescape then
-  escapes the `&` a second time (`&` → `&amp;`), producing `&amp;gt;&amp;gt;`
-  in the actual HTML response, which a browser correctly renders back as
-  the literal text `&gt;&gt;` on screen — a classic double-escape, not a
-  missing-escape bug.
-
-  **What's already fixed, narrowly, on purpose**: `vtt_parser.py:367-383`'s
-  `normalize_speaker_change_marker()` (called from `parse_vtt()` line 97
-  — VTT/SRT only, not TTML) matches *exactly* `&gt;&gt;` **anchored to the
-  start of a cue** and converts it to a real `»` character — a
-  deliberately narrow fix (see `BACKLOG_DONE.md:1269-1300` for the
-  original reasoning and its regression test), not general HTML-entity
-  unescaping; a real `html.unescape()` call doesn't exist anywhere in
-  `vtt_parser.py` (confirmed via grep — the repo's only `html.unescape()`
-  calls are in `app/platforms/lims.py`, unrelated). **What's still
-  genuinely unhandled**: the same `&gt;&gt;` string appearing mid-cue
-  rather than at the very start; any other HTML entity (`&amp;`, `&#39;`,
-  `&lt;`, `&quot;`, `&nbsp;`, etc.) arriving pre-escaped in source caption
-  text; and the entire `strip_unknown_caption_markup()` fallback path
-  (SBV/SUB/SMI/SAMI/plain-.txt), which has no cue-level text normalization
-  of any kind. TTML doesn't need this fix — its text comes from
-  `ElementTree`'s own `itertext()` (line 184), which already resolves
-  real XML entities during parsing, so this specific artifact can't arise
-  there. A general fix would need a real (not narrowly-anchored)
-  `html.unescape()` pass at the same point in the pipeline where
-  `normalize_speaker_change_marker()` already runs, careful not to
-  double-unescape text that was never double-escaped in the first place.
 - **SCC/STL captions are detected but not readable at all.** Both are
   binary/encoded (EIA-608 line-21 data, EBU subtitle format) — no text
   can be extracted without real codec-level decoding, so these just
