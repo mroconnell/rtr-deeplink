@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Coverage | Red Tape Recordings{% endblock %}
+{% block meta %}
+  <meta name="description" content="Every video platform Red Tape Recordings already supports, with a real archived meeting as proof.">
+{% endblock %}
+{% block content %}
+  <main class="about-page">
+    <h1>Coverage</h1>
+    <p class="about-lede">We support a platform once, and every city or county on it works. Here's every platform we already read video and transcripts from, each with a real archived meeting as proof.</p>
+    <p>Don't see your city's platform below? <a href="/">Paste a meeting link</a> and see what comes back — if it's a platform we already know, it'll just work.</p>
+
+    <div class="meeting-list">
+      {% for row in coverage %}
+      <div class="calendar-candidate meeting-result-row">
+        <div class="calendar-candidate-main">
+          {% if row.example %}
+          <a href="/m/{{ row.example.slug }}">{{ row.label }}</a>
+          <span class="calendar-candidate-date">
+            {{ row.example.title or "Untitled meeting" }}
+            {%- if row.example.jurisdiction %} &middot; {{ row.example.jurisdiction }}{% endif -%}
+          </span>
+          {% else %}
+          <span>{{ row.label }}</span>
+          <span class="calendar-candidate-date">Supported, but no example archived yet</span>
+          {% endif %}
+        </div>
+        {% if row.example and row.example.has_transcript %}
+        <span class="transcript-badge" title="A transcript is available for this meeting">&#10003; Transcript</span>
+        {% else %}
+        <span class="transcript-badge transcript-badge-placeholder" aria-hidden="true">&#10003; Transcript</span>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+
+    <p class="subtitle" style="margin-top: 1.5rem;">Some cities use a calendar/agenda tool (Legistar, CivicPlus, PrimeGov, CivicWeb) that itself just points at one of the platforms above rather than hosting video directly — those work too, they just aren't their own row here.</p>
+  </main>
+{% endblock %}

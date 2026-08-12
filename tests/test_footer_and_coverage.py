@@ -1,26 +1,89 @@
-"""HTTP-level tests for the universal site footer and its new /coverage
-placeholder page (app/main.py) -- built 2026-08-10 per the user's request
-for a footer with sitemap and a few other links not in the main nav.
+"""HTTP-level tests for the universal site footer (app/main.py /
+archive/main.py base.html) and the real /coverage page (archive/main.py +
+archive/db/crud.py's get_platform_coverage()) -- built 2026-08-10 as a
+placeholder, replaced 2026-08-12 with a real per-platform table backed by
+the Archive's own MeetingPage data. Lives on the Archive service (like
+/meetings) and is reverse-proxied through the resolver, not rendered by
+the resolver directly -- see app/main.py's `_proxy_to_archive` call for
+"coverage".
 """
 
 from fastapi.testclient import TestClient
 
 import app.main
 import archive.main
+from archive.db import crud
 
 resolver_client = TestClient(app.main.app)
 archive_client_ = TestClient(archive.main.app)
 
 
-def test_coverage_page_renders():
-    response = resolver_client.get("/coverage")
+def test_coverage_page_renders_every_platform_label():
+    response = archive_client_.get("/coverage")
     assert response.status_code == 200
-    assert "Coming soon" in response.text
+    for label in crud.PLATFORM_LABELS.values():
+        assert label in response.text
 
 
-def test_coverage_page_is_noindexed():
-    response = resolver_client.get("/coverage")
-    assert '<meta name="robots" content="noindex">' in response.text
+def test_coverage_page_no_longer_placeholder():
+    response = archive_client_.get("/coverage")
+    assert "Coming soon" not in response.text
+
+
+def test_coverage_page_renders_example_with_transcript_badge(monkeypatch):
+    # get_platform_coverage() itself is exercised for real below (against
+    # the shared test DB, which other tests also write "granicus" rows
+    # into) -- rendering is tested here against controlled fake data
+    # instead of asserting on *which* real row the shared DB happens to
+    # pick, since that's not what this test is actually checking.
+    async def _fake_coverage():
+        return [
+            {
+                "platform": "granicus",
+                "label": "Granicus",
+                "example": {
+                    "slug": "coverage-test-slug",
+                    "title": "Coverage Test Meeting",
+                    "jurisdiction": "City of Coverage Test",
+                    "has_transcript": True,
+                },
+                "page_count": 1,
+            },
+            {"platform": "viebit", "label": "Viebit", "example": None, "page_count": 0},
+        ]
+
+    monkeypatch.setattr(crud, "get_platform_coverage", _fake_coverage)
+
+    response = archive_client_.get("/coverage")
+    assert response.status_code == 200
+    assert "Coverage Test Meeting" in response.text
+    assert "City of Coverage Test" in response.text
+    assert '/m/coverage-test-slug' in response.text
+    assert "Supported, but no example archived yet" in response.text
+
+
+async def test_get_platform_coverage_reflects_a_real_ingested_meeting():
+    payload = {
+        "platform": "granicus",
+        "source_url": "https://coverage-test.granicus.com/player/clip/coverage-crud-1",
+        "external_id": "coverage-crud-1",
+        "title": "Coverage CRUD Test Meeting",
+        "date": "2026-01-01",
+        "jurisdiction": "City of Coverage Test",
+        "video_url": "https://example.com/v.m3u8",
+        "video_format": "m3u8",
+        "segments": [{"start": 0, "end": 1, "text": "hello"}],
+        "agenda_items": [],
+        "transcript_language": "en",
+        "transcript_warnings": [],
+    }
+    await crud.ingest_resolution(payload, "https://coverage-test.granicus.com/player/clip/coverage-crud-1")
+
+    coverage = await crud.get_platform_coverage()
+    granicus_row = next(row for row in coverage if row["platform"] == "granicus")
+    assert granicus_row["example"] is not None
+    assert granicus_row["example"]["has_transcript"] is True
+    assert granicus_row["page_count"] >= 1
 
 
 def test_resolver_footer_has_all_four_links():
