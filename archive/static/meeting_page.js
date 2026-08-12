@@ -135,8 +135,25 @@ async function initYouTubeVideo(embedUrl) {
   });
 }
 
-function wireSharedControls(adapter) {
+// liveTracking=false (Viebit only, see createViebitAdapter -- no
+// cross-frame API of any kind exists, so adapter.currentTime can't
+// reflect real playback position once playback has moved past whatever
+// time it was last explicitly set to) skips every affordance that would
+// read adapter.currentTime to construct or display a link, rather than
+// silently showing/copying a stale position. Explicit seeks (a
+// transcript-line click) still work fully either way. Mirrors
+// app/static/player.js's identical option.
+function wireSharedControls(adapter, { liveTracking = true } = {}) {
   const linkToCurrentLabel = document.getElementById('linkToCurrentLabel');
+  const linkBtn = document.getElementById('linkToCurrentBtn');
+  const noTranscriptLinkBtn = document.getElementById('noTranscriptLinkBtn');
+
+  if (!liveTracking) {
+    if (linkBtn) linkBtn.hidden = true;
+    if (noTranscriptLinkBtn) noTranscriptLinkBtn.hidden = true;
+    return;
+  }
+
   adapter.addEventListener('timeupdate', () => {
     const segId = findActiveSegment(adapter.currentTime);
     if (segId) highlightSegment(segId, true, 'nearest');
@@ -146,7 +163,6 @@ function wireSharedControls(adapter) {
   updateNoTranscriptTime(adapter);
   if (linkToCurrentLabel) linkToCurrentLabel.textContent = `Share video at ${formatTime(adapter.currentTime)}`;
 
-  const linkBtn = document.getElementById('linkToCurrentBtn');
   if (linkBtn) {
     const toast = document.getElementById('linkToCurrentToast');
     let toastTimer = null;
@@ -168,7 +184,6 @@ function wireSharedControls(adapter) {
     });
   }
 
-  const noTranscriptLinkBtn = document.getElementById('noTranscriptLinkBtn');
   if (noTranscriptLinkBtn) {
     const label = noTranscriptLinkBtn.querySelector('.cassette-label');
     const defaultText = label.textContent;
@@ -185,6 +200,40 @@ function wireSharedControls(adapter) {
       }
     });
   }
+}
+
+// Viebit (NYC Council, via Legistar delegation) -- iframe-embedded, not
+// native <video>/hls.js. Mirrors app/static/player.js's identical
+// adapter/initializer -- see that file's comments and viebit.py's module
+// docstring for the full "why": no cross-frame API exists on Viebit's
+// embed page at all, so the only control available is the `?t={seconds}`
+// query param it reads once on load.
+function createViebitAdapter(iframeEl, baseEmbedUrl) {
+  let lastSetTime = 0;
+  return {
+    get currentTime() { return lastSetTime; },
+    set currentTime(t) {
+      lastSetTime = Math.max(0, Math.floor(t));
+      const url = new URL(baseEmbedUrl);
+      url.searchParams.set('t', String(lastSetTime));
+      iframeEl.src = url.toString();
+    },
+    play: () => {},
+    pause: () => {},
+    addEventListener: () => {},
+  };
+}
+
+function initViebitVideo(embedUrl) {
+  const iframe = document.getElementById('viebitFrame');
+  if (!iframe) return;
+
+  iframe.src = embedUrl;
+
+  const adapter = createViebitAdapter(iframe, embedUrl);
+  activeVideoAdapter = adapter;
+  wireSharedControls(adapter, { liveTracking: false });
+  applyDeepLink(adapter);
 }
 
 function wireSeekAndCopyClicks() {
@@ -521,6 +570,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const videoFormat = wrapper.dataset.videoFormat;
   if (videoFormat === 'youtube') {
     initYouTubeVideo(videoUrl);
+  } else if (videoFormat === 'viebit') {
+    initViebitVideo(videoUrl);
   } else if (videoUrl) {
     initNativeVideo(videoUrl, videoFormat);
   }

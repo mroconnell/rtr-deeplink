@@ -29,11 +29,12 @@ async def test_resolve_real_nyc_council_meeting():
     assert result.title == "NYCC-250-8-1_260722-110636.mp4"
     assert result.jurisdiction == "New York City, NY"
     assert result.date == "2026-07-22"
-    assert result.video_url == (
-        "https://vbfast-vod.viebit.com/otfp/counciln/hFWIQkuFLuWGb0mw/"
-        "NYCC-250-8-1_260722-110636,master.m3u8?fmp4=1"
-    )
-    assert result.video_format == "m3u8"
+    # Real fix 2026-08-12: the raw master.m3u8 is CDN-gated (403s even with
+    # realistic headers, confirmed live in production) -- video_url is now
+    # always rebuilt as the confirmed-safe-to-iframe /embed/vod?v={id} path
+    # on the fetched page's own origin, not the raw HLS manifest.
+    assert result.video_url == "https://councilnyc.viebit.com/embed/vod?v=hFWIQkuFLuWGb0mw"
+    assert result.video_format == "viebit"
     assert result.transcript_language == "en"
     assert result.transcript_warnings == []
     # Real dedupe_rollup_cues()/normalize_shouting_caption() should have
@@ -77,7 +78,8 @@ async def test_resolve_no_caption_track_falls_back_to_warning():
     with mock_session(routes):
         result = await ViebitAssetFinder().resolve(url)
 
-    assert result.video_url == "https://vbfast-vod.viebit.com/otfp/x/video,master.m3u8?fmp4=1"
+    assert result.video_url == "https://councilnyc.viebit.com/embed/vod?v=x"
+    assert result.video_format == "viebit"
     assert result.segments == []
     assert any("no captions found" in w.lower() for w in result.transcript_warnings)
 
@@ -87,3 +89,16 @@ async def test_format_date_handles_missing_and_invalid_values():
     assert ViebitAssetFinder._format_date(0) is None
     assert ViebitAssetFinder._format_date("not-a-number") is None
     assert ViebitAssetFinder._format_date(1784734559) == "2026-07-22"
+
+
+def test_build_embed_url_rebuilds_confirmed_safe_path():
+    # Real fix 2026-08-12: always rebuilds /embed/vod?v={id} on the fetched
+    # page's own origin, regardless of whether the fetch landed on the
+    # outer /vod/?v=... page or /embed/vod?v=... directly -- only the
+    # latter is confirmed to have no X-Frame-Options restriction.
+    assert (
+        ViebitAssetFinder._build_embed_url("https://councilnyc.viebit.com/vod/?s=true&v=x.mp4", "abc123")
+        == "https://councilnyc.viebit.com/embed/vod?v=abc123"
+    )
+    assert ViebitAssetFinder._build_embed_url("https://councilnyc.viebit.com/vod/", None) is None
+    assert ViebitAssetFinder._build_embed_url("not-a-real-url", "abc123") is None
