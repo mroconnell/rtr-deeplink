@@ -6,6 +6,7 @@ from typing import Any, Optional
 
 from sqlalchemy import and_, or_, select
 
+from ..utils.jurisdiction_format import normalize_state_suffix
 from ..utils.language import detect_language_from_texts
 from ..utils.search import build_corpus, find_snippet, matches, tokenize
 from ..utils.slugify import build_base_slug, random_suffix
@@ -147,6 +148,7 @@ async def _find_or_create_page(session, payload: dict[str, Any], input_url_norma
     platform = payload["platform"]
     external_id = payload.get("external_id")
     source_url_normalized = normalize_url(payload["source_url"])
+    jurisdiction = normalize_state_suffix(payload.get("jurisdiction"))
 
     page = await _find_existing_page(
         session,
@@ -157,7 +159,7 @@ async def _find_or_create_page(session, payload: dict[str, Any], input_url_norma
     )
 
     if page is None:
-        base_slug = build_base_slug(payload.get("jurisdiction") or "", payload.get("date") or "", payload.get("title") or "")
+        base_slug = build_base_slug(jurisdiction or "", payload.get("date") or "", payload.get("title") or "")
         slug = await _unique_slug(session, base_slug)
         page = MeetingPage(
             slug=slug,
@@ -166,7 +168,7 @@ async def _find_or_create_page(session, payload: dict[str, Any], input_url_norma
             source_url_normalized=source_url_normalized,
             title=payload.get("title"),
             date=payload.get("date"),
-            jurisdiction=payload.get("jurisdiction"),
+            jurisdiction=jurisdiction,
             video_url=payload.get("video_url"),
             video_format=payload.get("video_format"),
             agenda_items=payload.get("agenda_items") or [],
@@ -180,7 +182,7 @@ async def _find_or_create_page(session, payload: dict[str, Any], input_url_norma
         # on a later, better resolve) without touching the slug.
         page.title = payload.get("title") or page.title
         page.date = payload.get("date") or page.date
-        page.jurisdiction = payload.get("jurisdiction") or page.jurisdiction
+        page.jurisdiction = jurisdiction or page.jurisdiction
         page.video_url = payload.get("video_url") or page.video_url
         page.video_format = payload.get("video_format") or page.video_format
         if payload.get("agenda_items"):

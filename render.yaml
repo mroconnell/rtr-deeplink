@@ -93,6 +93,14 @@ services:
         sync: false
       - key: CLERK_WEBHOOK_SIGNING_SECRET
         sync: false
+      # Who GET /admin/daily-report (app/reporting.py) emails the once-a-day
+      # operator digest to. Optional -- defaults to ryan@how-to-adu.com if
+      # unset. Triggered by .github/workflows/daily-report.yml's cron
+      # schedule rather than a Render Cron Job service, since those have no
+      # free tier (confirmed, min $1/mo) and this reuses infra already
+      # running/paid for here.
+      - key: DAILY_REPORT_EMAIL_TO
+        sync: false
 
   - type: web
     name: rtr-deeplink-archive

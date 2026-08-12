@@ -74,6 +74,33 @@
   {% endif %}
 {% endblock %}
 {% block content %}
+  {#- User request 2026-08-11 (re-requested independently after already
+     existing as a plain link list): switch between a meeting's multiple
+     TranscriptVersions via a dropdown near the transcript's own
+     Download links, not a separate link list above the whole section.
+     A plain <select> in a GET form -- selecting an option submits the
+     form, reloading the page at ?version={id} exactly like the old link
+     list did (same full-reload-per-version behavior; deliberately not
+     the all-versions-in-one-DOM/JS-tab redesign also discussed in
+     BACKLOG.md, per the user's own simpler call: alternate versions
+     don't need to be independently searchable or track playback live,
+     a plain reload that re-renders that version as the new
+     active_version already does everything needed, including deep-link
+     time-tracking against that version's own segments). Defined as a
+     macro (not a separate template file) since this codebase has no
+     existing {% raw %}{% include %}{% endraw %} precedent to match, and
+     it's called from both transcript branches below. #}
+  {% macro version_picker() %}
+  <form method="get" class="version-picker">
+    <label for="versionSelect">Version:</label>
+    <select id="versionSelect" name="version" onchange="this.form.submit()">
+      {% for v in page.versions %}
+      <option value="{{ v.id }}" {% if active_version and v.id == active_version.id %}selected{% endif %}>{{ v.language or "unknown" }} ({{ v.source }})</option>
+      {% endfor %}
+    </select>
+    <noscript><button type="submit" class="cassette-btn cassette-btn-outline">Go</button></noscript>
+  </form>
+  {% endmacro %}
   {#- Whether to offer the transcribe-from-audio CTA at all -- true unless
      the page is already showing our own self-transcribed version (in which
      case re-requesting one wouldn't accomplish anything). Hoisted out of
@@ -246,28 +273,22 @@
     </div>
     {% endif %}
 
-    {% if page.versions|length > 1 %}
-    <div class="version-picker">
-      Transcript version:
-      {% for v in page.versions %}
-        {% if active_version and v.id == active_version.id %}
-        <span class="version-active">{{ v.language or "unknown" }} ({{ v.source }})</span>
-        {% else %}
-        <a href="?version={{ v.id }}">{{ v.language or "unknown" }} ({{ v.source }})</a>
-        {% endif %}
-      {% endfor %}
-    </div>
-    {% endif %}
-
     {% if active_version and active_version.segments %}
     <div class="transcript-section">
       <h2>Transcript</h2>
-      <p class="transcript-export">
+      {#- A <div>, not a <p> -- .transcript-export is styled purely by
+         class, and the dropdown branch below nests a <form>, which isn't
+         valid phrasing content inside a real <p>. #}
+      <div class="transcript-export">
         Download:
         <a href="/m/{{ page.slug }}/transcript.txt?version={{ active_version.id }}">Text</a>
         &middot;
         <a href="/m/{{ page.slug }}/transcript.srt?version={{ active_version.id }}">SRT</a>
-      </p>
+        {% if page.versions|length > 1 %}
+        &middot;
+        {{ version_picker() }}
+        {% endif %}
+      </div>
       {% if active_version.source == "transcribed" %}
       <div class="ai-disclaimer">
         <span class="dymo-label-small">AI TRANSCRIPT</span>
@@ -314,6 +335,9 @@
     {% else %}
     <div class="transcript-section" id="transcriptMissing">
       <h2>Transcript</h2>
+      {% if page.versions|length > 1 %}
+      <div class="transcript-export">{{ version_picker() }}</div>
+      {% endif %}
       {% if active_version and active_version.transcript_warnings %}
       <div class="warnings">{{ active_version.transcript_warnings|warnings_html }}</div>
       {% endif %}

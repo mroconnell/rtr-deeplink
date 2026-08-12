@@ -1,0 +1,38 @@
+# Triggers the once-a-day operator digest (GET /admin/daily-report, see
+# app/reporting.py) instead of a Render Cron Job service -- Render Cron
+# Jobs have no free tier (confirmed, minimum $1/mo), while this reuses the
+# rtr-deeplink web service that's already running/paid for, at no extra
+# infra cost.
+#
+# Requires two repo secrets (Settings -> Secrets and variables -> Actions):
+#   RESOLVER_BASE_URL   -- the resolver's own base URL, e.g.
+#                           https://rtr-deeplink.onrender.com (Render's
+#                           default per-service URL, same pattern as
+#                           rtr-deeplink-archive.onrender.com -- not
+#                           necessarily the redtaperecordings.com custom
+#                           domain, since /admin/* isn't one of the paths
+#                           documented as reverse-proxied through it).
+#   ADMIN_STATS_TOKEN    -- same shared token /admin/stats and friends use
+#                           (app/main.py's _admin_token_ok), matching
+#                           whatever's set on the rtr-deeplink Render
+#                           service.
+name: Daily report
+
+on:
+  schedule:
+    # 23:30 UTC = 4:30 PM Pacific during PDT (UTC-7, in effect as of
+    # 2026-08-11). GitHub Actions cron is fixed UTC with no DST awareness,
+    # same caveat as Render's own cron scheduling -- this drifts to 3:30 PM
+    # Pacific once PST (UTC-8) takes over in November; revisit then if
+    # 4:30 PM Pacific specifically needs to hold year-round.
+    - cron: "30 23 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call /admin/daily-report
+        run: |
+          curl --fail-with-body --silent --show-error \
+            "${{ secrets.RESOLVER_BASE_URL }}/admin/daily-report?token=${{ secrets.ADMIN_STATS_TOKEN }}"

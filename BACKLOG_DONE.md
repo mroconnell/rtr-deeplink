@@ -379,6 +379,29 @@ changelog of task titles.
   `DATABASE_URL=sqlite+aiosqlite:///<repo-root>/archive_dev.db` before
   doing anything further.
 
+- **[Done 2026-08-11] Added Google-style `-exclude`/`-"phrase"` search
+  operators plus no-op `+`/`&`/`AND`, closing most of the "no boolean
+  operators" gap `BACKLOG.md` had flagged** (commit `0cf48bf`; `OR`
+  remains genuinely open — see BACKLOG.md, it needs real expression-tree
+  parsing this flat list-based `_parse_query()` can't represent).
+  `_parse_query()` now also collects `excluded_phrases`/`excluded_words`
+  from any `-`-prefixed phrase/word; `matches()` checks those first and
+  fails immediately on a hit, before the positive AND checks run, so an
+  exclusion always wins over a coincidental positive match elsewhere in
+  the same corpus. Exclusions are always checked as an exact substring,
+  even in fuzzy mode — a fuzzy exclusion risks dropping a meeting that
+  only *resembles* the excluded term, a worse failure mode than an
+  exclusion occasionally missing a typo'd instance. `+term`, a bare `&`,
+  and the bare word `AND` are stripped as no-ops (previously would have
+  been searched for as literal, always-failing tokens). The `?` search-
+  tips popover on `/meetings` (`meeting_list.html`) replaced the old
+  static one-line hint, since the growing operator list no longer fit
+  inline. 5 new tests in `tests/test_archive_search.py` cover word/phrase
+  exclusion, exclusion staying exact under fuzzy mode, and both no-op
+  forms. *(Note: this entry was written up after the fact, 2026-08-11,
+  during a backlog-cleanup pass — the actual build predates it; see
+  `CLAUDE.md`'s note on more than one session sharing this repo.)*
+
 ## Incidents
 
 - **[Resolved 2026-08-11] Clerk production cutover surfaced three real
@@ -537,6 +560,45 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-11] Fixed two of the three real gaps in `/meetings`'
+  title/jurisdiction formatting — state abbreviations and truncation;
+  casing consistency deliberately left open (see BACKLOG.md).** Reported
+  by the user from a real `/meetings` screenshot: long names weren't
+  truncated, casing varied row to row, and US states appeared as both
+  full names and 2-letter abbreviations, with no centralized
+  normalization anywhere in the codebase.
+
+  **State abbreviation**: new `archive/utils/jurisdiction_format.py`'s
+  `normalize_state_suffix()` canonicalizes a trailing full state name to
+  its 2-letter code (`"San Diego, California"` → `"San Diego, CA"`),
+  wired into `archive/db/crud.py`'s `_find_or_create_page()` — the single
+  choke point every ingest (from every adapter) already passes through
+  before a `MeetingPage` row is created or updated, so this needed no
+  per-adapter changes. Deliberately narrow: only the text after the
+  *last* comma is ever treated as a state candidate, so it can't misfire
+  on a jurisdiction string that itself contains a comma (e.g. "Winston-
+  Salem, Forsyth County, North Carolina" → "Winston-Salem, Forsyth
+  County, NC", not touching "Forsyth County"). Already-abbreviated or
+  state-less jurisdictions pass through byte-for-byte unchanged. 9 new
+  tests (`tests/test_jurisdiction_format.py`).
+
+  **Truncation**: `/meetings` row title and jurisdiction/date line both
+  now truncate with a CSS ellipsis (`.calendar-candidate-main a` /
+  `.calendar-candidate-date` in `archive/static/style.css`) instead of
+  wrapping — scoped to that specific row layout, not `.calendar-
+  candidate` itself, since that class is also reused unmodified by the
+  resolver's calendar-picker list. Live-verified in-browser: injected a
+  real long title/jurisdiction row and confirmed both ellipsis-truncate
+  on one line instead of wrapping.
+
+  **Deliberately not touched**: city/county/meeting-body name casing.
+  Unlike state (~50 closed values), city/body names are effectively
+  unbounded with real edge cases a blind `.title()` call gets wrong
+  (acronyms, apostrophes, multi-word names) — capture-time normalization
+  there risks silently and permanently corrupting a real name with no
+  easy undo, so it's left as its own open item in BACKLOG.md rather than
+  guessed at this pass. Full suite green (438 tests, 429 + 9 new).
+
 - **[Done 2026-08-11] Fixed the nav flashing "Sign in" on every full page
   load for an already-signed-in visitor — reported by the user against
   `/account/saved`.** `archive/templates/base.html`'s nav always
@@ -555,22 +617,19 @@ changelog of task titles.
   confirming the initial HTML for both states via a monkeypatched
   `get_clerk_user_id`, and live in-browser against the anonymous case.
   Full suite green (422 tests).
-- **[Done 2026-08-11] Built (not yet live-confirmed) a fix for the Clerk
-  sign-out flow landing on Clerk's own bare hosted page instead of this
-  site.** Root cause confirmed live: at Claude's request, the user
-  signed out on staging and landed on
-  `guided-bedbug-18.accounts.dev/sign-in` (a real screenshot showed
-  Clerk's own generic branding, no RTR nav/footer at all) — exactly the
-  theory `BACKLOG.md` had flagged (`mountUserButton()` called with no
-  `afterSignOutUrl` option, so Clerk's built-in "Sign out" menu item used
-  its own default destination). Fix: `shared_static/clerk_nav.js`'s
-  `window.Clerk.load()` call now passes `afterSignOutUrl` pointing back
-  at the homepage. Inferred from Clerk's documented API surface, not
-  checked against live docs this pass — pushed to
-  `accounts-clerk-phase1` for the user to confirm with a real sign-out
-  once staging redeploys, same "don't claim a fix without a positive
-  example" convention as everywhere else. **Kept live in BACKLOG.md, not
-  moved fully here, until that confirmation lands.**
+- **[Done 2026-08-11] Fixed the Clerk sign-out flow landing on Clerk's own
+  bare hosted page instead of this site — now live-confirmed.** Root
+  cause confirmed live: at Claude's request, the user signed out on
+  staging and landed on `guided-bedbug-18.accounts.dev/sign-in` (a real
+  screenshot showed Clerk's own generic branding, no RTR nav/footer at
+  all) — exactly the theory `BACKLOG.md` had flagged (`mountUserButton()`
+  called with no `afterSignOutUrl` option, so Clerk's built-in "Sign out"
+  menu item used its own default destination). Fix: `shared_static/
+  clerk_nav.js`'s `window.Clerk.load()` call now passes `afterSignOutUrl`
+  pointing back at the homepage. **Confirmed working 2026-08-11**: the
+  user signed out for real (via their own Chrome, already-authenticated
+  session) and landed on the homepage as intended — no further action
+  needed.
 - **[Done 2026-08-11] Made the source-transcript disclaimer's pointer to
   the real "Request Transcript from Audio" button more obvious — user
   feedback the same day the disclaimer itself shipped.** The original
@@ -1542,6 +1601,43 @@ changelog of task titles.
   caption that legitimately mentions an ampersand or angle bracket
   elsewhere never gets a second, unintended round of interpretation.
   Full suite green (264 tests, up from 262).
+
+- **[Done 2026-08-12] Generalized the double-escaping fix above to every
+  remaining case it deliberately left open — mid-cue `&gt;&gt;`, any
+  other pre-escaped HTML entity, and the entire text-fallback caption
+  path.** The narrow fix's own docstring flagged exactly what it wasn't
+  covering: `&gt;&gt;` appearing mid-cue rather than at cue start; other
+  entities (`&amp;`, `&#39;`, `&lt;`, `&quot;`, `&nbsp;`) arriving
+  pre-escaped in source caption text; and `strip_unknown_caption_markup()`
+  (the SBV/SUB/SMI/SAMI/plain-.txt fallback), which had no cue-level text
+  normalization of any kind. New `unescape_caption_entities()` in
+  `app/utils/vtt_parser.py` runs a real `html.unescape()` pass, called
+  last in `parse_vtt()` — after `normalize_speaker_change_marker()`, so
+  the start-of-cue case still becomes the real `»` glyph exactly as
+  before, and only whatever's left (mid-cue occurrences, other entities)
+  gets the general unescape — and last in `strip_unknown_caption_markup()`
+  too, deliberately *after* its tag-stripping regex runs, so a caption
+  that legitimately meant an already-escaped fake tag as literal text
+  (e.g. `&lt;i&gt;`) can't unescape into something that regex would then
+  wrongly strip.
+
+  Confirmed safe against the original narrow fix's own stated risk
+  (broadly unescaping could misfire on a caption that legitimately
+  contains a bare `&`/`<`/`>`): `html.unescape()` only ever converts text
+  already shaped like a real entity reference (`&name;`, `&#NNN;`, or the
+  handful of legacy semicolon-less named entities HTML5 still
+  recognizes) — a literal, non-entity `&` (e.g. "Bed & Breakfast") isn't
+  that shape and passes through untouched; a new test asserts exactly
+  this. Whatever comes out still goes through Jinja's normal autoescape
+  before reaching the page, so a real `<`/`>`/`&` this surfaces displays
+  as safe literal text, never interpreted as markup.
+
+  6 new tests in `tests/test_vtt_parser.py`: mid-cue `&gt;&gt;` plus
+  `&amp;`/`&quot;`/`&#39;` all unescaping correctly; a literal ampersand
+  staying untouched; the start-of-cue-marker-then-mid-cue-entity case
+  end-to-end through `parse_vtt()`; the fallback path unescaping
+  `&amp;`/`&quot;`; and the tag-stripping-order safety case above. Full
+  suite green (443 tests, up from 438).
 
 - **[Done 2026-08-10] `/meetings` results now break the jurisdiction/date
   onto its own line under the title, instead of running inline right

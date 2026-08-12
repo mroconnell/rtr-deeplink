@@ -54,7 +54,7 @@ from dotenv import load_dotenv
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.platforms.youtube import YouTubeAssetFinder  # noqa: E402
-from app.utils.vtt_parser import normalize_shouting_caption  # noqa: E402
+from app.utils.vtt_parser import normalize_shouting_caption, unescape_caption_entities  # noqa: E402
 from archive.utils.email import send_youtube_transcript_failure, send_youtube_transcript_report  # noqa: E402
 
 # Gentler than bulk_ingest.py's 1.5s -- every request here hits YouTube
@@ -111,6 +111,14 @@ def snippets_to_segments(snippets) -> List[dict]:
             "text": text,
         })
     normalize_shouting_caption(cues)
+    # Real gap fixed 2026-08-12: this conversion bypasses parse_vtt()
+    # entirely (works from youtube-transcript-api snippets, not raw VTT
+    # text), so it never picked up unescape_caption_entities() when that
+    # was added there -- if a fetched snippet ever legitimately contains a
+    # pre-escaped entity, this closes that gap here too. See its
+    # docstring in app/utils/vtt_parser.py for why this is safe to run
+    # unconditionally.
+    unescape_caption_entities(cues)
     # normalize_shouting_caption()'s sentence-casing only capitalizes at
     # the start of the string or after sentence punctuation -- a leading
     # "» " marker hides the first letter from both. A speaker change

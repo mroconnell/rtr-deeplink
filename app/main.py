@@ -28,7 +28,7 @@ from svix.webhooks import Webhook
 
 load_dotenv()
 
-from . import archive_client
+from . import archive_client, reporting
 from .db import crud
 from .db.engine import init_models
 from .platforms import register_all_finders
@@ -1144,6 +1144,34 @@ async def admin_stats(token: str = ""):
     if stats is None:
         return JSONResponse({"error": "stats_unavailable"}, status_code=503)
     return stats
+
+
+@app.get("/admin/daily-report")
+async def admin_daily_report(token: str = "", dry_run: bool = False):
+    """Triggers the once-a-day operator digest (app/reporting.py) on
+    demand -- called by the GitHub Actions cron workflow
+    (.github/workflows/daily-report.yml) once a day, and usable manually
+    for testing (?dry_run=true composes but doesn't send). Deliberately
+    an HTTP endpoint on this already-running service rather than a
+    separate Render Cron Job service: Render Cron Jobs have no free tier
+    (confirmed, minimum $1/mo), while this reuses infrastructure that's
+    already paid for and already has direct DATABASE_URL/CLERK_SECRET_KEY/
+    RESEND_API_KEY access -- see app/reporting.py's own docstring for what
+    the report actually contains.
+    """
+    if not _admin_token_ok(token):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    to = os.environ.get("DAILY_REPORT_EMAIL_TO", "ryan@how-to-adu.com")
+    try:
+        result = await reporting.run_daily_report(to=to, dry_run=dry_run)
+    except Exception:
+        logger.exception("Daily report run failed unexpectedly.")
+        return JSONResponse({"error": "daily_report_failed"}, status_code=500)
+
+    if not dry_run and not result["sent"]:
+        return JSONResponse({"error": "send_failed", "subject": result["subject"]}, status_code=502)
+    return result
 
 
 @app.get("/admin/log")

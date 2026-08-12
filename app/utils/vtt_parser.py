@@ -1,3 +1,4 @@
+import html
 import re
 import xml.etree.ElementTree as ET
 from typing import Iterable, List, Dict, Any, Optional
@@ -95,6 +96,7 @@ def parse_vtt(content: str) -> List[Dict[str, Any]]:
 
     normalize_shouting_caption(cues)
     normalize_speaker_change_marker(cues)
+    unescape_caption_entities(cues)
     return cues
 
 
@@ -225,7 +227,13 @@ def strip_unknown_caption_markup(content: str) -> str:
     # same ALL-CAPS re-casing every structured-format parser already
     # does (see _normalize_shouting_text()'s docstring), so an ALL-CAPS
     # SBV/SUB/SMI/plain-.txt track stayed ALL CAPS unconditionally.
-    return _normalize_shouting_text("\n".join(lines).strip())
+    normalized = _normalize_shouting_text("\n".join(lines).strip())
+    # Also fixed 2026-08-11: unescape_caption_entities()'s general
+    # double-escaping fix (see its own docstring), applied here last
+    # (after tag-stripping above) so an already-escaped fake tag some
+    # source legitimately meant as literal text (e.g. "&lt;i&gt;") can't
+    # unescape into something _MARKUP_TAG_RE would then wrongly strip.
+    return html.unescape(normalized)
 
 
 # Extensions with a real structured (start/end/text) parser above.
@@ -398,6 +406,33 @@ _SPEAKER_CHANGE_MARKER_RE = re.compile(r"^&gt;&gt;\s*")
 def normalize_speaker_change_marker(cues: List[Dict[str, Any]]) -> None:
     for cue in cues:
         cue["text"] = _SPEAKER_CHANGE_MARKER_RE.sub("» ", cue["text"])
+
+
+def unescape_caption_entities(cues: List[Dict[str, Any]]) -> None:
+    """General fix for the double-escaping bug the narrow marker fix above
+    only partly covers (see BACKLOG.md): a caption source's *raw* text can
+    already contain literal HTML entities (`&amp;`, `&lt;`, `&#39;`,
+    `&nbsp;`, or a mid-cue `&gt;&gt;` the start-anchored marker regex above
+    never touches) baked in as plain text, not real `<`/`>`/`&` characters
+    -- an extraction artifact from a source that was itself HTML. Left
+    alone, Jinja's autoescape then escapes the leading `&` a second time
+    (`&` -> `&amp;`), producing a visible `&gt;&gt;`-style artifact on the
+    page instead of the real character.
+
+    Safe to run unconditionally, run once, last (after the tag-stripping
+    fallback paths that call this have already done their own
+    processing): `html.unescape()` only ever converts text that already
+    matches a real entity pattern (`&name;`, `&#NNN;`, or the handful of
+    legacy semicolon-less named entities the HTML5 spec still recognizes)
+    -- a caption that legitimately contains a bare `&`/`<`/`>` character
+    (e.g. someone reading "Bed & Breakfast" or a URL aloud) doesn't match
+    that shape and passes through completely unchanged. Whatever comes out
+    still goes through Jinja's normal autoescape before reaching the page,
+    so a real `<`/`>`/`&` this surfaces is displayed as safe literal text,
+    never interpreted as markup.
+    """
+    for cue in cues:
+        cue["text"] = html.unescape(cue["text"])
 
 
 # Words genuinely fine at length <= 2 -- everything else that short (e.g.
