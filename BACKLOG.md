@@ -462,67 +462,36 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   timing). Wired into Granicus, CA Legislature, Swagit, and CivicClerk.
   If any of these turns out to be common on a real platform, worth a real
   structured parser instead of the generic strip.
-- **ALL-CAPS transcript display — real sample checked 2026-08-12
-  (Minneapolis City Council, 2026-07-16, LIMS→YouTube). Root cause is
-  almost certainly stale pre-fix data, not a heuristic gap — pending the
-  user running an admin recheck to confirm.** Checked the user's own
-  reported page (`redtaperecordings.com/m/city-of-minneapolis-2026-07-16-
-  city-council`) directly: the transcript is genuinely, fully ALL CAPS
-  ("GOOD MORNING EVERYONE. MY NAME IS ELLIOT PAYNE..."), but the *same*
-  transcript also still shows the raw, pre-fix `&amp;gt;&amp;gt;`
-  double-escape artifact (see BACKLOG_DONE.md's 2026-08-12 general-unescape
-  entry) right next to a correctly `»`-converted duplicate of the same
-  line — and that narrower marker fix shipped 2026-08-10. A page still
-  showing pre-2026-08-10 artifacts means its stored `TranscriptVersion`
-  predates *all* of the shouting-detection/marker/unescape fixes and has
-  simply never been reprocessed — the same "old pages don't retroactively
-  benefit from a parsing fix" pattern already hit and fixed for Dublin/
-  Yountville (see BACKLOG_DONE.md). `normalize_shouting_caption()`'s
-  heuristic (≥40 letters, ≤2% lowercase ratio) should trip easily on a
-  genuinely fully-ALL-CAPS real meeting transcript this long — no reason
-  yet to believe the thresholds themselves are the problem.
-
-  **Two real, previously-undocumented gaps found while trying to force a
-  recheck, not yet fixed:**
+- **Stale archived transcripts have no automated refresh path — real gap
+  confirmed 2026-08-12 fixing the Minneapolis ALL-CAPS report (see
+  BACKLOG_DONE.md for the fix itself), two distinct pieces still open.**
+  Everything needed to *manually* fix one specific page now exists
+  (fetch a fresh transcript locally, push it, promote it), but nothing
+  automated will ever do this on its own for a page that already has a
+  transcript, however bad:
   - **Re-submitting an already-archived URL through the normal public
-    `/api/resolve` flow does *not* refresh stale content.** Confirmed
-    live: POSTing the Minneapolis source URL returned only
-    `{"redirect_url": "/m/..."}` — `archive_client.lookup()` runs *before*
-    any live resolve (see README's "Lookup, before resolving") and
-    short-circuits straight to the existing page the moment a permanent
-    page is found, so a live re-resolve never even starts. The only real
-    ways to force a refresh are `/admin/recheck-archive-page` (token-gated),
-    the passive 30-day `ARCHIVE_RECHECK_AFTER` cycle, or (for a
-    YouTube-delegated page specifically) the daily transcript-wanted
-    script below — there is currently no public, no-token way for anyone
-    (including the user, without pulling `ADMIN_STATS_TOKEN` out of a
-    deployed env) to force one specific stale page to refresh sooner.
+    `/api/resolve` flow does not refresh stale content.**
+    `archive_client.lookup()` runs *before* any live resolve (see
+    README's "Lookup, before resolving") and short-circuits straight to
+    the existing page the moment a permanent page is found, so a live
+    re-resolve never even starts. The only ways to force a refresh are
+    `/admin/recheck-archive-page` (token-gated) or the passive 30-day
+    `ARCHIVE_RECHECK_AFTER` cycle — no public, no-token way for anyone to
+    ask for one specific stale page to refresh sooner.
   - **`scripts/fetch_youtube_transcripts.py`'s queue
     (`GET /internal/transcript-wanted`) only ever returns YouTube-backed
     pages with *no* default transcript at all** — a page with an
     existing-but-bad transcript (stale, ALL-CAPS, pre-fix artifacts, or
     otherwise low quality) never qualifies as "wanted," so the daily
     script will never pick it up and re-fetch it, no matter how long it
-    runs. This means any YouTube-delegated page ingested before a future
-    caption-quality fix ships will stay stale indefinitely unless someone
-    notices and manually reruns `/admin/recheck-archive-page` (which
-    still won't refetch YouTube captions server-side anyway, per the
-    IP-block — recheck would need to go through this same script's path,
-    which the queue endpoint doesn't currently support for an
-    already-has-a-transcript page). Worth deciding whether the queue
-    should also surface low-quality-flagged pages, not just missing ones.
-  - Separately, worth noting: `scripts/fetch_youtube_transcripts.py`'s own
-    `snippets_to_segments()` calls `normalize_shouting_caption()` directly
-    but never calls the new `unescape_caption_entities()`
-    (`app/utils/vtt_parser.py`, added 2026-08-12) — since this script
-    bypasses `parse_vtt()` entirely (works from `youtube-transcript-api`
-    snippets, not raw VTT text), any future double-escape artifact in a
-    fetched snippet would still slip through this path even after
-    today's general fix. Not confirmed whether `youtube-transcript-api`
-    snippets ever actually contain pre-escaped entities in practice (this
-    script's own docstring only describes literal `>>` characters, not
-    escaped ones) — worth adding the same call there for consistency
-    regardless, low cost either way.
+    runs. Combined with the point above, a YouTube-delegated page that
+    got a bad transcript once will stay that way indefinitely unless
+    someone manually repeats the exact fix-it-by-hand process used for
+    Minneapolis (fetch locally, push via `/internal/ingest`, promote via
+    the new `/admin/promote-transcript-version` — see BACKLOG_DONE.md).
+    Worth deciding whether the queue should also surface low-quality-
+    flagged pages, not just missing ones, and/or whether recheck should
+    be able to trigger this same script's path for one page on demand.
 - **SCC/STL captions are detected but not readable at all.** Both are
   binary/encoded (EIA-608 line-21 data, EBU subtitle format) — no text
   can be extracted without real codec-level decoding, so these just

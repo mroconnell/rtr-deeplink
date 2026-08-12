@@ -560,6 +560,64 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-12] Fixed a real ALL-CAPS transcript on a live production
+  page (Minneapolis City Council, 2026-07-16) — root-caused to stale
+  pre-fix data, not a shouting-heuristic gap, and closed by building a
+  missing admin capability along the way.** Checked the user's own
+  reported page directly: the transcript was genuinely, fully ALL CAPS,
+  and also still showed the raw pre-2026-08-10 `&amp;gt;&amp;gt;`
+  double-escape artifact — proof its stored `TranscriptVersion` predated
+  every relevant parsing fix (shouting-detection, marker, unescape) and
+  had simply never been reprocessed, the same "old pages don't
+  retroactively benefit from a parsing fix" pattern already hit for
+  Dublin/Yountville.
+
+  **Real dead ends hit trying to force a fix, each a genuine gap** (both
+  still open as their own BACKLOG.md entry — this only closes the one
+  specific page, not the systemic cause): an `/admin/recheck-archive-page`
+  run confirmed live production re-resolves can't fetch YouTube captions
+  at all (the known Render-IP block) — it refreshed the agenda/metadata
+  but not the transcript; re-submitting the source URL through the normal
+  public flow did nothing, since `archive_client.lookup()` short-circuits
+  to a redirect before any live resolve starts; and the daily local
+  `scripts/fetch_youtube_transcripts.py` script's queue only ever lists
+  pages with *no* transcript, so a page with an existing-but-bad one is
+  invisible to it.
+
+  **What actually fixed this one page**: a one-off local run (residential
+  IP, same requirement as the daily script) fetched the real transcript
+  via `youtube-transcript-api`, correctly de-shouted and unescaped via
+  the existing `snippets_to_segments()`/`unescape_caption_entities()`
+  pipeline (6,577 real segments), and pushed it through the normal
+  `/internal/ingest` path using the source URL's own alias to match the
+  existing page. This created a second, correct `TranscriptVersion` — but
+  revealed one more real gap: `promote_transcript_version()` only ever
+  fires automatically from `ingest_resolution()`'s `_is_real_improvement()`
+  check (no-segments/no-language cases), so a fresh, better-quality
+  replacement pushed against an already-has-segments-and-language default
+  had no path to become the default at all.
+
+  **Closed that gap for real, not just for this one page**: a new
+  token-gated admin action — `crud.manually_promote_transcript_version()`
+  → `POST /internal/transcript-version/promote` (`archive/main.py`) →
+  `archive_client.promote_transcript_version()` →
+  `GET /admin/promote-transcript-version` (`app/main.py`) — mirroring the
+  existing `correct-transcript-language` feature's exact chain. Built on
+  its own fresh branch off `main` (not `accounts-clerk-phase1`, which had
+  gone stale after an earlier squash-merge under a different commit hash
+  the same day), PR #16, merged and deployed via Render's normal
+  Blueprint auto-deploy (confirmed both `rtr-deeplink` and
+  `rtr-deeplink-archive` live on the merge commit via the `render` CLI
+  before calling the new endpoint). 9 new tests (crud-level + HTTP-level,
+  mirroring the correct-language feature's existing coverage).
+
+  **Verified end to end on the real live page**: called
+  `/admin/promote-transcript-version` for the Minneapolis meeting's
+  version 122, then confirmed via a direct fetch of the live page that
+  its first transcript segment reads "Good morning everyone. My name" —
+  the real fix, not just a passing test. Full suite green throughout
+  (453 tests after the promote-endpoint addition).
+
 - **[Done 2026-08-11] Fixed two of the three real gaps in `/meetings`'
   title/jurisdiction formatting — state abbreviations and truncation;
   casing consistency deliberately left open (see BACKLOG.md).** Reported
