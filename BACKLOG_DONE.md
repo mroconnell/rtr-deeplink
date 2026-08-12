@@ -2937,6 +2937,64 @@ changelog of task titles.
 
 ## Platform coverage
 
+- **[Done 2026-08-12] New adapter: Detroit, MI's Cablecast video portal —
+  reversed an earlier "unsolvable, dead endpoint" call after being
+  pushed back on, and it turned out to be genuinely solvable.** The
+  original Wave 2 research's sample URL
+  (`detroit-vod.cablecast.tv/CablecastPublicSite/`) timed out on a
+  direct HTTPS request and was logged as unreachable. Turned out to be
+  half right: the portal's HTTPS (port 443) genuinely does hang
+  indefinitely for the *entire* domain (confirmed via direct `curl`:
+  15s+ timeout on HTTPS, under a second on plain HTTP) — but the site
+  itself is very much alive, and Detroit's own city website
+  (`detroitmi.gov`) links this exact portal today, correctly using a
+  plain `http://` URL rather than `https://`.
+
+  Given a real show URL (`detroit-vod.cablecast.tv/internetchannel/
+  show/{id}?site=1`), the page is a Remix.js SSR app embedding the
+  requested show's full data — plus a ~35-item "related shows"
+  carousel — in one `window.__remixContext = {...};` JSON blob.
+  `_find_show()` recursively searches that whole tree for the object
+  whose own `showId` matches the URL's, rather than assuming a fixed
+  key path (Remix's loader-data nesting is keyed by route id, not
+  worth hardcoding). The real video is a direct, unauthenticated
+  `.m3u8` on a *different* subdomain (`reflect-detroit-vod.cablecast
+  .tv`, confirmed reachable over HTTPS just fine — only the portal
+  domain itself hangs) — already fully supported by this app's existing
+  hls.js pathway, zero new frontend work needed, unlike Aurora/Viebit.
+
+  `resolve()` always fetches over plain HTTP regardless of what scheme
+  was pasted (`_force_http()`), so the more natural `https://` paste
+  doesn't hang the whole resolve — verified this doesn't regress
+  `source_url` (still records exactly what the user pasted, even though
+  the fetch itself goes over HTTP).
+
+  Deliberately scoped to this specific portal template
+  (`cablecast.tv` domain *and* an `/internetchannel/show/{id}` path),
+  not a general "any `*.cablecast.tv` domain" rule — Charlotte, NC's
+  confirmed Cablecast site uses a visibly different template (a
+  "DOWNLOADS" tab exposing plain `store-N/...-vN/vod.mp4` +
+  `transcript.en.txt` files directly, no Remix JSON, HTTPS works fine
+  there), so this isn't assumed to generalize to every Cablecast
+  customer without its own confirmed sample.
+
+  `vodTranscripts` is a real field in the schema but was an empty `[]`
+  on every one of 36 real shows checked on the one page fetched — per
+  this repo's "don't claim a data path works without a positive
+  example" convention, no extraction is attempted; only whether it's
+  non-empty is checked, so a future real populated example can be wired
+  in without first needing to prove the field exists.
+
+  Confirmed live end-to-end against the real show the user found
+  (`show/15323`, "Detroit City Council Formal Session 07-28-2026"):
+  correct title/date/jurisdiction, a real playable `.m3u8` URL, honest
+  "no transcript" warning. Also confirmed a pasted `https://` URL
+  resolves in ~0.3s instead of hanging. New `app/platforms/cablecast.py`
+  + fixture (`tests/fixtures/cablecast/detroit_show_15323.html`, a real
+  530KB fetched page), registered in `detect_platform()`. 9 new tests
+  (`tests/test_cablecast.py`). Full suite green (476 tests, up from
+  467).
+
 - **[Done 2026-08-12] New adapter: CivicWeb (iCompass, a Diligent brand),
   resolving the Wave 2 research's open question — confirmed live it's a
   YouTube-delegating platform, not a new video host.** The research had
