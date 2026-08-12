@@ -62,9 +62,13 @@ async def test_resolve_video_id_happy_path_with_manual_captions(monkeypatch):
     assert result.source_url == "https://okc.primegov.com/x"
     assert result.external_id == f"youtube:{REAL_VIDEO_ID}"
     assert result.title == REAL_TITLE
-    # upload_date YYYYMMDD -> ISO, per BACKLOG.md's confirmed real-meeting-
-    # date-mismatch note (upload_date is when it was posted, not the real
-    # meeting date -- this test pins the current, imperfect behavior).
+    # upload_date YYYYMMDD -> ISO. This still falls back to the imperfect
+    # upload_date (one day after the real meeting -- see BACKLOG_DONE.md)
+    # since _info_with_track() doesn't set release_date -- pins the
+    # fallback path specifically, for a video with no release_date at all
+    # (e.g. a plain never-live upload). See
+    # test_resolve_video_id_prefers_release_date_over_upload_date below
+    # for the now-fixed, real-release_date case.
     assert result.date == "2026-08-05"
     assert result.jurisdiction == REAL_UPLOADER
     assert result.video_url == f"https://www.youtube.com/embed/{REAL_VIDEO_ID}"
@@ -76,6 +80,22 @@ async def test_resolve_video_id_happy_path_with_manual_captions(monkeypatch):
     assert result.transcript_language == "en"
     # Manual captions -- no auto-generated-caption disclaimer.
     assert not any("auto-generated" in w for w in result.transcript_warnings)
+
+
+async def test_resolve_video_id_prefers_release_date_over_upload_date(monkeypatch):
+    # Real bug fixed 2026-08-12: confirmed on this exact real OKC video
+    # (id uNDJRR3ywVo, a livestreamed-then-archived meeting, was_live=True)
+    # that yt-dlp's real upload_date ("20260805") is one day after the
+    # real meeting, while its real release_date ("20260804") matches the
+    # video's own title ("...August 4, 2026") exactly -- confirmed on a
+    # second independent real sample (Columbus, OH) too, both was_live.
+    info = _info_with_track(is_manual=True)
+    info["release_date"] = "20260804"
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", lambda video_id: info)
+
+    result = await YouTubeAssetFinder.resolve_video_id(REAL_VIDEO_ID, source_url="https://example.com")
+
+    assert result.date == "2026-08-04"
 
 
 async def test_resolve_video_id_flags_auto_generated_captions(monkeypatch):
