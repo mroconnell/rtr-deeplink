@@ -6,11 +6,66 @@
 {% block content %}
   <main class="about-page">
     <h1>Coverage</h1>
-    <p class="about-lede">We support a platform once, and every city or county on it works. Here's every platform we already read video and transcripts from, each with a real archived meeting as proof.</p>
-    <p>Don't see your city's platform below? <a href="/">Paste a meeting link</a> and see what comes back — if it's a platform we already know, it'll just work.</p>
+    <p class="about-lede">We support a platform once, and every city or county on it works. Here's a real archived meeting as proof, both by government and by the platform behind it.</p>
+    <p>Don't see your city below? <a href="/">Paste a meeting link</a> and see what comes back — if it's on a platform we already know, it'll just work.</p>
 
+    <h2>Every place we've covered</h2>
+    <p>Looking for a specific city, county, or state rather than a vendor name? Use your browser's find-on-page (Ctrl+F or Cmd+F) and search for it — e.g. "Napa" or "Aurora."</p>
+    <div class="table-responsive">
+      <table class="table table-sm table-striped align-middle">
+        <thead>
+          <tr>
+            <th scope="col">Government</th>
+            <th scope="col">Example meeting</th>
+            <th scope="col">Transcript</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in jurisdictions %}
+          <tr>
+            <td>{{ row.jurisdiction }}</td>
+            <td><a href="/m/{{ row.example.slug }}">{{ row.example.title or "Untitled meeting" }}</a></td>
+            <td>
+              {% if row.example.has_transcript %}
+              <span class="transcript-badge" title="A transcript is available for this meeting">&#10003; Transcript</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <h2 style="margin-top: 2.5rem;">By platform</h2>
+    <p>We support a platform once, and every city or county on it works — here's every platform we already read video and transcripts from.</p>
     <div class="meeting-list">
-      {% for row in coverage %}
+      {% for row in coverage.direct %}
+      <div class="calendar-candidate meeting-result-row">
+        <div class="calendar-candidate-main">
+          {% if row.example %}
+          <a href="/m/{{ row.example.slug }}">{{ row.label }}</a>
+          <span class="calendar-candidate-date">
+            {{ row.example.title or "Untitled meeting" }}
+            {%- if row.example.jurisdiction %} &middot; {{ row.example.jurisdiction }}{% endif -%}
+          </span>
+          {% else %}
+          <span>{{ row.label }}</span>
+          <span class="calendar-candidate-date">Supported, but no example archived yet</span>
+          {% endif %}
+        </div>
+        {% if row.example and row.example.has_transcript %}
+        <span class="transcript-badge" title="A transcript is available for this meeting">&#10003; Transcript</span>
+        {% else %}
+        <span class="transcript-badge transcript-badge-placeholder" aria-hidden="true">&#10003; Transcript</span>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+
+    <h2 style="margin-top: 2rem;">Custom</h2>
+    <p class="subtitle">Not a shared vendor product — a scraper we built for one specific government site each.</p>
+    <div class="meeting-list">
+      {% for row in coverage.custom %}
       <div class="calendar-candidate meeting-result-row">
         <div class="calendar-candidate-main">
           {% if row.example %}
@@ -34,5 +89,11 @@
     </div>
 
     <p class="subtitle" style="margin-top: 1.5rem;">Some cities use a calendar/agenda tool (Legistar, CivicPlus, PrimeGov, CivicWeb) that itself just points at one of the platforms above rather than hosting video directly — those work too, they just aren't their own row here.</p>
+
+    <h2 style="margin-top: 2.5rem;">What about YouTube?</h2>
+    <p>A lot of government agencies host their recordings on YouTube, which actually does a good job with transcripts and deep links already. If you're in a hurry working with a YouTube-embedded hearing, we encourage you to use YouTube's own built-in transcript and deep-link features — that's why YouTube isn't listed as its own platform above. Where a government page embeds or links a YouTube video (like the "Custom" platforms above), we'll happily read it for you; for a video pasted straight from youtube.com, YouTube's own tools are usually the faster path.</p>
+
+    <h2 style="margin-top: 2rem;">Other projects worth knowing about</h2>
+    <p>For New York City Council meetings specifically, check out <a href="https://citymeetings.nyc" target="_blank" rel="noopener noreferrer">Vikram Oberoi's City Meetings NYC</a> — a human-verified, diarized transcript project covering the NYC Council and the NYC Charter Revision Commission better than we could hope to. Oberoi's openness in sharing what he learned building it was fundamental to building this tool in the first place, so we're glad to send New York traffic his way.</p>
   </main>
 {% endblock %}

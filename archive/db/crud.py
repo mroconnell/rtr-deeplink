@@ -3,6 +3,7 @@ import math
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
+from urllib.parse import urlparse
 
 from sqlalchemy import and_, or_, select
 
@@ -609,82 +610,187 @@ async def list_pages(
     }
 
 
-# Real, distinct video-hosting platforms only -- ordered to match
-# README.md's "Supported platforms" table. Deliberately excludes Legistar/
-# CivicPlus/PrimeGov/CivicWeb: those are calendar-tool detection routers
-# that delegate to one of the platforms below via resolve_via_platform()
-# (or, for CivicWeb, a direct YouTubeAssetFinder call) -- on every real,
-# successfully-ingested push the delegated finder's own ResolvedMeeting
-# is returned as-is, so MeetingPage.platform ends up "granicus"/"youtube"/
-# etc., never "legistar"/"civicplus"/"primegov"/"civicweb" (confirmed by
-# reading each adapter's resolve() -- platform=self.platform_name only
-# ever appears on their error-path returns, which are never pushed to the
-# Archive since a push requires real segments/agenda_items). Listing them
-# here would mean every one of those rows stays permanently exampleless,
-# not because nothing's supported but because the label itself never
-# occurs -- coverage.html adds a short note about these wrapper platforms
-# instead of a row that can never have a demo.
-PLATFORM_LABELS: dict[str, str] = {
+# Platforms that host video directly (or, for Viebit/Cablecast, are
+# reached by delegation but ARE the real host) -- ordered to match
+# README.md's "Supported platforms" table. Deliberately excludes
+# Legistar/CivicPlus/PrimeGov/CivicWeb: those are calendar-tool detection
+# routers that delegate to one of the platforms below via
+# resolve_via_platform() (or, for CivicWeb, a direct YouTubeAssetFinder
+# call) -- on every real, successfully-ingested push the delegated
+# finder's own ResolvedMeeting is returned as-is, so MeetingPage.platform
+# ends up "granicus"/"youtube"/etc., never "legistar"/"civicplus"/
+# "primegov"/"civicweb" (confirmed by reading each adapter's resolve() --
+# platform=self.platform_name only ever appears on their error-path
+# returns, which are never pushed to the Archive since a push requires
+# real segments/agenda_items). Listing them here would mean every one of
+# those rows stays permanently exampleless, not because nothing's
+# supported but because the label itself never occurs -- coverage.html
+# adds a short note about these wrapper platforms instead of a row that
+# can never have a demo.
+DIRECT_PLATFORMS: dict[str, str] = {
     "granicus": "Granicus",
     "civicclerk": "CivicClerk",
     "swagit": "Swagit",
-    "escribe": "eScribe",
-    "ca_legislature": "California Legislature",
-    "youtube": "YouTube",
     "viebit": "Viebit",
-    "lims": "Minneapolis LIMS",
-    "slc": "Salt Lake City meeting recaps",
-    "aurora_tv": "Aurora, CO (auroratv.org)",
+    "escribe": "eScribe",
     "cablecast": "Cablecast (Detroit, MI)",
 }
 
+# Platforms grouped under a single "Custom" row on /coverage -- each is a
+# real, distinct scraper this app built (not a shared vendor product),
+# but two of the four (lims, slc) delegate to YouTubeAssetFinder for the
+# actual video the exact same way lims.py/slc.py's own resolve() does
+# (see their docstrings) -- MeetingPage.platform ends up "youtube" for a
+# page from either of them, indistinguishable by platform alone from a
+# raw pasted YouTube link. _entry_platform_from_source_url() below
+# recovers which of the two it actually was from the page's own
+# source_url_normalized instead. ca_legislature and aurora_tv don't have
+# this problem (they self-host video, no YouTube delegation), so they're
+# matched by MeetingPage.platform directly, same as DIRECT_PLATFORMS.
+CUSTOM_PLATFORMS: dict[str, str] = {
+    "ca_legislature": "California State Legislature",
+    "slc": "Salt Lake City meeting recaps",
+    "lims": "Minneapolis LIMS",
+    "aurora_tv": "Aurora, CO (auroratv.org)",
+}
 
-async def get_platform_coverage() -> list[dict]:
-    """One row per real, distinct video-hosting platform for the public
-    /coverage page -- a real example permanent page (preferring one with
-    a good transcript, for a more convincing demo) plus a transcript-
-    availability checkmark, not aggregate stats.
+# YouTube is deliberately never its own /coverage row -- a viewer already
+# gets a good deep-linkable transcript straight from YouTube itself for
+# a directly-pasted YouTube URL, so this page steers people toward
+# pasting the government page that embeds/links it instead (a Granicus/
+# Swagit/etc. page, or one of the CUSTOM_PLATFORMS above) wherever one
+# exists. See coverage.html's own footer note.
+_YOUTUBE_DELEGATING_CUSTOM_PLATFORMS = frozenset({"lims", "slc"})
 
-    Every key in PLATFORM_LABELS is returned even with zero live examples
-    ("example": None) -- an honest "no example live yet" beats silently
-    omitting a platform this app genuinely supports in code but hasn't
-    happened to resolve a real meeting on yet, per CLAUDE.md's "don't
-    claim a data path works without a positive example" convention (the
-    thing being demonstrated here is "does a real page exist," not "is
-    this code path exercised" -- those are different claims).
+
+def _entry_platform_from_source_url(source_url_normalized: str) -> Optional[str]:
+    """Minimal, deliberately duplicated subset of app/platforms/base.py's
+    detect_platform() -- just enough to recognize the two YouTube-
+    delegating custom scrapers (see CUSTOM_PLATFORMS above) from a page's
+    own source_url_normalized. archive/ deliberately doesn't import from
+    app/ (see README's project structure notes on this directory's other
+    deliberately-duplicated utils, e.g. url_normalize.py/language.py) --
+    this stays scoped to exactly the two cases get_platform_coverage()
+    needs, not a general URL classifier.
+    """
+    netloc = urlparse(source_url_normalized).netloc.lower()
+    path = urlparse(source_url_normalized).path.lower()
+    if "lims.minneapolismn.gov" in netloc:
+        return "lims"
+    if netloc.endswith("slc.gov") and "-meeting-recap" in path:
+        return "slc"
+    return None
+
+
+def _coverage_row(key: str, label: str, examples: list[dict]) -> dict:
+    example = next((e for e in examples if e["has_transcript"]), examples[0] if examples else None)
+    return {"platform": key, "label": label, "example": example, "page_count": len(examples)}
+
+
+async def get_platform_coverage() -> dict:
+    """Grouped rows for the public /coverage page -- a real example
+    permanent page (preferring one with a good transcript, for a more
+    convincing demo) plus a transcript-availability checkmark per
+    platform, not aggregate stats. Returns {"direct": [...], "custom":
+    [...]}, matching how coverage.html renders "Custom" as one grouped
+    section with its own sub-rows rather than a flat list.
+
+    Every key in DIRECT_PLATFORMS/CUSTOM_PLATFORMS is returned even with
+    zero live examples ("example": None) -- an honest "no example live
+    yet" beats silently omitting a platform this app genuinely supports
+    in code but hasn't happened to resolve a real meeting on yet, per
+    CLAUDE.md's "don't claim a data path works without a positive
+    example" convention (the thing being demonstrated here is "does a
+    real page exist," not "is this code path exercised" -- those are
+    different claims).
     """
     async with async_session() as session:
-        stmt = select(MeetingPage, TranscriptVersion.id, TranscriptVersion.transcript_warnings).outerjoin(
+        stmt = select(
+            MeetingPage.platform,
+            MeetingPage.slug,
+            MeetingPage.title,
+            MeetingPage.jurisdiction,
+            MeetingPage.source_url_normalized,
+            TranscriptVersion.id,
+            TranscriptVersion.transcript_warnings,
+        ).outerjoin(
             TranscriptVersion,
             and_(TranscriptVersion.meeting_page_id == MeetingPage.id, TranscriptVersion.is_default.is_(True)),
         )
         rows = (await session.execute(stmt)).all()
 
-    by_platform: dict[str, list[dict]] = {}
-    for mp, version_id, warnings in rows:
+    by_key: dict[str, list[dict]] = {}
+    for platform, slug, title, jurisdiction, source_url, version_id, warnings in rows:
         has_transcript = version_id is not None and not any(_GARBLED_MARKER in w for w in (warnings or []))
-        by_platform.setdefault(mp.platform, []).append(
-            {
-                "slug": mp.slug,
-                "title": mp.title,
-                "jurisdiction": mp.jurisdiction,
-                "has_transcript": has_transcript,
-            }
+        example = {"slug": slug, "title": title, "jurisdiction": jurisdiction, "has_transcript": has_transcript}
+
+        if platform in DIRECT_PLATFORMS:
+            by_key.setdefault(platform, []).append(example)
+        elif platform == "youtube":
+            entry = _entry_platform_from_source_url(source_url)
+            if entry in _YOUTUBE_DELEGATING_CUSTOM_PLATFORMS:
+                by_key.setdefault(entry, []).append(example)
+            # else: a raw pasted YouTube link, or a Legistar/CivicPlus/
+            # PrimeGov/CivicWeb/best-effort page that happened to
+            # delegate to YouTube -- not shown, YouTube is intentionally
+            # excluded from this page (see coverage.html's footer note).
+        elif platform in CUSTOM_PLATFORMS:
+            # ca_legislature, aurora_tv -- self-hosted, no delegation.
+            by_key.setdefault(platform, []).append(example)
+
+    return {
+        "direct": [_coverage_row(k, v, by_key.get(k, [])) for k, v in DIRECT_PLATFORMS.items()],
+        "custom": [_coverage_row(k, v, by_key.get(k, [])) for k, v in CUSTOM_PLATFORMS.items()],
+    }
+
+
+async def get_jurisdiction_coverage() -> list[dict]:
+    """One row per distinct jurisdiction (MeetingPage.jurisdiction) with
+    at least one archived meeting -- a real "did you cover my city"
+    roster meant to be Ctrl+F'd, complementing get_platform_coverage()'s
+    per-platform summary above it on /coverage. That one groups by
+    engineering detail (which vendor) most viewers don't think in terms
+    of; user request 2026-08-12: "only software engineers think platform
+    first... most people want to ctrl-f 'napa' or 'aurora'." Sorted
+    alphabetically (case-insensitively), not by volume or recency, since
+    Ctrl+F relies on the reader's own scan order matching what they
+    typed, not this app's.
+
+    No platform grouping/exclusion logic here (unlike
+    get_platform_coverage()) -- a real archived meeting counts regardless
+    of which platform or delegation path found it, since "did you cover
+    my city" doesn't care how.
+    """
+    async with async_session() as session:
+        stmt = (
+            select(
+                MeetingPage.jurisdiction,
+                MeetingPage.slug,
+                MeetingPage.title,
+                TranscriptVersion.id,
+                TranscriptVersion.transcript_warnings,
+            )
+            .outerjoin(
+                TranscriptVersion,
+                and_(TranscriptVersion.meeting_page_id == MeetingPage.id, TranscriptVersion.is_default.is_(True)),
+            )
+            .where(MeetingPage.jurisdiction.is_not(None))
+        )
+        rows = (await session.execute(stmt)).all()
+
+    by_jurisdiction: dict[str, list[dict]] = {}
+    for jurisdiction, slug, title, version_id, warnings in rows:
+        has_transcript = version_id is not None and not any(_GARBLED_MARKER in w for w in (warnings or []))
+        by_jurisdiction.setdefault(jurisdiction, []).append(
+            {"slug": slug, "title": title, "has_transcript": has_transcript}
         )
 
-    coverage = []
-    for platform, label in PLATFORM_LABELS.items():
-        examples = by_platform.get(platform, [])
-        example = next((e for e in examples if e["has_transcript"]), examples[0] if examples else None)
-        coverage.append(
-            {
-                "platform": platform,
-                "label": label,
-                "example": example,
-                "page_count": len(examples),
-            }
-        )
-    return coverage
+    result = []
+    for jurisdiction in sorted(by_jurisdiction, key=str.casefold):
+        examples = by_jurisdiction[jurisdiction]
+        example = next((e for e in examples if e["has_transcript"]), examples[0])
+        result.append({"jurisdiction": jurisdiction, "example": example, "page_count": len(examples)})
+    return result
 
 
 async def list_all_page_slugs() -> list[dict]:
