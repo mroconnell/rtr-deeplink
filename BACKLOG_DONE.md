@@ -555,22 +555,19 @@ changelog of task titles.
   confirming the initial HTML for both states via a monkeypatched
   `get_clerk_user_id`, and live in-browser against the anonymous case.
   Full suite green (422 tests).
-- **[Done 2026-08-11] Built (not yet live-confirmed) a fix for the Clerk
-  sign-out flow landing on Clerk's own bare hosted page instead of this
-  site.** Root cause confirmed live: at Claude's request, the user
-  signed out on staging and landed on
-  `guided-bedbug-18.accounts.dev/sign-in` (a real screenshot showed
-  Clerk's own generic branding, no RTR nav/footer at all) — exactly the
-  theory `BACKLOG.md` had flagged (`mountUserButton()` called with no
-  `afterSignOutUrl` option, so Clerk's built-in "Sign out" menu item used
-  its own default destination). Fix: `shared_static/clerk_nav.js`'s
-  `window.Clerk.load()` call now passes `afterSignOutUrl` pointing back
-  at the homepage. Inferred from Clerk's documented API surface, not
-  checked against live docs this pass — pushed to
-  `accounts-clerk-phase1` for the user to confirm with a real sign-out
-  once staging redeploys, same "don't claim a fix without a positive
-  example" convention as everywhere else. **Kept live in BACKLOG.md, not
-  moved fully here, until that confirmation lands.**
+- **[Done 2026-08-11] Fixed the Clerk sign-out flow landing on Clerk's own
+  bare hosted page instead of this site — now live-confirmed.** Root
+  cause confirmed live: at Claude's request, the user signed out on
+  staging and landed on `guided-bedbug-18.accounts.dev/sign-in` (a real
+  screenshot showed Clerk's own generic branding, no RTR nav/footer at
+  all) — exactly the theory `BACKLOG.md` had flagged (`mountUserButton()`
+  called with no `afterSignOutUrl` option, so Clerk's built-in "Sign out"
+  menu item used its own default destination). Fix: `shared_static/
+  clerk_nav.js`'s `window.Clerk.load()` call now passes `afterSignOutUrl`
+  pointing back at the homepage. **Confirmed working 2026-08-11**: the
+  user signed out for real (via their own Chrome, already-authenticated
+  session) and landed on the homepage as intended — no further action
+  needed.
 - **[Done 2026-08-11] Made the source-transcript disclaimer's pointer to
   the real "Request Transcript from Audio" button more obvious — user
   feedback the same day the disclaimer itself shipped.** The original

@@ -223,25 +223,6 @@ anything) to build against it.
   abbreviation" rule would need to operate on the trailing portion of an
   opaque string (e.g. after the last comma), not a structured field.
 
-## Accounts (Clerk) UI gaps found 2026-08-11
-
-- **The Clerk sign-out flow lands the user on a bare page with no RTR
-  nav/footer at all — root cause confirmed live 2026-08-11, fix built and
-  pushed the same day, not yet confirmed working.** Root cause: the user
-  tested a real sign-out on staging at Claude's request and landed on
-  `guided-bedbug-18.accounts.dev/sign-in` — Clerk's own generic hosted
-  Account Portal page (real screenshot: no RTR branding/nav/footer at
-  all), confirming the theory below exactly. `mountUserButton()`
-  (`shared_static/clerk_nav.js`) was invoked with no options at all, so
-  its built-in "Sign out" menu item used Clerk's own default post-sign-out
-  destination instead of anything on this site. Fix: `window.Clerk.load()`
-  now passes `afterSignOutUrl` pointing back at the homepage — inferred
-  from Clerk's documented API surface, not checked against live docs this
-  pass. **Still needs**: a real sign-out on staging (after this fix
-  deploys) to confirm the redirect itself actually lands on this site
-  instead of Clerk's page, same "don't claim a fix without a positive
-  example" convention as everywhere else in this file.
-
 ## Deep links
 
 The `t`/`line` scheme itself is sound and hasn't changed since the initial
