@@ -591,6 +591,131 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-13] Built `scripts/backfill_archived_pages.py` — the
+  bulk version of the existing one-URL-at-a-time
+  `GET /admin/recheck-archive-page`, for the "archived pages don't
+  self-heal" gap (see the still-open `BACKLOG.md` entry, which this
+  entry only partly closes — the tool exists, running it against
+  production is still a separate, deliberate step).**
+
+  **The gap this fixes**: `MeetingPage.jurisdiction` (and every other
+  resolved field) is set once at ingest and never re-checked on its own.
+  Confirmed live against seven separate, already-fixed bugs still showing
+  their old wrong value purely because nobody had resubmitted those exact
+  URLs since the fix shipped — Long Beach's Swagit "Revised -" bug,
+  San Francisco/Denver's display bug, Fresno, Napa and other CA cities,
+  Memphis/Jacksonville, a PrimeGov page, and a Viebit/NYCC page.
+
+  **What got built**:
+  - `crud.list_all_page_urls()` (`archive/db/crud.py`) — every archived
+    page's `slug`/`title`/`platform`/`source_url_normalized`, same shape
+    convention as the existing `list_youtube_pages_missing_transcripts()`
+    (the "transcript wanted" queue) but unscoped to any one platform,
+    since this backfill exists to fix any adapter's stale data.
+  - `GET /internal/pages/all-urls` (`archive/main.py`) — token-gated
+    route exposing the above, same pattern as `/internal/transcript-wanted`.
+  - `archive_client.list_all_page_urls()` (`app/archive_client.py`) —
+    the resolver-side proxy fetching that list.
+  - `app.main._recheck_archived_page()` gained an optional `dry_run=False`
+    parameter — still does the real resolve (so a caller can see what
+    *would* change) but skips the push. Previously untested at the unit
+    level despite being live since 2026-08-09; gained real coverage in
+    this pass (`tests/test_recheck_archived_page.py`) — dry-run vs. real
+    push, unsupported-platform and resolve-exception error paths, and
+    confirming a resolve with no real content never pushes regardless of
+    `dry_run`.
+  - `scripts/backfill_archived_pages.py` — the sweep itself. Imports
+    `app.main._recheck_archived_page()` directly to reuse its exact
+    resolve+push logic rather than reimplementing it. Runs strictly
+    sequentially (never concurrently), with a configurable delay between
+    *every* page regardless of source domain (default 2s) — real
+    politeness matters here, this hits potentially hundreds of different
+    live government sites, several of which host more than one archived
+    page (e.g. multiple Long Beach meetings all on the same
+    `longbeachca.new.swagit.com`). `--dry-run`, `--limit N`, and
+    `--platform NAME` flags let a run be scoped/previewed before an
+    unscoped real one.
+
+  **Verified three ways**: 15 new unit/integration tests (the crud
+  function + route, `_recheck_archived_page()`'s new `dry_run` behavior);
+  full suite green (599 tests); and a real local end-to-end run — spun up
+  an isolated local Archive server (its own throwaway SQLite file, never
+  touching production), seeded one real page (the actual Long Beach
+  Swagit meeting, `longbeachca.new.swagit.com/videos/395182`) with a
+  deliberately-wrong stored jurisdiction ("Revised - Long Beach, CA",
+  reproducing the real bug), then ran the script against it: `--dry-run`
+  correctly reported "would push -- jurisdiction='Long Beach, CA'" while
+  leaving the stored value untouched (confirmed by re-reading it after),
+  then a real run correctly rewrote the stored value to `Long Beach, CA`
+  (confirmed by re-reading it again). This used a genuine live network
+  call to the real Swagit page, not a mock, and never touched production
+  data at any point.
+
+  **Explicitly not done in this pass**: running it against production.
+  Given it hits potentially hundreds of different real government
+  websites and rewrites live `MeetingPage` rows, that's a deliberate,
+  separate action for whoever has `ARCHIVE_BASE_URL`/
+  `ARCHIVE_INGEST_TOKEN` access to run themselves, ideally starting
+  scoped (`--dry-run --limit 5` or `--platform swagit`) before an
+  unscoped run — see the still-open `BACKLOG.md` entry.
+
+- **[Done 2026-08-13] Four real bugs found live-testing the previous
+  day's jurisdiction_enrich rollout, all shipped in one pass
+  (PR #29) — this entry was missed at the time and only written up
+  after the fact, 2026-08-13, when the user asked whether the Swagit fix
+  had a backlog record at all. It didn't; corrected here.**
+  - **`format_jurisdiction_display()` (`archive/utils/
+    jurisdiction_format.py`) and its JS twin (`app/static/player.js`)
+    mangled real consolidated city-counties.** A naive "starts with
+    'City '" prefix check also matched "City and County of San
+    Francisco"/"...Denver" on just the first 5 characters, leaving "and
+    County of San Francisco". Checked and left fully untouched now — the
+    "and County of" phrasing is real, non-redundant information, unlike
+    a plain "City of", same reasoning as why "County of X" alone was
+    already preserved.
+  - **Swagit's title-parsing regex (`app/platforms/swagit.py`'s
+    `_extract_metadata()`) swallowed a "- Revised -"/"- Closed Session -"
+    marker into the jurisdiction on Long Beach meetings** (e.g. "Revised
+    - Long Beach, CA" instead of "Long Beach, CA"). A lazy `(.*?)`
+    title-part match locks onto the *first* hyphen it can make the rest
+    of the pattern satisfy — since the marker text itself has no comma,
+    that first split still worked, swallowing "Revised - Long Beach"
+    whole into the city group. Made the match greedy (`(.*)`) so it
+    always backtracks to the *last* hyphen before ", {State}$" instead —
+    the real city boundary in every real title shape seen so far,
+    including the plain no-marker case. Live-reverified 2026-08-13 (see
+    the "archived pages don't self-heal" entry in `BACKLOG.md`): a fresh
+    resolve of `longbeachca.new.swagit.com/videos/395182` with the
+    current code correctly returns `Long Beach, CA`.
+  - **Dallas County's CivicWeb pages had no state.** Investigated why the
+    ZIP-anchored address fallback wasn't catching it: the real page has
+    zero 5-digit numbers anywhere in its raw HTML, so the lookup had
+    nothing to key off. Added `dallascounty.civicweb.net` to
+    `jurisdiction_enrich.py`'s confirmed-domain registry instead, same
+    pattern as Cablecast's Detroit/Charlotte entries — live-verified
+    resolves to `Dallas County, TX`.
+  - **LIMS (`app/platforms/lims.py`) occasionally returned a bare city
+    name with no state.** When the agenda page's title didn't match the
+    expected `_TITLE_RE` shape, `resolve()` silently kept whatever
+    jurisdiction `YouTubeAssetFinder` had already set — the channel/
+    uploader name, an unrelated field. Fixed to always prefer the known
+    Minneapolis domain (LIMS is single-tenant, every real URL is this one
+    system) rather than ever trusting an uploader name for this
+    specifically.
+
+  **Verified**: full suite green (556 tests, 5 new regression tests:
+  `test_display_keeps_consolidated_city_and_county_label`,
+  `test_extract_metadata_strips_a_revised_marker_from_jurisdiction`,
+  `test_extract_metadata_strips_a_closed_session_marker_from_jurisdiction`,
+  plus CivicWeb/LIMS domain-fallback tests). Also confirmed several other
+  user-reported cases from the same live-testing pass (Fresno, NYCC,
+  Memphis, Jacksonville, "SLC Live Meetings") were stale already-archived
+  data from before earlier fixes shipped, not currently-reproducible
+  code bugs — current code resolves all of them correctly when re-run
+  directly. That distinction turned into its own tracked, still-open
+  entry (`BACKLOG.md`'s "archived pages don't self-heal") once it kept
+  recurring.
+
 - **[Done 2026-08-12] Built `app/utils/jurisdiction_enrich.py` — a shared,
   Census-backed "fill in a missing state" module, and wired it into
   Granicus (the largest single source of the gap) and Cablecast.**

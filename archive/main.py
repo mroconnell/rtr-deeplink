@@ -164,6 +164,21 @@ async def internal_schema_info(authorization: Optional[str] = Header(None)):
     }
 
 
+@app.get("/internal/pages/all-urls")
+async def internal_all_page_urls(authorization: Optional[str] = Header(None)):
+    """Every archived page's real source URL + platform -- the backfill
+    sweep's starting point (scripts/backfill_archived_pages.py). See
+    crud.list_all_page_urls()'s own docstring for why this exists at all:
+    nothing re-checks an already-archived page on its own, so an adapter/
+    jurisdiction fix only ever reaches pages resolved *after* it shipped
+    unless something re-resolves the old ones deliberately.
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    return {"pages": await crud.list_all_page_urls()}
+
+
 @app.get("/internal/transcript-wanted")
 async def internal_transcript_wanted(authorization: Optional[str] = Header(None)):
     """The "transcript wanted" queue: every archived YouTube-backed page
