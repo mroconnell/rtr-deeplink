@@ -101,39 +101,23 @@ anything) to build against it.
 
 ## Bugs
 
-- **PrimeGov's `_extract_jurisdiction()` can still pick up an unrelated
-  city name from agenda body text — reopened 2026-08-12, full context in
-  `BACKLOG_DONE.md`.** An earlier same-day fix capped the search to the
-  first 2000 characters, on the assumption the real header always
-  appears "early." Real character offsets fetched live from all three
-  known real PrimeGov pages disproved that: OKC's real header sits at
-  offset ~4,753 (past the window), Thousand Oaks's only real match is a
-  "City of Thousand Oaks" mention buried in mission-statement prose at
-  offset ~264,423, and SLC's false-positive "City of Holladay" match sits
-  at ~374,844 — *farther* into the page than Thousand Oaks's real match,
-  so no single window size can include Thousand Oaks's real match while
-  excluding SLC's false one. The window was reverted (back to an
-  unscoped, boilerplate-stripped search), since it had been trading two
-  correct, originally-confirmed real cities for one — but that means
-  SLC's original bug is genuinely open again: a real slc.primegov.com
-  meeting will resolve to `"City of Holladay, UT"` (now with a
-  confidently-appended real state, via the separate jurisdiction_enrich
-  work, which makes the wrong answer read as more authoritative than it
-  did before, not less).
-
-  **What a real fix needs, given the data above**: not a positional rule
-  — the real matches (OKC, Thousand Oaks) and the false one (SLC) don't
-  separate cleanly by character offset across these three shapes.
-  Structural options worth trying against more real examples before
-  committing to one: OKC's real header is bold-tagged and is the *entire*
-  content of its `<strong>` tag (vs. SLC's false positive, also bold, but
-  embedded mid-sentence in a much longer resolution title) — but Thousand
-  Oaks's real match isn't in a bold tag at all, it's plain paragraph
-  prose, so a bold-tag-only rule would miss it. Worth checking a fourth
-  and fifth real PrimeGov city before trying anything more structural,
-  per this file's own "verify against real examples" convention — three
-  samples already proved one plausible-looking rule (position) wrong, and
-  a second untested rule risks the same fate.
+- **PrimeGov's `_extract_jurisdiction()` still has no real structural fix
+  for the SLC/Holladay false-positive — only patched for that one
+  confirmed domain, not solved generally.** SLC's specific bug (every
+  real `slc.primegov.com` meeting is fixed 2026-08-13 via a known-domain
+  full override — see `BACKLOG_DONE.md`), but the underlying problem
+  the earlier investigation surfaced is still real and open: an unscoped
+  body-text search can't structurally tell a genuine page header from an
+  agenda-item mention (confirmed against three real cities — OKC,
+  Thousand Oaks, SLC — none of which separate cleanly by character
+  position, and a bold-tag rule would fix OKC/SLC but miss Thousand
+  Oaks's plain-prose header). **A fourth PrimeGov city with this same
+  false-positive shape and no confirmed domain of its own would still
+  hit the original bug** — the domain override only works because SLC
+  happened to get reported and confirmed. Worth revisiting the
+  structural options (bold-tag heuristic, etc.) against more real
+  examples if this recurs, rather than adding a domain override per
+  incident indefinitely.
 
 - ~~**`find_platform_link()`'s fallback delegation could self-loop into
   real infinite recursion**~~ **Fixed 2026-08-12 — full detail in
