@@ -4,10 +4,30 @@ directly from the user's own request: try our best instead of a flat
 the exact string detect_platform() returns for anything unmatched.
 """
 
+import yt_dlp
+
 from app.platforms.generic_fallback import GenericFallbackAssetFinder
 from app.platforms.youtube import YouTubeAssetFinder
 
 from aiohttp_mock import FakeResponse, mock_session
+
+# Real page shape confirmed live 2026-08-13 across 5 real CRRMA board
+# meeting URLs (crrma.org/information/meetings/board/{date}) -- see
+# BACKLOG.md's "generic_fallback.py's YouTube-embed branch" entry.
+# Trimmed to just the parts _backfill_metadata_from_page() reads.
+CRRMA_URL = "https://www.crrma.org/information/meetings/board/2025-11-12"
+CRRMA_VIDEO_ID = "dQw4w9WgXcQ"
+CRRMA_PAGE_HTML = f"""
+<html><head><title>Camino Real Regional Mobility Authority | El Paso, Texas</title></head>
+<body>
+<iframe src="https://www.youtube.com/embed/{CRRMA_VIDEO_ID}"></iframe>
+<h1 id="notice-of-meeting">NOTICE OF MEETING</h1>
+<h2 id="november-12-2025-----900am">November 12, 2025 - 9:00am</h2>
+<p><strong>A meeting of the CRRMA Board of Directors will be held on Wednesday November 12, 2025,
+at 9:00am in the 2nd Floor Main Conference Room of El Paso City Hall, located at 300 N. Campbell,
+El Paso, Texas 79901.</strong></p>
+</body></html>
+"""
 
 PAGE_URL = "https://some-city.example.gov/meetings/council-2026-01-01"
 REAL_VIDEO_ID = "dQw4w9WgXcQ"
@@ -250,3 +270,102 @@ async def test_resolve_falls_through_when_delegation_raises(monkeypatch):
     # Falls back to the honest "nothing found" outcome rather than crashing.
     assert result.platform == "unknown"
     assert result.video_url is None
+
+
+async def test_resolve_backfills_title_and_jurisdiction_when_youtube_metadata_blocked(monkeypatch):
+    # Real gap confirmed live 2026-08-13 (see BACKLOG.md): when yt-dlp is
+    # blocked by YouTube's anti-bot check (the real, documented Render-IP
+    # issue), the delegated YouTube result has no title/jurisdiction at
+    # all -- this used to surface as a bare "Untitled meeting" even
+    # though the page itself has everything needed. CRRMA's own <title>
+    # ("Camino Real Regional Mobility Authority | El Paso, Texas") and
+    # notice-of-meeting body paragraph ("CRRMA Board of Directors") are
+    # both real, present on 5 confirmed real examples.
+    def _raise(video_id):
+        raise yt_dlp.utils.DownloadError("Sign in to confirm you're not a bot")
+
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _raise)
+    routes = {CRRMA_URL: FakeResponse(status=200, text=CRRMA_PAGE_HTML, url=CRRMA_URL)}
+
+    with mock_session(routes):
+        result = await GenericFallbackAssetFinder().resolve(CRRMA_URL)
+
+    # User's own stated naming preference, 2026-08-13: "I'd expect it to
+    # have CRRMA in there somewhere" -- the notice-block phrase wins over
+    # the bare <title>-derived org name.
+    assert result.title == "CRRMA Board of Directors"
+    assert result.jurisdiction == "El Paso, Texas"
+    assert result.date == "2025-11-12"
+    # Playback itself is unaffected -- this is purely a metadata backfill.
+    assert result.video_url == f"https://www.youtube.com/embed/{CRRMA_VIDEO_ID}"
+
+
+async def test_resolve_does_not_backfill_title_over_a_real_youtube_title(monkeypatch):
+    # Title backfill must never override a real title a delegated finder
+    # DID find -- only fires when title is still empty.
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _fake_extract_info)
+    routes = {CRRMA_URL: FakeResponse(status=200, text=CRRMA_PAGE_HTML, url=CRRMA_URL)}
+
+    with mock_session(routes):
+        result = await GenericFallbackAssetFinder().resolve(CRRMA_URL)
+
+    assert result.title == "Some City Council Meeting"
+
+
+async def test_resolve_overrides_youtube_uploader_jurisdiction_even_with_a_real_title(monkeypatch):
+    # Real bug found live 2026-08-13, re-resolving the actual CRRMA page
+    # (/m/meeting-732f78) once yt-dlp succeeded (unblocked from a
+    # residential IP): YouTubeAssetFinder.resolve_video_id() unconditionally
+    # sets jurisdiction=info.get("uploader") whenever it succeeds -- a
+    # channel name ("Camino Real Regional Mobility Authority" here), not
+    # a real jurisdiction, the same class of bug already fixed for
+    # PrimeGov. Unlike title, jurisdiction backfill must fire regardless
+    # of whether YouTube's own metadata call succeeded, since this
+    # branch's only delegate is YouTubeAssetFinder and its uploader field
+    # is never a trustworthy jurisdiction.
+    def _fake_info(video_id):
+        return {
+            "title": "November 12, 2025 - CRRMA Board Meeting",
+            "uploader": "Camino Real Regional Mobility Authority",
+            "upload_date": "20251117",
+        }
+
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _fake_info)
+    routes = {CRRMA_URL: FakeResponse(status=200, text=CRRMA_PAGE_HTML, url=CRRMA_URL)}
+
+    with mock_session(routes):
+        result = await GenericFallbackAssetFinder().resolve(CRRMA_URL)
+
+    # Real YouTube title wins (not overridden)...
+    assert result.title == "November 12, 2025 - CRRMA Board Meeting"
+    # ...but the uploader-derived "jurisdiction" is replaced with the
+    # page's own real one.
+    assert result.jurisdiction == "El Paso, Texas"
+
+
+async def test_backfill_falls_back_to_bare_title_tag_org_name_without_a_notice_block():
+    from app.platforms.generic_fallback import GenericFallbackAssetFinder as F
+    from app.platforms.models import ResolvedMeeting
+
+    html = "<html><head><title>Some Org | Somewhere, ST</title></head><body>No notice block here.</body></html>"
+    resolved = ResolvedMeeting(platform="unknown", source_url=CRRMA_URL)
+
+    F._backfill_metadata_from_page(resolved, html, CRRMA_URL)
+
+    assert resolved.title == "Some Org"
+    assert resolved.jurisdiction == "Somewhere, ST"
+
+
+async def test_backfill_is_a_no_op_without_a_pipe_shaped_title():
+    from app.platforms.generic_fallback import GenericFallbackAssetFinder as F
+    from app.platforms.models import ResolvedMeeting
+
+    html = "<html><head><title>Just A Plain Title</title></head><body>Nothing useful here.</body></html>"
+    resolved = ResolvedMeeting(platform="unknown", source_url=CRRMA_URL)
+
+    F._backfill_metadata_from_page(resolved, html, CRRMA_URL)
+
+    assert resolved.title is None
+    assert resolved.jurisdiction is None
+    # The URL-path date still gets filled in independent of the title shape.
+    assert resolved.date == "2025-11-12"

@@ -13,6 +13,25 @@ from ..utils.vtt_parser import decode_vtt_bytes, detect_language_from_texts, par
 
 _AGENDA_TEXT_RE = re.compile(r"agenda", re.IGNORECASE)
 
+# Real page shape confirmed live 2026-08-13 across 5 real CRRMA board
+# meeting URLs (crrma.org/information/meetings/board/{date}) -- see
+# BACKLOG.md's "generic_fallback.py's YouTube-embed branch" entry. Only
+# used as a last-resort backfill when the delegated finder's own
+# metadata extraction came back completely empty (confirmed root cause:
+# YouTube's yt-dlp call is blocked by anti-bot from Render's server IP,
+# youtube.py's own documented gap, so `resolved.title` is None) --
+# scoped to this exact shape, never assumed to generalize to other
+# generic-fallback sites without their own confirmed example, same
+# convention as every other adapter in this repo.
+_TITLE_TAG_PIPE_RE = re.compile(r"^(.*?)\s*\|\s*(.+?)\s*$")
+_URL_PATH_DATE_RE = re.compile(r"/(\d{4})-(\d{2})-(\d{2})(?:[/?]|$)")
+# The notice-of-meeting body paragraph names the governing body more
+# specifically ("CRRMA Board of Directors") than the bare org name in
+# <title> ("Camino Real Regional Mobility Authority") -- user's own
+# stated preference, 2026-08-13: "I'd expect it to have CRRMA in there
+# somewhere."
+_BOARD_OF_DIRECTORS_RE = re.compile(r"\b([A-Z]{2,8}\s+Board\s+of\s+Directors)\b")
+
 _BEST_EFFORT_VIDEO_WARNING = (
     "This city isn't officially supported yet, so we're trying our best — we think we found the "
     "video below. Deep-linking to a specific moment might work here, or it might not — feel free "
@@ -154,6 +173,7 @@ class GenericFallbackAssetFinder(AssetFinder):
             # "unknown" alone would silently miss this, the *most* common
             # real outcome (a small city just embeds a YouTube video).
             resolved.best_effort = True
+            self._backfill_metadata_from_page(resolved, html, url)
             return resolved
 
         delegated = await self._try_delegate_to_known_platform(html, url)
@@ -175,7 +195,7 @@ class GenericFallbackAssetFinder(AssetFinder):
 
         transcript_warnings = [] if segments else [_NO_TRANSCRIPT_WARNING]
 
-        return ResolvedMeeting(
+        resolved = ResolvedMeeting(
             platform=self.platform_name,
             source_url=url,
             video_url=video_url,
@@ -187,6 +207,59 @@ class GenericFallbackAssetFinder(AssetFinder):
             agenda_link=agenda_link,
             best_effort=True,
         )
+        self._backfill_metadata_from_page(resolved, html, url)
+        return resolved
+
+    @staticmethod
+    def _backfill_metadata_from_page(resolved: ResolvedMeeting, html: str, url: str) -> None:
+        """Last-resort title/jurisdiction/date fill-in for a still-empty
+        `resolved.title` -- see the module-level regex comments above for
+        the real confirmed page shape this targets. Deliberately only
+        fires on a still-empty title, so it can never clobber a real
+        title/jurisdiction a delegated finder (e.g. YouTube, when yt-dlp
+        isn't blocked) already found.
+
+        `resolved.jurisdiction` is intentionally stored as raw text
+        ("El Paso, Texas", not "El Paso, TX") -- `normalize_state_suffix()`
+        already runs on every ingest server-side
+        (`archive/db/crud.py`'s `_find_or_create_page()`), so abbreviating
+        it here too would just be redundant, not incorrect.
+        """
+        date_match = _URL_PATH_DATE_RE.search(url)
+        if date_match and not resolved.date:
+            resolved.date = f"{date_match.group(1)}-{date_match.group(2)}-{date_match.group(3)}"
+
+        soup = BeautifulSoup(html, "html.parser")
+        board_match = _BOARD_OF_DIRECTORS_RE.search(soup.get_text(" ", strip=True))
+
+        org_name, jurisdiction = None, None
+        title_tag = soup.title.get_text(strip=True) if soup.title else None
+        if title_tag:
+            pipe_match = _TITLE_TAG_PIPE_RE.match(title_tag)
+            if pipe_match:
+                org_name, jurisdiction = pipe_match.group(1), pipe_match.group(2)
+
+        if not resolved.title:
+            # Prefer the notice-block's own body-name phrase over the bare
+            # <title>-derived org name when both are available -- user's
+            # own stated preference, see the _BOARD_OF_DIRECTORS_RE
+            # comment above.
+            resolved.title = board_match.group(1) if board_match else org_name
+
+        # Jurisdiction, unlike title, always prefers the page's own value
+        # over whatever's already on `resolved` -- real bug found live
+        # 2026-08-13 confirmed via a re-resolved CRRMA page
+        # (/m/meeting-732f78): when yt-dlp isn't blocked,
+        # `YouTubeAssetFinder.resolve_video_id()` unconditionally sets
+        # `jurisdiction=info.get("uploader")` (youtube.py), a channel
+        # name ("Camino Real Regional Mobility Authority"), not a real
+        # jurisdiction -- the exact same class of bug already fixed for
+        # PrimeGov (primegov.py's own resolve() unconditionally overrides
+        # YouTube's uploader for the same reason). Since this branch's
+        # only possible delegate is YouTubeAssetFinder, there's no other
+        # legitimate source `resolved.jurisdiction` could hold here.
+        if jurisdiction:
+            resolved.jurisdiction = jurisdiction
 
     @staticmethod
     async def _try_delegate_to_known_platform(html: str, page_url: str) -> Optional[ResolvedMeeting]:
