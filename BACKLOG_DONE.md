@@ -591,6 +591,46 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-13] PrimeGov now backfills `title` from the page's
+  own real inner `<title>` tag when YouTube's own extraction is
+  empty — found live by the user on a real LA City Council meeting.**
+  The user pointed out that
+  [a real LA `Portal/Meeting` URL](https://lacity.primegov.com/Portal/Meeting?meetingTemplateId=157675)
+  would come through with no title even though YouTube's own title
+  ("Regular City Council") and the page's own `<title>` tag ("City
+  Council Meeting - 8/12/2026 5:00:00 PM") were both real and available.
+  Investigated rather than assumed: a local resolve (residential
+  network, yt-dlp unblocked) actually already returned the right title
+  today — the *real* gap only shows up when yt-dlp is blocked (Render's
+  documented IP-block gap, `youtube.py`), confirmed by simulating that
+  exact condition (`DownloadError`, same pattern `test_youtube.py`
+  already uses) — `resolved.title` came back `None`, while jurisdiction/
+  date still worked fine since those already had their own page-based
+  fallbacks (built 2026-08-09/12) — title never did.
+
+  **Real, confirmed shape, not assumed from one example**: every
+  PrimeGov `Portal/Meeting` page carries *two* `<title>` tags — an
+  outer, useless `<title>Meeting</title>`, followed by a real one
+  further into the response. Confirmed live across all 3 independently-
+  confirmed real PrimeGov customers this repo has ever checked (OKC:
+  "City Council - 8/4/2026 1:30:00 PM"; Thousand Oaks: "Thousand Oaks
+  City Council Regular Meeting (Closed Session) - 7/8/2026 12:00:00
+  AM"; LA: "City Council Meeting - 8/12/2026 5:00:00 PM") — not an
+  LA-specific quirk, a platform-wide pattern. New
+  `_extract_title()` returns the first `<title>` tag whose text isn't
+  the exact generic placeholder. Applied in `resolve()` only when
+  `resolved.title` is still empty — a real YouTube title, when
+  available, is never overridden.
+
+  **Verified**: 4 new unit tests (629 total passing) — the extraction
+  function against the real confirmed shape, the no-real-title case,
+  and two `resolve()`-level tests (backfills when YouTube is blocked,
+  never overrides a real YouTube title) using the same `DownloadError`
+  simulation pattern already established in `test_youtube.py`. A real
+  local resolve of all 3 customer URLs with yt-dlp genuinely blocked
+  (simulated) confirmed every one now gets its real title instead of
+  `None`.
+
 - **[Done 2026-08-13] Legistar's `MeetingDetail.aspx` page now backfills
   `agenda_link` — a real, easy win identified 2026-08-12 but not built
   until now.** Re-confirmed live against the same real Mesa, AZ example

@@ -119,6 +119,17 @@ anything) to build against it.
   examples if this recurs, rather than adding a domain override per
   incident indefinitely.
 
+  ~~**Separately: PrimeGov never backfilled `title` from the page itself
+  when YouTube's own extraction is empty**~~ **Fixed 2026-08-13 — full
+  detail in `BACKLOG_DONE.md`.** Confirmed live on a real LA City
+  Council meeting the user flagged: every `Portal/Meeting` page carries
+  a real, useful inner `<title>` tag (confirmed across 3 independent
+  customers — OKC, Thousand Oaks, LA), sitting right after a useless
+  outer `<title>Meeting</title>` — never read before this fix, so a page
+  came through with no title at all whenever yt-dlp is blocked (the
+  documented Render-IP gap), even though jurisdiction/date already had
+  their own page-based fallbacks.
+
 - ~~**`find_platform_link()`'s fallback delegation could self-loop into
   real infinite recursion**~~ **Fixed 2026-08-12 — full detail in
   `BACKLOG_DONE.md`.** A same-page `#fragment` anchor (e.g. a "skip to
