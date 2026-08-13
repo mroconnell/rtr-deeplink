@@ -1708,11 +1708,27 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   shipping it, not after.
 - **Coverage page — a public, sortable/filterable table of every
   jurisdiction/platform combination successfully resolved so far.**
-  Currently a real, live, `noindex`'d placeholder, not vaporware: `/coverage`
-  (`app/main.py:1027-1033`) renders `app/templates/coverage.html`, whose
-  entire content today is "Coming soon: a public, sortable list of every
-  city and platform we already support," pointing visitors at pasting a
-  URL or `/meetings` search in the meantime.
+  **Update 2026-08-13: the "Coming soon placeholder, still `noindex`'d"
+  framing below is stale and should not be trusted** — `/coverage`
+  (`archive/main.py:647-655`, `archive/templates/coverage.html`) has been a
+  real, indexable page (no `noindex` anywhere on it, confirmed by grep)
+  since it was actually built in commit `741ca52`, and got a real UX pass
+  today: multiple real example meetings shown per platform (not just 1;
+  Granicus shows 5), the example meeting itself is the link (previously
+  the platform name was), the stale "Cablecast (Detroit, MI)" label is
+  gone now that Charlotte, NC is a confirmed second customer, and the
+  intro/footer copy was rewritten with SEO and LLM-discoverability in
+  mind (see `CLAUDE_BACKLOG.md`'s "SEO / LLM-discoverability" section for
+  further, not-yet-built ideas in this direction). `sitemap.xml` was also
+  fixed the same day to include `/coverage` itself, plus `/`, `/about`,
+  `/meetings` (previously only `/m/{slug}` pages were listed).
+  **What's still genuinely unbuilt, though — the real gap this entry is
+  actually about**: today's page groups by platform with a handful of
+  example meetings each, not a full sortable/filterable table with one
+  row per jurisdiction and the specific per-jurisdiction columns described
+  below (agenda-embedded, instant-transcript-from-source vs.
+  audio-transcript-possible, a two-column provider split, outcome bucket,
+  last-verified date). The spec below is still the live, open ask.
 
   **Concrete column spec from the user, 2026-08-11** — one row per
   successfully-added city/jurisdiction, with columns:

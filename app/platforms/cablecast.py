@@ -59,11 +59,16 @@ TARGET_LANGUAGE = "en"
 #
 # Deliberately scoped to this specific portal template (Remix-based
 # `/internetchannel/show/{id}` pages), not a general "any *.cablecast.tv
-# domain" rule -- Charlotte, NC's confirmed Cablecast site
-# (charlotte.cablecast.tv) uses a visibly different template (a
-# "DOWNLOADS" tab exposing plain `store-N/...-vN/vod.mp4` +
-# `transcript.en.txt` files directly, no Remix JSON, HTTPS works fine
-# there), so this vendor is not a single uniform shape across customers.
+# domain" rule. An early investigation (before Charlotte was confirmed)
+# suspected Charlotte's site used a visibly different, non-Remix
+# "DOWNLOADS"-tab template -- that suspicion was wrong: Charlotte's real
+# `/internetchannel/show/{id}` pages (e.g. show/2451, see the
+# vodTranscripts note above) use the exact same Remix template as
+# Detroit's, and both are now confirmed handled by this one adapter (see
+# CablecastAssetFinder's own docstring). Still scoped to this template
+# specifically, not a blanket *.cablecast.tv rule, since Cablecast is a
+# multi-tenant product and a still-unconfirmed customer could genuinely
+# use a different portal template -- just not Charlotte.
 _SHOW_ID_RE = re.compile(r"/internetchannel/show/(\d+)")
 _REMIX_CONTEXT_RE = re.compile(r"window\.__remixContext\s*=\s*(\{.*?\});</script>", re.DOTALL)
 
