@@ -101,6 +101,106 @@ anything) to build against it.
 
 ## Bugs
 
+- **PrimeGov's `_extract_jurisdiction()` can still pick up an unrelated
+  city name from agenda body text — reopened 2026-08-12, full context in
+  `BACKLOG_DONE.md`.** An earlier same-day fix capped the search to the
+  first 2000 characters, on the assumption the real header always
+  appears "early." Real character offsets fetched live from all three
+  known real PrimeGov pages disproved that: OKC's real header sits at
+  offset ~4,753 (past the window), Thousand Oaks's only real match is a
+  "City of Thousand Oaks" mention buried in mission-statement prose at
+  offset ~264,423, and SLC's false-positive "City of Holladay" match sits
+  at ~374,844 — *farther* into the page than Thousand Oaks's real match,
+  so no single window size can include Thousand Oaks's real match while
+  excluding SLC's false one. The window was reverted (back to an
+  unscoped, boilerplate-stripped search), since it had been trading two
+  correct, originally-confirmed real cities for one — but that means
+  SLC's original bug is genuinely open again: a real slc.primegov.com
+  meeting will resolve to `"City of Holladay, UT"` (now with a
+  confidently-appended real state, via the separate jurisdiction_enrich
+  work, which makes the wrong answer read as more authoritative than it
+  did before, not less).
+
+  **What a real fix needs, given the data above**: not a positional rule
+  — the real matches (OKC, Thousand Oaks) and the false one (SLC) don't
+  separate cleanly by character offset across these three shapes.
+  Structural options worth trying against more real examples before
+  committing to one: OKC's real header is bold-tagged and is the *entire*
+  content of its `<strong>` tag (vs. SLC's false positive, also bold, but
+  embedded mid-sentence in a much longer resolution title) — but Thousand
+  Oaks's real match isn't in a bold tag at all, it's plain paragraph
+  prose, so a bold-tag-only rule would miss it. Worth checking a fourth
+  and fifth real PrimeGov city before trying anything more structural,
+  per this file's own "verify against real examples" convention — three
+  samples already proved one plausible-looking rule (position) wrong, and
+  a second untested rule risks the same fate.
+
+- ~~**`find_platform_link()`'s fallback delegation could self-loop into
+  real infinite recursion**~~ **Fixed 2026-08-12 — full detail in
+  `BACKLOG_DONE.md`.** A same-page `#fragment` anchor (e.g. a "skip to
+  content" accessibility link, present on nearly every Legistar page)
+  used to resolve back to the current page and get delegated to again,
+  recursing without bound. `find_platform_link()` now skips any candidate
+  resolving to the same URL as `page_url`, closing this at the root for
+  every caller.
+
+- ~~**`CablecastAssetFinder` hardcodes jurisdiction as "Detroit, MI" for
+  *every* Cablecast customer, not just Detroit**~~ **Fixed 2026-08-12 —
+  full detail in `BACKLOG_DONE.md`.** Now derived per-customer from the
+  already-parsed Remix `site` object instead of a hardcoded constant; a
+  state suffix is only appended for a customer actually confirmed so far
+  (Detroit, Charlotte — see the "no-state jurisdiction audit" item below
+  for the general version of this gap). Not yet checked against a third
+  real Cablecast customer, so `_extract_jurisdiction()`'s single-word-city
+  assumption is worth revisiting once one turns up.
+
+- ~~**Portland, OR's council agenda pages really do resolve correctly
+  today — the resolve-level cache had no expiry, unlike its Archive-level
+  counterpart, and was serving a stale, permanently-cached negative
+  result from before that was true.**~~ **Fixed 2026-08-12 — full detail
+  in `BACKLOG_DONE.md`.** `get_cached_resolution()` (`app/db/crud.py`) now
+  expires a `video_found=False` row after an hour, mirroring the Archive's
+  own `ARCHIVE_RECHECK_AFTER_NO_TRANSCRIPT` reasoning; a row that did find
+  a video keeps no TTL.
+
+- ~~**"Request Transcript from Audio" showed a misleading "no usable
+  audio or video source" error that was actually just the transcription-
+  request rate limit**~~ **Fixed 2026-08-12 — full detail in
+  `BACKLOG_DONE.md`.** slowapi's 429 response body has no `ok`/`message`
+  keys, so both duplicated copies of `runFeasibilityCheck()`
+  (`app/static/player.js`, `archive/static/meeting_page.js`) used to fall
+  through to the generic failure message. Both now check `res.status ===
+  429` explicitly first and show real rate-limit copy instead.
+
+- **Google Search Console flagged 3 "Videos" structured-data issues
+  site-wide (alert received 2026-08-12)**: missing `thumbnailUrl`
+  (critical — blocks video rich-result eligibility), plus `uploadDate`
+  reported as both an invalid datetime value and missing a timezone
+  (non-critical). Both trace to the same `VideoObject` JSON-LD block in
+  [meeting_page.html:37-66](archive/templates/meeting_page.html:37-66):
+  - `thumbnailUrl` is omitted entirely — already a known, named gap (see
+    the comment at
+    [meeting_page.html:29-36](archive/templates/meeting_page.html:29-36),
+    which cross-references the same underlying missing-thumbnail
+    limitation noted for `og:image` in `CLAUDE_BACKLOG.md`). No adapter
+    in `app/platforms/` currently extracts or generates a thumbnail
+    image for a meeting.
+  - `uploadDate` is set directly from `page.date|tojson` at
+    [meeting_page.html:52](archive/templates/meeting_page.html:52).
+    `date` is stored as a bare `String(20)` 
+    ([archive/db/models.py:32](archive/db/models.py:32)) and populated
+    per-adapter as plain `YYYY-MM-DD` text with no time-of-day or
+    timezone component — which is exactly what Google's "missing a
+    timezone" complaint describes. schema.org itself accepts a
+    date-only `ISO 8601` value, but Google's stricter rich-result
+    validator wants a full datetime; fixing this means deciding on (and
+    threading through) a real timestamp per meeting, since the app
+    genuinely doesn't track meeting time-of-day today, only date. The
+    separate "invalid datetime value" flag suggests at least one
+    real row has a non-`YYYY-MM-DD` value in `date` (a bad adapter
+    extraction) — worth cross-checking actual production values before
+    assuming both complaints share one root cause.
+
 - **YouTube-backed meetings' transcripts run through
   `scripts/fetch_youtube_transcripts.py` on a daily `launchd` schedule
   now (both shipped 2026-08-10, see BACKLOG_DONE.md) — real remaining
@@ -124,46 +224,43 @@ anything) to build against it.
     pursuing this angle themselves; `bulk_ingest.py`-style manual
     pushes can carry whatever comes back.
 
-- **PrimeGov's `_extract_jurisdiction()` regex isn't scoped to the page
-  header, so it can pick up an unrelated city name mentioned in agenda
-  body text.** Reported by the user 2026-08-12 with two real examples on
-  `slc.primegov.com` (Salt Lake City's own PrimeGov portal): a real Salt
-  Lake City Council meeting
-  (`https://slc.primegov.com/Portal/Meeting?meetingTemplateId=3853`) got
-  jurisdiction "Holladay" instead — Holladay was only mentioned as one
-  agenda item (its addition to the Central Wasatch Commission), and
-  `app/platforms/primegov.py`'s `_JURISDICTION_RE` (`\b(city|county|town)
-  of\s+...`) does a plain `.search()` over the *entire* page HTML, so the
-  first "City of Holladay"/"Town of Holladay"-shaped phrase anywhere in
-  the agenda body wins over the page's real header. A second, different
-  meeting got "SLC Live Meetings" as its jurisdiction instead — that one
-  never matched the regex at all (no "City/County/Town of X" phrase found
-  on that page), so `PrimeGovAssetFinder.resolve()` left
-  `YouTubeAssetFinder.resolve_video_id()`'s own `jurisdiction=info.get
-  ("uploader")` (the YouTube channel name) in place uncorrected — a real,
-  different failure mode from the Holladay case, not the same bug twice.
-  Not yet fixed — a real fix likely means scoping `_JURISDICTION_RE` to
-  just the page's header/title area (matching `_extract_date()`'s own
-  `[:2000]`-character-prefix approach) rather than searching the whole
-  page, plus deciding what `PrimeGovAssetFinder` should do when its own
-  extraction finds nothing at all (right now it silently trusts YouTube's
-  uploader name, which is not a jurisdiction).
-- **Jurisdiction display is verbose and inconsistent site-wide — "City of
-  Napa, CA" everywhere reads as redundant since almost everything archived
-  is a city.** User request 2026-08-12: consider dropping "City of"/
-  "City" entirely from display (e.g. just "Napa, CA" or "Napa (City)"),
-  reserving an explicit label for the actual exception — counties (and
-  states, e.g. California State Legislature). Not yet scoped: this is a
-  display-only change in spirit, but `jurisdiction` is stored pre-
-  formatted at ingest time (`normalize_state_suffix()` in
-  `archive/db/crud.py`, called from `_find_or_create_page()`) rather than
-  formatted at render time, and is used as free text in several places
-  (page titles, `<title>` tags, JSON-LD, the /coverage jurisdiction table
-  added 2026-08-12) — worth deciding whether this becomes a real display-
-  time formatter (Jinja filter) applied everywhere `jurisdiction` renders,
-  versus changing what gets stored, before building it.
+- ~~**PrimeGov's `_extract_jurisdiction()` regex wasn't scoped to the page
+  header, so it could pick up an unrelated city name mentioned in agenda
+  body text.**~~ **Fixed 2026-08-12 — full detail in `BACKLOG_DONE.md`.**
+  `_extract_jurisdiction()` now strips `<script>`/`<style>` boilerplate
+  and caps the search to the first 2000 characters of what's left
+  (matching `_extract_date()`'s own convention), and `resolve()` no
+  longer falls back to YouTube's `uploader` name when the page itself has
+  no match — a page whose header doesn't fit the "City/County/Town of X"
+  pattern (e.g. real "SALT LAKE CITY COUNCIL"-shaped headers) now
+  correctly comes through with no jurisdiction rather than a wrong one.
+- ~~**Jurisdiction display was verbose and inconsistent site-wide — "City
+  of Napa, CA" everywhere read as redundant.**~~ **Fixed 2026-08-12 — full
+  detail in `BACKLOG_DONE.md`.** A display-time Jinja filter
+  (`jurisdiction_display`, backed by `archive/utils/
+  jurisdiction_format.py`'s `format_jurisdiction_display()`) now drops a
+  leading "City of "/"City " everywhere a stored jurisdiction renders;
+  "County of X" and state-legislature-style names are untouched. What's
+  actually stored is unchanged. The resolver's own client-rendered page
+  has a small JS mirror in `app/static/player.js`.
 
 ## `/meetings` search & saved items — UI gaps found 2026-08-11
+
+- **"Save this meeting"/"Save this search" buttons render for every
+  visitor regardless of sign-in status, and an anonymous click silently
+  no-ops.** Confirmed 2026-08-12 while documenting which features are
+  Clerk-gated for README.md: `archive/templates/meeting_page.html`'s Save
+  buttons have no client-side signed-in check, and
+  `archive/static/meeting_page.js`'s click handler (~lines 460-496) just
+  leaves state unchanged on the `POST /api/account/save-meeting` 401
+  (`_NOT_LOGGED_IN`, `app/main.py:744`) rather than surfacing a "sign in to
+  save this" prompt. An anonymous visitor gets no feedback at all — the
+  button just does nothing, indistinguishable from a silent failure. Same
+  underlying gap presumably applies to the `/meetings` "Save this search"
+  button. Worth deciding the fix alongside the item directly below (both
+  are about this button not reflecting real state) — likely either a
+  sign-in prompt on a 401, or hiding/disabling the button for anonymous
+  visitors in the first place.
 
 - **"Save this search" can silently save the wrong search, and gives no
   feedback that it's already been saved.** Reported by the user via two
@@ -231,15 +328,43 @@ anything) to build against it.
   **Also flagged by the user 2026-08-12, real and separate from the above:
   some jurisdictions never had a state at all to begin with** —
   `normalize_state_suffix()` only fires on a trailing `", <State>"`
-  suffix, so a jurisdiction with no state component (e.g. a bare city
-  name some adapter extracted with nothing after it, or a body name like
-  "Illinois General Assembly" that names a state *without* a
-  comma-separated suffix) just passes through untouched, same as before
-  this fix — not normalized, not flagged, not distinguishable from "this
-  adapter never captures state at all" without checking per-platform.
-  Worth a real audit of which adapters/jurisdictions actually produce a
-  no-state value and why, before deciding whether/how to backfill it —
-  not attempted yet.
+  suffix, so a jurisdiction with no state component just passes through
+  untouched. **Audited, designed, and partly built 2026-08-12 — full
+  detail in `BACKLOG_DONE.md`.** A new shared module,
+  `app/utils/jurisdiction_enrich.py`, fills in a missing state using real
+  US Census Bureau data (counties, places, and ZIP-to-county/ZIP-to-place
+  crosswalks, ~3.2MB, checked into the repo) plus a small confirmed-domain
+  registry for names that are ambiguous nationally (e.g. "Detroit" is a
+  real city in 4 different states) — tried in priority order: confirmed
+  domain → unambiguous name lookup → a ZIP-anchored address found in page
+  text, scoped to never let a county government's own city-shaped mailing
+  address stand in for the county itself (see `BACKLOG_DONE.md` for why
+  that's a real, specific trap, not a hypothetical one). Wired into
+  **Granicus** (the largest single source of this gap) and **Cablecast**
+  so far.
+
+  **Update 2026-08-12: fully wired now, every adapter identified in the
+  audit — full detail in `BACKLOG_DONE.md`.** Legistar, PrimeGov, eScribe,
+  CivicWeb, and LIMS all now call the same shared
+  `jurisdiction_enrich.enrich_jurisdiction_text()`; CivicClerk gets a
+  narrower fallback (`lookup_city_state()` when its own API's
+  `location.city` is present but `location.state` is empty) since its
+  data already arrives as separate structured fields rather than free
+  text. Two real bugs in the shared module were found and fixed along the
+  way (an "Oklahoma City"-shaped double-normalization collision with
+  "Oklahoma borough, PA", and a since-reverted PrimeGov window-cap
+  regression — see the bug entry above, still genuinely open). Full suite
+  green (551 tests); live-verified against real Cablecast, Granicus,
+  PrimeGov, and CivicWeb pages.
+
+  **Still open, real gaps not touched by either pass**: YouTube's
+  `uploader`-as-jurisdiction and the cases where no jurisdiction is set at
+  all (`generic_fallback.py`, `civicplus.py`) are different problems this
+  module doesn't address (not a missing state — a wrong or absent field
+  entirely). CivicClerk's new fallback is schema-verified but not
+  content-verified — no real customer with a blank `location.state` has
+  turned up yet to confirm it fires correctly in practice (covered by a
+  synthetic test only, per `tests/test_civicclerk.py`).
 
 ## Deep links
 
@@ -308,6 +433,252 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   suite green throughout (121 tests, unaffected -- this was a pure
   frontend change).
 ## Platform coverage — open questions
+
+- **Seattle Channel (`seattlechannel.org`) — new platform, not supported
+  at all today, flagged by the user 2026-08-12 with a real example**
+  ([seattlechannel.org/.../city-council-all-videos-index?videoid=x189286](https://www.seattlechannel.org/mayor-and-council/city-council/city-council-all-videos-index?videoid=x189286),
+  "City Council 8/11/2026"). User's own diagnosis was right on both
+  counts, confirmed live: the page really is "one video with a lot of
+  good detail" sitting above "a whole feed of videos" for *other*
+  meetings, and the `?videoid=x189286` query param really is the key
+  that disambiguates which one is wanted.
+
+  **Root cause of "no video found" today, confirmed via direct `curl`
+  (plain HTTP, no JS needed)**: every video on the page — the requested
+  one *and* the whole feed below it — has its real direct `.mp4` URL
+  (`video.seattle.gov/media/council/{file}.mp4`) sitting only inside an
+  inline `onclick="javascript:loadJWPlayer7('//video.seattle.gov/...',
+  ...)"` string, never as a real `href`/`src` attribute. That's exactly
+  what neither `media_scan.scan_media_urls()` nor
+  `find_platform_link()` look inside — both are `href`/`src`-attribute
+  scanners, so this page has zero matches for either, which is why
+  today's `generic_fallback.py` result comes back completely empty
+  rather than finding the *wrong* video from the feed — there's nothing
+  in an `href`/`src` for it to (correctly or incorrectly) find at all.
+
+  **What a real adapter has to work with here is unusually rich for an
+  unsupported platform** — confirmed present in the raw HTML for *every*
+  feed item, not just the requested one:
+  - `<meta name="video_date" content="2026-08-11">` — a clean,
+    machine-readable date, no parsing needed.
+  - The page's own `<title>` (`"City Council 8/11/2026 |
+    seattlechannel.org"`) already matches the requested video exactly,
+    not the feed's first/most-recent item.
+  - Each feed item's `loadJWPlayer7(...)` call carries, as plain
+    JS-string arguments: the direct `.mp4` URL, a full real agenda
+    description as HTML (e.g. this meeting's: "Call to Order; Roll
+    Call; Proclamation: Susan Han Day; ...; CB 121254: relating to
+    rental agreement regulation; ..."), title, date, duration, a numeric
+    ID, and a relative SRT caption path
+    (`documents/SeattleChannel/closedcaption/2026/{file}.srt`) — a real
+    caption file per meeting, not just a maybe.
+  - **The disambiguation signal is exactly what the user guessed**: each
+    feed item's wrapping `<a href="…?videoid={id}" onclick="…">` pairs a
+    real `videoid` with its own `loadJWPlayer7(...)` call — so scoping
+    extraction to the one `<a>` whose `videoid` matches the URL's own
+    query param (not "the first `.mp4` on the page," which could easily
+    be a *different* meeting from the feed) is the reliable way to get
+    the right video, confirmed consistent here: the top-of-page player
+    init and the matching feed item both point at the identical
+    `council_081126_2022663.mp4`.
+
+  **Open question, not yet checked**: what happens when a Seattle
+  Channel URL has no `?videoid=` at all (just the bare index page) —
+  the user's own framing ("a video ID fed in with the URL *sometimes*")
+  implies this is a real, not-yet-seen case, possibly needing the same
+  "ambiguous, here are the candidates" handling `CalendarPageError`
+  already gives Legistar calendar pages, rather than silently guessing
+  the first/most-recent feed item.
+
+  **Found, and it's a real upgrade — user's own alternate suggestion,
+  confirmed live 2026-08-12**: the same meeting at
+  [seattlechannel.org/videos?videoid=x189286](https://www.seattlechannel.org/videos?videoid=x189286)
+  (vs. the original `/mayor-and-council/city-council/city-council-all-
+  videos-index?videoid=...` path) has **zero feed items** (`curl`
+  confirms 0 matches for the `tiledThumbnailItem` class that made the
+  other URL confusing) — "the only city council video is the top one,"
+  exactly as the user described. This isn't just a cleaner page, it's a
+  structurally simpler extraction target:
+  - The video's real source config sits in one plain
+    `jwplayer('vidPlayer').setup({ sources: [{file:
+    "//video.seattle.gov/media/council/council_081126_2022663.mp4", ...}],
+    tracks: [{file: "documents/seattlechannel/closedcaption/2026/
+    council_081126_2022663.srt", kind: "captions", ...}], ga: {idstring:
+    'City Council 8/11/2026'} })` call in a `<script>` tag — title,
+    direct mp4, and caption path all in one well-scoped JS object literal,
+    no per-feed-item disambiguation needed at all (same "real JSON/JS
+    object embedded in a script tag" shape this codebase already parses
+    elsewhere — Cablecast's `window.__remixContext`, ChampDS's
+    `playapi.champds.com` response).
+  - The SRT caption file is *also* separately reachable as a plain
+    `<a href="documents/SeattleChannel/closedcaption/2026/council_081126
+    _2022663.srt">` inside `.episodeDescription` — a real `href`
+    attribute this time, confirming the user's "the caption file is
+    right there downloadable in the video description" observation and
+    giving a second, even-simpler extraction path for captions alone.
+  - **A genuine bonus found while checking**: `.seekItem` elements
+    (`<a class="seekItem" href="#" data-seek="8865">CB 121254: relating
+    to rental agreement regulation - 2:27:45</a>`) give real per-agenda-
+    item *timestamps* (`data-seek`, in seconds) paired with real item
+    text — unlike Legistar's untimed agenda table (above), this is
+    exactly the shape `ResolvedMeeting.agenda_items` wants
+    (`List[TranscriptSegment]`, real start times), not a compromise or
+    a new field needed.
+  - Same `?videoid=` disambiguation question as the other URL still
+    applies here (what happens with none present) — not yet checked
+    whether `/videos` bare (no query param) behaves differently than
+    the `all-videos-index` page did.
+
+  **Given this page is both cleaner and richer, it's the better build
+  target of the two** — worth confirming a second real `/videos?videoid=`
+  example before writing `seattlechannel.py`, same convention as
+  everywhere else in this file, but this one URL shape alone already
+  looks sufficient for direct video + real captions + timestamped agenda,
+  better coverage than several already-shipped adapters manage.
+
+- **`generic_fallback.py`'s YouTube-embed branch never attempts *any*
+  page-level metadata backfill — a real, confirmed gap distinct from the
+  already-known yt-dlp/Render-IP-block issue, found via a real example
+  2026-08-12**: user praised the resolver's handling of an unsupported
+  site overall
+  ([/m/meeting-732f78](https://redtaperecordings.com/m/meeting-732f78),
+  original: [crrma.org/information/meetings/board/2025-11-12](https://www.crrma.org/information/meetings/board/2025-11-12),
+  El Paso's Camino Real Regional Mobility Authority) but flagged that the
+  result shows "Untitled meeting" with zero jurisdiction/date, which
+  "looks funny and clutters search" — asked for a better convention for
+  this case, even suggested pulling the video/channel name from YouTube,
+  or "grabbing the subdomain/url from the source or scraping the text of
+  the source."
+
+  **Confirmed two separate, stacked causes, not one**:
+  1. `_extract_info()`'s yt-dlp call is blocked by YouTube's anti-bot
+     check from Render's IP (already documented, `youtube.py:78-113` —
+     this is the *existing*, harder infrastructure problem, not new here)
+     — so the channel/video-title metadata the user's first suggestion
+     wants genuinely isn't available today. Not re-opening that fight in
+     this entry.
+  2. **The real, easy gap**: when `generic_fallback.py` finds a YouTube
+     embed ([generic_fallback.py:145-157](app/platforms/generic_fallback.py:145-157)),
+     it delegates straight to `YouTubeAssetFinder.resolve_video_id()` and
+     does *nothing else* — no fallback to the source page's own `<title>`
+     tag, no URL-path parsing, nothing. Confirmed live what's sitting
+     right there, unused, on this exact example: CRRMA's own `<title>`
+     tag reads **"Camino Real Regional Mobility Authority | El Paso,
+     Texas"** (a real, usable jurisdiction, `curl`'d directly, no JS
+     needed) and the source URL's own path is
+     `/information/meetings/board/2025-11-12` — a real ISO-shaped date
+     and a real meeting-type word ("board"), sitting in the URL itself,
+     unparsed. Exactly the user's second suggestion, and it would work
+     here without any new network call — this data is already in hand
+     (the same `html`/`url` `generic_fallback.py` already fetched) by the
+     time `resolve()` gives up on a real title. Legistar's equivalent
+     fallback path already does something structurally similar
+     (`_extract_page_meeting_info()` reading the page's own `<title>`/RSS
+     as a metadata source when the delegated platform's own is missing/
+     bad) — same pattern, just never built for `generic_fallback.py`'s
+     YouTube branch specifically.
+  3. Both current YouTube-branch gaps compound: with #1 blocked, the
+     genuinely-known-good fallback (#2, unbuilt) is the only real path
+     to a usable title/jurisdiction here today.
+
+  **User's exact target output for this specific example, 2026-08-12** —
+  concrete enough to implement directly against, not just "do something
+  better": `Meeting name: Camino Real Regional Mobility Authority
+  11/12/2025` / `Jurisdiction: El Paso, TX`. Maps cleanly onto the raw
+  `<title>` tag confirmed above (`"Camino Real Regional Mobility
+  Authority | El Paso, Texas"`) split on `|`: the part before is the
+  body/org name (paired with the URL-path date for the title), the part
+  after is the jurisdiction. `"El Paso, Texas"` → `"El Paso, TX"` should
+  already fall out for free if this jurisdiction value gets run through
+  the existing `normalize_state_suffix()`
+  (`archive/utils/jurisdiction_format.py`, already applied to every
+  normal ingest via `_find_or_create_page()` in `archive/db/crud.py`)
+  rather than stored raw — not a new utility to write, just needs this
+  new fallback path to actually call it. Worth checking a second `{org} | {City, State}`-shaped
+  `<title>` on another real generic-fallback site before assuming this
+  exact split-on-`|` shape generalizes, same convention as everywhere
+  else in this file — CRRMA is the only confirmed example so far.
+
+  **Separately, a real UI/copy question, independent of whether #2 above
+  ever gets built**: what should render when metadata truly can't be
+  found by any method? Today's convention is a bare "Untitled meeting"
+  (`meeting_page.html:98`'s dropdown and `meeting_list.html:90`'s browse
+  listing both share the exact same `m.title or "Untitled meeting"`
+  fallback) — user's suggestion: something more like "Temporary Name:
+  meeting-732f78" that signals "we know this is incomplete" rather than
+  reading as broken/empty. Distinct from the extraction gap above — worth
+  deciding even if #2 closes most real cases, since some will always slip
+  through (a truly metadata-free source page, e.g. a bare unlabeled video
+  iframe with no page `<title>` and a non-date-shaped URL).
+
+- **CHAMP/ChampDS (`play.champds.com`) — new platform, not supported at
+  all today, flagged by the user 2026-08-12 via a real Atlanta, GA
+  example**
+  ([play.champds.com/atlantaga/event/1227](https://play.champds.com/atlantaga/event/1227),
+  a real "Committee on Council Meeting"). Confirmed why the resolver
+  can't find the embedded video: exactly the same shape as the Chicago
+  ELMS case just below — the video is injected client-side from a
+  separate JSON call, real server HTML has none of it
+  (`curl`'d directly, confirmed empty — every field on the page,
+  `#h3EventTitle`/`#h4EventDate`/the player itself, starts blank in the
+  markup and gets filled in by `cds.event.js` after load).
+
+  **Traced the real API, confirmed live, no headless browser needed** —
+  same URL as the page itself, just on a different host:
+  `https://playapi.champds.com/{customer}/event/{id}` (i.e.
+  `window.location.host` with `api.` spliced in before the last two
+  domain labels — `play.champds.com` → `playapi.champds.com`; see
+  `cds.common.js`'s `HOST = hosts[0] + 'api.' + hosts[1] + '.' + hosts[2]`
+  for the exact client-side logic this mirrors) returns a complete,
+  well-structured JSON payload, plain GET, no auth, no special headers:
+  - `Event.EventTitle` ("Committee on Council Meeting"),
+    `Event.EventDateTimeCustomerLocal` (real local date/time, already
+    customer-timezone-adjusted — no UTC conversion needed),
+    `Customer.CustomerName` ("Atlanta GA" — jurisdiction),
+    `Board.BoardName` ("Committee on Council" — the meeting body/type,
+    same kind of richer sub-classification flagged as missing from
+    Legistar above).
+  - **Two independent, both-confirmed-live ways to get real video**:
+    (1) `MediaInfo.DownloadURL` (e.g.
+    `/DOWNLOAD-MEDIA/atlantaga/eventmainmedia/{id}`, relative to
+    `play.champds.com`) — a direct, unauthenticated MP4 download,
+    confirmed 200 with a real `Content-Length`/`Content-Disposition` on
+    **two different event IDs** (1227 from this investigation, 1233 from
+    a second URL the user separately supplied mid-investigation) — this
+    is the simpler, more robust option, and probably what `video_format`
+    should map to (plain `mp4`, like every other direct-file case this
+    app already supports, no new player-integration work needed unlike
+    Chicago's Vimeo gap below).
+    (2) `MediaInfo.VOD2` (a relative HLS path, e.g.
+    `/VOD/event/AtlantaGA/1227/.../master.m3u8`) combined with
+    `ServicesAndMachineInfo["8"].URLBase` (e.g.
+    `https://securestream10.champds.com`) — confirmed this reconstruction
+    exactly matches the real URL the page's own player actually requests
+    (`vjs2026` player's own console log: `"USING VOD2! {clipURL:
+    https://securestream10.champds.com/VOD/event/Atlan.../master.m3u8}"`)
+    — a real `m3u8`, this app's already-supported format, but needs the
+    numbered `securestream{N}.champds.com` host read out of
+    `ServicesAndMachineInfo` per-customer rather than hardcoded (it's `7`
+    for regular playback services in this response, `10` specifically for
+    the VOD2/HLS pairing — not yet clear if that number is
+    customer-specific or fixed platform-wide).
+  - **Agenda items, if present, ride in the same JSON** under
+    `Agenda.AgendaItems` (per `cds.event.js`'s own
+    `if(data.Agenda && data.Agenda.AgendaItems)` check — no separate
+    endpoint) — **unconfirmed with a positive example**: this specific
+    Atlanta meeting has none (`Event.AgendaStyleMask: 0`, no `Agenda` key
+    in the response at all), so the real per-item shape (timestamped or
+    not?) is still unknown, same "flagged, not assumed" gap as CivicClerk/
+    eScribe's caption fields.
+
+  **Only one city checked so far (Atlanta, GA)** — per this repo's own
+  convention, worth confirming the `playapi.` host-splicing trick and the
+  JSON shape hold on a second, independently-run ChampDS customer site
+  before writing `champds.py` for real, not assuming one city
+  generalizes. Otherwise this is about as fleshed-out as a pre-build
+  investigation gets in this file — a real adapter here looks
+  straightforward (plain `aiohttp` JSON GET, no Cloudflare/JS-rendering
+  hurdle found, direct-mp4 option needs no new frontend work at all).
 
 - **Chicago's City Clerk ELMS (`chicityclerkelms.chicago.gov`) is a real,
   strong dedicated-adapter candidate — found 2026-08-10 while confirming
@@ -396,6 +767,46 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   showcase-embed shape it uses (`vimeo.com/showcase/.../video/...`)
   differs.
 
+  **Update 2026-08-12: a real Chicago-native showcase-shaped example is
+  now in hand, exactly the case flagged as unconfirmed just above** —
+  user tried
+  [chicityclerkelms.chicago.gov/Meeting/?meetingId=B2E99313-3D76-F111-AB0C-001DD80BE073](https://chicityclerkelms.chicago.gov/Meeting/?meetingId=B2E99313-3D76-F111-AB0C-001DD80BE073)
+  directly, expecting the resolver to find, embed, caption, and offer
+  AI-transcription on its Vimeo video. Confirmed via the same real API:
+  `videoLink: ["https://vimeo.com/showcase/8925576?video=1210310337"]`
+  — real "Committee on Budget and Government Operations" meeting,
+  2026-07-16, `transcriptLink` empty (`[""]`) same as every other sample
+  so far. This *is* the `vimeo.com/showcase/.../video/...` shape the
+  entry above hadn't tested yet — but only the data side; whether its
+  caption-fetching (signed URL + possible Cloudflare challenge) behaves
+  the same as the channel-page samples above is **still unconfirmed**,
+  same real-browser check needed, not attempted in this pass.
+
+  **Clarifying the user's third ask ("use it for... AI transcription
+  requests") — this is not a separate blocker from the captions one,
+  it's the same one.** On-demand Whisper transcription needs a real
+  probeable audio/video *file* URL (what `probe_duration()`/
+  `extract_chunk_audio()` work against for every other platform), and
+  Vimeo doesn't expose that any more directly than it exposes captions —
+  both live behind the same signed `player.vimeo.com/video/{id}/config`
+  response the entry above already found returns a plain **403** to a
+  non-browser request. So "embed the video" (needs a new Vimeo
+  player/iframe integration, `app/static/player.js` has none today) and
+  "captions + AI-transcription audio" (both need getting past the same
+  signed-config/Cloudflare wall) are two separate pieces of work, not
+  three — worth keeping that framing when this eventually gets built,
+  so the audio-extraction piece isn't accidentally re-investigated as if
+  it were a new, unrelated problem.
+
+  **Fourth confirmed example, same day**:
+  [?meetingId=DF5C52EA-0D6B-F111-A823-001DD8019941](https://chicityclerkelms.chicago.gov/Meeting/?meetingId=DF5C52EA-0D6B-F111-A823-001DD8019941)
+  → `videoLink: ["https://vimeo.com/showcase/citycouncil?video=1209979957"]`
+  — full "City Council" body this time (not a committee), and notably
+  the showcase identifier is a human slug (`citycouncil`) rather than
+  the numeric one (`8925576`) from the Budget committee example above —
+  confirms the `vimeo.com/showcase/{slug-or-id}?video={id}` shape holds
+  across different showcase-ID styles, not just one body's own naming.
+
 - **Phoenix's Legistar instance (`phoenix.legistar.com`) — root cause
   now confirmed structural, not one ambiguous sample.** Domain routing
   itself is confirmed correct (`phoenix.legistar.com` matches
@@ -432,6 +843,136 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   design, it only ever delegates to the underlying video platform for
   that), so a Legistar page never showing agenda items is expected
   behavior, not a second bug to chase.
+
+- **El Paso, TX studied as a real test case for the channel-discovery
+  question above — user's idea 2026-08-12, prompted by the CRRMA
+  "Untitled meeting" entry earlier in this file**: given a known Vimeo
+  (or YouTube) channel with no direct government-page link, can search
+  engines find the .gov page that embeds/links to a specific video?
+  **Real answer for El Paso specifically: didn't need to find out** — a
+  much better path exists and makes the search-engine approach
+  unnecessary here. `www.elpasotexas.gov/videos/` is a plain,
+  server-rendered page (confirmed via direct `curl`, no JS needed) that
+  directly links out to **every one of the city's Vimeo showcases**, one
+  per body — `vimeo.com/showcase/{ad-hoc, agenda-review, boac,
+  budget-hearing, building-standards, city-plan, crrma, csc, fhtf, foac,
+  open-space, special-cc, veterans-affairs}` — plus the city's real
+  YouTube channel (`youtube.com/user/cityofelpasotx`). Notably,
+  `vimeo.com/showcase/crrma` ("Camino Real Regional Mobility Authority")
+  exists too — the *same* CRRMA meetings from the earlier "Untitled
+  meeting" entry may have a second, better-organized source here, worth
+  checking directly against that specific 2025-11-12 meeting before
+  assuming CRRMA's own bare YouTube embed is the only source.
+
+  **The search-engine reverse-lookup idea itself, tested directly, came
+  back inconclusive/negative** — worth recording since it answers the
+  user's actual question, not just the El Paso side-question: neither
+  `site:elpasotexas.gov vimeo.com` nor a direct search for
+  `"vimeo.com/eptx"` / a specific showcase URL surfaced the
+  `elpasotexas.gov/videos/` page that's proven to link to it. Not
+  conclusive proof the technique never works elsewhere (one real city,
+  one real search backend, on one particular day), but real, live
+  evidence that it isn't reliable enough to lean on as a general
+  strategy — a direct, methodical crawl of a known city's own domain
+  (the way `elpasotexas.gov/videos/` was actually found here, via a
+  *different* real search query about El Paso's video setup generally,
+  not a reverse-lookup of the Vimeo URL itself) looks like the more
+  promising general pattern than reverse image/embed search.
+
+  **Still blocked on the same foundational gap already flagged for
+  Chicago ELMS above**: this app has zero Vimeo playback support today
+  (no adapter, no frontend player integration) — building real support
+  for any of this needs that piece regardless of how the specific video
+  gets found. A per-showcase video list (real titles/dates per meeting)
+  wasn't confirmed either — `vimeo.com/showcase/{id}` pages are
+  JS-rendered (confirmed: `curl` returns only the showcase's own title,
+  no individual video data), so listing real per-meeting entries would
+  need either Vimeo's own API or a headless-browser fetch, not yet
+  checked which.
+
+- **Legistar's own MeetingDetail.aspx page carries real metadata that
+  `LegistarAssetFinder` never scrapes at all — confirmed live 2026-08-12
+  on a real example the user flagged**
+  ([mesa.legistar.com/MeetingDetail.aspx?ID=1428059](https://mesa.legistar.com/MeetingDetail.aspx?ID=1428059&GUID=C6D3581F-B224-4A1C-A59D-0885C238FD52&Options=info|&Search=),
+  a real Mesa, AZ City Council meeting, video delegated to YouTube). The
+  resolved page today shows title "City Council" / jurisdiction "City of
+  Mesa" / date 2026-08-10 — technically correct (from
+  `_extract_page_meeting_info()`'s `<title>` parse,
+  [app/platforms/legistar.py:236-260](app/platforms/legistar.py:236-260)),
+  but weak, and the user (correctly) expected more from that link. The
+  live page itself has real, server-rendered content this adapter
+  currently ignores entirely:
+  - **`Published agenda: Agenda / Accessible Agenda`** — a direct link to
+    the real agenda document, sitting right in the "Meeting Details"
+    table. `ResolvedMeeting.agenda_link`
+    ([app/platforms/models.py:42-48](app/platforms/models.py:42-48)) exists
+    for exactly this ("a single raw agenda-document URL... found a link
+    that looks like the agenda") and other adapters already populate it —
+    Legistar's own adapter never does. This is the cheapest real win here:
+    one new selector, no new field needed.
+  - **`Meeting location: Study Session / Special Council Meeting`** — a
+    real distinguishing sub-type Legistar tracks that the generic
+    `{jurisdiction} - Meeting of {body} on {date}` `<title>`/RSS pattern
+    (the adapter's only metadata source today) doesn't carry at all. Every
+    Legistar meeting from this body would currently title identically
+    ("City Council"), even a Study Session vs. a regular session vs. a
+    Special Meeting — this field is exactly what would tell them apart.
+  - **A real "Meeting Items" table** (`File #`, `Agenda #`, `Type`,
+    `Title`, columns) with substantive per-item text — e.g. this meeting's
+    real items were "Canvassing, declaring, and adopting the results of
+    the Primary Election held on July 21, 2026... Resolution No. 12562"
+    and a development-agreement resolution for "an AC Hotel by Marriott."
+    Doesn't cleanly fit `agenda_items` (typed `List[TranscriptSegment]` —
+    real per-item *timestamps*, like Granicus's AgendaViewer.php chapter
+    markers) since Legistar's table has no per-item time offset, only
+    ordering. **User's call 2026-08-12, after weighing the shape
+    mismatch: probably not worth pursuing** — the real agenda document
+    (`agenda_link`, above) already covers the "what was on the agenda"
+    need without a new untimed-items shape just for this one platform.
+    Left here for context, not as an open TODO.
+
+- **Baltimore's Legistar instance (`baltimore.legistar.com`) — how often
+  does a meeting actually have video in the attachments table, and is
+  there a better way to find it when it's missing?** Prompted by the user
+  noticing, 2026-08-12, that most Baltimore meetings they're seeing don't
+  have one, "interesting that this one does" (the
+  [City Council Hearing, 2025-10-20, ID=1282692](https://baltimore.legistar.com/MeetingDetail.aspx?GUID=5353B4B6-3F2D-4E02-8DA0-F62A82299422&ID=1282692&Options=info|&Search=)
+  from the resolution-mechanics question just above — its real YouTube
+  "Recording" link is what `_try_fallback_video_link()`
+  ([app/platforms/legistar.py](app/platforms/legistar.py), built for
+  Baltimore originally, see `BACKLOG_DONE.md`) exists to catch).
+
+  **A quick real check confirms the pattern, doesn't yet explain it**:
+  pulled 4 meeting IDs straight off `baltimore.legistar.com/Calendar.aspx`
+  (1332199, 1376920, 1376921, 1405006) — every single one has a
+  completely empty `Attachments:` field, no video, no Recording link,
+  nothing. 4-for-4 empty vs. the one known-good example isn't enough of a
+  sample to conclude anything about *why* (different meeting body?
+  different era — this may just be a backlog of not-yet-processed/older
+  meetings on the general calendar? only certain meeting types get a
+  recording attached at all?), just enough to confirm the user's
+  observation is real and not a fluke.
+
+  **Next real step, not yet done**: work through
+  [baltimore.legistar.com/Departments.aspx](https://baltimore.legistar.com/Departments.aspx)
+  — Baltimore's full directory of boards/committees/departments — to find
+  a specific body's own meeting list rather than sampling the mixed
+  general calendar. Two candidate "City Council" entries found there
+  already: `DepartmentDetail.aspx?ID=28879` ("City Council") and
+  `ID=28881` ("Baltimore City Council") — worth checking whether either
+  gives a curated meeting list for the same body the one working example
+  belongs to (full Council plenary sessions, as opposed to a subcommittee)
+  and, if so, whether *that* body's meetings consistently have video
+  attached even when the general calendar sample above doesn't. (A first
+  attempt at `DepartmentDetail.aspx?ID=28879` didn't surface meeting links
+  directly — may need a different nav path, e.g. a Meetings tab/param,
+  not yet found.) If a real pattern falls out (e.g. "only full Council
+  sessions get recordings, subcommittees don't"), that's a genuine signal
+  worth teaching the adapter or the frontend about; if it's closer to
+  "video is attached inconsistently, no real pattern," that's useful to
+  know too, before investing in a fancier fallback (e.g. a CharmTV-
+  channel search, the same class of fix already flagged for Phoenix/
+  Philadelphia/Albuquerque above).
 
 - **Headless-browser adapters (Minneapolis LIMS, SLC meeting recaps) —
   built and shipped 2026-08-09, see BACKLOG_DONE.md for the full build.
@@ -597,6 +1138,10 @@ auditing it (2026-08-08) — two fixed since, one still open below:
     adapter candidate by population reach of anything found this pass.
     Detroit's eScribe side is also worth checking for populated captions
     while there — no eScribe example anywhere has one confirmed yet.
+    **Update 2026-08-12**: `CablecastAssetFinder` is now built (see
+    `BACKLOG_DONE.md`) and live for both Charlotte and Detroit, including
+    real `vodTranscripts` extraction — see `BACKLOG_DONE.md`'s "Cablecast
+    real transcript extraction" entry for the full build.
   - **IQM2** — a Granicus-family product (footer: `support@granicus.com`)
     with a distinct UI/URL shape from the classic ViewPublisher/
     MediaPlayer this app already parses. Confirmed on **Atlanta, GA**
@@ -615,18 +1160,35 @@ auditing it (2026-08-08) — two fixed since, one still open below:
     placeholders, so the real video-embed shape is still unconfirmed —
     needs a live-browser check before any adapter work, not just a
     positive ID of the vendor.
-  - **A new, unified Granicus product** (`webcontent.granicusops.com`,
-    a different URL/UI shape from classic ViewPublisher/MediaPlayer)
-    confirmed on **two** cities independently via a Legistar-calendar
-    redirect — **Fresno, CA** and **Colorado Springs, CO** — which makes
-    it a real trend, not a one-off sample. **Worth treating as a
-    possible forward-compatibility risk to the existing Granicus/
-    Legistar adapters, not just a new-city opportunity**: if Granicus is
-    migrating existing customers onto this product over time, cities
-    this app already resolves correctly today could start silently
-    failing later. Worth a closer look sooner than the rest of this
-    list, specifically to check whether `granicus.py`/`legistar.py`'s
-    parsing still works against this new shape at all.
+  - ~~**A new, unified Granicus product** (`webcontent.granicusops.com`)
+    — possible forward-compat risk to the existing Granicus/Legistar
+    adapters~~ **Re-checked live 2026-08-12: real risk to the video path
+    not reproduced on either sample city, and `webcontent.granicusops.com`
+    itself turns out to be a document CDN, not a video-player product.**
+    Followed both cities' real, current Legistar video links end-to-end:
+    Fresno's `ID1=2161`/`2162` and Colorado Springs's `ID1=2664`/`2662`/
+    `2656` (the only video-linked meetings on each city's current calendar
+    window) all still redirect cleanly through `Video.aspx?Mode=Granicus`
+    → `MediaPlayer.php` → the classic `{city}.granicus.com/player/clip/
+    {id}` shape `granicus.py` already fully supports — no
+    `webcontent.granicusops.com` in the chain on either city, today.
+    Separately confirmed what `webcontent.granicusops.com` actually is:
+    `curl`ing it directly returns a raw S3 `AccessDenied` XML body (i.e.
+    it's an S3-backed static-file host), and every real URL under it found
+    via search is a per-customer **PDF document** (`/content/{customer}/
+    *.pdf` — eComments user guides, virtual-meeting-attendance
+    instructions), not a video page. So this looks like Granicus's
+    existing document/PDF CDN, not a new video-player product migrating
+    existing customers — the original 2026-08-11 survey most likely
+    encountered it via an agenda/document link on these cities' calendars,
+    not the video path, so the "cities this app already resolves could
+    start silently failing" risk doesn't hold up on what's actually
+    reachable today. Not fully closed (a genuinely different Granicus
+    video product, e.g. the separately-observed `{city}-prod.civica.
+    granicusops.com` pattern seen on Sunnyvale/Bellflower via search but
+    not confirmed live against real video, could still exist and could
+    still be a real migration risk) — but no longer treated as an
+    active, unaddressed threat to Fresno/Colorado Springs specifically.
   - **A "decoupled transcript service" pattern** — a real transcript
     hosted entirely separately from the video, cross-referenced by
     meeting rather than embedded on the same page — found independently
@@ -671,6 +1233,131 @@ auditing it (2026-08-08) — two fixed since, one still open below:
     pass showed no caption UI at all.
 
 ## Archive roadmap
+
+- **"Feed cities" — should this app ever synthesize its own meeting
+  pages for cities that have no well-defined per-meeting page at all?
+  Open strategic question, not a build item, prompted by a 2026-08-12
+  pass through the 50 biggest US cities.** A real, recurring pattern
+  distinct from every other gap logged this session: a city publishes
+  video as one big feed (a YouTube channel, a Vimeo showcase list, a
+  Seattle-Channel-style video index) and agendas/meeting metadata as a
+  *separate* feed (a Granicus/Legistar calendar, an agenda-only page),
+  sometimes on two different pages, sometimes both crammed onto one —
+  but never as a single stable, government-hosted URL that's "the page"
+  for one specific meeting with both video and agenda attached. Every
+  adapter in this app assumes that stable per-meeting page exists
+  somewhere and just needs finding/parsing; these cities don't have one
+  to find. Concretely already seen this session in that shape: Seattle
+  Channel's video-plus-feed page (above), Phoenix/Philadelphia/
+  Albuquerque's Legistar-page-with-no-video-link-at-all-but-a-separate-
+  city-YouTube-channel (above), Chicago ELMS's agenda API paired with a
+  separate Vimeo showcase (above), El Paso's `elpasotexas.gov/videos/`
+  directory of per-body Vimeo showcases (above).
+
+  **The idea, in the user's own words**: rather than only ever resolving
+  a URL someone pastes, build a page ourselves that indexes a city's
+  video feed and its separate agenda feed, matches them (e.g. by date —
+  "the city hosts all its city council meetings on YouTube with the date
+  of the meeting in the title" paired with "a list of all the agendas...
+  on Granicus with the date in the metadata"), and creates a real,
+  possibly-permanent meeting page on *our* site combining both. The
+  user's own framing of the tradeoff: "in a way, this is a PITA. In
+  another way, these might be the most helpful pages we create because
+  there isn't a near duplicate on the government agency's website." That
+  second point is real and worth sitting with — every other page this
+  app makes mirrors something that already exists somewhere, just made
+  more accessible/deep-linkable/transcribed; a synthesized feed-matched
+  page would be the one case where the page genuinely doesn't exist
+  anywhere else in this form. That's a stronger value proposition than
+  usual, and a correspondingly higher bar for correctness (see below).
+
+  **Real considerations to work through before scoping a specific
+  version, not yet decided on any of these:**
+  - **Match confidence is the central risk, not a side detail.** Date/
+    title heuristic matching between two independent feeds *will*
+    sometimes attach the wrong video to the wrong meeting — unlike
+    today's "no video found" (an honest gap), a wrong match is
+    fabricated-looking correct-seeming misattribution on what would be a
+    real, publicly-indexed page under a real jurisdiction's name — a
+    sharper version of the fabricated-content risk the Trust & Safety
+    section above already threat-models for `generic_fallback`, not a
+    new category of risk. Whatever gets built needs a real answer for
+    "how confident is confident enough to publish," not just "best
+    guess."
+  - **One-time historical backfill vs. an ongoing/scheduled pipeline are
+    two very different sizes of commitment — the user's own instinct is
+    that ongoing is the harder one, worth taking seriously rather than
+    assuming they're the same problem at different scales.** A one-time
+    backfill for a fixed list of big cities is bounded: run it once,
+    review the matches, publish, done — much closer to the existing
+    `bulk_ingest.py` shape than to a new standing system. An ongoing
+    pipeline means continuously matching new videos to new agendas
+    forever, on a schedule, per city, with drift over time (a city
+    changes its YouTube channel, changes its agenda vendor, changes its
+    upload cadence) silently degrading match quality with nothing
+    forcing a human to notice.
+  - **Temporary vs. permanent doesn't have to be a single decision up
+    front** — the existing `best_effort`/`generic_fallback` ephemeral
+    `/meeting?url=` flow already has a real lower-trust tier "isn't
+    pushed to the permanent Archive unless it has real content" pattern
+    to borrow from; a synthesized match could start there (visible, but
+    not yet a permanent indexed page) before anything gets promoted.
+  - **Scale/cost is unscoped**: how many of the 50 cities checked
+    actually hit this specific "two separate feeds" pattern (as opposed
+    to the many *other* distinct problems logged this same session —
+    rate limiting, wrong jurisdiction, infinite recursion, weak metadata
+    — which aren't this problem and shouldn't get bundled into sizing
+    it), how many historical meetings per city, and whether transcribing
+    all of them is assumed as part of this or a separate ask on top —
+    none of that's been counted yet.
+
+  **On "is there an easy version" — the concrete next step is counting,
+  not building.** Before sizing this at all, worth going back through
+  the 50-city pass specifically to tag which cities hit *this* pattern
+  (two separate feeds, no per-meeting page) rather than one of the other
+  distinct bugs/gaps already logged individually this session — right
+  now this entry is grounded in four real examples encountered
+  incidentally, not a real count of how big "feed cities" actually are
+  among the 50. That count is what would turn "maybe just do the big
+  cities once" from a gut instinct into an actual scoped decision.
+
+  **A real, promising extraction angle for whatever gets built: WCAG/
+  accessibility-driven markup, not just date/title matching — user's own
+  idea 2026-08-12, checked directly against real pages rather than left
+  as speculation.** Government sites lean on standardized accessibility
+  markup more than most (Section 508 compliance is often a legal
+  requirement, not a nice-to-have), and unlike a proprietary player's
+  internal JS config, these are standards-based and consistent across
+  unrelated sites — real findings, not assumptions:
+  - **`<track kind="captions" src="...">` inside a native `<video>`
+    element** — the actual HTML5 captions standard. Confirmed present,
+    identically shaped, on three separate real government meeting pages
+    already fetched during earlier work in this repo (each a plain
+    `/videos/{id}/captions.vtt` path) — about as reliable a caption-
+    discovery signal as exists wherever a site uses native `<video>`
+    rather than a JW Player/Vimeo/YouTube-style embed.
+  - **`<time datetime="...">` semantic date/time markup** — confirmed
+    real on Portland.gov, with full ISO datetime *including time of
+    day* (`<time datetime="2026-07-29T16:30:00Z">`) — notably the exact
+    missing piece from the earlier Google-Search-Console `uploadDate`/
+    timezone finding (Bugs, above): this app doesn't capture meeting
+    time-of-day anywhere today, and here's a real government source
+    that already has it in clean, structured form.
+  - **WCAG-required iframe `title` attributes, when a site populates
+    them well** — Portland's video iframes carry real, descriptive
+    titles (`"YouTube | Portland City Council AM Session 07/29/26"`,
+    correctly distinguishing AM/PM sessions); confirmed *not* universal
+    though — CRRMA's iframe title on the exact same YouTube-embed
+    pattern (Bugs, above) was just the generic placeholder `"YouTube
+    video player"`. Same accessibility requirement, inconsistent
+    real-world compliance — has to be checked per site, not assumed.
+  - **Real negative, worth not chasing further**: checked 7 real
+    government pages this session (Portland, Seattle Channel x2, CRRMA,
+    Columbus, Charlotte, Baltimore) for schema.org/JSON-LD structured
+    data (the same VideoObject markup this app's *own* pages emit for
+    SEO) — zero hits on all seven. Unlike the accessibility markup
+    above, this doesn't look like a technique government sites
+    reciprocate.
 
 **Architectural context:** anything about content/audience rather than
 resolving (permanent pages, search, accounts/billing, email alerts, the
@@ -882,6 +1569,54 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
      last since both need real usage of the earlier phases to be worth
      building against.
 
+  **Business-model framing, from the user, 2026-08-12 — several rounds of
+  refinement the same day, replaces the original "journalists are the
+  paying user" framing entirely.** Advocates and grassroots organizers,
+  not journalists, are the primary intended audience — journalists are a
+  good example user (real distribution/credibility value) but a smaller
+  group than the grassroots/advocacy base this is actually being built
+  for, and shouldn't be built into the product's core definition anywhere
+  (`README.md`'s Vision section now reflects this). The intended paying
+  customer is a different group again: institutional users with real
+  budgets — special interest groups, corporations, city staff/management.
+
+  **The likely shape of the split, directionally — not priced or built
+  yet.** Usage seems likely to split into two real modes once there's a
+  regular user base: a light user following one or two meetings a month
+  for a single city council or planning commission, and a heavy user
+  tracking meaningfully more than that. Rough shape floated by the user
+  (not a commitment): an account-creation gate that grants free monthly
+  credits sized to comfortably cover the light-user case, with a paid tier
+  (the user's own reference point: something like $40/month) that raises
+  the ceiling high enough a heavy individual user doesn't have to think
+  about limits day to day. Separately, a B2B/institutional tier is the
+  intended answer for an organization tracking a specific topic across
+  many jurisdictions at once (the user's own example: a company's PR team
+  following a specific kind of siting decision across city councils) — a
+  different usage shape from an individual power user, likely
+  priced/scoped differently rather than being "the same paid tier, bought
+  by a company."
+
+  **On-demand transcription's email-only gate is a deliberate middle path,
+  not a stepping-stone toward eventually requiring a full account —
+  explicit user correction, 2026-08-12.** Transcription is still the app's
+  single most cost-intensive feature by a wide margin (see "On-demand
+  transcription" below for real dollar/compute figures), and email
+  confirmation was chosen specifically as real friction against abuse
+  without forcing a login onto the app's costliest path. Keep it this way
+  going forward rather than treating it as an implicit TODO to fully
+  account-gate later.
+
+  Search itself stays free as long as it's cheap to run; the plan for
+  if/when that stops being true is a real, explicitly limited free tier —
+  either the credit system above or narrower scope (e.g. free tier limited
+  to shorter date ranges) — rather than putting search behind a paywall
+  outright. Not yet decided: the actual credit amounts, the exact
+  paid-tier price/limits, whether B2B pricing is a multiple of the
+  individual paid tier or a separate negotiated thing, or what usage/cost
+  threshold triggers building any of this at all — all directional
+  thinking to conceive of usage modes, not a committed pricing plan.
+
   **Real open questions, not decided yet — need the user's call before
   building past phase 1:** what's actually free vs. paid (the phased
   plan above is a sequencing proposal, not a pricing decision); whether
@@ -942,18 +1677,37 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     OAuth) — "Hi there," is the documented fallback either way, so a
     missing field degrades gracefully, but the "Hi [First Name]," path
     itself hasn't been seen fire for real yet.
-- **`ryan@redtaperecordings.com` and `ally@redtaperecordings.com` don't
-  actually receive email yet.** User request 2026-08-12. Real, not
-  hypothetical: `RESEND_REPLY_TO_ADDRESS` already points transactional-
-  email replies at one of these (see the "We couldn't cook this one"
-  bullet above), and `ryan@redtaperecordings.com` is the footer's
-  `mailto:` Contact link on every page (`base.html`, both services) — if
-  neither address has a real mailbox behind it, replies and contact
-  emails go nowhere silently. This is domain/DNS/mailbox-provider setup
-  (e.g. Google Workspace, or forwarding through whatever registrar/DNS
-  host `redtaperecordings.com` uses), not a code change — needs the user
-  to do it directly (this session has no access to DNS or a mailbox
-  provider account), not something to build here.
+- **Audit every user-facing email address on the site and consolidate on
+  `ally@redtaperecordings.com`.** User request 2026-08-12, after setting
+  up `ally@`/`ryan@redtaperecordings.com` forwarding (see
+  `BACKLOG_DONE.md`'s "Email deliverability" section) — now that `ally@`
+  actually receives mail, make sure it's the address the site actually
+  shows/uses, not `ryan@`. A first grep (2026-08-12) found:
+  - Two `mailto:` Contact links, both currently `ryan@redtaperecordings.com`:
+    `app/templates/base.html:77` and `archive/templates/base.html:95`.
+  - `app/templates/about.html:19` shows `ryan@how-to-adu.com` directly
+    (the personal inbox, not a `redtaperecordings.com` address at all).
+  - `RESEND_REPLY_TO_ADDRESS` (`app/main.py`, `archive/utils/email.py`,
+    Render dashboard env var per `BACKLOG_DONE.md`'s "Closed out
+    2026-08-10" note) is currently `ryan@redtaperecordings.com` — this is
+    where transactional-email replies and the "We couldn't cook this
+    one" failure CC actually land, so it's in scope too even though it's
+    config, not a template string.
+  - **Form submissions**: grepped every `<form>` on both services.
+    `/api/report-problem` (`app/main.py:704`) only writes a `ProblemReport`
+    DB row — no email is sent anywhere today, so there's nothing to
+    repoint there yet; this would only become relevant if problem
+    reports later grow an email notification. The newsletter signup
+    form (`/api/newsletter/signup`) posts to a Resend **audience**, not
+    an inbox — no address to repoint either. So "form submissions" turned
+    up no actual `ally@`-relevant address yet, unlike the static mailto
+    links and `RESEND_REPLY_TO_ADDRESS`.
+  - **Deliberately left alone, pending a decision**: `DAILY_REPORT_EMAIL_TO`
+    and `YOUTUBE_FETCH_REPORT_EMAIL` (`scripts/daily_report.py`,
+    `scripts/fetch_youtube_transcripts.py`) both default to
+    `ryan@how-to-adu.com` — these are operator-facing ops digests, not
+    site-facing addresses, so probably out of scope for this ask, but
+    flagging since they're the same "which Ryan address" question.
 - **Lifecycle email bugs found by the user 2026-08-11 — three of the four
   fixed 2026-08-11, see BACKLOG_DONE.md for the full root-cause detail on
   each.** The fourth, "People are talking about…" (saved-search alert
@@ -1228,6 +1982,114 @@ one item below is resolved as a result.
   after two live crashes. Worth a real `"base"`-at-900s measurement as
   its own follow-up once `"tiny"` is confirmed working end-to-end on the
   new plan, not stacked on top of an unconfirmed fix.
+
+  **A second, distinct manifestation of the same hallucination failure
+  mode found live 2026-08-12** (County of Napa, Board of Supervisors
+  2026-06-02:
+  [/m/county-of-napa-2026-06-02-board-of-supervisors-on-2026-06-02-9-00-am-final-suppl](https://redtaperecordings.com/m/county-of-napa-2026-06-02-board-of-supervisors-on-2026-06-02-9-00-am-final-suppl)),
+  reported by the user as "meeting is in English but the transcript is in
+  Spanish." Read through the actual segments: the meeting genuinely is in
+  English throughout (real content from ~9:02 onward, e.g. a whole LGBTQ+
+  Pride Month proclamation, transcribes correctly) — the `en (transcribed)`
+  label itself is correct, langdetect isn't the bug here. The real defect
+  sits earlier, 0:00–8:57: the transcript reads as a long stretch of
+  "Testing one, two, three." repeated ~17 times, then several lines of
+  fabricated Spanish-*looking* text with no real-world referent —
+  `"donde es el de dependimiento no es todo eso es un futuro en la
+  secuencia de una sección"`, `"¿Como se no le pumping? ¿Se puede ser un
+  mal."` **Initially assumed (wrongly) to be Whisper free-associating over
+  dead air/a mic test — corrected by the user 2026-08-12, who confirmed
+  people are actually speaking real content throughout that whole
+  stretch, i.e. this is ~0% transcription accuracy against real speech,
+  not a quiet-audio hallucination loop.** That reopens the root-cause
+  question rather than closing it: two real, untested possibilities, not
+  one confirmed one —
+  (1) genuinely poor source audio for this stretch specifically (heavy
+  noise/echo/crosstalk/low mic gain) that the `"tiny"` model can't get a
+  usable signal from even though real speech is present, or
+  (2) an extraction bug: `extract_chunk_audio()`
+  ([app/platforms/media_probe.py](app/platforms/media_probe.py)) pulling
+  the wrong audio stream/offset/a corrupted segment for this specific
+  chunk, so what Whisper actually receives for 0:00–8:57 doesn't
+  faithfully represent the real speech happening in the source recording
+  at all. **Neither is confirmed** — telling them apart needs someone to
+  actually listen to the extracted chunk audio itself (not just read the
+  transcript output, which is all that's been checked so far) against the
+  real meeting recording for that same time range. The `vad_filter`
+  fix proposed in the original write-up of this entry assumed silence and
+  is likely the wrong fix if it's actually (1) or (2) — VAD only skips
+  non-speech spans, so it wouldn't touch a chunk with continuous real
+  speech in it. Don't build a fix here until the audio itself has been
+  checked. Same "verify against a
+  real example" convention as everywhere else in this file.
+
+  **Update 2026-08-12: user has now listened to it directly — very clear
+  audio, no noise/echo/crosstalk.** That rules out hypothesis (1)
+  (genuinely poor source audio the model can't parse) and points at (2),
+  an extraction bug specific to this chunk — though note the user listened
+  to the source recording itself, not the transient chunk audio file
+  `extract_chunk_audio()` actually hands to Whisper (deleted after
+  processing, inside `worker/main.py`'s `tempfile.TemporaryDirectory`
+  block — nothing to inspect after the fact today). Since the source is
+  confirmed clean, the next real step if anyone picks this up is to
+  reproduce one real chunk locally (same `extract_chunk_audio()` call,
+  same 0:00–900s range, same real source URL) and actually listen to *that
+  file* before it gets deleted — if it's also clean, the bug is in
+  faster-whisper's handling of this chunk (parameters, first-chunk
+  cold-start behavior, `MEETING_VOCABULARY_PROMPT` biasing it toward a
+  wrong track somehow); if it's already corrupted/garbled/wrong-content at
+  that point, the bug is in extraction (wrong stream, bad seek offset,
+  transcoding artifact), not in Whisper at all.
+
+  **Update 2026-08-12: reproduced directly, root cause is now a real,
+  well-evidenced extraction bug, not a Whisper problem.** Ran the exact
+  production media URL (`archive-stream.granicus.com/OnDemand/.../
+  napa_10ae7709-....mp4/playlist.m3u8`, pulled from the live page's own
+  embedded video URL) through the same `extract_chunk_audio()` ffmpeg
+  invocation the worker uses, then transcribed the result with the same
+  `faster-whisper` "tiny" model/prompt/`beam_size` `worker/
+  transcription_engine.py` uses — this reproduced the *exact* reported
+  symptom locally: "Testing one, two, three" (and the Spanish-sounding
+  gibberish after it) from 0:00 through ~508s, then a clean, correct
+  transition into the real Pride Month proclamation content around
+  555–570s, matching the "~9:02" real-content start already reported live.
+  Three concrete findings rule out both original hypotheses and point at a
+  specific new one:
+  - **Not silence/quiet audio**: `ffmpeg`'s `volumedetect` on the 0–508s
+    "bad" region measured `mean_volume: -32.3 dB`, essentially identical
+    to the confirmed-real-speech 570–600s region's `-31.3 dB` — real
+    audio energy is present throughout, not silence a VAD filter would
+    have caught.
+  - **`ffmpeg` itself warns during extraction**, independent of `-ss`
+    placement (reproduced identically with `-ss` before *and* after
+    `-i`, ruling out a bad seek offset specifically): `"Queue input is
+    backward in time"` / `"Application provided invalid, non
+    monotonically increasing dts to muxer"`, repeated dozens of times —
+    real evidence the underlying HLS segments this specific
+    `archive-stream.granicus.com` "OnDemand" VOD serves have
+    non-monotonic/overlapping timestamps, not that `extract_chunk_audio()`
+    is asking for the wrong offset.
+  - **The hallucinated phrase repeats at suspiciously mechanical ~30-second
+    intervals** (0, 30, 60, 90, ... 480s — confirmed via local
+    re-transcription, not eyeballed) — real organic speech doesn't repeat
+    identically on a metronome; this is much more consistent with
+    something in the HLS segment sequence itself looping or duplicating a
+    short real segment (plausibly a genuine pre-broadcast mic-check
+    recording — "Vamos a hacer una prueba... Testing one, two, three" is
+    real, meaningful audio content, not noise) than with either a clean
+    signal or true silence.
+
+  **Not yet built, and deliberately not attempted this pass**: a real fix
+  needs to establish *why* this specific VOD's HLS timestamps are
+  non-monotonic (a Granicus live-to-VOD stitching artifact? a genuine
+  duplicated segment in the source?) and whether a targeted `ffmpeg` flag
+  (e.g. `-fflags +genpts`, forcing regenerated presentation timestamps
+  instead of trusting the source's) actually produces clean audio for this
+  same range — untested, and this is one sample from one CDN path
+  (`archive-stream.granicus.com`'s "OnDemand" proxy specifically, not
+  every Granicus clip), so worth checking whether this recurs on a second
+  real `archive-stream.granicus.com` VOD before generalizing a fix, per
+  this file's own "verify with a real example" convention.
 - **Per-meeting `initial_prompt` seeded with real council-member names,
   from the agenda — user idea, 2026-08-11, real proper-noun accuracy
   motivation (their example: "Council Member Rashi Kesarwani, Council

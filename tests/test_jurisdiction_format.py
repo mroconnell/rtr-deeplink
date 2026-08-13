@@ -1,4 +1,4 @@
-from archive.utils.jurisdiction_format import normalize_state_suffix
+from archive.utils.jurisdiction_format import format_jurisdiction_display, normalize_state_suffix
 
 
 def test_full_state_name_becomes_abbreviation():
@@ -38,3 +38,43 @@ def test_only_touches_trailing_component():
     # A comma-containing city name shouldn't confuse which segment is "the state" --
     # only the text after the *last* comma is ever treated as a state candidate.
     assert normalize_state_suffix("Winston-Salem, Forsyth County, North Carolina") == "Winston-Salem, Forsyth County, NC"
+
+
+def test_display_drops_city_of_prefix():
+    # User request 2026-08-12: almost everything archived is a city, so
+    # labeling every row that way reads as redundant.
+    assert format_jurisdiction_display("City of Napa, CA") == "Napa, CA"
+
+
+def test_display_drops_bare_city_prefix():
+    assert format_jurisdiction_display("City Napa, CA") == "Napa, CA"
+
+
+def test_display_is_case_insensitive_on_the_prefix():
+    assert format_jurisdiction_display("city of Oklahoma City") == "Oklahoma City"
+
+
+def test_display_keeps_county_label():
+    # The real exception this is meant to preserve -- see the docstring.
+    assert format_jurisdiction_display("County of Napa, CA") == "County of Napa, CA"
+    assert format_jurisdiction_display("Forsyth County, NC") == "Forsyth County, NC"
+
+
+def test_display_keeps_state_legislature_body_names():
+    assert format_jurisdiction_display("California State Legislature") == "California State Legislature"
+    assert format_jurisdiction_display("Illinois General Assembly") == "Illinois General Assembly"
+
+
+def test_display_keeps_town_label():
+    # Not explicitly requested to be dropped, unlike "City of" -- treated
+    # like County, kept as-is.
+    assert format_jurisdiction_display("Town of Thousand Oaks, CA") == "Town of Thousand Oaks, CA"
+
+
+def test_display_passes_through_a_jurisdiction_with_no_city_prefix():
+    assert format_jurisdiction_display("Charlotte, NC") == "Charlotte, NC"
+
+
+def test_display_none_and_empty_pass_through():
+    assert format_jurisdiction_display(None) is None
+    assert format_jurisdiction_display("") == ""

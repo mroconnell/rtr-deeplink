@@ -46,3 +46,29 @@ def normalize_state_suffix(jurisdiction: Optional[str]) -> Optional[str]:
     if not abbr:
         return jurisdiction
     return f"{prefix.strip()}, {abbr}"
+
+
+_DROPPED_DISPLAY_PREFIXES = ("City of ", "City ")
+
+
+def format_jurisdiction_display(jurisdiction: Optional[str]) -> Optional[str]:
+    """Drops a leading "City of "/"City " for display -- user request
+    2026-08-12: almost everything archived is a city, so labeling every
+    row that way ("City of Napa, CA") reads as redundant. Reserves the
+    explicit label for the real exceptions this repo actually stores --
+    "County of X"/"X County" and state-legislature-style body names both
+    pass through unchanged, since dropping the label there would make a
+    real, useful distinction disappear.
+
+    Display-time only, applied at render (as a Jinja filter here; the
+    resolver's `app/static/player.js` has its own small JS equivalent for
+    the one place it renders a raw, unarchived `jurisdiction` client-side)
+    -- what's actually stored (`normalize_state_suffix()`'s output) is
+    never touched, so this can be revisited without a data migration.
+    """
+    if not jurisdiction:
+        return jurisdiction
+    for prefix in _DROPPED_DISPLAY_PREFIXES:
+        if jurisdiction.lower().startswith(prefix.lower()):
+            return jurisdiction[len(prefix):]
+    return jurisdiction

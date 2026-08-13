@@ -107,6 +107,32 @@ async def test_resolve_real_event_with_populated_srt_captions():
     assert result.segments[3].text == "Meeting to order."
 
 
+async def test_resolve_fills_in_missing_state_via_shared_lookup():
+    # Synthetic -- every real CivicClerk sample found so far (Clovis CA,
+    # Emporia KS, Highland CA, Lino Lakes MN) already has eventLocation.state
+    # populated, so this exact gap is unconfirmed in the wild (see
+    # BACKLOG.md's "no-state jurisdiction audit"). Exercises the fallback
+    # in case a real customer with a blank state ever shows up: an
+    # unambiguous city name should still resolve a real state via the same
+    # shared gazetteer lookup every free-text adapter uses.
+    url = "https://example.portal.civicclerk.com/event/2/media"
+    event_json = (
+        '{"id": 2, "eventName": "Test Meeting", "eventDate": "2026-01-01T00:00:00Z", '
+        '"eventLocation": {"city": "Fresno", "state": ""}}'
+    )
+    media_json = '{"id": 2, "videoUrl": "https://cpmedia.azureedge.net/example/b.mp4", "eventBookmarks": []}'
+
+    routes = {
+        "https://example.api.civicclerk.com/v1/Events/2": FakeResponse(status=200, text=event_json),
+        "https://example.api.civicclerk.com/v1/EventsMedia/2": FakeResponse(status=200, text=media_json),
+    }
+
+    with mock_session(routes):
+        result = await CivicClerkAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "Fresno, CA"
+
+
 async def test_resolve_text_fallback_for_unstructured_caption_format():
     # Synthetic, not real -- only .srt has ever been observed live on this
     # platform (event 585 above). Exercises the new fallback path in case

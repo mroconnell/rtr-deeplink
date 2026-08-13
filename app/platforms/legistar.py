@@ -9,6 +9,7 @@ from bs4 import BeautifulSoup
 from .base import AssetFinder, CalendarPageError, find_platform_link, get_finder, resolve_via_platform
 from .models import ResolvedMeeting
 from .youtube import YouTubeAssetFinder
+from ..utils import jurisdiction_enrich
 
 # Confirmed live (2026-08-09) on two real NYC MeetingDetail.aspx pages: the
 # outer page's own <title> reliably gives "{jurisdiction} - Meeting of
@@ -105,7 +106,7 @@ class LegistarAssetFinder(AssetFinder):
                     candidates=video_links,
                 )
 
-            page_info = self._extract_page_meeting_info(soup)
+            page_info = self._extract_page_meeting_info(soup, final_url)
             target_final_url, _ = await self._fetch(session, video_links[0]["url"])
             if not self._is_legistar_domain(target_final_url):
                 resolved = await resolve_via_platform(target_final_url)
@@ -144,7 +145,12 @@ class LegistarAssetFinder(AssetFinder):
         if video_id:
             resolved = await YouTubeAssetFinder.resolve_video_id(video_id, source_url=page_url)
         else:
-            match = find_platform_link(html, page_url, exclude=frozenset({"youtube"}))
+            # "legistar" excluded too, defense-in-depth alongside base.py's
+            # own same-URL check above -- this method only ever runs when
+            # LegistarAssetFinder has already claimed page_url, so a match
+            # that resolved back to "legistar" could only ever mean
+            # re-delegating to itself.
+            match = find_platform_link(html, page_url, exclude=frozenset({"youtube", "legistar"}))
             if not match:
                 return None
             candidate, platform = match
@@ -153,7 +159,7 @@ class LegistarAssetFinder(AssetFinder):
             except Exception:
                 return None
 
-        page_info = LegistarAssetFinder._extract_page_meeting_info(soup)
+        page_info = LegistarAssetFinder._extract_page_meeting_info(soup, page_url)
         if page_info:
             if LegistarAssetFinder._looks_like_raw_filename(resolved.title) or not resolved.title:
                 resolved.title = page_info["title"]
@@ -232,7 +238,7 @@ class LegistarAssetFinder(AssetFinder):
         return title, date
 
     @staticmethod
-    def _extract_page_meeting_info(soup: BeautifulSoup) -> Optional[dict]:
+    def _extract_page_meeting_info(soup: BeautifulSoup, page_url: str) -> Optional[dict]:
         text = soup.title.get_text(" ", strip=True) if soup.title else None
         if not text or not _PAGE_TITLE_RE.match(text):
             # Real gap confirmed live 2026-08-10: Baltimore's Legistar
@@ -253,6 +259,15 @@ class LegistarAssetFinder(AssetFinder):
         jurisdiction = match.group(1).strip()
         if jurisdiction.lower().startswith("the "):
             jurisdiction = jurisdiction[4:]
+        # Real shape confirmed live: this capture is sometimes a clean
+        # "City of X" (Baltimore), sometimes a body-inclusive "X City
+        # Council" (NYC) -- enrich_jurisdiction_text() safely no-ops
+        # (returns unchanged) rather than mismatching when the text
+        # doesn't resemble a real place/county name, so it's always safe
+        # to try regardless of which shape this page happened to produce.
+        jurisdiction = jurisdiction_enrich.enrich_jurisdiction_text(
+            jurisdiction, netloc=urlparse(page_url).netloc, page_text=text
+        )
         month, day, year = int(match.group(3)), int(match.group(4)), match.group(5)
         return {
             "title": match.group(2).strip(),

@@ -1,0 +1,21 @@
+jurisdiction,real_states_found_in,ambiguous,resolution_method,platform,adapter_file,example_meeting_url,notes
+Detroit,"MI, OR, AL, TX",yes,confirmed domain registry,Cablecast,app/platforms/cablecast.py,https://detroit-vod.cablecast.tv/internetchannel/show/15323?site=1,Real customer; name alone unresolvable
+Charlotte,"NC, MI, IA, TX, TN",yes,confirmed domain registry,Cablecast,app/platforms/cablecast.py,https://charlotte.cablecast.tv/internetchannel/show/2451?site=1,Real customer; name alone unresolvable
+Chicago,IL,no,unique name lookup,Cablecast,app/platforms/cablecast.py,,Synthetic test case (unconfirmed real Cablecast customer)
+Minneapolis,"MN, KS",yes,confirmed domain registry,LIMS,app/platforms/lims.py,https://lims.minneapolismn.gov/MarkedAgenda/CI/{id},Real customer; name alone unresolvable
+Alexandria,"VA + 7 others",yes,stays state-less (honest gap),Legistar,app/platforms/legistar.py,https://alexandria.legistar.com/MeetingDetail.aspx?ID=6490,Fixture-based (real page originally fetched)
+Mesa,"AZ, WA",yes,stays state-less (honest gap),Legistar,app/platforms/legistar.py,https://mesa.legistar.com/MeetingDetail.aspx?ID=1428059,Live-verified
+Baltimore,"MD (independent city), OH (village)",yes,stays state-less (honest gap),Legistar,app/platforms/legistar.py,https://baltimore.legistar.com/MeetingDetail.aspx?ID=1282692,Fixture-based (real page originally fetched)
+Chicago,IL,no,unique name lookup,Legistar,app/platforms/legistar.py,,Synthetic test case
+Napa,CA,no,unique name lookup,Granicus,app/platforms/granicus.py,https://napa.granicus.com/player/clip/5812?redirect=true&view_id=3,Live-verified
+Sonoma County,CA,no,unique name lookup,Granicus,app/platforms/granicus.py,,Synthetic test case
+Fresno,CA,no,unique name lookup,Granicus,app/platforms/granicus.py,https://fresno.granicus.com/player/clip/2162?view_id=1&redirect=true,Live-verified
+Colorado Springs,CA,n/a,pre-existing source suffix left untouched,Granicus,app/platforms/granicus.py,https://coloradosprings.granicus.com/player/clip/2664?view_id=1&redirect=true,"Source RSS feed literally says ""Co"" not ""CO"" -- our enrichment correctly left it alone"
+Washington County,30+ states,yes,stays ambiguous (unit test),jurisdiction_enrich (shared),app/utils/jurisdiction_enrich.py,,Unit test only
+Oklahoma City,OK,no,unique name lookup (after a real bug fix),PrimeGov,app/platforms/primegov.py,https://okc.primegov.com/Portal/Meeting?meetingTemplateId=68482,"Live-verified; a normalization bug briefly collided this with ""Oklahoma borough, PA"" -- fixed"
+Thousand Oaks,CA,no,unique name lookup,PrimeGov,app/platforms/primegov.py,https://toaks.primegov.com/Portal/Meeting?meetingTemplateId=9446,Live-verified
+Holladay,UT,no (but wrong city -- real extraction bug),unique name lookup applied to a mis-extracted name,PrimeGov,app/platforms/primegov.py,https://slc.primegov.com/Portal/Meeting?meetingTemplateId=3853,"Real, still-open bug: page's real jurisdiction (Salt Lake City) isn't extracted at all; an unrelated agenda item name (Holladay) is picked up instead and now confidently shows a real but wrong state"
+Kansas City,"KS, MO",yes,stays ambiguous (unit test),jurisdiction_enrich (shared),app/utils/jurisdiction_enrich.py,,"Unit test only; user-suggested case, confirmed real"
+Bakersfield,CA,no,unique name lookup,eScribe,app/platforms/escribe.py,,Fixture-based (real page originally fetched)
+Dallas County,"AL, AR, IA, MO, TX",yes,stays state-less (honest gap),CivicWeb,app/platforms/civicweb.py,https://dallascounty.civicweb.net/Portal/MeetingInformation.aspx?Org=Cal&Id=2108,Live-verified
+Napa County,CA,no,unique name lookup,CivicWeb,app/platforms/civicweb.py,,Synthetic test case

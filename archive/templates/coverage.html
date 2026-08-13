@@ -24,7 +24,7 @@
         <tbody>
           {% for row in jurisdictions %}
           <tr>
-            <td>{{ row.jurisdiction }}</td>
+            <td>{{ row.jurisdiction|jurisdiction_display }}</td>
             <td><a href="/m/{{ row.example.slug }}">{{ row.example.title or "Untitled meeting" }}</a></td>
             <td>
               {% if row.example.has_transcript %}
@@ -47,7 +47,7 @@
           <a href="/m/{{ row.example.slug }}">{{ row.label }}</a>
           <span class="calendar-candidate-date">
             {{ row.example.title or "Untitled meeting" }}
-            {%- if row.example.jurisdiction %} &middot; {{ row.example.jurisdiction }}{% endif -%}
+            {%- if row.example.jurisdiction %} &middot; {{ row.example.jurisdiction|jurisdiction_display }}{% endif -%}
           </span>
           {% else %}
           <span>{{ row.label }}</span>
@@ -73,7 +73,7 @@
           <a href="/m/{{ row.example.slug }}">{{ row.label }}</a>
           <span class="calendar-candidate-date">
             {{ row.example.title or "Untitled meeting" }}
-            {%- if row.example.jurisdiction %} &middot; {{ row.example.jurisdiction }}{% endif -%}
+            {%- if row.example.jurisdiction %} &middot; {{ row.example.jurisdiction|jurisdiction_display }}{% endif -%}
           </span>
           {% else %}
           <span>{{ row.label }}</span>

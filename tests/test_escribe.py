@@ -37,8 +37,10 @@ async def test_resolve_real_bakersfield_meeting():
     # Real bug fixed 2026-08-09: the page body has no "City of X" phrase
     # (just a plain address), so jurisdiction used to silently come back
     # None -- now falls back to the pub-{city}.escribemeetings.com
-    # subdomain.
-    assert result.jurisdiction == "Bakersfield"
+    # subdomain. State appended 2026-08-12 via the shared
+    # jurisdiction_enrich module -- "Bakersfield" is a real, nationally-
+    # unique incorporated place name.
+    assert result.jurisdiction == "Bakersfield, CA"
     assert result.video_url == (
         "https://cdn1.isilive.ca/vod/_definst_/mp4:bakersfield/"
         "iSiLIVE%20Encoder%20760_CCM330_2026-07-15-06-04.mp4/playlist.m3u8"

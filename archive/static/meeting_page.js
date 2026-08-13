@@ -360,7 +360,19 @@ function wireTranscribeForm() {
         body: JSON.stringify({ url: form.dataset.url || window.location.href }),
       });
       const data = await res.json();
-      if (data.ok) {
+      if (res.status === 429) {
+        // Real bug fixed 2026-08-12: slowapi's rate-limit response has no
+        // `ok`/`message` keys (its body is `{"error": "Rate limit
+        // exceeded: ..."}`), so this used to fall through to the generic
+        // "couldn't find a usable audio or video source" message below --
+        // reading exactly like a real resolution failure with no hint the
+        // actual cause was "you've already requested several transcripts
+        // this hour." Checked before `data.ok` specifically so a real
+        // rate limit is never mistaken for that. Same duplicated fix as
+        // app/static/player.js's copy of this function.
+        checkStatusEl.textContent = "You've requested a few transcripts already this hour — please try again a bit later.";
+        checkStatusEl.className = 'transcribe-status error';
+      } else if (data.ok) {
         feasibilityOk = true;
         const clerkEmail = window.RTRClerk && window.RTRClerk.isSignedIn() && window.Clerk.user && window.Clerk.user.primaryEmailAddress
           ? window.Clerk.user.primaryEmailAddress.emailAddress

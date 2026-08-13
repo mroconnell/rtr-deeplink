@@ -8,6 +8,7 @@ import aiohttp
 from .base import AssetFinder
 from .models import ResolvedMeeting
 from .youtube import YouTubeAssetFinder
+from ..utils import jurisdiction_enrich
 
 # CivicWeb (iCompass, a Diligent brand -- footer-confirmed, a genuinely
 # different vendor from eScribe despite both being Canadian civic-meeting
@@ -59,7 +60,7 @@ class CivicWebAssetFinder(AssetFinder):
             videolink = await self._fetch_json(session, f"{origin}/api/videolink/{meeting_id}")
             meeting_data = await self._fetch_json(session, f"{origin}/Services/MeetingsService.svc/meetings/{meeting_id}/meetingData")
 
-        jurisdiction = self._extract_jurisdiction(html) if html else None
+        jurisdiction = self._extract_jurisdiction(html, url) if html else None
         title = meeting_data.get("Name") if meeting_data else None
 
         entry = videolink[0] if videolink else None
@@ -97,9 +98,17 @@ class CivicWebAssetFinder(AssetFinder):
         return match.group(1) if match else None
 
     @staticmethod
-    def _extract_jurisdiction(html: str) -> Optional[str]:
+    def _extract_jurisdiction(html: str, url: str) -> Optional[str]:
         match = _TITLE_JURISDICTION_RE.search(html)
-        return match.group(1).strip() if match else None
+        if not match:
+            return None
+        jurisdiction = match.group(1).strip()
+        # No state anywhere in this shape -- confirmed real, e.g. real
+        # "Dallas County" (see module docstring). See BACKLOG.md's
+        # "no-state jurisdiction audit".
+        return jurisdiction_enrich.enrich_jurisdiction_text(
+            jurisdiction, netloc=urlparse(url).netloc, page_text=html
+        )
 
     @staticmethod
     async def _fetch_text(session: aiohttp.ClientSession, url: str) -> Optional[str]:

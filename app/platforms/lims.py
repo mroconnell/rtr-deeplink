@@ -2,11 +2,13 @@ import html
 import json
 import re
 from typing import List, Optional
+from urllib.parse import urlparse
 
 from .base import AssetFinder
 from .headless_browser import fetch_via_browser
 from .models import ResolvedMeeting, TranscriptSegment
 from .youtube import YouTubeAssetFinder
+from ..utils import jurisdiction_enrich
 
 _ID_RE = re.compile(r"/MarkedAgenda/[A-Za-z]+/(\d+)")
 _PRE_RE = re.compile(r"<pre[^>]*>(.*?)</pre>", re.S)
@@ -66,7 +68,7 @@ class LimsAssetFinder(AssetFinder):
         meeting_id = match.group(1)
 
         agenda_html = await fetch_via_browser(url)
-        title, date, jurisdiction = self._extract_page_meta(agenda_html)
+        title, date, jurisdiction = self._extract_page_meta(agenda_html, url)
 
         json_url = f"https://lims.minneapolismn.gov/MeetingYoutubeVideo/{meeting_id}"
         json_html = await fetch_via_browser(json_url)
@@ -93,7 +95,7 @@ class LimsAssetFinder(AssetFinder):
         return resolved
 
     @staticmethod
-    def _extract_page_meta(page_html: str):
+    def _extract_page_meta(page_html: str, url: str):
         title_match = re.search(r"<title>([^<]*)</title>", page_html)
         if not title_match:
             return None, None, None
@@ -110,6 +112,14 @@ class LimsAssetFinder(AssetFinder):
         if split_match:
             title = split_match.group(1).strip()
             jurisdiction = split_match.group(2).strip()
+            # No state in this shape -- confirmed real ("Minneapolis"),
+            # and itself ambiguous nationally (a real, smaller Minneapolis
+            # also exists in Kansas) -- resolved via the confirmed-domain
+            # registry, not a name lookup alone. See BACKLOG.md's
+            # "no-state jurisdiction audit".
+            jurisdiction = jurisdiction_enrich.enrich_jurisdiction_text(
+                jurisdiction, netloc=urlparse(url).netloc, page_text=raw_title
+            )
 
         return title, date, jurisdiction
 

@@ -23,6 +23,8 @@ from .db import crud
 from .db.engine import init_models
 from .utils import email as email_utils
 from .utils.clerk_auth import clerk_frontend_api_url, get_clerk_user_id
+from .utils.jurisdiction_format import format_jurisdiction_display
+from .utils.language import language_display_name
 from .utils.render_warnings import render_warnings_html
 from .utils.transcript_export import to_srt, to_txt
 from .utils.url_normalize import normalize_url
@@ -61,6 +63,13 @@ templates.env.globals["CLERK_FRONTEND_API_URL"] = clerk_frontend_api_url(os.envi
 # would otherwise silently re-escape real markup this filter already
 # produced correctly).
 templates.env.filters["warnings_html"] = lambda warnings: Markup(render_warnings_html(warnings or []))
+templates.env.filters["language_name"] = language_display_name
+# "scraped" is our internal TranscriptVersion.source value (see
+# archive/db/models.py) -- never shown verbatim to a reader, who has no
+# reason to know or care that it means "downloaded from the source site's
+# own captions" versus AI-transcribed.
+templates.env.filters["source_label"] = lambda source: "sourced" if source == "scraped" else source
+templates.env.filters["jurisdiction_display"] = format_jurisdiction_display
 
 
 @app.exception_handler(StarletteHTTPException)

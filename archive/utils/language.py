@@ -23,3 +23,16 @@ def detect_language_from_texts(texts: Iterable[str]) -> Optional[str]:
         return _detect_language(sample)
     except LangDetectException:
         return None
+
+
+# User-facing names for the version picker (meeting_page.html) -- raw
+# langdetect/source-provided codes aren't self-explanatory to a reader.
+# Only the two codes actually seen in practice so far; an unrecognized
+# code falls back to displaying itself rather than guessing.
+LANGUAGE_DISPLAY_NAMES = {"en": "English", "es": "Español"}
+
+
+def language_display_name(code: Optional[str]) -> str:
+    if not code:
+        return "unknown"
+    return LANGUAGE_DISPLAY_NAMES.get(code, code)

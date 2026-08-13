@@ -158,7 +158,11 @@ def test_extract_date_returns_none_without_a_month_name_date():
 
 
 def test_extract_jurisdiction_normalizes_all_caps_header():
-    assert PrimeGovAssetFinder._extract_jurisdiction(OKC_HEADER_HTML) == "City of Oklahoma City"
+    # "Oklahoma City" is a real, nationally-unique incorporated place --
+    # confirmed via app/utils/jurisdiction_data, so this now also confirms
+    # the shared jurisdiction_enrich wiring is reached, not just the
+    # header-parsing regex.
+    assert PrimeGovAssetFinder._extract_jurisdiction(OKC_HEADER_HTML, PAGE_URL) == "City of Oklahoma City, OK"
 
 
 def test_extract_jurisdiction_stops_at_lowercase_word_in_flowing_prose():
@@ -168,15 +172,56 @@ def test_extract_jurisdiction_stops_at_lowercase_word_in_flowing_prose():
     # statement text elsewhere on the page, since nothing but a lowercase
     # word follows the real city name there.
     prose = "It is the mission of the City of Thousand Oaks that all employees are treated well."
-    assert PrimeGovAssetFinder._extract_jurisdiction(prose) == "City of Thousand Oaks"
+    toaks_url = "https://toaks.primegov.com/Portal/Meeting?meetingTemplateId=9446"
+    assert PrimeGovAssetFinder._extract_jurisdiction(prose, toaks_url) == "City of Thousand Oaks, CA"
 
 
 def test_extract_jurisdiction_reads_toaks_header():
-    assert PrimeGovAssetFinder._extract_jurisdiction(TOAKS_HEADER_HTML) == "City of Thousand Oaks"
+    toaks_url = "https://toaks.primegov.com/Portal/Meeting?meetingTemplateId=9446"
+    assert PrimeGovAssetFinder._extract_jurisdiction(TOAKS_HEADER_HTML, toaks_url) == "City of Thousand Oaks, CA"
 
 
 def test_extract_jurisdiction_returns_none_when_absent():
-    assert PrimeGovAssetFinder._extract_jurisdiction(PAGE_HTML_NO_VIDEO) is None
+    assert PrimeGovAssetFinder._extract_jurisdiction(PAGE_HTML_NO_VIDEO, PAGE_URL) is None
+
+
+def test_extract_jurisdiction_still_matches_agenda_body_text_when_header_does_not_match():
+    # Real, currently-STILL-OPEN gap -- see BACKLOG.md. A same-day window-
+    # capping "fix" for exactly this shape (SLC's real header, "SALT LAKE
+    # CITY COUNCIL", isn't "City/County/Town of X"-shaped, so an unrelated
+    # agenda item mentioning a different city can still win) was reverted
+    # after live-checking all three real known examples: the window that
+    # would avoid this false positive also broke both of PrimeGov's
+    # original, previously-correctly-resolving real cities (OKC and
+    # Thousand Oaks both have their own real, correct match sitting
+    # thousands of characters into the real page -- nowhere near "early"),
+    # a worse regression than reopening this one. This test documents the
+    # current, honest (if imperfect) behavior, not a fix -- note
+    # "Holladay" is itself a real, nationally-unique place name (per
+    # app/utils/jurisdiction_data), so the shared enrichment step now
+    # confidently appends its real state (UT) to this wrong city name,
+    # which if anything makes the underlying extraction bug read as more
+    # authoritative than it did before, not less -- worth keeping in mind
+    # for whoever picks up a real fix for the extraction itself.
+    html = (
+        "<html><body>"
+        "<strong>SALT LAKE CITY COUNCIL</strong><br><strong>AGENDA</strong>"
+        "<p>Item 12: Central Wasatch Commission - adding the City of Holladay.</p>"
+        "</body></html>"
+    )
+    result = PrimeGovAssetFinder._extract_jurisdiction(
+        html, "https://slc.primegov.com/Portal/Meeting?meetingTemplateId=3853"
+    )
+    assert result == "City of Holladay, UT"
+
+
+def test_extract_jurisdiction_strips_script_and_style_boilerplate():
+    # Boilerplate stripping itself is still real and kept (a <script>
+    # block's own text could otherwise be searched) -- just no longer
+    # paired with a length cap, see the module-level comment on why.
+    boilerplate = "<script>" + ("window.sessionStorage.setItem('x', 'y');" * 60) + "</script>"
+    html = f"<html><body>{boilerplate}{OKC_HEADER_HTML}</body></html>"
+    assert PrimeGovAssetFinder._extract_jurisdiction(html, PAGE_URL) == "City of Oklahoma City, OK"
 
 
 async def test_resolve_overrides_wrong_youtube_date_and_jurisdiction_with_page_header(monkeypatch):
@@ -199,7 +244,7 @@ async def test_resolve_overrides_wrong_youtube_date_and_jurisdiction_with_page_h
         result = await PrimeGovAssetFinder().resolve(PAGE_URL)
 
     assert result.date == "2026-08-04"
-    assert result.jurisdiction == "City of Oklahoma City"
+    assert result.jurisdiction == "City of Oklahoma City, OK"
 
 
 async def test_resolve_overrides_uninformative_youtube_uploader(monkeypatch):
@@ -219,14 +264,18 @@ async def test_resolve_overrides_uninformative_youtube_uploader(monkeypatch):
         result = await PrimeGovAssetFinder().resolve(toaks_url)
 
     assert result.date == "2026-07-07"
-    assert result.jurisdiction == "City of Thousand Oaks"
+    assert result.jurisdiction == "City of Thousand Oaks, CA"
 
 
-async def test_resolve_falls_back_to_youtube_values_when_page_has_no_header(monkeypatch):
-    # Existing behavior preserved for pages without the agenda header (e.g.
-    # a stripped-down/unusual PrimeGov template) -- better-than-nothing
-    # YouTube values still come through unchanged rather than being
-    # silently overwritten with None.
+async def test_resolve_clears_jurisdiction_when_page_has_no_header(monkeypatch):
+    # Real bug fixed 2026-08-12, reported by the user on a real
+    # slc.primegov.com meeting whose header didn't match _JURISDICTION_RE
+    # at all: this used to silently leave YouTube's own `uploader` value
+    # in place ("SLC Live Meetings" in that real case) -- a channel name,
+    # not a jurisdiction. Now cleared to None instead, an honest "we
+    # don't know" rather than a wrong-looking answer. `date` is unaffected
+    # -- that field's own fallback-preservation behavior wasn't part of
+    # this bug and isn't changed.
     monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _fake_extract_info)
     routes = {PAGE_URL: FakeResponse(status=200, text=PAGE_HTML_WITH_VIDEO, url=PAGE_URL)}
 
@@ -234,4 +283,4 @@ async def test_resolve_falls_back_to_youtube_values_when_page_has_no_header(monk
         result = await PrimeGovAssetFinder().resolve(PAGE_URL)
 
     assert result.date == "2026-08-05"
-    assert result.jurisdiction == "cityofokc"
+    assert result.jurisdiction is None

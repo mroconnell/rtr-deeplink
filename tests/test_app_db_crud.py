@@ -7,6 +7,8 @@ silently lost if the resolver process restarted mid-flight, with zero log
 trace -- see BACKLOG_DONE.md.
 """
 
+from datetime import datetime, timedelta, timezone
+
 from app.db import crud
 
 
@@ -15,6 +17,7 @@ async def _log(
     *,
     status: str = "success",
     transcript_found: bool = False,
+    video_found: bool = False,
     resolved_payload: dict | None = None,
 ) -> int:
     return await crud.log_resolution(
@@ -22,6 +25,7 @@ async def _log(
         input_url_normalized=f"https://example.granicus.com/player/clip/{url_suffix}",
         input_platform="granicus",
         status=status,
+        video_found=video_found,
         transcript_found=transcript_found,
         segment_count=1 if transcript_found else 0,
         resolved_payload=resolved_payload if resolved_payload is not None else {"segments": [], "agenda_items": []},
@@ -145,3 +149,70 @@ async def test_stats_pending_archive_pushes_count():
     await crud.mark_archive_pushed(resolution_id)
     after_mark = (await crud.get_stats())["pending_archive_pushes"]
     assert after_mark == before
+
+
+async def test_get_cached_resolution_ignores_a_stale_no_video_row():
+    # Real bug fixed 2026-08-12: get_cached_resolution() previously had no
+    # age check at all, so a one-time bad resolve (a generic_fallback
+    # miss on a page that genuinely has a real video, confirmed live on a
+    # real www.portland.gov URL) got served to every future visitor
+    # forever, with no automatic path back to a fresh resolve.
+    from app.db.engine import async_session
+    from app.db.models import MeetingResolution
+
+    url = "https://example.granicus.com/player/clip/stale-no-video"
+    resolution_id = await _log(
+        "stale-no-video", video_found=False, resolved_payload={"video_url": None, "segments": [], "agenda_items": []}
+    )
+
+    async with async_session() as session:
+        row = await session.get(MeetingResolution, resolution_id)
+        row.created_at = datetime.now(timezone.utc) - timedelta(hours=2)
+        await session.commit()
+
+    assert await crud.get_cached_resolution(url) is None
+
+
+async def test_get_cached_resolution_keeps_a_fresh_no_video_row():
+    # Same shape as above, but still within the TTL -- confirms this is a
+    # real age check, not an unconditional exclusion of video_found=False
+    # rows.
+    from app.db.engine import async_session
+    from app.db.models import MeetingResolution
+
+    url = "https://example.granicus.com/player/clip/fresh-no-video"
+    resolution_id = await _log(
+        "fresh-no-video", video_found=False, resolved_payload={"video_url": None, "segments": [], "agenda_items": []}
+    )
+
+    async with async_session() as session:
+        row = await session.get(MeetingResolution, resolution_id)
+        row.created_at = datetime.now(timezone.utc) - timedelta(minutes=30)
+        await session.commit()
+
+    cached = await crud.get_cached_resolution(url)
+    assert cached is not None
+    assert cached["resolution_id"] == resolution_id
+
+
+async def test_get_cached_resolution_never_expires_a_row_with_video_found():
+    # A row that DID find a video keeps no TTL at all -- only a
+    # video_found=False row is subject to the new staleness check.
+    from app.db.engine import async_session
+    from app.db.models import MeetingResolution
+
+    url = "https://example.granicus.com/player/clip/old-but-video-found"
+    resolution_id = await _log(
+        "old-but-video-found",
+        video_found=True,
+        resolved_payload={"video_url": "https://example.com/v.m3u8", "segments": [], "agenda_items": []},
+    )
+
+    async with async_session() as session:
+        row = await session.get(MeetingResolution, resolution_id)
+        row.created_at = datetime.now(timezone.utc) - timedelta(days=30)
+        await session.commit()
+
+    cached = await crud.get_cached_resolution(url)
+    assert cached is not None
+    assert cached["resolution_id"] == resolution_id

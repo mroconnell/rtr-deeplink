@@ -57,7 +57,7 @@ async def test_resolve_extracts_real_video_title_date_jurisdiction(monkeypatch):
     assert result.platform == "youtube"  # delegated finder's own platform name, unchanged
     assert result.title == "Climate & Infrastructure Committee"
     assert result.date == "2026-08-06"
-    assert result.jurisdiction == "City of Minneapolis"
+    assert result.jurisdiction == "City of Minneapolis, MN"
     assert result.video_url == f"https://www.youtube.com/embed/{REAL_VIDEO_ID}"
 
 
@@ -137,7 +137,7 @@ async def test_resolve_still_works_when_youtube_metadata_fetch_fails(monkeypatch
 
     assert result.title == "Climate & Infrastructure Committee"
     assert result.date == "2026-08-06"
-    assert result.jurisdiction == "City of Minneapolis"
+    assert result.jurisdiction == "City of Minneapolis, MN"
     assert result.video_url == f"https://www.youtube.com/embed/{REAL_VIDEO_ID}"
     assert len(result.agenda_items) == 3  # LIMS's own JSON data, untouched by the YouTube failure
     assert result.segments == []
@@ -164,10 +164,16 @@ async def test_resolve_works_for_a_non_ci_committee_code(monkeypatch):
 
 
 def test_extract_page_meta_parses_real_title_shape():
-    title, date, jurisdiction = LimsAssetFinder._extract_page_meta(AGENDA_PAGE_HTML)
+    # "Minneapolis" is itself ambiguous nationally (a real, smaller
+    # Minneapolis also exists in Kansas -- confirmed via
+    # app/utils/jurisdiction_data), so the state here comes from the
+    # confirmed-domain registry, not a name lookup alone.
+    title, date, jurisdiction = LimsAssetFinder._extract_page_meta(
+        AGENDA_PAGE_HTML, "https://lims.minneapolismn.gov/MarkedAgenda/CI/6133"
+    )
     assert title == "Climate & Infrastructure Committee"
     assert date == "2026-08-06"
-    assert jurisdiction == "City of Minneapolis"
+    assert jurisdiction == "City of Minneapolis, MN"
 
 
 def test_extract_video_and_timestamps_parses_real_json_shape():

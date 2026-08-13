@@ -92,3 +92,24 @@ def test_find_platform_link_respects_exclude():
         "https://www.youtube.com/user/somechannel", "youtube"
     )
     assert find_platform_link(html, "https://example.gov/meeting", exclude=frozenset({"youtube"})) is None
+
+
+def test_find_platform_link_skips_same_page_fragment_anchors():
+    # Real bug, confirmed live 2026-08-12: a same-page "#fragment" href
+    # (e.g. an accessibility "skip to content" link, present on nearly
+    # every Legistar page) resolves back to page_url itself via urljoin().
+    # Without this check, a caller whose own platform isn't in `exclude`
+    # gets its own page back as a "match" and recurses into resolving it
+    # again -- unbounded recursion, confirmed on a real Columbus, OH
+    # Legistar meeting with no other video link on the page.
+    html = '<html><body><a href="#mainContent">Skip to main content</a></body></html>'
+    assert find_platform_link(html, "https://columbus.legistar.com/MeetingDetail.aspx?ID=1") is None
+
+
+def test_find_platform_link_skips_same_page_absolute_self_link():
+    # Same protection, for an absolute self-referencing href with a
+    # fragment rather than a bare "#fragment" -- both resolve to the same
+    # URL once the fragment is stripped.
+    page_url = "https://columbus.legistar.com/MeetingDetail.aspx?ID=1"
+    html = f'<html><body><a href="{page_url}#mainContent">Skip</a></body></html>'
+    assert find_platform_link(html, page_url) is None

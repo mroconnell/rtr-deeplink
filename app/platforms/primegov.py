@@ -1,5 +1,6 @@
 import re
 from typing import Optional
+from urllib.parse import urlparse
 
 import aiohttp
 from bs4 import BeautifulSoup
@@ -7,6 +8,7 @@ from bs4 import BeautifulSoup
 from .base import AssetFinder
 from .models import ResolvedMeeting
 from .youtube import YouTubeAssetFinder
+from ..utils import jurisdiction_enrich
 
 _VIDEO_URL_VAR_RE = re.compile(r'var\s+videoUrl\s*=\s*"([A-Za-z0-9_-]{11})"')
 
@@ -42,6 +44,38 @@ _MONTHS = [
 # table-cell headings once tags are stripped, e.g. "OKLAHOMA CITY FORMAL
 # AGENDA CITY COUNCIL" would otherwise merge into one match).
 _JURISDICTION_RE = re.compile(r"\b(city|county|town) of\s+([^<>]{1,80}?)(?=<|[,.])", re.IGNORECASE)
+
+# Reported by the user with two real examples on slc.primegov.com:
+# _JURISDICTION_RE's plain, unscoped .search() over the entire page HTML
+# let a "City/Town of X" phrase anywhere in the agenda BODY (e.g. "Central
+# Wasatch Commission... City of Holladay") win over the page's real
+# header, since it just matches the first occurrence anywhere.
+#
+# A same-day fix capped the search to the first ~2000 characters after
+# stripping <script>/<style> blocks, on the theory that the real header
+# always appears "early" and body text always appears "later." **Real
+# character offsets from all three known real examples, fetched live
+# 2026-08-12 to actually check that theory rather than trust the earlier
+# synthetic test that seemed to confirm it, proved it wrong**: OKC's real
+# header sits at offset ~4,753 (already past a 2,000-char window);
+# Thousand Oaks's only real match is a "City of Thousand Oaks" mention
+# buried in mission-statement prose at offset ~264,423, nowhere near the
+# top at all; SLC's false-positive Holladay match sits at ~374,844 --
+# *farther* into the page than Thousand Oaks's real one, so no window
+# size can separate "real match" from "false positive" by position alone
+# without either missing Thousand Oaks or capturing SLC's false
+# positive (a window between ~265k-374k would happen to thread this
+# specific needle, but that's tuned to three examples, not a real rule).
+# Confirmed directly: re-running the *original* unscoped search against
+# all three real pages finds OKC's and Thousand Oaks's real matches
+# correctly (both are genuinely the first "X of Y"-shaped match on their
+# respective pages) and only gets SLC wrong -- i.e. the windowed "fix"
+# traded two correct, originally-confirmed real cities for one, a net
+# regression. Reverted back to an unscoped search (still boilerplate-
+# stripped, harmless) until a real, non-positional way to tell a genuine
+# header from an agenda-item mention is found and verified against more
+# than three examples -- see BACKLOG.md.
+_BOILERPLATE_RE = re.compile(r"<(script|style)\b[^>]*>.*?</\1>", re.IGNORECASE | re.DOTALL)
 
 
 class PrimeGovAssetFinder(AssetFinder):
@@ -103,9 +137,14 @@ class PrimeGovAssetFinder(AssetFinder):
         page_date = self._extract_date(html)
         if page_date:
             resolved.date = page_date
-        page_jurisdiction = self._extract_jurisdiction(html)
-        if page_jurisdiction:
-            resolved.jurisdiction = page_jurisdiction
+        # Unconditional, not "only override if truthy" -- YouTube's own
+        # `uploader` (a channel name, e.g. "SLC Live Meetings") is not a
+        # jurisdiction, so it must never be left in place just because
+        # this page's own extraction found nothing. Real bug fixed
+        # 2026-08-12: a page whose header doesn't happen to contain a
+        # "City/County/Town of X" phrase now correctly comes through with
+        # no jurisdiction at all, rather than a wrong-looking channel name.
+        resolved.jurisdiction = self._extract_jurisdiction(html, url)
 
         return resolved
 
@@ -126,8 +165,9 @@ class PrimeGovAssetFinder(AssetFinder):
         return f"{year}-{month:02d}-{day:02d}"
 
     @staticmethod
-    def _extract_jurisdiction(html: str) -> Optional[str]:
-        match = _JURISDICTION_RE.search(html)
+    def _extract_jurisdiction(html: str, url: str) -> Optional[str]:
+        text = _BOILERPLATE_RE.sub("", html)
+        match = _JURISDICTION_RE.search(text)
         if not match:
             return None
         kept = []
@@ -143,4 +183,13 @@ class PrimeGovAssetFinder(AssetFinder):
                 break
         if not kept:
             return None
-        return f"{match.group(1).capitalize()} of {' '.join(kept)}"
+        jurisdiction = f"{match.group(1).capitalize()} of {' '.join(kept)}"
+        # No state anywhere in this shape -- confirmed real, e.g. "City of
+        # Oklahoma City"/"City of Thousand Oaks". Reuses the same full
+        # boilerplate-stripped text for the ZIP-address fallback, since a
+        # real address (e.g. Thousand Oaks's own "2100 E. Thousand Oaks
+        # Blvd., Thousand Oaks, CA 91362") could in principle appear
+        # anywhere the jurisdiction match itself is now allowed to.
+        return jurisdiction_enrich.enrich_jurisdiction_text(
+            jurisdiction, netloc=urlparse(url).netloc, page_text=text
+        )
