@@ -243,63 +243,26 @@ anything) to build against it.
 
 ## `/meetings` search & saved items — UI gaps found 2026-08-11
 
-- **"Save this meeting"/"Save this search" buttons render for every
+- ~~**"Save this meeting"/"Save this search" buttons render for every
   visitor regardless of sign-in status, and an anonymous click silently
-  no-ops.** Confirmed 2026-08-12 while documenting which features are
-  Clerk-gated for README.md: `archive/templates/meeting_page.html`'s Save
-  buttons have no client-side signed-in check, and
-  `archive/static/meeting_page.js`'s click handler (~lines 460-496) just
-  leaves state unchanged on the `POST /api/account/save-meeting` 401
-  (`_NOT_LOGGED_IN`, `app/main.py:744`) rather than surfacing a "sign in to
-  save this" prompt. An anonymous visitor gets no feedback at all — the
-  button just does nothing, indistinguishable from a silent failure. Same
-  underlying gap presumably applies to the `/meetings` "Save this search"
-  button. Worth deciding the fix alongside the item directly below (both
-  are about this button not reflecting real state) — likely either a
-  sign-in prompt on a 401, or hiding/disabling the button for anonymous
-  visitors in the first place.
+  no-ops."**~~ **Investigated 2026-08-13, turned out to already be
+  false.** Live-checked as a genuinely signed-out visitor on both
+  `/meetings` and a real `/m/*` page — neither Save button renders at
+  all. Confirmed via `git log -S "if active_account"` that both
+  templates' `{% if active_account %}` gating has been in place since the
+  very first accounts-phase commits (`47f4ab5`/`a1ac0ec`), not added
+  later — this bug's premise was incorrect from the moment it was
+  written 2026-08-12, most likely a misread of the code rather than a
+  real regression. No fix needed.
 
-- **"Save this search" can silently save the wrong search, and gives no
-  feedback that it's already been saved.** Reported by the user via two
-  concrete scenarios: (1) type a query but don't hit Search, then click
-  "Save this search" — nothing stops this, and what gets saved is
-  whatever the *last-applied* search was (e.g. "All meetings" if none
-  yet), not the just-typed, unsubmitted text; (2) search "Cameras", hit
-  Search, hit Save, then type "Flock" without hitting Search again, hit
-  Save again — silently re-saves "Cameras," not "Flock." Confirmed by
-  reading the code: `archive/templates/meeting_list.html`'s Save button
-  (`#saveSearchBtn`, lines 23-30) gets its `data-q`/`data-jurisdiction`/
-  etc. (lines 24-26) from the *server-rendered, already-applied* `q`/
-  `jurisdiction`/etc. template variables — i.e. whatever `/meetings` was
-  last loaded with — not a live read of the search box's current DOM
-  value. `archive/static/meeting_list.js`'s `wireSaveSearchButton()`
-  (lines 6-44) then POSTs exactly those baked-in `data-*` values to
-  `/api/account/save-search` on click (confirmed via
-  `app/main.py:775-780` → `app/archive_client.py:220-236` →
-  `archive/main.py:373-377` → `crud.save_search`,
-  `archive/db/crud.py:1194`) — so the button's actual behavior is "save
-  the search currently showing on this page," which only matches user
-  intent if Search was just clicked. The label also never changes: it
-  always reads "Save this search" regardless of whether this exact
-  search was already saved (there's no "Saved"/"Unsave" state on this
-  page — confirmed via the JS file's own header comment, which notes
-  unsaving only exists on `/account/saved`, wired separately by
-  `saved_items.js`), so a user also gets no cue they're about to create
-  a duplicate.
-
-  **User's own brainstormed fixes, not decided/built — worth weighing
-  together since they overlap:** turn "Save this search" into "Unsave
-  search" immediately after a successful save, reverting to "Save this
-  search" the moment the query box or any filter changes; give the
-  Search button itself a visual "ready to click" cue (glow/color) when
-  the box/filters differ from what's currently applied, clearing once
-  Search is clicked; conversely have the Save button/its bookmark icon
-  light up once a search *has* been applied and is save-able. A
-  "depressed vs. popped-up" (tape-deck button) visual metaphor was also
-  floated for the same cue, matching the page's existing cassette-deck
-  styling (`cassette-btn` class already used by both buttons, line 18 and
-  the outline variant in `saved_items.html`). All riffing, not a chosen
-  design — needs a real decision before building.
+- ~~**"Save this search" can silently save the wrong/stale search, and
+  gives no feedback that it's already been saved.**~~ **Investigated
+  2026-08-13: the stale-value bug was already fixed 2026-08-11 (see
+  `archive/static/meeting_list.js`'s own header comment/`isStale()`,
+  predating this backlog entry) — Save is disabled the moment the search
+  box/filters diverge from what's actually applied. The remaining piece,
+  the Save/Unsave toggle + visual cue, built 2026-08-13 — full detail in
+  `BACKLOG_DONE.md`.**
 
 - **Meeting title/jurisdiction display: casing still inconsistent row to
   row — the state-abbreviation and truncation parts of this gap shipped

@@ -1,8 +1,6 @@
 // "Save this search" -- saves the current /meetings query as-is (see
 // archive/templates/meeting_list.html's saveSearchBtn data-* attributes,
 // set from the same server-rendered filter state the page itself used).
-// No unsave here -- unsaving a search happens from /account/saved (see
-// saved_items.js), where the saved-search list actually lives.
 //
 // Real bug fixed 2026-08-11: the button used to always read those
 // server-rendered data-* values, which only reflect the *last-applied*
@@ -13,7 +11,26 @@
 // baseline, and disable Save the moment they diverge -- you can't save
 // something you haven't actually searched for yet. `save_search()`
 // (archive/db/crud.py) already dedupes identical repeat saves server-side,
-// so no separate "already saved" guard is needed here.
+// so a fresh click on an identical already-saved search just returns that
+// row's own id again rather than erroring or duplicating.
+//
+// Save/Unsave toggle added 2026-08-13, per the user's own brainstormed
+// design (BACKLOG.md): flips to "Unsave search" immediately after a
+// successful save, reverts to "Save this search" the moment the box/
+// filters change again (handled by refreshStaleState() below, since an
+// edited-but-not-yet-searched query no longer represents whatever's
+// saved). In-session only -- doesn't check the server for a pre-existing
+// matching saved search on page load, matching the user's own stated
+// scope ("immediately after a successful save"), not a fuller "is this
+// exact search already saved" feature. Unsaving here reuses the exact
+// same /api/account/unsave-search endpoint saved_items.js already calls
+// from /account/saved.
+//
+// Visual cue on both actions reuses .pointed-to (style.css) -- the same
+// "pop up and glow" tape-deck cue built for #transcribeToggle
+// (wireSourceDisclaimerPointer() below), per the user's own explicit
+// request to keep that exact aesthetic consistent across the site rather
+// than invent a new one.
 function wireSaveSearchButton() {
   const btn = document.getElementById('saveSearchBtn');
   const statusEl = document.getElementById('saveSearchStatus');
@@ -38,6 +55,7 @@ function wireSaveSearchButton() {
   };
 
   const STALE_TITLE = 'Hit Search to apply your changes first';
+  let savedItemId = null;
 
   const isStale = () =>
     (!!searchInput && searchInput.value !== applied.q) ||
@@ -48,10 +66,39 @@ function wireSaveSearchButton() {
     (!!hasAgendaInput && hasAgendaInput.checked !== applied.hasAgenda) ||
     (!!fuzzyInput && fuzzyInput.checked !== applied.fuzzy);
 
+  const applySavedState = (saved) => {
+    btn.dataset.saved = saved ? 'true' : 'false';
+    const label = btn.querySelector('.cassette-label');
+    if (label) label.textContent = saved ? 'Unsave search' : 'Save this search';
+    if (!saved) savedItemId = null;
+  };
+
+  // Restarts the CSS animation on demand -- simply re-adding the class
+  // is a no-op if it's already present (from a previous save/unsave in
+  // the same session), since the animation already ran to completion.
+  const popGlow = () => {
+    btn.classList.remove('pointed-to');
+    void btn.offsetWidth; // force reflow so the removal actually registers
+    btn.classList.add('pointed-to');
+  };
+
   const refreshStaleState = () => {
     const stale = isStale();
-    btn.disabled = stale;
     btn.title = stale ? STALE_TITLE : '';
+    if (stale) {
+      // The in-progress edit no longer matches whatever's actually
+      // saved -- stop claiming "Unsave search" for a search that isn't
+      // this one anymore. Real correctness fix, not just cosmetic: a
+      // stale "Unsave search" label would otherwise unsave the *old*
+      // search using an id that no longer corresponds to what's on
+      // screen.
+      applySavedState(false);
+      // A lingering "Saved ✓"/"Removed" from before this edit would
+      // otherwise sit next to a now-reverted, disabled button, reading
+      // as if that message still applies to the in-progress edit.
+      if (statusEl) statusEl.textContent = '';
+    }
+    btn.disabled = stale;
   };
 
   [searchInput, jurisdictionInput, dateFromInput, dateToInput].forEach((el) => {
@@ -64,27 +111,48 @@ function wireSaveSearchButton() {
 
   btn.addEventListener('click', async () => {
     if (isStale()) return;
-    const searchParams = {};
-    if (applied.q) searchParams.q = applied.q;
-    if (applied.jurisdiction) searchParams.jurisdiction = applied.jurisdiction;
-    if (applied.dateFrom) searchParams.date_from = applied.dateFrom;
-    if (applied.dateTo) searchParams.date_to = applied.dateTo;
-    if (applied.hasAgenda) searchParams.has_agenda = true;
-    if (applied.hasTranscript) searchParams.has_transcript = true;
-    if (applied.fuzzy) searchParams.fuzzy = true;
+    const saved = btn.dataset.saved === 'true';
 
     btn.disabled = true;
     if (statusEl) statusEl.textContent = '';
     try {
-      const res = await fetch('/api/account/save-search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ search_params: searchParams }),
-      });
-      if (res.ok) {
-        if (statusEl) statusEl.textContent = 'Saved ✓';
+      if (saved) {
+        const res = await fetch('/api/account/unsave-search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ saved_item_id: savedItemId }),
+        });
+        if (res.ok) {
+          applySavedState(false);
+          if (statusEl) statusEl.textContent = 'Removed';
+          popGlow();
+        } else {
+          if (statusEl) statusEl.textContent = 'Something went wrong — please try again.';
+        }
       } else {
-        if (statusEl) statusEl.textContent = 'Something went wrong — please try again.';
+        const searchParams = {};
+        if (applied.q) searchParams.q = applied.q;
+        if (applied.jurisdiction) searchParams.jurisdiction = applied.jurisdiction;
+        if (applied.dateFrom) searchParams.date_from = applied.dateFrom;
+        if (applied.dateTo) searchParams.date_to = applied.dateTo;
+        if (applied.hasAgenda) searchParams.has_agenda = true;
+        if (applied.hasTranscript) searchParams.has_transcript = true;
+        if (applied.fuzzy) searchParams.fuzzy = true;
+
+        const res = await fetch('/api/account/save-search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ search_params: searchParams }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          savedItemId = (data && typeof data.id === 'number') ? data.id : null;
+          applySavedState(true);
+          if (statusEl) statusEl.textContent = 'Saved ✓';
+          popGlow();
+        } else {
+          if (statusEl) statusEl.textContent = 'Something went wrong — please try again.';
+        }
       }
     } catch (err) {
       if (statusEl) statusEl.textContent = 'Something went wrong — please try again.';
