@@ -22,6 +22,39 @@ resolver itself still never hosts public content pages directly; that's
 the whole reason the Archive is a separate app rather than a feature bolted
 onto this one.
 
+## Vision
+
+Red Tape Recordings builds power tools for the advocates, grassroots
+organizers, and everyday citizens doing the real digging into local
+government — people who need to skip straight to the moment, transcript
+line, or agenda item that matters, and search across hundreds of
+jurisdictions and meetings at once for a topic they're tracking, rather
+than sitting through hours of video. Journalists are a good example user
+of this (real distribution/credibility value) but a smaller group than the
+grassroots/advocacy base this is actually built for — not the product's
+core definition. `rtr-deeplink` is the tool that saves that time.
+
+**Lean, fast, and useful is the standing bar, not a phase we graduated out
+of.** Accounts, permanent pages, and site-wide search were all once "nice
+to have," and they're real now — but the core function (resolve a meeting,
+share a deep link) still works with no account and no signup, in the
+lightest format that does the job.
+
+**Who it's for, and how this is meant to eventually pay for itself.**
+Advocates, grassroots organizers, and everyday citizens are the intended
+core users, outnumbering local journalists by a wide margin even though a
+journalist is a great example case. Two real usage modes are expected once
+there's a regular user base: someone lightly following a meeting or two a
+month for one city council or planning commission, and someone tracking
+meaningfully more than that. The free tier is meant to comfortably cover
+the light case; a paid individual tier removes the ceiling for a heavy
+user, and a separate institutional/B2B tier is the intended answer for an
+organization tracking a specific topic across many jurisdictions at once
+(e.g. a company's PR team following a specific kind of siting decision
+across city councils) — a different usage shape from an individual power
+user. None of this is priced or built yet — see `BACKLOG.md`'s "Accounts +
+token billing" section for the fuller, still-directional thinking.
+
 ## Quick start
 
 ```bash
@@ -537,9 +570,11 @@ the wrong language — this app can't fix that at the source, but a viewer
 can ask for a real transcript made from the meeting's own audio instead.
 Click "Transcribe this meeting from audio" on any meeting page (ephemeral
 or permanent), and — once a couple of quick checks pass — leave an email
-address to be notified when it's ready. It's added to the permanent page
-alongside the original, not instead of it, so nothing is ever silently
-replaced.
+address to be notified when it's ready. No account required — a Clerk
+session isn't checked or needed; the email address (confirmed by a
+one-click link the first time) is the only gate. It's added to the
+permanent page alongside the original, not instead of it, so nothing is
+ever silently replaced.
 
 **Why this needs a third service.** Transcribing a multi-hour meeting is
 real, sustained work — nothing like the sub-second checks the resolver and
@@ -615,6 +650,32 @@ are all completely unaffected by whether you're signed in. The only new,
 purely additive things a signed-in visitor sees are a "Save this
 meeting"/"Save this search" button, a bookmark icon by the meeting title,
 a "My Saved Items" nav link, and a user avatar.
+
+### What needs an account, at a glance
+
+| Works for everyone, no sign-in | Requires a signed-in Clerk session |
+|---|---|
+| Resolving/watching a meeting, transcript, and agenda | Saving a meeting (`POST /api/account/save-meeting`) |
+| Deep-linking — seeking, "Copy link to current time", "Go to time" | Saving a search (`POST /api/account/save-search`) |
+| In-page transcript search, transcript download (Text/SRT) | Unsaving either of the above |
+| `/meetings` site-wide search across the Archive | "My Saved Items" (`/account/saved`) |
+| "Report a problem with this meeting" | |
+| Requesting on-demand transcription from audio — email only, see "On-demand transcription" below | |
+
+Requesting a transcription is **not** Clerk-gated — by deliberate design,
+not as a stepping-stone toward eventually requiring a full account. It's
+the app's most cost-intensive feature by far (see "On-demand transcription"
+below for real dollar/compute figures), and email confirmation (a one-click
+click-through the first time) is the intentional middle path between
+"fully open" and "requires a real account" — real friction against abuse
+without putting a login wall in front of the app's single costliest
+feature. See `BACKLOG.md`'s "Accounts + token billing" section for the
+broader account/billing thinking this sits alongside.
+
+One real, open UX gap while we're at it: the "Save this meeting"/"Save
+this search" buttons render for every visitor regardless of sign-in
+status. An anonymous click today just silently no-ops (a 401 the frontend
+doesn't surface) rather than prompting sign-in — see `BACKLOG.md`.
 
 **Why Clerk, not a hand-rolled session system.** The user explicitly chose
 a third-party auth provider over building/maintaining login, sessions, and
@@ -718,6 +779,51 @@ touching Clerk env vars/DNS again.
 cascade) has unit test coverage but has never actually been fired for
 real against a deleted Clerk account. See `BACKLOG.md` for the user's
 explicit call on this.
+
+## Email
+
+Two independent pieces of plumbing, easy to conflate but separate
+concerns:
+
+**Outbound (sending)** — Resend (`archive/utils/email.py`, and
+`app/main.py`'s own `_resend_send()` + branded templates as of the
+accounts/lifecycle-emails feature — previously the resolver only ever
+upserted Resend audience contacts, never sent transactional mail).
+`RESEND_API_KEY` + `RESEND_FROM_ADDRESS` (currently `Ryan
+<ryan@ally.redtaperecordings.com>` — `ally.redtaperecordings.com` is
+Resend's verified sending subdomain, its DNS untouched since setup) +
+`RESEND_REPLY_TO_ADDRESS` (currently `ryan@redtaperecordings.com`, the
+root domain — set on all three Render services: resolver, Archive,
+worker) + `RESEND_AUDIENCE_ID` (the newsletter audience). See "Accounts
+(Clerk)" above for which lifecycle emails are actually live.
+
+**Inbound (receiving)** — `redtaperecordings.com`'s MX records point at
+ImprovMX (free forwarding: `mx1`/`mx2.improvmx.com` plus an SPF TXT
+record), which forwards `ryan@`, `ally@`, and a wildcard catch-all, all
+to `ryan@how-to-adu.com`. Set up and managed entirely in Namecheap DNS +
+the ImprovMX dashboard — no code involved, nothing to configure
+per-environment. One subdomain has its own separate, unrelated MX:
+`send.ally.redtaperecordings.com` → `feedback-smtp.us-east-1.amazonses.com`,
+Resend's own bounce-handling record for its SES backend — don't touch it
+when editing DNS here even though it looks similar to the ImprovMX pair,
+since it's a different subdomain serving a different purpose. Full setup
+history (why Namecheap's own forwarding wizard couldn't be used
+directly, both live-verification passes) is in `BACKLOG_DONE.md`'s
+"Email deliverability" section.
+
+**Site-facing addresses** currently shown/used are a mix, not yet
+consolidated: footer `mailto:` links use `ryan@redtaperecordings.com`
+(`app/templates/base.html`, `archive/templates/base.html`), the About
+page shows `ryan@how-to-adu.com` directly
+(`app/templates/about.html`), and `RESEND_REPLY_TO_ADDRESS` is
+`ryan@redtaperecordings.com`. Auditing and consolidating these onto
+`ally@redtaperecordings.com` is an open `BACKLOG.md` item as of
+2026-08-12.
+
+**Ops-only addresses**, unrelated to the site and out of scope for the
+above: `DAILY_REPORT_EMAIL_TO` and `YOUTUBE_FETCH_REPORT_EMAIL` (both in
+`scripts/`, both default to `ryan@how-to-adu.com`) send operator
+digests, not user-facing mail.
 
 ## Supported platforms
 

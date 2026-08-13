@@ -95,6 +95,27 @@ under everything else. This repo extracts and fixes just that part.
   `#transcript-fragments`) because no real meeting with that data
   populated has been found yet — these are explicitly flagged as
   best-effort in code comments and BACKLOG.md, not silently assumed.
+- **Synthetic tests (hand-written HTML/JSON, not fetched from a real page)
+  are for exercising one specific logic branch already confirmed against
+  real data — never a substitute for the "test against a real URL first"
+  rule above.** Reach for one only once the adapter's basic real-page
+  parsing is already fixture/live-verified, and what's left to cover is a
+  narrower edge case (an ambiguous-name collision, a missing-field
+  fallback, a rare error path) that no real example has surfaced yet.
+  Building one well means two things: (1) the payload's *shape* should
+  reuse a schema already confirmed from a real fixture, never an invented
+  field structure; (2) the *facts* inside it must be real and
+  independently verifiable even though the page/response itself is
+  hand-built — e.g. `test_resolve_fills_in_missing_state_via_shared_lookup`
+  (`tests/test_civicclerk.py`) uses "Fresno, CA" because it's a
+  confirmed-unambiguous real city, not a fabricated one, and
+  `jurisdiction_enrich`'s "Kansas City" test relies on that being a real,
+  confirmed-ambiguous KS/MO city, not an assumption. Always comment the
+  test as synthetic and note what's still unconfirmed (e.g. "no CivicClerk
+  customer with a blank `location.state` has been found yet") — that's
+  what lets a later read of the suite tell real-verified coverage apart
+  from a plausible-but-unconfirmed one, the same distinction the bullet
+  above draws for data paths generally.
 - **When a platform turns out to be a wrapper around another** (confirmed
   so far: Legistar and CivicPlus both just link out to Granicus, and
   PrimeGov embeds a YouTube video), delegate rather than writing a
