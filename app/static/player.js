@@ -39,7 +39,7 @@ function formatJurisdictionDisplay(jurisdiction) {
   if (jurisdiction.toLowerCase().startsWith('city and county of ')) {
     return jurisdiction;
   }
-  for (const prefix of ['City of ', 'City ']) {
+  for (const prefix of ['The City of ', 'City of ', 'City ']) {
     if (jurisdiction.toLowerCase().startsWith(prefix.toLowerCase())) {
       return jurisdiction.slice(prefix.length);
     }

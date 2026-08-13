@@ -591,12 +591,60 @@ changelog of task titles.
 
 ## Bugs
 
-- **[Done 2026-08-13] Built `scripts/backfill_archived_pages.py` — the
-  bulk version of the existing one-URL-at-a-time
-  `GET /admin/recheck-archive-page`, for the "archived pages don't
-  self-heal" gap (see the still-open `BACKLOG.md` entry, which this
-  entry only partly closes — the tool exists, running it against
-  production is still a separate, deliberate step).**
+- **[Done 2026-08-13] Bulk backfill of archived pages — built
+  `scripts/backfill_archived_pages.py`, then found and fixed a real bug
+  in it via dry-run, then ran it against all 179 production archived
+  pages. Fully closes the "archived pages don't self-heal" gap for every
+  example on record at the time.**
+
+  **Real bug found before the production run**: the first full dry-run
+  (179 pages) had 24 failures, all "Could not find a YouTube video ID in
+  {url}" — every LIMS, PrimeGov, and one Legistar (Baltimore) page, plus
+  generic_fallback's CRRMA page. Cause: the script picked the finder
+  using `MeetingPage.platform`, which stores the name of whichever finder
+  actually resolved a page — `"youtube"` for anything that delegates
+  (PrimeGov, LIMS, Legistar-via-YouTube, generic_fallback's YouTube-embed
+  branch) — rather than the platform to re-resolve *through*. Those pages
+  deliberately keep their *original* (non-YouTube) `source_url_normalized`
+  stored specifically so a re-resolve goes back through that platform's
+  own scraping logic; handing that URL straight to `YouTubeAssetFinder`
+  can't find a video ID in it. Fixed by re-detecting the platform fresh
+  from the URL (`detect_platform(url)`) instead of trusting the stored
+  field — matching what `GET /admin/recheck-archive-page` already did.
+  Verified against one LIMS page and one PrimeGov SLC page individually
+  before re-running the full sweep; the corrected dry-run then showed
+  only 2 failures (both transient YouTube read-timeouts, not a code
+  issue) and 172 pages that would update (up from 150) — plus the CRRMA
+  page started resolving too.
+
+  **Production run** (`--delay 1.5`, all 179 pages, unscoped): 173 pages
+  updated, 2 failed (both the same transient YouTube read-timeouts seen
+  in the corrected dry-run — re-running just those later would likely
+  clear them, not investigated further since they're not a code bug), 4
+  had nothing new to push. Live-verified afterward on
+  redtaperecordings.com: Napa's Parks/Rec/Trees Commission page now shows
+  "Napa, CA" (previously no state); the Memphis City Council page still
+  shows "The City of Memphis, TN" — correctly abbreviated now, but with
+  the display-prefix bug intact, tracked as its own item (see "Strip
+  'The City of' from jurisdiction display" below); the residual
+  Long-Beach-2023 page (real Charlotte, NC meeting archived under a
+  stale `detroit-mi-...` slug from before the original Cablecast
+  hardcoded-jurisdiction bug was fixed — see the false-alarm
+  investigation note this same session) re-pushed cleanly as a no-op,
+  confirming the slug itself is just a historical artifact, not a sign of
+  further corruption.
+
+  **Decided explicitly not to schedule this to run automatically.**
+  Unlike the (scheduled, safe-by-construction) saved-search alert digest,
+  which only ever *adds* new content, this script *rewrites* existing
+  `MeetingPage` rows against live output from adapters that can
+  themselves have bugs — exactly what the platform-detection bug above
+  was. Running unattended on a cron would have pushed that bug's 24 bad
+  results straight to production instead of catching it in a dry-run
+  first. Stays a manual, `--dry-run`-first operation for now; revisit only
+  if it accumulates a track record of clean runs.
+
+  Below is the original build entry, kept as-is:
 
   **The gap this fixes**: `MeetingPage.jurisdiction` (and every other
   resolved field) is set once at ingest and never re-checked on its own.

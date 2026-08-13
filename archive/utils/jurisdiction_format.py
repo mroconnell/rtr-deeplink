@@ -48,13 +48,14 @@ def normalize_state_suffix(jurisdiction: Optional[str]) -> Optional[str]:
     return f"{prefix.strip()}, {abbr}"
 
 
-_DROPPED_DISPLAY_PREFIXES = ("City of ", "City ")
+_DROPPED_DISPLAY_PREFIXES = ("The City of ", "City of ", "City ")
 
 
 def format_jurisdiction_display(jurisdiction: Optional[str]) -> Optional[str]:
-    """Drops a leading "City of "/"City " for display -- user request
-    2026-08-12: almost everything archived is a city, so labeling every
-    row that way ("City of Napa, CA") reads as redundant. Reserves the
+    """Drops a leading "The City of "/"City of "/"City " for display --
+    user request 2026-08-12: almost everything archived is a city, so
+    labeling every row that way ("City of Napa, CA") reads as redundant.
+    Reserves the
     explicit label for the real exceptions this repo actually stores --
     "County of X"/"X County" and state-legislature-style body names both
     pass through unchanged, since dropping the label there would make a
