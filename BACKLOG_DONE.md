@@ -591,6 +591,43 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-13] Legistar's `MeetingDetail.aspx` page now backfills
+  `agenda_link` — a real, easy win identified 2026-08-12 but not built
+  until now.** Re-confirmed live against the same real Mesa, AZ example
+  (`mesa.legistar.com/MeetingDetail.aspx?ID=1428059`) that the exact page
+  shape from the original report is still accurate: `<a
+  id="ctl00_ContentPlaceHolder1_hypAgenda" href="View.ashx?M=A&...">`.
+  New `_extract_agenda_link()` matches by ID *suffix* (`hypAgenda`), not
+  the full `ctl00_ContentPlaceHolder1_` prefix — that prefix is an
+  ASP.NET WebForms naming-container artifact that could in principle
+  differ under a different master-page nesting on another customer's
+  instance; a suffix match costs nothing and is strictly safer, even
+  though only one customer's exact prefix has been confirmed so far.
+
+  Wired into both of `LegistarAssetFinder`'s delegation paths
+  (`resolve()`'s primary `a.videolink` path and `_try_fallback_video_link()`),
+  applied as `resolved.agenda_link or page_info.get("agenda_link")` in
+  both — a fallback for whenever the delegated platform (e.g. Granicus's
+  own `AgendaViewer.php` link) didn't already find one, not an override.
+  Deliberately *not* gated behind the existing `_looks_like_raw_filename()`
+  title-quality check the way title/jurisdiction/date already are in the
+  primary path — agenda_link is real, useful data independent of whether
+  the delegated platform's own title happened to look bad.
+
+  Left the "Meeting location" field (a real meeting-type sub-label on
+  this same page, e.g. "Study Session") deliberately unbuilt — see the
+  still-open `BACKLOG.md` entry for why: unconfirmed whether every
+  Legistar customer uses that field the same way Mesa does, or puts a
+  real physical address there instead.
+
+  Verified: 2 new unit tests (agenda-link extraction against the real
+  confirmed page shape, and a no-agenda-yet case) plus 3 existing tests
+  updated for the extra dict key; full suite green (616 tests); a real
+  local resolve against the live Mesa URL confirms `agenda_link` comes
+  through correctly while title/date/jurisdiction — already fine from the
+  delegated YouTube result in this case — pass through unmodified, same
+  intended split-application behavior.
+
 - **[Done 2026-08-13] "Save this search" is now a real Save/Unsave
   toggle with a visual confirmation cue, plus two stale backlog entries
   corrected after live investigation showed their underlying bugs no

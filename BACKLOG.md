@@ -820,29 +820,27 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   `LegistarAssetFinder` never scrapes at all — confirmed live 2026-08-12
   on a real example the user flagged**
   ([mesa.legistar.com/MeetingDetail.aspx?ID=1428059](https://mesa.legistar.com/MeetingDetail.aspx?ID=1428059&GUID=C6D3581F-B224-4A1C-A59D-0885C238FD52&Options=info|&Search=),
-  a real Mesa, AZ City Council meeting, video delegated to YouTube). The
-  resolved page today shows title "City Council" / jurisdiction "City of
-  Mesa" / date 2026-08-10 — technically correct (from
-  `_extract_page_meeting_info()`'s `<title>` parse,
-  [app/platforms/legistar.py:236-260](app/platforms/legistar.py:236-260)),
-  but weak, and the user (correctly) expected more from that link. The
-  live page itself has real, server-rendered content this adapter
-  currently ignores entirely:
-  - **`Published agenda: Agenda / Accessible Agenda`** — a direct link to
-    the real agenda document, sitting right in the "Meeting Details"
-    table. `ResolvedMeeting.agenda_link`
-    ([app/platforms/models.py:42-48](app/platforms/models.py:42-48)) exists
-    for exactly this ("a single raw agenda-document URL... found a link
-    that looks like the agenda") and other adapters already populate it —
-    Legistar's own adapter never does. This is the cheapest real win here:
-    one new selector, no new field needed.
-  - **`Meeting location: Study Session / Special Council Meeting`** — a
-    real distinguishing sub-type Legistar tracks that the generic
-    `{jurisdiction} - Meeting of {body} on {date}` `<title>`/RSS pattern
-    (the adapter's only metadata source today) doesn't carry at all. Every
-    Legistar meeting from this body would currently title identically
-    ("City Council"), even a Study Session vs. a regular session vs. a
-    Special Meeting — this field is exactly what would tell them apart.
+  a real Mesa, AZ City Council meeting, video delegated to YouTube).
+  - ~~**`Published agenda: Agenda / Accessible Agenda`**~~ **Fixed
+    2026-08-13 — full detail in `BACKLOG_DONE.md`.** New
+    `_extract_agenda_link()`, applied regardless of title quality (unlike
+    the existing title/jurisdiction/date backfill, which only fires when
+    the delegated platform's own title looks bad) since it's real, useful
+    data even when everything else already resolved fine — it's just a
+    fallback for whenever the delegated platform didn't already find its
+    own agenda link.
+  - **`Meeting location: Study Session / Special Council Meeting` — still
+    open, deliberately not touched.** Re-checked live 2026-08-13: this
+    field is genuinely labeled "Meeting location" but Mesa's real value
+    is a meeting-type descriptor, not a physical address. Unconfirmed
+    whether that's true for every Legistar customer or just how Mesa
+    happens to use the field (a different customer might put a real
+    room/address there instead) — blending it into the title without
+    knowing which case applies risks either a useful distinction
+    ("Study Session") or nonsense ("123 Main St, Council Chambers")
+    depending on the customer. Needs a second real example before
+    deciding how (or whether) to use it, same "verify against real
+    examples" convention as everywhere else in this file.
   - **A real "Meeting Items" table** (`File #`, `Agenda #`, `Type`,
     `Title`, columns) with substantive per-item text — e.g. this meeting's
     real items were "Canvassing, declaring, and adopting the results of

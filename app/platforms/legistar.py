@@ -114,6 +114,14 @@ class LegistarAssetFinder(AssetFinder):
                     resolved.title = page_info["title"]
                     resolved.jurisdiction = resolved.jurisdiction or page_info["jurisdiction"]
                     resolved.date = resolved.date or page_info["date"]
+                # Applied regardless of title quality, unlike the block
+                # above -- Legistar's own agenda link is real, useful
+                # data even when the delegated platform's title/date are
+                # already fine, and it's just a fallback for whenever the
+                # delegated platform (e.g. Granicus's own AgendaViewer.php
+                # link) didn't already find one itself.
+                if page_info:
+                    resolved.agenda_link = resolved.agenda_link or page_info.get("agenda_link")
                 return resolved
 
             return ResolvedMeeting(
@@ -173,6 +181,7 @@ class LegistarAssetFinder(AssetFinder):
             # is the more authoritative source whenever it has one.
             resolved.jurisdiction = page_info["jurisdiction"] or resolved.jurisdiction
             resolved.date = resolved.date or page_info["date"]
+            resolved.agenda_link = resolved.agenda_link or page_info.get("agenda_link")
         return resolved
 
     @staticmethod
@@ -273,7 +282,28 @@ class LegistarAssetFinder(AssetFinder):
             "title": match.group(2).strip(),
             "jurisdiction": jurisdiction,
             "date": f"{year}-{month:02d}-{day:02d}",
+            "agenda_link": LegistarAssetFinder._extract_agenda_link(soup, page_url),
         }
+
+    @staticmethod
+    def _extract_agenda_link(soup: BeautifulSoup, page_url: str) -> Optional[str]:
+        """A direct link to the real agenda document, sitting right in
+        MeetingDetail.aspx's own "Meeting Details" table -- real, easy win
+        confirmed live 2026-08-12 on a real Mesa, AZ meeting
+        (mesa.legistar.com), re-confirmed live 2026-08-13: `<a
+        id="ctl00_ContentPlaceHolder1_hypAgenda" href="View.ashx?M=A&...">
+        Agenda</a>`. Matched by ID suffix (not the full
+        `ctl00_ContentPlaceHolder1_` prefix) since that prefix is an
+        ASP.NET WebForms naming-container artifact that could in
+        principle differ under a different master-page nesting on another
+        customer's instance -- unconfirmed either way, but a suffix match
+        costs nothing and is strictly safer. Absent entirely on a page
+        with no published agenda yet (a real, non-error state, not
+        checked further)."""
+        link = soup.find("a", id=lambda x: x and x.endswith("hypAgenda"))
+        if not link or not link.get("href"):
+            return None
+        return urljoin(page_url, link["href"])
 
     @staticmethod
     def _looks_like_raw_filename(title: Optional[str]) -> bool:
