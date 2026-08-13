@@ -246,11 +246,58 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     # the page's raw HTML), so a domain entry is the only real option here,
     # same reasoning as Cablecast's Detroit/Charlotte entries above.
     "dallascounty.civicweb.net": KnownJurisdiction("Dallas", "county", "TX"),
+    # Confirmed live 2026-08-13 -- all nationally-ambiguous city names
+    # (Alexandria, Sacramento*, Long Beach, Oakland, San Diego, Baltimore,
+    # Berkeley, Boston all collide with a same-named place in another
+    # state per app/utils/jurisdiction_data) whose Granicus/Legistar page
+    # extracted a real, correct "City of X" but no state to go with it,
+    # since a bare name lookup stays ambiguous by design. *Sacramento
+    # itself isn't nationally ambiguous, but is listed here for
+    # consistency/documentation since it was reported alongside the rest.
+    "alexandria.granicus.com": KnownJurisdiction("Alexandria", "city", "VA"),
+    "sacramento.granicus.com": KnownJurisdiction("Sacramento", "city", "CA"),
+    "longbeach.granicus.com": KnownJurisdiction("Long Beach", "city", "CA"),
+    "oakland.granicus.com": KnownJurisdiction("Oakland", "city", "CA"),
+    "sandiego.granicus.com": KnownJurisdiction("San Diego", "city", "CA"),
+    "berkeley.granicus.com": KnownJurisdiction("Berkeley", "city", "CA"),
+    "boston.granicus.com": KnownJurisdiction("Boston", "city", "MA"),
+    # Legistar, not Granicus -- Baltimore's own page is the jurisdiction
+    # source here (see legistar.py's _extract_page_meeting_info()), not a
+    # delegated platform's domain.
+    "baltimore.legistar.com": KnownJurisdiction("Baltimore", "city", "MD"),
+    # Every real slc.primegov.com meeting checked resolves to Salt Lake
+    # City itself -- confirmed by each meeting's own title ("Salt Lake
+    # City Formal Meeting", "Salt Lake City Council Work Session"), even
+    # the two archived under a "City of Holladay" jurisdiction. See
+    # BACKLOG_DONE.md for why: PrimeGov's own page-text extraction is
+    # confirmed unreliable specifically on this domain (an unrelated
+    # "Central Wasatch Commission... City of Holladay" mention elsewhere
+    # on the page can outrank the real header), so this domain is looked
+    # up as a full override in primegov.py, not just a missing-state fill
+    # -- see known_jurisdiction_display() below.
+    "slc.primegov.com": KnownJurisdiction("Salt Lake City", "city", "UT"),
 }
 
 
 def lookup_by_domain(netloc: str) -> Optional[KnownJurisdiction]:
     return _KNOWN_DOMAINS.get(netloc.lower())
+
+
+def known_jurisdiction_display(netloc: str) -> Optional[str]:
+    """Full "{Type} of {Name}, {State}" string for a domain in
+    `_KNOWN_DOMAINS`, e.g. "City of Salt Lake City, UT". Unlike
+    `resolve_state()`/`enrich_jurisdiction_text()` (which only ever fill
+    in a missing *state* for a name the caller already extracted from
+    page text), this replaces the name too -- for the rare domain where
+    that page-text extraction has itself been confirmed unreliable (only
+    `slc.primegov.com` today, see the `_KNOWN_DOMAINS` entry above), a
+    caller should prefer this over trusting its own text extraction on
+    that specific domain, not just fall back to it when the extraction
+    finds nothing."""
+    known = lookup_by_domain(netloc)
+    if not known:
+        return None
+    return f"{known.type.capitalize()} of {known.name}, {known.state}"
 
 
 def resolve_state(

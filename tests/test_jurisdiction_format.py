@@ -40,6 +40,21 @@ def test_only_touches_trailing_component():
     assert normalize_state_suffix("Winston-Salem, Forsyth County, North Carolina") == "Winston-Salem, Forsyth County, NC"
 
 
+def test_mis_cased_abbreviation_gets_re_cased():
+    # Real bug found live 2026-08-13: Colorado Springs' own Granicus RSS
+    # channel title carries the state as "Co", not "CO" -- not a full
+    # state name (so the lookup above never fires) and not already
+    # correctly-cased (so the "already-abbreviated" no-op case doesn't
+    # apply either).
+    assert normalize_state_suffix("Colorado Springs, Co") == "Colorado Springs, CO"
+
+
+def test_unrecognized_two_letter_suffix_passes_through_unchanged():
+    # "Not A State" trimmed down to two letters shouldn't false-positive --
+    # only a real state abbreviation gets re-cased.
+    assert normalize_state_suffix("Some Body, Xy") == "Some Body, Xy"
+
+
 def test_display_drops_city_of_prefix():
     # User request 2026-08-12: almost everything archived is a city, so
     # labeling every row that way reads as redundant.

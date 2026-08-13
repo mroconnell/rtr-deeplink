@@ -144,7 +144,18 @@ class PrimeGovAssetFinder(AssetFinder):
         # 2026-08-12: a page whose header doesn't happen to contain a
         # "City/County/Town of X" phrase now correctly comes through with
         # no jurisdiction at all, rather than a wrong-looking channel name.
-        resolved.jurisdiction = self._extract_jurisdiction(html, url)
+        #
+        # A known-domain full override (e.g. slc.primegov.com) always wins
+        # over `_extract_jurisdiction()`'s own page-text search -- see
+        # `jurisdiction_enrich.known_jurisdiction_display()`'s docstring
+        # for why: on this specific domain, that search is confirmed to
+        # sometimes pick up an unrelated city mentioned in agenda body
+        # text (BACKLOG.md's open PrimeGov jurisdiction-extraction entry),
+        # so the domain itself is the more trustworthy signal here, not
+        # just a fallback for when the text search finds nothing.
+        resolved.jurisdiction = jurisdiction_enrich.known_jurisdiction_display(
+            urlparse(url).netloc
+        ) or self._extract_jurisdiction(html, url)
 
         return resolved
 

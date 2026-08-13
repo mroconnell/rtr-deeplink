@@ -208,3 +208,24 @@ def test_enrich_jurisdiction_text_skips_a_value_that_already_has_a_comma():
 
 def test_enrich_jurisdiction_text_skips_a_callers_placeholder():
     assert je.enrich_jurisdiction_text("Unknown Jurisdiction", placeholder="Unknown Jurisdiction") == "Unknown Jurisdiction"
+
+
+def test_enrich_jurisdiction_text_resolves_alexandria_via_confirmed_domain():
+    # Confirmed live 2026-08-13: "Alexandria" alone stays ambiguous (see
+    # test_enrich_jurisdiction_text_leaves_ambiguous_names_unchanged
+    # above), but alexandria.granicus.com is a confirmed real customer.
+    assert je.enrich_jurisdiction_text(
+        "City of Alexandria", netloc="alexandria.granicus.com"
+    ) == "City of Alexandria, VA"
+
+
+def test_known_jurisdiction_display_builds_full_string_for_a_confirmed_domain():
+    assert je.known_jurisdiction_display("slc.primegov.com") == "City of Salt Lake City, UT"
+
+
+def test_known_jurisdiction_display_is_case_insensitive():
+    assert je.known_jurisdiction_display("SLC.PRIMEGOV.COM") == "City of Salt Lake City, UT"
+
+
+def test_known_jurisdiction_display_returns_none_for_an_unconfirmed_domain():
+    assert je.known_jurisdiction_display("some-random-city.example.com") is None

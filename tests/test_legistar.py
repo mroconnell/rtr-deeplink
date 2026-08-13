@@ -345,18 +345,19 @@ def test_extract_page_meeting_info_falls_back_to_rss_link_when_title_empty():
     )
     assert LegistarAssetFinder._extract_page_meeting_info(soup, "https://baltimore.legistar.com/MeetingDetail.aspx?ID=1") == {
         "title": "Baltimore City Council",
-        "jurisdiction": "City of Baltimore",
+        "jurisdiction": "City of Baltimore, MD",
         "date": "2025-10-20",
     }
 
 
 def test_extract_page_meeting_info_fills_in_state_for_an_unambiguous_jurisdiction():
-    # Real wiring confirmation: "New York City Council" (used above) and
-    # "City of Baltimore" both stay state-less because they're genuinely
-    # ambiguous (a real collision either directly or, for Baltimore, in
-    # the underlying gazetteer -- see jurisdiction_enrich tests) -- this
-    # uses a real, nationally-unique jurisdiction name instead to confirm
-    # the enrichment step is actually reached, not just safely inert.
+    # Real wiring confirmation: "New York City Council" (used above) stays
+    # state-less because it's a genuine real collision -- this uses a
+    # real, nationally-unique jurisdiction name instead to confirm the
+    # enrichment step is actually reached, not just safely inert.
+    # ("City of Baltimore" used to be the go-to example here too, until
+    # baltimore.legistar.com became a confirmed domain -- see the RSS-link
+    # test above, and jurisdiction_enrich's own tests, for that case now.)
     from bs4 import BeautifulSoup
 
     soup = BeautifulSoup(
@@ -445,7 +446,7 @@ async def test_fallback_extracts_jurisdiction_from_empty_title_via_rss_link(monk
     # field, even though that field wasn't empty -- the fallback path's
     # jurisdiction override is unconditional when page_info has one,
     # unlike the primary a.videolink delegation path.
-    assert result.jurisdiction == "City of Baltimore"
+    assert result.jurisdiction == "City of Baltimore, MD"
     assert result.date == "2025-10-20"
 
 

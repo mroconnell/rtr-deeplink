@@ -284,3 +284,42 @@ async def test_resolve_clears_jurisdiction_when_page_has_no_header(monkeypatch):
 
     assert result.date == "2026-08-05"
     assert result.jurisdiction is None
+
+
+async def test_resolve_uses_known_domain_override_when_page_has_no_header(monkeypatch):
+    # Real bug reported live 2026-08-13: on slc.primegov.com specifically,
+    # a page with no matching header used to fall all the way through to
+    # None (the case above) -- but every real slc.primegov.com meeting is
+    # confirmed to actually be Salt Lake City, so this domain now gets a
+    # known-domain override instead, applied *before* the unreliable
+    # text-based extraction. See jurisdiction_enrich._KNOWN_DOMAINS.
+    slc_url = "https://slc.primegov.com/Portal/Meeting?meetingTemplateId=3948"
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _fake_extract_info)
+    routes = {slc_url: FakeResponse(status=200, text=PAGE_HTML_WITH_VIDEO, url=slc_url)}
+
+    with mock_session(routes):
+        result = await PrimeGovAssetFinder().resolve(slc_url)
+
+    assert result.jurisdiction == "City of Salt Lake City, UT"
+
+
+async def test_resolve_known_domain_override_beats_a_false_positive_body_match(monkeypatch):
+    # The other half of the same bug: a real slc.primegov.com page whose
+    # agenda body mentions an unrelated "City of Holladay" used to win
+    # over the real header (see
+    # test_extract_jurisdiction_still_matches_agenda_body_text_when_header_does_not_match
+    # above, which still documents _extract_jurisdiction()'s own raw
+    # behavior in isolation) -- but at the resolve() level, the domain
+    # override now wins before that text search ever runs.
+    slc_url = "https://slc.primegov.com/Portal/Meeting?meetingTemplateId=3853"
+    html = (
+        PAGE_HTML_WITH_VIDEO
+        + "<p>Item 12: Central Wasatch Commission - adding the City of Holladay.</p>"
+    )
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _fake_extract_info)
+    routes = {slc_url: FakeResponse(status=200, text=html, url=slc_url)}
+
+    with mock_session(routes):
+        result = await PrimeGovAssetFinder().resolve(slc_url)
+
+    assert result.jurisdiction == "City of Salt Lake City, UT"
