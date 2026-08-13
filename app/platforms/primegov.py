@@ -129,6 +129,16 @@ class PrimeGovAssetFinder(AssetFinder):
 
         resolved = await YouTubeAssetFinder.resolve_video_id(video_id, source_url=url)
 
+        # Only fires when YouTube's own title extraction came back empty
+        # (yt-dlp blocked from Render's IP, the documented gap this whole
+        # module's docstring already covers) -- a real title from YouTube
+        # is never overridden. Real gap found live 2026-08-13 on a real
+        # LA City Council meeting: with yt-dlp blocked, this page used to
+        # come through with no title at all even though the page has a
+        # perfectly good one sitting right there.
+        if not resolved.title:
+            resolved.title = self._extract_title(html)
+
         # Prefer the PrimeGov page's own date/jurisdiction over whatever
         # YouTube's resolve_video_id already set -- see the module-level
         # comment on _MONTH_DATE_RE for why those are unreliable here. Only
@@ -163,6 +173,25 @@ class PrimeGovAssetFinder(AssetFinder):
     def _extract_video_id(html: str) -> Optional[str]:
         match = _VIDEO_URL_VAR_RE.search(html)
         return match.group(1) if match else None
+
+    @staticmethod
+    def _extract_title(html: str) -> Optional[str]:
+        """PrimeGov's Portal/Meeting pages always carry TWO <title> tags
+        -- confirmed live 2026-08-13 across all 3 real customers checked
+        so far (OKC, Thousand Oaks, LA), not a one-off: an outer,
+        generic, useless "<title>Meeting</title>" followed by a real one
+        further into the response ("City Council - 8/4/2026 1:30:00 PM",
+        "Thousand Oaks City Council Regular Meeting (Closed Session) -
+        7/8/2026 12:00:00 AM", "City Council Meeting - 8/12/2026
+        5:00:00 PM"). Returns the first one that isn't the exact generic
+        placeholder text.
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        for tag in soup.find_all("title"):
+            text = tag.get_text(strip=True)
+            if text and text.lower() != "meeting":
+                return text
+        return None
 
     @staticmethod
     def _extract_date(html: str) -> Optional[str]:

@@ -1,3 +1,5 @@
+import yt_dlp
+
 from app.platforms.primegov import PrimeGovAssetFinder
 from app.platforms.youtube import YouTubeAssetFinder
 
@@ -323,3 +325,52 @@ async def test_resolve_known_domain_override_beats_a_false_positive_body_match(m
         result = await PrimeGovAssetFinder().resolve(slc_url)
 
     assert result.jurisdiction == "City of Salt Lake City, UT"
+
+
+def test_extract_title_reads_the_real_inner_title_tag():
+    # Real shape confirmed live 2026-08-13 across 3 independent real
+    # PrimeGov customers (OKC, Thousand Oaks, a real LA City Council
+    # meeting) -- every Portal/Meeting page carries an outer, useless
+    # "<title>Meeting</title>" followed by a real one further into the
+    # response.
+    html = "<html><head><title>Meeting</title></head><body><title>City Council - 8/4/2026 1:30:00 PM</title></body></html>"
+    assert PrimeGovAssetFinder._extract_title(html) == "City Council - 8/4/2026 1:30:00 PM"
+
+
+def test_extract_title_returns_none_when_only_the_generic_title_exists():
+    assert PrimeGovAssetFinder._extract_title(PAGE_HTML_WITH_VIDEO) is None
+
+
+async def test_resolve_backfills_title_from_the_real_inner_title_tag_when_youtube_has_none(monkeypatch):
+    # Real gap found live 2026-08-13 on a real LA City Council meeting:
+    # when yt-dlp is blocked (Render's documented IP block, see
+    # youtube.py), this page used to come through with no title at all,
+    # even though the page has a perfectly good one sitting right there.
+    def _raise(video_id):
+        raise yt_dlp.utils.DownloadError("Sign in to confirm you're not a bot")
+
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _raise)
+    html = PAGE_HTML_WITH_VIDEO.replace(
+        "<title>Meeting</title>",
+        "<title>Meeting</title><title>City Council Meeting - 8/12/2026 5:00:00 PM</title>",
+    )
+    routes = {PAGE_URL: FakeResponse(status=200, text=html, url=PAGE_URL)}
+
+    with mock_session(routes):
+        result = await PrimeGovAssetFinder().resolve(PAGE_URL)
+
+    assert result.title == "City Council Meeting - 8/12/2026 5:00:00 PM"
+
+
+async def test_resolve_does_not_backfill_title_over_a_real_youtube_title(monkeypatch):
+    html = PAGE_HTML_WITH_VIDEO.replace(
+        "<title>Meeting</title>",
+        "<title>Meeting</title><title>City Council Meeting - 8/12/2026 5:00:00 PM</title>",
+    )
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _fake_extract_info)
+    routes = {PAGE_URL: FakeResponse(status=200, text=html, url=PAGE_URL)}
+
+    with mock_session(routes):
+        result = await PrimeGovAssetFinder().resolve(PAGE_URL)
+
+    assert result.title == "Oklahoma City Council Meeting - August 4, 2026"
