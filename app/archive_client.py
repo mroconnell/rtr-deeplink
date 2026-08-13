@@ -60,6 +60,31 @@ async def lookup(normalized_url: str) -> Optional[dict]:
             return None
 
 
+async def list_all_page_urls() -> Optional[list[dict]]:
+    """Every archived page's real source URL + platform -- the backfill
+    sweep's starting point (scripts/backfill_archived_pages.py). Returns
+    None on any failure, same pattern as every other call here."""
+    base = _base_url()
+    if not base:
+        return None
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                f"{base}/internal/pages/all-urls",
+                headers=_headers(),
+                timeout=PROXY_TIMEOUT,
+            ) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    return data.get("pages")
+                logger.error("Archive all-urls fetch failed (%s): %s", response.status, await response.text())
+                return None
+    except Exception:
+        logger.exception("Archive all-urls request failed.")
+        return None
+
+
 async def push(payload: dict[str, Any], input_url_normalized: str) -> bool:
     """Push a completed resolve to the Archive to create a permanent page
     or attach a new transcript version to an existing one. Fire-and-forget

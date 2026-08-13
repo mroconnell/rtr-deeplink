@@ -328,6 +328,39 @@ async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) 
         return {"slug": page.slug, "url": f"/m/{page.slug}"}
 
 
+async def list_all_page_urls() -> list[dict]:
+    """Every archived page's identity fields -- the backfill sweep's
+    starting point (scripts/backfill_archived_pages.py), for re-resolving
+    every page fresh so already-shipped adapter/jurisdiction fixes reach
+    pages archived before they existed, not just new resolves going
+    forward. `MeetingPage.jurisdiction` (and every other field) is only
+    ever set at ingest time -- nothing re-checks an already-archived page
+    on its own, confirmed live 2026-08-13 against seven real, separate
+    jurisdiction bugs that were already fixed in code but still showing
+    the old wrong value because the pages themselves were never
+    re-resolved (see BACKLOG.md's "archived pages don't self-heal" entry).
+
+    Returns exactly what the resolver's own `_recheck_archived_page()`
+    (app/main.py) needs: the real source URL to re-resolve, and the
+    platform to pick the right adapter -- same shape convention as
+    `list_youtube_pages_missing_transcripts()` above.
+    """
+    async with async_session() as session:
+        pages = (
+            await session.execute(select(MeetingPage).order_by(MeetingPage.created_at.asc()))
+        ).scalars().all()
+
+        return [
+            {
+                "slug": page.slug,
+                "title": page.title,
+                "platform": page.platform,
+                "source_url_normalized": page.source_url_normalized,
+            }
+            for page in pages
+        ]
+
+
 async def list_youtube_pages_missing_transcripts() -> list[dict]:
     """Every archived YouTube-backed meeting page with no default
     transcript -- the "transcript wanted" queue consumed by

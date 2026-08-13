@@ -223,13 +223,22 @@ def _parse_updated_at(raw: str):
     return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
-async def _recheck_archived_page(url: str, normalized: str, platform: str) -> dict:
+async def _recheck_archived_page(url: str, normalized: str, platform: str, *, dry_run: bool = False) -> dict:
     """Re-resolve a permanent page and push if it finds real content. Used
-    two ways: fired via BackgroundTasks on a lookup hit that's gone stale
+    three ways: fired via BackgroundTasks on a lookup hit that's gone stale
     (ARCHIVE_RECHECK_AFTER, return value discarded -- a failure there just
-    means the page stays as it was, so it's logged rather than raised), and
+    means the page stays as it was, so it's logged rather than raised),
     called directly + awaited by /admin/recheck-archive-page below, which
-    does want the outcome to show the caller what happened."""
+    does want the outcome to show the caller what happened, and by
+    scripts/backfill_archived_pages.py's corpus-wide sweep (see that
+    script for why re-resolving *every* archived page, not just stale
+    ones, is worth doing -- an adapter/jurisdiction fix only ever reaches
+    a page that gets re-resolved after it shipped, never retroactively).
+
+    `dry_run=True` still does the real resolve (so a caller can see what
+    *would* change) but skips the push -- used by the backfill script to
+    preview a run against real data without touching the Archive.
+    """
     try:
         finder = get_finder(platform)
     except UnsupportedPlatformError:
@@ -241,13 +250,14 @@ async def _recheck_archived_page(url: str, normalized: str, platform: str) -> di
         return {"error": "resolve_failed", "message": str(e)}
 
     pushed = bool(result.segments or result.agenda_items or result.agenda_link)
-    if pushed:
+    if pushed and not dry_run:
         await archive_client.push(result.model_dump(), normalized)
 
     return {
         "pushed": pushed,
         "platform": result.platform,
         "title": result.title,
+        "jurisdiction": result.jurisdiction,
         "segment_count": len(result.segments),
         "agenda_item_count": len(result.agenda_items),
         "transcript_warnings": result.transcript_warnings,
