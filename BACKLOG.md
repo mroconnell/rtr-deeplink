@@ -253,41 +253,9 @@ anything) to build against it.
   always lands on the last hyphen before ", {State}". Live-reverified
   2026-08-13: re-resolving `longbeachca.new.swagit.com/videos/395182`
   fresh with the current code correctly returns `Long Beach, CA` — the
-  fix itself is confirmed working. **What's still visibly wrong in
-  production isn't this bug** — see the "archived pages don't self-heal"
-  entry directly below, which this is now a concrete example of.
-
-- **Fixes to jurisdiction extraction/display logic never retroactively
-  reach already-archived pages — a real, repeatedly-confirmed gap, not a
-  one-off.** `MeetingPage.jurisdiction` is set once at ingest
-  (`archive/db/crud.py`'s `_find_or_create_page()`) and only ever
-  refreshed if that exact page gets re-resolved — which only happens if
-  someone resubmits the original URL through `/api/resolve` *and* the
-  page is past its recheck window (`ARCHIVE_RECHECK_AFTER`, 30 days for a
-  page with a transcript). Simply viewing an archived `/m/*` page never
-  triggers a recheck. **Confirmed live 2026-08-13 against seven separate
-  already-fixed bugs, all still showing the old wrong value on their
-  existing archived pages** while a fresh re-resolve of the same real
-  source URL correctly returns the fixed value: the Swagit "Revised -"
-  bug above (Long Beach), the "City and County of X" display bug (San
-  Francisco, Denver), Fresno (no state), Napa and other CA cities on
-  `/meetings` (no state), Memphis/Jacksonville (un-abbreviated full state
-  name), a PrimeGov "SLC Live Meetings" page (pre-dates the uploader-
-  fallback removal), and a Viebit NYCC page (blank jurisdiction, pre-dates
-  the hardcoded NYC jurisdiction). `GET /admin/recheck-archive-page`
-  (`app/main.py`) already exists as a one-URL-at-a-time manual fix, built
-  "for when a permanent page needs refreshing sooner than 30 days" — but
-  there's no bulk version, so the only way any of the seven examples above
-  actually get corrected today is if someone happens to paste that exact
-  URL in again. **Built 2026-08-13 — full detail in `BACKLOG_DONE.md`.**
-  `scripts/backfill_archived_pages.py`, local-verified end-to-end against
-  a real seeded page (dry-run left it untouched, a real run correctly
-  fixed the stored jurisdiction). **Still open: it hasn't been run
-  against production yet** — that's the actual remaining step to close
-  out all seven examples above, a deliberate one-time action given it
-  hits potentially hundreds of different live government sites (start
-  with `--dry-run --limit 5` or `--platform swagit` before an unscoped
-  run).
+  fix itself is confirmed working, and the stale archived pages have
+  since been corrected too — see "Bulk backfill of archived pages" in
+  `BACKLOG_DONE.md`.
 
 ## `/meetings` search & saved items — UI gaps found 2026-08-11
 

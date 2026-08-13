@@ -50,6 +50,13 @@ def test_display_drops_bare_city_prefix():
     assert format_jurisdiction_display("City Napa, CA") == "Napa, CA"
 
 
+def test_display_drops_the_city_of_prefix():
+    # Real gap found live 2026-08-13: Memphis/Milwaukee store jurisdiction
+    # as "The City of X" (not just "City of X"), which the original
+    # _DROPPED_DISPLAY_PREFIXES list didn't cover.
+    assert format_jurisdiction_display("The City of Memphis, TN") == "Memphis, TN"
+
+
 def test_display_is_case_insensitive_on_the_prefix():
     assert format_jurisdiction_display("city of Oklahoma City") == "Oklahoma City"
 

@@ -72,6 +72,7 @@ async def main() -> None:
     # import-order reasoning as this repo's other CLI scripts.
     from app import archive_client
     from app.main import _recheck_archived_page
+    from app.platforms.base import detect_platform
 
     pages = await archive_client.list_all_page_urls()
     if pages is None:
@@ -100,7 +101,21 @@ async def main() -> None:
     for i, page in enumerate(pages, 1):
         slug = page["slug"]
         url = page["source_url_normalized"]
-        platform = page["platform"]
+        # Re-detect from the URL rather than trusting the stored platform
+        # field -- MeetingPage.platform records the *delegated* finder's
+        # name (e.g. "youtube"), not the original one, for platforms that
+        # delegate (PrimeGov, LIMS, CivicWeb, generic_fallback's YouTube
+        # branch). Those deliberately keep the *original* source URL
+        # stored (not the delegated YouTube URL) specifically so a
+        # re-resolve goes through their own scraping logic again -- same
+        # reasoning /admin/recheck-archive-page (app/main.py) already
+        # uses. Passing the stored "youtube" platform straight to
+        # get_finder() here would hand a LIMS/PrimeGov URL to
+        # YouTubeAssetFinder directly, which can't find a video ID in a
+        # non-YouTube URL -- confirmed live 2026-08-13: every LIMS and
+        # PrimeGov page in a first backfill dry-run failed exactly this
+        # way before this fix.
+        platform = detect_platform(url)
 
         result = await _recheck_archived_page(url, url, platform, dry_run=args.dry_run)
 
