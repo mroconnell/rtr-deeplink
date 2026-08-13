@@ -611,6 +611,52 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   through (a truly metadata-free source page, e.g. a bare unlabeled video
   iframe with no page `<title>` and a non-date-shaped URL).
 
+  **Update 2026-08-13, still broken in prod, confirmed again with stronger
+  evidence — this is the next thing to actually build, not just study
+  further**: user re-tested the same
+  [/m/meeting-732f78](https://redtaperecordings.com/m/meeting-732f78) page
+  live in prod and it's still "Untitled meeting" with no jurisdiction (code
+  confirms #2 above was never implemented — no `title`/`jurisdiction`
+  handling exists anywhere in `generic_fallback.py` today, only the
+  original YouTube-delegate call). Re-`curl`'d all 5 known CRRMA board
+  URLs directly (the original 2025-11-12 one plus four more the user gave —
+  2026-05-13, 2026-04-08, 2026-03-11, 2026-01-28) and every single one
+  returns the exact same `<title>Camino Real Regional Mobility Authority |
+  El Paso, Texas</title>` — confirms the split-on-`|` shape is stable
+  across at least 5 real examples now, not just 1, closing the "worth
+  checking a second example" caveat above (for this exact site; still only
+  one *site* overall, per this file's usual convention of not
+  over-generalizing from one platform).
+
+  **New signal found this pass, richer than the `<title>` tag alone**: the
+  page body itself has a real, semantically-marked "Notice of meeting"
+  block — `<h1 id="notice-of-meeting">NOTICE OF MEETING</h1>` followed by
+  `<h2 id="november-12-2025-----900am">November 12, 2025 - 9:00am</h2>`
+  and a `<p>` reading *"A meeting of the CRRMA Board of Directors will be
+  held on Wednesday November 12, 2025, at 9:00am in the 2nd Floor Main
+  Conference Room of El Paso City Hall, located at 300 N. Campbell, El
+  Paso, Texas 79901."* — confirmed live via `curl`, present identically
+  (modulo the date) on all 5 URLs, and cross-confirmed by the user against
+  the linked agenda PDF too. This is a *better* jurisdiction/date source
+  than the `<title>` tag for this site specifically: it has the full
+  street address (useful if jurisdiction enrichment ever wants
+  address-level precision, not just city/state) and an unambiguous
+  same-page date independent of the URL's own `YYYY-MM-DD` path segment
+  (today's plan already reads the date from the URL path per point #2
+  above — this is a second, corroborating same-page source, not a
+  replacement).
+
+  **Naming preference, user's own words 2026-08-13**: whatever the meeting
+  title ends up being, "I'd expect it to have CRRMA in there somewhere" —
+  e.g. `"CRRMA Board of Directors"` or `"Camino Real Regional Mobility
+  Authority Board"` rather than just the bare org name from the `<title>`
+  tag. The Notice-of-meeting `<p>` text above already contains "CRRMA
+  Board of Directors" verbatim, so this naming preference and the new
+  signal solve each other — worth preferring that phrase (or a regex
+  extracting `"{ACRONYM} Board of Directors"`/`"{Org} Board"` from the
+  notice paragraph) over the bare `<title>`-derived org name when both are
+  available.
+
 - **CHAMP/ChampDS (`play.champds.com`) — new platform, not supported at
   all today, flagged by the user 2026-08-12 via a real Atlanta, GA
   example**
