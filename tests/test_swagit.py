@@ -1,3 +1,5 @@
+from bs4 import BeautifulSoup
+
 from app.platforms.models import TranscriptSegment
 from app.platforms.swagit import SwagitAssetFinder, _group_word_fragments
 
@@ -166,3 +168,38 @@ async def test_resolve_no_caption_file_falls_through_to_no_transcript_warning():
 
     assert result.segments == []
     assert any("no transcript found" in w.lower() for w in result.transcript_warnings)
+
+
+def test_extract_metadata_plain_title():
+    soup = BeautifulSoup(
+        "<html><head><title>Jul 28, 2026 Regular Meetings - League City, TX</title></head></html>",
+        "html.parser",
+    )
+    title, date, jurisdiction = SwagitAssetFinder._extract_metadata(soup)
+    assert title == "Jul 28, 2026 Regular Meetings"
+    assert date == "2026-07-28"
+    assert jurisdiction == "League City, TX"
+
+
+def test_extract_metadata_strips_a_revised_marker_from_jurisdiction():
+    # Real bug found live 2026-08-13 (longbeachca.new.swagit.com): a lazy
+    # title-part match let a "- Revised -" marker's own text get swallowed
+    # into the jurisdiction group, since it has no comma to stop the
+    # match early -- resolved to "Revised - Long Beach, CA" instead of
+    # "Long Beach, CA".
+    soup = BeautifulSoup(
+        "<html><head><title>Aug 04, 2026 City Council Special Meeting - Revised - Long Beach, CA</title></head></html>",
+        "html.parser",
+    )
+    title, date, jurisdiction = SwagitAssetFinder._extract_metadata(soup)
+    assert title == "Aug 04, 2026 City Council Special Meeting - Revised"
+    assert jurisdiction == "Long Beach, CA"
+
+
+def test_extract_metadata_strips_a_closed_session_marker_from_jurisdiction():
+    soup = BeautifulSoup(
+        "<html><head><title>Aug 04, 2026 City Council Special Meeting - Closed Session - Long Beach, CA</title></head></html>",
+        "html.parser",
+    )
+    title, date, jurisdiction = SwagitAssetFinder._extract_metadata(soup)
+    assert jurisdiction == "Long Beach, CA"

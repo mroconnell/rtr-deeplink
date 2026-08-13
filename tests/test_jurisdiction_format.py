@@ -75,6 +75,15 @@ def test_display_passes_through_a_jurisdiction_with_no_city_prefix():
     assert format_jurisdiction_display("Charlotte, NC") == "Charlotte, NC"
 
 
+def test_display_keeps_consolidated_city_and_county_label():
+    # Real bug found live 2026-08-13: a naive "starts with 'City '" check
+    # also matched "City and County of San Francisco"/"...Denver" (real
+    # consolidated city-county governments) on just its first 5
+    # characters, leaving a mangled "and County of San Francisco".
+    assert format_jurisdiction_display("City and County of San Francisco, CA") == "City and County of San Francisco, CA"
+    assert format_jurisdiction_display("City and County of Denver, CO") == "City and County of Denver, CO"
+
+
 def test_display_none_and_empty_pass_through():
     assert format_jurisdiction_display(None) is None
     assert format_jurisdiction_display("") == ""
