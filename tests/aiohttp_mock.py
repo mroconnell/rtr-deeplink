@@ -43,7 +43,12 @@ class FakeResponse:
     async def read(self):
         return self._raw
 
-    async def json(self):
+    async def json(self, content_type=None):
+        # `content_type` accepted (and ignored, same as real aiohttp when
+        # passed `content_type=None`) so a caller can skip real aiohttp's
+        # Content-Type-header check -- champds.py needs this since the
+        # real ChampDS API serves its JSON as `text/html` (confirmed
+        # live), not `application/json`.
         import json as _json
         return _json.loads(self._text)
 
