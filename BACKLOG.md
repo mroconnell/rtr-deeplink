@@ -1159,6 +1159,54 @@ auditing it (2026-08-08) — two fixed since, one still open below:
     logic directly, since most other Granicus instances checked this
     pass showed no caption UI at all.
 
+- **Wayne County, MI's own meeting-listing site
+  (`waynecountymi.gov`) — user-reported 2026-08-13, root cause confirmed
+  to be a fetch-level block, not a parsing gap.** Real example:
+  [waynecountymi.gov/.../Wayne-County-Commission-January-8-2026](https://www.waynecountymi.gov/Government/Elected-Officials/Commission/Committees/Full-Commission-Meetings/2026/Wayne-County-Commission-January-8-2026)
+  (calendar/listing page:
+  [.../Full-Commission-Meetings](https://www.waynecountymi.gov/Government/Elected-Officials/Commission/Committees/Full-Commission-Meetings)).
+  Prod currently shows a bare "Meeting" — no title, no jurisdiction, no
+  video, no agenda — even though, per the user, the page has all of it:
+  a plain "Video" link to `youtu.be/RFwXrAzkXR8`, an agenda PDF, and a
+  header reading "Wayne County Commission - January 8, 2026" that the
+  URL slug also spells out.
+
+  **Confirmed via a real browser (`mcp__Claude_Browser__*`) that every
+  one of those is real, static, server-rendered content** — no JS
+  needed to see it: `<title>Wayne County Commission - January 8, 2026 -
+  Wayne County, Michigan</title>`, a plain `<a href="https://youtu.be/
+  RFwXrAzkXR8">Video</a>`, and a plain `<a href=".../agenda2026-0108.pdf">
+  Agenda2026-0108.pdf</a>`. This is exactly the shape
+  `generic_fallback.py`'s priority-1 path (a plain linked YouTube video)
+  and `_find_agenda_link()` (a same-page `<a>` whose text contains
+  "agenda") are already built to catch — so the empty prod result isn't
+  a missing-pattern gap like the Sebastopol/Tarrant entries above.
+
+  **Root cause instead: the site's own edge/WAF blocks the fetch itself.**
+  A plain `curl` with the same Chrome `User-Agent`
+  `generic_fallback.py` already sends returned a 403 with a literal
+  Akamai `Access Denied` / `errors.edgesuite.net` body (~550 bytes, no
+  page content at all) — and `resolve()`'s `response.raise_for_status()`
+  (`generic_fallback.py:149`) turns that straight into a raised
+  exception, caught generically in `app/main.py`'s `/api/resolve`
+  handler (`except Exception as e:` around line 358) and surfaced as an
+  empty best-effort result with nothing populated — matching the "bare
+  'Meeting', no video, no jx, no agenda" symptom exactly. A real browser
+  (real TLS/JS/cookie behavior) gets through fine; a plain server-side
+  `aiohttp`/`curl` request does not. Not the same failure mode as the
+  YouTube-caption-fetch IP block noted elsewhere in this file (that one
+  is Render's cloud IP specifically vs. a residential one); this looks
+  like Akamai Bot Manager reacting to the request's fingerprint rather
+  than its origin IP, though that's not independently confirmed here.
+
+  Not fixed this pass — logged per this repo's "new bugs/gaps found
+  while working go in BACKLOG.md" convention. If this turns out to
+  affect other government sites (Akamai is a common CDN/WAF for larger
+  county/state sites), a shared retry-via-headless-browser fallback for
+  a confirmed-blocked fetch would fix all of them at once rather than
+  a Wayne-County-specific patch — but only one example exists so far,
+  so not worth generalizing yet.
+
 ## Archive roadmap
 
 - **"Feed cities" — should this app ever synthesize its own meeting
