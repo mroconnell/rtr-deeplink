@@ -63,6 +63,31 @@ async def test_resolve_real_meeting_delegates_to_youtube(monkeypatch):
     assert result.video_url == f"https://www.youtube.com/embed/{REAL_VIDEO_ID}"
 
 
+async def test_resolve_falls_back_to_known_domain_when_title_does_not_match(monkeypatch):
+    # Applying the same fix already confirmed live for lims.py and
+    # generic_fallback.py (see BACKLOG_DONE.md): if this page's own
+    # <title> ever doesn't match _TITLE_JURISDICTION_RE (unconfirmed so
+    # far for CivicWeb, but the same class of bug is proven for two other
+    # YouTube-delegating adapters), jurisdiction must not silently fall
+    # through to YouTube's own uploader field ("Dallas County TV" here --
+    # a channel name, not a jurisdiction).
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _fake_extract_info)
+    unmatched_title_html = "<html><head><title>Meeting Portal</title></head><body></body></html>"
+
+    routes = {
+        MEETING_URL: FakeResponse(status=200, text=unmatched_title_html, url=MEETING_URL),
+        VIDEOLINK_URL: FakeResponse(status=200, text=VIDEOLINK_JSON, url=VIDEOLINK_URL),
+        MEETING_DATA_URL: FakeResponse(status=200, text=MEETING_DATA_JSON, url=MEETING_DATA_URL),
+    }
+
+    with mock_session(routes):
+        result = await CivicWebAssetFinder().resolve(MEETING_URL)
+
+    # Falls back to the confirmed-domain registry (type-aware, "County
+    # of" preserved) rather than "Dallas County TV".
+    assert result.jurisdiction == "County of Dallas, TX"
+
+
 async def test_resolve_missing_video_id_reports_no_video(monkeypatch):
     no_video_json = '"[{\\"MeetingDate\\":\\"2026-08-04T00:00:00\\",\\"YouTube\\":false}]"'
     routes = {

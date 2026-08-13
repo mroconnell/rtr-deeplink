@@ -539,13 +539,28 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   `BACKLOG_DONE.md`.** A separate, real bug surfaced while re-verifying
   the fix live: `YouTubeAssetFinder.resolve_video_id()` unconditionally
   sets `jurisdiction=info.get("uploader")` (a channel name) whenever
-  yt-dlp succeeds — the same class of bug already fixed for PrimeGov,
-  just never addressed at the shared `youtube.py` level. Worth revisiting
-  whether `youtube.py` itself should stop setting jurisdiction from
-  `uploader` at all, rather than relying on each individual caller
-  (PrimeGov, now generic_fallback) to override it after the fact — LIMS
-  and any other direct YouTube-delegating adapter could have the same
-  latent gap, unconfirmed either way.
+  yt-dlp succeeds, and every caller that delegates to it has to know to
+  override that afterward or the channel name leaks through as a fake
+  jurisdiction. **Audited every direct `YouTubeAssetFinder` delegator
+  2026-08-13**: PrimeGov (already unconditional-override), LIMS (already
+  fixed, same day), `slc.py` (always unconditional, hardcoded single
+  jurisdiction), generic_fallback (fixed this pass), and CivicWeb (fixed
+  this pass, same day — see `BACKLOG_DONE.md`) are all now safe.
+  **Still genuinely unconfirmed**: `legistar.py`'s *primary* delegation
+  path ([legistar.py:111-117](app/platforms/legistar.py:111-117)) only
+  overrides jurisdiction via `resolved.jurisdiction or page_info[...]`
+  — i.e. prefers whatever the delegated platform set, falling back to
+  Legistar's own page info only when empty — and only runs at all when
+  `resolved.title` looks like a raw filename. This only matters if a
+  Legistar video link ever resolves directly to a bare YouTube URL
+  (rather than the far more common Granicus delegation, where this isn't
+  an issue) with a raw-filename-shaped title; no real example of that
+  specific combination has turned up yet, so not touched without one —
+  same "don't fix without a confirmed example" convention as everywhere
+  else in this file. Worth revisiting either this path or fixing the
+  root cause once and for all in `youtube.py` itself (stop setting
+  `jurisdiction` from `uploader` at the source, rather than requiring
+  every caller to remember to override it) if a real example surfaces.
 
   **Still open, a real UI/copy question, independent of the extraction
   fix above**: what should render when metadata truly can't be found by

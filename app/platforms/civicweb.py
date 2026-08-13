@@ -86,6 +86,25 @@ class CivicWebAssetFinder(AssetFinder):
             resolved.date = date
         if jurisdiction:
             resolved.jurisdiction = jurisdiction
+        else:
+            # Applying the same fix already confirmed live for lims.py and
+            # generic_fallback.py (see BACKLOG_DONE.md): when this page's
+            # own <title> extraction doesn't match (page shape varies more
+            # than the one Dallas County example confirmed so far), this
+            # used to silently keep whatever YouTubeAssetFinder set
+            # jurisdiction to -- the channel's own uploader name, not a
+            # jurisdiction. Unlike LIMS (single-tenant), CivicWeb is
+            # multi-customer, so this only fires for a domain already
+            # confirmed in jurisdiction_enrich's registry (e.g.
+            # dallascounty.civicweb.net) rather than assuming any
+            # civicweb.net subdomain is safe to guess at. Uses
+            # known_jurisdiction_display() rather than LIMS's own
+            # `f"{known.name}, {known.state}"` shortcut -- that shortcut
+            # only works because LIMS's one confirmed domain is a *city*;
+            # CivicWeb's confirmed domain is Dallas *County*, and dropping
+            # the "County" distinction the same way would misleadingly
+            # read as if this were a city named Dallas.
+            resolved.jurisdiction = jurisdiction_enrich.known_jurisdiction_display(urlparse(url).netloc)
         return resolved
 
     @staticmethod

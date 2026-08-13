@@ -591,6 +591,29 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-13] `civicweb.py` no longer lets YouTube's `uploader`
+  field leak through as jurisdiction when the page's own `<title>`
+  extraction doesn't match.** Found while auditing every direct
+  `YouTubeAssetFinder` delegator for the same bug class just fixed in
+  `lims.py` and `generic_fallback.py` (see the entry directly below) —
+  `civicweb.py`'s `if jurisdiction: resolved.jurisdiction = jurisdiction`
+  had no `else` branch, so a non-matching `<title>` (unconfirmed live so
+  far, but the exact same code shape LIMS and generic_fallback both had
+  before their real confirmed failures) would silently leave whatever
+  YouTube's uploader field set in place. Fixed by falling back to
+  `jurisdiction_enrich.known_jurisdiction_display()` (not LIMS's own
+  `f"{known.name}, {known.state}"` shortcut — that only works because
+  LIMS's one confirmed domain is a *city*; CivicWeb's confirmed domain is
+  Dallas *County*, and dropping the "County" distinction the same way
+  would misleadingly read as a city named Dallas).
+  `known_jurisdiction_display()` also correctly returns `None` when the
+  domain isn't confirmed, clearing the bad uploader value entirely rather
+  than leaving it in place. New test confirms the fallback produces
+  "County of Dallas, TX," not "Dallas County TV" (the fixture's uploader
+  value). Full suite green (614 tests). Audited every other direct
+  YouTube delegator in the same pass — see `BACKLOG.md`'s updated entry
+  for the one still-unconfirmed gap (Legistar's primary delegation path).
+
 - **[Done 2026-08-13] `generic_fallback.py`'s YouTube-embed branch now
   backfills title/jurisdiction/date from the source page itself when
   YouTube's own metadata comes back empty — closes the CRRMA
