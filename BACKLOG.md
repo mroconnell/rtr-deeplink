@@ -394,6 +394,31 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   frontend change).
 ## Platform coverage — open questions
 
+- **Hyland "221 Agenda Online" (OnBase Agenda) — new platform, not
+  supported at all today, found 2026-08-13 while investigating the
+  "Untitled meeting" copy question** (see the `/meetings` UI-gaps
+  section below). Real example:
+  [tucsonaz.hylandcloud.com/221agendaonline/Meetings/ViewMeeting?doctype=2&id=1956](https://tucsonaz.hylandcloud.com/221agendaonline/Meetings/ViewMeeting?doctype=2&id=1956)
+  (`/m/meeting`, Tucson, AZ) — the one real page in the whole Archive
+  with a completely empty title today. Confirmed live via `curl` (plain
+  HTTP, no JS): the page's raw HTML has *zero* usable static text
+  anywhere — `<title>` is just the vendor's own generic product name
+  ("View Meeting - OnBase Agenda Online"), no meta description, no
+  visible heading, no date-shaped URL segment (`id=1956` is an opaque
+  internal id), and the AJAX endpoint the page's own JS calls to render
+  the agenda (`.../Meetings/ViewMeetingAgenda?meetingId=1956&type=...`)
+  returns the same empty vendor-branded shell, not real meeting data —
+  everything genuinely renders client-side. The `/Meetings` calendar
+  listing page is equally empty statically. A generic_fallback-style
+  static-HTML backfill (the CRRMA fix, `BACKLOG_DONE.md`) structurally
+  cannot help here — real support would need a headless-browser fetch
+  (`fetch_via_browser`, the same approach LIMS/SLC already use), a
+  proper new-platform build, not a quick fix. **Re-confirmed via a
+  second real example the user gave** (`id=1897`, same Tucson instance)
+  — byte-for-byte identical template shell aside from the meeting id in
+  a few JS URLs, confirming this is a platform-wide gap (every meeting
+  on this instance), not one unusual page.
+
 - **Seattle Channel (`seattlechannel.org`) — new platform, not supported
   at all today, flagged by the user 2026-08-12 with a real example**
   ([seattlechannel.org/.../city-council-all-videos-index?videoid=x189286](https://www.seattlechannel.org/mayor-and-council/city-council/city-council-all-videos-index?videoid=x189286),
@@ -532,10 +557,28 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   listing both share the exact same `m.title or "Untitled meeting"`
   fallback) — user's suggestion: something more like "Temporary Name:
   meeting-732f78" that signals "we know this is incomplete" rather than
-  reading as broken/empty. Still relevant even with the extraction fix
-  in place, since some pages will always slip through (a truly
-  metadata-free source page, e.g. a bare unlabeled video iframe with no
-  page `<title>` and a non-date-shaped URL) — not decided or built.
+  reading as broken/empty. Not decided or built.
+
+  **User's follow-up idea, 2026-08-13**: instead of a bare placeholder,
+  try a much looser best-effort grab (any plausible `<h1>`/`og:title`/
+  meta-description text, not the strict `<title>` "split on `|`" pattern
+  the CRRMA fix uses) and label it "Maybe: {result}" to signal low
+  confidence. **Checked against the one real remaining "Untitled
+  meeting" page in the whole Archive before building anything** (Tucson,
+  AZ on Hyland's "221 Agenda Online" — see the new platform-coverage
+  entry above) — it disproves that a looser regex would help in
+  general: that page's raw HTML has *no* usable static text anywhere at
+  all (confirmed via `curl`, everything renders client-side via AJAX),
+  so even the loosest static-HTML regex would still find nothing. For
+  this class of failure specifically, only a real headless-browser fetch
+  (a much bigger, new-platform-shaped build) or the plain placeholder
+  idea would actually help — the looser-regex idea is real and worth
+  keeping for a *different* kind of failure (a page with SOME static
+  text that just doesn't happen to match the strict `<title>`-pipe
+  shape), but only one confirmed example exists today and it's the wrong
+  shape to validate that specific idea. Needs a second real example of
+  *that* failure mode before committing to a "Maybe:" shape — not
+  abandoned, just not enough evidence yet either way.
 
 - **CHAMP/ChampDS (`play.champds.com`) — new platform, not supported at
   all today, flagged by the user 2026-08-12 via a real Atlanta, GA
