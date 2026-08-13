@@ -33,6 +33,12 @@ let activeVideoAdapter = null;
 // side Jinja pass to apply that Python version through.
 function formatJurisdictionDisplay(jurisdiction) {
   if (!jurisdiction) return jurisdiction;
+  // Real consolidated city-counties (San Francisco, Denver) must never
+  // hit the plain "City " strip below -- see jurisdiction_format.py's
+  // Python twin for the live bug this guards against.
+  if (jurisdiction.toLowerCase().startsWith('city and county of ')) {
+    return jurisdiction;
+  }
   for (const prefix of ['City of ', 'City ']) {
     if (jurisdiction.toLowerCase().startsWith(prefix.toLowerCase())) {
       return jurisdiction.slice(prefix.length);

@@ -293,8 +293,19 @@ class SwagitAssetFinder(AssetFinder):
     @staticmethod
     def _extract_metadata(soup: BeautifulSoup):
         raw_title = soup.title.get_text(strip=True) if soup.title else ""
-        # "{Date}, {Meeting Title} - {City}, {State}"
-        match = re.match(r"^(.*?)\s*-\s*([^,]+),\s*([A-Za-z]{2})\s*$", raw_title)
+        # "{Date}, {Meeting Title} - {City}, {State}" -- but real bug found
+        # live 2026-08-13: some meetings carry an extra "- Revised -" or
+        # "- Closed Session -" marker before the city (e.g. "Aug 04, 2026
+        # City Council Special Meeting - Revised - Long Beach, CA"). A lazy
+        # (.*?) title-part match locks onto the *first* " - " it can make
+        # work, and since the marker text itself has no comma, that first
+        # split still satisfies the rest of the pattern -- swallowing
+        # "Revised - Long Beach" into the city group. A greedy (.*) title
+        # match instead backtracks from the end, always landing on the
+        # *last* " - " before ", {State}$", which is the real city
+        # boundary in every real title shape seen so far (both this one
+        # and the plain no-marker case).
+        match = re.match(r"^(.*)\s*-\s*([^,]+),\s*([A-Za-z]{2})\s*$", raw_title)
         title, jurisdiction = raw_title or None, None
         date = None
         if match:

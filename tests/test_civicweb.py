@@ -55,7 +55,11 @@ async def test_resolve_real_meeting_delegates_to_youtube(monkeypatch):
     assert result.external_id == f"youtube:{REAL_VIDEO_ID}"
     assert result.title == "Commissioners Court - Aug 04 2026"
     assert result.date == "2026-08-04"
-    assert result.jurisdiction == "Dallas County"
+    # "Dallas County" is real in AL/AR/IA/MO/TX, so a bare name lookup
+    # alone stays ambiguous -- resolved via the confirmed-domain registry
+    # instead (added 2026-08-13, see BACKLOG.md/BACKLOG_DONE.md), since
+    # this customer's real pages carry no ZIP-anchored address either.
+    assert result.jurisdiction == "Dallas County, TX"
     assert result.video_url == f"https://www.youtube.com/embed/{REAL_VIDEO_ID}"
 
 
@@ -73,7 +77,11 @@ async def test_resolve_missing_video_id_reports_no_video(monkeypatch):
     assert result.video_url is None
     assert result.video_warnings == ["No video found for this meeting."]
     # Real page metadata is still surfaced even without a video.
-    assert result.jurisdiction == "Dallas County"
+    # "Dallas County" is real in AL/AR/IA/MO/TX, so a bare name lookup
+    # alone stays ambiguous -- resolved via the confirmed-domain registry
+    # instead (added 2026-08-13, see BACKLOG.md/BACKLOG_DONE.md), since
+    # this customer's real pages carry no ZIP-anchored address either.
+    assert result.jurisdiction == "Dallas County, TX"
     assert result.title == "Commissioners Court - Aug 04 2026"
 
 

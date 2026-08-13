@@ -91,6 +91,20 @@ class LimsAssetFinder(AssetFinder):
             resolved.date = date
         if jurisdiction:
             resolved.jurisdiction = jurisdiction
+        else:
+            # Real bug found live 2026-08-13: when the agenda page's own
+            # title doesn't match _TITLE_RE (page shape varies more than
+            # the two committees tested so far), this used to silently
+            # keep whatever YouTubeAssetFinder set jurisdiction to --
+            # the channel's own uploader name, a different problem
+            # category entirely (see BACKLOG.md). LIMS is single-tenant
+            # (every real URL is this one Minneapolis system, unlike a
+            # shared multi-customer platform), so the known-domain entry
+            # is always correct here and should never be second-guessed
+            # by an unrelated YouTube field.
+            known = jurisdiction_enrich.lookup_by_domain(urlparse(url).netloc)
+            if known:
+                resolved.jurisdiction = f"{known.name}, {known.state}"
         resolved.agenda_items = agenda_items
         return resolved
 

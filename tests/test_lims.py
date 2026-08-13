@@ -144,6 +144,30 @@ async def test_resolve_still_works_when_youtube_metadata_fetch_fails(monkeypatch
     assert any("blocking automated caption requests" in w for w in result.video_warnings)
 
 
+async def test_resolve_falls_back_to_known_domain_when_page_title_does_not_match(monkeypatch):
+    # Real bug found live 2026-08-13: when the agenda page's title doesn't
+    # match _TITLE_RE (some real page shape not yet seen in this suite),
+    # jurisdiction used to silently fall through to whatever
+    # YouTubeAssetFinder set it to -- the channel's own uploader name, a
+    # different, unrelated field. LIMS is single-tenant (every real URL is
+    # this one Minneapolis system), so the known-domain entry must win
+    # over an uploader name that isn't even guaranteed to be a real place.
+    async def _unmatched_title_page(url, **kwargs):
+        if "MeetingYoutubeVideo" in url:
+            return JSON_ENDPOINT_HTML
+        return "<html><head><title>Some Other Page Shape</title></head><body></body></html>"
+
+    def _fake_extract_info_wrong_uploader(video_id):
+        return {"title": "Real YouTube Title", "uploader": "Not A Real City", "upload_date": "20260806"}
+
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _fake_extract_info_wrong_uploader)
+    monkeypatch.setattr("app.platforms.lims.fetch_via_browser", _unmatched_title_page)
+
+    result = await LimsAssetFinder().resolve(MEETING_URL)
+
+    assert result.jurisdiction == "Minneapolis, MN"
+
+
 async def test_resolve_works_for_a_non_ci_committee_code(monkeypatch):
     # Real bug reported live 2026-08-10: a real user-submitted URL,
     # https://lims.minneapolismn.gov/MarkedAgenda/BHZ/6105 (Business,

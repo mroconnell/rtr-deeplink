@@ -60,13 +60,17 @@ def format_jurisdiction_display(jurisdiction: Optional[str]) -> Optional[str]:
     pass through unchanged, since dropping the label there would make a
     real, useful distinction disappear.
 
-    Display-time only, applied at render (as a Jinja filter here; the
-    resolver's `app/static/player.js` has its own small JS equivalent for
-    the one place it renders a raw, unarchived `jurisdiction` client-side)
-    -- what's actually stored (`normalize_state_suffix()`'s output) is
-    never touched, so this can be revisited without a data migration.
+    Real bug found live 2026-08-13: a naive "starts with 'City '" check
+    also matched "City and County of San Francisco"/"...Denver" (real
+    consolidated city-county governments) on just the first 5 characters,
+    leaving a mangled "and County of San Francisco". Checked first, and
+    left completely untouched -- the "and County of" phrasing is real,
+    non-redundant information (unlike a plain "City of"), same reasoning
+    as why "County of X" alone is already preserved above.
     """
     if not jurisdiction:
+        return jurisdiction
+    if jurisdiction.lower().startswith("city and county of "):
         return jurisdiction
     for prefix in _DROPPED_DISPLAY_PREFIXES:
         if jurisdiction.lower().startswith(prefix.lower()):

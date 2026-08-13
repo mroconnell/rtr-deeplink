@@ -238,6 +238,14 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     # confirmed via app/utils/jurisdiction_data -- so a bare name lookup
     # alone would stay ambiguous for this real, confirmed LIMS customer.
     "lims.minneapolismn.gov": KnownJurisdiction("Minneapolis", "city", "MN"),
+    # "Dallas County" is also real in AL/AR/IA/MO -- confirmed via
+    # app/utils/jurisdiction_data -- so a bare name lookup stays
+    # deliberately ambiguous. Found live 2026-08-13: this customer's real
+    # meeting pages carry no ZIP-anchored address at all for the fallback
+    # lookup to key off of (confirmed: zero 5-digit numbers anywhere in
+    # the page's raw HTML), so a domain entry is the only real option here,
+    # same reasoning as Cablecast's Detroit/Charlotte entries above.
+    "dallascounty.civicweb.net": KnownJurisdiction("Dallas", "county", "TX"),
 }
 
 
