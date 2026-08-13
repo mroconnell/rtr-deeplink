@@ -310,6 +310,7 @@ def test_extract_page_meeting_info_parses_real_nyc_title_shapes():
         "title": "Committee on Finance",
         "jurisdiction": "New York City Council",
         "date": "2025-12-18",
+        "agenda_link": None,
     }
 
     full_council_soup = BeautifulSoup(
@@ -321,6 +322,7 @@ def test_extract_page_meeting_info_parses_real_nyc_title_shapes():
         "title": "City Council",
         "jurisdiction": "New York City Council",
         "date": "2025-12-18",
+        "agenda_link": None,
     }
 
 
@@ -347,6 +349,7 @@ def test_extract_page_meeting_info_falls_back_to_rss_link_when_title_empty():
         "title": "Baltimore City Council",
         "jurisdiction": "City of Baltimore, MD",
         "date": "2025-10-20",
+        "agenda_link": None,
     }
 
 
@@ -366,6 +369,29 @@ def test_extract_page_meeting_info_fills_in_state_for_an_unambiguous_jurisdictio
     )
     info = LegistarAssetFinder._extract_page_meeting_info(soup, "https://chicago.legistar.com/MeetingDetail.aspx?ID=1")
     assert info["jurisdiction"] == "City of Chicago, IL"
+
+
+def test_extract_agenda_link_reads_real_mesa_page_shape():
+    # Real shape confirmed live 2026-08-12 and re-confirmed 2026-08-13 on
+    # a real Mesa, AZ meeting (mesa.legistar.com/MeetingDetail.aspx?
+    # ID=1428059) -- see BACKLOG.md/BACKLOG_DONE.md.
+    from bs4 import BeautifulSoup
+
+    html = (
+        '<span id="ctl00_ContentPlaceHolder1_lblAgendaX">Published agenda:</span>'
+        '<a id="ctl00_ContentPlaceHolder1_hypAgenda" '
+        'href="View.ashx?M=A&amp;ID=1428059&amp;GUID=C6D3581F-B224-4A1C-A59D-0885C238FD52">Agenda</a>'
+    )
+    soup = BeautifulSoup(html, "html.parser")
+    link = LegistarAssetFinder._extract_agenda_link(soup, "https://mesa.legistar.com/MeetingDetail.aspx?ID=1428059")
+    assert link == "https://mesa.legistar.com/View.ashx?M=A&ID=1428059&GUID=C6D3581F-B224-4A1C-A59D-0885C238FD52"
+
+
+def test_extract_agenda_link_returns_none_when_absent():
+    from bs4 import BeautifulSoup
+
+    soup = BeautifulSoup("<span>No agenda link here.</span>", "html.parser")
+    assert LegistarAssetFinder._extract_agenda_link(soup, "https://example.legistar.com/MeetingDetail.aspx?ID=1") is None
 
 
 def test_looks_like_raw_filename_matches_real_viebit_title():
