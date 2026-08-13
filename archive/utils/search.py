@@ -229,3 +229,45 @@ def find_snippet(query: str, texts: Iterable[str], fuzzy: bool, window: int = 50
                 return _build_snippet(text, span, window)
 
     return None
+
+
+def find_matching_segment(query: str, segments: Iterable[dict], fuzzy: bool, window: int = 50) -> Optional[dict]:
+    """Like `find_snippet()`, but per-*segment* rather than over one
+    joined blob -- built for archive/search_alerts.py's saved-search
+    alert emails, which need to deep-link to the exact matching moment
+    (a real segment's own `start` timestamp), not just show an excerpt.
+    `find_snippet`/`_find_span` above have no concept of segment
+    boundaries (they run against `" ".join(seg["text"] for seg in
+    segments)`), so there's no way to recover *which* segment a match
+    came from, or its timestamp, from them alone.
+
+    `segments` is the same `[{"start": float, "end": float, "text": str},
+    ...]` shape TranscriptVersion.segments already stores. Checked in
+    index order (chronological, since segments are always stored that
+    way); returns the *first* matching segment, same "first match wins"
+    convention as `find_snippet()`. Phrases checked before words within
+    each segment, same precedence. Returns None when no segment's own
+    text matches -- e.g. the query only matched the meeting's title/
+    agenda text, or `query` is a keyword-less filter search with no real
+    search terms at all -- callers should fall back to a plain title/
+    date/link line with no quote in that case.
+    """
+    phrases, terms, _excluded_phrases, _excluded_terms = _parse_query(query or "")
+    if not phrases and not terms:
+        return None
+
+    for index, segment in enumerate(segments):
+        text = segment.get("text") or ""
+        if not text:
+            continue
+        text_lower = text.lower()
+        for phrase in phrases:
+            span = _find_span(phrase, text_lower, fuzzy=False)
+            if span:
+                return {"index": index, "start": segment.get("start"), "quote_html": _build_snippet(text, span, window)}
+        for term in terms:
+            span = _find_span(term, text_lower, fuzzy)
+            if span:
+                return {"index": index, "start": segment.get("start"), "quote_html": _build_snippet(text, span, window)}
+
+    return None

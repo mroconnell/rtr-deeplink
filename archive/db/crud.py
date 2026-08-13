@@ -432,6 +432,7 @@ async def list_pages(
     has_transcript: Optional[bool] = None,
     keyword: Optional[str] = None,
     fuzzy: bool = False,
+    created_after: Optional[datetime] = None,
 ) -> dict:
     """Paginated listing for the /meetings index page. Filters and the
     keyword search box narrow this same query rather than being a separate
@@ -462,6 +463,14 @@ async def list_pages(
     `date` is stored as an ISO "YYYY-MM-DD" string, not a Date column --
     lexicographic comparison on that format matches chronological order, so
     plain >=/<= works for the date-range filter without a schema change.
+
+    `created_after` is a different axis from `date_from`/`date_to`: those
+    filter the meeting's own calendar date (a string), this filters
+    `MeetingPage.created_at` (a real timestamp column) -- when the page
+    was archived, not when the meeting happened. Added for
+    archive/search_alerts.py's "what's new since this saved search was
+    last checked" sweep, which has no other reason to exist in the normal
+    /meetings browsing UI.
     """
     page = max(1, page)
     page_size = max(1, min(page_size, 100))
@@ -473,6 +482,8 @@ async def list_pages(
         conditions.append(MeetingPage.date >= date_from)
     if date_to:
         conditions.append(MeetingPage.date <= date_to)
+    if created_after:
+        conditions.append(MeetingPage.created_at > created_after)
     if has_transcript is True:
         conditions.append(TranscriptVersion.id.is_not(None))
     elif has_transcript is False:
@@ -608,6 +619,33 @@ async def list_pages(
         "page_size": page_size,
         "total_pages": total_pages,
     }
+
+
+async def find_new_matches_for_saved_search(search_params: dict, since: Optional[datetime]) -> list[dict]:
+    """The alert sweep's core query (archive/search_alerts.py) -- reuses
+    list_pages() wholesale rather than reimplementing its filter/keyword/
+    fuzzy logic, scoped to pages archived after `since` via
+    `created_after`.
+
+    `search_params` is stored using /meetings's own query-param name `q`
+    (see SavedItem.search_params's docstring) -- list_pages()'s own
+    keyword param is `keyword`, so a bare `list_pages(**search_params)`
+    raises TypeError. Translated here rather than at every call site.
+    """
+    params = dict(search_params)
+    keyword = params.pop("q", None)
+    result = await list_pages(
+        page_size=100,
+        keyword=keyword,
+        created_after=since,
+        jurisdiction=params.get("jurisdiction"),
+        date_from=params.get("date_from"),
+        date_to=params.get("date_to"),
+        has_agenda=params.get("has_agenda"),
+        has_transcript=params.get("has_transcript"),
+        fuzzy=bool(params.get("fuzzy", False)),
+    )
+    return result["pages"]
 
 
 # Platforms that host video directly (or, for Viebit/Cablecast, are
@@ -1429,7 +1467,18 @@ async def save_search(clerk_user_id: str, search_params: dict) -> dict:
             if row.search_params == search_params:
                 return {"id": row.id, "item_type": row.item_type, "search_params": row.search_params}
 
-        item = SavedItem(clerk_user_id=clerk_user_id, item_type="saved_search", search_params=search_params)
+        # last_alerted_at starts at "now," not None -- the alert sweep
+        # (archive/search_alerts.py) treats a None cursor as "alert on
+        # everything ever archived," which would dump every pre-existing
+        # match on this brand-new search's very first check. Only a
+        # dedup-hit (the loop above) skips this -- an existing row's
+        # cursor must never be reset backward by re-saving the same query.
+        item = SavedItem(
+            clerk_user_id=clerk_user_id,
+            item_type="saved_search",
+            search_params=search_params,
+            last_alerted_at=datetime.now(timezone.utc),
+        )
         session.add(item)
         await session.commit()
         await session.refresh(item)
@@ -1447,6 +1496,61 @@ async def unsave_item(clerk_user_id: str, saved_item_id: int) -> bool:
         await session.delete(item)
         await session.commit()
         return True
+
+
+async def unsave_item_by_id(saved_item_id: int) -> bool:
+    """Like unsave_item(), but for the one caller that has no
+    clerk_user_id to scope against: a click on a saved-search alert
+    email's per-alert unsubscribe link (archive/main.py's
+    /alerts/unsubscribe route). That click is authorized by a signed
+    token (archive/utils/link_tokens.py) instead -- verified by the
+    caller before this function is ever reached, so no ownership check
+    is needed here."""
+    async with async_session() as session:
+        item = await session.get(SavedItem, saved_item_id)
+        if item is None:
+            return False
+        await session.delete(item)
+        await session.commit()
+        return True
+
+
+async def list_all_saved_searches() -> list[dict]:
+    """Every saved_search SavedItem across every account -- the alert
+    sweep's (archive/search_alerts.py) starting point. Intentionally
+    unscoped by clerk_user_id (unlike every other SavedItem query in this
+    file): the sweep itself iterates every user's saved searches in one
+    pass, not one account's."""
+    async with async_session() as session:
+        rows = (
+            await session.execute(select(SavedItem).where(SavedItem.item_type == "saved_search"))
+        ).scalars().all()
+        return [
+            {
+                "id": r.id,
+                "clerk_user_id": r.clerk_user_id,
+                "search_params": r.search_params or {},
+                "last_alerted_at": r.last_alerted_at,
+            }
+            for r in rows
+        ]
+
+
+async def mark_saved_searches_alerted(saved_item_ids: list[int], checked_at: datetime) -> None:
+    """Advances last_alerted_at for every saved search included in a
+    digest that actually sent -- called only after a real, successful
+    send (archive/search_alerts.py), never speculatively, so a failed
+    Resend send doesn't silently lose that match by moving the cursor
+    forward anyway."""
+    if not saved_item_ids:
+        return
+    async with async_session() as session:
+        rows = (
+            await session.execute(select(SavedItem).where(SavedItem.id.in_(saved_item_ids)))
+        ).scalars().all()
+        for row in rows:
+            row.last_alerted_at = checked_at
+        await session.commit()
 
 
 async def list_saved_items(clerk_user_id: str) -> dict:
