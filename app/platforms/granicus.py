@@ -12,6 +12,7 @@ from bs4 import BeautifulSoup
 from .base import AssetFinder
 from .media_scan import scan_media_urls, media_type
 from .models import AlternateTranscript, ResolvedMeeting, TranscriptSegment
+from ..utils import jurisdiction_enrich
 from ..utils.vtt_parser import (
     STRUCTURED_CAPTION_PARSERS,
     decode_vtt_bytes,
@@ -182,7 +183,7 @@ class GranicusAssetFinder(AssetFinder):
         if not title:
             title = f"{jurisdiction} Meeting" + (f" - {date}" if date else "")
 
-        return {"title": title[:500], "date": date, "jurisdiction": jurisdiction[:200]}
+        return {"title": title[:500], "date": date, "jurisdiction": jurisdiction[:200], "page_text": page_text}
 
     @staticmethod
     def _humanize_subdomain(subdomain: str) -> Optional[str]:
@@ -359,6 +360,19 @@ class GranicusAssetFinder(AssetFinder):
             channel_jurisdiction, channel_body, item_date = await self._fetch_channel_info(session, final_url, clip_id)
             if channel_jurisdiction:
                 metadata["jurisdiction"] = channel_jurisdiction
+            # Neither source above (body-text match or the RSS channel
+            # title that can just override it) ever includes a state --
+            # fill one in via the shared jurisdiction_enrich module once
+            # whichever of the two has won, reusing the same page_text
+            # _extract_metadata() already built (visible text + meta
+            # description, since a real address has been found living in
+            # only one or the other on different real pages).
+            metadata["jurisdiction"] = jurisdiction_enrich.enrich_jurisdiction_text(
+                metadata["jurisdiction"],
+                netloc=urlparse(final_url).netloc,
+                page_text=metadata["page_text"],
+                placeholder="Unknown Jurisdiction",
+            )
             if not metadata["date"] and item_date:
                 metadata["date"] = item_date
             if not metadata["date"] and clip_id:

@@ -89,6 +89,28 @@ async def test_resolve_falls_back_to_docket_pdf_date_when_page_and_rss_have_none
     assert result.jurisdiction == "City of Alexandria"
 
 
+async def test_resolve_fills_in_state_for_a_real_unambiguous_city():
+    # End-to-end: the existing napacity fixture's own body text produces
+    # "City of Napa" with no state today -- confirms the enrichment step
+    # is actually wired into resolve(), not just unit-tested in isolation.
+    url = "https://napacity.granicus.com/player/clip/3450"
+    html = load_fixture("granicus", "napacity_clip3450.html")
+    captions = load_fixture_bytes("granicus", "napacity_clip3450_captions.vtt")
+
+    routes = {
+        url: FakeResponse(status=200, text=html, url=url),
+        "https://napacity.granicus.com/videos/3450/captions.vtt":
+            FakeResponse(status=200, raw=captions),
+        "https://napacity.granicus.com/AgendaViewer.php?clip_id=3450&embedded=1":
+            FakeResponse(status=404),
+    }
+
+    with mock_session(routes):
+        result = await GranicusAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "City of Napa, CA"
+
+
 def test_extract_date_from_document_links_direct():
     from bs4 import BeautifulSoup
 

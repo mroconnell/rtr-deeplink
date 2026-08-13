@@ -10,6 +10,7 @@ from langdetect import detect as detect_language, LangDetectException
 
 from .base import AssetFinder
 from .models import ResolvedMeeting, TranscriptSegment
+from ..utils import jurisdiction_enrich
 from ..utils.vtt_parser import parse_vtt, is_likely_garbled, decode_vtt_bytes
 
 TARGET_LANGUAGE = "en"
@@ -173,8 +174,9 @@ class EscribeAssetFinder(AssetFinder):
                 except ValueError:
                     continue
 
+        page_text = soup.get_text(" ", strip=True)
         jurisdiction = None
-        city_match = re.search(r"City of ([A-Za-z .]+)", soup.get_text(" ", strip=True))
+        city_match = re.search(r"City of ([A-Za-z .]+)", page_text)
         if city_match:
             jurisdiction = city_match.group(1).strip()
         if not jurisdiction:
@@ -186,6 +188,14 @@ class EscribeAssetFinder(AssetFinder):
             # (`pub-{city}.escribemeetings.com`), a real signal independent
             # of body wording.
             jurisdiction = EscribeAssetFinder._jurisdiction_from_subdomain(url)
+
+        # Neither source above ever includes a state -- see BACKLOG.md's
+        # "no-state jurisdiction audit". Bakersfield's own page text is a
+        # real example of exactly the address shape the ZIP fallback is
+        # built for ("...Bakersfield, CA 93301").
+        jurisdiction = jurisdiction_enrich.enrich_jurisdiction_text(
+            jurisdiction, netloc=urlparse(url).netloc, page_text=page_text
+        )
 
         return title, date, jurisdiction
 

@@ -306,7 +306,7 @@ def test_extract_page_meeting_info_parses_real_nyc_title_shapes():
         "on 12/18/2025 at 11:30 AM</title>",
         "html.parser",
     )
-    assert LegistarAssetFinder._extract_page_meeting_info(committee_soup) == {
+    assert LegistarAssetFinder._extract_page_meeting_info(committee_soup, "https://legistar.council.nyc.gov/MeetingDetail.aspx?ID=1") == {
         "title": "Committee on Finance",
         "jurisdiction": "New York City Council",
         "date": "2025-12-18",
@@ -317,7 +317,7 @@ def test_extract_page_meeting_info_parses_real_nyc_title_shapes():
         "on 12/18/2025 at 1:30 PM</title>",
         "html.parser",
     )
-    assert LegistarAssetFinder._extract_page_meeting_info(full_council_soup) == {
+    assert LegistarAssetFinder._extract_page_meeting_info(full_council_soup, "https://legistar.council.nyc.gov/MeetingDetail.aspx?ID=1") == {
         "title": "City Council",
         "jurisdiction": "New York City Council",
         "date": "2025-12-18",
@@ -328,10 +328,10 @@ def test_extract_page_meeting_info_returns_none_without_matching_title():
     from bs4 import BeautifulSoup
 
     no_title_soup = BeautifulSoup("<body>No title tag here.</body>", "html.parser")
-    assert LegistarAssetFinder._extract_page_meeting_info(no_title_soup) is None
+    assert LegistarAssetFinder._extract_page_meeting_info(no_title_soup, "https://example.legistar.com/MeetingDetail.aspx?ID=1") is None
 
     unrelated_title_soup = BeautifulSoup("<title>Meeting</title>", "html.parser")
-    assert LegistarAssetFinder._extract_page_meeting_info(unrelated_title_soup) is None
+    assert LegistarAssetFinder._extract_page_meeting_info(unrelated_title_soup, "https://example.legistar.com/MeetingDetail.aspx?ID=1") is None
 
 
 def test_extract_page_meeting_info_falls_back_to_rss_link_when_title_empty():
@@ -343,11 +343,28 @@ def test_extract_page_meeting_info_falls_back_to_rss_link_when_title_empty():
         'title="City of Baltimore - Meeting of Baltimore City Council on 10/20/2025 at 5:00 PM" /></head>',
         "html.parser",
     )
-    assert LegistarAssetFinder._extract_page_meeting_info(soup) == {
+    assert LegistarAssetFinder._extract_page_meeting_info(soup, "https://baltimore.legistar.com/MeetingDetail.aspx?ID=1") == {
         "title": "Baltimore City Council",
         "jurisdiction": "City of Baltimore",
         "date": "2025-10-20",
     }
+
+
+def test_extract_page_meeting_info_fills_in_state_for_an_unambiguous_jurisdiction():
+    # Real wiring confirmation: "New York City Council" (used above) and
+    # "City of Baltimore" both stay state-less because they're genuinely
+    # ambiguous (a real collision either directly or, for Baltimore, in
+    # the underlying gazetteer -- see jurisdiction_enrich tests) -- this
+    # uses a real, nationally-unique jurisdiction name instead to confirm
+    # the enrichment step is actually reached, not just safely inert.
+    from bs4 import BeautifulSoup
+
+    soup = BeautifulSoup(
+        "<title>The City of Chicago - Meeting of City Council on 1/2/2026 at 10:00 AM</title>",
+        "html.parser",
+    )
+    info = LegistarAssetFinder._extract_page_meeting_info(soup, "https://chicago.legistar.com/MeetingDetail.aspx?ID=1")
+    assert info["jurisdiction"] == "City of Chicago, IL"
 
 
 def test_looks_like_raw_filename_matches_real_viebit_title():
@@ -458,3 +475,29 @@ async def test_falls_back_to_a_plain_granicus_link_when_no_videolink_found():
     assert result.platform == "granicus"
     assert result.external_id == "granicus:1504"
     assert result.source_url == url
+
+
+async def test_no_video_link_with_only_a_same_page_skip_link_does_not_recurse():
+    # Real bug, confirmed live 2026-08-12 on a real Columbus, OH meeting
+    # (ID=1425378, reported by the user as a hang followed by a bogus
+    # "invalid JSON" error): a page with no a.videolink and no YouTube
+    # link, but a completely standard accessibility "skip to content"
+    # anchor, used to recurse without bound -- urljoin() resolves
+    # "#mainContent" back to this exact page's own URL, detect_platform()
+    # classifies that URL as "legistar" again, and the fallback delegated
+    # to LegistarAssetFinder.resolve() on the same page it was already
+    # resolving, forever. Fixed at the root in base.find_platform_link()
+    # (skips any candidate resolving to the same URL as page_url) plus
+    # belt-and-suspenders here (exclude "legistar" too).
+    url = "https://columbus.legistar.com/MeetingDetail.aspx?ID=1425378"
+    html = (
+        '<html><body><a href="#mainContent" class="skip-to-content">Skip to main content</a>'
+        "<table><tr><td>Attachments</td></tr></table></body></html>"
+    )
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await LegistarAssetFinder().resolve(url)
+
+    assert result.platform == "legistar"
+    assert result.video_warnings == ["No video link found on this Legistar page."]

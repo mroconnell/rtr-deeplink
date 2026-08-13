@@ -6,6 +6,7 @@ import aiohttp
 
 from .base import AssetFinder
 from .models import AlternateTranscript, ResolvedMeeting, TranscriptSegment
+from ..utils import jurisdiction_enrich
 from ..utils.vtt_parser import (
     STRUCTURED_CAPTION_PARSERS,
     decode_vtt_bytes,
@@ -75,7 +76,15 @@ class CivicClerkAssetFinder(AssetFinder):
             title = event.get("eventName") or None
             date = (event.get("eventDate") or "")[:10] or None
             location = event.get("eventLocation") or {}
-            jurisdiction = ", ".join(p for p in (location.get("city"), location.get("state")) if p) or None
+            city = location.get("city")
+            state = location.get("state")
+            if city and not state:
+                # The API's own location.state is empty for some customers
+                # (unconfirmed how common -- no real example seen yet, see
+                # BACKLOG.md's "no-state jurisdiction audit") -- falls back
+                # to the same shared lookup every free-text adapter uses.
+                state = jurisdiction_enrich.lookup_city_state(city)
+            jurisdiction = ", ".join(p for p in (city, state) if p) or None
 
             video_url = media.get("videoUrl") or event.get("mediaStreamPath") or event.get("mediaSourcePathMp4")
             if not video_url:

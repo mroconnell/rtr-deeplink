@@ -77,6 +77,17 @@ async def test_resolve_missing_video_id_reports_no_video(monkeypatch):
     assert result.title == "Commissioners Court - Aug 04 2026"
 
 
+def test_extract_jurisdiction_fills_in_state_for_an_unambiguous_county():
+    # "Dallas County" itself is genuinely ambiguous (real counties by that
+    # name exist in AL, AR, IA, MO, *and* TX -- confirmed via
+    # app/utils/jurisdiction_data, matching the real fixture above staying
+    # state-less). Uses a nationally-unique county name instead to confirm
+    # the shared jurisdiction_enrich wiring is actually reached.
+    html = "<html><head><title>Napa County - Meeting Information</title></head></html>"
+    result = CivicWebAssetFinder._extract_jurisdiction(html, "https://napacounty.civicweb.net/Portal/x")
+    assert result == "Napa County, CA"
+
+
 def test_extract_meeting_id_from_real_url_shape():
     assert CivicWebAssetFinder._extract_meeting_id(MEETING_URL) == "2108"
     assert CivicWebAssetFinder._extract_meeting_id("https://example.civicweb.net/Portal/x") is None
