@@ -4037,6 +4037,76 @@ changelog of task titles.
 
 ## Platform coverage
 
+- **[Done 2026-08-13] New adapter: CHAMP/ChampDS (`play.champds.com`) —
+  confirmed live against 6 independent real customers before writing
+  any code, per this repo's own convention (the original investigation
+  had only checked Atlanta, GA).** Fetched real API responses directly
+  (`playapi.champds.com/{customer}/event/{id}`, a plain unauthenticated
+  JSON GET) for Auburn NY, Gillette WY, Marlborough MA, Saco ME, and
+  Worcester MA (found via a live web search for other real
+  `play.champds.com` URLs) — every one matched the original Atlanta
+  shape for title/date/jurisdiction, but split roughly evenly on video
+  availability: `MediaInfo.DownloadURL` (a direct MP4) present for
+  Atlanta and Auburn only; the other 4 (the actual majority) have only
+  `MediaInfo.VOD2` (a relative HLS path).
+
+  **Real, confirmed blocker found while verifying VOD2 playback, not
+  just theorized**: before wiring VOD2 in as `video_url`, checked
+  whether the reconstructed `.m3u8` URL is actually fetchable from this
+  site's own context. It isn't — `curl` confirmed
+  `securestream10.champds.com` enforces a strict
+  `Referer: https://play.champds.com/` check (a bare request, this
+  site's own real domain as referer, and an unrelated third-party
+  referer were all rejected with 406; only champds.com's own referer
+  worked). The master playlist's own sub-resources (`index-v1-a1.m3u8`,
+  then real `.ts` segments) are relative URLs on the same host, so the
+  same check would presumably block those too, not just the master file
+  — confirmed the block isn't scoped to one request. Embedding this URL
+  directly in `<video>`/hls.js on this site would send this site's own
+  referer, not champds.com's, and 406 in the browser at playback time,
+  not resolve time — the kind of "looks like it works, silently breaks
+  live" gap this repo's conventions exist to avoid. Decided *not* to
+  ship a link that would fail this way: `_extract_video()` only returns
+  `DownloadURL`-shaped MP4s; the VOD2 case still returns full
+  metadata/agenda info with an honest "no video found" instead. Making
+  VOD2 playable for real would need a genuine streaming reverse-proxy
+  (fetch server-side with the right header, rewrite every segment URL
+  inside the playlist to route through it) — real, scoped follow-up
+  work, not attempted this pass (see the still-open note in
+  `BACKLOG.md`, folded back into the closed entry there since the
+  adapter itself is done).
+
+  **Also found while building**: real per-item agenda text exists
+  (`Agenda.AgendaItems`, e.g. Gillette's real "A. Call to Order") but
+  with no per-item time offset, only ordering — same shape mismatch as
+  Legistar's own "Meeting Items" table (see the Legistar `agenda_link`
+  entry above), so not forced into `agenda_items`. `Agenda.Attachments`
+  (e.g. Marlborough's real "Packet" PDF) is a better fit for the
+  single-link `agenda_link` field instead — the real download path
+  (`/ATT/{customer}/{MediaFileLocation}/{MediaFileName}`) was found by
+  reading `play.champds.com`'s own `cds.event.js` (`getAttachmentPath()`)
+  rather than guessing, confirmed live with a real `curl` (200,
+  `Content-Type: application/pdf`, real `Content-Length`).
+  `MediaInfo.Captions` was empty on all 6 customers checked — no
+  positive example, so left unattempted, same "don't claim a caption
+  path works without a positive example" convention as CivicClerk/
+  eScribe.
+
+  **Verified three ways**: 9 new unit tests (real trimmed JSON fixtures,
+  not invented shapes) covering the direct-MP4 case, the
+  VOD2-deliberately-withheld case, agenda-link extraction, the
+  no-captions warning, and error paths; a real local resolve against
+  all 6 live customer URLs (confirmed title/jurisdiction/date/
+  video_url/agenda_link match expectations); direct `curl` verification
+  that Atlanta's MP4 download URL is genuinely playable (200, real
+  `Content-Length`) while Marlborough's VOD2 URL would 406 in this
+  site's context. Full suite green (625 tests). Also extended the
+  shared `tests/aiohttp_mock.py`'s `FakeResponse.json()` to accept
+  (and ignore) a `content_type` kwarg, matching real aiohttp's
+  `content_type=None` skip-check behavior — needed since ChampDS's real
+  API serves JSON as `Content-Type: text/html` (confirmed live), not
+  `application/json`, the first adapter here to hit that.
+
 - **[Done 2026-08-12] New adapter: Detroit, MI's Cablecast video portal —
   reversed an earlier "unsolvable, dead endpoint" call after being
   pushed back on, and it turned out to be genuinely solvable.** The

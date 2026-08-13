@@ -580,74 +580,23 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   *that* failure mode before committing to a "Maybe:" shape — not
   abandoned, just not enough evidence yet either way.
 
-- **CHAMP/ChampDS (`play.champds.com`) — new platform, not supported at
-  all today, flagged by the user 2026-08-12 via a real Atlanta, GA
-  example**
-  ([play.champds.com/atlantaga/event/1227](https://play.champds.com/atlantaga/event/1227),
-  a real "Committee on Council Meeting"). Confirmed why the resolver
-  can't find the embedded video: exactly the same shape as the Chicago
-  ELMS case just below — the video is injected client-side from a
-  separate JSON call, real server HTML has none of it
-  (`curl`'d directly, confirmed empty — every field on the page,
-  `#h3EventTitle`/`#h4EventDate`/the player itself, starts blank in the
-  markup and gets filled in by `cds.event.js` after load).
-
-  **Traced the real API, confirmed live, no headless browser needed** —
-  same URL as the page itself, just on a different host:
-  `https://playapi.champds.com/{customer}/event/{id}` (i.e.
-  `window.location.host` with `api.` spliced in before the last two
-  domain labels — `play.champds.com` → `playapi.champds.com`; see
-  `cds.common.js`'s `HOST = hosts[0] + 'api.' + hosts[1] + '.' + hosts[2]`
-  for the exact client-side logic this mirrors) returns a complete,
-  well-structured JSON payload, plain GET, no auth, no special headers:
-  - `Event.EventTitle` ("Committee on Council Meeting"),
-    `Event.EventDateTimeCustomerLocal` (real local date/time, already
-    customer-timezone-adjusted — no UTC conversion needed),
-    `Customer.CustomerName` ("Atlanta GA" — jurisdiction),
-    `Board.BoardName` ("Committee on Council" — the meeting body/type,
-    same kind of richer sub-classification flagged as missing from
-    Legistar above).
-  - **Two independent, both-confirmed-live ways to get real video**:
-    (1) `MediaInfo.DownloadURL` (e.g.
-    `/DOWNLOAD-MEDIA/atlantaga/eventmainmedia/{id}`, relative to
-    `play.champds.com`) — a direct, unauthenticated MP4 download,
-    confirmed 200 with a real `Content-Length`/`Content-Disposition` on
-    **two different event IDs** (1227 from this investigation, 1233 from
-    a second URL the user separately supplied mid-investigation) — this
-    is the simpler, more robust option, and probably what `video_format`
-    should map to (plain `mp4`, like every other direct-file case this
-    app already supports, no new player-integration work needed unlike
-    Chicago's Vimeo gap below).
-    (2) `MediaInfo.VOD2` (a relative HLS path, e.g.
-    `/VOD/event/AtlantaGA/1227/.../master.m3u8`) combined with
-    `ServicesAndMachineInfo["8"].URLBase` (e.g.
-    `https://securestream10.champds.com`) — confirmed this reconstruction
-    exactly matches the real URL the page's own player actually requests
-    (`vjs2026` player's own console log: `"USING VOD2! {clipURL:
-    https://securestream10.champds.com/VOD/event/Atlan.../master.m3u8}"`)
-    — a real `m3u8`, this app's already-supported format, but needs the
-    numbered `securestream{N}.champds.com` host read out of
-    `ServicesAndMachineInfo` per-customer rather than hardcoded (it's `7`
-    for regular playback services in this response, `10` specifically for
-    the VOD2/HLS pairing — not yet clear if that number is
-    customer-specific or fixed platform-wide).
-  - **Agenda items, if present, ride in the same JSON** under
-    `Agenda.AgendaItems` (per `cds.event.js`'s own
-    `if(data.Agenda && data.Agenda.AgendaItems)` check — no separate
-    endpoint) — **unconfirmed with a positive example**: this specific
-    Atlanta meeting has none (`Event.AgendaStyleMask: 0`, no `Agenda` key
-    in the response at all), so the real per-item shape (timestamped or
-    not?) is still unknown, same "flagged, not assumed" gap as CivicClerk/
-    eScribe's caption fields.
-
-  **Only one city checked so far (Atlanta, GA)** — per this repo's own
-  convention, worth confirming the `playapi.` host-splicing trick and the
-  JSON shape hold on a second, independently-run ChampDS customer site
-  before writing `champds.py` for real, not assuming one city
-  generalizes. Otherwise this is about as fleshed-out as a pre-build
-  investigation gets in this file — a real adapter here looks
-  straightforward (plain `aiohttp` JSON GET, no Cloudflare/JS-rendering
-  hurdle found, direct-mp4 option needs no new frontend work at all).
+- ~~**CHAMP/ChampDS (`play.champds.com`) — new platform, not supported at
+  all today**~~ **Built 2026-08-13 — full detail in `BACKLOG_DONE.md`.**
+  New `app/platforms/champds.py`, confirmed live against 6 independent
+  real customers. **Real, confirmed blocker found while building, not
+  just theorized**: `MediaInfo.VOD2`'s HLS URL (the *majority* real
+  case — 4 of 6 customers checked have no `DownloadURL` at all) sits
+  behind a strict `Referer: https://play.champds.com/` check on
+  `securestream10.champds.com` that this site's own browser requests
+  can't satisfy — confirmed live via `curl` with several different
+  referers, all rejected except champds.com's own. Only the direct-MP4
+  `DownloadURL` case (2 of 6 customers) is wired up to actually play;
+  the VOD2 case still gets full metadata + agenda link, just an honest
+  "no video found" instead of a link that would 406 in the browser. A
+  real streaming reverse-proxy (fetch server-side with the right
+  header, rewrite every segment URL in the playlist to route back
+  through it) would unblock the other 4 — real, scoped follow-up work,
+  not attempted this pass.
 
 - **Chicago's City Clerk ELMS (`chicityclerkelms.chicago.gov`) is a real,
   strong dedicated-adapter candidate — found 2026-08-10 while confirming

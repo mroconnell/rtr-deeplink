@@ -130,6 +130,13 @@ def detect_platform(url: str) -> str:
         # NC's confirmed Cablecast site uses a visibly different template
         # this adapter doesn't handle.
         return "cablecast"
+    if "champds.com" in netloc:
+        # CHAMP/ChampDS -- confirmed live 2026-08-13 against 6 independent
+        # real customers (Atlanta GA, Auburn NY, Gillette WY, Marlborough
+        # MA, Saco ME, Worcester MA), all sharing this exact
+        # play.champds.com domain with the customer as a path segment,
+        # not a subdomain -- see champds.py's own module docstring.
+        return "champds"
     if "auroratv.org" in netloc:
         # Aurora, CO's own Drupal-built council video site -- confirmed
         # live 2026-08-12, found during a Wave 2 platform-coverage pass
