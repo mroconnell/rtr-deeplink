@@ -533,126 +533,31 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   looks sufficient for direct video + real captions + timestamped agenda,
   better coverage than several already-shipped adapters manage.
 
-- **`generic_fallback.py`'s YouTube-embed branch never attempts *any*
-  page-level metadata backfill — a real, confirmed gap distinct from the
-  already-known yt-dlp/Render-IP-block issue, found via a real example
-  2026-08-12**: user praised the resolver's handling of an unsupported
-  site overall
-  ([/m/meeting-732f78](https://redtaperecordings.com/m/meeting-732f78),
-  original: [crrma.org/information/meetings/board/2025-11-12](https://www.crrma.org/information/meetings/board/2025-11-12),
-  El Paso's Camino Real Regional Mobility Authority) but flagged that the
-  result shows "Untitled meeting" with zero jurisdiction/date, which
-  "looks funny and clutters search" — asked for a better convention for
-  this case, even suggested pulling the video/channel name from YouTube,
-  or "grabbing the subdomain/url from the source or scraping the text of
-  the source."
+- **`generic_fallback.py`'s YouTube-embed branch had no page-level
+  metadata backfill, so CRRMA's meeting pages showed "Untitled meeting"
+  with no jurisdiction — fixed 2026-08-13, full detail in
+  `BACKLOG_DONE.md`.** A separate, real bug surfaced while re-verifying
+  the fix live: `YouTubeAssetFinder.resolve_video_id()` unconditionally
+  sets `jurisdiction=info.get("uploader")` (a channel name) whenever
+  yt-dlp succeeds — the same class of bug already fixed for PrimeGov,
+  just never addressed at the shared `youtube.py` level. Worth revisiting
+  whether `youtube.py` itself should stop setting jurisdiction from
+  `uploader` at all, rather than relying on each individual caller
+  (PrimeGov, now generic_fallback) to override it after the fact — LIMS
+  and any other direct YouTube-delegating adapter could have the same
+  latent gap, unconfirmed either way.
 
-  **Confirmed two separate, stacked causes, not one**:
-  1. `_extract_info()`'s yt-dlp call is blocked by YouTube's anti-bot
-     check from Render's IP (already documented, `youtube.py:78-113` —
-     this is the *existing*, harder infrastructure problem, not new here)
-     — so the channel/video-title metadata the user's first suggestion
-     wants genuinely isn't available today. Not re-opening that fight in
-     this entry.
-  2. **The real, easy gap**: when `generic_fallback.py` finds a YouTube
-     embed ([generic_fallback.py:145-157](app/platforms/generic_fallback.py:145-157)),
-     it delegates straight to `YouTubeAssetFinder.resolve_video_id()` and
-     does *nothing else* — no fallback to the source page's own `<title>`
-     tag, no URL-path parsing, nothing. Confirmed live what's sitting
-     right there, unused, on this exact example: CRRMA's own `<title>`
-     tag reads **"Camino Real Regional Mobility Authority | El Paso,
-     Texas"** (a real, usable jurisdiction, `curl`'d directly, no JS
-     needed) and the source URL's own path is
-     `/information/meetings/board/2025-11-12` — a real ISO-shaped date
-     and a real meeting-type word ("board"), sitting in the URL itself,
-     unparsed. Exactly the user's second suggestion, and it would work
-     here without any new network call — this data is already in hand
-     (the same `html`/`url` `generic_fallback.py` already fetched) by the
-     time `resolve()` gives up on a real title. Legistar's equivalent
-     fallback path already does something structurally similar
-     (`_extract_page_meeting_info()` reading the page's own `<title>`/RSS
-     as a metadata source when the delegated platform's own is missing/
-     bad) — same pattern, just never built for `generic_fallback.py`'s
-     YouTube branch specifically.
-  3. Both current YouTube-branch gaps compound: with #1 blocked, the
-     genuinely-known-good fallback (#2, unbuilt) is the only real path
-     to a usable title/jurisdiction here today.
-
-  **User's exact target output for this specific example, 2026-08-12** —
-  concrete enough to implement directly against, not just "do something
-  better": `Meeting name: Camino Real Regional Mobility Authority
-  11/12/2025` / `Jurisdiction: El Paso, TX`. Maps cleanly onto the raw
-  `<title>` tag confirmed above (`"Camino Real Regional Mobility
-  Authority | El Paso, Texas"`) split on `|`: the part before is the
-  body/org name (paired with the URL-path date for the title), the part
-  after is the jurisdiction. `"El Paso, Texas"` → `"El Paso, TX"` should
-  already fall out for free if this jurisdiction value gets run through
-  the existing `normalize_state_suffix()`
-  (`archive/utils/jurisdiction_format.py`, already applied to every
-  normal ingest via `_find_or_create_page()` in `archive/db/crud.py`)
-  rather than stored raw — not a new utility to write, just needs this
-  new fallback path to actually call it. Worth checking a second `{org} | {City, State}`-shaped
-  `<title>` on another real generic-fallback site before assuming this
-  exact split-on-`|` shape generalizes, same convention as everywhere
-  else in this file — CRRMA is the only confirmed example so far.
-
-  **Separately, a real UI/copy question, independent of whether #2 above
-  ever gets built**: what should render when metadata truly can't be
-  found by any method? Today's convention is a bare "Untitled meeting"
+  **Still open, a real UI/copy question, independent of the extraction
+  fix above**: what should render when metadata truly can't be found by
+  any method at all? Today's convention is a bare "Untitled meeting"
   (`meeting_page.html:98`'s dropdown and `meeting_list.html:90`'s browse
   listing both share the exact same `m.title or "Untitled meeting"`
   fallback) — user's suggestion: something more like "Temporary Name:
   meeting-732f78" that signals "we know this is incomplete" rather than
-  reading as broken/empty. Distinct from the extraction gap above — worth
-  deciding even if #2 closes most real cases, since some will always slip
-  through (a truly metadata-free source page, e.g. a bare unlabeled video
-  iframe with no page `<title>` and a non-date-shaped URL).
-
-  **Update 2026-08-13, still broken in prod, confirmed again with stronger
-  evidence — this is the next thing to actually build, not just study
-  further**: user re-tested the same
-  [/m/meeting-732f78](https://redtaperecordings.com/m/meeting-732f78) page
-  live in prod and it's still "Untitled meeting" with no jurisdiction (code
-  confirms #2 above was never implemented — no `title`/`jurisdiction`
-  handling exists anywhere in `generic_fallback.py` today, only the
-  original YouTube-delegate call). Re-`curl`'d all 5 known CRRMA board
-  URLs directly (the original 2025-11-12 one plus four more the user gave —
-  2026-05-13, 2026-04-08, 2026-03-11, 2026-01-28) and every single one
-  returns the exact same `<title>Camino Real Regional Mobility Authority |
-  El Paso, Texas</title>` — confirms the split-on-`|` shape is stable
-  across at least 5 real examples now, not just 1, closing the "worth
-  checking a second example" caveat above (for this exact site; still only
-  one *site* overall, per this file's usual convention of not
-  over-generalizing from one platform).
-
-  **New signal found this pass, richer than the `<title>` tag alone**: the
-  page body itself has a real, semantically-marked "Notice of meeting"
-  block — `<h1 id="notice-of-meeting">NOTICE OF MEETING</h1>` followed by
-  `<h2 id="november-12-2025-----900am">November 12, 2025 - 9:00am</h2>`
-  and a `<p>` reading *"A meeting of the CRRMA Board of Directors will be
-  held on Wednesday November 12, 2025, at 9:00am in the 2nd Floor Main
-  Conference Room of El Paso City Hall, located at 300 N. Campbell, El
-  Paso, Texas 79901."* — confirmed live via `curl`, present identically
-  (modulo the date) on all 5 URLs, and cross-confirmed by the user against
-  the linked agenda PDF too. This is a *better* jurisdiction/date source
-  than the `<title>` tag for this site specifically: it has the full
-  street address (useful if jurisdiction enrichment ever wants
-  address-level precision, not just city/state) and an unambiguous
-  same-page date independent of the URL's own `YYYY-MM-DD` path segment
-  (today's plan already reads the date from the URL path per point #2
-  above — this is a second, corroborating same-page source, not a
-  replacement).
-
-  **Naming preference, user's own words 2026-08-13**: whatever the meeting
-  title ends up being, "I'd expect it to have CRRMA in there somewhere" —
-  e.g. `"CRRMA Board of Directors"` or `"Camino Real Regional Mobility
-  Authority Board"` rather than just the bare org name from the `<title>`
-  tag. The Notice-of-meeting `<p>` text above already contains "CRRMA
-  Board of Directors" verbatim, so this naming preference and the new
-  signal solve each other — worth preferring that phrase (or a regex
-  extracting `"{ACRONYM} Board of Directors"`/`"{Org} Board"` from the
-  notice paragraph) over the bare `<title>`-derived org name when both are
-  available.
+  reading as broken/empty. Still relevant even with the extraction fix
+  in place, since some pages will always slip through (a truly
+  metadata-free source page, e.g. a bare unlabeled video iframe with no
+  page `<title>` and a non-date-shaped URL) — not decided or built.
 
 - **CHAMP/ChampDS (`play.champds.com`) — new platform, not supported at
   all today, flagged by the user 2026-08-12 via a real Atlanta, GA

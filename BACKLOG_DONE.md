@@ -591,6 +591,73 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-13] `generic_fallback.py`'s YouTube-embed branch now
+  backfills title/jurisdiction/date from the source page itself when
+  YouTube's own metadata comes back empty — closes the CRRMA
+  "Untitled meeting" gap, confirmed against 5 real board-meeting URLs.**
+
+  **Root cause, two stacked issues**: (1) YouTube's yt-dlp call is
+  blocked by anti-bot checks from Render's server IP (the existing,
+  documented infrastructure gap, `youtube.py`), so
+  `YouTubeAssetFinder.resolve_video_id()` degrades to a title-less,
+  jurisdiction-less `ResolvedMeeting` in production; (2)
+  `generic_fallback.py`'s YouTube-embed branch never attempted any
+  fallback of its own when that happened — confirmed live 2026-08-13 that
+  `redtaperecordings.com/m/meeting-732f78` still showed "Untitled
+  meeting" with no jurisdiction.
+
+  **What got built**: `GenericFallbackAssetFinder._backfill_metadata_from_page()`,
+  called after both the YouTube-delegation branch and the final
+  catch-all "nothing found" branch (both build a `ResolvedMeeting` that
+  can end up with no title). Confirmed live via `curl` against all 5
+  known real CRRMA board-meeting URLs (`crrma.org/information/meetings/
+  board/{date}`, 2025-11-12 plus four more): every one carries the exact
+  same `<title>Camino Real Regional Mobility Authority | El Paso,
+  Texas</title>` shape (splittable on `|` into org name + jurisdiction)
+  and an identical `<h1 id="notice-of-meeting">`/body-paragraph block
+  naming the governing body more specifically ("CRRMA Board of
+  Directors" — matches the user's own stated naming preference, "I'd
+  expect it to have CRRMA in there somewhere"). Title prefers the
+  notice-block phrase over the bare `<title>`-derived org name; date
+  falls back to a `YYYY-MM-DD` segment already present in the source
+  URL's own path. Jurisdiction is stored as raw text ("El Paso, Texas"),
+  not pre-abbreviated — `normalize_state_suffix()` already runs on every
+  ingest server-side, so abbreviating here too would be redundant, not
+  incorrect. Deliberately scoped to this one confirmed page shape, not
+  generalized to other generic-fallback sites without their own
+  confirmed example, same convention as every other adapter in this
+  repo.
+
+  **A second, separate real bug found while live-verifying the fix**:
+  `redtaperecordings.com/m/meeting-732f78` already had a *title* (from an
+  earlier successful local yt-dlp resolve during this session's own
+  production backfill run, which used a residential IP yt-dlp isn't
+  blocked from) — but its jurisdiction was "Camino Real Regional
+  Mobility Authority," a YouTube channel *uploader* name, not a real
+  jurisdiction. Root cause: `YouTubeAssetFinder.resolve_video_id()`
+  unconditionally sets `jurisdiction=info.get("uploader")` whenever
+  yt-dlp succeeds (`youtube.py`) — the exact same class of bug already
+  fixed for PrimeGov (which unconditionally overrides YouTube's uploader
+  for this reason), just never addressed for `generic_fallback.py`'s
+  YouTube branch. Fixed by making jurisdiction backfill unconditional
+  (always prefers the page's own value when found, regardless of whether
+  `resolved.jurisdiction` is already set) while keeping title backfill
+  gated on emptiness only (a real YouTube-derived title is legitimate and
+  shouldn't be overridden) — since this branch's only possible delegate
+  is `YouTubeAssetFinder`, there's no other legitimate source
+  `resolved.jurisdiction` could hold here.
+
+  **Verified three ways**: 4 new unit tests (613 total passing) covering
+  the DownloadError-blocked case, the uploader-override case, and two
+  pure-function edge cases (bare title-tag fallback without a notice
+  block, and a full no-op when the title isn't pipe-shaped at all); a
+  real local resolve against the live `crrma.org` URL (residential
+  network, yt-dlp succeeds) confirming `jurisdiction == "El Paso, Texas"`
+  and the real YouTube title/date pass through unmodified.
+
+  **Still open**: the "what to show when nothing at all can be found"
+  UI/copy question — see the still-open `BACKLOG.md` entry.
+
 - **[Done 2026-08-13] Four more real jurisdiction bugs reported by the
   user after reviewing the production backfill's results — the
   SLC/Holladay PrimeGov bug, a state-casing bug (Colorado Springs), and 8
