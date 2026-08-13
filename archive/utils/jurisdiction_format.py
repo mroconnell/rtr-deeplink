@@ -32,20 +32,36 @@ US_STATE_NAME_TO_ABBR = {
 }
 
 
+_VALID_STATE_ABBRS = set(US_STATE_NAME_TO_ABBR.values())
+
+
 def normalize_state_suffix(jurisdiction: Optional[str]) -> Optional[str]:
     """"San Diego, California" -> "San Diego, CA". Only fires when the
     text after the *last* comma is exactly a recognized full state name
-    (case-insensitive) -- already-abbreviated ("Dublin, CA"), state-less
-    ("Illinois General Assembly"), or unrecognized trailing text all pass
-    through unchanged.
+    (case-insensitive) -- state-less ("Illinois General Assembly") or
+    unrecognized trailing text passes through unchanged.
+
+    Also re-cases an already-2-letter suffix that's a real state
+    abbreviation but not uppercase (e.g. "Colorado Springs, Co") -- real
+    bug found live 2026-08-13: Colorado Springs' own Granicus RSS channel
+    title carries the state as "Co", which the full-name lookup above
+    never catches (it's not "colorado"), so a mis-cased abbreviation
+    would otherwise ride through both this function and
+    `format_jurisdiction_display()` untouched, since neither expects an
+    adapter's own source text to already be state-shaped but wrong-cased.
+    An already-correct "Dublin, CA" is a no-op here (`.upper()` on an
+    already-uppercase string).
     """
     if not jurisdiction or "," not in jurisdiction:
         return jurisdiction
     prefix, _, suffix = jurisdiction.rpartition(",")
-    abbr = US_STATE_NAME_TO_ABBR.get(suffix.strip().lower())
-    if not abbr:
-        return jurisdiction
-    return f"{prefix.strip()}, {abbr}"
+    suffix = suffix.strip()
+    abbr = US_STATE_NAME_TO_ABBR.get(suffix.lower())
+    if abbr:
+        return f"{prefix.strip()}, {abbr}"
+    if len(suffix) == 2 and suffix.upper() in _VALID_STATE_ABBRS and suffix != suffix.upper():
+        return f"{prefix.strip()}, {suffix.upper()}"
+    return jurisdiction
 
 
 _DROPPED_DISPLAY_PREFIXES = ("The City of ", "City of ", "City ")

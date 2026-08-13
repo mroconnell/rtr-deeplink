@@ -86,7 +86,7 @@ async def test_resolve_falls_back_to_docket_pdf_date_when_page_and_rss_have_none
         result = await GranicusAssetFinder().resolve(url)
 
     assert result.date == "2025-04-02"
-    assert result.jurisdiction == "City of Alexandria"
+    assert result.jurisdiction == "City of Alexandria, VA"
 
 
 async def test_resolve_fills_in_state_for_a_real_unambiguous_city():
