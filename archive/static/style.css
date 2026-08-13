@@ -777,6 +777,26 @@ mark.search-match.current { background: #f97316; color: #fff; }
 .about-actions { padding-left: 1.25rem; }
 .about-actions li { margin-bottom: 0.5rem; }
 
+/* /coverage's "By platform"/"Custom Platforms" sections group several
+   example rows (crud.py's _select_examples()) under one platform-name
+   heading -- .meeting-list/.calendar-candidate/.meeting-result-row above
+   already do the per-example row styling (same classes /meetings uses),
+   this just adds the small group label sitting above them and spacing
+   between one platform's group and the next. */
+.platform-groups { margin-top: 1rem; }
+.platform-group { margin-bottom: 1.75rem; }
+.platform-group:last-child { margin-bottom: 0; }
+.platform-group-label {
+  color: var(--primary);
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem;
+}
+.platform-group-empty {
+  color: var(--muted);
+  margin: 0;
+}
+
 /* --- Footer / newsletter signup --- */
 .site-footer {
   margin-top: 3rem;

@@ -62,6 +62,14 @@ def test_coverage_page_renders_example_with_transcript_badge(monkeypatch):
                 {
                     "platform": "granicus",
                     "label": "Granicus",
+                    "examples": [
+                        {
+                            "slug": "coverage-test-slug",
+                            "title": "Coverage Test Meeting",
+                            "jurisdiction": "City of Coverage Test",
+                            "has_transcript": True,
+                        }
+                    ],
                     "example": {
                         "slug": "coverage-test-slug",
                         "title": "Coverage Test Meeting",
@@ -70,9 +78,11 @@ def test_coverage_page_renders_example_with_transcript_badge(monkeypatch):
                     },
                     "page_count": 1,
                 },
-                {"platform": "viebit", "label": "Viebit", "example": None, "page_count": 0},
+                {"platform": "viebit", "label": "Viebit", "examples": [], "example": None, "page_count": 0},
             ],
-            "custom": [{"platform": "lims", "label": "Minneapolis LIMS", "example": None, "page_count": 0}],
+            "custom": [
+                {"platform": "lims", "label": "Minneapolis LIMS", "examples": [], "example": None, "page_count": 0}
+            ],
         }
 
     monkeypatch.setattr(crud, "get_platform_coverage", _fake_coverage)

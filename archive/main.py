@@ -655,11 +655,22 @@ async def coverage(request: Request):
     )
 
 
+
+# Public, indexable static pages -- not MeetingPage rows, so they have no
+# real lastmod and aren't produced by list_all_page_slugs(). Deliberately
+# excludes /account/saved, /alerts/unsubscribe, /meeting (already
+# robots.txt-disallowed as the ephemeral, unarchived resolver page), and
+# every /admin/* route -- none of those are public content.
+_SITEMAP_STATIC_PATHS = ["/", "/about", "/coverage", "/meetings"]
+
+
 @app.get("/sitemap.xml")
 async def sitemap():
     base = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
     entries = await crud.list_all_page_slugs()
-    body = templates.get_template("sitemap.xml.jinja").render(base_url=base, entries=entries)
+    body = templates.get_template("sitemap.xml.jinja").render(
+        base_url=base, entries=entries, static_paths=_SITEMAP_STATIC_PATHS
+    )
     return Response(content=body, media_type="application/xml")
 
 

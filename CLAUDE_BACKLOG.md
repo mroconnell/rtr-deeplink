@@ -259,3 +259,103 @@ request, deliberately not built as part of it — see `BACKLOG_DONE.md`'s
   phrase match against agenda text would miss most real discussion,
   which paraphrases rather than reads the agenda aloud) and whether this
   needs an LLM pass over the transcript or something simpler.
+
+## SEO / LLM-discoverability
+
+From a full-site audit run 2026-08-13, prompted by the user asking what
+would help this site "stand out for our target users doing search engine
+search or LLM research" — both classic SEO (ranking for queries like
+"watch [city] council meeting") and AI-agent discoverability (an LLM-powered
+browsing/research tool finding, citing, or recommending this tool). Audited
+directly against the real templates/routes, not assumed. Two items already
+confirmed working and not re-flagged here: `meeting_page.html`'s canonical
+`<link>`/`og:url` (already correctly points at the bare `/m/{slug}` URL even
+when viewing a non-default transcript version) and its existing `VideoObject`
+JSON-LD block. `robots.txt` already allows GPTBot/ClaudeBot/PerplexityBot/
+Google-Extended by default (`User-agent: *`, no bot-specific blocks) — no
+crawler-access problem to fix, only documentation to optionally add.
+
+**Tier 1 — highest value, matches this product's actual differentiator:**
+
+- **`Clip`/`hasPart` "key moments" JSON-LD on the existing `VideoObject`,
+  sourced from `page.agenda_items`.** Google's video structured-data spec
+  supports an array of `Clip` objects (`name`, `startOffset`, a timestamped
+  `url`) that produce clickable "key moments" directly in a search result —
+  this maps exactly onto `agenda_items` (already `{start, text}` records)
+  and onto this product's own core pitch (deep-linking to a moment).
+  Template-only; reuse the existing `unreliable_timestamps` guard
+  (`meeting_page.html:242`) to skip emitting `Clip` entries when a source's
+  timestamps aren't trustworthy, same as the visible UI already does.
+- **A real `thumbnailUrl`, reused for `og:image`/Twitter Card.** This is the
+  same root cause as `BACKLOG.md`'s open Google Search Console entry
+  (thumbnailUrl missing — blocks video rich-result eligibility) *and* this
+  file's own existing "Social share previews with an image" item above
+  (Growth mechanics) — one fix serves both; don't build twice. Cheapest
+  first slice: YouTube-backed pages can use YouTube's own free thumbnail
+  URLs (`i.ytimg.com/vi/{id}/hqdefault.jpg`) with zero generation work;
+  direct mp4/m3u8 sources would need real `ffmpeg` frame extraction (not a
+  new dependency category — `ffprobe` is already in the transcription-
+  feasibility pipeline).
+- **ISO-8601 timezone on `uploadDate`.** Second half of the same Search
+  Console alert (flagged as non-critical). Real per-adapter time-of-day
+  capture is a bigger, multi-adapter lift — `BACKLOG.md`'s WCAG-markup
+  research entry found only Portland.gov actually exposes real
+  time-of-day among 7 real government sites checked, so it won't be
+  available broadly. Cheaper interim option: emit `date + "T00:00:00Z"`
+  instead of a bare date string, at the cost of not being literally
+  accurate — flagging the tradeoff rather than deciding it here.
+
+**Tier 2 — solid, low-cost, template-only:**
+
+- **`<link rel="canonical">` on `/meetings` and `/coverage`.** Neither has
+  one today despite `public_base_url` already being a Jinja global. Without
+  it, `/meetings`' seven independent query params (`q`, `jurisdiction`,
+  `date_from`, `date_to`, `fuzzy`, `has_agenda`, `has_transcript`) create
+  real duplicate-content surface area. Canonicalize every filtered variant
+  to the bare unfiltered URL.
+- **`Event` JSON-LD alongside the existing `VideoObject`** on
+  `meeting_page.html` — `name`/`startDate`/`jurisdiction` are all fields
+  already on the page, a meeting genuinely is an `Event`.
+- **`<meta name="description">` on `app/templates/index.html` and
+  `about.html`.** Currently empty on both — `base.html` defines
+  `{% block meta %}{% endblock %}` but neither homepage nor about page fills
+  it in, despite both being real indexable pages.
+
+**Tier 3 — lower priority / more experimental:**
+
+- **`llms.txt`.** Research finding, not assumption: adoption sits around
+  8-10% of major sites, but AI search crawlers (ChatGPT, Perplexity, Claude)
+  essentially don't fetch it in practice, and its presence doesn't correlate
+  with being cited more — consensus framing is "low-cost, low-yield bet,"
+  not a ranking lever. Where it *does* get used is dev-tooling agents
+  (Cursor, Claude Code) pointed at documentation sites, which isn't this
+  product's shape. If built at all, frame it as a machine-readable
+  navigation aid for an agent trying to *use* the tool on a visitor's
+  behalf (site shape, URL patterns like `/m/{slug}`), not an SEO play —
+  set expectations accordingly.
+- **Semantic `<time datetime="...">` on visible transcript/agenda
+  timestamps** (currently plain `<a>`/`<span>` text like `[12:34]`). Cheap,
+  template-only, and directly mirrors the WCAG-driven pattern `BACKLOG.md`'s
+  own accessibility-standards research already found valuable on
+  Portland.gov — applying the same discipline to this site's own markup.
+- **Explicit AI-crawler naming in `robots.txt`.** Already permissive via
+  `User-agent: *`; this would only add documentation value, not function.
+
+**Considered and explicitly rejected, so a future pass doesn't re-litigate:**
+
+- **`GovernmentOrganization` markup describing the jurisdiction.** Real
+  conflict with this app's own documented spoofing/trust-risk concerns
+  (`BACKLOG.md`'s trust & safety section already flags that an unverified
+  `generic_fallback` page could become "a seemingly-legitimate, SEO-indexed
+  permanent page under a real-sounding jurisdiction name") — marking up the
+  jurisdiction itself as a `GovernmentOrganization` would actively worsen
+  that risk. If ever used, it should describe the actual verified
+  publisher/platform, never the jurisdiction, and never on a
+  `generic_fallback`/`noindex` page.
+- **`BroadcastEvent`.** For live-streamed content only; this product is
+  archived/on-demand playback of past meetings.
+- **`Legislation`/`GovernmentPermit` schema types.** No matching fields
+  anywhere in the real `MeetingPage` data model (no bill numbers, no
+  legislative text) — would be inventing structure that doesn't exist.
+- **`rel="next"`/`rel="prev"` pagination on `/meetings`.** Google
+  deprecated using this signal for indexing in 2019; not worth building.

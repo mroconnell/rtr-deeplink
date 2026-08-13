@@ -704,7 +704,7 @@ DIRECT_PLATFORMS: dict[str, str] = {
     "swagit": "Swagit",
     "viebit": "Viebit",
     "escribe": "eScribe",
-    "cablecast": "Cablecast (Detroit, MI)",
+    "cablecast": "Cablecast",
 }
 
 # Platforms grouped under a single "Custom" row on /coverage -- each is a
@@ -733,6 +733,45 @@ CUSTOM_PLATFORMS: dict[str, str] = {
 # exists. See coverage.html's own footer note.
 _YOUTUBE_DELEGATING_CUSTOM_PLATFORMS = frozenset({"lims", "slc"})
 
+# How many example rows to show per platform on /coverage. Granicus gets
+# more because it's this app's most common platform by a wide margin (see
+# README's "Supported platforms" table ordering) -- showing several cities
+# under it communicates real vendor breadth in a way a single example
+# doesn't. Every other DIRECT_PLATFORMS/CUSTOM_PLATFORMS key uses the
+# default.
+_DEFAULT_EXAMPLE_COUNT = 3
+_PLATFORM_EXAMPLE_COUNTS: dict[str, int] = {"granicus": 5}
+
+
+def _select_examples(examples: list[dict], count: int) -> list[dict]:
+    """Pick up to `count` examples out of all real examples found for a
+    platform, preferring (1) a different jurisdiction each time, so a
+    multi-example row demonstrates real multi-city breadth instead of
+    several meetings from the same one city, then (2) has_transcript=True
+    within that first pass, so the examples shown make for a convincing
+    demo. Never fabricates rows -- a platform with only 1-2 real
+    jurisdictions (most CUSTOM_PLATFORMS entries are single-city scrapers
+    by nature) just returns however many real examples actually exist.
+    """
+    if not examples:
+        return []
+    ordered = sorted(examples, key=lambda e: not e["has_transcript"])
+    seen_jurisdictions: set = set()
+    picked: list[dict] = []
+    leftover: list[dict] = []
+    for e in ordered:
+        j = e["jurisdiction"]
+        if j is None or j not in seen_jurisdictions:
+            if j is not None:
+                seen_jurisdictions.add(j)
+            picked.append(e)
+        else:
+            leftover.append(e)
+        if len(picked) >= count:
+            return picked[:count]
+    picked.extend(leftover)
+    return picked[:count]
+
 
 def _entry_platform_from_source_url(source_url_normalized: str) -> Optional[str]:
     """Minimal, deliberately duplicated subset of app/platforms/base.py's
@@ -754,15 +793,26 @@ def _entry_platform_from_source_url(source_url_normalized: str) -> Optional[str]
 
 
 def _coverage_row(key: str, label: str, examples: list[dict]) -> dict:
-    example = next((e for e in examples if e["has_transcript"]), examples[0] if examples else None)
-    return {"platform": key, "label": label, "example": example, "page_count": len(examples)}
+    count = _PLATFORM_EXAMPLE_COUNTS.get(key, _DEFAULT_EXAMPLE_COUNT)
+    selected = _select_examples(examples, count)
+    return {
+        "platform": key,
+        "label": label,
+        "examples": selected,
+        # Kept for back-compat with any caller/test that reads a single
+        # "best" example (same has_transcript-preferred pick as before) --
+        # coverage.html itself now renders `examples` (plural).
+        "example": selected[0] if selected else None,
+        "page_count": len(examples),
+    }
 
 
 async def get_platform_coverage() -> dict:
-    """Grouped rows for the public /coverage page -- a real example
-    permanent page (preferring one with a good transcript, for a more
-    convincing demo) plus a transcript-availability checkmark per
-    platform, not aggregate stats. Returns {"direct": [...], "custom":
+    """Grouped rows for the public /coverage page -- one or more real
+    example permanent pages per platform (see _PLATFORM_EXAMPLE_COUNTS),
+    preferring ones with a good transcript and distinct jurisdictions for
+    a more convincing demo, plus a transcript-availability checkmark per
+    example, not aggregate stats. Returns {"direct": [...], "custom":
     [...]}, matching how coverage.html renders "Custom" as one grouped
     section with its own sub-rows rather than a flat list.
 

@@ -38,59 +38,47 @@
     </div>
 
     <h2 style="margin-top: 2.5rem;">By platform</h2>
-    <p>The same list, grouped by the platform we read video and transcripts from — helpful if you already know your city's vendor.</p>
-    <div class="meeting-list">
-      {% for row in coverage.direct %}
-      <div class="calendar-candidate meeting-result-row">
-        <div class="calendar-candidate-main">
-          {% if row.example %}
-          <a href="/m/{{ row.example.slug }}">{{ row.label }}</a>
-          <span class="calendar-candidate-date">
-            {{ row.example.title or "Untitled meeting" }}
-            {%- if row.example.jurisdiction %} &middot; {{ row.example.jurisdiction|jurisdiction_display }}{% endif -%}
-          </span>
+    <p>Below are real, working examples grouped by the video platform that hosts them — Granicus, CivicClerk, Swagit, Viebit, eScribe, and Cablecast — so you can confirm your city's meeting software is already supported (including calendar/agenda tools like Legistar and PrimeGov that hand off to one of these — see "What about Platform XYZ?" below) before you paste a link of your own.</p>
+
+    {% macro platform_group(row) %}
+    <div class="platform-group">
+      <h3 class="platform-group-label">{{ row.label }}</h3>
+      {% if row.examples %}
+      <div class="meeting-list">
+        {% for ex in row.examples %}
+        <div class="calendar-candidate meeting-result-row">
+          <div class="calendar-candidate-main">
+            <a href="/m/{{ ex.slug }}">{{ ex.title or "Untitled meeting" }}</a>
+            <span class="calendar-candidate-date">
+              {%- if ex.jurisdiction %}{{ ex.jurisdiction|jurisdiction_display }}{% endif -%}
+            </span>
+          </div>
+          {% if ex.has_transcript %}
+          <span class="transcript-badge" title="A transcript is available for this meeting">&#10003; Transcript</span>
           {% else %}
-          <span>{{ row.label }}</span>
-          <span class="calendar-candidate-date">Supported, but no example archived yet</span>
+          <span class="transcript-badge transcript-badge-placeholder" aria-hidden="true">&#10003; Transcript</span>
           {% endif %}
         </div>
-        {% if row.example and row.example.has_transcript %}
-        <span class="transcript-badge" title="A transcript is available for this meeting">&#10003; Transcript</span>
-        {% else %}
-        <span class="transcript-badge transcript-badge-placeholder" aria-hidden="true">&#10003; Transcript</span>
-        {% endif %}
+        {% endfor %}
       </div>
-      {% endfor %}
+      {% else %}
+      <p class="platform-group-empty">Supported, but no example archived yet</p>
+      {% endif %}
+    </div>
+    {% endmacro %}
+
+    <div class="platform-groups">
+      {% for row in coverage.direct %}{{ platform_group(row) }}{% endfor %}
     </div>
 
     <h2 style="margin-top: 2rem;">Custom Platforms</h2>
     <p>Many cities, counties, and states have built internal tools or unique combinations of vendors, and we sort of have to handle them uniquely. Examples include:</p>
-    <div class="meeting-list">
-      {% for row in coverage.custom %}
-      <div class="calendar-candidate meeting-result-row">
-        <div class="calendar-candidate-main">
-          {% if row.example %}
-          <a href="/m/{{ row.example.slug }}">{{ row.label }}</a>
-          <span class="calendar-candidate-date">
-            {{ row.example.title or "Untitled meeting" }}
-            {%- if row.example.jurisdiction %} &middot; {{ row.example.jurisdiction|jurisdiction_display }}{% endif -%}
-          </span>
-          {% else %}
-          <span>{{ row.label }}</span>
-          <span class="calendar-candidate-date">Supported, but no example archived yet</span>
-          {% endif %}
-        </div>
-        {% if row.example and row.example.has_transcript %}
-        <span class="transcript-badge" title="A transcript is available for this meeting">&#10003; Transcript</span>
-        {% else %}
-        <span class="transcript-badge transcript-badge-placeholder" aria-hidden="true">&#10003; Transcript</span>
-        {% endif %}
-      </div>
-      {% endfor %}
+    <div class="platform-groups">
+      {% for row in coverage.custom %}{{ platform_group(row) }}{% endfor %}
     </div>
 
     <h2 style="margin-top: 2.5rem;">What about Platform XYZ?</h2>
-    <p>Some cities use a calendar/agenda tool (Legistar, CivicPlus, PrimeGov, CivicWeb) that itself just points at one of the platforms above rather than hosting video directly — those work too, they just aren't their own row here.</p>
+    <p>Legistar, CivicPlus, PrimeGov, and CivicWeb aren't in the list above because none of them host video directly — they're calendar and agenda front-ends that hand the actual recording off to another platform. In practice: Legistar and CivicPlus meetings are almost always hosted on Granicus, while PrimeGov and CivicWeb meetings are almost always embedded straight from YouTube. So if your city runs Legistar, CivicPlus, PrimeGov, or CivicWeb, paste the meeting page link anyway — we follow it through to the real Granicus recording or YouTube embed underneath and transcribe it there.</p>
 
     <h2 style="margin-top: 2.5rem;">What about YouTube?</h2>
     <p>A lot of government agencies host their recordings on YouTube, which actually does a good job with transcripts and deep links already. If you're in a hurry working with a YouTube-embedded hearing, we encourage you to use YouTube's own built-in transcript and deep-link features — that's why YouTube isn't listed as its own platform above. Where a government page embeds or links a YouTube video (like the "Custom" platforms above), we'll happily read it for you; for a video pasted straight from youtube.com, YouTube's own tools are usually the faster path.</p>
