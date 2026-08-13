@@ -1207,6 +1207,80 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   a Wayne-County-specific patch — but only one example exists so far,
   so not worth generalizing yet.
 
+- **Sacramento County, CA's own agenda site
+  (`agendanet.saccounty.gov`) — user-reported 2026-08-13, a third real
+  customer of the same "ViewMeeting?id=X&doctype=Y" agenda-management
+  product this file already flags a gap for on two other counties'
+  hosted domains, plus one genuinely new, cheap signal.** Real example:
+  [agendanet.saccounty.gov/BoardofSupervisors/Meetings/ViewMeeting?id=10231&doctype=1](https://agendanet.saccounty.gov/BoardofSupervisors/Meetings/ViewMeeting?id=10231&doctype=1)
+  (calendar page:
+  [saccounty.gov/us/en/countywide-calendar.html](https://www.saccounty.gov/us/en/countywide-calendar.html#gsc.tab=0)).
+  **Confirmed live in prod
+  ([redtaperecordings.com](https://redtaperecordings.com)): "Untitled
+  meeting," no video ("we couldn't find a video on this page
+  automatically") — but the agenda link *is* found correctly** ("We
+  think we found an agenda here:
+  .../Documents/Downloadfile/BOARD_OF_SUPERVISORS_10231_Agenda_Packet_8_11_2026_9_30_00_AM.pdf",
+  via `_find_agenda_link()`'s existing "any `<a>` containing 'agenda'"
+  scan) — so this is a narrower gap than the Wayne County entry above,
+  not a total blank.
+
+  Unlike Wayne County, **the fetch itself is not blocked** — `curl` with
+  the same UA `generic_fallback.py` sends gets a clean 200 with the full
+  page. And unlike a bot-block, **the real video is right there in the
+  static HTML**: a JW Player `file:` pointing at
+  `https://d2fdkm9wl77cjf.cloudfront.net/mcvod/mediacache/amlst:.../
+  playlist.m3u8?instance=1&amp;token=...` — same `mcvod/mediacache`
+  CloudFront shape, same broken `&amp;` (undecoded HTML entity) in the
+  query string, and the same `/Meetings/ViewMeeting?id=X&doctype=Y` +
+  `/Meetings/ViewMeetingAgenda?meetingId=X&type=...` URL/JS-function
+  shape (`loadAgendaDocument()`, `g_isAccessible`,
+  `switchAccessibleView()`) as the other two counties' OnBase Agenda
+  Online pages flagged elsewhere in this file — a third real customer
+  of what looks like the same underlying product, this time deployed on
+  the county's own domain with no Hyland branding anywhere in the
+  rendered page (confirmed: no "Hyland"/"OnBase" string anywhere in the
+  static HTML, including the footer, which is empty), so domain/footer
+  text alone won't be enough to detect this vendor generically — the
+  URL-path shape and JS function names are the more reliable fingerprint
+  across all three. Video not showing in prod despite this matches the
+  same unresolved "not yet isolated" gap already logged for the other
+  two counties, not a new root cause.
+
+  **One new, cheap, and genuinely different signal found on this page:**
+  real per-meeting title/date text sits in the `title` attribute of the
+  *exact same* `<a>` link `_find_agenda_link()` already successfully
+  finds and reports —
+  `title="View Agenda Packet for BOARD OF SUPERVISORS BOARD OF
+  SUPERVISORS MEETING on 8/11/2026 9:30:00 AM"`. Nothing currently reads
+  it. This is a different (and easier) case than the Tarrant/Sebastopol
+  metadata gaps logged above, which all need a *new* place to look —
+  here the link is already being scanned for the agenda itself, so
+  reading its `title` attribute as a title/date backfill needs no new
+  fetch or pattern, just checking one attribute on a match
+  `_find_agenda_link()` already has in hand. The county/body name
+  ("Sacramento County") itself would still need to come from somewhere
+  else (the `<title>` tag is only the generic, non-per-meeting
+  "Sacramento County Board of Supervisors Meetings," same category as
+  Tarrant's generic `<title>`) — the richer per-meeting agenda header
+  text ("AGENDA / BOARD OF SUPERVISORS / 700 H STREET SUITE 1450 /
+  SACRAMENTO, CA 95814 / TUESDAY / AUGUST 11, 2026") only appears after
+  `loadAgendaDocument()` runs on window load, confirmed absent from the
+  raw static HTML — same "genuinely renders client-side" limitation
+  already noted for these vendor pages elsewhere in this file, not a
+  new gap on its own.
+
+  **Also noted, not investigated further:** the page's own JS defines
+  `itemEventPoints`/`sectionEventPoints` objects mapping agenda item and
+  section IDs to numeric video-timestamp offsets — the vendor's own
+  agenda-item deep-link mechanism, already built client-side. Not
+  relevant to this specific gap, but worth remembering if per-agenda-item
+  deep linking is ever prioritized (see the Tarrant County accordion-agenda
+  entry above for a similar structured-agenda opportunity).
+
+  Not fixed this pass — logged per this repo's "new bugs/gaps found
+  while working go in BACKLOG.md" convention.
+
 ## Archive roadmap
 
 - **"Feed cities" — should this app ever synthesize its own meeting
