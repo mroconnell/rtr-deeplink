@@ -591,6 +591,59 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-13] "Save this search" is now a real Save/Unsave
+  toggle with a visual confirmation cue, plus two stale backlog entries
+  corrected after live investigation showed their underlying bugs no
+  longer exist (one never did).**
+
+  **Investigation first, before building anything**: the two
+  `/meetings` Save-button bugs the user asked about turned out to already
+  be resolved. (1) Live-checked as a genuinely signed-out visitor on both
+  `/meetings` and a real `/m/*` page — neither Save button renders at
+  all; `git log -S "if active_account"` confirmed the `{% if
+  active_account %}` gating on both templates has been in place since the
+  very first accounts-phase commits, not added later, so the original
+  "renders for every visitor" premise was wrong from when it was written.
+  (2) The stale-search-value bug (saving whatever was last *applied*
+  instead of the just-typed, unsubmitted text) was already fixed
+  2026-08-11 — `archive/static/meeting_list.js`'s `isStale()` disables
+  Save the moment the box/filters diverge from what's actually applied,
+  predating this backlog entry's own write-up. `BACKLOG.md` corrected to
+  reflect both.
+
+  **What was actually still open and got built**: the Save/Unsave toggle
+  itself, per the user's own brainstormed design (turn "Save this search"
+  into "Unsave search" immediately after a successful save, revert the
+  moment the box/filters change again) plus a visual confirmation cue —
+  user's explicit direction: reuse the exact "pop up and glow" tape-deck
+  cue already built for `#transcribeToggle` (`.pointed-to`/
+  `cassette-btn-pop` in `style.css`) rather than invent a new visual
+  language, "to stick to across the site until we go for a full redesign
+  one day."
+
+  `archive/static/meeting_list.js`'s `wireSaveSearchButton()`: tracks the
+  returned `saved_item_id` from a successful save, reuses the same
+  `/api/account/unsave-search` endpoint `saved_items.js` already calls
+  from `/account/saved` for the unsave click, and — a real correctness
+  fix, not just cosmetic — resets back to "Save this search" the instant
+  `isStale()` goes true again, since a stale "Unsave search" label would
+  otherwise unsave the *old* search using an id that no longer
+  corresponds to what's on screen. In-session only (doesn't check the
+  server for a pre-existing matching saved search on page load) — matches
+  the user's own stated scope of "immediately after a successful save,"
+  not a fuller "is this exact search already saved" feature.
+
+  **Verified via a standalone browser harness** (real DOM structure +
+  real CSS + the real JS file, `fetch` mocked to avoid needing a live
+  Clerk session) rather than skipped for lack of live auth: save → button
+  flips to "Unsave search," correct `saved_item_id` threaded through;
+  unsave → reverts cleanly; editing the search box after a save reverts
+  the button to disabled "Save this search" *and* clears the stale
+  "Saved ✓" status text (a small additional fix caught during this same
+  verification pass — the status message used to linger next to the
+  reverted button, reading as if it still applied). Full suite green (614
+  tests, no Python touched by this change).
+
 - **[Done 2026-08-13] `civicweb.py` no longer lets YouTube's `uploader`
   field leak through as jurisdiction when the page's own `<title>`
   extraction doesn't match.** Found while auditing every direct
