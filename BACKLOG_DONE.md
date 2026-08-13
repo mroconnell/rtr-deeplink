@@ -591,6 +591,64 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-13] Four more real jurisdiction bugs reported by the
+  user after reviewing the production backfill's results — the
+  SLC/Holladay PrimeGov bug, a state-casing bug (Colorado Springs), and 8
+  nationally-ambiguous city names with no state (Alexandria VA,
+  Sacramento CA, Long Beach CA, Oakland CA, San Diego CA, Berkeley CA,
+  Boston MA, Baltimore MD). All shipped in one PR (#34), then re-run
+  through the backfill scoped per-domain, then live-verified.**
+
+  **SLC/Holladay**: the earlier same-day investigation (see the still-open
+  `BACKLOG.md` entry for the general structural problem) had reverted a
+  positional-window fix because it traded two correct real cities for
+  one. Checking the actual URLs of every `slc.primegov.com` page in the
+  Archive settled it: every one of them, including the two mis-labeled
+  "City of Holladay," has its own meeting title confirming it's really a
+  Salt Lake City meeting ("Salt Lake City Formal Meeting," "Salt Lake
+  City Council Work Session"). Added `slc.primegov.com` to
+  `jurisdiction_enrich._KNOWN_DOMAINS` and a new
+  `known_jurisdiction_display()` helper — unlike the existing
+  fill-in-missing-state-only lookup, this returns a full "City of X,
+  ST" string and is checked in `primegov.py`'s `resolve()` *before*
+  `_extract_jurisdiction()`'s unreliable body-text search ever runs, so
+  the false-positive Holladay match can no longer win. Scoped to this one
+  confirmed domain only — see the still-open `BACKLOG.md` entry for why a
+  future unconfirmed PrimeGov city could still hit the original bug.
+
+  **Colorado Springs "Co" vs. "CO"**: Colorado Springs' own Granicus RSS
+  channel title carries the state as "Co," not "CO" — a real source-data
+  quirk, not a bug in this repo's own extraction. Neither existing
+  mechanism caught it: `enrich_jurisdiction_text()` skips any value that
+  already has a comma (by design, so it doesn't second-guess a state that
+  came with the name), and `normalize_state_suffix()` only matched a
+  *spelled-out* full state name. Extended `normalize_state_suffix()`
+  (`archive/utils/jurisdiction_format.py`) to also re-case an
+  already-2-letter suffix that's a real abbreviation but not uppercase —
+  still a no-op on an already-correct "Dublin, CA."
+
+  **8 no-state cities**: all were extracting a correct "City of X" with
+  no state because the name is genuinely ambiguous nationally (confirmed
+  via `app/utils/jurisdiction_data` — e.g. "Alexandria" collides with
+  real places in LA/MN/KY/IN, "Boston" with several small towns outside
+  MA), so `enrich_jurisdiction_text()`'s name lookup correctly declined
+  to guess. Added each as a confirmed domain to `_KNOWN_DOMAINS`, same
+  pattern as the existing Detroit/Charlotte/Minneapolis/Dallas County
+  entries — 7 on Granicus (Alexandria, Sacramento, Long Beach, Oakland,
+  San Diego, Berkeley, Boston), 1 on Legistar (Baltimore, resolved via
+  the page's own domain, not the delegated YouTube video's).
+
+  **Verified**: 15 new/updated unit tests (608 total passing, including 3
+  existing tests whose fixtures now correctly resolve a state they'd
+  previously hardcoded as unresolved — Baltimore, Alexandria). Once both
+  Render services deployed the merged PR, re-ran
+  `scripts/backfill_archived_pages.py --url-contains <domain>` once per
+  affected domain (58 pages total across all 10 domains, 0 failures) and
+  live-verified on redtaperecordings.com: the two former "Holladay" pages
+  and every other `slc.primegov.com` meeting now show "Salt Lake City,
+  UT"; Colorado Springs shows "CO"; Alexandria shows "Alexandria, VA";
+  Baltimore shows "Baltimore, MD".
+
 - **[Done 2026-08-13] Bulk backfill of archived pages — built
   `scripts/backfill_archived_pages.py`, then found and fixed a real bug
   in it via dry-run, then ran it against all 179 production archived
