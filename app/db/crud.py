@@ -2,13 +2,23 @@ from collections import Counter
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 
 from .engine import async_session
 from .models import MeetingResolution, ProblemReport
 from .outcomes import classify_outcome
 
 VALID_ISSUE_TYPES = {"wrong_video", "bad_transcript", "wrong_metadata", "wrong_language", "other"}
+
+# A cached resolve where no video was found at all (most likely a
+# generic_fallback miss, or a platform bug since fixed) has real upside in
+# being retried sooner rather than served forever -- same "nothing to lose
+# by looking again" reasoning ARCHIVE_RECHECK_AFTER_NO_TRANSCRIPT already
+# uses on the Archive side (app/main.py). A row that DID find a video keeps
+# no TTL at all here -- a confirmed-working platform's resolve is much less
+# likely to have been wrong than a "found nothing" miss is to have since
+# improved.
+_STALE_NO_VIDEO_RECHECK_AFTER = timedelta(hours=1)
 
 # Rows past this many failed push attempts stop being retried by the
 # sweep -- a permanently-broken payload (e.g. the source video got taken
@@ -28,13 +38,25 @@ async def get_cached_resolution(normalized_url: str) -> Optional[dict]:
     that opportunistically re-pushes to the Archive (app/main.py) can
     mark the same durable-push tracking a fresh resolve does, rather
     than pushing blind with no way to record success.
+
+    Real bug fixed 2026-08-12: this previously had no age check at all --
+    unlike the Archive-page lookup's own ARCHIVE_RECHECK_AFTER, a
+    video_found=False row (e.g. a generic_fallback miss on a page that
+    genuinely has a real embedded video, confirmed live on a real
+    www.portland.gov URL whose direct re-resolve found everything
+    correctly) got served to every future visitor indefinitely, with no
+    automatic path back to a fresh resolve. A video_found=False row now
+    expires after _STALE_NO_VIDEO_RECHECK_AFTER; a row that did find a
+    video is unaffected.
     """
+    stale_cutoff = datetime.now(timezone.utc) - _STALE_NO_VIDEO_RECHECK_AFTER
     async with async_session() as session:
         stmt = (
             select(MeetingResolution)
             .where(
                 MeetingResolution.input_url_normalized == normalized_url,
                 MeetingResolution.status == "success",
+                or_(MeetingResolution.video_found.is_(True), MeetingResolution.created_at >= stale_cutoff),
             )
             .order_by(MeetingResolution.created_at.desc())
             .limit(1)

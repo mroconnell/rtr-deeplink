@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ page.title or "Meeting" }}{% if page.jurisdiction %} — {{ page.jurisdiction }}{% endif %}{% if page.date %} ({{ page.date }}){% endif %} | Red Tape Recordings{% endblock %}
+{% block title %}{{ page.title or "Meeting" }}{% if page.jurisdiction %} — {{ page.jurisdiction|jurisdiction_display }}{% endif %}{% if page.date %} ({{ page.date }}){% endif %} | Red Tape Recordings{% endblock %}
 {# data-version-id: read by /shared-static/deep_link.js so a line=seg-N
    deep link is only trusted when it was generated from this exact
    TranscriptVersion -- empty when there's no active_version at all
@@ -7,7 +7,7 @@
    info, trust line as-is" same as an old pre-this-fix link. #}
 {% block body_attrs %} data-version-id="{{ active_version.id if active_version else '' }}"{% endblock %}
 {% block meta %}
-  {% set description = (page.title or "A public meeting") ~ (page.jurisdiction and (" in " ~ page.jurisdiction) or "") ~ (page.date and (" on " ~ page.date) or "") ~ ", with video and transcript." %}
+  {% set description = (page.title or "A public meeting") ~ (page.jurisdiction and (" in " ~ (page.jurisdiction|jurisdiction_display)) or "") ~ (page.date and (" on " ~ page.date) or "") ~ ", with video and transcript." %}
   <meta name="description" content="{{ description }}">
   {% if page.platform == "unknown" %}
   {#- generic_fallback.py registers under platform_name = "unknown" -- the
@@ -95,7 +95,7 @@
     <label for="versionSelect">Version:</label>
     <select id="versionSelect" name="version" onchange="this.form.submit()">
       {% for v in page.versions %}
-      <option value="{{ v.id }}" {% if active_version and v.id == active_version.id %}selected{% endif %}>{{ v.language or "unknown" }} ({{ v.source }})</option>
+      <option value="{{ v.id }}" {% if active_version and v.id == active_version.id %}selected{% endif %}>{{ v.language|language_name }} ({{ v.source|source_label }})</option>
       {% endfor %}
     </select>
     <noscript><button type="submit" class="cassette-btn cassette-btn-outline">Go</button></noscript>
@@ -120,7 +120,7 @@
         {% endif %}
       </h1>
       <p>
-        {%- if page.jurisdiction %}{{ page.jurisdiction }}{% endif -%}
+        {%- if page.jurisdiction %}{{ page.jurisdiction|jurisdiction_display }}{% endif -%}
         {%- if page.date %}{% if page.jurisdiction %} &middot; {% endif %}{{ page.date }}{% endif -%}
       </p>
       {% if page.source_url %}

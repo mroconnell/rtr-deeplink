@@ -80,7 +80,11 @@ def test_coverage_page_renders_example_with_transcript_badge(monkeypatch):
     response = archive_client_.get("/coverage")
     assert response.status_code == 200
     assert "Coverage Test Meeting" in response.text
-    assert "City of Coverage Test" in response.text
+    # Rendered through the jurisdiction_display filter -- "City of" is
+    # dropped for display (user request 2026-08-12), so the raw stored
+    # value should never appear verbatim on this page.
+    assert "Coverage Test" in response.text
+    assert "City of Coverage Test" not in response.text
     assert '/m/coverage-test-slug' in response.text
     assert "Supported, but no example archived yet" in response.text
 

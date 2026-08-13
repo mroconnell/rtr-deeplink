@@ -194,13 +194,29 @@ def find_platform_link(
     video-ID-validated YouTube check of their own (both `generic_fallback.
     py` and `legistar.py` do, via `YouTubeAssetFinder.extract_video_id()`)
     should exclude "youtube" here and rely on that instead.
+
+    Real bug, confirmed live 2026-08-12: a same-page anchor -- most
+    commonly a bare `#fragment` href like an accessibility "skip to
+    content" link, which every Legistar page has -- resolves back to
+    `page_url` itself via `urljoin()`. If that URL's own platform isn't in
+    `exclude` (true for whatever platform is *currently* being resolved,
+    since `exclude` only ever covered "youtube"), this returns the current
+    page as its own "match," and the caller delegates to that platform's
+    `resolve()` on the same page it's already resolving -- which hits the
+    same skip-link again, and recurses without bound (confirmed on a real
+    Columbus, OH Legistar meeting with no video link at all). Skipping any
+    candidate that resolves to the same URL as `page_url` closes this at
+    the root, for every caller, independent of what they pass as `exclude`.
     """
     soup = BeautifulSoup(html, "html.parser")
+    page_url_no_fragment = urlparse(page_url)._replace(fragment="").geturl()
     for tag in soup.find_all(_DELEGATABLE_LINK_TAGS):
         value = tag.get("href") or tag.get("src")
         if not value:
             continue
         candidate = urljoin(page_url, value.strip())
+        if urlparse(candidate)._replace(fragment="").geturl() == page_url_no_fragment:
+            continue
         platform = detect_platform(candidate)
         if platform == "unknown" or platform in exclude:
             continue

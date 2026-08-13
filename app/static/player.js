@@ -23,6 +23,24 @@ let transcriptTracks = [];
 // against `activeVideoAdapter` regardless of which platform this is.
 let activeVideoAdapter = null;
 
+// Drops a leading "City of "/"City " for display -- user request
+// 2026-08-12: almost everything archived is a city, so labeling every
+// row that way ("City of Napa, CA") reads as redundant. Reserves the
+// explicit label for the real exceptions ("County of X"/"X County",
+// state-legislature-style body names), left unchanged. JS mirror of
+// archive/utils/jurisdiction_format.py's format_jurisdiction_display() --
+// this is the resolver's own client-rendered page, which has no server-
+// side Jinja pass to apply that Python version through.
+function formatJurisdictionDisplay(jurisdiction) {
+  if (!jurisdiction) return jurisdiction;
+  for (const prefix of ['City of ', 'City ']) {
+    if (jurisdiction.toLowerCase().startsWith(prefix.toLowerCase())) {
+      return jurisdiction.slice(prefix.length);
+    }
+  }
+  return jurisdiction;
+}
+
 function formatTime(seconds) {
   seconds = Math.floor(seconds || 0);
   const h = Math.floor(seconds / 3600);
@@ -432,7 +450,18 @@ function wireTranscribeForm() {
         body: JSON.stringify({ url: sourceUrl }),
       });
       const data = await res.json();
-      if (data.ok) {
+      if (res.status === 429) {
+        // Real bug fixed 2026-08-12: slowapi's rate-limit response has no
+        // `ok`/`message` keys (its body is `{"error": "Rate limit
+        // exceeded: ..."}`), so this used to fall through to the generic
+        // "couldn't find a usable audio or video source" message below --
+        // reading exactly like a real resolution failure with no hint the
+        // actual cause was "you've already requested several transcripts
+        // this hour." Checked before `data.ok` specifically so a real
+        // rate limit is never mistaken for that.
+        checkStatusEl.textContent = "You've requested a few transcripts already this hour — please try again a bit later.";
+        checkStatusEl.className = 'transcribe-status error';
+      } else if (data.ok) {
         feasibilityOk = true;
         const clerkEmail = window.RTRClerk && window.RTRClerk.isSignedIn() && window.Clerk.user && window.Clerk.user.primaryEmailAddress
           ? window.Clerk.user.primaryEmailAddress.emailAddress
@@ -1032,7 +1061,7 @@ async function init() {
   metaEl.innerHTML = `<h1>${escapeHtml(data.title || 'Meeting')}</h1>` +
     `<p class="source-link"><a href="${escapeHtml(data.source_url)}" target="_blank" rel="noopener noreferrer">View original source &#8599;</a></p>` +
     (bestEffort ? `<p>This government website isn't supported yet, so we're going to try our best.</p>` : '') +
-    `<p>${escapeHtml(data.jurisdiction || '')}${data.date ? ' &middot; ' + escapeHtml(data.date) : ''}</p>`;
+    `<p>${escapeHtml(formatJurisdictionDisplay(data.jurisdiction) || '')}${data.date ? ' &middot; ' + escapeHtml(data.date) : ''}</p>`;
 
   if (bestEffort) {
     // Plain, tentative "here's what we think we found" line instead of a
