@@ -428,6 +428,41 @@ async def internal_unsave_search(req: UnsaveItemRequest, authorization: Optional
     return {"removed": removed}
 
 
+@app.post("/internal/account/send-search-alerts")
+async def internal_send_search_alerts(dry_run: bool = False, authorization: Optional[str] = Header(None)):
+    """All the real work for the saved-search alert sweep happens here --
+    direct DB access, direct Clerk/Resend credentials, no extra hop.
+    GET /admin/send-search-alerts (app/main.py) is the public trigger
+    (GitHub Actions cron), delegating here via app/archive_client.py --
+    same /admin/* -> /internal/* split every other admin action already
+    uses (e.g. /admin/promote-transcript-version).
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    from . import search_alerts
+
+    return await search_alerts.run_search_alerts(dry_run=dry_run)
+
+
+@app.get("/alerts/unsubscribe")
+async def alerts_unsubscribe(request: Request, token: str = ""):
+    """One-click unsubscribe from a single saved-search alert -- the
+    email's "[unsubscribe from this alert]" link, distinct from the
+    sitewide /unsubscribe (app/main.py). No login, no confirmation step,
+    same CAN-SPAM-driven reasoning as that route: this needs to work from
+    a plain email click. Authorized by a signed token
+    (archive/utils/link_tokens.py) rather than clerk_user_id, since the
+    click itself carries no session -- crud.unsave_item_by_id() trusts
+    that the token was already verified here.
+    """
+    from .utils import link_tokens
+
+    saved_item_id = link_tokens.verify_saved_item_token(token)
+    removed = await crud.unsave_item_by_id(saved_item_id) if saved_item_id is not None else False
+    return templates.TemplateResponse(request, "alert_unsubscribed.html", {"removed": removed})
+
+
 @app.get("/internal/account/saved")
 async def internal_list_saved_items(clerk_user_id: str, authorization: Optional[str] = Header(None)):
     if not _token_ok(authorization):

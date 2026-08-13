@@ -203,7 +203,18 @@ class SavedItem(Base):
     # shape /meetings already accepts (q, jurisdiction, date_from, date_to,
     # has_agenda, has_transcript, fuzzy), stored verbatim so "run this
     # saved search" is just crud.list_pages(**search_params) and "show its
-    # link" is just building /meetings?<the same dict>.
+    # link" is just building /meetings?<the same dict>. Note: `q` maps to
+    # list_pages()'s `keyword` param, not a literal **-unpack -- see
+    # archive/search_alerts.py's `_run_saved_search()`.
     search_params: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+
+    # Cursor for the saved-search alert sweep (archive/search_alerts.py) --
+    # only ever meaningful for item_type == "saved_search" rows, left NULL
+    # for saved_meeting. No server_default: a DB-level default would also
+    # populate it on saved_meeting creation, where it means nothing.
+    # crud.save_search() sets this explicitly to "now" on a genuinely new
+    # row so the very first sweep only ever alerts on meetings archived
+    # *after* the search was saved, never a dump of pre-existing matches.
+    last_alerted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

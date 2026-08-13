@@ -308,6 +308,111 @@ async def send_transcription_failed_email(
     return await _send(to, "We hit a snag on your transcript", _branded_wrapper(body_html, base_url), cc=cc)
 
 
+def _digest_subject(groups: list) -> str:
+    """Draft copy, not yet approved in marketing/LIFECYCLE_EMAILS.md --
+    that doc's subject ('Somebody said "[keyword]"') was written for
+    exactly one match; a digest can bundle several across multiple saved
+    searches, including keyword-less filter searches with no "[keyword]"
+    to quote at all. Shipped now per an explicit decision (easy to swap
+    the literal strings once real copy is approved) rather than blocking
+    the feature on a separate copy-approval pass.
+    """
+    total_matches = sum(len(g["matches"]) for g in groups)
+    keywords = [g["keyword"] for g in groups if g.get("keyword")]
+    if keywords:
+        subject = f'Somebody said "{keywords[0]}"'
+        extra = total_matches - 1
+        return f"{subject} (+{extra} more)" if extra > 0 else subject
+    plural = total_matches != 1
+    return f"{total_matches} new meeting{'s' if plural else ''} {'match' if plural else 'matches'} your saved searches"
+
+
+def compose_search_alert_digest(*, first_name: Optional[str], groups: list) -> tuple:
+    """Builds (subject, html) for the saved-search alert digest, with no
+    I/O -- separated from send_search_alert_digest() below so a dry run
+    (archive/search_alerts.py's run_search_alerts(dry_run=True)) can
+    compose and inspect real output without ever calling Resend, same
+    "compose is pure, send is a thin wrapper" split app/reporting.py's
+    compose_report_email()/send_report_email() already established for
+    the daily report.
+
+    "People are talking about..." per marketing/LIFECYCLE_EMAILS.md #5,
+    adapted into a digest -- one email per user bundling every new match
+    across *all* their saved searches, not one email per match (explicit
+    decision; Resend has no built-in batching, so this app does the
+    accumulation itself in archive/search_alerts.py before this is ever
+    called).
+
+    `groups` shape: `[{"keyword": Optional[str], "unsubscribe_url": str,
+    "matches": [{"title": str, "date": Optional[str], "jurisdiction":
+    Optional[str], "page_url": str, "quote_html": Optional[str]}]}]` --
+    one entry per saved search that had at least one new match.
+    `quote_html` is None when the match came from title/agenda text
+    rather than any transcript segment (see
+    archive/utils/search.py's find_matching_segment()) -- rendered as a
+    plain title/date/link line with no quote in that case, since the
+    approved copy's per-match quote can't exist for that entry.
+
+    Each group gets its own "unsubscribe from this alert" link (deletes
+    just that one saved search) *in addition to* the sitewide unsubscribe
+    `_send()` already appends to every email -- the approved copy's
+    "[unsubscribe from this alert]" is a second, more specific link, not
+    a replacement.
+    """
+    base_url = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
+    greeting_name = html.escape(first_name) if first_name else "there"
+
+    sections = []
+    for group in groups:
+        match_rows = []
+        for match in group["matches"]:
+            title = html.escape(match["title"] or "Untitled meeting")
+            meta = " &middot; ".join(
+                html.escape(part) for part in (match.get("jurisdiction"), match.get("date")) if part
+            )
+            quote_block = (
+                f'<td style="border-left:3px solid #ddd;padding:2px 0 2px 16px;'
+                f'font-family:Georgia,\'Times New Roman\',serif;font-size:14px;font-style:italic;color:#666;">'
+                f'&hellip;{match["quote_html"]}&hellip;</td>'
+                if match.get("quote_html")
+                else ""
+            )
+            match_rows.append(f"""\
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 14px;width:100%;">
+<tr><td style="font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#2c3e50;">
+<strong>{title}</strong>{f'<br><span style="font-size:13px;color:#666;">{meta}</span>' if meta else ''}
+</td></tr>
+{f'<tr>{quote_block}</tr>' if quote_block else ''}
+<tr><td style="padding-top:4px;"><a href="{match['page_url']}" style="color:#3498db;font-family:Georgia,'Times New Roman',serif;font-size:14px;">Hear it in context &rarr;</a></td></tr>
+</table>""")
+
+        keyword_label = f'"{html.escape(group["keyword"])}"' if group.get("keyword") else "your saved search"
+        sections.append(f"""\
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px;width:100%;border-top:1px solid #eee;padding-top:16px;">
+<tr><td style="font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#666;padding-bottom:10px;">You asked us to watch for {keyword_label}, and it just came up:</td></tr>
+<tr><td>{''.join(match_rows)}</td></tr>
+<tr><td style="font-family:Georgia,'Times New Roman',serif;font-size:12px;color:#999;padding-top:4px;">
+<a href="{group['unsubscribe_url']}" style="color:#999;">Unsubscribe from this alert</a>
+</td></tr>
+</table>""")
+
+    manage_url = f"{base_url}/account/saved" if base_url else "/account/saved"
+    body_html = f"""\
+<p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:17px;color:#2c3e50;">Hi {greeting_name},</p>
+{''.join(sections)}
+<p style="margin:16px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#2c3e50;">We'll keep watching, and we'll let you know when something else turns up.</p>
+<p style="margin:8px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:12px;color:#999;"><a href="{manage_url}" style="color:#999;">Manage your alerts</a></p>
+<p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#2c3e50;">Thanks for letting us help with the digging.</p>
+"""
+    body_html += _signoff_html(base_url)
+    return _digest_subject(groups), _branded_wrapper(body_html, base_url)
+
+
+async def send_search_alert_digest(to: str, *, first_name: Optional[str], groups: list) -> bool:
+    subject, body = compose_search_alert_digest(first_name=first_name, groups=groups)
+    return await _send(to, subject, body)
+
+
 async def send_youtube_transcript_report(to: str, *, ingested: list, skipped: list, failed: list) -> bool:
     """Daily report for scripts/fetch_youtube_transcripts.py's launchd
     run -- every meeting a transcript was actually added to, plus a

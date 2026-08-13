@@ -20,6 +20,11 @@ PROXY_TIMEOUT = aiohttp.ClientTimeout(total=65)
 # a bound that fails fast rather than making a viewer wait out a slow/cold
 # Archive.
 TRANSCRIPTION_TIMEOUT = aiohttp.ClientTimeout(total=15)
+# A single call here fans out to N Clerk lookups + N Resend sends inside
+# Archive's own /internal/account/send-search-alerts handler, unlike every
+# other proxy call above (one object in, one object out) -- needs real
+# headroom for a corpus-wide sweep, not the fast-fail budget those get.
+SEARCH_ALERTS_TIMEOUT = aiohttp.ClientTimeout(total=120)
 
 _HOP_BY_HOP_HEADERS = {"connection", "transfer-encoding", "keep-alive", "content-encoding", "content-length"}
 
@@ -346,6 +351,31 @@ async def promote_transcript_version(slug: str, version_id: int) -> Optional[dic
                 return None
     except Exception:
         logger.exception("Archive promote-version request failed.")
+        return None
+
+
+async def send_search_alerts(dry_run: bool = False) -> Optional[dict]:
+    """Admin action: run the saved-search alert sweep -- see app/main.py's
+    /admin/send-search-alerts. Returns None on any failure, same pattern
+    as every other call here."""
+    base = _base_url()
+    if not base:
+        return None
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{base}/internal/account/send-search-alerts",
+                params={"dry_run": "true" if dry_run else "false"},
+                headers=_headers(),
+                timeout=SEARCH_ALERTS_TIMEOUT,
+            ) as response:
+                if response.status == 200:
+                    return await response.json()
+                logger.error("Archive send-search-alerts failed (%s): %s", response.status, await response.text())
+                return None
+    except Exception:
+        logger.exception("Archive send-search-alerts request failed.")
         return None
 
 

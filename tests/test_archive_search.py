@@ -1,4 +1,4 @@
-from archive.utils.search import build_corpus, find_snippet, matches, tokenize
+from archive.utils.search import build_corpus, find_matching_segment, find_snippet, matches, tokenize
 
 
 def test_exact_search_is_plain_substring():
@@ -193,3 +193,34 @@ def test_bare_and_ampersand_are_no_ops():
     corpus = build_corpus("City Council Meeting", "Dublin, CA", "discussion of traffic signals downtown")
     assert matches("traffic AND downtown", corpus, set(), fuzzy=False)
     assert matches("traffic & downtown", corpus, set(), fuzzy=False)
+
+
+def test_find_matching_segment_returns_the_first_matching_segment():
+    segments = [
+        {"start": 0.0, "end": 5.0, "text": "call to order"},
+        {"start": 5.0, "end": 12.0, "text": "discussion of traffic signals downtown"},
+        {"start": 12.0, "end": 20.0, "text": "more traffic talk here too"},
+    ]
+    result = find_matching_segment("traffic", segments, fuzzy=False)
+    assert result["index"] == 1
+    assert result["start"] == 5.0
+    assert "<mark" in result["quote_html"]
+
+
+def test_find_matching_segment_returns_none_when_no_segment_matches():
+    # The query only matches the meeting's title/agenda, not any segment.
+    segments = [{"start": 0.0, "end": 5.0, "text": "call to order"}]
+    assert find_matching_segment("traffic", segments, fuzzy=False) is None
+
+
+def test_find_matching_segment_returns_none_for_a_keyword_less_query():
+    segments = [{"start": 0.0, "end": 5.0, "text": "discussion of traffic signals"}]
+    assert find_matching_segment("", segments, fuzzy=False) is None
+    assert find_matching_segment(None, segments, fuzzy=False) is None
+
+
+def test_find_matching_segment_respects_fuzzy_flag():
+    segments = [{"start": 0.0, "end": 5.0, "text": "the council discussed trafic calming"}]
+    assert find_matching_segment("traffic", segments, fuzzy=False) is None
+    result = find_matching_segment("traffic", segments, fuzzy=True)
+    assert result["index"] == 0

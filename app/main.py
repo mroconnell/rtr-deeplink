@@ -1169,6 +1169,26 @@ async def admin_daily_report(token: str = "", dry_run: bool = False):
     return result
 
 
+@app.get("/admin/send-search-alerts")
+async def admin_send_search_alerts(token: str = "", dry_run: bool = False):
+    """Triggers the saved-search alert sweep (archive/search_alerts.py)
+    on demand -- called by the GitHub Actions cron workflow
+    (.github/workflows/send-search-alerts.yml) once a day, and usable
+    manually for testing (?dry_run=true composes but doesn't send, and
+    doesn't advance any saved search's cursor). Thin proxy, same
+    /admin/* -> /internal/* split every other admin action already uses
+    -- all the real work (DB access, Clerk/Resend calls) happens on the
+    Archive service, which owns SavedItem/MeetingPage.
+    """
+    if not _admin_token_ok(token):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    result = await archive_client.send_search_alerts(dry_run=dry_run)
+    if result is None:
+        return JSONResponse({"error": "send_search_alerts_failed"}, status_code=502)
+    return result
+
+
 @app.get("/admin/log")
 async def admin_log(token: str = "", limit: int = 200, format: str = "json"):
     if not _admin_token_ok(token):

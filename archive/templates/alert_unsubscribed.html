@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Unsubscribed | Red Tape Recordings{% endblock %}
+{% block content %}
+  <main class="center-page">
+    {% if removed %}
+      <h1>You're unsubscribed from that alert.</h1>
+      <p class="subtitle">That saved search has been removed. Your other saved searches and alerts are unaffected.</p>
+    {% else %}
+      <h1>Something went wrong.</h1>
+      <p class="subtitle">That link looks invalid or has already been used. If this was a mistake, you can manage your saved searches directly from your account.</p>
+    {% endif %}
+  </main>
+{% endblock %}

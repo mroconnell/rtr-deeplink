@@ -1,0 +1,37 @@
+# Triggers the daily saved-search alert sweep (GET
+# /admin/send-search-alerts, see archive/search_alerts.py) instead of a
+# Render Cron Job service -- same reasoning as .github/workflows/
+# daily-report.yml (Render Cron Jobs have no free tier), reusing the
+# rtr-deeplink web service that's already running/paid for.
+#
+# Requires the same two repo secrets daily-report.yml already uses
+# (Settings -> Secrets and variables -> Actions):
+#   RESOLVER_BASE_URL   -- the resolver's own base URL, e.g.
+#                           https://rtr-deeplink.onrender.com
+#   ADMIN_STATS_TOKEN    -- same shared token /admin/stats and friends use
+#                           (app/main.py's _admin_token_ok).
+#
+# Cron time deliberately offset from daily-report.yml's own 23:30 UTC so
+# the two scheduled jobs don't both fire in the same minute against
+# Render's free-tier-adjacent resources.
+
+name: Send search alerts
+
+on:
+  schedule:
+    - cron: "35 23 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Compose and log each digest, but don't send anything or advance any cursor"
+        type: boolean
+        default: false
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call /admin/send-search-alerts
+        run: |
+          curl --fail-with-body --silent --show-error \
+            "${{ secrets.RESOLVER_BASE_URL }}/admin/send-search-alerts?token=${{ secrets.ADMIN_STATS_TOKEN }}&dry_run=${{ inputs.dry_run || 'false' }}"

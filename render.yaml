@@ -136,6 +136,14 @@ services:
         sync: false
       - key: CLERK_JWT_KEY
         sync: false
+      # HMAC key for the saved-search alert email's per-alert unsubscribe
+      # link (archive/utils/link_tokens.py) -- deliberately its own
+      # secret, not a reuse of CLERK_SECRET_KEY/ARCHIVE_INGEST_TOKEN
+      # (both auth/service-boundary secrets for a different purpose).
+      # Archive-only: verification happens where the link is clicked
+      # (GET /alerts/unsubscribe), not on the resolver.
+      - key: ALERT_UNSUBSCRIBE_SECRET
+        sync: false
 
   # On-demand transcription's background processor (see worker/main.py's
   # module docstring for why this reaches into archive/db directly rather
