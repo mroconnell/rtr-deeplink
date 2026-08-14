@@ -672,3 +672,81 @@ async def test_resolve_wayne_fixture_picks_video_link_not_channel_link(monkeypat
     # No ISO date anywhere on the page -- the trailing slug date fills in.
     assert result.date == "2026-01-08"
     assert result.agenda_link.endswith("agenda2026-0108.pdf")
+
+
+# --- 2026-08-14 rebuild coverage (Phase 3: two-tier video pointer -- the
+# user's explicit call: "the pointer where the video lives would be a
+# GREAT outcome for the fallback page"). ---
+
+SEBASTOPOL_EVENT_URL = "https://www.cityofsebastopol.gov/events/city-council-meeting-january-6-2026/"
+
+
+async def test_resolve_surfaces_vimeo_pointer_as_recognized_video_link():
+    # Sebastopol's real shape: the video is a plain <a href> to a Vimeo
+    # page (numeric id + privacy hash, &#038; numeric entity in the query)
+    # nothing can play -- must surface as a recognized-host pointer, and
+    # NEVER enter video_url (a page URL there breaks the native player).
+    html = load_fixture("generic_fallback", "sebastopol_event_page.html")
+    routes = {SEBASTOPOL_EVENT_URL: FakeResponse(status=200, text=html, url=SEBASTOPOL_EVENT_URL)}
+
+    with mock_session(routes):
+        result = await GenericFallbackAssetFinder().resolve(SEBASTOPOL_EVENT_URL)
+
+    assert result.video_url is None
+    assert result.video_link == "https://vimeo.com/1152708575/db9859a2aa?fl=sm&fe=ec"
+    assert result.video_link_recognized is True
+    assert any("can't play it here yet" in w for w in result.video_warnings)
+    # Metadata unaffected by the pointer path.
+    assert result.title == "City Council Meeting January 6, 2026"
+    assert result.jurisdiction == "City of Sebastopol, California"
+
+
+def test_video_pointer_ignores_vimeo_channel_links():
+    # A footer "watch us on Vimeo" channel link has no numeric video id --
+    # the exact false-positive class the curated regex must exclude.
+    html = '<a href="https://vimeo.com/cityofsomewhere">Follow us on Vimeo</a>'
+    link, recognized = GenericFallbackAssetFinder._find_video_pointer(html, "https://city.gov/page")
+    assert link is None
+
+
+def test_video_pointer_loose_tier_matches_video_shaped_anchor_text():
+    # Wayne County's real link text is exactly "Video" -- the shape that
+    # motivated the loose tier. (On the real Wayne page the youtu.be href
+    # is caught by the YouTube tier first; this synthetic variant uses an
+    # unplayable host to exercise the loose tier alone, and the anchored
+    # match means a sentence mentioning video never fires.)
+    html = (
+        '<a href="https://videoplayer.example-cdn.com/meeting/123">Video</a>'
+        "<p>Read the video policy update from last video meeting here.</p>"
+    )
+    link, recognized = GenericFallbackAssetFinder._find_video_pointer(html, "https://city.gov/page")
+    assert link == "https://videoplayer.example-cdn.com/meeting/123"
+    assert recognized is False
+
+
+def test_video_pointer_iframe_tier_skips_junk_hosts():
+    # GTM iframe is OCFL's real page furniture; a third-party player
+    # iframe is the real signal.
+    html = (
+        '<iframe src="https://www.googletagmanager.com/ns.html?id=GTM-X"></iframe>'
+        '<iframe src="https://player.example-vendor.com/embed/456"></iframe>'
+    )
+    link, recognized = GenericFallbackAssetFinder._find_video_pointer(html, "https://city.gov/page")
+    assert link == "https://player.example-vendor.com/embed/456"
+    assert recognized is False
+
+
+async def test_resolve_prefers_playable_video_over_pointer():
+    # The pointer is tier 5 -- a page with BOTH a playable m3u8 and a
+    # vimeo link must play the m3u8 and leave the pointer empty.
+    html = (
+        '<video src="https://cdn.city.gov/videos/meeting.m3u8"></video>'
+        '<a href="https://vimeo.com/123456789">Watch</a>'
+    )
+    routes = {PAGE_URL: FakeResponse(status=200, text=html, url=PAGE_URL)}
+
+    with mock_session(routes):
+        result = await GenericFallbackAssetFinder().resolve(PAGE_URL)
+
+    assert result.video_url == "https://cdn.city.gov/videos/meeting.m3u8"
+    assert result.video_link is None

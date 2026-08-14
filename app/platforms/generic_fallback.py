@@ -112,6 +112,43 @@ _SLUG_DATE_RE = re.compile(
     rf"({'|'.join(_MONTHS_FULL)})-(\d{{1,2}})-(\d{{4}})/?$", re.IGNORECASE
 )
 
+# --- Video pointer (2026-08-14 rebuild, per the user's explicit call:
+# "the pointer where the video lives would be a GREAT outcome for the
+# fallback page"). Two confidence tiers with distinct UI copy:
+#
+# Curated tier: a Vimeo video-page link -- numeric video id required
+# (optionally with a privacy hash), which structurally excludes
+# channel/user/home links ("vimeo.com/cityname" footer links, the same
+# false-positive class youtube.py's own regex avoids). Confirmed real on
+# Sebastopol CA (vimeo.com/1152708575/db9859a2aa) and Chicago ELMS
+# (vimeo.com/showcase/... -- also numeric-id'd); vimeo is the only
+# curated host until another unsupported video host shows a real example.
+_VIMEO_VIDEO_LINK_RE = re.compile(
+    r"https?://(?:www\.)?vimeo\.com/(?:showcase/[^\s\"'<>]+|\d+(?:/[0-9a-f]+)?(?:\?[^\s\"'<>]*)?)",
+    re.IGNORECASE,
+)
+# Loose tier: an <a> whose visible text is video-shaped. Anchored
+# whole-text match (not substring) so a sentence merely mentioning video
+# doesn't fire; "Video" is Wayne County MI's real link text, the shape
+# that motivated this tier. The user explicitly accepted wrong-ish
+# pointers here -- the UI copy says "proceed with caution."
+_VIDEO_TEXT_RE = re.compile(
+    r"^(?:watch(?:\s+(?:the\s+)?(?:video|meeting|recording|live\s*stream))?"
+    r"|(?:view|meeting|full)?\s*video(?:\s+recording)?"
+    r"|live\s*stream(?:/recording)?|recording)$",
+    re.IGNORECASE,
+)
+# Iframes whose src host serves page furniture, not video -- the junk
+# blocklist for the loose iframe tier. Each entry seen on a real capture
+# in tests/fixtures/generic_fallback/ (GTM on OCFL's page, `javascript:`
+# on PBC's) or ubiquitous enough to need no citation (analytics,
+# recaptcha, social embeds).
+_IFRAME_JUNK_HOSTS = (
+    "googletagmanager.com", "google-analytics.com", "doubleclick.net",
+    "recaptcha.net", "google.com/recaptcha", "facebook.com", "twitter.com",
+    "platform.twitter.com", "youtube.com",  # youtube iframes are tier-1 territory, never a pointer
+)
+
 _BEST_EFFORT_VIDEO_WARNING = (
     "This city isn't officially supported yet, so we're trying our best — we think we found the "
     "video below. Deep-linking to a specific moment might work here, or it might not — feel free "
@@ -122,6 +159,10 @@ _NO_VIDEO_FOUND_WARNING = (
     "This city isn't officially supported yet, so we're trying our best — but we couldn't find a "
     "video on this page automatically. You can try to request a transcript from the audio, or go "
     "straight to the original source."
+)
+_VIDEO_POINTER_WARNING = (
+    "This city isn't officially supported yet, so we're trying our best — we found what looks "
+    "like the video, but we can't play it here yet. The link on this page goes to the original."
 )
 _NO_TRANSCRIPT_WARNING = (
     "We didn't automatically find a transcript here — this city isn't officially supported yet — "
@@ -276,6 +317,12 @@ class GenericFallbackAssetFinder(AssetFinder):
         media_urls = scan_media_urls(html, url)
         video_url, video_format = self._pick_video_url(media_urls)
 
+        # Video tier 5: nothing playable -- point at where the video
+        # probably lives instead of showing a bare "no video found."
+        video_link, video_link_recognized = (None, False)
+        if not video_url:
+            video_link, video_link_recognized = self._find_video_pointer(html, url)
+
         segments: List[TranscriptSegment] = []
         transcript_language: Optional[str] = None
         for caption_url in self._collect_caption_candidates(html, media_urls, url):
@@ -287,20 +334,74 @@ class GenericFallbackAssetFinder(AssetFinder):
 
         transcript_warnings = [] if segments else [_NO_TRANSCRIPT_WARNING]
 
+        if video_url:
+            video_warning = _BEST_EFFORT_VIDEO_WARNING
+        elif video_link:
+            video_warning = _VIDEO_POINTER_WARNING
+        else:
+            video_warning = _NO_VIDEO_FOUND_WARNING
+
         resolved = ResolvedMeeting(
             platform=self.platform_name,
             source_url=url,
             video_url=video_url,
             video_format=video_format,
+            video_link=video_link,
+            video_link_recognized=video_link_recognized,
             segments=segments,
             transcript_language=transcript_language,
-            video_warnings=[_BEST_EFFORT_VIDEO_WARNING if video_url else _NO_VIDEO_FOUND_WARNING],
+            video_warnings=[video_warning],
             transcript_warnings=transcript_warnings,
             agenda_link=agenda_link,
             best_effort=True,
         )
         self._backfill_metadata_from_page(resolved, html, url, agenda_link_title)
         return resolved
+
+    @staticmethod
+    def _find_video_pointer(html: str, page_url: str) -> Tuple[Optional[str], bool]:
+        """Where the video probably lives, when nothing playable was
+        found -- returns (url, recognized). Tiers, in confidence order
+        (see the module-level pointer regexes for the real examples each
+        is built on):
+
+        1. A link to a curated known video host (Vimeo video/showcase
+           pages) -> recognized=True.
+        2. An <a> whose visible text is video-shaped ("Video",
+           "Watch...", "Live Stream/Recording") -> recognized=False.
+        3. An iframe to a third-party host that isn't page furniture
+           (analytics/recaptcha/social) -> recognized=False.
+
+        The user explicitly accepted loose matches here (2026-08-14):
+        the UI renders recognized=False pointers with "we don't
+        recognize {host} as a supported video host, so proceed with
+        caution" -- a wrong-ish pointer behind tentative copy beats a
+        bare "[No video found]".
+        """
+        match = _VIMEO_VIDEO_LINK_RE.search(html)
+        if match:
+            return html_module.unescape(match.group(0)), True
+
+        soup = BeautifulSoup(html, "html.parser")
+        page_host = urlparse(page_url).netloc.lower()
+        for a in soup.find_all("a", href=True):
+            href = a["href"].strip()
+            if not href or href.startswith("#") or href.lower().startswith("javascript:"):
+                continue
+            if _VIDEO_TEXT_RE.match(a.get_text(" ", strip=True)):
+                return urljoin(page_url, href), False
+        for iframe in soup.find_all("iframe", src=True):
+            src = iframe["src"].strip()
+            if not src.lower().startswith(("http://", "https://", "//")):
+                continue
+            candidate = urljoin(page_url, src)
+            host = urlparse(candidate).netloc.lower()
+            if not host or host == page_host:
+                continue
+            if any(junk in candidate.lower() for junk in _IFRAME_JUNK_HOSTS):
+                continue
+            return candidate, False
+        return None, False
 
     async def _fetch_page(self, url: str) -> Optional[str]:
         """Plain fetch; None means "couldn't load the page at all."

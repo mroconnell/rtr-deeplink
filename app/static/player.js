@@ -1073,7 +1073,26 @@ async function init() {
     // Plain, tentative "here's what we think we found" line instead of a
     // declarative warning box -- nothing here is confirmed on a platform
     // we don't actually support, so the framing shouldn't imply otherwise.
-    renderSourceGuess('videoSourceGuess', 'We think the video is here: ', data.video_url, '[No video found]');
+    if (data.video_url || !data.video_link) {
+      renderSourceGuess('videoSourceGuess', 'We think the video is here: ', data.video_url, '[No video found]');
+    } else {
+      // A pointer to where the video probably lives, when nothing playable
+      // was found -- two confidence tiers with distinct copy (the user's
+      // own framing, 2026-08-14): a recognized video host gets a
+      // confident line, a loose video-shaped guess gets a cautionary one.
+      // Never fed to initVideo() -- a page URL in the player breaks the
+      // native <video> path silently.
+      let host = '';
+      try { host = new URL(data.video_link).hostname.replace(/^www\./, ''); } catch (e) { /* leave blank */ }
+      const suffix = data.video_link_recognized
+        ? ` — we recognize ${host} as a regular video host, but can't embed it here yet.`
+        : ` — but we don't recognize ${host} as a supported video host, so proceed with caution.`;
+      const el = document.getElementById('videoLinkGuess');
+      el.innerHTML = escapeHtml('We think the video is here: ')
+        + `<a href="${escapeHtml(data.video_link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(data.video_link)}</a>`
+        + escapeHtml(suffix);
+      el.hidden = false;
+    }
   } else {
     // #videoError (inside #videoSection, below the player) is where this
     // rendered when a video exists -- kept exactly as-is for that case. But

@@ -46,6 +46,21 @@ class ResolvedMeeting(BaseModel):
     # it as a plain "we think we found an agenda here: <link>" line rather
     # than the clickable timestamp table agenda_items gets.
     agenda_link: Optional[str] = None
+    # A video we found but cannot play -- no adapter/frontend support for
+    # its host (e.g. a Vimeo page link), or just a video-shaped link on a
+    # page where nothing playable was found. NEVER placed in `video_url`,
+    # which must stay playable (a page URL in video_url breaks the native
+    # <video> path silently). Resolver-page-only by design: a link-only
+    # result never satisfies the archive push gate (app/main.py's
+    # `segments or agenda_items or agenda_link` check), and the Archive's
+    # ingest model silently drops unknown fields, so no archive schema
+    # change is needed. `video_link_recognized` drives the two-tier UI
+    # copy (user's own framing, 2026-08-14): True = the host is a known
+    # video platform ("we recognize {host} as a regular video host"),
+    # False = a looser video-shaped guess ("we don't recognize {host}...
+    # so proceed with caution").
+    video_link: Optional[str] = None
+    video_link_recognized: bool = False
     transcript_language: Optional[str] = None  # ISO 639-1 code detected from actual caption text
     # Other real caption tracks found on the page but not chosen as
     # `segments` -- lets the frontend offer a language switcher instead of
