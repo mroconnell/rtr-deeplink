@@ -28,6 +28,16 @@ os.environ.setdefault("DATABASE_URL", f"sqlite+aiosqlite:///{_test_db_path}")
 # BACKLOG_DONE.md for the first occurrence of this exact bug.
 os.environ.setdefault("ARCHIVE_INGEST_TOKEN", "test-token")
 os.environ.setdefault("ADMIN_STATS_TOKEN", "test-admin-token")
+# Same reasoning again: app.main/archive.main each read this once, at
+# import time, into templates.env.globals -- several nav tests
+# (tests/test_accounts_anonymous_regression.py) assert on the
+# CLERK_PUBLISHABLE_KEY-configured nav markup and never set it
+# themselves, so without a guaranteed default they only pass by accident
+# when the developer's local .env happens to carry a real key. Confirmed
+# failing in a clean environment with no .env at all (CI's first real
+# run, 2026-08-14) despite passing locally -- exactly the order/env
+# dependent flake shape described above, just for a different var.
+os.environ.setdefault("CLERK_PUBLISHABLE_KEY", "pk_test_fake_for_tests")
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
