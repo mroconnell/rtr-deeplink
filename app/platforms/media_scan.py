@@ -1,3 +1,4 @@
+import html as html_module
 import re
 from typing import List
 from urllib.parse import urljoin, urlparse
@@ -17,19 +18,46 @@ CAPTION_EXTENSIONS = (
     "vtt", "srt", "ttml", "dfxp", "itt", "scc", "stl", "sbv", "sub", "smi", "sami",
 )
 
+_MEDIA_EXTS = "mp4|mp3|wav|webm|ogg"
+_ALL_EXTS = f"{_MEDIA_EXTS}|m3u8|{'|'.join(CAPTION_EXTENSIONS)}"
+
+# Absolute-URL patterns terminate on quotes, whitespace, angle brackets,
+# and backslashes -- the original quote-only termination let a bare
+# (unquoted) URL in page text swallow everything up to the next quote
+# character, including newlines and following markup (confirmed by running
+# the old pattern against real captures during the 2026-08-14 rebuild).
 MEDIA_URL_PATTERNS = [
-    r"https?://[^\"']+\.m3u8[^\"']*",
-    rf"https?://[^\"']+\.(?:mp4|mp3|wav|webm|ogg|{'|'.join(CAPTION_EXTENSIONS)})[^\"']*",
-    rf"src=[\"']([^\"']+\.(?:mp4|mp3|wav|webm|ogg|m3u8|{'|'.join(CAPTION_EXTENSIONS)}))[\"'&]",
-    rf"data-src=[\"']([^\"']+\.(?:mp4|mp3|wav|webm|ogg|m3u8|{'|'.join(CAPTION_EXTENSIONS)}))[\"'&]",
+    r"https?://[^\"'\s<>\\]+\.m3u8[^\"'\s<>\\]*",
+    rf"https?://[^\"'\s<>\\]+\.(?:mp4|mp3|wav|webm|ogg|{'|'.join(CAPTION_EXTENSIONS)})[^\"'\s<>\\]*",
+    # src=/data-src= attributes (relative and protocol-relative URLs live
+    # here). The original terminator class ["'&] rejected any URL with a
+    # query string -- the real Sacramento County OnBase page's
+    # `playlist.m3u8?instance=1&amp;token=...` never matched it. Query
+    # strings are now captured up to the closing quote.
+    rf"(?:data-)?src=[\"']([^\"']+\.(?:{_ALL_EXTS})(?:\?[^\"']*)?)[\"']",
+    # JW Player-style config `file:` keys -- `sources: [{file: "..."}]` and
+    # `tracks: [{file: "..."}]` both use it. Justified by three real
+    # confirmed pages (2026-08-14 captures in tests/fixtures/generic_fallback/):
+    # Sacramento + Maricopa County (absolute m3u8 with an &amp;-escaped
+    # query token) and Seattle Channel (protocol-relative //host mp4 in
+    # sources, RELATIVE-path srt in tracks -- urljoin resolves both).
+    # Deliberately scoped to the `file:` key shape, not a generic
+    # quoted-string grab, to keep wrong-video risk down.
+    rf"[\"']?file[\"']?\s*:\s*[\"']([^\"']+\.(?:{_ALL_EXTS})(?:\?[^\"']*)?)[\"']",
     # .xml/.txt are too generic to match unconditionally (sitemap
     # references, analytics config, any random text file on the page) --
     # only treated as a possible caption file when the URL path itself
     # also looks caption-related, matching how real ones are actually
     # named (e.g. CivicClerk's "ClosedCaption/...", Granicus's
     # "captions.vtt").
-    r"https?://[^\"']*(?:caption|subtitle|transcript|/cc[_./-])[^\"']*\.(?:xml|txt)[^\"']*",
+    r"https?://[^\"'\s<>\\]*(?:caption|subtitle|transcript|/cc[_./-])[^\"'\s<>\\]*\.(?:xml|txt)[^\"'\s<>\\]*",
 ]
+
+# Segment-aware, not a plain substring check -- the original
+# `"icon" in url` blocklist also blocked any URL containing e.g.
+# "silicon"/"iconic" in a path segment. A blocked word must now stand
+# alone between separators (start/end, "/", "_", ".", "-").
+_BLOCKLIST_RE = re.compile(r"(?:^|[/_.\-])(?:placeholder|logo|icon)(?:[/_.\-]|$)")
 
 
 def scan_media_urls(html: str, page_url: str) -> List[str]:
@@ -39,6 +67,20 @@ def scan_media_urls(html: str, page_url: str) -> List[str]:
     SwagitAssetFinder since both embed real media URLs as plain strings
     somewhere in server-rendered HTML/inline <script> content, just in
     different surrounding structures.
+
+    Returns candidates in **document order** (first occurrence wins on
+    duplicates) -- this used to return `list(set(...))`, whose
+    nondeterministic ordering made every "first match wins" caller
+    (e.g. generic_fallback's `_pick_video_url`) a per-run coin flip on
+    pages with more than one media URL.
+
+    Each extracted candidate is HTML-entity-unescaped (`&amp;` -> `&`,
+    numeric entities too) before being returned -- confirmed live
+    2026-08-14 on the real Sacramento County OnBase page, whose m3u8 URL
+    carries `?instance=1&amp;token=...` in the raw HTML: without
+    unescaping, the CDN receives a literal `amp;token` parameter and the
+    real `token` is lost. Unescaping is per-candidate only, never applied
+    to the whole document (which could corrupt offsets/other matches).
 
     Also de-escapes JSON-style backslash-escaped slashes before matching --
     confirmed live 2026-08-10 against a real small-city site (Aurora, CO's
@@ -54,20 +96,51 @@ def scan_media_urls(html: str, page_url: str) -> List[str]:
     real URL, never invent content that wasn't already there.
     """
     html = html.replace("\\/", "/")
-    media_urls = set()
 
+    positioned = []  # (position, resolved_url)
     for pattern in MEDIA_URL_PATTERNS:
         for match in re.finditer(pattern, html, re.IGNORECASE):
             raw = match.group(1) if match.groups() else match.group(0)
-            if raw and not any(x in raw.lower() for x in ("placeholder", "logo", "icon")):
-                media_urls.add(urljoin(page_url, raw.strip("\"'")))
+            if not raw:
+                continue
+            raw = html_module.unescape(raw.strip("\"'"))
+            # Unescaping can re-introduce characters the pattern's own
+            # termination already excluded (e.g. a literal &quot; that was
+            # part of an escaped JSON blob) -- trim at the first one.
+            raw = re.split(r"[\"'\s<>\\]", raw, maxsplit=1)[0]
+            if not raw or _BLOCKLIST_RE.search(raw.lower()):
+                continue
+            positioned.append((match.start(), urljoin(page_url, raw)))
 
-    return list(media_urls)
+    positioned.sort(key=lambda item: item[0])
+    seen = set()
+    media_urls = []
+    for _, url in positioned:
+        if url not in seen:
+            seen.add(url)
+            media_urls.append(url)
+    return media_urls
+
+
+def is_hls_url(url: str) -> bool:
+    """True when the URL's *path* ends in .m3u8, query string ignored.
+
+    Exists because four separate call sites (generic_fallback, granicus,
+    swagit, ca_legislature) each hand-rolled
+    `candidate.lower().endswith(".m3u8")` against the FULL url -- which is
+    False for a real HLS URL carrying a query string
+    (`playlist.m3u8?instance=1&token=...`), the confirmed root cause of
+    the Sacramento County "no video found" production bug (2026-08-14).
+    """
+    return urlparse(url).path.lower().endswith(".m3u8")
 
 
 def media_type(url: str) -> str:
     path = urlparse(url).path.lower()
-    if url.lower().endswith(".m3u8"):
+    # Checked against the path, not the full URL -- a query string after
+    # .m3u8 used to make this fall through to "unknown" (same root cause
+    # as is_hls_url()'s docstring describes).
+    if path.endswith(".m3u8"):
         return "video"
     if path.endswith((".mp4", ".mov", ".m4v")):
         return "video"

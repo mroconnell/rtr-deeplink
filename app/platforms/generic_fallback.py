@@ -6,7 +6,7 @@ import aiohttp
 from bs4 import BeautifulSoup
 
 from .base import AssetFinder, find_platform_link, get_finder
-from .media_scan import media_type, scan_media_urls
+from .media_scan import is_hls_url, media_type, scan_media_urls
 from .models import ResolvedMeeting, TranscriptSegment
 from .youtube import YouTubeAssetFinder
 from ..utils.vtt_parser import decode_vtt_bytes, detect_language_from_texts, parse_captions_by_extension
@@ -394,7 +394,7 @@ class GenericFallbackAssetFinder(AssetFinder):
     @staticmethod
     def _pick_video_url(media_urls: List[str]) -> Tuple[Optional[str], Optional[str]]:
         for candidate in media_urls:
-            if media_type(candidate) == "video" and candidate.lower().endswith(".m3u8"):
+            if media_type(candidate) == "video" and is_hls_url(candidate):
                 return candidate, "m3u8"
         for candidate in media_urls:
             if media_type(candidate) == "video":

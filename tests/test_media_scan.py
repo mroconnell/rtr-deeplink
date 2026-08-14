@@ -114,3 +114,101 @@ def test_scan_media_urls_does_not_pick_up_unrelated_xml_or_txt():
     )
     urls = scan_media_urls(html, "https://city.example.com/page")
     assert urls == []
+
+
+# --- 2026-08-14 rebuild coverage (Phase 1 of the generic-fallback rebuild;
+# see BACKLOG_DONE.md). Every URL/shape below is a real one pulled from a
+# real page capture in tests/fixtures/generic_fallback/, not invented. ---
+
+SACRAMENTO_M3U8 = (
+    "https://d2fdkm9wl77cjf.cloudfront.net/mcvod/mediacache/"
+    "amlst:2vxN2KTTsz01k_deoRNbhu/playlist.m3u8?instance=1&token=abc123"
+)
+
+
+def test_media_type_classifies_m3u8_with_query_string_as_video():
+    # THE confirmed root cause of Sacramento County's production "no video
+    # found": the old check ran endswith(".m3u8") on the full URL, so a
+    # query string made a real HLS playlist classify as "unknown".
+    assert media_type(SACRAMENTO_M3U8) == "video"
+
+
+def test_is_hls_url_ignores_query_string():
+    from app.platforms.media_scan import is_hls_url
+
+    assert is_hls_url(SACRAMENTO_M3U8)
+    assert is_hls_url("https://x.gov/playlist.m3u8")
+    assert not is_hls_url("https://x.gov/video.mp4?fmt=m3u8")
+
+
+def test_scan_media_urls_decodes_html_entities_in_extracted_urls():
+    # Real shape from the Sacramento capture: the raw HTML carries
+    # `?instance=1&amp;token=...` -- without unescaping, the CDN receives a
+    # literal `amp;token` parameter and the real token is lost.
+    html = (
+        '<script>jwplayer("player").setup({playlist: [{'
+        'file: "https://d2fdkm9wl77cjf.cloudfront.net/mcvod/playlist.m3u8?instance=1&amp;token=xyz"'
+        "}]});</script>"
+    )
+    urls = scan_media_urls(html, "https://agendanet.saccounty.gov/ViewMeeting?id=10231")
+    assert urls == ["https://d2fdkm9wl77cjf.cloudfront.net/mcvod/playlist.m3u8?instance=1&token=xyz"]
+
+
+def test_scan_media_urls_file_key_matches_protocol_relative_and_relative_paths():
+    # Real shape from the Seattle Channel capture: JW `sources:` uses a
+    # protocol-relative mp4 and `tracks:` a relative-path srt; urljoin must
+    # resolve both against the page URL.
+    html = (
+        "playerInstance.setup({sources: [{"
+        'file: "//video.seattle.gov/media/council/council_081126_2022663.mp4", label: "Auto"}],'
+        'tracks: [{file: "documents/seattlechannel/closedcaption/2026/council_081126_2022663.srt",'
+        ' label: "English"}]});'
+    )
+    urls = scan_media_urls(html, "https://www.seattlechannel.org/videos?videoid=x189286")
+    assert "https://video.seattle.gov/media/council/council_081126_2022663.mp4" in urls
+    assert (
+        "https://www.seattlechannel.org/documents/seattlechannel/closedcaption/2026/"
+        "council_081126_2022663.srt"
+    ) in urls
+
+
+def test_scan_media_urls_src_attribute_keeps_query_string():
+    # The old src= pattern's terminator class ["'&] rejected any URL with a
+    # query string outright.
+    html = '<source src="//cdn.example.gov/v/meeting.m3u8?a=1&b=2">'
+    urls = scan_media_urls(html, "https://example.gov/page")
+    assert urls == ["https://cdn.example.gov/v/meeting.m3u8?a=1&b=2"]
+
+
+def test_scan_media_urls_returns_document_order_deterministically():
+    # Used to return list(set(...)) -- nondeterministic ordering that made
+    # "first match wins" callers a per-run coin flip (real risk on OCFL's
+    # 8-part meeting, whose parts must come back AA-first).
+    html = (
+        '<a href="https://otv.ocfl.net/otv/BCC071626AA.mp4">part 1</a>'
+        '<a href="https://otv.ocfl.net/otv/BCC071626BB.mp4">part 2</a>'
+        '<a href="https://otv.ocfl.net/otv/BCC071626AA.mp4">part 1 again</a>'
+    )
+    urls = scan_media_urls(html, "https://netapps.ocfl.net/Mod/meetings/1/2069")
+    assert urls == [
+        "https://otv.ocfl.net/otv/BCC071626AA.mp4",
+        "https://otv.ocfl.net/otv/BCC071626BB.mp4",
+    ]
+
+
+def test_scan_media_urls_blocklist_is_segment_aware():
+    # "silicon" contains "icon" -- the old substring blocklist dropped it.
+    html = (
+        '<video src="https://city.gov/media/silicon-valley-update.mp4"></video>'
+        '<img src="https://city.gov/img/logo.mp4">'
+    )
+    urls = scan_media_urls(html, "https://city.gov/page")
+    assert urls == ["https://city.gov/media/silicon-valley-update.mp4"]
+
+
+def test_scan_media_urls_bare_url_stops_at_whitespace_and_markup():
+    # The old quote-only termination let an unquoted URL swallow all
+    # following text up to the next quote character.
+    html = "Watch here: https://x.gov/a/playlist.m3u8 and then more text\n<p>stuff</p>"
+    urls = scan_media_urls(html, "https://x.gov/page")
+    assert urls == ["https://x.gov/a/playlist.m3u8"]

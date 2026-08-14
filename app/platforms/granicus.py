@@ -10,7 +10,7 @@ import wordninja
 from bs4 import BeautifulSoup
 
 from .base import AssetFinder
-from .media_scan import scan_media_urls, media_type
+from .media_scan import is_hls_url, scan_media_urls, media_type
 from .models import AlternateTranscript, ResolvedMeeting, TranscriptSegment
 from ..utils import jurisdiction_enrich
 from ..utils.vtt_parser import (
@@ -302,7 +302,7 @@ class GranicusAssetFinder(AssetFinder):
         """m3u8 preferred over a bare mp4 when both are present -- HLS gets
         adaptive bitrate via hls.js, a direct mp4 doesn't."""
         for candidate in media_urls:
-            if media_type(candidate) == "video" and candidate.lower().endswith(".m3u8"):
+            if media_type(candidate) == "video" and is_hls_url(candidate):
                 return candidate, "m3u8"
         for candidate in media_urls:
             if media_type(candidate) == "video":

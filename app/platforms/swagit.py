@@ -7,7 +7,7 @@ import aiohttp
 from bs4 import BeautifulSoup
 
 from .base import AssetFinder
-from .media_scan import scan_media_urls, media_type
+from .media_scan import is_hls_url, scan_media_urls, media_type
 from .models import ResolvedMeeting, TranscriptSegment
 from ..utils.vtt_parser import (
     STRUCTURED_CAPTION_PARSERS,
@@ -123,7 +123,7 @@ class SwagitAssetFinder(AssetFinder):
         media_urls = scan_media_urls(html, final_url)
         video_url, video_format = None, None
         for candidate in media_urls:
-            if media_type(candidate) == "video" and candidate.lower().endswith(".m3u8"):
+            if media_type(candidate) == "video" and is_hls_url(candidate):
                 video_url, video_format = candidate, "m3u8"
                 break
         if not video_url:
