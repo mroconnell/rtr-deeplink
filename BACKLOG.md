@@ -309,6 +309,36 @@ anything) to build against it.
     extraction) — worth cross-checking actual production values before
     assuming both complaints share one root cause.
 
+  **Update 2026-08-14: user ran the real Minneapolis LIMS page through
+  Google's Rich Results Test directly (not just Search Console's
+  site-wide crawl alert) — real, useful signal, both good and new.**
+  Overall result: **pass, 0 errors** — `VideoObject` detected cleanly
+  with `name`/`description`/`embedUrl`/`thumbnailUrl`/`url`/`inLanguage`/
+  `duration`/`publisher` all populated exactly as the template emits
+  them, confirming the 2026-08-14 thumbnailUrl/Clip build (see
+  `BACKLOG_DONE.md`) is real and validator-clean, not just
+  visually-plausible. 8 *non-critical* issues, all already understood or
+  now root-caused:
+  - `uploadDate` "invalid datetime"/"missing timezone" — the same two
+    flags already logged above, now confirmed reproducing on a real,
+    specific page rather than only a site-wide alert.
+  - **All 6 `Clip` entries flag "Missing field endOffset" — new, but now
+    root-caused, not just observed.** `meeting_page.html`'s Clip block
+    ([:100-102](archive/templates/meeting_page.html:100)) only emits
+    `endOffset` when `item.end and item.end > item.start`. LIMS's own
+    `_flatten_timestamps()`
+    ([lims.py:166](app/platforms/lims.py:166)/
+    [:171](app/platforms/lims.py:171)) sets `TranscriptSegment(start=
+    seconds, end=seconds, ...)` — `end` is always exactly equal to
+    `start` for every LIMS agenda item (there's no real per-item
+    duration data, so it's reused as a required-field placeholder) —
+    meaning the template's guard is never true for *any* LIMS-sourced
+    Clip, on any LIMS page, not just this one. Other adapters (Granicus,
+    IQM2) instead set each item's `end` to the *next* item's `start` (a
+    real, if approximate, duration) — the same convention LIMS could
+    adopt in `_flatten_timestamps()` to close this cleanly, same
+    low-risk shape as the fix, not attempted this pass.
+
 - **YouTube-backed meetings' transcripts run through
   `scripts/fetch_youtube_transcripts.py` on a daily `launchd` schedule
   now (both shipped 2026-08-10, see BACKLOG_DONE.md) — real remaining
@@ -378,6 +408,34 @@ anything) to build against it.
   later — this bug's premise was incorrect from the moment it was
   written 2026-08-12, most likely a misread of the code rather than a
   real regression. No fix needed.
+
+  **Update 2026-08-14: a different, real report — no save button while
+  actually signed in**, on
+  [redtaperecordings.com/meeting?url=...sccgov.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=17601](https://redtaperecordings.com/meeting?url=https%3A%2F%2Fsccgov.iqm2.com%2FCitizens%2FSplitView.aspx%3FMode%3DVideo%26MeetingID%3D17601)
+  (the real Santa Clara County meeting from this file's own IQM2 build
+  notes). Confirmed structurally: `app/templates/meeting.html` (the
+  `/meeting?url=` live-resolve page) has **zero** save-button markup at
+  all — grep for "save" across that template and its JS returns nothing
+  — so a save button structurally cannot appear there regardless of
+  login state, only after the client-side `/api/resolve` call redirects
+  to the real `/m/{slug}` page once archived. Live-replayed this exact
+  URL (signed out, since this session has no way to authenticate as the
+  user): it does redirect correctly to
+  `/m/the-county-of-santa-clara-ca-2026-08-11-board-of-supervisors-regular-meeting`
+  with real title/jurisdiction/video, and that page's own save buttons
+  are correctly gated behind `{% if active_account %}`
+  ([meeting_page.html:163](archive/templates/meeting_page.html:163)/
+  [:216](archive/templates/meeting_page.html:216)). **Genuinely
+  unconfirmed by this investigation**: whether `active_account` evaluates
+  correctly for a real signed-in visitor after arriving via this specific
+  `/meeting?url=` → redirect chain — that's exactly what the user
+  reported failing, but reproducing it needs their actual logged-in
+  session, not something checkable without real account credentials.
+  Worth a repro check: does the save button appear if a logged-in user
+  navigates directly to the `/m/{slug}` URL rather than via `/meeting?url=`?
+  If yes, the bug is specifically in whether the Clerk session cookie
+  survives this redirect path; if no, `active_account` itself has a
+  broader problem.
 
 - ~~**"Save this search" can silently save the wrong/stale search, and
   gives no feedback that it's already been saved.**~~ **Investigated
@@ -450,6 +508,26 @@ anything) to build against it.
   turned up yet to confirm it fires correctly in practice (covered by a
   synthetic test only, per `tests/test_civicclerk.py`).
 
+  **New gap found 2026-08-14, live-testing `/meetings`' jurisdiction
+  filter: searching "California" finds nothing, but "CA" works.** Root
+  cause confirmed by reading the code, not guessed: the jurisdiction
+  filter (`archive/db/crud.py:513`/`937`) is a plain
+  `MeetingPage.jurisdiction.ilike(f"%{jurisdiction}%")` substring match
+  against the *stored* column — and `normalize_state_suffix()` (this
+  entry's own fix, above) means that column's state suffix is now
+  essentially always the 2-letter abbreviation ("Sacramento County,
+  CA"), never the full name. So a real, natural search term like
+  "California" structurally can never match, while "CA" always will —
+  the same normalization that fixed row-to-row display inconsistency
+  created this search-side regression as a side effect. The user's own
+  candidate fixes: a dropdown of known jurisdictions, or a
+  California=CA lookup table for search specifically (effectively the
+  inverse of `US_STATE_NAME_TO_ABBR` in
+  `archive/utils/jurisdiction_format.py`, which already has the full
+  name→abbreviation mapping needed — reusing it to also expand a
+  full-name search term to its abbreviation, or match either form,
+  looks like the cheapest fix, but not decided/built this pass).
+
 ## Deep links
 
 The `t`/`line` scheme itself is sound and hasn't changed since the initial
@@ -516,6 +594,98 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   simulation), and `data-version-id` renders correctly. Full Python
   suite green throughout (121 tests, unaffected -- this was a pure
   frontend change).
+
+## Meeting page UI gaps found 2026-08-14 (live testing)
+
+- **Agenda items drift rightward as timestamps get wider — real root
+  cause confirmed by reading the CSS, not guessed.** User's own framing:
+  agenda items should share one left-aligned margin all the way down the
+  page, the same way transcript caption text already visibly does.
+  `.transcript-segment { display: grid; grid-template-columns: auto auto
+  1fr; ... }` ([style.css:568](archive/static/style.css:568)) is applied
+  identically to *both* agenda items and transcript lines — but each
+  `.transcript-segment` div is its own independent grid container, so
+  its `auto`-sized timestamp column is sized to fit only *that row's*
+  own timestamp text, not a shared width across the whole list. A row
+  showing `[0:05]` gets a narrower first column than a row showing
+  `[1:23:45]`, so each row's text column starts at a different x
+  position. This is structurally identical for agenda and transcript —
+  the reason it visibly bothers agenda specifically is that a meeting's
+  full agenda (spanning `0:05` to potentially `7:59:59` in one glance) is
+  usually all visible in the viewport at once, so the drift is obvious;
+  transcript timestamps only vary by a second or two within any given
+  scrolled-to viewport, so the same per-row independent-grid quirk never
+  visibly produces drift there. A real fix needs the timestamp column
+  aligned *across* rows, not just within one — either a fixed (not
+  `auto`) width wide enough for the longest real timestamp shape
+  (`H:MM:SS`), or CSS Subgrid on the parent list. Not attempted this
+  pass — a CSS-only change to a class shared by both agenda and
+  transcript, so any fix needs checking against both, not just agenda.
+
+- **Meeting pages sometimes render unusually wide — confirmed root cause
+  on a real example**, [redtaperecordings.com/m/meeting-38ca49](https://redtaperecordings.com/m/meeting-38ca49)
+  (the Sacramento County page also logged above). `.meeting-page` is a
+  CSS Grid on desktop (`grid-template-columns: minmax(220px, 300px)
+  1fr`, [style.css:227](archive/static/style.css:227)), with the agenda/
+  transcript content living in `#transcriptColumn`, the `1fr` track. Grid
+  items default to `min-width: auto`, which sizes a track to fit its
+  content's *minimum* intrinsic width — for an unbreakable string (no
+  spaces/hyphens for the browser to wrap on), that's the string's full
+  rendered width, `overflow-wrap: break-word` on the text itself
+  notwithstanding, since break-word only prevents overflow once the
+  box's own width is already otherwise constrained. This page's real
+  agenda-link URL is a single ~185-character unbroken token
+  (`.../Documents/Downloadfile/BOARD_OF_SUPERVISORS_10231_Agenda_Packet_
+  8_11_2026_9_30_00_AM.pdf?documentType=5&meetingId=10231&isAttachment=
+  True`), confirmed via `curl` of the real page — long enough to force
+  `#transcriptColumn`'s track wider than its fair `1fr` share, pushing
+  `.meeting-page` past its own `max-width: 860px`. `#transcriptColumn`
+  has no `min-width: 0` override anywhere in `style.css` today — the
+  exact fix already applied to two other real instances of this same
+  quirk in this same stylesheet
+  (`.calendar-candidate-main { min-width: 0; }`,
+  `.saved-item-main { min-width: 0; }`), just never extended to this
+  container. (Browser-pane diagnostics were unreliable while checking
+  this live — 0×0 viewport reported by `javascript_tool` even after an
+  explicit resize — so this is confirmed via CSS/HTML source reading,
+  not a live rendered screenshot; worth a visual confirm once the
+  browser pane is behaving.)
+
+- **Auto-scroll toggle is missing on every archived `/m/{slug}` page,
+  full stop — not intermittent, and not conditioned on whether a video
+  exists.** Confirmed by grep: `app/templates/meeting.html` (the
+  `/meeting?url=` live-resolve page) has a real
+  `#toggleAutoScrollBtn`/`#autoScrollState` toggle wired to
+  `autoScrollEnabled` in `app/static/player.js`. `archive/templates/
+  meeting_page.html` and `archive/static/meeting_page.js` have **no**
+  such toggle at all — grep for "autoscroll"/"auto-scroll" across both
+  returns nothing. Instead, `meeting_page.js:159` calls
+  `highlightSegment(segId, true, 'nearest')` — auto-scroll hardcoded on,
+  permanently, with no way to turn it off on any permanent page. So the
+  user's "sometimes it's missing" observation maps onto a real, simple
+  split: every `/meeting?url=` (not-yet-archived) page has the toggle,
+  every `/m/{slug}` (archived, permanent — the majority of real traffic)
+  page never does, video or no video. Porting the resolver's toggle
+  markup/JS to the Archive template would close this.
+
+- **PDF agenda links are never rendered inline or text-extracted for
+  preview — a real product question raised live-testing, not yet a
+  scoped bug.** Today, any agenda PDF `generic_fallback.py` finds is
+  shown only as a plain outbound link
+  (`.source-guess`/`_find_agenda_link()`), never embedded in a viewer or
+  summarized. Two distinct asks worth separating if this gets scoped:
+  (1) an inline PDF viewer (a real frontend/UX decision — embed via
+  `<iframe>`/`<embed>` pointing at the PDF URL directly is the cheapest
+  version, works today with zero backend change, but doesn't add
+  searchability); (2) extracting real text from the PDF (even just the
+  first page/top of document, per the user's own "regex of the top
+  text" suggestion) to store as a searchable preview/snippet — this
+  needs a real PDF-text-extraction dependency (e.g. `pypdf`/`pdfplumber`,
+  neither currently in `requirements.txt`) and a place to store the
+  extracted text (`MeetingPage` has no such column today). Not
+  investigated further this pass — logged as a real gap/question, not
+  designed.
+
 ## Platform coverage — open questions
 
 - **Hyland "221 Agenda Online" (OnBase Agenda) — new platform, not
@@ -607,6 +777,21 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   doesn't attempt real agenda-item extraction), not a new bug, just
   another data point on how weak the fallback is for this platform
   specifically.
+
+  **Update 2026-08-14, live-tested by the user against a third meeting
+  id on this same instance
+  ([id=4665](https://mccobagenda.databankcloud.com/AgendaOnline/Meetings/ViewMeeting?id=4665&doctype=3)):
+  the video fix confirmed working on a brand-new id too** (live-replayed:
+  "Share video at 0:00" — the real video plays) — **but title/
+  jurisdiction are still exactly as weak as before**, live-confirmed on
+  this exact id as "Untitled meeting," no jurisdiction, agenda link still
+  the bare site root. Jurisdiction specifically has a real, low-risk fix
+  already available and not yet wired in: see the "Orange County FL"
+  residual bullet above (`jurisdiction_enrich.lookup_by_domain()` /
+  `_KNOWN_DOMAINS`) — this domain (`mccobagenda.databankcloud.com`) is
+  just as good a `_KNOWN_DOMAINS` candidate as `netapps.ocfl.net`, same
+  reasoning: no in-page text maps to a real jurisdiction, but the domain
+  itself unambiguously does (Maricopa County, AZ).
 
 - **IQM2 (`app/platforms/iqm2.py`) — Riverside County, CA's real title/
   jurisdiction extraction should work by inspection but doesn't in prod,
@@ -825,6 +1010,16 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   in-browser.** Actual Vimeo *playback* (embedding + captions) is still
   the separate, bigger gap tracked in the Vimeo entry above — the
   pointer is the honest middle ground until that exists.
+
+  **Re-checked live 2026-08-14 after a user report that jurisdiction
+  "still doesn't grab" here — doesn't reproduce.** Live-replayed this
+  exact URL just now: jurisdiction renders correctly as "Sebastopol, CA"
+  on its own line under the title, exactly the sitewide convention, plus
+  the video pointer described above. Worth a straight correction rather
+  than a new bug entry — this page appears to already be working as
+  intended on both fronts described in this update; if the user still
+  sees it missing, worth comparing browser/cache state rather than
+  assuming a live regression, since this exact URL just resolved clean.
 
 - ~~**CHAMP/ChampDS (`play.champds.com`) — new platform, not supported at
   all today**~~ **Built 2026-08-13 — full detail in `BACKLOG_DONE.md`.**
@@ -1525,10 +1720,33 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   YouTube video (gated on the page's own iframe_api loader — the
   corroboration that made shipping on this one example acceptable), and
   title/date come from the h1 assembly + heading-date extractors when
-  YouTube's own metadata is blocked. **Still open, the only remaining
-  piece**: (3), parsing the accordion agenda structure into real
-  `agenda_items` — that's the dedicated-adapter part, still gated on a
-  second real example per the paragraph above.
+  YouTube's own metadata is blocked. **Still open**: (3), parsing the
+  accordion agenda structure into real `agenda_items` — that's the
+  dedicated-adapter part, still gated on a second real example per the
+  paragraph above — **and, re-confirmed live by the user this same day,
+  jurisdiction specifically is still never set**, even though the
+  h1-assembled title text ("Tarrant County Commissioners Court") already
+  contains it in full. The title/jurisdiction extractors here fill
+  `resolved.title` only, never split any of it back out into
+  `resolved.jurisdiction`. **A second, independent real signal the user
+  also pointed out**: the YouTube video's own channel name is a plain,
+  unauthenticated, no-yt-dlp-needed way to get at the same answer —
+  confirmed live via the public oEmbed endpoint
+  (`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=
+  {id}&format=json`, no API key, not subject to the yt-dlp/Render-IP
+  blocking documented elsewhere in this file) returning real
+  `"author_name":"TarrantCountyTX"` for this exact video. Tempting as a
+  generic fallback signal, but needs real care, not a blind reuse: this
+  file already has a documented, fixed bug class
+  (`generic_fallback.py`'s YouTube-embed branch entry, above) for
+  exactly "jurisdiction set unconditionally from a YouTube
+  channel/uploader name" being wrong in general (a channel name isn't
+  always a clean jurisdiction string) — any use of oEmbed's `author_name`
+  here should probably be a corroborating signal alongside the page's own
+  h1 text, not a standalone source, and only after a second real example
+  confirms the channel-name-to-jurisdiction mapping is reliable beyond
+  this one (admittedly very clean, "TarrantCountyTX" → "Tarrant County,
+  TX") case.
 
 - **Wayne County, MI's own meeting-listing site
   (`waynecountymi.gov`) — user-reported 2026-08-13, root cause confirmed
@@ -1653,6 +1871,23 @@ auditing it (2026-08-08) — two fixed since, one still open below:
     this fallback returns a no-video result, since the same
     can't-possibly-work state likely also shows on Wayne County/Tucson-
     style genuinely-empty pages, not just this one.
+
+    **Independently re-confirmed 2026-08-14 by the user live-testing the
+    actual archived page**, `/m/meeting-890af1` — same misleading CTA,
+    same underlying page. One small correction to "its archived page is
+    empty" above, worth noting precisely rather than letting stand
+    uncorrected: it isn't actually blank — live-checked and it shows a
+    real (if generic, sitewide-not-per-meeting) title, "BCC Meeting
+    Videos," pulled from the page's own `<h1 id="pageTitle"
+    class="ms-core-pageTitle">` via the rebuild's h1-assembly extractor,
+    plus a real (if also generic) agenda link to
+    `discover.pbc.gov/countycommissioners/Pages/Agenda.aspx`. So the h1
+    extractor *is* doing something useful here — it's just SharePoint's
+    one static, page-wide heading, not this specific meeting's real
+    title/date/jurisdiction, which per the SharePoint list-view markup
+    confirmed in this file's own residual note only exists client-side.
+    Doesn't change the real conclusion (still needs its own headless
+    trigger idea), just corrects the "empty" description.
   - **Video-only best-effort results are never archived** — the push
     gate (`app/main.py`, `segments or agenda_items or agenda_link`)
     predates the rebuild, but matters more now that the fallback finds
