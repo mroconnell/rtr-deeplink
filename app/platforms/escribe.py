@@ -9,6 +9,7 @@ from bs4 import BeautifulSoup
 from langdetect import detect as detect_language, LangDetectException
 
 from .base import AssetFinder
+from .generic_fallback import scan_page_for_video_evidence
 from .models import ResolvedMeeting, TranscriptSegment
 from ..utils import jurisdiction_enrich
 from ..utils.vtt_parser import parse_vtt, is_likely_garbled, decode_vtt_bytes
@@ -74,15 +75,42 @@ class EscribeAssetFinder(AssetFinder):
 
             player = soup.select_one("#isi_player[data-client_id][data-stream_name]")
             video_url, video_format = None, None
+            video_link: Optional[str] = None
+            video_link_recognized = False
+            best_effort = False
             segments: List[TranscriptSegment] = []
             transcript_language: Optional[str] = None
 
             if not player:
-                video_warnings.append(
-                    "No video integration found on this page -- this city's eScribe "
-                    "setup may only offer a live stream (e.g. Vimeo) with no archive, "
-                    "or use a video platform this adapter doesn't recognize yet."
+                # Opt-in backstop (2026-08-14 rebuild, first adapter wired
+                # in): eScribe's own docstring documents "no video
+                # integration" as a common, real outcome here, and its
+                # pages are per-meeting (no other meetings' videos on the
+                # page -- low wrong-video risk, unlike e.g. Cablecast's
+                # related-shows carousel). Perry, GA is the confirmed real
+                # beneficiary shape: its only video is a plain Vimeo
+                # live-stream link, exactly what the pointer tier
+                # surfaces. A backstop hit is best-effort by definition --
+                # it came from a generic scan, not eScribe's own
+                # structure -- so the result is flagged accordingly.
+                scanned_url, scanned_format, scanned_link, scanned_recognized = (
+                    scan_page_for_video_evidence(html, url)
                 )
+                if scanned_url or scanned_link:
+                    video_url, video_format = scanned_url, scanned_format
+                    video_link, video_link_recognized = scanned_link, scanned_recognized
+                    best_effort = True
+                    video_warnings.append(
+                        "This city's eScribe setup has no recognized video integration, "
+                        "but a general scan of the page found what looks like the "
+                        "video -- treat it as best-effort, not confirmed."
+                    )
+                else:
+                    video_warnings.append(
+                        "No video integration found on this page -- this city's eScribe "
+                        "setup may only offer a live stream (e.g. Vimeo) with no archive, "
+                        "or use a video platform this adapter doesn't recognize yet."
+                    )
             else:
                 client_id = player["data-client_id"]
                 stream_name = player["data-stream_name"]
@@ -130,11 +158,14 @@ class EscribeAssetFinder(AssetFinder):
             jurisdiction=jurisdiction,
             video_url=video_url,
             video_format=video_format,
+            video_link=video_link,
+            video_link_recognized=video_link_recognized,
             segments=segments,
             agenda_items=agenda_items,
             transcript_language=transcript_language,
             video_warnings=video_warnings,
             transcript_warnings=transcript_warnings,
+            best_effort=best_effort,
         )
 
     @staticmethod

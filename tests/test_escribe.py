@@ -151,3 +151,76 @@ async def test_resolve_video_present_but_no_caption_file_found():
     assert result.video_url is not None
     assert result.segments == []
     assert any("no caption file was found" in w.lower() for w in result.transcript_warnings)
+
+
+# --- 2026-08-14 rebuild coverage (Phase 4: the opt-in generic-scan
+# backstop -- eScribe is the first adapter wired in, chosen because "no
+# video integration" is its documented common real outcome and its pages
+# are per-meeting, so wrong-video risk is low). ---
+
+
+async def test_backstop_finds_youtube_embed_when_no_isi_player(monkeypatch):
+    # SYNTHETIC on a real shape: no eScribe city with an embedded YouTube
+    # video has been confirmed yet (2026-08-14) -- this exercises the
+    # backstop branch with the same iframe-embed shape confirmed real on
+    # many generic-fallback pages. The eScribe page scaffold (title
+    # format, pub-{city} subdomain) matches the real confirmed template.
+    url = "https://pub-example.escribemeetings.com/Meeting.aspx?Id=9"
+    html = (
+        '<html><head><title>Council Meeting - January 1, 2026</title></head><body>'
+        '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>'
+        "</body></html>"
+    )
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await EscribeAssetFinder().resolve(url)
+
+    assert result.video_url == "https://www.youtube.com/embed/dQw4w9WgXcQ"
+    assert result.video_format == "youtube"
+    # A backstop hit is best-effort by definition, with a provenance
+    # warning -- the video came from a generic scan, not eScribe's own
+    # structure.
+    assert result.best_effort is True
+    assert any("general scan of the page" in w for w in result.video_warnings)
+    # eScribe's own metadata is untouched.
+    assert result.title == "Council Meeting"
+    assert result.date == "2026-01-01"
+
+
+async def test_backstop_surfaces_vimeo_pointer_for_perry_ga_shape(monkeypatch):
+    # Perry, GA is the CONFIRMED real beneficiary shape (this adapter's
+    # own 2026-08-06 docstring): no iSiLIVE integration at all, just a
+    # plain link to a live Vimeo stream. Synthetic reconstruction of that
+    # confirmed shape (the original page wasn't captured).
+    url = "https://pub-perryga.escribemeetings.com/Meeting.aspx?Id=4"
+    html = (
+        '<html><head><title>Council Meeting - January 1, 2026</title></head><body>'
+        '<a href="https://vimeo.com/123456789">Watch the live stream</a>'
+        "</body></html>"
+    )
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await EscribeAssetFinder().resolve(url)
+
+    assert result.video_url is None
+    assert result.video_link == "https://vimeo.com/123456789"
+    assert result.video_link_recognized is True
+    assert result.best_effort is True
+
+
+async def test_backstop_leaves_true_no_video_result_unchanged():
+    # A page with genuinely nothing video-shaped keeps the original honest
+    # warning, no best_effort flag, no pointer.
+    url = "https://pub-example.escribemeetings.com/Meeting.aspx?Id=2"
+    html = "<html><head><title>Untitled - January 1, 2026</title></head><body>No player here.</body></html>"
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await EscribeAssetFinder().resolve(url)
+
+    assert result.video_url is None
+    assert result.video_link is None
+    assert result.best_effort is False
+    assert any("no video integration found" in w.lower() for w in result.video_warnings)

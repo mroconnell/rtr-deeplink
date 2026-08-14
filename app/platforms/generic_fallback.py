@@ -732,3 +732,35 @@ class GenericFallbackAssetFinder(AssetFinder):
         content = decode_vtt_bytes(raw)
         cues, _fallback_text = parse_captions_by_extension(caption_url, content)
         return cues
+
+
+def scan_page_for_video_evidence(
+    html: str, page_url: str
+) -> Tuple[Optional[str], Optional[str], Optional[str], bool]:
+    """The generic fallback's page-analysis tiers, packaged for DEDICATED
+    adapters to opt into as a backstop when their own platform-specific
+    extraction found no video (2026-08-14 rebuild, the user's explicit
+    call: opt-in per adapter, never blanket -- a blind second-pass scan on
+    a page carrying OTHER meetings' videos, like Cablecast's related-shows
+    carousel, could attach the wrong meeting's video, which is worse than
+    none).
+
+    Returns `(video_url, video_format, video_link, video_link_recognized)`
+    -- at most one of video_url/video_link is set. Pure page analysis, no
+    network: the YouTube tier returns the embed URL directly rather than
+    running YouTubeAssetFinder's metadata resolve, since an opting-in
+    adapter already has its own (better) metadata.
+
+    Callers should set `best_effort=True` and append a provenance warning
+    when attaching anything from here -- the result came from a generic
+    scan, not the platform's own confirmed structure.
+    """
+    video_id = GenericFallbackAssetFinder._find_youtube_video_id(html)
+    if video_id:
+        return f"https://www.youtube.com/embed/{video_id}", "youtube", None, False
+    media_urls = scan_media_urls(html, page_url)
+    video_url, video_format = GenericFallbackAssetFinder._pick_video_url(media_urls)
+    if video_url:
+        return video_url, video_format, None, False
+    video_link, recognized = GenericFallbackAssetFinder._find_video_pointer(html, page_url)
+    return None, None, video_link, recognized
