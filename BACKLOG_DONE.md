@@ -4856,6 +4856,94 @@ changelog of task titles.
   concurrently by another session working this same backlog) before and
   after — all passing, no regressions from either change.
 
+- **[Done 2026-08-13] `/coverage` page redesign + sitemap completeness**
+  (commits `9e1cef0`, `517011f`), from a live-testing pass that turned up
+  several real usability/accuracy issues, not a hypothetical cleanup:
+  the Cablecast row still said "(Detroit, MI)" even though Charlotte, NC
+  had already become a real, live-transcribed second customer on the same
+  adapter; each row linked the *platform name* instead of the example
+  meeting, backwards from the sitewide `/meetings` convention; the
+  Transcript badge read as attached to the platform label rather than the
+  specific example; and only one example city was ever shown per
+  platform, even Granicus, underselling its real breadth.
+
+  **`archive/db/crud.py`**: `DIRECT_PLATFORMS["cablecast"]` label changed
+  to plain `"Cablecast"` (city names now come from real per-example
+  jurisdiction data instead of a hand-maintained label that will go stale
+  again the next time Cablecast gains a city). Added
+  `_PLATFORM_EXAMPLE_COUNTS` (default 3, Granicus 5) and
+  `_select_examples()`, which prefers a distinct jurisdiction per pick
+  (real multi-city breadth) then `has_transcript=True` within that, and
+  never fabricates rows. `_coverage_row()` now returns a plural
+  `examples` list while keeping the old singular `example` (=
+  `examples[0]`) and `page_count` fields for back-compat.
+
+  **`archive/templates/coverage.html`**: replaced the duplicated
+  `coverage.direct`/`coverage.custom` loops with one shared
+  `{% macro platform_group(row) %}` (same in-file-macro pattern as
+  `meeting_page.html`'s `version_picker()`), rendering each example's
+  title as the link with its own Transcript badge — platform name became
+  a plain `<h3>` group heading. Rewrote the "By platform" intro sentence
+  with SEO/LLM-discoverability intent (real search phrasing like "link to
+  city meetings on Granicus", plus framing useful to an LLM agent
+  recommending the tool) and rewrote "What about Platform XYZ?" to name
+  all four confirmed real delegation pairings (Legistar→Granicus,
+  CivicPlus→Granicus, PrimeGov→YouTube, CivicWeb→YouTube).
+
+  **Decision (left to Claude's judgment by the user): kept prose, did not
+  merge into a "Granicus/Legistar" row label.** A `MeetingPage` ingested
+  via a Legistar/CivicPlus URL is stored with `platform="granicus"` and a
+  real `granicus.com` `source_url_normalized` — no Legistar-specific data
+  exists on it at all (see `crud.py`'s existing comment on why these are
+  excluded from `DIRECT_PLATFORMS`). A merged label would visually claim
+  the shown example demonstrates Legistar support, which it doesn't —
+  the same "don't claim a data path works without a positive example"
+  principle this repo already applies elsewhere.
+
+  **Sitemap**: `archive/templates/sitemap.xml.jinja` and
+  `archive/main.py`'s `/sitemap.xml` route previously only emitted
+  `/m/{slug}` entries via `crud.list_all_page_slugs()`. Added a static
+  `_SITEMAP_STATIC_PATHS` list (`/`, `/about`, `/coverage`, `/meetings`)
+  rendered with no `<lastmod>` (no real timestamp exists for them —
+  didn't fabricate one). Deliberately excluded `/account/saved`,
+  `/alerts/unsubscribe`, `/meeting` (ephemeral, already
+  `robots.txt`-disallowed), and any `/admin/*` route.
+
+  **SEO/LLM-discoverability audit**: a broader sitewide audit was run in
+  parallel (structured data, meta tags, canonical URLs, `llms.txt`,
+  AI-crawler access) but, per user decision, only the two items above
+  shipped this pass — the full tiered audit was logged to
+  `CLAUDE_BACKLOG.md`'s "SEO / LLM-discoverability" section for later
+  triage rather than built blind.
+
+  **Follow-up fix same day**: auditing README/backlog accuracy afterward
+  surfaced a stale, self-contradicting comment in
+  `app/platforms/cablecast.py` (left over from before Charlotte was
+  confirmed working) claiming Charlotte used "a visibly different
+  template this adapter doesn't handle" — directly contradicted by the
+  adapter's own docstring three lines below. Fixed the comment and the
+  matching stale README table row (commit `517011f`); comment/doc-only,
+  verified via `pytest tests/ -k cablecast` (21 passed).
+
+  Verified via `pytest tests/test_footer_and_coverage.py`, a local
+  Archive run (`DATABASE_URL=` empty-prefix trick to force SQLite) with
+  `/coverage` checked in-browser (page text dump + `read_page` + a direct
+  `curl` of rendered HTML, since the browser pane's screenshot tool was
+  flaky that session) confirming the Cablecast row no longer says
+  "(Detroit, MI)", each example title links with its own badge, and
+  Granicus shows 5 distinct-jurisdiction examples; and `curl
+  localhost:<port>/sitemap.xml` confirming `/`, `/about`, `/coverage`,
+  `/meetings` all appear and `/account/saved`, `/meeting`, `/admin/*` do
+  not.
+
+  **What's still open**: the larger "sortable/filterable table, one row
+  per jurisdiction with agenda-embedded/instant-transcript/provider-split/
+  outcome-bucket/last-verified-date columns" spec from the original
+  Coverage page roadmap ask is still unbuilt — today's work is a UX/
+  accuracy pass on the existing grouped-by-platform page, not that table.
+  Tracked as the still-open part of the "Coverage page" entry in
+  `BACKLOG.md`'s Archive roadmap section.
+
 ## Testing infrastructure
 
 - **[Done 2026-08-07] Fixture-based pytest suite, from Claude's own

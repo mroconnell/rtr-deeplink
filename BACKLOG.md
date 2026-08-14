@@ -430,6 +430,68 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   a few JS URLs, confirming this is a platform-wide gap (every meeting
   on this instance), not one unusual page.
 
+  **Update 2026-08-13: a second real customer confirms this is genuinely
+  platform-wide across hosting domains, not one reseller's quirk — and
+  overturns part of the "everything genuinely renders client-side"
+  conclusion above.** User-reported:
+  [mccobagenda.databankcloud.com/AgendaOnline/Meetings/ViewMeeting?id=4694&doctype=3](https://mccobagenda.databankcloud.com/AgendaOnline/Meetings/ViewMeeting?id=4694&doctype=3)
+  (Maricopa County, AZ). Same exact product — footer reads "Copyright ©
+  2015-2026 Hyland Software, Inc.", same `/AgendaOnline/Meetings/
+  ViewMeeting?id={n}&doctype={n}` URL shape, same generic `<title>View
+  Meeting - OnBase Agenda Online</title>` with zero static jurisdiction
+  text — but hosted on `databankcloud.com` rather than Tucson's
+  `hylandcloud.com`, i.e. a different Hyland reseller/hosting domain
+  serving the identical template. Confirmed live in prod
+  ([redtaperecordings.com](https://redtaperecordings.com), via browser):
+  resolves to "Untitled meeting," "we couldn't find a video on this page
+  automatically," matching Tucson's symptom.
+
+  **But unlike Tucson, this customer's page does have a real, static,
+  server-rendered video URL** — confirmed via plain `curl` (no JS): a JW
+  Player `setup()` call in an inline `<script>` block with
+  `file: "https://d27q9sfkph1oc9.cloudfront.net/mcvod/mediacache/
+  amlst:{id}/playlist.m3u8?instance=1&amp;token={signed-token}"`, a real
+  signed CloudFront-hosted HLS stream. So "every OnBase Agenda Online
+  customer needs a headless-browser fetch" (Tucson's conclusion) doesn't
+  generalize — video availability varies per customer/config the same
+  way it does on Cablecast/CHAMP, and this customer's video should in
+  principle be reachable via the existing static-HTML path.
+
+  **Confirmed `media_scan.scan_media_urls()`'s existing `.m3u8` pattern
+  *does* correctly extract this exact URL** when run locally against the
+  same HTML this environment's `curl` fetched (verified directly in a
+  Python shell) — so the scanning regex itself isn't the blocker. Yet
+  the live prod resolve still returns no video. Root cause of that gap
+  is **not yet isolated** — could be Render's server IP getting a
+  different (bot-gated/stripped) response than a plain dev-machine
+  `curl` gets, a cookie/session requirement, or something else; needs a
+  live debugging pass (e.g. checking what `generic_fallback.py`'s own
+  `aiohttp` fetch actually receives from production, not just replaying
+  a locally-curled snapshot) before attempting a fix — not attempted
+  this pass, per this repo's "don't fix without a confirmed root cause"
+  convention.
+
+  **Separately, a real bug independent of the above**: the extracted
+  URL's query string contains a literal `&amp;` HTML entity
+  (`?instance=1&amp;token=...`) rather than a decoded `&` — even once
+  the video *is* found, this would break the query string (`token`
+  becomes part of a bogus `amp` value, not a real param) unless
+  something HTML-entity-decodes it first. `scan_media_urls()` already
+  has one comparable de-escaping step (backslash-escaped JSON slashes,
+  see its docstring) — an `html.unescape()` pass, or a narrower
+  `&amp;` → `&` replace, would need the same treatment. Not fixed this
+  pass (code changes are out of scope for this session), just flagged
+  as a second, independently real problem on the same URL.
+
+  **Also noted, lower priority**: the "we think we found an agenda here"
+  link the prod resolve returned points at the OnBase Agenda Online site
+  root (`.../AgendaOnline/`), not this specific meeting's agenda — a
+  known limitation of `_find_agenda_link()`'s best-effort "any `<a>`
+  containing 'agenda'" matching (its own docstring already says it
+  doesn't attempt real agenda-item extraction), not a new bug, just
+  another data point on how weak the fallback is for this platform
+  specifically.
+
 - **Seattle Channel (`seattlechannel.org`) — new platform, not supported
   at all today, flagged by the user 2026-08-12 with a real example**
   ([seattlechannel.org/.../city-council-all-videos-index?videoid=x189286](https://www.seattlechannel.org/mayor-and-council/city-council/city-council-all-videos-index?videoid=x189286),
@@ -591,6 +653,35 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   *that* failure mode before committing to a "Maybe:" shape — not
   abandoned, just not enough evidence yet either way.
 
+  **Update 2026-08-13: that second example has now shown up, user-found
+  at
+  [cityofsebastopol.gov/events/city-council-meeting-january-6-2026/](https://www.cityofsebastopol.gov/events/city-council-meeting-january-6-2026/)
+  — the resolver currently shows a bare "Meeting" here instead of the
+  real title/jurisdiction, and per the user's report there's also a
+  linked video (see the Vimeo entry above) that isn't being picked up
+  either.** Confirmed via WebFetch of the raw page: exact `<title>` is
+  `City Council Meeting January 6, 2026 - City of Sebastopol,
+  California` — real static text, cleanly identifies both the meeting
+  and the jurisdiction, but uses a `" - "` separator, not the `"|"`
+  `_TITLE_TAG_PIPE_RE` was built against for CRRMA. This is exactly the
+  "page with SOME static text that doesn't match the strict pipe shape"
+  case the note above was waiting on: a WordPress "The Events Calendar"
+  -style page (`/events/{slug}/`), a different real generic-fallback
+  template family from CRRMA's. Two real, separately-confirmed gaps on
+  this one page, worth fixing together since both trace back to the same
+  URL: (1) title/jurisdiction extraction needs to handle a `" - "`
+  suffix shape in addition to `"|"` — or, given now-two confirmed real
+  separator styles, a looser last-resort split (e.g. on the last
+  `" - "`/`"|"`/`"—"` before a trailing `", <state>"` or known org name)
+  might be worth it over hardcoding a second exact-separator regex; (2)
+  the Vimeo video link needs the general Vimeo playback support tracked
+  in the entry above — once that exists, this page's plain server-side
+  `<a href="vimeo.com/...">` should already be catchable by
+  `_try_delegate_to_known_platform()`'s existing link scan with no
+  Sebastopol-specific code. Not yet built — logged here per this repo's
+  "new bugs/gaps found while working go in BACKLOG.md" convention, not
+  investigated further this pass.
+
 - ~~**CHAMP/ChampDS (`play.champds.com`) — new platform, not supported at
   all today**~~ **Built 2026-08-13 — full detail in `BACKLOG_DONE.md`.**
   New `app/platforms/champds.py`, confirmed live against 6 independent
@@ -735,6 +826,26 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   the numeric one (`8925576`) from the Budget committee example above —
   confirms the `vimeo.com/showcase/{slug-or-id}?video={id}` shape holds
   across different showcase-ID styles, not just one body's own naming.
+
+  **Update 2026-08-13: a fifth real example, and a third distinct URL
+  shape — user-confirmed at
+  [cityofsebastopol.gov/events/city-council-meeting-january-6-2026/](https://www.cityofsebastopol.gov/events/city-council-meeting-january-6-2026/).**
+  A plain top-level `vimeo.com/{id}/{privacy-hash}?fl=sm&fe=ec` link
+  (`https://vimeo.com/1152708575/db9859a2aa?fl=sm&fe=ec`) — different
+  from both the channel-page shape (Salisbury/Rockland/Spokane/
+  Corvallis/Wilson) and the showcase shape (Chicago ELMS). This is a
+  WordPress city-events page hit through `generic_fallback.py`, not a
+  dedicated adapter, and unlike Chicago's client-injected `videoLink`,
+  the Vimeo link here is server-rendered as a plain `<a href>` (confirmed
+  via WebFetch of the raw page) — so once general Vimeo playback support
+  exists, `generic_fallback.py`'s existing "any known-platform link on
+  the page" scan (`_try_delegate_to_known_platform()`) would likely pick
+  this one up for free, no page-specific work needed. Whether this
+  specific privacy-hash'd URL shape has a fetchable signed caption URL
+  the same way the channel-page samples did is unconfirmed — no
+  real-browser check attempted yet for this one. Same underlying blocker
+  as the rest of this entry: no Vimeo playback/caption support exists in
+  this app today.
 
 - **Phoenix's Legistar instance (`phoenix.legistar.com`) — root cause
   now confirmed structural, not one ambiguous sample.** Domain routing
@@ -1158,6 +1269,85 @@ auditing it (2026-08-08) — two fixed since, one still open below:
     Worth checking against `granicus.py`'s existing caption-detection
     logic directly, since most other Granicus instances checked this
     pass showed no caption UI at all.
+
+- **Tarrant County, TX's own "Agenda Management System"
+  (`agendamgmtprod.tarrantcountytx.gov`) — new platform, not supported
+  at all today, user-reported 2026-08-13 with a real example**:
+  [agendamgmtprod.tarrantcountytx.gov/Meetings/GetHTMLAgenda?meetingId=&dataSource=&id=21849bbe-d099-4637-1560-08ddc611a5e2](https://agendamgmtprod.tarrantcountytx.gov/Meetings/GetHTMLAgenda?meetingId=&dataSource=&id=21849bbe-d099-4637-1560-08ddc611a5e2)
+  ("Commissioners Court," "TUESDAY, AUGUST 19, 2025 - 10:00 AM"). A
+  custom ASP.NET/IIS agenda system (`X-Powered-By: ASP.NET`, real
+  cookies set), designed to be iframed into `tarrantcountytx.gov` (its
+  `Content-Security-Policy: frame-ancestors` and `X-Frame-Options` both
+  only allow that origin), not a Hyland/CivicClerk/Granicus-family
+  product — a genuinely new vendor. **Confirmed live in prod
+  ([redtaperecordings.com](https://redtaperecordings.com)) that
+  `generic_fallback.py` currently finds neither video nor agenda here**
+  even though, per direct `curl` (409KB of real static HTML, no JS
+  needed), both are genuinely present and unusually rich:
+
+  1. **Video — a real root cause, not a missing feature.** The user's
+     "floating picture-in-picture" video is a real YouTube embed, but
+     built dynamically via the IFrame Player API rather than a plain
+     `youtube.com/watch|embed/...` URL anywhere in the HTML: the only
+     literal `youtube.com` string on the page is
+     `<script src="https://www.youtube.com/iframe_api"></script>` (the
+     API loader itself), and the actual video id sits in a bare JS
+     assignment, `const videoId = 'Awrb74sMXyM';`, with no surrounding
+     URL at all. `youtube.py`'s `_VIDEO_ID_RE` — the same regex
+     `generic_fallback.py` calls via `YouTubeAssetFinder.extract_video_id()`
+     — only matches an id immediately preceded by `youtube.com/(watch?v=|
+     embed/|shorts/|live/)` or `youtu.be/`, so this shape structurally
+     can't match today. A second, narrower pattern for a bare
+     `videoId\s*=\s*['"]([A-Za-z0-9_-]{11})['"]`-style assignment would
+     catch this specific case, but only one example exists so far — per
+     this repo's "don't fix without a confirmed example, and don't
+     over-generalize from one" convention, worth watching for a second
+     Tarrant-style page (same county, a different meeting id) or another
+     jurisdiction using this exact embedding pattern before writing a
+     regex against it.
+  2. **Metadata — genuinely excellent, and currently thrown away
+     entirely.** Real, clean, static text: `<h1>Tarrant County</h1>`,
+     `<h1>Commissioners Court</h1>`, and `<h4>TUESDAY, AUGUST 19, 2025 -
+     10:00 AM` sit right at the top of the page. None of
+     `generic_fallback.py`'s existing metadata backfill applies here —
+     the CRRMA-derived logic
+     (`_backfill_metadata_from_page`/`_TITLE_TAG_PIPE_RE`) only reads the
+     `<title>` tag, and this page's `<title>` is a generic, non-specific
+     "Commissioners Court - Archived Agendas and Videos" (no date, same
+     for every meeting on this instance) — the real per-meeting signal is
+     in `<h1>`/`<h4>` text instead. A second real static-text shape this
+     backfill doesn't yet handle, same category as the Sebastopol,
+     CA `" - "`-separated-`<title>` gap logged above, but a different
+     concrete shape (heading text, not `<title>`) — reinforces that a
+     single hardcoded pattern won't keep up and some kind of broader
+     "plausible heading/title text" heuristic is worth prioritizing
+     (echoes the user's own "Maybe: {result}" idea noted earlier in this
+     file).
+  3. **Agenda — the page doesn't link to an agenda, it *is* the full
+     rendered agenda** (`GetHTMLAgenda` is a literal, accurate name):
+     structured `class="accordion-item"` blocks with per-item labels
+     (`class="itemLabelTab1 numberWithIndent..."`) run the whole length
+     of the page — real structured agenda content, not a PDF link.
+     `_find_agenda_link()`'s "any `<a>` tag whose text/href contains
+     'agenda'" approach can't find this by design (there's no such
+     `<a>` — confirmed via grep, zero matches), which is why the prod
+     result shows "no agenda found" despite the richest agenda content
+     seen in any generic-fallback case so far. This is closer to a real
+     `agenda_items` extraction opportunity (parsing the accordion
+     structure directly, LIMS-style) than anything `_find_agenda_link()`
+     was designed to do.
+
+  Taken together — a genuinely new vendor, real video, unusually strong
+  structured metadata and agenda content, all currently invisible to the
+  generic fallback for three separate, specific reasons — this reads as
+  a real dedicated-adapter candidate (`app/platforms/tarrant_agenda.py`
+  or similar), same shape as the Chicago ELMS entry above, rather than
+  three independent fallback patches. Not started this pass — logged per
+  this repo's "new bugs/gaps found while working go in BACKLOG.md"
+  convention; needs a second real Tarrant County meeting id (or another
+  jurisdiction on the same ASP.NET agenda-management product, if one
+  turns up) before over-generalizing any of the three fixes above from
+  a single example.
 
 - **Wayne County, MI's own meeting-listing site
   (`waynecountymi.gov`) — user-reported 2026-08-13, root cause confirmed
