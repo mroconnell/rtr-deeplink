@@ -656,31 +656,14 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   **Update 2026-08-13: that second example has now shown up, user-found
   at
   [cityofsebastopol.gov/events/city-council-meeting-january-6-2026/](https://www.cityofsebastopol.gov/events/city-council-meeting-january-6-2026/)
-  — the resolver currently shows a bare "Meeting" here instead of the
-  real title/jurisdiction, and per the user's report there's also a
-  linked video (see the Vimeo entry above) that isn't being picked up
-  either.** Confirmed via WebFetch of the raw page: exact `<title>` is
-  `City Council Meeting January 6, 2026 - City of Sebastopol,
-  California` — real static text, cleanly identifies both the meeting
-  and the jurisdiction, but uses a `" - "` separator, not the `"|"`
-  `_TITLE_TAG_PIPE_RE` was built against for CRRMA. This is exactly the
-  "page with SOME static text that doesn't match the strict pipe shape"
-  case the note above was waiting on: a WordPress "The Events Calendar"
-  -style page (`/events/{slug}/`), a different real generic-fallback
-  template family from CRRMA's. Two real, separately-confirmed gaps on
-  this one page, worth fixing together since both trace back to the same
-  URL: (1) title/jurisdiction extraction needs to handle a `" - "`
-  suffix shape in addition to `"|"` — or, given now-two confirmed real
-  separator styles, a looser last-resort split (e.g. on the last
-  `" - "`/`"|"`/`"—"` before a trailing `", <state>"` or known org name)
-  might be worth it over hardcoding a second exact-separator regex; (2)
-  the Vimeo video link needs the general Vimeo playback support tracked
-  in the entry above — once that exists, this page's plain server-side
+  — two real, separately-confirmed gaps on this one page.** ~~Title/
+  jurisdiction extraction~~ **fixed 2026-08-13 — full detail in
+  `BACKLOG_DONE.md`.** The Vimeo video piece is still open: the real
+  video link needs the general Vimeo playback support tracked in the
+  entry above — once that exists, this page's plain server-side
   `<a href="vimeo.com/...">` should already be catchable by
   `_try_delegate_to_known_platform()`'s existing link scan with no
-  Sebastopol-specific code. Not yet built — logged here per this repo's
-  "new bugs/gaps found while working go in BACKLOG.md" convention, not
-  investigated further this pass.
+  Sebastopol-specific code. Not yet built.
 
 - ~~**CHAMP/ChampDS (`play.champds.com`) — new platform, not supported at
   all today**~~ **Built 2026-08-13 — full detail in `BACKLOG_DONE.md`.**
@@ -1397,6 +1380,14 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   a Wayne-County-specific patch — but only one example exists so far,
   so not worth generalizing yet.
 
+  **Ruled out, not the same root cause as the Sebastopol UA fix below**:
+  re-checked live 2026-08-13 after bumping `generic_fallback.py`'s UA to
+  a modern Chrome string (see `BACKLOG_DONE.md`) — this page is still
+  fully blocked with the new UA too, confirming Akamai's block here isn't
+  simply reacting to the old Chrome/91 string the way Sebastopol's WAF
+  was. A deeper fingerprint check (TLS/JA3, cookies, JS challenge) or a
+  genuinely different WAF product, not yet isolated.
+
 - **Sacramento County, CA's own agenda site
   (`agendanet.saccounty.gov`) — user-reported 2026-08-13, a third real
   customer of the same "ViewMeeting?id=X&doctype=Y" agenda-management
@@ -1437,28 +1428,18 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   same unresolved "not yet isolated" gap already logged for the other
   two counties, not a new root cause.
 
-  **One new, cheap, and genuinely different signal found on this page:**
-  real per-meeting title/date text sits in the `title` attribute of the
-  *exact same* `<a>` link `_find_agenda_link()` already successfully
-  finds and reports —
-  `title="View Agenda Packet for BOARD OF SUPERVISORS BOARD OF
-  SUPERVISORS MEETING on 8/11/2026 9:30:00 AM"`. Nothing currently reads
-  it. This is a different (and easier) case than the Tarrant/Sebastopol
-  metadata gaps logged above, which all need a *new* place to look —
-  here the link is already being scanned for the agenda itself, so
-  reading its `title` attribute as a title/date backfill needs no new
-  fetch or pattern, just checking one attribute on a match
-  `_find_agenda_link()` already has in hand. The county/body name
-  ("Sacramento County") itself would still need to come from somewhere
-  else (the `<title>` tag is only the generic, non-per-meeting
-  "Sacramento County Board of Supervisors Meetings," same category as
-  Tarrant's generic `<title>`) — the richer per-meeting agenda header
-  text ("AGENDA / BOARD OF SUPERVISORS / 700 H STREET SUITE 1450 /
+  ~~**One new, cheap, and genuinely different signal found on this
+  page**: real per-meeting title/date text sits in the `title` attribute
+  of the *exact same* `<a>` link `_find_agenda_link()` already
+  successfully finds and reports~~ **Fixed 2026-08-13 — full detail in
+  `BACKLOG_DONE.md`.** The county/body name ("Sacramento County") itself
+  still isn't backfilled — the richer per-meeting agenda header text
+  ("AGENDA / BOARD OF SUPERVISORS / 700 H STREET SUITE 1450 /
   SACRAMENTO, CA 95814 / TUESDAY / AUGUST 11, 2026") only appears after
   `loadAgendaDocument()` runs on window load, confirmed absent from the
   raw static HTML — same "genuinely renders client-side" limitation
-  already noted for these vendor pages elsewhere in this file, not a
-  new gap on its own.
+  already noted for these vendor pages elsewhere in this file, not a new
+  gap on its own. The video root cause (above) remains unresolved.
 
   **Also noted, not investigated further:** the page's own JS defines
   `itemEventPoints`/`sectionEventPoints` objects mapping agenda item and
@@ -1467,9 +1448,6 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   relevant to this specific gap, but worth remembering if per-agenda-item
   deep linking is ever prioritized (see the Tarrant County accordion-agenda
   entry above for a similar structured-agenda opportunity).
-
-  Not fixed this pass — logged per this repo's "new bugs/gaps found
-  while working go in BACKLOG.md" convention.
 
 ## Archive roadmap
 

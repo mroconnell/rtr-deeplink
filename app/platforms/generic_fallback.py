@@ -24,7 +24,38 @@ _AGENDA_TEXT_RE = re.compile(r"agenda", re.IGNORECASE)
 # generic-fallback sites without their own confirmed example, same
 # convention as every other adapter in this repo.
 _TITLE_TAG_PIPE_RE = re.compile(r"^(.*?)\s*\|\s*(.+?)\s*$")
+# Second confirmed real separator style, found live 2026-08-13 on
+# Sebastopol, CA (cityofsebastopol.gov/events/{slug}/, a WordPress "The
+# Events Calendar" page -- a different generic-fallback template family
+# from CRRMA's <title>Org | Jurisdiction</title> shape above): "City
+# Council Meeting January 6, 2026 - City of Sebastopol, California".
+# Scoped to the LAST " - " in the title (an early hyphen inside a
+# meeting name, e.g. "Special Session - Budget Item", shouldn't split
+# there -- greedy group 1 backtracks from the end to find it) and
+# requires the tail to contain a comma, since a real jurisdiction here
+# reads "City[, State]"/"City of X, State" while a bare meeting-name
+# segment wouldn't. Only two real separator styles confirmed so far --
+# not a general last-resort splitter, just a second exact shape, same
+# "verify before generalizing" convention as everywhere else in this
+# file.
+_TITLE_TAG_DASH_RE = re.compile(r"^(.*)\s+-\s+([^-]*,\s*[^-]+?)\s*$")
 _URL_PATH_DATE_RE = re.compile(r"/(\d{4})-(\d{2})-(\d{2})(?:[/?]|$)")
+# Real vendor-generated `title` attribute found live 2026-08-13 on
+# Sacramento County's OnBase Agenda Online-family agenda link ("View
+# Agenda Packet for BOARD OF SUPERVISORS BOARD OF SUPERVISORS MEETING on
+# 8/11/2026 9:30:00 AM") -- see BACKLOG.md's "Sacramento County, CA's own
+# agenda site" entry. Only used to backfill title/date, never
+# jurisdiction (the body/type text here never names the county itself,
+# confirmed on this one example -- "Sacramento County" only appears in
+# the page's generic, non-per-meeting <title> tag). The apparent
+# duplication ("BOARD OF SUPERVISORS BOARD OF SUPERVISORS MEETING") is
+# left as-is rather than deduped -- with only one real example in hand,
+# it's plausibly a real "{meeting type} {body name} MEETING" template
+# that happens to coincide here, not a confirmed universal artifact worth
+# guessing a dedup rule for.
+_AGENDA_LINK_TITLE_RE = re.compile(
+    r"View Agenda Packet for\s+(.+?)\s+on\s+(\d{1,2})/(\d{1,2})/(\d{4})", re.IGNORECASE
+)
 # The notice-of-meeting body paragraph names the governing body more
 # specifically ("CRRMA Board of Directors") than the bare org name in
 # <title> ("Camino Real Regional Mobility Authority") -- user's own
@@ -134,9 +165,19 @@ class GenericFallbackAssetFinder(AssetFinder):
 
     def __init__(self):
         self.headers = {
+            # A modern UA, not the Chrome/91 (2021) string every other
+            # adapter in this repo still uses -- confirmed live 2026-08-13
+            # that at least one real WAF (cityofsebastopol.gov's) 403s the
+            # old string while a current Chrome UA gets a clean 200 for
+            # the identical request. Scoped to just this adapter, not
+            # copied to the other 10 files still using Chrome/91: those
+            # target known vendor platforms already confirmed working
+            # with it, and changing an already-working request header
+            # sitewide needs its own per-platform verification, not a
+            # drive-by bundled into this fix -- see BACKLOG.md.
             "User-Agent": (
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                "(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
             ),
         }
 
@@ -159,7 +200,7 @@ class GenericFallbackAssetFinder(AssetFinder):
                 best_effort=True,
             )
 
-        agenda_link = self._find_agenda_link(html, url)
+        agenda_link, agenda_link_title = self._find_agenda_link(html, url)
 
         youtube_video_id = YouTubeAssetFinder.extract_video_id(html)
         if youtube_video_id:
@@ -173,7 +214,7 @@ class GenericFallbackAssetFinder(AssetFinder):
             # "unknown" alone would silently miss this, the *most* common
             # real outcome (a small city just embeds a YouTube video).
             resolved.best_effort = True
-            self._backfill_metadata_from_page(resolved, html, url)
+            self._backfill_metadata_from_page(resolved, html, url, agenda_link_title)
             return resolved
 
         delegated = await self._try_delegate_to_known_platform(html, url)
@@ -207,11 +248,13 @@ class GenericFallbackAssetFinder(AssetFinder):
             agenda_link=agenda_link,
             best_effort=True,
         )
-        self._backfill_metadata_from_page(resolved, html, url)
+        self._backfill_metadata_from_page(resolved, html, url, agenda_link_title)
         return resolved
 
     @staticmethod
-    def _backfill_metadata_from_page(resolved: ResolvedMeeting, html: str, url: str) -> None:
+    def _backfill_metadata_from_page(
+        resolved: ResolvedMeeting, html: str, url: str, agenda_link_title: Optional[str] = None
+    ) -> None:
         """Last-resort title/jurisdiction/date fill-in for a still-empty
         `resolved.title` -- see the module-level regex comments above for
         the real confirmed page shape this targets. Deliberately only
@@ -238,6 +281,10 @@ class GenericFallbackAssetFinder(AssetFinder):
             pipe_match = _TITLE_TAG_PIPE_RE.match(title_tag)
             if pipe_match:
                 org_name, jurisdiction = pipe_match.group(1), pipe_match.group(2)
+            else:
+                dash_match = _TITLE_TAG_DASH_RE.match(title_tag)
+                if dash_match:
+                    org_name, jurisdiction = dash_match.group(1), dash_match.group(2)
 
         if not resolved.title:
             # Prefer the notice-block's own body-name phrase over the bare
@@ -260,6 +307,20 @@ class GenericFallbackAssetFinder(AssetFinder):
         # legitimate source `resolved.jurisdiction` could hold here.
         if jurisdiction:
             resolved.jurisdiction = jurisdiction
+
+        # Last-resort title/date backfill from the agenda link's own
+        # `title` attribute -- see _AGENDA_LINK_TITLE_RE's module-level
+        # comment. Only fires when both are still empty, so it can never
+        # clobber a real title/date the <title>-tag or delegated-finder
+        # paths above already found.
+        if agenda_link_title:
+            agenda_match = _AGENDA_LINK_TITLE_RE.search(agenda_link_title)
+            if agenda_match:
+                body_text, month, day, year = agenda_match.groups()
+                if not resolved.title:
+                    resolved.title = body_text.title() if body_text.isupper() else body_text
+                if not resolved.date:
+                    resolved.date = f"{int(year):04d}-{int(month):02d}-{int(day):02d}"
 
     @staticmethod
     async def _try_delegate_to_known_platform(html: str, page_url: str) -> Optional[ResolvedMeeting]:
@@ -303,12 +364,17 @@ class GenericFallbackAssetFinder(AssetFinder):
         return resolved
 
     @staticmethod
-    def _find_agenda_link(html: str, page_url: str) -> Optional[str]:
+    def _find_agenda_link(html: str, page_url: str) -> Tuple[Optional[str], Optional[str]]:
         """Best-effort: a single <a> tag whose visible text or href
         contains "agenda" (case-insensitive). Doesn't attempt to extract
         agenda *items* -- see class docstring. Prefers a PDF-looking href
         (the common real-world shape) over an HTML page, since a PDF is
-        the more specific, less-likely-to-be-a-false-positive signal."""
+        the more specific, less-likely-to-be-a-false-positive signal.
+
+        Returns `(url, title_attr)` -- the winning `<a>` tag's own `title`
+        attribute (or None) is handed back alongside the link so callers
+        can mine it for a title/date backfill (see
+        `_AGENDA_LINK_TITLE_RE`) without a second pass over the page."""
         soup = BeautifulSoup(html, "html.parser")
         candidates = []
         for a in soup.find_all("a", href=True):
@@ -317,12 +383,12 @@ class GenericFallbackAssetFinder(AssetFinder):
                 continue
             text = a.get_text(" ", strip=True)
             if _AGENDA_TEXT_RE.search(text) or _AGENDA_TEXT_RE.search(href):
-                candidates.append(urljoin(page_url, href))
+                candidates.append((urljoin(page_url, href), a.get("title")))
         if not candidates:
-            return None
-        for candidate in candidates:
+            return None, None
+        for candidate, title_attr in candidates:
             if candidate.lower().split("?")[0].endswith(".pdf"):
-                return candidate
+                return candidate, title_attr
         return candidates[0]
 
     @staticmethod

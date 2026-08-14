@@ -6783,3 +6783,79 @@ changelog of task titles.
   path and confirms `claim_next_chunk()` picks the *newer, higher-priority*
   one first — proving priority actually overrides FIFO order, not just
   coincidentally agreeing with it. Full suite green (171 tests — 1 new).
+
+- **[Done 2026-08-13] `generic_fallback.py`'s title/jurisdiction backfill
+  now handles a second real separator style, an agenda-link
+  `title`-attribute backfill, and a stale User-Agent that was silently
+  blocking at least one real site.** Two small, independently-confirmed
+  gaps from BACKLOG.md's "Platform coverage — open questions" section,
+  both fixed in one pass since they touch the same function.
+
+  **Sebastopol, CA's `" - "`-separated `<title>` shape** (`_TITLE_TAG_DASH_RE`,
+  `app/platforms/generic_fallback.py`): the existing `_TITLE_TAG_PIPE_RE`
+  only matched `"Org | Jurisdiction"` (CRRMA's shape); Sebastopol's real
+  title reads `"City Council Meeting January 6, 2026 - City of
+  Sebastopol, California"`. Added a second regex, tried only when the
+  pipe pattern doesn't match, scoped to the *last* `" - "` in the title
+  (a greedy first group backtracks past any earlier hyphen inside the
+  meeting name itself) with the tail required to contain a comma (a real
+  jurisdiction reads "City[, State]"; a bare meeting-name segment
+  wouldn't) — covered by
+  `test_backfill_does_not_split_on_a_hyphen_inside_the_meeting_name` in
+  `tests/test_generic_fallback.py`.
+
+  **Real, separate blocker found live while verifying this fix, fixed in
+  the same pass**: a direct (non-mocked) resolve against the real
+  Sebastopol URL came back completely empty even with the new regex in
+  place — the page fetch itself was silently failing.
+  `generic_fallback.py`'s hardcoded `User-Agent` (`Chrome/91.0.4472.124`,
+  copy-pasted from 2021, shared verbatim across 11 files in
+  `app/platforms/`) gets a 403 from this site's WAF; a plain `curl` with
+  a current Chrome UA string against the identical URL gets a clean 200
+  with the real page. Bumped **only `generic_fallback.py`'s own UA** to a
+  current Chrome string — deliberately not touched in the other 10
+  files, which target known vendor platforms already confirmed working
+  with the old string; changing an already-working request header
+  sitewide needs its own per-platform verification, not a drive-by
+  bundled into this fix. Confirmed this isn't the same root cause as the
+  still-open Wayne County, MI Akamai block (BACKLOG.md): re-resolving
+  that page live with the new UA is still fully blocked, so that one's a
+  deeper fingerprint check, not just a stale UA string.
+
+  **Sacramento County's OnBase-family agenda-link `title` attribute**
+  (`_AGENDA_LINK_TITLE_RE`): a real, already-flagged cheap signal —
+  `_find_agenda_link()` already finds and returns Sacramento's agenda PDF
+  link; that same `<a>` tag's own `title` attribute carries real
+  per-meeting text the code never read (`"View Agenda Packet for BOARD
+  OF SUPERVISORS BOARD OF SUPERVISORS MEETING on 8/11/2026 9:30:00
+  AM"`). `_find_agenda_link()` now returns `(url, title_attr)` instead of
+  a bare URL, threaded through both `resolve()` call sites into
+  `_backfill_metadata_from_page()` (now takes an optional
+  `agenda_link_title` param). Backfills `title`/`date` only, each
+  independently guarded by "only if still empty" — never jurisdiction,
+  since the county/body name never appears in this attribute on the one
+  confirmed example (the page's own `<title>` tag is too generic:
+  "Sacramento County Board of Supervisors Meetings," no per-meeting
+  text). The apparent word duplication in the real example
+  ("BOARD OF SUPERVISORS BOARD OF SUPERVISORS MEETING") was left as-is
+  rather than deduped — with only one real example in hand, it's
+  plausibly a real "{meeting type} {body name} MEETING" template that
+  happens to coincide here, not a confirmed universal artifact worth
+  guessing a dedup rule for.
+
+  Both fixes verified against the real live pages (not just mocked
+  fixtures): `GenericFallbackAssetFinder().resolve()` run directly
+  against both real URLs now returns `title="City Council Meeting
+  January 6, 2026"`/`jurisdiction="City of Sebastopol, California"` for
+  Sebastopol, and `title="Board Of Supervisors Board Of Supervisors
+  Meeting"`/`date="2026-08-11"` for Sacramento. Sacramento's page was
+  already archived (`meeting-38ca49`) — ran
+  `scripts/backfill_archived_pages.py --url-contains saccounty` for real
+  against production, confirmed via a direct fetch of
+  `redtaperecordings.com/m/meeting-38ca49` that the live page now shows
+  the fixed title. Sebastopol's page was never pushed to the permanent
+  Archive (only viewed via the ephemeral best-effort flow), so there was
+  nothing to backfill there.
+
+  6 new tests in `tests/test_generic_fallback.py` (22 total in that
+  file), full suite green (635 tests).

@@ -369,3 +369,130 @@ async def test_backfill_is_a_no_op_without_a_pipe_shaped_title():
     assert resolved.jurisdiction is None
     # The URL-path date still gets filled in independent of the title shape.
     assert resolved.date == "2025-11-12"
+
+
+# Real page shape confirmed live 2026-08-13 via WebFetch on
+# cityofsebastopol.gov/events/{slug}/ -- a WordPress "The Events
+# Calendar" page, a different generic-fallback template family from
+# CRRMA's <title>Org | Jurisdiction</title> shape above. Real <title>:
+# "City Council Meeting January 6, 2026 - City of Sebastopol,
+# California". See BACKLOG.md's "generic_fallback.py's YouTube-embed
+# branch" entry.
+SEBASTOPOL_URL = "https://www.cityofsebastopol.gov/events/city-council-meeting-january-6-2026/"
+SEBASTOPOL_PAGE_HTML = """
+<html><head><title>City Council Meeting January 6, 2026 - City of Sebastopol, California</title></head>
+<body><p>No YouTube embed on this page -- the real video here is Vimeo, not yet supported.</p></body></html>
+"""
+
+
+async def test_backfill_handles_the_dash_separated_title_shape():
+    from app.platforms.generic_fallback import GenericFallbackAssetFinder as F
+    from app.platforms.models import ResolvedMeeting
+
+    resolved = ResolvedMeeting(platform="unknown", source_url=SEBASTOPOL_URL)
+
+    F._backfill_metadata_from_page(resolved, SEBASTOPOL_PAGE_HTML, SEBASTOPOL_URL)
+
+    assert resolved.title == "City Council Meeting January 6, 2026"
+    assert resolved.jurisdiction == "City of Sebastopol, California"
+
+
+async def test_resolve_backfills_title_and_jurisdiction_from_dash_separated_title():
+    # Full resolve()-level check: Sebastopol has no YouTube embed (the
+    # real video is Vimeo, unsupported), so this exercises the plain
+    # "no video found" fallback branch, not the YouTube-delegation branch
+    # the CRRMA tests above cover.
+    routes = {SEBASTOPOL_URL: FakeResponse(status=200, text=SEBASTOPOL_PAGE_HTML, url=SEBASTOPOL_URL)}
+
+    with mock_session(routes):
+        result = await GenericFallbackAssetFinder().resolve(SEBASTOPOL_URL)
+
+    assert result.title == "City Council Meeting January 6, 2026"
+    assert result.jurisdiction == "City of Sebastopol, California"
+    assert result.video_url is None
+
+
+async def test_backfill_does_not_split_on_a_hyphen_inside_the_meeting_name():
+    # An early " - " that isn't the real org/jurisdiction boundary (e.g.
+    # a meeting-type qualifier) shouldn't cause a wrong split -- the
+    # greedy first group should backtrack to the LAST " - " in the title,
+    # which is the one actually followed by a comma-shaped jurisdiction.
+    from app.platforms.generic_fallback import GenericFallbackAssetFinder as F
+    from app.platforms.models import ResolvedMeeting
+
+    html = (
+        "<html><head><title>Special Session - Budget Item - City of Somewhere, ST"
+        "</title></head><body></body></html>"
+    )
+    resolved = ResolvedMeeting(platform="unknown", source_url=SEBASTOPOL_URL)
+
+    F._backfill_metadata_from_page(resolved, html, SEBASTOPOL_URL)
+
+    assert resolved.title == "Special Session - Budget Item"
+    assert resolved.jurisdiction == "City of Somewhere, ST"
+
+
+# Real vendor-generated `title` attribute confirmed live 2026-08-13 on
+# Sacramento County's OnBase Agenda Online-family agenda link
+# (agendanet.saccounty.gov) -- see BACKLOG.md's "Sacramento County, CA's
+# own agenda site" entry. The page's own <title> tag is generic
+# ("Sacramento County Board of Supervisors Meetings," no per-meeting
+# text), so this is the only real per-meeting signal available.
+SACRAMENTO_URL = "https://agendanet.saccounty.gov/BoardofSupervisors/Meetings/ViewMeeting?id=10231&doctype=1"
+SACRAMENTO_PAGE_HTML = """
+<html><head><title>Sacramento County Board of Supervisors Meetings</title></head>
+<body>
+<a href="/Documents/Downloadfile/BOARD_OF_SUPERVISORS_10231_Agenda_Packet_8_11_2026_9_30_00_AM.pdf"
+   title="View Agenda Packet for BOARD OF SUPERVISORS BOARD OF SUPERVISORS MEETING on 8/11/2026 9:30:00 AM">
+   Agenda
+</a>
+</body></html>
+"""
+
+
+def test_find_agenda_link_returns_the_matched_as_title_attribute():
+    from app.platforms.generic_fallback import GenericFallbackAssetFinder as F
+
+    link, title_attr = F._find_agenda_link(SACRAMENTO_PAGE_HTML, SACRAMENTO_URL)
+
+    assert link.endswith("BOARD_OF_SUPERVISORS_10231_Agenda_Packet_8_11_2026_9_30_00_AM.pdf")
+    assert title_attr == "View Agenda Packet for BOARD OF SUPERVISORS BOARD OF SUPERVISORS MEETING on 8/11/2026 9:30:00 AM"
+
+
+async def test_resolve_backfills_title_and_date_from_the_agenda_links_title_attribute():
+    routes = {SACRAMENTO_URL: FakeResponse(status=200, text=SACRAMENTO_PAGE_HTML, url=SACRAMENTO_URL)}
+
+    with mock_session(routes):
+        result = await GenericFallbackAssetFinder().resolve(SACRAMENTO_URL)
+
+    # Real per-meeting title/date, not "Untitled meeting" -- but no
+    # jurisdiction, since the agenda link's own title attribute never
+    # names the county and the page's <title> tag is too generic to
+    # backfill it from (see the module-level comment on
+    # _AGENDA_LINK_TITLE_RE for why this is deliberately title/date only).
+    assert result.title == "Board Of Supervisors Board Of Supervisors Meeting"
+    assert result.date == "2026-08-11"
+    assert result.jurisdiction is None
+    assert result.agenda_link.endswith("BOARD_OF_SUPERVISORS_10231_Agenda_Packet_8_11_2026_9_30_00_AM.pdf")
+
+
+async def test_agenda_link_title_backfill_never_overrides_an_already_found_title():
+    # Pair the Sacramento-shaped agenda link with a real CRRMA-shaped
+    # <title> tag on the same page -- the pipe-derived title must win,
+    # since the agenda-link title/date backfill is guarded per-field by
+    # "only fires when still empty," not an all-or-nothing switch. The
+    # pipe title carries no date, so `date` legitimately still comes from
+    # the agenda link here -- these two backfills aren't mutually
+    # exclusive, just independently guarded.
+    html = SACRAMENTO_PAGE_HTML.replace(
+        "<title>Sacramento County Board of Supervisors Meetings</title>",
+        "<title>Some Org | Somewhere, ST</title>",
+    )
+    routes = {SACRAMENTO_URL: FakeResponse(status=200, text=html, url=SACRAMENTO_URL)}
+
+    with mock_session(routes):
+        result = await GenericFallbackAssetFinder().resolve(SACRAMENTO_URL)
+
+    assert result.title == "Some Org"
+    assert result.jurisdiction == "Somewhere, ST"
+    assert result.date == "2026-08-11"
