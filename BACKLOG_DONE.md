@@ -6958,8 +6958,14 @@ changelog of task titles.
   adapter's `resolve()`; blocked fetch → headless refetch, then the same
   diagnosis again). Scorecard, measured by the new backtest harness
   against the live pages: **8 PASS / 9 FAIL before → 17 PASS / 0 FAIL
-  after** across the six non-headless corpus pages, plus both headless
-  rows verified locally with the flag on.
+  after** across the six non-headless corpus pages during the build,
+  and — the final full run, 2026-08-14, after the headless flag shipped
+  to prod — **22 PASS / 0 PARTIAL / 0 FAIL across all 9 corpus pages**
+  with `--include-headless`: six pages fully extract, Sebastopol gets
+  its recognized-host video pointer, and PBC/Tucson return their
+  documented honest-empty (both genuinely have nothing static to give;
+  Tucson's escalation reaches the rendered page and confirms no video
+  exists there at all, matching the user's own expectation for it).
 
   **Phase 0 — backtest harness + fixtures** (`scripts/backtest_fallback.py`,
   `tests/fixtures/generic_fallback/`): runs the fallback live against the
@@ -7027,10 +7033,18 @@ changelog of task titles.
   real Tucson shell's nav "Agenda" link — the site-root junk link prod
   already showed — turned out to veto escalation on exactly the page
   needing it). First caller anywhere to survive
-  `HeadlessBrowserUnavailable`; ships disabled until playwright is
+  `HeadlessBrowserUnavailable`; shipped disabled until playwright was
   verified on Render. Verified locally flag-on against the LIVE pages:
   Wayne County resolves fully through the browser; Tucson escalates and
-  stays honestly empty (its pages genuinely have no video).
+  stays honestly empty (its pages genuinely have no video). **Enabled
+  in prod later the same day**, after playwright-on-Render was verified
+  for real (a fresh, never-archived LIMS meeting — `MarkedAgenda/COW/
+  6144` — resolved fully through production; LIMS has no non-browser
+  path, so that's direct proof, closing render.yaml's open build
+  question from the 2026-08-09 incidents). End-to-end confirmed
+  post-deploy: the previously fully-Akamai-blocked Wayne County page
+  resolved through production's own browser and got archived as a
+  permanent page.
 
   Two corpus expectations needed loosening for a legitimate reason worth
   recording: on residential networks yt-dlp *succeeds*, so the real

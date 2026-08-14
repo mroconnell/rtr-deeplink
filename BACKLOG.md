@@ -430,6 +430,22 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   a few JS URLs, confirming this is a platform-wide gap (every meeting
   on this instance), not one unusual page.
 
+  **Update 2026-08-14: the headless-browser fetch this entry called for
+  now exists and runs against Tucson's pages** — the generic fallback's
+  empty-shell escalation (built in the 2026-08-14 rebuild, enabled in
+  prod, see `BACKLOG_DONE.md`) fires on exactly this shell's shape (its
+  real 153 chars of visible text tuned the trigger threshold). Final
+  backtest confirms the honest limit: even the fully-rendered Tucson
+  page yields no video, because **no video exists on these pages at
+  all** — matching the user's own earlier framing ("I don't expect the
+  Tucson pages to ever work well because there's no video in them").
+  What escalation could still improve here someday is metadata (the
+  rendered agenda has real title/date text), but per-customer video
+  variance (Maricopa's static video is already fixed, see below) means
+  the remaining Tucson-specific value is small — leaving this entry
+  open only for the metadata piece and any future customer whose
+  rendered page does carry video.
+
   **Update 2026-08-13: a second real customer confirms this is genuinely
   platform-wide across hosting domains, not one reseller's quirk — and
   overturns part of the "everything genuinely renders client-side"

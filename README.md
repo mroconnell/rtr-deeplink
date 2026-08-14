@@ -887,13 +887,16 @@ resort) — every extractor only fills still-empty fields. The agenda
 link finder is unchanged: a single best-effort `<a>`, never fabricated
 `agenda_items`.
 
-Blocked fetches can escalate to the real headless-browser fetch
-(`GENERIC_FALLBACK_HEADLESS=1`, **off by default** until playwright is
-verified working on Render — see `render.yaml`'s own comments): a
-block-family status (Wayne County MI's real Akamai 403), a small
-challenge-interstitial body, or an empty-evidence resolve of a
+Blocked fetches escalate to the real headless-browser fetch
+(`GENERIC_FALLBACK_HEADLESS=1` — **enabled in production** since
+2026-08-14, the same day playwright-on-Render was finally verified
+working for real; see `render.yaml`'s env-var comment for the
+evidence): a block-family status (Wayne County MI's real Akamai 403),
+a small challenge-interstitial body, or an empty-evidence resolve of a
 client-rendered shell triggers at most one Chromium retry, whose
-rendered HTML re-runs the same diagnosis. Dedicated adapters can also
+rendered HTML re-runs the same diagnosis — end-to-end confirmed in
+prod against the previously fully-Akamai-blocked Wayne County page,
+which now resolves with real video/title/jurisdiction/date/agenda. Dedicated adapters can also
 opt into the same page-analysis tiers as a backstop when their own
 extraction found no video (`scan_page_for_video_evidence()` — eScribe
 is wired in; opt-in per adapter only, since a blind second pass on a
