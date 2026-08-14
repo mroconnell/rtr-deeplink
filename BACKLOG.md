@@ -258,6 +258,30 @@ anything) to build against it.
   since been corrected too — see "Bulk backfill of archived pages" in
   `BACKLOG_DONE.md`.
 
+- **Minneapolis LIMS stores raw HTML inside agenda item text — visible
+  on real archived pages as escaped markup shown to users, found
+  2026-08-14 while live-verifying the new Clip structured data.**
+  Confirmed on production:
+  `/m/city-of-minneapolis-mn-2026-08-10-committee-of-the-whole`'s Agenda
+  section renders items like
+  `&lt;a href='/Download/CommitteeReport/4915/...pdf' class='previousmettingdate'...`
+  as literal text — the adapter (`app/platforms/lims.py`, the
+  `SerializedVideoTimestamps` tree) is storing a raw HTML anchor string
+  as `item.text` instead of its text content. The new `Clip` "key
+  moments" JSON-LD inherited the same markup in its `name` fields until
+  a display-time `|striptags` was added there (2026-08-14, same day —
+  that fixes the structured data only). **Still open, the real fix**:
+  strip HTML at extraction time in the LIMS adapter (checking what the
+  anchor's own text vs. tail text should contribute against the real
+  endpoint's data, per the test-against-real-data convention), then
+  re-push affected archived pages (`/admin/recheck-archive-page` exists
+  for exactly this). Worth also deciding whether the *visible* agenda
+  template should defensively `striptags` too — it would instantly clean
+  every already-archived page at display time, but papers over adapter
+  bugs the ingest path should be catching; not decided this pass.
+  Unknown whether other adapters have the same latent issue — LIMS is
+  the only one confirmed.
+
 ## `/meetings` search & saved items — UI gaps found 2026-08-11
 
 - ~~**"Save this meeting"/"Save this search" buttons render for every

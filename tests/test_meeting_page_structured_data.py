@@ -203,6 +203,36 @@ async def test_m3u8_page_has_no_thumbnail_but_valid_json(monkeypatch):
     assert '<meta property="og:image"' not in response.text
 
 
+async def test_html_in_item_text_stripped_from_clip_name(monkeypatch):
+    # Synthetic, but the shape is real and was found live, not assumed:
+    # Minneapolis LIMS stores raw HTML anchors inside agenda item text
+    # (confirmed 2026-08-14 on the production page
+    # /m/city-of-minneapolis-mn-2026-08-10-committee-of-the-whole, whose
+    # Clip names leaked markup before this fix -- the adapter-side root
+    # cause is tracked in BACKLOG.md). A schema.org name must be plain
+    # text regardless of what the source stored.
+    monkeypatch.setitem(
+        archive.main.templates.env.globals, "public_base_url", "https://example.org"
+    )
+    slug = await _make_page(
+        "sd-html-in-name",
+        agenda_items=[
+            {"start": 0.0, "end": 60.0, "text": "Item One"},
+            {
+                "start": 122.0,
+                "end": 310.0,
+                "text": "<a href='/Download/CommitteeReport/4915/x.pdf' class='previousmettingdate'>8/4/2026</a> Committee Report",
+            },
+        ],
+    )
+
+    response = archive_client.get(f"/m/{slug}")
+    data = _get_json_ld(response.text)
+    name = data["hasPart"][1]["name"]
+    assert "<" not in name and "href" not in name
+    assert "8/4/2026" in name and "Committee Report" in name
+
+
 async def test_long_item_text_truncated_in_clip_name(monkeypatch):
     # IQM2 agenda items can carry full ordinance/resolution text -- a
     # "key moment" label should stay label-sized.

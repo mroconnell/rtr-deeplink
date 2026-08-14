@@ -90,7 +90,12 @@
       {% for item in clip_items -%}
       {
         "@type": "Clip",
-        "name": {{ item.text|truncate(100)|tojson }},
+        {#- striptags: confirmed live 2026-08-14 on Minneapolis LIMS
+           (/m/city-of-minneapolis-mn-2026-08-10-committee-of-the-whole)
+           that a real source can store raw HTML anchors inside agenda
+           item text -- a schema.org name must never carry markup. The
+           adapter-side root cause is tracked in BACKLOG.md. #}
+        "name": {{ item.text|striptags|truncate(100)|tojson }},
         "startOffset": {{ item.start|int }},
         {% if item.end and item.end > item.start -%}
         "endOffset": {{ item.end|int }},
