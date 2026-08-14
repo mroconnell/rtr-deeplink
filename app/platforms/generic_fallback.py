@@ -11,6 +11,7 @@ from .base import AssetFinder, find_platform_link, get_finder
 from .media_scan import is_hls_url, media_type, scan_media_urls
 from .models import ResolvedMeeting, TranscriptSegment
 from .youtube import YouTubeAssetFinder
+from ..utils.url_guard import guarded_get, read_capped_bytes, read_capped_text
 from ..utils.vtt_parser import decode_vtt_bytes, detect_language_from_texts, parse_captions_by_extension
 
 _AGENDA_TEXT_RE = re.compile(r"agenda", re.IGNORECASE)
@@ -479,11 +480,17 @@ class GenericFallbackAssetFinder(AssetFinder):
         body: Optional[str] = None
         try:
             async with aiohttp.ClientSession(headers=self.headers) as session:
-                async with session.get(
-                    url, allow_redirects=True, timeout=aiohttp.ClientTimeout(total=20)
-                ) as response:
+                # guarded_get, not a bare session.get(allow_redirects=True)
+                # -- re-validates the destination on every redirect hop
+                # (a permitted host can 302 to a private one) rather than
+                # trusting aiohttp's own follow. See url_guard.py's module
+                # docstring / AUDIT_2026-08-14.md finding #2. A blocked
+                # destination degrades to the same honest "couldn't even
+                # load the page" outcome as any other fetch failure below,
+                # same as an unrelated timeout/connection error would.
+                async with guarded_get(session, url, timeout=aiohttp.ClientTimeout(total=20)) as response:
                     status = response.status
-                    body = await response.text()
+                    body = await read_capped_text(response)
         except Exception:
             pass
 
@@ -844,10 +851,13 @@ class GenericFallbackAssetFinder(AssetFinder):
     async def _try_fetch_caption(caption_url: str):
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.get(caption_url, timeout=aiohttp.ClientTimeout(total=15)) as response:
+                # Same SSRF guard as _fetch_page above -- caption_url comes
+                # from scanning the fetched page's own markup, so it's just
+                # as caller-influenced as the entry URL.
+                async with guarded_get(session, caption_url, timeout=aiohttp.ClientTimeout(total=15)) as response:
                     if response.status != 200:
                         return None
-                    raw = await response.read()
+                    raw = await read_capped_bytes(response)
         except Exception:
             return None
         content = decode_vtt_bytes(raw)

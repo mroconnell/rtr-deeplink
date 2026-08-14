@@ -54,6 +54,16 @@ properly:
   Verified for real (throwaway failing-test PR, confirmed merge actively
   rejected, not just shown red) — see `BACKLOG_DONE.md`'s "Testing
   infrastructure" section for the full entry.
+- **SSRF guard on `/api/resolve`.** **Fixed 2026-08-14** (WO-5 of
+  `AUDIT_EXECUTION_BRIEF.md`, audit finding #2): `ResolveRequest.url` was
+  a bare, unvalidated `str` that flowed straight into
+  `generic_fallback.py`'s `session.get(url, allow_redirects=True, ...)`
+  for any unrecognized host, with no scheme allowlist, no private/
+  internal-IP rejection, no per-hop redirect re-validation, and (in
+  production, `GENERIC_FALLBACK_HEADLESS=1`) a real headless browser that
+  would load whatever it was pointed at. New `app/utils/url_guard.py`
+  closes all of that at once — see `BACKLOG_DONE.md`'s "Security
+  hardening" section for the full fix and verification detail.
 - **Docs hygiene — a live, confirmed example of drift, not a
   hypothetical.** Saved-search alert emails
   (`archive/search_alerts.py`, a real daily cron sending real emails,

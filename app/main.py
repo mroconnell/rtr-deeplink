@@ -38,6 +38,7 @@ from .platforms.media_probe import is_plausible_meeting_duration, probe_duration
 from .platforms.models import ResolvedMeeting
 from .platforms.youtube import YouTubeAssetFinder
 from .utils.clerk_auth import clerk_frontend_api_url, get_clerk_user_id
+from .utils.url_guard import BlockedURLError, check_destination
 from .utils.url_normalize import normalize_url
 
 logger = logging.getLogger("rtr_deeplink.db")
@@ -273,6 +274,17 @@ async def health():
 @app.post("/api/resolve")
 @limiter.limit("20/minute")
 async def resolve(request: Request, req: ResolveRequest, background_tasks: BackgroundTasks):
+    # SSRF guard, checked before any dispatch -- an unknown host falls
+    # through to generic_fallback.py's own fetch, which (unguarded) would
+    # follow this URL wherever it points, private/internal addresses
+    # included. See app/utils/url_guard.py's module docstring and
+    # AUDIT_2026-08-14.md finding #2. Rejects here with a clean message,
+    # never the underlying resolve/fetch machinery's own exception text.
+    try:
+        await check_destination(req.url)
+    except BlockedURLError as e:
+        return {"error": "blocked_url", "message": str(e)}
+
     platform = detect_platform(req.url)
     normalized = normalize_url(req.url)
 

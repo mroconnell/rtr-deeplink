@@ -12,8 +12,11 @@ suite) -- these tests are about `_get_browser()`'s own retry/error-
 translation logic, not Playwright's real behavior.
 """
 
+import pytest
+
 import app.platforms.headless_browser as hb
 from app.platforms.headless_browser import HeadlessBrowserUnavailable, _get_browser
+from app.utils.url_guard import BlockedURLError
 
 
 def _reset_module_state():
@@ -158,3 +161,64 @@ def test_install_chromium_only_attempts_once(monkeypatch):
     assert first is False
     assert second is False  # short-circuited by _install_attempted, no second subprocess call
     assert len(run_calls) == 1
+
+
+# --- WO-5 SSRF guard on the headless escalation ---------------------------
+# fetch_via_browser() is the one path in this repo where a plain
+# check_destination() on the entry URL isn't enough: a real Chromium tab
+# follows redirects and loads sub-resources entirely on its own, so a
+# permitted entry URL can still redirect the *browser* to a private
+# address mid-navigation. See headless_browser.py's _guard_route()
+# docstring and app/utils/url_guard.py's module docstring.
+
+
+async def test_fetch_via_browser_rejects_a_blocked_entry_url_before_touching_the_browser(monkeypatch):
+    _reset_module_state()
+    calls = []
+
+    async def _never_called():
+        calls.append(1)
+        raise AssertionError("should never reach _get_browser for a blocked entry URL")
+
+    monkeypatch.setattr(hb, "_get_browser", _never_called)
+
+    with pytest.raises(BlockedURLError):
+        await hb.fetch_via_browser("http://169.254.169.254/latest/meta-data/")
+
+    assert calls == []
+
+
+class _FakeRequest:
+    def __init__(self, url):
+        self.url = url
+
+
+class _FakeRoute:
+    def __init__(self, url):
+        self.request = _FakeRequest(url)
+        self.aborted = False
+        self.continued = False
+
+    async def abort(self):
+        self.aborted = True
+
+    async def continue_(self):
+        self.continued = True
+
+
+async def test_guard_route_aborts_a_request_to_a_private_address():
+    # The case a plain entry-URL check misses: a request the page itself
+    # makes mid-navigation (e.g. a server-side redirect Chromium follows
+    # on its own) pointed at a link-local address.
+    route = _FakeRoute("http://169.254.169.254/latest/meta-data/")
+    await hb._guard_route(route)
+    assert route.aborted is True
+    assert route.continued is False
+
+
+async def test_guard_route_continues_a_request_to_an_allowed_address():
+    # Literal public IP, not a domain -- keeps this hermetic (no real DNS).
+    route = _FakeRoute("https://93.184.216.34/style.css")
+    await hb._guard_route(route)
+    assert route.continued is True
+    assert route.aborted is False

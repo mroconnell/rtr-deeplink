@@ -906,6 +906,16 @@ extraction found no video (`scan_page_for_video_evidence()` — eScribe
 is wired in; opt-in per adapter only, since a blind second pass on a
 page carrying other meetings' videos could attach the wrong one).
 
+Every fetch this adapter makes — the initial page load, a caption URL
+found on that page, and the headless-browser escalation above (including
+every redirect and sub-resource request the browser itself makes) —
+passes through `app/utils/url_guard.py`'s SSRF guard first: an
+`http`/`https` scheme allowlist, rejection of private/loopback/link-local/
+reserved destinations re-checked on every redirect hop (not just the
+entry URL), and a response-size cap. `/api/resolve` itself rejects a
+blocked URL immediately, before any adapter — including this one — ever
+runs. See that module's docstring for the real gap this closes.
+
 Every result from this adapter (including when it delegates to
 `YouTubeAssetFinder`, whose own `platform` field stays `"youtube"`) sets
 `ResolvedMeeting.best_effort = True`, which drives a dedicated, openly
