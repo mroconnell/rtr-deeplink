@@ -359,3 +359,55 @@ crawler-access problem to fix, only documentation to optionally add.
   legislative text) — would be inventing structure that doesn't exist.
 - **`rel="next"`/`rel="prev"` pagination on `/meetings`.** Google
   deprecated using this signal for indexing in 2019; not worth building.
+
+## Discoverability additions (2026-08-14)
+
+From a discoverability strategy discussion with the user. The marketing-
+shaped half of that session (newsjacking playbook, partnership targets,
+launch timing) lives in `~/Documents/rtr-business/marketing/
+discoverability-ideas.md`, not here; the user is separately already
+executing personalized deeplink outreach and native social clips
+themselves. Two of the session's four product-shaped ideas were **already
+tracked above and are deliberately not re-added**: "key moments"
+`Clip`/`hasPart` JSON-LD (SEO Tier 1) and the thumbnail/`og:image`
+share-card pair (Growth mechanics' "Social share previews" +
+"Quote-clip sharing" and SEO Tier 1's `thumbnailUrl` entry — the
+session's discussion reinforces their priority rather than changing
+their content). The two genuinely new:
+
+- **Jurisdiction hub pages (`/j/{slug}`).** A server-rendered per-city/
+  county landing page ("Oakland City Council meetings — video,
+  transcripts, deep links") listing that jurisdiction's archived
+  meetings, built over the same `list_pages()` query `/meetings`'
+  jurisdiction filter already runs — the new work is a stable URL,
+  page copy, `<title>`/meta-description, and sitemap inclusion, not new
+  querying. Targets the "[city] council meeting video/transcript"
+  searches future users type today, and doubles as the hook page for
+  city-specific outreach (stronger than linking a filtered `/meetings`
+  URL). Foundation is real: transcript text is confirmed server-rendered
+  on `/m/*` pages (`archive/templates/meeting_page.html:328`, verified
+  2026-08-14), so these pages sit on genuinely indexable surface. Open
+  questions before building: slug scheme, given stored jurisdiction
+  strings are still messy (see `BACKLOG.md`'s open casing/no-state
+  items — a hub page per raw string variant would fragment instead of
+  consolidate); minimum-meeting-count threshold before a hub page
+  exists (a one-meeting "hub" is thin-content risk); and whether hub
+  pages join `sitemap.xml` immediately or after a corpus-growth pass
+  gives them real content.
+
+- **"Famous moments in public comment" curated collection page.** A
+  hand-curated, permanent page of notable public-hearing moments (the
+  user's example: Dave Chappelle speaking against a housing development
+  at a Yellow Springs, OH council meeting), each deep-linked to its
+  archived moment with a transcript excerpt. Durable listicle-bait that
+  earns backlinks between news cycles, and pairs directly with the
+  user's in-motion native-clips marketing (each clip's "full context"
+  link can point here or at the specific page). Curation stays manual by
+  design — trust posture: only confirmed-real meetings, consistent with
+  `BACKLOG.md`'s trust-tier thinking. Open questions: where the curated
+  list lives (a checked-in data file rendered by the Archive vs. a DB
+  table — a small checked-in file matches this repo's lean bias); and
+  the real prerequisite that each featured meeting must first resolve
+  and archive successfully (many candidates are on city YouTube
+  channels, which the resolver already handles — worth confirming
+  per-moment before it makes the page).
