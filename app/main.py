@@ -1114,10 +1114,15 @@ async def robots():
     # /meeting (singular) is the ephemeral resolver page -- once a URL is
     # archived, /m/{slug} is the canonical version, so keeping /meeting?url=
     # variants out of the index avoids thin/duplicate-content pages
-    # competing with the permanent ones for the same query.
+    # competing with the permanent ones for the same query. robots.txt
+    # Disallow matching is prefix-based, so a bare "Disallow: /meeting"
+    # also blocks /meetings (the Archive's browse/search hub, which is
+    # separately listed as indexable in the sitemap) -- anchor both forms
+    # instead of relying on the prefix trap.
     lines = [
         "User-agent: *",
-        "Disallow: /meeting",
+        "Disallow: /meeting$",
+        "Disallow: /meeting?",
         "Sitemap: https://redtaperecordings.com/sitemap.xml",
     ]
     return Response(content="\n".join(lines) + "\n", media_type="text/plain")
