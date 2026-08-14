@@ -5,6 +5,113 @@ investigation detail behind each fix — lives in
 [BACKLOG_DONE.md](BACKLOG_DONE.md); items below link back to it for context
 where relevant.
 
+## App-wide audit: industry best practices & resource management — scoped 2026-08-14, for handoff
+
+The tool itself works well now — 15+ platform adapters, 683 tests,
+accounts, on-demand transcription, admin outcome reporting. This section
+scopes a **broad audit of everything around the tool**, prompted by a
+strategy conversation that surfaced how lopsided that is: heavy
+investment in features/reliability, comparatively little in
+discoverability, user validation, and standard engineering/business
+hygiene. Intended to be **handed to a separate agent (Cowork)** to
+execute — written to be self-contained (real file paths, real findings,
+real open questions) rather than assuming this conversation's context.
+
+**What this session already found — starting leads, not finished
+verification.** Each was a quick, targeted check (a handful of greps/
+reads), not an audit — the whole point of this section is to do that
+properly:
+
+- **User feedback & validation — the single biggest blind spot found.**
+  The only feedback channel is a passive mailto link on
+  `app/templates/about.html` ("Questions, feedback, or a meeting that
+  didn't work?"), never surfaced mid-use. `ProblemReport`
+  (`app/db/models.py`) is scoped narrowly to "something's wrong with
+  *this meeting*" (content-quality bugs), not general product
+  feedback. GA's `trackEvent()` helper (`app/templates/base.html`) is
+  wired up but only fired from three call sites total
+  (`newsletter_signup`, two `copy_link_to_time` calls) — no event for a
+  successful resolve, a save, or a returning visitor, so there is
+  currently no way to answer "does anyone come back" even in
+  principle. No documented user interview/usability session exists for
+  *this* product (`rtr-deeplink`) — the "two things people wanted"
+  finding `CLAUDE.md` cites is from round 1's testing, a different,
+  bigger, now-superseded product. Competitive-landscape research is
+  explicitly "nothing done yet" per `rtr-business/TASKS.md`. This
+  matters most *right now* because the first-10 personalized-deeplink
+  outreach and the clips campaign are starting — the cheapest window
+  there will ever be to instrument real signal, before it becomes
+  unrecoverable history.
+- **Discoverability — already the subject of its own backlog work**
+  (see `CLAUDE_BACKLOG.md`'s "Discoverability additions" section and
+  `rtr-business/marketing/discoverability-ideas.md`) — included here
+  only as a pointer so the audit doesn't duplicate it.
+- **CI/CD — no automated test gate.** `.github/workflows/` has exactly
+  two workflows (`daily-report.yml`, `send-search-alerts.yml`), both
+  scheduled cron triggers — neither runs `pytest` or `npm test`.
+  Nothing currently stops a broken change from merging to `main` and
+  auto-deploying via Render's Blueprint sync (which fires on every push
+  per `render.yaml`'s own header comment), despite this repo being
+  worked on by multiple parallel sessions on the same day (see
+  `CLAUDE.md`'s own warning about that pattern).
+- **Docs hygiene — a live, confirmed example of drift, not a
+  hypothetical.** Saved-search alert emails
+  (`archive/search_alerts.py`, a real daily cron sending real emails,
+  merged 2026-08-13 as PR #30) are described as unbuilt future work in
+  `BACKLOG.md`'s own "Accounts + token billing" section, in `README.md`
+  (line ~754), and in `rtr-business/BUSINESS_OVERVIEW.md`'s "Not built
+  yet" list — all three wrong, none caught until this session. Also:
+  this feature has never been human-verified firing for real (see the
+  live-verification checklist from this same session date). Worth
+  checking whether other recently-merged work has the same gap.
+- **Legal/compliance — already tracked in `rtr-business/TASKS.md`**,
+  included here only as a cross-reference: no privacy policy/ToS live,
+  LLC formation status TBD, the Clerk `user.deleted` → data-purge
+  cascade has unit coverage but has never fired against a real account.
+- **Data durability — an unverified unknown, not a confirmed gap.** No
+  Postgres backup/point-in-time-recovery policy is documented anywhere
+  (`README.md`, `render.yaml`, `BACKLOG.md`) — and `render.yaml` has no
+  `databases:` block at all, meaning the real Postgres instances exist
+  outside the Blueprint's tracked config. A five-minute check of
+  Render's dashboard would resolve this either way; nobody's done it.
+- **Security — one open, self-authored threat model with no built
+  mitigations.** The "fake/spoofed government content" threat model
+  above (this file's own "Trust & safety" section, written
+  2026-08-10) still has nothing beyond a reactive report form and one
+  `noindex` tag. Separately: no dependency-vulnerability scanning
+  exists (no Dependabot config, nothing like `pip-audit` anywhere in
+  CI — which itself doesn't run automatically, see above).
+- **Financial/resource management — costs not fully inventoried.**
+  `rtr-business/TASKS.md` already flags this: the transcription
+  worker's $25/mo is the only confirmed recurring cost; both `starter`
+  web plans, the domain, Resend, and Clerk have no confirmed monthly
+  total. No pricing decided, no revenue. Worth pairing with an actual
+  Render usage/cost review (worker sizing was set from real OOM
+  crashes, not re-verified against current usage since).
+- **Accessibility — a positive finding, not a gap, on a shallow
+  check.** `aria-` attributes appear across most templates and a real
+  `lang` attribute is set — better than expected on a five-minute grep.
+  No automated a11y check (Lighthouse CI, axe) exists to keep it that
+  way as the site grows, but this shouldn't be assumed broken without
+  an actual audit.
+
+**What "resource management" should mean for this audit**: not just
+inventorying dollar costs (financial ops above), but asking whether
+engineering effort itself is going to the right places — this session's
+own framing was that feature/reliability work has been heavy relative to
+discoverability and user validation; the audit should form its own
+independent view on that rather than taking this session's read as
+given.
+
+**Scoping notes for whoever picks this up**: every finding above is a
+starting lead from one session's quick checks, not a finished
+conclusion — verify before acting on any of them. This is deliberately
+broad (industry best practices generally: reliability, security,
+compliance, cost, process, and user/product validation) rather than
+scoped to one fix, since the point is to find what a systematic pass
+surfaces that ad hoc work has missed — this list is a floor, not a
+ceiling.
+
 ## Trust & safety — real gaps, threat-modeled 2026-08-10
 
 Prompted directly by the user asking "should I be worried about prompt
