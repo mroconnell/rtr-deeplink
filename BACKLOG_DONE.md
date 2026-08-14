@@ -68,6 +68,61 @@ changelog of task titles.
   re-crawled — structured-data validity is confirmed, rich-result
   *uptake* is Google's call, not verifiable locally.
 
+- **[Done 2026-08-14] Minneapolis LIMS stores raw HTML inside agenda item
+  text — real adapter bug found live-verifying the Clip markup above,
+  now fixed at the extraction source, not just papered over in the
+  template.** Confirmed on production
+  (`/m/city-of-minneapolis-mn-2026-08-10-committee-of-the-whole`,
+  real source `MarkedAgenda/COW/6144`): the Agenda section was
+  rendering items like
+  `&lt;a href='/Download/CommitteeReport/4915/...pdf'
+  class='previousmettingdate' aria-label='...'>Business, Housing &
+  Zoning Committee ` as literal escaped text — `app/platforms/lims.py`'s
+  `_flatten_timestamps()` was storing a category's
+  `SerializedVideoTimestamps` title verbatim, and this particular
+  category type (a Committee Report cross-link, not every category)
+  carries a raw, unclosed `<a>` tag right in the title string. Sibling
+  file-level titles on the same meeting are plain text, so this is a
+  category-level quirk specific to how LIMS labels a Committee Report
+  reference, not a wholesale format shift.
+
+  Fixed with a new `LimsAssetFinder._clean_title()` (strips tags via
+  `_HTML_TAG_RE`, collapses leftover whitespace) called on both the
+  category-level and file-level title before building each
+  `TranscriptSegment` — plain titles pass through byte-for-byte
+  unchanged. Deliberately fixed at the adapter/extraction layer, not
+  with a defensive `striptags` in the display template (the open
+  question the same-day Clip-markup entry above left undecided) — the
+  template already got its own narrower `striptags` for the `Clip` JSON-LD
+  specifically, but the real fix belongs where the data enters the
+  system, per this repo's general convention of not silently absorbing
+  a source-data bug downstream.
+
+  Verified three ways: 2 new tests in `tests/test_lims.py`
+  (`test_clean_title_strips_real_html_anchor_shape` using the exact
+  stored text recovered from the production page, plus a full-resolve
+  regression test) — both COW and non-COW existing tests untouched, 683
+  passed full-suite. Live-verified on production after deploy+re-push:
+  scanned all 11 archived Minneapolis pages
+  (`https://redtaperecordings.com/meetings?jurisdiction=Minneapolis`)
+  for `&lt;a href` in their rendered HTML — found contamination on
+  exactly 2 (`COW/6120` and `COW/6144`, both Committee of the Whole
+  meetings; the other 9, including several City Council and other
+  committee types, were already clean), used
+  `GET /admin/recheck-archive-page?url=...` (documented in README's
+  "Caching and reporting" section) to force a fresh re-resolve + Archive
+  push of both against the fixed adapter, then re-fetched both rendered
+  pages and confirmed zero `&lt;a href` occurrences and correct Clip/
+  agenda text (e.g. "Business, Housing & Zoning Committee", no leaked
+  markup) on both.
+
+  **Still open, explicitly not decided or checked this pass**: whether
+  any other adapter has the same latent issue — only LIMS is confirmed;
+  and the same-day entry's open question about a defensive
+  template-level `striptags` for the visible agenda section (not just
+  the Clip JSON-LD) remains genuinely undecided, now lower-priority
+  since the actual source-data bug is fixed.
+
 - **[Done 2026-08-10] Built a branded 404 page on both services, plus
   logging when one is hit — the "custom 404 / not-found page, plus an
   error log when it gets hit" ask.** Confirmed neither service had one
