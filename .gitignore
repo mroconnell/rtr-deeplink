@@ -6,3 +6,4 @@ venv/
 .env
 *.db
 node_modules/
+.claude/
