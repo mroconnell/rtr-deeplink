@@ -137,6 +137,12 @@ def detect_platform(url: str) -> str:
         # play.champds.com domain with the customer as a path segment,
         # not a subdomain -- see champds.py's own module docstring.
         return "champds"
+    if "iqm2.com" in netloc:
+        # IQM2 -- confirmed live 2026-08-13 against two real customers
+        # (Atlanta GA's atlantacityga.iqm2.com, Santa Clara County CA's
+        # sccgov.iqm2.com), each on its own subdomain with the customer as
+        # the subdomain itself -- see iqm2.py's own module docstring.
+        return "iqm2"
     if "auroratv.org" in netloc:
         # Aurora, CO's own Drupal-built council video site -- confirmed
         # live 2026-08-12, found during a Wave 2 platform-coverage pass

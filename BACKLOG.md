@@ -1163,53 +1163,32 @@ auditing it (2026-08-08) — two fixed since, one still open below:
     `BACKLOG_DONE.md`) and live for both Charlotte and Detroit, including
     real `vodTranscripts` extraction — see `BACKLOG_DONE.md`'s "Cablecast
     real transcript extraction" entry for the full build.
-  - **IQM2** — a Granicus-family product (footer: `support@granicus.com`)
-    with a distinct UI/URL shape from the classic ViewPublisher/
-    MediaPlayer this app already parses. Confirmed on **Atlanta, GA**
-    (`atlantacityga.iqm2.com/Citizens/`, one of three parallel systems
-    Atlanta runs) and **Santa Clara County, CA**
-    (`sccgov.iqm2.com/citizens/default.aspx?frame=no` — the county
-    briefly moved to PrimeGov in Jan 2024, then reverted back to IQM2
-    "until further notice").
+  - ~~**IQM2** — a Granicus-family product with a distinct UI/URL shape
+    from the classic ViewPublisher/MediaPlayer this app already parses.
+    Confirmed on Atlanta, GA and Santa Clara County, CA; real video-embed
+    shape unconfirmed~~ **Atlanta piece built 2026-08-14 —
+    `app/platforms/iqm2.py`, full detail in `BACKLOG_DONE.md`.** Confirmed
+    live: video delegates to a real Granicus HLS URL sitting in a plain
+    HTML comment, and real per-item timestamped agenda data (procedural
+    entries plus full ordinance/resolution text) comes from the same
+    per-meeting page in "AgendaOutline" mode.
 
-    **Update 2026-08-13: the real video-embed shape is now confirmed for
-    Atlanta, via a real browser + a plain `curl` cross-check — a
-    genuinely easy adapter target, not the "needs JS execution" framing
-    above.** A past meeting's real, static, server-rendered "Video" link
-    carries a plain `onclick="OpenWindow('/Citizens/SplitView.aspx?
-    Mode=Video&MeetingID={id}&Format=Minutes')"` (confirmed live, e.g.
-    `MeetingID=4294`) — an upcoming meeting with no recording yet just
-    has a bare `href="#"` with no onclick, which is how to tell the two
-    cases apart. That `SplitView.aspx` page's raw static HTML (verified
-    via plain `curl`, no JS/browser needed — matches how every other
-    adapter here already fetches) carries a literal
-    `<!-- MEDIA URL: https://archive-stream.granicus.com/OnDemand/
-    _definst_/mp4:archive/atlantacityga/{id}_480.mp4/playlist.m3u8-->`
-    comment — a real, direct Granicus HLS URL, confirming IQM2 really is
-    a Granicus-family wrapper for video too, not just for support email.
-    `SplitView.aspx` itself doesn't carry per-meeting title/date (its own
-    `<title>` is the generic "Video Outline - City of Atlanta, Georgia"),
-    so a real adapter needs the calendar/meeting-list row for that (the
-    row's own `title` attribute already carries clean structured text —
-    board name, meeting type, status, full address — same shape as
-    Sacramento's agenda-link `title` attribute fix, see `BACKLOG_DONE.md`).
-
-    **Santa Clara County is a different, messier case, re-confirmed
-    live, not yet resolved**: `Detail_Meeting.aspx?ID={id}` (a real,
-    plain per-meeting page, distinct from Atlanta's calendar-only shape)
-    has an excellent per-meeting `<title>` — e.g. `"2026/08/14 09:00 AM
-    Personnel Board Business Meeting - Web Outline - The County of Santa
-    Clara, California"`, date/time/body/jurisdiction all in one clean
-    string — but every "Video" link checked across several real past
-    committee/commission meetings was still a bare `href="#"` with no
-    onclick, unlike Atlanta's. Not yet checked against a real past
-    **Board of Supervisors** meeting specifically (the flagship body,
-    `BodyID=1179`) — only smaller commissions/committees were sampled
-    this pass, and it's still an open question whether video population
-    is body-type-dependent (some bodies never get video) or whether SCC's
-    instance genuinely needs a JS-executed check unlike Atlanta's. Worth
-    a second real check against a confirmed past Board of Supervisors
-    meeting before concluding either way.
+    **Santa Clara County stays open — a real, still-unresolved gap, not
+    covered by the Atlanta build.** `Detail_Meeting.aspx?ID={id}` has an
+    excellent per-meeting `<title>` (date/time/body/jurisdiction all in
+    one clean string, e.g. `"2026/08/14 09:00 AM Personnel Board Business
+    Meeting - Web Outline - The County of Santa Clara, California"` — the
+    shipped adapter already extracts this correctly for SCC too), but
+    every "Video" link checked across several real past committee/
+    commission meetings was still a bare `href="#"` with no onclick,
+    unlike Atlanta's. Not yet checked against a real past **Board of
+    Supervisors** meeting specifically (the flagship body, `BodyID=1179`)
+    — only smaller commissions/committees were sampled, and it's still an
+    open question whether video population is body-type-dependent (some
+    bodies never get video) or whether SCC's instance genuinely needs a
+    JS-executed check unlike Atlanta's. Worth a second real check against
+    a confirmed past Board of Supervisors meeting before concluding
+    either way.
   - ~~**CivicWeb** (iCompass, a Diligent brand) — confirmed as **Dallas
     County, TX**'s (2.6M) meeting-video host; page is JS-rendered, real
     embed shape unconfirmed~~ **Stale — this was actually built the next

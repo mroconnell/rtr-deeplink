@@ -19,6 +19,7 @@ def register_all_finders() -> None:
     from .escribe import EscribeAssetFinder
     from .generic_fallback import GenericFallbackAssetFinder
     from .granicus import GranicusAssetFinder
+    from .iqm2 import IQM2AssetFinder
     from .legistar import LegistarAssetFinder
     from .lims import LimsAssetFinder
     from .primegov import PrimeGovAssetFinder
@@ -43,6 +44,7 @@ def register_all_finders() -> None:
     register(CivicWebAssetFinder())
     register(CablecastAssetFinder())
     register(ChampDSAssetFinder())
+    register(IQM2AssetFinder())
     # Registered under "unknown" -- the exact string detect_platform()
     # already returns for anything unmatched -- so get_finder("unknown")
     # finds this instead of raising UnsupportedPlatformError. Keep this

@@ -6859,3 +6859,78 @@ changelog of task titles.
 
   6 new tests in `tests/test_generic_fallback.py` (22 total in that
   file), full suite green (635 tests).
+
+- **[Done 2026-08-14] Add IQM2 platform adapter (Atlanta, GA), a real
+  Granicus-family wrapper with genuinely rich per-item timestamped
+  agenda data.** New `app/platforms/iqm2.py`, confirmed live against a
+  real Atlanta, GA meeting
+  (`atlantacityga.iqm2.com/Citizens/Detail_Meeting.aspx?ID=4294`).
+
+  **Video**: IQM2 doesn't host video itself. A past meeting's real
+  "Video" link on the plain meeting-detail page carries a static
+  `OnClick="javascript:OpenWindow('/Citizens/SplitView.aspx?Mode=Video&
+  MeetingID={id}&...')"` — an upcoming/no-recording meeting's link stays
+  a bare `href="#"` with no onclick, the reliable signal used to tell the
+  two apart. That `SplitView.aspx` page's raw static HTML (a plain
+  fetch, no JS/browser execution needed) carries a literal
+  `<!-- MEDIA URL: https://archive-stream.granicus.com/... .m3u8-->`
+  comment — a real, direct Granicus HLS URL. Confirmed the stream URL
+  itself needs a real (non-default) User-Agent — CloudFront 403s a plain
+  `curl` default UA, 200s with a current browser UA — and has **no**
+  Referer restriction, unlike ChampDS's VOD2 path (`champds.py`). Since
+  there's no Granicus *page* to hand off to (just a bare stream URL, not
+  a `granicus.com` URL `GranicusAssetFinder.resolve()` could take), this
+  adapter sets `video_url`/`video_format="m3u8"` directly rather than
+  delegating — a new pattern in this codebase, not the Legistar/CivicPlus
+  page-delegation shape.
+
+  **Real per-item timestamps, found while researching video** — the same
+  `Detail_Meeting.aspx?ID={id}` URL, requested with
+  `Target=Detail&CssClass=AgendaOutline&Mode=Video&Frame=Nothing` added,
+  renders every agenda item as a real
+  `<a class="AgendaOutlineLink" onclick="javascript:SetPosition({seconds});">`
+  — confirmed live with 65 real items on the one Atlanta example,
+  spanning plain procedural entries ("Roll Call") and full real
+  ordinance/resolution text with real council-member names. This
+  "AgendaOutline" page conveniently carries the *same* `<title>` as the
+  plain detail page, so this adapter only ever needs two fetches total
+  (the AgendaOutline page for title/date/jurisdiction/agenda_items, plus
+  `SplitView.aspx` for the video URL), not three. Items with no
+  `SetPosition` onclick (real supporting-document links like "Minutes
+  Packet," appointment letters, bio PDFs sharing the same CSS class) are
+  filtered out rather than becoming bogus zero-duration agenda entries.
+  `end` for each item is the next item's `start` (or its own `start` for
+  the last item), mirroring `granicus.py`'s existing
+  `_fetch_agenda_items()` convention exactly.
+
+  **Title/date/jurisdiction**: the vendor's own generic "Web Outline"
+  branding string (confirmed identical across both real customers, not
+  per-city) is a reliable fixed separator in the page's `<title>` —
+  `"{YYYY}/{MM}/{DD} {time} {meeting name} - Web Outline -
+  {jurisdiction}"`. Jurisdiction already carries a spelled-out state name
+  in both confirmed examples ("City of Atlanta, Georgia," "The County of
+  Santa Clara, California"), so `jurisdiction_enrich.enrich_jurisdiction_text()`
+  is called for consistency with every other adapter but is a no-op here
+  in practice.
+
+  **Santa Clara County, CA — the second real confirmed customer — title/
+  date/jurisdiction extraction works identically there too**, but every
+  real past committee/commission meeting checked had no video link
+  populated at all, unlike Atlanta's (degrades to an honest "No video
+  found for this meeting," not a crash or guess). Left as a real, still-
+  open gap — not yet checked against a real past Board of Supervisors
+  meeting specifically — see `BACKLOG.md`.
+
+  `detect_platform()` (`app/platforms/base.py`) gets a new `"iqm2.com" in
+  netloc` branch; registered in `app/platforms/__init__.py`. README's
+  "Supported platforms" table gets a new IQM2 row — and, caught in the
+  same pass, a missing CHAMP/ChampDS row that had never been added when
+  that adapter shipped (a pre-existing documentation gap, unrelated to
+  this build).
+
+  7 new tests in `tests/test_iqm2.py`, using real trimmed fixtures (both
+  the Atlanta success case and the Santa Clara no-video case are real
+  confirmed shapes, not invented). Full suite green (642 tests). Verified
+  directly against the real live Atlanta and Santa Clara pages (not just
+  mocked fixtures) before writing tests, and again after, via
+  `IQM2AssetFinder().resolve()` called directly against both real URLs.
