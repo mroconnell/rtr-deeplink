@@ -1,4 +1,5 @@
 import html as html_module
+import os
 import re
 from typing import List, Optional, Tuple
 from urllib.parse import urljoin, urlparse
@@ -149,6 +150,43 @@ _IFRAME_JUNK_HOSTS = (
     "platform.twitter.com", "youtube.com",  # youtube iframes are tier-1 territory, never a pointer
 )
 
+# --- Headless-browser escalation (2026-08-14 rebuild, Phase 5).
+# Env-gated OFF by default: playwright-on-Render has never been confirmed
+# working in production (two real 2026-08-09 build incidents -- see
+# render.yaml:16-40 and headless_browser.py's own docstring). Flip
+# GENERIC_FALLBACK_HEADLESS=1 only after a real prod verification of the
+# headless build (e.g. a successful LIMS/SLC prod resolve). The worker
+# never sets it -- playwright is deliberately absent from
+# worker/requirements.txt.
+_HEADLESS_ESCALATION_ENV = "GENERIC_FALLBACK_HEADLESS"
+# Statuses a WAF/bot-gate answers with -- 403 is Wayne County MI's real
+# confirmed Akamai response (tests/fixtures/generic_fallback/
+# wayne_akamai_403.html); the rest are the standard block-status family.
+_BLOCK_STATUSES = {401, 403, 429, 503}
+# Challenge-page body markers for blocks served as a 200 -- each tied to a
+# real observed body: "access denied"/"errors.edgesuite.net" are literal
+# strings in the captured Akamai body; "just a moment" is Cloudflare's
+# interstitial, the exact page LIMS/SLC's always-headless fetch was built
+# against (headless_browser.py's docstring). Only checked on small bodies
+# (a real page mentioning "access denied" in prose is fine).
+_CHALLENGE_MARKERS = ("errors.edgesuite.net", "access denied", "just a moment")
+_CHALLENGE_BODY_MAX_BYTES = 2048
+# Empty-evidence retry gate: the resolve found literally nothing AND the
+# page's visible text is near-empty -- the client-rendered-shell shape.
+# Threshold tuned against the real Tucson Hyland capture (153 chars of
+# visible text). Deliberately does NOT catch PBC's SharePoint shell (6KB
+# of real nav/chrome text, measured 2026-08-14): firing on every
+# evidence-less page that still has real text would make an enabled flag
+# pay a >=4s browser fetch on ordinary no-video pages -- PBC stays a
+# documented gap, see BACKLOG.md.
+_EMPTY_SHELL_TEXT_MAX_CHARS = 500
+
+
+def _headless_escalation_enabled() -> bool:
+    # Read at call time, not import time, so the flag can be set/unset
+    # without a process restart being silently required in tests.
+    return os.environ.get(_HEADLESS_ESCALATION_ENV, "") == "1"
+
 _BEST_EFFORT_VIDEO_WARNING = (
     "This city isn't officially supported yet, so we're trying our best — we think we found the "
     "video below. Deep-linking to a specific moment might work here, or it might not — feel free "
@@ -272,7 +310,7 @@ class GenericFallbackAssetFinder(AssetFinder):
         }
 
     async def resolve(self, url: str) -> ResolvedMeeting:
-        html = await self._fetch_page(url)
+        html, escalated = await self._fetch_page(url)
         if html is None:
             return ResolvedMeeting(
                 platform=self.platform_name,
@@ -284,6 +322,27 @@ class GenericFallbackAssetFinder(AssetFinder):
                 best_effort=True,
             )
 
+        resolved = await self._resolve_from_html(url, html)
+
+        # Empty-evidence retry (escalation trigger c): the plain fetch
+        # succeeded but produced literally nothing AND the page reads as a
+        # client-rendered shell (Tucson Hyland's confirmed shape). One
+        # browser attempt per resolve, total -- never after an already-
+        # escalated fetch.
+        if (
+            not escalated
+            and _headless_escalation_enabled()
+            and self._is_empty_evidence(resolved)
+            and self._looks_like_empty_shell(html)
+        ):
+            rendered = await self._try_browser_fetch(url)
+            if rendered is not None:
+                re_resolved = await self._resolve_from_html(url, rendered)
+                if not self._is_empty_evidence(re_resolved):
+                    return re_resolved
+        return resolved
+
+    async def _resolve_from_html(self, url: str, html: str) -> ResolvedMeeting:
         agenda_link, agenda_link_title = self._find_agenda_link(html, url)
 
         # Video tier 1+2: an embedded YouTube video, in any of the
@@ -403,20 +462,82 @@ class GenericFallbackAssetFinder(AssetFinder):
             return candidate, False
         return None, False
 
-    async def _fetch_page(self, url: str) -> Optional[str]:
-        """Plain fetch; None means "couldn't load the page at all."
-        Extracted from resolve()'s inline try/except so the (env-gated,
-        off-by-default) headless-browser escalation has one place to hook
-        into -- see BACKLOG.md's generic-fallback rebuild entry."""
+    async def _fetch_page(self, url: str) -> Tuple[Optional[str], bool]:
+        """Fetch the page; returns `(html, escalated)`. `html is None`
+        means "couldn't load the page at all."
+
+        Escalation triggers a+b (env-gated OFF by default -- see the
+        module-level _HEADLESS_ESCALATION_ENV block): a block-family
+        status (Wayne County MI's real Akamai 403), or a 200 whose small
+        body is a challenge interstitial. When the flag is off, or the
+        browser is unavailable/fails, a blocked fetch degrades to exactly
+        the pre-escalation behavior: None, and the honest "couldn't even
+        load the page" message. A challenge body is never handed to the
+        extraction layers as if it were the real page.
+        """
+        status: Optional[int] = None
+        body: Optional[str] = None
         try:
             async with aiohttp.ClientSession(headers=self.headers) as session:
                 async with session.get(
                     url, allow_redirects=True, timeout=aiohttp.ClientTimeout(total=20)
                 ) as response:
-                    response.raise_for_status()
-                    return await response.text()
+                    status = response.status
+                    body = await response.text()
+        except Exception:
+            pass
+
+        blocked = status in _BLOCK_STATUSES or (
+            status == 200
+            and body is not None
+            and len(body) <= _CHALLENGE_BODY_MAX_BYTES
+            and any(marker in body.lower() for marker in _CHALLENGE_MARKERS)
+        )
+        if status is not None and 200 <= status < 300 and not blocked:
+            return body, False
+
+        if blocked and _headless_escalation_enabled():
+            rendered = await self._try_browser_fetch(url)
+            if rendered is not None:
+                return rendered, True
+        return None, False
+
+    @staticmethod
+    async def _try_browser_fetch(url: str) -> Optional[str]:
+        """One real-Chromium fetch, degrading to None on ANY failure --
+        including HeadlessBrowserUnavailable, which no other caller in
+        this repo catches (LIMS/SLC let it propagate because their
+        hostnames are KNOWN to need a browser; this escalation is
+        speculative, so a missing browser must never turn a normal
+        fallback resolve into a crash). Imported lazily so the worker
+        (which deliberately omits playwright) never touches the module
+        unless the flag is actually on."""
+        try:
+            from .headless_browser import fetch_via_browser
+            return await fetch_via_browser(url)
         except Exception:
             return None
+
+    @staticmethod
+    def _is_empty_evidence(resolved: ResolvedMeeting) -> bool:
+        """Whether a resolve found nothing worth keeping -- the
+        empty-evidence escalation gate. `agenda_link` is deliberately NOT
+        counted: the real Tucson Hyland shell (the page this trigger was
+        built for) carries an "Agenda" NAV link that `_find_agenda_link`
+        best-effort-matches to the site root -- the exact junk-link
+        outcome BACKLOG.md already documented from prod -- and counting
+        it would veto escalation on precisely the page that needs it."""
+        return not any((
+            resolved.video_url,
+            resolved.video_link,
+            resolved.title,
+            resolved.segments,
+        ))
+
+    @staticmethod
+    def _looks_like_empty_shell(html: str) -> bool:
+        text = BeautifulSoup(html, "html.parser").get_text(" ", strip=True)
+        return len(text) <= _EMPTY_SHELL_TEXT_MAX_CHARS
 
     @staticmethod
     def _find_youtube_video_id(html: str) -> Optional[str]:

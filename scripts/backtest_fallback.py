@@ -124,10 +124,14 @@ CORPUS = [
         "url": "https://www.waynecountymi.gov/Government/Elected-Officials/Commission/Committees/Full-Commission-Meetings/2026/Wayne-County-Commission-January-8-2026",
         "requires_headless": True,
         "expect": {
+            # "Commission" is satisfied on both real paths: yt-dlp success
+            # gives the real YouTube title ("Commission Meeting | Full
+            # Commission - Jan 8, 2026"), the blocked path gives og:title
+            # ("Wayne County Commission - January 8, 2026").
             "video": "youtube",
             "video_url_contains": "RFwXrAzkXR8",
             "agenda_link": True,
-            "title_contains": "Wayne County Commission",
+            "title_contains": "Commission",
         },
         "backlog_ref": "Wayne County MI Akamai-block entry",
     },

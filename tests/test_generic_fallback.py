@@ -750,3 +750,126 @@ async def test_resolve_prefers_playable_video_over_pointer():
 
     assert result.video_url == "https://cdn.city.gov/videos/meeting.m3u8"
     assert result.video_link is None
+
+
+# --- 2026-08-14 rebuild coverage (Phase 5: headless escalation, env-gated
+# OFF by default -- playwright-on-Render is still unverified, see
+# render.yaml's own comments). ---
+
+WAYNE_URL = "https://www.waynecountymi.gov/Government/Elected-Officials/Commission/Committees/Full-Commission-Meetings/2026/Wayne-County-Commission-January-8-2026"
+
+
+async def test_escalation_disabled_by_default_browser_never_called(monkeypatch):
+    # With the env var unset (the shipped default), a real Akamai 403 must
+    # degrade to today's exact behavior -- and the browser must never be
+    # touched.
+    monkeypatch.delenv("GENERIC_FALLBACK_HEADLESS", raising=False)
+    calls = []
+
+    async def _fake_browser(url):
+        calls.append(url)
+        return "<html>should never be used</html>"
+
+    monkeypatch.setattr(GenericFallbackAssetFinder, "_try_browser_fetch", staticmethod(_fake_browser))
+    akamai_403 = load_fixture("generic_fallback", "wayne_akamai_403.html")
+    routes = {WAYNE_URL: FakeResponse(status=403, text=akamai_403, url=WAYNE_URL)}
+
+    with mock_session(routes):
+        result = await GenericFallbackAssetFinder().resolve(WAYNE_URL)
+
+    assert calls == []
+    assert result.video_url is None
+    assert any("couldn't even load the page" in w for w in result.video_warnings)
+
+
+async def test_escalation_resolves_wayne_county_through_the_browser(monkeypatch):
+    # Trigger (a): the real Akamai 403 -> browser fetch -> the real
+    # browser-captured Wayne page resolves fully (youtu.be video, agenda
+    # pdf, og:title, slug date).
+    def _raise(video_id):
+        raise yt_dlp.utils.DownloadError("blocked")
+
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _raise)
+    monkeypatch.setenv("GENERIC_FALLBACK_HEADLESS", "1")
+    wayne_html = load_fixture("generic_fallback", "wayne_county_commission_2026-01-08.html")
+
+    async def _fake_browser(url):
+        assert url == WAYNE_URL
+        return wayne_html
+
+    monkeypatch.setattr(GenericFallbackAssetFinder, "_try_browser_fetch", staticmethod(_fake_browser))
+    akamai_403 = load_fixture("generic_fallback", "wayne_akamai_403.html")
+    routes = {WAYNE_URL: FakeResponse(status=403, text=akamai_403, url=WAYNE_URL)}
+
+    with mock_session(routes):
+        result = await GenericFallbackAssetFinder().resolve(WAYNE_URL)
+
+    assert result.video_url == "https://www.youtube.com/embed/RFwXrAzkXR8"
+    assert result.title == "Wayne County Commission - January 8, 2026"
+    assert result.date == "2026-01-08"
+    assert result.agenda_link.endswith("agenda2026-0108.pdf")
+
+
+async def test_escalation_degrades_cleanly_when_browser_unavailable(monkeypatch):
+    # HeadlessBrowserUnavailable (or any browser failure) must fall back
+    # to today's clean unreachable-page message, never a crash -- this is
+    # the first caller anywhere that has to survive a missing browser.
+    monkeypatch.setenv("GENERIC_FALLBACK_HEADLESS", "1")
+
+    async def _unavailable(url):
+        return None  # _try_browser_fetch already swallows the exception
+
+    monkeypatch.setattr(GenericFallbackAssetFinder, "_try_browser_fetch", staticmethod(_unavailable))
+    akamai_403 = load_fixture("generic_fallback", "wayne_akamai_403.html")
+    routes = {WAYNE_URL: FakeResponse(status=403, text=akamai_403, url=WAYNE_URL)}
+
+    with mock_session(routes):
+        result = await GenericFallbackAssetFinder().resolve(WAYNE_URL)
+
+    assert result.video_url is None
+    assert any("couldn't even load the page" in w for w in result.video_warnings)
+
+
+async def test_empty_shell_trigger_fires_on_real_tucson_shape(monkeypatch):
+    # Trigger (c): a 200 with zero evidence and near-empty visible text
+    # (the real Tucson Hyland client-rendered shell, 153 chars of visible
+    # text) -> one browser attempt, whose rendered HTML is re-diagnosed.
+    monkeypatch.setenv("GENERIC_FALLBACK_HEADLESS", "1")
+    tucson_url = "https://tucsonaz.hylandcloud.com/221agendaonline/Meetings/ViewMeeting?doctype=2&id=1956"
+    shell = load_fixture("generic_fallback", "tucson_viewmeeting_1956.html")
+    rendered = (
+        "<html><head><title>Mayor and Council Regular Meeting - City of Tucson, Arizona"
+        "</title></head><body><video src='https://example-cdn.gov/tucson/meeting.mp4'></video></body></html>"
+    )
+
+    async def _fake_browser(url):
+        return rendered
+
+    monkeypatch.setattr(GenericFallbackAssetFinder, "_try_browser_fetch", staticmethod(_fake_browser))
+    routes = {tucson_url: FakeResponse(status=200, text=shell, url=tucson_url)}
+
+    with mock_session(routes):
+        result = await GenericFallbackAssetFinder().resolve(tucson_url)
+
+    assert result.video_url == "https://example-cdn.gov/tucson/meeting.mp4"
+
+
+async def test_empty_shell_trigger_skips_pages_with_real_text(monkeypatch):
+    # A normal text-bearing page with no video must NOT pay a browser
+    # fetch even with the flag on -- the visible-text gate.
+    monkeypatch.setenv("GENERIC_FALLBACK_HEADLESS", "1")
+    calls = []
+
+    async def _fake_browser(url):
+        calls.append(url)
+        return "<html>never</html>"
+
+    monkeypatch.setattr(GenericFallbackAssetFinder, "_try_browser_fetch", staticmethod(_fake_browser))
+    texty = "<html><body>" + ("This council discussed real business. " * 30) + "</body></html>"
+    routes = {PAGE_URL: FakeResponse(status=200, text=texty, url=PAGE_URL)}
+
+    with mock_session(routes):
+        result = await GenericFallbackAssetFinder().resolve(PAGE_URL)
+
+    assert calls == []
+    assert result.video_url is None
