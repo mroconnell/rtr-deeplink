@@ -25,7 +25,13 @@ jobs:
 
       - run: pip install -r requirements.txt -r requirements-dev.txt
 
-      - run: pytest
+      # Plain `pytest` doesn't add the repo root to sys.path, so
+      # `import app.main` / `import archive.main` fail with
+      # ModuleNotFoundError (app/ and archive/ are top-level packages,
+      # siblings of tests/, not underneath it) -- confirmed by this exact
+      # failure on this workflow's first real run. `python -m pytest`
+      # adds cwd to sys.path[0] the same way local dev invocations do.
+      - run: python -m pytest
 
       - uses: actions/setup-node@v4
         with:
