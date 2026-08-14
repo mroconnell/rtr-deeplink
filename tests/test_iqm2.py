@@ -47,8 +47,11 @@ ATLANTA_SPLIT_HTML = """
 
 # Real shape: Santa Clara County, CA, Personnel Board Business Meeting,
 # Aug 14 2026 (sccgov.iqm2.com/citizens/Detail_Meeting.aspx?ID=17321) --
-# a real, confirmed second customer with no video onclick populated (a
-# real, still-open gap for this instance -- see BACKLOG.md).
+# a real, confirmed second customer with no video onclick populated. Real,
+# but narrower than it first looked: confirmed 2026-08-14 (see the real
+# Board of Supervisors fixture below) that video population is body-type-
+# dependent, not a per-customer/per-instance gap -- smaller commissions/
+# committees like this one just don't always get a recording attached.
 SCC_URL = "https://sccgov.iqm2.com/citizens/Detail_Meeting.aspx?ID=17321"
 SCC_OUTLINE_URL = (
     "https://sccgov.iqm2.com/citizens/Detail_Meeting.aspx?Target=Detail&CssClass=AgendaOutline"
@@ -59,6 +62,60 @@ SCC_OUTLINE_HTML = """
 <html><head><title>2026/08/14 09:00 AM Personnel Board Business Meeting - Web Outline - The County of Santa Clara, California</title></head>
 <body>No AgendaOutlineLink items on this real page -- unconfirmed whether that's this meeting specifically or a wider gap.</body></html>
 """
+
+# Real shape: Santa Clara County, CA, Board of Supervisors Regular
+# Meeting, Aug 11 2026 (sccgov.iqm2.com/citizens/Detail_Meeting.aspx?
+# ID=17601) -- confirmed live 2026-08-14 that SCC's flagship body DOES
+# get video, resolving the "is this body-type-dependent or a per-instance
+# gap" open question from BACKLOG.md. Same customer/adapter as the
+# no-video fixture above, different real body.
+SCC_BOS_URL = "https://sccgov.iqm2.com/citizens/Detail_Meeting.aspx?ID=17601"
+SCC_BOS_OUTLINE_URL = (
+    "https://sccgov.iqm2.com/citizens/Detail_Meeting.aspx?Target=Detail&CssClass=AgendaOutline"
+    "&Mode=Video&Frame=Nothing&ID=17601"
+)
+SCC_BOS_SPLIT_URL = "https://sccgov.iqm2.com/citizens/SplitView.aspx?Mode=Video&MeetingID=17601&Format=Minutes"
+SCC_BOS_OUTLINE_HTML = """
+<html><head><title>
+2026/08/11 09:30 AM Board of Supervisors Regular Meeting - Web Outline - The County of Santa Clara, California
+</title></head>
+<body>
+<a target='Detail' class='AgendaOutlineLink' href='FileOpen.aspx?Type=8&ID=4200'>Transcript</a>
+<a target='Detail' class='AgendaOutlineLink'
+   href='Detail_Motion.aspx?MediaPosition=0.000&ID=990001'>Invocation by Mora Oommen, Executive Director, Youth Community Service.</a>
+<a target='Detail' class='AgendaOutlineLink' onclick='javascript:SetPosition(3734.202); return false;'
+   href='Detail_Motion.aspx?MediaPosition=3734.202&ID=990002'>Public Comment.</a>
+</body></html>
+"""
+SCC_BOS_SPLIT_HTML = """
+<div><!-- MEDIA URL: https://archive-stream.granicus.com/OnDemand/_definst_/mp4:archive/sccgov/28462_480.mp4/playlist.m3u8--></div>
+"""
+
+
+async def test_resolve_finds_real_video_on_scc_board_of_supervisors_meeting():
+    # The flagship body works exactly like Atlanta's -- confirms the
+    # earlier "no video" fixture above is a real, narrower, body-type-
+    # specific gap, not a structural limitation of this adapter or of
+    # SCC's instance generally.
+    routes = {
+        SCC_BOS_OUTLINE_URL: FakeResponse(status=200, text=SCC_BOS_OUTLINE_HTML, url=SCC_BOS_OUTLINE_URL),
+        SCC_BOS_SPLIT_URL: FakeResponse(status=200, text=SCC_BOS_SPLIT_HTML, url=SCC_BOS_SPLIT_URL),
+    }
+
+    with mock_session(routes):
+        result = await IQM2AssetFinder().resolve(SCC_BOS_URL)
+
+    assert result.title == "Board of Supervisors Regular Meeting"
+    assert result.date == "2026-08-11"
+    assert result.jurisdiction == "The County of Santa Clara, California"
+    assert result.video_url == (
+        "https://archive-stream.granicus.com/OnDemand/_definst_/mp4:archive/sccgov/"
+        "28462_480.mp4/playlist.m3u8"
+    )
+    # Only the one real timestamped item -- "Transcript" and the
+    # Invocation link both have no SetPosition onclick, same filtering as
+    # the Atlanta "Minutes Packet" case.
+    assert [item.text for item in result.agenda_items] == ["Public Comment."]
 
 
 async def test_resolve_reads_real_title_date_jurisdiction_and_video():

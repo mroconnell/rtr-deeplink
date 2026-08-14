@@ -6917,9 +6917,22 @@ changelog of task titles.
   date/jurisdiction extraction works identically there too**, but every
   real past committee/commission meeting checked had no video link
   populated at all, unlike Atlanta's (degrades to an honest "No video
-  found for this meeting," not a crash or guess). Left as a real, still-
-  open gap — not yet checked against a real past Board of Supervisors
-  meeting specifically — see `BACKLOG.md`.
+  found for this meeting," not a crash or guess).
+
+  **Update 2026-08-14, user-requested: checked a real past Board of
+  Supervisors meeting specifically (`ID=17601`, Aug 11 2026 Regular
+  Meeting) — resolves cleanly with zero code changes.** Real title/date/
+  jurisdiction, a real playable Granicus HLS URL (same CloudFront
+  403-without-a-real-UA / 200-with-one pattern as Atlanta, confirmed via
+  direct `curl`), and 72 real timestamped agenda items. So the earlier
+  "no video" finding was real but narrower than it looked: video
+  population on this instance is body-type-dependent (smaller
+  commissions/committees don't always get a recording attached), not a
+  structural gap in this adapter or a per-customer limitation the way it
+  first appeared. New regression test,
+  `test_resolve_finds_real_video_on_scc_board_of_supervisors_meeting`
+  (`tests/test_iqm2.py`), using a real trimmed fixture from this exact
+  meeting. Full suite green (643 tests).
 
   `detect_platform()` (`app/platforms/base.py`) gets a new `"iqm2.com" in
   netloc` branch; registered in `app/platforms/__init__.py`. README's

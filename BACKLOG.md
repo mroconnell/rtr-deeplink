@@ -1166,29 +1166,27 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   - ~~**IQM2** — a Granicus-family product with a distinct UI/URL shape
     from the classic ViewPublisher/MediaPlayer this app already parses.
     Confirmed on Atlanta, GA and Santa Clara County, CA; real video-embed
-    shape unconfirmed~~ **Atlanta piece built 2026-08-14 —
-    `app/platforms/iqm2.py`, full detail in `BACKLOG_DONE.md`.** Confirmed
-    live: video delegates to a real Granicus HLS URL sitting in a plain
-    HTML comment, and real per-item timestamped agenda data (procedural
-    entries plus full ordinance/resolution text) comes from the same
-    per-meeting page in "AgendaOutline" mode.
+    shape unconfirmed~~ **Built 2026-08-14 — `app/platforms/iqm2.py`, full
+    detail in `BACKLOG_DONE.md`.** Confirmed live: video delegates to a
+    real Granicus HLS URL sitting in a plain HTML comment, and real
+    per-item timestamped agenda data (procedural entries plus full
+    ordinance/resolution text) comes from the same per-meeting page in
+    "AgendaOutline" mode.
 
-    **Santa Clara County stays open — a real, still-unresolved gap, not
-    covered by the Atlanta build.** `Detail_Meeting.aspx?ID={id}` has an
-    excellent per-meeting `<title>` (date/time/body/jurisdiction all in
-    one clean string, e.g. `"2026/08/14 09:00 AM Personnel Board Business
-    Meeting - Web Outline - The County of Santa Clara, California"` — the
-    shipped adapter already extracts this correctly for SCC too), but
-    every "Video" link checked across several real past committee/
-    commission meetings was still a bare `href="#"` with no onclick,
-    unlike Atlanta's. Not yet checked against a real past **Board of
-    Supervisors** meeting specifically (the flagship body, `BodyID=1179`)
-    — only smaller commissions/committees were sampled, and it's still an
-    open question whether video population is body-type-dependent (some
-    bodies never get video) or whether SCC's instance genuinely needs a
-    JS-executed check unlike Atlanta's. Worth a second real check against
-    a confirmed past Board of Supervisors meeting before concluding
-    either way.
+    ~~**Santa Clara County's own video-population gap**~~ **Resolved
+    2026-08-14, no code change needed — it really was body-type-dependent,
+    the first hypothesis, not a second per-instance limitation.** Checked
+    a real, clearly-past **Board of Supervisors** meeting specifically
+    (`Detail_Meeting.aspx?ID=17601`, Aug 11 2026 Regular Meeting) that the
+    earlier smaller-committee sample hadn't covered: the already-shipped
+    adapter resolves it correctly with zero changes — real title/date/
+    jurisdiction, a real playable Granicus HLS URL (same CloudFront
+    403-without-a-real-UA / 200-with-one pattern as Atlanta, confirmed via
+    direct `curl`), and 72 real timestamped agenda items. So SCC's flagship
+    body works exactly like Atlanta's; the earlier gap was real but
+    narrower than it looked — smaller commissions/committees on this
+    instance apparently don't always get video attached, not a structural
+    problem with this adapter or this customer's site.
   - ~~**CivicWeb** (iCompass, a Diligent brand) — confirmed as **Dallas
     County, TX**'s (2.6M) meeting-video host; page is JS-rendered, real
     embed shape unconfirmed~~ **Stale — this was actually built the next
