@@ -71,9 +71,14 @@ CORPUS = [
         "url": "https://agendamgmtprod.tarrantcountytx.gov/Meetings/GetHTMLAgenda?meetingId=&dataSource=&id=21849bbe-d099-4637-1560-08ddc611a5e2",
         "requires_headless": False,
         "expect": {
+            # "Commissioners Court" is satisfied on BOTH real paths: when
+            # yt-dlp succeeds (residential networks) the real YouTube title
+            # is exactly "Commissioners Court" and correctly wins; when
+            # yt-dlp is blocked (Render) the page's own h1 assembly gives
+            # "Tarrant County Commissioners Court".
             "video": "youtube",
             "video_url_contains": "Awrb74sMXyM",
-            "title_contains": "Tarrant County",
+            "title_contains": "Commissioners Court",
             "date": "2025-08-19",
         },
         "backlog_ref": "Tarrant County Agenda Management System entry",

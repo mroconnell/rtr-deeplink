@@ -496,3 +496,179 @@ async def test_agenda_link_title_backfill_never_overrides_an_already_found_title
     assert result.title == "Some Org"
     assert result.jurisdiction == "Somewhere, ST"
     assert result.date == "2026-08-11"
+
+
+# --- 2026-08-14 rebuild coverage (Phase 2: diagnose-and-route restructure;
+# see BACKLOG_DONE.md). Fixtures are trimmed REAL captures -- source URL
+# and capture date in each file's own header comment. ---
+
+from conftest import load_fixture
+
+TARRANT_URL = "https://agendamgmtprod.tarrantcountytx.gov/Meetings/GetHTMLAgenda?meetingId=&dataSource=&id=21849bbe-d099-4637-1560-08ddc611a5e2"
+SEATTLE_URL = "https://www.seattlechannel.org/videos?videoid=x189286"
+SEATTLE_SRT_URL = "https://www.seattlechannel.org/documents/seattlechannel/closedcaption/2026/council_081126_2022663.srt"
+SACRAMENTO_ONBASE_URL = "https://agendanet.saccounty.gov/BoardofSupervisors/Meetings/ViewMeeting?id=10231&doctype=1"
+OCFL_URL = "https://netapps.ocfl.net/Mod/meetings/1/2069"
+OCFL_VTT_URL = "https://otv.ocfl.net/otv/BCC2026/BCC071626/BCC071626AA.vtt"
+
+# Real cue shape (trimmed) -- enough for parse_captions_by_extension to
+# yield real timed segments.
+REAL_SRT_SAMPLE = """1
+00:00:01,000 --> 00:00:04,000
+I'll go ahead and call the meeting to order.
+
+2
+00:00:04,500 --> 00:00:07,000
+Roll call, please.
+"""
+REAL_VTT_SAMPLE = """WEBVTT
+
+00:00:01.000 --> 00:00:04.000
+Good morning, this meeting of the Board is called to order.
+
+00:00:04.500 --> 00:00:07.000
+Thank you, Madam Chair.
+"""
+
+
+async def test_resolve_finds_tarrant_bare_video_id_and_heading_metadata(monkeypatch):
+    # Tarrant County's real shape: `const videoId = 'Awrb74sMXyM';` next to
+    # the youtube.com/iframe_api loader, with metadata only in <h1>s/<h4>s
+    # (its <title> is the generic "Commissioners Court - Archived Agendas
+    # and Videos"). yt-dlp mocked as blocked (the documented Render-IP
+    # reality) so the page's own backfill is what's exercised.
+    def _raise(video_id):
+        raise yt_dlp.utils.DownloadError("Sign in to confirm you're not a bot")
+
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _raise)
+    html = load_fixture("generic_fallback", "tarrant_gethtmlagenda_21849bbe.html")
+    routes = {TARRANT_URL: FakeResponse(status=200, text=html, url=TARRANT_URL)}
+
+    with mock_session(routes):
+        result = await GenericFallbackAssetFinder().resolve(TARRANT_URL)
+
+    assert result.video_url == "https://www.youtube.com/embed/Awrb74sMXyM"
+    assert result.video_format == "youtube"
+    assert result.best_effort is True
+    # Two sibling <h1>s assembled in document order.
+    assert result.title == "Tarrant County Commissioners Court"
+    # From the date <h4>; the address-only <h4> before it has no month
+    # name and is correctly skipped.
+    assert result.date == "2025-08-19"
+
+
+def test_find_youtube_video_id_requires_iframe_api_corroboration():
+    # A bare 11-char videoId assignment on a page that never loads the
+    # IFrame Player API must NOT match -- the corroboration gate is the
+    # wrong-video guard that makes shipping on one confirmed example
+    # (Tarrant) acceptable.
+    html = "<script>const videoId = 'Awrb74sMXyM';</script>"
+    assert GenericFallbackAssetFinder._find_youtube_video_id(html) is None
+
+
+def test_find_youtube_video_id_skips_ambiguous_bare_ids():
+    html = (
+        '<script src="https://www.youtube.com/iframe_api"></script>'
+        "<script>var videoId = 'Awrb74sMXyM'; videoId = 'dQw4w9WgXcQ';</script>"
+    )
+    assert GenericFallbackAssetFinder._find_youtube_video_id(html) is None
+
+
+def test_find_youtube_video_id_handles_nocookie_and_escaped_watch_urls():
+    # Pure URL-shape variants of the already-confirmed patterns -- no
+    # government page with either shape confirmed yet (2026-08-14), see
+    # the module-level comments.
+    assert (
+        GenericFallbackAssetFinder._find_youtube_video_id(
+            '<iframe src="https://www.youtube-nocookie.com/embed/Awrb74sMXyM"></iframe>'
+        )
+        == "Awrb74sMXyM"
+    )
+    assert (
+        GenericFallbackAssetFinder._find_youtube_video_id(
+            '<a href="https://www.youtube.com/watch?feature=share&amp;v=Awrb74sMXyM">watch</a>'
+        )
+        == "Awrb74sMXyM"
+    )
+
+
+async def test_resolve_finds_seattle_protocol_relative_mp4_and_relative_srt():
+    # Seattle Channel's real /videos?videoid= shape: protocol-relative mp4
+    # in the JW sources file:, relative-path srt in tracks file: (also a
+    # plain <a href>), machine-readable video_date meta.
+    html = load_fixture("generic_fallback", "seattle_videos_x189286.html")
+    routes = {
+        SEATTLE_URL: FakeResponse(status=200, text=html, url=SEATTLE_URL),
+        SEATTLE_SRT_URL: FakeResponse(status=200, text=REAL_SRT_SAMPLE, url=SEATTLE_SRT_URL),
+    }
+
+    with mock_session(routes):
+        result = await GenericFallbackAssetFinder().resolve(SEATTLE_URL)
+
+    assert result.video_url == "https://video.seattle.gov/media/council/council_081126_2022663.mp4"
+    assert result.video_format == "mp4"
+    assert len(result.segments) == 2
+    assert "call the meeting to order" in result.segments[0].text
+    assert result.date == "2026-08-11"
+
+
+async def test_resolve_sacramento_onbase_m3u8_with_decoded_token():
+    # End-to-end over the real trimmed capture: the JW playlist file: URL
+    # carries &amp;token= in raw HTML; the resolved video_url must carry
+    # the DECODED &token= or the CDN sees a bogus `amp;token` param.
+    html = load_fixture("generic_fallback", "sacramento_viewmeeting_10231.html")
+    routes = {SACRAMENTO_ONBASE_URL: FakeResponse(status=200, text=html, url=SACRAMENTO_ONBASE_URL)}
+
+    with mock_session(routes):
+        result = await GenericFallbackAssetFinder().resolve(SACRAMENTO_ONBASE_URL)
+
+    assert result.video_format == "m3u8"
+    assert "playlist.m3u8?instance=1&token=" in result.video_url
+    assert "&amp;" not in result.video_url
+    # The agenda-link title-attribute backfill still wins for title/date.
+    assert result.title == "Board Of Supervisors Board Of Supervisors Meeting"
+    assert result.date == "2026-08-11"
+
+
+async def test_resolve_ocfl_multipart_picks_first_part_and_fetches_vtt():
+    # OCFL's real video.js playlist: single-quoted src: mp4 parts AA/BB,
+    # each with a matching textTracks vtt. Deterministic scan order must
+    # pick part AA (document order), and the vtt candidates must be
+    # fetched via the caption chain.
+    html = load_fixture("generic_fallback", "ocfl_meetings_2069.html")
+    routes = {
+        OCFL_URL: FakeResponse(status=200, text=html, url=OCFL_URL),
+        OCFL_VTT_URL: FakeResponse(status=200, text=REAL_VTT_SAMPLE, url=OCFL_VTT_URL),
+    }
+
+    with mock_session(routes):
+        result = await GenericFallbackAssetFinder().resolve(OCFL_URL)
+
+    assert result.video_url == "https://otv.ocfl.net/otv/BCC2026/BCC071626/BCC071626AA.mp4"
+    assert result.video_format == "mp4"
+    assert len(result.segments) == 2
+    assert "called to order" in result.segments[0].text
+
+
+async def test_resolve_wayne_fixture_picks_video_link_not_channel_link(monkeypatch):
+    # The Wayne County page carries BOTH the real youtu.be video link and
+    # a "Subscribe on YouTube" CHANNEL link -- extraction must pick the
+    # video. (The live page needs the headless escalation to fetch at all;
+    # this exercises the diagnosis layer over the browser-captured HTML.)
+    def _raise(video_id):
+        raise yt_dlp.utils.DownloadError("blocked")
+
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _raise)
+    wayne_url = "https://www.waynecountymi.gov/Government/Elected-Officials/Commission/Committees/Full-Commission-Meetings/2026/Wayne-County-Commission-January-8-2026"
+    html = load_fixture("generic_fallback", "wayne_county_commission_2026-01-08.html")
+    routes = {wayne_url: FakeResponse(status=200, text=html, url=wayne_url)}
+
+    with mock_session(routes):
+        result = await GenericFallbackAssetFinder().resolve(wayne_url)
+
+    assert result.video_url == "https://www.youtube.com/embed/RFwXrAzkXR8"
+    # og:title beats the h1 and the slug.
+    assert result.title == "Wayne County Commission - January 8, 2026"
+    # No ISO date anywhere on the page -- the trailing slug date fills in.
+    assert result.date == "2026-01-08"
+    assert result.agenda_link.endswith("agenda2026-0108.pdf")

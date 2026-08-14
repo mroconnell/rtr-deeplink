@@ -1,6 +1,7 @@
+import html as html_module
 import re
 from typing import List, Optional, Tuple
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 import aiohttp
 from bs4 import BeautifulSoup
@@ -62,6 +63,54 @@ _AGENDA_LINK_TITLE_RE = re.compile(
 # stated preference, 2026-08-13: "I'd expect it to have CRRMA in there
 # somewhere."
 _BOARD_OF_DIRECTORS_RE = re.compile(r"\b([A-Z]{2,8}\s+Board\s+of\s+Directors)\b")
+
+# --- YouTube discovery beyond youtube.py's own URL-shaped regex. These
+# live here (private), NOT in youtube.py's _VIDEO_ID_RE, so the 16
+# dedicated adapters that depend on that regex keep their exact behavior.
+#
+# youtube-nocookie.com is YouTube's real privacy-enhanced embed domain --
+# the same 11-char id space, just a different host _VIDEO_ID_RE doesn't
+# know. No government page with this shape has been confirmed yet
+# (2026-08-14) -- included because it's a pure URL-shape variant of an
+# already-confirmed pattern, not a new guess; upgrade this comment when a
+# real example turns up.
+_NOCOOKIE_EMBED_RE = re.compile(r"youtube-nocookie\.com/embed/([A-Za-z0-9_-]{11})")
+# Bare JS assignment shape, confirmed live 2026-08-13 on Tarrant County's
+# Agenda Management System (agendamgmtprod.tarrantcountytx.gov):
+# `const videoId = 'Awrb74sMXyM';` with no youtube.com URL around it at
+# all -- the id is handed to the IFrame Player API loader, whose
+# `<script src="https://www.youtube.com/iframe_api">` tag is the
+# corroboration signal this match is gated on (see
+# _find_youtube_video_id) so a random 11-char string on a page that
+# never loads the YouTube player can't false-positive.
+_BARE_VIDEO_ID_RE = re.compile(r"\bvideoId\s*=\s*['\"]([A-Za-z0-9_-]{11})['\"]")
+_IFRAME_API_MARKER = "youtube.com/iframe_api"
+
+# Machine-readable per-meeting date meta tag, confirmed live 2026-08-13 on
+# Seattle Channel (<meta name="video_date" content="2026-08-11">) -- part
+# of the WCAG/accessibility-markup family of signals BACKLOG.md's
+# feed-cities entry catalogued from real government pages.
+_ISO_DATE_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})")
+_MONTHS_FULL = (
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+)
+# Textual date inside a heading, confirmed live 2026-08-13 on Tarrant
+# County's `<h4>TUESDAY, AUGUST 19, 2025 - 10:00 AM</h4>` (an
+# address-only sibling <h4> precedes it -- no month name, so this
+# correctly skips it).
+_HEADING_DATE_RE = re.compile(
+    r"(?:(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),?\s+)?"
+    rf"({'|'.join(_MONTHS_FULL)})\s+(\d{{1,2}}),?\s+(\d{{4}})",
+    re.IGNORECASE,
+)
+# Trailing textual date in a URL slug, e.g. Wayne County MI's
+# ".../Wayne-County-Commission-January-8-2026" and Sebastopol's
+# "/events/city-council-meeting-january-6-2026/" -- both real confirmed
+# shapes (2026-08-13/14).
+_SLUG_DATE_RE = re.compile(
+    rf"({'|'.join(_MONTHS_FULL)})-(\d{{1,2}})-(\d{{4}})/?$", re.IGNORECASE
+)
 
 _BEST_EFFORT_VIDEO_WARNING = (
     "This city isn't officially supported yet, so we're trying our best — we think we found the "
@@ -182,14 +231,8 @@ class GenericFallbackAssetFinder(AssetFinder):
         }
 
     async def resolve(self, url: str) -> ResolvedMeeting:
-        try:
-            async with aiohttp.ClientSession(headers=self.headers) as session:
-                async with session.get(
-                    url, allow_redirects=True, timeout=aiohttp.ClientTimeout(total=20)
-                ) as response:
-                    response.raise_for_status()
-                    html = await response.text()
-        except Exception:
+        html = await self._fetch_page(url)
+        if html is None:
             return ResolvedMeeting(
                 platform=self.platform_name,
                 source_url=url,
@@ -202,7 +245,10 @@ class GenericFallbackAssetFinder(AssetFinder):
 
         agenda_link, agenda_link_title = self._find_agenda_link(html, url)
 
-        youtube_video_id = YouTubeAssetFinder.extract_video_id(html)
+        # Video tier 1+2: an embedded YouTube video, in any of the
+        # confirmed shapes (URL-shaped id, HTML-escaped watch URL,
+        # nocookie embed, or Tarrant's bare corroborated JS assignment).
+        youtube_video_id = self._find_youtube_video_id(html)
         if youtube_video_id:
             resolved = await YouTubeAssetFinder.resolve_video_id(youtube_video_id, source_url=url)
             resolved.video_warnings = [_BEST_EFFORT_VIDEO_WARNING, *resolved.video_warnings]
@@ -217,22 +263,27 @@ class GenericFallbackAssetFinder(AssetFinder):
             self._backfill_metadata_from_page(resolved, html, url, agenda_link_title)
             return resolved
 
+        # Video tier 3: a link out to a platform with a real dedicated
+        # adapter -- that adapter's own resolve() is strictly better than
+        # anything this generic scan could do.
         delegated = await self._try_delegate_to_known_platform(html, url)
         if delegated:
             delegated.agenda_link = delegated.agenda_link or agenda_link
             return delegated
 
+        # Video tier 4: a directly playable media URL found by the shared
+        # generic scan.
         media_urls = scan_media_urls(html, url)
         video_url, video_format = self._pick_video_url(media_urls)
 
         segments: List[TranscriptSegment] = []
         transcript_language: Optional[str] = None
-        caption_urls = [u for u in media_urls if media_type(u) == "subtitle"]
-        if caption_urls:
-            cues = await self._try_fetch_caption(caption_urls[0])
+        for caption_url in self._collect_caption_candidates(html, media_urls, url):
+            cues = await self._try_fetch_caption(caption_url)
             if cues:
                 segments = [TranscriptSegment(**c) for c in cues]
                 transcript_language = detect_language_from_texts(c["text"] for c in cues)
+                break
 
         transcript_warnings = [] if segments else [_NO_TRANSCRIPT_WARNING]
 
@@ -250,6 +301,99 @@ class GenericFallbackAssetFinder(AssetFinder):
         )
         self._backfill_metadata_from_page(resolved, html, url, agenda_link_title)
         return resolved
+
+    async def _fetch_page(self, url: str) -> Optional[str]:
+        """Plain fetch; None means "couldn't load the page at all."
+        Extracted from resolve()'s inline try/except so the (env-gated,
+        off-by-default) headless-browser escalation has one place to hook
+        into -- see BACKLOG.md's generic-fallback rebuild entry."""
+        try:
+            async with aiohttp.ClientSession(headers=self.headers) as session:
+                async with session.get(
+                    url, allow_redirects=True, timeout=aiohttp.ClientTimeout(total=20)
+                ) as response:
+                    response.raise_for_status()
+                    return await response.text()
+        except Exception:
+            return None
+
+    @staticmethod
+    def _find_youtube_video_id(html: str) -> Optional[str]:
+        """Every confirmed way a real government page embeds a YouTube
+        video, tried in confidence order:
+
+        1. A URL-shaped id anywhere in the raw HTML -- youtube.py's own
+           regex, unchanged.
+        2. The same, over an entity-unescaped copy -- a watch URL written
+           as `watch?a=1&amp;v={id}` in raw HTML never matches the plain
+           regex, whose `(?:.*&)?v=` needs a literal `&` (no confirmed
+           government example yet; a pure escaping variant of an
+           already-confirmed shape, not a new guess).
+        3. A youtube-nocookie.com embed (same id space, different host --
+           see _NOCOOKIE_EMBED_RE's comment).
+        4. Tarrant County's bare `videoId = '{id}'` JS assignment --
+           gated on the page actually loading the IFrame Player API
+           (_IFRAME_API_MARKER) AND every such assignment agreeing on a
+           single distinct id; ambiguity means skip, since guessing
+           between two ids risks attaching the wrong meeting's video,
+           which is worse than none.
+        """
+        video_id = YouTubeAssetFinder.extract_video_id(html)
+        if video_id:
+            return video_id
+        video_id = YouTubeAssetFinder.extract_video_id(html_module.unescape(html))
+        if video_id:
+            return video_id
+        match = _NOCOOKIE_EMBED_RE.search(html)
+        if match:
+            return match.group(1)
+        if _IFRAME_API_MARKER in html:
+            ids = set(_BARE_VIDEO_ID_RE.findall(html))
+            if len(ids) == 1:
+                return ids.pop()
+        return None
+
+    @staticmethod
+    def _collect_caption_candidates(html: str, media_urls: List[str], page_url: str) -> List[str]:
+        """Caption URLs to try, in confidence order, deduped, capped at 3
+        (each is a real network fetch; a page with many caption-shaped
+        links shouldn't turn one resolve into a crawl):
+
+        1. <track> elements -- the actual HTML5 captions standard,
+           confirmed present and identically shaped on three real
+           government pages (BACKLOG.md's accessibility-markup findings).
+           kind="captions"/"subtitles"/absent all count (subtitles is the
+           spec default when kind is omitted).
+        2. A plain <a href> whose path ends in a caption extension --
+           confirmed live 2026-08-13 on Seattle Channel ("Download a SRT
+           caption file <a href=...>here</a>"), a RELATIVE path resolved
+           against the page URL.
+        3. Subtitle-typed URLs from the generic media scan (which now
+           also surfaces JW-config `tracks: {file: ...}` entries -- on
+           Seattle that's the same .srt as tier 2, deduped away).
+        """
+        candidates: List[str] = []
+        soup = BeautifulSoup(html, "html.parser")
+        for track in soup.find_all("track", src=True):
+            kind = (track.get("kind") or "subtitles").lower()
+            if kind in ("captions", "subtitles"):
+                candidates.append(urljoin(page_url, track["src"].strip()))
+        for a in soup.find_all("a", href=True):
+            href = a["href"].strip()
+            if not href or href.startswith("#") or href.lower().startswith("javascript:"):
+                continue
+            candidate = urljoin(page_url, href)
+            if media_type(candidate) == "subtitle":
+                candidates.append(candidate)
+        candidates.extend(u for u in media_urls if media_type(u) == "subtitle")
+
+        seen = set()
+        unique = []
+        for candidate in candidates:
+            if candidate not in seen:
+                seen.add(candidate)
+                unique.append(candidate)
+        return unique[:3]
 
     @staticmethod
     def _backfill_metadata_from_page(
@@ -308,11 +452,65 @@ class GenericFallbackAssetFinder(AssetFinder):
         if jurisdiction:
             resolved.jurisdiction = jurisdiction
 
-        # Last-resort title/date backfill from the agenda link's own
-        # `title` attribute -- see _AGENDA_LINK_TITLE_RE's module-level
-        # comment. Only fires when both are still empty, so it can never
-        # clobber a real title/date the <title>-tag or delegated-finder
-        # paths above already found.
+        # --- Broader title fallbacks (2026-08-14 rebuild), each tried
+        # only while title is still empty, strictly after the
+        # confirmed-shape <title>-tag extractors above:
+        if not resolved.title:
+            # og:title / twitter:title -- confirmed real and per-meeting on
+            # Wayne County MI ('<meta property="og:title" content="Wayne
+            # County Commission - January 8, 2026">'). A site whose
+            # og:title is generic boilerplate just re-states its <title>
+            # tag, which already failed to match above -- same
+            # best-effort risk profile as every other extractor here.
+            for attrs in ({"property": "og:title"}, {"name": "twitter:title"}):
+                meta = soup.find("meta", attrs=attrs)
+                if meta and meta.get("content", "").strip():
+                    resolved.title = meta["content"].strip()
+                    break
+        if not resolved.title:
+            # h1 assembly -- confirmed live 2026-08-13 on Tarrant County,
+            # whose real header is TWO sibling <h1>s ("Tarrant County" +
+            # "Commissioners Court"). Joined in document order; gated to
+            # at most 3 h1s total, since a page using many h1s is using
+            # them as section styling, not identity.
+            h1_texts = [h.get_text(" ", strip=True) for h in soup.find_all("h1")]
+            h1_texts = [t for t in h1_texts if t]
+            if 0 < len(h1_texts) <= 3:
+                assembled = " ".join(dict.fromkeys(h1_texts))
+                if assembled and len(assembled) <= 120:
+                    resolved.title = assembled
+        # --- Broader date fallbacks (2026-08-14 rebuild), same
+        # only-fill-empty rule:
+        if not resolved.date:
+            # <meta name="video_date" content="YYYY-MM-DD"> -- Seattle
+            # Channel's real machine-readable per-meeting date.
+            meta = soup.find("meta", attrs={"name": "video_date"})
+            if meta and _ISO_DATE_RE.match(meta.get("content", "").strip()):
+                resolved.date = meta["content"].strip()[:10]
+        if not resolved.date:
+            # <time datetime="..."> -- semantic markup confirmed real on
+            # Portland.gov (BACKLOG.md's accessibility-markup findings);
+            # first occurrence, ISO date prefix only.
+            time_tag = soup.find("time", datetime=True)
+            if time_tag:
+                iso = _ISO_DATE_RE.match(time_tag["datetime"].strip())
+                if iso:
+                    resolved.date = iso.group(0)
+        if not resolved.date:
+            # A textual date inside a prominent heading -- Tarrant's
+            # "<h4>TUESDAY, AUGUST 19, 2025 - 10:00 AM</h4>". First
+            # month-named heading in document order wins.
+            for heading in soup.find_all(["h1", "h2", "h3", "h4"]):
+                match = _HEADING_DATE_RE.search(heading.get_text(" ", strip=True))
+                if match:
+                    month = [m.lower() for m in _MONTHS_FULL].index(match.group(1).lower()) + 1
+                    resolved.date = f"{int(match.group(3)):04d}-{month:02d}-{int(match.group(2)):02d}"
+                    break
+
+        # Title/date backfill from the agenda link's own `title`
+        # attribute -- see _AGENDA_LINK_TITLE_RE's module-level comment.
+        # Only fires when the field is still empty, so it can never
+        # clobber a real title/date any path above already found.
         if agenda_link_title:
             agenda_match = _AGENDA_LINK_TITLE_RE.search(agenda_link_title)
             if agenda_match:
@@ -321,6 +519,25 @@ class GenericFallbackAssetFinder(AssetFinder):
                     resolved.title = body_text.title() if body_text.isupper() else body_text
                 if not resolved.date:
                     resolved.date = f"{int(year):04d}-{int(month):02d}-{int(day):02d}"
+
+        # --- True last resorts: the URL slug itself (2026-08-14 rebuild).
+        # Confirmed real slug shapes: Wayne County MI
+        # ("Wayne-County-Commission-January-8-2026") and Sebastopol
+        # ("city-council-meeting-january-6-2026").
+        if not resolved.title:
+            # Requires >= 2 ALPHABETIC hyphen-separated words, so
+            # "ViewMeeting"/bare-numeric-id/date-only paths (e.g.
+            # "council-2026-01-01", which would humanize into junk) never
+            # fire.
+            slug = urlparse(url).path.rstrip("/").rsplit("/", 1)[-1]
+            words = [w for w in slug.split("-") if w]
+            if len(words) >= 2 and sum(1 for w in words if w.isalpha()) >= 2:
+                resolved.title = " ".join(words)
+        if not resolved.date:
+            match = _SLUG_DATE_RE.search(urlparse(url).path)
+            if match:
+                month = [m.lower() for m in _MONTHS_FULL].index(match.group(1).lower()) + 1
+                resolved.date = f"{int(match.group(3)):04d}-{month:02d}-{int(match.group(2)):02d}"
 
     @staticmethod
     async def _try_delegate_to_known_platform(html: str, page_url: str) -> Optional[ResolvedMeeting]:
