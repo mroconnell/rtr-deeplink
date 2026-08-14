@@ -173,13 +173,19 @@ anything) to build against it.
   reported as both an invalid datetime value and missing a timezone
   (non-critical). Both trace to the same `VideoObject` JSON-LD block in
   [meeting_page.html:37-66](archive/templates/meeting_page.html:37-66):
-  - `thumbnailUrl` is omitted entirely — already a known, named gap (see
-    the comment at
-    [meeting_page.html:29-36](archive/templates/meeting_page.html:29-36),
-    which cross-references the same underlying missing-thumbnail
-    limitation noted for `og:image` in `CLAUDE_BACKLOG.md`). No adapter
-    in `app/platforms/` currently extracts or generates a thumbnail
-    image for a meeting.
+  - ~~`thumbnailUrl` is omitted entirely~~ **Partially fixed 2026-08-14
+    — full detail in `BACKLOG_DONE.md`'s "VideoObject.thumbnailUrl +
+    Clip key moments" entry.** YouTube-backed pages (the free,
+    predictable `i.ytimg.com` slice) now emit `thumbnailUrl` plus
+    `og:image`/`twitter:card`, and pages with real agenda timestamps
+    also gained `Clip` "key moments" markup in the same pass. **Still
+    open**: direct mp4/m3u8 pages — the majority of the Archive — still
+    have no thumbnail; that needs real `ffmpeg` frame extraction (not a
+    new dependency category, `ffprobe` is already in the
+    transcription-feasibility pipeline) and somewhere to host the
+    extracted frames, which is a real new decision (this app hosts no
+    images today). Re-check Search Console once YouTube-backed pages
+    are re-crawled to confirm the critical flag actually clears there.
   - `uploadDate` is set directly from `page.date|tojson` at
     [meeting_page.html:52](archive/templates/meeting_page.html:52).
     `date` is stored as a bare `String(20)` 

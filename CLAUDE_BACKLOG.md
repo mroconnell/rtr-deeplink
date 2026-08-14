@@ -36,12 +36,15 @@ Ties directly to the app's stated growth mechanism: shareable deep link →
 organic growth (see `BACKLOG.md`'s roadmap intro and the newsletter/GA
 items).
 
-- **Social share previews with an image.** `archive/templates/
-  meeting_page.html` currently has `og:title`/`og:description`/`og:url` but
-  no `og:image` or `twitter:card` — a shared deep link currently renders as
-  a bare text card on Slack/Twitter/iMessage. Worth generating a simple
-  share-card image (jurisdiction + meeting title + maybe a quoted
-  transcript line) server-side.
+- **Social share previews with an image.** ~~No `og:image` or
+  `twitter:card` at all~~ — partially shipped 2026-08-14: YouTube-backed
+  pages now unfurl with the video's real `i.ytimg.com` thumbnail (see
+  `BACKLOG_DONE.md`'s "VideoObject.thumbnailUrl + Clip key moments"
+  entry). **Still open, the original idea's real remainder**: mp4/m3u8
+  pages (the majority) still render as bare text cards, and a
+  *generated* branded share-card (jurisdiction + meeting title + maybe a
+  quoted transcript line) would beat a raw video frame even where the
+  thumbnail now exists — overlaps with "Quote-clip sharing" below.
 - **Quote-clip sharing.** Let a user select a transcript excerpt and
   generate a shareable image/card of that quote + timestamp + a link back
   to that exact moment — a much stronger viral unit than a bare link, and
@@ -277,25 +280,15 @@ crawler-access problem to fix, only documentation to optionally add.
 
 **Tier 1 — highest value, matches this product's actual differentiator:**
 
-- **`Clip`/`hasPart` "key moments" JSON-LD on the existing `VideoObject`,
-  sourced from `page.agenda_items`.** Google's video structured-data spec
-  supports an array of `Clip` objects (`name`, `startOffset`, a timestamped
-  `url`) that produce clickable "key moments" directly in a search result —
-  this maps exactly onto `agenda_items` (already `{start, text}` records)
-  and onto this product's own core pitch (deep-linking to a moment).
-  Template-only; reuse the existing `unreliable_timestamps` guard
-  (`meeting_page.html:242`) to skip emitting `Clip` entries when a source's
-  timestamps aren't trustworthy, same as the visible UI already does.
-- **A real `thumbnailUrl`, reused for `og:image`/Twitter Card.** This is the
-  same root cause as `BACKLOG.md`'s open Google Search Console entry
-  (thumbnailUrl missing — blocks video rich-result eligibility) *and* this
-  file's own existing "Social share previews with an image" item above
-  (Growth mechanics) — one fix serves both; don't build twice. Cheapest
-  first slice: YouTube-backed pages can use YouTube's own free thumbnail
-  URLs (`i.ytimg.com/vi/{id}/hqdefault.jpg`) with zero generation work;
-  direct mp4/m3u8 sources would need real `ffmpeg` frame extraction (not a
-  new dependency category — `ffprobe` is already in the transcription-
-  feasibility pipeline).
+~~The first two Tier-1 items — `Clip`/`hasPart` "key moments" JSON-LD and
+`thumbnailUrl` reused for `og:image`/Twitter Card — were accepted and
+built 2026-08-14~~ (per this file's convention: moved out once accepted —
+full build/verification detail in `BACKLOG_DONE.md`'s
+"VideoObject.thumbnailUrl + Clip key moments" entry). The residual —
+mp4/m3u8 pages still thumbnail-less pending real `ffmpeg` frame
+extraction — is tracked in `BACKLOG.md`'s Google Search Console entry,
+not here.
+
 - **ISO-8601 timezone on `uploadDate`.** Second half of the same Search
   Console alert (flagged as non-critical). Real per-adapter time-of-day
   capture is a bigger, multi-adapter lift — `BACKLOG.md`'s WCAG-markup

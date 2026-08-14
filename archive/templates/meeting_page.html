@@ -25,15 +25,27 @@
   <meta property="og:title" content="{{ page.title or 'Meeting' }}">
   <meta property="og:description" content="{{ description }}">
   <meta property="og:type" content="video.other">
+  {#- YouTube-backed pages get a free, predictable thumbnail from
+     i.ytimg.com (see archive/utils/video_thumbnail.py) -- reused for
+     both og:image (link-unfurl cards) and VideoObject.thumbnailUrl
+     below, since they're the same underlying gap (BACKLOG.md's Google
+     Search Console entry + CLAUDE_BACKLOG.md's og:image note). Direct
+     mp4/m3u8 pages still have no thumbnail -- that needs real ffmpeg
+     frame extraction, still tracked as the remaining slice. #}
+  {% set thumbnail_url = page.video_url|youtube_thumbnail_url %}
+  {% if thumbnail_url %}
+  <meta property="og:image" content="{{ thumbnail_url }}">
+  <meta name="twitter:card" content="summary_large_image">
+  {% endif %}
   {% if page.video_url %}
   {#- schema.org VideoObject for search-engine rich-result eligibility.
-     No thumbnailUrl -- this app doesn't generate one (see CLAUDE_BACKLOG.md's
-     og:image note, the same underlying gap) -- so this is unlikely to
-     actually earn a video rich snippet yet, but the structured data is
-     still valid and machine-readable without one. contentUrl is used for a
-     direct playable file (mp4/m3u8, this app's normal case); embedUrl is
-     used for YouTube instead, since that video_url is an iframe-embed URL,
-     not a raw media file, and schema.org distinguishes the two. #}
+     contentUrl is used for a direct playable file (mp4/m3u8, this app's
+     normal case); embedUrl is used for YouTube instead, since that
+     video_url is an iframe-embed URL, not a raw media file, and
+     schema.org distinguishes the two. thumbnailUrl (YouTube-backed
+     pages only, see above) is what Google's validator flags as blocking
+     rich-result eligibility when absent, so non-YouTube pages remain
+     valid-but-ineligible until the ffmpeg slice exists. #}
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -44,6 +56,9 @@
     "embedUrl": {{ page.video_url|tojson }},
     {% else -%}
     "contentUrl": {{ page.video_url|tojson }},
+    {% endif -%}
+    {% if thumbnail_url -%}
+    "thumbnailUrl": {{ thumbnail_url|tojson }},
     {% endif -%}
     {% if public_base_url -%}
     "url": {{ (public_base_url ~ "/m/" ~ page.slug)|tojson }},
@@ -57,6 +72,33 @@
     {% if active_version and active_version.segments -%}
     {% set total_seconds = active_version.segments[-1].end|int -%}
     "duration": "PT{{ total_seconds // 3600 }}H{{ (total_seconds % 3600) // 60 }}M{{ total_seconds % 60 }}S",
+    {% endif -%}
+    {#- Clip "key moments": Google renders these as clickable chapter
+       links directly in a video search result -- agenda_items are
+       already exactly the shape it wants (real per-item start times +
+       item text), and each url is the same ?t= deep link the visible
+       agenda timestamps produce. Gated three ways: absolute URLs
+       require public_base_url (same guard as canonical/og:url above);
+       the all-identical-timestamps check mirrors the agenda section's
+       own unreliable_timestamps guard below (blocks have separate
+       scopes, so the expression is duplicated -- keep the two in sync);
+       and no items means no key at all rather than an empty array. #}
+    {% set clip_items = page.agenda_items or [] -%}
+    {% set clips_unreliable = clip_items|length > 1 and (clip_items|map(attribute='start')|unique|list|length == 1) -%}
+    {% if public_base_url and clip_items and not clips_unreliable -%}
+    "hasPart": [
+      {% for item in clip_items -%}
+      {
+        "@type": "Clip",
+        "name": {{ item.text|truncate(100)|tojson }},
+        "startOffset": {{ item.start|int }},
+        {% if item.end and item.end > item.start -%}
+        "endOffset": {{ item.end|int }},
+        {% endif -%}
+        "url": {{ (public_base_url ~ "/m/" ~ page.slug ~ "?t=" ~ (item.start|int))|tojson }}
+      }{{ "," if not loop.last }}
+      {% endfor -%}
+    ],
     {% endif -%}
     "publisher": {
       "@type": "Organization",
@@ -238,7 +280,10 @@
        navigation, so fall back to a plain, unlinked outline instead. A
        single item at 0:00 is normal (the first topic starting at the top
        of the video) -- only suppress when there's more than one item and
-       they're all identical. Mirrors app/static/player.js's renderAgenda(). #}
+       they're all identical. Mirrors app/static/player.js's renderAgenda(),
+       and is itself mirrored by the Clip "key moments" guard in this
+       template's meta block (separate block scope, so the expression is
+       duplicated there -- keep the two in sync). #}
     {% set unreliable_timestamps = page.agenda_items|length > 1 and (page.agenda_items|map(attribute='start')|unique|list|length == 1) %}
     <div class="agenda-section">
       <h2>Agenda</h2>

@@ -8,6 +8,66 @@ changelog of task titles.
 
 ## Site polish
 
+- **[Done 2026-08-14] `VideoObject.thumbnailUrl` (YouTube-backed pages) +
+  `Clip` "key moments" structured data on `/m/{slug}` — the two
+  doubly-endorsed SEO tier-1 items from `CLAUDE_BACKLOG.md`'s 2026-08-13
+  audit, built per the user's direct ask during the discoverability
+  strategy session.** Addresses the critical half of `BACKLOG.md`'s
+  Google Search Console entry (missing `thumbnailUrl` blocks video
+  rich-result eligibility outright) and turns `agenda_items`' real
+  per-item timestamps into Google-renderable chaptered "key moments."
+
+  What shipped: new `archive/utils/video_thumbnail.py` —
+  `youtube_thumbnail_url()` derives the free, predictable
+  `i.ytimg.com/vi/{id}/hqdefault.jpg` thumbnail from any YouTube-shaped
+  `video_url` (the 11-char-id regex mirrors `app/platforms/youtube.py`'s,
+  duplicated rather than imported across the service boundary per the
+  existing `clerk_auth.py` convention; `hqdefault` specifically because
+  `maxresdefault` 404s on many older uploads) — registered as a Jinja
+  filter in `archive/main.py`. `meeting_page.html`'s meta block now
+  emits, for YouTube-backed pages: `thumbnailUrl` in the `VideoObject`
+  JSON-LD plus `og:image`/`twitter:card` (the same underlying gap as
+  `CLAUDE_BACKLOG.md`'s "Social share previews" item — one fix, both
+  uses; a shared deep link now unfurls with the video thumbnail instead
+  of a bare text card). And for any page with real agenda timestamps:
+  a `hasPart` array of `Clip` objects (`name` truncated to 100 chars —
+  IQM2 items can carry full ordinance text — `startOffset`,
+  `endOffset` only when `end > start`, and a `?t={start}` deep-link
+  `url`, the same contract the visible agenda timestamps produce).
+  Gated three ways: requires `public_base_url` (Clip URLs must be
+  absolute, same guard as canonical/og:url), skips when the agenda
+  section's own `unreliable_timestamps` condition holds (the
+  all-items-at-0:00 CivicClerk shape — key moments claiming 26 items
+  all start at 0:00 would be false navigation; expression duplicated
+  into the meta block since Jinja blocks don't share scope, with
+  keep-in-sync comments on both copies), and omits the key entirely
+  rather than emitting an empty array.
+
+  Verified: 8 new tests (`tests/test_meeting_page_structured_data.py`)
+  — filter unit tests (embed/watch/youtu.be shapes, None for m3u8/
+  missing) and rendered-page tests via the ingest→GET `/m/{slug}` path,
+  where `json.loads` on the extracted JSON-LD doubles as a validity
+  check on the hand-built template JSON (synthetic payloads, but the
+  embed-URL shape is exactly what `youtube.py` builds and agenda items
+  use the real `{start, end, text}` segment shape). Full suite 680
+  passed. Live-verified in-browser against a locally-served seeded page:
+  `JSON.parse` of the rendered JSON-LD succeeds in the browser,
+  thumbnail/clips/og:image/twitter:card all present and correct, agenda
+  section renders unchanged, no new console errors (the two 404s seen —
+  `/archive-static/*` — are a pre-existing artifact of hitting the
+  Archive service directly instead of through the resolver's proxy,
+  confirmed unrelated).
+
+  **Residuals, split back out as live items**: mp4/m3u8 pages still have
+  no thumbnail (needs real ffmpeg frame extraction — the majority of
+  archived pages, so the Search Console complaint isn't fully closed,
+  see `BACKLOG.md`'s updated entry) and the `uploadDate`
+  timezone/invalid-value half of that same entry is untouched. Google's
+  actual rendering of key moments should be re-checked in Search
+  Console once a real YouTube-backed page with agenda items is
+  re-crawled — structured-data validity is confirmed, rich-result
+  *uptake* is Google's call, not verifiable locally.
+
 - **[Done 2026-08-10] Built a branded 404 page on both services, plus
   logging when one is hit — the "custom 404 / not-found page, plus an
   error log when it gets hit" ask.** Confirmed neither service had one

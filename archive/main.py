@@ -28,6 +28,7 @@ from .utils.language import language_display_name
 from .utils.render_warnings import render_warnings_html
 from .utils.transcript_export import to_srt, to_txt
 from .utils.url_normalize import normalize_url
+from .utils.video_thumbnail import youtube_thumbnail_url
 
 logger = logging.getLogger("rtr_archive")
 
@@ -70,6 +71,7 @@ templates.env.filters["language_name"] = language_display_name
 # own captions" versus AI-transcribed.
 templates.env.filters["source_label"] = lambda source: "sourced" if source == "scraped" else source
 templates.env.filters["jurisdiction_display"] = format_jurisdiction_display
+templates.env.filters["youtube_thumbnail_url"] = youtube_thumbnail_url
 
 
 @app.exception_handler(StarletteHTTPException)
