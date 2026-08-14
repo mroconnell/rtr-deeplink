@@ -1,0 +1,41 @@
+# Runs the pytest + node test suites on every push and PR. Added
+# 2026-08-14 (AUDIT_EXECUTION_BRIEF.md WO-2) -- previously nothing ran the
+# suite between sessions, and a Render Blueprint sync auto-deploys `main`
+# on every push, so a regression could reach production ungated.
+#
+# The suite is fully hermetic (tests/conftest.py pins a temp SQLite DB,
+# HTTP is mocked, Playwright is monkeypatched) -- no network, Postgres, or
+# `playwright install` step needed here. Python is pinned to 3.12.3 to
+# match render.yaml's PYTHON_VERSION; local dev commonly runs 3.13.
+name: Test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.3"
+
+      - run: pip install -r requirements.txt -r requirements-dev.txt
+
+      # Plain `pytest` doesn't add the repo root to sys.path, so
+      # `import app.main` / `import archive.main` fail with
+      # ModuleNotFoundError (app/ and archive/ are top-level packages,
+      # siblings of tests/, not underneath it) -- confirmed by this exact
+      # failure on this workflow's first real run. `python -m pytest`
+      # adds cwd to sys.path[0] the same way local dev invocations do.
+      - run: python -m pytest
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - run: npm ci
+      - run: npm test
