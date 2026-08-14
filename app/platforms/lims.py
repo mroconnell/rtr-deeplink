@@ -12,6 +12,7 @@ from ..utils import jurisdiction_enrich
 
 _ID_RE = re.compile(r"/MarkedAgenda/[A-Za-z]+/(\d+)")
 _PRE_RE = re.compile(r"<pre[^>]*>(.*?)</pre>", re.S)
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
 _TITLE_RE = re.compile(r"^(.+?)\s+Agenda\s+\d{1,2}/\d{1,2}/\d{4}\s+.+?-\s*(.+)$")
 _TITLE_DATE_RE = re.compile(r"Agenda\s+(\d{1,2})/(\d{1,2})/(\d{4})")
 
@@ -160,15 +161,32 @@ class LimsAssetFinder(AssetFinder):
         segments: List[TranscriptSegment] = []
         for entry in entries:
             seconds = LimsAssetFinder._as_seconds(entry.get("timeInSeconds"))
-            title = entry.get("title")
+            title = LimsAssetFinder._clean_title(entry.get("title"))
             if seconds is not None and title:
                 segments.append(TranscriptSegment(start=seconds, end=seconds, text=title))
             for file_entry in entry.get("files") or []:
                 file_seconds = LimsAssetFinder._as_seconds(file_entry.get("timeInSeconds"))
-                file_title = file_entry.get("title")
+                file_title = LimsAssetFinder._clean_title(file_entry.get("title"))
                 if file_seconds is not None and file_title:
                     segments.append(TranscriptSegment(start=file_seconds, end=file_seconds, text=file_title))
         return segments
+
+    @staticmethod
+    def _clean_title(title: Optional[str]) -> Optional[str]:
+        """LIMS timestamp titles can be raw HTML, not just plain text --
+        confirmed live 2026-08-14 on the real Committee of the Whole
+        meeting (MarkedAgenda/COW/6144's endpoint data, seen stored on
+        /m/city-of-minneapolis-mn-2026-08-10-committee-of-the-whole):
+        a category title like "<a href='/Download/CommitteeReport/...'
+        aria-label='...'>Business, Housing & Zoning Committee " -- a
+        Committee Report download link, opening tag unclosed, right in
+        the title string, while sibling file-level titles on the same
+        meeting are plain text. Strip tags and collapse the leftover
+        whitespace; plain titles pass through unchanged."""
+        if not title:
+            return title
+        cleaned = _HTML_TAG_RE.sub(" ", title)
+        return re.sub(r"\s+", " ", cleaned).strip()
 
     @staticmethod
     def _as_seconds(value) -> Optional[float]:

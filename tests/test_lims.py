@@ -204,3 +204,50 @@ def test_extract_video_and_timestamps_parses_real_json_shape():
     video_id, agenda_items = LimsAssetFinder._extract_video_and_timestamps(JSON_ENDPOINT_HTML)
     assert video_id == REAL_VIDEO_ID
     assert len(agenda_items) == 3
+
+
+def test_clean_title_strips_real_html_anchor_shape():
+    # Real bug found live 2026-08-14 while verifying the new Clip
+    # structured data on production: Committee of the Whole meetings
+    # (real source: MarkedAgenda/COW/6144) carry a Committee Report
+    # download link as raw HTML *inside* the timestamp title -- opening
+    # tag unclosed, no </a> -- which rendered as escaped literal markup
+    # in the archived page's visible Agenda section. The anchor string
+    # below is the exact stored text recovered from the production page
+    # /m/city-of-minneapolis-mn-2026-08-10-committee-of-the-whole, not a
+    # hand-invented shape.
+    raw = (
+        "<a href='/Download/CommitteeReport/4915/BHZ_08042026_Committee_Report.pdf' "
+        "class='previousmettingdate' aria-label='Business, Housing &"
+        " Zoning Committee Committee Report - Aug 04, 2026'>"
+        "Business, Housing & Zoning Committee "
+    )
+    assert LimsAssetFinder._clean_title(raw) == "Business, Housing & Zoning Committee"
+    # Plain titles (the same meeting's file-level items) pass through
+    # unchanged, and empty/None stay falsy so no segment gets created.
+    assert LimsAssetFinder._clean_title("Heritage Park Voluntary Relocation Plan") == "Heritage Park Voluntary Relocation Plan"
+    assert LimsAssetFinder._clean_title(None) is None
+    assert LimsAssetFinder._clean_title("<b></b>") == ""
+
+
+async def test_resolve_strips_html_from_timestamp_titles(monkeypatch):
+    # Same real shape as above, exercised through the full resolve path.
+    json_html = (
+        '<html><body><pre>{"url":"https://youtube.com/watch?v='
+        + REAL_VIDEO_ID
+        + '","SerializedVideoTimestamps":[{"id":1,"title":"&lt;a href=\'/Download/x.pdf\' '
+        "class='previousmettingdate'&gt;Business, Housing &amp; Zoning Committee \","
+        '"timeInSeconds":"122","files":null}]}</pre></body></html>'
+    )
+
+    async def _fetch(url, **kwargs):
+        if "MeetingYoutubeVideo" in url:
+            return json_html
+        return AGENDA_PAGE_HTML
+
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _fake_extract_info)
+    monkeypatch.setattr("app.platforms.lims.fetch_via_browser", _fetch)
+
+    result = await LimsAssetFinder().resolve(MEETING_URL)
+
+    assert [item.text for item in result.agenda_items] == ["Business, Housing & Zoning Committee"]
