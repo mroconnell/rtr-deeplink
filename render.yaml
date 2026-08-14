@@ -54,6 +54,19 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.3
+      # Enables the generic fallback's headless-browser escalation
+      # (app/platforms/generic_fallback.py -- one real-Chromium retry for
+      # a blocked/challenge/empty-shell fetch). Flipped on 2026-08-14
+      # only AFTER playwright-on-Render was finally verified working for
+      # real: a fresh, never-archived Minneapolis LIMS meeting
+      # (MarkedAgenda/COW/6144) resolved fully through production --
+      # LIMS's resolve has no non-browser path, so that success is direct
+      # proof the `playwright install chromium` build step above produces
+      # a launchable browser, closing the "unconfirmed" question in the
+      # build-step comment. A literal value, not sync:false -- this is a
+      # feature flag, not a secret, and belongs in source control.
+      - key: GENERIC_FALLBACK_HEADLESS
+        value: "1"
       - key: DATABASE_URL
         sync: false
       - key: ADMIN_STATS_TOKEN
