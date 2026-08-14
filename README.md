@@ -879,6 +879,17 @@ detection — there's no reliable generic pattern the way there is for
 media URLs or a single link, so items are just absent rather than
 guessed badly.
 
+Two real, confirmed gaps in this fallback path, both found via user
+reports 2026-08-13 and logged in `BACKLOG.md` rather than fixed yet:
+some government sites' own edge/WAF (confirmed on Wayne County, MI,
+an Akamai-fronted site) returns a 403 to the plain server-side fetch
+this adapter uses, even though a real browser gets the page fine — so
+the result comes back completely empty, not a parsing failure; and on
+at least three counties' pages built on the same "ViewMeeting?id=X&
+doctype=Y" agenda-management product (Sacramento County, CA among
+them), a real video URL sits right in the static HTML unblocked, but
+still isn't surfacing — root cause not yet isolated.
+
 Every result from this adapter (including when it delegates to
 `YouTubeAssetFinder`, whose own `platform` field stays `"youtube"`) sets
 `ResolvedMeeting.best_effort = True`, which drives a dedicated, openly
