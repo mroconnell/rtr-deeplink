@@ -457,31 +457,18 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   way it does on Cablecast/CHAMP, and this customer's video should in
   principle be reachable via the existing static-HTML path.
 
-  **Confirmed `media_scan.scan_media_urls()`'s existing `.m3u8` pattern
-  *does* correctly extract this exact URL** when run locally against the
-  same HTML this environment's `curl` fetched (verified directly in a
-  Python shell) — so the scanning regex itself isn't the blocker. Yet
-  the live prod resolve still returns no video. Root cause of that gap
-  is **not yet isolated** — could be Render's server IP getting a
-  different (bot-gated/stripped) response than a plain dev-machine
-  `curl` gets, a cookie/session requirement, or something else; needs a
-  live debugging pass (e.g. checking what `generic_fallback.py`'s own
-  `aiohttp` fetch actually receives from production, not just replaying
-  a locally-curled snapshot) before attempting a fix — not attempted
-  this pass, per this repo's "don't fix without a confirmed root cause"
-  convention.
-
-  **Separately, a real bug independent of the above**: the extracted
-  URL's query string contains a literal `&amp;` HTML entity
-  (`?instance=1&amp;token=...`) rather than a decoded `&` — even once
-  the video *is* found, this would break the query string (`token`
-  becomes part of a bogus `amp` value, not a real param) unless
-  something HTML-entity-decodes it first. `scan_media_urls()` already
-  has one comparable de-escaping step (backslash-escaped JSON slashes,
-  see its docstring) — an `html.unescape()` pass, or a narrower
-  `&amp;` → `&` replace, would need the same treatment. Not fixed this
-  pass (code changes are out of scope for this session), just flagged
-  as a second, independently real problem on the same URL.
+  ~~**Root cause of the video gap not yet isolated; separately, the
+  extracted URL carries a literal `&amp;` entity that would break the
+  query string.**~~ **Both fixed 2026-08-14 in the generic-fallback
+  rebuild — full detail in `BACKLOG_DONE.md`.** The real root cause was
+  neither Render's IP nor a cookie wall: `media_type()` ran
+  `endswith(".m3u8")` on the FULL url, so the query-stringed
+  `playlist.m3u8?instance=1&token=` classified as "unknown" and was
+  dropped after extraction; `scan_media_urls()` also never
+  entity-unescaped, so `&amp;token=` would have reached the CDN as a
+  literal `amp;token` param. Live-verified post-fix: this exact Maricopa
+  page (and Sacramento's, below) now resolves a real playable m3u8 with
+  a decoded token.
 
   **Also noted, lower priority**: the "we think we found an agenda here"
   link the prod resolve returned points at the OnBase Agenda Online site
@@ -594,6 +581,18 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   looks sufficient for direct video + real captions + timestamped agenda,
   better coverage than several already-shipped adapters manage.
 
+  **Update 2026-08-14: the generic fallback now handles the
+  `/videos?videoid=` page directly — full detail in `BACKLOG_DONE.md`'s
+  rebuild entry.** Live-verified: real mp4 (protocol-relative, via the
+  new JW-config `file:` scan pattern), real SRT captions (7,210 real
+  segments), and the real date from `<meta name="video_date">`. **What a
+  dedicated `seattlechannel.py` would still add over the fallback — the
+  only reason this entry stays open**: the `data-seek` per-agenda-item
+  timestamps (exactly `agenda_items`' shape, richer than several shipped
+  adapters), and the `?videoid=`-disambiguation handling for the
+  feed-style index pages the fallback deliberately doesn't scan (a feed
+  page carries many *other* meetings' mp4s — wrong-video guard).
+
 - **`generic_fallback.py`'s YouTube-embed branch had no page-level
   metadata backfill, so CRRMA's meeting pages showed "Untitled meeting"
   with no jurisdiction — fixed 2026-08-13, full detail in
@@ -658,12 +657,14 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   [cityofsebastopol.gov/events/city-council-meeting-january-6-2026/](https://www.cityofsebastopol.gov/events/city-council-meeting-january-6-2026/)
   — two real, separately-confirmed gaps on this one page.** ~~Title/
   jurisdiction extraction~~ **fixed 2026-08-13 — full detail in
-  `BACKLOG_DONE.md`.** The Vimeo video piece is still open: the real
-  video link needs the general Vimeo playback support tracked in the
-  entry above — once that exists, this page's plain server-side
-  `<a href="vimeo.com/...">` should already be catchable by
-  `_try_delegate_to_known_platform()`'s existing link scan with no
-  Sebastopol-specific code. Not yet built.
+  `BACKLOG_DONE.md`.** ~~The Vimeo video piece~~ **surfaced 2026-08-14
+  via the new video-pointer outcome (`ResolvedMeeting.video_link`, see
+  `BACKLOG_DONE.md`'s rebuild entry): the page now shows "we think the
+  video is here: <the real vimeo link> — we recognize vimeo.com as a
+  regular video host, but can't embed it here yet", live-verified
+  in-browser.** Actual Vimeo *playback* (embedding + captions) is still
+  the separate, bigger gap tracked in the Vimeo entry above — the
+  pointer is the honest middle ground until that exists.
 
 - ~~**CHAMP/ChampDS (`play.champds.com`) — new platform, not supported at
   all today**~~ **Built 2026-08-13 — full detail in `BACKLOG_DONE.md`.**
@@ -1349,6 +1350,17 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   turns up) before over-generalizing any of the three fixes above from
   a single example.
 
+  **Update 2026-08-14: pieces (1) and (2) are now handled by the
+  generic-fallback rebuild — full detail in `BACKLOG_DONE.md`.**
+  Live-verified: the bare `videoId` assignment resolves to the real
+  YouTube video (gated on the page's own iframe_api loader — the
+  corroboration that made shipping on this one example acceptable), and
+  title/date come from the h1 assembly + heading-date extractors when
+  YouTube's own metadata is blocked. **Still open, the only remaining
+  piece**: (3), parsing the accordion agenda structure into real
+  `agenda_items` — that's the dedicated-adapter part, still gated on a
+  second real example per the paragraph above.
+
 - **Wayne County, MI's own meeting-listing site
   (`waynecountymi.gov`) — user-reported 2026-08-13, root cause confirmed
   to be a fetch-level block, not a parsing gap.** Real example:
@@ -1405,6 +1417,61 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   was. A deeper fingerprint check (TLS/JA3, cookies, JS challenge) or a
   genuinely different WAF product, not yet isolated.
 
+  **Update 2026-08-14: the headless-browser escalation this entry asked
+  for is now built — but ships env-gated OFF, so this page stays broken
+  in prod until the flag is flipped.** Full detail in `BACKLOG_DONE.md`'s
+  rebuild entry: a block-family status (this page's real Akamai 403 was
+  the trigger it was built against) escalates to one real-Chromium
+  fetch, whose rendered HTML re-runs the same diagnosis. Verified
+  locally with the flag on against this exact live page: resolves fully
+  (real youtu.be video + agenda PDF + real title). **The remaining TODO
+  is operational, not code**: verify playwright actually works on Render
+  (render.yaml's own unresolved build question — e.g. confirm a
+  LIMS/SLC prod resolve succeeds) and then set
+  `GENERIC_FALLBACK_HEADLESS=1` on the resolver service.
+
+- **Residuals from the 2026-08-14 generic-fallback rebuild** (the build
+  itself is in `BACKLOG_DONE.md`; these are the real leftovers it
+  deliberately did not attempt):
+  - **Orange County FL (`netapps.ocfl.net/Mod/meetings/1/2069`) —
+    multi-part meetings get only their first part.** Found by
+    classifying all 223 archived pages' source URLs: the real page is a
+    video.js playlist of 8 mp4 parts (AA–HH), each with its own real
+    .vtt captions. The rebuilt fallback deterministically picks part AA
+    (live-verified: real video + 1,098 caption segments — the archived
+    page had been completely empty, an ingest-time failure predating the
+    modern-UA fix). Surfacing the *other* parts needs a real multi-part
+    UI/model decision, not a scan fix — no other multi-part example
+    confirmed yet.
+  - **Palm Beach County FL
+    (`discover.pbc.gov/...bcc-meeting-videos.aspx?videoid=...`) — a
+    JS-rendered SharePoint page the empty-shell escalation deliberately
+    does NOT catch.** Also found via the archived-URL classification
+    (its archived page is empty). The shell carries ~6KB of real
+    nav/chrome text, so the escalation's near-empty-text gate (tuned to
+    Tucson's real 153-char shell) never fires — widening it would make
+    an enabled flag pay a ≥4s browser fetch on every ordinary no-video
+    page. Needs either its own trigger idea or a dedicated look; note
+    the Seattle-style `videoid=` query param.
+  - **Video-only best-effort results are never archived** — the push
+    gate (`app/main.py`, `segments or agenda_items or agenda_link`)
+    predates the rebuild, but matters more now that the fallback finds
+    more videos: e.g. a Tarrant resolve on Render (yt-dlp blocked → no
+    segments; no agenda `<a>` on the page) produces a real video no
+    permanent page will record. Deliberately not widened — the gate's
+    junk-page rationale stands — but worth revisiting if pointer/video-
+    only pages turn out to be worth archiving.
+  - **Backstop expansion candidates**: `scan_page_for_video_evidence()`
+    is wired into eScribe only. Each further adapter opt-in needs its
+    own real no-video example plus a wrong-video risk check (Cablecast's
+    related-shows carousel is the confirmed shape that must never get a
+    blanket second pass).
+  - **Unconfirmed-shape extensions awaiting a real example** (commented
+    as such in code): `youtube-nocookie.com` embeds and HTML-escaped
+    `&amp;v=` watch URLs (pure URL-shape variants, shipped), and the
+    curated-pointer host list (Vimeo only until another unsupported
+    video host shows up on a real page).
+
 - **Sacramento County, CA's own agenda site
   (`agendanet.saccounty.gov`) — user-reported 2026-08-13, a third real
   customer of the same "ViewMeeting?id=X&doctype=Y" agenda-management
@@ -1441,9 +1508,15 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   static HTML, including the footer, which is empty), so domain/footer
   text alone won't be enough to detect this vendor generically — the
   URL-path shape and JS function names are the more reliable fingerprint
-  across all three. Video not showing in prod despite this matches the
+  across all three. ~~Video not showing in prod despite this matches the
   same unresolved "not yet isolated" gap already logged for the other
-  two counties, not a new root cause.
+  two counties.~~ **Video fixed 2026-08-14 in the generic-fallback
+  rebuild — the shared root cause (a query-string m3u8 classifying as
+  "unknown" in `media_scan.media_type()`, plus the un-decoded `&amp;`
+  entity) is confirmed and closed for all three counties at once; see
+  the Maricopa update above and `BACKLOG_DONE.md`. Live-verified: this
+  exact Sacramento page now resolves the real playable m3u8 with a
+  decoded token, alongside the already-working title/date/agenda.**
 
   ~~**One new, cheap, and genuinely different signal found on this
   page**: real per-meeting title/date text sits in the `title` attribute
@@ -1456,7 +1529,7 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   `loadAgendaDocument()` runs on window load, confirmed absent from the
   raw static HTML — same "genuinely renders client-side" limitation
   already noted for these vendor pages elsewhere in this file, not a new
-  gap on its own. The video root cause (above) remains unresolved.
+  gap on its own.
 
   **Also noted, not investigated further:** the page's own JS defines
   `itemEventPoints`/`sectionEventPoints` objects mapping agenda item and

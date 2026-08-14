@@ -858,39 +858,46 @@ platform share the same page/API structure. Detection lives in
 
 **Every URL `detect_platform()` doesn't recognize** goes to
 `generic_fallback.py`'s `GenericFallbackAssetFinder`, registered under
-`platform_name = "unknown"` — a real, honest best-effort attempt instead
-of an immediate "we don't support this yet": a plain fetch (not the
-headless-browser path above, reserved for known Cloudflare-gated
-platforms), looking for an embedded/linked YouTube video first
-(delegates to `YouTubeAssetFinder` for real video + captions when
-found), then for a plain link to any OTHER platform this app already
-fully supports (`<a href>`/`<iframe src>`/`<video src>`/`<source src>`,
-run through the same `detect_platform()` every URL gets classified by —
-confirmed live 2026-08-10: Austin, TX's own council pages don't embed
-video at all, they link out to their Swagit-hosted recording as a plain
-`<a href>`, which `SwagitAssetFinder` already resolves correctly), then
-falling back to `media_scan.py`'s generic `.m3u8`/`.mp4` scanner (the
-same one Granicus/Swagit use) plus any caption-shaped URL found
-alongside it. Also looks for a plain link to an agenda document —
-any `<a>` tag whose text or href contains "agenda", preferring a
-PDF-looking one (agendas are frequently standalone PDF downloads on
-small-city sites) — into `ResolvedMeeting.agenda_link` (a single raw
-URL), not forced into `agenda_items`, since that field implies real
-per-item timestamps this doesn't have. No structured agenda-*item*
-detection — there's no reliable generic pattern the way there is for
-media URLs or a single link, so items are just absent rather than
-guessed badly.
+`platform_name = "unknown"` — rebuilt 2026-08-14 (see `BACKLOG_DONE.md`
+for the full build, backtested against every real coverage-gap example
+in `BACKLOG.md`) as a *diagnostic router*: figure out what the page
+needs, then hand off to machinery that already exists. Video tiers, in
+order: (1–2) an embedded YouTube video in any confirmed shape — a
+URL-shaped id (raw or HTML-entity-escaped, youtube-nocookie included),
+or a bare `videoId = '...'` JS assignment gated on the page actually
+loading the IFrame Player API (Tarrant County's real shape) — delegated
+to `YouTubeAssetFinder`; (3) a plain link to any OTHER platform this app
+fully supports, delegated to that adapter's own `resolve()` (Austin, TX
+→ Swagit, confirmed live 2026-08-10); (4) a directly playable media URL
+via `media_scan.py`'s shared scanner (which handles query-stringed
+m3u8s, HTML-entity-escaped URLs, JW Player `file:` config keys, and
+protocol-relative/relative paths — the Sacramento/Seattle shapes);
+(5) when nothing playable exists, a **video pointer** —
+`ResolvedMeeting.video_link` — "we think the video is here: `<link>`",
+with two confidence tiers of copy: a curated known video host (Vimeo
+video/showcase links) gets "we recognize {host} as a regular video
+host", a looser video-shaped guess (a "Video"-texted anchor, a non-junk
+third-party player iframe) gets "we don't recognize {host}... so
+proceed with caution". Captions come from their own candidate chain
+(`<track>` elements, plain caption-file `<a href>`s, JW `tracks:`
+entries, scan results); metadata from a breadth of confirmed-real
+shapes (title-tag separators, og:title, h1 assembly, `video_date`
+meta, `<time datetime>`, heading dates, URL-slug humanization as last
+resort) — every extractor only fills still-empty fields. The agenda
+link finder is unchanged: a single best-effort `<a>`, never fabricated
+`agenda_items`.
 
-Two real, confirmed gaps in this fallback path, both found via user
-reports 2026-08-13 and logged in `BACKLOG.md` rather than fixed yet:
-some government sites' own edge/WAF (confirmed on Wayne County, MI,
-an Akamai-fronted site) returns a 403 to the plain server-side fetch
-this adapter uses, even though a real browser gets the page fine — so
-the result comes back completely empty, not a parsing failure; and on
-at least three counties' pages built on the same "ViewMeeting?id=X&
-doctype=Y" agenda-management product (Sacramento County, CA among
-them), a real video URL sits right in the static HTML unblocked, but
-still isn't surfacing — root cause not yet isolated.
+Blocked fetches can escalate to the real headless-browser fetch
+(`GENERIC_FALLBACK_HEADLESS=1`, **off by default** until playwright is
+verified working on Render — see `render.yaml`'s own comments): a
+block-family status (Wayne County MI's real Akamai 403), a small
+challenge-interstitial body, or an empty-evidence resolve of a
+client-rendered shell triggers at most one Chromium retry, whose
+rendered HTML re-runs the same diagnosis. Dedicated adapters can also
+opt into the same page-analysis tiers as a backstop when their own
+extraction found no video (`scan_page_for_video_evidence()` — eScribe
+is wired in; opt-in per adapter only, since a blind second pass on a
+page carrying other meetings' videos could attach the wrong one).
 
 Every result from this adapter (including when it delegates to
 `YouTubeAssetFinder`, whose own `platform` field stays `"youtube"`) sets

@@ -6947,3 +6947,101 @@ changelog of task titles.
   directly against the real live Atlanta and Santa Clara pages (not just
   mocked fixtures) before writing tests, and again after, via
   `IQM2AssetFinder().resolve()` called directly against both real URLs.
+
+- **[Done 2026-08-14] Generic-fallback rebuild: diagnose → route → point.**
+  A five-phase rebuild of `app/platforms/generic_fallback.py` (plus
+  `media_scan.py`), planned against every open coverage gap in BACKLOG.md
+  and backtested against the real gap URLs themselves. Architecture per
+  the user's own framing: the fallback is a *diagnostic router* — figure
+  out what the page needs, then hand off to machinery that already exists
+  (YouTube embed → `YouTubeAssetFinder`; known-platform link → that
+  adapter's `resolve()`; blocked fetch → headless refetch, then the same
+  diagnosis again). Scorecard, measured by the new backtest harness
+  against the live pages: **8 PASS / 9 FAIL before → 17 PASS / 0 FAIL
+  after** across the six non-headless corpus pages, plus both headless
+  rows verified locally with the flag on.
+
+  **Phase 0 — backtest harness + fixtures** (`scripts/backtest_fallback.py`,
+  `tests/fixtures/generic_fallback/`): runs the fallback live against the
+  real coverage-gap corpus (Sacramento, Maricopa, Tarrant, Seattle,
+  Sebastopol, OCFL, plus headless-gated Wayne/PBC/Tucson rows) and prints
+  a per-URL scorecard; exits nonzero on any non-headless FAIL. Fixtures
+  are trimmed real captures with source URL + date in each header,
+  including the real 550-byte Akamai 403 body and the full Tucson
+  client-rendered shell. Corpus intake also included classifying all 223
+  archived pages' source URLs by `detect_platform()` (66% granicus / 15%
+  swagit / 8 fallback-routed spanning 6 site families) — which surfaced
+  two unlogged production fallback failures (OCFL, PBC) now in the corpus.
+
+  **Phase 1 — media_scan.py correctness** (also the fix for the
+  three-county OnBase "no video" production bug): `media_type()` ran
+  `endswith(".m3u8")` on the FULL url, so `playlist.m3u8?instance=1&token=`
+  classified "unknown" and was dropped — the same full-URL check was
+  hand-rolled in four adapters' format-pick loops, all replaced with a
+  shared `is_hls_url()`. Plus per-candidate `html.unescape()` (the raw
+  HTML's `&amp;token=` would reach the CDN as a literal `amp;token`
+  param), deterministic document-order results replacing `list(set())`,
+  query-string support in the src= pattern, a new JW-config `file:`
+  pattern (Sacramento/Maricopa absolute m3u8, Seattle protocol-relative
+  mp4 + relative srt), tightened bare-URL termination, and a
+  segment-aware blocklist ("silicon" no longer eaten by "icon").
+
+  **Phase 2 — resolve() restructure**: layered video tiers (URL-shaped
+  YouTube ids over raw AND entity-unescaped HTML, nocookie embeds,
+  Tarrant's bare `videoId = '...'` assignment gated on the iframe_api
+  loader + single-distinct-id agreement; platform-link delegation;
+  direct media), a caption candidate chain (`<track>` elements → plain
+  caption-file `<a href>`s → scan results incl. JW `tracks:`, capped at
+  3 fetches), and metadata breadth (og:title/twitter:title, h1 assembly,
+  `video_date` meta, `<time datetime>`, heading month-name dates,
+  URL-slug humanization last — every extractor only-fills-empty,
+  confirmed shapes first).
+
+  **Phase 3 — two-tier video pointer** (the user's explicit call: "the
+  pointer where the video lives would be a GREAT outcome"):
+  `ResolvedMeeting.video_link` + `video_link_recognized`, never placed in
+  `video_url`; curated tier (Vimeo video/showcase links, numeric-id
+  gated) renders "we recognize {host} as a regular video host", loose
+  tier (video-shaped anchor text, non-junk third-party iframes) renders
+  "we don't recognize {host}... proceed with caution" — copy per the
+  user's own words. Resolver-page-only: link-only results never pass the
+  archive push gate, so no archive schema change. Verified in-browser on
+  a local resolver against the real Sebastopol page.
+
+  **Phase 4 — opt-in backstop for dedicated adapters**:
+  `scan_page_for_video_evidence()` packages the page-analysis tiers for
+  adapters whose own extraction found no video; eScribe wired first ("no
+  video integration" is its documented common outcome, pages are
+  per-meeting; Perry GA's plain Vimeo live-stream link is the confirmed
+  beneficiary shape). Backstop hits set `best_effort=True` + a
+  provenance warning. Opt-in per adapter only — the user's call — since
+  a blanket second pass on e.g. Cablecast's related-shows carousel could
+  attach the wrong meeting's video.
+
+  **Phase 5 — headless escalation, env-gated OFF**
+  (`GENERIC_FALLBACK_HEADLESS=1`): at most one Chromium retry per
+  resolve, on a block-family status (Wayne County's real Akamai 403), a
+  small challenge-interstitial body, or an empty-evidence resolve of a
+  near-empty shell (threshold tuned to Tucson's real 153-char shell;
+  agenda_link deliberately excluded from the evidence gate after the
+  real Tucson shell's nav "Agenda" link — the site-root junk link prod
+  already showed — turned out to veto escalation on exactly the page
+  needing it). First caller anywhere to survive
+  `HeadlessBrowserUnavailable`; ships disabled until playwright is
+  verified on Render. Verified locally flag-on against the LIVE pages:
+  Wayne County resolves fully through the browser; Tucson escalates and
+  stays honestly empty (its pages genuinely have no video).
+
+  Two corpus expectations needed loosening for a legitimate reason worth
+  recording: on residential networks yt-dlp *succeeds*, so the real
+  YouTube title correctly wins over the page's own backfill (Tarrant,
+  Wayne) — expectations now accept both the yt-dlp-success and
+  Render-blocked paths.
+
+  36 new tests across `test_media_scan.py`/`test_generic_fallback.py`/
+  `test_escribe.py`; full suite green (672, from 643). README's fallback
+  section rewritten. Residuals logged as a new BACKLOG.md entry (OCFL
+  multi-part, PBC's texty shell, the video-only push-gate nuance,
+  backstop expansion rules, unconfirmed-shape comments). Existing
+  archived pages deliberately NOT re-resolved — the user's call:
+  forward-looking fixes only.
