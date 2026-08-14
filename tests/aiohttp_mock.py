@@ -18,7 +18,7 @@ import aiohttp
 class FakeResponse:
     def __init__(
         self, status: int = 200, text: str = "", raw: bytes = None, url: str = None,
-        text_raises: Exception = None,
+        text_raises: Exception = None, headers: dict = None,
     ):
         self.status = status
         self._text = text
@@ -28,6 +28,11 @@ class FakeResponse:
         # a redirect straight to a binary PDF) -- real aiohttp raises
         # UnicodeDecodeError from .text() in that case, not from .get().
         self._text_raises = text_raises
+        # Real aiohttp headers are case-insensitive; a plain dict is fine
+        # for the two things tests actually need out of it so far
+        # (Location on a redirect, Content-Length for url_guard.py's size
+        # cap) -- exact-case lookups only, unlike the real CIMultiDict.
+        self.headers = headers if headers is not None else {}
 
     async def __aenter__(self):
         return self

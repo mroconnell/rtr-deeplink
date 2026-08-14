@@ -7292,3 +7292,136 @@ changelog of task titles.
   parallel the same afternoon (a real, repeated situation — see
   `CLAUDE.md`'s "worked on by more than one session" note). If two
   sessions ever actually break each other this way, flip this flag.
+
+## Security hardening
+
+- **[Done 2026-08-14] SSRF guard on `/api/resolve`** — WO-5 of
+  `AUDIT_EXECUTION_BRIEF.md`, executed exactly as specified, from
+  `AUDIT_2026-08-14.md` finding #2: `/api/resolve` will fetch arbitrary
+  URLs with no destination guard.
+
+  **The gap.** `ResolveRequest.url` (`app/main.py`) was a bare `str`.
+  Anything that didn't match a known platform fell through to
+  `generic_fallback.py`'s `GenericFallbackAssetFinder`, which did a plain
+  `aiohttp` GET with `allow_redirects=True` and no scheme allowlist, no
+  private/loopback/link-local/reserved-IP rejection, no per-hop redirect
+  re-validation, and no response-size cap. `GENERIC_FALLBACK_HEADLESS=1`
+  is on in production, so a blocked/challenge-gated fetch could also
+  escalate to a real headless Chromium tab that would load whatever it
+  was pointed at. An anonymous POST of
+  `http://169.254.169.254/latest/meta-data/...` (the AWS/GCP/Azure
+  instance-metadata address) or an internal Render hostname would be
+  fetched from inside the network, with the response returned in the
+  resolve payload.
+
+  **The fix.** One new module, `app/utils/url_guard.py`:
+  - `check_scheme()` / `check_destination()` — scheme allowlist
+    (`http`/`https` only) plus hostname resolution and rejection of
+    private/loopback/link-local/multicast/reserved/unspecified addresses.
+    A literal IP (including one found in a redirect `Location` header) is
+    classified directly with no DNS involved; a real hostname is resolved
+    via the stdlib resolver off the event loop, with DNS resolution
+    factored into its own `_resolve_hostname()` specifically so it's
+    monkeypatchable in tests without touching the network.
+  - `guarded_get()` — drop-in replacement for
+    `async with session.get(url, allow_redirects=True, ...)` that follows
+    redirects manually (capped at `MAX_REDIRECTS = 5`) and re-runs
+    `check_destination()` on **every hop**, not just the entry URL — the
+    case the brief specifically flagged as "the one people forget": a
+    permitted host can 302 straight to a private one, and aiohttp's own
+    `allow_redirects=True` has no concept of re-checking that.
+  - `read_capped_text()` / `read_capped_bytes()` — reject a response body
+    over `MAX_RESPONSE_BYTES` (10 MB), checking `Content-Length` as a
+    cheap short-circuit and the real decoded/read length regardless of
+    what that header claims (it's caller-supplied, not trusted alone).
+    Documented honestly as a buffered cap, not a true streaming abort —
+    `aiohttp`'s own `.text()`/`.read()` already buffer the body first;
+    this bounds worst-case memory for what gets returned/parsed, while
+    the existing per-request `ClientTimeout` already bounds worst-case
+    latency.
+
+  **Wired in at three points**, per the brief's explicit scope (the
+  resolve entrypoint and generic_fallback's own fetches — no other
+  adapter or endpoint touched):
+  1. `/api/resolve` (`app/main.py`) calls `check_destination(req.url)`
+     before any dispatch — archive lookup, DB cache, platform detection,
+     all of it. A rejected URL returns `{"error": "blocked_url",
+     "message": ...}` (200, not a 500) — a clean, user-facing rejection,
+     never the underlying fetch/resolve machinery's own exception text.
+  2. `generic_fallback.py`'s `_fetch_page()` (the main page GET) and
+     `_try_fetch_caption()` (a caption URL discovered on the fetched
+     page's own markup, just as caller-influenced as the entry URL) both
+     now use `guarded_get()` + `read_capped_text()`/`read_capped_bytes()`
+     instead of a bare `session.get()`.
+  3. `headless_browser.py`'s `fetch_via_browser()` — the escalation path
+     the brief explicitly called out as needing its own guard, since a
+     real Chromium tab follows redirects and loads sub-resources entirely
+     on its own, with no concept of a guard applied once to the entry
+     URL. `check_destination()` runs on the entry URL before the browser
+     is even touched, and a new `_guard_route()` is installed via
+     `context.route("**/*", ...)` on every request the page makes
+     (navigation, every redirect Chromium follows mid-navigation, every
+     sub-resource) — broader than a navigation-only guard, but a
+     Playwright route handler can't selectively apply to only
+     navigations without dropping that same protection for the exact
+     redirect case this exists to close.
+
+  **A real bug the test suite caught before it shipped**:
+  `BlockedURLError` subclasses `ValueError` (deliberately, so callers can
+  catch it as a validation error) — but the first draft of
+  `_check_content_length()`'s oversized-`Content-Length` check *raised*
+  `BlockedURLError` from inside a `try/except (TypeError, ValueError):
+  pass` block meant to catch a non-numeric header, which silently
+  swallowed its own exception. Caught by
+  `test_read_capped_text_rejects_an_oversized_content_length_header` in
+  the new `tests/test_url_guard.py` failing on the first run; fixed by
+  parsing the header outside the `try`/`except` that's only meant to
+  guard the `int()` call.
+
+  **Test coverage** (`tests/test_url_guard.py`, plus additions to
+  `tests/test_headless_browser.py` and `tests/test_generic_fallback.py`):
+  every rejected class (bad scheme, no hostname, loopback, private
+  ranges, link-local including the real cloud-metadata address,
+  multicast, reserved, unspecified, a hostname that resolves to a
+  private address, DNS failure), the redirect-to-private-IP case
+  specifically (with the private target deliberately left **unmocked** in
+  `mock_session`'s routes, so if the guard ever failed to block it before
+  issuing the second request, the mock's own "unmocked request" assertion
+  would fail the test independently of the `BlockedURLError` expectation
+  — the test can't pass by accident), redirect-chain length capping,
+  response-size capping (`Content-Length` header and real body length,
+  both text and bytes), the headless route interceptor's abort/continue
+  behavior, and the `/api/resolve` endpoint itself returning a clean
+  `blocked_url` JSON body (never a stack trace) for a rejected URL.
+  `tests/test_generic_fallback.py` gained an autouse `_fake_public_dns`
+  fixture patching `url_guard._resolve_hostname()` to a fixed public IP —
+  every existing test in that file uses real-looking domains
+  (`crrma.org` etc.) purely as fixture data, never actually fetched, so
+  without this the new guard would have made real DNS calls during the
+  test suite. `tests/aiohttp_mock.py`'s `FakeResponse` gained a `headers`
+  dict (previously absent) so the mock could simulate a redirect
+  `Location` header and a `Content-Length` header.
+
+  All 721 tests pass locally (up from 686 before this change — 32 new in
+  `tests/test_url_guard.py`, plus 3 more in `tests/test_headless_browser.py`),
+  `npm test` (29 tests, unaffected — no JS touched) passes. **Not yet
+  verified live** — this PR
+  had not been merged/deployed as of this writing; see the PR description
+  for the live-verification plan once it lands (fetch a known-blocked
+  target like `169.254.169.254` against the deployed `/api/resolve` and
+  confirm a clean `blocked_url` response, then confirm a real, previously-
+  working `generic_fallback` resolve — e.g. the Wayne County MI Akamai
+  case — still resolves normally through the new guard).
+
+  **Deliberately out of scope**, per the brief's own scoping: the other
+  15+ platform adapters' own `session.get()` calls (Legistar, Granicus,
+  CivicPlus, etc.) fetch from known, curated vendor hosts rather than an
+  arbitrary caller-supplied one, and weren't touched; the two
+  transcription endpoints (`/api/transcription/check-feasibility`,
+  `/api/transcription/submit`) call `finder.resolve()` directly rather
+  than through `/api/resolve`, so a URL that reaches generic_fallback via
+  either of those still gets `guarded_get()`'s protection at the fetch
+  layer, but not the entrypoint-level rejection `/api/resolve` gets before
+  any dispatch happens — worth a follow-up if that gap ever matters in
+  practice, not addressed here since the brief scoped this WO to "the
+  resolve entrypoint" specifically.

@@ -4,12 +4,30 @@ directly from the user's own request: try our best instead of a flat
 the exact string detect_platform() returns for anything unmatched.
 """
 
+import pytest
 import yt_dlp
 
 from app.platforms.generic_fallback import GenericFallbackAssetFinder
 from app.platforms.youtube import YouTubeAssetFinder
+from app.utils import url_guard
 
 from aiohttp_mock import FakeResponse, mock_session
+
+
+@pytest.fixture(autouse=True)
+def _fake_public_dns(monkeypatch):
+    """Every resolve() call in this file now runs its URL through
+    app.utils.url_guard's SSRF check (WO-5), which resolves the hostname
+    for real. The domains used throughout this file (crrma.org, etc.) are
+    real-looking fixture data, never actually fetched -- mock_session
+    intercepts session.get() before any network call happens -- so DNS
+    must never really run here either, or the suite stops being hermetic.
+    Patches the resolver to return a fixed public IP for any hostname
+    that isn't already a literal IP. Tests that exercise the guard's own
+    IP-classification logic (private/loopback/link-local rejection, the
+    redirect-to-private-IP case) use literal-IP URLs instead and don't
+    need this."""
+    monkeypatch.setattr(url_guard, "_resolve_hostname", lambda hostname: ["93.184.216.34"])
 
 # Real page shape confirmed live 2026-08-13 across 5 real CRRMA board
 # meeting URLs (crrma.org/information/meetings/board/{date}) -- see

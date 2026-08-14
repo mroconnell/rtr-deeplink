@@ -86,10 +86,13 @@ import sys
 from typing import Optional
 
 try:
-    from playwright.async_api import Browser, async_playwright
+    from playwright.async_api import Browser, Route, async_playwright
 except ImportError:
     Browser = None  # type: ignore[assignment,misc]
+    Route = None  # type: ignore[assignment,misc]
     async_playwright = None
+
+from ..utils.url_guard import BlockedURLError, check_destination
 
 logger = logging.getLogger("rtr_deeplink.headless_browser")
 
@@ -187,15 +190,35 @@ async def warm_up() -> None:
     await _get_browser()
 
 
+async def _guard_route(route: "Route") -> None:
+    """Playwright request interceptor, installed on every context below --
+    a real browser follows redirects and loads sub-resources entirely on
+    its own, with no concept of this app's SSRF guard. `page.goto()`'s own
+    URL passing check_destination() once (see fetch_via_browser) doesn't
+    cover a server-side redirect the browser follows mid-navigation, which
+    is exactly the gap this closes. Runs for every request the page makes,
+    not just the top-level navigation -- a route handler can't selectively
+    apply to only navigations without dropping that same protection for
+    redirects Playwright treats as ordinary requests."""
+    try:
+        await check_destination(route.request.url)
+    except BlockedURLError:
+        await route.abort()
+        return
+    await route.continue_()
+
+
 async def fetch_via_browser(url: str, *, wait_ms: int = DEFAULT_WAIT_MS) -> str:
     """Loads `url` in a real (headless) Chromium tab and returns the
     rendered HTML -- for a source that returns a Cloudflare JS challenge
     to a plain HTTP request. Each call gets its own browser context (cheap
     relative to the shared browser instance itself) so concurrent fetches
     don't share cookies/state with each other."""
+    await check_destination(url)
     browser = await _get_browser()
     context = await browser.new_context(user_agent=_REALISTIC_USER_AGENT, viewport=_VIEWPORT)
     try:
+        await context.route("**/*", _guard_route)
         page = await context.new_page()
         await page.goto(url, timeout=20000)
         await page.wait_for_timeout(wait_ms)
