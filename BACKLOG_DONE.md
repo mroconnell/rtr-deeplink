@@ -706,6 +706,39 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-14] `robots.txt`'s `Disallow: /meeting` was also
+  blocking `/meetings` (the Archive's own browse/search hub) — found in
+  the 2026-08-14 app-wide audit (`AUDIT_2026-08-14.md`, finding #1), not
+  live-caught by a person.** `app/main.py`'s `/robots.txt` handler emitted
+  a single bare `Disallow: /meeting`, meant only to keep the ephemeral
+  `/meeting?url=…` resolver page out of the index once a `/m/{slug}`
+  permanent version exists. robots.txt `Disallow` matching is
+  prefix-based, not exact, so that one line also matched `/meetings` —
+  which `archive/main.py`'s `_SITEMAP_STATIC_PATHS` simultaneously lists
+  as indexable in `sitemap.xml`. Confirmed live before the fix: fetching
+  `redtaperecordings.com/meetings` returned a robots-disallowed result
+  while `/`, `/about`, and `/robots.txt` fetched fine — the site was
+  telling crawlers to index a page it also told them not to crawl, working
+  directly against the discoverability effort already underway.
+
+  **Fix**: replaced the single directive with two anchored forms —
+  `Disallow: /meeting$` (exact path only) and `Disallow: /meeting?` (its
+  query-string variants) — both supported by Google and Bing. `/meetings`
+  no longer matches either. New `tests/test_robots_txt.py` (3 tests, 686
+  total passing): asserts the emitted body carries both anchored forms and
+  not the old bare line, asserts `/meetings` isn't matched by any emitted
+  `Disallow` line, and asserts the ephemeral resolver page (`/meeting` and
+  `/meeting?url=…`) is still blocked. Deliberately not using
+  `urllib.robotparser` for the assertions — confirmed by hand it doesn't
+  implement `$` end-anchoring or treat `?` literally, so it gives wrong
+  answers for exactly the cases this fix changes; the test implements the
+  real (Google/Bing) semantics itself instead.
+
+  **Still needed, not code**: re-submit the sitemap in Search Console
+  after this deploys and confirm `/meetings` stops being reported as
+  blocked — that's a Search Console action + a multi-day recrawl wait,
+  not something this PR can verify.
+
 - **[Done 2026-08-13] PrimeGov now backfills `title` from the page's
   own real inner `<title>` tag when YouTube's own extraction is
   empty — found live by the user on a real LA City Council meeting.**
