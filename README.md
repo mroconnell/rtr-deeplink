@@ -77,6 +77,10 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
+Both this suite and the JS suite below also run in CI on every push/PR
+(`.github/workflows/test.yml`, added 2026-08-14), pinned to Python 3.12.3
+to match `render.yaml`.
+
 `tests/` covers the platform-independent utilities (`app/utils/vtt_parser.py`,
 `app/platforms/media_scan.py`, `app/platforms/base.py`'s `detect_platform`)
 directly, and exercises Granicus/Legistar/CivicPlus/CivicClerk/Swagit/
