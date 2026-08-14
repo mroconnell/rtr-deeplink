@@ -706,6 +706,30 @@ changelog of task titles.
 
 ## Bugs
 
+- **[Done 2026-08-14] Correction to WO-3 of `AUDIT_EXECUTION_BRIEF.md`
+  ("Stop shipping machine-local `.claude/` config") — `.claude/` was
+  never actually tracked in this repo.** The brief's premise, echoed from
+  `AUDIT_2026-08-14.md` finding #12, was that `.claude/settings.local.json`
+  (pre-approving `Bash(git push *)`) and `.claude/launch.json`
+  (hardcoding `/Users/mroconnell/...`) were committed and shipping to
+  every clone. Verified thoroughly before acting on it: `git log --all
+  --oneline -- .claude/` (every branch, local and remote) returns
+  nothing; `git ls-tree -r origin/main` and every `origin/*` branch's
+  tree has no `.claude/` entries; `.gitignore`'s own history
+  (`git log -p -- .gitignore`) never mentions it either. `settings.local.json`
+  specifically is additionally covered by this machine's own personal
+  global gitignore (`~/.config/git/ignore`, `**/.claude/settings.local.json`)
+  — but that's local-machine config, irrelevant to whether the repo
+  itself ever tracked it, and doesn't explain `launch.json` (not covered
+  by that global rule, also never tracked). Genuinely unconfirmed: why
+  the audit reported this as a live finding — plausibly a `find`/`ls`
+  check that saw the files existing on disk without confirming via `git
+  ls-files` whether they were actually committed. Added `.claude/` to
+  `.gitignore` anyway (defensive, costs nothing, matches WO-3's
+  acceptance criterion `git ls-files | grep '^\.claude/'` returns
+  nothing — already true beforehand, stays true after). No `git rm
+  --cached` needed since nothing was ever cached.
+
 - **[Done 2026-08-14] `robots.txt`'s `Disallow: /meeting` was also
   blocking `/meetings` (the Archive's own browse/search hub) — found in
   the 2026-08-14 app-wide audit (`AUDIT_2026-08-14.md`, finding #1), not
