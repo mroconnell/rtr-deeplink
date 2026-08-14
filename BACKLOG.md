@@ -608,6 +608,37 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   another data point on how weak the fallback is for this platform
   specifically.
 
+- **IQM2 (`app/platforms/iqm2.py`) — Riverside County, CA's real title/
+  jurisdiction extraction should work by inspection but doesn't in prod,
+  user-reported 2026-08-14, not touched by the generic-fallback rebuild
+  above (this is a separate dedicated adapter).** Real example:
+  [riversidecountyca.iqm2.com/Citizens/SplitView.aspx?Format=Agenda&MeetingID=3499&Mode=Video](https://riversidecountyca.iqm2.com/Citizens/SplitView.aspx?Format=Agenda&MeetingID=3499&Mode=Video)
+  (`/m/meeting-4fefb4`). Confirmed live: video plays fine (real Granicus
+  HLS delegation working as designed), but "Untitled meeting," no
+  jurisdiction. Fetched the exact `outline_url` this adapter itself
+  builds
+  (`.../Citizens/Detail_Meeting.aspx?Target=Detail&CssClass=AgendaOutline&Mode=Video&Frame=Nothing&ID=3499`)
+  directly via `curl` — its `<title>` is real and well-formed:
+  "2026/08/12 09:30 AM (RCTC-GM) Riverside County Transportation
+  Commission General Meeting Regular Meeting - Web Outline - Riverside
+  County, California," which matches `_TITLE_RE` cleanly by inspection
+  (date group, "(RCTC-GM) Riverside County Transportation Commission
+  General Meeting Regular Meeting" as the meeting name, "Riverside
+  County, California" as jurisdiction — the exact same "{name} - Web
+  Outline - {jurisdiction}" shape already confirmed working for Atlanta
+  and Santa Clara County per this file's own IQM2 build notes).
+
+  So unlike the OCFL/Sacramento/Maricopa cases above, this doesn't look
+  like a stale-archive-page artifact (no known IQM2 fix has shipped since
+  this page was likely first resolved) or an extraction-logic gap (the
+  regex should match) — it's a real, unexplained discrepancy between what
+  a plain `curl` fetch sees and what production's actual resolve found,
+  same open-question shape already flagged for the OnBase counties before
+  their fix was found (a query-string/entity-decoding bug, in that case).
+  Not yet root-caused for IQM2 specifically — needs the same kind of live
+  debugging (what does `iqm2.py`'s own `aiohttp` fetch actually receive
+  from Render, not just a replayed local `curl`) rather than a guess.
+
 - **Seattle Channel (`seattlechannel.org`) — new platform, not supported
   at all today, flagged by the user 2026-08-12 with a real example**
   ([seattlechannel.org/.../city-council-all-videos-index?videoid=x189286](https://www.seattlechannel.org/mayor-and-council/city-council/city-council-all-videos-index?videoid=x189286),
@@ -1582,7 +1613,22 @@ auditing it (2026-08-08) — two fixed since, one still open below:
     page had been completely empty, an ingest-time failure predating the
     modern-UA fix). Surfacing the *other* parts needs a real multi-part
     UI/model decision, not a scan fix — no other multi-part example
-    confirmed yet.
+    confirmed yet. **Also still missing, separate from the video-parts
+    gap: jurisdiction.** The user asked 2026-08-14 whether
+    `netapps.ocfl.net` could just be marked as Orange County, FL —
+    confirmed real via that domain's own `Content-Security-Policy:
+    frame-ancestors ... orangecountyfl.net` header and a `<meta
+    name="keywords" content="...Orange County, Archive">` tag, and the
+    exact right mechanism for this already exists and is already used
+    the same way elsewhere: `app/utils/jurisdiction_enrich.py`'s
+    `_KNOWN_DOMAINS` + `lookup_by_domain()` (today's callers: `lims.py`
+    for Minneapolis/Dallas County, both cases chosen for the same reason
+    — no reliable in-page jurisdiction text to extract). `generic_fallback.py`
+    never calls `lookup_by_domain()` at all right now — worth wiring in
+    as a last-resort jurisdiction fill for exactly this kind of page (no
+    `<title>`/`h1`/meta signal maps to a real jurisdiction, but the
+    domain itself unambiguously does), same low-risk shape as the
+    existing OnBase/DataBank cases already logged in this file.
   - **Palm Beach County FL
     (`discover.pbc.gov/...bcc-meeting-videos.aspx?videoid=...`) — a
     JS-rendered SharePoint page the empty-shell escalation deliberately
@@ -1592,7 +1638,21 @@ auditing it (2026-08-08) — two fixed since, one still open below:
     Tucson's real 153-char shell) never fires — widening it would make
     an enabled flag pay a ≥4s browser fetch on every ordinary no-video
     page. Needs either its own trigger idea or a dedicated look; note
-    the Seattle-style `videoid=` query param.
+    the Seattle-style `videoid=` query param. **User's own diagnosis,
+    2026-08-14**: this page's `videoid` param made them initially expect
+    a multi-video-feed problem like Seattle Channel's — checked directly
+    and that's not quite it (this specific SharePoint page has *zero*
+    static video/media of any kind, single or multiple; it's the
+    empty-shell case above, not a disambiguation case). **But their
+    underlying, more important point is real and independent of that**:
+    today's "no video found" result still offers "Request Transcript
+    from Audio" even when no video was found at all — which can't
+    possibly produce anything (there's no audio source to point the
+    transcription job at). Worth checking whether that CTA is already
+    conditioned on `video_url`/a real pointer existing anywhere else
+    this fallback returns a no-video result, since the same
+    can't-possibly-work state likely also shows on Wayne County/Tucson-
+    style genuinely-empty pages, not just this one.
   - **Video-only best-effort results are never archived** — the push
     gate (`app/main.py`, `segments or agenda_items or agenda_link`)
     predates the rebuild, but matters more now that the fallback finds
@@ -1611,6 +1671,24 @@ auditing it (2026-08-08) — two fixed since, one still open below:
     `&amp;v=` watch URLs (pure URL-shape variants, shipped), and the
     curated-pointer host list (Vimeo only until another unsupported
     video host shows up on a real page).
+  - **A live check 2026-08-14 of three already-archived pages
+    (`/m/meeting-7ac1da` = OCFL, `/m/meeting-38ca49` = Sacramento,
+    `/m/meeting-1e9bac` = Maricopa `id=4694`, the same meeting already
+    logged above) still shows pre-rebuild behavior** (Untitled/no video,
+    despite this file's own notes above saying those exact gaps are
+    fixed) — expected, not a regression: this rebuild's own entry in
+    `BACKLOG_DONE.md` says existing archived pages were deliberately
+    **not** re-resolved ("forward-looking fixes only"), and the "stale
+    archived transcripts have no automated refresh path" gap already
+    logged elsewhere in this file (no on-demand re-resolve short of the
+    passive 30-day `ARCHIVE_RECHECK_AFTER` cycle or the token-gated
+    admin endpoint) is exactly why. Also newly observed on the
+    Sacramento page specifically: its title renders as "Board Of
+    Supervisors Board Of Supervisors Meeting" — a real duplicated-phrase
+    bug, but since this is the same stale pre-rebuild page, **unconfirmed
+    whether a fresh resolve of the same URL still reproduces it** — worth
+    checking against a live re-resolve (not this pre-rebuild cached
+    page) before treating it as a current bug to fix.
 
 - **Sacramento County, CA's own agenda site
   (`agendanet.saccounty.gov`) — user-reported 2026-08-13, a third real
