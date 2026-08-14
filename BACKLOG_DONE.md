@@ -7231,3 +7231,64 @@ changelog of task titles.
   backstop expansion rules, unconfirmed-shape comments). Existing
   archived pages deliberately NOT re-resolved — the user's call:
   forward-looking fixes only.
+
+- **[Done 2026-08-14] Branch ruleset on `main` requiring the `test` check
+  — the second half of WO-2 (`AUDIT_EXECUTION_BRIEF.md`), closing the gap
+  BACKLOG.md's "CI/CD" entry left open (a red workflow was visible but
+  didn't gate merges).** Ryan created the ruleset directly in the GitHub
+  UI (`gh` lacked no permission for this — see below — the UI was just
+  faster): enforcement active, PR required with 0 required approvals,
+  force-push and branch-deletion blocked, `test` (from
+  `.github/workflows/test.yml`) as a required status check.
+
+  **Verified for real, per WO-2's acceptance criteria**, not just read
+  back from the API: pushed a throwaway branch
+  (`test/ruleset-verify-failing-check`) with a deliberately failing test,
+  opened PR #49, waited for the `test` check to go red, then confirmed
+  `gh pr view --json mergeable,mergeStateStatus` reported
+  `mergeStateStatus: "BLOCKED"` and — the stronger proof — that
+  `gh pr merge --squash` was actively rejected ("is not mergeable: the
+  base branch policy prohibits the merge"), not merely displayed as
+  unmergeable. Closed the PR and deleted the branch (both remote via
+  `gh pr close --delete-branch` and the local worktree) immediately
+  after. Work was done in an isolated `git worktree` rather than on the
+  checked-out `main`, since `main` had unrelated uncommitted changes
+  (`AUDIT_EXECUTION_BRIEF.md` edits, a `_to_delete/` scratch folder) that
+  weren't safe to disturb.
+
+  **`gh` has full API access to repository rulesets** (`gh api
+  repos/.../rulesets` and `PUT .../rulesets/<id>` both worked with the
+  existing `repo` token scope) — worth knowing for next time, since the
+  session was prepared to stop and hand this back to the UI if scope was
+  missing.
+
+  **Two follow-up refinements, same session, both via `gh api ...
+  --method PUT` with a JSON body** (the form-encoded `-F 'rules[][x]=y'`
+  flat syntax does *not* build nested rule-array objects correctly —
+  confirmed by a 422 "data matches no possible input" on every rule past
+  index 1 when tried; a plain JSON file via `--input` is the reliable
+  path for this endpoint):
+  1. `.github/workflows/test.yml`'s `on: push` (unfiltered) plus
+     `on: pull_request` ran the `test` check twice per feature-branch
+     push — confirmed live during the verification above (PR #49 showed
+     two separate `test` check runs). Changed to `push: branches: [main]`
+     — `pull_request` alone already covers every feature-branch push in
+     this repo's PR-first workflow, so this halves Actions minutes and
+     removes the ambiguity of two runs reporting under one status-check
+     context.
+  2. `allowed_merge_methods` on the ruleset's `pull_request` rule
+     defaulted to `["merge", "squash", "rebase"]`; restricted to
+     `["squash"]` to match `CLAUDE.md`'s own git-workflow convention
+     (`gh pr merge --squash --delete-branch`), converting a habit that
+     was previously just followed into one GitHub now enforces.
+
+  **Left as-is, a deliberate tradeoff, not an oversight:**
+  `strict_required_status_checks_policy` stays `false` — requiring
+  branches to be up to date with `main` before merge would force a
+  rebase-and-rerun on every merge, which is disproportionate at this
+  repo's PR volume. The real cost: a PR that passed CI against an older
+  `main` can still merge without re-running against the latest `main`,
+  which matters most exactly when two sessions are working the repo in
+  parallel the same afternoon (a real, repeated situation — see
+  `CLAUDE.md`'s "worked on by more than one session" note). If two
+  sessions ever actually break each other this way, flip this flag.

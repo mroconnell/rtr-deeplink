@@ -47,12 +47,13 @@ properly:
   `rtr-business/marketing/discoverability-ideas.md`) — included here
   only as a pointer so the audit doesn't duplicate it.
 - ~~**CI/CD — no automated test gate.**~~ **Fixed 2026-08-14** (WO-2 of
-  `AUDIT_EXECUTION_BRIEF.md`): `.github/workflows/test.yml` now runs
-  `pytest` + `npm test` on every push and PR, pinned to Python 3.12.3 to
-  match `render.yaml`. Branch protection requiring it is a separate,
-  Ryan-owned dashboard step (WO-2's acceptance criteria) — until that's
-  on, a red workflow is visible but not yet a hard merge block. See
-  `BACKLOG_DONE.md` for the full entry once that step is confirmed.
+  `AUDIT_EXECUTION_BRIEF.md`): `.github/workflows/test.yml` runs `pytest`
+  + `npm test` on every push to `main` and every PR (pinned to Python
+  3.12.3 to match `render.yaml`), and a branch ruleset on `main` requires
+  the `test` check to pass, blocks force pushes, and restricts deletions.
+  Verified for real (throwaway failing-test PR, confirmed merge actively
+  rejected, not just shown red) — see `BACKLOG_DONE.md`'s "Testing
+  infrastructure" section for the full entry.
 - **Docs hygiene — a live, confirmed example of drift, not a
   hypothetical.** Saved-search alert emails
   (`archive/search_alerts.py`, a real daily cron sending real emails,
