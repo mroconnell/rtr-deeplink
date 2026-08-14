@@ -1018,16 +1018,25 @@ auditing it (2026-08-08) — two fixed since, one still open below:
     container text comes back empty, deliberately not attempted yet
     given the risk of a fragile heuristic picking up the wrong heading on
     a page shaped differently again.
-  - **Real Render deployment of the new `playwright install --with-deps
-    chromium` build step is genuinely unverified** — see `render.yaml`'s
-    own comment and `headless_browser.py`'s docstring. Chromium needs
-    real system-level shared libraries Render's plain `python` buildpack
-    has never been confirmed to have (a much bigger ask than ffprobe's
-    single binary, which *did* turn out to already be present). May need
-    `runtime: docker` instead if `--with-deps` can't install what it
-    needs in Render's build environment. Needs a real deploy attempt,
-    expecting a real possible failure the way the worker's own first two
-    deploys hit real OOM crashes — not assumed to work on the first try.
+  - ~~**Real Render deployment of the `playwright install chromium`
+    build step is genuinely unverified**~~ **Verified working 2026-08-14.**
+    A fresh, never-archived Minneapolis LIMS meeting
+    (`lims.minneapolismn.gov/MarkedAgenda/COW/6144`) resolved fully
+    through production — real YouTube video, title, date, and 6
+    timestamped agenda items. LIMS's `resolve()` calls
+    `fetch_via_browser()` unconditionally for both of its fetches with
+    no non-browser path, so that success is direct proof the plain
+    `playwright install chromium` build step (post-`--with-deps`-removal,
+    see `render.yaml`'s incident comment) produces a launchable Chromium
+    on Render's `runtime: python` buildpack — Render's base image really
+    does carry the needed shared libraries, same as ffprobe turned out
+    to already be present. `runtime: docker` not needed. This
+    verification is also what green-lit enabling the generic fallback's
+    `GENERIC_FALLBACK_HEADLESS=1` escalation in prod the same day —
+    end-to-end confirmed post-deploy: the Wayne County, MI page (fully
+    Akamai-blocked, a total loss two days earlier) resolved through
+    production's own browser with real video/title/jurisdiction/date/
+    agenda-PDF, and got archived as a permanent page in the process.
   - **Headless-browser fetches are real, meaningfully slower than every
     other adapter here** — a real resolve for LIMS needs *two* sequential
     fetches (agenda page for title/date, JSON endpoint for video/
@@ -1418,17 +1427,19 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   genuinely different WAF product, not yet isolated.
 
   **Update 2026-08-14: the headless-browser escalation this entry asked
-  for is now built — but ships env-gated OFF, so this page stays broken
-  in prod until the flag is flipped.** Full detail in `BACKLOG_DONE.md`'s
-  rebuild entry: a block-family status (this page's real Akamai 403 was
-  the trigger it was built against) escalates to one real-Chromium
-  fetch, whose rendered HTML re-runs the same diagnosis. Verified
-  locally with the flag on against this exact live page: resolves fully
-  (real youtu.be video + agenda PDF + real title). **The remaining TODO
-  is operational, not code**: verify playwright actually works on Render
-  (render.yaml's own unresolved build question — e.g. confirm a
-  LIMS/SLC prod resolve succeeds) and then set
-  `GENERIC_FALLBACK_HEADLESS=1` on the resolver service.
+  for is now built AND enabled in prod.** Full detail in
+  `BACKLOG_DONE.md`'s rebuild entry: a block-family status (this page's
+  real Akamai 403 was the trigger it was built against) escalates to one
+  real-Chromium fetch, whose rendered HTML re-runs the same diagnosis.
+  Verified locally flag-on against this exact live page (resolves fully:
+  real youtu.be video + agenda PDF + real title). The operational
+  precondition — playwright actually working on Render — was then
+  verified for real the same day (a fresh, never-archived Minneapolis
+  LIMS meeting, `MarkedAgenda/COW/6144`, resolved fully through
+  production; LIMS has no non-browser path, so that's direct proof —
+  closing `render.yaml`'s open build question from the 2026-08-09
+  incidents), and `GENERIC_FALLBACK_HEADLESS=1` was committed to
+  `render.yaml`'s resolver env block (a literal value, not a secret).
 
 - **Residuals from the 2026-08-14 generic-fallback rebuild** (the build
   itself is in `BACKLOG_DONE.md`; these are the real leftovers it
