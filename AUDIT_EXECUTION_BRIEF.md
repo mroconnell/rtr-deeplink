@@ -26,6 +26,16 @@ are repeated here because every work order below is affected by at least one.
    origin/main`, then `gh pr create` + `gh pr merge --squash
    --delete-branch` from the worktree. Do not push a differently-named
    branch onto `main` via refspec; it gets flagged.
+
+   **Hard rule, added 2026-08-14 after a real incident:** never run `git
+   reset --hard`, `git checkout .`, or `git clean -fd` without running
+   `git stash -u` immediately before it — not "unless you checked," not
+   "unless the tree looked clean earlier." A session running WO-1 through
+   WO-3 did its `git status` check at session start, then ran `git reset
+   --hard origin/main` later in the same session and destroyed another
+   session's uncommitted `BACKLOG.md` edits (recovered via `git reflog`).
+   The check was correct; it was just stale by the time the destructive
+   command ran. The stash is what binds at the right moment.
 3. **Never grep a gitignored file with a broad pattern.** A real incident on
    2026-08-11 echoed `ARCHIVE_INGEST_TOKEN`'s plaintext value into a
    transcript and forced a rotation in three places. If you need an env
@@ -54,7 +64,7 @@ These are dashboard checks, not code. Three work orders are blocked on them.
 
 | # | Check | Blocks |
 |---|---|---|
-| P1 | Render → both Postgres instances: what plan? Free tier expires after 30 days. Backups/PITR on? Retention? | WO-4, WO-10 |
+| P1 | ~~Render → both Postgres instances: what plan?~~ **ANSWERED 2026-08-14:** `rtr-deeplink-db` is **Basic-256mb** (paid, ~$6/mo) — not at risk. Staging is free and expires 9/9/2026, which is intentional and disposable. Remaining sub-questions folded into WO-4 below. | WO-4, WO-10 |
 | P2 | Render → all three services: does the live plan match `render.yaml` (`starter`, `starter`, `standard`)? Current month's actual bill? | WO-4 |
 | P3 | GA: is the property receiving events? Are `submit_meeting_url` and `copy_link_to_time` visible in the last 30 days? | WO-9 |
 | P4 | Resend + Clerk: plan, cost, distance from free-tier ceiling. | WO-4 |
@@ -64,7 +74,32 @@ These are dashboard checks, not code. Three work orders are blocked on them.
 
 ---
 
-## Phase 1 — before outreach starts
+## Phase 1 — before outreach starts · **COMPLETE 2026-08-14** (PRs #46, #47, #48)
+
+WO-1 and WO-2 landed as specified. **WO-3's premise was wrong** — `.claude/`
+was never tracked in this repo (verified with `git log --all -- .claude/`,
+empty across all branches). The audit inferred tracking from `.gitignore`
+lacking the entry plus those files being present on disk; the copy it was
+reading had `.git` stripped, so tracking was never actually checkable. The
+`.gitignore` entry landed anyway as free insurance. Treat this as a
+reminder that the audit's UNVERIFIED markers were load-bearing.
+
+**WO-2 paid for itself immediately**, and in a way worth recording: both
+bugs it surfaced were *environment-masking* bugs, not code bugs. Bare
+`pytest` wasn't putting the repo root on `sys.path` (fixed with `python -m
+pytest`), and two nav tests were silently reading a real
+`CLERK_PUBLISHABLE_KEY` out of the local `.env` (fixed by defaulting it in
+`conftest.py`, matching the existing `ARCHIVE_INGEST_TOKEN` /
+`ADMIN_STATS_TOKEN` pattern). Until PR #47, "pytest passes" was partly a
+statement about one laptop rather than about the code — which is precisely
+the failure mode the suite was built to prevent.
+
+**Branch protection landed and was verified 2026-08-14** — a ruleset on
+`main` requiring the `test` check, confirmed to actually block merge (not
+just show red) with a throwaway failing-test PR; see `BACKLOG_DONE.md`'s
+"Testing infrastructure" section for the full record, including two
+follow-up refinements (the dual-trigger fix, squash-only merges). **Still
+open, Ryan's:** the Search Console sitemap re-submission.
 
 ### WO-1 · Fix `robots.txt` prefix match — **~15 min**
 
@@ -128,6 +163,10 @@ tracked files. Do not delete them locally.
 
 ## Phase 2 — the week after
 
+**Start with WO-5, not WO-4.** WO-4 is blocked on external checks P1, P2,
+and P4; WO-5 is blocked on nothing. Numbering here is dependency order
+within the audit, not a queue.
+
 ### WO-4 · Bring infra into the Blueprint + finish the cost inventory — **1-2 hrs** · *blocked on P1, P2, P4*
 
 **Problem.** `render.yaml` has no `databases:` block, so both Postgres
@@ -138,14 +177,37 @@ incident where a push silently reverted manually-set paid plans back to
 comment (`render.yaml:181`) that two of them "MUST" match, and nothing
 checks it.
 
-**Do.** Add a `databases:` block reflecting what P1 actually found. Add a
-startup log line on the worker and Archive asserting their `DATABASE_URL`
-hostnames match, failing loudly if not. Record the confirmed monthly total
-in `rtr-business/BUSINESS_OVERVIEW.md` (replacing the current partial
-figure) with the date it was confirmed.
+**Do.** Add a `databases:` block for `rtr-deeplink-db` (Basic-256mb,
+confirmed 2026-08-14). Deliberately exclude the free staging instance, with
+a comment saying it's disposable and expires 9/9/2026 — so a future reader
+doesn't "fix" its absence. Add a startup log line on the worker and Archive
+asserting their `DATABASE_URL` hostnames match, failing loudly if not.
+Record the confirmed monthly total in `rtr-business/BUSINESS_OVERVIEW.md`
+(replacing the current partial figure) with the date it was confirmed.
+
+**Three sub-questions P1 left open — resolve these as part of this WO:**
+
+1. **Storage headroom.** Basic-256mb names the RAM, not the disk. The
+   Archive grows monotonically (transcript segments are JSON blobs in
+   `transcript_versions.segments`). Get the current DB size and the plan's
+   storage ceiling, and record both. A full disk on Postgres is a hard
+   outage, and this is the first resource here that grows without anyone
+   deciding it should.
+2. **What the recovery window actually is.** Per Render's docs, PITR exists
+   on paid instances but the window follows the *workspace* tier — 3 days
+   on Hobby, 7 on Pro — and upgrading doesn't backfill it. Confirm which
+   applies. Three days is short for a solo operator: a bad migration on a
+   Friday, noticed the next Wednesday, is past the window.
+3. **Write down the restore procedure.** Render's PITR spins up a *new*
+   instance rather than rewinding the existing one, so recovery is a
+   swap — reconnect three services to a new `DATABASE_URL` under pressure.
+   That's not a button. Document the steps in `README.md`, and do one
+   throwaway PITR restore to a scratch instance to confirm the procedure is
+   real. An untested restore isn't a backup.
 
 **Acceptance.** `render.yaml` describes every paid resource. A deliberate
-hostname mismatch in local env produces a clear startup error.
+hostname mismatch in local env produces a clear startup error. Storage
+headroom, PITR window, and a tested restore procedure are all written down.
 
 ### WO-5 · SSRF guard on the resolve entrypoint — **2-4 hrs**
 

@@ -1,7 +1,14 @@
-# Runs the pytest + node test suites on every push and PR. Added
-# 2026-08-14 (AUDIT_EXECUTION_BRIEF.md WO-2) -- previously nothing ran the
-# suite between sessions, and a Render Blueprint sync auto-deploys `main`
-# on every push, so a regression could reach production ungated.
+# Runs the pytest + node test suites on every push to main and every PR.
+# Added 2026-08-14 (AUDIT_EXECUTION_BRIEF.md WO-2) -- previously nothing ran
+# the suite between sessions, and a Render Blueprint sync auto-deploys
+# `main` on every push, so a regression could reach production ungated.
+#
+# `push` is filtered to `main` on purpose: `pull_request` already covers
+# every feature-branch push (a PR is open from first push in this repo's
+# workflow), so an unfiltered `push` trigger ran the same suite twice per
+# push -- confirmed 2026-08-14 verifying the branch ruleset, see
+# BACKLOG_DONE.md. This also removes the ambiguity of two runs reporting
+# under the same `test` status-check context.
 #
 # The suite is fully hermetic (tests/conftest.py pins a temp SQLite DB,
 # HTTP is mocked, Playwright is monkeypatched) -- no network, Postgres, or
@@ -11,6 +18,7 @@ name: Test
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 jobs:
