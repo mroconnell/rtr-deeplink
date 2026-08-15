@@ -294,11 +294,15 @@ def test_table_lookup_recognizes_a_page_authored_abbreviation():
 def test_finalize_jurisdiction_repairs_trailing_bleed():
     # Real value, Hercules CA's Granicus page -- the still-open
     # granicus.py body-regex bug (BACKLOG.md) let agenda-heading text run
-    # on past the real city name.
+    # on past the real city name. State gets filled in on the now-clean
+    # name too (_fill_missing_state(), added 2026-08-15 running the
+    # workstream-4 backfill dry run): the ORIGINAL bled string could
+    # never resolve a state (it doesn't validate), so nothing upstream
+    # ever got the chance to look one up until now.
     result = je.finalize_jurisdiction(
         "City of Hercules. XIV. PUBLIC COMMUNICATIONS XV.", netloc="hercules.granicus.com"
     )
-    assert result.jurisdiction == "City of Hercules"
+    assert result.jurisdiction == "City of Hercules, CA"
     assert result.meeting_body is None
     assert result.confidence == "repaired"
 
@@ -306,6 +310,20 @@ def test_finalize_jurisdiction_repairs_trailing_bleed():
 def test_finalize_jurisdiction_preserves_state_suffix_through_a_repair():
     result = je.finalize_jurisdiction("City of Boston to accept and expend the amount of, MA")
     assert result.jurisdiction == "City of Boston, MA"
+    assert result.confidence == "repaired"
+
+
+def test_finalize_jurisdiction_fills_a_state_the_bled_original_never_could():
+    # Real gap found live 2026-08-15 running the workstream-4 backfill dry
+    # run: "City of Castle Pines History of Parks and Recreat" never
+    # validates, so the ORIGINAL adapter-time state-enrichment attempt
+    # correctly found nothing (a bled name can't be looked up). Once
+    # repaired down to "Castle Pines" -- a real, unambiguous CO city --
+    # this function gets one more shot at resolving a state, rather than
+    # leaving the repaired name state-less forever just because the first
+    # attempt (on the wrong, bled text) failed.
+    result = je.finalize_jurisdiction("City of Castle Pines History of Parks and Recreat")
+    assert result.jurisdiction == "City of Castle Pines, CO"
     assert result.confidence == "repaired"
 
 
@@ -323,9 +341,12 @@ def test_finalize_jurisdiction_splits_a_real_entity_prefix():
     # Real value, hacsc.granicus.com -- "Housing Authority" is a real,
     # distinct governing body, not bleed; splitting it out (rather than
     # discarding it, or leaving the whole string un-validatable) is the
-    # correct outcome per JURISDICTION_METADATA_PLAN.md's design.
+    # correct outcome per JURISDICTION_METADATA_PLAN.md's design. State
+    # gets filled in on the split-out jurisdiction half too
+    # (_fill_missing_state(), 2026-08-15) -- "Santa Clara" alone would be
+    # ambiguous, but "County of Santa Clara" resolves unambiguously.
     result = je.finalize_jurisdiction("Housing Authority of the County of Santa Clara")
-    assert result.jurisdiction == "County of Santa Clara"
+    assert result.jurisdiction == "County of Santa Clara, CA"
     assert result.meeting_body == "Housing Authority"
     assert result.confidence == "repaired"
 

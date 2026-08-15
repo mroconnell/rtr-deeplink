@@ -93,7 +93,7 @@ async def test_list_pages_surfaces_a_split_meeting_body():
     )
 
     result = await crud.list_pages(keyword="quorum", page_size=50)
-    row = next(p for p in result["pages"] if p["jurisdiction"] == "County of Santa Clara")
+    row = next(p for p in result["pages"] if p["jurisdiction"] == "County of Santa Clara, CA")
     assert row["meeting_body"] == "Housing Authority"
 
 

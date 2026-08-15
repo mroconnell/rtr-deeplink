@@ -612,6 +612,27 @@ class JurisdictionResult:
     confidence: str
 
 
+def _fill_missing_state(name: str, existing_suffix: str, netloc: Optional[str]) -> str:
+    """Real gap found live 2026-08-15 running the workstream-4 backfill
+    dry run: a repaired/split name frequently has no state at all, not
+    because none exists, but because the state-enrichment step upstream
+    (`enrich_jurisdiction_text()`, run once at the adapter's own
+    extraction time) tried to resolve a state for the BLED name before
+    this function ever cleaned it up -- "City of Castle Pines History of
+    Parks and Recreat" doesn't validate against any table, so that
+    earlier attempt correctly found nothing and gave up, even though the
+    real name it bled from ("Castle Pines") resolves to CO unambiguously
+    on its own. Gives the now-clean name one more shot via the same
+    `resolve_state()` used everywhere else, but only when no suffix
+    already survived from the original raw string -- never overrides a
+    state that was already there."""
+    if existing_suffix:
+        return existing_suffix
+    jurisdiction_type = "county" if _COUNTY_TYPE_HINT_RE.search(name) else "city"
+    state = resolve_state(name, jurisdiction_type, netloc=netloc)
+    return f", {state}" if state else ""
+
+
 def finalize_jurisdiction(
     raw_jurisdiction: Optional[str], *, netloc: Optional[str] = None
 ) -> JurisdictionResult:
@@ -651,13 +672,14 @@ def finalize_jurisdiction(
     trimmed = _trim_repair(base)
     if trimmed:
         repaired_name, _table = trimmed
-        return JurisdictionResult(f"{repaired_name}{suffix}", None, "repaired")
+        return JurisdictionResult(f"{repaired_name}{_fill_missing_state(repaired_name, suffix, netloc)}", None, "repaired")
 
     body = _split_entity_prefix(base)
     if body:
         jurisdiction_half = base[len(body):].strip()
         jurisdiction_half = re.sub(r"^\s*of\s+(the\s+)?", "", jurisdiction_half, flags=re.IGNORECASE)
-        return JurisdictionResult(f"{jurisdiction_half}{suffix}", body, "repaired")
+        final_suffix = _fill_missing_state(jurisdiction_half, suffix, netloc)
+        return JurisdictionResult(f"{jurisdiction_half}{final_suffix}", body, "repaired")
 
     if known:
         return JurisdictionResult(f"{known.name}, {known.state}", None, "fallback")

@@ -138,7 +138,7 @@ async def test_list_saved_items_surfaces_a_split_meeting_body():
 
     items = await crud.list_saved_items(user)
     saved = next(m for m in items["meetings"] if m["slug"] == slug)
-    assert saved["jurisdiction"] == "County of Santa Clara"
+    assert saved["jurisdiction"] == "County of Santa Clara, CA"
     assert saved["meeting_body"] == "Housing Authority"
 
 

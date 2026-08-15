@@ -308,7 +308,7 @@ async def test_ingest_resolution_repairs_a_bled_jurisdiction_end_to_end():
         url,
     )
     page = await crud.get_page_by_slug((await crud.lookup_page_for_url(url))["slug"])
-    assert page["jurisdiction"] == "City of Hercules"
+    assert page["jurisdiction"] == "City of Hercules, CA"
     assert page["meeting_body"] is None
     assert page["jurisdiction_confidence"] == "repaired"
 
@@ -325,7 +325,7 @@ async def test_ingest_resolution_splits_a_real_entity_prefix_end_to_end():
         url,
     )
     page = await crud.get_page_by_slug((await crud.lookup_page_for_url(url))["slug"])
-    assert page["jurisdiction"] == "County of Santa Clara"
+    assert page["jurisdiction"] == "County of Santa Clara, CA"
     assert page["meeting_body"] == "Housing Authority"
     assert page["jurisdiction_confidence"] == "repaired"
 
