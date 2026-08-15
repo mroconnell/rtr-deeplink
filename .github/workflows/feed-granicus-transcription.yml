@@ -1,0 +1,70 @@
+# Feeds 12 Granicus pages every 6 hours into the worker's existing
+# auto-transcription idle-time mechanism (worker/main.py's
+# maybe_generate_auto_job(), see BACKLOG_DONE.md's 2026-08-09 entry) --
+# no new transcription-job code, this just keeps real MeetingPage
+# candidates (video present, no transcript) flowing into the pool that
+# mechanism already pulls from.
+#
+# Runs on GitHub's own runners rather than a local launchd job (the
+# pattern scripts/com.redtaperecordings.fetch-youtube-transcripts.plist
+# uses) because Granicus, unlike YouTube, has no cloud-IP caption-fetch
+# blocking -- there's no reason this needs to run from a residential IP,
+# and a GitHub-hosted runner doesn't depend on Ryan's Mac being awake.
+#
+# Cadence (12 every 6h = 48/day) decided 2026-08-15 from the real
+# Granicus median meeting length (144 min, 321 real archived meetings)
+# and Whisper tiny's ~6x realtime speed -- see SOURCING_QUEUE.md's
+# "Cadence decided" note (rtr-business/research/) for the full math.
+#
+# The queue (scripts/granicus_auto_transcription_queue.txt) is the 481
+# Granicus "agenda-only" pages confirmed live 2026-08-15 to actually have
+# real video -- see rtr-business/research/session_report_2026-08-15.md.
+# scripts/feed_granicus_auto_transcription.py pops 12 off the front each
+# run and rewrites the file; this workflow commits that change back so
+# state persists across runs. At 12/run the queue lasts ~40 runs (~10
+# days) before it's naturally exhausted, at which point this workflow
+# becomes a silent no-op (the script exits cleanly on an empty queue).
+#
+# Requires two repo secrets (Settings -> Secrets and variables -> Actions),
+# separate from the ADMIN_STATS_TOKEN/RESOLVER_BASE_URL pair
+# daily-report.yml uses:
+#   ARCHIVE_BASE_URL     -- the Archive service's own base URL
+#   ARCHIVE_INGEST_TOKEN -- matching whatever's set on that Render service
+name: Feed Granicus auto-transcription queue
+
+on:
+  schedule:
+    # Every 6 hours, off the top of the hour per GitHub's own guidance on
+    # avoiding the exact-hour pile-up every other repo's cron jobs land on.
+    - cron: "13 */6 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  feed:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Feed the next batch
+        env:
+          ARCHIVE_BASE_URL: ${{ secrets.ARCHIVE_BASE_URL }}
+          ARCHIVE_INGEST_TOKEN: ${{ secrets.ARCHIVE_INGEST_TOKEN }}
+        run: python scripts/feed_granicus_auto_transcription.py
+
+      - name: Commit updated queue state
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add scripts/granicus_auto_transcription_queue.txt
+          git diff --cached --quiet && echo "No queue change to commit." && exit 0
+          git commit -m "Advance Granicus auto-transcription queue [skip ci]"
+          git push
