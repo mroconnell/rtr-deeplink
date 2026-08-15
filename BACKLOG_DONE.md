@@ -4249,6 +4249,72 @@ changelog of task titles.
 
 ## Platform coverage
 
+- **[Done 2026-08-14] New adapter: Seattle Channel (`seattlechannel.org`)
+  — confirmed live against two independent real meetings on the
+  `/videos?videoid={id}` page shape before writing any code, per this
+  repo's own convention** (the original investigation, 2026-08-12, only
+  had one confirmed example, x189286; x184865 was fetched fresh the same
+  session as this build to confirm the shape generalizes). Real data this
+  platform has that most unsupported ones don't: a direct, unauthenticated
+  `.mp4` URL, real populated SRT captions, and real per-agenda-item
+  `data-seek` timestamps — richer coverage than several already-shipped
+  adapters manage.
+
+  **The reliable disambiguator, confirmed against both real samples**: the
+  primary video's JW Player instance is always literally
+  `jwplayer('vidPlayer')` — a fixed, hardcoded element id — while any
+  *other* video embedded further down the same page (a real "related
+  story" clip, confirmed present on the x184865 sample) uses a different,
+  per-video numeric id (`jw4052508` on that sample). `seattlechannel.py`
+  slices the HTML to the `vidPlayer` block specifically, bounded by the
+  `playerInstance.on('complete', ...)` call that immediately follows every
+  real `setup()` call in this template — confirmed this is what keeps the
+  adapter from ever picking up the unrelated video's file/caption/title,
+  not just a theoretical concern (a real fixture test exercises exactly
+  this).
+
+  **Deliberately scoped narrower than the whole domain**: `detect_platform()`
+  only claims `seattlechannel.org` URLs whose path is exactly `/videos`
+  *and* carry a `videoid` query param — the older
+  `/mayor-and-council/city-council/city-council-all-videos-index?videoid=...`
+  feed page (many *other* meetings' videos below the requested one, the
+  original 2026-08-12 find) and a bare `/videos` with no `videoid` (an
+  ambiguous case never actually seen live) both fall through to
+  `generic_fallback.py` instead, which already handles the `/videos?
+  videoid=` shape reasonably via its own JW-config scan pattern (see this
+  file's 2026-08-14 generic-fallback rebuild entry) and the feed page via
+  its existing scan. Rather than guess at `CalendarPageError`-style
+  candidate-list handling for the no-`videoid` case with zero real
+  examples to verify against, this stays on the already-adequate fallback
+  path — narrower scope, but every claimed shape is real-verified, not
+  speculative.
+
+  **Real gap found building this, not fixed here (out of scope — a shared
+  `vtt_parser.py` heuristic, not this adapter)**: the first fixture
+  attempt trimmed the real caption file to ~60 lines, which turned out to
+  be a genuine trap. This transcript's heavy real use of
+  `&gt;&gt;&gt;`/`&gt;&gt;` speaker-change markers (nearly every line) means
+  each `&gt;`'s own embedded lowercase letters (`g`, `t`) skew
+  `normalize_shouting_caption()`'s letter-ratio heuristic — it runs
+  *before* entity-unescaping, by design (see `unescape_caption_entities()`'s
+  own docstring: "run once, last") — so over a short sample the lowercase
+  ratio crosses `_SHOUT_LOWERCASE_RATIO_MAX` and the heuristic concludes
+  the ALL-CAPS transcript "isn't really shouting," leaving it uppercase.
+  Confirmed against the real, full 7,320-line file that this is purely a
+  too-small-sample artifact, not a real production gap — normalization
+  correctly fires once there's enough real prose to dilute the marker
+  density (confirmed to flip around the 700-line mark on this real file).
+  Fixture grown to a real 900-line/225-cue excerpt instead of casually
+  reordering a deliberately-ordered shared pipeline.
+
+  Live-verified end to end against both real URLs through a local resolver
+  instance: x184865 ("City Council 3/3/2026") returns 1,830 real
+  transcript segments, `en`, no warnings, and 5 real agenda items with
+  `endOffset` chained to the next item's start (same convention as
+  Granicus/IQM2/LIMS); x189286 ("City Council 8/11/2026," the original
+  find) resolves equally cleanly. 8 new fixture-backed tests
+  (`tests/test_seattlechannel.py`), full suite green (729 tests).
+
 - **[Done 2026-08-13] New adapter: CHAMP/ChampDS (`play.champds.com`) —
   confirmed live against 6 independent real customers before writing
   any code, per this repo's own convention (the original investigation

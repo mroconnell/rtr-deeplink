@@ -834,119 +834,15 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   debugging (what does `iqm2.py`'s own `aiohttp` fetch actually receive
   from Render, not just a replayed local `curl`) rather than a guess.
 
-- **Seattle Channel (`seattlechannel.org`) — new platform, not supported
-  at all today, flagged by the user 2026-08-12 with a real example**
-  ([seattlechannel.org/.../city-council-all-videos-index?videoid=x189286](https://www.seattlechannel.org/mayor-and-council/city-council/city-council-all-videos-index?videoid=x189286),
-  "City Council 8/11/2026"). User's own diagnosis was right on both
-  counts, confirmed live: the page really is "one video with a lot of
-  good detail" sitting above "a whole feed of videos" for *other*
-  meetings, and the `?videoid=x189286` query param really is the key
-  that disambiguates which one is wanted.
-
-  **Root cause of "no video found" today, confirmed via direct `curl`
-  (plain HTTP, no JS needed)**: every video on the page — the requested
-  one *and* the whole feed below it — has its real direct `.mp4` URL
-  (`video.seattle.gov/media/council/{file}.mp4`) sitting only inside an
-  inline `onclick="javascript:loadJWPlayer7('//video.seattle.gov/...',
-  ...)"` string, never as a real `href`/`src` attribute. That's exactly
-  what neither `media_scan.scan_media_urls()` nor
-  `find_platform_link()` look inside — both are `href`/`src`-attribute
-  scanners, so this page has zero matches for either, which is why
-  today's `generic_fallback.py` result comes back completely empty
-  rather than finding the *wrong* video from the feed — there's nothing
-  in an `href`/`src` for it to (correctly or incorrectly) find at all.
-
-  **What a real adapter has to work with here is unusually rich for an
-  unsupported platform** — confirmed present in the raw HTML for *every*
-  feed item, not just the requested one:
-  - `<meta name="video_date" content="2026-08-11">` — a clean,
-    machine-readable date, no parsing needed.
-  - The page's own `<title>` (`"City Council 8/11/2026 |
-    seattlechannel.org"`) already matches the requested video exactly,
-    not the feed's first/most-recent item.
-  - Each feed item's `loadJWPlayer7(...)` call carries, as plain
-    JS-string arguments: the direct `.mp4` URL, a full real agenda
-    description as HTML (e.g. this meeting's: "Call to Order; Roll
-    Call; Proclamation: Susan Han Day; ...; CB 121254: relating to
-    rental agreement regulation; ..."), title, date, duration, a numeric
-    ID, and a relative SRT caption path
-    (`documents/SeattleChannel/closedcaption/2026/{file}.srt`) — a real
-    caption file per meeting, not just a maybe.
-  - **The disambiguation signal is exactly what the user guessed**: each
-    feed item's wrapping `<a href="…?videoid={id}" onclick="…">` pairs a
-    real `videoid` with its own `loadJWPlayer7(...)` call — so scoping
-    extraction to the one `<a>` whose `videoid` matches the URL's own
-    query param (not "the first `.mp4` on the page," which could easily
-    be a *different* meeting from the feed) is the reliable way to get
-    the right video, confirmed consistent here: the top-of-page player
-    init and the matching feed item both point at the identical
-    `council_081126_2022663.mp4`.
-
-  **Open question, not yet checked**: what happens when a Seattle
-  Channel URL has no `?videoid=` at all (just the bare index page) —
-  the user's own framing ("a video ID fed in with the URL *sometimes*")
-  implies this is a real, not-yet-seen case, possibly needing the same
-  "ambiguous, here are the candidates" handling `CalendarPageError`
-  already gives Legistar calendar pages, rather than silently guessing
-  the first/most-recent feed item.
-
-  **Found, and it's a real upgrade — user's own alternate suggestion,
-  confirmed live 2026-08-12**: the same meeting at
-  [seattlechannel.org/videos?videoid=x189286](https://www.seattlechannel.org/videos?videoid=x189286)
-  (vs. the original `/mayor-and-council/city-council/city-council-all-
-  videos-index?videoid=...` path) has **zero feed items** (`curl`
-  confirms 0 matches for the `tiledThumbnailItem` class that made the
-  other URL confusing) — "the only city council video is the top one,"
-  exactly as the user described. This isn't just a cleaner page, it's a
-  structurally simpler extraction target:
-  - The video's real source config sits in one plain
-    `jwplayer('vidPlayer').setup({ sources: [{file:
-    "//video.seattle.gov/media/council/council_081126_2022663.mp4", ...}],
-    tracks: [{file: "documents/seattlechannel/closedcaption/2026/
-    council_081126_2022663.srt", kind: "captions", ...}], ga: {idstring:
-    'City Council 8/11/2026'} })` call in a `<script>` tag — title,
-    direct mp4, and caption path all in one well-scoped JS object literal,
-    no per-feed-item disambiguation needed at all (same "real JSON/JS
-    object embedded in a script tag" shape this codebase already parses
-    elsewhere — Cablecast's `window.__remixContext`, ChampDS's
-    `playapi.champds.com` response).
-  - The SRT caption file is *also* separately reachable as a plain
-    `<a href="documents/SeattleChannel/closedcaption/2026/council_081126
-    _2022663.srt">` inside `.episodeDescription` — a real `href`
-    attribute this time, confirming the user's "the caption file is
-    right there downloadable in the video description" observation and
-    giving a second, even-simpler extraction path for captions alone.
-  - **A genuine bonus found while checking**: `.seekItem` elements
-    (`<a class="seekItem" href="#" data-seek="8865">CB 121254: relating
-    to rental agreement regulation - 2:27:45</a>`) give real per-agenda-
-    item *timestamps* (`data-seek`, in seconds) paired with real item
-    text — unlike Legistar's untimed agenda table (above), this is
-    exactly the shape `ResolvedMeeting.agenda_items` wants
-    (`List[TranscriptSegment]`, real start times), not a compromise or
-    a new field needed.
-  - Same `?videoid=` disambiguation question as the other URL still
-    applies here (what happens with none present) — not yet checked
-    whether `/videos` bare (no query param) behaves differently than
-    the `all-videos-index` page did.
-
-  **Given this page is both cleaner and richer, it's the better build
-  target of the two** — worth confirming a second real `/videos?videoid=`
-  example before writing `seattlechannel.py`, same convention as
-  everywhere else in this file, but this one URL shape alone already
-  looks sufficient for direct video + real captions + timestamped agenda,
-  better coverage than several already-shipped adapters manage.
-
-  **Update 2026-08-14: the generic fallback now handles the
-  `/videos?videoid=` page directly — full detail in `BACKLOG_DONE.md`'s
-  rebuild entry.** Live-verified: real mp4 (protocol-relative, via the
-  new JW-config `file:` scan pattern), real SRT captions (7,210 real
-  segments), and the real date from `<meta name="video_date">`. **What a
-  dedicated `seattlechannel.py` would still add over the fallback — the
-  only reason this entry stays open**: the `data-seek` per-agenda-item
-  timestamps (exactly `agenda_items`' shape, richer than several shipped
-  adapters), and the `?videoid=`-disambiguation handling for the
-  feed-style index pages the fallback deliberately doesn't scan (a feed
-  page carries many *other* meetings' mp4s — wrong-video guard).
+~~**Seattle Channel (`seattlechannel.org`) — new platform, not supported
+  at all today**~~ **Built 2026-08-14 — new `app/platforms/seattlechannel.py`,
+  full detail in `BACKLOG_DONE.md`.** Confirmed live against two independent
+  real meetings on the `/videos?videoid={id}` shape: direct mp4, real SRT
+  captions, and real per-item `data-seek` agenda timestamps. Scoped
+  narrowly to that exact URL shape — the older feed-style index page and a
+  bare `/videos` with no `videoid` are deliberately left to
+  `generic_fallback.py`'s own JW-config scan, which already handles them
+  reasonably (see `BACKLOG_DONE.md`'s 2026-08-14 rebuild entry).
 
 - **`generic_fallback.py`'s YouTube-embed branch had no page-level
   metadata backfill, so CRRMA's meeting pages showed "Untitled meeting"
