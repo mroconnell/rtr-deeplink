@@ -2108,11 +2108,18 @@ unusually wide, and the missing auto-scroll toggle on archived pages~~
     passive 30-day `ARCHIVE_RECHECK_AFTER` cycle or the token-gated
     admin endpoint) is exactly why. Also newly observed on the
     Sacramento page specifically: its title renders as "Board Of
-    Supervisors Board Of Supervisors Meeting" — a real duplicated-phrase
-    bug, but since this is the same stale pre-rebuild page, **unconfirmed
-    whether a fresh resolve of the same URL still reproduces it** — worth
-    checking against a live re-resolve (not this pre-rebuild cached
-    page) before treating it as a current bug to fix.
+    Supervisors Board Of Supervisors Meeting." **Resolved 2026-08-15 —
+    checked with a live re-resolve of the real URL
+    (`agendanet.saccounty.gov/BoardofSupervisors/Meetings/ViewMeeting?doctype=1&id=10231`),
+    not the stale cached page: it reproduces identically today
+    (`title="Board Of Supervisors Board Of Supervisors Meeting"`).** Not
+    a stale-cache artifact — this is real text straight from the source
+    page's own agenda-link `title` attribute (`_AGENDA_LINK_TITLE_RE`),
+    matching CLAUDE.md's own already-documented reasoning for this exact
+    shape: plausibly a real `"{meeting type} {body name} MEETING"`
+    template that happens to coincide here, not a confirmed universal
+    artifact worth guessing a general dedup rule from a single example.
+    **Deliberately not a bug to fix** — no code change made.
 
 - **Sacramento County, CA's own agenda site
   (`agendanet.saccounty.gov`) — user-reported 2026-08-13, a third real
