@@ -197,8 +197,7 @@ _BEST_EFFORT_VIDEO_WARNING = (
 )
 _NO_VIDEO_FOUND_WARNING = (
     "This city isn't officially supported yet, so we're trying our best — but we couldn't find a "
-    "video on this page automatically. You can try to request a transcript from the audio, or go "
-    "straight to the original source."
+    "video on this page automatically. Try going straight to the original source instead."
 )
 _VIDEO_POINTER_WARNING = (
     "This city isn't officially supported yet, so we're trying our best — we found what looks "
