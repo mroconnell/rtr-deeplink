@@ -388,6 +388,61 @@ their content). The two genuinely new:
   pages join `sitemap.xml` immediately or after a corpus-growth pass
   gives them real content.
 
+## Data sourcing / coverage growth (2026-08-15)
+
+Raised by the user after the jurisdiction pipeline shipped, asking what
+a *future* Granicus/Swagit bulk-pull round (like the ~1154-URL Granicus
+batch and its Swagit companion this session ingested, 204/204 and
+207/207 clean after filtering) should do differently. Confirmed first:
+that batch's success/failure was entirely a video/caption-availability
+question (dead links, 0-segment archive.org captures) — completely
+orthogonal to jurisdiction quality, since this session never touched
+Granicus's/Swagit's own video/caption-fetching code. So these ideas are
+about *finding more real candidate URLs*, not about anything the
+jurisdiction work itself would unlock.
+
+- **Census-place-table-driven candidate generation.** Didn't exist as
+  reusable data before this session; `app/utils/jurisdiction_data/
+  places.csv` (real US Census Gazetteer incorporated places, ~2,243
+  unique names) is now a complete, systematic list that could seed
+  candidate discovery instead of only classifying URLs already found —
+  e.g. probing `{place-slug}.granicus.com` / `.new.swagit.com` for every
+  Census place, or as search-query seed terms. Real, unverified
+  question before building anything: how well Census place *names* map
+  to actual Granicus/Swagit *subdomain* conventions (the "(balance)"/
+  consolidated-government naming quirks this session's own data fix
+  dealt with are one small example of the mismatch risk) — would need
+  checking against a sample of known-real customer subdomains first,
+  same "verify before generalizing" convention as everywhere else in
+  this repo.
+- **Legistar as a second discovery channel for Granicus cities.**
+  Legistar doesn't host its own video — confirmed this repo already
+  delegates it straight to Granicus (`resolve_via_platform()`, see
+  CLAUDE.md's platform-wrapper convention). So a Legistar-sourced URL
+  list isn't new resolution capability, it's a *different candidate
+  list* that might contain real Granicus customers the archive.org
+  scrape missed. Worth doing only if a real Legistar URL source (a
+  directory, another archive.org query) turns up — not worth inventing
+  one from scratch.
+- **Whether to exclude school districts/MPOs/transit authorities from a
+  future pull is a scope decision, not a data-quality one — flagged,
+  not recommended either way.** The jurisdiction pipeline was
+  deliberately built so these don't need excluding (`finalize_jurisdiction()`'s
+  "unverified" tier stores them as-is rather than mangling or dropping
+  them — real examples confirmed live: Warren County Public Schools VA,
+  Broward MPO). Filtering them at *sourcing* time would only make sense
+  if the product goal narrows to "cities and counties specifically"
+  rather than "public government meetings broadly" — that's the user's
+  call to make, not a technical fix to build.
+- **How much headroom is actually left in "going deeper" on the
+  existing Granicus/Swagit lists is unknown** — nobody has checked how
+  complete the original archive.org-sourced Granicus list or the Swagit
+  companion list actually are against the real universe of Granicus/
+  Swagit customers. Worth a real check (even a rough one, e.g. sampling
+  known customer directories if either platform publishes one) before
+  assuming there's more to find there versus the Census-driven approach
+  above finding it more systematically.
+
 - **"Famous moments in public comment" curated collection page.** A
   hand-curated, permanent page of notable public-hearing moments (the
   user's example: Dave Chappelle speaking against a housing development
