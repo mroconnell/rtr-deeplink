@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 
 import aiohttp
 from dotenv import load_dotenv
@@ -38,6 +38,7 @@ from .platforms.media_probe import is_plausible_meeting_duration, probe_duration
 from .platforms.models import ResolvedMeeting
 from .platforms.youtube import YouTubeAssetFinder
 from .utils.clerk_auth import clerk_frontend_api_url, get_clerk_user_id
+from .utils.jurisdiction_enrich import finalize_jurisdiction
 from .utils.url_guard import BlockedURLError, check_destination
 from .utils.url_normalize import normalize_url
 
@@ -383,6 +384,17 @@ async def resolve(request: Request, req: ResolveRequest, background_tasks: Backg
         }
 
     payload = result.model_dump()
+    # Diagnostic only -- computed here for /admin/stats visibility into
+    # extraction quality at resolve time, but result.jurisdiction (both in
+    # `payload` and the `jurisdiction=` param below) is deliberately left
+    # untouched: this table logs the raw adapter output, never a repaired
+    # value (see MeetingResolution.jurisdiction_confidence's own comment,
+    # app/db/models.py). The Archive is the only place a repaired/split
+    # jurisdiction actually gets written -- see
+    # archive/db/crud.py's _find_or_create_page().
+    jurisdiction_confidence = finalize_jurisdiction(
+        result.jurisdiction, netloc=urlparse(result.source_url).netloc
+    ).confidence
     resolution_id = await safe(
         crud.log_resolution,
         input_url=req.url,
@@ -401,6 +413,7 @@ async def resolve(request: Request, req: ResolveRequest, background_tasks: Backg
         title=result.title,
         date=result.date,
         jurisdiction=result.jurisdiction,
+        jurisdiction_confidence=jurisdiction_confidence,
         resolved_payload=payload,
         resolve_duration_ms=int((time.monotonic() - start) * 1000),
     )

@@ -263,3 +263,120 @@ def test_known_jurisdiction_display_is_case_insensitive():
 
 def test_known_jurisdiction_display_returns_none_for_an_unconfirmed_domain():
     assert je.known_jurisdiction_display("some-random-city.example.com") is None
+
+
+# --- finalize_jurisdiction() -- ingest-time validation/repair/split,
+# built from the 2026-08-15 audit of all 649 real archived jurisdiction
+# values. See JURISDICTION_METADATA_PLAN.md for the full design and
+# BACKLOG.md's "Census-table baseline validation" entry for the data this
+# was tuned against. Every case below is a real value pulled from that
+# audit, not invented.
+
+def test_finalize_jurisdiction_validates_a_clean_name_unchanged():
+    result = je.finalize_jurisdiction("City of Sunnyvale, CA")
+    assert result.jurisdiction == "City of Sunnyvale, CA"
+    assert result.meeting_body is None
+    assert result.confidence == "validated"
+
+
+def test_finalize_jurisdiction_repairs_trailing_bleed():
+    # Real value, Hercules CA's Granicus page -- the still-open
+    # granicus.py body-regex bug (BACKLOG.md) let agenda-heading text run
+    # on past the real city name.
+    result = je.finalize_jurisdiction(
+        "City of Hercules. XIV. PUBLIC COMMUNICATIONS XV.", netloc="hercules.granicus.com"
+    )
+    assert result.jurisdiction == "City of Hercules"
+    assert result.meeting_body is None
+    assert result.confidence == "repaired"
+
+
+def test_finalize_jurisdiction_preserves_state_suffix_through_a_repair():
+    result = je.finalize_jurisdiction("City of Boston to accept and expend the amount of, MA")
+    assert result.jurisdiction == "City of Boston, MA"
+    assert result.confidence == "repaired"
+
+
+def test_finalize_jurisdiction_never_trims_a_legitimately_long_real_name():
+    # Real value, a real Bay Area agency -- trimming from the right would
+    # eventually hit "Bay" (a real place), but nothing in the discarded
+    # tail looks like bleed, so this must be left whole.
+    result = je.finalize_jurisdiction("Bay Area Headquarters Authority")
+    assert result.jurisdiction == "Bay Area Headquarters Authority"
+    assert result.meeting_body is None
+    assert result.confidence == "unverified"
+
+
+def test_finalize_jurisdiction_splits_a_real_entity_prefix():
+    # Real value, hacsc.granicus.com -- "Housing Authority" is a real,
+    # distinct governing body, not bleed; splitting it out (rather than
+    # discarding it, or leaving the whole string un-validatable) is the
+    # correct outcome per JURISDICTION_METADATA_PLAN.md's design.
+    result = je.finalize_jurisdiction("Housing Authority of the County of Santa Clara")
+    assert result.jurisdiction == "County of Santa Clara"
+    assert result.meeting_body == "Housing Authority"
+    assert result.confidence == "repaired"
+
+
+def test_finalize_jurisdiction_does_not_split_off_a_bare_type_phrase():
+    # Real bug caught testing this fix against all 649 archived rows:
+    # "The City of Memphis" and "City and County of Denver" both look
+    # like the entity-split shape, but "The City"/"City and County" are
+    # not real distinct entities, just the ordinary jurisdiction-type
+    # phrasing -- splitting them off would produce meaningless bodies.
+    result = je.finalize_jurisdiction("The City of Memphis, TN")
+    assert result.meeting_body is None
+    assert result.jurisdiction == "The City of Memphis, TN"
+
+    result = je.finalize_jurisdiction("City and County of San Francisco")
+    assert result.meeting_body is None
+    assert result.jurisdiction == "City and County of San Francisco"
+
+
+def test_finalize_jurisdiction_authoritative_domain_overrides_even_a_plausible_extraction():
+    # The real Holladay bug this design exists to close: PrimeGov's own
+    # text extraction on slc.primegov.com sometimes finds a genuine,
+    # table-valid *wrong* city ("City of Holladay, UT" -- Holladay is a
+    # real Utah city) instead of the real header. Table validation alone
+    # can never catch a plausible-but-wrong value; only an authoritative
+    # domain override can.
+    result = je.finalize_jurisdiction("City of Holladay, UT", netloc="slc.primegov.com")
+    assert result.jurisdiction == "Salt Lake City, UT"
+    assert result.confidence == "authoritative"
+
+
+def test_finalize_jurisdiction_authoritative_domain_fills_a_blank_too():
+    result = je.finalize_jurisdiction(None, netloc="slc.primegov.com")
+    assert result.jurisdiction == "Salt Lake City, UT"
+    assert result.confidence == "authoritative"
+
+
+def test_finalize_jurisdiction_fallback_domain_fires_on_blank_or_unvalidated_extraction():
+    # A "fallback"-strength entry fires whenever extraction leaves nothing
+    # usable -- blank, or present but not table-valid -- unlike
+    # "authoritative", which overrides even a plausible-looking real
+    # extraction (see the Holladay test above). This is deliberately
+    # different from "only when blank": alexandria.granicus.com is
+    # registered because this single-tenant customer is confirmed to
+    # always be Alexandria, VA, so an unvalidatable extraction on this
+    # specific host is still safer to answer from the registry than to
+    # leave unverified.
+    result = je.finalize_jurisdiction(None, netloc="alexandria.granicus.com")
+    assert result.jurisdiction == "Alexandria, VA"
+    assert result.confidence == "fallback"
+
+    result = je.finalize_jurisdiction("Not A Real Place Zzyzx", netloc="alexandria.granicus.com")
+    assert result.jurisdiction == "Alexandria, VA"
+    assert result.confidence == "fallback"
+
+
+def test_finalize_jurisdiction_does_not_consult_an_unregistered_domain():
+    result = je.finalize_jurisdiction("Some Unvalidatable Text", netloc="totally-unknown-host.example.com")
+    assert result.jurisdiction == "Some Unvalidatable Text"
+    assert result.confidence == "unverified"
+
+
+def test_finalize_jurisdiction_returns_blank_confidence_for_nothing_at_all():
+    result = je.finalize_jurisdiction(None)
+    assert result.jurisdiction is None
+    assert result.confidence == "blank"

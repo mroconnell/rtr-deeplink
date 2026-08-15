@@ -91,6 +91,7 @@ async def log_resolution(
     title: Optional[str] = None,
     date: Optional[str] = None,
     jurisdiction: Optional[str] = None,
+    jurisdiction_confidence: Optional[str] = None,
     resolved_payload: Optional[dict] = None,
     resolve_duration_ms: Optional[int] = None,
 ) -> int:
@@ -124,6 +125,7 @@ async def log_resolution(
             title=title,
             date=date,
             jurisdiction=jurisdiction,
+            jurisdiction_confidence=jurisdiction_confidence,
             resolved_payload=resolved_payload,
             resolve_duration_ms=resolve_duration_ms,
         )

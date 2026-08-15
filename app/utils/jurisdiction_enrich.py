@@ -253,7 +253,22 @@ def find_zip_addresses(text: str) -> List[Tuple[str, str, str]]:
 class KnownJurisdiction:
     name: str
     type: str  # "city" or "county"
+    # "fallback" (default): used only to fill a missing state, or to
+    # supply a jurisdiction when the caller found none at all -- never
+    # overrides a real extracted name, even a wrong one. "authoritative":
+    # this domain's own page-text extraction is *confirmed unreliable*
+    # (today: only slc.primegov.com -- see that entry's own comment for
+    # why), so this entry should win outright, even over a successful-
+    # looking extraction. Kept rare and evidence-backed on purpose --
+    # every domain defaults to "fallback" unless a real, documented
+    # incident earns the stronger tier. Added 2026-08-15 as part of
+    # JURISDICTION_METADATA_PLAN.md's registry-in-enricher design; not
+    # yet consulted by any caller (PrimeGov's own resolve() still has its
+    # own separate, untouched known_jurisdiction_display() call for this
+    # -- see BACKLOG.md's "Future refactor, deliberately deferred" entry
+    # for why that's staying as-is until this design is proven).
     state: str
+    strength: str = "fallback"  # "fallback" | "authoritative" -- see comment above
 
 
 # Confirmed, real (domain, jurisdiction) pairs -- the single most reliable
@@ -310,7 +325,7 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     # on the page can outrank the real header), so this domain is looked
     # up as a full override in primegov.py, not just a missing-state fill
     # -- see known_jurisdiction_display() below.
-    "slc.primegov.com": KnownJurisdiction("Salt Lake City", "city", "UT"),
+    "slc.primegov.com": KnownJurisdiction("Salt Lake City", "city", "UT", strength="authoritative"),
 }
 
 
@@ -413,3 +428,208 @@ def enrich_jurisdiction_text(
     jurisdiction_type = "county" if _TYPE_HINT_RE.search(jurisdiction) else "city"
     state = resolve_state(jurisdiction, jurisdiction_type, netloc=netloc, page_text=page_text)
     return f"{jurisdiction}, {state}" if state else jurisdiction
+
+
+# --- Validation, repair, and ingest-time finalization (2026-08-15) ---
+#
+# Everything above this point answers "given a name, what's its state" --
+# built and proven first (see BACKLOG_DONE.md's "no-state jurisdiction
+# audit"). This section answers a different, later question this repo's
+# own audit surfaced: "is the *name itself* trustworthy at all, and can a
+# broken one be repaired automatically." Design and the real data behind
+# it (all 649 archived jurisdictions, an extraction-convention tournament,
+# a baseline-validation pass) live in JURISDICTION_METADATA_PLAN.md --
+# this is the implementation, not a fresh design.
+#
+# Single entry point: `finalize_jurisdiction()`, called once at ingest
+# time (archive/db/crud.py's `_find_or_create_page()`), not per-adapter --
+# see BACKLOG.md's "Future refactor, deliberately deferred" entry for why
+# this is deliberately NOT wired into every adapter's own extraction path.
+
+_COUNTY_TYPE_HINT_RE = re.compile(r"\b(?:county|parish|borough)\b", re.IGNORECASE)
+_STATE_SUFFIX_RE = re.compile(r",\s*([A-Za-z]{2})\.?\s*$")
+# Bare government-type words -- if an attempted split leaves nothing but
+# one of these as the "body," it isn't a real entity name, just the
+# ordinary "Type of Name" shape (e.g. "City of Boston") that should never
+# be split in the first place.
+_BARE_TYPE_WORDS = {"city", "county", "town", "township", "village", "borough", "parish"}
+
+
+def _is_bare_type_phrase(body: str) -> bool:
+    """True for "City", "The City", "City and County", "The County" --
+    every real word in `body` (ignoring a leading "the" and any "and") is
+    just a government-type word, so there's no real distinct entity to
+    split off. Real bug caught testing against all 649 archived rows:
+    the original single-word check only caught bare "City"/"County" and
+    missed "The City of Memphis" / "City and County of Denver" / "City
+    and County of San Francisco" -- each would have split off a
+    meaningless "The City"/"City and County" body instead of leaving the
+    already-fine jurisdiction whole."""
+    words = re.sub(r"^the\s+", "", body, flags=re.IGNORECASE).lower().split()
+    words = [w for w in words if w != "and"]
+    return bool(words) and all(w in _BARE_TYPE_WORDS for w in words)
+
+
+def _table_lookup(name: str) -> Optional[Tuple[str, List[str]]]:
+    """(table, states) if any normalization candidate of `name` is a real
+    known place or county name -- ambiguous (multi-state) still counts as
+    "known" here, since this validates the NAME, not the state (a
+    separate, already-solved problem above). Checks the county table
+    first when the name itself says county/parish/borough, mirroring
+    `enrich_jurisdiction_text()`'s own type-detection, so "York County"
+    matches the real county instead of one of the 5 unrelated places
+    named "York"."""
+    name = name.strip().rstrip(".,;:")
+    if not name:
+        return None
+    county_first = bool(_COUNTY_TYPE_HINT_RE.search(name))
+    tables = (
+        [("county", _COUNTY_STATES), ("place", _PLACE_STATES)]
+        if county_first
+        else [("place", _PLACE_STATES), ("county", _COUNTY_STATES)]
+    )
+    for candidate in _normalize_candidates(name):
+        for label, table in tables:
+            if candidate in table:
+                return label, sorted(set(table[candidate]))
+    return None
+
+
+_ROMAN_NUMERAL_RE = re.compile(r"\b[IVXLC]{2,6}\.?\b")
+
+
+def _looks_like_bleed(tail: str) -> bool:
+    """Sanity check on text a trim would discard: does it look like
+    sentence/agenda bleed (lowercase prose, roman-numeral list markers,
+    digits) rather than part of a real longer name? Confirmed against the
+    2026-08-15 audit's full "repaired_by_trim" bucket (73 cases): every
+    one of the 16 cases this signal flags was a correct repair, and every
+    one of the 57 it left alone was a real, legitimately long name (e.g.
+    "Bay Area Headquarters Authority") that a bare trim would have
+    mangled -- so this gate is required, not optional, for the trim below
+    to be safe."""
+    if _ROMAN_NUMERAL_RE.search(tail):
+        return True
+    if re.search(r"\d", tail):
+        return True
+    return any(w[0].islower() for w in tail.split() if w)
+
+
+def _trim_repair(name: str) -> Optional[Tuple[str, str]]:
+    """Longest-valid-prefix repair: drop tokens from the right until the
+    remainder validates, but only when the discarded tail itself looks
+    like bleed (`_looks_like_bleed()`) -- never applied bare, since most
+    of the audit's trim-reachable names were legitimate long entities a
+    blind trim would have destroyed. Returns (repaired_name, table) or
+    None."""
+    tokens = name.split()
+    for cut in range(len(tokens) - 1, 0, -1):
+        prefix = " ".join(tokens[:cut]).rstrip(".,;:")
+        if not prefix:
+            continue
+        hit = _table_lookup(prefix)
+        if hit and _looks_like_bleed(" ".join(tokens[cut:])):
+            return prefix, hit[0]
+    return None
+
+
+def _split_entity_prefix(name: str) -> Optional[str]:
+    """"<Entity> of <Jurisdiction>" -> body, when the jurisdiction half
+    validates. Real example this exists for: "Housing Authority of the
+    County of Santa Clara" -> body "Housing Authority", jurisdiction
+    "County of Santa Clara" (which `_table_lookup()`/`_normalize_candidates()`
+    already know how to resolve via the existing leading-"County of"
+    strip). Tries the LEFTMOST " of " first and returns as soon as one
+    validates -- for a name with more than one "of", the leftmost split
+    keeps the most of the real jurisdiction phrase intact (preserving
+    "County" rather than trimming down to a bare, more war-torn "Santa
+    Clara"). Returns the body text only; the caller already has (or can
+    re-derive) the validated jurisdiction half.
+
+    Deliberately does NOT fire on the ordinary "City of Boston" shape --
+    a split that would leave only a bare type word ("City"/"County"/etc.)
+    as the body isn't a real entity, just this function accidentally
+    re-parsing an already-fine name.
+    """
+    for m in re.finditer(r"\bof\b", name, re.IGNORECASE):
+        body = name[: m.start()].strip().rstrip(",")
+        if not body or _is_bare_type_phrase(body):
+            continue
+        candidate = name[m.end():].strip()
+        candidate = re.sub(r"^the\s+", "", candidate, flags=re.IGNORECASE)
+        if candidate and _table_lookup(candidate):
+            return body
+    return None
+
+
+@dataclass(frozen=True)
+class JurisdictionResult:
+    jurisdiction: Optional[str]
+    meeting_body: Optional[str]
+    # "authoritative" -- registry override, highest trust.
+    # "validated"     -- name matches a real place/county as-is.
+    # "repaired"      -- trim or entity-split recovered a valid name from
+    #                    a bled/prefixed one.
+    # "fallback"      -- registry fallback used because extraction was
+    #                    blank or didn't validate.
+    # "unverified"    -- kept as given; not in any table, but not
+    #                    rejected either (school districts, MPOs, transit
+    #                    authorities, and every other real entity type no
+    #                    national table covers -- see BACKLOG.md's
+    #                    "Deprioritized ideas" for why these stay
+    #                    unverified rather than being forced to guess).
+    # "blank"         -- nothing at all, before or after this function.
+    confidence: str
+
+
+def finalize_jurisdiction(
+    raw_jurisdiction: Optional[str], *, netloc: Optional[str] = None
+) -> JurisdictionResult:
+    """The one ingest-time pass that turns whatever an adapter extracted
+    into a scored, optionally-repaired, optionally-split final value.
+    Called once, from `archive/db/crud.py`'s `_find_or_create_page()` --
+    see this module's own section header above for why this lives at
+    ingest time rather than being threaded through every adapter.
+
+    Never loses information without evidence: a name that doesn't
+    validate and shows no bleed signal is returned completely unchanged
+    (confidence "unverified"), not discarded or guessed at -- see
+    `_looks_like_bleed()` and `_split_entity_prefix()` for the two
+    mechanisms that DO change the value, and BACKLOG.md's "Census-table
+    baseline validation" entry for the real data (649 archived rows) this
+    design was built and tuned against.
+    """
+    known = lookup_by_domain(netloc) if netloc else None
+
+    if known and known.strength == "authoritative":
+        return JurisdictionResult(f"{known.name}, {known.state}", None, "authoritative")
+
+    if not raw_jurisdiction:
+        if known:
+            return JurisdictionResult(f"{known.name}, {known.state}", None, "fallback")
+        return JurisdictionResult(raw_jurisdiction, None, "blank")
+
+    # Already has a state suffix from a prior enrichment step -- validate
+    # the name portion only, state stays as already resolved.
+    state_match = _STATE_SUFFIX_RE.search(raw_jurisdiction)
+    base = _STATE_SUFFIX_RE.sub("", raw_jurisdiction).strip().rstrip(".,;:") if state_match else raw_jurisdiction
+    suffix = f", {state_match.group(1).upper()}" if state_match else ""
+
+    if _table_lookup(base):
+        return JurisdictionResult(raw_jurisdiction, None, "validated")
+
+    trimmed = _trim_repair(base)
+    if trimmed:
+        repaired_name, _table = trimmed
+        return JurisdictionResult(f"{repaired_name}{suffix}", None, "repaired")
+
+    body = _split_entity_prefix(base)
+    if body:
+        jurisdiction_half = base[len(body):].strip()
+        jurisdiction_half = re.sub(r"^\s*of\s+(the\s+)?", "", jurisdiction_half, flags=re.IGNORECASE)
+        return JurisdictionResult(f"{jurisdiction_half}{suffix}", body, "repaired")
+
+    if known:
+        return JurisdictionResult(f"{known.name}, {known.state}", None, "fallback")
+
+    return JurisdictionResult(raw_jurisdiction, None, "unverified")

@@ -31,6 +31,21 @@ class MeetingPage(Base):
     title: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     date: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     jurisdiction: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    # Both added 2026-08-15 (JURISDICTION_METADATA_PLAN.md), populated by
+    # app/utils/jurisdiction_enrich.py's finalize_jurisdiction() in
+    # _find_or_create_page() -- never set directly from a raw adapter
+    # payload. meeting_body is the entity name split off a leading
+    # "<Entity> of <Jurisdiction>" shape (e.g. "Housing Authority" split
+    # from "Housing Authority of the County of Santa Clara", leaving
+    # `jurisdiction` as the clean "County of Santa Clara") -- null on
+    # every page where no split applied, which is most of them.
+    # jurisdiction_confidence is one of finalize_jurisdiction()'s
+    # JurisdictionResult.confidence values ("authoritative"/"validated"/
+    # "repaired"/"fallback"/"unverified"/"blank") -- a plain string
+    # column, not an enum, so a new confidence tier never needs a
+    # migration to add.
+    meeting_body: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    jurisdiction_confidence: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     video_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     video_format: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
     agenda_items: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
