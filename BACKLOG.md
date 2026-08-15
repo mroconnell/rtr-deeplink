@@ -2849,6 +2849,63 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   boolean-expression parsing is actually needed, or whether `-exclude`
   plus no-op `+`/`AND`/`&` already covers most of the practical value a
   journalist would want, at a fraction of the parser complexity.
+- **Audit per-adapter coverage of `meeting_body`, then be strategic about
+  extending it — low priority, no urgency.** `meeting_pages.meeting_body`
+  ([archive/db/models.py:47](archive/db/models.py:47), `Text`, nullable)
+  landed 2026-08-15 alongside `jurisdiction_confidence` as part of
+  `JURISDICTION_METADATA_PLAN.md`'s workstream 1, already merged, migrated,
+  and backfilled in production — confirmed live end-to-end for the
+  Santa Clara Housing Authority page (`meeting_body="Housing Authority"`,
+  full detail in `BACKLOG_DONE.md`'s "Jurisdiction/title extraction
+  pipeline" entry) and rendered on `/m/{slug}`, `/meetings`, and My Saved
+  Items (see `JURISDICTION_METADATA_PLAN.md`'s Slice 4). It is genuinely
+  live, not a dead column — the open gap is coverage, not plumbing.
+
+  Today the field is populated exactly one way, centrally: `finalize_
+  jurisdiction()` in `app/utils/jurisdiction_enrich.py` calls
+  `_split_entity_prefix()` on whatever jurisdiction string it ends up
+  with, splitting a leading `"<Entity> of <Jurisdiction>"` shape (e.g.
+  "Housing Authority of the County of Santa Clara") into `meeting_body`
+  and a cleaned `jurisdiction`. It's not adapter-specific extraction —
+  every adapter's resolved jurisdiction text passes through the same
+  generic split, so coverage depends entirely on how often a given
+  adapter/platform's real jurisdiction strings happen to contain that
+  exact "<Entity> of <Jurisdiction>" shape, which the code's own comments
+  already flag as a minority case. `JURISDICTION_METADATA_PLAN.md` (line
+  ~92) separately notes Granicus's `_fetch_channel_info()` already parses
+  a body-shaped value out of its RSS channel title as an independent,
+  adapter-native precedent — worth checking whether that value and the
+  generic split ever disagree on the same page, since they're two
+  different code paths today.
+
+  The actual ask: figure out, per adapter/platform, how often real
+  archived meetings *should* have a `meeting_body` but don't — i.e. cases
+  where the raw title/jurisdiction text clearly contains a splittable
+  entity prefix that the current generic regex/split doesn't catch
+  (different wording than "X of Y", a prefix that isn't at the very
+  start, a platform whose native metadata already separates body/
+  jurisdiction but never gets threaded through `finalize_jurisdiction()`
+  at all). Use the ~650 already-archived meetings as the test set per
+  adapter (same approach as the census-baseline-validation bug above and
+  the workstream-1/2 tournament in `JURISDICTION_METADATA_PLAN.md` —
+  dry-run against real cached data, no guessing at shapes that haven't
+  been seen), and be strategic rather than blanket about which adapters
+  are worth extending — some platforms (special districts, transit
+  authorities, housing authorities) will have real entity-prefix volume
+  worth chasing; many won't, and forcing the split where it doesn't
+  belong risks the same "loses information without a bleed signal"
+  mistake `JURISDICTION_METADATA_PLAN.md` already called out and
+  deliberately avoided when this field was designed.
+- **Once `meeting_body` has real, strategic coverage (see above), add it
+  as a `/meetings` search filter — separate, related item, sequenced
+  after the coverage work, not before.** Today's search
+  (`archive/utils/search.py`) matches title/jurisdiction/agenda/
+  transcript text but has no `meeting_body`-aware filter or facet (e.g.
+  "show me all Housing Authority meetings" as a distinct filter from a
+  plain text search hitting the same words). Low value until coverage is
+  broad enough that filtering by it actually narrows a real result set
+  instead of just the handful of pages the entity-prefix split happens to
+  catch today.
 
 ## On-demand transcription — real gaps left open
 
