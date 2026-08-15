@@ -248,6 +248,16 @@ anything) to build against it.
     check the raw unsplit subdomain against the Census tables first,
     and validate wordninja's output against them after — decline to
     guess when neither form is a real name.
+    **Two more real confirmed examples, found 2026-08-15 scanning all 501
+    rows of the live `/coverage` "Every place we've covered" table for
+    outliers (see the new entry below on that table being a real, useful
+    QA surface):** `psrc2.granicus.com/player/clip/1001` → jurisdiction
+    "Psr C 2" (Puget Sound Regional Council — a real acronym-named
+    regional agency, not a Census place, same shape as `sfwmd`/`rideuta`
+    above) and `loswegok12.granicus.com/player/clip/903` → "L Oswego K
+    12" (Lake Oswego School District, OR — same class as the already-
+    flagged "townships/school districts aren't in the places table"
+    gap above, compounded by the acronym-humanization bug here).
   - **Two pages store a literal date as the jurisdiction** ("July 21,
     2026", "August 11, 2026") — source adapter not yet traced.
   - ~~**`app/utils/jurisdiction_data/places.csv` is missing every Census
@@ -336,6 +346,92 @@ anything) to build against it.
   against more real examples rather than guessing a rule now — same
   "verify before generalizing" convention this file already applies to
   PrimeGov's still-open structural gap above.
+
+  **Update 2026-08-15: the identical bug exists independently in
+  `escribe.py`, not shared code with Granicus — confirmed root cause,
+  6 real examples.** Found scanning `/coverage`'s 501-row table for
+  outliers (see the new entry below). [escribe.py:210](app/platforms/escribe.py:210):
+  `re.search(r"City of ([A-Za-z .]+)", page_text)` — the exact same
+  open-ended `[A-Za-z .]` character class with no sentence/tag boundary,
+  written separately from Granicus's version rather than shared. Real
+  confirmed hits, all live-verified via the meeting's own "View original
+  source" link:
+  - `pub-cityofgainesville.escribemeetings.com` → "Gainesville General
+    Policy Committee Meeting AGENDA Thursday, FL" (should be
+    "Gainesville, FL")
+  - `pub-delta.escribemeetings.com` → "Delta Housing Accelerator Fund
+    Initiatives Summary.pdf Recommendation" (should be "Delta, BC") — the
+    bleed ran straight into an agenda PDF's filename
+  - Four real Canadian examples where the regex ran on past the city name
+    into the page's land-acknowledgment boilerplate (displayed with the
+    leading "City of "/"Town of " stripped by `format_jurisdiction_display()`,
+    per this session's investigation, not independently re-confirmed
+    against that function's source): "Mississauga as being part of the
+    Treaty and Traditional Territory of the Mississaugas of the Credit
+    First Nation," "Oshawa is situated on lands within the traditional
+    and treaty territory of the Michi Saagiig and Chippewa Anishinaabeg
+    and the signatories of the Williams Treaties," "Port Moody Strategic
+    Priorities Committee Agenda Tuesday," "Thunder Bay be approved in
+    accordance with Table" (should be Mississauga/Oshawa/Port Moody/
+    Thunder Bay, ON/BC respectively)
+
+  Same fix direction as the Granicus entry above, and worth considering
+  whether the two adapters should share one bounded-regex helper instead
+  of maintaining two independently-drifting copies of the same bug.
+
+- **Fountain Valley clip 607 shows a wrong title and jurisdiction today —
+  real, confirmed, not yet root-caused. Found 2026-08-15 in the same
+  `/coverage` scan.** This is the same Granicus clip already extensively
+  documented elsewhere in this file and `BACKLOG_DONE.md` for its garbled/
+  Portuguese-misdetected transcript
+  (`fountainvalley.granicus.com/MediaPlayer.php?clip_id=607`, "View
+  original source" link confirmed live from
+  [/m/city-of-fountain-valley-city-council-meeting-jun-16th-2026](https://redtaperecordings.com/m/city-of-fountain-valley-city-council-meeting-jun-16th-2026)),
+  but the title/jurisdiction mismatch itself has never been flagged
+  before. Live today the page displays title "COMMUNITY REDEVELOPMENT
+  AGENCY - SPECIAL MEETING," jurisdiction "Ft. Myers, FL.," date
+  "2025-08-11" — none of which match the URL slug (which encodes
+  "city-of-fountain-valley-city-council-meeting-jun-16th-2026"). Checked
+  the actual live Granicus source page via `curl` before writing this up:
+  its real `<title>` today is the clean "City Council Meeting - Jun 16th,
+  2026" (matching the slug), and a full-text search of that page's raw
+  HTML for "Ft. Myers" or "Community Redevelopment Agency" finds nothing
+  — whatever produced the stored title/jurisdiction isn't visible on the
+  source page as it exists now. The transcript content itself does read
+  as genuine Fountain Valley material (a real Orange County Power
+  Authority presentation to the city council). **Root cause not
+  determined this pass** — candidates not yet distinguished: a stale
+  resolve from before the source page's title changed, some kind of
+  cross-page data contamination (compare the Dublin/Yountville
+  version-promotion bugs already fixed and documented in
+  `BACKLOG_DONE.md`, a different bug class but the same general area of
+  code), or something else entirely. Worth a real investigation, not a
+  guessed fix — flagging as a genuine "how did this happen" question.
+
+- **`/coverage`'s "Every place we've covered" table is a real, useful
+  place to spot resolver bugs by eyeballing outliers — confirmed by
+  actually doing it, 2026-08-15, per direct suggestion.** A single pass
+  over all 501 rows (jurisdiction + example-meeting title columns,
+  flagging anything unusually long or containing stray digits/punctuation)
+  surfaced every finding logged just above in one session: 2 new
+  wordninja-acronym examples, a whole second adapter with the same
+  unbounded-regex bug as the already-known Granicus one (6 real
+  examples), and a genuine wrong-title/wrong-jurisdiction data mismatch
+  on an already-flagged page nobody had noticed before. Also surfaced,
+  not written up separately since they're just more instances of the
+  already-open "Census-table baseline validation" bug above rather than
+  anything new: the two literal-date-as-jurisdiction rows ("August 11,
+  2026," "July 21, 2026") are both still live and unfixed. On the title
+  side, two real examples of title-extraction bleed worth keeping in mind
+  for whatever eventually improves title extraction generally: a title
+  that swallowed a full Zoom dial-in block (meeting ID, passcode, phone
+  number) past the real title text, and a title truncated mid-word
+  ("...Exhibit 1 was adde") — a live, real instance of the exact
+  mid-word-truncation signal the Census-baseline entry above proposed but
+  had no confirmed example of yet. Worth treating this kind of scan as a
+  repeatable practice (e.g. after any batch of new adapter/jurisdiction
+  work) rather than a one-off — cheap to do, and every hit this pass was
+  a real, previously-undocumented bug, not noise.
 
 - **Swagit's jurisdiction extraction has no fallback at all when the page
   `<title>` doesn't end in a plain `"..., {2-letter state}"` shape — every
@@ -723,6 +819,68 @@ anything) to build against it.
   content-verified — no real customer with a blank `location.state` has
   turned up yet to confirm it fires correctly in practice (covered by a
   synthetic test only, per `tests/test_civicclerk.py`).
+
+  **Update 2026-08-15: a real customer confirms an even blanker case than
+  the one flagged above, and it has a clean, already-built fix path.**
+  [losaltoshillsca.portal.civicclerk.com/event/4567/media](https://losaltoshillsca.portal.civicclerk.com/event/4567/media)
+  (Los Altos Hills, CA — City Council Regular Meeting, June 18, 2026)
+  shows a completely blank jurisdiction live on
+  [redtaperecordings.com](https://redtaperecordings.com/meeting?url=https://losaltoshillsca.portal.civicclerk.com/event/4567/media).
+  Confirmed via `curl` against the real API
+  (`losaltoshillsca.api.civicclerk.com/v1/Events/4567`):
+  `eventLocation` is `{"city": null, "state": null, ...}` — not just a
+  missing state, the *whole* location object is empty. `civicclerk.py`'s
+  only fallback ([civicclerk.py:81-86](app/platforms/civicclerk.py:81))
+  is `if city and not state: state = lookup_city_state(city)` — it never
+  fires when `city` itself is falsy, so `jurisdiction` ends up `None`
+  with zero fallback attempted at all, unlike every other adapter this
+  audit wired up.
+
+  **Confirmed fix needs no new code, only a new call.**
+  `jurisdiction_enrich.extract_jurisdiction_chain()` (built 2026-08-15 for
+  `JURISDICTION_METADATA_PLAN.md`, see `BACKLOG_DONE.md`) already resolves
+  this exact URL correctly with zero extra network calls — tested live in
+  the repo's own venv (`wordninja` isn't in a bare `python3`'s path,
+  needed `source .venv/bin/activate` first):
+  `extract_jurisdiction_chain(page_text="", html="", url=url)` →
+  `"Los Altos Hills, CA"`, via the chain's validated-subdomain tier
+  (`losaltoshillsca` → wordninja splits to `["los", "altos", "hills",
+  "ca"]` → strips the trailing state abbreviation → `"Los Altos Hills"`
+  validates against the Census places table). CivicClerk was never wired
+  into this chain — the module's own comment names Swagit and
+  generic_fallback as "the first two callers," not CivicClerk, even
+  though CivicClerk's blank-location case is exactly the "adapter's own
+  primary extraction came up empty" scenario the chain was built for.
+
+  **A second, independent, even richer real signal was found while
+  checking "the agenda or anywhere else" per the user's ask — CivicClerk's
+  own agenda file is fetchable as plain text and the adapter never reads
+  it at all today.** The `Events/{id}` response's `publishedFiles` array
+  includes a real "Agenda" entry
+  (`GetMeetingFile(fileId=8983,plainText=false)`); calling the same
+  endpoint with `plainText=true` instead returns a JSON `{"blobUri": ...}`
+  pointing to a SAS-signed Azure blob `.txt` — confirmed live, and its
+  real content starts: `"Town of Los Altos Hills / City Council Regular
+  Meeting Agenda / Thursday, June 18, 2026, at 5:30 PM / Council Chambers,
+  26379 Fremont Road, / Los Altos Hills, CA 94022"`. That's a clean match
+  for the chain's stoprule tier (`_STOPRULE_TRIGGER_RE`, "Town of X") —
+  actually a *stronger* signal than the subdomain tier, since it doesn't
+  depend on wordninja splitting a customer's subdomain cleanly. Today
+  `civicclerk.py` never fetches `publishedFiles`/`GetMeetingFile` at all,
+  for jurisdiction or anything else — this is a real, unused, confirmed
+  data source, not a hypothetical one.
+
+  **Not fixed yet, no code touched (session scoped to backlog-only
+  edits).** Two independent, evidence-backed paths, either sufficient on
+  its own for this customer: (1) call `extract_jurisdiction_chain(url=url)`
+  as a fallback whenever `eventLocation` yields no usable city — cheapest,
+  no new network call; (2) fetch the agenda's plaintext blob when
+  `publishedFiles` has an "Agenda" entry and feed its text through the
+  same chain (or `_stoprule_extract()` directly) — costs one extra
+  request pair (`GetMeetingFile(plainText=true)` + the blob fetch itself)
+  but is more robust and doubles as real agenda text CivicClerk pages
+  don't otherwise surface at all today. Worth deciding whether to build
+  both or just the free one first.
 
   **New gap found 2026-08-14, live-testing `/meetings`' jurisdiction
   filter: searching "California" finds nothing, but "CA" works.** Root
@@ -2787,6 +2945,46 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   into that same data, a rule for picking a representative example URL
   per jurisdiction/platform pair (e.g. most recent successful resolve),
   and the sort/filter UI itself.
+- **Smaller, near-term polish request (2026-08-15) for the "Every place
+  we've covered" table that already shipped — distinct from the bigger
+  sortable/filterable redesign above, which is still unbuilt.** Real
+  table today: `archive/templates/coverage.html:18-41`, three columns
+  (Government, Example meeting, Transcript), one `<tr>` per jurisdiction,
+  populated by `crud.get_jurisdiction_coverage()` sorted alphabetically —
+  confirmed live at 501 rows currently
+  (`document.querySelectorAll('table.table tbody tr').length` on
+  [redtaperecordings.com/coverage](https://redtaperecordings.com/coverage)).
+  No JS/CSS exists yet for sorting or frozen columns anywhere on this
+  page or table (`style.css`'s only `position: sticky` uses today are the
+  meeting page's video column and toolbar, not a data table).
+
+  Three asks, all pure front-end (no backend/data change — every row is
+  already server-rendered in one pass):
+  1. A new leftmost row-number column, frozen (`position: sticky; left:
+     0`) independent of the other three columns' own scroll/sort state —
+     i.e. it stays put and keeps counting 1, 2, 3... regardless of what
+     the Government/Example/Transcript columns are doing. Rendered in a
+     lighter font-weight than the rest of the row so it doesn't compete
+     visually with the actual content — but explicitly *meant* to be
+     noticed once a reader scrolls far enough to see it hit a big number
+     (501 today) as a real "wow, that's a lot" moment, the user's own
+     framing.
+  2. Government/Example meeting/Transcript headers become clickable and
+     sort the table by that column — the frozen row-number column and the
+     header row itself excluded, per the user's explicit scoping.
+  3. Sorting resets/reassigns the row numbers to the frozen column's
+     *display* position, not the original alphabetical order — implied by
+     "frozen, not tied to the three existing columns" (the numbers stay
+     put positionally 1..N no matter how the sortable columns reorder
+     underneath them, rather than the row-number column itself getting
+     dragged along with a sort).
+
+  Worth deciding sort behavior specifics when building (not blocking the
+  write-up): whether "Transcript" sorts by presence of the badge (a
+  boolean, so really just grouping has-transcript rows together, asc/desc
+  toggle) and whether repeat clicks on the same header toggle
+  ascending/descending, matching the plain-JS-table-sort pattern this
+  would need (no existing sort-table JS in this codebase to reuse).
 - **Companion "known gaps" page — same table shape, listing
   jurisdictions/platforms that don't resolve cleanly yet** (attempted but
   blocked, partially working, or simply not yet built), separate from
