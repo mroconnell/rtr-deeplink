@@ -60,6 +60,59 @@ audit, extraction tournament, and design rationale this work grew out of.
   (the Greeley collision, both directions) in `tests/test_jurisdiction_enrich.py`.
   Full suite green (734 tests) both before and after.
 
+- **[Done 2026-08-15] `extract_jurisdiction_chain()`'s capitalization walk
+  could pick up a real city name mentioned inside spoken caption
+  dialogue, not the meeting's own jurisdiction, and would have stored it
+  as-is.** Found running workstream 4's dry-run backfill diff against
+  real cached HTML (not hypothetical): a Broward MPO Swagit page
+  (`browardmpo.new.swagit.com/videos/359517`) has an ALL-CAPS caption
+  line — "...ALSO, THE S. MIDDLE RIVER MOBILITY PROJECT IN THE CITY OF
+  FORT LAUDERDALE THAT'S IDENTIFIED..." — that the walk matched into,
+  producing `"City of Fort Lauderdale That'S Identified"`. The
+  `_looks_like_bleed()` trim-repair gate correctly declined to trim it
+  (neither `"That'S"` nor `"Identified"` starts lowercase, so nothing
+  signals bleed), but the chain still returned the ungated raw candidate
+  — the same class of false positive `_JURISDICTION_RE`'s own
+  module-level comment in `app/platforms/primegov.py` already documents
+  for PrimeGov's agenda-body text (the SLC/Holladay case), now confirmed
+  on a second, independent adapter/page.
+
+  Fix: `extract_jurisdiction_chain()` now requires every candidate to
+  actually clear `finalize_jurisdiction()`'s own bar (validated/repaired/
+  authoritative) before accepting it — a candidate that doesn't is
+  discarded and the next tier is tried, rather than ever being returned
+  raw. This is deliberately stricter than `finalize_jurisdiction()`'s
+  general policy of keeping an *adapter-native* unvalidatable
+  jurisdiction unchanged (real special-purpose entities like school
+  districts have no table to validate against, but a real trust basis in
+  the adapter's own purpose-built extraction) — none of this chain's
+  three tiers have that trust basis, since they're all generic regex
+  guesses over arbitrary page text.
+
+  Adding this gate exposed a second, smaller gap: it would have also
+  rejected genuinely correct page-abbreviated names ("Ft. Worth", "Mt.
+  Vernon" — real names real websites write that way, see this file's own
+  entry on `_STOPRULE_ABBREV_OK` in `JURISDICTION_METADATA_PLAN.md`)
+  since the Census table's own key is the spelled-out form ("Fort
+  Worth"). Fixed by adding `_expand_abbreviations()` (St./Ste./Ft./Mt./
+  Pt./N./S./E./W. → their full forms) as an extra candidate
+  `_table_lookup()` tries when the raw name doesn't match as-is —
+  narrowly scoped to `_table_lookup()` only (not the public
+  `lookup_city_state()`/`lookup_county_state()` API other adapters call
+  directly via `resolve_state()`), to keep this fix's blast radius
+  contained to the new validation gate and `finalize_jurisdiction()`'s
+  own validate/trim/split path.
+
+  Re-ran the workstream-4 dry-run diff (against the same cached 649-page
+  HTML the tournament already fetched, no new network requests) after
+  the fix: the Fort Lauderdale row disappeared from the change set
+  entirely (jurisdiction correctly stays blank) and no other row's
+  confidence dropped to "unverified" as a *new* value — every remaining
+  proposed change is validated/repaired/authoritative. Regression tests:
+  `test_extract_jurisdiction_chain_rejects_a_capitalization_walk_false_positive`
+  (the real Fort Lauderdale case) and `test_table_lookup_recognizes_a_page_authored_abbreviation`
+  in `tests/test_jurisdiction_enrich.py`. Full suite green (763 tests).
+
 ## Site polish
 
 - **[Done 2026-08-14] `VideoObject.thumbnailUrl` (YouTube-backed pages) +

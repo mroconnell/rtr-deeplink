@@ -471,6 +471,30 @@ def _is_bare_type_phrase(body: str) -> bool:
     return bool(words) and all(w in _BARE_TYPE_WORDS for w in words)
 
 
+# Page-authored abbreviations for a name's real Census-canonical form --
+# the same set `_STOPRULE_ABBREV_OK` (below) treats as "not a real
+# sentence-ending period," but here for the opposite purpose: expanding
+# them so a page-abbreviated name like "Ft. Worth"/"Mt. Vernon"/"N. Las
+# Vegas" actually MATCHES the Census table's own "Fort Worth"/"Mount
+# Vernon"/"North Las Vegas" entry, rather than failing validation just
+# because a real website chose the abbreviated spelling (same underlying
+# fact the stop rule's exception list exists for, applied here to lookup
+# instead of parsing).
+_ABBREV_EXPANSIONS = {
+    "st": "saint", "ste": "sainte", "ft": "fort", "mt": "mount",
+    "pt": "point", "n": "north", "s": "south", "e": "east", "w": "west",
+}
+_ABBREV_WORD_RE = re.compile(r"\b(" + "|".join(_ABBREV_EXPANSIONS) + r")\.?(?=\s|$)", re.IGNORECASE)
+
+
+def _expand_abbreviations(name: str) -> str:
+    def _replace(m: "re.Match") -> str:
+        expansion = _ABBREV_EXPANSIONS[m.group(1).lower()]
+        return expansion.capitalize() if m.group(1)[0].isupper() else expansion
+
+    return _ABBREV_WORD_RE.sub(_replace, name)
+
+
 def _table_lookup(name: str) -> Optional[Tuple[str, List[str]]]:
     """(table, states) if any normalization candidate of `name` is a real
     known place or county name -- ambiguous (multi-state) still counts as
@@ -479,7 +503,8 @@ def _table_lookup(name: str) -> Optional[Tuple[str, List[str]]]:
     first when the name itself says county/parish/borough, mirroring
     `enrich_jurisdiction_text()`'s own type-detection, so "York County"
     matches the real county instead of one of the 5 unrelated places
-    named "York"."""
+    named "York". Also tries an abbreviation-expanded form
+    (`_expand_abbreviations()`) when the raw name doesn't match as-is."""
     name = name.strip().rstrip(".,;:")
     if not name:
         return None
@@ -489,7 +514,11 @@ def _table_lookup(name: str) -> Optional[Tuple[str, List[str]]]:
         if county_first
         else [("place", _PLACE_STATES), ("county", _COUNTY_STATES)]
     )
-    for candidate in _normalize_candidates(name):
+    candidates = list(_normalize_candidates(name))
+    expanded = _expand_abbreviations(name)
+    if expanded != name:
+        candidates.extend(_normalize_candidates(expanded))
+    for candidate in candidates:
         for label, table in tables:
             if candidate in table:
                 return label, sorted(set(table[candidate]))
@@ -790,22 +819,51 @@ def extract_jurisdiction_chain(*, page_text: str, html: str, url: str) -> Option
     """Shared fallback chain for adapters whose own primary extraction
     found nothing: stop-rule body regex -> capitalization-bounded walk ->
     validated subdomain, tried in tournament-ranked order, first hit
-    wins. Every candidate gets one run through `enrich_jurisdiction_text()`
-    before being returned, so callers get the same "name + state when
-    findable" shape `finalize_jurisdiction()` expects downstream.
+    wins.
 
-    Deliberately does NOT consult the known-domain registry --
-    `finalize_jurisdiction()` (this module's ingest-time entry point)
-    already does that as its own first step, so a caller that also feeds
-    this chain's output into `finalize_jurisdiction()` gets registry
-    coverage once, not duplicated here.
+    Every candidate is required to actually validate (directly, via
+    trim-repair, or via the domain registry -- i.e. whatever
+    `finalize_jurisdiction()` would grade "validated"/"repaired"/
+    "authoritative") before being accepted; a candidate that doesn't
+    clear that bar is discarded and the next tier is tried instead of
+    ever being returned raw. This is stricter than
+    `finalize_jurisdiction()`'s own general policy of keeping an
+    unvalidatable *adapter-native* jurisdiction unchanged ("unverified"
+    -- school districts, MPOs, etc. genuinely aren't in any table) --
+    that trust basis doesn't exist here, since every candidate in THIS
+    chain is a generic regex guess over arbitrary page text, not a
+    purpose-built adapter extraction. Real, confirmed-live failure this
+    guards against (2026-08-15): on a Broward MPO Swagit page
+    (browardmpo.new.swagit.com/videos/359517), the capitalization walk
+    matched into an ALL-CAPS caption line of someone's spoken testimony
+    ("...IN THE CITY OF FORT LAUDERDALE THAT'S IDENTIFIED...") and would
+    have stored "City of Fort Lauderdale That'S Identified" as the
+    jurisdiction -- a real place name's-worth of text bled into
+    something no adapter's own extraction would ever produce. Declining
+    (returning None, leaving the page's jurisdiction blank as before) is
+    correct here; a real city mention inside spoken dialogue is not
+    reliable evidence of the *meeting's own* jurisdiction, the same
+    lesson `_JURISDICTION_RE`'s SLC/Holladay false positive already
+    taught for PrimeGov's agenda-body text (see that regex's own
+    module-level comment in app/platforms/primegov.py).
+
+    Deliberately does NOT consult the known-domain registry as its own
+    separate step -- `finalize_jurisdiction()` already does, both here
+    (for gating) and again at the caller's own ingest-time call, so
+    registry coverage is still applied, just not duplicated as a
+    dedicated tier.
     """
     netloc = urlparse(url).netloc
-    candidate = (
-        _stoprule_extract(page_text)
-        or _capitalization_walk_extract(html)
-        or _validated_subdomain_extract(url)
-    )
-    if not candidate:
-        return None
-    return enrich_jurisdiction_text(candidate, netloc=netloc, page_text=page_text)
+    for extractor in (
+        lambda: _stoprule_extract(page_text),
+        lambda: _capitalization_walk_extract(html),
+        lambda: _validated_subdomain_extract(url),
+    ):
+        candidate = extractor()
+        if not candidate:
+            continue
+        enriched = enrich_jurisdiction_text(candidate, netloc=netloc, page_text=page_text)
+        result = finalize_jurisdiction(enriched, netloc=netloc)
+        if result.confidence in ("validated", "repaired", "authoritative"):
+            return result.jurisdiction
+    return None

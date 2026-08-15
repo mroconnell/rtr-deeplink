@@ -279,6 +279,18 @@ def test_finalize_jurisdiction_validates_a_clean_name_unchanged():
     assert result.confidence == "validated"
 
 
+def test_table_lookup_recognizes_a_page_authored_abbreviation():
+    # "Ft. Worth" is how real pages actually write it (user's own call,
+    # 2026-08-15 -- see _STOPRULE_ABBREV_OK's comment); the Census table's
+    # own key is the spelled-out "Fort Worth". Added specifically so
+    # extract_jurisdiction_chain()'s validation gate (which requires a
+    # candidate to actually validate before being accepted) doesn't
+    # reject every abbreviated real name it was built to preserve.
+    assert je._table_lookup("Ft. Worth") == ("place", ["TX"])
+    assert je._table_lookup("Mt. Vernon") is not None
+    assert je.finalize_jurisdiction("City of Ft. Worth").confidence == "validated"
+
+
 def test_finalize_jurisdiction_repairs_trailing_bleed():
     # Real value, Hercules CA's Granicus page -- the still-open
     # granicus.py body-regex bug (BACKLOG.md) let agenda-heading text run
@@ -440,6 +452,30 @@ def test_extract_jurisdiction_chain_subdomain_resolves_state_via_registry():
         page_text="no trigger", html="<html>no trigger</html>", url="https://sandiego.granicus.com/player/clip/1"
     )
     assert result == "San Diego, CA"
+
+
+def test_extract_jurisdiction_chain_rejects_a_capitalization_walk_false_positive():
+    # Real, confirmed-live bug (2026-08-15, found while dry-running the
+    # workstream 4 backfill against real cached HTML, not hypothetical):
+    # a Broward MPO Swagit page (browardmpo.new.swagit.com/videos/359517)
+    # has an ALL-CAPS caption line of spoken testimony -- "...IN THE CITY
+    # OF FORT LAUDERDALE THAT'S IDENTIFIED..." -- that the capitalization
+    # walk matched into, producing "City of Fort Lauderdale That'S
+    # Identified." That candidate doesn't validate (nor trim-repair,
+    # since "That'S"/"Identified" show no bleed signal -- both are
+    # capitalized, so _looks_like_bleed() correctly refuses to guess
+    # which prefix is real) and must be discarded, not stored -- a real
+    # city mention inside spoken dialogue is not evidence of the
+    # meeting's own jurisdiction.
+    page_text = (
+        "ALSO, THE S. MIDDLE RIVER MOBILITY PROJECT IN THE CITY OF FORT LAUDERDALE THAT'S "
+        "IDENTIFIED. Next item on the agenda."
+    )
+    html = f"<html><body><p>{page_text}</p></body></html>"
+    result = je.extract_jurisdiction_chain(
+        page_text="no trigger for the stop rule here", html=html, url="https://browardmpo.new.swagit.com/videos/1"
+    )
+    assert result is None
 
 
 def test_extract_jurisdiction_chain_declines_rather_than_guesses():
