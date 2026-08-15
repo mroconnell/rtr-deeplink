@@ -156,7 +156,7 @@ function wireSharedControls(adapter, { liveTracking = true } = {}) {
 
   adapter.addEventListener('timeupdate', () => {
     const segId = findActiveSegment(adapter.currentTime);
-    if (segId) highlightSegment(segId, true, 'nearest');
+    if (segId) highlightSegment(segId, autoScrollEnabled, 'nearest');
     updateNoTranscriptTime(adapter);
     if (linkToCurrentLabel) linkToCurrentLabel.textContent = `Share video at ${formatTime(adapter.currentTime)}`;
   });
@@ -234,6 +234,16 @@ function initViebitVideo(embedUrl) {
   activeVideoAdapter = adapter;
   wireSharedControls(adapter, { liveTracking: false });
   applyDeepLink(adapter);
+}
+
+function wireAutoScrollToggle() {
+  const toggleBtn = document.getElementById('toggleAutoScrollBtn');
+  const stateSpan = document.getElementById('autoScrollState');
+  if (!toggleBtn || !stateSpan) return;
+  toggleBtn.addEventListener('click', () => {
+    autoScrollEnabled = !autoScrollEnabled;
+    stateSpan.textContent = autoScrollEnabled ? 'On' : 'Off';
+  });
 }
 
 function wireSeekAndCopyClicks() {
@@ -570,6 +580,7 @@ document.addEventListener('DOMContentLoaded', () => {
   );
 
   wireSeekAndCopyClicks();
+  wireAutoScrollToggle();
   wireReportProblemForm();
   wireTranscribeForm();
   wireTranscribeInlineTriggers();

@@ -3,6 +3,13 @@
 {% block meta %}
   <meta name="description" content="Browse {{ total }} archived public meetings with video and transcript.">
   <link rel="alternate" type="application/rss+xml" title="Red Tape Recordings — newly archived meetings" href="/feed.xml{% if jurisdiction %}?jurisdiction={{ jurisdiction|urlencode }}{% endif %}">
+  {% if public_base_url %}
+  {#- /meetings has 7 independent query params (q, jurisdiction, date_from,
+     date_to, fuzzy, has_agenda, has_transcript) with no canonical today,
+     creating real duplicate-content surface area (BACKLOG.md). Every
+     filtered variant canonicalizes to the bare unfiltered URL. #}
+  <link rel="canonical" href="{{ public_base_url }}/meetings">
+  {% endif %}
 {% endblock %}
 {% block content %}
   <main class="meeting-list-page">

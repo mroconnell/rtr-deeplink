@@ -64,7 +64,12 @@
     "url": {{ (public_base_url ~ "/m/" ~ page.slug)|tojson }},
     {% endif -%}
     {% if page.date -%}
-    "uploadDate": {{ page.date|tojson }},
+    {#- Cheap interim fix for Google Rich Results' "missing timezone"
+       uploadDate flag (BACKLOG.md) -- date is stored as a bare YYYY-MM-DD
+       string with no real time-of-day captured anywhere in the app today,
+       so this isn't literally accurate, just schema-valid; the real fix
+       (per-adapter time-of-day capture) is a bigger, separate project. #}
+    "uploadDate": {{ (page.date ~ "T00:00:00Z")|tojson }},
     {% endif -%}
     {% if active_version and active_version.language -%}
     "inLanguage": {{ active_version.language|tojson }},
@@ -112,6 +117,39 @@
   }
   </script>
   {% endif %}
+  {#- Event JSON-LD alongside VideoObject above (CLAUDE_BACKLOG.md's SEO
+     Tier 2) -- a meeting genuinely is an Event, and name/date/jurisdiction
+     are real fields on every page regardless of whether video exists, so
+     this isn't nested inside the page.video_url guard above. #}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    "name": {{ (page.title or "Meeting")|tojson }},
+    {% if page.date -%}
+    "startDate": {{ page.date|tojson }},
+    {% endif -%}
+    {% if page.jurisdiction -%}
+    "location": {
+      "@type": "Place",
+      "name": {{ (page.jurisdiction|jurisdiction_display)|tojson }}
+    },
+    {% endif -%}
+    {% if public_base_url -%}
+    "url": {{ (public_base_url ~ "/m/" ~ page.slug)|tojson }}
+    {%- else -%}
+    "description": {{ description|tojson }}
+    {%- endif %}
+  }
+  </script>
+  {#- Deliberately not "eventStatus"/"eventAttendanceMode"/"offers" --
+     those opt into Google's stricter Event *rich-result* requirements
+     (real address, ticketing info) this app has no data for and isn't
+     trying to qualify for; this is plain, valid schema.org markup for
+     general SEO/AI-discoverability context, not a rich-result bid, same
+     "don't claim more than the data supports" caution as the
+     GovernmentOrganization markup this file's own SEO section already
+     rejected for a related reason. #}
 {% endblock %}
 {% block head_extra %}
   {% if page.video_format == "m3u8" %}
@@ -197,6 +235,11 @@
           <video id="meetingVideo" controls playsinline preload="auto"></video>
           {% endif %}
         </div>
+        {% if page.agenda_items or (active_version and active_version.segments) %}
+        <div class="video-subtoolbar">
+          <button id="toggleAutoScrollBtn" class="btn btn-outline-secondary" title="Toggle auto-scroll">Auto-scroll: <span id="autoScrollState">On</span></button>
+        </div>
+        {% endif %}
       </div>
       {% else %}
       {#- Real fix, 2026-08-10 (see BACKLOG_DONE.md) -- MeetingPage now has
