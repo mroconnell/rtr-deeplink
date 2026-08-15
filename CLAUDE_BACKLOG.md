@@ -289,30 +289,13 @@ mp4/m3u8 pages still thumbnail-less pending real `ffmpeg` frame
 extraction — is tracked in `BACKLOG.md`'s Google Search Console entry,
 not here.
 
-- **ISO-8601 timezone on `uploadDate`.** Second half of the same Search
-  Console alert (flagged as non-critical). Real per-adapter time-of-day
-  capture is a bigger, multi-adapter lift — `BACKLOG.md`'s WCAG-markup
-  research entry found only Portland.gov actually exposes real
-  time-of-day among 7 real government sites checked, so it won't be
-  available broadly. Cheaper interim option: emit `date + "T00:00:00Z"`
-  instead of a bare date string, at the cost of not being literally
-  accurate — flagging the tradeoff rather than deciding it here.
+~~**ISO-8601 timezone on `uploadDate`.**~~ Built 2026-08-14 alongside the
+other Wave 1 fixes — full detail in `BACKLOG_DONE.md`.
 
-**Tier 2 — solid, low-cost, template-only:**
-
-- **`<link rel="canonical">` on `/meetings` and `/coverage`.** Neither has
-  one today despite `public_base_url` already being a Jinja global. Without
-  it, `/meetings`' seven independent query params (`q`, `jurisdiction`,
-  `date_from`, `date_to`, `fuzzy`, `has_agenda`, `has_transcript`) create
-  real duplicate-content surface area. Canonicalize every filtered variant
-  to the bare unfiltered URL.
-- **`Event` JSON-LD alongside the existing `VideoObject`** on
-  `meeting_page.html` — `name`/`startDate`/`jurisdiction` are all fields
-  already on the page, a meeting genuinely is an `Event`.
-- **`<meta name="description">` on `app/templates/index.html` and
-  `about.html`.** Currently empty on both — `base.html` defines
-  `{% block meta %}{% endblock %}` but neither homepage nor about page fills
-  it in, despite both being real indexable pages.
+~~**Tier 2 — solid, low-cost, template-only:** canonical links on
+`/meetings`/`/coverage`, `Event` JSON-LD alongside `VideoObject`, meta
+descriptions on `index.html`/`about.html`.~~ All three built 2026-08-14
+alongside the other Wave 1 fixes — full detail in `BACKLOG_DONE.md`.
 
 **Tier 3 — lower priority / more experimental:**
 
