@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import FrozenSet, List, Optional, Tuple, TypedDict
-from urllib.parse import urljoin, urlparse
+from urllib.parse import parse_qs, urljoin, urlparse
 
 from bs4 import BeautifulSoup
 
@@ -149,6 +149,13 @@ def detect_platform(url: str) -> str:
         # sccgov.iqm2.com), each on its own subdomain with the customer as
         # the subdomain itself -- see iqm2.py's own module docstring.
         return "iqm2"
+    if netloc.endswith("seattlechannel.org") and path == "/videos" and "videoid" in parse_qs(urlparse(url).query):
+        # Seattle Channel -- confirmed live 2026-08-14, scoped narrowly to
+        # the `/videos?videoid={id}` shape (single video, no ambiguity) --
+        # see seattlechannel.py's own module docstring for why the older
+        # feed-style index pages and a bare `/videos` (no videoid) are
+        # deliberately left to generic_fallback.py instead.
+        return "seattle_channel"
     if "auroratv.org" in netloc:
         # Aurora, CO's own Drupal-built council video site -- confirmed
         # live 2026-08-12, found during a Wave 2 platform-coverage pass
