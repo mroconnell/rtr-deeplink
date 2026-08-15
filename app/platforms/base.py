@@ -130,6 +130,12 @@ def detect_platform(url: str) -> str:
         # NC's confirmed Cablecast site uses a visibly different template
         # this adapter doesn't handle.
         return "cablecast"
+    if "clerkshq.com" in netloc:
+        # ClerkBase ("ClerkHQ") -- confirmed live 2026-08-14 against one
+        # real customer (Yellow Springs, OH) -- see clerkbase.py's own
+        # module docstring for the landing-page/document-page shapes and
+        # how video is found (a wrapper link straight to a YouTube embed).
+        return "clerkbase"
     if "champds.com" in netloc:
         # CHAMP/ChampDS -- confirmed live 2026-08-13 against 6 independent
         # real customers (Atlanta GA, Auburn NY, Gillette WY, Marlborough
