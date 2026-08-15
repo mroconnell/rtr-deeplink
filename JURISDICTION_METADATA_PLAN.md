@@ -172,6 +172,50 @@ upgrade, per the design above.
   `test_ingest_promotion.py`, reusing the Hercules/Santa Clara real
   examples). Full suite green throughout (750 tests at time of writing).
 
+**Slice 3 (same branch)**: promoted the tournament's two winning
+extractors into a shared chain (`jurisdiction_enrich.extract_jurisdiction_chain()`)
+and wired it into the two priority adapters -- Swagit and
+generic_fallback, the highest-volume adapters that never called into
+this module at all before.
+- Three tiers, tournament-ranked: `_stoprule_extract()` (body-text "City
+  of X" walk with the period+capitalization combined stop rule --
+  361/649 table-valid in the tournament, beating the shipped Granicus
+  regex's 318 outright and eliminating bleed almost entirely, 68→2
+  trim-needed), `_capitalization_walk_extract()` (a reimplementation of
+  PrimeGov's own tag-bounded regex -- 326/649 -- deliberately NOT
+  imported from `app.platforms.primegov`, since that adapter's resolve()
+  path stays untouched this round and importing a live method from it
+  would create exactly the coupling that deferral is about avoiding),
+  `_validated_subdomain_extract()` (raw-label-then-wordninja-split,
+  Census-validated before ever being offered -- 416/649 with zero
+  garbage, vs. 408/229-garbage for the shipped always-guess wordninja
+  fallback; fixes Galesburg specifically, since wordninja's own split
+  "Gales Burg" never validates while the raw label does). Every
+  candidate is run through the existing `enrich_jurisdiction_text()` for
+  state resolution before being returned, reusing its domain/name/ZIP
+  disambiguation rather than duplicating it.
+  `clerkbase_slug`/`fallback_titletag` (tournament losers -- no
+  generalization / zero unique coverage) are deliberately excluded.
+- Swagit's `resolve()` calls the chain only when its own `<title>`-tail
+  parse found nothing. generic_fallback's `_backfill_metadata_from_page()`
+  calls it only when neither confirmed `<title>`-tag shape matched AND
+  `resolved.jurisdiction` is still empty -- preserving the existing
+  "jurisdiction always prefers a matched title-tag over a YouTube
+  uploader name" override behavior exactly as before.
+- Deliberately duplicates (doesn't import) Granicus's
+  `US_STATE_ABBREVIATIONS` set and reimplements PrimeGov's jurisdiction
+  regex, both to avoid a platforms -> utils reverse import (both
+  `granicus.py` and `primegov.py` already import this module).
+- Tests: 9 new (6 pure-function chain tests in
+  `test_jurisdiction_enrich.py` covering all three tiers plus a
+  decline-rather-than-guess case; 2 real `resolve()`-level tests in
+  `test_swagit.py`; 1 in `test_generic_fallback.py`), all built from the
+  same real Hercules/Galesburg/San-Diego examples already verified
+  earlier in this plan -- no new synthetic shapes invented. Full suite
+  green throughout (759 tests at time of writing).
+- **Still not done**: display-layer wiring, the targeted ~90-page
+  backfill.
+
 ## Sequencing decision
 
 Tests before tweaks: workstream 1 today, tournament next, implementation

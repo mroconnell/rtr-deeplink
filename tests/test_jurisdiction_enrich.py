@@ -380,3 +380,75 @@ def test_finalize_jurisdiction_returns_blank_confidence_for_nothing_at_all():
     result = je.finalize_jurisdiction(None)
     assert result.jurisdiction is None
     assert result.confidence == "blank"
+
+
+# --- extract_jurisdiction_chain() (2026-08-15, workstream 2 promotions) ---
+# Shared fallback chain for adapters with no bespoke extraction (Swagit,
+# generic_fallback) -- see the module-level comment above
+# extract_jurisdiction_chain() in jurisdiction_enrich.py for the tournament
+# results these three tiers are promoted from.
+
+
+def test_extract_jurisdiction_chain_stoprule_repairs_a_real_bleed_case():
+    # The real Hercules bleed confirmed live 2026-08-15 (see BACKLOG.md's
+    # "Granicus jurisdiction bleed" entry): the shipped body regex has no
+    # sentence boundary and runs straight into an agenda's roman-numeral
+    # list. The stop rule fixes this at the source, before the enricher's
+    # own repair machinery would even need to run.
+    page_text = "Welcome. Meeting of the City of Hercules. XIV. PUBLIC COMMUNICATIONS XV. ADJOURNMENT"
+    result = je.extract_jurisdiction_chain(
+        page_text=page_text, html=f"<html>{page_text}</html>", url="https://hercules.granicus.com/player/clip/1306"
+    )
+    assert result == "City of Hercules, CA"
+
+
+def test_extract_jurisdiction_chain_stoprule_keeps_a_real_abbreviation():
+    page_text = "Agenda for the City of Ft. Worth regular council session"
+    result = je.extract_jurisdiction_chain(page_text=page_text, html="", url="https://example.granicus.com/clip/1")
+    assert result == "City of Ft. Worth"
+
+
+def test_extract_jurisdiction_chain_falls_back_to_capitalization_walk():
+    # No "City/County/Town of" trigger for the stop rule to find in plain
+    # text, but the tag-bounded walk (mirrors PrimeGov's own shipped
+    # regex) finds it in the raw markup.
+    # ("Oklahoma City" is nationally unambiguous, so
+    # enrich_jurisdiction_text() correctly appends its real state too.)
+    html = "<table><td>OKLAHOMA CITY</td><td>FORMAL AGENDA</td></table> City of Oklahoma City<br>more"
+    result = je.extract_jurisdiction_chain(page_text="no trigger here", html=html, url="https://example.com/clip/1")
+    assert result == "City of Oklahoma City, OK"
+
+
+def test_extract_jurisdiction_chain_falls_back_to_validated_subdomain():
+    # Real case this tier exists for: wordninja over-splits "galesburg"
+    # into "Gales Burg" (a real, confirmed bug this session, not
+    # hypothetical -- see BACKLOG.md), which never validates. Checking the
+    # raw unsplit label first fixes it without needing wordninja at all.
+    result = je.extract_jurisdiction_chain(
+        page_text="no trigger", html="<html>no trigger</html>", url="https://galesburg.granicus.com/player/clip/1"
+    )
+    assert result == "Galesburg"
+
+
+def test_extract_jurisdiction_chain_subdomain_resolves_state_via_registry():
+    # sandiego.granicus.com is a real, already-registered known domain --
+    # confirms the subdomain tier's candidate is run through
+    # enrich_jurisdiction_text() (which consults the registry), not
+    # returned bare, since "San Diego" alone is nationally ambiguous
+    # (CA and TX both have a real "San Diego").
+    result = je.extract_jurisdiction_chain(
+        page_text="no trigger", html="<html>no trigger</html>", url="https://sandiego.granicus.com/player/clip/1"
+    )
+    assert result == "San Diego, CA"
+
+
+def test_extract_jurisdiction_chain_declines_rather_than_guesses():
+    # No trigger phrase, no tag-bounded match, and a subdomain that
+    # doesn't validate against any real place/county -- every tier
+    # declines, so the chain returns None rather than fabricating
+    # something.
+    result = je.extract_jurisdiction_chain(
+        page_text="nothing useful here", html="<html>nothing useful here</html>",
+        url="https://totallymadeupgarbage999.example.com/clip/1",
+    )
+    assert result is None

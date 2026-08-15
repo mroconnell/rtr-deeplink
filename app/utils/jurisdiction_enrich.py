@@ -48,6 +48,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+from urllib.parse import urlparse
 
 _DATA_DIR = Path(__file__).parent / "jurisdiction_data"
 
@@ -633,3 +634,178 @@ def finalize_jurisdiction(
         return JurisdictionResult(f"{known.name}, {known.state}", None, "fallback")
 
     return JurisdictionResult(raw_jurisdiction, None, "unverified")
+
+
+# --- Shared extraction chain, for adapters with no bespoke extraction of
+# their own (2026-08-15) ---
+#
+# Built from the extraction tournament (JURISDICTION_METADATA_PLAN.md,
+# workstream 2): every portable jurisdiction-extraction convention run
+# against all 649 archived pages' raw HTML, scored against the Census
+# tables. Two conventions each beat their shipped counterpart outright
+# and are promoted here into a chain any adapter can call once its own
+# primary extraction comes up empty -- Swagit and generic_fallback are
+# the first two callers, since the audit found them the highest-volume
+# adapters that never called into this module at all (~22 blank Swagit
+# jurisdictions, generic_fallback's title-tag regexes with no further
+# fallback). clerkbase_slug (2 real hits outside its home platform --
+# doesn't generalize) and fallback_titletag (zero *unique* coverage once
+# the tiers below run first, and its non-validating misses are real
+# junk: bare dates, "Auroratv") were both tournament losers and are
+# deliberately excluded.
+#
+# The capitalization-bounded walk below mirrors
+# app.platforms.primegov.PrimeGovAssetFinder._extract_jurisdiction's own
+# regex rather than importing it: that adapter's own resolve() and
+# registry-consultation logic are deliberately left untouched this round
+# (see BACKLOG.md's "Future refactor, deliberately deferred" entry), and
+# importing a live method from it here would create exactly the coupling
+# that entry is about avoiding. Similarly, the validated-subdomain
+# extractor below re-checks the Census tables directly rather than
+# calling GranicusAssetFinder._humanize_subdomain() -- both platform
+# modules already import *this* module, so importing back from either
+# would be a circular import, not just a style choice.
+
+_CHAIN_BOILERPLATE_RE = re.compile(r"<(script|style)\b[^>]*>.*?</\1>", re.IGNORECASE | re.DOTALL)
+_CHAIN_TAG_JURISDICTION_RE = re.compile(r"\b(city|county|town) of\s+([^<>]{1,80}?)(?=<|[,.])", re.IGNORECASE)
+
+_STOPRULE_TRIGGER_RE = re.compile(r"\b(City|County|Town) of\s+")
+# Abbreviations pages actually write ("Ft. Worth", "Mt. Vernon", "N. Las
+# Vegas") -- not just the Census tables' own canonical two (St./Ste.),
+# since this stop rule is about how *websites* punctuate a name, not how
+# the Census does (user's call, 2026-08-15, made after seeing "Ft."/"Mt."
+# trip the first draft's period-stop).
+_STOPRULE_ABBREV_OK = {"st", "ste", "ft", "mt", "pt", "n", "s", "e", "w"}
+
+# Deliberately duplicated from app.platforms.granicus.US_STATE_ABBREVIATIONS
+# rather than imported -- see the module comment above on why a
+# platforms -> utils reverse import isn't an option here.
+_STATE_ABBREVIATIONS_LOWER = {
+    "al", "ak", "az", "ar", "ca", "co", "ct", "de", "fl", "ga", "hi", "id", "il", "in",
+    "ia", "ks", "ky", "la", "me", "md", "ma", "mi", "mn", "ms", "mo", "mt", "ne", "nv",
+    "nh", "nj", "nm", "ny", "nc", "nd", "oh", "ok", "or", "pa", "ri", "sc", "sd", "tn",
+    "tx", "ut", "vt", "va", "wa", "wv", "wi", "wy", "dc",
+}
+
+
+def _stoprule_extract(page_text: str) -> Optional[str]:
+    """"City/County/Town of X" walk over rendered page text that stops at
+    the first lowercase-initial word, a period not in
+    `_STOPRULE_ABBREV_OK`, a comma/semicolon, or 5 words -- whichever
+    comes first. Beat the shipped Granicus body regex outright in the
+    tournament (361 vs. 318 table-valid of 649) by fixing exactly the
+    bleed the shipped regex's open-ended character class allows (e.g.
+    "City of Hercules. XIV. PUBLIC COMMUNICATIONS XV." -- confirmed live
+    2026-08-15 against hercules.granicus.com/player/clip/1306, see
+    BACKLOG.md)."""
+    m = _STOPRULE_TRIGGER_RE.search(page_text)
+    if not m:
+        return None
+    kept: List[str] = []
+    for word in page_text[m.end():m.end() + 120].split():
+        core = word.strip(",;:")
+        if not core or not core[0].isupper():
+            break
+        if core.endswith(".") and core[:-1].lower() not in _STOPRULE_ABBREV_OK and len(core.rstrip(".")) > 1:
+            kept.append(core.rstrip("."))
+            break
+        kept.append(core)
+        if word != core:
+            # A comma/semicolon ends the name ("City of Boston,
+            # Massachusetts") -- keep the token but stop the walk, the
+            # same boundary the shipped Granicus regex's character class
+            # already uses.
+            break
+        if len(kept) >= 5:
+            break
+    return f"{m.group(1)} of {' '.join(kept)}" if kept else None
+
+
+def _capitalization_walk_extract(html: str) -> Optional[str]:
+    """"City/County/Town of X" walk over tag-bounded raw HTML (stops at
+    the first non-capitalized word or 4 words) -- the tournament's second
+    winner (326 table-valid of 649, primegov_walk). See the module
+    comment above for why this is a reimplementation, not a shared
+    import."""
+    text = _CHAIN_BOILERPLATE_RE.sub("", html)
+    match = _CHAIN_TAG_JURISDICTION_RE.search(text)
+    if not match:
+        return None
+    kept: List[str] = []
+    for word in match.group(2).split():
+        core = word.strip(".,;:")
+        if not core or not core[0].isupper():
+            break
+        # Normalize all-caps header text ("OKLAHOMA CITY") to title case
+        # without touching text that's already properly cased.
+        kept.append(core.title() if core.isupper() else core)
+        if len(kept) >= 4:
+            break
+    if not kept:
+        return None
+    return f"{match.group(1).capitalize()} of {' '.join(kept)}"
+
+
+def _validated_subdomain_extract(url: str) -> Optional[str]:
+    """Bare (no state suffix) subdomain-derived name, validated against
+    the Census tables before ever being offered as a candidate -- unlike
+    the shipped wordninja-humanize fallback (Granicus's
+    `_humanize_subdomain()`), this declines instead of guessing when
+    nothing validates (416 table-valid / 0 garbage of 649 in the
+    tournament, vs. 408 valid / 229 garbage for the shipped
+    wordninja-always approach). Tried unsplit first -- fixes Galesburg:
+    wordninja's own split ("Gales Burg") never validates, while the raw
+    label does -- and only falls back to a wordninja split when the raw
+    label itself doesn't validate. State is deliberately left to the
+    caller's `enrich_jurisdiction_text()` pass, which already has
+    domain/ZIP disambiguation this function doesn't need to duplicate."""
+    host = urlparse(url).netloc.lower()
+    parts = host.split(".")
+    if len(parts) <= 2 or parts[0] == "www":
+        return None
+    label = parts[0]
+
+    for candidate in (label, label.rstrip("0123456789")):
+        if _table_lookup(candidate):
+            return candidate.title()
+
+    try:
+        import wordninja
+    except ImportError:
+        return None
+    words = wordninja.split(label)
+    if not words:
+        return None
+    if len(words) > 1 and words[-1].lower() in _STATE_ABBREVIATIONS_LOWER:
+        words = words[:-1]
+    while len(words) > 1 and words[0].lower() in ("city", "county", "town", "of"):
+        words = words[1:]
+    if not words:
+        return None
+    name = " ".join(w.capitalize() for w in words)
+    return name if _table_lookup(name) else None
+
+
+def extract_jurisdiction_chain(*, page_text: str, html: str, url: str) -> Optional[str]:
+    """Shared fallback chain for adapters whose own primary extraction
+    found nothing: stop-rule body regex -> capitalization-bounded walk ->
+    validated subdomain, tried in tournament-ranked order, first hit
+    wins. Every candidate gets one run through `enrich_jurisdiction_text()`
+    before being returned, so callers get the same "name + state when
+    findable" shape `finalize_jurisdiction()` expects downstream.
+
+    Deliberately does NOT consult the known-domain registry --
+    `finalize_jurisdiction()` (this module's ingest-time entry point)
+    already does that as its own first step, so a caller that also feeds
+    this chain's output into `finalize_jurisdiction()` gets registry
+    coverage once, not duplicated here.
+    """
+    netloc = urlparse(url).netloc
+    candidate = (
+        _stoprule_extract(page_text)
+        or _capitalization_walk_extract(html)
+        or _validated_subdomain_extract(url)
+    )
+    if not candidate:
+        return None
+    return enrich_jurisdiction_text(candidate, netloc=netloc, page_text=page_text)

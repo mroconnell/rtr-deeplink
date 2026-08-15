@@ -384,9 +384,35 @@ async def test_backfill_is_a_no_op_without_a_pipe_shaped_title():
     F._backfill_metadata_from_page(resolved, html, CRRMA_URL)
 
     assert resolved.title is None
+    # Also proves the shared extraction chain (tried below, since neither
+    # title-tag regex matched) declines rather than fabricates anything
+    # when the page genuinely has no jurisdiction signal at all.
     assert resolved.jurisdiction is None
     # The URL-path date still gets filled in independent of the title shape.
     assert resolved.date == "2025-11-12"
+
+
+async def test_backfill_falls_back_to_extraction_chain_when_title_has_no_shape():
+    # Real gap this session's audit found (2026-08-15): neither confirmed
+    # <title>-tag shape covers every real generic_fallback page, and
+    # before this session there was no further fallback at all --
+    # jurisdiction just stayed blank. Now the shared chain
+    # (jurisdiction_enrich.extract_jurisdiction_chain) gets a shot at the
+    # page body first.
+    from app.platforms.generic_fallback import GenericFallbackAssetFinder as F
+    from app.platforms.models import ResolvedMeeting
+
+    html = (
+        "<html><head><title>Just A Plain Title</title></head><body>"
+        "Notice of a special meeting of the City of Hercules. XIV. PUBLIC COMMUNICATIONS XV."
+        "</body></html>"
+    )
+    resolved = ResolvedMeeting(platform="unknown", source_url=CRRMA_URL)
+
+    F._backfill_metadata_from_page(resolved, html, CRRMA_URL)
+
+    assert resolved.title is None
+    assert resolved.jurisdiction == "City of Hercules, CA"
 
 
 # Real page shape confirmed live 2026-08-13 via WebFetch on
