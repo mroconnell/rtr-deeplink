@@ -216,6 +216,43 @@ this module at all before.
 - **Still not done**: display-layer wiring, the targeted ~90-page
   backfill.
 
+**Slice 4 (same branch)**: display-layer wiring for `meeting_body`
+(`jurisdiction_confidence` deliberately NOT surfaced anywhere in the UI
+-- see below).
+- `archive/db/crud.py`'s remaining response-dict builders now select and
+  return `meeting_body` alongside `jurisdiction`: `list_pages()` (the
+  `/meetings` listing's own query) and `list_saved_items()` (which joins
+  `MeetingPage` for its saved-meetings display fields). `get_page_by_slug()`
+  already had it from Slice 2.
+- Three templates render it, each right next to the existing jurisdiction
+  display, separated by " · ": `meeting_page.html` (the individual
+  meeting's byline), `meeting_list.html` (`/meetings` per-row), and
+  `saved_items.html` (My Saved Items). Verified live in-browser (not just
+  via the JSON response) against a real seeded page using the Housing
+  Authority of Santa Clara example already used in
+  `test_ingest_promotion.py`: both `/m/{slug}` and `/meetings` correctly
+  render "Housing Authority · County of Santa Clara · 2026-08-10".
+- **`/coverage` and `feed.xml` deliberately left unwired** -- judgment
+  call, not an oversight. `/coverage`'s examples exist to demo "does this
+  platform correctly extract a jurisdiction," a claim `meeting_body`
+  doesn't bear on; the RSS feed's titles are kept intentionally short for
+  syndication. Both stay wired to `jurisdiction` alone.
+- **`jurisdiction_confidence` intentionally has zero UI surface**, still.
+  The tiers below "authoritative"/"validated"/"repaired" all mean "kept
+  as extracted, not specially trusted" -- "unverified" in particular
+  covers the *correct*, common case of a real entity type no national
+  table will ever contain (school districts, MPOs, transit authorities --
+  see this file's own "Deprioritized ideas" cross-reference in
+  BACKLOG.md). Showing users a "low confidence" badge on those would be
+  actively misleading, not informative -- confidence is a diagnostic
+  field for the backfill/future admin tooling, not a public trust signal.
+- Tests: 2 new real end-to-end integration tests
+  (`test_list_pages_search.py`, `test_saved_items.py`), same Santa Clara
+  Housing Authority example, confirming the field survives both read
+  paths and not just `get_page_by_slug()`. Full suite green throughout
+  (761 tests at time of writing).
+- **Still not done**: the targeted ~90-page backfill.
+
 ## Sequencing decision
 
 Tests before tweaks: workstream 1 today, tournament next, implementation

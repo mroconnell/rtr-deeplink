@@ -8,14 +8,14 @@ any order without colliding (the fixture DB isn't reset per-test).
 from archive.db import crud
 
 
-def _payload(external_id: str, source_url: str, title: str = "Test Meeting") -> dict:
+def _payload(external_id: str, source_url: str, title: str = "Test Meeting", jurisdiction: str = "City of Test") -> dict:
     return {
         "platform": "granicus",
         "source_url": source_url,
         "external_id": external_id,
         "title": title,
         "date": "2026-01-01",
-        "jurisdiction": "City of Test",
+        "jurisdiction": jurisdiction,
         "video_url": "https://example.com/v.m3u8",
         "video_format": "m3u8",
         "segments": [],
@@ -25,9 +25,9 @@ def _payload(external_id: str, source_url: str, title: str = "Test Meeting") -> 
     }
 
 
-async def _make_page(external_id: str) -> str:
+async def _make_page(external_id: str, jurisdiction: str = "City of Test") -> str:
     url = f"https://example.granicus.com/player/clip/{external_id}"
-    result = await crud.ingest_resolution(_payload(external_id, url), url)
+    result = await crud.ingest_resolution(_payload(external_id, url, jurisdiction=jurisdiction), url)
     return result["slug"]
 
 
@@ -124,6 +124,22 @@ async def test_list_saved_items_returns_both_types_and_scoped_to_owner():
     assert len(items["meetings"]) == 2
     assert len(items["searches"]) == 1
     assert {m["slug"] for m in items["meetings"]} == {slug1, slug2}
+
+
+async def test_list_saved_items_surfaces_a_split_meeting_body():
+    # Display-layer wiring (2026-08-15, JURISDICTION_METADATA_PLAN.md):
+    # list_saved_items() used to only join MeetingPage.jurisdiction, so a
+    # real entity-prefix split (see test_ingest_promotion.py's Housing
+    # Authority of Santa Clara case) was silently dropped on the saved-
+    # items page even though get_page_by_slug() already carried it.
+    user = "user_save_test_9"
+    slug = await _make_page("save-item-9", jurisdiction="Housing Authority of the County of Santa Clara")
+    await crud.save_meeting(user, slug)
+
+    items = await crud.list_saved_items(user)
+    saved = next(m for m in items["meetings"] if m["slug"] == slug)
+    assert saved["jurisdiction"] == "County of Santa Clara"
+    assert saved["meeting_body"] == "Housing Authority"
 
 
 async def test_list_saved_items_is_newest_first():

@@ -657,6 +657,7 @@ async def list_pages(
                 "title": r["mp"].title,
                 "date": r["mp"].date,
                 "jurisdiction": r["mp"].jurisdiction,
+                "meeting_body": r["mp"].meeting_body,
                 "platform": r["mp"].platform,
                 "language": r["lang"],
                 # Quality-aware, not just "a version exists" -- a garbled
@@ -1687,12 +1688,18 @@ async def list_saved_items(clerk_user_id: str) -> dict:
         if meeting_ids:
             page_rows = (
                 await session.execute(
-                    select(MeetingPage.id, MeetingPage.slug, MeetingPage.title, MeetingPage.date, MeetingPage.jurisdiction).where(
+                    select(
+                        MeetingPage.id, MeetingPage.slug, MeetingPage.title, MeetingPage.date,
+                        MeetingPage.jurisdiction, MeetingPage.meeting_body,
+                    ).where(
                         MeetingPage.id.in_(meeting_ids)
                     )
                 )
             ).all()
-            pages_by_id = {pid: {"slug": slug, "title": title, "date": date, "jurisdiction": jurisdiction} for pid, slug, title, date, jurisdiction in page_rows}
+            pages_by_id = {
+                pid: {"slug": slug, "title": title, "date": date, "jurisdiction": jurisdiction, "meeting_body": meeting_body}
+                for pid, slug, title, date, jurisdiction, meeting_body in page_rows
+            }
 
     meetings, searches = [], []
     for row in rows:

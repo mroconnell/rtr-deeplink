@@ -13,14 +13,16 @@ from archive.db.engine import async_session
 from archive.db.models import MeetingPage, TranscriptVersion
 
 
-def _payload(external_id: str, source_url: str, *, segments, transcript_warnings=None) -> dict:
+def _payload(
+    external_id: str, source_url: str, *, segments, transcript_warnings=None, jurisdiction="City of Search Test"
+) -> dict:
     return {
         "platform": "granicus",
         "source_url": source_url,
         "external_id": external_id,
         "title": "Demoted Version Search Test Meeting",
         "date": "2026-01-01",
-        "jurisdiction": "City of Search Test",
+        "jurisdiction": jurisdiction,
         "video_url": "https://example.com/v.m3u8",
         "video_format": "m3u8",
         "segments": segments,
@@ -71,6 +73,28 @@ async def test_search_finds_keyword_in_demoted_non_default_version():
     # a viewer clicking through would never actually see it, since the
     # page itself only ever renders the current default version.
     assert row["snippet"] is None
+
+
+async def test_list_pages_surfaces_a_split_meeting_body():
+    # Display-layer wiring (2026-08-15, JURISDICTION_METADATA_PLAN.md):
+    # list_pages() -- the /meetings listing's own query -- didn't select
+    # MeetingPage.meeting_body at all before this, so a real entity-prefix
+    # split (see test_ingest_promotion.py's Housing Authority of Santa
+    # Clara case) was invisible on /meetings even though the individual
+    # meeting page (get_page_by_slug()) already showed it.
+    url = "https://example.granicus.com/player/clip/search-meeting-body"
+    await crud.ingest_resolution(
+        _payload(
+            "granicus:search-meeting-body", url,
+            segments=[{"start": 0, "end": 1, "text": "quorum present"}],
+            jurisdiction="Housing Authority of the County of Santa Clara",
+        ),
+        url,
+    )
+
+    result = await crud.list_pages(keyword="quorum", page_size=50)
+    row = next(p for p in result["pages"] if p["jurisdiction"] == "County of Santa Clara")
+    assert row["meeting_body"] == "Housing Authority"
 
 
 async def test_search_snippet_comes_from_the_current_default_version():
