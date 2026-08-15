@@ -40,6 +40,16 @@ class MeetingResolution(Base):
     title: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     date: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     jurisdiction: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    # Added 2026-08-15 (JURISDICTION_METADATA_PLAN.md) -- diagnostic only,
+    # for /admin/stats visibility into extraction quality at resolve time.
+    # `jurisdiction` above stays the raw, unmodified adapter output (this
+    # table's whole purpose is an honest log of every resolve attempt, see
+    # the class docstring); this records what
+    # app/utils/jurisdiction_enrich.py's finalize_jurisdiction() would
+    # score it as, WITHOUT rewriting `jurisdiction` itself -- the actual
+    # repaired/split value only ever gets written to the Archive's
+    # meeting_pages.jurisdiction, never here.
+    jurisdiction_confidence: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
 
     resolved_payload: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     resolve_duration_ms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)

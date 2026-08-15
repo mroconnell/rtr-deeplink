@@ -7,6 +7,8 @@ from urllib.parse import urlparse
 
 from sqlalchemy import and_, or_, select
 
+from app.utils.jurisdiction_enrich import finalize_jurisdiction
+
 from ..utils.jurisdiction_format import jurisdiction_search_terms, normalize_state_suffix
 from ..utils.language import detect_language_from_texts
 from ..utils.search import build_corpus, find_snippet, matches, tokenize
@@ -150,6 +152,18 @@ async def _find_or_create_page(session, payload: dict[str, Any], input_url_norma
     external_id = payload.get("external_id")
     source_url_normalized = normalize_url(payload["source_url"])
     jurisdiction = normalize_state_suffix(payload.get("jurisdiction"))
+    # finalize_jurisdiction() runs AFTER normalize_state_suffix() on
+    # purpose -- it expects an already-2-letter state suffix (e.g. "City
+    # of Boston, MA"), not a full state name ("Massachusetts"), so
+    # validation/repair/split has a clean value to work with. See
+    # JURISDICTION_METADATA_PLAN.md for the design and BACKLOG.md's
+    # "Census-table baseline validation" entry for the real data this was
+    # tuned against. Cross-package import (archive/ -> app/) mirrors the
+    # same boundary worker/main.py already crosses -- jurisdiction_enrich
+    # is a pure utility module (stdlib + CSV data only), not FastAPI/
+    # app-server-specific.
+    jx_result = finalize_jurisdiction(jurisdiction, netloc=urlparse(source_url_normalized).netloc)
+    jurisdiction = jx_result.jurisdiction
 
     page = await _find_existing_page(
         session,
@@ -170,6 +184,8 @@ async def _find_or_create_page(session, payload: dict[str, Any], input_url_norma
             title=payload.get("title"),
             date=payload.get("date"),
             jurisdiction=jurisdiction,
+            meeting_body=jx_result.meeting_body,
+            jurisdiction_confidence=jx_result.confidence,
             video_url=payload.get("video_url"),
             video_format=payload.get("video_format"),
             agenda_items=payload.get("agenda_items") or [],
@@ -184,6 +200,13 @@ async def _find_or_create_page(session, payload: dict[str, Any], input_url_norma
         page.title = payload.get("title") or page.title
         page.date = payload.get("date") or page.date
         page.jurisdiction = jurisdiction or page.jurisdiction
+        # meeting_body/jurisdiction_confidence only refresh alongside a
+        # real new jurisdiction value -- same truthy-gated pattern as
+        # jurisdiction itself just above, so a later resolve with no
+        # jurisdiction at all can't silently wipe a previously-split body.
+        if jurisdiction:
+            page.meeting_body = jx_result.meeting_body
+            page.jurisdiction_confidence = jx_result.confidence
         page.video_url = payload.get("video_url") or page.video_url
         page.video_format = payload.get("video_format") or page.video_format
         if payload.get("agenda_items"):
@@ -434,6 +457,13 @@ async def get_page_by_slug(slug: str) -> Optional[dict]:
             "title": page.title,
             "date": page.date,
             "jurisdiction": page.jurisdiction,
+            # Both added 2026-08-15 alongside the columns themselves --
+            # deliberately included from the start rather than repeating
+            # the exact "platform" key omission this same function's own
+            # docstring/test (test_get_page_by_slug_includes_platform)
+            # documents as a real, previously-shipped bug.
+            "meeting_body": page.meeting_body,
+            "jurisdiction_confidence": page.jurisdiction_confidence,
             "video_url": page.video_url,
             "video_format": page.video_format,
             "agenda_items": page.agenda_items or [],
@@ -627,6 +657,7 @@ async def list_pages(
                 "title": r["mp"].title,
                 "date": r["mp"].date,
                 "jurisdiction": r["mp"].jurisdiction,
+                "meeting_body": r["mp"].meeting_body,
                 "platform": r["mp"].platform,
                 "language": r["lang"],
                 # Quality-aware, not just "a version exists" -- a garbled
@@ -1657,12 +1688,18 @@ async def list_saved_items(clerk_user_id: str) -> dict:
         if meeting_ids:
             page_rows = (
                 await session.execute(
-                    select(MeetingPage.id, MeetingPage.slug, MeetingPage.title, MeetingPage.date, MeetingPage.jurisdiction).where(
+                    select(
+                        MeetingPage.id, MeetingPage.slug, MeetingPage.title, MeetingPage.date,
+                        MeetingPage.jurisdiction, MeetingPage.meeting_body,
+                    ).where(
                         MeetingPage.id.in_(meeting_ids)
                     )
                 )
             ).all()
-            pages_by_id = {pid: {"slug": slug, "title": title, "date": date, "jurisdiction": jurisdiction} for pid, slug, title, date, jurisdiction in page_rows}
+            pages_by_id = {
+                pid: {"slug": slug, "title": title, "date": date, "jurisdiction": jurisdiction, "meeting_body": meeting_body}
+                for pid, slug, title, date, jurisdiction, meeting_body in page_rows
+            }
 
     meetings, searches = [], []
     for row in rows:

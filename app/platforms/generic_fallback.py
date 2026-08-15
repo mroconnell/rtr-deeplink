@@ -11,6 +11,7 @@ from .base import AssetFinder, find_platform_link, get_finder
 from .media_scan import is_hls_url, media_type, scan_media_urls
 from .models import ResolvedMeeting, TranscriptSegment
 from .youtube import YouTubeAssetFinder
+from ..utils import jurisdiction_enrich
 from ..utils.url_guard import guarded_get, read_capped_bytes, read_capped_text
 from ..utils.vtt_parser import decode_vtt_bytes, detect_language_from_texts, parse_captions_by_extension
 
@@ -678,6 +679,18 @@ class GenericFallbackAssetFinder(AssetFinder):
         # YouTube's uploader for the same reason). Since this branch's
         # only possible delegate is YouTubeAssetFinder, there's no other
         # legitimate source `resolved.jurisdiction` could hold here.
+        if not jurisdiction and not resolved.jurisdiction:
+            # Neither confirmed <title>-tag shape matched (both are
+            # scoped to one confirmed real page family each -- see the
+            # module-level regex comments) and no delegate already set
+            # anything. Try the shared chain before leaving this page
+            # blank -- generic_fallback never called into this module at
+            # all before (2026-08-15 audit), despite being one of the two
+            # highest-volume sources of blank jurisdictions.
+            jurisdiction = jurisdiction_enrich.extract_jurisdiction_chain(
+                page_text=soup.get_text(" ", strip=True), html=html, url=url
+            )
+
         if jurisdiction:
             resolved.jurisdiction = jurisdiction
 

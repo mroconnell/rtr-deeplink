@@ -9,6 +9,7 @@ from bs4 import BeautifulSoup
 from .base import AssetFinder
 from .media_scan import is_hls_url, scan_media_urls, media_type
 from .models import ResolvedMeeting, TranscriptSegment
+from ..utils import jurisdiction_enrich
 from ..utils.vtt_parser import (
     STRUCTURED_CAPTION_PARSERS,
     decode_vtt_bytes,
@@ -119,6 +120,16 @@ class SwagitAssetFinder(AssetFinder):
 
         soup = BeautifulSoup(html, "html.parser")
         title, date, jurisdiction = self._extract_metadata(soup)
+        if not jurisdiction:
+            # <title> didn't match the "... - City, ST" shape this
+            # adapter's own extraction expects (special-purpose entities:
+            # school districts, MPOs, transit/utility authorities -- see
+            # BACKLOG.md's "Swagit blank-jurisdiction gap" entry, the
+            # highest-volume source of blank jurisdictions in the
+            # 2026-08-15 audit). Try the shared chain before giving up.
+            jurisdiction = jurisdiction_enrich.extract_jurisdiction_chain(
+                page_text=soup.get_text(" ", strip=True), html=html, url=final_url
+            )
 
         media_urls = scan_media_urls(html, final_url)
         video_url, video_format = None, None

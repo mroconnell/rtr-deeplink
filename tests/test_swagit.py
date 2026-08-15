@@ -76,6 +76,50 @@ async def test_resolve_detects_language_from_transcript_fragments():
     assert result.transcript_language == "en"
 
 
+async def test_resolve_falls_back_to_extraction_chain_when_title_has_no_city_state_shape():
+    # Real gap this session's audit found (2026-08-15, "Swagit
+    # blank-jurisdiction gap" in BACKLOG.md): _extract_metadata() only
+    # ever sets jurisdiction from a "... - City, ST"-shaped <title>. A
+    # school-district/authority-style title with no such shape used to
+    # leave jurisdiction blank even when the page body plainly names a
+    # real city -- now the shared chain (jurisdiction_enrich.
+    # extract_jurisdiction_chain) gets a shot at it.
+    url = "https://hercules.new.swagit.com/videos/1"
+    html = (
+        "<html><head><title>Special Meeting</title></head><body>"
+        '<script>var playlist = [{"file": "https://archive-stream.granicus.com/x/playlist.m3u8"}];</script>'
+        "<p>Notice of a special meeting of the City of Hercules. XIV. PUBLIC COMMUNICATIONS XV.</p>"
+        "</body></html>"
+    )
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await SwagitAssetFinder().resolve(url)
+
+    assert result.title == "Special Meeting"
+    assert result.jurisdiction == "City of Hercules, CA"
+
+
+async def test_resolve_falls_back_to_validated_subdomain_when_body_has_no_city_phrase():
+    # No "City/County/Town of" phrase anywhere on the page and no
+    # ", ST"-shaped <title> -- only the validated-subdomain tier can find
+    # anything here. Galesburg is nationally ambiguous (IL/KS/MI/ND all
+    # have a real Galesburg), so this also confirms the chain doesn't
+    # fabricate a state it can't confirm.
+    url = "https://galesburg.new.swagit.com/videos/1"
+    html = (
+        "<html><head><title>Regular Meeting</title></head><body>"
+        '<script>var playlist = [{"file": "https://archive-stream.granicus.com/x/playlist.m3u8"}];</script>'
+        "</body></html>"
+    )
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await SwagitAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "Galesburg"
+
+
 def test_group_word_fragments_merges_real_dublin_example():
     # Real bug (2026-08-08): Swagit's #transcript-fragments emits one
     # TranscriptSegment per word with start == end (a true instant) --

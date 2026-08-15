@@ -205,8 +205,9 @@
         {% endif %}
       </h1>
       <p>
+        {%- if page.meeting_body %}{{ page.meeting_body }}{% if page.jurisdiction %} &middot; {% endif %}{% endif -%}
         {%- if page.jurisdiction %}{{ page.jurisdiction|jurisdiction_display }}{% endif -%}
-        {%- if page.date %}{% if page.jurisdiction %} &middot; {% endif %}{{ page.date }}{% endif -%}
+        {%- if page.date %}{% if page.jurisdiction or page.meeting_body %} &middot; {% endif %}{{ page.date }}{% endif -%}
       </p>
       {% if page.source_url %}
       <p class="source-link"><a href="{{ page.source_url }}" target="_blank" rel="noopener noreferrer">View original source &rarr;</a></p>

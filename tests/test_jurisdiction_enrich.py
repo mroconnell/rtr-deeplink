@@ -49,6 +49,40 @@ def test_lookup_city_state_does_not_double_strip_a_name_that_legitimately_ends_i
     assert je.lookup_city_state("Oklahoma City") == "OK"
 
 
+def test_lookup_city_state_resolves_real_consolidated_city_county_governments():
+    # Real gap found and fixed 2026-08-15: build_jurisdiction_data.py's
+    # build_places() only kept Census FUNCSTAT "A" (active incorporated
+    # government) rows, silently dropping every real consolidated
+    # city-county government -- Census codes these "B" (Baton Rouge,
+    # Lafayette) or "F" ("... (balance)" statistical-area rows), not "A".
+    # Confirmed against the real 2024 Gazetteer file (see
+    # build_places()'s own comment for the full FUNCSTAT list). All 8 "F"
+    # rows are asserted here, not just one -- this was a closed, verified
+    # list at fix time, not a general pattern to trust blindly.
+    assert je.lookup_city_state("Nashville-Davidson") == "TN"
+    assert je.lookup_city_state("Indianapolis") == "IN"
+    assert je.lookup_city_state("Louisville/Jefferson County") == "KY"
+    assert je.lookup_city_state("Athens-Clarke County") == "GA"
+    assert je.lookup_city_state("Augusta-Richmond County") == "GA"
+    assert je.lookup_city_state("Butte-Silver Bow") == "MT"
+    assert je.lookup_city_state("Baton Rouge") == "LA"
+
+
+def test_lookup_city_state_does_not_over_strip_a_consolidated_government_name():
+    # Real bug caught while fixing the gap above: naively applying the
+    # normal trailing-type-word strip AFTER already stripping "unified
+    # government (balance)" turned "Greeley County unified government
+    # (balance)" into just "greeley" -- colliding with three unrelated
+    # real cities named Greeley (CO, IA, KS) and making an otherwise-
+    # unambiguous county lookup falsely ambiguous. "County" here is part
+    # of the real name (a *county* consolidated government, distinct from
+    # any city sharing the root name), same trap as Oklahoma City above.
+    assert je.lookup_city_state("Greeley County") == "KS"
+    # Plain "Greeley" must still correctly stay ambiguous -- this fix must
+    # not accidentally make the collision worse in the other direction.
+    assert je.lookup_city_state("Greeley") is None
+
+
 def test_lookup_city_state_returns_none_for_real_collisions():
     # Real, confirmed: "Detroit" is a real city in MI, OR, AL, and TX;
     # "Charlotte" in NC, MI, IA, TX, and TN -- the exact real example this
@@ -229,3 +263,249 @@ def test_known_jurisdiction_display_is_case_insensitive():
 
 def test_known_jurisdiction_display_returns_none_for_an_unconfirmed_domain():
     assert je.known_jurisdiction_display("some-random-city.example.com") is None
+
+
+# --- finalize_jurisdiction() -- ingest-time validation/repair/split,
+# built from the 2026-08-15 audit of all 649 real archived jurisdiction
+# values. See JURISDICTION_METADATA_PLAN.md for the full design and
+# BACKLOG.md's "Census-table baseline validation" entry for the data this
+# was tuned against. Every case below is a real value pulled from that
+# audit, not invented.
+
+def test_finalize_jurisdiction_validates_a_clean_name_unchanged():
+    result = je.finalize_jurisdiction("City of Sunnyvale, CA")
+    assert result.jurisdiction == "City of Sunnyvale, CA"
+    assert result.meeting_body is None
+    assert result.confidence == "validated"
+
+
+def test_table_lookup_recognizes_a_page_authored_abbreviation():
+    # "Ft. Worth" is how real pages actually write it (user's own call,
+    # 2026-08-15 -- see _STOPRULE_ABBREV_OK's comment); the Census table's
+    # own key is the spelled-out "Fort Worth". Added specifically so
+    # extract_jurisdiction_chain()'s validation gate (which requires a
+    # candidate to actually validate before being accepted) doesn't
+    # reject every abbreviated real name it was built to preserve.
+    assert je._table_lookup("Ft. Worth") == ("place", ["TX"])
+    assert je._table_lookup("Mt. Vernon") is not None
+    assert je.finalize_jurisdiction("City of Ft. Worth").confidence == "validated"
+
+
+def test_finalize_jurisdiction_repairs_trailing_bleed():
+    # Real value, Hercules CA's Granicus page -- the still-open
+    # granicus.py body-regex bug (BACKLOG.md) let agenda-heading text run
+    # on past the real city name. State gets filled in on the now-clean
+    # name too (_fill_missing_state(), added 2026-08-15 running the
+    # workstream-4 backfill dry run): the ORIGINAL bled string could
+    # never resolve a state (it doesn't validate), so nothing upstream
+    # ever got the chance to look one up until now.
+    result = je.finalize_jurisdiction(
+        "City of Hercules. XIV. PUBLIC COMMUNICATIONS XV.", netloc="hercules.granicus.com"
+    )
+    assert result.jurisdiction == "City of Hercules, CA"
+    assert result.meeting_body is None
+    assert result.confidence == "repaired"
+
+
+def test_finalize_jurisdiction_preserves_state_suffix_through_a_repair():
+    result = je.finalize_jurisdiction("City of Boston to accept and expend the amount of, MA")
+    assert result.jurisdiction == "City of Boston, MA"
+    assert result.confidence == "repaired"
+
+
+def test_finalize_jurisdiction_fills_a_state_the_bled_original_never_could():
+    # Real gap found live 2026-08-15 running the workstream-4 backfill dry
+    # run: "City of Castle Pines History of Parks and Recreat" never
+    # validates, so the ORIGINAL adapter-time state-enrichment attempt
+    # correctly found nothing (a bled name can't be looked up). Once
+    # repaired down to "Castle Pines" -- a real, unambiguous CO city --
+    # this function gets one more shot at resolving a state, rather than
+    # leaving the repaired name state-less forever just because the first
+    # attempt (on the wrong, bled text) failed.
+    result = je.finalize_jurisdiction("City of Castle Pines History of Parks and Recreat")
+    assert result.jurisdiction == "City of Castle Pines, CO"
+    assert result.confidence == "repaired"
+
+
+def test_finalize_jurisdiction_never_trims_a_legitimately_long_real_name():
+    # Real value, a real Bay Area agency -- trimming from the right would
+    # eventually hit "Bay" (a real place), but nothing in the discarded
+    # tail looks like bleed, so this must be left whole.
+    result = je.finalize_jurisdiction("Bay Area Headquarters Authority")
+    assert result.jurisdiction == "Bay Area Headquarters Authority"
+    assert result.meeting_body is None
+    assert result.confidence == "unverified"
+
+
+def test_finalize_jurisdiction_splits_a_real_entity_prefix():
+    # Real value, hacsc.granicus.com -- "Housing Authority" is a real,
+    # distinct governing body, not bleed; splitting it out (rather than
+    # discarding it, or leaving the whole string un-validatable) is the
+    # correct outcome per JURISDICTION_METADATA_PLAN.md's design. State
+    # gets filled in on the split-out jurisdiction half too
+    # (_fill_missing_state(), 2026-08-15) -- "Santa Clara" alone would be
+    # ambiguous, but "County of Santa Clara" resolves unambiguously.
+    result = je.finalize_jurisdiction("Housing Authority of the County of Santa Clara")
+    assert result.jurisdiction == "County of Santa Clara, CA"
+    assert result.meeting_body == "Housing Authority"
+    assert result.confidence == "repaired"
+
+
+def test_finalize_jurisdiction_does_not_split_off_a_bare_type_phrase():
+    # Real bug caught testing this fix against all 649 archived rows:
+    # "The City of Memphis" and "City and County of Denver" both look
+    # like the entity-split shape, but "The City"/"City and County" are
+    # not real distinct entities, just the ordinary jurisdiction-type
+    # phrasing -- splitting them off would produce meaningless bodies.
+    result = je.finalize_jurisdiction("The City of Memphis, TN")
+    assert result.meeting_body is None
+    assert result.jurisdiction == "The City of Memphis, TN"
+
+    result = je.finalize_jurisdiction("City and County of San Francisco")
+    assert result.meeting_body is None
+    assert result.jurisdiction == "City and County of San Francisco"
+
+
+def test_finalize_jurisdiction_authoritative_domain_overrides_even_a_plausible_extraction():
+    # The real Holladay bug this design exists to close: PrimeGov's own
+    # text extraction on slc.primegov.com sometimes finds a genuine,
+    # table-valid *wrong* city ("City of Holladay, UT" -- Holladay is a
+    # real Utah city) instead of the real header. Table validation alone
+    # can never catch a plausible-but-wrong value; only an authoritative
+    # domain override can.
+    result = je.finalize_jurisdiction("City of Holladay, UT", netloc="slc.primegov.com")
+    assert result.jurisdiction == "Salt Lake City, UT"
+    assert result.confidence == "authoritative"
+
+
+def test_finalize_jurisdiction_authoritative_domain_fills_a_blank_too():
+    result = je.finalize_jurisdiction(None, netloc="slc.primegov.com")
+    assert result.jurisdiction == "Salt Lake City, UT"
+    assert result.confidence == "authoritative"
+
+
+def test_finalize_jurisdiction_fallback_domain_fires_on_blank_or_unvalidated_extraction():
+    # A "fallback"-strength entry fires whenever extraction leaves nothing
+    # usable -- blank, or present but not table-valid -- unlike
+    # "authoritative", which overrides even a plausible-looking real
+    # extraction (see the Holladay test above). This is deliberately
+    # different from "only when blank": alexandria.granicus.com is
+    # registered because this single-tenant customer is confirmed to
+    # always be Alexandria, VA, so an unvalidatable extraction on this
+    # specific host is still safer to answer from the registry than to
+    # leave unverified.
+    result = je.finalize_jurisdiction(None, netloc="alexandria.granicus.com")
+    assert result.jurisdiction == "Alexandria, VA"
+    assert result.confidence == "fallback"
+
+    result = je.finalize_jurisdiction("Not A Real Place Zzyzx", netloc="alexandria.granicus.com")
+    assert result.jurisdiction == "Alexandria, VA"
+    assert result.confidence == "fallback"
+
+
+def test_finalize_jurisdiction_does_not_consult_an_unregistered_domain():
+    result = je.finalize_jurisdiction("Some Unvalidatable Text", netloc="totally-unknown-host.example.com")
+    assert result.jurisdiction == "Some Unvalidatable Text"
+    assert result.confidence == "unverified"
+
+
+def test_finalize_jurisdiction_returns_blank_confidence_for_nothing_at_all():
+    result = je.finalize_jurisdiction(None)
+    assert result.jurisdiction is None
+    assert result.confidence == "blank"
+
+
+# --- extract_jurisdiction_chain() (2026-08-15, workstream 2 promotions) ---
+# Shared fallback chain for adapters with no bespoke extraction (Swagit,
+# generic_fallback) -- see the module-level comment above
+# extract_jurisdiction_chain() in jurisdiction_enrich.py for the tournament
+# results these three tiers are promoted from.
+
+
+def test_extract_jurisdiction_chain_stoprule_repairs_a_real_bleed_case():
+    # The real Hercules bleed confirmed live 2026-08-15 (see BACKLOG.md's
+    # "Granicus jurisdiction bleed" entry): the shipped body regex has no
+    # sentence boundary and runs straight into an agenda's roman-numeral
+    # list. The stop rule fixes this at the source, before the enricher's
+    # own repair machinery would even need to run.
+    page_text = "Welcome. Meeting of the City of Hercules. XIV. PUBLIC COMMUNICATIONS XV. ADJOURNMENT"
+    result = je.extract_jurisdiction_chain(
+        page_text=page_text, html=f"<html>{page_text}</html>", url="https://hercules.granicus.com/player/clip/1306"
+    )
+    assert result == "City of Hercules, CA"
+
+
+def test_extract_jurisdiction_chain_stoprule_keeps_a_real_abbreviation():
+    page_text = "Agenda for the City of Ft. Worth regular council session"
+    result = je.extract_jurisdiction_chain(page_text=page_text, html="", url="https://example.granicus.com/clip/1")
+    assert result == "City of Ft. Worth"
+
+
+def test_extract_jurisdiction_chain_falls_back_to_capitalization_walk():
+    # No "City/County/Town of" trigger for the stop rule to find in plain
+    # text, but the tag-bounded walk (mirrors PrimeGov's own shipped
+    # regex) finds it in the raw markup.
+    # ("Oklahoma City" is nationally unambiguous, so
+    # enrich_jurisdiction_text() correctly appends its real state too.)
+    html = "<table><td>OKLAHOMA CITY</td><td>FORMAL AGENDA</td></table> City of Oklahoma City<br>more"
+    result = je.extract_jurisdiction_chain(page_text="no trigger here", html=html, url="https://example.com/clip/1")
+    assert result == "City of Oklahoma City, OK"
+
+
+def test_extract_jurisdiction_chain_falls_back_to_validated_subdomain():
+    # Real case this tier exists for: wordninja over-splits "galesburg"
+    # into "Gales Burg" (a real, confirmed bug this session, not
+    # hypothetical -- see BACKLOG.md), which never validates. Checking the
+    # raw unsplit label first fixes it without needing wordninja at all.
+    result = je.extract_jurisdiction_chain(
+        page_text="no trigger", html="<html>no trigger</html>", url="https://galesburg.granicus.com/player/clip/1"
+    )
+    assert result == "Galesburg"
+
+
+def test_extract_jurisdiction_chain_subdomain_resolves_state_via_registry():
+    # sandiego.granicus.com is a real, already-registered known domain --
+    # confirms the subdomain tier's candidate is run through
+    # enrich_jurisdiction_text() (which consults the registry), not
+    # returned bare, since "San Diego" alone is nationally ambiguous
+    # (CA and TX both have a real "San Diego").
+    result = je.extract_jurisdiction_chain(
+        page_text="no trigger", html="<html>no trigger</html>", url="https://sandiego.granicus.com/player/clip/1"
+    )
+    assert result == "San Diego, CA"
+
+
+def test_extract_jurisdiction_chain_rejects_a_capitalization_walk_false_positive():
+    # Real, confirmed-live bug (2026-08-15, found while dry-running the
+    # workstream 4 backfill against real cached HTML, not hypothetical):
+    # a Broward MPO Swagit page (browardmpo.new.swagit.com/videos/359517)
+    # has an ALL-CAPS caption line of spoken testimony -- "...IN THE CITY
+    # OF FORT LAUDERDALE THAT'S IDENTIFIED..." -- that the capitalization
+    # walk matched into, producing "City of Fort Lauderdale That'S
+    # Identified." That candidate doesn't validate (nor trim-repair,
+    # since "That'S"/"Identified" show no bleed signal -- both are
+    # capitalized, so _looks_like_bleed() correctly refuses to guess
+    # which prefix is real) and must be discarded, not stored -- a real
+    # city mention inside spoken dialogue is not evidence of the
+    # meeting's own jurisdiction.
+    page_text = (
+        "ALSO, THE S. MIDDLE RIVER MOBILITY PROJECT IN THE CITY OF FORT LAUDERDALE THAT'S "
+        "IDENTIFIED. Next item on the agenda."
+    )
+    html = f"<html><body><p>{page_text}</p></body></html>"
+    result = je.extract_jurisdiction_chain(
+        page_text="no trigger for the stop rule here", html=html, url="https://browardmpo.new.swagit.com/videos/1"
+    )
+    assert result is None
+
+
+def test_extract_jurisdiction_chain_declines_rather_than_guesses():
+    # No trigger phrase, no tag-bounded match, and a subdomain that
+    # doesn't validate against any real place/county -- every tier
+    # declines, so the chain returns None rather than fabricating
+    # something.
+    result = je.extract_jurisdiction_chain(
+        page_text="nothing useful here", html="<html>nothing useful here</html>",
+        url="https://totallymadeupgarbage999.example.com/clip/1",
+    )
+    assert result is None

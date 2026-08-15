@@ -12,7 +12,13 @@ from archive.db import crud
 
 
 def _payload(
-    external_id: str, source_url: str, *, segments=None, agenda_items=None, transcript_language=None
+    external_id: str,
+    source_url: str,
+    *,
+    segments=None,
+    agenda_items=None,
+    transcript_language=None,
+    jurisdiction="City of Test",
 ) -> dict:
     return {
         "platform": "granicus",
@@ -20,7 +26,7 @@ def _payload(
         "external_id": external_id,
         "title": "Test Meeting",
         "date": "2026-01-01",
-        "jurisdiction": "City of Test",
+        "jurisdiction": jurisdiction,
         "video_url": "https://example.com/v.m3u8",
         "video_format": "m3u8",
         "segments": segments or [],
@@ -280,3 +286,58 @@ async def test_demotion_not_triggered_when_default_segments_are_not_agenda_copy(
     await crud.ingest_resolution(_payload(external_id, url, segments=[], agenda_items=agenda), url)
     page = await crud.get_page_by_slug((await crud.lookup_page_for_url(url))["slug"])
     assert page["versions"][0]["is_default"] is True
+
+
+async def test_ingest_resolution_repairs_a_bled_jurisdiction_end_to_end():
+    # Real DB integration test for JURISDICTION_METADATA_PLAN.md's
+    # finalize_jurisdiction() wiring in _find_or_create_page() -- not just
+    # the pure-function tests in tests/test_jurisdiction_enrich.py. Uses
+    # the exact real bled value found live on hercules.granicus.com (see
+    # BACKLOG.md's "GranicusAssetFinder._extract_metadata()'s page-body
+    # jurisdiction regex" entry) to confirm the repair actually reaches
+    # the stored MeetingPage through the real ingest path, not just the
+    # function in isolation.
+    url = "https://hercules.granicus.com/player/clip/promo-jx-repair"
+    external_id = "granicus:promo-jx-repair"
+
+    await crud.ingest_resolution(
+        _payload(
+            external_id, url,
+            jurisdiction="City of Hercules. XIV. PUBLIC COMMUNICATIONS XV.",
+        ),
+        url,
+    )
+    page = await crud.get_page_by_slug((await crud.lookup_page_for_url(url))["slug"])
+    assert page["jurisdiction"] == "City of Hercules, CA"
+    assert page["meeting_body"] is None
+    assert page["jurisdiction_confidence"] == "repaired"
+
+
+async def test_ingest_resolution_splits_a_real_entity_prefix_end_to_end():
+    url = "https://hacsc.granicus.com/player/clip/promo-jx-split"
+    external_id = "granicus:promo-jx-split"
+
+    await crud.ingest_resolution(
+        _payload(
+            external_id, url,
+            jurisdiction="Housing Authority of the County of Santa Clara",
+        ),
+        url,
+    )
+    page = await crud.get_page_by_slug((await crud.lookup_page_for_url(url))["slug"])
+    assert page["jurisdiction"] == "County of Santa Clara, CA"
+    assert page["meeting_body"] == "Housing Authority"
+    assert page["jurisdiction_confidence"] == "repaired"
+
+
+async def test_ingest_resolution_leaves_unrecognized_jurisdiction_unverified():
+    # "City of Test" (the shared _payload() default) isn't a real place --
+    # must be kept exactly as given, not discarded or guessed at.
+    url = "https://example.granicus.com/player/clip/promo-jx-unverified"
+    external_id = "granicus:promo-jx-unverified"
+
+    await crud.ingest_resolution(_payload(external_id, url), url)
+    page = await crud.get_page_by_slug((await crud.lookup_page_for_url(url))["slug"])
+    assert page["jurisdiction"] == "City of Test"
+    assert page["meeting_body"] is None
+    assert page["jurisdiction_confidence"] == "unverified"

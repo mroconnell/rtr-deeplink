@@ -6,6 +6,113 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Jurisdiction/title extraction pipeline (2026-08-15)
+
+Part of the multi-round improvement described in
+`JURISDICTION_METADATA_PLAN.md` — see that file for the full baseline
+audit, extraction tournament, and design rationale this work grew out of.
+
+- **[Done 2026-08-15] `places.csv` was missing every real consolidated
+  city-county government (Nashville-Davidson, Louisville/Jefferson,
+  Indianapolis, Baton Rouge, and 6 others), because
+  `build_jurisdiction_data.py`'s `build_places()` only kept Census
+  FUNCSTAT "A" rows.** Root-caused against the *actual* 2024 Gazetteer
+  file, not guessed — downloaded it fresh and inspected the real
+  FUNCSTAT distribution (19,465 "A", 12,820 "S" CDPs, 34 "I" inactive, 8
+  "F", 4 "N" nonfunctioning, 2 "B"). Every one of the 8 "F" rows and
+  both "B" rows is a real, actively-governed city, just filed under
+  Census's own "... (balance)" statistical-area naming for the 8 (its
+  own docs: "F" marks a statistical *area* construct, not a claim the
+  government is fictitious) or coded "B" because the government legally
+  overlaps its parish (Baton Rouge, Lafayette, LA). Fix: broadened the
+  filter to `FUNCSTAT in ("A", "B", "F")`, confirmed against a full
+  regeneration that this adds exactly those 10 real rows and nothing
+  else (fresh run against freshly re-downloaded Census source files,
+  `git diff --stat` showed only `places.csv` changed, +10 lines, no
+  changes to `counties.csv`/`zcta_*.csv`).
+
+  **A second, real bug found while testing the fix, not before
+  shipping it**: `jurisdiction_enrich.py`'s `_normalize_name()` needed
+  new logic to strip the "(balance)" suffix and the government-type
+  phrase ("metropolitan government"/"metro government"/"unified
+  government"/"consolidated government") before these new rows could
+  ever be looked up by their real common names. The first version of
+  that fix applied the *existing* trailing-type-word strip
+  unconditionally afterward too — which turned "Greeley County unified
+  government (balance)" into just "greeley", colliding with three
+  unrelated real cities named Greeley (CO/IA/KS) and making an
+  otherwise-clean, unambiguous county lookup falsely return `None`. Caught
+  by testing all 8 "F" rows individually before considering the fix
+  done, not just the ones that happened to work. Fixed by skipping the
+  generic trailing strip whenever the government-type phrase already
+  matched — "County" in "Greeley County" is part of the real
+  distinguishing name here (a *county* consolidated government, not the
+  unrelated city), same class of trap as the already-documented
+  "Oklahoma City"/"Carson City" case in this same function. Verified:
+  `lookup_city_state("Greeley County") == "KS"` and
+  `lookup_city_state("Greeley")` still correctly returns `None`
+  (genuinely ambiguous, must not resolve).
+
+  Regression tests added:
+  `test_lookup_city_state_resolves_real_consolidated_city_county_governments`
+  (all 7 city-shaped entries, individually) and
+  `test_lookup_city_state_does_not_over_strip_a_consolidated_government_name`
+  (the Greeley collision, both directions) in `tests/test_jurisdiction_enrich.py`.
+  Full suite green (734 tests) both before and after.
+
+- **[Done 2026-08-15] `extract_jurisdiction_chain()`'s capitalization walk
+  could pick up a real city name mentioned inside spoken caption
+  dialogue, not the meeting's own jurisdiction, and would have stored it
+  as-is.** Found running workstream 4's dry-run backfill diff against
+  real cached HTML (not hypothetical): a Broward MPO Swagit page
+  (`browardmpo.new.swagit.com/videos/359517`) has an ALL-CAPS caption
+  line — "...ALSO, THE S. MIDDLE RIVER MOBILITY PROJECT IN THE CITY OF
+  FORT LAUDERDALE THAT'S IDENTIFIED..." — that the walk matched into,
+  producing `"City of Fort Lauderdale That'S Identified"`. The
+  `_looks_like_bleed()` trim-repair gate correctly declined to trim it
+  (neither `"That'S"` nor `"Identified"` starts lowercase, so nothing
+  signals bleed), but the chain still returned the ungated raw candidate
+  — the same class of false positive `_JURISDICTION_RE`'s own
+  module-level comment in `app/platforms/primegov.py` already documents
+  for PrimeGov's agenda-body text (the SLC/Holladay case), now confirmed
+  on a second, independent adapter/page.
+
+  Fix: `extract_jurisdiction_chain()` now requires every candidate to
+  actually clear `finalize_jurisdiction()`'s own bar (validated/repaired/
+  authoritative) before accepting it — a candidate that doesn't is
+  discarded and the next tier is tried, rather than ever being returned
+  raw. This is deliberately stricter than `finalize_jurisdiction()`'s
+  general policy of keeping an *adapter-native* unvalidatable
+  jurisdiction unchanged (real special-purpose entities like school
+  districts have no table to validate against, but a real trust basis in
+  the adapter's own purpose-built extraction) — none of this chain's
+  three tiers have that trust basis, since they're all generic regex
+  guesses over arbitrary page text.
+
+  Adding this gate exposed a second, smaller gap: it would have also
+  rejected genuinely correct page-abbreviated names ("Ft. Worth", "Mt.
+  Vernon" — real names real websites write that way, see this file's own
+  entry on `_STOPRULE_ABBREV_OK` in `JURISDICTION_METADATA_PLAN.md`)
+  since the Census table's own key is the spelled-out form ("Fort
+  Worth"). Fixed by adding `_expand_abbreviations()` (St./Ste./Ft./Mt./
+  Pt./N./S./E./W. → their full forms) as an extra candidate
+  `_table_lookup()` tries when the raw name doesn't match as-is —
+  narrowly scoped to `_table_lookup()` only (not the public
+  `lookup_city_state()`/`lookup_county_state()` API other adapters call
+  directly via `resolve_state()`), to keep this fix's blast radius
+  contained to the new validation gate and `finalize_jurisdiction()`'s
+  own validate/trim/split path.
+
+  Re-ran the workstream-4 dry-run diff (against the same cached 649-page
+  HTML the tournament already fetched, no new network requests) after
+  the fix: the Fort Lauderdale row disappeared from the change set
+  entirely (jurisdiction correctly stays blank) and no other row's
+  confidence dropped to "unverified" as a *new* value — every remaining
+  proposed change is validated/repaired/authoritative. Regression tests:
+  `test_extract_jurisdiction_chain_rejects_a_capitalization_walk_false_positive`
+  (the real Fort Lauderdale case) and `test_table_lookup_recognizes_a_page_authored_abbreviation`
+  in `tests/test_jurisdiction_enrich.py`. Full suite green (763 tests).
+
 ## Site polish
 
 - **[Done 2026-08-14] `VideoObject.thumbnailUrl` (YouTube-backed pages) +
