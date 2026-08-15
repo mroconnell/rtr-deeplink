@@ -605,51 +605,18 @@ anything) to build against it.
     extracted frames, which is a real new decision (this app hosts no
     images today). Re-check Search Console once YouTube-backed pages
     are re-crawled to confirm the critical flag actually clears there.
-  - `uploadDate` is set directly from `page.date|tojson` at
-    [meeting_page.html:52](archive/templates/meeting_page.html:52).
-    `date` is stored as a bare `String(20)` 
-    ([archive/db/models.py:32](archive/db/models.py:32)) and populated
-    per-adapter as plain `YYYY-MM-DD` text with no time-of-day or
-    timezone component — which is exactly what Google's "missing a
-    timezone" complaint describes. schema.org itself accepts a
-    date-only `ISO 8601` value, but Google's stricter rich-result
-    validator wants a full datetime; fixing this means deciding on (and
-    threading through) a real timestamp per meeting, since the app
-    genuinely doesn't track meeting time-of-day today, only date. The
-    separate "invalid datetime value" flag suggests at least one
-    real row has a non-`YYYY-MM-DD` value in `date` (a bad adapter
-    extraction) — worth cross-checking actual production values before
-    assuming both complaints share one root cause.
-
-  **Update 2026-08-14: user ran the real Minneapolis LIMS page through
-  Google's Rich Results Test directly (not just Search Console's
-  site-wide crawl alert) — real, useful signal, both good and new.**
-  Overall result: **pass, 0 errors** — `VideoObject` detected cleanly
-  with `name`/`description`/`embedUrl`/`thumbnailUrl`/`url`/`inLanguage`/
-  `duration`/`publisher` all populated exactly as the template emits
-  them, confirming the 2026-08-14 thumbnailUrl/Clip build (see
-  `BACKLOG_DONE.md`) is real and validator-clean, not just
-  visually-plausible. 8 *non-critical* issues, all already understood or
-  now root-caused:
-  - `uploadDate` "invalid datetime"/"missing timezone" — the same two
-    flags already logged above, now confirmed reproducing on a real,
-    specific page rather than only a site-wide alert.
-  - **All 6 `Clip` entries flag "Missing field endOffset" — new, but now
-    root-caused, not just observed.** `meeting_page.html`'s Clip block
-    ([:100-102](archive/templates/meeting_page.html:100)) only emits
-    `endOffset` when `item.end and item.end > item.start`. LIMS's own
-    `_flatten_timestamps()`
-    ([lims.py:166](app/platforms/lims.py:166)/
-    [:171](app/platforms/lims.py:171)) sets `TranscriptSegment(start=
-    seconds, end=seconds, ...)` — `end` is always exactly equal to
-    `start` for every LIMS agenda item (there's no real per-item
-    duration data, so it's reused as a required-field placeholder) —
-    meaning the template's guard is never true for *any* LIMS-sourced
-    Clip, on any LIMS page, not just this one. Other adapters (Granicus,
-    IQM2) instead set each item's `end` to the *next* item's `start` (a
-    real, if approximate, duration) — the same convention LIMS could
-    adopt in `_flatten_timestamps()` to close this cleanly, same
-    low-risk shape as the fix, not attempted this pass.
+  - ~~`uploadDate` missing a timezone~~ **Fixed 2026-08-14 — full detail
+    in `BACKLOG_DONE.md`'s "Wave 1" entry.** Now emits
+    `date + "T00:00:00Z"`. **Still open**: the separate "invalid
+    datetime value" flag suggests at least one real row has a
+    non-`YYYY-MM-DD` value in `date` (a bad adapter extraction) — never
+    cross-checked against actual production values, so it's not known
+    whether this is already fixed as a side effect or still live.
+  - ~~All 6 `Clip` entries on the real Minneapolis LIMS test page flag
+    "Missing field endOffset"~~ **Fixed 2026-08-14 — full detail in
+    `BACKLOG_DONE.md`'s "Wave 1" entry.** LIMS's `_flatten_timestamps()`
+    now sets each item's `end` to the next item's `start`, matching
+    Granicus/IQM2's convention, instead of always equaling `start`.
 
 - **YouTube-backed meetings' transcripts run through
   `scripts/fetch_youtube_transcripts.py` on a daily `launchd` schedule
@@ -882,25 +849,9 @@ anything) to build against it.
   don't otherwise surface at all today. Worth deciding whether to build
   both or just the free one first.
 
-  **New gap found 2026-08-14, live-testing `/meetings`' jurisdiction
-  filter: searching "California" finds nothing, but "CA" works.** Root
-  cause confirmed by reading the code, not guessed: the jurisdiction
-  filter (`archive/db/crud.py:513`/`937`) is a plain
-  `MeetingPage.jurisdiction.ilike(f"%{jurisdiction}%")` substring match
-  against the *stored* column — and `normalize_state_suffix()` (this
-  entry's own fix, above) means that column's state suffix is now
-  essentially always the 2-letter abbreviation ("Sacramento County,
-  CA"), never the full name. So a real, natural search term like
-  "California" structurally can never match, while "CA" always will —
-  the same normalization that fixed row-to-row display inconsistency
-  created this search-side regression as a side effect. The user's own
-  candidate fixes: a dropdown of known jurisdictions, or a
-  California=CA lookup table for search specifically (effectively the
-  inverse of `US_STATE_NAME_TO_ABBR` in
-  `archive/utils/jurisdiction_format.py`, which already has the full
-  name→abbreviation mapping needed — reusing it to also expand a
-  full-name search term to its abbreviation, or match either form,
-  looks like the cheapest fix, but not decided/built this pass).
+  ~~**New gap found 2026-08-14, live-testing `/meetings`' jurisdiction
+  filter: searching "California" finds nothing, but "CA" works.**~~
+  **Fixed 2026-08-14 — full detail in `BACKLOG_DONE.md`'s "Wave 1" entry.**
 
 ## Deep links
 
@@ -971,76 +922,9 @@ auditing it (2026-08-08) — two fixed since, one still open below:
 
 ## Meeting page UI gaps found 2026-08-14 (live testing)
 
-- **Agenda items drift rightward as timestamps get wider — real root
-  cause confirmed by reading the CSS, not guessed.** User's own framing:
-  agenda items should share one left-aligned margin all the way down the
-  page, the same way transcript caption text already visibly does.
-  `.transcript-segment { display: grid; grid-template-columns: auto auto
-  1fr; ... }` ([style.css:568](archive/static/style.css:568)) is applied
-  identically to *both* agenda items and transcript lines — but each
-  `.transcript-segment` div is its own independent grid container, so
-  its `auto`-sized timestamp column is sized to fit only *that row's*
-  own timestamp text, not a shared width across the whole list. A row
-  showing `[0:05]` gets a narrower first column than a row showing
-  `[1:23:45]`, so each row's text column starts at a different x
-  position. This is structurally identical for agenda and transcript —
-  the reason it visibly bothers agenda specifically is that a meeting's
-  full agenda (spanning `0:05` to potentially `7:59:59` in one glance) is
-  usually all visible in the viewport at once, so the drift is obvious;
-  transcript timestamps only vary by a second or two within any given
-  scrolled-to viewport, so the same per-row independent-grid quirk never
-  visibly produces drift there. A real fix needs the timestamp column
-  aligned *across* rows, not just within one — either a fixed (not
-  `auto`) width wide enough for the longest real timestamp shape
-  (`H:MM:SS`), or CSS Subgrid on the parent list. Not attempted this
-  pass — a CSS-only change to a class shared by both agenda and
-  transcript, so any fix needs checking against both, not just agenda.
-
-- **Meeting pages sometimes render unusually wide — confirmed root cause
-  on a real example**, [redtaperecordings.com/m/meeting-38ca49](https://redtaperecordings.com/m/meeting-38ca49)
-  (the Sacramento County page also logged above). `.meeting-page` is a
-  CSS Grid on desktop (`grid-template-columns: minmax(220px, 300px)
-  1fr`, [style.css:227](archive/static/style.css:227)), with the agenda/
-  transcript content living in `#transcriptColumn`, the `1fr` track. Grid
-  items default to `min-width: auto`, which sizes a track to fit its
-  content's *minimum* intrinsic width — for an unbreakable string (no
-  spaces/hyphens for the browser to wrap on), that's the string's full
-  rendered width, `overflow-wrap: break-word` on the text itself
-  notwithstanding, since break-word only prevents overflow once the
-  box's own width is already otherwise constrained. This page's real
-  agenda-link URL is a single ~185-character unbroken token
-  (`.../Documents/Downloadfile/BOARD_OF_SUPERVISORS_10231_Agenda_Packet_
-  8_11_2026_9_30_00_AM.pdf?documentType=5&meetingId=10231&isAttachment=
-  True`), confirmed via `curl` of the real page — long enough to force
-  `#transcriptColumn`'s track wider than its fair `1fr` share, pushing
-  `.meeting-page` past its own `max-width: 860px`. `#transcriptColumn`
-  has no `min-width: 0` override anywhere in `style.css` today — the
-  exact fix already applied to two other real instances of this same
-  quirk in this same stylesheet
-  (`.calendar-candidate-main { min-width: 0; }`,
-  `.saved-item-main { min-width: 0; }`), just never extended to this
-  container. (Browser-pane diagnostics were unreliable while checking
-  this live — 0×0 viewport reported by `javascript_tool` even after an
-  explicit resize — so this is confirmed via CSS/HTML source reading,
-  not a live rendered screenshot; worth a visual confirm once the
-  browser pane is behaving.)
-
-- **Auto-scroll toggle is missing on every archived `/m/{slug}` page,
-  full stop — not intermittent, and not conditioned on whether a video
-  exists.** Confirmed by grep: `app/templates/meeting.html` (the
-  `/meeting?url=` live-resolve page) has a real
-  `#toggleAutoScrollBtn`/`#autoScrollState` toggle wired to
-  `autoScrollEnabled` in `app/static/player.js`. `archive/templates/
-  meeting_page.html` and `archive/static/meeting_page.js` have **no**
-  such toggle at all — grep for "autoscroll"/"auto-scroll" across both
-  returns nothing. Instead, `meeting_page.js:159` calls
-  `highlightSegment(segId, true, 'nearest')` — auto-scroll hardcoded on,
-  permanently, with no way to turn it off on any permanent page. So the
-  user's "sometimes it's missing" observation maps onto a real, simple
-  split: every `/meeting?url=` (not-yet-archived) page has the toggle,
-  every `/m/{slug}` (archived, permanent — the majority of real traffic)
-  page never does, video or no video. Porting the resolver's toggle
-  markup/JS to the Archive template would close this.
+~~Agenda/transcript timestamp column drift, meeting pages rendering
+unusually wide, and the missing auto-scroll toggle on archived pages~~
+**Fixed 2026-08-14 — full detail in `BACKLOG_DONE.md`'s "Wave 1" entry.**
 
 - **PDF agenda links are never rendered inline or text-extracted for
   preview — a real product question raised live-testing, not yet a

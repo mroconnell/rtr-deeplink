@@ -6,6 +6,93 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Wave 1: meeting-page CSS drift/overflow, auto-scroll toggle port, jurisdiction search, LIMS endOffset, SEO tier 2 (2026-08-14)
+
+Shipped in one commit (`2421f9f`, #52) — seven small, independently
+root-caused fixes from `BACKLOG.md`/`CLAUDE_BACKLOG.md`. Recorded here
+2026-08-15, a day after the fact — the commit landed but the source
+backlog entries were never moved out, exactly the doc-drift class of
+problem this repo's own "App-wide audit" entry already flags. 721 pytest
++ 29 npm tests green; live-verified end to end against a real resolved
+Jacksonville, FL Granicus meeting.
+
+- **Agenda/transcript timestamp column drift.** `.transcript-segment`'s
+  grid (`archive/static/style.css`, `app/static/style.css`) used an
+  `auto`-sized first column, so each row's timestamp width was fit to
+  that row alone — a list spanning `[0:05]` to `[7:59:59]` visibly
+  drifted row to row. Fixed to a fixed `8.5ch` column (comfortably fits
+  the longest real timestamp at the 14-hour transcription cap, in the
+  monospace font already used). Verified live: timestamp columns align
+  at 83.47px/27.2px/326.5px across all 2177 real segments on the
+  Jacksonville test page.
+- **Meeting pages rendering unusually wide.** `#transcriptColumn` (the
+  `1fr` grid track holding agenda/transcript content) had no
+  `min-width: 0`, so an unbreakable long agenda-PDF URL (confirmed real,
+  a ~185-character unbroken token on a Sacramento County page) forced
+  the track past its fair share, pushing `.meeting-page` past its own
+  `max-width: 860px`. Fixed with the same `min-width: 0` override
+  already used for `.calendar-candidate-main`/`.saved-item-main`.
+- **Auto-scroll toggle missing on every permanent `/m/{slug}` page.**
+  The resolver's ephemeral `/meeting?url=` page had a real
+  `#toggleAutoScrollBtn`/`autoScrollEnabled` toggle
+  (`app/templates/meeting.html`, `app/static/player.js`); the Archive's
+  permanent pages never had one at all —
+  `archive/static/meeting_page.js` hardcoded auto-scroll on with no way
+  to turn it off. Ported the toggle markup/JS/CSS across. Verified live:
+  renders and actually toggles.
+- **LIMS agenda items never got a real `end` timestamp.**
+  `lims.py`'s `_flatten_timestamps()` set `end == start` for every item
+  (no per-item duration data), so `meeting_page.html`'s `Clip` JSON-LD
+  guard (`end > start`) was never true for any LIMS page — every LIMS
+  `Clip` silently missed `endOffset` (one of the 8 non-critical issues
+  Google's Rich Results Test flagged on a real Minneapolis LIMS page).
+  Fixed by adopting Granicus/IQM2's existing convention: each item's
+  `end` becomes the *next* item's `start` (the last item keeps
+  `end == start`, unavoidable without real duration data). Verified
+  directly against the real `MarkedAgenda/COW/6144` fixture.
+- **`/meetings`' jurisdiction filter couldn't match a full state name.**
+  Real regression from the 2026-08-11 `normalize_state_suffix()` fix
+  (see that entry below): once stored jurisdictions consistently end in
+  a 2-letter abbreviation ("Sacramento County, CA"), a plain substring
+  filter against the stored column means searching "California" matches
+  nothing while "CA" always works — confirmed live 2026-08-14. Fixed via
+  `jurisdiction_search_terms()` (`archive/utils/jurisdiction_format.py`),
+  reusing the existing `US_STATE_NAME_TO_ABBR` table to expand a
+  full-name search term to its abbreviation (or vice versa) so either
+  form matches. Verified: `jurisdiction=California` and `jurisdiction=CA`
+  now return the same results.
+- **`uploadDate` missing an ISO-8601 timezone + no `Event` JSON-LD.**
+  Second half of the 2026-08-12 Google Search Console alert (the
+  `thumbnailUrl` half shipped separately 2026-08-14, see the
+  "VideoObject.thumbnailUrl + Clip key moments" entry below).
+  `uploadDate` now emits `date + "T00:00:00Z"` instead of a bare date
+  string (real per-adapter time-of-day capture would be a much bigger,
+  multi-adapter lift — WCAG-markup research elsewhere in this repo found
+  only Portland.gov of 7 real government sites checked actually exposes
+  real time-of-day, so this interim fix is deliberately not literally
+  accurate, just validator-clean). A new `Event` JSON-LD block sits
+  alongside the existing `VideoObject` one (`name`/`startDate`/
+  `jurisdiction` were already on the page). Verified: both render as
+  valid JSON-LD on the test page. **Still open, not touched this pass**:
+  direct mp4/m3u8 pages (the majority of the Archive) still have no
+  `thumbnailUrl` at all, pending real `ffmpeg` frame extraction and
+  somewhere to host the frames; and the separate "invalid datetime
+  value" flag (at least one real row has a non-`YYYY-MM-DD` `date`) was
+  never cross-checked against production data — both remain real,
+  tracked gaps, not silently dropped.
+- **No `<link rel="canonical">` on `/meetings` or `/coverage`, no
+  `<meta name="description">` on the resolver's `index.html`/
+  `about.html`.** `/meetings`' seven independent query params created
+  real duplicate-content surface area with no canonical pointing back to
+  the bare unfiltered URL. Added canonical links to both pages
+  (`archive/templates/meeting_list.html`, `coverage.html`) and meta
+  descriptions to both resolver pages, including adding the
+  `{% block meta %}` `base.html` itself was missing. Verified: canonical
+  links render on `/meetings` and `/coverage`.
+- **`CLAUDE.md` corrected a stale claim** that eScribe/PrimeGov/YouTube
+  had zero test coverage — all three were already fixture-covered by
+  this point, per README's own "Running tests" section.
+
 ## Jurisdiction/title extraction pipeline (2026-08-15)
 
 Part of the multi-round improvement described in
