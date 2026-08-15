@@ -123,6 +123,13 @@ async def test_resolve_returns_honest_no_video_message_when_nothing_found():
     assert result.segments == []
     assert any("couldn't find a video on this page automatically" in w for w in result.video_warnings)
     assert any("didn't automatically find a transcript" in w for w in result.transcript_warnings)
+    # Real bug fixed 2026-08-15 (BACKLOG.md): this warning used to also
+    # say "you can try to request a transcript from the audio" -- there's
+    # no audio source at all on a genuinely no-video page, and the phrase
+    # was misleading and self-turned into a broken button (render_warnings.py
+    # wraps this exact phrase into a clickable .transcribe-inline-trigger,
+    # which meeting_page.js:536 fires unconditionally with no null guard).
+    assert not any("request a transcript from the audio" in w for w in result.video_warnings)
 
 
 async def test_resolve_handles_page_fetch_failure_cleanly():

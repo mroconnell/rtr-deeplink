@@ -193,7 +193,19 @@
      transcript" and "no transcript" branches below) now that the CTA lives
      once, in the video column, rather than inline with whichever
      transcript-section branch happened to render. #}
-  {% set show_transcribe_cta = not (active_version and active_version.segments and active_version.source == "transcribed") %}
+  {#- Real bug found 2026-08-14/15 (see BACKLOG.md): this CTA used to
+     render on every page regardless of page.video_url, including
+     genuinely no-video pages (Wayne County/Tucson/Palm Beach-style empty
+     shells) where clicking it can't possibly produce anything -- there's
+     no audio source to point a transcription job at. Gated on
+     page.video_url too now. Safe to do without also touching the
+     "SOURCE TRANSCRIPT" disclaimer's #sourceDisclaimerPointer glow logic
+     below (still assumes this branch's button always exists) -- that
+     branch only ever renders when active_version.segments is real,
+     which in practice never happens without a real video_url also being
+     present, and wireSourceDisclaimerPointer() null-guards both
+     elements regardless. #}
+  {% set show_transcribe_cta = page.video_url and not (active_version and active_version.segments and active_version.source == "transcribed") %}
   <main class="meeting-page">
     <div class="meta">
       <h1>

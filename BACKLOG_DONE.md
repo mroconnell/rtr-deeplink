@@ -6,6 +6,48 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## "Request Transcript from Audio" rendering on genuinely no-video pages (2026-08-15)
+
+Real gap raised by the user 2026-08-14 while investigating Palm Beach
+County's SharePoint page (`BACKLOG.md`'s Wayne County/Palm Beach entry),
+independently re-confirmed against the real archived page
+`/m/meeting-890af1`. Two connected bugs, not one — found by tracing the
+full click path before touching anything, not just the obviously-visible
+symptom:
+
+1. **The main CTA button had no video-presence check at all.**
+   `meeting_page.html`'s `show_transcribe_cta` was computed purely from
+   whether an AI transcript already existed
+   (`not (active_version and active_version.segments and
+   active_version.source == "transcribed")`), so it rendered on every
+   page site-wide regardless of `page.video_url` — including genuinely
+   empty pages (Wayne County/Tucson/Palm Beach-style) where clicking it
+   can't possibly produce anything, since there's no audio source to
+   point a transcription job at. Fixed by gating on `page.video_url` too.
+2. **A sharper, previously-unnoticed version of the same bug, found by
+   checking what a fix to (1) alone would actually leave behind.**
+   `generic_fallback.py`'s `_NO_VIDEO_FOUND_WARNING` text literally said
+   "you can try to request a transcript from the audio" on a page with no
+   video *or* audio source. `archive/utils/render_warnings.py` auto-wraps
+   that exact phrase into a clickable `.transcribe-inline-trigger`
+   button, and `archive/static/meeting_page.js:536` fires it with **no
+   null guard**
+   (`document.getElementById('transcribeToggle').click()`). So fixing
+   (1) alone would have silently turned the *inline warning-text* version
+   of this same broken promise into a real JS exception on click, instead
+   of the harmless-but-misleading no-op it is today — a worse bug than
+   the one being fixed. Closed by rewriting the warning text to stop
+   promising something impossible (confirmed no other adapter's warning
+   text contains this exact phrase, via a repo-wide grep, so this was the
+   only source).
+
+Verified live (not just via the API): seeded a local Archive DB with one
+no-video page and one has-video page, confirmed in-browser via the actual
+rendered `/m/{slug}` HTML that the button is absent on the former and
+still present on the latter. `tests/test_generic_fallback.py` gained a
+regression assertion that the misleading phrase is gone from
+`_NO_VIDEO_FOUND_WARNING`. Full suite green (764 tests) throughout.
+
 ## Wave 1: meeting-page CSS drift/overflow, auto-scroll toggle port, jurisdiction search, LIMS endOffset, SEO tier 2 (2026-08-14)
 
 Shipped in one commit (`2421f9f`, #52) — seven small, independently

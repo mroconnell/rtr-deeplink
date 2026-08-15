@@ -2052,18 +2052,30 @@ unusually wide, and the missing auto-scroll toggle on archived pages~~
     static video/media of any kind, single or multiple; it's the
     empty-shell case above, not a disambiguation case). **But their
     underlying, more important point is real and independent of that**:
-    today's "no video found" result still offers "Request Transcript
-    from Audio" even when no video was found at all — which can't
-    possibly produce anything (there's no audio source to point the
-    transcription job at). Worth checking whether that CTA is already
-    conditioned on `video_url`/a real pointer existing anywhere else
-    this fallback returns a no-video result, since the same
-    can't-possibly-work state likely also shows on Wayne County/Tucson-
-    style genuinely-empty pages, not just this one.
+    ~~today's "no video found" result still offers "Request Transcript
+    from Audio" even when no video was found at all~~ **Fixed
+    2026-08-15.** Two real, connected bugs, not one: (1)
+    `meeting_page.html`'s `show_transcribe_cta` was computed purely from
+    whether an AI transcript already existed, with no `page.video_url`
+    check at all, so the button rendered on every genuinely-empty page
+    site-wide, not just this one — now gated on `page.video_url` too,
+    verified live (no-video test page: button gone; has-video test page:
+    button still renders). (2) A sharper, previously-unnoticed version of
+    the same bug: `generic_fallback.py`'s own `_NO_VIDEO_FOUND_WARNING`
+    text literally said "you can try to request a transcript from the
+    audio" — and `render_warnings.py` auto-wraps that exact phrase into a
+    clickable `.transcribe-inline-trigger` button, which
+    `meeting_page.js:536` fires with **no null guard**
+    (`document.getElementById('transcribeToggle').click()`), so simply
+    fixing (1) alone would have made that inline warning-text link throw
+    a JS error on click instead of silently doing nothing. Fixed by
+    rewriting the warning text to no longer promise something impossible
+    (confirmed: no other adapter's warning text contains this phrase).
 
     **Independently re-confirmed 2026-08-14 by the user live-testing the
-    actual archived page**, `/m/meeting-890af1` — same misleading CTA,
-    same underlying page. One small correction to "its archived page is
+    actual archived page**, `/m/meeting-890af1` — same misleading CTA
+    (now fixed, see above), same underlying page. One small correction to
+    "its archived page is
     empty" above, worth noting precisely rather than letting stand
     uncorrected: it isn't actually blank — live-checked and it shows a
     real (if generic, sitewide-not-per-meeting) title, "BCC Meeting
