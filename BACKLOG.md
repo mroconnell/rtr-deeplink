@@ -834,6 +834,41 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   debugging (what does `iqm2.py`'s own `aiohttp` fetch actually receive
   from Render, not just a replayed local `curl`) rather than a guess.
 
+  **Update 2026-08-14: root cause narrowed further — the real
+  `IQM2AssetFinder().resolve()` code path, run directly (not a bare
+  `curl` replay), returns correct title/date/jurisdiction right now.**
+  Ran the actual adapter against the live URL: title
+  "(RCTC-GM) Riverside County Transportation Commission General Meeting
+  Regular Meeting", date "2026-08-12", jurisdiction "Riverside County,
+  California" — all correct, matching the by-inspection expectation
+  exactly. `agenda_items` came back empty, but that's real and
+  independently confirmed, not part of this bug: the live outline page
+  for this specific meeting has zero `AgendaOutlineLink` entries (fetched
+  directly, `AgendaOutlineLink` count is 0), the same "not every
+  commission/meeting on this instance gets timestamped items" gap already
+  documented for Santa Clara County above, not a title/jurisdiction
+  extraction problem.
+
+  This shifts the likely explanation back toward a **stale archived
+  page**, not a live code defect — the earlier "doesn't look like a
+  stale-archive-page artifact" reasoning assumed no relevant fix had
+  shipped since this page was first resolved, but the code demonstrably
+  works correctly *today*, on this exact real URL, with no code changes
+  made. The existing archived page (`/m/meeting-4fefb4`) most likely
+  predates whatever state made this resolve correctly (could be an
+  incidental fix to shared code — `jurisdiction_enrich`, `_TITLE_RE`,
+  or similar — landing after this page was first pushed, not a dedicated
+  IQM2 fix). **Not fully closed — still needs one production step this
+  session has no access to do**: hit
+  `/admin/recheck-archive-page?url=...&token=$ADMIN_STATS_TOKEN` against
+  the real production URL to force a fresh resolve + Archive push, then
+  confirm `/m/meeting-4fefb4` (or wherever it lands) shows the correct
+  title/jurisdiction. If that fixes it, this closes as a stale-page case,
+  same shape as the OCFL/Sacramento/Maricopa entries above; if the
+  production resolve *still* comes back wrong even after a forced
+  recheck, that would be new, real evidence of an actual Render-specific
+  runtime difference worth investigating further.
+
 - **Seattle Channel (`seattlechannel.org`) — new platform, not supported
   at all today, flagged by the user 2026-08-12 with a real example**
   ([seattlechannel.org/.../city-council-all-videos-index?videoid=x189286](https://www.seattlechannel.org/mayor-and-council/city-council/city-council-all-videos-index?videoid=x189286),
