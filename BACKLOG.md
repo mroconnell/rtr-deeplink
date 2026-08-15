@@ -834,6 +834,41 @@ auditing it (2026-08-08) — two fixed since, one still open below:
   debugging (what does `iqm2.py`'s own `aiohttp` fetch actually receive
   from Render, not just a replayed local `curl`) rather than a guess.
 
+  **Update 2026-08-14: root cause narrowed further — the real
+  `IQM2AssetFinder().resolve()` code path, run directly (not a bare
+  `curl` replay), returns correct title/date/jurisdiction right now.**
+  Ran the actual adapter against the live URL: title
+  "(RCTC-GM) Riverside County Transportation Commission General Meeting
+  Regular Meeting", date "2026-08-12", jurisdiction "Riverside County,
+  California" — all correct, matching the by-inspection expectation
+  exactly. `agenda_items` came back empty, but that's real and
+  independently confirmed, not part of this bug: the live outline page
+  for this specific meeting has zero `AgendaOutlineLink` entries (fetched
+  directly, `AgendaOutlineLink` count is 0), the same "not every
+  commission/meeting on this instance gets timestamped items" gap already
+  documented for Santa Clara County above, not a title/jurisdiction
+  extraction problem.
+
+  This shifts the likely explanation back toward a **stale archived
+  page**, not a live code defect — the earlier "doesn't look like a
+  stale-archive-page artifact" reasoning assumed no relevant fix had
+  shipped since this page was first resolved, but the code demonstrably
+  works correctly *today*, on this exact real URL, with no code changes
+  made. The existing archived page (`/m/meeting-4fefb4`) most likely
+  predates whatever state made this resolve correctly (could be an
+  incidental fix to shared code — `jurisdiction_enrich`, `_TITLE_RE`,
+  or similar — landing after this page was first pushed, not a dedicated
+  IQM2 fix). **Not fully closed — still needs one production step this
+  session has no access to do**: hit
+  `/admin/recheck-archive-page?url=...&token=$ADMIN_STATS_TOKEN` against
+  the real production URL to force a fresh resolve + Archive push, then
+  confirm `/m/meeting-4fefb4` (or wherever it lands) shows the correct
+  title/jurisdiction. If that fixes it, this closes as a stale-page case,
+  same shape as the OCFL/Sacramento/Maricopa entries above; if the
+  production resolve *still* comes back wrong even after a forced
+  recheck, that would be new, real evidence of an actual Render-specific
+  runtime difference worth investigating further.
+
 ~~**Seattle Channel (`seattlechannel.org`) — new platform, not supported
   at all today**~~ **Built 2026-08-14 — new `app/platforms/seattlechannel.py`,
   full detail in `BACKLOG_DONE.md`.** Confirmed live against two independent
@@ -2299,6 +2334,36 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   ships, not assumed fine because `ProblemReport` already covers the
   Trust & safety section's narrower "is this a real government meeting"
   concern above.
+
+  **Timestamp-level annotations on a note — proposed by the user,
+  2026-08-14.** Example given: save
+  `https://redtaperecordings.com/m/yellow-springs-oh-2022-02-07-virtual-village-council-2022-02-07?t=6153&line=seg-2543&version=251`
+  with a user-written notation like "Dave Chappelle speaks about
+  affordable housing in Yellow Springs, OH" — i.e. a `saved_meeting`
+  note pinned to one moment (a `t`/`line`/`version` triple, matching the
+  deep-link query params `app/main.py`'s resolve route already emits —
+  see "Deep links" section above), not just the meeting as a whole. This
+  is a real gap in the `Note` model sketched above: `saved_meeting`
+  currently only carries `meeting_page_id` + a whole-meeting reference,
+  with `body_text` reserved for `post`/`repost` types — nothing today
+  captures a specific timestamp *or* attaches free text to a
+  `saved_meeting` note. Cheapest fit: let `saved_meeting` notes also set
+  `body_text` (already nullable) and add nullable `t`/`line`/`version`
+  columns (or a single `deeplink_params` JSON blob, matching the existing
+  `search_params` JSON precedent on `saved_search`) so a note can
+  optionally pin to one moment instead of the whole meeting. Directly
+  useful for the advocate/organizer audience this app is being built for
+  (see "Business-model framing" above) — annotating *why* a specific
+  moment matters is a stronger unit than a bare saved meeting, and a
+  natural building block toward the already-planned `post`/`repost` note
+  types (a moment-annotation is close to a first-class quote-post).
+  Depends on phase 1 (`Note` model) already shipping — sequence alongside
+  or just after phase 2's profile pages, since a pinned-moment note is
+  most useful once it's actually visible somewhere. Overlaps with, but is
+  distinct from, `CLAUDE_BACKLOG.md`'s "Quote-clip sharing" idea: that one
+  is a *public* shareable image/card; this is a *personal* private-or-public
+  notation a user leaves for themselves or their profile, no image
+  generation required to be useful. Not yet built or scoped further.
 - **Lifecycle-triggered transactional emails (Resend) — built 2026-08-11
   from rtr-business's `marketing/LIFECYCLE_EMAILS.md` (approved copy/
   voice, written by the user).** That doc defines six emails; five

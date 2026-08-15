@@ -1,7 +1,7 @@
 import html
 import json
 import re
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from urllib.parse import urlparse
 
 from .base import AssetFinder
@@ -152,24 +152,34 @@ class LimsAssetFinder(AssetFinder):
         video_id_match = re.search(r"[?&]v=([\w-]{11})", video_url)
         video_id = video_id_match.group(1) if video_id_match else None
 
-        agenda_items = LimsAssetFinder._flatten_timestamps(data.get("SerializedVideoTimestamps") or [])
-        agenda_items.sort(key=lambda seg: seg.start)
+        raw_items = LimsAssetFinder._flatten_timestamps(data.get("SerializedVideoTimestamps") or [])
+        raw_items.sort(key=lambda item: item[0])
+        # Real gap fixed 2026-08-14: LIMS has no per-item duration data, so
+        # `end` used to just equal `start` for every item -- meeting_page.html's
+        # Clip JSON-LD only emits `endOffset` when `end > start`, so no LIMS
+        # Clip ever got one. Same approximate-duration convention Granicus/
+        # IQM2 already use: each item's `end` is the *next* item's `start`
+        # (the last item keeps `end == start`, same as before this fix).
+        agenda_items: List[TranscriptSegment] = []
+        for i, (seconds, title) in enumerate(raw_items):
+            end = raw_items[i + 1][0] if i + 1 < len(raw_items) else seconds
+            agenda_items.append(TranscriptSegment(start=seconds, end=max(end, seconds), text=title))
         return video_id, agenda_items
 
     @staticmethod
-    def _flatten_timestamps(entries: list) -> List[TranscriptSegment]:
-        segments: List[TranscriptSegment] = []
+    def _flatten_timestamps(entries: list) -> List[Tuple[float, str]]:
+        items: List[Tuple[float, str]] = []
         for entry in entries:
             seconds = LimsAssetFinder._as_seconds(entry.get("timeInSeconds"))
             title = LimsAssetFinder._clean_title(entry.get("title"))
             if seconds is not None and title:
-                segments.append(TranscriptSegment(start=seconds, end=seconds, text=title))
+                items.append((seconds, title))
             for file_entry in entry.get("files") or []:
                 file_seconds = LimsAssetFinder._as_seconds(file_entry.get("timeInSeconds"))
                 file_title = LimsAssetFinder._clean_title(file_entry.get("title"))
                 if file_seconds is not None and file_title:
-                    segments.append(TranscriptSegment(start=file_seconds, end=file_seconds, text=file_title))
-        return segments
+                    items.append((file_seconds, file_title))
+        return items
 
     @staticmethod
     def _clean_title(title: Optional[str]) -> Optional[str]:

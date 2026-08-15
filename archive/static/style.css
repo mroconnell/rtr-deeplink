@@ -236,7 +236,16 @@ body {
     top: 1rem;
   }
   .toolbar { position: static; }
-  #transcriptColumn { grid-column: 2; }
+  #transcriptColumn {
+    grid-column: 2;
+    /* Grid items default to min-width: auto, which sizes a track to fit
+       its content's minimum intrinsic width -- for an unbreakable string
+       (a long agenda-PDF URL with no spaces/hyphens to wrap on), that's
+       the string's full rendered width, pushing this track past its fair
+       1fr share and .meeting-page past its own max-width. Same fix as
+       .calendar-candidate-main/.saved-item-main below. */
+    min-width: 0;
+  }
 }
 
 .meta h1 { margin-bottom: 0.2rem; color: var(--primary); }
@@ -409,6 +418,17 @@ body {
   color: var(--fg);
   font-size: 0.9rem;
 }
+/* Auto-scroll toggle -- ported from app/static/style.css's identical
+   #toggleAutoScrollBtn/.video-subtoolbar block, the resolver-page-only
+   control every permanent /m/{slug} page was missing entirely. */
+.video-subtoolbar {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+#toggleAutoScrollBtn { width: 100%; }
 /* Positioning context for the floating .copy-toast bubble below --
    wraps just the button (not the whole .toolbar, whose own position
    flips between sticky/static across breakpoints) so the toast always
@@ -567,7 +587,16 @@ video { width: 100%; height: 100%; display: block; }
    CSS pattern" note at the top of this file. */
 .transcript-segment {
   display: grid;
-  grid-template-columns: auto auto 1fr;
+  /* Fixed (not auto) first column so the timestamp width doesn't vary row
+     to row -- each .transcript-segment is its own independent grid
+     container, so an auto-sized column only fits *that row's* own
+     timestamp text, causing agenda/transcript text to start at a
+     different x position per row (most visible on agenda, which spans
+     [0:05] to potentially [840:00] all in one viewport). 8.5ch
+     comfortably fits the longest real timestamp shape at the 14-hour
+     transcription cap, in the monospace font .segment-timestamp already
+     uses. */
+  grid-template-columns: 8.5ch auto 1fr;
   column-gap: 0.4rem;
   align-items: start;
   margin-bottom: 0.75rem;
