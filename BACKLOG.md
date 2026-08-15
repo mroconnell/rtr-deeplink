@@ -218,6 +218,212 @@ anything) to build against it.
 
 ## Bugs
 
+- **Census-table baseline validation of all 649 archived jurisdictions
+  (2026-08-15, workstream 1 of `JURISDICTION_METADATA_PLAN.md`) — new
+  confirmed findings beyond the two adapter bugs below.** Numbers: 510
+  valid as-is, 73 reachable by longest-valid-prefix trim, 44 not in
+  table, 22 blank. The trim bucket splits cleanly on a tail-sanity check
+  (lowercase prose/roman numerals/digits in the discarded tail): 16 true
+  bleed cases (every one a correct repair — Hercules, Boston, Fort
+  Worth...) vs 57 legitimate long entities where trimming would *destroy*
+  a correct name ("Lake Washington School District" → "Lake", "Bay Area
+  Headquarters Authority" → "Bay") — so trim must always be gated on
+  bleed signals, never applied bare. Three bleed cases the current
+  signals miss (Sarasota/Hollywood/Hampton — Title-Case/ALL-CAPS bleed);
+  a mid-word-truncation signal (tails ending "the Tex", "servic",
+  "Standa" — the regex's own 40-char cap cutting words in half) would
+  catch all three. Specific new bugs found, each verified against the
+  data, all unfixed:
+  - **Granicus's wordninja subdomain-humanization fallback produces
+    confident garbage on acronym subdomains** (~15 archived rows):
+    "Ride Uta" (rideuta), "La Usd" (lausd), "Ccs F" (ccsf), "Pcb Gov"
+    (pcbgov), and the best one: **"S Fw, MD" from `sfwmd`** — the South
+    Florida Water Management District's trailing "md" misread as a
+    Maryland state suffix. A second, distinct failure mode in the same
+    fallback (user's correction 2026-08-15): **"Gales Burg" from
+    `galesburg`** — not an acronym at all, but wordninja *over-splitting*
+    a real one-word city name that would have validated against the
+    Census table untouched ("galesburg" is literally already a valid
+    places.csv key, Galesburg IL/MI/ND). Fix direction covers both:
+    check the raw unsplit subdomain against the Census tables first,
+    and validate wordninja's output against them after — decline to
+    guess when neither form is a real name.
+  - **Two pages store a literal date as the jurisdiction** ("July 21,
+    2026", "August 11, 2026") — source adapter not yet traced.
+  - ~~**`app/utils/jurisdiction_data/places.csv` is missing every Census
+    "(balance)" consolidated city**~~ **Fixed 2026-08-15 — full detail in
+    `BACKLOG_DONE.md`.**
+  - **"Saint"↔"St." normalization gap**: stored "Saint Paul" misses the
+    table's "St. Paul city". Same family: okina/apostrophe variants
+    ("Kauai County" in-table vs "Kauaʻi County" on pages).
+  - **Townships/county-subdivisions aren't in the places table at all**
+    (Upper Providence PA, Greenburgh NY, Upper Dublin PA) — Census
+    publishes a county-subdivision gazetteer that would cover them;
+    same build-script extension as the school-district idea parked in
+    "Deprioritized ideas" below.
+  - **One Canadian jurisdiction** (Elliot Lake, ON — eScribe) — the
+    tables are US-only by construction; needs an exemption flag, not a
+    wrong-country lookup.
+  - **Validation caught one subtly wrong stored name**: "Bainbridge, WA"
+    — the real WA city is Bainbridge *Island*; plain "Bainbridge" only
+    exists in GA/IN/NY/OH, so the table's state-mismatch flag was
+    correct, not noise.
+
+  Full per-row detail: `baseline_validation.csv` in this session's
+  scratchpad; regenerate any time via the script logged in
+  `JURISDICTION_METADATA_PLAN.md`'s workstream 1.
+
+- **`GranicusAssetFinder._extract_metadata()`'s page-body jurisdiction regex
+  has no sentence/tag boundary, so it can swallow unrelated agenda text
+  into the stored jurisdiction — confirmed live 2026-08-15 across multiple
+  real customers, found while auditing all ~650 `/meetings` rows after the
+  204-URL Granicus batch above landed.** Root cause,
+  [granicus.py:162](app/platforms/granicus.py:162):
+  `re.search(r"\b(City|County|Town) of ([A-Z][A-Za-z .]{1,40})", page_text)`
+  — the character class `[A-Za-z .]` allows spaces *and* literal periods
+  with no stop condition at a real sentence end, so once "City of X"
+  matches, the regex just keeps consuming letters/spaces/periods for up to
+  40 more characters regardless of whether that text is still the city
+  name. Live-verified by fetching a real page directly (not guessed from
+  the regex alone) — `hercules.granicus.com/player/clip/1306`'s actual
+  page text produces exactly `'City of Hercules. XIV. PUBLIC
+  COMMUNICATIONS XV. '` when the regex runs, matching the real stored
+  jurisdiction on
+  [redtaperecordings.com/m/city-of-hercules-xiv-public-communications-xv-2024-05-14-city-council-on-2024-05](https://redtaperecordings.com/m/city-of-hercules-xiv-public-communications-xv-2024-05-14-city-council-on-2024-05)
+  character for character. This only fires when `_fetch_channel_info()`'s
+  RSS-channel jurisdiction (the normally-preferred, reliable source — see
+  the comment right above this regex) comes back empty for that customer,
+  so it's a fallback-path bug, not universal.
+
+  Real examples pulled from the live `/meetings` listing, all Granicus,
+  all the same shape — the jurisdiction field is stuck mid-sentence into
+  unrelated body/agenda/notice text:
+  - `Sarasota Legacy Business PLEDGE OF PUBLIC` (should be `Sarasota, FL`)
+  - `Punta Gorda Council is seeking the servic[es...]` (should be `Punta Gorda, FL`)
+  - `Huntsville.Ordinance No.` (should be `Huntsville, AL`) — also shows the
+    regex swallowing a literal `.` with no following space, since the
+    source text itself has none
+  - `Fort Worth in Communications with the Tex[as...]` (should be `Fort Worth, TX`)
+  - `Edgewater and the Florida Department of T[ransportation...]` (should be `Edgewater, FL`)
+  - `Town of Castle Rock Authorizing the Plum Creek Wa[ter...]` (should be `Castle Rock, CO`)
+  - `Castle Pines History of Parks and Recreat[ion...]` (should be `Castle Pines, CO`)
+  - `Boston to accept and expend the amount of, MA` (should be `Boston, MA`) —
+    note the state-suffix normalizer still correctly appended `, MA` at the
+    end even though the jurisdiction text itself was already garbage,
+    worth remembering when judging how "obviously wrong" a fix's test
+    cases need to look
+  - `Milwaukee.` (should be `Milwaukee, WI`) — the mildest real case, just
+    one stray trailing period, same root cause as the rest
+
+  **Not a universal cap on this file's whole "City/County of X" idea** —
+  `Lexington-Fayette Urban County Government`, `Capital Metropolitan
+  Transportation Authority, TX`, `Albuquerque Bernalillo County Water
+  Utility Authority`, and `Housing Authority of the County of Santa Clara`
+  all *also* flagged as "implausibly long" in this same audit but are
+  real, correct, legitimately-long agency names (confirmed against their
+  real subdomains — hacsc, abcwua, capmetrotx) — any fix needs to keep
+  distinguishing a genuinely long real name from body text that ran on
+  past the real name, not just cap length harder.
+
+  **Not fixed, and no fix chosen yet.** The obvious first idea — copy
+  PrimeGov's already-fixed `_extract_jurisdiction()` approach
+  ([primegov.py:128-146](app/platforms/primegov.py:128), stop at the first
+  word that doesn't start with an uppercase letter, cap at 4 words) —
+  would NOT cleanly solve this on its own: several of the bleed examples
+  above are agenda-heading text that's itself capitalized or ALL-CAPS
+  ("PLEDGE OF PUBLIC", "XIV. PUBLIC COMMUNICATIONS XV."), so a
+  capitalization-only gate wouldn't stop early on those. Worth deciding
+  against more real examples rather than guessing a rule now — same
+  "verify before generalizing" convention this file already applies to
+  PrimeGov's still-open structural gap above.
+
+- **Swagit's jurisdiction extraction has no fallback at all when the page
+  `<title>` doesn't end in a plain `"..., {2-letter state}"` shape — every
+  special-purpose entity (school district, MPO, transit/utility authority,
+  state agency) on Swagit comes through with a blank jurisdiction, even
+  though the real jurisdiction-bearing text is sitting right there in the
+  same title. Confirmed live 2026-08-15, found in the same `/meetings`
+  audit as the Granicus entry above.** Root cause,
+  [swagit.py:308](app/platforms/swagit.py:308): `_extract_metadata()`'s
+  only jurisdiction source is
+  `re.match(r"^(.*)\s*-\s*([^,]+),\s*([A-Za-z]{2})\s*$", raw_title)` — if
+  that doesn't match, `jurisdiction` stays `None` with nothing else
+  attempted (contrast with Granicus, which at least falls back to
+  humanizing the subdomain). Live-verified on three real pages, fetching
+  the raw `<title>` tag directly:
+  - `sccoe.new.swagit.com/videos/383171` →
+    `"Apr 22, 2026 County Board of Education - Santa Clara County Office
+    of Education"` — no trailing `", ST"`, so the whole string ends up as
+    the *title* instead (see
+    [/m/apr-22-2026-county-board-of-education-santa-clara-county-office-of-education](https://redtaperecordings.com/m/apr-22-2026-county-board-of-education-santa-clara-county-office-of-education)),
+    with the real jurisdiction text ("Santa Clara County Office of
+    Education") never pulled out into its own field.
+  - `ercot.new.swagit.com/videos/363073` →
+    `"...Board of Directors Meeting - ERCOT - Electric Reliability
+    Council of Texas"` — same shape, same gap.
+  - `dfps.new.swagit.com/videos/355341` →
+    `"Sep 12, 2025 DFPS Council Meeting\t - Texas Dept of Family and
+    Protective Services"` — same gap, **plus a separate, smaller finding**:
+    that's a literal tab character embedded in Swagit's own source
+    `<title>` tag (confirmed via raw `curl`, not a copy artifact), which
+    passes straight through unnormalized into this app's stored title —
+    visible as a literal tab in the raw title text on
+    [/m/sep-12-2025-dfps-council-meeting-texas-dept-of-family-and-protective-services](https://redtaperecordings.com/m/sep-12-2025-dfps-council-meeting-texas-dept-of-family-and-protective-services).
+    Cheap, low-risk fix on our side regardless of the jurisdiction gap:
+    collapse internal whitespace (`\t`/`\n`) to a single space when
+    extracting `raw_title`.
+
+  16 real examples of the blank-jurisdiction gap turned up in one
+  `/meetings` pass (Santa Clara County Office of Education, VIA
+  Metropolitan Transit, Travis Central Appraisal District, Sioux City
+  Community School District, Port of Galveston, Pelham Public Schools,
+  HOMTV, Mansfield ISD, Louisiana Economic Development, Houston ISD,
+  ERCOT, DFPS, Coppell ISD, Cecil County Public Schools, Broward MPO, plus
+  one plain city — Rancho Cucamonga, CA — whose title also didn't end in
+  the expected shape). Not designed yet: the real jurisdiction text
+  appears in a different place per entity type (before the first ` - `
+  for some, the whole remainder for others), so this isn't as
+  mechanical a fix as it might look at first glance.
+
+- **Granicus's own captions.vtt appears to hard-cap at exactly 36,000 cues
+  per file, cutting a long meeting's transcript off mid-sentence with no
+  warning — a source-side limitation, not a bug in this app's fetch/parse
+  code, confirmed live 2026-08-15.** Found while reviewing the 204-URL
+  Granicus dry-run batch (see `GRANICUS_DRY_RUN_BRIEF.md` in
+  `rtr-business/research/`): three unrelated jurisdictions — College Park
+  GA (`college-park.granicus.com/player/clip/1475`), Coral Gables FL
+  (`coralgables.granicus.com/player/clip/2876`), and Marion County FL
+  (`marionfl.granicus.com/player/clip/1368`) — all resolved to *exactly*
+  36,000 segments, an implausible coincidence for three different meetings
+  of different real lengths (last cue timestamps ~3.09h, ~3.4h, ~3.3h
+  respectively). Root-caused by fetching each `captions.vtt` directly
+  (`curl`, not through this app): College Park's file is a real, complete,
+  untruncated-by-us 2.7MB download (confirmed via `Content-Length`/full
+  read) containing precisely 36,000 `-->` cue markers, and the file's last
+  cue ends mid-word: `"said the tip of the iceberg We"` with no closing
+  punctuation, immediately followed by end-of-file — not a natural
+  sentence/meeting end. Coral Gables's raw VTT, checked the same way, cuts
+  off identically mid-phrase at cue 36,000: `"SETUP INCLUDES TENTS, THE
+  SCREEN,"`. No `36000`/cue-count cap exists anywhere in this repo's own
+  code (`app/platforms/granicus.py`, `app/utils/vtt_parser.py` — grepped
+  for it directly), so this is Granicus's own captioning pipeline (almost
+  certainly its live-auto-caption path, not a human-authored file)
+  silently stopping at a fixed cue count rather than at the meeting's
+  actual end.
+
+  **Not yet built**: any detection or user-facing signal for this. Today
+  a meeting that hits this cap looks identical to one with a complete
+  transcript — no `transcript_warnings` entry, nothing on the meeting
+  page. A cheap first heuristic worth trying: flag (not silently drop)
+  any Granicus resolve whose segment count is exactly 36,000, since a
+  real meeting landing on that exact number by chance is essentially
+  impossible — though this only catches the exact-cap case, not a case
+  where the true cap is some other round number on a different Granicus
+  customer's config, which hasn't been checked. Worth checking a handful
+  of the other long-running meetings in the same 204-URL batch (anything
+  approaching 30-36k segments) to see whether the cap is a fixed constant
+  across all Granicus customers or varies.
+
 - **PrimeGov's `_extract_jurisdiction()` still has no real structural fix
   for the SLC/Holladay false-positive — only patched for that one
   confirmed domain, not solved generally.** SLC's specific bug (every
@@ -2986,3 +3192,50 @@ one item below is resolved as a result.
   PO-token-provider plugin, a proxy) were already surfaced and
   deliberately not attempted, given real cost/maintenance/risk
   tradeoffs none of them have been evaluated against yet.
+
+## Future refactor, deliberately deferred (2026-08-15)
+
+- **PrimeGov's private known-domain override can be absorbed into the
+  enricher once the registry-in-enricher design ships — but leave it
+  alone until then.** `primegov.py`'s `resolve()` calls
+  `jurisdiction_enrich.known_jurisdiction_display()` before its own
+  `_extract_jurisdiction()` — the only adapter with this plumbing, added
+  for the confirmed-misleading `slc.primegov.com` case and verified live
+  in prod. `JURISDICTION_METADATA_PLAN.md`'s settled design moves the
+  same lookup into the enricher's first step (with an authoritative/
+  fallback strength flag per entry), which will make PrimeGov's copy
+  redundant. User's explicit call: don't touch PrimeGov's working
+  override during the testing phase; delete it only after the
+  enricher-side version is built, tested, and confirmed to produce the
+  identical result on the real SLC pages (the two Holladay-bug meetings
+  are the regression cases to check).
+
+## Deprioritized ideas — allowed back if we wish (parked 2026-08-15)
+
+Parked here by the user during the jurisdiction/title extraction planning
+conversation (see `JURISDICTION_METADATA_PLAN.md` for what *was*
+green-lit). Not rejected — explicitly allowed to return.
+
+- **School-district / special-entity jurisdiction lookup.** School
+  districts don't conform to city/county boundaries — they're their own
+  geography, so the Census places/counties tables (and the whole
+  known-jurisdiction validation idea) structurally can't cover them. One
+  real lead for whenever this comes back: the same Census Gazetteer
+  program the existing `jurisdiction_data/` tables are built from *also*
+  publishes school-district files (unified/elementary/secondary, name +
+  state), so districts are tractable with the exact same
+  build-script/lookup mechanism later. The 2026-08-15 Swagit batch alone
+  surfaced ~10 real district/board-of-education pages, so there's real
+  data waiting when this gets picked up.
+- **MPO / transit-authority / utility-district name table.** No national
+  authoritative table exists (unlike cities/counties/districts), so
+  these stay validation-exempt indefinitely — "not in table" must stay a
+  keep-and-flag outcome, never a rejection, largely because of this
+  class. VIA Metropolitan Transit, Broward MPO, ERCOT, Port of
+  Galveston, Travis Central Appraisal District are the real examples on
+  file from the 2026-08-15 audit.
+- **Grand unification of adapter metadata extraction** beyond what the
+  tournament data actually supports — the plan deliberately stops at
+  "promote measured winners into a shared fallback chain," not a
+  rewrite of per-adapter primary extraction, which is platform-specific
+  for real reasons (API fields, RSS feeds, URL conventions).

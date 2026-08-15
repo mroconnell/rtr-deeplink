@@ -49,6 +49,40 @@ def test_lookup_city_state_does_not_double_strip_a_name_that_legitimately_ends_i
     assert je.lookup_city_state("Oklahoma City") == "OK"
 
 
+def test_lookup_city_state_resolves_real_consolidated_city_county_governments():
+    # Real gap found and fixed 2026-08-15: build_jurisdiction_data.py's
+    # build_places() only kept Census FUNCSTAT "A" (active incorporated
+    # government) rows, silently dropping every real consolidated
+    # city-county government -- Census codes these "B" (Baton Rouge,
+    # Lafayette) or "F" ("... (balance)" statistical-area rows), not "A".
+    # Confirmed against the real 2024 Gazetteer file (see
+    # build_places()'s own comment for the full FUNCSTAT list). All 8 "F"
+    # rows are asserted here, not just one -- this was a closed, verified
+    # list at fix time, not a general pattern to trust blindly.
+    assert je.lookup_city_state("Nashville-Davidson") == "TN"
+    assert je.lookup_city_state("Indianapolis") == "IN"
+    assert je.lookup_city_state("Louisville/Jefferson County") == "KY"
+    assert je.lookup_city_state("Athens-Clarke County") == "GA"
+    assert je.lookup_city_state("Augusta-Richmond County") == "GA"
+    assert je.lookup_city_state("Butte-Silver Bow") == "MT"
+    assert je.lookup_city_state("Baton Rouge") == "LA"
+
+
+def test_lookup_city_state_does_not_over_strip_a_consolidated_government_name():
+    # Real bug caught while fixing the gap above: naively applying the
+    # normal trailing-type-word strip AFTER already stripping "unified
+    # government (balance)" turned "Greeley County unified government
+    # (balance)" into just "greeley" -- colliding with three unrelated
+    # real cities named Greeley (CO, IA, KS) and making an otherwise-
+    # unambiguous county lookup falsely ambiguous. "County" here is part
+    # of the real name (a *county* consolidated government, distinct from
+    # any city sharing the root name), same trap as Oklahoma City above.
+    assert je.lookup_city_state("Greeley County") == "KS"
+    # Plain "Greeley" must still correctly stay ambiguous -- this fix must
+    # not accidentally make the collision worse in the other direction.
+    assert je.lookup_city_state("Greeley") is None
+
+
 def test_lookup_city_state_returns_none_for_real_collisions():
     # Real, confirmed: "Detroit" is a real city in MI, OR, AL, and TX;
     # "Charlotte" in NC, MI, IA, TX, and TN -- the exact real example this

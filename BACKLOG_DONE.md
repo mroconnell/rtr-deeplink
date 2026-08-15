@@ -6,6 +6,60 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Jurisdiction/title extraction pipeline (2026-08-15)
+
+Part of the multi-round improvement described in
+`JURISDICTION_METADATA_PLAN.md` — see that file for the full baseline
+audit, extraction tournament, and design rationale this work grew out of.
+
+- **[Done 2026-08-15] `places.csv` was missing every real consolidated
+  city-county government (Nashville-Davidson, Louisville/Jefferson,
+  Indianapolis, Baton Rouge, and 6 others), because
+  `build_jurisdiction_data.py`'s `build_places()` only kept Census
+  FUNCSTAT "A" rows.** Root-caused against the *actual* 2024 Gazetteer
+  file, not guessed — downloaded it fresh and inspected the real
+  FUNCSTAT distribution (19,465 "A", 12,820 "S" CDPs, 34 "I" inactive, 8
+  "F", 4 "N" nonfunctioning, 2 "B"). Every one of the 8 "F" rows and
+  both "B" rows is a real, actively-governed city, just filed under
+  Census's own "... (balance)" statistical-area naming for the 8 (its
+  own docs: "F" marks a statistical *area* construct, not a claim the
+  government is fictitious) or coded "B" because the government legally
+  overlaps its parish (Baton Rouge, Lafayette, LA). Fix: broadened the
+  filter to `FUNCSTAT in ("A", "B", "F")`, confirmed against a full
+  regeneration that this adds exactly those 10 real rows and nothing
+  else (fresh run against freshly re-downloaded Census source files,
+  `git diff --stat` showed only `places.csv` changed, +10 lines, no
+  changes to `counties.csv`/`zcta_*.csv`).
+
+  **A second, real bug found while testing the fix, not before
+  shipping it**: `jurisdiction_enrich.py`'s `_normalize_name()` needed
+  new logic to strip the "(balance)" suffix and the government-type
+  phrase ("metropolitan government"/"metro government"/"unified
+  government"/"consolidated government") before these new rows could
+  ever be looked up by their real common names. The first version of
+  that fix applied the *existing* trailing-type-word strip
+  unconditionally afterward too — which turned "Greeley County unified
+  government (balance)" into just "greeley", colliding with three
+  unrelated real cities named Greeley (CO/IA/KS) and making an
+  otherwise-clean, unambiguous county lookup falsely return `None`. Caught
+  by testing all 8 "F" rows individually before considering the fix
+  done, not just the ones that happened to work. Fixed by skipping the
+  generic trailing strip whenever the government-type phrase already
+  matched — "County" in "Greeley County" is part of the real
+  distinguishing name here (a *county* consolidated government, not the
+  unrelated city), same class of trap as the already-documented
+  "Oklahoma City"/"Carson City" case in this same function. Verified:
+  `lookup_city_state("Greeley County") == "KS"` and
+  `lookup_city_state("Greeley")` still correctly returns `None`
+  (genuinely ambiguous, must not resolve).
+
+  Regression tests added:
+  `test_lookup_city_state_resolves_real_consolidated_city_county_governments`
+  (all 7 city-shaped entries, individually) and
+  `test_lookup_city_state_does_not_over_strip_a_consolidated_government_name`
+  (the Greeley collision, both directions) in `tests/test_jurisdiction_enrich.py`.
+  Full suite green (734 tests) both before and after.
+
 ## Site polish
 
 - **[Done 2026-08-14] `VideoObject.thumbnailUrl` (YouTube-backed pages) +

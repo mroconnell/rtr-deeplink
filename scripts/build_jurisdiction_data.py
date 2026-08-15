@@ -80,10 +80,30 @@ def build_places(source_dir: Path) -> None:
     rows = _read_tsv_from_zip_or_dir(
         source_dir, "2024_Gaz_place_national.zip", "2024_Gaz_place_national.txt"
     )
-    # FUNCSTAT "A" = active incorporated government -- excludes CDPs and
-    # other purely-statistical entities with no real government to be
-    # "the jurisdiction" of a meeting.
-    out_rows = [(r["NAME"].strip(), r["USPS"].strip()) for r in rows if r["FUNCSTAT"] == "A"]
+    # FUNCSTAT "A" = active incorporated government -- excludes CDPs (12,820
+    # rows, FUNCSTAT "S") and other purely-statistical entities with no real
+    # government to be "the jurisdiction" of a meeting -- correct as far as
+    # it went.
+    #
+    # But "A" alone silently dropped every real consolidated city-county
+    # government (Nashville-Davidson, Louisville/Jefferson, Indianapolis,
+    # Baton Rouge...) -- found live 2026-08-15 auditing the Archive's real
+    # jurisdiction values against this table. Root cause, confirmed against
+    # the actual 2024 Gazetteer file (not guessed): Census codes these as
+    # "B" (2 rows nationally -- Baton Rouge, Lafayette LA, both real
+    # governed cities, just legally overlapping with their parish) or "F"
+    # ("Nashville-Davidson metropolitan government (balance)",
+    # "Indianapolis city (balance)", "Louisville/Jefferson County metro
+    # government (balance)", "Athens-Clarke County unified government
+    # (balance)", "Augusta-Richmond County consolidated government
+    # (balance)", "Butte-Silver Bow (balance)", "Milford city (balance)",
+    # "Greeley County unified government (balance)" -- 8 rows nationally,
+    # every one a real active government, Census's own docs describe "F" as
+    # a statistical "balance" construct for the *area*, not a claim the
+    # government itself is fictitious). Confirmed safe to include both:
+    # only 10 rows total nationally, none overlapping the "S"/"I"/"N" codes
+    # (CDPs, inactive, nonfunctioning) this filter still correctly excludes.
+    out_rows = [(r["NAME"].strip(), r["USPS"].strip()) for r in rows if r["FUNCSTAT"] in ("A", "B", "F")]
     with open(OUT_DIR / "places.csv", "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(["name", "state"])

@@ -58,6 +58,23 @@ _TRAILING_TYPE_RE = re.compile(
     r"\s+(?:county|parish|borough|city|town|village|township|municipality|municipio)$",
     re.IGNORECASE,
 )
+# Real consolidated city-county governments -- confirmed against the
+# actual 2024 Census Gazetteer file 2026-08-15 (see
+# build_jurisdiction_data.py's build_places() comment for the full FUNCSTAT
+# story), stored under Census's own "(balance)" statistical-area naming,
+# e.g. "Nashville-Davidson metropolitan government (balance)". Neither
+# piece is a plain type-word _TRAILING_TYPE_RE already knows -- stripped
+# first, in this order (parenthetical, then the government-type phrase),
+# so "Nashville-Davidson metropolitan government (balance)" normalizes to
+# "nashville-davidson", matching how a real page actually refers to it.
+# Only 8 real rows nationally use this shape (confirmed via the same
+# Gazetteer file), so this is a closed, verified list, not a guess at a
+# general pattern.
+_BALANCE_SUFFIX_RE = re.compile(r"\s*\(balance\)\s*$", re.IGNORECASE)
+_GOVERNMENT_TYPE_RE = re.compile(
+    r"\s+(?:metropolitan government|metro government|unified government|consolidated government)$",
+    re.IGNORECASE,
+)
 
 
 def _normalize_name(name: str) -> str:
@@ -66,12 +83,30 @@ def _normalize_name(name: str) -> str:
     where the trailing word is always Census's own guaranteed single
     generic type annotation (e.g. "Abbeville city", "Oklahoma City city"
     -- the real proper name followed by exactly one lowercase type word),
-    safe to strip unconditionally.
+    safe to strip unconditionally. Also strips a trailing "(balance)" +
+    government-type phrase first, when present -- see
+    `_BALANCE_SUFFIX_RE`'s comment.
 
     NOT used directly on query-side text -- see `_normalize_candidates()`
     below for why a bare query needs a different, two-attempt strategy.
     """
     name = name.strip()
+    name = _BALANCE_SUFFIX_RE.sub("", name)
+    name, government_stripped = _GOVERNMENT_TYPE_RE.subn("", name)
+    if government_stripped:
+        # The government-type phrase ("unified government" etc.) IS the
+        # generic type annotation here -- stop, don't also run the plain
+        # city/county/etc. strip below. Real bug caught 2026-08-15 testing
+        # this against "Greeley County unified government (balance)": a
+        # second blind strip turned "Greeley County" into "greeley",
+        # colliding with three unrelated real cities named Greeley
+        # (CO/IA/KS) and making an otherwise-unambiguous county lookup
+        # falsely ambiguous. "County" here is part of what's actually
+        # being named (a *county* consolidated government, distinct from
+        # any city of the same root name), the same real-word-that-looks-
+        # generic trap already noted below for "Oklahoma City"/"Carson
+        # City" -- not safe to strip just because it's a known type word.
+        return name.strip().lower()
     leading_match = _LEADING_TYPE_RE.match(name)
     if leading_match:
         name = name[leading_match.end():]
