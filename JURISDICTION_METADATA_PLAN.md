@@ -253,6 +253,26 @@ this module at all before.
   (761 tests at time of writing).
 - **Still not done**: the targeted ~90-page backfill.
 
+**Slice 5 -- merge, migrate, and the real backfill (2026-08-15)**: the
+whole branch (`jurisdiction-pipeline-r1`, 6 commits) merged to `main` via
+[PR #56](https://github.com/mroconnell/rtr-deeplink/pull/56), production
+Alembic migrations run for both services, and the backfill executed for
+real against production. Full account, including a real deploy-pipeline
+mistake caught mid-session, in `BACKLOG_DONE.md`'s
+"Jurisdiction/title extraction pipeline" section.
+
+**Workstream 1/2/4 real numbers, superseding this file's earlier estimate**:
+the dry-run diff (computed against the tournament's cached HTML, not a
+fresh fetch) found only **30** of 649 pages would actually change --
+9 already-correct SLC rows (cosmetic reformat only, excluded from the
+real backfill per the user's call), 21 real fixes (17 Granicus bleed
+repairs, 3 Swagit blank-jurisdiction fills, 1 generic_fallback blank fill
+-- Tucson). All 21 confirmed live in production Postgres and on
+`redtaperecordings.com` after the fix -- e.g. Hercules now reads
+"Hercules, CA" (was "Hercules. XIV. PUBLIC COMMUNICATIONS XV."), the
+Santa Clara Housing Authority page now reads "Housing Authority · County
+of Santa Clara, CA".
+
 ## Sequencing decision
 
 Tests before tweaks: workstream 1 today, tournament next, implementation

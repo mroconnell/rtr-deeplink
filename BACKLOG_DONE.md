@@ -113,6 +113,73 @@ audit, extraction tournament, and design rationale this work grew out of.
   (the real Fort Lauderdale case) and `test_table_lookup_recognizes_a_page_authored_abbreviation`
   in `tests/test_jurisdiction_enrich.py`. Full suite green (763 tests).
 
+- **[Done 2026-08-15] The whole jurisdiction pipeline merged to `main`,
+  deployed, and the real backfill executed against production**
+  ([PR #56](https://github.com/mroconnell/rtr-deeplink/pull/56)) — with
+  one real deploy-pipeline mistake caught and corrected mid-session, not
+  before. All 6 commits on `jurisdiction-pipeline-r1` had sat unmerged
+  the whole time this feature was being built, tested, and dry-run —
+  `main`/`origin/main` never moved. A first live "execute the 21" backfill
+  run (real network re-resolves, real pushes to production) went through
+  cleanly with 0 failures, but a spot-check on `redtaperecordings.com`
+  afterward showed the Hercules page's jurisdiction completely unchanged.
+  Root cause, confirmed directly: querying production Postgres for
+  `meeting_pages.meeting_body` raised `UndefinedColumnError` — the new
+  Alembic migrations had only ever been run against local SQLite this
+  session (by design, to avoid touching production `DATABASE_URL` for a
+  schema diff), never against production. The backfill script pushes via
+  an HTTP call to the Archive's own deployed service (`archive_client.push()`),
+  not a direct DB write from local code — so it had been re-resolving
+  each page correctly with the new adapter code, then handing the result
+  to a still-*old*-code production service with no `finalize_jurisdiction()`
+  call and no new columns, which just silently re-stored the same
+  already-bled raw value. No data was corrupted (a same-value overwrite,
+  not a bad write), but the backfill's actual purpose never fired.
+
+  Fix, in order: (1) pushed the branch, opened PR #56, merged to `main`
+  after CI passed (`gh pr merge --squash --delete-branch`, blocked once by
+  branch protection until the required "test" check finished); (2) ran
+  `alembic upgrade head` for both services directly on Render's own shell
+  (not from a local machine — `archive/alembic/env.py` and
+  `app/alembic/env.py` each read their DB URL from their own service's
+  `DATABASE_URL`, and this repo's local `.env` has an entirely different
+  `DATABASE_URL` — the resolver's own dev DB, not either production
+  database — so running migrations locally without an explicit override
+  risked targeting the wrong database entirely); (3) confirmed both
+  production databases' `alembic_version` tables were already correctly
+  tracked at each migration's expected `down_revision` before running
+  (clean forward migration, no stamping needed); (4) re-ran the 21-page
+  backfill for real once the schema was in place.
+
+  **A second, smaller mistake, caught immediately via the same
+  discipline**: the post-backfill verification query itself first went
+  through `archive.db.crud` (importing `archive/db/engine.py`, which
+  resolves its own `DATABASE_URL` from env) instead of the dedicated
+  `ARCHIVE_DATABASE_URL` this session's read-only cross-service scripts
+  already used correctly earlier (see the tournament's
+  `fetch_tournament_sources.py`) — same wrong-database class of mistake
+  as the deploy issue above, just local and read-only. Caught by the
+  query failing with the identical `UndefinedColumnError`, re-diagnosed
+  by comparing the resolved database *names* (not just hosts, which
+  matched) across all three: `archive.db.engine.DATABASE_URL` and env
+  `DATABASE_URL` both resolve to `rtr_deeplink_db` (the resolver's own
+  database); only `ARCHIVE_DATABASE_URL` resolves to `rtr_archive`, the
+  real target. Re-verified correctly via a direct `asyncpg` query against
+  `ARCHIVE_DATABASE_URL`: all 21 pages landed exactly as the dry-run
+  predicted (e.g. Hercules: `jurisdiction_confidence="repaired"`,
+  `"City of Hercules, CA"`; the Santa Clara Housing Authority page:
+  `meeting_body="Housing Authority"`, `jurisdiction="County of Santa
+  Clara, CA"`). Confirmed rendering correctly live on
+  `redtaperecordings.com`'s `/meetings` search for both.
+
+  **Lesson for next time a schema-changing branch sits unmerged while
+  being developed and dry-run**: a clean local test suite and a clean
+  dry-run against cached data prove the *code* is correct, never that
+  it's *deployed* — always check `git log main..<branch>` (or just try a
+  live read against production) before trusting a "successful" live push
+  actually exercised the new logic, not just the old code silently
+  absorbing it.
+
 ## Site polish
 
 - **[Done 2026-08-14] `VideoObject.thumbnailUrl` (YouTube-backed pages) +
