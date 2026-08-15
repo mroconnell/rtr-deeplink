@@ -13,6 +13,7 @@ def register_all_finders() -> None:
     from .ca_legislature import CaliforniaLegislatureAssetFinder
     from .cablecast import CablecastAssetFinder
     from .champds import ChampDSAssetFinder
+    from .clerkbase import ClerkBaseAssetFinder
     from .civicclerk import CivicClerkAssetFinder
     from .civicweb import CivicWebAssetFinder
     from .civicplus import CivicPlusAssetFinder
@@ -45,6 +46,7 @@ def register_all_finders() -> None:
     register(CablecastAssetFinder())
     register(ChampDSAssetFinder())
     register(IQM2AssetFinder())
+    register(ClerkBaseAssetFinder())
     # Registered under "unknown" -- the exact string detect_platform()
     # already returns for anything unmatched -- so get_finder("unknown")
     # finds this instead of raising UnsupportedPlatformError. Keep this
