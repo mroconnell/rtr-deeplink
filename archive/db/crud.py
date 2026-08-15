@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 
 from sqlalchemy import and_, or_, select
 
-from ..utils.jurisdiction_format import normalize_state_suffix
+from ..utils.jurisdiction_format import jurisdiction_search_terms, normalize_state_suffix
 from ..utils.language import detect_language_from_texts
 from ..utils.search import build_corpus, find_snippet, matches, tokenize
 from ..utils.slugify import build_base_slug, random_suffix
@@ -510,7 +510,8 @@ async def list_pages(
 
     conditions = []
     if jurisdiction:
-        conditions.append(MeetingPage.jurisdiction.ilike(f"%{jurisdiction}%"))
+        terms = jurisdiction_search_terms(jurisdiction)
+        conditions.append(or_(*(MeetingPage.jurisdiction.ilike(f"%{t}%") for t in terms)))
     if date_from:
         conditions.append(MeetingPage.date >= date_from)
     if date_to:
@@ -934,7 +935,8 @@ async def list_recent_pages_for_feed(*, jurisdiction: Optional[str] = None, limi
     limit = max(1, min(limit, 100))
     stmt = select(MeetingPage).order_by(MeetingPage.created_at.desc()).limit(limit)
     if jurisdiction:
-        stmt = stmt.where(MeetingPage.jurisdiction.ilike(f"%{jurisdiction}%"))
+        terms = jurisdiction_search_terms(jurisdiction)
+        stmt = stmt.where(or_(*(MeetingPage.jurisdiction.ilike(f"%{t}%") for t in terms)))
 
     async with async_session() as session:
         rows = (await session.execute(stmt)).scalars().all()

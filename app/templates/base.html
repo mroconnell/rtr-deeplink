@@ -13,6 +13,7 @@
   <link rel="manifest" href="/static/manifest.json">
   <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
   <meta name="theme-color" content="#2c3e50">
+  {% block meta %}{% endblock %}
   {% if GA_MEASUREMENT_ID %}
   <script async src="https://www.googletagmanager.com/gtag/js?id={{ GA_MEASUREMENT_ID }}"></script>
   <script>

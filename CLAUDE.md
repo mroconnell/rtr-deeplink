@@ -136,20 +136,19 @@ under everything else. This repo extracts and fixes just that part.
   before assuming it's a bug in this repo's code.
 - **A pytest suite exists now (`tests/`, see README's "Running tests")** —
   run it (`pytest`) before/after touching `app/utils/vtt_parser.py`,
-  `app/platforms/media_scan.py`, `app/platforms/base.py`, or the
-  Granicus/Legistar/CivicPlus/CivicClerk/CA Legislature/Swagit adapters,
-  since those are the ones with real coverage today (84 tests as of
-  2026-08-08). **eScribe, PrimeGov, and YouTube still have zero test
-  coverage** — the one gap actually worth closing next if you're touching
-  any of those three, since right now a regression there would only ever
-  be caught by live-testing, same as before this suite existed. It
-  doesn't replace live-testing a new adapter or a genuinely new
-  real-world case (see the first bullet above) — it exists to catch a
-  *previously-covered* case silently regressing between sessions, which
-  live-testing alone doesn't protect against. When you fix a bug found
-  via live testing, consider adding a fixture-backed regression test for
-  it in the same pass, the way the Simi Valley Spanish-caption and
-  blank-VTT cases already are.
+  `app/platforms/media_scan.py`, `app/platforms/base.py`, or any platform
+  adapter. Every adapter now has real fixture-backed coverage (see
+  README's "Running tests" section for the current, authoritative list —
+  this file previously claimed eScribe/PrimeGov/YouTube had zero coverage;
+  that was stale as of this correction and is exactly the kind of doc-drift
+  this repo's own "App-wide audit" backlog entry flags as a real, confirmed
+  problem, not a hypothetical one). It doesn't replace live-testing a new
+  adapter or a genuinely new real-world case (see the first bullet above)
+  — it exists to catch a *previously-covered* case silently regressing
+  between sessions, which live-testing alone doesn't protect against. When
+  you fix a bug found via live testing, consider adding a fixture-backed
+  regression test for it in the same pass, the way the Simi Valley
+  Spanish-caption and blank-VTT cases already are.
 - **A brand-new table still needs no manual migration** — `init_models()`
   in both `app/db/engine.py` and `archive/db/engine.py` runs
   `Base.metadata.create_all()` unconditionally on every startup, so a new

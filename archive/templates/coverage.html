@@ -2,6 +2,9 @@
 {% block title %}Coverage | Red Tape Recordings{% endblock %}
 {% block meta %}
   <meta name="description" content="Cities, counties, and states we've covered so far, with a real archived meeting as proof.">
+  {% if public_base_url %}
+  <link rel="canonical" href="{{ public_base_url }}/coverage">
+  {% endif %}
 {% endblock %}
 {% block content %}
   <main class="about-page">
