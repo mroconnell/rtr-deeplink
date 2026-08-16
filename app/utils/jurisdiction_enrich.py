@@ -394,6 +394,22 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     # since it's real and resolves, not because it's likely to be
     # actively maintained going forward.
     "sandiego.hylandcloud.com": KnownJurisdiction("San Diego", "city", "CA"),
+    # Found 2026-08-16 via a `site:.gov inurl:OnBaseAgendaOnline/Meetings/
+    # ViewMeeting` web search -- each confirmed with a real resolving
+    # ViewMeeting page. Two candidates from the same search
+    # (documents.provo.gov, onbase.sandiego.gov -- San Diego's real .gov
+    # domain, a separate lead from the stale sandiego.hylandcloud.com
+    # entry above) turned out to be fully dead (404/DNS failure even on
+    # their own site root, not just one stale meeting id) and were left
+    # unregistered.
+    "onbaseweb.pittsburgca.gov": KnownJurisdiction("Pittsburg", "city", "CA"),
+    "agenda.modestogov.com": KnownJurisdiction("Modesto", "city", "CA"),
+    "onbase.centennialco.gov": KnownJurisdiction("Centennial", "city", "CO"),
+    # A second, distinct real Santa Barbara subdomain (docs.
+    # santabarbaraca.gov is already registered above) -- both resolve
+    # independently through hyland.py, so both are kept rather than
+    # assuming one is a stale alias of the other.
+    "records.santabarbaraca.gov": KnownJurisdiction("Santa Barbara", "city", "CA"),
 }
 
 
