@@ -213,6 +213,22 @@ async def internal_transcript_wanted(authorization: Optional[str] = Header(None)
     return {"pages": await crud.list_youtube_pages_missing_transcripts()}
 
 
+@app.get("/internal/transcription-backlog")
+async def internal_transcription_backlog(limit: Optional[int] = None, authorization: Optional[str] = Header(None)):
+    """Batch counterpart to /internal/transcript-wanted above -- every
+    archived page across ANY platform missing a good transcript,
+    oldest-archived-first, skipping pages already in escalating-failure
+    cooldown (see crud._in_auto_transcription_cooldown()). Consumed by
+    scripts/transcribe_backlog_locally.py, run on a local Mac with a
+    bigger faster-whisper model than the Render-2GB-constrained worker's
+    "tiny" default -- see that script's own module docstring.
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    return {"pages": await crud.list_transcription_backlog_candidates(limit=limit)}
+
+
 @app.get("/internal/lookup")
 async def internal_lookup(normalized_url: str, authorization: Optional[str] = Header(None)):
     # 404, not 401/403 -- this is a private endpoint, its existence
@@ -258,6 +274,16 @@ class IngestRequest(BaseModel):
     video_warnings: List[str] = []
     agenda_link: Optional[str] = None
     input_url_normalized: str
+    # Archive-only -- not part of ResolvedMeeting (app/platforms/models.py),
+    # so every normal resolver push/bulk_ingest.py/fetch_youtube_transcripts.py
+    # call simply omits it and gets the "scraped" default crud.
+    # ingest_resolution() already applied before this field existed.
+    # scripts/transcribe_backlog_locally.py is the one real caller that
+    # sets this to "transcribed" -- see that function's own docstring for
+    # why mislabeling self-transcribed content as "scraped" would be a
+    # real problem (losing the AI-transcript disclaimer), not a cosmetic
+    # one.
+    source: Optional[str] = None
 
 
 @app.post("/internal/ingest")
