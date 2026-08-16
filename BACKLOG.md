@@ -5,6 +5,79 @@ investigation detail behind each fix — lives in
 [BACKLOG_DONE.md](BACKLOG_DONE.md); items below link back to it for context
 where relevant.
 
+## Easy-win triage (2026-08-16) — two waves ready to execute
+
+Per direct request: a pass through this whole file to pull out genuinely
+easy, low-risk items — root cause and fix direction already established
+in the entry itself (not "worth deciding"/open design questions), small
+footprint (1-2 files), no new schema/migration/dependency/infra, nothing
+touching Clerk auth (documented history of that being unreliable — see
+the sign-in-redirect saga referenced in the Archive-roadmap accounts
+entry below), not a from-scratch platform adapter build. Each item below
+is a pointer to its full write-up elsewhere in this file, not a
+duplicate — search this file for the quoted phrase to find the source
+entry with all the evidence.
+
+**Wave 1 — copy & data only, essentially zero logic risk.** Ship
+together as one small PR; none of these touch branching logic.
+1. Contact `mailto:` links still show `ryan@` instead of the live
+   `ally@redtaperecordings.com` (search "Audit every user-facing email
+   address"). `app/templates/base.html:78`, `archive/templates/base.html:95`.
+2. Transcription rate-limit 429 copy is unfriendly (search "You've
+   requested a few transcripts already this hour"). `app/static/player.js:468`,
+   `archive/static/meeting_page.js:383`. (The same entry's other half —
+   signed-in users bypassing the limit entirely — is real but not yet
+   feasible to schedule; see "Left out" below.)
+3. README.md wrongly says saved-search alert emails are "Not yet built"
+   (search "Docs hygiene — a live, confirmed example of drift").
+   `README.md` (~line 754) — `archive/search_alerts.py` is real, merged,
+   cron-driven.
+4. Two confirmed jurisdiction-registry gaps — Orange County, FL (search
+   "Can we mark this domain/url as Orange County, FL") and Maricopa
+   County, AZ's DataBank Cloud OnBase instance (search "Hyland \"221
+   Agenda Online\""). `app/utils/jurisdiction_enrich.py`'s
+   `_KNOWN_DOMAINS` dict (~line 284) — pure data, `finalize_jurisdiction()`
+   already consults this registry for every adapter.
+5. Swagit's `raw_title` carries a literal tab character straight through
+   into stored titles, confirmed via real `curl` (search "a literal tab
+   character embedded in Swagit's own source"). `app/platforms/swagit.py:306`.
+
+**Wave 2 — small, self-contained logic fixes.** Each has a clear fix
+direction already written up; land as separate small PRs, roughly in
+this order:
+6. CivicClerk never falls back when `eventLocation` is completely blank,
+   confirmed live on Los Altos Hills, CA (search "losaltoshillsca").
+   `app/platforms/civicclerk.py:81-86` — call the already-built,
+   already-manually-verified `jurisdiction_enrich.extract_jurisdiction_chain(url=url)`.
+   Lowest risk in this wave: the fix's output was already tested and
+   confirmed correct in this session, not just theorized.
+7. Granicus's `captions.vtt` hard-caps at exactly 36,000 cues with no
+   warning, confirmed on 3 independent real customers (search "hard-cap
+   at exactly 36,000 cues"). `app/platforms/granicus.py` — flag (don't
+   silently drop) any resolve whose segment count is exactly 36,000.
+   Explicitly a first heuristic per the entry, not a full fix.
+8. Granicus's wordninja subdomain-humanization fallback produces
+   confident garbage on acronym subdomains — "S Fw, MD" from `sfwmd`,
+   "Psr C 2" from `psrc2`, etc. (search "produces confident garbage on
+   acronym subdomains"). `app/platforms/granicus.py:188-214`
+   (`_humanize_subdomain()`) should reuse the already tournament-tested
+   `_validated_subdomain_extract()` in `app/utils/jurisdiction_enrich.py`
+   (~line 800) — currently private, needs a small public wrapper before
+   `granicus.py` can call it.
+9. `/coverage`'s "Every place we've covered" table wants a frozen
+   row-number column and sortable headers (search "row number" or "Every
+   place we've covered"). `archive/templates/coverage.html:18-41` plus
+   new CSS/JS — genuinely new (if small) client-side sort logic, no
+   backend/data change. Largest item in this wave for that reason.
+
+**Left out on purpose, not an oversight**: signed-in users bypassing the
+transcription rate limit entirely (the other half of item 2's source
+entry) — the entry itself flags that slowapi's `@limiter.limit(...)`
+applies unconditionally at decoration time with no existing per-request
+bypass pattern in this codebase, so the implementation path is
+unconfirmed. Worth a short feasibility spike before scheduling it
+alongside item 6, which already has a proven fix.
+
 ## App-wide audit: industry best practices & resource management — scoped 2026-08-14, for handoff
 
 The tool itself works well now — 15+ platform adapters, 683 tests,
