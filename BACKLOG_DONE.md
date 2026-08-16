@@ -6,6 +6,74 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Hyland "OnBase Agenda Online" — new dedicated adapter built, overturning the earlier "genuinely renders client-side" conclusion (2026-08-16)
+
+Built `app/platforms/hyland.py`, replacing `generic_fallback.py`'s
+patchwork handling of this platform (below) for all 3 confirmed real
+customers: `tucsonaz.hylandcloud.com` (Tucson, AZ, no video), `mccobagenda.
+databankcloud.com` (Maricopa County, AZ), `agendanet.saccounty.gov`
+(Sacramento County, CA) — routed in `base.py` on the shared
+`/Meetings/ViewMeeting` URL path shape (confirmed identical across all 3
+despite each using a different preceding product-name path segment and a
+different hosting domain — an earlier routing attempt also required
+`"agendaonline"` in the path, which real-world-tested false on Sacramento's
+`/BoardofSupervisors/Meetings/ViewMeeting` shape; caught via
+`bulk_ingest.py --dry-run` against the real URL, not by inspection).
+
+**The real finding that made this worth a dedicated adapter, not just a
+`_KNOWN_DOMAINS` registry entry**: this product's own
+`/Meetings/ViewMeetingAgenda?meetingId={id}&type={doctype}` AJAX endpoint
+returns real, plain server-rendered HTML via a bare `curl` — no JS
+execution needed — on all 3 customers, including Tucson. **This directly
+overturns this file's own earlier conclusion** ("the AJAX endpoint...
+returns the same empty vendor-branded shell, not real meeting data —
+everything genuinely renders client-side," which drove building and
+enabling the headless-browser escalation for this exact page shape). That
+earlier probe used the page's own literal, unsubstituted
+`type=AGENDATYPEVALUE` JS-template placeholder rather than the real
+`doctype` value from the URL — once substituted, the endpoint returns a
+real `<h1>{meeting name}<br>{date time}<br></h1>` header plus a full
+nested outline of `accessible-item`/`accessible-section` divs, each real
+item carrying its own text and a `loadAgendaItem({id})` onclick. Confirmed
+against fresh `curl` fixtures for all 3 customers, saved to
+`tests/fixtures/hyland/`.
+
+**Second real finding, only relevant to the 2 customers with video
+(Maricopa/Sacramento, not Tucson)**: the main `ViewMeeting` page's inline
+`itemEventPoints`/`sectionEventPoints` JS objects (flagged as "not
+investigated further" in the Sacramento entry below) map that same numeric
+item id to a real video-seek offset in seconds. Joining the two endpoints
+on that shared id produces a real, timestamped `agenda_items` list (48
+items for Maricopa, 35 for Sacramento) — genuine per-agenda-item deep
+linking, with no headless browser and no per-customer heuristics beyond
+the id join. Tucson has no video, so no event points exist there either;
+it falls back to `agenda_link` pointing at its own real per-meeting AJAX
+URL (not the OnBase site root `_find_agenda_link()`'s best-effort scan
+used to return).
+
+Video extraction (Maricopa/Sacramento) reuses `media_scan.scan_media_urls`/
+`is_hls_url`/`media_type` rather than re-implementing JW-player `file:`
+parsing — the same shared code already fixed for this exact page shape's
+`&amp;token=` entity-decoding and query-stringed-`.m3u8` bugs during the
+2026-08-14 generic-fallback rebuild, so this adapter can't regress either
+one. No caption/transcript track of any kind was found on any of the 3
+samples' JW Player config (no `tracks:` key at all, unlike TelVue) — this
+platform is video(+agenda)-only until a real example says otherwise.
+
+Jurisdiction: none of the 3 known domains has reliable in-page text
+(Maricopa/Tucson have zero; Sacramento's sits in a generic sitewide
+`<title>`, one unconfirmed-to-generalize sample) — all 3 registered in
+`jurisdiction_enrich._KNOWN_DOMAINS` instead, same reasoning as this
+file's existing LIMS/CivicWeb precedent for this exact situation. A future
+4th OnBase customer needs its own registry entry the same way (not
+automatic) — a real, expected residual, not a bug.
+
+Verified: 4 new tests in `tests/test_hyland.py` (real fixtures, no
+synthetic HTML), full suite 775/775 passing, and end-to-end via
+`bulk_ingest.py --dry-run` against all 3 live URLs post-fix, confirming
+correct `platform=hyland` routing and the exact real title/date/
+agenda_items/video counts shown above.
+
 ## Checked empirically: no other adapter has eScribe/CivicClerk's YouTube-delegation gap (2026-08-16)
 
 Prompted by a fair challenge after the eScribe/CivicClerk fixes above:

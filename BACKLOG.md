@@ -1118,110 +1118,16 @@ unusually wide, and the missing auto-scroll toggle on archived pages~~
   (`page.platform = payload.get("platform") or page.platform`) --
   straightforward, not yet done.
 
-- **Hyland "221 Agenda Online" (OnBase Agenda) — new platform, not
-  supported at all today, found 2026-08-13 while investigating the
-  "Untitled meeting" copy question** (see the `/meetings` UI-gaps
-  section below). Real example:
-  [tucsonaz.hylandcloud.com/221agendaonline/Meetings/ViewMeeting?doctype=2&id=1956](https://tucsonaz.hylandcloud.com/221agendaonline/Meetings/ViewMeeting?doctype=2&id=1956)
-  (`/m/meeting`, Tucson, AZ) — the one real page in the whole Archive
-  with a completely empty title today. Confirmed live via `curl` (plain
-  HTTP, no JS): the page's raw HTML has *zero* usable static text
-  anywhere — `<title>` is just the vendor's own generic product name
-  ("View Meeting - OnBase Agenda Online"), no meta description, no
-  visible heading, no date-shaped URL segment (`id=1956` is an opaque
-  internal id), and the AJAX endpoint the page's own JS calls to render
-  the agenda (`.../Meetings/ViewMeetingAgenda?meetingId=1956&type=...`)
-  returns the same empty vendor-branded shell, not real meeting data —
-  everything genuinely renders client-side. The `/Meetings` calendar
-  listing page is equally empty statically. A generic_fallback-style
-  static-HTML backfill (the CRRMA fix, `BACKLOG_DONE.md`) structurally
-  cannot help here — real support would need a headless-browser fetch
-  (`fetch_via_browser`, the same approach LIMS/SLC already use), a
-  proper new-platform build, not a quick fix. **Re-confirmed via a
-  second real example the user gave** (`id=1897`, same Tucson instance)
-  — byte-for-byte identical template shell aside from the meeting id in
-  a few JS URLs, confirming this is a platform-wide gap (every meeting
-  on this instance), not one unusual page.
-
-  **Update 2026-08-14: the headless-browser fetch this entry called for
-  now exists and runs against Tucson's pages** — the generic fallback's
-  empty-shell escalation (built in the 2026-08-14 rebuild, enabled in
-  prod, see `BACKLOG_DONE.md`) fires on exactly this shell's shape (its
-  real 153 chars of visible text tuned the trigger threshold). Final
-  backtest confirms the honest limit: even the fully-rendered Tucson
-  page yields no video, because **no video exists on these pages at
-  all** — matching the user's own earlier framing ("I don't expect the
-  Tucson pages to ever work well because there's no video in them").
-  What escalation could still improve here someday is metadata (the
-  rendered agenda has real title/date text), but per-customer video
-  variance (Maricopa's static video is already fixed, see below) means
-  the remaining Tucson-specific value is small — leaving this entry
-  open only for the metadata piece and any future customer whose
-  rendered page does carry video.
-
-  **Update 2026-08-13: a second real customer confirms this is genuinely
-  platform-wide across hosting domains, not one reseller's quirk — and
-  overturns part of the "everything genuinely renders client-side"
-  conclusion above.** User-reported:
-  [mccobagenda.databankcloud.com/AgendaOnline/Meetings/ViewMeeting?id=4694&doctype=3](https://mccobagenda.databankcloud.com/AgendaOnline/Meetings/ViewMeeting?id=4694&doctype=3)
-  (Maricopa County, AZ). Same exact product — footer reads "Copyright ©
-  2015-2026 Hyland Software, Inc.", same `/AgendaOnline/Meetings/
-  ViewMeeting?id={n}&doctype={n}` URL shape, same generic `<title>View
-  Meeting - OnBase Agenda Online</title>` with zero static jurisdiction
-  text — but hosted on `databankcloud.com` rather than Tucson's
-  `hylandcloud.com`, i.e. a different Hyland reseller/hosting domain
-  serving the identical template. Confirmed live in prod
-  ([redtaperecordings.com](https://redtaperecordings.com), via browser):
-  resolves to "Untitled meeting," "we couldn't find a video on this page
-  automatically," matching Tucson's symptom.
-
-  **But unlike Tucson, this customer's page does have a real, static,
-  server-rendered video URL** — confirmed via plain `curl` (no JS): a JW
-  Player `setup()` call in an inline `<script>` block with
-  `file: "https://d27q9sfkph1oc9.cloudfront.net/mcvod/mediacache/
-  amlst:{id}/playlist.m3u8?instance=1&amp;token={signed-token}"`, a real
-  signed CloudFront-hosted HLS stream. So "every OnBase Agenda Online
-  customer needs a headless-browser fetch" (Tucson's conclusion) doesn't
-  generalize — video availability varies per customer/config the same
-  way it does on Cablecast/CHAMP, and this customer's video should in
-  principle be reachable via the existing static-HTML path.
-
-  ~~**Root cause of the video gap not yet isolated; separately, the
-  extracted URL carries a literal `&amp;` entity that would break the
-  query string.**~~ **Both fixed 2026-08-14 in the generic-fallback
-  rebuild — full detail in `BACKLOG_DONE.md`.** The real root cause was
-  neither Render's IP nor a cookie wall: `media_type()` ran
-  `endswith(".m3u8")` on the FULL url, so the query-stringed
-  `playlist.m3u8?instance=1&token=` classified as "unknown" and was
-  dropped after extraction; `scan_media_urls()` also never
-  entity-unescaped, so `&amp;token=` would have reached the CDN as a
-  literal `amp;token` param. Live-verified post-fix: this exact Maricopa
-  page (and Sacramento's, below) now resolves a real playable m3u8 with
-  a decoded token.
-
-  **Also noted, lower priority**: the "we think we found an agenda here"
-  link the prod resolve returned points at the OnBase Agenda Online site
-  root (`.../AgendaOnline/`), not this specific meeting's agenda — a
-  known limitation of `_find_agenda_link()`'s best-effort "any `<a>`
-  containing 'agenda'" matching (its own docstring already says it
-  doesn't attempt real agenda-item extraction), not a new bug, just
-  another data point on how weak the fallback is for this platform
-  specifically.
-
-  **Update 2026-08-14, live-tested by the user against a third meeting
-  id on this same instance
-  ([id=4665](https://mccobagenda.databankcloud.com/AgendaOnline/Meetings/ViewMeeting?id=4665&doctype=3)):
-  the video fix confirmed working on a brand-new id too** (live-replayed:
-  "Share video at 0:00" — the real video plays) — **but title/
-  jurisdiction are still exactly as weak as before**, live-confirmed on
-  this exact id as "Untitled meeting," no jurisdiction, agenda link still
-  the bare site root. Jurisdiction specifically has a real, low-risk fix
-  already available and not yet wired in: see the "Orange County FL"
-  residual bullet above (`jurisdiction_enrich.lookup_by_domain()` /
-  `_KNOWN_DOMAINS`) — this domain (`mccobagenda.databankcloud.com`) is
-  just as good a `_KNOWN_DOMAINS` candidate as `netapps.ocfl.net`, same
-  reasoning: no in-page text maps to a real jurisdiction, but the domain
-  itself unambiguously does (Maricopa County, AZ).
+~~**Hyland "OnBase Agenda Online" — new platform, not supported at all
+  today.**~~ **Built 2026-08-16 — new `app/platforms/hyland.py`, full
+  detail in `BACKLOG_DONE.md`.** Confirmed live against all 3 known
+  customers (Tucson AZ, Maricopa County AZ, Sacramento County CA): real
+  title/date from a previously-misdiagnosed AJAX endpoint (no headless
+  browser needed after all, overturning this entry's own earlier
+  conclusion), real timestamped `agenda_items` on the 2 customers with
+  video (joining that same AJAX outline against the main page's inline
+  `itemEventPoints` map), and real jurisdiction via 3 new
+  `_KNOWN_DOMAINS` entries.
 
 - **IQM2 (`app/platforms/iqm2.py`) — Riverside County, CA's real title/
   jurisdiction extraction should work by inspection but doesn't in prod,
@@ -2305,72 +2211,14 @@ unusually wide, and the missing auto-scroll toggle on archived pages~~
     artifact worth guessing a general dedup rule from a single example.
     **Deliberately not a bug to fix** — no code change made.
 
-- **Sacramento County, CA's own agenda site
-  (`agendanet.saccounty.gov`) — user-reported 2026-08-13, a third real
-  customer of the same "ViewMeeting?id=X&doctype=Y" agenda-management
-  product this file already flags a gap for on two other counties'
-  hosted domains, plus one genuinely new, cheap signal.** Real example:
-  [agendanet.saccounty.gov/BoardofSupervisors/Meetings/ViewMeeting?id=10231&doctype=1](https://agendanet.saccounty.gov/BoardofSupervisors/Meetings/ViewMeeting?id=10231&doctype=1)
-  (calendar page:
-  [saccounty.gov/us/en/countywide-calendar.html](https://www.saccounty.gov/us/en/countywide-calendar.html#gsc.tab=0)).
-  **Confirmed live in prod
-  ([redtaperecordings.com](https://redtaperecordings.com)): "Untitled
-  meeting," no video ("we couldn't find a video on this page
-  automatically") — but the agenda link *is* found correctly** ("We
-  think we found an agenda here:
-  .../Documents/Downloadfile/BOARD_OF_SUPERVISORS_10231_Agenda_Packet_8_11_2026_9_30_00_AM.pdf",
-  via `_find_agenda_link()`'s existing "any `<a>` containing 'agenda'"
-  scan) — so this is a narrower gap than the Wayne County entry above,
-  not a total blank.
-
-  Unlike Wayne County, **the fetch itself is not blocked** — `curl` with
-  the same UA `generic_fallback.py` sends gets a clean 200 with the full
-  page. And unlike a bot-block, **the real video is right there in the
-  static HTML**: a JW Player `file:` pointing at
-  `https://d2fdkm9wl77cjf.cloudfront.net/mcvod/mediacache/amlst:.../
-  playlist.m3u8?instance=1&amp;token=...` — same `mcvod/mediacache`
-  CloudFront shape, same broken `&amp;` (undecoded HTML entity) in the
-  query string, and the same `/Meetings/ViewMeeting?id=X&doctype=Y` +
-  `/Meetings/ViewMeetingAgenda?meetingId=X&type=...` URL/JS-function
-  shape (`loadAgendaDocument()`, `g_isAccessible`,
-  `switchAccessibleView()`) as the other two counties' OnBase Agenda
-  Online pages flagged elsewhere in this file — a third real customer
-  of what looks like the same underlying product, this time deployed on
-  the county's own domain with no Hyland branding anywhere in the
-  rendered page (confirmed: no "Hyland"/"OnBase" string anywhere in the
-  static HTML, including the footer, which is empty), so domain/footer
-  text alone won't be enough to detect this vendor generically — the
-  URL-path shape and JS function names are the more reliable fingerprint
-  across all three. ~~Video not showing in prod despite this matches the
-  same unresolved "not yet isolated" gap already logged for the other
-  two counties.~~ **Video fixed 2026-08-14 in the generic-fallback
-  rebuild — the shared root cause (a query-string m3u8 classifying as
-  "unknown" in `media_scan.media_type()`, plus the un-decoded `&amp;`
-  entity) is confirmed and closed for all three counties at once; see
-  the Maricopa update above and `BACKLOG_DONE.md`. Live-verified: this
-  exact Sacramento page now resolves the real playable m3u8 with a
-  decoded token, alongside the already-working title/date/agenda.**
-
-  ~~**One new, cheap, and genuinely different signal found on this
-  page**: real per-meeting title/date text sits in the `title` attribute
-  of the *exact same* `<a>` link `_find_agenda_link()` already
-  successfully finds and reports~~ **Fixed 2026-08-13 — full detail in
-  `BACKLOG_DONE.md`.** The county/body name ("Sacramento County") itself
-  still isn't backfilled — the richer per-meeting agenda header text
-  ("AGENDA / BOARD OF SUPERVISORS / 700 H STREET SUITE 1450 /
-  SACRAMENTO, CA 95814 / TUESDAY / AUGUST 11, 2026") only appears after
-  `loadAgendaDocument()` runs on window load, confirmed absent from the
-  raw static HTML — same "genuinely renders client-side" limitation
-  already noted for these vendor pages elsewhere in this file, not a new
-  gap on its own.
-
-  **Also noted, not investigated further:** the page's own JS defines
-  `itemEventPoints`/`sectionEventPoints` objects mapping agenda item and
-  section IDs to numeric video-timestamp offsets — the vendor's own
-  agenda-item deep-link mechanism, already built client-side. Not
-  relevant to this specific gap, but worth remembering if per-agenda-item
-  deep linking is ever prioritized (see the Tarrant County accordion-agenda
-  entry above for a similar structured-agenda opportunity).
+~~**Sacramento County, CA's own agenda site (`agendanet.saccounty.gov`)
+  — a third real customer of the same OnBase Agenda Online product.**~~
+  **Built 2026-08-16 as part of the new `app/platforms/hyland.py`
+  adapter, full detail in `BACKLOG_DONE.md`.** The `itemEventPoints`/
+  `sectionEventPoints` deep-link mechanism noted below as "not
+  investigated further" turned out to be exactly the missing piece —
+  joined against the AJAX agenda outline's own item ids, it's now the
+  adapter's real timestamped `agenda_items` mechanism.
 
 ## Archive roadmap
 
