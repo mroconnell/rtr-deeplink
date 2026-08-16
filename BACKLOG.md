@@ -2224,6 +2224,45 @@ unusually wide, and the missing auto-scroll toggle on archived pages~~
 
 ## Archive roadmap
 
+- **Design reference for the cassette-reel button animation, flagged
+  2026-08-16: the user likes the "Install GitHub App" button's animation
+  on Sentry's onboarding page and wants to use it as a reference point
+  for improving our own.** Reference:
+  [how-to-adu.sentry.io/onboarding/scm-connect/](https://how-to-adu.sentry.io/onboarding/scm-connect/)
+  (a private, logged-in page on the user's own Sentry org — not
+  independently viewed this pass, since it needs their session; noted
+  from a screenshot of that button's DOM in devtools, not the live page).
+  What the screenshot actually shows, so this isn't lost: a
+  `data-sentry-component="StyledButton"` button wrapping a
+  `data-sentry-component="Button-Flex"` inner span, with real `::before`
+  and `::after` pseudo-elements on the button itself (visible in the
+  devtools tree) — suggesting a layered sweep/fill/underline-style effect
+  built from those pseudo-elements, not just a plain color transition,
+  but **the actual motion (timing, easing, what visually happens on
+  hover/click) was never described or watched — only this static
+  structure is confirmed.** Whoever works on this should visit the live
+  URL and actually watch the animation first, not infer behavior from a
+  DOM snapshot.
+
+  Our own reel animation today:
+  [archive/static/style.css:138-155](archive/static/style.css:138) —
+  `.cassette-reel` is an inline SVG; `.cassette-btn:hover
+  .cassette-reel, .cassette-btn:active .cassette-reel` spins it via
+  `@keyframes reel-spin` (0.8s linear infinite) on hover/press, and a
+  separate `.cassette-reel.spinning` variant runs the same keyframe
+  slower (1.6s) as an ambient "please wait" state while a real
+  fetch/resolve is in flight (up to ~20s, per the CSS's own comment on
+  why it's intentionally slower than the hover flourish). Used on two
+  buttons today: the homepage submit button and the meeting page's "Copy
+  link to current time." A related, previously-floated idea already
+  built once in a different spot — `cassette-btn-pop`
+  ([style.css:164-171](archive/static/style.css:164), a "lift up and
+  glow" attention cue used by `meeting_page.js`'s
+  `wireSourceDisclaimerPointer()`) — is the closest existing precedent
+  for a more elaborate cassette-button animation than the plain spin, if
+  the Sentry reference turns out to be that kind of "pop/lift" effect
+  rather than a sweep/fill one once actually watched.
+
 - **"Feed cities" — should this app ever synthesize its own meeting
   pages for cities that have no well-defined per-meeting page at all?
   Open strategic question, not a build item, prompted by a 2026-08-12
