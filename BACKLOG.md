@@ -1047,12 +1047,31 @@ unusually wide, and the missing auto-scroll toggle on archived pages~~
   which string is correct. Stopped guessing rather than keep trying
   strings blind, per this repo's own "don't claim a caption path works
   without a positive example" convention -- a URL that happens to work
-  by luck isn't understood well enough to trust or document. Needs
-  either a captions-enabled page found live to watch the real browser
-  network request fire (this one page never fired a `.vtt` request even
-  after a few seconds loaded, suggesting captions may need to be
-  explicitly toggled on in the player, not just present in the API), or
-  ChampDS's own API docs/support.
+  by luck isn't understood well enough to trust or document.
+
+  **Update 2026-08-16, same session: confirmed live in-browser this
+  isn't a "wrong trigger" problem -- the champds.com frontend genuinely
+  never wires up captions at all, for this meeting or any other.**
+  Loaded `play.champds.com/atlantaga/event/1077` for real, played the
+  video, and explicitly clicked the player's own "Captions" button and
+  selected the "english cc" menu option -- no `.vtt`/caption network
+  request fired at any point (confirmed checking every request, not just
+  ones matching a `vtt` filter, in case the real URL is an opaque/hashed
+  path the way TelVue's `closed_captions/{signed-blob}` one is). Direct
+  DOM inspection after all of that confirms why:
+  `document.querySelector('video').textTracks.length === 0` and zero
+  `<track>` elements exist anywhere in the page -- the "Captions" menu
+  video.js renders is its own generic default UI, not backed by a real
+  track, so selecting a language does nothing. This matches the earlier
+  JS-source finding (zero caption references in any loaded script) from
+  the other direction: there is no live, observable request anywhere on
+  champds.com's own site that reveals the real caption URL, for *any*
+  customer, not just ones without a special "captions enabled" state.
+  `MediaInfo.Captions` being populated in the API is real, but appears to
+  be dead/unused data the current frontend doesn't consume -- building
+  around it now would mean guessing a URL nobody has ever confirmed
+  works, not copying a real one. Only remaining path forward is ChampDS's
+  own API docs/support, not further live investigation from this side.
 
 - **TelVue host enumeration — not yet built, needs real investigation
   before starting (2026-08-16).** `app/platforms/telvue.py` (added this
