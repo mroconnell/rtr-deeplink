@@ -1,0 +1,55 @@
+"""HTTP-level tests for GET /api/health on both services (WO-6). Render
+gates deploys on this endpoint (render.yaml); before this fix both
+handlers returned a static {"status": "ok"} regardless of DB state -- the
+2026-08-09 incident had the app failing every query on a missing column
+while this would still have reported healthy. See AUDIT_EXECUTION_BRIEF.md.
+"""
+
+from fastapi.testclient import TestClient
+
+import app.db.engine
+import app.main
+import archive.db.engine
+import archive.main
+
+app_client = TestClient(app.main.app)
+archive_client_ = TestClient(archive.main.app)
+
+
+def test_app_health_ok_when_db_reachable():
+    response = app_client.get("/api/health")
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+
+class _BrokenEngine:
+    """AsyncEngine.connect is a read-only attribute, so a broken DB can't
+    be simulated by monkeypatching a method onto the real engine -- swap
+    the whole module-level `engine` object instead. The health handler
+    re-imports `engine` from `.db.engine` on every call, so it picks up
+    whatever this module attribute currently points to."""
+
+    def connect(self, *args, **kwargs):
+        raise RuntimeError("db down")
+
+
+def test_app_health_returns_503_when_db_unreachable(monkeypatch):
+    monkeypatch.setattr(app.db.engine, "engine", _BrokenEngine())
+
+    response = app_client.get("/api/health")
+    assert response.status_code == 503
+    assert response.json()["status"] == "error"
+
+
+def test_archive_health_ok_when_db_reachable():
+    response = archive_client_.get("/api/health")
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+
+def test_archive_health_returns_503_when_db_unreachable(monkeypatch):
+    monkeypatch.setattr(archive.db.engine, "engine", _BrokenEngine())
+
+    response = archive_client_.get("/api/health")
+    assert response.status_code == 503
+    assert response.json()["status"] == "error"
