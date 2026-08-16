@@ -291,6 +291,26 @@ def test_table_lookup_recognizes_a_page_authored_abbreviation():
     assert je.finalize_jurisdiction("City of Ft. Worth").confidence == "validated"
 
 
+def test_table_lookup_recognizes_a_spelled_out_saint():
+    # Real bug found in the 2026-08-15 Census-baseline audit (BACKLOG.md):
+    # stored "Saint Paul" used to miss the table's own key, since the
+    # real Census places table stores this family abbreviated ("St. Paul
+    # city", confirmed via a direct grep -- 148 real "St. " rows, zero
+    # "Saint " rows), the opposite direction from "Ft. Worth"/"Mt.
+    # Vernon" above, which the table stores spelled out.
+    assert je._table_lookup("Saint Paul") == (
+        "place", ["AK", "AR", "IA", "IN", "KS", "MN", "MO", "NE", "OR", "TX", "VA"],
+    )
+    assert je.finalize_jurisdiction("City of Saint Paul, MN").confidence == "validated"
+
+
+def test_table_lookup_strips_a_hawaiian_okina():
+    # Real bug found in the same audit: a real page can spell "Kauaʻi"
+    # with the Hawaiian ʻokina, but the Census table's own key is plain
+    # "kauai" (no diacritic).
+    assert je._table_lookup("Kauaʻi County") == ("county", ["HI"])
+
+
 def test_finalize_jurisdiction_repairs_trailing_bleed():
     # Real value, Hercules CA's Granicus page -- the still-open
     # granicus.py body-regex bug (BACKLOG.md) let agenda-heading text run

@@ -321,9 +321,16 @@ anything) to build against it.
   - ~~**`app/utils/jurisdiction_data/places.csv` is missing every Census
     "(balance)" consolidated city**~~ **Fixed 2026-08-15 — full detail in
     `BACKLOG_DONE.md`.**
-  - **"Saint"↔"St." normalization gap**: stored "Saint Paul" misses the
-    table's "St. Paul city". Same family: okina/apostrophe variants
-    ("Kauai County" in-table vs "Kauaʻi County" on pages).
+  - ~~**"Saint"↔"St." normalization gap**~~ **Fixed 2026-08-16 —
+    `app/utils/jurisdiction_enrich.py`'s `_table_lookup()` now also tries
+    a `_contract_saints()` candidate ("Saint"/"Sainte" → "St."/"Ste.",
+    the reverse of the existing `_expand_abbreviations()`, needed because
+    a direct grep confirmed the Census table stores this one family
+    abbreviated — 148 real "St. " rows, zero "Saint " rows — unlike
+    Fort/Mount/North/South/East/West, all stored spelled out) and a
+    `_strip_okina()` candidate (Hawaiian ʻokina/apostrophe variants —
+    "Kauai County" in-table vs "Kauaʻi County" on pages). New tests in
+    `tests/test_jurisdiction_enrich.py`.
   - **Townships/county-subdivisions aren't in the places table at all**
     (Upper Providence PA, Greenburgh NY, Upper Dublin PA) — Census
     publishes a county-subdivision gazetteer that would cover them;
