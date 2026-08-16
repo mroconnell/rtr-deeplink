@@ -1101,6 +1101,20 @@ unusually wide, and the missing auto-scroll toggle on archived pages~~
   HYLAND_DISCOVERY.md` for the full method and a per-platform
   probability-of-success table (TelVue rated high).
 
+  **CivicPlus and Legistar CDX enumeration attempted 2026-08-16, both came
+  back empty** (`hosts_civicplus.txt`/`hosts_legistar.txt` in
+  `rtr-business/research/`, 0 usable hosts either way) — neither surfaced a
+  meeting-page path template the way CivicWeb's did. Don't re-run the same
+  domain-wide CDX scan; both are rated likely to respond better to the
+  same web-search-first method as TelVue above (see
+  `HYLAND_DISCOVERY.md`'s probability table — Legistar rated High, since
+  it's never had a stage-1 CDX host enumeration completed either, per
+  `CDX_QUERIES.md`'s explicit note). Full status of every platform's CDX
+  progress (including PrimeGov/CivicWeb/eScribe/IQM2/ClerkBase/ChampDS,
+  which all got real stage-2 yields the same night) is in
+  `CDX_QUERIES.md` directly — not duplicated here to avoid the two
+  drifting apart again.
+
 ~~**`page.platform` never gets updated on a re-ingest of an existing
   page.**~~ **Fixed 2026-08-16 — full detail, including a real
   unrelated production deploy incident hit right after merging, in
