@@ -12,12 +12,22 @@ from .models import ResolvedMeeting, TranscriptSegment
 from .youtube import YouTubeAssetFinder
 from ..utils import jurisdiction_enrich
 
-# Hyland "OnBase Agenda Online" -- confirmed 2026-08-16 across 5 real
-# customers on 5 different hosting domains, spanning TWO distinct real
-# versions of the same underlying vendor product (found by testing extra
-# real URLs the user found via a plain Google search, not enumeration --
-# domain/CDX enumeration alone would never have surfaced the version
-# split, since it only shows up once you actually resolve a page).
+# Hyland "OnBase Agenda Online" -- confirmed 2026-08-16 across 23 real
+# customers on 23 different hosting domains (see jurisdiction_enrich.py's
+# `_KNOWN_DOMAINS` for the current full list), spanning TWO distinct real
+# versions of the same underlying vendor product. The version split was
+# found from 5 initial real URLs (3 from an earlier session pass, 2 the
+# user found via a plain web search) -- domain/CDX enumeration alone
+# would never have surfaced it, since it only shows up once you actually
+# resolve a page. The other 18 customers were found afterward via a mix
+# of further web search (both user-supplied and this adapter's own
+# targeted queries) and Wayback CDX subdomain enumeration of the two
+# known shared-hosting apex domains (hylandcloud.com, databankcloud.com)
+# -- every one of them resolved correctly with zero code changes beyond
+# a jurisdiction registry entry, confirming the version-probing/
+# extraction logic below already generalizes across real path-prefix
+# variance (198/203/211/221/231/251agendaonline, plus fully custom
+# prefixes like `gilbertagendaonline`).
 #
 # **Version A** (the "accessible" outline UI) -- tucsonaz.hylandcloud.com
 # (Tucson, AZ), mccobagenda.databankcloud.com (Maricopa County, AZ),
