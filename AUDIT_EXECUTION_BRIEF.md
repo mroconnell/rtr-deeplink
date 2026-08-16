@@ -181,10 +181,17 @@ tracked files. Do not delete them locally.
 
 ---
 
-## Wave 1 — make failures visible
+## Wave 1 — make failures visible · **COMPLETE 2026-08-16**
 
 No blockers. ~1-2 days. Do these first — each is cheap and makes some
 other failure mode observable that is currently silent.
+
+All four items (WO-5, WO-6, WO-8, WO-7, WO-13) are done. What's left is
+Ryan's, not code: create the Sentry and uptime-monitor accounts (WO-7),
+set `SENTRY_DSN`/`UPTIME_CHECK_URL` on Render, optionally set
+`ALERT_WEBHOOK_URL` as a repo secret (shared by all three cron
+workflows). Wave 2 (dependency & code hygiene) has no blockers and can
+start any time.
 
 ### WO-5 · SSRF guard on the resolve entrypoint — **DONE**
 
@@ -322,7 +329,7 @@ failure turns the daily-report workflow red — **verified**, covered by
 plus the full suite (808 passed). `tests/test_health_resolve_check.py` and
 `tests/test_sentry_init.py` cover the new endpoint and the no-op/init gate.
 
-### WO-13 · Adapter health canary — **~half a day** · *new, from `CLAUDE_BACKLOG.md`*
+### WO-13 · Adapter health canary — **DONE 2026-08-16**
 
 **Problem.** The test suite and WO-7's Sentry both catch code-level
 failures, but neither catches the failure mode this repo hits most often
@@ -339,10 +346,45 @@ and alerts (reuse WO-7's notification path) when a previously-successful
 platform starts coming back empty/error. Keep it cheap: one URL per
 platform, not a full crawl.
 
-**Acceptance.** Running against today's adapters, all platforms pass.
-Deliberately breaking one adapter's parsing locally (e.g. a fixture-based
-test double) and running the canary against it produces a real alert, not
-a silent pass.
+**Fixed.** `scripts/adapter_canary.py` calls each platform's real
+`AssetFinder.resolve()` directly (in-process, not via the deployed HTTP
+service — no dependency on the app being up, no canary noise written into
+production's cache/stats/Archive) against one real, confirmed-good URL per
+platform, pulled from that platform's own test fixtures (picking the
+richest positive example where a test file had more than one real
+candidate). `.github/workflows/adapter-canary.yml` runs it daily
+(distinct cron time from the other two cron workflows — no Render
+resource-contention reason to cluster with them) with the full dependency
+set plus `playwright install chromium` (two platforms, LIMS/SLC, are
+genuinely headless-browser-gated), and reuses WO-7's exact
+`if: failure()` → `ALERT_WEBHOOK_URL`-or-`::warning::` notification step.
+
+A `CalendarPageError` (a listing/calendar page rather than one meeting --
+e.g. CivicPlus's AgendaCenter, which has no single-meeting URL shape at
+all) with real candidates found counts as a pass, not a failure — a real
+regression there would show up as the candidate list going empty, not as
+the routing behavior itself.
+
+**Two platforms deliberately excluded from `CANARY_URLS`, not guessed at**
+— `scripts/adapter_canary.py`'s own comment has the full reasoning:
+- **swagit**: no real Swagit meeting URL exists anywhere in this repo's
+  text at all (`tests/test_swagit.py`'s own header says so).
+- **civicplus**: the one site this adapter was ever verified against
+  stopped resolving 2026-08-07 (already documented in
+  `tests/fixtures/civicplus/README.md`), re-confirmed dead by a live DNS
+  failure building this canary. New `BACKLOG.md` entry (Platform coverage
+  section) records this and names an untested replacement candidate
+  (Maricopa County, AZ).
+
+**Acceptance.** Running live against today's adapters: **20/20 platforms
+pass** (confirmed 2026-08-16, real network calls against real government
+sites, not mocked — `python scripts/adapter_canary.py`). Deliberately
+breaking one adapter's parsing locally (a fixture-based fake finder
+returning an empty `ResolvedMeeting`, plus a second case for a
+`CalendarPageError` with zero candidates) produces a real reported
+failure, not a silent pass — `tests/test_adapter_canary.py` (10 tests, no
+real network calls, matching this suite's hermetic convention). Full
+suite green (818 passed).
 
 ---
 

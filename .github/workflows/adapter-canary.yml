@@ -1,0 +1,60 @@
+# Adapter health canary (WO-13, AUDIT_EXECUTION_BRIEF.md) -- re-resolves
+# one real, known-good meeting URL per supported platform
+# (scripts/adapter_canary.py) on a schedule and fails the run if any
+# platform stops returning real content. Complements WO-7's Sentry
+# integration: Sentry catches raised exceptions, this catches the quieter
+# failure mode Sentry can't see -- a government site changing structure
+# so a working adapter keeps returning HTTP 200 with nothing real in it.
+#
+# Deliberately calls each platform's real AssetFinder.resolve() directly
+# in this runner (see the script's own docstring), not the deployed HTTP
+# service -- a run doesn't depend on the app being up, and doesn't write
+# canary noise into production's cache/stats/Archive. Needs the full
+# dependency set (not test.yml's hermetic subset) plus a real Chromium
+# binary, since two platforms (LIMS, SLC) are genuinely headless-browser-
+# gated -- same `playwright install chromium` command render.yaml's own
+# build step uses (see that file's comment on why `--with-deps` was
+# dropped).
+#
+# Cron time deliberately distinct from daily-report.yml/
+# send-search-alerts.yml's 23:30/23:35 UTC pair -- this job doesn't touch
+# Render at all (no resource-contention reason to cluster with them), and
+# a mid-morning Pacific run leaves the rest of the day to react to a
+# failure.
+#
+# Optional: ALERT_WEBHOOK_URL -- see daily-report.yml's matching comment;
+# same secret, shared across all three scheduled workflows.
+
+name: Adapter health canary
+
+on:
+  schedule:
+    - cron: "0 15 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.3"
+
+      - run: pip install -r requirements.txt
+      - run: playwright install chromium
+
+      - name: Run adapter canary
+        run: python scripts/adapter_canary.py
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          if [ -n "${{ secrets.ALERT_WEBHOOK_URL }}" ]; then
+            curl --silent --show-error -X POST -H "Content-Type: application/json" \
+              -d "{\"text\": \"Adapter health canary failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+              "${{ secrets.ALERT_WEBHOOK_URL }}" || true
+          else
+            echo "::warning::Adapter canary failed and ALERT_WEBHOOK_URL isn't set -- no external notification sent (relying on GitHub's own failed-scheduled-workflow email)."
+          fi
