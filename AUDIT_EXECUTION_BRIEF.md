@@ -186,12 +186,13 @@ tracked files. Do not delete them locally.
 No blockers. ~1-2 days. Do these first — each is cheap and makes some
 other failure mode observable that is currently silent.
 
-All four items (WO-5, WO-6, WO-8, WO-7, WO-13) are done. What's left is
-Ryan's, not code: create the Sentry and uptime-monitor accounts (WO-7),
-set `SENTRY_DSN`/`UPTIME_CHECK_URL` on Render, optionally set
-`ALERT_WEBHOOK_URL` as a repo secret (shared by all three cron
-workflows). Wave 2 (dependency & code hygiene) has no blockers and can
-start any time.
+All four items (WO-5, WO-6, WO-8, WO-7, WO-13) are done. Ryan's WO-7
+account setup is done too — `SENTRY_DSN` and `UPTIME_CHECK_URL` are both
+live on the resolver, `/api/health/resolve-check` verified returning
+`{"status":"ok"}` in production. Only optional loose end: an
+`ALERT_WEBHOOK_URL` repo secret (Slack/Discord), shared by all three cron
+workflows, still unset. Wave 2 (dependency & code hygiene) has no
+blockers and can start any time.
 
 ### WO-5 · SSRF guard on the resolve entrypoint — **DONE**
 
@@ -312,19 +313,31 @@ cron's `--fail-with-body` actually trips.
   `metrics_unavailable` with the list of which metrics failed.
 
 **Still open — Ryan's, not code:**
-1. Create a Sentry account (free tier), set `SENTRY_DSN` on all three
-   Render services.
-2. Create an external uptime-monitor account (e.g. UptimeRobot, Better
+1. ~~Create a Sentry account (free tier), set `SENTRY_DSN` on all three
+   Render services.~~ **Done 2026-08-16** — DSN uploaded. Not yet
+   independently verified that a real raised exception actually shows up
+   in the Sentry dashboard (see Acceptance below).
+2. ~~Create an external uptime-monitor account (e.g. UptimeRobot, Better
    Uptime), point a GET check at `/api/health/resolve-check`, and set
    `UPTIME_CHECK_URL` on the resolver to a real meeting URL you're
    comfortable being polled repeatedly (most polls will hit cache, not
-   re-fetch the source site — see the endpoint's own docstring).
-3. Optional: an `ALERT_WEBHOOK_URL` repo secret (Slack/Discord incoming
-   webhook) for (c) above.
+   re-fetch the source site — see the endpoint's own docstring).~~ **Done
+   and verified live 2026-08-16** — UptimeRobot configured,
+   `UPTIME_CHECK_URL` set to `https://simivalley.granicus.com/player/clip/2840`
+   (real Granicus meeting, video + populated transcript, plain HTTP
+   adapter — deliberately not a headless-browser platform or YouTube, to
+   avoid unrelated false alarms). Took a manual "Deploy latest commit" to
+   actually pick up the env var — a plain service restart didn't do it,
+   worth remembering next time this comes up. `curl
+   https://rtr-deeplink.onrender.com/api/health/resolve-check` now
+   returns `{"status":"ok"}`.
+3. Optional, still open: an `ALERT_WEBHOOK_URL` repo secret (Slack/Discord
+   incoming webhook) for (c) above.
 
 **Acceptance.** A deliberately raised exception on a staging path appears in
-Sentry — **not verified**, needs step 1 above first. A forced metric
-failure turns the daily-report workflow red — **verified**, covered by
+Sentry — **not verified**, DSN is set but this specific check hasn't been
+run. A forced metric failure turns the daily-report workflow red —
+**verified**, covered by
 `tests/test_daily_report.py::test_admin_daily_report_returns_502_when_a_metric_failed`
 plus the full suite (808 passed). `tests/test_health_resolve_check.py` and
 `tests/test_sentry_init.py` cover the new endpoint and the no-op/init gate.
