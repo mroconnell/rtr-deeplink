@@ -231,7 +231,7 @@ done in this pass:** confirming in Render that the health-check gate
 actually fails a deploy when the endpoint reports unhealthy — that needs a
 real deploy to verify, not something a local session can confirm.
 
-### WO-8 · Admin token out of the URL — **~45 min**
+### WO-8 · Admin token out of the URL — **DONE 2026-08-16**
 
 **Problem.** `daily-report.yml:38` and `send-search-alerts.yml:37` both send
 `?token=${{ secrets.ADMIN_STATS_TOKEN }}`. GitHub masks it in Actions logs;
@@ -243,8 +243,27 @@ keeping query-param support temporarily so the switch isn't a flag day.
 Update both workflows to `curl -H`. Then remove the query-param path in a
 follow-up once you've confirmed both crons ran green.
 
-**Acceptance.** Both workflows pass with header auth. `secrets.compare_digest`
-still used (don't regress to `==`).
+**Fixed.** `_admin_token_ok()` now checks `Authorization: Bearer` first and
+falls back to the `token` query param only if no (or a malformed) header is
+present — still `secrets.compare_digest`, not `==`. All 9 `/admin/*` routes
+(one more than the audit's original count: `/admin/stats`,
+`/admin/daily-report`, `/admin/send-search-alerts`, `/admin/log`,
+`/admin/problem-reports`, `/admin/recheck-archive-page`,
+`/admin/sweep-pending-pushes`, `/admin/promote-transcript-version`,
+`/admin/correct-transcript-language`) now take an `authorization` header
+param. Both cron workflows (`daily-report.yml`, `send-search-alerts.yml`)
+switched to `curl -H "Authorization: Bearer ..."`; the query-param path is
+deliberately still live for now, per the "not a flag day" instruction.
+
+**Acceptance.** `tests/test_admin_token_auth.py` (new) covers: no
+credentials → 404, correct/incorrect header → 200/404, correct/incorrect
+legacy query param → 200/404, header takes priority when both are present,
+and a malformed (non-`Bearer`-shaped) header falls back to the query param
+rather than hard-rejecting. Full suite green (796 passed). **Still open,
+Ryan's:** confirm both workflows actually run green against the deployed
+header-auth change, then remove the query-param fallback in a follow-up PR
+— not done in this pass, since it needs a real cron run against prod to
+confirm before it's safe to remove.
 
 ### WO-7 · Know when production breaks — **2-3 hrs**
 

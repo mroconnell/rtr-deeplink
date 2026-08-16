@@ -14,7 +14,7 @@ from urllib.parse import quote, urlparse
 
 import aiohttp
 from dotenv import load_dotenv
-from fastapi import BackgroundTasks, FastAPI, Request, Response
+from fastapi import BackgroundTasks, FastAPI, Header, Request, Response
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -1177,16 +1177,26 @@ async def subscribe(request: Request):
     return templates.TemplateResponse(request, "subscribe.html", {})
 
 
-def _admin_token_ok(token: str) -> bool:
+def _admin_token_ok(token: str, authorization: Optional[str] = None) -> bool:
+    """`Authorization: Bearer` is preferred -- Render's request logs don't
+    mask a `?token=` query param the way GitHub Actions masks its own
+    secrets, so a token in the URL leaks into Render's logs on every call.
+    The `token` query param still works too, deliberately, so this isn't a
+    flag day for anything still calling the old way; remove that fallback
+    once both cron workflows have run green on header auth for a while."""
     expected = os.environ.get("ADMIN_STATS_TOKEN", "")
-    return bool(expected) and secrets.compare_digest(token, expected)
+    if not expected:
+        return False
+    if authorization and authorization.startswith("Bearer "):
+        return secrets.compare_digest(authorization[len("Bearer "):], expected)
+    return secrets.compare_digest(token, expected)
 
 
 @app.get("/admin/stats")
-async def admin_stats(token: str = ""):
+async def admin_stats(token: str = "", authorization: Optional[str] = Header(None)):
     # 404, not 401/403 -- the route's existence shouldn't be distinguishable
     # from a typo'd URL to anyone without the token.
-    if not _admin_token_ok(token):
+    if not _admin_token_ok(token, authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
     stats = await safe(crud.get_stats)
@@ -1196,7 +1206,7 @@ async def admin_stats(token: str = ""):
 
 
 @app.get("/admin/daily-report")
-async def admin_daily_report(token: str = "", dry_run: bool = False):
+async def admin_daily_report(token: str = "", dry_run: bool = False, authorization: Optional[str] = Header(None)):
     """Triggers the once-a-day operator digest (app/reporting.py) on
     demand -- called by the GitHub Actions cron workflow
     (.github/workflows/daily-report.yml) once a day, and usable manually
@@ -1208,7 +1218,7 @@ async def admin_daily_report(token: str = "", dry_run: bool = False):
     RESEND_API_KEY access -- see app/reporting.py's own docstring for what
     the report actually contains.
     """
-    if not _admin_token_ok(token):
+    if not _admin_token_ok(token, authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
     to = os.environ.get("DAILY_REPORT_EMAIL_TO", "ryan@how-to-adu.com")
@@ -1224,7 +1234,9 @@ async def admin_daily_report(token: str = "", dry_run: bool = False):
 
 
 @app.get("/admin/send-search-alerts")
-async def admin_send_search_alerts(token: str = "", dry_run: bool = False):
+async def admin_send_search_alerts(
+    token: str = "", dry_run: bool = False, authorization: Optional[str] = Header(None)
+):
     """Triggers the saved-search alert sweep (archive/search_alerts.py)
     on demand -- called by the GitHub Actions cron workflow
     (.github/workflows/send-search-alerts.yml) once a day, and usable
@@ -1234,7 +1246,7 @@ async def admin_send_search_alerts(token: str = "", dry_run: bool = False):
     -- all the real work (DB access, Clerk/Resend calls) happens on the
     Archive service, which owns SavedItem/MeetingPage.
     """
-    if not _admin_token_ok(token):
+    if not _admin_token_ok(token, authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
     result = await archive_client.send_search_alerts(dry_run=dry_run)
@@ -1244,8 +1256,10 @@ async def admin_send_search_alerts(token: str = "", dry_run: bool = False):
 
 
 @app.get("/admin/log")
-async def admin_log(token: str = "", limit: int = 200, format: str = "json"):
-    if not _admin_token_ok(token):
+async def admin_log(
+    token: str = "", limit: int = 200, format: str = "json", authorization: Optional[str] = Header(None)
+):
+    if not _admin_token_ok(token, authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
     rows = await safe(crud.list_resolutions, limit)
@@ -1266,8 +1280,10 @@ async def admin_log(token: str = "", limit: int = 200, format: str = "json"):
 
 
 @app.get("/admin/problem-reports")
-async def admin_problem_reports(token: str = "", limit: int = 200):
-    if not _admin_token_ok(token):
+async def admin_problem_reports(
+    token: str = "", limit: int = 200, authorization: Optional[str] = Header(None)
+):
+    if not _admin_token_ok(token, authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
     rows = await safe(crud.list_problem_reports, limit)
@@ -1277,14 +1293,16 @@ async def admin_problem_reports(token: str = "", limit: int = 200):
 
 
 @app.get("/admin/recheck-archive-page")
-async def admin_recheck_archive_page(token: str = "", url: str = ""):
+async def admin_recheck_archive_page(
+    token: str = "", url: str = "", authorization: Optional[str] = Header(None)
+):
     """On-demand version of the ARCHIVE_RECHECK_AFTER background recheck --
     for when a permanent page needs refreshing sooner than 30 days (e.g. an
     adapter bug fix that should reach an already-archived page now, not on
     its next stale-lookup hit). Synchronous, not a BackgroundTask -- the
     caller is explicitly waiting to see the outcome, unlike the passive
     recheck this reuses."""
-    if not _admin_token_ok(token):
+    if not _admin_token_ok(token, authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
     if not url:
         return JSONResponse(
@@ -1297,7 +1315,7 @@ async def admin_recheck_archive_page(token: str = "", url: str = ""):
 
 
 @app.get("/admin/sweep-pending-pushes")
-async def admin_sweep_pending_pushes(token: str = ""):
+async def admin_sweep_pending_pushes(token: str = "", authorization: Optional[str] = Header(None)):
     """On-demand version of the opportunistic push-retry sweep
     (_maybe_schedule_push_sweep, fired passively from /api/resolve) --
     for checking on or forcing the durable-push retry mechanism directly
@@ -1305,7 +1323,7 @@ async def admin_sweep_pending_pushes(token: str = ""):
     a BackgroundTask, so the caller sees exactly what was found and
     retried. See BACKLOG_DONE.md's silent-push-loss entry for why this
     mechanism exists at all."""
-    if not _admin_token_ok(token):
+    if not _admin_token_ok(token, authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
     retried = await _sweep_pending_archive_pushes()
@@ -1319,7 +1337,12 @@ async def admin_sweep_pending_pushes(token: str = ""):
 
 
 @app.get("/admin/promote-transcript-version")
-async def admin_promote_transcript_version(token: str = "", url: str = "", version_id: Optional[int] = None):
+async def admin_promote_transcript_version(
+    token: str = "",
+    url: str = "",
+    version_id: Optional[int] = None,
+    authorization: Optional[str] = Header(None),
+):
     """Manually makes a specific TranscriptVersion a page's default --
     for the real gap found 2026-08-12 fixing a stale ALL-CAPS transcript
     (Minneapolis City Council): a manually-pushed replacement transcript
@@ -1328,7 +1351,7 @@ async def admin_promote_transcript_version(token: str = "", url: str = "", versi
     manually_promote_transcript_version() and
     BACKLOG_DONE.md). Same url-lookup shape as
     /admin/correct-transcript-language above."""
-    if not _admin_token_ok(token):
+    if not _admin_token_ok(token, authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
     if not url or version_id is None:
         return JSONResponse(
@@ -1350,7 +1373,13 @@ async def admin_promote_transcript_version(token: str = "", url: str = "", versi
 
 
 @app.get("/admin/correct-transcript-language")
-async def admin_correct_transcript_language(token: str = "", url: str = "", language: str = "", version_id: Optional[int] = None):
+async def admin_correct_transcript_language(
+    token: str = "",
+    url: str = "",
+    language: str = "",
+    version_id: Optional[int] = None,
+    authorization: Optional[str] = Header(None),
+):
     """Applies a "wrong_language" problem report's correction -- the
     "public report, admin fixes" flow decided 2026-08-09 (see
     BACKLOG_DONE.md). Takes the reported meeting's raw source URL (same
@@ -1359,7 +1388,7 @@ async def admin_correct_transcript_language(token: str = "", url: str = "", lang
     looks up the matching permanent page the same way a repeat paste
     would. Targets the page's current default transcript version unless a
     specific version_id is given."""
-    if not _admin_token_ok(token):
+    if not _admin_token_ok(token, authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
     if not url or not language:
         return JSONResponse(

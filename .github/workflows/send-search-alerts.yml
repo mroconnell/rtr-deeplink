@@ -34,4 +34,5 @@ jobs:
       - name: Call /admin/send-search-alerts
         run: |
           curl --fail-with-body --silent --show-error \
-            "${{ secrets.RESOLVER_BASE_URL }}/admin/send-search-alerts?token=${{ secrets.ADMIN_STATS_TOKEN }}&dry_run=${{ inputs.dry_run || 'false' }}"
+            -H "Authorization: Bearer ${{ secrets.ADMIN_STATS_TOKEN }}" \
+            "${{ secrets.RESOLVER_BASE_URL }}/admin/send-search-alerts?dry_run=${{ inputs.dry_run || 'false' }}"
