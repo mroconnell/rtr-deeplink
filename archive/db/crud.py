@@ -197,6 +197,24 @@ async def _find_or_create_page(session, payload: dict[str, Any], input_url_norma
     else:
         # Keep page-level fields fresh (title/video/agenda can improve
         # on a later, better resolve) without touching the slug.
+        #
+        # Real bug fixed 2026-08-16: `platform` was never in this list --
+        # every other content field refreshed on re-ingest, but a page
+        # created before its adapter existed (or before an adapter fix
+        # landed, e.g. escribe.py's/civicclerk.py's YouTube-delegation
+        # fix) stayed frozen at whatever platform value it had on first
+        # creation forever, even once the content itself was demonstrably
+        # fixed by a later re-ingest. Confirmed live: 3 TelVue pages kept
+        # showing platform="unknown" after building telvue.py and
+        # re-ingesting them, despite real segments/agenda_items/video_url
+        # all having updated correctly. Safe to always trust the fresh
+        # payload's platform (not truthy-gated like the others) --
+        # `payload["platform"]` is never blank, and confirmed every
+        # partial-push caller (scripts/fetch_youtube_transcripts.py)
+        # already echoes the page's own current platform back rather
+        # than hardcoding something else, so this can't regress an
+        # already-correct page.
+        page.platform = payload.get("platform") or page.platform
         page.title = payload.get("title") or page.title
         page.date = payload.get("date") or page.date
         page.jurisdiction = jurisdiction or page.jurisdiction
