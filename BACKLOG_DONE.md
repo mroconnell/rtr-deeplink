@@ -6,6 +6,91 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Hyland "OnBase Agenda Online" — expanded from 3 to 23 real customer domains, second UI version + YouTube delegation added (2026-08-16)
+
+Follow-on to the adapter build below, same day, prompted by the user
+finding real example URLs via plain web search after the initial 3-customer
+version shipped. Grew into a much bigger platform-coverage pass:
+
+**Second UI version ("Version B") found and supported.** Two real URLs
+(Santa Barbara CA, Concord CA) run a genuinely different UI version of
+this product: the original `Meetings/ViewMeetingAgenda` endpoint
+redirects to a generic error page for these customers, and the real
+agenda outline instead comes from `Documents/ViewAgenda` (a converted-
+Word-document render via Aspose.Words) whose real item ids still join
+against the same `itemEventPoints` video-seek mechanism as the original
+version. `resolve()` tries the original endpoint first (safe
+unconditionally -- Version B's redirect target never matches the title/
+date regex) and falls back only when that yields nothing. Real bug
+caught building this: Version B's item text can span multiple sibling
+`<span>` tags inside one link, and extracting only the first span
+truncated real content (confirmed on Concord: "Considering" instead of
+the full real sentence) -- fixed with a full-anchor-then-strip-tags
+extraction, scoped to Version B only.
+
+**YouTube delegation added.** A real Municipality of Anchorage, AK
+meeting confirmed this vendor's page template also supports a plain
+YouTube iframe embed instead of JW Player (the page's own JS references
+both "JWPlayer.cshtml" and "YoutubePlayer.cshtml"). `_find_video()` now
+falls back to `YouTubeAssetFinder` delegation whenever no direct media
+file is found, matching escribe.py/civicclerk.py's existing pattern --
+also picks up a real transcript as a side effect, something no JW-Player
+customer on this platform has had before.
+
+**20 more real customer domains found and registered**, growing the
+platform from 3 to 23 total, via three methods layered on top of each
+other:
+1. User-supplied real URLs (Santa Barbara, Concord, plus a
+   researcher-supplied list of subdomain-naming conventions the user
+   relayed -- Steamboat Springs CO, Whittier CA, Compton CA, Sarasota
+   County FL, Municipality of Anchorage AK, Santa Cruz CA, Hamilton
+   County OH's Job & Family Services instance, plus a `padre.org` and a
+   `hamilton-co.org` "Search Meeting Content" landing page that
+   confirmed the same product without an easily obtainable real meeting
+   id via a plain GET).
+2. Wayback CDX subdomain enumeration of the two known shared-hosting
+   apex domains (hylandcloud.com: 87,473 crawled URLs, 129 unique
+   subdomains; databankcloud.com: 767 URLs, 8 subdomains), filtered to
+   subdomains with an `agendaonline` path in their own crawl history --
+   found Dunwoody GA, Durango CO, Gilbert AZ, Henderson NV, Tempe AZ
+   (reachable here even though the separately-found `www.tempe.gov` page
+   is Akamai-blocked), and Westerville OH. Two more candidates
+   (`3cenergy.hylandcloud.com`, a second `maricopa.hylandcloud.com`
+   tenant) are confirmed dead (DNS failures live) and were not
+   registered.
+3. A `site:.gov inurl:OnBaseAgendaOnline/Meetings/ViewMeeting` web
+   search -- found Pittsburg CA, Modesto CA, Centennial CO, and a
+   second, distinct Santa Barbara CA subdomain
+   (`records.santabarbaraca.gov`, alongside the already-found `docs.`
+   one -- both resolve independently). Two more candidates
+   (`documents.provo.gov`, `onbase.sandiego.gov` -- San Diego's real
+   `.gov` domain) are confirmed dead (404/DNS failure on their own site
+   root, not just one stale id) and were not registered.
+   `sandiego.hylandcloud.com` (found via method 2) does resolve, but its
+   only content (5 total crawled URLs ever, oldest dated 2016) reads as
+   an abandoned pilot rather than the city's actual current system
+   (almost certainly Granicus, like every other major CA city already
+   covered) -- registered anyway since it's real and resolving, with
+   that caveat noted in the registry comment.
+
+Every one of the 20 new domains was confirmed with a real, correctly-
+resolving `ViewMeeting` URL through the actual adapter before being
+registered -- none enumerated blind. Real, non-obvious confirmation from
+this pass: none of the 20 needed any adapter code change beyond a
+jurisdiction registry entry, despite real path-prefix variance across
+them (`198agendaonline` through `251agendaonline`, plus fully custom
+prefixes like `gilbertagendaonline` and `211agendaonlinecouncil`) --
+direct evidence the routing/version-probing logic already generalizes
+rather than being tuned to the first few customers.
+
+Verified: 3 new fixture-backed tests (`tests/test_hyland.py`, now 7
+total for this platform) covering Version B's fallback, its real
+multi-span text-truncation fix, and YouTube delegation with a real
+transcript. Full suite 778/778 passing. End-to-end `bulk_ingest.py
+--dry-run` against all 29 known real URLs across all 23 domains,
+confirming correct `platform=hyland` routing and real title/date/
+agenda_items/video for every one.
+
 ## Hyland "OnBase Agenda Online" — new dedicated adapter built, overturning the earlier "genuinely renders client-side" conclusion (2026-08-16)
 
 Built `app/platforms/hyland.py`, replacing `generic_fallback.py`'s

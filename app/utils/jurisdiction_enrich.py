@@ -336,6 +336,80 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     "tucsonaz.hylandcloud.com": KnownJurisdiction("Tucson", "city", "AZ"),
     "mccobagenda.databankcloud.com": KnownJurisdiction("Maricopa", "county", "AZ"),
     "agendanet.saccounty.gov": KnownJurisdiction("Sacramento", "county", "CA"),
+    # Found 2026-08-16 via a plain web search for the platform's
+    # distinctive URL path, not domain/CDX enumeration -- both run the
+    # same product's second confirmed UI version (see hyland.py's module
+    # docstring). Neither has reliable in-page jurisdiction text either.
+    "docs.santabarbaraca.gov": KnownJurisdiction("Santa Barbara", "city", "CA"),
+    "stream2.ci.concord.ca.us": KnownJurisdiction("Concord", "city", "CA"),
+    # Found 2026-08-16, same web-search method, a second batch (one
+    # researcher-supplied list of subdomain-naming conventions plus
+    # user-found examples) -- each domain confirmed live with a real
+    # ViewMeeting page resolving through hyland.py, none with reliable
+    # in-page jurisdiction text.
+    "docs.steamboatsprings.net": KnownJurisdiction("Steamboat Springs", "city", "CO"),
+    "online.cityofwhittier.org": KnownJurisdiction("Whittier", "city", "CA"),
+    "onbase.comptoncity.org": KnownJurisdiction("Compton", "city", "CA"),
+    # scgov.net confirmed via web search to be Sarasota County, FL's own
+    # domain -- no "Sarasota" string anywhere in the OnBase pages
+    # themselves (same "vendor page carries no branding of the customer
+    # who deployed it" pattern as every other entry in this block).
+    "egenda.scgov.net": KnownJurisdiction("Sarasota", "county", "FL"),
+    # muni.org confirmed via web search to be the Municipality of
+    # Anchorage, AK's own domain -- the one real meeting id checked here
+    # was a regional transportation-planning committee (AMATS), not a
+    # council meeting, but the domain itself is unambiguously Anchorage's,
+    # same reasoning as every domain-registry entry in this file.
+    "meetings.muni.org": KnownJurisdiction("Anchorage", "city", "AK"),
+    "ecm.cityofsantacruz.com": KnownJurisdiction("Santa Cruz", "city", "CA"),
+    # Real government meetings (confirmed: real video + real per-item
+    # agenda outline), but hosted on Hamilton County's Job & Family
+    # Services-specific OnBase instance rather than a general county
+    # portal -- still the same product/adapter, just a narrower agency
+    # scope than the other county-level entries in this file.
+    "hcjfsonbase.jfs.hamilton-co.org": KnownJurisdiction("Hamilton", "county", "OH"),
+    # Found 2026-08-16 via Wayback CDX subdomain enumeration of
+    # hylandcloud.com/databankcloud.com (the two known shared-hosting
+    # apex domains) -- each confirmed with a real resolving ViewMeeting
+    # page, unlike the many other CDX-listed subdomains under these two
+    # domains that turned out to be non-government OnBase customers
+    # (banks, hospitals, universities -- OnBase is a general enterprise
+    # content-management product, not government-specific) or dead
+    # (3cenergy, a second maricopa.hylandcloud.com tenant -- both DNS
+    # failures live, not registered).
+    "dunwoodyga.hylandcloud.com": KnownJurisdiction("Dunwoody", "city", "GA"),
+    "durangogov.hylandcloud.com": KnownJurisdiction("Durango", "city", "CO"),
+    "gilbertaz.databankcloud.com": KnownJurisdiction("Gilbert", "city", "AZ"),
+    "henderson.hylandcloud.com": KnownJurisdiction("Henderson", "city", "NV"),
+    # Confirmed reachable and resolving correctly on this hylandcloud.com
+    # tenant, unlike the Akamai-blocked www.tempe.gov page found earlier
+    # via web search (a different, unconfirmed platform on that domain).
+    "tempe.hylandcloud.com": KnownJurisdiction("Tempe", "city", "AZ"),
+    "westerville.hylandcloud.com": KnownJurisdiction("Westerville", "city", "OH"),
+    # Resolves correctly, but the only content found (5 total crawled
+    # URLs across this domain's whole CDX history, oldest dated 2016) is
+    # sparse enough to suggest an abandoned/legacy pilot rather than San
+    # Diego's actual current meeting system (almost certainly Granicus,
+    # like every other major California city already covered) -- kept
+    # since it's real and resolves, not because it's likely to be
+    # actively maintained going forward.
+    "sandiego.hylandcloud.com": KnownJurisdiction("San Diego", "city", "CA"),
+    # Found 2026-08-16 via a `site:.gov inurl:OnBaseAgendaOnline/Meetings/
+    # ViewMeeting` web search -- each confirmed with a real resolving
+    # ViewMeeting page. Two candidates from the same search
+    # (documents.provo.gov, onbase.sandiego.gov -- San Diego's real .gov
+    # domain, a separate lead from the stale sandiego.hylandcloud.com
+    # entry above) turned out to be fully dead (404/DNS failure even on
+    # their own site root, not just one stale meeting id) and were left
+    # unregistered.
+    "onbaseweb.pittsburgca.gov": KnownJurisdiction("Pittsburg", "city", "CA"),
+    "agenda.modestogov.com": KnownJurisdiction("Modesto", "city", "CA"),
+    "onbase.centennialco.gov": KnownJurisdiction("Centennial", "city", "CO"),
+    # A second, distinct real Santa Barbara subdomain (docs.
+    # santabarbaraca.gov is already registered above) -- both resolve
+    # independently through hyland.py, so both are kept rather than
+    # assuming one is a stale alias of the other.
+    "records.santabarbaraca.gov": KnownJurisdiction("Santa Barbara", "city", "CA"),
 }
 
 

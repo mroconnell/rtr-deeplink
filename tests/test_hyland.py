@@ -1,4 +1,5 @@
 from app.platforms.hyland import HylandAssetFinder
+from app.platforms.youtube import YouTubeAssetFinder
 
 from aiohttp_mock import FakeResponse, mock_session
 from conftest import load_fixture
@@ -22,6 +23,27 @@ MARICOPA_AGENDA_URL = (
 SACRAMENTO_URL = "https://agendanet.saccounty.gov/BoardofSupervisors/Meetings/ViewMeeting?id=10231&doctype=1"
 SACRAMENTO_AGENDA_URL = (
     "https://agendanet.saccounty.gov/BoardofSupervisors/Meetings/ViewMeetingAgenda?meetingId=10231&type=1"
+)
+
+# Version B (converted-Word-document UI) -- found 2026-08-16 via a plain
+# web search, not enumeration. Both `Meetings/ViewMeetingAgenda` fetches
+# below land on the real generic "Error - OnBase Agenda Online" page
+# (confirmed live: aiohttp follows the real 302 automatically), which is
+# what drives the adapter's fallback to `Documents/ViewAgenda`.
+SANTABARBARA_URL = "https://docs.santabarbaraca.gov/OnBaseAgendaOnline/Meetings/ViewMeeting?id=1184&doctype=1"
+SANTABARBARA_AGENDA_A_URL = (
+    "https://docs.santabarbaraca.gov/OnBaseAgendaOnline/Meetings/ViewMeetingAgenda?meetingId=1184&type=1"
+)
+SANTABARBARA_AGENDA_B_URL = (
+    "https://docs.santabarbaraca.gov/OnBaseAgendaOnline/Documents/ViewAgenda?meetingId=1184&type=agenda&doctype=1"
+)
+
+CONCORD_URL = "https://stream2.ci.concord.ca.us/OnBaseAgendaOnline/Meetings/ViewMeeting?id=1413&doctype=1"
+CONCORD_AGENDA_A_URL = (
+    "https://stream2.ci.concord.ca.us/OnBaseAgendaOnline/Meetings/ViewMeetingAgenda?meetingId=1413&type=1"
+)
+CONCORD_AGENDA_B_URL = (
+    "https://stream2.ci.concord.ca.us/OnBaseAgendaOnline/Documents/ViewAgenda?meetingId=1413&type=agenda&doctype=1"
 )
 
 
@@ -130,6 +152,135 @@ async def test_resolve_sacramento_multiline_item_text_is_normalized():
         "BARK Of Supervisors Adoptable Pet Update (Animal Care Services) "
         "Supervisorial District(s): All"
     )
+
+
+async def test_resolve_santabarbara_falls_back_to_version_b_document_endpoint():
+    # Santa Barbara runs the real second confirmed UI version of this
+    # product ("Version B" in hyland.py's module docstring): the old
+    # Meetings/ViewMeetingAgenda endpoint redirects to a generic error
+    # page (real content, not a synthetic stub), so the adapter must fall
+    # back to Documents/ViewAgenda -- and to the main page's own <title>
+    # for title/date, since Version B's agenda document carries no date.
+    html = load_fixture("hyland", "santabarbara_view_meeting.html")
+    notfound_html = load_fixture("hyland", "santabarbara_view_meeting_agenda_notfound.html")
+    doc_html = load_fixture("hyland", "santabarbara_view_agenda_document.html")
+    routes = {
+        SANTABARBARA_URL: FakeResponse(status=200, text=html, url=SANTABARBARA_URL),
+        SANTABARBARA_AGENDA_A_URL: FakeResponse(status=200, text=notfound_html, url=SANTABARBARA_AGENDA_A_URL),
+        SANTABARBARA_AGENDA_B_URL: FakeResponse(status=200, text=doc_html, url=SANTABARBARA_AGENDA_B_URL),
+    }
+
+    with mock_session(routes):
+        result = await HylandAssetFinder().resolve(SANTABARBARA_URL)
+
+    assert result.platform == "hyland"
+    assert result.title == "Regular City Council Meeting"
+    assert result.date == "2026-08-11"
+    assert result.jurisdiction == "Santa Barbara, CA"
+    # This customer has no video at all (same as Tucson) -- no
+    # itemEventPoints on the main page, so no timestamps to join agenda
+    # items against even though real item text exists in the document.
+    assert result.video_url is None
+    assert result.agenda_items == []
+    assert result.agenda_link == SANTABARBARA_AGENDA_B_URL
+
+
+async def test_resolve_concord_version_b_multiline_item_text_not_truncated():
+    # Real bug caught building Version B support: real item text can span
+    # multiple sibling <span> tags inside one <a href="javascript:
+    # loadAgendaItem(...)"> -- capturing only the first span (as Version
+    # A's regex does) truncates real content down to just "Considering"
+    # instead of the full sentence. Confirmed via this exact real fixture.
+    html = load_fixture("hyland", "concord_view_meeting.html")
+    notfound_html = load_fixture("hyland", "concord_view_meeting_agenda_notfound.html")
+    doc_html = load_fixture("hyland", "concord_view_agenda_document.html")
+    routes = {
+        CONCORD_URL: FakeResponse(status=200, text=html, url=CONCORD_URL),
+        CONCORD_AGENDA_A_URL: FakeResponse(status=200, text=notfound_html, url=CONCORD_AGENDA_A_URL),
+        CONCORD_AGENDA_B_URL: FakeResponse(status=200, text=doc_html, url=CONCORD_AGENDA_B_URL),
+    }
+
+    with mock_session(routes):
+        result = await HylandAssetFinder().resolve(CONCORD_URL)
+
+    assert result.platform == "hyland"
+    assert result.title == "Regular Meeting"
+    assert result.date == "2026-02-10"
+    assert result.jurisdiction == "Concord, CA"
+    assert result.video_format == "m3u8"
+    assert result.video_url is not None
+
+    assert len(result.agenda_items) == 3
+    first = result.agenda_items[0]
+    assert first.start == 1093.52
+    assert first.end == 2266.52
+    assert first.text == (
+        'Presentation – to Karen Sakata, Diablo Japanese American Club, proclaiming '
+        'February 19, 2026, as "Japanese American Incarceration During World War II '
+        'Day" in the City of Concord. Presentation by Mayor Nakamura .'
+    )
+    # Real video + real agenda_items means no need for the link-only
+    # fallback.
+    assert result.agenda_link is None
+
+
+async def test_resolve_delegates_to_youtube_when_no_direct_media_file(monkeypatch):
+    # Real gap found 2026-08-16 on a live Municipality of Anchorage, AK
+    # meeting: this vendor's own player template supports either a JW
+    # Player config (every other confirmed customer) or a plain YouTube
+    # iframe embed ("JWPlayer.cshtml or YoutubePlayer.cshtml", per the
+    # page's own JS comment) -- media_scan.scan_media_urls only recognizes
+    # direct media-file URLs, so this used to come back with no video at
+    # all despite a real, playable YouTube embed being right there.
+    url = "https://meetings.muni.org/AgendaOnline/Meetings/ViewMeeting?id=6500&doctype=1"
+    agenda_a_url = "https://meetings.muni.org/AgendaOnline/Meetings/ViewMeetingAgenda?meetingId=6500&type=1"
+    agenda_b_url = (
+        "https://meetings.muni.org/AgendaOnline/Documents/ViewAgenda?meetingId=6500&type=agenda&doctype=1"
+    )
+    html = load_fixture("hyland", "anchorage_view_meeting_youtube.html")
+    notfound_html = load_fixture("hyland", "anchorage_view_meeting_agenda_notfound.html")
+    doc_html = load_fixture("hyland", "anchorage_view_agenda_document.html")
+    routes = {
+        url: FakeResponse(status=200, text=html, url=url),
+        agenda_a_url: FakeResponse(status=200, text=notfound_html, url=agenda_a_url),
+        agenda_b_url: FakeResponse(status=200, text=doc_html, url=agenda_b_url),
+    }
+
+    monkeypatch.setattr(
+        YouTubeAssetFinder,
+        "_extract_info",
+        lambda video_id: {
+            "title": "Anchorage Platting Board",
+            "uploader": "MuniOfAnchorage",
+            "upload_date": "20260701",
+            "_chosen_track": (
+                "WEBVTT\n\n00:00:02.001 --> 00:00:22.555\n♪\n".encode("utf-8"),
+                "en",
+                True,
+            ),
+        },
+    )
+
+    with mock_session(routes):
+        result = await HylandAssetFinder().resolve(url)
+
+    assert result.platform == "hyland"
+    # Real title/date/jurisdiction still come from this adapter's own
+    # extraction, not YouTube's own metadata -- delegation is for video +
+    # transcript only, matching every other delegator in this codebase.
+    assert result.title == "Platting Board - July 1, 2026"
+    assert result.jurisdiction == "Anchorage, AK"
+    assert result.video_url == "https://www.youtube.com/embed/92SgT7nRbKw"
+    assert result.video_format == "youtube"
+    assert result.video_warnings == []
+    # Real bonus: a YouTube-backed customer gets a real transcript, a
+    # capability no JW-Player customer on this platform has at all.
+    assert len(result.segments) == 1
+    assert result.segments[0].text == "♪"
+    assert result.transcript_language == "en"
+    # Real timestamped agenda outline still works independent of which
+    # video source was used.
+    assert len(result.agenda_items) == 3
 
 
 async def test_resolve_no_meeting_id_skips_agenda_fetch_gracefully():

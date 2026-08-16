@@ -1,0 +1,727 @@
+
+
+
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+	<meta charset="utf-8" />
+	<meta http-equiv="x-ua-compatible" content="IE=Edge" />
+	<title>Platting Board - July 1, 2026 - 7/1/2026 6:30:00 PM - OnBase Agenda Online</title>
+	<link href="/AgendaOnline/favicon.ico" rel="shortcut icon" type="image/x-icon" />
+	<meta name="viewport" content="width=device-width" />
+	
+	<meta name="format-detection" content="telephone=no" />
+
+	<script src="/AgendaOnline/bundles/jquery?v=0XJqbYX4tFhH25_G_qbbiJSeeoDaZY7hjfcdPnQjLwc1"></script>
+
+
+	<link href="/AgendaOnline/bundles/css?v=70WAfh5_Fryuvc09STu6rVeZuOqzlpEN2LfMECCmFrw1" rel="stylesheet"/>
+
+
+
+	<script src="/AgendaOnline/Scripts/bootstrap.bundle-5.1.3.min.js" type="text/javascript"></script>
+
+	<!-- Dynamic Stylesheet -->
+	<link href="/AgendaOnline/Style" rel="stylesheet" />
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-8048387-10', 'auto');
+  ga('send', 'pageview');
+
+</script></head>
+<body><!-- Google Tag Manager -->
+<noscript><iframe src="//www.googletagmanager.com/ns.html?id=GTM-PL3KPC"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-PL3KPC');</script>
+<!-- End Google Tag Manager -->
+	<!--<div id="logo-container">
+		
+<div class="logo"><img src="/AgendaOnline/Images/Logo1.png" /></div>
+	</div>-->
+	<!--<div id="navbar" class="navbar navbar-expand-sm navbar-dark" role="navigation">
+		<div class="navbar-header">
+			<button class="navbar-toggler"
+					type="button"
+					data-bs-toggle="collapse"
+					data-bs-target="#navbarNavAltMarkup"
+					aria-controls="navbarNavAltMarkup"
+					aria-expanded="false">
+				<span class="navbar-toggler-icon header"></span>
+			</button>
+			<div class="media-collapse">
+				<span id="media-collapse-text">Hide Media</span>
+			</div>
+		</div>
+		<div id="navbarNavAltMarkup" class="navbar-collapse collapse">
+			<ul class="nav navbar-nav">
+				<li class="nav-link"><a href="/AgendaOnline/" id="lnkNavHome">Home</a></li>
+				<li class="nav-link"><a href="/AgendaOnline/Meetings" id="lnkNavMeetings">Meetings</a></li>
+				<li class="nav-link"><a href="/AgendaOnline/Home/Contact" id="lnkNavContact">Contact</a></li>
+			</ul>
+		</div>
+
+	</div>-->
+       <div id="livenow"></div>
+	<div>
+		   
+		<section class="content-wrapper clear-fix">
+			
+<script type="text/javascript">
+	const TABLET_SIZE = 900;
+	const PHONE_SIZE = 480;
+
+	var g_isLargeDisplay = true;
+	var g_documentType = '1';
+	var g_mediaAndItemViewTop = 0;
+
+	$(window).on('load', function () {
+		loadAgendaDocument(g_documentType);
+	});
+
+	$(document).ready(function () {
+		g_mediaAndItemViewTop = $('#mediaAndItemView').offset().top;
+
+		checkIfLargeDisplay();
+
+		setupKeyNavigationOfOutline();
+	});
+
+	$(window).on("scroll", function () {
+		positionPanels();
+	});
+
+	$(window).on("resize", function () {
+		checkIfLargeDisplay();
+
+		positionPanels();
+	});
+
+	function loadAgendaDocument(doctype)
+	{
+		var type = 'agenda';
+		var isDocumentAvailable = 'True';
+
+		if ( doctype == 2 )
+		{
+			type = 'minutes';
+			isDocumentAvailable = 'False';
+		}
+		else if ( doctype == 3 )
+		{
+			type = 'summary';
+			isDocumentAvailable ='False';
+		}
+
+		var url = '/AgendaOnline/Documents/ViewAgenda?meetingId=6500&type=AGENDATYPEVALUE&doctype=' + doctype;
+
+		url = url.replace('AGENDATYPEVALUE', type);
+
+		if (isDocumentAvailable == "False")
+		{
+			$('#main-content').html('Document unavailable');
+		}
+		else
+		{
+			$.get
+			(
+				url,
+				function (data)
+				{
+					//deleting inherited meta and title tags
+					$(document).ready(function () {
+						let parentElement = $('#main-content');
+						if (parentElement.length > 0) {
+							parentElement.find('meta').remove();
+							parentElement.find('title').remove();
+						}
+					})
+
+					$('#main-content').html(data);
+					var linkId = 1;
+					//replace the link hrefs and create the click handler using jquery (used for IE9 and IE10 compatibility)
+					$('#main-content a').each(function () {
+						if ($(this).attr("href") != null) {
+							// add ID for automation
+							if ($(this).attr("id") == null) {
+								$(this).attr("id", "lnkAgendaItem_" + linkId++);
+							}
+							let hrefValue = $(this).attr("href");
+							let dataRegex = /loadAgendaItem\((\d{1,}),(true|false)\)/.exec(hrefValue);
+
+							if (dataRegex != null)
+							{
+								let sectionOrItemId = dataRegex[1];
+								let isSection = dataRegex[2] == "true";
+
+								if (sectionOrItemId != null && isSection != null){
+									$(this).click(function (e){
+										loadAgendaItem(sectionOrItemId, isSection);
+										selectTreeItemByObject($(this));
+										e.preventDefault();
+										return false;
+									});
+
+									$(this).attr("href", "#mediaAndItemView");
+									$(this).attr("tabIndex", "-1");
+									if (isSection) {
+										$(this).attr("title", "Read more details about this section");
+									}
+									else {
+										$(this).attr("title", "Read more details about this item");
+									}
+								}
+							}
+						}
+					});
+					setupTreeNavigation();
+
+					$(window).resize();
+				}
+			);
+		}
+
+		// The global document type gets reset to whatever meeting document button was clicked.
+		g_documentType = doctype;
+
+		// Update agenda buttons
+		updateAgendaButtons();
+
+		// Clear out the item view section.
+		$('#itemView').empty();
+
+		positionPanels();
+	}
+
+	function loadAgendaItem(itemId, isSection)
+	{
+		var type = 'agenda';
+
+		if ( g_documentType == 2 )
+		{
+			type = 'minutes';
+		}
+		else if ( g_documentType == 3 )
+		{
+			type = 'summary';
+		}
+
+		var url = '/AgendaOnline/Meetings/ViewMeetingAgendaItem?meetingId=6500&itemId=ITEMIDVALUE&isSection=ISSECTIONVALUE&type=AGENDATYPEVALUE'
+					.replace("ITEMIDVALUE", encodeURIComponent(itemId))
+					.replace("ISSECTIONVALUE", isSection ? "true" : "false")
+					.replace('AGENDATYPEVALUE', type);
+		console.log(url.toString());
+
+		$.get
+		(
+			url,
+			function (data)
+			{
+				$('#itemView').html(data);
+
+				$(window).resize();
+
+				$("#mediaAndItemView").focus();
+
+				let scrollOffset = 0;
+				if (!g_isLargeDisplay)
+				{
+                    let playerContainerHeight = 0;
+                    if ($("#player-container")[0]) {
+                        playerContainerHeight = $("#player-container").outerHeight() + $("#navbar").outerHeight();
+					}
+                    scrollOffset = playerContainerHeight + 60;
+				}
+				window.scrollTo({
+					top: ($("#mediaAndItemView").position().top - scrollOffset),
+					behavior: "smooth"
+					});
+			}
+		);
+
+		
+		if (isSection) {
+			if (sectionEventPoints[itemId] != null)
+			{
+				jumpMedia(sectionEventPoints[itemId]);
+			}
+		}
+		else
+		{
+			if (itemEventPoints[itemId] != null)
+			{
+				jumpMedia(itemEventPoints[itemId]);
+			}
+		}
+		
+	}
+
+	function loadAgendaSection(sectionId)
+	{
+		loadAgendaItem(sectionId, true);
+	}
+
+	function updateAgendaButtons()
+	{
+		if (g_documentType == 2)
+		{
+			clearCurrentButton("#btnAgenda");
+			clearCurrentButton("#btnSummary");
+			setCurrentButton("#btnMinutes");
+		}
+		else if (g_documentType == 3)
+		{
+			clearCurrentButton("#btnAgenda");
+			setCurrentButton("#btnSummary");
+			clearCurrentButton("#btnMinutes");
+		}
+		else
+		{
+			setCurrentButton("#btnAgenda");
+			clearCurrentButton("#btnSummary");
+			clearCurrentButton("#btnMinutes");
+		}
+	}
+
+	function setCurrentButton(buttonId) {
+		$(buttonId).attr({
+			disabled: "disabled",
+			class: "btn btn-default"
+		});
+	}
+
+	function clearCurrentButton(buttonId) {
+		$(buttonId).attr({
+			class: "btn btn-primary"
+		});
+
+		$(buttonId).removeAttr('disabled');
+	}
+
+	function checkIfLargeDisplay() {
+		g_isLargeDisplay = $(window).width() >= TABLET_SIZE;
+	}
+
+	function positionPanels() {
+		if (g_isLargeDisplay) {
+			positionPanelsOnRight();
+		}
+		else
+		{
+			positionPanelsOnBottom();
+		}
+	}
+
+	function positionPanelsOnRight() {
+		let windowWidth = $(window).width();
+		let verticleScrollOffset = $(window).scrollTop();
+
+		$('#main-content').css("width", windowWidth * .63).css("float", "left");
+		$('#mediaAndItemView').css("width", windowWidth * .32).css("float", "right")
+			.css('top', calculateMediaAndItemViewTop(verticleScrollOffset) + 'px');
+
+		$('#itemView').css("overflow-y", "scroll")
+			.css('height', calculateItemDetailsHeight(verticleScrollOffset) + 'px');
+	}
+
+	function positionPanelsOnBottom() {
+		$('#main-content').css("width", "auto").css("float", "none");
+		$('#mediaAndItemView').css("width", "auto").css("float", "none").css('top', 'auto');
+		$('#itemView').css("overflow-y", "auto").css('height', "auto");
+	}
+
+	function calculateMediaAndItemViewTop(verticleScrollOffset) {
+		if (verticleScrollOffset > g_mediaAndItemViewTop) {
+			return Math.floor(verticleScrollOffset - g_mediaAndItemViewTop);
+		}
+		return 0;
+	}
+
+	function calculateItemDetailsHeight(verticleScrollOffset) {
+		let playerContainerHeight = 0;
+		if ($("#player-container")[0]) {
+            playerContainerHeight = $("#player-container").outerHeight();
+		}
+        let height = ($(window).height() - playerContainerHeight);
+		if (verticleScrollOffset < g_mediaAndItemViewTop) {
+			height -= g_mediaAndItemViewTop - verticleScrollOffset;
+		}
+		return Math.floor(height);
+	}
+
+	// Keyboard accessibility for meeting tree
+	const PAGE_UP_PAGE_DOWN_NODE_JUMP = 5;
+
+	function setupKeyNavigationOfOutline() {
+		$("#main-content").on("keydown", handleKeyDownOnTree);
+	}
+
+	function handleKeyDownOnTree(e) {
+		var handled = true;
+		switch (e.key) {
+			case 'Up':
+			case "ArrowUp":
+				selectTreeItemByIndex(currentTreeIndex - 1);
+				break;
+			case 'Down':
+			case "ArrowDown":
+				selectTreeItemByIndex(currentTreeIndex + 1);
+				break;
+
+			case "PageUp":
+				selectTreeItemByIndex(currentTreeIndex - PAGE_UP_PAGE_DOWN_NODE_JUMP);
+				break;
+			case "PageDown":
+				selectTreeItemByIndex(currentTreeIndex + PAGE_UP_PAGE_DOWN_NODE_JUMP);
+				break;
+
+			case "Home":
+				selectTreeItemByIndex(0);
+				break;
+			case "End":
+				selectTreeItemByIndex(treeItems.length - 1);
+				break;
+
+			case "Enter":
+				showDetails();
+				break;
+
+			default:
+				handled = false;
+		}
+		if (handled) {
+			e.stopPropagation();
+			e.preventDefault();
+		}
+	}
+
+	var treeItems;
+	var currentTreeIndex = -1;
+	var firstTime = true;
+
+	function setupTreeNavigation() {
+		currentTreeIndex = -1;
+		treeItems = $("#main-content a[href='#mediaAndItemView']");
+
+		selectTreeItemByIndex(0, false);
+		if (!firstTime) {
+			$('#skip-to-main-content').click();
+		}
+		firstTime = false;
+	}
+
+	function selectTreeItemByIndex(newIndex, setFocus = true) {
+		clearSelectedTreeItem();
+
+		if (newIndex < 0) {
+			currentTreeIndex = 0;
+		}
+		else if (newIndex >= treeItems.length) {
+			currentTreeIndex = treeItems.length - 1;
+		}
+		else {
+			currentTreeIndex = newIndex;
+		}
+
+		selectTreeItem($(treeItems[currentTreeIndex]), setFocus);
+	}
+
+	function selectTreeItemByObject(treeItem) {
+		selectTreeItemByIndex(getTreeItemIndex(treeItem), true);
+	}
+
+	function clearSelectedTreeItem() {
+		if (currentTreeIndex >= 0 && currentTreeIndex < treeItems.length) {
+			$(treeItems[currentTreeIndex]).removeClass("selected-item");
+			$(treeItems[currentTreeIndex]).attr("tabIndex", "-1");
+		}
+	}
+
+	function selectTreeItem(treeItem, setFocus = true) {
+		treeItem.addClass("selected-item");
+		treeItem.attr("tabIndex", "0");
+		if (setFocus) {
+			treeItem.focus();
+		}
+	}
+
+	function getTreeItemIndex(treeItem) {
+		return treeItems.index(treeItem);
+	}
+
+	function showDetails() {
+		if (currentTreeIndex >= 0 && currentTreeIndex < treeItems.length) {
+			$(treeItems[currentTreeIndex]).trigger("click");
+		}
+	}
+
+	function focusBackToTreeItem() {
+		let item = $(treeItems[currentTreeIndex]);
+		item.focus();
+		let offset = 60;
+		// If small screen and showing media, offset by player and navigation bar height
+		if ($(".media-collapse").is(":visible")) {
+            offset += $(".player-container").outerHeight() + $(".navbar").outerHeight();
+		}
+        $(document).scrollTop(item.offset().top - offset);
+	}
+	// Keyboard accessibility for meeting tree
+</script>
+    <div id="agenda-table" class="container-fluid">
+        <div id="agenda-container" class="row">
+            <div class="no-padding">
+                <div class="container-fluid">
+                    <div class="row">
+                        <div class="col-md-9 no-padding-left">
+                            <div>
+                                    <a href="#main-content" id="btnAgenda" role="button" class="btn btn-primary" onclick="loadAgendaDocument(1);" title="View Agenda for Platting Board - July 1, 2026 Platting Board on 7/1/2026 6:30:00 PM">Agenda</a>
+                                                                                                                                                            </div>
+                        </div>
+                    </div>
+                </div>
+                <br>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="no-padding">
+
+                <div id="main-content" role="main" class="no-padding-left" aria-label="Meeting outline structure.  Can be navigated by using the following keys: &#39;up&#39;, &#39;down&#39;, &#39;home&#39;, &#39;end&#39;, &#39;page up&#39;, &#39;page down&#39;.  Keys navigate respectively to the item: &#39;previous&#39;, &#39;next&#39;, &#39;first&#39;, &#39;last&#39;, &#39;up 5&#39;, or &#39;down 5&#39;.  Use the &#39;Enter&#39; key to view the details of what is selected.">
+                </div>
+
+                <section id="mediaAndItemView" class="no-padding-right" tabindex="-1" aria-label="Details of the selected meeting item or section">
+                    <div id="mediaView">
+
+
+
+
+<div id="player-container" class="player-container">
+    <iframe id="player" type="text/html" width="100%" height="280"
+            src="https://www.youtube.com/embed/92SgT7nRbKw?enablejsapi=1"
+            frameborder="0" allowfullscreen="allowfullscreen"></iframe>
+</div>
+
+<script type="text/javascript">
+    var player;
+    function onYouTubeIframeAPIReady() {
+        player = new YT.Player('player', {
+            playerVars: {
+                modestbranding: 0,
+                showinfo: 0,
+                rel: 0
+            }
+        });
+    }
+
+    // use the resize function on the window to apply the css for tablet and phone size.
+    // resize method is used because the point the player jumps to the bottom could be different.
+    // Called from Player.cshtml
+    function resizePlayerControl(playerHeight) {
+        if ($(".player-container").outerHeight() != 0) {
+            $("#player").height(playerHeight);
+        }
+    }
+
+    function jumpMedia(point) {
+        var isLive = 'false';
+
+        //we don't want to attemp a jump if its a live video
+        if (isLive == "false") {
+            player.seekTo(point);
+        }
+    }
+</script>
+
+<script type="text/javascript" src="https://www.youtube.com/iframe_api"></script>
+
+<script type="text/javascript">    
+	const PLAYER_PADDING = 4;
+	const NAV_BAR_PADDING = 14;
+	const DEFAULT_PLAYER_HEIGHT = 280;
+
+	$(document).ready(function () {
+		const ANIMATION_SPEED = 300;
+
+		$(".media-collapse").click(function (e) {
+            var playerHeight = calculatePlayerHeightForTogglingShowHideMedia();
+
+			// Animate player container
+			$(".player-container").animate({
+				height: playerHeight
+			}, ANIMATION_SPEED, function (e) {
+                if (playerHeight == 0) {
+					$("#media-collapse-text").text("Show Media");
+                    $("#player").height(0);
+				}
+				else {
+					$("#media-collapse-text").text("Hide Media");
+                    $("#player").height(playerHeight);
+				}
+			});
+
+			// Animate Show/Hide Media button
+			$(".media-collapse").animate({ top: playerHeight }, ANIMATION_SPEED);
+
+			// Animate Navigation bar
+			$("#navbar").animate({ top: playerHeight }, ANIMATION_SPEED);
+
+			// Animate Meeting document container
+			$("#agenda-container").animate({
+				"margin-top": playerHeight + $("#navbar").height() + NAV_BAR_PADDING + PLAYER_PADDING
+			}, ANIMATION_SPEED);
+		});
+
+		$(window).trigger("resize");
+	});
+
+	// use the resize function on the window to apply the CSS for tablet and phone size.
+	// resize method is used because the point the player jumps to the bottom could be different.
+	$(window).resize(function () {
+		let playerHeight = DEFAULT_PLAYER_HEIGHT;
+        if (isPlayerVisible()) {
+			$("#media-collapse-text").text("Hide Media");
+			if ($(window).width() <= TABLET_SIZE) {
+				playerHeight = showPlayerOnTop();
+			} else {
+                playerHeight = showPlayerOnRight();
+			}
+		} else {
+			$("#media-collapse-text").text("Show Media");
+
+			if ($(window).width() >= TABLET_SIZE) {
+				// If resizing to a larger screen size and the player is hidden, then show it on the right-hand side
+                playerHeight = showPlayerOnRight();
+			}
+		}
+
+		$(".media-collapse").css({
+			position: "fixed",
+			top: $(".player-container").height(),
+			left: ($(window).width() / 2) - ($('.media-collapse').width() / 2),
+			"z-index": 100
+		});
+
+        resizePlayerControl(playerHeight); // Calls method in JWPlayer.cshtml or YoutubePlayer.cshtml
+	});
+
+	function calculatePlayerHeightForTogglingShowHideMedia() {
+		let result = 0;
+
+        if (!isPlayerVisible()) {
+            if ($(window).width() <= TABLET_SIZE) {
+                result = DEFAULT_PLAYER_HEIGHT;
+            }
+		}
+        return calculatePlayerHeightFromWindowHeight(result);
+	}
+
+	function isPlayerVisible() {
+		return $(".player-container").height() != 0;
+	}
+
+	function showPlayerOnTop() {
+		$(".media-collapse").show();
+        $(".player-container").show();
+		let playerHeight = calculatePlayerHeightFromWindowHeight(DEFAULT_PLAYER_HEIGHT);
+
+        $(".player-container").css(
+            {
+                position: "fixed",
+                top: 0,
+                left: 0,
+                height: playerHeight,
+                "z-index": 98
+            }
+        );
+        $("#navbar").css(
+            {
+                width: "100%",
+                position: "fixed",
+                top: playerHeight,
+                left: 0,
+                "z-index": 99,
+                "border-radius": "0px"
+            }
+        );
+
+        $("#agenda-container").css({
+            "margin-top": $("#navbar").height() + NAV_BAR_PADDING + playerHeight + PLAYER_PADDING,
+            "z-index": 101
+        });
+
+		$("#logo-container").hide();
+		return playerHeight;
+	}
+
+	function showPlayerOnRight() {
+        let playerHeight = calculatePlayerHeightFromWindowHeight(DEFAULT_PLAYER_HEIGHT);
+        $(".media-collapse").hide();
+		$(".player-container").show();
+
+        $(".player-container").css(
+            {
+                position: "relative",
+                height: playerHeight
+            }
+		);
+        $("#navbar").removeAttr("style");
+        $("#navbar").addClass("navbar navbar-dark");
+        $("#agenda-container").css("margin-top", "0px");
+		$("#logo-container").show();
+        return playerHeight;
+	}
+
+	function calculatePlayerHeightFromWindowHeight(currentHeight) {
+		let windowHeight = $(window).height();
+
+        // Don't allow player be taller than 33% of the screen height
+		if (windowHeight / 3 < currentHeight) {
+			return windowHeight / 3;
+		}
+		return currentHeight;
+	}
+</script>                    </div>
+                    <div id="itemView">
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+    <br>
+    <br>
+    <script type="text/javascript">
+		var itemEventPoints =
+			{
+95991: 1681,94566: 188.826,94178: 343,96601: 188.826,96617: 343,96618: 1681,			}
+
+		var sectionEventPoints =
+			{
+66807: 2468,66808: 2474,66788: 174,66789: 218,66798: 258,66799: 259,66783: 12,66787: 170,68313: 12,68317: 170,68318: 174,68319: 218,68328: 258,68329: 259,68337: 2468,68338: 2474,			}
+    </script>
+
+		</section>
+	</div>
+	<div class="footer">
+		<div class="container">
+			<div class="row">
+				<div class="no-padding-left copyright">
+					<!--<img src="~/Images/OnBase_Logo.png" class="onbase-logo" />
+					Copyright &#169; 2015-2026 Hyland Software, Inc.-->
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<script src="/AgendaOnline/bundles/corescripts?v=OoIHuCd2Vo-mvl0Mo7yezhFz4lpe-uKKkUPytMkRrQs1"></script>
+
+
+	<!--Version: 25.1.9.1000-->
+</body>
+</html>
