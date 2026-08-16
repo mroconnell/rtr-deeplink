@@ -1019,6 +1019,86 @@ unusually wide, and the missing auto-scroll toggle on archived pages~~
 
 ## Platform coverage — open questions
 
+- **ChampDS real captions confirmed to exist for at least one customer —
+  but the URL to actually fetch them is still unknown (2026-08-16).**
+  `champds.py`'s own docstring said `MediaInfo.Captions` was empty on
+  every one of the 6 original customers checked, so caption parsing was
+  deliberately never built. Re-checked against 61 fresh real URLs from
+  this session's champds enumeration (see `BACKLOG_DONE.md`): 1 (`play.
+  champds.com/atlantaga/event/1077`) has real, populated `Captions`:
+  `[{"LanguageName": "English", "LanguageID": "en", "MediaPath":
+  "/2026-03/eaec74850c81b8ef2877faa746c28b61dc836fb4.vtt"}]` -- a real
+  positive example finally exists, so this is worth building. **But the
+  URL to actually fetch that MediaPath is still unconfirmed** -- tried
+  and ruled out: (1) the raw MediaPath prepended with `play.champds.com`,
+  `playapi.champds.com`, and a `/{customer}/` prefix -- all 404. (2) Full
+  reverse-engineering of every JS file the real event page loads
+  (`cds.event.js`, `override.cds.event.js`, `cds.common.js`,
+  `cds.constants.js`) -- zero references to "caption"/"vtt"/"track"
+  anywhere, meaning the current champds.com frontend may not even render
+  captions client-side yet, so there's no JS code to copy the pattern
+  from the way the `/ATT/{customer}/...` attachment-URL pattern was
+  found. (3) The confirmed-working `DOWNLOAD-MEDIA` endpoint
+  (`/DOWNLOAD-MEDIA/{customer}/eventmainmedia/{event_id}`, what
+  `video_url` already uses) accepts a `type` path segment -- tried 10
+  plausible values (`caption`, `closedcaption`, `cc`, `transcript`,
+  `subtitle`, etc.), every one came back **501 Not Implemented** (not
+  404) confirming the endpoint recognizes *a* type parameter but not
+  which string is correct. Stopped guessing rather than keep trying
+  strings blind, per this repo's own "don't claim a caption path works
+  without a positive example" convention -- a URL that happens to work
+  by luck isn't understood well enough to trust or document. Needs
+  either a captions-enabled page found live to watch the real browser
+  network request fire (this one page never fired a `.vtt` request even
+  after a few seconds loaded, suggesting captions may need to be
+  explicitly toggled on in the player, not just present in the API), or
+  ChampDS's own API docs/support.
+
+- **TelVue host enumeration — not yet built, needs real investigation
+  before starting (2026-08-16).** `app/platforms/telvue.py` (added this
+  session, see `BACKLOG_DONE.md`) resolves individual TelVue meeting
+  pages fine, but no host-enumeration pass has been run for it, unlike
+  primegov/civicweb/escribe/iqm2/clerkshq/cablecast. Two real
+  complications, confirmed live, that make this harder than a
+  copy-paste of the clerkshq path-based script: (1) `videoplayer.
+  telvue.com` alone hit the CDX 200,000-row cap on a bare
+  `collapse=urlkey` (exact-dedup) pull -- same "much bigger than it
+  looks" situation primegov/civicweb had, needs the K-character collapse
+  treatment, not clerkshq's "just page through everything" approach
+  (clerkshq was only 9,479 total rows). (2) The raw urlkey sample shows
+  path shapes that don't match the one confirmed real page structure
+  (`/player/{org_token}/media/{id}`) -- e.g. `.../m4qs8s.../stream/732`
+  -- suggesting multiple distinct URL patterns got crawled together, and
+  the tenant identifier is an opaque per-customer token, not a readable
+  city name, so collapsed buckets can't be eyeballed for noise the way
+  clerkshq's `ripuc1`...`ripuc143` duplication was caught. Needs its own
+  real investigation pass (confirm the real fixed_prefix, check whether
+  the opaque token is even a stable per-customer identifier or rotates
+  per-video) before writing an enumeration script, not a quick reuse.
+
+- **`page.platform` never gets updated on a re-ingest of an existing
+  page — found 2026-08-16 while checking whether TelVue's 3 known real
+  meetings had actually come off the "unknown platform" list after
+  building the new adapter.** They hadn't, even though re-ingesting them
+  demonstrably worked (real segments/agenda_items/video_url all updated
+  correctly, confirmed live on `/m/august-11-2026-ashland-planning-commission`
+  and the other two). Root cause, confirmed reading `archive/db/
+  crud.py`'s `_find_or_create_page()`: the `else:` branch (updating an
+  *existing* matched page) refreshes `title`/`date`/`jurisdiction`/
+  `video_url`/`video_format`/`agenda_items`/`video_warnings`/
+  `agenda_link`/`updated_at` -- every content field a later, better
+  resolve could improve -- but never reassigns `page.platform`, so it
+  stays frozen at whatever value the page had on first creation. Content
+  is genuinely fixed; the platform *label* just silently lies about it
+  forever after. Likely affects every page whose adapter was added/fixed
+  *after* the page was first archived under `platform="unknown"` (or any
+  wrong prior platform value), not just these 3 -- worth checking `/
+  internal/pages/all-urls` again after a fix to see how many actually
+  update. Fix should mirror the existing truthy-gated pattern already
+  used for every other field just above it in the same function
+  (`page.platform = payload.get("platform") or page.platform`) --
+  straightforward, not yet done.
+
 - **Hyland "221 Agenda Online" (OnBase Agenda) — new platform, not
   supported at all today, found 2026-08-13 while investigating the
   "Untitled meeting" copy question** (see the `/meetings` UI-gaps

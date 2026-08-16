@@ -6,6 +6,44 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Checked empirically: no other adapter has eScribe/CivicClerk's YouTube-delegation gap (2026-08-16)
+
+Prompted by a fair challenge after the eScribe/CivicClerk fixes above:
+a lot of government sites embed YouTube, so is it really plausible that
+only two adapters out of the whole set have this gap? The earlier check
+had only been a code-pattern audit (grep for an arbitrary/configurable
+external-URL field) — real, but not the same as looking at real data.
+
+Ran the empirical version: pulled every live `MeetingPage` via
+`/internal/pages/all-urls` (1,073 pages), excluded platforms already
+confirmed to delegate properly (youtube, primegov, civicweb, clerkbase,
+telvue, lims, slc, escribe, civicclerk — the last two fixed earlier this
+session), leaving 730 pages across granicus (383), swagit (241), iqm2
+(86), cablecast (2), viebit (2), aurora_tv (1), ca_legislature (2), and
+the residual `unknown` bucket (13). Fetched each page's own rendered
+`/m/{slug}` HTML (fast — hits our own Render service, not 700+ external
+government sites) and regex-matched `data-video-url`/`data-video-format`
+for a youtube.com/youtu.be URL.
+
+**Result: zero genuine hits.** One match came back (`unknown` /
+`welcome-to-clerkbase`, a clerkshq/YellowSprings-OH page), but it isn't a
+new gap — it's the same `page.platform` staleness bug documented in
+`BACKLOG.md` (that page was ingested before `clerkbase.py`'s own
+delegation existed, so it's frozen at `platform="unknown"` even though
+the adapter resolves it correctly today; `clerkbase.py` already
+delegates to `YouTubeAssetFinder` properly, confirmed reading its
+source). 5 of 730 fetches hit a transient `URLError` and weren't
+retried (under 1% of the sample) — not enough to change the conclusion,
+but a real gap in this check's own script if it's ever rerun.
+
+Conclusion: granicus/swagit/iqm2/cablecast/viebit/aurora_tv/
+ca_legislature are all real video-hosting products in their own right
+(that's their business model), so their customers don't typically *also*
+embed a separate YouTube video the way an agenda-only platform like
+eScribe or CivicClerk sometimes does when a customer has no native video
+integration. No further adapter work needed here — closed, not just
+deprioritized.
+
 ## TelVue: a whole new platform found hiding as "unknown"; CivicClerk had the same YouTube-delegation gap as eScribe (2026-08-16)
 
 Follow-on from the eScribe fix above, prompted by the user asking what a
