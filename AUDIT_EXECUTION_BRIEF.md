@@ -3,8 +3,22 @@
 **Source:** `AUDIT_2026-08-14.md` (in this repo root and in `rtr-business/`)
 **For:** Claude Code sessions working against `rtr-deeplink`
 **Written:** 2026-08-14, against commit `bf3ef7f`
+**Re-sequenced 2026-08-16:** Phase 2/3 re-grouped into six waves after a
+roadmap-planning pass (reliability/ops lens, ~2-4 week horizon). Status
+corrected against a live code check the same day: **WO-5 (SSRF guard) is
+done** — it shipped since this brief was written but was still listed as
+open below; everything else in Phase 2/3 was reconfirmed genuinely still
+open (`app/main.py:270-272`/`archive/main.py:109-111` still return static
+`{"status": "ok"}`, `app/main.py:1167`'s admin-token check is still
+query-param only, `requirements.txt` is still fully unpinned, no
+`databases:` block in `render.yaml`, no Sentry import anywhere, no lint
+config). Four new work orders (WO-13 through WO-16) were folded in from
+`BACKLOG.md`/`CLAUDE_BACKLOG.md` since they sit inside the same lens. The
+underlying Problem/Do/Acceptance detail for WO-4 through WO-12 is
+unchanged from 2026-08-14 — only status, sequencing, and grouping changed.
 
-Twelve work orders, in dependency order. Each is sized to one PR. Pick one,
+Twelve-plus work orders, in dependency order within each wave. Each is
+sized to one PR. Pick one,
 do it completely, land it, move on — do **not** batch several into one
 branch. Several of these touch deploy-time behaviour, and a mixed PR makes
 a bad deploy impossible to bisect.
@@ -17,9 +31,12 @@ Four hazards specific to this repo. All are documented in `CLAUDE.md`; they
 are repeated here because every work order below is affected by at least one.
 
 1. **A merge to `main` deploys to production immediately.** `render.yaml`
-   Blueprint sync fires on every push. There is currently no test gate
-   (that's WO-3). Until WO-3 lands, treat every merge as a production
-   deploy you are personally responsible for verifying.
+   Blueprint sync fires on every push. A CI test gate now exists and
+   branch protection is verified to actually block a failing merge (WO-2,
+   done — see Phase 1 below), but that only blocks merges with a failing
+   test, not merges with a passing test and a bad live consequence. Treat
+   every merge as a production deploy you are personally responsible for
+   verifying.
 2. **This clone may be shared with another active session.** Run `git
    status` first. If there are uncommitted changes that aren't yours, don't
    touch them — isolate your work with `git worktree add /tmp/<name>
@@ -64,13 +81,16 @@ These are dashboard checks, not code. Three work orders are blocked on them.
 
 | # | Check | Blocks |
 |---|---|---|
-| P1 | ~~Render → both Postgres instances: what plan?~~ **ANSWERED 2026-08-14:** `rtr-deeplink-db` is **Basic-256mb** (paid, ~$6/mo) — not at risk. Staging is free and expires 9/9/2026, which is intentional and disposable. Remaining sub-questions folded into WO-4 below. | WO-4, WO-10 |
-| P2 | Render → all three services: does the live plan match `render.yaml` (`starter`, `starter`, `standard`)? Current month's actual bill? | WO-4 |
-| P3 | GA: is the property receiving events? Are `submit_meeting_url` and `copy_link_to_time` visible in the last 30 days? | WO-9 |
-| P4 | Resend + Clerk: plan, cost, distance from free-tier ceiling. | WO-4 |
+| P1 | ~~Render → both Postgres instances: what plan?~~ **ANSWERED 2026-08-14:** `rtr-deeplink-db` is **Basic-256mb** (paid, ~$6/mo) — not at risk. Staging is free and expires 9/9/2026, which is intentional and disposable. Remaining sub-questions folded into WO-4 below. | WO-4 (Wave 4), WO-10 (Wave 5) |
+| P2 | Render → all three services: does the live plan match `render.yaml` (`starter`, `starter`, `standard`)? Current month's actual bill? | WO-4 (Wave 4) |
+| P3 | GA: is the property receiving events? Are `submit_meeting_url` and `copy_link_to_time` visible in the last 30 days? | WO-9 (Wave 3) |
+| P4 | Resend + Clerk: plan, cost, distance from free-tier ceiling. | WO-4 (Wave 4) |
 | P5 | Actions → a recent `send-search-alerts` run: did a real alert email actually send? | — (informational) |
 
-**P1 is the highest-consequence unknown in the audit.** Do it first.
+**P1 was the highest-consequence unknown in the audit and is already
+answered** (see above). What's left blocking is P2 and P4 (both gate Wave
+4) and P3 (gates Wave 3) — worth asking Ryan for these early, since
+they're quick dashboard checks that would otherwise stall a wave mid-way.
 
 ---
 
@@ -161,11 +181,175 @@ tracked files. Do not delete them locally.
 
 ---
 
-## Phase 2 — the week after
+## Wave 1 — make failures visible
 
-**Start with WO-5, not WO-4.** WO-4 is blocked on external checks P1, P2,
-and P4; WO-5 is blocked on nothing. Numbering here is dependency order
-within the audit, not a queue.
+No blockers. ~1-2 days. Do these first — each is cheap and makes some
+other failure mode observable that is currently silent.
+
+### WO-5 · SSRF guard on the resolve entrypoint — **DONE**
+
+Shipped since this brief was written (`app/utils/url_guard.py`), still
+listed here so the dependency history stays legible. Original spec, for
+reference: `ResolveRequest.url` was a bare `str` and unknown hosts fell
+through to the generic fallback's `session.get(url,
+allow_redirects=True, ...)` with no scheme allowlist, no private-IP
+rejection, no per-hop redirect check, and no response-size cap, while
+`GENERIC_FALLBACK_HEADLESS=1` meant a real browser would fetch whatever
+it was pointed at. Fixed with a shared helper applied at the resolve
+entrypoint and the generic fallback's own fetches, including the headless
+escalation. See `BACKLOG.md`'s App-wide-audit section for the closure
+note.
+
+### WO-6 · Health checks that can fail — **1-2 hrs**
+
+**Problem.** `render.yaml:47,128` gate deploys on `/api/health`, and both
+handlers return a static `{"status": "ok"}` (`app/main.py:268-270`,
+`archive/main.py:109-111`). During the 2026-08-09 incident the app was
+failing every query on a missing column and would still have reported `ok`.
+
+**Do.** Execute `SELECT 1` (and on the Archive, a cheap count against one
+real table). Return 503 with a short reason on failure. Keep it cheap —
+Render polls this frequently.
+
+**Acceptance.** With the DB unreachable locally, the endpoint returns 503.
+After deploy, confirm in Render that the health check gate actually fails a
+deploy when the endpoint is unhealthy — an unverified gate is the same
+problem in a new costume.
+
+### WO-8 · Admin token out of the URL — **~45 min**
+
+**Problem.** `daily-report.yml:38` and `send-search-alerts.yml:37` both send
+`?token=${{ secrets.ADMIN_STATS_TOKEN }}`. GitHub masks it in Actions logs;
+Render's request logs do not. The Archive already does this correctly at
+`archive/main.py:100-106`.
+
+**Do.** Accept `Authorization: Bearer` on the admin routes in `app/main.py`,
+keeping query-param support temporarily so the switch isn't a flag day.
+Update both workflows to `curl -H`. Then remove the query-param path in a
+follow-up once you've confirmed both crons ran green.
+
+**Acceptance.** Both workflows pass with header auth. `secrets.compare_digest`
+still used (don't regress to `==`).
+
+### WO-7 · Know when production breaks — **2-3 hrs**
+
+**Problem.** No error monitoring exists; `CLAUDE_BACKLOG.md:28-31` concedes
+that "production exceptions currently only surface if someone happens to
+check Render logs." The daily digest degrades silently by design —
+`app/reporting.py:53-60` lets one metric fail without blanking the others,
+so `curl --fail-with-body` sees HTTP 200 on a half-broken report.
+
+**Do.** (a) Sentry free tier on both web services and the worker, with the
+DSN as an env var and a no-op when unset, matching how Clerk degrades. (b) An
+external uptime check against a **real resolve path**, not `/api/health`.
+(c) Add `if: failure()` notification steps to both existing workflows. (d)
+Make `/admin/daily-report` return a non-2xx when any metric errored, so the
+cron's `--fail-with-body` actually trips.
+
+**Acceptance.** A deliberately raised exception on a staging path appears in
+Sentry. A forced metric failure turns the daily-report workflow red.
+
+### WO-13 · Adapter health canary — **~half a day** · *new, from `CLAUDE_BACKLOG.md`*
+
+**Problem.** The test suite and WO-7's Sentry both catch code-level
+failures, but neither catches the failure mode this repo hits most often
+in practice: a government site quietly changes its page/API structure and
+a working adapter starts returning empty or wrong data while still
+returning HTTP 200 — no exception, nothing for Sentry to see. A past
+session flagged this as **"still the highest-value remaining item"** in
+`CLAUDE_BACKLOG.md`, unreviewed/unaccepted until this planning pass.
+
+**Do.** A scheduled job (reuse the existing GH Actions cron pattern) that
+re-resolves one known-good URL per supported platform — the same URLs
+already used as `tests/fixtures/` sources are a natural starting list —
+and alerts (reuse WO-7's notification path) when a previously-successful
+platform starts coming back empty/error. Keep it cheap: one URL per
+platform, not a full crawl.
+
+**Acceptance.** Running against today's adapters, all platforms pass.
+Deliberately breaking one adapter's parsing locally (e.g. a fixture-based
+test double) and running the canary against it produces a real alert, not
+a silent pass.
+
+---
+
+## Wave 2 — dependency & code hygiene
+
+No blockers, parallel-safe with any other wave. ~1 day.
+
+### WO-11 · Pin dependencies, then scan them — **2-3 hrs**
+
+**Problem.** Every entry in all three requirements files uses `>=` with no
+upper bound and no lockfile, while `render.yaml:40,126` reinstall on every
+deploy — so two deploys of identical source can install different versions.
+No Dependabot, no `pip-audit`.
+
+**Do.** `pip-compile` a lockfile per service. **Keep `yt-dlp` deliberately
+loose** with a comment pointing at `CLAUDE.md:128-136` — YouTube actively
+breaks scrapers and yt-dlp only works because it chases them; pinning it is
+a bug, not hygiene. Same reasoning for `faster-whisper` in the worker. Then
+enable Dependabot (only useful once versions are pinned) and add `pip-audit`
+to the WO-2 workflow as a non-blocking job first, blocking once the initial
+noise is triaged.
+
+**Acceptance.** One verification deploy per service off the lockfile.
+Dependabot opens PRs. `yt-dlp` still floats.
+
+### WO-12 · Linter and formatter — **1 hr config, 2-4 hrs first pass**
+
+**Problem.** No ruff/black/mypy/pre-commit config anywhere. Given that
+multiple sessions edit this tree the same day, a formatter is mostly about
+keeping `git pull --rebase` clean — gratuitous whitespace diffs are what
+turn a clean rebase into a conflicted one.
+
+**Do.** Add `ruff` (lint + format in one tool) to `requirements-dev.txt`, a
+minimal config block, and a `ruff check` / `ruff format --check` step in the
+WO-2 workflow. Land the bulk reformat as its **own** commit so it doesn't
+poison `git blame` on the config commit.
+
+**Skip mypy.** Retrofitting types here is a multi-day project with unclear
+payoff at this stage.
+
+---
+
+## Wave 3 — outreach measurability
+
+No code blockers, but **coordinate the UTM convention with Ryan before any
+real outreach send** — see below. ~1 day.
+
+### WO-9 · The three events that make outreach measurable — **~1 afternoon** · *blocked on P3*
+
+**Problem.** Five GA events exist (`submit_meeting_url` at
+`app/templates/index.html:26`, three `copy_link_to_time` in `player.js`, one
+`newsletter_signup`). Missing: whether a resolve **succeeded**, whether
+anyone **played** the video, and any way to attribute a visit to an outreach
+recipient.
+
+**Do.** Fire `resolve_result` with `{status, platform}` from the resolve
+response handler; `video_play` and `transcript_seek` from `player.js`, which
+already has `trackEvent` in scope. Keep params low-cardinality — no URLs, no
+anything user-identifying.
+
+**Ryan's half, and it needs no code:** every personalized link in the
+first-10 campaign gets
+`?utm_source=outreach&utm_campaign=first10&utm_content=<recipient-slug>`.
+GA segments on that automatically. **This is unrecoverable if the first
+emails go out without it** — settle the convention before WO-9 is even
+written. This directly unblocks the outreach-tracking prerequisite already
+flagged as open in `rtr-business/TASKS.md`.
+
+**Acceptance.** All three events visible in GA realtime during a manual
+walkthrough. Confirm the UTM parameters survive the `/meeting` →
+`/m/{slug}` archive redirect; if they don't, that's a real bug and the
+campaign's attribution depends on fixing it.
+
+---
+
+## Wave 4 — infra into the Blueprint + backup/restore
+
+**Blocked on Ryan's dashboard checks P2 and P4** (P1 already answered —
+see the Prerequisites table above). Flag these to Ryan at the start of the
+wave, not mid-wave. ~1-2 hrs once unblocked.
 
 ### WO-4 · Bring infra into the Blueprint + finish the cost inventory — **1-2 hrs** · *blocked on P1, P2, P4*
 
@@ -209,114 +393,14 @@ Record the confirmed monthly total in `rtr-business/BUSINESS_OVERVIEW.md`
 hostname mismatch in local env produces a clear startup error. Storage
 headroom, PITR window, and a tested restore procedure are all written down.
 
-### WO-5 · SSRF guard on the resolve entrypoint — **2-4 hrs**
-
-**Problem.** `ResolveRequest.url` is a bare `str` (`app/main.py:113-114`).
-Unknown hosts fall through to the generic fallback, which does
-`session.get(url, allow_redirects=True, ...)`
-(`app/platforms/generic_fallback.py:481-483`) with no scheme allowlist, no
-private-IP rejection, no per-hop redirect validation, and no response-size
-cap. `GENERIC_FALLBACK_HEADLESS=1` is on in production, so a real browser
-loads whatever it's pointed at. An anonymous POST of
-`http://169.254.169.254/...` or an internal Render hostname is fetched from
-inside the network, and content can return in the resolve payload.
-
-**Do.** One shared helper — `app/utils/url_guard.py` — applied at the
-entrypoint so every adapter inherits it:
-
-- scheme in `{http, https}` only;
-- resolve the hostname, reject loopback / private / link-local / multicast /
-  reserved ranges;
-- cap redirects and re-run the check on **each hop** (a permitted host can
-  302 to a private one);
-- cap response body size.
-
-Wire it into the resolve path and the generic fallback's own fetches. It
-must also guard the headless escalation.
-
-**Acceptance.** Tests for each rejected class, including the redirect-to-
-private-IP case, which is the one people forget. A rejected URL returns a
-clean user-facing error, not a stack trace. Existing adapter tests still
-pass — if a fixture host trips the guard, that's a real finding, not a
-reason to loosen it.
-
-### WO-6 · Health checks that can fail — **1-2 hrs**
-
-**Problem.** `render.yaml:47,128` gate deploys on `/api/health`, and both
-handlers return a static `{"status": "ok"}` (`app/main.py:268-270`,
-`archive/main.py:109-111`). During the 2026-08-09 incident the app was
-failing every query on a missing column and would still have reported `ok`.
-
-**Do.** Execute `SELECT 1` (and on the Archive, a cheap count against one
-real table). Return 503 with a short reason on failure. Keep it cheap —
-Render polls this frequently.
-
-**Acceptance.** With the DB unreachable locally, the endpoint returns 503.
-After deploy, confirm in Render that the health check gate actually fails a
-deploy when the endpoint is unhealthy — an unverified gate is the same
-problem in a new costume.
-
-### WO-7 · Know when production breaks — **2-3 hrs**
-
-**Problem.** No error monitoring exists; `CLAUDE_BACKLOG.md:28-31` concedes
-that "production exceptions currently only surface if someone happens to
-check Render logs." The daily digest degrades silently by design —
-`app/reporting.py:53-60` lets one metric fail without blanking the others,
-so `curl --fail-with-body` sees HTTP 200 on a half-broken report.
-
-**Do.** (a) Sentry free tier on both web services and the worker, with the
-DSN as an env var and a no-op when unset, matching how Clerk degrades. (b) An
-external uptime check against a **real resolve path**, not `/api/health`.
-(c) Add `if: failure()` notification steps to both existing workflows. (d)
-Make `/admin/daily-report` return a non-2xx when any metric errored, so the
-cron's `--fail-with-body` actually trips.
-
-**Acceptance.** A deliberately raised exception on a staging path appears in
-Sentry. A forced metric failure turns the daily-report workflow red.
-
-### WO-8 · Admin token out of the URL — **~45 min**
-
-**Problem.** `daily-report.yml:38` and `send-search-alerts.yml:37` both send
-`?token=${{ secrets.ADMIN_STATS_TOKEN }}`. GitHub masks it in Actions logs;
-Render's request logs do not. The Archive already does this correctly at
-`archive/main.py:100-106`.
-
-**Do.** Accept `Authorization: Bearer` on the admin routes in `app/main.py`,
-keeping query-param support temporarily so the switch isn't a flag day.
-Update both workflows to `curl -H`. Then remove the query-param path in a
-follow-up once you've confirmed both crons ran green.
-
-**Acceptance.** Both workflows pass with header auth. `secrets.compare_digest`
-still used (don't regress to `==`).
-
-### WO-9 · The three events that make outreach measurable — **~1 afternoon** · *blocked on P3*
-
-**Problem.** Five GA events exist (`submit_meeting_url` at
-`app/templates/index.html:26`, three `copy_link_to_time` in `player.js`, one
-`newsletter_signup`). Missing: whether a resolve **succeeded**, whether
-anyone **played** the video, and any way to attribute a visit to an outreach
-recipient.
-
-**Do.** Fire `resolve_result` with `{status, platform}` from the resolve
-response handler; `video_play` and `transcript_seek` from `player.js`, which
-already has `trackEvent` in scope. Keep params low-cardinality — no URLs, no
-anything user-identifying.
-
-**Ryan's half, and it needs no code:** every personalized link in the
-first-10 campaign gets
-`?utm_source=outreach&utm_campaign=first10&utm_content=<recipient-slug>`.
-GA segments on that automatically. **This is unrecoverable if the first
-emails go out without it** — settle the convention before WO-9 is even
-written.
-
-**Acceptance.** All three events visible in GA realtime during a manual
-walkthrough. Confirm the UTM parameters survive the `/meeting` →
-`/m/{slug}` archive redirect; if they don't, that's a real bug and the
-campaign's attribution depends on fixing it.
-
 ---
 
-## Phase 3 — a quiet day
+## Wave 5 — migrations survive deploys ("a quiet day")
+
+**Blocked on Ryan's prod `DATABASE_URL` access.** The single most
+incident-prone area of this repo (three documented incidents). Schedule
+last, do not parallelize other DB-schema-touching work against it.
+~1 day.
 
 ### WO-10 · Make migrations survive deploys — **~1 day, do carefully** · *blocked on P1*
 
@@ -349,38 +433,76 @@ new tables. That guidance is what makes the drift invisible. Updating
 manual step. `alembic current` equals `head` on both services. Automating
 step 3 before step 2 will fail on the first run — the drift is already there.
 
-### WO-11 · Pin dependencies, then scan them — **2-3 hrs**
+---
 
-**Problem.** Every entry in all three requirements files uses `>=` with no
-upper bound and no lockfile, while `render.yaml:40,126` reinstall on every
-deploy — so two deploys of identical source can install different versions.
-No Dependabot, no `pip-audit`.
+## Wave 6 — recurring bug-class cleanup
 
-**Do.** `pip-compile` a lockfile per service. **Keep `yt-dlp` deliberately
-loose** with a comment pointing at `CLAUDE.md:128-136` — YouTube actively
-breaks scrapers and yt-dlp only works because it chases them; pinning it is
-a bug, not hygiene. Same reasoning for `faster-whisper` in the worker. Then
-enable Dependabot (only useful once versions are pinned) and add `pip-audit`
-to the WO-2 workflow as a non-blocking job first, blocking once the initial
-noise is triaged.
+No blockers, lower urgency than Waves 1-5 — fill gaps between waves or run
+after. ~2-3 days. Three items pulled from `BACKLOG.md`'s Bugs section and
+Archive-roadmap-adjacent findings, chosen because each fixes a *pattern*
+behind several already-open bugs rather than one instance.
 
-**Acceptance.** One verification deploy per service off the lockfile.
-Dependabot opens PRs. `yt-dlp` still floats.
+### WO-14 · Shared bounded-extraction jurisdiction-regex helper — **new**
 
-### WO-12 · Linter and formatter — **1 hr config, 2-4 hrs first pass**
+**Problem.** `GranicusAssetFinder._extract_metadata()`'s jurisdiction regex
+has no sentence/tag boundary and swallows unrelated agenda text into the
+stored jurisdiction — confirmed live on 9 real Granicus customers (Sarasota,
+Punta Gorda, Huntsville, Fort Worth, Edgewater, Castle Rock, Castle Pines,
+Boston, Milwaukee). The **identical bug exists independently** in
+`escribe.py` (not shared code), confirmed on 6 real examples including 4
+Canadian cities. A naive port of PrimeGov's existing fix won't work here —
+some bleed examples are themselves ALL-CAPS agenda headings.
 
-**Problem.** No ruff/black/mypy/pre-commit config anywhere. Given that
-multiple sessions edit this tree the same day, a formatter is mostly about
-keeping `git pull --rebase` clean — gratuitous whitespace diffs are what
-turn a clean rebase into a conflicted one.
+**Do.** Design one shared bounded-extraction helper both adapters can call,
+rather than patching each site independently — the two confirmed instances
+of the same bug class are the signal that a shared fix is worth it over two
+one-offs.
 
-**Do.** Add `ruff` (lint + format in one tool) to `requirements-dev.txt`, a
-minimal config block, and a `ruff check` / `ruff format --check` step in the
-WO-2 workflow. Land the bulk reformat as its **own** commit so it doesn't
-poison `git blame` on the config commit.
+**Acceptance.** Existing fixture tests for both adapters still pass. New
+regression tests cover at least the 9 Granicus and 6 eScribe confirmed-bleed
+examples above.
 
-**Skip mypy.** Retrofitting types here is a multi-day project with unclear
-payoff at this stage.
+### WO-15 · Stale-archived-page refresh path — **new**
+
+**Problem.** Two confirmed gaps combine into one recurring root cause:
+re-submitting an already-archived URL through the public API never
+triggers a refresh (it short-circuits to the cached lookup; only a
+token-gated admin endpoint or the passive 30-day recheck cycle re-resolves
+it), and the YouTube transcript-wanted queue only ever surfaces pages with
+**no** transcript, never an existing-but-bad one. `BACKLOG.md` traces this
+exact pattern as the likely root cause behind several separately-filed
+"why does this page look wrong" bugs: `riversidecountyca.iqm2.com`
+title/jurisdiction, several OCFL/Sacramento/Maricopa pages, and the
+Fountain Valley clip 607 title/jurisdiction mismatch.
+
+**Do.** Build a real re-resolve/refresh mechanism reachable without the
+admin token — e.g. a rate-limited "refresh this page" path — and extend the
+YouTube transcript-wanted queue to also surface existing-but-flagged-bad
+transcripts, not just missing ones.
+
+**Acceptance.** Re-submitting a known-stale archived URL produces updated
+content without needing the admin token. At least one of the BACKLOG.md
+bugs this WO is meant to explain (Fountain Valley clip 607 is the most
+concrete) is re-verified and closed as a consequence, not just theorized.
+
+### WO-16 · Census-table jurisdiction gaps — **new**
+
+**Problem.** The 2026-08-14 649-jurisdiction Census-table validation audit
+left four categories of confirmed gaps: two archived pages store a literal
+date as their jurisdiction (source untraced); townships/county subdivisions
+are missing from the lookup table entirely (Upper Providence PA, Greenburgh
+NY, Upper Dublin PA — confirmed real, not fabricated); and Elliot Lake, ON
+needs a country-exemption flag since it's Canadian and was never going to
+be in a US Census table.
+
+**Do.** Trace the two date-as-jurisdiction pages to their root cause before
+fixing (don't paper over with a filter). Add the confirmed township/county
+subdivisions to the lookup table. Add a country field or exemption flag so
+non-US jurisdictions like Elliot Lake stop being treated as lookup misses.
+
+**Acceptance.** All four confirmed cases resolve correctly on re-check. The
+fix doesn't silently swallow future genuine lookup misses — a real miss
+should still be visibly flagged, not defaulted away.
 
 ---
 
@@ -403,11 +525,16 @@ payoff at this stage.
 Two confirmed contradictions, both about saved-search alerts, which shipped
 2026-08-13 as PR #30 and run daily via `send-search-alerts.yml`:
 
-- `README.md:753-756` — "**Not yet built**: saved-search alert emails"
+- `README.md:753-756` — "**Not yet built**: saved-search alert emails" —
+  **fixed** (re-checked 2026-08-16, this repo's README no longer says it).
 - `rtr-business/BUSINESS_OVERVIEW.md:86` — "Not built yet: billing of any
-  kind, saved-search alert emails, …"
+  kind, saved-search alert emails, …" — **still stale as of 2026-08-16**,
+  confirmed by direct grep. This lives in the separate `rtr-business`
+  workspace, so it's not one of the WOs above, but worth a one-line fix
+  next time anyone is in that repo — it's exactly the kind of drift the
+  rule below exists to prevent.
 
-Fix both. Then add the rule to `CLAUDE.md`: **a PR that ships a feature must
+Then add the rule to `CLAUDE.md`: **a PR that ships a feature must
 update every doc that named it as unbuilt, and the PR description must list
 which.** The audit found three of eight of its own starting leads were wrong
 because they were written from these docs — the docs here are good enough
