@@ -6,6 +6,74 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## `page.platform` never refreshed on re-ingest of an existing page — found while verifying TelVue, fixed, then closed 8 more "unknown" pages (2026-08-16)
+
+Found while checking whether TelVue's 3 known real meetings had actually
+come off the "unknown platform" list after `telvue.py` shipped earlier
+the same session. They hadn't, even though re-ingesting them demonstrably
+worked (real segments/agenda_items/video_url all updated correctly,
+confirmed live on `/m/august-11-2026-ashland-planning-commission` and the
+other two). Root cause, confirmed reading `archive/db/crud.py`'s
+`_find_or_create_page()`: the `else:` branch (updating an *existing*
+matched page) refreshed `title`/`date`/`jurisdiction`/`video_url`/
+`video_format`/`agenda_items`/`video_warnings`/`agenda_link`/`updated_at`
+— every content field a later, better resolve could improve — but never
+reassigned `page.platform`, so it stayed frozen at whatever value the
+page had on first creation. Content was genuinely fixed; the platform
+*label* just silently lied about it forever after. Affected every page
+whose adapter was added/fixed *after* the page was first archived under
+`platform="unknown"` (or any wrong prior platform value), not just the
+3 TelVue ones.
+
+**Fixed in [PR #69](https://github.com/mroconnell/rtr-deeplink/pull/69)**:
+`page.platform = payload.get("platform") or page.platform` as the first
+line of the same `else:` branch, mirroring the existing truthy-gated
+pattern already used for every other field just above it. New regression
+test (`tests/test_ingest_promotion.py::test_reingest_updates_platform_on_an_existing_page`)
+reproduces the exact real scenario: ingest under `platform="unknown"`,
+re-ingest the same URL under a different platform with a different
+`external_id` (matching how the real TelVue pages fell through to the
+`source_url_normalized` match path, not the `external_id`+`platform`
+path) — asserts platform actually updates. Full suite passing at merge
+time (771/771).
+
+**Real, unrelated production incident hit right after merging**: Render's
+deploy for this exact commit failed —
+`ERROR: Could not install packages due to an OSError:
+HTTPSConnectionPool(host='files.pythonhosted.org', port=443)... too many
+502 error responses` — a transient PyPI CDN failure, not a code problem
+(confirmed zero new imports in the diff). Diagnosed via the `render` CLI
+(services list → deploys list → build logs filtered by timestamp) and
+fixed by triggering a redeploy of the same commit
+(`render deploys create srv-d9ras3ijnfac73f9ps5g --confirm`); the
+redeploy succeeded and the fix was verified live immediately after.
+
+**Follow-up the same day**: re-checked all remaining "unknown"-platform
+pages via `/internal/pages/all-urls` now that the fix was deployed (13 →
+8 after this pass). Found real, new value in 3: a clerkshq/Yellow
+Springs OH page (4,712 segments), a seattlechannel.org page (7,210
+segments + 8 agenda_items), and confirmed `netapps.ocfl.net` correctly
+*stays* `unknown` (no adapter exists for it, working as intended). Also
+found a genuinely new tier-3 candidate this way —
+`riversidecountyca.iqm2.com` (real video, no transcript) — added to
+`scripts/tier3_auto_transcription_queue.txt` and shipped as
+[PR #70](https://github.com/mroconnell/rtr-deeplink/pull/70).
+
+**Re-checked again 2026-08-16, after the Hyland adapter work below
+shipped**: `platform="unknown"` count is down to 4 (`/internal/pages/
+all-urls` re-fetched fresh, not from a cached copy). Of those,
+`mccobagenda.databankcloud.com`'s `id=4665` page — one of the 8 in the
+previous count — is now correctly `platform="hyland"` after being
+re-ingested as part of that work. The remaining 4 are `netapps.ocfl.net`
+(no adapter, expected — see its own "Orange County FL" entry elsewhere
+in this file), `discover.pbc.gov` (SharePoint, no adapter, expected),
+`cityofsebastopol.gov` (no adapter, expected), and, surprisingly,
+`riversidecountyca.iqm2.com` itself — the same URL just re-ingested via
+this section's own PR #70, on a domain `iqm2.py` clearly does have an
+adapter for. That one looks like a real, fresh gap rather than an
+expected "no adapter" case and is logged as its own open item in
+`BACKLOG.md`.
+
 ## Hyland "OnBase Agenda Online" — expanded from 3 to 23 real customer domains, second UI version + YouTube delegation added (2026-08-16)
 
 Follow-on to the adapter build below, same day, prompted by the user
