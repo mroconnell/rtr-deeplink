@@ -108,6 +108,23 @@ def _token_ok(authorization: Optional[str]) -> bool:
 
 @app.get("/api/health")
 async def health():
+    """Render gates deploys on this endpoint (render.yaml), so it has to be
+    able to actually fail. During the 2026-08-09 incident the app was
+    failing every query on a missing column and this would still have
+    reported "ok" -- a health check that can't fail isn't one. The count
+    query (rather than just SELECT 1) also catches a real table missing
+    or misnamed, which a bare connection check wouldn't."""
+    from sqlalchemy import func, select
+
+    from .db.engine import engine
+    from .db.models import MeetingPage
+
+    try:
+        async with engine.connect() as conn:
+            await conn.execute(select(func.count()).select_from(MeetingPage))
+    except Exception:
+        logger.exception("Health check failed: database unreachable.")
+        return JSONResponse({"status": "error", "reason": "database unreachable"}, status_code=503)
     return {"status": "ok"}
 
 

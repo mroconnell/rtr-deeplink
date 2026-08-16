@@ -200,7 +200,7 @@ entrypoint and the generic fallback's own fetches, including the headless
 escalation. See `BACKLOG.md`'s App-wide-audit section for the closure
 note.
 
-### WO-6 · Health checks that can fail — **1-2 hrs**
+### WO-6 · Health checks that can fail — **DONE 2026-08-16**
 
 **Problem.** `render.yaml:47,128` gate deploys on `/api/health`, and both
 handlers return a static `{"status": "ok"}` (`app/main.py:268-270`,
@@ -211,10 +211,25 @@ failing every query on a missing column and would still have reported `ok`.
 real table). Return 503 with a short reason on failure. Keep it cheap —
 Render polls this frequently.
 
-**Acceptance.** With the DB unreachable locally, the endpoint returns 503.
-After deploy, confirm in Render that the health check gate actually fails a
-deploy when the endpoint is unhealthy — an unverified gate is the same
-problem in a new costume.
+**Fixed.** Both handlers now open a real DB connection before reporting
+`ok` — the resolver runs `SELECT 1`, the Archive runs a cheap
+`SELECT count(*)` against `MeetingPage` (catching a missing/misnamed table,
+not just a dead connection). Either raises → `logger.exception` +
+`{"status": "error", "reason": "database unreachable"}` at 503. Both
+handlers do the DB import locally inside the function, matching the
+existing `/internal/schema-info` pattern (`archive/main.py`) rather than
+adding new module-level imports.
+
+**Acceptance.** `tests/test_health_endpoint.py` covers all four cases (both
+services × reachable/unreachable), full suite still green (789 passed). DB
+unreachability is simulated by swapping the module-level `engine` object
+for a stub whose `.connect()` raises — `AsyncEngine.connect` turned out to
+be a read-only attribute, so patching a method onto the real engine
+instance doesn't work; swapping the whole object does, since the handler
+re-imports `engine` from `.db.engine` on every call. **Still open, not
+done in this pass:** confirming in Render that the health-check gate
+actually fails a deploy when the endpoint reports unhealthy — that needs a
+real deploy to verify, not something a local session can confirm.
 
 ### WO-8 · Admin token out of the URL — **~45 min**
 
