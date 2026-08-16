@@ -342,6 +342,32 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     # docstring). Neither has reliable in-page jurisdiction text either.
     "docs.santabarbaraca.gov": KnownJurisdiction("Santa Barbara", "city", "CA"),
     "stream2.ci.concord.ca.us": KnownJurisdiction("Concord", "city", "CA"),
+    # Found 2026-08-16, same web-search method, a second batch (one
+    # researcher-supplied list of subdomain-naming conventions plus
+    # user-found examples) -- each domain confirmed live with a real
+    # ViewMeeting page resolving through hyland.py, none with reliable
+    # in-page jurisdiction text.
+    "docs.steamboatsprings.net": KnownJurisdiction("Steamboat Springs", "city", "CO"),
+    "online.cityofwhittier.org": KnownJurisdiction("Whittier", "city", "CA"),
+    "onbase.comptoncity.org": KnownJurisdiction("Compton", "city", "CA"),
+    # scgov.net confirmed via web search to be Sarasota County, FL's own
+    # domain -- no "Sarasota" string anywhere in the OnBase pages
+    # themselves (same "vendor page carries no branding of the customer
+    # who deployed it" pattern as every other entry in this block).
+    "egenda.scgov.net": KnownJurisdiction("Sarasota", "county", "FL"),
+    # muni.org confirmed via web search to be the Municipality of
+    # Anchorage, AK's own domain -- the one real meeting id checked here
+    # was a regional transportation-planning committee (AMATS), not a
+    # council meeting, but the domain itself is unambiguously Anchorage's,
+    # same reasoning as every domain-registry entry in this file.
+    "meetings.muni.org": KnownJurisdiction("Anchorage", "city", "AK"),
+    "ecm.cityofsantacruz.com": KnownJurisdiction("Santa Cruz", "city", "CA"),
+    # Real government meetings (confirmed: real video + real per-item
+    # agenda outline), but hosted on Hamilton County's Job & Family
+    # Services-specific OnBase instance rather than a general county
+    # portal -- still the same product/adapter, just a narrower agency
+    # scope than the other county-level entries in this file.
+    "hcjfsonbase.jfs.hamilton-co.org": KnownJurisdiction("Hamilton", "county", "OH"),
 }
 
 
