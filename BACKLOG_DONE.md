@@ -6,6 +6,86 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Easy-win triage waves 1 + 2 — 9 backlog items shipped (2026-08-16)
+
+Both waves scoped in BACKLOG.md's "Easy-win triage" section (a direct
+pass through the file to pull out genuinely low-risk, root-cause-known
+items) landed in two commits, full suite green throughout (782 pytest +
+29 JS tests by the end). Source entries for each item, struck through
+with a pointer to this entry, live wherever they originally were in
+BACKLOG.md/BACKLOG_DONE.md — not duplicated in full here.
+
+**Wave 1 — copy & data only:**
+1. Contact `mailto:` links (`app/templates/base.html`,
+   `archive/templates/base.html`) now point at
+   `ally@redtaperecordings.com` instead of `ryan@`.
+2. Transcription rate-limit 429 copy (`app/static/player.js`,
+   `archive/static/meeting_page.js`) rewritten to "You've hit the
+   transcript request limit for now — please try again in about an
+   hour." The harder half of the source ask — signed-in users bypassing
+   the limit entirely — is still open (slowapi's `@limiter.limit(...)`
+   applies unconditionally at decoration time, no existing per-request
+   bypass pattern in this codebase).
+3. `README.md` no longer says saved-search alert emails are "Not yet
+   built" — `archive/search_alerts.py` is real, merged, and cron-driven
+   via `.github/workflows/send-search-alerts.yml`.
+4. `netapps.ocfl.net` (Orange County, FL) registered in
+   `app/utils/jurisdiction_enrich.py`'s `_KNOWN_DOMAINS` — pure data, no
+   code change needed since `finalize_jurisdiction()` (called from
+   `archive/db/crud.py`'s `_find_or_create_page()`) already consults the
+   registry for every adapter's ingest.
+5. Swagit's `_extract_metadata()` (`app/platforms/swagit.py`) now
+   collapses internal whitespace (`re.sub(r"\s+", " ", raw_title)`)
+   after extracting `raw_title`, fixing a literal tab character from
+   Swagit's own `<title>` tag passing straight through into stored
+   titles (confirmed live on a real DFPS, TX page via `curl`).
+
+**Wave 2 — small, self-contained logic fixes:**
+6. `civicclerk.py`'s `resolve()` now falls back to
+   `jurisdiction_enrich.extract_jurisdiction_chain(page_text="",
+   html="", url=url)` whenever `eventLocation` yields no usable
+   jurisdiction string at all (not just a missing state) — confirmed
+   live on Los Altos Hills, CA (event 4567), new regression test added
+   to `tests/test_civicclerk.py`.
+7. `granicus.py`'s `resolve()` now appends a `transcript_warnings` entry
+   whenever a chosen caption track's segment count is exactly 36,000 —
+   Granicus's own undocumented per-file cue cap on very long meetings,
+   confirmed on 3 independent real customers (College Park GA, Coral
+   Gables FL, Marion County FL). New regression test in
+   `tests/test_granicus.py` uses a synthetic 36,000-cue VTT (a real one
+   would be an unwieldy fixture).
+8. New public `jurisdiction_enrich.validated_subdomain_extract()`
+   (thin wrapper around the existing tournament-tested
+   `_validated_subdomain_extract()`) replaces `granicus.py`'s
+   `_humanize_subdomain()`'s bare always-guess wordninja split. The
+   function now declines (returns `None`) instead of guessing when
+   neither the raw subdomain nor its wordninja split validates against
+   the Census place/county tables — fixes garbage like "sfwmd" →
+   "S Fw, MD" while keeping real cities ("fresno" → "Fresno, CA")
+   working. A trailing US state abbreviation is still stripped and
+   reattached as a ", ST" suffix independently of validation, same as
+   before (some subdomains encode it specifically to disambiguate a
+   nationally-ambiguous city name). Two new regression tests in
+   `tests/test_granicus.py` (one legit-city, one declined-acronym).
+   Not yet re-resolved against the ~15 already-archived rows with this
+   bug — the fix only changes future resolves.
+9. `/coverage`'s "Every place we've covered" table
+   (`archive/templates/coverage.html`) gained a frozen leftmost
+   row-number column (`position: sticky; left: 0`, lighter font-weight)
+   and clickable Government/Example meeting/Transcript headers that sort
+   the table client-side — new `archive/static/coverage.js` (repeat
+   click toggles ascending/descending; "Transcript" sorts by badge
+   presence) plus new CSS in `archive/static/style.css` (an explicit
+   `background` on the sticky column plus a manual striped-row overlay,
+   since Bootstrap's own `.table-striped` background wouldn't otherwise
+   reach an element pinned out of the normal row). Row numbers renumber
+   to the sorted display order rather than staying tied to the original
+   alphabetical rows, per the source entry's explicit scoping. Verified
+   live in a real browser (not just the test suite): seeded a local
+   Archive instance, confirmed sort-by-click reorders rows and
+   renumbers correctly, and confirmed the sticky column's computed
+   style (`position: sticky; left: 0px`) via direct JS inspection.
+
 ## `page.platform` never refreshed on re-ingest of an existing page — found while verifying TelVue, fixed, then closed 8 more "unknown" pages (2026-08-16)
 
 Found while checking whether TelVue's 3 known real meetings had actually
