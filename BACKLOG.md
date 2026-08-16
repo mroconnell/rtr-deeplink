@@ -3351,7 +3351,64 @@ one item below is resolved as a result.
   deliberately not attempted, given real cost/maintenance/risk
   tradeoffs none of them have been evaluated against yet.
 
-## Future refactor, deliberately deferred (2026-08-15)
+- **The transcription-request rate limit's copy is unfriendly/non-native-
+  reading and misses an obvious account-creation opportunity — and
+  logged-in users shouldn't be rate-limited at all, flagged 2026-08-15.**
+  Real copy, both duplicated copies of the fix from the already-closed
+  "misleading 429 message" entry above:
+  [app/static/player.js:468](app/static/player.js:468) and
+  [archive/static/meeting_page.js:383](archive/static/meeting_page.js:383)
+  — `"You've requested a few transcripts already this hour — please try
+  again a bit later."` Two real, separate asks:
+
+  1. **Rewrite the copy** — friendlier, more natural phrasing, and use the
+     moment productively rather than just telling an anonymous visitor to
+     wait.
+  2. **Signed-in users should never hit this limit at all**, and a
+     signed-out visitor who hits it should be prompted to sign in/create
+     an account instead of just told to wait.
+
+  **Confirmed root cause: the rate limit has zero concept of accounts
+  today, on either endpoint.** `limiter = Limiter(key_func=get_remote_address)`
+  ([app/main.py:85](app/main.py:85)) is pure per-IP limiting, unconditionally
+  applied via `@limiter.limit("5/hour")` on both
+  `/api/transcription/check-feasibility` and `/api/transcription/submit`
+  ([app/main.py:908-909](app/main.py:908),
+  [app/main.py:954-955](app/main.py:954)) — a signed-in Clerk session
+  changes nothing about which bucket a request counts against.
+
+  **The building block for "is this visitor logged in" already exists in
+  this exact file, proven and in active use nearby**:
+  `get_clerk_user_id(request)` ([app/utils/clerk_auth.py:68](app/utils/clerk_auth.py:68))
+  — cookie/header-based, no extra round trip once Clerk's JWKS cache is
+  warm, already imported into `app/main.py` and already used by the
+  save-meeting API routes right below these two endpoints
+  ([app/main.py:788-789](app/main.py:788)) to gate on sign-in state. Both
+  transcription routes already take `request: Request` as their first
+  parameter, so the check itself is cheap to add. **What's not yet solved:
+  slowapi's `@limiter.limit(...)` decorator applies unconditionally at
+  decoration time** — there's no existing pattern in this codebase for a
+  per-request conditional bypass (e.g. slowapi's own `exempt_when`, or
+  restructuring the limit check to run inside the function body instead of
+  the decorator). Worth checking slowapi's actual support for this rather
+  than assuming — not attempted or confirmed this pass.
+
+  **Real prior art directly relevant to the sign-in-CTA half of this,
+  worth reading before building — this exact UI spot already tried
+  something like this and deliberately backed out.** Per
+  `player.js`/`meeting_page.js`'s own comments and the "Second round" note
+  in the Archive-roadmap accounts entry above: this same transcribe-form
+  UI used to have an inline sign-in shortcut (a button opening Clerk's
+  modal), and it was **removed entirely** after three rounds of Clerk's
+  documented redirect options proved unreliable live — "per the user's
+  call once that saga made clear it wasn't worth the complexity there
+  specifically" (full saga in `BACKLOG_DONE.md`). A rate-limit-triggered
+  CTA isn't necessarily the same failure mode (a plain link to a sign-in
+  page behaves differently than a JS-driven modal-open shortcut), but
+  whoever builds this should read that history first rather than
+  re-discovering the same reliability problem — a plain link to a
+  dedicated `/sign-in` page (rather than reaching for the modal again)
+  may be the safer default given that track record.
 
 - **PrimeGov's private known-domain override can be absorbed into the
   enricher once the registry-in-enricher design ships — but leave it
