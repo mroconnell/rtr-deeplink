@@ -96,6 +96,21 @@ class CivicClerkAssetFinder(AssetFinder):
                 jurisdiction = jurisdiction_enrich.extract_jurisdiction_chain(
                     page_text="", html="", url=url
                 )
+            if not jurisdiction:
+                # Richer, costlier fallback: CivicClerk's own agenda file
+                # is fetchable as plain text (confirmed live on Los Altos
+                # Hills' real "Town of Los Altos Hills / City Council..."
+                # agenda) and is a stronger signal than the subdomain
+                # alone -- it doesn't depend on wordninja splitting a
+                # customer's subdomain cleanly. Only tried once the free
+                # subdomain-only tier above has already failed, since it
+                # costs two extra requests (the GetMeetingFile lookup,
+                # then the SAS-signed blob itself).
+                agenda_text = await self._fetch_agenda_text(session, event)
+                if agenda_text:
+                    jurisdiction = jurisdiction_enrich.extract_jurisdiction_chain(
+                        page_text=agenda_text, html="", url=url
+                    )
 
             video_url = media.get("videoUrl") or event.get("mediaStreamPath") or event.get("mediaSourcePathMp4")
             if not video_url:
@@ -256,6 +271,38 @@ class CivicClerkAssetFinder(AssetFinder):
             return None, None
         content = decode_vtt_bytes(raw)
         return parse_captions_by_extension(caption_url, content)
+
+    @staticmethod
+    async def _fetch_agenda_text(session: aiohttp.ClientSession, event: dict) -> Optional[str]:
+        """Best-effort plaintext of this event's real agenda file, when one
+        exists -- never raises, returns None on any failure. `publishedFiles`
+        entries carry a `GetMeetingFile(fileId=...,plainText=false)` URL by
+        default; swapping in `plainText=true` returns a small JSON
+        `{"blobUri": ...}` pointing to a SAS-signed Azure blob `.txt`
+        (confirmed live on Los Altos Hills, CA, event 4567, fileId 8983) --
+        fetched here as a second request, since the blob itself isn't JSON.
+        """
+        agenda_file = next(
+            (f for f in (event.get("publishedFiles") or []) if f.get("type") == "Agenda" and f.get("url")),
+            None,
+        )
+        if not agenda_file:
+            return None
+        plaintext_url = agenda_file["url"].replace("plainText=false", "plainText=true")
+        try:
+            async with session.get(plaintext_url, timeout=aiohttp.ClientTimeout(total=20)) as resp:
+                if resp.status != 200:
+                    return None
+                blob_info = await resp.json()
+            blob_uri = blob_info.get("blobUri")
+            if not blob_uri:
+                return None
+            async with session.get(blob_uri, timeout=aiohttp.ClientTimeout(total=20)) as resp:
+                if resp.status != 200:
+                    return None
+                return await resp.text()
+        except Exception:
+            return None
 
     @staticmethod
     async def _fetch_json_pair(session: aiohttp.ClientSession, url_a: str, url_b: str):

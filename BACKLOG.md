@@ -908,12 +908,15 @@ anything) to build against it.
   `extract_jurisdiction_chain(page_text="", html="", url=url)` as a
   fallback whenever `eventLocation` yields no usable city, confirmed
   live on this exact Los Altos Hills example (new regression test in
-  `tests/test_civicclerk.py`). **Path (2) still open, not built**:
-  fetching the agenda's plaintext blob when `publishedFiles` has an
-  "Agenda" entry and feeding its text through the same chain — a richer,
-  more robust signal (and real agenda text CivicClerk pages don't
-  otherwise surface today), but a bigger change (one extra request pair)
-  than wave 2's scope called for.
+  `tests/test_civicclerk.py`). ~~**Path (2) still open, not built**~~
+  **Fixed 2026-08-16 — full detail in `BACKLOG_DONE.md`.** New
+  `_fetch_agenda_text()` fetches the `publishedFiles` "Agenda" entry's
+  plaintext blob (`GetMeetingFile(...,plainText=true)` → `{"blobUri":
+  ...}` → the SAS blob itself) and feeds it through the same
+  `extract_jurisdiction_chain()`, tried only after path (1) has already
+  failed (costs two extra requests). New regression test uses a
+  synthetic subdomain/place name so it doesn't depend on path (1) also
+  failing to fire.
 
   ~~**New gap found 2026-08-14, live-testing `/meetings`' jurisdiction
   filter: searching "California" finds nothing, but "CA" works.**~~

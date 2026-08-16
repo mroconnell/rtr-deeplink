@@ -6,6 +6,42 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Jurisdiction validation gaps: "Saint"/"St.", ʻokina, CivicClerk agenda-text fallback (2026-08-16)
+
+Three follow-on fixes picked up after closing out the easy-win triage
+waves, same "root cause and fix direction already established" bar:
+
+- **`_table_lookup()` (`app/utils/jurisdiction_enrich.py`) rejected two
+  real, legitimately-spelled name families.** "Saint Paul" never matched
+  the Census table's own "St. Paul city" key — confirmed via a direct
+  grep of `places.csv`: this ONE prefix family (of the six
+  `_ABBREV_EXPANSIONS` covers) is stored abbreviated in the real table
+  (148 "St. " rows, zero "Saint " rows), the opposite of Fort/Mount/
+  North/South/East/West, all stored spelled out — so the existing
+  abbreviation-expansion tier (built for exactly the opposite direction)
+  never helped here. New `_contract_saints()` tries the reverse
+  ("Saint"/"Sainte" → "St."/"Ste.") as an additional candidate tier.
+  Separately, "Kauaʻi" (real Hawaiian ʻokina) never matched the table's
+  plain "Kauai" (no diacritic) — new `_strip_okina()` tier strips
+  ʻokina/apostrophe-like characters before lookup. Two new tests in
+  `tests/test_jurisdiction_enrich.py`. Full suite green (784 tests).
+- **CivicClerk's blank-`eventLocation` fallback (fixed same day, see
+  "Easy-win triage" above) only tried the free, URL-only tier of
+  `extract_jurisdiction_chain()` — the source entry's "path (2)"
+  remainder is now built too.** New `_fetch_agenda_text()`
+  (`app/platforms/civicclerk.py`) fetches the event's own
+  `publishedFiles` "Agenda" entry as plaintext (swap `plainText=false`
+  → `plainText=true` on the existing `GetMeetingFile` URL, which returns
+  `{"blobUri": ...}` pointing to a SAS-signed Azure blob, then fetches
+  that blob directly) and feeds the real text through the same chain —
+  a richer signal that doesn't depend on wordninja splitting a
+  customer's subdomain cleanly. Only tried once the free tier has
+  already failed, since it costs two extra requests. New regression
+  test (`test_resolve_falls_back_to_agenda_plaintext_when_subdomain_also_fails`)
+  uses a synthetic subdomain/place name specifically so it doesn't
+  depend on the free tier also failing to fire, keeping the two tests
+  independent. Full suite green (785 tests).
+
 ## Easy-win triage waves 1 + 2 — 9 backlog items shipped (2026-08-16)
 
 Both waves scoped in BACKLOG.md's "Easy-win triage" section (a direct
