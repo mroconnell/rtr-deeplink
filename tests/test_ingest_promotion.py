@@ -19,9 +19,10 @@ def _payload(
     agenda_items=None,
     transcript_language=None,
     jurisdiction="City of Test",
+    platform="granicus",
 ) -> dict:
     return {
-        "platform": "granicus",
+        "platform": platform,
         "source_url": source_url,
         "external_id": external_id,
         "title": "Test Meeting",
@@ -51,6 +52,37 @@ async def test_get_page_by_slug_includes_platform():
 
     page = await crud.get_page_by_slug((await crud.lookup_page_for_url(url))["slug"])
     assert page["platform"] == "granicus"
+
+
+async def test_reingest_updates_platform_on_an_existing_page():
+    # Real bug fixed 2026-08-16: a page's `platform` was only ever set at
+    # creation, never refreshed on re-ingest -- every other content field
+    # (title/video_url/segments/agenda_items/...) already did. Confirmed
+    # live: 3 real TelVue pages, first archived under platform="unknown"
+    # before app/platforms/telvue.py existed, stayed "unknown" forever
+    # even after building the adapter and re-ingesting them with real
+    # content. Different external_id/platform between the two payloads
+    # here mirrors that real scenario exactly -- the match falls through
+    # to the source_url_normalized fallback in _find_existing_page(),
+    # same as the real re-ingest did, not the external_id+platform path.
+    url = "https://example.com/unknown-then-telvue-meeting"
+    await crud.ingest_resolution(
+        _payload("unknown:fallback-1", url, platform="unknown", segments=[]), url
+    )
+    page = await crud.get_page_by_slug((await crud.lookup_page_for_url(url))["slug"])
+    assert page["platform"] == "unknown"
+
+    await crud.ingest_resolution(
+        _payload(
+            "telvue:real-1",
+            url,
+            platform="telvue",
+            segments=[{"start": 0.0, "end": 1.0, "text": "Call to order."}],
+        ),
+        url,
+    )
+    page = await crud.get_page_by_slug((await crud.lookup_page_for_url(url))["slug"])
+    assert page["platform"] == "telvue"
 
 
 async def test_correct_transcript_version_language_fixes_default_version():
