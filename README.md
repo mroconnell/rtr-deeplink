@@ -642,6 +642,76 @@ diarization pass (self-hosted `faster-whisper` is the same base WhisperX
 already builds real diarization on top of, via `pyannote.audio`) doesn't
 need its own schema change later.
 
+**Working the existing backlog locally, on a bigger model than the cloud
+worker can afford.** `worker/`'s `faster-whisper` model size is forced
+down to `"tiny"` by Render's 2GB worker plan (real OOM crashes on
+`"small"`, not a quality choice — see `worker/transcription_engine.py`'s
+own docstring), and `"tiny"`'s real accuracy against actual meeting audio
+has two confirmed failure modes documented in `BACKLOG.md`'s "On-demand
+transcription" section (a meaning-changing mistranscription, and a
+near-total transcription failure on a real stretch of English speech). A
+local Mac isn't under that ceiling, so `scripts/transcribe_backlog_
+locally.py` works the archived-but-untranscribed backlog
+(`/meetings?has_transcript=false`, ~209 meetings as of 2026-08-16) from
+here instead:
+
+```bash
+python scripts/transcribe_backlog_locally.py --dry-run
+python scripts/transcribe_backlog_locally.py --limit 5
+python scripts/transcribe_backlog_locally.py --model-size medium --limit 1
+python scripts/transcribe_backlog_locally.py --url "https://..."  # one specific meeting, bypassing the queue
+```
+
+- **Model size is auto-picked from this Mac's real total RAM** (`"small"`
+  at ≥16GB, `"medium"` at ≥32GB, `"base"` otherwise — see
+  `_pick_default_model_size()`'s own docstring for the exact reasoning),
+  not guessed — override with `--model-size`. `device="cpu"` stays correct
+  even here: `faster-whisper`'s CTranslate2 backend has no Apple Silicon
+  GPU acceleration, so this is still CPU inference, just on real
+  multi-core hardware instead of Render's box.
+- **Candidates** come from `GET /internal/transcription-backlog`
+  (`archive/main.py`, token-gated like every other `/internal/*` route) —
+  the any-platform, batch counterpart to `/internal/transcript-wanted`'s
+  YouTube-only queue, reusing `find_auto_transcription_candidate()`'s own
+  quality/cooldown checks (`archive/db/crud.py`) so this script and the
+  worker's own idle-time auto-generation never duplicate feasibility-probe
+  effort on the same page. `probe_duration()`/`is_plausible_meeting_
+  duration()` (the same 5-minute-to-14-hour bounds the worker already
+  uses) skip an infeasible candidate cheaply, before spending real
+  transcription time on it.
+- **No full download** — reuses `extract_chunk_audio()`
+  (`app/platforms/media_probe.py`) for direct remote extraction (an HTTP
+  Range fetch for a direct file, just the covering `.ts` segments for
+  HLS), same as the worker. **Chunking is kept** (900 seconds, same as
+  the worker's own `AUTO_TRANSCRIPTION_CHUNK_SIZE_SECONDS`) for a
+  different reason than the worker's real one — RAM isn't the local
+  constraint — see the script's own module docstring: it bounds each
+  individual `ffmpeg`/`ffprobe` call under `media_probe.py`'s shared
+  120-second subprocess timeout, proven safe at 900s in production but
+  untested at a full multi-hour single pass.
+- **Pushes with `"source": "transcribed"` explicitly** via
+  `POST /internal/ingest` (now accepts an optional `source` field,
+  default `"scraped"` for every other caller) — the same real AI-transcript
+  disclaimer the worker's own output gets, not a silent "scraped" (i.e.
+  authoritative government caption) mislabel. Dedup is scoped by `source`
+  too, so a repeat run against an already-transcribed meeting is a no-op
+  rather than a duplicate version.
+- **Never touches `transcription_jobs`/`claim_next_chunk()`** — those are
+  explicitly single-worker-process-safe only (see `claim_next_chunk()`'s
+  own docstring), so this script discovers/pushes purely over the same
+  token-gated `/internal/*` HTTP surface `scripts/fetch_youtube_
+  transcripts.py` already established, and can safely run at the same
+  time as the real worker.
+
+Live-verified 2026-08-16 against a real backlog meeting (Welland/Elgin
+County, ON — `welland-2026-01-27-county-council-meeting`, a real 783-second
+eScribe recording with no prior transcript): `--model-size small` produced
+102 real, coherent segments (language detected `en`) in 113 seconds,
+pushed successfully, and the AI TRANSCRIPT disclaimer + real timestamped
+segments (starting "We're live." at 0:00, ending with real adjournment/
+motion dialogue) are live on the actual public page. The meeting no
+longer appears in a follow-up `/internal/transcription-backlog` call.
+
 ## Accounts (Clerk)
 
 Shipped 2026-08-11, phase 1: sign in and save meetings/searches to your
