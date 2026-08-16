@@ -299,7 +299,20 @@ async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) 
     existing one) from a resolver push. `payload` is the resolver's
     ResolvedMeeting.model_dump() shape: platform, source_url, external_id,
     title, date, jurisdiction, video_url, video_format, segments,
-    agenda_items, transcript_language, transcript_warnings.
+    agenda_items, transcript_language, transcript_warnings. `source` is an
+    optional extra key (not part of ResolvedMeeting itself -- Archive-only)
+    defaulting to "scraped" when absent, same as every existing caller
+    (the resolver's own push, bulk_ingest.py, fetch_youtube_transcripts.py
+    all omit it). scripts/transcribe_backlog_locally.py is the one real
+    caller that sets it to "transcribed" explicitly -- without this,
+    locally-Whisper-transcribed content pushed through this same endpoint
+    would silently get labeled "scraped" (a real government caption),
+    losing the meeting_page.html disclaimer and other source=="transcribed"
+    -gated behavior real self-transcribed content already gets when the
+    worker writes it directly (see report_chunk_result() below) -- a
+    hallucination-risk mislabeling this repo has already flagged as a real
+    reputational concern (BACKLOG.md's "tiny" quality findings), not a
+    cosmetic one.
 
     Also handles promoting/demoting the page's default TranscriptVersion
     when warranted -- see _is_real_improvement() and
@@ -310,6 +323,7 @@ async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) 
     """
     segments = payload.get("segments") or []
     agenda_items = payload.get("agenda_items") or []
+    source = payload.get("source") or "scraped"
 
     async with async_session() as session:
         page = await _find_or_create_page(session, payload, input_url_normalized)
@@ -329,12 +343,18 @@ async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) 
             language = payload.get("transcript_language")
             content_hash = _content_hash(segments)
 
+            # Dedup is scoped to the same `source` value too -- otherwise
+            # a "transcribed" push could never dedup against an earlier
+            # identical "transcribed" push (it would only ever check
+            # against "scraped" rows), creating a fresh duplicate version
+            # every time the same meeting gets re-transcribed with the
+            # same result.
             duplicate = (
                 await session.execute(
                     select(TranscriptVersion).where(
                         TranscriptVersion.meeting_page_id == page.id,
                         TranscriptVersion.language == language,
-                        TranscriptVersion.source == "scraped",
+                        TranscriptVersion.source == source,
                         TranscriptVersion.content_hash == content_hash,
                     )
                 )
@@ -349,7 +369,7 @@ async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) 
                 version = TranscriptVersion(
                     meeting_page_id=page.id,
                     language=language,
-                    source="scraped",
+                    source=source,
                     is_default=any_version is None,
                     segments=segments,
                     transcript_warnings=payload.get("transcript_warnings") or [],
@@ -450,6 +470,73 @@ async def list_youtube_pages_missing_transcripts() -> list[dict]:
             }
             for page in pages
         ]
+
+
+async def list_transcription_backlog_candidates(limit: Optional[int] = None) -> list[dict]:
+    """Oldest-archived-first MeetingPages missing a good transcript, across
+    ANY platform -- the batch counterpart to find_auto_transcription_
+    candidate() (which only ever returns one candidate at a time, for the
+    worker's own idle-time single-job auto-generation loop) and to
+    list_youtube_pages_missing_transcripts() (YouTube-only, feeding the
+    real-caption *fetch* path in scripts/fetch_youtube_transcripts.py,
+    strictly better than an audio transcription when real captions
+    exist). Consumed by scripts/transcribe_backlog_locally.py, which runs
+    on a local Mac (no Render 2GB ceiling) and works a real batch per
+    invocation rather than one page every AUTO_GENERATION_CHECK_INTERVAL_
+    SECONDS.
+
+    Applies the exact same _has_good_transcript() quality check and
+    _in_auto_transcription_cooldown() escalating-backoff skip the worker's
+    own auto-generation candidate search uses, so this script and the
+    worker's idle-time path never duplicate feasibility-probe effort on
+    (or fight over) the same recently-failed page.
+
+    Not platform-restricted (unlike list_youtube_pages_missing_
+    transcripts()): the caller extracts audio directly from whatever
+    video_url a fresh resolve returns (via app/platforms/media_probe.py's
+    extract_chunk_audio(), an HTTP Range/HLS-segment pull, not a full
+    download), which works the same way regardless of which platform
+    found that URL. The one real exception is a YouTube-backed page
+    (video_format == "youtube", a youtube.com/embed/{id} URL, not a
+    direct-streamable one) -- included here rather than filtered out
+    server-side, since a plausible-in-the-future audio-fallback path for
+    those (see BACKLOG.md's "Whisper fallback for YouTube videos with no
+    captions at all") is a different, still-unbuilt mechanism (yt-dlp
+    audio download, not direct URL extraction); the caller filters these
+    out cheaply using the same video_format field returned here, rather
+    than this function silently dropping a real candidate a future caller
+    might handle differently.
+
+    Full Python-side scan over every page, same "fine at today's scale,
+    revisit at real scale" reasoning as find_auto_transcription_candidate()
+    and list_pages()'s own keyword search -- this is a manually-invoked
+    local batch tool, not a hot request path.
+    """
+    async with async_session() as session:
+        pages = (await session.execute(select(MeetingPage).order_by(MeetingPage.created_at.asc()))).scalars().all()
+
+        candidates = []
+        for page in pages:
+            if await _has_good_transcript(session, page.id):
+                continue
+            if await _in_auto_transcription_cooldown(session, page.id):
+                continue
+            candidates.append({
+                "slug": page.slug,
+                "title": page.title,
+                "platform": page.platform,
+                "external_id": page.external_id,
+                "source_url_normalized": page.source_url_normalized,
+                "video_url": page.video_url,
+                "video_format": page.video_format,
+                "jurisdiction": page.jurisdiction,
+                "date": page.date,
+                "created_at": page.created_at.isoformat(),
+            })
+            if limit is not None and len(candidates) >= limit:
+                break
+
+    return candidates
 
 
 async def get_page_by_slug(slug: str) -> Optional[dict]:
