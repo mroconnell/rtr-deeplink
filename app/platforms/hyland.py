@@ -9,6 +9,7 @@ import aiohttp
 from .base import AssetFinder
 from .media_scan import is_hls_url, media_type, scan_media_urls
 from .models import ResolvedMeeting, TranscriptSegment
+from .youtube import YouTubeAssetFinder
 from ..utils import jurisdiction_enrich
 
 # Hyland "OnBase Agenda Online" -- confirmed 2026-08-16 across 5 real
@@ -70,10 +71,16 @@ from ..utils import jurisdiction_enrich
 # name} - {date time} - OnBase Agenda Online</title>`, used as this
 # version's title/date source instead.
 #
-# Common to all 5 samples: no caption/transcript track of any kind was
-# found on any JW Player config (no `tracks:` key at all, unlike TelVue)
-# -- this platform is video(+agenda)-only until a real example says
-# otherwise. Jurisdiction: none has reliable in-page jurisdiction text
+# Every JW-Player-backed customer found so far has no caption/transcript
+# track of any kind (no `tracks:` key at all, unlike TelVue) -- but a real
+# 2026-08-16 example (Municipality of Anchorage, AK) confirms this vendor
+# template also supports a plain YouTube iframe embed as the player
+# instead of JW Player, per its own JS comment ("JWPlayer.cshtml or
+# YoutubePlayer.cshtml") -- `_find_video()` falls back to
+# `YouTubeAssetFinder` delegation whenever no direct media-file URL is
+# found, which also picks up a real transcript for that customer, a
+# capability no JW-Player customer has at all. Jurisdiction: none has
+# reliable in-page jurisdiction text
 # (Sacramento's <title> is the closest, one unconfirmed-to-generalize
 # example) -- same reasoning as this file's LIMS/lookup_by_domain()
 # precedent, so every known domain is registered in
@@ -157,6 +164,24 @@ class HylandAssetFinder(AssetFinder):
                 )
 
             video_url, video_format = self._find_video(html, url)
+            segments, transcript_language, transcript_warnings = [], None, []
+            if not video_url:
+                # Found 2026-08-16 on a real Municipality of Anchorage, AK
+                # meeting: this vendor's own player template supports
+                # either a JW Player config (every other confirmed
+                # customer so far) or a plain YouTube iframe embed
+                # ("JWPlayer.cshtml or YoutubePlayer.cshtml", per the
+                # page's own JS comment) depending on customer config --
+                # delegating also picks up a real transcript for free,
+                # something no JW-Player customer has ever had.
+                yt_video_id = YouTubeAssetFinder.extract_video_id(html)
+                if yt_video_id:
+                    youtube_delegated = await YouTubeAssetFinder.resolve_video_id(yt_video_id, source_url=url)
+                    video_url = youtube_delegated.video_url
+                    video_format = youtube_delegated.video_format
+                    segments = youtube_delegated.segments
+                    transcript_language = youtube_delegated.transcript_language
+                    transcript_warnings = list(youtube_delegated.transcript_warnings)
             event_points = self._parse_event_points(html)
 
             title, date, agenda_items, agenda_link = None, None, [], None
@@ -206,9 +231,12 @@ class HylandAssetFinder(AssetFinder):
             jurisdiction=jurisdiction,
             video_url=video_url,
             video_format=video_format,
+            segments=segments,
             agenda_items=agenda_items,
             agenda_link=agenda_link,
+            transcript_language=transcript_language,
             video_warnings=video_warnings,
+            transcript_warnings=transcript_warnings,
         )
 
     @staticmethod
