@@ -83,9 +83,9 @@ to match `render.yaml`.
 
 `tests/` covers the platform-independent utilities (`app/utils/vtt_parser.py`,
 `app/platforms/media_scan.py`, `app/platforms/base.py`'s `detect_platform`)
-directly, and exercises Granicus/Legistar/CivicPlus/CivicClerk/Swagit/
-CA Legislature/PrimeGov/YouTube/Viebit/eScribe end-to-end against real fixture files saved under
-`tests/fixtures/` (fetched live from real government sites, not synthetic
+directly, and exercises every adapter in the "Supported platforms" table
+below end-to-end against real fixture files saved under `tests/fixtures/`
+(fetched live from real government sites, not synthetic
 — see each fixture directory for where it came from; `tests/fixtures/
 civicplus/README.md` explains the one exception, hand-built to match a
 real site's confirmed structure since that live site has since changed).
@@ -754,10 +754,12 @@ couldn't cook this one" (new — fires when a transcription job gives up
 after repeated chunk failures). The resolver gained its own transactional
 Resend-send capability for this (`app/main.py`'s `_resend_send()` +
 branded template, duplicated from `archive/utils/email.py`'s equivalent)
-— previously it only ever upserted Resend audience contacts. **Not yet
-built**: saved-search alert emails (the doc's sixth entry, "People are
-talking about…") — a real new feature (match detection + a per-alert
-unsubscribe token), tracked separately in `BACKLOG.md`.
+— previously it only ever upserted Resend audience contacts. Saved-search
+alert emails (the doc's sixth entry, "People are talking about…") are
+also live: `archive/search_alerts.py`, run daily by
+`.github/workflows/send-search-alerts.yml` via
+`scripts/send_search_alerts.py`, matches new results against saved
+searches and sends a per-alert email with its own unsubscribe token.
 
 **Env vars** — see `.env.example` / `archive/.env.example` for the full,
 current list and setup notes. `CLERK_PUBLISHABLE_KEY` + `CLERK_SECRET_KEY`
@@ -860,6 +862,9 @@ platform share the same page/API structure. Detection lives in
 | CHAMP/ChampDS | `champds.py` | Confirmed live 2026-08-13 against 6 independent real customers via a plain, unauthenticated JSON API (`playapi.champds.com/{customer}/event/{id}`). Only the direct-MP4 `MediaInfo.DownloadURL` case is wired up to play (2 of 6 customers) — the majority-case `VOD2` HLS URL is deliberately withheld even when present, since it's gated by a strict `Referer: https://play.champds.com/` check this site can't satisfy (confirmed live via direct `curl`) | Agenda-only: `Agenda.Attachments`, preferring a `.pdf`-shaped one. No real captions confirmed on any of the 6 customers checked |
 | IQM2 | `iqm2.py` | Confirmed live 2026-08-13 against Atlanta, GA — doesn't host video itself; a past meeting's real "Video" link carries a plain static `onclick="OpenWindow('/Citizens/SplitView.aspx?Mode=Video&MeetingID={id}...')"` (a future/no-recording meeting's link stays a bare unpopulated placeholder, the signal used to tell the two apart), and that page's raw static HTML carries a literal `<!-- MEDIA URL: ... -->` HTML comment with a direct Granicus HLS URL — no JS execution needed, a plain `curl` sees it, though the stream URL itself needs a real (non-default) User-Agent. Santa Clara County, CA is a second real confirmed customer — smaller commissions/committees checked there often have no video link populated, but its flagship Board of Supervisors meetings do (confirmed live 2026-08-14), so this is a real body-type-dependent gap on that instance, not a limitation of this adapter | Real per-item timestamps: the same per-meeting page, requested with `Target=Detail&CssClass=AgendaOutline&Mode=Video&Frame=Nothing`, renders every agenda item as a real `SetPosition({seconds})` onclick alongside the actual item text (procedural entries and full ordinance/resolution text alike) |
 | ClerkBase (clerkshq.com) | `clerkbase.py` | Confirmed live 2026-08-14 against one real customer (Yellow Springs, OH) — doesn't host video itself. The landing page's static HTML (no JS execution needed) embeds the real agenda-document URL and title as plain JS variables (`window.autoOpenDocUrl`/`autoOpenDocTitle`); that document (a raw MS Word HTML export, also directly linkable on its own) embeds the video as an `opengovideo.com` wrapper link straight to a YouTube embed — delegates to `YouTubeAssetFinder`, `platform` stays `"youtube"` (same PrimeGov/CivicWeb pattern). Jurisdiction comes from the URL's own `{Name}-{ST}` client-site slug (a ClerkBase product convention), not page text | Whatever YouTube provides. Only one real customer checked so far — a second sample would confirm how general the landing-page/document-page shapes really are |
+| TelVue | `telvue.py` | Confirmed live 2026-08-16 against a real Ashland, OR Planning Commission meeting on `videoplayer.telvue.com` (also reachable via a `peg.tv` shortlink, a plain HTTP redirect to the same page — no separate platform). Everything needed is a plain JSON `Player.setupData['playlist']` array embedded in the static HTML, no JS execution needed — a real `file:` HLS URL plus a `tracks:` list | Real captions confirmed present and high-quality on the one sample checked — WebVTT with `<v Speaker N>` voice tags, stripped by a TelVue-specific regex (`parse_vtt()` doesn't strip these on its own). A separate `chapters.vtt` track gives real start/end agenda-item ranges |
+| Seattle Channel (seattlechannel.org) | `seattlechannel.py` | Confirmed live 2026-08-14 against two independent real meetings, scoped narrowly to the `/videos?videoid={id}` URL shape (the older feed-style index page and a bare `/videos` with no id are deliberately left to `generic_fallback.py`). The primary video's JW Player instance is always the fixed element id `vidPlayer` — HTML is sliced to that specific block, bounded by the following `.on('complete', ...)` call, so an unrelated "related video" embedded further down the same page is never picked up by mistake | Real SRT captions, plus real per-item `data-seek` timestamps from `<a class="seekItem">` elements, turned into `agenda_items` |
+| Hyland "OnBase Agenda Online" | `hyland.py` | Confirmed live 2026-08-16 across 26 real customer domains, spanning two distinct real UI versions of the same vendor product. Version A's separate `/Meetings/ViewMeetingAgenda` endpoint and Version B's `/Documents/ViewAgenda` endpoint (a converted-Word-document render) are both plain server-rendered HTML, no JS execution needed — `resolve()` tries Version A first and falls back to Version B only when that yields nothing. Falls back to `YouTubeAssetFinder` delegation when no direct JW Player media file is found (one real customer's page uses a YouTube embed instead) | Real timestamped `agenda_items` on customers with video: each version's own agenda outline embeds a `loadAgendaItem({id})` link per item, joined against the main page's inline `itemEventPoints` video-seek-offset map on that same id. No caption/transcript track of any kind has been found on any JW-Player-backed customer — only the YouTube-delegated one has a real transcript |
 
 **Every URL `detect_platform()` doesn't recognize** goes to
 `generic_fallback.py`'s `GenericFallbackAssetFinder`, registered under

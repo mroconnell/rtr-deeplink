@@ -32,12 +32,13 @@ together as one small PR; none of these touch branching logic.
    (search "Docs hygiene — a live, confirmed example of drift").
    `README.md` (~line 754) — `archive/search_alerts.py` is real, merged,
    cron-driven.
-4. Two confirmed jurisdiction-registry gaps — Orange County, FL (search
-   "Can we mark this domain/url as Orange County, FL") and Maricopa
-   County, AZ's DataBank Cloud OnBase instance (search "Hyland \"221
-   Agenda Online\""). `app/utils/jurisdiction_enrich.py`'s
-   `_KNOWN_DOMAINS` dict (~line 284) — pure data, `finalize_jurisdiction()`
-   already consults this registry for every adapter.
+4. One remaining confirmed jurisdiction-registry gap — Orange County, FL
+   (search "Can we mark this domain/url as Orange County, FL").
+   `app/utils/jurisdiction_enrich.py`'s `_KNOWN_DOMAINS` dict (pure data,
+   `finalize_jurisdiction()` already consults this registry for every
+   adapter). (This item's other half — Maricopa County, AZ's DataBank
+   Cloud OnBase instance — is done: registered as part of the
+   `hyland.py` adapter build, see `BACKLOG_DONE.md`.)
 5. Swagit's `raw_title` carries a literal tab character straight through
    into stored titles, confirmed via real `curl` (search "a literal tab
    character embedded in Swagit's own source"). `app/platforms/swagit.py:306`.
@@ -1095,39 +1096,47 @@ unusually wide, and the missing auto-scroll toggle on archived pages~~
   the opaque token is even a stable per-customer identifier or rotates
   per-video) before writing an enumeration script, not a quick reuse.
 
-- **`page.platform` never gets updated on a re-ingest of an existing
-  page — found 2026-08-16 while checking whether TelVue's 3 known real
-  meetings had actually come off the "unknown platform" list after
-  building the new adapter.** They hadn't, even though re-ingesting them
-  demonstrably worked (real segments/agenda_items/video_url all updated
-  correctly, confirmed live on `/m/august-11-2026-ashland-planning-commission`
-  and the other two). Root cause, confirmed reading `archive/db/
-  crud.py`'s `_find_or_create_page()`: the `else:` branch (updating an
-  *existing* matched page) refreshes `title`/`date`/`jurisdiction`/
-  `video_url`/`video_format`/`agenda_items`/`video_warnings`/
-  `agenda_link`/`updated_at` -- every content field a later, better
-  resolve could improve -- but never reassigns `page.platform`, so it
-  stays frozen at whatever value the page had on first creation. Content
-  is genuinely fixed; the platform *label* just silently lies about it
-  forever after. Likely affects every page whose adapter was added/fixed
-  *after* the page was first archived under `platform="unknown"` (or any
-  wrong prior platform value), not just these 3 -- worth checking `/
-  internal/pages/all-urls` again after a fix to see how many actually
-  update. Fix should mirror the existing truthy-gated pattern already
-  used for every other field just above it in the same function
-  (`page.platform = payload.get("platform") or page.platform`) --
-  straightforward, not yet done.
+  **Promising untried alternative, 2026-08-16**: the Hyland adapter's own
+  host-discovery pass (see `BACKLOG_DONE.md`) found that a plain web
+  search for a platform's distinctive URL path/host string reliably
+  surfaces real customers when CDX enumeration is blocked or the tenant
+  identifier isn't a readable name — exactly this platform's situation.
+  `site:.gov inurl:videoplayer.telvue.com` / `site:.gov inurl:peg.tv`
+  hasn't been tried yet; see `~/Documents/rtr-business/research/
+  HYLAND_DISCOVERY.md` for the full method and a per-platform
+  probability-of-success table (TelVue rated high).
+
+~~**`page.platform` never gets updated on a re-ingest of an existing
+  page.**~~ **Fixed 2026-08-16 — full detail, including a real
+  unrelated production deploy incident hit right after merging, in
+  `BACKLOG_DONE.md`.**
+
+- **`riversidecountyca.iqm2.com` stays `platform="unknown"` despite
+  `iqm2.py` clearly having an adapter for `iqm2.com` domains — found
+  2026-08-16 doing backlog hygiene, not yet root-caused.** This exact
+  URL was already re-ingested once via the tier-3 feeder (see the
+  `page.platform` entry in `BACKLOG_DONE.md`, PR #70) and a fresh
+  `/internal/pages/all-urls` pull still shows it `unknown`. Read
+  `scripts/feed_tier3_auto_transcription.py`'s own push logic
+  end-to-end — it does call `detect_platform()`/`get_finder()` correctly
+  and sends `result.model_dump()` (which includes a real `platform`
+  field) to `/internal/ingest`, so the obvious "script bug" hypothesis
+  doesn't hold up by inspection alone. Needs real live debugging (check
+  the actual DB row / re-trigger and inspect the exact payload sent) to
+  find the real cause, not another guess -- flagged here rather than
+  guessed at further.
 
 ~~**Hyland "OnBase Agenda Online" — new platform, not supported at all
   today.**~~ **Built 2026-08-16 — new `app/platforms/hyland.py`, full
-  detail in `BACKLOG_DONE.md`.** Confirmed live against all 3 known
-  customers (Tucson AZ, Maricopa County AZ, Sacramento County CA): real
-  title/date from a previously-misdiagnosed AJAX endpoint (no headless
-  browser needed after all, overturning this entry's own earlier
-  conclusion), real timestamped `agenda_items` on the 2 customers with
-  video (joining that same AJAX outline against the main page's inline
-  `itemEventPoints` map), and real jurisdiction via 3 new
-  `_KNOWN_DOMAINS` entries.
+  detail in `BACKLOG_DONE.md`.** Grew same-day from the initial 3
+  customers (Tucson AZ, Maricopa County AZ, Sacramento County CA) to
+  **26 real customer domains** across two distinct UI versions, plus
+  YouTube-embed delegation for customers whose player isn't JW Player —
+  see `BACKLOG_DONE.md`'s "expanded from 3 to 23" entry (title now
+  understates the final count; not renamed so the entry's own history
+  stays legible) for the full discovery-methodology writeup, and
+  `~/Documents/rtr-business/research/HYLAND_DISCOVERY.md` for the
+  reusable enumeration/search playbook this produced.
 
 - **IQM2 (`app/platforms/iqm2.py`) — Riverside County, CA's real title/
   jurisdiction extraction should work by inspection but doesn't in prod,
