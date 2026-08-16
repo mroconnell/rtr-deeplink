@@ -175,6 +175,21 @@ def detect_platform(url: str) -> str:
         # caption hosts' response to Render's specific cloud IP is
         # genuinely unconfirmed -- see aurora.py's own module docstring.
         return "aurora_tv"
+    if "/meetings/viewmeeting" in path:
+        # Hyland "OnBase Agenda Online" -- confirmed live 2026-08-16 across
+        # 3 real customer domains (tucsonaz.hylandcloud.com, mccobagenda.
+        # databankcloud.com, agendanet.saccounty.gov), each a different
+        # reseller/hosting domain AND a different product-name path segment
+        # ("221agendaonline"/"AgendaOnline"/"BoardofSupervisors") serving
+        # the identical vendor template -- an earlier version of this check
+        # required "agendaonline" in the path too, which real-world-tested
+        # false on Sacramento's `/BoardofSupervisors/Meetings/ViewMeeting`
+        # shape (caught via bulk_ingest.py --dry-run against the real URL,
+        # not by inspection). `/Meetings/ViewMeeting` alone, confirmed
+        # identical and specific across all 3, is the right fingerprint --
+        # see hyland.py's own module docstring for the rest of the
+        # investigation.
+        return "hyland"
     return "unknown"
 
 

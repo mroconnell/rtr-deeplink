@@ -327,6 +327,15 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     # up as a full override in primegov.py, not just a missing-state fill
     # -- see known_jurisdiction_display() below.
     "slc.primegov.com": KnownJurisdiction("Salt Lake City", "city", "UT", strength="authoritative"),
+    # Hyland "OnBase Agenda Online" -- confirmed live 2026-08-16, none of
+    # the 3 known customer domains carries reliable in-page jurisdiction
+    # text (Maricopa/Tucson have none at all; Sacramento's happens to sit
+    # in a generic sitewide <title>, one unconfirmed-to-generalize sample)
+    # -- see hyland.py's own module docstring for the full page-structure
+    # investigation.
+    "tucsonaz.hylandcloud.com": KnownJurisdiction("Tucson", "city", "AZ"),
+    "mccobagenda.databankcloud.com": KnownJurisdiction("Maricopa", "county", "AZ"),
+    "agendanet.saccounty.gov": KnownJurisdiction("Sacramento", "county", "CA"),
 }
 
 
