@@ -11,6 +11,7 @@ from langdetect import detect as detect_language, LangDetectException
 from .base import AssetFinder
 from .generic_fallback import scan_page_for_video_evidence
 from .models import ResolvedMeeting, TranscriptSegment
+from .youtube import YouTubeAssetFinder
 from ..utils import jurisdiction_enrich
 from ..utils.vtt_parser import parse_vtt, is_likely_garbled, decode_vtt_bytes
 
@@ -96,7 +97,37 @@ class EscribeAssetFinder(AssetFinder):
                 scanned_url, scanned_format, scanned_link, scanned_recognized = (
                     scan_page_for_video_evidence(html, url)
                 )
-                if scanned_url or scanned_link:
+                if scanned_format == "youtube":
+                    # Real gap found + fixed 2026-08-16: scan_page_for_video_evidence()
+                    # deliberately returns just the embed URL for a YouTube hit (see
+                    # its own docstring -- "an opting-in adapter already has its own
+                    # better metadata"), never fetching captions itself. Every other
+                    # caller that reaches this tier (generic_fallback.py's own
+                    # resolve, primegov.py, civicweb.py, clerkbase.py) follows up
+                    # with a real YouTubeAssetFinder.resolve_video_id() call for
+                    # captions -- this adapter never did, so real, confirmed
+                    # YouTube-embedded meetings sat with segments=[] even though a
+                    # caption fetch (this app's own residential-IP advantage over
+                    # Render's blocked cloud IP) could reach them. video_id is
+                    # always the last path segment of the embed URL returned above.
+                    video_id = scanned_url.rsplit("/", 1)[-1]
+                    yt_resolved = await YouTubeAssetFinder.resolve_video_id(video_id, source_url=url)
+                    video_url, video_format = yt_resolved.video_url, yt_resolved.video_format
+                    segments = yt_resolved.segments
+                    transcript_language = yt_resolved.transcript_language
+                    transcript_warnings.extend(yt_resolved.transcript_warnings)
+                    video_warnings.extend(yt_resolved.video_warnings)
+                    best_effort = True
+                    video_warnings.append(
+                        "This city's eScribe setup has no recognized video integration, "
+                        "but a general scan of the page found what looks like the "
+                        "video -- treat it as best-effort, not confirmed."
+                    )
+                    # Prefer eScribe's own page metadata over YouTube's channel/video
+                    # title -- same reasoning as primegov.py's identical override.
+                    title = title or yt_resolved.title
+                    date = date or yt_resolved.date
+                elif scanned_url or scanned_link:
                     video_url, video_format = scanned_url, scanned_format
                     video_link, video_link_recognized = scanned_link, scanned_recognized
                     best_effort = True

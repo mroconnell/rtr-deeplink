@@ -1,0 +1,68 @@
+# Feeds 12 "tier 3" pages every 6 hours into the worker's existing
+# auto-transcription idle-time mechanism (worker/main.py's
+# maybe_generate_auto_job(), see BACKLOG_DONE.md's 2026-08-09 entry) --
+# same pattern as feed-granicus-transcription.yml, for a different
+# platform mix (escribe/iqm2/civicclerk/etc pages found 2026-08-16 to
+# have a real video but no captions and no agenda -- see
+# scripts/feed_tier3_auto_transcription.py's own docstring for why this
+# needed a separate script rather than reusing feed_granicus_
+# auto_transcription.py's bulk_ingest.py call directly).
+#
+# Runs on GitHub's own runners for the same reason feed-granicus-
+# transcription.yml does -- none of these platforms have YouTube's
+# cloud-IP caption-fetch blocking, so there's no residential-IP
+# requirement here.
+#
+# The queue (scripts/tier3_auto_transcription_queue.txt) is 466 pages
+# confirmed live 2026-08-16 to have a real video_url via a direct
+# re-resolve (not just an archived-URL match) -- see
+# rtr-business/research/video_hosting_catalog_combined.csv for the full
+# per-URL data this queue was built from.
+#
+# Batch size (12/6h) reuses feed-granicus-transcription.yml's cadence as
+# a starting default, not independently derived from this queue's real
+# median video length -- see feed_tier3_auto_transcription.py's own
+# docstring. Cron minute (:43) deliberately offset from the Granicus
+# job's :13 so the two scheduled jobs don't land in the same minute
+# (same reasoning as daily-report.yml / send-search-alerts.yml's offset).
+#
+# Requires the same two repo secrets feed-granicus-transcription.yml
+# already uses (Settings -> Secrets and variables -> Actions):
+#   ARCHIVE_BASE_URL     -- the Archive service's own base URL
+#   ARCHIVE_INGEST_TOKEN -- matching whatever's set on that Render service
+name: Feed tier 3 auto-transcription queue
+
+on:
+  schedule:
+    - cron: "43 */6 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  feed:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Feed the next batch
+        env:
+          ARCHIVE_BASE_URL: ${{ secrets.ARCHIVE_BASE_URL }}
+          ARCHIVE_INGEST_TOKEN: ${{ secrets.ARCHIVE_INGEST_TOKEN }}
+        run: python scripts/feed_tier3_auto_transcription.py
+
+      - name: Commit updated queue state
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add scripts/tier3_auto_transcription_queue.txt
+          git diff --cached --quiet && echo "No queue change to commit." && exit 0
+          git commit -m "Advance tier 3 auto-transcription queue [skip ci]"
+          git push

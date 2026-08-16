@@ -6,6 +6,55 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## eScribe never delegated to YouTube for captions on its own found-video pages (2026-08-16)
+
+Found while cataloguing where video actually lives for ~1,200 "zero
+transcript" URLs accumulated across this and a prior session (real
+resolve re-checks, not archived-URL guesses — see
+`rtr-business/research/video_hosting_catalog_combined.csv`, built by a
+new `scripts/catalog_video_hosting.py`). 51 of the 269 eScribe pages in
+that "no transcript, agenda items, or agenda link found" bucket turned
+out to have a real, live YouTube embed — `escribe.py`'s own
+`scan_page_for_video_evidence()` backstop tier had already found the
+video, but `platform` stayed `"escribe"` (not `"youtube"`), which is why
+grepping the dry-run log's `platform=X` text for `youtube` (the first,
+cheaper check tried) undercounted this to zero — only re-resolving each
+URL directly and reading `result.video_url`/`video_format` surfaced it.
+
+Root cause, confirmed reading the source: `scan_page_for_video_evidence()`
+(`generic_fallback.py`) is deliberately detection-only — its own
+docstring says so ("the YouTube tier returns the embed URL directly
+rather than running YouTubeAssetFinder's metadata resolve, since an
+opting-in adapter already has its own better metadata"). Every *other*
+caller that reaches this tier already does the follow-up call itself:
+`generic_fallback.py`'s own `resolve()`, `primegov.py`, `civicweb.py`,
+`clerkbase.py` all call `YouTubeAssetFinder.resolve_video_id()` once they
+have a video id. `escribe.py` was the one adapter that took the detected
+embed URL as final without ever fetching captions for it — not a
+timing/network issue, a genuine missing code path.
+
+**Fixed**: `escribe.py`'s backstop branch now extracts the video id from
+the returned embed URL and calls `YouTubeAssetFinder.resolve_video_id()`
+the same way `primegov.py` does, keeping eScribe's own (usually better)
+title/date extraction and only falling back to YouTube's when eScribe's
+own came back empty — same override reasoning `primegov.py`'s docstring
+already gives.
+
+**Verified live** against 5 real, previously-zero-segment pages
+(`pub-beaumontab`, `pub-brant`, `pub-cambridge`, `pub-courtenay`,
+`pub-mackenziebc`.escribemeetings.com): all 5 now resolve with real
+segment counts (3207, 3016, 6500, 2680, 1009) where they previously
+showed `segments=0`. `pytest tests/test_escribe.py` still 10/10 after the
+change — no regression to eScribe's own native (iSiLIVE) caption path.
+Real-ingested all 51 confirmed eScribe+YouTube URLs afterward via
+`scripts/bulk_ingest.py` (no dry-run) — see the git commit for the
+outcome tally.
+
+**Not checked further**: 3 URLs in the same catalog resolved as
+`platform=civicclerk` with a YouTube video found but zero
+segments/agenda — plausibly the same missing-delegation gap in
+`civicclerk.py`, not confirmed. Left open if it recurs.
+
 ## "Request Transcript from Audio" rendering on genuinely no-video pages (2026-08-15)
 
 Real gap raised by the user 2026-08-14 while investigating Palm Beach
