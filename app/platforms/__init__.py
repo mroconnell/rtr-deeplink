@@ -27,6 +27,7 @@ def register_all_finders() -> None:
     from .seattlechannel import SeattleChannelAssetFinder
     from .slc import SlcAssetFinder
     from .swagit import SwagitAssetFinder
+    from .telvue import TelvueAssetFinder
     from .viebit import ViebitAssetFinder
     from .youtube import YouTubeAssetFinder
 
@@ -49,6 +50,7 @@ def register_all_finders() -> None:
     register(IQM2AssetFinder())
     register(ClerkBaseAssetFinder())
     register(SeattleChannelAssetFinder())
+    register(TelvueAssetFinder())
     # Registered under "unknown" -- the exact string detect_platform()
     # already returns for anything unmatched -- so get_finder("unknown")
     # finds this instead of raising UnsupportedPlatformError. Keep this

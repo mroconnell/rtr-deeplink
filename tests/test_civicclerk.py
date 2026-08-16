@@ -1,4 +1,5 @@
 from app.platforms.civicclerk import CivicClerkAssetFinder
+from app.platforms.youtube import YouTubeAssetFinder
 
 from aiohttp_mock import FakeResponse, mock_session
 from conftest import load_fixture, load_fixture_bytes
@@ -42,13 +43,35 @@ async def test_resolve_real_event_with_video_and_agenda_bookmarks():
     assert any("no caption" in w.lower() for w in result.transcript_warnings)
 
 
-async def test_resolve_event_with_external_video_and_no_bookmarks():
+async def test_resolve_event_with_external_video_and_no_bookmarks(monkeypatch):
     # Real event 17 -- externalVideoUrl (a YouTube live link) instead of a
     # direct videoUrl, and zero eventBookmarks/caption tracks. Fetched live
     # 2026-08-07; unlike event 20, event 17's own mediaStreamPath/
     # mediaSourcePathMp4 fields are genuinely empty, so this actually
     # exercises the externalVideoUrl fallback branch rather than shadowing
     # it with a same-event direct video field.
+    #
+    # Real gap found + fixed 2026-08-16: video_format used to come back
+    # None for this exact shape (a youtube.com URL has no recognized file
+    # extension), which meant the frontend's iframe+Player-API playback
+    # path never triggered -- not just a missing-captions gap, the video
+    # may not have played at all. Now delegates to
+    # YouTubeAssetFinder.resolve_video_id() the same way escribe.py/
+    # primegov.py/civicweb.py/clerkbase.py already do.
+    monkeypatch.setattr(
+        YouTubeAssetFinder,
+        "_extract_info",
+        lambda video_id: {
+            "title": "Clovis City Council — YouTube live stream",
+            "uploader": "cityofclovis",
+            "upload_date": "20260107",
+            "_chosen_track": (
+                "WEBVTT\n\n00:00:01.000 --> 00:00:03.000\nCall to order.\n".encode("utf-8"),
+                "en",
+                True,
+            ),
+        },
+    )
     url = "https://clovisca.portal.civicclerk.com/event/17/media"
     event_json = load_fixture("civicclerk", "clovisca_event17.json")
     media_json = load_fixture("civicclerk", "clovisca_media17.json")
@@ -63,8 +86,17 @@ async def test_resolve_event_with_external_video_and_no_bookmarks():
     with mock_session(routes):
         result = await CivicClerkAssetFinder().resolve(url)
 
-    assert result.video_url == "https://www.youtube.com/live/2SkDu11i3hQ"
+    assert result.platform == "civicclerk"
+    # Canonical embed-URL form, same as every other delegating adapter --
+    # not the raw watch/live URL CivicClerk's own API happened to store.
+    assert result.video_url == "https://www.youtube.com/embed/2SkDu11i3hQ"
+    assert result.video_format == "youtube"
     assert result.agenda_items == []
+    # CivicClerk's own caption fields were empty for this event -- real
+    # captions now come from the YouTube delegation fallback instead of
+    # segments staying empty forever.
+    assert len(result.segments) == 1
+    assert result.segments[0].text == "Call to order."
 
 
 async def test_resolve_real_event_with_populated_srt_captions():

@@ -6,6 +6,85 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## TelVue: a whole new platform found hiding as "unknown"; CivicClerk had the same YouTube-delegation gap as eScribe (2026-08-16)
+
+Follow-on from the eScribe fix above, prompted by the user asking what a
+self-audit of our *own already-live pages* (not new enumeration) might
+surface. Pulled every live `MeetingPage` via `/internal/pages/all-urls`
+(1,071 pages total that session) and looked specifically at the 13 rows
+with `platform="unknown"` — real, already-ingested meetings that
+`generic_fallback.py` had to handle because no dedicated adapter existed.
+
+**TelVue — a real platform with zero coverage, found from 3 real
+customer meetings already live under `platform="unknown"`** (2 direct
+`videoplayer.telvue.com` URLs, 1 reached via a `u.peg.tv` shortlink).
+Investigated live against a real Ashland, OR Planning Commission meeting:
+everything needed — video (`master.m3u8`), real per-speaker closed
+captions, and a separate real chapters/agenda track — is embedded as
+plain JSON in the static page HTML
+(`Player.setupData['playlist']`), no JS execution needed. Confirmed
+`u.peg.tv/s/{code}` is a plain HTTP redirect straight to the
+`videoplayer.telvue.com` page (`u.peg.tv/s/6abzuu` → 200 on the TelVue
+URL) — same wrapper pattern as Legistar/CivicPlus's Granicus delegation,
+so no separate PEG.tv adapter was needed, just routing both domains to
+one `TelvueAssetFinder` in `detect_platform()`.
+
+Built `app/platforms/telvue.py`, registered it, added real fixture-backed
+tests (`tests/test_telvue.py`, fixtures from the real Ashland meeting).
+Verified live against both the direct URL and the peg.tv redirect: real
+segment counts (2683 and 4108) and real agenda chapters (9 and 15) on
+first try. Real gap caught building this: WebVTT `<v Speaker N>...</v>`
+voice tags aren't stripped by `parse_vtt()` on its own — without
+stripping them the transcript would have literally shown
+`<v Speaker 1>Recording in progress.</v>` — handled locally in the
+adapter rather than touching the shared parser, since this is the first
+platform this codebase has seen with voice-tagged VTT. Jurisdiction is
+best-effort only (extracted from the title's body-name portion, e.g.
+"Ashland Planning Commission" → "Ashland") since TelVue's URL path uses
+an opaque per-customer org token, not a readable city name the way
+eScribe's `pub-{city}` subdomain is — unconfirmed against multiple real
+customers.
+
+Re-ingested the 3 already-live URLs afterward (real `bulk_ingest.py`, not
+dry-run) — all 3 matched their existing `MeetingPage` row by
+`source_url_normalized` and updated in place (`platform` upgraded from
+`unknown` to `telvue`, real transcripts/agenda attached), confirmed by
+comparing slugs before/after: no duplicates created.
+
+**CivicClerk had the identical YouTube-delegation gap eScribe did, just
+via a different code path.** Found by re-running the same "zero
+transcript, is_youtube=True" check from the eScribe investigation against
+`resolved_platform="civicclerk"` rows — 3 hits
+(`ashlandcowi`/`eriecopa`/`highlandparkil`.portal.civicclerk.com). Root
+cause, confirmed reading `civicclerk.py`: some customers set
+`externalVideoUrl`/`externalMediaUrl` to a plain YouTube link, but the
+adapter's `video_format` was computed purely from the URL's file
+extension (`video_url.rsplit(".", 1)[-1]`) — a `youtube.com/watch?v=...`
+URL has no matching extension, so `video_format` came back `None`. That's
+worse than just missing captions: the frontend needs
+`video_format="youtube"` specifically to trigger the iframe+Player-API
+playback path, so the video may not have played at all, confirmed live
+on `ashlandcowi` event 362 (`video_format=None`, `segments=0`) before the
+fix.
+
+**Fixed**: when `video_url` matches a YouTube URL shape
+(`YouTubeAssetFinder.extract_video_id()` returns a real id), delegates to
+`YouTubeAssetFinder.resolve_video_id()` for the correct `video_url`/
+`video_format`, and only falls back to YouTube's captions when
+CivicClerk's own `closedCaptionTracks`/`closedCaptionUrl` come back empty
+— CivicClerk's own captions are kept when present, since those are
+usually curated per-meeting rather than auto-generated. Updated the
+existing real-fixture test (`clovisca_event17`, a real Clovis, CA sample
+already in the suite) to assert the fix rather than the old broken
+behavior, with `YouTubeAssetFinder._extract_info` properly mocked.
+Verified live: 2 of the 3 real cases now resolve with real segments
+(3042, 1602) and correct `video_format="youtube"`; the third
+(`eriecopa`) genuinely has no captions available on YouTube's side —
+expected variance, not a bug, matching the escribe fix's 49/51 (not
+51/51) real-world hit rate. Real-ingested the 2 successful cases.
+
+`pytest` full suite: 770/770 passing after both changes.
+
 ## eScribe never delegated to YouTube for captions on its own found-video pages (2026-08-16)
 
 Found while cataloguing where video actually lives for ~1,200 "zero
