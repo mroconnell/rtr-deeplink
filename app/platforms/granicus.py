@@ -174,7 +174,7 @@ class GranicusAssetFinder(AssetFinder):
         netloc = urlparse(url).netloc
         domain_parts = netloc.split(".")
         if not jurisdiction and len(domain_parts) > 1 and domain_parts[0] not in ("www", "granicus"):
-            candidate = self._humanize_subdomain(domain_parts[0])
+            candidate = self._humanize_subdomain(domain_parts[0], url)
             if candidate:
                 jurisdiction = candidate
 
@@ -186,32 +186,31 @@ class GranicusAssetFinder(AssetFinder):
         return {"title": title[:500], "date": date, "jurisdiction": jurisdiction[:200], "page_text": page_text}
 
     @staticmethod
-    def _humanize_subdomain(subdomain: str) -> Optional[str]:
+    def _humanize_subdomain(subdomain: str, url: str) -> Optional[str]:
         """Turn a concatenated subdomain like "sandiego" or "leaguecitytx"
-        into "San Diego" / "League City, TX" -- word-segmented via wordninja
-        (a lightweight, offline word-frequency segmenter) rather than the
-        previous naive .title() call, which left multi-word city names
-        unreadable (e.g. "sandiego" -> "Sandiego"). Strips a trailing US
-        state abbreviation into a ", ST" suffix, and drops a leading
-        "city of"/"county of"/"town of" since that's redundant once we're
-        about to label this as the jurisdiction.
+        into "San Diego" / "League City, TX". The name itself comes from
+        `jurisdiction_enrich.validated_subdomain_extract()` -- Census-
+        table-validated (raw label tried first, then a wordninja split),
+        declining (returning None) rather than guessing when neither form
+        is a real place name. Real bug this replaced: a bare
+        wordninja-always-guess produced confident garbage on acronym
+        subdomains, e.g. "sfwmd" -> "S Fw, MD" (South Florida Water
+        Management District's trailing "md" misread as a Maryland state
+        suffix), "psrc2" -> "Psr C 2", "rideuta" -> "Ride Uta" -- see
+        BACKLOG.md. A trailing US state abbreviation is still stripped and
+        reattached as a ", ST" suffix independently of validation, same as
+        before -- some subdomains encode it specifically to disambiguate a
+        nationally-ambiguous city name (e.g. "leaguecitytx").
         """
         words = wordninja.split(subdomain)
-        if not words:
-            return None
-
         state_suffix = None
-        if len(words) > 1 and words[-1].lower() in US_STATE_ABBREVIATIONS:
+        if words and len(words) > 1 and words[-1].lower() in US_STATE_ABBREVIATIONS:
             state_suffix = words[-1].upper()
-            words = words[:-1]
 
-        while len(words) > 1 and words[0].lower() in ("city", "county", "town", "of"):
-            words = words[1:]
-
-        if not words:
+        name = jurisdiction_enrich.validated_subdomain_extract(url)
+        if not name:
             return None
 
-        name = " ".join(w.capitalize() for w in words)
         return f"{name}, {state_suffix}" if state_suffix else name
 
     @staticmethod
@@ -475,6 +474,23 @@ class GranicusAssetFinder(AssetFinder):
                     _vtt_url, cues, lang = chosen
                     segments = [TranscriptSegment(**cue) for cue in cues]
                     transcript_language = lang
+                    if len(segments) == 36000:
+                        # Granicus's own captions.vtt appears to hard-cap at
+                        # exactly 36,000 cues on very long meetings, cutting
+                        # off mid-sentence with no warning of its own --
+                        # confirmed live on 3 independent real customers
+                        # (College Park GA, Coral Gables FL, Marion County
+                        # FL), see BACKLOG.md. A real meeting landing on
+                        # this exact count by chance is essentially
+                        # impossible, so flag it rather than silently
+                        # presenting a truncated transcript as complete.
+                        # First heuristic, not a full fix -- doesn't catch
+                        # a cap at some other round number.
+                        transcript_warnings.append(
+                            "This transcript may be cut off — it hit exactly "
+                            "36,000 lines, a known limit in Granicus's own "
+                            "captioning for very long meetings."
+                        )
                     if lang and lang != TARGET_LANGUAGE:
                         transcript_warnings.append(
                             f"These captions appear to be in '{lang}', not '{TARGET_LANGUAGE}' — "

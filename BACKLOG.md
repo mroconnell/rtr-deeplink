@@ -18,58 +18,34 @@ is a pointer to its full write-up elsewhere in this file, not a
 duplicate — search this file for the quoted phrase to find the source
 entry with all the evidence.
 
-**Wave 1 — copy & data only, essentially zero logic risk.** Ship
+**Both waves shipped 2026-08-16 — full detail in `BACKLOG_DONE.md`'s
+"Easy-win triage waves 1 + 2" entry.** All 9 items landed (items 1-5,
+2-file copy/data fixes; items 6-9, small self-contained logic fixes),
+full suite green throughout. Original numbered list kept below,
+struck through, so this section's own history stays legible.
+
+~~**Wave 1 — copy & data only, essentially zero logic risk.** Ship
 together as one small PR; none of these touch branching logic.
 1. Contact `mailto:` links still show `ryan@` instead of the live
-   `ally@redtaperecordings.com` (search "Audit every user-facing email
-   address"). `app/templates/base.html:78`, `archive/templates/base.html:95`.
-2. Transcription rate-limit 429 copy is unfriendly (search "You've
-   requested a few transcripts already this hour"). `app/static/player.js:468`,
-   `archive/static/meeting_page.js:383`. (The same entry's other half —
-   signed-in users bypassing the limit entirely — is real but not yet
-   feasible to schedule; see "Left out" below.)
-3. README.md wrongly says saved-search alert emails are "Not yet built"
-   (search "Docs hygiene — a live, confirmed example of drift").
-   `README.md` (~line 754) — `archive/search_alerts.py` is real, merged,
-   cron-driven.
-4. One remaining confirmed jurisdiction-registry gap — Orange County, FL
-   (search "Can we mark this domain/url as Orange County, FL").
-   `app/utils/jurisdiction_enrich.py`'s `_KNOWN_DOMAINS` dict (pure data,
-   `finalize_jurisdiction()` already consults this registry for every
-   adapter). (This item's other half — Maricopa County, AZ's DataBank
-   Cloud OnBase instance — is done: registered as part of the
-   `hyland.py` adapter build, see `BACKLOG_DONE.md`.)
+   `ally@redtaperecordings.com`.
+2. Transcription rate-limit 429 copy is unfriendly. (The same entry's
+   other half — signed-in users bypassing the limit entirely — is real
+   but not yet feasible to schedule; see "Left out" below.)
+3. README.md wrongly says saved-search alert emails are "Not yet built."
+4. One remaining confirmed jurisdiction-registry gap — Orange County, FL.
 5. Swagit's `raw_title` carries a literal tab character straight through
-   into stored titles, confirmed via real `curl` (search "a literal tab
-   character embedded in Swagit's own source"). `app/platforms/swagit.py:306`.
+   into stored titles.
 
-**Wave 2 — small, self-contained logic fixes.** Each has a clear fix
-direction already written up; land as separate small PRs, roughly in
-this order:
+**Wave 2 — small, self-contained logic fixes.**
 6. CivicClerk never falls back when `eventLocation` is completely blank,
-   confirmed live on Los Altos Hills, CA (search "losaltoshillsca").
-   `app/platforms/civicclerk.py:81-86` — call the already-built,
-   already-manually-verified `jurisdiction_enrich.extract_jurisdiction_chain(url=url)`.
-   Lowest risk in this wave: the fix's output was already tested and
-   confirmed correct in this session, not just theorized.
+   confirmed live on Los Altos Hills, CA.
 7. Granicus's `captions.vtt` hard-caps at exactly 36,000 cues with no
-   warning, confirmed on 3 independent real customers (search "hard-cap
-   at exactly 36,000 cues"). `app/platforms/granicus.py` — flag (don't
-   silently drop) any resolve whose segment count is exactly 36,000.
-   Explicitly a first heuristic per the entry, not a full fix.
+   warning, confirmed on 3 independent real customers.
 8. Granicus's wordninja subdomain-humanization fallback produces
    confident garbage on acronym subdomains — "S Fw, MD" from `sfwmd`,
-   "Psr C 2" from `psrc2`, etc. (search "produces confident garbage on
-   acronym subdomains"). `app/platforms/granicus.py:188-214`
-   (`_humanize_subdomain()`) should reuse the already tournament-tested
-   `_validated_subdomain_extract()` in `app/utils/jurisdiction_enrich.py`
-   (~line 800) — currently private, needs a small public wrapper before
-   `granicus.py` can call it.
+   "Psr C 2" from `psrc2`, etc.
 9. `/coverage`'s "Every place we've covered" table wants a frozen
-   row-number column and sortable headers (search "row number" or "Every
-   place we've covered"). `archive/templates/coverage.html:18-41` plus
-   new CSS/JS — genuinely new (if small) client-side sort logic, no
-   backend/data change. Largest item in this wave for that reason.
+   row-number column and sortable headers.~~
 
 **Left out on purpose, not an oversight**: signed-in users bypassing the
 transcription rate limit entirely (the other half of item 2's source
@@ -143,11 +119,13 @@ properly:
   (`archive/search_alerts.py`, a real daily cron sending real emails,
   merged 2026-08-13 as PR #30) are described as unbuilt future work in
   `BACKLOG.md`'s own "Accounts + token billing" section, in `README.md`
-  (line ~754), and in `rtr-business/BUSINESS_OVERVIEW.md`'s "Not built
-  yet" list — all three wrong, none caught until this session. Also:
-  this feature has never been human-verified firing for real (see the
-  live-verification checklist from this same session date). Worth
-  checking whether other recently-merged work has the same gap.
+  (line ~754) — ~~fixed 2026-08-16, wave 1 item 3, see
+  `BACKLOG_DONE.md`~~ — and in `rtr-business/BUSINESS_OVERVIEW.md`'s
+  "Not built yet" list, **still wrong**, not this repo so out of scope
+  for wave 1. Also: this feature has never been human-verified firing
+  for real (see the live-verification checklist from this same session
+  date). Worth checking whether other recently-merged work has the same
+  gap.
 - **Legal/compliance — already tracked in `rtr-business/TASKS.md`**,
   included here only as a cross-reference: no privacy policy/ToS live,
   LLC formation status TBD, the Clerk `user.deleted` → data-purge
@@ -308,20 +286,26 @@ anything) to build against it.
   "Standa" — the regex's own 40-char cap cutting words in half) would
   catch all three. Specific new bugs found, each verified against the
   data, all unfixed:
-  - **Granicus's wordninja subdomain-humanization fallback produces
-    confident garbage on acronym subdomains** (~15 archived rows):
+  - ~~**Granicus's wordninja subdomain-humanization fallback produces
+    confident garbage on acronym subdomains**~~ **Fixed 2026-08-16, wave
+    2 item 8 — full detail in `BACKLOG_DONE.md`.** (~15 archived rows):
     "Ride Uta" (rideuta), "La Usd" (lausd), "Ccs F" (ccsf), "Pcb Gov"
     (pcbgov), and the best one: **"S Fw, MD" from `sfwmd`** — the South
     Florida Water Management District's trailing "md" misread as a
-    Maryland state suffix. A second, distinct failure mode in the same
-    fallback (user's correction 2026-08-15): **"Gales Burg" from
-    `galesburg`** — not an acronym at all, but wordninja *over-splitting*
-    a real one-word city name that would have validated against the
-    Census table untouched ("galesburg" is literally already a valid
-    places.csv key, Galesburg IL/MI/ND). Fix direction covers both:
-    check the raw unsplit subdomain against the Census tables first,
-    and validate wordninja's output against them after — decline to
-    guess when neither form is a real name.
+    Maryland state suffix. `_humanize_subdomain()` now declines (rather
+    than guessing) via the new public
+    `jurisdiction_enrich.validated_subdomain_extract()`, which checks the
+    raw unsplit subdomain against the Census tables first and validates
+    wordninja's split output after. Not yet re-resolved against the
+    ~15 already-archived rows above (this fix only changes future
+    resolves) — worth a bulk re-check same as the other stale-archive
+    cases in this file. A second, distinct failure mode in the same
+    fallback (user's correction 2026-08-15) is fixed by the same change:
+    **"Gales Burg" from `galesburg`** — not an acronym at all, but
+    wordninja *over-splitting* a real one-word city name that validates
+    against the Census table untouched ("galesburg" is literally already
+    a valid places.csv key, Galesburg IL/MI/ND) — the new raw-label-first
+    check catches this too.
     **Two more real confirmed examples, found 2026-08-15 scanning all 501
     rows of the live `/coverage` "Every place we've covered" table for
     outliers (see the new entry below on that table being a real, useful
@@ -337,9 +321,16 @@ anything) to build against it.
   - ~~**`app/utils/jurisdiction_data/places.csv` is missing every Census
     "(balance)" consolidated city**~~ **Fixed 2026-08-15 — full detail in
     `BACKLOG_DONE.md`.**
-  - **"Saint"↔"St." normalization gap**: stored "Saint Paul" misses the
-    table's "St. Paul city". Same family: okina/apostrophe variants
-    ("Kauai County" in-table vs "Kauaʻi County" on pages).
+  - ~~**"Saint"↔"St." normalization gap**~~ **Fixed 2026-08-16 —
+    `app/utils/jurisdiction_enrich.py`'s `_table_lookup()` now also tries
+    a `_contract_saints()` candidate ("Saint"/"Sainte" → "St."/"Ste.",
+    the reverse of the existing `_expand_abbreviations()`, needed because
+    a direct grep confirmed the Census table stores this one family
+    abbreviated — 148 real "St. " rows, zero "Saint " rows — unlike
+    Fort/Mount/North/South/East/West, all stored spelled out) and a
+    `_strip_okina()` candidate (Hawaiian ʻokina/apostrophe variants —
+    "Kauai County" in-table vs "Kauaʻi County" on pages). New tests in
+    `tests/test_jurisdiction_enrich.py`.
   - **Townships/county-subdivisions aren't in the places table at all**
     (Upper Providence PA, Greenburgh NY, Upper Dublin PA) — Census
     publishes a county-subdivision gazetteer that would cover them;
@@ -539,9 +530,11 @@ anything) to build against it.
     passes straight through unnormalized into this app's stored title —
     visible as a literal tab in the raw title text on
     [/m/sep-12-2025-dfps-council-meeting-texas-dept-of-family-and-protective-services](https://redtaperecordings.com/m/sep-12-2025-dfps-council-meeting-texas-dept-of-family-and-protective-services).
-    Cheap, low-risk fix on our side regardless of the jurisdiction gap:
+    ~~Cheap, low-risk fix on our side regardless of the jurisdiction gap:
     collapse internal whitespace (`\t`/`\n`) to a single space when
-    extracting `raw_title`.
+    extracting `raw_title`.~~ **Fixed 2026-08-16, wave 1 item 5 — full
+    detail in `BACKLOG_DONE.md`.** The blank-jurisdiction gap itself (the
+    other 16 examples below) is still open.
 
   16 real examples of the blank-jurisdiction gap turned up in one
   `/meetings` pass (Santa Clara County Office of Education, VIA
@@ -581,18 +574,17 @@ anything) to build against it.
   silently stopping at a fixed cue count rather than at the meeting's
   actual end.
 
-  **Not yet built**: any detection or user-facing signal for this. Today
-  a meeting that hits this cap looks identical to one with a complete
-  transcript — no `transcript_warnings` entry, nothing on the meeting
-  page. A cheap first heuristic worth trying: flag (not silently drop)
-  any Granicus resolve whose segment count is exactly 36,000, since a
-  real meeting landing on that exact number by chance is essentially
-  impossible — though this only catches the exact-cap case, not a case
-  where the true cap is some other round number on a different Granicus
-  customer's config, which hasn't been checked. Worth checking a handful
-  of the other long-running meetings in the same 204-URL batch (anything
-  approaching 30-36k segments) to see whether the cap is a fixed constant
-  across all Granicus customers or varies.
+  ~~**Not yet built**: any detection or user-facing signal for this.~~
+  **Fixed 2026-08-16, wave 2 item 7 — full detail in
+  `BACKLOG_DONE.md`.** A `transcript_warnings` entry now flags any
+  Granicus resolve whose segment count is exactly 36,000, per the "cheap
+  first heuristic" below. **Still open**: this only catches the
+  exact-cap case, not a case where the true cap is some other round
+  number on a different Granicus customer's config, which hasn't been
+  checked. Worth checking a handful of the other long-running meetings
+  in the same 204-URL batch (anything approaching 30-36k segments) to
+  see whether the cap is a fixed constant across all Granicus customers
+  or varies.
 
 - **PrimeGov's `_extract_jurisdiction()` still has no real structural fix
   for the SLC/Holladay false-positive — only patched for that one
@@ -911,17 +903,17 @@ anything) to build against it.
   for jurisdiction or anything else — this is a real, unused, confirmed
   data source, not a hypothetical one.
 
-  **Not fixed yet, no code touched (session scoped to backlog-only
-  edits).** Two independent, evidence-backed paths, either sufficient on
-  its own for this customer: (1) call `extract_jurisdiction_chain(url=url)`
-  as a fallback whenever `eventLocation` yields no usable city — cheapest,
-  no new network call; (2) fetch the agenda's plaintext blob when
-  `publishedFiles` has an "Agenda" entry and feed its text through the
-  same chain (or `_stoprule_extract()` directly) — costs one extra
-  request pair (`GetMeetingFile(plainText=true)` + the blob fetch itself)
-  but is more robust and doubles as real agenda text CivicClerk pages
-  don't otherwise surface at all today. Worth deciding whether to build
-  both or just the free one first.
+  **Path (1) fixed 2026-08-16, wave 2 item 6 — full detail in
+  `BACKLOG_DONE.md`.** `civicclerk.py` now calls
+  `extract_jurisdiction_chain(page_text="", html="", url=url)` as a
+  fallback whenever `eventLocation` yields no usable city, confirmed
+  live on this exact Los Altos Hills example (new regression test in
+  `tests/test_civicclerk.py`). **Path (2) still open, not built**:
+  fetching the agenda's plaintext blob when `publishedFiles` has an
+  "Agenda" entry and feeding its text through the same chain — a richer,
+  more robust signal (and real agenda text CivicClerk pages don't
+  otherwise surface today), but a bigger change (one extra request pair)
+  than wave 2's scope called for.
 
   ~~**New gap found 2026-08-14, live-testing `/meetings`' jurisdiction
   filter: searching "California" finds nothing, but "CA" works.**~~
@@ -2108,21 +2100,19 @@ unusually wide, and the missing auto-scroll toggle on archived pages~~
     modern-UA fix). Surfacing the *other* parts needs a real multi-part
     UI/model decision, not a scan fix — no other multi-part example
     confirmed yet. **Also still missing, separate from the video-parts
-    gap: jurisdiction.** The user asked 2026-08-14 whether
-    `netapps.ocfl.net` could just be marked as Orange County, FL —
-    confirmed real via that domain's own `Content-Security-Policy:
-    frame-ancestors ... orangecountyfl.net` header and a `<meta
-    name="keywords" content="...Orange County, Archive">` tag, and the
-    exact right mechanism for this already exists and is already used
-    the same way elsewhere: `app/utils/jurisdiction_enrich.py`'s
-    `_KNOWN_DOMAINS` + `lookup_by_domain()` (today's callers: `lims.py`
-    for Minneapolis/Dallas County, both cases chosen for the same reason
-    — no reliable in-page jurisdiction text to extract). `generic_fallback.py`
-    never calls `lookup_by_domain()` at all right now — worth wiring in
-    as a last-resort jurisdiction fill for exactly this kind of page (no
-    `<title>`/`h1`/meta signal maps to a real jurisdiction, but the
-    domain itself unambiguously does), same low-risk shape as the
-    existing OnBase/DataBank cases already logged in this file.
+    gap: jurisdiction.** ~~The user asked 2026-08-14 whether
+    `netapps.ocfl.net` could just be marked as Orange County, FL~~
+    **Fixed 2026-08-16, wave 1 item 4 — full detail in
+    `BACKLOG_DONE.md`.** Confirmed real via that domain's own
+    `Content-Security-Policy: frame-ancestors ... orangecountyfl.net`
+    header and a `<meta name="keywords" content="...Orange County,
+    Archive">` tag; registered in `app/utils/jurisdiction_enrich.py`'s
+    `_KNOWN_DOMAINS`. Turned out `generic_fallback.py` needed no new
+    `lookup_by_domain()` call after all — `finalize_jurisdiction()`
+    (`archive/db/crud.py`'s ingest-time call) already consults the
+    registry for every adapter, so the registry entry alone was the
+    complete fix, same as `lims.py`'s existing Minneapolis/Dallas County
+    precedent.
   - **Palm Beach County FL
     (`discover.pbc.gov/...bcc-meeting-videos.aspx?videoid=...`) — a
     JS-rendered SharePoint page the empty-shell escalation deliberately
@@ -2710,9 +2700,11 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   `BACKLOG_DONE.md`'s "Email deliverability" section) — now that `ally@`
   actually receives mail, make sure it's the address the site actually
   shows/uses, not `ryan@`. A first grep (2026-08-12) found:
-  - Two `mailto:` Contact links, both currently `ryan@redtaperecordings.com`:
-    `app/templates/base.html:77` and `archive/templates/base.html:95`.
-  - `app/templates/about.html:19` shows `ryan@how-to-adu.com` directly
+  - ~~Two `mailto:` Contact links, both currently `ryan@redtaperecordings.com`~~
+    **Fixed 2026-08-16, wave 1 item 1 — full detail in
+    `BACKLOG_DONE.md`.** `app/templates/base.html:77` and
+    `archive/templates/base.html:95`.
+  - **Still open**: `app/templates/about.html:19` shows `ryan@how-to-adu.com` directly
     (the personal inbox, not a `redtaperecordings.com` address at all).
   - `RESEND_REPLY_TO_ADDRESS` (`app/main.py`, `archive/utils/email.py`,
     Render dashboard env var per `BACKLOG_DONE.md`'s "Closed out
@@ -2877,46 +2869,19 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   into that same data, a rule for picking a representative example URL
   per jurisdiction/platform pair (e.g. most recent successful resolve),
   and the sort/filter UI itself.
-- **Smaller, near-term polish request (2026-08-15) for the "Every place
-  we've covered" table that already shipped — distinct from the bigger
-  sortable/filterable redesign above, which is still unbuilt.** Real
-  table today: `archive/templates/coverage.html:18-41`, three columns
-  (Government, Example meeting, Transcript), one `<tr>` per jurisdiction,
-  populated by `crud.get_jurisdiction_coverage()` sorted alphabetically —
-  confirmed live at 501 rows currently
-  (`document.querySelectorAll('table.table tbody tr').length` on
-  [redtaperecordings.com/coverage](https://redtaperecordings.com/coverage)).
-  No JS/CSS exists yet for sorting or frozen columns anywhere on this
-  page or table (`style.css`'s only `position: sticky` uses today are the
-  meeting page's video column and toolbar, not a data table).
-
-  Three asks, all pure front-end (no backend/data change — every row is
-  already server-rendered in one pass):
-  1. A new leftmost row-number column, frozen (`position: sticky; left:
-     0`) independent of the other three columns' own scroll/sort state —
-     i.e. it stays put and keeps counting 1, 2, 3... regardless of what
-     the Government/Example/Transcript columns are doing. Rendered in a
-     lighter font-weight than the rest of the row so it doesn't compete
-     visually with the actual content — but explicitly *meant* to be
-     noticed once a reader scrolls far enough to see it hit a big number
-     (501 today) as a real "wow, that's a lot" moment, the user's own
-     framing.
-  2. Government/Example meeting/Transcript headers become clickable and
-     sort the table by that column — the frozen row-number column and the
-     header row itself excluded, per the user's explicit scoping.
-  3. Sorting resets/reassigns the row numbers to the frozen column's
-     *display* position, not the original alphabetical order — implied by
-     "frozen, not tied to the three existing columns" (the numbers stay
-     put positionally 1..N no matter how the sortable columns reorder
-     underneath them, rather than the row-number column itself getting
-     dragged along with a sort).
-
-  Worth deciding sort behavior specifics when building (not blocking the
-  write-up): whether "Transcript" sorts by presence of the badge (a
-  boolean, so really just grouping has-transcript rows together, asc/desc
-  toggle) and whether repeat clicks on the same header toggle
-  ascending/descending, matching the plain-JS-table-sort pattern this
-  would need (no existing sort-table JS in this codebase to reuse).
+- ~~**Smaller, near-term polish request (2026-08-15) for the "Every place
+  we've covered" table that already shipped**~~ **Fixed 2026-08-16, wave
+  2 item 9 — full detail in `BACKLOG_DONE.md`.** Distinct from the bigger
+  sortable/filterable redesign above, which is still unbuilt. All three
+  original asks landed in `archive/templates/coverage.html` + new
+  `archive/static/coverage.js` + `style.css`: a frozen (`position:
+  sticky; left: 0`) leftmost row-number column in a lighter font-weight,
+  clickable Government/Example meeting/Transcript headers that sort the
+  table (repeat click toggles ascending/descending, "Transcript" sorts by
+  badge presence), and row numbers that renumber to the sorted display
+  order rather than staying tied to the original alphabetical rows.
+  Verified live in-browser (sort-by-click + sticky column both confirmed
+  against a locally-seeded table), not just against the test suite.
 - **Companion "known gaps" page — same table shape, listing
   jurisdictions/platforms that don't resolve cleanly yet** (attempted but
   blocked, partially working, or simply not yet built), separate from
@@ -3390,9 +3355,12 @@ one item below is resolved as a result.
   — `"You've requested a few transcripts already this hour — please try
   again a bit later."` Two real, separate asks:
 
-  1. **Rewrite the copy** — friendlier, more natural phrasing, and use the
-     moment productively rather than just telling an anonymous visitor to
-     wait.
+  1. ~~**Rewrite the copy**~~ **Fixed 2026-08-16, wave 1 item 2 — full
+     detail in `BACKLOG_DONE.md`.** Now "You've hit the transcript
+     request limit for now — please try again in about an hour." Doesn't
+     yet use the moment productively (no sign-in/account-creation
+     prompt) — deliberately left out, see ask 2 below, which is the
+     harder, still-unbuilt half.
   2. **Signed-in users should never hit this limit at all**, and a
      signed-out visitor who hits it should be prompted to sign in/create
      an account instead of just told to wait.
@@ -3453,6 +3421,74 @@ one item below is resolved as a result.
   enricher-side version is built, tested, and confirmed to produce the
   identical result on the real SLC pages (the two Holladay-bug meetings
   are the regression cases to check).
+
+- **New feature request, 2026-08-16: a recurring operator email report
+  every 6 hours, to `ryan@redtaperecordings.com`, with 6 metrics** —
+  queued worker jobs, failed jobs in the last 48h, succeeded jobs in the
+  last 48h, total meetings on site, meetings with a transcript, meetings
+  without one. Note this is a **third** distinct "Ryan" address in play
+  (see the "consolidate on `ally@redtaperecordings.com`" entry in
+  Archive roadmap below): `DAILY_REPORT_EMAIL_TO`'s current default is
+  `ryan@how-to-adu.com`, the consolidation target is `ally@`, and now
+  this request names `ryan@redtaperecordings.com` specifically — worth
+  confirming which address this new report should actually use before
+  building rather than assuming it should match either existing default.
+
+  **A real, similar mechanism already exists and is the pattern to
+  follow, but lives on the wrong service for this data.**
+  `app/reporting.py` (imported by `GET /admin/daily-report` in
+  `app/main.py:1184` and `scripts/daily_report.py`, triggered daily by
+  `.github/workflows/daily-report.yml`) already does almost exactly this
+  shape of thing — a `MetricResult` dataclass that lets one metric fail
+  without blanking the whole digest, `compose_report_email()`/
+  `send_report_email()`, a GitHub Actions cron hitting an admin-token-
+  gated endpoint rather than a paid Render Cron Job (see that file's own
+  docstring for why). But it queries Clerk/Resend and the **resolver's**
+  own database (`meeting_resolutions`) — by design, per its own
+  docstring, since `DATABASE_URL` there points at the resolver's DB, not
+  the Archive's separate one. **All 6 metrics the user actually wants
+  live in the Archive's database instead**: `TranscriptionJob`
+  (`archive/db/models.py:95`, status `"pending_confirmation" ->
+  "queued" -> "in_progress" -> "completed" | "failed"`, matching
+  `worker/main.py`'s own claim query
+  `TranscriptionJob.status.in_(("queued", "in_progress"))` for the
+  "queued" count) and `MeetingPage`/`TranscriptVersion` for the meeting/
+  transcript counts. Confirmed no equivalent stats aggregator exists yet
+  on the Archive side (`archive/db/crud.py` has no `get_stats()`-shaped
+  function at all, unlike `app/db/crud.py`'s resolver-side one) — this
+  would be new query code, not a wire-up of something already built,
+  unlike most of this session's other easy-win items.
+
+  **Real design question worth deciding before building, not guessed
+  at**: `TranscriptionJob` has only a `created_at` timestamp
+  ([archive/db/models.py:163](archive/db/models.py:163)) — no
+  `completed_at`/`failed_at` column. "Failed/succeeded in the last 48h"
+  can only be approximated by *when the job was created*, not when it
+  actually finished — a job created 3 days ago that just failed an hour
+  ago wouldn't show up, while one created 47 hours ago that's still
+  running would count as neither yet. Worth deciding whether that
+  approximation is acceptable (cheap, no schema change) or whether this
+  needs a new timestamp column (bigger scope, this repo's Alembic
+  migration path per `archive/alembic/README.md`) before committing to
+  a design. For "meetings with/without a transcript," reuse the
+  already-existing quality-aware check
+  (`archive/db/crud.py`'s `_has_good_transcript()`, the same
+  `_GARBLED_MARKER`-checking logic `list_pages()`'s "✓ Transcript" badge
+  uses) rather than a naive "does any `TranscriptVersion` row exist"
+  count — this repo already fixed exactly that presence-vs-quality bug
+  once (see `BACKLOG_DONE.md`'s "quality-aware, not just presence-aware"
+  entry) and shouldn't reintroduce it here.
+
+  **Where this probably belongs**: a sibling of `app/reporting.py`
+  inside `archive/` (its own `reporting.py`, a new admin-token-gated
+  endpoint in `archive/main.py` following the same `_admin_token_ok`
+  pattern, a new GitHub Actions cron workflow on a 6-hour schedule
+  instead of daily), reusing `archive/utils/email.py`'s existing
+  Resend-send helper (already used for single-recipient internal ops
+  email, e.g. the transcription-failed notification) rather than
+  `app/reporting.py`'s private `send_report_email()`, which is scoped to
+  the resolver service. Not started — this is a scoped feature request,
+  not yet designed in full or built.
 
 ## Deprioritized ideas — allowed back if we wish (parked 2026-08-15)
 

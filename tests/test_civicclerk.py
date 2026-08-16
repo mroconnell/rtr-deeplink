@@ -165,6 +165,32 @@ async def test_resolve_fills_in_missing_state_via_shared_lookup():
     assert result.jurisdiction == "Fresno, CA"
 
 
+async def test_resolve_falls_back_to_jurisdiction_chain_when_location_is_fully_blank():
+    # Real gap found live 2026-08-15 on Los Altos Hills, CA (event 4567):
+    # eventLocation.city AND .state both null, not just a missing state,
+    # so the state-only fallback above never fires and jurisdiction used
+    # to come back None. `extract_jurisdiction_chain()`'s validated-
+    # subdomain tier resolves this correctly from the URL alone --
+    # "losaltoshillsca" -> wordninja -> "Los Altos Hills" -- confirmed
+    # live in BACKLOG.md, no page_text/html needed.
+    url = "https://losaltoshillsca.portal.civicclerk.com/event/4567/media"
+    event_json = (
+        '{"id": 4567, "eventName": "City Council Regular Meeting", '
+        '"eventDate": "2026-06-18T00:00:00Z", "eventLocation": {"city": null, "state": null}}'
+    )
+    media_json = '{"id": 4567, "videoUrl": "https://cpmedia.azureedge.net/example/c.mp4", "eventBookmarks": []}'
+
+    routes = {
+        "https://losaltoshillsca.api.civicclerk.com/v1/Events/4567": FakeResponse(status=200, text=event_json),
+        "https://losaltoshillsca.api.civicclerk.com/v1/EventsMedia/4567": FakeResponse(status=200, text=media_json),
+    }
+
+    with mock_session(routes):
+        result = await CivicClerkAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "Los Altos Hills, CA"
+
+
 async def test_resolve_text_fallback_for_unstructured_caption_format():
     # Synthetic, not real -- only .srt has ever been observed live on this
     # platform (event 585 above). Exercises the new fallback path in case

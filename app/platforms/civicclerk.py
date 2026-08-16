@@ -86,6 +86,16 @@ class CivicClerkAssetFinder(AssetFinder):
                 # to the same shared lookup every free-text adapter uses.
                 state = jurisdiction_enrich.lookup_city_state(city)
             jurisdiction = ", ".join(p for p in (city, state) if p) or None
+            if not jurisdiction:
+                # eventLocation is sometimes entirely empty (city AND
+                # state both null, not just a missing state) -- confirmed
+                # live on Los Altos Hills, CA (event 4567), where the
+                # chain's validated-subdomain tier alone resolves this
+                # correctly with zero extra network calls, no page_text/
+                # html needed.
+                jurisdiction = jurisdiction_enrich.extract_jurisdiction_chain(
+                    page_text="", html="", url=url
+                )
 
             video_url = media.get("videoUrl") or event.get("mediaStreamPath") or event.get("mediaSourcePathMp4")
             if not video_url:

@@ -380,7 +380,7 @@ function wireTranscribeForm() {
         // this hour." Checked before `data.ok` specifically so a real
         // rate limit is never mistaken for that. Same duplicated fix as
         // app/static/player.js's copy of this function.
-        checkStatusEl.textContent = "You've requested a few transcripts already this hour — please try again a bit later.";
+        checkStatusEl.textContent = "You've hit the transcript request limit for now — please try again in about an hour.";
         checkStatusEl.className = 'transcribe-status error';
       } else if (data.ok) {
         feasibilityOk = true;

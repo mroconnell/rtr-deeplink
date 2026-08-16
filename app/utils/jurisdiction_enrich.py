@@ -419,6 +419,15 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     "agendas.fitchburgwi.gov": KnownJurisdiction("Fitchburg", "city", "WI"),
     "dms.missionviejo.gov": KnownJurisdiction("Mission Viejo", "city", "CA"),
     "isearchmonterey.org": KnownJurisdiction("Monterey", "city", "CA"),
+    # Confirmed real 2026-08-14 via this domain's own
+    # `Content-Security-Policy: frame-ancestors ... orangecountyfl.net`
+    # header and a `<meta name="keywords" content="...Orange County,
+    # Archive">` tag -- no reliable in-page jurisdiction text otherwise,
+    # so this is a domain-registry entry, not a text-extraction fallback.
+    # generic_fallback.py (the adapter for this page) doesn't extract a
+    # meeting-body TYPE the way Granicus/CivicClerk do, so this is
+    # registered as "county" directly rather than inferred per-resolve.
+    "netapps.ocfl.net": KnownJurisdiction("Orange", "county", "FL"),
 }
 
 
@@ -587,6 +596,42 @@ def _expand_abbreviations(name: str) -> str:
     return _ABBREV_WORD_RE.sub(_replace, name)
 
 
+# The opposite direction of `_ABBREV_EXPANSIONS`, needed for exactly one
+# prefix family: confirmed by grepping the real Census places table
+# directly (2026-08-16), "St."/"Ste." is the ONLY one of the six
+# abbreviations above where the table itself stores the *abbreviated*
+# form (148 real "St. " rows, zero "Saint " rows) -- "Fort"/"Mount"/
+# "North"/"South"/"East"/"West" are all stored spelled out (0 abbreviated
+# rows for any of them), which is exactly what `_expand_abbreviations()`
+# already handles. A page/adapter that spells out "Saint Paul" (a
+# genuinely common real spelling, not a typo) would otherwise never
+# match the table's "St. Paul city" key in either direction.
+_SAINT_CONTRACTIONS = {"saint": "st.", "sainte": "ste."}
+_SAINT_WORD_RE = re.compile(r"\b(" + "|".join(_SAINT_CONTRACTIONS) + r")\b", re.IGNORECASE)
+
+
+def _contract_saints(name: str) -> str:
+    def _replace(m: "re.Match") -> str:
+        contraction = _SAINT_CONTRACTIONS[m.group(1).lower()]
+        return contraction.capitalize() if m.group(1)[0].isupper() else contraction
+
+    return _SAINT_WORD_RE.sub(_replace, name)
+
+
+# Hawaiian ʻokina and similar typographic apostrophe glyphs a real page
+# may use in a diacritic-bearing name ("Kauaʻi") that the Census table
+# itself never carries (confirmed: table key is plain "kauai") -- stripped
+# as its own candidate tier rather than folded into `_normalize_name()`,
+# since that function also normalizes the table's OWN keys, which never
+# contain these characters in the first place.
+_OKINA_CHARS = "ʻʼ''`"
+_OKINA_RE = re.compile("[" + re.escape(_OKINA_CHARS) + "]")
+
+
+def _strip_okina(name: str) -> str:
+    return _OKINA_RE.sub("", name)
+
+
 def _table_lookup(name: str) -> Optional[Tuple[str, List[str]]]:
     """(table, states) if any normalization candidate of `name` is a real
     known place or county name -- ambiguous (multi-state) still counts as
@@ -596,7 +641,9 @@ def _table_lookup(name: str) -> Optional[Tuple[str, List[str]]]:
     `enrich_jurisdiction_text()`'s own type-detection, so "York County"
     matches the real county instead of one of the 5 unrelated places
     named "York". Also tries an abbreviation-expanded form
-    (`_expand_abbreviations()`) when the raw name doesn't match as-is."""
+    (`_expand_abbreviations()`), a "Saint"->"St."-contracted form
+    (`_contract_saints()`), and an ʻokina/apostrophe-stripped form
+    (`_strip_okina()`) when the raw name doesn't match as-is."""
     name = name.strip().rstrip(".,;:")
     if not name:
         return None
@@ -610,6 +657,12 @@ def _table_lookup(name: str) -> Optional[Tuple[str, List[str]]]:
     expanded = _expand_abbreviations(name)
     if expanded != name:
         candidates.extend(_normalize_candidates(expanded))
+    contracted = _contract_saints(name)
+    if contracted != name:
+        candidates.extend(_normalize_candidates(contracted))
+    de_okina = _strip_okina(name)
+    if de_okina != name:
+        candidates.extend(_normalize_candidates(de_okina))
     for candidate in candidates:
         for label, table in tables:
             if candidate in table:
@@ -927,6 +980,16 @@ def _validated_subdomain_extract(url: str) -> Optional[str]:
         return None
     name = " ".join(w.capitalize() for w in words)
     return name if _table_lookup(name) else None
+
+
+def validated_subdomain_extract(url: str) -> Optional[str]:
+    """Public wrapper around `_validated_subdomain_extract()` for callers
+    outside this module's own chain -- e.g. granicus.py's subdomain-
+    humanization fallback, which used to always guess via a bare
+    wordninja split (confident garbage on acronym subdomains like
+    "sfwmd" -> "S Fw, MD", see BACKLOG.md) instead of declining when
+    nothing validates against the Census tables."""
+    return _validated_subdomain_extract(url)
 
 
 def extract_jurisdiction_chain(*, page_text: str, html: str, url: str) -> Optional[str]:

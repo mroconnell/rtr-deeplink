@@ -16,17 +16,19 @@
     <h2>Every place we've covered</h2>
     <p>Looking for a specific city, county, or state rather than a vendor name? Use your browser's find-on-page (Ctrl+F or Cmd+F) and search for it — e.g. "Napa" or "Aurora."</p>
     <div class="table-responsive">
-      <table class="table table-sm table-striped align-middle">
+      <table class="table table-sm table-striped align-middle coverage-table" id="coverageTable">
         <thead>
           <tr>
-            <th scope="col">Government</th>
-            <th scope="col">Example meeting</th>
-            <th scope="col">Transcript</th>
+            <th scope="col" class="row-number-col">#</th>
+            <th scope="col" class="sortable-col" data-sort-key="jurisdiction" role="button" tabindex="0">Government</th>
+            <th scope="col" class="sortable-col" data-sort-key="title" role="button" tabindex="0">Example meeting</th>
+            <th scope="col" class="sortable-col" data-sort-key="transcript" role="button" tabindex="0">Transcript</th>
           </tr>
         </thead>
         <tbody>
           {% for row in jurisdictions %}
-          <tr>
+          <tr data-jurisdiction="{{ row.jurisdiction|jurisdiction_display }}" data-title="{{ row.example.title or 'Untitled meeting' }}" data-transcript="{{ '1' if row.example.has_transcript else '0' }}">
+            <td class="row-number-col">{{ loop.index }}</td>
             <td>{{ row.jurisdiction|jurisdiction_display }}</td>
             <td><a href="/m/{{ row.example.slug }}">{{ row.example.title or "Untitled meeting" }}</a></td>
             <td>
@@ -89,4 +91,7 @@
     <h2 style="margin-top: 2rem;">Other projects worth knowing about</h2>
     <p>For New York City Council meetings specifically, check out <a href="https://citymeetings.nyc" target="_blank" rel="noopener noreferrer">Vikram Oberoi's City Meetings NYC</a> — a human-verified, diarized transcript project covering the NYC Council and the NYC Charter Revision Commission better than we could hope to. Oberoi's openness in sharing what he learned building it was fundamental to building this tool in the first place, so we're glad to send New York traffic his way.</p>
   </main>
+{% endblock %}
+{% block scripts %}
+  <script src="/archive-static/coverage.js"></script>
 {% endblock %}

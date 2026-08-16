@@ -258,7 +258,7 @@ async def test_coverage_page_renders_a_real_jurisdiction_row():
 
 def test_resolver_footer_has_all_four_links():
     response = resolver_client.get("/")
-    for href in ("/sitemap.xml", "/feed.xml", "/coverage", "mailto:ryan@redtaperecordings.com"):
+    for href in ("/sitemap.xml", "/feed.xml", "/coverage", "mailto:ally@redtaperecordings.com"):
         assert href in response.text
 
 
@@ -270,5 +270,5 @@ def test_subscribe_page_hides_redundant_prompt_but_keeps_footer_links():
 
 def test_archive_footer_has_all_four_links():
     response = archive_client_.get("/this-page-does-not-exist")  # any page renders base.html's footer
-    for href in ("/sitemap.xml", "/feed.xml", "/coverage", "mailto:ryan@redtaperecordings.com"):
+    for href in ("/sitemap.xml", "/feed.xml", "/coverage", "mailto:ally@redtaperecordings.com"):
         assert href in response.text
