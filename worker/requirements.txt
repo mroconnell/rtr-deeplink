@@ -19,3 +19,7 @@ python-dotenv>=1.0
 # Self-hosted speech-to-text (see worker/transcription_engine.py) --
 # CTranslate2-based, no torch/GPU dependency, real CPU inference.
 faster-whisper
+
+# Error monitoring (2026-08-16, WO-7): no-op when SENTRY_DSN unset, same
+# degrade pattern used across this repo -- see worker/main.py's _init_sentry().
+sentry-sdk>=2.0

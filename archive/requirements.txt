@@ -12,3 +12,6 @@ alembic>=1.13
 # network call per request. See requirements.txt's matching comment; no
 # svix here since webhook handling lives on the resolver only.
 clerk-backend-api>=6.0
+# Error monitoring (2026-08-16, WO-7): no-op when SENTRY_DSN unset, same
+# degrade pattern as Clerk above -- see archive/main.py's _init_sentry().
+sentry-sdk>=2.0

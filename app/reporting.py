@@ -66,6 +66,22 @@ def _fmt(result: MetricResult) -> str:
     return str(result.value)
 
 
+def _metrics_to_jsonable(metrics: dict) -> dict:
+    """MetricResult isn't a Pydantic model, so build the JSON-safe shape
+    explicitly rather than relying on FastAPI's encoder to guess."""
+    return {name: {"value": r.value, "error": r.error} for name, r in metrics.items()}
+
+
+def failed_metric_names(jsonable_metrics: dict) -> list:
+    """Which metrics in the (already-jsonable) dict came back with an
+    error. Used by GET /admin/daily-report (WO-7, 2026-08-16) to decide
+    whether to return a non-2xx -- previously a metric failing silently
+    composed into the email as "unavailable (...)" with no signal at the
+    HTTP layer, so the cron's `--fail-with-body` never tripped and a
+    degraded report looked identical to a healthy one from the outside."""
+    return [name for name, m in jsonable_metrics.items() if m.get("error") is not None]
+
+
 async def fetch_clerk_metrics(secret_key: str) -> dict:
     """Returns {"clerk_total_users": MetricResult, "clerk_new_users_24h": MetricResult}."""
     if not secret_key:
@@ -275,4 +291,4 @@ async def run_daily_report(*, to: str, dry_run: bool = False) -> dict:
         resend_from = os.environ.get("RESEND_FROM_ADDRESS", "")
         sent = await send_report_email(to, subject, body, api_key=resend_api_key, from_address=resend_from)
 
-    return {"subject": subject, "body": body, "sent": sent}
+    return {"subject": subject, "body": body, "sent": sent, "metrics": _metrics_to_jsonable(metrics)}

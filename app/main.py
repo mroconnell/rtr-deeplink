@@ -28,6 +28,28 @@ from svix.webhooks import Webhook
 
 load_dotenv()
 
+
+def _init_sentry() -> None:
+    """No-op when SENTRY_DSN unset, same degrade pattern as Clerk/
+    ARCHIVE_INGEST_TOKEN elsewhere in this codebase -- Sentry is opt-in
+    infra, not a hard dependency. Called before the FastAPI app is
+    constructed so its ASGI auto-instrumentation (unhandled-exception
+    capture on every route) attaches; the SDK's default logging
+    integration also means every existing logger.exception()/
+    logger.error() call in this codebase starts reporting to Sentry with
+    no per-call-site changes needed. traces_sample_rate=0 -- performance
+    tracing isn't what this is for, and it's a separate (metered) Sentry
+    quota from error events."""
+    dsn = os.environ.get("SENTRY_DSN", "")
+    if not dsn:
+        return
+    import sentry_sdk
+
+    sentry_sdk.init(dsn=dsn, environment=os.environ.get("SENTRY_ENVIRONMENT", "production"), traces_sample_rate=0)
+
+
+_init_sentry()
+
 from . import archive_client, reporting
 from .db import crud
 from .db.engine import init_models
@@ -283,6 +305,54 @@ async def health():
     except Exception:
         logger.exception("Health check failed: database unreachable.")
         return JSONResponse({"status": "error", "reason": "database unreachable"}, status_code=503)
+    return {"status": "ok"}
+
+
+@app.get("/api/health/resolve-check")
+async def health_resolve_check():
+    """For an external uptime monitor to poll (WO-7) -- unlike /api/health
+    above, which only proves the DB is reachable, this proves the whole
+    resolve pipeline (routing, adapter dispatch, DB read/write) actually
+    completes a request. Deliberately checks one fixed, operator-chosen
+    URL (UPTIME_CHECK_URL) rather than a caller-supplied one, so this can
+    be a plain GET any free-tier uptime service can poll -- no request
+    body needed. No-op ("not_configured", still 200 -- this must never be
+    what breaks an uptime dashboard on its own) when the env var is unset,
+    same degrade pattern as Clerk/Sentry elsewhere in this file.
+
+    Reuses the real cache path (crud.get_cached_resolution) rather than
+    forcing a live fetch on every poll -- most polls hit cache (cheap,
+    polite to the government source site being checked); WO-13's adapter
+    health canary is the mechanism that specifically re-verifies live
+    per-platform adapter parsing, on its own slower cadence, not this
+    endpoint.
+    """
+    check_url = os.environ.get("UPTIME_CHECK_URL", "")
+    if not check_url:
+        return {
+            "status": "not_configured",
+            "message": "Set UPTIME_CHECK_URL to a real, known-good meeting URL to enable this check.",
+        }
+
+    normalized = normalize_url(check_url)
+    cached = await safe(crud.get_cached_resolution, normalized)
+    if cached:
+        payload = cached["payload"]
+    else:
+        try:
+            platform = detect_platform(check_url)
+            finder = get_finder(platform)
+            result = await finder.resolve(check_url)
+            payload = result.model_dump()
+        except Exception as e:
+            logger.exception("Uptime resolve-check failed for %s.", check_url)
+            return JSONResponse({"status": "error", "reason": str(e)[:200]}, status_code=503)
+
+    has_content = bool(
+        payload.get("segments") or payload.get("agenda_items") or payload.get("video_url") or payload.get("agenda_link")
+    )
+    if not has_content:
+        return JSONResponse({"status": "error", "reason": "resolve returned no content"}, status_code=503)
     return {"status": "ok"}
 
 
@@ -1227,6 +1297,19 @@ async def admin_daily_report(token: str = "", dry_run: bool = False, authorizati
     except Exception:
         logger.exception("Daily report run failed unexpectedly.")
         return JSONResponse({"error": "daily_report_failed"}, status_code=500)
+
+    # A metric failing used to compose silently into the email as
+    # "unavailable (...)" with no signal at the HTTP layer -- the cron's
+    # `--fail-with-body` never tripped, so a degraded report looked
+    # identical to a healthy one from the outside (WO-7, 2026-08-16).
+    # Checked ahead of the send-failure check below so it's surfaced
+    # either way, not masked by a coincident send failure.
+    failed_metrics = reporting.failed_metric_names(result["metrics"])
+    if failed_metrics:
+        return JSONResponse(
+            {"error": "metrics_unavailable", "failed_metrics": failed_metrics, "subject": result["subject"]},
+            status_code=502,
+        )
 
     if not dry_run and not result["sent"]:
         return JSONResponse({"error": "send_failed", "subject": result["subject"]}, status_code=502)
