@@ -304,6 +304,7 @@ class SwagitAssetFinder(AssetFinder):
     @staticmethod
     def _extract_metadata(soup: BeautifulSoup):
         raw_title = soup.title.get_text(strip=True) if soup.title else ""
+        raw_title = re.sub(r"\s+", " ", raw_title)
         # "{Date}, {Meeting Title} - {City}, {State}" -- but real bug found
         # live 2026-08-13: some meetings carry an extra "- Revised -" or
         # "- Closed Session -" marker before the city (e.g. "Aug 04, 2026

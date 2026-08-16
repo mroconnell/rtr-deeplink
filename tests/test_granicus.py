@@ -32,6 +32,85 @@ async def test_resolve_real_blank_caption_meeting():
     assert any("blank" in w.lower() for w in result.transcript_warnings)
 
 
+async def test_resolve_humanizes_valid_city_subdomain_when_no_page_text_jurisdiction():
+    # No "City/County of X" text anywhere on the page (unlike the Napa
+    # fixture reused elsewhere in this file) -- forces the subdomain
+    # fallback. "fresno" is a real, unambiguous Census place, so this
+    # should still resolve correctly via
+    # jurisdiction_enrich.validated_subdomain_extract().
+    url = "https://fresno.granicus.com/player/clip/99"
+    html = "<html><head><title>Meeting</title></head><body>No jurisdiction text here.</body></html>"
+
+    routes = {
+        url: FakeResponse(status=200, text=html, url=url),
+        "https://fresno.granicus.com/videos/99/captions.vtt": FakeResponse(status=404),
+        "https://fresno.granicus.com/videos/99/player": FakeResponse(status=404),
+        "https://fresno.granicus.com/AgendaViewer.php?clip_id=99&embedded=1": FakeResponse(status=404),
+    }
+
+    with mock_session(routes):
+        result = await GranicusAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "Fresno, CA"
+
+
+async def test_resolve_declines_subdomain_humanization_for_unvalidated_acronym():
+    # Real bug found live 2026-08-15: the old bare wordninja-always-guess
+    # turned "sfwmd" (South Florida Water Management District) into
+    # "S Fw, MD" -- its trailing "md" misread as a Maryland state suffix.
+    # "sfwmd" doesn't validate against the Census place/county tables (it's
+    # an agency name, not a place), so this should now decline rather than
+    # guess, leaving jurisdiction at the generic placeholder.
+    url = "https://sfwmd.granicus.com/player/clip/99"
+    html = "<html><head><title>Meeting</title></head><body>No jurisdiction text here.</body></html>"
+
+    routes = {
+        url: FakeResponse(status=200, text=html, url=url),
+        "https://sfwmd.granicus.com/videos/99/captions.vtt": FakeResponse(status=404),
+        "https://sfwmd.granicus.com/videos/99/player": FakeResponse(status=404),
+        "https://sfwmd.granicus.com/AgendaViewer.php?clip_id=99&embedded=1": FakeResponse(status=404),
+    }
+
+    with mock_session(routes):
+        result = await GranicusAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "Unknown Jurisdiction"
+
+
+async def test_resolve_flags_exactly_36000_cues_as_possibly_cut_off():
+    # Granicus's own captions.vtt appears to hard-cap at exactly 36,000
+    # cues on very long meetings, cutting off mid-sentence with no
+    # warning of its own -- confirmed live 2026-08-15 on 3 independent
+    # real customers (College Park GA, Coral Gables FL, Marion County
+    # FL), see BACKLOG.md. Synthetic VTT here (36,000 real cues would be
+    # an unwieldy fixture), reusing the real Napa clip 3450 page shape.
+    url = "https://napacity.granicus.com/player/clip/3450"
+    html = load_fixture("granicus", "napacity_clip3450.html")
+    lines = ["WEBVTT", ""]
+    for i in range(36000):
+        start_s, end_s = i, i + 1
+        start = f"{start_s // 3600:02d}:{(start_s % 3600) // 60:02d}:{start_s % 60:02d}.000"
+        end = f"{end_s // 3600:02d}:{(end_s % 3600) // 60:02d}:{end_s % 60:02d}.000"
+        lines.append(f"{start} --> {end}")
+        lines.append(f"cue {i}")
+        lines.append("")
+    captions = "\n".join(lines).encode("utf-8")
+
+    routes = {
+        url: FakeResponse(status=200, text=html, url=url),
+        "https://napacity.granicus.com/videos/3450/captions.vtt":
+            FakeResponse(status=200, raw=captions),
+        "https://napacity.granicus.com/AgendaViewer.php?clip_id=3450&embedded=1":
+            FakeResponse(status=404),
+    }
+
+    with mock_session(routes):
+        result = await GranicusAssetFinder().resolve(url)
+
+    assert len(result.segments) == 36000
+    assert any("36,000" in w for w in result.transcript_warnings)
+
+
 async def test_agenda_viewer_redirect_to_raw_pdf_surfaces_as_fallback_link():
     # Real Napa City Council clip 3470 (view_id=12), fetched live
     # 2026-08-11 -- AgendaViewer.php redirects straight to a *raw* binary

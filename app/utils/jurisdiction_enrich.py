@@ -419,6 +419,15 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     "agendas.fitchburgwi.gov": KnownJurisdiction("Fitchburg", "city", "WI"),
     "dms.missionviejo.gov": KnownJurisdiction("Mission Viejo", "city", "CA"),
     "isearchmonterey.org": KnownJurisdiction("Monterey", "city", "CA"),
+    # Confirmed real 2026-08-14 via this domain's own
+    # `Content-Security-Policy: frame-ancestors ... orangecountyfl.net`
+    # header and a `<meta name="keywords" content="...Orange County,
+    # Archive">` tag -- no reliable in-page jurisdiction text otherwise,
+    # so this is a domain-registry entry, not a text-extraction fallback.
+    # generic_fallback.py (the adapter for this page) doesn't extract a
+    # meeting-body TYPE the way Granicus/CivicClerk do, so this is
+    # registered as "county" directly rather than inferred per-resolve.
+    "netapps.ocfl.net": KnownJurisdiction("Orange", "county", "FL"),
 }
 
 
@@ -927,6 +936,16 @@ def _validated_subdomain_extract(url: str) -> Optional[str]:
         return None
     name = " ".join(w.capitalize() for w in words)
     return name if _table_lookup(name) else None
+
+
+def validated_subdomain_extract(url: str) -> Optional[str]:
+    """Public wrapper around `_validated_subdomain_extract()` for callers
+    outside this module's own chain -- e.g. granicus.py's subdomain-
+    humanization fallback, which used to always guess via a bare
+    wordninja split (confident garbage on acronym subdomains like
+    "sfwmd" -> "S Fw, MD", see BACKLOG.md) instead of declining when
+    nothing validates against the Census tables."""
+    return _validated_subdomain_extract(url)
 
 
 def extract_jurisdiction_chain(*, page_text: str, html: str, url: str) -> Optional[str]:
