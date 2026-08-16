@@ -35,4 +35,5 @@ jobs:
       - name: Call /admin/daily-report
         run: |
           curl --fail-with-body --silent --show-error \
-            "${{ secrets.RESOLVER_BASE_URL }}/admin/daily-report?token=${{ secrets.ADMIN_STATS_TOKEN }}"
+            -H "Authorization: Bearer ${{ secrets.ADMIN_STATS_TOKEN }}" \
+            "${{ secrets.RESOLVER_BASE_URL }}/admin/daily-report"
