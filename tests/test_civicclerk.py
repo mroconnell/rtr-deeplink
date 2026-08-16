@@ -191,6 +191,41 @@ async def test_resolve_falls_back_to_jurisdiction_chain_when_location_is_fully_b
     assert result.jurisdiction == "Los Altos Hills, CA"
 
 
+async def test_resolve_falls_back_to_agenda_plaintext_when_subdomain_also_fails():
+    # Path 2 of the same source entry as the test above (BACKLOG.md):
+    # when eventLocation is blank AND the URL-only chain (subdomain alone)
+    # also fails to validate -- unlike Los Altos Hills, where the
+    # subdomain tier alone was already enough -- CivicClerk's own agenda
+    # file is fetchable as plain text and is a richer, independent signal.
+    # Real shape confirmed live on Los Altos Hills' actual agenda blob
+    # ("Town of Los Altos Hills / City Council Regular Meeting Agenda /
+    # Thursday, ..."); synthetic subdomain/place name here so this test
+    # doesn't depend on the free tier above also failing to fire.
+    url = "https://testgov123.portal.civicclerk.com/event/9/media"
+    event_json = (
+        '{"id": 9, "eventName": "City Council Meeting", '
+        '"eventDate": "2026-06-18T00:00:00Z", "eventLocation": {"city": null, "state": null}, '
+        '"publishedFiles": [{"type": "Agenda", "fileId": 8983, '
+        '"url": "https://testgov123.api.civicclerk.com/v1/Meetings/GetMeetingFile(fileId=8983,plainText=false)"}]}'
+    )
+    media_json = '{"id": 9, "videoUrl": "https://cpmedia.azureedge.net/example/d.mp4", "eventBookmarks": []}'
+    blob_url = "https://sasblob.example.com/agenda-8983.txt?sig=abc123"
+    agenda_text = "Town of Galesburg / City Council Regular Meeting Agenda / Thursday, June 18, 2026"
+
+    routes = {
+        "https://testgov123.api.civicclerk.com/v1/Events/9": FakeResponse(status=200, text=event_json),
+        "https://testgov123.api.civicclerk.com/v1/EventsMedia/9": FakeResponse(status=200, text=media_json),
+        "https://testgov123.api.civicclerk.com/v1/Meetings/GetMeetingFile(fileId=8983,plainText=true)":
+            FakeResponse(status=200, text=f'{{"blobUri": "{blob_url}"}}'),
+        blob_url: FakeResponse(status=200, text=agenda_text),
+    }
+
+    with mock_session(routes):
+        result = await CivicClerkAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "Town of Galesburg"
+
+
 async def test_resolve_text_fallback_for_unstructured_caption_format():
     # Synthetic, not real -- only .srt has ever been observed live on this
     # platform (event 585 above). Exercises the new fallback path in case
