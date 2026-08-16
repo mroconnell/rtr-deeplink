@@ -6,6 +6,55 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Napa VOD "Testing 123" hallucination: proposed ffmpeg fix disproven, original symptom no longer reproduces (2026-08-16)
+
+Picked up the still-open "second, distinct manifestation of the
+hallucination failure mode" entry (the County of Napa 2026-06-02 Board
+of Supervisors meeting, 0:00–8:57 transcribing as repeated "Testing one,
+two, three" plus fabricated Spanish-looking text) rather than blindly
+implementing its proposed `-fflags +genpts` fix — that flag was
+explicitly flagged "untested" in the entry itself, so verified first,
+per this file's own "verify before generalizing" convention.
+
+Fetched the real production HLS URL directly (via the live meeting
+page's own embedded video URL, `archive-stream.granicus.com/OnDemand/
+_definst_/mp4:archive/napa/napa_10ae7709-....mp4/playlist.m3u8`) and ran
+three real local checks with ffmpeg 8.1.2 + the repo's own
+`faster-whisper==1.2.1`:
+
+1. **`-fflags +genpts` does nothing** — reproduced the exact same "Queue
+   input is backward in time" / "non monotonically increasing dts"
+   warnings with the flag present, identical to without it.
+2. **A different flag, `-af aresample=async=1`, does eliminate every
+   warning — but the extracted audio itself is unchanged.** Transcribed
+   both the warning-free and warning-riddled extractions through the
+   exact same model config; the transcripts were line-for-line
+   identical (one trivial 2-second segment-boundary shift). The dts
+   warnings are a cosmetic libmp3lame-muxer complaint about
+   container-level timestamp metadata that never affected which audio
+   samples actually reached Whisper — there was no real bug in
+   `extract_chunk_audio()` to fix.
+3. **The originally-reported hallucination itself doesn't reproduce.**
+   Re-ran the exact 2026-08-12 repro (same URL, same single continuous
+   0–900s chunk, same model/prompt/beam_size) and got a single brief
+   "Testing 1, 2, 3" at 0–15.7s, then a clean, accurate transcript the
+   rest of the way through 900s (a real Pledge of Allegiance, "Pet of
+   the Week" segment, and the full Pride Month proclamation, all
+   transcribed correctly) — not the ~17x repeated phrase plus fabricated
+   Spanish text originally reported. Most plausible explanation, not
+   conclusively confirmed: `worker/requirements.txt` pins no version for
+   `faster-whisper` (bare `faster-whisper` line, no `==`), so every
+   fresh build picks up whatever's newest — a real possibility an
+   upstream release between 2026-08-12 and now already fixed this class
+   of repetition-loop hallucination (a known Whisper-family bug
+   category), unrelated to anything in this app's own code. Not chased
+   further (would need pinning + bisecting historical `faster-whisper`
+   releases, out of scope for closing this entry).
+
+Closed the entry as "no code fix needed" rather than leaving a disproven
+fix hypothesis open or implementing a flag that (confirmed) changes
+nothing. No code changed; this is a research-only close-out.
+
 ## Jurisdiction validation gaps: "Saint"/"St.", ʻokina, CivicClerk agenda-text fallback (2026-08-16)
 
 Three follow-on fixes picked up after closing out the easy-win triage
@@ -54,7 +103,11 @@ BACKLOG.md/BACKLOG_DONE.md — not duplicated in full here.
 **Wave 1 — copy & data only:**
 1. Contact `mailto:` links (`app/templates/base.html`,
    `archive/templates/base.html`) now point at
-   `ally@redtaperecordings.com` instead of `ryan@`.
+   `ally@redtaperecordings.com` instead of `ryan@`. The same email-audit
+   entry's other leftover, `app/templates/about.html`'s feedback link
+   (previously `ryan@how-to-adu.com`, a personal inbox, not a
+   `redtaperecordings.com` address at all), fixed the same way 2026-08-16
+   in a follow-on pass.
 2. Transcription rate-limit 429 copy (`app/static/player.js`,
    `archive/static/meeting_page.js`) rewritten to "You've hit the
    transcript request limit for now — please try again in about an

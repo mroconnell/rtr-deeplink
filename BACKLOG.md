@@ -2707,8 +2707,9 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     **Fixed 2026-08-16, wave 1 item 1 — full detail in
     `BACKLOG_DONE.md`.** `app/templates/base.html:77` and
     `archive/templates/base.html:95`.
-  - **Still open**: `app/templates/about.html:19` shows `ryan@how-to-adu.com` directly
-    (the personal inbox, not a `redtaperecordings.com` address at all).
+  - ~~`app/templates/about.html:19` shows `ryan@how-to-adu.com` directly
+    (the personal inbox, not a `redtaperecordings.com` address at all)~~
+    **Fixed 2026-08-16 — full detail in `BACKLOG_DONE.md`.**
   - `RESEND_REPLY_TO_ADDRESS` (`app/main.py`, `archive/utils/email.py`,
     Render dashboard env var per `BACKLOG_DONE.md`'s "Closed out
     2026-08-10" note) is currently `ryan@redtaperecordings.com` — this is
@@ -3187,17 +3188,48 @@ one item below is resolved as a result.
     real, meaningful audio content, not noise) than with either a clean
     signal or true silence.
 
-  **Not yet built, and deliberately not attempted this pass**: a real fix
-  needs to establish *why* this specific VOD's HLS timestamps are
-  non-monotonic (a Granicus live-to-VOD stitching artifact? a genuine
-  duplicated segment in the source?) and whether a targeted `ffmpeg` flag
-  (e.g. `-fflags +genpts`, forcing regenerated presentation timestamps
-  instead of trusting the source's) actually produces clean audio for this
-  same range — untested, and this is one sample from one CDN path
-  (`archive-stream.granicus.com`'s "OnDemand" proxy specifically, not
-  every Granicus clip), so worth checking whether this recurs on a second
-  real `archive-stream.granicus.com` VOD before generalizing a fix, per
-  this file's own "verify with a real example" convention.
+  **Update 2026-08-16: both the proposed ffmpeg fix and the underlying
+  bug itself were tested for real, with a surprising result — there was
+  never anything to fix in `extract_chunk_audio()` at all.** Three real
+  checks, same production `archive-stream.granicus.com` URL as above,
+  local ffmpeg 8.1.2 + the repo's own `faster-whisper==1.2.1` (no
+  version pin exists in `worker/requirements.txt`, see below for why
+  that matters):
+  1. **`-fflags +genpts` (the proposed fix) does nothing** — reproduced
+     the same "Queue input is backward in time" warnings with the flag
+     present, identically to without it.
+  2. **A different flag, `-af aresample=async=1`, does eliminate every
+     warning — but changes nothing about the extracted audio itself.**
+     Transcribing the warning-free output and the original
+     warning-riddled output through the exact same `faster-whisper`
+     "tiny"/prompt/`beam_size=5` config produced line-for-line identical
+     transcripts (one trivial 2-second segment-boundary difference).
+     The "non monotonically increasing dts" warnings are a cosmetic
+     libmp3lame-muxer complaint about container-level timestamp
+     metadata — they never affected which audio samples actually reach
+     Whisper. There's no real bug in this function to fix.
+  3. **The originally-reported symptom itself doesn't reproduce
+     anymore.** Re-ran the *exact* repro from the 2026-08-12 update
+     above (same URL, same single continuous 0–900s chunk, same model
+     config) and got a single brief "Testing 1, 2, 3" at 0–15.7s,
+     immediately followed by clean, correct, real content the rest of
+     the way through 900s (a real Pledge of Allegiance, "Pet of the
+     Week," and the full Pride Month proclamation, all transcribed
+     accurately) — not the ~17x repeated "Testing 123" + fabricated
+     Spanish gibberish through 508s originally reported. Most plausible
+     explanation, not conclusively pinned down: `worker/requirements.txt`
+     pins no version for `faster-whisper` (confirmed: bare `faster-whisper`
+     line, no `==`), so every fresh build picks up whatever's newest at
+     build time — a real possibility that an upstream release between
+     2026-08-12 and now (repetition-loop hallucination is a known class
+     of Whisper-family bug with a history of upstream fixes) already
+     resolved this, not anything in this app's own code. Not chased
+     further (would need pinning + testing multiple historical
+     `faster-whisper` versions to confirm which release changed it,
+     out of scope for closing this entry). **Closing as "no code fix
+     needed, and the original symptom is unreproducible with today's
+     dependencies"** rather than leaving a stale, disproven fix
+     hypothesis open.
 - **Per-meeting `initial_prompt` seeded with real council-member names,
   from the agenda — user idea, 2026-08-11, real proper-noun accuracy
   motivation (their example: "Council Member Rashi Kesarwani, Council
