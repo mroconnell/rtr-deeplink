@@ -24,6 +24,25 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
+def _init_sentry() -> None:
+    """No-op when SENTRY_DSN unset, same degrade pattern as app/main.py's
+    matching _init_sentry() (deliberately duplicated per service). This
+    process never serves HTTP, so there's no ASGI app to auto-instrument
+    -- what this buys here is the SDK's logging integration, which turns
+    every existing logger.exception() call in the loop below (and in
+    archive.db/archive.utils.email, which this process calls directly)
+    into a Sentry event with no per-call-site changes needed."""
+    dsn = os.environ.get("SENTRY_DSN", "")
+    if not dsn:
+        return
+    import sentry_sdk
+
+    sentry_sdk.init(dsn=dsn, environment=os.environ.get("SENTRY_ENVIRONMENT", "production"), traces_sample_rate=0)
+
+
+_init_sentry()
+
 from app.platforms import register_all_finders
 from app.platforms.base import UnsupportedPlatformError, get_finder
 from app.platforms.media_probe import extract_chunk_audio, is_plausible_meeting_duration, probe_duration

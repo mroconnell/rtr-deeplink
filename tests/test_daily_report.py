@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 import app.main
 import app.reporting as reporting_module
 from aiohttp_mock import FakeResponse, mock_session
-from app.reporting import MetricResult, _count_since, compose_report_email
+from app.reporting import MetricResult, _count_since, _metrics_to_jsonable, compose_report_email, failed_metric_names
 
 resolver_client = TestClient(app.main.app)
 
@@ -128,3 +128,32 @@ def test_admin_daily_report_dry_run_returns_composed_email_without_sending(monke
     assert body["sent"] is False
     assert "6 reports run" in body["subject"]
     assert "Total: 142" in body["body"]
+
+
+def test_metrics_to_jsonable_converts_dataclasses():
+    jsonable = _metrics_to_jsonable(_metrics())
+    assert jsonable["reports_run"] == {"value": 6, "error": None}
+
+
+def test_failed_metric_names_lists_only_errored_metrics():
+    jsonable = _metrics_to_jsonable(_metrics(resend_sent_24h=MetricResult(None, "boom")))
+    assert failed_metric_names(jsonable) == ["resend_sent_24h"]
+
+
+def test_admin_daily_report_returns_502_when_a_metric_failed(monkeypatch):
+    # WO-7 (2026-08-16): a metric failing used to compose silently into the
+    # email body with no signal at the HTTP layer, so the cron's
+    # `--fail-with-body` never tripped -- see AUDIT_EXECUTION_BRIEF.md.
+    async def fake_gather_metrics():
+        return _metrics(resend_sent_24h=MetricResult(None, "RuntimeError: timed out"))
+
+    monkeypatch.setattr(reporting_module, "gather_metrics", fake_gather_metrics)
+
+    response = resolver_client.get(
+        "/admin/daily-report", params={"token": "test-admin-token", "dry_run": "true"}
+    )
+
+    assert response.status_code == 502
+    body = response.json()
+    assert body["error"] == "metrics_unavailable"
+    assert body["failed_metrics"] == ["resend_sent_24h"]

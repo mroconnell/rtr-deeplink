@@ -14,6 +14,9 @@
 # Cron time deliberately offset from daily-report.yml's own 23:30 UTC so
 # the two scheduled jobs don't both fire in the same minute against
 # Render's free-tier-adjacent resources.
+#
+# Optional (WO-7, 2026-08-16): ALERT_WEBHOOK_URL -- see daily-report.yml's
+# matching comment; same secret, shared across both workflows.
 
 name: Send search alerts
 
@@ -36,3 +39,13 @@ jobs:
           curl --fail-with-body --silent --show-error \
             -H "Authorization: Bearer ${{ secrets.ADMIN_STATS_TOKEN }}" \
             "${{ secrets.RESOLVER_BASE_URL }}/admin/send-search-alerts?dry_run=${{ inputs.dry_run || 'false' }}"
+      - name: Notify on failure
+        if: failure()
+        run: |
+          if [ -n "${{ secrets.ALERT_WEBHOOK_URL }}" ]; then
+            curl --silent --show-error -X POST -H "Content-Type: application/json" \
+              -d "{\"text\": \"Send search alerts workflow failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+              "${{ secrets.ALERT_WEBHOOK_URL }}" || true
+          else
+            echo "::warning::Send search alerts failed and ALERT_WEBHOOK_URL isn't set -- no external notification sent (relying on GitHub's own failed-scheduled-workflow email)."
+          fi

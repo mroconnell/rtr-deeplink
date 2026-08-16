@@ -265,7 +265,7 @@ header-auth change, then remove the query-param fallback in a follow-up PR
 — not done in this pass, since it needs a real cron run against prod to
 confirm before it's safe to remove.
 
-### WO-7 · Know when production breaks — **2-3 hrs**
+### WO-7 · Know when production breaks — **CODE DONE 2026-08-16, needs Ryan's accounts**
 
 **Problem.** No error monitoring exists; `CLAUDE_BACKLOG.md:28-31` concedes
 that "production exceptions currently only surface if someone happens to
@@ -280,8 +280,47 @@ external uptime check against a **real resolve path**, not `/api/health`.
 Make `/admin/daily-report` return a non-2xx when any metric errored, so the
 cron's `--fail-with-body` actually trips.
 
+**Fixed — code side.**
+- (a) `_init_sentry()` (duplicated per service, same pattern as
+  `clerk_auth.py`) calls `sentry_sdk.init()` before the app/worker loop
+  starts, only when `SENTRY_DSN` is set. Its default logging integration
+  means every existing `logger.exception()`/`logger.error()` call across
+  all three services starts reporting with **no per-call-site changes** —
+  this was the actual leverage, not manually instrumenting each one.
+- (b) New `GET /api/health/resolve-check` — unlike `/api/health`, this
+  runs a real resolve (via the same cache-then-live-adapter path
+  `/api/resolve` itself uses) against one operator-chosen URL
+  (`UPTIME_CHECK_URL`), so a plain GET from any free-tier uptime service
+  proves the whole pipeline, not just the DB. Returns `not_configured`
+  (still 200) when the env var is unset — this endpoint existing must
+  never be what breaks a dashboard on its own.
+- (c) Both `daily-report.yml` and `send-search-alerts.yml` got an
+  `if: failure()` step that posts to `ALERT_WEBHOOK_URL` (Slack/Discord
+  incoming webhook) when set, and logs a `::warning::` annotation
+  otherwise — GitHub's own failed-scheduled-workflow email is the
+  fallback either way, so this is additive, not the only signal.
+- (d) `run_daily_report()` now returns each metric's jsonable
+  `{value, error}`; `/admin/daily-report` checks `failed_metric_names()`
+  first (ahead of the existing send-failure check) and returns 502
+  `metrics_unavailable` with the list of which metrics failed.
+
+**Still open — Ryan's, not code:**
+1. Create a Sentry account (free tier), set `SENTRY_DSN` on all three
+   Render services.
+2. Create an external uptime-monitor account (e.g. UptimeRobot, Better
+   Uptime), point a GET check at `/api/health/resolve-check`, and set
+   `UPTIME_CHECK_URL` on the resolver to a real meeting URL you're
+   comfortable being polled repeatedly (most polls will hit cache, not
+   re-fetch the source site — see the endpoint's own docstring).
+3. Optional: an `ALERT_WEBHOOK_URL` repo secret (Slack/Discord incoming
+   webhook) for (c) above.
+
 **Acceptance.** A deliberately raised exception on a staging path appears in
-Sentry. A forced metric failure turns the daily-report workflow red.
+Sentry — **not verified**, needs step 1 above first. A forced metric
+failure turns the daily-report workflow red — **verified**, covered by
+`tests/test_daily_report.py::test_admin_daily_report_returns_502_when_a_metric_failed`
+plus the full suite (808 passed). `tests/test_health_resolve_check.py` and
+`tests/test_sentry_init.py` cover the new endpoint and the no-op/init gate.
 
 ### WO-13 · Adapter health canary — **~half a day** · *new, from `CLAUDE_BACKLOG.md`*
 

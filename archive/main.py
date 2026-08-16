@@ -19,6 +19,22 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 load_dotenv()
 
+
+def _init_sentry() -> None:
+    """No-op when SENTRY_DSN unset, same degrade pattern as Clerk/
+    ARCHIVE_INGEST_TOKEN elsewhere in this codebase -- see app/main.py's
+    matching _init_sentry() for the fuller reasoning (deliberately
+    duplicated per service, same as clerk_auth.py/url_normalize.py)."""
+    dsn = os.environ.get("SENTRY_DSN", "")
+    if not dsn:
+        return
+    import sentry_sdk
+
+    sentry_sdk.init(dsn=dsn, environment=os.environ.get("SENTRY_ENVIRONMENT", "production"), traces_sample_rate=0)
+
+
+_init_sentry()
+
 from .db import crud
 from .db.engine import init_models
 from .utils import email as email_utils

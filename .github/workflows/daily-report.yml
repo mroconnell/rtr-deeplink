@@ -16,6 +16,12 @@
 #                           (app/main.py's _admin_token_ok), matching
 #                           whatever's set on the rtr-deeplink Render
 #                           service.
+#
+# Optional (WO-7, 2026-08-16): ALERT_WEBHOOK_URL -- a Slack/Discord
+# incoming-webhook URL. If unset, a failed run still shows red in the
+# Actions tab and GitHub's own default failed-scheduled-workflow email
+# still fires -- this secret is purely an additional, faster channel, not
+# the only way a failure surfaces.
 name: Daily report
 
 on:
@@ -37,3 +43,13 @@ jobs:
           curl --fail-with-body --silent --show-error \
             -H "Authorization: Bearer ${{ secrets.ADMIN_STATS_TOKEN }}" \
             "${{ secrets.RESOLVER_BASE_URL }}/admin/daily-report"
+      - name: Notify on failure
+        if: failure()
+        run: |
+          if [ -n "${{ secrets.ALERT_WEBHOOK_URL }}" ]; then
+            curl --silent --show-error -X POST -H "Content-Type: application/json" \
+              -d "{\"text\": \"Daily report workflow failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+              "${{ secrets.ALERT_WEBHOOK_URL }}" || true
+          else
+            echo "::warning::Daily report failed and ALERT_WEBHOOK_URL isn't set -- no external notification sent (relying on GitHub's own failed-scheduled-workflow email)."
+          fi
