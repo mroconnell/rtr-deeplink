@@ -1125,6 +1125,24 @@ unusually wide, and the missing auto-scroll toggle on archived pages~~
   `CDX_QUERIES.md` directly — not duplicated here to avoid the two
   drifting apart again.
 
+  **CivicPlus has zero currently-live, confirmed-real URLs anywhere in
+  this repo, re-confirmed 2026-08-16 building the WO-13 adapter health
+  canary.** `ca-westlakevillage.civicplus.com` — the one site this
+  adapter was ever verified against — already had a documented note
+  (`tests/fixtures/civicplus/README.md`) saying it stopped resolving as
+  of 2026-08-07; a live DNS lookup while building the canary confirmed
+  it's still dead (`ClientConnectorDNSError`, not an adapter bug). A real
+  untested replacement candidate is already on file above (this same
+  section, Maricopa County AZ note): `maricopa.gov/324/Board-of-
+  Supervisors-Meeting-Information`, a CivicPlus AgendaCenter page linking
+  directly to YouTube — but its URL shape (`/324/...`, a generic CivicPlus
+  content-module path) doesn't obviously match the `/AgendaCenter/...`
+  shape `civicplus.py`'s docstring documents, so it needs a real fetch-
+  and-verify pass before trusting it, not just wiring it in. Until then,
+  `scripts/adapter_canary.py`'s `CANARY_URLS` deliberately excludes
+  civicplus (see that file's own comment) rather than pointing at a dead
+  or unverified URL.
+
 ~~**`page.platform` never gets updated on a re-ingest of an existing
   page.**~~ **Fixed 2026-08-16 — full detail, including a real
   unrelated production deploy incident hit right after merging, in
