@@ -336,6 +336,12 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     "tucsonaz.hylandcloud.com": KnownJurisdiction("Tucson", "city", "AZ"),
     "mccobagenda.databankcloud.com": KnownJurisdiction("Maricopa", "county", "AZ"),
     "agendanet.saccounty.gov": KnownJurisdiction("Sacramento", "county", "CA"),
+    # Found 2026-08-16 via a plain web search for the platform's
+    # distinctive URL path, not domain/CDX enumeration -- both run the
+    # same product's second confirmed UI version (see hyland.py's module
+    # docstring). Neither has reliable in-page jurisdiction text either.
+    "docs.santabarbaraca.gov": KnownJurisdiction("Santa Barbara", "city", "CA"),
+    "stream2.ci.concord.ca.us": KnownJurisdiction("Concord", "city", "CA"),
 }
 
 

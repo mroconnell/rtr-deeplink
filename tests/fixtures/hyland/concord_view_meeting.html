@@ -1,0 +1,878 @@
+
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+	<meta charset="utf-8" />
+	<title>Regular Meeting - 2/10/2026 6:30:00 PM - OnBase Agenda Online</title>
+	<link href="/OnBaseAgendaOnline/favicon.ico" rel="shortcut icon" type="image/x-icon" />
+	<meta name="viewport" content="width=device-width" />
+	
+	<meta name="format-detection" content="telephone=no" />
+
+	<script src="/OnBaseAgendaOnline/bundles/jquery?v=0XJqbYX4tFhH25_G_qbbiJSeeoDaZY7hjfcdPnQjLwc1"></script>
+
+
+	<link href="/OnBaseAgendaOnline/bundles/css?v=70WAfh5_Fryuvc09STu6rVeZuOqzlpEN2LfMECCmFrw1" rel="stylesheet"/>
+
+
+
+	<script src="/OnBaseAgendaOnline/Scripts/bootstrap.bundle-5.1.3.min.js" type="text/javascript"></script>
+
+	<!-- Dynamic Stylesheet -->
+	<link href="/OnBaseAgendaOnline/Style" rel="stylesheet" />
+</head>
+<body>
+	<div id="accessible-nav" class="visually-hidden-focusable accessible-nav navbar">
+		<ul class="nav navbar-nav">
+			<li class="nav-link">
+				<a id="skip-to-main-content" href="#main-content">Skip to main content</a>
+			</li>
+			<li class="nav-link">
+				<a id="skip-to-intro-content" class="hidden" href="#intro-content">Skip to introduction content</a>
+			</li>
+			<li class="nav-link">
+				<a id="skip-to-search-content" class="hidden" href="#search-content">Skip to search</a>
+			</li>
+		</ul>
+	</div>
+	<div id="logo-container">
+		
+<div class="logo"><img src="/OnBaseAgendaOnline/Images/OnBase_Logo.png" alt="OnBase Logo" /></div>
+	</div>
+	<div id="navbar" class="navbar navbar-expand-sm navbar-dark" role="navigation">
+		<div class="navbar-header">
+			<button class="navbar-toggler"
+					type="button"
+					data-bs-toggle="collapse"
+					data-bs-target="#navbarNavAltMarkup"
+					aria-controls="navbarNavAltMarkup"
+					aria-expanded="false">
+				<span class="navbar-toggler-icon header"></span>
+			</button>
+			<div class="media-collapse">
+				<span id="media-collapse-text">Hide Media</span>
+			</div>
+		</div>
+		<div id="navbarNavAltMarkup" class="navbar-collapse collapse">
+			<ul class="nav navbar-nav">
+				<li class="nav-link"><a href="/OnBaseAgendaOnline/" id="lnkNavHome" title="Navigate to home page">Home</a></li>
+				<li class="nav-link"><a href="/OnBaseAgendaOnline/Meetings" id="lnkNavMeetings" title="Navigate to meeting search page">Meetings</a></li>
+				<!--
+				<li class="nav-link"><a href="/OnBaseAgendaOnline/Home/Contact" id="lnkNavContact" title="Navigate to contact info page">Contact</a></li>
+	            -->		
+			</ul>
+		</div>
+
+	</div>
+	<div>
+		
+		<section class="content-wrapper clear-fix">
+			
+<script type="text/javascript">
+	const TABLET_SIZE = 900;
+	const PHONE_SIZE = 480;
+
+	var g_isLargeDisplay = true;
+	var g_documentType = '1';
+	var g_mediaAndItemViewTop = 0;
+
+	$(window).on('load', function () {
+		loadAgendaDocument(g_documentType);
+	});
+
+	$(document).ready(function () {
+		g_mediaAndItemViewTop = $('#mediaAndItemView').offset().top;
+
+		checkIfLargeDisplay();
+
+		setupKeyNavigationOfOutline();
+	});
+
+	$(window).on("scroll", function () {
+		positionPanels();
+	});
+
+	$(window).on("resize", function () {
+		checkIfLargeDisplay();
+
+		positionPanels();
+	});
+
+	function loadAgendaDocument(doctype)
+	{
+		var type = 'agenda';
+		var isDocumentAvailable = 'True';
+
+		if ( doctype == 2 )
+		{
+			type = 'minutes';
+			isDocumentAvailable = 'True';
+		}
+		else if ( doctype == 3 )
+		{
+			type = 'summary';
+			isDocumentAvailable ='False';
+		}
+
+		var url = '/OnBaseAgendaOnline/Documents/ViewAgenda?meetingId=1413&type=AGENDATYPEVALUE&doctype=' + doctype;
+
+		url = url.replace('AGENDATYPEVALUE', type);
+
+		if (isDocumentAvailable == "False")
+		{
+			$('#main-content').html('Document unavailable');
+		}
+		else
+		{
+			$.get
+			(
+				url,
+				function (data)
+				{
+					//deleting inherited meta and title tags
+					$(document).ready(function () {
+						let parentElement = $('#main-content');
+						if (parentElement.length > 0) {
+							parentElement.find('meta').remove();
+							parentElement.find('title').remove();
+						}
+					})
+
+					$('#main-content').html(data);
+					var linkId = 1;
+					//replace the link hrefs and create the click handler using jquery (used for IE9 and IE10 compatibility)
+					$('#main-content a').each(function () {
+						if ($(this).attr("href") != null) {
+							// add ID for automation
+							if ($(this).attr("id") == null) {
+								$(this).attr("id", "lnkAgendaItem_" + linkId++);
+							}
+							let hrefValue = $(this).attr("href");
+							let dataRegex = /loadAgendaItem\((\d{1,}),(true|false)\)/.exec(hrefValue);
+
+							if (dataRegex != null)
+							{
+								let sectionOrItemId = dataRegex[1];
+								let isSection = dataRegex[2] == "true";
+
+								if (sectionOrItemId != null && isSection != null){
+									$(this).click(function (e){
+										loadAgendaItem(sectionOrItemId, isSection);
+										selectTreeItemByObject($(this));
+										e.preventDefault();
+										return false;
+									});
+
+									$(this).attr("href", "#mediaAndItemView");
+									$(this).attr("tabIndex", "-1");
+									if (isSection) {
+										$(this).attr("title", "Read more details about this section");
+									}
+									else {
+										$(this).attr("title", "Read more details about this item");
+									}
+								}
+							}
+						}
+					});
+					setupTreeNavigation();
+
+					$(window).resize();
+				}
+			);
+		}
+
+		// The global document type gets reset to whatever meeting document button was clicked.
+		g_documentType = doctype;
+
+		// Update agenda buttons
+		updateAgendaButtons();
+
+		// Clear out the item view section.
+		$('#itemView').empty();
+
+		positionPanels();
+	}
+
+	function loadAgendaItem(itemId, isSection)
+	{
+		var type = 'agenda';
+
+		if ( g_documentType == 2 )
+		{
+			type = 'minutes';
+		}
+		else if ( g_documentType == 3 )
+		{
+			type = 'summary';
+		}
+
+		var url = '/OnBaseAgendaOnline/Meetings/ViewMeetingAgendaItem?meetingId=1413&itemId=ITEMIDVALUE&isSection=ISSECTIONVALUE&type=AGENDATYPEVALUE'
+					.replace("ITEMIDVALUE", encodeURIComponent(itemId))
+					.replace("ISSECTIONVALUE", isSection ? "true" : "false")
+					.replace('AGENDATYPEVALUE', type);
+
+		$.get
+		(
+			url,
+			function (data)
+			{
+				$('#itemView').html(data);
+
+				$(window).resize();
+
+				$("#mediaAndItemView").focus();
+
+				let scrollOffset = 0;
+				if (!g_isLargeDisplay)
+				{
+                    let playerContainerHeight = 0;
+                    if ($("#player-container")[0]) {
+                        playerContainerHeight = $("#player-container").outerHeight() + $("#navbar").outerHeight();
+					}
+                    scrollOffset = playerContainerHeight + 60;
+				}
+				window.scrollTo({
+					top: ($("#mediaAndItemView").position().top - scrollOffset),
+					behavior: "smooth"
+					});
+			}
+		);
+
+		
+		if (isSection) {
+			if (sectionEventPoints[itemId] != null)
+			{
+				jumpMedia(sectionEventPoints[itemId]);
+			}
+		}
+		else
+		{
+			if (itemEventPoints[itemId] != null)
+			{
+				jumpMedia(itemEventPoints[itemId]);
+			}
+		}
+		
+	}
+
+	function loadAgendaSection(sectionId)
+	{
+		loadAgendaItem(sectionId, true);
+	}
+
+	function updateAgendaButtons()
+	{
+		if (g_documentType == 2)
+		{
+			clearCurrentButton("#btnAgenda");
+			clearCurrentButton("#btnSummary");
+			setCurrentButton("#btnMinutes");
+		}
+		else if (g_documentType == 3)
+		{
+			clearCurrentButton("#btnAgenda");
+			setCurrentButton("#btnSummary");
+			clearCurrentButton("#btnMinutes");
+		}
+		else
+		{
+			setCurrentButton("#btnAgenda");
+			clearCurrentButton("#btnSummary");
+			clearCurrentButton("#btnMinutes");
+		}
+	}
+
+	function setCurrentButton(buttonId) {
+		$(buttonId).attr({
+			disabled: "disabled",
+			class: "btn btn-default"
+		});
+	}
+
+	function clearCurrentButton(buttonId) {
+		$(buttonId).attr({
+			class: "btn btn-primary"
+		});
+
+		$(buttonId).removeAttr('disabled');
+	}
+
+	function checkIfLargeDisplay() {
+		g_isLargeDisplay = $(window).width() >= TABLET_SIZE;
+	}
+
+	function positionPanels() {
+		if (g_isLargeDisplay) {
+			positionPanelsOnRight();
+		}
+		else
+		{
+			positionPanelsOnBottom();
+		}
+	}
+
+	function positionPanelsOnRight() {
+		let windowWidth = $(window).width();
+		let verticleScrollOffset = $(window).scrollTop();
+
+		$('#main-content').css("width", windowWidth * .63).css("float", "left");
+		$('#mediaAndItemView').css("width", windowWidth * .32).css("float", "right")
+			.css('top', calculateMediaAndItemViewTop(verticleScrollOffset) + 'px');
+
+		$('#itemView').css("overflow-y", "scroll")
+			.css('height', calculateItemDetailsHeight(verticleScrollOffset) + 'px');
+	}
+
+	function positionPanelsOnBottom() {
+		$('#main-content').css("width", "auto").css("float", "none");
+		$('#mediaAndItemView').css("width", "auto").css("float", "none").css('top', 'auto');
+		$('#itemView').css("overflow-y", "auto").css('height', "auto");
+	}
+
+	function calculateMediaAndItemViewTop(verticleScrollOffset) {
+		if (verticleScrollOffset > g_mediaAndItemViewTop) {
+			return Math.floor(verticleScrollOffset - g_mediaAndItemViewTop);
+		}
+		return 0;
+	}
+
+	function calculateItemDetailsHeight(verticleScrollOffset) {
+		let playerContainerHeight = 0;
+		if ($("#player-container")[0]) {
+            playerContainerHeight = $("#player-container").outerHeight();
+		}
+        let height = ($(window).height() - playerContainerHeight);
+		if (verticleScrollOffset < g_mediaAndItemViewTop) {
+			height -= g_mediaAndItemViewTop - verticleScrollOffset;
+		}
+		return Math.floor(height);
+	}
+
+	// Keyboard accessibility for meeting tree
+	const PAGE_UP_PAGE_DOWN_NODE_JUMP = 5;
+
+	function setupKeyNavigationOfOutline() {
+		$("#main-content").on("keydown", handleKeyDownOnTree);
+	}
+
+	function handleKeyDownOnTree(e) {
+		var handled = true;
+		switch (e.key) {
+			case 'Up':
+			case "ArrowUp":
+				selectTreeItemByIndex(currentTreeIndex - 1);
+				break;
+			case 'Down':
+			case "ArrowDown":
+				selectTreeItemByIndex(currentTreeIndex + 1);
+				break;
+
+			case "PageUp":
+				selectTreeItemByIndex(currentTreeIndex - PAGE_UP_PAGE_DOWN_NODE_JUMP);
+				break;
+			case "PageDown":
+				selectTreeItemByIndex(currentTreeIndex + PAGE_UP_PAGE_DOWN_NODE_JUMP);
+				break;
+
+			case "Home":
+				selectTreeItemByIndex(0);
+				break;
+			case "End":
+				selectTreeItemByIndex(treeItems.length - 1);
+				break;
+
+			case "Enter":
+				showDetails();
+				break;
+
+			default:
+				handled = false;
+		}
+		if (handled) {
+			e.stopPropagation();
+			e.preventDefault();
+		}
+	}
+
+	var treeItems;
+	var currentTreeIndex = -1;
+	var firstTime = true;
+
+	function setupTreeNavigation() {
+		currentTreeIndex = -1;
+		treeItems = $("#main-content a[href='#mediaAndItemView']");
+
+		selectTreeItemByIndex(0, false);
+		if (!firstTime) {
+			$('#skip-to-main-content').click();
+		}
+		firstTime = false;
+	}
+
+	function selectTreeItemByIndex(newIndex, setFocus = true) {
+		clearSelectedTreeItem();
+
+		if (newIndex < 0) {
+			currentTreeIndex = 0;
+		}
+		else if (newIndex >= treeItems.length) {
+			currentTreeIndex = treeItems.length - 1;
+		}
+		else {
+			currentTreeIndex = newIndex;
+		}
+
+		selectTreeItem($(treeItems[currentTreeIndex]), setFocus);
+	}
+
+	function selectTreeItemByObject(treeItem) {
+		selectTreeItemByIndex(getTreeItemIndex(treeItem), true);
+	}
+
+	function clearSelectedTreeItem() {
+		if (currentTreeIndex >= 0 && currentTreeIndex < treeItems.length) {
+			$(treeItems[currentTreeIndex]).removeClass("selected-item");
+			$(treeItems[currentTreeIndex]).attr("tabIndex", "-1");
+		}
+	}
+
+	function selectTreeItem(treeItem, setFocus = true) {
+		treeItem.addClass("selected-item");
+		treeItem.attr("tabIndex", "0");
+		if (setFocus) {
+			treeItem.focus();
+		}
+	}
+
+	function getTreeItemIndex(treeItem) {
+		return treeItems.index(treeItem);
+	}
+
+	function showDetails() {
+		if (currentTreeIndex >= 0 && currentTreeIndex < treeItems.length) {
+			$(treeItems[currentTreeIndex]).trigger("click");
+		}
+	}
+
+	function focusBackToTreeItem() {
+		let item = $(treeItems[currentTreeIndex]);
+		item.focus();
+		let offset = 60;
+		// If small screen and showing media, offset by player and navigation bar height
+		if ($(".media-collapse").is(":visible")) {
+            offset += $(".player-container").outerHeight() + $(".navbar").outerHeight();
+		}
+        $(document).scrollTop(item.offset().top - offset);
+	}
+	// Keyboard accessibility for meeting tree
+</script>
+    <div id="agenda-table" class="container-fluid">
+        <div id="agenda-container" class="row">
+            <div class="no-padding">
+                <div class="container-fluid">
+                    <div class="row">
+                        <div class="col-md-9 no-padding-left">
+                            <div>
+                                    <a href="#main-content" id="btnAgenda" role="button" class="btn btn-primary" onclick="loadAgendaDocument(1);" title="View Agenda for Regular Meeting Concord City Council on 2/10/2026 6:30:00 PM">Agenda</a>
+                                                                                                    <a href="#main-content" id="btnMinutes" role="button" class="btn btn-primary" onclick="loadAgendaDocument(2);" title="View Minutes for Regular Meeting Concord City Council on 2/10/2026 6:30:00 PM">Minutes</a>
+                                                                    <span class="meetingPadding"></span>
+                                    <a href="/OnBaseAgendaOnline/Documents/DownloadFile/Regular_Meeting_1413_Agenda_Packet_2_10_2026_6_30_00_PM.pdf?documentType=5&amp;meetingId=1413&amp;isAttachment=True" id="lnkAgendaPacket" target="_blank"
+                                       title="View PDF of Agenda Packet for Regular Meeting Concord City Council on 2/10/2026 6:30:00 PM in a new tab">
+                                        Agenda Packet
+                                        <img src="/OnBaseAgendaOnline/Images/PDF_16x16.png" alt="PDF Icon" />
+                                    </a>
+                                                            </div>
+                        </div>
+                    </div>
+                </div>
+                <br>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="no-padding">
+
+                <div id="main-content" role="main" class="no-padding-left" aria-label="Meeting outline structure.  Can be navigated by using the following keys: &#39;up&#39;, &#39;down&#39;, &#39;home&#39;, &#39;end&#39;, &#39;page up&#39;, &#39;page down&#39;.  Keys navigate respectively to the item: &#39;previous&#39;, &#39;next&#39;, &#39;first&#39;, &#39;last&#39;, &#39;up 5&#39;, or &#39;down 5&#39;.  Use the &#39;Enter&#39; key to view the details of what is selected.">
+                </div>
+
+                <section id="mediaAndItemView" class="no-padding-right" tabindex="-1" aria-label="Details of the selected meeting item or section">
+                    <div id="mediaView">
+
+
+
+<script src="../Scripts/jwplayer/jwplayer.js?8.38.2"></script>
+
+<script src="/OnBaseAgendaOnline/Scripts/browser.js"></script>
+
+<script>
+	var currentEventPoint;
+
+	$.ajax({
+		url: "/OnBaseAgendaOnline/Media/Validate"
+	}).done(function (data) {
+		jwplayer.key = data;
+		SetupPlayer();
+	});
+
+	const RETRY_MAX = 30; // Roughly 5 minutes (30 * 10 seconds of HLS timeouts)
+	var retryCounter = 0;
+
+	const handleError = (e) => {
+		// Error 232001 comes when the chunklist file fails to download but the playlist file is successful
+		// see: https://developer.jwplayer.com/jwplayer/docs/jw8-player-errors-reference#232001
+		if (retryCounter < RETRY_MAX && e.code == 232001) {
+			retryCounter++;
+			console.warn("Trying again to view the video: " + retryCounter);
+			SetupPlayer();
+		}
+		else if (retryCounter >= RETRY_MAX) {
+			console.warn("Video retry timed out");
+		}
+		// Note: error code 232404 when cache is full
+	};
+
+	function SetupPlayer() {
+		//JWPLAYER
+		var playerInstance = jwplayer('player').setup({
+			playlist: [{
+				file: "https://d1i1bep3enrd27.cloudfront.net/mcvod/mediacache/amlst:-59OJcJoyDRDaHx4UUzxTIhaMPPcrFAfs-pE93ZR4Ffg8vpIPggBzJgaWYGLIdBP/playlist.m3u8?instance=1&amp;token=gRWWqlgwfnPMR9Vl2_Rmlr7SwuEcoSB_8Zwu9kiIk5NFn4zIyA"
+			}],
+			stretching: "uniform",
+			base : "../scripts/jwplayer/",
+			width: "100%",
+			height: "280px",
+			androidhls: true,
+			autostart: false,
+			events: {
+				onReady: function (e) {
+					$(window).trigger("resize");
+				},
+				onPlay: function (e) {
+					if (currentEventPoint != null) {
+						jwplayer('player').seek(currentEventPoint);
+						currentEventPoint = null; //set the currentEventPoint to null after the player has jumped.
+					}
+				},
+				onSetupError: function (e) {
+					if ($.browser.needsFlash() == true && jwplayer().getRenderingMode() == "html5") {
+						$("#player-container").html('<div class="noflash">' +
+														'<span>' +
+															'Sorry, Flash Player is either not installed or not enabled. <br />Please install or enable the flash plugin.' +
+														'</span>' +
+													'</div>');
+					};
+				},
+			}
+		});
+		playerInstance.on('error', handleError);
+	}
+
+</script>
+
+<div id="player-container" class="player-container">
+	<div tabindex="0" class="jwplayer jw-reset jw-skin-seven jw-state-idle" id="player" style="width: 480px; height: 270px;">
+		<div class="jw-aspect jw-reset"></div>
+		<div class="jw-media jw-reset">
+			<object name="myElement_swf_0" width="100%" height="100%" class="jw-swf jw-reset" id="myElement_swf_0" data="../Scripts/jwplayer/jwplayer.flash.swf" type="application/x-shockwave-flash" style="left: 0px; top: 0px; right: 0px; bottom: 0px; display: block; position: absolute;" bgcolor="#000000">
+				<param name="allowfullscreen" value="true">
+				<param name="allowscriptaccess" value="always">
+				<param name="wmode" value="opaque">
+				<param name="menu" value="false">
+			</object>
+		</div>
+		<div class="jw-preview jw-reset"></div>
+		<div class="jw-captions jw-reset">
+			<div class="jw-captions-window jw-reset">
+				<span class="jw-captions-text jw-reset"></span>
+			</div>
+		</div>
+		<div class="jw-title jw-reset" style="display: none;">
+			<div class="jw-title-primary jw-reset"></div>
+			<div class="jw-title-secondary jw-reset"></div>
+		</div>
+		<div class="jw-overlays jw-reset"></div>
+		<div class="jw-controls jw-reset">
+			<div class="jw-display-icon-container jw-background-color jw-reset">
+				<div class="jw-icon jw-icon-display jw-button-color jw-reset"></div>
+			</div>
+			<div class="jw-controls-right jw-reset">
+				<div class="jw-dock jw-reset">
+				</div>
+			</div>
+			<div class="jw-controlbar jw-background-color jw-reset">
+				<div class="jw-group jw-controlbar-left-group jw-reset">
+					<div class="jw-icon jw-icon-inline jw-button-color jw-reset jw-icon-playback"></div>
+					<div class="jw-icon jw-icon-inline jw-button-color jw-reset jw-icon-prev" style="display: none;"></div>
+					<div class="jw-icon jw-icon-tooltip jw-icon-playlist jw-button-color jw-reset jw-hidden">
+						<div class="jw-overlay jw-reset"></div>
+					</div>
+					<div class="jw-icon jw-icon-inline jw-button-color jw-reset jw-icon-next" style="display: none;"></div>
+					<span class="jw-text jw-reset jw-text-elapsed">00:00</span>
+				</div>
+				<div class="jw-group jw-controlbar-center-group jw-reset">
+					<div class="jw-slider-time jw-background-color jw-reset jw-slider-horizontal jw-reset">
+						<div class="jw-slider-container jw-reset">
+							<div class="jw-rail jw-reset"></div>
+							<div class="jw-buffer jw-reset" style="width: 0%;"></div>
+							<div class="jw-progress jw-reset" style="width: 0%;"></div>
+							<div class="jw-knob jw-reset" style="left: 0%;"></div>
+							<div class="jw-icon jw-icon-tooltip jw-tooltip-time jw-button-color jw-reset"><div class="jw-overlay jw-reset"><div class="jw-time-tip jw-background-color jw-reset"><div class="jw-reset" style="width: 0px; height: 0px;"></div><span class="jw-text jw-reset"></span></div></div></div>
+						</div>
+					</div>
+					<span class="jw-text jw-reset jw-text-alt"></span>
+				</div>
+				<div class="jw-group jw-controlbar-right-group jw-reset">
+					<span class="jw-text jw-reset jw-text-duration">00:00</span>
+					<div class="jw-icon jw-icon-tooltip jw-icon-hd jw-button-color jw-reset jw-hidden">
+						<div class="jw-overlay jw-reset"></div>
+					</div>
+					<div class="jw-icon jw-icon-tooltip jw-icon-cc jw-button-color jw-reset jw-hidden jw-off">
+						<div class="jw-overlay jw-reset"></div>
+					</div>
+					<div class="jw-icon jw-icon-tooltip jw-icon-audio-tracks jw-button-color jw-reset jw-hidden">
+						<div class="jw-overlay jw-reset"></div>
+					</div>
+					<div class="jw-icon jw-icon-tooltip jw-icon-more jw-button-color jw-reset jw-hidden">
+						<div class="jw-overlay-horizontal jw-reset"></div>
+					</div>
+					<div class="jw-icon jw-icon-inline jw-button-color jw-reset jw-icon-volume"></div>
+					<div class="jw-icon jw-icon-inline jw-button-color jw-reset jw-icon-cast jw-off" style="display: none;"></div>
+					<div class="jw-slider-volume jw-background-color jw-reset jw-slider-horizontal jw-reset">
+						<div class="jw-slider-container jw-reset">
+							<div class="jw-rail jw-reset"></div>
+							<div class="jw-buffer jw-reset"></div>
+							<div class="jw-progress jw-reset" style="width: 90%;"></div>
+							<div class="jw-knob jw-reset" style="left: 90%;"></div>
+						</div>
+					</div>
+					<div class="jw-icon jw-icon-tooltip jw-icon-volume jw-button-color jw-reset">
+						<div class="jw-overlay jw-reset">
+							<div class="jw-slider-volume jw-volume-tip jw-background-color jw-reset jw-slider-vertical jw-reset">
+								<div class="jw-slider-container jw-reset">
+									<div class="jw-rail jw-reset"></div>
+									<div class="jw-buffer jw-reset"></div>
+									<div class="jw-progress jw-reset" style="height: 90%;"></div>
+									<div class="jw-knob jw-reset" style="bottom: 90%;"></div>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="jw-icon jw-icon-inline jw-button-color jw-reset jw-icon-fullscreen">
+
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<script type="text/javascript">
+
+	// use the resize function on the window to apply the css for tablet and phone size.
+	// resize method is used because the point the player jumps to the bottom could be different.
+	// Called from Player.cshtml
+    function resizePlayerControl(playerHeight) {
+        if ($(".player-container").outerHeight() != 0) {
+			jwplayer('player').resize("100%", playerHeight);
+		}
+	}
+
+	function jumpMedia(point) {
+		var isLive = 'false';
+
+		//we don't want to attemp a jump if its a live video
+		if (isLive == "false") {
+			currentEventPoint = point;
+			jwplayer('player').seek(point);
+
+		}
+	}
+
+
+</script>
+
+<script type="text/javascript">    
+	const PLAYER_PADDING = 4;
+	const NAV_BAR_PADDING = 14;
+	const DEFAULT_PLAYER_HEIGHT = 280;
+
+	$(document).ready(function () {
+		const ANIMATION_SPEED = 300;
+
+		$(".media-collapse").click(function (e) {
+            var playerHeight = calculatePlayerHeightForTogglingShowHideMedia();
+
+			// Animate player container
+			$(".player-container").animate({
+				height: playerHeight
+			}, ANIMATION_SPEED, function (e) {
+                if (playerHeight == 0) {
+					$("#media-collapse-text").text("Show Media");
+                    $("#player").height(0);
+				}
+				else {
+					$("#media-collapse-text").text("Hide Media");
+                    $("#player").height(playerHeight);
+				}
+			});
+
+			// Animate Show/Hide Media button
+			$(".media-collapse").animate({ top: playerHeight }, ANIMATION_SPEED);
+
+			// Animate Navigation bar
+			$("#navbar").animate({ top: playerHeight }, ANIMATION_SPEED);
+
+			// Animate Meeting document container
+			$("#agenda-container").animate({
+				"margin-top": playerHeight + $("#navbar").height() + NAV_BAR_PADDING + PLAYER_PADDING
+			}, ANIMATION_SPEED);
+		});
+
+		$(window).trigger("resize");
+	});
+
+	// use the resize function on the window to apply the CSS for tablet and phone size.
+	// resize method is used because the point the player jumps to the bottom could be different.
+	$(window).resize(function () {
+		let playerHeight = DEFAULT_PLAYER_HEIGHT;
+        if (isPlayerVisible()) {
+			$("#media-collapse-text").text("Hide Media");
+			if ($(window).width() <= TABLET_SIZE) {
+				playerHeight = showPlayerOnTop();
+			} else {
+                playerHeight = showPlayerOnRight();
+			}
+		} else {
+			$("#media-collapse-text").text("Show Media");
+
+			if ($(window).width() >= TABLET_SIZE) {
+				// If resizing to a larger screen size and the player is hidden, then show it on the right-hand side
+                playerHeight = showPlayerOnRight();
+			}
+		}
+
+		$(".media-collapse").css({
+			position: "fixed",
+			top: $(".player-container").height(),
+			left: ($(window).width() / 2) - ($('.media-collapse').width() / 2),
+			"z-index": 100
+		});
+
+        resizePlayerControl(playerHeight); // Calls method in JWPlayer.cshtml or YoutubePlayer.cshtml
+	});
+
+	function calculatePlayerHeightForTogglingShowHideMedia() {
+		let result = 0;
+
+        if (!isPlayerVisible()) {
+            if ($(window).width() <= TABLET_SIZE) {
+                result = DEFAULT_PLAYER_HEIGHT;
+            }
+		}
+        return calculatePlayerHeightFromWindowHeight(result);
+	}
+
+	function isPlayerVisible() {
+		return $(".player-container").height() != 0;
+	}
+
+	function showPlayerOnTop() {
+		$(".media-collapse").show();
+        $(".player-container").show();
+		let playerHeight = calculatePlayerHeightFromWindowHeight(DEFAULT_PLAYER_HEIGHT);
+
+        $(".player-container").css(
+            {
+                position: "fixed",
+                top: 0,
+                left: 0,
+                height: playerHeight,
+                "z-index": 98
+            }
+        );
+        $("#navbar").css(
+            {
+                width: "100%",
+                position: "fixed",
+                top: playerHeight,
+                left: 0,
+                "z-index": 99,
+                "border-radius": "0px"
+            }
+        );
+
+        $("#agenda-container").css({
+            "margin-top": $("#navbar").height() + NAV_BAR_PADDING + playerHeight + PLAYER_PADDING,
+            "z-index": 101
+        });
+
+		$("#logo-container").hide();
+		return playerHeight;
+	}
+
+	function showPlayerOnRight() {
+        let playerHeight = calculatePlayerHeightFromWindowHeight(DEFAULT_PLAYER_HEIGHT);
+        $(".media-collapse").hide();
+		$(".player-container").show();
+
+        $(".player-container").css(
+            {
+                position: "relative",
+                height: playerHeight
+            }
+		);
+        $("#navbar").removeAttr("style");
+        $("#navbar").addClass("navbar navbar-dark");
+        $("#agenda-container").css("margin-top", "0px");
+		$("#logo-container").show();
+        return playerHeight;
+	}
+
+	function calculatePlayerHeightFromWindowHeight(currentHeight) {
+		let windowHeight = $(window).height();
+
+        // Don't allow player be taller than 33% of the screen height
+		if (windowHeight / 3 < currentHeight) {
+			return windowHeight / 3;
+		}
+		return currentHeight;
+	}
+</script>                    </div>
+                    <div id="itemView">
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+    <br>
+    <br>
+    <script type="text/javascript">
+		var itemEventPoints =
+			{
+25109: 1093.52,25110: 2266.52,24968: 4474.52,25124: 1093.52,25131: 2266.52,25132: 4474.52,			}
+
+		var sectionEventPoints =
+			{
+18380: 0,18381: 128.52,18398: 149.52,18382: 173.52,18399: 1081.52,18384: 2046.52,18385: 2234.52,18387: 5664.52,18389: 5898.52,19009: 0,19010: 128.52,19011: 149.52,19012: 173.52,19013: 1081.52,19014: 2046.52,19015: 2234.52,19016: 5664.52,19017: 5898.52,			}
+    </script>
+
+		</section>
+	</div>
+	<div class="footer">
+		<div class="container">
+			<div class="row">
+				<div class="no-padding-left copyright">
+					<img src="/OnBaseAgendaOnline/Images/OnBase_Logo.png" class="onbase-logo" alt="OnBase Logo" />
+					Copyright &#169; 2015-2026 Hyland Software, Inc.
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<script src="/OnBaseAgendaOnline/bundles/corescripts?v=OoIHuCd2Vo-mvl0Mo7yezhFz4lpe-uKKkUPytMkRrQs1"></script>
+
+
+	<!--Version: 24.1.9.1000-->
+</body>
+</html>
