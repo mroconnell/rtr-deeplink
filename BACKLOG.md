@@ -3422,6 +3422,74 @@ one item below is resolved as a result.
   identical result on the real SLC pages (the two Holladay-bug meetings
   are the regression cases to check).
 
+- **New feature request, 2026-08-16: a recurring operator email report
+  every 6 hours, to `ryan@redtaperecordings.com`, with 6 metrics** —
+  queued worker jobs, failed jobs in the last 48h, succeeded jobs in the
+  last 48h, total meetings on site, meetings with a transcript, meetings
+  without one. Note this is a **third** distinct "Ryan" address in play
+  (see the "consolidate on `ally@redtaperecordings.com`" entry in
+  Archive roadmap below): `DAILY_REPORT_EMAIL_TO`'s current default is
+  `ryan@how-to-adu.com`, the consolidation target is `ally@`, and now
+  this request names `ryan@redtaperecordings.com` specifically — worth
+  confirming which address this new report should actually use before
+  building rather than assuming it should match either existing default.
+
+  **A real, similar mechanism already exists and is the pattern to
+  follow, but lives on the wrong service for this data.**
+  `app/reporting.py` (imported by `GET /admin/daily-report` in
+  `app/main.py:1184` and `scripts/daily_report.py`, triggered daily by
+  `.github/workflows/daily-report.yml`) already does almost exactly this
+  shape of thing — a `MetricResult` dataclass that lets one metric fail
+  without blanking the whole digest, `compose_report_email()`/
+  `send_report_email()`, a GitHub Actions cron hitting an admin-token-
+  gated endpoint rather than a paid Render Cron Job (see that file's own
+  docstring for why). But it queries Clerk/Resend and the **resolver's**
+  own database (`meeting_resolutions`) — by design, per its own
+  docstring, since `DATABASE_URL` there points at the resolver's DB, not
+  the Archive's separate one. **All 6 metrics the user actually wants
+  live in the Archive's database instead**: `TranscriptionJob`
+  (`archive/db/models.py:95`, status `"pending_confirmation" ->
+  "queued" -> "in_progress" -> "completed" | "failed"`, matching
+  `worker/main.py`'s own claim query
+  `TranscriptionJob.status.in_(("queued", "in_progress"))` for the
+  "queued" count) and `MeetingPage`/`TranscriptVersion` for the meeting/
+  transcript counts. Confirmed no equivalent stats aggregator exists yet
+  on the Archive side (`archive/db/crud.py` has no `get_stats()`-shaped
+  function at all, unlike `app/db/crud.py`'s resolver-side one) — this
+  would be new query code, not a wire-up of something already built,
+  unlike most of this session's other easy-win items.
+
+  **Real design question worth deciding before building, not guessed
+  at**: `TranscriptionJob` has only a `created_at` timestamp
+  ([archive/db/models.py:163](archive/db/models.py:163)) — no
+  `completed_at`/`failed_at` column. "Failed/succeeded in the last 48h"
+  can only be approximated by *when the job was created*, not when it
+  actually finished — a job created 3 days ago that just failed an hour
+  ago wouldn't show up, while one created 47 hours ago that's still
+  running would count as neither yet. Worth deciding whether that
+  approximation is acceptable (cheap, no schema change) or whether this
+  needs a new timestamp column (bigger scope, this repo's Alembic
+  migration path per `archive/alembic/README.md`) before committing to
+  a design. For "meetings with/without a transcript," reuse the
+  already-existing quality-aware check
+  (`archive/db/crud.py`'s `_has_good_transcript()`, the same
+  `_GARBLED_MARKER`-checking logic `list_pages()`'s "✓ Transcript" badge
+  uses) rather than a naive "does any `TranscriptVersion` row exist"
+  count — this repo already fixed exactly that presence-vs-quality bug
+  once (see `BACKLOG_DONE.md`'s "quality-aware, not just presence-aware"
+  entry) and shouldn't reintroduce it here.
+
+  **Where this probably belongs**: a sibling of `app/reporting.py`
+  inside `archive/` (its own `reporting.py`, a new admin-token-gated
+  endpoint in `archive/main.py` following the same `_admin_token_ok`
+  pattern, a new GitHub Actions cron workflow on a 6-hour schedule
+  instead of daily), reusing `archive/utils/email.py`'s existing
+  Resend-send helper (already used for single-recipient internal ops
+  email, e.g. the transcription-failed notification) rather than
+  `app/reporting.py`'s private `send_report_email()`, which is scoped to
+  the resolver service. Not started — this is a scoped feature request,
+  not yet designed in full or built.
+
 ## Deprioritized ideas — allowed back if we wish (parked 2026-08-15)
 
 Parked here by the user during the jurisdiction/title extraction planning
