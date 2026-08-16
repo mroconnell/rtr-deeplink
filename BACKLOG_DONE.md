@@ -6,6 +6,155 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Local-Mac transcription backlog script — bigger model than the worker's forced "tiny" (2026-08-16)
+
+Built to work down the real ~209-meeting `/meetings?has_transcript=false`
+backlog: `worker/`'s cloud transcription worker is forced to
+`faster-whisper` `"tiny"` by Render's 2GB plan (see
+`worker/transcription_engine.py`'s own docstring — real OOM crashes on
+`"small"`, not a quality choice), and `"tiny"`'s real accuracy has two
+confirmed failure modes already on record in `BACKLOG.md`'s "On-demand
+transcription" section (a meaning-changing mistranscription, a
+near-total transcription failure on a real Napa stretch of English
+speech). A local Mac has no such RAM ceiling, so
+`scripts/transcribe_backlog_locally.py` runs there instead, with a
+bigger model.
+
+**What shipped:**
+- `scripts/transcribe_backlog_locally.py` — discovers candidates, re-
+  resolves each fresh via the same `app/platforms/base.py` adapter
+  registry the worker/resolver use, probes duration and skips anything
+  implausible (`app/platforms/media_probe.py`'s existing 5-min-to-14-hour
+  bounds), extracts audio directly (`extract_chunk_audio()`, no full
+  download) in 900-second chunks, transcribes each chunk locally, and
+  pushes the finished transcript back through `POST /internal/ingest`
+  with `"source": "transcribed"` explicitly set. `--model-size` defaults
+  to a real-RAM-based pick (`"small"` at ≥16GB, `"medium"` at ≥32GB,
+  `"base"` otherwise — see `_pick_default_model_size()`'s own docstring),
+  not a guess. `--url` lets one specific meeting be targeted directly,
+  bypassing the oldest-first queue (added mid-build, once it became clear
+  the queue's first several real candidates were multi-hour meetings —
+  needed a way to target a short one for a fast verification pass, and
+  it's generally useful afterward too, the same "target one page
+  directly" pattern `/admin/recheck-archive-page?url=` already offers on
+  the resolver side).
+- `GET /internal/transcription-backlog` (`archive/main.py` +
+  `archive/db/crud.py`'s new `list_transcription_backlog_candidates()`)
+  — the any-platform, batch counterpart to `/internal/transcript-wanted`'s
+  YouTube-only queue. Reuses `find_auto_transcription_candidate()`'s own
+  `_has_good_transcript()`/`_in_auto_transcription_cooldown()` checks
+  directly, so this script and the worker's own idle-time auto-generation
+  path never duplicate feasibility-probe effort on (or fight over) the
+  same recently-failed page. Returned candidates include YouTube-backed
+  pages too (not filtered server-side) since a plausible future
+  YouTube-audio-fallback mechanism (BACKLOG.md's still-open "Whisper
+  fallback for YouTube videos with no captions at all" entry — a
+  different mechanism, yt-dlp audio download rather than direct URL
+  extraction, since a resolved YouTube `video_url` is a
+  `youtube.com/embed/{id}` page, not something `ffprobe`/`ffmpeg` can
+  extract audio from directly) might want them; this script's own
+  `process_one()` filters them out cheaply client-side instead, on
+  `video_format == "youtube"`.
+- `IngestRequest.source` (`archive/main.py`, optional, defaults to
+  `"scraped"` — every existing caller, resolver pushes included, is
+  unaffected). Real correctness fix this closes: `archive/db/crud.py`'s
+  `ingest_resolution()` previously hardcoded every fresh `TranscriptVersion`
+  to `source="scraped"` regardless of what actually produced it — fine
+  when every caller's content genuinely was scraped from a government
+  source, but this script's content is Whisper-transcribed and needed to
+  read that way. Silently mislabeling it "scraped" would have meant it
+  read as an authoritative government caption instead of getting the real
+  `meeting_page.html` "AI TRANSCRIPT" disclaimer the worker's own
+  `source="transcribed"` output already gets — a real reputational risk
+  this repo has already flagged directly (the Cupertino/Napa hallucination
+  findings above), not a cosmetic labeling detail. The content-hash dedup
+  check in the same function was scoped to `source` too (previously
+  hardcoded to compare only against existing `"scraped"` rows) — without
+  that, a `"transcribed"` push could never dedup against an earlier
+  identical `"transcribed"` push, creating a fresh duplicate version every
+  time the same meeting got re-run with the same result.
+
+**Deliberately does not touch `transcription_jobs`/`claim_next_chunk()`
+at all** — `claim_next_chunk()`'s own docstring is explicit that it's
+safe for exactly one worker process, not concurrent ones (no row-level
+locking). This script is a second, independent process that could run
+at the same time as the real worker, so it follows `scripts/fetch_
+youtube_transcripts.py`'s established pattern instead: discover and push
+purely over the same token-gated `/internal/*` HTTP surface, idempotent
+and content-hash-deduped either way, so a rare race with the cloud worker
+picking up the same page just gets deduped, not double-versioned.
+
+**Verification, real not synthetic:**
+- Local functional test first, before ever touching production: an
+  isolated SQLite instance (`DATABASE_URL=""`, explicitly forced — see
+  the "real problems hit" note below), 3 synthetic `MeetingPage` rows
+  (no transcript at all / a recent failed job in cooldown / YouTube-
+  backed with no transcript), confirmed `GET /internal/transcription-
+  backlog` returns exactly the right 2 candidates (excludes the
+  cooldown one) and respects `limit`; confirmed `POST /internal/ingest`
+  with `source="transcribed"` renders the real "AI TRANSCRIPT" disclaimer
+  on the resulting page, and that same-source dedup / cross-source
+  non-dedup both work as designed (pushed identical content twice under
+  `"transcribed"` → 1 version; pushed the same content again under
+  `"scraped"` → a distinct 2nd version, not deduped against the first).
+  `pytest` — 789 passed, no regressions (initially saw 5 failures caused
+  by test-DB pollution from this same manual testing, not a real
+  regression — see below).
+- Landed via PR #81 (`gh pr create` + `gh pr merge --squash
+  --delete-branch`, from an isolated worktree per this file's own
+  multi-session convention), which deployed the new `/internal/*`
+  endpoint to the real Render Archive service. Confirmed live via a
+  direct `GET /internal/transcription-backlog` call against the real
+  `ARCHIVE_BASE_URL` (200, a real candidate returned) before proceeding.
+- **Real end-to-end run against the live backlog**: queried the real
+  endpoint for candidates, `ffprobe`'d several to find a short one (the
+  queue's first several real entries — Chula Vista, Watsonville — turned
+  out to be 3.5+ hour meetings, impractical for a fast verification pass)
+  — landed on Welland/Elgin County, ON
+  (`welland-2026-01-27-county-council-meeting`, eScribe, a real
+  783-second/13-minute recording, no prior transcript). Ran for real
+  (`--model-size small`, not even the cloud worker's `"tiny"`): 102 real,
+  coherent segments (`language=en`) in 113 seconds wall time, pushed
+  successfully. Confirmed live on the actual public page
+  (`https://redtaperecordings.com/m/welland-2026-01-27-county-council-meeting`):
+  the real "AI TRANSCRIPT" disclaimer renders, and real timestamped
+  segments are present starting "We're live." at 0:00 through real
+  adjournment/motion dialogue at the end ("Motion is carried... Councilor
+  Woodner moves. Deputy warden Jones seconds... I think we have a new
+  record.") — coherent, on-topic content, not a hallucination loop. A
+  follow-up `GET /internal/transcription-backlog` call confirmed the page
+  no longer appears in the queue.
+
+**Real problems hit while building this, not hypothetical:**
+- Running a local `uvicorn archive.main:app` for dev testing, `python-
+  dotenv`'s default `load_dotenv()` (no explicit path) walks *upward*
+  from the calling module's own directory looking for a `.env` — since
+  this worktree is nested inside the main repo checkout (which has its
+  own real `.env`), that search silently found and loaded the outer
+  repo's real `DATABASE_URL`, `ARCHIVE_BASE_URL`, and
+  `ARCHIVE_INGEST_TOKEN` into a supposedly-isolated local test process.
+  Caught immediately (the query failed with a schema mismatch against
+  whatever that `DATABASE_URL` pointed at — not confirmed to be real
+  live production specifically, but treated as if it might be) — no
+  writes occurred (only a failing `SELECT`), but real enough to be worth
+  recording explicitly: always force `DATABASE_URL=""` (an explicit,
+  already-present env var, which `load_dotenv()`'s default
+  non-override behavior respects) when running any local dev/test server
+  from inside a nested worktree, not just leaving it unset.
+- That same `DATABASE_URL=""` habit, used again for a full `pytest` run,
+  collided with `tests/conftest.py`'s own `os.environ.setdefault
+  ("DATABASE_URL", ...)` — `setdefault` only fills in a *missing* key,
+  and an explicit empty string already counts as "present," so the test
+  suite silently fell through to `archive/db/engine.py`'s own local-dev
+  fallback file (`./archive_dev.db`) instead of the isolated tmpfile
+  `conftest.py` sets up per session. That file already had leftover rows
+  from earlier manual testing, producing 5 real (but non-representative)
+  test failures on count-based assertions. Not a real regression —
+  confirmed by re-running with `DATABASE_URL` genuinely unset (not
+  `""`) against a clean checkout: 789 passed. Worth remembering
+  specifically because it looks exactly like a real regression at a
+  glance.
+
 ## Napa VOD "Testing 123" hallucination: proposed ffmpeg fix disproven, original symptom no longer reproduces (2026-08-16)
 
 Picked up the still-open "second, distinct manifestation of the

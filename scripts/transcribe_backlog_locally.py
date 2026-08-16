@@ -105,8 +105,9 @@ from dotenv import load_dotenv
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.platforms import register_all_finders  # noqa: E402
-from app.platforms.base import UnsupportedPlatformError, get_finder  # noqa: E402
+from app.platforms.base import UnsupportedPlatformError, detect_platform, get_finder  # noqa: E402
 from app.platforms.media_probe import extract_chunk_audio, is_plausible_meeting_duration, probe_duration  # noqa: E402
+from app.utils.url_normalize import normalize_url  # noqa: E402
 from app.utils.vtt_parser import detect_language_from_texts  # noqa: E402
 from worker.segment_utils import chunk_count, chunk_duration, chunk_start, shift_segments  # noqa: E402
 
@@ -337,6 +338,15 @@ async def main() -> None:
     parser.add_argument("--dry-run", action="store_true", help="Transcribe and report, but don't push")
     parser.add_argument("--limit", type=int, default=None, help="Process at most this many meetings")
     parser.add_argument(
+        "--url", default=None,
+        help="Transcribe one specific meeting URL directly, bypassing the oldest-first backlog "
+        "queue entirely (e.g. to target one known page, or re-try one that previously failed, "
+        "without waiting for it to come up in queue order). Same "
+        "GET /internal/transcription-backlog "
+        "-vs- '/admin/recheck-archive-page?url=' pattern app/main.py already offers for a live "
+        "resolve. Ignores --limit when set.",
+    )
+    parser.add_argument(
         "--model-size", default=None,
         help="faster-whisper model size (tiny|base|small|medium|large-v3|...). "
         "Defaults based on this Mac's real total RAM -- see _pick_default_model_size().",
@@ -367,7 +377,27 @@ async def main() -> None:
     print("Model loaded.\n")
 
     async with aiohttp.ClientSession() as session:
-        pages = await _get_candidates(session, args.limit)
+        if args.url:
+            # Bypasses the discovery queue entirely -- doesn't need to be a
+            # page crud.list_transcription_backlog_candidates() would even
+            # return (e.g. it's fine to target a page that already has a
+            # transcript, to force a re-transcription). detect_platform()
+            # is the same classifier /api/resolve itself uses; process_one()
+            # re-resolves fresh regardless, so no other field here needs to
+            # be real -- video_format is deliberately left unset (not
+            # "youtube") so the cheap pre-filter in process_one() never
+            # blocks an explicit, operator-chosen target.
+            normalized = normalize_url(args.url)
+            pages = [{
+                "slug": normalized,
+                "platform": detect_platform(args.url),
+                "external_id": None,
+                "source_url_normalized": normalized,
+                "video_url": None,
+                "video_format": None,
+            }]
+        else:
+            pages = await _get_candidates(session, args.limit)
         if not pages:
             print("Transcription backlog is empty -- nothing to do.")
             return

@@ -700,7 +700,17 @@ anything) to build against it.
     — **decided 2026-08-10: local, not the worker**, and deliberately
     **lower priority than everything else** in this backlog (most YouTube
     videos already have real captions; this only covers the rarer
-    no-captions case). Not yet built.
+    no-captions case). Not yet built. Still distinct from
+    `scripts/transcribe_backlog_locally.py` (built 2026-08-16, see
+    `BACKLOG_DONE.md`) even though both run local `faster-whisper`: that
+    script works the general (any-platform) has-no-transcript backlog via
+    direct remote audio extraction (`extract_chunk_audio()`), which
+    can't work on a YouTube-backed page's `video_url` (a
+    `youtube.com/embed/{id}` page, not something `ffprobe`/`ffmpeg` can
+    pull audio from) — confirmed by that script's own candidate list
+    still including YouTube pages, filtered out client-side rather than
+    silently dropped. This yt-dlp-audio path is still what closes that
+    gap, whenever it gets built.
   - **Human/source-side option (analysis option 9), user-side**: for
     big cities, ask the clerk for the caption file directly, or
     manually export from YouTube Studio-visible sources — the user is
