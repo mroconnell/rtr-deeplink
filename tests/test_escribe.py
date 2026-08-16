@@ -1,4 +1,5 @@
 from app.platforms.escribe import EscribeAssetFinder
+from app.platforms.youtube import YouTubeAssetFinder
 
 from aiohttp_mock import FakeResponse, mock_session
 from conftest import load_fixture
@@ -160,11 +161,34 @@ async def test_resolve_video_present_but_no_caption_file_found():
 
 
 async def test_backstop_finds_youtube_embed_when_no_isi_player(monkeypatch):
-    # SYNTHETIC on a real shape: no eScribe city with an embedded YouTube
-    # video has been confirmed yet (2026-08-14) -- this exercises the
-    # backstop branch with the same iframe-embed shape confirmed real on
-    # many generic-fallback pages. The eScribe page scaffold (title
-    # format, pub-{city} subdomain) matches the real confirmed template.
+    # Real shape, confirmed live 2026-08-16 across 51 real eScribe pages
+    # (see BACKLOG_DONE.md) -- back when this test was written the shape
+    # itself was synthetic; it's since been confirmed on many real cities
+    # (e.g. pub-beaumontab, pub-brant, pub-cambridge.escribemeetings.com).
+    # Real gap found the same day: this backstop used to stop at the raw
+    # embed URL without ever fetching captions -- every real
+    # YouTube-embedded eScribe meeting sat with segments=[] regardless of
+    # whether captions actually existed. Now delegates to
+    # YouTubeAssetFinder.resolve_video_id() the same way primegov.py/
+    # civicweb.py/clerkbase.py already do.
+    monkeypatch.setattr(
+        YouTubeAssetFinder,
+        "_extract_info",
+        lambda video_id: {
+            "title": "City of Example — YouTube channel upload",
+            "uploader": "cityofexample",
+            "upload_date": "20260102",
+            "_chosen_track": (
+                (
+                    "WEBVTT\n\n"
+                    "00:00:01.000 --> 00:00:03.000\n"
+                    "Call to order.\n"
+                ).encode("utf-8"),
+                "en",
+                True,
+            ),
+        },
+    )
     url = "https://pub-example.escribemeetings.com/Meeting.aspx?Id=9"
     html = (
         '<html><head><title>Council Meeting - January 1, 2026</title></head><body>'
@@ -176,16 +200,53 @@ async def test_backstop_finds_youtube_embed_when_no_isi_player(monkeypatch):
     with mock_session(routes):
         result = await EscribeAssetFinder().resolve(url)
 
+    # platform stays "escribe", not "youtube" -- same reasoning as
+    # primegov.py's delegation: the caller pasted an eScribe URL, "View
+    # original source" should keep pointing there.
+    assert result.platform == "escribe"
     assert result.video_url == "https://www.youtube.com/embed/dQw4w9WgXcQ"
     assert result.video_format == "youtube"
+    assert len(result.segments) == 1
+    assert result.segments[0].text == "Call to order."
+    assert result.transcript_language == "en"
     # A backstop hit is best-effort by definition, with a provenance
     # warning -- the video came from a generic scan, not eScribe's own
     # structure.
     assert result.best_effort is True
     assert any("general scan of the page" in w for w in result.video_warnings)
-    # eScribe's own metadata is untouched.
+    # eScribe's own metadata is preferred over YouTube's channel-upload title.
     assert result.title == "Council Meeting"
     assert result.date == "2026-01-01"
+
+
+async def test_backstop_youtube_falls_back_to_page_metadata_when_missing(monkeypatch):
+    # Mirror of primegov.py's own override-only-when-empty test: if
+    # eScribe's own page has no usable title/date, YouTube's real values
+    # should still come through rather than leaving both None.
+    monkeypatch.setattr(
+        YouTubeAssetFinder,
+        "_extract_info",
+        lambda video_id: {
+            "title": "Real YouTube Title",
+            "uploader": "cityofexample",
+            "upload_date": "20260102",
+            "_chosen_track": None,
+        },
+    )
+    url = "https://pub-example.escribemeetings.com/Meeting.aspx?Id=10"
+    html = (
+        "<html><head><title></title></head><body>"
+        '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>'
+        "</body></html>"
+    )
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await EscribeAssetFinder().resolve(url)
+
+    assert result.title == "Real YouTube Title"
+    assert result.date == "2026-01-02"
+    assert result.segments == []
 
 
 async def test_backstop_surfaces_vimeo_pointer_for_perry_ga_shape(monkeypatch):
