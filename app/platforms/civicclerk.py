@@ -6,6 +6,7 @@ import aiohttp
 
 from .base import AssetFinder
 from .models import AlternateTranscript, ResolvedMeeting, TranscriptSegment
+from .youtube import YouTubeAssetFinder
 from ..utils import jurisdiction_enrich
 from ..utils.vtt_parser import (
     STRUCTURED_CAPTION_PARSERS,
@@ -96,6 +97,29 @@ class CivicClerkAssetFinder(AssetFinder):
             if not video_url:
                 video_warnings.append("No playable video found for this event.")
 
+            # Real gap found + fixed 2026-08-16: some customers set
+            # externalVideoUrl/externalMediaUrl to a plain YouTube link,
+            # but the extension-based video_format check above always
+            # left format=None for one (no file extension in a youtube.com
+            # URL) -- the frontend needs video_format="youtube" specifically
+            # for the iframe+Player-API playback path, so this wasn't just
+            # a missing-captions gap, the video may not have played at all.
+            # Confirmed live on a real customer (ashlandcowi, event 362):
+            # externalVideoUrl was a bare youtube.com/watch?v= link,
+            # video_format came back None, segments=0. Delegates to
+            # YouTubeAssetFinder for real captions the same way escribe.py/
+            # primegov.py/civicweb.py/clerkbase.py already do -- CivicClerk's
+            # own captions (fetched below) are still preferred when present,
+            # since those are usually curated per-meeting rather than
+            # auto-generated.
+            youtube_delegated = None
+            if video_url:
+                yt_video_id = YouTubeAssetFinder.extract_video_id(video_url)
+                if yt_video_id:
+                    youtube_delegated = await YouTubeAssetFinder.resolve_video_id(yt_video_id, source_url=url)
+                    video_url = youtube_delegated.video_url
+                    video_format = youtube_delegated.video_format
+
             # Real order confirmed live (Emporia, KS, event 585):
             # closedCaptionUrl and closedCaptionTracks[0].file point at the
             # same file, so a bare closedCaptionUrl alone is enough when
@@ -171,6 +195,11 @@ class CivicClerkAssetFinder(AssetFinder):
                     )
             else:
                 transcript_warnings.append("No caption or transcript data found for this event.")
+
+            if not segments and youtube_delegated and youtube_delegated.segments:
+                segments = youtube_delegated.segments
+                transcript_language = youtube_delegated.transcript_language
+                transcript_warnings = list(youtube_delegated.transcript_warnings)
 
         # Agenda is fetched independently of whether a real transcript was
         # found -- useful navigation context either way, not just a

@@ -97,6 +97,17 @@ def detect_platform(url: str) -> str:
         return "ca_legislature"
     if "youtube.com" in netloc or "youtu.be" in netloc:
         return "youtube"
+    if "telvue.com" in netloc or netloc.endswith("peg.tv"):
+        # TelVue -- found 2026-08-16 via generic_fallback already having
+        # resolved real customer meetings (2 videoplayer.telvue.com pages,
+        # 1 u.peg.tv shortlink) with platform="unknown". peg.tv is
+        # confirmed live to be a plain HTTP redirect straight to a
+        # videoplayer.telvue.com page (u.peg.tv/s/{code} -> 200 on the
+        # telvue URL) -- same "wrapper" pattern as Legistar/CivicPlus's
+        # Granicus delegation, not a distinct platform needing its own
+        # adapter. See telvue.py's own docstring for the real page
+        # structure this was built against.
+        return "telvue"
     if "viebit.com" in netloc:
         # The real video platform underneath NYC Council's Legistar
         # instance, reached by delegation (see the legistar.council.nyc.gov
