@@ -368,6 +368,32 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     # portal -- still the same product/adapter, just a narrower agency
     # scope than the other county-level entries in this file.
     "hcjfsonbase.jfs.hamilton-co.org": KnownJurisdiction("Hamilton", "county", "OH"),
+    # Found 2026-08-16 via Wayback CDX subdomain enumeration of
+    # hylandcloud.com/databankcloud.com (the two known shared-hosting
+    # apex domains) -- each confirmed with a real resolving ViewMeeting
+    # page, unlike the many other CDX-listed subdomains under these two
+    # domains that turned out to be non-government OnBase customers
+    # (banks, hospitals, universities -- OnBase is a general enterprise
+    # content-management product, not government-specific) or dead
+    # (3cenergy, a second maricopa.hylandcloud.com tenant -- both DNS
+    # failures live, not registered).
+    "dunwoodyga.hylandcloud.com": KnownJurisdiction("Dunwoody", "city", "GA"),
+    "durangogov.hylandcloud.com": KnownJurisdiction("Durango", "city", "CO"),
+    "gilbertaz.databankcloud.com": KnownJurisdiction("Gilbert", "city", "AZ"),
+    "henderson.hylandcloud.com": KnownJurisdiction("Henderson", "city", "NV"),
+    # Confirmed reachable and resolving correctly on this hylandcloud.com
+    # tenant, unlike the Akamai-blocked www.tempe.gov page found earlier
+    # via web search (a different, unconfirmed platform on that domain).
+    "tempe.hylandcloud.com": KnownJurisdiction("Tempe", "city", "AZ"),
+    "westerville.hylandcloud.com": KnownJurisdiction("Westerville", "city", "OH"),
+    # Resolves correctly, but the only content found (5 total crawled
+    # URLs across this domain's whole CDX history, oldest dated 2016) is
+    # sparse enough to suggest an abandoned/legacy pilot rather than San
+    # Diego's actual current meeting system (almost certainly Granicus,
+    # like every other major California city already covered) -- kept
+    # since it's real and resolves, not because it's likely to be
+    # actively maintained going forward.
+    "sandiego.hylandcloud.com": KnownJurisdiction("San Diego", "city", "CA"),
 }
 
 
