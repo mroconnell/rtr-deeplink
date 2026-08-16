@@ -410,6 +410,15 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     # independently through hyland.py, so both are kept rather than
     # assuming one is a stale alias of the other.
     "records.santabarbaraca.gov": KnownJurisdiction("Santa Barbara", "city", "CA"),
+    # Found 2026-08-16 -- the user loosened the site:.gov search above
+    # (dropping the exact `inurl:` operator) and relayed the raw results;
+    # each domain confirmed with a real resolving ViewMeeting page here
+    # (via Wayback CDX, since none of these 3 sites' own listing pages
+    # expose a static meeting link -- same client-side-search-only
+    # limitation as Tampa/Padre/Carbon/Coconino noted elsewhere).
+    "agendas.fitchburgwi.gov": KnownJurisdiction("Fitchburg", "city", "WI"),
+    "dms.missionviejo.gov": KnownJurisdiction("Mission Viejo", "city", "CA"),
+    "isearchmonterey.org": KnownJurisdiction("Monterey", "city", "CA"),
 }
 
 
