@@ -105,6 +105,27 @@ else; do whenever convenient, no particular order.
   events** in the GA dashboard's last-30-days view — these all fire
   client-side per the code and were checked via `window.dataLayer`
   locally, but never cross-checked against the live GA property itself.
+  **Partly confirmed 2026-08-17 (Ryan, GA Realtime + the Aug 10–17
+  reports)**: `submit_meeting_url` (185 that week), `resolve_result` and
+  `copy_link_to_time` (17) all arrive; the 1:1 submit→result on Aug 17
+  shows the funnel isn't dropping. `video_play` / `transcript_seek` still
+  unconfirmed in the dashboard — but the bigger finding was *why* they'd
+  be near-zero anyway: those events only existed on the resolver's
+  ephemeral `/meeting` page, while the Archive's 1,200+ permanent `/m/*`
+  pages (where sitemap/search/shared-link traffic lands) emitted **no
+  custom events at all** — GA for Aug 17 with Ryan filtered out showed
+  only page_view/session_start/first_visit/scroll/user_engagement.
+  **Fixed the same day**: `archive/static/meeting_page.js` now fires the
+  same `video_play` / `transcript_seek` / `copy_link_to_time` (identical
+  names, no extra params — `page_location` already separates surfaces)
+  plus `save_meeting` (`action: save|unsave`, only on a confirmed server
+  flip); 5 jsdom tests exercise the real boot path; verified in-browser
+  through the resolver→archive proxy. What's left of this item: watch
+  the next week's GA for those four names on `/m/*` page paths — the
+  first real answer to "does anyone use the deep links". Also worth one
+  look: the Aug 10–16 daily split of `submit_meeting_url` (185 vs 1 on
+  Aug 17) — evenly-spaced round-the-clock = a bot on the form; clustered
+  on outreach days = the first-10 campaign working.
 - **[HUMAN] P5: confirm a real `send-search-alerts` cron run actually sent a real
   email** to a real saved search — the workflow runs daily and reports
   success, but nobody's checked an inbox for the actual email.
