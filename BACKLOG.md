@@ -5,7 +5,26 @@ investigation detail behind each fix — lives in
 [BACKLOG_DONE.md](BACKLOG_DONE.md); items below link back to it for context
 where relevant.
 
-## Stale Archive-shaped tables in the resolver's database (`rtr_deeplink_db`) — cause unknown, real cleanup candidate
+## Transcript segment timestamps unintuitive past 59 minutes — don't match video player's hh:mm:ss
+
+Confirmed live 2026-08-17 on a long meeting: transcript segment labels
+past the one-hour mark show as raw, un-rolled-over minutes:seconds
+(e.g. `[364:47]`, `[364:49]`) instead of `6:04:47`-style hh:mm:ss — while
+the `<video>` element's own native controls just above it show
+`6:05:03 / 6:05:06`, so the two clocks on the same page disagree and the
+segment timestamps take real effort to parse on a multi-hour meeting.
+
+Root cause not yet established. `formatTime()` in
+[player.js](app/static/player.js:59) — used for segment links, agenda
+items, the plain-text transcript download, and the "share at" label — has
+had an `h > 0 ? `${h}:${pad(m)}:${pad(s)}`` branch since it was first
+added, and that branch can't produce a bare `364:47`-shaped string for
+any input, since `m` is only unpadded/unbounded when `h === 0`, which
+requires `seconds < 3600`. So either production was serving a stale
+bundle at the time of the screenshot, or these particular segment labels
+are reaching the page through some other path than `formatTime()` — not
+confirmed either way yet. Needs checking against a fresh reload of the
+same meeting before assuming which.
 
 Confirmed live 2026-08-17 during the WO-4 PITR test-restore verification
 (see `BACKLOG_DONE.md`): the Postgres server backing `rtr-deeplink-db`
@@ -38,6 +57,63 @@ finding this. Any cleanup is a real, destructive action against
 production and should only be done by Ryan after the root cause is
 understood and Ryan executes or explicitly approves it — not something
 to do reflexively just because the tables look unused.
+
+## Reliability/ops audit — remaining manual/dashboard checks (2026-08-17)
+
+`AUDIT_EXECUTION_BRIEF.md`'s Phase 1 and Waves 1, 2, 3, 4, and 6 are all
+code-complete and merged (full Problem/Do/Fixed detail moved to
+`BACKLOG_DONE.md`'s "Reliability/ops audit execution" entry). Only Wave 5
+(WO-10, migrations survive deploys) remains real open engineering work,
+tracked live in `AUDIT_EXECUTION_BRIEF.md` itself. What's below are small,
+no-code, dashboard-or-manual confirmations that were left open across
+those waves — grouped into one item instead of scattered as "still open"
+footnotes across six waves, so they don't get lost. None block anything
+else; do whenever convenient, no particular order.
+
+- **Sentry: confirm a real raised exception actually appears in the
+  dashboard.** `SENTRY_DSN` is live and set on all three services, but
+  nobody has forced a real exception and watched it land in Sentry's UI
+  — WO-7's own stated acceptance criterion, never run.
+- **`ALERT_WEBHOOK_URL` repo secret** (Slack/Discord incoming webhook,
+  shared by all three cron workflows: daily-report, send-search-alerts,
+  adapter-canary) — optional, still unset. Without it, a workflow failure
+  still surfaces via GitHub's own failed-scheduled-workflow email, so
+  this is a nice-to-have, not a real gap.
+- **Confirm Render's health-check gate actually fails a deploy** when
+  `/api/health` (resolver or Archive) reports unhealthy (WO-6) — the 503
+  logic is unit-tested, but nobody has watched a real Render deploy
+  actually get blocked by it.
+- **Confirm both admin cron workflows run green against the deployed
+  `Authorization: Bearer` header-auth change**, then remove WO-8's
+  query-param fallback in a follow-up PR. The fallback is deliberately
+  still live until this is confirmed — don't remove it without checking
+  a real cron run first.
+- **Confirm a real Render deploy installed cleanly off the new pinned
+  lockfiles** (WO-11) — verified locally in an isolated venv per service,
+  but the actual Render build hasn't been watched since the lockfiles
+  landed.
+- **P3: confirm GA is actually receiving `submit_meeting_url`/
+  `copy_link_to_time`/`resolve_result`/`video_play`/`transcript_seek`
+  events** in the GA dashboard's last-30-days view — these all fire
+  client-side per the code and were checked via `window.dataLayer`
+  locally, but never cross-checked against the live GA property itself.
+- **P5: confirm a real `send-search-alerts` cron run actually sent a real
+  email** to a real saved search — the workflow runs daily and reports
+  success, but nobody's checked an inbox for the actual email.
+- **`rtr-business/BUSINESS_OVERVIEW.md` still says "Not built yet: ...
+  saved-search alert emails"** — stale; that feature shipped 2026-08-13
+  (PR #30) and runs daily. `README.md`'s own copy of this claim was
+  already corrected 2026-08-16. One-line fix whenever anyone's next in
+  that file — not done here since business-workspace edits are kept
+  separate from code-repo sessions per `CLAUDE.md`.
+- **The audit's own doc-hygiene rule was never actually added to
+  `CLAUDE.md`.** `AUDIT_EXECUTION_BRIEF.md`'s "Docs debt" section
+  proposed: "a PR that ships a feature must update every doc that named
+  it as unbuilt, and the PR description must list which" — a real,
+  reasonable rule (the audit found three of its own eight starting leads
+  were wrong because they trusted a stale doc), but it was only ever
+  written down as a proposal, never landed as an actual `CLAUDE.md`
+  addition. Small, no-code fix whenever anyone's next editing that file.
 
 ## Easy-win triage (2026-08-16) — two waves ready to execute
 
