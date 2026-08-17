@@ -6,6 +6,145 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Made `scripts/transcribe_backlog_locally.py` safe for a real unattended overnight run (2026-08-17)
+
+Direct fallout from a real session running the script overnight
+(`--limit 40`, several hours in): the user, who isn't a developer and
+doesn't know Python I/O internals, asked why a multi-hour run showed
+*zero* output in its log file despite the process clearly being alive
+(high CPU), and separately reported that the very first HTTP call the
+script makes had crashed the entire run hours earlier and gone unnoticed
+until manually checked. Framed as "a large unattended local job a
+non-developer needs to be able to check on and trust," not just a
+one-line bug fix.
+
+**Root cause of the invisible output**: every progress line in the
+script used plain `print(...)`, which fully block-buffers when stdout is
+redirected to a file/pipe (as it always is for a real backgrounded
+overnight run) — the OS only gets the bytes on process exit or an
+explicit flush. The only reason *anything* showed up live in that run's
+log was that `app/platforms/media_probe.py`'s `logger.warning()`/
+`logger.info()` calls happen to flush immediately:
+`logging.StreamHandler.emit()` calls `self.flush()` after every record
+regardless of the stream's buffering mode. That inconsistency (some
+things live, most not, no obvious reason why) was itself part of what
+the user found confusing.
+
+**Fix — output**: routed all of the script's own progress output through
+Python's `logging` module, configured the same way `worker/main.py`'s
+own standalone process already does it (`logging.basicConfig(level=
+logging.INFO)` at import time, module-level `getLogger(...)`) rather than
+inventing a third output convention — plus `stream=sys.stdout` (matching
+where the old `print()` calls went) and `force=True` (so this config
+wins regardless of import order). Configuring the *root* logger here also
+means `media_probe.py`'s existing calls — previously the only visibly-live
+thing, for no reason a reader of this script would guess — now share the
+exact same timestamped format as everything else. Plain-English additions
+beyond the raw bug fix, per the brief's "make it trustworthy for a
+non-developer" framing: a real-config summary line at run start (model
+size, limit, dry-run, chunk-seconds, promote), a plain-English
+starting/finishing line per meeting, and running ingested/skipped/failed
+totals logged after *every* meeting (not just at the very end) — the
+whole point being a run that might not make it to the end unattended.
+
+**Root cause of the crash**: the script's very first network call
+(`GET /internal/transcription-backlog`, fetching the whole candidate list
+before the main loop even starts) had no retry at all — a transient 502
+from unrelated deploy activity elsewhere took down the entire 40-meeting
+run, before the per-meeting loop's own existing try/except (which *does*
+already isolate one meeting's failure from the rest) ever got a chance to
+help.
+
+**Fix — retries**: added `_request_json()`, a shared retrying request
+helper used by every call this script makes to the Archive's own
+`/internal/*` API (candidate list fetch, ingest push, promote) — same
+exponential-backoff-with-jitter shape already established in
+`app/platforms/granicus.py`'s `_fetch_page()`
+(`(2**attempt) * random.uniform(0.5, 1.5)`), scaled up with a bigger base
+delay (these calls can afford to be patient against an hours-long run).
+Deliberately narrower retry predicate than granicus.py's, though:
+granicus.py retries any status >=400 because it scrapes arbitrary
+third-party sites where even a 403 can be a transient bot-block; these
+calls are to *our own* Archive API with *our own* token, so a 4xx is a
+real, static problem (bad token, malformed payload) that retrying can't
+fix — only 5xx and connection-level failures (timeout, DNS, reset)
+retry. Applied to the initial candidate fetch (the real incident) and,
+per the brief's explicit prompt to think beyond just the cheap call, to
+the per-meeting ingest push too — a transient blip there after local
+Whisper compute has already finished (potentially a long time for a real
+meeting) is a much bigger loss than the initial fetch failing. If an
+ingest push still fails even after retries are exhausted, the finished
+payload is now written to `local_transcription_backups/` (gitignored)
+instead of just being discarded with a "failed" log line — recoverable
+later with a plain `curl -X POST .../internal/ingest` once the Archive is
+reachable again, not a re-transcription. If the *initial* candidate fetch
+still fails after retries, the run now exits with one clear plain-English
+line (real outage vs. bad token, what to check) instead of an unhandled
+Python traceback.
+
+**"Machine slept mid-run" made legible, not solved** (the brief's fourth
+ask, explicitly scoped as "use your judgment, explain either way"): can't
+stop macOS from sleeping from inside a script, so this doesn't try.
+Added `_note_if_suspended()`, called after each transcription chunk and
+after each meeting: compares `time.time()` (wall clock, which jumps
+forward by the real elapsed time on wake) against `time.monotonic()`
+(which stops advancing while the machine is suspended). A big *skew*
+between the two — not the absolute elapsed time, since a single real
+Whisper chunk can legitimately run 10-20+ minutes of continuous CPU work
+— is what actually indicates a suspend; ordinary work doesn't produce
+that skew, only an actual suspend or a long stalled connection does.
+Purely informational (a `logger.warning()` line), by design — there's
+nothing more automatable to build here without either fighting macOS's
+own power management or adding a `caffeinate`-style wrapper, which is a
+real, separate, user-facing choice (trading battery/fan noise for
+guaranteed run continuity) rather than something to silently decide for
+them in this script.
+
+**Test coverage** (`tests/test_transcribe_backlog_locally.py`, 8 new
+tests): per this repo's own "synthetic tests need a real-verified shape,
+and testing a retry loop needs something real to retry against"
+convention, `_request_json()`'s retry/backoff logic is tested against a
+*real* aiohttp server on a loopback port (`_CountingServer`), not a
+mocked `aiohttp.ClientSession` — real sockets, a real HTTP
+request/response cycle, backoff delays shrunk via monkeypatched module
+constants (not mocked-away `asyncio.sleep`) so the suite stays fast while
+the retry loop itself runs unmodified. Covers: recovers after 2 real 502s
+then a real 200 (asserting the exact real request count, 3, not just "it
+didn't crash"); a 4xx fails on the first attempt without retrying;
+persistent 5xx gives up after exactly `max_retries` real attempts; a
+genuine connection-refused port (nothing listening) is retried and
+eventually raises, distinct from the HTTP-status path; `_get_candidates()`
+itself (not just the shared helper) survives a transient 502 end-to-end.
+Plus direct tests of `_note_if_suspended()` (warns on a real backdated
+wall-vs-monotonic skew, silent when the clocks agree) and
+`_save_local_backup()` (writes back exactly the JSON that would have been
+POSTed). All 866 tests pass (up from 854 before this change — 12 new:
+these 8 plus 4 that landed on `main` from unrelated work merged in while
+this was in progress).
+
+**Live-verified, not just unit-tested** — the literal bug being fixed
+(invisible output in a redirected file while the process is still
+running) can't be proven by a unit test, since it's about real process
+I/O timing. Ran the actual script for real (`--dry-run --limit 1`,
+against the real production Archive and a real backlog candidate —
+Calgary AB, a real eScribe meeting) with stdout redirected to a file the
+same way the overnight `--limit 40` run already in progress on this same
+machine was started, then read that file repeatedly *while the process
+was still alive* (confirmed via `ps`, real climbing CPU time, not just
+assumed): `Run started: model_size=...` appeared within 1 second of
+launch, followed over the next several minutes by the model-load
+confirmation, the real candidate-list response, the meeting-start line,
+and faster-whisper's own internal progress lines (duration probe,
+language detection) — every one of them visible in the redirected file
+before the process exited, which is exactly the failure this fix
+targets. (Also incidentally confirmed this repo's own worktree-safety
+convention for real: `ps` showed the actual, currently-running `--limit
+40` overnight process from earlier tonight, untouched by any of this.)
+
+**Also updated**: `README.md`'s "Working the existing backlog locally"
+section documents the new visibility/retry/local-backup behavior;
+`.gitignore` gained `local_transcription_backups/`.
+
 ## Cleaned up two live pages hit by the seam-duplication/phase-cancellation bugs; built the retroactive hallucination audit; real reusable `--promote` tooling (2026-08-16)
 
 Follow-up work after both bugs (seam-duplication, PRs #91/#92; stereo
