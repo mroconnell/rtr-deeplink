@@ -53,6 +53,7 @@ from .utils.jurisdiction_format import (
 )
 from .utils.language import language_display_name
 from .utils.render_warnings import render_warnings_html
+from .utils.segment_time import format_segment_time
 from .utils.transcript_export import to_srt, to_txt
 from .utils.video_thumbnail import youtube_thumbnail_url
 
@@ -153,6 +154,12 @@ templates.env.filters["source_label"] = lambda source: (
 )
 templates.env.filters["jurisdiction_display"] = format_jurisdiction_display
 templates.env.filters["youtube_thumbnail_url"] = youtube_thumbnail_url
+# Real bug, confirmed live: meeting_page.html used to render agenda-item/
+# transcript-segment timestamps with a naive "%d:%02d"|format(seconds //
+# 60, seconds % 60), which has no hour rollover -- a segment at 21887s
+# rendered as the literal "364:47" instead of "6:04:47". See
+# archive/utils/segment_time.py's own docstring.
+templates.env.filters["segment_time"] = format_segment_time
 
 
 @app.exception_handler(StarletteHTTPException)
