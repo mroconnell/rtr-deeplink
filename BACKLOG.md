@@ -1195,18 +1195,26 @@ unusually wide, and the missing auto-scroll toggle on archived pages~~
   2026-08-16 via the web-search method, not the systematic CDX pass this
   entry originally called for — real result, real remaining gap.** The
   web-search-first method (proposed below, and validated on Legistar the
-  same night) found several real, currently-working
-  `videoplayer.telvue.com` meeting URLs, including one genuinely new
-  real jurisdiction: Fitchburg, MA (FATV), 956 real transcript segments,
-  22 agenda items — ingested for real. Full detail, including how its
-  opaque per-customer token was identified (quoting the token itself in
-  a follow-up search), in `CDX_QUERIES.md`. **Still not done**: a
-  systematic `hosts_telvue.txt` the way Legistar's 19-host list exists
-  now — this was a handful of confirmatory searches, not the same scale
-  of effort, and the CDX-side complications this entry originally
-  documented (200k-row cap, opaque token, mixed path shapes) are still
-  real and still unaddressed if someone wants full coverage rather than
-  a few more spot-checks.
+  same night) found 12 real org tokens across two rounds of searching,
+  4 of which turned into genuinely new real captioned jurisdictions,
+  all ingested for real: Fitchburg, MA (FATV, 956 segments, 22 agenda
+  items), Bellefonte Borough, PA (2 separate meetings, 397/1,635
+  segments), and State College Borough, PA (2,365 segments) — the
+  latter three all came from one org token that turned out to cover
+  multiple distinct PA jurisdictions (Centre County area) via different
+  playlist IDs, a real structural finding of its own. One more real hit
+  (2,497 segments) was deliberately **not** ingested — its jurisdiction
+  is only a nickname-match guess ("ECTV" → likely Scranton, PA, from
+  "Electric City" being Scranton's real nickname) with no direct
+  linking .gov page confirming it, so it's held back rather than
+  guessed. Full token-by-token table with confidence levels in the new
+  `~/Documents/rtr-business/research/telvue_org_tokens.md`. **Still not
+  done**: a systematic `hosts_telvue.txt` the way Legistar's 19-host
+  list exists now — the 12 tokens above came from ~4 total searches, not
+  the same scale of effort, and the CDX-side complications this entry
+  originally documented (200k-row cap, opaque token, mixed path shapes)
+  are still real and still unaddressed if someone wants full coverage
+  rather than a few more spot-checks.
 
   **Real bug found via this work, fixed same day**: `telvue.py`'s
   `_guess_jurisdiction()` mismatched a bare "City Council - 5.6.2025"
