@@ -1,0 +1,26 @@
+# WO-11 (AUDIT_EXECUTION_BRIEF.md, 2026-08-16) -- only useful once
+# dependencies are actually pinned, which requirements.txt/archive/
+# requirements.txt/worker/requirements.txt now are (compiled from each
+# directory's requirements.in via pip-compile). One entry per service,
+# matching the three independently-deployed Render services.
+#
+# yt-dlp/faster-whisper/youtube-transcript-api are deliberately left
+# unpinned in the compiled requirements.txt files (see those files' own
+# comments) -- Dependabot has nothing to bump for a bare, versionless
+# line, so it naturally leaves them alone without any extra config here.
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "pip"
+    directory: "/archive"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "pip"
+    directory: "/worker"
+    schedule:
+      interval: "weekly"

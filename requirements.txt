@@ -1,26 +1,177 @@
-fastapi>=0.116
-uvicorn[standard]>=0.30
-aiohttp>=3.9
-beautifulsoup4>=4.12
-jinja2>=3.1
-langdetect>=1.0.9
-wordninja>=2.0.0
-sqlalchemy[asyncio]>=2.0
-asyncpg>=0.29
-aiosqlite>=0.20
-python-dotenv>=1.0
+aiohappyeyeballs==2.7.1
+    # via aiohttp
+aiohttp==3.14.3
+    # via -r requirements.in
+aiosignal==1.4.0
+    # via aiohttp
+aiosqlite==0.22.1
+    # via -r requirements.in
+alembic==1.19.1
+    # via -r requirements.in
+annotated-doc==0.0.5
+    # via fastapi
+annotated-types==0.8.0
+    # via pydantic
+anyio==4.14.2
+    # via
+    #   httpx
+    #   starlette
+    #   watchfiles
+asyncpg==0.31.0
+    # via -r requirements.in
+attrs==26.1.0
+    # via
+    #   aiohttp
+    #   svix
+beautifulsoup4==4.15.0
+    # via -r requirements.in
+certifi==2026.7.22
+    # via
+    #   httpcore
+    #   httpx
+    #   sentry-sdk
+cffi==2.1.1
+    # via cryptography
+clerk-backend-api==7.0.0
+    # via -r requirements.in
+click==8.4.2
+    # via uvicorn
+cryptography==50.0.0
+    # via clerk-backend-api
+deprecated==1.3.1
+    # via
+    #   limits
+    #   svix
+fastapi==0.141.1
+    # via -r requirements.in
+frozenlist==1.8.0
+    # via
+    #   aiohttp
+    #   aiosignal
+greenlet==3.5.5
+    # via
+    #   playwright
+    #   sqlalchemy
+h11==0.16.0
+    # via
+    #   httpcore
+    #   uvicorn
+httpcore==1.0.9
+    # via
+    #   clerk-backend-api
+    #   httpx
+httptools==0.8.0
+    # via uvicorn
+httpx==0.28.1
+    # via
+    #   clerk-backend-api
+    #   svix
+idna==3.18
+    # via
+    #   anyio
+    #   httpx
+    #   yarl
+jinja2==3.1.6
+    # via -r requirements.in
+langdetect==1.0.9
+    # via -r requirements.in
+limits==5.8.0
+    # via slowapi
+mako==1.4.1
+    # via alembic
+markupsafe==3.0.3
+    # via
+    #   jinja2
+    #   mako
+multidict==6.7.1
+    # via
+    #   aiohttp
+    #   yarl
+packaging==26.3
+    # via limits
+playwright==1.62.0
+    # via -r requirements.in
+propcache==0.5.2
+    # via
+    #   aiohttp
+    #   yarl
+pycparser==3.0
+    # via cffi
+pydantic==2.13.4
+    # via
+    #   clerk-backend-api
+    #   fastapi
+    #   svix
+pydantic-core==2.46.4
+    # via pydantic
+pyee==13.0.1
+    # via playwright
+pyjwt==2.13.0
+    # via clerk-backend-api
+python-dateutil==2.9.0.post0
+    # via svix
+python-dotenv==1.2.3
+    # via
+    #   -r requirements.in
+    #   uvicorn
+pyyaml==6.0.3
+    # via uvicorn
+sentry-sdk==2.68.0
+    # via -r requirements.in
+six==1.17.0
+    # via
+    #   langdetect
+    #   python-dateutil
+slowapi==0.1.10
+    # via -r requirements.in
+soupsieve==2.9.2
+    # via beautifulsoup4
+sqlalchemy[asyncio]==2.0.52
+    # via
+    #   -r requirements.in
+    #   alembic
+standardwebhooks==1.1.0
+    # via svix
+starlette==1.6.0
+    # via fastapi
+svix==1.99.1
+    # via -r requirements.in
+typing-extensions==4.16.0
+    # via
+    #   alembic
+    #   beautifulsoup4
+    #   fastapi
+    #   limits
+    #   pydantic
+    #   pydantic-core
+    #   pyee
+    #   sqlalchemy
+    #   typing-inspection
+typing-inspection==0.4.4
+    # via
+    #   fastapi
+    #   pydantic
+urllib3==2.7.0
+    # via sentry-sdk
+uvicorn[standard]==0.52.3
+    # via -r requirements.in
+uvloop==0.22.1
+    # via uvicorn
+watchfiles==1.2.0
+    # via uvicorn
+websockets==17.0.1
+    # via uvicorn
+wordninja==2.0.0
+    # via -r requirements.in
+wrapt==2.3.0
+    # via deprecated
+yarl==1.24.5
+    # via aiohttp
+
+# Deliberately unpinned (WO-11, 2026-08-16) -- YouTube actively breaks
+# scrapers and yt-dlp only works because it chases them; pinning it is a
+# bug, not hygiene. See requirements.in's matching comment. Re-add this
+# line after every `pip-compile requirements.in` re-run -- pip-compile
+# doesn't know about it since it's excluded from requirements.in on
+# purpose.
 yt-dlp
-slowapi>=0.1.9
-playwright>=1.62
-alembic>=1.13
-# Auth (2026-08-10): Clerk, chosen specifically so this app never has to
-# hand-roll session/cookie/password security -- see BACKLOG.md's
-# "Accounts + token billing" section. clerk-backend-api verifies the
-# Clerk session cookie locally (no network call per request); svix
-# verifies the webhook signature Clerk uses to notify us of account
-# create/delete events.
-clerk-backend-api>=6.0
-svix>=1.99
-# Error monitoring (2026-08-16, WO-7): no-op when SENTRY_DSN unset, same
-# degrade pattern as Clerk above -- see app/main.py's _init_sentry().
-sentry-sdk>=2.0
