@@ -44,6 +44,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
+      actions: write
     steps:
       - uses: actions/checkout@v4
 
@@ -60,11 +62,62 @@ jobs:
           ARCHIVE_INGEST_TOKEN: ${{ secrets.ARCHIVE_INGEST_TOKEN }}
         run: python scripts/feed_granicus_auto_transcription.py
 
-      - name: Commit updated queue state
+      # Was a direct `git push` to main -- broken since the 2026-08-14
+      # branch ruleset (requires a PR + passing "test" check, blocks
+      # direct pushes; see BACKLOG_DONE.md). Every run's push was being
+      # silently rejected (GH013), so the queue never actually advanced.
+      # Fixed by routing through a PR instead. `allow_auto_merge` is off
+      # for this repo (confirmed via `gh api repos/.../rtr-deeplink`), so
+      # rather than flip that repo setting, this waits for the "test"
+      # check itself (dispatched manually -- see test.yml's
+      # workflow_dispatch comment for why that's necessary) and merges
+      # directly once it's green.
+      - name: Advance queue via PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add scripts/granicus_auto_transcription_queue.txt
-          git diff --cached --quiet && echo "No queue change to commit." && exit 0
-          git commit -m "Advance Granicus auto-transcription queue [skip ci]"
-          git push
+          if git diff --cached --quiet; then
+            echo "No queue change to commit."
+            exit 0
+          fi
+
+          BRANCH="queue-advance/granicus-${{ github.run_id }}"
+          git checkout -b "$BRANCH"
+          git commit -m "Advance Granicus auto-transcription queue"
+          git push -u origin "$BRANCH"
+
+          PR_URL=$(gh pr create \
+            --title "Advance Granicus auto-transcription queue" \
+            --body "Automated queue advancement from the Granicus feed workflow (run ${{ github.run_id }}). Per-URL outcomes: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --base main \
+            --head "$BRANCH")
+          echo "Opened $PR_URL"
+
+          # PRs/branches created with GITHUB_TOKEN don't trigger
+          # pull_request-triggered workflows, so the required "test"
+          # check would never appear on this PR by itself.
+          # workflow_dispatch is exempt from that restriction.
+          gh workflow run test.yml --ref "$BRANCH"
+
+          echo "Waiting for the dispatched test.yml run to appear..."
+          RUN_ID=""
+          for i in $(seq 1 30); do
+            RUN_ID=$(gh run list --workflow=test.yml --branch="$BRANCH" --limit=1 --json databaseId --jq '.[0].databaseId' || true)
+            if [ -n "$RUN_ID" ]; then
+              break
+            fi
+            sleep 5
+          done
+          if [ -z "$RUN_ID" ]; then
+            echo "Dispatched test.yml run never appeared -- leaving PR $PR_URL open for manual review." >&2
+            exit 1
+          fi
+
+          echo "Watching run $RUN_ID..."
+          gh run watch "$RUN_ID" --exit-status
+
+          gh pr merge "$BRANCH" --squash --delete-branch
