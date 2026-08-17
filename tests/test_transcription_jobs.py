@@ -431,6 +431,170 @@ async def test_list_completed_multichunk_transcription_jobs_filters_correctly():
     assert row["slug"] == multi_job["meeting_page_slug"]
 
 
+async def test_list_hallucination_candidate_transcript_versions_filters_correctly():
+    # Backs GET /internal/transcription/hallucination-candidates (archive/
+    # main.py), added 2026-08-16 as the retroactive-audit counterpart to
+    # list_completed_multichunk_transcription_jobs() above -- same template,
+    # for the phase-cancellation hallucination bug instead of the
+    # seam-duplication one (see BACKLOG.md's phase-cancellation write-up,
+    # which flagged this audit as still open/not yet built).
+    #
+    # Three real populations exercised here:
+    #  1. A "cloud worker" hallucinated version, produced via the real
+    #     report_chunk_result() finalize path (same real hallucination-loop
+    #     fixture as test_completed_job_flags_a_real_hallucinated_transcript
+    #     above) -- already carries the warning today, since that check is
+    #     already wired into this path going forward. already_flagged=True.
+    #  2. A "local script" hallucinated version, pushed directly via
+    #     ingest_resolution(source="transcribed") with transcript_warnings=[]
+    #     -- simulates a version that shipped *before* detect_hallucination_
+    #     warnings() existed (scripts/transcribe_backlog_locally.py wires
+    #     this in too, but a pre-fix run wouldn't have). The audit must
+    #     catch this retroactively even though the stored row itself carries
+    #     no warning. already_flagged=False.
+    #  3. A clean "local script" version (real clean fixture from
+    #     test_completed_job_does_not_flag_a_real_clean_transcript above) --
+    #     must not appear in the audit at all.
+    worker_url = "https://example.granicus.com/player/clip/tj-halluc-audit-worker"
+    worker_job = await crud.create_transcription_job(
+        payload=_payload("granicus:tj-halluc-audit-worker", worker_url),
+        input_url_normalized=worker_url,
+        requester_email="halluc-audit-worker@example.com",
+        media_url="https://example.com/v.m3u8",
+        media_kind="video",
+        probed_duration_seconds=900,
+        chunk_size_seconds=900,
+        skip_confirmation=True,
+    )
+    claim = await crud.claim_next_chunk()
+    assert claim["job_id"] == worker_job["job_id"]
+    hallucinated_segments = [
+        {
+            "start": 0.0,
+            "end": 30.0,
+            "text": "Public comment, motion, second, aye, nay, abstain,",
+            "speaker": None,
+        },
+    ] + [
+        {
+            "start": 240.0 + i * 10,
+            "end": 250.0 + i * 10,
+            "text": "So, we are going to take a look at what we are going to do.",
+            "speaker": None,
+        }
+        for i in range(44)
+    ]
+    worker_result = await crud.report_chunk_result(
+        worker_job["job_id"],
+        success=True,
+        shifted_segments=hallucinated_segments,
+    )
+    assert worker_result["status"] == "completed"
+    worker_version_id = worker_result["transcript_version_id"]
+
+    local_url = "https://example.granicus.com/player/clip/tj-halluc-audit-local"
+    local_result = await crud.ingest_resolution(
+        {
+            "platform": "granicus",
+            "source_url": local_url,
+            "external_id": "granicus:tj-halluc-audit-local",
+            "title": "T",
+            "date": "2026-01-01",
+            "jurisdiction": "City of Test",
+            "video_url": "https://example.com/v.m3u8",
+            "video_format": "m3u8",
+            "segments": hallucinated_segments,
+            "agenda_items": [],
+            "transcript_language": "en",
+            "transcript_warnings": [],  # pre-fix: no warning stored
+            "source": "transcribed",
+        },
+        local_url,
+    )
+    local_version_id = local_result["version_id"]
+    assert local_version_id is not None
+
+    clean_url = "https://example.granicus.com/player/clip/tj-halluc-audit-clean"
+    clean_segments = [
+        {
+            "start": 300.0,
+            "end": 309.52,
+            "text": "Councillor Garling. Sorry, I'm confused now. So there is an access point off of Ogovi, and the drawing",
+            "speaker": None,
+        },
+        {
+            "start": 309.52,
+            "end": 315.36,
+            "text": "it says, there's not. So there would be access for, say, if, like, someone were delivering or",
+            "speaker": None,
+        },
+        {
+            "start": 315.36,
+            "end": 318.56,
+            "text": "for firefighting, you know, someone could, could access through, like, you know, like,",
+            "speaker": None,
+        },
+        {
+            "start": 318.56,
+            "end": 322.80,
+            "text": "that's supposed to be a fence or a gate or something, but a driveway access would be off of that",
+            "speaker": None,
+        },
+        {
+            "start": 322.80,
+            "end": 328.40,
+            "text": "lane portion to the off of Hastings. So I'm, I'm, I'm not in favor of this at all. I,",
+            "speaker": None,
+        },
+        {
+            "start": 328.40,
+            "end": 334.08,
+            "text": "I just, I don't know why we would. I get it's an unopened portion, um, but if you were, if you've",
+            "speaker": None,
+        },
+    ]
+    clean_result = await crud.ingest_resolution(
+        {
+            "platform": "granicus",
+            "source_url": clean_url,
+            "external_id": "granicus:tj-halluc-audit-clean",
+            "title": "T",
+            "date": "2026-01-01",
+            "jurisdiction": "City of Test",
+            "video_url": "https://example.com/v.m3u8",
+            "video_format": "m3u8",
+            "segments": clean_segments,
+            "agenda_items": [],
+            "transcript_language": "en",
+            "transcript_warnings": [],
+            "source": "transcribed",
+        },
+        clean_url,
+    )
+    clean_version_id = clean_result["version_id"]
+    assert clean_version_id is not None
+
+    audited = await crud.list_hallucination_candidate_transcript_versions()
+    audited_version_ids = {row["version_id"] for row in audited}
+
+    assert worker_version_id in audited_version_ids
+    assert local_version_id in audited_version_ids
+    assert clean_version_id not in audited_version_ids
+
+    worker_row = next(r for r in audited if r["version_id"] == worker_version_id)
+    assert worker_row["already_flagged"] is True
+    assert worker_row["produced_by"] == "cloud_worker"
+    assert worker_row["job_id"] == worker_job["job_id"]
+    assert worker_row["slug"] == worker_job["meeting_page_slug"]
+
+    local_row = next(r for r in audited if r["version_id"] == local_version_id)
+    assert (
+        local_row["already_flagged"] is False
+    )  # pre-fix row, no warning stored -- caught retroactively
+    assert local_row["produced_by"] == "local_script"
+    assert local_row["job_id"] is None
+
+
 async def test_completed_job_detects_language_from_transcribed_text():
     # Real gap closed alongside the search-language fix earlier this
     # session (see BACKLOG_DONE.md): a transcribed version used to always

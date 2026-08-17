@@ -438,6 +438,23 @@ async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) 
         )
 
         new_version_id = None
+        # Tracks whichever TranscriptVersion this push's content actually
+        # corresponds to -- either the id of one freshly created here, or
+        # (when a content-hash duplicate already exists, e.g. re-running
+        # this same transcription a second time) that existing version's
+        # id. Kept as a separate variable from new_version_id on purpose:
+        # the auto-promotion check right below must still only ever fire
+        # for a genuinely *new* version (new_version_id), never re-promote
+        # an old duplicate just because it was pushed again -- but a caller
+        # asking "what version does this push correspond to" (e.g.
+        # scripts/transcribe_backlog_locally.py's --promote) needs an id
+        # either way. Real gap this closes, found live re-transcribing
+        # Boulder County (see BACKLOG_DONE.md): the fixed transcript's
+        # content already matched a non-default version from an earlier
+        # real (non-dry-run) push during the original bug investigation,
+        # so nothing "new" was created on this call, but there was still a
+        # real, promotable version to point at.
+        matched_version_id = None
 
         if segments:
             language = payload.get("transcript_language")
@@ -488,6 +505,9 @@ async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) 
                 session.add(version)
                 await session.flush()  # assigns version.id
                 new_version_id = version.id
+                matched_version_id = version.id
+            else:
+                matched_version_id = duplicate.id
 
         if current_default is not None:
             if new_version_id is not None and _is_real_improvement(
@@ -500,7 +520,21 @@ async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) 
                 current_default.is_default = False
 
         await session.commit()
-        return {"slug": page.slug, "url": f"/m/{page.slug}"}
+        # version_id is matched_version_id above: the TranscriptVersion this
+        # push's content corresponds to (freshly created or an existing
+        # content-hash duplicate), or None when there were no segments to
+        # ingest at all. Added 2026-08-16: previously nothing surfaced this
+        # at all, a real gap hit re-transcribing Boulder County/Port
+        # Coquitlam after the seam-duplication/phase-cancellation fixes (see
+        # BACKLOG_DONE.md) -- promoting the relevant version requires its
+        # id, and the page's existing default already has segments+
+        # language, so _is_real_improvement() alone won't auto-promote a
+        # fresh push.
+        return {
+            "slug": page.slug,
+            "url": f"/m/{page.slug}",
+            "version_id": matched_version_id,
+        }
 
 
 async def list_all_page_urls() -> list[dict]:
@@ -726,6 +760,106 @@ async def list_completed_multichunk_transcription_jobs() -> list[dict]:
             }
             for r in rows
         ]
+
+
+async def list_hallucination_candidate_transcript_versions() -> list[dict]:
+    """Retroactive audit, same role as list_completed_multichunk_transcription_
+    jobs() above plays for the seam-duplication bug: re-runs
+    detect_hallucination_warnings() (archive/utils/transcription_quality.py --
+    the same function report_chunk_result() now calls at finalize time, and
+    scripts/transcribe_backlog_locally.py's transcribe_meeting() calls
+    directly) against the *stored* segments of every already-completed
+    source=="transcribed" TranscriptVersion, to find which ones would trip
+    the check today but shipped before it existed (or before this specific
+    row was ever re-evaluated). See BACKLOG.md's phase-cancellation write-up
+    -- this was flagged there as open/not yet built.
+
+    source=="transcribed" (not "scraped") covers both real populations the
+    brief calls out: the cloud worker's report_chunk_result() and
+    scripts/transcribe_backlog_locally.py's local-Mac runs both set this
+    exact value (see ingest_resolution()'s own docstring on why the script
+    sets it explicitly) -- a plain "scraped" caption was never run through
+    Whisper at all, so it isn't a candidate for a Whisper-hallucination
+    symptom in the first place. Left-joins TranscriptionJob on
+    transcript_version_id to label which real path produced each version:
+    a matching job means the cloud worker produced it (job_id present); no
+    match means scripts/transcribe_backlog_locally.py did, since that script
+    deliberately never writes to transcription_jobs at all (see its own
+    module docstring).
+
+    `already_flagged` is True when this exact version's stored
+    transcript_warnings already carries the hallucination marker (i.e. it
+    was created after the check went live and correctly caught this itself)
+    -- included so a caller can tell "newly discovered by this audit" apart
+    from "already known", without needing to inspect every row by hand.
+
+    Read-only and audit-only, on purpose, same as the seam-duplication
+    audit: sizes the real exposure without touching anything. A human
+    decides what (if anything) from this list is worth re-running.
+    """
+    async with async_session() as session:
+        rows = (
+            await session.execute(
+                select(
+                    TranscriptVersion.id,
+                    TranscriptVersion.meeting_page_id,
+                    TranscriptVersion.language,
+                    TranscriptVersion.is_default,
+                    TranscriptVersion.segments,
+                    TranscriptVersion.transcript_warnings,
+                    TranscriptVersion.created_at,
+                    MeetingPage.slug,
+                    MeetingPage.title,
+                    TranscriptionJob.id,
+                )
+                .join(MeetingPage, MeetingPage.id == TranscriptVersion.meeting_page_id)
+                .outerjoin(
+                    TranscriptionJob,
+                    TranscriptionJob.transcript_version_id == TranscriptVersion.id,
+                )
+                .where(TranscriptVersion.source == "transcribed")
+                .order_by(TranscriptVersion.id.asc())
+            )
+        ).all()
+
+        candidates = []
+        for (
+            version_id,
+            meeting_page_id,
+            language,
+            is_default,
+            segments,
+            transcript_warnings,
+            created_at,
+            slug,
+            title,
+            job_id,
+        ) in rows:
+            warnings = detect_hallucination_warnings(segments or [])
+            if not warnings:
+                continue
+            already_flagged = any(
+                _HALLUCINATION_MARKER in w for w in (transcript_warnings or [])
+            )
+            candidates.append(
+                {
+                    "version_id": version_id,
+                    "meeting_page_id": meeting_page_id,
+                    "slug": slug,
+                    "title": title,
+                    "language": language,
+                    "is_default": is_default,
+                    "segment_count": len(segments or []),
+                    "already_flagged": already_flagged,
+                    "produced_by": "cloud_worker"
+                    if job_id is not None
+                    else "local_script",
+                    "job_id": job_id,
+                    "created_at": created_at.isoformat() if created_at else None,
+                }
+            )
+
+        return candidates
 
 
 async def get_page_by_slug(slug: str) -> Optional[dict]:

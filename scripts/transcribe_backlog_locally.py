@@ -74,6 +74,11 @@ Usage (from the repo root, with the venv active):
     python scripts/transcribe_backlog_locally.py --dry-run
     python scripts/transcribe_backlog_locally.py --limit 3
     python scripts/transcribe_backlog_locally.py --model-size medium --limit 1
+    # Manual re-transcription of one already-live page (e.g. cleaning up a
+    # transcript affected by a since-fixed bug) -- --promote makes the fresh
+    # version the page's default immediately instead of leaving it as a
+    # non-default version nothing points to. See --promote's own --help text.
+    python scripts/transcribe_backlog_locally.py --url "https://example.com/meeting" --promote
 
 Requires ARCHIVE_BASE_URL and ARCHIVE_INGEST_TOKEN in the repo's local
 .env (same as scripts/bulk_ingest.py / fetch_youtube_transcripts.py),
@@ -232,6 +237,31 @@ async def _ingest(
         raise RuntimeError(f"ingest failed ({response.status}): {text[:300]}")
 
 
+async def _promote(session: aiohttp.ClientSession, slug: str, version_id: int) -> dict:
+    """POST /internal/transcript-version/promote -- makes `version_id` the
+    page's default TranscriptVersion. Added 2026-08-16 alongside
+    ingest_resolution()'s new `version_id` return field, for --promote
+    below: a fresh push here does NOT automatically become the page's
+    default when the page already has a default with segments+language
+    (see archive/db/crud.py's _is_real_improvement()), which is exactly the
+    normal case for a manual re-transcription of an already-live page (the
+    whole reason to re-run this script on it). Never demotes the old
+    version out of existence -- promote_transcript_version()'s own
+    docstring: it stays reachable via `?version=`, this only flips which
+    one is_default.
+    """
+    async with session.post(
+        f"{_base_url()}/internal/transcript-version/promote",
+        json={"slug": slug, "version_id": version_id},
+        headers=_headers(),
+        timeout=INGEST_TIMEOUT,
+    ) as response:
+        if response.status == 200:
+            return await response.json()
+        text = await response.text()
+        raise RuntimeError(f"promote failed ({response.status}): {text[:300]}")
+
+
 async def transcribe_meeting(
     engine, source_url: str, platform: str, *, chunk_size_seconds: int
 ) -> dict:
@@ -359,8 +389,22 @@ async def process_one(
     *,
     dry_run: bool,
     chunk_size_seconds: int,
+    promote: bool = False,
 ) -> dict:
-    """Returns {"slug", "status": "ingested"|"skipped"|"failed", "detail"}."""
+    """Returns {"slug", "status": "ingested"|"skipped"|"failed", "detail"}.
+
+    `promote`: after a successful ingest, if response["version_id"] is not
+    None (it's None only when this push produced literally no segments --
+    see ingest_resolution()'s own docstring for why it's still set even
+    when the push's content matched an already-existing version by content
+    hash, not just a freshly-created one), calls POST /internal/
+    transcript-version/promote to make that version the page's default
+    immediately. Without this, a manual re-transcription of an already-live
+    page (e.g. after a real transcription-quality fix ships) sits as a
+    non-default version until someone promotes it by hand -- see
+    _promote()'s own docstring for why ingest alone usually isn't enough to
+    auto-promote in that case.
+    """
     slug = page.get("slug", "?")
 
     # Cheap pre-filter before any real work: a YouTube-backed page's
@@ -412,11 +456,23 @@ async def process_one(
     }
     response = await _ingest(session, payload, page["source_url_normalized"])
     page_url = response.get("url", "")
+    version_id = response.get("version_id")
+    detail = f"{len(result['segments'])} segments (language={result['language']}){hallucinated_note} -> {page_url}"
+
+    promote_note = ""
+    if promote:
+        if version_id is None:
+            promote_note = " (--promote: skipped, push produced no segments)"
+        else:
+            await _promote(session, response.get("slug", slug), version_id)
+            promote_note = f" (promoted version {version_id} to default)"
+
     return {
         "slug": slug,
         "status": "ingested",
-        "detail": f"{len(result['segments'])} segments (language={result['language']}){hallucinated_note} -> {page_url}",
+        "detail": f"{detail}{promote_note}",
         "segment_count": len(result["segments"]),
+        "version_id": version_id,
     }
 
 
@@ -452,6 +508,19 @@ async def main() -> None:
         default=CHUNK_SIZE_SECONDS,
         help=f"Seconds of audio per ffmpeg extraction call (default {CHUNK_SIZE_SECONDS} -- "
         "see module docstring for why this isn't just 'the whole meeting at once' locally).",
+    )
+    parser.add_argument(
+        "--promote",
+        action="store_true",
+        help="After a successful ingest, automatically promote the TranscriptVersion this push "
+        "corresponds to (freshly created, or an existing content-hash duplicate if re-running an "
+        "identical transcription) to be the page's default (POST /internal/transcript-version/"
+        "promote). Off by default -- a plain re-run of the normal backlog queue pushes brand-new "
+        "pages, where the very first version is already is_default=True on creation and this is a "
+        "no-op; it matters specifically for --url against an already-live page whose existing "
+        "default already has segments+language, where ingest_resolution()'s automatic promotion "
+        "won't fire on its own (see _promote()'s own docstring). Skipped only if the push produced "
+        "no segments at all.",
     )
     args = parser.parse_args()
 
@@ -526,6 +595,7 @@ async def main() -> None:
                     page,
                     dry_run=args.dry_run,
                     chunk_size_seconds=args.chunk_seconds,
+                    promote=args.promote,
                 )
             except Exception as e:
                 result = {

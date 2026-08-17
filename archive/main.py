@@ -294,6 +294,30 @@ async def internal_transcription_completed_multichunk(
     return {"jobs": await crud.list_completed_multichunk_transcription_jobs()}
 
 
+@app.get("/internal/transcription/hallucination-candidates")
+async def internal_transcription_hallucination_candidates(
+    authorization: Optional[str] = Header(None),
+):
+    """Read-only audit list: every already-completed source=="transcribed"
+    TranscriptVersion whose *stored* segments trip
+    detect_hallucination_warnings() (archive/utils/transcription_quality.py)
+    when re-run today -- real candidates for the stereo phase-cancellation
+    hallucination bug fixed 2026-08-16 (see
+    worker/segment_utils.py's "Hallucinated-transcription detection" note
+    and BACKLOG_DONE.md) having already shipped to a live public page
+    before either the extraction-side fix or this detection check existed.
+    Same reasoning and structure as
+    GET /internal/transcription/completed-multichunk right above (that
+    audit's own template for this one) -- answers the audit without
+    needing direct DATABASE_URL access. Never re-transcribes or modifies
+    anything itself; a human decides what's worth re-running.
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    return {"candidates": await crud.list_hallucination_candidate_transcript_versions()}
+
+
 @app.get("/internal/lookup")
 async def internal_lookup(
     normalized_url: str, authorization: Optional[str] = Header(None)
