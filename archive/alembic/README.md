@@ -176,7 +176,34 @@ do so** -- see the one-time adoption step below first.
 
 ## Running this against production
 
-*(You'll always be doing this from a Render Shell tab for the
+**As of 2026-08-17 (WO-10) you normally don't — the deploy does.**
+`render.yaml`'s `rtr-deeplink-archive` service has
+`preDeployCommand: cd archive && alembic upgrade head`: Render runs it
+after the build and *before* the new instance is switched live, so any
+migration merged to `main` is applied to production before the code
+that needs it starts. If the migration fails, the deploy is cancelled
+and the previous build keeps running (Render's Events tab shows the
+pre-deploy step and its log). "Already at head" is a fast no-op, so
+doc-only pushes cost nothing. `archive/db/engine.py`'s `init_models()`
+is a no-op on Postgres since the same change — this history is the
+*only* thing that writes to the production schema — and CI runs
+`alembic check` (models vs. a fresh migration-built SQLite) on every PR
+so a model edit with no migration fails before merge. Two things to
+keep in mind writing a migration now that it runs unattended: (1) code
+in the same PR must tolerate the schema *before* the migration too, or
+be gated on the column's existence (see `crud._fts_available()` — the
+2026-08-17 `search_tsv` migration was designed to land in either order
+and did); (2) a long table rewrite (a `GENERATED ... STORED` column, a
+type change) holds an ACCESS EXCLUSIVE lock for its duration — the
+`search_tsv` add was ~30s on the 77MB corpus — during which reads
+block, so merge those at a quiet moment.
+
+The rest of this section is still worth reading: it's the history of
+how the production logbook got to `head` by hand (twice, painfully),
+and it's the procedure to fall back to if the pre-deploy step ever
+fails and you need to see or fix the state yourself.
+
+*(When you do need the shell: a Render Shell tab for the
 `rtr-deeplink-archive` service — `DATABASE_URL` is already set there
 automatically as an environment variable, so every command below just
 works as typed. You never need to type, paste, or export a database URL

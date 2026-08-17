@@ -398,6 +398,79 @@ pages drop out of browse/sitemap/feed (sitemap was 1,223 URLs before the
 generic_fallback fix — compare after), and any of them that later gain
 video/captions come back on their own.
 
+## WO-10 — migrations survive deploys: Archive `preDeployCommand: alembic upgrade head`, `create_all()` gated to SQLite, CI `alembic check` (2026-08-17)
+
+[Done 2026-08-17 for the Archive; resolver half tracked live in
+`BACKLOG.md`] The last open wave of `AUDIT_EXECUTION_BRIEF.md`, done the
+evening of the day that produced its best motivating example (PR #116's
+model column deploying ~13 minutes ahead of its `ALTER TABLE` → every
+`meeting_pages` read on the Archive raising `UndefinedColumnError` until
+Ryan ran the migration by hand — the fourth schema-ordering incident
+after 2026-08-09/10/13). Ryan: "do the WO-10 preDeployCommand".
+
+**The brief's strict order, and how it was honored in one PR**: step 2
+(reconcile `alembic_version` with `head`) was already true for the
+Archive that day — Ryan had run `cd archive && alembic upgrade head`
+twice on the Render shell (`bf4f54a11e5f`, then `c1d2e3f4a5b6`), so
+`current == head`. Verified the deeper precondition before automating
+anything: on a fresh Postgres, `alembic upgrade head` from empty then
+`alembic check` reported **no missing model tables or columns** (the
+only diffs were the three deliberately unmapped Postgres-only objects —
+the pg_trgm index, the generated `search_tsv` column and its GIN index
+— which `alembic check` sees as "in DB, not in models"; expected). So
+steps 1 and 3 could land together safely for this service.
+
+**Built** (`render.yaml`, `archive/db/engine.py`,
+`.github/workflows/test.yml`, `tests/test_archive_init_models_gate.py`):
+- `rtr-deeplink-archive`: `preDeployCommand: cd archive && alembic
+  upgrade head`. Render runs it after the build, before the new instance
+  is switched live; a failure cancels the deploy and the previous build
+  keeps serving — the ordering guarantee this repo never had. Idempotent
+  ("already at head" is a no-op), runs with the service's own
+  `DATABASE_URL`, alembic from `archive/requirements.txt`. The worker
+  shares the DB and deliberately does NOT run migrations (one owner; two
+  concurrent `upgrade head`s would race on the same DDL).
+- `archive/db/engine.py::init_models()` returns immediately on
+  `engine.dialect.name == "postgresql"`; `create_all()` runs only for
+  SQLite (local/tests). Gated on the dialect, not an env var, so the safe
+  path needs no configuration. This is the change that removes the
+  silent-drift mechanism itself: a new table can no longer appear in
+  prod without a migration.
+- CI: `alembic upgrade head` on a fresh SQLite from the migration chain,
+  then `alembic check` — fails a PR that edits a model without a
+  migration. Runs on SQLite deliberately: the PG-only objects are
+  dialect-guarded in migrations and unmapped on models, so both sides
+  omit them and the check is exact (verified clean before adding).
+- 2 tests pin the gate (a stub engine reporting `postgresql` is never
+  connected to; the real SQLite engine still runs `create_all()`).
+- Docs: `CLAUDE.md`'s "brand-new table needs no manual migration"
+  bullet — the guidance that made drift invisible — rewritten to the new
+  rule (every Archive schema change = one migration, nothing else; two
+  corollaries: code must tolerate the pre-migration schema or feature-
+  detect, per `crud._fts_available()`; prefer generated columns over
+  column + backfill); `archive/alembic/README.md`'s production section
+  now leads with "the deploy does this"; `AUDIT_EXECUTION_BRIEF.md`
+  updated; the `BACKLOG.md` incident entry closed with the resolver
+  follow-up split out.
+
+**Not done, deliberately — the resolver (`app/`)**: its Alembic history
+(2 revisions) has never been stamped in prod, so the same
+`preDeployCommand` there would fail on first run (the baseline `CREATE
+TABLE`s against existing tables — the brief's own warning). The one-time
+`alembic stamp head` needs the *resolver* service's Render shell (Ryan);
+`render.yaml` carries a comment at the exact spot with the exact steps,
+and `BACKLOG.md` tracks it. The resolver has never had a schema
+incident, which is why it's the half that could wait.
+
+**Verification of the mechanism itself**: the PR's own deploy is the
+first run — Render's Events tab for `rtr-deeplink-archive` shows a
+"Pre-deploy" step with `alembic upgrade head` logging that it's already
+at head, then the deploy going live; `/api/health` 200 after. The
+acceptance criterion "a test migration adding a column deploys cleanly
+with no manual step" is met by the *next* real Archive migration —
+which, per `CLAUDE.md`'s new rule, will be written to tolerate either
+order anyway.
+
 ## Jurisdiction hub pages — `/j/{slug}`, one landing page per government, threshold-indexed (2026-08-17)
 
 [Done 2026-08-17] Promoted from `CLAUDE_BACKLOG.md`'s "Jurisdiction hub

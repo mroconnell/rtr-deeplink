@@ -78,20 +78,30 @@ async_session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncS
 
 
 async def init_models() -> None:
-    """Still the whole story for local dev/tests -- a fresh SQLite file
-    with no migration history just works, zero config. Adopted Alembic
-    2026-08-09 (`archive/alembic/`) as the real source of truth for
-    *production* schema changes going forward, since `create_all()`
-    can only ever add new tables, never alter an existing one (the wall
-    this repo hit three separate times before adopting real migration
-    tooling -- see BACKLOG_DONE.md). This still runs unconditionally on
-    every startup (`create_all` is a safe no-op against tables that
-    already exist, whichever way they got created), so an Alembic
-    migration that only adds a new table doesn't strictly need
-    `init_models()` touched at all -- but any migration that *alters* an
-    existing table (the actual reason Alembic exists now) needs a real
-    `alembic upgrade head` run, this function can't do that part.
+    """`create_all()` for local dev/tests only -- a fresh SQLite file with
+    no migration history just works, zero config.
+
+    **On Postgres (production) this is now a deliberate no-op** (WO-10,
+    2026-08-17). Alembic (`archive/alembic/`) is the one source of truth
+    for the production schema, and `render.yaml`'s `preDeployCommand`
+    runs `alembic upgrade head` before each new build starts serving, so
+    a migration lands *before* the code that needs it. Until today
+    `create_all()` also ran unconditionally on every prod startup, which
+    was the exact mechanism that let `alembic_version` silently fall
+    behind: a new table quietly appeared via `create_all()`, nobody
+    noticed no migration existed for it, and the next migration that
+    *altered* something arrived with a human in the loop -- three
+    documented incidents (2026-08-09/10/13, `archive/alembic/README.md`)
+    plus the 2026-08-17 UndefinedColumnError outage from a model column
+    deploying ahead of its migration (BACKLOG_DONE.md). Now a model change
+    without a migration fails loudly on Postgres (the table/column just
+    isn't there) instead of half-working, and CI runs `alembic check` on
+    a fresh SQLite to catch that before merge (.github/workflows/test.yml).
+    Gated on the dialect, not an env var, so nothing has to be configured
+    for the safe path to be the default.
     """
+    if engine.dialect.name == "postgresql":
+        return
     from .models import Base
 
     async with engine.begin() as conn:

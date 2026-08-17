@@ -77,6 +77,28 @@ jobs:
       # adds cwd to sys.path[0] the same way local dev invocations do.
       - run: python -m pytest
 
+      # WO-10 (2026-08-17): the archive's models and its Alembic migrations
+      # must agree, because production schema is now Alembic-only --
+      # render.yaml's preDeployCommand runs `alembic upgrade head` before
+      # each build goes live, and archive/db/engine.py's create_all() is a
+      # no-op on Postgres. A model column added without a migration used
+      # to be silently papered over by create_all(); now it would 500 in
+      # prod. This catches it at PR time: build a fresh SQLite purely from
+      # the migration chain, then `alembic check` diffs the models against
+      # it and fails on any pending "add" operation. Blocking. (Runs on
+      # SQLite deliberately: the Postgres-only objects the migrations add
+      # -- pg_trgm index, the generated search_tsv column + its GIN index
+      # -- are dialect-guarded in the migrations and unmapped on the
+      # models, so both sides omit them here and the check is exact.
+      # Verified clean 2026-08-17 before this step was added.)
+      - name: alembic check (archive models == migrations)
+        working-directory: archive
+        env:
+          DATABASE_URL: sqlite+aiosqlite:///./ci_alembic_check.db
+        run: |
+          alembic upgrade head
+          alembic check
+
       - uses: actions/setup-node@v4
         with:
           node-version: "22"

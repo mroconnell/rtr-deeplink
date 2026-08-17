@@ -549,35 +549,42 @@ anything) to build against it.
   for title extraction — or something else). Worth watching for a second
   example before designing a fix.
 
-- **[HUMAN] Schema-migration deploy ordering has now caused a real, sitewide
-  Archive outage (2026-08-17, ~09:25–09:38 PT) — the third schema-change
-  incident in this repo's history, and the strongest evidence yet for
-  WO-10 ("migrations survive deploys", the one open wave in
-  `AUDIT_EXECUTION_BRIEF.md`).** Full incident record in
-  `BACKLOG_DONE.md`'s "search_corpus column deployed before its
-  migration ran" entry; the short version: PR #116 added
-  `MeetingPage.search_corpus` + an Alembic migration, deployed, and for
-  ~13 minutes every `meeting_pages` read on the Archive
-  (`/m/*`, `/meetings`, `/feed.xml`, and the worker's own polling
-  queries) raised `UndefinedColumnError: column meeting_pages.search_corpus
-  does not exist`, because `create_all()` can't ALTER an existing table
-  and the migration hadn't been run against prod yet. Recovered once
-  the migration was applied. **What's still open, the actual ask**: a
-  mechanism — not a documented rule, which already existed and was
-  followed in spirit (the PR was explicitly "schema-only, safe to deploy
-  alone") but couldn't prevent the ORM from selecting the new column the
-  instant the model changed — that makes "model references a column
-  prod doesn't have" impossible to deploy: e.g. `alembic upgrade head`
-  as part of the Archive's Render `preDeployCommand`/build step
-  (Render's own supported hook for exactly this), or at minimum a
-  startup assertion comparing `alembic current` to `head` that fails the
-  health check so the deploy is blocked (WO-6's gate) rather than
-  serving 500s. This is what WO-10 should build; today's incident is its
-  motivating example. Also worth capturing in that work: the
-  `python scripts/backfill_search_corpus.py` one-time step Ryan ran by
-  hand on the Render shell (1,219 rows) is the second manual
-  prod-shell step in two days (`alembic upgrade head` being the first) —
-  fine for now, but a pattern WO-10 should absorb.
+- ~~**[HUMAN] Schema-migration deploy ordering has now caused a real,
+  sitewide Archive outage (2026-08-17)** — the ask was a *mechanism*
+  making "model references a column prod doesn't have" impossible to
+  deploy.~~ **Built for the Archive the same evening (WO-10, PR pending
+  merge as of this edit — full detail in `BACKLOG_DONE.md`'s "WO-10"
+  entry)**: `render.yaml` `preDeployCommand: cd archive && alembic
+  upgrade head` (schema lands before the code goes live; a failing
+  migration cancels the deploy and keeps the old build), `archive/db/
+  engine.py`'s `create_all()` a no-op on Postgres (Alembic is the only
+  writer to the prod schema), and CI `alembic check` on every PR (a model
+  edit without a migration fails before merge). Precondition verified
+  before automating: archive `alembic_version` == head after Ryan's two
+  `upgrade head` runs that day, and `alembic check` against a fresh
+  `upgrade head` DB reported no missing model tables/columns.
+
+  **What's still open — the resolver half, Ryan-gated:** `app/`'s Alembic
+  history (`app/alembic/`, 2 revisions) has never been stamped in
+  production, so the same `preDeployCommand` there would fail on its
+  first run (it would try the baseline `CREATE TABLE`s against tables
+  that already exist — the brief's "step 3 before step 2" warning). One
+  shell step unlocks it, on the **`rtr-deeplink`** (resolver) service's
+  Render shell, not the archive's: `cd app && alembic current` (expect
+  empty), confirm the real columns match head (`GET /admin/stats`
+  returning `pending_archive_pushes` cleanly is the documented check —
+  see `app/alembic/README.md`), then `cd app && alembic stamp head`. Then
+  a small PR: add `preDeployCommand: cd app && alembic upgrade head` to
+  the `rtr-deeplink` service (a comment marks the exact spot in
+  `render.yaml`), gate `app/db/engine.py`'s `create_all()` to
+  non-Postgres the way archive's is, and extend the CI `alembic check`
+  step to `app/`. Until then a new *resolver* table still appears via
+  `create_all()` and an altered resolver table still needs a hand-run
+  migration — the resolver has never had a schema incident, which is why
+  it's the half that could wait. Also still true: `scripts/
+  backfill_search_corpus.py`-style one-time backfills remain manual —
+  prefer generated columns (the `search_tsv` pattern) so there's nothing
+  to backfill.
 
 - **[HUMAN] Search Console "Page indexed without content" (alert 2026-08-17)
   is still genuinely unexplained — and specifically NOT explained by

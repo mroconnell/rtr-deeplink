@@ -180,22 +180,38 @@ under everything else. This repo extracts and fixes just that part.
   you fix a bug found via live testing, consider adding a fixture-backed
   regression test for it in the same pass, the way the Simi Valley
   Spanish-caption and blank-VTT cases already are.
-- **A brand-new table still needs no manual migration** — `init_models()`
-  in both `app/db/engine.py` and `archive/db/engine.py` runs
-  `Base.metadata.create_all()` unconditionally on every startup, so a new
-  table (e.g. `ProblemReport`, added 2026-08-08) just appears in prod
-  Postgres the next time the service restarts/deploys. **Altering an
-  existing table is a different story** — `create_all` can't do that,
-  and this repo hit that wall for real (the job-priority column, the
-  materialized search column), which is why `archive/` adopted Alembic
-  2026-08-09 (`archive/alembic/`, see BACKLOG_DONE.md) as the real
-  source of truth for *that* kind of change going forward. `init_models()`
-  itself wasn't touched and still runs the same way — Alembic is
-  additive, not a replacement for the zero-friction `create_all()` path
-  fresh local/test databases use. See `archive/alembic/README.md` for
-  how to write a new migration and the one-time production-adoption step
-  (`alembic stamp head`) that hasn't been run yet — needs real production
-  `DATABASE_URL` access this session doesn't have.
+- **Every Archive schema change needs an Alembic migration — and that's
+  all it needs (WO-10, landed 2026-08-17).** For `archive/`: write the
+  migration in `archive/alembic/versions/` (see `archive/alembic/README.md`
+  for how), and `render.yaml`'s `preDeployCommand: cd archive && alembic
+  upgrade head` runs it *before* the new build starts serving — no shell
+  step, no human in the loop, and a failed migration cancels the deploy
+  and leaves the old build running. `archive/db/engine.py`'s
+  `init_models()` is a **no-op on Postgres** now: `create_all()` runs
+  only for the local/test SQLite path, so a model change without a
+  migration fails loudly in prod instead of half-working — and CI runs
+  `alembic check` against a fresh migration-built SQLite on every PR
+  (`.github/workflows/test.yml`), so it fails *before* merge. This
+  replaces the earlier guidance that "a brand-new table needs no manual
+  migration because `create_all()` runs at startup": that convenience was
+  precisely what let `alembic_version` drift silently and produced four
+  incidents (2026-08-09/10/13, and the 2026-08-17 `UndefinedColumnError`
+  outage when a model column deployed ~13 minutes ahead of its
+  `ALTER TABLE` — see BACKLOG_DONE.md). Two rules that follow: **never
+  reference a new column in code the same deploy it's added unless the
+  code tolerates its absence** (the `search_tsv` feature-detect pattern in
+  `crud._fts_available()` is the model — either order deploys safely),
+  and **a generated/computed column beats "column + backfill script"**
+  when Postgres can compute the value (no ingest change, no one-time
+  script, no seam). **The resolver (`app/`) is NOT there yet**: its
+  `create_all()` still runs on Postgres and its Alembic history
+  (`app/alembic/`, 2 revisions) has never been stamped in prod — the
+  one-time `alembic stamp head` on the resolver's Render shell (per
+  `app/alembic/README.md`, after confirming `alembic current` is empty
+  and the real columns match head) is what unlocks adding the same
+  `preDeployCommand` there; tracked in `BACKLOG.md`. Until then a new
+  *resolver* table still appears via `create_all()`, and an altered
+  resolver table still needs a hand-run migration.
 - **`app/db/outcomes.py` classifies reporting outcomes from real signal on
   the row where one exists, and falls back to substring-matching
   `transcript_warnings` only where it doesn't.** `agenda_fallback` is
