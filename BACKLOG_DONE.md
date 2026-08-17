@@ -257,6 +257,98 @@ Full suite (845 tests), `ruff check`, and `ruff format --check` all clean.
 bleed" entry for the 4 Granicus cases that only resolve correctly today
 via subdomain-fallback luck, not the text-based chain itself.
 
+## WO-16: Census-table jurisdiction gaps (2026-08-16)
+
+**Problem.** The 2026-08-14/15 649-jurisdiction Census-table validation
+audit left four categories of confirmed gaps (`BACKLOG.md`): two archived
+pages storing a literal date as their jurisdiction (source untraced);
+townships/county subdivisions (Upper Providence PA, Greenburgh NY, Upper
+Dublin PA — all confirmed real) missing from the lookup table entirely;
+and Elliot Lake, ON needing some kind of non-US exemption since it was
+never going to be in a US Census table.
+
+**Fix, part 1 — townships/county subdivisions (the one real code
+change).** Census tracks these as a wholly separate gazetteer (COUSUB),
+not a subset of the counties/places tables already used —
+`scripts/build_jurisdiction_data.py` gained `build_county_subdivisions()`,
+downloading and filtering the real 2024 Census county-subdivision
+gazetteer (`2024_Gaz_cousubs_national.zip`, 36,421 raw rows) to
+`FUNCSTAT == "A"` only (16,157 rows) — deliberately narrower than
+`places.csv`'s `"A"/"B"/"F"` (that expansion was earned by real confirmed
+consolidated-government examples; COUSUB's own `"F"` rows are literally
+placeholder `"County subdivisions not defined"` junk, and the other
+codes — `G`, `C`, `B`, also real townships/towns on a quick sample — have
+no `BACKLOG.md`-confirmed real example needing them yet, so left out
+rather than guessed at). New `app/utils/jurisdiction_data/
+county_subdivisions.csv`, loaded as `_SUBDIVISION_STATES` in
+`jurisdiction_enrich.py` and checked as a third, lowest-priority tier in
+`_table_lookup()` (after place, after county — a real city/county name
+should always win over a same-named township, and no confirmed real case
+needs the opposite). All three confirmed examples verified: `_table_lookup
+("Upper Providence Township") == ("subdivision", ["PA"])` (this name is
+genuinely real *twice* in PA — Montgomery and Delaware counties — still
+resolves unambiguously since both agree on state), same for Greenburgh
+NY and Upper Dublin PA.
+
+**Real new finding from adding this table**: "Oshawa" (the Ontario city
+several WO-14 eScribe test cases already used, land-acknowledgment
+boilerplate) turns out to also be a real, if obscure, county subdivision
+— "Oshawa Township, MN" — confirmed via a direct `_table_lookup("Oshawa")`
+call returning `("subdivision", ["MN"])`. This flipped one of WO-14's own
+regression tests from resolving via eScribe's subdomain fallback (bare
+"Oshawa") to resolving via `extract_jurisdiction_chain()`'s primary
+stop-rule tier instead (`"City of Oshawa"`, "City of" prefix intact,
+stripped only at display time — see WO-14's own entry above). Traced all
+the way through: the actual stored/displayed jurisdiction text is
+unaffected either way (still correctly "Oshawa," never wrongly relabeled
+to Minnesota — `enrich_jurisdiction_text()` doesn't attach a state suffix
+just because a name happens to validate against a single-state table
+entry, it needs an independent ZIP/domain signal to do that), only the
+internal `jurisdiction_confidence` tag changes (`"validated"` instead of
+whatever the fallback path would have produced) — and that field is
+explicitly diagnostic-only with zero UI surface
+(`JURISDICTION_METADATA_PLAN.md`). Fixed the now-overly-strict test
+assertion (`tests/test_escribe.py`, exact `==` loosened to a substring
+check, matching the more robust pattern `tests/test_granicus.py`'s own
+WO-14 tests already used) rather than the underlying behavior, since
+there was nothing incorrect to fix. Documented as a real, narrow,
+accepted structural limitation of the whole validate-against-Census-
+tables approach — any real US place/subdivision name that happens to
+coincide with a well-known foreign place name carries this same risk,
+not something specific to Oshawa or to this pass's change.
+
+**Investigated, no code change — parts 2 and 3.** The two
+literal-date-as-jurisdiction pages are no longer reproducible: a fresh
+full scan of live production `/coverage` (843 rows today, up from 649 at
+the original audit, fetched via a real `curl` against
+`redtaperecordings.com`, not guessed) found zero jurisdictions matching a
+plain "Month Day, Year" shape, and neither of the two originally-quoted
+date strings appears anywhere on the page. Most likely already closed as
+a side effect of WO-14's bleed fix (or a peer session's parallel work)
+rather than independently root-caused here — the original two URLs were
+never recorded at the time, and the audit's own `baseline_validation.csv`
+no longer exists in any session's scratchpad, so there's no way to
+confirm the exact mechanism, only that the symptom is gone today.
+Elliot Lake, ON: directly tested `finalize_jurisdiction()` against
+"Elliot Lake"/"Elliot Lake, ON" — both correctly grade `"unverified"`
+(kept as given, not rejected, no wrong-US-state force-fit attempted), the
+same documented-correct category real untabled entity types (school
+districts, MPOs, and — per this finding — non-US jurisdictions
+generally) already get. No live bug found to fix; the "exemption flag"
+this item asked for would matter for a future re-run of the audit
+*script* itself (so Elliot Lake doesn't inflate a "not in table" miss
+count), and that script no longer exists to extend.
+
+**Verification.** New test:
+`tests/test_jurisdiction_enrich.py`'s
+`test_table_lookup_recognizes_a_township_county_subdivision` (all 3
+confirmed real townships, plus the two-Upper-Providence-Townships
+same-state-still-unambiguous case). Full suite (854 tests), `ruff check`,
+`ruff format --check` all clean. `county_subdivisions.csv` generated by
+running the new build function directly against a freshly `curl`-fetched
+real Census gazetteer file (not hand-written), same provenance standard
+as the other three tables.
+
 ## WO-15: stale-archived-page refresh path (2026-08-16)
 
 **Problem.** Two confirmed gaps combined into one recurring root cause:

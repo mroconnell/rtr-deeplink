@@ -674,7 +674,7 @@ step 3 before step 2 will fail on the first run — the drift is already there.
 
 ---
 
-## Wave 6 — recurring bug-class cleanup
+## Wave 6 — recurring bug-class cleanup · **COMPLETE 2026-08-16**
 
 No blockers, lower urgency than Waves 1-5 — fill gaps between waves or run
 after. ~2-3 days. Three items pulled from `BACKLOG.md`'s Bugs section and
@@ -682,18 +682,6 @@ Archive-roadmap-adjacent findings, chosen because each fixes a *pattern*
 behind several already-open bugs rather than one instance.
 
 ### WO-14 · Shared bounded-extraction jurisdiction-regex helper — **new** — **DONE 2026-08-16**
-
-**Fixed.** Both Granicus and eScribe now call the already-built
-`jurisdiction_enrich.extract_jurisdiction_chain()` (it existed from prior
-work but was never wired into these two adapters). Also fixed eScribe's
-subdomain fallback, which was mangling multi-word Canadian city names
-("Thunderbay" instead of "Thunder Bay"). Live re-verified against
-`hercules.granicus.com/player/clip/1306`. Full detail, all 9 Granicus + 6
-eScribe cases, and one honestly-flagged residual gap (4 Granicus cases
-that only resolve via subdomain-fallback luck, not the text-chain itself)
-in `BACKLOG_DONE.md` / `BACKLOG.md`.
-
-
 
 **Problem.** `GranicusAssetFinder._extract_metadata()`'s jurisdiction regex
 has no sentence/tag boundary and swallows unrelated agenda text into the
@@ -713,27 +701,17 @@ one-offs.
 regression tests cover at least the 9 Granicus and 6 eScribe confirmed-bleed
 examples above.
 
+**Fixed.** Both Granicus and eScribe now call the already-built
+`jurisdiction_enrich.extract_jurisdiction_chain()` (it existed from prior
+work but was never wired into these two adapters). Also fixed eScribe's
+subdomain fallback, which was mangling multi-word Canadian city names
+("Thunderbay" instead of "Thunder Bay"). Live re-verified against
+`hercules.granicus.com/player/clip/1306`. Full detail, all 9 Granicus + 6
+eScribe cases, and one honestly-flagged residual gap (4 Granicus cases
+that only resolve via subdomain-fallback luck, not the text-chain itself)
+in `BACKLOG_DONE.md` / `BACKLOG.md`.
+
 ### WO-15 · Stale-archived-page refresh path — **new** — **DONE 2026-08-16**
-
-**Fixed.** New public, rate-limited `POST /api/refresh-archived-page`
-(app/main.py) + a "Refresh this page" button on the Archive's meeting
-page, reusing the existing `_recheck_archived_page()` resolve/push logic
-so no new resolve code was written. `list_youtube_pages_missing_
-transcripts()` now reuses the same quality gate `_has_good_transcript()`
-already provides, so an existing-but-garbled default resurfaces in the
-queue too — which surfaced a second real gap (a fresh push there wouldn't
-auto-promote over an already-has-segments+language default), fixed by
-having `fetch_youtube_transcripts.py` always call the already-built
-promote endpoint after a push. Live-verified end-to-end in a local
-resolver+Archive pair (cooldown, then a real recheck past cooldown).
-**Not verified against a real already-broken production page** (Fountain
-Valley clip 607, `riversidecountyca.iqm2.com`) — both of those pages'
-underlying adapter bugs are still separately unfixed, so there's nothing
-for this mechanism to have fixed yet; re-verifying live once either
-adapter bug lands is a natural follow-up, not done here. Full detail in
-`BACKLOG_DONE.md`.
-
-
 
 **Problem.** Two confirmed gaps combine into one recurring root cause:
 re-submitting an already-archived URL through the public API never
@@ -756,7 +734,31 @@ content without needing the admin token. At least one of the BACKLOG.md
 bugs this WO is meant to explain (Fountain Valley clip 607 is the most
 concrete) is re-verified and closed as a consequence, not just theorized.
 
-### WO-16 · Census-table jurisdiction gaps — **new**
+**Fixed.** New public, rate-limited `POST /api/refresh-archived-page`
+(app/main.py) + a "Refresh this page" button on the Archive's meeting
+page, reusing the existing `_recheck_archived_page()` resolve/push logic
+so no new resolve code was written. `list_youtube_pages_missing_
+transcripts()` now reuses the same quality gate `_has_good_transcript()`
+already provides, so an existing-but-garbled default resurfaces in the
+queue too — which surfaced a second real gap (a fresh push there wouldn't
+auto-promote over an already-has-segments+language default), fixed by
+having `fetch_youtube_transcripts.py` always call the already-built
+promote endpoint after a push. Live-verified end-to-end in a local
+resolver+Archive pair (cooldown, then a real recheck past cooldown).
+**Not verified against a real already-broken production page** (Fountain
+Valley clip 607, `riversidecountyca.iqm2.com`) — both of those pages'
+underlying adapter bugs are still separately unfixed, so there's nothing
+for this mechanism to have fixed yet; re-verifying live once either
+adapter bug lands is a natural follow-up, not done here. Full detail in
+`BACKLOG_DONE.md`.
+
+### WO-16 · Census-table jurisdiction gaps — **new** — **DONE 2026-08-16**
+
+**Fixed (part 1, the one real code change).** Townships/county
+subdivisions (Upper Providence PA, Greenburgh NY, Upper Dublin PA) were
+missing from the Census-table lookup entirely -- Census tracks them as a
+separate gazetteer. (Full context on the other two parts of this WO is in
+the Problem/Do/Acceptance below, kept in the original order.)
 
 **Problem.** The 2026-08-14 649-jurisdiction Census-table validation audit
 left four categories of confirmed gaps: two archived pages store a literal
@@ -774,6 +776,25 @@ non-US jurisdictions like Elliot Lake stop being treated as lookup misses.
 **Acceptance.** All four confirmed cases resolve correctly on re-check. The
 fix doesn't silently swallow future genuine lookup misses — a real miss
 should still be visibly flagged, not defaulted away.
+
+**Fixed (part 1, the one real code change).** New
+`build_county_subdivisions()` + `county_subdivisions.csv`, wired into
+`jurisdiction_enrich.py`'s `_table_lookup()` as a third tier. Surfaced a
+real, narrow finding along the way: "Oshawa" (Ontario) also happens to be
+a real, obscure Minnesota township — traced end-to-end and confirmed
+harmless (stored jurisdiction text is unaffected, only an invisible
+internal confidence tag changes).
+
+**Investigated, no code change needed (parts 2 and 3).** The two
+literal-date-as-jurisdiction pages are no longer reproducible on
+production (a fresh live scan of all 843 `/coverage` rows found zero
+date-shaped jurisdictions) — likely already closed by WO-14 or parallel
+work, not independently root-caused here. Elliot Lake, ON: directly
+tested and confirmed today's code already handles it correctly
+(`"unverified"`, the documented-correct category for untabled entity
+types) — no live bug, no fix needed. Full detail, including why each
+"no fix needed" conclusion was reached rather than assumed, in
+`BACKLOG_DONE.md`.
 
 ---
 

@@ -178,6 +178,13 @@ def _load_zcta_table(
 
 _COUNTY_STATES = _load_name_state_table("counties.csv")
 _PLACE_STATES = _load_name_state_table("places.csv")
+# WO-16 (BACKLOG.md, 2026-08-16): townships/county subdivisions (Upper
+# Providence PA, Greenburgh NY, Upper Dublin PA -- all confirmed real,
+# live-flagged as lookup misses) are a separate Census gazetteer (COUSUB),
+# not a subset of counties.csv/places.csv -- see
+# scripts/build_jurisdiction_data.py's build_county_subdivisions() for the
+# source/filter detail.
+_SUBDIVISION_STATES = _load_name_state_table("county_subdivisions.csv")
 _ZCTA_COUNTY = _load_zcta_table("zcta_county.csv", "county_name")
 _ZCTA_PLACE = _load_zcta_table("zcta_place.csv", "place_name")
 
@@ -682,11 +689,16 @@ def _table_lookup(name: str) -> Optional[Tuple[str, List[str]]]:
     if not name:
         return None
     county_first = bool(_COUNTY_TYPE_HINT_RE.search(name))
+    # Subdivisions checked last regardless of county_first -- a real city
+    # or county name should always win over a same-named township (rare,
+    # but e.g. many townships share a name with a nearby borough/city in
+    # the same state), and no confirmed real case needs it to outrank
+    # either.
     tables = (
         [("county", _COUNTY_STATES), ("place", _PLACE_STATES)]
         if county_first
         else [("place", _PLACE_STATES), ("county", _COUNTY_STATES)]
-    )
+    ) + [("subdivision", _SUBDIVISION_STATES)]
     candidates = list(_normalize_candidates(name))
     expanded = _expand_abbreviations(name)
     if expanded != name:
