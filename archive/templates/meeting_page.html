@@ -236,9 +236,9 @@
          visitor to guess. Only rendered when the status is set, so
          ordinary pages are untouched. #}
       {% if date_status == "upcoming" %}
-      <p class="date-status-notice date-status-upcoming" role="note"><span class="date-status-pill">Upcoming</span> This meeting hasn't happened yet{% if page.date %} (scheduled {{ page.date }}){% endif %}. Video and a transcript will appear here once the source publishes them{% if page.source_url %} &mdash; use &ldquo;Refresh this page&rdquo; below to check{% endif %}.</p>
+      <p class="date-status-notice date-status-upcoming" role="note"><span class="date-status-pill" title="This meeting hasn't happened yet, so we can't have video or a transcript for it yet">Upcoming</span> This meeting hasn't happened yet{% if page.date %} (scheduled {{ page.date }}){% endif %}. Video and a transcript will appear here once the source publishes them{% if page.source_url %} &mdash; use &ldquo;Refresh this page&rdquo; below to check{% endif %}.</p>
       {% elif date_status == "recent" %}
-      <p class="date-status-notice date-status-recent" role="note"><span class="date-status-pill">Recent</span> This meeting was held recently{% if page.date %} ({{ page.date }}){% endif %}. Governments often publish video and captions days to weeks afterward{% if page.source_url %} &mdash; use &ldquo;Refresh this page&rdquo; below to check for them{% endif %}.</p>
+      <p class="date-status-notice date-status-recent" role="note"><span class="date-status-pill" title="Recent meetings sometimes don't have final video or captions from the source yet">Recent</span> This meeting was held recently{% if page.date %} ({{ page.date }}){% endif %}. Governments often publish video and captions days to weeks afterward{% if page.source_url %} &mdash; use &ldquo;Refresh this page&rdquo; below to check for them{% endif %}.</p>
       {% endif %}
       {% if page.source_url %}
       <p class="source-link"><a href="{{ page.source_url }}" target="_blank" rel="noopener noreferrer">View original source &rarr;</a></p>
