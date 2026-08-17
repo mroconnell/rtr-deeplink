@@ -6,5 +6,5 @@ venv/
 .env
 *.db
 node_modules/
-.claude/
+.claude/settings.local.json
 local_transcription_backups/

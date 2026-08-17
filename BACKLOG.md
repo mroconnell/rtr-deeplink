@@ -866,6 +866,36 @@ anything) to build against it.
     now sets each item's `end` to the next item's `start`, matching
     Granicus/IQM2's convention, instead of always equaling `start`.
 
+- **`sitemap.xml` includes `generic_fallback` pages that the page template
+  itself `noindex`es — a real, code-confirmed contradiction, not just a
+  guess from the alert.** Source: a separate Search Console alert
+  (received 2026-08-17, forwarded via Gmail to `CLAUDE_BACKLOG.md` first,
+  now promoted here after tracing it to real code) specifically titled
+  "New reasons prevent pages **in a sitemap** from being indexed... Excluded
+  by 'noindex' tag" — meaning Google is finding these via `sitemap.xml`
+  itself, not just organic crawling. Root cause confirmed by reading both
+  sides: `archive/templates/meeting_page.html:12-19` emits
+  `<meta name="robots" content="noindex">` whenever `page.platform ==
+  "unknown"` (i.e. every `generic_fallback`-resolved page — the
+  least-verified adapter, by design per the trust & safety section below),
+  but `archive/db/crud.py`'s `list_all_page_slugs()` (used by
+  `archive/main.py`'s `/sitemap.xml` route,
+  `archive/db/crud.py:1430-1443`) selects every `MeetingPage` slug
+  unfiltered — no `platform != "unknown"` clause — so every
+  `generic_fallback` page's URL lands in the sitemap while its own page
+  simultaneously tells Google not to index it. Fix looks small and
+  low-risk: add `.where(MeetingPage.platform != "unknown")` to
+  `list_all_page_slugs()`'s query (`platform` is already an indexed
+  column, `archive/db/models.py:29`). Not yet confirmed against production
+  data how many `generic_fallback` pages currently exist/are actually in
+  the live sitemap — the code-level contradiction is real regardless, but
+  worth a quick prod check to gauge how many URLs this actually affects
+  before/after the fix. The separate, real "Page indexed without content"
+  reason from the same 2026-08-17 alert batch is NOT explained by this —
+  still open, see `CLAUDE_BACKLOG.md`'s 2026-08-17 entry for that one and
+  for a newly-surfaced third reason ("Page with redirect", alert received
+  2026-08-16) that hasn't been investigated yet.
+
 - **YouTube-backed meetings' transcripts run through
   `scripts/fetch_youtube_transcripts.py` on a daily `launchd` schedule
   now (both shipped 2026-08-10, see BACKLOG_DONE.md) — real remaining
@@ -1382,6 +1412,54 @@ unusually wide, and the missing auto-scroll toggle on archived pages~~
   page.**~~ **Fixed 2026-08-16 — full detail, including a real
   unrelated production deploy incident hit right after merging, in
   `BACKLOG_DONE.md`.**
+
+- **Both auto-transcription feed workflows (`feed-tier3-transcription.yml`,
+  `feed-granicus-transcription.yml`) have likely never successfully
+  self-advanced their queue files, ever — every scheduled run's commit
+  is rejected by the branch ruleset, silently, since before either
+  workflow was even written.** Found via a real GitHub Actions failure
+  notification email (`RTR-Claude` Gmail label), not a guess: opened the
+  actual failed run
+  (https://github.com/mroconnell/rtr-deeplink/actions/runs/32035051794)
+  and its job logs directly. The script itself succeeds (12 real URLs
+  resolved and POSTed to `/internal/ingest`, several `[OK]`), but the
+  final "commit updated queue state" step fails every time:
+  ```
+  remote: error: GH013: Repository rule violations found for refs/heads/main.
+  remote: - Changes must be made through a pull request.
+  remote: - Required status check "test" is expected.
+  ! [remote rejected] main -> main (push declined due to repository rule violations)
+  ```
+  Root cause: both workflows still `git push` their queue-advancement
+  commit straight to `main` (with `[skip ci]`), a pattern that predates
+  the branch ruleset requiring PRs + a passing `test` check
+  (`BACKLOG_DONE.md`'s "Branch ruleset on `main`" entry, **added
+  2026-08-14**) — but both workflows' own docstrings date their queues to
+  **2026-08-15/16**, i.e. *after* the ruleset existed. Nobody updated the
+  push step when writing these newer workflows, so as far as can be told
+  the automated advancement path has never once worked in production.
+  **Real, confirmed impact**: every commit from `scripts/
+  tier3_auto_transcription_queue.txt`'s and `scripts/
+  granicus_auto_transcription_queue.txt`'s git history
+  (`git log -- <file>`) traces to a real merged PR (#59, #64, #67, #70,
+  #105 as of this writing) — none from the workflow's own bot commit.
+  `origin/main`'s tier-3 queue is 1191 lines right now (post-PR #105,
+  merged today) and the run above logged "1179 remaining after this
+  run," meaning it fed the same front-of-queue 12 URLs it (and every
+  prior run) already tried, and will keep re-trying only those same 12
+  every 6 hours until a human manually edits the file via a PR — the
+  ~1179 behind them are never reached by the automated drip at all,
+  defeating the mechanism's whole purpose. Two fix directions, a real
+  tradeoff rather than an obvious pick: (1) have the workflow open a PR
+  and auto-merge instead of pushing directly — the ruleset requires 0
+  approvals per that same `BACKLOG_DONE.md` entry, so this could still be
+  fully unattended, just slower (waits on the `test` check); or (2) add
+  `github-actions[bot]` as a scoped bypass actor on the ruleset, keeping
+  the direct-push pattern but narrowing what it protects against. Worth
+  fixing soon regardless of which direction — the log's duplicate-URL
+  reprocessing (`tbdhu`, `mississauga` both appear twice in the same
+  single run's output above) is a live symptom of the queue never
+  actually shrinking.
 
 - **`riversidecountyca.iqm2.com` stays `platform="unknown"` despite
   `iqm2.py` clearly having an adapter for `iqm2.com` domains — found

@@ -89,6 +89,29 @@ under everything else. This repo extracts and fixes just that part.
   verified, live-tested findings. Once the user accepts an item from it,
   move it into `BACKLOG.md` proper (in that file's style, with real
   verification) rather than marking it done in place.
+- **`CLAUDE_INBOX_TRIAGE.md` is a third, separate staging file — set up
+  2026-08-17 — populated by a daily *unattended* scheduled Routine, not
+  by an interactive session.** The Routine reads Gmail's `rtr-claude`
+  label (Search Console, GitHub Actions failure notifications,
+  UptimeRobot, eventually Sentry), reasons about each new item using the
+  same standards as everywhere else in this file (chase a real report
+  when one's reachable — e.g. GitHub Actions logs, via this repo's own
+  API access — reason from the alert text plus real code when it isn't,
+  e.g. Search Console's auth-walled dashboard; never guess without
+  either), and appends findings there. It deliberately never writes
+  directly to `BACKLOG.md`/`CLAUDE_BACKLOG.md`/`BACKLOG_DONE.md` — since
+  it runs unattended once a day and opens+merges its own PR with no
+  human in the loop, writing into files an interactive session might be
+  mid-edit on (see the multi-session bullet below) would risk a real
+  collision the dedicated file avoids entirely. A human (or a later
+  session, explicitly asked) promotes anything that holds up into
+  `BACKLOG.md`/`CLAUDE_BACKLOG.md` proper, same pattern as this bullet's
+  `CLAUDE_BACKLOG.md` promotion step, then deletes it from the triage
+  file rather than marking it done in place. `render.yaml`'s
+  `buildFilter.ignoredPaths` (all three services) excludes all four of
+  these backlog/triage docs from triggering a Render redeploy, so this
+  auto-merging is safe from a production standpoint even with zero human
+  review — see that file's own comment.
 - **Don't claim a caption/data path works without a positive example.**
   Several adapters have fields that are schema-verified but not
   content-verified (e.g. CivicClerk's `closedCaptionTracks`, Swagit's
