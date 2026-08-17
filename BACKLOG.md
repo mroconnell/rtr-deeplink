@@ -5,6 +5,36 @@ investigation detail behind each fix — lives in
 [BACKLOG_DONE.md](BACKLOG_DONE.md); items below link back to it for context
 where relevant.
 
+## Social auto-posting shipped 2026-08-17 but NOT yet live-verified — needs a real account + one watched first post
+
+The pipeline is built and unit-tested (`archive/utils/social.py`,
+`SocialPost` table, `/internal/ingest` hook — see README's "Social
+auto-posting" section): a freshly *created* Archive page whose resolve
+matches `outcomes.py`'s `success` bucket (plus a ≥50-segment floor) gets
+announced on Bluesky and/or Mastodon, claim-first-deduped per (page,
+network) so re-ingests/backfills/races can never double-post. But both
+network clients are exactly the kind of schema-verified-but-not-
+content-verified path this repo flags: written against the documented
+Bluesky XRPC / Mastodon `/api/v1/statuses` APIs, **zero real posts ever
+made** — no account or credentials existed at build time. Remaining
+steps, all needing Ryan: (1) create the account(s) (Bluesky app
+password / Mastodon app token — see README setup steps), (2) set the
+env vars on the Archive Render service, (3) watch the first real
+announcement land and check the link facet renders as a clickable
+permalink on Bluesky (the facet byte-offset math is the most
+plausible-but-unconfirmed part). Until then treat the clients as
+best-effort.
+
+Known residual gap, deliberate v1 scope: only page *creation* can
+trigger a post. A page first created agenda-only (or with a garbled
+transcript) that later gains a real, high-quality transcript — via a
+re-resolve, a caption source catching up, or an on-demand Whisper job
+(the worker writes transcripts through `report_chunk_result()`, which
+never touches this hook at all) — is never announced. If real
+announcements prove worth having, the upgrade-triggered case is the
+natural phase 2; the `SocialPost` claim table already supports it
+without schema changes.
+
 ## [JUST-DO-IT] Transcript segment timestamps unintuitive past 59 minutes — don't match video player's hh:mm:ss
 
 Confirmed live 2026-08-17 on a long meeting: transcript segment labels

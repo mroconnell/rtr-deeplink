@@ -201,6 +201,19 @@ services:
       # (GET /alerts/unsubscribe), not on the resolver.
       - key: ALERT_UNSUBSCRIBE_SECRET
         sync: false
+      # Social auto-posting (archive/utils/social.py) -- all optional; a
+      # network with its pair unset is silently disabled, all unset means
+      # the feature is inert. See archive/.env.example and README's
+      # "Social auto-posting" section. NOT yet live-verified against a
+      # real account -- see BACKLOG.md before assuming a post went out.
+      - key: BLUESKY_HANDLE
+        sync: false
+      - key: BLUESKY_APP_PASSWORD
+        sync: false
+      - key: MASTODON_BASE_URL
+        sync: false
+      - key: MASTODON_ACCESS_TOKEN
+        sync: false
 
   # On-demand transcription's background processor (see worker/main.py's
   # module docstring for why this reaches into archive/db directly rather

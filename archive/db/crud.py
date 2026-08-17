@@ -6,6 +6,7 @@ from typing import Any, Optional
 from urllib.parse import urlparse
 
 from sqlalchemy import Text, and_, cast, func, or_, select
+from sqlalchemy.exc import IntegrityError
 
 from app.utils.jurisdiction_enrich import finalize_jurisdiction
 
@@ -32,6 +33,7 @@ from .models import (
     MeetingPage,
     MeetingPageUrlAlias,
     SavedItem,
+    SocialPost,
     TranscriptionJob,
     TranscriptVersion,
 )
@@ -238,12 +240,18 @@ async def _unique_slug(session, base: str) -> str:
 
 async def _find_or_create_page(
     session, payload: dict[str, Any], input_url_normalized: str
-) -> MeetingPage:
+) -> tuple[MeetingPage, bool]:
     """Shared by ingest_resolution() and create_transcription_job() -- both
     need "find this meeting's permanent page, or create one if this is the
     first thing that's ever landed for it" from the same resolver-payload
     shape. Extracted 2026-08-08 when the transcription feature needed the
     exact same logic ingest_resolution() already had inline.
+
+    Returns (page, created) -- `created` is True only when this call
+    built a brand-new page rather than matching an existing one. The
+    social auto-posting hook (archive/utils/social.py) keys off this so
+    re-ingests (the resolver's push-retry sweep, the backfill script
+    re-resolving the whole corpus) can never announce an old page again.
     """
     platform = payload["platform"]
     external_id = payload.get("external_id")
@@ -272,6 +280,7 @@ async def _find_or_create_page(
         input_url_normalized=input_url_normalized,
     )
 
+    created = page is None
     if page is None:
         base_slug = build_base_slug(
             jurisdiction or "", payload.get("date") or "", payload.get("title") or ""
@@ -356,7 +365,7 @@ async def _find_or_create_page(
 
     await _ensure_alias(session, input_url_normalized, page.id)
     await _ensure_alias(session, source_url_normalized, page.id)
-    return page
+    return page, created
 
 
 def _is_real_improvement(
@@ -461,7 +470,9 @@ async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) 
     source = payload.get("source") or "scraped"
 
     async with async_session() as session:
-        page = await _find_or_create_page(session, payload, input_url_normalized)
+        page, page_created = await _find_or_create_page(
+            session, payload, input_url_normalized
+        )
 
         current_default = (
             (
@@ -581,11 +592,64 @@ async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) 
         # id, and the page's existing default already has segments+
         # language, so _is_real_improvement() alone won't auto-promote a
         # fresh push.
+        # page_id/created: consumed by /internal/ingest's social
+        # auto-posting hook (archive/main.py + archive/utils/social.py) --
+        # `created` is the only signal that distinguishes "a brand-new
+        # permanent page just came into existence" from the far more
+        # common re-ingest of an existing one. Extra keys are harmless to
+        # every pre-existing caller (they read slug/url/version_id only).
         return {
             "slug": page.slug,
             "url": f"/m/{page.slug}",
             "version_id": matched_version_id,
+            "page_id": page.id,
+            "created": page_created,
         }
+
+
+async def claim_social_post(meeting_page_id: int, network: str) -> Optional[int]:
+    """Insert the dedup row for a (page, network) announcement *before*
+    any network call is made -- returns the new row's id, or None when a
+    row already exists (someone else already claimed/posted this target).
+    Claim-first is the whole point of the SocialPost table (see its model
+    docstring): the unique constraint turns a race between two concurrent
+    ingests of the same brand-new page into one post and one silent skip,
+    never two public posts.
+    """
+    async with async_session() as session:
+        row = SocialPost(
+            meeting_page_id=meeting_page_id, network=network, status="pending"
+        )
+        session.add(row)
+        try:
+            await session.commit()
+        except IntegrityError:
+            return None
+        return row.id
+
+
+async def finish_social_post(
+    post_id: int,
+    *,
+    status: str,
+    post_uri: Optional[str] = None,
+    error: Optional[str] = None,
+) -> None:
+    """Record how a claimed announcement actually went ("posted" with the
+    network's own permalink, or "failed" with the error text). A "failed"
+    row deliberately keeps its claim -- no automatic retry loop reposts
+    it -- so a transient network error costs one missed announcement, not
+    a risk of duplicates; see archive/utils/social.py's module docstring
+    for that tradeoff.
+    """
+    async with async_session() as session:
+        row = await session.get(SocialPost, post_id)
+        if row is None:
+            return
+        row.status = status
+        row.post_uri = post_uri
+        row.error = error
+        await session.commit()
 
 
 async def list_all_page_urls() -> list[dict]:
@@ -1941,7 +2005,7 @@ async def create_transcription_job(
     caller that passes PRIORITY_LOW instead.
     """
     async with async_session() as session:
-        page = await _find_or_create_page(session, payload, input_url_normalized)
+        page, _ = await _find_or_create_page(session, payload, input_url_normalized)
 
         not_expired_pending = or_(
             TranscriptionJob.status.in_(SPENDING_JOB_STATUSES),

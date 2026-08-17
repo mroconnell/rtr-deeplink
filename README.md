@@ -993,6 +993,60 @@ above: `DAILY_REPORT_EMAIL_TO` and `YOUTUBE_FETCH_REPORT_EMAIL` (both in
 `scripts/`, both default to `ryan@how-to-adu.com`) send operator
 digests, not user-facing mail.
 
+## Social auto-posting (Bluesky / Mastodon)
+
+When a brand-new permanent page is created in the Archive **and** the
+resolve behind it was genuinely high-quality, the Archive can announce it
+on a Bluesky and/or Mastodon account automatically
+(`archive/utils/social.py`, hooked into `/internal/ingest`). Off by
+default — with no credentials set the feature is completely inert.
+
+**What counts as "high quality"** mirrors `app/db/outcomes.py`'s
+`success` bucket (the same definition `/admin/stats` reports on): a real
+video URL, a real transcript, no garbled-source/hallucination warning,
+and English-or-undetected language — plus a minimum transcript length
+this feature adds on top (`SOCIAL_MIN_SEGMENTS`, default 50 segments),
+because a technically-successful caption stub isn't worth a public post.
+Agenda-only pages, garbled transcripts (e.g. the Fountain Valley case),
+and non-English detections never post.
+
+**When it fires**: only when `/internal/ingest` *creates* the page.
+Re-ingests — the resolver's push-retry sweep, stale-page rechecks,
+`scripts/backfill_archived_pages.py`'s corpus-wide re-resolve — can never
+trigger a post, and a `SocialPost` table row per (page, network),
+claimed *before* the network call under a unique constraint, makes
+posting at-most-once even under a race. A failed post is recorded and
+deliberately never retried automatically (a missed announcement is
+cheap; a duplicate on a public feed isn't). Known residual: a page
+created agenda-only that gains a real transcript *later* never gets
+announced — see `BACKLOG.md`.
+
+**Setup** (the human half — none of this can be automated):
+
+1. Create the account: for Bluesky, sign up (e.g. `rtr.bsky.social`, or
+   set a custom domain handle later); for Mastodon, pick an instance and
+   register there.
+2. Get credentials: Bluesky — Settings → App Passwords → create one
+   (never use the real account password); Mastodon — Preferences →
+   Development → New application with the `write:statuses` scope, copy
+   the access token.
+3. Set env vars on the **Archive** Render service (see
+   `archive/.env.example`): `BLUESKY_HANDLE` + `BLUESKY_APP_PASSWORD`
+   and/or `MASTODON_BASE_URL` + `MASTODON_ACCESS_TOKEN`.
+   `PUBLIC_BASE_URL` must also be set (it already is in production) —
+   posts link to `{PUBLIC_BASE_URL}/m/{slug}`.
+
+Either network can be enabled alone; each posts and dedups
+independently. Post text is composed once, capped at 300 characters
+(Bluesky's limit, the stricter of the two), with the permalink always
+kept intact and a proper Bluesky link facet so the URL is clickable.
+
+> **Not yet live-verified**: both clients are written against the
+> documented public APIs but had no real account/credentials at build
+> time — the first real post after setup should be watched (see the
+> `BACKLOG.md` entry) the same way any schema-verified-but-not-
+> content-verified path in this repo is treated.
+
 ## Supported platforms
 
 Most local governments don't build their own video/meeting-minutes
