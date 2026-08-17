@@ -1335,7 +1335,15 @@ async def find_new_matches_for_saved_search(
 # those rows stays permanently exampleless, not because nothing's
 # supported but because the label itself never occurs -- coverage.html
 # adds a short note about these wrapper platforms instead of a row that
-# can never have a demo.
+# can never have a demo. iqm2 and hyland both *can* embed/delegate a
+# video from elsewhere (a raw Granicus HLS URL for iqm2; an occasional
+# YouTube fallback for hyland -- see each adapter's own docstring) but,
+# unlike the routers above, neither overrides ResolvedMeeting.platform
+# when doing so -- confirmed by reading both adapters' resolve() end to
+# end, platform=self.platform_name on every return path -- so they're
+# genuine direct rows, not YouTube-delegation lookalikes. clerkbase is
+# the opposite case -- see CUSTOM_PLATFORMS below, it's deliberately not
+# here.
 DIRECT_PLATFORMS: dict[str, str] = {
     "granicus": "Granicus",
     "civicclerk": "CivicClerk",
@@ -1343,23 +1351,38 @@ DIRECT_PLATFORMS: dict[str, str] = {
     "viebit": "Viebit",
     "escribe": "eScribe",
     "cablecast": "Cablecast",
+    "champds": "CHAMP/ChampDS",
+    "iqm2": "IQM2",
+    "seattle_channel": "Seattle Channel",
+    "telvue": "TelVue",
+    "hyland": "Hyland OnBase Agenda Online",
 }
 
 # Platforms grouped under a single "Custom" row on /coverage -- each is a
 # real, distinct scraper this app built (not a shared vendor product),
-# but two of the four (lims, slc) delegate to YouTubeAssetFinder for the
-# actual video the exact same way lims.py/slc.py's own resolve() does
-# (see their docstrings) -- MeetingPage.platform ends up "youtube" for a
-# page from either of them, indistinguishable by platform alone from a
-# raw pasted YouTube link. _entry_platform_from_source_url() below
-# recovers which of the two it actually was from the page's own
-# source_url_normalized instead. ca_legislature and aurora_tv don't have
-# this problem (they self-host video, no YouTube delegation), so they're
-# matched by MeetingPage.platform directly, same as DIRECT_PLATFORMS.
+# but three of the five (lims, slc, clerkbase) delegate to
+# YouTubeAssetFinder for the actual video the exact same way
+# lims.py/slc.py/clerkbase.py's own resolve() does (see their docstrings)
+# -- MeetingPage.platform ends up "youtube" for a page from any of the
+# three, indistinguishable by platform alone from a raw pasted YouTube
+# link. _entry_platform_from_source_url() below recovers which one it
+# actually was from the page's own source_url_normalized instead.
+# Unlike lims/slc, clerkbase has *no* success path that keeps its own
+# "clerkbase" platform label -- confirmed by reading clerkbase.py's
+# resolve() end to end, "clerkbase" only appears on its no-video error
+# return, which is never pushed to the Archive (a push requires real
+# segments/agenda_items) -- so without this special-casing, a
+# "clerkbase" DIRECT_PLATFORMS row would be permanently exampleless for
+# a structural reason, not just because no example has shown up yet
+# (the same gap this section already fixed for lims/slc). ca_legislature
+# and aurora_tv don't have this problem (they self-host video, no
+# YouTube delegation), so they're matched by MeetingPage.platform
+# directly, same as DIRECT_PLATFORMS.
 CUSTOM_PLATFORMS: dict[str, str] = {
     "ca_legislature": "California State Legislature",
     "slc": "Salt Lake City meeting recaps",
     "lims": "Minneapolis LIMS",
+    "clerkbase": "ClerkBase (clerkshq.com)",
     "aurora_tv": "Aurora, CO (auroratv.org)",
 }
 
@@ -1369,7 +1392,7 @@ CUSTOM_PLATFORMS: dict[str, str] = {
 # pasting the government page that embeds/links it instead (a Granicus/
 # Swagit/etc. page, or one of the CUSTOM_PLATFORMS above) wherever one
 # exists. See coverage.html's own footer note.
-_YOUTUBE_DELEGATING_CUSTOM_PLATFORMS = frozenset({"lims", "slc"})
+_YOUTUBE_DELEGATING_CUSTOM_PLATFORMS = frozenset({"lims", "slc", "clerkbase"})
 
 # How many example rows to show per platform on /coverage. Granicus gets
 # more because it's this app's most common platform by a wide margin (see
@@ -1413,12 +1436,12 @@ def _select_examples(examples: list[dict], count: int) -> list[dict]:
 
 def _entry_platform_from_source_url(source_url_normalized: str) -> Optional[str]:
     """Minimal, deliberately duplicated subset of app/platforms/base.py's
-    detect_platform() -- just enough to recognize the two YouTube-
+    detect_platform() -- just enough to recognize the three YouTube-
     delegating custom scrapers (see CUSTOM_PLATFORMS above) from a page's
     own source_url_normalized. archive/ deliberately doesn't import from
     app/ (see README's project structure notes on this directory's other
     deliberately-duplicated utils, e.g. url_normalize.py/language.py) --
-    this stays scoped to exactly the two cases get_platform_coverage()
+    this stays scoped to exactly the three cases get_platform_coverage()
     needs, not a general URL classifier.
     """
     netloc = urlparse(source_url_normalized).netloc.lower()
@@ -1427,6 +1450,8 @@ def _entry_platform_from_source_url(source_url_normalized: str) -> Optional[str]
         return "lims"
     if netloc.endswith("slc.gov") and "-meeting-recap" in path:
         return "slc"
+    if "clerkshq.com" in netloc:
+        return "clerkbase"
     return None
 
 
