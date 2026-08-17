@@ -43,6 +43,7 @@ from .db import crud
 from .db.engine import init_models
 from .utils import email as email_utils
 from .utils.clerk_auth import clerk_frontend_api_url, get_clerk_user_id
+from .utils.date_status import meeting_date_status
 from .utils.jurisdiction_format import (
     STATE_SLUG_TO_ABBR,
     US_STATE_ABBR_TO_NAME,
@@ -727,12 +728,31 @@ async def meeting_page(request: Request, slug: str, version: Optional[int] = Non
 
     state_abbr = state_abbr_from_jurisdiction(page["jurisdiction"])
 
+    # Python twin of crud._is_empty_page_condition() (no video, no agenda
+    # items/link, no transcript version at all) -- the template noindexes
+    # such a page, matching its exclusion from /meetings, the sitemap and
+    # the feed. Kept in lockstep with the SQL predicate on purpose; a
+    # divergence would put a noindexed page back in the sitemap, the
+    # exact Search Console contradiction the 2026-08-17 fix removed.
+    page_is_empty = not (
+        page["video_url"]
+        or page["agenda_items"]
+        or page["agenda_link"]
+        or page["versions"]
+    )
+
     return templates.TemplateResponse(
         request,
         "meeting_page.html",
         {
             "page": page,
             "active_version": active_version,
+            "page_is_empty": page_is_empty,
+            # "upcoming" / "recent" / None -- drives the notice under the
+            # title explaining why a page may not have video/captions yet.
+            "date_status": meeting_date_status(
+                page["date"], has_transcript=bool(page["versions"])
+            ),
             # The <html lang> attribute should reflect what's actually on
             # the page, not always English -- a transcript's real language
             # comes from its TranscriptVersion, not a sitewide constant.

@@ -560,7 +560,14 @@ existed.
 server-rendered index of every permanent page (`crud.list_pages()`,
 20/page) with a search box and jurisdiction/date-range/has-transcript/
 has-agenda filters — all plain GET params, so results are
-shareable/bookmarkable URLs with no JS required. `GET /sitemap.xml` and
+shareable/bookmarkable URLs with no JS required. Empty pages (no video,
+no agenda, no transcript) are excluded from the default browse, the
+sitemap and the feed at query time — not deleted, and still shown under
+an explicit `has_transcript=false` filter (that's how gaps get found) —
+and rows/pages carry an "Upcoming"/"Recent" pill when the meeting
+hasn't happened yet or happened within the last 30 days without a
+transcript (`archive/utils/date_status.py`; see `BACKLOG_DONE.md`'s
+2026-08-17 entry). `GET /sitemap.xml` and
 `GET /robots.txt` (the latter lives on the resolver, not proxied, since
 `robots.txt` has to be at the domain root) give search engines an actual
 crawl path to `/m/{slug}` pages, which previously had none —

@@ -6,6 +6,103 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Empty ("zero-value") meeting pages excluded from browse/sitemap/feed at query time; Upcoming/Recent date pills (2026-08-17)
+
+[Done 2026-08-17] Started as Ryan's idea for a morning Routine that would
+skim `/meetings?has_transcript=false` and *delete* meetings with no video,
+no agenda and no transcript; refined the same minute to "hide them from
+search results instead". Measured live before deciding anything
+(production `/meetings` subtitle counts): 1,219 archived meetings → 179
+with `has_transcript=false` → **39 with `has_transcript=false&has_agenda=
+false`**. Curl'd each of the 39 `/m/` pages: **17 rendered "no video
+found"** (the true nothing-at-all set — including the two known bare
+`/m/meeting` / `/m/meeting-890af1` junk pages), 22 still embedded a
+player (video-only, thin but not zero-value). **Several of the 17 were
+recent or not-yet-held meetings** — `sarasota-county-fl-2026-08-25-bcc-
+regular` (8 days in the future), the two Santa Barbara 2026-08-11 pages
+(6 days old) — exactly the "captions land days-to-weeks later" case
+`ARCHIVE_RECHECK_AFTER` exists for, so any rule acting on "empty today"
+without a date guard would have removed pages about to become real.
+
+**Decisions (Ryan, 2026-08-17):** (1) don't delete — there was no
+`MeetingPage` delete path at all (only per-account `SavedItem` deletes),
+and adding one would orphan `SavedItem.meeting_page_id`, break already-
+shared `/m/` deep links, and re-create the page under a possibly-different
+slug on the next paste; (2) make "zero-value" a *default exclusion* in
+`list_pages()` and the sitemap; (3) keep it off under an explicit
+`has_transcript=false` filter, since that's how gaps get found; (4) the
+"how do these get in at all?" question (the push gate in `app/main.py` is
+`segments or agenda_items or agenda_link`, yet 22 video-only pages exist)
+is deliberately *not* being chased — junk URLs to fake sites will always
+be pasteable, so a live exclusion beats policing the entry point.
+
+**Built** (PR from a git worktree, since two other sessions were active
+in `archive/` at the same time — both pinged and confirmed
+non-overlapping regions):
+- `archive/db/crud.py` `_is_empty_page_condition()`: SQL predicate =
+  `video_url` NULL/empty AND `agenda_link` NULL/empty AND
+  `NOT _has_agenda_condition()` AND `NOT EXISTS (any TranscriptVersion)`
+  — *any* version, not just default, so a demoted-but-real transcript
+  still counts. The EXISTS uses an `aliased(TranscriptVersion)` +
+  `.correlate(MeetingPage)` because `list_pages()` already outer-joins
+  `TranscriptVersion`; without the alias SQLAlchemy auto-correlated that
+  table away too and raised "returned no FROM clauses" (caught by the
+  new tests on the first run). Applied by default in `list_pages()`
+  **only when both `has_transcript` and `has_agenda` are `None`**, and
+  unconditionally in `list_all_page_slugs()` (sitemap) and
+  `list_recent_pages_for_feed()` (feed). Query-time, not a stored flag or
+  a Routine: self-healing (a page reappears the moment a recheck fills
+  anything in, no un-hide step; a future-dated meeting is never
+  permanently judged) and no schema change (a new column would be an
+  Alembic-migration case, and prod still hasn't run `alembic stamp head`).
+- `archive/main.py` `/m/{slug}`: `page_is_empty` (Python twin of the SQL
+  predicate) → `meeting_page.html` emits `<meta name="robots"
+  content="noindex">` for empty pages, alongside the existing
+  `platform == "unknown"` case. The page still serves 200 so shared links
+  keep working. This is the same sitemap-vs-noindex consistency the
+  2026-08-17 `generic_fallback` fix established, and directly targets
+  Search Console's still-open "Page indexed without content" (a
+  title-only shell is the likeliest shape for that verdict).
+- **"Upcoming" / "Recent" date pills** (Ryan's follow-on question, same
+  session — answered yes and built): new pure helper
+  `archive/utils/date_status.py` (`meeting_date_status(date,
+  has_transcript, today)` → `"upcoming"` if the meeting date is after
+  today, `"recent"` if within `RECENT_MEETING_WINDOW` = 30 days *and* no
+  transcript version exists, else `None`; tolerant ISO parse; UTC "today",
+  off by at most a calendar day around midnight — fine for a soft label).
+  Rendered as an inline `.date-status-pill` next to the date on
+  `/meetings` rows (`meeting_list.html`) and as a one-line
+  `.date-status-notice` under the title on the meeting page pointing at
+  the existing "Refresh this page" control. Neutral-toned, untilted, so
+  it doesn't compete with the green TRANSCRIPT stamp. "Recent" is gated
+  on no-transcript on purpose (nothing left to wait for once one exists);
+  "Upcoming" is not (a pre-posted agenda is still upcoming). The 30-day
+  window is a judgment call matching `ARCHIVE_RECHECK_AFTER`'s reasoning,
+  named as a constant to tune.
+
+**Verified**: `tests/test_date_status.py` (8 unit tests, pinned `today`)
++ `tests/test_empty_page_exclusion.py` (8 integration tests: empty hidden
+from default browse but present under `has_transcript=false` and
+`has_transcript=false&has_agenda=false`; each of video-only /
+agenda-link-only / agenda-items-only / transcript-only is *not* empty;
+an empty page reappears after a later ingest fills it in; sitemap + feed
+exclusion at the crud level; empty page serves 200 with noindex while a
+real page has none; date_status values per row and the pill/notice
+markup on `/meetings` and `/m/`). Full suite 920 passed. Then in-browser
+against a seeded scratch SQLite Archive (5 pages: empty shell, upcoming
+agenda-link-only, recent video-only, 2021 video-only gap, recent with
+transcript), served through the resolver proxy so real CSS applied:
+default browse showed 4 of 5 with RECENT and UPCOMING pills on exactly
+the right rows and none on the old gap / transcript rows;
+`?has_transcript=false` showed the empty shell again; the upcoming and
+recent meeting pages showed the notice under the meta line; the empty
+page returned 200 with one `noindex` meta and the recent page none;
+`/sitemap.xml` and `/feed.xml` each listed the 4 non-empty slugs only;
+no server errors. Expected post-deploy effect on prod: the 17 empty
+pages drop out of browse/sitemap/feed (sitemap was 1,223 URLs before the
+generic_fallback fix — compare after), and any of them that later gain
+video/captions come back on their own.
+
 ## Search Step 1: SQL-authoritative `list_pages()` — exact search O(page_size), fuzzy streamed, worker corpus gap closed (2026-08-17)
 
 [Done 2026-08-17] Follows the two same-day incidents below. After hotfix
