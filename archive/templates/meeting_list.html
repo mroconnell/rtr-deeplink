@@ -37,6 +37,7 @@
           <li>Put a phrase in <code>"quotes"</code> to match it exactly, e.g. <code>"data center"</code>.</li>
           <li>Every word is required by default &mdash; <code>traffic downtown</code> finds meetings with both.</li>
           <li>Put <code>-</code> in front of a word or phrase to exclude it &mdash; <code>traffic -parking</code> or <code>-"data center"</code>.</li>
+          <li><code>OR</code> matches either side &mdash; <code>flock OR camera</code> finds meetings with at least one. Word forms match too: <code>budget</code> also finds &ldquo;budgets&rdquo; and &ldquo;budgeting&rdquo;.</li>
           <li><code>+</code>, <code>&amp;</code>, and <code>AND</code> are also understood, but don't change anything &mdash; every word's already required.</li>
         </ul>
       </div>

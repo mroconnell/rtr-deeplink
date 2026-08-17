@@ -27,7 +27,19 @@ from typing import Iterable, Optional
 
 _WORD_RE = re.compile(r"[a-z0-9']+")
 _PHRASE_RE = re.compile(r'(-?)"([^"]*)"')
-_NOOP_WORDS = {"and", "&"}
+# Tokens parse_query() drops rather than treating as search words. `and`
+# and `&` were always no-ops (every word is required anyway). `or` was
+# added 2026-08-17, the day Postgres full-text search shipped: the FTS path
+# reads the raw query via websearch_to_tsquery(), where `OR` genuinely
+# means "either" -- but find_snippet() (and the LIKE fallback path) still
+# go through parse_query(), and "or" as a *word* meant the snippet
+# highlighter went looking for the substring "or" and lit up "F<or>",
+# "<Or>der", "bef<or>e" on a page that had matched via the other operand
+# (real report, Ryan, first hour after FTS went live). On the LIKE
+# fallback, dropping it is no worse than before -- "or" is a substring of
+# nearly every transcript, so requiring it was already a no-op in effect;
+# that path simply ANDs the operands, and the search tips say so.
+_NOOP_WORDS = {"and", "&", "or"}
 
 
 def build_corpus(*texts: str) -> str:
