@@ -399,31 +399,54 @@ anything) to build against it.
 
 ## Bugs
 
-- **[IMPROVEMENT-ROUND] Jurisdiction-bleed on eScribe, confirmed via a full
-  `/coverage` sweep 2026-08-17 — the same Title-Case/ALL-CAPS bleed gap
-  already documented for Granicus, plus a bigger, structural gap it
-  exposed: the trim-repair safety net can't run at all for non-US
-  sources.** Sorted all 871 rows of the live "Every place we've covered"
-  table by jurisdiction text and scanned adjacent pairs for one string
-  being a prefix of another (a clean jurisdiction followed immediately by
-  the same name plus trailing bled text) — 8 real, confirmed bleed cases,
-  every one on `*.escribemeetings.com`:
+- **[JUST-DO-IT] Jurisdiction-bleed, confirmed cross-platform (Granicus AND
+  eScribe) via two passes over the full `/coverage` sweep 2026-08-17 — far
+  more widespread than the first pass found.** First pass sorted all 871
+  rows by jurisdiction text and only caught pairs with a clean sibling
+  sitting adjacent alphabetically (8 cases). A second pass sorting by raw
+  jurisdiction *length* instead — a strictly better method, since a bled
+  row doesn't need a lucky clean twin nearby to be caught this way — found
+  27 rows over 40 characters, the large majority real bleed. This directly
+  confirms, with real live strings, 3 cases this file's own "residual gap"
+  entry (below, Granicus jurisdiction-bleed fix) had only ever named as
+  *hypothetical*:
 
   | Real city | What shows instead | Source |
   |---|---|---|
-  | Brampton, ON | "Brampton Meeting" | pub-brampton.escribemeetings.com |
-  | Shelburne, ON | "Brantford regarding Professional Activity" | pub-shelburne.escribemeetings.com |
-  | Delta, BC | "Delta Housing Accelerator Fund Initiatives Summary.pdf Recommendation" | pub-delta.escribemeetings.com |
-  | Gainesville, FL | "Gainesville City Commission Regular Meeting AGENDA Thursday, FL" | pub-cityofgainesville.escribemeetings.com |
-  | Kelowna, BC | "Kelowna Regular Council Meeting AGENDA Monday" | kelownapublishing.escribemeetings.com |
-  | Mississauga, ON | "Mississauga as being part of the Treaty and Traditional Territory of the Mississaugas of the Credit First Nation" | pub-mississauga.escribemeetings.com |
-  | Oshawa, ON | "Oshawa is situated on lands within the traditional and treaty territory of the Michi Saagiig and Chippewa Anishinaabeg and the signatories of the Williams Treaties" | pub-oshawa.escribemeetings.com |
-  | Uxbridge, ON | "Peterborough Attachments" | pub-uxbridge.escribemeetings.com |
+  | Sarasota, FL | "Sarasota Legacy Business PLEDGE OF PUBLIC" | sarasota.granicus.com |
+  | Hollywood, FL | "Hollywood Be Awarded As A Subrecipient O" | hollywoodfl.granicus.com |
+  | Hampton, VA | "Hampton Zoning Ordinance Regarding Standa" | hampton.granicus.com |
+
+  Plus the original 8 (Brampton, Shelburne→"Brantford...", Delta,
+  Gainesville, Kelowna, Mississauga, Oshawa, Uxbridge→"Peterborough
+  Attachments" — see git history for this entry's first version for the
+  full table) and a second, larger new batch, all eScribe, all Canadian,
+  confirmed by source:
+
+  | Real city | What shows instead | Source |
+  |---|---|---|
+  | Brock Township, ON | "Township of Brock.pdf Pulled from Council Information Index by Regional Councillor Pettingill Rescue Lake Simcoe Coalition Communication Number" (143 chars) | pub-townshipofbrock.escribemeetings.com |
+  | New Westminster, BC | "New Westminster. Recommendation THAT the goal of zero traffic fatalities and serious injuries" | pub-newwestcity.escribemeetings.com |
+  | Guelph, ON | "Guelph now hold a meeting that is closed to the public" | pub-guelph.escribemeetings.com |
+  | Thunder Bay, ON | "Thunder Bay be approved in accordance with Table" | pub-thunderbay.escribemeetings.com |
+  | Lethbridge, AB | "Lethbridge currently utilizes Standing Policy Committees" | pub-lethbridge.escribemeetings.com |
+  | Peterborough, ON | "Peterborough is committed to making meetings accessible for people of all abilities..." | pub-peterborough.escribemeetings.com |
+
+  Also real but not independently source-confirmed this pass (same
+  patterns, high confidence): Port Moody BC (×2), Kenora ON, Beaumont,
+  Cambridge, Richmond Hill ON, Elliot Lake ON, Hercules CA. **Not bleed —
+  legitimately long real entity names, left alone**: Capital Metropolitan
+  Transportation Authority TX, Lake Washington School District WA, Bay
+  Area Headquarters Authority, Lexington-Fayette Urban County Government,
+  and ~25 similar real long names in the same length-sorted scan —
+  flagging explicitly so a future length-threshold-based scan doesn't
+  mistake real long names for bleed.
 
   **Root cause, confirmed by reading `app/utils/jurisdiction_enrich.py`
   directly, not assumed — two independent causes, not one:**
 
-  1. **7 of 8 (every Canadian one) never reach the bleed check at all.**
+  1. **The large majority (every confirmed-Canadian case across both
+     passes) never reach the bleed check at all.**
      `finalize_jurisdiction()`'s `_trim_repair()` only calls
      `_looks_like_bleed()` on a candidate tail *after* the trimmed prefix
      validates against `_table_lookup()` — and `_table_lookup()`'s tables
@@ -436,16 +459,37 @@ anything) to build against it.
      kept exactly as-is, the same bucket a real, correct Canadian name
      like "Elliot Lake, ON" also lands in, since the system currently has
      no way to tell a real unverifiable name from bled garbage on a
-     source it can't validate against anything.
-  2. **The 1 US case (Gainesville) does reach the check, and hits the
-     already-known blind spot.** "Gainesville" alone validates, so
-     `_looks_like_bleed()` runs against the tail "City Commission Regular
-     Meeting AGENDA Thursday" — every word starts uppercase (including
-     the all-caps "AGENDA"), so the lowercase/digit/roman-numeral-only
-     heuristic correctly-by-its-own-rule returns `False`. This is the
-     exact residual gap already flagged in this file for 4 Granicus cases
-     (Sarasota, Punta Gorda, Castle Rock, Castle Pines) — now confirmed
-     recurring on eScribe too, not Granicus-specific.
+     source it can't validate against anything. Confirmed this explains
+     even the heavily-lowercase tails (Guelph "now hold a meeting that
+     is...", Thunder Bay "be approved in accordance with...") that would
+     otherwise be expected to trip the lowercase check if it were ever
+     reached — it isn't reached at all for these, regardless of how
+     obviously bleed-shaped the tail is.
+  2. **The confirmed US/Granicus cases (Sarasota, Hollywood, Hampton,
+     Gainesville) do reach the check, and hit the already-known blind
+     spot.** Each city name alone validates against the US table, so
+     `_looks_like_bleed()` runs against the tail — and every one of these
+     4 tails happens to be pure Title-Case/ALL-CAPS with zero
+     lowercase-starting words ("Legacy Business PLEDGE OF PUBLIC", "Be
+     Awarded As A Subrecipient O", "Zoning Ordinance Regarding Standa",
+     "City Commission Regular Meeting AGENDA Thursday"), so the
+     lowercase/digit/roman-numeral-only heuristic correctly-by-its-own-
+     rule returns `False`. This is the exact residual gap already flagged
+     below for Sarasota/Hollywood/Hampton as hypothetical — now confirmed
+     live, plus Gainesville as a new eScribe instance of the same gap.
+     Two of these tails are also independently truncated mid-word
+     ("Standa", "O") — the same mid-word-truncation signal already
+     documented elsewhere in this file for title extraction, now
+     confirmed on jurisdiction text too.
+
+  One case doesn't cleanly fit either explanation and is flagged honestly
+  rather than force-fit: Peterborough, ON's tail ("is committed to making
+  meetings accessible...") is heavily lowercase, and "Peterborough" is
+  also a real US place (Peterborough, NH) that plausibly validates —
+  meaning this one may actually reach `_looks_like_bleed()` and still not
+  get trimmed, which neither explanation above accounts for. Worth
+  re-checking directly against current code once the two fixes below
+  land, rather than assuming it's just another #1 case.
 
   **Fix directions, two independent pieces, not equal size:**
   - **The real fix for #1**: add a Canadian city/county-level table to
