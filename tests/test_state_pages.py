@@ -223,10 +223,16 @@ async def test_crud_get_state_page_data_shape_and_counts():
     data = await crud.get_state_page_data("CA")
     assert data is not None
     assert data["name"] == "California"
-    juris_names = {j["jurisdiction"] for j in data["jurisdictions"]}
-    assert "Napa, CA" in juris_names
-    assert "Sacramento County, CA" in juris_names
-    assert "Coalinga, CA" not in juris_names  # platform "unknown" excluded
+    # Rows are grouped by hub slug (2026-08-17): the shared fixture DB
+    # holds both "Napa, CA" (seeded here) and "City of Napa, CA" (seeded by
+    # another test), and those are ONE government -> one row, one
+    # /j/napa-ca hub -- so identify rows by hub_slug, not raw string.
+    hub_slugs = {j["hub_slug"] for j in data["jurisdictions"]}
+    assert "napa-ca" in hub_slugs
+    assert "sacramento-county-ca" in hub_slugs
+    assert "coalinga-ca" not in hub_slugs  # platform "unknown" excluded
+    napa_rows = [j for j in data["jurisdictions"] if j["hub_slug"] == "napa-ca"]
+    assert len(napa_rows) == 1  # variants consolidated, not duplicated
     assert data["total_pages"] >= 2
     assert data["jurisdiction_count"] == len(data["jurisdictions"])
     assert len(data["recent_pages"]) <= 25

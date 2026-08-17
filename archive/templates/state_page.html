@@ -33,7 +33,7 @@
         <tbody>
           {% for row in jurisdictions %}
           <tr>
-            <td>{{ row.jurisdiction|jurisdiction_display }}</td>
+            <td>{% if row.hub_slug %}<a href="/j/{{ row.hub_slug }}">{{ row.jurisdiction|jurisdiction_display }}</a>{% else %}{{ row.jurisdiction|jurisdiction_display }}{% endif %}</td>
             <td>{{ row.page_count }}</td>
             <td><a href="/m/{{ row.example.slug }}">{{ row.example.title or "Untitled meeting" }}</a></td>
             <td>

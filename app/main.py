@@ -1492,6 +1492,15 @@ async def archive_state_page(path: str, request: Request):
     )
 
 
+@app.get("/j/{path:path}")
+async def archive_jurisdiction_page(path: str, request: Request):
+    # Per-government hub pages (archive/main.py's /j/{hub_slug}) -- same
+    # proxy shape as /state/*.
+    return await _proxy_to_archive(
+        f"j/{path}", str(request.query_params), request.headers.get("cookie")
+    )
+
+
 @app.get("/sitemap.xml")
 async def archive_sitemap():
     return await _proxy_to_archive("sitemap.xml", "")

@@ -642,6 +642,33 @@ limitation. A state with zero indexable meetings 404s rather than
 rendering an empty shell, and every `/m/{slug}` page whose jurisdiction
 has a state now links "More {State} meetings" to its state page.
 
+**`GET /j/{slug}` (per-government hub pages, added 2026-08-17)** — one
+landing page per jurisdiction ("Napa, CA public meeting videos &
+transcripts", `/j/napa-ca`), proxied like `/state/*`. Grouped by
+`jurisdiction_hub_slug()` (`archive/utils/jurisdiction_format.py`) — the
+slug of the *display* form, so raw-string variants of one government
+("City of Napa, CA" / "Napa, CA" / casing) consolidate into a single hub
+while real distinctions ("County of Napa, CA", "City and County of San
+Francisco, CA") stay separate; the state-page tables group by the same
+slug and link each government to its hub. Each hub lists every archived
+meeting for that government newest-first with transcript badges, a
+meeting-body breakdown ("City Council (30) · Planning Commission (12)"
+from `meeting_body`), date range, a `BreadcrumbList` (Home › State ›
+Jurisdiction) and breadcrumb nav, and links to `/state/{slug}` and the
+pre-filtered `/meetings?jurisdiction=` search; every `/m/{slug}` page
+links "More {Jurisdiction} meetings" to its hub. **Thin-content
+threshold**: the archive is wide and shallow (measured 2026-08-17: 574
+stateful jurisdictions, 439 with exactly one meeting), so every hub
+*renders* but only hubs with ≥ `crud.JURISDICTION_HUB_MIN_INDEXABLE` (2)
+meetings are indexable and listed in `sitemap.xml` (real lastmod);
+below that the page carries `noindex` and a "know of another?" note.
+Evaluated live per request — a singleton hub becomes indexable by
+itself when its second meeting lands. Backed by
+`crud.get_jurisdiction_hub_data()` / `crud.list_indexable_hub_entries()`
+(one `GROUP BY jurisdiction` over indexable, non-empty pages; no schema
+change). Same `platform == "unknown"` / empty-page exclusions as the
+sitemap and state pages.
+
 **Search** covers title, jurisdiction, agenda item text, and *every*
 transcript version's segment text (so a demoted version's text still
 counts toward a match, though the listing's badge and snippet reflect the
@@ -1303,7 +1330,7 @@ archive/
   main.py                 FastAPI app: /internal/lookup, /internal/ingest,
                            /internal/transcription/* (all token-gated),
                            /m/{slug}, /m/{slug}/transcript.{txt,srt},
-                           /meetings, /coverage, /state/{slug},
+                           /meetings, /coverage, /state/{slug}, /j/{slug},
                            /sitemap.xml, /feed.xml,
                            /api/health, /account/saved, and the token-gated
                            /internal/account/* routes -- see "Accounts
@@ -1324,6 +1351,9 @@ archive/
                            /coverage's three sections),
                            get_state_coverage_index()/get_state_page_data()
                            (back /state/{slug} + /coverage's state links),
+                           get_jurisdiction_hub_data()/
+                           list_indexable_hub_entries() (back /j/{slug} +
+                           its sitemap entries),
                            list_all_page_slugs() (backs /sitemap.xml),
                            list_recent_pages_for_feed() (backs /feed.xml),
                            the TranscriptionJob lifecycle (create/claim/

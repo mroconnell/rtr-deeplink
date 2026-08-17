@@ -1366,3 +1366,13 @@ thead .row-number-col { z-index: 2; background: var(--bg); }
   flex-wrap: wrap;
   gap: 0.4rem 1.25rem;
 }
+
+/* Jurisdiction hub pages (/j/{slug}) -- breadcrumb trail, the per-body
+   count line ("City Council (30) · Planning Commission (12)"), and the
+   below-threshold note (see crud.JURISDICTION_HUB_MIN_INDEXABLE). */
+.hub-breadcrumb { font-size: 0.9rem; margin-bottom: 0.5rem; }
+.hub-breadcrumb a { text-decoration: none; }
+.hub-breadcrumb a:hover { text-decoration: underline; }
+.hub-bodies { color: var(--fg-muted, #555); margin-top: -0.25rem; }
+.hub-body-count { opacity: 0.75; }
+.hub-thin-note { font-style: italic; }

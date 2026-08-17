@@ -351,26 +351,6 @@ share-card pair (Growth mechanics' "Social share previews" +
 session's discussion reinforces their priority rather than changing
 their content). The two genuinely new:
 
-- **Jurisdiction hub pages (`/j/{slug}`).** A server-rendered per-city/
-  county landing page ("Oakland City Council meetings — video,
-  transcripts, deep links") listing that jurisdiction's archived
-  meetings, built over the same `list_pages()` query `/meetings`'
-  jurisdiction filter already runs — the new work is a stable URL,
-  page copy, `<title>`/meta-description, and sitemap inclusion, not new
-  querying. Targets the "[city] council meeting video/transcript"
-  searches future users type today, and doubles as the hook page for
-  city-specific outreach (stronger than linking a filtered `/meetings`
-  URL). Foundation is real: transcript text is confirmed server-rendered
-  on `/m/*` pages (`archive/templates/meeting_page.html:328`, verified
-  2026-08-14), so these pages sit on genuinely indexable surface. Open
-  questions before building: slug scheme, given stored jurisdiction
-  strings are still messy (see `BACKLOG.md`'s open casing/no-state
-  items — a hub page per raw string variant would fragment instead of
-  consolidate); minimum-meeting-count threshold before a hub page
-  exists (a one-meeting "hub" is thin-content risk); and whether hub
-  pages join `sitemap.xml` immediately or after a corpus-growth pass
-  gives them real content.
-
 ## Data sourcing / coverage growth (2026-08-15)
 
 Raised by the user after the jurisdiction pipeline shipped, asking what
