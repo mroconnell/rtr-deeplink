@@ -3240,7 +3240,9 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   the exact operator SQLAlchemy emits).
 
   **Step 1 live result was only half the win — and the follow-up (#131,
-  same day) is what makes the SQL itself fast:** after #129 deployed,
+  same day) turned out NOT to move prod at all (see the end of this
+  paragraph; the bench it was built on didn't model prod's bottleneck):**
+  after #129 deployed,
   search no longer crashed (fuzzy and `"public comment"` 503→200,
   counts/snippets correct) but exact search on common terms was *still*
   21–33s — now provably inside Postgres, on the predicate itself. Rare
@@ -3265,6 +3267,23 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   / 0.15s (phrase) — i.e. Step 2a below isn't just ranking, it's the
   only path to sub-second on common terms; trigram GIN is structurally
   the wrong index for "does this huge doc contain this common word".
+  **Live after #131: no measurable change** (`budget` 27.5s, `flock`
+  34.5s, `"public comment"` 31.5s; rare `quokka` 0.2s, browse 0.24s;
+  clean sequential runs, no warm-up effect) — the bench box was
+  CPU-bound with the corpus in page cache; prod evidently isn't. **The
+  actual live blocker, still unverified: needs one `EXPLAIN (ANALYZE,
+  BUFFERS)` of the `LIKE '%budget%'` query from the Render shell (asked
+  of Ryan), plus `pg_total_relation_size('meeting_pages')` vs heap size
+  and `SHOW shared_buffers`.** Leading hypothesis is I/O — reading the
+  whole TOASTed corpus per common-term query on a small Postgres whose
+  cache can't hold it — in which case Step 2a's `tsvector` GIN
+  (membership answered from the index, corpus never touched) is the
+  fix; but that is a hypothesis, not a finding, and two from-outside
+  diagnoses today were half wrong. Full detail in `BACKLOG_DONE.md`.
+  Practical implication for prioritization: `/meetings?q=<any common
+  civic word>` is still ~30s in production right now, and Step 2a is
+  the only candidate fix on the table — that raises its priority above
+  "after WO-10, eventually" if the EXPLAIN confirms I/O.
 
   **Step 2 — still open, two independent halves, both need one schema
   migration each and so should wait for WO-10's deploy-time migration
