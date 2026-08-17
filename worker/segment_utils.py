@@ -10,6 +10,7 @@ dependency-direction reasoning).
 """
 
 import re
+import unicodedata
 from difflib import SequenceMatcher
 from typing import Any, Dict, List, Tuple
 
@@ -220,3 +221,141 @@ def merge_chunk_segments(
     drop = count_seam_overlap_segments(previous_segments, new_segments)
     kept_prev = previous_segments[: len(previous_segments) - drop] if drop else previous_segments
     return [*kept_prev, *new_segments]
+
+
+# --- Hallucinated-transcription detection -----------------------------------
+#
+# Real, confirmed bug (Port Coquitlam, BC, 2025-02-18 Committee of Council
+# Meeting, found live 2026-08-16 -- see BACKLOG_DONE.md): a real backlog
+# meeting's transcript came back as complete hallucinated gibberish -- a
+# chaotic mix of Telugu, Sinhala, random Unicode symbol spam, nonsense
+# English ("Did you ever see your mom will never wake up at the bus stop?"),
+# and long runs of a single repeated character, with the whole transcript's
+# detected language pushed as "te" (Telugu) for a Canadian English-language
+# meeting. Root-caused by directly diffing real audio, not assumed: the
+# source's left/right stereo channels are near-exact phase-inverted copies
+# of each other, so extract_chunk_audio()'s plain mono downmix (`-ac 1`, an
+# average of the two channels) destructively cancels the real signal into
+# near-silent noise -- see app/platforms/media_probe.py's own docstring for
+# the full writeup and its now-fixed extraction-side fallback. faster-
+# whisper hallucinates on that kind of near-silent/noise input rather than
+# recognizing there's nothing real to transcribe -- a well-documented
+# Whisper failure mode, not unique to this one meeting, and not guaranteed
+# to always be caused by (or fixed by) the same phase-cancellation mechanism
+# -- a genuinely corrupted stream, wrong media entirely, or another source
+# defect could trigger the same symptom. This is that second, independent
+# safety net: even with the extraction-side fix, nothing previously checked
+# a *Whisper-produced* transcript for exactly this kind of garbage before
+# push -- the scraped-caption ingest path has had `is_likely_garbled()`
+# (app/utils/vtt_parser.py) for this since early on; this Whisper-specific
+# path had no equivalent at all.
+#
+# Reproduced directly against this same real meeting's real (pre-fix) audio
+# while investigating: a "tiny"-model transcription of its second chunk
+# produced one exact sentence ("So, we are going to take a look at what we
+# are going to do.") repeated verbatim across 40 of 45 total segments -- a
+# 0.89 repetition-run ratio. Every real clean transcript checked (this same
+# meeting's own post-fix transcription, and Boulder County CO from the
+# seam-duplication investigation) has no run longer than 2.
+
+# Two independent Whisper decodes of the same real speech (see worker/
+# segment_utils.py's seam-duplication note above) still don't repeat a whole
+# sentence verbatim dozens of times in a row -- real speech occasionally
+# repeats a short phrase once or twice (a stutter, a genuine "thank you,
+# thank you"), never a long run like the confirmed real case (0.89). Set
+# with real margin below that.
+_HALLUCINATION_REPETITION_RUN_RATIO_THRESHOLD = 0.5
+_HALLUCINATION_REPETITION_MATCH_RATIO = 0.85
+_HALLUCINATION_MIN_SEGMENTS_FOR_REPETITION_CHECK = 5
+
+# A run of the same character repeated this many times in a row is
+# essentially never real transcribed speech (the longest ordinary English
+# repeated-character words -- "hmmmm", "nooo" -- top out around 4-5) --
+# reported live as a real symptom of this same bug ("long runs of a single
+# repeated character"), a well-documented Whisper degenerate-decoding
+# failure mode.
+_HALLUCINATION_CHAR_RUN_LENGTH = 10
+_CHAR_RUN_RE = re.compile(r"(.)\1{" + str(_HALLUCINATION_CHAR_RUN_LENGTH - 1) + r",}")
+
+# Fraction of alphabetic characters outside the Latin script -- catches the
+# real Telugu/Sinhala degeneration reported live on this same broken audio.
+# Latin-script alphabetic characters include accented forms (é, ñ, ü, ...),
+# so a legitimate French/Spanish transcript (real content already live on
+# this Archive, e.g. a Spanish-language LA USD board meeting) isn't
+# penalized -- only a substantially non-Latin transcript is.
+_HALLUCINATION_NON_LATIN_RATIO_THRESHOLD = 0.15
+_HALLUCINATION_MIN_ALPHA_CHARS_FOR_SCRIPT_CHECK = 40
+
+HALLUCINATION_WARNING = (
+    "This transcript looks like it may be hallucinated by the transcription "
+    "model (not a real transcript of what was said) -- treat it as unreliable. "
+    "This can happen when the source audio is unusually quiet, corrupted, or "
+    "otherwise hard to transcribe."
+)
+
+
+def _normalize_for_repetition(text: str) -> str:
+    return re.sub(r"\s+", " ", text.strip().lower())
+
+
+def _repetition_run_ratio(segments: List[Dict[str, Any]]) -> float:
+    """Longest run of consecutive segments with near-identical normalized
+    text, as a fraction of the total segment count -- see this module's
+    "Hallucinated-transcription detection" note above for the real,
+    confirmed case this is tuned against."""
+    if len(segments) < 2:
+        return 0.0
+    best_run = 1
+    current_run = 1
+    for prev_seg, cur_seg in zip(segments, segments[1:]):
+        prev_text = _normalize_for_repetition(prev_seg["text"])
+        cur_text = _normalize_for_repetition(cur_seg["text"])
+        if prev_text and SequenceMatcher(None, prev_text, cur_text).ratio() >= _HALLUCINATION_REPETITION_MATCH_RATIO:
+            current_run += 1
+            best_run = max(best_run, current_run)
+        else:
+            current_run = 1
+    return best_run / len(segments)
+
+
+def _has_long_character_run(segments: List[Dict[str, Any]]) -> bool:
+    sample = "".join(seg["text"] for seg in segments)
+    return bool(_CHAR_RUN_RE.search(sample))
+
+
+def _non_latin_alpha_ratio(segments: List[Dict[str, Any]]) -> float:
+    sample = "".join(seg["text"] for seg in segments)
+    alpha_chars = [c for c in sample if c.isalpha()]
+    if len(alpha_chars) < _HALLUCINATION_MIN_ALPHA_CHARS_FOR_SCRIPT_CHECK:
+        return 0.0
+    non_latin = sum(1 for c in alpha_chars if "LATIN" not in unicodedata.name(c, ""))
+    return non_latin / len(alpha_chars)
+
+
+def detect_hallucination_warnings(segments: List[Dict[str, Any]]) -> List[str]:
+    """Heuristic quality check on a Whisper-produced transcript's segments
+    -- flags likely-hallucinated content so a caller can warn rather than
+    presenting it at face value, the same role `is_likely_garbled()`
+    (app/utils/vtt_parser.py) already plays for scraped captions. Not a
+    guarantee, same honesty as that function's own docstring: a heuristic
+    tuned against the real confirmed case above, not proof against every
+    possible hallucination shape. Returns a list (usually empty) rather
+    than a bool so a caller can fold the result straight into
+    `transcript_warnings` the same way every adapter's own
+    `is_likely_garbled()` check already does.
+    """
+    warnings: List[str] = []
+
+    if len(segments) >= _HALLUCINATION_MIN_SEGMENTS_FOR_REPETITION_CHECK:
+        if _repetition_run_ratio(segments) >= _HALLUCINATION_REPETITION_RUN_RATIO_THRESHOLD:
+            warnings.append(HALLUCINATION_WARNING)
+            return warnings  # one real warning is enough; no need to stack near-duplicates
+
+    if _has_long_character_run(segments):
+        warnings.append(HALLUCINATION_WARNING)
+        return warnings
+
+    if _non_latin_alpha_ratio(segments) >= _HALLUCINATION_NON_LATIN_RATIO_THRESHOLD:
+        warnings.append(HALLUCINATION_WARNING)
+
+    return warnings

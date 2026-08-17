@@ -13,6 +13,7 @@ from ..utils.jurisdiction_format import jurisdiction_search_terms, normalize_sta
 from ..utils.language import detect_language_from_texts
 from ..utils.search import build_corpus, find_snippet, matches, tokenize
 from ..utils.slugify import build_base_slug, random_suffix
+from ..utils.transcription_quality import detect_hallucination_warnings
 from ..utils.url_normalize import normalize_url
 from .engine import async_session
 from .models import MeetingPage, MeetingPageUrlAlias, SavedItem, TranscriptionJob, TranscriptVersion
@@ -27,6 +28,24 @@ def _content_hash(segments: list) -> str:
 # matching if either message ever changes (see CLAUDE.md's note on that
 # file about why this isn't accidental duplication).
 _GARBLED_MARKER = "looks garbled at the source"
+# Substring of archive/utils/transcription_quality.py's HALLUCINATION_WARNING
+# -- a Whisper-produced transcript is a genuinely different failure mode
+# than a garbled *scraped* caption (model hallucination on our own extracted
+# audio, not corruption at the government source -- see that module's own
+# docstring), kept as its own distinct, honestly-worded warning rather than
+# folded into _GARBLED_MARKER's wording. Still needs to count as "not a
+# good transcript" everywhere _GARBLED_MARKER does (re-transcription
+# eligibility, the /coverage and /meetings "✓ Transcript" badges), so every
+# call site below checks both markers, not just _GARBLED_MARKER alone.
+_HALLUCINATION_MARKER = "hallucinated by the transcription model"
+
+
+def _has_real_warning_free_transcript(warnings: Optional[list]) -> bool:
+    """True if none of `warnings` mark this version as garbled-at-source or
+    likely-hallucinated -- the shared "is this actually a good transcript"
+    check every call site below needs, factored out so a third quality
+    marker never again needs updating in four separate places."""
+    return not any(_GARBLED_MARKER in w or _HALLUCINATION_MARKER in w for w in (warnings or []))
 
 
 async def _has_good_transcript(session, meeting_page_id: int) -> bool:
@@ -48,7 +67,7 @@ async def _has_good_transcript(session, meeting_page_id: int) -> bool:
     ).scalars().first()
     if version is None or not version.segments:
         return False
-    return not any(_GARBLED_MARKER in w for w in (version.transcript_warnings or []))
+    return _has_real_warning_free_transcript(version.transcript_warnings)
 
 
 async def lookup_page_for_url(url_normalized: str) -> Optional[dict]:
@@ -819,15 +838,15 @@ async def list_pages(
                 # transcript shouldn't earn the same "Transcript" badge as
                 # a real one. Language-independent on purpose (any
                 # language counts, per explicit request) -- only quality
-                # is gated. Same _GARBLED_MARKER check as
-                # _has_good_transcript() above, inlined here rather than
-                # calling it (that function does its own DB query per
-                # page; this loop already has transcript_warnings from
-                # the single batch query above, so re-querying per row
-                # would be a real N+1).
+                # is gated. Same quality check as _has_good_transcript()
+                # above (via _has_real_warning_free_transcript()), inlined
+                # here rather than calling that function directly (it does
+                # its own DB query per page; this loop already has
+                # transcript_warnings from the single batch query above, so
+                # re-querying per row would be a real N+1).
                 "has_transcript": (
                     r["version_id"] is not None
-                    and not any(_GARBLED_MARKER in w for w in (r["warnings"] or []))
+                    and _has_real_warning_free_transcript(r["warnings"])
                 ),
                 "has_agenda": bool(r["mp"].agenda_items),
                 "snippet": _snippet_for(r["mp"]),
@@ -1029,7 +1048,7 @@ async def get_platform_coverage() -> dict:
 
     by_key: dict[str, list[dict]] = {}
     for platform, slug, title, jurisdiction, source_url, version_id, warnings in rows:
-        has_transcript = version_id is not None and not any(_GARBLED_MARKER in w for w in (warnings or []))
+        has_transcript = version_id is not None and _has_real_warning_free_transcript(warnings)
         example = {"slug": slug, "title": title, "jurisdiction": jurisdiction, "has_transcript": has_transcript}
 
         if platform in DIRECT_PLATFORMS:
@@ -1088,7 +1107,7 @@ async def get_jurisdiction_coverage() -> list[dict]:
 
     by_jurisdiction: dict[str, list[dict]] = {}
     for jurisdiction, slug, title, version_id, warnings in rows:
-        has_transcript = version_id is not None and not any(_GARBLED_MARKER in w for w in (warnings or []))
+        has_transcript = version_id is not None and _has_real_warning_free_transcript(warnings)
         by_jurisdiction.setdefault(jurisdiction, []).append(
             {"slug": slug, "title": title, "has_transcript": has_transcript}
         )
@@ -1584,13 +1603,22 @@ async def report_chunk_result(
 
         if job.chunks_completed >= job.total_chunks:
             language = detect_language_from_texts(s["text"] for s in job.partial_segments)
+            # Real, confirmed gap closed 2026-08-16 (Port Coquitlam, BC --
+            # see BACKLOG_DONE.md and archive/utils/transcription_quality.py's
+            # own docstring): a Whisper-produced transcript had no equivalent
+            # of the scraped-caption path's is_likely_garbled() check before
+            # this version went live. Applied here, once, on the full
+            # finished transcript -- covers both a real user-submitted job
+            # and the worker's own idle-time auto-generated ones, the one
+            # place both actually finish.
+            hallucination_warnings = detect_hallucination_warnings(job.partial_segments)
             version = TranscriptVersion(
                 meeting_page_id=job.meeting_page_id,
                 language=language,
                 source="transcribed",
                 is_default=False,  # promote_transcript_version sets the real default below
                 segments=sorted(job.partial_segments, key=lambda s: s["start"]),
-                transcript_warnings=[],
+                transcript_warnings=hallucination_warnings,
                 content_hash=_content_hash(job.partial_segments),
             )
             session.add(version)
