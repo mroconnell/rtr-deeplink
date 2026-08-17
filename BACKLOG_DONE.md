@@ -6,6 +6,275 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Reliability/ops audit execution — Phase 1 + Waves 1, 2, 3, 4, 6 (WO-1, WO-6 through WO-9, WO-11 through WO-13, WO-16) (2026-08-14 through 2026-08-17)
+
+`AUDIT_EXECUTION_BRIEF.md` (root of this repo) tracked a 16-work-order
+reliability/ops plan across a Phase 1 and six waves. As of 2026-08-17
+everything is shipped and verified except Wave 5 (WO-10, "migrations
+survive deploys") — still genuinely open, blocked on Ryan's prod DB
+access, and kept live in `AUDIT_EXECUTION_BRIEF.md` itself since it's the
+one remaining active work order. `AUDIT_EXECUTION_BRIEF.md` was trimmed
+2026-08-17 to just that open work; this entry preserves the Problem/Do/
+Fixed detail for the work orders that didn't already have their own
+dedicated section here — **WO-2** (see "Testing infrastructure" below),
+**WO-3** (see the `.gitignore` correction entry below), and **WO-5** (see
+"Security hardening" below) already had their own entries and aren't
+repeated; **WO-14/WO-15/WO-16's jurisdiction/refresh-path work** already
+has its own entries above and isn't repeated either, though WO-16 is
+listed below for completeness since the brief bundled it into Wave 6.
+A handful of small Ryan-owned dashboard/manual checks were left open
+across these waves (Sentry exception verification, confirming a Render
+health-check gate actually blocks a bad deploy, confirming both admin
+crons run green against the new header-auth before removing the old
+query-param fallback, confirming a real Render deploy off the new pinned
+lockfiles, GA event visibility, a real sent alert email) — these were
+**not** silently dropped; they're consolidated into one live checklist
+item in `BACKLOG.md` ("Reliability/ops audit — remaining manual/dashboard
+checks") rather than left scattered as footnotes across six waves.
+
+### WO-1 · Fix `robots.txt` prefix match — DONE 2026-08-14
+
+**Problem.** `app/main.py`'s robots.txt emitted a bare `Disallow:
+/meeting`, and robots.txt matches by prefix — so it also blocked
+`/meetings`, the Archive's own browse/search hub, despite that page being
+simultaneously advertised as indexable in the sitemap.
+
+**Fixed.** Replaced the single directive with two anchored forms,
+`Disallow: /meeting$` and `Disallow: /meeting?`, so `/meetings` is no
+longer caught. Unit tests assert both anchored forms are present, no bare
+`Disallow: /meeting` line exists, and `/meetings` isn't matched. Deployed
+and the live `robots.txt` confirmed correct; Search Console re-submission
+was Ryan's follow-up, outside code scope.
+
+### WO-6 · Health checks that can fail — DONE 2026-08-16
+
+**Problem.** Both `/api/health` handlers (resolver and Archive) returned
+a static `{"status": "ok"}` regardless of DB state. During the
+2026-08-09 incident the app was failing every query on a missing column
+and would still have reported healthy.
+
+**Fixed.** Both handlers now open a real DB connection before reporting
+`ok` — the resolver runs `SELECT 1`, the Archive runs a cheap
+`SELECT count(*)` against `MeetingPage` (catching a missing/misnamed
+table, not just a dead connection). Either raising → `logger.exception` +
+`{"status": "error", "reason": "database unreachable"}` at 503. Covered
+by `tests/test_health_endpoint.py` (all four cases: both services ×
+reachable/unreachable — DB unreachability simulated by swapping the
+module-level `engine` object for a stub whose `.connect()` raises, since
+`AsyncEngine.connect` turned out to be a read-only attribute that can't
+be monkeypatched directly). Full suite green (789 passed at the time).
+
+### WO-7 · Know when production breaks (Sentry + uptime + failure-visible cron) — DONE 2026-08-16
+
+**Problem.** No error monitoring existed anywhere; production exceptions
+only surfaced if someone happened to check Render logs. The daily digest
+also degraded silently by design — one failed metric didn't blank the
+others, so a cron's `curl --fail-with-body` saw HTTP 200 on a half-broken
+report.
+
+**Fixed.**
+- Sentry free tier wired into all three services (`_init_sentry()`,
+  duplicated per service matching the existing Clerk-degrades-gracefully
+  pattern) — no-op when `SENTRY_DSN` is unset. Its default logging
+  integration means every existing `logger.exception()`/`logger.error()`
+  call across all three services starts reporting with zero
+  per-call-site changes.
+- New `GET /api/health/resolve-check` runs a real resolve (the same
+  cache-then-live-adapter path `/api/resolve` itself uses) against one
+  operator-chosen URL (`UPTIME_CHECK_URL`), so a plain GET from a
+  free-tier uptime service proves the whole pipeline, not just the DB.
+  Returns `not_configured` (still 200) when unset, so the endpoint
+  existing can never itself break a dashboard.
+- Both `daily-report.yml` and `send-search-alerts.yml` got an `if:
+  failure()` step posting to `ALERT_WEBHOOK_URL` when set, and a
+  `::warning::` annotation otherwise (GitHub's own failed-scheduled-
+  workflow email is the fallback either way).
+- `run_daily_report()` now returns each metric's `{value, error}`;
+  `/admin/daily-report` checks for any failed metric first and returns
+  502 `metrics_unavailable` with the failure list, so `--fail-with-body`
+  actually trips.
+
+**Ryan's account setup, done 2026-08-16**: `SENTRY_DSN` live on all three
+services; UptimeRobot configured against
+`https://simivalley.granicus.com/player/clip/2840` (a real Granicus
+meeting, deliberately not YouTube/headless-browser, to avoid unrelated
+false alarms) with `UPTIME_CHECK_URL` set on the resolver — confirmed
+live via `curl` returning `{"status":"ok"}`. Took a manual "Deploy latest
+commit" to actually pick up the env var; a plain restart didn't.
+
+**Verified.** A forced metric failure turns the daily-report workflow
+red — covered by
+`tests/test_daily_report.py::test_admin_daily_report_returns_502_when_a_metric_failed`
+plus the full suite (808 passed). `tests/test_health_resolve_check.py`
+and `tests/test_sentry_init.py` cover the new endpoint and the no-op/init
+gate. **Not verified**: a deliberately raised exception actually landing
+in the Sentry dashboard — DSN is live but this specific check was never
+run; now tracked in `BACKLOG.md`'s consolidated checklist.
+
+### WO-8 · Admin token out of the URL — DONE 2026-08-16
+
+**Problem.** `daily-report.yml` and `send-search-alerts.yml` both sent
+`?token=${{ secrets.ADMIN_STATS_TOKEN }}` — GitHub masks it in Actions
+logs, but Render's own request logs don't. The Archive already did this
+correctly.
+
+**Fixed.** `_admin_token_ok()` now checks `Authorization: Bearer` first
+and falls back to the `token` query param only if no (or a malformed)
+header is present — still `secrets.compare_digest`, not `==`. All 9
+`/admin/*` routes take an `authorization` header param now. Both cron
+workflows switched to `curl -H "Authorization: Bearer ..."`; the
+query-param path is deliberately still live, per a "not a flag day"
+transition. `tests/test_admin_token_auth.py` covers no-credentials → 404,
+correct/incorrect header → 200/404, correct/incorrect legacy query param
+→ 200/404, header priority when both present, and a malformed header
+falling back to the query param rather than hard-rejecting. Full suite
+green (796 passed).
+
+**Still open, not code**: confirming both workflows actually run green
+against the deployed header-auth change, then removing the query-param
+fallback in a follow-up PR — needs a real cron run against prod first.
+Now tracked in `BACKLOG.md`'s consolidated checklist rather than as a
+loose end here.
+
+### WO-9 · The three events that make outreach measurable — DONE 2026-08-16
+
+**Problem.** Five GA events existed (`submit_meeting_url`, three
+`copy_link_to_time`, one `newsletter_signup`). Missing: whether a
+resolve succeeded, whether anyone played the video, and any way to
+attribute a visit to an outreach recipient.
+
+**Fixed.**
+- `resolve_result` fires at all four `/api/resolve` response branches
+  with `{status, platform}` — status values always one of a small fixed
+  set, never free text.
+- `transcript_seek` fires from the real transcript-line click handler,
+  deliberately not agenda-item clicks (same CSS class, separate feature).
+- `video_play` fires from the shared `play` listener covering
+  native/YouTube/Viebit. **Real bug found and fixed while wiring this
+  up**: the native adapter's own muted warm-up play-then-pause trick
+  fired the same event — without a fix, `video_play` would have fired on
+  every page load. Fixed with a module-level
+  `suppressWarmupPlayTracking` flag.
+- **Second real gap, outside original scope**: the Archive had no Google
+  Analytics at all, meaning any outreach visit landing directly on a
+  permanent `/m/{slug}` page (a large fraction of real traffic) would
+  have been invisible to GA regardless of UTM survival. Fixed by
+  mirroring the resolver's `GA_MEASUREMENT_ID`/`gtag`/`trackEvent`
+  snippet onto the Archive's `base.html`.
+
+**Verified live** against a local dev server and a real Granicus meeting
+(Simi Valley): `window.dataLayer` inspected directly — `resolve_result`
+fires correctly on success, `video_play` does not fire on page load but
+does on a real click, `transcript_seek` fires on a real transcript-line
+click. UTM params confirmed to survive the `/meeting` → `/m/{slug}`
+archive redirect intact. Full suite green (836 passed), JS suite green
+(29 passed).
+
+**Ryan's half, not code**: settle the UTM convention
+(`?utm_source=outreach&utm_campaign=first10&utm_content=<recipient-slug>`)
+before any real outreach send — unrecoverable if the first emails go out
+without it.
+
+### WO-11 · Pin dependencies, then scan them — DONE 2026-08-16
+
+**Problem.** Every requirements file used unbounded `>=` with no
+lockfile, while `render.yaml` reinstalls on every deploy — so two deploys
+of identical source could install different dependency versions. No
+Dependabot, no `pip-audit`.
+
+**Fixed.** Each service now has a `requirements.in` (loose source)
+compiled via `pip-compile` into a fully-pinned `requirements.txt`.
+`yt-dlp`, `faster-whisper`, and `youtube-transcript-api` are deliberately
+excluded from compilation and appended unpinned by hand afterward, each
+with a comment explaining why (see `CLAUDE.md`'s yt-dlp note) and a
+reminder to re-append after the next `pip-compile` run. `.github/
+dependabot.yml` covers all three service directories, weekly.
+`pip-audit` added as a non-blocking `test.yml` step, scanning all four
+requirements files — clean at the time, left non-blocking so a future
+CVE disclosure doesn't silently block every merge.
+
+**Verified** locally (no prod access that session): full suite green
+(818 passed) after installing the pinned resolver requirements,
+including a real major-version bump surfaced by pinning
+(`clerk-backend-api` 6.0.1 → 7.0.0, confirmed compatible). Archive and
+worker requirements each verified installing cleanly in their own
+isolated scratch venv, matching how they actually deploy.
+
+**Still open, not code**: a real Render deploy off the new pinned
+lockfiles hasn't been watched — now tracked in `BACKLOG.md`'s
+consolidated checklist.
+
+### WO-12 · Linter and formatter — DONE 2026-08-16
+
+**Problem.** No ruff/black/mypy/pre-commit config anywhere. With
+multiple sessions editing this tree the same day, a formatter mostly
+protects `git pull --rebase` from gratuitous whitespace conflicts.
+
+**Fixed, in two PRs** (squash-merge-only branch protection means two PRs
+was the only way to get two separate commits on `main`):
+- Config PR: `ruff.toml` (`select = ["E", "F", "W"]`, `ignore = ["E402",
+  "E501"]` — E402 excluded because this repo intentionally imports some
+  modules only after `load_dotenv()`/`_init_sentry()` runs; E501
+  excluded because comments/docstrings here are deliberately
+  prose-length). Also fixed the 13 real findings that selection
+  surfaced (7 unused imports, 2 unused locals, 2 ambiguous
+  single-letter names, 2 trailing-whitespace lines in Alembic-generated
+  migration docstrings) and added `ruff check` as a blocking CI step.
+- Reformat PR: ran `ruff format` across `app/`, `archive/`, `worker/`,
+  `scripts/`, `tests/` — 144 files reformatted. Added `ruff format
+  --check` as a blocking CI step. Coordinated with 4 active peer sessions
+  before running the repo-wide reformat given its blast radius.
+
+**Skip mypy** — deliberate, not attempted; retrofitting types is a
+multi-day project with unclear payoff at this stage.
+
+**Verified.** `ruff check`/`ruff format --check` both pass cleanly. Full
+suite green post-reformat (835 passed).
+
+### WO-13 · Adapter health canary — DONE 2026-08-16
+
+**Problem.** The test suite and WO-7's Sentry both catch code-level
+failures, but neither catches this repo's most common real failure mode:
+a government site quietly changes structure and a working adapter starts
+returning empty/wrong data while still returning HTTP 200 — no
+exception, nothing for Sentry to see. Self-flagged in
+`CLAUDE_BACKLOG.md` as "still the highest-value remaining item."
+
+**Fixed.** `scripts/adapter_canary.py` calls each platform's real
+`AssetFinder.resolve()` directly (in-process, not via the deployed HTTP
+service — no production cache/stats/Archive noise) against one real,
+confirmed-good URL per platform, pulled from each platform's own test
+fixtures. `.github/workflows/adapter-canary.yml` runs it daily (its own
+cron time, no resource contention with the other two cron workflows)
+with `playwright install chromium` for the two headless-browser-gated
+platforms (LIMS, SLC), reusing WO-7's exact `if: failure()` →
+`ALERT_WEBHOOK_URL`-or-`::warning::` notification step. A
+`CalendarPageError` with real candidates found (e.g. CivicPlus's
+AgendaCenter, which has no single-meeting URL shape) counts as a pass —
+a real regression there would show as the candidate list going empty,
+not the routing behavior itself.
+
+**Two platforms deliberately excluded from `CANARY_URLS`**: swagit (no
+real Swagit meeting URL exists anywhere in this repo's text) and
+civicplus (the one site this adapter was ever verified against stopped
+resolving 2026-08-07, re-confirmed dead by live DNS failure building
+this canary — a `BACKLOG.md` entry names an untested replacement
+candidate, Maricopa County AZ).
+
+**Verified.** Running live against real government sites (not mocked):
+20/20 platforms pass. Deliberately breaking one adapter's parsing
+locally (a fixture-based fake finder returning an empty
+`ResolvedMeeting`, plus a `CalendarPageError`-with-zero-candidates case)
+produces a real reported failure — `tests/test_adapter_canary.py` (10
+tests, no real network calls). Full suite green (818 passed).
+
+### WO-16 · Census-table jurisdiction gaps — bundled in Wave 6, DONE 2026-08-16
+
+Full detail already in this file's own "WO-16: Census-table jurisdiction
+gaps" entry above (townships/county subdivisions added to the lookup
+table, the two literal-date-as-jurisdiction pages no longer reproduce,
+Elliot Lake ON confirmed already handled correctly) — not repeated here.
+
 ## PITR test restore — confirmed working, real data verified (2026-08-17)
 
 WO-4 (`AUDIT_EXECUTION_BRIEF.md`, Wave 4) left one item genuinely open:
