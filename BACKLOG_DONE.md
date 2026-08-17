@@ -217,6 +217,90 @@ pages drop out of browse/sitemap/feed (sitemap was 1,223 URLs before the
 generic_fallback fix — compare after), and any of them that later gain
 video/captions come back on their own.
 
+## Search Step 2a: Postgres full-text search (`search_tsv` generated column + GIN), feature-detected, `OR`/stemming/`sort=relevance` (2026-08-17)
+
+[Done 2026-08-17 — code merged; the prod migration run is the one
+remaining operational step, see below] Ryan: "and also do 2a", right
+after `pg_stat_statements` settled that the DB was the whole ~27s of a
+common-word search (LIKE scans averaging 16.5s each under real load vs
+4.7s in isolation on a 64MB-`shared_buffers` Postgres — I/O-bound
+detoasting of the 77MB corpus per query, which no LIKE tuning could beat;
+see the Step 1 entry below and #143's DB plan bump).
+
+**Schema** (`archive/alembic/versions/2026_08_17_2100-c1d2e3f4a5b6_…py`,
+Postgres-only, no-op on SQLite): `ALTER TABLE meeting_pages ADD COLUMN
+search_tsv tsvector GENERATED ALWAYS AS (to_tsvector('english',
+left(coalesce(search_corpus,''), 3000000))) STORED` + `CREATE INDEX
+CONCURRENTLY … USING gin (search_tsv)` inside an Alembic
+`autocommit_block()`. A *generated* column, deliberately: Postgres
+computes it from `search_corpus` on every INSERT/UPDATE, so there is no
+ingest-time code to keep in sync and no one-time backfill script — the
+two seams that produced #116's outage and #127's OOM the same morning.
+`left(…, 3e6)` caps the input so the expression can never exceed
+tsvector's hard 1MB limit and fail a row's INSERT (measured on the bench:
+a 534K-char corpus → 138KB tsvector; prod's largest meeting is ~400K
+chars, so the cap is ~9× that). `'english'` config; the Spanish-language
+minority degrades to near-`simple` stemming, not wrong results. **The
+column is NOT mapped on `MeetingPage`** — SQLite/`create_all()`/ORM
+inserts never see it; crud references it only via
+`literal_column("meeting_pages.search_tsv")`.
+
+**Query** (`archive/db/crud.py`): `_fts_available(session)` — Postgres
+only, cached 60s, one `information_schema.columns` lookup — decides per
+request; when true and not fuzzy, `list_pages()` uses `_fts_condition()`
+= `search_tsv @@ websearch_to_tsquery('english', keyword)`, otherwise
+the Step 1 LIKE path exactly as before. **This is the third seam
+closed**: code and migration can deploy in either order — before the
+migration prod simply keeps the LIKE path; within a minute of the
+migration FTS is on, no restart. `websearch_to_tsquery()` natively
+speaks the `"quoted phrase"` / `-exclusion` syntax `parse_query()`
+already accepts, and adds `OR` (closes the "Search bar has no OR
+support" backlog item for free), stemming (budget/budgets/budgeting) and
+stopword removal; `+`/`&`/`and` (parse_query's no-ops) stay no-ops. Two
+deliberate semantic differences from `matches()`, documented in the
+docstring: word match not substring ("cat" no longer hits
+"concatenate"), and an all-stopword query matches nothing. Membership
+and `count(*) OVER ()` come from the GIN index without reading the
+corpus, so per-search cost stops scaling with how common the word is
+(bench, 1,219 × 300KB docs: `@@ 'budget'` count 0.00s vs LIKE 1.75s /
+ILIKE 7.7s; ranked page 0.10s). `sort="relevance"` orders by
+`ts_rank_cd(search_tsv, query)` — the one FTS operation that reads the
+(much smaller) tsvector per matched row — opt-in via `/meetings?sort=
+relevance` (route param, checkbox in the filter panel, carried through
+the search form's hidden field and pagination `qs_parts` like `fuzzy`);
+default stays newest-first so the UX doesn't change under anyone.
+Fuzzy mode is untouched (Python over streamed corpus text; still the
+LIKE path for its phrases/exclusions). Snippets are untouched (default-
+version segments for the 20 returned rows, `find_snippet()` — an
+irregular-stem match like ran→run just yields no snippet, never a wrong
+one).
+
+**Verification**: SQLite suite 955 green (the LIKE fallback is what CI
+exercises — unchanged behaviour); `tests/test_search_fts.py` = 4
+dialect-agnostic shape tests (compiled SQL is `@@ websearch_to_tsquery`,
+never LIKE, never touches `search_corpus`; `ts_rank_cd` shape; the LIKE
+fallback still finds a real page when `_fts_available` is False; the
+sqlite gate never queries) + 5 Postgres-only integration tests, all
+green against a real `postgres:16` with the migration applied via
+`alembic upgrade head` (the `CREATE INDEX CONCURRENTLY` autocommit path
+included): column detected; stemming + word-not-substring; phrase /
+exclusion / `OR`; pagination totals; relevance order (dense doc first)
+vs default newest; snippet still present. The 13 earlier search tests
+(`test_list_pages_sql_authoritative.py`, `test_list_pages_search_
+postgres.py`) also pass with FTS active — incl. the "zebrx must NOT
+match" exact-mode case and the demoted-version snippet rule.
+
+**Remaining operational step**: `cd archive && alembic upgrade head` on
+the Archive's Render shell, at a quiet moment — the ADD COLUMN rewrites
+`meeting_pages` computing `to_tsvector` for every row under an ACCESS
+EXCLUSIVE lock (~30s for prod's 77MB corpus; bench: 161s for 444MB),
+during which `/m/*` reads block; the index build is CONCURRENTLY and
+doesn't lock. Then confirm with `SELECT calls, mean_exec_time FROM
+pg_stat_statements WHERE query ILIKE '%websearch_to_tsquery%'` growing
+and `/meetings?q=budget` returning in well under a second. WO-10's
+`preDeployCommand: alembic upgrade head` would make this automatic and
+is the right follow-up; this migration is safe to land that way since
+the code tolerates either order.
 ## Worker auto-transcription candidate sweep: from 102MB of transcript JSON every 5 idle minutes to one anti-join (2026-08-17)
 
 [Done 2026-08-17] Found while chasing prod search latency (below); Ryan
