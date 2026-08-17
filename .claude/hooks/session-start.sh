@@ -7,6 +7,12 @@ if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
   exit 0
 fi
 
+# Async: let the session open immediately: installs finish in the
+# background instead of blocking session start (trade-off: python/pip/
+# pytest/ruff -- and PATH itself, via CLAUDE_ENV_FILE below -- aren't
+# ready until this finishes, up to asyncTimeout ms later).
+echo '{"async": true, "asyncTimeout": 300000}'
+
 cd "$CLAUDE_PROJECT_DIR"
 
 # The container's system Python has an old Debian-packaged setuptools that
