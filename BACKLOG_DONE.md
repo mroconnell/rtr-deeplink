@@ -6,6 +6,138 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Cleaned up two live pages hit by the seam-duplication/phase-cancellation bugs; built the retroactive hallucination audit; real reusable `--promote` tooling (2026-08-16)
+
+Follow-up work after both bugs (seam-duplication, PRs #91/#92; stereo
+phase-cancellation hallucination, PRs #94/#95) were fixed and deployed —
+two specific already-live pages the user named still had the old bad
+symptom in their default transcript, plus the phase-cancellation entry's
+own write-up had flagged the retroactive already-shipped-exposure audit
+as explicitly open/not yet built (see BACKLOG.md's note that closed).
+
+**Real gap found first, fixed properly rather than worked around**:
+`archive/db/crud.py`'s `ingest_resolution()` returned only
+`{"slug", "url"}` — no way for a caller to learn the id of the
+`TranscriptVersion` a push just wrote, so `scripts/transcribe_backlog_
+locally.py` had no way to promote a fresh re-transcription of an
+already-live page (its existing default already has segments+language,
+so `_is_real_improvement()`'s auto-promotion never fires for a manual
+re-transcription — confirmed by reading that function before writing any
+code, not assumed). Fixed by having `ingest_resolution()` return a real
+`"version_id"`, threaded straight through `POST /internal/ingest`'s JSON
+response, plus a new `--promote` flag on the script that calls the
+existing `POST /internal/transcript-version/promote` endpoint
+automatically after a successful ingest. **A second real gap surfaced
+live, not synthetically**: re-running Boulder County for real the first
+time, the freshly-transcribed (fixed) content's hash already matched a
+non-default `TranscriptVersion` left over from earlier real (non-dry-run)
+investigation work, so nothing *new* was created and `version_id` came
+back `None` — `--promote` correctly no-op'd, but that defeated the whole
+point for exactly the case it exists for. Fixed by tracking a separate
+`matched_version_id` (the id of whichever version a push's content
+corresponds to, freshly created or an existing content-hash duplicate)
+distinct from the `new_version_id` the auto-promotion-on-improvement
+check must keep using internally (that check must never re-promote an old
+duplicate just because it was pushed again). Landed as PR #97, 3 new
+`tests/test_ingest_promotion.py` cases lock in all three cases (fresh
+push, no-segments push, content-hash duplicate); `tests/
+test_transcription_jobs.py` gained a fourth test covering the new audit
+endpoint below. 840 total tests passing after merge, `ruff check`/`ruff
+format --check` clean.
+
+**Retroactive hallucination audit, same template as the seam-duplication
+bug's `GET /internal/transcription/completed-multichunk`**: new `GET
+/internal/transcription/hallucination-candidates` (also in PR #97)
+re-runs `detect_hallucination_warnings()` (reused, not reimplemented)
+against the *stored* segments of every `source=="transcribed"`
+`TranscriptVersion`, left-joining `TranscriptionJob.transcript_version_id`
+to label `cloud_worker` vs. `local_script`-produced (the local script
+never touches `transcription_jobs` at all — see its own module
+docstring). Read-only/audit-only, never re-transcribes anything itself.
+
+**Run for real immediately after PR #97 deployed** (confirmed via `render
+deploys list srv-d9ras3ijnfac73f9ps5g -o json` showing deploy
+`dep-da19r88db16c73c9r3lg`, commit `ec95957`, `status: "live"`, finished
+2026-08-17T05:36:42Z — not just that the GitHub merge succeeded). Real
+result: **5 candidates**, all `already_flagged: false` (i.e. a genuinely
+new finding — none of these rows already carried the hallucination
+warning marker):
+
+| slug | version_id | produced_by | job_id | language | segments |
+|---|---|---|---|---|---|
+| revised-long-beach-ca-2026-08-04-aug-04-2026-city-council-special-meeting | 176 | cloud_worker | 74 | en | 1239 |
+| san-diego-county-ca-2026-06-24-board-of-supervisors | 240 | cloud_worker | 103 | en | 4662 |
+| meeting-38ca49 | 246 | cloud_worker | 111 | en | 5052 |
+| portcoquitlam-2025-02-18-committee-of-council-meeting | 971 | local_script | — | te | 230 |
+| kitchener-2026-05-05-heritage-kitchener-committee | 981 | cloud_worker | 201 | cy | 410 |
+
+Spot-checked two of the `en` rows live (Long Beach, San Diego County) to
+rule out a heuristic false-positive on legitimate repetitive procedural
+speech (roll calls, votes) — both confirmed real: the actual rendered
+transcript's opening segments are a genuine repetition-loop artifact (14+
+consecutive segments of bare `"."`), not coherent real content the
+detector misfired on. The other two (`meeting-38ca49`, Kitchener) weren't
+individually spot-checked; Kitchener's `cy` (Welsh) language tag is
+itself a strong signal given the jurisdiction. See BACKLOG.md's matching
+open entry for the remaining-4 re-transcription decision, deliberately
+left to the user, same precedent as the seam-duplication audit's own
+118-job list.
+
+**The two user-named live pages, cleaned up for real** (not just a dry
+run):
+
+- **Boulder County, CO**
+  (`bouldercounty-2026-02-05-historic-preservation-advisory-board`) — the
+  seam-duplication bug's duplicated "truck caro..." sentence at the
+  chunk-1/chunk-2 boundary (~15:00). Re-ran `scripts/
+  transcribe_backlog_locally.py --url "<source_url>" --promote` for real
+  against the deployed fix: `chunk 1/2 transcribed (136 segments)`,
+  `chunk 2/2 transcribed (94 segments, dropped 3 seam-duplicate
+  segment(s))`, `227 segments (language=en) ... (promoted version 986 to
+  default)`, 230.4s total. Verified against the real live page with a
+  fresh cache-busted `curl` fetch (independent of any browser/CDN cache):
+  the distinctive duplicated fragment unique to the bug (`"Is just this
+  whole question about truck caro..."`) appears **0 times**; the phrase
+  "truck caro" itself appears exactly 2 times, matching the two real,
+  legitimate separate mentions in the actual meeting (at 15:00 and
+  15:53), not the original bug's 3 (the legitimate 2 plus the duplicated
+  intro). The transcript now flows cleanly from `[14:31] "...acutos to
+  her and her effort."` straight into `[15:00] "This whole question about
+  truck caro, which may actually predate the Bracero program, there's an
+  exhibit at the Colorado Railroad Museum..."` with no restatement.
+
+- **Port Coquitlam, BC**
+  (`portcoquitlam-2025-02-18-committee-of-council-meeting`) — the
+  phase-cancellation hallucination bug's Telugu/Sinhala/gibberish default
+  transcript (`transcript_language="te"`). Re-ran the same command against
+  the deployed fix: extraction log confirmed the automatic left-channel
+  fallback fired on both chunks (`"Chunk audio at 0s looks suspiciously
+  quiet after mono downmix (-44.2dB) -- retrying with the left channel
+  alone..."`, same at `900s`, `-45.5dB`), `chunk 1/2 transcribed (190
+  segments)`, `chunk 2/2 transcribed (116 segments)`, `306 segments
+  (language=en) ... (promoted version 991 to default)`, 348.9s total.
+  Verified against the real live page: the old garbage marker (`"Did you
+  ever see your mom"`) appears **0 times**; the transcript now opens with
+  coherent real English content — `"All right, good afternoon, everyone.
+  I call to order. Committee of council meeting, February 18, 2025..."`
+  — flowing into an actual real development-variance-permit discussion
+  (`"...The applicant Burkill Development Limited has applied for a
+  development variance permit for a lot at 2472 Chilcott Avenue..."`),
+  matching the real content this exact meeting was already independently
+  confirmed to contain during the original bug investigation (see this
+  file's phase-cancellation entry below). The old `te` version (971) is
+  still visible in the page's version picker and still appears in the
+  hallucination-candidates audit above — confirmed **not deleted**, only
+  demoted (`is_default` flipped from `true` to `false` between the two
+  audit runs) — matching this repo's "never delete transcript versions"
+  convention (`promote_transcript_version()`'s own docstring).
+
+**Not done here, deliberately, per the task's own explicit scope**: no
+other live page was re-transcribed or otherwise touched — the remaining 4
+hallucination-audit candidates and the separate 118-job seam-duplication
+list are both real, open, user-facing decisions, not something to act on
+automatically.
+
 ## Local-Mac transcription backlog script — bigger model than the worker's forced "tiny" (2026-08-16)
 
 Built to work down the real ~209-meeting `/meetings?has_transcript=false`
