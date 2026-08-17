@@ -132,11 +132,22 @@ services:
   - type: web
     name: rtr-deeplink-archive
     runtime: python
-    plan: starter  # was free -- upgraded 2026-08-10 (see the top-of-file
-                   # note on keeping this synced with real decisions).
-                   # Free services spin down after 15min idle (~30-60s
-                   # cold start), a real risk to crawl/index health for
-                   # these public, potentially-indexed /m/* pages.
+    plan: standard  # was starter (512MB) -- upgraded 2026-08-17 (see the
+                   # top-of-file note on keeping this synced with real
+                   # decisions) after `starter` OOM-crashed in production
+                   # (Sentry: "Ran out of memory (used over 512MB)",
+                   # 7:10-7:11 AM) on a /meetings?q=flock keyword search --
+                   # see BACKLOG.md's "Search: move to a materialized/
+                   # indexed column" entry for the root cause
+                   # (list_pages() loading every TranscriptVersion.segments
+                   # blob for every meeting into memory on any keyword
+                   # search). `standard` buys headroom while that's fixed
+                   # properly; it doesn't fix the underlying unbounded
+                   # memory use. Originally was free -- upgraded to
+                   # starter 2026-08-10. Free services spin down after
+                   # 15min idle (~30-60s cold start), a real risk to
+                   # crawl/index health for these public, potentially-
+                   # indexed /m/* pages.
     # See rtr-deeplink's matching buildFilter comment above -- same reason.
     buildFilter:
       ignoredPaths:

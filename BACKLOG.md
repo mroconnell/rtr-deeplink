@@ -3299,14 +3299,14 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 - **Video highlight clips + algorithmic feed** — distant future. Flagged
   tension: this app's "never host video, only embed" principle directly
   conflicts with hosting/serving clip segments.
-- **Search: move to a materialized/indexed column once the Archive
-  outgrows a Python-side scan.** Built 2026-08-08 (see
-  [BACKLOG_DONE.md](BACKLOG_DONE.md)): `/meetings` search (title,
-  jurisdiction, agenda text, transcript text — exact and fuzzy/typo-
-  tolerant modes, see `archive/utils/search.py`) currently works by
-  reading each candidate meeting's already-stored JSON and matching in
-  Python at query time, deliberately, to avoid two things: a schema
-  change (adding a column to the already-live `MeetingPage`/
+- **Search: move to a materialized/indexed column — now confirmed live in
+  production as an OOM crash, not just a future scaling concern.** Built
+  2026-08-08 (see [BACKLOG_DONE.md](BACKLOG_DONE.md)): `/meetings` search
+  (title, jurisdiction, agenda text, transcript text — exact and
+  fuzzy/typo-tolerant modes, see `archive/utils/search.py`) currently
+  works by reading each candidate meeting's already-stored JSON and
+  matching in Python at query time, deliberately, to avoid two things: a
+  schema change (adding a column to the already-live `MeetingPage`/
   `TranscriptVersion` tables — no longer blocked on migration tooling
   itself now that Alembic's adopted, see BACKLOG_DONE.md, but still a
   real production schema change to run deliberately) and a Postgres-only
@@ -3315,11 +3315,39 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   differently for the same query, which this codebase avoids on
   principle elsewhere too).
 
-  Fine at today's scale (dozens of meetings); the real fix once the
-  Archive grows into the hundreds/thousands is a materialized, indexed
-  search column — a `tsvector`-backed column with a GIN trigram index on
-  Postgres, populated at ingest time instead of recomputed per search
-  request. Two things worth deciding when that becomes real, not before:
+  **Confirmed hit in production 2026-08-17**: user reported a 502 on
+  `https://redtaperecordings.com/meetings?q=flock`. Plain `/meetings`
+  (no `q`) loaded fine, isolating it to the keyword-search path.
+  Sentry (added the day before, see WO-7 / commit `444cec6`) showed two
+  `Instance failed: xhv2g — Ran out of memory (used over 512MB)` events
+  at 7:10-7:11 AM the same day. Root cause in `archive/db/crud.py`'s
+  `list_pages()`: with a keyword and no other filters, the SQL query
+  matches every `MeetingPage` row, and the function then loads *every*
+  `TranscriptVersion.segments` JSON blob for *every version* of *every*
+  one of those pages into memory in one shot (`crud.py:1046-1054`,
+  `transcript_text_by_page`) before any matching happens — no per-page
+  streaming, no early exit once `page_size` results are found, no cap on
+  how much transcript JSON gets materialized at once. Multi-hour meeting
+  transcripts are large (thousands of timestamped segments each), and
+  this loads all versions of all meetings regardless of relevance, which
+  was apparently enough real transcript volume by 2026-08-17 to blow a
+  512MB instance. So the "fine at today's scale (dozens of meetings)"
+  assumption below was already wrong in production by the time it was
+  actually tested with a real, popular query term — not just a
+  hypothetical hundreds/thousands-scale concern. Not yet fixed; no code
+  changed as part of this investigation (read-only session). Cheapest
+  interim mitigation, short of the real fix below: fetch/scan transcript
+  segments in per-page batches with an early exit once `page_size`
+  matches are found, instead of materializing the whole archive's
+  transcript JSON up front.
+
+  Fine at today's scale (dozens of meetings) for *most* queries, per the
+  above now demonstrably not always true; the real fix once the Archive
+  grows into the hundreds/thousands (or sooner, per the incident above)
+  is a materialized, indexed search column — a `tsvector`-backed column
+  with a GIN trigram index on Postgres, populated at ingest time instead
+  of recomputed per search request. Two things worth deciding when that
+  becomes real, not before:
   - **No new job queue needed to populate it.** `archive_client.push()`
     already runs via FastAPI's `BackgroundTasks`, fired after
     `/api/resolve`'s response goes back to the browser (see "Push, after
