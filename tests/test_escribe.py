@@ -306,3 +306,82 @@ async def test_backstop_leaves_true_no_video_result_unchanged():
     assert result.video_link is None
     assert result.best_effort is False
     assert any("no video integration found" in w.lower() for w in result.video_warnings)
+
+
+def test_extract_metadata_jurisdiction_no_longer_bleeds_into_agenda_text():
+    # WO-14 (BACKLOG.md, 2026-08-16): synthetic page-text reconstructions
+    # around the exact bled substrings BACKLOG.md quotes as confirmed real
+    # on 6 live eScribe customers, found 2026-08-15 -- the surrounding
+    # filler text is invented since the full original page text wasn't
+    # captured at the time, but the bled fragment, real subdomain, and
+    # correct city are real, confirmed values, not guesses. The old bare
+    # `re.search(r"City of ([A-Za-z .]+)", page_text)` had no sentence/tag
+    # boundary and would have kept the whole tail as the jurisdiction.
+    from bs4 import BeautifulSoup
+
+    cases = [
+        (
+            "pub-cityofgainesville.escribemeetings.com",
+            "Gainesville General Policy Committee Meeting AGENDA Thursday, ",
+            "Gainesville",
+        ),
+        (
+            "pub-delta.escribemeetings.com",
+            "Delta Housing Accelerator Fund Initiatives Summary.pdf Recommendation ",
+            "Delta",
+        ),
+        (
+            "pub-mississauga.escribemeetings.com",
+            "Mississauga as being part of the Treaty and Traditional "
+            "Territory of the Mississaugas of the Credit First Nation, "
+            "we thank",
+            "Mississauga",
+        ),
+        (
+            "pub-oshawa.escribemeetings.com",
+            "Oshawa is situated on lands within the traditional and treaty "
+            "territory of the Michi Saagiig",
+            "Oshawa",
+        ),
+        (
+            "pub-portmoody.escribemeetings.com",
+            "Port Moody Strategic Priorities Committee Agenda Tuesday, ",
+            "Port Moody",
+        ),
+        (
+            "pub-thunderbay.escribemeetings.com",
+            "Thunder Bay be approved in accordance with Table 1 of the report",
+            "Thunder Bay",
+        ),
+    ]
+    for subdomain, tail, expected_city in cases:
+        html = (
+            f"<html><title>Meeting - January 1, 2026</title>"
+            f"<body>City of {tail}</body></html>"
+        )
+        soup = BeautifulSoup(html, "html.parser")
+        _title, _date, jurisdiction = EscribeAssetFinder._extract_metadata(
+            soup, f"https://{subdomain}/x", html
+        )
+        assert jurisdiction == expected_city, (
+            f"expected {expected_city!r}, got {jurisdiction!r} (input tail: {tail!r})"
+        )
+
+
+def test_jurisdiction_from_subdomain_splits_concatenated_multiword_names():
+    # WO-14 (BACKLOG.md, 2026-08-16): this fallback used to be a bare
+    # `.replace("-", " ").title()`, which only helps a subdomain with
+    # literal hyphens -- real eScribe customers use one concatenated word
+    # ("portmoody", "thunderbay" -- confirmed live), which collapsed into
+    # "Portmoody"/"Thunderbay" instead of "Port Moody"/"Thunder Bay".
+    cases = [
+        ("pub-cityofgainesville.escribemeetings.com", "Gainesville"),
+        ("pub-portmoody.escribemeetings.com", "Port Moody"),
+        ("pub-thunderbay.escribemeetings.com", "Thunder Bay"),
+        ("pub-delta.escribemeetings.com", "Delta"),
+    ]
+    for netloc, expected in cases:
+        assert (
+            EscribeAssetFinder._jurisdiction_from_subdomain(f"https://{netloc}/x")
+            == expected
+        )

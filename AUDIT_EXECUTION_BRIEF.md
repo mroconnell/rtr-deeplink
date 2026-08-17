@@ -681,7 +681,19 @@ after. ~2-3 days. Three items pulled from `BACKLOG.md`'s Bugs section and
 Archive-roadmap-adjacent findings, chosen because each fixes a *pattern*
 behind several already-open bugs rather than one instance.
 
-### WO-14 · Shared bounded-extraction jurisdiction-regex helper — **new**
+### WO-14 · Shared bounded-extraction jurisdiction-regex helper — **new** — **DONE 2026-08-16**
+
+**Fixed.** Both Granicus and eScribe now call the already-built
+`jurisdiction_enrich.extract_jurisdiction_chain()` (it existed from prior
+work but was never wired into these two adapters). Also fixed eScribe's
+subdomain fallback, which was mangling multi-word Canadian city names
+("Thunderbay" instead of "Thunder Bay"). Live re-verified against
+`hercules.granicus.com/player/clip/1306`. Full detail, all 9 Granicus + 6
+eScribe cases, and one honestly-flagged residual gap (4 Granicus cases
+that only resolve via subdomain-fallback luck, not the text-chain itself)
+in `BACKLOG_DONE.md` / `BACKLOG.md`.
+
+
 
 **Problem.** `GranicusAssetFinder._extract_metadata()`'s jurisdiction regex
 has no sentence/tag boundary and swallows unrelated agenda text into the

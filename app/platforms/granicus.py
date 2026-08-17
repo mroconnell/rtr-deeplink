@@ -166,7 +166,7 @@ class GranicusAssetFinder(AssetFinder):
         raise aiohttp.ClientError(f"Failed to fetch {url}: {last_error}")
 
     def _extract_metadata(
-        self, soup: BeautifulSoup, url: str
+        self, soup: BeautifulSoup, url: str, html: str
     ) -> Dict[str, Optional[str]]:
         def text_of(selector) -> Optional[str]:
             el = soup.select_one(selector)
@@ -216,16 +216,31 @@ class GranicusAssetFinder(AssetFinder):
             + " "
             + (meta_content('meta[name="description"]') or "")
         )
-        body_match = re.search(
-            r"\b(City|County|Town) of ([A-Z][A-Za-z .]{1,40})", page_text
+        # Real bug fixed 2026-08-16 (WO-14, BACKLOG.md): this used to be a
+        # bare `re.search(r"\b(City|County|Town) of ([A-Z][A-Za-z .]{1,40})",
+        # ...)` with no sentence/tag boundary, so once "City of X" matched it
+        # kept consuming letters/spaces/periods for up to 40 more characters
+        # regardless of whether that text was still the city name --
+        # confirmed live on 9 real customers (Sarasota, Punta Gorda,
+        # Huntsville, Fort Worth, Edgewater, Castle Rock, Castle Pines,
+        # Boston, Milwaukee), e.g. hercules.granicus.com/player/clip/1306
+        # producing 'City of Hercules. XIV. PUBLIC COMMUNICATIONS XV. '
+        # character for character. extract_jurisdiction_chain() is the same
+        # bounded stop-rule/capitalization-walk chain already shipped for
+        # swagit/civicclerk/generic_fallback -- every candidate it returns
+        # is validated against the Census tables (directly or via
+        # trim-repair) before being accepted, so it declines instead of
+        # guessing when nothing cleanly bounds the match.
+        jurisdiction = jurisdiction_enrich.extract_jurisdiction_chain(
+            page_text=page_text, html=html, url=url
         )
-        if body_match:
-            jurisdiction = f"{body_match.group(1)} of {body_match.group(2).strip()}"
-        else:
+        if not jurisdiction:
             # Some counties are phrased the other way round on their own
             # pages ("San Diego County" rather than "County of San Diego") --
             # confirmed on a real sdcounty.granicus.com page, where the
-            # City-of/County-of pattern above doesn't match at all.
+            # City-of/County-of pattern above doesn't match at all. Not
+            # covered by extract_jurisdiction_chain(), which only handles
+            # "X of Y" phrasing.
             reversed_match = re.search(
                 r"\b([A-Z][A-Za-z]+(?: [A-Z][A-Za-z]+){0,2}) (County|Parish)\b",
                 page_text,
@@ -428,7 +443,7 @@ class GranicusAssetFinder(AssetFinder):
         async with aiohttp.ClientSession() as session:
             html, final_url = await self._fetch_page(session, url)
             soup = BeautifulSoup(html, "html.parser")
-            metadata = self._extract_metadata(soup, final_url)
+            metadata = self._extract_metadata(soup, final_url, html)
             media_urls = self._extract_media_urls(html, final_url)
             clip_id = self._extract_clip_id(final_url)
 

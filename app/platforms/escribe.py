@@ -5,6 +5,7 @@ from typing import Dict, List, Optional
 from urllib.parse import quote, urlparse
 
 import aiohttp
+import wordninja
 from bs4 import BeautifulSoup
 from langdetect import detect as detect_language, LangDetectException
 
@@ -73,7 +74,7 @@ class EscribeAssetFinder(AssetFinder):
                 html = await response.text()
 
             soup = BeautifulSoup(html, "html.parser")
-            title, date, jurisdiction = self._extract_metadata(soup, url)
+            title, date, jurisdiction = self._extract_metadata(soup, url, html)
             agenda_items = self._extract_agenda_items(soup, html)
 
             player = soup.select_one("#isi_player[data-client_id][data-stream_name]")
@@ -240,7 +241,7 @@ class EscribeAssetFinder(AssetFinder):
             return None
 
     @staticmethod
-    def _extract_metadata(soup: BeautifulSoup, url: str):
+    def _extract_metadata(soup: BeautifulSoup, url: str, html: str):
         raw_title = soup.title.get_text(strip=True) if soup.title else ""
         title, date = raw_title or None, None
         if " - " in raw_title:
@@ -256,10 +257,21 @@ class EscribeAssetFinder(AssetFinder):
                     continue
 
         page_text = soup.get_text(" ", strip=True)
-        jurisdiction = None
-        city_match = re.search(r"City of ([A-Za-z .]+)", page_text)
-        if city_match:
-            jurisdiction = city_match.group(1).strip()
+        # Real bug fixed 2026-08-16 (WO-14, BACKLOG.md): this used to be a
+        # bare `re.search(r"City of ([A-Za-z .]+)", page_text)` -- the exact
+        # same open-ended, unbounded character class as Granicus's version
+        # (written independently, not shared code), confirmed live on 6 real
+        # customers including Gainesville ("Gainesville General Policy
+        # Committee Meeting AGENDA Thursday, FL") and 4 Canadian examples
+        # where the regex ran on past the city name into land-acknowledgment
+        # boilerplate. extract_jurisdiction_chain() is the same bounded
+        # stop-rule/capitalization-walk chain already shipped for
+        # swagit/civicclerk/generic_fallback -- fixing both adapters' copies
+        # of this bug with one shared, Census-validated helper instead of
+        # patching each site independently.
+        jurisdiction = jurisdiction_enrich.extract_jurisdiction_chain(
+            page_text=page_text, html=html, url=url
+        )
         if not jurisdiction:
             # Real gap fixed 2026-08-08: the "City of X" phrasing above
             # isn't universal -- Bakersfield, CA's page just has a plain
@@ -285,8 +297,27 @@ class EscribeAssetFinder(AssetFinder):
         match = _SUBDOMAIN_RE.match(urlparse(url).netloc.lower())
         if not match:
             return None
-        name = match.group(1).replace("-", " ").strip()
-        return name.title() or None
+        label = match.group(1).replace("-", "")
+        # Real bug fixed 2026-08-16 (WO-14, BACKLOG.md): this used to be a
+        # bare `.replace("-", " ").title()`, which only helps a subdomain
+        # with literal hyphens -- every real customer confirmed live is one
+        # concatenated word ("cityofgainesville", "thunderbay", "portmoody"),
+        # so a multi-word city collapsed into one mashed-together word
+        # ("Thunderbay", "Portmoody" instead of "Thunder Bay"/"Port Moody").
+        # wordninja-split the same way Granicus's _humanize_subdomain() does.
+        # Deliberately NOT gated on Census-table validation like Granicus's
+        # version (jurisdiction_enrich.validated_subdomain_extract()) --
+        # eScribe serves real Canadian customers (Mississauga, Oshawa, Port
+        # Moody, Thunder Bay, all confirmed live) that the US-only Census
+        # tables can't validate by construction (see BACKLOG.md's WO-16), so
+        # gating on validation here would make this fallback *decline* on
+        # exactly the customers it most needs to cover.
+        words = wordninja.split(label)
+        while len(words) > 1 and words[0].lower() in ("city", "county", "town", "of"):
+            words = words[1:]
+        if not words:
+            return None
+        return " ".join(w.capitalize() for w in words)
 
     @staticmethod
     def _extract_agenda_items(

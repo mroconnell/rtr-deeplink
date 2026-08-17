@@ -459,7 +459,7 @@ def test_extract_metadata_ignores_previous_meeting_date_reference():
     )
     soup = BeautifulSoup(html, "html.parser")
     metadata = GranicusAssetFinder()._extract_metadata(
-        soup, "https://memphis.granicus.com/player/clip/9789"
+        soup, "https://memphis.granicus.com/player/clip/9789", html
     )
     assert metadata["date"] is None
 
@@ -476,7 +476,7 @@ def test_extract_metadata_still_finds_a_real_date_elsewhere_on_the_page():
     )
     soup = BeautifulSoup(html, "html.parser")
     metadata = GranicusAssetFinder()._extract_metadata(
-        soup, "https://memphis.granicus.com/player/clip/9789"
+        soup, "https://memphis.granicus.com/player/clip/9789", html
     )
     assert metadata["date"] == "2023-12-19"
 
@@ -543,3 +543,121 @@ async def test_resolve_minutes_viewer_redirect_treated_as_no_minutes_not_crash()
         result = await GranicusAssetFinder().resolve(url)
 
     assert result.date is None
+
+
+def test_extract_metadata_jurisdiction_no_longer_bleeds_into_agenda_text_hercules():
+    # WO-14 (BACKLOG.md, 2026-08-16): real fixture, fetched live 2026-08-16
+    # from hercules.granicus.com/player/clip/1306. The old bare
+    # `re.search(r"\b(City|County|Town) of ([A-Z][A-Za-z .]{1,40})", ...)`
+    # produced 'City of Hercules. XIV. PUBLIC COMMUNICATIONS XV. ' character
+    # for character on this exact page (re-confirmed against the live fetch
+    # before this fix landed) -- no sentence/tag boundary, so it just kept
+    # consuming letters/spaces/periods once "City of" matched.
+    # extract_jurisdiction_chain() fixes this via its bounded stop-rule
+    # extractor, validated against the Census tables.
+    html = load_fixture("granicus", "hercules_clip1306.html")
+    soup = BeautifulSoup(html, "html.parser")
+    metadata = GranicusAssetFinder()._extract_metadata(
+        soup, "https://hercules.granicus.com/player/clip/1306", html
+    )
+    assert metadata["jurisdiction"] == "City of Hercules, CA"
+
+
+def test_extract_metadata_jurisdiction_bleed_regressions_text_only():
+    # WO-14 (BACKLOG.md, 2026-08-16): synthetic page-text reconstructions
+    # around 5 of the 9 confirmed-real bled substrings BACKLOG.md quotes
+    # (Huntsville/Boston/Fort Worth/Edgewater/Milwaukee, all found live
+    # 2026-08-15) -- the surrounding filler text is invented since the full
+    # original page text wasn't captured at the time, but the bled fragment
+    # itself and the correct city are real, confirmed values, not guesses.
+    # A deliberately unrelated subdomain (not the city's own) isolates the
+    # fix to extract_jurisdiction_chain()'s text-based tiers alone -- these
+    # 5 resolve correctly on text alone, with no help from the subdomain
+    # fallback below.
+    cases = [
+        ("Huntsville.Ordinance No. 2026-01 follows", "Huntsville"),
+        (
+            "Boston to accept and expend the amount of $500,000 for a grant",
+            "Boston",
+        ),
+        (
+            "Fort Worth in Communications with the Texas Department of "
+            "Transportation regarding",
+            "Fort Worth",
+        ),
+        (
+            "Edgewater and the Florida Department of Transportation entered "
+            "into an agreement",
+            "Edgewater",
+        ),
+        ("Milwaukee. Next item on the agenda", "Milwaukee"),
+    ]
+    for tail, expected_city in cases:
+        html = f"<html><body>preamble City of {tail}</body></html>"
+        soup = BeautifulSoup(html, "html.parser")
+        metadata = GranicusAssetFinder()._extract_metadata(
+            soup, "https://example.granicus.com/player/clip/1", html
+        )
+        assert expected_city in metadata["jurisdiction"], (
+            f"expected {expected_city!r} in {metadata['jurisdiction']!r} "
+            f"(input tail: {tail!r})"
+        )
+        assert "Communications" not in metadata["jurisdiction"]
+        assert "Department" not in metadata["jurisdiction"]
+
+
+def test_extract_metadata_jurisdiction_bleed_regressions_via_subdomain_fallback():
+    # WO-14 (BACKLOG.md, 2026-08-16): the remaining 4 of 9 confirmed-real
+    # cases (Sarasota, Punta Gorda, Castle Rock, Castle Pines). These are
+    # NOT fixed by extract_jurisdiction_chain()'s text tiers alone -- the
+    # bled tail in each ("Legacy Business PLEDGE OF", "Council is seeking",
+    # "Authorizing", "History of Parks and Recreat[ion]") is itself
+    # Title-Case/ALL-CAPS prose with no lowercase/digit/roman-numeral
+    # signal, so `_looks_like_bleed()`'s trim-repair gate (deliberately
+    # conservative -- see its own docstring) declines to trim it, exactly
+    # the still-open "Title-Case/ALL-CAPS bleed" gap BACKLOG.md's Census
+    # baseline entry already flags for Sarasota/Hollywood/Hampton. What
+    # actually recovers the correct city for these 4 in production is
+    # Granicus's own subdomain-per-customer convention (confirmed the
+    # pattern across every other Granicus example in this codebase, e.g.
+    # hercules.granicus.com, memphis.granicus.com) -- the chain's
+    # Census-validated subdomain tier catches what the text tiers miss.
+    # Uses each city's real, conventional Granicus-style subdomain rather
+    # than a generic placeholder, since that convention is what's actually
+    # under test here.
+    cases = [
+        (
+            "sarasota",
+            "Sarasota Legacy Business PLEDGE OF PUBLIC COMMENT follows",
+            "Sarasota",
+        ),
+        (
+            "puntagorda",
+            "Punta Gorda Council is seeking the services of a contractor",
+            "Punta Gorda",
+        ),
+        (
+            "castlerock",
+            "Castle Rock Authorizing the Plum Creek Water Reclamation "
+            "Authority contract",
+            "Castle Rock",
+        ),
+        (
+            "castlepines",
+            "Castle Pines History of Parks and Recreation department report",
+            "Castle Pines",
+        ),
+    ]
+    for subdomain, tail, expected_city in cases:
+        html = f"<html><body>preamble City of {tail}</body></html>"
+        soup = BeautifulSoup(html, "html.parser")
+        metadata = GranicusAssetFinder()._extract_metadata(
+            soup, f"https://{subdomain}.granicus.com/player/clip/1", html
+        )
+        assert expected_city in metadata["jurisdiction"], (
+            f"expected {expected_city!r} in {metadata['jurisdiction']!r} "
+            f"(input tail: {tail!r})"
+        )
+        assert "Authorizing" not in metadata["jurisdiction"]
+        assert "PLEDGE" not in metadata["jurisdiction"]
+        assert "Recreation" not in metadata["jurisdiction"]
