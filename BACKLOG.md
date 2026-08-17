@@ -270,6 +270,97 @@ anything) to build against it.
 
 ## Bugs
 
+- **`is_likely_garbled()` only samples the transcript's first 4000
+  characters, so a transcript that starts clean and degrades later is
+  invisible to it — found 2026-08-16 via a DB skim for transcript-quality
+  examples, root cause confirmed by reading the source directly.** Real
+  case: Cincinnati OH Budget & Finance Committee, 2023-02-13
+  (`cincinnati-oh-2023-02-13-budget-and-finance-committee-on-2023-02-13-1-00-pm`,
+  Granicus). The stored transcript (98,449 chars total) is clean prose
+  through roughly char 5,500, then degrades into raw binary-looking
+  garbage (`*eqt*eqt*eq*eqt*eqt*eqaeq(T*zq4m fs~d= 8 yx2z2"BCMvf;jv6...`)
+  for a long stretch after that. `is_likely_garbled()`
+  ([app/utils/vtt_parser.py:462](app/utils/vtt_parser.py#L462)) takes
+  `sample = " ".join(...)[:4000]` — a hardcoded prefix, not a spread
+  sample across the transcript — so this specific row's corruption starts
+  just past the sampling window and the heuristic never sees it.
+  `transcript_warnings` on this row is empty, consistent with the
+  heuristic silently passing it. Calibrated originally against Alexandria
+  VA (garbled from very early on, see `BACKLOG_DONE.md`'s 2026-08-06
+  entry) — that case likely happened to be garbled within the first 4000
+  chars, which is probably why this gap wasn't caught at the time.
+  Possible fix direction (untested): sample from multiple offsets across
+  the transcript, not just the start — but worth checking whether other
+  archived rows have the same "clean prefix, garbled tail" shape before
+  picking a specific sampling strategy.
+
+- **`app/utils/vtt_parser.py`'s `parse_vtt()` has (at least) two separate
+  real content-corruption gaps, plus one existing fix that's wired to the
+  wrong adapters — all found 2026-08-16 via the same DB skim, all
+  root-caused by reading the parser source directly against real stored
+  output (not yet independently re-fetched from the live source VTT
+  byte-for-byte, so treat the *symptom* as confirmed and the *fix
+  direction* as a strong lead rather than a sure thing):**
+  - **WebVTT `NOTE` (comment/metadata) blocks aren't recognized at all,
+    so their text gets silently absorbed into whatever cue is open at
+    that point.** Real example: Tavares FL CivicClerk BCC meeting,
+    2024-06-11 (`tavares-fl-2024-06-11-bcc-regular-board-meeting`) —
+    stored segments alternate real spoken text with literal metadata
+    lines like `NOTE Confidence: 0.962116034285714`, e.g. "Good morning
+    and welcome to the June 11th, NOTE Confidence: 0.962116034285714
+    2024 meeting of the Board NOTE Confidence: 0.962116034285714 of
+    County Commissioners." `parse_vtt()`
+    ([app/utils/vtt_parser.py:34](app/utils/vtt_parser.py#L34)) only
+    special-cases blank lines, `WEBVTT`, timestamp lines, and (as of a
+    2026 fix) a cue-identifier lookahead — nothing checks for a line
+    starting with `NOTE`, so per the WebVTT spec these comment blocks
+    fall straight into the "append as cue text" branch.
+  - **Inline WebVTT voice tags (`<v.Male.spk3 Speaker2>` etc.) are never
+    stripped**, and can visibly mangle words when a tag lands mid-word
+    across the source's line wrapping. Real example: a platform=`unknown`
+    meeting (`meeting-7ac1da`, an Orange County FL budget presentation,
+    parsed via `app/platforms/generic_fallback.py`, which also goes
+    through `parse_vtt()` for `.vtt` content) — stored text includes raw
+    `<v.Male.spk3 Speaker2>` tags inline, and what's very likely a real
+    person's name comes out mangled as "misbranded rigors." `parse_vtt()`
+    itself does no tag-stripping at all; the only tag-stripping in this
+    file (`_TAG_RE`/`_MARKUP_TAG_RE`) lives in `dedupe_rollup_cues()` and
+    `strip_unknown_caption_markup()`, neither of which runs on this path.
+  - **A "growing/rollup caption" duplication artifact appears on multiple
+    non-YouTube adapters, and the fix for exactly this pattern already
+    exists but isn't wired to them.** `dedupe_rollup_cues()`
+    ([app/utils/vtt_parser.py:291](app/utils/vtt_parser.py#L291)) was
+    built for YouTube's growing-caption cue structure and is called only
+    from `app/platforms/youtube.py` and `app/platforms/viebit.py` — never
+    from `granicus.py`, `civicclerk.py`, or `escribe.py`, confirmed by
+    grep. Real examples of the same symptom class on those un-wired
+    adapters: Tacoma WA council meeting (Granicus,
+    `city-of-tacoma-wa-2026-01-06-city-council-on-2026-01-06-5-00-pm` —
+    `">> Councilmember Hines: >> Councilmember Hines: WE >> Councilmember
+    Hines: WE WILL >> Councilmember Hines: WE WILL GET..."`), two DC
+    Judiciary & Public Safety Committee hearings (Granicus, 2026), a
+    CivicClerk meeting (`2026-03-10-city-council-meeting`), and an
+    eScribe meeting (Essex County,
+    `2025-12-03-county-of-essex-2026-advocacy-priorities-essex-county-council-regular`).
+    Worth checking whether `dedupe_rollup_cues()`'s generic
+    prefix-growing logic actually handles these adapters' cue shape
+    correctly before wiring it in blind — its docstring and worked
+    example are YouTube-specific, and these sources include a repeated
+    role-label prefix (`>> Councilmember Hines:`) that YouTube's pattern
+    doesn't have, so the fix may need adjusting rather than a direct
+    wire-through.
+
+- **Second real instance of the Fountain Valley-shaped garbled/wrong-
+  language pattern (see `BACKLOG_DONE.md`), found 2026-08-16 via the same
+  DB skim.** Chula Vista Public Comments, 2026-05-19 (eScribe,
+  `chula-vista-public-comments-2026-05-19-city-council-meeting`):
+  `transcript_language` and `transcript_warnings` both fire (tagged `es`
+  with a "no matching-language track found" warning, plus the garbled-at-
+  source marker), and the stored Spanish text does read as garbled rather
+  than fluent. Not independently re-verified against the live page — just
+  confirms this failure shape recurs on a different real customer, not a
+  one-off.
+
 - **Census-table baseline validation of all 649 archived jurisdictions
   (2026-08-15, workstream 1 of `JURISDICTION_METADATA_PLAN.md`) — new
   confirmed findings beyond the two adapter bugs below.** Numbers: 510
@@ -1024,6 +1115,27 @@ unusually wide, and the missing auto-scroll toggle on archived pages~~
   designed.
 
 ## Platform coverage — open questions
+
+- **CLAUDE.md's working-conventions section currently states CivicClerk
+  and eScribe have "no example anywhere with populated captions" — a DB
+  query 2026-08-16 found real, populated caption content for both,
+  worth reconciling rather than trusting either claim blind.** Counts
+  from `transcript_versions` (`is_default=true, source='scraped'`): 26
+  CivicClerk rows (avg ~2,200 segments each) and 147 eScribe rows (avg
+  ~2,760 segments each), both with real, non-empty spoken-text content —
+  not just placeholder/agenda-only rows. Two ways to reconcile this,
+  neither confirmed: (1) CLAUDE.md's claim may be about a narrower thing
+  specifically — e.g. CivicClerk's `closedCaptionTracks` field by name,
+  which the same doc separately calls out as "schema-verified but not
+  content-verified" — rather than "any populated caption content from
+  this platform at all," in which case both claims could be true
+  simultaneously about different things; or (2) the doc is genuinely
+  stale and real examples have shown up since it was last updated (the
+  same kind of doc-drift the "App-wide audit" section elsewhere in this
+  file already flags as a real, confirmed problem, not hypothetical).
+  Whoever picks this up should pull a couple of the 26/147 rows and read
+  them end to end before editing CLAUDE.md either way — this entry is
+  from a DB count, not a read-through.
 
 - **ChampDS real captions confirmed to exist for at least one customer —
   but the URL to actually fetch them is still unknown (2026-08-16).**
