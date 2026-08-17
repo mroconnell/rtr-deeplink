@@ -3222,16 +3222,14 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 
 - **Hallucinated-transcript detection (`detect_hallucination_warnings()`,
   added 2026-08-16 alongside the phase-cancellation fix — see
-  [BACKLOG_DONE.md](BACKLOG_DONE.md)'s matching "Bugs" entry) has two
-  real, known limits, not yet addressed.** (1) **Already-live exposure
-  unaudited**: unlike the seam-duplication bug's `GET /internal/
-  transcription/completed-multichunk` (which lists real candidates for
-  that bug), nothing yet checks whether any of the 118 already-completed
-  multi-chunk jobs (or the separate local-script-transcribed backlog,
-  see the entry directly below) already shipped *this* bug's symptom
-  before the fix existed — a real, not-yet-run audit, structurally
-  similar to the seam-duplication one but not yet built. (2) **Doesn't
-  catch semantic-nonsense hallucination**: the three structural signals
+  [BACKLOG_DONE.md](BACKLOG_DONE.md)'s matching "Bugs" entry) had two
+  real, known limits.** (1) **Already-live exposure unaudited**: ~~unlike
+  the seam-duplication bug's `GET /internal/transcription/completed-
+  multichunk`~~ **built and run for real 2026-08-17** — see
+  [BACKLOG_DONE.md](BACKLOG_DONE.md)'s matching entry for the new `GET
+  /internal/transcription/hallucination-candidates` endpoint and its real
+  5-candidate result. (2) **Doesn't catch semantic-nonsense
+  hallucination**, still open: the three structural signals
   (repetition-run ratio, long character runs, non-Latin-script ratio)
   deliberately don't try to catch *coherent-looking but false* text —
   confirmed by a real, directly-quoted example from this same
@@ -3241,6 +3239,42 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   `test_detect_hallucination_warnings_does_not_claim_to_catch_semantic_nonsense`).
   Catching that shape would need a real language-model-judge pass (cost/
   latency tradeoff, not yet designed), not a cheap structural heuristic.
+
+- **4 already-completed, already-live default transcripts are real,
+  confirmed candidates for the phase-cancellation hallucination bug fixed
+  2026-08-16 (or a related hallucination symptom) — a real, user-facing
+  decision still open, not code.** See
+  [BACKLOG_DONE.md](BACKLOG_DONE.md)'s matching entry for the full
+  `GET /internal/transcription/hallucination-candidates` build/run
+  writeup (5 total real candidates found; the 5th, Port Coquitlam, BC,
+  was already re-transcribed and promoted as part of the same pass, see
+  that entry). The remaining 4, all still `is_default=True` today, not
+  yet re-transcribed or otherwise touched (deliberately, matching the
+  seam-duplication audit's own precedent right below — deciding what to
+  re-transcribe is the user's call):
+  - `revised-long-beach-ca-2026-08-04-aug-04-2026-city-council-special-meeting`
+    (version 176, cloud-worker job 74, `en`, 1239 segments) — spot-checked
+    live: real, confirmed hallucination-loop artifact (14+ consecutive
+    segments of bare `"."`) is present at the very start of the actual
+    rendered transcript, not a heuristic false-positive.
+  - `san-diego-county-ca-2026-06-24-board-of-supervisors` (version 240,
+    cloud-worker job 103, `en`, 4662 segments) — same `"."`-repetition-loop
+    symptom, also spot-checked live and confirmed real.
+  - `meeting-38ca49` (Sacramento County, CA Board of Supervisors 2026-08-11;
+    version 246, cloud-worker job 111, `en`, 5052 segments) — spot-checked
+    live: real, classic Whisper hallucination on quiet/no-speech audio at
+    the very start (`"Thank you for your attention." ... "Thank you very
+    much for watching this video and I'll see you in the next video."` —
+    a well-known stock hallucinated phrase), before the transcript recovers
+    into genuinely coherent real content once the meeting actually starts
+    at 6:30.
+  - `kitchener-2026-05-05-heritage-kitchener-committee` (version 981,
+    cloud-worker job 201, `cy` — Welsh, 410 segments) — spot-checked live:
+    real, confirmed garbled Welsh-script gibberish throughout, including a
+    single ~500-character run of repeated `w` (`"Ymwwwww...w"`) and a
+    later repetition loop (`"Ff. Ff. Ff. Ff."`) — two of the detector's
+    three structural signals both genuinely present, not a misdetection
+    edge case.
 
 - **118 already-completed, already-live transcriptions are real
   candidates for the seam-duplication bug fixed 2026-08-16 — a real,
