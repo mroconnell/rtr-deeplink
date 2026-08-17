@@ -470,6 +470,10 @@ _COMMON_SHORT_WORDS = {
 }
 _GARBLED_MIN_SAMPLE_WORDS = 40
 _GARBLED_JUNK_RATIO_MAX = 0.06
+# Four offsets across the transcript rather than just its start -- see the
+# is_likely_garbled docstring for why a single leading prefix isn't enough.
+_GARBLED_SAMPLE_OFFSETS = (0.0, 0.25, 0.5, 0.75)
+_GARBLED_SAMPLE_SLICE_CHARS = 1000
 
 
 def is_likely_garbled(cues: List[Dict[str, Any]]) -> bool:
@@ -483,8 +487,27 @@ def is_likely_garbled(cues: List[Dict[str, Any]]) -> bool:
     while four independently-confirmed clean real sources (Boston, San
     Diego, DC, San Francisco) all sit under 2%. The 6% threshold sits with
     real margin on both sides of that gap.
+
+    Sampled at four offsets (start, ~25%, ~50%, ~75%) instead of a single
+    leading prefix -- a real confirmed case (Cincinnati OH, "budget and
+    finance committee" 2023-02-13, 98,449 chars of joined cue text) stays
+    clean through roughly the first quarter of the transcript and then
+    degrades into binary-looking junk for most of what follows. A fixed
+    4000-char prefix (~4% of that transcript) never got far enough to see
+    it: sampling just the old prefix on this real transcript's text gives a
+    ~1.3% junk ratio (well under threshold, so it went unflagged), while
+    sampling all four offsets gives ~42% (correctly flagged). Verified
+    directly against this real transcript's text (fetched from the live,
+    public `/m/{slug}/transcript.txt` export) while building this fix.
     """
-    sample = " ".join(c["text"] for c in cues)[:4000]
+    full_text = " ".join(c["text"] for c in cues)
+    sample = "".join(
+        full_text[
+            int(len(full_text) * offset) : int(len(full_text) * offset)
+            + _GARBLED_SAMPLE_SLICE_CHARS
+        ]
+        for offset in _GARBLED_SAMPLE_OFFSETS
+    )
     words = re.findall(r"[A-Za-z0-9']+", sample)
     alpha_words = [w for w in words if re.search(r"[A-Za-z]", w)]
     if len(alpha_words) < _GARBLED_MIN_SAMPLE_WORDS:
