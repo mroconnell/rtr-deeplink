@@ -145,7 +145,9 @@ async def test_get_candidates_survives_a_transient_502(counting_server, monkeypa
     """End-to-end through the real function the script's main() calls for
     its very first network request -- not just the shared helper."""
     counting_server.statuses = [502]
-    monkeypatch.setattr(tbl, "_base_url", lambda: f"http://127.0.0.1:{counting_server.port}")
+    monkeypatch.setattr(
+        tbl, "_base_url", lambda: f"http://127.0.0.1:{counting_server.port}"
+    )
     monkeypatch.setattr(tbl, "_headers", lambda: {})
     async with aiohttp.ClientSession() as session:
         pages = await tbl._get_candidates(session, limit=5)

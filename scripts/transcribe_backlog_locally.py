@@ -219,7 +219,9 @@ SUSPEND_GAP_THRESHOLD_SECONDS = 120.0
 # /internal/ingest fails even after _request_json()'s own retries are
 # exhausted -- see _save_local_backup()'s docstring. Gitignored (local-only
 # scratch output, never meant to be committed).
-FAILED_INGEST_DIR = Path(__file__).resolve().parent.parent / "local_transcription_backups"
+FAILED_INGEST_DIR = (
+    Path(__file__).resolve().parent.parent / "local_transcription_backups"
+)
 
 
 class _RetryableHTTPError(Exception):
