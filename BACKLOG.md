@@ -3089,6 +3089,26 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 
 ## On-demand transcription — real gaps left open
 
+- **118 already-completed, already-live transcriptions are real
+  candidates for the seam-duplication bug fixed 2026-08-16 — a real,
+  user-facing decision still open, not code.** See
+  [BACKLOG_DONE.md](BACKLOG_DONE.md)'s matching "Bugs" entry for the
+  full root-cause/fix/verification writeup. The fix stops the bug from
+  shipping on any *future* multi-chunk transcription, but doesn't touch
+  what's already live — deliberately, per this task's own brief, since
+  deciding what (if anything) to re-transcribe is the user's call, not
+  something to do automatically. `GET /internal/transcription/completed-
+  multichunk` (token-gated) returns the real, current list (job id, page
+  slug, chunk count, duration, completion date) any time it's needed
+  again. Two real open sub-questions, not yet decided: (1) whether to
+  re-transcribe all 118, a prioritized subset (e.g. longest/most-viewed
+  first), or none until a specific one gets reported; (2) this list only
+  covers jobs the cloud worker's own queue processed — it does **not**
+  cover `scripts/transcribe_backlog_locally.py`'s separate local-Mac
+  backlog runs (which never touch the `transcription_jobs` table at
+  all), a real, currently-uncounted second population also affected by
+  the same pre-fix bug.
+
 Built 2026-08-08, see [BACKLOG_DONE.md](BACKLOG_DONE.md) for the full
 build/verification detail. First real deploy attempt (also 2026-08-08)
 immediately crash-looped on a missing `pydantic` dependency in
