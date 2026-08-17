@@ -290,17 +290,37 @@ vs default newest; snippet still present. The 13 earlier search tests
 postgres.py`) also pass with FTS active — incl. the "zebrx must NOT
 match" exact-mode case and the demoted-version snippet rule.
 
-**Remaining operational step**: `cd archive && alembic upgrade head` on
-the Archive's Render shell, at a quiet moment — the ADD COLUMN rewrites
-`meeting_pages` computing `to_tsvector` for every row under an ACCESS
-EXCLUSIVE lock (~30s for prod's 77MB corpus; bench: 161s for 444MB),
-during which `/m/*` reads block; the index build is CONCURRENTLY and
-doesn't lock. Then confirm with `SELECT calls, mean_exec_time FROM
-pg_stat_statements WHERE query ILIKE '%websearch_to_tsquery%'` growing
-and `/meetings?q=budget` returning in well under a second. WO-10's
-`preDeployCommand: alembic upgrade head` would make this automatic and
-is the right follow-up; this migration is safe to land that way since
-the code tolerates either order.
+**Applied to prod 2026-08-17 ~15:10 PT** (Ryan, Archive Render shell:
+`cd archive && alembic upgrade head` → `bf4f54a11e5f -> c1d2e3f4a5b6`),
+minutes after #143's DB resize landed (`SHOW shared_buffers` → 256MB,
+was 64MB). The lock window showed up exactly as predicted — one 503@65s
+and two instant 502s in the middle of a measurement — then FTS was on
+within the 60s detect window, no restart. **Final production numbers,
+clean sequential, via the public domain**, against this morning's:
+
+| query | this morning | after #143 (RAM) alone | after #145 (FTS) |
+|---|---|---|---|
+| `budget` (~890 matches, "Page 1 of 45") | 26–35s / 502 | 1.47s | **0.39s** |
+| `"public comment"` | 503 | — | **0.39s** |
+| `flock` | 23–34s | — | **0.49s** |
+| `budgets` (stemming, new) | n/a | — | 0.33s |
+| `budget&sort=relevance` (new) | n/a | — | 0.41s |
+| `flock OR drone` (new; 10 pages vs 5 for `flock`) | n/a | — | fast |
+| browse | 0.24s | — | 0.21s |
+| `flock&fuzzy=true` (opt-in, Python) | 21s / 503 | — | 10.7s |
+
+So the two levers are separately attributable: RAM took the LIKE scan
+from ~27s to ~1.5s (the whole 218MB working set now cache-resident);
+FTS took it from there to sub-second and made cost independent of how
+common the word is. Result counts unchanged (`budget` still 45 pages —
+FTS agrees with the substring path on the common case), 20 highlighted
+snippets on page 1. Fuzzy is the one remaining slow mode (opt-in,
+UI-labeled); Step 2b (vocabulary table) is designed in `BACKLOG.md` if
+it's ever wanted. WO-10's `preDeployCommand: alembic upgrade head` is
+still the right follow-up so the next migration needs no shell step —
+this one was safe in either order, which is the property future
+migrations should keep.
+
 ## Worker auto-transcription candidate sweep: from 102MB of transcript JSON every 5 idle minutes to one anti-join (2026-08-17)
 
 [Done 2026-08-17] Found while chasing prod search latency (below); Ryan
