@@ -17,7 +17,6 @@ fixture-confirmed elsewhere.
 import json
 import re
 
-import pytest
 from fastapi.testclient import TestClient
 
 import archive.main

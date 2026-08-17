@@ -157,7 +157,6 @@ async def test_confirm_flips_status_and_clears_token():
 async def test_expired_pending_confirmation_is_superseded_and_unconfirmable():
     from datetime import datetime, timedelta, timezone
 
-    from sqlalchemy import select
 
     from archive.db.engine import async_session
     from archive.db.models import TranscriptionJob
@@ -387,7 +386,6 @@ async def test_create_failed_auto_transcription_job_is_immediately_failed():
         url,
     )
     slug = (await crud.lookup_page_for_url(url))["slug"]
-    page = await crud.get_page_by_slug(slug)
 
     # get_page_by_slug()'s dict doesn't carry the raw MeetingPage.id, so
     # look it up the same way find_auto_transcription_candidate() would.

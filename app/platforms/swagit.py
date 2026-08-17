@@ -1,7 +1,6 @@
 import re
 from datetime import datetime
-from typing import List, Optional
-from urllib.parse import urlparse
+from typing import List
 
 import aiohttp
 from bs4 import BeautifulSoup

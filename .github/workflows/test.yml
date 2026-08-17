@@ -33,6 +33,14 @@ jobs:
 
       - run: pip install -r requirements.txt -r requirements-dev.txt
 
+      # WO-12 (2026-08-16): ruff.toml has the (deliberately minimal) rule
+      # selection and reasoning. Blocking -- the codebase is clean against
+      # it as of this commit. `ruff format --check` isn't added yet; that
+      # lands together with the one-time bulk reformat in a follow-up PR,
+      # kept separate so the reformat can be its own commit without
+      # poisoning git blame on this config-only change.
+      - run: ruff check app/ archive/ worker/ scripts/ tests/
+
       # WO-11 (2026-08-16): scan all three services' compiled lockfiles
       # for known vulnerabilities. Non-blocking on purpose for now --
       # `continue-on-error: true` -- so a newly-disclosed CVE doesn't

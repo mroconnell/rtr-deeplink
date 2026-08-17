@@ -54,7 +54,7 @@ import aiohttp  # noqa: E402
 from app.platforms import register_all_finders  # noqa: E402
 from app.platforms.base import detect_platform, get_finder, UnsupportedPlatformError, CalendarPageError  # noqa: E402
 from app.utils.url_normalize import normalize_url  # noqa: E402
-from scripts.bulk_ingest import _ingest, INGEST_TIMEOUT, REQUEST_DELAY_SECONDS  # noqa: E402
+from scripts.bulk_ingest import _ingest, REQUEST_DELAY_SECONDS  # noqa: E402
 
 QUEUE_FILE = REPO_ROOT / "scripts" / "tier3_auto_transcription_queue.txt"
 BATCH_SIZE = 12
