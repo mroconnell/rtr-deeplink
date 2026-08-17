@@ -442,3 +442,47 @@ jurisdiction work itself would unlock.
   and archive successfully (many candidates are on city YouTube
   channels, which the resolver already handles — worth confirming
   per-moment before it makes the page).
+
+## Google Search Console — new indexing-exclusion alert (2026-08-17)
+
+Forwarded by the user via a Gmail "RTR-Claude" label (see this session's
+discussion about a scheduled Routine that will eventually triage these
+automatically) — email subject "New reasons preventing your pages from
+being indexed," flagging two exclusion reasons site-wide for
+`redtaperecordings.com`: "Excluded by 'noindex' tag" and "Page indexed
+without content." Distinct from the existing `BACKLOG.md` Search Console
+entry (2026-08-12 alert, a separate "Videos" structured-data report about
+`thumbnailUrl`/`uploadDate`/`Clip.endOffset` — not this one). Not yet
+opened in the real Search Console report, so which specific URLs are
+affected is unconfirmed — only a plausible-but-unverified read below,
+per this repo's own "don't claim a path works/is broken without a real
+example" convention:
+
+- **"Excluded by 'noindex' tag" is plausibly expected, not a bug.**
+  `archive/templates/meeting_page.html:19` deliberately emits
+  `<meta name="robots" content="noindex">` for `platform == "unknown"`
+  (`generic_fallback` pages — the least-verified adapter, no domain
+  restriction) specifically to stop search-engine amplification of
+  unverified content; `saved_items.html` is unconditionally `noindex`
+  too (an account page, correctly never meant to be indexed). If the
+  real report's affected URLs are only these two categories, this
+  exclusion reason needs no fix — it's the intended trust/safety
+  behavior `BACKLOG.md`'s own trust-tier section already documents.
+  Still worth opening the report once to confirm the flagged URLs really
+  are only these, not something unexpected riding along.
+- **"Page indexed without content" is the more likely real gap, unconfirmed.**
+  `archive/templates/meeting_page.html`'s transcript text is confirmed
+  server-rendered (verified 2026-08-14, see the "SEO / LLM-discoverability"
+  section above) — so this isn't the app/'s client-side `/api/resolve`
+  pattern showing Google an empty shell (that risk applies to `app/`'s
+  `/meeting?url=...` pages, not `/m/{slug}`, and it's unconfirmed whether
+  those are even in Google's index at all). More plausible on `/m/*`
+  specifically: a real meeting with neither a transcript nor agenda items
+  (some platforms genuinely have neither, per the "Supported platforms"
+  README table) would render as a genuinely thin page — title, date,
+  video embed, no real text body — which is exactly what this exclusion
+  reason describes. Needs the real report's URL list to confirm which
+  case it actually is before deciding whether this needs a fix (e.g.
+  excluding truly-empty pages from the sitemap) or is just a handful of
+  real thin meetings that will resolve themselves as more platforms gain
+  caption coverage.
