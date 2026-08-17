@@ -14,6 +14,8 @@ casing is deliberately *not* touched here).
 
 from typing import Optional
 
+from .slugify import slugify_text
+
 US_STATE_NAME_TO_ABBR = {
     "alabama": "AL",
     "alaska": "AK",
@@ -289,3 +291,32 @@ def format_jurisdiction_display(jurisdiction: Optional[str]) -> Optional[str]:
     if abbr and is_canadian_abbr(abbr):
         return f"{result} (Canada)"
     return result
+
+
+_CANADA_DISPLAY_SUFFIX = " (Canada)"
+
+
+def jurisdiction_hub_slug(jurisdiction: Optional[str]) -> Optional[str]:
+    """The stable `/j/{slug}` for a stored jurisdiction string, e.g.
+    "Napa, CA" -> "napa-ca", "County of Napa, CA" -> "county-of-napa-ca",
+    "California State Senate" -> "california-state-senate". None for an
+    empty/None jurisdiction (such pages belong to no hub).
+
+    Built from the *display* form (format_jurisdiction_display()), not the
+    raw string, on purpose: that's what makes raw variants of one
+    government -- "City of Napa, CA" / "Napa, CA" / casing differences --
+    collapse into a single hub instead of one thin page per spelling (the
+    fragmentation risk CLAUDE_BACKLOG.md's hub-page idea flagged), while
+    the distinctions the display form deliberately keeps ("County of X",
+    "City and County of X") stay separate hubs, because they are separate
+    governments. The " (Canada)" display marker is stripped first -- it's
+    presentation, and the ", AB" suffix already carries the identity.
+    Uses the same slug rule as MeetingPage.slug (slugify_text()), so a hub
+    slug and a meeting slug for the same city share a prefix.
+    """
+    display = format_jurisdiction_display(jurisdiction)
+    if not display:
+        return None
+    if display.endswith(_CANADA_DISPLAY_SUFFIX):
+        display = display[: -len(_CANADA_DISPLAY_SUFFIX)]
+    return slugify_text(display) or None

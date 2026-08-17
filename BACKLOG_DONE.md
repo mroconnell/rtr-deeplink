@@ -398,6 +398,85 @@ pages drop out of browse/sitemap/feed (sitemap was 1,223 URLs before the
 generic_fallback fix — compare after), and any of them that later gain
 video/captions come back on their own.
 
+## Jurisdiction hub pages — `/j/{slug}`, one landing page per government, threshold-indexed (2026-08-17)
+
+[Done 2026-08-17] Promoted from `CLAUDE_BACKLOG.md`'s "Jurisdiction hub
+pages" idea (Ryan: "the jx pages would be good next", after the state
+pages, search rewrite and Archive GA instrumentation had all shipped the
+same day). Targets the "[city] council meeting video / transcript"
+searches, and doubles as the hook page for city-specific outreach.
+
+**The measurement that shaped the design** (scraped from the live
+`/state/*` tables, read-only): the archive is *wide and shallow* — 574
+jurisdictions with a state, **439 (76%) with exactly one meeting**, 110
+with two, 25 with three+, only two with 10+ (San Diego 42, Napa 24). A
+one-meeting "hub" is a near-duplicate of that meeting's own `/m/*` page
+— thin/doorway content to a crawler — so building 574 indexable hubs
+would have been an SEO liability. Hence: **every hub renders** (real
+navigation, and every `/m/*` page links to its hub) but **only hubs with
+≥ `crud.JURISDICTION_HUB_MIN_INDEXABLE` = 2 meetings are indexable**
+(135 today, covering 47% of meetings) and in `sitemap.xml`; below that
+the page carries `noindex` and a "know of another? paste its link" note.
+Evaluated live per request, so a singleton hub flips to indexable by
+itself when the bulk-ingest scripts land its second meeting — the
+threshold tracks depth with no code change. One dial; 3 is the
+conservative alternative. The other two open questions from the idea
+were answered the same way: **slug scheme** = `jurisdiction_hub_slug()`
+(`archive/utils/jurisdiction_format.py`), the slug of the *display* form
+(`format_jurisdiction_display()`, which strips "City of" but keeps
+"County of"/"City and County of") via the app's one slug rule
+(`slugify_text()`, public form of `build_base_slug()`'s per-part rule),
+so raw-string variants of one government ("City of Napa, CA" / "Napa,
+CA" / casing) consolidate into `napa-ca` while real distinctions stay
+separate governments (`county-of-napa-ca`), and " (Canada)" (a display
+marker) is stripped; **sitemap timing** = immediately, threshold-gated.
+
+**Built**: `crud._hub_groups()` (one `GROUP BY jurisdiction` over
+indexable, non-empty pages — `platform != "unknown"` and
+`~_is_empty_page_condition()`, the sitemap's posture — aggregated by hub
+slug in Python; a few hundred rows, run per request, no cache/staleness,
+**no schema change**), `get_jurisdiction_hub_data(slug)` (every meeting
+for the hub's raw strings newest-first with transcript badges, counts,
+date range, transcript count, `meeting_body` breakdown, state
+abbr/name/slug, `indexable`), `list_indexable_hub_entries()` (sitemap,
+real lastmod). `get_state_page_data()` now groups its government table by
+hub slug too (so variants are one row) and each row links to its hub.
+Route `/j/{hub_slug}` in `archive/main.py` (404 unknown/empty; same
+in-route pattern), `jurisdiction_page.html` (title/description/canonical/
+OG, `BreadcrumbList` JSON-LD Home › State › Jurisdiction + breadcrumb
+nav, lede, body counts, full list, links to `/state/{slug}` and the
+`/meetings?jurisdiction=` search, RSS alternate), resolver proxy
+`/j/{path}` (same as `/state`), sitemap `<url>` entries, "More
+{Jurisdiction} meetings" link on every `/m/*` page next to the state
+link, small CSS.
+
+**Verification**: 10 new tests (`tests/test_jurisdiction_hubs.py`, real
+seeds with jurisdictions no other file uses — Yountville, CA across two
+raw variants + a platform-unknown row; Rio Vista, CA singleton): slug
+merging/distinctions, consolidation + counts + bodies + unknown
+exclusion, below-threshold not indexable, unknown → None/404, sitemap
+threshold, route content/breadcrumb/links, noindex + thin note, meeting-
+and state-page links (state table shows the variants as ONE row),
+resolver proxy route present. One existing state-page test updated to
+identify rows by hub slug (its "Napa, CA" seed now correctly merges with
+another test's "City of Napa, CA"). Suite 970 green; JS 34/34. Verified
+in-browser through the resolver→archive proxy: styled hub with
+breadcrumb, lede, "Town Council (2) · Planning Commission (1)", three
+meetings incl. the merged variant, badges; singleton hub renders with
+`noindex` + note; state table one Yountville row → `/j/yountville-ca`;
+sitemap lists only the indexable hub; meeting page shows "More
+Yountville, CA meetings". README: new `/j/{slug}` section + route/crud
+listings.
+
+**Not done / worth watching**: no `/coverage` link list to hubs (135+
+links is too many there; the state pages are the hub index — the
+`/coverage` "Browse by state" → state page → hub path is the intended
+route). No `ItemList` JSON-LD (Breadcrumb is the cheap, real win; an
+ItemList of 40 meetings adds page weight for unclear return). Stateless
+jurisdictions (state legislatures, "NYC Council"-style names) get hubs
+without a state breadcrumb level. Whether Google treats 135 two-meeting
+hubs as substantive is the real open question — the threshold constant
+is the dial if Search Console starts flagging them.
 ## Search Step 2a: Postgres full-text search (`search_tsv` generated column + GIN), feature-detected, `OR`/stemming/`sort=relevance` (2026-08-17)
 
 [Done 2026-08-17 — code merged; the prod migration run is the one

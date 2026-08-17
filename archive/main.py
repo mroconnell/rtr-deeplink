@@ -48,6 +48,7 @@ from .utils.jurisdiction_format import (
     STATE_SLUG_TO_ABBR,
     US_STATE_ABBR_TO_NAME,
     format_jurisdiction_display,
+    jurisdiction_hub_slug,
     state_abbr_from_jurisdiction,
     state_slug_from_abbr,
 )
@@ -813,6 +814,9 @@ async def meeting_page(request: Request, slug: str, version: Optional[int] = Non
             # ", ST" suffix, and the template omits the link.
             "state_name": US_STATE_ABBR_TO_NAME[state_abbr] if state_abbr else None,
             "state_slug": state_slug_from_abbr(state_abbr) if state_abbr else None,
+            # For the "More {Jurisdiction} meetings" link to /j/{slug} --
+            # None (link omitted) when the page has no jurisdiction at all.
+            "hub_slug": jurisdiction_hub_slug(page.get("jurisdiction")),
         },
     )
 
@@ -984,6 +988,27 @@ async def state_page(request: Request, state_slug: str):
     )
 
 
+@app.get("/j/{hub_slug}")
+async def jurisdiction_page(request: Request, hub_slug: str):
+    """Per-government hub: every archived meeting for one jurisdiction
+    (see crud.get_jurisdiction_hub_data() -- grouped by
+    jurisdiction_hub_slug(), so raw-string variants of one city land on one
+    page). 404s for an unknown slug or one with no indexable meetings, same
+    in-route pattern as /m/{slug} and /state/{slug}. Below
+    crud.JURISDICTION_HUB_MIN_INDEXABLE meetings the page renders with a
+    noindex (thin-content posture) and stays out of sitemap.xml."""
+    data = await crud.get_jurisdiction_hub_data(hub_slug)
+    if data is None:
+        return templates.TemplateResponse(
+            request, "not_found.html", {}, status_code=404
+        )
+    return templates.TemplateResponse(
+        request,
+        "jurisdiction_page.html",
+        {**data, "active_account": get_clerk_user_id(request)},
+    )
+
+
 # Public, indexable static pages -- not MeetingPage rows, so they have no
 # real lastmod and aren't produced by list_all_page_slugs(). Deliberately
 # excludes /account/saved, /alerts/unsubscribe, /meeting (already
@@ -997,10 +1022,12 @@ async def sitemap():
     base = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
     entries = await crud.list_all_page_slugs()
     states = await crud.get_state_coverage_index()
+    hubs = await crud.list_indexable_hub_entries()
     body = templates.get_template("sitemap.xml.jinja").render(
         base_url=base,
         entries=entries,
         states=states,
+        hubs=hubs,
         static_paths=_SITEMAP_STATIC_PATHS,
     )
     return Response(content=body, media_type="application/xml")

@@ -13,7 +13,9 @@ from app.utils.jurisdiction_enrich import finalize_jurisdiction
 from ..utils.date_status import meeting_date_status
 from ..utils.jurisdiction_format import (
     US_STATE_ABBR_TO_NAME,
+    format_jurisdiction_display,
     is_canadian_abbr,
+    jurisdiction_hub_slug,
     jurisdiction_search_terms,
     normalize_state_suffix,
     state_abbr_from_jurisdiction,
@@ -2209,16 +2211,25 @@ async def get_state_page_data(abbr: str) -> Optional[dict]:
     if not pages:
         return None
 
-    by_jurisdiction: dict[str, list[dict]] = {}
+    # Grouped by hub slug (jurisdiction_hub_slug(), i.e. the display form),
+    # not the raw string -- since 2026-08-17 each row links to its /j/{slug}
+    # hub, and raw variants of one government ("City of Napa, CA" /
+    # "Napa, CA") must be one row pointing at one hub, not two rows with
+    # the same display name. `jurisdiction` stays the first raw string
+    # seen, for the jurisdiction_display filter and any raw-string uses.
+    by_hub: dict[str, list[dict]] = {}
     for p in pages:
-        by_jurisdiction.setdefault(p["jurisdiction"], []).append(p)
+        by_hub.setdefault(jurisdiction_hub_slug(p["jurisdiction"]) or "", []).append(p)
     jurisdictions = []
-    for jurisdiction in sorted(by_jurisdiction, key=str.casefold):
-        examples = by_jurisdiction[jurisdiction]
+    for hub_slug in sorted(
+        by_hub, key=lambda s: by_hub[s][0]["jurisdiction"].casefold()
+    ):
+        examples = by_hub[hub_slug]
         example = next((e for e in examples if e["has_transcript"]), examples[0])
         jurisdictions.append(
             {
-                "jurisdiction": jurisdiction,
+                "jurisdiction": examples[0]["jurisdiction"],
+                "hub_slug": hub_slug or None,
                 "example": example,
                 "page_count": len(examples),
             }
@@ -2233,6 +2244,183 @@ async def get_state_page_data(abbr: str) -> Optional[dict]:
         "total_pages": len(pages),
         "jurisdiction_count": len(jurisdictions),
     }
+
+
+# --- Jurisdiction hub pages: /j/{slug} -----------------------------------
+#
+# One landing page per government ("Napa, CA -- public meeting video &
+# transcripts"), grouped by jurisdiction_hub_slug() (the display form's
+# slug, so raw-string variants of one government consolidate) rather than
+# by the raw stored string. Built 2026-08-17 on top of the state pages;
+# same posture as those and the sitemap: platform == "unknown" and empty
+# pages are excluded throughout.
+#
+# The archive is wide and shallow (measured 2026-08-17 from the live
+# /state/* tables: 574 stateful jurisdictions, 439 with exactly ONE
+# meeting, 110 with two, 25 with three+, two with 10+ -- San Diego 42,
+# Napa 24). A one-meeting "hub" is a near-duplicate of that meeting's own
+# page, i.e. thin/doorway content to a crawler. So every hub *renders*
+# (useful navigation, and every /m/* page links to its hub) but only hubs
+# with >= JURISDICTION_HUB_MIN_INDEXABLE meetings are indexable (no
+# noindex) and listed in sitemap.xml. Evaluated live per request, so a
+# singleton hub becomes indexable by itself the moment a second meeting
+# lands -- the bulk-ingest scripts add depth over time and this tracks
+# it with no code change. One dial; 3 is the conservative alternative.
+JURISDICTION_HUB_MIN_INDEXABLE = 2
+
+
+def _hub_base_conditions():
+    return (
+        MeetingPage.jurisdiction.is_not(None),
+        MeetingPage.platform != "unknown",
+        ~_is_empty_page_condition(),
+    )
+
+
+async def _hub_groups(session) -> dict[str, dict]:
+    """slug -> {display, jurisdictions: [raw strings], page_count,
+    last_updated, state_abbr}, from one GROUP BY over indexable, non-empty
+    pages. A few hundred rows -- cheap enough to run per request (no
+    cache, so nothing can go stale), same approach the state pages use."""
+    stmt = (
+        select(
+            MeetingPage.jurisdiction,
+            func.count(),
+            func.max(MeetingPage.updated_at),
+        )
+        .where(*_hub_base_conditions())
+        .group_by(MeetingPage.jurisdiction)
+    )
+    rows = (await session.execute(stmt)).all()
+    groups: dict[str, dict] = {}
+    for jurisdiction, count, last_updated in rows:
+        slug = jurisdiction_hub_slug(jurisdiction)
+        if not slug:
+            continue
+        g = groups.setdefault(
+            slug,
+            {
+                "slug": slug,
+                "display": format_jurisdiction_display(jurisdiction),
+                "jurisdictions": [],
+                "page_count": 0,
+                "last_updated": last_updated,
+                "state_abbr": state_abbr_from_jurisdiction(jurisdiction),
+            },
+        )
+        g["jurisdictions"].append(jurisdiction)
+        g["page_count"] += count
+        if last_updated and (
+            g["last_updated"] is None or last_updated > g["last_updated"]
+        ):
+            g["last_updated"] = last_updated
+    return groups
+
+
+async def get_jurisdiction_hub_data(slug: str) -> Optional[dict]:
+    """Everything /j/{slug} renders, or None when no indexable page maps to
+    this slug (the route 404s). Every meeting for the hub's raw
+    jurisdiction strings, newest first; counts, date range, transcript
+    count, a by-body breakdown (meeting_body, e.g. "City Council" x 30 --
+    None when the split never happened); the state for the breadcrumb and
+    "Part of {State}" link; and `indexable`, the threshold verdict the
+    template turns into a robots meta and the sitemap uses to include the
+    hub. Loads every meeting for one government -- San Diego's 42 is the
+    current maximum, so no pagination; the "search all" link to
+    /meetings?jurisdiction= covers a future 500-meeting city."""
+    async with async_session() as session:
+        groups = await _hub_groups(session)
+        group = groups.get(slug)
+        if group is None:
+            return None
+        stmt = (
+            select(
+                MeetingPage.slug,
+                MeetingPage.title,
+                MeetingPage.date,
+                MeetingPage.jurisdiction,
+                MeetingPage.meeting_body,
+                TranscriptVersion.id,
+                TranscriptVersion.transcript_warnings,
+            )
+            .outerjoin(
+                TranscriptVersion,
+                and_(
+                    TranscriptVersion.meeting_page_id == MeetingPage.id,
+                    TranscriptVersion.is_default.is_(True),
+                ),
+            )
+            .where(
+                MeetingPage.jurisdiction.in_(group["jurisdictions"]),
+                *_hub_base_conditions(),
+            )
+            .order_by(
+                MeetingPage.date.desc().nulls_last(), MeetingPage.created_at.desc()
+            )
+        )
+        rows = (await session.execute(stmt)).all()
+
+    pages = [
+        {
+            "slug": page_slug,
+            "title": title,
+            "date": date,
+            "jurisdiction": jurisdiction,
+            "meeting_body": meeting_body,
+            "has_transcript": version_id is not None
+            and _has_real_warning_free_transcript(warnings),
+        }
+        for page_slug, title, date, jurisdiction, meeting_body, version_id, warnings in rows
+    ]
+    if not pages:
+        return None
+    body_counts: dict[str, int] = {}
+    for p in pages:
+        if p["meeting_body"]:
+            body_counts[p["meeting_body"]] = body_counts.get(p["meeting_body"], 0) + 1
+    bodies = sorted(body_counts.items(), key=lambda kv: (-kv[1], kv[0]))
+    dates = sorted(p["date"] for p in pages if p["date"])
+    abbr = group["state_abbr"]
+    return {
+        "slug": slug,
+        "display": group["display"],
+        "pages": pages,
+        "total_pages": len(pages),
+        "transcript_count": sum(1 for p in pages if p["has_transcript"]),
+        "bodies": [{"name": n, "count": c} for n, c in bodies],
+        "earliest_date": dates[0] if dates else None,
+        "latest_date": dates[-1] if dates else None,
+        "state_abbr": abbr,
+        "state_name": US_STATE_ABBR_TO_NAME.get(abbr) if abbr else None,
+        "state_slug": state_slug_from_abbr(abbr) if abbr else None,
+        "indexable": len(pages) >= JURISDICTION_HUB_MIN_INDEXABLE,
+        "min_indexable": JURISDICTION_HUB_MIN_INDEXABLE,
+        # The raw strings, for the /meetings?jurisdiction= "search all" link
+        # (the first is as good as any -- list_pages()'s jurisdiction
+        # filter is a substring match).
+        "search_jurisdiction": group["jurisdictions"][0],
+    }
+
+
+async def list_indexable_hub_entries() -> list[dict]:
+    """[{slug, display, last_updated}] for every hub at or above
+    JURISDICTION_HUB_MIN_INDEXABLE -- sitemap.xml's /j/ entries (real
+    lastmod, same as the state entries). Sorted by slug for a stable
+    file."""
+    async with async_session() as session:
+        groups = await _hub_groups(session)
+    return sorted(
+        (
+            {
+                "slug": g["slug"],
+                "display": g["display"],
+                "last_updated": g["last_updated"],
+            }
+            for g in groups.values()
+            if g["page_count"] >= JURISDICTION_HUB_MIN_INDEXABLE
+        ),
+        key=lambda g: g["slug"],
+    )
 
 
 async def list_all_page_slugs() -> list[dict]:

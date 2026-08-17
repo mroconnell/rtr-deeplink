@@ -227,6 +227,7 @@
         {%- if page.meeting_body %}{{ page.meeting_body }}{% if page.jurisdiction %} &middot; {% endif %}{% endif -%}
         {%- if page.jurisdiction %}{{ page.jurisdiction|jurisdiction_display }}{% endif -%}
         {%- if page.date %}{% if page.jurisdiction or page.meeting_body %} &middot; {% endif %}{{ page.date }}{% endif -%}
+        {%- if hub_slug %} &middot; <a href="/j/{{ hub_slug }}">More {{ page.jurisdiction|jurisdiction_display }} meetings</a>{% endif -%}
         {%- if state_slug %} &middot; <a href="/state/{{ state_slug }}">More {{ state_name }} meetings</a>{% endif -%}
       </p>
       {#- Date-status notice (archive/utils/date_status.py): a page with
