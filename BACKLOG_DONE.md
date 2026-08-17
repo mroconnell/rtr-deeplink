@@ -6,6 +6,64 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Transcript/agenda segment timestamps past 59 minutes rendered wrong (2026-08-17)
+
+[Done 2026-08-17] BACKLOG.md previously carried this as "Transcript
+segment timestamps unintuitive past 59 minutes — don't match video
+player's hh:mm:ss," root cause unestablished, with a specific but
+incorrect suspicion recorded: that `formatTime()` in
+[player.js](app/static/player.js:59) was somehow producing bare
+`364:47`-shaped strings. Verified against current code before touching
+anything, per this file's own standing rule about not trusting a stale
+backlog entry's stated root cause blindly: `formatTime()` (and its
+identical twin in `archive/static/meeting_page.js`) is structurally
+correct — `h > 0 ? \`${h}:${pad(m)}:${pad(s)}\` : \`${m}:${pad(s)}\`` —
+and can't produce that output for any input, and `meeting_page.js` only
+wires click handlers onto already-server-rendered markup; it never
+rewrites the timestamp text at all.
+
+**The real bug**: `archive/templates/meeting_page.html` rendered
+agenda-item and transcript-segment timestamps directly in Jinja using a
+naive `"%d:%02d"|format(seconds // 60, seconds % 60)` at two call sites
+(then ~lines 380 and 443) — no hour rollover at all. For a segment at
+21887 seconds (6:04:47), that literally computes `21887 // 60 = 364`,
+`21887 % 60 = 47` → the string `"364:47"`, exactly matching the real bug
+report, while the `<video>` element's own native controls correctly
+showed `6:05:03`.
+
+**Fix**: added `format_segment_time(seconds)` in a new
+`archive/utils/segment_time.py`, mirroring the correct JS `formatTime()`
+logic exactly (`h > 0 ? "{h}:{mm}:{ss}" : "{m}:{ss}"`, zero-padded
+appropriately), registered as a Jinja filter (`templates.env.filters
+["segment_time"]`) in `archive/main.py` following the same
+`templates.env.filters[...]` registration pattern already used for
+`warnings_html`/`language_name`/`source_label`/`jurisdiction_display`/
+`youtube_thumbnail_url`. Both `meeting_page.html` call sites now use
+`{{ x|segment_time }}` instead of the inline format string.
+
+**Test coverage**: `tests/test_segment_time.py` — direct unit tests for
+`format_segment_time()`, including the exact real `21887 -> "6:04:47"`
+case, the sub-hour case (`125 -> "2:05"`, confirming no regression),
+`0`, an exact-hour boundary, minute/second padding within an hour,
+`None` defaulting to `0:00`, and fractional-second truncation.
+
+**Live-verified in-browser, not just by reading the logic** (this exact
+bug was originally missed that way — see the stale root-cause suspicion
+above): ran the Archive service locally against an isolated local SQLite
+database (explicitly overriding `DATABASE_URL` to a local sqlite file —
+this repo's ambient `.env` at the shared checkout root otherwise gets
+picked up by `load_dotenv()`'s upward directory search and points at a
+real Postgres instance, which this session deliberately avoided writing
+test data into), ingested a real test meeting via `/internal/ingest` with
+a genuine 21887-second segment, and loaded the rendered `/m/{slug}` page
+in the browser: both the Agenda and Transcript sections now show
+`[6:04:47]` (previously would have shown `[364:47]`), with the sub-hour
+case (`[0:05]`) and an hour-plus-one-minute case (`[1:01:01]`) also
+rendering correctly on the same page.
+
+Full `pytest` (930 passed, 4 skipped) and `ruff format`/`ruff check` both
+clean.
+
 ## Empty ("zero-value") meeting pages excluded from browse/sitemap/feed at query time; Upcoming/Recent date pills (2026-08-17)
 
 [Done 2026-08-17] Started as Ryan's idea for a morning Routine that would

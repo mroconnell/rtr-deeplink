@@ -5,26 +5,34 @@ investigation detail behind each fix — lives in
 [BACKLOG_DONE.md](BACKLOG_DONE.md); items below link back to it for context
 where relevant.
 
-## [JUST-DO-IT] Transcript segment timestamps unintuitive past 59 minutes — don't match video player's hh:mm:ss
+## [JUST-DO-IT] Running a service from a `.claude/worktrees/` subdirectory silently inherits the shared checkout's `.env`
 
-Confirmed live 2026-08-17 on a long meeting: transcript segment labels
-past the one-hour mark show as raw, un-rolled-over minutes:seconds
-(e.g. `[364:47]`, `[364:49]`) instead of `6:04:47`-style hh:mm:ss — while
-the `<video>` element's own native controls just above it show
-`6:05:03 / 6:05:06`, so the two clocks on the same page disagree and the
-segment timestamps take real effort to parse on a multi-hour meeting.
+Confirmed live 2026-08-17: starting `archive.main:app` locally from inside
+a worktree at `<repo>/.claude/worktrees/<name>/` (no `.env` of its own)
+still connected to a real Postgres database via `asyncpg` on the very
+first request, even though no `DATABASE_URL` was set anywhere in the
+shell. Cause: `archive/main.py`'s `load_dotenv()` call takes no explicit
+path, so `python-dotenv` walks up from the current working directory
+looking for a `.env` — and finds the *shared checkout's* `.env` at the
+repo root two levels up, loading its real `DATABASE_URL` (and everything
+else in it) into the worktree's process. `load_dotenv()`'s default
+`override=False` means an explicitly-set `DATABASE_URL` in the launching
+shell command *does* take precedence — confirmed by re-running with
+`DATABASE_URL="sqlite+aiosqlite:///./some_file.db"` prefixed on the same
+command, which then genuinely used local SQLite — but that's easy to
+forget, and the failure mode if forgotten is a worktree session silently
+reading (and, worse, potentially writing test data into) a real shared
+database it has no business touching. No data was written in the
+incident that surfaced this — the one test query issued before this was
+caught failed with a schema mismatch (`UndefinedColumnError: column
+meeting_pages.meeting_body does not exist`) before any write occurred.
+Worth either passing an explicit `.env` path (or `override=True` with an
+explicit local path) in `archive/main.py`/`app/main.py`'s `load_dotenv()`
+calls, or at minimum a `CLAUDE.md` note warning worktree sessions to
+always set `DATABASE_URL` explicitly before running either service
+locally.
 
-Root cause not yet established. `formatTime()` in
-[player.js](app/static/player.js:59) — used for segment links, agenda
-items, the plain-text transcript download, and the "share at" label — has
-had an `h > 0 ? `${h}:${pad(m)}:${pad(s)}`` branch since it was first
-added, and that branch can't produce a bare `364:47`-shaped string for
-any input, since `m` is only unpadded/unbounded when `h === 0`, which
-requires `seconds < 3600`. So either production was serving a stale
-bundle at the time of the screenshot, or these particular segment labels
-are reaching the page through some other path than `formatTime()` — not
-confirmed either way yet. Needs checking against a fresh reload of the
-same meeting before assuming which.
+## Stray demo-shaped tables found in `rtr_deeplink_db` during PITR test-restore verification (2026-08-17)
 
 Confirmed live 2026-08-17 during the WO-4 PITR test-restore verification
 (see `BACKLOG_DONE.md`): the Postgres server backing `rtr-deeplink-db`
