@@ -6,6 +6,54 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Incident #2 same day: backfilled `search_corpus` OOM-crashed the plain `/meetings` browse — hotfix #127 (2026-08-17)
+
+[Resolved 2026-08-17] Directly downstream of the migration incident
+below, once it was fixed. Ryan ran PR #123's one-time
+`scripts/backfill_search_corpus.py` on the Render shell (~09:55 PT,
+1,219 rows). Within minutes `/meetings` — the *plain, no-keyword browse*
+— went from fine to 37–57s responses and then 502s, `?page=2` 502'd
+instantly (Render's LB refusing while the instance restarted), and Ryan
+saw `proxy_get` timeouts in Sentry from the resolver side. Everything
+else on the Archive stayed healthy the whole time (`/api/health` 0.4s,
+`/coverage` 2s, `/m/*` ~1s), which is what localized it to that route.
+
+**Root cause** (read from `list_pages()` + `models.py`): `search_corpus`
+holds every meeting's *entire concatenated transcript text*, and every
+`select(MeetingPage)` in `crud.py` — eleven call sites, including
+`list_pages()`'s browse — selects every mapped column by default. That
+was harmless for the ~30 minutes the column was empty; the moment the
+backfill filled all 1,219 rows, rendering 20 title rows on `/meetings`
+meant loading 1,219 full transcripts into a 512MB instance. Same OOM
+class as the morning's `?q=flock` 502, now on the highest-traffic route
+on the site — and it fired *because* the fix for that first OOM had just
+been completed.
+
+**Fix (#127, one keyword + tests)**: `deferred=True` on the column
+(`archive/db/models.py`) — keeps it out of every default SELECT list;
+it's only ever referenced in WHERE predicates (`ilike` /
+`word_similarity`) which never load the value, and a grep confirmed
+nothing in the app reads it as an attribute (all uses are writes). New
+regression test pins the compiled SQL (`search_corpus` absent from a
+default `select(MeetingPage)`, present in an explicit WHERE); the two
+existing tests that read the attribute directly opt in via `undefer()`
+(async SQLAlchemy raises `MissingGreenlet` on an implicit lazy load,
+which is exactly what caught them). Suite 895 green.
+
+**Verified live ~2 min after deploy**: plain `/meetings` **0.6s** (was
+37s→502), `?page=3` **0.4s** (was instant-502). Keyword search survives
+now but is still 23–35s for common terms — that residual is the live
+"Search: move to a materialized/indexed column" entry in `BACKLOG.md`,
+with the second-query root cause written up there.
+
+**Lesson worth keeping**: a "schema-only, nothing reads it yet" column
+is only inert if the ORM doesn't load it — a large `Text` column on a
+hot model must be `deferred` from the first commit, not after the
+backfill proves it. Two incidents in one morning from one three-PR
+series, both in the seams *between* the PRs (deploy-before-migrate, then
+populate-before-defer) rather than in any PR's own diff — the sequencing
+was documented carefully and still bit twice; that's the WO-10 argument.
+
 ## Incident: `search_corpus` column deployed before its migration ran — ~13 min sitewide Archive outage (2026-08-17)
 
 [Resolved 2026-08-17] **Timeline (all PT, from git + Sentry):** 09:25 PR
