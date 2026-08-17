@@ -13,6 +13,7 @@ from app.utils.jurisdiction_enrich import finalize_jurisdiction
 from ..utils.date_status import meeting_date_status
 from ..utils.jurisdiction_format import (
     US_STATE_ABBR_TO_NAME,
+    is_canadian_abbr,
     jurisdiction_search_terms,
     normalize_state_suffix,
     state_abbr_from_jurisdiction,
@@ -1665,15 +1666,20 @@ async def get_jurisdiction_coverage() -> list[dict]:
 
 
 async def get_state_coverage_index() -> list[dict]:
-    """One row per US state with >= 1 indexable archived meeting, for the
-    /state/{slug} landing pages: /coverage's "Browse by state" section and
-    sitemap.xml's per-state entries. Excludes platform == "unknown"
-    (generic_fallback) pages -- state pages are an indexable SEO surface
-    and carry the same trust posture as the sitemap (see
-    list_all_page_slugs() below). Jurisdictions without a recognized
-    ", ST" suffix (school districts, state agencies, non-US) simply don't
-    group into any state -- a documented limitation, not a bug.
-    Sorted by state name."""
+    """One row per US state or Canadian province/territory with >= 1
+    indexable archived meeting, for the /state/{slug} landing pages:
+    /coverage's "Browse by state" section and sitemap.xml's per-state
+    entries. Excludes platform == "unknown" (generic_fallback) pages --
+    state pages are an indexable SEO surface and carry the same trust
+    posture as the sitemap (see list_all_page_slugs() below).
+    Jurisdictions without a recognized ", ST" suffix (school districts,
+    state agencies, non-US/non-Canada) simply don't group into any state
+    -- a documented limitation, not a bug. Sorted by name within each of
+    two country groups (US first, matching /coverage's existing "Browse
+    by state" heading; Canada second under its own "country": "CA" rows)
+    -- each row's "country" field ("US"/"CA", from is_canadian_abbr())
+    is what lets coverage.html render the two as separate sections
+    without a second query."""
     async with async_session() as session:
         stmt = select(MeetingPage.jurisdiction, MeetingPage.updated_at).where(
             MeetingPage.jurisdiction.is_not(None),
@@ -1699,19 +1705,27 @@ async def get_state_coverage_index() -> list[dict]:
             "abbr": abbr,
             "name": US_STATE_ABBR_TO_NAME[abbr],
             "slug": state_slug_from_abbr(abbr),
+            "country": "CA" if is_canadian_abbr(abbr) else "US",
             "jurisdiction_count": len(entry["jurisdictions"]),
             "page_count": entry["page_count"],
             "last_updated": entry["last_updated"],
         }
         for abbr, entry in by_state.items()
     ]
-    result.sort(key=lambda s: s["name"])
+    result.sort(key=lambda s: (s["country"] != "US", s["name"]))
     return result
 
 
 async def get_state_page_data(abbr: str) -> Optional[dict]:
-    """Everything /state/{slug} renders, or None when the state has no
-    indexable pages (the route 404s). Anchored suffix match on the stored
+    """Everything /state/{slug} renders, or None when the state/province
+    has no indexable pages (the route 404s). `abbr` works for either a US
+    state or a Canadian province/territory -- US_STATE_ABBR_TO_NAME
+    combines both (see jurisdiction_format.py), so no country-specific
+    branch is needed here just to resolve a display name; a Canadian
+    jurisdiction's own ", AB"-style suffix already carries a "(Canada)"
+    display marker wherever it's rendered through the jurisdiction_display
+    filter (see format_jurisdiction_display()), so state_page.html itself
+    needed no template changes. Anchored suffix match on the stored
     jurisdiction -- normalize_state_suffix() guarantees the canonical
     ", CA" form at write time, so LIKE '%, CA' can't false-positive the
     way list_pages()'s substring ilike would ("Decatur, GA" contains

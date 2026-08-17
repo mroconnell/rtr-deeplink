@@ -13,10 +13,21 @@
     <p>This is a list of cities, counties, states, and so on that we have covered so far and successfully transcribed.</p>
     <p>Don't see your city below? <a href="/">Paste a meeting link</a> and see what comes back — if it's on a platform we already know, it'll just work.</p>
 
-    {% if states %}
+    {% set us_states = states|selectattr("country", "equalto", "US")|list %}
+    {% set ca_provinces = states|selectattr("country", "equalto", "CA")|list %}
+    {% if us_states %}
     <h2>Browse by state</h2>
     <ul class="state-links">
-      {% for s in states %}
+      {% for s in us_states %}
+      <li><a href="/state/{{ s.slug }}">{{ s.name }}</a> ({{ s.page_count }})</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    {% if ca_provinces %}
+    <h2 style="margin-top: 1.5rem;">Browse by province (Canada)</h2>
+    <ul class="state-links">
+      {% for s in ca_provinces %}
       <li><a href="/state/{{ s.slug }}">{{ s.name }}</a> ({{ s.page_count }})</li>
       {% endfor %}
     </ul>

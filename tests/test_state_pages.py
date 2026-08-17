@@ -74,6 +74,15 @@ async def _seed_all():
         jurisdiction="Coalinga, CA",
         title="Coalinga Generic Fallback Meeting",
     )
+    # Calgary, AB: a real, already-archived Canadian jurisdiction
+    # (confirmed live on /coverage as of 2026-08-17), not an invented one
+    # -- exercises the "Browse by state"/"Browse by province" country
+    # split and the /state/{slug} route for a province slug.
+    slugs["calgary"] = await _seed(
+        "granicus:state-calgary",
+        jurisdiction="Calgary, AB",
+        title="Calgary City Council",
+    )
     return slugs
 
 
@@ -139,6 +148,7 @@ async def test_coverage_page_links_states(monkeypatch):
                 "abbr": "CA",
                 "name": "California",
                 "slug": "california",
+                "country": "US",
                 "jurisdiction_count": 2,
                 "page_count": 5,
                 "last_updated": datetime(2026, 3, 3),
@@ -152,12 +162,49 @@ async def test_coverage_page_links_states(monkeypatch):
     assert "Browse by state" in response.text
 
 
+async def test_coverage_page_links_canadian_provinces(monkeypatch):
+    from datetime import datetime
+
+    async def _fake_index():
+        return [
+            {
+                "abbr": "AB",
+                "name": "Alberta",
+                "slug": "alberta",
+                "country": "CA",
+                "jurisdiction_count": 1,
+                "page_count": 1,
+                "last_updated": datetime(2026, 3, 3),
+            }
+        ]
+
+    monkeypatch.setattr(crud, "get_state_coverage_index", _fake_index)
+    response = client.get("/coverage")
+    assert response.status_code == 200
+    assert 'href="/state/alberta"' in response.text
+    assert "Browse by province (Canada)" in response.text
+    # No US states in this fake index -- the "Browse by state" heading
+    # shouldn't render an empty section.
+    assert "Browse by state</h2>" not in response.text
+
+
 async def test_meeting_page_links_state_page():
     slugs = await _seed_all()
     response = client.get(f"/m/{slugs['napa']}")
     assert response.status_code == 200
     assert 'href="/state/california"' in response.text
     assert "More California meetings" in response.text
+
+
+async def test_meeting_page_links_canadian_province_page():
+    slugs = await _seed_all()
+    response = client.get(f"/m/{slugs['calgary']}")
+    assert response.status_code == 200
+    assert 'href="/state/alberta"' in response.text
+    assert "More Alberta meetings" in response.text
+    # The Canada display suffix should show on the meeting page itself,
+    # through the same jurisdiction_display filter path as US states.
+    assert "Calgary, AB (Canada)" in response.text
 
 
 async def test_meeting_page_without_state_renders_without_link():
@@ -185,8 +232,28 @@ async def test_crud_get_state_page_data_shape_and_counts():
     assert len(data["recent_pages"]) <= 25
 
 
+async def test_crud_get_state_page_data_for_canadian_province():
+    slugs = await _seed_all()
+    data = await crud.get_state_page_data("AB")
+    assert data is not None
+    assert data["name"] == "Alberta"
+    juris_names = {j["jurisdiction"] for j in data["jurisdictions"]}
+    assert "Calgary, AB" in juris_names
+    example_slugs = {j["example"]["slug"] for j in data["jurisdictions"]}
+    assert slugs["calgary"] in example_slugs
+
+
 async def test_crud_get_state_page_data_none_for_empty():
     assert await crud.get_state_page_data("WY") is None
+
+
+async def test_state_page_renders_a_canadian_province():
+    slugs = await _seed_all()
+    response = client.get("/state/alberta")
+    assert response.status_code == 200
+    assert "Calgary" in response.text
+    assert f"/m/{slugs['calgary']}" in response.text
+    assert "Alberta public meeting videos" in response.text
 
 
 async def test_crud_get_state_coverage_index():
@@ -197,13 +264,30 @@ async def test_crud_get_state_coverage_index():
     ca = by_abbr["CA"]
     assert ca["name"] == "California"
     assert ca["slug"] == "california"
+    assert ca["country"] == "US"
     assert ca["jurisdiction_count"] >= 2
     assert ca["page_count"] >= 2
     assert ca["last_updated"] is not None
     assert "WY" not in by_abbr
-    # Sorted by state name.
-    names = [row["name"] for row in index]
-    assert names == sorted(names)
+    # Alberta shows up as its own real row, distinct from any US state,
+    # via the "Calgary, AB" seed in _seed_all().
+    assert "AB" in by_abbr
+    ab = by_abbr["AB"]
+    assert ab["name"] == "Alberta"
+    assert ab["slug"] == "alberta"
+    assert ab["country"] == "CA"
+    assert ab["page_count"] >= 1
+    # Sorted by country group (US before Canada, matching /coverage's
+    # "Browse by state" section coming before "Browse by province
+    # (Canada)"), then alphabetically by name within each group -- not a
+    # single global alphabetical sort across both, since that would
+    # interleave "Alberta" ahead of "California".
+    us_names = [row["name"] for row in index if row["country"] == "US"]
+    ca_names = [row["name"] for row in index if row["country"] == "CA"]
+    assert us_names == sorted(us_names)
+    assert ca_names == sorted(ca_names)
+    countries = [row["country"] for row in index]
+    assert countries == sorted(countries, key=lambda c: c != "US")
 
 
 def test_resolver_proxies_state_route():
@@ -222,3 +306,7 @@ async def test_sitemap_includes_state_pages():
     assert "/state/california</loc>" in response.text
     assert "/state/georgia</loc>" in response.text
     assert "/state/wyoming" not in response.text
+    # A Canadian province gets a sitemap entry the same way a US state
+    # does -- get_state_coverage_index()'s extra "country" field doesn't
+    # change what sitemap.xml.jinja needs (just .slug/.last_updated).
+    assert "/state/alberta</loc>" in response.text
