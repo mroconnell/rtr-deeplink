@@ -577,7 +577,7 @@ async def list_all_page_urls() -> list[dict]:
 
 
 async def list_youtube_pages_missing_transcripts() -> list[dict]:
-    """Every archived YouTube-backed meeting page with no default
+    """Every archived YouTube-backed meeting page with no *good* default
     transcript -- the "transcript wanted" queue consumed by
     scripts/fetch_youtube_transcripts.py. YouTube-only because that's the
     one platform whose captions this service structurally can't fetch
@@ -587,29 +587,28 @@ async def list_youtube_pages_missing_transcripts() -> list[dict]:
     fine from a residential one, so fetching happens off-server and gets
     pushed back through the normal /internal/ingest path.
 
-    "Missing" means no is_default=True TranscriptVersion, not merely zero
-    version rows -- a page whose only version was demoted for being a
-    copied agenda (_default_looks_like_copied_agenda) genuinely shows "no
-    transcript" and should be re-fetchable too.
+    "No good transcript" reuses `_has_good_transcript()` (the same quality
+    gate `list_transcription_backlog_candidates()` already uses) rather
+    than the narrower "no is_default=True row at all" this used to check.
+    Real gap fixed 2026-08-16 (WO-15, BACKLOG.md): a YouTube-backed page
+    whose default transcript is *present but garbled* (e.g. a Whisper
+    audio-fallback transcript that never got a real caption track) used to
+    never resurface here at all, even though a real YouTube caption fetch
+    -- strictly better than an audio transcription when it exists -- would
+    fix it. `_has_good_transcript()` already covers the original "no
+    is_default row" case too (no segments -> False), so this is a strict
+    broadening, not a behavior change for the original case.
 
     Returns exactly the identity fields a push needs for
     _find_or_create_page() to match the existing page rather than
     creating a duplicate: platform, external_id, source_url_normalized.
     """
     async with async_session() as session:
-        default_exists = (
-            select(TranscriptVersion.id)
-            .where(
-                TranscriptVersion.meeting_page_id == MeetingPage.id,
-                TranscriptVersion.is_default.is_(True),
-            )
-            .exists()
-        )
         pages = (
             (
                 await session.execute(
                     select(MeetingPage)
-                    .where(MeetingPage.video_format == "youtube", ~default_exists)
+                    .where(MeetingPage.video_format == "youtube")
                     .order_by(MeetingPage.created_at.asc())
                 )
             )
@@ -617,17 +616,21 @@ async def list_youtube_pages_missing_transcripts() -> list[dict]:
             .all()
         )
 
-        return [
-            {
-                "slug": page.slug,
-                "title": page.title,
-                "platform": page.platform,
-                "external_id": page.external_id,
-                "source_url_normalized": page.source_url_normalized,
-                "video_url": page.video_url,
-            }
-            for page in pages
-        ]
+        wanted = []
+        for page in pages:
+            if await _has_good_transcript(session, page.id):
+                continue
+            wanted.append(
+                {
+                    "slug": page.slug,
+                    "title": page.title,
+                    "platform": page.platform,
+                    "external_id": page.external_id,
+                    "source_url_normalized": page.source_url_normalized,
+                    "video_url": page.video_url,
+                }
+            )
+        return wanted
 
 
 async def list_transcription_backlog_candidates(

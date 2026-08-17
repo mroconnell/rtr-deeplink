@@ -713,7 +713,27 @@ one-offs.
 regression tests cover at least the 9 Granicus and 6 eScribe confirmed-bleed
 examples above.
 
-### WO-15 · Stale-archived-page refresh path — **new**
+### WO-15 · Stale-archived-page refresh path — **new** — **DONE 2026-08-16**
+
+**Fixed.** New public, rate-limited `POST /api/refresh-archived-page`
+(app/main.py) + a "Refresh this page" button on the Archive's meeting
+page, reusing the existing `_recheck_archived_page()` resolve/push logic
+so no new resolve code was written. `list_youtube_pages_missing_
+transcripts()` now reuses the same quality gate `_has_good_transcript()`
+already provides, so an existing-but-garbled default resurfaces in the
+queue too — which surfaced a second real gap (a fresh push there wouldn't
+auto-promote over an already-has-segments+language default), fixed by
+having `fetch_youtube_transcripts.py` always call the already-built
+promote endpoint after a push. Live-verified end-to-end in a local
+resolver+Archive pair (cooldown, then a real recheck past cooldown).
+**Not verified against a real already-broken production page** (Fountain
+Valley clip 607, `riversidecountyca.iqm2.com`) — both of those pages'
+underlying adapter bugs are still separately unfixed, so there's nothing
+for this mechanism to have fixed yet; re-verifying live once either
+adapter bug lands is a natural follow-up, not done here. Full detail in
+`BACKLOG_DONE.md`.
+
+
 
 **Problem.** Two confirmed gaps combine into one recurring root cause:
 re-submitting an already-archived URL through the public API never

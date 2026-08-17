@@ -327,6 +327,74 @@ async def _recheck_archived_page(
     }
 
 
+class RefreshRequest(BaseModel):
+    url: str
+
+
+# Real cooldown to keep a public "refresh this page" call polite to the
+# real government source site being re-scraped -- shorter than
+# ARCHIVE_RECHECK_AFTER's 30-day passive cadence (this is an explicit user
+# ask, not an opportunistic background check), but still a real floor, not
+# "every click." Matches ARCHIVE_RECHECK_AFTER_NO_TRANSCRIPT's own
+# precedent that a shorter window is fine when there's real upside to
+# checking again soon.
+MANUAL_REFRESH_COOLDOWN = timedelta(hours=1)
+
+
+@app.post("/api/refresh-archived-page")
+@limiter.limit("10/hour")
+async def refresh_archived_page(request: Request, req: RefreshRequest):
+    """Public, rate-limited counterpart to /admin/recheck-archive-page --
+    real gap fixed 2026-08-16 (WO-15, BACKLOG.md): re-submitting an
+    already-archived URL through /api/resolve never triggered a refresh on
+    its own -- it always short-circuits to the cached Archive lookup (see
+    /api/resolve above), so only the token-gated admin endpoint or the
+    passive ARCHIVE_RECHECK_AFTER cycle ever re-resolved a stale page.
+    BACKLOG.md traces several separately-filed "why does this page look
+    wrong" bugs to exactly this gap. Powers a "Refresh this page" link on
+    the Archive's meeting_page.html -- same-origin via app/main.py's own
+    /m/{slug} proxy to the Archive service, so no CORS setup is needed.
+
+    Cooled down (MANUAL_REFRESH_COOLDOWN) rather than unconditional, same
+    politeness reasoning as ARCHIVE_RECHECK_AFTER's own module comment --
+    a real click deserves a shorter wait than the 30-day passive cadence,
+    not an unlimited one.
+    """
+    try:
+        await check_destination(req.url)
+    except BlockedURLError as e:
+        return {"error": "blocked_url", "message": str(e)}
+
+    platform = detect_platform(req.url)
+    normalized = normalize_url(req.url)
+
+    archived = await safe(archive_client.lookup, normalized)
+    if not archived:
+        return JSONResponse(
+            {
+                "error": "not_archived",
+                "message": "This URL has no permanent page yet -- submit it on the homepage first.",
+            },
+            status_code=404,
+        )
+
+    updated_at = _parse_updated_at(archived.get("updated_at"))
+    if (
+        updated_at
+        and (datetime.now(timezone.utc) - updated_at) < MANUAL_REFRESH_COOLDOWN
+    ):
+        return JSONResponse(
+            {
+                "error": "cooldown",
+                "message": "This page was already refreshed recently -- try again later.",
+                "retry_after": (updated_at + MANUAL_REFRESH_COOLDOWN).isoformat(),
+            },
+            status_code=429,
+        )
+
+    return await _recheck_archived_page(req.url, normalized, platform)
+
+
 @app.get("/api/health")
 async def health():
     """Render gates deploys on this endpoint (render.yaml), so it has to be

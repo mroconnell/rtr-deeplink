@@ -257,6 +257,102 @@ Full suite (845 tests), `ruff check`, and `ruff format --check` all clean.
 bleed" entry for the 4 Granicus cases that only resolve correctly today
 via subdomain-fallback luck, not the text-based chain itself.
 
+## WO-15: stale-archived-page refresh path (2026-08-16)
+
+**Problem.** Two confirmed gaps combined into one recurring root cause:
+re-submitting an already-archived URL through the public API never
+triggered a refresh (it short-circuited to the cached lookup; only the
+token-gated `GET /admin/recheck-archive-page` or the passive 30-day
+`ARCHIVE_RECHECK_AFTER` cycle re-resolved it), and the YouTube
+transcript-wanted queue (`crud.list_youtube_pages_missing_transcripts()`)
+only ever surfaced pages with **no** default transcript at all, never an
+existing-but-flagged-bad one. `BACKLOG.md` traces this pattern as the
+likely root cause behind several separately-filed "why does this page
+look wrong" bugs.
+
+**Fix, part 1 — public refresh endpoint.** New `POST
+/api/refresh-archived-page` in `app/main.py`: looks up the URL via
+`archive_client.lookup()`, rejects with `not_archived` (404) if there's
+no permanent page yet, enforces a `MANUAL_REFRESH_COOLDOWN` (1 hour —
+shorter than the 30-day passive cadence since this is an explicit user
+ask, but still a real floor so a "refresh" button can't be used to hammer
+the real government source repeatedly) via `429 cooldown`, then calls the
+existing `_recheck_archived_page()` synchronously and returns its result
+— the same function the admin endpoint and passive sweep already use, so
+no new resolve logic was written. Rate-limited (`10/hour` via the
+existing slowapi limiter) and SSRF-guarded (`check_destination()`) the
+same as `/api/resolve`. A "Refresh this page" button was added to
+`archive/templates/meeting_page.html` (`archive/static/meeting_page.js`'s
+`wireRefreshPageButton()`, styled in `archive/static/style.css`) — calls
+the resolver's endpoint via a plain relative `fetch()`, which works
+same-origin with no CORS setup needed because `app/main.py`'s existing
+`/m/{slug}` route already proxies the Archive's pages through the
+resolver's own origin (confirmed by checking `archive/static/
+meeting_page.js`'s existing `wireReportProblemForm()`/`wireTranscribeForm()`,
+which already call other resolver-hosted `/api/*` routes the same way).
+
+**Fix, part 2 — quality-aware transcript-wanted queue.**
+`list_youtube_pages_missing_transcripts()` (`archive/db/crud.py`) used to
+only check `~default_exists` (no `is_default=True` row at all). Now
+reuses `_has_good_transcript()` — the same quality gate
+`list_transcription_backlog_candidates()` already uses (real segments +
+`_has_real_warning_free_transcript()`) — so a page whose default is
+*present but garbled* (e.g. a Whisper audio-fallback transcript that
+never got real captions) resurfaces too. Strict broadening: the original
+"no row at all" case still returns `False` from `_has_good_transcript()`
+(no segments), so nothing regresses.
+
+This surfaced a second real gap: `archive/db/crud.py`'s
+`_is_real_improvement()` (which decides whether a fresh ingest push
+auto-becomes the page's new default) is deliberately narrow — it only
+auto-promotes when the current default has no segments at all, or has
+segments but no language. A page now in the broadened queue because its
+default is garbled already has segments+language, so a fresh real-caption
+push would silently create a new *non-default* version and leave the
+garbled one live and visible — the queue would think the problem was
+fixed while the page itself looked unchanged. Fixed by having
+`scripts/fetch_youtube_transcripts.py` explicitly call the already-built
+`POST /internal/transcript-version/promote` (added same-day, 2026-08-16,
+for `scripts/transcribe_backlog_locally.py`'s opt-in `--promote` flag)
+after every successful push — always, not opt-in, since a genuinely-
+fetched real YouTube caption track is unconditionally more trustworthy
+than whatever's already flagged bad (unlike `transcribe_backlog_locally.py`'s
+own Whisper-based re-transcriptions, where quality varies enough to want
+a human's say-so first).
+
+**Verification.** New tests: `tests/test_refresh_archived_page.py` (5
+cases: not-archived 404, cooldown 429, real recheck fires past cooldown,
+missing-`updated_at` never blocks, SSRF guard fires before any lookup),
+`tests/test_transcript_wanted.py`'s new
+`test_wanted_includes_youtube_page_with_garbled_transcript`,
+`tests/test_fetch_youtube_transcripts.py`'s two new `process_one()`
+promote tests (promotes when `version_id` is set; skips cleanly when it
+isn't). Full suite (853 tests), `ruff check`, `ruff format --check` all
+clean. Live-verified locally end-to-end against a real (SQLite,
+non-production) resolver+Archive pair: created a real archived page,
+clicked the actual "Refresh this page" button in-browser — confirmed the
+429 cooldown response and its styled error message, backdated
+`updated_at` past the cooldown, clicked again — confirmed a real (not
+mocked) `_recheck_archived_page()` call fired, attempted a genuine fetch
+against the (nonexistent) test URL, failed gracefully, and rendered "No
+changes found at the source." with no crash and no unhandled exception.
+
+**Not verified against a real already-broken production page** (e.g.
+Fountain Valley clip 607 or the `riversidecountyca.iqm2.com` title bug,
+both cited in `BACKLOG.md` as the pattern this mechanism should help
+with) — deliberately not done this pass: triggering a real re-scrape
+against production data isn't something to do unprompted, and more
+importantly, both of those pages' *underlying* root causes are still
+separate, unfixed bugs of their own (IQM2's title/jurisdiction
+extraction, and Fountain Valley clip 607's still-undetermined data
+mismatch) — this mechanism only removes the "how would a fix ever reach
+the already-archived page" blocker, it doesn't retroactively produce
+correct data from an adapter that's still extracting the wrong thing. Once
+either of those adapter bugs is actually fixed, re-verifying via a real
+click on the live page (rather than the token-gated admin endpoint) is
+the natural way to confirm this mechanism works end-to-end in production
+— split out as its own follow-up rather than closed here.
+
 ## Local-Mac transcription backlog script — bigger model than the worker's forced "tiny" (2026-08-16)
 
 Built to work down the real ~209-meeting `/meetings?has_transcript=false`

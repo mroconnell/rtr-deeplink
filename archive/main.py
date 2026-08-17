@@ -252,11 +252,13 @@ async def internal_all_page_urls(authorization: Optional[str] = Header(None)):
 @app.get("/internal/transcript-wanted")
 async def internal_transcript_wanted(authorization: Optional[str] = Header(None)):
     """The "transcript wanted" queue: every archived YouTube-backed page
-    with no default transcript. Consumed by
-    scripts/fetch_youtube_transcripts.py, which fetches captions from a
-    residential IP (this service's own cloud IP is confirmed blocked by
-    YouTube -- see the crud function's docstring) and pushes them back
-    through the normal /internal/ingest path.
+    with no *good* default transcript -- missing entirely, or present but
+    flagged bad (garbled/no real content), see
+    list_youtube_pages_missing_transcripts()'s own docstring (WO-15,
+    BACKLOG.md). Consumed by scripts/fetch_youtube_transcripts.py, which
+    fetches captions from a residential IP (this service's own cloud IP is
+    confirmed blocked by YouTube -- see the crud function's docstring) and
+    pushes them back through the normal /internal/ingest path.
     """
     if not _token_ok(authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
