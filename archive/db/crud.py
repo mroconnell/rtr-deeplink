@@ -1804,6 +1804,299 @@ async def get_jurisdiction_coverage() -> list[dict]:
     return result
 
 
+# --- get_full_jurisdiction_coverage() and its helpers -----------------------
+# BACKLOG.md's "Coverage page -- a public, sortable/filterable table" entry:
+# one row per successfully-archived jurisdiction (same population as
+# get_jurisdiction_coverage() above, sharing its `MeetingPage.jurisdiction
+# is not None` gate), but with the fuller per-jurisdiction column spec that
+# function was never meant to carry -- video/agenda/transcript yes-no
+# columns, a two-column provider split, an outcome bucket, and a
+# last-verified date. Deliberately a new function rather than growing
+# get_jurisdiction_coverage() itself: that one backs the existing "Every
+# place we've covered" table and its own tests, which should keep behaving
+# exactly as before.
+
+
+# Domains recovering a YouTube-delegating wrapper platform's own real
+# identity from a page's source_url_normalized -- superset of
+# _entry_platform_from_source_url() above (which only recognizes lims/slc/
+# clerkbase, the three CUSTOM_PLATFORMS entries with their own /coverage
+# row). PrimeGov and CivicWeb are added here too: real, confirmed-live
+# wrapper platforms (README's "Supported platforms" table) that preserve
+# their own source_url on delegation the same way lims/slc/clerkbase do
+# (see primegov.py/civicweb.py's own docstrings), but that don't have a
+# DIRECT_PLATFORMS/CUSTOM_PLATFORMS row of their own today -- not a gap
+# this function needs to fix, just two more identities worth recovering
+# for the "Detail page" column below, which is the entire reason this
+# split exists (BACKLOG.md's "Provider, split into two columns" spec).
+def _wrapper_detail_label(source_url_normalized: str) -> Optional[str]:
+    netloc = urlparse(source_url_normalized).netloc.lower()
+    path = urlparse(source_url_normalized).path.lower()
+    if "lims.minneapolismn.gov" in netloc:
+        return "Minneapolis LIMS"
+    if netloc.endswith("slc.gov") and "-meeting-recap" in path:
+        return "Salt Lake City meeting recaps"
+    if "clerkshq.com" in netloc:
+        return "ClerkBase (clerkshq.com)"
+    if netloc.endswith("primegov.com"):
+        return "PrimeGov"
+    if netloc.endswith("civicweb.net"):
+        return "CivicWeb"
+    return None
+
+
+_PLATFORM_LABELS: dict[str, str] = {**DIRECT_PLATFORMS, **CUSTOM_PLATFORMS}
+
+
+def _platform_split(
+    platform: str, source_url_normalized: str, video_url: Optional[str]
+) -> tuple[str, str]:
+    """Returns (detail_page_label, video_label) for one MeetingPage row.
+
+    Only genuinely splits into two different labels when there's real
+    recoverable evidence they differ (the YouTube-wrapper case, or a
+    generic_fallback "unknown" row where the raw video host is at least
+    visible even though it isn't a named platform this app has an adapter
+    for) -- everywhere else both columns show the same label, which is the
+    honest answer given what's actually stored. Per CLAUDE.md's
+    wrapper-platform bullet, a Legistar/CivicPlus-delegated row's
+    MeetingPage.platform is already overwritten to the delegated platform
+    (e.g. "granicus") by the time it's ingested, and source_url_normalized
+    is the delegated platform's own URL too -- this app genuinely has no
+    stored way to tell, post-hoc, that a given Granicus row arrived via a
+    Legistar page rather than a directly-pasted Granicus link. Showing
+    "Detail page: Granicus; Video: Granicus" for that row isn't a missed
+    split, it's the real limit of what's recoverable from stored data.
+    """
+    if platform == "youtube":
+        wrapper = _wrapper_detail_label(source_url_normalized)
+        if wrapper:
+            return wrapper, "YouTube"
+        return "YouTube", "YouTube"
+    if platform == "unknown":
+        # generic_fallback.py's own scan for a directly playable media URL
+        # (no named platform/adapter involved) -- the raw host is real,
+        # derivable signal even though it isn't a platform this app has
+        # code for, so it's shown as-is rather than guessed at (e.g. never
+        # labeled "Vimeo" without a confirmed vimeo.com host -- see
+        # CLAUDE.md's "don't claim a data path works without a positive
+        # example" convention).
+        if video_url:
+            host = urlparse(video_url).netloc or "Custom/Generic"
+            return "Custom/Generic", host
+        return "Custom/Generic", "Custom/Generic"
+    label = _PLATFORM_LABELS.get(platform, platform)
+    return label, label
+
+
+# Mirrors app/db/outcomes.py's classify_outcome() bucket names/ordering, but
+# reads MeetingPage/TranscriptVersion (archive/db/models.py) instead of a
+# MeetingResolution row (app/db/models.py, a different schema on a
+# different service's DB) -- archive/ deliberately doesn't import from
+# app/ (see README's project-structure notes on other deliberately-
+# duplicated utils), and the inputs differ anyway (a page's already-
+# persisted state here vs. a fresh resolve() payload there). Same bucket
+# keys, so a reader comparing the two /admin/stats-style views gets the
+# same mental model.
+_OUTCOME_LABELS: dict[str, str] = {
+    "no_video": "No video",
+    "blank_transcript": "Blank/no transcript",
+    "agenda_fallback": "Agenda only",
+    "garbled_transcript": "Garbled transcript",
+    "non_english_transcript": "Transcript (non-English)",
+    "success": "Real transcript",
+}
+# Lower is better -- used to pick which of a jurisdiction's several pages
+# best represents it (same "prefer the most convincing real example"
+# intent as _select_examples() above, just scored on the fuller bucket
+# list instead of a single has_transcript bool).
+_OUTCOME_RANK: dict[str, int] = {
+    "success": 0,
+    "non_english_transcript": 1,
+    "garbled_transcript": 2,
+    "agenda_fallback": 3,
+    "blank_transcript": 4,
+    "no_video": 5,
+}
+
+
+def _classify_page_outcome(
+    *,
+    video_url: Optional[str],
+    agenda_items: Optional[list],
+    default_content_hash: Optional[str],
+    default_transcript_warnings: Optional[list],
+    default_transcript_language: Optional[str],
+) -> str:
+    if not video_url:
+        return "no_video"
+    if default_content_hash is None or default_content_hash == _EMPTY_CONTENT_HASH:
+        if agenda_items:
+            return "agenda_fallback"
+        return "blank_transcript"
+    if default_transcript_warnings and any(
+        _GARBLED_MARKER in w or _HALLUCINATION_MARKER in w
+        for w in default_transcript_warnings
+    ):
+        return "garbled_transcript"
+    if default_transcript_language and default_transcript_language != "en":
+        return "non_english_transcript"
+    return "success"
+
+
+async def get_full_jurisdiction_coverage() -> list[dict]:
+    """One row per distinct jurisdiction, same population as
+    get_jurisdiction_coverage() above, with the full column spec from
+    BACKLOG.md's "Coverage page" entry: video-embeds / agenda-embedded /
+    instant-transcript-from-source / transcript-from-audio-possible
+    (yes/no each), a two-column "detail page" vs "video" provider split
+    (see _platform_split()), an outcome bucket (see _classify_page_outcome,
+    mirroring app/db/outcomes.py's classify_outcome()), and a last-verified
+    date. A jurisdiction with several archived pages gets its yes/no
+    columns computed as "true if ANY of its pages has this" (this is a
+    "did we ever manage this for this city" roster, not a per-meeting
+    one), but its platform-split/outcome/example columns come from
+    whichever single page best represents it (lowest _OUTCOME_RANK, i.e.
+    the most convincing real example) -- same spirit as
+    get_jurisdiction_coverage()'s own has_transcript-preferred example
+    pick, just scored on the fuller outcome bucket instead of one bool.
+
+    Reads only the columns each computation actually needs (never
+    TranscriptVersion.segments, the heavy JSON column -- see
+    MeetingPage.search_corpus's own docstring on why that matters at this
+    table's real production scale) via an EXISTS subquery for "a real
+    source-provided (source='scraped') transcript exists on ANY version of
+    this page" (not just the default one -- a page's default can be
+    promoted to a later 'transcribed' version via
+    manually_promote_transcript_version() without deleting the original
+    scraped one, so checking only the default would wrongly say "no" for
+    a page that still has a real scraped transcript sitting non-default),
+    plus a plain outerjoin on the default version for the outcome-bucket
+    fields (content_hash/transcript_warnings/language), which are always
+    about "what does /m/{slug} show by default right now."
+    """
+    # Aliased + explicitly correlated to MeetingPage only, same reason as
+    # _is_empty_page_condition()'s identical pattern above: the outer query
+    # below already outerjoins TranscriptVersion (the default version), so
+    # without the alias SQLAlchemy auto-correlates that join away too,
+    # leaving this subquery with no FROM at all.
+    any_scraped_version = aliased(TranscriptVersion)
+    has_scraped_transcript = (
+        select(any_scraped_version.id)
+        .where(
+            any_scraped_version.meeting_page_id == MeetingPage.id,
+            any_scraped_version.source == "scraped",
+            any_scraped_version.content_hash != _EMPTY_CONTENT_HASH,
+        )
+        .correlate(MeetingPage)
+        .exists()
+    )
+    async with async_session() as session:
+        stmt = (
+            select(
+                MeetingPage.jurisdiction,
+                MeetingPage.slug,
+                MeetingPage.title,
+                MeetingPage.platform,
+                MeetingPage.source_url_normalized,
+                MeetingPage.video_url,
+                MeetingPage.video_format,
+                MeetingPage.agenda_items,
+                MeetingPage.updated_at,
+                has_scraped_transcript.label("has_scraped_transcript"),
+                TranscriptVersion.content_hash,
+                TranscriptVersion.transcript_warnings,
+                TranscriptVersion.language,
+            )
+            .outerjoin(
+                TranscriptVersion,
+                and_(
+                    TranscriptVersion.meeting_page_id == MeetingPage.id,
+                    TranscriptVersion.is_default.is_(True),
+                ),
+            )
+            .where(MeetingPage.jurisdiction.is_not(None))
+        )
+        rows = (await session.execute(stmt)).all()
+
+    by_jurisdiction: dict[str, list[dict]] = {}
+    for (
+        jurisdiction,
+        slug,
+        title,
+        platform,
+        source_url_normalized,
+        video_url,
+        video_format,
+        agenda_items,
+        updated_at,
+        has_scraped,
+        content_hash,
+        transcript_warnings,
+        language,
+    ) in rows:
+        detail_label, video_label = _platform_split(
+            platform, source_url_normalized, video_url
+        )
+        outcome = _classify_page_outcome(
+            video_url=video_url,
+            agenda_items=agenda_items,
+            default_content_hash=content_hash,
+            default_transcript_warnings=transcript_warnings,
+            default_transcript_language=language,
+        )
+        by_jurisdiction.setdefault(jurisdiction, []).append(
+            {
+                "slug": slug,
+                "title": title,
+                "video_embeds": video_url is not None,
+                "agenda_embedded": bool(agenda_items),
+                "instant_transcript": bool(has_scraped),
+                # Mirrors app/main.py's own _unreadable_media_message()
+                # reasoning: a video_format=="youtube" result is
+                # structurally unprobeable by ffprobe (an iframe-embed
+                # page, never a real media file), so the on-demand
+                # Whisper path can never succeed for it regardless of
+                # whether anyone has actually tried yet -- see that
+                # function's own docstring for the full trace. A live
+                # ffprobe check per row here would be far too expensive
+                # for a full coverage table; this is the same structural
+                # approximation the resolver itself already relies on.
+                "audio_transcript_possible": video_url is not None
+                and video_format != "youtube",
+                "detail_platform": detail_label,
+                "video_platform": video_label,
+                "outcome": outcome,
+                "updated_at": updated_at,
+            }
+        )
+
+    result = []
+    for jurisdiction in sorted(by_jurisdiction, key=str.casefold):
+        pages = by_jurisdiction[jurisdiction]
+        best = min(pages, key=lambda p: _OUTCOME_RANK[p["outcome"]])
+        last_verified = max(p["updated_at"] for p in pages)
+        result.append(
+            {
+                "jurisdiction": jurisdiction,
+                "video_embeds": any(p["video_embeds"] for p in pages),
+                "agenda_embedded": any(p["agenda_embedded"] for p in pages),
+                "instant_transcript": any(p["instant_transcript"] for p in pages),
+                "audio_transcript_possible": any(
+                    p["audio_transcript_possible"] for p in pages
+                ),
+                "detail_platform": best["detail_platform"],
+                "video_platform": best["video_platform"],
+                "outcome": best["outcome"],
+                "outcome_label": _OUTCOME_LABELS[best["outcome"]],
+                "last_verified": last_verified,
+                "example": {"slug": best["slug"], "title": best["title"]},
+                "page_count": len(pages),
+            }
+        )
+    return result
+
+
 async def get_state_coverage_index() -> list[dict]:
     """One row per US state or Canadian province/territory with >= 1
     indexable archived meeting, for the /state/{slug} landing pages:

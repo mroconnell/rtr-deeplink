@@ -593,6 +593,32 @@ path works without a positive example" convention — the thing being
 shown here is "does a real page exist," not "is this code path
 exercised," which are different claims.
 
+`/coverage` also has a per-government-body table ("Every place we've
+covered", `crud.get_jurisdiction_coverage()`) below the per-platform one,
+sorted alphabetically for Ctrl+F discoverability ("only software
+engineers think platform first"), and — added 2026-08-17 — a fuller
+**"Full jurisdiction detail table"** (`crud.get_full_jurisdiction_coverage()`),
+one sortable/filterable row per successfully-archived jurisdiction with:
+video-embeds / agenda-embedded / instant-transcript-from-source /
+transcript-from-audio-possible (yes/no each — the last is derived from
+`video_format != "youtube"`, mirroring `app/main.py`'s own
+`_unreadable_media_message()` reasoning that a YouTube-hosted video is
+structurally unprobeable by ffprobe, not a live check), a two-column
+"Detail page" vs. "Video" provider split (recovers PrimeGov/CivicWeb/
+LIMS/SLC/ClerkBase's real identity from `source_url_normalized` even
+though `MeetingPage.platform` says "youtube" for all of them — see this
+file's "when a platform turns out to be a wrapper around another" note in
+CLAUDE.md for the Legistar/CivicPlus case this *can't* recover, since
+their delegation overwrites `source_url` with the delegated platform's
+own URL), an outcome bucket (mirrors `app/db/outcomes.py`'s
+`classify_outcome()`), and a last-verified date. Sorting reuses
+`archive/static/coverage.js`'s existing client-side pattern (now
+generalized to any `table.sortable-table`); filtering is plain
+client-side JS (dropdowns + a jurisdiction search box + yes/no checkbox
+filters) — the whole roster is ~870 rows in production as of 2026-08-17,
+small enough to render server-side in one page load and filter/sort
+entirely in the browser, same reasoning the sort code already relied on.
+
 **`GET /state/{slug}` (per-state landing pages, added 2026-08-17)** —
 server-rendered, indexable SEO pages ("California public meeting videos &
 transcripts", `/state/california`), proxied like `/coverage`. Each lists
@@ -1293,7 +1319,9 @@ archive/
     crud.py                  identity matching/dedup, slug generation,
                            content-hash version dedup, list_pages()
                            (paginated + filtered, backs /meetings),
-                           get_platform_coverage() (backs /coverage),
+                           get_platform_coverage()/get_jurisdiction_coverage()/
+                           get_full_jurisdiction_coverage() (all back
+                           /coverage's three sections),
                            get_state_coverage_index()/get_state_page_data()
                            (back /state/{slug} + /coverage's state links),
                            list_all_page_slugs() (backs /sitemap.xml),
