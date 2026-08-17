@@ -71,6 +71,40 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="rtr-archive", lifespan=lifespan)
+
+
+@app.middleware("http")
+async def handle_head_requests(request: Request, call_next):
+    """Same fix as app/main.py's identically-named middleware (deliberate
+    duplicate per this repo's own convention of not sharing code between
+    the two services) -- every route here is declared with
+    @app.get(...)/@app.post(...) etc, and FastAPI/Starlette does *not*
+    automatically answer a bare HTTP HEAD for a GET route, so a HEAD
+    (uptime checks, some crawlers, `curl -I`) 405s on all 19 routes with
+    no handling at all. Dispatch a HEAD internally as a GET (rewriting
+    `request.scope["method"]` before it reaches routing) and return the
+    real response's status/headers with the body stripped -- per RFC 9110
+    4.2, HEAD's response must carry the same headers a GET would
+    (including Content-Length), just no body.
+
+    Note: `call_next`'s returned object is always Starlette's internal
+    `_StreamingResponse` wrapper, whose own `.background` is hardcoded to
+    `None` -- any real background work a route attaches runs as part of
+    the real handler's own response inside `call_next`'s concurrent
+    dispatch, independent of the empty response built here, so there's
+    nothing to carry over."""
+    if request.method != "HEAD":
+        return await call_next(request)
+    request.scope["method"] = "GET"
+    response = await call_next(request)
+    return Response(
+        content=b"",
+        status_code=response.status_code,
+        headers=dict(response.headers),
+        media_type=response.media_type,
+    )
+
+
 app.mount("/static", StaticFiles(directory=APP_DIR / "static"), name="static")
 # Deep-link JS shared with the resolver service (app/main.py mounts the
 # same top-level directory identically) -- see shared_static/deep_link.js's
