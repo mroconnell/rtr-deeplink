@@ -82,9 +82,9 @@ These are dashboard checks, not code. Three work orders are blocked on them.
 | # | Check | Blocks |
 |---|---|---|
 | P1 | ~~Render → both Postgres instances: what plan?~~ **ANSWERED 2026-08-14:** `rtr-deeplink-db` is **Basic-256mb** (paid, ~$6/mo) — not at risk. Staging is free and expires 9/9/2026, which is intentional and disposable. Remaining sub-questions folded into WO-4 below. | WO-4 (Wave 4), WO-10 (Wave 5) |
-| P2 | Render → all three services: does the live plan match `render.yaml` (`starter`, `starter`, `standard`)? Current month's actual bill? | WO-4 (Wave 4) |
+| P2 | ~~Render → all three services: does the live plan match `render.yaml`? Current month's actual bill?~~ **ANSWERED 2026-08-17:** plans basically match. Real bill via CSV export: **$16.26 month-to-date, $49.10 projected for August** — recorded in `rtr-business/BUSINESS_OVERVIEW.md`. One real anomaly surfaced, not yet explained: both the resolver and Archive show billed hours on *both* `starter` and `standard` tiers this month despite `render.yaml` declaring `starter` for both — noted in `BUSINESS_OVERVIEW.md`, not investigated further this pass. Bandwidth is worth watching: 5.13GB/5GB included this month, close to real overage. | WO-4 (Wave 4) |
 | P3 | GA: is the property receiving events? Are `submit_meeting_url` and `copy_link_to_time` visible in the last 30 days? | WO-9 (Wave 3) |
-| P4 | Resend + Clerk: plan, cost, distance from free-tier ceiling. | WO-4 (Wave 4) |
+| P4 | ~~Resend + Clerk: plan, cost, distance from free-tier ceiling.~~ **ANSWERED 2026-08-17:** both free tier, well under ceiling. | WO-4 (Wave 4) |
 | P5 | Actions → a recent `send-search-alerts` run: did a real alert email actually send? | — (informational) |
 
 **P1 was the highest-consequence unknown in the audit and is already
@@ -584,11 +584,9 @@ suite green (29 passed), `ruff check`/`ruff format --check` clean.
 
 ---
 
-## Wave 4 — infra into the Blueprint + backup/restore
+## Wave 4 — infra into the Blueprint + backup/restore · **DONE 2026-08-17**
 
-**Blocked on Ryan's dashboard checks P2 and P4** (P1 already answered —
-see the Prerequisites table above). Flag these to Ryan at the start of the
-wave, not mid-wave. ~1-2 hrs once unblocked.
+P1, P2, P4 all now answered (see the Prerequisites table above).
 
 ### WO-4 · Bring infra into the Blueprint + finish the cost inventory — **1-2 hrs** · *blocked on P1, P2, P4*
 
@@ -631,6 +629,33 @@ Record the confirmed monthly total in `rtr-business/BUSINESS_OVERVIEW.md`
 **Acceptance.** `render.yaml` describes every paid resource. A deliberate
 hostname mismatch in local env produces a clear startup error. Storage
 headroom, PITR window, and a tested restore procedure are all written down.
+
+**Status.** Startup hostname assertion shipped and merged (WO-4 part 1,
+`archive/db/engine.py`'s `_assert_expected_db_host()`, gated on a new
+`EXPECTED_DB_HOST` env var so it can never crash a staging/test deploy
+that doesn't set it). Cost inventory recorded in
+`rtr-business/BUSINESS_OVERVIEW.md` with real, confirmed figures. Storage
+headroom confirmed (25.17% of 1GB used, 2026-08-17). PITR window confirmed
+(**Hobby tier, 3 days**) and the restore procedure written up in
+`README.md`'s new "Backups and recovery" section.
+
+**`databases:` block merged 2026-08-17 (PR #107), and verified clean
+against the live Render dashboard** — Ryan confirmed all four checks
+post-sync: (1) the Blueprint sync event completed successfully, (2) no
+duplicate `rtr-deeplink-db` instance was created, (3) the adopted
+instance's plan/RAM/storage/hostname are all unchanged from before the
+sync, (4) both `rtr-deeplink-archive` and `rtr-transcription-worker`
+booted cleanly afterward (proving `EXPECTED_DB_HOST` matched for real, not
+just in local tests). First time this repo has adopted an existing
+database (not a compute service) into a Blueprint, and it went cleanly.
+
+**One real item still open, not silently dropped: the actual PITR test
+restore.** The README procedure (`README.md`'s "Backups and recovery")
+is written from Render's documented behavior plus this workspace's
+confirmed real settings, but nobody has clicked through an actual
+recovery yet — a cross-checked hypothesis, not a proven procedure. Needs
+Ryan to do one throwaway restore to a scratch instance (never repointing
+any real service at it). Tracked as its own live entry in `BACKLOG.md`.
 
 ---
 

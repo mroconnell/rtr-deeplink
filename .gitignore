@@ -7,3 +7,4 @@ venv/
 *.db
 node_modules/
 .claude/settings.local.json
+local_transcription_backups/

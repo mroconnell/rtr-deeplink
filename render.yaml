@@ -152,6 +152,18 @@ services:
         value: 3.12.3
       - key: DATABASE_URL
         sync: false
+      # WO-4 (AUDIT_EXECUTION_BRIEF.md, 2026-08-16): the real internal
+      # Postgres hostname for rtr-deeplink-db (not a secret -- Render's
+      # own internal service hostname, no credentials in it). Checked at
+      # startup against DATABASE_URL's own host
+      # (archive/db/engine.py's _assert_expected_db_host()) -- a real,
+      # loud failure if DATABASE_URL ever gets pointed at the wrong
+      # database instead of silent wrong-data confusion. A literal value,
+      # not sync:false, so a Blueprint sync can't silently drop it the
+      # way render.yaml's own header already warns a manually-set value
+      # can be.
+      - key: EXPECTED_DB_HOST
+        value: dpg-d9r06nqjobas739hlc8g-a
       - key: ARCHIVE_INGEST_TOKEN
         sync: false
       - key: PUBLIC_BASE_URL
@@ -207,6 +219,12 @@ services:
     envVars:
       - key: DATABASE_URL
         sync: false  # MUST be the exact same value as rtr-deeplink-archive's DATABASE_URL above -- not a separate database
+      # WO-4 (AUDIT_EXECUTION_BRIEF.md, 2026-08-16): same real, checked
+      # guarantee for the "MUST be the exact same value" comment above --
+      # see rtr-deeplink-archive's own matching entry for the full
+      # reasoning.
+      - key: EXPECTED_DB_HOST
+        value: dpg-d9r06nqjobas739hlc8g-a
       - key: PUBLIC_BASE_URL
         sync: false
       - key: RESEND_API_KEY
@@ -221,3 +239,25 @@ services:
         sync: false  # optional -- unauthenticated Hugging Face Hub requests work fine today, just at a lower rate limit; see BACKLOG.md
       - key: AUTO_TRANSCRIPTION_REQUESTER_EMAIL
         sync: false  # optional -- idle-time auto-generation (worker/main.py) is silently disabled when unset; set to receive its completion-email activity digest
+
+databases:
+  # WO-4 (AUDIT_EXECUTION_BRIEF.md, 2026-08-16): brings the one paid,
+  # persistent-data resource into tracked config -- confirmed live via
+  # Render's dashboard 2026-08-17 (Basic-256mb, 256MB RAM/0.1 CPU/1GB
+  # storage, Oregon, PostgreSQL 18, hostname dpg-d9r06nqjobas739hlc8g-a --
+  # matches EXPECTED_DB_HOST above). Render's Blueprint sync adopts an
+  # existing database by exact `name:` match, the same mechanism already
+  # proven safe for the three services above -- this is the first time
+  # it's been tried for a database specifically in this repo, so this
+  # change was reviewed with the user before merging, not treated as
+  # routine (see AUDIT_EXECUTION_BRIEF.md's Wave 4 notes).
+  #
+  # Deliberately does NOT declare rtr-deeplink-staging-db here -- it's
+  # free-tier and intentionally disposable (expires 9/9/2026, per the
+  # Prerequisites table above). A future reader: that's not an oversight
+  # to "fix," don't add it.
+  - name: rtr-deeplink-db
+    databaseName: rtr_deeplink_db
+    plan: basic-256mb
+    region: oregon
+    postgresMajorVersion: "18"

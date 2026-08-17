@@ -24,6 +24,47 @@ def _resolve_database_url() -> str:
 
 DATABASE_URL = _resolve_database_url()
 
+
+def _assert_expected_db_host(url: str) -> None:
+    """WO-4 (AUDIT_EXECUTION_BRIEF.md, 2026-08-16): render.yaml's own
+    comment on the worker's DATABASE_URL says it "MUST be the exact same
+    value as rtr-deeplink-archive's" -- but each is a separately
+    dashboard-set env var on two different Render services, with nothing
+    enforcing that at deploy time. A copy-paste mistake (worker pointed at
+    a stale or staging database) would otherwise only surface as
+    confusing missing/duplicate data, not a startup failure.
+
+    Gated on `EXPECTED_DB_HOST` (a real Render internal Postgres hostname
+    like "dpg-xxxxxxxxxxxxxxxxxxxx-a", not a secret) being set at all --
+    same optional, no-op-when-unset degrade pattern as GA_MEASUREMENT_ID/
+    SENTRY_DSN/CLERK_PUBLISHABLE_KEY elsewhere in this codebase.
+    Deliberately NOT hardcoded: this module is imported by both the
+    Archive service and the worker (via archive.db.crud) *and* by any
+    dashboard-cloned staging/test service running the same code from the
+    same branch -- a bare hardcoded production hostname would hard-crash
+    a staging deploy the moment it redeployed with this check in place.
+    Set `EXPECTED_DB_HOST` only on the two production services in
+    render.yaml; staging/test services simply never set it and this
+    stays a no-op there, exactly as intended.
+    """
+    expected = os.environ.get("EXPECTED_DB_HOST", "").strip()
+    if not expected or url.startswith("sqlite"):
+        return
+    from urllib.parse import urlparse
+
+    host = urlparse(url).hostname or ""
+    if expected not in host:
+        raise RuntimeError(
+            f"DATABASE_URL hostname mismatch: EXPECTED_DB_HOST={expected!r} "
+            f"not found in the configured DATABASE_URL's host ({host!r}). "
+            "This almost certainly means DATABASE_URL is pointed at the "
+            "wrong database -- refusing to start rather than silently "
+            "running against unexpected data."
+        )
+
+
+_assert_expected_db_host(DATABASE_URL)
+
 _engine_kwargs = {"pool_pre_ping": True}
 if not DATABASE_URL.startswith("sqlite"):
     # Same free-tier connection-cap reasoning as the resolver's engine.py --

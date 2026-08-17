@@ -5,6 +5,40 @@ investigation detail behind each fix — lives in
 [BACKLOG_DONE.md](BACKLOG_DONE.md); items below link back to it for context
 where relevant.
 
+## Stale Archive-shaped tables in the resolver's database (`rtr_deeplink_db`) — cause unknown, real cleanup candidate
+
+Confirmed live 2026-08-17 during the WO-4 PITR test-restore verification
+(see `BACKLOG_DONE.md`): the Postgres server backing `rtr-deeplink-db`
+hosts two logical databases, `rtr_deeplink_db` (the resolver's —
+`meeting_resolutions`, `problem_reports`, 355 real rows) and `rtr_archive`
+(the Archive's — `meeting_pages`, `transcript_versions`, 1,117 real
+rows). That two-database split is the documented, intentional
+architecture (README's "Database architecture" section), not the
+finding here.
+
+The actual finding: `rtr_deeplink_db` *also* contains a full set of
+Archive-shaped tables (`meeting_pages`, `transcript_versions`,
+`transcription_jobs`, `meeting_page_url_aliases`) holding only 4 old
+demo rows (`city-of-demo-...`, `nowhere-xx-...-some-raw-pasted-youtube-
+meeting`, dated 2026-08-12) — entirely separate from the real Archive
+data in `rtr_archive`. Nothing in `app/db/models.py` defines these table
+names, so nothing in the resolver's live code should be reading or
+writing them.
+
+Root cause not established — worth checking `rtr_deeplink_db`'s own
+`alembic_version` history and git blame around when `archive/db` was
+split from a shared database, rather than guessing. Timing note: the
+demo data's date (2026-08-12) is *after* both services adopted Alembic
+(2026-08-09/08-10 per `CLAUDE.md`), so "leftover from before the split"
+doesn't cleanly fit — a different explanation (e.g. a demo-seed script
+or test run that once pointed at production) is equally plausible.
+
+**Not urgent, not touched.** No data was modified or dropped as part of
+finding this. Any cleanup is a real, destructive action against
+production and should only be done by Ryan after the root cause is
+understood and Ryan executes or explicitly approves it — not something
+to do reflexively just because the tables look unused.
+
 ## Easy-win triage (2026-08-16) — two waves ready to execute
 
 Per direct request: a pass through this whole file to pull out genuinely
@@ -1263,9 +1297,22 @@ unusually wide, and the missing auto-scroll toggle on archived pages~~
 
   Full status of every platform's CDX progress (including
   PrimeGov/CivicWeb/eScribe/IQM2/ClerkBase/ChampDS, which all got real
-  stage-2 yields the same night, and Granicus/Cablecast's still-partial
-  status) is in `CDX_QUERIES.md` directly — not duplicated here to avoid
-  the two drifting apart again.
+  stage-2 yields the same night) is in `CDX_QUERIES.md` directly — not
+  duplicated here to avoid the two drifting apart again.
+
+~~**Cablecast/Swagit/CivicClerk stage-2 seeks — not yet run.**~~ **Done
+  2026-08-17.** 728 real candidate URLs found (Cablecast 44/256 hosts,
+  Swagit 430/434, CivicClerk 254/257 — full breakdown in
+  `CDX_QUERIES.md`). Sample-checked for real caption content (44/30/30):
+  25 confirmed real, **ingested for real**; the other 703 added to
+  `scripts/tier3_auto_transcription_queue.txt` for the existing cron
+  feeder to resolve and push at pickup time, rather than re-checking each
+  one by hand first. Also fixed a real bug in `hosts_to_urls.py` found
+  live during this run: a shared single-thread executor meant to bound a
+  DNS-hang per-call instead let one real hang silently wedge every host
+  after it for the rest of the run — fixed to use a fresh one-shot
+  executor per call. That script lives in `rtr-business/research/`, not
+  this repo.
 
   **CivicPlus has zero currently-live, confirmed-real URLs anywhere in
   this repo, re-confirmed 2026-08-16 building the WO-13 adapter health
