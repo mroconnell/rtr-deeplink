@@ -439,101 +439,49 @@ anything) to build against it.
   scratchpad; regenerate any time via the script logged in
   `JURISDICTION_METADATA_PLAN.md`'s workstream 1.
 
-- **`GranicusAssetFinder._extract_metadata()`'s page-body jurisdiction regex
+- ~~**`GranicusAssetFinder._extract_metadata()`'s page-body jurisdiction regex
   has no sentence/tag boundary, so it can swallow unrelated agenda text
-  into the stored jurisdiction — confirmed live 2026-08-15 across multiple
-  real customers, found while auditing all ~650 `/meetings` rows after the
-  204-URL Granicus batch above landed.** Root cause,
-  [granicus.py:162](app/platforms/granicus.py:162):
-  `re.search(r"\b(City|County|Town) of ([A-Z][A-Za-z .]{1,40})", page_text)`
-  — the character class `[A-Za-z .]` allows spaces *and* literal periods
-  with no stop condition at a real sentence end, so once "City of X"
-  matches, the regex just keeps consuming letters/spaces/periods for up to
-  40 more characters regardless of whether that text is still the city
-  name. Live-verified by fetching a real page directly (not guessed from
-  the regex alone) — `hercules.granicus.com/player/clip/1306`'s actual
-  page text produces exactly `'City of Hercules. XIV. PUBLIC
-  COMMUNICATIONS XV. '` when the regex runs, matching the real stored
-  jurisdiction on
-  [redtaperecordings.com/m/city-of-hercules-xiv-public-communications-xv-2024-05-14-city-council-on-2024-05](https://redtaperecordings.com/m/city-of-hercules-xiv-public-communications-xv-2024-05-14-city-council-on-2024-05)
-  character for character. This only fires when `_fetch_channel_info()`'s
-  RSS-channel jurisdiction (the normally-preferred, reliable source — see
-  the comment right above this regex) comes back empty for that customer,
-  so it's a fallback-path bug, not universal.
+  into the stored jurisdiction**~~ **Fixed 2026-08-16 (WO-14) — both
+  Granicus and eScribe's independent copies of this bug now share
+  `jurisdiction_enrich.extract_jurisdiction_chain()`. Full detail
+  (root cause, all 9 Granicus + 6 eScribe confirmed examples, live
+  re-verification against the real Hercules page) in `BACKLOG_DONE.md`.**
+  One real gap found and left explicitly open by that fix, not silently
+  closed:
 
-  Real examples pulled from the live `/meetings` listing, all Granicus,
-  all the same shape — the jurisdiction field is stuck mid-sentence into
-  unrelated body/agenda/notice text:
-  - `Sarasota Legacy Business PLEDGE OF PUBLIC` (should be `Sarasota, FL`)
-  - `Punta Gorda Council is seeking the servic[es...]` (should be `Punta Gorda, FL`)
-  - `Huntsville.Ordinance No.` (should be `Huntsville, AL`) — also shows the
-    regex swallowing a literal `.` with no following space, since the
-    source text itself has none
-  - `Fort Worth in Communications with the Tex[as...]` (should be `Fort Worth, TX`)
-  - `Edgewater and the Florida Department of T[ransportation...]` (should be `Edgewater, FL`)
-  - `Town of Castle Rock Authorizing the Plum Creek Wa[ter...]` (should be `Castle Rock, CO`)
-  - `Castle Pines History of Parks and Recreat[ion...]` (should be `Castle Pines, CO`)
-  - `Boston to accept and expend the amount of, MA` (should be `Boston, MA`) —
-    note the state-suffix normalizer still correctly appended `, MA` at the
-    end even though the jurisdiction text itself was already garbage,
-    worth remembering when judging how "obviously wrong" a fix's test
-    cases need to look
-  - `Milwaukee.` (should be `Milwaukee, WI`) — the mildest real case, just
-    one stray trailing period, same root cause as the rest
-
-  **Not a universal cap on this file's whole "City/County of X" idea** —
-  `Lexington-Fayette Urban County Government`, `Capital Metropolitan
-  Transportation Authority, TX`, `Albuquerque Bernalillo County Water
-  Utility Authority`, and `Housing Authority of the County of Santa Clara`
-  all *also* flagged as "implausibly long" in this same audit but are
-  real, correct, legitimately-long agency names (confirmed against their
-  real subdomains — hacsc, abcwua, capmetrotx) — any fix needs to keep
-  distinguishing a genuinely long real name from body text that ran on
-  past the real name, not just cap length harder.
-
-  **Not fixed, and no fix chosen yet.** The obvious first idea — copy
-  PrimeGov's already-fixed `_extract_jurisdiction()` approach
-  ([primegov.py:128-146](app/platforms/primegov.py:128), stop at the first
-  word that doesn't start with an uppercase letter, cap at 4 words) —
-  would NOT cleanly solve this on its own: several of the bleed examples
-  above are agenda-heading text that's itself capitalized or ALL-CAPS
-  ("PLEDGE OF PUBLIC", "XIV. PUBLIC COMMUNICATIONS XV."), so a
-  capitalization-only gate wouldn't stop early on those. Worth deciding
-  against more real examples rather than guessing a rule now — same
-  "verify before generalizing" convention this file already applies to
-  PrimeGov's still-open structural gap above.
-
-  **Update 2026-08-15: the identical bug exists independently in
-  `escribe.py`, not shared code with Granicus — confirmed root cause,
-  6 real examples.** Found scanning `/coverage`'s 501-row table for
-  outliers (see the new entry below). [escribe.py:210](app/platforms/escribe.py:210):
-  `re.search(r"City of ([A-Za-z .]+)", page_text)` — the exact same
-  open-ended `[A-Za-z .]` character class with no sentence/tag boundary,
-  written separately from Granicus's version rather than shared. Real
-  confirmed hits, all live-verified via the meeting's own "View original
-  source" link:
-  - `pub-cityofgainesville.escribemeetings.com` → "Gainesville General
-    Policy Committee Meeting AGENDA Thursday, FL" (should be
-    "Gainesville, FL")
-  - `pub-delta.escribemeetings.com` → "Delta Housing Accelerator Fund
-    Initiatives Summary.pdf Recommendation" (should be "Delta, BC") — the
-    bleed ran straight into an agenda PDF's filename
-  - Four real Canadian examples where the regex ran on past the city name
-    into the page's land-acknowledgment boilerplate (displayed with the
-    leading "City of "/"Town of " stripped by `format_jurisdiction_display()`,
-    per this session's investigation, not independently re-confirmed
-    against that function's source): "Mississauga as being part of the
-    Treaty and Traditional Territory of the Mississaugas of the Credit
-    First Nation," "Oshawa is situated on lands within the traditional
-    and treaty territory of the Michi Saagiig and Chippewa Anishinaabeg
-    and the signatories of the Williams Treaties," "Port Moody Strategic
-    Priorities Committee Agenda Tuesday," "Thunder Bay be approved in
-    accordance with Table" (should be Mississauga/Oshawa/Port Moody/
-    Thunder Bay, ON/BC respectively)
-
-  Same fix direction as the Granicus entry above, and worth considering
-  whether the two adapters should share one bounded-regex helper instead
-  of maintaining two independently-drifting copies of the same bug.
+  **Residual gap: `_looks_like_bleed()`'s trim-repair gate still misses
+  pure Title-Case/ALL-CAPS bleed with no lowercase/digit/roman-numeral
+  signal in the discarded tail** — confirmed live-equivalent 2026-08-16 on
+  4 of the 9 Granicus cases (Sarasota, Punta Gorda, Castle Rock, Castle
+  Pines): `extract_jurisdiction_chain()`'s text-only tiers (stop-rule +
+  capitalization-walk) still produce a bled candidate for these
+  (`"City of Sarasota Legacy Business PLEDGE OF"`, `"Town of Castle Rock
+  Authorizing"`, etc.), and `_looks_like_bleed()` (`jurisdiction_enrich.py`)
+  declines to trim it because the discarded tail (`"Legacy Business PLEDGE
+  OF"`, `"Authorizing"`) is itself Title-Case/ALL-CAPS prose with no
+  lowercase-word/digit/roman-numeral signal — exactly the "Title-Case/
+  ALL-CAPS bleed" gap the 2026-08-15 Census-baseline audit already flagged
+  for Sarasota/Hollywood/Hampton (see that entry above) but never fixed.
+  **In production these 4 are currently saved by Granicus's own
+  subdomain-per-customer URL convention** (confirmed live-verified against
+  `tests/test_granicus.py`'s new
+  `test_extract_metadata_jurisdiction_bleed_regressions_via_subdomain_fallback`)
+  — `extract_jurisdiction_chain()`'s Census-validated subdomain tier
+  catches what the text tiers miss, since e.g. `sarasota.granicus.com`
+  validates "Sarasota" directly. That's real coverage, not nothing, but
+  it's incidental (works because Granicus subdomains usually *are* the
+  city name) rather than a fix to the trim heuristic itself — any Granicus
+  customer whose subdomain doesn't match the city name would still bleed.
+  No fix attempted this pass, same "verify against more real examples
+  before guessing a rule" call the original bug entry already made for
+  the capitalization-only PrimeGov approach — an ALL-CAPS-word signal
+  looks like a plausible next step (none of the confirmed legitimate long
+  names in the original entry — Lexington-Fayette Urban County Government,
+  Capital Metropolitan Transportation Authority, etc. — contain ALL-CAPS
+  words) but wasn't added without a way to re-verify it against the
+  73-case trim-reachable bucket the existing gate was tuned against
+  (`baseline_validation.csv`, no longer available in any session's
+  scratchpad).
 
 - **Fountain Valley clip 607 shows a wrong title and jurisdiction today —
   real, confirmed, not yet root-caused. Found 2026-08-15 in the same

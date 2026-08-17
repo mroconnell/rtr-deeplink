@@ -143,6 +143,120 @@ hallucination-audit candidates and the separate 118-job seam-duplication
 list are both real, open, user-facing decisions, not something to act on
 automatically.
 
+## WO-14: shared jurisdiction-regex bleed fix for Granicus + eScribe (2026-08-16)
+
+**Problem.** `GranicusAssetFinder._extract_metadata()`'s page-body
+jurisdiction regex has no sentence/tag boundary, so it can swallow
+unrelated agenda text into the stored jurisdiction — confirmed live
+2026-08-15 across multiple real customers, found while auditing all ~650
+`/meetings` rows after the 204-URL Granicus batch landed. Root cause,
+`granicus.py`: `re.search(r"\b(City|County|Town) of ([A-Z][A-Za-z
+.]{1,40})", page_text)` — the character class `[A-Za-z .]` allows spaces
+*and* literal periods with no stop condition at a real sentence end, so
+once "City of X" matches, the regex just keeps consuming
+letters/spaces/periods for up to 40 more characters regardless of whether
+that text is still the city name. Live-verified by fetching a real page
+directly — `hercules.granicus.com/player/clip/1306`'s actual page text
+produced exactly `'City of Hercules. XIV. PUBLIC COMMUNICATIONS XV. '`
+when the old regex ran, matching the real stored jurisdiction on
+[redtaperecordings.com/m/city-of-hercules-xiv-public-communications-xv-2024-05-14-city-council-on-2024-05](https://redtaperecordings.com/m/city-of-hercules-xiv-public-communications-xv-2024-05-14-city-council-on-2024-05)
+character for character. Only fires when `_fetch_channel_info()`'s
+RSS-channel jurisdiction (the normally-preferred source) comes back empty
+for that customer, so it's a fallback-path bug, not universal.
+
+Real examples pulled from the live `/meetings` listing, all Granicus, all
+the same shape:
+- `Sarasota Legacy Business PLEDGE OF PUBLIC` (should be `Sarasota, FL`)
+- `Punta Gorda Council is seeking the servic[es...]` (should be `Punta Gorda, FL`)
+- `Huntsville.Ordinance No.` (should be `Huntsville, AL`) — also shows the
+  regex swallowing a literal `.` with no following space
+- `Fort Worth in Communications with the Tex[as...]` (should be `Fort Worth, TX`)
+- `Edgewater and the Florida Department of T[ransportation...]` (should be `Edgewater, FL`)
+- `Town of Castle Rock Authorizing the Plum Creek Wa[ter...]` (should be `Castle Rock, CO`)
+- `Castle Pines History of Parks and Recreat[ion...]` (should be `Castle Pines, CO`)
+- `Boston to accept and expend the amount of, MA` (should be `Boston, MA`)
+- `Milwaukee.` (should be `Milwaukee, WI`) — the mildest real case
+
+Not a universal cap on the whole "City/County of X" idea —
+`Lexington-Fayette Urban County Government`, `Capital Metropolitan
+Transportation Authority, TX`, `Albuquerque Bernalillo County Water
+Utility Authority`, and `Housing Authority of the County of Santa Clara`
+all also flagged as "implausibly long" in the same audit but are real,
+correct, legitimately-long agency names.
+
+**The identical bug existed independently in `escribe.py`**, not shared
+code with Granicus — confirmed root cause, 6 real examples, found scanning
+`/coverage`'s 501-row table for outliers.
+`re.search(r"City of ([A-Za-z .]+)", page_text)` — the exact same
+open-ended `[A-Za-z .]` character class, written separately from
+Granicus's version. Real confirmed hits, all live-verified via the
+meeting's own "View original source" link:
+- `pub-cityofgainesville.escribemeetings.com` → "Gainesville General
+  Policy Committee Meeting AGENDA Thursday, FL" (should be "Gainesville, FL")
+- `pub-delta.escribemeetings.com` → "Delta Housing Accelerator Fund
+  Initiatives Summary.pdf Recommendation" (should be "Delta, BC")
+- Four real Canadian examples where the regex ran on past the city name
+  into land-acknowledgment boilerplate: "Mississauga as being part of the
+  Treaty and Traditional Territory of the Mississaugas of the Credit First
+  Nation," "Oshawa is situated on lands within the traditional and treaty
+  territory of the Michi Saagiig and Chippewa Anishinaabeg and the
+  signatories of the Williams Treaties," "Port Moody Strategic Priorities
+  Committee Agenda Tuesday," "Thunder Bay be approved in accordance with
+  Table" (should be Mississauga/Oshawa/Port Moody/Thunder Bay, ON/BC
+  respectively).
+
+**Fix.** Rather than patching each adapter's regex independently, both
+now call the shared `jurisdiction_enrich.extract_jurisdiction_chain()` —
+a bounded stop-rule/capitalization-walk chain that was already built and
+shipped for `swagit.py`/`civicclerk.py`/`generic_fallback.py` (PR #56,
+2026-08-15/16) but never wired into Granicus or eScribe despite being the
+exact fix this bug needed; every candidate it returns is validated
+against the Census tables (directly, via trim-repair, or via the domain
+registry) before being accepted, so it declines instead of guessing when
+nothing cleanly bounds the match. `_extract_metadata()` in both adapters
+now takes the raw `html` string (previously only `soup`/`url`) since the
+capitalization-walk tier needs tag boundaries the parsed `soup` text
+doesn't preserve. Granicus keeps its separate reversed "X County" regex
+as a secondary fallback (not covered by the chain, which only handles
+"X of Y" phrasing, and not itself flagged as buggy).
+
+A second, real bug found and fixed in the same pass: eScribe's
+`_jurisdiction_from_subdomain()` fallback (used when the chain declines)
+was a bare `.replace("-", " ").title()`, which only helps a subdomain
+with literal hyphens — every real customer confirmed live is one
+concatenated word (`cityofgainesville`, `thunderbay`, `portmoody`), so a
+multi-word city collapsed into one mashed-together word ("Thunderbay",
+"Portmoody" instead of "Thunder Bay"/"Port Moody"). Now wordninja-splits
+the label the same way Granicus's `_humanize_subdomain()` does, with
+leading `city`/`county`/`town`/`of` tokens stripped — but deliberately
+*not* gated on Census-table validation like Granicus's version
+(`jurisdiction_enrich.validated_subdomain_extract()`), since eScribe
+serves real Canadian customers the US-only Census tables can't validate
+by construction (see WO-16 in `BACKLOG.md`); gating on validation here
+would make the fallback decline on exactly the customers it most needs to
+cover.
+
+**Verification.** All 9 Granicus + 6 eScribe confirmed cases re-verified
+(5 Granicus cases resolve correctly from page text alone; the other 4 via
+Granicus's real per-customer subdomain convention — see the residual gap
+split out in `BACKLOG.md`; all 6 eScribe cases resolve correctly via the
+fixed subdomain fallback). Hercules re-verified against a fresh live fetch
+of `hercules.granicus.com/player/clip/1306` (2026-08-16): the old regex
+logic still reproduces the exact documented bug on today's page; the new
+code produces `"City of Hercules, CA"`. That live HTML is now checked in
+as `tests/fixtures/granicus/hercules_clip1306.html` and covered by
+`test_extract_metadata_jurisdiction_no_longer_bleeds_into_agenda_text_hercules`.
+New regression tests: `tests/test_granicus.py`'s
+`test_extract_metadata_jurisdiction_bleed_regressions_text_only` (5 cases)
+and `..._via_subdomain_fallback` (4 cases); `tests/test_escribe.py`'s
+`test_extract_metadata_jurisdiction_no_longer_bleeds_into_agenda_text` (6
+cases) and `test_jurisdiction_from_subdomain_splits_concatenated_multiword_names`.
+Full suite (845 tests), `ruff check`, and `ruff format --check` all clean.
+
+**Not fully closed** — see `BACKLOG.md`'s residual "Title-Case/ALL-CAPS
+bleed" entry for the 4 Granicus cases that only resolve correctly today
+via subdomain-fallback luck, not the text-based chain itself.
+
 ## Local-Mac transcription backlog script — bigger model than the worker's forced "tiny" (2026-08-16)
 
 Built to work down the real ~209-meeting `/meetings?has_transcript=false`
