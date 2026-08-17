@@ -14,7 +14,13 @@ from ..utils.jurisdiction_format import (
     normalize_state_suffix,
 )
 from ..utils.language import detect_language_from_texts
-from ..utils.search import build_corpus, find_snippet, matches, tokenize
+from ..utils.search import (
+    build_corpus,
+    compute_search_corpus,
+    find_snippet,
+    matches,
+    tokenize,
+)
 from ..utils.slugify import build_base_slug, random_suffix
 from ..utils.transcription_quality import detect_hallucination_warnings
 from ..utils.url_normalize import normalize_url
@@ -518,6 +524,31 @@ async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) 
                 current_default, agenda_items
             ):
                 current_default.is_default = False
+
+        # Recomputed unconditionally on every ingest, not just when a new
+        # version is created -- cheap (one extra indexed SELECT), and
+        # simpler than special-casing "did anything relevant change".
+        # Covers every trigger case: page.title/jurisdiction/agenda_items
+        # were already updated above via _find_or_create_page(), and any
+        # new TranscriptVersion is already flushed above, so this SELECT
+        # sees fresh state for both. Promotion/demotion alone never
+        # changes this: the corpus covers every version's text regardless
+        # of is_default (see list_pages()'s docstring), so which version
+        # is currently default doesn't affect what's in the corpus.
+        all_segments = (
+            (
+                await session.execute(
+                    select(TranscriptVersion.segments).where(
+                        TranscriptVersion.meeting_page_id == page.id
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        page.search_corpus = compute_search_corpus(
+            page.title, page.jurisdiction, page.agenda_items, all_segments
+        )
 
         await session.commit()
         # version_id is matched_version_id above: the TranscriptVersion this

@@ -69,6 +69,18 @@ class MeetingPage(Base):
     video_warnings: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
     agenda_link: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
+    # Precomputed, lowercased title+jurisdiction+agenda+all-transcript-
+    # versions text (archive/utils/search.py's compute_search_corpus()) --
+    # written by crud.ingest_resolution() on every ingest. Nullable because
+    # pre-existing rows only get it via the one-time
+    # scripts/backfill_search_corpus.py sweep. GIN-trigram-indexed on
+    # Postgres by the migration that adds this column, but not via an
+    # ORM-level `index=True` here -- see that migration for why. See
+    # BACKLOG.md's "Search: move to a materialized/indexed column" entry
+    # for why this exists and archive/db/crud.py's list_pages() for how
+    # it's queried.
+    search_corpus: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

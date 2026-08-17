@@ -1,9 +1,14 @@
 """Keyword search over a meeting's title/jurisdiction/agenda/transcript
-text. No search index, no materialized column -- see the note on
-`list_pages()` in `crud.py` and BACKLOG.md for why, and what it'll take to
-outgrow this. Everything here runs in Python, over whatever the DB already
-returned, at query time -- fine at the Archive's current scale (dozens of
-meetings), not meant to scale past a few hundred.
+text. The actual match decision, phrase/exclusion parsing, fuzzy
+(typo-tolerant) matching, and snippet/segment extraction all still run
+here, in Python, exactly as before -- see the note on `list_pages()` in
+`crud.py` and BACKLOG.md's "Search: move to a materialized/indexed column"
+entry. On Postgres, `list_pages()` now uses `MeetingPage.search_corpus`
+(this module's `compute_search_corpus()`, precomputed at ingest time and
+GIN-trigram-indexed) to narrow candidates in SQL first, so these functions
+only ever run over a small result set instead of a full-table scan; on
+SQLite (dev/CI) `list_pages()` still runs the full scan unchanged, since
+dev/CI never has enough rows for that to matter.
 """
 
 import html
@@ -25,6 +30,28 @@ def build_corpus(*texts: str) -> str:
 
 def tokenize(corpus: str) -> set:
     return set(_WORD_RE.findall(corpus))
+
+
+def compute_search_corpus(
+    title: Optional[str],
+    jurisdiction: Optional[str],
+    agenda_items: Optional[list],
+    all_segments: Iterable[list],
+) -> str:
+    """The exact text `MeetingPage.search_corpus` should hold -- same
+    fields `build_corpus()` already assembles at query time, computed once
+    and stored instead of every request. `all_segments` is every linked
+    TranscriptVersion's `.segments` list, not just the default one -- see
+    `list_pages()`'s own docstring for why a demoted version's text still
+    has to count toward a match. Shared by `crud.ingest_resolution()` and
+    `scripts/backfill_search_corpus.py` so this text is assembled in
+    exactly one place, not two copies that can drift.
+    """
+    agenda_text = " ".join(item.get("text", "") for item in (agenda_items or []))
+    transcript_text = " ".join(
+        seg.get("text", "") for segs in all_segments for seg in (segs or [])
+    )
+    return build_corpus(title or "", jurisdiction or "", agenda_text, transcript_text)
 
 
 def _levenshtein(a: str, b: str, max_dist: int) -> int:
@@ -62,7 +89,7 @@ def _fuzzy_threshold(word: str) -> int:
     return 2
 
 
-def _parse_query(query: str) -> tuple:
+def parse_query(query: str) -> tuple:
     """Splits a query into (phrases, words, excluded_phrases, excluded_words).
 
     A `"quoted phrase"` is required as one continuous adjacent match;
@@ -135,7 +162,7 @@ def matches(query: str, corpus: str, corpus_words: set, fuzzy: bool) -> bool:
     just something near it, which is a worse failure mode than an
     exclusion occasionally missing a typo'd instance of the excluded word.
     """
-    phrases, terms, excluded_phrases, excluded_terms = _parse_query(query)
+    phrases, terms, excluded_phrases, excluded_terms = parse_query(query)
     if not phrases and not terms and not excluded_phrases and not excluded_terms:
         return True
 
@@ -215,7 +242,7 @@ def find_snippet(
     with only the deliberately-inserted <mark> tag left raw -- callers
     should render it with a "safe"/no-further-escaping filter.
     """
-    phrases, terms, _excluded_phrases, _excluded_terms = _parse_query(query)
+    phrases, terms, _excluded_phrases, _excluded_terms = parse_query(query)
     if not phrases and not terms:
         return None
 
@@ -259,7 +286,7 @@ def find_matching_segment(
     search terms at all -- callers should fall back to a plain title/
     date/link line with no quote in that case.
     """
-    phrases, terms, _excluded_phrases, _excluded_terms = _parse_query(query or "")
+    phrases, terms, _excluded_phrases, _excluded_terms = parse_query(query or "")
     if not phrases and not terms:
         return None
 

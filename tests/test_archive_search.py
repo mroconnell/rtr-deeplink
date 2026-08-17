@@ -1,5 +1,6 @@
 from archive.utils.search import (
     build_corpus,
+    compute_search_corpus,
     find_matching_segment,
     find_snippet,
     matches,
@@ -264,3 +265,51 @@ def test_find_matching_segment_respects_fuzzy_flag():
     assert find_matching_segment("traffic", segments, fuzzy=False) is None
     result = find_matching_segment("traffic", segments, fuzzy=True)
     assert result["index"] == 0
+
+
+def test_compute_search_corpus_matches_build_corpus_query_time_shape():
+    # compute_search_corpus() precomputes what list_pages() otherwise
+    # assembles at query time via build_corpus() -- same title/jurisdiction/
+    # agenda/transcript fields, same lowercased join, just from an
+    # agenda_items list + multiple TranscriptVersion.segments lists instead
+    # of already-flattened strings.
+    all_segments = [
+        [{"start": 0.0, "end": 5.0, "text": "discussion of traffic signals"}],
+        [{"start": 0.0, "end": 5.0, "text": "downtown parking permits"}],
+    ]
+    corpus = compute_search_corpus(
+        "City Council Meeting",
+        "Dublin, CA",
+        [{"text": "Item 1: Traffic Calming"}],
+        all_segments,
+    )
+    expected = build_corpus(
+        "City Council Meeting",
+        "Dublin, CA",
+        "Item 1: Traffic Calming",
+        "discussion of traffic signals downtown parking permits",
+    )
+    assert corpus == expected
+    assert matches("parking", corpus, set(), fuzzy=False)
+
+
+def test_compute_search_corpus_includes_every_transcript_version():
+    # Every linked TranscriptVersion's text counts, not just the default
+    # one -- a demoted version's text (e.g. a superseded scraped caption)
+    # must still be findable, matching list_pages()'s own documented
+    # behavior for the query-time build_corpus() path.
+    all_segments = [
+        [{"start": 0.0, "end": 5.0, "text": "demoted garbled caption text"}],
+        [{"start": 0.0, "end": 5.0, "text": "clean re-transcription text"}],
+    ]
+    corpus = compute_search_corpus(None, None, None, all_segments)
+    assert matches("garbled", corpus, set(), fuzzy=False)
+    assert matches("re-transcription", corpus, set(), fuzzy=False)
+
+
+def test_compute_search_corpus_handles_missing_fields():
+    assert compute_search_corpus(None, None, None, []) == ""
+    assert compute_search_corpus(None, None, [], [[]]) == ""
+    # A segment dict missing "text" shouldn't raise.
+    corpus = compute_search_corpus("Title", None, None, [[{"start": 0.0, "end": 1.0}]])
+    assert corpus == "title"
