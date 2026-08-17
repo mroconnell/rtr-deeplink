@@ -20,6 +20,18 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Dispatched directly (not via push/pull_request) by
+  # feed-tier3-transcription.yml / feed-granicus-transcription.yml's
+  # queue-advancement step: PRs/branches created with the default
+  # GITHUB_TOKEN don't trigger pull_request-triggered workflows (GitHub's
+  # own loop-prevention for that token), so a queue-advance PR would
+  # never get a "test" check on its own. workflow_dispatch is explicitly
+  # exempt from that prevention, so those workflows dispatch this one
+  # directly on the queue-advance branch; the resulting check run still
+  # satisfies the branch ruleset's required "test" status check, since
+  # required checks are matched by head SHA + job context ("test"), not
+  # by which event produced the run. See those workflows' own comments.
+  workflow_dispatch: {}
 
 jobs:
   test:
