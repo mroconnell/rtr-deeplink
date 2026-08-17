@@ -6,6 +6,54 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Incident: `search_corpus` column deployed before its migration ran — ~13 min sitewide Archive outage (2026-08-17)
+
+[Resolved 2026-08-17] **Timeline (all PT, from git + Sentry):** 09:25 PR
+#116 merged and deployed (release `f44f5d84`) — "Search: add
+materialized search_corpus column (PR1/3)", adding
+`MeetingPage.search_corpus` (nullable Text) + an Alembic migration
+(`f54a11e5f`) + a GIN-trigram index on Postgres. The PR description
+correctly said "nothing reads this column yet … safe to deploy alone" —
+but the ORM *selects every mapped column* on any `select(MeetingPage)`,
+so the instant the model gained the attribute, every read of
+`meeting_pages` in production issued `SELECT … meeting_pages.search_corpus
+…` against a table that didn't have it. Sentry (its first real day of
+service — this closes WO-7's "confirm a real exception appears in the
+dashboard" criterion) recorded `sqlalchemy.dialects.postgresql.asyncpg.
+ProgrammingError: <UndefinedColumnError>: column meeting_pages.
+search_corpus does not exist` across five issues at once: `/m/{slug}`
+(23 events, `crud.get_page_by_slug()`), `/meetings`, `/feed.xml`, and
+the worker's `claim_next_chunk` / `find_auto_transcript…` polling — i.e.
+everything that touches Postgres, both services. 09:37 PRs #123 (backfill
+script) and #124 (rewire `list_pages()`) merged; the migration was
+applied to prod in that window (Sentry's last event ~09:38, every
+page 200 on re-test after), and Ryan then ran `alembic upgrade head` +
+`python scripts/backfill_search_corpus.py` (1,219 rows) by hand on the
+Render shell to complete PR2/3's one-time step.
+
+**Diagnostic misstep worth recording, since it briefly went into
+`BACKLOG.md` as fact:** the outage was first observed from *outside* by
+a session investigating Search Console's flagged-URL list, which caught
+three specific 500ing pages (`/m/welcome-to-clerkbase`, an SLC page, a
+Minneapolis LIMS page) and — because eight other pages tested 200 in the
+same pass and `transcript.txt` exports "worked on the same rows" — wrote
+it up as a slc/lims/clerkbase-specific template-render bug. Every one of
+those observations was a **timing artifact**: the 500s were sampled
+inside the 13-minute window and the 200s just after it closed. Root cause
+was correctly identified only once the Sentry traceback was read. Lesson,
+already stated in `CLAUDE.md` in another form: don't infer a code-path
+diagnosis from black-box HTTP status sampling when a traceback is
+available — go get the traceback first.
+
+**Root cause, structurally:** `init_models()` runs `create_all()`, which
+creates *new tables* but never ALTERs existing ones (documented in
+`CLAUDE.md`), so a model change to an existing table is only safe once
+its Alembic migration has run against prod — and today nothing enforced
+that ordering at deploy time. Same class as the two earlier incidents
+that motivated adopting Alembic (job-priority column, materialized search
+column). What's still open — a mechanism, not a rule — is tracked as the
+live `BACKLOG.md` "Schema-migration deploy ordering" entry, feeding WO-10.
+
 ## Per-state SEO landing pages — `/state/{slug}` (2026-08-17)
 
 [Done 2026-08-17] Built from a direct user ask ("all the meetings in a
