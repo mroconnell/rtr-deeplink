@@ -102,6 +102,48 @@ async def probe_duration(media_url: str, *, source_page_url: str) -> Optional[fl
         return None
 
 
+async def _mean_volume_db(path: Path) -> Optional[float]:
+    """Runs ffmpeg's own `volumedetect` filter against an already-local
+    file (no network involved, just decoding a small mp3 already on
+    disk) and returns its reported mean_volume in dB, or None if it
+    couldn't be parsed. Used by extract_chunk_audio() below to detect a
+    real, confirmed failure mode -- see its own docstring."""
+    try:
+        _returncode, _stdout, stderr = await _run(
+            "ffmpeg", "-i", str(path), "-af", "volumedetect", "-f", "null", "-",
+        )
+    except (FileNotFoundError, asyncio.TimeoutError):
+        return None
+    for line in stderr.decode(errors="replace").splitlines():
+        if "mean_volume:" in line:
+            try:
+                return float(line.split("mean_volume:")[1].strip().split(" ")[0])
+            except (IndexError, ValueError):
+                return None
+    return None
+
+
+# Real, confirmed threshold, not guessed: a known-good real meeting
+# (Boulder County, CO) measures ~-20dB mean_volume on its extracted mono
+# audio; a real, confirmed-broken one (Port Coquitlam, BC, 2025-02-18
+# Committee of Council Meeting -- see BACKLOG_DONE.md) measures ~-44 to
+# -46dB after the same plain `-ac 1` mono downmix, because its source's
+# left/right channels are near-exact phase-inverted copies of each other
+# -- summing them (the standard stereo->mono average) destructively
+# cancels the real signal into near-silence/noise, which is what fed
+# faster-whisper the near-silent audio it then hallucinated wildly on
+# (confirmed by transcribing that same real audio three ways: the
+# standard mono downmix produced nonsense, while either individual
+# channel alone -- both measuring ~-15.7dB, and their *difference*
+# measuring ~-10.4dB, the signature of near-perfect phase inversion --
+# produced a clean, coherent real transcript of the actual meeting).
+# -38dB sits with real margin on both sides of that ~-20 vs. ~-45 gap --
+# comfortably below genuinely-quiet-but-real speech (soft-spoken
+# officials, a distant mic) while still well above the confirmed
+# phase-cancellation case.
+_SUSPICIOUSLY_QUIET_MEAN_VOLUME_DB = -38.0
+
+
 async def extract_chunk_audio(
     media_url: str, *, start: float, duration: float, source_page_url: str, out_path: Path
 ) -> bool:
@@ -115,6 +157,22 @@ async def extract_chunk_audio(
     caller is responsible for treating a False/exception as a retryable
     per-chunk failure, not a fatal job error (see archive/db/crud.py's
     consecutive_chunk_failures budget).
+
+    A stereo source whose left/right channels are (near-)phase-inverted
+    is a real, confirmed failure mode of the plain `-ac 1` downmix below
+    (see `_SUSPICIOUSLY_QUIET_MEAN_VOLUME_DB`'s own comment for the full
+    real-data writeup) -- destructive cancellation leaves faster-whisper
+    almost nothing real to transcribe, and it hallucinates on the
+    near-silent result instead of failing loudly. After the normal
+    downmix, this checks the *already-extracted* file's own mean volume
+    (cheap -- no network, just decoding the small file already on disk)
+    and, only when it looks suspiciously quiet, re-extracts using the
+    left channel alone instead of an averaged downmix -- avoiding the
+    cancellation outright rather than just detecting its symptom
+    downstream (see worker/segment_utils.py's separate hallucination-
+    warning check, the defense-in-depth layer for whatever this doesn't
+    catch -- e.g. a source that's *genuinely* bad/corrupted audio, not a
+    phase-inversion artifact this can actually fix).
     """
     out_path.parent.mkdir(parents=True, exist_ok=True)
     try:
@@ -138,4 +196,49 @@ async def extract_chunk_audio(
             returncode, media_url, start, stderr.decode(errors="replace")[:500],
         )
         return False
-    return out_path.exists() and out_path.stat().st_size > 0
+    if not (out_path.exists() and out_path.stat().st_size > 0):
+        return False
+
+    mean_volume = await _mean_volume_db(out_path)
+    if mean_volume is not None and mean_volume < _SUSPICIOUSLY_QUIET_MEAN_VOLUME_DB:
+        logger.warning(
+            "Chunk audio at %ss looks suspiciously quiet after mono downmix (%.1fdB) -- "
+            "retrying with the left channel alone in case this is stereo phase "
+            "cancellation (see media_probe.py's own docstring)",
+            start, mean_volume,
+        )
+        left_path = out_path.with_suffix(".left.mp3")
+        try:
+            returncode2, _stdout2, stderr2 = await _run(
+                "ffmpeg", "-y",
+                "-headers", realistic_headers(source_page_url),
+                "-ss", str(start),
+                "-i", media_url,
+                "-t", str(duration),
+                "-vn", "-af", "pan=mono|c0=c0", "-ar", "16000",
+                "-c:a", "libmp3lame", "-b:a", "32k",
+                str(left_path),
+            )
+        except (FileNotFoundError, asyncio.TimeoutError):
+            logger.exception("Left-channel fallback extraction failed for %s @ %ss", media_url, start)
+            return True  # keep the original (quiet, but present) mono result
+        if returncode2 == 0 and left_path.exists() and left_path.stat().st_size > 0:
+            left_volume = await _mean_volume_db(left_path)
+            if left_volume is not None and left_volume > mean_volume + 10:
+                # A real, meaningfully louder single channel -- confirms this
+                # was cancellation, not a genuinely quiet source (where a
+                # single channel wouldn't be any louder than the mix). Use it.
+                left_path.replace(out_path)
+                logger.info(
+                    "Chunk audio at %ss: left channel (%.1fdB) is real signal the mono "
+                    "downmix had cancelled (%.1fdB) -- using it instead",
+                    start, left_volume, mean_volume,
+                )
+            else:
+                left_path.unlink(missing_ok=True)
+        else:
+            logger.warning(
+                "Left-channel fallback extraction failed (%s) for %s @ %ss: %s",
+                returncode2, media_url, start, stderr2.decode(errors="replace")[:500],
+            )
+    return True

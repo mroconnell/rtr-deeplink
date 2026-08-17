@@ -359,6 +359,79 @@ async def test_completed_job_detects_language_from_transcribed_text():
     assert transcribed["language"] == "en"
 
 
+async def test_completed_job_flags_a_real_hallucinated_transcript():
+    # Real bug fixed 2026-08-16 (Port Coquitlam, BC -- see BACKLOG_DONE.md
+    # and archive/utils/transcription_quality.py's own docstring): a
+    # Whisper-produced transcript had no equivalent of the scraped-caption
+    # path's is_likely_garbled() check before going live. This exercises
+    # the real DB finalize path (report_chunk_result()), not just the pure
+    # detection function directly -- confirms the archive-side duplicate
+    # is actually wired in, not just present in the file.
+    url = "https://example.granicus.com/player/clip/tj-halluc-1"
+    job = await crud.create_transcription_job(
+        payload=_payload("granicus:tj-halluc-1", url), input_url_normalized=url,
+        requester_email="halluc1@example.com", media_url="https://example.com/v.m3u8",
+        media_kind="video", probed_duration_seconds=900, chunk_size_seconds=900,
+        skip_confirmation=True,
+    )
+    claim = await crud.claim_next_chunk()
+    assert claim["job_id"] == job["job_id"]
+
+    # Directly reproduced against the real Port Coquitlam audio while
+    # investigating this bug: one real distinct sentence, then the same
+    # sentence repeated verbatim -- a real, confirmed hallucination-loop
+    # shape (see worker/segment_utils.py's matching real fixture for the
+    # full provenance note).
+    hallucinated_segments = [
+        {"start": 0.0, "end": 30.0, "text": "Public comment, motion, second, aye, nay, abstain,", "speaker": None},
+    ] + [
+        {
+            "start": 240.0 + i * 10, "end": 250.0 + i * 10,
+            "text": "So, we are going to take a look at what we are going to do.",
+            "speaker": None,
+        }
+        for i in range(44)
+    ]
+    result = await crud.report_chunk_result(job["job_id"], success=True, shifted_segments=hallucinated_segments)
+    assert result["status"] == "completed"
+
+    page = await crud.get_page_by_slug(job["meeting_page_slug"])
+    transcribed = next(v for v in page["versions"] if v["source"] == "transcribed")
+    assert transcribed["transcript_warnings"]
+    assert "hallucinated" in transcribed["transcript_warnings"][0].lower()
+
+
+async def test_completed_job_does_not_flag_a_real_clean_transcript():
+    # False-positive check on the same real finalize path, using the real,
+    # independently-confirmed-clean transcript this same investigation
+    # produced from the phase-cancellation fix (left channel instead of
+    # the cancelled mono downmix).
+    url = "https://example.granicus.com/player/clip/tj-clean-1"
+    job = await crud.create_transcription_job(
+        payload=_payload("granicus:tj-clean-1", url), input_url_normalized=url,
+        requester_email="clean1@example.com", media_url="https://example.com/v.m3u8",
+        media_kind="video", probed_duration_seconds=900, chunk_size_seconds=900,
+        skip_confirmation=True,
+    )
+    claim = await crud.claim_next_chunk()
+    assert claim["job_id"] == job["job_id"]
+
+    clean_segments = [
+        {"start": 300.0, "end": 309.52, "text": "Councillor Garling. Sorry, I'm confused now. So there is an access point off of Ogovi, and the drawing", "speaker": None},
+        {"start": 309.52, "end": 315.36, "text": "it says, there's not. So there would be access for, say, if, like, someone were delivering or", "speaker": None},
+        {"start": 315.36, "end": 318.56, "text": "for firefighting, you know, someone could, could access through, like, you know, like,", "speaker": None},
+        {"start": 318.56, "end": 322.80, "text": "that's supposed to be a fence or a gate or something, but a driveway access would be off of that", "speaker": None},
+        {"start": 322.80, "end": 328.40, "text": "lane portion to the off of Hastings. So I'm, I'm, I'm not in favor of this at all. I,", "speaker": None},
+        {"start": 328.40, "end": 334.08, "text": "I just, I don't know why we would. I get it's an unopened portion, um, but if you were, if you've", "speaker": None},
+    ]
+    result = await crud.report_chunk_result(job["job_id"], success=True, shifted_segments=clean_segments)
+    assert result["status"] == "completed"
+
+    page = await crud.get_page_by_slug(job["meeting_page_slug"])
+    transcribed = next(v for v in page["versions"] if v["source"] == "transcribed")
+    assert transcribed["transcript_warnings"] == []
+
+
 async def test_chunk_failures_fail_the_job_after_budget_exhausted():
     url = "https://example.granicus.com/player/clip/tj-6"
     job = await crud.create_transcription_job(

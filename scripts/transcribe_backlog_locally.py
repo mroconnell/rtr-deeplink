@@ -109,7 +109,14 @@ from app.platforms.base import UnsupportedPlatformError, detect_platform, get_fi
 from app.platforms.media_probe import extract_chunk_audio, is_plausible_meeting_duration, probe_duration  # noqa: E402
 from app.utils.url_normalize import normalize_url  # noqa: E402
 from app.utils.vtt_parser import detect_language_from_texts  # noqa: E402
-from worker.segment_utils import chunk_count, chunk_duration, chunk_start, merge_chunk_segments, shift_segments  # noqa: E402
+from worker.segment_utils import (  # noqa: E402
+    chunk_count,
+    chunk_duration,
+    chunk_start,
+    detect_hallucination_warnings,
+    merge_chunk_segments,
+    shift_segments,
+)
 
 INGEST_TIMEOUT = aiohttp.ClientTimeout(total=65)  # matches archive_client.PUSH_TIMEOUT -- tolerates a Render cold start
 # Gentler than bulk_ingest.py's 1.5s isn't needed here -- this script hits
@@ -280,11 +287,20 @@ async def transcribe_meeting(engine, source_url: str, platform: str, *, chunk_si
     if not all_segments:
         return {"ok": False, "reason": "transcription produced no usable segments"}
 
-    language = detect_language_from_texts(s["text"] for s in all_segments)
+    sorted_segments = sorted(all_segments, key=lambda s: s["start"])
+    language = detect_language_from_texts(s["text"] for s in sorted_segments)
+    # Real, confirmed gap closed 2026-08-16 (Port Coquitlam, BC -- see
+    # worker/segment_utils.py's own "Hallucinated-transcription detection"
+    # note and BACKLOG_DONE.md): nothing previously checked a Whisper-
+    # produced transcript for garbled/hallucinated content before this
+    # script pushed it live, unlike the scraped-caption path's existing
+    # is_likely_garbled() check.
+    warnings = detect_hallucination_warnings(sorted_segments)
     return {
         "ok": True,
-        "segments": sorted(all_segments, key=lambda s: s["start"]),
+        "segments": sorted_segments,
         "language": language,
+        "transcript_warnings": warnings,
         "video_url": result.video_url,
         "video_format": result.video_format,
         "platform": result.platform,
@@ -320,11 +336,14 @@ async def process_one(
     if not result["ok"]:
         return {"slug": slug, "status": "skipped", "detail": result["reason"]}
 
+    hallucinated_note = " -- LOOKS HALLUCINATED" if result["transcript_warnings"] else ""
+
     if dry_run:
         return {
             "slug": slug,
             "status": "skipped",
-            "detail": f"[dry-run] would push {len(result['segments'])} segments (language={result['language']})",
+            "detail": f"[dry-run] would push {len(result['segments'])} segments "
+            f"(language={result['language']}){hallucinated_note}",
         }
 
     payload = {
@@ -335,13 +354,14 @@ async def process_one(
         "video_format": result["video_format"],
         "segments": result["segments"],
         "transcript_language": result["language"],
+        "transcript_warnings": result["transcript_warnings"],
     }
     response = await _ingest(session, payload, page["source_url_normalized"])
     page_url = response.get("url", "")
     return {
         "slug": slug,
         "status": "ingested",
-        "detail": f"{len(result['segments'])} segments (language={result['language']}) -> {page_url}",
+        "detail": f"{len(result['segments'])} segments (language={result['language']}){hallucinated_note} -> {page_url}",
         "segment_count": len(result["segments"]),
     }
 
