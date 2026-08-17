@@ -313,3 +313,39 @@ def test_compute_search_corpus_handles_missing_fields():
     # A segment dict missing "text" shouldn't raise.
     corpus = compute_search_corpus("Title", None, None, [[{"start": 0.0, "end": 1.0}]])
     assert corpus == "title"
+
+
+def test_or_is_a_no_op_token_for_parse_query_and_never_a_snippet_target():
+    # Real report, 2026-08-17, first hour after Postgres full-text search
+    # went live: "flock OR camera" returned the right pages (FTS reads the
+    # raw query, where OR means either) but the snippet highlighter, which
+    # still goes through parse_query(), treated "or" as a search word and
+    # lit up the substring inside "For", "Order", "before" on pages that
+    # had matched via "camera". parse_query() must drop it like and/&.
+    from archive.utils.search import parse_query
+
+    phrases, words, excluded_phrases, excluded_words = parse_query("flock OR camera")
+    assert words == ["flock", "camera"]
+    assert not phrases and not excluded_phrases and not excluded_words
+
+    # A page matched via the second operand: snippet highlights "camera",
+    # never an "or" buried in another word.
+    text = "For the record, the order of business is the camera policy."
+    snippet = find_snippet("flock OR camera", [text], fuzzy=False)
+    assert snippet is not None
+    assert '<mark class="search-match">camera</mark>' in snippet
+    assert '<mark class="search-match">or</mark>' not in snippet.lower()
+
+    # ...and a page with neither operand yields no snippet rather than a
+    # bogus "or" hit.
+    assert (
+        find_snippet("flock OR camera", ["For the record, no match here."], fuzzy=False)
+        is None
+    )
+
+    # LIKE-fallback semantics: OR degrades to AND (documented) -- both
+    # operands present matches; only one present does not.
+    both = build_corpus("T", "J", "flock of birds and a camera")
+    one = build_corpus("T", "J", "just a camera here")
+    assert matches("flock OR camera", both, set(), fuzzy=False)
+    assert not matches("flock OR camera", one, set(), fuzzy=False)
