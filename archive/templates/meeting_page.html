@@ -220,6 +220,7 @@
         {%- if page.meeting_body %}{{ page.meeting_body }}{% if page.jurisdiction %} &middot; {% endif %}{% endif -%}
         {%- if page.jurisdiction %}{{ page.jurisdiction|jurisdiction_display }}{% endif -%}
         {%- if page.date %}{% if page.jurisdiction or page.meeting_body %} &middot; {% endif %}{{ page.date }}{% endif -%}
+        {%- if state_slug %} &middot; <a href="/state/{{ state_slug }}">More {{ state_name }} meetings</a>{% endif -%}
       </p>
       {% if page.source_url %}
       <p class="source-link"><a href="{{ page.source_url }}" target="_blank" rel="noopener noreferrer">View original source &rarr;</a></p>

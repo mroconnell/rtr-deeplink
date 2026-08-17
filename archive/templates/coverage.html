@@ -13,6 +13,15 @@
     <p>This is a list of cities, counties, states, and so on that we have covered so far and successfully transcribed.</p>
     <p>Don't see your city below? <a href="/">Paste a meeting link</a> and see what comes back — if it's on a platform we already know, it'll just work.</p>
 
+    {% if states %}
+    <h2>Browse by state</h2>
+    <ul class="state-links">
+      {% for s in states %}
+      <li><a href="/state/{{ s.slug }}">{{ s.name }}</a> ({{ s.page_count }})</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
     <h2>Every place we've covered</h2>
     <p>Looking for a specific city, county, or state rather than a vendor name? Use your browser's find-on-page (Ctrl+F or Cmd+F) and search for it — e.g. "Napa" or "Aurora."</p>
     <div class="table-responsive">

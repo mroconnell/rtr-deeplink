@@ -586,6 +586,29 @@ path works without a positive example" convention — the thing being
 shown here is "does a real page exist," not "is this code path
 exercised," which are different claims.
 
+**`GET /state/{slug}` (per-state landing pages, added 2026-08-17)** —
+server-rendered, indexable SEO pages ("California public meeting videos &
+transcripts", `/state/california`), proxied like `/coverage`. Each lists
+that state's covered governments (same table shape as `/coverage`'s
+"Every place we've covered", grouped from the stored jurisdiction's
+canonical `", ST"` suffix via
+`archive/utils/jurisdiction_format.py`'s `state_abbr_from_jurisdiction()`)
+plus the 25 most recently archived meetings, with a self-referential
+canonical (deliberately unlike `/meetings`' filter-blind one) and a link
+to the pre-filtered `/meetings?jurisdiction={StateName}` search. Backed by
+`crud.get_state_page_data()` (anchored `LIKE '%, CA'` suffix match — not
+`list_pages()`'s substring ilike, which would leak "Decatur, GA" into
+California via its "ca" substring) and `crud.get_state_coverage_index()`
+(one row per covered state; also feeds `/coverage`'s "Browse by state"
+section and per-state `sitemap.xml` entries with real lastmod values).
+Both queries exclude `platform == "unknown"` pages — the same trust
+posture as the sitemap, which noindexed pages shouldn't leak through.
+Jurisdictions without a recognized `", ST"` suffix (school districts,
+state agencies, non-US) don't appear on any state page — a documented
+limitation. A state with zero indexable meetings 404s rather than
+rendering an empty shell, and every `/m/{slug}` page whose jurisdiction
+has a state now links "More {State} meetings" to its state page.
+
 **Search** covers title, jurisdiction, agenda item text, and the default
 transcript version's segment text — not just title/jurisdiction like the
 original v1. Two modes, chosen by an "exact"/"fuzzy" checkbox in the UI
@@ -1173,7 +1196,8 @@ app/
                            limited via slowapi), /api/report-problem,
                            /admin/*, /robots.txt, the /m/*,
                            /archive-static/*, /meetings, /account/saved,
-                           /sitemap.xml, /feed.xml Archive proxy routes,
+                           /coverage, /state/*, /sitemap.xml, /feed.xml
+                           Archive proxy routes,
                            /api/newsletter/signup, /unsubscribe, the
                            accounts routes (/api/account/*,
                            /api/clerk/webhook) and their three
@@ -1234,7 +1258,8 @@ archive/
   main.py                 FastAPI app: /internal/lookup, /internal/ingest,
                            /internal/transcription/* (all token-gated),
                            /m/{slug}, /m/{slug}/transcript.{txt,srt},
-                           /meetings, /coverage, /sitemap.xml, /feed.xml,
+                           /meetings, /coverage, /state/{slug},
+                           /sitemap.xml, /feed.xml,
                            /api/health, /account/saved, and the token-gated
                            /internal/account/* routes -- see "Accounts
                            (Clerk)" above
@@ -1250,6 +1275,8 @@ archive/
                            content-hash version dedup, list_pages()
                            (paginated + filtered, backs /meetings),
                            get_platform_coverage() (backs /coverage),
+                           get_state_coverage_index()/get_state_page_data()
+                           (back /state/{slug} + /coverage's state links),
                            list_all_page_slugs() (backs /sitemap.xml),
                            list_recent_pages_for_feed() (backs /feed.xml),
                            the TranscriptionJob lifecycle (create/claim/

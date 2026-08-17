@@ -1272,3 +1272,14 @@ thead .row-number-col { z-index: 2; background: var(--bg); }
 }
 .coverage-table th.sortable-col[aria-sort="ascending"]::after { content: '\2191'; color: var(--fg); }
 .coverage-table th.sortable-col[aria-sort="descending"]::after { content: '\2193'; color: var(--fg); }
+
+/* "Browse by state" link list on /coverage -- compact flex-wrapped rows
+   instead of a tall one-per-line bullet list (up to ~40 states). */
+.state-links {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.25rem;
+}

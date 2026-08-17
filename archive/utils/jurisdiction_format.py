@@ -70,6 +70,37 @@ US_STATE_NAME_TO_ABBR = {
 
 _VALID_STATE_ABBRS = set(US_STATE_NAME_TO_ABBR.values())
 
+# "CA" -> "California". Inverted from the dict above rather than
+# hand-maintained; a naive .title() on "district of columbia" would yield
+# "District Of Columbia", hence the override.
+US_STATE_ABBR_TO_NAME = {
+    abbr: name.title() for name, abbr in US_STATE_NAME_TO_ABBR.items()
+}
+US_STATE_ABBR_TO_NAME["DC"] = "District of Columbia"
+
+# "california" / "district-of-columbia" -> "CA" / "DC", for /state/{slug}.
+STATE_SLUG_TO_ABBR = {
+    name.replace(" ", "-"): abbr for name, abbr in US_STATE_NAME_TO_ABBR.items()
+}
+
+
+def state_abbr_from_jurisdiction(jurisdiction: Optional[str]) -> Optional[str]:
+    """ "Napa, CA" -> "CA". None when the text after the last comma isn't
+    exactly a valid 2-letter state abbreviation -- the stored form is
+    canonical uppercase via `normalize_state_suffix()` at write time, so
+    this deliberately doesn't re-run full-name or case repairs."""
+    if not jurisdiction or "," not in jurisdiction:
+        return None
+    _, _, suffix = jurisdiction.rpartition(",")
+    suffix = suffix.strip()
+    if suffix in _VALID_STATE_ABBRS:
+        return suffix
+    return None
+
+
+def state_slug_from_abbr(abbr: str) -> str:
+    return US_STATE_ABBR_TO_NAME[abbr].lower().replace(" ", "-")
+
 
 def normalize_state_suffix(jurisdiction: Optional[str]) -> Optional[str]:
     """ "San Diego, California" -> "San Diego, CA". Only fires when the

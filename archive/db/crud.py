@@ -10,8 +10,11 @@ from sqlalchemy import and_, or_, select
 from app.utils.jurisdiction_enrich import finalize_jurisdiction
 
 from ..utils.jurisdiction_format import (
+    US_STATE_ABBR_TO_NAME,
     jurisdiction_search_terms,
     normalize_state_suffix,
+    state_abbr_from_jurisdiction,
+    state_slug_from_abbr,
 )
 from ..utils.language import detect_language_from_texts
 from ..utils.search import build_corpus, find_snippet, matches, tokenize
@@ -1425,6 +1428,131 @@ async def get_jurisdiction_coverage() -> list[dict]:
             }
         )
     return result
+
+
+async def get_state_coverage_index() -> list[dict]:
+    """One row per US state with >= 1 indexable archived meeting, for the
+    /state/{slug} landing pages: /coverage's "Browse by state" section and
+    sitemap.xml's per-state entries. Excludes platform == "unknown"
+    (generic_fallback) pages -- state pages are an indexable SEO surface
+    and carry the same trust posture as the sitemap (see
+    list_all_page_slugs() below). Jurisdictions without a recognized
+    ", ST" suffix (school districts, state agencies, non-US) simply don't
+    group into any state -- a documented limitation, not a bug.
+    Sorted by state name."""
+    async with async_session() as session:
+        stmt = select(MeetingPage.jurisdiction, MeetingPage.updated_at).where(
+            MeetingPage.jurisdiction.is_not(None),
+            MeetingPage.platform != "unknown",
+        )
+        rows = (await session.execute(stmt)).all()
+
+    by_state: dict[str, dict] = {}
+    for jurisdiction, updated_at in rows:
+        abbr = state_abbr_from_jurisdiction(jurisdiction)
+        if not abbr:
+            continue
+        entry = by_state.setdefault(
+            abbr, {"jurisdictions": set(), "page_count": 0, "last_updated": updated_at}
+        )
+        entry["jurisdictions"].add(jurisdiction)
+        entry["page_count"] += 1
+        if updated_at > entry["last_updated"]:
+            entry["last_updated"] = updated_at
+
+    result = [
+        {
+            "abbr": abbr,
+            "name": US_STATE_ABBR_TO_NAME[abbr],
+            "slug": state_slug_from_abbr(abbr),
+            "jurisdiction_count": len(entry["jurisdictions"]),
+            "page_count": entry["page_count"],
+            "last_updated": entry["last_updated"],
+        }
+        for abbr, entry in by_state.items()
+    ]
+    result.sort(key=lambda s: s["name"])
+    return result
+
+
+async def get_state_page_data(abbr: str) -> Optional[dict]:
+    """Everything /state/{slug} renders, or None when the state has no
+    indexable pages (the route 404s). Anchored suffix match on the stored
+    jurisdiction -- normalize_state_suffix() guarantees the canonical
+    ", CA" form at write time, so LIKE '%, CA' can't false-positive the
+    way list_pages()'s substring ilike would ("Decatur, GA" contains
+    "ca"). Same platform != "unknown" exclusion and default-version
+    transcript-badge join as get_jurisdiction_coverage() above."""
+    async with async_session() as session:
+        stmt = (
+            select(
+                MeetingPage.jurisdiction,
+                MeetingPage.slug,
+                MeetingPage.title,
+                MeetingPage.date,
+                TranscriptVersion.id,
+                TranscriptVersion.transcript_warnings,
+            )
+            .outerjoin(
+                TranscriptVersion,
+                and_(
+                    TranscriptVersion.meeting_page_id == MeetingPage.id,
+                    TranscriptVersion.is_default.is_(True),
+                ),
+            )
+            .where(
+                MeetingPage.jurisdiction.like(f"%, {abbr}"),
+                MeetingPage.platform != "unknown",
+            )
+        )
+        rows = (await session.execute(stmt)).all()
+
+    pages = []
+    for jurisdiction, slug, title, date, version_id, warnings in rows:
+        # LIKE is case-insensitive on SQLite (dev/tests), so re-check the
+        # suffix exactly -- keeps dev and prod (case-sensitive Postgres
+        # LIKE) behaving identically.
+        if state_abbr_from_jurisdiction(jurisdiction) != abbr:
+            continue
+        has_transcript = version_id is not None and _has_real_warning_free_transcript(
+            warnings
+        )
+        pages.append(
+            {
+                "jurisdiction": jurisdiction,
+                "slug": slug,
+                "title": title,
+                "date": date,
+                "has_transcript": has_transcript,
+            }
+        )
+    if not pages:
+        return None
+
+    by_jurisdiction: dict[str, list[dict]] = {}
+    for p in pages:
+        by_jurisdiction.setdefault(p["jurisdiction"], []).append(p)
+    jurisdictions = []
+    for jurisdiction in sorted(by_jurisdiction, key=str.casefold):
+        examples = by_jurisdiction[jurisdiction]
+        example = next((e for e in examples if e["has_transcript"]), examples[0])
+        jurisdictions.append(
+            {
+                "jurisdiction": jurisdiction,
+                "example": example,
+                "page_count": len(examples),
+            }
+        )
+
+    recent_pages = sorted(pages, key=lambda p: p["date"] or "", reverse=True)[:25]
+    return {
+        "abbr": abbr,
+        "name": US_STATE_ABBR_TO_NAME[abbr],
+        "jurisdictions": jurisdictions,
+        "recent_pages": recent_pages,
+        "total_pages": len(pages),
+        "jurisdiction_count": len(jurisdictions),
+    }
 
 
 async def list_all_page_slugs() -> list[dict]:
