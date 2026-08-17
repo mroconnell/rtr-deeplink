@@ -39,8 +39,8 @@
           <tr data-jurisdiction="{{ row.jurisdiction|jurisdiction_display }}" data-title="{{ row.example.title or 'Untitled meeting' }}" data-transcript="{{ '1' if row.example.has_transcript else '0' }}">
             <td class="row-number-col">{{ loop.index }}</td>
             <td>{{ row.jurisdiction|jurisdiction_display }}</td>
-            <td><a href="/m/{{ row.example.slug }}">{{ row.example.title or "Untitled meeting" }}</a></td>
-            <td>
+            <td class="coverage-title-col"><a href="/m/{{ row.example.slug }}" title="{{ row.example.title or 'Untitled meeting' }}">{{ row.example.title or "Untitled meeting" }}</a></td>
+            <td class="coverage-transcript-col">
               {% if row.example.has_transcript %}
               <span class="transcript-badge" title="A transcript is available for this meeting">&#10003; Transcript</span>
               {% endif %}

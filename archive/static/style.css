@@ -1245,6 +1245,30 @@ mark.search-match.current { background: #f97316; color: #fff; }
   color: var(--muted);
   text-align: right;
   padding-right: 0.75rem;
+  /* Only ever holds a small integer -- no reason to compete for space
+     with the title/transcript columns below, which actually need room. */
+  width: 2rem;
+  max-width: 2rem;
+  font-size: 0.8rem;
+}
+/* "Example meeting" (title) and "Transcript" columns used to have no
+   width constraint at all, so a long meeting title could stretch the
+   whole table wide enough to force horizontal scroll and push the
+   Transcript column off-screen on the live /coverage page. Capping
+   both with max-width + ellipsis keeps every row a predictable width
+   regardless of title length; the full title is still available via
+   the link's title="" tooltip and the /m/{slug} page itself. */
+.coverage-table .coverage-title-col {
+  max-width: 14rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.coverage-table .coverage-transcript-col {
+  max-width: 9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 /* Bootstrap 5.3's own table-striped overlay (rgba(0,0,0,.05)) applied
    directly to the frozen column too, since its own explicit background
