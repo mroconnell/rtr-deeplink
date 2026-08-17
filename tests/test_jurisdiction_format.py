@@ -1,8 +1,11 @@
 from archive.utils.jurisdiction_format import (
+    CA_PROVINCE_NAME_TO_ABBR,
     STATE_SLUG_TO_ABBR,
     US_STATE_ABBR_TO_NAME,
     US_STATE_NAME_TO_ABBR,
     format_jurisdiction_display,
+    is_canadian_abbr,
+    jurisdiction_search_terms,
     normalize_state_suffix,
     state_abbr_from_jurisdiction,
     state_slug_from_abbr,
@@ -142,9 +145,35 @@ def test_display_none_and_empty_pass_through():
     assert format_jurisdiction_display("") == ""
 
 
+def test_display_appends_canada_suffix_for_a_province_abbreviation():
+    # Real, already-archived Canadian jurisdictions -- see /coverage.
+    assert format_jurisdiction_display("Calgary, AB") == "Calgary, AB (Canada)"
+    assert format_jurisdiction_display("Amherstburg, ON") == "Amherstburg, ON (Canada)"
+
+
+def test_display_canada_suffix_applies_after_city_of_prefix_is_dropped():
+    # Synthetic combination -- Airdrie, AB is a real, already-archived
+    # jurisdiction, but whether its stored form actually carries a "City
+    # of" prefix hasn't been confirmed live; this exercises the two
+    # features' composition (prefix-stripping runs before the suffix is
+    # appended), not a claim about Airdrie's real stored jurisdiction text.
+    assert (
+        format_jurisdiction_display("City of Airdrie, AB") == "Airdrie, AB (Canada)"
+    )
+
+
+def test_display_does_not_add_canada_suffix_for_a_us_state():
+    assert format_jurisdiction_display("Napa, CA") == "Napa, CA"
+
+
 def test_abbr_to_name_round_trips_all_states():
-    assert len(US_STATE_ABBR_TO_NAME) == 51
+    # 51 US (50 states + DC) + 13 Canadian provinces/territories, since
+    # US_STATE_ABBR_TO_NAME combines both (see jurisdiction_format.py's
+    # own comment on why) -- was 51 before Canada was added 2026-08-17.
+    assert len(US_STATE_ABBR_TO_NAME) == 64
     for name, abbr in US_STATE_NAME_TO_ABBR.items():
+        assert US_STATE_ABBR_TO_NAME[abbr].lower() == name
+    for name, abbr in CA_PROVINCE_NAME_TO_ABBR.items():
         assert US_STATE_ABBR_TO_NAME[abbr].lower() == name
 
 
@@ -153,19 +182,66 @@ def test_abbr_to_name_dc_casing():
     assert US_STATE_ABBR_TO_NAME["DC"] == "District of Columbia"
 
 
+def test_abbr_to_name_newfoundland_and_labrador_casing():
+    # Same naive-.title() problem as DC above -- "newfoundland and
+    # labrador".title() would give "... And Labrador".
+    assert US_STATE_ABBR_TO_NAME["NL"] == "Newfoundland and Labrador"
+
+
 def test_state_slug_map_round_trips_all_states():
-    assert len(STATE_SLUG_TO_ABBR) == 51
+    # Same 51 -> 64 change as US_STATE_ABBR_TO_NAME above, same reason.
+    assert len(STATE_SLUG_TO_ABBR) == 64
     for abbr in US_STATE_ABBR_TO_NAME:
         assert STATE_SLUG_TO_ABBR[state_slug_from_abbr(abbr)] == abbr
     assert STATE_SLUG_TO_ABBR["california"] == "CA"
     assert STATE_SLUG_TO_ABBR["district-of-columbia"] == "DC"
     assert STATE_SLUG_TO_ABBR["new-hampshire"] == "NH"
+    assert STATE_SLUG_TO_ABBR["alberta"] == "AB"
+    assert STATE_SLUG_TO_ABBR["newfoundland-and-labrador"] == "NL"
+
+
+def test_ca_province_name_to_abbr_has_13_provinces_and_territories():
+    # All 10 provinces plus the 3 territories (Yukon, Northwest
+    # Territories, Nunavut).
+    assert len(CA_PROVINCE_NAME_TO_ABBR) == 13
+    assert set(CA_PROVINCE_NAME_TO_ABBR.values()) == {
+        "AB",
+        "BC",
+        "MB",
+        "NB",
+        "NL",
+        "NT",
+        "NS",
+        "NU",
+        "ON",
+        "PE",
+        "QC",
+        "SK",
+        "YT",
+    }
+
+
+def test_is_canadian_abbr():
+    assert is_canadian_abbr("AB") is True
+    assert is_canadian_abbr("ON") is True
+    assert is_canadian_abbr("CA") is False  # California, not confusable
+    assert is_canadian_abbr("DC") is False
+    assert is_canadian_abbr(None) is False
+    assert is_canadian_abbr("XY") is False
 
 
 def test_state_abbr_from_jurisdiction_extracts_canonical_suffix():
     assert state_abbr_from_jurisdiction("Napa, CA") == "CA"
     assert state_abbr_from_jurisdiction("Sacramento County, CA") == "CA"
     assert state_abbr_from_jurisdiction("Washington, DC") == "DC"
+
+
+def test_state_abbr_from_jurisdiction_extracts_canadian_province():
+    # Real, already-archived Canadian jurisdictions confirmed live on
+    # /coverage as of 2026-08-17, not invented ones.
+    assert state_abbr_from_jurisdiction("Calgary, AB") == "AB"
+    assert state_abbr_from_jurisdiction("Amherstburg, ON") == "ON"
+    assert state_abbr_from_jurisdiction("Airdrie, AB") == "AB"
 
 
 def test_state_abbr_from_jurisdiction_rejects_stateless_strings():
@@ -178,3 +254,36 @@ def test_state_abbr_from_jurisdiction_rejects_stateless_strings():
     assert state_abbr_from_jurisdiction("Napa, ca") is None
     assert state_abbr_from_jurisdiction(None) is None
     assert state_abbr_from_jurisdiction("") is None
+
+
+def test_normalize_state_suffix_full_province_name_becomes_abbreviation():
+    # Real ingest-time behavior change -- see normalize_state_suffix()'s
+    # own docstring. "Calgary, Alberta" is the real full-name shape a
+    # scraper could plausibly hand this function, even though the
+    # already-archived "Calgary, AB" jurisdiction is already normalized.
+    assert normalize_state_suffix("Calgary, Alberta") == "Calgary, AB"
+    assert normalize_state_suffix("Airdrie, Alberta") == "Airdrie, AB"
+
+
+def test_normalize_state_suffix_recases_mis_cased_province_abbr():
+    assert normalize_state_suffix("Calgary, ab") == "Calgary, AB"
+
+
+def test_normalize_state_suffix_already_abbreviated_province_passes_through():
+    assert normalize_state_suffix("Amherstburg, ON") == "Amherstburg, ON"
+
+
+def test_jurisdiction_search_terms_expands_full_state_name():
+    assert jurisdiction_search_terms("California") == ["California", "CA"]
+    assert jurisdiction_search_terms("Texas") == ["Texas", "TX"]
+
+
+def test_jurisdiction_search_terms_expands_full_province_name():
+    assert jurisdiction_search_terms("Alberta") == ["Alberta", "AB"]
+    assert jurisdiction_search_terms("Ontario") == ["Ontario", "ON"]
+
+
+def test_jurisdiction_search_terms_leaves_non_full_name_terms_unchanged():
+    assert jurisdiction_search_terms("Napa") == ["Napa"]
+    assert jurisdiction_search_terms("CA") == ["CA"]
+    assert jurisdiction_search_terms("Calgary") == ["Calgary"]
