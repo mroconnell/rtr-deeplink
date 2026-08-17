@@ -469,23 +469,39 @@ site-wide for `redtaperecordings.com`:
   `noindex`es exactly those `generic_fallback` (`platform == "unknown"`)
   pages. Full write-up and fix direction now in `BACKLOG.md`, right after
   the existing 2026-08-12 Search Console entry.
-- **"Page indexed without content" — still open, unconfirmed.**
-  `meeting_page.html`'s transcript text is confirmed server-rendered
-  (verified 2026-08-14, see "SEO / LLM-discoverability" above), which
-  rules out the obvious client-side-render explanation for `/m/*` pages
-  specifically. More plausible: a real meeting with neither transcript nor
-  agenda items (some platforms genuinely have neither) rendering as a
-  genuinely thin page — title, date, video embed, no real text body.
-  Needs the actual report's URL list to confirm before deciding between
-  "exclude truly-empty pages from the sitemap" vs. "just a handful of
-  real thin meetings that improve as caption coverage grows."
-- **"Page with redirect" — new, not yet investigated at all.** Its own
-  separate alert, received 2026-08-16, one day before the other two.
-  No code-tracing done yet; candidates worth checking before assuming
-  anything: `MeetingPageUrlAlias`-driven redirects if alias (not
-  canonical) slugs somehow ended up in the sitemap, or a mundane
-  domain-level redirect (bare domain → `www`, or HTTP → HTTPS) that
-  Search Console flags informationally even when harmless. Needs the
-  report opened to see which URLs are actually affected before guessing
-  further — flagging this one as a genuine question for the user rather
-  than a hypothesis, since there isn't yet enough signal to reason from.
+- **"Page indexed without content" — still open, unconfirmed, but with a
+  concrete named candidate now (found by the daily inbox-triage Routine's
+  2026-08-17 second-pass run).** `meeting_page.html`'s transcript text is
+  confirmed server-rendered (verified 2026-08-14, see "SEO /
+  LLM-discoverability" above), which rules out the obvious
+  client-side-render explanation for `/m/*` pages specifically. More
+  plausible: a real meeting with neither transcript nor agenda items
+  rendering as a genuinely thin page — title, date, video embed, no real
+  text body. This file's own "Agenda/minutes PDF text extraction" section
+  already documents exactly this shape on a real page: the Napa City
+  Council/Housing Authority case, which today "has literally nothing
+  describing what was discussed beyond the raw video and a bare link."
+  Not confirmed as the actual page(s) Search Console flagged — just the
+  closest known real example of the shape that would produce this
+  symptom. Needs the actual report's URL list to confirm before deciding
+  between "exclude truly-empty pages from the sitemap" vs. "just a
+  handful of real thin meetings that improve as caption/agenda coverage
+  grows."
+- **"Page with redirect" — application code ruled out (same 2026-08-17
+  second-pass run), still open on the real cause.** Its own separate
+  alert, received 2026-08-16, one day before the other two. Grepped both
+  `app/` and `archive/` for anything redirect-issuing
+  (`RedirectResponse`/`redirect_slashes`/3xx status codes): the Archive
+  service — where `/m/*` meeting pages actually live — issues no
+  redirects anywhere in its own code. The only `RedirectResponse` in the
+  whole repo is `app/main.py:1370`, the *resolver* service's unrelated
+  root-path fallback, nothing to do with meeting pages. So if real `/m/*`
+  URLs are genuinely redirecting, it isn't this app's code — most likely
+  a host/DNS-level canonicalization redirect (bare domain → `www`, or
+  HTTP → HTTPS), which Search Console can flag informationally even when
+  it's intentional and harmless. Real remaining candidate if it's *not*
+  that: `MeetingPageUrlAlias`-driven redirects, if alias (not canonical)
+  slugs somehow ended up in the sitemap. Needs the report opened to see
+  which URLs are actually affected before guessing further — flagging
+  this one as a genuine question for the user rather than a hypothesis,
+  since there isn't yet enough signal to reason from.
