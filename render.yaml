@@ -131,6 +131,18 @@ services:
         value: 3.12.3
       - key: DATABASE_URL
         sync: false
+      # WO-4 (AUDIT_EXECUTION_BRIEF.md, 2026-08-16): the real internal
+      # Postgres hostname for rtr-deeplink-db (not a secret -- Render's
+      # own internal service hostname, no credentials in it). Checked at
+      # startup against DATABASE_URL's own host
+      # (archive/db/engine.py's _assert_expected_db_host()) -- a real,
+      # loud failure if DATABASE_URL ever gets pointed at the wrong
+      # database instead of silent wrong-data confusion. A literal value,
+      # not sync:false, so a Blueprint sync can't silently drop it the
+      # way render.yaml's own header already warns a manually-set value
+      # can be.
+      - key: EXPECTED_DB_HOST
+        value: dpg-d9r06nqjobas739hlc8g-a
       - key: ARCHIVE_INGEST_TOKEN
         sync: false
       - key: PUBLIC_BASE_URL
@@ -179,6 +191,12 @@ services:
     envVars:
       - key: DATABASE_URL
         sync: false  # MUST be the exact same value as rtr-deeplink-archive's DATABASE_URL above -- not a separate database
+      # WO-4 (AUDIT_EXECUTION_BRIEF.md, 2026-08-16): same real, checked
+      # guarantee for the "MUST be the exact same value" comment above --
+      # see rtr-deeplink-archive's own matching entry for the full
+      # reasoning.
+      - key: EXPECTED_DB_HOST
+        value: dpg-d9r06nqjobas739hlc8g-a
       - key: PUBLIC_BASE_URL
         sync: false
       - key: RESEND_API_KEY
