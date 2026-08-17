@@ -1,10 +1,11 @@
 """Postgres-only coverage for list_pages()'s indexed keyword-search path
-(archive/db/crud.py's _keyword_conditions_postgres()) -- the SQLite path
-these functions fall back to is already covered by
-tests/test_list_pages_search.py and tests/test_archive_search.py and runs
-in every normal test session; this file exists because *this* path can
-only run against a real Postgres database, which CI (SQLite-only, see
-.github/workflows/test.yml) doesn't provide.
+(archive/db/crud.py's _keyword_conditions(), née _keyword_conditions_postgres
+-- as of the 2026-08-17 Step 1 rewrite the same SQL runs on SQLite too, so
+tests/test_list_pages_search.py, tests/test_list_pages_sql_authoritative.py
+and tests/test_archive_search.py already exercise the query shape in every
+normal session; this file exists to run it against a real Postgres, i.e.
+with the pg_trgm GIN index and Postgres's own ILIKE/JSON semantics, which
+CI (SQLite-only, see .github/workflows/test.yml) doesn't provide.
 
 Skipped entirely unless DATABASE_URL points at a real Postgres instance.
 The target database must already have `alembic upgrade head` applied

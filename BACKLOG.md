@@ -3402,34 +3402,80 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   result pages). No longer 502s, so not an outage, but far outside
   anything a visitor will wait for.
 
-  **What's still wrong, the live remainder of this entry — the SQL
-  pre-filter works, the step after it doesn't scale.** Read directly from
-  `list_pages()` as of #124: after the trigram pre-filter narrows
-  candidates, the function still runs its *second* query pulling
-  **`TranscriptVersion.segments` (the full JSON blob) for every version of
-  every candidate page** into Python, to (a) re-run `matches()` as the
-  authoritative check and (b) build snippets from the default version's
-  text. For a rare word that's fine (few candidates). For a common civic
-  word like "budget"/"council"/"motion" the pre-filter barely narrows
-  anything, so it's back to materializing ~900 full transcripts per
-  request — same shape as the original OOM, just below the crash line
-  now that the corpus column itself is deferred. There is also still no
-  SQL-side LIMIT/OFFSET: pagination happens in Python *after* everything
-  is loaded, so page 1 of a 45-page result costs the same as loading all
-  45. Fix direction (a design choice for whoever owns the search work,
-  not patched blind here): stop loading `segments` for search at all —
-  paginate in SQL (LIMIT/OFFSET on the pre-filtered query, with
-  `has_agenda` moved into SQL via a JSON-length/`!= '[]'` predicate so
-  nothing forces Python-side pagination), and build the snippet from the
-  already-materialized `search_corpus` text (it's the same concatenated
-  text `find_snippet()` scans today; the only real loss is the current
-  "snippet only from the *default* version" rule, which needs deciding —
-  either accept the corpus-wide snippet or store a small
-  `default_version_text` alongside). Then `matches()` becomes a
-  20-row-per-page re-check instead of a whole-corpus one. Worth doing
-  soon: search is the flagship feature the whole Archive roadmap says
-  the corpus exists to serve, and it's currently ~25–35s for exactly the
-  common terms a journalist would type first.
+  **Step 1 shipped 2026-08-17 (same day, ~2h after the numbers above) —
+  exact-mode search is now SQL-authoritative and O(page_size) in memory:**
+  full detail in `BACKLOG_DONE.md`'s "Search Step 1: SQL-authoritative
+  `list_pages()`" entry. Short version: `ILIKE '%term%'` on
+  `search_corpus` is *provably the same predicate* as `matches()`'s
+  exact mode (same `build_corpus()` over the same four fields, lowercased
+  on both sides), so the Python re-check over freshly-loaded transcript
+  JSON was pure overhead — dropped. `has_agenda` moved into SQL, LIMIT/
+  OFFSET + COUNT(*) pagination, default-version segments loaded only for
+  the returned page's snippets (preserving the "never show a demoted
+  version's text" rule), fuzzy words checked in Python over *streamed*
+  corpus text (~5ms/doc measured, a few seconds archive-wide, off by
+  default and UI-labeled "slower"). Also fixed: the worker's
+  transcription-completion path never refreshed `search_corpus`, so
+  freshly Whisper-transcribed meetings were silently unsearchable on
+  prod. Verified against a real Postgres 16 + pg_trgm container with the
+  full migration chain (GIN Bitmap Index Scan confirmed via EXPLAIN for
+  the exact operator SQLAlchemy emits).
+
+  **Step 2 — still open, two independent halves, both need one schema
+  migration each and so should wait for WO-10's deploy-time migration
+  mechanism (see the reliability-audit section) after today's two
+  seam incidents:**
+
+  - **2a. Relevance ranking + stemming via Postgres full-text search.**
+    Step 1 makes search fast, but results are still ordered
+    `created_at DESC` — a search for "flock" shows the *newest* meeting
+    that mentions it, not the meeting most *about* it, and "budget"
+    won't match "budgets"/"budgeting". Design: a `tsvector` **generated
+    column** over `search_corpus` (`GENERATED ALWAYS AS
+    (to_tsvector('english', search_corpus)) STORED` — Postgres computes
+    it, so **no backfill script and no ingest change**, the two seams
+    that bit today), a GIN index on it, `websearch_to_tsquery()` for the
+    query (natively understands the exact `"quoted phrase"` /
+    `-exclusion` syntax `parse_query()` already accepts),
+    `ts_rank_cd()` for ordering, `ts_headline()` for snippets (only for
+    the 20 returned rows — it's slow on 100KB+ documents, so never for
+    the whole result set). Trigram stays for fuzzy. Real costs to weigh:
+    (1) a genuine dev/prod divergence — SQLite's FTS5 is a different
+    dialect, so either the tsvector path is Postgres-only with the ILIKE
+    path as SQLite fallback (a real branch, unlike Step 1's dialect-
+    agnostic code), or the test suite gains a Postgres container
+    (`tests/test_list_pages_search_postgres.py` and the new
+    `tests/test_list_pages_sql_authoritative.py` already run clean
+    against `docker run postgres:16` + `alembic upgrade head`, so the
+    harness half exists — it's a CI decision, not a build); (2) tsvector
+    has a 1MB size cap and 16,383-position cap per lexeme — the longest
+    multi-hour transcripts (60k+ words) are worth checking against those
+    limits before committing, not assumed fine; (3) `english` stemming
+    on Spanish-language transcripts (a real, confirmed minority — see the
+    Chula Vista / Fountain Valley entries) degrades to no-stemming, not
+    wrong results, but worth a `simple` vs per-language config decision.
+  - **2b. Fuzzy search via a trigram-indexed vocabulary table.** Fuzzy
+    is correct and no longer crashes after Step 1, but it's inherently
+    O(archive) CPU in Python (tokenize every corpus, ~4ms each) because
+    `matches()`'s bounded Levenshtein against real corpus words has no
+    recall-safe SQL equivalent over whole documents — `word_similarity()`
+    on a 130KB doc is either useless (the recall-safe 0.15 threshold PR
+    #124 used lets everything through) or lossy (anything selective drops
+    genuine 2-edit typos on 6-letter words: "budget"→"bodgat" scores 0.14
+    — worked out from the trigram sets, see `_keyword_conditions()`'s
+    docstring). The classic fix: a `search_vocabulary(word, page_ids or
+    per-page rows)` table of distinct corpus words — *short strings*,
+    where trigram similarity is fast, index-friendly, and accurate —
+    fuzzy-match the *query term* against the vocabulary (`word <-> term`
+    / `similarity(word, term)`), take the small set of real words within
+    edit distance (optionally re-checked with the *exact same* Python
+    Levenshtein to keep today's semantics byte-for-byte), then
+    exact-ILIKE those expanded words against `search_corpus` — which is
+    the already-fast Step 1 path. Needs the table + a populate step
+    (ingest-time from `compute_search_corpus()`'s tokens, plus a one-time
+    backfill) — same "column shipped before backfill/defer" seam class as
+    today, so plan the deploy order explicitly. Lower priority than 2a:
+    fuzzy is opt-in and a few seconds; ranking affects every search.
 - **Search bar has no `OR` support.** `-exclude`/`-"phrase"` and no-op
   `+`/`&`/`AND` shipped 2026-08-11 (see BACKLOG_DONE.md) — this entry now
   covers only the one operator still genuinely missing. `_parse_query()`

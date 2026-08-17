@@ -1,14 +1,20 @@
 """Keyword search over a meeting's title/jurisdiction/agenda/transcript
-text. The actual match decision, phrase/exclusion parsing, fuzzy
-(typo-tolerant) matching, and snippet/segment extraction all still run
-here, in Python, exactly as before -- see the note on `list_pages()` in
-`crud.py` and BACKLOG.md's "Search: move to a materialized/indexed column"
-entry. On Postgres, `list_pages()` now uses `MeetingPage.search_corpus`
-(this module's `compute_search_corpus()`, precomputed at ingest time and
-GIN-trigram-indexed) to narrow candidates in SQL first, so these functions
-only ever run over a small result set instead of a full-table scan; on
-SQLite (dev/CI) `list_pages()` still runs the full scan unchanged, since
-dev/CI never has enough rows for that to matter.
+text: query parsing (phrases/exclusions), the fuzzy (typo-tolerant) word
+match, and snippet/segment extraction.
+
+Division of labor with `crud.list_pages()` as of 2026-08-17: **exact-mode
+matching happens entirely in SQL** against `MeetingPage.search_corpus` --
+this module's `compute_search_corpus()`, precomputed at ingest and
+GIN-trigram-indexed on Postgres -- because `search_corpus ILIKE '%term%'`
+is the very same predicate `matches()` computes (`build_corpus()` over the
+same fields, lowercased on both sides), so `matches()` no longer runs for
+exact searches at all. `parse_query()` is shared so SQL and Python read
+a query identically. `matches()` still decides **fuzzy** words in Python
+(bounded Levenshtein against real corpus words has no recall-safe SQL
+form) over each candidate's streamed `search_corpus` text, and
+`find_snippet()` runs only over the returned page's default-version
+segments. See `list_pages()`/`_keyword_conditions()` docstrings and
+BACKLOG.md's "Search: move to a materialized/indexed column" entry.
 """
 
 import html
