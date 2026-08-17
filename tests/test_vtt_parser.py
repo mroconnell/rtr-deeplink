@@ -158,6 +158,56 @@ def test_is_likely_garbled_false_below_min_sample_size():
     assert is_likely_garbled(cues) is False
 
 
+def test_is_likely_garbled_true_for_clean_prefix_then_garbled_tail():
+    # Real confirmed case (Cincinnati OH, "budget and finance committee"
+    # 2023-02-13, see BACKLOG.md and vtt_parser.py's is_likely_garbled
+    # docstring): 98,449 chars of real joined cue text that stays clean
+    # through roughly the first quarter, then degrades into binary-looking
+    # junk for most of what follows. No raw fixture .vtt exists for this
+    # meeting (it delegates Legistar -> Granicus, and only the already-
+    # rendered plain-text export was available to check against), so this
+    # test is built from real text: the clean prefix below is the real
+    # opening dialogue and the garbled tail is the real corrupted content,
+    # both fetched live from the meeting's public
+    # /m/{slug}/transcript.txt export on redtaperecordings.com while
+    # building this fix -- only the surrounding structure (splitting into
+    # a handful of discrete cues, and interior padding to reproduce the
+    # real ~98K-char total length/offsets) is synthetic. Confirmed against
+    # this real text that the *old* single-4000-char-prefix sampling gives
+    # a ~1.3% junk ratio (misses it, well under the 6% threshold) while
+    # the new four-offset sampling gives ~42% (correctly flags it).
+    clean_prefix = (
+        ">> Councilmember Harris: if councilmembers can take their seats. "
+        ">> Councilmember Harris: all right. We will begin. Welcome to "
+        "budget and finance. I'm your budget chair, reggie harris. I'm "
+        "joined today by PRESIDENT Pro tem parks, and councilmember "
+        "warble and councilmember johnson. Vice mayor lemon-kearney, "
+        "councilmember owens, councilmember keating and jeffreys, from "
+        "the administration, sorry, we can't hear you. sorry about that "
+        "I'm mark, a member of the common ground usa, an organization "
+        "for the prudent management of land holdings and other public "
+        "ownership and this is about the plans to sell off the "
+        "cincinnati southern. And just pointing to the best explain I "
+        "did a radio show over s"
+    )
+    garbled_fragment = (
+        "6~\x7fkf}IXFpu;f[So1d ko/8#\n:wb0oi>3I7\n]O?3/8ns\"ZeHr/I/w'dx6t\n"
+        '"w6tp^Nngzhur+6zg\n^NQn:f&IFRe~dn\x7fDf1!\n\x7fk\ntCu\n'
+        "w_MRrHnw6tp^NngzhIXf\nTr+6~g>mGjr+6~g>mGjr+6~g>mGjr+6~g>mGjr+6~"
+        'g>Ogm?,f1?Mm?$b\n?Iv^nq>wrc12f\x7f+Df{" c\n0"\nu\x7fk=\n'
+        "~LfYf\x7f+Db3qp^s:j\x7fk=g\x7f+6~\x7fkf}IXFpu;f[So1d ko/8#\n"
+    )
+    # Real total length was 98,449 chars, clean through ~28%; pad with
+    # filler (itself alternating real-shaped clean/garbled blocks) so the
+    # 0/25/50/75% sample offsets land in the same real regions confirmed
+    # above rather than only ever hitting index 0.
+    padding_clean = "the meeting will come to order. " * 200
+    padding_garbled = garbled_fragment * 40
+    full_text = clean_prefix + padding_clean + padding_garbled
+    cues = [{"start": 0, "end": 1, "text": full_text}]
+    assert is_likely_garbled(cues) is True
+
+
 def test_normalize_shouting_caption_recases_all_caps_track():
     content = (
         "WEBVTT\n\n"
