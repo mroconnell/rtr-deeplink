@@ -3386,25 +3386,50 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   matches are found, instead of materializing the whole archive's
   transcript JSON up front.
 
-  Fine at today's scale (dozens of meetings) for *most* queries, per the
-  above now demonstrably not always true; the real fix once the Archive
-  grows into the hundreds/thousands (or sooner, per the incident above)
-  is a materialized, indexed search column — a `tsvector`-backed column
-  with a GIN trigram index on Postgres, populated at ingest time instead
-  of recomputed per search request. Two things worth deciding when that
-  becomes real, not before:
-  - **No new job queue needed to populate it.** `archive_client.push()`
-    already runs via FastAPI's `BackgroundTasks`, fired after
-    `/api/resolve`'s response goes back to the browser (see "Push, after
-    resolving" in README.md) — computing and storing the search column
-    would just be one more step inside that same already-backgrounded
-    DB write, not a new async system.
-  - **Existing archived meetings would need a one-time backfill script**
-    to populate the new column retroactively (nothing populates it for
-    meetings ingested before the column existed) — a single one-off run,
-    not an ongoing concern, similar in spirit to
-    `/admin/recheck-archive-page`'s existing per-meeting refresh but
-    needing to run once across every page rather than on demand for one.
+  **The materialized column shipped later the same day** — PRs #116
+  (schema + GIN-trigram migration), #123 (one-time backfill, run by Ryan
+  on the Render shell: 1,219 rows), #124 (`list_pages()` rewired to
+  pre-filter in SQL via `_keyword_conditions_postgres()` against
+  `MeetingPage.search_corpus`) — plus hotfix #127 (`deferred=True` on the
+  column, after the freshly-backfilled corpus started riding along on
+  every plain `select(MeetingPage)` and OOM-crashed the *browse* page —
+  see `BACKLOG_DONE.md`'s incident entries for both that and the
+  migration-ordering outage from #116's deploy). **Result, measured live
+  after #127 (2026-08-17 ~10:15 PT)**: browse is fixed for real — plain
+  `/meetings` 37s→502 before, **0.6s** after; `?page=3` **0.4s**. But
+  keyword search only went from *crashing* to *slow*: `?q=flock` 23.5s
+  (~100 matches), `?q=budget` **35s** (~900 of 1,219 meetings match — 45
+  result pages). No longer 502s, so not an outage, but far outside
+  anything a visitor will wait for.
+
+  **What's still wrong, the live remainder of this entry — the SQL
+  pre-filter works, the step after it doesn't scale.** Read directly from
+  `list_pages()` as of #124: after the trigram pre-filter narrows
+  candidates, the function still runs its *second* query pulling
+  **`TranscriptVersion.segments` (the full JSON blob) for every version of
+  every candidate page** into Python, to (a) re-run `matches()` as the
+  authoritative check and (b) build snippets from the default version's
+  text. For a rare word that's fine (few candidates). For a common civic
+  word like "budget"/"council"/"motion" the pre-filter barely narrows
+  anything, so it's back to materializing ~900 full transcripts per
+  request — same shape as the original OOM, just below the crash line
+  now that the corpus column itself is deferred. There is also still no
+  SQL-side LIMIT/OFFSET: pagination happens in Python *after* everything
+  is loaded, so page 1 of a 45-page result costs the same as loading all
+  45. Fix direction (a design choice for whoever owns the search work,
+  not patched blind here): stop loading `segments` for search at all —
+  paginate in SQL (LIMIT/OFFSET on the pre-filtered query, with
+  `has_agenda` moved into SQL via a JSON-length/`!= '[]'` predicate so
+  nothing forces Python-side pagination), and build the snippet from the
+  already-materialized `search_corpus` text (it's the same concatenated
+  text `find_snippet()` scans today; the only real loss is the current
+  "snippet only from the *default* version" rule, which needs deciding —
+  either accept the corpus-wide snippet or store a small
+  `default_version_text` alongside). Then `matches()` becomes a
+  20-row-per-page re-check instead of a whole-corpus one. Worth doing
+  soon: search is the flagship feature the whole Archive roadmap says
+  the corpus exists to serve, and it's currently ~25–35s for exactly the
+  common terms a journalist would type first.
 - **Search bar has no `OR` support.** `-exclude`/`-"phrase"` and no-op
   `+`/`&`/`AND` shipped 2026-08-11 (see BACKLOG_DONE.md) — this entry now
   covers only the one operator still genuinely missing. `_parse_query()`
