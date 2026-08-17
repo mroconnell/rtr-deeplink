@@ -13,6 +13,20 @@ services:
     name: rtr-deeplink
     runtime: python
     plan: starter
+    # Skips a Blueprint-sync redeploy when a push touches ONLY these
+    # backlog/triage docs -- added 2026-08-17 alongside the daily Gmail
+    # inbox-triage Routine (CLAUDE_INBOX_TRIAGE.md), which auto-merges its
+    # own PRs and has no reason to ever redeploy this service. Render's
+    # buildFilter only suppresses a deploy when every changed path in the
+    # push matches ignoredPaths -- a commit that also touches real code
+    # still deploys normally, so this is safe for any doc-only push, not
+    # just the Routine's.
+    buildFilter:
+      ignoredPaths:
+        - BACKLOG.md
+        - BACKLOG_DONE.md
+        - CLAUDE_BACKLOG.md
+        - CLAUDE_INBOX_TRIAGE.md
     # Real incident, 2026-08-09, two real failures in sequence, not one:
     # (1) the ORIGINAL `playwright install --with-deps chromium` build
     # step left a real user seeing `BrowserType.launch: Executable
@@ -123,6 +137,13 @@ services:
                    # Free services spin down after 15min idle (~30-60s
                    # cold start), a real risk to crawl/index health for
                    # these public, potentially-indexed /m/* pages.
+    # See rtr-deeplink's matching buildFilter comment above -- same reason.
+    buildFilter:
+      ignoredPaths:
+        - BACKLOG.md
+        - BACKLOG_DONE.md
+        - CLAUDE_BACKLOG.md
+        - CLAUDE_INBOX_TRIAGE.md
     buildCommand: pip install -r archive/requirements.txt
     startCommand: uvicorn archive.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
@@ -169,6 +190,13 @@ services:
     runtime: docker
     dockerfilePath: worker/Dockerfile
     dockerContext: .
+    # See rtr-deeplink's matching buildFilter comment above -- same reason.
+    buildFilter:
+      ignoredPaths:
+        - BACKLOG.md
+        - BACKLOG_DONE.md
+        - CLAUDE_BACKLOG.md
+        - CLAUDE_INBOX_TRIAGE.md
     # `starter` (512MB) OOM-crashed twice in real production, 2026-08-08 --
     # once loading the original "small" model default, and again (after
     # switching to "tiny") on a real 900s meeting chunk (~1421MB measured,
