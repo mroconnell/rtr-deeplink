@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 from urllib.parse import urlparse
 
-from sqlalchemy import Text, and_, cast, func, or_, select
+from sqlalchemy import Text, and_, cast, exists, func, or_, select
 from sqlalchemy.orm import aliased
 
 from app.utils.jurisdiction_enrich import finalize_jurisdiction
@@ -71,30 +71,68 @@ def _has_real_warning_free_transcript(warnings: Optional[list]) -> bool:
     )
 
 
+# sha256 of the empty string: what _content_hash() yields for a version
+# whose segments are [] or all-empty-text. Both paths that create a
+# TranscriptVersion (ingest_resolution(), report_chunk_result()) set
+# content_hash via _content_hash(), so "has real content" is decidable
+# from this indexed 64-char column without ever reading `segments` --
+# which matters: segments is the full transcript JSON (102MB across
+# prod's default versions, 2026-08-17), and reading it just to test
+# emptiness was what made _has_good_transcript()'s callers the #1
+# consumer of production DB time (see BACKLOG_DONE.md).
+_EMPTY_CONTENT_HASH = _content_hash([])
+
+
+def _good_default_transcript_exists():
+    """SQL `EXISTS` for "this MeetingPage has a real, non-garbled default
+    transcript" -- the same decision _has_good_transcript() makes, as a
+    correlated subquery usable in a WHERE clause, and touching only
+    is_default / content_hash / transcript_warnings, never `segments`.
+    transcript_warnings is a small JSON list; the two quality markers are
+    plain ASCII substrings so a text-cast LIKE is exact on both Postgres
+    (json::text is the stored text verbatim) and SQLite. NULL warnings
+    means "no warnings", i.e. good -- guarded explicitly, since
+    `NOT (NULL LIKE ...)` is NULL and would silently drop those rows."""
+    warnings_text = cast(TranscriptVersion.transcript_warnings, Text)
+    return exists().where(
+        TranscriptVersion.meeting_page_id == MeetingPage.id,
+        TranscriptVersion.is_default.is_(True),
+        TranscriptVersion.content_hash != _EMPTY_CONTENT_HASH,
+        or_(
+            TranscriptVersion.transcript_warnings.is_(None),
+            and_(
+                ~warnings_text.like(f"%{_GARBLED_MARKER}%"),
+                ~warnings_text.like(f"%{_HALLUCINATION_MARKER}%"),
+            ),
+        ),
+    )
+
+
 async def _has_good_transcript(session, meeting_page_id: int) -> bool:
     """True if this page's default TranscriptVersion has real, non-garbled
     content -- used to pick the Archive recheck cadence (see
     ARCHIVE_RECHECK_AFTER's has_transcript branch in app/main.py): a page
     missing a real transcript benefits from being rechecked often, since
     the government source's own captions may catch up at any time; a page
-    that already has a good one doesn't."""
-    version = (
-        (
-            await session.execute(
-                select(TranscriptVersion).where(
-                    and_(
-                        TranscriptVersion.meeting_page_id == meeting_page_id,
-                        TranscriptVersion.is_default.is_(True),
-                    )
+    that already has a good one doesn't. Reads only content_hash +
+    transcript_warnings -- see _EMPTY_CONTENT_HASH for why not segments;
+    keep this and _good_default_transcript_exists() making the same
+    decision."""
+    row = (
+        await session.execute(
+            select(
+                TranscriptVersion.content_hash, TranscriptVersion.transcript_warnings
+            ).where(
+                and_(
+                    TranscriptVersion.meeting_page_id == meeting_page_id,
+                    TranscriptVersion.is_default.is_(True),
                 )
             )
         )
-        .scalars()
-        .first()
-    )
-    if version is None or not version.segments:
+    ).first()
+    if row is None or row[0] == _EMPTY_CONTENT_HASH:
         return False
-    return _has_real_warning_free_transcript(version.transcript_warnings)
+    return _has_real_warning_free_transcript(row[1])
 
 
 async def lookup_page_for_url(url_normalized: str) -> Optional[dict]:
@@ -2130,34 +2168,24 @@ def _aware(dt: datetime) -> datetime:
     return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
-async def _in_auto_transcription_cooldown(session, meeting_page_id: int) -> bool:
-    """True if this page has failed auto/manual transcription recently
-    enough that it shouldn't be tried again yet -- see
-    AUTO_TRANSCRIPTION_BASE_COOLDOWN's docstring for the escalating-backoff
-    reasoning. Counts *consecutive* failures walking back from the most
-    recent job, stopping at the first non-"failed" one (a "completed" job
-    means this page already has what it needs; an older failure before a
-    completed one is stale history, not part of the current streak)."""
-    jobs = (
-        (
-            await session.execute(
-                select(TranscriptionJob)
-                .where(TranscriptionJob.meeting_page_id == meeting_page_id)
-                .order_by(TranscriptionJob.created_at.desc())
-            )
-        )
-        .scalars()
-        .all()
-    )
-
+def _cooldown_active(jobs_newest_first: list[tuple], now: datetime) -> bool:
+    """The escalating-backoff decision on a page's TranscriptionJob history
+    -- `jobs_newest_first` is [(status, updated_at), ...] ordered by
+    created_at DESC. Counts *consecutive* failures walking back from the
+    most recent job, stopping at the first non-"failed" one (a "completed"
+    job means this page already has what it needs; an older failure before
+    a completed one is stale history, not part of the current streak).
+    Pure so find_auto_transcription_candidate() can evaluate it over a
+    batch it fetched in one query, and _in_auto_transcription_cooldown()
+    over a single page."""
     consecutive_failures = 0
     most_recent_failed_at = None
-    for job in jobs:
-        if job.status != "failed":
+    for status, updated_at in jobs_newest_first:
+        if status != "failed":
             break
         consecutive_failures += 1
         if most_recent_failed_at is None:
-            most_recent_failed_at = job.updated_at
+            most_recent_failed_at = updated_at
 
     if consecutive_failures == 0:
         return False
@@ -2166,7 +2194,25 @@ async def _in_auto_transcription_cooldown(session, meeting_page_id: int) -> bool
         AUTO_TRANSCRIPTION_BASE_COOLDOWN * (2 ** (consecutive_failures - 1)),
         AUTO_TRANSCRIPTION_MAX_COOLDOWN,
     )
-    return datetime.now(timezone.utc) < _aware(most_recent_failed_at) + cooldown
+    return now < _aware(most_recent_failed_at) + cooldown
+
+
+async def _in_auto_transcription_cooldown(session, meeting_page_id: int) -> bool:
+    """True if this page has failed auto/manual transcription recently
+    enough that it shouldn't be tried again yet -- see
+    AUTO_TRANSCRIPTION_BASE_COOLDOWN's docstring for the escalating-backoff
+    reasoning and _cooldown_active() for the rule. Selects only
+    status/updated_at: TranscriptionJob carries `partial_segments` (a whole
+    in-progress transcript as JSON), which the previous full-entity select
+    dragged along for every job of every page checked."""
+    jobs = (
+        await session.execute(
+            select(TranscriptionJob.status, TranscriptionJob.updated_at)
+            .where(TranscriptionJob.meeting_page_id == meeting_page_id)
+            .order_by(TranscriptionJob.created_at.desc())
+        )
+    ).all()
+    return _cooldown_active([tuple(j) for j in jobs], datetime.now(timezone.utc))
 
 
 async def find_auto_transcription_candidate() -> Optional[dict]:
@@ -2176,34 +2222,63 @@ async def find_auto_transcription_candidate() -> Optional[dict]:
     completely empty before calling this -- this function only picks a
     candidate, it doesn't check that itself.
 
-    Full Python-side scan over every page, deliberately -- fine at today's
-    scale (dozens of meetings) and only ever called at most once every
-    AUTO_GENERATION_CHECK_INTERVAL_SECONDS (see worker/main.py), same
-    "acceptable now, revisit at real scale" reasoning as /meetings' own
-    search scan (BACKLOG.md's materialized-search-column entry).
+    Two light queries, no transcript data moved -- rewritten 2026-08-17
+    after `pg_stat_statements` showed the previous shape (load every
+    MeetingPage, then per page call _has_good_transcript() -- which
+    selected the full TranscriptVersion incl. its `segments` JSON -- and
+    _in_auto_transcription_cooldown()) as the #1 consumer of production
+    DB time: 218,480 calls / 47 minutes, i.e. all 102MB of transcript JSON
+    pulled through a 64MB-shared_buffers Postgres every 5 idle minutes to
+    make one decision. Now: (1) the pages *lacking* a good default
+    transcript, in SQL via _good_default_transcript_exists() -- the same
+    filter shape /meetings' has_transcript=False uses -- ordered
+    created_at ASC (a few hundred light rows, not 1,219 + their
+    transcripts); (2) those pages' TranscriptionJob status/updated_at
+    history in one query; then the cooldown rule in Python per candidate
+    until one passes. Same "oldest page without a good transcript and not
+    in cooldown" result as before.
     """
     async with async_session() as session:
-        pages = (
-            (
-                await session.execute(
-                    select(MeetingPage).order_by(MeetingPage.created_at.asc())
+        candidates = (
+            await session.execute(
+                select(
+                    MeetingPage.id,
+                    MeetingPage.slug,
+                    MeetingPage.source_url_normalized,
+                    MeetingPage.platform,
                 )
+                .where(~_good_default_transcript_exists())
+                .order_by(MeetingPage.created_at.asc())
             )
-            .scalars()
-            .all()
-        )
+        ).all()
+        if not candidates:
+            return None
 
-        for page in pages:
-            if await _has_good_transcript(session, page.id):
-                continue
-            if await _in_auto_transcription_cooldown(session, page.id):
-                continue
-            return {
-                "meeting_page_id": page.id,
-                "slug": page.slug,
-                "source_url": page.source_url_normalized,
-                "platform": page.platform,
-            }
+        job_rows = (
+            await session.execute(
+                select(
+                    TranscriptionJob.meeting_page_id,
+                    TranscriptionJob.status,
+                    TranscriptionJob.updated_at,
+                )
+                .where(TranscriptionJob.meeting_page_id.in_([c[0] for c in candidates]))
+                .order_by(TranscriptionJob.created_at.desc())
+            )
+        ).all()
+    jobs_by_page: dict[int, list[tuple]] = {}
+    for page_id, status, updated_at in job_rows:
+        jobs_by_page.setdefault(page_id, []).append((status, updated_at))
+
+    now = datetime.now(timezone.utc)
+    for page_id, slug, source_url, platform in candidates:
+        if _cooldown_active(jobs_by_page.get(page_id, []), now):
+            continue
+        return {
+            "meeting_page_id": page_id,
+            "slug": slug,
+            "source_url": source_url,
+            "platform": platform,
+        }
     return None
 
 

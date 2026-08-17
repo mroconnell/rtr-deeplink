@@ -1044,3 +1044,89 @@ async def test_in_auto_transcription_cooldown_escalates_with_consecutive_failure
     assert (
         in_cooldown is True
     )  # 2 consecutive failures => 2-day cooldown, 36h in is still inside it
+
+
+def test_auto_candidate_and_cooldown_queries_never_touch_transcript_json():
+    # 2026-08-17: pg_stat_statements showed the old find_auto_transcription_
+    # candidate() (per-page _has_good_transcript() selecting the whole
+    # TranscriptVersion incl. segments) as the #1 consumer of prod DB time
+    # -- 218,480 calls, 47 min, all 102MB of transcript JSON every 5 idle
+    # minutes. Pin at the SQL level that neither the good-transcript
+    # predicate nor the cooldown query names a JSON blob column.
+    from sqlalchemy import select
+    from sqlalchemy.dialects import postgresql
+
+    from archive.db.models import MeetingPage, TranscriptionJob
+
+    sql = str(
+        select(MeetingPage.id)
+        .where(~crud._good_default_transcript_exists())
+        .compile(dialect=postgresql.dialect())
+    )
+    assert "segments" not in sql, sql
+    assert "content_hash" in sql and "transcript_warnings" in sql
+    # The cooldown history query shape (status/updated_at only).
+    cooldown_sql = str(
+        select(TranscriptionJob.status, TranscriptionJob.updated_at).compile(
+            dialect=postgresql.dialect()
+        )
+    )
+    assert "partial_segments" not in cooldown_sql
+
+
+async def test_has_good_transcript_treats_garbled_and_hallucinated_as_not_good():
+    # The SQL predicate and the per-page helper must agree: a default
+    # version carrying either quality marker in transcript_warnings is NOT
+    # a good transcript, so the page stays an auto-transcription candidate.
+    from archive.db.engine import async_session
+    from archive.db.models import MeetingPage
+    from sqlalchemy import select
+
+    async def _page_with_warning(eid: str, warning: str):
+        url = f"https://example.granicus.com/player/clip/{eid}"
+        await crud.ingest_resolution(
+            {
+                "platform": "granicus",
+                "source_url": url,
+                "external_id": f"granicus:{eid}",
+                "title": "T",
+                "date": "2026-01-01",
+                "jurisdiction": f"City of {eid}",
+                "video_url": "https://example.com/v.m3u8",
+                "video_format": "m3u8",
+                "segments": [{"start": 0, "end": 1, "text": "words words words"}],
+                "agenda_items": [],
+                "transcript_language": "en",
+                "transcript_warnings": [warning] if warning else [],
+            },
+            url,
+        )
+        return (await crud.lookup_page_for_url(url))["slug"]
+
+    garbled = await _page_with_warning(
+        "auto-garbled", "This transcript looks garbled at the source."
+    )
+    halluc = await _page_with_warning(
+        "auto-halluc",
+        "Parts of this transcript may have been hallucinated by the transcription model.",
+    )
+    clean = await _page_with_warning("auto-clean", "")
+
+    async with async_session() as session:
+        rows = (
+            await session.execute(
+                select(MeetingPage.slug, crud._good_default_transcript_exists()).where(
+                    MeetingPage.slug.in_([garbled, halluc, clean])
+                )
+            )
+        ).all()
+        by_slug = {slug: bool(good) for slug, good in rows}
+        assert by_slug == {garbled: False, halluc: False, clean: True}
+        # ...and the per-page helper agrees, row for row.
+        for slug, expected in by_slug.items():
+            page_id = (
+                await session.execute(
+                    select(MeetingPage.id).where(MeetingPage.slug == slug)
+                )
+            ).scalar_one()
+            assert await crud._has_good_transcript(session, page_id) is expected, slug
