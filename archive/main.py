@@ -245,6 +245,23 @@ async def internal_transcription_backlog(limit: Optional[int] = None, authorizat
     return {"pages": await crud.list_transcription_backlog_candidates(limit=limit)}
 
 
+@app.get("/internal/transcription/completed-multichunk")
+async def internal_transcription_completed_multichunk(authorization: Optional[str] = Header(None)):
+    """Read-only audit list: every completed TranscriptionJob with
+    total_chunks > 1 -- real candidates for the seam-duplication bug fixed
+    2026-08-16 (see worker/segment_utils.py's "Seam-duplication dedup"
+    note and BACKLOG_DONE.md) having already shipped to a live public page
+    before the fix existed. Added specifically to answer that audit
+    without needing direct DATABASE_URL access (same reasoning as
+    /internal/schema-info -- see its own docstring). Never re-transcribes
+    or modifies anything itself.
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    return {"jobs": await crud.list_completed_multichunk_transcription_jobs()}
+
+
 @app.get("/internal/lookup")
 async def internal_lookup(normalized_url: str, authorization: Optional[str] = Header(None)):
     # 404, not 401/403 -- this is a private endpoint, its existence

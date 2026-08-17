@@ -539,6 +539,56 @@ async def list_transcription_backlog_candidates(limit: Optional[int] = None) -> 
     return candidates
 
 
+async def list_completed_multichunk_transcription_jobs() -> list[dict]:
+    """Every completed TranscriptionJob with total_chunks > 1 -- i.e. every
+    on-demand transcription that actually went through the real per-chunk
+    extract_chunk_audio()/shift_segments() loop (worker/main.py's
+    process_next_chunk()) before this loop dropped its own seam-duplicate
+    detection (worker/segment_utils.py's count_seam_overlap_segments(),
+    added 2026-08-16 -- see BACKLOG_DONE.md's matching entry for the full
+    root-cause writeup). A single-chunk job (total_chunks == 1) never hit
+    a chunk boundary at all, so it isn't a candidate for that bug.
+
+    Read-only and audit-only, on purpose: this just sizes how much
+    already-completed, already-live work is a real candidate for the bug
+    having shipped before the fix -- it deliberately doesn't re-transcribe
+    or touch anything itself. A human decides what (if anything) from this
+    list is worth re-running.
+    """
+    async with async_session() as session:
+        rows = (
+            await session.execute(
+                select(
+                    TranscriptionJob.id,
+                    TranscriptionJob.meeting_page_id,
+                    TranscriptionJob.total_chunks,
+                    TranscriptionJob.chunk_size_seconds,
+                    TranscriptionJob.probed_duration_seconds,
+                    TranscriptionJob.updated_at,
+                    MeetingPage.slug,
+                    MeetingPage.title,
+                )
+                .join(MeetingPage, MeetingPage.id == TranscriptionJob.meeting_page_id)
+                .where(TranscriptionJob.status == "completed", TranscriptionJob.total_chunks > 1)
+                .order_by(TranscriptionJob.id.asc())
+            )
+        ).all()
+
+        return [
+            {
+                "job_id": r.id,
+                "meeting_page_id": r.meeting_page_id,
+                "slug": r.slug,
+                "title": r.title,
+                "total_chunks": r.total_chunks,
+                "chunk_size_seconds": r.chunk_size_seconds,
+                "probed_duration_seconds": r.probed_duration_seconds,
+                "completed_at": r.updated_at.isoformat() if r.updated_at else None,
+            }
+            for r in rows
+        ]
+
+
 async def get_page_by_slug(slug: str) -> Optional[dict]:
     async with async_session() as session:
         page = (
@@ -1474,6 +1524,13 @@ async def claim_next_chunk() -> Optional[dict]:
             "total_chunks": job.total_chunks,
             "chunk_size_seconds": job.chunk_size_seconds,
             "probed_duration_seconds": job.probed_duration_seconds,
+            # Every segment persisted by a prior chunk of this same job --
+            # the worker needs this to detect a seam-duplicate at this
+            # chunk's own boundary (worker/segment_utils.py's
+            # count_seam_overlap_segments(), see its own docstring for
+            # why -- confirmed live 2026-08-16, see BACKLOG_DONE.md)
+            # before it ever calls report_chunk_result().
+            "partial_segments": job.partial_segments,
         }
 
 
@@ -1482,6 +1539,7 @@ async def report_chunk_result(
     *,
     success: bool,
     shifted_segments: Optional[list] = None,
+    drop_previous_tail: int = 0,
     error: Optional[str] = None,
 ) -> dict:
     """Called by the worker after attempting one chunk. On success, appends
@@ -1492,6 +1550,17 @@ async def report_chunk_result(
     failure, counts toward MAX_CONSECUTIVE_CHUNK_FAILURES before giving up
     on the whole job -- a single flaky chunk (transient network blip)
     shouldn't fail an otherwise-fine multi-hour job.
+
+    `drop_previous_tail` (default 0, a pure no-op -- existing callers/tests
+    are unaffected): the caller (worker/main.py) has already compared this
+    chunk's own segments against the job's previously-persisted
+    `partial_segments` (via worker/segment_utils.py's
+    count_seam_overlap_segments(), using the `partial_segments` claim_next_
+    chunk() now returns) and found this many trailing entries there are a
+    real seam-duplicate of what `shifted_segments` is about to restate --
+    see that function's own docstring for the confirmed root cause. They're
+    dropped here, right before the new segments are appended, so a fixed
+    HLS chunk-boundary duplicate never reaches a real TranscriptVersion.
     """
     async with async_session() as session:
         job = await session.get(TranscriptionJob, job_id)
@@ -1509,7 +1578,8 @@ async def report_chunk_result(
             return {"status": job.status, "consecutive_chunk_failures": job.consecutive_chunk_failures}
 
         job.consecutive_chunk_failures = 0
-        job.partial_segments = [*job.partial_segments, *(shifted_segments or [])]
+        kept_previous = job.partial_segments[: len(job.partial_segments) - drop_previous_tail] if drop_previous_tail else job.partial_segments
+        job.partial_segments = [*kept_previous, *(shifted_segments or [])]
         job.chunks_completed += 1
 
         if job.chunks_completed >= job.total_chunks:

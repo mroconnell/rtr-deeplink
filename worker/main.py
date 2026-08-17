@@ -48,7 +48,7 @@ from app.platforms.base import UnsupportedPlatformError, get_finder
 from app.platforms.media_probe import extract_chunk_audio, is_plausible_meeting_duration, probe_duration
 from archive.db import crud
 from archive.utils import email as email_utils
-from worker.segment_utils import chunk_duration, chunk_start, shift_segments
+from worker.segment_utils import chunk_duration, chunk_start, count_seam_overlap_segments, shift_segments
 from worker.transcription_engine import TranscriptionEngine, build_default_engine
 
 logging.basicConfig(level=logging.INFO)
@@ -232,7 +232,21 @@ async def process_next_chunk(engine: TranscriptionEngine) -> bool:
             return True
 
     shifted = shift_segments(raw_segments, start)
-    result = await crud.report_chunk_result(job_id, success=True, shifted_segments=shifted)
+    # Detect a real seam-duplicate against what the previous chunk already
+    # persisted -- confirmed live 2026-08-16 (Boulder County, CO, see
+    # worker/segment_utils.py's own "Seam-duplication dedup" note and
+    # BACKLOG_DONE.md): extract_chunk_audio()'s fast HLS seek can land
+    # several real seconds before this chunk's requested start, so its
+    # transcript can restate the end of the previous chunk's own segments.
+    drop_previous_tail = count_seam_overlap_segments(claim.get("partial_segments") or [], shifted)
+    result = await crud.report_chunk_result(
+        job_id, success=True, shifted_segments=shifted, drop_previous_tail=drop_previous_tail,
+    )
+    if drop_previous_tail:
+        logger.info(
+            "Job %s: dropped %s seam-duplicate segment(s) from the previous chunk's tail",
+            job_id, drop_previous_tail,
+        )
     logger.info(
         "Job %s: chunk %s/%s done (%s segments), job status now %s",
         job_id, chunk_index + 1, total_chunks, len(shifted), result.get("status"),

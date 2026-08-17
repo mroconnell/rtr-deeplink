@@ -109,7 +109,7 @@ from app.platforms.base import UnsupportedPlatformError, detect_platform, get_fi
 from app.platforms.media_probe import extract_chunk_audio, is_plausible_meeting_duration, probe_duration  # noqa: E402
 from app.utils.url_normalize import normalize_url  # noqa: E402
 from app.utils.vtt_parser import detect_language_from_texts  # noqa: E402
-from worker.segment_utils import chunk_count, chunk_duration, chunk_start, shift_segments  # noqa: E402
+from worker.segment_utils import chunk_count, chunk_duration, chunk_start, merge_chunk_segments, shift_segments  # noqa: E402
 
 INGEST_TIMEOUT = aiohttp.ClientTimeout(total=65)  # matches archive_client.PUSH_TIMEOUT -- tolerates a Render cold start
 # Gentler than bulk_ingest.py's 1.5s isn't needed here -- this script hits
@@ -210,8 +210,11 @@ async def transcribe_meeting(engine, source_url: str, platform: str, *, chunk_si
     reasoning as worker/main.py's own re-resolve-before-each-chunk), probes
     its real duration, and transcribes it locally chunk by chunk (each
     chunk independently extracted/transcribed/offset -- see
-    worker/segment_utils.py's shift_segments()), collecting every chunk's
-    segments into one full-meeting-relative list. No DB job/checkpoint
+    worker/segment_utils.py's shift_segments() -- then merged onto the
+    running list via that module's merge_chunk_segments(), which drops a
+    real seam-duplicate at the chunk boundary if one is detected -- see
+    its own docstring), collecting every chunk's segments into one
+    full-meeting-relative list. No DB job/checkpoint
     involved -- this whole function either finishes a meeting in one
     process lifetime or doesn't; a crash mid-meeting just means re-running
     this script tries that meeting again from scratch next time (this
@@ -260,9 +263,19 @@ async def transcribe_meeting(engine, source_url: str, platform: str, *, chunk_si
                 return {"ok": False, "reason": f"ffmpeg extraction failed on chunk {idx + 1}/{total_chunks}"}
 
             raw_segments = await engine.transcribe_chunk(audio_path)
-            all_segments.extend(shift_segments(raw_segments, start))
+            # merge_chunk_segments() (not a plain .extend()) -- HLS sources
+            # can restate the previous chunk's last sentence at the head of
+            # this one (extract_chunk_audio()'s fast seek lands on the
+            # nearest preceding HLS segment boundary, not the exact
+            # requested second; confirmed live 2026-08-16 against this same
+            # backlog, Boulder County CO -- see worker/segment_utils.py's
+            # "Seam-duplication dedup" note and BACKLOG_DONE.md).
+            before = len(all_segments)
+            all_segments = merge_chunk_segments(all_segments, shift_segments(raw_segments, start))
+            dropped = before + len(raw_segments) - len(all_segments)
             audio_path.unlink(missing_ok=True)
-            print(f"      chunk {idx + 1}/{total_chunks} transcribed ({len(raw_segments)} segments)")
+            dedup_note = f", dropped {dropped} seam-duplicate segment(s)" if dropped else ""
+            print(f"      chunk {idx + 1}/{total_chunks} transcribed ({len(raw_segments)} segments{dedup_note})")
 
     if not all_segments:
         return {"ok": False, "reason": "transcription produced no usable segments"}
