@@ -1714,6 +1714,125 @@ audit, extraction tournament, and design rationale this work grew out of.
 
 ## Bugs
 
+- **[Done 2026-08-16] Hallucinated Whisper transcript (Telugu/Sinhala/
+  symbol spam, nonsense English, `transcript_language` pushed as `"te"`)
+  root-caused to stereo phase cancellation in `extract_chunk_audio()`'s
+  mono downmix, and fixed with both a real extraction-side fix and a new
+  Whisper-specific garbled-output check — found live via
+  `scripts/transcribe_backlog_locally.py --url` against a real backlog
+  meeting, same session as the seam-duplication bug below.** Port
+  Coquitlam, BC's `portcoquitlam-2025-02-18-committee-of-council-meeting`
+  (a 1572-second, 2-chunk eScribe meeting) came back as complete
+  gibberish: a chaotic mix of Telugu, Sinhala, random Unicode symbol
+  spam, nonsense English (`"Did you ever see your mom will never wake up
+  at the bus stop?"`, `"Lord of Evil, saint of heaven, / Lord God of
+  peace!"`), and long runs of a single repeated character. A real timing
+  anomaly correlated: 2624.2s to transcribe 1572s of audio — slower than
+  real-time, versus ~7:1 faster-than-real-time for two other real
+  meetings transcribed the same session with the same model/settings.
+
+  **Root cause, confirmed empirically, not assumed.** Re-resolved the
+  meeting fresh and fetched its real HLS playlist/audio directly
+  (`https://cdn1.isilive.ca/.../Committee%20Encoder%20839_Committee%20of%20Council%20Meeting_2025-02-18-03-59.mp4/playlist.m3u8`).
+  Sampling fresh, isolated 60-second slices across the *entire* meeting
+  (not just the reported boundary) with `faster-whisper "tiny"` showed
+  garbage/hallucination at essentially every point, not just one chunk
+  seam — ruling out a localized bad-segment theory. `ffmpeg volumedetect`
+  on the actual extracted mono audio showed `mean_volume: -44.2dB` (chunk
+  1) / `-45.5dB` (chunk 2) — a real ~24dB gap versus a known-good real
+  meeting (Boulder County, ~-20.5dB, from the seam-duplication
+  investigation below). `ffprobe` confirmed the source is genuine stereo
+  AAC (`channels=2`). Extracting the left channel alone and the right
+  channel alone (via ffmpeg's `pan=mono|c0=c0` / `c0=c1`) each measured
+  `-15.7dB` — a real, present, much louder signal than the mono mix —
+  and extracting their *difference* (`pan=mono|c0=c0-c1`) measured
+  `-10.4dB`, louder still: the exact numeric signature of two near-
+  perfectly phase-inverted channels (summing them cancels; subtracting
+  reinforces). Transcribing all three confirmed it decisively: the
+  standard mono downmix produced nonsense (`"Public comment, public
+  comment, public comment..."`, `"the door will be open to the door
+  without any further delay in the day"`), while the left channel, right
+  channel, and their difference all independently produced the *same*
+  clean, coherent real transcript of a real council discussion
+  ("Councillor Garling. Sorry, I'm confused now. So there is an access
+  point off of Ogovi..."). `faster-whisper "tiny"` on the real (pre-fix)
+  chunk 2 audio also directly reproduced a hallucination-loop symptom:
+  one real sentence repeated verbatim across 44 of 45 total segments.
+
+  **Fix, two parts, not just detection.** (1)
+  `app/platforms/media_probe.py`'s `extract_chunk_audio()` now checks its
+  own already-extracted audio's mean volume (cheap — no network, just
+  decoding the small file already on disk) and, when it's below
+  `-38dB` (set with real margin between the ~-20dB good and ~-45dB
+  confirmed-broken cases), automatically retries with the left channel
+  alone (`pan=mono|c0=c0`) instead of the averaged downmix, using it only
+  if it's meaningfully louder (confirming real cancellation, not a
+  genuinely quiet source) — this actually *fixes* the extraction rather
+  than only flagging bad output downstream, so a meeting like this one
+  now produces a real, usable transcript instead of a correctly-rejected
+  blank one. (2) Defense-in-depth for whatever (1) doesn't catch (a
+  genuinely corrupted stream, wrong media entirely, or a hallucination
+  cause unrelated to phase cancellation): `worker/segment_utils.py`
+  gained `detect_hallucination_warnings()` — the same role
+  `app/utils/vtt_parser.py`'s `is_likely_garbled()` already plays for
+  scraped captions, which this Whisper-specific ingest path had no
+  equivalent of at all until now. Three independent signals, each tuned
+  against the real confirmed symptoms above: a segment-level repetition-
+  run ratio (≥0.5, well below the real 0.89 confirmed case), a run of
+  ≥10 identical characters in a row (essentially never real speech), and
+  a non-Latin-alphabetic-character ratio (≥15%, deliberately excluding
+  accented Latin letters so a legitimate French/Spanish transcript —
+  real content already live on this Archive, e.g. an LA USD board
+  meeting — isn't penalized). Wired into `archive/db/crud.py`'s
+  `report_chunk_result()` finalize step (covers both a real
+  user-submitted transcription and the worker's own idle-time
+  auto-generated jobs, the one place both actually finish) via a
+  deliberate duplicate in `archive/utils/transcription_quality.py` — same
+  cross-service-duplication convention as `archive/utils/language.py`,
+  since the Archive shouldn't gain a dependency on `worker/`'s heavier
+  codebase for a few small pure functions — and directly in
+  `scripts/transcribe_backlog_locally.py`'s `transcribe_meeting()`, which
+  never touches `transcription_jobs` at all. The existing
+  `_GARBLED_MARKER`-based "does this page have a good transcript" checks
+  (re-transcription eligibility, the `/coverage` and `/meetings` "✓
+  Transcript" badges — four separate call sites in `archive/db/crud.py`)
+  now also honor the new hallucination marker via a shared
+  `_has_real_warning_free_transcript()` helper, replacing four separate
+  inline `_GARBLED_MARKER`-only checks — per this file's own note on
+  `app/db/outcomes.py`, a new quality-warning message needs exactly this
+  kind of update or it silently falls through to a more generic bucket.
+
+  **Verified against real data, not just that the code runs.** Re-ran
+  `scripts/transcribe_backlog_locally.py --dry-run --url <the same Port
+  Coquitlam URL>` (no live page modified) with both fixes in place. The
+  extraction log shows the automatic left-channel fallback firing on
+  both chunks (`"Chunk audio at 0s looks suspiciously quiet after mono
+  downmix (-44.2dB)..."` / same at `900s`, `-45.5dB`). The resulting
+  transcript is 306 segments of completely coherent real English content
+  from start to finish (a real development-variance-permit discussion,
+  ending with the meeting's real closing procedure), `language=en`
+  correctly detected (not `"te"`), zero hallucination warnings, and a
+  clean flow through the exact 900s chunk boundary that previously
+  produced garbage. Total transcription time dropped from the original
+  run's reported 2624s (slower than real-time) to 354s (4.4x
+  faster-than-real-time) — independent confirmation that the
+  hallucination-induced slow decoding is gone too, not just that the
+  output looks better. `tests/test_worker_segment_utils.py` and
+  `tests/test_transcription_jobs.py` carry this as permanent regression
+  coverage: the real reproduced repetition-loop segments, the real
+  post-fix clean transcript (a false-positive check), the real quoted-
+  verbatim nonsense-English lines from the original report (documented
+  as a real, honest limitation this heuristic doesn't try to catch —
+  semantic nonsense needs a language-model judge, not a cheap structural
+  check), and a DB-integration test confirming the archive-side
+  duplicate is actually wired into `report_chunk_result()`'s finalize
+  path, not just present in the file — 835 total tests passing.
+
+  **Not done here, deliberately**: the already-live Port Coquitlam page
+  itself was not re-transcribed or otherwise modified as part of this
+  work — same reasoning as the seam-duplication entry below, that's the
+  user's own call to make.
+
 - **[Done 2026-08-16] Multi-chunk transcription duplicated real
   sentences at every ~900s chunk boundary on an HLS source — found live
   by the user on a real production page (Boulder County, CO,
