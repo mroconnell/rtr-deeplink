@@ -294,6 +294,53 @@ from the repo root fails with `No 'script_location' key found in
 configuration`, and running it from the wrong service's directory would
 point at the wrong models/database entirely.
 
+**Backups and recovery (WO-4, `AUDIT_EXECUTION_BRIEF.md`, confirmed live
+2026-08-17).** All persistent state (both `app/db` and `archive/db`) lives
+in one Render Postgres instance, `rtr-deeplink-db` (Basic-256mb, Oregon).
+Render takes continuous backups automatically on paid instances — nothing
+to configure — but two things about how that actually works matter more
+than "backups exist":
+
+- **The recovery window is 3 days, not a generic "we have backups."** This
+  workspace is on Render's Hobby tier, and PITR (point-in-time recovery)
+  retention follows the *workspace* tier, not the database's own plan —
+  confirmed live via Render's dashboard, not assumed from their docs.
+  Upgrading the database's own plan later would **not** extend this; only
+  upgrading the whole workspace to a paid Team/Pro tier would (7 days).
+  Concretely: a bad migration that lands on a Friday and isn't noticed
+  until the following Wednesday is already past the window by the time
+  anyone looks.
+- **Restoring is a swap, not a rewind.** Render's PITR spins up a brand
+  new database instance at the chosen point in time — it does not roll
+  the existing `rtr-deeplink-db` back in place. Recovering for real means:
+  1. In Render's dashboard, open `rtr-deeplink-db` → **Recovery** → pick a
+     timestamp within the last 3 days → this creates a **new** Postgres
+     instance (a new name, a new internal hostname).
+  2. Copy the new instance's connection string.
+  3. Update `DATABASE_URL` on all three services that use it
+     (`rtr-deeplink`, `rtr-deeplink-archive`, `rtr-transcription-worker`)
+     to point at the new instance, and redeploy each.
+  4. If `EXPECTED_DB_HOST` is set on `rtr-deeplink-archive`/
+     `rtr-transcription-worker` (`archive/db/engine.py`'s
+     `_assert_expected_db_host()`, WO-4), update it too, or the two
+     services will refuse to start against the recovered database — this
+     is the check working as intended (a hostname that doesn't match is
+     exactly the signal a manual recovery step got missed), not a bug to
+     work around.
+  5. Once confirmed working, update the old `rtr-deeplink-db` Render
+     Blueprint entry (`render.yaml`'s `databases:` block) to the new
+     instance's name so a future Blueprint sync doesn't try to reconcile
+     against the now-abandoned original.
+
+**Not yet done: an actual test restore.** This procedure is written from
+Render's documented PITR behavior, cross-checked against this workspace's
+real dashboard (tier, retention window, instance details) — but nobody
+has actually clicked through a real recovery yet. An unexercised restore
+procedure is a hypothesis, not a backup plan; doing one throwaway PITR
+restore to a scratch instance (never repointing any real service at it)
+to confirm these steps are accurate is a real, still-open follow-up, not
+a formality — see `BACKLOG.md`.
+
 ## Caching and reporting
 
 Re-scraping a government site every single time someone revisits the same
