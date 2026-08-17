@@ -19,8 +19,27 @@ sent alert email, one un-landed doc-hygiene rule) are consolidated into
 one live checklist in `BACKLOG.md`: "Reliability/ops audit — remaining
 manual/dashboard checks" — not repeated here.
 
-**Wave 5 (WO-10) is the only work order left.** Sized to one PR. Do it
-completely, land it, done.
+**Wave 5 (WO-10) landed 2026-08-17 for the Archive service** — the one
+that has actually had schema incidents. `archive/db/engine.py`'s
+`create_all()` is a no-op on Postgres; `render.yaml`'s
+`rtr-deeplink-archive` runs `preDeployCommand: cd archive && alembic
+upgrade head` before each build goes live; CI runs `alembic check`
+(models vs. a fresh migration-built SQLite) on every PR. Steps 1–3
+below were done in one PR because step 2's precondition was already
+met that day (Ryan ran `alembic upgrade head` on the archive twice, so
+`alembic_version` == head == `c1d2e3f4a5b6`, and `alembic check` on a
+fresh `upgrade head` DB showed no missing model tables/columns). **What
+remains of WO-10 is the resolver half, and it is Ryan-gated**: the
+resolver's Alembic history (`app/alembic/`, 2 revisions) has never been
+stamped in prod, so its `preDeployCommand` would fail on first run
+(exactly the "step 3 before step 2" warning below). The one-time step —
+on the `rtr-deeplink` service's Render shell, `cd app && alembic
+current` (expect empty), confirm real columns match head via `GET
+/admin/stats`, then `alembic stamp head` — then a follow-up PR adds the
+same `preDeployCommand` and gates `app/db/engine.py`'s `create_all()`.
+Tracked in `BACKLOG.md`'s "Schema-migration deploy ordering" entry.
+Full detail: `BACKLOG_DONE.md`'s "WO-10" entry. The original work-order
+text is kept below for the resolver follow-up.
 
 ---
 
