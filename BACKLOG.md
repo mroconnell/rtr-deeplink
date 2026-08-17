@@ -3201,6 +3201,28 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 
 ## On-demand transcription — real gaps left open
 
+- **Hallucinated-transcript detection (`detect_hallucination_warnings()`,
+  added 2026-08-16 alongside the phase-cancellation fix — see
+  [BACKLOG_DONE.md](BACKLOG_DONE.md)'s matching "Bugs" entry) has two
+  real, known limits, not yet addressed.** (1) **Already-live exposure
+  unaudited**: unlike the seam-duplication bug's `GET /internal/
+  transcription/completed-multichunk` (which lists real candidates for
+  that bug), nothing yet checks whether any of the 118 already-completed
+  multi-chunk jobs (or the separate local-script-transcribed backlog,
+  see the entry directly below) already shipped *this* bug's symptom
+  before the fix existed — a real, not-yet-run audit, structurally
+  similar to the seam-duplication one but not yet built. (2) **Doesn't
+  catch semantic-nonsense hallucination**: the three structural signals
+  (repetition-run ratio, long character runs, non-Latin-script ratio)
+  deliberately don't try to catch *coherent-looking but false* text —
+  confirmed by a real, directly-quoted example from this same
+  investigation (`"Did you ever see your mom will never wake up at the
+  bus stop?"`) that the detector correctly does *not* flag (see
+  `tests/test_worker_segment_utils.py`'s
+  `test_detect_hallucination_warnings_does_not_claim_to_catch_semantic_nonsense`).
+  Catching that shape would need a real language-model-judge pass (cost/
+  latency tradeoff, not yet designed), not a cheap structural heuristic.
+
 - **118 already-completed, already-live transcriptions are real
   candidates for the seam-duplication bug fixed 2026-08-16 — a real,
   user-facing decision still open, not code.** See
