@@ -405,7 +405,7 @@ suite green (818 passed).
 
 No blockers, parallel-safe with any other wave. ~1 day.
 
-### WO-11 · Pin dependencies, then scan them — **2-3 hrs**
+### WO-11 · Pin dependencies, then scan them — **DONE 2026-08-16**
 
 **Problem.** Every entry in all three requirements files uses `>=` with no
 upper bound and no lockfile, while `render.yaml:40,126` reinstall on every
@@ -420,8 +420,37 @@ enable Dependabot (only useful once versions are pinned) and add `pip-audit`
 to the WO-2 workflow as a non-blocking job first, blocking once the initial
 noise is triaged.
 
-**Acceptance.** One verification deploy per service off the lockfile.
-Dependabot opens PRs. `yt-dlp` still floats.
+**Fixed.** Each service now has a `requirements.in` (loose source, all the
+existing explanatory comments preserved) compiled via `pip-compile` into a
+fully-pinned `requirements.txt` (the actual install target, unchanged).
+`yt-dlp` (resolver + worker), `faster-whisper` (worker), and
+`youtube-transcript-api` (dev-only) are excluded from each `.in` file and
+appended unpinned by hand to the compiled `.txt` afterward, each with a
+comment explaining why and a reminder to re-append after the next
+`pip-compile` run — pip-compile has no native "leave this one floating"
+flag, so this is a deliberate manual step, not an oversight. `.github/
+dependabot.yml` covers all three service directories (`/`, `/archive`,
+`/worker`), weekly. `pip-audit` added as a non-blocking step in
+`test.yml`, scanning all four requirements files (resolver, dev, archive,
+worker) — today's scan is clean across all four (no known
+vulnerabilities), so there's no real "initial noise" to triage before
+flipping it blocking, but it's left non-blocking per the work order's own
+instruction, since that's really about tolerating a *future* CVE
+disclosure without silently blocking every merge, not about today's
+clean result.
+
+**Acceptance.** Verified locally rather than via a real Render deploy (no
+prod access this session): `pip install -r requirements.txt
+-r requirements-dev.txt` into the working venv, full suite green (818
+passed) — including a real major-version bump surfaced by pinning
+(`clerk-backend-api` 6.0.1 → 7.0.0) that turned out compatible.
+`archive/requirements.txt` and `worker/requirements.txt` each verified to
+install cleanly in their own isolated scratch venv, matching how they
+actually deploy (separate Render services, never installed together).
+`yt-dlp`/`faster-whisper`/`youtube-transcript-api` confirmed still
+unpinned in the final compiled files. A real Render deploy per service is
+still the strongest verification and hasn't happened yet — worth
+confirming after this merges.
 
 ### WO-12 · Linter and formatter — **1 hr config, 2-4 hrs first pass**
 

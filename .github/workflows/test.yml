@@ -33,6 +33,21 @@ jobs:
 
       - run: pip install -r requirements.txt -r requirements-dev.txt
 
+      # WO-11 (2026-08-16): scan all three services' compiled lockfiles
+      # for known vulnerabilities. Non-blocking on purpose for now --
+      # `continue-on-error: true` -- so a newly-disclosed CVE doesn't
+      # suddenly block every merge with no warning; flip this to blocking
+      # once any initial noise from a real finding has been triaged.
+      # pip-audit reads a requirements file's pins directly, no separate
+      # install of archive/worker's own deps needed in this job's venv.
+      - name: pip-audit (non-blocking)
+        continue-on-error: true
+        run: |
+          pip-audit -r requirements.txt
+          pip-audit -r requirements-dev.txt
+          pip-audit -r archive/requirements.txt
+          pip-audit -r worker/requirements.txt
+
       # Plain `pytest` doesn't add the repo root to sys.path, so
       # `import app.main` / `import archive.main` fail with
       # ModuleNotFoundError (app/ and archive/ are top-level packages,

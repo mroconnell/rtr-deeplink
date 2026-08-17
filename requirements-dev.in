@@ -1,0 +1,16 @@
+-r requirements.txt
+pytest>=8.0
+pytest-asyncio>=0.24
+# Lockfile tooling (WO-11, 2026-08-16) -- pip-tools compiles
+# requirements.in -> requirements.txt per service; pip-audit scans the
+# compiled lockfiles for known vulnerabilities (see .github/workflows/
+# test.yml's non-blocking pip-audit step).
+pip-tools
+pip-audit
+
+# youtube-transcript-api is deliberately NOT compiled/pinned here --
+# local tooling only (scripts/fetch_youtube_transcripts.py), unpinned for
+# the same reason yt-dlp is (see requirements.in's matching comment): it
+# only works because it's actively maintained against YouTube's changes.
+# Appended unpinned directly to the bottom of requirements-dev.txt by
+# hand after every `pip-compile requirements-dev.in` run.

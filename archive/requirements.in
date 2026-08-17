@@ -1,0 +1,17 @@
+fastapi>=0.116
+uvicorn[standard]>=0.30
+jinja2>=3.1
+aiohttp>=3.9
+langdetect>=1.0.9
+sqlalchemy[asyncio]>=2.0
+asyncpg>=0.29
+aiosqlite>=0.20
+python-dotenv>=1.0
+alembic>=1.13
+# Auth (2026-08-10): Clerk -- verifies the session cookie locally, no
+# network call per request. See requirements.txt's matching comment; no
+# svix here since webhook handling lives on the resolver only.
+clerk-backend-api>=6.0
+# Error monitoring (2026-08-16, WO-7): no-op when SENTRY_DSN unset, same
+# degrade pattern as Clerk above -- see archive/main.py's _init_sentry().
+sentry-sdk>=2.0

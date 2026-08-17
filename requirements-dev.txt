@@ -1,11 +1,334 @@
--r requirements.txt
-pytest>=8.0
-pytest-asyncio>=0.24
-# Local tooling only (scripts/fetch_youtube_transcripts.py), deliberately
-# NOT in requirements.txt: YouTube blocks caption requests from cloud IPs
-# (confirmed live 2026-08-10 -- IpBlocked from Render's shell, works from
-# a residential connection), so this library is useless on the deployed
-# services and only ever runs from a local machine. Unpinned for the same
-# reason yt-dlp is (see requirements.txt): it only works because it's
-# actively maintained against YouTube's changes.
+aiohappyeyeballs==2.7.1
+    # via
+    #   -r requirements.txt
+    #   aiohttp
+aiohttp==3.14.3
+    # via -r requirements.txt
+aiosignal==1.4.0
+    # via
+    #   -r requirements.txt
+    #   aiohttp
+aiosqlite==0.22.1
+    # via -r requirements.txt
+alembic==1.19.1
+    # via -r requirements.txt
+annotated-doc==0.0.5
+    # via
+    #   -r requirements.txt
+    #   fastapi
+annotated-types==0.8.0
+    # via
+    #   -r requirements.txt
+    #   pydantic
+anyio==4.14.2
+    # via
+    #   -r requirements.txt
+    #   httpx
+    #   starlette
+    #   watchfiles
+asyncpg==0.31.0
+    # via -r requirements.txt
+attrs==26.1.0
+    # via
+    #   -r requirements.txt
+    #   aiohttp
+    #   svix
+beautifulsoup4==4.15.0
+    # via -r requirements.txt
+boolean-py==5.0
+    # via license-expression
+build==1.5.0
+    # via pip-tools
+cachecontrol[filecache]==0.14.4
+    # via
+    #   cachecontrol
+    #   pip-audit
+certifi==2026.7.22
+    # via
+    #   -r requirements.txt
+    #   httpcore
+    #   httpx
+    #   requests
+    #   sentry-sdk
+cffi==2.1.1
+    # via
+    #   -r requirements.txt
+    #   cryptography
+charset-normalizer==3.5.1
+    # via requests
+clerk-backend-api==7.0.0
+    # via -r requirements.txt
+click==8.4.2
+    # via
+    #   -r requirements.txt
+    #   pip-tools
+    #   uvicorn
+cryptography==50.0.0
+    # via
+    #   -r requirements.txt
+    #   clerk-backend-api
+cyclonedx-python-lib==11.12.0
+    # via pip-audit
+defusedxml==0.7.1
+    # via py-serializable
+deprecated==1.3.1
+    # via
+    #   -r requirements.txt
+    #   limits
+    #   svix
+fastapi==0.141.1
+    # via -r requirements.txt
+filelock==3.32.3
+    # via cachecontrol
+frozenlist==1.8.0
+    # via
+    #   -r requirements.txt
+    #   aiohttp
+    #   aiosignal
+greenlet==3.5.5
+    # via
+    #   -r requirements.txt
+    #   playwright
+    #   sqlalchemy
+h11==0.16.0
+    # via
+    #   -r requirements.txt
+    #   httpcore
+    #   uvicorn
+httpcore==1.0.9
+    # via
+    #   -r requirements.txt
+    #   clerk-backend-api
+    #   httpx
+httptools==0.8.0
+    # via
+    #   -r requirements.txt
+    #   uvicorn
+httpx==0.28.1
+    # via
+    #   -r requirements.txt
+    #   clerk-backend-api
+    #   svix
+idna==3.18
+    # via
+    #   -r requirements.txt
+    #   anyio
+    #   httpx
+    #   requests
+    #   yarl
+iniconfig==2.3.0
+    # via pytest
+jinja2==3.1.6
+    # via -r requirements.txt
+langdetect==1.0.9
+    # via -r requirements.txt
+license-expression==30.4.4
+    # via cyclonedx-python-lib
+limits==5.8.0
+    # via
+    #   -r requirements.txt
+    #   slowapi
+mako==1.4.1
+    # via
+    #   -r requirements.txt
+    #   alembic
+markdown-it-py==4.2.0
+    # via rich
+markupsafe==3.0.3
+    # via
+    #   -r requirements.txt
+    #   jinja2
+    #   mako
+mdurl==0.1.2
+    # via markdown-it-py
+msgpack==1.2.1
+    # via cachecontrol
+multidict==6.7.1
+    # via
+    #   -r requirements.txt
+    #   aiohttp
+    #   yarl
+packageurl-python==0.17.6
+    # via cyclonedx-python-lib
+packaging==26.3
+    # via
+    #   -r requirements.txt
+    #   build
+    #   limits
+    #   pip-audit
+    #   pip-requirements-parser
+    #   pytest
+    #   wheel
+pip-api==0.0.34
+    # via pip-audit
+pip-audit==2.10.1
+    # via -r requirements-dev.in
+pip-requirements-parser==32.0.1
+    # via pip-audit
+pip-tools==7.6.1
+    # via -r requirements-dev.in
+platformdirs==4.11.3
+    # via pip-audit
+playwright==1.62.0
+    # via -r requirements.txt
+pluggy==1.6.0
+    # via pytest
+propcache==0.5.2
+    # via
+    #   -r requirements.txt
+    #   aiohttp
+    #   yarl
+py-serializable==2.1.0
+    # via cyclonedx-python-lib
+pycparser==3.0
+    # via
+    #   -r requirements.txt
+    #   cffi
+pydantic==2.13.4
+    # via
+    #   -r requirements.txt
+    #   clerk-backend-api
+    #   fastapi
+    #   svix
+pydantic-core==2.46.4
+    # via
+    #   -r requirements.txt
+    #   pydantic
+pyee==13.0.1
+    # via
+    #   -r requirements.txt
+    #   playwright
+pygments==2.20.0
+    # via
+    #   pytest
+    #   rich
+pyjwt==2.13.0
+    # via
+    #   -r requirements.txt
+    #   clerk-backend-api
+pyparsing==3.3.2
+    # via pip-requirements-parser
+pyproject-hooks==1.2.0
+    # via
+    #   build
+    #   pip-tools
+pytest==9.1.1
+    # via
+    #   -r requirements-dev.in
+    #   pytest-asyncio
+pytest-asyncio==1.4.0
+    # via -r requirements-dev.in
+python-dateutil==2.9.0.post0
+    # via
+    #   -r requirements.txt
+    #   svix
+python-dotenv==1.2.3
+    # via
+    #   -r requirements.txt
+    #   uvicorn
+pyyaml==6.0.3
+    # via
+    #   -r requirements.txt
+    #   uvicorn
+requests==2.34.2
+    # via
+    #   cachecontrol
+    #   pip-audit
+rich==15.0.0
+    # via pip-audit
+sentry-sdk==2.68.0
+    # via -r requirements.txt
+six==1.17.0
+    # via
+    #   -r requirements.txt
+    #   langdetect
+    #   python-dateutil
+slowapi==0.1.10
+    # via -r requirements.txt
+sortedcontainers==2.4.0
+    # via cyclonedx-python-lib
+soupsieve==2.9.2
+    # via
+    #   -r requirements.txt
+    #   beautifulsoup4
+sqlalchemy[asyncio]==2.0.52
+    # via
+    #   -r requirements.txt
+    #   alembic
+standardwebhooks==1.1.0
+    # via
+    #   -r requirements.txt
+    #   svix
+starlette==1.6.0
+    # via
+    #   -r requirements.txt
+    #   fastapi
+svix==1.99.1
+    # via -r requirements.txt
+tomli==2.4.1
+    # via pip-audit
+tomli-w==1.2.0
+    # via pip-audit
+typing-extensions==4.16.0
+    # via
+    #   -r requirements.txt
+    #   alembic
+    #   beautifulsoup4
+    #   fastapi
+    #   limits
+    #   pydantic
+    #   pydantic-core
+    #   pyee
+    #   sqlalchemy
+    #   typing-inspection
+typing-inspection==0.4.4
+    # via
+    #   -r requirements.txt
+    #   fastapi
+    #   pydantic
+urllib3==2.7.0
+    # via
+    #   -r requirements.txt
+    #   requests
+    #   sentry-sdk
+uvicorn[standard]==0.52.3
+    # via -r requirements.txt
+uvloop==0.22.1
+    # via
+    #   -r requirements.txt
+    #   uvicorn
+watchfiles==1.2.0
+    # via
+    #   -r requirements.txt
+    #   uvicorn
+websockets==17.0.1
+    # via
+    #   -r requirements.txt
+    #   uvicorn
+wheel==0.48.0
+    # via pip-tools
+wordninja==2.0.0
+    # via -r requirements.txt
+wrapt==2.3.0
+    # via
+    #   -r requirements.txt
+    #   deprecated
+yarl==1.24.5
+    # via
+    #   -r requirements.txt
+    #   aiohttp
+# yt-dlp: deliberately re-unpinned by hand here even though pip-compile
+# resolved it to a specific version above -- it's pulled in transitively
+# via requirements.txt's own unpinned yt-dlp line, and pip-compile has no
+# way to know it should stay that way. See requirements.txt's matching
+# comment. Re-fix this line after every `pip-compile requirements-dev.in`
+# re-run.
+yt-dlp
+# youtube-transcript-api is deliberately unpinned too -- see
+# requirements-dev.in's matching comment. Not resolvable via pip-compile
+# at all since it's excluded from requirements-dev.in on purpose.
 youtube-transcript-api
+
+# The following packages are considered to be unsafe in a requirements file:
+# pip
+# setuptools
