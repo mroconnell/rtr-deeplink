@@ -307,7 +307,8 @@ body {
    system. Empty by default (no text yet), so no visible pill until a
    real status message is set. */
 .report-problem-status,
-.transcribe-status {
+.transcribe-status,
+.refresh-page-status {
   display: inline-block;
   border-radius: 7px;
   padding: 0.35rem 0.85rem;
@@ -315,11 +316,16 @@ body {
   margin: 0.6rem 0 0;
 }
 .report-problem-status:empty,
-.transcribe-status:empty { display: none; }
+.transcribe-status:empty,
+.refresh-page-status:empty { display: none; }
 .report-problem-status.success,
-.transcribe-status.success { background: var(--success-bg); color: var(--success-fg); }
+.transcribe-status.success,
+.refresh-page-status.success { background: var(--success-bg); color: var(--success-fg); }
 .report-problem-status.error,
-.transcribe-status.error { background: var(--error-bg); color: var(--secondary); }
+.transcribe-status.error,
+.refresh-page-status.error { background: var(--error-bg); color: var(--secondary); }
+
+.refresh-page-toggle { margin: 0.4rem 0 0; }
 
 .transcribe-toggle { margin: 0.4rem 0 0; }
 .nyc-crosslink { margin: 0.75rem 0 0; font-size: 0.9rem; }

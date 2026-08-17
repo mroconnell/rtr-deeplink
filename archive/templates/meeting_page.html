@@ -224,6 +224,12 @@
       {% if page.source_url %}
       <p class="source-link"><a href="{{ page.source_url }}" target="_blank" rel="noopener noreferrer">View original source &rarr;</a></p>
       {% endif %}
+      {% if page.source_url %}
+      <p class="refresh-page-toggle">
+        <button type="button" id="refreshPageBtn" class="link-button" data-url="{{ page.source_url }}">Refresh this page</button>
+        <span id="refreshPageStatus" class="refresh-page-status" role="status"></span>
+      </p>
+      {% endif %}
     </div>
 
     <div id="videoColumn" class="video-column">

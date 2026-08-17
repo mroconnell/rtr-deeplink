@@ -11,10 +11,19 @@ the human-typed CC1 track with real ">>" speaker markers, not just
 auto-captions). So the server can't fetch these itself; this script runs
 on a residential connection instead, consuming the Archive's own
 "transcript wanted" queue (GET /internal/transcript-wanted: every
-YouTube-backed page with no default transcript) and pushing results back
-through the same POST /internal/ingest every other transcript already
-goes through -- idempotent, deduped by content hash, and matched to the
-existing page by the identity fields the queue returns.
+YouTube-backed page with no *good* default transcript -- missing
+entirely, or present but flagged bad/garbled, see
+list_youtube_pages_missing_transcripts()'s docstring) and pushing results
+back through the same POST /internal/ingest every other transcript
+already goes through -- idempotent, deduped by content hash, and matched
+to the existing page by the identity fields the queue returns. When the
+page already had a (bad) default transcript, a fresh push doesn't
+automatically become the new default (archive/db/crud.py's
+_is_real_improvement() is deliberately narrow), so this script always
+follows up with POST /internal/transcript-version/promote -- a real
+YouTube caption track is unconditionally more trustworthy than whatever
+was already flagged bad, unlike scripts/transcribe_backlog_locally.py's
+opt-in --promote for its own Whisper-based re-transcriptions.
 
 Usage (from the repo root, with the venv active):
     python scripts/fetch_youtube_transcripts.py
@@ -179,6 +188,39 @@ async def _ingest(
         raise RuntimeError(f"ingest failed ({response.status}): {text[:300]}")
 
 
+async def _promote(session: aiohttp.ClientSession, slug: str, version_id: int) -> dict:
+    """POST /internal/transcript-version/promote -- makes `version_id` the
+    page's default TranscriptVersion. Real gap fixed 2026-08-16 (WO-15,
+    BACKLOG.md): since the transcript-wanted queue now also surfaces pages
+    whose default is present-but-garbled (not just missing entirely -- see
+    list_youtube_pages_missing_transcripts()'s docstring), a fresh push for
+    those does NOT automatically become the page's default -- the current
+    default already has segments+language, so archive/db/crud.py's
+    _is_real_improvement() declines to auto-promote (deliberately narrow,
+    to avoid unpredictably flip-flopping the default). Unlike
+    scripts/transcribe_backlog_locally.py's opt-in --promote (a Whisper
+    audio re-transcription, quality varies, worth a human's say-so), a
+    genuinely-fetched real YouTube caption track is unconditionally more
+    trustworthy than whatever's already flagged bad, so this script always
+    promotes rather than gating it behind a flag. Never demotes the old
+    version out of existence -- promote_transcript_version()'s own
+    docstring: it stays reachable via `?version=`, this only flips which
+    one is_default. A no-op (not an error) when the pushed version was
+    already the default (e.g. the original "no transcript at all" case,
+    where ingest_resolution() already made it the default at creation).
+    """
+    async with session.post(
+        f"{_base_url()}/internal/transcript-version/promote",
+        json={"slug": slug, "version_id": version_id},
+        headers=_headers(),
+        timeout=INGEST_TIMEOUT,
+    ) as response:
+        if response.status == 200:
+            return await response.json()
+        text = await response.text()
+        raise RuntimeError(f"promote failed ({response.status}): {text[:300]}")
+
+
 async def process_one(
     session: aiohttp.ClientSession, page: dict, *, dry_run: bool
 ) -> dict:
@@ -238,10 +280,15 @@ async def process_one(
     }
     response = await _ingest(session, payload, page["source_url_normalized"])
     page_url = response.get("url", "")
+    version_id = response.get("version_id")
+    promote_detail = ""
+    if version_id is not None:
+        await _promote(session, response.get("slug", slug), version_id)
+        promote_detail = " (promoted to default)"
     return {
         "slug": slug,
         "status": "ingested",
-        "detail": f"{len(segments)} segments (language={language}) -> {page_url}",
+        "detail": f"{len(segments)} segments (language={language}) -> {page_url}{promote_detail}",
         # Only meaningful for status=="ingested" -- consumed by
         # send_youtube_transcript_report() to build the email's list,
         # kept out of "detail" (the console/log string) since a plain

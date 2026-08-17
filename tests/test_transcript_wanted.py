@@ -64,6 +64,24 @@ async def test_wanted_excludes_youtube_page_with_transcript():
     ]
 
 
+async def test_wanted_includes_youtube_page_with_garbled_transcript():
+    # WO-15 (BACKLOG.md, 2026-08-16): real gap fixed -- a page with a
+    # *present but garbled* transcript (e.g. a Whisper audio-fallback
+    # transcript that never got real captions) used to never resurface
+    # here at all, even though a real YouTube caption fetch would fix it.
+    url = "https://www.youtube.com/watch?v=wanted-garbled"
+    payload = _payload(
+        "youtube:wanted-garbled",
+        url,
+        segments=[{"start": 0, "end": 1, "text": "garbled nonsense"}],
+    )
+    payload["transcript_warnings"] = ["This transcript looks garbled at the source."]
+    await crud.ingest_resolution(payload, url)
+
+    wanted = await crud.list_youtube_pages_missing_transcripts()
+    assert [p for p in wanted if p["external_id"] == "youtube:wanted-garbled"]
+
+
 async def test_wanted_excludes_non_youtube_page_without_transcript():
     # A Granicus page missing its transcript is a real gap, but not one
     # this queue can help with -- the whole point is YouTube's cloud-IP

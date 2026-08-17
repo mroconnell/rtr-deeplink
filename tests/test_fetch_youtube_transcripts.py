@@ -1,16 +1,21 @@
 """Tests for scripts/fetch_youtube_transcripts.py's snippet-to-segment
 conversion -- the pure part of the local fetcher (the YouTube fetch itself
 is lazy-imported and only ever runs from a residential IP, see the
-script's own docstring).
+script's own docstring) -- and process_one()'s WO-15 (BACKLOG.md,
+2026-08-16) auto-promote step.
 """
 
 import sys
+from contextlib import contextmanager
 from pathlib import Path
 from types import SimpleNamespace
+from unittest import mock
+
+import aiohttp
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
-from fetch_youtube_transcripts import snippets_to_segments  # noqa: E402
+from fetch_youtube_transcripts import process_one, snippets_to_segments  # noqa: E402
 
 
 def _snippet(text, start, duration=2.0):
@@ -90,3 +95,123 @@ def test_pre_escaped_entity_in_snippet_gets_unescaped():
     # that general double-escaping fix was added there.
     segments = snippets_to_segments([_snippet("Smith &amp; Jones, LLC", 0.0)])
     assert segments[0]["text"] == "Smith & Jones, LLC"
+
+
+class _FakePostResponse:
+    def __init__(self, json_body):
+        self._json_body = json_body
+        self.status = 200
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
+
+    async def text(self):
+        return str(self._json_body)
+
+    async def json(self):
+        return self._json_body
+
+
+@contextmanager
+def _mock_post(routes: dict):
+    """routes: {url: response_dict}. Records every call as (url, json_body)
+    tuples on the returned list, mirroring aiohttp_mock.py's exact-URL-match
+    convention but for POST (fetch_youtube_transcripts.py only ever POSTs,
+    never GETs, to the Archive)."""
+    calls = []
+
+    def fake_post(self, url, json=None, **kwargs):
+        calls.append((str(url), json))
+        key = str(url)
+        if key not in routes:
+            raise AssertionError(f"Unmocked POST in test: {key}")
+        return _FakePostResponse(routes[key])
+
+    with mock.patch.object(aiohttp.ClientSession, "post", fake_post):
+        yield calls
+
+
+async def test_process_one_promotes_after_a_successful_push(monkeypatch):
+    # WO-15 (BACKLOG.md, 2026-08-16): a page already in the transcript-
+    # wanted queue because its existing default is garbled has segments+
+    # language already, so archive/db/crud.py's _is_real_improvement()
+    # won't auto-promote a fresh push on its own -- process_one() must
+    # explicitly follow up with POST /internal/transcript-version/promote.
+    base = "https://archive.example.com"
+    monkeypatch.setattr("fetch_youtube_transcripts._base_url", lambda: base)
+    monkeypatch.setattr(
+        "fetch_youtube_transcripts.fetch_transcript",
+        lambda video_id: ([{"start": 0.0, "end": 1.0, "text": "hello"}], "en"),
+    )
+    page = {
+        "slug": "promote-test-meeting",
+        "title": "Promote Test Meeting",
+        "platform": "youtube",
+        "external_id": "youtube:promote-test",
+        "source_url_normalized": "https://www.youtube.com/watch?v=AAAAAAAAAAA",
+        "video_url": "https://www.youtube.com/embed/AAAAAAAAAAA",
+    }
+    routes = {
+        f"{base}/internal/ingest": {
+            "slug": "promote-test-meeting",
+            "url": "/m/promote-test-meeting",
+            "version_id": 42,
+        },
+        f"{base}/internal/transcript-version/promote": {
+            "slug": "promote-test-meeting",
+            "promoted_version_id": 42,
+        },
+    }
+
+    async with aiohttp.ClientSession() as session:
+        with _mock_post(routes) as calls:
+            result = await process_one(session, page, dry_run=False)
+
+    assert result["status"] == "ingested"
+    assert "(promoted to default)" in result["detail"]
+    urls_called = [url for url, _body in calls]
+    assert urls_called == [
+        f"{base}/internal/ingest",
+        f"{base}/internal/transcript-version/promote",
+    ]
+    promote_body = calls[1][1]
+    assert promote_body == {"slug": "promote-test-meeting", "version_id": 42}
+
+
+async def test_process_one_skips_promote_when_ingest_had_no_segments(monkeypatch):
+    # A push whose content exactly content-hash-duplicates an already
+    # *non-default* version with no fresh segments created would come back
+    # with version_id=None from ingest_resolution() in one real edge case
+    # (see its own docstring) -- process_one() shouldn't call promote with
+    # nothing to promote.
+    base = "https://archive.example.com"
+    monkeypatch.setattr("fetch_youtube_transcripts._base_url", lambda: base)
+    monkeypatch.setattr(
+        "fetch_youtube_transcripts.fetch_transcript",
+        lambda video_id: ([{"start": 0.0, "end": 1.0, "text": "hello"}], "en"),
+    )
+    page = {
+        "slug": "no-version-id-meeting",
+        "platform": "youtube",
+        "external_id": "youtube:no-version-id",
+        "source_url_normalized": "https://www.youtube.com/watch?v=BBBBBBBBBBB",
+        "video_url": "https://www.youtube.com/embed/BBBBBBBBBBB",
+    }
+    routes = {
+        f"{base}/internal/ingest": {
+            "slug": "no-version-id-meeting",
+            "url": "/m/no-version-id-meeting",
+            "version_id": None,
+        },
+    }
+
+    async with aiohttp.ClientSession() as session:
+        with _mock_post(routes) as calls:
+            result = await process_one(session, page, dry_run=False)
+
+    assert result["status"] == "ingested"
+    assert "(promoted to default)" not in result["detail"]
+    assert [url for url, _body in calls] == [f"{base}/internal/ingest"]

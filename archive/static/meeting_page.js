@@ -470,6 +470,57 @@ function wireReportProblemForm() {
   });
 }
 
+// "Refresh this page" -- WO-15 (BACKLOG.md, 2026-08-16): re-submitting
+// this URL through the homepage never triggered a refresh on its own
+// (only a token-gated admin endpoint or the passive 30-day recheck cycle
+// did), the confirmed root cause behind several separately-filed "why
+// does this page look wrong" bugs. Calls the resolver's own
+// /api/refresh-archived-page (same-origin via app/main.py's /m/{slug}
+// proxy, same pattern wireReportProblemForm()/wireTranscribeForm() above
+// already rely on) and reloads on success so the visitor sees the result
+// immediately rather than having to guess whether anything changed.
+function wireRefreshPageButton() {
+  const btn = document.getElementById('refreshPageBtn');
+  const statusEl = document.getElementById('refreshPageStatus');
+  if (!btn || !statusEl) return;
+
+  btn.addEventListener('click', async () => {
+    const url = btn.dataset.url;
+    if (!url) return;
+
+    btn.disabled = true;
+    statusEl.textContent = 'Checking the source for updates…';
+    statusEl.className = 'refresh-page-status';
+
+    try {
+      const res = await fetch('/api/refresh-archived-page', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        statusEl.textContent = data.pushed
+          ? 'Updated — reloading…'
+          : 'No changes found at the source.';
+        statusEl.className = 'refresh-page-status success';
+        if (data.pushed) {
+          setTimeout(() => window.location.reload(), 1200);
+          return;
+        }
+      } else {
+        statusEl.textContent = data.message || 'Something went wrong — please try again.';
+        statusEl.className = 'refresh-page-status error';
+      }
+    } catch (err) {
+      statusEl.textContent = 'Something went wrong — please try again.';
+      statusEl.className = 'refresh-page-status error';
+    } finally {
+      btn.disabled = false;
+    }
+  });
+}
+
 // Save this meeting -- two controls that toggle the same saved/unsaved
 // state together: the text button below the video (#saveMeetingBtn) and
 // the bookmark icon next to the title (#saveMeetingIconBtn), both tagged
@@ -586,6 +637,7 @@ document.addEventListener('DOMContentLoaded', () => {
   wireTranscribeInlineTriggers();
   wireSourceDisclaimerPointer();
   wireSaveMeetingButton();
+  wireRefreshPageButton();
 
   const wrapper = document.getElementById('videoWrapper');
   if (!wrapper) return;
