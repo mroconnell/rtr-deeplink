@@ -393,15 +393,17 @@ async def process_one(
 ) -> dict:
     """Returns {"slug", "status": "ingested"|"skipped"|"failed", "detail"}.
 
-    `promote`: after a successful ingest, if the push actually created a new
-    TranscriptVersion (response["version_id"] is not None -- it can be None
-    when segments were empty, or a content-hash duplicate meant nothing new
-    was written), calls POST /internal/transcript-version/promote to make it
-    the page's default immediately. Without this, a manual re-transcription
-    of an already-live page (e.g. after a real transcription-quality fix
-    ships) sits as a non-default version until someone promotes it by hand
-    -- see _promote()'s own docstring for why ingest alone usually isn't
-    enough to auto-promote in that case.
+    `promote`: after a successful ingest, if response["version_id"] is not
+    None (it's None only when this push produced literally no segments --
+    see ingest_resolution()'s own docstring for why it's still set even
+    when the push's content matched an already-existing version by content
+    hash, not just a freshly-created one), calls POST /internal/
+    transcript-version/promote to make that version the page's default
+    immediately. Without this, a manual re-transcription of an already-live
+    page (e.g. after a real transcription-quality fix ships) sits as a
+    non-default version until someone promotes it by hand -- see
+    _promote()'s own docstring for why ingest alone usually isn't enough to
+    auto-promote in that case.
     """
     slug = page.get("slug", "?")
 
@@ -460,7 +462,7 @@ async def process_one(
     promote_note = ""
     if promote:
         if version_id is None:
-            promote_note = " (--promote: skipped, no new version created -- content-hash duplicate of an existing version)"
+            promote_note = " (--promote: skipped, push produced no segments)"
         else:
             await _promote(session, response.get("slug", slug), version_id)
             promote_note = f" (promoted version {version_id} to default)"
@@ -510,14 +512,15 @@ async def main() -> None:
     parser.add_argument(
         "--promote",
         action="store_true",
-        help="After a successful ingest, automatically promote the newly-created TranscriptVersion "
-        "to be the page's default (POST /internal/transcript-version/promote). Off by default -- a "
-        "plain re-run of the normal backlog queue pushes brand-new pages, where the very first "
-        "version is already is_default=True on creation and this is a no-op; it matters specifically "
-        "for --url against an already-live page whose existing default already has segments+language, "
-        "where ingest_resolution()'s automatic promotion won't fire on its own (see _promote()'s own "
-        "docstring). Skipped automatically if the push didn't actually create a new version (a "
-        "content-hash duplicate of what's already there).",
+        help="After a successful ingest, automatically promote the TranscriptVersion this push "
+        "corresponds to (freshly created, or an existing content-hash duplicate if re-running an "
+        "identical transcription) to be the page's default (POST /internal/transcript-version/"
+        "promote). Off by default -- a plain re-run of the normal backlog queue pushes brand-new "
+        "pages, where the very first version is already is_default=True on creation and this is a "
+        "no-op; it matters specifically for --url against an already-live page whose existing "
+        "default already has segments+language, where ingest_resolution()'s automatic promotion "
+        "won't fire on its own (see _promote()'s own docstring). Skipped only if the push produced "
+        "no segments at all.",
     )
     args = parser.parse_args()
 

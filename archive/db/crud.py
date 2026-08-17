@@ -438,6 +438,23 @@ async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) 
         )
 
         new_version_id = None
+        # Tracks whichever TranscriptVersion this push's content actually
+        # corresponds to -- either the id of one freshly created here, or
+        # (when a content-hash duplicate already exists, e.g. re-running
+        # this same transcription a second time) that existing version's
+        # id. Kept as a separate variable from new_version_id on purpose:
+        # the auto-promotion check right below must still only ever fire
+        # for a genuinely *new* version (new_version_id), never re-promote
+        # an old duplicate just because it was pushed again -- but a caller
+        # asking "what version does this push correspond to" (e.g.
+        # scripts/transcribe_backlog_locally.py's --promote) needs an id
+        # either way. Real gap this closes, found live re-transcribing
+        # Boulder County (see BACKLOG_DONE.md): the fixed transcript's
+        # content already matched a non-default version from an earlier
+        # real (non-dry-run) push during the original bug investigation,
+        # so nothing "new" was created on this call, but there was still a
+        # real, promotable version to point at.
+        matched_version_id = None
 
         if segments:
             language = payload.get("transcript_language")
@@ -488,6 +505,9 @@ async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) 
                 session.add(version)
                 await session.flush()  # assigns version.id
                 new_version_id = version.id
+                matched_version_id = version.id
+            else:
+                matched_version_id = duplicate.id
 
         if current_default is not None:
             if new_version_id is not None and _is_real_improvement(
@@ -500,19 +520,20 @@ async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) 
                 current_default.is_default = False
 
         await session.commit()
-        # version_id is the id of the TranscriptVersion this call actually
-        # created (None when there were no segments to ingest, or a
-        # content-hash duplicate meant nothing new was created -- see the
-        # dedup check above). Added 2026-08-16: previously nothing surfaced
-        # this at all, a real gap hit re-transcribing Boulder County/Port
+        # version_id is matched_version_id above: the TranscriptVersion this
+        # push's content corresponds to (freshly created or an existing
+        # content-hash duplicate), or None when there were no segments to
+        # ingest at all. Added 2026-08-16: previously nothing surfaced this
+        # at all, a real gap hit re-transcribing Boulder County/Port
         # Coquitlam after the seam-duplication/phase-cancellation fixes (see
-        # BACKLOG_DONE.md) -- promoting the fresh version requires its id,
-        # and the page's existing default already has segments+language, so
-        # _is_real_improvement() alone won't auto-promote a fresh push.
+        # BACKLOG_DONE.md) -- promoting the relevant version requires its
+        # id, and the page's existing default already has segments+
+        # language, so _is_real_improvement() alone won't auto-promote a
+        # fresh push.
         return {
             "slug": page.slug,
             "url": f"/m/{page.slug}",
-            "version_id": new_version_id,
+            "version_id": matched_version_id,
         }
 
 

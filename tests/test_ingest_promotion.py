@@ -37,6 +37,60 @@ def _payload(
     }
 
 
+async def test_ingest_resolution_returns_new_version_id_on_first_push():
+    # Added 2026-08-16 alongside scripts/transcribe_backlog_locally.py's
+    # --promote flag: a caller needs the id of the version this push
+    # actually corresponds to, to promote it -- previously ingest_
+    # resolution() returned only {"slug", "url"}.
+    url = "https://example.granicus.com/player/clip/promo-version-id-new"
+    external_id = "granicus:promo-version-id-new"
+
+    result = await crud.ingest_resolution(
+        _payload(
+            external_id,
+            url,
+            segments=[{"start": 0, "end": 1, "text": "hello there"}],
+            transcript_language="en",
+        ),
+        url,
+    )
+    assert result["version_id"] is not None
+
+    page = await crud.get_page_by_slug(result["slug"])
+    assert any(v["id"] == result["version_id"] for v in page["versions"])
+
+
+async def test_ingest_resolution_returns_no_segments_no_version_id():
+    url = "https://example.granicus.com/player/clip/promo-version-id-empty"
+    external_id = "granicus:promo-version-id-empty"
+
+    result = await crud.ingest_resolution(_payload(external_id, url), url)
+    assert result["version_id"] is None
+
+
+async def test_ingest_resolution_returns_existing_version_id_on_content_hash_duplicate():
+    # Real gap found live 2026-08-16 re-transcribing Boulder County, CO
+    # after the seam-duplication fix: the fixed transcript's exact content
+    # already matched a non-default TranscriptVersion from an earlier real
+    # (non-dry-run) push, so this call created nothing new -- but
+    # --promote still needs *some* version_id to act on, not None, or a
+    # manual re-transcription that happens to match an already-ingested
+    # result could never be promoted via this path at all.
+    url = "https://example.granicus.com/player/clip/promo-version-id-dup"
+    external_id = "granicus:promo-version-id-dup"
+    segments = [{"start": 0, "end": 1, "text": "the exact same real content"}]
+
+    first = await crud.ingest_resolution(
+        _payload(external_id, url, segments=segments, transcript_language="en"), url
+    )
+    assert first["version_id"] is not None
+
+    second = await crud.ingest_resolution(
+        _payload(external_id, url, segments=segments, transcript_language="en"), url
+    )
+    assert second["version_id"] == first["version_id"]  # matched, not None
+
+
 async def test_get_page_by_slug_includes_platform():
     # Real bug fixed 2026-08-09: get_page_by_slug()'s returned dict never
     # included a "platform" key at all, so a template referencing
