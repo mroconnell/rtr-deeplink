@@ -6,6 +6,187 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Coverage page — full sortable/filterable per-jurisdiction detail table [Done 2026-08-17]
+
+BACKLOG.md's "[IMPROVEMENT-ROUND] Coverage page" entry's real remaining
+gap (the per-platform grouped view already existed and stayed unchanged):
+`/coverage` groups by platform and lists "Every place we've covered" by
+jurisdiction, but had no single, sortable/filterable table with one row
+per successfully-archived jurisdiction and the user's full column spec.
+Built as a new, additive section on the existing `/coverage` page — the
+existing platform-grouped view and jurisdiction roster keep working
+exactly as before, verified by the full pre-existing test suite staying
+green (see below).
+
+**What was built**:
+- `archive/db/crud.py`: a new `get_full_jurisdiction_coverage()` (~230
+  lines including docstrings/helpers), deliberately additive next to
+  `get_platform_coverage()`/`get_jurisdiction_coverage()` rather than a
+  rewrite of either. One row per jurisdiction (same population as
+  `get_jurisdiction_coverage()`, same `MeetingPage.jurisdiction is not
+  None` gate), with:
+  - `video_embeds`/`agenda_embedded` — straight from `MeetingPage.video_url`
+    and `agenda_items`.
+  - `instant_transcript` — a real, non-empty `TranscriptVersion` with
+    `source == "scraped"` on *any* version of the page, not just the
+    default one (a page's default can be promoted to a later
+    `"transcribed"` version via `manually_promote_transcript_version()`
+    without deleting the original scraped one, so checking only the
+    default would wrongly say "no" for a page that still has a real
+    scraped transcript sitting non-default).
+  - `audio_transcript_possible` — `video_url is not None and video_format
+    != "youtube"`. Mirrors `app/main.py`'s own
+    `_unreadable_media_message()` reasoning: a YouTube-hosted video is an
+    iframe-embed page, never a real media file, so ffprobe can never read
+    it — a structural, permanent limitation, not something that needs a
+    live probe per row (which would be far too expensive for a full
+    coverage table).
+  - **Two-column provider split** (`detail_platform`/`video_platform`,
+    via new `_platform_split()`/`_wrapper_detail_label()` helpers): only
+    genuinely splits into two different labels when there's real
+    recoverable evidence they differ. `MeetingPage.platform == "youtube"`
+    is recovered back to its real originating wrapper platform
+    (Minneapolis LIMS / Salt Lake City / ClerkBase / **PrimeGov** /
+    **CivicWeb** — the last two newly added here, since
+    `get_platform_coverage()`'s existing `_entry_platform_from_source_url()`
+    only ever recognized the first three) via the real, confirmed *.primegov.com
+    /*.civicweb.net domain patterns (confirmed live by reading
+    `primegov.py`/`civicweb.py` directly, not assumed) on
+    `source_url_normalized`. Everywhere else — including every
+    Legistar/CivicPlus-delegated row — both columns show the *same*
+    label, which is the honest answer: per CLAUDE.md's wrapper-platform
+    bullet, Legistar/CivicPlus delegation overwrites both
+    `MeetingPage.platform` *and* `source_url_normalized` with the
+    delegated platform's own values, so this app genuinely has no stored
+    way to tell, post-hoc, that a given Granicus row arrived via a
+    Legistar page rather than a directly-pasted Granicus link — showing
+    "Detail: Granicus; Video: Granicus" for that row isn't a missed
+    split, it's the real limit of what's recoverable from stored data. A
+    `platform == "unknown"` (generic_fallback direct-media-file) row
+    shows the real `video_url` host as its video label rather than
+    guessing a platform name (e.g. never labeled "Vimeo" without a
+    confirmed vimeo.com host, per CLAUDE.md's "don't claim a data path
+    works without a positive example" convention).
+  - **Outcome bucket** (`_classify_page_outcome()`) — mirrors
+    `app/db/outcomes.py`'s `classify_outcome()` bucket names/ordering
+    (no_video / blank_transcript / agenda_fallback / garbled_transcript /
+    non_english_transcript / success), but reads
+    `MeetingPage`/`TranscriptVersion` directly rather than importing that
+    function, since it classifies a different schema
+    (`MeetingResolution`, the resolver's own DB) on a different service's
+    DB — archive/ deliberately doesn't import from app/.
+  - `last_verified` — `max(updated_at)` across the jurisdiction's pages.
+  - A jurisdiction with several archived pages gets each yes/no column as
+    "true if ANY of its pages has it" (a "did we ever manage this for
+    this city" roster), but its platform-split/outcome/example columns
+    from whichever single page has the best (lowest-ranked) outcome
+    bucket — same spirit as `get_jurisdiction_coverage()`'s own
+    has_transcript-preferred example pick.
+  - A correlation bug hit building the `instant_transcript` EXISTS
+    subquery: without an alias, SQLAlchemy auto-correlated the outer
+    query's own `TranscriptVersion` outerjoin into the subquery too,
+    leaving it with no FROM clause at all (`InvalidRequestError`) — fixed
+    with the exact same `aliased(TranscriptVersion)` +
+    `.correlate(MeetingPage)` pattern `_is_empty_page_condition()` already
+    uses a few hundred lines up in the same file, for the identical
+    reason.
+- `archive/main.py`: `/coverage` now also calls
+  `get_full_jurisdiction_coverage()` and computes distinct
+  detail-platform/video-platform/outcome option lists for the new
+  filter dropdowns (derived from the real rows, not
+  `DIRECT_PLATFORMS`/`CUSTOM_PLATFORMS`, since this table can show labels
+  those dicts don't have, e.g. "PrimeGov" or a raw host).
+- `archive/templates/coverage.html`: new "Full jurisdiction detail table"
+  section between the existing jurisdiction roster and the "By platform"
+  section, with a filter row (search box, 3 dropdowns, 4 checkboxes) and
+  a 10-column table (`#`, Government, Video embeds, Agenda embedded,
+  Instant transcript, Audio transcript possible, Detail page, Video
+  platform, Outcome, Last verified, Example).
+- `archive/static/coverage.js`: generalized from a single hardcoded
+  `#coverageTable` to `initSortableTable()` applied to every
+  `table.sortable-table` (both the existing table and the new one now
+  carry that class), preserving the exact existing sort behavior/pattern
+  for the pre-existing table. Added a new client-side filter block scoped
+  to `#fullCoverageTable` only (search substring match + 3 dropdown exact
+  matches + 4 "only show yes" checkboxes, all AND'd together), reusing
+  the sort code's `renumberVisibleRows()` so row numbers skip
+  filtered-out rows rather than showing gaps.
+- `archive/static/style.css`: `.coverage-filters`/`.coverage-filter-check`/
+  `.coverage-filter-count`/`.coverage-yesno-col` styling for the new
+  section, deliberately scoped narrowly (comment notes this file is
+  Archive-only, no resolver counterpart to keep in sync, same as the
+  pre-existing coverage-table rules right above it).
+- `README.md` (the `/coverage` route description and the `crud.py`
+  function list in "Project structure") and `BACKLOG.md` (this entry
+  moved here) updated per this repo's doc-drift convention.
+
+**Scale check before choosing client-side filtering**: production
+`/coverage` currently renders 871 jurisdiction rows in the existing
+"Every place we've covered" table with zero pagination (confirmed live,
+`document.querySelectorAll('#coverageTable tbody tr').length` on
+`https://redtaperecordings.com/coverage`) — small enough that adding a
+second, similarly-sized table with client-side sort *and* filter is a
+direct extension of the same already-working pattern, not a new scaling
+risk. `_is_empty_page_condition()`'s own docstring nearby independently
+confirms ~1,200 total `MeetingPage` rows in prod as of 2026-08-17, the
+same order of magnitude.
+
+**Verification**:
+- New tests in `tests/test_footer_and_coverage.py`: a direct-platform
+  meeting (Granicus, full video+agenda+transcript → every yes/no column
+  True, `outcome == "success"`, detail == video == "Granicus"); a
+  synthetic-but-real-shaped LIMS wrapper case (confirmed live via a
+  throwaway script before writing the test that
+  `app/utils/jurisdiction_enrich.py`'s `_KNOWN_DOMAINS` forces
+  `lims.minneapolismn.gov` to jurisdiction "Minneapolis, MN"
+  unconditionally on ingest, regardless of the payload's own
+  `jurisdiction` field — the test asserts against that real value, not a
+  made-up one); a PrimeGov wrapper case on a synthetic
+  `*.primegov.com` subdomain (real domain pattern, confirmed by reading
+  `primegov.py` directly) proving the new PrimeGov recognition works and
+  `audio_transcript_possible` is correctly False for a
+  `video_format == "youtube"` row; an agenda-only CivicClerk case
+  (`outcome == "agenda_fallback"`); and two HTTP-level tests confirming
+  the new table/headers render and a real ingested row appears in the
+  HTML. Full suite: 961 passed, 4 skipped (pre-existing skips,
+  unrelated), 0 failed, both before and after.
+- Direct Python-level verification of `get_full_jurisdiction_coverage()`
+  against 6 realistic seeded scenarios spanning direct-platform success,
+  LIMS-wrapper success, PrimeGov-wrapper blank-transcript, agenda-only,
+  garbled-transcript (non-English + `_GARBLED_MARKER`), and
+  video-only/no-transcript (eScribe) — every row's computed
+  detail_platform/video_platform/outcome matched expectations exactly.
+- HTTP-level verification: a real local `archive.main:app` instance
+  (isolated `DATABASE_URL`, the same 6 seeded rows) served `/coverage`
+  and the rendered HTML contained the new table with correct per-row
+  values for every column, cross-checked against the Python-level output
+  above.
+- **Genuine limitation hit, worth recording honestly rather than
+  glossing over**: real interactive in-browser click verification (sort
+  header clicks, dropdown/checkbox filtering) could not be completed this
+  session. This session's agent is worktree-isolated
+  (`.claude/worktrees/agent-aa1bfbda75e4e291a`), and the Browser pane's
+  own dev-server-launching mechanism runs in a *separate* execution
+  context that returned a hard `PermissionError: Operation not permitted`
+  reading *any* path under `.claude/worktrees/...` — confirmed by direct
+  test, not assumed — and, separately, a `getcwd()`-level failure trying
+  to reach even the *shared* checkout's own `.venv` from that same
+  context (confirmed by finding the pre-existing `archive-verify` launch
+  config, unrelated to this session, failed identically). Neither
+  worktree-local nor scratch-directory-`--app-dir` workarounds could
+  route around this — it's a structural boundary between the agent's
+  worktree and the Browser pane's own process-launching context, not a
+  fixable mistake in how the dev server was started. The sort/filter JS
+  itself carries real risk mitigation despite this: `initSortableTable()`
+  is a straight generalization of the exact algorithm
+  `archive/static/coverage.js` already used for the pre-existing
+  `#coverageTable` (verified live in-browser previously — see this
+  file's 2026-08-16 "wave 2 item 9" entry above — "sort-by-click ...
+  confirmed against a locally-seeded table"), and the new filter code is
+  plain `dataset` attribute checks + `display: none` toggling with no
+  novel DOM-manipulation risk. Worth a real in-browser click-through next
+  time a session without this isolation constraint touches `/coverage`.
+
 ## Transcript/agenda segment timestamps past 59 minutes rendered wrong (2026-08-17)
 
 [Done 2026-08-17] BACKLOG.md previously carried this as "Transcript

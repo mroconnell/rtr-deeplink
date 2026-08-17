@@ -931,6 +931,22 @@ async def coverage(request: Request):
     coverage_rows = await crud.get_platform_coverage()
     jurisdictions = await crud.get_jurisdiction_coverage()
     states = await crud.get_state_coverage_index()
+    full_jurisdictions = await crud.get_full_jurisdiction_coverage()
+    # Distinct filter-dropdown option lists, derived from the real rows
+    # rather than DIRECT_PLATFORMS/CUSTOM_PLATFORMS directly -- this table
+    # can show labels those dicts don't have (e.g. "PrimeGov", a raw
+    # video_url host for a generic_fallback row), so the dropdowns should
+    # only ever offer options a filter click can actually match something.
+    detail_platform_options = sorted(
+        {row["detail_platform"] for row in full_jurisdictions}, key=str.casefold
+    )
+    video_platform_options = sorted(
+        {row["video_platform"] for row in full_jurisdictions}, key=str.casefold
+    )
+    outcome_options = sorted(
+        {(row["outcome"], row["outcome_label"]) for row in full_jurisdictions},
+        key=lambda o: o[1],
+    )
     return templates.TemplateResponse(
         request,
         "coverage.html",
@@ -938,6 +954,10 @@ async def coverage(request: Request):
             "coverage": coverage_rows,
             "jurisdictions": jurisdictions,
             "states": states,
+            "full_jurisdictions": full_jurisdictions,
+            "detail_platform_options": detail_platform_options,
+            "video_platform_options": video_platform_options,
+            "outcome_options": outcome_options,
             "active_account": get_clerk_user_id(request),
         },
     )

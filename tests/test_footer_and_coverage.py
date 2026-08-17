@@ -13,7 +13,13 @@ grouped by platform at all) for Ctrl+F discoverability, since "only
 software engineers think platform first." Lives on the Archive service
 (like /meetings) and is reverse-proxied through the resolver, not
 rendered by the resolver directly -- see app/main.py's
-`_proxy_to_archive` call for "coverage".
+`_proxy_to_archive` call for "coverage". Also covers
+get_full_jurisdiction_coverage(), added 2026-08-17 (BACKLOG.md's
+"Coverage page -- a public, sortable/filterable table" entry) for the
+fuller per-jurisdiction column spec (video/agenda/transcript yes-no
+columns, a two-column detail-page/video provider split, an outcome
+bucket, a last-verified date) that get_jurisdiction_coverage() above was
+never meant to carry.
 """
 
 from fastapi.testclient import TestClient
@@ -255,6 +261,193 @@ async def test_jurisdiction_coverage_sorted_case_insensitively():
     ]
     lower_names = [j.casefold() for j in jurisdictions]
     assert lower_names == sorted(lower_names)
+
+
+async def test_full_jurisdiction_coverage_reflects_a_direct_platform_meeting():
+    # A "direct" platform (Granicus hosts its own video, no delegation) --
+    # video/agenda/transcript all real and present, so every yes/no column
+    # should read True, and the two-column provider split should collapse
+    # to the same "Granicus" label on both sides (no delegation happened,
+    # so there's nothing to split).
+    payload = {
+        "platform": "granicus",
+        "source_url": "https://coverage-full-direct-test.granicus.com/player/clip/1",
+        "external_id": "coverage-full-direct-1",
+        "title": "Full Coverage Direct Test Meeting",
+        "date": "2026-01-01",
+        "jurisdiction": "Full Coverage Test City, Direct",
+        "video_url": "https://example.com/v.m3u8",
+        "video_format": "m3u8",
+        "segments": [{"start": 0, "end": 1, "text": "hello"}],
+        "agenda_items": [{"start": 0, "end": 1, "text": "Item 1"}],
+        "transcript_language": "en",
+        "transcript_warnings": [],
+    }
+    await crud.ingest_resolution(
+        payload, "https://coverage-full-direct-test.granicus.com/player/clip/1"
+    )
+
+    rows = await crud.get_full_jurisdiction_coverage()
+    row = next(
+        r for r in rows if r["jurisdiction"] == "Full Coverage Test City, Direct"
+    )
+    assert row["video_embeds"] is True
+    assert row["agenda_embedded"] is True
+    assert row["instant_transcript"] is True
+    assert row["audio_transcript_possible"] is True
+    assert row["detail_platform"] == "Granicus"
+    assert row["video_platform"] == "Granicus"
+    assert row["outcome"] == "success"
+    assert row["example"]["slug"]
+    assert row["page_count"] >= 1
+
+
+async def test_full_jurisdiction_coverage_splits_lims_wrapper_platform():
+    # Synthetic payload, but the shape is real: lims.py's own resolve()
+    # (app/platforms/lims.py) calls YouTubeAssetFinder.resolve_video_id()
+    # on success, which always returns platform="youtube" while source_url
+    # stays the original lims.minneapolismn.gov URL (confirmed by reading
+    # both modules directly, not assumed) -- this is the exact real shape
+    # that makes the "Detail page" vs "Video platform" split meaningful.
+    # jurisdiction is deliberately NOT asserted against a made-up value
+    # here: app/utils/jurisdiction_enrich.py's `_KNOWN_DOMAINS` maps
+    # lims.minneapolismn.gov straight to the real, confirmed "Minneapolis,
+    # MN" (LIMS is single-tenant -- see lims.py's own docstring), and
+    # finalize_jurisdiction() applies that override unconditionally on
+    # ingest, so whatever this payload's own `jurisdiction` field says
+    # gets replaced regardless (confirmed live via a throwaway script
+    # before writing this test, not assumed).
+    payload = {
+        "platform": "youtube",
+        "source_url": "https://lims.minneapolismn.gov/MarkedAgenda/CI/88888",
+        "external_id": "coverage-full-lims-1",
+        "title": "Full Coverage LIMS Test Meeting",
+        "date": "2026-01-01",
+        "jurisdiction": "Full Coverage Test City, LIMS",
+        "video_url": "https://example.com/embed/v1",
+        "video_format": "youtube",
+        "segments": [{"start": 0, "end": 1, "text": "hello"}],
+        "agenda_items": [],
+        "transcript_language": "en",
+        "transcript_warnings": [],
+    }
+    await crud.ingest_resolution(
+        payload, "https://lims.minneapolismn.gov/MarkedAgenda/CI/88888"
+    )
+
+    rows = await crud.get_full_jurisdiction_coverage()
+    row = next(r for r in rows if r["jurisdiction"] == "Minneapolis, MN")
+    assert row["detail_platform"] == "Minneapolis LIMS"
+    assert row["video_platform"] == "YouTube"
+    # video_format == "youtube" is structurally unprobeable by ffprobe (see
+    # app/main.py's _unreadable_media_message()) -- on-demand transcription
+    # is never possible for it, regardless of whether video/agenda exist.
+    assert row["audio_transcript_possible"] is False
+
+
+async def test_full_jurisdiction_coverage_splits_primegov_wrapper_platform():
+    # Synthetic payload, real shape: primegov.py's own resolve() (app/
+    # platforms/primegov.py, confirmed by reading it directly) also calls
+    # YouTubeAssetFinder.resolve_video_id() with the original PrimeGov URL
+    # preserved as source_url, same pattern as LIMS -- PrimeGov isn't its
+    # own DIRECT_PLATFORMS/CUSTOM_PLATFORMS row (get_platform_coverage()
+    # doesn't show it anywhere), but get_full_jurisdiction_coverage()'s
+    # own _wrapper_detail_label() recovers it from the real *.primegov.com
+    # domain regardless, per BACKLOG.md's explicit "PrimeGov embeds a
+    # YouTube video" example for this column split.
+    payload = {
+        "platform": "youtube",
+        "source_url": "https://coverage-full-test.primegov.com/Portal/MeetingPreview?id=1",
+        "external_id": "coverage-full-primegov-1",
+        "title": "Full Coverage PrimeGov Test Meeting",
+        "date": "2026-01-01",
+        "jurisdiction": "Full Coverage Test City, PrimeGov",
+        "video_url": "https://example.com/embed/v2",
+        "video_format": "youtube",
+        "segments": [],
+        "agenda_items": [],
+        "transcript_language": None,
+        "transcript_warnings": [],
+    }
+    await crud.ingest_resolution(
+        payload,
+        "https://coverage-full-test.primegov.com/Portal/MeetingPreview?id=1",
+    )
+
+    rows = await crud.get_full_jurisdiction_coverage()
+    row = next(
+        r for r in rows if r["jurisdiction"] == "Full Coverage Test City, PrimeGov"
+    )
+    assert row["detail_platform"] == "PrimeGov"
+    assert row["video_platform"] == "YouTube"
+    # No segments and no agenda_items -> blank_transcript, not no_video
+    # (video_url is set).
+    assert row["outcome"] == "blank_transcript"
+    assert row["instant_transcript"] is False
+
+
+async def test_full_jurisdiction_coverage_agenda_only_outcome():
+    payload = {
+        "platform": "civicclerk",
+        "source_url": "https://coverage-full-agenda-test.civicclerk.com/Web/Player.aspx?id=1",
+        "external_id": "coverage-full-agenda-1",
+        "title": "Full Coverage Agenda-Only Test Meeting",
+        "date": "2026-01-01",
+        "jurisdiction": "Full Coverage Test City, AgendaOnly",
+        "video_url": "https://example.com/v.mp4",
+        "video_format": "mp4",
+        "segments": [],
+        "agenda_items": [{"start": 0, "end": 1, "text": "Item 1"}],
+        "transcript_language": None,
+        "transcript_warnings": [],
+    }
+    await crud.ingest_resolution(
+        payload,
+        "https://coverage-full-agenda-test.civicclerk.com/Web/Player.aspx?id=1",
+    )
+
+    rows = await crud.get_full_jurisdiction_coverage()
+    row = next(
+        r for r in rows if r["jurisdiction"] == "Full Coverage Test City, AgendaOnly"
+    )
+    assert row["outcome"] == "agenda_fallback"
+    assert row["agenda_embedded"] is True
+    assert row["audio_transcript_possible"] is True
+
+
+def test_coverage_page_renders_full_jurisdiction_table_headers():
+    response = archive_client_.get("/coverage")
+    assert "Full jurisdiction detail table" in response.text
+    assert "Video embeds" in response.text
+    assert "Agenda embedded" in response.text
+    assert "Instant transcript" in response.text
+    assert "Audio transcript possible" in response.text
+    assert "Video platform" in response.text
+    assert 'id="fullCoverageTable"' in response.text
+
+
+async def test_coverage_page_renders_a_real_full_jurisdiction_row():
+    payload = {
+        "platform": "granicus",
+        "source_url": "https://coverage-full-http-test.granicus.com/player/clip/1",
+        "external_id": "coverage-full-http-1",
+        "title": "Full Coverage HTTP Test Meeting",
+        "date": "2026-01-01",
+        "jurisdiction": "Full Coverage Test City, HTTP",
+        "video_url": "https://example.com/v.m3u8",
+        "video_format": "m3u8",
+        "segments": [{"start": 0, "end": 1, "text": "hello"}],
+        "agenda_items": [],
+        "transcript_language": "en",
+        "transcript_warnings": [],
+    }
+    await crud.ingest_resolution(
+        payload, "https://coverage-full-http-test.granicus.com/player/clip/1"
+    )
+
+    response = archive_client_.get("/coverage")
+    assert "Full Coverage Test City, HTTP" in response.text
+    assert "Full Coverage HTTP Test Meeting" in response.text
 
 
 def test_coverage_page_renders_jurisdiction_table_headers():

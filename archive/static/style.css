@@ -1326,6 +1326,36 @@ thead .row-number-col { z-index: 2; background: var(--bg); }
 .coverage-table th.sortable-col[aria-sort="ascending"]::after { content: '\2191'; color: var(--fg); }
 .coverage-table th.sortable-col[aria-sort="descending"]::after { content: '\2193'; color: var(--fg); }
 
+/* --- /coverage's "Full jurisdiction detail table" filter row --- */
+.coverage-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  margin: 1rem 0 0.5rem;
+}
+.coverage-filters input[type="search"] { max-width: 16rem; }
+.coverage-filters select { max-width: 14rem; }
+.coverage-filter-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-weight: 400;
+}
+.coverage-filter-count {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 0.5rem;
+}
+.coverage-table .coverage-yesno-col {
+  text-align: center;
+  color: var(--muted);
+  width: 1px;
+  white-space: nowrap;
+}
+
 /* "Browse by state" link list on /coverage -- compact flex-wrapped rows
    instead of a tall one-per-line bullet list (up to ~40 states). */
 .state-links {

@@ -36,7 +36,7 @@
     <h2>Every place we've covered</h2>
     <p>Looking for a specific city, county, or state rather than a vendor name? Use your browser's find-on-page (Ctrl+F or Cmd+F) and search for it — e.g. "Napa" or "Aurora."</p>
     <div class="table-responsive">
-      <table class="table table-sm table-striped align-middle coverage-table" id="coverageTable">
+      <table class="table table-sm table-striped align-middle coverage-table sortable-table" id="coverageTable">
         <thead>
           <tr>
             <th scope="col" class="row-number-col">#</th>
@@ -56,6 +56,81 @@
               <span class="transcript-badge" title="A transcript is available for this meeting">&#10003; Transcript</span>
               {% endif %}
             </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <h2 style="margin-top: 2.5rem;">Full jurisdiction detail table</h2>
+    <p>Every column below is computed from real archived data, not a claim about what's theoretically supported — "Detail page" is the platform the meeting page itself lives on (e.g. Granicus, Swagit); "Video platform" is who actually serves the video, which sometimes differs (Legistar and CivicPlus pages usually hand video off to Granicus; PrimeGov and CivicWeb usually embed straight from YouTube — see <a href="#platform-xyz">"What about Platform XYZ?"</a> below). "Instant transcript" means the source itself provided captions; "Audio transcript possible" means our own on-demand transcription could be attempted (not that it has been) — it's never possible for a YouTube-hosted video, since we can't pull audio out of a YouTube embed to transcribe. A jurisdiction with several archived meetings shows "yes" on any yes/no column if at least one of them has it, and its outcome/provider/example columns reflect its single best-covered meeting.</p>
+    <div class="coverage-filters">
+      <input type="search" id="fullCoverageSearch" class="form-control form-control-sm" placeholder="Search government name…" aria-label="Search government name">
+      <select id="fullCoverageOutcomeFilter" class="form-select form-select-sm" aria-label="Filter by outcome">
+        <option value="">All outcomes</option>
+        {% for key, label in outcome_options %}
+        <option value="{{ key }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+      <select id="fullCoverageDetailFilter" class="form-select form-select-sm" aria-label="Filter by detail page platform">
+        <option value="">All detail-page platforms</option>
+        {% for label in detail_platform_options %}
+        <option value="{{ label }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+      <select id="fullCoverageVideoPlatformFilter" class="form-select form-select-sm" aria-label="Filter by video platform">
+        <option value="">All video platforms</option>
+        {% for label in video_platform_options %}
+        <option value="{{ label }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+      <label class="coverage-filter-check"><input type="checkbox" id="fullCoverageVideoOnly"> Video embeds</label>
+      <label class="coverage-filter-check"><input type="checkbox" id="fullCoverageAgendaOnly"> Agenda embedded</label>
+      <label class="coverage-filter-check"><input type="checkbox" id="fullCoverageInstantOnly"> Instant transcript</label>
+      <label class="coverage-filter-check"><input type="checkbox" id="fullCoverageAudioOnly"> Audio transcript possible</label>
+    </div>
+    <p id="fullCoverageCount" class="coverage-filter-count"></p>
+    <div class="table-responsive">
+      <table class="table table-sm table-striped align-middle coverage-table sortable-table" id="fullCoverageTable">
+        <thead>
+          <tr>
+            <th scope="col" class="row-number-col">#</th>
+            <th scope="col" class="sortable-col" data-sort-key="jurisdiction" role="button" tabindex="0">Government</th>
+            <th scope="col" class="sortable-col" data-sort-key="video" role="button" tabindex="0">Video embeds</th>
+            <th scope="col" class="sortable-col" data-sort-key="agenda" role="button" tabindex="0">Agenda embedded</th>
+            <th scope="col" class="sortable-col" data-sort-key="instant" role="button" tabindex="0">Instant transcript</th>
+            <th scope="col" class="sortable-col" data-sort-key="audio" role="button" tabindex="0">Audio transcript possible</th>
+            <th scope="col" class="sortable-col" data-sort-key="detail" role="button" tabindex="0">Detail page</th>
+            <th scope="col" class="sortable-col" data-sort-key="videoPlatform" role="button" tabindex="0">Video platform</th>
+            <th scope="col" class="sortable-col" data-sort-key="outcome" role="button" tabindex="0">Outcome</th>
+            <th scope="col" class="sortable-col" data-sort-key="verified" role="button" tabindex="0">Last verified</th>
+            <th scope="col">Example</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in full_jurisdictions %}
+          <tr
+            data-jurisdiction="{{ row.jurisdiction|jurisdiction_display }}"
+            data-video="{{ '1' if row.video_embeds else '0' }}"
+            data-agenda="{{ '1' if row.agenda_embedded else '0' }}"
+            data-instant="{{ '1' if row.instant_transcript else '0' }}"
+            data-audio="{{ '1' if row.audio_transcript_possible else '0' }}"
+            data-detail="{{ row.detail_platform }}"
+            data-video-platform="{{ row.video_platform }}"
+            data-outcome="{{ row.outcome }}"
+            data-verified="{{ row.last_verified.isoformat() }}"
+          >
+            <td class="row-number-col">{{ loop.index }}</td>
+            <td>{{ row.jurisdiction|jurisdiction_display }}</td>
+            <td class="coverage-yesno-col">{{ '✓' if row.video_embeds else '–' }}</td>
+            <td class="coverage-yesno-col">{{ '✓' if row.agenda_embedded else '–' }}</td>
+            <td class="coverage-yesno-col">{{ '✓' if row.instant_transcript else '–' }}</td>
+            <td class="coverage-yesno-col">{{ '✓' if row.audio_transcript_possible else '–' }}</td>
+            <td>{{ row.detail_platform }}</td>
+            <td>{{ row.video_platform }}</td>
+            <td>{{ row.outcome_label }}</td>
+            <td>{{ row.last_verified.strftime('%Y-%m-%d') }}</td>
+            <td class="coverage-title-col"><a href="/m/{{ row.example.slug }}" title="{{ row.example.title or 'Untitled meeting' }}">{{ row.example.title or "Untitled meeting" }}</a></td>
           </tr>
           {% endfor %}
         </tbody>
@@ -102,7 +177,7 @@
       {% for row in coverage.custom %}{{ platform_group(row) }}{% endfor %}
     </div>
 
-    <h2 style="margin-top: 2.5rem;">What about Platform XYZ?</h2>
+    <h2 style="margin-top: 2.5rem;" id="platform-xyz">What about Platform XYZ?</h2>
     <p>Legistar, CivicPlus, PrimeGov, and CivicWeb aren't in the list above because none of them host video directly — they're calendar and agenda front-ends that hand the actual recording off to another platform. In practice: Legistar and CivicPlus meetings are almost always hosted on Granicus, while PrimeGov and CivicWeb meetings are almost always embedded straight from YouTube. So if your city runs Legistar, CivicPlus, PrimeGov, or CivicWeb, paste the meeting page link anyway — we follow it through to the real Granicus recording or YouTube embed underneath and transcribe it there.</p>
 
     <h2 style="margin-top: 2.5rem;">What about YouTube?</h2>
