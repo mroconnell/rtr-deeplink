@@ -443,46 +443,49 @@ jurisdiction work itself would unlock.
   channels, which the resolver already handles — worth confirming
   per-moment before it makes the page).
 
-## Google Search Console — new indexing-exclusion alert (2026-08-17)
+## Google Search Console — indexing-exclusion alerts (2026-08-16/17)
 
-Forwarded by the user via a Gmail "RTR-Claude" label (see this session's
-discussion about a scheduled Routine that will eventually triage these
-automatically) — email subject "New reasons preventing your pages from
-being indexed," flagging two exclusion reasons site-wide for
-`redtaperecordings.com`: "Excluded by 'noindex' tag" and "Page indexed
-without content." Distinct from the existing `BACKLOG.md` Search Console
-entry (2026-08-12 alert, a separate "Videos" structured-data report about
-`thumbnailUrl`/`uploadDate`/`Clip.endOffset` — not this one). Not yet
-opened in the real Search Console report, so which specific URLs are
-affected is unconfirmed — only a plausible-but-unverified read below,
-per this repo's own "don't claim a path works/is broken without a real
-example" convention:
+First surfaced via the user manually pasting one email; the rest read
+directly from Gmail (`RTR-Claude` label) once the connector was enabled
+for this session, 2026-08-17 — 9 threads total under that label, all from
+`sc-noreply@google.com`. Two (`how-to-adu.com`'s indexing/performance
+alerts) are about a different site entirely, not this repo, and correctly
+excluded from any of this. One (2026-08-12, "Videos structured data
+issues") duplicates the alert already tracked in `BACKLOG.md` (same
+`thumbnailUrl`/`uploadDate` issues) — no new entry needed. The rest are
+onboarding/informational (GA property association, "monitor search
+traffic," generic "improve your presence" tips) — not actionable findings.
 
-- **"Excluded by 'noindex' tag" is plausibly expected, not a bug.**
-  `archive/templates/meeting_page.html:19` deliberately emits
-  `<meta name="robots" content="noindex">` for `platform == "unknown"`
-  (`generic_fallback` pages — the least-verified adapter, no domain
-  restriction) specifically to stop search-engine amplification of
-  unverified content; `saved_items.html` is unconditionally `noindex`
-  too (an account page, correctly never meant to be indexed). If the
-  real report's affected URLs are only these two categories, this
-  exclusion reason needs no fix — it's the intended trust/safety
-  behavior `BACKLOG.md`'s own trust-tier section already documents.
-  Still worth opening the report once to confirm the flagged URLs really
-  are only these, not something unexpected riding along.
-- **"Page indexed without content" is the more likely real gap, unconfirmed.**
-  `archive/templates/meeting_page.html`'s transcript text is confirmed
-  server-rendered (verified 2026-08-14, see the "SEO / LLM-discoverability"
-  section above) — so this isn't the app/'s client-side `/api/resolve`
-  pattern showing Google an empty shell (that risk applies to `app/`'s
-  `/meeting?url=...` pages, not `/m/{slug}`, and it's unconfirmed whether
-  those are even in Google's index at all). More plausible on `/m/*`
-  specifically: a real meeting with neither a transcript nor agenda items
-  (some platforms genuinely have neither, per the "Supported platforms"
-  README table) would render as a genuinely thin page — title, date,
-  video embed, no real text body — which is exactly what this exclusion
-  reason describes. Needs the real report's URL list to confirm which
-  case it actually is before deciding whether this needs a fix (e.g.
-  excluding truly-empty pages from the sitemap) or is just a handful of
-  real thin meetings that will resolve themselves as more platforms gain
-  caption coverage.
+Three real, distinct indexing-exclusion reasons across two alert emails,
+site-wide for `redtaperecordings.com`:
+
+- **"Excluded by 'noindex' tag" — root cause found and confirmed via code,
+  moved to `BACKLOG.md`.** The 2026-08-17 alert scoped specifically to
+  **sitemap-submitted pages** (not just any crawled page) turned out to be
+  a real, traceable bug, not the "probably intentional" guess this entry
+  originally had: `archive/db/crud.py`'s `list_all_page_slugs()` (feeds
+  `/sitemap.xml`) selects every `MeetingPage` slug with no
+  `platform != "unknown"` filter, while `meeting_page.html` deliberately
+  `noindex`es exactly those `generic_fallback` (`platform == "unknown"`)
+  pages. Full write-up and fix direction now in `BACKLOG.md`, right after
+  the existing 2026-08-12 Search Console entry.
+- **"Page indexed without content" — still open, unconfirmed.**
+  `meeting_page.html`'s transcript text is confirmed server-rendered
+  (verified 2026-08-14, see "SEO / LLM-discoverability" above), which
+  rules out the obvious client-side-render explanation for `/m/*` pages
+  specifically. More plausible: a real meeting with neither transcript nor
+  agenda items (some platforms genuinely have neither) rendering as a
+  genuinely thin page — title, date, video embed, no real text body.
+  Needs the actual report's URL list to confirm before deciding between
+  "exclude truly-empty pages from the sitemap" vs. "just a handful of
+  real thin meetings that improve as caption coverage grows."
+- **"Page with redirect" — new, not yet investigated at all.** Its own
+  separate alert, received 2026-08-16, one day before the other two.
+  No code-tracing done yet; candidates worth checking before assuming
+  anything: `MeetingPageUrlAlias`-driven redirects if alias (not
+  canonical) slugs somehow ended up in the sitemap, or a mundane
+  domain-level redirect (bare domain → `www`, or HTTP → HTTPS) that
+  Search Console flags informationally even when harmless. Needs the
+  report opened to see which URLs are actually affected before guessing
+  further — flagging this one as a genuine question for the user rather
+  than a hypothesis, since there isn't yet enough signal to reason from.

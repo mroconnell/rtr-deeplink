@@ -756,6 +756,36 @@ anything) to build against it.
     now sets each item's `end` to the next item's `start`, matching
     Granicus/IQM2's convention, instead of always equaling `start`.
 
+- **`sitemap.xml` includes `generic_fallback` pages that the page template
+  itself `noindex`es — a real, code-confirmed contradiction, not just a
+  guess from the alert.** Source: a separate Search Console alert
+  (received 2026-08-17, forwarded via Gmail to `CLAUDE_BACKLOG.md` first,
+  now promoted here after tracing it to real code) specifically titled
+  "New reasons prevent pages **in a sitemap** from being indexed... Excluded
+  by 'noindex' tag" — meaning Google is finding these via `sitemap.xml`
+  itself, not just organic crawling. Root cause confirmed by reading both
+  sides: `archive/templates/meeting_page.html:12-19` emits
+  `<meta name="robots" content="noindex">` whenever `page.platform ==
+  "unknown"` (i.e. every `generic_fallback`-resolved page — the
+  least-verified adapter, by design per the trust & safety section below),
+  but `archive/db/crud.py`'s `list_all_page_slugs()` (used by
+  `archive/main.py`'s `/sitemap.xml` route,
+  `archive/db/crud.py:1430-1443`) selects every `MeetingPage` slug
+  unfiltered — no `platform != "unknown"` clause — so every
+  `generic_fallback` page's URL lands in the sitemap while its own page
+  simultaneously tells Google not to index it. Fix looks small and
+  low-risk: add `.where(MeetingPage.platform != "unknown")` to
+  `list_all_page_slugs()`'s query (`platform` is already an indexed
+  column, `archive/db/models.py:29`). Not yet confirmed against production
+  data how many `generic_fallback` pages currently exist/are actually in
+  the live sitemap — the code-level contradiction is real regardless, but
+  worth a quick prod check to gauge how many URLs this actually affects
+  before/after the fix. The separate, real "Page indexed without content"
+  reason from the same 2026-08-17 alert batch is NOT explained by this —
+  still open, see `CLAUDE_BACKLOG.md`'s 2026-08-17 entry for that one and
+  for a newly-surfaced third reason ("Page with redirect", alert received
+  2026-08-16) that hasn't been investigated yet.
+
 - **YouTube-backed meetings' transcripts run through
   `scripts/fetch_youtube_transcripts.py` on a daily `launchd` schedule
   now (both shipped 2026-08-10, see BACKLOG_DONE.md) — real remaining
