@@ -3427,15 +3427,15 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     snippets unchanged (default-version segments, 20 rows). Verified on
     a real postgres:16: migration applies (incl. `CREATE INDEX
     CONCURRENTLY` in an Alembic autocommit block), 9 FTS integration
-    tests + the 13 earlier search tests green with FTS active. **The one
-    remaining step is running the migration against prod** — `cd archive
-    && alembic upgrade head` on the Archive's Render shell, at a quiet
-    moment (the ADD COLUMN rewrites the table under a lock for ~30s on
-    the 77MB corpus); FTS switches on within a minute, no restart. Until
-    then prod stays on the LIKE path, exactly as today. WO-10's
-    preDeployCommand would make even that step automatic — still the
-    right follow-up, now smaller because this migration is safe in any
-    order.
+    tests + the 13 earlier search tests green with FTS active. **Migration
+    applied to prod 2026-08-17 ~15:10 PT and live**: `budget` 0.39s (was
+    26–35s / 502 this morning), `"public comment"` 0.39s (was 503),
+    `flock` 0.49s, `flock OR drone` works, `budgets` stems, browse 0.21s
+    — the RAM bump (#143, `shared_buffers` 64→256MB) alone had already
+    taken `budget` to 1.47s; FTS took it the rest of the way and made
+    cost independent of term frequency. Full table in `BACKLOG_DONE.md`.
+    WO-10's preDeployCommand remains the right follow-up so the *next*
+    migration needs no shell step.
   - **2b. Fuzzy search via a trigram-indexed vocabulary table.** Fuzzy
     is correct and no longer crashes after Step 1, but it's inherently
     O(archive) CPU in Python (tokenize every corpus, ~4ms each) because
