@@ -1335,52 +1335,69 @@ that added this reorg, for which ones are new).
 ### Live but broken
 
 - **[JUST-DO-IT] Both auto-transcription feed workflows (`feed-tier3-transcription.yml`,
-  `feed-granicus-transcription.yml`) have likely never successfully
-  self-advanced their queue files, ever — every scheduled run's commit
-  is rejected by the branch ruleset, silently, since before either
-  workflow was even written.** Found via a real GitHub Actions failure
-  notification email (`RTR-Claude` Gmail label), not a guess: opened the
-  actual failed run
-  (https://github.com/mroconnell/rtr-deeplink/actions/runs/32035051794)
-  and its job logs directly. The script itself succeeds (12 real URLs
-  resolved and POSTed to `/internal/ingest`, several `[OK]`), but the
-  final "commit updated queue state" step fails every time:
+  `feed-granicus-transcription.yml`) have never successfully self-advanced
+  their queue files, and still can't, even after PR #144's fix — a
+  second, previously-unknown repo-level restriction blocks it too.**
+  Originally found via a real GitHub Actions failure notification email
+  (`RTR-Claude` Gmail label): the direct `git push` of the
+  queue-advancement commit was being rejected by the 2026-08-14 branch
+  ruleset (`GH013`, requires a PR + passing `test` check) on every single
+  scheduled run since the ruleset existed — confirmed from the actual
+  failed run's logs
+  (https://github.com/mroconnell/rtr-deeplink/actions/runs/32035051794).
+  The resolve/ingest half always worked fine (12 real URLs resolved and
+  POSTed to `/internal/ingest` per run, several `[OK]`); only the final
+  commit-back step failed, so the queue never actually shrank — every run
+  re-fed the same front-of-queue 12 URLs.
+
+  **PR #144 (2026-08-17) fixed that specific cause**: instead of pushing
+  directly, each workflow now commits the queue change on a new branch,
+  opens a PR, dispatches `test.yml` on it directly via `workflow_dispatch`
+  (needed because PRs/branches created with the default `GITHUB_TOKEN`
+  don't trigger `pull_request`-triggered workflows — GitHub's own
+  loop-prevention for that token — so the required `test` check would
+  otherwise never appear), waits for that run, then merges once green.
+  `pytest` (955 passed, 4 skipped) and the PR's own `test` check both
+  passed, and the PR merged cleanly.
+
+  **Live-triggered `feed-tier3-transcription.yml` for real afterward
+  (`gh workflow run` against `main`,
+  https://github.com/mroconnell/rtr-deeplink/actions/runs/32074229224) to
+  verify end-to-end, per this task's own verification requirement — and
+  it still failed, at a new point**: the resolve/ingest step again
+  succeeded for real (12 more real URLs), but the new "Advance queue via
+  PR" step died on `gh pr create` itself:
   ```
-  remote: error: GH013: Repository rule violations found for refs/heads/main.
-  remote: - Changes must be made through a pull request.
-  remote: - Required status check "test" is expected.
-  ! [remote rejected] main -> main (push declined due to repository rule violations)
+  pull request create failed: GraphQL: GitHub Actions is not permitted to create or approve pull requests (createPullRequest)
   ```
-  Root cause: both workflows still `git push` their queue-advancement
-  commit straight to `main` (with `[skip ci]`), a pattern that predates
-  the branch ruleset requiring PRs + a passing `test` check
-  (`BACKLOG_DONE.md`'s "Branch ruleset on `main`" entry, **added
-  2026-08-14**) — but both workflows' own docstrings date their queues to
-  **2026-08-15/16**, i.e. *after* the ruleset existed. Nobody updated the
-  push step when writing these newer workflows, so as far as can be told
-  the automated advancement path has never once worked in production.
-  **Real, confirmed impact**: every commit from `scripts/
-  tier3_auto_transcription_queue.txt`'s and `scripts/
-  granicus_auto_transcription_queue.txt`'s git history
-  (`git log -- <file>`) traces to a real merged PR (#59, #64, #67, #70,
-  #105 as of this writing) — none from the workflow's own bot commit.
-  `origin/main`'s tier-3 queue is 1191 lines right now (post-PR #105,
-  merged today) and the run above logged "1179 remaining after this
-  run," meaning it fed the same front-of-queue 12 URLs it (and every
-  prior run) already tried, and will keep re-trying only those same 12
-  every 6 hours until a human manually edits the file via a PR — the
-  ~1179 behind them are never reached by the automated drip at all,
-  defeating the mechanism's whole purpose. Two fix directions, a real
-  tradeoff rather than an obvious pick: (1) have the workflow open a PR
-  and auto-merge instead of pushing directly — the ruleset requires 0
-  approvals per that same `BACKLOG_DONE.md` entry, so this could still be
-  fully unattended, just slower (waits on the `test` check); or (2) add
-  `github-actions[bot]` as a scoped bypass actor on the ruleset, keeping
-  the direct-push pattern but narrowing what it protects against. Worth
-  fixing soon regardless of which direction — the log's duplicate-URL
-  reprocessing (`tbdhu`, `mississauga` both appear twice in the same
-  single run's output above) is a live symptom of the queue never
-  actually shrinking.
+  This is a separate repo setting (Settings → Actions → General →
+  Workflow permissions → "Allow GitHub Actions to create and approve pull
+  requests"), distinct from the job's own `permissions:` block —
+  `pull-requests: write` there isn't sufficient on its own, and this
+  wasn't visible from reading the YAML/API beforehand. Net effect:
+  automated advancement is *still* broken today, just one step further
+  into the pipeline than before.
+
+  Manually completed the one stranded queue-advance branch that run left
+  behind (its 12 URLs really were ingested; the diff was just "pop 12
+  known-already-ingested URLs off the front") via a normal human-authored
+  PR, #147 — merged, so both queue files are correctly caught up as of
+  tonight. That's a one-time catch-up, not a fix; the next scheduled run
+  will hit the exact same `createPullRequest` error.
+
+  **Two remaining options, needs a real decision (not something to flip
+  unilaterally — it's a repo security-relevant setting either way)**:
+  (1) enable that "Allow GitHub Actions to create and approve pull
+  requests" repo setting, letting the already-landed `GITHUB_TOKEN`-based
+  flow from PR #144 work as designed; or (2) provision a PAT (fine-grained,
+  scoped to just this repo, `contents:write` + `pull-requests:write`) as a
+  new repo secret and have the "Advance queue via PR" step authenticate
+  with that instead of `GITHUB_TOKEN` — this is also GitHub's own
+  documented pattern for "workflow opens a PR that then needs its own CI
+  run," and would incidentally make the `workflow_dispatch`-on-`test.yml`
+  workaround unnecessary too (PR/branches authored by a PAT trigger
+  `pull_request`-triggered workflows normally, unlike `GITHUB_TOKEN`) —
+  simpler, though it does mean a credential to create and rotate.
 
 ### Needs a human decision
 
