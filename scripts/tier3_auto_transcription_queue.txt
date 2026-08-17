@@ -1,15 +1,3 @@
-https://pub-hpsb.escribemeetings.com/Meeting.aspx?Id=56072e75-86dc-4a22-a3d6-93b160e84251&Agenda=Agenda&lang=English
-https://pub-lincoln.escribemeetings.com/Meeting.aspx?Id=41f53ce5-46cc-48a6-94ed-236fe7f379fd&Agenda=Agenda&lang=English&Item=40&Tab=attachments
-https://pub-tbdhu.escribemeetings.com/Meeting.aspx?Id=451c5f29-9247-47c7-b74f-ca33763e01b5&lang=English
-https://pub-trca.escribemeetings.com/Meeting.aspx?Id=65c73572-280b-4131-9978-b567f1b12eca&Agenda=Agenda&lang=English
-https://pub-tbdhu.escribemeetings.com/Meeting.aspx?Id=451c5f29-9247-47c7-b74f-ca33763e01b5&lang=English
-https://pub-trca.escribemeetings.com/Meeting.aspx?Id=65c73572-280b-4131-9978-b567f1b12eca&Agenda=Agenda&lang=English
-http://alpinecountyca.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=3326&Format=Agenda
-http://barstowcityca.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=2532&Format=Minutes
-http://bartlettcitytn.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1739&MediaPosition=&ID=2925&CssClass=
-http://baystlouisms.iqm2.com/Citizens/Detail_LegiFile.aspx?MeetingID=1525&MediaPosition=&ID=7876&CssClass=&Print=Yes
-http://bedfordny.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1512&Format=Agenda
-http://berkeleycountysc.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=4203&MediaPosition=&ID=4430&CssClass=
 http://buffalogrovevillageil.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1842&Format=Minutes
 http://burtonmi.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1640&Format=Minutes
 http://butlercountyoh.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2119&MediaPosition=&ID=9217&CssClass=
