@@ -1258,16 +1258,22 @@ unusually wide, and the missing auto-scroll toggle on archived pages~~
 ~~**Cablecast/Swagit/CivicClerk stage-2 seeks — not yet run.**~~ **Done
   2026-08-17.** 728 real candidate URLs found (Cablecast 44/256 hosts,
   Swagit 430/434, CivicClerk 254/257 — full breakdown in
-  `CDX_QUERIES.md`). Sample-checked for real caption content (44/30/30):
-  25 confirmed real, **ingested for real**; the other 703 added to
-  `scripts/tier3_auto_transcription_queue.txt` for the existing cron
-  feeder to resolve and push at pickup time, rather than re-checking each
-  one by hand first. Also fixed a real bug in `hosts_to_urls.py` found
-  live during this run: a shared single-thread executor meant to bound a
-  DNS-hang per-call instead let one real hang silently wedge every host
-  after it for the rest of the run — fixed to use a fresh one-shot
-  executor per call. That script lives in `rtr-business/research/`, not
-  this repo.
+  `CDX_QUERIES.md`). Real-content check ran against the FULL set for all
+  three (started as a 44/30/30 sample, extended once the sample showed
+  real yield): **180 confirmed real captioned jurisdictions, all
+  ingested for real** (Cablecast 2/44, Swagit 139/430, CivicClerk
+  39/254). Worth noting: the initial 30-URL samples overestimated yield
+  for Swagit (40% sample vs. 32% full) and especially CivicClerk (37%
+  sample vs. 15% full) — a small sample isn't a reliable stand-in for the
+  full set here. The remaining 548 (video-with-no-captions or
+  nothing-found) went to `scripts/tier3_auto_transcription_queue.txt`
+  for the existing cron feeder to resolve and push at pickup time, rather
+  than re-checking each one by hand first. Also fixed a real bug in
+  `hosts_to_urls.py` found live during this run: a shared single-thread
+  executor meant to bound a DNS-hang per-call instead let one real hang
+  silently wedge every host after it for the rest of the run — fixed to
+  use a fresh one-shot executor per call. That script lives in
+  `rtr-business/research/`, not this repo.
 
   **CivicPlus has zero currently-live, confirmed-real URLs anywhere in
   this repo, re-confirmed 2026-08-16 building the WO-13 adapter health
