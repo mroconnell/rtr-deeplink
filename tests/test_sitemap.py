@@ -35,9 +35,7 @@ def _payload(platform: str, external_id: str, source_url: str) -> dict:
 
 async def _seed(platform: str, external_id: str) -> str:
     url = f"https://example.com/sitemap-seed/{external_id}"
-    result = await crud.ingest_resolution(
-        _payload(platform, external_id, url), url
-    )
+    result = await crud.ingest_resolution(_payload(platform, external_id, url), url)
     return result["slug"]
 
 
