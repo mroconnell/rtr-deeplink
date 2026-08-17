@@ -49,3 +49,69 @@ manually in the session that built this Routine; their findings already
 live in `BACKLOG.md`/`CLAUDE_BACKLOG.md` directly, not here). The first
 real entries will appear after the Routine's first scheduled run against
 genuinely new mail.
+
+---
+
+## 2026-08-17 (second pass)
+
+**Note on this run**: the retroactive "mark everything already-processed"
+step described above did not actually take — this run's own search for
+`label:rtr-claude -label:rtr-claude-processed` still returned all 34
+threads that existed as of today, none carrying the
+`rtr-claude-processed` label. All 34 were reviewed. Most turned out to
+already be covered: out of scope (`how-to-adu.com` alerts), purely
+informational (account sign-ins, GA/Search-Console property
+confirmations, daily transcript-count reports), UptimeRobot `TEST:`
+notifications, or duplicates of work already merged same-day in PR #114
+("Claude Code on the web setup... two confirmed bugs") — that PR
+independently found and logged directly to `BACKLOG.md` the exact same
+two bugs this run's own investigation had also traced (both feed
+auto-transcription workflows failing every run because their queue-state
+commit gets rejected by the `main` branch ruleset; `sitemap.xml`
+including pages this app deliberately `noindex`s). Not re-added here to
+avoid duplicating `BACKLOG.md`.
+
+**This run could not apply the `rtr-claude-processed` label to any of the
+34 threads it reviewed** — the Gmail connection's OAuth token expired
+partway through labeling (all label calls failed with "requires
+re-authorization"). Ryan needs to reauthorize the Gmail connector (via
+claude.ai connector settings, or `/mcp` in an interactive session) before
+the next scheduled run — otherwise it will re-review the same 34 threads
+again. Two of the two genuinely new items below (not covered by PR #114)
+are real open questions, not bugs with a traced root cause:
+
+### Search Console: "Page indexed without content" — open question, Unconfirmed
+
+New reason as of the 2026-08-17 09:46 UTC alert. Search Console's own
+dashboard is auth-walled, so the specific flagged URLs aren't visible to
+this Routine. Plausible but unverified explanation: this may correlate
+with the already-documented "some meeting pages have nothing but a bare
+video + link, no transcript or agenda" gap
+(`CLAUDE_BACKLOG.md`'s "Agenda/minutes PDF text extraction" section
+describes this exact shape, e.g. Napa City Council/Housing Authority).
+Not confirmed as the same thing — just the closest existing known gap
+that would produce this symptom.
+
+**Impact**: unknown page count (dashboard access needed to size it for
+real); if it is the known thin-content gap, no new fix beyond what's
+already scoped in `CLAUDE_BACKLOG.md`. **Open question for Ryan**: check
+the actual flagged URL list in the Search Console dashboard to confirm
+or rule out this explanation before anyone spends time on it.
+
+### Search Console: "Page with redirect" — open question, Unconfirmed
+
+New reason as of the 2026-08-16 19:20 UTC alert. Grepped both `app/` and
+`archive/` for any redirect-issuing code
+(`RedirectResponse`/`redirect_slashes`/3xx status codes) — the Archive
+service (where meeting pages live) issues no redirects anywhere in its
+own code; the only `RedirectResponse` in the repo is
+`app/main.py:1370`, the *resolver* service's unrelated root-path
+fallback. So if real meeting pages are actually redirecting, it isn't
+application code — most likely host/DNS-level canonicalization
+(non-www → www, http → https), which is usually intentional and benign.
+
+**Impact**: likely no real user-facing issue, but unconfirmed without
+seeing which specific URLs Search Console flagged. **Open question for
+Ryan**: worth a quick check of the flagged URL list to rule out
+something less benign (e.g. a stale/renamed slug 301-ing somewhere
+unexpected) before treating this as noise.
