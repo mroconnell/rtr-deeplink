@@ -5,7 +5,7 @@ investigation detail behind each fix — lives in
 [BACKLOG_DONE.md](BACKLOG_DONE.md); items below link back to it for context
 where relevant.
 
-## Transcript segment timestamps unintuitive past 59 minutes — don't match video player's hh:mm:ss
+## [JUST-DO-IT] Transcript segment timestamps unintuitive past 59 minutes — don't match video player's hh:mm:ss
 
 Confirmed live 2026-08-17 on a long meeting: transcript segment labels
 past the one-hour mark show as raw, un-rolled-over minutes:seconds
@@ -70,43 +70,43 @@ those waves — grouped into one item instead of scattered as "still open"
 footnotes across six waves, so they don't get lost. None block anything
 else; do whenever convenient, no particular order.
 
-- **Sentry: confirm a real raised exception actually appears in the
+- **[HUMAN] Sentry: confirm a real raised exception actually appears in the
   dashboard.** `SENTRY_DSN` is live and set on all three services, but
   nobody has forced a real exception and watched it land in Sentry's UI
   — WO-7's own stated acceptance criterion, never run.
-- **`ALERT_WEBHOOK_URL` repo secret** (Slack/Discord incoming webhook,
+- **[HUMAN] `ALERT_WEBHOOK_URL` repo secret** (Slack/Discord incoming webhook,
   shared by all three cron workflows: daily-report, send-search-alerts,
   adapter-canary) — optional, still unset. Without it, a workflow failure
   still surfaces via GitHub's own failed-scheduled-workflow email, so
   this is a nice-to-have, not a real gap.
-- **Confirm Render's health-check gate actually fails a deploy** when
+- **[HUMAN] Confirm Render's health-check gate actually fails a deploy** when
   `/api/health` (resolver or Archive) reports unhealthy (WO-6) — the 503
   logic is unit-tested, but nobody has watched a real Render deploy
   actually get blocked by it.
-- **Confirm both admin cron workflows run green against the deployed
+- **[HUMAN] Confirm both admin cron workflows run green against the deployed
   `Authorization: Bearer` header-auth change**, then remove WO-8's
   query-param fallback in a follow-up PR. The fallback is deliberately
   still live until this is confirmed — don't remove it without checking
   a real cron run first.
-- **Confirm a real Render deploy installed cleanly off the new pinned
+- **[HUMAN] Confirm a real Render deploy installed cleanly off the new pinned
   lockfiles** (WO-11) — verified locally in an isolated venv per service,
   but the actual Render build hasn't been watched since the lockfiles
   landed.
-- **P3: confirm GA is actually receiving `submit_meeting_url`/
+- **[HUMAN] P3: confirm GA is actually receiving `submit_meeting_url`/
   `copy_link_to_time`/`resolve_result`/`video_play`/`transcript_seek`
   events** in the GA dashboard's last-30-days view — these all fire
   client-side per the code and were checked via `window.dataLayer`
   locally, but never cross-checked against the live GA property itself.
-- **P5: confirm a real `send-search-alerts` cron run actually sent a real
+- **[HUMAN] P5: confirm a real `send-search-alerts` cron run actually sent a real
   email** to a real saved search — the workflow runs daily and reports
   success, but nobody's checked an inbox for the actual email.
-- **`rtr-business/BUSINESS_OVERVIEW.md` still says "Not built yet: ...
+- **[JUST-DO-IT] `rtr-business/BUSINESS_OVERVIEW.md` still says "Not built yet: ...
   saved-search alert emails"** — stale; that feature shipped 2026-08-13
   (PR #30) and runs daily. `README.md`'s own copy of this claim was
   already corrected 2026-08-16. One-line fix whenever anyone's next in
   that file — not done here since business-workspace edits are kept
   separate from code-repo sessions per `CLAUDE.md`.
-- **The audit's own doc-hygiene rule was never actually added to
+- **[JUST-DO-IT] The audit's own doc-hygiene rule was never actually added to
   `CLAUDE.md`.** `AUDIT_EXECUTION_BRIEF.md`'s "Docs debt" section
   proposed: "a PR that ships a feature must update every doc that named
   it as unbuilt, and the PR description must list which" — a real,
@@ -182,7 +182,7 @@ verification.** Each was a quick, targeted check (a handful of greps/
 reads), not an audit — the whole point of this section is to do that
 properly:
 
-- **User feedback & validation — the single biggest blind spot found.**
+- **[IMPROVEMENT-ROUND] User feedback & validation — the single biggest blind spot found.**
   The only feedback channel is a passive mailto link on
   `app/templates/about.html` ("Questions, feedback, or a meeting that
   didn't work?"), never surfaced mid-use. `ProblemReport`
@@ -202,7 +202,7 @@ properly:
   outreach and the clips campaign are starting — the cheapest window
   there will ever be to instrument real signal, before it becomes
   unrecoverable history.
-- **Discoverability — already the subject of its own backlog work**
+- **[IMPROVEMENT-ROUND] Discoverability — already the subject of its own backlog work**
   (see `CLAUDE_BACKLOG.md`'s "Discoverability additions" section and
   `rtr-business/marketing/discoverability-ideas.md`) — included here
   only as a pointer so the audit doesn't duplicate it.
@@ -214,17 +214,7 @@ properly:
   Verified for real (throwaway failing-test PR, confirmed merge actively
   rejected, not just shown red) — see `BACKLOG_DONE.md`'s "Testing
   infrastructure" section for the full entry.
-- **SSRF guard on `/api/resolve`.** **Fixed 2026-08-14** (WO-5 of
-  `AUDIT_EXECUTION_BRIEF.md`, audit finding #2): `ResolveRequest.url` was
-  a bare, unvalidated `str` that flowed straight into
-  `generic_fallback.py`'s `session.get(url, allow_redirects=True, ...)`
-  for any unrecognized host, with no scheme allowlist, no private/
-  internal-IP rejection, no per-hop redirect re-validation, and (in
-  production, `GENERIC_FALLBACK_HEADLESS=1`) a real headless browser that
-  would load whatever it was pointed at. New `app/utils/url_guard.py`
-  closes all of that at once — see `BACKLOG_DONE.md`'s "Security
-  hardening" section for the full fix and verification detail.
-- **Docs hygiene — a live, confirmed example of drift, not a
+- **[JUST-DO-IT] Docs hygiene — a live, confirmed example of drift, not a
   hypothetical.** Saved-search alert emails
   (`archive/search_alerts.py`, a real daily cron sending real emails,
   merged 2026-08-13 as PR #30) are described as unbuilt future work in
@@ -236,31 +226,31 @@ properly:
   for real (see the live-verification checklist from this same session
   date). Worth checking whether other recently-merged work has the same
   gap.
-- **Legal/compliance — already tracked in `rtr-business/TASKS.md`**,
+- **[NEEDS-AUDIT] Legal/compliance — already tracked in `rtr-business/TASKS.md`**,
   included here only as a cross-reference: no privacy policy/ToS live,
   LLC formation status TBD, the Clerk `user.deleted` → data-purge
   cascade has unit coverage but has never fired against a real account.
-- **Data durability — an unverified unknown, not a confirmed gap.** No
+- **[NEEDS-AUDIT] Data durability — an unverified unknown, not a confirmed gap.** No
   Postgres backup/point-in-time-recovery policy is documented anywhere
   (`README.md`, `render.yaml`, `BACKLOG.md`) — and `render.yaml` has no
   `databases:` block at all, meaning the real Postgres instances exist
   outside the Blueprint's tracked config. A five-minute check of
   Render's dashboard would resolve this either way; nobody's done it.
-- **Security — one open, self-authored threat model with no built
+- **[NEEDS-AUDIT] Security — one open, self-authored threat model with no built
   mitigations.** The "fake/spoofed government content" threat model
   above (this file's own "Trust & safety" section, written
   2026-08-10) still has nothing beyond a reactive report form and one
   `noindex` tag. Separately: no dependency-vulnerability scanning
   exists (no Dependabot config, nothing like `pip-audit` anywhere in
   CI — which itself doesn't run automatically, see above).
-- **Financial/resource management — costs not fully inventoried.**
+- **[NEEDS-AUDIT] Financial/resource management — costs not fully inventoried.**
   `rtr-business/TASKS.md` already flags this: the transcription
   worker's $25/mo is the only confirmed recurring cost; both `starter`
   web plans, the domain, Resend, and Clerk have no confirmed monthly
   total. No pricing decided, no revenue. Worth pairing with an actual
   Render usage/cost review (worker sizing was set from real OOM
   crashes, not re-verified against current usage since).
-- **Accessibility — a positive finding, not a gap, on a shallow
+- **[NEEDS-AUDIT] Accessibility — a positive finding, not a gap, on a shallow
   check.** `aria-` attributes appear across most templates and a real
   `lang` attribute is set — better than expected on a five-minute grep.
   No automated a11y check (Lighthouse CI, axe) exists to keep it that
@@ -293,7 +283,7 @@ not a hypothetical checklist. Nothing here is built yet; this section
 exists to make the actual risk shape visible before deciding what (if
 anything) to build against it.
 
-- **Prompt injection: not a live product risk today, because no LLM sits
+- **[DONE?] Prompt injection: not a live product risk today, because no LLM sits
   in the deployed serving path at all.** Every adapter parses scraped
   page content with deterministic regex/BeautifulSoup/JSON extraction —
   nothing reads a page's text and *acts* on instructions found in it.
@@ -311,7 +301,7 @@ anything) to build against it.
   today; worth re-reading this section before building the first one
   that is.
 
-- **Fake/spoofed "government" pages and non-government content getting
+- **[HUMAN] Fake/spoofed "government" pages and non-government content getting
   archived as if it were official: a real, currently wide-open gap, not
   a hypothetical one.** Confirmed by reading the actual code: nothing
   verifies a submitted URL's site is a genuine government body before
@@ -380,7 +370,7 @@ anything) to build against it.
 
 ## Bugs
 
-- **Schema-migration deploy ordering has now caused a real, sitewide
+- **[HUMAN] Schema-migration deploy ordering has now caused a real, sitewide
   Archive outage (2026-08-17, ~09:25–09:38 PT) — the third schema-change
   incident in this repo's history, and the strongest evidence yet for
   WO-10 ("migrations survive deploys", the one open wave in
@@ -410,7 +400,7 @@ anything) to build against it.
   prod-shell step in two days (`alembic upgrade head` being the first) —
   fine for now, but a pattern WO-10 should absorb.
 
-- **Search Console "Page indexed without content" (alert 2026-08-17)
+- **[HUMAN] Search Console "Page indexed without content" (alert 2026-08-17)
   is still genuinely unexplained — and specifically NOT explained by
   the outage above** (that started 09:25 PT today; the alert predates
   it, and Google's last crawl of the flagged `/m/welcome-to-clerkbase`
@@ -429,7 +419,7 @@ anything) to build against it.
   the flag list has *other* URLs beyond that one, paste them — that
   would point at a broader thin-content shape worth chasing.
 
-- **Every route on both services returns 405 to HTTP `HEAD` requests —
+- **[JUST-DO-IT] Every route on both services returns 405 to HTTP `HEAD` requests —
   site-wide, app-level, confirmed live and reproduced locally 2026-08-17.**
   `curl -I` against `/`, `/about`, `/coverage`, `/meetings`,
   `/state/california`, and `/m/{slug}` all return `405 Method Not
@@ -446,7 +436,7 @@ anything) to build against it.
   `archive/`. Found 2026-08-17 while investigating the Search Console
   flags above — first noticed as `curl -I /coverage` → 405.
 
-- **`is_likely_garbled()` only samples the transcript's first 4000
+- **[JUST-DO-IT] `is_likely_garbled()` only samples the transcript's first 4000
   characters, so a transcript that starts clean and degrades later is
   invisible to it — found 2026-08-16 via a DB skim for transcript-quality
   examples, root cause confirmed by reading the source directly.** Real
@@ -470,7 +460,7 @@ anything) to build against it.
   archived rows have the same "clean prefix, garbled tail" shape before
   picking a specific sampling strategy.
 
-- **`app/utils/vtt_parser.py`'s `parse_vtt()` has (at least) two separate
+- **[JUST-DO-IT] `app/utils/vtt_parser.py`'s `parse_vtt()` has (at least) two separate
   real content-corruption gaps, plus one existing fix that's wired to the
   wrong adapters — all found 2026-08-16 via the same DB skim, all
   root-caused by reading the parser source directly against real stored
@@ -526,7 +516,7 @@ anything) to build against it.
     doesn't have, so the fix may need adjusting rather than a direct
     wire-through.
 
-- **Second real instance of the Fountain Valley-shaped garbled/wrong-
+- **[JUST-DO-IT] Second real instance of the Fountain Valley-shaped garbled/wrong-
   language pattern (see `BACKLOG_DONE.md`), found 2026-08-16 via the same
   DB skim.** Chula Vista Public Comments, 2026-05-19 (eScribe,
   `chula-vista-public-comments-2026-05-19-city-council-meeting`):
@@ -537,7 +527,7 @@ anything) to build against it.
   confirms this failure shape recurs on a different real customer, not a
   one-off.
 
-- **Census-table baseline validation of all 649 archived jurisdictions
+- **[DONE?] Census-table baseline validation of all 649 archived jurisdictions
   (2026-08-15, workstream 1 of `JURISDICTION_METADATA_PLAN.md`) — new
   confirmed findings beyond the two adapter bugs below.** Numbers: 510
   valid as-is, 73 reachable by longest-valid-prefix trim, 44 not in
@@ -648,7 +638,7 @@ anything) to build against it.
   scratchpad; regenerate any time via the script logged in
   `JURISDICTION_METADATA_PLAN.md`'s workstream 1.
 
-- ~~**`GranicusAssetFinder._extract_metadata()`'s page-body jurisdiction regex
+- ~~**[JUST-DO-IT] `GranicusAssetFinder._extract_metadata()`'s page-body jurisdiction regex
   has no sentence/tag boundary, so it can swallow unrelated agenda text
   into the stored jurisdiction**~~ **Fixed 2026-08-16 (WO-14) — both
   Granicus and eScribe's independent copies of this bug now share
@@ -692,7 +682,7 @@ anything) to build against it.
   (`baseline_validation.csv`, no longer available in any session's
   scratchpad).
 
-- **Fountain Valley clip 607 shows a wrong title and jurisdiction today —
+- **[NEEDS-AUDIT] Fountain Valley clip 607 shows a wrong title and jurisdiction today —
   real, confirmed, not yet root-caused. Found 2026-08-15 in the same
   `/coverage` scan.** This is the same Granicus clip already extensively
   documented elsewhere in this file and `BACKLOG_DONE.md` for its garbled/
@@ -721,7 +711,7 @@ anything) to build against it.
   code), or something else entirely. Worth a real investigation, not a
   guessed fix — flagging as a genuine "how did this happen" question.
 
-- **`/coverage`'s "Every place we've covered" table is a real, useful
+- **[JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a real, useful
   place to spot resolver bugs by eyeballing outliers — confirmed by
   actually doing it, 2026-08-15, per direct suggestion.** A single pass
   over all 501 rows (jurisdiction + example-meeting title columns,
@@ -746,7 +736,7 @@ anything) to build against it.
   work) rather than a one-off — cheap to do, and every hit this pass was
   a real, previously-undocumented bug, not noise.
 
-- **Swagit's jurisdiction extraction has no fallback at all when the page
+- **[IMPROVEMENT-ROUND] Swagit's jurisdiction extraction has no fallback at all when the page
   `<title>` doesn't end in a plain `"..., {2-letter state}"` shape — every
   special-purpose entity (school district, MPO, transit/utility authority,
   state agency) on Swagit comes through with a blank jurisdiction, even
@@ -796,7 +786,7 @@ anything) to build against it.
   for some, the whole remainder for others), so this isn't as
   mechanical a fix as it might look at first glance.
 
-- **Granicus's own captions.vtt appears to hard-cap at exactly 36,000 cues
+- **[DONE?] Granicus's own captions.vtt appears to hard-cap at exactly 36,000 cues
   per file, cutting a long meeting's transcript off mid-sentence with no
   warning — a source-side limitation, not a bug in this app's fetch/parse
   code, confirmed live 2026-08-15.** Found while reviewing the 204-URL
@@ -834,7 +824,7 @@ anything) to build against it.
   see whether the cap is a fixed constant across all Granicus customers
   or varies.
 
-- **PrimeGov's `_extract_jurisdiction()` still has no real structural fix
+- **[JUST-DO-IT] PrimeGov's `_extract_jurisdiction()` still has no real structural fix
   for the SLC/Holladay false-positive — only patched for that one
   confirmed domain, not solved generally.** SLC's specific bug (every
   real `slc.primegov.com` meeting is fixed 2026-08-13 via a known-domain
@@ -900,7 +890,7 @@ anything) to build against it.
   through to the generic failure message. Both now check `res.status ===
   429` explicitly first and show real rate-limit copy instead.
 
-- **Google Search Console flagged 3 "Videos" structured-data issues
+- **[IMPROVEMENT-ROUND] Google Search Console flagged 3 "Videos" structured-data issues
   site-wide (alert received 2026-08-12)**: missing `thumbnailUrl`
   (critical — blocks video rich-result eligibility), plus `uploadDate`
   reported as both an invalid datetime value and missing a timezone
@@ -932,7 +922,7 @@ anything) to build against it.
     now sets each item's `end` to the next item's `start`, matching
     Granicus/IQM2's convention, instead of always equaling `start`.
 
-- ~~**`sitemap.xml` includes `generic_fallback` pages that the page template
+- ~~**[DONE?] `sitemap.xml` includes `generic_fallback` pages that the page template
   itself `noindex`es**~~ **Fixed 2026-08-17 — full detail in
   `BACKLOG_DONE.md`'s "Sitemap no longer lists noindexed
   `generic_fallback` pages" entry.** The separate "Page indexed without
@@ -1007,262 +997,13 @@ anything) to build against it.
   since been corrected too — see "Bulk backfill of archived pages" in
   `BACKLOG_DONE.md`.
 
-## `/meetings` search & saved items — UI gaps found 2026-08-11
-
-- ~~**"Save this meeting"/"Save this search" buttons render for every
-  visitor regardless of sign-in status, and an anonymous click silently
-  no-ops."**~~ **Investigated 2026-08-13, turned out to already be
-  false.** Live-checked as a genuinely signed-out visitor on both
-  `/meetings` and a real `/m/*` page — neither Save button renders at
-  all. Confirmed via `git log -S "if active_account"` that both
-  templates' `{% if active_account %}` gating has been in place since the
-  very first accounts-phase commits (`47f4ab5`/`a1ac0ec`), not added
-  later — this bug's premise was incorrect from the moment it was
-  written 2026-08-12, most likely a misread of the code rather than a
-  real regression. No fix needed.
-
-  **Update 2026-08-14: a different, real report — no save button while
-  actually signed in**, on
-  [redtaperecordings.com/meeting?url=...sccgov.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=17601](https://redtaperecordings.com/meeting?url=https%3A%2F%2Fsccgov.iqm2.com%2FCitizens%2FSplitView.aspx%3FMode%3DVideo%26MeetingID%3D17601)
-  (the real Santa Clara County meeting from this file's own IQM2 build
-  notes). Confirmed structurally: `app/templates/meeting.html` (the
-  `/meeting?url=` live-resolve page) has **zero** save-button markup at
-  all — grep for "save" across that template and its JS returns nothing
-  — so a save button structurally cannot appear there regardless of
-  login state, only after the client-side `/api/resolve` call redirects
-  to the real `/m/{slug}` page once archived. Live-replayed this exact
-  URL (signed out, since this session has no way to authenticate as the
-  user): it does redirect correctly to
-  `/m/the-county-of-santa-clara-ca-2026-08-11-board-of-supervisors-regular-meeting`
-  with real title/jurisdiction/video, and that page's own save buttons
-  are correctly gated behind `{% if active_account %}`
-  ([meeting_page.html:163](archive/templates/meeting_page.html:163)/
-  [:216](archive/templates/meeting_page.html:216)). **Genuinely
-  unconfirmed by this investigation**: whether `active_account` evaluates
-  correctly for a real signed-in visitor after arriving via this specific
-  `/meeting?url=` → redirect chain — that's exactly what the user
-  reported failing, but reproducing it needs their actual logged-in
-  session, not something checkable without real account credentials.
-  Worth a repro check: does the save button appear if a logged-in user
-  navigates directly to the `/m/{slug}` URL rather than via `/meeting?url=`?
-  If yes, the bug is specifically in whether the Clerk session cookie
-  survives this redirect path; if no, `active_account` itself has a
-  broader problem.
-
-- ~~**"Save this search" can silently save the wrong/stale search, and
-  gives no feedback that it's already been saved.**~~ **Investigated
-  2026-08-13: the stale-value bug was already fixed 2026-08-11 (see
-  `archive/static/meeting_list.js`'s own header comment/`isStale()`,
-  predating this backlog entry) — Save is disabled the moment the search
-  box/filters diverge from what's actually applied. The remaining piece,
-  the Save/Unsave toggle + visual cue, built 2026-08-13 — full detail in
-  `BACKLOG_DONE.md`.**
-
-- **Meeting title/jurisdiction display: casing still inconsistent row to
-  row — the state-abbreviation and truncation parts of this gap shipped
-  2026-08-11, see BACKLOG_DONE.md.** State names are now normalized to
-  their 2-letter abbreviation at Archive ingest time
-  (`archive/utils/jurisdiction_format.py`'s `normalize_state_suffix()`,
-  wired into `archive/db/crud.py`'s `_find_or_create_page()`), and long
-  titles/jurisdiction lines now truncate with an ellipsis on `/meetings`
-  (`.calendar-candidate-main a` / `.calendar-candidate-date` in
-  `style.css`) instead of wrapping. **Still open, deliberately not
-  touched**: city/county/meeting-body name casing itself. That's
-  effectively unbounded (tens of thousands of real values) with real
-  edge cases a blind `.title()`/casing rule gets wrong (acronyms like
-  "MTA"/"ZBA", multi-word or apostrophe'd city names) — every adapter
-  still stores whatever casing the source page used, unchanged, and
-  fixing that safely would need either a real per-value dictionary/
-  exception list or a narrower heuristic (e.g. something like
-  `vtt_parser.py`'s existing `normalize_shouting_caption()` ALL-CAPS
-  detector, which only re-cases when its own heuristic is confident,
-  rather than a blanket `.title()`) — not attempted this pass, since a
-  wrong guess here silently corrupts a real name with no easy undo.
-
-  **Also flagged by the user 2026-08-12, real and separate from the above:
-  some jurisdictions never had a state at all to begin with** —
-  `normalize_state_suffix()` only fires on a trailing `", <State>"`
-  suffix, so a jurisdiction with no state component just passes through
-  untouched. **Audited, designed, and partly built 2026-08-12 — full
-  detail in `BACKLOG_DONE.md`.** A new shared module,
-  `app/utils/jurisdiction_enrich.py`, fills in a missing state using real
-  US Census Bureau data (counties, places, and ZIP-to-county/ZIP-to-place
-  crosswalks, ~3.2MB, checked into the repo) plus a small confirmed-domain
-  registry for names that are ambiguous nationally (e.g. "Detroit" is a
-  real city in 4 different states) — tried in priority order: confirmed
-  domain → unambiguous name lookup → a ZIP-anchored address found in page
-  text, scoped to never let a county government's own city-shaped mailing
-  address stand in for the county itself (see `BACKLOG_DONE.md` for why
-  that's a real, specific trap, not a hypothetical one). Wired into
-  **Granicus** (the largest single source of this gap) and **Cablecast**
-  so far.
-
-  **Update 2026-08-12: fully wired now, every adapter identified in the
-  audit — full detail in `BACKLOG_DONE.md`.** Legistar, PrimeGov, eScribe,
-  CivicWeb, and LIMS all now call the same shared
-  `jurisdiction_enrich.enrich_jurisdiction_text()`; CivicClerk gets a
-  narrower fallback (`lookup_city_state()` when its own API's
-  `location.city` is present but `location.state` is empty) since its
-  data already arrives as separate structured fields rather than free
-  text. Two real bugs in the shared module were found and fixed along the
-  way (an "Oklahoma City"-shaped double-normalization collision with
-  "Oklahoma borough, PA", and a since-reverted PrimeGov window-cap
-  regression — see the bug entry above, still genuinely open). Full suite
-  green (551 tests); live-verified against real Cablecast, Granicus,
-  PrimeGov, and CivicWeb pages.
-
-  **Still open, real gaps not touched by either pass**: YouTube's
-  `uploader`-as-jurisdiction and the cases where no jurisdiction is set at
-  all (`generic_fallback.py`, `civicplus.py`) are different problems this
-  module doesn't address (not a missing state — a wrong or absent field
-  entirely). CivicClerk's new fallback is schema-verified but not
-  content-verified — no real customer with a blank `location.state` has
-  turned up yet to confirm it fires correctly in practice (covered by a
-  synthetic test only, per `tests/test_civicclerk.py`).
-
-  **Update 2026-08-15: a real customer confirms an even blanker case than
-  the one flagged above, and it has a clean, already-built fix path.**
-  [losaltoshillsca.portal.civicclerk.com/event/4567/media](https://losaltoshillsca.portal.civicclerk.com/event/4567/media)
-  (Los Altos Hills, CA — City Council Regular Meeting, June 18, 2026)
-  shows a completely blank jurisdiction live on
-  [redtaperecordings.com](https://redtaperecordings.com/meeting?url=https://losaltoshillsca.portal.civicclerk.com/event/4567/media).
-  Confirmed via `curl` against the real API
-  (`losaltoshillsca.api.civicclerk.com/v1/Events/4567`):
-  `eventLocation` is `{"city": null, "state": null, ...}` — not just a
-  missing state, the *whole* location object is empty. `civicclerk.py`'s
-  only fallback ([civicclerk.py:81-86](app/platforms/civicclerk.py:81))
-  is `if city and not state: state = lookup_city_state(city)` — it never
-  fires when `city` itself is falsy, so `jurisdiction` ends up `None`
-  with zero fallback attempted at all, unlike every other adapter this
-  audit wired up.
-
-  **Confirmed fix needs no new code, only a new call.**
-  `jurisdiction_enrich.extract_jurisdiction_chain()` (built 2026-08-15 for
-  `JURISDICTION_METADATA_PLAN.md`, see `BACKLOG_DONE.md`) already resolves
-  this exact URL correctly with zero extra network calls — tested live in
-  the repo's own venv (`wordninja` isn't in a bare `python3`'s path,
-  needed `source .venv/bin/activate` first):
-  `extract_jurisdiction_chain(page_text="", html="", url=url)` →
-  `"Los Altos Hills, CA"`, via the chain's validated-subdomain tier
-  (`losaltoshillsca` → wordninja splits to `["los", "altos", "hills",
-  "ca"]` → strips the trailing state abbreviation → `"Los Altos Hills"`
-  validates against the Census places table). CivicClerk was never wired
-  into this chain — the module's own comment names Swagit and
-  generic_fallback as "the first two callers," not CivicClerk, even
-  though CivicClerk's blank-location case is exactly the "adapter's own
-  primary extraction came up empty" scenario the chain was built for.
-
-  **A second, independent, even richer real signal was found while
-  checking "the agenda or anywhere else" per the user's ask — CivicClerk's
-  own agenda file is fetchable as plain text and the adapter never reads
-  it at all today.** The `Events/{id}` response's `publishedFiles` array
-  includes a real "Agenda" entry
-  (`GetMeetingFile(fileId=8983,plainText=false)`); calling the same
-  endpoint with `plainText=true` instead returns a JSON `{"blobUri": ...}`
-  pointing to a SAS-signed Azure blob `.txt` — confirmed live, and its
-  real content starts: `"Town of Los Altos Hills / City Council Regular
-  Meeting Agenda / Thursday, June 18, 2026, at 5:30 PM / Council Chambers,
-  26379 Fremont Road, / Los Altos Hills, CA 94022"`. That's a clean match
-  for the chain's stoprule tier (`_STOPRULE_TRIGGER_RE`, "Town of X") —
-  actually a *stronger* signal than the subdomain tier, since it doesn't
-  depend on wordninja splitting a customer's subdomain cleanly. Today
-  `civicclerk.py` never fetches `publishedFiles`/`GetMeetingFile` at all,
-  for jurisdiction or anything else — this is a real, unused, confirmed
-  data source, not a hypothetical one.
-
-  **Path (1) fixed 2026-08-16, wave 2 item 6 — full detail in
-  `BACKLOG_DONE.md`.** `civicclerk.py` now calls
-  `extract_jurisdiction_chain(page_text="", html="", url=url)` as a
-  fallback whenever `eventLocation` yields no usable city, confirmed
-  live on this exact Los Altos Hills example (new regression test in
-  `tests/test_civicclerk.py`). ~~**Path (2) still open, not built**~~
-  **Fixed 2026-08-16 — full detail in `BACKLOG_DONE.md`.** New
-  `_fetch_agenda_text()` fetches the `publishedFiles` "Agenda" entry's
-  plaintext blob (`GetMeetingFile(...,plainText=true)` → `{"blobUri":
-  ...}` → the SAS blob itself) and feeds it through the same
-  `extract_jurisdiction_chain()`, tried only after path (1) has already
-  failed (costs two extra requests). New regression test uses a
-  synthetic subdomain/place name so it doesn't depend on path (1) also
-  failing to fire.
-
-  ~~**New gap found 2026-08-14, live-testing `/meetings`' jurisdiction
-  filter: searching "California" finds nothing, but "CA" works.**~~
-  **Fixed 2026-08-14 — full detail in `BACKLOG_DONE.md`'s "Wave 1" entry.**
-
-## Deep links
-
-The `t`/`line` scheme itself is sound and hasn't changed since the initial
-scaffold (`t`, raw seconds, always wins the actual seek; `line=seg-N` is
-display-only highlighting — see the comment above `applyDeepLink()` in
-`shared_static/deep_link.js` and the precedence-bug fix in
-[BACKLOG_DONE.md](BACKLOG_DONE.md)). That's already the "robust, won't
-shift under us" design a deep-link contract needs. Three real gaps found
-auditing it (2026-08-08) — two fixed since, one still open below:
-
-- **~~Two independent copies of `t`/`line`/`seg-N` logic, and
-  `line=seg-N` could point at the wrong line after a version change~~ —
-  both fixed 2026-08-08.** Was: `app/static/player.js` and
-  `archive/static/meeting_page.js` duplicated the exact same deep-link
-  parsing/apply logic, kept in sync only by a comment; separately, a
-  bookmarked `/m/some-meeting?t=630&line=seg-42` could highlight the
-  wrong line if that page's default `TranscriptVersion` was ever
-  replaced (`t=630` would still seek correctly — a wrong-highlight bug,
-  not a broken link). Fixed together, since both touched the same
-  parse/apply code: the shared logic (`getQueryParams`,
-  `getDeepLinkTime/Line/Version`, `updateUrlParams`, `findActiveSegment`,
-  `highlightSegment`, `applyDeepLink`, the `segments`/`autoScrollEnabled`
-  module state) now lives in one new file, `shared_static/deep_link.js`
-  — a new top-level directory mounted identically by both `app/main.py`
-  and `archive/main.py` at `/shared-static` (one file on disk, two
-  independent `StaticFiles` mounts, so either service serves it whether
-  reached directly or through the resolver's reverse proxy). Loaded
-  before `player.js`/`meeting_page.js` in each page's `{% block scripts
-  %}`, both of which had their duplicate copies deleted. `updateUrlParams`
-  now automatically tags every generated link with the Archive's current
-  `TranscriptVersion.id` (read from a new `data-version-id` attribute on
-  `archive/templates/meeting_page.html`'s `<body>`, via a `body_attrs`
-  block added to `archive/templates/base.html` matching the resolver's
-  existing pattern) — automatic per call site, not something a future
-  new "copy link" button could forget to pass. `applyDeepLink` trusts
-  `line` only when the URL's `version` matches the page's current one
-  (or either side has no version info at all — an old pre-fix link, or
-  the resolver's page, which has no version concept); on a real
-  mismatch it falls back to `findActiveSegment(t)` (time-proximity
-  matching) instead of highlighting a possibly-wrong index.
-
-  Verified three ways, no JS test framework existing in this repo (see
-  the item below): (1) a real behavioral difference caught and
-  preserved during the merge — `player.js`'s `highlightSegment` respected
-  an `autoScrollEnabled` toggle the Archive page doesn't have; folded
-  into the shared file so the Archive page (which never toggles it)
-  behaves identically to before. (2) A one-off Node `vm.runInContext`
-  script (not a permanent test) simulating real multi-`<script>`-tag
-  scoping — critically *not* a plain `eval()`, which was tried first and
-  gave misleading results because direct eval creates its own nested
-  lexical scope, unlike separate classic `<script>` tags which genuinely
-  share top-level `let`/`const` bindings — covering version-match,
-  version-mismatch-fallback, no-version-old-link, resolver-page (no
-  version), and the URL-tagging behavior of `updateUrlParams` itself: 9
-  cases, all passing. (3) Real local servers (resolver proxying to a
-  real local Archive instance, matching production's reverse-proxy
-  shape exactly) with a seeded real page, checked live in-browser —
-  `/shared-static/deep_link.js` loads with no console errors, all
-  shared functions (`applyDeepLink`, `findActiveSegment`,
-  `updateUrlParams`, `highlightSegment`) are defined and callable from
-  both `player.js` and `meeting_page.js`, `segments` populated by one
-  script is correctly visible to functions defined in the other
-  (confirming real cross-script-tag `let` sharing, not just the Node
-  simulation), and `data-version-id` renders correctly. Full Python
-  suite green throughout (121 tests, unaffected -- this was a pure
-  frontend change).
-
 ## Meeting page UI gaps found 2026-08-14 (live testing)
 
 ~~Agenda/transcript timestamp column drift, meeting pages rendering
 unusually wide, and the missing auto-scroll toggle on archived pages~~
 **Fixed 2026-08-14 — full detail in `BACKLOG_DONE.md`'s "Wave 1" entry.**
 
-- **PDF agenda links are never rendered inline or text-extracted for
+- **[IMPROVEMENT-ROUND] PDF agenda links are never rendered inline or text-extracted for
   preview — a real product question raised live-testing, not yet a
   scoped bug.** Today, any agenda PDF `generic_fallback.py` finds is
   shown only as a plain outbound link
@@ -1280,148 +1021,72 @@ unusually wide, and the missing auto-scroll toggle on archived pages~~
   investigated further this pass — logged as a real gap/question, not
   designed.
 
+- **[JUST-DO-IT] `/coverage`'s "Every place we've covered" table is too narrow —
+  the Transcript column gets cut off, forcing unintuitive horizontal
+  scroll.** Real, confirmed live. Fix: narrow the "Example meeting"
+  (title) and "Transcript" columns in `archive/templates/coverage.html`'s
+  `.coverage-table` styling, and shrink the row-number column (`#`) to a
+  smaller font/width.
+
+- **[JUST-DO-IT] "Browse by state" (added 2026-08-17, PR #122) has no "Canada"
+  entry — structurally, not just missing data.** The entire feature
+  (`archive/utils/jurisdiction_format.py`'s `US_STATE_NAME_TO_ABBR`/
+  `US_STATE_ABBR_TO_NAME`, `archive/db/crud.py`'s
+  `get_state_coverage_index()`, `/state/{slug}` in `archive/main.py`) is
+  built entirely on a hardcoded US-only state table. Real Canadian
+  jurisdictions already exist in the archived data (e.g. Airdrie, AB;
+  Amherstburg, ON) but have no equivalent province table, so they never
+  appear under any "Browse by state" grouping. Fix needs a parallel
+  Canadian-provinces table (13 provinces/territories) and a "Canada"
+  grouping, most naturally a second `get_*_coverage_index()`-style
+  function reusing the same pattern.
+
+- **[JUST-DO-IT] Canadian province abbreviations look like typos to US readers
+  everywhere a state abbreviation renders sitewide.** Same root cause as
+  the "Browse by state" gap above — no Canada-aware formatting anywhere
+  in `jurisdiction_format.py`. Fix: append ", Canada" or " (Canada)"
+  whenever the trailing suffix is a recognized Canadian province code, in
+  the same `jurisdiction_display` filter / `format_jurisdiction_display()`
+  path that already normalizes US state display — needs a
+  `CANADIAN_PROVINCE_ABBRS` set, shared with the "Browse by state" fix's
+  new table.
+
+- **[JUST-DO-IT] `/coverage`'s "By platform" section should list more platforms.**
+  `DIRECT_PLATFORMS`/`CUSTOM_PLATFORMS` in `archive/db/crud.py` don't
+  reflect the full current adapter registry
+  (`app/platforms/__init__.py`'s `register_all_finders()`) — confirmed by
+  actually diffing the two: the registry has 22 finders total, of which
+  `legistar`/`civicplus`/`primegov`/`civicweb`/`youtube` are deliberately
+  and correctly excluded (`crud.py`'s own comment explains why — they're
+  calendar-tool routers whose `MeetingPage.platform` always ends up as
+  whatever they delegated to, never their own name, so a row for them
+  could never have a real example), but **six real, dedicated adapters
+  with their own `platform_name` are registered and can produce real
+  ingested pages, yet aren't in `DIRECT_PLATFORMS` or `CUSTOM_PLATFORMS`
+  and so fall through `get_platform_coverage()`'s `if`/`elif` chain with
+  no matching branch — silently dropped from the page entirely, not just
+  under-labeled**: ChampDS, IQM2, ClerkBase, Seattle Channel, TelVue, and
+  Hyland. Needs both: (a) adding these six to `DIRECT_PLATFORMS` (or a
+  new grouping, if any behave like the YouTube-delegating `CUSTOM_PLATFORMS`
+  entries — not checked here), and (b) updating the page's intro
+  paragraph, which currently only names the six original `DIRECT_PLATFORMS`
+  vendors ("Granicus, CivicClerk, Swagit, Viebit, eScribe, and Cablecast")
+  and doesn't mention any of the newer ones.
+
 ## Platform coverage — open questions
 
-- **CLAUDE.md's working-conventions section currently states CivicClerk
-  and eScribe have "no example anywhere with populated captions" — a DB
-  query 2026-08-16 found real, populated caption content for both,
-  worth reconciling rather than trusting either claim blind.** Counts
-  from `transcript_versions` (`is_default=true, source='scraped'`): 26
-  CivicClerk rows (avg ~2,200 segments each) and 147 eScribe rows (avg
-  ~2,760 segments each), both with real, non-empty spoken-text content —
-  not just placeholder/agenda-only rows. Two ways to reconcile this,
-  neither confirmed: (1) CLAUDE.md's claim may be about a narrower thing
-  specifically — e.g. CivicClerk's `closedCaptionTracks` field by name,
-  which the same doc separately calls out as "schema-verified but not
-  content-verified" — rather than "any populated caption content from
-  this platform at all," in which case both claims could be true
-  simultaneously about different things; or (2) the doc is genuinely
-  stale and real examples have shown up since it was last updated (the
-  same kind of doc-drift the "App-wide audit" section elsewhere in this
-  file already flags as a real, confirmed problem, not hypothetical).
-  Whoever picks this up should pull a couple of the 26/147 rows and read
-  them end to end before editing CLAUDE.md either way — this entry is
-  from a DB count, not a read-through.
+Split 2026-08-17 into sub-groups by real status, since lumping all of
+these under one undifferentiated priority hid real signal -- a live
+broken automation and two items genuinely needing a human decision were
+sitting next to purely dormant, needs-a-real-example items. This section
+has grown since the original triage pass sorted 19 items into these
+buckets -- several additional items turned up on re-read and were sorted
+by the same test (see BACKLOG_DONE.md's triage-session note, or the PR
+that added this reorg, for which ones are new).
 
-- **ChampDS real captions confirmed to exist for at least one customer —
-  but the URL to actually fetch them is still unknown (2026-08-16).**
-  `champds.py`'s own docstring said `MediaInfo.Captions` was empty on
-  every one of the 6 original customers checked, so caption parsing was
-  deliberately never built. Re-checked against 61 fresh real URLs from
-  this session's champds enumeration (see `BACKLOG_DONE.md`): 1 (`play.
-  champds.com/atlantaga/event/1077`) has real, populated `Captions`:
-  `[{"LanguageName": "English", "LanguageID": "en", "MediaPath":
-  "/2026-03/eaec74850c81b8ef2877faa746c28b61dc836fb4.vtt"}]` -- a real
-  positive example finally exists, so this is worth building. **But the
-  URL to actually fetch that MediaPath is still unconfirmed** -- tried
-  and ruled out: (1) the raw MediaPath prepended with `play.champds.com`,
-  `playapi.champds.com`, and a `/{customer}/` prefix -- all 404. (2) Full
-  reverse-engineering of every JS file the real event page loads
-  (`cds.event.js`, `override.cds.event.js`, `cds.common.js`,
-  `cds.constants.js`) -- zero references to "caption"/"vtt"/"track"
-  anywhere, meaning the current champds.com frontend may not even render
-  captions client-side yet, so there's no JS code to copy the pattern
-  from the way the `/ATT/{customer}/...` attachment-URL pattern was
-  found. (3) The confirmed-working `DOWNLOAD-MEDIA` endpoint
-  (`/DOWNLOAD-MEDIA/{customer}/eventmainmedia/{event_id}`, what
-  `video_url` already uses) accepts a `type` path segment -- tried 10
-  plausible values (`caption`, `closedcaption`, `cc`, `transcript`,
-  `subtitle`, etc.), every one came back **501 Not Implemented** (not
-  404) confirming the endpoint recognizes *a* type parameter but not
-  which string is correct. Stopped guessing rather than keep trying
-  strings blind, per this repo's own "don't claim a caption path works
-  without a positive example" convention -- a URL that happens to work
-  by luck isn't understood well enough to trust or document.
+### Done
 
-  **Update 2026-08-16, same session: confirmed live in-browser this
-  isn't a "wrong trigger" problem -- the champds.com frontend genuinely
-  never wires up captions at all, for this meeting or any other.**
-  Loaded `play.champds.com/atlantaga/event/1077` for real, played the
-  video, and explicitly clicked the player's own "Captions" button and
-  selected the "english cc" menu option -- no `.vtt`/caption network
-  request fired at any point (confirmed checking every request, not just
-  ones matching a `vtt` filter, in case the real URL is an opaque/hashed
-  path the way TelVue's `closed_captions/{signed-blob}` one is). Direct
-  DOM inspection after all of that confirms why:
-  `document.querySelector('video').textTracks.length === 0` and zero
-  `<track>` elements exist anywhere in the page -- the "Captions" menu
-  video.js renders is its own generic default UI, not backed by a real
-  track, so selecting a language does nothing. This matches the earlier
-  JS-source finding (zero caption references in any loaded script) from
-  the other direction: there is no live, observable request anywhere on
-  champds.com's own site that reveals the real caption URL, for *any*
-  customer, not just ones without a special "captions enabled" state.
-  `MediaInfo.Captions` being populated in the API is real, but appears to
-  be dead/unused data the current frontend doesn't consume -- building
-  around it now would mean guessing a URL nobody has ever confirmed
-  works, not copying a real one. Only remaining path forward is ChampDS's
-  own API docs/support, not further live investigation from this side.
-
-~~**TelVue host enumeration — not yet built.**~~ **Partially done
-  2026-08-16 via the web-search method, not the systematic CDX pass this
-  entry originally called for — real result, real remaining gap.** The
-  web-search-first method (proposed below, and validated on Legistar the
-  same night) found several real, currently-working
-  `videoplayer.telvue.com` meeting URLs, including one genuinely new
-  real jurisdiction: Fitchburg, MA (FATV), 956 real transcript segments,
-  22 agenda items — ingested for real. Full detail, including how its
-  opaque per-customer token was identified (quoting the token itself in
-  a follow-up search), in `CDX_QUERIES.md`. **Still not done**: a
-  systematic `hosts_telvue.txt` the way Legistar's 19-host list exists
-  now — this was a handful of confirmatory searches, not the same scale
-  of effort, and the CDX-side complications this entry originally
-  documented (200k-row cap, opaque token, mixed path shapes) are still
-  real and still unaddressed if someone wants full coverage rather than
-  a few more spot-checks.
-
-  **Real bug found via this work, fixed same day**: `telvue.py`'s
-  `_guess_jurisdiction()` mismatched a bare "City Council - 5.6.2025"
-  title (Fitchburg's real title has no city-name prefix at all) as
-  jurisdiction="City", which then got a state appended downstream —
-  "City, MA" ended up as the real ingested jurisdiction, and the slug
-  it produced (`city-ma-city-council-5-6-2025`) is now permanently
-  wrong for that one already-ingested page (slugs don't regenerate on
-  re-ingest, by design — re-ingesting after the fix didn't change it).
-  Fixed in `_guess_jurisdiction()` to reject bare "city"/"town"/
-  "village"/"township" as a name; regression test added
-  (`tests/test_telvue.py::test_guess_jurisdiction_rejects_generic_placeholder_words`).
-  The one bad existing slug is cosmetic (still resolves, still has the
-  real transcript) and not worth a manual DB fix on its own.
-
-  **Legistar CDX enumeration came back empty on the first attempt, then
-  the web-search method fixed it for real, 2026-08-16.** A domain-wide
-  CDX scan of `legistar.com` found 0 usable hosts (matches CivicPlus's
-  same-shaped failure below). The web-search-first method found 19 real,
-  currently-active customer subdomains instead — full list, stage-2
-  seek results (19/19 hit), and the caption-yield breakdown are in
-  `CDX_QUERIES.md`, not duplicated here. **Two of those 19 turned into
-  genuinely new real captioned jurisdictions, checked against
-  `/internal/pages/all-urls` before ingesting and confirmed not already
-  present**: Lake County, IL (via `cablecast`, 162 segments) and City of
-  Saint Paul, MN (via `granicus`, 1,029 segments) — both ingested for
-  real via `bulk_ingest.py`.
-
-  **CivicPlus CDX enumeration attempted 2026-08-16, came back empty**
-  (`hosts_civicplus.txt` in `rtr-business/research/`, 0 usable hosts) —
-  didn't surface a meeting-page path template the way CivicWeb's did.
-  **Unlike Legistar/TelVue, the web-search method wasn't tried and isn't
-  obviously the right next step**: CivicPlus is a general city-website
-  CMS that delegates to Granicus/Legistar for actual video (confirmed,
-  see this file's own delegation-pattern note near the top), not a
-  distinct video platform — searching `civicplus.com` directly would
-  mostly just re-surface Granicus/Legistar hosts already reachable more
-  directly through their own enumeration. Not rated in
-  `HYLAND_DISCOVERY.md`'s probability table for this reason. If this is
-  ever worth revisiting, the real target is whatever specific
-  meeting-page path CivicPlus sites link out to, not `civicplus.com`
-  itself.
-
-  Full status of every platform's CDX progress (including
-  PrimeGov/CivicWeb/eScribe/IQM2/ClerkBase/ChampDS, which all got real
-  stage-2 yields the same night) is in `CDX_QUERIES.md` directly — not
-  duplicated here to avoid the two drifting apart again.
-
-~~**Cablecast/Swagit/CivicClerk stage-2 seeks — not yet run.**~~ **Done
+~~**[DONE?] Cablecast/Swagit/CivicClerk stage-2 seeks — not yet run.**~~ **Done
   2026-08-17.** 728 real candidate URLs found (Cablecast 44/256 hosts,
   Swagit 430/434, CivicClerk 254/257 — full breakdown in
   `CDX_QUERIES.md`). Sample-checked for real caption content (44/30/30):
@@ -1458,7 +1123,99 @@ unusually wide, and the missing auto-scroll toggle on archived pages~~
   unrelated production deploy incident hit right after merging, in
   `BACKLOG_DONE.md`.**
 
-- **Both auto-transcription feed workflows (`feed-tier3-transcription.yml`,
+~~**Seattle Channel (`seattlechannel.org`) — new platform, not supported
+  at all today**~~ **Built 2026-08-14 — new `app/platforms/seattlechannel.py`,
+  full detail in `BACKLOG_DONE.md`.** Confirmed live against two independent
+  real meetings on the `/videos?videoid={id}` shape: direct mp4, real SRT
+  captions, and real per-item `data-seek` agenda timestamps. Scoped
+  narrowly to that exact URL shape — the older feed-style index page and a
+  bare `/videos` with no `videoid` are deliberately left to
+  `generic_fallback.py`'s own JW-config scan, which already handles them
+  reasonably (see `BACKLOG_DONE.md`'s 2026-08-14 rebuild entry).
+
+- **[DONE?] Wayne County, MI's own meeting-listing site
+  (`waynecountymi.gov`) — user-reported 2026-08-13, root cause confirmed
+  to be a fetch-level block, not a parsing gap.** Real example:
+  [waynecountymi.gov/.../Wayne-County-Commission-January-8-2026](https://www.waynecountymi.gov/Government/Elected-Officials/Commission/Committees/Full-Commission-Meetings/2026/Wayne-County-Commission-January-8-2026)
+  (calendar/listing page:
+  [.../Full-Commission-Meetings](https://www.waynecountymi.gov/Government/Elected-Officials/Commission/Committees/Full-Commission-Meetings)).
+  Prod currently shows a bare "Meeting" — no title, no jurisdiction, no
+  video, no agenda — even though, per the user, the page has all of it:
+  a plain "Video" link to `youtu.be/RFwXrAzkXR8`, an agenda PDF, and a
+  header reading "Wayne County Commission - January 8, 2026" that the
+  URL slug also spells out.
+
+  **Confirmed via a real browser (`mcp__Claude_Browser__*`) that every
+  one of those is real, static, server-rendered content** — no JS
+  needed to see it: `<title>Wayne County Commission - January 8, 2026 -
+  Wayne County, Michigan</title>`, a plain `<a href="https://youtu.be/
+  RFwXrAzkXR8">Video</a>`, and a plain `<a href=".../agenda2026-0108.pdf">
+  Agenda2026-0108.pdf</a>`. This is exactly the shape
+  `generic_fallback.py`'s priority-1 path (a plain linked YouTube video)
+  and `_find_agenda_link()` (a same-page `<a>` whose text contains
+  "agenda") are already built to catch — so the empty prod result isn't
+  a missing-pattern gap like the Sebastopol/Tarrant entries above.
+
+  **Root cause instead: the site's own edge/WAF blocks the fetch itself.**
+  A plain `curl` with the same Chrome `User-Agent`
+  `generic_fallback.py` already sends returned a 403 with a literal
+  Akamai `Access Denied` / `errors.edgesuite.net` body (~550 bytes, no
+  page content at all) — and `resolve()`'s `response.raise_for_status()`
+  (`generic_fallback.py:149`) turns that straight into a raised
+  exception, caught generically in `app/main.py`'s `/api/resolve`
+  handler (`except Exception as e:` around line 358) and surfaced as an
+  empty best-effort result with nothing populated — matching the "bare
+  'Meeting', no video, no jx, no agenda" symptom exactly. A real browser
+  (real TLS/JS/cookie behavior) gets through fine; a plain server-side
+  `aiohttp`/`curl` request does not. Not the same failure mode as the
+  YouTube-caption-fetch IP block noted elsewhere in this file (that one
+  is Render's cloud IP specifically vs. a residential one); this looks
+  like Akamai Bot Manager reacting to the request's fingerprint rather
+  than its origin IP, though that's not independently confirmed here.
+
+  Not fixed this pass — logged per this repo's "new bugs/gaps found
+  while working go in BACKLOG.md" convention. If this turns out to
+  affect other government sites (Akamai is a common CDN/WAF for larger
+  county/state sites), a shared retry-via-headless-browser fallback for
+  a confirmed-blocked fetch would fix all of them at once rather than
+  a Wayne-County-specific patch — but only one example exists so far,
+  so not worth generalizing yet.
+
+  **Ruled out, not the same root cause as the Sebastopol UA fix below**:
+  re-checked live 2026-08-13 after bumping `generic_fallback.py`'s UA to
+  a modern Chrome string (see `BACKLOG_DONE.md`) — this page is still
+  fully blocked with the new UA too, confirming Akamai's block here isn't
+  simply reacting to the old Chrome/91 string the way Sebastopol's WAF
+  was. A deeper fingerprint check (TLS/JA3, cookies, JS challenge) or a
+  genuinely different WAF product, not yet isolated.
+
+  **Update 2026-08-14: the headless-browser escalation this entry asked
+  for is now built AND enabled in prod.** Full detail in
+  `BACKLOG_DONE.md`'s rebuild entry: a block-family status (this page's
+  real Akamai 403 was the trigger it was built against) escalates to one
+  real-Chromium fetch, whose rendered HTML re-runs the same diagnosis.
+  Verified locally flag-on against this exact live page (resolves fully:
+  real youtu.be video + agenda PDF + real title). The operational
+  precondition — playwright actually working on Render — was then
+  verified for real the same day (a fresh, never-archived Minneapolis
+  LIMS meeting, `MarkedAgenda/COW/6144`, resolved fully through
+  production; LIMS has no non-browser path, so that's direct proof —
+  closing `render.yaml`'s open build question from the 2026-08-09
+  incidents), and `GENERIC_FALLBACK_HEADLESS=1` was committed to
+  `render.yaml`'s resolver env block (a literal value, not a secret).
+
+~~**Sacramento County, CA's own agenda site (`agendanet.saccounty.gov`)
+  — a third real customer of the same OnBase Agenda Online product.**~~
+  **Built 2026-08-16 as part of the new `app/platforms/hyland.py`
+  adapter, full detail in `BACKLOG_DONE.md`.** The `itemEventPoints`/
+  `sectionEventPoints` deep-link mechanism noted below as "not
+  investigated further" turned out to be exactly the missing piece —
+  joined against the AJAX agenda outline's own item ids, it's now the
+  adapter's real timestamped `agenda_items` mechanism.
+
+### Live but broken
+
+- **[JUST-DO-IT] Both auto-transcription feed workflows (`feed-tier3-transcription.yml`,
   `feed-granicus-transcription.yml`) have likely never successfully
   self-advanced their queue files, ever — every scheduled run's commit
   is rejected by the branch ruleset, silently, since before either
@@ -1506,211 +1263,9 @@ unusually wide, and the missing auto-scroll toggle on archived pages~~
   single run's output above) is a live symptom of the queue never
   actually shrinking.
 
-- **`riversidecountyca.iqm2.com` stays `platform="unknown"` despite
-  `iqm2.py` clearly having an adapter for `iqm2.com` domains — found
-  2026-08-16 doing backlog hygiene, not yet root-caused.** This exact
-  URL was already re-ingested once via the tier-3 feeder (see the
-  `page.platform` entry in `BACKLOG_DONE.md`, PR #70) and a fresh
-  `/internal/pages/all-urls` pull still shows it `unknown`. Read
-  `scripts/feed_tier3_auto_transcription.py`'s own push logic
-  end-to-end — it does call `detect_platform()`/`get_finder()` correctly
-  and sends `result.model_dump()` (which includes a real `platform`
-  field) to `/internal/ingest`, so the obvious "script bug" hypothesis
-  doesn't hold up by inspection alone. Needs real live debugging (check
-  the actual DB row / re-trigger and inspect the exact payload sent) to
-  find the real cause, not another guess -- flagged here rather than
-  guessed at further.
+### Needs a human decision
 
-~~**Hyland "OnBase Agenda Online" — new platform, not supported at all
-  today.**~~ **Built 2026-08-16 — new `app/platforms/hyland.py`, full
-  detail in `BACKLOG_DONE.md`.** Grew same-day from the initial 3
-  customers (Tucson AZ, Maricopa County AZ, Sacramento County CA) to
-  **26 real customer domains** across two distinct UI versions, plus
-  YouTube-embed delegation for customers whose player isn't JW Player —
-  see `BACKLOG_DONE.md`'s "expanded from 3 to 23" entry (title now
-  understates the final count; not renamed so the entry's own history
-  stays legible) for the full discovery-methodology writeup, and
-  `~/Documents/rtr-business/research/HYLAND_DISCOVERY.md` for the
-  reusable enumeration/search playbook this produced.
-
-- **IQM2 (`app/platforms/iqm2.py`) — Riverside County, CA's real title/
-  jurisdiction extraction should work by inspection but doesn't in prod,
-  user-reported 2026-08-14, not touched by the generic-fallback rebuild
-  above (this is a separate dedicated adapter).** Real example:
-  [riversidecountyca.iqm2.com/Citizens/SplitView.aspx?Format=Agenda&MeetingID=3499&Mode=Video](https://riversidecountyca.iqm2.com/Citizens/SplitView.aspx?Format=Agenda&MeetingID=3499&Mode=Video)
-  (`/m/meeting-4fefb4`). Confirmed live: video plays fine (real Granicus
-  HLS delegation working as designed), but "Untitled meeting," no
-  jurisdiction. Fetched the exact `outline_url` this adapter itself
-  builds
-  (`.../Citizens/Detail_Meeting.aspx?Target=Detail&CssClass=AgendaOutline&Mode=Video&Frame=Nothing&ID=3499`)
-  directly via `curl` — its `<title>` is real and well-formed:
-  "2026/08/12 09:30 AM (RCTC-GM) Riverside County Transportation
-  Commission General Meeting Regular Meeting - Web Outline - Riverside
-  County, California," which matches `_TITLE_RE` cleanly by inspection
-  (date group, "(RCTC-GM) Riverside County Transportation Commission
-  General Meeting Regular Meeting" as the meeting name, "Riverside
-  County, California" as jurisdiction — the exact same "{name} - Web
-  Outline - {jurisdiction}" shape already confirmed working for Atlanta
-  and Santa Clara County per this file's own IQM2 build notes).
-
-  So unlike the OCFL/Sacramento/Maricopa cases above, this doesn't look
-  like a stale-archive-page artifact (no known IQM2 fix has shipped since
-  this page was likely first resolved) or an extraction-logic gap (the
-  regex should match) — it's a real, unexplained discrepancy between what
-  a plain `curl` fetch sees and what production's actual resolve found,
-  same open-question shape already flagged for the OnBase counties before
-  their fix was found (a query-string/entity-decoding bug, in that case).
-  Not yet root-caused for IQM2 specifically — needs the same kind of live
-  debugging (what does `iqm2.py`'s own `aiohttp` fetch actually receive
-  from Render, not just a replayed local `curl`) rather than a guess.
-
-  **Update 2026-08-14: root cause narrowed further — the real
-  `IQM2AssetFinder().resolve()` code path, run directly (not a bare
-  `curl` replay), returns correct title/date/jurisdiction right now.**
-  Ran the actual adapter against the live URL: title
-  "(RCTC-GM) Riverside County Transportation Commission General Meeting
-  Regular Meeting", date "2026-08-12", jurisdiction "Riverside County,
-  California" — all correct, matching the by-inspection expectation
-  exactly. `agenda_items` came back empty, but that's real and
-  independently confirmed, not part of this bug: the live outline page
-  for this specific meeting has zero `AgendaOutlineLink` entries (fetched
-  directly, `AgendaOutlineLink` count is 0), the same "not every
-  commission/meeting on this instance gets timestamped items" gap already
-  documented for Santa Clara County above, not a title/jurisdiction
-  extraction problem.
-
-  This shifts the likely explanation back toward a **stale archived
-  page**, not a live code defect — the earlier "doesn't look like a
-  stale-archive-page artifact" reasoning assumed no relevant fix had
-  shipped since this page was first resolved, but the code demonstrably
-  works correctly *today*, on this exact real URL, with no code changes
-  made. The existing archived page (`/m/meeting-4fefb4`) most likely
-  predates whatever state made this resolve correctly (could be an
-  incidental fix to shared code — `jurisdiction_enrich`, `_TITLE_RE`,
-  or similar — landing after this page was first pushed, not a dedicated
-  IQM2 fix). **Not fully closed — still needs one production step this
-  session has no access to do**: hit
-  `/admin/recheck-archive-page?url=...&token=$ADMIN_STATS_TOKEN` against
-  the real production URL to force a fresh resolve + Archive push, then
-  confirm `/m/meeting-4fefb4` (or wherever it lands) shows the correct
-  title/jurisdiction. If that fixes it, this closes as a stale-page case,
-  same shape as the OCFL/Sacramento/Maricopa entries above; if the
-  production resolve *still* comes back wrong even after a forced
-  recheck, that would be new, real evidence of an actual Render-specific
-  runtime difference worth investigating further.
-
-~~**Seattle Channel (`seattlechannel.org`) — new platform, not supported
-  at all today**~~ **Built 2026-08-14 — new `app/platforms/seattlechannel.py`,
-  full detail in `BACKLOG_DONE.md`.** Confirmed live against two independent
-  real meetings on the `/videos?videoid={id}` shape: direct mp4, real SRT
-  captions, and real per-item `data-seek` agenda timestamps. Scoped
-  narrowly to that exact URL shape — the older feed-style index page and a
-  bare `/videos` with no `videoid` are deliberately left to
-  `generic_fallback.py`'s own JW-config scan, which already handles them
-  reasonably (see `BACKLOG_DONE.md`'s 2026-08-14 rebuild entry).
-
-- **`generic_fallback.py`'s YouTube-embed branch had no page-level
-  metadata backfill, so CRRMA's meeting pages showed "Untitled meeting"
-  with no jurisdiction — fixed 2026-08-13, full detail in
-  `BACKLOG_DONE.md`.** A separate, real bug surfaced while re-verifying
-  the fix live: `YouTubeAssetFinder.resolve_video_id()` unconditionally
-  sets `jurisdiction=info.get("uploader")` (a channel name) whenever
-  yt-dlp succeeds, and every caller that delegates to it has to know to
-  override that afterward or the channel name leaks through as a fake
-  jurisdiction. **Audited every direct `YouTubeAssetFinder` delegator
-  2026-08-13**: PrimeGov (already unconditional-override), LIMS (already
-  fixed, same day), `slc.py` (always unconditional, hardcoded single
-  jurisdiction), generic_fallback (fixed this pass), and CivicWeb (fixed
-  this pass, same day — see `BACKLOG_DONE.md`) are all now safe.
-  **Still genuinely unconfirmed**: `legistar.py`'s *primary* delegation
-  path ([legistar.py:111-117](app/platforms/legistar.py:111-117)) only
-  overrides jurisdiction via `resolved.jurisdiction or page_info[...]`
-  — i.e. prefers whatever the delegated platform set, falling back to
-  Legistar's own page info only when empty — and only runs at all when
-  `resolved.title` looks like a raw filename. This only matters if a
-  Legistar video link ever resolves directly to a bare YouTube URL
-  (rather than the far more common Granicus delegation, where this isn't
-  an issue) with a raw-filename-shaped title; no real example of that
-  specific combination has turned up yet, so not touched without one —
-  same "don't fix without a confirmed example" convention as everywhere
-  else in this file. Worth revisiting either this path or fixing the
-  root cause once and for all in `youtube.py` itself (stop setting
-  `jurisdiction` from `uploader` at the source, rather than requiring
-  every caller to remember to override it) if a real example surfaces.
-
-  **Still open, a real UI/copy question, independent of the extraction
-  fix above**: what should render when metadata truly can't be found by
-  any method at all? Today's convention is a bare "Untitled meeting"
-  (`meeting_page.html:98`'s dropdown and `meeting_list.html:90`'s browse
-  listing both share the exact same `m.title or "Untitled meeting"`
-  fallback) — user's suggestion: something more like "Temporary Name:
-  meeting-732f78" that signals "we know this is incomplete" rather than
-  reading as broken/empty. Not decided or built.
-
-  **User's follow-up idea, 2026-08-13**: instead of a bare placeholder,
-  try a much looser best-effort grab (any plausible `<h1>`/`og:title`/
-  meta-description text, not the strict `<title>` "split on `|`" pattern
-  the CRRMA fix uses) and label it "Maybe: {result}" to signal low
-  confidence. **Checked against the one real remaining "Untitled
-  meeting" page in the whole Archive before building anything** (Tucson,
-  AZ on Hyland's "221 Agenda Online" — see the new platform-coverage
-  entry above) — it disproves that a looser regex would help in
-  general: that page's raw HTML has *no* usable static text anywhere at
-  all (confirmed via `curl`, everything renders client-side via AJAX),
-  so even the loosest static-HTML regex would still find nothing. For
-  this class of failure specifically, only a real headless-browser fetch
-  (a much bigger, new-platform-shaped build) or the plain placeholder
-  idea would actually help — the looser-regex idea is real and worth
-  keeping for a *different* kind of failure (a page with SOME static
-  text that just doesn't happen to match the strict `<title>`-pipe
-  shape), but only one confirmed example exists today and it's the wrong
-  shape to validate that specific idea. Needs a second real example of
-  *that* failure mode before committing to a "Maybe:" shape — not
-  abandoned, just not enough evidence yet either way.
-
-  **Update 2026-08-13: that second example has now shown up, user-found
-  at
-  [cityofsebastopol.gov/events/city-council-meeting-january-6-2026/](https://www.cityofsebastopol.gov/events/city-council-meeting-january-6-2026/)
-  — two real, separately-confirmed gaps on this one page.** ~~Title/
-  jurisdiction extraction~~ **fixed 2026-08-13 — full detail in
-  `BACKLOG_DONE.md`.** ~~The Vimeo video piece~~ **surfaced 2026-08-14
-  via the new video-pointer outcome (`ResolvedMeeting.video_link`, see
-  `BACKLOG_DONE.md`'s rebuild entry): the page now shows "we think the
-  video is here: <the real vimeo link> — we recognize vimeo.com as a
-  regular video host, but can't embed it here yet", live-verified
-  in-browser.** Actual Vimeo *playback* (embedding + captions) is still
-  the separate, bigger gap tracked in the Vimeo entry above — the
-  pointer is the honest middle ground until that exists.
-
-  **Re-checked live 2026-08-14 after a user report that jurisdiction
-  "still doesn't grab" here — doesn't reproduce.** Live-replayed this
-  exact URL just now: jurisdiction renders correctly as "Sebastopol, CA"
-  on its own line under the title, exactly the sitewide convention, plus
-  the video pointer described above. Worth a straight correction rather
-  than a new bug entry — this page appears to already be working as
-  intended on both fronts described in this update; if the user still
-  sees it missing, worth comparing browser/cache state rather than
-  assuming a live regression, since this exact URL just resolved clean.
-
-- ~~**CHAMP/ChampDS (`play.champds.com`) — new platform, not supported at
-  all today**~~ **Built 2026-08-13 — full detail in `BACKLOG_DONE.md`.**
-  New `app/platforms/champds.py`, confirmed live against 6 independent
-  real customers. **Real, confirmed blocker found while building, not
-  just theorized**: `MediaInfo.VOD2`'s HLS URL (the *majority* real
-  case — 4 of 6 customers checked have no `DownloadURL` at all) sits
-  behind a strict `Referer: https://play.champds.com/` check on
-  `securestream10.champds.com` that this site's own browser requests
-  can't satisfy — confirmed live via `curl` with several different
-  referers, all rejected except champds.com's own. Only the direct-MP4
-  `DownloadURL` case (2 of 6 customers) is wired up to actually play;
-  the VOD2 case still gets full metadata + agenda link, just an honest
-  "no video found" instead of a link that would 406 in the browser. A
-  real streaming reverse-proxy (fetch server-side with the right
-  header, rewrite every segment URL in the playlist to route back
-  through it) would unblock the other 4 — real, scoped follow-up work,
-  not attempted this pass.
-
-- **Chicago's City Clerk ELMS (`chicityclerkelms.chicago.gov`) is a real,
+- **[HUMAN] Chicago's City Clerk ELMS (`chicityclerkelms.chicago.gov`) is a real,
   strong dedicated-adapter candidate — found 2026-08-10 while confirming
   the generic fallback correctly caught it (it did, as an "unsupported
   gate," per user testing).** The video (a real Vimeo link) never showed
@@ -1857,7 +1412,7 @@ unusually wide, and the missing auto-scroll toggle on archived pages~~
   as the rest of this entry: no Vimeo playback/caption support exists in
   this app today.
 
-- **Phoenix's Legistar instance (`phoenix.legistar.com`) — root cause
+- **[HUMAN] Phoenix's Legistar instance (`phoenix.legistar.com`) — root cause
   now confirmed structural, not one ambiguous sample.** Domain routing
   itself is confirmed correct (`phoenix.legistar.com` matches
   `_is_legistar_domain()`, so `LegistarAssetFinder` claims it as
@@ -1894,7 +1449,342 @@ unusually wide, and the missing auto-scroll toggle on archived pages~~
   that), so a Legistar page never showing agenda items is expected
   behavior, not a second bug to chase.
 
-- **El Paso, TX studied as a real test case for the channel-discovery
+### Dormant / needs a real example
+
+- **[LATER] CLAUDE.md's working-conventions section currently states CivicClerk
+  and eScribe have "no example anywhere with populated captions" — a DB
+  query 2026-08-16 found real, populated caption content for both,
+  worth reconciling rather than trusting either claim blind.** Counts
+  from `transcript_versions` (`is_default=true, source='scraped'`): 26
+  CivicClerk rows (avg ~2,200 segments each) and 147 eScribe rows (avg
+  ~2,760 segments each), both with real, non-empty spoken-text content —
+  not just placeholder/agenda-only rows. Two ways to reconcile this,
+  neither confirmed: (1) CLAUDE.md's claim may be about a narrower thing
+  specifically — e.g. CivicClerk's `closedCaptionTracks` field by name,
+  which the same doc separately calls out as "schema-verified but not
+  content-verified" — rather than "any populated caption content from
+  this platform at all," in which case both claims could be true
+  simultaneously about different things; or (2) the doc is genuinely
+  stale and real examples have shown up since it was last updated (the
+  same kind of doc-drift the "App-wide audit" section elsewhere in this
+  file already flags as a real, confirmed problem, not hypothetical).
+  Whoever picks this up should pull a couple of the 26/147 rows and read
+  them end to end before editing CLAUDE.md either way — this entry is
+  from a DB count, not a read-through.
+
+- **[LATER] ChampDS real captions confirmed to exist for at least one customer —
+  but the URL to actually fetch them is still unknown (2026-08-16).**
+  `champds.py`'s own docstring said `MediaInfo.Captions` was empty on
+  every one of the 6 original customers checked, so caption parsing was
+  deliberately never built. Re-checked against 61 fresh real URLs from
+  this session's champds enumeration (see `BACKLOG_DONE.md`): 1 (`play.
+  champds.com/atlantaga/event/1077`) has real, populated `Captions`:
+  `[{"LanguageName": "English", "LanguageID": "en", "MediaPath":
+  "/2026-03/eaec74850c81b8ef2877faa746c28b61dc836fb4.vtt"}]` -- a real
+  positive example finally exists, so this is worth building. **But the
+  URL to actually fetch that MediaPath is still unconfirmed** -- tried
+  and ruled out: (1) the raw MediaPath prepended with `play.champds.com`,
+  `playapi.champds.com`, and a `/{customer}/` prefix -- all 404. (2) Full
+  reverse-engineering of every JS file the real event page loads
+  (`cds.event.js`, `override.cds.event.js`, `cds.common.js`,
+  `cds.constants.js`) -- zero references to "caption"/"vtt"/"track"
+  anywhere, meaning the current champds.com frontend may not even render
+  captions client-side yet, so there's no JS code to copy the pattern
+  from the way the `/ATT/{customer}/...` attachment-URL pattern was
+  found. (3) The confirmed-working `DOWNLOAD-MEDIA` endpoint
+  (`/DOWNLOAD-MEDIA/{customer}/eventmainmedia/{event_id}`, what
+  `video_url` already uses) accepts a `type` path segment -- tried 10
+  plausible values (`caption`, `closedcaption`, `cc`, `transcript`,
+  `subtitle`, etc.), every one came back **501 Not Implemented** (not
+  404) confirming the endpoint recognizes *a* type parameter but not
+  which string is correct. Stopped guessing rather than keep trying
+  strings blind, per this repo's own "don't claim a caption path works
+  without a positive example" convention -- a URL that happens to work
+  by luck isn't understood well enough to trust or document.
+
+  **Update 2026-08-16, same session: confirmed live in-browser this
+  isn't a "wrong trigger" problem -- the champds.com frontend genuinely
+  never wires up captions at all, for this meeting or any other.**
+  Loaded `play.champds.com/atlantaga/event/1077` for real, played the
+  video, and explicitly clicked the player's own "Captions" button and
+  selected the "english cc" menu option -- no `.vtt`/caption network
+  request fired at any point (confirmed checking every request, not just
+  ones matching a `vtt` filter, in case the real URL is an opaque/hashed
+  path the way TelVue's `closed_captions/{signed-blob}` one is). Direct
+  DOM inspection after all of that confirms why:
+  `document.querySelector('video').textTracks.length === 0` and zero
+  `<track>` elements exist anywhere in the page -- the "Captions" menu
+  video.js renders is its own generic default UI, not backed by a real
+  track, so selecting a language does nothing. This matches the earlier
+  JS-source finding (zero caption references in any loaded script) from
+  the other direction: there is no live, observable request anywhere on
+  champds.com's own site that reveals the real caption URL, for *any*
+  customer, not just ones without a special "captions enabled" state.
+  `MediaInfo.Captions` being populated in the API is real, but appears to
+  be dead/unused data the current frontend doesn't consume -- building
+  around it now would mean guessing a URL nobody has ever confirmed
+  works, not copying a real one. Only remaining path forward is ChampDS's
+  own API docs/support, not further live investigation from this side.
+
+~~**[LATER] TelVue host enumeration — not yet built.**~~ **Partially done
+  2026-08-16 via the web-search method, not the systematic CDX pass this
+  entry originally called for — real result, real remaining gap.** The
+  web-search-first method (proposed below, and validated on Legistar the
+  same night) found several real, currently-working
+  `videoplayer.telvue.com` meeting URLs, including one genuinely new
+  real jurisdiction: Fitchburg, MA (FATV), 956 real transcript segments,
+  22 agenda items — ingested for real. Full detail, including how its
+  opaque per-customer token was identified (quoting the token itself in
+  a follow-up search), in `CDX_QUERIES.md`. **Still not done**: a
+  systematic `hosts_telvue.txt` the way Legistar's 19-host list exists
+  now — this was a handful of confirmatory searches, not the same scale
+  of effort, and the CDX-side complications this entry originally
+  documented (200k-row cap, opaque token, mixed path shapes) are still
+  real and still unaddressed if someone wants full coverage rather than
+  a few more spot-checks.
+
+  **Real bug found via this work, fixed same day**: `telvue.py`'s
+  `_guess_jurisdiction()` mismatched a bare "City Council - 5.6.2025"
+  title (Fitchburg's real title has no city-name prefix at all) as
+  jurisdiction="City", which then got a state appended downstream —
+  "City, MA" ended up as the real ingested jurisdiction, and the slug
+  it produced (`city-ma-city-council-5-6-2025`) is now permanently
+  wrong for that one already-ingested page (slugs don't regenerate on
+  re-ingest, by design — re-ingesting after the fix didn't change it).
+  Fixed in `_guess_jurisdiction()` to reject bare "city"/"town"/
+  "village"/"township" as a name; regression test added
+  (`tests/test_telvue.py::test_guess_jurisdiction_rejects_generic_placeholder_words`).
+  The one bad existing slug is cosmetic (still resolves, still has the
+  real transcript) and not worth a manual DB fix on its own.
+
+  **Legistar CDX enumeration came back empty on the first attempt, then
+  the web-search method fixed it for real, 2026-08-16.** A domain-wide
+  CDX scan of `legistar.com` found 0 usable hosts (matches CivicPlus's
+  same-shaped failure below). The web-search-first method found 19 real,
+  currently-active customer subdomains instead — full list, stage-2
+  seek results (19/19 hit), and the caption-yield breakdown are in
+  `CDX_QUERIES.md`, not duplicated here. **Two of those 19 turned into
+  genuinely new real captioned jurisdictions, checked against
+  `/internal/pages/all-urls` before ingesting and confirmed not already
+  present**: Lake County, IL (via `cablecast`, 162 segments) and City of
+  Saint Paul, MN (via `granicus`, 1,029 segments) — both ingested for
+  real via `bulk_ingest.py`.
+
+  **CivicPlus CDX enumeration attempted 2026-08-16, came back empty**
+  (`hosts_civicplus.txt` in `rtr-business/research/`, 0 usable hosts) —
+  didn't surface a meeting-page path template the way CivicWeb's did.
+  **Unlike Legistar/TelVue, the web-search method wasn't tried and isn't
+  obviously the right next step**: CivicPlus is a general city-website
+  CMS that delegates to Granicus/Legistar for actual video (confirmed,
+  see this file's own delegation-pattern note near the top), not a
+  distinct video platform — searching `civicplus.com` directly would
+  mostly just re-surface Granicus/Legistar hosts already reachable more
+  directly through their own enumeration. Not rated in
+  `HYLAND_DISCOVERY.md`'s probability table for this reason. If this is
+  ever worth revisiting, the real target is whatever specific
+  meeting-page path CivicPlus sites link out to, not `civicplus.com`
+  itself.
+
+  Full status of every platform's CDX progress (including
+  PrimeGov/CivicWeb/eScribe/IQM2/ClerkBase/ChampDS, which all got real
+  stage-2 yields the same night) is in `CDX_QUERIES.md` directly — not
+  duplicated here to avoid the two drifting apart again.
+
+- **[LATER] `riversidecountyca.iqm2.com` stays `platform="unknown"` despite
+  `iqm2.py` clearly having an adapter for `iqm2.com` domains — found
+  2026-08-16 doing backlog hygiene, not yet root-caused.** This exact
+  URL was already re-ingested once via the tier-3 feeder (see the
+  `page.platform` entry in `BACKLOG_DONE.md`, PR #70) and a fresh
+  `/internal/pages/all-urls` pull still shows it `unknown`. Read
+  `scripts/feed_tier3_auto_transcription.py`'s own push logic
+  end-to-end — it does call `detect_platform()`/`get_finder()` correctly
+  and sends `result.model_dump()` (which includes a real `platform`
+  field) to `/internal/ingest`, so the obvious "script bug" hypothesis
+  doesn't hold up by inspection alone. Needs real live debugging (check
+  the actual DB row / re-trigger and inspect the exact payload sent) to
+  find the real cause, not another guess -- flagged here rather than
+  guessed at further.
+
+~~**[LATER] Hyland "OnBase Agenda Online" — new platform, not supported at all
+  today.**~~ **Built 2026-08-16 — new `app/platforms/hyland.py`, full
+  detail in `BACKLOG_DONE.md`.** Grew same-day from the initial 3
+  customers (Tucson AZ, Maricopa County AZ, Sacramento County CA) to
+  **26 real customer domains** across two distinct UI versions, plus
+  YouTube-embed delegation for customers whose player isn't JW Player —
+  see `BACKLOG_DONE.md`'s "expanded from 3 to 23" entry (title now
+  understates the final count; not renamed so the entry's own history
+  stays legible) for the full discovery-methodology writeup, and
+  `~/Documents/rtr-business/research/HYLAND_DISCOVERY.md` for the
+  reusable enumeration/search playbook this produced.
+
+- **[LATER] IQM2 (`app/platforms/iqm2.py`) — Riverside County, CA's real title/
+  jurisdiction extraction should work by inspection but doesn't in prod,
+  user-reported 2026-08-14, not touched by the generic-fallback rebuild
+  above (this is a separate dedicated adapter).** Real example:
+  [riversidecountyca.iqm2.com/Citizens/SplitView.aspx?Format=Agenda&MeetingID=3499&Mode=Video](https://riversidecountyca.iqm2.com/Citizens/SplitView.aspx?Format=Agenda&MeetingID=3499&Mode=Video)
+  (`/m/meeting-4fefb4`). Confirmed live: video plays fine (real Granicus
+  HLS delegation working as designed), but "Untitled meeting," no
+  jurisdiction. Fetched the exact `outline_url` this adapter itself
+  builds
+  (`.../Citizens/Detail_Meeting.aspx?Target=Detail&CssClass=AgendaOutline&Mode=Video&Frame=Nothing&ID=3499`)
+  directly via `curl` — its `<title>` is real and well-formed:
+  "2026/08/12 09:30 AM (RCTC-GM) Riverside County Transportation
+  Commission General Meeting Regular Meeting - Web Outline - Riverside
+  County, California," which matches `_TITLE_RE` cleanly by inspection
+  (date group, "(RCTC-GM) Riverside County Transportation Commission
+  General Meeting Regular Meeting" as the meeting name, "Riverside
+  County, California" as jurisdiction — the exact same "{name} - Web
+  Outline - {jurisdiction}" shape already confirmed working for Atlanta
+  and Santa Clara County per this file's own IQM2 build notes).
+
+  So unlike the OCFL/Sacramento/Maricopa cases above, this doesn't look
+  like a stale-archive-page artifact (no known IQM2 fix has shipped since
+  this page was likely first resolved) or an extraction-logic gap (the
+  regex should match) — it's a real, unexplained discrepancy between what
+  a plain `curl` fetch sees and what production's actual resolve found,
+  same open-question shape already flagged for the OnBase counties before
+  their fix was found (a query-string/entity-decoding bug, in that case).
+  Not yet root-caused for IQM2 specifically — needs the same kind of live
+  debugging (what does `iqm2.py`'s own `aiohttp` fetch actually receive
+  from Render, not just a replayed local `curl`) rather than a guess.
+
+  **Update 2026-08-14: root cause narrowed further — the real
+  `IQM2AssetFinder().resolve()` code path, run directly (not a bare
+  `curl` replay), returns correct title/date/jurisdiction right now.**
+  Ran the actual adapter against the live URL: title
+  "(RCTC-GM) Riverside County Transportation Commission General Meeting
+  Regular Meeting", date "2026-08-12", jurisdiction "Riverside County,
+  California" — all correct, matching the by-inspection expectation
+  exactly. `agenda_items` came back empty, but that's real and
+  independently confirmed, not part of this bug: the live outline page
+  for this specific meeting has zero `AgendaOutlineLink` entries (fetched
+  directly, `AgendaOutlineLink` count is 0), the same "not every
+  commission/meeting on this instance gets timestamped items" gap already
+  documented for Santa Clara County above, not a title/jurisdiction
+  extraction problem.
+
+  This shifts the likely explanation back toward a **stale archived
+  page**, not a live code defect — the earlier "doesn't look like a
+  stale-archive-page artifact" reasoning assumed no relevant fix had
+  shipped since this page was first resolved, but the code demonstrably
+  works correctly *today*, on this exact real URL, with no code changes
+  made. The existing archived page (`/m/meeting-4fefb4`) most likely
+  predates whatever state made this resolve correctly (could be an
+  incidental fix to shared code — `jurisdiction_enrich`, `_TITLE_RE`,
+  or similar — landing after this page was first pushed, not a dedicated
+  IQM2 fix). **Not fully closed — still needs one production step this
+  session has no access to do**: hit
+  `/admin/recheck-archive-page?url=...&token=$ADMIN_STATS_TOKEN` against
+  the real production URL to force a fresh resolve + Archive push, then
+  confirm `/m/meeting-4fefb4` (or wherever it lands) shows the correct
+  title/jurisdiction. If that fixes it, this closes as a stale-page case,
+  same shape as the OCFL/Sacramento/Maricopa entries above; if the
+  production resolve *still* comes back wrong even after a forced
+  recheck, that would be new, real evidence of an actual Render-specific
+  runtime difference worth investigating further.
+
+- **[LATER] `generic_fallback.py`'s YouTube-embed branch had no page-level
+  metadata backfill, so CRRMA's meeting pages showed "Untitled meeting"
+  with no jurisdiction — fixed 2026-08-13, full detail in
+  `BACKLOG_DONE.md`.** A separate, real bug surfaced while re-verifying
+  the fix live: `YouTubeAssetFinder.resolve_video_id()` unconditionally
+  sets `jurisdiction=info.get("uploader")` (a channel name) whenever
+  yt-dlp succeeds, and every caller that delegates to it has to know to
+  override that afterward or the channel name leaks through as a fake
+  jurisdiction. **Audited every direct `YouTubeAssetFinder` delegator
+  2026-08-13**: PrimeGov (already unconditional-override), LIMS (already
+  fixed, same day), `slc.py` (always unconditional, hardcoded single
+  jurisdiction), generic_fallback (fixed this pass), and CivicWeb (fixed
+  this pass, same day — see `BACKLOG_DONE.md`) are all now safe.
+  **Still genuinely unconfirmed**: `legistar.py`'s *primary* delegation
+  path ([legistar.py:111-117](app/platforms/legistar.py:111-117)) only
+  overrides jurisdiction via `resolved.jurisdiction or page_info[...]`
+  — i.e. prefers whatever the delegated platform set, falling back to
+  Legistar's own page info only when empty — and only runs at all when
+  `resolved.title` looks like a raw filename. This only matters if a
+  Legistar video link ever resolves directly to a bare YouTube URL
+  (rather than the far more common Granicus delegation, where this isn't
+  an issue) with a raw-filename-shaped title; no real example of that
+  specific combination has turned up yet, so not touched without one —
+  same "don't fix without a confirmed example" convention as everywhere
+  else in this file. Worth revisiting either this path or fixing the
+  root cause once and for all in `youtube.py` itself (stop setting
+  `jurisdiction` from `uploader` at the source, rather than requiring
+  every caller to remember to override it) if a real example surfaces.
+
+  **Still open, a real UI/copy question, independent of the extraction
+  fix above**: what should render when metadata truly can't be found by
+  any method at all? Today's convention is a bare "Untitled meeting"
+  (`meeting_page.html:98`'s dropdown and `meeting_list.html:90`'s browse
+  listing both share the exact same `m.title or "Untitled meeting"`
+  fallback) — user's suggestion: something more like "Temporary Name:
+  meeting-732f78" that signals "we know this is incomplete" rather than
+  reading as broken/empty. Not decided or built.
+
+  **User's follow-up idea, 2026-08-13**: instead of a bare placeholder,
+  try a much looser best-effort grab (any plausible `<h1>`/`og:title`/
+  meta-description text, not the strict `<title>` "split on `|`" pattern
+  the CRRMA fix uses) and label it "Maybe: {result}" to signal low
+  confidence. **Checked against the one real remaining "Untitled
+  meeting" page in the whole Archive before building anything** (Tucson,
+  AZ on Hyland's "221 Agenda Online" — see the new platform-coverage
+  entry above) — it disproves that a looser regex would help in
+  general: that page's raw HTML has *no* usable static text anywhere at
+  all (confirmed via `curl`, everything renders client-side via AJAX),
+  so even the loosest static-HTML regex would still find nothing. For
+  this class of failure specifically, only a real headless-browser fetch
+  (a much bigger, new-platform-shaped build) or the plain placeholder
+  idea would actually help — the looser-regex idea is real and worth
+  keeping for a *different* kind of failure (a page with SOME static
+  text that just doesn't happen to match the strict `<title>`-pipe
+  shape), but only one confirmed example exists today and it's the wrong
+  shape to validate that specific idea. Needs a second real example of
+  *that* failure mode before committing to a "Maybe:" shape — not
+  abandoned, just not enough evidence yet either way.
+
+  **Update 2026-08-13: that second example has now shown up, user-found
+  at
+  [cityofsebastopol.gov/events/city-council-meeting-january-6-2026/](https://www.cityofsebastopol.gov/events/city-council-meeting-january-6-2026/)
+  — two real, separately-confirmed gaps on this one page.** ~~Title/
+  jurisdiction extraction~~ **fixed 2026-08-13 — full detail in
+  `BACKLOG_DONE.md`.** ~~The Vimeo video piece~~ **surfaced 2026-08-14
+  via the new video-pointer outcome (`ResolvedMeeting.video_link`, see
+  `BACKLOG_DONE.md`'s rebuild entry): the page now shows "we think the
+  video is here: <the real vimeo link> — we recognize vimeo.com as a
+  regular video host, but can't embed it here yet", live-verified
+  in-browser.** Actual Vimeo *playback* (embedding + captions) is still
+  the separate, bigger gap tracked in the Vimeo entry above — the
+  pointer is the honest middle ground until that exists.
+
+  **Re-checked live 2026-08-14 after a user report that jurisdiction
+  "still doesn't grab" here — doesn't reproduce.** Live-replayed this
+  exact URL just now: jurisdiction renders correctly as "Sebastopol, CA"
+  on its own line under the title, exactly the sitewide convention, plus
+  the video pointer described above. Worth a straight correction rather
+  than a new bug entry — this page appears to already be working as
+  intended on both fronts described in this update; if the user still
+  sees it missing, worth comparing browser/cache state rather than
+  assuming a live regression, since this exact URL just resolved clean.
+
+- ~~**CHAMP/ChampDS (`play.champds.com`) — new platform, not supported at
+  all today**~~ **Built 2026-08-13 — full detail in `BACKLOG_DONE.md`.**
+  New `app/platforms/champds.py`, confirmed live against 6 independent
+  real customers. **Real, confirmed blocker found while building, not
+  just theorized**: `MediaInfo.VOD2`'s HLS URL (the *majority* real
+  case — 4 of 6 customers checked have no `DownloadURL` at all) sits
+  behind a strict `Referer: https://play.champds.com/` check on
+  `securestream10.champds.com` that this site's own browser requests
+  can't satisfy — confirmed live via `curl` with several different
+  referers, all rejected except champds.com's own. Only the direct-MP4
+  `DownloadURL` case (2 of 6 customers) is wired up to actually play;
+  the VOD2 case still gets full metadata + agenda link, just an honest
+  "no video found" instead of a link that would 406 in the browser. A
+  real streaming reverse-proxy (fetch server-side with the right
+  header, rewrite every segment URL in the playlist to route back
+  through it) would unblock the other 4 — real, scoped follow-up work,
+  not attempted this pass.
+
+- **[LATER] El Paso, TX studied as a real test case for the channel-discovery
   question above — user's idea 2026-08-12, prompted by the CRRMA
   "Untitled meeting" entry earlier in this file**: given a known Vimeo
   (or YouTube) channel with no direct government-page link, can search
@@ -1940,7 +1830,7 @@ unusually wide, and the missing auto-scroll toggle on archived pages~~
   need either Vimeo's own API or a headless-browser fetch, not yet
   checked which.
 
-- **Legistar's own MeetingDetail.aspx page carries real metadata that
+- **[LATER] Legistar's own MeetingDetail.aspx page carries real metadata that
   `LegistarAssetFinder` never scrapes at all — confirmed live 2026-08-12
   on a real example the user flagged**
   ([mesa.legistar.com/MeetingDetail.aspx?ID=1428059](https://mesa.legistar.com/MeetingDetail.aspx?ID=1428059&GUID=C6D3581F-B224-4A1C-A59D-0885C238FD52&Options=info|&Search=),
@@ -1979,7 +1869,7 @@ unusually wide, and the missing auto-scroll toggle on archived pages~~
     need without a new untimed-items shape just for this one platform.
     Left here for context, not as an open TODO.
 
-- **Baltimore's Legistar instance (`baltimore.legistar.com`) — how often
+- **[LATER] Baltimore's Legistar instance (`baltimore.legistar.com`) — how often
   does a meeting actually have video in the attachments table, and is
   there a better way to find it when it's missing?** Prompted by the user
   noticing, 2026-08-12, that most Baltimore meetings they're seeing don't
@@ -2022,7 +1912,7 @@ unusually wide, and the missing auto-scroll toggle on archived pages~~
   channel search, the same class of fix already flagged for Phoenix/
   Philadelphia/Albuquerque above).
 
-- **Headless-browser adapters (Minneapolis LIMS, SLC meeting recaps) —
+- **[LATER] Headless-browser adapters (Minneapolis LIMS, SLC meeting recaps) —
   built and shipped 2026-08-09, see BACKLOG_DONE.md for the full build.
   Real, still-open follow-ups:**
   - **Not yet checked: whether "LIMS" is a white-labeled product used by
@@ -2079,7 +1969,8 @@ unusually wide, and the missing auto-scroll toggle on archived pages~~
     could in principle resist even a realistic-UA headless fetch (untested
     against a third real case), just no longer the default assumption
     for "what happens when we hit Cloudflare next."
-- **TTML/DFXP/ITT caption parsing (`app/utils/vtt_parser.py`'s
+
+- **[LATER] TTML/DFXP/ITT caption parsing (`app/utils/vtt_parser.py`'s
   `parse_ttml()`) is spec-verified only, not sample-verified.** Built
   against the W3C TTML spec's documented shape after the CivicClerk SRT
   finding below prompted a broader look at caption format assumptions —
@@ -2090,7 +1981,8 @@ unusually wide, and the missing auto-scroll toggle on archived pages~~
   (no frame rate available to convert with — skips that cue rather than
   guessing). If a real TTML/DFXP sample turns up, verify against it and
   update this note.
-- **SBV/SUB/SMI/SAMI/plain-.txt captions get a generic best-effort text
+
+- **[LATER] SBV/SUB/SMI/SAMI/plain-.txt captions get a generic best-effort text
   fallback (`strip_unknown_caption_markup()`), not real per-format
   parsing.** No per-line timing, since these formats were never actually
   observed either — the fallback exists so real caption text isn't
@@ -2099,7 +1991,8 @@ unusually wide, and the missing auto-scroll toggle on archived pages~~
   timing). Wired into Granicus, CA Legislature, Swagit, and CivicClerk.
   If any of these turns out to be common on a real platform, worth a real
   structured parser instead of the generic strip.
-- **Stale archived transcripts have no automated refresh path — real gap
+
+- **[LATER] Stale archived transcripts have no automated refresh path — real gap
   confirmed 2026-08-12 fixing the Minneapolis ALL-CAPS report (see
   BACKLOG_DONE.md for the fix itself), two distinct pieces still open.**
   Everything needed to *manually* fix one specific page now exists
@@ -2129,21 +2022,24 @@ unusually wide, and the missing auto-scroll toggle on archived pages~~
     Worth deciding whether the queue should also surface low-quality-
     flagged pages, not just missing ones, and/or whether recheck should
     be able to trigger this same script's path for one page on demand.
-- **SCC/STL captions are detected but not readable at all.** Both are
+
+- **[LATER] SCC/STL captions are detected but not readable at all.** Both are
   binary/encoded (EIA-608 line-21 data, EBU subtitle format) — no text
   can be extracted without real codec-level decoding, so these just
   surface as a direct link ("you can view it directly: {url}") rather
   than attempted content. Genuinely low-probability for a small city's
   web captioning vendor (these are broadcast-editing interchange
   formats), so not worth building unless a real example turns up.
-- **Row-level CC/SRT files in Legistar/CivicPlus calendar listings** —
+
+- **[LATER] Row-level CC/SRT files in Legistar/CivicPlus calendar listings** —
   user's instinct that a calendar row might expose a direct caption file
   link alongside the video link, more reliable than what the destination
   video platform's own page offers. Checked Maricopa AZ, Westlake Village
   CA, San Diego city/county, both Berkeley Legistar calendars — none had
   one. Not disproven, just not found yet; extend `LegistarAssetFinder`/
   `CivicPlusAssetFinder`'s row-scraping when a real example turns up.
-- **New: collect custom-domain examples for popular platforms as they're
+
+- **[LATER] New: collect custom-domain examples for popular platforms as they're
   found, into the existing shared sample sheet** ("Watchdog Sample
   meetings," linked in `CLAUDE.md`) — not a code change, a standing
   habit. Motivated directly by the NYC Legistar case above: rather than
@@ -2153,7 +2049,8 @@ unusually wide, and the missing auto-scroll toggle on archived pages~~
   only build a general detection rule once several real examples exist
   to generalize from. Applies beyond Legistar — the same principle now
   also shapes the multi-video-detection decision below.
-- **Swagit custom-domain embeds unverified** (e.g. `dublin.ca.gov/
+
+- **[LATER] Swagit custom-domain embeds unverified** (e.g. `dublin.ca.gov/
   swagit-video-player?video_id=...`). `detect_platform` recognizes the URL
   shape, but the one sample URL 404'd — parsing has only been verified
   against real `*.swagit.com` domains. Needs a fresh sample URL.
@@ -2170,7 +2067,8 @@ unusually wide, and the missing auto-scroll toggle on archived pages~~
   support" logic already resolves it, since the iframe `src` is a real
   `*.swagit.com` URL) and doesn't substitute for a real sample of
   Dublin's self-contained custom-domain player. Genuinely still open.
-- **YouTube/PrimeGov: non-English captions untested**, and it's unknown
+
+- **[LATER] YouTube/PrimeGov: non-English captions untested**, and it's unknown
   whether the manual-vs-auto-generated track coverage gap seen on the one
   real LA sample (see [BACKLOG_DONE.md](BACKLOG_DONE.md)) is typical or
   specific to that video. Two tangential non-English-caption leads found
@@ -2180,7 +2078,7 @@ unusually wide, and the missing auto-scroll toggle on archived pages~~
   council meetings (`archive.org/details/covbva-*`) carries real
   `.es.asr.srt` files alongside the English ones.
 
-- **New platform-vendor gaps found 2026-08-11, via a Wave 2 survey of
+- **[LATER] New platform-vendor gaps found 2026-08-11, via a Wave 2 survey of
   the largest US cities/counties** (see BACKLOG roadmap doc for the full
   survey; full data compiled to an artifact, not saved in-repo). None of
   these were previously tracked here — real gaps, not yet-fixed known
@@ -2306,7 +2204,7 @@ unusually wide, and the missing auto-scroll toggle on archived pages~~
     logic directly, since most other Granicus instances checked this
     pass showed no caption UI at all.
 
-- **Tarrant County, TX's own "Agenda Management System"
+- **[LATER] Tarrant County, TX's own "Agenda Management System"
   (`agendamgmtprod.tarrantcountytx.gov`) — new platform, not supported
   at all today, user-reported 2026-08-13 with a real example**:
   [agendamgmtprod.tarrantcountytx.gov/Meetings/GetHTMLAgenda?meetingId=&dataSource=&id=21849bbe-d099-4637-1560-08ddc611a5e2](https://agendamgmtprod.tarrantcountytx.gov/Meetings/GetHTMLAgenda?meetingId=&dataSource=&id=21849bbe-d099-4637-1560-08ddc611a5e2)
@@ -2419,78 +2317,7 @@ unusually wide, and the missing auto-scroll toggle on archived pages~~
   this one (admittedly very clean, "TarrantCountyTX" → "Tarrant County,
   TX") case.
 
-- **Wayne County, MI's own meeting-listing site
-  (`waynecountymi.gov`) — user-reported 2026-08-13, root cause confirmed
-  to be a fetch-level block, not a parsing gap.** Real example:
-  [waynecountymi.gov/.../Wayne-County-Commission-January-8-2026](https://www.waynecountymi.gov/Government/Elected-Officials/Commission/Committees/Full-Commission-Meetings/2026/Wayne-County-Commission-January-8-2026)
-  (calendar/listing page:
-  [.../Full-Commission-Meetings](https://www.waynecountymi.gov/Government/Elected-Officials/Commission/Committees/Full-Commission-Meetings)).
-  Prod currently shows a bare "Meeting" — no title, no jurisdiction, no
-  video, no agenda — even though, per the user, the page has all of it:
-  a plain "Video" link to `youtu.be/RFwXrAzkXR8`, an agenda PDF, and a
-  header reading "Wayne County Commission - January 8, 2026" that the
-  URL slug also spells out.
-
-  **Confirmed via a real browser (`mcp__Claude_Browser__*`) that every
-  one of those is real, static, server-rendered content** — no JS
-  needed to see it: `<title>Wayne County Commission - January 8, 2026 -
-  Wayne County, Michigan</title>`, a plain `<a href="https://youtu.be/
-  RFwXrAzkXR8">Video</a>`, and a plain `<a href=".../agenda2026-0108.pdf">
-  Agenda2026-0108.pdf</a>`. This is exactly the shape
-  `generic_fallback.py`'s priority-1 path (a plain linked YouTube video)
-  and `_find_agenda_link()` (a same-page `<a>` whose text contains
-  "agenda") are already built to catch — so the empty prod result isn't
-  a missing-pattern gap like the Sebastopol/Tarrant entries above.
-
-  **Root cause instead: the site's own edge/WAF blocks the fetch itself.**
-  A plain `curl` with the same Chrome `User-Agent`
-  `generic_fallback.py` already sends returned a 403 with a literal
-  Akamai `Access Denied` / `errors.edgesuite.net` body (~550 bytes, no
-  page content at all) — and `resolve()`'s `response.raise_for_status()`
-  (`generic_fallback.py:149`) turns that straight into a raised
-  exception, caught generically in `app/main.py`'s `/api/resolve`
-  handler (`except Exception as e:` around line 358) and surfaced as an
-  empty best-effort result with nothing populated — matching the "bare
-  'Meeting', no video, no jx, no agenda" symptom exactly. A real browser
-  (real TLS/JS/cookie behavior) gets through fine; a plain server-side
-  `aiohttp`/`curl` request does not. Not the same failure mode as the
-  YouTube-caption-fetch IP block noted elsewhere in this file (that one
-  is Render's cloud IP specifically vs. a residential one); this looks
-  like Akamai Bot Manager reacting to the request's fingerprint rather
-  than its origin IP, though that's not independently confirmed here.
-
-  Not fixed this pass — logged per this repo's "new bugs/gaps found
-  while working go in BACKLOG.md" convention. If this turns out to
-  affect other government sites (Akamai is a common CDN/WAF for larger
-  county/state sites), a shared retry-via-headless-browser fallback for
-  a confirmed-blocked fetch would fix all of them at once rather than
-  a Wayne-County-specific patch — but only one example exists so far,
-  so not worth generalizing yet.
-
-  **Ruled out, not the same root cause as the Sebastopol UA fix below**:
-  re-checked live 2026-08-13 after bumping `generic_fallback.py`'s UA to
-  a modern Chrome string (see `BACKLOG_DONE.md`) — this page is still
-  fully blocked with the new UA too, confirming Akamai's block here isn't
-  simply reacting to the old Chrome/91 string the way Sebastopol's WAF
-  was. A deeper fingerprint check (TLS/JA3, cookies, JS challenge) or a
-  genuinely different WAF product, not yet isolated.
-
-  **Update 2026-08-14: the headless-browser escalation this entry asked
-  for is now built AND enabled in prod.** Full detail in
-  `BACKLOG_DONE.md`'s rebuild entry: a block-family status (this page's
-  real Akamai 403 was the trigger it was built against) escalates to one
-  real-Chromium fetch, whose rendered HTML re-runs the same diagnosis.
-  Verified locally flag-on against this exact live page (resolves fully:
-  real youtu.be video + agenda PDF + real title). The operational
-  precondition — playwright actually working on Render — was then
-  verified for real the same day (a fresh, never-archived Minneapolis
-  LIMS meeting, `MarkedAgenda/COW/6144`, resolved fully through
-  production; LIMS has no non-browser path, so that's direct proof —
-  closing `render.yaml`'s open build question from the 2026-08-09
-  incidents), and `GENERIC_FALLBACK_HEADLESS=1` was committed to
-  `render.yaml`'s resolver env block (a literal value, not a secret).
-
-- **Residuals from the 2026-08-14 generic-fallback rebuild** (the build
+- **[LATER] Residuals from the 2026-08-14 generic-fallback rebuild** (the build
   itself is in `BACKLOG_DONE.md`; these are the real leftovers it
   deliberately did not attempt):
   - **Orange County FL (`netapps.ocfl.net/Mod/meetings/1/2069`) —
@@ -2613,18 +2440,9 @@ unusually wide, and the missing auto-scroll toggle on archived pages~~
     artifact worth guessing a general dedup rule from a single example.
     **Deliberately not a bug to fix** — no code change made.
 
-~~**Sacramento County, CA's own agenda site (`agendanet.saccounty.gov`)
-  — a third real customer of the same OnBase Agenda Online product.**~~
-  **Built 2026-08-16 as part of the new `app/platforms/hyland.py`
-  adapter, full detail in `BACKLOG_DONE.md`.** The `itemEventPoints`/
-  `sectionEventPoints` deep-link mechanism noted below as "not
-  investigated further" turned out to be exactly the missing piece —
-  joined against the AJAX agenda outline's own item ids, it's now the
-  adapter's real timestamped `agenda_items` mechanism.
-
 ## Archive roadmap
 
-- **Design reference for the cassette-reel button animation, flagged
+- **[IMPROVEMENT-ROUND] Design reference for the cassette-reel button animation, flagged
   2026-08-16: the user likes the "Install GitHub App" button's animation
   on Sentry's onboarding page and wants to use it as a reference point
   for improving our own.** Reference:
@@ -2663,7 +2481,7 @@ unusually wide, and the missing auto-scroll toggle on archived pages~~
   the Sentry reference turns out to be that kind of "pop/lift" effect
   rather than a sweep/fill one once actually watched.
 
-- **"Feed cities" — should this app ever synthesize its own meeting
+- **[IMPROVEMENT-ROUND] "Feed cities" — should this app ever synthesize its own meeting
   pages for cities that have no well-defined per-meeting page at all?
   Open strategic question, not a build item, prompted by a 2026-08-12
   pass through the 50 biggest US cities.** A real, recurring pattern
@@ -2795,7 +2613,7 @@ resolver — see [BACKLOG_DONE.md](BACKLOG_DONE.md) for the full reasoning.
 The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 `app/db/crud.py` plus `archive_client.lookup()`/`.push()`.
 
-- **Accounts + token billing — scoping started 2026-08-10, per the
+- **[IMPROVEMENT-ROUND] Accounts + token billing — scoping started 2026-08-10, per the
   user's explicit go-ahead ("start scoping," not "start building").
   Phase 1 build actually started the same day, on a dedicated branch
   (`accounts-clerk-phase1`) — see below.** Needed for paid features
@@ -3092,7 +2910,7 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   is a *public* shareable image/card; this is a *personal* private-or-public
   notation a user leaves for themselves or their profile, no image
   generation required to be useful. Not yet built or scoped further.
-- **Lifecycle-triggered transactional emails (Resend) — built 2026-08-11
+- **[IMPROVEMENT-ROUND] Lifecycle-triggered transactional emails (Resend) — built 2026-08-11
   from rtr-business's `marketing/LIFECYCLE_EMAILS.md` (approved copy/
   voice, written by the user).** That doc defines six emails; five
   shipped this pass, one explicitly split off given its real scope:
@@ -3136,7 +2954,7 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     OAuth) — "Hi there," is the documented fallback either way, so a
     missing field degrades gracefully, but the "Hi [First Name]," path
     itself hasn't been seen fire for real yet.
-- **Audit every user-facing email address on the site and consolidate on
+- **[IMPROVEMENT-ROUND] Audit every user-facing email address on the site and consolidate on
   `ally@redtaperecordings.com`.** User request 2026-08-12, after setting
   up `ally@`/`ryan@redtaperecordings.com` forwarding (see
   `BACKLOG_DONE.md`'s "Email deliverability" section) — now that `ally@`
@@ -3170,7 +2988,7 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     `ryan@how-to-adu.com` — these are operator-facing ops digests, not
     site-facing addresses, so probably out of scope for this ask, but
     flagging since they're the same "which Ryan address" question.
-- **Lifecycle email bugs found by the user 2026-08-11 — three of the four
+- **[JUST-DO-IT] Lifecycle email bugs found by the user 2026-08-11 — three of the four
   fixed 2026-08-11, see BACKLOG_DONE.md for the full root-cause detail on
   each.** The fourth, "People are talking about…" (saved-search alert
   emails, `marketing/LIFECYCLE_EMAILS.md`'s #5), was always a real new
@@ -3180,7 +2998,7 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   email) is flagged there too as later-still: Resend has no built-in
   batching, so a digest needs its own accumulation + scheduled-or-
   event-driven send logic, not just copy.
-- **Email alerts for saved searches — confirmed 2026-08-09 as the most
+- **[IMPROVEMENT-ROUND] Email alerts for saved searches — confirmed 2026-08-09 as the most
   concrete "worth paying for" feature identified so far.** Depends on
   accounts and search both existing first (search already live; accounts
   is not). This is what turns a one-time lookup into something a
@@ -3209,7 +3027,7 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   there as later still — Resend has no built-in batching/digest feature,
   so that needs its own accumulation logic on top of whatever ships
   first.
-- **Proactive transcription crawler — re-prioritized 2026-08-09 to
+- **[IMPROVEMENT-ROUND] Proactive transcription crawler — re-prioritized 2026-08-09 to
   precede accounts/billing, then explicitly held back again 2026-08-10
   ("not yet — keep prioritizing bugs/gaps").** The reasoning below for
   *why* it matters still stands; the decision is about sequencing, not
@@ -3229,7 +3047,7 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   built) — this is a re-prioritization question, not a new build: worth
   deciding whether it jumps ahead of accounts/billing given it doesn't
   require them.
-- **Batch lookup — accept multiple meeting URLs at once (paste-list,
+- **[IMPROVEMENT-ROUND] Batch lookup — accept multiple meeting URLs at once (paste-list,
   CSV, etc.) instead of one at a time.** Removes the main friction point
   for a journalist working many jurisdictions at once — pasting dozens
   of URLs one-by-one doesn't match how someone actually works a
@@ -3241,7 +3059,7 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   hypothetical one) means unmetered batch access could get expensive
   fast. Rate-limiting or account-gating this is worth deciding before
   shipping it, not after.
-- **Coverage page — a public, sortable/filterable table of every
+- **[IMPROVEMENT-ROUND] Coverage page — a public, sortable/filterable table of every
   jurisdiction/platform combination successfully resolved so far.**
   **Update 2026-08-13: the "Coming soon placeholder, still `noindex`'d"
   framing below is stale and should not be trusted** — `/coverage`
@@ -3325,7 +3143,7 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   order rather than staying tied to the original alphabetical rows.
   Verified live in-browser (sort-by-click + sticky column both confirmed
   against a locally-seeded table), not just against the test suite.
-- **Companion "known gaps" page — same table shape, listing
+- **[NEEDS-AUDIT] Companion "known gaps" page — same table shape, listing
   jurisdictions/platforms that don't resolve cleanly yet** (attempted but
   blocked, partially working, or simply not yet built), separate from
   the coverage page above. Turns "it didn't work" from a dead end into a
@@ -3341,10 +3159,10 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   manual status field rather than being purely derived from logs. Could
   ship after or alongside the coverage page, reusing the same table
   component.
-- **Video highlight clips + algorithmic feed** — distant future. Flagged
+- **[IMPROVEMENT-ROUND] Video highlight clips + algorithmic feed** — distant future. Flagged
   tension: this app's "never host video, only embed" principle directly
   conflicts with hosting/serving clip segments.
-- **Search: move to a materialized/indexed column — now confirmed live in
+- **[IMPROVEMENT-ROUND] Search: move to a materialized/indexed column — now confirmed live in
   production as an OOM crash, not just a future scaling concern.** Built
   2026-08-08 (see [BACKLOG_DONE.md](BACKLOG_DONE.md)): `/meetings` search
   (title, jurisdiction, agenda text, transcript text — exact and
@@ -3476,7 +3294,7 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     backfill) — same "column shipped before backfill/defer" seam class as
     today, so plan the deploy order explicitly. Lower priority than 2a:
     fuzzy is opt-in and a few seconds; ranking affects every search.
-- **Search bar has no `OR` support.** `-exclude`/`-"phrase"` and no-op
+- **[IMPROVEMENT-ROUND] Search bar has no `OR` support.** `-exclude`/`-"phrase"` and no-op
   `+`/`&`/`AND` shipped 2026-08-11 (see BACKLOG_DONE.md) — this entry now
   covers only the one operator still genuinely missing. `_parse_query()`
   (`archive/utils/search.py`) returns flat phrase/word lists that all get
@@ -3486,7 +3304,7 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   boolean-expression parsing is actually needed, or whether `-exclude`
   plus no-op `+`/`AND`/`&` already covers most of the practical value a
   journalist would want, at a fraction of the parser complexity.
-- **Audit per-adapter coverage of `meeting_body`, then be strategic about
+- **[IMPROVEMENT-ROUND] Audit per-adapter coverage of `meeting_body`, then be strategic about
   extending it — low priority, no urgency.** `meeting_pages.meeting_body`
   ([archive/db/models.py:47](archive/db/models.py:47), `Text`, nullable)
   landed 2026-08-15 alongside `jurisdiction_confidence` as part of
@@ -3533,7 +3351,7 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   belong risks the same "loses information without a bleed signal"
   mistake `JURISDICTION_METADATA_PLAN.md` already called out and
   deliberately avoided when this field was designed.
-- **Once `meeting_body` has real, strategic coverage (see above), add it
+- **[IMPROVEMENT-ROUND] Once `meeting_body` has real, strategic coverage (see above), add it
   as a `/meetings` search filter — separate, related item, sequenced
   after the coverage work, not before.** Today's search
   (`archive/utils/search.py`) matches title/jurisdiction/agenda/
@@ -3546,7 +3364,7 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 
 ## On-demand transcription — real gaps left open
 
-- **Hallucinated-transcript detection (`detect_hallucination_warnings()`,
+- **[LATER] Hallucinated-transcript detection (`detect_hallucination_warnings()`,
   added 2026-08-16 alongside the phase-cancellation fix — see
   [BACKLOG_DONE.md](BACKLOG_DONE.md)'s matching "Bugs" entry) had two
   real, known limits.** (1) **Already-live exposure unaudited**: ~~unlike
@@ -3566,7 +3384,7 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   Catching that shape would need a real language-model-judge pass (cost/
   latency tradeoff, not yet designed), not a cheap structural heuristic.
 
-- **4 already-completed, already-live default transcripts are real,
+- **[HUMAN] 4 already-completed, already-live default transcripts are real,
   confirmed candidates for the phase-cancellation hallucination bug fixed
   2026-08-16 (or a related hallucination symptom) — a real, user-facing
   decision still open, not code.** See
@@ -3602,7 +3420,7 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     three structural signals both genuinely present, not a misdetection
     edge case.
 
-- **118 already-completed, already-live transcriptions are real
+- **[HUMAN] 118 already-completed, already-live transcriptions are real
   candidates for the seam-duplication bug fixed 2026-08-16 — a real,
   user-facing decision still open, not code.** See
   [BACKLOG_DONE.md](BACKLOG_DONE.md)'s matching "Bugs" entry for the
@@ -3632,13 +3450,13 @@ deployed with its own real, isolated dependency set). Confirmed by that
 same deploy: `worker/Dockerfile` **does** build successfully on Render —
 one item below is resolved as a result.
 
-- **~~ffmpeg/ffprobe availability on the resolver service is
+- **[DONE?] ~~ffmpeg/ffprobe availability on the resolver service is
   unverified.~~ Confirmed live 2026-08-08.** A real `POST` to
   `/api/transcription/check-feasibility` against a live Granicus URL
   returned `{"ok": true, "duration_seconds": 27073.36, ...}` — the plain
   `runtime: python` Render buildpack already has `ffprobe` on `PATH`, no
   `runtime: docker` switch needed after all.
-- **~~Render worker plan sizing is a guess.~~ Resolved for real 2026-08-08,
+- **[DONE?] ~~Render worker plan sizing is a guess.~~ Resolved for real 2026-08-08,
   after two live crashes, not one.** First real deploy OOM-killed on
   `plan: starter` (512MB) loading the original `"small"` model default.
   Switched to `"tiny"`, sized from local measurement -- but that
@@ -3844,7 +3662,7 @@ one item below is resolved as a result.
      needed, and the original symptom is unreproducible with today's
      dependencies"** rather than leaving a stale, disproven fix
      hypothesis open.
-- **Per-meeting `initial_prompt` seeded with real council-member names,
+- **[IMPROVEMENT-ROUND] Per-meeting `initial_prompt` seeded with real council-member names,
   from the agenda — user idea, 2026-08-11, real proper-noun accuracy
   motivation (their example: "Council Member Rashi Kesarwani, Council
   Member Rigel Robinson").** Today's `MEETING_VOCABULARY_PROMPT`
@@ -3890,14 +3708,14 @@ one item below is resolved as a result.
   throughout — would need a real before/after check against an actual
   meeting with known misspelled names, not assumed to help just because
   it's plausible.
-- **~~Resend's contact-lookup-by-email endpoint is unverified.~~ Confirmed
+- **[DONE?] ~~Resend's contact-lookup-by-email endpoint is unverified.~~ Confirmed
   live 2026-08-08.** A real request from an existing newsletter subscriber
   (`mroconnell@gmail.com`) correctly skipped the confirm-by-email step and
   went straight to `queued` — proof `archive/utils/email.py`'s
   `check_audience_membership()` and Resend's `GET /audiences/{id}/
   contacts/{email}` endpoint shape both work as written, not just
   degrading safely on failure.
-- **~~Completion email's "share this" ask has no real "support us" CTA
+- **[DONE?] ~~Completion email's "share this" ask has no real "support us" CTA
   behind it~~ — moot as of 2026-08-11: the ask itself is gone.** The
   completion email's copy was fully rewritten that day to match
   `marketing/LIFECYCLE_EMAILS.md`'s approved "Your transcript's ready"
@@ -3906,7 +3724,7 @@ one item below is resolved as a result.
   us" ask gets built later (once accounts/billing exist — see "Archive
   roadmap" below), it'd need to be added back as new copy against that
   doc's now-current version, not restored as it was.
-- **~~A non-default `TranscriptVersion` is invisible to internal
+- **[DONE?] ~~A non-default `TranscriptVersion` is invisible to internal
   search~~ — fixed 2026-08-08.** Confirmed by reading the actual code,
   prompted by asking whether a scraped caption and an AI transcript
   could both be shown/found once a meeting has both. The version-picker
@@ -3964,7 +3782,7 @@ one item below is resolved as a result.
   prioritized — revisit only if the SEO angle specifically becomes worth
   it later.
 
-- **[Big, low priority] "Request Transcript from Audio" doesn't work for
+- **[PARK] [Big, low priority] "Request Transcript from Audio" doesn't work for
   YouTube-hosted meetings.** Confirmed live 2026-08-10: clicking it on a
   YouTube meeting returns "We found a media source but couldn't read it
   — it may be unavailable." Root cause traced precisely, not guessed:
@@ -3994,7 +3812,7 @@ one item below is resolved as a result.
   deliberately not attempted, given real cost/maintenance/risk
   tradeoffs none of them have been evaluated against yet.
 
-- **The transcription-request rate limit's copy is unfriendly/non-native-
+- **[IMPROVEMENT-ROUND] The transcription-request rate limit's copy is unfriendly/non-native-
   reading and misses an obvious account-creation opportunity — and
   logged-in users shouldn't be rate-limited at all, flagged 2026-08-15.**
   Real copy, both duplicated copies of the fix from the already-closed
@@ -4056,7 +3874,7 @@ one item below is resolved as a result.
   dedicated `/sign-in` page (rather than reaching for the modal again)
   may be the safer default given that track record.
 
-- **PrimeGov's private known-domain override can be absorbed into the
+- **[JUST-DO-IT] PrimeGov's private known-domain override can be absorbed into the
   enricher once the registry-in-enricher design ships — but leave it
   alone until then.** `primegov.py`'s `resolve()` calls
   `jurisdiction_enrich.known_jurisdiction_display()` before its own
@@ -4071,7 +3889,7 @@ one item below is resolved as a result.
   identical result on the real SLC pages (the two Holladay-bug meetings
   are the regression cases to check).
 
-- **New feature request, 2026-08-16: a recurring operator email report
+- **[IMPROVEMENT-ROUND] New feature request, 2026-08-16: a recurring operator email report
   every 6 hours, to `ryan@redtaperecordings.com`, with 6 metrics** —
   queued worker jobs, failed jobs in the last 48h, succeeded jobs in the
   last 48h, total meetings on site, meetings with a transcript, meetings
@@ -4145,7 +3963,7 @@ Parked here by the user during the jurisdiction/title extraction planning
 conversation (see `JURISDICTION_METADATA_PLAN.md` for what *was*
 green-lit). Not rejected — explicitly allowed to return.
 
-- **School-district / special-entity jurisdiction lookup.** School
+- **[IMPROVEMENT-ROUND] School-district / special-entity jurisdiction lookup.** School
   districts don't conform to city/county boundaries — they're their own
   geography, so the Census places/counties tables (and the whole
   known-jurisdiction validation idea) structurally can't cover them. One
@@ -4156,15 +3974,10 @@ green-lit). Not rejected — explicitly allowed to return.
   build-script/lookup mechanism later. The 2026-08-15 Swagit batch alone
   surfaced ~10 real district/board-of-education pages, so there's real
   data waiting when this gets picked up.
-- **MPO / transit-authority / utility-district name table.** No national
+- **[PARK] MPO / transit-authority / utility-district name table.** No national
   authoritative table exists (unlike cities/counties/districts), so
   these stay validation-exempt indefinitely — "not in table" must stay a
   keep-and-flag outcome, never a rejection, largely because of this
   class. VIA Metropolitan Transit, Broward MPO, ERCOT, Port of
   Galveston, Travis Central Appraisal District are the real examples on
   file from the 2026-08-15 audit.
-- **Grand unification of adapter metadata extraction** beyond what the
-  tournament data actually supports — the plan deliberately stops at
-  "promote measured winners into a shared fallback chain," not a
-  rewrite of per-adapter primary extraction, which is platform-specific
-  for real reasons (API fields, RSS feeds, URL conventions).
