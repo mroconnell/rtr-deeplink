@@ -584,7 +584,7 @@ suite green (29 passed), `ruff check`/`ruff format --check` clean.
 
 ---
 
-## Wave 4 — infra into the Blueprint + backup/restore · **MOSTLY DONE 2026-08-17**
+## Wave 4 — infra into the Blueprint + backup/restore · **DONE 2026-08-17**
 
 P1, P2, P4 all now answered (see the Prerequisites table above).
 
@@ -639,20 +639,23 @@ headroom confirmed (25.17% of 1GB used, 2026-08-17). PITR window confirmed
 (**Hobby tier, 3 days**) and the restore procedure written up in
 `README.md`'s new "Backups and recovery" section.
 
-**Not done: the `databases:` block, and the actual test restore.** The
-`databases:` block is drafted and open for review (PR #107) but
-deliberately **not merged** — first time this repo has declared an
-existing database (not a compute service) in a Blueprint, and Render's
-reconciliation adopting it by name match, while the same mechanism
-already proven for the 3 services, hasn't been tried for a stateful
-resource here before. Needs Ryan's explicit go-ahead given the real (if
-probably small) risk of Render attempting to modify the live database on
-sync if any value is wrong. The throwaway PITR test restore itself also
-still needs doing — the README procedure is written from Render's
-documented behavior + this workspace's confirmed real settings, but
-nobody has clicked through an actual recovery yet, so it's a
-cross-checked hypothesis, not a proven procedure. Both left as real open
-items in `BACKLOG.md`, not silently dropped.
+**`databases:` block merged 2026-08-17 (PR #107), and verified clean
+against the live Render dashboard** — Ryan confirmed all four checks
+post-sync: (1) the Blueprint sync event completed successfully, (2) no
+duplicate `rtr-deeplink-db` instance was created, (3) the adopted
+instance's plan/RAM/storage/hostname are all unchanged from before the
+sync, (4) both `rtr-deeplink-archive` and `rtr-transcription-worker`
+booted cleanly afterward (proving `EXPECTED_DB_HOST` matched for real, not
+just in local tests). First time this repo has adopted an existing
+database (not a compute service) into a Blueprint, and it went cleanly.
+
+**One real item still open, not silently dropped: the actual PITR test
+restore.** The README procedure (`README.md`'s "Backups and recovery")
+is written from Render's documented behavior plus this workspace's
+confirmed real settings, but nobody has clicked through an actual
+recovery yet — a cross-checked hypothesis, not a proven procedure. Needs
+Ryan to do one throwaway restore to a scratch instance (never repointing
+any real service at it). Tracked as its own live entry in `BACKLOG.md`.
 
 ---
 

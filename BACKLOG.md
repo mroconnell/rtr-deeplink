@@ -5,6 +5,25 @@ investigation detail behind each fix — lives in
 [BACKLOG_DONE.md](BACKLOG_DONE.md); items below link back to it for context
 where relevant.
 
+## Untested PITR restore procedure — real risk, not yet exercised
+
+WO-4 (`AUDIT_EXECUTION_BRIEF.md`, Wave 4, closed 2026-08-17) confirmed
+this workspace is on Render's **Hobby tier — a 3-day PITR window**, not
+7 — and wrote up the restore procedure in `README.md`'s "Backups and
+recovery" section (a database recovery is a *swap* to a brand-new
+instance, not an in-place rewind — reconnecting all three services'
+`DATABASE_URL`, and `EXPECTED_DB_HOST` on two of them, is a real manual
+step under pressure, not a button). That procedure is written from
+Render's documented behavior plus this workspace's confirmed real
+settings (tier, plan, hostname, all cross-checked against a live
+dashboard), but **nobody has actually clicked through a real recovery
+yet** — it's a cross-checked hypothesis, not a proven one. Needs Ryan to
+do one throwaway PITR restore to a scratch instance (never repointing
+any real service's `DATABASE_URL` at it) to confirm the documented steps
+are accurate. An unexercised restore procedure is a real gap, not a
+formality — the whole point of Wave 4 was catching exactly this kind of
+untested assumption before it's needed for real.
+
 ## Easy-win triage (2026-08-16) — two waves ready to execute
 
 Per direct request: a pass through this whole file to pull out genuinely
