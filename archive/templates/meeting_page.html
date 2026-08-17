@@ -395,7 +395,7 @@
         </div>
         {% else %}
         <div class="transcript-segment" id="agenda-{{ loop.index0 }}" data-start="{{ item.start }}">
-          <a href="#agenda-{{ loop.index0 }}" class="segment-timestamp" data-start="{{ item.start }}">[{{ "%d:%02d"|format(item.start // 60, item.start % 60) }}]</a>
+          <a href="#agenda-{{ loop.index0 }}" class="segment-timestamp" data-start="{{ item.start }}">[{{ item.start|segment_time }}]</a>
           <button class="segment-link-btn" data-start="{{ item.start }}" title="Copy link to this item" aria-label="Copy link to this item"><svg width="17" height="17" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M7.5 10.5a2.5 2.5 0 0 0 3.54 0l2-2a2.5 2.5 0 0 0-3.54-3.54l-.71.71" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M10.5 7.5a2.5 2.5 0 0 0-3.54 0l-2 2a2.5 2.5 0 0 0 3.54 3.54l.71-.71" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
           <span class="segment-text">{{ item.text }}</span>
         </div>
@@ -458,7 +458,7 @@
       <div class="transcript-list">
         {% for seg in active_version.segments %}
         <div class="transcript-segment" id="seg-{{ loop.index0 }}" data-start="{{ seg.start }}">
-          <a href="#seg-{{ loop.index0 }}" class="segment-timestamp" data-start="{{ seg.start }}">[{{ "%d:%02d"|format(seg.start // 60, seg.start % 60) }}]</a>
+          <a href="#seg-{{ loop.index0 }}" class="segment-timestamp" data-start="{{ seg.start }}">[{{ seg.start|segment_time }}]</a>
           <button class="segment-link-btn" data-start="{{ seg.start }}" data-line="seg-{{ loop.index0 }}" title="Copy link to this line" aria-label="Copy link to this line"><svg width="17" height="17" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M7.5 10.5a2.5 2.5 0 0 0 3.54 0l2-2a2.5 2.5 0 0 0-3.54-3.54l-.71.71" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M10.5 7.5a2.5 2.5 0 0 0-3.54 0l-2 2a2.5 2.5 0 0 0 3.54 3.54l.71-.71" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
           <span class="segment-text">{{ seg.text }}</span>
         </div>
