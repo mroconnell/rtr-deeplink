@@ -3244,20 +3244,44 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   **Live after #131: no measurable change** (`budget` 27.5s, `flock`
   34.5s, `"public comment"` 31.5s; rare `quokka` 0.2s, browse 0.24s;
   clean sequential runs, no warm-up effect) — the bench box was
-  CPU-bound with the corpus in page cache; prod evidently isn't. **The
-  actual live blocker, still unverified: needs one `EXPLAIN (ANALYZE,
-  BUFFERS)` of the `LIKE '%budget%'` query from the Render shell (asked
-  of Ryan), plus `pg_total_relation_size('meeting_pages')` vs heap size
-  and `SHOW shared_buffers`.** Leading hypothesis is I/O — reading the
-  whole TOASTed corpus per common-term query on a small Postgres whose
-  cache can't hold it — in which case Step 2a's `tsvector` GIN
-  (membership answered from the index, corpus never touched) is the
-  fix; but that is a hypothesis, not a finding, and two from-outside
-  diagnoses today were half wrong. Full detail in `BACKLOG_DONE.md`.
-  Practical implication for prioritization: `/meetings?q=<any common
-  civic word>` is still ~30s in production right now, and Step 2a is
-  the only candidate fix on the table — that raises its priority above
-  "after WO-10, eventually" if the EXPLAIN confirms I/O.
+  CPU-bound with the corpus in page cache; prod evidently isn't.
+
+  **Resolved 2026-08-17 evening with real DB evidence (Ryan ran EXPLAIN
+  + `pg_stat_statements` on the Render shell — full transcript of the
+  numbers in `BACKLOG_DONE.md`): the DB *is* the whole 27–33s, and it
+  runs 3–4× slower for the app than in isolation.** `EXPLAIN (ANALYZE,
+  BUFFERS)` of the app's exact query, run interactively: **4.7s**
+  (Bitmap Index Scan on the trigram GIN — the index *is* used, contrary
+  to the bench-box guess above; 901 candidates, 9 removed by recheck;
+  `meeting_pages` is 77MB of which the heap is 1.6MB — 98% TOAST;
+  `shared_buffers = 64MB`). But `pg_stat_statements` for the same
+  statements as the *app* ran them: **49 calls, mean 16.5s (page) +
+  16.7s (count) ≈ 33s per search, max 41s/46s** — and a bare `SELECT id
+  … WHERE search_corpus ILIKE $1` from an app/script path: mean **32.9s**.
+  Same query, same data: the difference is *load*. This Postgres has
+  64MB of buffers, cold TOAST reads at ~3MB/s (my 20-row snippet
+  `segments` fetch: mean 2.8s, max 7.9s — `EXPLAIN` hid it because it
+  never sends rows), and that day also absorbed the worker's 5-minute
+  sweeps (now fixed, see the transcription section), crawler searches
+  (2 full 77MB scans each pre-#131), and **14 ad-hoc interactive queries
+  over 10s each totalling 1,043s (17 min) of saturation** — so nothing
+  stays cached and every scan runs at a fraction of its isolated speed;
+  #131's CPU savings are invisible against that. **Conclusion, now a
+  finding not a hypothesis: any design that reads the corpus per search
+  is bounded by this DB's I/O; only answering from an index (Step 2a's
+  `tsvector` GIN — count and membership without touching TOAST) or a DB
+  with enough RAM to keep the 77MB corpus resident escapes it.**
+  `shared_buffers=64MB` implies Render's smallest Postgres tier; the
+  next tier up would likely make the whole working set cache-resident
+  and turn 16s scans into ~2s with zero code — a dollars lever, Ryan's
+  call, listed as an option not a recommendation. Cheap code-side
+  reductions still worth taking (each cuts I/O per search): build
+  snippets from `search_corpus` (the 20 corpora are already warm from
+  the recheck) instead of cold `segments` JSON (−2.8s mean); and confirm
+  #131's windowed count actually deployed (the 49-call pair above is
+  #129's two-query shape; the windowed query wasn't visible in the
+  truncated list — check via `pg_stat_statements WHERE query ILIKE
+  '%count(*) OVER%'`).
 
   **Step 2 — still open, two independent halves, both need one schema
   migration each and so should wait for WO-10's deploy-time migration
@@ -3383,6 +3407,67 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   catch today.
 
 ## On-demand transcription — real gaps left open
+
+- ~~**[JUST-DO-IT] `find_auto_transcription_candidate()` streams the
+  entire transcript corpus through the DB every 5 idle minutes — an N+1
+  that loads full `segments` JSON per page.**~~ **Fixed 2026-08-17 (same
+  day it was found) — full detail in `BACKLOG_DONE.md`'s "Worker
+  auto-transcription candidate sweep" entry.** Short version: `pg_stat_
+  statements` showed `_has_good_transcript()`'s full-entity select
+  (segments JSON included) as the **#1 consumer of production DB time**
+  (218,480 calls, 47 min); the sweep now runs as one `NOT EXISTS`
+  candidate query over `content_hash`/`transcript_warnings` (never
+  `segments`) plus one status/updated_at history query, then the
+  unchanged cooldown rule in Python — verified on real Postgres as a
+  Hash Anti Join touching 8 buffers where it used to move 102MB.
+  `_has_good_transcript()` and `_in_auto_transcription_cooldown()` (which
+  was also dragging `TranscriptionJob.partial_segments` along) are fixed
+  for their other callers too. **What this fix does NOT claim**: that the
+  sweep was the search-latency contention — see the search entry; the
+  `pg_stat_statements` answer there is that the app's own LIKE scans
+  average 16.5s each on this I/O-starved DB, so removing the sweep helps
+  the DB generally but is not the search fix.
+  **Related, same `pg_stat_statements` read — a house-rule finding, not
+  a code bug:** four one-off, hand-written analytics queries (`mp.`/`tv.`
+  aliases, one with `AVG(jsonb_array_length(tv.segments::jsonb))`, one
+  `SELECT mp.slug, mp.jurisdiction, tv.segments … JOIN`) each ran
+  **50–62 seconds** against production — full scans of every `segments`
+  blob on a `shared_buffers = 64MB` server whose TOAST reads run at
+  ~3MB/s cold. Each is a minute of saturated I/O during which live
+  `/meetings` search crawls for real users. They aren't from app code
+  (SQLAlchemy never emits those aliases) — they're interactive sessions
+  exploring prod data. Source, as far as it could be traced (2026-08-17
+  evening): the "empty pages" peer session (PR #136) confirmed it never
+  opened a prod DB connection (curl + scratch SQLite only); the "Q&A
+  Prod" session confirmed *it* never ran raw SQL either — the auto-mode
+  permission classifier blocked its `psql` attempt and it used the app's
+  `/internal/*` endpoints instead — **but one of its spawned background
+  sub-agents had been told to "sample real archived rows" without raw
+  SQL being explicitly forbidden, and sub-agents evidently aren't held to
+  the same `psql` gate the top-level session hit.** That's the systemic
+  gap, not the specific query: a top-level permission block doesn't
+  propagate to sub-agents' instructions unless the spawning prompt says
+  so. All three of that session's agents have since been given an
+  explicit "never run raw SQL/psql against prod" correction.
+  `pg_stat_statements` itself has no timestamps or client identity to
+  pin it further. Best remaining lead (relayed second-hand by the Q&A
+  session, unverified): a since-ended peer session named "Whisper
+  instructions" had described "skimming ~780 real scraped-caption
+  transcripts in the archive DB for quality" as prep for a Whisper
+  prompt-eval harness — a close match for both the
+  `AVG(jsonb_array_length(tv.segments::jsonb))`-by-platform shape and
+  the segments-by-slug pulls. **Rule worth adding to `CLAUDE.md`, right
+  next to the existing `.env`-grep incident bullet (same "a shell command
+  with real consequences" class)**: never run a full-`segments`/full-
+  corpus scan against the production DB from an interactive session —
+  sample with `LIMIT`, aggregate over `pg_column_size()` instead of the
+  values, use `cast(segments AS text) <> '[]'`-style predicates for
+  emptiness (what #136's in-app code correctly does), or use the
+  PITR/restore path (`BACKLOG_DONE.md`'s PITR entry) for real analysis.
+  And the corollary that actually closes the gap: **any prompt that
+  spawns a sub-agent with prod access must restate the rule
+  explicitly** — a permission block the parent hit does not carry into
+  the child's instructions.
 
 - **[LATER] Hallucinated-transcript detection (`detect_hallucination_warnings()`,
   added 2026-08-16 alongside the phase-cancellation fix — see

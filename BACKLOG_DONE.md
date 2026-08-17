@@ -217,6 +217,60 @@ pages drop out of browse/sitemap/feed (sitemap was 1,223 URLs before the
 generic_fallback fix — compare after), and any of them that later gain
 video/captions come back on their own.
 
+## Worker auto-transcription candidate sweep: from 102MB of transcript JSON every 5 idle minutes to one anti-join (2026-08-17)
+
+[Done 2026-08-17] Found while chasing prod search latency (below); Ryan
+asked for exactly this ("have that worker use the filter for no
+transcripts to limit how many meetings it pulls each time"). `worker/
+main.py` calls `crud.find_auto_transcription_candidate()` every
+`AUTO_GENERATION_CHECK_INTERVAL_SECONDS = 300` while its queue is empty.
+The old shape: `select(MeetingPage)` for all ~1,219 pages, then per page
+`_has_good_transcript()` — which selected the **full `TranscriptVersion`
+entity, `segments` JSON included** (not deferred) just to evaluate
+`not version.segments` — and `_in_auto_transcription_cooldown()`, which
+selected full `TranscriptionJob` rows including `partial_segments` (an
+in-progress transcript as JSON). ~2,400 round-trips per sweep, all 102MB
+of default-version transcript JSON (`sum(pg_column_size(segments))`,
+Render shell) pulled to the worker to make one decision, on a Postgres
+with `shared_buffers = 64MB`. **`pg_stat_statements` (enabled by Ryan the
+same evening) showed the `_has_good_transcript()` select as the #1
+consumer of production DB time: 218,480 calls, 2,822s (47 min) total,
+mean 13ms, max 1.1s — more than everything else in the top 8 combined**;
+218k ÷ 1,219 ≈ 180 sweeps since stats began. Its docstring said "fine at
+today's scale (dozens of meetings)" — the same stale assumption the
+search OOM disproved that morning.
+
+**Fix (`archive/db/crud.py`)**: `_EMPTY_CONTENT_HASH = _content_hash([])`
+(sha256 of "" — both version-creating paths set `content_hash` via
+`_content_hash()`, so "has real content" is decidable from that indexed
+64-char column, never `segments`); new `_good_default_transcript_exists()`
+— a correlated `EXISTS` over `is_default` / `content_hash != EMPTY` /
+`transcript_warnings` text-cast `NOT LIKE` the two quality markers (plain
+ASCII, so exact on Postgres `json::text` and SQLite; `NULL` warnings
+guarded explicitly since `NOT (NULL LIKE …)` is NULL); `_has_good_
+transcript()` now selects only `content_hash, transcript_warnings` (same
+decision, for its other callers — the recheck cadence and two `/internal`
+listings that loop the same way); `_cooldown_active(jobs_newest_first,
+now)` pure helper shared by `_in_auto_transcription_cooldown()` (now
+selects `status, updated_at` only) and the finder; `find_auto_
+transcription_candidate()` = one candidates query (`WHERE NOT
+EXISTS(good default)`, `ORDER BY created_at ASC`, light columns) + one
+`status/updated_at` history query for those ids, then the unchanged
+escalating-cooldown rule in Python until a candidate passes. Same
+"oldest page without a good transcript and not in cooldown" result.
+
+**Verification**: suite 925 green with zero changes to the three
+existing candidate-finder tests; two new tests (`tests/test_
+transcription_jobs.py`): the compiled predicate/cooldown SQL names no
+`segments`/`partial_segments` column, and garbled/hallucinated/clean
+default versions classify identically through the SQL predicate and the
+per-page helper. On a real `postgres:16` with the full migration chain
+(session-scoped loop, see the search entry): the six worker-path tests
+pass, and `EXPLAIN (ANALYZE, BUFFERS)` of the candidate query is a **Hash
+Anti Join, 8 shared buffers, <0.1ms** — vs 102MB moved before. Explicitly
+*not* claimed: that this sweep was the search-latency contention (it was
+~5% duty); the search finding is separate, below.
+
 ## Search Step 1: SQL-authoritative `list_pages()` — exact search O(page_size), fuzzy streamed, worker corpus gap closed (2026-08-17)
 
 [Done 2026-08-17] Follows the two same-day incidents below. After hotfix
