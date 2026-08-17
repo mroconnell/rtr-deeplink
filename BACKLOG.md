@@ -380,6 +380,79 @@ anything) to build against it.
 
 ## Bugs
 
+- **Three production `/m/*` pages return 500 on GET — all on
+  YouTube-delegating custom platforms (slc, lims, clerkbase) — and this
+  is very likely the real cause of Search Console's "Page indexed
+  without content" flag. Found 2026-08-17 investigating Ryan's flagged-URL
+  list; extensively isolated from outside, root cause NOT yet pinned —
+  needs the Sentry traceback (SENTRY_DSN is live on the Archive since
+  WO-7, so the exception is already being captured).** Confirmed 500 live,
+  both via the public domain and the Archive's own onrender.com host
+  (so not the resolver proxy):
+  `/m/welcome-to-clerkbase` (the flagged URL, crawled by Google 2026-08-14),
+  `/m/salt-lake-city-ut-2026-05-05-salt-lake-city-council-meeting` (SLC),
+  `/m/city-of-minneapolis-2026-08-06-climate-infrastructure-committee`
+  (LIMS). Confirmed 200 at the same time: all 8 of `/coverage`'s
+  per-platform example pages (Granicus, CivicClerk, Swagit, Viebit,
+  eScribe, Cablecast, CA State Legislature, Aurora CO), plus two LA City
+  pages (PrimeGov→YouTube, platform "youtube") — so it is *not* all
+  YouTube-backed pages, and not sitewide.
+
+  **What's been isolated (all checked live 2026-08-17):**
+  - `GET /m/{slug}/transcript.txt` returns **200 for the same 500ing
+    slugs** — `crud.get_page_by_slug()` and `_pick_active_version()`
+    work fine on these rows in production, so the crash is in the
+    remaining `meeting_page()` route code or (most likely) the
+    `meeting_page.html` template render. Also: welcome-to-clerkbase's
+    transcript.txt being 200 means that row *has* real segments.
+  - **Not reproducible locally on current code** with plausible
+    same-shaped seeds: an all-null-fields ClerkBase-shaped page (which
+    reproduces the exact `welcome-to-clerkbase` slug) and an
+    slc-platform YouTube-embed page with segments + agenda_items both
+    render 200 locally. So it's prod-data-specific, not a code path
+    that always fails.
+  - `youtube_thumbnail_url()` was bounds-tested directly (None, empty,
+    junk, embed-with-params) — never raises. Not the crash.
+  - **Timeline hint**: Google crawled welcome-to-clerkbase 2026-08-14 —
+    the same day the `Clip`/`hasPart` "key moments" JSON-LD block
+    shipped in `meeting_page.html`, and the "Page indexed without
+    content" alert arrived 2026-08-17, *before* that day's deploys. So
+    the 2026-08-14 template additions are the prime suspect window, and
+    today's state-pages/sitemap PRs (#121/#122) are unlikely to be the
+    cause (also: pages 500 on data the new code handles fine locally,
+    incl. a stateless-jurisdiction test that passes).
+  - Reading the Clip block for type hazards: `item.end and item.end >
+    item.start` (`meeting_page.html`, Clip loop) raises TypeError in
+    Jinja if a stored agenda item mixes types (e.g. string `end`,
+    numeric `start`) — and slc/lims are exactly the platforms whose
+    agenda_items are *synthesized* from curated t= links/structured
+    data rather than a vendor API. Plausible, unproven — check Sentry
+    before coding a fix, then add the failing shape as a fixture test.
+
+  **Impact**: every affected page is fully down for users and crawlers
+  (plain "Internal Server Error" body), and each one Google recrawls
+  while broken risks deindexing — worth fixing promptly. Next step:
+  open Sentry, find the `/m/welcome-to-clerkbase` exception, fix the
+  actual crash, and re-check the other two slugs plus Search Console's
+  flagged list afterwards.
+
+- **Every route on both services returns 405 to HTTP `HEAD` requests —
+  site-wide, app-level, confirmed live and reproduced locally 2026-08-17.**
+  `curl -I` against `/`, `/about`, `/coverage`, `/meetings`,
+  `/state/california`, and `/m/{slug}` all return `405 Method Not
+  Allowed` in production (resolver domain and Archive onrender.com host
+  alike), and a local uvicorn reproduces it — so it's FastAPI route
+  registration (`@app.get` does not auto-register HEAD), not Render.
+  Crawlers and uptime tools commonly probe with HEAD (UptimeRobot's
+  HTTP monitor type defaults to it; Googlebot uses it occasionally for
+  cache revalidation), and a 405 makes the site look broken to any such
+  probe even though GET works. Not user-visible, so not urgent, but
+  cheap to fix: either add `methods=["GET", "HEAD"]` on the public
+  routes or (simpler, covers everything at once) a tiny middleware that
+  rewrites HEAD to GET and strips the response body, on both `app/` and
+  `archive/`. Found 2026-08-17 while investigating the Search Console
+  flags above — first noticed as `curl -I /coverage` → 405.
+
 - **`is_likely_garbled()` only samples the transcript's first 4000
   characters, so a transcript that starts clean and degrades later is
   invisible to it — found 2026-08-16 via a DB skim for transcript-quality
