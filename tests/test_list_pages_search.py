@@ -7,6 +7,7 @@ tests/test_transcription_jobs.py.
 """
 
 from sqlalchemy import select
+from sqlalchemy.orm import undefer
 
 from archive.db import crud
 from archive.db.engine import async_session
@@ -209,7 +210,9 @@ async def test_ingest_resolution_populates_search_corpus():
         page = (
             (
                 await session.execute(
-                    select(MeetingPage).where(MeetingPage.source_url_normalized == url)
+                    select(MeetingPage)
+                    .options(undefer(MeetingPage.search_corpus))
+                    .where(MeetingPage.source_url_normalized == url)
                 )
             )
             .scalars()
@@ -248,7 +251,9 @@ async def test_ingest_resolution_search_corpus_includes_every_version():
         page = (
             (
                 await session.execute(
-                    select(MeetingPage).where(MeetingPage.source_url_normalized == url)
+                    select(MeetingPage)
+                    .options(undefer(MeetingPage.search_corpus))
+                    .where(MeetingPage.source_url_normalized == url)
                 )
             )
             .scalars()
@@ -256,3 +261,23 @@ async def test_ingest_resolution_search_corpus_includes_every_version():
         )
         assert "zzyzxaardvark" in page.search_corpus
         assert "zzyzxcapybara" in page.search_corpus
+
+
+def test_search_corpus_is_deferred_and_never_in_a_plain_meeting_page_select():
+    # Load-bearing, not an optimization (see the column's comment in
+    # archive/db/models.py): search_corpus holds every meeting's full
+    # transcript text, and every `select(MeetingPage)` in crud.py -- incl.
+    # list_pages()'s plain no-keyword browse behind /meetings -- would drag
+    # all of it into memory just to list 20 titles. That is exactly what
+    # OOM-crashed the production Archive on 2026-08-17 the moment the
+    # backfill populated the column. Pin it at the SQL level: the compiled
+    # default SELECT must not name the column at all.
+    compiled = str(select(MeetingPage).compile())
+    assert "search_corpus" not in compiled
+    # ...while an explicit WHERE against it (list_pages()'s Postgres
+    # pre-filter shape) still works -- deferral only affects the SELECT
+    # list, never the column's usability in a predicate.
+    filtered = str(
+        select(MeetingPage.id).where(MeetingPage.search_corpus.ilike("%x%")).compile()
+    )
+    assert "search_corpus" in filtered

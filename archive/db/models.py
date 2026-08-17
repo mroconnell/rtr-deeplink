@@ -79,7 +79,19 @@ class MeetingPage(Base):
     # BACKLOG.md's "Search: move to a materialized/indexed column" entry
     # for why this exists and archive/db/crud.py's list_pages() for how
     # it's queried.
-    search_corpus: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    #
+    # deferred=True is load-bearing, not an optimization: this column
+    # holds every meeting's *entire* transcript text, and every
+    # `select(MeetingPage)` in crud.py -- including list_pages()'s plain
+    # no-keyword browse behind /meetings -- would otherwise pull all of
+    # it into memory just to render 20 title rows. That is exactly what
+    # OOM-crashed the Archive on 2026-08-17 the moment the backfill
+    # populated the column (see BACKLOG_DONE.md). Deferred, it's only
+    # ever referenced in WHERE clauses (ilike / word_similarity), which
+    # never need the value loaded; nothing reads it as an attribute.
+    search_corpus: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True, deferred=True
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
