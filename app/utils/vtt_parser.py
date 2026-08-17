@@ -52,6 +52,20 @@ def parse_vtt(content: str) -> List[Dict[str, Any]]:
             i += 1
             continue
 
+        # A WebVTT NOTE (comment) block -- per the spec (section 4.3), the
+        # keyword is "NOTE" alone or followed by whitespace, and the block
+        # runs through any continuation lines up to the next blank line.
+        # Real example: a Tavares FL CivicClerk BCC meeting stores segments
+        # with literal `NOTE Confidence: 0.962116034285714` lines alternating
+        # with real cue text -- without this check, parse_vtt had no
+        # special-case for a NOTE line and silently absorbed it as text onto
+        # whatever cue was open.
+        if line == "NOTE" or line.startswith("NOTE ") or line.startswith("NOTE\t"):
+            i += 1
+            while i < n and lines[i].strip():
+                i += 1
+            continue
+
         timestamp_match = _TIMESTAMP_LINE_RE.match(line)
 
         if timestamp_match:
@@ -93,6 +107,19 @@ def parse_vtt(content: str) -> List[Dict[str, Any]]:
 
     if current_cue:
         cues.append(current_cue)
+
+    # Inline WebVTT tags (voice tags like <v.Male.spk3 Speaker2>, but also
+    # <c>, <b>, <i>, timestamp tags, etc.) are never valid transcript text --
+    # strip them here rather than leaving that only to dedupe_rollup_cues()/
+    # strip_unknown_caption_markup(), neither of which runs on this path.
+    # Real example: a platform="unknown" meeting (Orange County FL, via
+    # generic_fallback.py -> parse_vtt()) has raw `<v.Male.spk3 Speaker2>`
+    # tags inline in its real, currently-live captions.vtt files (confirmed
+    # live 2026-08-17: otv.ocfl.net's real VTT output for a July 2026 BCC
+    # budget session has 1098 such tags). Reuses the same _TAG_RE already
+    # defined below in this file for dedupe_rollup_cues().
+    for cue in cues:
+        cue["text"] = _TAG_RE.sub("", cue["text"])
 
     normalize_shouting_caption(cues)
     normalize_speaker_change_marker(cues)

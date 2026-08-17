@@ -103,6 +103,69 @@ def test_parse_vtt_real_bakersfield_fixture_with_numbered_cues():
     assert not any(re.search(r"\n\d+$", c["text"]) for c in cues)
 
 
+def test_parse_vtt_strips_inline_voice_tags_real_ocfl_fixture():
+    # Real captions.vtt fetched live 2026-08-17 from otv.ocfl.net (Orange
+    # County FL's live captioning host, discovered via the real
+    # netapps.ocfl.net meeting-listing fixture's own vtt links), trimmed to
+    # its first 12 cues. Confirms the real, currently-live bug documented
+    # in BACKLOG.md: a platform="unknown" meeting parsed via
+    # generic_fallback.py -> parse_vtt() (meeting-7ac1da, a different OCFL
+    # meeting already archived with this exact same raw <v.Male.spkN
+    # SpeakerN> tag shape, where the tags being left in mangled a real
+    # person's name into "misbranded rigors") has these tags inline in its
+    # real source VTT -- parse_vtt() itself did no tag-stripping at all
+    # before this fix.
+    content = load_fixture("generic_fallback", "ocfl_bcc071626aa_captions.vtt")
+    cues = parse_vtt(content)
+    assert len(cues) == 12
+    assert (
+        cues[0]["text"] == ">> Good morning, everyone.\nAnd welcome all of you to the"
+    )
+    assert (
+        cues[2]["text"] == ">> Budget Work Session, July,\nthe 16th 2026, we're in the"
+    )
+    # No raw voice tag should survive into any cue's rendered text.
+    assert not any("<v." in c["text"] for c in cues)
+    assert not any("<" in c["text"] for c in cues)
+
+
+def test_parse_vtt_skips_note_blocks_synthetic():
+    # Real WebVTT NOTE (comment) blocks are a spec-defined construct
+    # (section 4.3) confirmed present in this exact shape in a real
+    # archived meeting -- Tavares FL CivicClerk BCC meeting, 2024-06-11
+    # (tavares-fl-2024-06-11-bcc-regular-board-meeting): its already-parsed
+    # stored segments (fetched live from the meeting's public
+    # /m/{slug}/transcript.txt export while building this fix) alternate
+    # real spoken text with literal `NOTE Confidence: 0.962116034285714`
+    # lines, e.g. "Good morning and welcome to the June 11th, NOTE
+    # Confidence: 0.962116034285714 2024 meeting of the Board ...". The
+    # real source VTT hasn't itself been independently re-fetched (see
+    # BACKLOG.md's own caveat on this entry), so this test is synthetic: it
+    # reconstructs real WebVTT NOTE-block syntax around real confirmed cue
+    # text and the real confidence value seen in production, rather than
+    # replaying an actual captured .vtt file byte-for-byte.
+    content = (
+        "WEBVTT\n\n"
+        "NOTE Confidence: 0.962116034285714\n\n"
+        "00:00:02.450 --> 00:00:02.480\n"
+        "Good morning and welcome to the June 11th,\n\n"
+        "NOTE\n"
+        "This is a multi-line comment block\n"
+        "that should also be skipped entirely.\n\n"
+        "00:00:02.480 --> 00:00:02.500\n"
+        "2024 meeting of the Board\n\n"
+        "NOTE Confidence: 0.962116034285714\n\n"
+        "00:00:02.500 --> 00:00:02.510\n"
+        "of County Commissioners."
+    )
+    cues = parse_vtt(content)
+    assert len(cues) == 3
+    assert cues[0]["text"] == "Good morning and welcome to the June 11th,"
+    assert cues[1]["text"] == "2024 meeting of the Board"
+    assert cues[2]["text"] == "of County Commissioners."
+    assert not any("NOTE" in c["text"] for c in cues)
+
+
 def test_decode_vtt_bytes_real_blank_placeholder():
     # Real 8-byte "WEBVTT\n\n" placeholder Granicus serves when a meeting
     # was never captioned -- fetched live from napacity.granicus.com's
