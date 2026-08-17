@@ -43,7 +43,6 @@ from .utils.jurisdiction_format import format_jurisdiction_display
 from .utils.language import language_display_name
 from .utils.render_warnings import render_warnings_html
 from .utils.transcript_export import to_srt, to_txt
-from .utils.url_normalize import normalize_url
 from .utils.video_thumbnail import youtube_thumbnail_url
 
 logger = logging.getLogger("rtr_archive")

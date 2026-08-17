@@ -35,7 +35,7 @@ REQUEST_DELAY_SECONDS = 1.5
 
 async def main():
     urls_file = sys.argv[1]
-    urls = [l.strip() for l in Path(urls_file).read_text().splitlines() if l.strip() and not l.startswith("#")]
+    urls = [line.strip() for line in Path(urls_file).read_text().splitlines() if line.strip() and not line.startswith("#")]
 
     register_all_finders()
 

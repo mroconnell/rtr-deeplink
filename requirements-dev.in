@@ -7,6 +7,9 @@ pytest-asyncio>=0.24
 # test.yml's non-blocking pip-audit step).
 pip-tools
 pip-audit
+# Lint + format (WO-12, 2026-08-16) -- see ruff.toml for the (deliberately
+# minimal) config and .github/workflows/test.yml for the CI steps.
+ruff
 
 # youtube-transcript-api is deliberately NOT compiled/pinned here --
 # local tooling only (scripts/fetch_youtube_transcripts.py), unpinned for

@@ -1,0 +1,25 @@
+# WO-12 (AUDIT_EXECUTION_BRIEF.md, 2026-08-16). Deliberately minimal --
+# lint + format, not a style overhaul. See .github/workflows/test.yml for
+# how this is wired into CI.
+line-length = 88
+
+[lint]
+# E, F, W: pycodestyle errors/warnings + pyflakes -- unused imports,
+# undefined names, real syntax-adjacent bugs. Not UP/B/I/ANN/D and friends
+# (pyupgrade, bugbear, import-sorting, type-annotation, docstring rules)
+# -- those are stylistic-overhaul territory, out of scope here.
+select = ["E", "F", "W"]
+ignore = [
+    # This repo deliberately imports several modules only after
+    # load_dotenv()/_init_sentry() run (app/main.py, archive/main.py,
+    # worker/main.py, scripts/adapter_canary.py) so env vars are set
+    # before anything that reads them at import time. Real, intentional
+    # pattern, not an accident -- see those files' own comments.
+    "E402",
+    # This codebase's comments/docstrings are deliberately prose-length,
+    # often exceeding 88 chars on purpose (see CLAUDE.md's own style) --
+    # ruff format doesn't rewrap comments, so enforcing this on them would
+    # mean manually re-wrapping prose against the house style, not fixing
+    # a real problem. Still applies to actual code via the formatter.
+    "E501",
+]

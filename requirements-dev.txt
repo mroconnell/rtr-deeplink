@@ -236,6 +236,8 @@ requests==2.34.2
     #   pip-audit
 rich==15.0.0
     # via pip-audit
+ruff==0.16.3
+    # via -r requirements-dev.in
 sentry-sdk==2.68.0
     # via -r requirements.txt
 six==1.17.0

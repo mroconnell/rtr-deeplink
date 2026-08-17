@@ -77,7 +77,7 @@ class YouTubeAssetFinder(AssetFinder):
 
         try:
             info = await asyncio.to_thread(cls._extract_info, video_id)
-        except yt_dlp.utils.DownloadError as e:
+        except yt_dlp.utils.DownloadError:
             # Real production incident, 2026-08-09: YouTube's anti-bot
             # check ("Sign in to confirm you're not a bot") blocks
             # Render's server IP outright, regardless of which internal

@@ -321,7 +321,7 @@ def dedupe_rollup_cues(cues: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     prev_line = ""
     for cue in cues:
         text = _TAG_RE.sub("", cue["text"])
-        lines = [l.strip() for l in text.split("\n") if l.strip()]
+        lines = [part.strip() for part in text.split("\n") if part.strip()]
         line = lines[-1] if lines else ""
         if not line:
             continue
