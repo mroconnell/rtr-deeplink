@@ -6,6 +6,43 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## PITR test restore — confirmed working, real data verified (2026-08-17)
+
+WO-4 (`AUDIT_EXECUTION_BRIEF.md`, Wave 4) left one item genuinely open:
+the documented restore procedure (`README.md`'s "Backups and recovery")
+was written from Render's documented behavior plus this workspace's
+confirmed real settings, but nobody had clicked through an actual
+recovery. Ryan ran a real throwaway PITR restore via Render's dashboard
+(new scratch instance `rtr-deeplink-db-copy`, restored from the latest
+available point, "copy existing settings" selected) and it was verified
+together in this session.
+
+**First check produced a false alarm, since corrected.** `SELECT count(*)
+FROM meeting_pages` against the restored instance's default-suggested
+database (`rtr_deeplink_db`, the name Render's Connect panel defaults
+to) returned 4 — alarmingly low against production's real ~860+ rows.
+Cross-checked live production directly (`curl` against `/coverage` and
+`/api/health`) and confirmed production itself was completely healthy
+(860 rows, health check OK) — ruling out a live incident and pointing at
+either the restore mechanism or the check itself being wrong.
+
+**Root cause: checked the wrong database name, not a broken restore.**
+`\l` on the restored instance showed the Postgres *server* actually hosts
+two logical databases: `rtr_deeplink_db` (the resolver's — real tables
+`meeting_resolutions`/`problem_reports`, confirmed 355 real rows in the
+restore) and `rtr_archive` (the Archive's real database — confirmed
+**1,117 real rows** in `meeting_pages` in the restore, matching
+production). The 4-row result came from a *different*, apparently dead
+set of Archive-shaped tables that happen to also exist inside
+`rtr_deeplink_db` (see the new stale-tables entry in `BACKLOG.md` for
+that separate finding) — not from the real `rtr_archive` database at all.
+
+**Conclusion: the restore procedure works.** All real data (both
+services' worth) came through correctly in the scratch instance. The
+`README.md` procedure's steps are confirmed accurate, not just
+theoretically correct. Scratch instance deleted immediately after
+verification, per plan — never repointed at any real service.
+
 ## Made `scripts/transcribe_backlog_locally.py` safe for a real unattended overnight run (2026-08-17)
 
 Direct fallout from a real session running the script overnight
