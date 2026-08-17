@@ -157,9 +157,7 @@ def test_display_canada_suffix_applies_after_city_of_prefix_is_dropped():
     # of" prefix hasn't been confirmed live; this exercises the two
     # features' composition (prefix-stripping runs before the suffix is
     # appended), not a claim about Airdrie's real stored jurisdiction text.
-    assert (
-        format_jurisdiction_display("City of Airdrie, AB") == "Airdrie, AB (Canada)"
-    )
+    assert format_jurisdiction_display("City of Airdrie, AB") == "Airdrie, AB (Canada)"
 
 
 def test_display_does_not_add_canada_suffix_for_a_us_state():
