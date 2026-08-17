@@ -380,61 +380,54 @@ anything) to build against it.
 
 ## Bugs
 
-- **Three production `/m/*` pages return 500 on GET — all on
-  YouTube-delegating custom platforms (slc, lims, clerkbase) — and this
-  is very likely the real cause of Search Console's "Page indexed
-  without content" flag. Found 2026-08-17 investigating Ryan's flagged-URL
-  list; extensively isolated from outside, root cause NOT yet pinned —
-  needs the Sentry traceback (SENTRY_DSN is live on the Archive since
-  WO-7, so the exception is already being captured).** Confirmed 500 live,
-  both via the public domain and the Archive's own onrender.com host
-  (so not the resolver proxy):
-  `/m/welcome-to-clerkbase` (the flagged URL, crawled by Google 2026-08-14),
-  `/m/salt-lake-city-ut-2026-05-05-salt-lake-city-council-meeting` (SLC),
-  `/m/city-of-minneapolis-2026-08-06-climate-infrastructure-committee`
-  (LIMS). Confirmed 200 at the same time: all 8 of `/coverage`'s
-  per-platform example pages (Granicus, CivicClerk, Swagit, Viebit,
-  eScribe, Cablecast, CA State Legislature, Aurora CO), plus two LA City
-  pages (PrimeGov→YouTube, platform "youtube") — so it is *not* all
-  YouTube-backed pages, and not sitewide.
+- **Schema-migration deploy ordering has now caused a real, sitewide
+  Archive outage (2026-08-17, ~09:25–09:38 PT) — the third schema-change
+  incident in this repo's history, and the strongest evidence yet for
+  WO-10 ("migrations survive deploys", the one open wave in
+  `AUDIT_EXECUTION_BRIEF.md`).** Full incident record in
+  `BACKLOG_DONE.md`'s "search_corpus column deployed before its
+  migration ran" entry; the short version: PR #116 added
+  `MeetingPage.search_corpus` + an Alembic migration, deployed, and for
+  ~13 minutes every `meeting_pages` read on the Archive
+  (`/m/*`, `/meetings`, `/feed.xml`, and the worker's own polling
+  queries) raised `UndefinedColumnError: column meeting_pages.search_corpus
+  does not exist`, because `create_all()` can't ALTER an existing table
+  and the migration hadn't been run against prod yet. Recovered once
+  the migration was applied. **What's still open, the actual ask**: a
+  mechanism — not a documented rule, which already existed and was
+  followed in spirit (the PR was explicitly "schema-only, safe to deploy
+  alone") but couldn't prevent the ORM from selecting the new column the
+  instant the model changed — that makes "model references a column
+  prod doesn't have" impossible to deploy: e.g. `alembic upgrade head`
+  as part of the Archive's Render `preDeployCommand`/build step
+  (Render's own supported hook for exactly this), or at minimum a
+  startup assertion comparing `alembic current` to `head` that fails the
+  health check so the deploy is blocked (WO-6's gate) rather than
+  serving 500s. This is what WO-10 should build; today's incident is its
+  motivating example. Also worth capturing in that work: the
+  `python scripts/backfill_search_corpus.py` one-time step Ryan ran by
+  hand on the Render shell (1,219 rows) is the second manual
+  prod-shell step in two days (`alembic upgrade head` being the first) —
+  fine for now, but a pattern WO-10 should absorb.
 
-  **What's been isolated (all checked live 2026-08-17):**
-  - `GET /m/{slug}/transcript.txt` returns **200 for the same 500ing
-    slugs** — `crud.get_page_by_slug()` and `_pick_active_version()`
-    work fine on these rows in production, so the crash is in the
-    remaining `meeting_page()` route code or (most likely) the
-    `meeting_page.html` template render. Also: welcome-to-clerkbase's
-    transcript.txt being 200 means that row *has* real segments.
-  - **Not reproducible locally on current code** with plausible
-    same-shaped seeds: an all-null-fields ClerkBase-shaped page (which
-    reproduces the exact `welcome-to-clerkbase` slug) and an
-    slc-platform YouTube-embed page with segments + agenda_items both
-    render 200 locally. So it's prod-data-specific, not a code path
-    that always fails.
-  - `youtube_thumbnail_url()` was bounds-tested directly (None, empty,
-    junk, embed-with-params) — never raises. Not the crash.
-  - **Timeline hint**: Google crawled welcome-to-clerkbase 2026-08-14 —
-    the same day the `Clip`/`hasPart` "key moments" JSON-LD block
-    shipped in `meeting_page.html`, and the "Page indexed without
-    content" alert arrived 2026-08-17, *before* that day's deploys. So
-    the 2026-08-14 template additions are the prime suspect window, and
-    today's state-pages/sitemap PRs (#121/#122) are unlikely to be the
-    cause (also: pages 500 on data the new code handles fine locally,
-    incl. a stateless-jurisdiction test that passes).
-  - Reading the Clip block for type hazards: `item.end and item.end >
-    item.start` (`meeting_page.html`, Clip loop) raises TypeError in
-    Jinja if a stored agenda item mixes types (e.g. string `end`,
-    numeric `start`) — and slc/lims are exactly the platforms whose
-    agenda_items are *synthesized* from curated t= links/structured
-    data rather than a vendor API. Plausible, unproven — check Sentry
-    before coding a fix, then add the failing shape as a fixture test.
-
-  **Impact**: every affected page is fully down for users and crawlers
-  (plain "Internal Server Error" body), and each one Google recrawls
-  while broken risks deindexing — worth fixing promptly. Next step:
-  open Sentry, find the `/m/welcome-to-clerkbase` exception, fix the
-  actual crash, and re-check the other two slugs plus Search Console's
-  flagged list afterwards.
+- **Search Console "Page indexed without content" (alert 2026-08-17)
+  is still genuinely unexplained — and specifically NOT explained by
+  the outage above** (that started 09:25 PT today; the alert predates
+  it, and Google's last crawl of the flagged `/m/welcome-to-clerkbase`
+  was 2026-08-14). Best current theory, unverified: that page's stored
+  content on Aug 14 was placeholder-shaped — its title was literally
+  "Welcome to ClerkBase" (a ClerkBase landing-page title, not a
+  meeting) — before a later re-resolve (WO-15's stale-page refresh, or
+  a manual one) turned it into the real Yellow Springs, OH 2022-02-07
+  village-council meeting it shows today. If so, it's the "adapter
+  stored a landing page as a meeting" class of bug (see the ClerkBase
+  row in README's platform table — only one real customer checked so
+  far), and Google's verdict was correct for what it saw. Cheapest
+  next step: Search Console → URL Inspection on that slug → "Request
+  Indexing", then see whether the flag clears on recrawl of the
+  now-real content; if it does, this is closed with no code change. If
+  the flag list has *other* URLs beyond that one, paste them — that
+  would point at a broader thin-content shape worth chasing.
 
 - **Every route on both services returns 405 to HTTP `HEAD` requests —
   site-wide, app-level, confirmed live and reproduced locally 2026-08-17.**
