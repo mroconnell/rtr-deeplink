@@ -6,6 +6,44 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Sitemap no longer lists noindexed `generic_fallback` pages (2026-08-17)
+
+[Done 2026-08-17] **`sitemap.xml` includes `generic_fallback` pages that
+the page template itself `noindex`es — a real, code-confirmed
+contradiction, not just a guess from the alert.** Source: a separate
+Search Console alert (received 2026-08-17, forwarded via Gmail to
+`CLAUDE_BACKLOG.md` first, then promoted to `BACKLOG.md` after tracing it
+to real code) specifically titled "New reasons prevent pages **in a
+sitemap** from being indexed... Excluded by 'noindex' tag" — meaning
+Google is finding these via `sitemap.xml` itself, not just organic
+crawling. Root cause confirmed by reading both sides:
+`archive/templates/meeting_page.html:12-19` emits
+`<meta name="robots" content="noindex">` whenever `page.platform ==
+"unknown"` (i.e. every `generic_fallback`-resolved page — the
+least-verified adapter, by design per `BACKLOG.md`'s trust & safety
+section), but `archive/db/crud.py`'s `list_all_page_slugs()` (used by
+`archive/main.py`'s `/sitemap.xml` route) selected every `MeetingPage`
+slug unfiltered — no `platform != "unknown"` clause — so every
+`generic_fallback` page's URL landed in the sitemap while its own page
+simultaneously told Google not to index it.
+
+**Fix**: added `.where(MeetingPage.platform != "unknown")` to
+`list_all_page_slugs()`'s query (`platform` is `nullable=False` and
+already indexed, `archive/db/models.py:29`), plus the suite's first-ever
+`/sitemap.xml` tests (`tests/test_sitemap.py`): static paths + XML
+content type, an indexable seeded page appearing with `<lastmod>`, a
+seeded `platform="unknown"` page absent from the rendered sitemap (the
+regression case), and a direct crud-level exclusion assertion. Live
+sitemap held 1,223 URLs just before the fix (counted via `curl` — how
+many are `generic_fallback` isn't distinguishable from slugs alone;
+compare the count after the next deploy for the real delta). The
+separate "Page indexed without content" reason from the same 2026-08-17
+alert batch is NOT explained by this — still open in
+`CLAUDE_BACKLOG.md`'s 2026-08-17 entry, along with "Page with redirect"
+(2026-08-16). Re-check Search Console after Google re-fetches the
+sitemap to confirm the "Excluded by 'noindex' tag" reason actually
+clears.
+
 ## Reliability/ops audit execution — Phase 1 + Waves 1, 2, 3, 4, 6 (WO-1, WO-6 through WO-9, WO-11 through WO-13, WO-16) (2026-08-14 through 2026-08-17)
 
 `AUDIT_EXECUTION_BRIEF.md` (root of this repo) tracked a 16-work-order

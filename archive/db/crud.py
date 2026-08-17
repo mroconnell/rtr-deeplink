@@ -1428,16 +1428,20 @@ async def get_jurisdiction_coverage() -> list[dict]:
 
 
 async def list_all_page_slugs() -> list[dict]:
-    """Every page's slug + updated_at, unpaginated -- for sitemap.xml.
+    """Every indexable page's slug + updated_at, unpaginated -- for
+    sitemap.xml. Excludes platform == "unknown" (generic_fallback) pages:
+    meeting_page.html noindexes exactly those, so listing them in the
+    sitemap sends Google contradictory signals (the real Search Console
+    "Excluded by 'noindex' tag ... in a sitemap" alert, 2026-08-17).
     Fine as a single query at hundreds/thousands of rows; revisit (batching,
     a sitemap index + sub-sitemaps) only once actually approaching the
     ~50k-URL point where Google expects that split."""
     async with async_session() as session:
         rows = (
             await session.execute(
-                select(MeetingPage.slug, MeetingPage.updated_at).order_by(
-                    MeetingPage.updated_at.desc()
-                )
+                select(MeetingPage.slug, MeetingPage.updated_at)
+                .where(MeetingPage.platform != "unknown")
+                .order_by(MeetingPage.updated_at.desc())
             )
         ).all()
     return [{"slug": slug, "updated_at": updated_at} for slug, updated_at in rows]
