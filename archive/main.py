@@ -876,10 +876,16 @@ async def meetings_index(
     fuzzy: Optional[str] = None,
     has_agenda: Optional[str] = None,
     has_transcript: Optional[str] = None,
+    # Search Step 2a: "relevance" orders keyword results by ts_rank_cd()
+    # (Postgres full-text search only -- see crud.list_pages()); anything
+    # else, incl. the tolerated empty string, means the default newest-
+    # first. Same tolerant-string shape as the three bools above.
+    sort: Optional[str] = None,
 ):
     fuzzy_bool = fuzzy == "true"
     has_agenda_bool = _parse_optional_bool(has_agenda)
     has_transcript_bool = _parse_optional_bool(has_transcript)
+    sort_relevance = sort == "relevance"
     result = await crud.list_pages(
         page=page,
         jurisdiction=jurisdiction,
@@ -889,6 +895,7 @@ async def meetings_index(
         has_transcript=has_transcript_bool,
         keyword=q,
         fuzzy=fuzzy_bool,
+        sort="relevance" if sort_relevance else "newest",
     )
     return templates.TemplateResponse(
         request,
@@ -902,6 +909,7 @@ async def meetings_index(
             "fuzzy": fuzzy_bool,
             "has_agenda": has_agenda_bool,
             "has_transcript": has_transcript_bool,
+            "sort_relevance": sort_relevance,
             "active_account": get_clerk_user_id(request),
         },
     )

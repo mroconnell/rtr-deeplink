@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 from urllib.parse import urlparse
 
-from sqlalchemy import Text, and_, cast, exists, func, or_, select
+from sqlalchemy import Text, and_, cast, exists, func, literal_column, or_, select, text
 from sqlalchemy.orm import aliased
 
 from app.utils.jurisdiction_enrich import finalize_jurisdiction
@@ -1078,6 +1078,78 @@ def _keyword_conditions(keyword: str, fuzzy: bool) -> tuple[list, list[str]]:
     return conditions, []
 
 
+# --- Search Step 2a: Postgres full-text search over search_corpus ---------
+#
+# meeting_pages.search_tsv is a GENERATED tsvector column added by Alembic
+# revision c1d2e3f4a5b6, Postgres-only, and deliberately NOT mapped on the
+# MeetingPage model (so SQLite / create_all() / ORM inserts never see it).
+# It's referenced only through the literal below, and only after
+# _fts_available() has confirmed the column exists on the connected DB --
+# which is what lets the migration and this code deploy in either order
+# (the 2026-08-17 UndefinedColumnError incident was exactly a model column
+# arriving before its migration; see BACKLOG_DONE.md).
+
+_SEARCH_TSV = literal_column("meeting_pages.search_tsv")
+_FTS_CONFIG = "english"
+_FTS_CHECK_TTL = timedelta(seconds=60)
+_fts_state: dict[str, Any] = {"available": None, "checked_at": None}
+
+
+async def _fts_available(session) -> bool:
+    """True when the connected DB is Postgres AND meeting_pages.search_tsv
+    exists. Cached for _FTS_CHECK_TTL so a search costs at most one extra
+    ~1ms information_schema lookup a minute, and so running the migration
+    against a live service flips FTS on within a minute with no restart.
+    Always False on SQLite (dev/CI) -- the LIKE path stays the tested,
+    dialect-agnostic fallback there."""
+    if session.bind.dialect.name != "postgresql":
+        return False
+    now = datetime.now(timezone.utc)
+    checked_at = _fts_state["checked_at"]
+    if checked_at is not None and now - checked_at < _FTS_CHECK_TTL:
+        return bool(_fts_state["available"])
+    row = (
+        await session.execute(
+            text(
+                "SELECT 1 FROM information_schema.columns "
+                "WHERE table_name = 'meeting_pages' AND column_name = 'search_tsv'"
+            )
+        )
+    ).first()
+    _fts_state["available"] = row is not None
+    _fts_state["checked_at"] = now
+    return bool(_fts_state["available"])
+
+
+def _fts_query(keyword: str):
+    """The tsquery for a user's search string. websearch_to_tsquery()
+    natively understands the syntax parse_query() already accepts --
+    "quoted phrase" (adjacency), -word / -"phrase" (exclusion), bare words
+    ANDed -- and adds `OR` (BACKLOG.md's "no OR support" gap closes for
+    free), stemming (budget/budgets/budgeting) and stopword removal via
+    the 'english' config. `+`/`&`/`and` (parse_query()'s no-ops) become
+    punctuation/stopwords, i.e. still no-ops. Never raises on odd input
+    (unbalanced quotes etc.) -- that's why it's used over to_tsquery()."""
+    return func.websearch_to_tsquery(_FTS_CONFIG, keyword)
+
+
+def _fts_condition(keyword: str):
+    """`search_tsv @@ websearch_to_tsquery(...)` -- answered from the GIN
+    index on the tsvector; never reads search_corpus, which is why it
+    stays fast on a common word where the trigram LIKE path had to
+    detoast and scan every candidate's whole document (16.5s mean under
+    load on prod, 2026-08-17)."""
+    return _SEARCH_TSV.op("@@")(_fts_query(keyword))
+
+
+def _fts_rank(keyword: str):
+    """ts_rank_cd(search_tsv, query): cover-density relevance, for
+    sort=relevance. Reads the tsvector (not the corpus) for each matched
+    row, so it's the one FTS operation that scales with match count --
+    opt-in, default order stays newest-first."""
+    return func.ts_rank_cd(_SEARCH_TSV, _fts_query(keyword))
+
+
 def _has_agenda_condition():
     """SQL equivalent of Python's `bool(mp.agenda_items)`. agenda_items is
     a JSON column that can hold SQL NULL (older rows), JSON `null`
@@ -1149,6 +1221,7 @@ async def list_pages(
     keyword: Optional[str] = None,
     fuzzy: bool = False,
     created_after: Optional[datetime] = None,
+    sort: str = "newest",
 ) -> dict:
     """Paginated meeting list behind /meetings (and the saved-search alert
     sweep, via find_new_matches_for_saved_search()).
@@ -1156,14 +1229,32 @@ async def list_pages(
     Every filter is applied in SQL -- jurisdiction (via
     jurisdiction_search_terms()'s state-name expansion), date range,
     created_after, has_transcript, has_agenda (_has_agenda_condition()),
-    and exact-mode keyword search (_keyword_conditions() against the
-    materialized `MeetingPage.search_corpus`, GIN-trigram-indexed on
-    Postgres). Pagination is LIMIT/OFFSET plus one COUNT(*), so a plain
-    browse or an exact search costs O(page_size) memory no matter how many
-    meetings match -- the 2026-08-17 rewrite, after the previous shape
-    (SQL pre-filter, then load every candidate's full transcript JSON for
-    a Python re-check, then paginate in Python) OOM-crashed the Archive on
-    common terms and took 25-35s when it survived. See BACKLOG_DONE.md.
+    and keyword search. Pagination is LIMIT/OFFSET plus one COUNT(*), so a
+    plain browse or a keyword search costs O(page_size) memory no matter
+    how many meetings match -- the 2026-08-17 rewrite, after the previous
+    shape (SQL pre-filter, then load every candidate's full transcript
+    JSON for a Python re-check, then paginate in Python) OOM-crashed the
+    Archive on common terms and took 25-35s when it survived. See
+    BACKLOG_DONE.md.
+
+    Keyword search has two SQL forms, chosen per request by
+    _fts_available() (Search Step 2a, 2026-08-17):
+    - **Full-text (Postgres with the search_tsv column present)**:
+      `search_tsv @@ websearch_to_tsquery('english', keyword)` -- answered
+      from the GIN index on the generated tsvector without reading the
+      corpus, so cost no longer scales with how common the word is
+      (the trigram LIKE path had to detoast + scan every candidate's whole
+      document: 16.5s mean under real load on prod for "budget"). Adds
+      stemming, stopword removal and `OR`; phrases/exclusions keep their
+      meaning. Semantics therefore differ slightly from matches(): a
+      substring inside a longer word ("cat" in "concatenate") no longer
+      matches, an all-stopword query ("the") matches nothing.
+    - **LIKE (SQLite, or Postgres before the migration has run)**:
+      _keyword_conditions() against `search_corpus` -- byte-for-byte
+      matches()'s exact mode. This is what dev/CI exercise.
+    `sort="relevance"` (only meaningful with a keyword, FTS only) orders
+    by ts_rank_cd(); the default "newest" keeps created_at DESC so the
+    UX doesn't change under anyone.
 
     Fuzzy mode is the one exception: unquoted words are matched in Python
     by matches()'s bounded Levenshtein against each candidate's
@@ -1226,11 +1317,6 @@ async def list_pages(
         conditions.append(_has_agenda_condition())
     elif has_agenda is False:
         conditions.append(~_has_agenda_condition())
-    fuzzy_words: list[str] = []
-    if keyword:
-        keyword_conditions, fuzzy_words = _keyword_conditions(keyword, fuzzy)
-        conditions.extend(keyword_conditions)
-
     # Explicit columns, not the MeetingPage entity: keeps every row light
     # (no identity map, no chance of a deferred column sneaking back in)
     # and lets the fuzzy path stream + discard each corpus as it goes.
@@ -1253,17 +1339,32 @@ async def list_pages(
         TranscriptVersion.id,
         TranscriptVersion.transcript_warnings,
     ]
-    if fuzzy_words:
-        columns.append(MeetingPage.search_corpus)
-    stmt = (
-        select(*columns)
-        .outerjoin(TranscriptVersion, default_version)
-        .order_by(MeetingPage.created_at.desc(), MeetingPage.id.desc())
-    )
-    if conditions:
-        stmt = stmt.where(and_(*conditions))
 
     async with async_session() as session:
+        # Keyword form is decided here, per request, because detecting the
+        # FTS column needs a session. Fuzzy mode never uses FTS: its
+        # typo-tolerant word match is Python's (see _keyword_conditions()),
+        # and its phrase/exclusion narrowing stays on the LIKE path.
+        fuzzy_words: list[str] = []
+        order_by = [MeetingPage.created_at.desc(), MeetingPage.id.desc()]
+        if keyword:
+            if not fuzzy and await _fts_available(session):
+                conditions.append(_fts_condition(keyword))
+                if sort == "relevance":
+                    order_by.insert(0, _fts_rank(keyword).desc())
+            else:
+                keyword_conditions, fuzzy_words = _keyword_conditions(keyword, fuzzy)
+                conditions.extend(keyword_conditions)
+        if fuzzy_words:
+            columns.append(MeetingPage.search_corpus)
+        stmt = (
+            select(*columns)
+            .outerjoin(TranscriptVersion, default_version)
+            .order_by(*order_by)
+        )
+        if conditions:
+            stmt = stmt.where(and_(*conditions))
+
         if fuzzy_words:
             # Python-authoritative for the fuzzy words; stream so at most
             # one corpus text is in memory at a time. `keyword` is passed

@@ -4,17 +4,21 @@ match, and snippet/segment extraction.
 
 Division of labor with `crud.list_pages()` as of 2026-08-17: **exact-mode
 matching happens entirely in SQL** against `MeetingPage.search_corpus` --
-this module's `compute_search_corpus()`, precomputed at ingest and
-GIN-trigram-indexed on Postgres -- because `search_corpus ILIKE '%term%'`
-is the very same predicate `matches()` computes (`build_corpus()` over the
-same fields, lowercased on both sides), so `matches()` no longer runs for
-exact searches at all. `parse_query()` is shared so SQL and Python read
-a query identically. `matches()` still decides **fuzzy** words in Python
-(bounded Levenshtein against real corpus words has no recall-safe SQL
-form) over each candidate's streamed `search_corpus` text, and
-`find_snippet()` runs only over the returned page's default-version
-segments. See `list_pages()`/`_keyword_conditions()` docstrings and
-BACKLOG.md's "Search: move to a materialized/indexed column" entry.
+this module's `compute_search_corpus()`, precomputed at ingest -- either
+as Postgres full-text search (`search_tsv @@ websearch_to_tsquery(...)`
+over a generated tsvector, once Alembic revision c1d2e3f4a5b6 is applied
+-- stemming, `OR`, index-answered) or, before that migration / on
+SQLite, as `search_corpus LIKE '%term%'`, which is the very same
+predicate `matches()` computes (`build_corpus()` over the same fields,
+lowercased on both sides). Either way `matches()` no longer runs for
+exact searches. `parse_query()` is shared so the LIKE path and Python
+read a query identically (websearch_to_tsquery reads the same syntax
+natively). `matches()` still decides **fuzzy** words in Python (bounded
+Levenshtein against real corpus words has no recall-safe SQL form) over
+each candidate's streamed `search_corpus` text, and `find_snippet()`
+runs only over the returned page's default-version segments. See
+`list_pages()` / `_keyword_conditions()` / `_fts_condition()` docstrings
+and BACKLOG.md's "Search: move to a materialized/indexed column" entry.
 """
 
 import html

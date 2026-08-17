@@ -616,33 +616,45 @@ limitation. A state with zero indexable meetings 404s rather than
 rendering an empty shell, and every `/m/{slug}` page whose jurisdiction
 has a state now links "More {State} meetings" to its state page.
 
-**Search** covers title, jurisdiction, agenda item text, and the default
-transcript version's segment text — not just title/jurisdiction like the
-original v1. Two modes, chosen by an "exact"/"fuzzy" checkbox in the UI
-(`fuzzy=true` query param), exact by default:
-- **Exact** (default, faster): a plain case-insensitive substring match
-  against everything above, concatenated. No per-word computation, so
-  this is the cheap path a search that doesn't need typo tolerance should
-  use.
-- **Fuzzy**: tokenizes that same text into words and matches each query
-  term against real transcript words within a small edit-distance
-  (typo tolerance) — so a query for "traffic" still finds a transcript
-  that says "trafic" or "traffiq" (real transcription errors, not
-  hypothetical), where exact substring search would silently miss it.
+**Search** covers title, jurisdiction, agenda item text, and *every*
+transcript version's segment text (so a demoted version's text still
+counts toward a match, though the listing's badge and snippet reflect the
+default version). All of that is materialized at ingest into one
+lowercased `meeting_pages.search_corpus` column (`compute_search_corpus()`
+in `archive/utils/search.py`, refreshed by `crud._refresh_search_corpus()`
+on every ingest and when a Whisper transcription completes), and every
+filter runs in SQL with `LIMIT/OFFSET` + a windowed count — see
+`list_pages()`'s docstring. Query syntax: bare words are ANDed,
+`"quoted phrase"` requires adjacency, `-word` / `-"phrase"` excludes.
+Three code paths, chosen per request:
+- **Full-text (Postgres, once Alembic revision `c1d2e3f4a5b6` has been
+  applied)** — the default in production: `search_tsv @@
+  websearch_to_tsquery('english', q)` against a `GENERATED` tsvector
+  column with a GIN index, answered from the index without reading the
+  corpus, so a common word costs the same as a rare one. Adds stemming
+  (budget/budgets/budgeting), stopword removal and `OR`. Word match, not
+  substring. `?sort=relevance` ("Sort by relevance" checkbox) orders by
+  `ts_rank_cd`; the default stays newest-first. `list_pages()`
+  feature-detects the column (`crud._fts_available()`) and falls back to
+  the next path when it's absent, so code and migration can deploy in
+  either order.
+- **Exact substring (SQLite in dev/CI, or Postgres before that
+  migration)**: `search_corpus LIKE '%term%'` — byte-for-byte the
+  predicate `archive/utils/search.py`'s `matches()` computes, GIN-trigram
+  indexed on Postgres (revision `bf4f54a11e5f`).
+- **Fuzzy** (`fuzzy=true`, "Fuzzy search (…slower)" checkbox): each query
+  word must be within a small edit distance of a real word in the
+  meeting's text — so "traffic" still finds a transcript that says
+  "trafic" or "traffiq" (real transcription errors). Python-side by
+  necessity (bounded Levenshtein has no recall-safe SQL form), streamed
+  over `search_corpus` text one row at a time; phrases/exclusions still
+  narrow in SQL first. Opt-in and a few seconds archive-wide.
 
-Both modes run entirely in Python, at query time, over whatever
-`list_pages()`'s own DB query already returned — see `archive/utils/
-search.py` and the docstring on `list_pages()` for the full reasoning.
-Deliberately **not** what this eventually needs at real scale: a
-materialized/indexed search column (e.g. Postgres trigram search over a
-`tsvector`-style column, populated at ingest time) instead of scanning
-every candidate meeting's JSON on every search request. Fine today at a
-few dozen meetings; tracked as a real follow-up (not a hypothetical one)
-in `BACKLOG.md`, including what populating that column would look like
-without adding a job queue (piggybacking on the ingest write that's
-already backgrounded via FastAPI's `BackgroundTasks`, not blocking
-`/api/resolve`'s response — see "Push, after resolving" above) and what a
-one-time backfill for already-archived meetings would need.
+`BACKLOG.md`'s "Search: move to a materialized/indexed column" entry has
+the full history — including the 2026-08-17 day this went from a Python
+scan over transcript JSON (which OOM-crashed the Archive on common terms)
+to the shape above — and the one remaining piece (2b: a vocabulary table
+to make fuzzy index-backed).
 
 ## On-demand transcription
 

@@ -22,6 +22,7 @@
     <form method="get" action="/meetings" class="meeting-search-form">
       <input type="text" name="q" value="{{ q }}" placeholder="Search title, jurisdiction, agenda, or transcript&hellip;" aria-label="Search meetings">
       {% if fuzzy %}<input type="hidden" name="fuzzy" value="true">{% endif %}
+      {% if sort_relevance %}<input type="hidden" name="sort" value="relevance">{% endif %}
       <button type="submit" class="cassette-btn">Search</button>
     </form>
     <div class="subtitle search-hint">
@@ -80,6 +81,10 @@
           <label class="checkbox-filter">
             <input type="checkbox" name="fuzzy" value="true"{% if fuzzy %} checked{% endif %}>
             Fuzzy search (tolerates transcript typos, slower)
+          </label>
+          <label class="checkbox-filter">
+            <input type="checkbox" name="sort" value="relevance"{% if sort_relevance %} checked{% endif %}>
+            Sort by relevance (default: newest first)
           </label>
         </div>
         <div class="filters-row filters-row-actions">
@@ -144,6 +149,7 @@
       {% if date_from %}{% set _ = qs_parts.append("date_from=" + date_from|urlencode) %}{% endif %}
       {% if date_to %}{% set _ = qs_parts.append("date_to=" + date_to|urlencode) %}{% endif %}
       {% if fuzzy %}{% set _ = qs_parts.append("fuzzy=true") %}{% endif %}
+      {% if sort_relevance %}{% set _ = qs_parts.append("sort=relevance") %}{% endif %}
       {% if has_agenda %}{% set _ = qs_parts.append("has_agenda=true") %}{% endif %}
       {% if has_transcript %}{% set _ = qs_parts.append("has_transcript=true") %}{% endif %}
       {% set qs = qs_parts|join("&") %}
