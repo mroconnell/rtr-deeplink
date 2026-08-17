@@ -3001,45 +3001,6 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     `ryan@how-to-adu.com` — these are operator-facing ops digests, not
     site-facing addresses, so probably out of scope for this ask, but
     flagging since they're the same "which Ryan address" question.
-- **[JUST-DO-IT] Lifecycle email bugs found by the user 2026-08-11 — three of the four
-  fixed 2026-08-11, see BACKLOG_DONE.md for the full root-cause detail on
-  each.** The fourth, "People are talking about…" (saved-search alert
-  emails, `marketing/LIFECYCLE_EMAILS.md`'s #5), was always a real new
-  feature rather than a bug in this batch — see the "Email alerts for
-  saved searches" entry directly below, which is the same feature. That
-  doc's own "Digest variant of #5" (batching multiple alerts into one
-  email) is flagged there too as later-still: Resend has no built-in
-  batching, so a digest needs its own accumulation + scheduled-or-
-  event-driven send logic, not just copy.
-- **[IMPROVEMENT-ROUND] Email alerts for saved searches — confirmed 2026-08-09 as the most
-  concrete "worth paying for" feature identified so far.** Depends on
-  accounts and search both existing first (search already live; accounts
-  is not). This is what turns a one-time lookup into something a
-  journalist keeps coming back to for an ongoing beat — it converts
-  passive search into active monitoring, the actual job-to-be-done for
-  someone covering the same story across dozens of jurisdictions over
-  time. Also directly benefits from the crawler re-prioritization below
-  (more corpus = more useful alerts). **As of the expanded accounts scope
-  above (2026-08-10), this is no longer a separate build** — it's the
-  `notify_by_email` toggle on `NoteSubscription`, phase 2 of that plan,
-  alongside the equivalent in-profile `notify_in_profile` toggle the
-  user also asked for. Kept as its own bullet here since it's still the
-  concrete "worth paying for" signal that justifies building that phase
-  at all, not because it's architecturally separate anymore. **Copy
-  already approved**: this is `marketing/LIFECYCLE_EMAILS.md`'s #5,
-  "People are talking about…" — subject `Somebody said "[keyword]"`,
-  quotes the matching transcript line, deep-links straight to it. When
-  this actually gets built: needs real match-detection (event-driven off
-  meeting ingestion/transcription, reusing the same filter logic
-  `/meetings` already runs, rather than a new polling job — keeps this
-  app's "no background job queue" stance intact) and a per-alert
-  one-click unsubscribe token (the doc's copy shows both a "[manage]" and
-  an "[unsubscribe from this alert]" link, distinct from the existing
-  full-list `/unsubscribe`). The doc's own "digest variant" (batch
-  multiple alerts into one email instead of one-per-match) is flagged
-  there as later still — Resend has no built-in batching/digest feature,
-  so that needs its own accumulation logic on top of whatever ships
-  first.
 - **[IMPROVEMENT-ROUND] Proactive transcription crawler — re-prioritized 2026-08-09 to
   precede accounts/billing, then explicitly held back again 2026-08-10
   ("not yet — keep prioritizing bugs/gaps").** The reasoning below for

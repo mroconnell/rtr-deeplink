@@ -81,6 +81,14 @@ under everything else. This repo extracts and fixes just that part.
   item left behind a real residual gap (a follow-up not yet built, an
   edge case still unfixed), split that part back out as its own live
   entry in `BACKLOG.md`, cross-linking to `BACKLOG_DONE.md` for context.
+- **A PR that ships a feature must update every doc that named it as
+  unbuilt, and the PR description must list which.** `README.md`,
+  `BACKLOG.md`, and this file all describe real, current gaps — a PR that
+  closes one of those gaps but leaves the doc still describing it as
+  future/unbuilt work recreates exactly the kind of doc-drift this repo's
+  own "App-wide audit" backlog entry already flagged as a real, confirmed
+  problem (see this file's pytest-suite bullet above for one concrete
+  instance of it), not a hypothetical one.
 - **`CLAUDE_BACKLOG.md` is a separate, unreviewed suggestions list**,
   distinct from `BACKLOG.md`. When asked to brainstorm improvements/
   features rather than record a bug or gap found while working, write them

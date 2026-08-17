@@ -64,6 +64,62 @@ rendering correctly on the same page.
 Full `pytest` (930 passed, 4 skipped) and `ruff format`/`ruff check` both
 clean.
 
+## Saved-search email alerts shipped — daily digest cron, not the originally-planned real-time/NoteSubscription design (BACKLOG.md entry corrected 2026-08-17)
+
+[Done, discovered already-shipped 2026-08-17] BACKLOG.md's "Email alerts
+for saved searches" entry still described this as pure future work built
+on top of a not-yet-built `NoteSubscription` table (part of the much
+larger, still-speculative accounts "Note"/profile-pages social-layer plan
+in BACKLOG.md's "Accounts + token billing" section) with real-time,
+event-driven match detection. Checked the actual code rather than trusting
+the backlog text: the feature is fully shipped, via a **materially
+simpler mechanism** than either of those two things.
+
+**What actually exists**: `archive/search_alerts.py`'s `run_search_alerts()`
+is a daily sweep (`.github/workflows/send-search-alerts.yml`, cron `35 23
+* * *`, calling `GET /admin/send-search-alerts` — same GitHub Actions
+pattern `daily-report.yml` already uses in place of a paid Render Cron
+Job), not real-time/event-driven. It reuses the existing `SavedItem`
+table directly (a `last_alerted_at` cursor column added to it) rather
+than the proposed new `NoteSubscription` table — no accounts "phase 2" or
+`Note`/profile-pages model was needed at all. For every `item_type ==
+"saved_search"` row, it re-runs the saved query
+(`crud.find_new_matches_for_saved_search()`), resolves a real matching
+transcript segment + deep link per match when there's a keyword
+(`utils/search.py`'s `find_matching_segment()`), groups every user's new
+matches across *all* their saved searches into **one digest email per
+user** (`email_utils.compose_search_alert_digest()`) rather than one
+email per match, and only advances `last_alerted_at` for searches that
+contributed to a digest that actually sent — a failed Resend send or a
+missing email never silently drops a match. The recipient's email is
+looked up live from Clerk's Backend API at send time and never stored
+(`get_user_contact()`), matching `SavedItem`'s existing zero-PII design.
+Supports `dry_run` (compose + log, no send, no cursor advance) via both
+the admin endpoint and `scripts/send_search_alerts.py`'s CLI wrapper.
+
+**The per-alert unsubscribe token the original entry said would be
+needed** (distinct from the existing full-list `/unsubscribe`) is real
+and shipped too: `GET /alerts/unsubscribe?token=...`
+(`archive/main.py`), signed by `link_tokens.sign_saved_item_id()`.
+
+**Test coverage**: `tests/test_search_alerts_matching.py`,
+`tests/test_search_alerts_run.py`, `tests/test_search_alert_email.py`,
+and `tests/test_search_alerts_routes.py` — matching logic, the full sweep
+(grouping, cursor-advance-only-on-send, dry-run), email composition, and
+the HTTP-level admin/unsubscribe routes.
+
+**Correcting the record**: this is genuinely a different feature from what
+BACKLOG.md described, not the same one finished — the entry's real-time,
+event-driven, one-email-per-match design (`marketing/LIFECYCLE_EMAILS.md`'s
+#5, "People are talking about…", subject `Somebody said "[keyword]"`) was
+never built; what shipped went straight to what that same entry called
+the "digest variant... flagged as later still." The unrelated
+`NoteSubscription`/`Note`/profile-pages social-layer plan in BACKLOG.md's
+"Accounts + token billing" section is untouched by this — it remains a
+real, separate, still-unbuilt piece of future scope (in-profile
+notifications specifically still have no equivalent to this email path),
+not duplicated here.
+
 ## Empty ("zero-value") meeting pages excluded from browse/sitemap/feed at query time; Upcoming/Recent date pills (2026-08-17)
 
 [Done 2026-08-17] Started as Ryan's idea for a morning Routine that would
@@ -3390,6 +3446,31 @@ audit, extraction tournament, and design rationale this work grew out of.
 
 ## Bugs
 
+- **[Done 2026-08-17] Confirmed all 4 of the user's originally-reported
+  2026-08-11 lifecycle-email bugs are fixed in current code, closing the
+  stale live entry BACKLOG.md still carried for this batch.** Read the
+  actual current code rather than trusting the backlog text, per this
+  repo's own "don't just trust the backlog text" convention: (a)
+  transcript excerpt always empty in completion emails — `archive/db/
+  crud.py`'s `_job_dict()` includes `"transcript_version_id":
+  job.transcript_version_id`; (b) email header background/label colors
+  reversed — `archive/utils/email.py`'s `_branded_wrapper()` has the outer
+  `<td>` in `#212529` (dark, matching the site's `bg-dark` navbar) with
+  the inner `<span>` carrying its own `#b71c1c` red background, the
+  correct on-site `.dymo-label` contrast (red label *inside* a dark bar,
+  not the reverse); (c) hardcoded ALL CAPS instead of Title Case — the
+  same function's `wordmark = "Red Tape Recordings"` is real Title Case,
+  not `RED TAPE RECORDINGS`; (d) "Red Tape Recordings" text not linking
+  back to the site — both `_branded_wrapper()`'s header wordmark and
+  `_signoff_html()`'s sign-off line wrap the text in a real `<a
+  href="{base_url}">` when `base_url` is set. See this file's two
+  matching 2026-08-11 entries below for the original root-cause/fix
+  detail on each. BACKLOG.md's live stub for this batch (which already
+  knew 3 of these were fixed and only flagged the unrelated "People are
+  talking about…" saved-search-alert item as a separate, still-open
+  feature — see the "Email alerts for saved searches" entry, corrected
+  the same day this entry was written) is removed now that nothing about
+  this batch is still open.
 - **[Done 2026-08-16] Hallucinated Whisper transcript (Telugu/Sinhala/
   symbol spam, nonsense English, `transcript_language` pushed as `"te"`)
   root-caused to stereo phase cancellation in `extract_chunk_audio()`'s
