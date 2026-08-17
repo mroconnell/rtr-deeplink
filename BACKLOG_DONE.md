@@ -1714,6 +1714,114 @@ audit, extraction tournament, and design rationale this work grew out of.
 
 ## Bugs
 
+- **[Done 2026-08-16] Multi-chunk transcription duplicated real
+  sentences at every ~900s chunk boundary on an HLS source — found live
+  by the user on a real production page (Boulder County, CO,
+  `bouldercounty-2026-02-05-historic-preservation-advisory-board`), root-
+  caused by directly diffing real audio, and fixed in the shared code
+  path both `worker/main.py` (the live cloud worker) and
+  `scripts/transcribe_backlog_locally.py` use.** The user spotted a real
+  duplicate right at the chunk 1/chunk 2 seam (900s = 15:00) on the live
+  page: chunk 1 cut off mid-sentence ("...there's an exhibit at the.")
+  and chunk 2 restated the same sentence from the top before continuing
+  ("This whole question about truck caro...there's an exhibit at the
+  Colorado Railroad Museum..."). Confirmed as a systemic pattern, not a
+  one-off, by the user independently ("the repetition often happens at
+  15:00 minute marker") and by a same-day single-chunk meeting (Welland,
+  ON, 783s, never split) showing no such artifact.
+
+  **Root cause, confirmed empirically, not assumed** (per this file's own
+  "don't claim a data path works/fails without a positive example"
+  convention): `worker/segment_utils.py`'s `chunk_start()`/
+  `chunk_duration()` have zero designed overlap on paper (chunk N covers
+  exactly `[N*900, (N+1)*900)`), so the real mechanism had to be in
+  `app/platforms/media_probe.py`'s `extract_chunk_audio()`, which uses
+  fast/input-side ffmpeg `-ss` seeking (before `-i`). Fetched Boulder
+  County's real HLS playlist directly: segments are ~36s each, and the
+  segment covering the true 900s mark actually starts at 887.8s — not a
+  clean multiple of 36, so this doesn't self-correct across sources.
+  Then extracted the *real* audio three ways from the real source
+  (`https://cdn1.isilive.ca/.../GMT20260206-010224_Recording_gallery_1280x720.mp4/playlist.m3u8`)
+  and transcribed each with `faster-whisper`: (1) production's actual
+  fast `-ss 900` extraction, (2) an accurate/output-side `-ss 900`
+  extraction for comparison, (3) an accurate continuous slice spanning
+  850-950s as ground truth. Result: the accurate extraction at exactly
+  900s correctly starts mid-sentence ("Colorado Railroad Museum, so down
+  in Golden..."), while production's fast extraction at the same
+  requested timestamp actually contains audio from ~883-887s onward —
+  the *exact* sentence chunk 1 had just finished, re-transcribed in
+  full. Confirmed via ffmpeg's own read statistics too: the accurate
+  extraction had to read ~31.7MB (nearly the whole preceding stream) to
+  reach 900s; the fast one read only ~1.6MB — proving the fast path
+  really does jump straight to a nearby segment rather than decoding
+  forward, and that jump can land before the requested second for an
+  HLS source specifically (a direct-file source has no such segment
+  granularity to snap to, so this doesn't affect a non-HLS platform).
+
+  **Fix**: not a seek-accuracy fix — making `-ss` accurate for HLS means
+  ffmpeg has to download and decode the *entire* preceding stream (the
+  ~31MB vs. ~1.6MB measured above for just this one chunk), a cost that
+  only grows with how far into a meeting a chunk starts, silently
+  turning every later chunk of a long meeting into a near-full
+  re-download. Instead, `worker/segment_utils.py` gained
+  `count_seam_overlap_segments()`/`merge_chunk_segments()`: a word-level
+  fuzzy match (via `difflib.SequenceMatcher` ratio over sliding
+  suffix/prefix word windows, not whole-segment text equality — two
+  independent Whisper decodes of the same audio don't reliably agree on
+  segment boundaries or punctuation, confirmed by the real transcripts
+  above) anchored at the actual seam, tuned against the real confirmed
+  overlap (an 18-word run) and checked against a real false-positive
+  case (a short, ordinary shared phrase like "thank you very much"
+  scores well below the real duplicate's match ratio). Wired into both
+  real call sites so neither was left half-fixed: `worker/main.py`'s
+  `process_next_chunk()` (`claim_next_chunk()` now also returns the
+  job's `partial_segments` so the worker can compare against what's
+  already persisted; `report_chunk_result()` gained an opt-in
+  `drop_previous_tail` param, default 0 so every pre-existing
+  caller/test is unaffected) and `scripts/transcribe_backlog_locally.py`'s
+  `transcribe_meeting()` (`merge_chunk_segments()` in place of a plain
+  `.extend()`).
+
+  **Verified against real data, not just that the code runs**: re-ran
+  `scripts/transcribe_backlog_locally.py --dry-run --url
+  <the same Boulder County URL>` (no live page modified) after the fix —
+  log line reads `chunk 2/2 transcribed (86 segments, dropped 3
+  seam-duplicate segment(s))`, and printing the actual resulting
+  segments around the boundary confirms a clean, single flow directly
+  from chunk 1's last real sentence ("...tie to what Larry brought up
+  previously.") into chunk 2's fuller restatement ("This whole question
+  about tricharro...Colorado Railroad Museum...") with no duplicate
+  text. `tests/test_worker_segment_utils.py` carries this as a
+  permanent regression test using the verbatim real production duplicate
+  text plus real `faster-whisper` output captured during this
+  investigation (commented as real, not synthetic, per this file's own
+  test-honesty convention) — 827 total tests passing.
+
+  **Audit of already-shipped exposure**: added `GET
+  /internal/transcription/completed-multichunk` (token-gated, read-only,
+  same reasoning as `/internal/schema-info`) specifically to answer this
+  without needing direct production `DATABASE_URL` access. Real result,
+  queried right after this fix deployed: **118 completed
+  `TranscriptionJob` rows have `total_chunks > 1`** (i.e. went through
+  the buggy chunk-boundary path at least once), spanning `job_id` 1
+  through 192, `completed_at` 2026-08-08 through 2026-08-16 — every one
+  of them a real candidate for this exact duplication having shipped to
+  a live public page before this fix existed. This count covers only
+  jobs the *cloud worker's* queue processed (real user-requested
+  transcriptions plus its own idle-time auto-generation, both of which
+  go through `TranscriptionJob`/`claim_next_chunk()`); it does **not**
+  cover `scripts/transcribe_backlog_locally.py`'s own local-Mac backlog
+  runs (Boulder County itself included), since that script deliberately
+  never touches the `transcription_jobs` table at all (see its own
+  module docstring) — those are a real, separate, currently-uncounted
+  population also affected by the same bug, sized differently if ever
+  needed (e.g. via `TranscriptVersion` rows with `source="transcribed"`
+  not linked to a `total_chunks > 1` job). Deliberately did not
+  re-transcribe or modify any of the 118 live pages as part of this work
+  — that decision belongs to the user, and the full list (job id, page
+  slug, chunk count, duration, completion date) was handed over
+  separately for exactly that call.
+
 - **[Done 2026-08-14] Correction to WO-3 of `AUDIT_EXECUTION_BRIEF.md`
   ("Stop shipping machine-local `.claude/` config") — `.claude/` was
   never actually tracked in this repo.** The brief's premise, echoed from
