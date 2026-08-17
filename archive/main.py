@@ -43,7 +43,13 @@ from .db import crud
 from .db.engine import init_models
 from .utils import email as email_utils
 from .utils.clerk_auth import clerk_frontend_api_url, get_clerk_user_id
-from .utils.jurisdiction_format import format_jurisdiction_display
+from .utils.jurisdiction_format import (
+    STATE_SLUG_TO_ABBR,
+    US_STATE_ABBR_TO_NAME,
+    format_jurisdiction_display,
+    state_abbr_from_jurisdiction,
+    state_slug_from_abbr,
+)
 from .utils.language import language_display_name
 from .utils.render_warnings import render_warnings_html
 from .utils.transcript_export import to_srt, to_txt
@@ -719,6 +725,8 @@ async def meeting_page(request: Request, slug: str, version: Optional[int] = Non
         else False
     )
 
+    state_abbr = state_abbr_from_jurisdiction(page["jurisdiction"])
+
     return templates.TemplateResponse(
         request,
         "meeting_page.html",
@@ -739,6 +747,11 @@ async def meeting_page(request: Request, slug: str, version: Optional[int] = Non
             # design note).
             "active_account": active_account,
             "meeting_saved": meeting_saved,
+            # For the "More {State} meetings" link to /state/{slug} --
+            # both None when the stored jurisdiction has no recognized
+            # ", ST" suffix, and the template omits the link.
+            "state_name": US_STATE_ABBR_TO_NAME[state_abbr] if state_abbr else None,
+            "state_slug": state_slug_from_abbr(state_abbr) if state_abbr else None,
         },
     )
 
@@ -848,12 +861,35 @@ async def account_saved(request: Request):
 async def coverage(request: Request):
     coverage_rows = await crud.get_platform_coverage()
     jurisdictions = await crud.get_jurisdiction_coverage()
+    states = await crud.get_state_coverage_index()
     return templates.TemplateResponse(
         request,
         "coverage.html",
         {
             "coverage": coverage_rows,
             "jurisdictions": jurisdictions,
+            "states": states,
+            "active_account": get_clerk_user_id(request),
+        },
+    )
+
+
+@app.get("/state/{state_slug}")
+async def state_page(request: Request, state_slug: str):
+    abbr = STATE_SLUG_TO_ABBR.get(state_slug)
+    data = await crud.get_state_page_data(abbr) if abbr else None
+    if data is None:
+        # Unknown slug, or a real state with no indexable meetings yet --
+        # same in-route 404 pattern as /m/{slug}.
+        return templates.TemplateResponse(
+            request, "not_found.html", {}, status_code=404
+        )
+    return templates.TemplateResponse(
+        request,
+        "state_page.html",
+        {
+            **data,
+            "state_slug": state_slug,
             "active_account": get_clerk_user_id(request),
         },
     )
@@ -871,8 +907,12 @@ _SITEMAP_STATIC_PATHS = ["/", "/about", "/coverage", "/meetings"]
 async def sitemap():
     base = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
     entries = await crud.list_all_page_slugs()
+    states = await crud.get_state_coverage_index()
     body = templates.get_template("sitemap.xml.jinja").render(
-        base_url=base, entries=entries, static_paths=_SITEMAP_STATIC_PATHS
+        base_url=base,
+        entries=entries,
+        states=states,
+        static_paths=_SITEMAP_STATIC_PATHS,
     )
     return Response(content=body, media_type="application/xml")
 

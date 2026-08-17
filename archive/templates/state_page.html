@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}{{ name }} public meeting videos & transcripts | Red Tape Recordings{% endblock %}
+{% block meta %}
+  <meta name="description" content="Archived public government meetings from {{ jurisdiction_count }} {{ name }} cities, counties, and agencies — {{ total_pages }} meeting{{ 's' if total_pages != 1 else '' }} with video and searchable transcripts.">
+  <link rel="alternate" type="application/rss+xml" title="Newly archived {{ name }} meetings" href="/feed.xml?jurisdiction={{ name|urlencode }}">
+  {#- Self-referential canonical, deliberately unlike /meetings' filter-blind
+     one -- each state page is its own indexable SEO surface. #}
+  {% if public_base_url %}
+  <link rel="canonical" href="{{ public_base_url }}/state/{{ state_slug }}">
+  <meta property="og:url" content="{{ public_base_url }}/state/{{ state_slug }}">
+  {% endif %}
+  <meta property="og:title" content="{{ name }} public meeting videos & transcripts">
+  <meta property="og:description" content="Watch and search archived {{ name }} government meetings — city councils, county boards, and public agencies — with transcripts and deep links to specific moments.">
+  <meta property="og:type" content="website">
+{% endblock %}
+{% block content %}
+  <main class="about-page">
+    <h1>{{ name }} public meetings</h1>
+    <p class="about-lede">Video, transcripts, and deep links for {{ total_pages }} archived public meeting{{ 's' if total_pages != 1 else '' }} from {{ jurisdiction_count }} {{ name }} government{{ 's' if jurisdiction_count != 1 else '' }} — city councils, county boards, and public agencies.</p>
+    <p>Don't see your city? <a href="/">Paste a meeting link</a> and see what comes back — if it's on a platform we already know, it'll just work.</p>
+
+    <h2>Governments covered in {{ name }}</h2>
+    <div class="table-responsive">
+      <table class="table table-sm table-striped align-middle coverage-table">
+        <thead>
+          <tr>
+            <th scope="col">Government</th>
+            <th scope="col">Meetings</th>
+            <th scope="col">Example meeting</th>
+            <th scope="col">Transcript</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in jurisdictions %}
+          <tr>
+            <td>{{ row.jurisdiction|jurisdiction_display }}</td>
+            <td>{{ row.page_count }}</td>
+            <td><a href="/m/{{ row.example.slug }}">{{ row.example.title or "Untitled meeting" }}</a></td>
+            <td>
+              {% if row.example.has_transcript %}
+              <span class="transcript-badge" title="A transcript is available for this meeting">&#10003; Transcript</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <h2 style="margin-top: 2.5rem;">Recently archived</h2>
+    <div class="meeting-list">
+      {% for m in recent_pages %}
+      <div class="calendar-candidate meeting-result-row">
+        <div class="calendar-candidate-main">
+          <a href="/m/{{ m.slug }}">{{ m.title or "Untitled meeting" }}</a>
+          <span class="calendar-candidate-date">
+            {%- if m.jurisdiction %}{{ m.jurisdiction|jurisdiction_display }}{% endif -%}
+            {%- if m.date %} &middot; {{ m.date }}{% endif -%}
+          </span>
+        </div>
+        {% if m.has_transcript %}
+        <span class="transcript-badge" title="A transcript is available for this meeting">&#10003; Transcript</span>
+        {% else %}
+        <span class="transcript-badge transcript-badge-placeholder" aria-hidden="true">&#10003; Transcript</span>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+
+    <p style="margin-top: 1.5rem;">
+      <a href="/meetings?jurisdiction={{ name|urlencode }}">Search all {{ total_pages }} {{ name }} meetings &rarr;</a>
+      &nbsp;&middot;&nbsp;
+      <a href="/coverage">All coverage by state and platform</a>
+    </p>
+  </main>
+{% endblock %}

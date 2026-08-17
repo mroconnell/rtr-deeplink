@@ -1,6 +1,11 @@
 from archive.utils.jurisdiction_format import (
+    STATE_SLUG_TO_ABBR,
+    US_STATE_ABBR_TO_NAME,
+    US_STATE_NAME_TO_ABBR,
     format_jurisdiction_display,
     normalize_state_suffix,
+    state_abbr_from_jurisdiction,
+    state_slug_from_abbr,
 )
 
 
@@ -135,3 +140,41 @@ def test_display_keeps_consolidated_city_and_county_label():
 def test_display_none_and_empty_pass_through():
     assert format_jurisdiction_display(None) is None
     assert format_jurisdiction_display("") == ""
+
+
+def test_abbr_to_name_round_trips_all_states():
+    assert len(US_STATE_ABBR_TO_NAME) == 51
+    for name, abbr in US_STATE_NAME_TO_ABBR.items():
+        assert US_STATE_ABBR_TO_NAME[abbr].lower() == name
+
+
+def test_abbr_to_name_dc_casing():
+    # A naive .title() would give "District Of Columbia".
+    assert US_STATE_ABBR_TO_NAME["DC"] == "District of Columbia"
+
+
+def test_state_slug_map_round_trips_all_states():
+    assert len(STATE_SLUG_TO_ABBR) == 51
+    for abbr in US_STATE_ABBR_TO_NAME:
+        assert STATE_SLUG_TO_ABBR[state_slug_from_abbr(abbr)] == abbr
+    assert STATE_SLUG_TO_ABBR["california"] == "CA"
+    assert STATE_SLUG_TO_ABBR["district-of-columbia"] == "DC"
+    assert STATE_SLUG_TO_ABBR["new-hampshire"] == "NH"
+
+
+def test_state_abbr_from_jurisdiction_extracts_canonical_suffix():
+    assert state_abbr_from_jurisdiction("Napa, CA") == "CA"
+    assert state_abbr_from_jurisdiction("Sacramento County, CA") == "CA"
+    assert state_abbr_from_jurisdiction("Washington, DC") == "DC"
+
+
+def test_state_abbr_from_jurisdiction_rejects_stateless_strings():
+    # No comma at all -- state-legislature-style body names.
+    assert state_abbr_from_jurisdiction("Illinois General Assembly") is None
+    # Trailing text that isn't a valid abbreviation.
+    assert state_abbr_from_jurisdiction("Meeting, Room 4") is None
+    # Lowercase suffix is NOT accepted -- the stored form is canonical
+    # uppercase via normalize_state_suffix() at write time.
+    assert state_abbr_from_jurisdiction("Napa, ca") is None
+    assert state_abbr_from_jurisdiction(None) is None
+    assert state_abbr_from_jurisdiction("") is None

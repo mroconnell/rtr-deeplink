@@ -5,6 +5,12 @@
     <loc>{{ base_url }}{{ path }}</loc>
   </url>
 {%- endfor %}
+{%- for s in states %}
+  <url>
+    <loc>{{ base_url }}/state/{{ s.slug }}</loc>
+    <lastmod>{{ s.last_updated.strftime('%Y-%m-%d') }}</lastmod>
+  </url>
+{%- endfor %}
 {%- for entry in entries %}
   <url>
     <loc>{{ base_url }}/m/{{ entry.slug }}</loc>

@@ -1451,6 +1451,13 @@ async def coverage(request: Request):
     )
 
 
+@app.get("/state/{path:path}")
+async def archive_state_page(path: str, request: Request):
+    return await _proxy_to_archive(
+        f"state/{path}", str(request.query_params), request.headers.get("cookie")
+    )
+
+
 @app.get("/sitemap.xml")
 async def archive_sitemap():
     return await _proxy_to_archive("sitemap.xml", "")

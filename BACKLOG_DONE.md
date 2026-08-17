@@ -6,6 +6,69 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Per-state SEO landing pages — `/state/{slug}` (2026-08-17)
+
+[Done 2026-08-17] Built from a direct user ask ("all the meetings in a
+state, eg California, Florida") in a discoverability-focused session —
+never a `BACKLOG.md` item, so recorded done directly here. Related but
+deliberately deferred: `CLAUDE_BACKLOG.md`'s per-jurisdiction hub pages
+(`/j/{slug}`), whose open questions (slug scheme over messy stored
+jurisdiction strings, thin-content threshold) don't apply here — state
+pages group by the stored jurisdiction's *write-time-canonicalized*
+`", ST"` suffix (`normalize_state_suffix()` runs on every ingest), which
+sidesteps the messy-string problem entirely. Production motivation
+checked before building: ~871 covered jurisdictions on live `/coverage`,
+575 with a clean `", ST"` suffix (CA 153, TX 105, FL 74).
+
+**What shipped**: `GET /state/{slug}` (e.g. `/state/california`) on the
+Archive + a matching resolver proxy entry (`app/main.py`, mirrors
+`/coverage`'s — without it the route 404s in production). New
+`archive/templates/state_page.html`: state-specific title/meta
+description, self-referential canonical (deliberately unlike
+`/meetings`' filter-blind one), a governments table (same shape as
+`/coverage`'s "Every place we've covered"), the 25 most recent meetings,
+and a link to pre-filtered `/meetings?jurisdiction={StateName}` (full
+name, so `jurisdiction_search_terms()` expands it). Data:
+`crud.get_state_page_data()` — **anchored `LIKE '%, CA'` suffix match,
+not `list_pages()`'s substring ilike** ("Decatur, GA" contains "ca" and
+would leak into California; a regression test covers exactly this), with
+a Python-side exact-suffix re-check since SQLite's LIKE is
+case-insensitive while Postgres's isn't — and
+`crud.get_state_coverage_index()` (one row per covered state, max
+`updated_at` as sitemap lastmod). Both exclude `platform == "unknown"`
+pages, same trust posture as the same-day sitemap noindex fix (entry
+below). Internal linking for crawlability: `/coverage` gained a "Browse
+by state" section, and every `/m/{slug}` page whose jurisdiction has a
+state links "More {State} meetings". `sitemap.xml` gained a per-state
+loop with real lastmod. New state helpers in
+`archive/utils/jurisdiction_format.py` (`US_STATE_ABBR_TO_NAME` inverted
+from the existing name→abbr map with a DC casing override,
+`STATE_SLUG_TO_ABBR`, `state_abbr_from_jurisdiction()`,
+`state_slug_from_abbr()`). Unknown state slugs and real states with zero
+indexable meetings both 404.
+
+**Known limitations, deliberate**: jurisdictions without a recognized
+`", ST"` suffix (school districts named without one, state agencies,
+non-US like Elliot Lake ON) appear on no state page (~296 of 871 in
+production at build time); no pagination (capped at 25 recent + the
+`/meetings` link); no JSON-LD (CollectionPage/ItemList judged negligible
+SERP value for a listing page — possible follow-up).
+
+**Verification**: 19 new tests green (`tests/test_state_pages.py`,
+`tests/test_sitemap.py` additions, `tests/test_jurisdiction_format.py`
+additions), full suite 889 passed. Browser-verified per repo convention
+against seeded local data on both services: styled rendering via the
+resolver proxy (8011) incl. the Browse-by-state section and the meeting
+page's state link, direct-archive rendering, `/state/nowhere` +
+`/state/wyoming` 404s, `xmllint`-valid sitemap with state URLs present
+and an unknown-platform page's slug absent, on both ports. One
+shared-test-DB collision found and fixed along the way: an exclusion
+assertion originally seeded "Fresno, CA" as the unknown-platform row,
+which collided with `tests/test_civicclerk.py`'s own indexable Fresno
+row when the full suite ran — switched to Coalinga, CA (real Census
+place, used by no other test), per the suite's unique-identifiers
+convention.
+
 ## Sitemap no longer lists noindexed `generic_fallback` pages (2026-08-17)
 
 [Done 2026-08-17] **`sitemap.xml` includes `generic_fallback` pages that
