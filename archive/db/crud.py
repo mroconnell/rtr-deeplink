@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 from urllib.parse import urlparse
 
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, func, or_, select
 
 from app.utils.jurisdiction_enrich import finalize_jurisdiction
 
@@ -22,12 +22,13 @@ from ..utils.search import (
     compute_search_corpus,
     find_snippet,
     matches,
+    parse_query,
     tokenize,
 )
 from ..utils.slugify import build_base_slug, random_suffix
 from ..utils.transcription_quality import detect_hallucination_warnings
 from ..utils.url_normalize import normalize_url
-from .engine import async_session
+from .engine import DATABASE_URL, async_session
 from .models import (
     MeetingPage,
     MeetingPageUrlAlias,
@@ -958,6 +959,68 @@ async def get_page_by_slug(slug: str) -> Optional[dict]:
         }
 
 
+_IS_POSTGRES = not DATABASE_URL.startswith("sqlite")
+
+# Recall-safe on purpose: word_similarity() only needs to narrow the
+# candidate set without ever excluding a genuine fuzzy match -- matches()
+# (archive/utils/search.py) still runs downstream on whatever this lets
+# through and makes the real per-word Levenshtein decision. Deliberately
+# loose starting point; needs tuning against real Postgres data before
+# this path is trusted in prod, see BACKLOG.md.
+_FUZZY_WORD_SIMILARITY_THRESHOLD = 0.15
+
+
+def _escape_ilike(term: str) -> str:
+    """Escapes `\\`, `%`, `_` so a literal one of these typed in a search
+    box is matched literally against `search_corpus`, not treated as an
+    ILIKE wildcard/escape character."""
+    return term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def _keyword_conditions_postgres(keyword: str, fuzzy: bool) -> list:
+    """Postgres-only: translates `keyword` into SQL conditions against
+    `MeetingPage.search_corpus` that narrow candidates via the GIN
+    trigram index, using the exact same phrase/word/exclusion parsing
+    `matches()` uses at the final Python-side match step below --
+    `list_pages()` never trusts this alone, it only shrinks the row set
+    Python then re-checks with `matches()`/builds snippets from. See
+    `list_pages()`'s own docstring for why this only runs on Postgres.
+
+    Phrases and exclusions always use exact ILIKE substring matching
+    (mirroring `matches()`'s own "always exact, even in fuzzy mode" rule
+    for phrases/exclusions); only unquoted included words branch on
+    `fuzzy`, using `word_similarity()` -- not `similarity()`/`%`, which
+    would compare the *whole* multi-KB corpus against a short word and be
+    dominated by corpus length rather than by whether a matching word
+    exists inside it.
+    """
+    phrases, words, excluded_phrases, excluded_words = parse_query(keyword)
+    conditions = []
+    for phrase in phrases:
+        conditions.append(
+            MeetingPage.search_corpus.ilike(f"%{_escape_ilike(phrase)}%", escape="\\")
+        )
+    for phrase in excluded_phrases:
+        conditions.append(
+            ~MeetingPage.search_corpus.ilike(f"%{_escape_ilike(phrase)}%", escape="\\")
+        )
+    for word in excluded_words:
+        conditions.append(
+            ~MeetingPage.search_corpus.ilike(f"%{_escape_ilike(word)}%", escape="\\")
+        )
+    for word in words:
+        if fuzzy:
+            conditions.append(
+                func.word_similarity(word, MeetingPage.search_corpus)
+                > _FUZZY_WORD_SIMILARITY_THRESHOLD
+            )
+        else:
+            conditions.append(
+                MeetingPage.search_corpus.ilike(f"%{_escape_ilike(word)}%", escape="\\")
+            )
+    return conditions
+
+
 async def list_pages(
     *,
     page: int = 1,
@@ -981,21 +1044,28 @@ async def list_pages(
     caption superseded by a later AI transcript, or vice versa) is still
     findable even though the listing itself only ever displays the
     default version's language/has_transcript badge. See
-    `archive/utils/search.py`. No search index, no materialized column:
-    matching runs in Python, at query time, over whatever this function's
-    own SQL query already returned -- deliberately not the "real" fix
-    (Postgres trigram search + a materialized/indexed text column) that
-    full transcript-body search eventually needs at real scale. Fine for
-    the Archive's current size (dozens of meetings); see BACKLOG.md
-    ("Search: move to a materialized/indexed column at scale") for what
-    outgrowing this looks like and why it isn't built that way now.
+    `archive/utils/search.py`.
+
+    On Postgres, a keyword search first narrows candidates in SQL via
+    `_keyword_conditions_postgres()` against `MeetingPage.search_corpus`
+    (a materialized, GIN-trigram-indexed column populated at ingest time
+    -- see `archive/db/models.py` and BACKLOG.md's "Search: move to a
+    materialized/indexed column" entry) -- so this function never has to
+    pull every candidate page's full transcript JSON just to test a
+    match. Only that narrowed row set then goes through the exact same
+    Python `matches()`/`find_snippet()` logic as before, which still
+    makes the authoritative match decision and builds snippets -- the SQL
+    step is a fast pre-filter, not a replacement for it. On SQLite
+    (dev/CI, which never has enough rows for this to matter) this
+    pre-filter is skipped entirely and the full Python-side scan runs
+    exactly as it always has -- see `_IS_POSTGRES` below.
+
     `jurisdiction`/`date_from`/`date_to`/`has_transcript` still filter in
     SQL first (cheap, and `has_transcript` needs no JSON at all), so a
     keyword-less, agenda-less browse of the page never fetches transcript
-    JSON it doesn't need. `has_agenda` and `keyword` can only be evaluated
-    once agenda/transcript content is in hand, so pagination for those
-    happens in Python, over the SQL-filtered candidate set, not via
-    LIMIT/OFFSET.
+    JSON it doesn't need. `has_agenda` can only be evaluated once agenda
+    content is in hand, so pagination still happens in Python over the
+    SQL-filtered candidate set, not via LIMIT/OFFSET, even on Postgres.
 
     `date` is stored as an ISO "YYYY-MM-DD" string, not a Date column --
     lexicographic comparison on that format matches chronological order, so
@@ -1028,6 +1098,8 @@ async def list_pages(
         conditions.append(TranscriptVersion.id.is_not(None))
     elif has_transcript is False:
         conditions.append(TranscriptVersion.id.is_(None))
+    if keyword and _IS_POSTGRES:
+        conditions.extend(_keyword_conditions_postgres(keyword, fuzzy))
 
     # The display-facing columns (language/has_transcript badge) still
     # come from the default version only, via this same outerjoin as
