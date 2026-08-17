@@ -81,6 +81,301 @@ file, harmless on SQLite.) Live production numbers recorded in the
 `BACKLOG.md` search entry once #129 deploys. Step 2 (FTS ranking; fuzzy
 vocabulary table) backlogged there with full designs.
 
+## [Done — moved from BACKLOG.md 2026-08-17] `/meetings` search & saved items — UI gaps found 2026-08-11
+
+Moved wholesale during the 2026-08-17 backlog triage pass: Ryan's own
+triage table marked this whole section `done?` (jurisdiction/state
+normalization gaps found and mostly fixed), and every sub-item below
+either turned out to be a non-issue on investigation or shipped a real
+fix. **One caveat worth flagging rather than silently dropping**: the
+first bullet's "Update 2026-08-14" leaves one genuinely open thread —
+whether `active_account` evaluates correctly for a real signed-in visitor
+arriving via the `/meeting?url=` → `/m/{slug}` redirect specifically has
+never been reproduced (needs a real logged-in session this repo's
+sessions don't have). If that repro check still matters, it's worth its
+own live `BACKLOG.md` entry rather than assuming it's covered here.
+
+- ~~**"Save this meeting"/"Save this search" buttons render for every
+  visitor regardless of sign-in status, and an anonymous click silently
+  no-ops."**~~ **Investigated 2026-08-13, turned out to already be
+  false.** Live-checked as a genuinely signed-out visitor on both
+  `/meetings` and a real `/m/*` page — neither Save button renders at
+  all. Confirmed via `git log -S "if active_account"` that both
+  templates' `{% if active_account %}` gating has been in place since the
+  very first accounts-phase commits (`47f4ab5`/`a1ac0ec`), not added
+  later — this bug's premise was incorrect from the moment it was
+  written 2026-08-12, most likely a misread of the code rather than a
+  real regression. No fix needed.
+
+  **Update 2026-08-14: a different, real report — no save button while
+  actually signed in**, on
+  [redtaperecordings.com/meeting?url=...sccgov.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=17601](https://redtaperecordings.com/meeting?url=https%3A%2F%2Fsccgov.iqm2.com%2FCitizens%2FSplitView.aspx%3FMode%3DVideo%26MeetingID%3D17601)
+  (the real Santa Clara County meeting from this file's own IQM2 build
+  notes). Confirmed structurally: `app/templates/meeting.html` (the
+  `/meeting?url=` live-resolve page) has **zero** save-button markup at
+  all — grep for "save" across that template and its JS returns nothing
+  — so a save button structurally cannot appear there regardless of
+  login state, only after the client-side `/api/resolve` call redirects
+  to the real `/m/{slug}` page once archived. Live-replayed this exact
+  URL (signed out, since this session has no way to authenticate as the
+  user): it does redirect correctly to
+  `/m/the-county-of-santa-clara-ca-2026-08-11-board-of-supervisors-regular-meeting`
+  with real title/jurisdiction/video, and that page's own save buttons
+  are correctly gated behind `{% if active_account %}`
+  ([meeting_page.html:163](archive/templates/meeting_page.html:163)/
+  [:216](archive/templates/meeting_page.html:216)). **Genuinely
+  unconfirmed by this investigation**: whether `active_account` evaluates
+  correctly for a real signed-in visitor after arriving via this specific
+  `/meeting?url=` → redirect chain — that's exactly what the user
+  reported failing, but reproducing it needs their actual logged-in
+  session, not something checkable without real account credentials.
+  Worth a repro check: does the save button appear if a logged-in user
+  navigates directly to the `/m/{slug}` URL rather than via `/meeting?url=`?
+  If yes, the bug is specifically in whether the Clerk session cookie
+  survives this redirect path; if no, `active_account` itself has a
+  broader problem.
+
+- ~~**"Save this search" can silently save the wrong/stale search, and
+  gives no feedback that it's already been saved.**~~ **Investigated
+  2026-08-13: the stale-value bug was already fixed 2026-08-11 (see
+  `archive/static/meeting_list.js`'s own header comment/`isStale()`,
+  predating this backlog entry) — Save is disabled the moment the search
+  box/filters diverge from what's actually applied. The remaining piece,
+  the Save/Unsave toggle + visual cue, built 2026-08-13 — full detail in
+  `BACKLOG_DONE.md`.**
+
+- **Meeting title/jurisdiction display: casing still inconsistent row to
+  row — the state-abbreviation and truncation parts of this gap shipped
+  2026-08-11, see BACKLOG_DONE.md.** State names are now normalized to
+  their 2-letter abbreviation at Archive ingest time
+  (`archive/utils/jurisdiction_format.py`'s `normalize_state_suffix()`,
+  wired into `archive/db/crud.py`'s `_find_or_create_page()`), and long
+  titles/jurisdiction lines now truncate with an ellipsis on `/meetings`
+  (`.calendar-candidate-main a` / `.calendar-candidate-date` in
+  `style.css`) instead of wrapping. **Still open, deliberately not
+  touched**: city/county/meeting-body name casing itself. That's
+  effectively unbounded (tens of thousands of real values) with real
+  edge cases a blind `.title()`/casing rule gets wrong (acronyms like
+  "MTA"/"ZBA", multi-word or apostrophe'd city names) — every adapter
+  still stores whatever casing the source page used, unchanged, and
+  fixing that safely would need either a real per-value dictionary/
+  exception list or a narrower heuristic (e.g. something like
+  `vtt_parser.py`'s existing `normalize_shouting_caption()` ALL-CAPS
+  detector, which only re-cases when its own heuristic is confident,
+  rather than a blanket `.title()`) — not attempted this pass, since a
+  wrong guess here silently corrupts a real name with no easy undo.
+
+  **Also flagged by the user 2026-08-12, real and separate from the above:
+  some jurisdictions never had a state at all to begin with** —
+  `normalize_state_suffix()` only fires on a trailing `", <State>"`
+  suffix, so a jurisdiction with no state component just passes through
+  untouched. **Audited, designed, and partly built 2026-08-12 — full
+  detail in `BACKLOG_DONE.md`.** A new shared module,
+  `app/utils/jurisdiction_enrich.py`, fills in a missing state using real
+  US Census Bureau data (counties, places, and ZIP-to-county/ZIP-to-place
+  crosswalks, ~3.2MB, checked into the repo) plus a small confirmed-domain
+  registry for names that are ambiguous nationally (e.g. "Detroit" is a
+  real city in 4 different states) — tried in priority order: confirmed
+  domain → unambiguous name lookup → a ZIP-anchored address found in page
+  text, scoped to never let a county government's own city-shaped mailing
+  address stand in for the county itself (see `BACKLOG_DONE.md` for why
+  that's a real, specific trap, not a hypothetical one). Wired into
+  **Granicus** (the largest single source of this gap) and **Cablecast**
+  so far.
+
+  **Update 2026-08-12: fully wired now, every adapter identified in the
+  audit — full detail in `BACKLOG_DONE.md`.** Legistar, PrimeGov, eScribe,
+  CivicWeb, and LIMS all now call the same shared
+  `jurisdiction_enrich.enrich_jurisdiction_text()`; CivicClerk gets a
+  narrower fallback (`lookup_city_state()` when its own API's
+  `location.city` is present but `location.state` is empty) since its
+  data already arrives as separate structured fields rather than free
+  text. Two real bugs in the shared module were found and fixed along the
+  way (an "Oklahoma City"-shaped double-normalization collision with
+  "Oklahoma borough, PA", and a since-reverted PrimeGov window-cap
+  regression — see the bug entry above, still genuinely open). Full suite
+  green (551 tests); live-verified against real Cablecast, Granicus,
+  PrimeGov, and CivicWeb pages.
+
+  **Still open, real gaps not touched by either pass**: YouTube's
+  `uploader`-as-jurisdiction and the cases where no jurisdiction is set at
+  all (`generic_fallback.py`, `civicplus.py`) are different problems this
+  module doesn't address (not a missing state — a wrong or absent field
+  entirely). CivicClerk's new fallback is schema-verified but not
+  content-verified — no real customer with a blank `location.state` has
+  turned up yet to confirm it fires correctly in practice (covered by a
+  synthetic test only, per `tests/test_civicclerk.py`).
+
+  **Update 2026-08-15: a real customer confirms an even blanker case than
+  the one flagged above, and it has a clean, already-built fix path.**
+  [losaltoshillsca.portal.civicclerk.com/event/4567/media](https://losaltoshillsca.portal.civicclerk.com/event/4567/media)
+  (Los Altos Hills, CA — City Council Regular Meeting, June 18, 2026)
+  shows a completely blank jurisdiction live on
+  [redtaperecordings.com](https://redtaperecordings.com/meeting?url=https://losaltoshillsca.portal.civicclerk.com/event/4567/media).
+  Confirmed via `curl` against the real API
+  (`losaltoshillsca.api.civicclerk.com/v1/Events/4567`):
+  `eventLocation` is `{"city": null, "state": null, ...}` — not just a
+  missing state, the *whole* location object is empty. `civicclerk.py`'s
+  only fallback ([civicclerk.py:81-86](app/platforms/civicclerk.py:81))
+  is `if city and not state: state = lookup_city_state(city)` — it never
+  fires when `city` itself is falsy, so `jurisdiction` ends up `None`
+  with zero fallback attempted at all, unlike every other adapter this
+  audit wired up.
+
+  **Confirmed fix needs no new code, only a new call.**
+  `jurisdiction_enrich.extract_jurisdiction_chain()` (built 2026-08-15 for
+  `JURISDICTION_METADATA_PLAN.md`, see `BACKLOG_DONE.md`) already resolves
+  this exact URL correctly with zero extra network calls — tested live in
+  the repo's own venv (`wordninja` isn't in a bare `python3`'s path,
+  needed `source .venv/bin/activate` first):
+  `extract_jurisdiction_chain(page_text="", html="", url=url)` →
+  `"Los Altos Hills, CA"`, via the chain's validated-subdomain tier
+  (`losaltoshillsca` → wordninja splits to `["los", "altos", "hills",
+  "ca"]` → strips the trailing state abbreviation → `"Los Altos Hills"`
+  validates against the Census places table). CivicClerk was never wired
+  into this chain — the module's own comment names Swagit and
+  generic_fallback as "the first two callers," not CivicClerk, even
+  though CivicClerk's blank-location case is exactly the "adapter's own
+  primary extraction came up empty" scenario the chain was built for.
+
+  **A second, independent, even richer real signal was found while
+  checking "the agenda or anywhere else" per the user's ask — CivicClerk's
+  own agenda file is fetchable as plain text and the adapter never reads
+  it at all today.** The `Events/{id}` response's `publishedFiles` array
+  includes a real "Agenda" entry
+  (`GetMeetingFile(fileId=8983,plainText=false)`); calling the same
+  endpoint with `plainText=true` instead returns a JSON `{"blobUri": ...}`
+  pointing to a SAS-signed Azure blob `.txt` — confirmed live, and its
+  real content starts: `"Town of Los Altos Hills / City Council Regular
+  Meeting Agenda / Thursday, June 18, 2026, at 5:30 PM / Council Chambers,
+  26379 Fremont Road, / Los Altos Hills, CA 94022"`. That's a clean match
+  for the chain's stoprule tier (`_STOPRULE_TRIGGER_RE`, "Town of X") —
+  actually a *stronger* signal than the subdomain tier, since it doesn't
+  depend on wordninja splitting a customer's subdomain cleanly. Today
+  `civicclerk.py` never fetches `publishedFiles`/`GetMeetingFile` at all,
+  for jurisdiction or anything else — this is a real, unused, confirmed
+  data source, not a hypothetical one.
+
+  **Path (1) fixed 2026-08-16, wave 2 item 6 — full detail in
+  `BACKLOG_DONE.md`.** `civicclerk.py` now calls
+  `extract_jurisdiction_chain(page_text="", html="", url=url)` as a
+  fallback whenever `eventLocation` yields no usable city, confirmed
+  live on this exact Los Altos Hills example (new regression test in
+  `tests/test_civicclerk.py`). ~~**Path (2) still open, not built**~~
+  **Fixed 2026-08-16 — full detail in `BACKLOG_DONE.md`.** New
+  `_fetch_agenda_text()` fetches the `publishedFiles` "Agenda" entry's
+  plaintext blob (`GetMeetingFile(...,plainText=true)` → `{"blobUri":
+  ...}` → the SAS blob itself) and feeds it through the same
+  `extract_jurisdiction_chain()`, tried only after path (1) has already
+  failed (costs two extra requests). New regression test uses a
+  synthetic subdomain/place name so it doesn't depend on path (1) also
+  failing to fire.
+
+  ~~**New gap found 2026-08-14, live-testing `/meetings`' jurisdiction
+  filter: searching "California" finds nothing, but "CA" works.**~~
+  **Fixed 2026-08-14 — full detail in `BACKLOG_DONE.md`'s "Wave 1" entry.**
+
+## [Done — moved from BACKLOG.md 2026-08-17] Deep links
+
+Moved wholesale during the 2026-08-17 backlog triage pass: Ryan's own
+triage table marked this section `done?` (both real gaps found auditing
+the deep-link scheme were fixed the same day they were found).
+
+The `t`/`line` scheme itself is sound and hasn't changed since the initial
+scaffold (`t`, raw seconds, always wins the actual seek; `line=seg-N` is
+display-only highlighting — see the comment above `applyDeepLink()` in
+`shared_static/deep_link.js` and the precedence-bug fix below). That's
+already the "robust, won't shift under us" design a deep-link contract
+needs. Three real gaps found auditing it (2026-08-08) — two fixed since,
+one was already this file's own known-open item now closed too:
+
+- **~~Two independent copies of `t`/`line`/`seg-N` logic, and
+  `line=seg-N` could point at the wrong line after a version change~~ —
+  both fixed 2026-08-08.** Was: `app/static/player.js` and
+  `archive/static/meeting_page.js` duplicated the exact same deep-link
+  parsing/apply logic, kept in sync only by a comment; separately, a
+  bookmarked `/m/some-meeting?t=630&line=seg-42` could highlight the
+  wrong line if that page's default `TranscriptVersion` was ever
+  replaced (`t=630` would still seek correctly — a wrong-highlight bug,
+  not a broken link). Fixed together, since both touched the same
+  parse/apply code: the shared logic (`getQueryParams`,
+  `getDeepLinkTime/Line/Version`, `updateUrlParams`, `findActiveSegment`,
+  `highlightSegment`, `applyDeepLink`, the `segments`/`autoScrollEnabled`
+  module state) now lives in one new file, `shared_static/deep_link.js`
+  — a new top-level directory mounted identically by both `app/main.py`
+  and `archive/main.py` at `/shared-static` (one file on disk, two
+  independent `StaticFiles` mounts, so either service serves it whether
+  reached directly or through the resolver's reverse proxy). Loaded
+  before `player.js`/`meeting_page.js` in each page's `{% block scripts
+  %}`, both of which had their duplicate copies deleted. `updateUrlParams`
+  now automatically tags every generated link with the Archive's current
+  `TranscriptVersion.id` (read from a new `data-version-id` attribute on
+  `archive/templates/meeting_page.html`'s `<body>`, via a `body_attrs`
+  block added to `archive/templates/base.html` matching the resolver's
+  existing pattern) — automatic per call site, not something a future
+  new "copy link" button could forget to pass. `applyDeepLink` trusts
+  `line` only when the URL's `version` matches the page's current one
+  (or either side has no version info at all — an old pre-fix link, or
+  the resolver's page, which has no version concept); on a real
+  mismatch it falls back to `findActiveSegment(t)` (time-proximity
+  matching) instead of highlighting a possibly-wrong index.
+
+  Verified three ways, no JS test framework existing in this repo: (1) a
+  real behavioral difference caught and preserved during the merge —
+  `player.js`'s `highlightSegment` respected an `autoScrollEnabled`
+  toggle the Archive page doesn't have; folded into the shared file so
+  the Archive page (which never toggles it) behaves identically to
+  before. (2) A one-off Node `vm.runInContext` script (not a permanent
+  test) simulating real multi-`<script>`-tag scoping — critically *not* a
+  plain `eval()`, which was tried first and gave misleading results
+  because direct eval creates its own nested lexical scope, unlike
+  separate classic `<script>` tags which genuinely share top-level
+  `let`/`const` bindings — covering version-match, version-mismatch-
+  fallback, no-version-old-link, resolver-page (no version), and the
+  URL-tagging behavior of `updateUrlParams` itself: 9 cases, all passing.
+  (3) Real local servers (resolver proxying to a real local Archive
+  instance, matching production's reverse-proxy shape exactly) with a
+  seeded real page, checked live in-browser — `/shared-static/deep_link.js`
+  loads with no console errors, all shared functions (`applyDeepLink`,
+  `findActiveSegment`, `updateUrlParams`, `highlightSegment`) are defined
+  and callable from both `player.js` and `meeting_page.js`, `segments`
+  populated by one script is correctly visible to functions defined in
+  the other (confirming real cross-script-tag `let` sharing, not just the
+  Node simulation), and `data-version-id` renders correctly. Full Python
+  suite green throughout (121 tests, unaffected -- this was a pure
+  frontend change).
+
+## [Done — moved from BACKLOG.md 2026-08-17] SSRF guard on `/api/resolve`
+
+[Done 2026-08-14] (WO-5 of `AUDIT_EXECUTION_BRIEF.md`, audit finding #2):
+`ResolveRequest.url` was a bare, unvalidated `str` that flowed straight
+into `generic_fallback.py`'s `session.get(url, allow_redirects=True,
+...)` for any unrecognized host, with no scheme allowlist, no private/
+internal-IP rejection, no per-hop redirect re-validation, and (in
+production, `GENERIC_FALLBACK_HEADLESS=1`) a real headless browser that
+would load whatever it was pointed at. New `app/utils/url_guard.py`
+closes all of that at once — see this file's own "Security hardening"
+section (below) for the full fix and verification detail. Moved out of
+`BACKLOG.md`'s "App-wide audit" section during the 2026-08-17 triage
+pass, where it had been sitting tagged `done?` even though it was
+genuinely finished, not uncertain.
+
+## [Considered and declined — moved from BACKLOG.md 2026-08-17] Grand unification of adapter metadata extraction
+
+Not a bug, not a build — a deliberate scope decision made during the
+jurisdiction/title extraction planning conversation
+(`JURISDICTION_METADATA_PLAN.md`) and confirmed during the 2026-08-17
+backlog triage pass. The tournament-style extraction work that plan
+green-lit stops at "promote measured winners into a shared fallback
+chain" — it does not attempt a full rewrite of each adapter's *primary*
+extraction into one unified mechanism. That's platform-specific for real
+reasons (API fields, RSS feeds, URL conventions differ enough per vendor
+that a single shared extractor would fight each one), so a grand
+unification beyond the fallback-chain layer was considered and explicitly
+declined, not left as an open idea to revisit. Kept here for the
+reasoning rather than in live `BACKLOG.md`, since there's no future
+action attached to it.
+
 ## Incident #2 same day: backfilled `search_corpus` OOM-crashed the plain `/meetings` browse — hotfix #127 (2026-08-17)
 
 [Resolved 2026-08-17] Directly downstream of the migration incident
