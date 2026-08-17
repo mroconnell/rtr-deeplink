@@ -975,15 +975,25 @@ async def get_page_by_slug(slug: str) -> Optional[dict]:
         }
 
 
-def _escape_ilike(term: str) -> str:
+def _escape_like(term: str) -> str:
     """Escapes `\\`, `%`, `_` so a literal one of these typed in a search
-    box is matched literally against `search_corpus`, not treated as an
-    ILIKE wildcard/escape character."""
+    box is matched literally against `search_corpus`, not treated as a
+    LIKE wildcard/escape character."""
     return term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
 def _corpus_contains(term: str):
-    return MeetingPage.search_corpus.ilike(f"%{_escape_ilike(term)}%", escape="\\")
+    """`LIKE`, deliberately not `ILIKE`: `search_corpus` is lowercased by
+    construction (compute_search_corpus() -> build_corpus() -> .lower())
+    and parse_query() lowercases every term, so the two are the same
+    predicate -- but Postgres's ILIKE lowercases the *whole document* per
+    row via locale case-folding before matching, and these documents are
+    multi-hundred-KB transcripts. Measured 2026-08-17 on a real
+    postgres:16 with 1,219 x 300KB docs + the pg_trgm GIN index: ILIKE
+    7.7s vs LIKE 1.75s for `%budget%` (identical gap with the index
+    disabled, so it's the recheck/case-fold, not index selection). SQLite's
+    LIKE is ASCII-case-insensitive anyway, so dev/CI behave the same."""
+    return MeetingPage.search_corpus.like(f"%{_escape_like(term)}%", escape="\\")
 
 
 def _keyword_conditions(keyword: str, fuzzy: bool) -> tuple[list, list[str]]:
@@ -1177,19 +1187,32 @@ async def list_pages(
             start = (page - 1) * page_size
             page_rows = matched[start : start + page_size]
         else:
-            count_stmt = (
-                select(func.count())
-                .select_from(MeetingPage)
-                .outerjoin(TranscriptVersion, default_version)
-            )
-            if conditions:
-                count_stmt = count_stmt.where(and_(*conditions))
-            total = (await session.execute(count_stmt)).scalar_one()
-            page_rows = (
+            # One scan, not two: the total rides along as a window
+            # aggregate on the same LIMIT/OFFSET query. A keyword LIKE
+            # over huge TOASTed corpora costs ~seconds per pass on
+            # Postgres (see _corpus_contains()), so a separate COUNT(*)
+            # doubled the whole request. Only a page past the end (no
+            # rows, so no window value) still needs the standalone count.
+            paged = (
                 await session.execute(
-                    stmt.limit(page_size).offset((page - 1) * page_size)
+                    stmt.add_columns(func.count().over().label("total"))
+                    .limit(page_size)
+                    .offset((page - 1) * page_size)
                 )
             ).all()
+            if paged:
+                total = paged[0][-1]
+                page_rows = [tuple(r[:-1]) for r in paged]
+            else:
+                page_rows = []
+                count_stmt = (
+                    select(func.count())
+                    .select_from(MeetingPage)
+                    .outerjoin(TranscriptVersion, default_version)
+                )
+                if conditions:
+                    count_stmt = count_stmt.where(and_(*conditions))
+                total = (await session.execute(count_stmt)).scalar_one()
 
         # Snippet inputs for the returned rows only: the default version's
         # segments (see the docstring for why not search_corpus).
