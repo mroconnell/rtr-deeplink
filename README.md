@@ -702,6 +702,28 @@ python scripts/transcribe_backlog_locally.py --url "https://..."  # one specific
   token-gated `/internal/*` HTTP surface `scripts/fetch_youtube_
   transcripts.py` already established, and can safely run at the same
   time as the real worker.
+- **Built for an unattended overnight run someone who isn't a developer
+  checks on, not just an interactive one** — added 2026-08-17 after a
+  real multi-hour run showed zero output in its redirected log file
+  despite being alive (`print()` fully buffers on a redirected stream;
+  see `BACKLOG_DONE.md`). Progress now goes through Python's `logging`
+  module (same convention `worker/main.py` already uses), which flushes
+  every line immediately even when piped to a file — plain-English,
+  timestamped lines for the run's real config, each meeting starting/
+  finishing, running ingested/skipped/failed totals after every meeting
+  (not just at the end), and retries. Every call to the Archive's own
+  `/internal/*` API (candidate list fetch, ingest push, promote) retries
+  a 5xx or connection-level failure with exponential backoff instead of
+  crashing the whole run — real incident: a transient 502 on the very
+  first call used to end the entire batch before the main loop even
+  started. If an ingest push still fails after retries, the finished
+  transcription (the expensive part) is saved to `local_transcription_
+  backups/` rather than discarded, recoverable with a plain `curl` once
+  the Archive is reachable again. A detected wall-clock-vs-processing-time
+  gap (the machine likely slept, or a request stalled) gets logged
+  explicitly rather than passing silently. See `tests/test_transcribe_
+  backlog_locally.py` for retry/gap-detection coverage against a real
+  local HTTP server (not a mocked session).
 
 Live-verified 2026-08-16 against a real backlog meeting (Welland/Elgin
 County, ON — `welland-2026-01-27-county-council-meeting`, a real 783-second
