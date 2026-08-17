@@ -71,16 +71,21 @@ warning marker):
 | portcoquitlam-2025-02-18-committee-of-council-meeting | 971 | local_script | — | te | 230 |
 | kitchener-2026-05-05-heritage-kitchener-committee | 981 | cloud_worker | 201 | cy | 410 |
 
-Spot-checked two of the `en` rows live (Long Beach, San Diego County) to
-rule out a heuristic false-positive on legitimate repetitive procedural
-speech (roll calls, votes) — both confirmed real: the actual rendered
-transcript's opening segments are a genuine repetition-loop artifact (14+
-consecutive segments of bare `"."`), not coherent real content the
-detector misfired on. The other two (`meeting-38ca49`, Kitchener) weren't
-individually spot-checked; Kitchener's `cy` (Welsh) language tag is
-itself a strong signal given the jurisdiction. See BACKLOG.md's matching
-open entry for the remaining-4 re-transcription decision, deliberately
-left to the user, same precedent as the seam-duplication audit's own
+Spot-checked all 4 remaining candidates live to rule out a heuristic
+false-positive on legitimate repetitive procedural speech (roll calls,
+votes) — every one confirmed real, not a misfire: Long Beach and San
+Diego County (`en`) both open with a genuine repetition-loop artifact
+(14+ consecutive segments of bare `"."`); `meeting-38ca49` (Sacramento
+County, CA Board of Supervisors, 2026-08-11) opens with a classic Whisper
+stock hallucination on quiet/no-speech audio (`"Thank you for your
+attention." ... "Thank you very much for watching this video and I'll
+see you in the next video."`) before recovering into real coherent
+content once the meeting actually starts; Kitchener is genuinely garbled
+Welsh-script gibberish throughout, including both a ~500-character run of
+repeated `w` and a later `"Ff. Ff. Ff. Ff."` repetition loop. See
+BACKLOG.md's matching open entry for the remaining-4 re-transcription
+decision, deliberately left to the user, same precedent as the
+seam-duplication audit's own
 118-job list.
 
 **The two user-named live pages, cleaned up for real** (not just a dry

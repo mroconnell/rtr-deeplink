@@ -3260,12 +3260,21 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   - `san-diego-county-ca-2026-06-24-board-of-supervisors` (version 240,
     cloud-worker job 103, `en`, 4662 segments) — same `"."`-repetition-loop
     symptom, also spot-checked live and confirmed real.
-  - `meeting-38ca49` (version 246, cloud-worker job 111, `en`, 5052
-    segments) — not yet spot-checked live.
+  - `meeting-38ca49` (Sacramento County, CA Board of Supervisors 2026-08-11;
+    version 246, cloud-worker job 111, `en`, 5052 segments) — spot-checked
+    live: real, classic Whisper hallucination on quiet/no-speech audio at
+    the very start (`"Thank you for your attention." ... "Thank you very
+    much for watching this video and I'll see you in the next video."` —
+    a well-known stock hallucinated phrase), before the transcript recovers
+    into genuinely coherent real content once the meeting actually starts
+    at 6:30.
   - `kitchener-2026-05-05-heritage-kitchener-committee` (version 981,
-    cloud-worker job 201, `cy` — Welsh, almost certainly a real
-    misdetection given the jurisdiction, 410 segments) — not yet
-    spot-checked live.
+    cloud-worker job 201, `cy` — Welsh, 410 segments) — spot-checked live:
+    real, confirmed garbled Welsh-script gibberish throughout, including a
+    single ~500-character run of repeated `w` (`"Ymwwwww...w"`) and a
+    later repetition loop (`"Ff. Ff. Ff. Ff."`) — two of the detector's
+    three structural signals both genuinely present, not a misdetection
+    edge case.
 
 - **118 already-completed, already-live transcriptions are real
   candidates for the seam-duplication bug fixed 2026-08-16 — a real,
