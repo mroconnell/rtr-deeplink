@@ -95,7 +95,10 @@ this script's other imports).
 
 import argparse
 import asyncio
+import json
+import logging
 import os
+import random
 import subprocess
 import sys
 import tempfile
@@ -127,6 +130,37 @@ from worker.segment_utils import (  # noqa: E402
     shift_segments,
 )
 
+# Real bug, confirmed live 2026-08-16/17: this script's own progress output
+# (`print(...)`) fully buffers when stdout is redirected to a file/pipe --
+# which is how it's actually run for an unattended overnight batch -- so a
+# multi-hour run showed *zero* output in its log file despite being
+# demonstrably alive (high CPU). The only reason anything showed up at all
+# was that media_probe.py's `logger.warning()`/`logger.info()` calls happen
+# to flush immediately: `logging.StreamHandler.emit()` calls `self.flush()`
+# after every record, regardless of the underlying stream's buffering mode
+# -- unlike bare `print()`, which just writes into libc's block buffer and
+# waits. Fix: route this script's own output through the same `logging`
+# module, configured the same way worker/main.py's standalone process
+# already does it (`logging.basicConfig(level=logging.INFO)` at import
+# time, module-level `getLogger(...)`) rather than inventing a third
+# output style. `stream=sys.stdout` (matching where this script's own
+# `print()` calls already went) and `force=True` (so this wins even if
+# some import above it already touched logging config) are the two
+# additions beyond worker/main.py's bare call. Configuring the *root*
+# logger here also means media_probe.py's existing logger.* calls --
+# previously the only thing visibly live in a redirected run, for reasons
+# no one following this script would guess -- now share the exact same
+# timestamped format as everything else instead of standing out as an
+# unexplained exception.
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    stream=sys.stdout,
+    force=True,
+)
+logger = logging.getLogger("rtr_transcribe_backlog")
+
 INGEST_TIMEOUT = aiohttp.ClientTimeout(
     total=65
 )  # matches archive_client.PUSH_TIMEOUT -- tolerates a Render cold start
@@ -145,6 +179,170 @@ REQUEST_DELAY_SECONDS = 2.0
 # (RAM headroom, irrelevant on this Mac) -- see the module docstring above
 # for why this exists at all.
 CHUNK_SIZE_SECONDS = 900
+
+# --- Retry/backoff for this script's own calls to the Archive API ----------
+# Real incident, 2026-08-16/17: the very first HTTP call a real overnight
+# run makes (GET /internal/transcription-backlog, fetching the whole 40-
+# candidate list before the main loop even starts) hit a transient 502 from
+# unrelated deploy activity elsewhere, and the entire script exited on the
+# unhandled exception -- losing the run, not just one candidate. The
+# per-meeting loop already has its own try/except (one meeting's failure is
+# logged and the loop continues), but that resilience never covered this
+# call, or the per-meeting ingest push either.
+#
+# Same exponential-backoff-with-jitter shape as
+# app/platforms/granicus.py's `_fetch_page()`
+# (`(2**attempt) * random.uniform(0.5, 1.5)`), scaled up with a bigger base
+# delay since these calls can afford to be patient (a few minutes of
+# backoff is nothing against an hours-long unattended run). The retry
+# *predicate* is deliberately narrower than granicus.py's, though:
+# granicus.py retries on any status >=400 because it's scraping arbitrary
+# third-party government sites, where even a 403 can be a transient
+# bot-block that clears up. These calls are all to *our own* Archive API
+# with *our own* token -- a 4xx here (bad/missing ARCHIVE_INGEST_TOKEN, a
+# malformed payload) is a real, static problem that retrying for minutes
+# can't fix, so only 5xx responses and connection-level failures (timeout,
+# DNS, connection reset) are treated as retryable.
+MAX_RETRIES = 6
+RETRY_BASE_DELAY_SECONDS = 5.0
+RETRY_MAX_DELAY_SECONDS = 90.0
+
+# How big a gap between wall-clock time and processing time counts as "the
+# machine probably slept or lost network," not just "this chunk took a
+# while" -- see _note_if_suspended()'s own docstring below for why the
+# *skew* between the two clocks (not the absolute elapsed time) is the
+# right signal, and why 120s is safely above normal scheduling jitter while
+# still well below how long a real Whisper chunk can legitimately run.
+SUSPEND_GAP_THRESHOLD_SECONDS = 120.0
+
+# Where a finished-but-not-yet-ingested transcription gets saved if
+# /internal/ingest fails even after _request_json()'s own retries are
+# exhausted -- see _save_local_backup()'s docstring. Gitignored (local-only
+# scratch output, never meant to be committed).
+FAILED_INGEST_DIR = (
+    Path(__file__).resolve().parent.parent / "local_transcription_backups"
+)
+
+
+class _RetryableHTTPError(Exception):
+    """Raised internally by _request_json() for a 5xx response, so the same
+    except clause that already catches aiohttp's own connection-level
+    errors (timeout, DNS, reset) also catches this -- one retry loop, one
+    backoff policy, for both failure shapes."""
+
+
+async def _request_json(
+    session: aiohttp.ClientSession,
+    method: str,
+    url: str,
+    *,
+    label: str,
+    max_retries: int = MAX_RETRIES,
+    **kwargs,
+) -> dict:
+    """Shared retrying request helper for every call this script makes to
+    its own Archive API (candidate list fetch, ingest push, promote). See
+    the module-level comment above for the retry policy and why 4xx
+    responses fail immediately instead of retrying. `label` is a short
+    plain-English description of the call, used only in the retry/failure
+    log lines (e.g. "candidate list fetch", "ingest push for
+    https://..."), so a retry shows up as a legible, specific log line
+    instead of looking like the process silently hanging.
+    """
+    last_error: Optional[Exception] = None
+    for attempt in range(max_retries):
+        try:
+            async with session.request(method, url, **kwargs) as response:
+                if response.status >= 500:
+                    text = await response.text()
+                    raise _RetryableHTTPError(
+                        f"HTTP {response.status} for {label}: {text[:200]}"
+                    )
+                if response.status >= 400:
+                    text = await response.text()
+                    raise RuntimeError(
+                        f"{label} failed ({response.status}) -- not retrying, this looks "
+                        f"like a real config/request problem rather than a transient one: "
+                        f"{text[:300]}"
+                    )
+                return await response.json()
+        except (_RetryableHTTPError, aiohttp.ClientError, asyncio.TimeoutError) as e:
+            last_error = e
+            if attempt == max_retries - 1:
+                break
+            delay = min(
+                RETRY_MAX_DELAY_SECONDS,
+                RETRY_BASE_DELAY_SECONDS * (2**attempt) * random.uniform(0.5, 1.5),
+            )
+            logger.warning(
+                "%s failed (attempt %d/%d): %s -- retrying in %.0fs "
+                "(this is an automatic retry, not the process hanging)",
+                label,
+                attempt + 1,
+                max_retries,
+                str(e)[:200],
+                delay,
+            )
+            await asyncio.sleep(delay)
+    raise RuntimeError(f"{label} failed after {max_retries} attempts: {last_error}")
+
+
+def _note_if_suspended(wall_before: float, mono_before: float, context: str) -> None:
+    """Makes "the machine slept or lost network mid-run" a visible log line
+    instead of a silent, unexplained gap -- the real, non-developer-facing
+    ask this run's brief called out: someone watching an overnight run
+    shouldn't have to infer a suspend from CPU-usage graphs or a stack
+    trace.
+
+    Can't prevent macOS from sleeping from inside a Python script, and
+    doesn't try to; this only makes what already happened legible.
+
+    The signal: `time.monotonic()` stops advancing while the machine is
+    asleep, but `time.time()` (wall clock) jumps forward by the real
+    elapsed time on wake, since it's kept in sync with the real-time clock.
+    So the *skew* between the two -- not the absolute elapsed time, which a
+    single real Whisper chunk can legitimately spend 10-20+ minutes of
+    continuous CPU work on -- is what actually indicates a suspend.
+    Ordinary scheduling jitter is nowhere near
+    SUSPEND_GAP_THRESHOLD_SECONDS (120s); an actual sleep or a long dropped
+    connection produces a skew equal to however long that lasted, easily
+    minutes to hours.
+    """
+    wall_elapsed = time.time() - wall_before
+    mono_elapsed = time.monotonic() - mono_before
+    gap = wall_elapsed - mono_elapsed
+    if gap > SUSPEND_GAP_THRESHOLD_SECONDS:
+        logger.warning(
+            "Detected a ~%.0f-minute gap during %s where real time passed far faster than "
+            "processing time -- the machine most likely went to sleep, or lost network long "
+            "enough to stall a request, partway through. The run is continuing on its own; "
+            "no action needed unless this keeps happening.",
+            gap / 60.0,
+            context,
+        )
+
+
+def _save_local_backup(payload: dict, slug: str) -> Path:
+    """Writes a finished-but-not-yet-ingested transcription payload to disk.
+
+    Only called when /internal/ingest fails even after _request_json()'s
+    own retries are exhausted. At that point the expensive part -- local
+    Whisper compute, realistically minutes to well over an hour for a long
+    meeting -- is already done; the only thing actually lost by just
+    logging FAILED and moving on to the next candidate would be that
+    finished work, which is a much bigger loss than the network call that
+    failed. This is the exact same JSON body _ingest() POSTs (before
+    `input_url_normalized`/`source` are added -- see _ingest() -- so
+    recovering it later is a plain
+    `curl -X POST $ARCHIVE_BASE_URL/internal/ingest -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" -d @<path>`,
+    not a re-transcription.
+    """
+    FAILED_INGEST_DIR.mkdir(exist_ok=True)
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    safe_slug = "".join(c if c.isalnum() or c in "-_" else "_" for c in str(slug))[:100]
+    path = FAILED_INGEST_DIR / f"{ts}_{safe_slug}.json"
+    path.write_text(json.dumps(payload, indent=2))
+    return path
 
 
 def _base_url() -> str:
@@ -204,19 +402,16 @@ async def _get_candidates(
     params = {}
     if limit is not None:
         params["limit"] = str(limit)
-    async with session.get(
+    data = await _request_json(
+        session,
+        "GET",
         f"{_base_url()}/internal/transcription-backlog",
+        label="candidate list fetch",
         headers=_headers(),
         params=params,
         timeout=INGEST_TIMEOUT,
-    ) as response:
-        if response.status != 200:
-            text = await response.text()
-            raise RuntimeError(
-                f"transcription-backlog failed ({response.status}): {text[:300]}"
-            )
-        data = await response.json()
-        return data.get("pages", [])
+    )
+    return data.get("pages", [])
 
 
 async def _ingest(
@@ -225,16 +420,15 @@ async def _ingest(
     body = dict(payload)
     body["input_url_normalized"] = input_url_normalized
     body["source"] = "transcribed"  # see module docstring -- never omit this
-    async with session.post(
+    return await _request_json(
+        session,
+        "POST",
         f"{_base_url()}/internal/ingest",
+        label=f"ingest push for {input_url_normalized}",
         json=body,
         headers=_headers(),
         timeout=INGEST_TIMEOUT,
-    ) as response:
-        if response.status == 200:
-            return await response.json()
-        text = await response.text()
-        raise RuntimeError(f"ingest failed ({response.status}): {text[:300]}")
+    )
 
 
 async def _promote(session: aiohttp.ClientSession, slug: str, version_id: int) -> dict:
@@ -250,16 +444,15 @@ async def _promote(session: aiohttp.ClientSession, slug: str, version_id: int) -
     docstring: it stays reachable via `?version=`, this only flips which
     one is_default.
     """
-    async with session.post(
+    return await _request_json(
+        session,
+        "POST",
         f"{_base_url()}/internal/transcript-version/promote",
+        label=f"promote for {slug}",
         json={"slug": slug, "version_id": version_id},
         headers=_headers(),
         timeout=INGEST_TIMEOUT,
-    ) as response:
-        if response.status == 200:
-            return await response.json()
-        text = await response.text()
-        raise RuntimeError(f"promote failed ({response.status}): {text[:300]}")
+    )
 
 
 async def transcribe_meeting(
@@ -321,6 +514,8 @@ async def transcribe_meeting(
     all_segments: list = []
     with tempfile.TemporaryDirectory(prefix="rtr_local_transcribe_") as tmpdir:
         for idx in range(total_chunks):
+            chunk_wall_start = time.time()
+            chunk_mono_start = time.monotonic()
             start = chunk_start(idx, chunk_size_seconds)
             dur = chunk_duration(idx, chunk_size_seconds, duration)
             audio_path = Path(tmpdir) / f"chunk_{idx}.mp3"
@@ -354,8 +549,17 @@ async def transcribe_meeting(
             dedup_note = (
                 f", dropped {dropped} seam-duplicate segment(s)" if dropped else ""
             )
-            print(
-                f"      chunk {idx + 1}/{total_chunks} transcribed ({len(raw_segments)} segments{dedup_note})"
+            logger.info(
+                "    chunk %d/%d transcribed (%d segments%s)",
+                idx + 1,
+                total_chunks,
+                len(raw_segments),
+                dedup_note,
+            )
+            _note_if_suspended(
+                chunk_wall_start,
+                chunk_mono_start,
+                f"chunk {idx + 1}/{total_chunks} of {source_url}",
             )
 
     if not all_segments:
@@ -454,7 +658,21 @@ async def process_one(
         "transcript_language": result["language"],
         "transcript_warnings": result["transcript_warnings"],
     }
-    response = await _ingest(session, payload, page["source_url_normalized"])
+    try:
+        response = await _ingest(session, payload, page["source_url_normalized"])
+    except Exception as e:
+        # _ingest() already retried transient failures inside _request_json()
+        # -- this only fires once those retries are exhausted, meaning the
+        # push is genuinely not going through right now. The transcription
+        # itself (the expensive part) already succeeded, so save it to disk
+        # rather than just discarding it along with the "failed" result --
+        # see _save_local_backup()'s docstring for how to recover it later.
+        backup_path = _save_local_backup(payload, slug)
+        raise RuntimeError(
+            f"{e} -- transcription itself succeeded ({len(result['segments'])} segments, "
+            f"language={result['language']}); saved locally to {backup_path} so it isn't "
+            f"lost, re-push it manually once /internal/ingest is reachable again"
+        ) from e
     page_url = response.get("url", "")
     version_id = response.get("version_id")
     detail = f"{len(result['segments'])} segments (language={result['language']}){hallucinated_note} -> {page_url}"
@@ -525,28 +743,42 @@ async def main() -> None:
     args = parser.parse_args()
 
     if not _base_url():
-        print("ARCHIVE_BASE_URL is not set (check the repo's .env).", file=sys.stderr)
+        logger.error("ARCHIVE_BASE_URL is not set (check the repo's .env). Stopping.")
         sys.exit(1)
     if not os.environ.get("ARCHIVE_INGEST_TOKEN"):
-        print(
-            "ARCHIVE_INGEST_TOKEN is not set (check the repo's .env).", file=sys.stderr
+        logger.error(
+            "ARCHIVE_INGEST_TOKEN is not set (check the repo's .env). Stopping."
         )
         sys.exit(1)
 
     model_size = args.model_size or _pick_default_model_size()
-    print(
-        f"Model size: {model_size} ({'explicit --model-size' if args.model_size else 'auto-picked from local RAM'})"
+
+    # A real, plain-English "what is this run actually doing" line up front
+    # -- someone checking on an unattended overnight run should be able to
+    # see the real config (model size, whether it's a dry run, how many
+    # meetings it's targeting) from the top of the log without reading
+    # Python source.
+    logger.info(
+        "Run started: model_size=%s (%s), limit=%s, dry_run=%s, chunk_seconds=%s, "
+        "promote=%s, target=%s",
+        model_size,
+        "explicit --model-size" if args.model_size else "auto-picked from local RAM",
+        args.limit if args.limit is not None else "(none -- full backlog)",
+        args.dry_run,
+        args.chunk_seconds,
+        args.promote,
+        args.url or "(oldest-first backlog queue)",
     )
 
     register_all_finders()
 
-    print(
+    logger.info(
         "Loading faster-whisper model (this can take a while on first run, while weights download)..."
     )
     from worker.transcription_engine import FasterWhisperEngine
 
     engine = FasterWhisperEngine(model_size=model_size)
-    print("Model loaded.\n")
+    logger.info("Model loaded.")
 
     async with aiohttp.ClientSession() as session:
         if args.url:
@@ -571,22 +803,48 @@ async def main() -> None:
                 }
             ]
         else:
-            pages = await _get_candidates(session, args.limit)
+            # Retries transient failures internally (see _request_json());
+            # if it still fails after those retries, this is a real outage
+            # or a bad token, not something more retrying would fix -- fail
+            # clearly and immediately rather than an unhandled traceback,
+            # since this is the very first thing a real overnight run does
+            # and losing it here means losing the whole run before it even
+            # starts (the real incident this whole change responds to).
+            try:
+                pages = await _get_candidates(session, args.limit)
+            except Exception as e:
+                logger.error(
+                    "Could not fetch the candidate list from %s, even after retrying: %s "
+                    "-- nothing was transcribed this run. This is usually a real Archive "
+                    "outage or a bad ARCHIVE_INGEST_TOKEN, not a bug in this script; check "
+                    "the Archive service and .env before restarting.",
+                    _base_url(),
+                    e,
+                )
+                sys.exit(1)
         if not pages:
-            print("Transcription backlog is empty -- nothing to do.")
+            logger.info("Transcription backlog is empty -- nothing to do.")
             return
 
-        print(
-            f"{'[DRY RUN] ' if args.dry_run else ''}{len(pages)} candidate meeting(s) from {_base_url()}...\n"
+        logger.info(
+            "%s%d candidate meeting(s) from %s",
+            "[DRY RUN] " if args.dry_run else "",
+            len(pages),
+            _base_url(),
         )
 
         run_start = time.monotonic()
         results = []
+        ingested_count = skipped_count = failed_count = 0
         for i, page in enumerate(pages):
+            item_wall_start = time.time()
             item_start = time.monotonic()
-            timestamp = datetime.now().strftime("%H:%M:%S")
-            print(
-                f"[{timestamp}] ({i + 1}/{len(pages)}) {page.get('slug', '?')} -- {page.get('source_url_normalized', '')}"
+            logger.info(
+                "Meeting %d/%d starting: %s -- %s",
+                i + 1,
+                len(pages),
+                page.get("slug", "?"),
+                page.get("source_url_normalized", ""),
             )
             try:
                 result = await process_one(
@@ -605,19 +863,49 @@ async def main() -> None:
                 }
             elapsed = time.monotonic() - item_start
             results.append(result)
-            print(
-                f"    [{result['status'].upper()}] ({elapsed:.1f}s) {result['detail']}"
+
+            if result["status"] == "ingested":
+                ingested_count += 1
+                log_fn = logger.info
+            elif result["status"] == "skipped":
+                skipped_count += 1
+                log_fn = logger.info
+            else:
+                failed_count += 1
+                log_fn = logger.error
+            log_fn(
+                "Meeting %d/%d finished in %.1fs: %s -- %s",
+                i + 1,
+                len(pages),
+                elapsed,
+                result["status"].upper(),
+                result["detail"],
+            )
+            # Running totals after every meeting, not just at the very end --
+            # the whole point of this is a run that might not make it to the
+            # end unattended, so whoever checks the log partway through
+            # should see real progress, not just individual meeting lines.
+            logger.info(
+                "Progress so far: %d ingested, %d skipped, %d failed (of %d total)",
+                ingested_count,
+                skipped_count,
+                failed_count,
+                len(pages),
+            )
+            _note_if_suspended(
+                item_wall_start, item_start, f"meeting {page.get('slug', '?')}"
             )
             if i < len(pages) - 1:
                 await asyncio.sleep(REQUEST_DELAY_SECONDS)
 
         total_elapsed = time.monotonic() - run_start
-        ingested = [r for r in results if r["status"] == "ingested"]
-        skipped = [r for r in results if r["status"] == "skipped"]
-        failed = [r for r in results if r["status"] == "failed"]
-        print(
-            f"\n{len(ingested)} ingested, {len(skipped)} skipped, {len(failed)} failed (of {len(pages)} candidates) "
-            f"in {total_elapsed:.1f}s."
+        logger.info(
+            "RUN COMPLETE: %d ingested, %d skipped, %d failed (of %d candidates) in %.1fs.",
+            ingested_count,
+            skipped_count,
+            failed_count,
+            len(pages),
+            total_elapsed,
         )
 
 
