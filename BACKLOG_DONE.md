@@ -122,8 +122,34 @@ heap → "31 pages" cost estimate → seq scan; harmless for common terms,
 a missed win for rare ones), and the tsvector row above means Step 2a is
 the only sub-second path for common terms — trigram GIN is structurally
 the wrong index for "does this huge doc contain this common word".
-Expected prod after #131: ~25s → ~3s (Render's box is slower than the
-bench machine).
+
+**Live after #131 deployed (clean, sequential, ~30 min post-merge): no
+measurable change.** `budget` 27.5s (29s on a warm second run), `flock`
+34.5s, `"public comment"` 31.5s, `budget&page=40` 33.8s, fuzzy 21s;
+`quokka` 0.2s and browse 0.24s. So the bench, which was **CPU-bound**
+(case-folding on an NVMe box with the whole corpus in page cache), did
+not model prod's bottleneck: something costs ~25–30s for any common
+term, ~0 for rare terms and browse, and doesn't warm up between runs.
+Leading hypothesis (unverified — twice today a from-outside diagnosis
+was half wrong, so this one is explicitly *not* asserted): **I/O** —
+every common-term query detoasts and reads the entire TOASTed corpus
+(hundreds of MB) from disk on a small Render Postgres whose cache can't
+hold it; halving the scans (b) wouldn't show if the second scan was
+already cache-warm, and case-folding CPU (a) is invisible against disk
+reads. Settling it needs one `EXPLAIN (ANALYZE, BUFFERS)` from the
+Render shell (asked of Ryan; `read=` ≫ `hit=` confirms I/O) plus table/
+TOAST size and `shared_buffers`. If I/O, Step 2a — a `tsvector` GIN that
+answers word membership from the *index* without touching the corpus at
+all — is the fix, and the only one; #131 stays as a correct,
+semantics-neutral improvement on any CPU-bound box. Two lessons kept:
+(1) benchmark the *deployed* environment's shape (RAM, disk, cache),
+not just its query — a bench that fits in page cache can't reproduce an
+I/O-bound prod; (2) **never poll a slow endpoint with a short client
+timeout** — a `curl -m 15` loop against `/meetings?q=budget` aborted
+client-side while the Archive kept running each ~25s scan, stacking
+overlapping full-corpus reads for eight minutes and producing a
+spurious 75s reading before the loop was killed and a clean sequential
+measurement taken.
 
 ## [Done — moved from BACKLOG.md 2026-08-17] `/meetings` search & saved items — UI gaps found 2026-08-11
 
