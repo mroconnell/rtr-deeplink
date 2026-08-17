@@ -187,3 +187,72 @@ async def test_has_transcript_badge_is_quality_aware_not_just_presence():
     good_row = next(p for p in result["pages"] if p["slug"] == good_slug)
     assert garbled_row["has_transcript"] is False
     assert good_row["has_transcript"] is True
+
+
+async def test_ingest_resolution_populates_search_corpus():
+    # ingest_resolution() must write MeetingPage.search_corpus on every
+    # ingest -- the write path is dialect-agnostic (unlike list_pages()'s
+    # read path, which only uses this column on Postgres), so it's safe
+    # and meaningful to assert against the SQLite test DB.
+    url = "https://example.granicus.com/player/clip/search-corpus-write"
+    await crud.ingest_resolution(
+        _payload(
+            "granicus:search-corpus-write",
+            url,
+            segments=[{"start": 0, "end": 1, "text": "zzyzxbanana unique corpus term"}],
+            jurisdiction="City of Corpus Test",
+        ),
+        url,
+    )
+
+    async with async_session() as session:
+        page = (
+            (
+                await session.execute(
+                    select(MeetingPage).where(MeetingPage.source_url_normalized == url)
+                )
+            )
+            .scalars()
+            .first()
+        )
+        assert page.search_corpus is not None
+        assert "zzyzxbanana" in page.search_corpus
+        assert "corpus test" in page.search_corpus.lower()
+
+
+async def test_ingest_resolution_search_corpus_includes_every_version():
+    # A second, later push (e.g. a re-transcription) that demotes the
+    # first version must still leave the first version's text in
+    # search_corpus -- same "every version counts" rule list_pages()'s
+    # own keyword matching already relies on.
+    url = "https://example.granicus.com/player/clip/search-corpus-multi-version"
+    await crud.ingest_resolution(
+        _payload(
+            "granicus:search-corpus-multi-version",
+            url,
+            segments=[{"start": 0, "end": 1, "text": "zzyzxaardvark original term"}],
+        ),
+        url,
+    )
+    await crud.ingest_resolution(
+        _payload(
+            "granicus:search-corpus-multi-version",
+            url,
+            segments=[{"start": 0, "end": 1, "text": "zzyzxcapybara replacement term"}],
+            transcript_warnings=[],
+        ),
+        url,
+    )
+
+    async with async_session() as session:
+        page = (
+            (
+                await session.execute(
+                    select(MeetingPage).where(MeetingPage.source_url_normalized == url)
+                )
+            )
+            .scalars()
+            .first()
+        )
+        assert "zzyzxaardvark" in page.search_corpus
+        assert "zzyzxcapybara" in page.search_corpus
