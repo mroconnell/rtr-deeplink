@@ -417,7 +417,12 @@ anything) to build against it.
   Indexing", then see whether the flag clears on recrawl of the
   now-real content; if it does, this is closed with no code change. If
   the flag list has *other* URLs beyond that one, paste them — that
-  would point at a broader thin-content shape worth chasing.
+  would point at a broader thin-content shape worth chasing. Partial
+  mitigation shipped 2026-08-17 regardless: genuinely empty pages (no
+  video/agenda/transcript — 17 live at the time) are now `noindex`ed and
+  excluded from browse/sitemap/feed at query time, see `BACKLOG_DONE.md`
+  "Empty ("zero-value") meeting pages"; if the flagged URLs turn out to
+  be that shape, this closes on recrawl with no further code change.
 
 - **[JUST-DO-IT] Every route on both services returns 405 to HTTP `HEAD` requests —
   site-wide, app-level, confirmed live and reproduced locally 2026-08-17.**

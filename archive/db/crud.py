@@ -6,9 +6,11 @@ from typing import Any, Optional
 from urllib.parse import urlparse
 
 from sqlalchemy import Text, and_, cast, func, or_, select
+from sqlalchemy.orm import aliased
 
 from app.utils.jurisdiction_enrich import finalize_jurisdiction
 
+from ..utils.date_status import meeting_date_status
 from ..utils.jurisdiction_format import (
     US_STATE_ABBR_TO_NAME,
     jurisdiction_search_terms,
@@ -1055,6 +1057,47 @@ def _has_agenda_condition():
     )
 
 
+def _is_empty_page_condition():
+    """SQL predicate for a "zero-value" page: no video, no agenda items, no
+    agenda link, and no TranscriptVersion of any kind. Such a page has
+    nothing a visitor can watch or read -- just a title/date shell.
+
+    Deliberately a *query-time* predicate, not a stored flag or a delete
+    (Ryan's call, 2026-08-17 -- see CLAUDE_BACKLOG.md's "Archive
+    hygiene" section for the live numbers behind it): 17 of ~1,200 prod
+    pages matched at the time, several of them recent or not-yet-held
+    meetings whose source will publish video/captions days-to-weeks later
+    (the exact case ARCHIVE_RECHECK_AFTER exists for). Evaluating "empty"
+    live means such a page reappears in browse/sitemap/feed the moment a
+    recheck fills anything in, with no un-hide step, and a future-dated
+    meeting is never permanently judged. It also needs no schema change
+    (a new column would be an Alembic-migration case, see CLAUDE.md), and
+    hard-deleting would orphan SavedItem rows and break already-shared
+    /m/ links. The page itself keeps serving at /m/{slug} regardless --
+    meeting_page.html just noindexes it while it's empty.
+
+    "Any TranscriptVersion", not "a default one": a version that exists
+    but was demoted still means the page holds real text.
+    """
+    # Aliased + explicitly correlated to MeetingPage only: list_pages()
+    # already outer-joins TranscriptVersion (the default version) in the
+    # outer query, and without the alias SQLAlchemy auto-correlates that
+    # table away too, leaving the subquery with no FROM at all.
+    any_version = aliased(TranscriptVersion)
+    has_any_version = (
+        select(any_version.id)
+        .where(any_version.meeting_page_id == MeetingPage.id)
+        .correlate(MeetingPage)
+        .exists()
+    )
+    return and_(
+        or_(MeetingPage.video_url.is_(None), MeetingPage.video_url == ""),
+        or_(MeetingPage.agenda_link.is_(None), MeetingPage.agenda_link == ""),
+        ~_has_agenda_condition(),
+        ~has_any_version,
+    )
+
+
 async def list_pages(
     *,
     page: int = 1,
@@ -1109,11 +1152,22 @@ async def list_pages(
     MeetingPage.created_at (when archived), a different axis from
     date_from/date_to (when the meeting happened) -- used by the alert
     sweep's "new since last check".
+
+    Empty pages (_is_empty_page_condition(): no video, no agenda, no
+    transcript) are excluded by default -- a plain browse or keyword
+    search shouldn't surface a title-only shell. The exclusion is
+    deliberately *off* whenever has_transcript or has_agenda is set
+    explicitly: `has_transcript=false` is how gaps get found and worked
+    on, so it must keep showing everything without a transcript, empties
+    included (Ryan, 2026-08-17). `has_transcript=true`/`has_agenda=true`
+    already imply non-empty, so nothing is lost there either.
     """
     page = max(1, page)
     page_size = max(1, min(page_size, 100))
 
     conditions = []
+    if has_transcript is None and has_agenda is None:
+        conditions.append(~_is_empty_page_condition())
     if jurisdiction:
         terms = jurisdiction_search_terms(jurisdiction)
         conditions.append(
@@ -1268,6 +1322,14 @@ async def list_pages(
                 ),
                 "has_agenda": bool(agenda_items),
                 "snippet": _snippet_for(page_id, agenda_items),
+                # "upcoming" / "recent" / None -- drives the date pill in
+                # meeting_list.html. Any version at all counts as "has a
+                # transcript" for this purpose (a garbled one is still
+                # something the source published, so there's nothing left
+                # to wait for), unlike the quality-gated badge above.
+                "date_status": meeting_date_status(
+                    date, has_transcript=version_id is not None
+                ),
             }
             for (
                 page_id,
@@ -1733,6 +1795,11 @@ async def list_all_page_slugs() -> list[dict]:
     meeting_page.html noindexes exactly those, so listing them in the
     sitemap sends Google contradictory signals (the real Search Console
     "Excluded by 'noindex' tag ... in a sitemap" alert, 2026-08-17).
+    Same reasoning for empty pages (_is_empty_page_condition()): the
+    template noindexes those too, and they're the likeliest source of
+    Search Console's "Page indexed without content" (see
+    CLAUDE_BACKLOG.md); a page that later fills in reappears here on its
+    own since the predicate is evaluated live.
     Fine as a single query at hundreds/thousands of rows; revisit (batching,
     a sitemap index + sub-sitemaps) only once actually approaching the
     ~50k-URL point where Google expects that split."""
@@ -1740,7 +1807,10 @@ async def list_all_page_slugs() -> list[dict]:
         rows = (
             await session.execute(
                 select(MeetingPage.slug, MeetingPage.updated_at)
-                .where(MeetingPage.platform != "unknown")
+                .where(
+                    MeetingPage.platform != "unknown",
+                    ~_is_empty_page_condition(),
+                )
                 .order_by(MeetingPage.updated_at.desc())
             )
         ).all()
@@ -1753,9 +1823,18 @@ async def list_recent_pages_for_feed(
     """Most-recently-archived pages for feed.xml -- a separate, deliberately
     simple query rather than reusing list_pages()'s pagination/multi-filter
     machinery, since a feed only ever wants "the last N, optionally scoped
-    to one jurisdiction," newest first, with no page number to track."""
+    to one jurisdiction," newest first, with no page number to track.
+    Empty pages are excluded, same as list_pages()'s default browse -- a
+    feed entry a subscriber can't watch or read anything on is just
+    noise (and a subscriber's reader would never re-fetch it once the
+    source fills the page in)."""
     limit = max(1, min(limit, 100))
-    stmt = select(MeetingPage).order_by(MeetingPage.created_at.desc()).limit(limit)
+    stmt = (
+        select(MeetingPage)
+        .where(~_is_empty_page_condition())
+        .order_by(MeetingPage.created_at.desc())
+        .limit(limit)
+    )
     if jurisdiction:
         terms = jurisdiction_search_terms(jurisdiction)
         stmt = stmt.where(

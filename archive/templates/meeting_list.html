@@ -100,6 +100,11 @@
             {%- if m.jurisdiction %}{{ m.jurisdiction|jurisdiction_display }}{% endif -%}
             {%- if m.date %} &middot; {{ m.date }}{% endif -%}
             {%- if not m.has_transcript and m.has_agenda %} &middot; agenda only{% endif -%}
+            {#- Date-status pill (archive/utils/date_status.py): tells a
+               browser *why* a row has no transcript badge when the answer
+               is "too early", not "the source never had one". #}
+            {%- if m.date_status == "upcoming" %} <span class="date-status-pill" title="This meeting hasn't happened yet; video and captions will appear once the source publishes them">Upcoming</span>{% endif -%}
+            {%- if m.date_status == "recent" %} <span class="date-status-pill" title="Held within the last 30 days; captions may still be published by the source">Recent</span>{% endif -%}
           </span>
           {% if m.snippet %}
           <p class="search-snippet">{{ m.snippet | safe }}</p>

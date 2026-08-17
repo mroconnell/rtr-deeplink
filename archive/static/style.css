@@ -799,6 +799,35 @@ mark.search-match.current { background: #f97316; color: #fff; }
   visibility: hidden;
 }
 
+/* "Upcoming" / "Recent" date-status pill (archive/utils/date_status.py):
+   inline next to the date on /meetings rows and leading the notice on a
+   meeting page. Same mono/uppercase voice as .transcript-badge but flat,
+   untilted and neutral-toned -- it's a status note, not the "we have it"
+   stamp, and shouldn't compete with the real transcript badge. */
+.date-status-pill {
+  display: inline-block;
+  vertical-align: 0.1em;
+  padding: 0.05em 0.45em;
+  border: 1px solid var(--muted);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  line-height: 1.5;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.date-status-notice {
+  margin: 0.4rem 0 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.date-status-notice .date-status-pill {
+  margin-right: 0.35em;
+}
+
 /* --- About page --- */
 .about-page {
   max-width: 640px;
