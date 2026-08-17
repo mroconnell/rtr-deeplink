@@ -200,7 +200,18 @@ class TelvueAssetFinder(AssetFinder):
         if not title:
             return None
         match = _BODY_SUFFIX_RE.match(title.strip())
-        return match.group(1).strip() or None if match else None
+        if not match:
+            return None
+        name = match.group(1).strip()
+        # Real bug, confirmed live 2026-08-16: a bare "City Council -
+        # 5.6.2025" title (no actual city name prefix) matches the regex
+        # with group(1)="City", which enrich_jurisdiction_text() then
+        # treats as a real name and appends a state to -- "City, MA".
+        # These generic placeholder words are never a real jurisdiction
+        # name on their own.
+        if name.lower() in {"city", "town", "village", "township"}:
+            return None
+        return name or None
 
     @staticmethod
     async def _fetch_vtt(session: aiohttp.ClientSession, vtt_url: str):

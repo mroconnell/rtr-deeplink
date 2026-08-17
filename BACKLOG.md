@@ -1191,51 +1191,70 @@ unusually wide, and the missing auto-scroll toggle on archived pages~~
   works, not copying a real one. Only remaining path forward is ChampDS's
   own API docs/support, not further live investigation from this side.
 
-- **TelVue host enumeration — not yet built, needs real investigation
-  before starting (2026-08-16).** `app/platforms/telvue.py` (added this
-  session, see `BACKLOG_DONE.md`) resolves individual TelVue meeting
-  pages fine, but no host-enumeration pass has been run for it, unlike
-  primegov/civicweb/escribe/iqm2/clerkshq/cablecast. Two real
-  complications, confirmed live, that make this harder than a
-  copy-paste of the clerkshq path-based script: (1) `videoplayer.
-  telvue.com` alone hit the CDX 200,000-row cap on a bare
-  `collapse=urlkey` (exact-dedup) pull -- same "much bigger than it
-  looks" situation primegov/civicweb had, needs the K-character collapse
-  treatment, not clerkshq's "just page through everything" approach
-  (clerkshq was only 9,479 total rows). (2) The raw urlkey sample shows
-  path shapes that don't match the one confirmed real page structure
-  (`/player/{org_token}/media/{id}`) -- e.g. `.../m4qs8s.../stream/732`
-  -- suggesting multiple distinct URL patterns got crawled together, and
-  the tenant identifier is an opaque per-customer token, not a readable
-  city name, so collapsed buckets can't be eyeballed for noise the way
-  clerkshq's `ripuc1`...`ripuc143` duplication was caught. Needs its own
-  real investigation pass (confirm the real fixed_prefix, check whether
-  the opaque token is even a stable per-customer identifier or rotates
-  per-video) before writing an enumeration script, not a quick reuse.
+~~**TelVue host enumeration — not yet built.**~~ **Partially done
+  2026-08-16 via the web-search method, not the systematic CDX pass this
+  entry originally called for — real result, real remaining gap.** The
+  web-search-first method (proposed below, and validated on Legistar the
+  same night) found several real, currently-working
+  `videoplayer.telvue.com` meeting URLs, including one genuinely new
+  real jurisdiction: Fitchburg, MA (FATV), 956 real transcript segments,
+  22 agenda items — ingested for real. Full detail, including how its
+  opaque per-customer token was identified (quoting the token itself in
+  a follow-up search), in `CDX_QUERIES.md`. **Still not done**: a
+  systematic `hosts_telvue.txt` the way Legistar's 19-host list exists
+  now — this was a handful of confirmatory searches, not the same scale
+  of effort, and the CDX-side complications this entry originally
+  documented (200k-row cap, opaque token, mixed path shapes) are still
+  real and still unaddressed if someone wants full coverage rather than
+  a few more spot-checks.
 
-  **Promising untried alternative, 2026-08-16**: the Hyland adapter's own
-  host-discovery pass (see `BACKLOG_DONE.md`) found that a plain web
-  search for a platform's distinctive URL path/host string reliably
-  surfaces real customers when CDX enumeration is blocked or the tenant
-  identifier isn't a readable name — exactly this platform's situation.
-  `site:.gov inurl:videoplayer.telvue.com` / `site:.gov inurl:peg.tv`
-  hasn't been tried yet; see `~/Documents/rtr-business/research/
-  HYLAND_DISCOVERY.md` for the full method and a per-platform
-  probability-of-success table (TelVue rated high).
+  **Real bug found via this work, fixed same day**: `telvue.py`'s
+  `_guess_jurisdiction()` mismatched a bare "City Council - 5.6.2025"
+  title (Fitchburg's real title has no city-name prefix at all) as
+  jurisdiction="City", which then got a state appended downstream —
+  "City, MA" ended up as the real ingested jurisdiction, and the slug
+  it produced (`city-ma-city-council-5-6-2025`) is now permanently
+  wrong for that one already-ingested page (slugs don't regenerate on
+  re-ingest, by design — re-ingesting after the fix didn't change it).
+  Fixed in `_guess_jurisdiction()` to reject bare "city"/"town"/
+  "village"/"township" as a name; regression test added
+  (`tests/test_telvue.py::test_guess_jurisdiction_rejects_generic_placeholder_words`).
+  The one bad existing slug is cosmetic (still resolves, still has the
+  real transcript) and not worth a manual DB fix on its own.
 
-  **CivicPlus and Legistar CDX enumeration attempted 2026-08-16, both came
-  back empty** (`hosts_civicplus.txt`/`hosts_legistar.txt` in
-  `rtr-business/research/`, 0 usable hosts either way) — neither surfaced a
-  meeting-page path template the way CivicWeb's did. Don't re-run the same
-  domain-wide CDX scan; both are rated likely to respond better to the
-  same web-search-first method as TelVue above (see
-  `HYLAND_DISCOVERY.md`'s probability table — Legistar rated High, since
-  it's never had a stage-1 CDX host enumeration completed either, per
-  `CDX_QUERIES.md`'s explicit note). Full status of every platform's CDX
-  progress (including PrimeGov/CivicWeb/eScribe/IQM2/ClerkBase/ChampDS,
-  which all got real stage-2 yields the same night) is in
-  `CDX_QUERIES.md` directly — not duplicated here to avoid the two
-  drifting apart again.
+  **Legistar CDX enumeration came back empty on the first attempt, then
+  the web-search method fixed it for real, 2026-08-16.** A domain-wide
+  CDX scan of `legistar.com` found 0 usable hosts (matches CivicPlus's
+  same-shaped failure below). The web-search-first method found 19 real,
+  currently-active customer subdomains instead — full list, stage-2
+  seek results (19/19 hit), and the caption-yield breakdown are in
+  `CDX_QUERIES.md`, not duplicated here. **Two of those 19 turned into
+  genuinely new real captioned jurisdictions, checked against
+  `/internal/pages/all-urls` before ingesting and confirmed not already
+  present**: Lake County, IL (via `cablecast`, 162 segments) and City of
+  Saint Paul, MN (via `granicus`, 1,029 segments) — both ingested for
+  real via `bulk_ingest.py`.
+
+  **CivicPlus CDX enumeration attempted 2026-08-16, came back empty**
+  (`hosts_civicplus.txt` in `rtr-business/research/`, 0 usable hosts) —
+  didn't surface a meeting-page path template the way CivicWeb's did.
+  **Unlike Legistar/TelVue, the web-search method wasn't tried and isn't
+  obviously the right next step**: CivicPlus is a general city-website
+  CMS that delegates to Granicus/Legistar for actual video (confirmed,
+  see this file's own delegation-pattern note near the top), not a
+  distinct video platform — searching `civicplus.com` directly would
+  mostly just re-surface Granicus/Legistar hosts already reachable more
+  directly through their own enumeration. Not rated in
+  `HYLAND_DISCOVERY.md`'s probability table for this reason. If this is
+  ever worth revisiting, the real target is whatever specific
+  meeting-page path CivicPlus sites link out to, not `civicplus.com`
+  itself.
+
+  Full status of every platform's CDX progress (including
+  PrimeGov/CivicWeb/eScribe/IQM2/ClerkBase/ChampDS, which all got real
+  stage-2 yields the same night, and Granicus/Cablecast's still-partial
+  status) is in `CDX_QUERIES.md` directly — not duplicated here to avoid
+  the two drifting apart again.
 
   **CivicPlus has zero currently-live, confirmed-real URLs anywhere in
   this repo, re-confirmed 2026-08-16 building the WO-13 adapter health

@@ -107,3 +107,14 @@ async def test_guess_jurisdiction_matches_known_body_suffixes():
     assert TelvueAssetFinder._guess_jurisdiction("Medford City Council") == "Medford"
     assert TelvueAssetFinder._guess_jurisdiction("Board of Water Commissioners") is None
     assert TelvueAssetFinder._guess_jurisdiction(None) is None
+
+
+def test_guess_jurisdiction_rejects_generic_placeholder_words():
+    # Real bug, confirmed live 2026-08-16: Fitchburg, MA's real title is a
+    # bare "City Council - 5.6.2025" with no actual city name prefix --
+    # matched the body-suffix regex with group(1)="City", producing the
+    # bogus jurisdiction "City" (then "City, MA" after state enrichment).
+    assert TelvueAssetFinder._guess_jurisdiction("City Council - 5.6.2025") is None
+    assert TelvueAssetFinder._guess_jurisdiction("Town Council") is None
+    assert TelvueAssetFinder._guess_jurisdiction("Village Board") is None
+    assert TelvueAssetFinder._guess_jurisdiction("Township Committee") is None
