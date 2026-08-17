@@ -227,6 +227,110 @@ async def test_full_chunk_lifecycle_promotes_transcribed_version():
     assert [s["start"] for s in transcribed[0]["segments"]] == [1.0, 901.0, 1801.0]
 
 
+async def test_claim_next_chunk_exposes_partial_segments_for_dedup():
+    # Real bug fixed 2026-08-16 (see BACKLOG_DONE.md, and worker/segment_
+    # utils.py's own "Seam-duplication dedup" note): worker/main.py needs
+    # the previous chunk's already-persisted segments to detect a real
+    # seam-duplicate before it ever calls report_chunk_result() for the
+    # next chunk -- claim_next_chunk() has to actually return them.
+    url = "https://example.granicus.com/player/clip/tj-dedup-1"
+    job = await crud.create_transcription_job(
+        payload=_payload("granicus:tj-dedup-1", url), input_url_normalized=url,
+        requester_email="dedup1@example.com", media_url="https://example.com/v.m3u8",
+        media_kind="video", probed_duration_seconds=1800, chunk_size_seconds=900,
+        skip_confirmation=True,
+    )
+    claim = await crud.claim_next_chunk()
+    assert claim["job_id"] == job["job_id"]
+    assert claim["partial_segments"] == []  # nothing persisted yet on the first chunk
+
+    first_chunk_segments = [{"start": 1.0, "end": 2.0, "text": "First chunk content.", "speaker": None}]
+    await crud.report_chunk_result(job["job_id"], success=True, shifted_segments=first_chunk_segments)
+
+    claim2 = await crud.claim_next_chunk()
+    assert claim2["job_id"] == job["job_id"]
+    assert claim2["partial_segments"] == first_chunk_segments
+
+    # Finish the job (frees its MAX_CONCURRENT_TRANSCRIPTION_JOBS slot for
+    # later tests in this file, same reasoning as _drain_job() above).
+    await crud.report_chunk_result(job["job_id"], success=True, shifted_segments=[])
+
+
+async def test_report_chunk_result_drops_seam_duplicate_tail():
+    # End-to-end check that drop_previous_tail actually removes the stale
+    # duplicate from the DB row, not just from an in-memory list -- the
+    # real mechanism worker/main.py relies on (see its own process_next_
+    # chunk(), and worker/segment_utils.py's count_seam_overlap_segments()
+    # for how drop_previous_tail gets computed from real content).
+    url = "https://example.granicus.com/player/clip/tj-dedup-2"
+    job = await crud.create_transcription_job(
+        payload=_payload("granicus:tj-dedup-2", url), input_url_normalized=url,
+        requester_email="dedup2@example.com", media_url="https://example.com/v.m3u8",
+        media_kind="video", probed_duration_seconds=1800, chunk_size_seconds=900,
+        skip_confirmation=True,
+    )
+    claim = await crud.claim_next_chunk()
+    assert claim["job_id"] == job["job_id"]
+    stale_and_kept = [
+        {"start": 1.0, "end": 2.0, "text": "Kept, unrelated content.", "speaker": None},
+        {"start": 895.0, "end": 899.0, "text": "This is the duplicated tail sentence.", "speaker": None},
+    ]
+    await crud.report_chunk_result(job["job_id"], success=True, shifted_segments=stale_and_kept)
+
+    claim2 = await crud.claim_next_chunk()
+    assert claim2["partial_segments"] == stale_and_kept
+
+    new_chunk_segments = [{"start": 900.0, "end": 903.0, "text": "This is the next chunk.", "speaker": None}]
+    # Simulates worker/main.py dropping the one stale segment it detected.
+    result = await crud.report_chunk_result(
+        job["job_id"], success=True, shifted_segments=new_chunk_segments, drop_previous_tail=1,
+    )
+    assert result["status"] == "completed"
+
+    page = await crud.get_page_by_slug(job["meeting_page_slug"])
+    transcribed = next(v for v in page["versions"] if v["source"] == "transcribed")
+    texts = [s["text"] for s in transcribed["segments"]]
+    assert texts == ["Kept, unrelated content.", "This is the next chunk."]
+    assert "This is the duplicated tail sentence." not in texts
+
+
+async def test_list_completed_multichunk_transcription_jobs_filters_correctly():
+    # Backs GET /internal/transcription/completed-multichunk (archive/
+    # main.py), added 2026-08-16 alongside the seam-duplication fix to
+    # size how many already-completed jobs are real candidates for having
+    # shipped the bug before the fix existed (see worker/segment_utils.py's
+    # "Seam-duplication dedup" note and BACKLOG_DONE.md).
+    multi_url = "https://example.granicus.com/player/clip/tj-audit-multi"
+    single_url = "https://example.granicus.com/player/clip/tj-audit-single"
+
+    multi_job = await crud.create_transcription_job(
+        payload=_payload("granicus:tj-audit-multi", multi_url), input_url_normalized=multi_url,
+        requester_email="audit-multi@example.com", media_url="https://example.com/v.m3u8",
+        media_kind="video", probed_duration_seconds=1800, chunk_size_seconds=900,
+        skip_confirmation=True,
+    )
+    assert multi_job["total_chunks"] == 2
+    await _drain_job(multi_job["job_id"], 2)
+
+    single_job = await crud.create_transcription_job(
+        payload=_payload("granicus:tj-audit-single", single_url), input_url_normalized=single_url,
+        requester_email="audit-single@example.com", media_url="https://example.com/v.m3u8",
+        media_kind="video", probed_duration_seconds=800, chunk_size_seconds=900,
+        skip_confirmation=True,
+    )
+    assert single_job["total_chunks"] == 1
+    await _drain_job(single_job["job_id"], 1)
+
+    audited = await crud.list_completed_multichunk_transcription_jobs()
+    audited_job_ids = {row["job_id"] for row in audited}
+    assert multi_job["job_id"] in audited_job_ids
+    assert single_job["job_id"] not in audited_job_ids  # total_chunks == 1, never hit a chunk boundary
+
+    row = next(r for r in audited if r["job_id"] == multi_job["job_id"])
+    assert row["total_chunks"] == 2
+    assert row["slug"] == multi_job["meeting_page_slug"]
+
+
 async def test_completed_job_detects_language_from_transcribed_text():
     # Real gap closed alongside the search-language fix earlier this
     # session (see BACKLOG_DONE.md): a transcribed version used to always
