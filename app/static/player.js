@@ -23,6 +23,15 @@ let transcriptTracks = [];
 // against `activeVideoAdapter` regardless of which platform this is.
 let activeVideoAdapter = null;
 
+// Guards the video_play GA event (WO-9) against the native adapter's own
+// muted play-then-pause warm-up trick (see initNativeVideo below) --
+// that trick calls video.play() directly on the same underlying element
+// wireSharedControls listens on, so without this flag every page load
+// would silently count as "someone played the video" whether or not a
+// real visitor ever pressed play. Only the native adapter needs this;
+// the YouTube adapter has no equivalent warm-up.
+let suppressWarmupPlayTracking = false;
+
 // Drops a leading "City of "/"City " for display -- user request
 // 2026-08-12: almost everything archived is a city, so labeling every
 // row that way ("City of Napa, CA") reads as redundant. Reserves the
@@ -138,6 +147,7 @@ function renderTranscript(segs) {
       if (activeVideoAdapter) activeVideoAdapter.currentTime = Math.max(0, start - 1);
       highlightSegment(segId, false);
       updateUrlParams({ t: start, line: segId });
+      trackEvent('transcript_seek');
     });
   });
 
@@ -637,15 +647,23 @@ function initNativeVideo(videoUrl, videoFormat) {
     const targetTime = video.currentTime;
     const wasMuted = video.muted;
     video.muted = true;
+    suppressWarmupPlayTracking = true;
     const playPromise = video.play();
     if (playPromise && playPromise.then) {
       playPromise.then(() => {
         video.pause();
         video.currentTime = targetTime;
         video.muted = wasMuted;
+        suppressWarmupPlayTracking = false;
       }).catch(() => {
         video.muted = wasMuted; // autoplay blocked -- nothing to undo, just restore mute state
+        suppressWarmupPlayTracking = false;
       });
+    } else {
+      // Some browsers return undefined from play() instead of a promise
+      // -- nothing to await, so the warm-up (and the flag) is already
+      // effectively done by the time this line runs.
+      suppressWarmupPlayTracking = false;
     }
   }, { once: true });
 
@@ -840,6 +858,17 @@ function wireSharedControls(adapter, { liveTracking = true } = {}) {
   // segment advances.
   adapter.addEventListener('play', () => document.body.classList.remove('video-at-rest'));
   adapter.addEventListener('pause', () => document.body.classList.add('video-at-rest'));
+  // Every adapter type (native, YouTube, Viebit) funnels through this one
+  // shared 'play' event, so this is the single place that covers all of
+  // them -- see createNativeAdapter/createYouTubeAdapter's own comments
+  // for why they're unified behind this common shape. suppressWarmupPlayTracking
+  // filters out the native adapter's own muted warm-up play (see
+  // initNativeVideo) -- without it every page load would count as a real
+  // play regardless of whether a visitor ever pressed play.
+  adapter.addEventListener('play', () => {
+    if (suppressWarmupPlayTracking) return;
+    trackEvent('video_play');
+  });
 
   const linkToCurrentLabel = document.getElementById('linkToCurrentLabel');
   const linkToCurrentBtn = document.getElementById('linkToCurrentBtn');
@@ -1023,6 +1052,13 @@ async function init() {
   // moment. .replace() (not .href) so this transient page doesn't sit in
   // back-history between the referrer and the permanent page.
   if (data.redirect_url) {
+    // No data.platform here -- the redirect response never carries it
+    // (see app/main.py's archive_redirect branch). Status alone is still
+    // useful signal (WO-9): this is a real resolve outcome distinct from
+    // a fresh success, and the UTM params riding along in `params` below
+    // survive into the redirect target unchanged, so attribution isn't
+    // lost even without a platform value here.
+    trackEvent('resolve_result', { status: 'redirect' });
     const params = getQueryParams();
     params.delete('url');
     const target = params.toString() ? `${data.redirect_url}?${params.toString()}` : data.redirect_url;
@@ -1031,11 +1067,16 @@ async function init() {
   }
 
   if (data.error === 'calendar_page') {
+    trackEvent('resolve_result', { status: 'calendar_page', platform: data.platform });
     renderCalendarPage(data);
     return;
   }
 
   if (data.error) {
+    // Keep params low-cardinality (WO-9) -- data.error itself (a small
+    // fixed set: blocked_url/unsupported_platform/resolve_failed) is the
+    // status, never data.message (free text, could be anything).
+    trackEvent('resolve_result', { status: data.error, platform: data.platform });
     statusEl.textContent = data.message || 'This meeting could not be resolved.';
     // Still worth letting someone report this -- "it wouldn't resolve at
     // all" is itself a useful signal, arguably more so than a report on a
@@ -1044,6 +1085,7 @@ async function init() {
     return;
   }
 
+  trackEvent('resolve_result', { status: 'success', platform: data.platform });
   statusEl.textContent = '';
   currentMeetingTitle = data.title || 'meeting';
   document.getElementById('reportProblemToggleWrap').hidden = false;

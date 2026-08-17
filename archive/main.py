@@ -84,6 +84,13 @@ templates.env.globals["public_base_url"] = os.environ.get("PUBLIC_BASE_URL", "")
 templates.env.globals["CLERK_PUBLISHABLE_KEY"] = os.environ.get(
     "CLERK_PUBLISHABLE_KEY", ""
 )
+# WO-9 (2026-08-16): this service had no GA setup at all -- app/main.py's
+# matching global existed, but a redirect from /meeting to a permanent
+# /m/{slug} page landed on a template with no gtag snippet, so the visit
+# (and any outreach UTM params riding along in the URL) went untracked
+# the moment it arrived here, regardless of whether the params themselves
+# survived the redirect. Same pattern as app/templates/base.html.
+templates.env.globals["GA_MEASUREMENT_ID"] = os.environ.get("GA_MEASUREMENT_ID", "")
 templates.env.globals["CLERK_FRONTEND_API_URL"] = clerk_frontend_api_url(
     os.environ.get("CLERK_PUBLISHABLE_KEY", "")
 )

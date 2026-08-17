@@ -501,12 +501,19 @@ blast radius (144 files) — all confirmed clear first.
 
 ---
 
-## Wave 3 — outreach measurability
+## Wave 3 — outreach measurability · **COMPLETE 2026-08-16**
 
 No code blockers, but **coordinate the UTM convention with Ryan before any
 real outreach send** — see below. ~1 day.
 
-### WO-9 · The three events that make outreach measurable — **~1 afternoon** · *blocked on P3*
+WO-9 done, including a real GA gap on Archive found and fixed along the
+way (see below). Still needs Ryan's side: settle the UTM convention
+before any real outreach email goes out. Wave 4 (infra into the
+Blueprint) is next but needs Ryan's dashboard checks (P2, P4) first;
+Wave 6 (recurring bug-class cleanup) has no blockers and could run in
+the meantime.
+
+### WO-9 · The three events that make outreach measurable — **DONE 2026-08-16**
 
 **Problem.** Five GA events exist (`submit_meeting_url` at
 `app/templates/index.html:26`, three `copy_link_to_time` in `player.js`, one
@@ -519,18 +526,61 @@ response handler; `video_play` and `transcript_seek` from `player.js`, which
 already has `trackEvent` in scope. Keep params low-cardinality — no URLs, no
 anything user-identifying.
 
+**Fixed.**
+- `resolve_result` fires at all four `/api/resolve` response branches in
+  `player.js`: `{status: 'success', platform}`, `{status: 'redirect'}` (no
+  platform — the redirect response never carries one), `{status:
+  'calendar_page', platform}`, and `{status: <error code>, platform}` for
+  `blocked_url`/`unsupported_platform`/`resolve_failed`. Status values are
+  always one of a small fixed set, never free text (`data.message` is
+  never sent).
+- `transcript_seek` fires from the real transcript-line click handler
+  (`renderTranscript`'s `.segment-timestamp` listener) — deliberately not
+  wired into agenda-item clicks, which reuse the same CSS class but are a
+  separate feature.
+- `video_play` fires from the one shared `adapter.addEventListener('play',
+  ...)` that already covers every video backend (native/YouTube/Viebit).
+  **Real bug found and fixed while wiring this up**: the native adapter's
+  own muted play-then-pause warm-up trick (`initNativeVideo`, briefly
+  autoplays-then-pauses to pre-buffer) fires the exact same native `play`
+  event this listener was hooked to — without a fix, `video_play` would
+  have fired on **every page load**, not just real user-initiated plays,
+  making the whole metric meaningless. Fixed with a module-level
+  `suppressWarmupPlayTracking` flag, set for the duration of the warm-up
+  sequence only. Confirmed live (see Acceptance) that a page load alone no
+  longer fires it, and a real play does.
+- **Second real gap found and fixed, not in the original WO-9 scope**:
+  Archive (`archive/main.py` + `archive/templates/base.html`) had **no
+  Google Analytics at all** — no `gtag`, no `GA_MEASUREMENT_ID` global,
+  nothing, unlike the resolver. Since a large fraction of real traffic
+  redirects from `/meeting` straight to a permanent `/m/{slug}` page, any
+  outreach visit landing there would have been completely invisible to
+  GA regardless of whether UTM params survived the redirect — undermining
+  WO-9's whole point for exactly the visits most likely to matter. Fixed
+  by mirroring the resolver's exact `GA_MEASUREMENT_ID` global +
+  conditional `gtag`/`trackEvent` snippet onto Archive's `base.html`.
+
 **Ryan's half, and it needs no code:** every personalized link in the
 first-10 campaign gets
 `?utm_source=outreach&utm_campaign=first10&utm_content=<recipient-slug>`.
 GA segments on that automatically. **This is unrecoverable if the first
-emails go out without it** — settle the convention before WO-9 is even
-written. This directly unblocks the outreach-tracking prerequisite already
-flagged as open in `rtr-business/TASKS.md`.
+emails go out without it** — settle the convention before sending. This
+directly unblocks the outreach-tracking prerequisite already flagged as
+open in `rtr-business/TASKS.md`.
 
-**Acceptance.** All three events visible in GA realtime during a manual
-walkthrough. Confirm the UTM parameters survive the `/meeting` →
-`/m/{slug}` archive redirect; if they don't, that's a real bug and the
-campaign's attribution depends on fixing it.
+**Acceptance.** All three events verified live against a local dev server
+and a real Granicus meeting (Simi Valley), not just read from code —
+`window.dataLayer` inspected directly in-browser after each action:
+`resolve_result` fires with `{status: 'success', platform: 'granicus'}` on
+a successful resolve; `video_play` does **not** fire on page load (warm-up
+suppressed) but **does** fire on a real play-button click; `transcript_seek`
+fires on a real transcript-line click. UTM survival confirmed live too:
+navigating to `/meeting?url=...&utm_source=outreach&utm_campaign=first10
+&utm_content=test-recipient` for an already-archived meeting redirected to
+`/m/{slug}?utm_source=outreach&utm_campaign=first10&utm_content=
+test-recipient` — params fully intact. Archive's new GA snippet confirmed
+rendering on a local Archive instance. Full suite green (836 passed), JS
+suite green (29 passed), `ruff check`/`ruff format --check` clean.
 
 ---
 
