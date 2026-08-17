@@ -1233,9 +1233,22 @@ unusually wide, and the missing auto-scroll toggle on archived pages~~
 
   Full status of every platform's CDX progress (including
   PrimeGov/CivicWeb/eScribe/IQM2/ClerkBase/ChampDS, which all got real
-  stage-2 yields the same night, and Granicus/Cablecast's still-partial
-  status) is in `CDX_QUERIES.md` directly — not duplicated here to avoid
-  the two drifting apart again.
+  stage-2 yields the same night) is in `CDX_QUERIES.md` directly — not
+  duplicated here to avoid the two drifting apart again.
+
+~~**Cablecast/Swagit/CivicClerk stage-2 seeks — not yet run.**~~ **Done
+  2026-08-17.** 728 real candidate URLs found (Cablecast 44/256 hosts,
+  Swagit 430/434, CivicClerk 254/257 — full breakdown in
+  `CDX_QUERIES.md`). Sample-checked for real caption content (44/30/30):
+  25 confirmed real, **ingested for real**; the other 703 added to
+  `scripts/tier3_auto_transcription_queue.txt` for the existing cron
+  feeder to resolve and push at pickup time, rather than re-checking each
+  one by hand first. Also fixed a real bug in `hosts_to_urls.py` found
+  live during this run: a shared single-thread executor meant to bound a
+  DNS-hang per-call instead let one real hang silently wedge every host
+  after it for the rest of the run — fixed to use a fresh one-shot
+  executor per call. That script lives in `rtr-business/research/`, not
+  this repo.
 
   **CivicPlus has zero currently-live, confirmed-real URLs anywhere in
   this repo, re-confirmed 2026-08-16 building the WO-13 adapter health
