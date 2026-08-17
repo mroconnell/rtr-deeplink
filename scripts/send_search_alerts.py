@@ -34,8 +34,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
 async def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--dry-run", action="store_true", help="Compose and print each digest, but don't send anything")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Compose and print each digest, but don't send anything",
+    )
     args = parser.parse_args()
 
     # Imported here, not at module level -- archive/search_alerts.py

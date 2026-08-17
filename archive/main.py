@@ -30,7 +30,11 @@ def _init_sentry() -> None:
         return
     import sentry_sdk
 
-    sentry_sdk.init(dsn=dsn, environment=os.environ.get("SENTRY_ENVIRONMENT", "production"), traces_sample_rate=0)
+    sentry_sdk.init(
+        dsn=dsn,
+        environment=os.environ.get("SENTRY_ENVIRONMENT", "production"),
+        traces_sample_rate=0,
+    )
 
 
 _init_sentry()
@@ -64,27 +68,41 @@ app.mount("/static", StaticFiles(directory=APP_DIR / "static"), name="static")
 # Deep-link JS shared with the resolver service (app/main.py mounts the
 # same top-level directory identically) -- see shared_static/deep_link.js's
 # own header comment for why this exists.
-app.mount("/shared-static", StaticFiles(directory=APP_DIR.parent / "shared_static"), name="shared_static")
+app.mount(
+    "/shared-static",
+    StaticFiles(directory=APP_DIR.parent / "shared_static"),
+    name="shared_static",
+)
 templates = Jinja2Templates(directory=APP_DIR / "templates")
 # Used only for <link rel="canonical">/OpenGraph tags -- the public domain
 # these pages are actually reached at (via the resolver's /m/* proxy), not
 # this service's own onrender.com URL. Empty locally, where there's no
 # real public domain to canonicalize against.
-templates.env.globals["public_base_url"] = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
-templates.env.globals["CLERK_PUBLISHABLE_KEY"] = os.environ.get("CLERK_PUBLISHABLE_KEY", "")
-templates.env.globals["CLERK_FRONTEND_API_URL"] = clerk_frontend_api_url(os.environ.get("CLERK_PUBLISHABLE_KEY", ""))
+templates.env.globals["public_base_url"] = os.environ.get("PUBLIC_BASE_URL", "").rstrip(
+    "/"
+)
+templates.env.globals["CLERK_PUBLISHABLE_KEY"] = os.environ.get(
+    "CLERK_PUBLISHABLE_KEY", ""
+)
+templates.env.globals["CLERK_FRONTEND_API_URL"] = clerk_frontend_api_url(
+    os.environ.get("CLERK_PUBLISHABLE_KEY", "")
+)
 # Server-side equivalent of shared_static/deep_link.js's linkifyWarning()
 # -- wraps render_warnings_html()'s already-escaped output in Markup so a
 # template call site doesn't also need `|safe` (a forgotten `|safe`
 # would otherwise silently re-escape real markup this filter already
 # produced correctly).
-templates.env.filters["warnings_html"] = lambda warnings: Markup(render_warnings_html(warnings or []))
+templates.env.filters["warnings_html"] = lambda warnings: Markup(
+    render_warnings_html(warnings or [])
+)
 templates.env.filters["language_name"] = language_display_name
 # "scraped" is our internal TranscriptVersion.source value (see
 # archive/db/models.py) -- never shown verbatim to a reader, who has no
 # reason to know or care that it means "downloaded from the source site's
 # own captions" versus AI-transcribed.
-templates.env.filters["source_label"] = lambda source: "sourced" if source == "scraped" else source
+templates.env.filters["source_label"] = lambda source: (
+    "sourced" if source == "scraped" else source
+)
 templates.env.filters["jurisdiction_display"] = format_jurisdiction_display
 templates.env.filters["youtube_thumbnail_url"] = youtube_thumbnail_url
 
@@ -98,8 +116,12 @@ async def not_found_handler(request: Request, exc: StarletteHTTPException):
     # for broken inbound links (old bookmarks, stale references from other
     # sites) that was previously invisible.
     if exc.status_code == 404:
-        logger.warning("404: %s (referer=%s)", request.url.path, request.headers.get("referer", ""))
-        return templates.TemplateResponse(request, "not_found.html", {}, status_code=404)
+        logger.warning(
+            "404: %s (referer=%s)", request.url.path, request.headers.get("referer", "")
+        )
+        return templates.TemplateResponse(
+            request, "not_found.html", {}, status_code=404
+        )
     return await http_exception_handler(request, exc)
 
 
@@ -118,7 +140,7 @@ def _token_ok(authorization: Optional[str]) -> bool:
     expected = os.environ.get("ARCHIVE_INGEST_TOKEN", "")
     if not expected or not authorization or not authorization.startswith("Bearer "):
         return False
-    return secrets.compare_digest(authorization[len("Bearer "):], expected)
+    return secrets.compare_digest(authorization[len("Bearer ") :], expected)
 
 
 @app.get("/api/health")
@@ -139,7 +161,9 @@ async def health():
             await conn.execute(select(func.count()).select_from(MeetingPage))
     except Exception:
         logger.exception("Health check failed: database unreachable.")
-        return JSONResponse({"status": "error", "reason": "database unreachable"}, status_code=503)
+        return JSONResponse(
+            {"status": "error", "reason": "database unreachable"}, status_code=503
+        )
     return {"status": "ok"}
 
 
@@ -172,7 +196,9 @@ async def internal_schema_info(authorization: Optional[str] = Header(None)):
     async with engine.connect() as conn:
         actual_columns = await conn.run_sync(
             lambda sync_conn: {
-                table_name: sorted(col["name"] for col in sa_inspect(sync_conn).get_columns(table_name))
+                table_name: sorted(
+                    col["name"] for col in sa_inspect(sync_conn).get_columns(table_name)
+                )
                 for table_name in sa_inspect(sync_conn).get_table_names()
             }
         )
@@ -183,10 +209,13 @@ async def internal_schema_info(authorization: Optional[str] = Header(None)):
             alembic_version = row[0] if row else None
 
     expected_columns = {
-        table.name: sorted(col.name for col in table.columns) for table in Base.metadata.sorted_tables
+        table.name: sorted(col.name for col in table.columns)
+        for table in Base.metadata.sorted_tables
     }
     mismatched_tables = [
-        name for name, cols in expected_columns.items() if actual_columns.get(name) != cols
+        name
+        for name, cols in expected_columns.items()
+        if actual_columns.get(name) != cols
     ]
 
     return {
@@ -229,7 +258,9 @@ async def internal_transcript_wanted(authorization: Optional[str] = Header(None)
 
 
 @app.get("/internal/transcription-backlog")
-async def internal_transcription_backlog(limit: Optional[int] = None, authorization: Optional[str] = Header(None)):
+async def internal_transcription_backlog(
+    limit: Optional[int] = None, authorization: Optional[str] = Header(None)
+):
     """Batch counterpart to /internal/transcript-wanted above -- every
     archived page across ANY platform missing a good transcript,
     oldest-archived-first, skipping pages already in escalating-failure
@@ -245,7 +276,9 @@ async def internal_transcription_backlog(limit: Optional[int] = None, authorizat
 
 
 @app.get("/internal/transcription/completed-multichunk")
-async def internal_transcription_completed_multichunk(authorization: Optional[str] = Header(None)):
+async def internal_transcription_completed_multichunk(
+    authorization: Optional[str] = Header(None),
+):
     """Read-only audit list: every completed TranscriptionJob with
     total_chunks > 1 -- real candidates for the seam-duplication bug fixed
     2026-08-16 (see worker/segment_utils.py's "Seam-duplication dedup"
@@ -262,7 +295,9 @@ async def internal_transcription_completed_multichunk(authorization: Optional[st
 
 
 @app.get("/internal/lookup")
-async def internal_lookup(normalized_url: str, authorization: Optional[str] = Header(None)):
+async def internal_lookup(
+    normalized_url: str, authorization: Optional[str] = Header(None)
+):
     # 404, not 401/403 -- this is a private endpoint, its existence
     # shouldn't be distinguishable from a typo to anyone without the token
     # (same reasoning as the resolver's /admin/* routes).
@@ -319,7 +354,9 @@ class IngestRequest(BaseModel):
 
 
 @app.post("/internal/ingest")
-async def internal_ingest(req: IngestRequest, authorization: Optional[str] = Header(None)):
+async def internal_ingest(
+    req: IngestRequest, authorization: Optional[str] = Header(None)
+):
     if not _token_ok(authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
@@ -377,7 +414,10 @@ async def internal_transcription_create_job(
     if not _token_ok(authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
-    skip_confirmation = req.clerk_verified or await email_utils.check_audience_membership(req.requester_email)
+    skip_confirmation = (
+        req.clerk_verified
+        or await email_utils.check_audience_membership(req.requester_email)
+    )
 
     job = await crud.create_transcription_job(
         payload=req.payload.model_dump(),
@@ -407,7 +447,9 @@ class TranscriptionConfirmRequest(BaseModel):
 
 
 @app.post("/internal/transcription/confirm")
-async def internal_transcription_confirm(req: TranscriptionConfirmRequest, authorization: Optional[str] = Header(None)):
+async def internal_transcription_confirm(
+    req: TranscriptionConfirmRequest, authorization: Optional[str] = Header(None)
+):
     if not _token_ok(authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
@@ -423,7 +465,9 @@ async def internal_transcription_confirm(req: TranscriptionConfirmRequest, autho
 
 
 @app.get("/internal/transcription/status/{job_id}")
-async def internal_transcription_status(job_id: int, authorization: Optional[str] = Header(None)):
+async def internal_transcription_status(
+    job_id: int, authorization: Optional[str] = Header(None)
+):
     if not _token_ok(authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
@@ -439,14 +483,19 @@ class PromoteVersionRequest(BaseModel):
 
 
 @app.post("/internal/transcript-version/promote")
-async def internal_promote_version(req: PromoteVersionRequest, authorization: Optional[str] = Header(None)):
+async def internal_promote_version(
+    req: PromoteVersionRequest, authorization: Optional[str] = Header(None)
+):
     if not _token_ok(authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
-    result = await crud.manually_promote_transcript_version(slug=req.slug, version_id=req.version_id)
+    result = await crud.manually_promote_transcript_version(
+        slug=req.slug, version_id=req.version_id
+    )
     if result is None:
         return JSONResponse(
-            {"error": "not_found", "message": "No matching meeting page/version."}, status_code=404
+            {"error": "not_found", "message": "No matching meeting page/version."},
+            status_code=404,
         )
     return result
 
@@ -458,7 +507,9 @@ class CorrectLanguageRequest(BaseModel):
 
 
 @app.post("/internal/transcript-version/correct-language")
-async def internal_correct_language(req: CorrectLanguageRequest, authorization: Optional[str] = Header(None)):
+async def internal_correct_language(
+    req: CorrectLanguageRequest, authorization: Optional[str] = Header(None)
+):
     if not _token_ok(authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
@@ -467,7 +518,8 @@ async def internal_correct_language(req: CorrectLanguageRequest, authorization: 
     )
     if result is None:
         return JSONResponse(
-            {"error": "not_found", "message": "No matching meeting page/version."}, status_code=404
+            {"error": "not_found", "message": "No matching meeting page/version."},
+            status_code=404,
         )
     return result
 
@@ -478,17 +530,24 @@ class SaveMeetingRequest(BaseModel):
 
 
 @app.post("/internal/account/save-meeting")
-async def internal_save_meeting(req: SaveMeetingRequest, authorization: Optional[str] = Header(None)):
+async def internal_save_meeting(
+    req: SaveMeetingRequest, authorization: Optional[str] = Header(None)
+):
     if not _token_ok(authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
     item = await crud.save_meeting(req.clerk_user_id, req.slug)
     if item is None:
-        return JSONResponse({"error": "not_found", "message": "No meeting with that slug."}, status_code=404)
+        return JSONResponse(
+            {"error": "not_found", "message": "No meeting with that slug."},
+            status_code=404,
+        )
     return item
 
 
 @app.post("/internal/account/unsave-meeting")
-async def internal_unsave_meeting(req: SaveMeetingRequest, authorization: Optional[str] = Header(None)):
+async def internal_unsave_meeting(
+    req: SaveMeetingRequest, authorization: Optional[str] = Header(None)
+):
     if not _token_ok(authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
     removed = await crud.unsave_meeting(req.clerk_user_id, req.slug)
@@ -501,7 +560,9 @@ class SaveSearchRequest(BaseModel):
 
 
 @app.post("/internal/account/save-search")
-async def internal_save_search(req: SaveSearchRequest, authorization: Optional[str] = Header(None)):
+async def internal_save_search(
+    req: SaveSearchRequest, authorization: Optional[str] = Header(None)
+):
     if not _token_ok(authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
     return await crud.save_search(req.clerk_user_id, req.search_params)
@@ -513,7 +574,9 @@ class UnsaveItemRequest(BaseModel):
 
 
 @app.post("/internal/account/unsave-search")
-async def internal_unsave_search(req: UnsaveItemRequest, authorization: Optional[str] = Header(None)):
+async def internal_unsave_search(
+    req: UnsaveItemRequest, authorization: Optional[str] = Header(None)
+):
     if not _token_ok(authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
     removed = await crud.unsave_item(req.clerk_user_id, req.saved_item_id)
@@ -521,7 +584,9 @@ async def internal_unsave_search(req: UnsaveItemRequest, authorization: Optional
 
 
 @app.post("/internal/account/send-search-alerts")
-async def internal_send_search_alerts(dry_run: bool = False, authorization: Optional[str] = Header(None)):
+async def internal_send_search_alerts(
+    dry_run: bool = False, authorization: Optional[str] = Header(None)
+):
     """All the real work for the saved-search alert sweep happens here --
     direct DB access, direct Clerk/Resend credentials, no extra hop.
     GET /admin/send-search-alerts (app/main.py) is the public trigger
@@ -551,12 +616,20 @@ async def alerts_unsubscribe(request: Request, token: str = ""):
     from .utils import link_tokens
 
     saved_item_id = link_tokens.verify_saved_item_token(token)
-    removed = await crud.unsave_item_by_id(saved_item_id) if saved_item_id is not None else False
-    return templates.TemplateResponse(request, "alert_unsubscribed.html", {"removed": removed})
+    removed = (
+        await crud.unsave_item_by_id(saved_item_id)
+        if saved_item_id is not None
+        else False
+    )
+    return templates.TemplateResponse(
+        request, "alert_unsubscribed.html", {"removed": removed}
+    )
 
 
 @app.get("/internal/account/saved")
-async def internal_list_saved_items(clerk_user_id: str, authorization: Optional[str] = Header(None)):
+async def internal_list_saved_items(
+    clerk_user_id: str, authorization: Optional[str] = Header(None)
+):
     if not _token_ok(authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
     return await crud.list_saved_items(clerk_user_id)
@@ -567,7 +640,9 @@ class DeleteAccountDataRequest(BaseModel):
 
 
 @app.post("/internal/account/delete-data")
-async def internal_delete_account_data(req: DeleteAccountDataRequest, authorization: Optional[str] = Header(None)):
+async def internal_delete_account_data(
+    req: DeleteAccountDataRequest, authorization: Optional[str] = Header(None)
+):
     """The right-to-deletion cascade, triggered by app/main.py's Clerk
     user.deleted webhook handler -- see crud.delete_account_data()'s own
     docstring for why this one call is the entire story on our side."""
@@ -592,8 +667,12 @@ def _pick_active_version(page: dict, version: Optional[int]) -> Optional[dict]:
 async def meeting_page(request: Request, slug: str, version: Optional[int] = None):
     page = await crud.get_page_by_slug(slug)
     if page is None:
-        logger.warning("404: /m/%s (referer=%s)", slug, request.headers.get("referer", ""))
-        return templates.TemplateResponse(request, "not_found.html", {}, status_code=404)
+        logger.warning(
+            "404: /m/%s (referer=%s)", slug, request.headers.get("referer", "")
+        )
+        return templates.TemplateResponse(
+            request, "not_found.html", {}, status_code=404
+        )
 
     active_version = _pick_active_version(page, version)
     active_account = get_clerk_user_id(request)
@@ -601,7 +680,11 @@ async def meeting_page(request: Request, slug: str, version: Optional[int] = Non
     # anonymous visitor never pays this extra query, matching the
     # "nothing existing gets gated, nothing extra costs anonymous
     # traffic" design note.
-    meeting_saved = await crud.is_meeting_saved(active_account, page["id"]) if active_account else False
+    meeting_saved = (
+        await crud.is_meeting_saved(active_account, page["id"])
+        if active_account
+        else False
+    )
 
     return templates.TemplateResponse(
         request,
@@ -612,7 +695,8 @@ async def meeting_page(request: Request, slug: str, version: Optional[int] = Non
             # The <html lang> attribute should reflect what's actually on
             # the page, not always English -- a transcript's real language
             # comes from its TranscriptVersion, not a sitewide constant.
-            "page_lang": (active_version["language"] if active_version else None) or "en",
+            "page_lang": (active_version["language"] if active_version else None)
+            or "en",
             # Truthy only for a real, verified Clerk session -- the cookie
             # is forwarded through the resolver's reverse proxy (see
             # app/archive_client.py's proxy_get()), so this is a single
@@ -637,9 +721,15 @@ async def meeting_transcript_export(slug: str, ext: str, version: Optional[int] 
 
     active_version = _pick_active_version(page, version)
     if not active_version or not active_version["segments"]:
-        return JSONResponse({"detail": "No transcript available for this meeting."}, status_code=404)
+        return JSONResponse(
+            {"detail": "No transcript available for this meeting."}, status_code=404
+        )
 
-    body = to_srt(active_version["segments"]) if ext == "srt" else to_txt(active_version["segments"])
+    body = (
+        to_srt(active_version["segments"])
+        if ext == "srt"
+        else to_txt(active_version["segments"])
+    )
     if ext == "txt" and active_version["source"] == "transcribed":
         # Prepended, not injected into the .srt -- SRT is a strict cue
         # format meant for subtitle players, and a fake cue at 00:00
@@ -728,9 +818,12 @@ async def coverage(request: Request):
     return templates.TemplateResponse(
         request,
         "coverage.html",
-        {"coverage": coverage_rows, "jurisdictions": jurisdictions, "active_account": get_clerk_user_id(request)},
+        {
+            "coverage": coverage_rows,
+            "jurisdictions": jurisdictions,
+            "active_account": get_clerk_user_id(request),
+        },
     )
-
 
 
 # Public, indexable static pages -- not MeetingPage rows, so they have no

@@ -8,7 +8,13 @@ from .engine import async_session
 from .models import MeetingResolution, ProblemReport
 from .outcomes import classify_outcome
 
-VALID_ISSUE_TYPES = {"wrong_video", "bad_transcript", "wrong_metadata", "wrong_language", "other"}
+VALID_ISSUE_TYPES = {
+    "wrong_video",
+    "bad_transcript",
+    "wrong_metadata",
+    "wrong_language",
+    "other",
+}
 
 # A cached resolve where no video was found at all (most likely a
 # generic_fallback miss, or a platform bug since fixed) has real upside in
@@ -56,7 +62,10 @@ async def get_cached_resolution(normalized_url: str) -> Optional[dict]:
             .where(
                 MeetingResolution.input_url_normalized == normalized_url,
                 MeetingResolution.status == "success",
-                or_(MeetingResolution.video_found.is_(True), MeetingResolution.created_at >= stale_cutoff),
+                or_(
+                    MeetingResolution.video_found.is_(True),
+                    MeetingResolution.created_at >= stale_cutoff,
+                ),
             )
             .order_by(MeetingResolution.created_at.desc())
             .limit(1)
@@ -158,7 +167,9 @@ def _worth_pushing(row: MeetingResolution) -> bool:
     return bool(payload.get("agenda_items"))
 
 
-async def get_pending_archive_pushes(*, min_age_minutes: int = 5, limit: int = 10) -> list[dict]:
+async def get_pending_archive_pushes(
+    *, min_age_minutes: int = 5, limit: int = 10
+) -> list[dict]:
     """Resolutions with real content that still have no confirmed Archive
     push, old enough that the fast BackgroundTasks path has clearly had
     its chance (avoids the sweep racing a push that's genuinely still
@@ -213,7 +224,9 @@ async def count_recent_resolutions(hours: int = 24) -> int:
     cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
     async with async_session() as session:
         result = await session.execute(
-            select(func.count()).select_from(MeetingResolution).where(MeetingResolution.created_at >= cutoff)
+            select(func.count())
+            .select_from(MeetingResolution)
+            .where(MeetingResolution.created_at >= cutoff)
         )
         return result.scalar_one()
 
@@ -230,7 +243,13 @@ async def get_stats() -> dict[str, Any]:
     """
     async with async_session() as session:
         rows = (
-            (await session.execute(select(MeetingResolution).order_by(MeetingResolution.created_at.desc())))
+            (
+                await session.execute(
+                    select(MeetingResolution).order_by(
+                        MeetingResolution.created_at.desc()
+                    )
+                )
+            )
             .scalars()
             .all()
         )
@@ -245,7 +264,11 @@ async def get_stats() -> dict[str, Any]:
             durations.append(row.resolve_duration_ms)
 
     total = len(rows)
-    success_count = sum(count for (_, outcome), count in platform_outcome_counts.items() if outcome == "success")
+    success_count = sum(
+        count
+        for (_, outcome), count in platform_outcome_counts.items()
+        if outcome == "success"
+    )
 
     recent_problems = [row for row in rows if classify_outcome(row) != "success"][:20]
 
@@ -256,7 +279,11 @@ async def get_stats() -> dict[str, Any]:
     # a genuinely stuck row even after MAX_ARCHIVE_PUSH_ATTEMPTS gives up
     # retrying it.
     pending_archive_pushes = sum(
-        1 for row in rows if row.status == "success" and row.archive_pushed_at is None and _worth_pushing(row)
+        1
+        for row in rows
+        if row.status == "success"
+        and row.archive_pushed_at is None
+        and _worth_pushing(row)
     )
 
     return {
@@ -264,7 +291,9 @@ async def get_stats() -> dict[str, Any]:
         "success_rate": (success_count / total) if total else None,
         "total_cache_hits": total_hits,
         "pending_archive_pushes": pending_archive_pushes,
-        "avg_resolve_duration_ms": (sum(durations) / len(durations)) if durations else None,
+        "avg_resolve_duration_ms": (sum(durations) / len(durations))
+        if durations
+        else None,
         "by_platform_outcome": [
             {"platform": platform, "outcome": outcome, "count": count}
             for (platform, outcome), count in sorted(platform_outcome_counts.items())
@@ -291,7 +320,9 @@ async def list_resolutions(limit: int = 200) -> list[dict]:
         rows = (
             (
                 await session.execute(
-                    select(MeetingResolution).order_by(MeetingResolution.created_at.desc()).limit(limit)
+                    select(MeetingResolution)
+                    .order_by(MeetingResolution.created_at.desc())
+                    .limit(limit)
                 )
             )
             .scalars()
@@ -310,7 +341,9 @@ async def list_resolutions(limit: int = 200) -> list[dict]:
     ]
 
 
-async def log_problem_report(*, url: str, issue_type: str, details: Optional[str]) -> bool:
+async def log_problem_report(
+    *, url: str, issue_type: str, details: Optional[str]
+) -> bool:
     # Returns True (not None) on success -- the caller uses safe(), which
     # itself returns None on a genuine DB failure, so this function
     # returning None on success too would make the two indistinguishable.
@@ -326,7 +359,9 @@ async def list_problem_reports(limit: int = 200) -> list[dict]:
         rows = (
             (
                 await session.execute(
-                    select(ProblemReport).order_by(ProblemReport.created_at.desc()).limit(limit)
+                    select(ProblemReport)
+                    .order_by(ProblemReport.created_at.desc())
+                    .limit(limit)
                 )
             )
             .scalars()

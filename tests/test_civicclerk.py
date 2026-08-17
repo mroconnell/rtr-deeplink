@@ -14,10 +14,12 @@ async def test_resolve_real_event_with_video_and_agenda_bookmarks():
     media_json = load_fixture("civicclerk", "clovisca_media20.json")
 
     routes = {
-        "https://clovisca.api.civicclerk.com/v1/Events/20":
-            FakeResponse(status=200, text=event_json),
-        "https://clovisca.api.civicclerk.com/v1/EventsMedia/20":
-            FakeResponse(status=200, text=media_json),
+        "https://clovisca.api.civicclerk.com/v1/Events/20": FakeResponse(
+            status=200, text=event_json
+        ),
+        "https://clovisca.api.civicclerk.com/v1/EventsMedia/20": FakeResponse(
+            status=200, text=media_json
+        ),
     }
 
     with mock_session(routes):
@@ -66,7 +68,9 @@ async def test_resolve_event_with_external_video_and_no_bookmarks(monkeypatch):
             "uploader": "cityofclovis",
             "upload_date": "20260107",
             "_chosen_track": (
-                "WEBVTT\n\n00:00:01.000 --> 00:00:03.000\nCall to order.\n".encode("utf-8"),
+                "WEBVTT\n\n00:00:01.000 --> 00:00:03.000\nCall to order.\n".encode(
+                    "utf-8"
+                ),
                 "en",
                 True,
             ),
@@ -77,10 +81,12 @@ async def test_resolve_event_with_external_video_and_no_bookmarks(monkeypatch):
     media_json = load_fixture("civicclerk", "clovisca_media17.json")
 
     routes = {
-        "https://clovisca.api.civicclerk.com/v1/Events/17":
-            FakeResponse(status=200, text=event_json),
-        "https://clovisca.api.civicclerk.com/v1/EventsMedia/17":
-            FakeResponse(status=200, text=media_json),
+        "https://clovisca.api.civicclerk.com/v1/Events/17": FakeResponse(
+            status=200, text=event_json
+        ),
+        "https://clovisca.api.civicclerk.com/v1/EventsMedia/17": FakeResponse(
+            status=200, text=media_json
+        ),
     }
 
     with mock_session(routes):
@@ -113,10 +119,12 @@ async def test_resolve_real_event_with_populated_srt_captions():
 
     caption_url = "https://cpmedia.azureedge.net/emporiaks/ClosedCaption/07222026172024531-585.srt"
     routes = {
-        "https://emporiaks.api.civicclerk.com/v1/Events/585":
-            FakeResponse(status=200, text=event_json),
-        "https://emporiaks.api.civicclerk.com/v1/EventsMedia/585":
-            FakeResponse(status=200, text=media_json),
+        "https://emporiaks.api.civicclerk.com/v1/Events/585": FakeResponse(
+            status=200, text=event_json
+        ),
+        "https://emporiaks.api.civicclerk.com/v1/EventsMedia/585": FakeResponse(
+            status=200, text=media_json
+        ),
         caption_url: FakeResponse(status=200, raw=captions_srt),
     }
 
@@ -155,8 +163,12 @@ async def test_resolve_fills_in_missing_state_via_shared_lookup():
     media_json = '{"id": 2, "videoUrl": "https://cpmedia.azureedge.net/example/b.mp4", "eventBookmarks": []}'
 
     routes = {
-        "https://example.api.civicclerk.com/v1/Events/2": FakeResponse(status=200, text=event_json),
-        "https://example.api.civicclerk.com/v1/EventsMedia/2": FakeResponse(status=200, text=media_json),
+        "https://example.api.civicclerk.com/v1/Events/2": FakeResponse(
+            status=200, text=event_json
+        ),
+        "https://example.api.civicclerk.com/v1/EventsMedia/2": FakeResponse(
+            status=200, text=media_json
+        ),
     }
 
     with mock_session(routes):
@@ -181,8 +193,12 @@ async def test_resolve_falls_back_to_jurisdiction_chain_when_location_is_fully_b
     media_json = '{"id": 4567, "videoUrl": "https://cpmedia.azureedge.net/example/c.mp4", "eventBookmarks": []}'
 
     routes = {
-        "https://losaltoshillsca.api.civicclerk.com/v1/Events/4567": FakeResponse(status=200, text=event_json),
-        "https://losaltoshillsca.api.civicclerk.com/v1/EventsMedia/4567": FakeResponse(status=200, text=media_json),
+        "https://losaltoshillsca.api.civicclerk.com/v1/Events/4567": FakeResponse(
+            status=200, text=event_json
+        ),
+        "https://losaltoshillsca.api.civicclerk.com/v1/EventsMedia/4567": FakeResponse(
+            status=200, text=media_json
+        ),
     }
 
     with mock_session(routes):
@@ -213,10 +229,15 @@ async def test_resolve_falls_back_to_agenda_plaintext_when_subdomain_also_fails(
     agenda_text = "Town of Galesburg / City Council Regular Meeting Agenda / Thursday, June 18, 2026"
 
     routes = {
-        "https://testgov123.api.civicclerk.com/v1/Events/9": FakeResponse(status=200, text=event_json),
-        "https://testgov123.api.civicclerk.com/v1/EventsMedia/9": FakeResponse(status=200, text=media_json),
-        "https://testgov123.api.civicclerk.com/v1/Meetings/GetMeetingFile(fileId=8983,plainText=true)":
-            FakeResponse(status=200, text=f'{{"blobUri": "{blob_url}"}}'),
+        "https://testgov123.api.civicclerk.com/v1/Events/9": FakeResponse(
+            status=200, text=event_json
+        ),
+        "https://testgov123.api.civicclerk.com/v1/EventsMedia/9": FakeResponse(
+            status=200, text=media_json
+        ),
+        "https://testgov123.api.civicclerk.com/v1/Meetings/GetMeetingFile(fileId=8983,plainText=true)": FakeResponse(
+            status=200, text=f'{{"blobUri": "{blob_url}"}}'
+        ),
         blob_url: FakeResponse(status=200, text=agenda_text),
     }
 
@@ -241,9 +262,15 @@ async def test_resolve_text_fallback_for_unstructured_caption_format():
     sbv_content = "0:00:01.000,0:00:02.000\nHello there."
 
     routes = {
-        "https://example.api.civicclerk.com/v1/Events/1": FakeResponse(status=200, text=event_json),
-        "https://example.api.civicclerk.com/v1/EventsMedia/1": FakeResponse(status=200, text=media_json),
-        "https://cpmedia.azureedge.net/example/cc.sbv": FakeResponse(status=200, text=sbv_content),
+        "https://example.api.civicclerk.com/v1/Events/1": FakeResponse(
+            status=200, text=event_json
+        ),
+        "https://example.api.civicclerk.com/v1/EventsMedia/1": FakeResponse(
+            status=200, text=media_json
+        ),
+        "https://cpmedia.azureedge.net/example/cc.sbv": FakeResponse(
+            status=200, text=sbv_content
+        ),
     }
 
     with mock_session(routes):

@@ -1,28 +1,42 @@
-from archive.utils.search import build_corpus, find_matching_segment, find_snippet, matches, tokenize
+from archive.utils.search import (
+    build_corpus,
+    find_matching_segment,
+    find_snippet,
+    matches,
+    tokenize,
+)
 
 
 def test_exact_search_is_plain_substring():
-    corpus = build_corpus("City Council Meeting", "Dublin, CA", "discussion of traffic signals downtown")
+    corpus = build_corpus(
+        "City Council Meeting", "Dublin, CA", "discussion of traffic signals downtown"
+    )
     assert matches("traffic", corpus, set(), fuzzy=False)
     assert matches("TRAFFIC", corpus, set(), fuzzy=False)
     assert not matches("trafic", corpus, set(), fuzzy=False)
 
 
 def test_exact_search_requires_every_term():
-    corpus = build_corpus("City Council Meeting", "Dublin, CA", "discussion of traffic signals downtown")
+    corpus = build_corpus(
+        "City Council Meeting", "Dublin, CA", "discussion of traffic signals downtown"
+    )
     assert matches("traffic downtown", corpus, set(), fuzzy=False)
     assert not matches("traffic uptown", corpus, set(), fuzzy=False)
 
 
 def test_fuzzy_search_tolerates_transcription_typos():
-    corpus = build_corpus("", "", "the council discussed trafic signals near the school")
+    corpus = build_corpus(
+        "", "", "the council discussed trafic signals near the school"
+    )
     words = tokenize(corpus)
     # Motivating example from the user request: "traffic" should still
     # match a transcript that actually says "trafic" (1 char short) or
     # "traffiq" (1 char substituted).
     assert matches("traffic", corpus, words, fuzzy=True)
 
-    corpus2 = build_corpus("", "", "the council discussed traffiq signals near the school")
+    corpus2 = build_corpus(
+        "", "", "the council discussed traffiq signals near the school"
+    )
     words2 = tokenize(corpus2)
     assert matches("traffic", corpus2, words2, fuzzy=True)
 
@@ -57,11 +71,15 @@ def test_find_snippet_uses_real_word_for_fuzzy_match_not_query_term():
     snippet = find_snippet("traffic", [text], fuzzy=True)
     assert snippet is not None
     assert '<mark class="search-match">trafic</mark>' in snippet
-    assert "traffic" not in snippet.split("<mark")[0]  # query term itself not injected verbatim
+    assert (
+        "traffic" not in snippet.split("<mark")[0]
+    )  # query term itself not injected verbatim
 
 
 def test_find_snippet_checks_texts_in_order_and_skips_empty():
-    snippet = find_snippet("traffic", ["", "no match here", "a note about traffic calming"], fuzzy=False)
+    snippet = find_snippet(
+        "traffic", ["", "no match here", "a note about traffic calming"], fuzzy=False
+    )
     assert snippet is not None
     assert "a note about" in snippet and "calming" in snippet
 
@@ -94,28 +112,40 @@ def test_find_snippet_adds_ellipsis_only_when_text_is_truncated():
 
 
 def test_quoted_phrase_requires_adjacent_match():
-    corpus = build_corpus("City Council Meeting", "Anytown, USA", "the city discussed a new data center project")
+    corpus = build_corpus(
+        "City Council Meeting",
+        "Anytown, USA",
+        "the city discussed a new data center project",
+    )
     assert matches('"data center"', corpus, set(), fuzzy=False)
     # Same two words present, but not adjacent -- must not match as a phrase.
-    corpus2 = build_corpus("", "", "the data we collected pointed to the community center")
+    corpus2 = build_corpus(
+        "", "", "the data we collected pointed to the community center"
+    )
     assert not matches('"data center"', corpus2, set(), fuzzy=False)
 
 
 def test_unquoted_multiword_search_is_still_and_not_phrase():
     # Confirms the fix didn't change existing unquoted behavior: both
     # words required, but not necessarily adjacent.
-    corpus = build_corpus("", "", "the data we collected pointed to the community center")
+    corpus = build_corpus(
+        "", "", "the data we collected pointed to the community center"
+    )
     assert matches("data center", corpus, set(), fuzzy=False)
 
 
 def test_quoted_phrase_combined_with_unquoted_word():
-    corpus = build_corpus("", "", "the city approved a new data center near downtown parking")
+    corpus = build_corpus(
+        "", "", "the city approved a new data center near downtown parking"
+    )
     assert matches('"data center" parking', corpus, set(), fuzzy=False)
     assert not matches('"data center" airport', corpus, set(), fuzzy=False)
 
 
 def test_quoted_phrase_missing_entirely_fails_even_if_words_present():
-    corpus = build_corpus("", "", "data was presented near the new community center today")
+    corpus = build_corpus(
+        "", "", "data was presented near the new community center today"
+    )
     assert not matches('"data center"', corpus, set(), fuzzy=False)
 
 
@@ -162,7 +192,11 @@ def test_find_snippet_phrase_is_exact_even_in_fuzzy_mode():
 
 
 def test_minus_prefix_excludes_meetings_containing_the_word():
-    corpus = build_corpus("City Council Meeting", "Dublin, CA", "discussion of traffic signals and parking")
+    corpus = build_corpus(
+        "City Council Meeting",
+        "Dublin, CA",
+        "discussion of traffic signals and parking",
+    )
     assert matches("traffic", corpus, set(), fuzzy=False)
     assert not matches("traffic -parking", corpus, set(), fuzzy=False)
 
@@ -184,13 +218,17 @@ def test_minus_exclusion_is_exact_even_in_fuzzy_mode():
 
 
 def test_plus_prefix_is_a_no_op_since_words_are_already_required():
-    corpus = build_corpus("City Council Meeting", "Dublin, CA", "discussion of traffic signals downtown")
+    corpus = build_corpus(
+        "City Council Meeting", "Dublin, CA", "discussion of traffic signals downtown"
+    )
     assert matches("+traffic +downtown", corpus, set(), fuzzy=False)
     assert not matches("+traffic +uptown", corpus, set(), fuzzy=False)
 
 
 def test_bare_and_ampersand_are_no_ops():
-    corpus = build_corpus("City Council Meeting", "Dublin, CA", "discussion of traffic signals downtown")
+    corpus = build_corpus(
+        "City Council Meeting", "Dublin, CA", "discussion of traffic signals downtown"
+    )
     assert matches("traffic AND downtown", corpus, set(), fuzzy=False)
     assert matches("traffic & downtown", corpus, set(), fuzzy=False)
 
@@ -220,7 +258,9 @@ def test_find_matching_segment_returns_none_for_a_keyword_less_query():
 
 
 def test_find_matching_segment_respects_fuzzy_flag():
-    segments = [{"start": 0.0, "end": 5.0, "text": "the council discussed trafic calming"}]
+    segments = [
+        {"start": 0.0, "end": 5.0, "text": "the council discussed trafic calming"}
+    ]
     assert find_matching_segment("traffic", segments, fuzzy=False) is None
     result = find_matching_segment("traffic", segments, fuzzy=True)
     assert result["index"] == 0

@@ -39,11 +39,16 @@ async def test_dry_run_resolves_but_never_pushes(monkeypatch):
         pushed["called"] = True
         return True
 
-    monkeypatch.setattr("app.main.get_finder", lambda platform: _FakeFinder(_real_result()))
+    monkeypatch.setattr(
+        "app.main.get_finder", lambda platform: _FakeFinder(_real_result())
+    )
     monkeypatch.setattr("app.main.archive_client.push", _fake_push)
 
     result = await _recheck_archived_page(
-        "https://example.new.swagit.com/videos/1", "https://example.new.swagit.com/videos/1", "swagit", dry_run=True
+        "https://example.new.swagit.com/videos/1",
+        "https://example.new.swagit.com/videos/1",
+        "swagit",
+        dry_run=True,
     )
 
     assert result["pushed"] is True  # real content *was* found...
@@ -59,11 +64,15 @@ async def test_real_run_pushes_when_content_found(monkeypatch):
         pushed["payload"] = payload
         return True
 
-    monkeypatch.setattr("app.main.get_finder", lambda platform: _FakeFinder(_real_result()))
+    monkeypatch.setattr(
+        "app.main.get_finder", lambda platform: _FakeFinder(_real_result())
+    )
     monkeypatch.setattr("app.main.archive_client.push", _fake_push)
 
     result = await _recheck_archived_page(
-        "https://example.new.swagit.com/videos/1", "https://example.new.swagit.com/videos/1", "swagit"
+        "https://example.new.swagit.com/videos/1",
+        "https://example.new.swagit.com/videos/1",
+        "swagit",
     )
 
     assert result["pushed"] is True
@@ -79,11 +88,15 @@ async def test_no_real_content_never_pushes_even_without_dry_run(monkeypatch):
         pushed["called"] = True
         return True
 
-    monkeypatch.setattr("app.main.get_finder", lambda platform: _FakeFinder(empty_result))
+    monkeypatch.setattr(
+        "app.main.get_finder", lambda platform: _FakeFinder(empty_result)
+    )
     monkeypatch.setattr("app.main.archive_client.push", _fake_push)
 
     result = await _recheck_archived_page(
-        "https://example.new.swagit.com/videos/2", "https://example.new.swagit.com/videos/2", "swagit"
+        "https://example.new.swagit.com/videos/2",
+        "https://example.new.swagit.com/videos/2",
+        "swagit",
     )
 
     assert result["pushed"] is False
@@ -91,7 +104,9 @@ async def test_no_real_content_never_pushes_even_without_dry_run(monkeypatch):
 
 
 async def test_unsupported_platform_returns_an_error_not_a_crash(monkeypatch):
-    result = await _recheck_archived_page("https://example.com/x", "https://example.com/x", "not-a-real-platform")
+    result = await _recheck_archived_page(
+        "https://example.com/x", "https://example.com/x", "not-a-real-platform"
+    )
     assert result["error"] == "unsupported_platform"
 
 
@@ -102,5 +117,7 @@ async def test_resolve_exception_returns_an_error_not_a_crash(monkeypatch):
 
     monkeypatch.setattr("app.main.get_finder", lambda platform: _RaisingFinder())
 
-    result = await _recheck_archived_page("https://example.com/x", "https://example.com/x", "swagit")
+    result = await _recheck_archived_page(
+        "https://example.com/x", "https://example.com/x", "swagit"
+    )
     assert result["error"] == "resolve_failed"

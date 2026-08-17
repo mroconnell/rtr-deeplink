@@ -24,13 +24,15 @@ def test_feed_is_valid_xml_with_special_characters_in_title():
     # containing a bare "&" or "<" (e.g. "Planning & Zoning") produced
     # invalid, unparseable XML until every interpolated value was escaped
     # explicitly with `|e`. This pins that down as a regression test.
-    entries = [{
-        "slug": "test-meeting",
-        "title": "Planning & Zoning <Special Session>",
-        "date": "2026-01-01",
-        "jurisdiction": "R & D County",
-        "created_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
-    }]
+    entries = [
+        {
+            "slug": "test-meeting",
+            "title": "Planning & Zoning <Special Session>",
+            "date": "2026-01-01",
+            "jurisdiction": "R & D County",
+            "created_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
+        }
+    ]
     xml = _render(entries)
     root = ET.fromstring(xml)  # raises if invalid
     title = root.find("./channel/item/title").text

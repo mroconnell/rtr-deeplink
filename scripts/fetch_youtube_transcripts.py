@@ -55,13 +55,18 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.platforms.youtube import YouTubeAssetFinder  # noqa: E402
 from app.utils.vtt_parser import normalize_shouting_caption, unescape_caption_entities  # noqa: E402
-from archive.utils.email import send_youtube_transcript_failure, send_youtube_transcript_report  # noqa: E402
+from archive.utils.email import (
+    send_youtube_transcript_failure,
+    send_youtube_transcript_report,
+)  # noqa: E402
 
 # Gentler than bulk_ingest.py's 1.5s -- every request here hits YouTube
 # from the operator's own home IP, and youtube-transcript-api's docs warn
 # that too many requests get even residential IPs temporarily blocked.
 REQUEST_DELAY_SECONDS = 5.0
-INGEST_TIMEOUT = aiohttp.ClientTimeout(total=65)  # matches archive_client.PUSH_TIMEOUT -- tolerates a Render cold start
+INGEST_TIMEOUT = aiohttp.ClientTimeout(
+    total=65
+)  # matches archive_client.PUSH_TIMEOUT -- tolerates a Render cold start
 
 # Not the Archive's own internal ARCHIVE_BASE_URL (its Render URL) --
 # emailed links need the real public domain, same distinction
@@ -70,7 +75,9 @@ INGEST_TIMEOUT = aiohttp.ClientTimeout(total=65)  # matches archive_client.PUSH_
 # (archive/utils/email.py) rather than a second one-off implementation --
 # same RESEND_API_KEY/RESEND_FROM_ADDRESS already in the repo's local
 # .env for other dev-time email testing.
-PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "https://redtaperecordings.com").rstrip("/")
+PUBLIC_BASE_URL = os.environ.get(
+    "PUBLIC_BASE_URL", "https://redtaperecordings.com"
+).rstrip("/")
 REPORT_EMAIL_TO = os.environ.get("YOUTUBE_FETCH_REPORT_EMAIL", "ryan@how-to-adu.com")
 
 
@@ -105,11 +112,13 @@ def snippets_to_segments(snippets) -> List[dict]:
             continue
         if text.startswith(">>"):
             text = "» " + text[2:].lstrip()
-        cues.append({
-            "start": float(snippet.start),
-            "end": float(snippet.start) + float(snippet.duration or 0),
-            "text": text,
-        })
+        cues.append(
+            {
+                "start": float(snippet.start),
+                "end": float(snippet.start) + float(snippet.duration or 0),
+                "text": text,
+            }
+        )
     normalize_shouting_caption(cues)
     # Real gap fixed 2026-08-12: this conversion bypasses parse_vtt()
     # entirely (works from youtube-transcript-api snippets, not raw VTT
@@ -140,20 +149,29 @@ def fetch_transcript(video_id: str):
 
 async def _get_wanted(session: aiohttp.ClientSession) -> List[dict]:
     async with session.get(
-        f"{_base_url()}/internal/transcript-wanted", headers=_headers(), timeout=INGEST_TIMEOUT
+        f"{_base_url()}/internal/transcript-wanted",
+        headers=_headers(),
+        timeout=INGEST_TIMEOUT,
     ) as response:
         if response.status != 200:
             text = await response.text()
-            raise RuntimeError(f"transcript-wanted failed ({response.status}): {text[:300]}")
+            raise RuntimeError(
+                f"transcript-wanted failed ({response.status}): {text[:300]}"
+            )
         data = await response.json()
         return data.get("pages", [])
 
 
-async def _ingest(session: aiohttp.ClientSession, payload: dict, input_url_normalized: str) -> Optional[dict]:
+async def _ingest(
+    session: aiohttp.ClientSession, payload: dict, input_url_normalized: str
+) -> Optional[dict]:
     body = dict(payload)
     body["input_url_normalized"] = input_url_normalized
     async with session.post(
-        f"{_base_url()}/internal/ingest", json=body, headers=_headers(), timeout=INGEST_TIMEOUT
+        f"{_base_url()}/internal/ingest",
+        json=body,
+        headers=_headers(),
+        timeout=INGEST_TIMEOUT,
     ) as response:
         if response.status == 200:
             return await response.json()
@@ -161,12 +179,18 @@ async def _ingest(session: aiohttp.ClientSession, payload: dict, input_url_norma
         raise RuntimeError(f"ingest failed ({response.status}): {text[:300]}")
 
 
-async def process_one(session: aiohttp.ClientSession, page: dict, *, dry_run: bool) -> dict:
+async def process_one(
+    session: aiohttp.ClientSession, page: dict, *, dry_run: bool
+) -> dict:
     """Returns {"slug", "status": "ingested"|"skipped"|"failed", "detail"}."""
     slug = page.get("slug", "?")
     video_id = YouTubeAssetFinder.extract_video_id(page.get("video_url") or "")
     if not video_id:
-        return {"slug": slug, "status": "failed", "detail": f"no video id in video_url={page.get('video_url')!r}"}
+        return {
+            "slug": slug,
+            "status": "failed",
+            "detail": f"no video id in video_url={page.get('video_url')!r}",
+        }
 
     try:
         # fetch_transcript is synchronous (the library has no async API);
@@ -178,10 +202,18 @@ async def process_one(session: aiohttp.ClientSession, page: dict, *, dry_run: bo
         # through the queue generating identical failures.
         if type(e).__name__ in ("IpBlocked", "RequestBlocked"):
             raise
-        return {"slug": slug, "status": "failed", "detail": f"{type(e).__name__}: {str(e)[:200]}"}
+        return {
+            "slug": slug,
+            "status": "failed",
+            "detail": f"{type(e).__name__}: {str(e)[:200]}",
+        }
 
     if not segments:
-        return {"slug": slug, "status": "skipped", "detail": "transcript fetch returned no usable segments"}
+        return {
+            "slug": slug,
+            "status": "skipped",
+            "detail": "transcript fetch returned no usable segments",
+        }
 
     if dry_run:
         return {
@@ -232,16 +264,28 @@ async def _notify_failure(dry_run: bool, error_message: str) -> None:
 
 
 async def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--dry-run", action="store_true", help="Fetch and report, but don't actually push")
-    parser.add_argument("--limit", type=int, default=None, help="Process at most this many pages")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Fetch and report, but don't actually push",
+    )
+    parser.add_argument(
+        "--limit", type=int, default=None, help="Process at most this many pages"
+    )
     args = parser.parse_args()
 
     if not _base_url():
-        await _notify_failure(args.dry_run, "ARCHIVE_BASE_URL is not set (check the repo's .env).")
+        await _notify_failure(
+            args.dry_run, "ARCHIVE_BASE_URL is not set (check the repo's .env)."
+        )
         sys.exit(1)
     if not os.environ.get("ARCHIVE_INGEST_TOKEN"):
-        await _notify_failure(args.dry_run, "ARCHIVE_INGEST_TOKEN is not set (check the repo's .env).")
+        await _notify_failure(
+            args.dry_run, "ARCHIVE_INGEST_TOKEN is not set (check the repo's .env)."
+        )
         sys.exit(1)
 
     # Everything past this point can fail in ways worth a real alert --
@@ -258,10 +302,14 @@ async def main() -> None:
             if not pages:
                 print("Transcript-wanted queue is empty -- nothing to do.")
                 if not args.dry_run:
-                    await send_youtube_transcript_report(REPORT_EMAIL_TO, ingested=[], skipped=[], failed=[])
+                    await send_youtube_transcript_report(
+                        REPORT_EMAIL_TO, ingested=[], skipped=[], failed=[]
+                    )
                 return
 
-            print(f"{'[DRY RUN] ' if args.dry_run else ''}{len(pages)} page(s) wanting transcripts on {_base_url()}...\n")
+            print(
+                f"{'[DRY RUN] ' if args.dry_run else ''}{len(pages)} page(s) wanting transcripts on {_base_url()}...\n"
+            )
 
             # Wall-clock timestamps on each line matter here specifically
             # because this is meant to run unattended (see the launchd job
@@ -300,14 +348,18 @@ async def main() -> None:
             ingested = [r for r in results if r["status"] == "ingested"]
             skipped = [r for r in results if r["status"] == "skipped"]
             failed = [r for r in results if r["status"] == "failed"]
-            avg = f", {total_elapsed / len(results):.1f}s/page average" if results else ""
+            avg = (
+                f", {total_elapsed / len(results):.1f}s/page average" if results else ""
+            )
             print(
                 f"\n{len(ingested)} ingested, {len(skipped)} skipped, {len(failed)} failed (of {len(pages)} queued) "
                 f"in {total_elapsed:.1f}s{avg}."
             )
 
             if not args.dry_run:
-                await send_youtube_transcript_report(REPORT_EMAIL_TO, ingested=ingested, skipped=skipped, failed=failed)
+                await send_youtube_transcript_report(
+                    REPORT_EMAIL_TO, ingested=ingested, skipped=skipped, failed=failed
+                )
     except Exception as e:
         await _notify_failure(args.dry_run, f"{type(e).__name__}: {str(e)[:300]}")
         sys.exit(1)

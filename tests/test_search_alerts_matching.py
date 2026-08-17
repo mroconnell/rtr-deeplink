@@ -14,7 +14,12 @@ from archive.db.engine import async_session
 from archive.db.models import MeetingPage
 
 
-def _payload(external_id: str, source_url: str, title: str = "Test Meeting", jurisdiction: str = "City of Test") -> dict:
+def _payload(
+    external_id: str,
+    source_url: str,
+    title: str = "Test Meeting",
+    jurisdiction: str = "City of Test",
+) -> dict:
     return {
         "platform": "granicus",
         "source_url": source_url,
@@ -24,7 +29,9 @@ def _payload(external_id: str, source_url: str, title: str = "Test Meeting", jur
         "jurisdiction": jurisdiction,
         "video_url": "https://example.com/v.m3u8",
         "video_format": "m3u8",
-        "segments": [{"start": 0.0, "end": 5.0, "text": "discussion of traffic calming measures"}],
+        "segments": [
+            {"start": 0.0, "end": 5.0, "text": "discussion of traffic calming measures"}
+        ],
         "agenda_items": [],
         "transcript_language": "en",
         "transcript_warnings": [],
@@ -39,7 +46,11 @@ async def _make_page(external_id: str, **kwargs) -> str:
 
 async def _set_created_at(slug: str, when: datetime) -> None:
     async with async_session() as session:
-        page = (await session.execute(select(MeetingPage).where(MeetingPage.slug == slug))).scalars().first()
+        page = (
+            (await session.execute(select(MeetingPage).where(MeetingPage.slug == slug)))
+            .scalars()
+            .first()
+        )
         page.created_at = when
         await session.commit()
 
@@ -51,7 +62,9 @@ async def test_find_new_matches_respects_the_since_cursor():
     await _set_created_at(old_slug, now - timedelta(days=2))
     await _set_created_at(new_slug, now)
 
-    matches = await crud.find_new_matches_for_saved_search({}, since=now - timedelta(hours=1))
+    matches = await crud.find_new_matches_for_saved_search(
+        {}, since=now - timedelta(hours=1)
+    )
     slugs = {m["slug"] for m in matches}
     assert new_slug in slugs
     assert old_slug not in slugs
@@ -148,7 +161,9 @@ async def test_list_all_saved_searches_only_returns_saved_search_type():
     await crud.save_search(user, {"q": "should-appear"})
 
     all_searches = await crud.list_all_saved_searches()
-    assert all(s["clerk_user_id"] != user or "q" in s["search_params"] for s in all_searches)
+    assert all(
+        s["clerk_user_id"] != user or "q" in s["search_params"] for s in all_searches
+    )
     matching = [s for s in all_searches if s["clerk_user_id"] == user]
     assert len(matching) == 1
     assert matching[0]["search_params"] == {"q": "should-appear"}

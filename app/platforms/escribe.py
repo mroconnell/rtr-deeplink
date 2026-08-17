@@ -66,7 +66,9 @@ class EscribeAssetFinder(AssetFinder):
         transcript_warnings: List[str] = []
 
         async with aiohttp.ClientSession(headers=self.headers) as session:
-            async with session.get(url, allow_redirects=True, timeout=aiohttp.ClientTimeout(total=30)) as response:
+            async with session.get(
+                url, allow_redirects=True, timeout=aiohttp.ClientTimeout(total=30)
+            ) as response:
                 response.raise_for_status()
                 html = await response.text()
 
@@ -111,8 +113,13 @@ class EscribeAssetFinder(AssetFinder):
                     # Render's blocked cloud IP) could reach them. video_id is
                     # always the last path segment of the embed URL returned above.
                     video_id = scanned_url.rsplit("/", 1)[-1]
-                    yt_resolved = await YouTubeAssetFinder.resolve_video_id(video_id, source_url=url)
-                    video_url, video_format = yt_resolved.video_url, yt_resolved.video_format
+                    yt_resolved = await YouTubeAssetFinder.resolve_video_id(
+                        video_id, source_url=url
+                    )
+                    video_url, video_format = (
+                        yt_resolved.video_url,
+                        yt_resolved.video_format,
+                    )
                     segments = yt_resolved.segments
                     transcript_language = yt_resolved.transcript_language
                     transcript_warnings.extend(yt_resolved.transcript_warnings)
@@ -151,12 +158,20 @@ class EscribeAssetFinder(AssetFinder):
 
                 candidates = []
                 for suffix in KNOWN_LANGUAGE_SUFFIXES:
-                    vtt_url = f"https://video.isilive.ca/{client_id}/{encoded_stream}" + (f".{suffix}" if suffix else "") + ".vtt"
+                    vtt_url = (
+                        f"https://video.isilive.ca/{client_id}/{encoded_stream}"
+                        + (f".{suffix}" if suffix else "")
+                        + ".vtt"
+                    )
                     cues = await self._fetch_vtt(session, vtt_url)
                     if cues:
-                        candidates.append((vtt_url, cues, self._detect_cue_language(cues)))
+                        candidates.append(
+                            (vtt_url, cues, self._detect_cue_language(cues))
+                        )
 
-                target_match = next((c for c in candidates if c[2] == TARGET_LANGUAGE), None)
+                target_match = next(
+                    (c for c in candidates if c[2] == TARGET_LANGUAGE), None
+                )
                 chosen = target_match or (candidates[0] if candidates else None)
 
                 if chosen:
@@ -202,7 +217,9 @@ class EscribeAssetFinder(AssetFinder):
     @staticmethod
     async def _fetch_vtt(session: aiohttp.ClientSession, vtt_url: str):
         try:
-            async with session.get(vtt_url, timeout=aiohttp.ClientTimeout(total=20)) as response:
+            async with session.get(
+                vtt_url, timeout=aiohttp.ClientTimeout(total=20)
+            ) as response:
                 if response.status != 200:
                     return None
                 raw = await response.read()
@@ -231,7 +248,9 @@ class EscribeAssetFinder(AssetFinder):
             title = title_part.strip() or title
             for fmt in ("%B %d, %Y", "%b %d, %Y"):
                 try:
-                    date = datetime.strptime(date_part.strip(), fmt).strftime("%Y-%m-%d")
+                    date = datetime.strptime(date_part.strip(), fmt).strftime(
+                        "%Y-%m-%d"
+                    )
                     break
                 except ValueError:
                     continue
@@ -270,7 +289,9 @@ class EscribeAssetFinder(AssetFinder):
         return name.title() or None
 
     @staticmethod
-    def _extract_agenda_items(soup: BeautifulSoup, html: str) -> List[TranscriptSegment]:
+    def _extract_agenda_items(
+        soup: BeautifulSoup, html: str
+    ) -> List[TranscriptSegment]:
         """Real per-item video timestamps, when present, come from a
         `video.Bookmarks` JS array embedded in the page (confirmed live on
         a real Bakersfield, CA meeting) -- entries shaped like
@@ -307,7 +328,10 @@ class EscribeAssetFinder(AssetFinder):
             time_end = b.get("TimeEnd")
             if item_id is None or time_start is None or time_end is None:
                 continue
-            if item_id not in earliest_by_id or time_start < earliest_by_id[item_id]["TimeStart"]:
+            if (
+                item_id not in earliest_by_id
+                or time_start < earliest_by_id[item_id]["TimeStart"]
+            ):
                 earliest_by_id[item_id] = b
 
         items: List[TranscriptSegment] = []

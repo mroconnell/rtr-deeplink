@@ -12,12 +12,12 @@ from aiohttp_mock import FakeResponse, mock_session
 PAGE_URL = "https://www.senate.ca.gov/media/9999"
 
 BASE_HTML = (
-    '<html><body>'
-    '<h1>Media on Demand</h1>'
-    '<h2>Joint Hearing on Housing, Monday, August 3, 2026</h2>'
+    "<html><body>"
+    "<h1>Media on Demand</h1>"
+    "<h2>Joint Hearing on Housing, Monday, August 3, 2026</h2>"
     '<video src="https://stream.senate.ca.gov/vod/_definst_/mp4:x/playlist.m3u8"></video>'
-    '{captions_tag}'
-    '</body></html>'
+    "{captions_tag}"
+    "</body></html>"
 )
 
 
@@ -29,7 +29,9 @@ async def test_resolve_text_fallback_when_caption_format_is_unstructured():
 
     routes = {
         PAGE_URL: FakeResponse(status=200, text=html, url=PAGE_URL),
-        "https://vod.senate.ca.gov/captions.sbv": FakeResponse(status=200, text=sbv_content),
+        "https://vod.senate.ca.gov/captions.sbv": FakeResponse(
+            status=200, text=sbv_content
+        ),
     }
 
     with mock_session(routes):
@@ -48,15 +50,18 @@ async def test_resolve_links_out_when_caption_format_is_unreadable():
 
     routes = {
         PAGE_URL: FakeResponse(status=200, text=html, url=PAGE_URL),
-        "https://vod.senate.ca.gov/captions.scc":
-            FakeResponse(status=200, text="Scenarist_SCC V1.0\n\n00:00:01:00 9420"),
+        "https://vod.senate.ca.gov/captions.scc": FakeResponse(
+            status=200, text="Scenarist_SCC V1.0\n\n00:00:01:00 9420"
+        ),
     }
 
     with mock_session(routes):
         result = await CaliforniaLegislatureAssetFinder().resolve(PAGE_URL)
 
     assert result.segments == []
-    assert any("can't read" in w and "captions.scc" in w for w in result.transcript_warnings)
+    assert any(
+        "can't read" in w and "captions.scc" in w for w in result.transcript_warnings
+    )
 
 
 async def test_resolve_detects_language_from_real_captions():

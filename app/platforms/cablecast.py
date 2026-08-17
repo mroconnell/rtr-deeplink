@@ -10,7 +10,11 @@ import aiohttp
 from .base import AssetFinder
 from .models import AlternateTranscript, ResolvedMeeting, TranscriptSegment
 from ..utils import jurisdiction_enrich
-from ..utils.vtt_parser import decode_vtt_bytes, detect_language_from_texts, normalize_shouting_caption
+from ..utils.vtt_parser import (
+    decode_vtt_bytes,
+    detect_language_from_texts,
+    normalize_shouting_caption,
+)
 
 TARGET_LANGUAGE = "en"
 
@@ -70,7 +74,9 @@ TARGET_LANGUAGE = "en"
 # multi-tenant product and a still-unconfirmed customer could genuinely
 # use a different portal template -- just not Charlotte.
 _SHOW_ID_RE = re.compile(r"/internetchannel/show/(\d+)")
-_REMIX_CONTEXT_RE = re.compile(r"window\.__remixContext\s*=\s*(\{.*?\});</script>", re.DOTALL)
+_REMIX_CONTEXT_RE = re.compile(
+    r"window\.__remixContext\s*=\s*(\{.*?\});</script>", re.DOTALL
+)
 
 # Real bug fixed 2026-08-12: this used to be a single hardcoded
 # "Detroit, MI" constant applied to *every* Cablecast customer, confirmed
@@ -123,7 +129,9 @@ class CablecastAssetFinder(AssetFinder):
 
         fetch_url = self._force_http(url)
         async with aiohttp.ClientSession() as session:
-            async with session.get(fetch_url, timeout=aiohttp.ClientTimeout(total=30)) as response:
+            async with session.get(
+                fetch_url, timeout=aiohttp.ClientTimeout(total=30)
+            ) as response:
                 response.raise_for_status()
                 html = await response.text()
 
@@ -149,7 +157,11 @@ class CablecastAssetFinder(AssetFinder):
         if vod_transcripts:
             async with aiohttp.ClientSession() as session:
                 fetched = await asyncio.gather(
-                    *(self._fetch_transcript(session, t.get("url")) for t in vod_transcripts if t.get("url")),
+                    *(
+                        self._fetch_transcript(session, t.get("url"))
+                        for t in vod_transcripts
+                        if t.get("url")
+                    ),
                     return_exceptions=True,
                 )
             # Same "never trust the source-provided language label" stance
@@ -164,7 +176,9 @@ class CablecastAssetFinder(AssetFinder):
                 lang = detect_language_from_texts(c["text"] for c in result)
                 candidates.append((result, lang))
 
-            target_match = next((c for c in candidates if c[1] == TARGET_LANGUAGE), None)
+            target_match = next(
+                (c for c in candidates if c[1] == TARGET_LANGUAGE), None
+            )
             chosen = target_match or (candidates[0] if candidates else None)
             if chosen:
                 cues, transcript_language = chosen
@@ -175,7 +189,10 @@ class CablecastAssetFinder(AssetFinder):
                         f"'{TARGET_LANGUAGE}' — no matching-language track was found for this meeting."
                     )
                 alternate_transcripts = [
-                    AlternateTranscript(language=lang, segments=[TranscriptSegment(**cue) for cue in cues])
+                    AlternateTranscript(
+                        language=lang,
+                        segments=[TranscriptSegment(**cue) for cue in cues],
+                    )
                     for cues, lang in candidates
                     if cues is not chosen[0]
                 ]
@@ -267,15 +284,22 @@ class CablecastAssetFinder(AssetFinder):
             if match:
                 city = match.group(1).strip()
                 state = jurisdiction_enrich.resolve_state(
-                    city, "city", netloc=urlparse(url).netloc, page_text=page_description
+                    city,
+                    "city",
+                    netloc=urlparse(url).netloc,
+                    page_text=page_description,
                 )
                 return f"{city}, {state}" if state else city
         return None
 
     @staticmethod
-    async def _fetch_transcript(session: aiohttp.ClientSession, transcript_url: str) -> Optional[List[dict]]:
+    async def _fetch_transcript(
+        session: aiohttp.ClientSession, transcript_url: str
+    ) -> Optional[List[dict]]:
         try:
-            async with session.get(transcript_url, timeout=aiohttp.ClientTimeout(total=20)) as response:
+            async with session.get(
+                transcript_url, timeout=aiohttp.ClientTimeout(total=20)
+            ) as response:
                 if response.status != 200:
                     return None
                 raw = await response.read()

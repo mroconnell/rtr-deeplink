@@ -14,16 +14,22 @@ client = TestClient(archive.main.app)
 
 def test_schema_info_rejects_missing_token():
     response = client.get("/internal/schema-info")
-    assert response.status_code == 404  # not 401/403 -- matches every other /internal/* route
+    assert (
+        response.status_code == 404
+    )  # not 401/403 -- matches every other /internal/* route
 
 
 def test_schema_info_rejects_wrong_token():
-    response = client.get("/internal/schema-info", headers={"Authorization": "Bearer not-the-real-token"})
+    response = client.get(
+        "/internal/schema-info", headers={"Authorization": "Bearer not-the-real-token"}
+    )
     assert response.status_code == 404
 
 
 def test_schema_info_reports_real_columns_matching_models():
-    response = client.get("/internal/schema-info", headers={"Authorization": "Bearer test-token"})
+    response = client.get(
+        "/internal/schema-info", headers={"Authorization": "Bearer test-token"}
+    )
     assert response.status_code == 200
     data = response.json()
 
@@ -36,4 +42,6 @@ def test_schema_info_reports_real_columns_matching_models():
     # non-empty mismatched_tables list.
     assert data["mismatched_tables"] == []
     assert data["schema_matches_models"] is True
-    assert set(data["expected_columns"]["meeting_pages"]) == set(data["actual_columns"]["meeting_pages"])
+    assert set(data["expected_columns"]["meeting_pages"]) == set(
+        data["actual_columns"]["meeting_pages"]
+    )

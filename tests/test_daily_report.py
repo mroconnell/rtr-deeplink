@@ -13,7 +13,13 @@ from fastapi.testclient import TestClient
 import app.main
 import app.reporting as reporting_module
 from aiohttp_mock import FakeResponse, mock_session
-from app.reporting import MetricResult, _count_since, _metrics_to_jsonable, compose_report_email, failed_metric_names
+from app.reporting import (
+    MetricResult,
+    _count_since,
+    _metrics_to_jsonable,
+    compose_report_email,
+    failed_metric_names,
+)
 
 resolver_client = TestClient(app.main.app)
 
@@ -70,7 +76,9 @@ async def test_count_since_single_page_filters_by_cutoff():
         import aiohttp
 
         async with aiohttp.ClientSession() as session:
-            count = await _count_since(session, "https://api.resend.com/emails", "test-key", cutoff)
+            count = await _count_since(
+                session, "https://api.resend.com/emails", "test-key", cutoff
+            )
 
     assert count == 1
 
@@ -100,7 +108,9 @@ async def test_count_since_stops_paging_once_past_cutoff():
         import aiohttp
 
         async with aiohttp.ClientSession() as session:
-            count = await _count_since(session, "https://api.resend.com/emails", "test-key", cutoff)
+            count = await _count_since(
+                session, "https://api.resend.com/emails", "test-key", cutoff
+            )
 
     assert count == 2
 
@@ -136,7 +146,9 @@ def test_metrics_to_jsonable_converts_dataclasses():
 
 
 def test_failed_metric_names_lists_only_errored_metrics():
-    jsonable = _metrics_to_jsonable(_metrics(resend_sent_24h=MetricResult(None, "boom")))
+    jsonable = _metrics_to_jsonable(
+        _metrics(resend_sent_24h=MetricResult(None, "boom"))
+    )
     assert failed_metric_names(jsonable) == ["resend_sent_24h"]
 
 

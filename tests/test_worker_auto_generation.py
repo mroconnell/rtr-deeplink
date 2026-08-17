@@ -28,7 +28,9 @@ async def test_maybe_generate_auto_job_disabled_without_requester_email(monkeypa
         nonlocal called
         called = True
 
-    monkeypatch.setattr(worker.main.crud, "find_auto_transcription_candidate", _fail_if_called)
+    monkeypatch.setattr(
+        worker.main.crud, "find_auto_transcription_candidate", _fail_if_called
+    )
 
     result = await worker.main.maybe_generate_auto_job()
     assert result is False
@@ -36,22 +38,30 @@ async def test_maybe_generate_auto_job_disabled_without_requester_email(monkeypa
 
 
 async def test_maybe_generate_auto_job_returns_false_with_no_candidate(monkeypatch):
-    monkeypatch.setattr(worker.main, "AUTO_TRANSCRIPTION_REQUESTER_EMAIL", "auto@example.com")
+    monkeypatch.setattr(
+        worker.main, "AUTO_TRANSCRIPTION_REQUESTER_EMAIL", "auto@example.com"
+    )
 
     async def _no_candidate():
         return None
 
-    monkeypatch.setattr(worker.main.crud, "find_auto_transcription_candidate", _no_candidate)
+    monkeypatch.setattr(
+        worker.main.crud, "find_auto_transcription_candidate", _no_candidate
+    )
 
     result = await worker.main.maybe_generate_auto_job()
     assert result is False
 
 
-async def test_maybe_generate_auto_job_records_failure_for_unsupported_platform(monkeypatch):
+async def test_maybe_generate_auto_job_records_failure_for_unsupported_platform(
+    monkeypatch,
+):
     # get_finder() raises UnsupportedPlatformError for a platform with no
     # registered finder -- confirms that's treated as a real (recorded)
     # failure, not an unhandled exception that crashes the poll loop.
-    monkeypatch.setattr(worker.main, "AUTO_TRANSCRIPTION_REQUESTER_EMAIL", "auto@example.com")
+    monkeypatch.setattr(
+        worker.main, "AUTO_TRANSCRIPTION_REQUESTER_EMAIL", "auto@example.com"
+    )
 
     async def _candidate():
         return {
@@ -69,8 +79,12 @@ async def test_maybe_generate_auto_job_records_failure_for_unsupported_platform(
         recorded["error_message"] = error_message
         return {"job_id": 1, "status": "failed"}
 
-    monkeypatch.setattr(worker.main.crud, "find_auto_transcription_candidate", _candidate)
-    monkeypatch.setattr(worker.main.crud, "create_failed_auto_transcription_job", _record_failure)
+    monkeypatch.setattr(
+        worker.main.crud, "find_auto_transcription_candidate", _candidate
+    )
+    monkeypatch.setattr(
+        worker.main.crud, "create_failed_auto_transcription_job", _record_failure
+    )
 
     result = await worker.main.maybe_generate_auto_job()
     assert result is True

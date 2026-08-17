@@ -401,9 +401,14 @@ suite green (818 passed).
 
 ---
 
-## Wave 2 — dependency & code hygiene
+## Wave 2 — dependency & code hygiene · **COMPLETE 2026-08-16**
 
 No blockers, parallel-safe with any other wave. ~1 day.
+
+Both items (WO-11, WO-12) done. A real Render deploy off the new pinned
+lockfiles (WO-11's acceptance criterion) still hasn't happened this
+session — worth confirming next deploy. Wave 3 (outreach measurability)
+has no blockers and can start any time.
 
 ### WO-11 · Pin dependencies, then scan them — **DONE 2026-08-16**
 
@@ -452,7 +457,7 @@ unpinned in the final compiled files. A real Render deploy per service is
 still the strongest verification and hasn't happened yet — worth
 confirming after this merges.
 
-### WO-12 · Linter and formatter — **1 hr config, 2-4 hrs first pass**
+### WO-12 · Linter and formatter — **DONE 2026-08-16**
 
 **Problem.** No ruff/black/mypy/pre-commit config anywhere. Given that
 multiple sessions edit this tree the same day, a formatter is mostly about
@@ -464,8 +469,35 @@ minimal config block, and a `ruff check` / `ruff format --check` step in the
 WO-2 workflow. Land the bulk reformat as its **own** commit so it doesn't
 poison `git blame` on the config commit.
 
+**Fixed, in two PRs** (this repo's branch protection is squash-merge-only,
+so two PRs was the only way to actually get two separate commits on
+`main` — a single PR with two commits would have collapsed into one on
+squash):
+- **PR #90** (config): `ruff.toml`, deliberately minimal — `select =
+  ["E", "F", "W"]`, `ignore = ["E402", "E501"]`. `E402` excluded because
+  this repo intentionally imports several modules only after
+  `load_dotenv()`/`_init_sentry()` run (a real, documented pattern, not
+  an accident); `E501` excluded because this codebase's comments/
+  docstrings are deliberately prose-length, and `ruff format` doesn't
+  rewrap comments anyway. Also fixed the 13 real findings that selection
+  surfaced (7 unused imports, 2 unused local variables, 2 ambiguous
+  single-letter variable names, 2 trailing-whitespace lines in
+  Alembic-generated migration docstrings) and added `ruff check` as a
+  blocking CI step.
+- **PR (this one)** (reformat): ran `ruff format` across `app/`,
+  `archive/`, `worker/`, `scripts/`, `tests/` — 144 files reformatted, 27
+  already compliant. Added `ruff format --check` as a blocking CI step
+  now that the codebase is compliant.
+
 **Skip mypy.** Retrofitting types here is a multi-day project with unclear
-payoff at this stage.
+payoff at this stage — not done, not attempted.
+
+**Acceptance.** `ruff check` and `ruff format --check` both pass cleanly.
+Full suite green post-reformat (835 passed — up from 818 at the start of
+this wave, entirely from real peer work merged concurrently in between,
+confirmed via `git log`, not from the reformat itself). Coordinated with
+4 active peer sessions before running the repo-wide reformat, given its
+blast radius (144 files) — all confirmed clear first.
 
 ---
 

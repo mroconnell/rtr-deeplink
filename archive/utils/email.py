@@ -97,7 +97,9 @@ async def check_audience_membership(email: str) -> bool:
                 data = await response.json()
                 return not data.get("unsubscribed", False)
     except Exception:
-        logger.exception("Resend audience-membership check failed for an email address.")
+        logger.exception(
+            "Resend audience-membership check failed for an email address."
+        )
         return False
 
 
@@ -130,7 +132,9 @@ async def _send(to: str, subject: str, html: str, *, cc: str = "") -> bool:
     api_key = _api_key()
     from_address = os.environ.get("RESEND_FROM_ADDRESS", "")
     if not api_key or not from_address:
-        logger.error("Transactional email send attempted but RESEND_API_KEY/RESEND_FROM_ADDRESS isn't configured.")
+        logger.error(
+            "Transactional email send attempted but RESEND_API_KEY/RESEND_FROM_ADDRESS isn't configured."
+        )
         return False
 
     # Appended centrally, once, here -- rather than at each of the four
@@ -162,7 +166,11 @@ async def _send(to: str, subject: str, html: str, *, cc: str = "") -> bool:
             ) as response:
                 if response.status < 300:
                     return True
-                logger.error("Resend transactional send failed (%s): %s", response.status, await response.text())
+                logger.error(
+                    "Resend transactional send failed (%s): %s",
+                    response.status,
+                    await response.text(),
+                )
                 return False
     except Exception:
         logger.exception("Resend transactional send request failed.")
@@ -224,7 +232,7 @@ def _signoff_html(base_url: str = "") -> str:
     if base_url:
         name = f'<a href="{base_url}" style="color:#2c3e50;">{name}</a>'
     return (
-        '<p style="margin:24px 0 0;font-family:Georgia,\'Times New Roman\',serif;'
+        "<p style=\"margin:24px 0 0;font-family:Georgia,'Times New Roman',serif;"
         f'font-size:14px;color:#2c3e50;">Signing out,<br>Ryan<br>{name}</p>'
     )
 
@@ -240,7 +248,12 @@ async def send_confirmation_email(to: str, confirm_url: str) -> bool:
 
 
 async def send_completion_email(
-    to: str, *, meeting_title: str, excerpt: str, page_url: str, first_name: Optional[str] = None
+    to: str,
+    *,
+    meeting_title: str,
+    excerpt: str,
+    page_url: str,
+    first_name: Optional[str] = None,
 ) -> bool:
     # "Your pizza is ready" per marketing/LIFECYCLE_EMAILS.md #4. Every
     # completion email is, by definition, about an AI-transcribed version
@@ -281,13 +294,15 @@ async def send_completion_email(
 <p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#2c3e50;">Thanks for using Red Tape Recordings.</p>
 """
     body_html += _signoff_html(base_url)
-    return await _send(to, "Your transcript's ready", _branded_wrapper(body_html, base_url))
+    return await _send(
+        to, "Your transcript's ready", _branded_wrapper(body_html, base_url)
+    )
 
 
 async def send_transcription_failed_email(
     to: str, *, meeting_title: str, page_url: str, first_name: Optional[str] = None
 ) -> bool:
-    """"We couldn't cook this one" -- the sad-path twin to
+    """ "We couldn't cook this one" -- the sad-path twin to
     send_completion_email() above, per marketing/LIFECYCLE_EMAILS.md's
     "Bonus" entry ("A failure with no email just reads as broken"). CC's
     RESEND_REPLY_TO_ADDRESS (Ryan's real inbox, same address every other
@@ -305,7 +320,12 @@ async def send_transcription_failed_email(
 """
     body_html += _signoff_html(base_url)
     cc = os.environ.get("RESEND_REPLY_TO_ADDRESS", "")
-    return await _send(to, "We hit a snag on your transcript", _branded_wrapper(body_html, base_url), cc=cc)
+    return await _send(
+        to,
+        "We hit a snag on your transcript",
+        _branded_wrapper(body_html, base_url),
+        cc=cc,
+    )
 
 
 def _digest_subject(groups: list) -> str:
@@ -368,38 +388,44 @@ def compose_search_alert_digest(*, first_name: Optional[str], groups: list) -> t
         for match in group["matches"]:
             title = html.escape(match["title"] or "Untitled meeting")
             meta = " &middot; ".join(
-                html.escape(part) for part in (match.get("jurisdiction"), match.get("date")) if part
+                html.escape(part)
+                for part in (match.get("jurisdiction"), match.get("date"))
+                if part
             )
             quote_block = (
                 f'<td style="border-left:3px solid #ddd;padding:2px 0 2px 16px;'
-                f'font-family:Georgia,\'Times New Roman\',serif;font-size:14px;font-style:italic;color:#666;">'
-                f'&hellip;{match["quote_html"]}&hellip;</td>'
+                f"font-family:Georgia,'Times New Roman',serif;font-size:14px;font-style:italic;color:#666;\">"
+                f"&hellip;{match['quote_html']}&hellip;</td>"
                 if match.get("quote_html")
                 else ""
             )
             match_rows.append(f"""\
 <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 14px;width:100%;">
 <tr><td style="font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#2c3e50;">
-<strong>{title}</strong>{f'<br><span style="font-size:13px;color:#666;">{meta}</span>' if meta else ''}
+<strong>{title}</strong>{f'<br><span style="font-size:13px;color:#666;">{meta}</span>' if meta else ""}
 </td></tr>
-{f'<tr>{quote_block}</tr>' if quote_block else ''}
-<tr><td style="padding-top:4px;"><a href="{match['page_url']}" style="color:#3498db;font-family:Georgia,'Times New Roman',serif;font-size:14px;">Hear it in context &rarr;</a></td></tr>
+{f"<tr>{quote_block}</tr>" if quote_block else ""}
+<tr><td style="padding-top:4px;"><a href="{match["page_url"]}" style="color:#3498db;font-family:Georgia,'Times New Roman',serif;font-size:14px;">Hear it in context &rarr;</a></td></tr>
 </table>""")
 
-        keyword_label = f'"{html.escape(group["keyword"])}"' if group.get("keyword") else "your saved search"
+        keyword_label = (
+            f'"{html.escape(group["keyword"])}"'
+            if group.get("keyword")
+            else "your saved search"
+        )
         sections.append(f"""\
 <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px;width:100%;border-top:1px solid #eee;padding-top:16px;">
 <tr><td style="font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#666;padding-bottom:10px;">You asked us to watch for {keyword_label}, and it just came up:</td></tr>
-<tr><td>{''.join(match_rows)}</td></tr>
+<tr><td>{"".join(match_rows)}</td></tr>
 <tr><td style="font-family:Georgia,'Times New Roman',serif;font-size:12px;color:#999;padding-top:4px;">
-<a href="{group['unsubscribe_url']}" style="color:#999;">Unsubscribe from this alert</a>
+<a href="{group["unsubscribe_url"]}" style="color:#999;">Unsubscribe from this alert</a>
 </td></tr>
 </table>""")
 
     manage_url = f"{base_url}/account/saved" if base_url else "/account/saved"
     body_html = f"""\
 <p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:17px;color:#2c3e50;">Hi {greeting_name},</p>
-{''.join(sections)}
+{"".join(sections)}
 <p style="margin:16px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#2c3e50;">We'll keep watching, and we'll let you know when something else turns up.</p>
 <p style="margin:8px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:12px;color:#999;"><a href="{manage_url}" style="color:#999;">Manage your alerts</a></p>
 <p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#2c3e50;">Thanks for letting us help with the digging.</p>
@@ -408,12 +434,16 @@ def compose_search_alert_digest(*, first_name: Optional[str], groups: list) -> t
     return _digest_subject(groups), _branded_wrapper(body_html, base_url)
 
 
-async def send_search_alert_digest(to: str, *, first_name: Optional[str], groups: list) -> bool:
+async def send_search_alert_digest(
+    to: str, *, first_name: Optional[str], groups: list
+) -> bool:
     subject, body = compose_search_alert_digest(first_name=first_name, groups=groups)
     return await _send(to, subject, body)
 
 
-async def send_youtube_transcript_report(to: str, *, ingested: list, skipped: list, failed: list) -> bool:
+async def send_youtube_transcript_report(
+    to: str, *, ingested: list, skipped: list, failed: list
+) -> bool:
     """Daily report for scripts/fetch_youtube_transcripts.py's launchd
     run -- every meeting a transcript was actually added to, plus a
     quick summary of anything skipped or failed along the way. Sent on
@@ -437,13 +467,23 @@ async def send_youtube_transcript_report(to: str, *, ingested: list, skipped: li
         body = "<p>No new transcripts today.</p>"
 
     if failed:
-        rows = "".join(f"<li>{html.escape(item['slug'])}: {html.escape(item['detail'])}</li>" for item in failed)
+        rows = "".join(
+            f"<li>{html.escape(item['slug'])}: {html.escape(item['detail'])}</li>"
+            for item in failed
+        )
         body += f"<p><strong>{len(failed)} failed:</strong></p><ul>{rows}</ul>"
     if skipped:
-        rows = "".join(f"<li>{html.escape(item['slug'])}: {html.escape(item['detail'])}</li>" for item in skipped)
+        rows = "".join(
+            f"<li>{html.escape(item['slug'])}: {html.escape(item['detail'])}</li>"
+            for item in skipped
+        )
         body += f"<p>{len(skipped)} skipped:</p><ul>{rows}</ul>"
 
-    subject = f"YouTube transcripts: {len(ingested)} added" if ingested else "YouTube transcripts: none new today"
+    subject = (
+        f"YouTube transcripts: {len(ingested)} added"
+        if ingested
+        else "YouTube transcripts: none new today"
+    )
     return await _send(to, subject, body)
 
 

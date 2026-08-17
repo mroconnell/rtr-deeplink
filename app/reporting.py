@@ -91,7 +91,9 @@ async def fetch_clerk_metrics(secret_key: str) -> dict:
     from clerk_backend_api import Clerk
 
     try:
-        cutoff_ms = int((datetime.now(timezone.utc) - timedelta(hours=24)).timestamp() * 1000)
+        cutoff_ms = int(
+            (datetime.now(timezone.utc) - timedelta(hours=24)).timestamp() * 1000
+        )
         async with Clerk(bearer_auth=secret_key) as clerk:
             total = await clerk.users.count_async(request={})
             new = await clerk.users.count_async(request={"created_at_after": cutoff_ms})
@@ -111,11 +113,15 @@ async def _resend_get(session: aiohttp.ClientSession, url: str, api_key: str) ->
     ) as response:
         if response.status != 200:
             text = await response.text()
-            raise RuntimeError(f"Resend GET {url} failed ({response.status}): {text[:200]}")
+            raise RuntimeError(
+                f"Resend GET {url} failed ({response.status}): {text[:200]}"
+            )
         return await response.json()
 
 
-async def _count_since(session: aiohttp.ClientSession, url: str, api_key: str, cutoff: datetime) -> int:
+async def _count_since(
+    session: aiohttp.ClientSession, url: str, api_key: str, cutoff: datetime
+) -> int:
     """Pages a Resend list endpoint (?limit=100&after=<cursor>), counting
     items whose created_at falls within the window and stopping once a
     page's items are all older than cutoff -- relies on the endpoint being
@@ -160,20 +166,27 @@ async def fetch_resend_sent_count(api_key: str) -> MetricResult:
     cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
     try:
         async with aiohttp.ClientSession() as session:
-            count = await _count_since(session, "https://api.resend.com/emails", api_key, cutoff)
+            count = await _count_since(
+                session, "https://api.resend.com/emails", api_key, cutoff
+            )
         return MetricResult(count)
     except Exception as e:
         return MetricResult(None, f"{type(e).__name__}: {str(e)[:200]}")
 
 
-async def fetch_resend_new_subscriber_count(api_key: str, audience_id: str) -> MetricResult:
+async def fetch_resend_new_subscriber_count(
+    api_key: str, audience_id: str
+) -> MetricResult:
     if not api_key or not audience_id:
         return MetricResult(None, "RESEND_API_KEY/RESEND_AUDIENCE_ID not set")
     cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
     try:
         async with aiohttp.ClientSession() as session:
             count = await _count_since(
-                session, f"https://api.resend.com/audiences/{audience_id}/contacts", api_key, cutoff
+                session,
+                f"https://api.resend.com/audiences/{audience_id}/contacts",
+                api_key,
+                cutoff,
             )
         return MetricResult(count)
     except Exception as e:
@@ -216,7 +229,9 @@ def compose_report_email(metrics: dict, *, report_date: date) -> tuple:
     return subject, body
 
 
-async def send_report_email(to: str, subject: str, body_html: str, *, api_key: str, from_address: str) -> bool:
+async def send_report_email(
+    to: str, subject: str, body_html: str, *, api_key: str, from_address: str
+) -> bool:
     """Minimal Resend transactional send -- deliberately a third copy of
     the ~15-line POST /emails pattern already independently duplicated in
     app/main.py's _resend_send() and archive/utils/email.py's _send(),
@@ -229,7 +244,9 @@ async def send_report_email(to: str, subject: str, body_html: str, *, api_key: s
     toggle) this single-purpose sender doesn't need.
     """
     if not api_key or not from_address:
-        logger.error("Daily report send attempted but RESEND_API_KEY/RESEND_FROM_ADDRESS isn't configured.")
+        logger.error(
+            "Daily report send attempted but RESEND_API_KEY/RESEND_FROM_ADDRESS isn't configured."
+        )
         return False
 
     payload = {"from": from_address, "to": [to], "subject": subject, "html": body_html}
@@ -241,13 +258,20 @@ async def send_report_email(to: str, subject: str, body_html: str, *, api_key: s
         async with aiohttp.ClientSession() as session:
             async with session.post(
                 "https://api.resend.com/emails",
-                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
                 json=payload,
                 timeout=_TIMEOUT,
             ) as response:
                 if response.status < 300:
                     return True
-                logger.error("Daily report send failed (%s): %s", response.status, await response.text())
+                logger.error(
+                    "Daily report send failed (%s): %s",
+                    response.status,
+                    await response.text(),
+                )
                 return False
     except Exception:
         logger.exception("Daily report send request failed.")
@@ -289,6 +313,13 @@ async def run_daily_report(*, to: str, dry_run: bool = False) -> dict:
     if not dry_run:
         resend_api_key = os.environ.get("RESEND_API_KEY", "")
         resend_from = os.environ.get("RESEND_FROM_ADDRESS", "")
-        sent = await send_report_email(to, subject, body, api_key=resend_api_key, from_address=resend_from)
+        sent = await send_report_email(
+            to, subject, body, api_key=resend_api_key, from_address=resend_from
+        )
 
-    return {"subject": subject, "body": body, "sent": sent, "metrics": _metrics_to_jsonable(metrics)}
+    return {
+        "subject": subject,
+        "body": body,
+        "sent": sent,
+        "metrics": _metrics_to_jsonable(metrics),
+    }

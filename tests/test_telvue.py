@@ -71,7 +71,9 @@ async def test_resolve_real_ashland_planning_commission_meeting():
 
 async def test_resolve_no_video_returns_warning_not_crash():
     url = "https://videoplayer.telvue.com/player/exampleorg/media/999999"
-    html = "<html><head><title>No Player</title></head><body>Nothing here.</body></html>"
+    html = (
+        "<html><head><title>No Player</title></head><body>Nothing here.</body></html>"
+    )
     routes = {url: FakeResponse(status=200, text=html, url=url)}
 
     with mock_session(routes):
@@ -90,13 +92,18 @@ async def test_split_title_date_handles_missing_date():
 
 
 async def test_split_title_date_parses_real_shape():
-    title, date = TelvueAssetFinder._split_title_date("Ashland City Council - August 19, 2025")
+    title, date = TelvueAssetFinder._split_title_date(
+        "Ashland City Council - August 19, 2025"
+    )
     assert title == "Ashland City Council"
     assert date == "2025-08-19"
 
 
 async def test_guess_jurisdiction_matches_known_body_suffixes():
-    assert TelvueAssetFinder._guess_jurisdiction("Ashland Planning Commission") == "Ashland"
+    assert (
+        TelvueAssetFinder._guess_jurisdiction("Ashland Planning Commission")
+        == "Ashland"
+    )
     assert TelvueAssetFinder._guess_jurisdiction("Medford City Council") == "Medford"
     assert TelvueAssetFinder._guess_jurisdiction("Board of Water Commissioners") is None
     assert TelvueAssetFinder._guess_jurisdiction(None) is None

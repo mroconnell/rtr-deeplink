@@ -25,7 +25,9 @@ def classify_outcome(row: MeetingResolution) -> str:
     warning text anymore.
     """
     if row.status != "success":
-        return row.status  # resolve_failed | calendar_page | unsupported_platform | archive_redirect
+        return (
+            row.status
+        )  # resolve_failed | calendar_page | unsupported_platform | archive_redirect
 
     if not row.video_found:
         return "no_video"
@@ -34,7 +36,9 @@ def classify_outcome(row: MeetingResolution) -> str:
         if payload.get("agenda_items"):
             return "agenda_fallback"
         return "blank_transcript"
-    if row.transcript_warnings and any(_GARBLED_MARKER in w for w in row.transcript_warnings):
+    if row.transcript_warnings and any(
+        _GARBLED_MARKER in w for w in row.transcript_warnings
+    ):
         return "garbled_transcript"
     if row.transcript_language and row.transcript_language != TARGET_LANGUAGE:
         return "non_english_transcript"

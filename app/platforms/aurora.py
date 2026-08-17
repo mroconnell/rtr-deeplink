@@ -7,7 +7,11 @@ from bs4 import BeautifulSoup
 
 from .base import AssetFinder
 from .models import ResolvedMeeting, TranscriptSegment
-from ..utils.vtt_parser import decode_vtt_bytes, detect_language_from_texts, parse_captions_by_extension
+from ..utils.vtt_parser import (
+    decode_vtt_bytes,
+    detect_language_from_texts,
+    parse_captions_by_extension,
+)
 
 # Aurora, CO's own Drupal-built video site (auroratv.org) -- found during a
 # Wave 2 platform-coverage pass (see BACKLOG.md), confirmed live 2026-08-12.
@@ -42,8 +46,18 @@ _TITLE_DATE_RE = re.compile(
     r"\s+(\d{1,2}),?\s+(\d{4})"
 )
 _MONTHS = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December",
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
 ]
 
 
@@ -54,7 +68,9 @@ class AuroraTvAssetFinder(AssetFinder):
 
     async def resolve(self, url: str) -> ResolvedMeeting:
         async with aiohttp.ClientSession() as session:
-            async with session.get(url, timeout=aiohttp.ClientTimeout(total=20)) as response:
+            async with session.get(
+                url, timeout=aiohttp.ClientTimeout(total=20)
+            ) as response:
                 html = await response.text()
 
         soup = BeautifulSoup(html, "html.parser")
@@ -84,7 +100,9 @@ class AuroraTvAssetFinder(AssetFinder):
             cues = await self._fetch_captions(caption_url)
             if cues:
                 segments = [TranscriptSegment(**cue) for cue in cues]
-                transcript_language = detect_language_from_texts(c["text"] for c in cues)
+                transcript_language = detect_language_from_texts(
+                    c["text"] for c in cues
+                )
         if not segments:
             transcript_warnings.append("No transcript found for this event.")
 
@@ -130,7 +148,9 @@ class AuroraTvAssetFinder(AssetFinder):
     async def _fetch_captions(caption_url: str):
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.get(caption_url, timeout=aiohttp.ClientTimeout(total=20)) as response:
+                async with session.get(
+                    caption_url, timeout=aiohttp.ClientTimeout(total=20)
+                ) as response:
                     if response.status != 200:
                         return None
                     raw = await response.read()

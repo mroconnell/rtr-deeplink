@@ -23,9 +23,7 @@ ATLANTA_OUTLINE_URL = (
     "https://atlantacityga.iqm2.com/Citizens/Detail_Meeting.aspx?Target=Detail&CssClass=AgendaOutline"
     "&Mode=Video&Frame=Nothing&ID=4294"
 )
-ATLANTA_SPLIT_URL = (
-    "https://atlantacityga.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=4294&Format=Minutes"
-)
+ATLANTA_SPLIT_URL = "https://atlantacityga.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=4294&Format=Minutes"
 ATLANTA_OUTLINE_HTML = """
 <html><head><title>
 \t2026/08/12 01:30 PM Finance/Executive Committee Regular Committee Meeting - Web Outline - City of Atlanta, Georgia
@@ -98,8 +96,12 @@ async def test_resolve_finds_real_video_on_scc_board_of_supervisors_meeting():
     # specific gap, not a structural limitation of this adapter or of
     # SCC's instance generally.
     routes = {
-        SCC_BOS_OUTLINE_URL: FakeResponse(status=200, text=SCC_BOS_OUTLINE_HTML, url=SCC_BOS_OUTLINE_URL),
-        SCC_BOS_SPLIT_URL: FakeResponse(status=200, text=SCC_BOS_SPLIT_HTML, url=SCC_BOS_SPLIT_URL),
+        SCC_BOS_OUTLINE_URL: FakeResponse(
+            status=200, text=SCC_BOS_OUTLINE_HTML, url=SCC_BOS_OUTLINE_URL
+        ),
+        SCC_BOS_SPLIT_URL: FakeResponse(
+            status=200, text=SCC_BOS_SPLIT_HTML, url=SCC_BOS_SPLIT_URL
+        ),
     }
 
     with mock_session(routes):
@@ -120,8 +122,12 @@ async def test_resolve_finds_real_video_on_scc_board_of_supervisors_meeting():
 
 async def test_resolve_reads_real_title_date_jurisdiction_and_video():
     routes = {
-        ATLANTA_OUTLINE_URL: FakeResponse(status=200, text=ATLANTA_OUTLINE_HTML, url=ATLANTA_OUTLINE_URL),
-        ATLANTA_SPLIT_URL: FakeResponse(status=200, text=ATLANTA_SPLIT_HTML, url=ATLANTA_SPLIT_URL),
+        ATLANTA_OUTLINE_URL: FakeResponse(
+            status=200, text=ATLANTA_OUTLINE_HTML, url=ATLANTA_OUTLINE_URL
+        ),
+        ATLANTA_SPLIT_URL: FakeResponse(
+            status=200, text=ATLANTA_SPLIT_HTML, url=ATLANTA_SPLIT_URL
+        ),
     }
 
     with mock_session(routes):
@@ -140,8 +146,12 @@ async def test_resolve_reads_real_title_date_jurisdiction_and_video():
 
 async def test_resolve_extracts_real_timestamped_agenda_items_and_skips_document_links():
     routes = {
-        ATLANTA_OUTLINE_URL: FakeResponse(status=200, text=ATLANTA_OUTLINE_HTML, url=ATLANTA_OUTLINE_URL),
-        ATLANTA_SPLIT_URL: FakeResponse(status=200, text=ATLANTA_SPLIT_HTML, url=ATLANTA_SPLIT_URL),
+        ATLANTA_OUTLINE_URL: FakeResponse(
+            status=200, text=ATLANTA_OUTLINE_HTML, url=ATLANTA_OUTLINE_URL
+        ),
+        ATLANTA_SPLIT_URL: FakeResponse(
+            status=200, text=ATLANTA_SPLIT_HTML, url=ATLANTA_SPLIT_URL
+        ),
     }
 
     with mock_session(routes):
@@ -166,7 +176,9 @@ async def test_resolve_reports_no_video_found_when_split_page_has_no_media_url()
     # never populate the video onclick at all -- degrades to an honest
     # "no video found" rather than crashing or guessing.
     routes = {
-        SCC_OUTLINE_URL: FakeResponse(status=200, text=SCC_OUTLINE_HTML, url=SCC_OUTLINE_URL),
+        SCC_OUTLINE_URL: FakeResponse(
+            status=200, text=SCC_OUTLINE_HTML, url=SCC_OUTLINE_URL
+        ),
         SCC_SPLIT_URL: FakeResponse(status=404, text="", url=SCC_SPLIT_URL),
     }
 

@@ -25,35 +25,64 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
 from app.platforms import register_all_finders  # noqa: E402
-from app.platforms.base import detect_platform, get_finder, UnsupportedPlatformError, CalendarPageError  # noqa: E402
+from app.platforms.base import (
+    detect_platform,
+    get_finder,
+    UnsupportedPlatformError,
+    CalendarPageError,
+)  # noqa: E402
 
 REQUEST_DELAY_SECONDS = 1.5
 
 
 async def main():
     urls_file = sys.argv[1]
-    urls = [line.strip() for line in Path(urls_file).read_text().splitlines() if line.strip() and not line.startswith("#")]
+    urls = [
+        line.strip()
+        for line in Path(urls_file).read_text().splitlines()
+        if line.strip() and not line.startswith("#")
+    ]
 
     register_all_finders()
 
     w = csv.writer(sys.stdout)
-    w.writerow(["url", "resolved_platform", "video_url", "video_format", "is_youtube",
-                "video_link", "video_link_recognized", "resolve_error"])
+    w.writerow(
+        [
+            "url",
+            "resolved_platform",
+            "video_url",
+            "video_format",
+            "is_youtube",
+            "video_link",
+            "video_link_recognized",
+            "resolve_error",
+        ]
+    )
 
     for i, url in enumerate(urls):
         try:
             platform = detect_platform(url)
             finder = get_finder(platform)
             result = await finder.resolve(url)
-            w.writerow([
-                url, result.platform, result.video_url or "", result.video_format or "",
-                result.video_format == "youtube" or (result.video_url or "").startswith(
-                    ("https://www.youtube.com", "https://youtube.com")),
-                result.video_link or "", result.video_link_recognized, "",
-            ])
+            w.writerow(
+                [
+                    url,
+                    result.platform,
+                    result.video_url or "",
+                    result.video_format or "",
+                    result.video_format == "youtube"
+                    or (result.video_url or "").startswith(
+                        ("https://www.youtube.com", "https://youtube.com")
+                    ),
+                    result.video_link or "",
+                    result.video_link_recognized,
+                    "",
+                ]
+            )
         except (UnsupportedPlatformError, CalendarPageError) as e:
             w.writerow([url, "", "", "", False, "", False, str(e)])
         except Exception as e:

@@ -133,11 +133,15 @@ def _install_chromium() -> bool:
     if _install_attempted:
         return False
     _install_attempted = True
-    logger.warning("Chromium binary missing -- attempting a runtime `playwright install chromium`.")
+    logger.warning(
+        "Chromium binary missing -- attempting a runtime `playwright install chromium`."
+    )
     try:
         result = subprocess.run(
             [sys.executable, "-m", "playwright", "install", "chromium"],
-            capture_output=True, text=True, timeout=300,
+            capture_output=True,
+            text=True,
+            timeout=300,
         )
         if result.returncode != 0:
             logger.error("Runtime playwright install failed: %s", result.stderr[-2000:])
@@ -216,7 +220,9 @@ async def fetch_via_browser(url: str, *, wait_ms: int = DEFAULT_WAIT_MS) -> str:
     don't share cookies/state with each other."""
     await check_destination(url)
     browser = await _get_browser()
-    context = await browser.new_context(user_agent=_REALISTIC_USER_AGENT, viewport=_VIEWPORT)
+    context = await browser.new_context(
+        user_agent=_REALISTIC_USER_AGENT, viewport=_VIEWPORT
+    )
     try:
         await context.route("**/*", _guard_route)
         page = await context.new_page()

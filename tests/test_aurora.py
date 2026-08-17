@@ -10,7 +10,9 @@ from app.platforms.base import detect_platform
 from aiohttp_mock import FakeResponse, mock_session
 from conftest import load_fixture
 
-MEETING_URL = "https://www.auroratv.org/video/regular-meeting-aurora-city-council-june-22-2026"
+MEETING_URL = (
+    "https://www.auroratv.org/video/regular-meeting-aurora-city-council-june-22-2026"
+)
 CAPTION_URL = "https://www.auroratv.org/sites/default/files/video-captions-70037.vtt"
 REAL_MP4_URL = "https://reflect-aurora.cablecast.tv/store-4/13040-EDITED-Regular-Meeting-of-v2/vod.mp4"
 
@@ -56,7 +58,9 @@ async def test_video_caption_field_is_a_filesystem_path_not_a_url():
 
 
 async def test_resolve_missing_mp4_url_reports_no_video():
-    html = "<html><head><title>Some Page</title></head><body>No video here.</body></html>"
+    html = (
+        "<html><head><title>Some Page</title></head><body>No video here.</body></html>"
+    )
     url = "https://www.auroratv.org/video/no-video-page"
 
     with mock_session({url: FakeResponse(status=200, text=html, url=url)}):

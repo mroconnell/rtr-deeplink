@@ -114,7 +114,9 @@ class IQM2AssetFinder(AssetFinder):
 
         title, date, jurisdiction, agenda_items = None, None, None, []
         if outline_html:
-            title, date, jurisdiction = self._extract_title_date_jurisdiction(outline_html)
+            title, date, jurisdiction = self._extract_title_date_jurisdiction(
+                outline_html
+            )
             agenda_items = self._extract_agenda_items(outline_html)
             if jurisdiction:
                 jurisdiction = jurisdiction_enrich.enrich_jurisdiction_text(
@@ -186,7 +188,9 @@ class IQM2AssetFinder(AssetFinder):
         agenda_items: List[TranscriptSegment] = []
         for i, (start, text) in enumerate(raw_items):
             end = raw_items[i + 1][0] if i + 1 < len(raw_items) else start
-            agenda_items.append(TranscriptSegment(start=start, end=max(end, start), text=text))
+            agenda_items.append(
+                TranscriptSegment(start=start, end=max(end, start), text=text)
+            )
         return agenda_items
 
     @staticmethod
@@ -194,9 +198,13 @@ class IQM2AssetFinder(AssetFinder):
         match = _MEDIA_URL_RE.search(html)
         return match.group(1) if match else None
 
-    async def _fetch_text(self, session: aiohttp.ClientSession, url: str) -> Optional[str]:
+    async def _fetch_text(
+        self, session: aiohttp.ClientSession, url: str
+    ) -> Optional[str]:
         try:
-            async with session.get(url, timeout=aiohttp.ClientTimeout(total=20)) as response:
+            async with session.get(
+                url, timeout=aiohttp.ClientTimeout(total=20)
+            ) as response:
                 if response.status != 200:
                     return None
                 return await response.text()

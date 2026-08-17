@@ -28,6 +28,7 @@ realtime speed -- see SOURCING_QUEUE.md's "Cadence decided" note for the
 full math. At 12/run this queue lasts ~40 runs (~10 days) before it's
 exhausted and this script becomes a silent no-op.
 """
+
 import subprocess
 import sys
 from pathlib import Path
@@ -42,7 +43,9 @@ def main() -> None:
         print("No queue file found -- nothing to do.")
         return
 
-    urls = [line.strip() for line in QUEUE_FILE.read_text().splitlines() if line.strip()]
+    urls = [
+        line.strip() for line in QUEUE_FILE.read_text().splitlines() if line.strip()
+    ]
     if not urls:
         print("Queue is empty -- nothing left to feed. This script can be retired.")
         return
@@ -54,7 +57,11 @@ def main() -> None:
     batch_file.write_text("\n".join(batch) + "\n")
 
     result = subprocess.run(
-        [sys.executable, str(REPO_ROOT / "scripts" / "bulk_ingest.py"), str(batch_file)],
+        [
+            sys.executable,
+            str(REPO_ROOT / "scripts" / "bulk_ingest.py"),
+            str(batch_file),
+        ],
         cwd=REPO_ROOT,
     )
     batch_file.unlink(missing_ok=True)

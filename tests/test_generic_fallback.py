@@ -27,7 +27,10 @@ def _fake_public_dns(monkeypatch):
     IP-classification logic (private/loopback/link-local rejection, the
     redirect-to-private-IP case) use literal-IP URLs instead and don't
     need this."""
-    monkeypatch.setattr(url_guard, "_resolve_hostname", lambda hostname: ["93.184.216.34"])
+    monkeypatch.setattr(
+        url_guard, "_resolve_hostname", lambda hostname: ["93.184.216.34"]
+    )
+
 
 # Real page shape confirmed live 2026-08-13 across 5 real CRRMA board
 # meeting URLs (crrma.org/information/meetings/board/{date}) -- see
@@ -76,17 +79,25 @@ This meeting is now in session.
 
 
 def _fake_extract_info(video_id):
-    return {"title": "Some City Council Meeting", "uploader": "Some City Gov", "upload_date": "20260101"}
+    return {
+        "title": "Some City Council Meeting",
+        "uploader": "Some City Gov",
+        "upload_date": "20260101",
+    }
 
 
 async def test_resolve_delegates_to_youtube_when_embed_found(monkeypatch):
     monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _fake_extract_info)
-    routes = {PAGE_URL: FakeResponse(status=200, text=PAGE_WITH_YOUTUBE_EMBED, url=PAGE_URL)}
+    routes = {
+        PAGE_URL: FakeResponse(status=200, text=PAGE_WITH_YOUTUBE_EMBED, url=PAGE_URL)
+    }
 
     with mock_session(routes):
         result = await GenericFallbackAssetFinder().resolve(PAGE_URL)
 
-    assert result.platform == "youtube"  # delegated finder's own platform name, unchanged -- real dedup identity
+    assert (
+        result.platform == "youtube"
+    )  # delegated finder's own platform name, unchanged -- real dedup identity
     assert result.video_url == f"https://www.youtube.com/embed/{REAL_VIDEO_ID}"
     assert any("isn't officially supported" in w for w in result.video_warnings)
     # best_effort must be True even though platform says "youtube" -- the
@@ -98,7 +109,9 @@ async def test_resolve_delegates_to_youtube_when_embed_found(monkeypatch):
 async def test_resolve_finds_direct_media_and_captions(monkeypatch):
     routes = {
         PAGE_URL: FakeResponse(status=200, text=PAGE_WITH_DIRECT_MEDIA, url=PAGE_URL),
-        "https://cdn.example.gov/captions/meeting.vtt": FakeResponse(status=200, text=REAL_VTT, url="x"),
+        "https://cdn.example.gov/captions/meeting.vtt": FakeResponse(
+            status=200, text=REAL_VTT, url="x"
+        ),
     }
 
     with mock_session(routes):
@@ -121,15 +134,23 @@ async def test_resolve_returns_honest_no_video_message_when_nothing_found():
     assert result.platform == "unknown"
     assert result.video_url is None
     assert result.segments == []
-    assert any("couldn't find a video on this page automatically" in w for w in result.video_warnings)
-    assert any("didn't automatically find a transcript" in w for w in result.transcript_warnings)
+    assert any(
+        "couldn't find a video on this page automatically" in w
+        for w in result.video_warnings
+    )
+    assert any(
+        "didn't automatically find a transcript" in w
+        for w in result.transcript_warnings
+    )
     # Real bug fixed 2026-08-15 (BACKLOG.md): this warning used to also
     # say "you can try to request a transcript from the audio" -- there's
     # no audio source at all on a genuinely no-video page, and the phrase
     # was misleading and self-turned into a broken button (render_warnings.py
     # wraps this exact phrase into a clickable .transcribe-inline-trigger,
     # which meeting_page.js:536 fires unconditionally with no null guard).
-    assert not any("request a transcript from the audio" in w for w in result.video_warnings)
+    assert not any(
+        "request a transcript from the audio" in w for w in result.video_warnings
+    )
 
 
 async def test_resolve_handles_page_fetch_failure_cleanly():
@@ -155,7 +176,10 @@ async def test_resolve_finds_media_without_captions(monkeypatch):
     assert result.video_url == "https://cdn.example.gov/videos/meeting.mp4"
     assert result.video_format == "mp4"
     assert result.segments == []
-    assert any("didn't automatically find a transcript" in w for w in result.transcript_warnings)
+    assert any(
+        "didn't automatically find a transcript" in w
+        for w in result.transcript_warnings
+    )
 
 
 async def test_resolve_surfaces_agenda_pdf_link_alongside_youtube_video(monkeypatch):
@@ -226,6 +250,7 @@ class _FakeSwagitFinder:
 
     async def resolve(self, url):
         from app.platforms.models import ResolvedMeeting
+
         return ResolvedMeeting(
             platform="swagit",
             source_url=url,
@@ -237,17 +262,26 @@ class _FakeSwagitFinder:
 
 
 async def test_resolve_delegates_to_swagit_link_found_on_page(monkeypatch):
-    monkeypatch.setattr("app.platforms.base.detect_platform", lambda url: (
-        "swagit" if "swagit.com" in url else "unknown"
-    ))
-    monkeypatch.setattr("app.platforms.generic_fallback.get_finder", lambda platform: _FakeSwagitFinder())
-    routes = {PAGE_URL: FakeResponse(status=200, text=PAGE_WITH_SWAGIT_LINK, url=PAGE_URL)}
+    monkeypatch.setattr(
+        "app.platforms.base.detect_platform",
+        lambda url: "swagit" if "swagit.com" in url else "unknown",
+    )
+    monkeypatch.setattr(
+        "app.platforms.generic_fallback.get_finder",
+        lambda platform: _FakeSwagitFinder(),
+    )
+    routes = {
+        PAGE_URL: FakeResponse(status=200, text=PAGE_WITH_SWAGIT_LINK, url=PAGE_URL)
+    }
 
     with mock_session(routes):
         result = await GenericFallbackAssetFinder().resolve(PAGE_URL)
 
     assert result.platform == "swagit"  # the delegated finder's own identity, unchanged
-    assert result.video_url == "https://archive-stream.granicus.com/OnDemand/fake.mp4/playlist.m3u8"
+    assert (
+        result.video_url
+        == "https://archive-stream.granicus.com/OnDemand/fake.mp4/playlist.m3u8"
+    )
     assert result.title == "Real City Council Meeting"
     # source_url stays the ORIGINAL page the visitor actually submitted,
     # not the swagit.com URL found on it -- matches how LIMS/PrimeGov
@@ -283,11 +317,16 @@ async def test_resolve_falls_through_when_delegation_raises(monkeypatch):
         async def resolve(self, url):
             raise ValueError("simulated real failure")
 
-    monkeypatch.setattr("app.platforms.base.detect_platform", lambda url: (
-        "swagit" if "swagit.com" in url else "unknown"
-    ))
-    monkeypatch.setattr("app.platforms.generic_fallback.get_finder", lambda platform: _RaisingFinder())
-    routes = {PAGE_URL: FakeResponse(status=200, text=PAGE_WITH_SWAGIT_LINK, url=PAGE_URL)}
+    monkeypatch.setattr(
+        "app.platforms.base.detect_platform",
+        lambda url: "swagit" if "swagit.com" in url else "unknown",
+    )
+    monkeypatch.setattr(
+        "app.platforms.generic_fallback.get_finder", lambda platform: _RaisingFinder()
+    )
+    routes = {
+        PAGE_URL: FakeResponse(status=200, text=PAGE_WITH_SWAGIT_LINK, url=PAGE_URL)
+    }
 
     with mock_session(routes):
         result = await GenericFallbackAssetFinder().resolve(PAGE_URL)
@@ -297,7 +336,9 @@ async def test_resolve_falls_through_when_delegation_raises(monkeypatch):
     assert result.video_url is None
 
 
-async def test_resolve_backfills_title_and_jurisdiction_when_youtube_metadata_blocked(monkeypatch):
+async def test_resolve_backfills_title_and_jurisdiction_when_youtube_metadata_blocked(
+    monkeypatch,
+):
     # Real gap confirmed live 2026-08-13 (see BACKLOG.md): when yt-dlp is
     # blocked by YouTube's anti-bot check (the real, documented Render-IP
     # issue), the delegated YouTube result has no title/jurisdiction at
@@ -337,7 +378,9 @@ async def test_resolve_does_not_backfill_title_over_a_real_youtube_title(monkeyp
     assert result.title == "Some City Council Meeting"
 
 
-async def test_resolve_overrides_youtube_uploader_jurisdiction_even_with_a_real_title(monkeypatch):
+async def test_resolve_overrides_youtube_uploader_jurisdiction_even_with_a_real_title(
+    monkeypatch,
+):
     # Real bug found live 2026-08-13, re-resolving the actual CRRMA page
     # (/m/meeting-732f78) once yt-dlp succeeded (unblocked from a
     # residential IP): YouTubeAssetFinder.resolve_video_id() unconditionally
@@ -429,7 +472,9 @@ async def test_backfill_falls_back_to_extraction_chain_when_title_has_no_shape()
 # "City Council Meeting January 6, 2026 - City of Sebastopol,
 # California". See BACKLOG.md's "generic_fallback.py's YouTube-embed
 # branch" entry.
-SEBASTOPOL_URL = "https://www.cityofsebastopol.gov/events/city-council-meeting-january-6-2026/"
+SEBASTOPOL_URL = (
+    "https://www.cityofsebastopol.gov/events/city-council-meeting-january-6-2026/"
+)
 SEBASTOPOL_PAGE_HTML = """
 <html><head><title>City Council Meeting January 6, 2026 - City of Sebastopol, California</title></head>
 <body><p>No YouTube embed on this page -- the real video here is Vimeo, not yet supported.</p></body></html>
@@ -453,7 +498,11 @@ async def test_resolve_backfills_title_and_jurisdiction_from_dash_separated_titl
     # real video is Vimeo, unsupported), so this exercises the plain
     # "no video found" fallback branch, not the YouTube-delegation branch
     # the CRRMA tests above cover.
-    routes = {SEBASTOPOL_URL: FakeResponse(status=200, text=SEBASTOPOL_PAGE_HTML, url=SEBASTOPOL_URL)}
+    routes = {
+        SEBASTOPOL_URL: FakeResponse(
+            status=200, text=SEBASTOPOL_PAGE_HTML, url=SEBASTOPOL_URL
+        )
+    }
 
     with mock_session(routes):
         result = await GenericFallbackAssetFinder().resolve(SEBASTOPOL_URL)
@@ -506,12 +555,21 @@ def test_find_agenda_link_returns_the_matched_as_title_attribute():
 
     link, title_attr = F._find_agenda_link(SACRAMENTO_PAGE_HTML, SACRAMENTO_URL)
 
-    assert link.endswith("BOARD_OF_SUPERVISORS_10231_Agenda_Packet_8_11_2026_9_30_00_AM.pdf")
-    assert title_attr == "View Agenda Packet for BOARD OF SUPERVISORS BOARD OF SUPERVISORS MEETING on 8/11/2026 9:30:00 AM"
+    assert link.endswith(
+        "BOARD_OF_SUPERVISORS_10231_Agenda_Packet_8_11_2026_9_30_00_AM.pdf"
+    )
+    assert (
+        title_attr
+        == "View Agenda Packet for BOARD OF SUPERVISORS BOARD OF SUPERVISORS MEETING on 8/11/2026 9:30:00 AM"
+    )
 
 
 async def test_resolve_backfills_title_and_date_from_the_agenda_links_title_attribute():
-    routes = {SACRAMENTO_URL: FakeResponse(status=200, text=SACRAMENTO_PAGE_HTML, url=SACRAMENTO_URL)}
+    routes = {
+        SACRAMENTO_URL: FakeResponse(
+            status=200, text=SACRAMENTO_PAGE_HTML, url=SACRAMENTO_URL
+        )
+    }
 
     with mock_session(routes):
         result = await GenericFallbackAssetFinder().resolve(SACRAMENTO_URL)
@@ -524,7 +582,9 @@ async def test_resolve_backfills_title_and_date_from_the_agenda_links_title_attr
     assert result.title == "Board Of Supervisors Board Of Supervisors Meeting"
     assert result.date == "2026-08-11"
     assert result.jurisdiction is None
-    assert result.agenda_link.endswith("BOARD_OF_SUPERVISORS_10231_Agenda_Packet_8_11_2026_9_30_00_AM.pdf")
+    assert result.agenda_link.endswith(
+        "BOARD_OF_SUPERVISORS_10231_Agenda_Packet_8_11_2026_9_30_00_AM.pdf"
+    )
 
 
 async def test_agenda_link_title_backfill_never_overrides_an_already_found_title():
@@ -650,13 +710,18 @@ async def test_resolve_finds_seattle_protocol_relative_mp4_and_relative_srt():
     html = load_fixture("generic_fallback", "seattle_videos_x189286.html")
     routes = {
         SEATTLE_URL: FakeResponse(status=200, text=html, url=SEATTLE_URL),
-        SEATTLE_SRT_URL: FakeResponse(status=200, text=REAL_SRT_SAMPLE, url=SEATTLE_SRT_URL),
+        SEATTLE_SRT_URL: FakeResponse(
+            status=200, text=REAL_SRT_SAMPLE, url=SEATTLE_SRT_URL
+        ),
     }
 
     with mock_session(routes):
         result = await GenericFallbackAssetFinder().resolve(SEATTLE_URL)
 
-    assert result.video_url == "https://video.seattle.gov/media/council/council_081126_2022663.mp4"
+    assert (
+        result.video_url
+        == "https://video.seattle.gov/media/council/council_081126_2022663.mp4"
+    )
     assert result.video_format == "mp4"
     assert len(result.segments) == 2
     assert "call the meeting to order" in result.segments[0].text
@@ -668,7 +733,11 @@ async def test_resolve_sacramento_onbase_m3u8_with_decoded_token():
     # carries &amp;token= in raw HTML; the resolved video_url must carry
     # the DECODED &token= or the CDN sees a bogus `amp;token` param.
     html = load_fixture("generic_fallback", "sacramento_viewmeeting_10231.html")
-    routes = {SACRAMENTO_ONBASE_URL: FakeResponse(status=200, text=html, url=SACRAMENTO_ONBASE_URL)}
+    routes = {
+        SACRAMENTO_ONBASE_URL: FakeResponse(
+            status=200, text=html, url=SACRAMENTO_ONBASE_URL
+        )
+    }
 
     with mock_session(routes):
         result = await GenericFallbackAssetFinder().resolve(SACRAMENTO_ONBASE_URL)
@@ -695,7 +764,9 @@ async def test_resolve_ocfl_multipart_picks_first_part_and_fetches_vtt():
     with mock_session(routes):
         result = await GenericFallbackAssetFinder().resolve(OCFL_URL)
 
-    assert result.video_url == "https://otv.ocfl.net/otv/BCC2026/BCC071626/BCC071626AA.mp4"
+    assert (
+        result.video_url == "https://otv.ocfl.net/otv/BCC2026/BCC071626/BCC071626AA.mp4"
+    )
     assert result.video_format == "mp4"
     assert len(result.segments) == 2
     assert "called to order" in result.segments[0].text
@@ -729,7 +800,9 @@ async def test_resolve_wayne_fixture_picks_video_link_not_channel_link(monkeypat
 # user's explicit call: "the pointer where the video lives would be a
 # GREAT outcome for the fallback page"). ---
 
-SEBASTOPOL_EVENT_URL = "https://www.cityofsebastopol.gov/events/city-council-meeting-january-6-2026/"
+SEBASTOPOL_EVENT_URL = (
+    "https://www.cityofsebastopol.gov/events/city-council-meeting-january-6-2026/"
+)
 
 
 async def test_resolve_surfaces_vimeo_pointer_as_recognized_video_link():
@@ -738,7 +811,11 @@ async def test_resolve_surfaces_vimeo_pointer_as_recognized_video_link():
     # nothing can play -- must surface as a recognized-host pointer, and
     # NEVER enter video_url (a page URL there breaks the native player).
     html = load_fixture("generic_fallback", "sebastopol_event_page.html")
-    routes = {SEBASTOPOL_EVENT_URL: FakeResponse(status=200, text=html, url=SEBASTOPOL_EVENT_URL)}
+    routes = {
+        SEBASTOPOL_EVENT_URL: FakeResponse(
+            status=200, text=html, url=SEBASTOPOL_EVENT_URL
+        )
+    }
 
     with mock_session(routes):
         result = await GenericFallbackAssetFinder().resolve(SEBASTOPOL_EVENT_URL)
@@ -756,7 +833,9 @@ def test_video_pointer_ignores_vimeo_channel_links():
     # A footer "watch us on Vimeo" channel link has no numeric video id --
     # the exact false-positive class the curated regex must exclude.
     html = '<a href="https://vimeo.com/cityofsomewhere">Follow us on Vimeo</a>'
-    link, recognized = GenericFallbackAssetFinder._find_video_pointer(html, "https://city.gov/page")
+    link, recognized = GenericFallbackAssetFinder._find_video_pointer(
+        html, "https://city.gov/page"
+    )
     assert link is None
 
 
@@ -770,7 +849,9 @@ def test_video_pointer_loose_tier_matches_video_shaped_anchor_text():
         '<a href="https://videoplayer.example-cdn.com/meeting/123">Video</a>'
         "<p>Read the video policy update from last video meeting here.</p>"
     )
-    link, recognized = GenericFallbackAssetFinder._find_video_pointer(html, "https://city.gov/page")
+    link, recognized = GenericFallbackAssetFinder._find_video_pointer(
+        html, "https://city.gov/page"
+    )
     assert link == "https://videoplayer.example-cdn.com/meeting/123"
     assert recognized is False
 
@@ -782,7 +863,9 @@ def test_video_pointer_iframe_tier_skips_junk_hosts():
         '<iframe src="https://www.googletagmanager.com/ns.html?id=GTM-X"></iframe>'
         '<iframe src="https://player.example-vendor.com/embed/456"></iframe>'
     )
-    link, recognized = GenericFallbackAssetFinder._find_video_pointer(html, "https://city.gov/page")
+    link, recognized = GenericFallbackAssetFinder._find_video_pointer(
+        html, "https://city.gov/page"
+    )
     assert link == "https://player.example-vendor.com/embed/456"
     assert recognized is False
 
@@ -821,7 +904,9 @@ async def test_escalation_disabled_by_default_browser_never_called(monkeypatch):
         calls.append(url)
         return "<html>should never be used</html>"
 
-    monkeypatch.setattr(GenericFallbackAssetFinder, "_try_browser_fetch", staticmethod(_fake_browser))
+    monkeypatch.setattr(
+        GenericFallbackAssetFinder, "_try_browser_fetch", staticmethod(_fake_browser)
+    )
     akamai_403 = load_fixture("generic_fallback", "wayne_akamai_403.html")
     routes = {WAYNE_URL: FakeResponse(status=403, text=akamai_403, url=WAYNE_URL)}
 
@@ -842,13 +927,17 @@ async def test_escalation_resolves_wayne_county_through_the_browser(monkeypatch)
 
     monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _raise)
     monkeypatch.setenv("GENERIC_FALLBACK_HEADLESS", "1")
-    wayne_html = load_fixture("generic_fallback", "wayne_county_commission_2026-01-08.html")
+    wayne_html = load_fixture(
+        "generic_fallback", "wayne_county_commission_2026-01-08.html"
+    )
 
     async def _fake_browser(url):
         assert url == WAYNE_URL
         return wayne_html
 
-    monkeypatch.setattr(GenericFallbackAssetFinder, "_try_browser_fetch", staticmethod(_fake_browser))
+    monkeypatch.setattr(
+        GenericFallbackAssetFinder, "_try_browser_fetch", staticmethod(_fake_browser)
+    )
     akamai_403 = load_fixture("generic_fallback", "wayne_akamai_403.html")
     routes = {WAYNE_URL: FakeResponse(status=403, text=akamai_403, url=WAYNE_URL)}
 
@@ -870,7 +959,9 @@ async def test_escalation_degrades_cleanly_when_browser_unavailable(monkeypatch)
     async def _unavailable(url):
         return None  # _try_browser_fetch already swallows the exception
 
-    monkeypatch.setattr(GenericFallbackAssetFinder, "_try_browser_fetch", staticmethod(_unavailable))
+    monkeypatch.setattr(
+        GenericFallbackAssetFinder, "_try_browser_fetch", staticmethod(_unavailable)
+    )
     akamai_403 = load_fixture("generic_fallback", "wayne_akamai_403.html")
     routes = {WAYNE_URL: FakeResponse(status=403, text=akamai_403, url=WAYNE_URL)}
 
@@ -896,7 +987,9 @@ async def test_empty_shell_trigger_fires_on_real_tucson_shape(monkeypatch):
     async def _fake_browser(url):
         return rendered
 
-    monkeypatch.setattr(GenericFallbackAssetFinder, "_try_browser_fetch", staticmethod(_fake_browser))
+    monkeypatch.setattr(
+        GenericFallbackAssetFinder, "_try_browser_fetch", staticmethod(_fake_browser)
+    )
     routes = {tucson_url: FakeResponse(status=200, text=shell, url=tucson_url)}
 
     with mock_session(routes):
@@ -915,8 +1008,14 @@ async def test_empty_shell_trigger_skips_pages_with_real_text(monkeypatch):
         calls.append(url)
         return "<html>never</html>"
 
-    monkeypatch.setattr(GenericFallbackAssetFinder, "_try_browser_fetch", staticmethod(_fake_browser))
-    texty = "<html><body>" + ("This council discussed real business. " * 30) + "</body></html>"
+    monkeypatch.setattr(
+        GenericFallbackAssetFinder, "_try_browser_fetch", staticmethod(_fake_browser)
+    )
+    texty = (
+        "<html><body>"
+        + ("This council discussed real business. " * 30)
+        + "</body></html>"
+    )
     routes = {PAGE_URL: FakeResponse(status=200, text=texty, url=PAGE_URL)}
 
     with mock_session(routes):

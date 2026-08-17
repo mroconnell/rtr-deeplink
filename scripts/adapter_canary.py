@@ -107,7 +107,9 @@ def has_real_content(result: ResolvedMeeting) -> bool:
     /api/health/resolve-check (WO-7) -- kept in sync deliberately, since
     both exist to answer the same underlying question: did this resolve
     produce something real, not just a 200 with nothing in it?"""
-    return bool(result.segments or result.agenda_items or result.video_url or result.agenda_link)
+    return bool(
+        result.segments or result.agenda_items or result.video_url or result.agenda_link
+    )
 
 
 async def check_platform(name: str, url: str) -> dict:
@@ -124,12 +126,27 @@ async def check_platform(name: str, url: str) -> dict:
         # show up as this list going empty, not as the error itself.
         if e.candidates:
             return {"platform": name, "url": url, "ok": True, "reason": None}
-        return {"platform": name, "url": url, "ok": False, "reason": "calendar page returned zero candidates"}
+        return {
+            "platform": name,
+            "url": url,
+            "ok": False,
+            "reason": "calendar page returned zero candidates",
+        }
     except Exception as e:
-        return {"platform": name, "url": url, "ok": False, "reason": f"{type(e).__name__}: {e}"[:300]}
+        return {
+            "platform": name,
+            "url": url,
+            "ok": False,
+            "reason": f"{type(e).__name__}: {e}"[:300],
+        }
 
     if not has_real_content(result):
-        return {"platform": name, "url": url, "ok": False, "reason": "resolve returned no real content"}
+        return {
+            "platform": name,
+            "url": url,
+            "ok": False,
+            "reason": "resolve returned no real content",
+        }
     return {"platform": name, "url": url, "ok": True, "reason": None}
 
 
@@ -137,12 +154,16 @@ async def run_canary(urls: dict[str, str]) -> list[dict]:
     # One request per distinct real-world site, not the same site hit
     # repeatedly -- concurrent is fine, no politeness concern like a
     # single-site crawl would have.
-    return await asyncio.gather(*(check_platform(name, url) for name, url in urls.items()))
+    return await asyncio.gather(
+        *(check_platform(name, url) for name, url in urls.items())
+    )
 
 
 def format_report(results: list[dict]) -> str:
     failed = [r for r in results if not r["ok"]]
-    lines = [f"Adapter health canary: {len(results) - len(failed)}/{len(results)} platforms OK"]
+    lines = [
+        f"Adapter health canary: {len(results) - len(failed)}/{len(results)} platforms OK"
+    ]
     for r in failed:
         lines.append(f"  FAIL {r['platform']}: {r['reason']} ({r['url']})")
     return "\n".join(lines)

@@ -16,7 +16,11 @@ client = TestClient(app.main.app)
 
 
 def _disallow_lines(body: str) -> list[str]:
-    return [line.split("Disallow: ", 1)[1] for line in body.splitlines() if line.startswith("Disallow: ")]
+    return [
+        line.split("Disallow: ", 1)[1]
+        for line in body.splitlines()
+        if line.startswith("Disallow: ")
+    ]
 
 
 def _matches(pattern: str, path: str) -> bool:

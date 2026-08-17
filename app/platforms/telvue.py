@@ -78,7 +78,9 @@ class TelvueAssetFinder(AssetFinder):
         transcript_warnings: List[str] = []
 
         async with aiohttp.ClientSession(headers=self.headers) as session:
-            async with session.get(url, allow_redirects=True, timeout=aiohttp.ClientTimeout(total=30)) as response:
+            async with session.get(
+                url, allow_redirects=True, timeout=aiohttp.ClientTimeout(total=30)
+            ) as response:
                 response.raise_for_status()
                 final_url = str(response.url)
                 html = await response.text()
@@ -113,7 +115,11 @@ class TelvueAssetFinder(AssetFinder):
                     cues = await self._fetch_vtt(session, absolute_url)
                     if cues:
                         for cue in cues:
-                            cue["text"] = _VOICE_TAG_RE.sub("", cue["text"]).replace("\n", " ").strip()
+                            cue["text"] = (
+                                _VOICE_TAG_RE.sub("", cue["text"])
+                                .replace("\n", " ")
+                                .strip()
+                            )
                         cues = [c for c in cues if c["text"]]
                     if cues:
                         segments = [TranscriptSegment(**cue) for cue in cues]
@@ -134,7 +140,9 @@ class TelvueAssetFinder(AssetFinder):
                     for cue in cues or []:
                         text = cue["text"].strip()
                         if text and text.lower() != "coming up...":
-                            agenda_items.append(TranscriptSegment(**{**cue, "text": text}))
+                            agenda_items.append(
+                                TranscriptSegment(**{**cue, "text": text})
+                            )
 
             if not video_url:
                 video_warnings.append("No video found on this TelVue page.")
@@ -156,7 +164,9 @@ class TelvueAssetFinder(AssetFinder):
 
     @staticmethod
     def _extract_playlist_entry(html: str) -> Optional[dict]:
-        match = re.search(r"Player\.setupData\['playlist'\]\s*=\s*(\[.*?\]);", html, re.S)
+        match = re.search(
+            r"Player\.setupData\['playlist'\]\s*=\s*(\[.*?\]);", html, re.S
+        )
         if not match:
             return None
         try:
@@ -178,7 +188,9 @@ class TelvueAssetFinder(AssetFinder):
                 try:
                     from datetime import datetime
 
-                    return title.strip() or None, datetime.strptime(fmt_text, fmt).strftime("%Y-%m-%d")
+                    return title.strip() or None, datetime.strptime(
+                        fmt_text, fmt
+                    ).strftime("%Y-%m-%d")
                 except ValueError:
                     continue
         return title.strip() or None, None
@@ -193,7 +205,9 @@ class TelvueAssetFinder(AssetFinder):
     @staticmethod
     async def _fetch_vtt(session: aiohttp.ClientSession, vtt_url: str):
         try:
-            async with session.get(vtt_url, timeout=aiohttp.ClientTimeout(total=20)) as response:
+            async with session.get(
+                vtt_url, timeout=aiohttp.ClientTimeout(total=20)
+            ) as response:
                 if response.status != 200:
                     return None
                 raw = await response.read()

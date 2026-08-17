@@ -49,7 +49,11 @@ async def get_user_contact(clerk_user_id: str) -> Optional[dict]:
         return None
 
     email_address = next(
-        (e.email_address for e in (user.email_addresses or []) if e.id == user.primary_email_address_id),
+        (
+            e.email_address
+            for e in (user.email_addresses or [])
+            if e.id == user.primary_email_address_id
+        ),
         None,
     )
     if not email_address:
@@ -57,7 +61,9 @@ async def get_user_contact(clerk_user_id: str) -> Optional[dict]:
     return {"email": email_address, "first_name": user.first_name}
 
 
-def _build_page_url(base_url: str, slug: str, segment: Optional[dict], version_id: Optional[int]) -> str:
+def _build_page_url(
+    base_url: str, slug: str, segment: Optional[dict], version_id: Optional[int]
+) -> str:
     url = f"{base_url}/m/{slug}"
     if not segment or segment.get("start") is None:
         return url
@@ -75,7 +81,9 @@ async def _matches_for_saved_search(item: dict, *, base_url: str) -> list[dict]:
     segment for, same as find_matching_segment()'s own None case."""
     keyword = item["search_params"].get("q")
     fuzzy = bool(item["search_params"].get("fuzzy", False))
-    pages = await crud.find_new_matches_for_saved_search(item["search_params"], since=item["last_alerted_at"])
+    pages = await crud.find_new_matches_for_saved_search(
+        item["search_params"], since=item["last_alerted_at"]
+    )
 
     matches = []
     for page in pages:
@@ -84,16 +92,22 @@ async def _matches_for_saved_search(item: dict, *, base_url: str) -> list[dict]:
         if keyword:
             full_page = await crud.get_page_by_slug(page["slug"])
             if full_page:
-                default_version = next((v for v in full_page["versions"] if v["is_default"]), None)
+                default_version = next(
+                    (v for v in full_page["versions"] if v["is_default"]), None
+                )
                 if default_version:
                     version_id = default_version["id"]
-                    segment = find_matching_segment(keyword, default_version["segments"] or [], fuzzy)
+                    segment = find_matching_segment(
+                        keyword, default_version["segments"] or [], fuzzy
+                    )
         matches.append(
             {
                 "title": page["title"],
                 "date": page["date"],
                 "jurisdiction": page["jurisdiction"],
-                "page_url": _build_page_url(base_url, page["slug"], segment, version_id),
+                "page_url": _build_page_url(
+                    base_url, page["slug"], segment, version_id
+                ),
                 "quote_html": segment["quote_html"] if segment else None,
             }
         )
@@ -123,16 +137,25 @@ async def run_search_alerts(*, dry_run: bool = False) -> dict:
         if not matches:
             continue
         by_user.setdefault(item["clerk_user_id"], []).append(
-            {"saved_item_id": item["id"], "keyword": item["search_params"].get("q"), "matches": matches}
+            {
+                "saved_item_id": item["id"],
+                "keyword": item["search_params"].get("q"),
+                "matches": matches,
+            }
         )
 
     sent: list[dict] = []
-    matches_found = sum(len(g["matches"]) for groups in by_user.values() for g in groups)
+    matches_found = sum(
+        len(g["matches"]) for groups in by_user.values() for g in groups
+    )
 
     for clerk_user_id, groups in by_user.items():
         contact = await get_user_contact(clerk_user_id)
         if not contact:
-            logger.warning("Skipping saved-search alert for %s -- no resolvable email.", clerk_user_id)
+            logger.warning(
+                "Skipping saved-search alert for %s -- no resolvable email.",
+                clerk_user_id,
+            )
             continue
 
         email_groups = [
@@ -148,20 +171,39 @@ async def run_search_alerts(*, dry_run: bool = False) -> dict:
         # or handed straight to email_utils._send() below on a real run
         # so this never recomposes (and never risks the two paths
         # producing subtly different output).
-        subject, body = email_utils.compose_search_alert_digest(first_name=contact["first_name"], groups=email_groups)
+        subject, body = email_utils.compose_search_alert_digest(
+            first_name=contact["first_name"], groups=email_groups
+        )
 
         if dry_run:
-            sent.append({"clerk_user_id": clerk_user_id, "email": contact["email"], "subject": subject, "body": body})
+            sent.append(
+                {
+                    "clerk_user_id": clerk_user_id,
+                    "email": contact["email"],
+                    "subject": subject,
+                    "body": body,
+                }
+            )
             continue
 
         ok = await email_utils._send(contact["email"], subject, body)
         if not ok:
-            logger.error("Search-alert digest send failed for %s -- cursor left unadvanced.", clerk_user_id)
+            logger.error(
+                "Search-alert digest send failed for %s -- cursor left unadvanced.",
+                clerk_user_id,
+            )
             continue
 
         saved_item_ids = [g["saved_item_id"] for g in groups]
         await crud.mark_saved_searches_alerted(saved_item_ids, checked_at)
-        sent.append({"clerk_user_id": clerk_user_id, "email": contact["email"], "subject": subject, "body": body})
+        sent.append(
+            {
+                "clerk_user_id": clerk_user_id,
+                "email": contact["email"],
+                "subject": subject,
+                "body": body,
+            }
+        )
 
     return {
         "saved_searches_checked": len(saved_searches),

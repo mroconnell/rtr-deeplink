@@ -28,8 +28,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
 async def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--dry-run", action="store_true", help="Compose and print the report, but don't send it")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Compose and print the report, but don't send it",
+    )
     args = parser.parse_args()
 
     # Imported here, not at module level -- app/reporting.py imports
@@ -55,7 +61,10 @@ async def main() -> None:
         return
 
     if not result["sent"]:
-        print("Send failed -- check RESEND_API_KEY/RESEND_FROM_ADDRESS and the log above.", file=sys.stderr)
+        print(
+            "Send failed -- check RESEND_API_KEY/RESEND_FROM_ADDRESS and the log above.",
+            file=sys.stderr,
+        )
         sys.exit(1)
     print(f"Sent: {result['subject']}")
 

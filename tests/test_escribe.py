@@ -48,7 +48,10 @@ async def test_resolve_real_bakersfield_meeting():
     )
     assert result.video_format == "m3u8"
     assert len(result.segments) == 25  # the trimmed real VTT fixture's cue count
-    assert result.segments[0].text == "The 330 p. m. meeting of the Bakersfield City Council"
+    assert (
+        result.segments[0].text
+        == "The 330 p. m. meeting of the Bakersfield City Council"
+    )
 
     # Real bug fixed 2026-08-09: EscribeAssetFinder never extracted
     # agenda_items at all, despite the real page having exactly the
@@ -70,33 +73,46 @@ async def test_resolve_real_bakersfield_meeting():
 
 
 async def test_jurisdiction_from_subdomain_used_only_as_fallback():
-    assert EscribeAssetFinder._jurisdiction_from_subdomain(
-        "https://pub-bakersfield.escribemeetings.com/Meeting.aspx?Id=1"
-    ) == "Bakersfield"
-    assert EscribeAssetFinder._jurisdiction_from_subdomain(
-        "https://pub-simi-valley.escribemeetings.com/Meeting.aspx?Id=1"
-    ) == "Simi Valley"
-    assert EscribeAssetFinder._jurisdiction_from_subdomain(
-        "https://example.com/Meeting.aspx?Id=1"
-    ) is None
+    assert (
+        EscribeAssetFinder._jurisdiction_from_subdomain(
+            "https://pub-bakersfield.escribemeetings.com/Meeting.aspx?Id=1"
+        )
+        == "Bakersfield"
+    )
+    assert (
+        EscribeAssetFinder._jurisdiction_from_subdomain(
+            "https://pub-simi-valley.escribemeetings.com/Meeting.aspx?Id=1"
+        )
+        == "Simi Valley"
+    )
+    assert (
+        EscribeAssetFinder._jurisdiction_from_subdomain(
+            "https://example.com/Meeting.aspx?Id=1"
+        )
+        is None
+    )
 
 
 async def test_extract_agenda_items_handles_missing_bookmarks_array():
-    html = "<html><body><div class='AgendaItem'><div class='AgendaItemTitle'>" \
-        "<a href=\"javascript:SelectItem(1);\">Roll Call</a></div></div></body></html>"
+    html = (
+        "<html><body><div class='AgendaItem'><div class='AgendaItemTitle'>"
+        '<a href="javascript:SelectItem(1);">Roll Call</a></div></div></body></html>'
+    )
     from bs4 import BeautifulSoup
+
     soup = BeautifulSoup(html, "html.parser")
     assert EscribeAssetFinder._extract_agenda_items(soup, html) == []
 
 
 async def test_extract_agenda_items_handles_malformed_bookmarks_json():
     html = (
-        "<script>var video = { Bookmarks : [{\"AgendaItemId\":1,not-json},"
+        '<script>var video = { Bookmarks : [{"AgendaItemId":1,not-json},'
         "</script>"
         "<div class='AgendaItem'><div class='AgendaItemTitle'>"
-        "<a href=\"javascript:SelectItem(1);\">Roll Call</a></div></div>"
+        '<a href="javascript:SelectItem(1);">Roll Call</a></div></div>'
     )
     from bs4 import BeautifulSoup
+
     soup = BeautifulSoup(html, "html.parser")
     assert EscribeAssetFinder._extract_agenda_items(soup, html) == []
 
@@ -106,11 +122,12 @@ async def test_extract_agenda_items_skips_items_without_a_matching_bookmark():
         '<script>var video = { Bookmarks : [{"AgendaItemId":2,"TimeStart":1000,"TimeEnd":2000}],'
         "</script>"
         "<div class='AgendaItem'><div class='AgendaItemTitle'>"
-        "<a href=\"javascript:SelectItem(1);\">Roll Call</a></div></div>"
+        '<a href="javascript:SelectItem(1);">Roll Call</a></div></div>'
         "<div class='AgendaItem'><div class='AgendaItemTitle'>"
-        "<a href=\"javascript:SelectItem(2);\">Public Comment</a></div></div>"
+        '<a href="javascript:SelectItem(2);">Public Comment</a></div></div>'
     )
     from bs4 import BeautifulSoup
+
     soup = BeautifulSoup(html, "html.parser")
     items = EscribeAssetFinder._extract_agenda_items(soup, html)
     assert len(items) == 1
@@ -137,13 +154,17 @@ async def test_resolve_no_video_integration_returns_warning_not_crash():
 async def test_resolve_video_present_but_no_caption_file_found():
     url = "https://pub-example.escribemeetings.com/Meeting.aspx?Id=3"
     html = (
-        '<html><head><title>Meeting - January 1, 2026</title></head><body>'
+        "<html><head><title>Meeting - January 1, 2026</title></head><body>"
         '<div id="isi_player" data-client_id="example" data-stream_name="clip.mp4"></div>'
         "</body></html>"
     )
     routes = {url: FakeResponse(status=200, text=html, url=url)}
     for suffix in [None, "fr", "es", "zh", "zh-hant", "tl"]:
-        vtt_url = "https://video.isilive.ca/example/clip.mp4" + (f".{suffix}" if suffix else "") + ".vtt"
+        vtt_url = (
+            "https://video.isilive.ca/example/clip.mp4"
+            + (f".{suffix}" if suffix else "")
+            + ".vtt"
+        )
         routes[vtt_url] = FakeResponse(status=404)
 
     with mock_session(routes):
@@ -151,7 +172,9 @@ async def test_resolve_video_present_but_no_caption_file_found():
 
     assert result.video_url is not None
     assert result.segments == []
-    assert any("no caption file was found" in w.lower() for w in result.transcript_warnings)
+    assert any(
+        "no caption file was found" in w.lower() for w in result.transcript_warnings
+    )
 
 
 # --- 2026-08-14 rebuild coverage (Phase 4: the opt-in generic-scan
@@ -179,11 +202,9 @@ async def test_backstop_finds_youtube_embed_when_no_isi_player(monkeypatch):
             "uploader": "cityofexample",
             "upload_date": "20260102",
             "_chosen_track": (
-                (
-                    "WEBVTT\n\n"
-                    "00:00:01.000 --> 00:00:03.000\n"
-                    "Call to order.\n"
-                ).encode("utf-8"),
+                ("WEBVTT\n\n00:00:01.000 --> 00:00:03.000\nCall to order.\n").encode(
+                    "utf-8"
+                ),
                 "en",
                 True,
             ),
@@ -191,7 +212,7 @@ async def test_backstop_finds_youtube_embed_when_no_isi_player(monkeypatch):
     )
     url = "https://pub-example.escribemeetings.com/Meeting.aspx?Id=9"
     html = (
-        '<html><head><title>Council Meeting - January 1, 2026</title></head><body>'
+        "<html><head><title>Council Meeting - January 1, 2026</title></head><body>"
         '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>'
         "</body></html>"
     )
@@ -256,7 +277,7 @@ async def test_backstop_surfaces_vimeo_pointer_for_perry_ga_shape(monkeypatch):
     # confirmed shape (the original page wasn't captured).
     url = "https://pub-perryga.escribemeetings.com/Meeting.aspx?Id=4"
     html = (
-        '<html><head><title>Council Meeting - January 1, 2026</title></head><body>'
+        "<html><head><title>Council Meeting - January 1, 2026</title></head><body>"
         '<a href="https://vimeo.com/123456789">Watch the live stream</a>'
         "</body></html>"
     )

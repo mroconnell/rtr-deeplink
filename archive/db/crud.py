@@ -9,14 +9,23 @@ from sqlalchemy import and_, or_, select
 
 from app.utils.jurisdiction_enrich import finalize_jurisdiction
 
-from ..utils.jurisdiction_format import jurisdiction_search_terms, normalize_state_suffix
+from ..utils.jurisdiction_format import (
+    jurisdiction_search_terms,
+    normalize_state_suffix,
+)
 from ..utils.language import detect_language_from_texts
 from ..utils.search import build_corpus, find_snippet, matches, tokenize
 from ..utils.slugify import build_base_slug, random_suffix
 from ..utils.transcription_quality import detect_hallucination_warnings
 from ..utils.url_normalize import normalize_url
 from .engine import async_session
-from .models import MeetingPage, MeetingPageUrlAlias, SavedItem, TranscriptionJob, TranscriptVersion
+from .models import (
+    MeetingPage,
+    MeetingPageUrlAlias,
+    SavedItem,
+    TranscriptionJob,
+    TranscriptVersion,
+)
 
 
 def _content_hash(segments: list) -> str:
@@ -45,7 +54,9 @@ def _has_real_warning_free_transcript(warnings: Optional[list]) -> bool:
     likely-hallucinated -- the shared "is this actually a good transcript"
     check every call site below needs, factored out so a third quality
     marker never again needs updating in four separate places."""
-    return not any(_GARBLED_MARKER in w or _HALLUCINATION_MARKER in w for w in (warnings or []))
+    return not any(
+        _GARBLED_MARKER in w or _HALLUCINATION_MARKER in w for w in (warnings or [])
+    )
 
 
 async def _has_good_transcript(session, meeting_page_id: int) -> bool:
@@ -56,15 +67,19 @@ async def _has_good_transcript(session, meeting_page_id: int) -> bool:
     the government source's own captions may catch up at any time; a page
     that already has a good one doesn't."""
     version = (
-        await session.execute(
-            select(TranscriptVersion).where(
-                and_(
-                    TranscriptVersion.meeting_page_id == meeting_page_id,
-                    TranscriptVersion.is_default.is_(True),
+        (
+            await session.execute(
+                select(TranscriptVersion).where(
+                    and_(
+                        TranscriptVersion.meeting_page_id == meeting_page_id,
+                        TranscriptVersion.is_default.is_(True),
+                    )
                 )
             )
         )
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
     if version is None or not version.segments:
         return False
     return _has_real_warning_free_transcript(version.transcript_warnings)
@@ -81,10 +96,16 @@ async def lookup_page_for_url(url_normalized: str) -> Optional[dict]:
     """
     async with async_session() as session:
         alias = (
-            await session.execute(
-                select(MeetingPageUrlAlias).where(MeetingPageUrlAlias.url_normalized == url_normalized)
+            (
+                await session.execute(
+                    select(MeetingPageUrlAlias).where(
+                        MeetingPageUrlAlias.url_normalized == url_normalized
+                    )
+                )
             )
-        ).scalars().first()
+            .scalars()
+            .first()
+        )
         if alias:
             page = await session.get(MeetingPage, alias.meeting_page_id)
             if page:
@@ -96,10 +117,16 @@ async def lookup_page_for_url(url_normalized: str) -> Optional[dict]:
                 }
 
         page = (
-            await session.execute(
-                select(MeetingPage).where(MeetingPage.source_url_normalized == url_normalized)
+            (
+                await session.execute(
+                    select(MeetingPage).where(
+                        MeetingPage.source_url_normalized == url_normalized
+                    )
+                )
             )
-        ).scalars().first()
+            .scalars()
+            .first()
+        )
         if page:
             return {
                 "slug": page.slug,
@@ -111,12 +138,25 @@ async def lookup_page_for_url(url_normalized: str) -> Optional[dict]:
     return None
 
 
-async def _find_existing_page(session, *, platform: str, external_id: Optional[str], source_url_normalized: str, input_url_normalized: str) -> Optional[MeetingPage]:
+async def _find_existing_page(
+    session,
+    *,
+    platform: str,
+    external_id: Optional[str],
+    source_url_normalized: str,
+    input_url_normalized: str,
+) -> Optional[MeetingPage]:
     alias = (
-        await session.execute(
-            select(MeetingPageUrlAlias).where(MeetingPageUrlAlias.url_normalized == input_url_normalized)
+        (
+            await session.execute(
+                select(MeetingPageUrlAlias).where(
+                    MeetingPageUrlAlias.url_normalized == input_url_normalized
+                )
+            )
         )
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
     if alias:
         page = await session.get(MeetingPage, alias.meeting_page_id)
         if page:
@@ -124,34 +164,61 @@ async def _find_existing_page(session, *, platform: str, external_id: Optional[s
 
     if external_id:
         page = (
-            await session.execute(
-                select(MeetingPage).where(MeetingPage.platform == platform, MeetingPage.external_id == external_id)
+            (
+                await session.execute(
+                    select(MeetingPage).where(
+                        MeetingPage.platform == platform,
+                        MeetingPage.external_id == external_id,
+                    )
+                )
             )
-        ).scalars().first()
+            .scalars()
+            .first()
+        )
         if page:
             return page
 
     return (
-        await session.execute(
-            select(MeetingPage).where(MeetingPage.source_url_normalized == source_url_normalized)
+        (
+            await session.execute(
+                select(MeetingPage).where(
+                    MeetingPage.source_url_normalized == source_url_normalized
+                )
+            )
         )
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
 
 
 async def _ensure_alias(session, url_normalized: str, meeting_page_id: int) -> None:
     existing = (
-        await session.execute(
-            select(MeetingPageUrlAlias).where(MeetingPageUrlAlias.url_normalized == url_normalized)
+        (
+            await session.execute(
+                select(MeetingPageUrlAlias).where(
+                    MeetingPageUrlAlias.url_normalized == url_normalized
+                )
+            )
         )
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
     if not existing:
-        session.add(MeetingPageUrlAlias(url_normalized=url_normalized, meeting_page_id=meeting_page_id))
+        session.add(
+            MeetingPageUrlAlias(
+                url_normalized=url_normalized, meeting_page_id=meeting_page_id
+            )
+        )
 
 
 async def _unique_slug(session, base: str) -> str:
     slug = base
     for _ in range(5):
-        existing = (await session.execute(select(MeetingPage).where(MeetingPage.slug == slug))).scalars().first()
+        existing = (
+            (await session.execute(select(MeetingPage).where(MeetingPage.slug == slug)))
+            .scalars()
+            .first()
+        )
         if not existing:
             return slug
         slug = f"{base}-{random_suffix()}"
@@ -160,7 +227,9 @@ async def _unique_slug(session, base: str) -> str:
     return f"{base}-{random_suffix(12)}"
 
 
-async def _find_or_create_page(session, payload: dict[str, Any], input_url_normalized: str) -> MeetingPage:
+async def _find_or_create_page(
+    session, payload: dict[str, Any], input_url_normalized: str
+) -> MeetingPage:
     """Shared by ingest_resolution() and create_transcription_job() -- both
     need "find this meeting's permanent page, or create one if this is the
     first thing that's ever landed for it" from the same resolver-payload
@@ -181,7 +250,9 @@ async def _find_or_create_page(session, payload: dict[str, Any], input_url_norma
     # same boundary worker/main.py already crosses -- jurisdiction_enrich
     # is a pure utility module (stdlib + CSV data only), not FastAPI/
     # app-server-specific.
-    jx_result = finalize_jurisdiction(jurisdiction, netloc=urlparse(source_url_normalized).netloc)
+    jx_result = finalize_jurisdiction(
+        jurisdiction, netloc=urlparse(source_url_normalized).netloc
+    )
     jurisdiction = jx_result.jurisdiction
 
     page = await _find_existing_page(
@@ -193,7 +264,9 @@ async def _find_or_create_page(session, payload: dict[str, Any], input_url_norma
     )
 
     if page is None:
-        base_slug = build_base_slug(jurisdiction or "", payload.get("date") or "", payload.get("title") or "")
+        base_slug = build_base_slug(
+            jurisdiction or "", payload.get("date") or "", payload.get("title") or ""
+        )
         slug = await _unique_slug(session, base_slug)
         page = MeetingPage(
             slug=slug,
@@ -277,7 +350,9 @@ async def _find_or_create_page(session, payload: dict[str, Any], input_url_norma
     return page
 
 
-def _is_real_improvement(current_default: TranscriptVersion, new_language: Optional[str]) -> bool:
+def _is_real_improvement(
+    current_default: TranscriptVersion, new_language: Optional[str]
+) -> bool:
     """True if a freshly-created TranscriptVersion (which always has real
     segments -- ingest_resolution() only creates one `if segments:`) is a
     genuine improvement over the page's current default, and should be
@@ -296,7 +371,9 @@ def _is_real_improvement(current_default: TranscriptVersion, new_language: Optio
     return not current_default.language and bool(new_language)
 
 
-def _default_looks_like_copied_agenda(current_default: TranscriptVersion, agenda_items: list) -> bool:
+def _default_looks_like_copied_agenda(
+    current_default: TranscriptVersion, agenda_items: list
+) -> bool:
     """True if the page's current default TranscriptVersion is actually
     just a copy of the meeting's agenda items, not a genuine transcript --
     a real, confirmed historical bug (see BACKLOG_DONE.md's Yountville
@@ -348,13 +425,17 @@ async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) 
         page = await _find_or_create_page(session, payload, input_url_normalized)
 
         current_default = (
-            await session.execute(
-                select(TranscriptVersion).where(
-                    TranscriptVersion.meeting_page_id == page.id,
-                    TranscriptVersion.is_default.is_(True),
+            (
+                await session.execute(
+                    select(TranscriptVersion).where(
+                        TranscriptVersion.meeting_page_id == page.id,
+                        TranscriptVersion.is_default.is_(True),
+                    )
                 )
             )
-        ).scalars().first()
+            .scalars()
+            .first()
+        )
 
         new_version_id = None
 
@@ -369,22 +450,32 @@ async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) 
             # every time the same meeting gets re-transcribed with the
             # same result.
             duplicate = (
-                await session.execute(
-                    select(TranscriptVersion).where(
-                        TranscriptVersion.meeting_page_id == page.id,
-                        TranscriptVersion.language == language,
-                        TranscriptVersion.source == source,
-                        TranscriptVersion.content_hash == content_hash,
+                (
+                    await session.execute(
+                        select(TranscriptVersion).where(
+                            TranscriptVersion.meeting_page_id == page.id,
+                            TranscriptVersion.language == language,
+                            TranscriptVersion.source == source,
+                            TranscriptVersion.content_hash == content_hash,
+                        )
                     )
                 )
-            ).scalars().first()
+                .scalars()
+                .first()
+            )
 
             if duplicate is None:
                 any_version = (
-                    await session.execute(
-                        select(TranscriptVersion).where(TranscriptVersion.meeting_page_id == page.id)
+                    (
+                        await session.execute(
+                            select(TranscriptVersion).where(
+                                TranscriptVersion.meeting_page_id == page.id
+                            )
+                        )
                     )
-                ).scalars().first()
+                    .scalars()
+                    .first()
+                )
                 version = TranscriptVersion(
                     meeting_page_id=page.id,
                     language=language,
@@ -399,9 +490,13 @@ async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) 
                 new_version_id = version.id
 
         if current_default is not None:
-            if new_version_id is not None and _is_real_improvement(current_default, payload.get("transcript_language")):
+            if new_version_id is not None and _is_real_improvement(
+                current_default, payload.get("transcript_language")
+            ):
                 await promote_transcript_version(session, page.id, new_version_id)
-            elif new_version_id is None and _default_looks_like_copied_agenda(current_default, agenda_items):
+            elif new_version_id is None and _default_looks_like_copied_agenda(
+                current_default, agenda_items
+            ):
                 current_default.is_default = False
 
         await session.commit()
@@ -427,8 +522,14 @@ async def list_all_page_urls() -> list[dict]:
     """
     async with async_session() as session:
         pages = (
-            await session.execute(select(MeetingPage).order_by(MeetingPage.created_at.asc()))
-        ).scalars().all()
+            (
+                await session.execute(
+                    select(MeetingPage).order_by(MeetingPage.created_at.asc())
+                )
+            )
+            .scalars()
+            .all()
+        )
 
         return [
             {
@@ -471,12 +572,16 @@ async def list_youtube_pages_missing_transcripts() -> list[dict]:
             .exists()
         )
         pages = (
-            await session.execute(
-                select(MeetingPage)
-                .where(MeetingPage.video_format == "youtube", ~default_exists)
-                .order_by(MeetingPage.created_at.asc())
+            (
+                await session.execute(
+                    select(MeetingPage)
+                    .where(MeetingPage.video_format == "youtube", ~default_exists)
+                    .order_by(MeetingPage.created_at.asc())
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         return [
             {
@@ -491,7 +596,9 @@ async def list_youtube_pages_missing_transcripts() -> list[dict]:
         ]
 
 
-async def list_transcription_backlog_candidates(limit: Optional[int] = None) -> list[dict]:
+async def list_transcription_backlog_candidates(
+    limit: Optional[int] = None,
+) -> list[dict]:
     """Oldest-archived-first MeetingPages missing a good transcript, across
     ANY platform -- the batch counterpart to find_auto_transcription_
     candidate() (which only ever returns one candidate at a time, for the
@@ -532,7 +639,15 @@ async def list_transcription_backlog_candidates(limit: Optional[int] = None) -> 
     local batch tool, not a hot request path.
     """
     async with async_session() as session:
-        pages = (await session.execute(select(MeetingPage).order_by(MeetingPage.created_at.asc()))).scalars().all()
+        pages = (
+            (
+                await session.execute(
+                    select(MeetingPage).order_by(MeetingPage.created_at.asc())
+                )
+            )
+            .scalars()
+            .all()
+        )
 
         candidates = []
         for page in pages:
@@ -540,18 +655,20 @@ async def list_transcription_backlog_candidates(limit: Optional[int] = None) -> 
                 continue
             if await _in_auto_transcription_cooldown(session, page.id):
                 continue
-            candidates.append({
-                "slug": page.slug,
-                "title": page.title,
-                "platform": page.platform,
-                "external_id": page.external_id,
-                "source_url_normalized": page.source_url_normalized,
-                "video_url": page.video_url,
-                "video_format": page.video_format,
-                "jurisdiction": page.jurisdiction,
-                "date": page.date,
-                "created_at": page.created_at.isoformat(),
-            })
+            candidates.append(
+                {
+                    "slug": page.slug,
+                    "title": page.title,
+                    "platform": page.platform,
+                    "external_id": page.external_id,
+                    "source_url_normalized": page.source_url_normalized,
+                    "video_url": page.video_url,
+                    "video_format": page.video_format,
+                    "jurisdiction": page.jurisdiction,
+                    "date": page.date,
+                    "created_at": page.created_at.isoformat(),
+                }
+            )
             if limit is not None and len(candidates) >= limit:
                 break
 
@@ -588,7 +705,10 @@ async def list_completed_multichunk_transcription_jobs() -> list[dict]:
                     MeetingPage.title,
                 )
                 .join(MeetingPage, MeetingPage.id == TranscriptionJob.meeting_page_id)
-                .where(TranscriptionJob.status == "completed", TranscriptionJob.total_chunks > 1)
+                .where(
+                    TranscriptionJob.status == "completed",
+                    TranscriptionJob.total_chunks > 1,
+                )
                 .order_by(TranscriptionJob.id.asc())
             )
         ).all()
@@ -611,18 +731,27 @@ async def list_completed_multichunk_transcription_jobs() -> list[dict]:
 async def get_page_by_slug(slug: str) -> Optional[dict]:
     async with async_session() as session:
         page = (
-            await session.execute(select(MeetingPage).where(MeetingPage.slug == slug))
-        ).scalars().first()
+            (await session.execute(select(MeetingPage).where(MeetingPage.slug == slug)))
+            .scalars()
+            .first()
+        )
         if page is None:
             return None
 
         versions = (
-            await session.execute(
-                select(TranscriptVersion)
-                .where(TranscriptVersion.meeting_page_id == page.id)
-                .order_by(TranscriptVersion.is_default.desc(), TranscriptVersion.created_at.asc())
+            (
+                await session.execute(
+                    select(TranscriptVersion)
+                    .where(TranscriptVersion.meeting_page_id == page.id)
+                    .order_by(
+                        TranscriptVersion.is_default.desc(),
+                        TranscriptVersion.created_at.asc(),
+                    )
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         return {
             "id": page.id,
@@ -715,7 +844,9 @@ async def list_pages(
     conditions = []
     if jurisdiction:
         terms = jurisdiction_search_terms(jurisdiction)
-        conditions.append(or_(*(MeetingPage.jurisdiction.ilike(f"%{t}%") for t in terms)))
+        conditions.append(
+            or_(*(MeetingPage.jurisdiction.ilike(f"%{t}%") for t in terms))
+        )
     if date_from:
         conditions.append(MeetingPage.date >= date_from)
     if date_to:
@@ -735,10 +866,18 @@ async def list_pages(
     # has_transcript badge below, not just search matching -- cheap, a
     # short warnings list, not the full transcript JSON.
     stmt = (
-        select(MeetingPage, TranscriptVersion.language, TranscriptVersion.id, TranscriptVersion.transcript_warnings)
+        select(
+            MeetingPage,
+            TranscriptVersion.language,
+            TranscriptVersion.id,
+            TranscriptVersion.transcript_warnings,
+        )
         .outerjoin(
             TranscriptVersion,
-            and_(TranscriptVersion.meeting_page_id == MeetingPage.id, TranscriptVersion.is_default.is_(True)),
+            and_(
+                TranscriptVersion.meeting_page_id == MeetingPage.id,
+                TranscriptVersion.is_default.is_(True),
+            ),
         )
         .order_by(MeetingPage.created_at.desc())
     )
@@ -778,7 +917,9 @@ async def list_pages(
                 ).all()
                 for page_id, segments, is_default in version_rows:
                     text = " ".join(seg.get("text", "") for seg in (segments or []))
-                    transcript_text_by_page[page_id] = f"{transcript_text_by_page.get(page_id, '')} {text}"
+                    transcript_text_by_page[page_id] = (
+                        f"{transcript_text_by_page.get(page_id, '')} {text}"
+                    )
                     if is_default:
                         default_transcript_text_by_page[page_id] = text
 
@@ -800,12 +941,14 @@ async def list_pages(
     filtered = []
     for mp, lang, version_id, warnings in rows:
         if _matches_page(mp):
-            filtered.append({"mp": mp, "lang": lang, "version_id": version_id, "warnings": warnings})
+            filtered.append(
+                {"mp": mp, "lang": lang, "version_id": version_id, "warnings": warnings}
+            )
 
     total = len(filtered)
     total_pages = max(1, (total + page_size - 1) // page_size)
     start = (page - 1) * page_size
-    page_rows = filtered[start:start + page_size]
+    page_rows = filtered[start : start + page_size]
 
     def _snippet_for(mp: MeetingPage) -> Optional[str]:
         # Only computed for the page of rows actually being returned, not
@@ -860,7 +1003,9 @@ async def list_pages(
     }
 
 
-async def find_new_matches_for_saved_search(search_params: dict, since: Optional[datetime]) -> list[dict]:
+async def find_new_matches_for_saved_search(
+    search_params: dict, since: Optional[datetime]
+) -> list[dict]:
     """The alert sweep's core query (archive/search_alerts.py) -- reuses
     list_pages() wholesale rather than reimplementing its filter/keyword/
     fuzzy logic, scoped to pages archived after `since` via
@@ -1042,14 +1187,24 @@ async def get_platform_coverage() -> dict:
             TranscriptVersion.transcript_warnings,
         ).outerjoin(
             TranscriptVersion,
-            and_(TranscriptVersion.meeting_page_id == MeetingPage.id, TranscriptVersion.is_default.is_(True)),
+            and_(
+                TranscriptVersion.meeting_page_id == MeetingPage.id,
+                TranscriptVersion.is_default.is_(True),
+            ),
         )
         rows = (await session.execute(stmt)).all()
 
     by_key: dict[str, list[dict]] = {}
     for platform, slug, title, jurisdiction, source_url, version_id, warnings in rows:
-        has_transcript = version_id is not None and _has_real_warning_free_transcript(warnings)
-        example = {"slug": slug, "title": title, "jurisdiction": jurisdiction, "has_transcript": has_transcript}
+        has_transcript = version_id is not None and _has_real_warning_free_transcript(
+            warnings
+        )
+        example = {
+            "slug": slug,
+            "title": title,
+            "jurisdiction": jurisdiction,
+            "has_transcript": has_transcript,
+        }
 
         if platform in DIRECT_PLATFORMS:
             by_key.setdefault(platform, []).append(example)
@@ -1066,8 +1221,12 @@ async def get_platform_coverage() -> dict:
             by_key.setdefault(platform, []).append(example)
 
     return {
-        "direct": [_coverage_row(k, v, by_key.get(k, [])) for k, v in DIRECT_PLATFORMS.items()],
-        "custom": [_coverage_row(k, v, by_key.get(k, [])) for k, v in CUSTOM_PLATFORMS.items()],
+        "direct": [
+            _coverage_row(k, v, by_key.get(k, [])) for k, v in DIRECT_PLATFORMS.items()
+        ],
+        "custom": [
+            _coverage_row(k, v, by_key.get(k, [])) for k, v in CUSTOM_PLATFORMS.items()
+        ],
     }
 
 
@@ -1099,7 +1258,10 @@ async def get_jurisdiction_coverage() -> list[dict]:
             )
             .outerjoin(
                 TranscriptVersion,
-                and_(TranscriptVersion.meeting_page_id == MeetingPage.id, TranscriptVersion.is_default.is_(True)),
+                and_(
+                    TranscriptVersion.meeting_page_id == MeetingPage.id,
+                    TranscriptVersion.is_default.is_(True),
+                ),
             )
             .where(MeetingPage.jurisdiction.is_not(None))
         )
@@ -1107,7 +1269,9 @@ async def get_jurisdiction_coverage() -> list[dict]:
 
     by_jurisdiction: dict[str, list[dict]] = {}
     for jurisdiction, slug, title, version_id, warnings in rows:
-        has_transcript = version_id is not None and _has_real_warning_free_transcript(warnings)
+        has_transcript = version_id is not None and _has_real_warning_free_transcript(
+            warnings
+        )
         by_jurisdiction.setdefault(jurisdiction, []).append(
             {"slug": slug, "title": title, "has_transcript": has_transcript}
         )
@@ -1116,7 +1280,13 @@ async def get_jurisdiction_coverage() -> list[dict]:
     for jurisdiction in sorted(by_jurisdiction, key=str.casefold):
         examples = by_jurisdiction[jurisdiction]
         example = next((e for e in examples if e["has_transcript"]), examples[0])
-        result.append({"jurisdiction": jurisdiction, "example": example, "page_count": len(examples)})
+        result.append(
+            {
+                "jurisdiction": jurisdiction,
+                "example": example,
+                "page_count": len(examples),
+            }
+        )
     return result
 
 
@@ -1127,12 +1297,18 @@ async def list_all_page_slugs() -> list[dict]:
     ~50k-URL point where Google expects that split."""
     async with async_session() as session:
         rows = (
-            await session.execute(select(MeetingPage.slug, MeetingPage.updated_at).order_by(MeetingPage.updated_at.desc()))
+            await session.execute(
+                select(MeetingPage.slug, MeetingPage.updated_at).order_by(
+                    MeetingPage.updated_at.desc()
+                )
+            )
         ).all()
     return [{"slug": slug, "updated_at": updated_at} for slug, updated_at in rows]
 
 
-async def list_recent_pages_for_feed(*, jurisdiction: Optional[str] = None, limit: int = 50) -> list[dict]:
+async def list_recent_pages_for_feed(
+    *, jurisdiction: Optional[str] = None, limit: int = 50
+) -> list[dict]:
     """Most-recently-archived pages for feed.xml -- a separate, deliberately
     simple query rather than reusing list_pages()'s pagination/multi-filter
     machinery, since a feed only ever wants "the last N, optionally scoped
@@ -1141,7 +1317,9 @@ async def list_recent_pages_for_feed(*, jurisdiction: Optional[str] = None, limi
     stmt = select(MeetingPage).order_by(MeetingPage.created_at.desc()).limit(limit)
     if jurisdiction:
         terms = jurisdiction_search_terms(jurisdiction)
-        stmt = stmt.where(or_(*(MeetingPage.jurisdiction.ilike(f"%{t}%") for t in terms)))
+        stmt = stmt.where(
+            or_(*(MeetingPage.jurisdiction.ilike(f"%{t}%") for t in terms))
+        )
 
     async with async_session() as session:
         rows = (await session.execute(stmt)).scalars().all()
@@ -1223,13 +1401,23 @@ async def promote_transcript_version(session, page_id: int, version_id: int) -> 
     (finalize) already are.
     """
     versions = (
-        await session.execute(select(TranscriptVersion).where(TranscriptVersion.meeting_page_id == page_id))
-    ).scalars().all()
+        (
+            await session.execute(
+                select(TranscriptVersion).where(
+                    TranscriptVersion.meeting_page_id == page_id
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
     for v in versions:
         v.is_default = v.id == version_id
 
 
-async def manually_promote_transcript_version(*, slug: str, version_id: int) -> Optional[dict]:
+async def manually_promote_transcript_version(
+    *, slug: str, version_id: int
+) -> Optional[dict]:
     """Admin action: make `version_id` this page's default TranscriptVersion.
     Real gap this closes -- found 2026-08-12 fixing a real stale ALL-CAPS
     transcript (Minneapolis City Council): `promote_transcript_version()`
@@ -1243,7 +1431,11 @@ async def manually_promote_transcript_version(*, slug: str, version_id: int) -> 
     `correct_transcript_version_language()` right below.
     """
     async with async_session() as session:
-        page = (await session.execute(select(MeetingPage).where(MeetingPage.slug == slug))).scalars().first()
+        page = (
+            (await session.execute(select(MeetingPage).where(MeetingPage.slug == slug)))
+            .scalars()
+            .first()
+        )
         if page is None:
             return None
 
@@ -1274,7 +1466,11 @@ async def correct_transcript_version_language(
     top-level admin action, never chained inside another write.
     """
     async with async_session() as session:
-        page = (await session.execute(select(MeetingPage).where(MeetingPage.slug == slug))).scalars().first()
+        page = (
+            (await session.execute(select(MeetingPage).where(MeetingPage.slug == slug)))
+            .scalars()
+            .first()
+        )
         if page is None:
             return None
 
@@ -1284,12 +1480,17 @@ async def correct_transcript_version_language(
                 return None
         else:
             version = (
-                await session.execute(
-                    select(TranscriptVersion).where(
-                        TranscriptVersion.meeting_page_id == page.id, TranscriptVersion.is_default.is_(True)
+                (
+                    await session.execute(
+                        select(TranscriptVersion).where(
+                            TranscriptVersion.meeting_page_id == page.id,
+                            TranscriptVersion.is_default.is_(True),
+                        )
                     )
                 )
-            ).scalars().first()
+                .scalars()
+                .first()
+            )
             if version is None:
                 return None
 
@@ -1330,25 +1531,40 @@ async def create_transcription_job(
             TranscriptionJob.status.in_(SPENDING_JOB_STATUSES),
             and_(
                 TranscriptionJob.status == "pending_confirmation",
-                TranscriptionJob.created_at >= datetime.now(timezone.utc) - PENDING_CONFIRMATION_EXPIRY,
+                TranscriptionJob.created_at
+                >= datetime.now(timezone.utc) - PENDING_CONFIRMATION_EXPIRY,
             ),
         )
         existing = (
-            await session.execute(
-                select(TranscriptionJob)
-                .where(TranscriptionJob.meeting_page_id == page.id, not_expired_pending)
-                .order_by(TranscriptionJob.created_at.desc())
+            (
+                await session.execute(
+                    select(TranscriptionJob)
+                    .where(
+                        TranscriptionJob.meeting_page_id == page.id, not_expired_pending
+                    )
+                    .order_by(TranscriptionJob.created_at.desc())
+                )
             )
-        ).scalars().first()
+            .scalars()
+            .first()
+        )
         if existing:
-            await session.commit()  # persist the page if it was just created, even though no job was
+            await (
+                session.commit()
+            )  # persist the page if it was just created, even though no job was
             return _job_dict(existing, page)
 
         active_spend_count = (
-            await session.execute(
-                select(TranscriptionJob).where(TranscriptionJob.status.in_(SPENDING_JOB_STATUSES))
+            (
+                await session.execute(
+                    select(TranscriptionJob).where(
+                        TranscriptionJob.status.in_(SPENDING_JOB_STATUSES)
+                    )
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         if len(active_spend_count) >= MAX_CONCURRENT_TRANSCRIPTION_JOBS:
             await session.commit()
             return {"error": "too_many_active_jobs", "slug": page.slug}
@@ -1389,12 +1605,16 @@ async def _in_auto_transcription_cooldown(session, meeting_page_id: int) -> bool
     means this page already has what it needs; an older failure before a
     completed one is stale history, not part of the current streak)."""
     jobs = (
-        await session.execute(
-            select(TranscriptionJob)
-            .where(TranscriptionJob.meeting_page_id == meeting_page_id)
-            .order_by(TranscriptionJob.created_at.desc())
+        (
+            await session.execute(
+                select(TranscriptionJob)
+                .where(TranscriptionJob.meeting_page_id == meeting_page_id)
+                .order_by(TranscriptionJob.created_at.desc())
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
 
     consecutive_failures = 0
     most_recent_failed_at = None
@@ -1429,7 +1649,15 @@ async def find_auto_transcription_candidate() -> Optional[dict]:
     search scan (BACKLOG.md's materialized-search-column entry).
     """
     async with async_session() as session:
-        pages = (await session.execute(select(MeetingPage).order_by(MeetingPage.created_at.asc()))).scalars().all()
+        pages = (
+            (
+                await session.execute(
+                    select(MeetingPage).order_by(MeetingPage.created_at.asc())
+                )
+            )
+            .scalars()
+            .all()
+        )
 
         for page in pages:
             if await _has_good_transcript(session, page.id):
@@ -1483,14 +1711,19 @@ async def confirm_transcription_job(token: str) -> Optional[dict]:
     404-not-401 pattern elsewhere in this codebase."""
     async with async_session() as session:
         job = (
-            await session.execute(
-                select(TranscriptionJob).where(
-                    TranscriptionJob.confirmation_token == token,
-                    TranscriptionJob.status == "pending_confirmation",
-                    TranscriptionJob.created_at >= datetime.now(timezone.utc) - PENDING_CONFIRMATION_EXPIRY,
+            (
+                await session.execute(
+                    select(TranscriptionJob).where(
+                        TranscriptionJob.confirmation_token == token,
+                        TranscriptionJob.status == "pending_confirmation",
+                        TranscriptionJob.created_at
+                        >= datetime.now(timezone.utc) - PENDING_CONFIRMATION_EXPIRY,
+                    )
                 )
             )
-        ).scalars().first()
+            .scalars()
+            .first()
+        )
         if job is None:
             return None
         job.status = "queued"
@@ -1515,16 +1748,24 @@ async def claim_next_chunk() -> Optional[dict]:
 
     async with async_session() as session:
         job = (
-            await session.execute(
-                select(TranscriptionJob)
-                .where(
-                    TranscriptionJob.status.in_(("queued", "in_progress")),
-                    (TranscriptionJob.claimed_at.is_(None)) | (TranscriptionJob.claimed_at < stale_before),
+            (
+                await session.execute(
+                    select(TranscriptionJob)
+                    .where(
+                        TranscriptionJob.status.in_(("queued", "in_progress")),
+                        (TranscriptionJob.claimed_at.is_(None))
+                        | (TranscriptionJob.claimed_at < stale_before),
+                    )
+                    .order_by(
+                        TranscriptionJob.priority.desc(),
+                        TranscriptionJob.created_at.asc(),
+                    )
+                    .limit(1)
                 )
-                .order_by(TranscriptionJob.priority.desc(), TranscriptionJob.created_at.asc())
-                .limit(1)
             )
-        ).scalars().first()
+            .scalars()
+            .first()
+        )
         if job is None:
             return None
 
@@ -1594,15 +1835,24 @@ async def report_chunk_result(
             if job.consecutive_chunk_failures >= MAX_CONSECUTIVE_CHUNK_FAILURES:
                 job.status = "failed"
             await session.commit()
-            return {"status": job.status, "consecutive_chunk_failures": job.consecutive_chunk_failures}
+            return {
+                "status": job.status,
+                "consecutive_chunk_failures": job.consecutive_chunk_failures,
+            }
 
         job.consecutive_chunk_failures = 0
-        kept_previous = job.partial_segments[: len(job.partial_segments) - drop_previous_tail] if drop_previous_tail else job.partial_segments
+        kept_previous = (
+            job.partial_segments[: len(job.partial_segments) - drop_previous_tail]
+            if drop_previous_tail
+            else job.partial_segments
+        )
         job.partial_segments = [*kept_previous, *(shifted_segments or [])]
         job.chunks_completed += 1
 
         if job.chunks_completed >= job.total_chunks:
-            language = detect_language_from_texts(s["text"] for s in job.partial_segments)
+            language = detect_language_from_texts(
+                s["text"] for s in job.partial_segments
+            )
             # Real, confirmed gap closed 2026-08-16 (Port Coquitlam, BC --
             # see BACKLOG_DONE.md and archive/utils/transcription_quality.py's
             # own docstring): a Whisper-produced transcript had no equivalent
@@ -1636,7 +1886,11 @@ async def report_chunk_result(
             }
 
         await session.commit()
-        return {"status": "in_progress", "chunks_completed": job.chunks_completed, "total_chunks": job.total_chunks}
+        return {
+            "status": "in_progress",
+            "chunks_completed": job.chunks_completed,
+            "total_chunks": job.total_chunks,
+        }
 
 
 def _job_dict(job: TranscriptionJob, page: Optional[MeetingPage]) -> dict:
@@ -1697,14 +1951,18 @@ async def is_meeting_saved(clerk_user_id: str, meeting_page_id: int) -> bool:
     so an anonymous visitor never pays this query at all."""
     async with async_session() as session:
         existing = (
-            await session.execute(
-                select(SavedItem.id).where(
-                    SavedItem.clerk_user_id == clerk_user_id,
-                    SavedItem.item_type == "saved_meeting",
-                    SavedItem.meeting_page_id == meeting_page_id,
+            (
+                await session.execute(
+                    select(SavedItem.id).where(
+                        SavedItem.clerk_user_id == clerk_user_id,
+                        SavedItem.item_type == "saved_meeting",
+                        SavedItem.meeting_page_id == meeting_page_id,
+                    )
                 )
             )
-        ).scalars().first()
+            .scalars()
+            .first()
+        )
         return existing is not None
 
 
@@ -1715,29 +1973,47 @@ async def save_meeting(clerk_user_id: str, slug: str) -> Optional[dict]:
     meeting just returns the existing row, never creates a second one."""
     async with async_session() as session:
         meeting_page_id = (
-            await session.execute(select(MeetingPage.id).where(MeetingPage.slug == slug))
-        ).scalars().first()
+            (
+                await session.execute(
+                    select(MeetingPage.id).where(MeetingPage.slug == slug)
+                )
+            )
+            .scalars()
+            .first()
+        )
         if meeting_page_id is None:
             return None
 
         existing = (
-            await session.execute(
-                select(SavedItem).where(
-                    SavedItem.clerk_user_id == clerk_user_id,
-                    SavedItem.item_type == "saved_meeting",
-                    SavedItem.meeting_page_id == meeting_page_id,
+            (
+                await session.execute(
+                    select(SavedItem).where(
+                        SavedItem.clerk_user_id == clerk_user_id,
+                        SavedItem.item_type == "saved_meeting",
+                        SavedItem.meeting_page_id == meeting_page_id,
+                    )
                 )
             )
-        ).scalars().first()
+            .scalars()
+            .first()
+        )
         if existing:
             item = existing
         else:
-            item = SavedItem(clerk_user_id=clerk_user_id, item_type="saved_meeting", meeting_page_id=meeting_page_id)
+            item = SavedItem(
+                clerk_user_id=clerk_user_id,
+                item_type="saved_meeting",
+                meeting_page_id=meeting_page_id,
+            )
             session.add(item)
             await session.commit()
             await session.refresh(item)
 
-        return {"id": item.id, "item_type": item.item_type, "meeting_page_id": item.meeting_page_id}
+        return {
+            "id": item.id,
+            "item_type": item.item_type,
+            "meeting_page_id": item.meeting_page_id,
+        }
 
 
 async def unsave_meeting(clerk_user_id: str, slug: str) -> bool:
@@ -1746,20 +2022,30 @@ async def unsave_meeting(clerk_user_id: str, slug: str) -> bool:
     unsaved is a no-op, same as save_meeting's own idempotence)."""
     async with async_session() as session:
         meeting_page_id = (
-            await session.execute(select(MeetingPage.id).where(MeetingPage.slug == slug))
-        ).scalars().first()
+            (
+                await session.execute(
+                    select(MeetingPage.id).where(MeetingPage.slug == slug)
+                )
+            )
+            .scalars()
+            .first()
+        )
         if meeting_page_id is None:
             return False
 
         existing = (
-            await session.execute(
-                select(SavedItem).where(
-                    SavedItem.clerk_user_id == clerk_user_id,
-                    SavedItem.item_type == "saved_meeting",
-                    SavedItem.meeting_page_id == meeting_page_id,
+            (
+                await session.execute(
+                    select(SavedItem).where(
+                        SavedItem.clerk_user_id == clerk_user_id,
+                        SavedItem.item_type == "saved_meeting",
+                        SavedItem.meeting_page_id == meeting_page_id,
+                    )
                 )
             )
-        ).scalars().first()
+            .scalars()
+            .first()
+        )
         if existing is None:
             return False
         await session.delete(existing)
@@ -1776,15 +2062,24 @@ async def save_search(clerk_user_id: str, search_params: dict) -> dict:
     already applies elsewhere in this file."""
     async with async_session() as session:
         existing_rows = (
-            await session.execute(
-                select(SavedItem).where(
-                    SavedItem.clerk_user_id == clerk_user_id, SavedItem.item_type == "saved_search"
+            (
+                await session.execute(
+                    select(SavedItem).where(
+                        SavedItem.clerk_user_id == clerk_user_id,
+                        SavedItem.item_type == "saved_search",
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         for row in existing_rows:
             if row.search_params == search_params:
-                return {"id": row.id, "item_type": row.item_type, "search_params": row.search_params}
+                return {
+                    "id": row.id,
+                    "item_type": row.item_type,
+                    "search_params": row.search_params,
+                }
 
         # last_alerted_at starts at "now," not None -- the alert sweep
         # (archive/search_alerts.py) treats a None cursor as "alert on
@@ -1801,7 +2096,11 @@ async def save_search(clerk_user_id: str, search_params: dict) -> dict:
         session.add(item)
         await session.commit()
         await session.refresh(item)
-        return {"id": item.id, "item_type": item.item_type, "search_params": item.search_params}
+        return {
+            "id": item.id,
+            "item_type": item.item_type,
+            "search_params": item.search_params,
+        }
 
 
 async def unsave_item(clerk_user_id: str, saved_item_id: int) -> bool:
@@ -1842,8 +2141,14 @@ async def list_all_saved_searches() -> list[dict]:
     pass, not one account's."""
     async with async_session() as session:
         rows = (
-            await session.execute(select(SavedItem).where(SavedItem.item_type == "saved_search"))
-        ).scalars().all()
+            (
+                await session.execute(
+                    select(SavedItem).where(SavedItem.item_type == "saved_search")
+                )
+            )
+            .scalars()
+            .all()
+        )
         return [
             {
                 "id": r.id,
@@ -1855,7 +2160,9 @@ async def list_all_saved_searches() -> list[dict]:
         ]
 
 
-async def mark_saved_searches_alerted(saved_item_ids: list[int], checked_at: datetime) -> None:
+async def mark_saved_searches_alerted(
+    saved_item_ids: list[int], checked_at: datetime
+) -> None:
     """Advances last_alerted_at for every saved search included in a
     digest that actually sent -- called only after a real, successful
     send (archive/search_alerts.py), never speculatively, so a failed
@@ -1865,8 +2172,14 @@ async def mark_saved_searches_alerted(saved_item_ids: list[int], checked_at: dat
         return
     async with async_session() as session:
         rows = (
-            await session.execute(select(SavedItem).where(SavedItem.id.in_(saved_item_ids)))
-        ).scalars().all()
+            (
+                await session.execute(
+                    select(SavedItem).where(SavedItem.id.in_(saved_item_ids))
+                )
+            )
+            .scalars()
+            .all()
+        )
         for row in rows:
             row.last_alerted_at = checked_at
         await session.commit()
@@ -1879,28 +2192,44 @@ async def list_saved_items(clerk_user_id: str) -> dict:
     the page needs those regardless."""
     async with async_session() as session:
         rows = (
-            await session.execute(
-                select(SavedItem)
-                .where(SavedItem.clerk_user_id == clerk_user_id)
-                .order_by(SavedItem.created_at.desc())
+            (
+                await session.execute(
+                    select(SavedItem)
+                    .where(SavedItem.clerk_user_id == clerk_user_id)
+                    .order_by(SavedItem.created_at.desc())
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
-        meeting_ids = [r.meeting_page_id for r in rows if r.item_type == "saved_meeting" and r.meeting_page_id]
+        meeting_ids = [
+            r.meeting_page_id
+            for r in rows
+            if r.item_type == "saved_meeting" and r.meeting_page_id
+        ]
         pages_by_id = {}
         if meeting_ids:
             page_rows = (
                 await session.execute(
                     select(
-                        MeetingPage.id, MeetingPage.slug, MeetingPage.title, MeetingPage.date,
-                        MeetingPage.jurisdiction, MeetingPage.meeting_body,
-                    ).where(
-                        MeetingPage.id.in_(meeting_ids)
-                    )
+                        MeetingPage.id,
+                        MeetingPage.slug,
+                        MeetingPage.title,
+                        MeetingPage.date,
+                        MeetingPage.jurisdiction,
+                        MeetingPage.meeting_body,
+                    ).where(MeetingPage.id.in_(meeting_ids))
                 )
             ).all()
             pages_by_id = {
-                pid: {"slug": slug, "title": title, "date": date, "jurisdiction": jurisdiction, "meeting_body": meeting_body}
+                pid: {
+                    "slug": slug,
+                    "title": title,
+                    "date": date,
+                    "jurisdiction": jurisdiction,
+                    "meeting_body": meeting_body,
+                }
                 for pid, slug, title, date, jurisdiction, meeting_body in page_rows
             }
 
@@ -1912,7 +2241,13 @@ async def list_saved_items(clerk_user_id: str) -> dict:
                 continue  # meeting page was deleted out from under a saved item -- skip, don't crash
             meetings.append({"id": row.id, "created_at": row.created_at, **page})
         elif row.item_type == "saved_search":
-            searches.append({"id": row.id, "created_at": row.created_at, "search_params": row.search_params or {}})
+            searches.append(
+                {
+                    "id": row.id,
+                    "created_at": row.created_at,
+                    "search_params": row.search_params or {},
+                }
+            )
 
     return {"meetings": meetings, "searches": searches}
 
@@ -1924,7 +2259,15 @@ async def delete_account_data(clerk_user_id: str) -> int:
     Returns the number of rows removed (for the webhook handler's own
     logging, not load-bearing)."""
     async with async_session() as session:
-        rows = (await session.execute(select(SavedItem).where(SavedItem.clerk_user_id == clerk_user_id))).scalars().all()
+        rows = (
+            (
+                await session.execute(
+                    select(SavedItem).where(SavedItem.clerk_user_id == clerk_user_id)
+                )
+            )
+            .scalars()
+            .all()
+        )
         count = len(rows)
         for row in rows:
             await session.delete(row)

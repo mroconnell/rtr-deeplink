@@ -33,7 +33,9 @@ async def test_resolve_real_nyc_council_meeting():
     # realistic headers, confirmed live in production) -- video_url is now
     # always rebuilt as the confirmed-safe-to-iframe /embed/vod?v={id} path
     # on the fetched page's own origin, not the raw HLS manifest.
-    assert result.video_url == "https://councilnyc.viebit.com/embed/vod?v=hFWIQkuFLuWGb0mw"
+    assert (
+        result.video_url == "https://councilnyc.viebit.com/embed/vod?v=hFWIQkuFLuWGb0mw"
+    )
     assert result.video_format == "viebit"
     assert result.transcript_language == "en"
     assert result.transcript_warnings == []
@@ -43,7 +45,9 @@ async def test_resolve_real_nyc_council_meeting():
     # together against this real sample, not just checking segment count.
     assert 800 < len(result.segments) < 900
     full_text = " ".join(s.text for s in result.segments)
-    assert full_text != full_text.upper(), "transcript should not still be all-uppercase"
+    assert full_text != full_text.upper(), (
+        "transcript should not still be all-uppercase"
+    )
     assert "council" in full_text.lower()
 
 
@@ -65,11 +69,11 @@ async def test_resolve_no_caption_track_falls_back_to_warning():
     url = "https://councilnyc.viebit.com/vod/?v=nocaptions"
     html = (
         "<html><body><script>"
-        "var pageConfig = {\"video\":{\"id\":\"x\",\"title\":\"No Captions Meeting\","
-        "\"dateCreated\":1784734559,"
-        "\"src\":[{\"storage\":\"https://vbfast-vod.viebit.com/otfp/x/\","
-        "\"url\":\"video,master.m3u8?fmp4=1\",\"type\":\"application/x-mpegurl\"}],"
-        "\"textTracks\":[]},\"hasAccess\":true};"
+        'var pageConfig = {"video":{"id":"x","title":"No Captions Meeting",'
+        '"dateCreated":1784734559,'
+        '"src":[{"storage":"https://vbfast-vod.viebit.com/otfp/x/",'
+        '"url":"video,master.m3u8?fmp4=1","type":"application/x-mpegurl"}],'
+        '"textTracks":[]},"hasAccess":true};'
         "</script></body></html>"
     )
 
@@ -97,8 +101,13 @@ def test_build_embed_url_rebuilds_confirmed_safe_path():
     # outer /vod/?v=... page or /embed/vod?v=... directly -- only the
     # latter is confirmed to have no X-Frame-Options restriction.
     assert (
-        ViebitAssetFinder._build_embed_url("https://councilnyc.viebit.com/vod/?s=true&v=x.mp4", "abc123")
+        ViebitAssetFinder._build_embed_url(
+            "https://councilnyc.viebit.com/vod/?s=true&v=x.mp4", "abc123"
+        )
         == "https://councilnyc.viebit.com/embed/vod?v=abc123"
     )
-    assert ViebitAssetFinder._build_embed_url("https://councilnyc.viebit.com/vod/", None) is None
+    assert (
+        ViebitAssetFinder._build_embed_url("https://councilnyc.viebit.com/vod/", None)
+        is None
+    )
     assert ViebitAssetFinder._build_embed_url("not-a-real-url", "abc123") is None

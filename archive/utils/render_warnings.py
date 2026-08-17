@@ -9,7 +9,9 @@ import re
 # reusing the JS version directly. Kept in sync by hand, same convention
 # as every other shared-shape-but-different-runtime pair in this repo.
 _URL_RE = re.compile(r"(https?://[^\s<]+)")
-_TRANSCRIBE_PHRASE_RE = re.compile(r"request a transcript from the audio", re.IGNORECASE)
+_TRANSCRIBE_PHRASE_RE = re.compile(
+    r"request a transcript from the audio", re.IGNORECASE
+)
 
 
 def render_warnings_html(warnings: list) -> str:
@@ -30,12 +32,18 @@ def render_warnings_html(warnings: list) -> str:
     autoescape would double-escape it.
     """
     linked = [
-        _URL_RE.sub(r'<a href="\1" target="_blank" rel="noopener noreferrer">\1</a>', html.escape(warning))
+        _URL_RE.sub(
+            r'<a href="\1" target="_blank" rel="noopener noreferrer">\1</a>',
+            html.escape(warning),
+        )
         for warning in warnings
     ]
     with_buttons = [
         _TRANSCRIBE_PHRASE_RE.sub(
-            lambda m: f'<button type="button" class="transcribe-inline-trigger">{m.group(0)}</button>', line
+            lambda m: (
+                f'<button type="button" class="transcribe-inline-trigger">{m.group(0)}</button>'
+            ),
+            line,
         )
         for line in linked
     ]

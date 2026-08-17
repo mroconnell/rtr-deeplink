@@ -32,7 +32,9 @@ from ..utils import jurisdiction_enrich
 # "don't claim a data path works without a positive example" convention;
 # see BACKLOG.md.
 _MEETING_ID_RE = re.compile(r"[?&]Id=(\d+)")
-_TITLE_JURISDICTION_RE = re.compile(r"<title>\s*([^<]+?)\s*-\s*Meeting Information\s*</title>", re.IGNORECASE)
+_TITLE_JURISDICTION_RE = re.compile(
+    r"<title>\s*([^<]+?)\s*-\s*Meeting Information\s*</title>", re.IGNORECASE
+)
 
 
 class CivicWebAssetFinder(AssetFinder):
@@ -57,8 +59,13 @@ class CivicWebAssetFinder(AssetFinder):
 
         async with aiohttp.ClientSession() as session:
             html = await self._fetch_text(session, url)
-            videolink = await self._fetch_json(session, f"{origin}/api/videolink/{meeting_id}")
-            meeting_data = await self._fetch_json(session, f"{origin}/Services/MeetingsService.svc/meetings/{meeting_id}/meetingData")
+            videolink = await self._fetch_json(
+                session, f"{origin}/api/videolink/{meeting_id}"
+            )
+            meeting_data = await self._fetch_json(
+                session,
+                f"{origin}/Services/MeetingsService.svc/meetings/{meeting_id}/meetingData",
+            )
 
         jurisdiction = self._extract_jurisdiction(html, url) if html else None
         title = meeting_data.get("Name") if meeting_data else None
@@ -104,7 +111,9 @@ class CivicWebAssetFinder(AssetFinder):
             # CivicWeb's confirmed domain is Dallas *County*, and dropping
             # the "County" distinction the same way would misleadingly
             # read as if this were a city named Dallas.
-            resolved.jurisdiction = jurisdiction_enrich.known_jurisdiction_display(urlparse(url).netloc)
+            resolved.jurisdiction = jurisdiction_enrich.known_jurisdiction_display(
+                urlparse(url).netloc
+            )
         return resolved
 
     @staticmethod
@@ -132,7 +141,9 @@ class CivicWebAssetFinder(AssetFinder):
     @staticmethod
     async def _fetch_text(session: aiohttp.ClientSession, url: str) -> Optional[str]:
         try:
-            async with session.get(url, timeout=aiohttp.ClientTimeout(total=20)) as response:
+            async with session.get(
+                url, timeout=aiohttp.ClientTimeout(total=20)
+            ) as response:
                 if response.status != 200:
                     return None
                 return await response.text()
@@ -153,7 +164,9 @@ class CivicWebAssetFinder(AssetFinder):
         endpoint and meetingData's normal single-encoded shape.
         """
         try:
-            async with session.get(url, timeout=aiohttp.ClientTimeout(total=20)) as response:
+            async with session.get(
+                url, timeout=aiohttp.ClientTimeout(total=20)
+            ) as response:
                 if response.status != 200:
                     return None
                 data = await response.json()

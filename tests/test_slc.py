@@ -38,7 +38,9 @@ independent analysis firm.
 </body></html>
 """
 
-NO_VIDEO_HTML = "<html><head><title>Some Page</title></head><body>No video here.</body></html>"
+NO_VIDEO_HTML = (
+    "<html><head><title>Some Page</title></head><body>No video here.</body></html>"
+)
 
 
 def _fake_extract_info(video_id):
@@ -59,7 +61,9 @@ async def test_resolve_delegates_to_youtube_and_overrides_metadata(monkeypatch):
 
     result = await SlcAssetFinder().resolve(MEETING_URL)
 
-    assert result.platform == "youtube"  # delegated finder's own platform name, unchanged
+    assert (
+        result.platform == "youtube"
+    )  # delegated finder's own platform name, unchanged
     assert result.video_url == f"https://www.youtube.com/embed/{REAL_VIDEO_ID}"
     assert result.title == "Salt Lake City Council Meeting"
     assert result.date == "2026-03-03"
@@ -75,7 +79,9 @@ async def test_resolve_keeps_original_slc_url_as_source_url(monkeypatch):
     assert result.source_url == MEETING_URL
 
 
-async def test_resolve_turns_watch_links_into_agenda_items_not_a_video_picker(monkeypatch):
+async def test_resolve_turns_watch_links_into_agenda_items_not_a_video_picker(
+    monkeypatch,
+):
     # The real, corrected finding this whole adapter exists for: several
     # "(Watch)" links on one page are timestamps into ONE video, not
     # several distinct videos -- see BACKLOG_DONE.md.
@@ -116,7 +122,9 @@ async def test_resolve_agenda_items_sorted_by_timestamp(monkeypatch):
     assert starts == sorted(starts)
 
 
-async def test_resolve_returns_no_video_warning_when_page_has_no_watch_links(monkeypatch):
+async def test_resolve_returns_no_video_warning_when_page_has_no_watch_links(
+    monkeypatch,
+):
     async def _no_video(url, **kwargs):
         return NO_VIDEO_HTML
 
@@ -138,6 +146,11 @@ def test_extract_date_parses_real_title_shape():
 
 
 def test_extract_timestamp_handles_both_formats():
-    assert SlcAssetFinder._extract_timestamp("https://youtube.com/live/x?t=1086s") == 1086.0
-    assert SlcAssetFinder._extract_timestamp("https://youtube.com/live/x?t=1441") == 1441.0
+    assert (
+        SlcAssetFinder._extract_timestamp("https://youtube.com/live/x?t=1086s")
+        == 1086.0
+    )
+    assert (
+        SlcAssetFinder._extract_timestamp("https://youtube.com/live/x?t=1441") == 1441.0
+    )
     assert SlcAssetFinder._extract_timestamp("https://youtube.com/live/x") is None

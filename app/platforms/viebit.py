@@ -8,7 +8,12 @@ import aiohttp
 
 from .base import AssetFinder
 from .models import ResolvedMeeting, TranscriptSegment
-from ..utils.vtt_parser import decode_vtt_bytes, dedupe_rollup_cues, is_likely_garbled, parse_vtt
+from ..utils.vtt_parser import (
+    decode_vtt_bytes,
+    dedupe_rollup_cues,
+    is_likely_garbled,
+    parse_vtt,
+)
 
 TARGET_LANGUAGE = "en"
 
@@ -117,7 +122,9 @@ class ViebitAssetFinder(AssetFinder):
                 return ResolvedMeeting(
                     platform=self.platform_name,
                     source_url=url,
-                    video_warnings=["Could not find Viebit's video configuration on this page."],
+                    video_warnings=[
+                        "Could not find Viebit's video configuration on this page."
+                    ],
                 )
 
             video = config.get("video") or {}
@@ -130,7 +137,11 @@ class ViebitAssetFinder(AssetFinder):
             transcript_warnings: List[str] = []
 
             track = next(
-                (t for t in (video.get("textTracks") or []) if t.get("kind") == "captions" and t.get("src")),
+                (
+                    t
+                    for t in (video.get("textTracks") or [])
+                    if t.get("kind") == "captions" and t.get("src")
+                ),
                 None,
             )
             if track:
@@ -194,14 +205,18 @@ class ViebitAssetFinder(AssetFinder):
         if not unix_ts:
             return None
         try:
-            return datetime.fromtimestamp(int(unix_ts), tz=timezone.utc).strftime("%Y-%m-%d")
+            return datetime.fromtimestamp(int(unix_ts), tz=timezone.utc).strftime(
+                "%Y-%m-%d"
+            )
         except (ValueError, TypeError, OSError):
             return None
 
     @staticmethod
     async def _fetch_vtt(session: aiohttp.ClientSession, vtt_url: str):
         try:
-            async with session.get(vtt_url, timeout=aiohttp.ClientTimeout(total=20)) as response:
+            async with session.get(
+                vtt_url, timeout=aiohttp.ClientTimeout(total=20)
+            ) as response:
                 if response.status != 200:
                     return None
                 raw = await response.read()

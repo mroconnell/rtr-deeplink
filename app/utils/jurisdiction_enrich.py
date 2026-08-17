@@ -110,7 +110,7 @@ def _normalize_name(name: str) -> str:
         return name.strip().lower()
     leading_match = _LEADING_TYPE_RE.match(name)
     if leading_match:
-        name = name[leading_match.end():]
+        name = name[leading_match.end() :]
     else:
         name = _TRAILING_TYPE_RE.sub("", name)
     return name.strip().lower()
@@ -143,7 +143,7 @@ def _normalize_candidates(name: str) -> List[str]:
     name = name.strip()
     leading_match = _LEADING_TYPE_RE.match(name)
     if leading_match:
-        return [name[leading_match.end():].strip().lower()]
+        return [name[leading_match.end() :].strip().lower()]
     as_is = name.lower()
     stripped = _TRAILING_TYPE_RE.sub("", name).strip().lower()
     return [as_is] if stripped == as_is else [as_is, stripped]
@@ -161,7 +161,9 @@ def _load_name_state_table(filename: str) -> Dict[str, List[str]]:
     return table
 
 
-def _load_zcta_table(filename: str, name_column: str) -> Dict[str, List[Tuple[str, str, int]]]:
+def _load_zcta_table(
+    filename: str, name_column: str
+) -> Dict[str, List[Tuple[str, str, int]]]:
     table: Dict[str, List[Tuple[str, str, int]]] = {}
     path = _DATA_DIR / filename
     if not path.exists():
@@ -247,7 +249,10 @@ def find_zip_addresses(text: str) -> List[Tuple[str, str, str]]:
     the first -- callers deciding what to trust (e.g. preferring one that
     agrees with an already-known city/state) is a caller-specific
     decision, not this function's."""
-    return [(m.group(1).strip(), m.group(2), m.group(3)) for m in _ZIP_ADDRESS_RE.finditer(text)]
+    return [
+        (m.group(1).strip(), m.group(2), m.group(3))
+        for m in _ZIP_ADDRESS_RE.finditer(text)
+    ]
 
 
 @dataclass(frozen=True)
@@ -326,7 +331,9 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     # on the page can outrank the real header), so this domain is looked
     # up as a full override in primegov.py, not just a missing-state fill
     # -- see known_jurisdiction_display() below.
-    "slc.primegov.com": KnownJurisdiction("Salt Lake City", "city", "UT", strength="authoritative"),
+    "slc.primegov.com": KnownJurisdiction(
+        "Salt Lake City", "city", "UT", strength="authoritative"
+    ),
     # Hyland "OnBase Agenda Online" -- confirmed live 2026-08-16, none of
     # the 3 known customer domains carries reliable in-page jurisdiction
     # text (Maricopa/Tucson have none at all; Sacramento's happens to sit
@@ -480,14 +487,20 @@ def resolve_state(
         if known and known.type == jurisdiction_type:
             return known.state
 
-    name_lookup = lookup_county_state if jurisdiction_type == "county" else lookup_city_state
+    name_lookup = (
+        lookup_county_state if jurisdiction_type == "county" else lookup_city_state
+    )
     if name:
         state = name_lookup(name)
         if state:
             return state
 
     if page_text:
-        zip_lookup = lookup_county_by_zip if jurisdiction_type == "county" else lookup_place_by_zip
+        zip_lookup = (
+            lookup_county_by_zip
+            if jurisdiction_type == "county"
+            else lookup_place_by_zip
+        )
         for _city, _state, zip_code in find_zip_addresses(page_text):
             result = zip_lookup(zip_code)
             if result:
@@ -528,7 +541,9 @@ def enrich_jurisdiction_text(
     if not jurisdiction or "," in jurisdiction or jurisdiction == placeholder:
         return jurisdiction
     jurisdiction_type = "county" if _TYPE_HINT_RE.search(jurisdiction) else "city"
-    state = resolve_state(jurisdiction, jurisdiction_type, netloc=netloc, page_text=page_text)
+    state = resolve_state(
+        jurisdiction, jurisdiction_type, netloc=netloc, page_text=page_text
+    )
     return f"{jurisdiction}, {state}" if state else jurisdiction
 
 
@@ -554,7 +569,15 @@ _STATE_SUFFIX_RE = re.compile(r",\s*([A-Za-z]{2})\.?\s*$")
 # one of these as the "body," it isn't a real entity name, just the
 # ordinary "Type of Name" shape (e.g. "City of Boston") that should never
 # be split in the first place.
-_BARE_TYPE_WORDS = {"city", "county", "town", "township", "village", "borough", "parish"}
+_BARE_TYPE_WORDS = {
+    "city",
+    "county",
+    "town",
+    "township",
+    "village",
+    "borough",
+    "parish",
+}
 
 
 def _is_bare_type_phrase(body: str) -> bool:
@@ -582,10 +605,19 @@ def _is_bare_type_phrase(body: str) -> bool:
 # fact the stop rule's exception list exists for, applied here to lookup
 # instead of parsing).
 _ABBREV_EXPANSIONS = {
-    "st": "saint", "ste": "sainte", "ft": "fort", "mt": "mount",
-    "pt": "point", "n": "north", "s": "south", "e": "east", "w": "west",
+    "st": "saint",
+    "ste": "sainte",
+    "ft": "fort",
+    "mt": "mount",
+    "pt": "point",
+    "n": "north",
+    "s": "south",
+    "e": "east",
+    "w": "west",
 }
-_ABBREV_WORD_RE = re.compile(r"\b(" + "|".join(_ABBREV_EXPANSIONS) + r")\.?(?=\s|$)", re.IGNORECASE)
+_ABBREV_WORD_RE = re.compile(
+    r"\b(" + "|".join(_ABBREV_EXPANSIONS) + r")\.?(?=\s|$)", re.IGNORECASE
+)
 
 
 def _expand_abbreviations(name: str) -> str:
@@ -607,7 +639,9 @@ def _expand_abbreviations(name: str) -> str:
 # genuinely common real spelling, not a typo) would otherwise never
 # match the table's "St. Paul city" key in either direction.
 _SAINT_CONTRACTIONS = {"saint": "st.", "sainte": "ste."}
-_SAINT_WORD_RE = re.compile(r"\b(" + "|".join(_SAINT_CONTRACTIONS) + r")\b", re.IGNORECASE)
+_SAINT_WORD_RE = re.compile(
+    r"\b(" + "|".join(_SAINT_CONTRACTIONS) + r")\b", re.IGNORECASE
+)
 
 
 def _contract_saints(name: str) -> str:
@@ -709,7 +743,7 @@ def _trim_repair(name: str) -> Optional[Tuple[str, str]]:
 
 
 def _split_entity_prefix(name: str) -> Optional[str]:
-    """"<Entity> of <Jurisdiction>" -> body, when the jurisdiction half
+    """ "<Entity> of <Jurisdiction>" -> body, when the jurisdiction half
     validates. Real example this exists for: "Housing Authority of the
     County of Santa Clara" -> body "Housing Authority", jurisdiction
     "County of Santa Clara" (which `_table_lookup()`/`_normalize_candidates()`
@@ -730,7 +764,7 @@ def _split_entity_prefix(name: str) -> Optional[str]:
         body = name[: m.start()].strip().rstrip(",")
         if not body or _is_bare_type_phrase(body):
             continue
-        candidate = name[m.end():].strip()
+        candidate = name[m.end() :].strip()
         candidate = re.sub(r"^the\s+", "", candidate, flags=re.IGNORECASE)
         if candidate and _table_lookup(candidate):
             return body
@@ -808,7 +842,11 @@ def finalize_jurisdiction(
     # Already has a state suffix from a prior enrichment step -- validate
     # the name portion only, state stays as already resolved.
     state_match = _STATE_SUFFIX_RE.search(raw_jurisdiction)
-    base = _STATE_SUFFIX_RE.sub("", raw_jurisdiction).strip().rstrip(".,;:") if state_match else raw_jurisdiction
+    base = (
+        _STATE_SUFFIX_RE.sub("", raw_jurisdiction).strip().rstrip(".,;:")
+        if state_match
+        else raw_jurisdiction
+    )
     suffix = f", {state_match.group(1).upper()}" if state_match else ""
 
     if _table_lookup(base):
@@ -817,14 +855,22 @@ def finalize_jurisdiction(
     trimmed = _trim_repair(base)
     if trimmed:
         repaired_name, _table = trimmed
-        return JurisdictionResult(f"{repaired_name}{_fill_missing_state(repaired_name, suffix, netloc)}", None, "repaired")
+        return JurisdictionResult(
+            f"{repaired_name}{_fill_missing_state(repaired_name, suffix, netloc)}",
+            None,
+            "repaired",
+        )
 
     body = _split_entity_prefix(base)
     if body:
-        jurisdiction_half = base[len(body):].strip()
-        jurisdiction_half = re.sub(r"^\s*of\s+(the\s+)?", "", jurisdiction_half, flags=re.IGNORECASE)
+        jurisdiction_half = base[len(body) :].strip()
+        jurisdiction_half = re.sub(
+            r"^\s*of\s+(the\s+)?", "", jurisdiction_half, flags=re.IGNORECASE
+        )
         final_suffix = _fill_missing_state(jurisdiction_half, suffix, netloc)
-        return JurisdictionResult(f"{jurisdiction_half}{final_suffix}", body, "repaired")
+        return JurisdictionResult(
+            f"{jurisdiction_half}{final_suffix}", body, "repaired"
+        )
 
     if known:
         return JurisdictionResult(f"{known.name}, {known.state}", None, "fallback")
@@ -862,8 +908,12 @@ def finalize_jurisdiction(
 # modules already import *this* module, so importing back from either
 # would be a circular import, not just a style choice.
 
-_CHAIN_BOILERPLATE_RE = re.compile(r"<(script|style)\b[^>]*>.*?</\1>", re.IGNORECASE | re.DOTALL)
-_CHAIN_TAG_JURISDICTION_RE = re.compile(r"\b(city|county|town) of\s+([^<>]{1,80}?)(?=<|[,.])", re.IGNORECASE)
+_CHAIN_BOILERPLATE_RE = re.compile(
+    r"<(script|style)\b[^>]*>.*?</\1>", re.IGNORECASE | re.DOTALL
+)
+_CHAIN_TAG_JURISDICTION_RE = re.compile(
+    r"\b(city|county|town) of\s+([^<>]{1,80}?)(?=<|[,.])", re.IGNORECASE
+)
 
 _STOPRULE_TRIGGER_RE = re.compile(r"\b(City|County|Town) of\s+")
 # Abbreviations pages actually write ("Ft. Worth", "Mt. Vernon", "N. Las
@@ -877,15 +927,62 @@ _STOPRULE_ABBREV_OK = {"st", "ste", "ft", "mt", "pt", "n", "s", "e", "w"}
 # rather than imported -- see the module comment above on why a
 # platforms -> utils reverse import isn't an option here.
 _STATE_ABBREVIATIONS_LOWER = {
-    "al", "ak", "az", "ar", "ca", "co", "ct", "de", "fl", "ga", "hi", "id", "il", "in",
-    "ia", "ks", "ky", "la", "me", "md", "ma", "mi", "mn", "ms", "mo", "mt", "ne", "nv",
-    "nh", "nj", "nm", "ny", "nc", "nd", "oh", "ok", "or", "pa", "ri", "sc", "sd", "tn",
-    "tx", "ut", "vt", "va", "wa", "wv", "wi", "wy", "dc",
+    "al",
+    "ak",
+    "az",
+    "ar",
+    "ca",
+    "co",
+    "ct",
+    "de",
+    "fl",
+    "ga",
+    "hi",
+    "id",
+    "il",
+    "in",
+    "ia",
+    "ks",
+    "ky",
+    "la",
+    "me",
+    "md",
+    "ma",
+    "mi",
+    "mn",
+    "ms",
+    "mo",
+    "mt",
+    "ne",
+    "nv",
+    "nh",
+    "nj",
+    "nm",
+    "ny",
+    "nc",
+    "nd",
+    "oh",
+    "ok",
+    "or",
+    "pa",
+    "ri",
+    "sc",
+    "sd",
+    "tn",
+    "tx",
+    "ut",
+    "vt",
+    "va",
+    "wa",
+    "wv",
+    "wi",
+    "wy",
+    "dc",
 }
 
 
 def _stoprule_extract(page_text: str) -> Optional[str]:
-    """"City/County/Town of X" walk over rendered page text that stops at
+    """ "City/County/Town of X" walk over rendered page text that stops at
     the first lowercase-initial word, a period not in
     `_STOPRULE_ABBREV_OK`, a comma/semicolon, or 5 words -- whichever
     comes first. Beat the shipped Granicus body regex outright in the
@@ -898,11 +995,15 @@ def _stoprule_extract(page_text: str) -> Optional[str]:
     if not m:
         return None
     kept: List[str] = []
-    for word in page_text[m.end():m.end() + 120].split():
+    for word in page_text[m.end() : m.end() + 120].split():
         core = word.strip(",;:")
         if not core or not core[0].isupper():
             break
-        if core.endswith(".") and core[:-1].lower() not in _STOPRULE_ABBREV_OK and len(core.rstrip(".")) > 1:
+        if (
+            core.endswith(".")
+            and core[:-1].lower() not in _STOPRULE_ABBREV_OK
+            and len(core.rstrip(".")) > 1
+        ):
             kept.append(core.rstrip("."))
             break
         kept.append(core)
@@ -918,7 +1019,7 @@ def _stoprule_extract(page_text: str) -> Optional[str]:
 
 
 def _capitalization_walk_extract(html: str) -> Optional[str]:
-    """"City/County/Town of X" walk over tag-bounded raw HTML (stops at
+    """ "City/County/Town of X" walk over tag-bounded raw HTML (stops at
     the first non-capitalized word or 4 words) -- the tournament's second
     winner (326 table-valid of 649, primegov_walk). See the module
     comment above for why this is a reimplementation, not a shared
@@ -1039,7 +1140,9 @@ def extract_jurisdiction_chain(*, page_text: str, html: str, url: str) -> Option
         candidate = extractor()
         if not candidate:
             continue
-        enriched = enrich_jurisdiction_text(candidate, netloc=netloc, page_text=page_text)
+        enriched = enrich_jurisdiction_text(
+            candidate, netloc=netloc, page_text=page_text
+        )
         result = finalize_jurisdiction(enriched, netloc=netloc)
         if result.confidence in ("validated", "repaired", "authoritative"):
             return result.jurisdiction

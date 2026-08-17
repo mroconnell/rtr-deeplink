@@ -1,4 +1,7 @@
-from archive.utils.jurisdiction_format import format_jurisdiction_display, normalize_state_suffix
+from archive.utils.jurisdiction_format import (
+    format_jurisdiction_display,
+    normalize_state_suffix,
+)
 
 
 def test_full_state_name_becomes_abbreviation():
@@ -18,7 +21,10 @@ def test_case_insensitive_match():
 
 
 def test_no_comma_passes_through_unchanged():
-    assert normalize_state_suffix("Illinois General Assembly") == "Illinois General Assembly"
+    assert (
+        normalize_state_suffix("Illinois General Assembly")
+        == "Illinois General Assembly"
+    )
 
 
 def test_unrecognized_trailing_text_passes_through_unchanged():
@@ -31,13 +37,18 @@ def test_none_and_empty_pass_through():
 
 
 def test_district_of_columbia():
-    assert normalize_state_suffix("Washington, District of Columbia") == "Washington, DC"
+    assert (
+        normalize_state_suffix("Washington, District of Columbia") == "Washington, DC"
+    )
 
 
 def test_only_touches_trailing_component():
     # A comma-containing city name shouldn't confuse which segment is "the state" --
     # only the text after the *last* comma is ever treated as a state candidate.
-    assert normalize_state_suffix("Winston-Salem, Forsyth County, North Carolina") == "Winston-Salem, Forsyth County, NC"
+    assert (
+        normalize_state_suffix("Winston-Salem, Forsyth County, North Carolina")
+        == "Winston-Salem, Forsyth County, NC"
+    )
 
 
 def test_mis_cased_abbreviation_gets_re_cased():
@@ -83,14 +94,23 @@ def test_display_keeps_county_label():
 
 
 def test_display_keeps_state_legislature_body_names():
-    assert format_jurisdiction_display("California State Legislature") == "California State Legislature"
-    assert format_jurisdiction_display("Illinois General Assembly") == "Illinois General Assembly"
+    assert (
+        format_jurisdiction_display("California State Legislature")
+        == "California State Legislature"
+    )
+    assert (
+        format_jurisdiction_display("Illinois General Assembly")
+        == "Illinois General Assembly"
+    )
 
 
 def test_display_keeps_town_label():
     # Not explicitly requested to be dropped, unlike "City of" -- treated
     # like County, kept as-is.
-    assert format_jurisdiction_display("Town of Thousand Oaks, CA") == "Town of Thousand Oaks, CA"
+    assert (
+        format_jurisdiction_display("Town of Thousand Oaks, CA")
+        == "Town of Thousand Oaks, CA"
+    )
 
 
 def test_display_passes_through_a_jurisdiction_with_no_city_prefix():
@@ -102,8 +122,14 @@ def test_display_keeps_consolidated_city_and_county_label():
     # also matched "City and County of San Francisco"/"...Denver" (real
     # consolidated city-county governments) on just its first 5
     # characters, leaving a mangled "and County of San Francisco".
-    assert format_jurisdiction_display("City and County of San Francisco, CA") == "City and County of San Francisco, CA"
-    assert format_jurisdiction_display("City and County of Denver, CO") == "City and County of Denver, CO"
+    assert (
+        format_jurisdiction_display("City and County of San Francisco, CA")
+        == "City and County of San Francisco, CA"
+    )
+    assert (
+        format_jurisdiction_display("City and County of Denver, CO")
+        == "City and County of Denver, CO"
+    )
 
 
 def test_display_none_and_empty_pass_through():

@@ -54,7 +54,9 @@ async def test_get_browser_self_heals_when_binary_missing(monkeypatch):
             return FakePlaywright()
 
     monkeypatch.setattr(hb, "async_playwright", lambda: FakePlaywrightContextManager())
-    monkeypatch.setattr(hb, "_install_chromium", lambda: True)  # simulate a successful runtime install
+    monkeypatch.setattr(
+        hb, "_install_chromium", lambda: True
+    )  # simulate a successful runtime install
 
     browser = await _get_browser()
 
@@ -79,7 +81,9 @@ async def test_get_browser_raises_clean_message_when_install_also_fails(monkeypa
             return FakePlaywright()
 
     monkeypatch.setattr(hb, "async_playwright", lambda: FakePlaywrightContextManager())
-    monkeypatch.setattr(hb, "_install_chromium", lambda: False)  # simulate a failed runtime install
+    monkeypatch.setattr(
+        hb, "_install_chromium", lambda: False
+    )  # simulate a failed runtime install
 
     try:
         await _get_browser()
@@ -90,7 +94,9 @@ async def test_get_browser_raises_clean_message_when_install_also_fails(monkeypa
         assert "╔" not in str(e)
 
 
-async def test_get_browser_reraises_unrelated_errors_without_attempting_install(monkeypatch):
+async def test_get_browser_reraises_unrelated_errors_without_attempting_install(
+    monkeypatch,
+):
     _reset_module_state()
 
     install_calls = []
@@ -109,7 +115,9 @@ async def test_get_browser_reraises_unrelated_errors_without_attempting_install(
             return FakePlaywright()
 
     monkeypatch.setattr(hb, "async_playwright", lambda: FakePlaywrightContextManager())
-    monkeypatch.setattr(hb, "_install_chromium", lambda: install_calls.append(1) or True)
+    monkeypatch.setattr(
+        hb, "_install_chromium", lambda: install_calls.append(1) or True
+    )
 
     try:
         await _get_browser()
@@ -120,7 +128,9 @@ async def test_get_browser_reraises_unrelated_errors_without_attempting_install(
     assert install_calls == []  # never even tried to self-heal for an unrelated error
 
 
-async def test_get_browser_raises_clean_error_when_playwright_package_missing(monkeypatch):
+async def test_get_browser_raises_clean_error_when_playwright_package_missing(
+    monkeypatch,
+):
     """Real 2026-08-09 incident: worker/requirements.txt deliberately
     doesn't include playwright (kept lean on purpose), but worker/main.py
     imports app.platforms, which registers LimsAssetFinder/SlcAssetFinder,
@@ -159,7 +169,9 @@ def test_install_chromium_only_attempts_once(monkeypatch):
     second = hb._install_chromium()
 
     assert first is False
-    assert second is False  # short-circuited by _install_attempted, no second subprocess call
+    assert (
+        second is False
+    )  # short-circuited by _install_attempted, no second subprocess call
     assert len(run_calls) == 1
 
 
@@ -172,7 +184,9 @@ def test_install_chromium_only_attempts_once(monkeypatch):
 # docstring and app/utils/url_guard.py's module docstring.
 
 
-async def test_fetch_via_browser_rejects_a_blocked_entry_url_before_touching_the_browser(monkeypatch):
+async def test_fetch_via_browser_rejects_a_blocked_entry_url_before_touching_the_browser(
+    monkeypatch,
+):
     _reset_module_state()
     calls = []
 

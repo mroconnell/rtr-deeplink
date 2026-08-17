@@ -48,7 +48,9 @@ class _FakeSession:
         return _FakeResponse()
 
 
-def _payload(external_id: str, source_url: str, title: str, keyword: str, jurisdiction: str) -> dict:
+def _payload(
+    external_id: str, source_url: str, title: str, keyword: str, jurisdiction: str
+) -> dict:
     return {
         "platform": "granicus",
         "source_url": source_url,
@@ -58,14 +60,26 @@ def _payload(external_id: str, source_url: str, title: str, keyword: str, jurisd
         "jurisdiction": jurisdiction,
         "video_url": "https://example.com/v.m3u8",
         "video_format": "m3u8",
-        "segments": [{"start": 42.0, "end": 48.0, "text": f"discussion of {keyword} calming measures downtown"}],
+        "segments": [
+            {
+                "start": 42.0,
+                "end": 48.0,
+                "text": f"discussion of {keyword} calming measures downtown",
+            }
+        ],
         "agenda_items": [],
         "transcript_language": "en",
         "transcript_warnings": [],
     }
 
 
-async def _make_page(external_id: str, title: str, *, keyword: str = "traffic", jurisdiction: str = "City of Alerttown, CA") -> str:
+async def _make_page(
+    external_id: str,
+    title: str,
+    *,
+    keyword: str = "traffic",
+    jurisdiction: str = "City of Alerttown, CA",
+) -> str:
     # keyword/jurisdiction default to shared values for tests that don't
     # care, but every test in this file that actually asserts on match
     # counts uses its own unique keyword -- run_search_alerts() sweeps
@@ -73,13 +87,19 @@ async def _make_page(external_id: str, title: str, *, keyword: str = "traffic", 
     # generic fixture text (e.g. every page mentioning "traffic") would
     # cause real, correct-but-confusing cross-test matches.
     url = f"https://example.granicus.com/player/clip/{external_id}"
-    result = await crud.ingest_resolution(_payload(external_id, url, title, keyword, jurisdiction), url)
+    result = await crud.ingest_resolution(
+        _payload(external_id, url, title, keyword, jurisdiction), url
+    )
     return result["slug"]
 
 
 async def _set_created_at(slug: str, when: datetime) -> None:
     async with async_session() as session:
-        page = (await session.execute(select(MeetingPage).where(MeetingPage.slug == slug))).scalars().first()
+        page = (
+            (await session.execute(select(MeetingPage).where(MeetingPage.slug == slug)))
+            .scalars()
+            .first()
+        )
         page.created_at = when
         await session.commit()
 
@@ -103,7 +123,9 @@ async def test_dry_run_composes_but_does_not_advance_cursor_or_send(monkeypatch)
     monkeypatch.setattr(search_alerts, "get_user_contact", _fake_contact())
 
     captured = {}
-    monkeypatch.setattr(email_module.aiohttp, "ClientSession", lambda: _FakeSession(captured))
+    monkeypatch.setattr(
+        email_module.aiohttp, "ClientSession", lambda: _FakeSession(captured)
+    )
 
     now = datetime.now(timezone.utc)
     slug = await _make_page("dryrun-1", "Dry Run Meeting", keyword="trafficdryrun")
@@ -138,10 +160,14 @@ async def test_real_send_advances_cursor_only_on_success(monkeypatch):
     monkeypatch.setenv("RESEND_FROM_ADDRESS", "Ryan <ryan@ally.redtaperecordings.com>")
 
     captured = {}
-    monkeypatch.setattr(email_module.aiohttp, "ClientSession", lambda: _FakeSession(captured))
+    monkeypatch.setattr(
+        email_module.aiohttp, "ClientSession", lambda: _FakeSession(captured)
+    )
 
     now = datetime.now(timezone.utc)
-    slug = await _make_page("realsend-1", "Real Send Meeting", keyword="trafficrealsend")
+    slug = await _make_page(
+        "realsend-1", "Real Send Meeting", keyword="trafficrealsend"
+    )
     await _set_created_at(slug, now)
     item = await crud.save_search("user_realsend_1", {"q": "trafficrealsend"})
     async with async_session() as session:
@@ -153,7 +179,10 @@ async def test_real_send_advances_cursor_only_on_success(monkeypatch):
 
     entry = next(e for e in result["sent"] if e["clerk_user_id"] == "user_realsend_1")
     assert entry["subject"] == 'Somebody said "trafficrealsend"'
-    assert any(p["json"]["subject"] == 'Somebody said "trafficrealsend"' for p in captured["posts"])
+    assert any(
+        p["json"]["subject"] == 'Somebody said "trafficrealsend"'
+        for p in captured["posts"]
+    )
 
     cursor = await _get_cursor(item["id"])
     # Advanced to (at least) the run's start time, not left behind.
@@ -192,11 +221,23 @@ async def test_multiple_saved_searches_for_one_user_become_one_digest(monkeypatc
     monkeypatch.setattr(search_alerts, "get_user_contact", _fake_contact())
 
     captured = {}
-    monkeypatch.setattr(email_module.aiohttp, "ClientSession", lambda: _FakeSession(captured))
+    monkeypatch.setattr(
+        email_module.aiohttp, "ClientSession", lambda: _FakeSession(captured)
+    )
 
     now = datetime.now(timezone.utc)
-    slug_a = await _make_page("digest-a", "Digest Meeting A", keyword="trafficdigesta", jurisdiction="City of Digesttown, CA")
-    slug_b = await _make_page("digest-b", "Digest Meeting B", keyword="trafficdigestb", jurisdiction="City of Digesttown, CA")
+    slug_a = await _make_page(
+        "digest-a",
+        "Digest Meeting A",
+        keyword="trafficdigesta",
+        jurisdiction="City of Digesttown, CA",
+    )
+    slug_b = await _make_page(
+        "digest-b",
+        "Digest Meeting B",
+        keyword="trafficdigestb",
+        jurisdiction="City of Digesttown, CA",
+    )
     await _set_created_at(slug_a, now)
     await _set_created_at(slug_b, now)
 
@@ -210,6 +251,8 @@ async def test_multiple_saved_searches_for_one_user_become_one_digest(monkeypatc
 
     result = await search_alerts.run_search_alerts(dry_run=True)
 
-    matching_entries = [e for e in result["sent"] if e["clerk_user_id"] == "user_digest_1"]
+    matching_entries = [
+        e for e in result["sent"] if e["clerk_user_id"] == "user_digest_1"
+    ]
     # One email, not two -- both saved searches' matches bundled together.
     assert len(matching_entries) == 1

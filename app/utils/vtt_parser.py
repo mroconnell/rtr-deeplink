@@ -384,7 +384,9 @@ def normalize_shouting_caption(cues: List[Dict[str, Any]]) -> None:
 
 def _sentence_case(text: str) -> str:
     text = text.lower()
-    text = re.sub(r"(^|[.!?]\s+|\n)([a-z])", lambda m: m.group(1) + m.group(2).upper(), text)
+    text = re.sub(
+        r"(^|[.!?]\s+|\n)([a-z])", lambda m: m.group(1) + m.group(2).upper(), text
+    )
     text = re.sub(r"\bi\b", "I", text)
     return text
 
@@ -439,9 +441,32 @@ def unescape_caption_entities(cues: List[Dict[str, Any]]) -> None:
 # Alexandria VA's real garbled captions: "tm", "Oa", "sd") is junk, not a
 # real short word.
 _COMMON_SHORT_WORDS = {
-    "a", "i", "to", "of", "in", "on", "is", "it", "be", "at", "as", "an",
-    "or", "if", "so", "no", "we", "he", "she", "do", "my", "up", "us",
-    "by", "am", "ok",
+    "a",
+    "i",
+    "to",
+    "of",
+    "in",
+    "on",
+    "is",
+    "it",
+    "be",
+    "at",
+    "as",
+    "an",
+    "or",
+    "if",
+    "so",
+    "no",
+    "we",
+    "he",
+    "she",
+    "do",
+    "my",
+    "up",
+    "us",
+    "by",
+    "am",
+    "ok",
 }
 _GARBLED_MIN_SAMPLE_WORDS = 40
 _GARBLED_JUNK_RATIO_MAX = 0.06
@@ -465,7 +490,9 @@ def is_likely_garbled(cues: List[Dict[str, Any]]) -> bool:
     if len(alpha_words) < _GARBLED_MIN_SAMPLE_WORDS:
         return False
 
-    junk = sum(1 for w in alpha_words if len(w) <= 2 and w.lower() not in _COMMON_SHORT_WORDS)
+    junk = sum(
+        1 for w in alpha_words if len(w) <= 2 and w.lower() not in _COMMON_SHORT_WORDS
+    )
     return (junk / len(alpha_words)) > _GARBLED_JUNK_RATIO_MAX
 
 

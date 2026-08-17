@@ -50,7 +50,11 @@ def _repetition_run_ratio(segments: List[Dict[str, Any]]) -> float:
     for prev_seg, cur_seg in zip(segments, segments[1:]):
         prev_text = _normalize_for_repetition(prev_seg["text"])
         cur_text = _normalize_for_repetition(cur_seg["text"])
-        if prev_text and SequenceMatcher(None, prev_text, cur_text).ratio() >= _HALLUCINATION_REPETITION_MATCH_RATIO:
+        if (
+            prev_text
+            and SequenceMatcher(None, prev_text, cur_text).ratio()
+            >= _HALLUCINATION_REPETITION_MATCH_RATIO
+        ):
             current_run += 1
             best_run = max(best_run, current_run)
         else:
@@ -78,7 +82,10 @@ def detect_hallucination_warnings(segments: List[Dict[str, Any]]) -> List[str]:
     warnings: List[str] = []
 
     if len(segments) >= _HALLUCINATION_MIN_SEGMENTS_FOR_REPETITION_CHECK:
-        if _repetition_run_ratio(segments) >= _HALLUCINATION_REPETITION_RUN_RATIO_THRESHOLD:
+        if (
+            _repetition_run_ratio(segments)
+            >= _HALLUCINATION_REPETITION_RUN_RATIO_THRESHOLD
+        ):
             warnings.append(HALLUCINATION_WARNING)
             return warnings
 

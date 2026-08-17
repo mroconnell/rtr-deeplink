@@ -80,7 +80,12 @@ class FasterWhisperEngine(TranscriptionEngine):
             str(audio_path), beam_size=5, initial_prompt=MEETING_VOCABULARY_PROMPT
         )
         return [
-            {"start": seg.start, "end": seg.end, "text": seg.text.strip(), "speaker": None}
+            {
+                "start": seg.start,
+                "end": seg.end,
+                "text": seg.text.strip(),
+                "speaker": None,
+            }
             for seg in segments
             if seg.text.strip()
         ]

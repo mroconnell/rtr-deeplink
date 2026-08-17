@@ -9,14 +9,26 @@ from .headless_browser import fetch_via_browser
 from .models import ResolvedMeeting, TranscriptSegment
 from .youtube import YouTubeAssetFinder
 
-_VIDEO_ID_RE = re.compile(r"(?:youtube\.com/live/|youtube\.com/watch\?v=|youtu\.be/)([\w-]{11})")
+_VIDEO_ID_RE = re.compile(
+    r"(?:youtube\.com/live/|youtube\.com/watch\?v=|youtu\.be/)([\w-]{11})"
+)
 _MONTH_DATE_RE = re.compile(
     r"(January|February|March|April|May|June|July|August|September|October|November|December)"
     r"\s+(\d{1,2}),?\s+(\d{4})"
 )
 _MONTHS = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December",
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
 ]
 
 
@@ -90,7 +102,9 @@ class SlcAssetFinder(AssetFinder):
                 continue
             topic = SlcAssetFinder._nearest_topic_text(a)
             if topic:
-                segments.append(TranscriptSegment(start=timestamp, end=timestamp, text=topic))
+                segments.append(
+                    TranscriptSegment(start=timestamp, end=timestamp, text=topic)
+                )
         segments.sort(key=lambda seg: seg.start)
         return segments
 
@@ -100,7 +114,9 @@ class SlcAssetFinder(AssetFinder):
         raw = (query.get("t") or [None])[0]
         if raw is None:
             return None
-        raw = raw.rstrip("s")  # "3034s" (plain youtube.com/watch links) vs "3034" (youtube.com/live links)
+        raw = raw.rstrip(
+            "s"
+        )  # "3034s" (plain youtube.com/watch links) vs "3034" (youtube.com/live links)
         try:
             return float(raw)
         except ValueError:

@@ -8,7 +8,12 @@ any order without colliding (the fixture DB isn't reset per-test).
 from archive.db import crud
 
 
-def _payload(external_id: str, source_url: str, title: str = "Test Meeting", jurisdiction: str = "City of Test") -> dict:
+def _payload(
+    external_id: str,
+    source_url: str,
+    title: str = "Test Meeting",
+    jurisdiction: str = "City of Test",
+) -> dict:
     return {
         "platform": "granicus",
         "source_url": source_url,
@@ -27,7 +32,9 @@ def _payload(external_id: str, source_url: str, title: str = "Test Meeting", jur
 
 async def _make_page(external_id: str, jurisdiction: str = "City of Test") -> str:
     url = f"https://example.granicus.com/player/clip/{external_id}"
-    result = await crud.ingest_resolution(_payload(external_id, url, jurisdiction=jurisdiction), url)
+    result = await crud.ingest_resolution(
+        _payload(external_id, url, jurisdiction=jurisdiction), url
+    )
     return result["slug"]
 
 
@@ -85,7 +92,9 @@ async def test_save_search_dedups_by_exact_params():
     params = {"q": "budget"}
 
     first = await crud.save_search(user, params)
-    second = await crud.save_search(user, dict(params))  # a different dict, same contents
+    second = await crud.save_search(
+        user, dict(params)
+    )  # a different dict, same contents
     assert first["id"] == second["id"]
 
     # A genuinely different search is a separate row.
@@ -133,7 +142,9 @@ async def test_list_saved_items_surfaces_a_split_meeting_body():
     # Authority of Santa Clara case) was silently dropped on the saved-
     # items page even though get_page_by_slug() already carried it.
     user = "user_save_test_9"
-    slug = await _make_page("save-item-9", jurisdiction="Housing Authority of the County of Santa Clara")
+    slug = await _make_page(
+        "save-item-9", jurisdiction="Housing Authority of the County of Santa Clara"
+    )
     await crud.save_meeting(user, slug)
 
     items = await crud.list_saved_items(user)
@@ -163,10 +174,16 @@ async def test_list_saved_items_is_newest_first():
     async with async_session() as session:
         # Ordered by id -- guaranteed insertion order, unlike created_at.
         rows = (
-            await session.execute(
-                select(SavedItem).where(SavedItem.clerk_user_id == user).order_by(SavedItem.id.asc())
+            (
+                await session.execute(
+                    select(SavedItem)
+                    .where(SavedItem.clerk_user_id == user)
+                    .order_by(SavedItem.id.asc())
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         older_row, newer_row = rows
         now = datetime.now(timezone.utc)
         older_row.created_at = now - timedelta(minutes=10)

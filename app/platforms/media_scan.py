@@ -15,7 +15,17 @@ from urllib.parse import urljoin, urlparse
 # an extension here just means "notice this file exists," not "trust we
 # can read it."
 CAPTION_EXTENSIONS = (
-    "vtt", "srt", "ttml", "dfxp", "itt", "scc", "stl", "sbv", "sub", "smi", "sami",
+    "vtt",
+    "srt",
+    "ttml",
+    "dfxp",
+    "itt",
+    "scc",
+    "stl",
+    "sbv",
+    "sub",
+    "smi",
+    "sami",
 )
 
 _MEDIA_EXTS = "mp4|mp3|wav|webm|ogg"
@@ -153,6 +163,8 @@ def media_type(url: str) -> str:
     # media_type() is a general classifier callers may run on a URL that
     # didn't come through scan_media_urls's own gate (e.g. a caption URL
     # from an API field, not a page scan).
-    if path.endswith((".xml", ".txt")) and re.search(r"caption|subtitle|transcript|/cc[_./-]", path):
+    if path.endswith((".xml", ".txt")) and re.search(
+        r"caption|subtitle|transcript|/cc[_./-]", path
+    ):
         return "subtitle"
     return "unknown"

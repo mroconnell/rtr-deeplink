@@ -22,9 +22,18 @@ client = TestClient(app.main.app)
 async def _log(url_suffix: str, *, transcript_found: bool = True) -> int:
     url = f"https://example.granicus.com/player/clip/push-tracking-{url_suffix}"
     return await crud.log_resolution(
-        input_url=url, input_url_normalized=url, input_platform="granicus", status="success",
-        transcript_found=transcript_found, segment_count=1 if transcript_found else 0,
-        resolved_payload={"segments": [{"start": 0, "end": 1, "text": "hi"}] if transcript_found else [], "agenda_items": []},
+        input_url=url,
+        input_url_normalized=url,
+        input_platform="granicus",
+        status="success",
+        transcript_found=transcript_found,
+        segment_count=1 if transcript_found else 0,
+        resolved_payload={
+            "segments": [{"start": 0, "end": 1, "text": "hi"}]
+            if transcript_found
+            else [],
+            "agenda_items": [],
+        },
     )
 
 
@@ -95,7 +104,9 @@ async def test_sweep_leaves_a_failed_push_pending_for_next_time(monkeypatch):
 
 def test_sweep_endpoint_rejects_missing_token():
     response = client.get("/admin/sweep-pending-pushes")
-    assert response.status_code == 404  # not 401/403 -- matches every other /admin/* and /internal/* route
+    assert (
+        response.status_code == 404
+    )  # not 401/403 -- matches every other /admin/* and /internal/* route
 
 
 def test_sweep_endpoint_rejects_wrong_token():
@@ -111,7 +122,9 @@ async def test_sweep_endpoint_retries_and_reports_pending_pushes(monkeypatch):
     monkeypatch.setattr(app.main, "ARCHIVE_PUSH_RETRY_AFTER_MINUTES", 0)
 
     resolution_id = await _log("endpoint")
-    response = client.get("/admin/sweep-pending-pushes", params={"token": "test-admin-token"})
+    response = client.get(
+        "/admin/sweep-pending-pushes", params={"token": "test-admin-token"}
+    )
     assert response.status_code == 200
     data = response.json()
     assert resolution_id in [r["resolution_id"] for r in data["retried"]]

@@ -17,7 +17,10 @@ def test_footer_empty_when_public_base_url_unset(monkeypatch):
 def test_footer_contains_a_real_unsubscribe_link(monkeypatch):
     monkeypatch.setenv("PUBLIC_BASE_URL", "https://redtaperecordings.com")
     footer = _unsubscribe_footer_html("ryan@example.com")
-    assert 'href="https://redtaperecordings.com/unsubscribe?email=ryan%40example.com"' in footer
+    assert (
+        'href="https://redtaperecordings.com/unsubscribe?email=ryan%40example.com"'
+        in footer
+    )
     assert "Unsubscribe" in footer
 
 
@@ -71,7 +74,9 @@ async def test_send_appends_the_footer_to_every_email(monkeypatch):
 
     monkeypatch.setattr(email_module.aiohttp, "ClientSession", lambda: _FakeSession())
 
-    ok = await email_module.send_confirmation_email("ryan@example.com", "https://example.com/confirm?token=abc")
+    ok = await email_module.send_confirmation_email(
+        "ryan@example.com", "https://example.com/confirm?token=abc"
+    )
     assert ok is True
     assert "Unsubscribe" in captured["json"]["html"]
     assert "email=ryan%40example.com" in captured["json"]["html"]
@@ -115,7 +120,9 @@ async def test_send_includes_reply_to_when_configured(monkeypatch):
 
     monkeypatch.setattr(email_module.aiohttp, "ClientSession", lambda: _FakeSession())
 
-    ok = await email_module.send_confirmation_email("ryan@example.com", "https://example.com/confirm?token=abc")
+    ok = await email_module.send_confirmation_email(
+        "ryan@example.com", "https://example.com/confirm?token=abc"
+    )
     assert ok is True
     assert captured["json"]["reply_to"] == "ryan@redtaperecordings.com"
 
@@ -154,6 +161,8 @@ async def test_send_omits_reply_to_when_unconfigured(monkeypatch):
 
     monkeypatch.setattr(email_module.aiohttp, "ClientSession", lambda: _FakeSession())
 
-    ok = await email_module.send_confirmation_email("ryan@example.com", "https://example.com/confirm?token=abc")
+    ok = await email_module.send_confirmation_email(
+        "ryan@example.com", "https://example.com/confirm?token=abc"
+    )
     assert ok is True
     assert "reply_to" not in captured["json"]

@@ -6,7 +6,13 @@ from urllib.parse import urljoin, urlparse
 import aiohttp
 from bs4 import BeautifulSoup
 
-from .base import AssetFinder, CalendarPageError, find_platform_link, get_finder, resolve_via_platform
+from .base import (
+    AssetFinder,
+    CalendarPageError,
+    find_platform_link,
+    get_finder,
+    resolve_via_platform,
+)
 from .models import ResolvedMeeting
 from .youtube import YouTubeAssetFinder
 from ..utils import jurisdiction_enrich
@@ -112,7 +118,9 @@ class LegistarAssetFinder(AssetFinder):
                 resolved = await resolve_via_platform(target_final_url)
                 if page_info and self._looks_like_raw_filename(resolved.title):
                     resolved.title = page_info["title"]
-                    resolved.jurisdiction = resolved.jurisdiction or page_info["jurisdiction"]
+                    resolved.jurisdiction = (
+                        resolved.jurisdiction or page_info["jurisdiction"]
+                    )
                     resolved.date = resolved.date or page_info["date"]
                 # Applied regardless of title quality, unlike the block
                 # above -- Legistar's own agenda link is real, useful
@@ -121,17 +129,23 @@ class LegistarAssetFinder(AssetFinder):
                 # delegated platform (e.g. Granicus's own AgendaViewer.php
                 # link) didn't already find one itself.
                 if page_info:
-                    resolved.agenda_link = resolved.agenda_link or page_info.get("agenda_link")
+                    resolved.agenda_link = resolved.agenda_link or page_info.get(
+                        "agenda_link"
+                    )
                 return resolved
 
             return ResolvedMeeting(
                 platform=self.platform_name,
                 source_url=url,
-                video_warnings=["Found a video link, but it didn't lead to a supported platform."],
+                video_warnings=[
+                    "Found a video link, but it didn't lead to a supported platform."
+                ],
             )
 
     @staticmethod
-    async def _try_fallback_video_link(html: str, page_url: str, soup: BeautifulSoup) -> Optional[ResolvedMeeting]:
+    async def _try_fallback_video_link(
+        html: str, page_url: str, soup: BeautifulSoup
+    ) -> Optional[ResolvedMeeting]:
         """Real gap confirmed live 2026-08-10: Baltimore's Legistar instance
         puts its video link in an attachments table as a plain
         `<a href="https://youtu.be/...">Recording</a>`, not the
@@ -151,14 +165,18 @@ class LegistarAssetFinder(AssetFinder):
         """
         video_id = YouTubeAssetFinder.extract_video_id(html)
         if video_id:
-            resolved = await YouTubeAssetFinder.resolve_video_id(video_id, source_url=page_url)
+            resolved = await YouTubeAssetFinder.resolve_video_id(
+                video_id, source_url=page_url
+            )
         else:
             # "legistar" excluded too, defense-in-depth alongside base.py's
             # own same-URL check above -- this method only ever runs when
             # LegistarAssetFinder has already claimed page_url, so a match
             # that resolved back to "legistar" could only ever mean
             # re-delegating to itself.
-            match = find_platform_link(html, page_url, exclude=frozenset({"youtube", "legistar"}))
+            match = find_platform_link(
+                html, page_url, exclude=frozenset({"youtube", "legistar"})
+            )
             if not match:
                 return None
             candidate, platform = match
@@ -169,7 +187,10 @@ class LegistarAssetFinder(AssetFinder):
 
         page_info = LegistarAssetFinder._extract_page_meeting_info(soup, page_url)
         if page_info:
-            if LegistarAssetFinder._looks_like_raw_filename(resolved.title) or not resolved.title:
+            if (
+                LegistarAssetFinder._looks_like_raw_filename(resolved.title)
+                or not resolved.title
+            ):
                 resolved.title = page_info["title"]
             # Prefers page_info's jurisdiction outright here, not just as a
             # fallback for an empty one (unlike the primary a.videolink
@@ -199,7 +220,9 @@ class LegistarAssetFinder(AssetFinder):
 
     @staticmethod
     async def _fetch(session: aiohttp.ClientSession, url: str):
-        async with session.get(url, allow_redirects=True, timeout=aiohttp.ClientTimeout(total=30)) as response:
+        async with session.get(
+            url, allow_redirects=True, timeout=aiohttp.ClientTimeout(total=30)
+        ) as response:
             response.raise_for_status()
             return str(response.url), await response.text()
 
@@ -247,7 +270,9 @@ class LegistarAssetFinder(AssetFinder):
         return title, date
 
     @staticmethod
-    def _extract_page_meeting_info(soup: BeautifulSoup, page_url: str) -> Optional[dict]:
+    def _extract_page_meeting_info(
+        soup: BeautifulSoup, page_url: str
+    ) -> Optional[dict]:
         text = soup.title.get_text(" ", strip=True) if soup.title else None
         if not text or not _PAGE_TITLE_RE.match(text):
             # Real gap confirmed live 2026-08-10: Baltimore's Legistar
@@ -257,7 +282,9 @@ class LegistarAssetFinder(AssetFinder):
             # RSS <link> tag, a standard Legistar template element
             # (confirmed present regardless of whether <title> itself is
             # populated), not something NYC-specific.
-            rss_link = soup.select_one('link[rel="alternate"][type="application/rss+xml"]')
+            rss_link = soup.select_one(
+                'link[rel="alternate"][type="application/rss+xml"]'
+            )
             if rss_link and rss_link.get("title"):
                 text = rss_link["title"]
         if not text:

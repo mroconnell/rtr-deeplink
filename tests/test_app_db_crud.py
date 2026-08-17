@@ -28,7 +28,9 @@ async def _log(
         video_found=video_found,
         transcript_found=transcript_found,
         segment_count=1 if transcript_found else 0,
-        resolved_payload=resolved_payload if resolved_payload is not None else {"segments": [], "agenda_items": []},
+        resolved_payload=resolved_payload
+        if resolved_payload is not None
+        else {"segments": [], "agenda_items": []},
     )
 
 
@@ -76,7 +78,11 @@ async def test_pending_pushes_excludes_content_free_resolutions():
     # status="success" with no real segments/agenda_items -- a resolve
     # that genuinely found nothing worth archiving. Never pushed, never
     # should be.
-    resolution_id = await _log("no-content", transcript_found=False, resolved_payload={"segments": [], "agenda_items": []})
+    resolution_id = await _log(
+        "no-content",
+        transcript_found=False,
+        resolved_payload={"segments": [], "agenda_items": []},
+    )
     pending = await crud.get_pending_archive_pushes(min_age_minutes=0)
     assert resolution_id not in [p["resolution_id"] for p in pending]
 
@@ -85,8 +91,12 @@ async def test_pending_pushes_includes_agenda_only_resolutions():
     # No transcript, but real agenda_items -- still worth pushing (same
     # "segments or agenda_items" gate /api/resolve itself uses).
     resolution_id = await _log(
-        "agenda-only", transcript_found=False,
-        resolved_payload={"segments": [], "agenda_items": [{"start": 0, "end": 0, "text": "Call to order"}]},
+        "agenda-only",
+        transcript_found=False,
+        resolved_payload={
+            "segments": [],
+            "agenda_items": [{"start": 0, "end": 0, "text": "Call to order"}],
+        },
     )
     pending = await crud.get_pending_archive_pushes(min_age_minutes=0)
     assert resolution_id in [p["resolution_id"] for p in pending]
@@ -105,7 +115,11 @@ async def test_pending_pushes_finds_a_real_candidate_behind_many_content_free_ro
     # more than a small limit*multiplier would have over-fetched) logged
     # before one real candidate.
     for i in range(15):
-        await _log(f"content-free-{i}", transcript_found=False, resolved_payload={"segments": [], "agenda_items": []})
+        await _log(
+            f"content-free-{i}",
+            transcript_found=False,
+            resolved_payload={"segments": [], "agenda_items": []},
+        )
     resolution_id = await _log("real-candidate-behind-the-noise", transcript_found=True)
 
     pending = await crud.get_pending_archive_pushes(min_age_minutes=0, limit=5)
@@ -113,7 +127,9 @@ async def test_pending_pushes_finds_a_real_candidate_behind_many_content_free_ro
 
 
 async def test_pending_pushes_excludes_non_success_status():
-    resolution_id = await _log("resolve-failed", status="resolve_failed", transcript_found=False)
+    resolution_id = await _log(
+        "resolve-failed", status="resolve_failed", transcript_found=False
+    )
     pending = await crud.get_pending_archive_pushes(min_age_minutes=0)
     assert resolution_id not in [p["resolution_id"] for p in pending]
 
@@ -130,9 +146,16 @@ async def test_pending_pushes_stops_after_max_attempts():
 async def test_get_cached_resolution_returns_id_alongside_payload():
     url = "https://example.granicus.com/player/clip/cached-shape"
     await crud.log_resolution(
-        input_url=url, input_url_normalized=url, input_platform="granicus", status="success",
-        transcript_found=True, segment_count=1,
-        resolved_payload={"segments": [{"start": 0, "end": 1, "text": "hi"}], "agenda_items": []},
+        input_url=url,
+        input_url_normalized=url,
+        input_platform="granicus",
+        status="success",
+        transcript_found=True,
+        segment_count=1,
+        resolved_payload={
+            "segments": [{"start": 0, "end": 1, "text": "hi"}],
+            "agenda_items": [],
+        },
     )
     cached = await crud.get_cached_resolution(url)
     assert cached is not None
@@ -162,7 +185,9 @@ async def test_get_cached_resolution_ignores_a_stale_no_video_row():
 
     url = "https://example.granicus.com/player/clip/stale-no-video"
     resolution_id = await _log(
-        "stale-no-video", video_found=False, resolved_payload={"video_url": None, "segments": [], "agenda_items": []}
+        "stale-no-video",
+        video_found=False,
+        resolved_payload={"video_url": None, "segments": [], "agenda_items": []},
     )
 
     async with async_session() as session:
@@ -182,7 +207,9 @@ async def test_get_cached_resolution_keeps_a_fresh_no_video_row():
 
     url = "https://example.granicus.com/player/clip/fresh-no-video"
     resolution_id = await _log(
-        "fresh-no-video", video_found=False, resolved_payload={"video_url": None, "segments": [], "agenda_items": []}
+        "fresh-no-video",
+        video_found=False,
+        resolved_payload={"video_url": None, "segments": [], "agenda_items": []},
     )
 
     async with async_session() as session:
@@ -205,7 +232,11 @@ async def test_get_cached_resolution_never_expires_a_row_with_video_found():
     resolution_id = await _log(
         "old-but-video-found",
         video_found=True,
-        resolved_payload={"video_url": "https://example.com/v.m3u8", "segments": [], "agenda_items": []},
+        resolved_payload={
+            "video_url": "https://example.com/v.m3u8",
+            "segments": [],
+            "agenda_items": [],
+        },
     )
 
     async with async_session() as session:

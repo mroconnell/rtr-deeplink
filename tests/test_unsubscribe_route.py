@@ -18,7 +18,9 @@ client = TestClient(app.main.app)
 async def test_resend_audience_upsert_returns_none_when_unconfigured(monkeypatch):
     monkeypatch.delenv("RESEND_API_KEY", raising=False)
     monkeypatch.delenv("RESEND_AUDIENCE_ID", raising=False)
-    result = await app.main._resend_audience_upsert("ryan@example.com", unsubscribed=True)
+    result = await app.main._resend_audience_upsert(
+        "ryan@example.com", unsubscribed=True
+    )
     assert result is None
 
 
@@ -54,7 +56,9 @@ async def test_resend_audience_upsert_posts_unsubscribed_true(monkeypatch):
 
     monkeypatch.setattr(app.main.aiohttp, "ClientSession", lambda: _FakeSession())
 
-    result = await app.main._resend_audience_upsert("ryan@example.com", unsubscribed=True)
+    result = await app.main._resend_audience_upsert(
+        "ryan@example.com", unsubscribed=True
+    )
     assert result is True
     assert captured["json"] == {"email": "ryan@example.com", "unsubscribed": True}
     assert "test-audience" in captured["url"]
@@ -87,7 +91,10 @@ def test_unsubscribe_success_shows_confirmation(monkeypatch):
     monkeypatch.setattr(app.main, "_resend_audience_upsert", _fake_upsert)
     response = client.get("/unsubscribe?email=ryan@example.com")
     assert response.status_code == 200
-    assert "You&#39;re unsubscribed" in response.text or "You're unsubscribed" in response.text
+    assert (
+        "You&#39;re unsubscribed" in response.text
+        or "You're unsubscribed" in response.text
+    )
     assert "ryan@example.com" in response.text
     assert captured == {"email": "ryan@example.com", "unsubscribed": True}
 

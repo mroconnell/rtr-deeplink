@@ -11,19 +11,13 @@ from conftest import load_fixture
 # ViewMeetingAgenda AJAX endpoint, for each customer.
 
 TUCSON_URL = "https://tucsonaz.hylandcloud.com/221agendaonline/Meetings/ViewMeeting?doctype=2&id=1956"
-TUCSON_AGENDA_URL = (
-    "https://tucsonaz.hylandcloud.com/221agendaonline/Meetings/ViewMeetingAgenda?meetingId=1956&type=2"
-)
+TUCSON_AGENDA_URL = "https://tucsonaz.hylandcloud.com/221agendaonline/Meetings/ViewMeetingAgenda?meetingId=1956&type=2"
 
 MARICOPA_URL = "https://mccobagenda.databankcloud.com/AgendaOnline/Meetings/ViewMeeting?id=4694&doctype=3"
-MARICOPA_AGENDA_URL = (
-    "https://mccobagenda.databankcloud.com/AgendaOnline/Meetings/ViewMeetingAgenda?meetingId=4694&type=3"
-)
+MARICOPA_AGENDA_URL = "https://mccobagenda.databankcloud.com/AgendaOnline/Meetings/ViewMeetingAgenda?meetingId=4694&type=3"
 
 SACRAMENTO_URL = "https://agendanet.saccounty.gov/BoardofSupervisors/Meetings/ViewMeeting?id=10231&doctype=1"
-SACRAMENTO_AGENDA_URL = (
-    "https://agendanet.saccounty.gov/BoardofSupervisors/Meetings/ViewMeetingAgenda?meetingId=10231&type=1"
-)
+SACRAMENTO_AGENDA_URL = "https://agendanet.saccounty.gov/BoardofSupervisors/Meetings/ViewMeetingAgenda?meetingId=10231&type=1"
 
 # Version B (converted-Word-document UI) -- found 2026-08-16 via a plain
 # web search, not enumeration. Both `Meetings/ViewMeetingAgenda` fetches
@@ -31,20 +25,12 @@ SACRAMENTO_AGENDA_URL = (
 # (confirmed live: aiohttp follows the real 302 automatically), which is
 # what drives the adapter's fallback to `Documents/ViewAgenda`.
 SANTABARBARA_URL = "https://docs.santabarbaraca.gov/OnBaseAgendaOnline/Meetings/ViewMeeting?id=1184&doctype=1"
-SANTABARBARA_AGENDA_A_URL = (
-    "https://docs.santabarbaraca.gov/OnBaseAgendaOnline/Meetings/ViewMeetingAgenda?meetingId=1184&type=1"
-)
-SANTABARBARA_AGENDA_B_URL = (
-    "https://docs.santabarbaraca.gov/OnBaseAgendaOnline/Documents/ViewAgenda?meetingId=1184&type=agenda&doctype=1"
-)
+SANTABARBARA_AGENDA_A_URL = "https://docs.santabarbaraca.gov/OnBaseAgendaOnline/Meetings/ViewMeetingAgenda?meetingId=1184&type=1"
+SANTABARBARA_AGENDA_B_URL = "https://docs.santabarbaraca.gov/OnBaseAgendaOnline/Documents/ViewAgenda?meetingId=1184&type=agenda&doctype=1"
 
 CONCORD_URL = "https://stream2.ci.concord.ca.us/OnBaseAgendaOnline/Meetings/ViewMeeting?id=1413&doctype=1"
-CONCORD_AGENDA_A_URL = (
-    "https://stream2.ci.concord.ca.us/OnBaseAgendaOnline/Meetings/ViewMeetingAgenda?meetingId=1413&type=1"
-)
-CONCORD_AGENDA_B_URL = (
-    "https://stream2.ci.concord.ca.us/OnBaseAgendaOnline/Documents/ViewAgenda?meetingId=1413&type=agenda&doctype=1"
-)
+CONCORD_AGENDA_A_URL = "https://stream2.ci.concord.ca.us/OnBaseAgendaOnline/Meetings/ViewMeetingAgenda?meetingId=1413&type=1"
+CONCORD_AGENDA_B_URL = "https://stream2.ci.concord.ca.us/OnBaseAgendaOnline/Documents/ViewAgenda?meetingId=1413&type=agenda&doctype=1"
 
 
 async def test_resolve_tucson_no_video_ever_falls_back_to_agenda_link():
@@ -58,7 +44,9 @@ async def test_resolve_tucson_no_video_ever_falls_back_to_agenda_link():
     agenda_html = load_fixture("hyland", "tucson_view_meeting_agenda.html")
     routes = {
         TUCSON_URL: FakeResponse(status=200, text=html, url=TUCSON_URL),
-        TUCSON_AGENDA_URL: FakeResponse(status=200, text=agenda_html, url=TUCSON_AGENDA_URL),
+        TUCSON_AGENDA_URL: FakeResponse(
+            status=200, text=agenda_html, url=TUCSON_AGENDA_URL
+        ),
     }
 
     with mock_session(routes):
@@ -88,7 +76,9 @@ async def test_resolve_maricopa_real_video_and_timestamped_agenda_items():
     agenda_html = load_fixture("hyland", "maricopa_view_meeting_agenda.html")
     routes = {
         MARICOPA_URL: FakeResponse(status=200, text=html, url=MARICOPA_URL),
-        MARICOPA_AGENDA_URL: FakeResponse(status=200, text=agenda_html, url=MARICOPA_AGENDA_URL),
+        MARICOPA_AGENDA_URL: FakeResponse(
+            status=200, text=agenda_html, url=MARICOPA_AGENDA_URL
+        ),
     }
 
     with mock_session(routes):
@@ -127,7 +117,9 @@ async def test_resolve_sacramento_multiline_item_text_is_normalized():
     agenda_html = load_fixture("hyland", "sacramento_view_meeting_agenda.html")
     routes = {
         SACRAMENTO_URL: FakeResponse(status=200, text=html, url=SACRAMENTO_URL),
-        SACRAMENTO_AGENDA_URL: FakeResponse(status=200, text=agenda_html, url=SACRAMENTO_AGENDA_URL),
+        SACRAMENTO_AGENDA_URL: FakeResponse(
+            status=200, text=agenda_html, url=SACRAMENTO_AGENDA_URL
+        ),
     }
 
     with mock_session(routes):
@@ -162,12 +154,18 @@ async def test_resolve_santabarbara_falls_back_to_version_b_document_endpoint():
     # back to Documents/ViewAgenda -- and to the main page's own <title>
     # for title/date, since Version B's agenda document carries no date.
     html = load_fixture("hyland", "santabarbara_view_meeting.html")
-    notfound_html = load_fixture("hyland", "santabarbara_view_meeting_agenda_notfound.html")
+    notfound_html = load_fixture(
+        "hyland", "santabarbara_view_meeting_agenda_notfound.html"
+    )
     doc_html = load_fixture("hyland", "santabarbara_view_agenda_document.html")
     routes = {
         SANTABARBARA_URL: FakeResponse(status=200, text=html, url=SANTABARBARA_URL),
-        SANTABARBARA_AGENDA_A_URL: FakeResponse(status=200, text=notfound_html, url=SANTABARBARA_AGENDA_A_URL),
-        SANTABARBARA_AGENDA_B_URL: FakeResponse(status=200, text=doc_html, url=SANTABARBARA_AGENDA_B_URL),
+        SANTABARBARA_AGENDA_A_URL: FakeResponse(
+            status=200, text=notfound_html, url=SANTABARBARA_AGENDA_A_URL
+        ),
+        SANTABARBARA_AGENDA_B_URL: FakeResponse(
+            status=200, text=doc_html, url=SANTABARBARA_AGENDA_B_URL
+        ),
     }
 
     with mock_session(routes):
@@ -196,8 +194,12 @@ async def test_resolve_concord_version_b_multiline_item_text_not_truncated():
     doc_html = load_fixture("hyland", "concord_view_agenda_document.html")
     routes = {
         CONCORD_URL: FakeResponse(status=200, text=html, url=CONCORD_URL),
-        CONCORD_AGENDA_A_URL: FakeResponse(status=200, text=notfound_html, url=CONCORD_AGENDA_A_URL),
-        CONCORD_AGENDA_B_URL: FakeResponse(status=200, text=doc_html, url=CONCORD_AGENDA_B_URL),
+        CONCORD_AGENDA_A_URL: FakeResponse(
+            status=200, text=notfound_html, url=CONCORD_AGENDA_A_URL
+        ),
+        CONCORD_AGENDA_B_URL: FakeResponse(
+            status=200, text=doc_html, url=CONCORD_AGENDA_B_URL
+        ),
     }
 
     with mock_session(routes):
@@ -215,7 +217,7 @@ async def test_resolve_concord_version_b_multiline_item_text_not_truncated():
     assert first.start == 1093.52
     assert first.end == 2266.52
     assert first.text == (
-        'Presentation – to Karen Sakata, Diablo Japanese American Club, proclaiming '
+        "Presentation – to Karen Sakata, Diablo Japanese American Club, proclaiming "
         'February 19, 2026, as "Japanese American Incarceration During World War II '
         'Day" in the City of Concord. Presentation by Mayor Nakamura .'
     )
@@ -232,13 +234,15 @@ async def test_resolve_delegates_to_youtube_when_no_direct_media_file(monkeypatc
     # page's own JS comment) -- media_scan.scan_media_urls only recognizes
     # direct media-file URLs, so this used to come back with no video at
     # all despite a real, playable YouTube embed being right there.
-    url = "https://meetings.muni.org/AgendaOnline/Meetings/ViewMeeting?id=6500&doctype=1"
-    agenda_a_url = "https://meetings.muni.org/AgendaOnline/Meetings/ViewMeetingAgenda?meetingId=6500&type=1"
-    agenda_b_url = (
-        "https://meetings.muni.org/AgendaOnline/Documents/ViewAgenda?meetingId=6500&type=agenda&doctype=1"
+    url = (
+        "https://meetings.muni.org/AgendaOnline/Meetings/ViewMeeting?id=6500&doctype=1"
     )
+    agenda_a_url = "https://meetings.muni.org/AgendaOnline/Meetings/ViewMeetingAgenda?meetingId=6500&type=1"
+    agenda_b_url = "https://meetings.muni.org/AgendaOnline/Documents/ViewAgenda?meetingId=6500&type=agenda&doctype=1"
     html = load_fixture("hyland", "anchorage_view_meeting_youtube.html")
-    notfound_html = load_fixture("hyland", "anchorage_view_meeting_agenda_notfound.html")
+    notfound_html = load_fixture(
+        "hyland", "anchorage_view_meeting_agenda_notfound.html"
+    )
     doc_html = load_fixture("hyland", "anchorage_view_agenda_document.html")
     routes = {
         url: FakeResponse(status=200, text=html, url=url),

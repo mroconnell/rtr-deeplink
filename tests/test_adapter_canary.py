@@ -11,7 +11,12 @@ silent pass.
 
 from app.platforms.base import CalendarPageError
 from app.platforms.models import ResolvedMeeting
-from scripts.adapter_canary import check_platform, format_report, has_real_content, run_canary
+from scripts.adapter_canary import (
+    check_platform,
+    format_report,
+    has_real_content,
+    run_canary,
+)
 
 
 def _meeting(**overrides) -> ResolvedMeeting:
@@ -21,11 +26,16 @@ def _meeting(**overrides) -> ResolvedMeeting:
 
 
 def test_has_real_content_true_with_segments():
-    assert has_real_content(_meeting(segments=[{"start": 0, "end": 1, "text": "hi"}])) is True
+    assert (
+        has_real_content(_meeting(segments=[{"start": 0, "end": 1, "text": "hi"}]))
+        is True
+    )
 
 
 def test_has_real_content_true_with_video_url_only():
-    assert has_real_content(_meeting(video_url="https://example.com/video.m3u8")) is True
+    assert (
+        has_real_content(_meeting(video_url="https://example.com/video.m3u8")) is True
+    )
 
 
 def test_has_real_content_false_when_empty():
@@ -47,12 +57,19 @@ async def test_check_platform_ok_when_finder_returns_real_content(monkeypatch):
     monkeypatch.setattr("scripts.adapter_canary.detect_platform", lambda url: "fake")
     monkeypatch.setattr(
         "scripts.adapter_canary.get_finder",
-        lambda platform: _FakeFinder(result=_meeting(segments=[{"start": 0, "end": 1, "text": "hi"}])),
+        lambda platform: _FakeFinder(
+            result=_meeting(segments=[{"start": 0, "end": 1, "text": "hi"}])
+        ),
     )
 
     result = await check_platform("fake", "https://example.com/1")
 
-    assert result == {"platform": "fake", "url": "https://example.com/1", "ok": True, "reason": None}
+    assert result == {
+        "platform": "fake",
+        "url": "https://example.com/1",
+        "ok": True,
+        "reason": None,
+    }
 
 
 async def test_check_platform_fails_when_finder_returns_empty_content(monkeypatch):
@@ -60,7 +77,10 @@ async def test_check_platform_fails_when_finder_returns_empty_content(monkeypatc
     # case -- a finder that runs without raising but produces nothing
     # real must still be reported as a failure, not a silent pass.
     monkeypatch.setattr("scripts.adapter_canary.detect_platform", lambda url: "fake")
-    monkeypatch.setattr("scripts.adapter_canary.get_finder", lambda platform: _FakeFinder(result=_meeting()))
+    monkeypatch.setattr(
+        "scripts.adapter_canary.get_finder",
+        lambda platform: _FakeFinder(result=_meeting()),
+    )
 
     result = await check_platform("fake", "https://example.com/1")
 
@@ -71,7 +91,8 @@ async def test_check_platform_fails_when_finder_returns_empty_content(monkeypatc
 async def test_check_platform_fails_when_finder_raises(monkeypatch):
     monkeypatch.setattr("scripts.adapter_canary.detect_platform", lambda url: "fake")
     monkeypatch.setattr(
-        "scripts.adapter_canary.get_finder", lambda platform: _FakeFinder(error=RuntimeError("site returned 500"))
+        "scripts.adapter_canary.get_finder",
+        lambda platform: _FakeFinder(error=RuntimeError("site returned 500")),
     )
 
     result = await check_platform("fake", "https://example.com/1")
@@ -89,13 +110,21 @@ async def test_check_platform_ok_when_calendar_page_has_candidates(monkeypatch):
     monkeypatch.setattr(
         "scripts.adapter_canary.get_finder",
         lambda platform: _FakeFinder(
-            error=CalendarPageError("multiple meetings", candidates=[{"title": "t", "date": "d", "url": "u"}])
+            error=CalendarPageError(
+                "multiple meetings",
+                candidates=[{"title": "t", "date": "d", "url": "u"}],
+            )
         ),
     )
 
     result = await check_platform("fake", "https://example.com/1")
 
-    assert result == {"platform": "fake", "url": "https://example.com/1", "ok": True, "reason": None}
+    assert result == {
+        "platform": "fake",
+        "url": "https://example.com/1",
+        "ok": True,
+        "reason": None,
+    }
 
 
 async def test_check_platform_fails_when_calendar_page_has_no_candidates(monkeypatch):
@@ -104,7 +133,9 @@ async def test_check_platform_fails_when_calendar_page_has_no_candidates(monkeyp
     monkeypatch.setattr("scripts.adapter_canary.detect_platform", lambda url: "fake")
     monkeypatch.setattr(
         "scripts.adapter_canary.get_finder",
-        lambda platform: _FakeFinder(error=CalendarPageError("no meetings found", candidates=[])),
+        lambda platform: _FakeFinder(
+            error=CalendarPageError("no meetings found", candidates=[])
+        ),
     )
 
     result = await check_platform("fake", "https://example.com/1")
@@ -115,11 +146,15 @@ async def test_check_platform_fails_when_calendar_page_has_no_candidates(monkeyp
 
 async def test_run_canary_reports_each_platform_independently(monkeypatch):
     finders = {
-        "good": _FakeFinder(result=_meeting(segments=[{"start": 0, "end": 1, "text": "hi"}])),
+        "good": _FakeFinder(
+            result=_meeting(segments=[{"start": 0, "end": 1, "text": "hi"}])
+        ),
         "broken": _FakeFinder(result=_meeting()),
     }
     monkeypatch.setattr("scripts.adapter_canary.detect_platform", lambda url: url)
-    monkeypatch.setattr("scripts.adapter_canary.get_finder", lambda platform: finders[platform])
+    monkeypatch.setattr(
+        "scripts.adapter_canary.get_finder", lambda platform: finders[platform]
+    )
 
     results = await run_canary({"good": "good", "broken": "broken"})
 
@@ -130,7 +165,12 @@ async def test_run_canary_reports_each_platform_independently(monkeypatch):
 def test_format_report_lists_only_failures():
     results = [
         {"platform": "good", "url": "u1", "ok": True, "reason": None},
-        {"platform": "broken", "url": "u2", "ok": False, "reason": "resolve returned no real content"},
+        {
+            "platform": "broken",
+            "url": "u2",
+            "ok": False,
+            "reason": "resolve returned no real content",
+        },
     ]
 
     report = format_report(results)

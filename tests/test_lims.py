@@ -39,7 +39,11 @@ JSON_ENDPOINT_HTML = (
 
 
 def _fake_extract_info(video_id):
-    return {"title": "Real YouTube Title", "uploader": "cityofminneapolis", "upload_date": "20260806"}
+    return {
+        "title": "Real YouTube Title",
+        "uploader": "cityofminneapolis",
+        "upload_date": "20260806",
+    }
 
 
 async def _fake_fetch_via_browser(url, **kwargs):
@@ -54,7 +58,9 @@ async def test_resolve_extracts_real_video_title_date_jurisdiction(monkeypatch):
 
     result = await LimsAssetFinder().resolve(MEETING_URL)
 
-    assert result.platform == "youtube"  # delegated finder's own platform name, unchanged
+    assert (
+        result.platform == "youtube"
+    )  # delegated finder's own platform name, unchanged
     assert result.title == "Climate & Infrastructure Committee"
     assert result.date == "2026-08-06"
     assert result.jurisdiction == "City of Minneapolis, MN"
@@ -82,8 +88,13 @@ async def test_resolve_flattens_category_and_file_level_timestamps(monkeypatch):
 
     texts_by_start = {item.start: item.text for item in result.agenda_items}
     assert texts_by_start[122.0] == "Consent"  # category-level, no files
-    assert texts_by_start[298.0] == "Sidewalk repair and construction assessments"  # file-level
-    assert texts_by_start[3266.0] == "2026-2029 Climate & Infrastructure (C&I) Committee Work Plan"
+    assert (
+        texts_by_start[298.0] == "Sidewalk repair and construction assessments"
+    )  # file-level
+    assert (
+        texts_by_start[3266.0]
+        == "2026-2029 Climate & Infrastructure (C&I) Committee Work Plan"
+    )
     # A category with neither a real timestamp nor files ("Public
     # Hearing" itself, timeInSeconds=null) contributes no entry of its own.
     assert "Public Hearing" not in texts_by_start.values()
@@ -139,12 +150,18 @@ async def test_resolve_still_works_when_youtube_metadata_fetch_fails(monkeypatch
     assert result.date == "2026-08-06"
     assert result.jurisdiction == "City of Minneapolis, MN"
     assert result.video_url == f"https://www.youtube.com/embed/{REAL_VIDEO_ID}"
-    assert len(result.agenda_items) == 3  # LIMS's own JSON data, untouched by the YouTube failure
+    assert (
+        len(result.agenda_items) == 3
+    )  # LIMS's own JSON data, untouched by the YouTube failure
     assert result.segments == []
-    assert any("blocking automated caption requests" in w for w in result.video_warnings)
+    assert any(
+        "blocking automated caption requests" in w for w in result.video_warnings
+    )
 
 
-async def test_resolve_falls_back_to_known_domain_when_page_title_does_not_match(monkeypatch):
+async def test_resolve_falls_back_to_known_domain_when_page_title_does_not_match(
+    monkeypatch,
+):
     # Real bug found live 2026-08-13: when the agenda page's title doesn't
     # match _TITLE_RE (some real page shape not yet seen in this suite),
     # jurisdiction used to silently fall through to whatever
@@ -158,9 +175,15 @@ async def test_resolve_falls_back_to_known_domain_when_page_title_does_not_match
         return "<html><head><title>Some Other Page Shape</title></head><body></body></html>"
 
     def _fake_extract_info_wrong_uploader(video_id):
-        return {"title": "Real YouTube Title", "uploader": "Not A Real City", "upload_date": "20260806"}
+        return {
+            "title": "Real YouTube Title",
+            "uploader": "Not A Real City",
+            "upload_date": "20260806",
+        }
 
-    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _fake_extract_info_wrong_uploader)
+    monkeypatch.setattr(
+        YouTubeAssetFinder, "_extract_info", _fake_extract_info_wrong_uploader
+    )
     monkeypatch.setattr("app.platforms.lims.fetch_via_browser", _unmatched_title_page)
 
     result = await LimsAssetFinder().resolve(MEETING_URL)
@@ -184,7 +207,9 @@ async def test_resolve_works_for_a_non_ci_committee_code(monkeypatch):
 
     assert result.platform == "youtube"
     assert result.video_url == f"https://www.youtube.com/embed/{REAL_VIDEO_ID}"
-    assert not any("could not find a meeting id" in w.lower() for w in result.video_warnings)
+    assert not any(
+        "could not find a meeting id" in w.lower() for w in result.video_warnings
+    )
 
 
 def test_extract_page_meta_parses_real_title_shape():
@@ -201,7 +226,9 @@ def test_extract_page_meta_parses_real_title_shape():
 
 
 def test_extract_video_and_timestamps_parses_real_json_shape():
-    video_id, agenda_items = LimsAssetFinder._extract_video_and_timestamps(JSON_ENDPOINT_HTML)
+    video_id, agenda_items = LimsAssetFinder._extract_video_and_timestamps(
+        JSON_ENDPOINT_HTML
+    )
     assert video_id == REAL_VIDEO_ID
     assert len(agenda_items) == 3
 
@@ -225,7 +252,10 @@ def test_clean_title_strips_real_html_anchor_shape():
     assert LimsAssetFinder._clean_title(raw) == "Business, Housing & Zoning Committee"
     # Plain titles (the same meeting's file-level items) pass through
     # unchanged, and empty/None stay falsy so no segment gets created.
-    assert LimsAssetFinder._clean_title("Heritage Park Voluntary Relocation Plan") == "Heritage Park Voluntary Relocation Plan"
+    assert (
+        LimsAssetFinder._clean_title("Heritage Park Voluntary Relocation Plan")
+        == "Heritage Park Voluntary Relocation Plan"
+    )
     assert LimsAssetFinder._clean_title(None) is None
     assert LimsAssetFinder._clean_title("<b></b>") == ""
 
@@ -250,4 +280,6 @@ async def test_resolve_strips_html_from_timestamp_titles(monkeypatch):
 
     result = await LimsAssetFinder().resolve(MEETING_URL)
 
-    assert [item.text for item in result.agenda_items] == ["Business, Housing & Zoning Committee"]
+    assert [item.text for item in result.agenda_items] == [
+        "Business, Housing & Zoning Committee"
+    ]

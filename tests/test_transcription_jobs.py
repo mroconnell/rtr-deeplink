@@ -17,7 +17,9 @@ async def _drain_job(job_id: int, total_chunks: int) -> dict:
     for _ in range(total_chunks):
         claim = await crud.claim_next_chunk()
         assert claim is not None and claim["job_id"] == job_id
-        result = await crud.report_chunk_result(job_id, success=True, shifted_segments=[])
+        result = await crud.report_chunk_result(
+            job_id, success=True, shifted_segments=[]
+        )
     return result
 
 
@@ -41,9 +43,13 @@ def _payload(external_id: str, source_url: str) -> dict:
 async def test_create_job_known_email_skips_confirmation():
     url = "https://example.granicus.com/player/clip/tj-1"
     job = await crud.create_transcription_job(
-        payload=_payload("granicus:tj-1", url), input_url_normalized=url,
-        requester_email="known@example.com", media_url="https://example.com/v.m3u8",
-        media_kind="video", probed_duration_seconds=1900, chunk_size_seconds=900,
+        payload=_payload("granicus:tj-1", url),
+        input_url_normalized=url,
+        requester_email="known@example.com",
+        media_url="https://example.com/v.m3u8",
+        media_kind="video",
+        probed_duration_seconds=1900,
+        chunk_size_seconds=900,
         skip_confirmation=True,
     )
     assert job["status"] == "queued"
@@ -54,9 +60,13 @@ async def test_create_job_known_email_skips_confirmation():
 async def test_create_job_new_email_requires_confirmation():
     url = "https://example.granicus.com/player/clip/tj-2"
     job = await crud.create_transcription_job(
-        payload=_payload("granicus:tj-2", url), input_url_normalized=url,
-        requester_email="new@example.com", media_url="https://example.com/v.m3u8",
-        media_kind="video", probed_duration_seconds=600, chunk_size_seconds=900,
+        payload=_payload("granicus:tj-2", url),
+        input_url_normalized=url,
+        requester_email="new@example.com",
+        media_url="https://example.com/v.m3u8",
+        media_kind="video",
+        probed_duration_seconds=600,
+        chunk_size_seconds=900,
         skip_confirmation=False,
     )
     assert job["status"] == "pending_confirmation"
@@ -66,14 +76,24 @@ async def test_duplicate_submit_returns_existing_job_not_a_new_one():
     url = "https://example.granicus.com/player/clip/tj-3"
     payload = _payload("granicus:tj-3", url)
     job1 = await crud.create_transcription_job(
-        payload=payload, input_url_normalized=url, requester_email="a@example.com",
-        media_url="https://example.com/v.m3u8", media_kind="video",
-        probed_duration_seconds=600, chunk_size_seconds=900, skip_confirmation=True,
+        payload=payload,
+        input_url_normalized=url,
+        requester_email="a@example.com",
+        media_url="https://example.com/v.m3u8",
+        media_kind="video",
+        probed_duration_seconds=600,
+        chunk_size_seconds=900,
+        skip_confirmation=True,
     )
     job2 = await crud.create_transcription_job(
-        payload=payload, input_url_normalized=url, requester_email="b@example.com",
-        media_url="https://example.com/v.m3u8", media_kind="video",
-        probed_duration_seconds=600, chunk_size_seconds=900, skip_confirmation=True,
+        payload=payload,
+        input_url_normalized=url,
+        requester_email="b@example.com",
+        media_url="https://example.com/v.m3u8",
+        media_kind="video",
+        probed_duration_seconds=600,
+        chunk_size_seconds=900,
+        skip_confirmation=True,
     )
     assert job1["job_id"] == job2["job_id"]
     await _drain_job(job1["job_id"], job1["total_chunks"])
@@ -87,17 +107,26 @@ async def test_claim_next_chunk_prefers_higher_priority_over_older_job():
     # PRIORITY_LOW batch work.
     old_url = "https://example.granicus.com/player/clip/tj-priority-old"
     old_job = await crud.create_transcription_job(
-        payload=_payload("granicus:tj-priority-old", old_url), input_url_normalized=old_url,
-        requester_email="old@example.com", media_url="https://example.com/v.m3u8",
-        media_kind="video", probed_duration_seconds=600, chunk_size_seconds=900,
-        skip_confirmation=True, priority=crud.PRIORITY_LOW,
+        payload=_payload("granicus:tj-priority-old", old_url),
+        input_url_normalized=old_url,
+        requester_email="old@example.com",
+        media_url="https://example.com/v.m3u8",
+        media_kind="video",
+        probed_duration_seconds=600,
+        chunk_size_seconds=900,
+        skip_confirmation=True,
+        priority=crud.PRIORITY_LOW,
     )
 
     new_url = "https://example.granicus.com/player/clip/tj-priority-new"
     new_job = await crud.create_transcription_job(
-        payload=_payload("granicus:tj-priority-new", new_url), input_url_normalized=new_url,
-        requester_email="new@example.com", media_url="https://example.com/v.m3u8",
-        media_kind="video", probed_duration_seconds=600, chunk_size_seconds=900,
+        payload=_payload("granicus:tj-priority-new", new_url),
+        input_url_normalized=new_url,
+        requester_email="new@example.com",
+        media_url="https://example.com/v.m3u8",
+        media_kind="video",
+        probed_duration_seconds=600,
+        chunk_size_seconds=900,
         skip_confirmation=True,
     )
 
@@ -121,9 +150,13 @@ async def test_confirm_unknown_token_returns_none():
 async def test_confirm_flips_status_and_clears_token():
     url = "https://example.granicus.com/player/clip/tj-4"
     await crud.create_transcription_job(
-        payload=_payload("granicus:tj-4", url), input_url_normalized=url,
-        requester_email="confirm-me@example.com", media_url="https://example.com/v.m3u8",
-        media_kind="video", probed_duration_seconds=600, chunk_size_seconds=900,
+        payload=_payload("granicus:tj-4", url),
+        input_url_normalized=url,
+        requester_email="confirm-me@example.com",
+        media_url="https://example.com/v.m3u8",
+        media_kind="video",
+        probed_duration_seconds=600,
+        chunk_size_seconds=900,
         skip_confirmation=False,
     )
     # Fetch the token directly via a fresh claim attempt is indirect --
@@ -138,10 +171,16 @@ async def test_confirm_flips_status_and_clears_token():
 
     async with async_session() as session:
         job_row = (
-            await session.execute(
-                select(TranscriptionJob).where(TranscriptionJob.requester_email == "confirm-me@example.com")
+            (
+                await session.execute(
+                    select(TranscriptionJob).where(
+                        TranscriptionJob.requester_email == "confirm-me@example.com"
+                    )
+                )
             )
-        ).scalars().first()
+            .scalars()
+            .first()
+        )
         token = job_row.confirmation_token
     assert token is not None
 
@@ -157,16 +196,20 @@ async def test_confirm_flips_status_and_clears_token():
 async def test_expired_pending_confirmation_is_superseded_and_unconfirmable():
     from datetime import datetime, timedelta, timezone
 
-
     from archive.db.engine import async_session
     from archive.db.models import TranscriptionJob
 
     url = "https://example.granicus.com/player/clip/tj-expiry"
     payload = _payload("granicus:tj-expiry", url)
     old_job = await crud.create_transcription_job(
-        payload=payload, input_url_normalized=url, requester_email="stale@example.com",
-        media_url="https://example.com/v.m3u8", media_kind="video",
-        probed_duration_seconds=600, chunk_size_seconds=900, skip_confirmation=False,
+        payload=payload,
+        input_url_normalized=url,
+        requester_email="stale@example.com",
+        media_url="https://example.com/v.m3u8",
+        media_kind="video",
+        probed_duration_seconds=600,
+        chunk_size_seconds=900,
+        skip_confirmation=False,
     )
     assert old_job["status"] == "pending_confirmation"
 
@@ -179,9 +222,14 @@ async def test_expired_pending_confirmation_is_superseded_and_unconfirmable():
     # A fresh request for the same page should NOT see the expired job as
     # blocking -- it should create a brand new one instead of returning it.
     new_job = await crud.create_transcription_job(
-        payload=payload, input_url_normalized=url, requester_email="fresh@example.com",
-        media_url="https://example.com/v.m3u8", media_kind="video",
-        probed_duration_seconds=600, chunk_size_seconds=900, skip_confirmation=True,
+        payload=payload,
+        input_url_normalized=url,
+        requester_email="fresh@example.com",
+        media_url="https://example.com/v.m3u8",
+        media_kind="video",
+        probed_duration_seconds=600,
+        chunk_size_seconds=900,
+        skip_confirmation=True,
     )
     assert new_job["job_id"] != old_job["job_id"]
     assert new_job["status"] == "queued"
@@ -195,9 +243,13 @@ async def test_expired_pending_confirmation_is_superseded_and_unconfirmable():
 async def test_full_chunk_lifecycle_promotes_transcribed_version():
     url = "https://example.granicus.com/player/clip/tj-5"
     job = await crud.create_transcription_job(
-        payload=_payload("granicus:tj-5", url), input_url_normalized=url,
-        requester_email="lifecycle@example.com", media_url="https://example.com/v.m3u8",
-        media_kind="video", probed_duration_seconds=1900, chunk_size_seconds=900,
+        payload=_payload("granicus:tj-5", url),
+        input_url_normalized=url,
+        requester_email="lifecycle@example.com",
+        media_url="https://example.com/v.m3u8",
+        media_kind="video",
+        probed_duration_seconds=1900,
+        chunk_size_seconds=900,
         skip_confirmation=True,
     )
     assert job["total_chunks"] == 3
@@ -206,8 +258,17 @@ async def test_full_chunk_lifecycle_promotes_transcribed_version():
         claim = await crud.claim_next_chunk()
         assert claim["job_id"] == job["job_id"]
         assert claim["chunk_index"] == i
-        shifted = [{"start": i * 900 + 1.0, "end": i * 900 + 2.0, "text": f"chunk {i}", "speaker": None}]
-        result = await crud.report_chunk_result(claim["job_id"], success=True, shifted_segments=shifted)
+        shifted = [
+            {
+                "start": i * 900 + 1.0,
+                "end": i * 900 + 2.0,
+                "text": f"chunk {i}",
+                "speaker": None,
+            }
+        ]
+        result = await crud.report_chunk_result(
+            claim["job_id"], success=True, shifted_segments=shifted
+        )
 
     assert result["status"] == "completed"
     assert result["transcript_version_id"] is not None
@@ -235,17 +296,25 @@ async def test_claim_next_chunk_exposes_partial_segments_for_dedup():
     # next chunk -- claim_next_chunk() has to actually return them.
     url = "https://example.granicus.com/player/clip/tj-dedup-1"
     job = await crud.create_transcription_job(
-        payload=_payload("granicus:tj-dedup-1", url), input_url_normalized=url,
-        requester_email="dedup1@example.com", media_url="https://example.com/v.m3u8",
-        media_kind="video", probed_duration_seconds=1800, chunk_size_seconds=900,
+        payload=_payload("granicus:tj-dedup-1", url),
+        input_url_normalized=url,
+        requester_email="dedup1@example.com",
+        media_url="https://example.com/v.m3u8",
+        media_kind="video",
+        probed_duration_seconds=1800,
+        chunk_size_seconds=900,
         skip_confirmation=True,
     )
     claim = await crud.claim_next_chunk()
     assert claim["job_id"] == job["job_id"]
     assert claim["partial_segments"] == []  # nothing persisted yet on the first chunk
 
-    first_chunk_segments = [{"start": 1.0, "end": 2.0, "text": "First chunk content.", "speaker": None}]
-    await crud.report_chunk_result(job["job_id"], success=True, shifted_segments=first_chunk_segments)
+    first_chunk_segments = [
+        {"start": 1.0, "end": 2.0, "text": "First chunk content.", "speaker": None}
+    ]
+    await crud.report_chunk_result(
+        job["job_id"], success=True, shifted_segments=first_chunk_segments
+    )
 
     claim2 = await crud.claim_next_chunk()
     assert claim2["job_id"] == job["job_id"]
@@ -264,26 +333,47 @@ async def test_report_chunk_result_drops_seam_duplicate_tail():
     # for how drop_previous_tail gets computed from real content).
     url = "https://example.granicus.com/player/clip/tj-dedup-2"
     job = await crud.create_transcription_job(
-        payload=_payload("granicus:tj-dedup-2", url), input_url_normalized=url,
-        requester_email="dedup2@example.com", media_url="https://example.com/v.m3u8",
-        media_kind="video", probed_duration_seconds=1800, chunk_size_seconds=900,
+        payload=_payload("granicus:tj-dedup-2", url),
+        input_url_normalized=url,
+        requester_email="dedup2@example.com",
+        media_url="https://example.com/v.m3u8",
+        media_kind="video",
+        probed_duration_seconds=1800,
+        chunk_size_seconds=900,
         skip_confirmation=True,
     )
     claim = await crud.claim_next_chunk()
     assert claim["job_id"] == job["job_id"]
     stale_and_kept = [
         {"start": 1.0, "end": 2.0, "text": "Kept, unrelated content.", "speaker": None},
-        {"start": 895.0, "end": 899.0, "text": "This is the duplicated tail sentence.", "speaker": None},
+        {
+            "start": 895.0,
+            "end": 899.0,
+            "text": "This is the duplicated tail sentence.",
+            "speaker": None,
+        },
     ]
-    await crud.report_chunk_result(job["job_id"], success=True, shifted_segments=stale_and_kept)
+    await crud.report_chunk_result(
+        job["job_id"], success=True, shifted_segments=stale_and_kept
+    )
 
     claim2 = await crud.claim_next_chunk()
     assert claim2["partial_segments"] == stale_and_kept
 
-    new_chunk_segments = [{"start": 900.0, "end": 903.0, "text": "This is the next chunk.", "speaker": None}]
+    new_chunk_segments = [
+        {
+            "start": 900.0,
+            "end": 903.0,
+            "text": "This is the next chunk.",
+            "speaker": None,
+        }
+    ]
     # Simulates worker/main.py dropping the one stale segment it detected.
     result = await crud.report_chunk_result(
-        job["job_id"], success=True, shifted_segments=new_chunk_segments, drop_previous_tail=1,
+        job["job_id"],
+        success=True,
+        shifted_segments=new_chunk_segments,
+        drop_previous_tail=1,
     )
     assert result["status"] == "completed"
 
@@ -304,18 +394,26 @@ async def test_list_completed_multichunk_transcription_jobs_filters_correctly():
     single_url = "https://example.granicus.com/player/clip/tj-audit-single"
 
     multi_job = await crud.create_transcription_job(
-        payload=_payload("granicus:tj-audit-multi", multi_url), input_url_normalized=multi_url,
-        requester_email="audit-multi@example.com", media_url="https://example.com/v.m3u8",
-        media_kind="video", probed_duration_seconds=1800, chunk_size_seconds=900,
+        payload=_payload("granicus:tj-audit-multi", multi_url),
+        input_url_normalized=multi_url,
+        requester_email="audit-multi@example.com",
+        media_url="https://example.com/v.m3u8",
+        media_kind="video",
+        probed_duration_seconds=1800,
+        chunk_size_seconds=900,
         skip_confirmation=True,
     )
     assert multi_job["total_chunks"] == 2
     await _drain_job(multi_job["job_id"], 2)
 
     single_job = await crud.create_transcription_job(
-        payload=_payload("granicus:tj-audit-single", single_url), input_url_normalized=single_url,
-        requester_email="audit-single@example.com", media_url="https://example.com/v.m3u8",
-        media_kind="video", probed_duration_seconds=800, chunk_size_seconds=900,
+        payload=_payload("granicus:tj-audit-single", single_url),
+        input_url_normalized=single_url,
+        requester_email="audit-single@example.com",
+        media_url="https://example.com/v.m3u8",
+        media_kind="video",
+        probed_duration_seconds=800,
+        chunk_size_seconds=900,
         skip_confirmation=True,
     )
     assert single_job["total_chunks"] == 1
@@ -324,7 +422,9 @@ async def test_list_completed_multichunk_transcription_jobs_filters_correctly():
     audited = await crud.list_completed_multichunk_transcription_jobs()
     audited_job_ids = {row["job_id"] for row in audited}
     assert multi_job["job_id"] in audited_job_ids
-    assert single_job["job_id"] not in audited_job_ids  # total_chunks == 1, never hit a chunk boundary
+    assert (
+        single_job["job_id"] not in audited_job_ids
+    )  # total_chunks == 1, never hit a chunk boundary
 
     row = next(r for r in audited if r["job_id"] == multi_job["job_id"])
     assert row["total_chunks"] == 2
@@ -339,20 +439,29 @@ async def test_completed_job_detects_language_from_transcribed_text():
     # real detection has enough real content to work with.
     url = "https://example.granicus.com/player/clip/tj-7"
     job = await crud.create_transcription_job(
-        payload=_payload("granicus:tj-7", url), input_url_normalized=url,
-        requester_email="language@example.com", media_url="https://example.com/v.m3u8",
-        media_kind="video", probed_duration_seconds=900, chunk_size_seconds=900,
+        payload=_payload("granicus:tj-7", url),
+        input_url_normalized=url,
+        requester_email="language@example.com",
+        media_url="https://example.com/v.m3u8",
+        media_kind="video",
+        probed_duration_seconds=900,
+        chunk_size_seconds=900,
         skip_confirmation=True,
     )
     assert job["total_chunks"] == 1
 
     claim = await crud.claim_next_chunk()
-    shifted = [{
-        "start": 1.0, "end": 8.0,
-        "text": "Good evening and welcome to tonight's regular city council meeting.",
-        "speaker": None,
-    }]
-    await crud.report_chunk_result(claim["job_id"], success=True, shifted_segments=shifted)
+    shifted = [
+        {
+            "start": 1.0,
+            "end": 8.0,
+            "text": "Good evening and welcome to tonight's regular city council meeting.",
+            "speaker": None,
+        }
+    ]
+    await crud.report_chunk_result(
+        claim["job_id"], success=True, shifted_segments=shifted
+    )
 
     page = await crud.get_page_by_slug(job["meeting_page_slug"])
     transcribed = next(v for v in page["versions"] if v["source"] == "transcribed")
@@ -369,9 +478,13 @@ async def test_completed_job_flags_a_real_hallucinated_transcript():
     # is actually wired in, not just present in the file.
     url = "https://example.granicus.com/player/clip/tj-halluc-1"
     job = await crud.create_transcription_job(
-        payload=_payload("granicus:tj-halluc-1", url), input_url_normalized=url,
-        requester_email="halluc1@example.com", media_url="https://example.com/v.m3u8",
-        media_kind="video", probed_duration_seconds=900, chunk_size_seconds=900,
+        payload=_payload("granicus:tj-halluc-1", url),
+        input_url_normalized=url,
+        requester_email="halluc1@example.com",
+        media_url="https://example.com/v.m3u8",
+        media_kind="video",
+        probed_duration_seconds=900,
+        chunk_size_seconds=900,
         skip_confirmation=True,
     )
     claim = await crud.claim_next_chunk()
@@ -383,16 +496,24 @@ async def test_completed_job_flags_a_real_hallucinated_transcript():
     # shape (see worker/segment_utils.py's matching real fixture for the
     # full provenance note).
     hallucinated_segments = [
-        {"start": 0.0, "end": 30.0, "text": "Public comment, motion, second, aye, nay, abstain,", "speaker": None},
+        {
+            "start": 0.0,
+            "end": 30.0,
+            "text": "Public comment, motion, second, aye, nay, abstain,",
+            "speaker": None,
+        },
     ] + [
         {
-            "start": 240.0 + i * 10, "end": 250.0 + i * 10,
+            "start": 240.0 + i * 10,
+            "end": 250.0 + i * 10,
             "text": "So, we are going to take a look at what we are going to do.",
             "speaker": None,
         }
         for i in range(44)
     ]
-    result = await crud.report_chunk_result(job["job_id"], success=True, shifted_segments=hallucinated_segments)
+    result = await crud.report_chunk_result(
+        job["job_id"], success=True, shifted_segments=hallucinated_segments
+    )
     assert result["status"] == "completed"
 
     page = await crud.get_page_by_slug(job["meeting_page_slug"])
@@ -408,23 +529,59 @@ async def test_completed_job_does_not_flag_a_real_clean_transcript():
     # the cancelled mono downmix).
     url = "https://example.granicus.com/player/clip/tj-clean-1"
     job = await crud.create_transcription_job(
-        payload=_payload("granicus:tj-clean-1", url), input_url_normalized=url,
-        requester_email="clean1@example.com", media_url="https://example.com/v.m3u8",
-        media_kind="video", probed_duration_seconds=900, chunk_size_seconds=900,
+        payload=_payload("granicus:tj-clean-1", url),
+        input_url_normalized=url,
+        requester_email="clean1@example.com",
+        media_url="https://example.com/v.m3u8",
+        media_kind="video",
+        probed_duration_seconds=900,
+        chunk_size_seconds=900,
         skip_confirmation=True,
     )
     claim = await crud.claim_next_chunk()
     assert claim["job_id"] == job["job_id"]
 
     clean_segments = [
-        {"start": 300.0, "end": 309.52, "text": "Councillor Garling. Sorry, I'm confused now. So there is an access point off of Ogovi, and the drawing", "speaker": None},
-        {"start": 309.52, "end": 315.36, "text": "it says, there's not. So there would be access for, say, if, like, someone were delivering or", "speaker": None},
-        {"start": 315.36, "end": 318.56, "text": "for firefighting, you know, someone could, could access through, like, you know, like,", "speaker": None},
-        {"start": 318.56, "end": 322.80, "text": "that's supposed to be a fence or a gate or something, but a driveway access would be off of that", "speaker": None},
-        {"start": 322.80, "end": 328.40, "text": "lane portion to the off of Hastings. So I'm, I'm, I'm not in favor of this at all. I,", "speaker": None},
-        {"start": 328.40, "end": 334.08, "text": "I just, I don't know why we would. I get it's an unopened portion, um, but if you were, if you've", "speaker": None},
+        {
+            "start": 300.0,
+            "end": 309.52,
+            "text": "Councillor Garling. Sorry, I'm confused now. So there is an access point off of Ogovi, and the drawing",
+            "speaker": None,
+        },
+        {
+            "start": 309.52,
+            "end": 315.36,
+            "text": "it says, there's not. So there would be access for, say, if, like, someone were delivering or",
+            "speaker": None,
+        },
+        {
+            "start": 315.36,
+            "end": 318.56,
+            "text": "for firefighting, you know, someone could, could access through, like, you know, like,",
+            "speaker": None,
+        },
+        {
+            "start": 318.56,
+            "end": 322.80,
+            "text": "that's supposed to be a fence or a gate or something, but a driveway access would be off of that",
+            "speaker": None,
+        },
+        {
+            "start": 322.80,
+            "end": 328.40,
+            "text": "lane portion to the off of Hastings. So I'm, I'm, I'm not in favor of this at all. I,",
+            "speaker": None,
+        },
+        {
+            "start": 328.40,
+            "end": 334.08,
+            "text": "I just, I don't know why we would. I get it's an unopened portion, um, but if you were, if you've",
+            "speaker": None,
+        },
     ]
-    result = await crud.report_chunk_result(job["job_id"], success=True, shifted_segments=clean_segments)
+    result = await crud.report_chunk_result(
+        job["job_id"], success=True, shifted_segments=clean_segments
+    )
     assert result["status"] == "completed"
 
     page = await crud.get_page_by_slug(job["meeting_page_slug"])
@@ -435,9 +592,13 @@ async def test_completed_job_does_not_flag_a_real_clean_transcript():
 async def test_chunk_failures_fail_the_job_after_budget_exhausted():
     url = "https://example.granicus.com/player/clip/tj-6"
     job = await crud.create_transcription_job(
-        payload=_payload("granicus:tj-6", url), input_url_normalized=url,
-        requester_email="fails@example.com", media_url="https://example.com/v.m3u8",
-        media_kind="video", probed_duration_seconds=2700, chunk_size_seconds=900,
+        payload=_payload("granicus:tj-6", url),
+        input_url_normalized=url,
+        requester_email="fails@example.com",
+        media_url="https://example.com/v.m3u8",
+        media_kind="video",
+        probed_duration_seconds=2700,
+        chunk_size_seconds=900,
         skip_confirmation=True,
     )
     assert job["total_chunks"] == 3
@@ -446,7 +607,9 @@ async def test_chunk_failures_fail_the_job_after_budget_exhausted():
     for _ in range(crud.MAX_CONSECUTIVE_CHUNK_FAILURES):
         claim = await crud.claim_next_chunk()
         assert claim["job_id"] == job["job_id"]
-        result = await crud.report_chunk_result(claim["job_id"], success=False, error="ffmpeg exploded")
+        result = await crud.report_chunk_result(
+            claim["job_id"], success=False, error="ffmpeg exploded"
+        )
 
     assert result["status"] == "failed"
     status = await crud.get_transcription_job_status(job["job_id"])
@@ -463,11 +626,18 @@ async def test_find_auto_transcription_candidate_skips_page_with_good_transcript
     url = "https://example.granicus.com/player/clip/auto-good-transcript"
     await crud.ingest_resolution(
         {
-            "platform": "granicus", "source_url": url, "external_id": "granicus:auto-good-transcript",
-            "title": "T", "date": "2026-01-01", "jurisdiction": "City of Test",
-            "video_url": "https://example.com/v.m3u8", "video_format": "m3u8",
-            "segments": [{"start": 0, "end": 1, "text": "hello there"}], "agenda_items": [],
-            "transcript_language": "en", "transcript_warnings": [],
+            "platform": "granicus",
+            "source_url": url,
+            "external_id": "granicus:auto-good-transcript",
+            "title": "T",
+            "date": "2026-01-01",
+            "jurisdiction": "City of Test",
+            "video_url": "https://example.com/v.m3u8",
+            "video_format": "m3u8",
+            "segments": [{"start": 0, "end": 1, "text": "hello there"}],
+            "agenda_items": [],
+            "transcript_language": "en",
+            "transcript_warnings": [],
         },
         url,
     )
@@ -494,17 +664,29 @@ async def test_find_auto_transcription_candidate_returns_page_missing_transcript
     url = "https://example.granicus.com/player/clip/auto-no-transcript"
     await crud.ingest_resolution(
         {
-            "platform": "granicus", "source_url": url, "external_id": "granicus:auto-no-transcript",
-            "title": "T", "date": "2026-01-01", "jurisdiction": "City of Test",
-            "video_url": "https://example.com/v.m3u8", "video_format": "m3u8",
-            "segments": [], "agenda_items": [], "transcript_language": None, "transcript_warnings": [],
+            "platform": "granicus",
+            "source_url": url,
+            "external_id": "granicus:auto-no-transcript",
+            "title": "T",
+            "date": "2026-01-01",
+            "jurisdiction": "City of Test",
+            "video_url": "https://example.com/v.m3u8",
+            "video_format": "m3u8",
+            "segments": [],
+            "agenda_items": [],
+            "transcript_language": None,
+            "transcript_warnings": [],
         },
         url,
     )
     slug = (await crud.lookup_page_for_url(url))["slug"]
 
     async with async_session() as session:
-        page = (await session.execute(select(MeetingPage).where(MeetingPage.slug == slug))).scalars().first()
+        page = (
+            (await session.execute(select(MeetingPage).where(MeetingPage.slug == slug)))
+            .scalars()
+            .first()
+        )
         assert await crud._has_good_transcript(session, page.id) is False
         assert await crud._in_auto_transcription_cooldown(session, page.id) is False
 
@@ -522,32 +704,51 @@ async def test_find_auto_transcription_candidate_skips_page_in_cooldown():
     url = "https://example.granicus.com/player/clip/auto-cooldown"
     await crud.ingest_resolution(
         {
-            "platform": "granicus", "source_url": url, "external_id": "granicus:auto-cooldown",
-            "title": "T", "date": "2026-01-01", "jurisdiction": "City of Test",
-            "video_url": "https://example.com/v.m3u8", "video_format": "m3u8",
-            "segments": [], "agenda_items": [], "transcript_language": None, "transcript_warnings": [],
+            "platform": "granicus",
+            "source_url": url,
+            "external_id": "granicus:auto-cooldown",
+            "title": "T",
+            "date": "2026-01-01",
+            "jurisdiction": "City of Test",
+            "video_url": "https://example.com/v.m3u8",
+            "video_format": "m3u8",
+            "segments": [],
+            "agenda_items": [],
+            "transcript_language": None,
+            "transcript_warnings": [],
         },
         url,
     )
     slug = (await crud.lookup_page_for_url(url))["slug"]
 
     job = await crud.create_transcription_job(
-        payload=_payload("granicus:auto-cooldown", url), input_url_normalized=url,
-        requester_email="auto@example.com", media_url="https://example.com/v.m3u8",
-        media_kind="video", probed_duration_seconds=900, chunk_size_seconds=900,
-        skip_confirmation=True, priority=crud.PRIORITY_LOW,
+        payload=_payload("granicus:auto-cooldown", url),
+        input_url_normalized=url,
+        requester_email="auto@example.com",
+        media_url="https://example.com/v.m3u8",
+        media_kind="video",
+        probed_duration_seconds=900,
+        chunk_size_seconds=900,
+        skip_confirmation=True,
+        priority=crud.PRIORITY_LOW,
     )
     for _ in range(crud.MAX_CONSECUTIVE_CHUNK_FAILURES):
         claim = await crud.claim_next_chunk()
         assert claim["job_id"] == job["job_id"]
-        await crud.report_chunk_result(job["job_id"], success=False, error="simulated failure")
+        await crud.report_chunk_result(
+            job["job_id"], success=False, error="simulated failure"
+        )
 
     status = await crud.get_transcription_job_status(job["job_id"])
     assert status["status"] == "failed"
 
     # Freshly failed -- still well within the 1-day base cooldown.
     async with async_session() as session:
-        page = (await session.execute(select(MeetingPage).where(MeetingPage.slug == slug))).scalars().first()
+        page = (
+            (await session.execute(select(MeetingPage).where(MeetingPage.slug == slug)))
+            .scalars()
+            .first()
+        )
         assert await crud._in_auto_transcription_cooldown(session, page.id) is True
 
 
@@ -555,10 +756,18 @@ async def test_create_failed_auto_transcription_job_is_immediately_failed():
     url = "https://example.granicus.com/player/clip/auto-fail-direct"
     await crud.ingest_resolution(
         {
-            "platform": "granicus", "source_url": url, "external_id": "granicus:auto-fail-direct",
-            "title": "T", "date": "2026-01-01", "jurisdiction": "City of Test",
-            "video_url": "https://example.com/v.m3u8", "video_format": "m3u8",
-            "segments": [], "agenda_items": [], "transcript_language": None, "transcript_warnings": [],
+            "platform": "granicus",
+            "source_url": url,
+            "external_id": "granicus:auto-fail-direct",
+            "title": "T",
+            "date": "2026-01-01",
+            "jurisdiction": "City of Test",
+            "video_url": "https://example.com/v.m3u8",
+            "video_format": "m3u8",
+            "segments": [],
+            "agenda_items": [],
+            "transcript_language": None,
+            "transcript_warnings": [],
         },
         url,
     )
@@ -571,17 +780,26 @@ async def test_create_failed_auto_transcription_job_is_immediately_failed():
     from sqlalchemy import select
 
     async with async_session() as session:
-        row = (await session.execute(select(MeetingPage).where(MeetingPage.slug == slug))).scalars().first()
+        row = (
+            (await session.execute(select(MeetingPage).where(MeetingPage.slug == slug)))
+            .scalars()
+            .first()
+        )
         page_id = row.id
 
     result = await crud.create_failed_auto_transcription_job(
-        meeting_page_id=page_id, requester_email="auto@example.com", error_message="No usable media source found.",
+        meeting_page_id=page_id,
+        requester_email="auto@example.com",
+        error_message="No usable media source found.",
     )
     status = await crud.get_transcription_job_status(result["job_id"])
     assert status["status"] == "failed"
     assert status["error_message"] == "No usable media source found."
     # Never claimable -- it was never queued in the first place.
-    assert await crud.claim_next_chunk() is None or (await crud.claim_next_chunk())["job_id"] != result["job_id"]
+    assert (
+        await crud.claim_next_chunk() is None
+        or (await crud.claim_next_chunk())["job_id"] != result["job_id"]
+    )
 
 
 async def test_in_auto_transcription_cooldown_escalates_with_consecutive_failures():
@@ -599,29 +817,53 @@ async def test_in_auto_transcription_cooldown_escalates_with_consecutive_failure
     url = "https://example.granicus.com/player/clip/auto-escalation"
     await crud.ingest_resolution(
         {
-            "platform": "granicus", "source_url": url, "external_id": "granicus:auto-escalation",
-            "title": "T", "date": "2026-01-01", "jurisdiction": "City of Test",
-            "video_url": "https://example.com/v.m3u8", "video_format": "m3u8",
-            "segments": [], "agenda_items": [], "transcript_language": None, "transcript_warnings": [],
+            "platform": "granicus",
+            "source_url": url,
+            "external_id": "granicus:auto-escalation",
+            "title": "T",
+            "date": "2026-01-01",
+            "jurisdiction": "City of Test",
+            "video_url": "https://example.com/v.m3u8",
+            "video_format": "m3u8",
+            "segments": [],
+            "agenda_items": [],
+            "transcript_language": None,
+            "transcript_warnings": [],
         },
         url,
     )
     slug = (await crud.lookup_page_for_url(url))["slug"]
 
     async with async_session() as session:
-        page = (await session.execute(select(MeetingPage).where(MeetingPage.slug == slug))).scalars().first()
+        page = (
+            (await session.execute(select(MeetingPage).where(MeetingPage.slug == slug)))
+            .scalars()
+            .first()
+        )
         page_id = page.id
 
         old_failure = TranscriptionJob(
-            meeting_page_id=page_id, requester_email="auto@example.com", status="failed",
-            media_url="", media_kind="video", probed_duration_seconds=0, chunk_size_seconds=1, total_chunks=1,
+            meeting_page_id=page_id,
+            requester_email="auto@example.com",
+            status="failed",
+            media_url="",
+            media_kind="video",
+            probed_duration_seconds=0,
+            chunk_size_seconds=1,
+            total_chunks=1,
         )
         session.add(old_failure)
         await session.commit()
 
         recent_failure = TranscriptionJob(
-            meeting_page_id=page_id, requester_email="auto@example.com", status="failed",
-            media_url="", media_kind="video", probed_duration_seconds=0, chunk_size_seconds=1, total_chunks=1,
+            meeting_page_id=page_id,
+            requester_email="auto@example.com",
+            status="failed",
+            media_url="",
+            media_kind="video",
+            probed_duration_seconds=0,
+            chunk_size_seconds=1,
+            total_chunks=1,
         )
         session.add(recent_failure)
         await session.commit()
@@ -635,4 +877,6 @@ async def test_in_auto_transcription_cooldown_escalates_with_consecutive_failure
 
         in_cooldown = await crud._in_auto_transcription_cooldown(session, page_id)
 
-    assert in_cooldown is True  # 2 consecutive failures => 2-day cooldown, 36h in is still inside it
+    assert (
+        in_cooldown is True
+    )  # 2 consecutive failures => 2-day cooldown, 36h in is still inside it

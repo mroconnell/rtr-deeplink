@@ -20,7 +20,14 @@ from fastapi.testclient import TestClient
 
 import app.main
 from app.utils import url_guard
-from app.utils.url_guard import BlockedURLError, check_destination, check_scheme, guarded_get, read_capped_bytes, read_capped_text
+from app.utils.url_guard import (
+    BlockedURLError,
+    check_destination,
+    check_scheme,
+    guarded_get,
+    read_capped_bytes,
+    read_capped_text,
+)
 
 from aiohttp_mock import FakeResponse, mock_session
 
@@ -28,6 +35,7 @@ client = TestClient(app.main.app)
 
 
 # --- check_scheme: cheap sync half ----------------------------------------
+
 
 def test_rejects_non_http_scheme():
     with pytest.raises(BlockedURLError):
@@ -51,21 +59,28 @@ def test_accepts_http_and_https():
 
 # --- check_destination: literal-IP classification (no DNS) ----------------
 
-@pytest.mark.parametrize("url", [
-    "http://127.0.0.1/",
-    "http://127.0.0.1:8080/admin",
-    "http://[::1]/",
-])
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://127.0.0.1/",
+        "http://127.0.0.1:8080/admin",
+        "http://[::1]/",
+    ],
+)
 async def test_rejects_loopback(url):
     with pytest.raises(BlockedURLError):
         await check_destination(url)
 
 
-@pytest.mark.parametrize("url", [
-    "http://10.0.0.5/",
-    "http://172.16.0.1/",
-    "http://192.168.1.1/",
-])
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://10.0.0.5/",
+        "http://172.16.0.1/",
+        "http://192.168.1.1/",
+    ],
+)
 async def test_rejects_private_ranges(url):
     with pytest.raises(BlockedURLError):
         await check_destination(url)
@@ -102,6 +117,7 @@ async def test_allows_a_public_ip():
 
 # --- check_destination: hostname resolution path ---------------------------
 
+
 async def test_rejects_a_hostname_that_resolves_to_a_private_address(monkeypatch):
     monkeypatch.setattr(url_guard, "_resolve_hostname", lambda hostname: ["10.0.0.9"])
     with pytest.raises(BlockedURLError):
@@ -109,14 +125,18 @@ async def test_rejects_a_hostname_that_resolves_to_a_private_address(monkeypatch
 
 
 async def test_allows_a_hostname_that_resolves_to_a_public_address(monkeypatch):
-    monkeypatch.setattr(url_guard, "_resolve_hostname", lambda hostname: ["93.184.216.34"])
+    monkeypatch.setattr(
+        url_guard, "_resolve_hostname", lambda hostname: ["93.184.216.34"]
+    )
     await check_destination("http://some-city.example.gov/meeting")  # does not raise
 
 
 async def test_blocked_if_any_resolved_address_is_private(monkeypatch):
     # A multi-A-record host is blocked if ANY record resolves somewhere
     # disallowed, not only if all of them do.
-    monkeypatch.setattr(url_guard, "_resolve_hostname", lambda hostname: ["93.184.216.34", "127.0.0.1"])
+    monkeypatch.setattr(
+        url_guard, "_resolve_hostname", lambda hostname: ["93.184.216.34", "127.0.0.1"]
+    )
     with pytest.raises(BlockedURLError):
         await check_destination("http://mixed.example.com/")
 
@@ -135,13 +155,20 @@ async def test_dns_failure_raises_a_clean_error(monkeypatch):
 # passes the guard can still 302 to a private one, and re-checking only
 # the entry URL misses that entirely.
 
+
 async def test_guarded_get_follows_an_allowed_redirect_chain(monkeypatch):
-    monkeypatch.setattr(url_guard, "_resolve_hostname", lambda hostname: ["93.184.216.34"])
+    monkeypatch.setattr(
+        url_guard, "_resolve_hostname", lambda hostname: ["93.184.216.34"]
+    )
     routes = {
         "http://a.example.com/": FakeResponse(
-            status=302, headers={"Location": "http://b.example.com/"}, url="http://a.example.com/",
+            status=302,
+            headers={"Location": "http://b.example.com/"},
+            url="http://a.example.com/",
         ),
-        "http://b.example.com/": FakeResponse(status=200, text="final page", url="http://b.example.com/"),
+        "http://b.example.com/": FakeResponse(
+            status=200, text="final page", url="http://b.example.com/"
+        ),
     }
     import aiohttp
 
@@ -157,10 +184,13 @@ async def test_guarded_get_rejects_a_redirect_to_a_private_ip(monkeypatch):
     # -- if guarded_get ever actually issued that second request instead
     # of blocking it first, mock_session's own "unmocked request" assertion
     # would fail this test, not just the BlockedURLError expectation.
-    monkeypatch.setattr(url_guard, "_resolve_hostname", lambda hostname: ["93.184.216.34"])
+    monkeypatch.setattr(
+        url_guard, "_resolve_hostname", lambda hostname: ["93.184.216.34"]
+    )
     routes = {
         "http://a.example.com/": FakeResponse(
-            status=302, headers={"Location": "http://169.254.169.254/latest/meta-data/"},
+            status=302,
+            headers={"Location": "http://169.254.169.254/latest/meta-data/"},
             url="http://a.example.com/",
         ),
     }
@@ -174,12 +204,15 @@ async def test_guarded_get_rejects_a_redirect_to_a_private_ip(monkeypatch):
 
 
 async def test_guarded_get_caps_redirect_chain_length(monkeypatch):
-    monkeypatch.setattr(url_guard, "_resolve_hostname", lambda hostname: ["93.184.216.34"])
+    monkeypatch.setattr(
+        url_guard, "_resolve_hostname", lambda hostname: ["93.184.216.34"]
+    )
     # One more hop than MAX_REDIRECTS allows, each redirecting to the next.
     routes = {}
     for i in range(url_guard.MAX_REDIRECTS + 2):
         routes[f"http://hop{i}.example.com/"] = FakeResponse(
-            status=302, headers={"Location": f"http://hop{i + 1}.example.com/"},
+            status=302,
+            headers={"Location": f"http://hop{i + 1}.example.com/"},
             url=f"http://hop{i}.example.com/",
         )
     import aiohttp
@@ -194,20 +227,31 @@ async def test_guarded_get_caps_redirect_chain_length(monkeypatch):
 async def test_guarded_get_ignores_allow_redirects_kwarg(monkeypatch):
     # allow_redirects=True is a no-op -- guarded_get always follows
     # redirects itself so it can re-validate each hop.
-    monkeypatch.setattr(url_guard, "_resolve_hostname", lambda hostname: ["93.184.216.34"])
-    routes = {"http://plain.example.com/": FakeResponse(status=200, text="ok", url="http://plain.example.com/")}
+    monkeypatch.setattr(
+        url_guard, "_resolve_hostname", lambda hostname: ["93.184.216.34"]
+    )
+    routes = {
+        "http://plain.example.com/": FakeResponse(
+            status=200, text="ok", url="http://plain.example.com/"
+        )
+    }
     import aiohttp
 
     with mock_session(routes):
         async with aiohttp.ClientSession() as session:
-            async with guarded_get(session, "http://plain.example.com/", allow_redirects=True) as response:
+            async with guarded_get(
+                session, "http://plain.example.com/", allow_redirects=True
+            ) as response:
                 assert await response.text() == "ok"
 
 
 # --- response size cap ------------------------------------------------------
 
+
 async def test_read_capped_text_rejects_an_oversized_content_length_header():
-    response = FakeResponse(status=200, text="small body", headers={"Content-Length": str(50 * 1024 * 1024)})
+    response = FakeResponse(
+        status=200, text="small body", headers={"Content-Length": str(50 * 1024 * 1024)}
+    )
     with pytest.raises(BlockedURLError):
         await read_capped_text(response, max_bytes=1024)
 
@@ -239,8 +283,11 @@ async def test_read_capped_bytes_allows_a_body_under_the_cap():
 # reaches that machinery -- no mocking needed for these, unlike a normal
 # resolve.
 
+
 def test_resolve_endpoint_rejects_link_local_metadata_url():
-    response = client.post("/api/resolve", json={"url": "http://169.254.169.254/latest/meta-data/"})
+    response = client.post(
+        "/api/resolve", json={"url": "http://169.254.169.254/latest/meta-data/"}
+    )
     assert response.status_code == 200  # a clean, handled rejection -- not a 500
     body = response.json()
     assert body["error"] == "blocked_url"

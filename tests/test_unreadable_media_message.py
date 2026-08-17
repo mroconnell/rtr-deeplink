@@ -21,9 +21,13 @@ from app.platforms.models import ResolvedMeeting
 
 def test_direct_youtube_url_gets_youtube_specific_message():
     result = ResolvedMeeting(
-        platform="youtube", source_url="https://www.youtube.com/watch?v=abc123", video_format="youtube"
+        platform="youtube",
+        source_url="https://www.youtube.com/watch?v=abc123",
+        video_format="youtube",
     )
-    assert "hosted on YouTube" in _unreadable_media_message(result, requested_platform="youtube")
+    assert "hosted on YouTube" in _unreadable_media_message(
+        result, requested_platform="youtube"
+    )
 
 
 def test_lims_delegated_to_youtube_gets_delegated_message_with_watch_link():
@@ -49,8 +53,10 @@ def test_lims_delegated_to_youtube_gets_delegated_message_with_watch_link():
 
 def test_primegov_delegated_to_youtube_gets_delegated_message():
     result = ResolvedMeeting(
-        platform="youtube", source_url="https://slc.primegov.com/Portal/Meeting?meetingTemplateId=1",
-        video_format="youtube", video_url="https://www.youtube.com/embed/abcDEF12345",
+        platform="youtube",
+        source_url="https://slc.primegov.com/Portal/Meeting?meetingTemplateId=1",
+        video_format="youtube",
+        video_url="https://www.youtube.com/embed/abcDEF12345",
     )
     message = _unreadable_media_message(result, requested_platform="primegov")
     assert "hosted on YouTube" not in message
@@ -63,27 +69,41 @@ def test_delegated_youtube_with_no_extractable_id_falls_back_to_generic():
     # changes, fall through to the generic message rather than rendering a
     # broken link.
     result = ResolvedMeeting(
-        platform="youtube", source_url="https://lims.minneapolismn.gov/MarkedAgenda/CI/6133",
-        video_format="youtube", video_url=None,
+        platform="youtube",
+        source_url="https://lims.minneapolismn.gov/MarkedAgenda/CI/6133",
+        video_format="youtube",
+        video_url=None,
     )
     message = _unreadable_media_message(result, requested_platform="lims")
-    assert message == "We found a media source but couldn't read it -- it may be unavailable."
+    assert (
+        message
+        == "We found a media source but couldn't read it -- it may be unavailable."
+    )
 
 
 def test_generic_fallback_embedded_youtube_gets_youtube_specific_message():
     # best_effort=True, source_url on some unbranded small-city page -- the
     # video genuinely is youtube.com, no other jurisdiction system to obscure.
     result = ResolvedMeeting(
-        platform="youtube", source_url="https://smallcity.example.gov/meeting", video_format="youtube",
+        platform="youtube",
+        source_url="https://smallcity.example.gov/meeting",
+        video_format="youtube",
         best_effort=True,
     )
-    assert "hosted on YouTube" in _unreadable_media_message(result, requested_platform="unknown")
+    assert "hosted on YouTube" in _unreadable_media_message(
+        result, requested_platform="unknown"
+    )
 
 
 def test_non_youtube_platform_stays_generic():
     result = ResolvedMeeting(
-        platform="granicus", source_url="https://city.granicus.com/player/clip/1", video_format="m3u8"
+        platform="granicus",
+        source_url="https://city.granicus.com/player/clip/1",
+        video_format="m3u8",
     )
     message = _unreadable_media_message(result, requested_platform="granicus")
     assert "hosted on YouTube" not in message
-    assert message == "We found a media source but couldn't read it -- it may be unavailable."
+    assert (
+        message
+        == "We found a media source but couldn't read it -- it may be unavailable."
+    )

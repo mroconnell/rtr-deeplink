@@ -35,11 +35,12 @@ jobs:
 
       # WO-12 (2026-08-16): ruff.toml has the (deliberately minimal) rule
       # selection and reasoning. Blocking -- the codebase is clean against
-      # it as of this commit. `ruff format --check` isn't added yet; that
-      # lands together with the one-time bulk reformat in a follow-up PR,
-      # kept separate so the reformat can be its own commit without
-      # poisoning git blame on this config-only change.
+      # both as of this commit, which includes the one-time bulk reformat
+      # (landed as its own commit, see that commit's own message, so it
+      # doesn't poison git blame on the config-only change that added
+      # `ruff check` a commit earlier).
       - run: ruff check app/ archive/ worker/ scripts/ tests/
+      - run: ruff format --check app/ archive/ worker/ scripts/ tests/
 
       # WO-11 (2026-08-16): scan all three services' compiled lockfiles
       # for known vulnerabilities. Non-blocking on purpose for now --

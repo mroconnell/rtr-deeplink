@@ -28,7 +28,9 @@ def test_all_account_routes_404_with_no_token():
 
 def test_all_account_routes_404_with_wrong_token():
     for path, body in _ROUTES:
-        response = client.post(path, json=body, headers={"Authorization": "Bearer not-the-real-token"})
+        response = client.post(
+            path, json=body, headers={"Authorization": "Bearer not-the-real-token"}
+        )
         assert response.status_code == 404, path
 
 

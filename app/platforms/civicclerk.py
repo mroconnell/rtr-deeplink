@@ -71,7 +71,9 @@ class CivicClerkAssetFinder(AssetFinder):
 
         async with aiohttp.ClientSession() as session:
             event, media = await self._fetch_json_pair(
-                session, f"{api_base}/Events/{event_id}", f"{api_base}/EventsMedia/{event_id}"
+                session,
+                f"{api_base}/Events/{event_id}",
+                f"{api_base}/EventsMedia/{event_id}",
             )
 
             title = event.get("eventName") or None
@@ -112,9 +114,15 @@ class CivicClerkAssetFinder(AssetFinder):
                         page_text=agenda_text, html="", url=url
                     )
 
-            video_url = media.get("videoUrl") or event.get("mediaStreamPath") or event.get("mediaSourcePathMp4")
+            video_url = (
+                media.get("videoUrl")
+                or event.get("mediaStreamPath")
+                or event.get("mediaSourcePathMp4")
+            )
             if not video_url:
-                video_url = media.get("externalVideoUrl") or event.get("externalMediaUrl")
+                video_url = media.get("externalVideoUrl") or event.get(
+                    "externalMediaUrl"
+                )
             video_format = None
             if video_url:
                 ext = video_url.rsplit(".", 1)[-1].split("?")[0].lower()
@@ -141,7 +149,9 @@ class CivicClerkAssetFinder(AssetFinder):
             if video_url:
                 yt_video_id = YouTubeAssetFinder.extract_video_id(video_url)
                 if yt_video_id:
-                    youtube_delegated = await YouTubeAssetFinder.resolve_video_id(yt_video_id, source_url=url)
+                    youtube_delegated = await YouTubeAssetFinder.resolve_video_id(
+                        yt_video_id, source_url=url
+                    )
                     video_url = youtube_delegated.video_url
                     video_format = youtube_delegated.video_format
 
@@ -151,9 +161,15 @@ class CivicClerkAssetFinder(AssetFinder):
             # there's no tracks array -- but closedCaptionTracks is the
             # richer source when there's more than one language, so it's
             # preferred when present.
-            caption_urls = [t["file"] for t in (media.get("closedCaptionTracks") or []) if t.get("file")]
+            caption_urls = [
+                t["file"]
+                for t in (media.get("closedCaptionTracks") or [])
+                if t.get("file")
+            ]
             if not caption_urls:
-                fallback = media.get("closedCaptionUrl") or media.get("transcriptionUrl")
+                fallback = media.get("closedCaptionUrl") or media.get(
+                    "transcriptionUrl"
+                )
                 if fallback:
                     caption_urls = [fallback]
 
@@ -162,15 +178,28 @@ class CivicClerkAssetFinder(AssetFinder):
                 text_fallback_candidates = []  # (url, text) -- no real timing available
                 unreadable_urls = []
                 for caption_url in caption_urls:
-                    cues, fallback_text = await self._fetch_captions(session, caption_url)
+                    cues, fallback_text = await self._fetch_captions(
+                        session, caption_url
+                    )
                     if cues:
-                        candidates.append((caption_url, cues, detect_language_from_texts(c.get("text") for c in cues)))
+                        candidates.append(
+                            (
+                                caption_url,
+                                cues,
+                                detect_language_from_texts(c.get("text") for c in cues),
+                            )
+                        )
                     elif fallback_text:
                         text_fallback_candidates.append((caption_url, fallback_text))
-                    elif caption_url.lower().split("?")[0].rsplit(".", 1)[-1] not in STRUCTURED_CAPTION_PARSERS:
+                    elif (
+                        caption_url.lower().split("?")[0].rsplit(".", 1)[-1]
+                        not in STRUCTURED_CAPTION_PARSERS
+                    ):
                         unreadable_urls.append(caption_url)
 
-                target_match = next((c for c in candidates if c[2] == TARGET_LANGUAGE), None)
+                target_match = next(
+                    (c for c in candidates if c[2] == TARGET_LANGUAGE), None
+                )
                 chosen = target_match or (candidates[0] if candidates else None)
 
                 if chosen:
@@ -189,7 +218,12 @@ class CivicClerkAssetFinder(AssetFinder):
                             "a transcript from the audio instead."
                         )
                     alternate_transcripts = [
-                        AlternateTranscript(language=lang, segments=[TranscriptSegment(**cue) for cue in candidate_cues])
+                        AlternateTranscript(
+                            language=lang,
+                            segments=[
+                                TranscriptSegment(**cue) for cue in candidate_cues
+                            ],
+                        )
                         for candidate_url, candidate_cues, lang in candidates
                         if candidate_url != _url
                     ]
@@ -203,7 +237,8 @@ class CivicClerkAssetFinder(AssetFinder):
                     _url, fallback_text = text_fallback_candidates[0]
                     segments = [
                         TranscriptSegment(start=0.0, end=0.0, text=line)
-                        for line in fallback_text.split("\n") if line.strip()
+                        for line in fallback_text.split("\n")
+                        if line.strip()
                     ]
                     transcript_warnings.append(
                         "This meeting has captions, but in a format we can only show "
@@ -219,7 +254,9 @@ class CivicClerkAssetFinder(AssetFinder):
                         "A caption file is referenced for this event but couldn't be fetched or parsed."
                     )
             else:
-                transcript_warnings.append("No caption or transcript data found for this event.")
+                transcript_warnings.append(
+                    "No caption or transcript data found for this event."
+                )
 
             if not segments and youtube_delegated and youtube_delegated.segments:
                 segments = youtube_delegated.segments
@@ -232,13 +269,21 @@ class CivicClerkAssetFinder(AssetFinder):
         agenda_items: List[TranscriptSegment] = []
         bookmarks = media.get("eventBookmarks") or []
         if bookmarks:
-            sorted_marks = sorted(bookmarks, key=lambda b: b.get("markerTimeStart") or 0)
+            sorted_marks = sorted(
+                bookmarks, key=lambda b: b.get("markerTimeStart") or 0
+            )
             for i, mark in enumerate(sorted_marks):
                 start = float(mark.get("markerTimeStart") or 0)
-                end = float(sorted_marks[i + 1].get("markerTimeStart") or start) if i + 1 < len(sorted_marks) else start
+                end = (
+                    float(sorted_marks[i + 1].get("markerTimeStart") or start)
+                    if i + 1 < len(sorted_marks)
+                    else start
+                )
                 text = mark.get("markerTitle") or mark.get("markerText") or ""
                 if text:
-                    agenda_items.append(TranscriptSegment(start=start, end=max(end, start), text=text))
+                    agenda_items.append(
+                        TranscriptSegment(start=start, end=max(end, start), text=text)
+                    )
 
         return ResolvedMeeting(
             platform=self.platform_name,
@@ -263,7 +308,9 @@ class CivicClerkAssetFinder(AssetFinder):
         Real confirmed format so far is .srt (Emporia, KS); .vtt is in the
         schema's shape but has never actually been observed either."""
         try:
-            async with session.get(caption_url, timeout=aiohttp.ClientTimeout(total=20)) as response:
+            async with session.get(
+                caption_url, timeout=aiohttp.ClientTimeout(total=20)
+            ) as response:
                 if response.status != 200:
                     return None, None
                 raw = await response.read()
@@ -273,7 +320,9 @@ class CivicClerkAssetFinder(AssetFinder):
         return parse_captions_by_extension(caption_url, content)
 
     @staticmethod
-    async def _fetch_agenda_text(session: aiohttp.ClientSession, event: dict) -> Optional[str]:
+    async def _fetch_agenda_text(
+        session: aiohttp.ClientSession, event: dict
+    ) -> Optional[str]:
         """Best-effort plaintext of this event's real agenda file, when one
         exists -- never raises, returns None on any failure. `publishedFiles`
         entries carry a `GetMeetingFile(fileId=...,plainText=false)` URL by
@@ -283,21 +332,29 @@ class CivicClerkAssetFinder(AssetFinder):
         fetched here as a second request, since the blob itself isn't JSON.
         """
         agenda_file = next(
-            (f for f in (event.get("publishedFiles") or []) if f.get("type") == "Agenda" and f.get("url")),
+            (
+                f
+                for f in (event.get("publishedFiles") or [])
+                if f.get("type") == "Agenda" and f.get("url")
+            ),
             None,
         )
         if not agenda_file:
             return None
         plaintext_url = agenda_file["url"].replace("plainText=false", "plainText=true")
         try:
-            async with session.get(plaintext_url, timeout=aiohttp.ClientTimeout(total=20)) as resp:
+            async with session.get(
+                plaintext_url, timeout=aiohttp.ClientTimeout(total=20)
+            ) as resp:
                 if resp.status != 200:
                     return None
                 blob_info = await resp.json()
             blob_uri = blob_info.get("blobUri")
             if not blob_uri:
                 return None
-            async with session.get(blob_uri, timeout=aiohttp.ClientTimeout(total=20)) as resp:
+            async with session.get(
+                blob_uri, timeout=aiohttp.ClientTimeout(total=20)
+            ) as resp:
                 if resp.status != 200:
                     return None
                 return await resp.text()
@@ -312,4 +369,5 @@ class CivicClerkAssetFinder(AssetFinder):
                 return await resp.json()
 
         import asyncio
+
         return await asyncio.gather(get(url_a), get(url_b))

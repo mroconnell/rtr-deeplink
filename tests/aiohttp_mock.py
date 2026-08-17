@@ -17,8 +17,13 @@ import aiohttp
 
 class FakeResponse:
     def __init__(
-        self, status: int = 200, text: str = "", raw: bytes = None, url: str = None,
-        text_raises: Exception = None, headers: dict = None,
+        self,
+        status: int = 200,
+        text: str = "",
+        raw: bytes = None,
+        url: str = None,
+        text_raises: Exception = None,
+        headers: dict = None,
     ):
         self.status = status
         self._text = text
@@ -55,12 +60,15 @@ class FakeResponse:
         # real ChampDS API serves its JSON as `text/html` (confirmed
         # live), not `application/json`.
         import json as _json
+
         return _json.loads(self._text)
 
     def raise_for_status(self):
         if self.status >= 400:
             raise aiohttp.ClientResponseError(
-                request_info=mock.Mock(), history=(), status=self.status,
+                request_info=mock.Mock(),
+                history=(),
+                status=self.status,
             )
 
 
@@ -73,7 +81,9 @@ def mock_session(routes: dict):
     def fake_get(self, url, **kwargs):
         key = str(url)
         if key not in routes:
-            raise AssertionError(f"Unmocked request in test: {key}\nKnown routes: {sorted(routes)}")
+            raise AssertionError(
+                f"Unmocked request in test: {key}\nKnown routes: {sorted(routes)}"
+            )
         response = routes[key]
         if not response.url:
             response.url = key
