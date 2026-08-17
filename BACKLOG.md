@@ -378,6 +378,112 @@ anything) to build against it.
 
 ## Bugs
 
+- **[IMPROVEMENT-ROUND] Jurisdiction-bleed on eScribe, confirmed via a full
+  `/coverage` sweep 2026-08-17 — the same Title-Case/ALL-CAPS bleed gap
+  already documented for Granicus, plus a bigger, structural gap it
+  exposed: the trim-repair safety net can't run at all for non-US
+  sources.** Sorted all 871 rows of the live "Every place we've covered"
+  table by jurisdiction text and scanned adjacent pairs for one string
+  being a prefix of another (a clean jurisdiction followed immediately by
+  the same name plus trailing bled text) — 8 real, confirmed bleed cases,
+  every one on `*.escribemeetings.com`:
+
+  | Real city | What shows instead | Source |
+  |---|---|---|
+  | Brampton, ON | "Brampton Meeting" | pub-brampton.escribemeetings.com |
+  | Shelburne, ON | "Brantford regarding Professional Activity" | pub-shelburne.escribemeetings.com |
+  | Delta, BC | "Delta Housing Accelerator Fund Initiatives Summary.pdf Recommendation" | pub-delta.escribemeetings.com |
+  | Gainesville, FL | "Gainesville City Commission Regular Meeting AGENDA Thursday, FL" | pub-cityofgainesville.escribemeetings.com |
+  | Kelowna, BC | "Kelowna Regular Council Meeting AGENDA Monday" | kelownapublishing.escribemeetings.com |
+  | Mississauga, ON | "Mississauga as being part of the Treaty and Traditional Territory of the Mississaugas of the Credit First Nation" | pub-mississauga.escribemeetings.com |
+  | Oshawa, ON | "Oshawa is situated on lands within the traditional and treaty territory of the Michi Saagiig and Chippewa Anishinaabeg and the signatories of the Williams Treaties" | pub-oshawa.escribemeetings.com |
+  | Uxbridge, ON | "Peterborough Attachments" | pub-uxbridge.escribemeetings.com |
+
+  **Root cause, confirmed by reading `app/utils/jurisdiction_enrich.py`
+  directly, not assumed — two independent causes, not one:**
+
+  1. **7 of 8 (every Canadian one) never reach the bleed check at all.**
+     `finalize_jurisdiction()`'s `_trim_repair()` only calls
+     `_looks_like_bleed()` on a candidate tail *after* the trimmed prefix
+     validates against `_table_lookup()` — and `_table_lookup()`'s tables
+     (`places.csv`/`counties.csv`/`county_subdivisions.csv` in
+     `app/utils/jurisdiction_data/`) are pure US Census Bureau data, no
+     Canadian equivalent exists anywhere in this repo. So for a Canadian
+     source, no cut of the string ever validates, the loop exhausts
+     without ever calling `_looks_like_bleed()`, and the raw bled text
+     falls through to `finalize_jurisdiction()`'s `"unverified"` bucket —
+     kept exactly as-is, the same bucket a real, correct Canadian name
+     like "Elliot Lake, ON" also lands in, since the system currently has
+     no way to tell a real unverifiable name from bled garbage on a
+     source it can't validate against anything.
+  2. **The 1 US case (Gainesville) does reach the check, and hits the
+     already-known blind spot.** "Gainesville" alone validates, so
+     `_looks_like_bleed()` runs against the tail "City Commission Regular
+     Meeting AGENDA Thursday" — every word starts uppercase (including
+     the all-caps "AGENDA"), so the lowercase/digit/roman-numeral-only
+     heuristic correctly-by-its-own-rule returns `False`. This is the
+     exact residual gap already flagged in this file for 4 Granicus cases
+     (Sarasota, Punta Gorda, Castle Rock, Castle Pines) — now confirmed
+     recurring on eScribe too, not Granicus-specific.
+
+  **Fix directions, two independent pieces, not equal size:**
+  - **The real fix for #1**: add a Canadian city/county-level table to
+    `app/utils/jurisdiction_data/` (Statistics Canada's Census Subdivision
+    file is the direct equivalent of what `places.csv`/`counties.csv`
+    already are) and add its rows into the *same* files `_load_name_state_table()`
+    already reads — confirmed by reading that function directly that
+    nothing about the loading/lookup code is US-specific, it's purely a
+    property of the data today. Also confirmed no 2-letter abbreviation
+    collision exists between any of the 13 Canadian province/territory
+    codes and the 50 US state codes, and the existing
+    ambiguity-safety (`lookup_city_state()`/`lookup_county_state()`
+    already return `None` rather than guess on a name that maps to more
+    than one "state") extends for free to a real US/Canada name collision
+    once both live in one table — no new ambiguity-handling code needed,
+    just real data. **Note this is a different table from the
+    province-level one added to `archive/utils/jurisdiction_format.py`
+    the same night (Canada support on `/coverage`'s "Browse by state") —
+    that one is for state/province-level display and grouping; this one
+    is city/county-level and is what the bleed-repair logic actually
+    depends on. Easy to conflate, don't assume fixing one fixes the
+    other.**
+  - **The smaller fix for #2**: extend `_looks_like_bleed()`'s tail check
+    to also flag an unusually long run of consecutive Title-Case/ALL-CAPS
+    words as bleed-like even with zero lowercase signal — a generic
+    length/shape signal (several capitalized words in a row is itself
+    suspicious), not tied to any specific vocabulary or subject matter.
+
+  Not yet attempted this pass — flagging with full root-cause detail
+  rather than guessing at either fix blind, same "verify before fixing"
+  convention as the rest of this file.
+
+- **[JUST-DO-IT] Same `/coverage` sweep also found 16 real pairs of a
+  jurisdiction appearing twice — once bare, once with its state suffix —
+  a different, simpler bug than the bleed cases above.** E.g. "Albany"
+  and "Albany, CA" both exist as separate values on real archived pages;
+  same pattern for Ashland/WI, Bakersfield/CA, Cook County/IL, Dublin/CA,
+  Frederick County/MD, Glendale/CA, Harris County/TX, Jacksonville/FL,
+  Memphis/TN, Milton/FL, Minneapolis/MN, Nassau County/FL, Redmond/OR,
+  San Jose/CA, and Washington County/VA. Not investigated further this
+  pass (found via a sort-adjacency scan while looking for bleed
+  specifically, not a dedicated audit) — likely either older archived
+  pages that predate `normalize_state_suffix()`'s adoption, or a source
+  whose raw jurisdiction text never had a state to begin with and no
+  fallback fired. Worth a real backfill sweep once root-caused, same
+  shape as this repo's existing stale-archive-backfill pattern.
+
+- **[NEEDS-AUDIT] Same sweep found one likely truncation case — the
+  opposite failure from bleed (losing real characters, not gaining
+  fake ones).** A bare "Pitt" appears as its own jurisdiction value on a
+  real archived page, separate from "Pittsburg, CA" which also exists
+  correctly elsewhere in the table — "Pitt" isn't a real jurisdiction on
+  its own, so this reads as "Pittsburg, CA" chopped off mid-word. Only
+  one example found; not enough to root-cause confidently yet (could be
+  a regex length cap cutting a word in half, matching the
+  mid-word-truncation signal already documented elsewhere in this file
+  for title extraction — or something else). Worth watching for a second
+  example before designing a fix.
+
 - **[HUMAN] Schema-migration deploy ordering has now caused a real, sitewide
   Archive outage (2026-08-17, ~09:25–09:38 PT) — the third schema-change
   incident in this repo's history, and the strongest evidence yet for
