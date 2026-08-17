@@ -3239,6 +3239,33 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   full migration chain (GIN Bitmap Index Scan confirmed via EXPLAIN for
   the exact operator SQLAlchemy emits).
 
+  **Step 1 live result was only half the win — and the follow-up (#131,
+  same day) is what makes the SQL itself fast:** after #129 deployed,
+  search no longer crashed (fuzzy and `"public comment"` 503→200,
+  counts/snippets correct) but exact search on common terms was *still*
+  21–33s — now provably inside Postgres, on the predicate itself. Rare
+  trigrams (`quokka`) 0.7s vs common ones ~25s regardless of match
+  count: the trigram GIN can't be selective for trigrams every 300KB
+  transcript contains, so every row is rechecked by scanning its whole
+  document, twice (page query + separate COUNT). Reproduced on a real
+  postgres:16 with 1,219 × 300KB lowercase docs + the GIN index (numbers
+  in `BACKLOG_DONE.md`): the two cheap fixes shipped as #131 — **(a)
+  `LIKE` instead of `ILIKE`** (the corpus is lowercased at write time and
+  `parse_query()` lowercases terms, so identical semantics; ILIKE was
+  case-folding every full document per row via locale — 7.7s→1.75s,
+  same gap with the index disabled), and **(b) one query with `count(*)
+  OVER ()`** instead of a separate COUNT (halves the scans). Combined
+  bench: 15.4s→1.76s (8.8×). Two findings recorded, not fixed: the
+  planner **doesn't even use the GIN index** for these — the heap is
+  tiny because the corpora are TOASTed, so the cost model sees "31
+  pages" and seq-scans, blind to detoast cost (irrelevant for common
+  terms, where the index can't help anyway; means rare terms pay a full
+  scan they needn't); and the same bench's stored `tsvector` column
+  answered `@@ 'budget'` in **0.00s** (count) / **0.10s** (ranked page)
+  / 0.15s (phrase) — i.e. Step 2a below isn't just ranking, it's the
+  only path to sub-second on common terms; trigram GIN is structurally
+  the wrong index for "does this huge doc contain this common word".
+
   **Step 2 — still open, two independent halves, both need one schema
   migration each and so should wait for WO-10's deploy-time migration
   mechanism (see the reliability-audit section) after today's two

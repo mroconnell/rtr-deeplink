@@ -77,9 +77,53 @@ SQLAlchemy emits (`~~*`) hits `ix_meeting_pages_search_corpus_trgm` as a
 Bitmap Index Scan; the has_agenda text-cast predicate confirmed against
 real JSON-`null` rows. (Postgres runs need `loop_scope="session"` on the
 test file — asyncpg's import-time pool is loop-bound; documented in the
-file, harmless on SQLite.) Live production numbers recorded in the
-`BACKLOG.md` search entry once #129 deploys. Step 2 (FTS ranking; fuzzy
-vocabulary table) backlogged there with full designs.
+file, harmless on SQLite.) Step 2 (FTS ranking; fuzzy vocabulary table)
+backlogged in `BACKLOG.md`'s search entry with full designs.
+
+**Live after #129 deployed (2026-08-17 ~10:57 PT)**: correct and no
+longer crashing — `budget` "Page 1 of 45", `flock` "Page 1 of 5", 20
+`<mark>` snippets, fuzzy 200 (was 503), `"public comment"` 200 (was 503),
+browse 0.56s — **but exact search still 21–33s** (`budget` 26s, `flock`
+34s, `"public comment"` 32s, `budget&page=40` 28s, fuzzy 21s). So the
+diagnosis above was only half right: the JSON load was *a* cost, but the
+dominant one for common terms is the SQL predicate itself. Tell: rare
+trigrams (`quokka`) 0.7s vs anything with common trigrams ~25s regardless
+of match count — the trigram GIN yields ~every row as a candidate for
+trigrams that every 300KB transcript contains, and each is rechecked by
+scanning its full document, twice (page + separate COUNT).
+
+**Follow-up #131 (same day, Ryan: "ship (a) and (b) if the numbers hold
+up") — benchmarked first on a real postgres:16 with 1,219 × 300KB
+lowercase docs (444MB, real-word vocab, "budget" in 75%) + the pg_trgm
+GIN index:**
+
+| query | time |
+|---|---|
+| as deployed by #129: `ILIKE` page + separate `ILIKE` COUNT | 7.7s + 7.7s |
+| (a) `LIKE` page / COUNT | 1.75s / 1.76s |
+| (a)+(b) `LIKE` + `count(*) OVER ()` in one query | **1.76s total (8.8×)** |
+| `ILIKE` vs `LIKE` with `enable_bitmapscan=off` (pure recheck cost) | 7.69s vs 1.79s |
+| phrase `"public comment"` ILIKE → LIKE | 8.7s → 2.8s |
+| stored `tsvector` GENERATED column, `@@ 'budget'` count / ranked page / phrase | 0.00s / 0.10s / 0.15s |
+
+(a) is semantics-preserving by construction — `search_corpus` is
+lowercased at write time (`compute_search_corpus()` → `build_corpus()` →
+`.lower()`) and `parse_query()` lowercases terms — while Postgres's ILIKE
+case-folds every full document per row via locale before matching; the
+identical gap with the index disabled proves it's the recheck, not index
+selection. (b) rides the total along as a window aggregate on the same
+LIMIT/OFFSET query (a page past the end, no rows, falls back to the
+standalone COUNT). New test pins the compiled operator is `LIKE` not
+`ILIKE` on the Postgres dialect. Verified on the real-Postgres container
+(both test files green; window total == standalone count with LIMIT
+applied after). Two findings recorded in `BACKLOG.md`, not fixed: the
+planner doesn't use the GIN index at all here (TOASTed corpora → tiny
+heap → "31 pages" cost estimate → seq scan; harmless for common terms,
+a missed win for rare ones), and the tsvector row above means Step 2a is
+the only sub-second path for common terms — trigram GIN is structurally
+the wrong index for "does this huge doc contain this common word".
+Expected prod after #131: ~25s → ~3s (Render's box is slower than the
+bench machine).
 
 ## [Done — moved from BACKLOG.md 2026-08-17] `/meetings` search & saved items — UI gaps found 2026-08-11
 

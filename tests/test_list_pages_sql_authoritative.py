@@ -268,3 +268,17 @@ async def test_transcription_completion_refreshes_search_corpus():
         assert unique in (page.search_corpus or "")
     # ...and it's actually searchable, which is what the corpus is for.
     assert slug in await _slugs(keyword=unique)
+
+
+def test_keyword_predicate_is_like_not_ilike():
+    # search_corpus is lowercased at write time and parse_query() lowercases
+    # terms, so LIKE == ILIKE here -- but ILIKE case-folds every
+    # multi-hundred-KB document per row on Postgres (measured 4.4x slower,
+    # see _corpus_contains()). Pin the operator at the SQL level.
+    from sqlalchemy.dialects import postgresql
+
+    conditions, _ = crud._keyword_conditions('budget "public comment" -flock', False)
+    for cond in conditions:
+        sql = str(cond.compile(dialect=postgresql.dialect()))
+        assert " LIKE " in sql, sql
+        assert "ILIKE" not in sql, sql
