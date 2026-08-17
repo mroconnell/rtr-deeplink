@@ -191,7 +191,7 @@ def test_is_likely_garbled_true_for_clean_prefix_then_garbled_tail():
         "did a radio show over s"
     )
     garbled_fragment = (
-        '6~\x7fkf}IXFpu;f[So1d ko/8#\n:wb0oi>3I7\n]O?3/8ns"ZeHr/I/w\'dx6t\n'
+        "6~\x7fkf}IXFpu;f[So1d ko/8#\n:wb0oi>3I7\n]O?3/8ns\"ZeHr/I/w'dx6t\n"
         '"w6tp^Nngzhur+6zg\n^NQn:f&IFRe~dn\x7fDf1!\n\x7fk\ntCu\n'
         "w_MRrHnw6tp^NngzhIXf\nTr+6~g>mGjr+6~g>mGjr+6~g>mGjr+6~g>mGjr+6~"
         'g>Ogm?,f1?Mm?$b\n?Iv^nq>wrc12f\x7f+Df{" c\n0"\nu\x7fk=\n'
@@ -201,8 +201,8 @@ def test_is_likely_garbled_true_for_clean_prefix_then_garbled_tail():
     # filler (itself alternating real-shaped clean/garbled blocks) so the
     # 0/25/50/75% sample offsets land in the same real regions confirmed
     # above rather than only ever hitting index 0.
-    padding_clean = ("the meeting will come to order. " * 200)
-    padding_garbled = (garbled_fragment * 40)
+    padding_clean = "the meeting will come to order. " * 200
+    padding_garbled = garbled_fragment * 40
     full_text = clean_prefix + padding_clean + padding_garbled
     cues = [{"start": 0, "end": 1, "text": full_text}]
     assert is_likely_garbled(cues) is True
