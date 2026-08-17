@@ -106,6 +106,40 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="rtr-deeplink", lifespan=lifespan)
 
+
+@app.middleware("http")
+async def handle_head_requests(request: Request, call_next):
+    """Every route here is declared with @app.get(...)/@app.post(...) etc,
+    and FastAPI/Starlette does *not* automatically answer a bare HTTP HEAD
+    for a GET route the way some frameworks do -- with no handling at all,
+    a HEAD (used by uptime checks like UptimeRobot, some crawlers, `curl
+    -I`) 405s on every one of this app's 27 routes. Rather than annotating
+    each route individually, dispatch a HEAD request internally as a GET
+    (rewriting `request.scope["method"]` before it reaches routing, so the
+    real GET handler runs unmodified) and return the real response's
+    status/headers with the body stripped -- per RFC 9110 4.2 HEAD's
+    response must have the same headers a GET would have (including
+    Content-Length), just no body. This also covers every route added
+    later with no further changes needed.
+
+    Note: `call_next`'s returned object is always Starlette's internal
+    `_StreamingResponse` wrapper, whose own `.background` is hardcoded to
+    `None` -- any real BackgroundTasks a route attaches (e.g. /api/resolve's
+    Archive push) run as part of the real handler's own response inside
+    `call_next`'s concurrent dispatch, independent of the empty response
+    built here, so there's nothing to carry over."""
+    if request.method != "HEAD":
+        return await call_next(request)
+    request.scope["method"] = "GET"
+    response = await call_next(request)
+    return Response(
+        content=b"",
+        status_code=response.status_code,
+        headers=dict(response.headers),
+        media_type=response.media_type,
+    )
+
+
 # /api/resolve is public and unauthenticated, and every call fans out to
 # fetch a real government meeting site -- rate limiting protects both that
 # site (being a good citizen about how hard we hit it) and this app's own
