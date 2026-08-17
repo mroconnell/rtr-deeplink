@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 from urllib.parse import urlparse
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import Text, and_, cast, func, or_, select
 
 from app.utils.jurisdiction_enrich import finalize_jurisdiction
 
@@ -18,7 +18,6 @@ from ..utils.jurisdiction_format import (
 )
 from ..utils.language import detect_language_from_texts
 from ..utils.search import (
-    build_corpus,
     compute_search_corpus,
     find_snippet,
     matches,
@@ -28,7 +27,7 @@ from ..utils.search import (
 from ..utils.slugify import build_base_slug, random_suffix
 from ..utils.transcription_quality import detect_hallucination_warnings
 from ..utils.url_normalize import normalize_url
-from .engine import DATABASE_URL, async_session
+from .engine import async_session
 from .models import (
     MeetingPage,
     MeetingPageUrlAlias,
@@ -400,6 +399,36 @@ def _default_looks_like_copied_agenda(
     return bool(seg_texts) and seg_texts == agenda_texts
 
 
+async def _refresh_search_corpus(session, page: MeetingPage) -> None:
+    """Recompute `page.search_corpus` from the page's current metadata +
+    every linked TranscriptVersion's segments (flushed, not necessarily
+    committed -- runs inside the caller's session). Must be called from
+    every path that creates a TranscriptVersion or changes title/
+    jurisdiction/agenda_items -- as of 2026-08-17 that's
+    ingest_resolution() and the worker's transcription-completion path in
+    report_chunk_result(). The latter was a real gap found the same day
+    the SQL-side search shipped: a Whisper transcript that finished after
+    a page's last ingest never made it into the corpus, so on Postgres
+    (where the corpus is the authoritative match, see list_pages()) that
+    meeting's transcript text was silently unsearchable until something
+    re-ingested the page.
+    """
+    all_segments = (
+        (
+            await session.execute(
+                select(TranscriptVersion.segments).where(
+                    TranscriptVersion.meeting_page_id == page.id
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    page.search_corpus = compute_search_corpus(
+        page.title, page.jurisdiction, page.agenda_items, all_segments
+    )
+
+
 async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) -> dict:
     """Create a MeetingPage (or attach a new TranscriptVersion to an
     existing one) from a resolver push. `payload` is the resolver's
@@ -539,20 +568,7 @@ async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) 
         # changes this: the corpus covers every version's text regardless
         # of is_default (see list_pages()'s docstring), so which version
         # is currently default doesn't affect what's in the corpus.
-        all_segments = (
-            (
-                await session.execute(
-                    select(TranscriptVersion.segments).where(
-                        TranscriptVersion.meeting_page_id == page.id
-                    )
-                )
-            )
-            .scalars()
-            .all()
-        )
-        page.search_corpus = compute_search_corpus(
-            page.title, page.jurisdiction, page.agenda_items, all_segments
-        )
+        await _refresh_search_corpus(session, page)
 
         await session.commit()
         # version_id is matched_version_id above: the TranscriptVersion this
@@ -959,17 +975,6 @@ async def get_page_by_slug(slug: str) -> Optional[dict]:
         }
 
 
-_IS_POSTGRES = not DATABASE_URL.startswith("sqlite")
-
-# Recall-safe on purpose: word_similarity() only needs to narrow the
-# candidate set without ever excluding a genuine fuzzy match -- matches()
-# (archive/utils/search.py) still runs downstream on whatever this lets
-# through and makes the real per-word Levenshtein decision. Deliberately
-# loose starting point; needs tuning against real Postgres data before
-# this path is trusted in prod, see BACKLOG.md.
-_FUZZY_WORD_SIMILARITY_THRESHOLD = 0.15
-
-
 def _escape_ilike(term: str) -> str:
     """Escapes `\\`, `%`, `_` so a literal one of these typed in a search
     box is matched literally against `search_corpus`, not treated as an
@@ -977,48 +982,67 @@ def _escape_ilike(term: str) -> str:
     return term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
-def _keyword_conditions_postgres(keyword: str, fuzzy: bool) -> list:
-    """Postgres-only: translates `keyword` into SQL conditions against
-    `MeetingPage.search_corpus` that narrow candidates via the GIN
-    trigram index, using the exact same phrase/word/exclusion parsing
-    `matches()` uses at the final Python-side match step below --
-    `list_pages()` never trusts this alone, it only shrinks the row set
-    Python then re-checks with `matches()`/builds snippets from. See
-    `list_pages()`'s own docstring for why this only runs on Postgres.
+def _corpus_contains(term: str):
+    return MeetingPage.search_corpus.ilike(f"%{_escape_ilike(term)}%", escape="\\")
 
-    Phrases and exclusions always use exact ILIKE substring matching
-    (mirroring `matches()`'s own "always exact, even in fuzzy mode" rule
-    for phrases/exclusions); only unquoted included words branch on
-    `fuzzy`, using `word_similarity()` -- not `similarity()`/`%`, which
-    would compare the *whole* multi-KB corpus against a short word and be
-    dominated by corpus length rather than by whether a matching word
-    exists inside it.
+
+def _keyword_conditions(keyword: str, fuzzy: bool) -> tuple[list, list[str]]:
+    """Translates `keyword` into SQL conditions against
+    `MeetingPage.search_corpus`, plus the list of unquoted words that
+    still need Python-side fuzzy matching (empty in exact mode).
+
+    In exact mode the SQL is *authoritative*, not a pre-filter: `matches()`
+    (archive/utils/search.py) decides exact mode as `term in corpus` where
+    `corpus` is `build_corpus(title, jurisdiction, agenda, transcript)` --
+    and `search_corpus` is `compute_search_corpus()`, which is that same
+    `build_corpus()` over the same four fields, lowercased, with
+    `parse_query()` lowercasing the terms. `ILIKE '%term%'` on that column
+    is therefore literally the same predicate; re-running it in Python
+    over freshly-loaded transcript JSON (what list_pages() did before
+    2026-08-17) added nothing but the memory/latency that OOM-crashed the
+    Archive on common terms -- see BACKLOG_DONE.md. Phrases and exclusions
+    are exact in both modes (matches()'s own rule), so they always go to
+    SQL. Runs identically on Postgres (where the GIN trigram index makes
+    it fast) and SQLite (dev/CI, unindexed but the same code path).
+
+    Fuzzy words are the one thing SQL can't decide: matches()'s bounded
+    Levenshtein against real corpus words has no recall-safe SQL
+    equivalent -- pg_trgm's word_similarity() over a multi-hundred-KB
+    document is either too loose to narrow anything (at the recall-safe
+    0.15 threshold the earlier version used) or drops genuine 2-edit
+    typos (anything selective), and costs tens of ms of server CPU per
+    row either way. So fuzzy words are returned for the caller to check
+    in Python over the corpus text -- streamed one row at a time (see
+    list_pages()), never the transcript JSON. The real fix for fuzzy is a
+    trigram-indexed vocabulary table (BACKLOG.md's search entry, "Step
+    2b"); until then fuzzy stays the opt-in, UI-labeled "slower" mode.
     """
     phrases, words, excluded_phrases, excluded_words = parse_query(keyword)
-    conditions = []
-    for phrase in phrases:
-        conditions.append(
-            MeetingPage.search_corpus.ilike(f"%{_escape_ilike(phrase)}%", escape="\\")
-        )
-    for phrase in excluded_phrases:
-        conditions.append(
-            ~MeetingPage.search_corpus.ilike(f"%{_escape_ilike(phrase)}%", escape="\\")
-        )
-    for word in excluded_words:
-        conditions.append(
-            ~MeetingPage.search_corpus.ilike(f"%{_escape_ilike(word)}%", escape="\\")
-        )
-    for word in words:
-        if fuzzy:
-            conditions.append(
-                func.word_similarity(word, MeetingPage.search_corpus)
-                > _FUZZY_WORD_SIMILARITY_THRESHOLD
-            )
-        else:
-            conditions.append(
-                MeetingPage.search_corpus.ilike(f"%{_escape_ilike(word)}%", escape="\\")
-            )
-    return conditions
+    conditions = [_corpus_contains(p) for p in phrases]
+    conditions += [~_corpus_contains(p) for p in excluded_phrases]
+    conditions += [~_corpus_contains(w) for w in excluded_words]
+    if fuzzy:
+        return conditions, list(words)
+    conditions += [_corpus_contains(w) for w in words]
+    return conditions, []
+
+
+def _has_agenda_condition():
+    """SQL equivalent of Python's `bool(mp.agenda_items)`. agenda_items is
+    a JSON column that can hold SQL NULL (older rows), JSON `null`
+    (SQLAlchemy's default for a Python None -- `none_as_null` is off), or
+    `[]` (what ingest writes when the resolver sent nothing, crud.py's
+    `payload.get("agenda_items") or []`) -- all three are "no agenda".
+    Compared as text rather than via json_array_length(), which raises on
+    Postgres for a JSON scalar like `null`. Portable across Postgres JSON
+    (`::text` yields the stored JSON text verbatim) and SQLite (already
+    text). The app only ever writes json.dumps output, so an empty array
+    is exactly `[]`, never `[ ]`.
+    """
+    return and_(
+        MeetingPage.agenda_items.is_not(None),
+        cast(MeetingPage.agenda_items, Text).not_in(("[]", "null")),
+    )
 
 
 async def list_pages(
@@ -1034,50 +1058,47 @@ async def list_pages(
     fuzzy: bool = False,
     created_after: Optional[datetime] = None,
 ) -> dict:
-    """Paginated listing for the /meetings index page. Filters and the
-    keyword search box narrow this same query rather than being a separate
-    feature (per the backlog note this was scoped from).
+    """Paginated meeting list behind /meetings (and the saved-search alert
+    sweep, via find_new_matches_for_saved_search()).
 
-    Keyword search covers title, jurisdiction, agenda item text, and
-    *every* transcript version's segment text for the page -- not just the
-    default one, so a version that's been demoted (e.g. a garbled scraped
-    caption superseded by a later AI transcript, or vice versa) is still
-    findable even though the listing itself only ever displays the
-    default version's language/has_transcript badge. See
-    `archive/utils/search.py`.
+    Every filter is applied in SQL -- jurisdiction (via
+    jurisdiction_search_terms()'s state-name expansion), date range,
+    created_after, has_transcript, has_agenda (_has_agenda_condition()),
+    and exact-mode keyword search (_keyword_conditions() against the
+    materialized `MeetingPage.search_corpus`, GIN-trigram-indexed on
+    Postgres). Pagination is LIMIT/OFFSET plus one COUNT(*), so a plain
+    browse or an exact search costs O(page_size) memory no matter how many
+    meetings match -- the 2026-08-17 rewrite, after the previous shape
+    (SQL pre-filter, then load every candidate's full transcript JSON for
+    a Python re-check, then paginate in Python) OOM-crashed the Archive on
+    common terms and took 25-35s when it survived. See BACKLOG_DONE.md.
 
-    On Postgres, a keyword search first narrows candidates in SQL via
-    `_keyword_conditions_postgres()` against `MeetingPage.search_corpus`
-    (a materialized, GIN-trigram-indexed column populated at ingest time
-    -- see `archive/db/models.py` and BACKLOG.md's "Search: move to a
-    materialized/indexed column" entry) -- so this function never has to
-    pull every candidate page's full transcript JSON just to test a
-    match. Only that narrowed row set then goes through the exact same
-    Python `matches()`/`find_snippet()` logic as before, which still
-    makes the authoritative match decision and builds snippets -- the SQL
-    step is a fast pre-filter, not a replacement for it. On SQLite
-    (dev/CI, which never has enough rows for this to matter) this
-    pre-filter is skipped entirely and the full Python-side scan runs
-    exactly as it always has -- see `_IS_POSTGRES` below.
+    Fuzzy mode is the one exception: unquoted words are matched in Python
+    by matches()'s bounded Levenshtein against each candidate's
+    `search_corpus` *text* (not transcript JSON), streamed one row at a
+    time so memory stays bounded, and paginated in Python. Phrases and
+    exclusions still narrow in SQL first. Measured ~5ms/doc CPU, so a few
+    seconds across the whole archive -- slow but no longer a crash; the
+    UI already labels fuzzy "slower". Why SQL can't do this: see
+    _keyword_conditions().
 
-    `jurisdiction`/`date_from`/`date_to`/`has_transcript` still filter in
-    SQL first (cheap, and `has_transcript` needs no JSON at all), so a
-    keyword-less, agenda-less browse of the page never fetches transcript
-    JSON it doesn't need. `has_agenda` can only be evaluated once agenda
-    content is in hand, so pagination still happens in Python over the
-    SQL-filtered candidate set, not via LIMIT/OFFSET, even on Postgres.
+    Snippets are built only for the page of rows actually returned, from
+    the *default* transcript version's segments (loaded for those <=
+    page_size rows only) plus agenda text -- deliberately not from
+    `search_corpus`, which spans every version: a query that only matches
+    an old, demoted version's text should still find the page, but never
+    show an excerpt the page itself doesn't display (real bug fixed
+    2026-08-08). See find_snippet().
 
-    `date` is stored as an ISO "YYYY-MM-DD" string, not a Date column --
-    lexicographic comparison on that format matches chronological order, so
-    plain >=/<= works for the date-range filter without a schema change.
-
-    `created_after` is a different axis from `date_from`/`date_to`: those
-    filter the meeting's own calendar date (a string), this filters
-    `MeetingPage.created_at` (a real timestamp column) -- when the page
-    was archived, not when the meeting happened. Added for
-    archive/search_alerts.py's "what's new since this saved search was
-    last checked" sweep, which has no other reason to exist in the normal
-    /meetings browsing UI.
+    The keyword search covers *every* TranscriptVersion of a page (the
+    corpus is computed over all of them, see compute_search_corpus()), so
+    a demoted version's text still counts toward a match while the
+    listing's language/has_transcript badge reflects the default version
+    only. `date` is an ISO "YYYY-MM-DD" string, so lexicographic
+    comparison is chronological. `created_after` filters
+    MeetingPage.created_at (when archived), a different axis from
+    date_from/date_to (when the meeting happened) -- used by the alert
+    sweep's "new since last check".
     """
     page = max(1, page)
     page_size = max(1, min(page_size, 100))
@@ -1098,146 +1119,146 @@ async def list_pages(
         conditions.append(TranscriptVersion.id.is_not(None))
     elif has_transcript is False:
         conditions.append(TranscriptVersion.id.is_(None))
-    if keyword and _IS_POSTGRES:
-        conditions.extend(_keyword_conditions_postgres(keyword, fuzzy))
+    if has_agenda is True:
+        conditions.append(_has_agenda_condition())
+    elif has_agenda is False:
+        conditions.append(~_has_agenda_condition())
+    fuzzy_words: list[str] = []
+    if keyword:
+        keyword_conditions, fuzzy_words = _keyword_conditions(keyword, fuzzy)
+        conditions.extend(keyword_conditions)
 
-    # The display-facing columns (language/has_transcript badge) still
-    # come from the default version only, via this same outerjoin as
-    # before -- only the *matching* corpus below expands to every version.
-    # transcript_warnings is pulled here (not just when a keyword search
-    # is active, unlike segments) since it's needed for every row's
-    # has_transcript badge below, not just search matching -- cheap, a
-    # short warnings list, not the full transcript JSON.
+    # Explicit columns, not the MeetingPage entity: keeps every row light
+    # (no identity map, no chance of a deferred column sneaking back in)
+    # and lets the fuzzy path stream + discard each corpus as it goes.
+    # id DESC as a tiebreaker makes pagination stable when many pages
+    # share a created_at (bulk ingests do).
+    default_version = and_(
+        TranscriptVersion.meeting_page_id == MeetingPage.id,
+        TranscriptVersion.is_default.is_(True),
+    )
+    columns = [
+        MeetingPage.id,
+        MeetingPage.slug,
+        MeetingPage.title,
+        MeetingPage.date,
+        MeetingPage.jurisdiction,
+        MeetingPage.meeting_body,
+        MeetingPage.platform,
+        MeetingPage.agenda_items,
+        TranscriptVersion.language,
+        TranscriptVersion.id,
+        TranscriptVersion.transcript_warnings,
+    ]
+    if fuzzy_words:
+        columns.append(MeetingPage.search_corpus)
     stmt = (
-        select(
-            MeetingPage,
-            TranscriptVersion.language,
-            TranscriptVersion.id,
-            TranscriptVersion.transcript_warnings,
-        )
-        .outerjoin(
-            TranscriptVersion,
-            and_(
-                TranscriptVersion.meeting_page_id == MeetingPage.id,
-                TranscriptVersion.is_default.is_(True),
-            ),
-        )
-        .order_by(MeetingPage.created_at.desc())
+        select(*columns)
+        .outerjoin(TranscriptVersion, default_version)
+        .order_by(MeetingPage.created_at.desc(), MeetingPage.id.desc())
     )
     if conditions:
         stmt = stmt.where(and_(*conditions))
 
     async with async_session() as session:
-        rows = (await session.execute(stmt)).all()
-
-        # Every version's segment text, not just the default's -- pulled
-        # in one extra query, only when a keyword search is actually
-        # running (same "don't drag transcript JSON over the wire for a
-        # plain browse" reasoning as before), keyed by page so a demoted
-        # version's text still counts toward a *match* even though it's
-        # never the one displayed. Separately, default_transcript_text_by_page
-        # tracks only the currently-displayed version's text -- used for
-        # the search-result *snippet* (below), not the match check. Real
-        # bug fixed 2026-08-08: a query that only matched an old, demoted
-        # version's text (e.g. pre-fix ALL-CAPS content superseded by a
-        # later re-transcription) still correctly found the page, but the
-        # snippet shown for it displayed that stale text -- confusing,
-        # since the page itself never shows it. Snippet text should only
-        # ever come from what a viewer would actually see on the page.
-        transcript_text_by_page: dict[int, str] = {}
-        default_transcript_text_by_page: dict[int, str] = {}
-        if keyword:
-            page_ids = [mp.id for mp, _lang, _vid, _warnings in rows]
-            if page_ids:
-                version_rows = (
-                    await session.execute(
-                        select(
-                            TranscriptVersion.meeting_page_id,
-                            TranscriptVersion.segments,
-                            TranscriptVersion.is_default,
-                        ).where(TranscriptVersion.meeting_page_id.in_(page_ids))
-                    )
-                ).all()
-                for page_id, segments, is_default in version_rows:
-                    text = " ".join(seg.get("text", "") for seg in (segments or []))
-                    transcript_text_by_page[page_id] = (
-                        f"{transcript_text_by_page.get(page_id, '')} {text}"
-                    )
-                    if is_default:
-                        default_transcript_text_by_page[page_id] = text
-
-    def _matches_page(mp: MeetingPage) -> bool:
-        if has_agenda is True and not mp.agenda_items:
-            return False
-        if has_agenda is False and mp.agenda_items:
-            return False
-        if not keyword:
-            return True
-        corpus = build_corpus(
-            mp.title or "",
-            mp.jurisdiction or "",
-            " ".join(item.get("text", "") for item in (mp.agenda_items or [])),
-            transcript_text_by_page.get(mp.id, ""),
-        )
-        return matches(keyword, corpus, tokenize(corpus) if fuzzy else set(), fuzzy)
-
-    filtered = []
-    for mp, lang, version_id, warnings in rows:
-        if _matches_page(mp):
-            filtered.append(
-                {"mp": mp, "lang": lang, "version_id": version_id, "warnings": warnings}
+        if fuzzy_words:
+            # Python-authoritative for the fuzzy words; stream so at most
+            # one corpus text is in memory at a time. `keyword` is passed
+            # whole to matches() -- it re-parses phrases/exclusions and
+            # re-checks them too, which is redundant with the SQL above
+            # but harmless (they already hold for every row we see).
+            matched: list[tuple] = []
+            result = await session.stream(stmt.execution_options(yield_per=200))
+            async for row in result:
+                corpus = row[-1] or ""
+                if matches(keyword, corpus, tokenize(corpus), True):
+                    matched.append(tuple(row[:-1]))
+            total = len(matched)
+            start = (page - 1) * page_size
+            page_rows = matched[start : start + page_size]
+        else:
+            count_stmt = (
+                select(func.count())
+                .select_from(MeetingPage)
+                .outerjoin(TranscriptVersion, default_version)
             )
+            if conditions:
+                count_stmt = count_stmt.where(and_(*conditions))
+            total = (await session.execute(count_stmt)).scalar_one()
+            page_rows = (
+                await session.execute(
+                    stmt.limit(page_size).offset((page - 1) * page_size)
+                )
+            ).all()
 
-    total = len(filtered)
-    total_pages = max(1, (total + page_size - 1) // page_size)
-    start = (page - 1) * page_size
-    page_rows = filtered[start : start + page_size]
+        # Snippet inputs for the returned rows only: the default version's
+        # segments (see the docstring for why not search_corpus).
+        default_segments_by_page: dict[int, list] = {}
+        if keyword and page_rows:
+            page_ids = [r[0] for r in page_rows]
+            seg_rows = (
+                await session.execute(
+                    select(
+                        TranscriptVersion.meeting_page_id, TranscriptVersion.segments
+                    ).where(
+                        TranscriptVersion.meeting_page_id.in_(page_ids),
+                        TranscriptVersion.is_default.is_(True),
+                    )
+                )
+            ).all()
+            default_segments_by_page = {pid: segs or [] for pid, segs in seg_rows}
 
-    def _snippet_for(mp: MeetingPage) -> Optional[str]:
-        # Only computed for the page of rows actually being returned, not
-        # every filtered match -- a snippet nobody's about to see costs
-        # nothing to skip. Deliberately excludes title/jurisdiction (see
-        # find_snippet()'s own docstring) since those already render
-        # directly above this in meeting_list.html. Uses only the
-        # *default* version's text (not transcript_text_by_page's
-        # all-versions blob used for matching above) -- if the query only
-        # matched an old demoted version, the page still correctly shows
-        # up in results, just with no snippet, rather than a misleading
-        # excerpt of text the page itself never displays.
+    def _snippet_for(page_id: int, agenda_items: Optional[list]) -> Optional[str]:
+        # Deliberately excludes title/jurisdiction (see find_snippet()'s
+        # docstring) since those already render directly above this in
+        # meeting_list.html.
         if not keyword:
             return None
-        agenda_text = " ".join(item.get("text", "") for item in (mp.agenda_items or []))
-        transcript_text = default_transcript_text_by_page.get(mp.id, "")
+        agenda_text = " ".join(item.get("text", "") for item in (agenda_items or []))
+        transcript_text = " ".join(
+            seg.get("text", "") for seg in default_segments_by_page.get(page_id, [])
+        )
         return find_snippet(keyword, [transcript_text, agenda_text], fuzzy)
 
+    total_pages = max(1, (total + page_size - 1) // page_size)
     return {
         "pages": [
             {
-                "slug": r["mp"].slug,
-                "title": r["mp"].title,
-                "date": r["mp"].date,
-                "jurisdiction": r["mp"].jurisdiction,
-                "meeting_body": r["mp"].meeting_body,
-                "platform": r["mp"].platform,
-                "language": r["lang"],
+                "slug": slug,
+                "title": title,
+                "date": date,
+                "jurisdiction": jurisdiction_,
+                "meeting_body": meeting_body,
+                "platform": platform,
+                "language": lang,
                 # Quality-aware, not just "a version exists" -- a garbled
                 # transcript shouldn't earn the same "Transcript" badge as
                 # a real one. Language-independent on purpose (any
                 # language counts, per explicit request) -- only quality
                 # is gated. Same quality check as _has_good_transcript()
-                # above (via _has_real_warning_free_transcript()), inlined
-                # here rather than calling that function directly (it does
-                # its own DB query per page; this loop already has
-                # transcript_warnings from the single batch query above, so
-                # re-querying per row would be a real N+1).
+                # (via _has_real_warning_free_transcript()), inlined here
+                # since transcript_warnings already rides along in the
+                # main query -- re-querying per row would be a real N+1.
                 "has_transcript": (
-                    r["version_id"] is not None
-                    and _has_real_warning_free_transcript(r["warnings"])
+                    version_id is not None
+                    and _has_real_warning_free_transcript(warnings)
                 ),
-                "has_agenda": bool(r["mp"].agenda_items),
-                "snippet": _snippet_for(r["mp"]),
+                "has_agenda": bool(agenda_items),
+                "snippet": _snippet_for(page_id, agenda_items),
             }
-            for r in page_rows
+            for (
+                page_id,
+                slug,
+                title,
+                date,
+                jurisdiction_,
+                meeting_body,
+                platform,
+                agenda_items,
+                lang,
+                version_id,
+                warnings,
+            ) in page_rows
         ],
         "total": total,
         "page": page,
@@ -2249,6 +2270,11 @@ async def report_chunk_result(
             job.transcript_version_id = version.id
             job.status = "completed"
             page = await session.get(MeetingPage, job.meeting_page_id)
+            if page is not None:
+                # The finished transcript must become searchable -- see
+                # _refresh_search_corpus()'s docstring for the real gap
+                # this closes.
+                await _refresh_search_corpus(session, page)
             await session.commit()
             return {
                 "status": "completed",

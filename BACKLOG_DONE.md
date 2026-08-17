@@ -6,6 +6,81 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Search Step 1: SQL-authoritative `list_pages()` — exact search O(page_size), fuzzy streamed, worker corpus gap closed (2026-08-17)
+
+[Done 2026-08-17] Follows the two same-day incidents below. After hotfix
+#127, browse was 0.6s but keyword search was still 23–35s and 503'd on
+common terms (`"public comment"`, fuzzy anything) — measured live:
+`quokka` (rare, ~1 match) 0.7s; `flock` (~100) 23.5s; `budget` (~900 of
+1,219) 35s; `"public comment"` 503@65s; `flock&fuzzy` 503@67s. Latency
+was a straight function of match count: after the SQL trigram pre-filter,
+`list_pages()` still loaded **every candidate's full
+`TranscriptVersion.segments` JSON** for a Python `matches()` re-check
+plus snippets, then paginated in Python.
+
+**The key finding that made the fix small**: in exact mode the Python
+re-check was provably redundant. `matches()` decides `term in corpus`
+where `corpus = build_corpus(title, jurisdiction, agenda, transcript)`;
+`search_corpus` is `compute_search_corpus()` — the *same* `build_corpus()`
+over the same four fields, lowercased, with `parse_query()` lowercasing
+terms. So `search_corpus ILIKE '%term%'` **is** the exact-mode predicate,
+byte-for-byte; the "SQL is only a pre-filter, never trusted alone"
+caution in #124's docstring was reasonable defensiveness nobody had
+checked. Phrases/exclusions are exact in both modes too.
+
+**What changed** (`archive/db/crud.py`, `list_pages()` rewritten;
+`_keyword_conditions_postgres()` → `_keyword_conditions()`; `_IS_POSTGRES`
+removed): every filter in SQL incl. `has_agenda` (new
+`_has_agenda_condition()` — text-cast compare against `[]`/`null`/SQL
+NULL, deliberately not `json_array_length()`, which raises on Postgres
+for the JSON-`null` rows that really exist — 2 of 30 in the verification
+DB); `LIMIT/OFFSET` + one `COUNT(*)`; explicit column select (no entity,
+no chance of a deferred column sneaking back); `created_at DESC, id
+DESC` for stable pagination across bulk-ingest timestamp ties;
+default-version `segments` loaded **only for the returned page's rows**
+for snippets — preserving the "never show a demoted version's excerpt"
+rule (real bug fixed 2026-08-08) exactly, which the earlier "snippet
+from `search_corpus`" idea would have broken. Fuzzy words: SQL can't
+decide them recall-safely (worked out from trigram sets:
+`word_similarity` at the recall-safe 0.15 threshold #124 used passes
+everything on a 130KB doc; anything selective drops genuine 2-edit typos
+— `budget`→`bodgat` scores 0.14) — so they're checked in Python by the
+unchanged `matches()`, over **streamed `search_corpus` text**
+(`session.stream`, `yield_per=200`, one corpus in memory at a time),
+never JSON. Measured 4.3ms tokenize + 0.3ms Levenshtein per 250KB doc →
+~5.6s archive-wide CPU: slow, opt-in, UI-labeled "slower", no longer a
+crash. Same code path on SQLite and Postgres now — *smaller* dev/prod
+divergence than #124's `_IS_POSTGRES` branch, and the SQLite suite
+exercises the real query.
+
+**Real bug fixed alongside**: `report_chunk_result()`'s
+transcription-completion path created + promoted a new
+`TranscriptVersion` but never recomputed `search_corpus` — so on
+Postgres, where the corpus is the match, every Whisper-transcribed
+meeting's transcript was silently unsearchable until something
+re-ingested the page. New shared `_refresh_search_corpus(session, page)`
+called from both `ingest_resolution()` and the completion path;
+regression test drives a real job through `claim_next_chunk()` →
+`report_chunk_result()` and asserts the word is searchable.
+
+**Verification**: 8 new tests (`tests/test_list_pages_sql_authoritative.py`:
+SQL-authoritative exact match, demoted-version match with `None`
+snippet, exclusions/phrases in SQL, all three no-agenda storage shapes,
+LIMIT/OFFSET totals across pages, fuzzy typo tolerance + snippet quotes
+the real word, fuzzy exclusions in SQL, worker corpus refresh); full
+suite 903 green on SQLite with **zero changes to existing tests**. Then
+against a real `postgres:16` container with this repo's full Alembic
+chain applied (`alembic upgrade head`, incl. pg_trgm + GIN): the 8 new
+tests + the other session's 4 Postgres-only search tests all pass;
+`EXPLAIN` with `enable_seqscan=off` confirms the exact operator
+SQLAlchemy emits (`~~*`) hits `ix_meeting_pages_search_corpus_trgm` as a
+Bitmap Index Scan; the has_agenda text-cast predicate confirmed against
+real JSON-`null` rows. (Postgres runs need `loop_scope="session"` on the
+test file — asyncpg's import-time pool is loop-bound; documented in the
+file, harmless on SQLite.) Live production numbers recorded in the
+`BACKLOG.md` search entry once #129 deploys. Step 2 (FTS ranking; fuzzy
+vocabulary table) backlogged there with full designs.
+
 ## Incident #2 same day: backfilled `search_corpus` OOM-crashed the plain `/meetings` browse — hotfix #127 (2026-08-17)
 
 [Resolved 2026-08-17] Directly downstream of the migration incident
