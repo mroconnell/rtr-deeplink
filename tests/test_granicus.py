@@ -16,10 +16,12 @@ async def test_resolve_real_blank_caption_meeting():
 
     routes = {
         url: FakeResponse(status=200, text=html, url=url),
-        "https://napacity.granicus.com/videos/3450/captions.vtt":
-            FakeResponse(status=200, raw=captions),
-        "https://napacity.granicus.com/AgendaViewer.php?clip_id=3450&embedded=1":
-            FakeResponse(status=404),
+        "https://napacity.granicus.com/videos/3450/captions.vtt": FakeResponse(
+            status=200, raw=captions
+        ),
+        "https://napacity.granicus.com/AgendaViewer.php?clip_id=3450&embedded=1": FakeResponse(
+            status=404
+        ),
     }
 
     with mock_session(routes):
@@ -45,7 +47,9 @@ async def test_resolve_humanizes_valid_city_subdomain_when_no_page_text_jurisdic
         url: FakeResponse(status=200, text=html, url=url),
         "https://fresno.granicus.com/videos/99/captions.vtt": FakeResponse(status=404),
         "https://fresno.granicus.com/videos/99/player": FakeResponse(status=404),
-        "https://fresno.granicus.com/AgendaViewer.php?clip_id=99&embedded=1": FakeResponse(status=404),
+        "https://fresno.granicus.com/AgendaViewer.php?clip_id=99&embedded=1": FakeResponse(
+            status=404
+        ),
     }
 
     with mock_session(routes):
@@ -68,7 +72,9 @@ async def test_resolve_declines_subdomain_humanization_for_unvalidated_acronym()
         url: FakeResponse(status=200, text=html, url=url),
         "https://sfwmd.granicus.com/videos/99/captions.vtt": FakeResponse(status=404),
         "https://sfwmd.granicus.com/videos/99/player": FakeResponse(status=404),
-        "https://sfwmd.granicus.com/AgendaViewer.php?clip_id=99&embedded=1": FakeResponse(status=404),
+        "https://sfwmd.granicus.com/AgendaViewer.php?clip_id=99&embedded=1": FakeResponse(
+            status=404
+        ),
     }
 
     with mock_session(routes):
@@ -89,7 +95,9 @@ async def test_resolve_flags_exactly_36000_cues_as_possibly_cut_off():
     lines = ["WEBVTT", ""]
     for i in range(36000):
         start_s, end_s = i, i + 1
-        start = f"{start_s // 3600:02d}:{(start_s % 3600) // 60:02d}:{start_s % 60:02d}.000"
+        start = (
+            f"{start_s // 3600:02d}:{(start_s % 3600) // 60:02d}:{start_s % 60:02d}.000"
+        )
         end = f"{end_s // 3600:02d}:{(end_s % 3600) // 60:02d}:{end_s % 60:02d}.000"
         lines.append(f"{start} --> {end}")
         lines.append(f"cue {i}")
@@ -98,10 +106,12 @@ async def test_resolve_flags_exactly_36000_cues_as_possibly_cut_off():
 
     routes = {
         url: FakeResponse(status=200, text=html, url=url),
-        "https://napacity.granicus.com/videos/3450/captions.vtt":
-            FakeResponse(status=200, raw=captions),
-        "https://napacity.granicus.com/AgendaViewer.php?clip_id=3450&embedded=1":
-            FakeResponse(status=404),
+        "https://napacity.granicus.com/videos/3450/captions.vtt": FakeResponse(
+            status=200, raw=captions
+        ),
+        "https://napacity.granicus.com/AgendaViewer.php?clip_id=3450&embedded=1": FakeResponse(
+            status=404
+        ),
     }
 
     with mock_session(routes):
@@ -130,9 +140,15 @@ async def test_agenda_viewer_redirect_to_raw_pdf_surfaces_as_fallback_link():
 
     routes = {
         url: FakeResponse(status=200, text=html, url=url),
-        "https://napacity.granicus.com/videos/3470/captions.vtt": FakeResponse(status=404),
+        "https://napacity.granicus.com/videos/3470/captions.vtt": FakeResponse(
+            status=404
+        ),
         "https://napacity.granicus.com/AgendaViewer.php?clip_id=3470&embedded=1": FakeResponse(
-            status=200, url=pdf_url, text_raises=UnicodeDecodeError("utf-8", b"\xe2", 0, 1, "invalid continuation byte")
+            status=200,
+            url=pdf_url,
+            text_raises=UnicodeDecodeError(
+                "utf-8", b"\xe2", 0, 1, "invalid continuation byte"
+            ),
         ),
     }
 
@@ -157,8 +173,12 @@ async def test_resolve_falls_back_to_docket_pdf_date_when_page_and_rss_have_none
 
     routes = {
         url: FakeResponse(status=200, text=html, url=url),
-        "https://alexandria.granicus.com/videos/6490/captions.vtt": FakeResponse(status=404),
-        "https://alexandria.granicus.com/AgendaViewer.php?clip_id=6490&embedded=1": FakeResponse(status=404),
+        "https://alexandria.granicus.com/videos/6490/captions.vtt": FakeResponse(
+            status=404
+        ),
+        "https://alexandria.granicus.com/AgendaViewer.php?clip_id=6490&embedded=1": FakeResponse(
+            status=404
+        ),
     }
 
     with mock_session(routes):
@@ -178,10 +198,12 @@ async def test_resolve_fills_in_state_for_a_real_unambiguous_city():
 
     routes = {
         url: FakeResponse(status=200, text=html, url=url),
-        "https://napacity.granicus.com/videos/3450/captions.vtt":
-            FakeResponse(status=200, raw=captions),
-        "https://napacity.granicus.com/AgendaViewer.php?clip_id=3450&embedded=1":
-            FakeResponse(status=404),
+        "https://napacity.granicus.com/videos/3450/captions.vtt": FakeResponse(
+            status=200, raw=captions
+        ),
+        "https://napacity.granicus.com/AgendaViewer.php?clip_id=3450&embedded=1": FakeResponse(
+            status=404
+        ),
     }
 
     with mock_session(routes):
@@ -229,12 +251,15 @@ async def test_resolve_falls_back_to_player_page_for_video_when_mediaplayer_has_
 
     routes = {
         url: FakeResponse(status=200, text=html, url=url),
-        "https://fountainvalley.granicus.com/videos/607/captions.vtt":
-            FakeResponse(status=200, raw=captions),
-        "https://fountainvalley.granicus.com/videos/607/player":
-            FakeResponse(status=200, text=player_html),
-        "https://fountainvalley.granicus.com/AgendaViewer.php?clip_id=607&embedded=1":
-            FakeResponse(status=404),
+        "https://fountainvalley.granicus.com/videos/607/captions.vtt": FakeResponse(
+            status=200, raw=captions
+        ),
+        "https://fountainvalley.granicus.com/videos/607/player": FakeResponse(
+            status=200, text=player_html
+        ),
+        "https://fountainvalley.granicus.com/AgendaViewer.php?clip_id=607&embedded=1": FakeResponse(
+            status=404
+        ),
     }
 
     with mock_session(routes):
@@ -262,10 +287,12 @@ async def test_resolve_real_meeting_with_spanish_captions():
 
     routes = {
         url: FakeResponse(status=200, text=html, url=url),
-        "https://simivalley.granicus.com/videos/2840/captions.vtt":
-            FakeResponse(status=200, raw=captions),
-        "https://simivalley.granicus.com/AgendaViewer.php?clip_id=2840&embedded=1":
-            FakeResponse(status=404),
+        "https://simivalley.granicus.com/videos/2840/captions.vtt": FakeResponse(
+            status=200, raw=captions
+        ),
+        "https://simivalley.granicus.com/AgendaViewer.php?clip_id=2840&embedded=1": FakeResponse(
+            status=404
+        ),
     }
 
     with mock_session(routes):
@@ -316,9 +343,13 @@ async def test_resolve_guessed_captions_url_404s_treated_as_blank():
 
     routes = {
         url: FakeResponse(status=200, text=html, url=url),
-        "https://example.granicus.com/videos/999/captions.vtt": FakeResponse(status=404),
+        "https://example.granicus.com/videos/999/captions.vtt": FakeResponse(
+            status=404
+        ),
         "https://example.granicus.com/videos/999/player": FakeResponse(status=404),
-        "https://example.granicus.com/AgendaViewer.php?clip_id=999&embedded=1": FakeResponse(status=404),
+        "https://example.granicus.com/AgendaViewer.php?clip_id=999&embedded=1": FakeResponse(
+            status=404
+        ),
     }
 
     with mock_session(routes):
@@ -333,24 +364,31 @@ async def test_resolve_guessed_captions_url_404s_treated_as_blank():
 # has ever been observed. These exercise the fallback logic itself, not a
 # real-world Granicus behavior -- see BACKLOG.md.
 
+
 async def test_resolve_text_fallback_when_only_unstructured_caption_format_found():
     # A .sbv link embedded in the page (media_scan's wider detection) --
     # the guessed .vtt path 404s (Granicus's usual heuristic finds
     # nothing), so this SBV file is the only real caption source.
     url = "https://example.granicus.com/player/clip/42"
     html = (
-        '<html><head><title>Council Meeting</title></head><body>'
+        "<html><head><title>Council Meeting</title></head><body>"
         '<a href="https://example.granicus.com/captions.sbv">CC</a>'
-        '</body></html>'
+        "</body></html>"
     )
-    sbv_content = "0:00:01.000,0:00:02.000\nHello there.\n\n0:00:02.000,0:00:03.000\nSecond line."
+    sbv_content = (
+        "0:00:01.000,0:00:02.000\nHello there.\n\n0:00:02.000,0:00:03.000\nSecond line."
+    )
 
     routes = {
         url: FakeResponse(status=200, text=html, url=url),
         "https://example.granicus.com/videos/42/captions.vtt": FakeResponse(status=404),
         "https://example.granicus.com/videos/42/player": FakeResponse(status=404),
-        "https://example.granicus.com/captions.sbv": FakeResponse(status=200, text=sbv_content),
-        "https://example.granicus.com/AgendaViewer.php?clip_id=42&embedded=1": FakeResponse(status=404),
+        "https://example.granicus.com/captions.sbv": FakeResponse(
+            status=200, text=sbv_content
+        ),
+        "https://example.granicus.com/AgendaViewer.php?clip_id=42&embedded=1": FakeResponse(
+            status=404
+        ),
     }
 
     with mock_session(routes):
@@ -366,18 +404,21 @@ async def test_resolve_links_out_when_caption_format_is_unreadable():
     # all, so this should surface as a direct link rather than silence.
     url = "https://example.granicus.com/player/clip/43"
     html = (
-        '<html><head><title>Council Meeting</title></head><body>'
+        "<html><head><title>Council Meeting</title></head><body>"
         '<a href="https://example.granicus.com/captions.scc">CC</a>'
-        '</body></html>'
+        "</body></html>"
     )
 
     routes = {
         url: FakeResponse(status=200, text=html, url=url),
         "https://example.granicus.com/videos/43/captions.vtt": FakeResponse(status=404),
         "https://example.granicus.com/videos/43/player": FakeResponse(status=404),
-        "https://example.granicus.com/captions.scc":
-            FakeResponse(status=200, text="Scenarist_SCC V1.0\n\n00:00:01:00 9420 9420"),
-        "https://example.granicus.com/AgendaViewer.php?clip_id=43&embedded=1": FakeResponse(status=404),
+        "https://example.granicus.com/captions.scc": FakeResponse(
+            status=200, text="Scenarist_SCC V1.0\n\n00:00:01:00 9420 9420"
+        ),
+        "https://example.granicus.com/AgendaViewer.php?clip_id=43&embedded=1": FakeResponse(
+            status=404
+        ),
     }
 
     with mock_session(routes):
@@ -394,7 +435,10 @@ def test_extract_clip_id_handles_all_url_shapes():
     assert extract("https://city.granicus.com/player/clip/1234") == "1234"
     assert extract("https://city.granicus.com/player/clip/1234?view_id=2") == "1234"
     assert extract("https://city.granicus.com/videos/5361/") == "5361"
-    assert extract("https://city.granicus.com/MediaPlayer.php?clip_id=789&view_id=1") == "789"
+    assert (
+        extract("https://city.granicus.com/MediaPlayer.php?clip_id=789&view_id=1")
+        == "789"
+    )
     assert extract("https://city.granicus.com/AboutUs.php") is None
 
 
@@ -414,7 +458,9 @@ def test_extract_metadata_ignores_previous_meeting_date_reference():
         "</body></html>"
     )
     soup = BeautifulSoup(html, "html.parser")
-    metadata = GranicusAssetFinder()._extract_metadata(soup, "https://memphis.granicus.com/player/clip/9789")
+    metadata = GranicusAssetFinder()._extract_metadata(
+        soup, "https://memphis.granicus.com/player/clip/9789"
+    )
     assert metadata["date"] is None
 
 
@@ -429,7 +475,9 @@ def test_extract_metadata_still_finds_a_real_date_elsewhere_on_the_page():
         "</body></html>"
     )
     soup = BeautifulSoup(html, "html.parser")
-    metadata = GranicusAssetFinder()._extract_metadata(soup, "https://memphis.granicus.com/player/clip/9789")
+    metadata = GranicusAssetFinder()._extract_metadata(
+        soup, "https://memphis.granicus.com/player/clip/9789"
+    )
     assert metadata["date"] == "2023-12-19"
 
 
@@ -454,8 +502,12 @@ async def test_resolve_finds_date_from_minutes_viewer_when_nothing_else_has_one(
     routes = {
         url: FakeResponse(status=200, text=html, url=url),
         minutes_url: FakeResponse(status=200, text=minutes_html, url=minutes_url),
-        "https://memphis.granicus.com/videos/10031/captions.vtt": FakeResponse(status=404),
-        "https://memphis.granicus.com/AgendaViewer.php?clip_id=10031&embedded=1": FakeResponse(status=404),
+        "https://memphis.granicus.com/videos/10031/captions.vtt": FakeResponse(
+            status=404
+        ),
+        "https://memphis.granicus.com/AgendaViewer.php?clip_id=10031&embedded=1": FakeResponse(
+            status=404
+        ),
     }
 
     with mock_session(routes):
@@ -479,8 +531,12 @@ async def test_resolve_minutes_viewer_redirect_treated_as_no_minutes_not_crash()
     routes = {
         url: FakeResponse(status=200, text=html, url=url),
         minutes_url: FakeResponse(status=302, text="", url=minutes_url),
-        "https://memphis.granicus.com/videos/9789/captions.vtt": FakeResponse(status=404),
-        "https://memphis.granicus.com/AgendaViewer.php?clip_id=9789&embedded=1": FakeResponse(status=404),
+        "https://memphis.granicus.com/videos/9789/captions.vtt": FakeResponse(
+            status=404
+        ),
+        "https://memphis.granicus.com/AgendaViewer.php?clip_id=9789&embedded=1": FakeResponse(
+            status=404
+        ),
     }
 
     with mock_session(routes):

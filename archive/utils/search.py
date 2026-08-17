@@ -152,7 +152,10 @@ def matches(query: str, corpus: str, corpus_words: set, fuzzy: bool) -> bool:
 
     def _term_matches(term: str) -> bool:
         threshold = _fuzzy_threshold(term)
-        return any(word == term or _levenshtein(term, word, threshold) <= threshold for word in corpus_words)
+        return any(
+            word == term or _levenshtein(term, word, threshold) <= threshold
+            for word in corpus_words
+        )
 
     return all(_term_matches(term) for term in terms)
 
@@ -188,10 +191,12 @@ def _build_snippet(text: str, span: tuple, window: int) -> str:
     before = html.escape(text[win_start:start])
     matched = html.escape(text[start:end])
     after = html.escape(text[end:win_end])
-    return f"{prefix}{before}<mark class=\"search-match\">{matched}</mark>{after}{suffix}"
+    return f'{prefix}{before}<mark class="search-match">{matched}</mark>{after}{suffix}'
 
 
-def find_snippet(query: str, texts: Iterable[str], fuzzy: bool, window: int = 50) -> Optional[str]:
+def find_snippet(
+    query: str, texts: Iterable[str], fuzzy: bool, window: int = 50
+) -> Optional[str]:
     """A short HTML excerpt around the first matching term, for
     `/meetings` search results -- e.g. "...traffic calming measures on
     <mark>Elm Street</mark> were discussed..." so a result reads like a
@@ -231,7 +236,9 @@ def find_snippet(query: str, texts: Iterable[str], fuzzy: bool, window: int = 50
     return None
 
 
-def find_matching_segment(query: str, segments: Iterable[dict], fuzzy: bool, window: int = 50) -> Optional[dict]:
+def find_matching_segment(
+    query: str, segments: Iterable[dict], fuzzy: bool, window: int = 50
+) -> Optional[dict]:
     """Like `find_snippet()`, but per-*segment* rather than over one
     joined blob -- built for archive/search_alerts.py's saved-search
     alert emails, which need to deep-link to the exact matching moment
@@ -264,10 +271,18 @@ def find_matching_segment(query: str, segments: Iterable[dict], fuzzy: bool, win
         for phrase in phrases:
             span = _find_span(phrase, text_lower, fuzzy=False)
             if span:
-                return {"index": index, "start": segment.get("start"), "quote_html": _build_snippet(text, span, window)}
+                return {
+                    "index": index,
+                    "start": segment.get("start"),
+                    "quote_html": _build_snippet(text, span, window),
+                }
         for term in terms:
             span = _find_span(term, text_lower, fuzzy)
             if span:
-                return {"index": index, "start": segment.get("start"), "quote_html": _build_snippet(text, span, window)}
+                return {
+                    "index": index,
+                    "start": segment.get("start"),
+                    "quote_html": _build_snippet(text, span, window),
+                }
 
     return None

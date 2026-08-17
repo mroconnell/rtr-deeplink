@@ -176,7 +176,9 @@ def test_lookup_by_domain_returns_none_for_an_unconfirmed_domain():
 def test_resolve_state_prefers_a_confirmed_domain_over_an_ambiguous_name():
     # "Detroit" alone is unresolvable (real collision, see above) -- the
     # confirmed domain is what actually makes this resolve.
-    assert je.resolve_state("Detroit", "city", netloc="detroit-vod.cablecast.tv") == "MI"
+    assert (
+        je.resolve_state("Detroit", "city", netloc="detroit-vod.cablecast.tv") == "MI"
+    )
 
 
 def test_resolve_state_falls_back_to_name_lookup_without_a_domain():
@@ -219,12 +221,18 @@ def test_enrich_jurisdiction_text_detects_county_type_from_the_text_itself():
 
 
 def test_enrich_jurisdiction_text_uses_a_confirmed_domain():
-    assert je.enrich_jurisdiction_text("Detroit", netloc="detroit-vod.cablecast.tv") == "Detroit, MI"
+    assert (
+        je.enrich_jurisdiction_text("Detroit", netloc="detroit-vod.cablecast.tv")
+        == "Detroit, MI"
+    )
 
 
 def test_enrich_jurisdiction_text_falls_back_to_zip_in_page_text():
     page_text = "Board of Supervisors, 575 Administration Dr, Santa Rosa, CA 95403"
-    assert je.enrich_jurisdiction_text("Sonoma County", page_text=page_text) == "Sonoma County, CA"
+    assert (
+        je.enrich_jurisdiction_text("Sonoma County", page_text=page_text)
+        == "Sonoma County, CA"
+    )
 
 
 def test_enrich_jurisdiction_text_leaves_ambiguous_names_unchanged():
@@ -241,24 +249,38 @@ def test_enrich_jurisdiction_text_skips_a_value_that_already_has_a_comma():
 
 
 def test_enrich_jurisdiction_text_skips_a_callers_placeholder():
-    assert je.enrich_jurisdiction_text("Unknown Jurisdiction", placeholder="Unknown Jurisdiction") == "Unknown Jurisdiction"
+    assert (
+        je.enrich_jurisdiction_text(
+            "Unknown Jurisdiction", placeholder="Unknown Jurisdiction"
+        )
+        == "Unknown Jurisdiction"
+    )
 
 
 def test_enrich_jurisdiction_text_resolves_alexandria_via_confirmed_domain():
     # Confirmed live 2026-08-13: "Alexandria" alone stays ambiguous (see
     # test_enrich_jurisdiction_text_leaves_ambiguous_names_unchanged
     # above), but alexandria.granicus.com is a confirmed real customer.
-    assert je.enrich_jurisdiction_text(
-        "City of Alexandria", netloc="alexandria.granicus.com"
-    ) == "City of Alexandria, VA"
+    assert (
+        je.enrich_jurisdiction_text(
+            "City of Alexandria", netloc="alexandria.granicus.com"
+        )
+        == "City of Alexandria, VA"
+    )
 
 
 def test_known_jurisdiction_display_builds_full_string_for_a_confirmed_domain():
-    assert je.known_jurisdiction_display("slc.primegov.com") == "City of Salt Lake City, UT"
+    assert (
+        je.known_jurisdiction_display("slc.primegov.com")
+        == "City of Salt Lake City, UT"
+    )
 
 
 def test_known_jurisdiction_display_is_case_insensitive():
-    assert je.known_jurisdiction_display("SLC.PRIMEGOV.COM") == "City of Salt Lake City, UT"
+    assert (
+        je.known_jurisdiction_display("SLC.PRIMEGOV.COM")
+        == "City of Salt Lake City, UT"
+    )
 
 
 def test_known_jurisdiction_display_returns_none_for_an_unconfirmed_domain():
@@ -271,6 +293,7 @@ def test_known_jurisdiction_display_returns_none_for_an_unconfirmed_domain():
 # BACKLOG.md's "Census-table baseline validation" entry for the data this
 # was tuned against. Every case below is a real value pulled from that
 # audit, not invented.
+
 
 def test_finalize_jurisdiction_validates_a_clean_name_unchanged():
     result = je.finalize_jurisdiction("City of Sunnyvale, CA")
@@ -299,7 +322,8 @@ def test_table_lookup_recognizes_a_spelled_out_saint():
     # "Saint " rows), the opposite direction from "Ft. Worth"/"Mt.
     # Vernon" above, which the table stores spelled out.
     assert je._table_lookup("Saint Paul") == (
-        "place", ["AK", "AR", "IA", "IN", "KS", "MN", "MO", "NE", "OR", "TX", "VA"],
+        "place",
+        ["AK", "AR", "IA", "IN", "KS", "MN", "MO", "NE", "OR", "TX", "VA"],
     )
     assert je.finalize_jurisdiction("City of Saint Paul, MN").confidence == "validated"
 
@@ -320,7 +344,8 @@ def test_finalize_jurisdiction_repairs_trailing_bleed():
     # never resolve a state (it doesn't validate), so nothing upstream
     # ever got the chance to look one up until now.
     result = je.finalize_jurisdiction(
-        "City of Hercules. XIV. PUBLIC COMMUNICATIONS XV.", netloc="hercules.granicus.com"
+        "City of Hercules. XIV. PUBLIC COMMUNICATIONS XV.",
+        netloc="hercules.granicus.com",
     )
     assert result.jurisdiction == "City of Hercules, CA"
     assert result.meeting_body is None
@@ -328,7 +353,9 @@ def test_finalize_jurisdiction_repairs_trailing_bleed():
 
 
 def test_finalize_jurisdiction_preserves_state_suffix_through_a_repair():
-    result = je.finalize_jurisdiction("City of Boston to accept and expend the amount of, MA")
+    result = je.finalize_jurisdiction(
+        "City of Boston to accept and expend the amount of, MA"
+    )
     assert result.jurisdiction == "City of Boston, MA"
     assert result.confidence == "repaired"
 
@@ -342,7 +369,9 @@ def test_finalize_jurisdiction_fills_a_state_the_bled_original_never_could():
     # this function gets one more shot at resolving a state, rather than
     # leaving the repaired name state-less forever just because the first
     # attempt (on the wrong, bled text) failed.
-    result = je.finalize_jurisdiction("City of Castle Pines History of Parks and Recreat")
+    result = je.finalize_jurisdiction(
+        "City of Castle Pines History of Parks and Recreat"
+    )
     assert result.jurisdiction == "City of Castle Pines, CO"
     assert result.confidence == "repaired"
 
@@ -418,13 +447,17 @@ def test_finalize_jurisdiction_fallback_domain_fires_on_blank_or_unvalidated_ext
     assert result.jurisdiction == "Alexandria, VA"
     assert result.confidence == "fallback"
 
-    result = je.finalize_jurisdiction("Not A Real Place Zzyzx", netloc="alexandria.granicus.com")
+    result = je.finalize_jurisdiction(
+        "Not A Real Place Zzyzx", netloc="alexandria.granicus.com"
+    )
     assert result.jurisdiction == "Alexandria, VA"
     assert result.confidence == "fallback"
 
 
 def test_finalize_jurisdiction_does_not_consult_an_unregistered_domain():
-    result = je.finalize_jurisdiction("Some Unvalidatable Text", netloc="totally-unknown-host.example.com")
+    result = je.finalize_jurisdiction(
+        "Some Unvalidatable Text", netloc="totally-unknown-host.example.com"
+    )
     assert result.jurisdiction == "Some Unvalidatable Text"
     assert result.confidence == "unverified"
 
@@ -450,14 +483,18 @@ def test_extract_jurisdiction_chain_stoprule_repairs_a_real_bleed_case():
     # own repair machinery would even need to run.
     page_text = "Welcome. Meeting of the City of Hercules. XIV. PUBLIC COMMUNICATIONS XV. ADJOURNMENT"
     result = je.extract_jurisdiction_chain(
-        page_text=page_text, html=f"<html>{page_text}</html>", url="https://hercules.granicus.com/player/clip/1306"
+        page_text=page_text,
+        html=f"<html>{page_text}</html>",
+        url="https://hercules.granicus.com/player/clip/1306",
     )
     assert result == "City of Hercules, CA"
 
 
 def test_extract_jurisdiction_chain_stoprule_keeps_a_real_abbreviation():
     page_text = "Agenda for the City of Ft. Worth regular council session"
-    result = je.extract_jurisdiction_chain(page_text=page_text, html="", url="https://example.granicus.com/clip/1")
+    result = je.extract_jurisdiction_chain(
+        page_text=page_text, html="", url="https://example.granicus.com/clip/1"
+    )
     assert result == "City of Ft. Worth"
 
 
@@ -468,7 +505,9 @@ def test_extract_jurisdiction_chain_falls_back_to_capitalization_walk():
     # ("Oklahoma City" is nationally unambiguous, so
     # enrich_jurisdiction_text() correctly appends its real state too.)
     html = "<table><td>OKLAHOMA CITY</td><td>FORMAL AGENDA</td></table> City of Oklahoma City<br>more"
-    result = je.extract_jurisdiction_chain(page_text="no trigger here", html=html, url="https://example.com/clip/1")
+    result = je.extract_jurisdiction_chain(
+        page_text="no trigger here", html=html, url="https://example.com/clip/1"
+    )
     assert result == "City of Oklahoma City, OK"
 
 
@@ -478,7 +517,9 @@ def test_extract_jurisdiction_chain_falls_back_to_validated_subdomain():
     # hypothetical -- see BACKLOG.md), which never validates. Checking the
     # raw unsplit label first fixes it without needing wordninja at all.
     result = je.extract_jurisdiction_chain(
-        page_text="no trigger", html="<html>no trigger</html>", url="https://galesburg.granicus.com/player/clip/1"
+        page_text="no trigger",
+        html="<html>no trigger</html>",
+        url="https://galesburg.granicus.com/player/clip/1",
     )
     assert result == "Galesburg"
 
@@ -490,7 +531,9 @@ def test_extract_jurisdiction_chain_subdomain_resolves_state_via_registry():
     # returned bare, since "San Diego" alone is nationally ambiguous
     # (CA and TX both have a real "San Diego").
     result = je.extract_jurisdiction_chain(
-        page_text="no trigger", html="<html>no trigger</html>", url="https://sandiego.granicus.com/player/clip/1"
+        page_text="no trigger",
+        html="<html>no trigger</html>",
+        url="https://sandiego.granicus.com/player/clip/1",
     )
     assert result == "San Diego, CA"
 
@@ -514,7 +557,9 @@ def test_extract_jurisdiction_chain_rejects_a_capitalization_walk_false_positive
     )
     html = f"<html><body><p>{page_text}</p></body></html>"
     result = je.extract_jurisdiction_chain(
-        page_text="no trigger for the stop rule here", html=html, url="https://browardmpo.new.swagit.com/videos/1"
+        page_text="no trigger for the stop rule here",
+        html=html,
+        url="https://browardmpo.new.swagit.com/videos/1",
     )
     assert result is None
 
@@ -525,7 +570,8 @@ def test_extract_jurisdiction_chain_declines_rather_than_guesses():
     # declines, so the chain returns None rather than fabricating
     # something.
     result = je.extract_jurisdiction_chain(
-        page_text="nothing useful here", html="<html>nothing useful here</html>",
+        page_text="nothing useful here",
+        html="<html>nothing useful here</html>",
         url="https://totallymadeupgarbage999.example.com/clip/1",
     )
     assert result is None

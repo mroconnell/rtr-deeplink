@@ -16,18 +16,27 @@ def test_escapes_html_metacharacters():
 
 
 def test_linkifies_a_bare_url():
-    result = render_warnings_html(["We think we found an agenda here: https://example.gov/agenda.pdf"])
+    result = render_warnings_html(
+        ["We think we found an agenda here: https://example.gov/agenda.pdf"]
+    )
     assert '<a href="https://example.gov/agenda.pdf"' in result
     assert 'rel="noopener noreferrer"' in result
 
 
 def test_wraps_transcribe_phrase_in_a_real_button():
-    result = render_warnings_html(["No captions found. You can request a transcript from the audio instead."])
-    assert '<button type="button" class="transcribe-inline-trigger">request a transcript from the audio</button>' in result
+    result = render_warnings_html(
+        ["No captions found. You can request a transcript from the audio instead."]
+    )
+    assert (
+        '<button type="button" class="transcribe-inline-trigger">request a transcript from the audio</button>'
+        in result
+    )
 
 
 def test_transcribe_phrase_matching_is_case_insensitive():
-    result = render_warnings_html(["Request a Transcript From the Audio if you need one."])
+    result = render_warnings_html(
+        ["Request a Transcript From the Audio if you need one."]
+    )
     assert 'class="transcribe-inline-trigger"' in result
 
 
@@ -46,6 +55,8 @@ def test_escapes_before_linkifying_so_injected_html_cannot_smuggle_a_fake_link()
     # generated, but escape-then-linkify is the same defense-in-depth
     # order the JS side uses), the injected tag itself must never survive
     # as real markup.
-    result = render_warnings_html(['<a href="https://evil.example">click</a> https://real.gov/agenda'])
-    assert "<a href=\"https://evil.example\">" not in result
+    result = render_warnings_html(
+        ['<a href="https://evil.example">click</a> https://real.gov/agenda']
+    )
+    assert '<a href="https://evil.example">' not in result
     assert '<a href="https://real.gov/agenda"' in result

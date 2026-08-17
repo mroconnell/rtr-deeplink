@@ -186,7 +186,9 @@ class HylandAssetFinder(AssetFinder):
                 # something no JW-Player customer has ever had.
                 yt_video_id = YouTubeAssetFinder.extract_video_id(html)
                 if yt_video_id:
-                    youtube_delegated = await YouTubeAssetFinder.resolve_video_id(yt_video_id, source_url=url)
+                    youtube_delegated = await YouTubeAssetFinder.resolve_video_id(
+                        yt_video_id, source_url=url
+                    )
                     video_url = youtube_delegated.video_url
                     video_format = youtube_delegated.video_format
                     segments = youtube_delegated.segments
@@ -208,7 +210,9 @@ class HylandAssetFinder(AssetFinder):
                 title, date = self._extract_title_date(agenda_html_a)
 
                 if title:
-                    agenda_items = self._build_agenda_items(agenda_html_a, event_points, _AGENDA_ITEM_RE)
+                    agenda_items = self._build_agenda_items(
+                        agenda_html_a, event_points, _AGENDA_ITEM_RE
+                    )
                     agenda_link = agenda_url_a
                 else:
                     type_word = _DOCTYPE_WORDS.get(doctype, "agenda")
@@ -218,7 +222,9 @@ class HylandAssetFinder(AssetFinder):
                     )
                     agenda_html_b = await self._fetch(session, agenda_url_b)
                     title, date = self._extract_title_date_from_main(html)
-                    agenda_items = self._build_agenda_items(agenda_html_b, event_points, _AGENDA_ITEM_NEW_RE)
+                    agenda_items = self._build_agenda_items(
+                        agenda_html_b, event_points, _AGENDA_ITEM_NEW_RE
+                    )
                     agenda_link = agenda_url_b
 
         if agenda_items:
@@ -227,7 +233,11 @@ class HylandAssetFinder(AssetFinder):
         jurisdiction: Optional[str] = None
         known = jurisdiction_enrich.lookup_by_domain(parsed.netloc)
         if known:
-            jurisdiction = f"{known.name} County, {known.state}" if known.type == "county" else f"{known.name}, {known.state}"
+            jurisdiction = (
+                f"{known.name} County, {known.state}"
+                if known.type == "county"
+                else f"{known.name}, {known.state}"
+            )
 
         if not video_url:
             video_warnings.append("No video found on this page.")
@@ -258,7 +268,9 @@ class HylandAssetFinder(AssetFinder):
 
     async def _fetch(self, session: aiohttp.ClientSession, url: str) -> Optional[str]:
         try:
-            async with session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as response:
+            async with session.get(
+                url, timeout=aiohttp.ClientTimeout(total=30)
+            ) as response:
                 if response.status != 200:
                     return None
                 return await response.text()
@@ -279,7 +291,9 @@ class HylandAssetFinder(AssetFinder):
         match = _TITLE_DATE_RE.search(html)
         if not match:
             return None, None
-        return html_module.unescape(match.group(1).strip()) or None, HylandAssetFinder._parse_date(match.group(2))
+        return html_module.unescape(
+            match.group(1).strip()
+        ) or None, HylandAssetFinder._parse_date(match.group(2))
 
     @staticmethod
     def _extract_title_date_from_main(html: Optional[str]):
@@ -291,12 +305,16 @@ class HylandAssetFinder(AssetFinder):
         match = _TITLE_DATE_MAIN_RE.search(html)
         if not match:
             return None, None
-        return html_module.unescape(match.group(1).strip()) or None, HylandAssetFinder._parse_date(match.group(2))
+        return html_module.unescape(
+            match.group(1).strip()
+        ) or None, HylandAssetFinder._parse_date(match.group(2))
 
     @staticmethod
     def _parse_date(text: str) -> Optional[str]:
         try:
-            return datetime.strptime(text.strip(), "%m/%d/%Y %I:%M:%S %p").strftime("%Y-%m-%d")
+            return datetime.strptime(text.strip(), "%m/%d/%Y %I:%M:%S %p").strftime(
+                "%Y-%m-%d"
+            )
         except ValueError:
             return None
 
@@ -337,5 +355,7 @@ class HylandAssetFinder(AssetFinder):
         agenda_items: List[TranscriptSegment] = []
         for i, (start, text) in enumerate(items):
             end = items[i + 1][0] if i + 1 < len(items) else start
-            agenda_items.append(TranscriptSegment(start=start, end=max(end, start), text=text))
+            agenda_items.append(
+                TranscriptSegment(start=start, end=max(end, start), text=text)
+            )
         return agenda_items

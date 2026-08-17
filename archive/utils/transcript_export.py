@@ -27,4 +27,6 @@ def _txt_timestamp(seconds: float) -> str:
 def to_txt(segments: list) -> str:
     """Plain-text transcript, one timestamped line per segment -- readable
     on its own, not just a stripped-down SRT (no cue numbers/arrows)."""
-    return "\n".join(f"[{_txt_timestamp(seg['start'])}] {seg['text']}" for seg in segments)
+    return "\n".join(
+        f"[{_txt_timestamp(seg['start'])}] {seg['text']}" for seg in segments
+    )

@@ -15,7 +15,9 @@ from difflib import SequenceMatcher
 from typing import Any, Dict, List, Tuple
 
 
-def shift_segments(segments: List[Dict[str, Any]], offset_seconds: float) -> List[Dict[str, Any]]:
+def shift_segments(
+    segments: List[Dict[str, Any]], offset_seconds: float
+) -> List[Dict[str, Any]]:
     """Rewrite chunk-relative transcript segments (as returned by the
     transcription engine, timed from 0 at the start of that chunk's audio)
     into full-meeting-relative seconds, by adding the chunk's own start
@@ -41,14 +43,18 @@ def chunk_count(total_duration_seconds: float, chunk_size_seconds: int) -> int:
     clamp ffmpeg's -t to the remaining duration on that final chunk."""
     if chunk_size_seconds <= 0:
         raise ValueError("chunk_size_seconds must be positive")
-    return max(1, -(-int(total_duration_seconds) // chunk_size_seconds))  # ceil division
+    return max(
+        1, -(-int(total_duration_seconds) // chunk_size_seconds)
+    )  # ceil division
 
 
 def chunk_start(chunk_index: int, chunk_size_seconds: int) -> float:
     return chunk_index * chunk_size_seconds
 
 
-def chunk_duration(chunk_index: int, chunk_size_seconds: int, total_duration_seconds: float) -> float:
+def chunk_duration(
+    chunk_index: int, chunk_size_seconds: int, total_duration_seconds: float
+) -> float:
     """Actual duration to extract for this chunk index -- chunk_size_seconds
     for every chunk except the last, which is clamped to what's left."""
     start = chunk_start(chunk_index, chunk_size_seconds)
@@ -115,7 +121,9 @@ MIN_SEAM_OVERLAP_WORDS = 6
 _LOOKBACK_SEGMENTS = 8
 
 
-def _segment_words(segments: List[Dict[str, Any]]) -> Tuple[List[str], List[Tuple[int, int, int]]]:
+def _segment_words(
+    segments: List[Dict[str, Any]],
+) -> Tuple[List[str], List[Tuple[int, int, int]]]:
     """(flat lowercase word list, [(segment_index, first_word_pos,
     last_word_pos_exclusive), ...]) for a lookback window of segments --
     lets the caller map a word-level match position back onto whole
@@ -157,13 +165,17 @@ def _find_seam_overlap_word_count(prev_words: List[str], new_words: List[str]) -
     """
     limit = min(len(prev_words), len(new_words), _LOOKBACK_SEGMENTS * 20)
     for n in range(limit, MIN_SEAM_OVERLAP_WORDS - 1, -1):
-        ratio = SequenceMatcher(None, prev_words[-n:], new_words[:n], autojunk=False).ratio()
+        ratio = SequenceMatcher(
+            None, prev_words[-n:], new_words[:n], autojunk=False
+        ).ratio()
         if ratio >= _SEAM_MATCH_RATIO_THRESHOLD:
             return n
     return 0
 
 
-def count_seam_overlap_segments(previous_segments: List[Dict[str, Any]], new_segments: List[Dict[str, Any]]) -> int:
+def count_seam_overlap_segments(
+    previous_segments: List[Dict[str, Any]], new_segments: List[Dict[str, Any]]
+) -> int:
     """How many segments at the END of `previous_segments` are a real,
     near-duplicate restatement of content at the START of `new_segments`
     -- see this module's own "Seam-duplication dedup" note above for the
@@ -187,7 +199,10 @@ def count_seam_overlap_segments(previous_segments: List[Dict[str, Any]], new_seg
     new_head = new_segments[:_LOOKBACK_SEGMENTS]
     prev_words, prev_spans = _segment_words(prev_tail)
     new_words, _new_spans = _segment_words(new_head)
-    if len(prev_words) < MIN_SEAM_OVERLAP_WORDS or len(new_words) < MIN_SEAM_OVERLAP_WORDS:
+    if (
+        len(prev_words) < MIN_SEAM_OVERLAP_WORDS
+        or len(new_words) < MIN_SEAM_OVERLAP_WORDS
+    ):
         return 0
 
     overlap_word_count = _find_seam_overlap_word_count(prev_words, new_words)
@@ -219,7 +234,11 @@ def merge_chunk_segments(
     earlier chunk's audio simply stopped mid-sentence at the chunk
     boundary; the later chunk's didn't)."""
     drop = count_seam_overlap_segments(previous_segments, new_segments)
-    kept_prev = previous_segments[: len(previous_segments) - drop] if drop else previous_segments
+    kept_prev = (
+        previous_segments[: len(previous_segments) - drop]
+        if drop
+        else previous_segments
+    )
     return [*kept_prev, *new_segments]
 
 
@@ -310,7 +329,11 @@ def _repetition_run_ratio(segments: List[Dict[str, Any]]) -> float:
     for prev_seg, cur_seg in zip(segments, segments[1:]):
         prev_text = _normalize_for_repetition(prev_seg["text"])
         cur_text = _normalize_for_repetition(cur_seg["text"])
-        if prev_text and SequenceMatcher(None, prev_text, cur_text).ratio() >= _HALLUCINATION_REPETITION_MATCH_RATIO:
+        if (
+            prev_text
+            and SequenceMatcher(None, prev_text, cur_text).ratio()
+            >= _HALLUCINATION_REPETITION_MATCH_RATIO
+        ):
             current_run += 1
             best_run = max(best_run, current_run)
         else:
@@ -347,9 +370,14 @@ def detect_hallucination_warnings(segments: List[Dict[str, Any]]) -> List[str]:
     warnings: List[str] = []
 
     if len(segments) >= _HALLUCINATION_MIN_SEGMENTS_FOR_REPETITION_CHECK:
-        if _repetition_run_ratio(segments) >= _HALLUCINATION_REPETITION_RUN_RATIO_THRESHOLD:
+        if (
+            _repetition_run_ratio(segments)
+            >= _HALLUCINATION_REPETITION_RUN_RATIO_THRESHOLD
+        ):
             warnings.append(HALLUCINATION_WARNING)
-            return warnings  # one real warning is enough; no need to stack near-duplicates
+            return (
+                warnings  # one real warning is enough; no need to stack near-duplicates
+            )
 
     if _has_long_character_run(segments):
         warnings.append(HALLUCINATION_WARNING)

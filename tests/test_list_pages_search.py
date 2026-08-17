@@ -14,7 +14,12 @@ from archive.db.models import MeetingPage, TranscriptVersion
 
 
 def _payload(
-    external_id: str, source_url: str, *, segments, transcript_warnings=None, jurisdiction="City of Search Test"
+    external_id: str,
+    source_url: str,
+    *,
+    segments,
+    transcript_warnings=None,
+    jurisdiction="City of Search Test",
 ) -> dict:
     return {
         "platform": "granicus",
@@ -37,23 +42,49 @@ async def test_search_finds_keyword_in_demoted_non_default_version():
 
     # First ingest: real content, becomes the (only, so far) default version.
     await crud.ingest_resolution(
-        _payload("granicus:search-demoted", url, segments=[{"start": 0, "end": 1, "text": "zzyzxquokka unique term"}]),
+        _payload(
+            "granicus:search-demoted",
+            url,
+            segments=[{"start": 0, "end": 1, "text": "zzyzxquokka unique term"}],
+        ),
         url,
     )
 
     async with async_session() as session:
-        page = (await session.execute(select(MeetingPage).where(MeetingPage.source_url_normalized == url))).scalars().first()
+        page = (
+            (
+                await session.execute(
+                    select(MeetingPage).where(MeetingPage.source_url_normalized == url)
+                )
+            )
+            .scalars()
+            .first()
+        )
         old_version = (
-            await session.execute(select(TranscriptVersion).where(TranscriptVersion.meeting_page_id == page.id))
-        ).scalars().first()
+            (
+                await session.execute(
+                    select(TranscriptVersion).where(
+                        TranscriptVersion.meeting_page_id == page.id
+                    )
+                )
+            )
+            .scalars()
+            .first()
+        )
 
         # Add a second version and promote it -- demotes the one with our
         # unique keyword, matching what promote_transcript_version() does
         # when a fresh AI transcript supersedes an older one.
         new_version = TranscriptVersion(
-            meeting_page_id=page.id, language="en", source="transcribed", is_default=False,
-            segments=[{"start": 0, "end": 1, "text": "totally different replacement content"}],
-            transcript_warnings=[], content_hash="not-a-real-hash",
+            meeting_page_id=page.id,
+            language="en",
+            source="transcribed",
+            is_default=False,
+            segments=[
+                {"start": 0, "end": 1, "text": "totally different replacement content"}
+            ],
+            transcript_warnings=[],
+            content_hash="not-a-real-hash",
         )
         session.add(new_version)
         await session.flush()
@@ -85,7 +116,8 @@ async def test_list_pages_surfaces_a_split_meeting_body():
     url = "https://example.granicus.com/player/clip/search-meeting-body"
     await crud.ingest_resolution(
         _payload(
-            "granicus:search-meeting-body", url,
+            "granicus:search-meeting-body",
+            url,
             segments=[{"start": 0, "end": 1, "text": "quorum present"}],
             jurisdiction="Housing Authority of the County of Santa Clara",
         ),
@@ -93,7 +125,9 @@ async def test_list_pages_surfaces_a_split_meeting_body():
     )
 
     result = await crud.list_pages(keyword="quorum", page_size=50)
-    row = next(p for p in result["pages"] if p["jurisdiction"] == "County of Santa Clara, CA")
+    row = next(
+        p for p in result["pages"] if p["jurisdiction"] == "County of Santa Clara, CA"
+    )
     assert row["meeting_body"] == "Housing Authority"
 
 
@@ -101,8 +135,11 @@ async def test_search_snippet_comes_from_the_current_default_version():
     url = "https://example.granicus.com/player/clip/search-snippet-default"
     await crud.ingest_resolution(
         _payload(
-            "granicus:search-snippet-default", url,
-            segments=[{"start": 0, "end": 1, "text": "a real quokka sighting downtown"}],
+            "granicus:search-snippet-default",
+            url,
+            segments=[
+                {"start": 0, "end": 1, "text": "a real quokka sighting downtown"}
+            ],
         ),
         url,
     )
@@ -122,15 +159,25 @@ async def test_has_transcript_badge_is_quality_aware_not_just_presence():
     garbled_url = "https://example.granicus.com/player/clip/list-garbled"
     await crud.ingest_resolution(
         _payload(
-            "granicus:list-garbled", garbled_url,
+            "granicus:list-garbled",
+            garbled_url,
             segments=[{"start": 0, "end": 1, "text": "??? garbled nonsense ???"}],
-            transcript_warnings=["This transcript looks garbled at the source (not a parsing bug on our end)."],
+            transcript_warnings=[
+                "This transcript looks garbled at the source (not a parsing bug on our end)."
+            ],
         ),
         garbled_url,
     )
 
     good_url = "https://example.granicus.com/player/clip/list-good"
-    await crud.ingest_resolution(_payload("granicus:list-good", good_url, segments=[{"start": 0, "end": 1, "text": "a real clean transcript"}]), good_url)
+    await crud.ingest_resolution(
+        _payload(
+            "granicus:list-good",
+            good_url,
+            segments=[{"start": 0, "end": 1, "text": "a real clean transcript"}],
+        ),
+        good_url,
+    )
 
     result = await crud.list_pages(page_size=200)
     garbled_slug = (await crud.lookup_page_for_url(garbled_url))["slug"]

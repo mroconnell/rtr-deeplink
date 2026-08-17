@@ -106,7 +106,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.platforms import register_all_finders  # noqa: E402
 from app.platforms.base import UnsupportedPlatformError, detect_platform, get_finder  # noqa: E402
-from app.platforms.media_probe import extract_chunk_audio, is_plausible_meeting_duration, probe_duration  # noqa: E402
+from app.platforms.media_probe import (
+    extract_chunk_audio,
+    is_plausible_meeting_duration,
+    probe_duration,
+)  # noqa: E402
 from app.utils.url_normalize import normalize_url  # noqa: E402
 from app.utils.vtt_parser import detect_language_from_texts  # noqa: E402
 from worker.segment_utils import (  # noqa: E402
@@ -118,7 +122,9 @@ from worker.segment_utils import (  # noqa: E402
     shift_segments,
 )
 
-INGEST_TIMEOUT = aiohttp.ClientTimeout(total=65)  # matches archive_client.PUSH_TIMEOUT -- tolerates a Render cold start
+INGEST_TIMEOUT = aiohttp.ClientTimeout(
+    total=65
+)  # matches archive_client.PUSH_TIMEOUT -- tolerates a Render cold start
 # Gentler than bulk_ingest.py's 1.5s isn't needed here -- this script hits
 # each government source once per meeting (a fresh resolve), not a whole
 # playlist worth of rapid requests, so REQUEST_DELAY_SECONDS only paces
@@ -174,7 +180,9 @@ def _pick_default_model_size() -> str:
     check.
     """
     try:
-        total_bytes = int(subprocess.check_output(["sysctl", "-n", "hw.memsize"], timeout=5))
+        total_bytes = int(
+            subprocess.check_output(["sysctl", "-n", "hw.memsize"], timeout=5)
+        )
     except Exception:
         return "base"
     total_gb = total_bytes / (1024**3)
@@ -185,26 +193,38 @@ def _pick_default_model_size() -> str:
     return "base"
 
 
-async def _get_candidates(session: aiohttp.ClientSession, limit: Optional[int]) -> List[dict]:
+async def _get_candidates(
+    session: aiohttp.ClientSession, limit: Optional[int]
+) -> List[dict]:
     params = {}
     if limit is not None:
         params["limit"] = str(limit)
     async with session.get(
-        f"{_base_url()}/internal/transcription-backlog", headers=_headers(), params=params, timeout=INGEST_TIMEOUT
+        f"{_base_url()}/internal/transcription-backlog",
+        headers=_headers(),
+        params=params,
+        timeout=INGEST_TIMEOUT,
     ) as response:
         if response.status != 200:
             text = await response.text()
-            raise RuntimeError(f"transcription-backlog failed ({response.status}): {text[:300]}")
+            raise RuntimeError(
+                f"transcription-backlog failed ({response.status}): {text[:300]}"
+            )
         data = await response.json()
         return data.get("pages", [])
 
 
-async def _ingest(session: aiohttp.ClientSession, payload: dict, input_url_normalized: str) -> dict:
+async def _ingest(
+    session: aiohttp.ClientSession, payload: dict, input_url_normalized: str
+) -> dict:
     body = dict(payload)
     body["input_url_normalized"] = input_url_normalized
     body["source"] = "transcribed"  # see module docstring -- never omit this
     async with session.post(
-        f"{_base_url()}/internal/ingest", json=body, headers=_headers(), timeout=INGEST_TIMEOUT
+        f"{_base_url()}/internal/ingest",
+        json=body,
+        headers=_headers(),
+        timeout=INGEST_TIMEOUT,
     ) as response:
         if response.status == 200:
             return await response.json()
@@ -212,7 +232,9 @@ async def _ingest(session: aiohttp.ClientSession, payload: dict, input_url_norma
         raise RuntimeError(f"ingest failed ({response.status}): {text[:300]}")
 
 
-async def transcribe_meeting(engine, source_url: str, platform: str, *, chunk_size_seconds: int) -> dict:
+async def transcribe_meeting(
+    engine, source_url: str, platform: str, *, chunk_size_seconds: int
+) -> dict:
     """Re-resolves `source_url` fresh (HLS/signed URLs can go stale, same
     reasoning as worker/main.py's own re-resolve-before-each-chunk), probes
     its real duration, and transcribes it locally chunk by chunk (each
@@ -245,16 +267,25 @@ async def transcribe_meeting(engine, source_url: str, platform: str, *, chunk_si
     try:
         result = await finder.resolve(source_url)
     except Exception as e:
-        return {"ok": False, "reason": f"re-resolve failed: {type(e).__name__}: {str(e)[:200]}"}
+        return {
+            "ok": False,
+            "reason": f"re-resolve failed: {type(e).__name__}: {str(e)[:200]}",
+        }
 
     if not result.video_url:
         return {"ok": False, "reason": "no usable audio/video source on re-resolve"}
 
     duration = await probe_duration(result.video_url, source_page_url=source_url)
     if duration is None:
-        return {"ok": False, "reason": "ffprobe couldn't read the media (unreachable, or not real media)"}
+        return {
+            "ok": False,
+            "reason": "ffprobe couldn't read the media (unreachable, or not real media)",
+        }
     if not is_plausible_meeting_duration(duration):
-        return {"ok": False, "reason": f"implausible duration ({duration:.0f}s) -- not a real meeting recording"}
+        return {
+            "ok": False,
+            "reason": f"implausible duration ({duration:.0f}s) -- not a real meeting recording",
+        }
 
     total_chunks = chunk_count(duration, chunk_size_seconds)
     all_segments: list = []
@@ -264,10 +295,17 @@ async def transcribe_meeting(engine, source_url: str, platform: str, *, chunk_si
             dur = chunk_duration(idx, chunk_size_seconds, duration)
             audio_path = Path(tmpdir) / f"chunk_{idx}.mp3"
             extracted = await extract_chunk_audio(
-                result.video_url, start=start, duration=dur, source_page_url=source_url, out_path=audio_path,
+                result.video_url,
+                start=start,
+                duration=dur,
+                source_page_url=source_url,
+                out_path=audio_path,
             )
             if not extracted:
-                return {"ok": False, "reason": f"ffmpeg extraction failed on chunk {idx + 1}/{total_chunks}"}
+                return {
+                    "ok": False,
+                    "reason": f"ffmpeg extraction failed on chunk {idx + 1}/{total_chunks}",
+                }
 
             raw_segments = await engine.transcribe_chunk(audio_path)
             # merge_chunk_segments() (not a plain .extend()) -- HLS sources
@@ -278,11 +316,17 @@ async def transcribe_meeting(engine, source_url: str, platform: str, *, chunk_si
             # backlog, Boulder County CO -- see worker/segment_utils.py's
             # "Seam-duplication dedup" note and BACKLOG_DONE.md).
             before = len(all_segments)
-            all_segments = merge_chunk_segments(all_segments, shift_segments(raw_segments, start))
+            all_segments = merge_chunk_segments(
+                all_segments, shift_segments(raw_segments, start)
+            )
             dropped = before + len(raw_segments) - len(all_segments)
             audio_path.unlink(missing_ok=True)
-            dedup_note = f", dropped {dropped} seam-duplicate segment(s)" if dropped else ""
-            print(f"      chunk {idx + 1}/{total_chunks} transcribed ({len(raw_segments)} segments{dedup_note})")
+            dedup_note = (
+                f", dropped {dropped} seam-duplicate segment(s)" if dropped else ""
+            )
+            print(
+                f"      chunk {idx + 1}/{total_chunks} transcribed ({len(raw_segments)} segments{dedup_note})"
+            )
 
     if not all_segments:
         return {"ok": False, "reason": "transcription produced no usable segments"}
@@ -309,7 +353,12 @@ async def transcribe_meeting(engine, source_url: str, platform: str, *, chunk_si
 
 
 async def process_one(
-    session: aiohttp.ClientSession, engine, page: dict, *, dry_run: bool, chunk_size_seconds: int
+    session: aiohttp.ClientSession,
+    engine,
+    page: dict,
+    *,
+    dry_run: bool,
+    chunk_size_seconds: int,
 ) -> dict:
     """Returns {"slug", "status": "ingested"|"skipped"|"failed", "detail"}."""
     slug = page.get("slug", "?")
@@ -331,12 +380,17 @@ async def process_one(
         }
 
     result = await transcribe_meeting(
-        engine, page["source_url_normalized"], page["platform"], chunk_size_seconds=chunk_size_seconds
+        engine,
+        page["source_url_normalized"],
+        page["platform"],
+        chunk_size_seconds=chunk_size_seconds,
     )
     if not result["ok"]:
         return {"slug": slug, "status": "skipped", "detail": result["reason"]}
 
-    hallucinated_note = " -- LOOKS HALLUCINATED" if result["transcript_warnings"] else ""
+    hallucinated_note = (
+        " -- LOOKS HALLUCINATED" if result["transcript_warnings"] else ""
+    )
 
     if dry_run:
         return {
@@ -367,11 +421,18 @@ async def process_one(
 
 
 async def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--dry-run", action="store_true", help="Transcribe and report, but don't push")
-    parser.add_argument("--limit", type=int, default=None, help="Process at most this many meetings")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument(
-        "--url", default=None,
+        "--dry-run", action="store_true", help="Transcribe and report, but don't push"
+    )
+    parser.add_argument(
+        "--limit", type=int, default=None, help="Process at most this many meetings"
+    )
+    parser.add_argument(
+        "--url",
+        default=None,
         help="Transcribe one specific meeting URL directly, bypassing the oldest-first backlog "
         "queue entirely (e.g. to target one known page, or re-try one that previously failed, "
         "without waiting for it to come up in queue order). Same "
@@ -380,12 +441,15 @@ async def main() -> None:
         "resolve. Ignores --limit when set.",
     )
     parser.add_argument(
-        "--model-size", default=None,
+        "--model-size",
+        default=None,
         help="faster-whisper model size (tiny|base|small|medium|large-v3|...). "
         "Defaults based on this Mac's real total RAM -- see _pick_default_model_size().",
     )
     parser.add_argument(
-        "--chunk-seconds", type=int, default=CHUNK_SIZE_SECONDS,
+        "--chunk-seconds",
+        type=int,
+        default=CHUNK_SIZE_SECONDS,
         help=f"Seconds of audio per ffmpeg extraction call (default {CHUNK_SIZE_SECONDS} -- "
         "see module docstring for why this isn't just 'the whole meeting at once' locally).",
     )
@@ -395,15 +459,21 @@ async def main() -> None:
         print("ARCHIVE_BASE_URL is not set (check the repo's .env).", file=sys.stderr)
         sys.exit(1)
     if not os.environ.get("ARCHIVE_INGEST_TOKEN"):
-        print("ARCHIVE_INGEST_TOKEN is not set (check the repo's .env).", file=sys.stderr)
+        print(
+            "ARCHIVE_INGEST_TOKEN is not set (check the repo's .env).", file=sys.stderr
+        )
         sys.exit(1)
 
     model_size = args.model_size or _pick_default_model_size()
-    print(f"Model size: {model_size} ({'explicit --model-size' if args.model_size else 'auto-picked from local RAM'})")
+    print(
+        f"Model size: {model_size} ({'explicit --model-size' if args.model_size else 'auto-picked from local RAM'})"
+    )
 
     register_all_finders()
 
-    print("Loading faster-whisper model (this can take a while on first run, while weights download)...")
+    print(
+        "Loading faster-whisper model (this can take a while on first run, while weights download)..."
+    )
     from worker.transcription_engine import FasterWhisperEngine
 
     engine = FasterWhisperEngine(model_size=model_size)
@@ -421,35 +491,53 @@ async def main() -> None:
             # "youtube") so the cheap pre-filter in process_one() never
             # blocks an explicit, operator-chosen target.
             normalized = normalize_url(args.url)
-            pages = [{
-                "slug": normalized,
-                "platform": detect_platform(args.url),
-                "external_id": None,
-                "source_url_normalized": normalized,
-                "video_url": None,
-                "video_format": None,
-            }]
+            pages = [
+                {
+                    "slug": normalized,
+                    "platform": detect_platform(args.url),
+                    "external_id": None,
+                    "source_url_normalized": normalized,
+                    "video_url": None,
+                    "video_format": None,
+                }
+            ]
         else:
             pages = await _get_candidates(session, args.limit)
         if not pages:
             print("Transcription backlog is empty -- nothing to do.")
             return
 
-        print(f"{'[DRY RUN] ' if args.dry_run else ''}{len(pages)} candidate meeting(s) from {_base_url()}...\n")
+        print(
+            f"{'[DRY RUN] ' if args.dry_run else ''}{len(pages)} candidate meeting(s) from {_base_url()}...\n"
+        )
 
         run_start = time.monotonic()
         results = []
         for i, page in enumerate(pages):
             item_start = time.monotonic()
             timestamp = datetime.now().strftime("%H:%M:%S")
-            print(f"[{timestamp}] ({i + 1}/{len(pages)}) {page.get('slug', '?')} -- {page.get('source_url_normalized', '')}")
+            print(
+                f"[{timestamp}] ({i + 1}/{len(pages)}) {page.get('slug', '?')} -- {page.get('source_url_normalized', '')}"
+            )
             try:
-                result = await process_one(session, engine, page, dry_run=args.dry_run, chunk_size_seconds=args.chunk_seconds)
+                result = await process_one(
+                    session,
+                    engine,
+                    page,
+                    dry_run=args.dry_run,
+                    chunk_size_seconds=args.chunk_seconds,
+                )
             except Exception as e:
-                result = {"slug": page.get("slug", "?"), "status": "failed", "detail": f"{type(e).__name__}: {str(e)[:300]}"}
+                result = {
+                    "slug": page.get("slug", "?"),
+                    "status": "failed",
+                    "detail": f"{type(e).__name__}: {str(e)[:300]}",
+                }
             elapsed = time.monotonic() - item_start
             results.append(result)
-            print(f"    [{result['status'].upper()}] ({elapsed:.1f}s) {result['detail']}")
+            print(
+                f"    [{result['status'].upper()}] ({elapsed:.1f}s) {result['detail']}"
+            )
             if i < len(pages) - 1:
                 await asyncio.sleep(REQUEST_DELAY_SECONDS)
 

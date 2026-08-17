@@ -43,8 +43,12 @@ async def test_listing_with_single_video_delegates_to_granicus():
     routes = {
         url: FakeResponse(status=200, text=html, url=url),
         granicus_url: FakeResponse(status=200, text=granicus_html, url=granicus_url),
-        "https://westlakevillage.granicus.com/videos/1201/captions.vtt": FakeResponse(status=404),
-        "https://westlakevillage.granicus.com/AgendaViewer.php?clip_id=1201&embedded=1": FakeResponse(status=404),
+        "https://westlakevillage.granicus.com/videos/1201/captions.vtt": FakeResponse(
+            status=404
+        ),
+        "https://westlakevillage.granicus.com/AgendaViewer.php?clip_id=1201&embedded=1": FakeResponse(
+            status=404
+        ),
     }
 
     with mock_session(routes):

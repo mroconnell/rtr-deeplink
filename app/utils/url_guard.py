@@ -180,7 +180,11 @@ class guarded_get:
             await check_destination(current)
             cm = self._session.get(current, allow_redirects=False, **self._kwargs)
             response = await cm.__aenter__()
-            location = response.headers.get("Location") if response.status in _REDIRECT_STATUSES else None
+            location = (
+                response.headers.get("Location")
+                if response.status in _REDIRECT_STATUSES
+                else None
+            )
             if not location:
                 # Not a redirect, or a redirect with no Location to follow
                 # -- either way, nothing left to do but hand it back.

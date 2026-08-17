@@ -15,7 +15,9 @@ from archive.db import crud
 client = TestClient(archive.main.app)
 
 
-def _payload(external_id: str, source_url: str, *, video_format="youtube", segments=None) -> dict:
+def _payload(
+    external_id: str, source_url: str, *, video_format="youtube", segments=None
+) -> dict:
     return {
         "platform": "youtube",
         "source_url": source_url,
@@ -49,14 +51,17 @@ async def test_wanted_excludes_youtube_page_with_transcript():
     url = "https://www.youtube.com/watch?v=wanted-no-has-transcript"
     await crud.ingest_resolution(
         _payload(
-            "youtube:wanted-no-has-transcript", url,
+            "youtube:wanted-no-has-transcript",
+            url,
             segments=[{"start": 0, "end": 1, "text": "we have a transcript"}],
         ),
         url,
     )
 
     wanted = await crud.list_youtube_pages_missing_transcripts()
-    assert not [p for p in wanted if p["external_id"] == "youtube:wanted-no-has-transcript"]
+    assert not [
+        p for p in wanted if p["external_id"] == "youtube:wanted-no-has-transcript"
+    ]
 
 
 async def test_wanted_excludes_non_youtube_page_without_transcript():
@@ -74,11 +79,15 @@ async def test_wanted_excludes_non_youtube_page_without_transcript():
 
 def test_transcript_wanted_route_rejects_missing_token():
     response = client.get("/internal/transcript-wanted")
-    assert response.status_code == 404  # not 401/403 -- matches every other /internal/* route
+    assert (
+        response.status_code == 404
+    )  # not 401/403 -- matches every other /internal/* route
 
 
 def test_transcript_wanted_route_rejects_wrong_token():
-    response = client.get("/internal/transcript-wanted", headers={"Authorization": "Bearer wrong"})
+    response = client.get(
+        "/internal/transcript-wanted", headers={"Authorization": "Bearer wrong"}
+    )
     assert response.status_code == 404
 
 
@@ -86,7 +95,9 @@ async def test_transcript_wanted_route_returns_queue():
     url = "https://www.youtube.com/watch?v=wanted-route"
     await crud.ingest_resolution(_payload("youtube:wanted-route", url), url)
 
-    response = client.get("/internal/transcript-wanted", headers={"Authorization": "Bearer test-token"})
+    response = client.get(
+        "/internal/transcript-wanted", headers={"Authorization": "Bearer test-token"}
+    )
     assert response.status_code == 200
     pages = response.json()["pages"]
     assert [p for p in pages if p["external_id"] == "youtube:wanted-route"]

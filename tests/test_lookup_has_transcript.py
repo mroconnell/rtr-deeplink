@@ -8,7 +8,9 @@ same pattern as tests/test_transcription_jobs.py.
 from archive.db import crud
 
 
-def _payload(external_id: str, source_url: str, *, segments=None, transcript_warnings=None) -> dict:
+def _payload(
+    external_id: str, source_url: str, *, segments=None, transcript_warnings=None
+) -> dict:
     return {
         "platform": "granicus",
         "source_url": source_url,
@@ -28,7 +30,11 @@ def _payload(external_id: str, source_url: str, *, segments=None, transcript_war
 async def test_lookup_has_transcript_true_for_real_transcript():
     url = "https://example.granicus.com/player/clip/lookup-good"
     await crud.ingest_resolution(
-        _payload("granicus:lookup-good", url, segments=[{"start": 0, "end": 1, "text": "hello"}]),
+        _payload(
+            "granicus:lookup-good",
+            url,
+            segments=[{"start": 0, "end": 1, "text": "hello"}],
+        ),
         url,
     )
     result = await crud.lookup_page_for_url(url)
@@ -38,7 +44,9 @@ async def test_lookup_has_transcript_true_for_real_transcript():
 
 async def test_lookup_has_transcript_false_when_no_version():
     url = "https://example.granicus.com/player/clip/lookup-none"
-    await crud.ingest_resolution(_payload("granicus:lookup-none", url, segments=[]), url)
+    await crud.ingest_resolution(
+        _payload("granicus:lookup-none", url, segments=[]), url
+    )
     result = await crud.lookup_page_for_url(url)
     assert result is not None
     assert result["has_transcript"] is False
@@ -48,9 +56,12 @@ async def test_lookup_has_transcript_false_when_garbled():
     url = "https://example.granicus.com/player/clip/lookup-garbled"
     await crud.ingest_resolution(
         _payload(
-            "granicus:lookup-garbled", url,
+            "granicus:lookup-garbled",
+            url,
             segments=[{"start": 0, "end": 1, "text": "??? ??? ???"}],
-            transcript_warnings=["This transcript looks garbled at the source (not a parsing bug on our end)."],
+            transcript_warnings=[
+                "This transcript looks garbled at the source (not a parsing bug on our end)."
+            ],
         ),
         url,
     )

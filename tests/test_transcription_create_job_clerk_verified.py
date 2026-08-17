@@ -21,7 +21,9 @@ client = TestClient(archive.main.app)
 _HEADERS = {"Authorization": "Bearer test-token"}
 
 
-def _body(external_id: str, requester_email: str, *, clerk_verified: bool = False) -> dict:
+def _body(
+    external_id: str, requester_email: str, *, clerk_verified: bool = False
+) -> dict:
     url = f"https://example.granicus.com/player/clip/{external_id}"
     return {
         "payload": {
@@ -54,14 +56,18 @@ async def _drain(job_id: int) -> None:
     await crud.report_chunk_result(job_id, success=True, shifted_segments=[])
 
 
-async def test_clerk_verified_skips_confirmation_even_when_not_a_newsletter_subscriber(monkeypatch):
+async def test_clerk_verified_skips_confirmation_even_when_not_a_newsletter_subscriber(
+    monkeypatch,
+):
     # The OR must short-circuit on clerk_verified alone -- a real
     # newsletter-audience check would say False here, proving this isn't
     # just accidentally passing via the other path.
     async def _not_a_subscriber(email):
         return False
 
-    monkeypatch.setattr(archive.main.email_utils, "check_audience_membership", _not_a_subscriber)
+    monkeypatch.setattr(
+        archive.main.email_utils, "check_audience_membership", _not_a_subscriber
+    )
     response = client.post(
         "/internal/transcription/create-job",
         json=_body("clerk-verified-1", "signedin@example.com", clerk_verified=True),
@@ -73,11 +79,15 @@ async def test_clerk_verified_skips_confirmation_even_when_not_a_newsletter_subs
     await _drain(body["job_id"])
 
 
-async def test_not_clerk_verified_still_falls_back_to_audience_membership_check(monkeypatch):
+async def test_not_clerk_verified_still_falls_back_to_audience_membership_check(
+    monkeypatch,
+):
     async def _is_a_subscriber(email):
         return True
 
-    monkeypatch.setattr(archive.main.email_utils, "check_audience_membership", _is_a_subscriber)
+    monkeypatch.setattr(
+        archive.main.email_utils, "check_audience_membership", _is_a_subscriber
+    )
     response = client.post(
         "/internal/transcription/create-job",
         json=_body("clerk-verified-2", "subscriber@example.com", clerk_verified=False),
@@ -93,7 +103,9 @@ async def test_neither_clerk_verified_nor_subscriber_needs_confirmation(monkeypa
     async def _not_a_subscriber(email):
         return False
 
-    monkeypatch.setattr(archive.main.email_utils, "check_audience_membership", _not_a_subscriber)
+    monkeypatch.setattr(
+        archive.main.email_utils, "check_audience_membership", _not_a_subscriber
+    )
     response = client.post(
         "/internal/transcription/create-job",
         json=_body("clerk-verified-3", "stranger@example.com", clerk_verified=False),

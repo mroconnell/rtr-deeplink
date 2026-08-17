@@ -82,9 +82,14 @@ async def test_save_search_round_trips_when_logged_in(monkeypatch):
 
     monkeypatch.setattr(app.main.archive_client, "save_search", _fake_save_search)
 
-    response = client.post("/api/account/save-search", json={"search_params": {"q": "budget"}})
+    response = client.post(
+        "/api/account/save-search", json={"search_params": {"q": "budget"}}
+    )
     assert response.status_code == 200
-    assert captured == {"clerk_user_id": "user_test_456", "search_params": {"q": "budget"}}
+    assert captured == {
+        "clerk_user_id": "user_test_456",
+        "search_params": {"q": "budget"},
+    }
 
 
 async def test_unsave_search_round_trips_when_logged_in(monkeypatch):
@@ -113,5 +118,7 @@ async def test_save_meeting_returns_502_on_archive_failure(monkeypatch):
 
     monkeypatch.setattr(app.main.archive_client, "save_search", _fake_save_search)
 
-    response = client.post("/api/account/save-search", json={"search_params": {"q": "x"}})
+    response = client.post(
+        "/api/account/save-search", json={"search_params": {"q": "x"}}
+    )
     assert response.status_code == 502

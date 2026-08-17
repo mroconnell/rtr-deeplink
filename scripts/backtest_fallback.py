@@ -63,7 +63,10 @@ CORPUS = [
         "name": "maricopa",
         "url": "https://mccobagenda.databankcloud.com/AgendaOnline/Meetings/ViewMeeting?id=4694&doctype=3",
         "requires_headless": False,
-        "expect": {"video": "m3u8", "video_url_contains": "playlist.m3u8?instance=1&token="},
+        "expect": {
+            "video": "m3u8",
+            "video_url_contains": "playlist.m3u8?instance=1&token=",
+        },
         "backlog_ref": "Hyland 221/OnBase entry (Maricopa update)",
     },
     {
@@ -168,40 +171,102 @@ def score(entry, resolved) -> list:
         if link and want in link:
             rows.append(("video", "PASS", f"pointer {link}"))
         else:
-            rows.append(("video", "FAIL", f"expected pointer containing {want!r}, got video_link={link!r} video_url={resolved.video_url!r}"))
+            rows.append(
+                (
+                    "video",
+                    "FAIL",
+                    f"expected pointer containing {want!r}, got video_link={link!r} video_url={resolved.video_url!r}",
+                )
+            )
     elif expected_video is None:
         if resolved.video_url is None:
             rows.append(("video", "PASS", "honestly empty, as expected"))
         else:
-            rows.append(("video", "PARTIAL", f"unexpectedly found {resolved.video_format}: {resolved.video_url[:80]} (better than expected -- tighten this row)"))
+            rows.append(
+                (
+                    "video",
+                    "PARTIAL",
+                    f"unexpectedly found {resolved.video_format}: {resolved.video_url[:80]} (better than expected -- tighten this row)",
+                )
+            )
     else:
         want_url = exp.get("video_url_contains", "")
-        if resolved.video_format == expected_video and resolved.video_url and want_url in resolved.video_url:
+        if (
+            resolved.video_format == expected_video
+            and resolved.video_url
+            and want_url in resolved.video_url
+        ):
             rows.append(("video", "PASS", resolved.video_url[:90]))
         else:
-            rows.append(("video", "FAIL", f"expected {expected_video} containing {want_url!r}, got format={resolved.video_format!r} url={str(resolved.video_url)[:90]!r}"))
+            rows.append(
+                (
+                    "video",
+                    "FAIL",
+                    f"expected {expected_video} containing {want_url!r}, got format={resolved.video_format!r} url={str(resolved.video_url)[:90]!r}",
+                )
+            )
 
     if exp.get("captions"):
-        rows.append(("captions", "PASS" if resolved.segments else "FAIL", f"{len(resolved.segments)} segments"))
+        rows.append(
+            (
+                "captions",
+                "PASS" if resolved.segments else "FAIL",
+                f"{len(resolved.segments)} segments",
+            )
+        )
     if exp.get("agenda_link"):
-        rows.append(("agenda", "PASS" if resolved.agenda_link else "FAIL", str(resolved.agenda_link)[:90]))
+        rows.append(
+            (
+                "agenda",
+                "PASS" if resolved.agenda_link else "FAIL",
+                str(resolved.agenda_link)[:90],
+            )
+        )
     if exp.get("title_contains"):
         ok = resolved.title and exp["title_contains"].lower() in resolved.title.lower()
         rows.append(("title", "PASS" if ok else "FAIL", repr(resolved.title)))
     if exp.get("date"):
-        rows.append(("date", "PASS" if resolved.date == exp["date"] else "FAIL", repr(resolved.date)))
+        rows.append(
+            (
+                "date",
+                "PASS" if resolved.date == exp["date"] else "FAIL",
+                repr(resolved.date),
+            )
+        )
     if exp.get("jurisdiction_contains"):
-        ok = resolved.jurisdiction and exp["jurisdiction_contains"].lower() in resolved.jurisdiction.lower()
-        rows.append(("jurisdiction", "PASS" if ok else "PARTIAL", repr(resolved.jurisdiction)))
+        ok = (
+            resolved.jurisdiction
+            and exp["jurisdiction_contains"].lower() in resolved.jurisdiction.lower()
+        )
+        rows.append(
+            ("jurisdiction", "PASS" if ok else "PARTIAL", repr(resolved.jurisdiction))
+        )
     return rows
 
 
 async def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--url-contains", type=str, default=None, help="Only run corpus rows whose URL contains this substring")
-    parser.add_argument("--delay", type=float, default=2.0, help="Seconds between rows (default 2.0)")
-    parser.add_argument("--include-headless", action="store_true", help="Also run rows that need the headless escalation")
-    parser.add_argument("--json", action="store_true", help="Emit a machine-readable JSON report instead of text")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "--url-contains",
+        type=str,
+        default=None,
+        help="Only run corpus rows whose URL contains this substring",
+    )
+    parser.add_argument(
+        "--delay", type=float, default=2.0, help="Seconds between rows (default 2.0)"
+    )
+    parser.add_argument(
+        "--include-headless",
+        action="store_true",
+        help="Also run rows that need the headless escalation",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit a machine-readable JSON report instead of text",
+    )
     args = parser.parse_args()
 
     # Deferred import, same reasoning as scripts/backfill_archived_pages.py:
@@ -230,13 +295,22 @@ async def main() -> None:
             results = [("resolve", "FAIL", f"{type(e).__name__}: {e}")]
         headless_note = " [requires_headless]" if entry["requires_headless"] else ""
         if not args.json:
-            print(f"[{i}/{len(rows)}] {entry['name']}{headless_note}  ({entry['backlog_ref']})")
+            print(
+                f"[{i}/{len(rows)}] {entry['name']}{headless_note}  ({entry['backlog_ref']})"
+            )
             for field, verdict, detail in results:
                 print(f"    {verdict:8s} {field:12s} {detail}")
             print()
-        report.append({"name": entry["name"], "url": entry["url"],
-                       "requires_headless": entry["requires_headless"],
-                       "results": [{"field": f, "verdict": v, "detail": d} for f, v, d in results]})
+        report.append(
+            {
+                "name": entry["name"],
+                "url": entry["url"],
+                "requires_headless": entry["requires_headless"],
+                "results": [
+                    {"field": f, "verdict": v, "detail": d} for f, v, d in results
+                ],
+            }
+        )
         if not entry["requires_headless"] and any(v == "FAIL" for _, v, _ in results):
             any_fail = True
 
@@ -245,8 +319,12 @@ async def main() -> None:
     else:
         n_pass = sum(1 for r in report for x in r["results"] if x["verdict"] == "PASS")
         n_fail = sum(1 for r in report for x in r["results"] if x["verdict"] == "FAIL")
-        n_part = sum(1 for r in report for x in r["results"] if x["verdict"] == "PARTIAL")
-        print(f"Scorecard: {n_pass} PASS, {n_part} PARTIAL, {n_fail} FAIL across {len(report)} page(s).")
+        n_part = sum(
+            1 for r in report for x in r["results"] if x["verdict"] == "PARTIAL"
+        )
+        print(
+            f"Scorecard: {n_pass} PASS, {n_part} PARTIAL, {n_fail} FAIL across {len(report)} page(s)."
+        )
 
     if any_fail:
         sys.exit(1)

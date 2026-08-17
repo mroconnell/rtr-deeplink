@@ -152,7 +152,9 @@ class LimsAssetFinder(AssetFinder):
         video_id_match = re.search(r"[?&]v=([\w-]{11})", video_url)
         video_id = video_id_match.group(1) if video_id_match else None
 
-        raw_items = LimsAssetFinder._flatten_timestamps(data.get("SerializedVideoTimestamps") or [])
+        raw_items = LimsAssetFinder._flatten_timestamps(
+            data.get("SerializedVideoTimestamps") or []
+        )
         raw_items.sort(key=lambda item: item[0])
         # Real gap fixed 2026-08-14: LIMS has no per-item duration data, so
         # `end` used to just equal `start` for every item -- meeting_page.html's
@@ -163,7 +165,9 @@ class LimsAssetFinder(AssetFinder):
         agenda_items: List[TranscriptSegment] = []
         for i, (seconds, title) in enumerate(raw_items):
             end = raw_items[i + 1][0] if i + 1 < len(raw_items) else seconds
-            agenda_items.append(TranscriptSegment(start=seconds, end=max(end, seconds), text=title))
+            agenda_items.append(
+                TranscriptSegment(start=seconds, end=max(end, seconds), text=title)
+            )
         return video_id, agenda_items
 
     @staticmethod
@@ -175,7 +179,9 @@ class LimsAssetFinder(AssetFinder):
             if seconds is not None and title:
                 items.append((seconds, title))
             for file_entry in entry.get("files") or []:
-                file_seconds = LimsAssetFinder._as_seconds(file_entry.get("timeInSeconds"))
+                file_seconds = LimsAssetFinder._as_seconds(
+                    file_entry.get("timeInSeconds")
+                )
                 file_title = LimsAssetFinder._clean_title(file_entry.get("title"))
                 if file_seconds is not None and file_title:
                     items.append((file_seconds, file_title))

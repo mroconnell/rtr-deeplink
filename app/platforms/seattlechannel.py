@@ -8,7 +8,11 @@ from bs4 import BeautifulSoup
 
 from .base import AssetFinder
 from .models import ResolvedMeeting, TranscriptSegment
-from ..utils.vtt_parser import decode_vtt_bytes, detect_language_from_texts, parse_captions_by_extension
+from ..utils.vtt_parser import (
+    decode_vtt_bytes,
+    detect_language_from_texts,
+    parse_captions_by_extension,
+)
 
 # Seattle Channel's own video site (seattlechannel.org) -- confirmed live
 # 2026-08-14 against two independent real meetings on the
@@ -30,11 +34,15 @@ from ..utils.vtt_parser import decode_vtt_bytes, detect_language_from_texts, par
 # bounded by the `playerInstance.on('complete', ...)` call that immediately
 # follows every real setup() call in this template, is what keeps this
 # adapter from ever picking up an unrelated video's file/caption/title.
-_VIDPLAYER_START_RE = re.compile(r"var\s+playerInstance\s*=\s*jwplayer\(['\"]vidPlayer['\"]\)\s*;")
+_VIDPLAYER_START_RE = re.compile(
+    r"var\s+playerInstance\s*=\s*jwplayer\(['\"]vidPlayer['\"]\)\s*;"
+)
 _FILE_RE = re.compile(r"file:\s*[\"']([^\"']+\.mp4)[\"']")
 _TRACK_FILE_RE = re.compile(r"tracks:\s*\[\s*\{\s*file:\s*[\"']([^\"']+)[\"']")
 _GA_IDSTRING_RE = re.compile(r"idstring:\s*['\"]([^'\"]+)['\"]")
-_SEEK_ITEM_RE = re.compile(r'<a class="seekItem"[^>]*data-seek="(\d+)"[^>]*>(.*?)</a>', re.DOTALL)
+_SEEK_ITEM_RE = re.compile(
+    r'<a class="seekItem"[^>]*data-seek="(\d+)"[^>]*>(.*?)</a>', re.DOTALL
+)
 _TRAILING_TIME_RE = re.compile(r"\s*-\s*\d{1,2}:\d{2}(?::\d{2})?$")
 
 
@@ -49,7 +57,9 @@ class SeattleChannelAssetFinder(AssetFinder):
 
     async def resolve(self, url: str) -> ResolvedMeeting:
         async with aiohttp.ClientSession() as session:
-            async with session.get(url, timeout=aiohttp.ClientTimeout(total=20)) as response:
+            async with session.get(
+                url, timeout=aiohttp.ClientTimeout(total=20)
+            ) as response:
                 page_html = await response.text()
 
         soup = BeautifulSoup(page_html, "html.parser")
@@ -83,7 +93,9 @@ class SeattleChannelAssetFinder(AssetFinder):
             cues = await self._fetch_captions(caption_url)
             if cues:
                 segments = [TranscriptSegment(**cue) for cue in cues]
-                transcript_language = detect_language_from_texts(c["text"] for c in cues)
+                transcript_language = detect_language_from_texts(
+                    c["text"] for c in cues
+                )
         if not segments:
             transcript_warnings.append("No transcript found for this event.")
 
@@ -113,7 +125,7 @@ class SeattleChannelAssetFinder(AssetFinder):
         end = page_html.find("playerInstance.on('complete'", start.end())
         if end == -1:
             end = start.end() + 4000
-        return page_html[start.end():end]
+        return page_html[start.end() : end]
 
     @staticmethod
     def _extract_title(soup: BeautifulSoup) -> Optional[str]:
@@ -134,7 +146,9 @@ class SeattleChannelAssetFinder(AssetFinder):
         raw_items = []
         for match in _SEEK_ITEM_RE.finditer(page_html):
             seconds = float(match.group(1))
-            text = html.unescape(BeautifulSoup(match.group(2), "html.parser").get_text(" ", strip=True))
+            text = html.unescape(
+                BeautifulSoup(match.group(2), "html.parser").get_text(" ", strip=True)
+            )
             text = _TRAILING_TIME_RE.sub("", text).strip()
             if text:
                 raw_items.append((seconds, text))
@@ -143,14 +157,18 @@ class SeattleChannelAssetFinder(AssetFinder):
         agenda_items: List[TranscriptSegment] = []
         for i, (seconds, text) in enumerate(raw_items):
             end = raw_items[i + 1][0] if i + 1 < len(raw_items) else seconds
-            agenda_items.append(TranscriptSegment(start=seconds, end=max(end, seconds), text=text))
+            agenda_items.append(
+                TranscriptSegment(start=seconds, end=max(end, seconds), text=text)
+            )
         return agenda_items
 
     @staticmethod
     async def _fetch_captions(caption_url: str):
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.get(caption_url, timeout=aiohttp.ClientTimeout(total=20)) as response:
+                async with session.get(
+                    caption_url, timeout=aiohttp.ClientTimeout(total=20)
+                ) as response:
                     if response.status != 200:
                         return None
                     raw = await response.read()

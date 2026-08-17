@@ -93,16 +93,26 @@ def test_chunk_duration_never_negative_past_the_end():
 def test_count_seam_overlap_detects_real_production_duplicate():
     # Verbatim from the real, live Boulder County page before this fix.
     previous_segments = [
-        {"start": 896.0, "end": 899.5, "text": "...this whole question about truck caro, which may actually predate the Bracero program."},
+        {
+            "start": 896.0,
+            "end": 899.5,
+            "text": "...this whole question about truck caro, which may actually predate the Bracero program.",
+        },
         {"start": 900.0, "end": 900.9, "text": "Um, there's an exhibit at the."},
     ]
     new_segments = [
-        {"start": 908.0, "end": 918.7, "text": "This whole question about truck caro, which may actually predate the Bracero program, there's an exhibit at the Colorado Railroad Museum, so down in Golden..."},
+        {
+            "start": 908.0,
+            "end": 918.7,
+            "text": "This whole question about truck caro, which may actually predate the Bracero program, there's an exhibit at the Colorado Railroad Museum, so down in Golden...",
+        },
     ]
     assert count_seam_overlap_segments(previous_segments, new_segments) == 2
 
     merged = merge_chunk_segments(previous_segments, new_segments)
-    assert merged == new_segments  # both duplicate prev segments dropped, new kept in full
+    assert (
+        merged == new_segments
+    )  # both duplicate prev segments dropped, new kept in full
 
 
 def test_count_seam_overlap_detects_real_whisper_output():
@@ -116,12 +126,28 @@ def test_count_seam_overlap_detects_real_whisper_output():
     # which is exactly why this dedup works at word granularity, not by
     # comparing whole-segment text for equality.
     previous_segments = [
-        {"start": 883.36, "end": 889.04, "text": "and I think there may be a tie to what Larry brought up previously, is just this whole question"},
-        {"start": 889.04, "end": 899.5, "text": "about Tracero, which may actually predate the Bracero program."},
+        {
+            "start": 883.36,
+            "end": 889.04,
+            "text": "and I think there may be a tie to what Larry brought up previously, is just this whole question",
+        },
+        {
+            "start": 889.04,
+            "end": 899.5,
+            "text": "about Tracero, which may actually predate the Bracero program.",
+        },
     ]
     new_segments = [
-        {"start": 900.0, "end": 909.04, "text": "whole question about Tracero, which may actually predate the Bracero program, there's an"},
-        {"start": 909.04, "end": 918.72, "text": "exhibit at the Colorado Railroad Museum, so down in Golden apparently it's going to be available"},
+        {
+            "start": 900.0,
+            "end": 909.04,
+            "text": "whole question about Tracero, which may actually predate the Bracero program, there's an",
+        },
+        {
+            "start": 909.04,
+            "end": 918.72,
+            "text": "exhibit at the Colorado Railroad Museum, so down in Golden apparently it's going to be available",
+        },
         {"start": 918.72, "end": 920.72, "text": "until August, so it's..."},
     ]
     drop = count_seam_overlap_segments(previous_segments, new_segments)
@@ -138,13 +164,24 @@ def test_count_seam_overlap_ignores_genuinely_different_content():
     # no seek imprecision at all, or an HLS source where the boundary
     # happens to land exactly on a segment edge).
     previous_segments = [
-        {"start": 895.0, "end": 900.0, "text": "Thank you, Commissioner, that concludes the staff report."},
+        {
+            "start": 895.0,
+            "end": 900.0,
+            "text": "Thank you, Commissioner, that concludes the staff report.",
+        },
     ]
     new_segments = [
-        {"start": 900.0, "end": 905.0, "text": "Moving on to item four B on tonight's agenda."},
+        {
+            "start": 900.0,
+            "end": 905.0,
+            "text": "Moving on to item four B on tonight's agenda.",
+        },
     ]
     assert count_seam_overlap_segments(previous_segments, new_segments) == 0
-    assert merge_chunk_segments(previous_segments, new_segments) == [*previous_segments, *new_segments]
+    assert merge_chunk_segments(previous_segments, new_segments) == [
+        *previous_segments,
+        *new_segments,
+    ]
 
 
 def test_count_seam_overlap_ignores_short_coincidental_phrases():
@@ -154,7 +191,11 @@ def test_count_seam_overlap_ignores_short_coincidental_phrases():
         {"start": 895.0, "end": 900.0, "text": "Okay, thank you very much for that."},
     ]
     new_segments = [
-        {"start": 900.0, "end": 905.0, "text": "Thank you very much, next we'll hear from the applicant."},
+        {
+            "start": 900.0,
+            "end": 905.0,
+            "text": "Thank you very much, next we'll hear from the applicant.",
+        },
     ]
     assert count_seam_overlap_segments(previous_segments, new_segments) == 0
 
@@ -168,7 +209,10 @@ def test_count_seam_overlap_empty_inputs_are_safe():
 def test_merge_chunk_segments_no_overlap_is_plain_concatenation():
     previous_segments = [{"start": 0.0, "end": 2.0, "text": "First chunk."}]
     new_segments = [{"start": 900.0, "end": 902.0, "text": "Second chunk."}]
-    assert merge_chunk_segments(previous_segments, new_segments) == [*previous_segments, *new_segments]
+    assert merge_chunk_segments(previous_segments, new_segments) == [
+        *previous_segments,
+        *new_segments,
+    ]
 
 
 # --- Hallucinated-transcription detection -----------------------------------
@@ -195,9 +239,15 @@ def _repeated_segment(start: float, text: str, *, step: float = 10.0) -> dict:
 # same cadence -- the run length (44 of 45) is what was directly observed,
 # not estimated.
 _REAL_HALLUCINATED_REPETITION_SEGMENTS = [
-    {"start": 0.0, "end": 30.0, "text": "Public comment, motion, second, aye, nay, abstain,"},
+    {
+        "start": 0.0,
+        "end": 30.0,
+        "text": "Public comment, motion, second, aye, nay, abstain,",
+    },
 ] + [
-    _repeated_segment(start, "So, we are going to take a look at what we are going to do.")
+    _repeated_segment(
+        start, "So, we are going to take a look at what we are going to do."
+    )
     for start in [240.0, 250.0, 260.0, *range(270, 665, 10)]
 ][:44]
 
@@ -208,8 +258,16 @@ _REAL_HALLUCINATED_REPETITION_SEGMENTS = [
 # included so a reader can see what this detector deliberately does *not*
 # claim to catch, not as a expected-positive fixture.
 _REAL_QUOTED_NONSENSE_ENGLISH = [
-    {"start": 0.0, "end": 4.0, "text": "Did you ever see your mom will never wake up at the bus stop?"},
-    {"start": 4.0, "end": 8.0, "text": "Lord of Evil, saint of heaven, Lord God of peace!"},
+    {
+        "start": 0.0,
+        "end": 4.0,
+        "text": "Did you ever see your mom will never wake up at the bus stop?",
+    },
+    {
+        "start": 4.0,
+        "end": 8.0,
+        "text": "Lord of Evil, saint of heaven, Lord God of peace!",
+    },
 ]
 
 # Real, from directly re-transcribing this same meeting's real audio after
@@ -217,17 +275,61 @@ _REAL_QUOTED_NONSENSE_ENGLISH = [
 # downmix) -- a genuinely clean, coherent real transcript, used as a
 # false-positive check.
 _REAL_CLEAN_PORT_COQUITLAM_SEGMENTS = [
-    {"start": 300.0, "end": 309.52, "text": "Councillor Garling. Sorry, I'm confused now. So there is an access point off of Ogovi, and the drawing"},
-    {"start": 309.52, "end": 315.36, "text": "it says, there's not. So there would be access for, say, if, like, someone were delivering or"},
-    {"start": 315.36, "end": 318.56, "text": "for firefighting, you know, someone could, could access through, like, you know, like,"},
-    {"start": 318.56, "end": 322.80, "text": "that's supposed to be a fence or a gate or something, but a driveway access would be off of that"},
-    {"start": 322.80, "end": 328.40, "text": "lane portion to the off of Hastings. So I'm, I'm, I'm not in favor of this at all. I,"},
-    {"start": 328.40, "end": 334.08, "text": "I just, I don't know why we would. I get it's an unopened portion, um, but if you were, if you've"},
-    {"start": 334.08, "end": 338.72, "text": "walked that, which I just did on the weekend, it literally is in between two houses, and it"},
-    {"start": 338.72, "end": 343.12, "text": "goes onto a super busy area, which including a telephone pole, right in the middle. We'd have"},
-    {"start": 343.12, "end": 348.96, "text": "to move the telephone over the end with. That's one thing. But it, it, it, that lane when, in essence,"},
-    {"start": 348.96, "end": 354.40, "text": "go right between two people and dump onto what is already a busy Hastings street. So, um,"},
-    {"start": 354.40, "end": 359.84, "text": "I'm not sure why we would put it to a point where we would access that lane."},
+    {
+        "start": 300.0,
+        "end": 309.52,
+        "text": "Councillor Garling. Sorry, I'm confused now. So there is an access point off of Ogovi, and the drawing",
+    },
+    {
+        "start": 309.52,
+        "end": 315.36,
+        "text": "it says, there's not. So there would be access for, say, if, like, someone were delivering or",
+    },
+    {
+        "start": 315.36,
+        "end": 318.56,
+        "text": "for firefighting, you know, someone could, could access through, like, you know, like,",
+    },
+    {
+        "start": 318.56,
+        "end": 322.80,
+        "text": "that's supposed to be a fence or a gate or something, but a driveway access would be off of that",
+    },
+    {
+        "start": 322.80,
+        "end": 328.40,
+        "text": "lane portion to the off of Hastings. So I'm, I'm, I'm not in favor of this at all. I,",
+    },
+    {
+        "start": 328.40,
+        "end": 334.08,
+        "text": "I just, I don't know why we would. I get it's an unopened portion, um, but if you were, if you've",
+    },
+    {
+        "start": 334.08,
+        "end": 338.72,
+        "text": "walked that, which I just did on the weekend, it literally is in between two houses, and it",
+    },
+    {
+        "start": 338.72,
+        "end": 343.12,
+        "text": "goes onto a super busy area, which including a telephone pole, right in the middle. We'd have",
+    },
+    {
+        "start": 343.12,
+        "end": 348.96,
+        "text": "to move the telephone over the end with. That's one thing. But it, it, it, that lane when, in essence,",
+    },
+    {
+        "start": 348.96,
+        "end": 354.40,
+        "text": "go right between two people and dump onto what is already a busy Hastings street. So, um,",
+    },
+    {
+        "start": 354.40,
+        "end": 359.84,
+        "text": "I'm not sure why we would put it to a point where we would access that lane.",
+    },
 ]
 
 # Boulder County CO, from the seam-duplication investigation -- another
@@ -235,13 +337,33 @@ _REAL_CLEAN_PORT_COQUITLAM_SEGMENTS = [
 # entirely, a second false-positive check.
 _REAL_CLEAN_BOULDER_COUNTY_SEGMENTS = [
     {"start": 862.12, "end": 864.12, "text": "Of a mental health inquiry."},
-    {"start": 864.12, "end": 869.12, "text": "And just how difficult it can be to be away from home to be without a."},
+    {
+        "start": 864.12,
+        "end": 869.12,
+        "text": "And just how difficult it can be to be away from home to be without a.",
+    },
     {"start": 869.12, "end": 871.12, "text": "A social network to support you."},
-    {"start": 871.12, "end": 873.12, "text": "And it was a it was a fascinating presentation."},
+    {
+        "start": 871.12,
+        "end": 873.12,
+        "text": "And it was a it was a fascinating presentation.",
+    },
     {"start": 873.12, "end": 874.12, "text": "And I."},
-    {"start": 874.12, "end": 878.12, "text": "And you know, kiddos to her and her effort."},
-    {"start": 900.00, "end": 908.96, "text": "This whole question about tricharro, which may actually predate the preserro program, there's"},
-    {"start": 908.96, "end": 918.12, "text": "an exhibit at the Colorado Railroad Museum, so down in Golden. Apparently, it's going to be"},
+    {
+        "start": 874.12,
+        "end": 878.12,
+        "text": "And you know, kiddos to her and her effort.",
+    },
+    {
+        "start": 900.00,
+        "end": 908.96,
+        "text": "This whole question about tricharro, which may actually predate the preserro program, there's",
+    },
+    {
+        "start": 908.96,
+        "end": 918.12,
+        "text": "an exhibit at the Colorado Railroad Museum, so down in Golden. Apparently, it's going to be",
+    },
 ]
 
 # Synthetic (real script, not real production output -- the coordinator's
@@ -255,14 +377,22 @@ _REAL_CLEAN_BOULDER_COUNTY_SEGMENTS = [
 _SYNTHETIC_NON_LATIN_SEGMENTS = [
     {"start": 0.0, "end": 5.0, "text": "నమస్కారం మీరు ఎలా ఉన్నారు ఈ రోజు వాతావరణం చాలా బాగుంది"},
     {"start": 5.0, "end": 10.0, "text": "ආයුබෝවන් ඔබට කොහොමද අද කාලගුණය ඉතා හොඳයි ස්තූතියි"},
-    {"start": 10.0, "end": 15.0, "text": "ఇది నిజంగా ఒక అద్భుతమైన సమావేశం మరియు మేము చాలా సంతోషిస్తున్నాము"},
+    {
+        "start": 10.0,
+        "end": 15.0,
+        "text": "ఇది నిజంగా ఒక అద్భుతమైన సమావేశం మరియు మేము చాలా సంతోషిస్తున్నాము",
+    },
 ]
 
 # Synthetic (a plausible shape for the reported "long runs of a single
 # repeated character" symptom, not the literal reported output) -- marked
 # synthetic for the same reason as above.
 _SYNTHETIC_CHAR_RUN_SEGMENTS = [
-    {"start": 0.0, "end": 5.0, "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+    {
+        "start": 0.0,
+        "end": 5.0,
+        "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    },
 ]
 
 
@@ -288,7 +418,9 @@ def test_detect_hallucination_warnings_no_false_positive_on_real_clean_transcrip
 
 def test_detect_hallucination_warnings_empty_and_short_input_are_safe():
     assert detect_hallucination_warnings([]) == []
-    assert detect_hallucination_warnings([{"start": 0.0, "end": 1.0, "text": "Hi."}]) == []
+    assert (
+        detect_hallucination_warnings([{"start": 0.0, "end": 1.0, "text": "Hi."}]) == []
+    )
 
 
 def test_detect_hallucination_warnings_does_not_claim_to_catch_semantic_nonsense():

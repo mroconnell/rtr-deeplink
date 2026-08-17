@@ -45,7 +45,11 @@ def _init_sentry() -> None:
         return
     import sentry_sdk
 
-    sentry_sdk.init(dsn=dsn, environment=os.environ.get("SENTRY_ENVIRONMENT", "production"), traces_sample_rate=0)
+    sentry_sdk.init(
+        dsn=dsn,
+        environment=os.environ.get("SENTRY_ENVIRONMENT", "production"),
+        traces_sample_rate=0,
+    )
 
 
 _init_sentry()
@@ -54,7 +58,12 @@ from . import archive_client, reporting
 from .db import crud
 from .db.engine import init_models
 from .platforms import register_all_finders
-from .platforms.base import detect_platform, get_finder, CalendarPageError, UnsupportedPlatformError
+from .platforms.base import (
+    detect_platform,
+    get_finder,
+    CalendarPageError,
+    UnsupportedPlatformError,
+)
 from .platforms.headless_browser import warm_up as warm_up_headless_browser
 from .platforms.media_probe import is_plausible_meeting_duration, probe_duration
 from .platforms.models import ResolvedMeeting
@@ -76,7 +85,9 @@ async def lifespan(app: FastAPI):
     except Exception:
         # A down/misconfigured DB must never stop the app from serving --
         # it just means caching/reporting silently no-ops (see `safe()`).
-        logger.exception("Failed to initialize DB models at startup; continuing without persistence.")
+        logger.exception(
+            "Failed to initialize DB models at startup; continuing without persistence."
+        )
     try:
         # Launches (and, if needed, self-heals) the shared Chromium
         # instance Minneapolis LIMS/SLC's adapters use, once, at startup
@@ -87,7 +98,9 @@ async def lifespan(app: FastAPI):
         # must never stop the other ~10 platforms from working.
         await warm_up_headless_browser()
     except Exception:
-        logger.exception("Failed to warm up the headless browser at startup; continuing without it.")
+        logger.exception(
+            "Failed to warm up the headless browser at startup; continuing without it."
+        )
     yield
 
 
@@ -112,11 +125,19 @@ app.mount("/static", StaticFiles(directory=APP_DIR / "static"), name="static")
 # Deep-link JS shared with the Archive service (archive/main.py mounts the
 # same top-level directory identically) -- see shared_static/deep_link.js's
 # own header comment for why this exists.
-app.mount("/shared-static", StaticFiles(directory=APP_DIR.parent / "shared_static"), name="shared_static")
+app.mount(
+    "/shared-static",
+    StaticFiles(directory=APP_DIR.parent / "shared_static"),
+    name="shared_static",
+)
 templates = Jinja2Templates(directory=APP_DIR / "templates")
 templates.env.globals["GA_MEASUREMENT_ID"] = os.environ.get("GA_MEASUREMENT_ID", "")
-templates.env.globals["CLERK_PUBLISHABLE_KEY"] = os.environ.get("CLERK_PUBLISHABLE_KEY", "")
-templates.env.globals["CLERK_FRONTEND_API_URL"] = clerk_frontend_api_url(os.environ.get("CLERK_PUBLISHABLE_KEY", ""))
+templates.env.globals["CLERK_PUBLISHABLE_KEY"] = os.environ.get(
+    "CLERK_PUBLISHABLE_KEY", ""
+)
+templates.env.globals["CLERK_FRONTEND_API_URL"] = clerk_frontend_api_url(
+    os.environ.get("CLERK_PUBLISHABLE_KEY", "")
+)
 
 
 @app.exception_handler(StarletteHTTPException)
@@ -127,9 +148,14 @@ async def not_found_handler(request: Request, exc: StarletteHTTPException):
     # signal for broken inbound links (old bookmarks, stale references from
     # other sites) that was previously invisible.
     if exc.status_code == 404:
-        logger.warning("404: %s (referer=%s)", request.url.path, request.headers.get("referer", ""))
-        return templates.TemplateResponse(request, "not_found.html", {}, status_code=404)
+        logger.warning(
+            "404: %s (referer=%s)", request.url.path, request.headers.get("referer", "")
+        )
+        return templates.TemplateResponse(
+            request, "not_found.html", {}, status_code=404
+        )
     return await http_exception_handler(request, exc)
+
 
 register_all_finders()
 
@@ -145,7 +171,9 @@ async def safe(fn, *args, **kwargs):
     try:
         return await fn(*args, **kwargs)
     except Exception:
-        logger.exception("DB call %s failed; continuing without it.", getattr(fn, "__name__", fn))
+        logger.exception(
+            "DB call %s failed; continuing without it.", getattr(fn, "__name__", fn)
+        )
         return None
 
 
@@ -209,11 +237,16 @@ async def _sweep_pending_archive_pushes() -> list[dict]:
     failure so this has something accurate to query). Returns what it
     found, for the admin endpoint below to report back synchronously;
     the passive opportunistic caller in /api/resolve ignores it."""
-    pending = await safe(crud.get_pending_archive_pushes, min_age_minutes=ARCHIVE_PUSH_RETRY_AFTER_MINUTES)
+    pending = await safe(
+        crud.get_pending_archive_pushes,
+        min_age_minutes=ARCHIVE_PUSH_RETRY_AFTER_MINUTES,
+    )
     if not pending:
         return []
     for item in pending:
-        await _push_and_track(item["resolution_id"], item["payload"], item["input_url_normalized"])
+        await _push_and_track(
+            item["resolution_id"], item["payload"], item["input_url_normalized"]
+        )
     return pending
 
 
@@ -228,7 +261,10 @@ def _maybe_schedule_push_sweep(background_tasks: BackgroundTasks) -> None:
     lock-grade guarantee."""
     global _last_push_sweep_at
     now = datetime.now(timezone.utc)
-    if _last_push_sweep_at is not None and (now - _last_push_sweep_at) < ARCHIVE_PUSH_SWEEP_INTERVAL:
+    if (
+        _last_push_sweep_at is not None
+        and (now - _last_push_sweep_at) < ARCHIVE_PUSH_SWEEP_INTERVAL
+    ):
         return
     _last_push_sweep_at = now
     background_tasks.add_task(_sweep_pending_archive_pushes)
@@ -247,7 +283,9 @@ def _parse_updated_at(raw: str):
     return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
-async def _recheck_archived_page(url: str, normalized: str, platform: str, *, dry_run: bool = False) -> dict:
+async def _recheck_archived_page(
+    url: str, normalized: str, platform: str, *, dry_run: bool = False
+) -> dict:
     """Re-resolve a permanent page and push if it finds real content. Used
     three ways: fired via BackgroundTasks on a lookup hit that's gone stale
     (ARCHIVE_RECHECK_AFTER, return value discarded -- a failure there just
@@ -304,7 +342,9 @@ async def health():
             await conn.execute(text("SELECT 1"))
     except Exception:
         logger.exception("Health check failed: database unreachable.")
-        return JSONResponse({"status": "error", "reason": "database unreachable"}, status_code=503)
+        return JSONResponse(
+            {"status": "error", "reason": "database unreachable"}, status_code=503
+        )
     return {"status": "ok"}
 
 
@@ -346,19 +386,29 @@ async def health_resolve_check():
             payload = result.model_dump()
         except Exception as e:
             logger.exception("Uptime resolve-check failed for %s.", check_url)
-            return JSONResponse({"status": "error", "reason": str(e)[:200]}, status_code=503)
+            return JSONResponse(
+                {"status": "error", "reason": str(e)[:200]}, status_code=503
+            )
 
     has_content = bool(
-        payload.get("segments") or payload.get("agenda_items") or payload.get("video_url") or payload.get("agenda_link")
+        payload.get("segments")
+        or payload.get("agenda_items")
+        or payload.get("video_url")
+        or payload.get("agenda_link")
     )
     if not has_content:
-        return JSONResponse({"status": "error", "reason": "resolve returned no content"}, status_code=503)
+        return JSONResponse(
+            {"status": "error", "reason": "resolve returned no content"},
+            status_code=503,
+        )
     return {"status": "ok"}
 
 
 @app.post("/api/resolve")
 @limiter.limit("20/minute")
-async def resolve(request: Request, req: ResolveRequest, background_tasks: BackgroundTasks):
+async def resolve(
+    request: Request, req: ResolveRequest, background_tasks: BackgroundTasks
+):
     # SSRF guard, checked before any dispatch -- an unknown host falls
     # through to generic_fallback.py's own fetch, which (unguarded) would
     # follow this URL wherever it points, private/internal addresses
@@ -398,7 +448,9 @@ async def resolve(request: Request, req: ResolveRequest, background_tasks: Backg
             else ARCHIVE_RECHECK_AFTER
         )
         if updated_at and (datetime.now(timezone.utc) - updated_at) > recheck_after:
-            background_tasks.add_task(_recheck_archived_page, req.url, normalized, platform)
+            background_tasks.add_task(
+                _recheck_archived_page, req.url, normalized, platform
+            )
         return {"redirect_url": archived["url"]}
 
     cached = await safe(crud.get_cached_resolution, normalized)
@@ -414,8 +466,14 @@ async def resolve(request: Request, req: ResolveRequest, background_tasks: Backg
         # -- get_cached_resolution() returns resolution_id alongside the
         # payload specifically for this.
         cached_payload = cached["payload"]
-        if cached_payload.get("segments") or cached_payload.get("agenda_items") or cached_payload.get("agenda_link"):
-            background_tasks.add_task(_push_and_track, cached["resolution_id"], cached_payload, normalized)
+        if (
+            cached_payload.get("segments")
+            or cached_payload.get("agenda_items")
+            or cached_payload.get("agenda_link")
+        ):
+            background_tasks.add_task(
+                _push_and_track, cached["resolution_id"], cached_payload, normalized
+            )
         return cached_payload
 
     try:
@@ -518,7 +576,9 @@ async def resolve(request: Request, req: ResolveRequest, background_tasks: Backg
     # rather than crashing on a None id.
     if result.segments or result.agenda_items or result.agenda_link:
         if resolution_id is not None:
-            background_tasks.add_task(_push_and_track, resolution_id, payload, normalized)
+            background_tasks.add_task(
+                _push_and_track, resolution_id, payload, normalized
+            )
         else:
             background_tasks.add_task(archive_client.push, payload, normalized)
 
@@ -551,13 +611,20 @@ async def _resend_audience_upsert(email: str, *, unsubscribed: bool) -> Optional
         async with aiohttp.ClientSession() as session:
             async with session.post(
                 f"https://api.resend.com/audiences/{audience_id}/contacts",
-                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
                 json={"email": email, "unsubscribed": unsubscribed},
                 timeout=aiohttp.ClientTimeout(total=10),
             ) as response:
                 if response.status < 300:
                     return True
-                logger.error("Resend audience upsert failed (%s): %s", response.status, await response.text())
+                logger.error(
+                    "Resend audience upsert failed (%s): %s",
+                    response.status,
+                    await response.text(),
+                )
                 return False
     except Exception:
         logger.exception("Resend audience upsert request failed.")
@@ -616,16 +683,25 @@ def _branded_email_html(body_html: str) -> str:
 
 def _email_signoff_html() -> str:
     return (
-        '<p style="margin:24px 0 0;font-family:Georgia,\'Times New Roman\',serif;'
+        "<p style=\"margin:24px 0 0;font-family:Georgia,'Times New Roman',serif;"
         'font-size:14px;color:#2c3e50;">Signing out,<br>Ryan<br>Red Tape Recordings</p>'
     )
 
 
-async def _resend_send(to: str, subject: str, body_html: str, *, cc: str = "", skip_unsubscribe_footer: bool = False) -> bool:
+async def _resend_send(
+    to: str,
+    subject: str,
+    body_html: str,
+    *,
+    cc: str = "",
+    skip_unsubscribe_footer: bool = False,
+) -> bool:
     api_key = os.environ.get("RESEND_API_KEY", "")
     from_address = os.environ.get("RESEND_FROM_ADDRESS", "")
     if not api_key or not from_address:
-        logger.error("Transactional email send attempted but RESEND_API_KEY/RESEND_FROM_ADDRESS isn't configured.")
+        logger.error(
+            "Transactional email send attempted but RESEND_API_KEY/RESEND_FROM_ADDRESS isn't configured."
+        )
         return False
 
     if not skip_unsubscribe_footer:
@@ -642,13 +718,20 @@ async def _resend_send(to: str, subject: str, body_html: str, *, cc: str = "", s
         async with aiohttp.ClientSession() as session:
             async with session.post(
                 "https://api.resend.com/emails",
-                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
                 json=payload,
                 timeout=aiohttp.ClientTimeout(total=10),
             ) as response:
                 if response.status < 300:
                     return True
-                logger.error("Resend transactional send failed (%s): %s", response.status, await response.text())
+                logger.error(
+                    "Resend transactional send failed (%s): %s",
+                    response.status,
+                    await response.text(),
+                )
                 return False
     except Exception:
         logger.exception("Resend transactional send request failed.")
@@ -656,7 +739,7 @@ async def _resend_send(to: str, subject: str, body_html: str, *, cc: str = "", s
 
 
 async def _send_account_created_email(to: str, *, first_name: Optional[str]) -> bool:
-    """"Thanks" -- LIFECYCLE_EMAILS.md #1. Fires once, from the Clerk
+    """ "Thanks" -- LIFECYCLE_EMAILS.md #1. Fires once, from the Clerk
     user.created webhook, instead of also sending "Welcome" -- account
     creation already auto-subscribes the address to the newsletter (see
     that webhook handler below), so sending both back to back would be
@@ -666,7 +749,10 @@ async def _send_account_created_email(to: str, *, first_name: Optional[str]) -> 
     OAuth profile might not); "Hi there," is the documented fallback.
     """
     greeting_name = html.escape(first_name) if first_name else "there"
-    base = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/") or "https://redtaperecordings.com"
+    base = (
+        os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
+        or "https://redtaperecordings.com"
+    )
     body_html = f"""\
 <p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:17px;color:#2c3e50;">Hi {greeting_name},</p>
 <p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#2c3e50;">You're in.</p>
@@ -680,17 +766,22 @@ async def _send_account_created_email(to: str, *, first_name: Optional[str]) -> 
 </table>
 """
     body_html += _email_signoff_html()
-    return await _resend_send(to, "Congrats on the new library card :)", _branded_email_html(body_html))
+    return await _resend_send(
+        to, "Congrats on the new library card :)", _branded_email_html(body_html)
+    )
 
 
 async def _send_newsletter_welcome_email(to: str) -> bool:
-    """"Welcome" -- LIFECYCLE_EMAILS.md #2, joining the free list via the
+    """ "Welcome" -- LIFECYCLE_EMAILS.md #2, joining the free list via the
     standalone /subscribe form (never a name field, so always "Hi
     there,"). Includes an inline unsubscribe mention as part of the
     approved copy itself, on top of the standard footer link every send
     here gets -- deliberate per the doc's own voice, not an oversight.
     """
-    base = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/") or "https://redtaperecordings.com"
+    base = (
+        os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
+        or "https://redtaperecordings.com"
+    )
     unsubscribe_url = f"{base}/unsubscribe?email={quote(to)}"
     body_html = f"""\
 <p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:17px;color:#2c3e50;">Hi there,</p>
@@ -705,12 +796,15 @@ async def _send_newsletter_welcome_email(to: str) -> bool:
 
 
 async def _send_unsubscribed_email(to: str) -> bool:
-    """"Goodbye for now" -- LIFECYCLE_EMAILS.md #3. Deliberately skips the
+    """ "Goodbye for now" -- LIFECYCLE_EMAILS.md #3. Deliberately skips the
     standard unsubscribe-footer link (skip_unsubscribe_footer=True): this
     email IS the unsubscribe confirmation, so a second "click here to
     unsubscribe" link right under it would read as a bug, not a courtesy.
     """
-    base = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/") or "https://redtaperecordings.com"
+    base = (
+        os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
+        or "https://redtaperecordings.com"
+    )
     body_html = f"""\
 <p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:17px;color:#2c3e50;">Hi there,</p>
 <p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#2c3e50;">Done. You're off the email list, and we won't send any more. A quiet inbox is a fair thing to want, and we're grateful for the time you gave us.</p>
@@ -718,7 +812,12 @@ async def _send_unsubscribed_email(to: str) -> bool:
 <p style="margin:0 0 20px;font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#2c3e50;">If you ever want back in, you're welcome anytime.</p>
 """
     body_html += _email_signoff_html()
-    return await _resend_send(to, "Goodbye for now", _branded_email_html(body_html), skip_unsubscribe_footer=True)
+    return await _resend_send(
+        to,
+        "Goodbye for now",
+        _branded_email_html(body_html),
+        skip_unsubscribe_footer=True,
+    )
 
 
 @app.post("/api/newsletter/signup")
@@ -726,15 +825,23 @@ async def newsletter_signup(req: NewsletterSignupRequest):
     email = req.email.strip()
     if not _EMAIL_RE.match(email):
         return JSONResponse(
-            {"error": "invalid_email", "message": "That doesn't look like a valid email address."},
+            {
+                "error": "invalid_email",
+                "message": "That doesn't look like a valid email address.",
+            },
             status_code=400,
         )
 
     ok = await _resend_audience_upsert(email, unsubscribed=False)
     if ok is None:
-        logger.error("Newsletter signup attempted but RESEND_API_KEY/RESEND_AUDIENCE_ID isn't configured.")
+        logger.error(
+            "Newsletter signup attempted but RESEND_API_KEY/RESEND_AUDIENCE_ID isn't configured."
+        )
         return JSONResponse(
-            {"error": "signup_unavailable", "message": "Signups aren't available right now — please try again later."},
+            {
+                "error": "signup_unavailable",
+                "message": "Signups aren't available right now — please try again later.",
+            },
             status_code=503,
         )
     if ok:
@@ -742,7 +849,10 @@ async def newsletter_signup(req: NewsletterSignupRequest):
         return {"status": "subscribed"}
 
     return JSONResponse(
-        {"error": "signup_failed", "message": "Something went wrong — please try again."},
+        {
+            "error": "signup_failed",
+            "message": "Something went wrong — please try again.",
+        },
         status_code=502,
     )
 
@@ -761,7 +871,9 @@ async def unsubscribe(request: Request, email: str = ""):
         ok = bool(result)
         if ok:
             await _send_unsubscribed_email(email)
-    return templates.TemplateResponse(request, "unsubscribed.html", {"unsubscribed": ok, "email": email})
+    return templates.TemplateResponse(
+        request, "unsubscribed.html", {"unsubscribed": ok, "email": email}
+    )
 
 
 @app.post("/api/clerk/webhook")
@@ -782,7 +894,9 @@ async def clerk_webhook(request: Request):
     """
     signing_secret = os.environ.get("CLERK_WEBHOOK_SIGNING_SECRET", "")
     if not signing_secret:
-        logger.error("Clerk webhook received but CLERK_WEBHOOK_SIGNING_SECRET isn't configured.")
+        logger.error(
+            "Clerk webhook received but CLERK_WEBHOOK_SIGNING_SECRET isn't configured."
+        )
         return JSONResponse({"error": "not_configured"}, status_code=503)
 
     body = await request.body()
@@ -798,14 +912,21 @@ async def clerk_webhook(request: Request):
     if event_type == "user.created":
         primary_id = data.get("primary_email_address_id")
         email = next(
-            (e.get("email_address") for e in data.get("email_addresses", []) if e.get("id") == primary_id),
+            (
+                e.get("email_address")
+                for e in data.get("email_addresses", [])
+                if e.get("id") == primary_id
+            ),
             None,
         )
         if email:
             await _resend_audience_upsert(email, unsubscribed=False)
             await _send_account_created_email(email, first_name=data.get("first_name"))
         else:
-            logger.warning("Clerk user.created webhook had no resolvable primary email for user %s.", data.get("id"))
+            logger.warning(
+                "Clerk user.created webhook had no resolvable primary email for user %s.",
+                data.get("id"),
+            )
     elif event_type == "user.deleted":
         clerk_user_id = data.get("id")
         if clerk_user_id:
@@ -849,7 +970,10 @@ async def report_problem(request: Request, req: ReportProblemRequest):
     )
     if result is None:
         return JSONResponse(
-            {"error": "report_failed", "message": "Something went wrong — please try again."},
+            {
+                "error": "report_failed",
+                "message": "Something went wrong — please try again.",
+            },
             status_code=502,
         )
     return {"status": "received"}
@@ -860,7 +984,10 @@ async def report_problem(request: Request, req: ReportProblemRequest):
 # A real 401, not the /internal/* 404-disguise convention -- these are
 # genuinely public routes, so "you're not logged in" is honest information
 # to return, not something worth hiding the route's existence over.
-_NOT_LOGGED_IN = JSONResponse({"error": "not_logged_in", "message": "Sign in to save meetings and searches."}, status_code=401)
+_NOT_LOGGED_IN = JSONResponse(
+    {"error": "not_logged_in", "message": "Sign in to save meetings and searches."},
+    status_code=401,
+)
 
 
 class SaveMeetingApiRequest(BaseModel):
@@ -874,7 +1001,10 @@ async def api_save_meeting(request: Request, req: SaveMeetingApiRequest):
         return _NOT_LOGGED_IN
     result = await archive_client.save_meeting(clerk_user_id, req.slug)
     if result is None:
-        return JSONResponse({"error": "not_found", "message": "No meeting with that slug."}, status_code=404)
+        return JSONResponse(
+            {"error": "not_found", "message": "No meeting with that slug."},
+            status_code=404,
+        )
     return result
 
 
@@ -899,7 +1029,11 @@ async def api_save_search(request: Request, req: SaveSearchApiRequest):
     result = await archive_client.save_search(clerk_user_id, req.search_params)
     if result is None:
         return JSONResponse(
-            {"error": "save_failed", "message": "Something went wrong — please try again."}, status_code=502
+            {
+                "error": "save_failed",
+                "message": "Something went wrong — please try again.",
+            },
+            status_code=502,
         )
     return result
 
@@ -971,7 +1105,9 @@ def _unreadable_media_message(result: ResolvedMeeting, requested_platform: str) 
     # visitor's own URL was directly youtube.com/youtu.be, or this is a
     # generic_fallback result (best_effort) where the page itself has no
     # other branded identity and the video genuinely is youtube.com.
-    if result.video_format == "youtube" and (requested_platform == "youtube" or result.best_effort):
+    if result.video_format == "youtube" and (
+        requested_platform == "youtube" or result.best_effort
+    ):
         return _YOUTUBE_UNREADABLE_MEDIA_MESSAGE
     # The delegated case (LIMS/PrimeGov) previously fell all the way
     # through to the generic message below, which reads as "maybe
@@ -991,7 +1127,9 @@ def _unreadable_media_message(result: ResolvedMeeting, requested_platform: str) 
 
 @app.post("/api/transcription/check-feasibility")
 @limiter.limit("5/hour")
-async def transcription_check_feasibility(request: Request, req: TranscriptionFeasibilityRequest):
+async def transcription_check_feasibility(
+    request: Request, req: TranscriptionFeasibilityRequest
+):
     """Live-resolves the meeting fresh (never the cache -- a stale/expired
     media URL would fail every chunk hours into a real job) and probes its
     real duration. Read-only: never touches the Archive, never spends a
@@ -1003,7 +1141,10 @@ async def transcription_check_feasibility(request: Request, req: TranscriptionFe
     try:
         finder = get_finder(platform)
     except UnsupportedPlatformError:
-        return {"ok": False, "message": f"We don't support '{platform}' meeting pages yet."}
+        return {
+            "ok": False,
+            "message": f"We don't support '{platform}' meeting pages yet.",
+        }
 
     try:
         result = await finder.resolve(req.url)
@@ -1011,7 +1152,10 @@ async def transcription_check_feasibility(request: Request, req: TranscriptionFe
         return {"ok": False, "message": f"Couldn't resolve this meeting: {e}"}
 
     if not result.video_url:
-        return {"ok": False, "message": "No usable audio or video source was found for this meeting."}
+        return {
+            "ok": False,
+            "message": "No usable audio or video source was found for this meeting.",
+        }
 
     duration = await probe_duration(result.video_url, source_page_url=req.url)
     if duration is None:
@@ -1046,7 +1190,10 @@ async def transcription_submit(request: Request, req: TranscriptionSubmitRequest
     email = req.email.strip()
     if not _EMAIL_RE.match(email):
         return JSONResponse(
-            {"error": "invalid_email", "message": "That doesn't look like a valid email address."},
+            {
+                "error": "invalid_email",
+                "message": "That doesn't look like a valid email address.",
+            },
             status_code=400,
         )
 
@@ -1055,25 +1202,36 @@ async def transcription_submit(request: Request, req: TranscriptionSubmitRequest
         finder = get_finder(platform)
     except UnsupportedPlatformError:
         return JSONResponse(
-            {"error": "unsupported_platform", "message": f"We don't support '{platform}' meeting pages yet."},
+            {
+                "error": "unsupported_platform",
+                "message": f"We don't support '{platform}' meeting pages yet.",
+            },
             status_code=400,
         )
 
     try:
         result = await finder.resolve(req.url)
     except Exception as e:
-        return JSONResponse({"error": "resolve_failed", "message": str(e)}, status_code=400)
+        return JSONResponse(
+            {"error": "resolve_failed", "message": str(e)}, status_code=400
+        )
 
     if not result.video_url:
         return JSONResponse(
-            {"error": "no_media", "message": "No usable audio or video source was found for this meeting."},
+            {
+                "error": "no_media",
+                "message": "No usable audio or video source was found for this meeting.",
+            },
             status_code=400,
         )
 
     duration = await probe_duration(result.video_url, source_page_url=req.url)
     if duration is None or not is_plausible_meeting_duration(duration):
         return JSONResponse(
-            {"error": "infeasible", "message": "We couldn't verify a usable media source for this meeting."},
+            {
+                "error": "infeasible",
+                "message": "We couldn't verify a usable media source for this meeting.",
+            },
             status_code=400,
         )
 
@@ -1105,7 +1263,9 @@ async def transcription_submit(request: Request, req: TranscriptionSubmitRequest
             status_code=429,
         )
 
-    job.pop("requester_email", None)  # never echo a viewer's own email back into a public JSON response
+    job.pop(
+        "requester_email", None
+    )  # never echo a viewer's own email back into a public JSON response
     return job
 
 
@@ -1124,7 +1284,10 @@ async def confirm_transcription(request: Request, token: str = ""):
     return templates.TemplateResponse(
         request,
         "confirm_transcription.html",
-        {"confirmed": job is not None, "meeting_page_slug": job.get("meeting_page_slug") if job else None},
+        {
+            "confirmed": job is not None,
+            "meeting_page_slug": job.get("meeting_page_slug") if job else None,
+        },
     )
 
 
@@ -1144,7 +1307,9 @@ async def meeting_redirect(request: Request, url: str = ""):
     )
 
 
-async def _proxy_to_archive(internal_path: str, query_string: str, cookie_header: Optional[str] = None) -> Response:
+async def _proxy_to_archive(
+    internal_path: str, query_string: str, cookie_header: Optional[str] = None
+) -> Response:
     """Reverse-proxies a GET request to the Archive service so its permanent
     pages are reachable at redtaperecordings.com/m/{slug} instead of a
     separate subdomain -- keeps SEO authority on one domain. These are
@@ -1159,7 +1324,9 @@ async def _proxy_to_archive(internal_path: str, query_string: str, cookie_header
     round-trip needed (see app/utils/clerk_auth.py / archive/utils/clerk_auth.py).
     """
     try:
-        session, response = await archive_client.proxy_get(internal_path, query_string, cookie_header)
+        session, response = await archive_client.proxy_get(
+            internal_path, query_string, cookie_header
+        )
     except Exception:
         logger.exception("Archive proxy request failed for %s", internal_path)
         return Response(
@@ -1185,7 +1352,9 @@ async def _proxy_to_archive(internal_path: str, query_string: str, cookie_header
 
 @app.get("/m/{path:path}")
 async def archive_meeting_page(path: str, request: Request):
-    return await _proxy_to_archive(f"m/{path}", str(request.query_params), request.headers.get("cookie"))
+    return await _proxy_to_archive(
+        f"m/{path}", str(request.query_params), request.headers.get("cookie")
+    )
 
 
 @app.get("/archive-static/{path:path}")
@@ -1195,17 +1364,23 @@ async def archive_static_asset(path: str, request: Request):
 
 @app.get("/meetings")
 async def archive_meetings_index(request: Request):
-    return await _proxy_to_archive("meetings", str(request.query_params), request.headers.get("cookie"))
+    return await _proxy_to_archive(
+        "meetings", str(request.query_params), request.headers.get("cookie")
+    )
 
 
 @app.get("/account/saved")
 async def account_saved(request: Request):
-    return await _proxy_to_archive("account/saved", str(request.query_params), request.headers.get("cookie"))
+    return await _proxy_to_archive(
+        "account/saved", str(request.query_params), request.headers.get("cookie")
+    )
 
 
 @app.get("/coverage")
 async def coverage(request: Request):
-    return await _proxy_to_archive("coverage", str(request.query_params), request.headers.get("cookie"))
+    return await _proxy_to_archive(
+        "coverage", str(request.query_params), request.headers.get("cookie")
+    )
 
 
 @app.get("/sitemap.xml")
@@ -1258,7 +1433,7 @@ def _admin_token_ok(token: str, authorization: Optional[str] = None) -> bool:
     if not expected:
         return False
     if authorization and authorization.startswith("Bearer "):
-        return secrets.compare_digest(authorization[len("Bearer "):], expected)
+        return secrets.compare_digest(authorization[len("Bearer ") :], expected)
     return secrets.compare_digest(token, expected)
 
 
@@ -1276,7 +1451,9 @@ async def admin_stats(token: str = "", authorization: Optional[str] = Header(Non
 
 
 @app.get("/admin/daily-report")
-async def admin_daily_report(token: str = "", dry_run: bool = False, authorization: Optional[str] = Header(None)):
+async def admin_daily_report(
+    token: str = "", dry_run: bool = False, authorization: Optional[str] = Header(None)
+):
     """Triggers the once-a-day operator digest (app/reporting.py) on
     demand -- called by the GitHub Actions cron workflow
     (.github/workflows/daily-report.yml) once a day, and usable manually
@@ -1307,12 +1484,18 @@ async def admin_daily_report(token: str = "", dry_run: bool = False, authorizati
     failed_metrics = reporting.failed_metric_names(result["metrics"])
     if failed_metrics:
         return JSONResponse(
-            {"error": "metrics_unavailable", "failed_metrics": failed_metrics, "subject": result["subject"]},
+            {
+                "error": "metrics_unavailable",
+                "failed_metrics": failed_metrics,
+                "subject": result["subject"],
+            },
             status_code=502,
         )
 
     if not dry_run and not result["sent"]:
-        return JSONResponse({"error": "send_failed", "subject": result["subject"]}, status_code=502)
+        return JSONResponse(
+            {"error": "send_failed", "subject": result["subject"]}, status_code=502
+        )
     return result
 
 
@@ -1340,7 +1523,10 @@ async def admin_send_search_alerts(
 
 @app.get("/admin/log")
 async def admin_log(
-    token: str = "", limit: int = 200, format: str = "json", authorization: Optional[str] = Header(None)
+    token: str = "",
+    limit: int = 200,
+    format: str = "json",
+    authorization: Optional[str] = Header(None),
 ):
     if not _admin_token_ok(token, authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
@@ -1352,10 +1538,18 @@ async def admin_log(
     if format == "csv":
         buf = io.StringIO()
         writer = csv.writer(buf)
-        writer.writerow(["url", "outcome", "platform", "transcript_language", "created_at"])
+        writer.writerow(
+            ["url", "outcome", "platform", "transcript_language", "created_at"]
+        )
         for row in rows:
             writer.writerow(
-                [row["url"], row["outcome"], row["platform"], row["transcript_language"], row["created_at"]]
+                [
+                    row["url"],
+                    row["outcome"],
+                    row["platform"],
+                    row["transcript_language"],
+                    row["created_at"],
+                ]
             )
         return Response(content=buf.getvalue(), media_type="text/csv")
 
@@ -1389,7 +1583,11 @@ async def admin_recheck_archive_page(
         return JSONResponse({"detail": "Not Found"}, status_code=404)
     if not url:
         return JSONResponse(
-            {"error": "missing_url", "message": "Pass ?url=<the meeting's source URL>."}, status_code=400
+            {
+                "error": "missing_url",
+                "message": "Pass ?url=<the meeting's source URL>.",
+            },
+            status_code=400,
         )
 
     platform = detect_platform(url)
@@ -1398,7 +1596,9 @@ async def admin_recheck_archive_page(
 
 
 @app.get("/admin/sweep-pending-pushes")
-async def admin_sweep_pending_pushes(token: str = "", authorization: Optional[str] = Header(None)):
+async def admin_sweep_pending_pushes(
+    token: str = "", authorization: Optional[str] = Header(None)
+):
     """On-demand version of the opportunistic push-retry sweep
     (_maybe_schedule_push_sweep, fired passively from /api/resolve) --
     for checking on or forcing the durable-push retry mechanism directly
@@ -1413,7 +1613,11 @@ async def admin_sweep_pending_pushes(token: str = "", authorization: Optional[st
     return {
         "retried_count": len(retried),
         "retried": [
-            {"resolution_id": item["resolution_id"], "url": item["input_url_normalized"], "attempts": item["attempts"]}
+            {
+                "resolution_id": item["resolution_id"],
+                "url": item["input_url_normalized"],
+                "attempts": item["attempts"],
+            }
             for item in retried
         ],
     }
@@ -1438,7 +1642,10 @@ async def admin_promote_transcript_version(
         return JSONResponse({"detail": "Not Found"}, status_code=404)
     if not url or version_id is None:
         return JSONResponse(
-            {"error": "missing_params", "message": "Pass ?url=<the meeting's source URL>&version_id=<id>."},
+            {
+                "error": "missing_params",
+                "message": "Pass ?url=<the meeting's source URL>&version_id=<id>.",
+            },
             status_code=400,
         )
 
@@ -1446,12 +1653,21 @@ async def admin_promote_transcript_version(
     lookup_result = await archive_client.lookup(normalized)
     if lookup_result is None:
         return JSONResponse(
-            {"error": "not_found", "message": "No archived permanent page matches that URL."}, status_code=404
+            {
+                "error": "not_found",
+                "message": "No archived permanent page matches that URL.",
+            },
+            status_code=404,
         )
 
-    result = await archive_client.promote_transcript_version(lookup_result["slug"], version_id)
+    result = await archive_client.promote_transcript_version(
+        lookup_result["slug"], version_id
+    )
     if result is None:
-        return JSONResponse({"error": "promotion_failed", "message": "Could not promote that version."}, status_code=502)
+        return JSONResponse(
+            {"error": "promotion_failed", "message": "Could not promote that version."},
+            status_code=502,
+        )
     return result
 
 
@@ -1475,7 +1691,10 @@ async def admin_correct_transcript_language(
         return JSONResponse({"detail": "Not Found"}, status_code=404)
     if not url or not language:
         return JSONResponse(
-            {"error": "missing_params", "message": "Pass ?url=<the meeting's source URL>&language=<ISO 639-1 code>."},
+            {
+                "error": "missing_params",
+                "message": "Pass ?url=<the meeting's source URL>&language=<ISO 639-1 code>.",
+            },
             status_code=400,
         )
 
@@ -1483,10 +1702,22 @@ async def admin_correct_transcript_language(
     lookup_result = await archive_client.lookup(normalized)
     if lookup_result is None:
         return JSONResponse(
-            {"error": "not_found", "message": "No archived permanent page matches that URL."}, status_code=404
+            {
+                "error": "not_found",
+                "message": "No archived permanent page matches that URL.",
+            },
+            status_code=404,
         )
 
-    result = await archive_client.correct_transcript_language(lookup_result["slug"], language, version_id)
+    result = await archive_client.correct_transcript_language(
+        lookup_result["slug"], language, version_id
+    )
     if result is None:
-        return JSONResponse({"error": "correction_failed", "message": "Could not apply the correction."}, status_code=502)
+        return JSONResponse(
+            {
+                "error": "correction_failed",
+                "message": "Could not apply the correction.",
+            },
+            status_code=502,
+        )
     return result

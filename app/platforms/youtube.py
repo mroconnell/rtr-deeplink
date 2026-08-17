@@ -6,7 +6,12 @@ import yt_dlp
 
 from .base import AssetFinder
 from .models import ResolvedMeeting, TranscriptSegment
-from ..utils.vtt_parser import decode_vtt_bytes, dedupe_rollup_cues, is_likely_garbled, parse_vtt
+from ..utils.vtt_parser import (
+    decode_vtt_bytes,
+    dedupe_rollup_cues,
+    is_likely_garbled,
+    parse_vtt,
+)
 
 TARGET_LANGUAGE = "en"
 
@@ -112,7 +117,9 @@ class YouTubeAssetFinder(AssetFinder):
                 ],
             )
         if not info:
-            raise ValueError(f"YouTube video {video_id} could not be resolved (no info returned by yt-dlp).")
+            raise ValueError(
+                f"YouTube video {video_id} could not be resolved (no info returned by yt-dlp)."
+            )
 
         video_warnings: List[str] = []
         transcript_warnings: List[str] = []
@@ -131,7 +138,9 @@ class YouTubeAssetFinder(AssetFinder):
         # benefits every adapter that delegates to YouTubeAssetFinder
         # (direct YouTube URLs, SLC, LIMS, Mesa/Albuquerque's Legistar
         # delegation), not just PrimeGov.
-        raw_date = info.get("release_date") or info.get("upload_date")  # YYYYMMDD or None
+        raw_date = info.get("release_date") or info.get(
+            "upload_date"
+        )  # YYYYMMDD or None
         date = None
         if raw_date and len(raw_date) == 8:
             date = f"{raw_date[:4]}-{raw_date[4:6]}-{raw_date[6:8]}"
@@ -200,7 +209,9 @@ class YouTubeAssetFinder(AssetFinder):
             # -- try them first, falling back to web only if none of them
             # returns anything usable. Not a guaranteed permanent fix
             # (YouTube tightens this periodically) -- see BACKLOG.md.
-            "extractor_args": {"youtube": {"player_client": ["android", "ios", "tv", "web"]}},
+            "extractor_args": {
+                "youtube": {"player_client": ["android", "ios", "tv", "web"]}
+            },
             # False (not the original True) so a real failure raises a
             # real yt_dlp.utils.DownloadError instead of silently
             # returning None -- see resolve_video_id's try/except, and
@@ -209,7 +220,9 @@ class YouTubeAssetFinder(AssetFinder):
             "ignoreerrors": False,
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
+            info = ydl.extract_info(
+                f"https://www.youtube.com/watch?v={video_id}", download=False
+            )
             if not info:
                 return None
 
@@ -245,7 +258,11 @@ class YouTubeAssetFinder(AssetFinder):
 
         auto_entry = YouTubeAssetFinder._vtt_entry(auto.get(TARGET_LANGUAGE, []))
         manual_key = next((k for k in manual if k.startswith(TARGET_LANGUAGE)), None)
-        manual_entry = YouTubeAssetFinder._vtt_entry(manual.get(manual_key, [])) if manual_key else None
+        manual_entry = (
+            YouTubeAssetFinder._vtt_entry(manual.get(manual_key, []))
+            if manual_key
+            else None
+        )
 
         auto_bytes = ydl.urlopen(auto_entry["url"]).read() if auto_entry else None
 
@@ -254,7 +271,11 @@ class YouTubeAssetFinder(AssetFinder):
             if auto_bytes:
                 auto_start = YouTubeAssetFinder._first_cue_start(auto_bytes)
                 manual_start = YouTubeAssetFinder._first_cue_start(manual_bytes)
-                if auto_start is not None and manual_start is not None and manual_start - auto_start > 60:
+                if (
+                    auto_start is not None
+                    and manual_start is not None
+                    and manual_start - auto_start > 60
+                ):
                     return auto_bytes, TARGET_LANGUAGE, False
             return manual_bytes, TARGET_LANGUAGE, True
 

@@ -31,12 +31,7 @@ def test_parse_vtt_basic_cues():
 
 
 def test_parse_vtt_multiline_cue_joins_with_newline():
-    content = (
-        "WEBVTT\n\n"
-        "00:00:01.000 --> 00:00:02.000\n"
-        "line one\n"
-        "line two"
-    )
+    content = "WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nline one\nline two"
     cues = parse_vtt(content)
     assert cues[0]["text"] == "line one\nline two"
 
@@ -227,12 +222,16 @@ def test_unescape_caption_entities_handles_mid_cue_and_other_entities():
     cues = [
         {"start": 0, "end": 1, "text": "Please see &gt;&gt; the linked agenda."},
         {"start": 1, "end": 2, "text": "Smith &amp; Jones, LLC"},
-        {"start": 2, "end": 3, "text": "She said &quot;hello&quot; and &#39;goodbye&#39;."},
+        {
+            "start": 2,
+            "end": 3,
+            "text": "She said &quot;hello&quot; and &#39;goodbye&#39;.",
+        },
     ]
     unescape_caption_entities(cues)
     assert cues[0]["text"] == "Please see >> the linked agenda."
     assert cues[1]["text"] == "Smith & Jones, LLC"
-    assert cues[2]["text"] == 'She said "hello" and \'goodbye\'.'
+    assert cues[2]["text"] == "She said \"hello\" and 'goodbye'."
 
 
 def test_unescape_caption_entities_leaves_literal_ampersand_alone():
@@ -262,9 +261,21 @@ def test_dedupe_rollup_cues_collapses_youtube_style_rollup():
     # Real structure confirmed live against a YouTube auto-caption track
     # (documented in vtt_parser.py's dedupe_rollup_cues docstring).
     cues = [
-        {"start": 1.199, "end": 3.75, "text": "\nmost permanent supportive housing takes"},
-        {"start": 3.75, "end": 3.76, "text": "most permanent supportive housing takes\n"},
-        {"start": 3.76, "end": 5.749, "text": "most permanent supportive housing takes\nfive to seven years"},
+        {
+            "start": 1.199,
+            "end": 3.75,
+            "text": "\nmost permanent supportive housing takes",
+        },
+        {
+            "start": 3.75,
+            "end": 3.76,
+            "text": "most permanent supportive housing takes\n",
+        },
+        {
+            "start": 3.76,
+            "end": 5.749,
+            "text": "most permanent supportive housing takes\nfive to seven years",
+        },
     ]
     result = dedupe_rollup_cues(cues)
     texts = [c["text"] for c in result]
@@ -327,14 +338,15 @@ def test_parse_srt_real_emporia_fixture():
 # CivicClerk/Granicus/Swagit/CA Legislature sample has ever used TTML.
 # Built and tested against the W3C TTML spec's own documented shape.
 
+
 def test_parse_ttml_clock_time():
     content = (
         '<?xml version="1.0" encoding="UTF-8"?>'
         '<tt xmlns="http://www.w3.org/ns/ttml" xml:lang="en">'
-        '<body><div>'
+        "<body><div>"
         '<p begin="00:00:01.000" end="00:00:03.500">Hello there.</p>'
         '<p begin="00:00:03.500" end="00:00:05.000">Second line.</p>'
-        '</div></body></tt>'
+        "</div></body></tt>"
     )
     cues = parse_ttml(content)
     assert cues == [
@@ -346,10 +358,10 @@ def test_parse_ttml_clock_time():
 def test_parse_ttml_offset_time_seconds_and_ms():
     content = (
         '<tt xmlns="http://www.w3.org/ns/ttml">'
-        '<body><div>'
+        "<body><div>"
         '<p begin="1.5s" end="3.2s">Seconds offset.</p>'
         '<p begin="3200ms" end="4000ms">Milliseconds offset.</p>'
-        '</div></body></tt>'
+        "</div></body></tt>"
     )
     cues = parse_ttml(content)
     assert cues == [
@@ -364,9 +376,9 @@ def test_parse_ttml_handles_namespace_prefix():
     # namespace-agnostic tag match must work for either.
     content = (
         '<tt:tt xmlns:tt="http://www.w3.org/ns/ttml">'
-        '<tt:body><tt:div>'
+        "<tt:body><tt:div>"
         '<tt:p begin="00:00:00.000" end="00:00:01.000">Prefixed.</tt:p>'
-        '</tt:div></tt:body></tt:tt>'
+        "</tt:div></tt:body></tt:tt>"
     )
     cues = parse_ttml(content)
     assert cues == [{"start": 0.0, "end": 1.0, "text": "Prefixed."}]
@@ -376,7 +388,7 @@ def test_parse_ttml_strips_nested_span_markup_and_collapses_whitespace():
     content = (
         '<tt xmlns="http://www.w3.org/ns/ttml"><body><div>'
         '<p begin="1.0s" end="2.0s">Hello\n  <span>there</span>,\n  world.</p>'
-        '</div></body></tt>'
+        "</div></body></tt>"
     )
     cues = parse_ttml(content)
     assert cues[0]["text"] == "Hello there, world."
@@ -389,7 +401,7 @@ def test_parse_ttml_skips_cue_with_unresolvable_frame_based_time():
         '<tt xmlns="http://www.w3.org/ns/ttml"><body><div>'
         '<p begin="40f" end="80f">Frame-based, skipped.</p>'
         '<p begin="1.0s" end="2.0s">Real cue, kept.</p>'
-        '</div></body></tt>'
+        "</div></body></tt>"
     )
     cues = parse_ttml(content)
     assert cues == [{"start": 1.0, "end": 2.0, "text": "Real cue, kept."}]
@@ -401,6 +413,7 @@ def test_parse_ttml_malformed_xml_returns_empty_not_raises():
 
 
 # --- strip_unknown_caption_markup --------------------------------------
+
 
 def test_strip_unknown_caption_markup_sbv_style():
     content = (
@@ -472,10 +485,14 @@ def test_strip_unknown_caption_markup_unescape_does_not_resurrect_stripped_tags(
     # silently deleted -- unescaping only happens *after* tag-stripping
     # here, so this content is never re-interpreted as a tag to strip.
     content = "0:00:01.000,0:00:02.000\nShe wrote &lt;i&gt;in italics&lt;/i&gt; on the form.\n"
-    assert strip_unknown_caption_markup(content) == "She wrote <i>in italics</i> on the form."
+    assert (
+        strip_unknown_caption_markup(content)
+        == "She wrote <i>in italics</i> on the form."
+    )
 
 
 # --- parse_captions_by_extension ---------------------------------------
+
 
 def test_parse_captions_by_extension_structured_formats():
     vtt = "WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nHi."
@@ -511,7 +528,9 @@ def test_parse_captions_by_extension_text_fallback_formats():
 
 
 def test_parse_captions_by_extension_binary_format_returns_nothing():
-    cues, text = parse_captions_by_extension("https://x.com/a.scc", "Scenarist_SCC V1.0\n\n00:00:01:00 9420")
+    cues, text = parse_captions_by_extension(
+        "https://x.com/a.scc", "Scenarist_SCC V1.0\n\n00:00:01:00 9420"
+    )
     assert cues is None
     assert text is None
 

@@ -98,7 +98,9 @@ class ClerkBaseAssetFinder(AssetFinder):
 
     @staticmethod
     async def _get(session: aiohttp.ClientSession, url: str) -> str:
-        async with session.get(url, timeout=aiohttp.ClientTimeout(total=20)) as response:
+        async with session.get(
+            url, timeout=aiohttp.ClientTimeout(total=20)
+        ) as response:
             response.raise_for_status()
             return await response.text()
 

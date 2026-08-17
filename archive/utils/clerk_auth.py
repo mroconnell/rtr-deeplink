@@ -37,6 +37,7 @@ def clerk_frontend_api_url(publishable_key: str) -> Optional[str]:
     except Exception:
         return None
 
+
 # Local-dev fallback origins for Clerk's authorized_parties check. Always
 # the *resolver's* local port, not this service's own -- a real browser
 # only ever talks to Archive by way of the resolver's reverse proxy

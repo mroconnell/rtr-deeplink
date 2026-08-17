@@ -103,7 +103,11 @@ def build_places(source_dir: Path) -> None:
     # government itself is fictitious). Confirmed safe to include both:
     # only 10 rows total nationally, none overlapping the "S"/"I"/"N" codes
     # (CDPs, inactive, nonfunctioning) this filter still correctly excludes.
-    out_rows = [(r["NAME"].strip(), r["USPS"].strip()) for r in rows if r["FUNCSTAT"] in ("A", "B", "F")]
+    out_rows = [
+        (r["NAME"].strip(), r["USPS"].strip())
+        for r in rows
+        if r["FUNCSTAT"] in ("A", "B", "F")
+    ]
     with open(OUT_DIR / "places.csv", "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(["name", "state"])
@@ -122,7 +126,9 @@ def build_zcta_county(source_dir: Path, fips_to_usps: dict) -> None:
         state = fips_to_usps.get(county_fips[:2])
         if not state:
             continue
-        out_rows.append((zcta, r["NAMELSAD_COUNTY_20"].strip(), state, int(r["AREALAND_PART"] or 0)))
+        out_rows.append(
+            (zcta, r["NAMELSAD_COUNTY_20"].strip(), state, int(r["AREALAND_PART"] or 0))
+        )
     with open(OUT_DIR / "zcta_county.csv", "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(["zcta", "county_name", "state", "area_land_part"])
@@ -141,7 +147,9 @@ def build_zcta_place(source_dir: Path, fips_to_usps: dict) -> None:
         state = fips_to_usps.get(place_fips[:2])
         if not state:
             continue
-        out_rows.append((zcta, r["NAMELSAD_PLACE_20"].strip(), state, int(r["AREALAND_PART"] or 0)))
+        out_rows.append(
+            (zcta, r["NAMELSAD_PLACE_20"].strip(), state, int(r["AREALAND_PART"] or 0))
+        )
     with open(OUT_DIR / "zcta_place.csv", "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(["zcta", "place_name", "state", "area_land_part"])
@@ -151,7 +159,9 @@ def build_zcta_place(source_dir: Path, fips_to_usps: dict) -> None:
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("Usage: python scripts/build_jurisdiction_data.py /path/to/downloaded/census/files/")
+        print(
+            "Usage: python scripts/build_jurisdiction_data.py /path/to/downloaded/census/files/"
+        )
         sys.exit(1)
     source = Path(sys.argv[1])
     fips_to_usps = build_counties(source)

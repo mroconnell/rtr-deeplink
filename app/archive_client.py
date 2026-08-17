@@ -26,7 +26,13 @@ TRANSCRIPTION_TIMEOUT = aiohttp.ClientTimeout(total=15)
 # headroom for a corpus-wide sweep, not the fast-fail budget those get.
 SEARCH_ALERTS_TIMEOUT = aiohttp.ClientTimeout(total=120)
 
-_HOP_BY_HOP_HEADERS = {"connection", "transfer-encoding", "keep-alive", "content-encoding", "content-length"}
+_HOP_BY_HOP_HEADERS = {
+    "connection",
+    "transfer-encoding",
+    "keep-alive",
+    "content-encoding",
+    "content-length",
+}
 
 
 def _base_url() -> str:
@@ -78,7 +84,11 @@ async def list_all_page_urls() -> Optional[list[dict]]:
                 if response.status == 200:
                     data = await response.json()
                     return data.get("pages")
-                logger.error("Archive all-urls fetch failed (%s): %s", response.status, await response.text())
+                logger.error(
+                    "Archive all-urls fetch failed (%s): %s",
+                    response.status,
+                    await response.text(),
+                )
                 return None
     except Exception:
         logger.exception("Archive all-urls request failed.")
@@ -114,7 +124,9 @@ async def push(payload: dict[str, Any], input_url_normalized: str) -> bool:
             ) as response:
                 if response.status >= 300:
                     text = await response.text()
-                    logger.error("Archive ingest failed (%s): %s", response.status, text)
+                    logger.error(
+                        "Archive ingest failed (%s): %s", response.status, text
+                    )
                     return False
                 return True
     except Exception:
@@ -170,7 +182,11 @@ async def request_transcription_job(
             ) as response:
                 if response.status == 200:
                     return await response.json()
-                logger.error("Archive transcription create-job failed (%s): %s", response.status, await response.text())
+                logger.error(
+                    "Archive transcription create-job failed (%s): %s",
+                    response.status,
+                    await response.text(),
+                )
                 return None
     except Exception:
         logger.exception("Archive transcription create-job request failed.")
@@ -371,7 +387,9 @@ async def promote_transcript_version(slug: str, version_id: int) -> Optional[dic
                 if response.status == 200:
                     return await response.json()
                 logger.error(
-                    "Archive promote-version failed (%s): %s", response.status, await response.text()
+                    "Archive promote-version failed (%s): %s",
+                    response.status,
+                    await response.text(),
                 )
                 return None
     except Exception:
@@ -397,14 +415,20 @@ async def send_search_alerts(dry_run: bool = False) -> Optional[dict]:
             ) as response:
                 if response.status == 200:
                     return await response.json()
-                logger.error("Archive send-search-alerts failed (%s): %s", response.status, await response.text())
+                logger.error(
+                    "Archive send-search-alerts failed (%s): %s",
+                    response.status,
+                    await response.text(),
+                )
                 return None
     except Exception:
         logger.exception("Archive send-search-alerts request failed.")
         return None
 
 
-async def correct_transcript_language(slug: str, language: str, version_id: Optional[int] = None) -> Optional[dict]:
+async def correct_transcript_language(
+    slug: str, language: str, version_id: Optional[int] = None
+) -> Optional[dict]:
     """Admin correction for a wrong TranscriptVersion.language -- see
     app/main.py's /admin/correct-transcript-language and BACKLOG_DONE.md's
     language-picker entry. Returns None on any failure, same pattern as
@@ -428,7 +452,9 @@ async def correct_transcript_language(slug: str, language: str, version_id: Opti
                 if response.status == 200:
                     return await response.json()
                 logger.error(
-                    "Archive correct-language failed (%s): %s", response.status, await response.text()
+                    "Archive correct-language failed (%s): %s",
+                    response.status,
+                    await response.text(),
                 )
                 return None
     except Exception:

@@ -14,20 +14,56 @@ deliberately *not* touched here).
 from typing import Optional
 
 US_STATE_NAME_TO_ABBR = {
-    "alabama": "AL", "alaska": "AK", "arizona": "AZ", "arkansas": "AR",
-    "california": "CA", "colorado": "CO", "connecticut": "CT", "delaware": "DE",
-    "florida": "FL", "georgia": "GA", "hawaii": "HI", "idaho": "ID",
-    "illinois": "IL", "indiana": "IN", "iowa": "IA", "kansas": "KS",
-    "kentucky": "KY", "louisiana": "LA", "maine": "ME", "maryland": "MD",
-    "massachusetts": "MA", "michigan": "MI", "minnesota": "MN",
-    "mississippi": "MS", "missouri": "MO", "montana": "MT", "nebraska": "NE",
-    "nevada": "NV", "new hampshire": "NH", "new jersey": "NJ",
-    "new mexico": "NM", "new york": "NY", "north carolina": "NC",
-    "north dakota": "ND", "ohio": "OH", "oklahoma": "OK", "oregon": "OR",
-    "pennsylvania": "PA", "rhode island": "RI", "south carolina": "SC",
-    "south dakota": "SD", "tennessee": "TN", "texas": "TX", "utah": "UT",
-    "vermont": "VT", "virginia": "VA", "washington": "WA",
-    "west virginia": "WV", "wisconsin": "WI", "wyoming": "WY",
+    "alabama": "AL",
+    "alaska": "AK",
+    "arizona": "AZ",
+    "arkansas": "AR",
+    "california": "CA",
+    "colorado": "CO",
+    "connecticut": "CT",
+    "delaware": "DE",
+    "florida": "FL",
+    "georgia": "GA",
+    "hawaii": "HI",
+    "idaho": "ID",
+    "illinois": "IL",
+    "indiana": "IN",
+    "iowa": "IA",
+    "kansas": "KS",
+    "kentucky": "KY",
+    "louisiana": "LA",
+    "maine": "ME",
+    "maryland": "MD",
+    "massachusetts": "MA",
+    "michigan": "MI",
+    "minnesota": "MN",
+    "mississippi": "MS",
+    "missouri": "MO",
+    "montana": "MT",
+    "nebraska": "NE",
+    "nevada": "NV",
+    "new hampshire": "NH",
+    "new jersey": "NJ",
+    "new mexico": "NM",
+    "new york": "NY",
+    "north carolina": "NC",
+    "north dakota": "ND",
+    "ohio": "OH",
+    "oklahoma": "OK",
+    "oregon": "OR",
+    "pennsylvania": "PA",
+    "rhode island": "RI",
+    "south carolina": "SC",
+    "south dakota": "SD",
+    "tennessee": "TN",
+    "texas": "TX",
+    "utah": "UT",
+    "vermont": "VT",
+    "virginia": "VA",
+    "washington": "WA",
+    "west virginia": "WV",
+    "wisconsin": "WI",
+    "wyoming": "WY",
     "district of columbia": "DC",
 }
 
@@ -36,7 +72,7 @@ _VALID_STATE_ABBRS = set(US_STATE_NAME_TO_ABBR.values())
 
 
 def normalize_state_suffix(jurisdiction: Optional[str]) -> Optional[str]:
-    """"San Diego, California" -> "San Diego, CA". Only fires when the
+    """ "San Diego, California" -> "San Diego, CA". Only fires when the
     text after the *last* comma is exactly a recognized full state name
     (case-insensitive) -- state-less ("Illinois General Assembly") or
     unrecognized trailing text passes through unchanged.
@@ -59,7 +95,11 @@ def normalize_state_suffix(jurisdiction: Optional[str]) -> Optional[str]:
     abbr = US_STATE_NAME_TO_ABBR.get(suffix.lower())
     if abbr:
         return f"{prefix.strip()}, {abbr}"
-    if len(suffix) == 2 and suffix.upper() in _VALID_STATE_ABBRS and suffix != suffix.upper():
+    if (
+        len(suffix) == 2
+        and suffix.upper() in _VALID_STATE_ABBRS
+        and suffix != suffix.upper()
+    ):
         return f"{prefix.strip()}, {suffix.upper()}"
     return jurisdiction
 
@@ -112,5 +152,5 @@ def format_jurisdiction_display(jurisdiction: Optional[str]) -> Optional[str]:
         return jurisdiction
     for prefix in _DROPPED_DISPLAY_PREFIXES:
         if jurisdiction.lower().startswith(prefix.lower()):
-            return jurisdiction[len(prefix):]
+            return jurisdiction[len(prefix) :]
     return jurisdiction

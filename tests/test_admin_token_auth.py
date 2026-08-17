@@ -43,7 +43,9 @@ def test_admin_stats_still_accepts_legacy_query_param():
 
 
 def test_admin_stats_rejects_wrong_legacy_query_param():
-    response = resolver_client.get("/admin/stats", params={"token": "not-the-real-token"})
+    response = resolver_client.get(
+        "/admin/stats", params={"token": "not-the-real-token"}
+    )
     assert response.status_code == 404
 
 

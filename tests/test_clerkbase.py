@@ -18,7 +18,9 @@ LANDING_URL = (
     "https://clerkshq.com/YellowSprings-OH?docId=feb07_22ag&"
     "path=ArchAgenda_VilCouncil%2C2022_COUNCIL_AGENDAS%2Cfeb07_22ag%2C"
 )
-CONTENT_URL = "https://clerkshq.com/Content/YellowSprings-OH/council/2022/feb07_22ag.htm"
+CONTENT_URL = (
+    "https://clerkshq.com/Content/YellowSprings-OH/council/2022/feb07_22ag.htm"
+)
 REAL_VIDEO_ID = "ThJ-uDDbhGQ"
 
 # Real, trimmed to the two JS variables clerkbase.py actually reads --
@@ -72,7 +74,9 @@ async def test_resolve_landing_page_delegates_to_youtube(monkeypatch):
     with mock_session(routes):
         result = await ClerkBaseAssetFinder().resolve(LANDING_URL)
 
-    assert result.platform == "youtube"  # same delegation convention as primegov.py/civicweb.py
+    assert (
+        result.platform == "youtube"
+    )  # same delegation convention as primegov.py/civicweb.py
     assert result.source_url == LANDING_URL  # not the delegated YouTube URL
     assert result.external_id == f"youtube:{REAL_VIDEO_ID}"
     # The landing page's own autoOpenDocTitle wins over YouTube's title.
@@ -101,7 +105,9 @@ async def test_resolve_direct_content_url_with_no_landing_wrapper(monkeypatch):
 async def test_resolve_missing_video_reports_no_video():
     routes = {
         LANDING_URL: FakeResponse(status=200, text=LANDING_HTML, url=LANDING_URL),
-        CONTENT_URL: FakeResponse(status=200, text=CONTENT_HTML_NO_VIDEO, url=CONTENT_URL),
+        CONTENT_URL: FakeResponse(
+            status=200, text=CONTENT_HTML_NO_VIDEO, url=CONTENT_URL
+        ),
     }
 
     with mock_session(routes):
@@ -115,6 +121,13 @@ async def test_resolve_missing_video_reports_no_video():
 
 
 def test_extract_jurisdiction_from_client_site_slug():
-    assert ClerkBaseAssetFinder._extract_jurisdiction(LANDING_URL) == "Yellow Springs, OH"
-    assert ClerkBaseAssetFinder._extract_jurisdiction(CONTENT_URL) == "Yellow Springs, OH"
-    assert ClerkBaseAssetFinder._extract_jurisdiction("https://clerkshq.com/help?ajax=1") is None
+    assert (
+        ClerkBaseAssetFinder._extract_jurisdiction(LANDING_URL) == "Yellow Springs, OH"
+    )
+    assert (
+        ClerkBaseAssetFinder._extract_jurisdiction(CONTENT_URL) == "Yellow Springs, OH"
+    )
+    assert (
+        ClerkBaseAssetFinder._extract_jurisdiction("https://clerkshq.com/help?ajax=1")
+        is None
+    )

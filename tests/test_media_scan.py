@@ -36,9 +36,7 @@ def test_scan_media_urls_sources_json_branch_was_removed_as_dead_code():
     # never something the plain regex patterns matched either (no bare
     # `src="..."` attribute, and the JSON value is a scheme-less relative
     # path, not a `https?://...` URL).
-    html = (
-        'var config = {"sources": [{"src": "/vid/main.mp4", "type": "video/mp4"}]};'
-    )
+    html = 'var config = {"sources": [{"src": "/vid/main.mp4", "type": "video/mp4"}]};'
     urls = scan_media_urls(html, "https://example.com/page")
     assert urls == []
 
@@ -100,8 +98,13 @@ def test_scan_media_urls_finds_json_escaped_urls():
         '13040-EDITED-Regular-Meeting-of-v2\\/vod.mp4"}}'
     )
     urls = scan_media_urls(html, "https://www.auroratv.org/video/regular-meeting")
-    assert "https://reflect-aurora.cablecast.tv/store-4/13040-EDITED-Regular-Meeting-of-v2/vod.mp4" in urls
-    assert "https://www.auroratv.org/sites/default/files/video-captions-70037.vtt" in urls
+    assert (
+        "https://reflect-aurora.cablecast.tv/store-4/13040-EDITED-Regular-Meeting-of-v2/vod.mp4"
+        in urls
+    )
+    assert (
+        "https://www.auroratv.org/sites/default/files/video-captions-70037.vtt" in urls
+    )
     # The filesystem path (no scheme, backslash-escaped or not) must never
     # be picked up as if it were a fetchable URL.
     assert not any("/home/atowntv" in u for u in urls)
@@ -151,7 +154,9 @@ def test_scan_media_urls_decodes_html_entities_in_extracted_urls():
         "}]});</script>"
     )
     urls = scan_media_urls(html, "https://agendanet.saccounty.gov/ViewMeeting?id=10231")
-    assert urls == ["https://d2fdkm9wl77cjf.cloudfront.net/mcvod/playlist.m3u8?instance=1&token=xyz"]
+    assert urls == [
+        "https://d2fdkm9wl77cjf.cloudfront.net/mcvod/playlist.m3u8?instance=1&token=xyz"
+    ]
 
 
 def test_scan_media_urls_file_key_matches_protocol_relative_and_relative_paths():
@@ -164,7 +169,9 @@ def test_scan_media_urls_file_key_matches_protocol_relative_and_relative_paths()
         'tracks: [{file: "documents/seattlechannel/closedcaption/2026/council_081126_2022663.srt",'
         ' label: "English"}]});'
     )
-    urls = scan_media_urls(html, "https://www.seattlechannel.org/videos?videoid=x189286")
+    urls = scan_media_urls(
+        html, "https://www.seattlechannel.org/videos?videoid=x189286"
+    )
     assert "https://video.seattle.gov/media/council/council_081126_2022663.mp4" in urls
     assert (
         "https://www.seattlechannel.org/documents/seattlechannel/closedcaption/2026/"

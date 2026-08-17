@@ -38,17 +38,30 @@ def _init_sentry() -> None:
         return
     import sentry_sdk
 
-    sentry_sdk.init(dsn=dsn, environment=os.environ.get("SENTRY_ENVIRONMENT", "production"), traces_sample_rate=0)
+    sentry_sdk.init(
+        dsn=dsn,
+        environment=os.environ.get("SENTRY_ENVIRONMENT", "production"),
+        traces_sample_rate=0,
+    )
 
 
 _init_sentry()
 
 from app.platforms import register_all_finders
 from app.platforms.base import UnsupportedPlatformError, get_finder
-from app.platforms.media_probe import extract_chunk_audio, is_plausible_meeting_duration, probe_duration
+from app.platforms.media_probe import (
+    extract_chunk_audio,
+    is_plausible_meeting_duration,
+    probe_duration,
+)
 from archive.db import crud
 from archive.utils import email as email_utils
-from worker.segment_utils import chunk_duration, chunk_start, count_seam_overlap_segments, shift_segments
+from worker.segment_utils import (
+    chunk_duration,
+    chunk_start,
+    count_seam_overlap_segments,
+    shift_segments,
+)
 from worker.transcription_engine import TranscriptionEngine, build_default_engine
 
 logging.basicConfig(level=logging.INFO)
@@ -94,7 +107,9 @@ AUTO_GENERATION_CHECK_INTERVAL_SECONDS = 300
 # a dedicated no-reply mailbox. Auto-generation is simply disabled
 # (maybe_generate_auto_job() always returns False) if this isn't set,
 # rather than guessing at a placeholder address.
-AUTO_TRANSCRIPTION_REQUESTER_EMAIL = os.environ.get("AUTO_TRANSCRIPTION_REQUESTER_EMAIL", "")
+AUTO_TRANSCRIPTION_REQUESTER_EMAIL = os.environ.get(
+    "AUTO_TRANSCRIPTION_REQUESTER_EMAIL", ""
+)
 
 
 def _auto_media_kind(video_format) -> str:
@@ -205,20 +220,30 @@ async def process_next_chunk(engine: TranscriptionEngine) -> bool:
     except Exception:
         logger.warning(
             "Fresh re-resolve failed for job %s chunk %s, falling back to the frozen media_url",
-            job_id, chunk_index, exc_info=True,
+            job_id,
+            chunk_index,
+            exc_info=True,
         )
 
     with tempfile.TemporaryDirectory(prefix="rtr_transcribe_") as tmpdir:
         audio_path = Path(tmpdir) / f"chunk_{chunk_index}.mp3"
         extracted = await extract_chunk_audio(
-            media_url, start=start, duration=duration, source_page_url=source_url, out_path=audio_path,
+            media_url,
+            start=start,
+            duration=duration,
+            source_page_url=source_url,
+            out_path=audio_path,
         )
         if not extracted:
             logger.warning(
                 "Job %s: ffmpeg extraction failed for chunk %s/%s (will retry on next poll)",
-                job_id, chunk_index + 1, total_chunks,
+                job_id,
+                chunk_index + 1,
+                total_chunks,
             )
-            await crud.report_chunk_result(job_id, success=False, error="ffmpeg extraction failed")
+            await crud.report_chunk_result(
+                job_id, success=False, error="ffmpeg extraction failed"
+            )
             return True
 
         try:
@@ -226,7 +251,9 @@ async def process_next_chunk(engine: TranscriptionEngine) -> bool:
         except Exception as e:
             logger.exception(
                 "Job %s: transcription failed for chunk %s/%s (will retry on next poll)",
-                job_id, chunk_index + 1, total_chunks,
+                job_id,
+                chunk_index + 1,
+                total_chunks,
             )
             await crud.report_chunk_result(job_id, success=False, error=str(e))
             return True
@@ -238,25 +265,43 @@ async def process_next_chunk(engine: TranscriptionEngine) -> bool:
     # BACKLOG_DONE.md): extract_chunk_audio()'s fast HLS seek can land
     # several real seconds before this chunk's requested start, so its
     # transcript can restate the end of the previous chunk's own segments.
-    drop_previous_tail = count_seam_overlap_segments(claim.get("partial_segments") or [], shifted)
+    drop_previous_tail = count_seam_overlap_segments(
+        claim.get("partial_segments") or [], shifted
+    )
     result = await crud.report_chunk_result(
-        job_id, success=True, shifted_segments=shifted, drop_previous_tail=drop_previous_tail,
+        job_id,
+        success=True,
+        shifted_segments=shifted,
+        drop_previous_tail=drop_previous_tail,
     )
     if drop_previous_tail:
         logger.info(
             "Job %s: dropped %s seam-duplicate segment(s) from the previous chunk's tail",
-            job_id, drop_previous_tail,
+            job_id,
+            drop_previous_tail,
         )
     logger.info(
         "Job %s: chunk %s/%s done (%s segments), job status now %s",
-        job_id, chunk_index + 1, total_chunks, len(shifted), result.get("status"),
+        job_id,
+        chunk_index + 1,
+        total_chunks,
+        len(shifted),
+        result.get("status"),
     )
 
     if result.get("status") == "completed":
-        logger.info("Job %s completed -> transcript_version %s", job_id, result.get("transcript_version_id"))
+        logger.info(
+            "Job %s completed -> transcript_version %s",
+            job_id,
+            result.get("transcript_version_id"),
+        )
         await _send_completion_email(job_id)
     elif result.get("status") == "failed":
-        logger.info("Job %s gave up after %s consecutive chunk failures", job_id, result.get("consecutive_chunk_failures"))
+        logger.info(
+            "Job %s gave up after %s consecutive chunk failures",
+            job_id,
+            result.get("consecutive_chunk_failures"),
+        )
         await _send_failure_email(job_id)
 
     return True
@@ -271,11 +316,17 @@ async def _send_completion_email(job_id: int) -> None:
     page = await crud.get_page_by_slug(status["meeting_page_slug"])
     if page:
         version = next(
-            (v for v in page["versions"] if v["id"] == status.get("transcript_version_id")),
+            (
+                v
+                for v in page["versions"]
+                if v["id"] == status.get("transcript_version_id")
+            ),
             None,
         )
         if version:
-            excerpt = " ".join(s["text"] for s in version["segments"])[:EMAIL_EXCERPT_CHARS]
+            excerpt = " ".join(s["text"] for s in version["segments"])[
+                :EMAIL_EXCERPT_CHARS
+            ]
 
     base = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
     page_url = f"{base}/m/{status['meeting_page_slug']}"
@@ -285,7 +336,11 @@ async def _send_completion_email(job_id: int) -> None:
         excerpt=excerpt,
         page_url=page_url,
     )
-    logger.info("Job %s: completion email to Resend %s", job_id, "accepted" if sent else "FAILED (see prior log line)")
+    logger.info(
+        "Job %s: completion email to Resend %s",
+        job_id,
+        "accepted" if sent else "FAILED (see prior log line)",
+    )
 
 
 async def _send_failure_email(job_id: int) -> None:
@@ -310,7 +365,11 @@ async def _send_failure_email(job_id: int) -> None:
         meeting_title=status.get("meeting_page_title") or "your meeting",
         page_url=page_url,
     )
-    logger.info("Job %s: failure email to Resend %s", job_id, "accepted" if sent else "FAILED (see prior log line)")
+    logger.info(
+        "Job %s: failure email to Resend %s",
+        job_id,
+        "accepted" if sent else "FAILED (see prior log line)",
+    )
 
 
 async def run_forever() -> None:
@@ -333,7 +392,10 @@ async def run_forever() -> None:
         else:
             empty_polls += 1
             if empty_polls % EMPTY_POLL_HEARTBEAT_EVERY == 0:
-                logger.info("Still polling, nothing queued (checked %s times since last job).", empty_polls)
+                logger.info(
+                    "Still polling, nothing queued (checked %s times since last job).",
+                    empty_polls,
+                )
 
             # process_next_chunk() returning False means claim_next_chunk()
             # found no queued/in_progress job at all -- with only ever one
@@ -351,7 +413,9 @@ async def run_forever() -> None:
                 except Exception:
                     logger.exception("Unhandled error in auto-generation check.")
 
-        await asyncio.sleep(POLL_INTERVAL_SECONDS if processed else EMPTY_POLL_BACKOFF_SECONDS)
+        await asyncio.sleep(
+            POLL_INTERVAL_SECONDS if processed else EMPTY_POLL_BACKOFF_SECONDS
+        )
 
 
 if __name__ == "__main__":

@@ -19,7 +19,9 @@ def test_promote_version_rejects_missing_token():
         "/internal/transcript-version/promote",
         json={"slug": "whatever", "version_id": 1},
     )
-    assert response.status_code == 404  # not 401/403 -- matches every other /internal/* route
+    assert (
+        response.status_code == 404
+    )  # not 401/403 -- matches every other /internal/* route
 
 
 def test_promote_version_rejects_wrong_token():

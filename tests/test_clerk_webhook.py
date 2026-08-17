@@ -42,7 +42,10 @@ def test_webhook_returns_503_when_signing_secret_unconfigured(monkeypatch):
 
 def test_webhook_rejects_invalid_signature(monkeypatch):
     monkeypatch.setenv("CLERK_WEBHOOK_SIGNING_SECRET", _TEST_SECRET)
-    body, headers = _signed_request({"type": "user.created", "data": {"id": "user_1"}}, secret="whsec_wrong_secret_entirely")
+    body, headers = _signed_request(
+        {"type": "user.created", "data": {"id": "user_1"}},
+        secret="whsec_wrong_secret_entirely",
+    )
     response = client.post("/api/clerk/webhook", content=body, headers=headers)
     assert response.status_code == 400
 
@@ -93,7 +96,10 @@ async def test_user_created_with_no_resolvable_email_does_not_crash(monkeypatch)
 
     monkeypatch.setattr(app.main, "_resend_audience_upsert", _fake_upsert)
 
-    event = {"type": "user.created", "data": {"id": "user_no_email", "email_addresses": []}}
+    event = {
+        "type": "user.created",
+        "data": {"id": "user_no_email", "email_addresses": []},
+    }
     body, headers = _signed_request(event)
     response = client.post("/api/clerk/webhook", content=body, headers=headers)
     assert response.status_code == 200

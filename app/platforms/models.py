@@ -19,19 +19,27 @@ class AlternateTranscript(BaseModel):
     segments (not just a language label) so the frontend can switch the
     displayed transcript client-side with no extra round-trip."""
 
-    language: Optional[str] = None  # ISO 639-1 code detected from actual caption text, same as transcript_language
+    language: Optional[str] = (
+        None  # ISO 639-1 code detected from actual caption text, same as transcript_language
+    )
     segments: List[TranscriptSegment] = []
 
 
 class ResolvedMeeting(BaseModel):
     platform: str
     source_url: str
-    external_id: Optional[str] = None  # namespaced e.g. "granicus:52945"; None until an adapter populates it
+    external_id: Optional[str] = (
+        None  # namespaced e.g. "granicus:52945"; None until an adapter populates it
+    )
     title: Optional[str] = None
     date: Optional[str] = None
     jurisdiction: Optional[str] = None
-    video_url: Optional[str] = None  # m3u8/mp4 URL playable by hls.js/<video>, OR a youtube.com/embed/{id} URL
-    video_format: Optional[str] = None  # "m3u8" | "mp4" | "youtube" | None -- "youtube" needs the iframe+Player-API pathway, not <video>
+    video_url: Optional[str] = (
+        None  # m3u8/mp4 URL playable by hls.js/<video>, OR a youtube.com/embed/{id} URL
+    )
+    video_format: Optional[str] = (
+        None  # "m3u8" | "mp4" | "youtube" | None -- "youtube" needs the iframe+Player-API pathway, not <video>
+    )
     segments: List[TranscriptSegment] = []
     # Agenda/chapter markers (Granicus's AgendaViewer.php, CivicClerk's
     # eventBookmarks, Swagit's .playerControl) -- kept separate from
@@ -61,7 +69,9 @@ class ResolvedMeeting(BaseModel):
     # so proceed with caution").
     video_link: Optional[str] = None
     video_link_recognized: bool = False
-    transcript_language: Optional[str] = None  # ISO 639-1 code detected from actual caption text
+    transcript_language: Optional[str] = (
+        None  # ISO 639-1 code detected from actual caption text
+    )
     # Other real caption tracks found on the page but not chosen as
     # `segments` -- lets the frontend offer a language switcher instead of
     # silently discarding every track but the best-matching one. Empty

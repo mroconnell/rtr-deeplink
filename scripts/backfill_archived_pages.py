@@ -55,15 +55,38 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
 async def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--dry-run", action="store_true", help="Resolve every page for real, but never push")
-    parser.add_argument("--limit", type=int, default=None, help="Only process the first N pages (for testing)")
-    parser.add_argument("--platform", type=str, default=None, help="Only process pages on this platform (e.g. swagit)")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument(
-        "--url-contains", type=str, default=None,
+        "--dry-run",
+        action="store_true",
+        help="Resolve every page for real, but never push",
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="Only process the first N pages (for testing)",
+    )
+    parser.add_argument(
+        "--platform",
+        type=str,
+        default=None,
+        help="Only process pages on this platform (e.g. swagit)",
+    )
+    parser.add_argument(
+        "--url-contains",
+        type=str,
+        default=None,
         help="Only process pages whose source URL contains this substring (e.g. longbeachca)",
     )
-    parser.add_argument("--delay", type=float, default=2.0, help="Seconds to wait between each page (default 2.0)")
+    parser.add_argument(
+        "--delay",
+        type=float,
+        default=2.0,
+        help="Seconds to wait between each page (default 2.0)",
+    )
     args = parser.parse_args()
 
     # Imported here, not at module level -- app.main builds a real FastAPI
@@ -121,11 +144,15 @@ async def main() -> None:
 
         if "error" in result:
             failed += 1
-            print(f"[{i}/{len(pages)}] {slug}: FAILED ({result['error']}: {str(result.get('message', ''))[:150]})")
+            print(
+                f"[{i}/{len(pages)}] {slug}: FAILED ({result['error']}: {str(result.get('message', ''))[:150]})"
+            )
         elif result["pushed"]:
             changed += 1
             verb = "would push" if args.dry_run else "pushed"
-            print(f"[{i}/{len(pages)}] {slug}: {verb} -- jurisdiction={result['jurisdiction']!r}")
+            print(
+                f"[{i}/{len(pages)}] {slug}: {verb} -- jurisdiction={result['jurisdiction']!r}"
+            )
         else:
             print(f"[{i}/{len(pages)}] {slug}: no real content found, skipped")
 
@@ -134,7 +161,9 @@ async def main() -> None:
 
     skipped = len(pages) - changed - failed
     verb = "would be updated" if args.dry_run else "updated"
-    print(f"\nDone. {changed} page(s) {verb}, {failed} failed, {skipped} had nothing new to push.")
+    print(
+        f"\nDone. {changed} page(s) {verb}, {failed} failed, {skipped} had nothing new to push."
+    )
 
 
 if __name__ == "__main__":

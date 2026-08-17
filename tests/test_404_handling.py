@@ -22,8 +22,14 @@ def test_resolver_unmatched_route_renders_branded_page():
 
 def test_resolver_unmatched_route_logs_a_warning(caplog):
     with caplog.at_level(logging.WARNING, logger="rtr_deeplink.db"):
-        resolver_client.get("/this-page-does-not-exist", headers={"referer": "https://example.com/old-link"})
-    assert any("404" in r.message and "/this-page-does-not-exist" in r.message for r in caplog.records)
+        resolver_client.get(
+            "/this-page-does-not-exist",
+            headers={"referer": "https://example.com/old-link"},
+        )
+    assert any(
+        "404" in r.message and "/this-page-does-not-exist" in r.message
+        for r in caplog.records
+    )
     assert any("example.com/old-link" in r.message for r in caplog.records)
 
 

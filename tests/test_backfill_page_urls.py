@@ -51,7 +51,11 @@ async def test_list_all_page_urls_includes_every_platform_not_just_youtube():
     await crud.ingest_resolution(payload, url)
 
     pages = await crud.list_all_page_urls()
-    assert [p for p in pages if p["source_url_normalized"] == url and p["platform"] == "swagit"]
+    assert [
+        p
+        for p in pages
+        if p["source_url_normalized"] == url and p["platform"] == "swagit"
+    ]
 
 
 def test_all_page_urls_route_rejects_missing_token():
@@ -60,7 +64,9 @@ def test_all_page_urls_route_rejects_missing_token():
 
 
 def test_all_page_urls_route_rejects_wrong_token():
-    response = client.get("/internal/pages/all-urls", headers={"Authorization": "Bearer wrong"})
+    response = client.get(
+        "/internal/pages/all-urls", headers={"Authorization": "Bearer wrong"}
+    )
     assert response.status_code == 404
 
 
@@ -68,7 +74,9 @@ async def test_all_page_urls_route_returns_real_pages():
     url = "https://example.granicus.com/player/clip/backfill-route-1"
     await crud.ingest_resolution(_payload("backfill:route-1", url), url)
 
-    response = client.get("/internal/pages/all-urls", headers={"Authorization": "Bearer test-token"})
+    response = client.get(
+        "/internal/pages/all-urls", headers={"Authorization": "Bearer test-token"}
+    )
     assert response.status_code == 200
     pages = response.json()["pages"]
     assert [p for p in pages if p["source_url_normalized"] == url]

@@ -31,8 +31,18 @@ _MONTH_DATE_RE = re.compile(
     r"\s+(\d{1,2}),?\s+(\d{4})"
 )
 _MONTHS = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December",
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
 ]
 
 # Bounded by an HTML tag or punctuation so this doesn't run away mid-sentence
@@ -43,7 +53,9 @@ _MONTHS = [
 # closely (confirmed live: OKC's header has no punctuation between adjacent
 # table-cell headings once tags are stripped, e.g. "OKLAHOMA CITY FORMAL
 # AGENDA CITY COUNCIL" would otherwise merge into one match).
-_JURISDICTION_RE = re.compile(r"\b(city|county|town) of\s+([^<>]{1,80}?)(?=<|[,.])", re.IGNORECASE)
+_JURISDICTION_RE = re.compile(
+    r"\b(city|county|town) of\s+([^<>]{1,80}?)(?=<|[,.])", re.IGNORECASE
+)
 
 # Reported by the user with two real examples on slc.primegov.com:
 # _JURISDICTION_RE's plain, unscoped .search() over the entire page HTML
@@ -75,7 +87,9 @@ _JURISDICTION_RE = re.compile(r"\b(city|county|town) of\s+([^<>]{1,80}?)(?=<|[,.
 # stripped, harmless) until a real, non-positional way to tell a genuine
 # header from an agenda-item mention is found and verified against more
 # than three examples -- see BACKLOG.md.
-_BOILERPLATE_RE = re.compile(r"<(script|style)\b[^>]*>.*?</\1>", re.IGNORECASE | re.DOTALL)
+_BOILERPLATE_RE = re.compile(
+    r"<(script|style)\b[^>]*>.*?</\1>", re.IGNORECASE | re.DOTALL
+)
 
 
 class PrimeGovAssetFinder(AssetFinder):

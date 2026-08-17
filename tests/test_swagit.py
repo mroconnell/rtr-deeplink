@@ -15,11 +15,11 @@ from aiohttp_mock import FakeResponse, mock_session
 PAGE_URL = "https://example.new.swagit.com/videos/1"
 
 BASE_HTML = (
-    '<html><head><title>Jul 21, 2026 Town Council Regular Meeting - Example, CA</title></head>'
-    '<body>'
+    "<html><head><title>Jul 21, 2026 Town Council Regular Meeting - Example, CA</title></head>"
+    "<body>"
     '<script>var playlist = [{{"file": "https://archive-stream.granicus.com/x/playlist.m3u8"}}];</script>'
-    '{captions_tag}'
-    '</body></html>'
+    "{captions_tag}"
+    "</body></html>"
 )
 
 
@@ -31,7 +31,9 @@ async def test_resolve_falls_back_to_caption_file_when_no_transcript_fragments()
 
     routes = {
         PAGE_URL: FakeResponse(status=200, text=html, url=PAGE_URL),
-        "https://example.new.swagit.com/captions.sbv": FakeResponse(status=200, text=sbv_content),
+        "https://example.new.swagit.com/captions.sbv": FakeResponse(
+            status=200, text=sbv_content
+        ),
     }
 
     with mock_session(routes):
@@ -57,10 +59,10 @@ async def test_resolve_detects_language_from_transcript_fragments():
     ).split()
     fragments = "".join(f'<a data-ts="{i}">{w}</a>' for i, w in enumerate(words))
     html = (
-        '<html><head><title>Jan 13, 2026 City Council - Example, CA</title></head><body>'
+        "<html><head><title>Jan 13, 2026 City Council - Example, CA</title></head><body>"
         '<script>var playlist = [{"file": "https://archive-stream.granicus.com/x/playlist.m3u8"}];</script>'
         f'<div id="transcript-fragments">{fragments}</div>'
-        '</body></html>'
+        "</body></html>"
     )
 
     routes = {PAGE_URL: FakeResponse(status=200, text=html, url=PAGE_URL)}
@@ -139,7 +141,9 @@ def test_group_word_fragments_merges_real_dublin_example():
     grouped = _group_word_fragments(words, window_seconds=4.0)
 
     assert len(grouped) < len(words)
-    assert " ".join(g.text for g in grouped) == "3, 2, 1. GOOD EVENING AND HAPPY NEW YEAR"
+    assert (
+        " ".join(g.text for g in grouped) == "3, 2, 1. GOOD EVENING AND HAPPY NEW YEAR"
+    )
     # Each group's start is its first word's timestamp, not a later one.
     assert grouped[0].start == 0.295
     # Each group's end is its last word's timestamp, not start == end.
@@ -174,10 +178,10 @@ async def test_resolve_normalizes_all_caps_transcript_fragments():
     ).split()
     fragments = "".join(f'<a data-ts="{i}">{w}</a>' for i, w in enumerate(words))
     html = (
-        '<html><head><title>Jan 13, 2026 City Council - Example, CA</title></head><body>'
+        "<html><head><title>Jan 13, 2026 City Council - Example, CA</title></head><body>"
         '<script>var playlist = [{"file": "https://archive-stream.granicus.com/x/playlist.m3u8"}];</script>'
         f'<div id="transcript-fragments">{fragments}</div>'
-        '</body></html>'
+        "</body></html>"
     )
 
     routes = {PAGE_URL: FakeResponse(status=200, text=html, url=PAGE_URL)}
@@ -186,7 +190,9 @@ async def test_resolve_normalizes_all_caps_transcript_fragments():
         result = await SwagitAssetFinder().resolve(PAGE_URL)
 
     full_text = " ".join(s.text for s in result.segments)
-    assert full_text != full_text.upper(), "transcript should no longer be all-uppercase"
+    assert full_text != full_text.upper(), (
+        "transcript should no longer be all-uppercase"
+    )
     assert "good" in full_text.lower()  # content preserved, just re-cased
 
 

@@ -89,9 +89,15 @@ def test_find_platform_link_respects_exclude():
     # video-ID-validated YouTube check exclude it here deliberately.
     html = '<html><body><a href="https://www.youtube.com/user/somechannel">Watch us</a></body></html>'
     assert find_platform_link(html, "https://example.gov/meeting") == (
-        "https://www.youtube.com/user/somechannel", "youtube"
+        "https://www.youtube.com/user/somechannel",
+        "youtube",
     )
-    assert find_platform_link(html, "https://example.gov/meeting", exclude=frozenset({"youtube"})) is None
+    assert (
+        find_platform_link(
+            html, "https://example.gov/meeting", exclude=frozenset({"youtube"})
+        )
+        is None
+    )
 
 
 def test_find_platform_link_skips_same_page_fragment_anchors():
@@ -103,7 +109,12 @@ def test_find_platform_link_skips_same_page_fragment_anchors():
     # again -- unbounded recursion, confirmed on a real Columbus, OH
     # Legistar meeting with no other video link on the page.
     html = '<html><body><a href="#mainContent">Skip to main content</a></body></html>'
-    assert find_platform_link(html, "https://columbus.legistar.com/MeetingDetail.aspx?ID=1") is None
+    assert (
+        find_platform_link(
+            html, "https://columbus.legistar.com/MeetingDetail.aspx?ID=1"
+        )
+        is None
+    )
 
 
 def test_find_platform_link_skips_same_page_absolute_self_link():

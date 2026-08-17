@@ -10,7 +10,9 @@ from app.platforms.youtube import YouTubeAssetFinder
 
 from aiohttp_mock import FakeResponse, mock_session
 
-MEETING_URL = "https://dallascounty.civicweb.net/Portal/MeetingInformation.aspx?Org=Cal&Id=2108"
+MEETING_URL = (
+    "https://dallascounty.civicweb.net/Portal/MeetingInformation.aspx?Org=Cal&Id=2108"
+)
 VIDEOLINK_URL = "https://dallascounty.civicweb.net/api/videolink/2108"
 MEETING_DATA_URL = "https://dallascounty.civicweb.net/Services/MeetingsService.svc/meetings/2108/meetingData"
 REAL_VIDEO_ID = "t2rG96zqw7M"
@@ -25,13 +27,15 @@ VIDEOLINK_JSON = (
     '\\"IndexPoints\\":\\"\\",\\"LocalIndexPoints\\":\\"\\",\\"ShowTimeStamps\\":true,'
     f'\\"ShowVideoLink\\":true,\\"YouTube\\":true,\\"YouTubeEventId\\":\\"{REAL_VIDEO_ID}\\"}}]"'
 )
-MEETING_DATA_JSON = (
-    '{"Id":2108,"Location":"Commissioners Court Room","Name":"Commissioners Court - Aug 04 2026","Time":"09:00 AM","TypeId":10}'
-)
+MEETING_DATA_JSON = '{"Id":2108,"Location":"Commissioners Court Room","Name":"Commissioners Court - Aug 04 2026","Time":"09:00 AM","TypeId":10}'
 
 
 def _fake_extract_info(video_id):
-    return {"title": "Commissioners Court", "uploader": "Dallas County TV", "upload_date": "20260804"}
+    return {
+        "title": "Commissioners Court",
+        "uploader": "Dallas County TV",
+        "upload_date": "20260804",
+    }
 
 
 def test_detect_platform_recognizes_civicweb_domain():
@@ -44,7 +48,9 @@ async def test_resolve_real_meeting_delegates_to_youtube(monkeypatch):
     routes = {
         MEETING_URL: FakeResponse(status=200, text=MEETING_HTML, url=MEETING_URL),
         VIDEOLINK_URL: FakeResponse(status=200, text=VIDEOLINK_JSON, url=VIDEOLINK_URL),
-        MEETING_DATA_URL: FakeResponse(status=200, text=MEETING_DATA_JSON, url=MEETING_DATA_URL),
+        MEETING_DATA_URL: FakeResponse(
+            status=200, text=MEETING_DATA_JSON, url=MEETING_DATA_URL
+        ),
     }
 
     with mock_session(routes):
@@ -63,7 +69,9 @@ async def test_resolve_real_meeting_delegates_to_youtube(monkeypatch):
     assert result.video_url == f"https://www.youtube.com/embed/{REAL_VIDEO_ID}"
 
 
-async def test_resolve_falls_back_to_known_domain_when_title_does_not_match(monkeypatch):
+async def test_resolve_falls_back_to_known_domain_when_title_does_not_match(
+    monkeypatch,
+):
     # Applying the same fix already confirmed live for lims.py and
     # generic_fallback.py (see BACKLOG_DONE.md): if this page's own
     # <title> ever doesn't match _TITLE_JURISDICTION_RE (unconfirmed so
@@ -72,12 +80,18 @@ async def test_resolve_falls_back_to_known_domain_when_title_does_not_match(monk
     # through to YouTube's own uploader field ("Dallas County TV" here --
     # a channel name, not a jurisdiction).
     monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _fake_extract_info)
-    unmatched_title_html = "<html><head><title>Meeting Portal</title></head><body></body></html>"
+    unmatched_title_html = (
+        "<html><head><title>Meeting Portal</title></head><body></body></html>"
+    )
 
     routes = {
-        MEETING_URL: FakeResponse(status=200, text=unmatched_title_html, url=MEETING_URL),
+        MEETING_URL: FakeResponse(
+            status=200, text=unmatched_title_html, url=MEETING_URL
+        ),
         VIDEOLINK_URL: FakeResponse(status=200, text=VIDEOLINK_JSON, url=VIDEOLINK_URL),
-        MEETING_DATA_URL: FakeResponse(status=200, text=MEETING_DATA_JSON, url=MEETING_DATA_URL),
+        MEETING_DATA_URL: FakeResponse(
+            status=200, text=MEETING_DATA_JSON, url=MEETING_DATA_URL
+        ),
     }
 
     with mock_session(routes):
@@ -89,11 +103,15 @@ async def test_resolve_falls_back_to_known_domain_when_title_does_not_match(monk
 
 
 async def test_resolve_missing_video_id_reports_no_video(monkeypatch):
-    no_video_json = '"[{\\"MeetingDate\\":\\"2026-08-04T00:00:00\\",\\"YouTube\\":false}]"'
+    no_video_json = (
+        '"[{\\"MeetingDate\\":\\"2026-08-04T00:00:00\\",\\"YouTube\\":false}]"'
+    )
     routes = {
         MEETING_URL: FakeResponse(status=200, text=MEETING_HTML, url=MEETING_URL),
         VIDEOLINK_URL: FakeResponse(status=200, text=no_video_json, url=VIDEOLINK_URL),
-        MEETING_DATA_URL: FakeResponse(status=200, text=MEETING_DATA_JSON, url=MEETING_DATA_URL),
+        MEETING_DATA_URL: FakeResponse(
+            status=200, text=MEETING_DATA_JSON, url=MEETING_DATA_URL
+        ),
     }
 
     with mock_session(routes):
@@ -117,13 +135,18 @@ def test_extract_jurisdiction_fills_in_state_for_an_unambiguous_county():
     # state-less). Uses a nationally-unique county name instead to confirm
     # the shared jurisdiction_enrich wiring is actually reached.
     html = "<html><head><title>Napa County - Meeting Information</title></head></html>"
-    result = CivicWebAssetFinder._extract_jurisdiction(html, "https://napacounty.civicweb.net/Portal/x")
+    result = CivicWebAssetFinder._extract_jurisdiction(
+        html, "https://napacounty.civicweb.net/Portal/x"
+    )
     assert result == "Napa County, CA"
 
 
 def test_extract_meeting_id_from_real_url_shape():
     assert CivicWebAssetFinder._extract_meeting_id(MEETING_URL) == "2108"
-    assert CivicWebAssetFinder._extract_meeting_id("https://example.civicweb.net/Portal/x") is None
+    assert (
+        CivicWebAssetFinder._extract_meeting_id("https://example.civicweb.net/Portal/x")
+        is None
+    )
 
 
 async def test_resolve_url_with_no_meeting_id_reports_error():
@@ -131,4 +154,6 @@ async def test_resolve_url_with_no_meeting_id_reports_error():
 
     result = await CivicWebAssetFinder().resolve(url)
 
-    assert result.video_warnings == ["Could not find a meeting id in this CivicWeb URL."]
+    assert result.video_warnings == [
+        "Could not find a meeting id in this CivicWeb URL."
+    ]

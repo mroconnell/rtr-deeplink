@@ -15,9 +15,9 @@ def _resolve_database_url() -> str:
     # Render (and most Postgres hosts) hand out plain postgres:// / postgresql://
     # URLs, but the async engine needs the asyncpg driver spelled out.
     if raw.startswith("postgres://"):
-        raw = "postgresql+asyncpg://" + raw[len("postgres://"):]
+        raw = "postgresql+asyncpg://" + raw[len("postgres://") :]
     elif raw.startswith("postgresql://"):
-        raw = "postgresql+asyncpg://" + raw[len("postgresql://"):]
+        raw = "postgresql+asyncpg://" + raw[len("postgresql://") :]
 
     return raw
 

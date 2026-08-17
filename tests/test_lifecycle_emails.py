@@ -58,7 +58,9 @@ async def test_send_completion_email_uses_new_subject_and_greeting(monkeypatch):
     monkeypatch.setenv("RESEND_FROM_ADDRESS", "Ryan <ryan@ally.redtaperecordings.com>")
 
     captured = {}
-    monkeypatch.setattr(email_module.aiohttp, "ClientSession", lambda: _FakeSession(captured))
+    monkeypatch.setattr(
+        email_module.aiohttp, "ClientSession", lambda: _FakeSession(captured)
+    )
 
     ok = await email_module.send_completion_email(
         "ryan@example.com",
@@ -81,7 +83,9 @@ async def test_send_completion_email_uses_first_name_when_given(monkeypatch):
     monkeypatch.setenv("RESEND_FROM_ADDRESS", "Ryan <ryan@ally.redtaperecordings.com>")
 
     captured = {}
-    monkeypatch.setattr(email_module.aiohttp, "ClientSession", lambda: _FakeSession(captured))
+    monkeypatch.setattr(
+        email_module.aiohttp, "ClientSession", lambda: _FakeSession(captured)
+    )
 
     await email_module.send_completion_email(
         "ryan@example.com",
@@ -99,7 +103,9 @@ async def test_send_transcription_failed_email_ccs_reply_to(monkeypatch):
     monkeypatch.setenv("RESEND_REPLY_TO_ADDRESS", "ryan@redtaperecordings.com")
 
     captured = {}
-    monkeypatch.setattr(email_module.aiohttp, "ClientSession", lambda: _FakeSession(captured))
+    monkeypatch.setattr(
+        email_module.aiohttp, "ClientSession", lambda: _FakeSession(captured)
+    )
 
     ok = await email_module.send_transcription_failed_email(
         "ryan@example.com",
@@ -112,16 +118,22 @@ async def test_send_transcription_failed_email_ccs_reply_to(monkeypatch):
     assert "couldn't get it done" in captured["json"]["html"]
 
 
-async def test_send_transcription_failed_email_omits_cc_when_reply_to_unset(monkeypatch):
+async def test_send_transcription_failed_email_omits_cc_when_reply_to_unset(
+    monkeypatch,
+):
     monkeypatch.setattr(email_module, "_api_key", lambda: "test-key")
     monkeypatch.setenv("RESEND_FROM_ADDRESS", "Ryan <ryan@ally.redtaperecordings.com>")
     monkeypatch.delenv("RESEND_REPLY_TO_ADDRESS", raising=False)
 
     captured = {}
-    monkeypatch.setattr(email_module.aiohttp, "ClientSession", lambda: _FakeSession(captured))
+    monkeypatch.setattr(
+        email_module.aiohttp, "ClientSession", lambda: _FakeSession(captured)
+    )
 
     await email_module.send_transcription_failed_email(
-        "ryan@example.com", meeting_title="City Council Meeting", page_url="https://redtaperecordings.com/m/x"
+        "ryan@example.com",
+        meeting_title="City Council Meeting",
+        page_url="https://redtaperecordings.com/m/x",
     )
     assert "cc" not in captured["json"]
 
@@ -185,7 +197,10 @@ async def test_user_created_with_no_email_does_not_send_thanks(monkeypatch):
 
     monkeypatch.setattr(app.main, "_send_account_created_email", _fail_if_called)
 
-    event = {"type": "user.created", "data": {"id": "user_no_email", "email_addresses": []}}
+    event = {
+        "type": "user.created",
+        "data": {"id": "user_no_email", "email_addresses": []},
+    }
     body, headers = _signed_request(event)
     response = client.post("/api/clerk/webhook", content=body, headers=headers)
     assert response.status_code == 200
@@ -257,7 +272,9 @@ def test_unsubscribe_does_not_send_goodbye_on_upsert_failure(monkeypatch):
     monkeypatch.setattr(app.main, "_resend_audience_upsert", _fake_upsert)
 
     async def _fail_if_called(to):
-        raise AssertionError("should not send Goodbye when the unsubscribe upsert failed")
+        raise AssertionError(
+            "should not send Goodbye when the unsubscribe upsert failed"
+        )
 
     monkeypatch.setattr(app.main, "_send_unsubscribed_email", _fail_if_called)
 
@@ -280,9 +297,13 @@ async def test_resend_send_includes_cc_when_given(monkeypatch):
     monkeypatch.setenv("RESEND_FROM_ADDRESS", "Ryan <ryan@ally.redtaperecordings.com>")
 
     captured = {}
-    monkeypatch.setattr(app.main.aiohttp, "ClientSession", lambda: _FakeSession(captured))
+    monkeypatch.setattr(
+        app.main.aiohttp, "ClientSession", lambda: _FakeSession(captured)
+    )
 
-    ok = await app.main._resend_send("ryan@example.com", "Subject", "<p>Body</p>", cc="other@example.com")
+    ok = await app.main._resend_send(
+        "ryan@example.com", "Subject", "<p>Body</p>", cc="other@example.com"
+    )
     assert ok is True
     assert captured["json"]["cc"] == ["other@example.com"]
 
@@ -293,7 +314,9 @@ async def test_resend_send_skip_unsubscribe_footer_omits_footer_link(monkeypatch
     monkeypatch.setenv("PUBLIC_BASE_URL", "https://redtaperecordings.com")
 
     captured = {}
-    monkeypatch.setattr(app.main.aiohttp, "ClientSession", lambda: _FakeSession(captured))
+    monkeypatch.setattr(
+        app.main.aiohttp, "ClientSession", lambda: _FakeSession(captured)
+    )
 
     await app.main._resend_send(
         "ryan@example.com", "Subject", "<p>Body</p>", skip_unsubscribe_footer=True
@@ -307,7 +330,9 @@ async def test_resend_send_includes_unsubscribe_footer_by_default(monkeypatch):
     monkeypatch.setenv("PUBLIC_BASE_URL", "https://redtaperecordings.com")
 
     captured = {}
-    monkeypatch.setattr(app.main.aiohttp, "ClientSession", lambda: _FakeSession(captured))
+    monkeypatch.setattr(
+        app.main.aiohttp, "ClientSession", lambda: _FakeSession(captured)
+    )
 
     await app.main._resend_send("ryan@example.com", "Subject", "<p>Body</p>")
     assert "Unsubscribe" in captured["json"]["html"]

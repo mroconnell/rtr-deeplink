@@ -13,7 +13,11 @@ from .models import ResolvedMeeting, TranscriptSegment
 from .youtube import YouTubeAssetFinder
 from ..utils import jurisdiction_enrich
 from ..utils.url_guard import guarded_get, read_capped_bytes, read_capped_text
-from ..utils.vtt_parser import decode_vtt_bytes, detect_language_from_texts, parse_captions_by_extension
+from ..utils.vtt_parser import (
+    decode_vtt_bytes,
+    detect_language_from_texts,
+    parse_captions_by_extension,
+)
 
 _AGENDA_TEXT_RE = re.compile(r"agenda", re.IGNORECASE)
 
@@ -95,8 +99,18 @@ _IFRAME_API_MARKER = "youtube.com/iframe_api"
 # feed-cities entry catalogued from real government pages.
 _ISO_DATE_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})")
 _MONTHS_FULL = (
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December",
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
 )
 # Textual date inside a heading, confirmed live 2026-08-13 on Tarrant
 # County's `<h4>TUESDAY, AUGUST 19, 2025 - 10:00 AM</h4>` (an
@@ -147,9 +161,15 @@ _VIDEO_TEXT_RE = re.compile(
 # on PBC's) or ubiquitous enough to need no citation (analytics,
 # recaptcha, social embeds).
 _IFRAME_JUNK_HOSTS = (
-    "googletagmanager.com", "google-analytics.com", "doubleclick.net",
-    "recaptcha.net", "google.com/recaptcha", "facebook.com", "twitter.com",
-    "platform.twitter.com", "youtube.com",  # youtube iframes are tier-1 territory, never a pointer
+    "googletagmanager.com",
+    "google-analytics.com",
+    "doubleclick.net",
+    "recaptcha.net",
+    "google.com/recaptcha",
+    "facebook.com",
+    "twitter.com",
+    "platform.twitter.com",
+    "youtube.com",  # youtube iframes are tier-1 territory, never a pointer
 )
 
 # --- Headless-browser escalation (2026-08-14 rebuild, Phase 5).
@@ -189,10 +209,11 @@ def _headless_escalation_enabled() -> bool:
     # without a process restart being silently required in tests.
     return os.environ.get(_HEADLESS_ESCALATION_ENV, "") == "1"
 
+
 _BEST_EFFORT_VIDEO_WARNING = (
     "This city isn't officially supported yet, so we're trying our best — we think we found the "
     "video below. Deep-linking to a specific moment might work here, or it might not — feel free "
-    "to try the \"Go to time\" / \"Share video at\" tools, but if a link doesn't land right, going "
+    'to try the "Go to time" / "Share video at" tools, but if a link doesn\'t land right, going '
     "back to the original source is the safer bet."
 )
 _NO_VIDEO_FOUND_WARNING = (
@@ -351,8 +372,13 @@ class GenericFallbackAssetFinder(AssetFinder):
         # nocookie embed, or Tarrant's bare corroborated JS assignment).
         youtube_video_id = self._find_youtube_video_id(html)
         if youtube_video_id:
-            resolved = await YouTubeAssetFinder.resolve_video_id(youtube_video_id, source_url=url)
-            resolved.video_warnings = [_BEST_EFFORT_VIDEO_WARNING, *resolved.video_warnings]
+            resolved = await YouTubeAssetFinder.resolve_video_id(
+                youtube_video_id, source_url=url
+            )
+            resolved.video_warnings = [
+                _BEST_EFFORT_VIDEO_WARNING,
+                *resolved.video_warnings,
+            ]
             resolved.agenda_link = agenda_link
             # YouTubeAssetFinder.resolve_video_id() always returns
             # platform="youtube" (its own identity, unchanged, regardless
@@ -389,7 +415,9 @@ class GenericFallbackAssetFinder(AssetFinder):
             cues = await self._try_fetch_caption(caption_url)
             if cues:
                 segments = [TranscriptSegment(**c) for c in cues]
-                transcript_language = detect_language_from_texts(c["text"] for c in cues)
+                transcript_language = detect_language_from_texts(
+                    c["text"] for c in cues
+                )
                 break
 
         transcript_warnings = [] if segments else [_NO_TRANSCRIPT_WARNING]
@@ -446,7 +474,11 @@ class GenericFallbackAssetFinder(AssetFinder):
         page_host = urlparse(page_url).netloc.lower()
         for a in soup.find_all("a", href=True):
             href = a["href"].strip()
-            if not href or href.startswith("#") or href.lower().startswith("javascript:"):
+            if (
+                not href
+                or href.startswith("#")
+                or href.lower().startswith("javascript:")
+            ):
                 continue
             if _VIDEO_TEXT_RE.match(a.get_text(" ", strip=True)):
                 return urljoin(page_url, href), False
@@ -488,7 +520,9 @@ class GenericFallbackAssetFinder(AssetFinder):
                 # destination degrades to the same honest "couldn't even
                 # load the page" outcome as any other fetch failure below,
                 # same as an unrelated timeout/connection error would.
-                async with guarded_get(session, url, timeout=aiohttp.ClientTimeout(total=20)) as response:
+                async with guarded_get(
+                    session, url, timeout=aiohttp.ClientTimeout(total=20)
+                ) as response:
                     status = response.status
                     body = await read_capped_text(response)
         except Exception:
@@ -521,6 +555,7 @@ class GenericFallbackAssetFinder(AssetFinder):
         unless the flag is actually on."""
         try:
             from .headless_browser import fetch_via_browser
+
             return await fetch_via_browser(url)
         except Exception:
             return None
@@ -534,12 +569,14 @@ class GenericFallbackAssetFinder(AssetFinder):
         best-effort-matches to the site root -- the exact junk-link
         outcome BACKLOG.md already documented from prod -- and counting
         it would veto escalation on precisely the page that needs it."""
-        return not any((
-            resolved.video_url,
-            resolved.video_link,
-            resolved.title,
-            resolved.segments,
-        ))
+        return not any(
+            (
+                resolved.video_url,
+                resolved.video_link,
+                resolved.title,
+                resolved.segments,
+            )
+        )
 
     @staticmethod
     def _looks_like_empty_shell(html: str) -> bool:
@@ -583,7 +620,9 @@ class GenericFallbackAssetFinder(AssetFinder):
         return None
 
     @staticmethod
-    def _collect_caption_candidates(html: str, media_urls: List[str], page_url: str) -> List[str]:
+    def _collect_caption_candidates(
+        html: str, media_urls: List[str], page_url: str
+    ) -> List[str]:
         """Caption URLs to try, in confidence order, deduped, capped at 3
         (each is a real network fetch; a page with many caption-shaped
         links shouldn't turn one resolve into a crawl):
@@ -609,7 +648,11 @@ class GenericFallbackAssetFinder(AssetFinder):
                 candidates.append(urljoin(page_url, track["src"].strip()))
         for a in soup.find_all("a", href=True):
             href = a["href"].strip()
-            if not href or href.startswith("#") or href.lower().startswith("javascript:"):
+            if (
+                not href
+                or href.startswith("#")
+                or href.lower().startswith("javascript:")
+            ):
                 continue
             candidate = urljoin(page_url, href)
             if media_type(candidate) == "subtitle":
@@ -626,7 +669,10 @@ class GenericFallbackAssetFinder(AssetFinder):
 
     @staticmethod
     def _backfill_metadata_from_page(
-        resolved: ResolvedMeeting, html: str, url: str, agenda_link_title: Optional[str] = None
+        resolved: ResolvedMeeting,
+        html: str,
+        url: str,
+        agenda_link_title: Optional[str] = None,
     ) -> None:
         """Last-resort title/jurisdiction/date fill-in for a still-empty
         `resolved.title` -- see the module-level regex comments above for
@@ -643,7 +689,9 @@ class GenericFallbackAssetFinder(AssetFinder):
         """
         date_match = _URL_PATH_DATE_RE.search(url)
         if date_match and not resolved.date:
-            resolved.date = f"{date_match.group(1)}-{date_match.group(2)}-{date_match.group(3)}"
+            resolved.date = (
+                f"{date_match.group(1)}-{date_match.group(2)}-{date_match.group(3)}"
+            )
 
         soup = BeautifulSoup(html, "html.parser")
         board_match = _BOARD_OF_DIRECTORS_RE.search(soup.get_text(" ", strip=True))
@@ -744,7 +792,9 @@ class GenericFallbackAssetFinder(AssetFinder):
             for heading in soup.find_all(["h1", "h2", "h3", "h4"]):
                 match = _HEADING_DATE_RE.search(heading.get_text(" ", strip=True))
                 if match:
-                    month = [m.lower() for m in _MONTHS_FULL].index(match.group(1).lower()) + 1
+                    month = [m.lower() for m in _MONTHS_FULL].index(
+                        match.group(1).lower()
+                    ) + 1
                     resolved.date = f"{int(match.group(3)):04d}-{month:02d}-{int(match.group(2)):02d}"
                     break
 
@@ -757,7 +807,9 @@ class GenericFallbackAssetFinder(AssetFinder):
             if agenda_match:
                 body_text, month, day, year = agenda_match.groups()
                 if not resolved.title:
-                    resolved.title = body_text.title() if body_text.isupper() else body_text
+                    resolved.title = (
+                        body_text.title() if body_text.isupper() else body_text
+                    )
                 if not resolved.date:
                     resolved.date = f"{int(year):04d}-{int(month):02d}-{int(day):02d}"
 
@@ -777,11 +829,17 @@ class GenericFallbackAssetFinder(AssetFinder):
         if not resolved.date:
             match = _SLUG_DATE_RE.search(urlparse(url).path)
             if match:
-                month = [m.lower() for m in _MONTHS_FULL].index(match.group(1).lower()) + 1
-                resolved.date = f"{int(match.group(3)):04d}-{month:02d}-{int(match.group(2)):02d}"
+                month = [m.lower() for m in _MONTHS_FULL].index(
+                    match.group(1).lower()
+                ) + 1
+                resolved.date = (
+                    f"{int(match.group(3)):04d}-{month:02d}-{int(match.group(2)):02d}"
+                )
 
     @staticmethod
-    async def _try_delegate_to_known_platform(html: str, page_url: str) -> Optional[ResolvedMeeting]:
+    async def _try_delegate_to_known_platform(
+        html: str, page_url: str
+    ) -> Optional[ResolvedMeeting]:
         """Uses `base.find_platform_link()` to look for a link to a
         platform this app already fully supports, and delegates to that
         adapter's own real resolve() -- e.g. a city page that just links
@@ -822,7 +880,9 @@ class GenericFallbackAssetFinder(AssetFinder):
         return resolved
 
     @staticmethod
-    def _find_agenda_link(html: str, page_url: str) -> Tuple[Optional[str], Optional[str]]:
+    def _find_agenda_link(
+        html: str, page_url: str
+    ) -> Tuple[Optional[str], Optional[str]]:
         """Best-effort: a single <a> tag whose visible text or href
         contains "agenda" (case-insensitive). Doesn't attempt to extract
         agenda *items* -- see class docstring. Prefers a PDF-looking href
@@ -837,7 +897,11 @@ class GenericFallbackAssetFinder(AssetFinder):
         candidates = []
         for a in soup.find_all("a", href=True):
             href = a["href"].strip()
-            if not href or href.startswith("#") or href.lower().startswith("javascript:"):
+            if (
+                not href
+                or href.startswith("#")
+                or href.lower().startswith("javascript:")
+            ):
                 continue
             text = a.get_text(" ", strip=True)
             if _AGENDA_TEXT_RE.search(text) or _AGENDA_TEXT_RE.search(href):
@@ -866,7 +930,9 @@ class GenericFallbackAssetFinder(AssetFinder):
                 # Same SSRF guard as _fetch_page above -- caption_url comes
                 # from scanning the fetched page's own markup, so it's just
                 # as caller-influenced as the entry URL.
-                async with guarded_get(session, caption_url, timeout=aiohttp.ClientTimeout(total=15)) as response:
+                async with guarded_get(
+                    session, caption_url, timeout=aiohttp.ClientTimeout(total=15)
+                ) as response:
                     if response.status != 200:
                         return None
                     raw = await read_capped_bytes(response)
@@ -905,5 +971,7 @@ def scan_page_for_video_evidence(
     video_url, video_format = GenericFallbackAssetFinder._pick_video_url(media_urls)
     if video_url:
         return video_url, video_format, None, False
-    video_link, recognized = GenericFallbackAssetFinder._find_video_pointer(html, page_url)
+    video_link, recognized = GenericFallbackAssetFinder._find_video_pointer(
+        html, page_url
+    )
     return None, None, video_link, recognized

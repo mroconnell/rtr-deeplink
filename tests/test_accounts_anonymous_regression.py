@@ -38,7 +38,9 @@ async def _make_page(external_id: str) -> str:
     return result["slug"]
 
 
-async def test_meeting_page_anonymous_has_no_save_button_and_renders_normally(monkeypatch):
+async def test_meeting_page_anonymous_has_no_save_button_and_renders_normally(
+    monkeypatch,
+):
     monkeypatch.setenv("CLERK_SECRET_KEY", "sk_test_fake_for_this_test")
     slug = await _make_page("anon-regress-1")
 
@@ -87,24 +89,35 @@ def test_nav_shows_signed_in_state_immediately_when_active_account_present(monke
     # active_account is already computed by every route base.html's nav
     # now reads it from -- confirms the *initial* HTML picks the right
     # state without needing any client-side JS to run first.
-    monkeypatch.setattr(archive.main, "get_clerk_user_id", lambda request: "user_test_nav")
+    monkeypatch.setattr(
+        archive.main, "get_clerk_user_id", lambda request: "user_test_nav"
+    )
     response = archive_client_.get("/account/saved")
     assert response.status_code == 200
-    assert '<a class="nav-link" href="#" id="clerk-sign-in-link" hidden>Sign in</a>' in response.text
+    assert (
+        '<a class="nav-link" href="#" id="clerk-sign-in-link" hidden>Sign in</a>'
+        in response.text
+    )
     assert '<span id="clerk-user-button"></span>' in response.text
     # Real bug fixed 2026-08-11, reported right after the above: Get
     # Updates had the exact same flash (a signed-in visitor briefly saw a
     # newsletter-signup link they already don't need), just less
     # noticeable until the Sign in flash stopped competing with it.
     assert 'id="nav-get-updates" hidden' in response.text
-    assert 'id="nav-get-updates-divider" style="display: none !important;"' in response.text
+    assert (
+        'id="nav-get-updates-divider" style="display: none !important;"'
+        in response.text
+    )
 
 
 def test_nav_shows_signed_out_state_when_no_active_account(monkeypatch):
     monkeypatch.setattr(archive.main, "get_clerk_user_id", lambda request: None)
     response = archive_client_.get("/account/saved")
     assert response.status_code == 200
-    assert '<a class="nav-link" href="#" id="clerk-sign-in-link">Sign in</a>' in response.text
+    assert (
+        '<a class="nav-link" href="#" id="clerk-sign-in-link">Sign in</a>'
+        in response.text
+    )
     assert '<span id="clerk-user-button" hidden></span>' in response.text
     assert 'id="nav-get-updates">' in response.text
     assert 'id="nav-get-updates-divider">' in response.text
@@ -136,7 +149,9 @@ def test_proxy_forwards_cookie_only_to_auth_aware_routes(monkeypatch):
 
     resolver_client.get("/meetings", headers={"Cookie": "__session=abc123"})
     resolver_client.get("/m/some-slug", headers={"Cookie": "__session=abc123"})
-    resolver_client.get("/archive-static/style.css", headers={"Cookie": "__session=abc123"})
+    resolver_client.get(
+        "/archive-static/style.css", headers={"Cookie": "__session=abc123"}
+    )
 
     by_path = {path.split("/")[0]: cookie for path, cookie in captured}
     assert by_path["meetings"] == "__session=abc123"

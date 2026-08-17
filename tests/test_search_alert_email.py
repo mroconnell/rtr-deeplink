@@ -40,7 +40,9 @@ class _FakeSession:
 def _setup(monkeypatch, captured):
     monkeypatch.setattr(email_module, "_api_key", lambda: "test-key")
     monkeypatch.setenv("RESEND_FROM_ADDRESS", "Ryan <ryan@ally.redtaperecordings.com>")
-    monkeypatch.setattr(email_module.aiohttp, "ClientSession", lambda: _FakeSession(captured))
+    monkeypatch.setattr(
+        email_module.aiohttp, "ClientSession", lambda: _FakeSession(captured)
+    )
 
 
 async def test_single_match_subject_matches_approved_shape(monkeypatch):
@@ -88,8 +90,20 @@ async def test_multiple_matches_subject_shows_plus_n_more(monkeypatch):
                 "keyword": "traffic",
                 "unsubscribe_url": "https://redtaperecordings.com/alerts/unsubscribe?token=a",
                 "matches": [
-                    {"title": "A", "date": None, "jurisdiction": None, "page_url": "https://x/1", "quote_html": None},
-                    {"title": "B", "date": None, "jurisdiction": None, "page_url": "https://x/2", "quote_html": None},
+                    {
+                        "title": "A",
+                        "date": None,
+                        "jurisdiction": None,
+                        "page_url": "https://x/1",
+                        "quote_html": None,
+                    },
+                    {
+                        "title": "B",
+                        "date": None,
+                        "jurisdiction": None,
+                        "page_url": "https://x/2",
+                        "quote_html": None,
+                    },
                 ],
             }
         ],
@@ -110,7 +124,13 @@ async def test_keyword_less_saved_search_uses_fallback_subject(monkeypatch):
                 "keyword": None,
                 "unsubscribe_url": "https://redtaperecordings.com/alerts/unsubscribe?token=a",
                 "matches": [
-                    {"title": "A", "date": "2026-08-01", "jurisdiction": "Napa, CA", "page_url": "https://x/1", "quote_html": None},
+                    {
+                        "title": "A",
+                        "date": "2026-08-01",
+                        "jurisdiction": "Napa, CA",
+                        "page_url": "https://x/1",
+                        "quote_html": None,
+                    },
                 ],
             }
         ],
@@ -133,12 +153,28 @@ async def test_multiple_groups_each_get_their_own_unsubscribe_link(monkeypatch):
             {
                 "keyword": "traffic",
                 "unsubscribe_url": "https://redtaperecordings.com/alerts/unsubscribe?token=first",
-                "matches": [{"title": "A", "date": None, "jurisdiction": None, "page_url": "https://x/1", "quote_html": None}],
+                "matches": [
+                    {
+                        "title": "A",
+                        "date": None,
+                        "jurisdiction": None,
+                        "page_url": "https://x/1",
+                        "quote_html": None,
+                    }
+                ],
             },
             {
                 "keyword": "flock",
                 "unsubscribe_url": "https://redtaperecordings.com/alerts/unsubscribe?token=second",
-                "matches": [{"title": "B", "date": None, "jurisdiction": None, "page_url": "https://x/2", "quote_html": None}],
+                "matches": [
+                    {
+                        "title": "B",
+                        "date": None,
+                        "jurisdiction": None,
+                        "page_url": "https://x/2",
+                        "quote_html": None,
+                    }
+                ],
             },
         ],
     )
@@ -158,7 +194,15 @@ async def test_sitewide_unsubscribe_footer_still_appended(monkeypatch):
             {
                 "keyword": "traffic",
                 "unsubscribe_url": "https://redtaperecordings.com/alerts/unsubscribe?token=a",
-                "matches": [{"title": "A", "date": None, "jurisdiction": None, "page_url": "https://x/1", "quote_html": None}],
+                "matches": [
+                    {
+                        "title": "A",
+                        "date": None,
+                        "jurisdiction": None,
+                        "page_url": "https://x/1",
+                        "quote_html": None,
+                    }
+                ],
             }
         ],
     )

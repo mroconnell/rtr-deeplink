@@ -22,11 +22,17 @@ class MeetingPage(Base):
     __tablename__ = "meeting_pages"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    slug: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
+    slug: Mapped[str] = mapped_column(
+        String(255), unique=True, nullable=False, index=True
+    )
 
     platform: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
-    external_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
-    source_url_normalized: Mapped[str] = mapped_column(String(2048), nullable=False, index=True)
+    external_id: Mapped[Optional[str]] = mapped_column(
+        String(255), nullable=True, index=True
+    )
+    source_url_normalized: Mapped[str] = mapped_column(
+        String(2048), nullable=False, index=True
+    )
 
     title: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     date: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
@@ -45,7 +51,9 @@ class MeetingPage(Base):
     # column, not an enum, so a new confidence tier never needs a
     # migration to add.
     meeting_body: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    jurisdiction_confidence: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    jurisdiction_confidence: Mapped[Optional[str]] = mapped_column(
+        String(20), nullable=True
+    )
     video_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     video_format: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
     agenda_items: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
@@ -61,9 +69,14 @@ class MeetingPage(Base):
     video_warnings: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
     agenda_link: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
     )
 
 
@@ -76,7 +89,9 @@ class TranscriptVersion(Base):
     __tablename__ = "transcript_versions"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    meeting_page_id: Mapped[int] = mapped_column(ForeignKey("meeting_pages.id"), nullable=False, index=True)
+    meeting_page_id: Mapped[int] = mapped_column(
+        ForeignKey("meeting_pages.id"), nullable=False, index=True
+    )
 
     language: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
     source: Mapped[str] = mapped_column(String(20), nullable=False, default="scraped")
@@ -89,7 +104,9 @@ class TranscriptVersion(Base):
     # weaker "segment count" proxy (see BACKLOG.md / plan notes).
     content_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
 
 class TranscriptionJob(Base):
@@ -110,18 +127,24 @@ class TranscriptionJob(Base):
     __tablename__ = "transcription_jobs"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    meeting_page_id: Mapped[int] = mapped_column(ForeignKey("meeting_pages.id"), nullable=False, index=True)
+    meeting_page_id: Mapped[int] = mapped_column(
+        ForeignKey("meeting_pages.id"), nullable=False, index=True
+    )
 
     requester_email: Mapped[str] = mapped_column(String(255), nullable=False)
     # Set only while status == "pending_confirmation"; cleared once
     # confirmed. Not reused across jobs -- a fresh token per request.
-    confirmation_token: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    confirmation_token: Mapped[Optional[str]] = mapped_column(
+        String(64), nullable=True, index=True
+    )
 
     # "pending_confirmation" -> "queued" -> "in_progress" -> "completed" | "failed"
     # A requester already in the Resend audience skips straight to
     # "queued" (see archive/utils/email.py's check_audience_membership) --
     # "pending_confirmation" only applies to a first-time email address.
-    status: Mapped[str] = mapped_column(String(24), nullable=False, default="pending_confirmation", index=True)
+    status: Mapped[str] = mapped_column(
+        String(24), nullable=False, default="pending_confirmation", index=True
+    )
 
     # Higher claimed first (claim_next_chunk() orders by priority.desc(),
     # created_at.asc() -- FIFO within the same tier), so a real visitor's
@@ -129,7 +152,9 @@ class TranscriptionJob(Base):
     # A plain int, not an enum, so a future higher tier needs no schema
     # change -- see PRIORITY_LOW/PRIORITY_MEDIUM in crud.py for the named
     # constants every call site should use instead of a raw number.
-    priority: Mapped[int] = mapped_column(Integer, nullable=False, default=10, server_default="10")
+    priority: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=10, server_default="10"
+    )
 
     # Frozen at submit time for the feasibility-checked URL, but the worker
     # re-resolves the adapter fresh before every chunk rather than trusting
@@ -137,7 +162,9 @@ class TranscriptionJob(Base):
     # sits queued a while or runs long. Kept here mainly for the record and
     # as a fallback if a fresh re-resolve ever fails outright.
     media_url: Mapped[str] = mapped_column(Text, nullable=False)
-    media_kind: Mapped[str] = mapped_column(String(10), nullable=False)  # "audio" | "video"
+    media_kind: Mapped[str] = mapped_column(
+        String(10), nullable=False
+    )  # "audio" | "video"
     probed_duration_seconds: Mapped[float] = mapped_column(nullable=False)
 
     chunk_size_seconds: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -152,17 +179,26 @@ class TranscriptionJob(Base):
     # Stale-claim safety net against a crashed/restarted worker process,
     # not a multi-worker race (only one worker process is planned) --
     # belt-and-suspenders, not load-bearing.
-    claimed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    consecutive_chunk_failures: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    claimed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    consecutive_chunk_failures: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0
+    )
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     transcript_version_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("transcript_versions.id"), nullable=True
     )
 
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
     )
 
 
@@ -178,10 +214,16 @@ class MeetingPageUrlAlias(Base):
     __tablename__ = "meeting_page_url_aliases"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    url_normalized: Mapped[str] = mapped_column(String(2048), unique=True, nullable=False, index=True)
-    meeting_page_id: Mapped[int] = mapped_column(ForeignKey("meeting_pages.id"), nullable=False, index=True)
+    url_normalized: Mapped[str] = mapped_column(
+        String(2048), unique=True, nullable=False, index=True
+    )
+    meeting_page_id: Mapped[int] = mapped_column(
+        ForeignKey("meeting_pages.id"), nullable=False, index=True
+    )
 
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
 
 class SavedItem(Base):
@@ -212,7 +254,9 @@ class SavedItem(Base):
     item_type: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
 
     # Set only for item_type == "saved_meeting".
-    meeting_page_id: Mapped[Optional[int]] = mapped_column(ForeignKey("meeting_pages.id"), nullable=True, index=True)
+    meeting_page_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("meeting_pages.id"), nullable=True, index=True
+    )
 
     # Set only for item_type == "saved_search" -- the exact query-param
     # shape /meetings already accepts (q, jurisdiction, date_from, date_to,
@@ -230,6 +274,10 @@ class SavedItem(Base):
     # crud.save_search() sets this explicitly to "now" on a genuinely new
     # row so the very first sweep only ever alerts on meetings archived
     # *after* the search was saved, never a dump of pre-existing matches.
-    last_alerted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_alerted_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

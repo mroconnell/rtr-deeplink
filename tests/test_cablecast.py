@@ -23,7 +23,9 @@ REAL_VOD_URL = (
 )
 
 CHARLOTTE_PORTAL_URL = "http://charlotte.cablecast.tv/internetchannel/show/2451?site=1"
-CHARLOTTE_VOD_URL = "https://charlotte.cablecast.tv/store-40/2451-City-Council-Meeting-v17/vod.m3u8"
+CHARLOTTE_VOD_URL = (
+    "https://charlotte.cablecast.tv/store-40/2451-City-Council-Meeting-v17/vod.m3u8"
+)
 CHARLOTTE_TRANSCRIPT_URL = "https://charlotte.cablecast.tv/store-40/2451-City-Council-Meeting-v17/transcript.en.txt"
 
 
@@ -32,7 +34,10 @@ def test_detect_platform_recognizes_cablecast_show_url():
     # Charlotte, NC's confirmed Cablecast site uses a different template
     # (no /internetchannel/show/ path) -- deliberately not matched here,
     # see cablecast.py's module docstring.
-    assert detect_platform("https://charlotte.cablecast.tv/internetchannel/?site=1") == "unknown"
+    assert (
+        detect_platform("https://charlotte.cablecast.tv/internetchannel/?site=1")
+        == "unknown"
+    )
 
 
 async def test_resolve_real_detroit_show():
@@ -80,7 +85,9 @@ async def test_resolve_real_charlotte_show():
 
     routes = {
         fetch_url: FakeResponse(status=200, text=html, url=fetch_url),
-        CHARLOTTE_TRANSCRIPT_URL: FakeResponse(status=200, text=transcript, url=CHARLOTTE_TRANSCRIPT_URL),
+        CHARLOTTE_TRANSCRIPT_URL: FakeResponse(
+            status=200, text=transcript, url=CHARLOTTE_TRANSCRIPT_URL
+        ),
     }
 
     with mock_session(routes):
@@ -168,22 +175,33 @@ async def test_resolve_show_not_found_in_page_reports_no_video():
 
 def test_extract_show_id():
     assert CablecastAssetFinder._extract_show_id(PORTAL_URL) == 15323
-    assert CablecastAssetFinder._extract_show_id("http://detroit-vod.cablecast.tv/internetchannel/watch-now") is None
+    assert (
+        CablecastAssetFinder._extract_show_id(
+            "http://detroit-vod.cablecast.tv/internetchannel/watch-now"
+        )
+        is None
+    )
 
 
 def test_force_http():
     assert (
-        CablecastAssetFinder._force_http("https://detroit-vod.cablecast.tv/internetchannel/show/1?site=1")
+        CablecastAssetFinder._force_http(
+            "https://detroit-vod.cablecast.tv/internetchannel/show/1?site=1"
+        )
         == "http://detroit-vod.cablecast.tv/internetchannel/show/1?site=1"
     )
     assert (
-        CablecastAssetFinder._force_http("http://detroit-vod.cablecast.tv/internetchannel/show/1?site=1")
+        CablecastAssetFinder._force_http(
+            "http://detroit-vod.cablecast.tv/internetchannel/show/1?site=1"
+        )
         == "http://detroit-vod.cablecast.tv/internetchannel/show/1?site=1"
     )
 
 
 def test_find_show_recursively_searches_nested_structure():
-    tree = {"a": {"b": [{"showId": 1, "title": "wrong"}, {"showId": 2, "title": "right"}]}}
+    tree = {
+        "a": {"b": [{"showId": 1, "title": "wrong"}, {"showId": 2, "title": "right"}]}
+    }
     found = CablecastAssetFinder._find_show(tree, 2)
     assert found == {"showId": 2, "title": "right"}
     assert CablecastAssetFinder._find_show(tree, 999) is None
@@ -196,13 +214,19 @@ def test_find_site_ignores_per_show_siteid_decoys():
     # (the only one with real prose) is found instead of a decoy.
     tree = {
         "shows": [{"showId": 1, "site": {"siteId": 1, "title": None}}],
-        "root": {"siteId": 1, "title": "Channel 10", "pageDescription": "The City of Detroit's Channel 10..."},
+        "root": {
+            "siteId": 1,
+            "title": "Channel 10",
+            "pageDescription": "The City of Detroit's Channel 10...",
+        },
     }
     found = CablecastAssetFinder._find_site(tree)
     assert found == tree["root"]
 
 
-_UNKNOWN_DOMAIN_URL = "http://some-other-city.cablecast.tv/internetchannel/show/1?site=1"
+_UNKNOWN_DOMAIN_URL = (
+    "http://some-other-city.cablecast.tv/internetchannel/show/1?site=1"
+)
 
 
 def test_extract_jurisdiction_prefers_page_description_over_title():
@@ -210,17 +234,29 @@ def test_extract_jurisdiction_prefers_page_description_over_title():
     # branding ("Channel 10"), not a jurisdiction -- pageDescription's
     # prose is what actually names the city on both real customers
     # checked.
-    site = {"title": "Channel 10", "pageDescription": "The City of Detroit's Channel 10 features programming..."}
+    site = {
+        "title": "Channel 10",
+        "pageDescription": "The City of Detroit's Channel 10 features programming...",
+    }
     assert CablecastAssetFinder._extract_jurisdiction(site, PORTAL_URL) == "Detroit, MI"
 
 
 def test_extract_jurisdiction_falls_back_to_title():
-    site = {"title": "City of Example GOV Channel", "pageDescription": "Watch local government meetings here."}
-    assert CablecastAssetFinder._extract_jurisdiction(site, _UNKNOWN_DOMAIN_URL) == "Example"
+    site = {
+        "title": "City of Example GOV Channel",
+        "pageDescription": "Watch local government meetings here.",
+    }
+    assert (
+        CablecastAssetFinder._extract_jurisdiction(site, _UNKNOWN_DOMAIN_URL)
+        == "Example"
+    )
 
 
 def test_extract_jurisdiction_returns_none_when_neither_field_matches():
-    site = {"title": "Channel 10", "pageDescription": "Watch local government meetings here."}
+    site = {
+        "title": "Channel 10",
+        "pageDescription": "Watch local government meetings here.",
+    }
     assert CablecastAssetFinder._extract_jurisdiction(site, _UNKNOWN_DOMAIN_URL) is None
 
 
@@ -231,7 +267,10 @@ def test_extract_jurisdiction_omits_state_for_an_unconfirmed_city():
     # for_an_unconfirmed_but_unambiguous_real_city below for the case
     # where this *does* now resolve, via the shared Census-backed lookup.
     site = {"title": "City of Example Channel", "pageDescription": ""}
-    assert CablecastAssetFinder._extract_jurisdiction(site, _UNKNOWN_DOMAIN_URL) == "Example"
+    assert (
+        CablecastAssetFinder._extract_jurisdiction(site, _UNKNOWN_DOMAIN_URL)
+        == "Example"
+    )
 
 
 def test_extract_jurisdiction_resolves_state_via_gazetteer_for_an_unconfirmed_but_unambiguous_real_city():
@@ -241,8 +280,14 @@ def test_extract_jurisdiction_resolves_state_via_gazetteer_for_an_unconfirmed_bu
     # -- "Chicago" is a real, unique (per app/utils/jurisdiction_data)
     # incorporated place name, unlike "Detroit"/"Charlotte" which need
     # the confirmed-domain registry specifically because they collide.
-    site = {"title": "Channel 10", "pageDescription": "The City of Chicago's Channel 10 features programming..."}
-    assert CablecastAssetFinder._extract_jurisdiction(site, _UNKNOWN_DOMAIN_URL) == "Chicago, IL"
+    site = {
+        "title": "Channel 10",
+        "pageDescription": "The City of Chicago's Channel 10 features programming...",
+    }
+    assert (
+        CablecastAssetFinder._extract_jurisdiction(site, _UNKNOWN_DOMAIN_URL)
+        == "Chicago, IL"
+    )
 
 
 def test_parse_transcript_reads_real_cue_shape():
@@ -278,6 +323,8 @@ def test_parse_transcript_returns_empty_list_for_no_matches():
 
 
 def test_format_date_handles_iso_with_offset_and_invalid():
-    assert CablecastAssetFinder._format_date("2026-07-28T00:00:00-04:00") == "2026-07-28"
+    assert (
+        CablecastAssetFinder._format_date("2026-07-28T00:00:00-04:00") == "2026-07-28"
+    )
     assert CablecastAssetFinder._format_date(None) is None
     assert CablecastAssetFinder._format_date("not-a-date") is None

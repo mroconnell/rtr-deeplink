@@ -23,7 +23,8 @@ def test_send_search_alerts_404s_with_no_token():
 
 def test_send_search_alerts_404s_with_wrong_token():
     response = client.post(
-        "/internal/account/send-search-alerts", headers={"Authorization": "Bearer not-the-real-token"}
+        "/internal/account/send-search-alerts",
+        headers={"Authorization": "Bearer not-the-real-token"},
     )
     assert response.status_code == 404
 
@@ -55,7 +56,9 @@ async def test_unsubscribe_route_deletes_saved_search_with_valid_token(monkeypat
 
 async def test_unsubscribe_route_with_tampered_token_deletes_nothing(monkeypatch):
     monkeypatch.setenv("ALERT_UNSUBSCRIBE_SECRET", "test-alert-secret")
-    item = await crud.save_search("user_unsub_route_3", {"q": "should-survive-tampering"})
+    item = await crud.save_search(
+        "user_unsub_route_3", {"q": "should-survive-tampering"}
+    )
     token = link_tokens.sign_saved_item_id(item["id"])
     tampered = token[:-1] + ("0" if token[-1] != "0" else "1")
 

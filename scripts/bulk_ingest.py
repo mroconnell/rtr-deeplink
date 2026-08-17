@@ -49,11 +49,18 @@ load_dotenv()
 import os  # noqa: E402 -- after load_dotenv() so ARCHIVE_* are populated by the time _base_url()/_headers() below read them
 
 from app.platforms import register_all_finders  # noqa: E402
-from app.platforms.base import detect_platform, get_finder, UnsupportedPlatformError, CalendarPageError  # noqa: E402
+from app.platforms.base import (
+    detect_platform,
+    get_finder,
+    UnsupportedPlatformError,
+    CalendarPageError,
+)  # noqa: E402
 from app.utils.url_normalize import normalize_url  # noqa: E402
 
 REQUEST_DELAY_SECONDS = 1.5
-INGEST_TIMEOUT = aiohttp.ClientTimeout(total=65)  # matches archive_client.PUSH_TIMEOUT -- tolerates a Render cold start
+INGEST_TIMEOUT = aiohttp.ClientTimeout(
+    total=65
+)  # matches archive_client.PUSH_TIMEOUT -- tolerates a Render cold start
 
 
 def _base_url() -> str:
@@ -93,9 +100,16 @@ def _expand_playlist(playlist_id: str) -> List[str]:
     resolves in app/platforms/youtube.py do (that file's player_client
     workaround is for the anti-bot check on actual caption/format
     extraction, which flat playlist listing never touches)."""
-    opts = {"extract_flat": True, "quiet": True, "no_warnings": True, "skip_download": True}
+    opts = {
+        "extract_flat": True,
+        "quiet": True,
+        "no_warnings": True,
+        "skip_download": True,
+    }
     with yt_dlp.YoutubeDL(opts) as ydl:
-        info = ydl.extract_info(f"https://www.youtube.com/playlist?list={playlist_id}", download=False)
+        info = ydl.extract_info(
+            f"https://www.youtube.com/playlist?list={playlist_id}", download=False
+        )
     entries = (info or {}).get("entries") or []
     return [e["url"] for e in entries if e.get("url")]
 
@@ -115,11 +129,16 @@ def _expand_urls(urls: List[str]) -> List[str]:
     return expanded
 
 
-async def _ingest(session: aiohttp.ClientSession, payload: dict, input_url_normalized: str) -> Optional[dict]:
+async def _ingest(
+    session: aiohttp.ClientSession, payload: dict, input_url_normalized: str
+) -> Optional[dict]:
     body = dict(payload)
     body["input_url_normalized"] = input_url_normalized
     async with session.post(
-        f"{_base_url()}/internal/ingest", json=body, headers=_headers(), timeout=INGEST_TIMEOUT
+        f"{_base_url()}/internal/ingest",
+        json=body,
+        headers=_headers(),
+        timeout=INGEST_TIMEOUT,
     ) as response:
         if response.status == 200:
             return await response.json()
@@ -127,18 +146,28 @@ async def _ingest(session: aiohttp.ClientSession, payload: dict, input_url_norma
         raise RuntimeError(f"ingest failed ({response.status}): {text[:300]}")
 
 
-async def process_one(session: aiohttp.ClientSession, url: str, *, dry_run: bool) -> dict:
+async def process_one(
+    session: aiohttp.ClientSession, url: str, *, dry_run: bool
+) -> dict:
     """Returns a result dict: {"url", "status": "ingested"|"skipped"|"failed", "detail"}."""
     try:
         platform = detect_platform(url)
         finder = get_finder(platform)
     except UnsupportedPlatformError:
-        return {"url": url, "status": "failed", "detail": f"unsupported platform (detected: {platform!r})"}
+        return {
+            "url": url,
+            "status": "failed",
+            "detail": f"unsupported platform (detected: {platform!r})",
+        }
 
     try:
         result = await finder.resolve(url)
     except CalendarPageError as e:
-        return {"url": url, "status": "failed", "detail": f"calendar page, not a single meeting: {e}"}
+        return {
+            "url": url,
+            "status": "failed",
+            "detail": f"calendar page, not a single meeting: {e}",
+        }
     except Exception as e:
         return {"url": url, "status": "failed", "detail": f"resolve raised: {e}"}
 
@@ -168,13 +197,21 @@ async def process_one(session: aiohttp.ClientSession, url: str, *, dry_run: bool
         return {"url": url, "status": "failed", "detail": f"ingest failed: {e}"}
 
     page_url = response.get("url") if response else None
-    return {"url": url, "status": "ingested", "detail": page_url or "(no url in response)"}
+    return {
+        "url": url,
+        "status": "ingested",
+        "detail": page_url or "(no url in response)",
+    }
 
 
 async def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument(
-        "urls_file", nargs="?", help="Path to a text file with one meeting URL per line (omit if using --playlist alone)"
+        "urls_file",
+        nargs="?",
+        help="Path to a text file with one meeting URL per line (omit if using --playlist alone)",
     )
     parser.add_argument(
         "--playlist",
@@ -183,21 +220,33 @@ async def main() -> None:
         metavar="URL",
         help="A YouTube playlist (or in-playlist video) URL to expand and ingest; repeatable",
     )
-    parser.add_argument("--dry-run", action="store_true", help="Resolve and report, but don't actually ingest")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Resolve and report, but don't actually ingest",
+    )
     args = parser.parse_args()
 
     if not _base_url():
-        print("ERROR: ARCHIVE_BASE_URL is not set (check the repo's .env).", file=sys.stderr)
+        print(
+            "ERROR: ARCHIVE_BASE_URL is not set (check the repo's .env).",
+            file=sys.stderr,
+        )
         sys.exit(1)
     if not args.dry_run and not os.environ.get("ARCHIVE_INGEST_TOKEN"):
-        print("ERROR: ARCHIVE_INGEST_TOKEN is not set (check the repo's .env).", file=sys.stderr)
+        print(
+            "ERROR: ARCHIVE_INGEST_TOKEN is not set (check the repo's .env).",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     if not args.urls_file and not args.playlist:
         print("ERROR: pass a urls_file, --playlist, or both.", file=sys.stderr)
         sys.exit(1)
 
-    raw_urls = (_read_urls(args.urls_file) if args.urls_file else []) + list(args.playlist)
+    raw_urls = (_read_urls(args.urls_file) if args.urls_file else []) + list(
+        args.playlist
+    )
     if not raw_urls:
         print(f"No URLs found in {args.urls_file}.", file=sys.stderr)
         sys.exit(1)
@@ -209,21 +258,27 @@ async def main() -> None:
 
     register_all_finders()
 
-    print(f"{'[DRY RUN] ' if args.dry_run else ''}Processing {len(urls)} URL(s) against {_base_url()}...\n")
+    print(
+        f"{'[DRY RUN] ' if args.dry_run else ''}Processing {len(urls)} URL(s) against {_base_url()}...\n"
+    )
 
     results = []
     async with aiohttp.ClientSession() as session:
         for i, url in enumerate(urls):
             result = await process_one(session, url, dry_run=args.dry_run)
             results.append(result)
-            print(f"[{result['status'].upper():8}] {url}\n           {result['detail']}")
+            print(
+                f"[{result['status'].upper():8}] {url}\n           {result['detail']}"
+            )
             if i < len(urls) - 1:
                 await asyncio.sleep(REQUEST_DELAY_SECONDS)
 
     ingested = [r for r in results if r["status"] == "ingested"]
     skipped = [r for r in results if r["status"] == "skipped"]
     failed = [r for r in results if r["status"] == "failed"]
-    print(f"\n{len(ingested)} ingested, {len(skipped)} skipped, {len(failed)} failed (of {len(urls)} total).")
+    print(
+        f"\n{len(ingested)} ingested, {len(skipped)} skipped, {len(failed)} failed (of {len(urls)} total)."
+    )
 
 
 if __name__ == "__main__":

@@ -92,7 +92,12 @@ async def test_correct_transcript_version_language_fixes_default_version():
     external_id = "granicus:promo-language-fix"
 
     await crud.ingest_resolution(
-        _payload(external_id, url, segments=[{"start": 0, "end": 1, "text": "hola"}], transcript_language="es"),
+        _payload(
+            external_id,
+            url,
+            segments=[{"start": 0, "end": 1, "text": "hola"}],
+            transcript_language="es",
+        ),
         url,
     )
     slug = (await crud.lookup_page_for_url(url))["slug"]
@@ -113,11 +118,21 @@ async def test_correct_transcript_version_language_targets_specific_version():
     # content_hash => both get created, not deduped) -- only the non-
     # default one should be touched.
     await crud.ingest_resolution(
-        _payload(external_id, url, segments=[{"start": 0, "end": 1, "text": "hello"}], transcript_language="en"),
+        _payload(
+            external_id,
+            url,
+            segments=[{"start": 0, "end": 1, "text": "hello"}],
+            transcript_language="en",
+        ),
         url,
     )
     await crud.ingest_resolution(
-        _payload(external_id, url, segments=[{"start": 0, "end": 1, "text": "bonjour"}], transcript_language="es"),
+        _payload(
+            external_id,
+            url,
+            segments=[{"start": 0, "end": 1, "text": "bonjour"}],
+            transcript_language="es",
+        ),
         url,
     )
     slug = (await crud.lookup_page_for_url(url))["slug"]
@@ -125,31 +140,43 @@ async def test_correct_transcript_version_language_targets_specific_version():
     assert len(page["versions"]) == 2
     target = next(v for v in page["versions"] if not v["is_default"])
     untouched_id = next(v["id"] for v in page["versions"] if v["id"] != target["id"])
-    untouched_original_language = next(v["language"] for v in page["versions"] if v["id"] == untouched_id)
+    untouched_original_language = next(
+        v["language"] for v in page["versions"] if v["id"] == untouched_id
+    )
 
-    result = await crud.correct_transcript_version_language(slug=slug, language="fr", version_id=target["id"])
+    result = await crud.correct_transcript_version_language(
+        slug=slug, language="fr", version_id=target["id"]
+    )
     assert result is not None
 
     page = await crud.get_page_by_slug(slug)
     fixed = next(v for v in page["versions"] if v["id"] == target["id"])
     untouched = next(v for v in page["versions"] if v["id"] == untouched_id)
     assert fixed["language"] == "fr"
-    assert untouched["language"] == untouched_original_language  # the other version is unaffected
+    assert (
+        untouched["language"] == untouched_original_language
+    )  # the other version is unaffected
 
 
 async def test_correct_transcript_version_language_returns_none_for_unknown_slug():
-    result = await crud.correct_transcript_version_language(slug="no-such-slug-at-all", language="en")
+    result = await crud.correct_transcript_version_language(
+        slug="no-such-slug-at-all", language="en"
+    )
     assert result is None
 
 
 async def test_correct_transcript_version_language_returns_none_for_mismatched_version_id():
     url = "https://example.granicus.com/player/clip/promo-language-mismatch"
     external_id = "granicus:promo-language-mismatch"
-    await crud.ingest_resolution(_payload(external_id, url, segments=[{"start": 0, "end": 1, "text": "hi"}]), url)
+    await crud.ingest_resolution(
+        _payload(external_id, url, segments=[{"start": 0, "end": 1, "text": "hi"}]), url
+    )
     slug = (await crud.lookup_page_for_url(url))["slug"]
 
     # A version_id that exists but doesn't belong to this page.
-    result = await crud.correct_transcript_version_language(slug=slug, language="en", version_id=999999999)
+    result = await crud.correct_transcript_version_language(
+        slug=slug, language="en", version_id=999999999
+    )
     assert result is None
 
 
@@ -163,11 +190,21 @@ async def test_manually_promote_transcript_version_makes_it_default():
     external_id = "granicus:promo-manual-promote"
 
     await crud.ingest_resolution(
-        _payload(external_id, url, segments=[{"start": 0, "end": 1, "text": "OLD BAD TEXT"}], transcript_language="en"),
+        _payload(
+            external_id,
+            url,
+            segments=[{"start": 0, "end": 1, "text": "OLD BAD TEXT"}],
+            transcript_language="en",
+        ),
         url,
     )
     await crud.ingest_resolution(
-        _payload(external_id, url, segments=[{"start": 0, "end": 1, "text": "New good text"}], transcript_language="en"),
+        _payload(
+            external_id,
+            url,
+            segments=[{"start": 0, "end": 1, "text": "New good text"}],
+            transcript_language="en",
+        ),
         url,
     )
     slug = (await crud.lookup_page_for_url(url))["slug"]
@@ -176,7 +213,9 @@ async def test_manually_promote_transcript_version_makes_it_default():
     replacement = next(v for v in page["versions"] if not v["is_default"])
     original = next(v for v in page["versions"] if v["is_default"])
 
-    result = await crud.manually_promote_transcript_version(slug=slug, version_id=replacement["id"])
+    result = await crud.manually_promote_transcript_version(
+        slug=slug, version_id=replacement["id"]
+    )
     assert result is not None
     assert result["promoted_version_id"] == replacement["id"]
 
@@ -188,17 +227,23 @@ async def test_manually_promote_transcript_version_makes_it_default():
 
 
 async def test_manually_promote_transcript_version_returns_none_for_unknown_slug():
-    result = await crud.manually_promote_transcript_version(slug="no-such-slug-at-all", version_id=1)
+    result = await crud.manually_promote_transcript_version(
+        slug="no-such-slug-at-all", version_id=1
+    )
     assert result is None
 
 
 async def test_manually_promote_transcript_version_returns_none_for_mismatched_version_id():
     url = "https://example.granicus.com/player/clip/promo-manual-mismatch"
     external_id = "granicus:promo-manual-mismatch"
-    await crud.ingest_resolution(_payload(external_id, url, segments=[{"start": 0, "end": 1, "text": "hi"}]), url)
+    await crud.ingest_resolution(
+        _payload(external_id, url, segments=[{"start": 0, "end": 1, "text": "hi"}]), url
+    )
     slug = (await crud.lookup_page_for_url(url))["slug"]
 
-    result = await crud.manually_promote_transcript_version(slug=slug, version_id=999999999)
+    result = await crud.manually_promote_transcript_version(
+        slug=slug, version_id=999999999
+    )
     assert result is None
 
 
@@ -208,7 +253,12 @@ async def test_dublin_style_promotes_when_language_detected_later():
 
     # First ingest: real segments, no language detected (pre-fix state).
     await crud.ingest_resolution(
-        _payload(external_id, url, segments=[{"start": 0, "end": 1, "text": "hello"}], transcript_language=None),
+        _payload(
+            external_id,
+            url,
+            segments=[{"start": 0, "end": 1, "text": "hello"}],
+            transcript_language=None,
+        ),
         url,
     )
     page = await crud.get_page_by_slug((await crud.lookup_page_for_url(url))["slug"])
@@ -220,7 +270,12 @@ async def test_dublin_style_promotes_when_language_detected_later():
     # Second ingest (a recheck): same segments, but language detection now
     # works -- should create a new version AND promote it over the old one.
     await crud.ingest_resolution(
-        _payload(external_id, url, segments=[{"start": 0, "end": 1, "text": "hello"}], transcript_language="en"),
+        _payload(
+            external_id,
+            url,
+            segments=[{"start": 0, "end": 1, "text": "hello"}],
+            transcript_language="en",
+        ),
         url,
     )
     page = await crud.get_page_by_slug((await crud.lookup_page_for_url(url))["slug"])
@@ -237,7 +292,10 @@ async def test_dublin_style_promotes_when_language_detected_later():
 async def test_yountville_style_demotes_stale_agenda_copy_default():
     url = "https://example.granicus.com/player/clip/promo-yountville"
     external_id = "granicus:promo-yountville"
-    agenda = [{"start": 0, "end": 30, "text": "Item A"}, {"start": 30, "end": 60, "text": "Item B"}]
+    agenda = [
+        {"start": 0, "end": 30, "text": "Item A"},
+        {"start": 30, "end": 60, "text": "Item B"},
+    ]
 
     # First ingest: segments that are actually just a copy of the agenda
     # (simulating the legacy since-removed code path's bad output).
@@ -266,7 +324,12 @@ async def test_no_promotion_when_default_already_has_segments_and_language():
     external_id = "granicus:promo-stable"
 
     await crud.ingest_resolution(
-        _payload(external_id, url, segments=[{"start": 0, "end": 1, "text": "hello"}], transcript_language="en"),
+        _payload(
+            external_id,
+            url,
+            segments=[{"start": 0, "end": 1, "text": "hello"}],
+            transcript_language="en",
+        ),
         url,
     )
     page = await crud.get_page_by_slug((await crud.lookup_page_for_url(url))["slug"])
@@ -276,7 +339,12 @@ async def test_no_promotion_when_default_already_has_segments_and_language():
     # with a language already present -- not confidently "better," so the
     # existing default should NOT get auto-demoted/replaced.
     await crud.ingest_resolution(
-        _payload(external_id, url, segments=[{"start": 0, "end": 1, "text": "a different transcript"}], transcript_language="en"),
+        _payload(
+            external_id,
+            url,
+            segments=[{"start": 0, "end": 1, "text": "a different transcript"}],
+            transcript_language="en",
+        ),
         url,
     )
     page = await crud.get_page_by_slug((await crud.lookup_page_for_url(url))["slug"])
@@ -290,7 +358,12 @@ async def test_no_default_yet_first_ingest_unaffected():
     # normal first-version-becomes-default behavior, no crash.
     url = "https://example.granicus.com/player/clip/promo-fresh"
     result = await crud.ingest_resolution(
-        _payload("granicus:promo-fresh", url, segments=[{"start": 0, "end": 1, "text": "hi"}], transcript_language="en"),
+        _payload(
+            "granicus:promo-fresh",
+            url,
+            segments=[{"start": 0, "end": 1, "text": "hi"}],
+            transcript_language="en",
+        ),
         url,
     )
     page = await crud.get_page_by_slug(result["slug"])
@@ -306,7 +379,12 @@ async def test_demotion_not_triggered_when_default_segments_are_not_agenda_copy(
     agenda = [{"start": 0, "end": 30, "text": "Item A"}]
 
     await crud.ingest_resolution(
-        _payload(external_id, url, segments=[{"start": 0, "end": 1, "text": "a genuine transcript line"}], agenda_items=agenda),
+        _payload(
+            external_id,
+            url,
+            segments=[{"start": 0, "end": 1, "text": "a genuine transcript line"}],
+            agenda_items=agenda,
+        ),
         url,
     )
     page = await crud.get_page_by_slug((await crud.lookup_page_for_url(url))["slug"])
@@ -315,7 +393,9 @@ async def test_demotion_not_triggered_when_default_segments_are_not_agenda_copy(
     # Recheck: still no new segments, real agenda present -- but the
     # existing default's text doesn't match the agenda, so it should stay
     # the default (a real transcript, not a copied-agenda artifact).
-    await crud.ingest_resolution(_payload(external_id, url, segments=[], agenda_items=agenda), url)
+    await crud.ingest_resolution(
+        _payload(external_id, url, segments=[], agenda_items=agenda), url
+    )
     page = await crud.get_page_by_slug((await crud.lookup_page_for_url(url))["slug"])
     assert page["versions"][0]["is_default"] is True
 
@@ -334,7 +414,8 @@ async def test_ingest_resolution_repairs_a_bled_jurisdiction_end_to_end():
 
     await crud.ingest_resolution(
         _payload(
-            external_id, url,
+            external_id,
+            url,
             jurisdiction="City of Hercules. XIV. PUBLIC COMMUNICATIONS XV.",
         ),
         url,
@@ -351,7 +432,8 @@ async def test_ingest_resolution_splits_a_real_entity_prefix_end_to_end():
 
     await crud.ingest_resolution(
         _payload(
-            external_id, url,
+            external_id,
+            url,
             jurisdiction="Housing Authority of the County of Santa Clara",
         ),
         url,

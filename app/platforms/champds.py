@@ -23,6 +23,7 @@ from ..utils import jurisdiction_enrich
 # cds.common.js's own client-side HOST-splicing logic).
 _EVENT_PATH_RE = re.compile(r"/([^/]+)/event/(\d+)")
 
+
 class ChampDSAssetFinder(AssetFinder):
     """CHAMP/ChampDS (play.champds.com) -- a government meeting-video
     platform, confirmed live 2026-08-13. Doesn't need a headless browser;
@@ -92,7 +93,9 @@ class ChampDSAssetFinder(AssetFinder):
             return ResolvedMeeting(
                 platform=self.platform_name,
                 source_url=url,
-                video_warnings=["Could not find a customer/event id in this ChampDS URL."],
+                video_warnings=[
+                    "Could not find a customer/event id in this ChampDS URL."
+                ],
             )
         customer, event_id = match.group(1), match.group(2)
         api_url = f"https://playapi.champds.com/{customer}/event/{event_id}"
@@ -110,11 +113,15 @@ class ChampDSAssetFinder(AssetFinder):
         event = data.get("Event") or {}
         title = event.get("EventTitle") or None
         date = self._extract_date(event.get("EventDateTimeCustomerLocal"))
-        jurisdiction = self._extract_jurisdiction((data.get("Customer") or {}).get("CustomerName"), url)
+        jurisdiction = self._extract_jurisdiction(
+            (data.get("Customer") or {}).get("CustomerName"), url
+        )
         video_url, video_format = self._extract_video(data)
         agenda_link = self._extract_agenda_link(data.get("Agenda") or {}, customer)
 
-        video_warnings = [] if video_url else ["No video found for this ChampDS meeting."]
+        video_warnings = (
+            [] if video_url else ["No video found for this ChampDS meeting."]
+        )
 
         return ResolvedMeeting(
             platform=self.platform_name,
@@ -195,7 +202,9 @@ class ChampDSAssetFinder(AssetFinder):
     @staticmethod
     async def _fetch_json(session: aiohttp.ClientSession, url: str) -> Optional[dict]:
         try:
-            async with session.get(url, timeout=aiohttp.ClientTimeout(total=20)) as response:
+            async with session.get(
+                url, timeout=aiohttp.ClientTimeout(total=20)
+            ) as response:
                 if response.status != 200:
                     return None
                 return await response.json(content_type=None)

@@ -27,7 +27,9 @@ MANUAL_VTT = (
 )
 
 
-def _info_with_track(*, is_manual: bool, lang: str = "en", vtt: str = MANUAL_VTT) -> dict:
+def _info_with_track(
+    *, is_manual: bool, lang: str = "en", vtt: str = MANUAL_VTT
+) -> dict:
     return {
         "title": REAL_TITLE,
         "uploader": REAL_UPLOADER,
@@ -52,11 +54,14 @@ def test_extract_video_id_handles_every_real_url_shape():
 
 async def test_resolve_video_id_happy_path_with_manual_captions(monkeypatch):
     monkeypatch.setattr(
-        YouTubeAssetFinder, "_extract_info",
+        YouTubeAssetFinder,
+        "_extract_info",
         lambda video_id: _info_with_track(is_manual=True),
     )
 
-    result = await YouTubeAssetFinder.resolve_video_id(REAL_VIDEO_ID, source_url="https://okc.primegov.com/x")
+    result = await YouTubeAssetFinder.resolve_video_id(
+        REAL_VIDEO_ID, source_url="https://okc.primegov.com/x"
+    )
 
     assert result.platform == "youtube"
     assert result.source_url == "https://okc.primegov.com/x"
@@ -93,29 +98,37 @@ async def test_resolve_video_id_prefers_release_date_over_upload_date(monkeypatc
     info["release_date"] = "20260804"
     monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", lambda video_id: info)
 
-    result = await YouTubeAssetFinder.resolve_video_id(REAL_VIDEO_ID, source_url="https://example.com")
+    result = await YouTubeAssetFinder.resolve_video_id(
+        REAL_VIDEO_ID, source_url="https://example.com"
+    )
 
     assert result.date == "2026-08-04"
 
 
 async def test_resolve_video_id_flags_auto_generated_captions(monkeypatch):
     monkeypatch.setattr(
-        YouTubeAssetFinder, "_extract_info",
+        YouTubeAssetFinder,
+        "_extract_info",
         lambda video_id: _info_with_track(is_manual=False),
     )
 
-    result = await YouTubeAssetFinder.resolve_video_id(REAL_VIDEO_ID, source_url="https://example.com")
+    result = await YouTubeAssetFinder.resolve_video_id(
+        REAL_VIDEO_ID, source_url="https://example.com"
+    )
 
     assert any("auto-generated" in w for w in result.transcript_warnings)
 
 
 async def test_resolve_video_id_flags_non_english_captions(monkeypatch):
     monkeypatch.setattr(
-        YouTubeAssetFinder, "_extract_info",
+        YouTubeAssetFinder,
+        "_extract_info",
         lambda video_id: _info_with_track(is_manual=True, lang="es"),
     )
 
-    result = await YouTubeAssetFinder.resolve_video_id(REAL_VIDEO_ID, source_url="https://example.com")
+    result = await YouTubeAssetFinder.resolve_video_id(
+        REAL_VIDEO_ID, source_url="https://example.com"
+    )
 
     assert result.transcript_language == "es"
     assert any("'es'" in w and "'en'" in w for w in result.transcript_warnings)
@@ -123,11 +136,18 @@ async def test_resolve_video_id_flags_non_english_captions(monkeypatch):
 
 async def test_resolve_video_id_no_captions_available(monkeypatch):
     monkeypatch.setattr(
-        YouTubeAssetFinder, "_extract_info",
-        lambda video_id: {"title": REAL_TITLE, "uploader": REAL_UPLOADER, "upload_date": REAL_UPLOAD_DATE},
+        YouTubeAssetFinder,
+        "_extract_info",
+        lambda video_id: {
+            "title": REAL_TITLE,
+            "uploader": REAL_UPLOADER,
+            "upload_date": REAL_UPLOAD_DATE,
+        },
     )
 
-    result = await YouTubeAssetFinder.resolve_video_id(REAL_VIDEO_ID, source_url="https://example.com")
+    result = await YouTubeAssetFinder.resolve_video_id(
+        REAL_VIDEO_ID, source_url="https://example.com"
+    )
 
     assert result.segments == []
     assert result.transcript_language is None
@@ -136,16 +156,25 @@ async def test_resolve_video_id_no_captions_available(monkeypatch):
 
 async def test_resolve_video_id_missing_upload_date_leaves_date_none(monkeypatch):
     monkeypatch.setattr(
-        YouTubeAssetFinder, "_extract_info",
-        lambda video_id: {"title": REAL_TITLE, "uploader": REAL_UPLOADER, "upload_date": None},
+        YouTubeAssetFinder,
+        "_extract_info",
+        lambda video_id: {
+            "title": REAL_TITLE,
+            "uploader": REAL_UPLOADER,
+            "upload_date": None,
+        },
     )
 
-    result = await YouTubeAssetFinder.resolve_video_id(REAL_VIDEO_ID, source_url="https://example.com")
+    result = await YouTubeAssetFinder.resolve_video_id(
+        REAL_VIDEO_ID, source_url="https://example.com"
+    )
 
     assert result.date is None
 
 
-async def test_resolve_video_id_degrades_to_playable_meeting_on_download_error(monkeypatch):
+async def test_resolve_video_id_degrades_to_playable_meeting_on_download_error(
+    monkeypatch,
+):
     # Real production incident, 2026-08-09 (see BACKLOG.md): YouTube's
     # anti-bot check blocks Render's server IP outright, regardless of
     # which internal yt-dlp client is used. Previously any DownloadError
@@ -159,13 +188,17 @@ async def test_resolve_video_id_degrades_to_playable_meeting_on_download_error(m
 
     monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _raise)
 
-    result = await YouTubeAssetFinder.resolve_video_id(REAL_VIDEO_ID, source_url="https://example.com")
+    result = await YouTubeAssetFinder.resolve_video_id(
+        REAL_VIDEO_ID, source_url="https://example.com"
+    )
 
     assert result.video_url == f"https://www.youtube.com/embed/{REAL_VIDEO_ID}"
     assert result.video_format == "youtube"
     assert result.title is None
     assert result.segments == []
-    assert any("blocking automated caption requests" in w for w in result.video_warnings)
+    assert any(
+        "blocking automated caption requests" in w for w in result.video_warnings
+    )
     assert any("No transcript available" in w for w in result.transcript_warnings)
 
 
@@ -173,12 +206,15 @@ async def test_resolve_video_id_raises_when_no_info_returned(monkeypatch):
     monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", lambda video_id: None)
 
     with pytest.raises(ValueError, match="no info returned by yt-dlp"):
-        await YouTubeAssetFinder.resolve_video_id(REAL_VIDEO_ID, source_url="https://example.com")
+        await YouTubeAssetFinder.resolve_video_id(
+            REAL_VIDEO_ID, source_url="https://example.com"
+        )
 
 
 async def test_resolve_delegates_to_resolve_video_id_for_a_standalone_url(monkeypatch):
     monkeypatch.setattr(
-        YouTubeAssetFinder, "_extract_info",
+        YouTubeAssetFinder,
+        "_extract_info",
         lambda video_id: _info_with_track(is_manual=True),
     )
 

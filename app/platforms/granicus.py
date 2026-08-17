@@ -51,10 +51,57 @@ _PREVIOUS_MEETING_DATE_RE = re.compile(
 GOVERNING_BODY_KEYWORDS = ("council", "commission", "board", "committee", "hearing")
 
 US_STATE_ABBREVIATIONS = {
-    "al", "ak", "az", "ar", "ca", "co", "ct", "de", "fl", "ga", "hi", "id", "il", "in",
-    "ia", "ks", "ky", "la", "me", "md", "ma", "mi", "mn", "ms", "mo", "mt", "ne", "nv",
-    "nh", "nj", "nm", "ny", "nc", "nd", "oh", "ok", "or", "pa", "ri", "sc", "sd", "tn",
-    "tx", "ut", "vt", "va", "wa", "wv", "wi", "wy", "dc",
+    "al",
+    "ak",
+    "az",
+    "ar",
+    "ca",
+    "co",
+    "ct",
+    "de",
+    "fl",
+    "ga",
+    "hi",
+    "id",
+    "il",
+    "in",
+    "ia",
+    "ks",
+    "ky",
+    "la",
+    "me",
+    "md",
+    "ma",
+    "mi",
+    "mn",
+    "ms",
+    "mo",
+    "mt",
+    "ne",
+    "nv",
+    "nh",
+    "nj",
+    "nm",
+    "ny",
+    "nc",
+    "nd",
+    "oh",
+    "ok",
+    "or",
+    "pa",
+    "ri",
+    "sc",
+    "sd",
+    "tn",
+    "tx",
+    "ut",
+    "vt",
+    "va",
+    "wa",
+    "wv",
+    "wi",
+    "wy",
+    "dc",
 }
 
 
@@ -86,7 +133,9 @@ class GranicusAssetFinder(AssetFinder):
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         }
 
-    async def _fetch_page(self, session: aiohttp.ClientSession, url: str, max_retries: int = 3) -> Tuple[str, str]:
+    async def _fetch_page(
+        self, session: aiohttp.ClientSession, url: str, max_retries: int = 3
+    ) -> Tuple[str, str]:
         """Returns (html, final_url) -- final_url is the post-redirect URL,
         which matters because a real MediaPlayer.php?clip_id=... URL (how
         Granicus's own UI shares links) always redirects to /player/clip/{id}
@@ -101,7 +150,9 @@ class GranicusAssetFinder(AssetFinder):
         for attempt in range(max_retries):
             try:
                 async with session.get(
-                    url, headers=self.headers, allow_redirects=True,
+                    url,
+                    headers=self.headers,
+                    allow_redirects=True,
                     timeout=aiohttp.ClientTimeout(total=30),
                 ) as response:
                     if response.status >= 400:
@@ -111,10 +162,12 @@ class GranicusAssetFinder(AssetFinder):
                 last_error = e
                 if attempt == max_retries - 1:
                     raise
-                await asyncio.sleep((2 ** attempt) * random.uniform(0.5, 1.5))
+                await asyncio.sleep((2**attempt) * random.uniform(0.5, 1.5))
         raise aiohttp.ClientError(f"Failed to fetch {url}: {last_error}")
 
-    def _extract_metadata(self, soup: BeautifulSoup, url: str) -> Dict[str, Optional[str]]:
+    def _extract_metadata(
+        self, soup: BeautifulSoup, url: str
+    ) -> Dict[str, Optional[str]]:
         def text_of(selector) -> Optional[str]:
             el = soup.select_one(selector)
             if el:
@@ -158,8 +211,14 @@ class GranicusAssetFinder(AssetFinder):
         # appears inside <meta name="description" content="...">, which
         # soup.get_text() never sees since it only walks text nodes, not
         # attribute values.
-        page_text = soup.get_text(" ", strip=True) + " " + (meta_content('meta[name="description"]') or "")
-        body_match = re.search(r"\b(City|County|Town) of ([A-Z][A-Za-z .]{1,40})", page_text)
+        page_text = (
+            soup.get_text(" ", strip=True)
+            + " "
+            + (meta_content('meta[name="description"]') or "")
+        )
+        body_match = re.search(
+            r"\b(City|County|Town) of ([A-Z][A-Za-z .]{1,40})", page_text
+        )
         if body_match:
             jurisdiction = f"{body_match.group(1)} of {body_match.group(2).strip()}"
         else:
@@ -167,13 +226,22 @@ class GranicusAssetFinder(AssetFinder):
             # pages ("San Diego County" rather than "County of San Diego") --
             # confirmed on a real sdcounty.granicus.com page, where the
             # City-of/County-of pattern above doesn't match at all.
-            reversed_match = re.search(r"\b([A-Z][A-Za-z]+(?: [A-Z][A-Za-z]+){0,2}) (County|Parish)\b", page_text)
+            reversed_match = re.search(
+                r"\b([A-Z][A-Za-z]+(?: [A-Z][A-Za-z]+){0,2}) (County|Parish)\b",
+                page_text,
+            )
             if reversed_match:
-                jurisdiction = f"{reversed_match.group(1).strip()} {reversed_match.group(2)}"
+                jurisdiction = (
+                    f"{reversed_match.group(1).strip()} {reversed_match.group(2)}"
+                )
 
         netloc = urlparse(url).netloc
         domain_parts = netloc.split(".")
-        if not jurisdiction and len(domain_parts) > 1 and domain_parts[0] not in ("www", "granicus"):
+        if (
+            not jurisdiction
+            and len(domain_parts) > 1
+            and domain_parts[0] not in ("www", "granicus")
+        ):
             candidate = self._humanize_subdomain(domain_parts[0], url)
             if candidate:
                 jurisdiction = candidate
@@ -183,7 +251,12 @@ class GranicusAssetFinder(AssetFinder):
         if not title:
             title = f"{jurisdiction} Meeting" + (f" - {date}" if date else "")
 
-        return {"title": title[:500], "date": date, "jurisdiction": jurisdiction[:200], "page_text": page_text}
+        return {
+            "title": title[:500],
+            "date": date,
+            "jurisdiction": jurisdiction[:200],
+            "page_text": page_text,
+        }
 
     @staticmethod
     def _humanize_subdomain(subdomain: str, url: str) -> Optional[str]:
@@ -226,9 +299,17 @@ class GranicusAssetFinder(AssetFinder):
         for pattern in patterns:
             match = re.search(pattern, text, re.IGNORECASE)
             if match:
-                for fmt in ("%Y-%m-%d", "%m-%d-%Y", "%m/%d/%Y", "%B %d, %Y", "%b %d, %Y"):
+                for fmt in (
+                    "%Y-%m-%d",
+                    "%m-%d-%Y",
+                    "%m/%d/%Y",
+                    "%B %d, %Y",
+                    "%b %d, %Y",
+                ):
                     try:
-                        return datetime.strptime(match.group(0), fmt).strftime("%Y-%m-%d")
+                        return datetime.strptime(match.group(0), fmt).strftime(
+                            "%Y-%m-%d"
+                        )
                     except ValueError:
                         continue
         return None
@@ -259,7 +340,9 @@ class GranicusAssetFinder(AssetFinder):
                 continue
             yy, mm, dd = match.groups()
             try:
-                return datetime.strptime(f"20{yy}-{mm}-{dd}", "%Y-%m-%d").strftime("%Y-%m-%d")
+                return datetime.strptime(f"20{yy}-{mm}-{dd}", "%Y-%m-%d").strftime(
+                    "%Y-%m-%d"
+                )
             except ValueError:
                 continue
         return None
@@ -329,7 +412,9 @@ class GranicusAssetFinder(AssetFinder):
         """
         player_url = f"https://{domain}/videos/{clip_id}/player"
         try:
-            async with session.get(player_url, timeout=aiohttp.ClientTimeout(total=20)) as response:
+            async with session.get(
+                player_url, timeout=aiohttp.ClientTimeout(total=20)
+            ) as response:
                 if response.status != 200:
                     return None, None
                 html = await response.text()
@@ -356,7 +441,11 @@ class GranicusAssetFinder(AssetFinder):
             # source when the page itself has none -- confirmed real (San
             # Francisco Board of Supervisors, clip 52945: no date anywhere
             # on the page, but a real RSS pubDate).
-            channel_jurisdiction, channel_body, item_date = await self._fetch_channel_info(session, final_url, clip_id)
+            (
+                channel_jurisdiction,
+                channel_body,
+                item_date,
+            ) = await self._fetch_channel_info(session, final_url, clip_id)
             if channel_jurisdiction:
                 metadata["jurisdiction"] = channel_jurisdiction
             # Neither source above (body-text match or the RSS channel
@@ -383,7 +472,9 @@ class GranicusAssetFinder(AssetFinder):
                 # the top. Tried before the document-link-filename last
                 # resort below since this is real structured content, not
                 # a filename guess.
-                metadata["date"] = await self._fetch_minutes_date(session, final_url, clip_id)
+                metadata["date"] = await self._fetch_minutes_date(
+                    session, final_url, clip_id
+                )
             if not metadata["date"]:
                 # True last resort, tried only once page text, RSS, and
                 # published minutes have all failed -- confirmed real and
@@ -404,7 +495,9 @@ class GranicusAssetFinder(AssetFinder):
             video_url, video_format = self._pick_video_url(media_urls)
             if not video_url and clip_id:
                 domain = urlparse(final_url).netloc
-                video_url, video_format = await self._fetch_video_from_player_page(session, domain, clip_id)
+                video_url, video_format = await self._fetch_video_from_player_page(
+                    session, domain, clip_id
+                )
             if not video_url:
                 video_warnings.append("No playable video found on this page.")
 
@@ -435,14 +528,25 @@ class GranicusAssetFinder(AssetFinder):
                 empty_or_failed_count = 0
                 for caption_url, result in zip(caption_urls, fetched):
                     if isinstance(result, Exception):
-                        transcript_warnings.append(f"Failed to fetch captions from {caption_url}: {result}")
+                        transcript_warnings.append(
+                            f"Failed to fetch captions from {caption_url}: {result}"
+                        )
                         continue
                     cues, fallback_text = result
                     if cues:
-                        candidates.append((caption_url, cues, detect_language_from_texts(c.get("text") for c in cues)))
+                        candidates.append(
+                            (
+                                caption_url,
+                                cues,
+                                detect_language_from_texts(c.get("text") for c in cues),
+                            )
+                        )
                     elif fallback_text:
                         text_fallback_candidates.append((caption_url, fallback_text))
-                    elif caption_url.lower().split("?")[0].rsplit(".", 1)[-1] in STRUCTURED_CAPTION_PARSERS:
+                    elif (
+                        caption_url.lower().split("?")[0].rsplit(".", 1)[-1]
+                        in STRUCTURED_CAPTION_PARSERS
+                    ):
                         # A real, fetchable file in a format we DO understand
                         # structurally, but it came back with zero cues --
                         # Granicus's own real placeholder case for .vtt
@@ -460,10 +564,16 @@ class GranicusAssetFinder(AssetFinder):
                         # below.
                         unreadable_urls.append(caption_url)
 
-                target_match = next((c for c in candidates if c[2] == TARGET_LANGUAGE), None)
+                target_match = next(
+                    (c for c in candidates if c[2] == TARGET_LANGUAGE), None
+                )
                 chosen = target_match or (candidates[0] if candidates else None)
 
-                if not chosen and not text_fallback_candidates and empty_or_failed_count:
+                if (
+                    not chosen
+                    and not text_fallback_candidates
+                    and empty_or_failed_count
+                ):
                     transcript_warnings.append(
                         "Caption file was blank, so we don't have a transcript for "
                         "this meeting yet — you can request one be generated from "
@@ -498,7 +608,9 @@ class GranicusAssetFinder(AssetFinder):
                         )
                     if len(candidates) > 1 and not target_match:
                         other_langs = sorted({c[2] for c in candidates if c[2]})
-                        transcript_warnings.append(f"Multiple caption tracks found ({other_langs}); none matched '{TARGET_LANGUAGE}'.")
+                        transcript_warnings.append(
+                            f"Multiple caption tracks found ({other_langs}); none matched '{TARGET_LANGUAGE}'."
+                        )
                     if is_likely_garbled(cues):
                         transcript_warnings.append(
                             "This transcript looks garbled at the source (not a parsing "
@@ -512,7 +624,9 @@ class GranicusAssetFinder(AssetFinder):
                     alternate_transcripts = [
                         AlternateTranscript(
                             language=lang,
-                            segments=[TranscriptSegment(**cue) for cue in candidate_cues],
+                            segments=[
+                                TranscriptSegment(**cue) for cue in candidate_cues
+                            ],
                         )
                         for candidate_vtt_url, candidate_cues, lang in candidates
                         if candidate_vtt_url != _vtt_url
@@ -531,7 +645,8 @@ class GranicusAssetFinder(AssetFinder):
                     fallback_url, fallback_text = text_fallback_candidates[0]
                     segments = [
                         TranscriptSegment(start=0.0, end=0.0, text=line)
-                        for line in fallback_text.split("\n") if line.strip()
+                        for line in fallback_text.split("\n")
+                        if line.strip()
                     ]
                     transcript_warnings.append(
                         "This meeting has captions, but in a format we can only show "
@@ -543,7 +658,9 @@ class GranicusAssetFinder(AssetFinder):
                         f"read at all yet — you can view it directly: {unreadable_urls[0]}"
                     )
             else:
-                transcript_warnings.append("No caption/transcript file found on this page.")
+                transcript_warnings.append(
+                    "No caption/transcript file found on this page."
+                )
 
             # Agenda is fetched independently of whether a real transcript
             # was found -- it's useful navigation context either way, not
@@ -553,12 +670,18 @@ class GranicusAssetFinder(AssetFinder):
             agenda_items: List[TranscriptSegment] = []
             agenda_link: Optional[str] = None
             if clip_id:
-                raw_items, agenda_fallback_url = await self._fetch_agenda_items(session, final_url, clip_id)
+                raw_items, agenda_fallback_url = await self._fetch_agenda_items(
+                    session, final_url, clip_id
+                )
                 if raw_items:
                     raw_items.sort(key=lambda item: item[0])
                     for i, (start, item_title) in enumerate(raw_items):
                         end = raw_items[i + 1][0] if i + 1 < len(raw_items) else start
-                        agenda_items.append(TranscriptSegment(start=start, end=max(end, start), text=item_title))
+                        agenda_items.append(
+                            TranscriptSegment(
+                                start=start, end=max(end, start), text=item_title
+                            )
+                        )
                 elif agenda_fallback_url:
                     # No timestamped chapter data (e.g. Berkeley/Paradise Valley AZ,
                     # which redirect AgendaViewer.php to their own external site or a
@@ -593,7 +716,9 @@ class GranicusAssetFinder(AssetFinder):
     async def _fetch_caption_file(session: aiohttp.ClientSession, caption_url: str):
         """Returns (cues, fallback_text) via parse_captions_by_extension --
         (None, None) on a fetch failure or a genuinely unparseable format."""
-        async with session.get(caption_url, timeout=aiohttp.ClientTimeout(total=20)) as response:
+        async with session.get(
+            caption_url, timeout=aiohttp.ClientTimeout(total=20)
+        ) as response:
             if response.status != 200:
                 return None, None
             raw = await response.read()
@@ -634,7 +759,9 @@ class GranicusAssetFinder(AssetFinder):
         domain = urlparse(page_url).netloc
         agenda_url = f"https://{domain}/AgendaViewer.php?clip_id={clip_id}&embedded=1"
         try:
-            async with session.get(agenda_url, timeout=aiohttp.ClientTimeout(total=15)) as response:
+            async with session.get(
+                agenda_url, timeout=aiohttp.ClientTimeout(total=15)
+            ) as response:
                 if response.status != 200:
                     return [], None
                 final_url = str(response.url)
@@ -689,7 +816,9 @@ class GranicusAssetFinder(AssetFinder):
         minutes_url = f"https://{domain}/MinutesViewer.php?clip_id={clip_id}&view_id={view_id}&embedded=1"
         try:
             async with session.get(
-                minutes_url, timeout=aiohttp.ClientTimeout(total=15), allow_redirects=False
+                minutes_url,
+                timeout=aiohttp.ClientTimeout(total=15),
+                allow_redirects=False,
             ) as response:
                 if response.status != 200:
                     return None
@@ -734,7 +863,9 @@ class GranicusAssetFinder(AssetFinder):
         domain = urlparse(url).netloc
         rss_url = f"https://{domain}/ViewPublisherRSS.php?view_id={view_id}&mode=video"
         try:
-            async with session.get(rss_url, timeout=aiohttp.ClientTimeout(total=10)) as response:
+            async with session.get(
+                rss_url, timeout=aiohttp.ClientTimeout(total=10)
+            ) as response:
                 if response.status != 200:
                     return None, None, None
                 xml = await response.text()
@@ -756,7 +887,8 @@ class GranicusAssetFinder(AssetFinder):
             # requiring a raw "?"/"&" separator before it.
             item_match = re.search(
                 rf"<item>(?:(?!</item>).)*?clip_id={re.escape(clip_id)}\b(?:(?!</item>).)*?</item>",
-                xml, re.DOTALL,
+                xml,
+                re.DOTALL,
             )
             if item_match:
                 item_xml = item_match.group(0)
@@ -771,6 +903,8 @@ class GranicusAssetFinder(AssetFinder):
                 if not item_date:
                     pubdate_match = re.search(r"<pubDate>([^<]+)</pubDate>", item_xml)
                     if pubdate_match:
-                        item_date = GranicusAssetFinder._parse_date_string(pubdate_match.group(1))
+                        item_date = GranicusAssetFinder._parse_date_string(
+                            pubdate_match.group(1)
+                        )
 
         return jurisdiction, body, item_date

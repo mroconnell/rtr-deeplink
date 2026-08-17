@@ -21,7 +21,9 @@ async def test_send_completion_email_noops_without_job_status(monkeypatch):
         nonlocal called
         called = True
 
-    monkeypatch.setattr(worker.main.email_utils, "send_completion_email", _fail_if_called)
+    monkeypatch.setattr(
+        worker.main.email_utils, "send_completion_email", _fail_if_called
+    )
 
     await worker.main._send_completion_email(1)
     assert called is False
@@ -76,7 +78,9 @@ async def test_send_failure_email_noops_without_job_status(monkeypatch):
         nonlocal called
         called = True
 
-    monkeypatch.setattr(worker.main.email_utils, "send_transcription_failed_email", _fail_if_called)
+    monkeypatch.setattr(
+        worker.main.email_utils, "send_transcription_failed_email", _fail_if_called
+    )
 
     await worker.main._send_failure_email(1)
     assert called is False
@@ -102,7 +106,9 @@ async def test_send_failure_email_sends_with_meeting_title_and_page_url(monkeypa
         captured["page_url"] = page_url
         return True
 
-    monkeypatch.setattr(worker.main.email_utils, "send_transcription_failed_email", _fake_send)
+    monkeypatch.setattr(
+        worker.main.email_utils, "send_transcription_failed_email", _fake_send
+    )
 
     await worker.main._send_failure_email(1)
     assert captured == {
@@ -114,7 +120,11 @@ async def test_send_failure_email_sends_with_meeting_title_and_page_url(monkeypa
 
 async def test_send_failure_email_falls_back_to_generic_title(monkeypatch):
     async def _status(job_id):
-        return {"meeting_page_slug": "some-meeting", "meeting_page_title": None, "requester_email": "r@example.com"}
+        return {
+            "meeting_page_slug": "some-meeting",
+            "meeting_page_title": None,
+            "requester_email": "r@example.com",
+        }
 
     monkeypatch.setattr(worker.main.crud, "get_transcription_job_status", _status)
     monkeypatch.setenv("PUBLIC_BASE_URL", "https://redtaperecordings.com")
@@ -125,7 +135,9 @@ async def test_send_failure_email_falls_back_to_generic_title(monkeypatch):
         captured["meeting_title"] = meeting_title
         return True
 
-    monkeypatch.setattr(worker.main.email_utils, "send_transcription_failed_email", _fake_send)
+    monkeypatch.setattr(
+        worker.main.email_utils, "send_transcription_failed_email", _fake_send
+    )
 
     await worker.main._send_failure_email(1)
     assert captured["meeting_title"] == "your meeting"

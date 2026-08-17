@@ -65,7 +65,9 @@ class CaliforniaLegislatureAssetFinder(AssetFinder):
         jurisdiction = f"California State {chamber}"
 
         async with aiohttp.ClientSession(headers=self.headers) as session:
-            async with session.get(url, allow_redirects=True, timeout=aiohttp.ClientTimeout(total=30)) as response:
+            async with session.get(
+                url, allow_redirects=True, timeout=aiohttp.ClientTimeout(total=30)
+            ) as response:
                 response.raise_for_status()
                 final_url = str(response.url)
                 html = await response.text()
@@ -91,17 +93,22 @@ class CaliforniaLegislatureAssetFinder(AssetFinder):
             # No longer .vtt-only (see media_scan.CAPTION_EXTENSIONS); still
             # excludes the scrubber-thumbnail sprite VTT -- see class docstring.
             caption_urls = [
-                u for u in media_urls
+                u
+                for u in media_urls
                 if media_type(u) == "subtitle" and "/thumbnails/" not in u.lower()
             ]
 
             segments: List[TranscriptSegment] = []
             transcript_language: Optional[str] = None
             if caption_urls:
-                cues, fallback_text = await self._fetch_captions(session, caption_urls[0])
+                cues, fallback_text = await self._fetch_captions(
+                    session, caption_urls[0]
+                )
                 if cues:
                     segments = [TranscriptSegment(**cue) for cue in cues]
-                    transcript_language = detect_language_from_texts(c.get("text") for c in cues)
+                    transcript_language = detect_language_from_texts(
+                        c.get("text") for c in cues
+                    )
                     if is_likely_garbled(cues):
                         transcript_warnings.append(
                             "This transcript looks garbled at the source (not a parsing "
@@ -115,14 +122,20 @@ class CaliforniaLegislatureAssetFinder(AssetFinder):
                     # .vtt); see BACKLOG.md.
                     segments = [
                         TranscriptSegment(start=0.0, end=0.0, text=line)
-                        for line in fallback_text.split("\n") if line.strip()
+                        for line in fallback_text.split("\n")
+                        if line.strip()
                     ]
-                    transcript_language = detect_language_from_texts(s.text for s in segments)
+                    transcript_language = detect_language_from_texts(
+                        s.text for s in segments
+                    )
                     transcript_warnings.append(
                         "This meeting has captions, but in a format we can only show "
                         "as plain text, not a clickable per-line transcript."
                     )
-                elif caption_urls[0].lower().split("?")[0].rsplit(".", 1)[-1] in STRUCTURED_CAPTION_PARSERS:
+                elif (
+                    caption_urls[0].lower().split("?")[0].rsplit(".", 1)[-1]
+                    in STRUCTURED_CAPTION_PARSERS
+                ):
                     transcript_warnings.append(
                         "A caption file is referenced for this meeting but could not "
                         "be fetched or was empty."
@@ -153,7 +166,9 @@ class CaliforniaLegislatureAssetFinder(AssetFinder):
     async def _fetch_captions(session: aiohttp.ClientSession, caption_url: str):
         """Returns (cues, fallback_text) via parse_captions_by_extension."""
         try:
-            async with session.get(caption_url, timeout=aiohttp.ClientTimeout(total=20)) as response:
+            async with session.get(
+                caption_url, timeout=aiohttp.ClientTimeout(total=20)
+            ) as response:
                 if response.status != 200:
                     return None, None
                 raw = await response.read()
@@ -169,18 +184,20 @@ class CaliforniaLegislatureAssetFinder(AssetFinder):
         Senate:   one combined <h2>Meeting Name, Weekday, Month D, YYYY</h2>.
         Falls back to <title> if neither heading shape is found.
         """
-        date_pattern = re.compile(
-            r"([A-Za-z]{3,9})\.?\s+(\d{1,2}),?\s*(\d{4})"
-        )
+        date_pattern = re.compile(r"([A-Za-z]{3,9})\.?\s+(\d{1,2}),?\s*(\d{4})")
 
         def visible_headings(tag_name):
             return [
-                h for h in soup.find_all(tag_name)
-                if "visually-hidden" not in (h.get("class") or []) and h.get_text(strip=True)
+                h
+                for h in soup.find_all(tag_name)
+                if "visually-hidden" not in (h.get("class") or [])
+                and h.get_text(strip=True)
             ]
 
         title, date = None, None
-        combined_pattern = re.compile(r",\s*[A-Za-z]+day,\s*[A-Za-z]{3,9}\.?\s+\d{1,2},?\s*\d{4}\s*$")
+        combined_pattern = re.compile(
+            r",\s*[A-Za-z]+day,\s*[A-Za-z]{3,9}\.?\s+\d{1,2},?\s*\d{4}\s*$"
+        )
 
         # Check for the Senate-style "Title, Weekday, Month D, YYYY" combined
         # h2 first -- it's a more specific signal than any h1, and matters
@@ -202,7 +219,9 @@ class CaliforniaLegislatureAssetFinder(AssetFinder):
                 title = h1s[0].get_text(strip=True)
                 for h2 in visible_headings("h2"):
                     if date_pattern.search(h2.get_text(strip=True)):
-                        date = CaliforniaLegislatureAssetFinder._parse_date(h2.get_text(strip=True))
+                        date = CaliforniaLegislatureAssetFinder._parse_date(
+                            h2.get_text(strip=True)
+                        )
                         break
 
         if not title:
@@ -217,9 +236,11 @@ class CaliforniaLegislatureAssetFinder(AssetFinder):
     def _split_title_date(text: str):
         # "Meeting Name, Weekday, Month D, YYYY" -> split off the trailing
         # "Weekday, Month D, YYYY" as the date, keep the rest as title.
-        match = re.search(r",\s*[A-Za-z]+day,\s*([A-Za-z]{3,9}\.?\s+\d{1,2},?\s*\d{4})\s*$", text)
+        match = re.search(
+            r",\s*[A-Za-z]+day,\s*([A-Za-z]{3,9}\.?\s+\d{1,2},?\s*\d{4})\s*$", text
+        )
         if match:
-            title = text[:match.start()].strip().rstrip(",")
+            title = text[: match.start()].strip().rstrip(",")
             date = CaliforniaLegislatureAssetFinder._parse_date(match.group(1))
             return title, date
         return text, CaliforniaLegislatureAssetFinder._parse_date(text)
@@ -227,12 +248,15 @@ class CaliforniaLegislatureAssetFinder(AssetFinder):
     @staticmethod
     def _parse_date(text: str) -> Optional[str]:
         from datetime import datetime
+
         match = re.search(r"([A-Za-z]{3,9})\.?\s+(\d{1,2}),?\s*(\d{4})", text)
         if not match:
             return None
         for fmt in ("%B %d %Y", "%b %d %Y"):
             try:
-                return datetime.strptime(f"{match.group(1)} {match.group(2)} {match.group(3)}", fmt).strftime("%Y-%m-%d")
+                return datetime.strptime(
+                    f"{match.group(1)} {match.group(2)} {match.group(3)}", fmt
+                ).strftime("%Y-%m-%d")
             except ValueError:
                 continue
         return None

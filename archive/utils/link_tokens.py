@@ -24,7 +24,9 @@ def _secret() -> bytes:
 
 
 def _signature(saved_item_id: int) -> str:
-    return hmac.new(_secret(), str(saved_item_id).encode("utf-8"), hashlib.sha256).hexdigest()[:32]
+    return hmac.new(
+        _secret(), str(saved_item_id).encode("utf-8"), hashlib.sha256
+    ).hexdigest()[:32]
 
 
 def sign_saved_item_id(saved_item_id: int) -> str:

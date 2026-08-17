@@ -47,12 +47,18 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
 import aiohttp  # noqa: E402
 
 from app.platforms import register_all_finders  # noqa: E402
-from app.platforms.base import detect_platform, get_finder, UnsupportedPlatformError, CalendarPageError  # noqa: E402
+from app.platforms.base import (
+    detect_platform,
+    get_finder,
+    UnsupportedPlatformError,
+    CalendarPageError,
+)  # noqa: E402
 from app.utils.url_normalize import normalize_url  # noqa: E402
 from scripts.bulk_ingest import _ingest, REQUEST_DELAY_SECONDS  # noqa: E402
 
@@ -92,7 +98,9 @@ async def main() -> None:
         print("No queue file found -- nothing to do.")
         return
 
-    urls = [line.strip() for line in QUEUE_FILE.read_text().splitlines() if line.strip()]
+    urls = [
+        line.strip() for line in QUEUE_FILE.read_text().splitlines() if line.strip()
+    ]
     if not urls:
         print("Queue is empty -- nothing left to feed. This script can be retired.")
         return

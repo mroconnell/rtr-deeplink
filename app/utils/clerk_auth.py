@@ -52,6 +52,7 @@ def clerk_frontend_api_url(publishable_key: str) -> Optional[str]:
     except Exception:
         return None
 
+
 # Clerk's authorized_parties check rejects a session token issued for a
 # different origin/app being replayed against this one. Falls back to
 # common local-dev origins when PUBLIC_BASE_URL isn't set, so this still

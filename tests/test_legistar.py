@@ -34,7 +34,9 @@ async def test_calendar_page_raises_pick_list_from_real_maricopa_calendar():
 
     candidates = exc_info.value.candidates
     assert len(candidates) > 1
-    assert all("granicus.com" in c["url"] or "Video.aspx" in c["url"] for c in candidates)
+    assert all(
+        "granicus.com" in c["url"] or "Video.aspx" in c["url"] for c in candidates
+    )
     assert all(c["title"] and c["date"] for c in candidates)
 
 
@@ -44,13 +46,15 @@ async def test_single_meeting_delegates_to_granicus():
     # Granicus player/clip URL -- delegation should hand off to a real
     # GranicusAssetFinder.resolve() call on that URL, not just detect it.
     meeting_url = "https://maricopa.legistar.com/MeetingDetail.aspx?ID=1"
-    video_aspx = "https://maricopa.legistar.com/Video.aspx?Mode=Granicus&ID1=1504&Mode2=Video"
+    video_aspx = (
+        "https://maricopa.legistar.com/Video.aspx?Mode=Granicus&ID1=1504&Mode2=Video"
+    )
     granicus_url = "https://cityofmaricopa.granicus.com/player/clip/1504"
 
     meeting_html = (
-        '<html><body><table><tr><td>City Council Meeting</td>'
-        '<td>4/8/2026</td></tr></table>'
-        f'<a class="videolink" onclick="window.open(\'{video_aspx}\',\'video\');'
+        "<html><body><table><tr><td>City Council Meeting</td>"
+        "<td>4/8/2026</td></tr></table>"
+        f"<a class=\"videolink\" onclick=\"window.open('{video_aspx}','video');"
         'return false;">Video</a></body></html>'
     )
     granicus_html = load_fixture("granicus", "napacity_clip3450.html")
@@ -59,8 +63,12 @@ async def test_single_meeting_delegates_to_granicus():
         meeting_url: FakeResponse(status=200, text=meeting_html, url=meeting_url),
         video_aspx: FakeResponse(status=200, text="", url=granicus_url),
         granicus_url: FakeResponse(status=200, text=granicus_html, url=granicus_url),
-        "https://cityofmaricopa.granicus.com/videos/1504/captions.vtt": FakeResponse(status=404),
-        "https://cityofmaricopa.granicus.com/AgendaViewer.php?clip_id=1504&embedded=1": FakeResponse(status=404),
+        "https://cityofmaricopa.granicus.com/videos/1504/captions.vtt": FakeResponse(
+            status=404
+        ),
+        "https://cityofmaricopa.granicus.com/AgendaViewer.php?clip_id=1504&embedded=1": FakeResponse(
+            status=404
+        ),
     }
 
     with mock_session(routes):
@@ -81,16 +89,18 @@ def test_find_video_links_ignores_audio_only_variants():
     from bs4 import BeautifulSoup
 
     html = (
-        '<html><body><table><tr><td>City Council Business Meeting</td>'
-        '<td>6/22/2026</td></tr></table>'
-        '<a class="videolink" onclick="window.open(\'Video.aspx?Mode=Granicus&ID1=3692&Mode2=Video\',\'video\');return false;">Video</a>'
-        '<a class="videolink" onclick="window.open(\'Video.aspx?Mode=Granicus&ID1=3692&Mode2=Audio\',\'video\');return false;">Audio</a>'
-        '<a class="videolink" onclick="window.open(\'Video.aspx?Mode=Granicus&ID1=3692&Mode2=AudioDownload\',\'video\');return false;">Audio Download</a>'
-        '</body></html>'
+        "<html><body><table><tr><td>City Council Business Meeting</td>"
+        "<td>6/22/2026</td></tr></table>"
+        "<a class=\"videolink\" onclick=\"window.open('Video.aspx?Mode=Granicus&ID1=3692&Mode2=Video','video');return false;\">Video</a>"
+        "<a class=\"videolink\" onclick=\"window.open('Video.aspx?Mode=Granicus&ID1=3692&Mode2=Audio','video');return false;\">Audio</a>"
+        "<a class=\"videolink\" onclick=\"window.open('Video.aspx?Mode=Granicus&ID1=3692&Mode2=AudioDownload','video');return false;\">Audio Download</a>"
+        "</body></html>"
     )
     soup = BeautifulSoup(html, "html.parser")
 
-    links = LegistarAssetFinder()._find_video_links(soup, "https://charlottenc.legistar.com/MeetingDetail.aspx?ID=1")
+    links = LegistarAssetFinder()._find_video_links(
+        soup, "https://charlottenc.legistar.com/MeetingDetail.aspx?ID=1"
+    )
 
     assert len(links) == 1
     assert "Mode2=Video" in links[0]["url"]
@@ -105,7 +115,9 @@ async def test_charlotte_single_meeting_with_audio_links_delegates_to_granicus()
         "https://charlottenc.legistar.com/MeetingDetail.aspx?ID=1365278"
         "&GUID=E6E474AC-A2A9-4CE4-BCF0-5B118522E3BE&Options=info|"
     )
-    video_aspx = "https://charlottenc.legistar.com/Video.aspx?Mode=Granicus&ID1=3692&Mode2=Video"
+    video_aspx = (
+        "https://charlottenc.legistar.com/Video.aspx?Mode=Granicus&ID1=3692&Mode2=Video"
+    )
     granicus_url = "https://charlottenc.granicus.com/player/clip/3692"
 
     meeting_html = load_fixture("legistar", "charlotte_meeting_audio_download.html")
@@ -115,8 +127,12 @@ async def test_charlotte_single_meeting_with_audio_links_delegates_to_granicus()
         meeting_url: FakeResponse(status=200, text=meeting_html, url=meeting_url),
         video_aspx: FakeResponse(status=200, text="", url=granicus_url),
         granicus_url: FakeResponse(status=200, text=granicus_html, url=granicus_url),
-        "https://charlottenc.granicus.com/videos/3692/captions.vtt": FakeResponse(status=404),
-        "https://charlottenc.granicus.com/AgendaViewer.php?clip_id=3692&embedded=1": FakeResponse(status=404),
+        "https://charlottenc.granicus.com/videos/3692/captions.vtt": FakeResponse(
+            status=404
+        ),
+        "https://charlottenc.granicus.com/AgendaViewer.php?clip_id=3692&embedded=1": FakeResponse(
+            status=404
+        ),
     }
 
     with mock_session(routes):
@@ -162,14 +178,16 @@ async def test_nyc_single_meeting_delegates_to_viebit():
         "aHR0cHM6Ly9jb3VuY2lsbnljLnZpZWJpdC5jb20vdm9kLz9zPXRydWUmdj1OWUND"
         "LTI1MC04LTFfMjYwNzIyLTExMDYzNi5tcDQ%3d&Mode2=Video"
     )
-    viebit_url = "https://councilnyc.viebit.com/embed/vod?v=hFWIQkuFLuWGb0mw&s=true&d=false"
+    viebit_url = (
+        "https://councilnyc.viebit.com/embed/vod?v=hFWIQkuFLuWGb0mw&s=true&d=false"
+    )
     vtt_url = "https://vbfast-vod.viebit.com/counciln/hFWIQkuFLuWGb0mw/NYCC-250-8-1_260722-110636.vtt"
 
     meeting_html = (
-        '<html><body><table><tr><td>Subcommittee on Landmarks</td>'
-        '<td>7/22/2026</td></tr></table>'
+        "<html><body><table><tr><td>Subcommittee on Landmarks</td>"
+        "<td>7/22/2026</td></tr></table>"
         f'<a class="videolink" onclick="OpenTelerikWindow(\'{video_aspx}\','
-        '\'video\');return false;">Video</a></body></html>'
+        "'video');return false;\">Video</a></body></html>"
     )
     viebit_html = load_fixture("viebit", "nycc_vod_page.html")
     vtt = load_fixture("viebit", "nycc_captions.vtt")
@@ -197,9 +215,15 @@ def test_is_legistar_domain_recognizes_nyc_custom_domain():
     # resolve_via_platform(), which re-detects it as "legistar" and would
     # have recursed on the same URL instead of ever reaching
     # _find_video_links.
-    assert LegistarAssetFinder._is_legistar_domain("https://legistar.council.nyc.gov/Calendar.aspx")
-    assert LegistarAssetFinder._is_legistar_domain("https://maricopa.legistar.com/MeetingDetail.aspx")
-    assert not LegistarAssetFinder._is_legistar_domain("https://councilnyc.viebit.com/embed/vod?v=x")
+    assert LegistarAssetFinder._is_legistar_domain(
+        "https://legistar.council.nyc.gov/Calendar.aspx"
+    )
+    assert LegistarAssetFinder._is_legistar_domain(
+        "https://maricopa.legistar.com/MeetingDetail.aspx"
+    )
+    assert not LegistarAssetFinder._is_legistar_domain(
+        "https://councilnyc.viebit.com/embed/vod?v=x"
+    )
 
 
 async def test_nyc_meeting_title_overrides_viebits_raw_filename_title():
@@ -217,15 +241,17 @@ async def test_nyc_meeting_title_overrides_viebits_raw_filename_title():
         "aHR0cHM6Ly9jb3VuY2lsbnljLnZpZWJpdC5jb20vdm9kLz9zPXRydWUmdj1OWUND"
         "LTI1MC04LTFfMjYwNzIyLTExMDYzNi5tcDQ%3d&Mode2=Video"
     )
-    viebit_url = "https://councilnyc.viebit.com/embed/vod?v=hFWIQkuFLuWGb0mw&s=true&d=false"
+    viebit_url = (
+        "https://councilnyc.viebit.com/embed/vod?v=hFWIQkuFLuWGb0mw&s=true&d=false"
+    )
     vtt_url = "https://vbfast-vod.viebit.com/counciln/hFWIQkuFLuWGb0mw/NYCC-250-8-1_260722-110636.vtt"
 
     meeting_html = (
         "<html><head><title>The New York City Council - Meeting of "
         "Committee on Finance on 12/18/2025 at 11:30 AM</title></head>"
-        '<body><table><tr><td>Video</td></tr></table>'
+        "<body><table><tr><td>Video</td></tr></table>"
         f'<a class="videolink" onclick="OpenTelerikWindow(\'{video_aspx}\','
-        '\'video\');return false;">Video</a></body></html>'
+        "'video');return false;\">Video</a></body></html>"
     )
     viebit_html = load_fixture("viebit", "nycc_vod_page.html")
     vtt = load_fixture("viebit", "nycc_captions.vtt")
@@ -271,13 +297,15 @@ async def test_nyc_meeting_without_page_title_keeps_viebits_title_unchanged():
         "aHR0cHM6Ly9jb3VuY2lsbnljLnZpZWJpdC5jb20vdm9kLz9zPXRydWUmdj1OWUND"
         "LTI1MC04LTFfMjYwNzIyLTExMDYzNi5tcDQ%3d&Mode2=Video"
     )
-    viebit_url = "https://councilnyc.viebit.com/embed/vod?v=hFWIQkuFLuWGb0mw&s=true&d=false"
+    viebit_url = (
+        "https://councilnyc.viebit.com/embed/vod?v=hFWIQkuFLuWGb0mw&s=true&d=false"
+    )
     vtt_url = "https://vbfast-vod.viebit.com/counciln/hFWIQkuFLuWGb0mw/NYCC-250-8-1_260722-110636.vtt"
 
     meeting_html = (
-        '<html><body><table><tr><td>Video</td></tr></table>'
+        "<html><body><table><tr><td>Video</td></tr></table>"
         f'<a class="videolink" onclick="OpenTelerikWindow(\'{video_aspx}\','
-        '\'video\');return false;">Video</a></body></html>'
+        "'video');return false;\">Video</a></body></html>"
     )
     viebit_html = load_fixture("viebit", "nycc_vod_page.html")
     vtt = load_fixture("viebit", "nycc_captions.vtt")
@@ -306,7 +334,9 @@ def test_extract_page_meeting_info_parses_real_nyc_title_shapes():
         "on 12/18/2025 at 11:30 AM</title>",
         "html.parser",
     )
-    assert LegistarAssetFinder._extract_page_meeting_info(committee_soup, "https://legistar.council.nyc.gov/MeetingDetail.aspx?ID=1") == {
+    assert LegistarAssetFinder._extract_page_meeting_info(
+        committee_soup, "https://legistar.council.nyc.gov/MeetingDetail.aspx?ID=1"
+    ) == {
         "title": "Committee on Finance",
         "jurisdiction": "New York City Council",
         "date": "2025-12-18",
@@ -318,7 +348,9 @@ def test_extract_page_meeting_info_parses_real_nyc_title_shapes():
         "on 12/18/2025 at 1:30 PM</title>",
         "html.parser",
     )
-    assert LegistarAssetFinder._extract_page_meeting_info(full_council_soup, "https://legistar.council.nyc.gov/MeetingDetail.aspx?ID=1") == {
+    assert LegistarAssetFinder._extract_page_meeting_info(
+        full_council_soup, "https://legistar.council.nyc.gov/MeetingDetail.aspx?ID=1"
+    ) == {
         "title": "City Council",
         "jurisdiction": "New York City Council",
         "date": "2025-12-18",
@@ -330,10 +362,20 @@ def test_extract_page_meeting_info_returns_none_without_matching_title():
     from bs4 import BeautifulSoup
 
     no_title_soup = BeautifulSoup("<body>No title tag here.</body>", "html.parser")
-    assert LegistarAssetFinder._extract_page_meeting_info(no_title_soup, "https://example.legistar.com/MeetingDetail.aspx?ID=1") is None
+    assert (
+        LegistarAssetFinder._extract_page_meeting_info(
+            no_title_soup, "https://example.legistar.com/MeetingDetail.aspx?ID=1"
+        )
+        is None
+    )
 
     unrelated_title_soup = BeautifulSoup("<title>Meeting</title>", "html.parser")
-    assert LegistarAssetFinder._extract_page_meeting_info(unrelated_title_soup, "https://example.legistar.com/MeetingDetail.aspx?ID=1") is None
+    assert (
+        LegistarAssetFinder._extract_page_meeting_info(
+            unrelated_title_soup, "https://example.legistar.com/MeetingDetail.aspx?ID=1"
+        )
+        is None
+    )
 
 
 def test_extract_page_meeting_info_falls_back_to_rss_link_when_title_empty():
@@ -345,7 +387,9 @@ def test_extract_page_meeting_info_falls_back_to_rss_link_when_title_empty():
         'title="City of Baltimore - Meeting of Baltimore City Council on 10/20/2025 at 5:00 PM" /></head>',
         "html.parser",
     )
-    assert LegistarAssetFinder._extract_page_meeting_info(soup, "https://baltimore.legistar.com/MeetingDetail.aspx?ID=1") == {
+    assert LegistarAssetFinder._extract_page_meeting_info(
+        soup, "https://baltimore.legistar.com/MeetingDetail.aspx?ID=1"
+    ) == {
         "title": "Baltimore City Council",
         "jurisdiction": "City of Baltimore, MD",
         "date": "2025-10-20",
@@ -367,7 +411,9 @@ def test_extract_page_meeting_info_fills_in_state_for_an_unambiguous_jurisdictio
         "<title>The City of Chicago - Meeting of City Council on 1/2/2026 at 10:00 AM</title>",
         "html.parser",
     )
-    info = LegistarAssetFinder._extract_page_meeting_info(soup, "https://chicago.legistar.com/MeetingDetail.aspx?ID=1")
+    info = LegistarAssetFinder._extract_page_meeting_info(
+        soup, "https://chicago.legistar.com/MeetingDetail.aspx?ID=1"
+    )
     assert info["jurisdiction"] == "City of Chicago, IL"
 
 
@@ -383,19 +429,31 @@ def test_extract_agenda_link_reads_real_mesa_page_shape():
         'href="View.ashx?M=A&amp;ID=1428059&amp;GUID=C6D3581F-B224-4A1C-A59D-0885C238FD52">Agenda</a>'
     )
     soup = BeautifulSoup(html, "html.parser")
-    link = LegistarAssetFinder._extract_agenda_link(soup, "https://mesa.legistar.com/MeetingDetail.aspx?ID=1428059")
-    assert link == "https://mesa.legistar.com/View.ashx?M=A&ID=1428059&GUID=C6D3581F-B224-4A1C-A59D-0885C238FD52"
+    link = LegistarAssetFinder._extract_agenda_link(
+        soup, "https://mesa.legistar.com/MeetingDetail.aspx?ID=1428059"
+    )
+    assert (
+        link
+        == "https://mesa.legistar.com/View.ashx?M=A&ID=1428059&GUID=C6D3581F-B224-4A1C-A59D-0885C238FD52"
+    )
 
 
 def test_extract_agenda_link_returns_none_when_absent():
     from bs4 import BeautifulSoup
 
     soup = BeautifulSoup("<span>No agenda link here.</span>", "html.parser")
-    assert LegistarAssetFinder._extract_agenda_link(soup, "https://example.legistar.com/MeetingDetail.aspx?ID=1") is None
+    assert (
+        LegistarAssetFinder._extract_agenda_link(
+            soup, "https://example.legistar.com/MeetingDetail.aspx?ID=1"
+        )
+        is None
+    )
 
 
 def test_looks_like_raw_filename_matches_real_viebit_title():
-    assert LegistarAssetFinder._looks_like_raw_filename("NYCC-250-8-2_251218-120823.mp4")
+    assert LegistarAssetFinder._looks_like_raw_filename(
+        "NYCC-250-8-2_251218-120823.mp4"
+    )
     assert not LegistarAssetFinder._looks_like_raw_filename("Committee on Finance")
     assert not LegistarAssetFinder._looks_like_raw_filename(None)
 
@@ -427,7 +485,11 @@ async def test_falls_back_to_a_plain_youtube_link_when_no_videolink_found(monkey
     routes = {url: FakeResponse(status=200, text=html, url=url)}
 
     def _fake_extract_info(video_id):
-        return {"title": "City Council Hearing", "uploader": "CharmTV", "upload_date": "20251020"}
+        return {
+            "title": "City Council Hearing",
+            "uploader": "CharmTV",
+            "upload_date": "20251020",
+        }
 
     monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _fake_extract_info)
 
@@ -441,7 +503,9 @@ async def test_falls_back_to_a_plain_youtube_link_when_no_videolink_found(monkey
     assert result.source_url == url
 
 
-async def test_fallback_extracts_jurisdiction_from_empty_title_via_rss_link(monkeypatch):
+async def test_fallback_extracts_jurisdiction_from_empty_title_via_rss_link(
+    monkeypatch,
+):
     # Real bug confirmed live 2026-08-10: Baltimore's Legistar instance
     # leaves <title> completely empty (unlike NYC's, which has the real
     # info directly in <title>) -- but the identical "{jurisdiction} -
@@ -452,7 +516,7 @@ async def test_fallback_extracts_jurisdiction_from_empty_title_via_rss_link(monk
     # jurisdiction is this").
     url = "https://baltimore.legistar.com/MeetingDetail.aspx?ID=1"
     html = (
-        '<html><head><title></title>'
+        "<html><head><title></title>"
         '<link rel="alternate" type="application/rss+xml" '
         'title="City of Baltimore - Meeting of Baltimore City Council on 10/20/2025 at 5:00 PM" />'
         "</head><body><table><tr><td>Attachments</td></tr></table>"
@@ -461,7 +525,11 @@ async def test_fallback_extracts_jurisdiction_from_empty_title_via_rss_link(monk
     routes = {url: FakeResponse(status=200, text=html, url=url)}
 
     def _fake_extract_info(video_id):
-        return {"title": "City Council Hearing", "uploader": "CharmTV Citizens' Hub", "upload_date": "20251020"}
+        return {
+            "title": "City Council Hearing",
+            "uploader": "CharmTV Citizens' Hub",
+            "upload_date": "20251020",
+        }
 
     monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _fake_extract_info)
 
@@ -492,8 +560,12 @@ async def test_falls_back_to_a_plain_granicus_link_when_no_videolink_found():
     routes = {
         url: FakeResponse(status=200, text=html, url=url),
         granicus_url: FakeResponse(status=200, text=granicus_html, url=granicus_url),
-        "https://cityofmaricopa.granicus.com/videos/1504/captions.vtt": FakeResponse(status=404),
-        "https://cityofmaricopa.granicus.com/AgendaViewer.php?clip_id=1504&embedded=1": FakeResponse(status=404),
+        "https://cityofmaricopa.granicus.com/videos/1504/captions.vtt": FakeResponse(
+            status=404
+        ),
+        "https://cityofmaricopa.granicus.com/AgendaViewer.php?clip_id=1504&embedded=1": FakeResponse(
+            status=404
+        ),
     }
 
     with mock_session(routes):

@@ -78,10 +78,22 @@ def test_coverage_page_renders_example_with_transcript_badge(monkeypatch):
                     },
                     "page_count": 1,
                 },
-                {"platform": "viebit", "label": "Viebit", "examples": [], "example": None, "page_count": 0},
+                {
+                    "platform": "viebit",
+                    "label": "Viebit",
+                    "examples": [],
+                    "example": None,
+                    "page_count": 0,
+                },
             ],
             "custom": [
-                {"platform": "lims", "label": "Minneapolis LIMS", "examples": [], "example": None, "page_count": 0}
+                {
+                    "platform": "lims",
+                    "label": "Minneapolis LIMS",
+                    "examples": [],
+                    "example": None,
+                    "page_count": 0,
+                }
             ],
         }
 
@@ -95,7 +107,7 @@ def test_coverage_page_renders_example_with_transcript_badge(monkeypatch):
     # value should never appear verbatim on this page.
     assert "Coverage Test" in response.text
     assert "City of Coverage Test" not in response.text
-    assert '/m/coverage-test-slug' in response.text
+    assert "/m/coverage-test-slug" in response.text
     assert "Supported, but no example archived yet" in response.text
 
 
@@ -114,10 +126,14 @@ async def test_get_platform_coverage_reflects_a_real_ingested_meeting():
         "transcript_language": "en",
         "transcript_warnings": [],
     }
-    await crud.ingest_resolution(payload, "https://coverage-test.granicus.com/player/clip/coverage-crud-1")
+    await crud.ingest_resolution(
+        payload, "https://coverage-test.granicus.com/player/clip/coverage-crud-1"
+    )
 
     coverage = await crud.get_platform_coverage()
-    granicus_row = next(row for row in coverage["direct"] if row["platform"] == "granicus")
+    granicus_row = next(
+        row for row in coverage["direct"] if row["platform"] == "granicus"
+    )
     assert granicus_row["example"] is not None
     assert granicus_row["example"]["has_transcript"] is True
     assert granicus_row["page_count"] >= 1
@@ -144,7 +160,9 @@ async def test_lims_sourced_meeting_shows_up_under_custom_despite_youtube_platfo
         "transcript_language": "en",
         "transcript_warnings": [],
     }
-    await crud.ingest_resolution(payload, "https://lims.minneapolismn.gov/MarkedAgenda/CI/99999")
+    await crud.ingest_resolution(
+        payload, "https://lims.minneapolismn.gov/MarkedAgenda/CI/99999"
+    )
 
     coverage = await crud.get_platform_coverage()
     lims_row = next(row for row in coverage["custom"] if row["platform"] == "lims")
@@ -167,7 +185,9 @@ async def test_raw_youtube_paste_does_not_show_up_anywhere_on_coverage():
         "transcript_language": "en",
         "transcript_warnings": [],
     }
-    await crud.ingest_resolution(payload, "https://www.youtube.com/watch?v=coverageRawYt1")
+    await crud.ingest_resolution(
+        payload, "https://www.youtube.com/watch?v=coverageRawYt1"
+    )
 
     coverage = await crud.get_platform_coverage()
     all_titles = [
@@ -193,10 +213,14 @@ async def test_get_jurisdiction_coverage_lists_a_real_ingested_meeting():
         "transcript_language": "en",
         "transcript_warnings": [],
     }
-    await crud.ingest_resolution(payload, "https://coverage-jurisdiction-test.granicus.com/player/clip/1")
+    await crud.ingest_resolution(
+        payload, "https://coverage-jurisdiction-test.granicus.com/player/clip/1"
+    )
 
     jurisdictions = await crud.get_jurisdiction_coverage()
-    napa_row = next(row for row in jurisdictions if row["jurisdiction"] == "City of Napa, CA")
+    napa_row = next(
+        row for row in jurisdictions if row["jurisdiction"] == "City of Napa, CA"
+    )
     assert napa_row["example"]["title"] == "Napa City Council Regular Meeting"
     assert napa_row["example"]["has_transcript"] is True
     assert napa_row["page_count"] >= 1
@@ -212,7 +236,10 @@ async def test_jurisdiction_coverage_sorted_case_insensitively():
         "transcript_language": None,
         "transcript_warnings": [],
     }
-    for suffix, jurisdiction in (("a", "zzz Sort Test City, ZZ"), ("b", "aaa Sort Test City, AA")):
+    for suffix, jurisdiction in (
+        ("a", "zzz Sort Test City, ZZ"),
+        ("b", "aaa Sort Test City, AA"),
+    ):
         payload = {
             **payload_base,
             "source_url": f"https://coverage-sort-test.granicus.com/player/clip/{suffix}",
@@ -223,7 +250,9 @@ async def test_jurisdiction_coverage_sorted_case_insensitively():
         }
         await crud.ingest_resolution(payload, payload["source_url"])
 
-    jurisdictions = [row["jurisdiction"] for row in await crud.get_jurisdiction_coverage()]
+    jurisdictions = [
+        row["jurisdiction"] for row in await crud.get_jurisdiction_coverage()
+    ]
     lower_names = [j.casefold() for j in jurisdictions]
     assert lower_names == sorted(lower_names)
 
@@ -249,7 +278,9 @@ async def test_coverage_page_renders_a_real_jurisdiction_row():
         "transcript_language": "en",
         "transcript_warnings": [],
     }
-    await crud.ingest_resolution(payload, "https://coverage-jurisdiction-http-test.granicus.com/player/clip/1")
+    await crud.ingest_resolution(
+        payload, "https://coverage-jurisdiction-http-test.granicus.com/player/clip/1"
+    )
 
     response = archive_client_.get("/coverage")
     assert "Aurora, CO" in response.text
@@ -258,7 +289,12 @@ async def test_coverage_page_renders_a_real_jurisdiction_row():
 
 def test_resolver_footer_has_all_four_links():
     response = resolver_client.get("/")
-    for href in ("/sitemap.xml", "/feed.xml", "/coverage", "mailto:ally@redtaperecordings.com"):
+    for href in (
+        "/sitemap.xml",
+        "/feed.xml",
+        "/coverage",
+        "mailto:ally@redtaperecordings.com",
+    ):
         assert href in response.text
 
 
@@ -269,6 +305,13 @@ def test_subscribe_page_hides_redundant_prompt_but_keeps_footer_links():
 
 
 def test_archive_footer_has_all_four_links():
-    response = archive_client_.get("/this-page-does-not-exist")  # any page renders base.html's footer
-    for href in ("/sitemap.xml", "/feed.xml", "/coverage", "mailto:ally@redtaperecordings.com"):
+    response = archive_client_.get(
+        "/this-page-does-not-exist"
+    )  # any page renders base.html's footer
+    for href in (
+        "/sitemap.xml",
+        "/feed.xml",
+        "/coverage",
+        "mailto:ally@redtaperecordings.com",
+    ):
         assert href in response.text

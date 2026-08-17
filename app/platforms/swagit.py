@@ -27,7 +27,8 @@ WORD_GROUPING_WINDOW_SECONDS = 4.0
 
 
 def _group_word_fragments(
-    word_segments: List[TranscriptSegment], window_seconds: float = WORD_GROUPING_WINDOW_SECONDS
+    word_segments: List[TranscriptSegment],
+    window_seconds: float = WORD_GROUPING_WINDOW_SECONDS,
 ) -> List[TranscriptSegment]:
     """Merges consecutive single-word segments (as emitted by Swagit's
     #transcript-fragments DOM, one <a data-ts> per word) into multi-word
@@ -46,14 +47,22 @@ def _group_word_fragments(
 
     for seg in word_segments:
         if group_words and seg.start - group_start > window_seconds:
-            grouped.append(TranscriptSegment(start=group_start, end=group_end, text=" ".join(group_words)))
+            grouped.append(
+                TranscriptSegment(
+                    start=group_start, end=group_end, text=" ".join(group_words)
+                )
+            )
             group_words = []
             group_start = seg.start
         group_words.append(seg.text)
         group_end = seg.end
 
     if group_words:
-        grouped.append(TranscriptSegment(start=group_start, end=group_end, text=" ".join(group_words)))
+        grouped.append(
+            TranscriptSegment(
+                start=group_start, end=group_end, text=" ".join(group_words)
+            )
+        )
 
     return grouped
 
@@ -110,7 +119,9 @@ class SwagitAssetFinder(AssetFinder):
 
         async with aiohttp.ClientSession() as session:
             async with session.get(
-                url, headers=self.headers, allow_redirects=True,
+                url,
+                headers=self.headers,
+                allow_redirects=True,
                 timeout=aiohttp.ClientTimeout(total=30),
             ) as response:
                 response.raise_for_status()
@@ -160,7 +171,9 @@ class SwagitAssetFinder(AssetFinder):
                     continue
                 text = a.get_text(strip=True)
                 if text:
-                    word_segments.append(TranscriptSegment(start=start, end=start, text=text))
+                    word_segments.append(
+                        TranscriptSegment(start=start, end=start, text=text)
+                    )
             # #transcript-fragments is one DOM element per *word*, each
             # with start == end (a true instant) -- confirmed live on that
             # same Dublin meeting: "GOOD"/"EVENING"/"AND"/"HAPPY"/"NEW"/
@@ -184,7 +197,9 @@ class SwagitAssetFinder(AssetFinder):
             # sample is genuinely ~all-uppercase, so a Swagit deployment
             # that turns out to emit normal-case text (unconfirmed either
             # way, no second sample yet) would pass through untouched.
-            cue_dicts = [{"start": s.start, "end": s.end, "text": s.text} for s in segments]
+            cue_dicts = [
+                {"start": s.start, "end": s.end, "text": s.text} for s in segments
+            ]
             normalize_shouting_caption(cue_dicts)
             for seg, cue in zip(segments, cue_dicts):
                 seg.text = cue["text"]
@@ -206,13 +221,17 @@ class SwagitAssetFinder(AssetFinder):
                 elif fallback_text:
                     segments = [
                         TranscriptSegment(start=0.0, end=0.0, text=line)
-                        for line in fallback_text.split("\n") if line.strip()
+                        for line in fallback_text.split("\n")
+                        if line.strip()
                     ]
                     transcript_warnings.append(
                         "This meeting has captions, but in a format we can only show "
                         "as plain text, not a clickable per-line transcript."
                     )
-                elif caption_urls[0].lower().split("?")[0].rsplit(".", 1)[-1] not in STRUCTURED_CAPTION_PARSERS:
+                elif (
+                    caption_urls[0].lower().split("?")[0].rsplit(".", 1)[-1]
+                    not in STRUCTURED_CAPTION_PARSERS
+                ):
                     transcript_warnings.append(
                         "This meeting has a caption file, but in a format we can't "
                         f"read at all yet — you can view it directly: {caption_urls[0]}"
@@ -232,7 +251,9 @@ class SwagitAssetFinder(AssetFinder):
         # showed no language at all on the /meetings listing since this was
         # never set, silently masked on the meeting page itself by that
         # page's own `page_lang` "or en" fallback (archive/main.py).
-        transcript_language = detect_language_from_texts(s.text for s in segments) if segments else None
+        transcript_language = (
+            detect_language_from_texts(s.text for s in segments) if segments else None
+        )
 
         # Chapter markers are fetched independently of whether a real
         # transcript was found -- useful navigation context either way,
@@ -266,7 +287,9 @@ class SwagitAssetFinder(AssetFinder):
         marks.sort(key=lambda m: m[0])
         for i, (start, text) in enumerate(marks):
             end = marks[i + 1][0] if i + 1 < len(marks) else start
-            agenda_items.append(TranscriptSegment(start=start, end=max(end, start), text=text))
+            agenda_items.append(
+                TranscriptSegment(start=start, end=max(end, start), text=text)
+            )
 
         return ResolvedMeeting(
             platform=self.platform_name,
@@ -291,7 +314,9 @@ class SwagitAssetFinder(AssetFinder):
         (new, speculative) path runs."""
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.get(caption_url, timeout=aiohttp.ClientTimeout(total=20)) as response:
+                async with session.get(
+                    caption_url, timeout=aiohttp.ClientTimeout(total=20)
+                ) as response:
                     if response.status != 200:
                         return None, None
                     raw = await response.read()
@@ -329,7 +354,9 @@ class SwagitAssetFinder(AssetFinder):
             if date_match:
                 for fmt in ("%b %d, %Y", "%B %d, %Y"):
                     try:
-                        date = datetime.strptime(date_match.group(1).replace(".", ""), fmt).strftime("%Y-%m-%d")
+                        date = datetime.strptime(
+                            date_match.group(1).replace(".", ""), fmt
+                        ).strftime("%Y-%m-%d")
                         break
                     except ValueError:
                         continue

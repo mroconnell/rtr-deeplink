@@ -44,9 +44,14 @@ def test_ok_on_cache_hit_with_real_content(monkeypatch):
     monkeypatch.setenv("UPTIME_CHECK_URL", "https://example.new.swagit.com/videos/1")
 
     async def fake_get_cached_resolution(normalized):
-        return {"resolution_id": 1, "payload": {"segments": [{"start": 0, "end": 1, "text": "hi"}]}}
+        return {
+            "resolution_id": 1,
+            "payload": {"segments": [{"start": 0, "end": 1, "text": "hi"}]},
+        }
 
-    monkeypatch.setattr(app.main.crud, "get_cached_resolution", fake_get_cached_resolution)
+    monkeypatch.setattr(
+        app.main.crud, "get_cached_resolution", fake_get_cached_resolution
+    )
 
     response = client.get("/api/health/resolve-check")
 
@@ -58,9 +63,19 @@ def test_503_on_cache_hit_with_no_content(monkeypatch):
     monkeypatch.setenv("UPTIME_CHECK_URL", "https://example.new.swagit.com/videos/1")
 
     async def fake_get_cached_resolution(normalized):
-        return {"resolution_id": 1, "payload": {"segments": [], "agenda_items": [], "video_url": None, "agenda_link": None}}
+        return {
+            "resolution_id": 1,
+            "payload": {
+                "segments": [],
+                "agenda_items": [],
+                "video_url": None,
+                "agenda_link": None,
+            },
+        }
 
-    monkeypatch.setattr(app.main.crud, "get_cached_resolution", fake_get_cached_resolution)
+    monkeypatch.setattr(
+        app.main.crud, "get_cached_resolution", fake_get_cached_resolution
+    )
 
     response = client.get("/api/health/resolve-check")
 
@@ -74,10 +89,14 @@ def test_ok_on_cache_miss_with_successful_live_resolve(monkeypatch):
     async def fake_get_cached_resolution(normalized):
         return None
 
-    monkeypatch.setattr(app.main.crud, "get_cached_resolution", fake_get_cached_resolution)
+    monkeypatch.setattr(
+        app.main.crud, "get_cached_resolution", fake_get_cached_resolution
+    )
     monkeypatch.setattr(
         "app.main.get_finder",
-        lambda platform: _FakeFinder(result=_FakeResolvedMeeting(segments=[{"start": 0, "end": 1, "text": "hi"}])),
+        lambda platform: _FakeFinder(
+            result=_FakeResolvedMeeting(segments=[{"start": 0, "end": 1, "text": "hi"}])
+        ),
     )
 
     response = client.get("/api/health/resolve-check")
@@ -92,8 +111,12 @@ def test_503_on_cache_miss_with_resolve_exception(monkeypatch):
     async def fake_get_cached_resolution(normalized):
         return None
 
-    monkeypatch.setattr(app.main.crud, "get_cached_resolution", fake_get_cached_resolution)
-    monkeypatch.setattr("app.main.get_finder", lambda platform: _FakeFinder(error=RuntimeError("boom")))
+    monkeypatch.setattr(
+        app.main.crud, "get_cached_resolution", fake_get_cached_resolution
+    )
+    monkeypatch.setattr(
+        "app.main.get_finder", lambda platform: _FakeFinder(error=RuntimeError("boom"))
+    )
 
     response = client.get("/api/health/resolve-check")
 

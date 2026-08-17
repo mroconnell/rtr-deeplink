@@ -46,7 +46,9 @@ class CivicPlusAssetFinder(AssetFinder):
 
     async def resolve(self, url: str) -> ResolvedMeeting:
         async with aiohttp.ClientSession(headers=self.headers) as session:
-            async with session.get(url, allow_redirects=True, timeout=aiohttp.ClientTimeout(total=30)) as response:
+            async with session.get(
+                url, allow_redirects=True, timeout=aiohttp.ClientTimeout(total=30)
+            ) as response:
                 response.raise_for_status()
                 final_url = str(response.url)
                 html = await response.text()
@@ -82,7 +84,11 @@ class CivicPlusAssetFinder(AssetFinder):
             if not media_cell:
                 continue
             video_link = next(
-                (a for a in media_cell.find_all("a", href=True) if detect_platform(a["href"]) != "unknown"),
+                (
+                    a
+                    for a in media_cell.find_all("a", href=True)
+                    if detect_platform(a["href"]) != "unknown"
+                ),
                 None,
             )
             if not video_link:
@@ -90,20 +96,28 @@ class CivicPlusAssetFinder(AssetFinder):
 
             title = "Untitled meeting"
             first_td = row.find("td")
-            title_link = first_td.find("p").find("a") if first_td and first_td.find("p") else None
+            title_link = (
+                first_td.find("p").find("a")
+                if first_td and first_td.find("p")
+                else None
+            )
             if title_link and title_link.get_text(strip=True):
                 title = title_link.get_text(strip=True)
 
             date = ""
             strong = row.find("h3").find("strong") if row.find("h3") else None
             if strong:
-                date = self._parse_date(strong.get_text(" ", strip=True)) or strong.get_text(" ", strip=True)
+                date = self._parse_date(
+                    strong.get_text(" ", strip=True)
+                ) or strong.get_text(" ", strip=True)
 
-            candidates.append({
-                "title": title,
-                "date": date,
-                "url": urljoin(page_url, video_link["href"]),
-            })
+            candidates.append(
+                {
+                    "title": title,
+                    "date": date,
+                    "url": urljoin(page_url, video_link["href"]),
+                }
+            )
         return candidates
 
     @staticmethod
