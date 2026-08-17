@@ -4,13 +4,15 @@ app/utils/jurisdiction_enrich.py loads at import time.
 
 Source files are official US Census Bureau Gazetteer/relationship files --
 public domain (17 U.S.C. Section 105), no login/API key needed. Download
-these four before running (not checked into this repo -- multi-MB raw
+these five before running (not checked into this repo -- multi-MB raw
 files, only the trimmed output below is committed):
 
   Counties gazetteer:
     https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2024_Gazetteer/2024_Gaz_counties_national.zip
   Places (cities/towns) gazetteer:
     https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2024_Gazetteer/2024_Gaz_place_national.zip
+  County subdivisions (townships etc.) gazetteer:
+    https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2024_Gazetteer/2024_Gaz_cousubs_national.zip
   ZCTA-to-county relationship file:
     https://www2.census.gov/geo/docs/maps-data/data/rel2020/zcta520/tab20_zcta520_county20_natl.txt
   ZCTA-to-place relationship file:
@@ -115,6 +117,36 @@ def build_places(source_dir: Path) -> None:
     print(f"places.csv: {len(out_rows)} rows")
 
 
+def build_county_subdivisions(source_dir: Path) -> None:
+    """WO-16 (BACKLOG.md, 2026-08-16): townships/county subdivisions
+    (Upper Providence PA, Greenburgh NY, Upper Dublin PA -- all confirmed
+    real, live-flagged jurisdiction lookup misses) aren't covered by
+    counties.csv or places.csv at all -- Census tracks them as a third,
+    separate gazetteer (COUSUB), not a subset of either. FUNCSTAT "A"
+    only (active government providing primary general-purpose functions)
+    -- deliberately narrower than places.csv's "A"/"B"/"F" (that
+    expansion was earned by real confirmed consolidated-government
+    examples; COUSUB's own F rows are literally placeholder "County
+    subdivisions not defined" junk, and this table's other codes (G, C,
+    B -- also real townships/towns on a quick sample) have no
+    BACKLOG-confirmed real example needing them yet, so left out rather
+    than guessed at, same "verify before generalizing" convention as
+    every other table here)."""
+    rows = _read_tsv_from_zip_or_dir(
+        source_dir, "2024_Gaz_cousubs_national.zip", "2024_Gaz_cousubs_national.txt"
+    )
+    out_rows = [
+        (r["NAME"].strip(), r["USPS"].strip()) for r in rows if r["FUNCSTAT"] == "A"
+    ]
+    with open(
+        OUT_DIR / "county_subdivisions.csv", "w", newline="", encoding="utf-8"
+    ) as f:
+        writer = csv.writer(f)
+        writer.writerow(["name", "state"])
+        writer.writerows(sorted(out_rows))
+    print(f"county_subdivisions.csv: {len(out_rows)} rows")
+
+
 def build_zcta_county(source_dir: Path, fips_to_usps: dict) -> None:
     rows = _read_pipe_delimited(source_dir, "tab20_zcta520_county20_natl.txt")
     out_rows = []
@@ -166,5 +198,6 @@ if __name__ == "__main__":
     source = Path(sys.argv[1])
     fips_to_usps = build_counties(source)
     build_places(source)
+    build_county_subdivisions(source)
     build_zcta_county(source, fips_to_usps)
     build_zcta_place(source, fips_to_usps)

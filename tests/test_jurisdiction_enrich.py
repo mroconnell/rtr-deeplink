@@ -335,6 +335,23 @@ def test_table_lookup_strips_a_hawaiian_okina():
     assert je._table_lookup("Kauaʻi County") == ("county", ["HI"])
 
 
+def test_table_lookup_recognizes_a_township_county_subdivision():
+    # WO-16 (BACKLOG.md, 2026-08-16): townships/county subdivisions
+    # weren't in any table at all before this -- Upper Providence PA,
+    # Greenburgh NY, and Upper Dublin PA are all confirmed real, live-
+    # flagged as lookup misses in the 2026-08-15 Census-baseline audit.
+    # Upper Providence Township genuinely exists twice in PA (Montgomery
+    # and Delaware counties, both real, confirmed against the Census
+    # gazetteer) -- still resolves unambiguously since both instances
+    # agree on the state.
+    assert je._table_lookup("Upper Providence Township") == ("subdivision", ["PA"])
+    assert je._table_lookup("Greenburgh") == ("subdivision", ["NY"])
+    assert (
+        je.finalize_jurisdiction("Township of Upper Dublin").confidence == "validated"
+    )
+    assert je.finalize_jurisdiction("Greenburgh, NY").confidence == "validated"
+
+
 def test_finalize_jurisdiction_repairs_trailing_bleed():
     # Real value, Hercules CA's Granicus page -- the still-open
     # granicus.py body-regex bug (BACKLOG.md) let agenda-heading text run

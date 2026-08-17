@@ -408,7 +408,21 @@ anything) to build against it.
     flagged "townships/school districts aren't in the places table"
     gap above, compounded by the acronym-humanization bug here).
   - **Two pages store a literal date as the jurisdiction** ("July 21,
-    2026", "August 11, 2026") — source adapter not yet traced.
+    2026", "August 11, 2026") — source adapter not yet traced. **Checked
+    2026-08-16 (WO-16): no longer reproducible.** A fresh full scan of
+    production `/coverage` (843 rows, up from 649 at the original audit —
+    fetched live via `curl`, not guessed) found zero jurisdiction values
+    matching a plain "Month Day, Year" shape, and neither exact date
+    string appears anywhere in the page. Most likely explanation: these
+    were Granicus/eScribe bleed cases the same shape as the ones WO-14
+    fixed (a "City of X" match running on into unrelated agenda date
+    text), incidentally closed by that fix or a peer session's parallel
+    work rather than independently root-caused here. Not claiming this as
+    a verified fix — the original two URLs were never recorded and
+    `baseline_validation.csv` no longer exists in any session's
+    scratchpad, so there's no way to confirm *why* they're gone, only
+    that they are. Worth watching for a recurrence next time this kind of
+    scan is run, not reopening speculatively now.
   - ~~**`app/utils/jurisdiction_data/places.csv` is missing every Census
     "(balance)" consolidated city**~~ **Fixed 2026-08-15 — full detail in
     `BACKLOG_DONE.md`.**
@@ -422,14 +436,33 @@ anything) to build against it.
     `_strip_okina()` candidate (Hawaiian ʻokina/apostrophe variants —
     "Kauai County" in-table vs "Kauaʻi County" on pages). New tests in
     `tests/test_jurisdiction_enrich.py`.
-  - **Townships/county-subdivisions aren't in the places table at all**
-    (Upper Providence PA, Greenburgh NY, Upper Dublin PA) — Census
-    publishes a county-subdivision gazetteer that would cover them;
-    same build-script extension as the school-district idea parked in
-    "Deprioritized ideas" below.
+  - ~~**Townships/county-subdivisions aren't in the places table at
+    all**~~ **Fixed 2026-08-16 (WO-16) — full detail in
+    `BACKLOG_DONE.md`, including a real new collision this surfaced**
+    (a genuine, obscure "Oshawa Township, MN" now shares a name with the
+    much-better-known Oshawa, ON — a real, if narrow, structural
+    limitation of the whole validate-against-Census-tables approach,
+    documented rather than fixed since it doesn't actually corrupt the
+    stored jurisdiction text, only its internal confidence tag — see the
+    `BACKLOG_DONE.md` entry for why).
   - **One Canadian jurisdiction** (Elliot Lake, ON — eScribe) — the
-    tables are US-only by construction; needs an exemption flag, not a
-    wrong-country lookup.
+    tables are US-only by construction. **Checked 2026-08-16 (WO-16): no
+    live bug found.** Directly tested `finalize_jurisdiction()` against
+    "Elliot Lake"/"Elliot Lake, ON" shapes — both correctly grade
+    `"unverified"` (kept as-given, not rejected, not force-fit to a wrong
+    US state) and `enrich_jurisdiction_text()` doesn't attempt a
+    wrong-country ZIP/domain lookup either. `"unverified"` is
+    `JurisdictionResult`'s own documented correct category for "a real
+    entity type no national table covers" (school districts, MPOs, and —
+    per this finding — non-US jurisdictions generally), and
+    `jurisdiction_confidence` is explicitly a diagnostic-only field with
+    zero UI surface (`JURISDICTION_METADATA_PLAN.md`), so there's no
+    user-visible symptom to fix. The "exemption flag" this bullet
+    originally asked for would matter for a future re-run of the
+    Census-baseline *validation audit script* specifically (so Elliot
+    Lake doesn't inflate its "not in table" count) — that script itself
+    no longer exists in any session's scratchpad to extend, so left as a
+    note for whoever rebuilds it next, not a runtime code change.
   - **Validation caught one subtly wrong stored name**: "Bainbridge, WA"
     — the real WA city is Bainbridge *Island*; plain "Bainbridge" only
     exists in GA/IN/NY/OH, so the table's state-mismatch flag was
