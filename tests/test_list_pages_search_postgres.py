@@ -147,11 +147,16 @@ async def test_quoted_phrase_requires_adjacent_match():
 
 
 async def test_fuzzy_word_similarity_narrowing_catches_a_real_typo():
-    # The regression risk word_similarity() (not similarity()) exists to
-    # avoid: comparing the whole corpus against a short word with plain
-    # similarity() is dominated by corpus length and matches almost
-    # nothing. This confirms the SQL narrowing step doesn't strip out a
-    # genuine typo'd match before matches(fuzzy=True) ever sees it.
+    # Black-box behavioral test -- still valid even though the mechanism
+    # behind it has changed twice since this was written: originally SQL
+    # word_similarity() narrowing feeding Python's matches(fuzzy=True)
+    # (PR #124), now Search Step 2b's trigram-indexed search_vocabulary
+    # table (see crud._fuzzy_keyword_conditions_via_vocabulary() and
+    # tests/test_search_fuzzy_vocab.py for that mechanism's own coverage)
+    # when available, falling back to the original Python-streamed
+    # matches() check otherwise. This test only asserts the outcome --
+    # a real typo still finds the real match -- regardless of which path
+    # produced it.
     url = "https://example.granicus.com/player/clip/pg-search-fuzzy"
     await crud.ingest_resolution(
         _payload(
