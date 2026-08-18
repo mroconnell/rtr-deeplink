@@ -625,6 +625,68 @@ anything) to build against it.
   `archive/`. Found 2026-08-17 while investigating the Search Console
   flags above — first noticed as `curl -I /coverage` → 405.
 
+  **Real-world impact confirmed 2026-08-18** (daily inbox-triage
+  Routine's second run, via UptimeRobot alert): this bug left the
+  `rtr-deeplink.onrender.com/api/health/resolve-check` monitor — the one
+  purpose-built to catch a real resolve-path outage (see
+  `BACKLOG_DONE.md`) — in a continuous DOWN state for **19h33m**
+  (2026-08-16 13:26:05 → 2026-08-17 08:59:06 UTC), root-caused by
+  UptimeRobot itself as "HTTP 405 - Method Not Allowed." No evidence the
+  resolve path was actually broken for that whole window (the route runs
+  a real resolve on GET, and nothing else points at a genuine outage),
+  but for nearly 20 hours a real outage during that window would have
+  gone unnoticed. Worth reprioritizing given this concrete
+  monitoring-blackout evidence, even though nothing user-visible failed.
+
+- **[HUMAN] Render account bandwidth limit reached — real, current cost
+  exposure, found by the daily inbox-triage Routine's 2026-08-18 run.**
+  Render's Hobby-plan bandwidth (5GB/month, shared account-wide across
+  `rtr-deeplink`, `rtr-deeplink-archive`, and the worker) hit "Approaching
+  Bandwidth Limit" (>70% used) 2026-08-17 12:13 UTC, then "Reached the
+  Bandwidth Limit" (100%) 2026-08-18 12:17 UTC — roughly 30% of a whole
+  month's allowance used in about 24 hours. Overage is now auto-billed at
+  $15 per additional 100GB, uncapped, resetting at the start of next
+  calendar month. **Open question for Ryan, not resolvable from here**:
+  is this expected (real traffic growth from the first-10
+  outreach/clips campaign — arguably good news) or something to check (a
+  proxy/redirect loop, or the Archive serving full video bytes through
+  `archive_client.py`'s proxy rather than just embedding a player/link)?
+  Render's dashboard bandwidth breakdown would answer this in under a
+  minute but requires the actual dashboard login.
+
+- **[HUMAN] Archive service instability, 2026-08-17 ~14:10-22:04 UTC —
+  mostly already-explained, but two pieces aren't, found by the daily
+  inbox-triage Routine's 2026-08-18 run.** Sentry showed a cluster of
+  production errors that evening: "Unclosed client session"/"Unclosed
+  connection" (resolver's `/api/health` complaining about
+  `archive_client.py` connections to `rtr-deeplink-archive.onrender.com`
+  never closing), a proxy `TimeoutError`
+  (`app/archive_client.py:362`, `proxy_get()` on `/meetings`),
+  "RuntimeError: Response content shorter than Content-Length" (Archive's
+  `/`, almost certainly Render's own health probe), and
+  "CannotConnectNowError: the database system is shutting down" (Archive's
+  `/api/health` DB connection). Most of this cluster is very likely
+  explained by `BACKLOG_DONE.md`'s already-documented WO-10 outage that
+  same evening (PR #116's model column deploying ~13 minutes ahead of its
+  `ALTER TABLE`, causing `UndefinedColumnError` on every `meeting_pages`
+  read — Sentry's own error for that is timestamped 16:26 UTC, right in
+  the middle of this cluster). **Two things aren't accounted for by that
+  explanation**: (a) four separate "Web Service rtr-deeplink-archive
+  exceeded its memory limit" restart emails fired at 14:10, 14:15, 14:23,
+  and 17:08 UTC — the first one **nearly 2.5 hours before** the first
+  `UndefinedColumnError` alert (16:26 UTC), so an OOM-driven trigger
+  *preceding* (and possibly contributing to) the schema-read errors is a
+  real, currently-unexplained possibility, not just downstream fallout
+  from them; (b) WO-10's own fix deploy (PR #156) itself failed to deploy
+  at 23:54:28 UTC that same evening ("We encountered an error during the
+  deploy process... your latest changes may not be live") — though
+  `render.yaml` on `main` today confirms `preDeployCommand` is live, so a
+  later attempt clearly succeeded, and the first attempt's own failure
+  reason was never surfaced. **Open question for Ryan**: worth a quick
+  look at Render's memory graph for the Archive around 14:00-17:00 UTC on
+  2026-08-17 to check whether OOM genuinely preceded/triggered the
+  schema-read cascade, or whether the timing is coincidental.
+
 - **[JUST-DO-IT] `is_likely_garbled()` only samples the transcript's first 4000
   characters, so a transcript that starts clean and degrades later is
   invisible to it — found 2026-08-16 via a DB skim for transcript-quality
@@ -1101,10 +1163,13 @@ anything) to build against it.
   itself `noindex`es**~~ **Fixed 2026-08-17 — full detail in
   `BACKLOG_DONE.md`'s "Sitemap no longer lists noindexed
   `generic_fallback` pages" entry.** The separate "Page indexed without
-  content" reason from the same 2026-08-17 alert batch is NOT explained by
-  this — still open, see `CLAUDE_BACKLOG.md`'s 2026-08-17 entry for that
-  one and for a third reason ("Page with redirect", alert received
-  2026-08-16) that hasn't been investigated yet.
+  content" reason from the same 2026-08-17 alert batch is not explained
+  by this fix, but is likely resolved separately by PR #136's empty-page
+  exclusion (also shipped 2026-08-17, see `BACKLOG_DONE.md`'s "Empty
+  ('zero-value') meeting pages" entry) — not confirmed, needs a Search
+  Console re-crawl to clear; see `CLAUDE_BACKLOG.md`'s 2026-08-17 entry
+  for the updated detail, and for the third reason ("Page with redirect",
+  alert received 2026-08-16) that's still genuinely uninvestigated.
 
 - **YouTube-backed meetings' transcripts run through
   `scripts/fetch_youtube_transcripts.py` on a daily `launchd` schedule

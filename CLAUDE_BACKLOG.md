@@ -449,24 +449,36 @@ site-wide for `redtaperecordings.com`:
   `noindex`es exactly those `generic_fallback` (`platform == "unknown"`)
   pages. Full write-up and fix direction now in `BACKLOG.md`, right after
   the existing 2026-08-12 Search Console entry.
-- **"Page indexed without content" — still open, unconfirmed, but with a
-  concrete named candidate now (found by the daily inbox-triage Routine's
-  2026-08-17 second-pass run).** `meeting_page.html`'s transcript text is
-  confirmed server-rendered (verified 2026-08-14, see "SEO /
-  LLM-discoverability" above), which rules out the obvious
-  client-side-render explanation for `/m/*` pages specifically. More
-  plausible: a real meeting with neither transcript nor agenda items
-  rendering as a genuinely thin page — title, date, video embed, no real
-  text body. This file's own "Agenda/minutes PDF text extraction" section
-  already documents exactly this shape on a real page: the Napa City
-  Council/Housing Authority case, which today "has literally nothing
-  describing what was discussed beyond the raw video and a bare link."
-  Not confirmed as the actual page(s) Search Console flagged — just the
+- **"Page indexed without content" — likely resolved by PR #136's
+  empty-page exclusion (shipped 2026-08-17, same day as this finding);
+  not confirmed done, needs a Search Console re-crawl to confirm the flag
+  actually clears.** `meeting_page.html`'s transcript text is confirmed
+  server-rendered (verified 2026-08-14, see "SEO / LLM-discoverability"
+  above), which rules out the obvious client-side-render explanation for
+  `/m/*` pages specifically. The plausible shape was a real meeting with
+  neither transcript nor agenda items rendering as a genuinely thin
+  page — title, date, video embed, no real text body. This file's own
+  "Agenda/minutes PDF text extraction" section already documents exactly
+  this shape on a real page: the Napa City Council/Housing Authority
+  case, which today "has literally nothing describing what was discussed
+  beyond the raw video and a bare link." This bullet originally framed
+  the fix as a choice between "exclude truly-empty pages from the
+  sitemap" and "just a handful of real thin meetings that improve as
+  caption/agenda coverage grows" — `BACKLOG_DONE.md`'s "Empty
+  ('zero-value') meeting pages excluded from browse/sitemap/feed" entry
+  (PR #136) built the former: pages with no video, no agenda, and no
+  transcript version (17 of ~1,200 live at the time) now get `noindex`ed
+  and excluded from `/meetings`, the sitemap, and the feed at query time
+  (`_is_empty_page_condition()` in `archive/db/crud.py`, the noindex meta
+  tag in `archive/templates/meeting_page.html`), and that entry
+  explicitly names this Search Console finding as the target. Still not
+  confirmed as the actual page(s) Search Console flagged — just the
   closest known real example of the shape that would produce this
-  symptom. Needs the actual report's URL list to confirm before deciding
-  between "exclude truly-empty pages from the sitemap" vs. "just a
-  handful of real thin meetings that improve as caption/agenda coverage
-  grows."
+  symptom, and the auth-walled Search Console dashboard itself hasn't
+  been re-checked. See `BACKLOG.md`'s matching ClerkBase-theory
+  `[HUMAN]` entry, which already carries the same "closes on recrawl with
+  no further code change, if the flagged URLs turn out to be this shape"
+  caveat.
 - **"Page with redirect" — application code ruled out (same 2026-08-17
   second-pass run), still open on the real cause.** Its own separate
   alert, received 2026-08-16, one day before the other two. Grepped both
