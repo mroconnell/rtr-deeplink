@@ -583,6 +583,9 @@ async def transcribe_meeting(
         "video_format": result.video_format,
         "platform": result.platform,
         "external_id": result.external_id,
+        "title": result.title,
+        "date": result.date,
+        "jurisdiction": result.jurisdiction,
     }
 
 
@@ -652,6 +655,9 @@ async def process_one(
         "platform": result["platform"],
         "source_url": page["source_url_normalized"],
         "external_id": result.get("external_id") or page.get("external_id"),
+        "title": result.get("title"),
+        "date": result.get("date"),
+        "jurisdiction": result.get("jurisdiction"),
         "video_url": result["video_url"],
         "video_format": result["video_format"],
         "segments": result["segments"],
