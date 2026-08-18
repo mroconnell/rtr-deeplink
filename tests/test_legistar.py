@@ -75,7 +75,7 @@ async def test_single_meeting_delegates_to_granicus():
         result = await LegistarAssetFinder().resolve(meeting_url)
 
     assert result.platform == "granicus"
-    assert result.external_id == "granicus:1504"
+    assert result.external_id == "granicus:cityofmaricopa.granicus.com:1504"
 
 
 def test_find_video_links_ignores_audio_only_variants():
@@ -141,7 +141,7 @@ async def test_charlotte_single_meeting_with_audio_links_delegates_to_granicus()
     # Real bug this regresses against: without the fix, this raised
     # CalendarPageError instead of ever reaching a real resolve.
     assert result.platform == "granicus"
-    assert result.external_id == "granicus:3692"
+    assert result.external_id == "granicus:charlottenc.granicus.com:3692"
 
 
 async def test_nyc_calendar_page_raises_pick_list_via_telerik_onclick():
@@ -572,7 +572,7 @@ async def test_falls_back_to_a_plain_granicus_link_when_no_videolink_found():
         result = await LegistarAssetFinder().resolve(url)
 
     assert result.platform == "granicus"
-    assert result.external_id == "granicus:1504"
+    assert result.external_id == "granicus:cityofmaricopa.granicus.com:1504"
     assert result.source_url == url
 
 

@@ -229,6 +229,30 @@ async def _find_existing_page(
             return page
 
     if external_id:
+        # NOTE: external_id is trusted as-is for this match -- it must
+        # already be globally unique across every real source it can come
+        # from, not just unique within one adapter's own output. A bare
+        # per-customer clip/event number on a multi-tenant platform (e.g.
+        # civicclerk.py's/granicus.py's own event/clip IDs, which restart
+        # near 1 for every separate customer) is NOT globally unique and
+        # must be host-namespaced by the adapter itself -- see those two
+        # files' own external_id comments for the real, confirmed-live
+        # 2026-08-18 incident this describes (multiple unrelated cities
+        # silently merged onto one row, each overwriting the other's
+        # title/date/jurisdiction, see BACKLOG.md).
+        #
+        # A netloc cross-check was tried here as a second line of defense
+        # and reverted: `source_url` is *deliberately* set to a different
+        # host than the real content for two legitimate existing cases --
+        # legistar.py's `fallback.source_url = url` keeps the original
+        # Legistar URL while platform/external_id point at the real
+        # Granicus host, and primegov.py's
+        # `YouTubeAssetFinder.resolve_video_id(video_id, source_url=url)`
+        # does the same for the original PrimeGov URL vs. youtube.com. A
+        # netloc check would have silently broken both of those intended
+        # cross-host merges into duplicate pages instead. Globally-unique
+        # external_id at the adapter level is the real fix; there's no
+        # cheap, generic way to also verify it here.
         page = (
             (
                 await session.execute(

@@ -712,7 +712,19 @@ class GranicusAssetFinder(AssetFinder):
             return ResolvedMeeting(
                 platform=self.platform_name,
                 source_url=url,
-                external_id=f"granicus:{clip_id}" if clip_id else None,
+                # Namespaced by host, not just the bare clip_id -- Granicus
+                # is multi-tenant and every customer numbers clips from near
+                # 1 independently, so two different cities routinely share
+                # the same clip_id. Real bug, confirmed live 2026-08-18: an
+                # unnamespaced external_id let _find_existing_page()
+                # (archive/db/crud.py) match e.g. "granicus:453" across 3
+                # unrelated counties and silently overwrite each other's
+                # title/date/jurisdiction on one shared row. See BACKLOG.md.
+                external_id=(
+                    f"granicus:{urlparse(final_url).netloc}:{clip_id}"
+                    if clip_id
+                    else None
+                ),
                 transcript_language=transcript_language,
                 title=metadata["title"],
                 date=metadata["date"],

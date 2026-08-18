@@ -288,7 +288,15 @@ class CivicClerkAssetFinder(AssetFinder):
         return ResolvedMeeting(
             platform=self.platform_name,
             source_url=url,
-            external_id=f"civicclerk:{event_id}",
+            # Namespaced by host, not just the bare event ID -- CivicClerk
+            # is multi-tenant and every customer numbers events from near 1
+            # independently, so two different cities routinely share the
+            # same event_id. Real bug, confirmed live 2026-08-18: unnamespaced
+            # external_id let _find_existing_page() (archive/db/crud.py)
+            # match "civicclerk:395" across 3 unrelated cities (Montrose CO /
+            # Ashland WI / Liberty MO) and silently overwrite each other's
+            # title/date/jurisdiction on one shared row. See BACKLOG.md.
+            external_id=f"civicclerk:{parsed.netloc}:{event_id}",
             title=title,
             date=date,
             jurisdiction=jurisdiction,

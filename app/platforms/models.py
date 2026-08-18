@@ -29,7 +29,11 @@ class ResolvedMeeting(BaseModel):
     platform: str
     source_url: str
     external_id: Optional[str] = (
-        None  # namespaced e.g. "granicus:52945"; None until an adapter populates it
+        None  # namespaced by host, e.g. "granicus:napacity.granicus.com:52945" --
+        # must include the host for any multi-tenant platform (a bare
+        # per-customer clip/event number collides across customers, see
+        # civicclerk.py's/granicus.py's own external_id comments); None
+        # until an adapter populates it
     )
     title: Optional[str] = None
     date: Optional[str] = None
