@@ -6,6 +6,146 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Jurisdiction-bleed, confirmed cross-platform — Canadian data table + Title-Case bleed fix [Done 2026-08-17]
+
+BACKLOG.md's "Jurisdiction-bleed, confirmed cross-platform" entry
+root-caused two independent causes behind ~27 confirmed real bleed
+examples; both fixes below were built and verified against those real
+strings, not synthetic ones.
+
+**Fix #1 — real Canadian city/town data.** `scripts/build_jurisdiction_data.py`
+gained `build_canada_places()`, sourced from Statistics Canada's own
+Standard Geographical Classification (SGC) 2021 "Structure" file
+(`https://www.statcan.gc.ca/eng/statistical-programs/document/sgc-cgt-2021-structure-eng.csv`
+— public, no login needed, confirmed live by downloading it directly this
+session). Every "Level 4 / Census subdivision" row (5,161 total, 5,028
+unique after dedup) is a real Canadian municipal-level government —
+merged directly into the SAME `app/utils/jurisdiction_data/places.csv`
+the US data already lives in (confirmed by reading
+`_load_name_state_table()` directly: fully data-agnostic, zero code
+changes needed there), not a separate table. Confirmed zero 2-letter
+abbreviation collision between the 13 province/territory codes and 50 US
+state codes, as the original entry predicted. One real *name* collision
+did surface and required updating an existing test:
+`test_table_lookup_recognizes_a_spelled_out_saint` — "St. Paul" is now
+ambiguous between the Minnesota city and a real Alberta town, exactly the
+"extends for free" ambiguity-safety the original entry called out, not a
+bug. Deliberately NOT split into a separate Canadian "counties" table —
+Canada's census-subdivision level doesn't cleanly separate into "city" vs
+"county" government the way US places.csv/counties.csv do, and every
+confirmed real bleed case is a plain city/town name; revisit if a real
+county-shaped Canadian case turns up. Deliberately NOT accent-folded —
+Canadian names are stored exactly as StatsCan spells them (Québec,
+Montréal, Trois-Rivières), so an English-language page spelling these
+without the French diacritics won't match today; no real confirmed bleed
+case needs this yet (every one is a plain-ASCII English city name), left
+as an honestly-documented gap rather than untested guessing.
+
+**Fix #2 — Title-Case/ALL-CAPS word-run signal in `_looks_like_bleed()`.**
+Added `_MIN_BLEED_WORD_RUN = 4` (`app/utils/jurisdiction_enrich.py`): once
+a discarded trim-repair tail contains zero lowercase-initial words (else
+the existing check already fires), a tail of 4+ words is now also treated
+as bleed. 4 is the exact real gap between the shortest confirmed real
+bleed tail (4 words: Sarasota's "Legacy Business PLEDGE OF", Hampton's
+"Zoning Ordinance Regarding Standa") and the longest real tail that must
+stay untouched (3 words: "Washington School District" off "Lake", "Area
+Headquarters Authority" off "Bay", "Metropolitan Transportation
+Authority" off "Capital" — all three from BACKLOG.md's own named
+must-not-trim list — plus the pre-existing Broward MPO false-positive
+regression test's "That'S Identified", 2 words). Verified directly
+against all four before picking the threshold, not assumed.
+
+**Real verification, using the actual raw strings from BACKLOG.md's
+confirmed table (`tests/test_jurisdiction_enrich.py`, new tests added
+this pass), not invented ones:**
+- Newly repaired by Fix #1 alone: Mississauga ON, Oshawa ON, New
+  Westminster BC, Guelph ON, Thunder Bay ON, Lethbridge AB, Peterborough
+  ON (see below).
+- Newly repaired by Fix #1 + Fix #2 together: Sarasota FL, Hollywood FL,
+  Hampton VA, Gainesville FL, Kelowna BC, Delta BC.
+- Confirmed still NOT repaired (real, honestly-flagged residual gaps, not
+  silently claimed fixed):
+  - **Brampton ON ("Brampton Meeting") and the older Castle Rock CO
+    ("Town of Castle Rock Authorizing") cases** — both have a
+    single-word discarded tail ("Meeting"/"Authorizing"), below
+    `_MIN_BLEED_WORD_RUN`. A single capitalized word is genuinely
+    indistinguishable from a legitimate short suffix with this signal
+    alone (lowering the threshold to catch these would also wrongly trim
+    "Lake Washington School District" → "Lake", confirmed by direct
+    testing) — left open rather than risking that regression.
+    Locked in as expected/current behavior by
+    `test_finalize_jurisdiction_single_word_bleed_tails_remain_a_known_residual_gap`.
+  - **Brock Township ON** ("Township of Brock.pdf Pulled from Council
+    Information Index...") — a different bug neither fix targets: the
+    real place name "Brock" is glued directly to a filename
+    (`Brock.pdf`, no space), so no cut of the string ever isolates a
+    bare "Brock" token for `_table_lookup()` to validate. An extraction-
+    side artifact (something concatenated a PDF filename with no
+    separator), not a jurisdiction_enrich.py gap.
+  - **A newly surfaced risk, not previously flagged: Fix #1 can turn an
+    honestly-garbled "unverified" bleed string into a CONFIDENTLY WRONG
+    "repaired" one, when the bled text happens to contain a different,
+    unrelated but real Canadian city name.** Two real confirmed
+    instances: Shelburne ON's raw value ("Brantford regarding
+    Professional Activity") now repairs to "Brantford, ON" — a real
+    place, but the WRONG city (the meeting is Shelburne's, not
+    Brantford's). Uxbridge ON's raw value ("Peterborough Attachments")
+    stays unrepaired only incidentally (single-word tail "Attachments"
+    doesn't meet the fix #2 threshold) — if it had been long enough to
+    trigger, it would have confidently "repaired" to the wrong city
+    (Peterborough) the same way. Neither fix could plausibly have caught
+    this: distinguishing "a real city name" from "the CORRECT real city
+    name for this specific meeting" from text shape alone isn't solvable
+    by a heuristic like this one. This is an instance of a pre-existing,
+    accepted category of risk in the whole trim-repair design (the same
+    risk the already-shipped Sarasota/Hollywood-style false positives
+    carry), not something these two fixes newly introduced from nothing
+    — but it's the first time it's been confirmed live with real
+    examples, so it's called out explicitly rather than silently
+    absorbed into "fixed." Not addressed this pass — see BACKLOG.md for
+    the live entry.
+
+**The "unexplained" Peterborough case, re-checked directly against real
+code per the ask, not guessed:** calling `finalize_jurisdiction()` with
+the real (BACKLOG.md-truncated) raw string
+"Peterborough is committed to making meetings accessible for people of
+all abilities" already repairs correctly to "Peterborough" (confidence
+"repaired") using code that predates BOTH of tonight's fixes — turns out
+"Peterborough" already collided with a real US place, Peterborough town
+NH, just in the county-*subdivision* table (`_table_lookup()`'s
+validation check reads that table; `lookup_city_state()`'s state-filling
+check does not, which is why it came back state-less before tonight).
+This session could not reproduce BACKLOG.md's "still not trimmed" claim
+against current code — most likely explanation is the already-archived
+production page's stored value simply predates whatever earlier fix made
+this validate, and was never reprocessed (reprocessing already-archived
+pages was explicitly out of scope for this pass, see below). What Fix #1
+adds on top: an actual province now resolves too ("Peterborough, ON"),
+since "Peterborough" is unambiguous in the *place* table once Canada's
+entry is the only one there (the NH collision lives in a different table
+lookup_city_state() never consults).
+
+**Bonus, not the core ask: sizing a future backfill.** Added
+`GET /internal/jurisdiction/bleed-backfill-candidates`
+(`archive/main.py` + `crud.list_jurisdiction_bleed_backfill_candidates()`),
+same token-gated read-only-audit pattern as
+`/internal/transcription/hallucination-candidates` — re-runs
+`finalize_jurisdiction()` against every already-archived page's current
+stored value and reports which would come out differently. Built and
+unit-tested (`tests/test_jurisdiction_backfill_audit.py`) against the
+isolated test DB, but this session had no real production `DATABASE_URL`
+access (same constraint noted elsewhere in this file for Alembic), so
+the *actual* production count was never obtained — hitting this endpoint
+with the real `ARCHIVE_INGEST_TOKEN` is how to get it. Per the task's own
+scope boundary, no already-archived page's stored jurisdiction was
+bulk-modified this pass — this endpoint only sizes the question, a human
+decides whether/when to act on it.
+
+**Full test suite**: 986 passed, 9 skipped (pre-existing, unrelated), 0
+failed — `pytest` run clean after all changes, including the one
+pre-existing test updated for the new real "St. Paul" US/Canada
+collision.
+
 ## Coverage page — full sortable/filterable per-jurisdiction detail table [Done 2026-08-17]
 
 BACKLOG.md's "[IMPROVEMENT-ROUND] Coverage page" entry's real remaining

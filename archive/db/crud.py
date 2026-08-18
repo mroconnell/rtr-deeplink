@@ -959,6 +959,62 @@ async def list_hallucination_candidate_transcript_versions() -> list[dict]:
         return candidates
 
 
+async def list_jurisdiction_bleed_backfill_candidates() -> dict:
+    """Read-only audit, same role/template as
+    list_hallucination_candidate_transcript_versions() above: re-runs
+    finalize_jurisdiction() (app/utils/jurisdiction_enrich.py) against
+    every already-archived MeetingPage's CURRENT stored `jurisdiction`
+    value, to size how many pages a future backfill of the 2026-08-17
+    Canadian-data + Title-Case-bleed fixes (BACKLOG.md's
+    "Jurisdiction-bleed, confirmed cross-platform" entry) would actually
+    touch. This session's own fixes are code-only and were explicitly
+    scoped to NOT re-process already-archived pages -- see that entry --
+    so this just answers "how many, if someone chooses to" without
+    changing anything itself.
+
+    A row counts as a candidate when re-running finalize_jurisdiction()
+    on its own already-stored value produces a *different* jurisdiction
+    string or a *better* confidence tier than what's on the row today --
+    safe to compare directly since the stored value is already whatever
+    the LAST finalize_jurisdiction() run produced for it (see
+    _find_or_create_page()'s own call), so re-running it now is
+    idempotent for any row neither fix actually changes.
+    """
+    async with async_session() as session:
+        rows = (
+            await session.execute(
+                select(
+                    MeetingPage.id,
+                    MeetingPage.slug,
+                    MeetingPage.title,
+                    MeetingPage.jurisdiction,
+                    MeetingPage.jurisdiction_confidence,
+                    MeetingPage.source_url_normalized,
+                ).where(MeetingPage.jurisdiction.is_not(None))
+            )
+        ).all()
+
+        candidates = []
+        for page_id, slug, title, jurisdiction, confidence, source_url in rows:
+            netloc = urlparse(source_url).netloc if source_url else None
+            result = finalize_jurisdiction(jurisdiction, netloc=netloc)
+            if result.jurisdiction == jurisdiction and result.confidence == confidence:
+                continue
+            candidates.append(
+                {
+                    "meeting_page_id": page_id,
+                    "slug": slug,
+                    "title": title,
+                    "current_jurisdiction": jurisdiction,
+                    "current_confidence": confidence,
+                    "repaired_jurisdiction": result.jurisdiction,
+                    "repaired_confidence": result.confidence,
+                }
+            )
+
+        return {"total_checked": len(rows), "candidates": candidates}
+
+
 async def get_page_by_slug(slug: str) -> Optional[dict]:
     async with async_session() as session:
         page = (

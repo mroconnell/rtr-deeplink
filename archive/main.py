@@ -376,6 +376,29 @@ async def internal_transcription_hallucination_candidates(
     return {"candidates": await crud.list_hallucination_candidate_transcript_versions()}
 
 
+@app.get("/internal/jurisdiction/bleed-backfill-candidates")
+async def internal_jurisdiction_bleed_backfill_candidates(
+    authorization: Optional[str] = Header(None),
+):
+    """Read-only audit list: every already-archived MeetingPage whose
+    stored `jurisdiction` would come out differently (a different string,
+    or a better confidence tier) if re-run through today's
+    finalize_jurisdiction() (app/utils/jurisdiction_enrich.py) -- real
+    candidates for the 2026-08-17 Canadian-data + Title-Case-bleed fixes
+    (BACKLOG.md's "Jurisdiction-bleed, confirmed cross-platform" entry)
+    having already shipped to a live public page before either fix
+    existed. Same reasoning and structure as
+    GET /internal/transcription/hallucination-candidates above (that
+    audit's own template for this one) -- answers "how big would a
+    backfill be" without needing direct DATABASE_URL access. Never
+    re-writes anything itself; a human decides what's worth backfilling.
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    return await crud.list_jurisdiction_bleed_backfill_candidates()
+
+
 @app.get("/internal/lookup")
 async def internal_lookup(
     normalized_url: str, authorization: Optional[str] = Header(None)

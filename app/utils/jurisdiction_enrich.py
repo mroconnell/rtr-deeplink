@@ -18,7 +18,17 @@ Four tables:
     states (e.g. "Washington County" exists in 30+ states; "Detroit" is a
     real city in MI, OR, AL, *and* TX). A bare name lookup only ever
     resolves when the name is unique nationally; an ambiguous name
-    returns None rather than guessing.
+    returns None rather than guessing. places.csv also carries 5,028 real
+    Canadian census subdivisions (city/town/township-level governments,
+    added 2026-08-17 -- BACKLOG.md's "Jurisdiction-bleed, confirmed
+    cross-platform" entry), sourced from Statistics Canada's own Standard
+    Geographical Classification, merged into the SAME file/table rather
+    than a separate one -- see scripts/build_jurisdiction_data.py's
+    build_canada_places() for the source URL and why one merged table.
+    Confirmed real US/Canada name collisions exist ("St. Paul" -- both a
+    real Minnesota city and a real Alberta town) and correctly resolve to
+    `None` via the same ambiguity-safety as any other collision, no new
+    code needed for that.
   - zcta_county.csv / zcta_place.csv: which county/place(s) a ZIP
     (technically a ZCTA, the Census's ZIP proxy) overlaps, with the real
     overlap area (AREALAND_PART) for tie-breaking -- 30% of ZCTAs
@@ -718,22 +728,59 @@ def _table_lookup(name: str) -> Optional[Tuple[str, List[str]]]:
 
 _ROMAN_NUMERAL_RE = re.compile(r"\b[IVXLC]{2,6}\.?\b")
 
+# Residual gap fix, 2026-08-17 (BACKLOG.md's "Jurisdiction-bleed, confirmed
+# cross-platform" entry): a discarded tail that's pure Title-Case/ALL-CAPS
+# prose (e.g. "Legacy Business PLEDGE OF PUBLIC", "City Commission Regular
+# Meeting AGENDA Thursday") has zero lowercase/digit/roman-numeral signal,
+# so it used to slide past every check above undetected -- confirmed live
+# on 7 real Granicus/eScribe bleed cases (Sarasota, Hollywood, Hampton,
+# Gainesville, Kelowna, Delta, New Westminster -- see that entry). By the
+# time this constant is even consulted, every word in `tail` already
+# starts uppercase (any lowercase-initial word already returned True
+# above), so "N-or-more consecutive Title-Case/ALL-CAPS words" collapses
+# to a plain word-count check on the whole tail.
+#
+# 4 is not a guess: it's the exact gap between the shortest confirmed real
+# bleed tail (4 words -- Sarasota's "Legacy Business PLEDGE OF", Hampton's
+# "Zoning Ordinance Regarding Standa") and the longest real tail that must
+# NOT trigger a trim (3 words -- "Washington School District" off "Lake"
+# and "Area Headquarters Authority" off "Bay", both real legitimately-long
+# names already covered by
+# test_finalize_jurisdiction_never_trims_a_legitimately_long_real_name()/
+# test_extract_jurisdiction_chain_rejects_a_capitalization_walk_false_positive(),
+# both re-verified against this exact constant before it was picked).
+# Known, honestly-flagged residual gap this threshold does NOT close: a
+# handful of confirmed real bleed cases have a tail of only 1-2 words
+# (Brampton's "Meeting", Castle Rock's "Authorizing") -- too short to
+# distinguish from a legitimate short suffix with this signal alone, so
+# they're left unrepaired rather than risking the false-positive side
+# (see BACKLOG.md for the honest accounting).
+_MIN_BLEED_WORD_RUN = 4
+
 
 def _looks_like_bleed(tail: str) -> bool:
     """Sanity check on text a trim would discard: does it look like
     sentence/agenda bleed (lowercase prose, roman-numeral list markers,
-    digits) rather than part of a real longer name? Confirmed against the
-    2026-08-15 audit's full "repaired_by_trim" bucket (73 cases): every
-    one of the 16 cases this signal flags was a correct repair, and every
-    one of the 57 it left alone was a real, legitimately long name (e.g.
-    "Bay Area Headquarters Authority") that a bare trim would have
-    mangled -- so this gate is required, not optional, for the trim below
-    to be safe."""
+    digits, or an unusually long run of Title-Case/ALL-CAPS words) rather
+    than part of a real longer name? Confirmed against the 2026-08-15
+    audit's full "repaired_by_trim" bucket (73 cases): every one of the 16
+    cases the original (pre-2026-08-17) signals flagged was a correct
+    repair, and every one of the 57 they left alone was a real,
+    legitimately long name (e.g. "Bay Area Headquarters Authority") that a
+    bare trim would have mangled -- so this gate is required, not
+    optional, for the trim below to be safe. The word-count tier added
+    2026-08-17 (`_MIN_BLEED_WORD_RUN`) is calibrated the same way, against
+    real confirmed Title-Case/ALL-CAPS bleed tails and the real
+    legitimately-long names that must stay untouched -- see that
+    constant's own comment for the exact evidence."""
     if _ROMAN_NUMERAL_RE.search(tail):
         return True
     if re.search(r"\d", tail):
         return True
-    return any(w[0].islower() for w in tail.split() if w)
+    words = tail.split()
+    if any(w[0].islower() for w in words if w):
+        return True
+    return len(words) >= _MIN_BLEED_WORD_RUN
 
 
 def _trim_repair(name: str) -> Optional[Tuple[str, str]]:
