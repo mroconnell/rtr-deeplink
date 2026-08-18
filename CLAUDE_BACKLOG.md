@@ -262,6 +262,48 @@ request, deliberately not built as part of it — see `BACKLOG_DONE.md`'s
   phrase match against agenda text would miss most real discussion,
   which paraphrases rather than reads the agenda aloud) and whether this
   needs an LLM pass over the transcript or something simpler.
+- **Reader-facing low-confidence/quality flag on Whisper-generated
+  transcripts -- raised by the user 2026-08-18, alongside a real bug this
+  same conversation found and moved to `BACKLOG.md` (the
+  `detect_language_from_texts()` first-2000-characters mislabeling
+  entry).** Today `detect_hallucination_warnings()`'s output
+  (`transcript_warnings`, `_GARBLED_MARKER`) only feeds
+  `app/db/outcomes.py`'s internal admin-reporting classification -- not
+  shown to readers at all. The user's framing: something like Wikipedia's
+  confidence banners ("this section needs more detail" / "needs human
+  verification") -- surface *and* explicitly acknowledge that a given
+  transcript (or section of one) hasn't been human-verified, rather than
+  presenting AI-generated text with the same visual confidence as a real
+  scraped government caption. Root cause context from the user, worth
+  keeping when this gets designed: these sources often have short (2-3
+  min) genuinely-foreign-language stretches (proclamations, a single
+  speaker) or dead air/loud music (meeting open, or a recess in a 4+ hour
+  meeting) that Whisper isn't built to handle well, embedded in meetings
+  that are otherwise clearly one language throughout -- so a good flag
+  should probably be scoped to the *offending stretch*, not just a
+  whole-page badge. Not designed yet -- open questions: page-level banner
+  vs. inline per-segment/per-chunk marking (today's warnings are
+  chunk-scoped, not whole-page), and whether it should also fire on the
+  language-mislabeling failure mode even when
+  `detect_hallucination_warnings()` itself sees nothing wrong (a
+  confidently-wrong language label isn't currently a "warning" at all).
+- **Compare `large-v2`/`large-v3` faster-whisper output against the
+  production `small`/`tiny` defaults on a real bad chunk -- raised by the
+  user 2026-08-18, not yet run.** Proposed protocol (the user's own): once
+  a specific meeting/chunk is confirmed low-quality (e.g. via the
+  reader-facing flag above once it exists, or by manual review), re-run
+  just that chunk -- not the whole meeting -- through both the
+  currently-used model size and `large-v2`/`large-v3`, then compare
+  outputs by eye. Needs a small standalone harness against
+  `FasterWhisperEngine` (`worker/transcription_engine.py`) rather than a
+  full `transcribe_backlog_locally.py` run, to target one chunk cheaply.
+  Purpose: find out whether the quiet-audio/hallucination pattern above
+  is a `small`-model-specific weakness `large-v2` genuinely does better
+  on, or a more fundamental Whisper-family limitation on real crowd
+  noise/music that a bigger model won't meaningfully fix -- informs
+  whether it's worth widening `_pick_default_model_size()`'s RAM tiers or
+  whether the reader-facing flag above is the more honest fix regardless
+  of model size.
 
 ## SEO / LLM-discoverability
 
