@@ -305,3 +305,33 @@ class SavedItem(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class SearchVocabulary(Base):
+    """Distinct real words seen anywhere in the archive's search_corpus,
+    globally deduped -- no page association, unlike MeetingPage/
+    TranscriptVersion's FK-linked shape. See archive/db/crud.py's
+    _fuzzy_keyword_conditions_via_vocabulary() for why none is needed:
+    this table only ever answers "which real words anywhere in the
+    archive are close to this typo'd query term" -- the separate,
+    already-fast search_corpus LIKE check (Step 1) decides whether a
+    specific page actually contains one of those words.
+
+    Populated by crud._refresh_search_corpus() (the same single choke
+    point that recomputes search_corpus itself) via
+    crud._upsert_vocabulary_words(), ON CONFLICT DO NOTHING since many
+    pages share common words. Cross-dialect like MeetingPage.search_corpus
+    (unlike search_tsv's deliberately-unmapped, Postgres-only,
+    generated-column shape) because populating it needs a real
+    application-level write path, not something Postgres can compute on
+    its own -- so it exists on SQLite too via create_all(), keeping the
+    write path dialect-agnostic and unit-testable without a live
+    Postgres. Only ever *queried* on Postgres though (GIN-trigram indexed
+    by this table's own migration) -- see crud._vocab_available(); fuzzy
+    search stays fully Python-streamed on SQLite dev/CI, same as before
+    this table existed.
+    """
+
+    __tablename__ = "search_vocabulary"
+
+    word: Mapped[str] = mapped_column(String(255), primary_key=True)

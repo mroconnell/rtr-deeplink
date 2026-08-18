@@ -6,12 +6,12 @@ listing displays. Against the isolated SQLite fixture DB, same pattern as
 tests/test_transcription_jobs.py.
 """
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import undefer
 
 from archive.db import crud
 from archive.db.engine import async_session
-from archive.db.models import MeetingPage, TranscriptVersion
+from archive.db.models import MeetingPage, SearchVocabulary, TranscriptVersion
 
 
 def _payload(
@@ -281,3 +281,64 @@ def test_search_corpus_is_deferred_and_never_in_a_plain_meeting_page_select():
         select(MeetingPage.id).where(MeetingPage.search_corpus.ilike("%x%")).compile()
     )
     assert "search_corpus" in filtered
+
+
+async def test_ingest_resolution_populates_search_vocabulary():
+    # Search Step 2b: _refresh_search_corpus() must upsert the corpus's
+    # real words into search_vocabulary alongside search_corpus itself --
+    # the write path is dialect-agnostic (see _upsert_vocabulary_words()),
+    # so this is safe and meaningful to assert against the SQLite test DB
+    # even though only Postgres ever queries the table.
+    url = "https://example.granicus.com/player/clip/vocab-write"
+    await crud.ingest_resolution(
+        _payload(
+            "granicus:vocab-write",
+            url,
+            segments=[{"start": 0, "end": 1, "text": "zzyzxfinch unique term"}],
+            jurisdiction="City of Vocab Test",
+        ),
+        url,
+    )
+
+    async with async_session() as session:
+        words = (
+            (
+                await session.execute(
+                    select(SearchVocabulary.word).where(
+                        SearchVocabulary.word.in_(["zzyzxfinch", "unique", "term"])
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert set(words) == {"zzyzxfinch", "unique", "term"}
+
+
+async def test_search_vocabulary_dedupes_words_shared_across_pages():
+    # A distinct, page-agnostic set (see SearchVocabulary's docstring) --
+    # two pages both containing "council" must not create two rows or
+    # raise a PK-conflict error (ON CONFLICT DO NOTHING).
+    for i, url in enumerate(
+        [
+            "https://example.granicus.com/player/clip/vocab-dedupe-a",
+            "https://example.granicus.com/player/clip/vocab-dedupe-b",
+        ]
+    ):
+        await crud.ingest_resolution(
+            _payload(
+                f"granicus:vocab-dedupe-{i}",
+                url,
+                segments=[{"start": 0, "end": 1, "text": "council quorum present"}],
+                jurisdiction=f"City of Vocab Dedupe {i}",
+            ),
+            url,
+        )
+
+    async with async_session() as session:
+        count = (
+            await session.execute(
+                select(func.count()).where(SearchVocabulary.word == "council")
+            )
+        ).scalar_one()
+        assert count == 1
