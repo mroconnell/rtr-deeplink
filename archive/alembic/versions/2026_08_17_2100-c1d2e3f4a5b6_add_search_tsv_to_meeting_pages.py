@@ -46,12 +46,23 @@ def upgrade() -> None:
     The GIN index is built CONCURRENTLY (no lock) in an autocommit block,
     since CREATE INDEX CONCURRENTLY can't run inside Alembic's default
     transaction.
+
+    ADD COLUMN IF NOT EXISTS, not a plain ADD COLUMN (WO-10 first-deploy
+    incident, 2026-08-17): the autocommit_block() below force-commits
+    whatever preceded it, so if a run gets this far and then the
+    CONCURRENTLY step fails or is interrupted, the column is already
+    permanently committed even though Alembic never wrote the version
+    stamp -- exactly what happened when this ran by hand that day. A
+    retry then re-hit a plain ADD COLUMN and got DuplicateColumnError
+    forever, wedging the preDeployCommand this migration's own WO-10 was
+    meant to protect. IF NOT EXISTS makes a retry from that half-applied
+    state converge instead of repeating the same failure.
     """
     bind = op.get_bind()
     if bind.dialect.name != "postgresql":
         return
     op.execute(
-        "ALTER TABLE meeting_pages ADD COLUMN search_tsv tsvector "
+        "ALTER TABLE meeting_pages ADD COLUMN IF NOT EXISTS search_tsv tsvector "
         "GENERATED ALWAYS AS "
         "(to_tsvector('english', left(coalesce(search_corpus, ''), 3000000))) STORED"
     )
