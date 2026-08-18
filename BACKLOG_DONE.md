@@ -6,6 +6,101 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Queue-advance automation: switched to QUEUE_ADVANCE_PAT, fully unattended end-to-end for both workflows [Done 2026-08-18]
+
+Closes out the saga this file's own next two entries below document in
+full (PR #144's permission fix, PR #172's run-selection fix, and the
+residual manual-approval gap they left behind). Picks up exactly where
+that gap was found: this repo is public, and a `GITHUB_TOKEN`-authored
+PR's `author_association` comes back `"CONTRIBUTOR"` rather than
+`"OWNER"`/`"MEMBER"`, so its real `pull_request`-triggered `test.yml` run
+sits stuck in `action_required` pending manual approval — and the `main`
+ruleset's required `test` check only ever credits that genuine
+`pull_request`-triggered run, never a `workflow_dispatch` stand-in.
+Re-confirmed live immediately before starting this fix: the latest
+scheduled run of each workflow (tier3 run 32175611160, granicus run
+32173489932, both 2026-08-18) had failed at the exact same point —
+`gh pr merge` rejected with `"the base branch policy prohibits the
+merge"` — on every single automated run since PR #172 landed.
+
+**Fix: `QUEUE_ADVANCE_PAT`, a fine-grained PAT scoped to `rtr-deeplink`
+only (Contents + Pull requests read/write), added as a repo secret.
+Expires 2026-10-17 — flagging that explicitly here since it will silently
+break both workflows again around then if not rotated; a separate
+scheduled reminder already exists for that date.** Both
+`feed-tier3-transcription.yml` and `feed-granicus-transcription.yml`
+(PR #176) now authenticate `actions/checkout@v4` and every `gh` CLI step
+with this PAT instead of the default `GITHUB_TOKEN`. Landed with the
+existing `workflow_dispatch` dispatch-and-poll workaround deliberately
+left in place (not removed blindly) pending live proof the PAT actually
+changes the ruleset outcome.
+
+**Verified immediately, live**: manually triggered
+`feed-tier3-transcription.yml`
+(https://github.com/mroconnell/rtr-deeplink/actions/runs/32188416992).
+The PAT-authenticated `checkout`/`gh pr create` steps worked and opened
+PR #177 — but the in-workflow `gh workflow run test.yml --ref "$BRANCH"`
+dispatch call itself failed: `HTTP 403: Resource not accessible by
+personal access token` — `QUEUE_ADVANCE_PAT` doesn't carry the `actions:
+write` scope that dispatch needs (a fine-grained PAT's available
+permission list doesn't include one for triggering other workflow runs
+the way a classic PAT with the `workflow` scope would). That turned out
+not to matter: `gh api repos/mroconnell/rtr-deeplink/pulls/177` showed
+`author_association: "OWNER"` (not `"CONTRIBUTOR"`) as predicted, its
+natural `pull_request`-triggered `test.yml` run fired immediately with
+**no approval gate**
+(https://github.com/mroconnell/rtr-deeplink/actions/runs/32188506193),
+passed, and a manual `gh pr merge 177 --squash --delete-branch` succeeded
+on the first try — the thing that had never once happened automatically
+through this entire saga.
+
+**Simplified in PR #178**: removed the now-dead (and now-broken, given
+the PAT's scopes) `workflow_dispatch` dispatch-and-poll step from both
+workflows, replacing it with `gh pr checks "$BRANCH" --watch --fail-fast`
+before `gh pr merge --squash --delete-branch`.
+
+**Hit one more real bug live-testing that simplification**: triggering
+`feed-tier3-transcription.yml` again right after PR #178 merged opened PR
+#179, but the workflow failed at the new `gh pr checks --watch` call with
+`"no checks reported on the branch"` — `gh pr checks --watch` errors
+immediately if called before GitHub has registered the
+`pull_request`-triggered `test.yml` run at all, rather than waiting for
+one to appear; it's watch-existing-checks, not wait-for-a-check-to-exist.
+Closed PR #179 without merging (its 12 URLs were already ingested; upsert
+makes re-ingestion harmless) and fixed in PR #180: both workflows now
+poll (up to 60s) for at least one check to exist before handing off to
+`--watch`.
+
+**Final live verification, both workflows, clean runs on the fully-fixed
+version**:
+- Tier 3: manually triggered
+  (https://github.com/mroconnell/rtr-deeplink/actions/runs/32189575670),
+  opened PR #181, natural `pull_request` `test.yml` run passed
+  (https://github.com/mroconnell/rtr-deeplink/actions/runs/32189668411,
+  `author_association: OWNER`), `gh pr merge` inside the workflow itself
+  succeeded with zero manual intervention.
+  `scripts/tier3_auto_transcription_queue.txt` confirmed down from 1167
+  to 1155 lines on `main` (`git log -1 --stat` on the merge commit shows
+  exactly `12 deletions(-)`).
+- Granicus: manually triggered
+  (https://github.com/mroconnell/rtr-deeplink/actions/runs/32189901009),
+  opened PR #182, natural `pull_request` `test.yml` run passed
+  (https://github.com/mroconnell/rtr-deeplink/actions/runs/32189983911,
+  `author_association: OWNER`), same unattended merge.
+  `scripts/granicus_auto_transcription_queue.txt` confirmed down from 457
+  to 445 lines on `main`, same `12 deletions(-)` pattern.
+
+**Net result: both queue-advance workflows are now genuinely, verifiably
+unattended end-to-end** — the residual manual-approval gap flagged in
+this saga's prior entry is closed for real, not just theorized. The only
+remaining maintenance burden is `QUEUE_ADVANCE_PAT`'s 2026-10-17
+expiration (see above).
+
+Also closed (without merging) two other queue-advance PRs stranded from
+before this fix — #174 (Granicus) and #175 (tier-3) — left over from runs
+that failed at the old `"base branch policy prohibits the merge"` point;
+their 12 URLs each were already resolved/ingested, so nothing was lost.
+
 ## Queue-advance automation: GITHUB_TOKEN PR-creation permission enabled, a real run-selection bug fixed, verified end-to-end [Done 2026-08-18]
 
 Picks up where the "Two remaining options, needs a real decision" note
