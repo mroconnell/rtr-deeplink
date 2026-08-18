@@ -2,7 +2,7 @@
 text: query parsing (phrases/exclusions), the fuzzy (typo-tolerant) word
 match, and snippet/segment extraction.
 
-Division of labor with `crud.list_pages()` as of 2026-08-17: **exact-mode
+Division of labor with `crud.list_pages()` as of 2026-08-18: **exact-mode
 matching happens entirely in SQL** against `MeetingPage.search_corpus` --
 this module's `compute_search_corpus()`, precomputed at ingest -- either
 as Postgres full-text search (`search_tsv @@ websearch_to_tsquery(...)`
@@ -13,12 +13,19 @@ predicate `matches()` computes (`build_corpus()` over the same fields,
 lowercased on both sides). Either way `matches()` no longer runs for
 exact searches. `parse_query()` is shared so the LIKE path and Python
 read a query identically (websearch_to_tsquery reads the same syntax
-natively). `matches()` still decides **fuzzy** words in Python (bounded
-Levenshtein against real corpus words has no recall-safe SQL form) over
-each candidate's streamed `search_corpus` text, and `find_snippet()`
-runs only over the returned page's default-version segments. See
-`list_pages()` / `_keyword_conditions()` / `_fts_condition()` docstrings
-and BACKLOG.md's "Search: move to a materialized/indexed column" entry.
+natively). **Fuzzy** is SQL-authoritative too on Postgres once
+`search_vocabulary` exists (revision c684908ce5ff): `matches()`'s
+`_levenshtein()`/`_fuzzy_threshold()` re-verify a small trigram-matched
+candidate set from that table rather than deciding matches directly, see
+`crud._fuzzy_keyword_conditions_via_vocabulary()`. `matches()` itself is
+still the Python-streamed fallback (SQLite dev/CI, or Postgres before
+that migration), deciding fuzzy words over each candidate's streamed
+`search_corpus` text directly. `find_snippet()` always runs over the
+returned page's default-version segments regardless of which path
+decided the match. See `list_pages()` / `_keyword_conditions()` /
+`_fts_condition()` / `_fuzzy_keyword_conditions_via_vocabulary()`
+docstrings and BACKLOG_DONE.md's "Search: move to a materialized/indexed
+column -- full saga, closed" entry.
 """
 
 import html

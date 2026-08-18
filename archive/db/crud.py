@@ -1180,17 +1180,22 @@ def _keyword_conditions(keyword: str, fuzzy: bool) -> tuple[list, list[str]]:
     SQL. Runs identically on Postgres (where the GIN trigram index makes
     it fast) and SQLite (dev/CI, unindexed but the same code path).
 
-    Fuzzy words are the one thing SQL can't decide: matches()'s bounded
-    Levenshtein against real corpus words has no recall-safe SQL
+    Fuzzy words are the one thing this function can't decide: matches()'s
+    bounded Levenshtein against real corpus words has no recall-safe SQL
     equivalent -- pg_trgm's word_similarity() over a multi-hundred-KB
-    document is either too loose to narrow anything (at the recall-safe
-    0.15 threshold the earlier version used) or drops genuine 2-edit
-    typos (anything selective), and costs tens of ms of server CPU per
-    row either way. So fuzzy words are returned for the caller to check
-    in Python over the corpus text -- streamed one row at a time (see
-    list_pages()), never the transcript JSON. The real fix for fuzzy is a
-    trigram-indexed vocabulary table (BACKLOG.md's search entry, "Step
-    2b"); until then fuzzy stays the opt-in, UI-labeled "slower" mode.
+    document is either too loose to narrow anything (at a recall-safe
+    threshold) or drops genuine 2-edit typos (anything selective), and
+    costs tens of ms of server CPU per row either way. So fuzzy words are
+    returned for the caller to check in Python over the corpus text --
+    streamed one row at a time (see list_pages()), never the transcript
+    JSON. This is now only the fallback path: on Postgres with
+    search_vocabulary present, list_pages() uses
+    _fuzzy_keyword_conditions_via_vocabulary() instead, which makes fuzzy
+    SQL-authoritative too (a small trigram-indexed word table, not
+    word_similarity() over whole documents) -- see that function's
+    docstring and BACKLOG_DONE.md's search entry. This function's fuzzy
+    branch still runs on SQLite (dev/CI) or Postgres before that
+    migration, where fuzzy stays the opt-in, UI-labeled "slower" mode.
     """
     phrases, words, excluded_phrases, excluded_words = parse_query(keyword)
     conditions = [_corpus_contains(p) for p in phrases]
