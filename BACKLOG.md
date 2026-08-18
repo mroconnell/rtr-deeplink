@@ -1455,70 +1455,43 @@ that added this reorg, for which ones are new).
 
 ### Live but broken
 
-- **[JUST-DO-IT] Both auto-transcription feed workflows (`feed-tier3-transcription.yml`,
-  `feed-granicus-transcription.yml`) have never successfully self-advanced
-  their queue files, and still can't, even after PR #144's fix — a
-  second, previously-unknown repo-level restriction blocks it too.**
-  Originally found via a real GitHub Actions failure notification email
-  (`RTR-Claude` Gmail label): the direct `git push` of the
-  queue-advancement commit was being rejected by the 2026-08-14 branch
-  ruleset (`GH013`, requires a PR + passing `test` check) on every single
-  scheduled run since the ruleset existed — confirmed from the actual
-  failed run's logs
-  (https://github.com/mroconnell/rtr-deeplink/actions/runs/32035051794).
-  The resolve/ingest half always worked fine (12 real URLs resolved and
-  POSTed to `/internal/ingest` per run, several `[OK]`); only the final
-  commit-back step failed, so the queue never actually shrank — every run
-  re-fed the same front-of-queue 12 URLs.
+- **[HUMAN] Both auto-transcription feed workflows' queue-advance PRs still need a human
+  to manually approve a pending GitHub Actions run on every single cycle —
+  found 2026-08-18 verifying the fix below end-to-end, real and still
+  unattended-blocking today.** Full history of how this got to a
+  real, working (but not yet unattended) state is in `BACKLOG_DONE.md`'s
+  "Queue-advance automation: GITHUB_TOKEN PR-creation permission enabled,
+  run-selection bug fixed, verified end-to-end" entry. The short version
+  of what's still open: this repo is public, and a `GITHUB_TOKEN`-authored
+  PR's `author_association` comes back `"CONTRIBUTOR"` rather than
+  `"OWNER"`/`"MEMBER"` — so its auto-triggered `pull_request`-event
+  `test.yml` run (the one the `main` ruleset's required `test` check
+  actually credits) gets gated behind this repo's fork-PR-approval
+  setting exactly like a real outside contributor's would, even though
+  it's same-repo and Ryan-triggered. A `workflow_dispatch`-triggered
+  `test.yml` run does NOT need approval and does pass, but the ruleset
+  doesn't credit it toward the required check regardless (confirmed live,
+  PR #171: two separate passing, correctly-PR-linked `test` check-runs
+  from the same app/integration, still rejected by `--admin` merge with
+  "Required status check 'test' is expected," until the actual
+  `pull_request`-triggered run was manually approved in the GitHub UI —
+  at which point the PR immediately went `MERGEABLE`/`CLEAN`). Net effect:
+  every future scheduled run's queue-advance PR will sit open until a
+  human clicks "Approve and run" on its pending check in the Actions UI —
+  real progress from "completely broken," but not yet the unattended
+  automation this was originally meant to be.
 
-  **PR #144 (2026-08-17) fixed that specific cause**: instead of pushing
-  directly, each workflow now commits the queue change on a new branch,
-  opens a PR, dispatches `test.yml` on it directly via `workflow_dispatch`
-  (needed because PRs/branches created with the default `GITHUB_TOKEN`
-  don't trigger `pull_request`-triggered workflows — GitHub's own
-  loop-prevention for that token — so the required `test` check would
-  otherwise never appear), waits for that run, then merges once green.
-  `pytest` (955 passed, 4 skipped) and the PR's own `test` check both
-  passed, and the PR merged cleanly.
-
-  **Live-triggered `feed-tier3-transcription.yml` for real afterward
-  (`gh workflow run` against `main`,
-  https://github.com/mroconnell/rtr-deeplink/actions/runs/32074229224) to
-  verify end-to-end, per this task's own verification requirement — and
-  it still failed, at a new point**: the resolve/ingest step again
-  succeeded for real (12 more real URLs), but the new "Advance queue via
-  PR" step died on `gh pr create` itself:
-  ```
-  pull request create failed: GraphQL: GitHub Actions is not permitted to create or approve pull requests (createPullRequest)
-  ```
-  This is a separate repo setting (Settings → Actions → General →
-  Workflow permissions → "Allow GitHub Actions to create and approve pull
-  requests"), distinct from the job's own `permissions:` block —
-  `pull-requests: write` there isn't sufficient on its own, and this
-  wasn't visible from reading the YAML/API beforehand. Net effect:
-  automated advancement is *still* broken today, just one step further
-  into the pipeline than before.
-
-  Manually completed the one stranded queue-advance branch that run left
-  behind (its 12 URLs really were ingested; the diff was just "pop 12
-  known-already-ingested URLs off the front") via a normal human-authored
-  PR, #147 — merged, so both queue files are correctly caught up as of
-  tonight. That's a one-time catch-up, not a fix; the next scheduled run
-  will hit the exact same `createPullRequest` error.
-
-  **Two remaining options, needs a real decision (not something to flip
-  unilaterally — it's a repo security-relevant setting either way)**:
-  (1) enable that "Allow GitHub Actions to create and approve pull
-  requests" repo setting, letting the already-landed `GITHUB_TOKEN`-based
-  flow from PR #144 work as designed; or (2) provision a PAT (fine-grained,
-  scoped to just this repo, `contents:write` + `pull-requests:write`) as a
-  new repo secret and have the "Advance queue via PR" step authenticate
-  with that instead of `GITHUB_TOKEN` — this is also GitHub's own
-  documented pattern for "workflow opens a PR that then needs its own CI
-  run," and would incidentally make the `workflow_dispatch`-on-`test.yml`
-  workaround unnecessary too (PR/branches authored by a PAT trigger
-  `pull_request`-triggered workflows normally, unlike `GITHUB_TOKEN`) —
-  simpler, though it does mean a credential to create and rotate.
+  **Needs a decision, not something to flip unilaterally** (same
+  reasoning as the permission decision already made): whether to loosen
+  this repo's "Fork pull request workflows from outside collaborators"
+  approval-requirement setting (no REST API found for reading/setting it
+  during this investigation — Settings → Actions → General in the GitHub
+  UI is the only confirmed path), which is the same gate that protects
+  against a malicious real fork PR running arbitrary CI with repo
+  secrets — a real security tradeoff, not a pure convenience toggle — or
+  to just accept manual approval each 6-hour cycle (cheap today at 2
+  workflows/day, but doesn't scale if more automated PR-opening workflows
+  get added later).
 
 ### Needs a human decision
 
