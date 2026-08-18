@@ -6,6 +6,174 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Jurisdiction-bleed, third pass — gated eScribe subdomain extraction, leading-date/glued-extension preprocessing, curated junk-tail stoplist [Done 2026-08-18]
+
+Four new bleed patterns found live on `/coverage`, each independently
+root-caused as a distinct bug from the 2026-08-17 fixes (`#158`/`#161`),
+not guessed — every one of the 13 real raw strings the ask surfaced was
+run directly against `finalize_jurisdiction()`/`_jurisdiction_from_
+subdomain()` before any fix was written, same convention as every prior
+pass in this file. Shipped as [PR #168](https://github.com/mroconnell/rtr-deeplink/pull/168).
+
+**Fix #1 — eScribe's subdomain-derived jurisdiction fallback is now
+gated on Census/StatsCan-table validation, closing a real regression
+the original ask's diagnosis didn't fully account for.** The ask's own
+premise (wordninja missing, so add it to `requirements.txt`) turned out
+to be false on direct testing: `wordninja==2.0.0` was already pinned and
+already imported unconditionally in both `escribe.py` and `granicus.py`.
+The REAL problem, found by actually running the pinned dependency rather
+than trusting the diagnosis: `EscribeAssetFinder._jurisdiction_from_
+subdomain()` (added WO-14, 2026-08-16) already wordninja-splits its
+subdomain label, but does so *ungated* — deliberately, per its own
+comment, since Canadian places weren't in the Census table when it
+shipped. That reasoning went stale the very next day (`#158` added 5,028
+real StatsCan rows to the same table `validated_label_extract()`
+checks). Left ungated, re-resolving these customers today would silently
+swap one wrong string for a *different, confidently wrong* one:
+wordninja splits `"townofbonnyville"` into `town/of/bonny/ville`, which
+joins (with spaces, after stripping the leading connector words) to
+`"Bonny Ville"` — not `"Bonnyville"`. Confirmed directly against the
+real pinned `wordninja==2.0.0` before writing any fix, not assumed.
+
+Now delegates to a new shared, gated function
+(`jurisdiction_enrich.validated_label_extract()`, a label-taking sibling
+of the existing `_validated_subdomain_extract()` that Granicus's
+`_humanize_subdomain()` already reuses via the public
+`validated_subdomain_extract()` wrapper), extended with two new tiers
+found necessary by testing against the real 8 originally-reported
+subdomains rather than the 5 hand-picked ones in the initial ask:
+
+1. **Spaced-then-glued wordninja rejoin.** The initial "corrected Fix 1"
+   proposal (raw-unsplit-first, then a spaced wordninja join) was tested
+   against the REAL production subdomain `"townofbonnyville"` (not the
+   hand-built `"bonnyville"` used in the first round of manual testing)
+   and found NOT to resolve it: `words=['bonny','ville']` after stripping
+   `town`/`of`, and `"Bonny Ville"` doesn't validate. Adding a GLUED
+   (no-space) rejoin as a fallback after the spaced attempt fixes it —
+   `"Bonnyville"` validates. Order matters and was verified the hard way:
+   trying glued BEFORE spaced was tested first and found to introduce a
+   real regression across all 253 real Granicus subdomains in
+   production — `"cityofnorthport"` wrongly resolved to `"Northport"` (a
+   real but WRONG place, a coincidental table match) instead of the
+   correct `"North Port"`; same failure on `"oakridgetn"` →
+   `"Oakridge"` instead of `"Oak Ridge"`. Spaced-first, glued-fallback
+   fixes Bonnyville with zero Granicus regressions (confirmed by
+   sweeping all 253 real Granicus subdomains before and after).
+2. **Canadian province-code stripping.** The shared trailing-abbreviation
+   strip (`_STATE_ABBREVIATIONS_LOWER`) was US-states-only, so
+   `"beaumontab"` (Beaumont, AB) and `"mackenziebc"` (Mackenzie, BC) —
+   both real, both grounded in the original ask's own examples — failed
+   to validate purely because the trailing province code was never
+   stripped. Added `_PROVINCE_ABBREVIATIONS_LOWER` (13 codes, verified no
+   collision with the US set).
+
+Also found and closed a real false-positive the province-code list
+introduced: `"citynmb"` wordninja-splits to `['city','n','mb']`; after
+stripping the leading `city` and trailing province code `mb`, the sole
+leftover word `"n"` was found to validate against a single-letter row in
+`places.csv` (almost certainly a data artifact — no real municipality is
+meaningfully 1-2 letters). Closed with a 3-character floor on any
+wordninja-derived candidate.
+
+**Verification: swept all 429 real subdomains currently in production**
+(176 distinct eScribe labels + 253 distinct Granicus labels, both pulled
+live via `/internal/pages/all-urls`) through old-vs-new logic before
+shipping — not just the 13 strings named in the ask. Net: 105/176 eScribe
+labels unchanged, 28 newly resolve correctly (Amherstburg, Baraboo,
+Watsonville, Clarington, Cramahe, Espanola, Healdsburg, Leduc, Morinville,
+Orinda, Penticton, Sahuarita, Scugog, Sechelt, Bonnyville, Beaumont,
+Mackenzie, and several state/province-suffix cleanups), 43 honestly
+decline instead of asserting wordninja garbage or a non-place acronym as
+a jurisdiction (SANDAG the MPO, TDSB the school board, "One Investment
+Program"). 249/253 Granicus labels unchanged, 4 newly resolve correctly
+(Coppell TX, Hyattsville MD, Manteca CA, Surfside FL), zero regressions.
+
+A real, honestly-flagged tradeoff surfaced by this sweep: ~9 eScribe
+customers that currently show a recognizable (if unvalidated) guess would
+decline to blank on a FUTURE re-resolve, because the StatsCan/Census
+table doesn't cover them yet — Lloydminster and Paso Robles (both simply
+missing), Durham/Peel/Waterloo Regions (a whole "regional municipality"
+category the table lacks), and Chatham-Kent/Arran-Elderslie/Blue
+Mountains (hyphenated names lost on a formatting mismatch). This mirrors
+the same "decline beats a wrong guess" tradeoff this repo already
+accepted for Granicus (the original tournament: 416 valid/0 garbage vs.
+408 valid/229 garbage for an always-guess approach) — extended to eScribe
+deliberately, not by accident. Tracked as a live, separate BACKLOG.md
+entry (table-completeness gap) rather than blocking this fix on it. Can't
+retroactively affect an already-published page — the existing backfill
+endpoint only re-runs `finalize_jurisdiction()` on stored text, never
+re-invokes subdomain extraction — only a future new meeting from these
+customers is affected.
+
+**Fix #2 — leading-date bleed** (`"6/16/25 Bellefonte Borough"`, `"8/6/25
+State College Borough"`, both real Pennsylvania Borough examples found
+live): a bleed DIRECTION `_trim_repair()` has zero handling for, since it
+only ever trims from the right. Closed with a narrow preprocessing regex
+(`_LEADING_DATE_RE`) at the top of `finalize_jurisdiction()`, guarded so
+stripping a leading date never collapses a date-only string to empty.
+Narrow enough (M/D/YY shape) to run unconditionally — no real
+jurisdiction name starts with a bare date, so it's a no-op on every
+string that doesn't have this exact bleed.
+
+**Fix #3 — glued file-extension bleed** (`"Township of Brock.pdf Pulled
+from Council Information Index by Regional Councillor Pettingill..."`,
+Brock Township ON — previously tracked as an open gap in BACKLOG.md,
+found unrepairable by the 2026-08-17 fixes since `_trim_repair()` cuts on
+whitespace tokens and `.pdf` is glued directly onto `"Brock"` with no
+space, so no cut ever lands on a clean `"Brock"`). Closed with a second
+narrow, no-op-when-absent preprocessing regex (`_GLUED_EXTENSION_RE`)
+inserting a space before a recognized office-document extension when
+it's glued to a letter — the EXISTING trim-repair/`_looks_like_bleed()`
+logic handles the rest unchanged once the space exists.
+
+**Fix #4 — closed, curated junk-tail stoplist** (`_KNOWN_JUNK_TAIL_WORDS
+= {"attachments", "meeting"}`), closing two of the three real examples in
+BACKLOG.md's existing "single-word-tail gap" entry (Brampton's
+`"Brampton Meeting"`, Peterborough's `"Peterborough Attachments"`) — the
+third, Castle Rock CO's `"Authorizing"`, stays open since no second real
+confirmed example grounds it on the stoplist yet, same "don't guess, only
+close what's grounded in real data" discipline as every other fix in this
+file. Deliberately a closed list rather than lowering `_MIN_BLEED_WORD_
+RUN` generally, which confirmed testing shows would also wrongly trim
+real long names (`"Lake Washington School District"` → `"Lake"`) — a
+closed list can only ever fire on an exact match to a word already proven
+junk, so it can't repeat that mistake.
+
+**Out of scope, investigated not fixed: `"RochestercityMN"`.** Root-
+caused via `app/platforms/iqm2.py`: `_TITLE_RE` captures the jurisdiction
+verbatim from the page's own `<title>` tag, and Rochester, MN's specific
+IQM2 tenant (`rochestercitymn.iqm2.com`) has `"RochestercityMN"` literally
+glued together as-is IN THE PAGE'S OWN TITLE TEXT — confirmed by checking
+IQM2's only other real customer, Santa Clara County, CA, whose title
+correctly reads `"...- Web Outline - The County of Santa Clara,
+California"` (proper spacing; extraction working as designed there). NOT
+a Python f-string join-character bug as the original ask speculated — the
+regex captures exactly what's on the page; the glued text originates at
+IQM2's own vendor/tenant configuration for this one city. Only one
+example exists (IQM2's only other confirmed customer), not enough real
+data to design a general fix.
+
+**Full existing `pytest` suite run before and after every fix, not just
+new cases**: 1018 passed / 15 skipped (8 new tests in `tests/
+test_jurisdiction_bleed_round2.py`; 2 existing tests updated where they
+asserted the specific OLD behavior these fixes intentionally changed —
+`test_escribe.py`'s "no video integration" test previously asserted a
+synthetic non-place subdomain `"example"` would guess `"Example"`, now
+correctly declines; `test_jurisdiction_enrich.py`'s single-word-tail-gap
+test split into a narrowed "still open" test for `"Authorizing"` and a
+new "now closed" test for `"Meeting"`/`"Attachments"`).
+
+**Backfill note, same two-step pattern as `#158`/`#161` → `#165`/`#166`:**
+the leading-date and glued-extension fixes are backfillable via the
+EXISTING `POST /internal/jurisdiction/backfill-apply` (`#165`) once
+deployed, since the bled tail/prefix in those cases is still separable by
+word. The originally-reported eScribe subdomain rows (Bonnyville, Grand
+Valley, etc.) are NOT — `"Townofbonnyville"` has no recoverable signal
+once already glued together in storage, so fixing those needs an actual
+re-resolve against the real source URL, not a text-only patch. Tracked as
+its own live, not-yet-built BACKLOG.md entry rather than forced through
+the wrong pipeline.
+
 ## Jurisdiction-bleed backfill — write path + real production run [Done 2026-08-18]
 
 Data-repair pass closing the residual gap left by the two fixes below
