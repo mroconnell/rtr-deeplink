@@ -1081,6 +1081,79 @@ async def list_jurisdiction_bleed_backfill_candidates() -> dict:
         return {"total_checked": len(rows), "candidates": candidates}
 
 
+async def apply_jurisdiction_bleed_backfill(*, dry_run: bool = True) -> dict:
+    """Write counterpart to list_jurisdiction_bleed_backfill_candidates()
+    above -- actually patches MeetingPage.jurisdiction /
+    jurisdiction_confidence for rows where finalize_jurisdiction() produces
+    a genuinely different jurisdiction STRING today (BACKLOG.md's
+    "Jurisdiction-bleed, confirmed cross-platform" backfill). Deliberately
+    narrower than the read-only audit: a confidence-tier-only change (e.g.
+    null -> "validated" with the same string) isn't worth a write and is
+    excluded here, unlike the audit above which reports both kinds.
+
+    Always recomputes candidates itself from each row's own stored
+    `jurisdiction` + `source_url_normalized` -- never accepts a
+    caller-supplied jurisdiction string to write, so a stale or forged
+    request body can't push arbitrary text into the column. Only the
+    `jurisdiction` and `jurisdiction_confidence` columns are touched; every
+    other MeetingPage field (title, video_url, segments, ...) is left
+    alone.
+
+    dry_run=True (the default) computes and returns the exact before/after
+    diff without writing anything -- mirrors this repo's existing
+    read-only-first pattern for internal tooling. dry_run=False commits the
+    updates and returns the same before/after shape for an audit trail.
+    """
+    async with async_session() as session:
+        rows = (
+            await session.execute(
+                select(
+                    MeetingPage.id,
+                    MeetingPage.slug,
+                    MeetingPage.title,
+                    MeetingPage.jurisdiction,
+                    MeetingPage.jurisdiction_confidence,
+                    MeetingPage.source_url_normalized,
+                ).where(MeetingPage.jurisdiction.is_not(None))
+            )
+        ).all()
+
+        changes = []
+        for page_id, slug, title, jurisdiction, confidence, source_url in rows:
+            netloc = urlparse(source_url).netloc if source_url else None
+            result = finalize_jurisdiction(jurisdiction, netloc=netloc)
+            if result.jurisdiction == jurisdiction:
+                continue
+            changes.append(
+                {
+                    "meeting_page_id": page_id,
+                    "slug": slug,
+                    "title": title,
+                    "before": {
+                        "jurisdiction": jurisdiction,
+                        "jurisdiction_confidence": confidence,
+                    },
+                    "after": {
+                        "jurisdiction": result.jurisdiction,
+                        "jurisdiction_confidence": result.confidence,
+                    },
+                }
+            )
+
+        if not dry_run and changes:
+            for change in changes:
+                page = await session.get(MeetingPage, change["meeting_page_id"])
+                if page is None:
+                    continue
+                page.jurisdiction = change["after"]["jurisdiction"]
+                page.jurisdiction_confidence = change["after"][
+                    "jurisdiction_confidence"
+                ]
+            await session.commit()
+
+        return {"dry_run": dry_run, "applied_count": len(changes), "changes": changes}
+
+
 async def get_page_by_slug(slug: str) -> Optional[dict]:
     async with async_session() as session:
         page = (
