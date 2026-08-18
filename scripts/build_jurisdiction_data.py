@@ -215,7 +215,6 @@ def build_zcta_county(source_dir: Path, fips_to_usps: dict) -> None:
     print(f"zcta_county.csv: {len(out_rows)} rows")
 
 
-
 # Standard Geographical Classification 2021, Volume I -- the official,
 # stable 2-digit province/territory codes (first two digits of every
 # 7-digit CSD `Code`). Confirmed directly against the real downloaded
@@ -270,7 +269,9 @@ def build_canada_places(canada_source_dir: Path) -> None:
         canada_rows.append((r["Class title"].strip(), prov))
 
     if skipped_unmapped:
-        print(f"build_canada_places: skipped {skipped_unmapped} rows with an unmapped province code")
+        print(
+            f"build_canada_places: skipped {skipped_unmapped} rows with an unmapped province code"
+        )
 
     combined = sorted(set(existing_rows) | set(canada_rows))
     with open(places_path, "w", newline="", encoding="utf-8") as f:

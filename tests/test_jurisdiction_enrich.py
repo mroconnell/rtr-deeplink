@@ -673,7 +673,9 @@ def test_finalize_jurisdiction_repairs_real_canadian_bleed_cases():
     assert result.jurisdiction == "Guelph, ON"
     assert result.confidence == "repaired"
 
-    result = je.finalize_jurisdiction("Thunder Bay be approved in accordance with Table")
+    result = je.finalize_jurisdiction(
+        "Thunder Bay be approved in accordance with Table"
+    )
     assert result.jurisdiction == "Thunder Bay, ON"
     assert result.confidence == "repaired"
 
@@ -708,7 +710,9 @@ def test_finalize_jurisdiction_peterborough_resolves_with_the_real_data_added_to
         "Peterborough is committed to making meetings accessible for "
         "people of all abilities"
     )
-    result = je.finalize_jurisdiction(raw, netloc="pub-peterborough.escribemeetings.com")
+    result = je.finalize_jurisdiction(
+        raw, netloc="pub-peterborough.escribemeetings.com"
+    )
     assert result.jurisdiction == "Peterborough, ON"
     assert result.confidence == "repaired"
 
@@ -729,7 +733,9 @@ def test_finalize_jurisdiction_repairs_title_case_bleed_with_no_lowercase_signal
     result = je.finalize_jurisdiction(
         "Hollywood Be Awarded As A Subrecipient O", netloc="hollywoodfl.granicus.com"
     )
-    assert result.jurisdiction == "Hollywood"  # ambiguous (FL/AL/SC) -- no guessed state
+    assert (
+        result.jurisdiction == "Hollywood"
+    )  # ambiguous (FL/AL/SC) -- no guessed state
     assert result.confidence == "repaired"
 
     result = je.finalize_jurisdiction(
