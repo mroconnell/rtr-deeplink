@@ -5,7 +5,18 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 from urllib.parse import urlparse
 
-from sqlalchemy import Text, and_, cast, exists, func, literal_column, or_, select, text
+from sqlalchemy import (
+    Text,
+    and_,
+    cast,
+    exists,
+    false,
+    func,
+    literal_column,
+    or_,
+    select,
+    text,
+)
 from sqlalchemy.orm import aliased
 
 from app.utils.jurisdiction_enrich import finalize_jurisdiction
@@ -23,6 +34,8 @@ from ..utils.jurisdiction_format import (
 )
 from ..utils.language import detect_language_from_texts
 from ..utils.search import (
+    _fuzzy_threshold,
+    _levenshtein,
     compute_search_corpus,
     find_snippet,
     matches,
@@ -1245,6 +1258,142 @@ def _fts_rank(keyword: str):
     return func.ts_rank_cd(_SEARCH_TSV, _fts_query(keyword))
 
 
+# --- Search Step 2b: trigram-indexed vocabulary for fast fuzzy search -----
+#
+# search_vocabulary is a real table (unlike search_tsv's generated column),
+# added by Alembic revision c684908ce5ff, populated by
+# _upsert_vocabulary_words() (called from _refresh_search_corpus()) and
+# cross-dialect on the model -- but only ever *queried* on Postgres, same
+# "feature-detect, don't assume the migration has run" discipline as
+# _fts_available(), gated by _vocab_available() below.
+
+_VOCAB_CHECK_TTL = timedelta(seconds=60)
+_vocab_state: dict[str, Any] = {"available": None, "checked_at": None}
+
+# pg_trgm's own default. A recall-safe *first pass* only -- every
+# candidate this turns up still gets re-verified against the exact same
+# _levenshtein()/_fuzzy_threshold() matches() itself uses, so a threshold
+# that's too loose costs a few wasted candidate checks, never a wrong
+# answer. Needs the same real-data tuning pass Step 1's fuzzy work got
+# once this has run against production for a while -- see BACKLOG.md.
+_VOCAB_SIMILARITY_THRESHOLD = 0.3
+_VOCAB_CANDIDATE_LIMIT = 50
+
+
+async def _vocab_available(session) -> bool:
+    """True when the connected DB is Postgres AND search_vocabulary
+    exists. Byte-for-byte mirror of _fts_available()'s caching/dialect/
+    fallback shape -- see that function's docstring; the only difference
+    is checking information_schema.tables (a whole table) rather than
+    .columns (search_tsv is a column on an existing table)."""
+    if session.bind.dialect.name != "postgresql":
+        return False
+    now = datetime.now(timezone.utc)
+    checked_at = _vocab_state["checked_at"]
+    if checked_at is not None and now - checked_at < _VOCAB_CHECK_TTL:
+        return bool(_vocab_state["available"])
+    row = (
+        await session.execute(
+            text(
+                "SELECT 1 FROM information_schema.tables "
+                "WHERE table_name = 'search_vocabulary'"
+            )
+        )
+    ).first()
+    _vocab_state["available"] = row is not None
+    _vocab_state["checked_at"] = now
+    return bool(_vocab_state["available"])
+
+
+def _vocab_candidate_stmt(term: str, limit: int):
+    """Pure statement builder, no DB access -- unit-testable via
+    .compile() the same way _fts_condition() is. The `%` operator (not a
+    bare `similarity() > threshold` call) is what makes the planner use
+    search_vocabulary's GIN trigram index; it reads
+    pg_trgm.similarity_threshold, which the caller must SET LOCAL first.
+    `term` is bound as a parameter (SQLAlchemy's normal Core behavior),
+    never string-interpolated -- it's user search input."""
+    return (
+        select(SearchVocabulary.word)
+        .where(SearchVocabulary.word.op("%")(term))
+        .order_by(func.similarity(SearchVocabulary.word, term).desc())
+        .limit(limit)
+    )
+
+
+async def _fuzzy_keyword_conditions_via_vocabulary(session, keyword: str) -> list:
+    """SQL-authoritative fuzzy search: the vocabulary-lookup replacement
+    for _keyword_conditions()'s Python-streamed fuzzy path. Phrases and
+    exclusions are always exact (matches()'s own rule, unaffected by
+    fuzzy) so they go through _corpus_contains() exactly as
+    _keyword_conditions() already does.
+
+    Each unquoted word:
+    - _fuzzy_threshold(word) == 0 (<=4 chars, matches()'s own "short
+      words require exact" rule) -- no vocabulary lookup needed, becomes
+      a plain _corpus_contains(word) exact condition. Note: matches()'s
+      own fuzzy branch checks *token* membership for these
+      (`word in corpus_words`), while _corpus_contains() is a substring
+      check -- the same deliberate substring-is-the-system's-canonical-
+      "contains" redefinition Step 1 already made for every other exact
+      term, extended here for consistency rather than reintroducing a
+      token-boundary special case.
+    - otherwise -- queries search_vocabulary via _vocab_candidate_stmt()
+      (a small, index-accelerated candidate set), re-verifies every
+      candidate against the *exact* _levenshtein()/_fuzzy_threshold()
+      matches() uses (byte-for-byte parity -- the trigram step is purely
+      a fast candidate generator, never the final decision), then becomes
+      an OR of _corpus_contains() over the confirmed real words. A term
+      with zero confirmed candidates becomes `false()`, not a skipped
+      condition -- a fuzzy term with no real match anywhere in the
+      archive must fail the whole AND, exactly like _keyword_conditions()
+      already requires (via matches()'s "not any(...)" semantics).
+
+    Returns conditions only, no fuzzy_words list -- nothing downstream in
+    list_pages() needs Python-side streaming after this.
+    """
+    phrases, words, excluded_phrases, excluded_words = parse_query(keyword)
+    conditions = [_corpus_contains(p) for p in phrases]
+    conditions += [~_corpus_contains(p) for p in excluded_phrases]
+    conditions += [~_corpus_contains(w) for w in excluded_words]
+
+    fuzzy_words = [w for w in words if _fuzzy_threshold(w) > 0]
+    conditions += [_corpus_contains(w) for w in words if _fuzzy_threshold(w) == 0]
+
+    if fuzzy_words:
+        # Scoped to this transaction only (SET LOCAL), never leaks to any
+        # other query on this connection. Postgres doesn't support a bind
+        # parameter here (SET doesn't accept $1-style placeholders) --
+        # safe to interpolate since this is a fixed module constant, not
+        # user input.
+        await session.execute(
+            text(
+                f"SET LOCAL pg_trgm.similarity_threshold = {_VOCAB_SIMILARITY_THRESHOLD}"
+            )
+        )
+        for term in fuzzy_words:
+            threshold = _fuzzy_threshold(term)
+            candidates = (
+                (
+                    await session.execute(
+                        _vocab_candidate_stmt(term, _VOCAB_CANDIDATE_LIMIT)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            confirmed = [
+                w
+                for w in candidates
+                if w == term or _levenshtein(term, w, threshold) <= threshold
+            ]
+            conditions.append(
+                or_(*(_corpus_contains(w) for w in confirmed)) if confirmed else false()
+            )
+
+    return conditions
+
+
 def _has_agenda_condition():
     """SQL equivalent of Python's `bool(mp.agenda_items)`. agenda_items is
     a JSON column that can hold SQL NULL (older rows), JSON `null`
@@ -1351,14 +1500,26 @@ async def list_pages(
     by ts_rank_cd(); the default "newest" keeps created_at DESC so the
     UX doesn't change under anyone.
 
-    Fuzzy mode is the one exception: unquoted words are matched in Python
-    by matches()'s bounded Levenshtein against each candidate's
-    `search_corpus` *text* (not transcript JSON), streamed one row at a
-    time so memory stays bounded, and paginated in Python. Phrases and
-    exclusions still narrow in SQL first. Measured ~5ms/doc CPU, so a few
-    seconds across the whole archive -- slow but no longer a crash; the
-    UI already labels fuzzy "slower". Why SQL can't do this: see
-    _keyword_conditions().
+    Fuzzy mode has its own two-tier fallback (Search Step 2b, once
+    Alembic revision c684908ce5ff is applied):
+    - **Vocabulary-backed (Postgres with search_vocabulary present)**:
+      SQL-authoritative, same as exact/FTS -- see
+      _fuzzy_keyword_conditions_via_vocabulary(). Each fuzzy word is
+      trigram-matched against the small, GIN-indexed vocabulary table,
+      re-verified with the exact same Levenshtein check matches() uses,
+      and the confirmed real words are checked against search_corpus via
+      the already-fast Step 1 LIKE path. O(page_size) memory, like
+      everything else.
+    - **Python-streamed (SQLite dev/CI, or Postgres before that
+      migration)**: unquoted words are matched in Python by matches()'s
+      bounded Levenshtein against each candidate's `search_corpus` text
+      (not transcript JSON), streamed one row at a time so memory stays
+      bounded, and paginated in Python. Measured ~5ms/doc CPU, so a few
+      seconds across the whole archive -- slow but no longer a crash; the
+      UI already labels fuzzy "slower". Why SQL alone can't do this
+      without a vocabulary table: see _keyword_conditions().
+    Phrases and exclusions are always exact and always narrow in SQL
+    first, in both tiers.
 
     Snippets are built only for the page of rows actually returned, from
     the *default* transcript version's segments (loaded for those <=
@@ -1437,9 +1598,13 @@ async def list_pages(
 
     async with async_session() as session:
         # Keyword form is decided here, per request, because detecting the
-        # FTS column needs a session. Fuzzy mode never uses FTS: its
-        # typo-tolerant word match is Python's (see _keyword_conditions()),
-        # and its phrase/exclusion narrowing stays on the LIKE path.
+        # FTS column / vocabulary table needs a session. Fuzzy mode never
+        # uses FTS. When search_vocabulary is available (Step 2b), fuzzy
+        # is SQL-authoritative too -- see
+        # _fuzzy_keyword_conditions_via_vocabulary() -- and fuzzy_words
+        # stays empty, same as the FTS branch. Only pre-migration Postgres
+        # or SQLite (dev/CI) still falls through to the Python-streamed
+        # path below.
         fuzzy_words: list[str] = []
         order_by = [MeetingPage.created_at.desc(), MeetingPage.id.desc()]
         if keyword:
@@ -1447,6 +1612,10 @@ async def list_pages(
                 conditions.append(_fts_condition(keyword))
                 if sort == "relevance":
                     order_by.insert(0, _fts_rank(keyword).desc())
+            elif fuzzy and await _vocab_available(session):
+                conditions.extend(
+                    await _fuzzy_keyword_conditions_via_vocabulary(session, keyword)
+                )
             else:
                 keyword_conditions, fuzzy_words = _keyword_conditions(keyword, fuzzy)
                 conditions.extend(keyword_conditions)
