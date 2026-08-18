@@ -37,6 +37,7 @@ from .models import (
     MeetingPage,
     MeetingPageUrlAlias,
     SavedItem,
+    SearchVocabulary,
     TranscriptionJob,
     TranscriptVersion,
 )
@@ -442,6 +443,36 @@ def _default_looks_like_copied_agenda(
     return bool(seg_texts) and seg_texts == agenda_texts
 
 
+async def _upsert_vocabulary_words(session, words: set) -> None:
+    """Inserts any of `words` not already in `search_vocabulary`, ignoring
+    duplicates -- many pages share common words, and the table is a
+    distinct, page-agnostic set (see SearchVocabulary's docstring for
+    why no page association is needed). Dialect-dispatched because
+    `ON CONFLICT DO NOTHING` needs the dialect-specific `insert()`
+    construct; runs on both SQLite and Postgres so the write path stays
+    dialect-agnostic and testable without a live Postgres, same
+    principle as search_corpus itself -- only the *query* side
+    (crud._vocab_available()) is Postgres-only.
+    """
+    # No real English word or plausible transcription token is anywhere
+    # near this long -- guards against a pathological run (a pasted URL,
+    # an ID string with no whitespace) exceeding the word column's
+    # String(255) and failing the whole ingest transaction on Postgres.
+    words = {w for w in words if len(w) <= 255}
+    if not words:
+        return
+    if session.bind.dialect.name == "postgresql":
+        from sqlalchemy.dialects.postgresql import insert as dialect_insert
+    else:
+        from sqlalchemy.dialects.sqlite import insert as dialect_insert
+    stmt = (
+        dialect_insert(SearchVocabulary)
+        .values([{"word": w} for w in words])
+        .on_conflict_do_nothing()
+    )
+    await session.execute(stmt)
+
+
 async def _refresh_search_corpus(session, page: MeetingPage) -> None:
     """Recompute `page.search_corpus` from the page's current metadata +
     every linked TranscriptVersion's segments (flushed, not necessarily
@@ -455,6 +486,11 @@ async def _refresh_search_corpus(session, page: MeetingPage) -> None:
     (where the corpus is the authoritative match, see list_pages()) that
     meeting's transcript text was silently unsearchable until something
     re-ingested the page.
+
+    Also upserts the corpus's distinct real words into `search_vocabulary`
+    (Search Step 2b) -- the same choke point that keeps search_corpus
+    itself in sync is the natural place to keep the vocabulary in sync
+    too, rather than duplicating this call at both real call sites.
     """
     all_segments = (
         (
@@ -470,6 +506,7 @@ async def _refresh_search_corpus(session, page: MeetingPage) -> None:
     page.search_corpus = compute_search_corpus(
         page.title, page.jurisdiction, page.agenda_items, all_segments
     )
+    await _upsert_vocabulary_words(session, tokenize(page.search_corpus))
 
 
 async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) -> dict:
