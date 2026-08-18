@@ -618,6 +618,66 @@ meetings ingested successfully through the actual production path
 (`virginiabeach`: 1 segment, `carsonca`: 32 segments, `coralvision`: 302
 segments, all live at their real `/m/{slug}` pages).
 
+## Swagit `/videos/{id}/transcript` URLs resolved to "no video" — turned out to be a real, separate transcript resource, not a missing-video bug [Done 2026-08-18]
+
+Found by the user manually clicking through a "dead" list from an
+oversized queue scan (see this same date's `BACKLOG.md`/`CLAUDE_BACKLOG.md`
+entries for the two sibling bugs found the same way — a false-dead
+YouTube/ffprobe mismatch and a slow-host timeout, both in throwaway scan
+tooling, not the adapter). Swagit specifically turned out to be a real
+adapter gap, confirmed live, not a script bug: `app/platforms/swagit.py`
+correctly resolves `https://{customer}.new.swagit.com/videos/{id}`, but
+the same meeting's `/videos/{id}/transcript` URL variant resolved to
+`video_url=None`, `"No playable video found on this page."` — even
+though clicking it in a real browser clearly showed a working page.
+
+**Root cause, confirmed live against 3 real customers (huberheightsoh
+clip 267352, allentx clip 189248, amarillotx clip 317100), not
+assumed**: `/videos/{id}/transcript` isn't another view of the video
+page at all — it's a genuinely separate resource. Live response headers
+confirm `Content-Type: text/plain` / `Content-Disposition: attachment`,
+i.e. a real plain-text file download. The old adapter fed that
+plain-text download through the HTML-scraping resolve path meant for
+the video page; naturally no video markup exists there, so it silently
+resolved to nothing.
+
+**It's not just a bug fix — the plain-text file is a real, usable
+transcript source**, better than this app's Whisper fallback where
+available: a Swagit-hosted transcript (labeled "ASR voice-to-text" by
+one customer's own disclaimer, "uncorrected Closed Captioning" by
+another), with real second-offset timestamps roughly every 5 minutes and
+inline agenda-item markers matching the page's own `a.playerControl`
+chapter markers. Every base `/videos/{id}` page that has one links to it
+via a real `<a href="/videos/{id}/transcript">` — distinguishable from
+the page's unrelated in-page `href="#transcript"` anchor, confirmed
+absent on a real collincountytx meeting with no generated transcript, so
+this is a genuinely optional per-meeting resource, not something assumed
+to always exist.
+
+**Fix, in `app/platforms/swagit.py`**: (1) a `/transcript`-suffixed URL
+is normalized back to its base video page for video/metadata/chapter
+resolution, so it no longer tries to scrape video markup off the
+transcript download; (2) the transcript download (from either URL
+shape) is fetched separately and parsed by a new
+`_parse_swagit_transcript_download()` into real, timestamped
+`TranscriptSegment`s — now the highest-priority transcript source for
+this platform, ahead of the existing `#transcript-fragments` DOM path
+and the never-yet-observed caption-file path; (3) repeated disclaimer
+boilerplate is captured as a `transcript_warnings` note rather than
+treated as real transcript prose.
+
+**Verified live post-fix** against all 4 example URLs: video + real
+multi-line, correctly-timestamped transcript segments now resolve
+correctly for huberheightsoh, allentx, and amarillotx's `/transcript`
+URLs; collincountytx (confirmed to have no transcript available) is
+unaffected, still resolves video with the correct "no transcript"
+warning rather than a false positive. 4 new fixture-backed regression
+tests added to `tests/test_swagit.py`, one using real, verbatim-fetched
+transcript text (per this repo's synthetic-test convention — real
+content even though the fixture itself is hand-built). Full suite: 1002
+passed, 9 skipped (unrelated), up from 996 before this session's other
+fixes landed.
+
 ## Jurisdiction-bleed, second pass — trim-repair fall-through, consolidated-government spelling, entity-suffix allowlist [Done 2026-08-17]
 
 Same-night follow-up audit of the fix immediately below (the Canadian-data

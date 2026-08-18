@@ -1,7 +1,11 @@
 from bs4 import BeautifulSoup
 
 from app.platforms.models import TranscriptSegment
-from app.platforms.swagit import SwagitAssetFinder, _group_word_fragments
+from app.platforms.swagit import (
+    SwagitAssetFinder,
+    _group_word_fragments,
+    _parse_swagit_transcript_download,
+)
 
 from aiohttp_mock import FakeResponse, mock_session
 
@@ -244,6 +248,145 @@ def test_extract_metadata_strips_a_revised_marker_from_jurisdiction():
     title, date, jurisdiction = SwagitAssetFinder._extract_metadata(soup)
     assert title == "Aug 04, 2026 City Council Special Meeting - Revised"
     assert jurisdiction == "Long Beach, CA"
+
+
+# Real bug found live 2026-08-18: pasting a Swagit `/videos/{id}/transcript`
+# URL (a real, purpose-built transcript download distinct from the
+# `/videos/{id}` page -- see swagit.py's class docstring and
+# `_parse_swagit_transcript_download`) into this app resolved to "no video
+# at all", since that endpoint is a plain-text file with no video markup or
+# #transcript-fragments DOM for the old code to find. Confirmed live against
+# three real customers (huberheightsoh clip 267352, allentx clip 189248,
+# amarillotx clip 317100) that this endpoint is `Content-Type: text/plain`
+# with `Content-Disposition: attachment`, not another HTML page.
+
+# Real transcript text, fetched live 2026-08-18 from
+# http://huberheightsoh.new.swagit.com/videos/267352/transcript
+# (verbatim, not fabricated or trimmed -- the whole real download is short).
+REAL_HUBER_TRANSCRIPT_DOWNLOAD_TEXT = """\
+* This transcript was created by voice-to-text technology. The transcript has not been edited for errors or omissions, it is for reference only and is not the official minutes of the meeting.
+          OKAY, WE READY?
+          [00:00:01]
+MARK, LIKE THOSE OLD WET WIPES THAT YOU FOUND OUT THE ROOM.
+          GOOD EVENING.
+          AND THIS IS THE CITY HEBREW HEIGHTS CITY COUNCIL WORK SESSION DATED JULY 19TH, 2023.
+          WE'RE GETTING STARTED AT 5 31.
+          UH, THIS MEETING IS OFFICIALLY
+          [1. Call Meeting To Order/Roll Call]
+CALLED TO ORDER.
+          SO TONY, WOULD YOU CALL THE ROLE PLEASE? MR. SHAW? HERE.
+          MS. BAKER? HERE.
+* This transcript was created by voice-to-text technology. The transcript has not been edited for errors or omissions, it is for reference only and is not the official minutes of the meeting.
+"""
+
+
+def test_parse_swagit_transcript_download_real_huber_example():
+    segments, notes = _parse_swagit_transcript_download(
+        REAL_HUBER_TRANSCRIPT_DOWNLOAD_TEXT
+    )
+
+    # Text before the first [HH:MM:SS] anchor stays at 0.0.
+    assert segments[0].start == 0.0
+    assert segments[0].text == "OKAY, WE READY?"
+    # The [00:00:01] anchor becomes the next segment's real start second --
+    # the inline "[1. Call Meeting To Order/Roll Call]" agenda marker is
+    # skipped (not duplicated from the DOM-derived agenda_items), but its
+    # surrounding prose lines are joined into one block.
+    assert segments[1].start == 1.0
+    assert "MARK, LIKE THOSE OLD WET WIPES" in segments[1].text
+    assert "CALLED TO ORDER." in segments[1].text
+    assert "[1. Call Meeting To Order" not in segments[1].text
+    # The repeated disclaimer line (top and bottom, identical text) is
+    # deduped into a single source note, not treated as transcript prose.
+    assert notes == [
+        "This transcript was created by voice-to-text technology. The "
+        "transcript has not been edited for errors or omissions, it is "
+        "for reference only and is not the official minutes of the meeting."
+    ]
+    assert all("This transcript was created" not in s.text for s in segments)
+
+
+TRANSCRIPT_VARIANT_URL = "https://example.new.swagit.com/videos/1/transcript"
+TRANSCRIPT_VARIANT_BASE_URL = "https://example.new.swagit.com/videos/1"
+
+TRANSCRIPT_VARIANT_BASE_HTML = (
+    "<html><head><title>Jul 21, 2026 Town Council Regular Meeting - Example, CA</title></head>"
+    "<body>"
+    '<script>var playlist = [{"file": "https://archive-stream.granicus.com/x/playlist.m3u8"}];</script>'
+    '<a href="/videos/1/transcript">Transcript</a>'
+    "</body></html>"
+)
+
+SHORT_REAL_TRANSCRIPT_TEXT = (
+    "          [00:00:01]\n"
+    "HELLO AND WELCOME TO THE MEETING.\n"
+)
+
+
+async def test_resolve_finds_video_when_given_the_transcript_url_directly():
+    # This is the exact real-world shape of the reported bug: a user
+    # pastes the `/transcript` URL, not the base `/videos/{id}` page.
+    routes = {
+        TRANSCRIPT_VARIANT_BASE_URL: FakeResponse(
+            status=200, text=TRANSCRIPT_VARIANT_BASE_HTML, url=TRANSCRIPT_VARIANT_BASE_URL
+        ),
+        TRANSCRIPT_VARIANT_URL: FakeResponse(
+            status=200, text=SHORT_REAL_TRANSCRIPT_TEXT, url=TRANSCRIPT_VARIANT_URL
+        ),
+    }
+
+    with mock_session(routes):
+        result = await SwagitAssetFinder().resolve(TRANSCRIPT_VARIANT_URL)
+
+    # Before the fix this was None with "No playable video found on this
+    # page." -- the `/transcript` URL was fetched directly as if it were
+    # the HTML video page.
+    assert result.video_url == "https://archive-stream.granicus.com/x/playlist.m3u8"
+    assert not result.video_warnings
+    assert [s.text for s in result.segments] == ["HELLO AND WELCOME TO THE MEETING."]
+    # The URL the caller actually pasted is preserved as source_url.
+    assert result.source_url == TRANSCRIPT_VARIANT_URL
+
+
+async def test_resolve_fetches_transcript_download_from_base_video_page_link():
+    # The more common real shape: the caller pastes the ordinary
+    # `/videos/{id}` page, which itself links to the transcript download.
+    routes = {
+        TRANSCRIPT_VARIANT_BASE_URL: FakeResponse(
+            status=200, text=TRANSCRIPT_VARIANT_BASE_HTML, url=TRANSCRIPT_VARIANT_BASE_URL
+        ),
+        TRANSCRIPT_VARIANT_URL: FakeResponse(
+            status=200, text=SHORT_REAL_TRANSCRIPT_TEXT, url=TRANSCRIPT_VARIANT_URL
+        ),
+    }
+
+    with mock_session(routes):
+        result = await SwagitAssetFinder().resolve(TRANSCRIPT_VARIANT_BASE_URL)
+
+    assert result.video_url == "https://archive-stream.granicus.com/x/playlist.m3u8"
+    assert [s.text for s in result.segments] == ["HELLO AND WELCOME TO THE MEETING."]
+
+
+async def test_resolve_does_not_mistake_the_in_page_anchor_for_a_real_transcript_link():
+    # Real distinction confirmed live 2026-08-18: every Swagit page has an
+    # unrelated `href="#transcript"` in-page anchor even when no generated
+    # transcript exists for that meeting (confirmed on a real
+    # collincountytx meeting) -- only a real `href="/videos/{id}/transcript"`
+    # download link means one exists. This must not be treated as one.
+    html = (
+        "<html><head><title>Jul 21, 2026 Town Council Regular Meeting - Example, CA</title></head>"
+        "<body>"
+        '<script>var playlist = [{"file": "https://archive-stream.granicus.com/x/playlist.m3u8"}];</script>'
+        '<a href="#transcript">Transcript</a>'
+        "</body></html>"
+    )
+    routes = {PAGE_URL: FakeResponse(status=200, text=html, url=PAGE_URL)}
+
+    with mock_session(routes):
+        result = await SwagitAssetFinder().resolve(PAGE_URL)
+
+    assert result.segments == []
+    assert any("no transcript found" in w.lower() for w in result.transcript_warnings)
 
 
 def test_extract_metadata_strips_a_closed_session_marker_from_jurisdiction():
