@@ -1,15 +1,3 @@
-https://anaheim.granicus.com/player/clip/3511
-https://annapolismd.granicus.com/player/clip/1410
-https://anoka-k12.granicus.com/player/clip/800?view_id=2
-https://apachejunction.granicus.com/player/clip/2687
-https://arkansas-sc.granicus.com/player/clip/1808?view_id=2
-https://arvin.granicus.com/player/clip/162
-https://ashland-va.granicus.com/player/clip/1703
-https://auburn.granicus.com/player/clip/1508?view_id=2
-https://aurora-il.granicus.com/player/clip/1510?view_id=1
-https://azusa.granicus.com/player/clip/1452
-https://balharbourfl.granicus.com/player/clip/453?view_id=1
-https://bchd.granicus.com/player/clip/632?view_id=2
 https://beaufort.granicus.com/player/clip/4776
 https://beaverton.granicus.com/player/clip/2938
 https://belleplaine.granicus.com/player/clip/679?view_id=2
