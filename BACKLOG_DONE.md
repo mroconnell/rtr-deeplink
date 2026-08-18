@@ -6,6 +6,84 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Cablecast/Swagit/CivicClerk stage-2 seeks, full-set real-content check: 180 confirmed real captioned jurisdictions [Done 2026-08-17]
+
+**Landed straight into this file instead of updating its own still-open
+`BACKLOG.md` entry, 2026-08-18 — explained below.** This entry's content
+comes from [PR #111](https://github.com/mroconnell/rtr-deeplink/pull/111)
+("Extend Cablecast/Swagit/CivicClerk real-content check to full sets: 180
+real"), opened 2026-08-17 and never merged: `origin/main` moved enough by
+2026-08-18 (heavy tier-3 queue churn from the scheduled feed workflows,
+plus a full day of other unrelated work) that the PR's
+`scripts/tier3_auto_transcription_queue.txt` diff hit a real merge
+conflict. Rather than resolve a diff against a queue file that's already
+been rewritten several times since, this records the PR's real,
+already-true finding directly here — the underlying data work (180 real
+ingests) happened for real on 2026-08-17 regardless of whether this PR's
+paperwork ever merges, confirmed by checking that `BACKLOG.md`'s own
+existing in-place entry on this topic still shows the old, stale "25
+confirmed real" number from the original 44/30/30 sample pass, meaning
+this update was never actually recorded anywhere until now.
+
+**The real finding**: extended the sample-based real-content check
+(44/30/30 URLs) to the full 728-candidate set across all three
+platforms. Final tally: **180 confirmed real captioned jurisdictions,
+all ingested for real** — Cablecast 2/44, Swagit 139/430, CivicClerk
+39/254. Worth remembering: the original 30-URL samples overestimated
+real yield, especially for CivicClerk (37% sample rate vs. 15% on the
+full set) and Swagit (40% vs. 32%) — a small sample isn't a reliable
+stand-in for the full set on this kind of check. The remaining 548
+(video-with-no-captions, or nothing found) went to
+`scripts/tier3_auto_transcription_queue.txt` for the existing cron
+feeder to resolve and push at pickup time, rather than re-checking each
+one by hand first.
+
+**Real bug fixed along the way**: `hosts_to_urls.py` (lives in
+`rtr-business/research/`, not this repo) used a shared single-thread
+executor meant to bound a per-call DNS-hang, but one real hang instead
+silently wedged every host queued after it for the rest of the run —
+fixed to use a fresh one-shot executor per call.
+
+## TelVue round 2: 12 org tokens found via web search, 4 more real captioned jurisdictions ingested [Done 2026-08-17]
+
+**Same situation as the entry immediately above — landed straight into
+this file instead of updating its own still-open `BACKLOG.md` entry,
+2026-08-18.** This entry's content comes from
+[PR #100](https://github.com/mroconnell/rtr-deeplink/pull/100) ("Backlog:
+TelVue round-2 web search finds 4 real captioned jurisdictions"), opened
+2026-08-17 and never merged: its `BACKLOG.md` diff hit a real conflict
+against other backlog entries that landed nearby since. Same reasoning
+applies — checked that `BACKLOG.md`'s own existing in-place TelVue entry
+still shows the old "Fitchburg, MA (FATV), 956 real transcript segments"
+phrasing from the first round only, confirming this round-2 update was
+never actually recorded anywhere until now, even though the real
+ingests it describes already happened.
+
+**The real finding**: a second round of the web-search-first method
+(the one validated on Legistar the same night as the original TelVue
+entry) found 12 real org tokens total across two rounds of searching, 4
+of which turned into genuinely new real captioned jurisdictions, all
+ingested for real: Fitchburg, MA (FATV, 956 segments, 22 agenda items),
+Bellefonte Borough, PA (2 separate meetings, 397/1,635 segments), and
+State College Borough, PA (2,365 segments) — the latter three all came
+from one org token that turned out to cover multiple distinct PA
+jurisdictions (Centre County area) via different playlist IDs, a real
+structural finding of its own. One more real hit (2,497 segments) was
+deliberately **not** ingested — its jurisdiction is only a
+nickname-match guess ("ECTV" → likely Scranton, PA, from "Electric City"
+being Scranton's real nickname) with no direct linking .gov page
+confirming it, so it was held back rather than guessed. Full
+token-by-token table with confidence levels in
+`~/Documents/rtr-business/research/telvue_org_tokens.md` (outside this
+repo).
+
+**Still not done, same as before**: a systematic `hosts_telvue.txt` the
+way Legistar's 19-host list exists now — the 12 tokens above came from
+~4 total searches, not the same scale of effort, and the CDX-side
+complications the original entry documented (200k-row cap, opaque
+token, mixed path shapes) are still real and still unaddressed if
+someone wants full coverage rather than a few more spot-checks.
+
 ## Queue-advance automation: switched to QUEUE_ADVANCE_PAT, fully unattended end-to-end for both workflows [Done 2026-08-18]
 
 Closes out the saga this file's own next two entries below document in
