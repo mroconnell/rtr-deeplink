@@ -1453,46 +1453,6 @@ that added this reorg, for which ones are new).
   joined against the AJAX agenda outline's own item ids, it's now the
   adapter's real timestamped `agenda_items` mechanism.
 
-### Live but broken
-
-- **[HUMAN] Both auto-transcription feed workflows' queue-advance PRs still need a human
-  to manually approve a pending GitHub Actions run on every single cycle —
-  found 2026-08-18 verifying the fix below end-to-end, real and still
-  unattended-blocking today.** Full history of how this got to a
-  real, working (but not yet unattended) state is in `BACKLOG_DONE.md`'s
-  "Queue-advance automation: GITHUB_TOKEN PR-creation permission enabled,
-  run-selection bug fixed, verified end-to-end" entry. The short version
-  of what's still open: this repo is public, and a `GITHUB_TOKEN`-authored
-  PR's `author_association` comes back `"CONTRIBUTOR"` rather than
-  `"OWNER"`/`"MEMBER"` — so its auto-triggered `pull_request`-event
-  `test.yml` run (the one the `main` ruleset's required `test` check
-  actually credits) gets gated behind this repo's fork-PR-approval
-  setting exactly like a real outside contributor's would, even though
-  it's same-repo and Ryan-triggered. A `workflow_dispatch`-triggered
-  `test.yml` run does NOT need approval and does pass, but the ruleset
-  doesn't credit it toward the required check regardless (confirmed live,
-  PR #171: two separate passing, correctly-PR-linked `test` check-runs
-  from the same app/integration, still rejected by `--admin` merge with
-  "Required status check 'test' is expected," until the actual
-  `pull_request`-triggered run was manually approved in the GitHub UI —
-  at which point the PR immediately went `MERGEABLE`/`CLEAN`). Net effect:
-  every future scheduled run's queue-advance PR will sit open until a
-  human clicks "Approve and run" on its pending check in the Actions UI —
-  real progress from "completely broken," but not yet the unattended
-  automation this was originally meant to be.
-
-  **Needs a decision, not something to flip unilaterally** (same
-  reasoning as the permission decision already made): whether to loosen
-  this repo's "Fork pull request workflows from outside collaborators"
-  approval-requirement setting (no REST API found for reading/setting it
-  during this investigation — Settings → Actions → General in the GitHub
-  UI is the only confirmed path), which is the same gate that protects
-  against a malicious real fork PR running arbitrary CI with repo
-  secrets — a real security tradeoff, not a pure convenience toggle — or
-  to just accept manual approval each 6-hour cycle (cheap today at 2
-  workflows/day, but doesn't scale if more automated PR-opening workflows
-  get added later).
-
 ### Needs a human decision
 
 - **[HUMAN] Chicago's City Clerk ELMS (`chicityclerkelms.chicago.gov`) is a real,
