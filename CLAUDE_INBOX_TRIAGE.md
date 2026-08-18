@@ -84,3 +84,209 @@ Search Console entry same-day (with this run's own additional
 investigation folded in — a concrete named thin-page candidate for the
 first, application code ruled out via a real grep for the second) and
 removed from here per this file's own promotion convention.
+
+---
+
+## 2026-08-18
+
+**Note on this run**: `label:rtr-claude -label:rtr-claude-processed`
+returned all 68 threads that existed in the `rtr-claude` label as of
+today (the label itself shows 68 threads total, 0 under
+`rtr-claude-processed`) — so the 2026-08-17 note's open item ("Gmail
+OAuth needs to actually get reauthorized before the next run") is
+**still not fixed**; this run started from the same unlabeled backlog
+again, now grown to 68 threads instead of 34. All 68 were read and
+reviewed this run (full plain-text bodies, not just snippets, for
+anything not immediately out-of-scope/informational/duplicate).
+
+**Labeling could not be attempted at all this run** — worse than
+2026-08-17's "died partway through": every `label_thread` call failed
+immediately with "MCP server Gmail requires re-authorization (token
+expired)" (one call was separately "Denied by user"). Ryan confirmed
+live mid-run to skip relabeling entirely rather than keep retrying a
+broken write path. **This is now a two-run-running open item** — the
+Gmail connector's OAuth needs to be reauthorized (and, per this run's
+new evidence, whatever grants Gmail *write* scope specifically needs to
+actually stick — read-only calls, `search_threads`/`get_message`, all
+worked fine this run, only `label_thread` failed) before the next
+scheduled run, or it will re-review the same ~68+ threads a third time.
+Since nothing could be labeled, this section documents every
+finding from a full 68-thread review so a future run's re-review of the
+same threads doesn't have to re-investigate what's below from scratch.
+
+**Skipped as out-of-scope/informational/duplicate (no write-up below,
+per this file's own convention)**: `how-to-adu.com` Search Console
+alerts (2, different property); UptimeRobot `TEST:`-prefixed
+notifications (2); "Your transcript's ready" / "YouTube transcripts: N
+added" / "none new today" account emails (7); the daily
+`ryan@ally.redtaperecordings.com` "Daily report" and saved-search-alert
+("data center") emails (2, both working-as-designed product features,
+not operational alerts); "New device signed in" account notice (1);
+GitHub "A Google identity was just linked to your account" (1);
+Search-Console property-association/tips emails with nothing to
+evaluate (3: GA association confirmed, "Monitor Search traffic"
+confirmed, "Improve Google presence" tips); the three "New reason(s)
+preventing your pages from being indexed" Search Console alerts
+(2026-08-16/17) — all three reasons ("Excluded by 'noindex' tag," "Page
+indexed without content," "Page with redirect") are exact repeats of
+reasons already tracked in `BACKLOG.md`/`CLAUDE_BACKLOG.md` per the
+2026-08-17 entry above, confirmed by reading each alert's full body,
+not just assumed from the subject line; "New Videos structured data
+issues" (2026-08-12) — confirmed duplicate of the already-tracked
+`thumbnailUrl`/`uploadDate` issue per the 2026-08-17 entry above; ~50
+"[mroconnell/rtr-deeplink] PR run failed: Test" / "Run failed: Test"
+emails from individual PR branches (2026-08-14 through 2026-08-18,
+including one literally titled "Throwaway: ruleset verification
+(deliberately failing test, do not merge)") — checked `test.yml`'s
+current runs on `main` via the GitHub API and confirmed CI is green on
+`main` as of the latest merge (run 32096776559, success), so these are
+normal dev-iteration failures on branches that were fixed before merge,
+not a live gap; one Sentry `TimeoutError` (`PYTHON-FASTAPI-P`,
+2026-08-18, `app/platforms/media_probe.py`'s `extract_chunk_audio()`
+hitting its 900s ffmpeg subprocess timeout on one Granicus HLS chunk) —
+matches the exact "single-chunk timeout, `handled=yes`, job continues
+cleanly to the next chunk" pattern `BACKLOG_DONE.md` already documents
+as expected/handled worker behavior, not a new bug; one Sentry
+`ProgrammingError`/`UndefinedColumnError` (`PYTHON-FASTAPI-1`,
+2026-08-17 16:26 UTC) — confirmed duplicate of the WO-10 schema-ordering
+outage `BACKLOG_DONE.md` already documents in full (PR #116's model
+column deploying ~13 min ahead of its migration); two Sentry "N new
+alerts" digest emails — pure digests of the individual issues already
+covered elsewhere in this entry, no separate information.
+
+### 1. Both auto-transcription feed workflows have been failing on
+**every single run** since their supposed fix landed — new root cause,
+not the old one
+
+**Confirmed** via real GitHub Actions job logs (not just the failure
+emails), across 6 consecutive runs of both `feed-granicus-transcription.yml`
+and `feed-tier3-transcription.yml`. `dd9f901`/PR #114's "queue-state
+commit gets rejected by the `main` branch ruleset" bug (referenced in
+the 2026-08-17 entry above) was genuinely fixed by `e998860` ("Fix
+auto-transcription feed workflows never advancing their queues", PR
+#144, merged 2026-08-17 ~22:02 UTC) — it now routes the queue-advance
+commit through a real PR instead of a rejected direct push. **But every
+run since that fix merged has failed anyway**, at the new "Advance queue
+via PR" step, with:
+
+```
+pull request create failed: GraphQL: GitHub Actions is not permitted to create or approve pull requests (createPullRequest)
+```
+
+Confirmed on the very first run after the fix merged (run 32074229224,
+tier3, sha `e998860` itself, 2026-08-17 22:03 UTC) and on every run
+since, most recently 2026-08-18 13:28 UTC (tier3) and 13:04 UTC
+(granicus). This is a repo/org-level Actions permission (Settings →
+Actions → General → "Allow GitHub Actions to create and approve pull
+requests," currently off), not a code bug in the workflow's logic. The
+`git push` of the queue-advance branch always succeeds first — only
+`gh pr create` fails — so each failed run leaves an orphaned
+`queue-advance/granicus-<run_id>` or `queue-advance/tier3-<run_id>`
+branch on the remote with no PR and no cleanup; at least 6 such orphan
+branches exist as of this run (one per failed run since the fix
+merged), and one more will accumulate every 6 hours until this is
+fixed.
+
+**Impact**: both auto-transcription queues (`scripts/
+granicus_auto_transcription_queue.txt`, 457 URLs remaining per the
+latest run's own log output; `scripts/tier3_auto_transcription_queue.txt`)
+have made **zero real progress** since PR #144 supposedly fixed this —
+the exact same "queue never advances" symptom PR #144 was written to
+solve, now caused by a different, still-open permission gap. Each run
+does still successfully call the Archive's ingest endpoint for whatever
+12 URLs are at the front of the (unchanged) queue file, so the same 12
+URLs are being re-submitted for ingestion every 6 hours instead of the
+queue actually advancing through its ~450+ remaining backlog — wasted
+work, though not obviously destructive (ingestion looked idempotent
+from the log: `[SKIPPED]`/`[INGESTED]` outcomes per URL). **Fix is a
+one-click repo setting change** (or switching these two workflow steps'
+`gh pr create`/`gh workflow run` calls to a PAT/GitHub App token instead
+of the default `GITHUB_TOKEN`), not a build.
+
+### 2. Render account bandwidth limit reached — real, current cost exposure
+
+**Confirmed** via the Render emails' own text (Render dashboard itself
+not reachable from here to see the per-service breakdown). Render's
+Hobby-plan bandwidth (5 GB/month, shared account-wide across
+`rtr-deeplink`, `rtr-deeplink-archive`, and the worker) hit "Approaching
+Bandwidth Limit" (>70% used) 2026-08-17 12:13 UTC, then "Reached the
+Bandwidth Limit" (100%) 2026-08-18 12:17 UTC — so roughly 30% of a whole
+month's allowance was used in about 24 hours. Overage is now
+auto-billed at $15 per additional 100 GB, uncapped, resetting at the
+start of next calendar month. **Open question for Ryan, not resolvable
+from here**: is this expected (real traffic growth from the first-10
+outreach/clips campaign — arguably good news) or something to check (a
+proxy/redirect loop, or the Archive serving full video bytes through
+`archive_client.py`'s proxy rather than just embedding a player/link)?
+Render's dashboard bandwidth breakdown (linked in the email) would
+answer this in under a minute but requires the actual dashboard login.
+
+### 3. UptimeRobot: `/api/health/resolve-check` was down for 19h33m — real-world
+impact from an already-tracked, currently-deprioritized bug
+
+**Confirmed**, and this is new *severity* evidence for an existing
+`BACKLOG.md` entry rather than a new root cause. `BACKLOG.md` already
+documents (as `[JUST-DO-IT]`, filed "not urgent") that every route on
+both services returns HTTP 405 to `HEAD` requests site-wide, and names
+UptimeRobot's default HEAD-probe behavior as one of the reasons this
+matters. This run found the concrete real-world consequence: the
+`rtr-deeplink.onrender.com/api/health/resolve-check` UptimeRobot monitor
+was in a continuous DOWN state for **19 hours 33 minutes**
+(2026-08-16 13:26:05 → 2026-08-17 08:59:06 UTC), root cause reported by
+UptimeRobot itself as "HTTP 405 - Method Not Allowed" — i.e. the
+already-known bug, not a real service outage (the resolve-check route
+itself runs a real resolve on GET and there's no other evidence the
+resolve path was actually broken for 19+ hours that day). **Impact**:
+for nearly 20 hours, the one monitor specifically built to catch a real
+resolve-path outage (`GET /api/health/resolve-check`, see
+`BACKLOG_DONE.md`) was blind — a genuine outage during that window would
+have gone unnoticed by UptimeRobot. Worth reprioritizing the existing
+405-on-HEAD fix given this concrete monitoring-blackout evidence; no new
+investigation needed, root cause was already found and documented.
+
+### 4. Archive service instability, 2026-08-17 ~14:10–22:04 UTC — mostly
+already-explained, but two pieces aren't
+
+**Unconfirmed** (Render's metrics/deploy-log dashboards aren't reachable
+from here; reasoned from Sentry alert text + `BACKLOG_DONE.md` +
+`render.yaml`). Sentry shows a cluster of production errors on
+`rtr-deeplink`/`rtr-deeplink-archive` this evening: "Unclosed client
+session" and "Unclosed connection" (both from the resolver's
+`/api/health`, complaining about `archive_client.py` connections to
+`rtr-deeplink-archive.onrender.com` never closing), a proxy
+`TimeoutError` (`app/archive_client.py:362`, `proxy_get()` on
+`/meetings`), "RuntimeError: Response content shorter than
+Content-Length" (Archive's own `/`, a `Go-http-client` request — almost
+certainly Render's own health probe), and "CannotConnectNowError: the
+database system is shutting down" (Archive's `/api/health` DB
+connection). **Most of this cluster is very likely explained by**
+`BACKLOG_DONE.md`'s already-documented WO-10 outage that same evening
+(PR #116's model column deploying ~13 minutes ahead of its `ALTER
+TABLE`, causing `UndefinedColumnError` on every `meeting_pages` read —
+Sentry's own `PYTHON-FASTAPI-1` for that exact error is timestamped
+16:26 UTC, right in the middle of this cluster) — an Archive that's
+erroring on most reads would plausibly produce exactly this shape of
+downstream resolver-side timeouts/unclosed-connection noise, and
+`BACKLOG_DONE.md` says the fix (WO-10's `preDeployCommand`) shipped
+"the same evening," confirmed still live in `render.yaml` today
+(`preDeployCommand: cd archive && alembic upgrade head`).
+
+**Two things from this window aren't accounted for by that explanation,
+though**: (a) four separate "Web Service rtr-deeplink-archive exceeded
+its memory limit" restart emails fired at 14:10, 14:15, 14:23, and 17:08
+UTC — the first one **nearly 2.5 hours before** the first
+`UndefinedColumnError` Sentry alert (16:26 UTC), so an OOM-driven
+trigger *preceding* (and possibly contributing to) the schema-read
+errors is a real, currently-unexplained possibility, not just
+downstream fallout from them — nothing in `BACKLOG_DONE.md`'s WO-10
+write-up mentions memory pressure. (b) WO-10's own fix deploy (commit
+`6e722be`, PR #156) **itself failed to deploy** at 23:54:28 UTC that
+same evening (Render: "We encountered an error during the deploy
+process for rtr-deeplink-archive... your latest changes may not be
+live") — ironic given the commit's purpose, though `render.yaml` on
+`main` today confirms `preDeployCommand` is live, so a later attempt
+clearly succeeded; the first attempt's own failure reason was never
+surfaced or explained anywhere. **Open question for Ryan**: worth a
+quick look at Render's memory graph for the Archive around 14:00–17:00
+UTC on 2026-08-17 to check whether OOM genuinely preceded/triggered the
+schema-read cascade, or whether the timing is coincidental.
