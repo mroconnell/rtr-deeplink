@@ -2700,6 +2700,58 @@ that added this reorg, for which ones are new).
     artifact worth guessing a general dedup rule from a single example.
     **Deliberately not a bug to fix** — no code change made.
 
+- **[LATER] Castus has zero support anywhere in the resolver — first real
+  signal it exists in the wild, from the `rtr-business/research`
+  government-first coverage-map crawl (2026-08-18).** Not in
+  `detect_platform()` (`app/platforms/base.py`), no adapter file, not in
+  `generic_fallback.py`'s curated-pointer list — genuinely unhandled, not
+  just unbuilt. 1 hit (`castus`) out of a 200-row national-ish sample of
+  `.gov` city/county homepages (`dotgov_probe.py`'s fingerprint list,
+  extrapolated in `discover_from_dotgov.sh`'s `coverage_map.csv`) — too
+  small an n to size the opportunity yet (the full ~9,766-row run this
+  checkpoint fed into will give a real count), but confirms Castus is a
+  real, in-use PEG/government-access video platform worth a first look
+  once a real customer URL is in hand, the same "test against a real live
+  URL first" rule this file's own working conventions require for any
+  new adapter.
+
+- **[LATER] Vimeo's real-world prevalence among small local governments is
+  now quantified for the first time — worth deciding if the existing
+  pointer-only handling is enough (2026-08-18).** Not an "add support"
+  gap the way Castus is: Vimeo is already recognized, but only via
+  `generic_fallback.py`'s curated pointer-link detector
+  (`_VIMEO_VIDEO_LINK_RE`, numeric video-id and `showcase/` links only) —
+  not in `detect_platform()`'s dispatch table, and with no Vimeo-native
+  caption/transcript extraction (unlike Granicus/Swagit/etc., which parse
+  the platform's own caption format). The same 200-row dotgov coverage-map
+  checkpoint found 6/200 Vimeo fingerprint hits — extrapolated (not
+  confirmed) to roughly 290 jurisdictions nationally at that rate, which
+  would make Vimeo a meaningfully larger population than several platforms
+  that already have dedicated adapters. Worth revisiting once the full
+  ~9,766-row run gives a real national count: if it holds up, decide
+  whether generic_fallback's pointer-only handling is sufficient at that
+  scale or whether native Vimeo caption support (if Vimeo's oEmbed/API
+  exposes captions — unconfirmed either way, no adapter work has looked at
+  this) is worth building.
+
+- **[LATER] Direct-to-YouTube may be the single largest video source among
+  small US local governments, ahead of Granicus — a resolver-prioritization
+  signal, not a code change by itself (2026-08-18).** Same 200-row dotgov
+  coverage-map checkpoint: `youtu.be` (11) + `youtube.com/embed` (7) = 18
+  hits, against Granicus's 14 — YouTube already ahead of the single most
+  common dedicated meeting-video vendor, in a sample skewed toward small
+  rural counties (Alabama/Alaska-heavy — the checkpoint's alphabetical
+  input ordering, since fixed for the full run; see this session's
+  `DOTGOV_DISCOVERY.md` update). If the full run confirms this nationally,
+  it means this project's own "Tier 2" platforms (those that delegate to
+  YouTube rather than hosting video themselves — see `CDX_QUERIES.md`'s
+  PrimeGov/CivicWeb sections, which already use this term) may be the
+  *primary* channel for small-government video, not a fallback behind the
+  dedicated-vendor platforms this project has prioritized adapter work for
+  so far. Worth weighing against `CDX_QUERIES.md`'s existing CDX
+  enumeration backlog once the full run's real number lands, not acted on
+  from this sample alone.
+
 ## Archive roadmap
 
 - **[IMPROVEMENT-ROUND] Design reference for the cassette-reel button animation, flagged
