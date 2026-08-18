@@ -548,6 +548,76 @@ redirecting, accepted since nothing legitimately linked to them (they
 were serving mismatched content anyway) and no saved item pointed at
 them. Full suite green throughout (1005 passed, 9 skipped).
 
+## Cablecast: newer portal template (`/show/{id}`, no `/internetchannel` prefix) was unresolvable, AND once fixed inside the finder, still unreachable through the real production routing path [Done 2026-08-18]
+
+Found via the same tier-1/tier-2 "dead" list pilot campaign as the Swagit
+entry below (a background agent piloting `rtr-business/research/
+urls_cablecast_miss.txt`, 25 of 211 sampled). Two distinct, stacked bugs,
+both real and confirmed live -- fixing only the first would have left
+the whole thing silently non-functional in production.
+
+**Bug 1 (found and fixed by the pilot agent), inside
+`app/platforms/cablecast.py`.** A newer Cablecast portal template
+(confirmed on `satellitebeach.cablecast.tv`, also `carsonca`,
+`virginiabeach`, `rialtoca`, and others) drops the `/internetchannel`
+prefix and serves shows at bare `/show/{id}` instead of
+`/internetchannel/show/{id}`. That bare path is protected by an AWS WAF
+JavaScript challenge that returns empty content to any non-browser
+fetch (the adapter correctly never attempts to solve/bypass a WAF
+challenge -- out of scope, same policy as everywhere else in this
+codebase). But the site's *root* page (`/`) isn't WAF-protected, and its
+own `window.__remixContext` embeds a large "related shows" catalog (287
+real shows confirmed on `satellitebeach` alone, back to 2019) -- enough
+to find the requested show without ever touching the blocked path. Also
+found and fixed a real `showId` type mismatch discovered along the way:
+an `int` on the older `/internetchannel/show/` template (Detroit,
+Charlotte) but a `str` on this newer one (e.g. `satellitebeach`'s
+`"showId": "540"`) -- silently broke matching even after the URL-shape
+fix, until compared as strings on both sides. Fix: a root-page fallback
+fetch when the direct `/show/{id}` path 404s or is WAF-blocked, plus
+string-normalized `showId` comparison. 4 fixture-backed regression tests
+added to `tests/test_cablecast.py` with real fixtures.
+
+**Bug 2 (found in a follow-up check, after the pilot agent's fix landed)
+-- the fix above was real but completely unreachable in production.**
+`app/platforms/base.py`'s `detect_platform()` is what routes a URL to
+`cablecast.py` in the first place, and its check was `"cablecast.tv" in
+netloc and "/internetchannel/show/" in path` -- deliberately scoped
+narrow back on 2026-08-12 specifically to exclude other, unhandled
+`*.cablecast.tv` templates (Charlotte, NC's confirmed-different one).
+That narrow scoping meant a bare `/show/{id}` URL was classified as
+platform `"unknown"` and never reached `cablecast.py`'s new fallback
+logic at all, regardless of how correct that logic was -- confirmed live
+by re-running the exact URLs the pilot agent had just verified through
+`CablecastAssetFinder().resolve()` directly, but through the real
+`detect_platform()` -> `get_finder()` -> `resolve()` path every actual
+production caller uses (`scripts/bulk_ingest.py`'s pattern): 2 of 3
+"recovered" URLs (`virginiabeach`, `carsonca`) came back with `video_
+url=None` and a generic "this city isn't officially supported yet"
+message from `generic_fallback.py`, not the real Cablecast handling --
+because they were never routed there. Only `coralvision`'s URL (which
+happened to already use the old `/internetchannel/show/` shape) worked,
+by coincidence of URL shape, not because the real fix was reachable.
+**Lesson worth keeping**: verifying a finder fix by calling the finder
+class directly, rather than through the actual `detect_platform()` entry
+point real callers use, can hide a routing-layer gap that makes the fix
+inert in production -- re-test through the real entry point, not just
+the class under test, before calling a fix verified.
+
+**Fix**: widened `detect_platform()`'s cablecast condition to also match
+a bare `/show/{id}` path (checked precisely -- the segment after `/show/`
+must be all-digits, not just presence of the substring), while leaving
+every other `*.cablecast.tv` template correctly unclaimed (the pilot
+agent separately confirmed two other real template variants -- a
+login-gated `FrontDoor.aspx` ASP.NET portal, and a fully client-rendered
+SPA with no embedded state -- neither of which uses a `/show/` path at
+all, so this widening doesn't accidentally claim them). Re-verified:
+`detect_platform()` now correctly returns `"cablecast"` for all three
+URLs, full suite green (1005 passed, 9 skipped), and all three real
+meetings ingested successfully through the actual production path
+(`virginiabeach`: 1 segment, `carsonca`: 32 segments, `coralvision`: 302
+segments, all live at their real `/m/{slug}` pages).
+
 ## Jurisdiction-bleed, second pass — trim-repair fall-through, consolidated-government spelling, entity-suffix allowlist [Done 2026-08-17]
 
 Same-night follow-up audit of the fix immediately below (the Canadian-data

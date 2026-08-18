@@ -133,13 +133,32 @@ def detect_platform(url: str) -> str:
         # slc.gov domain, since most of that site is ordinary city-
         # government content this app has no reason to try to resolve.
         return "slc"
-    if "cablecast.tv" in netloc and "/internetchannel/show/" in path:
+    _cablecast_bare_show_id = (
+        path[len("/show/") :].split("/")[0] if path.startswith("/show/") else ""
+    )
+    if "cablecast.tv" in netloc and (
+        "/internetchannel/show/" in path or _cablecast_bare_show_id.isdigit()
+    ):
         # Detroit, MI's Cablecast video portal -- confirmed live
         # 2026-08-12, see cablecast.py's own module docstring for why
-        # this is scoped to this specific URL shape (a Remix.js portal
-        # template) rather than any *.cablecast.tv domain -- Charlotte,
+        # this is scoped to specific URL shapes (Remix.js portal
+        # templates) rather than any *.cablecast.tv domain -- Charlotte,
         # NC's confirmed Cablecast site uses a visibly different template
-        # this adapter doesn't handle.
+        # this adapter doesn't handle. The bare "/show/{id}" form (no
+        # "/internetchannel" prefix) is a newer template variant, added
+        # 2026-08-18 after confirming live that this routing check was
+        # the reason `cablecast.py`'s own already-correct handling for it
+        # (root-page fallback + string-normalized showId, see that
+        # module's docstring) was unreachable through the real
+        # detect_platform() -> get_finder() -> resolve() path every
+        # production caller actually uses -- a fix verified only by
+        # calling the finder directly bypasses this exact gap, which is
+        # what happened here until this was caught by re-testing through
+        # the real pipeline. Still scoped to a `/show/{id}` path
+        # specifically, not the whole domain, so the other confirmed
+        # out-of-scope templates (a login-gated FrontDoor.aspx ASP.NET
+        # portal, a fully client-rendered SPA with no embedded state)
+        # remain correctly unclaimed.
         return "cablecast"
     if "clerkshq.com" in netloc:
         # ClerkBase ("ClerkHQ") -- confirmed live 2026-08-14 against one
