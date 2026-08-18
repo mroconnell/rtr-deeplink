@@ -342,3 +342,27 @@ async def test_search_vocabulary_dedupes_words_shared_across_pages():
             )
         ).scalar_one()
         assert count == 1
+
+
+async def test_upsert_vocabulary_words_chunks_a_large_word_set():
+    # Real incident, 2026-08-18: scripts/backfill_search_vocabulary.py
+    # passed an entire 200-page batch's union of distinct words (62,000+)
+    # to one call, which built a single INSERT with one bound parameter
+    # per word and hit PostgreSQL's hard 65535-parameters-per-statement
+    # limit. A single page's words (this test file's other tests) never
+    # came close, so this path was never exercised before. SQLite doesn't
+    # enforce that specific limit, but this still confirms the chunking
+    # loop itself is correct (every word lands, nothing silently dropped)
+    # regardless of dialect.
+    words = {f"zzyzxbulkword{i}" for i in range(70_000)}
+    async with async_session() as session:
+        await crud._upsert_vocabulary_words(session, words)
+        await session.commit()
+
+    async with async_session() as session:
+        count = (
+            await session.execute(
+                select(func.count()).where(SearchVocabulary.word.like("zzyzxbulkword%"))
+            )
+        ).scalar_one()
+        assert count == 70_000
