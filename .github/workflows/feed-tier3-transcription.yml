@@ -95,16 +95,26 @@ jobs:
             --head "$BRANCH")
           echo "Opened $PR_URL"
 
-          # PRs/branches created with GITHUB_TOKEN don't trigger
-          # pull_request-triggered workflows, so the required "test"
-          # check would never appear on this PR by itself.
-          # workflow_dispatch is exempt from that restriction.
+          # This repo is public, and a GITHUB_TOKEN-authored PR's
+          # author_association comes back "CONTRIBUTOR" (confirmed live,
+          # 2026-08-18 -- see BACKLOG_DONE.md), so its auto-triggered
+          # pull_request run for test.yml gets gated behind manual
+          # approval by this repo's fork-PR-approval setting, same as a
+          # real outside contributor's would -- it does NOT just fail to
+          # trigger, contrary to what this comment used to claim.
+          # workflow_dispatch bypasses that approval gate, so this
+          # dispatches one explicitly -- but both runs now exist side by
+          # side on the same branch, so the run-selection below must
+          # filter to workflow_dispatch specifically, or it can grab the
+          # stuck, approval-pending pull_request run instead (confirmed
+          # live, 2026-08-18: this exact race blocked PR #171 until
+          # fixed).
           gh workflow run test.yml --ref "$BRANCH"
 
           echo "Waiting for the dispatched test.yml run to appear..."
           RUN_ID=""
           for i in $(seq 1 30); do
-            RUN_ID=$(gh run list --workflow=test.yml --branch="$BRANCH" --limit=1 --json databaseId --jq '.[0].databaseId' || true)
+            RUN_ID=$(gh run list --workflow=test.yml --branch="$BRANCH" --event=workflow_dispatch --limit=1 --json databaseId --jq '.[0].databaseId' || true)
             if [ -n "$RUN_ID" ]; then
               break
             fi
