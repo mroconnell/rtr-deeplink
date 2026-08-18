@@ -439,32 +439,86 @@ anything) to build against it.
   Title-Case-bleed cases per the earlier residual-gap entry — not
   verified against enough real examples to build yet.
 
-- **[NEEDS-AUDIT] Jurisdiction-bleed fix's single-word-tail gap: real,
-  confirmed-live cases with only 1 word of discarded tail stay unrepaired
-  (Brampton ON's "Brampton Meeting", the older Castle Rock CO's "Town of
-  Castle Rock Authorizing") — deliberate, not an oversight (`BACKLOG_DONE.md`).**
-  A single capitalized word is genuinely indistinguishable from a
-  legitimate short suffix using a word-count signal alone — confirmed by
-  direct testing that lowering the threshold to catch these would also
-  wrongly trim real long names ("Lake Washington School District" →
-  "Lake"). Would need a different, non-length-based signal (a small
-  dictionary of common bleed-continuation words like "Meeting"/
-  "Attachments"/"Authorizing"? a check against the actual agenda/page
-  text rather than just the tail's shape?) to close without that
-  regression — not attempted this pass.
+- **[NEEDS-AUDIT] Jurisdiction-bleed fix's single-word-tail gap, narrowed
+  2026-08-18: "Brampton Meeting" and "Peterborough Attachments" are now
+  fixed (a closed, curated stoplist — see `BACKLOG_DONE.md`'s "jurisdiction-
+  bleed, third pass" entry); Castle Rock CO's "Town of Castle Rock
+  Authorizing" is the one real case still open** — no confirmed second
+  example of "Authorizing" as a bleed tail exists yet, so it stays off the
+  stoplist per this repo's "don't guess, ground in real data" convention
+  rather than being added speculatively. A single capitalized word is
+  still genuinely indistinguishable from a legitimate short suffix using a
+  word-count signal alone — confirmed by direct testing that lowering
+  `_MIN_BLEED_WORD_RUN` to catch it would also wrongly trim real long
+  names ("Lake Washington School District" → "Lake"). Closable the same
+  way as "Meeting"/"Attachments" the moment a second real confirmed
+  example of "Authorizing"-shaped bleed turns up.
 
-- **[NEEDS-AUDIT] Brock Township, ON's real bled value has the real place
-  name glued directly to a filename with no separator** ("Township of
-  Brock.pdf Pulled from Council Information Index by Regional
-  Councillor Pettingill..." — `pub-townshipofbrock.escribemeetings.com`),
-  **confirmed still unrepaired by the 2026-08-17 Canadian-data fix,
-  root-caused as a different bug neither fix targets (`BACKLOG_DONE.md`).**
-  No cut of the string ever isolates a bare "Brock" token for
-  `_table_lookup()` to validate, since it's always attached to ".pdf".
-  Reads as an extraction-side artifact (something concatenated a linked
-  PDF's filename onto the jurisdiction text with no space) rather than a
-  `jurisdiction_enrich.py` gap — not traced to its real source this
-  pass.
+- **[NEEDS-AUDIT] StatsCan/Census table completeness gap, surfaced
+  2026-08-18 by gating eScribe's subdomain extraction (`BACKLOG_DONE.md`'s
+  "jurisdiction-bleed, third pass" entry): a handful of real, currently-
+  correct eScribe customer names would decline to blank on a FUTURE
+  re-resolve, because the table PR #158 added doesn't cover them yet.**
+  Confirmed via a full sweep of all 176 real eScribe + 253 real Granicus
+  subdomains currently in production (`/internal/pages/all-urls`), not
+  guessed: **Lloydminster** (AB/SK) and **Paso Robles** (CA) are
+  unambiguous, well-known real places simply missing from the table;
+  **Durham Region / Peel Region / Region of Waterloo** are a whole
+  category — Ontario's upper-tier "regional municipality" entities — the
+  table doesn't include under that name; **Chatham-Kent / Arran-Elderslie
+  / Blue Mountains** are real Ontario municipalities lost purely on a
+  hyphen-formatting mismatch (table likely has them as literal
+  "Chatham-Kent" etc., and the wordninja-reconstructed candidate doesn't
+  preserve the hyphen). Scope note: this can't retroactively blank an
+  already-published page (the existing backfill endpoint only re-runs
+  `finalize_jurisdiction()` on stored text, never re-invokes subdomain
+  extraction) — it only affects a future new meeting from these ~9
+  customers, or an explicit re-feed. Fix is adding these to
+  `places.csv`/`counties.csv` (a data-completeness gap, not a logic
+  bug) — not attempted this pass, deliberately deferred per the decision
+  to accept "decline over guess" for eScribe the same way this repo
+  already accepted it for Granicus.
+
+- **[NEEDS-AUDIT] "RochestercityMN" root-caused, 2026-08-18 — a real page-
+  title data-quality quirk on ONE specific customer, not an adapter code
+  bug.** Investigated (not fixed, per this repo's "never build from
+  assumption" rule and the specific ask that flagged this as
+  out-of-scope-until-investigated): the real source is `app/platforms/
+  iqm2.py`'s `_TITLE_RE`, which captures the jurisdiction verbatim from
+  the page's own `<title>` tag (format `"{date} {time} {meeting_name} -
+  Web Outline - {jurisdiction}"`). Rochester, MN's specific IQM2 tenant
+  (`rochestercitymn.iqm2.com`) has "RochestercityMN" literally glued
+  together as-is in its own page title — confirmed by checking IQM2's
+  other real customer, Santa Clara County, CA, whose title correctly
+  reads "...- Web Outline - The County of Santa Clara, California" (proper
+  spacing, extraction working as designed). Not a Python f-string
+  join-character bug as originally suspected — the regex is capturing
+  exactly what's on the page; the glued text originates at IQM2's own
+  vendor/tenant configuration for this one city. Only one example found
+  (this is IQM2's only other confirmed customer besides Santa Clara), so
+  not enough real data to design a general fix — if a second glued-title
+  IQM2 customer turns up, this is the same shape of problem as eScribe's
+  glued-subdomain fix above and could reuse `validated_label_extract()`
+  the same way.
+
+- **[JUST-DO-IT] The originally-reported eScribe subdomain rows (Bonnyville
+  AB, Grand Valley ON, Point Edward ON, Boulder County CO, Beaumont AB,
+  Mackenzie BC — "Townofbonnyville" and siblings) are STILL wrong in the
+  live archive today** — this round's fix (`BACKLOG_DONE.md`'s
+  "jurisdiction-bleed, third pass" entry) only corrects the CODE, so a
+  FUTURE resolve of these customers comes out right; it doesn't touch what's
+  already stored. Unlike the trim-repair/date/extension cases in the same
+  fix (which the existing `POST /internal/jurisdiction/backfill-apply`,
+  PR #165, can text-patch directly since the bled tail is still separable
+  by word), these rows have no recoverable signal once glued together —
+  "Townofbonnyville" cannot be turned into "Bonnyville" by re-running
+  `finalize_jurisdiction()` on the stored string alone; it needs an actual
+  re-resolve (`EscribeAssetFinder.resolve(url)` against the real source
+  URL, now with the corrected subdomain logic, then re-ingest) — a heavier
+  mechanism closer to `scripts/feed_granicus_auto_transcription.py`'s
+  re-feed pattern than to #165's text-only endpoint. Not built this pass;
+  a human should confirm the approach before writing it, same as any
+  re-resolve script that writes to already-public pages.
 
 - **[JUST-DO-IT] Same `/coverage` sweep also found 16 real pairs of a
   jurisdiction appearing twice — once bare, once with its state suffix —

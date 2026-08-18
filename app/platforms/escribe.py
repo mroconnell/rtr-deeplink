@@ -5,7 +5,6 @@ from typing import Dict, List, Optional
 from urllib.parse import quote, urlparse
 
 import aiohttp
-import wordninja
 from bs4 import BeautifulSoup
 from langdetect import detect as detect_language, LangDetectException
 
@@ -305,19 +304,28 @@ class EscribeAssetFinder(AssetFinder):
         # so a multi-word city collapsed into one mashed-together word
         # ("Thunderbay", "Portmoody" instead of "Thunder Bay"/"Port Moody").
         # wordninja-split the same way Granicus's _humanize_subdomain() does.
-        # Deliberately NOT gated on Census-table validation like Granicus's
-        # version (jurisdiction_enrich.validated_subdomain_extract()) --
-        # eScribe serves real Canadian customers (Mississauga, Oshawa, Port
-        # Moody, Thunder Bay, all confirmed live) that the US-only Census
-        # tables can't validate by construction (see BACKLOG.md's WO-16), so
-        # gating on validation here would make this fallback *decline* on
-        # exactly the customers it most needs to cover.
-        words = wordninja.split(label)
-        while len(words) > 1 and words[0].lower() in ("city", "county", "town", "of"):
-            words = words[1:]
-        if not words:
-            return None
-        return " ".join(w.capitalize() for w in words)
+        #
+        # Was deliberately NOT gated on Census-table validation at first --
+        # eScribe serves real Canadian customers the then-US-only Census
+        # tables couldn't validate by construction. That reasoning went
+        # stale the very next day: PR #158 (2026-08-17) added 5,028 real
+        # StatsCan places to the same table `validated_label_extract()`
+        # checks against. Left ungated, this produced a real, confirmed-live
+        # bug of its own (2026-08-18): re-resolving "townofbonnyville" with
+        # this function's own wordninja split gives "Bonny Ville" -- a
+        # different, confidently WRONG string, not the almost-right
+        # "Townofbonnyville" it started from. Now delegates to the same
+        # gated, validated logic Granicus's `_humanize_subdomain()` already
+        # uses (`jurisdiction_enrich.validated_label_extract()`), rather
+        # than reimplementing wordninja-split-and-guess locally -- declining
+        # (returning None) on a subdomain that doesn't validate rather than
+        # asserting a wrong name. Known, honestly-flagged residual gap: a
+        # handful of real Ontario "regional municipality" names (Durham
+        # Region, Peel Region, Region of Waterloo) and hyphenated municipal
+        # names (Chatham-Kent, Arran-Elderslie) aren't in the StatsCan table
+        # under this exact form, so they now decline instead of returning
+        # their previous (accurate but unvalidated) guess -- see BACKLOG.md.
+        return jurisdiction_enrich.validated_label_extract(label)
 
     @staticmethod
     def _extract_agenda_items(

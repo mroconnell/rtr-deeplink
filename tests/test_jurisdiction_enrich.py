@@ -804,25 +804,41 @@ def test_extract_jurisdiction_chain_still_rejects_the_broward_false_positive():
 
 
 def test_finalize_jurisdiction_single_word_bleed_tails_remain_a_known_residual_gap():
-    # Real, confirmed-live raw values that 2026-08-17's two fixes
-    # deliberately do NOT repair -- their discarded tail is only 1 word
-    # ("Meeting", "Authorizing"), below _MIN_BLEED_WORD_RUN. There isn't
+    # "Town of Castle Rock Authorizing": still an open gap, 2026-08-18.
+    # Its discarded tail is only 1 word ("Authorizing"), below
+    # _MIN_BLEED_WORD_RUN, and "authorizing" isn't on the closed
+    # `_KNOWN_JUNK_TAIL_WORDS` stoplist (2026-08-18 fix #4) since no real
+    # confirmed-live example has grounded it there yet -- there isn't
     # enough signal in a single capitalized word to tell real bleed apart
     # from a legitimate short suffix without risking exactly the
     # over-trim
     # test_finalize_jurisdiction_title_case_fix_does_not_over_trigger_on_real_long_names()
-    # above guards against -- documented honestly as an open gap in
-    # BACKLOG.md rather than silently left, not something this fix claims
-    # to close.
-    result = je.finalize_jurisdiction(
-        "Brampton Meeting", netloc="pub-brampton.escribemeetings.com"
-    )
-    assert result.jurisdiction == "Brampton Meeting"
-    assert result.confidence == "unverified"
-
+    # above guards against, so it's documented honestly as an open gap in
+    # BACKLOG.md rather than silently left.
     result = je.finalize_jurisdiction("Town of Castle Rock Authorizing")
     assert result.jurisdiction == "Town of Castle Rock Authorizing"
     assert result.confidence == "unverified"
+
+
+def test_finalize_jurisdiction_known_junk_tail_words_are_repaired():
+    # Real, confirmed-live raw values (2026-08-18, found live on
+    # /coverage) that fix #4's closed `_KNOWN_JUNK_TAIL_WORDS` stoplist
+    # newly repairs -- their discarded tail is only 1 word ("Meeting",
+    # "Attachments"), below _MIN_BLEED_WORD_RUN, but both words are
+    # grounded in a real confirmed example so the stoplist authorizes the
+    # trim anyway (see that constant's own docstring for why this is safe
+    # where a general short-tail rule wouldn't be).
+    result = je.finalize_jurisdiction(
+        "Brampton Meeting", netloc="pub-brampton.escribemeetings.com"
+    )
+    assert result.jurisdiction == "Brampton, ON"
+    assert result.confidence == "repaired"
+
+    result = je.finalize_jurisdiction(
+        "Peterborough Attachments", netloc="pub-peterborough.escribemeetings.com"
+    )
+    assert result.jurisdiction == "Peterborough, ON"
+    assert result.confidence == "repaired"
 
 
 # --- Second-pass fixes, 2026-08-17: `_trim_repair()` no longer falls
