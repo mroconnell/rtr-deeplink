@@ -123,6 +123,22 @@ jobs:
             --head "$BRANCH")
           echo "Opened $PR_URL"
 
+          # `gh pr checks --watch` errors immediately with "no checks
+          # reported" if called before the pull_request-triggered
+          # test.yml run has registered at all, rather than waiting for
+          # one to appear -- confirmed live, 2026-08-18: hit this exact
+          # race right after simplifying this step (PR #178), stranding
+          # PR #179 on the tier-3 workflow. So wait for at least one
+          # check to exist first.
+          echo "Waiting for the pull_request-triggered test.yml check to register..."
+          for i in $(seq 1 12); do
+            COUNT=$(gh pr checks "$BRANCH" --json name --jq 'length' 2>/dev/null || echo 0)
+            if [ "$COUNT" != "0" ]; then
+              break
+            fi
+            sleep 5
+          done
+
           gh pr checks "$BRANCH" --watch --fail-fast
 
           gh pr merge "$BRANCH" --squash --delete-branch
