@@ -147,7 +147,11 @@ async def test_resolve_no_video_integration_returns_warning_not_crash():
 
     assert result.platform == "escribe"
     assert result.video_url is None
-    assert result.jurisdiction == "Example"
+    # "example" isn't a real place -- _jurisdiction_from_subdomain() now
+    # declines instead of guessing (2026-08-18 gating fix, see that
+    # function's own docstring), so this correctly comes back None rather
+    # than a title-cased guess.
+    assert result.jurisdiction is None
     assert any("no video integration found" in w.lower() for w in result.video_warnings)
 
 

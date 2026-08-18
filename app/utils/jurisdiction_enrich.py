@@ -612,6 +612,24 @@ def enrich_jurisdiction_text(
 
 _COUNTY_TYPE_HINT_RE = re.compile(r"\b(?:county|parish|borough)\b", re.IGNORECASE)
 _STATE_SUFFIX_RE = re.compile(r",\s*([A-Za-z]{2})\.?\s*$")
+# Leading-date bleed (2026-08-18, confirmed live: "6/16/25 Bellefonte
+# Borough", "8/6/25 State College Borough") -- a bleed DIRECTION
+# `_trim_repair()` below has zero handling for, since it only ever trims
+# from the right. Narrow and specific enough (M/D/YY date shape) to run
+# unconditionally as a preprocessing step: no real jurisdiction name starts
+# with a bare date, so this is a no-op on every string that doesn't have
+# this exact bleed.
+_LEADING_DATE_RE = re.compile(r"^\d{1,2}/\d{1,2}/\d{2,4}\s*[-–]?\s*")
+# Glued file-extension bleed (2026-08-18, confirmed live: "Township of
+# Brock.pdf Pulled from Council Information Index..." -- a Canadian
+# eScribe/CivicWeb agenda page listing an attachment filename inline, no
+# space before the extension). `_trim_repair()` cuts on whitespace tokens,
+# so ".pdf" glued directly onto "Brock" means no cut ever lands on a clean
+# "Brock" -- inserting a space before the extension lets the EXISTING
+# trim-repair/_looks_like_bleed() logic handle the rest unchanged. Same
+# no-op-when-absent reasoning as the date regex above: no real jurisdiction
+# name contains a bare recognized office-document extension.
+_GLUED_EXTENSION_RE = re.compile(r"(?<=[a-zA-Z])\.(pdf|docx?|xlsx?|pptx?)\b")
 # Bare government-type words -- if an attempted split leaves nothing but
 # one of these as the "body," it isn't a real entity name, just the
 # ordinary "Type of Name" shape (e.g. "City of Boston") that should never
@@ -828,12 +846,18 @@ _ROMAN_NUMERAL_RE = re.compile(r"\b[IVXLC]{2,6}\.?\b")
 # test_finalize_jurisdiction_never_trims_a_legitimately_long_real_name()/
 # test_extract_jurisdiction_chain_rejects_a_capitalization_walk_false_positive(),
 # both re-verified against this exact constant before it was picked).
-# Known, honestly-flagged residual gap this threshold does NOT close: a
-# handful of confirmed real bleed cases have a tail of only 1-2 words
-# (Brampton's "Meeting", Castle Rock's "Authorizing") -- too short to
-# distinguish from a legitimate short suffix with this signal alone, so
-# they're left unrepaired rather than risking the false-positive side
-# (see BACKLOG.md for the honest accounting).
+# Known, honestly-flagged residual gap this threshold does NOT close on its
+# own: a handful of confirmed real bleed cases have a tail of only 1-2
+# words (Brampton's "Meeting", Castle Rock's "Authorizing") -- too short to
+# distinguish from a legitimate short suffix with this signal alone. Two of
+# these ("Meeting", and Peterborough's "Attachments") are now closed via
+# `_KNOWN_JUNK_TAIL_WORDS` below instead -- a closed, curated stoplist
+# rather than lowering this threshold (confirmed by direct testing that
+# lowering it would also wrongly trim real long names, e.g. "Lake
+# Washington School District" -> "Lake"). Anything not on that stoplist
+# (Castle Rock's "Authorizing" included) stays unrepaired rather than
+# risking the false-positive side (see BACKLOG.md for the honest
+# accounting of what's still open).
 _MIN_BLEED_WORD_RUN = 4
 
 # Residual gap fix #2, 2026-08-17 (same investigation as
@@ -942,6 +966,21 @@ def _ends_with_known_entity_suffix(tail: str) -> bool:
     return last in _ENTITY_TYPE_SUFFIX_WORDS
 
 
+# Residual gap fix #3, 2026-08-18: a closed, curated stoplist of confirmed
+# single trailing junk words -- the inverse of `_ENTITY_TYPE_SUFFIX_WORDS`
+# above (that one PROTECTS a short tail from being trimmed; this one
+# AUTHORIZES trimming a short tail that `_MIN_BLEED_WORD_RUN`'s word-count
+# signal alone can't distinguish from a legitimate short suffix -- see its
+# own comment on this exact gap). Every entry here is grounded in a real,
+# confirmed-live bleed example, not guessed: "Peterborough Attachments" and
+# "Brampton Meeting" (both found live on /coverage, 2026-08-18). Only ever
+# fires on an EXACT match to a word already proven junk in real data, so
+# unlike a general 1-2-word-tail rule (already rejected by
+# `_MIN_BLEED_WORD_RUN`'s own comment -- it would also wrongly trim real
+# long names down to a single word) it can't make that same mistake.
+_KNOWN_JUNK_TAIL_WORDS = {"attachments", "meeting"}
+
+
 def _looks_like_bleed(tail: str) -> bool:
     """Sanity check on text a trim would discard: does it look like
     sentence/agenda bleed (lowercase prose, roman-numeral list markers,
@@ -970,6 +1009,8 @@ def _looks_like_bleed(tail: str) -> bool:
     if any(w[0].islower() for w in words if w):
         return True
     if len(words) < _MIN_BLEED_WORD_RUN:
+        if len(words) == 1 and words[0].strip(".,;:").lower() in _KNOWN_JUNK_TAIL_WORDS:
+            return True
         return False
     return not _ends_with_known_entity_suffix(tail)
 
@@ -1145,6 +1186,17 @@ def finalize_jurisdiction(
             return JurisdictionResult(f"{known.name}, {known.state}", None, "fallback")
         return JurisdictionResult(raw_jurisdiction, None, "blank")
 
+    # Preprocessing: strip noise shapes _trim_repair() below can't reach
+    # (a leading date only trims from the right; a glued file extension
+    # never lands on a whitespace cut point) -- see both regexes' own
+    # comments above. Guard the date-strip specifically: only take it if
+    # something real is left, so a bare date-only string doesn't collapse
+    # to empty.
+    date_stripped = _LEADING_DATE_RE.sub("", raw_jurisdiction).strip()
+    if date_stripped:
+        raw_jurisdiction = date_stripped
+    raw_jurisdiction = _GLUED_EXTENSION_RE.sub(r" .\1", raw_jurisdiction)
+
     # Already has a state suffix from a prior enrichment step -- validate
     # the name portion only, state stays as already resolved.
     state_match = _STATE_SUFFIX_RE.search(raw_jurisdiction)
@@ -1286,6 +1338,31 @@ _STATE_ABBREVIATIONS_LOWER = {
     "dc",
 }
 
+# Canadian province/territory codes, kept as their own set rather than
+# folded into `_STATE_ABBREVIATIONS_LOWER` above (no collisions between the
+# two -- verified) so it's clear at a glance this one exists specifically
+# for `_validated_label_extract()`'s eScribe use, added 2026-08-18 alongside
+# that function gaining a Canadian-serving caller. Real gap this closes:
+# without it, "beaumontab" (Beaumont, AB) and "mackenziebc" (Mackenzie, BC)
+# both fail to validate purely because the trailing province code is never
+# stripped, even though the underlying place name is already a real,
+# already-validated single-word table entry.
+_PROVINCE_ABBREVIATIONS_LOWER = {
+    "ab",
+    "bc",
+    "mb",
+    "nb",
+    "nl",
+    "ns",
+    "on",
+    "pe",
+    "qc",
+    "sk",
+    "nt",
+    "nu",
+    "yt",
+}
+
 
 def _stoprule_extract(page_text: str) -> Optional[str]:
     """ "City/County/Town of X" walk over rendered page text that stops at
@@ -1349,25 +1426,47 @@ def _capitalization_walk_extract(html: str) -> Optional[str]:
     return f"{match.group(1).capitalize()} of {' '.join(kept)}"
 
 
-def _validated_subdomain_extract(url: str) -> Optional[str]:
-    """Bare (no state suffix) subdomain-derived name, validated against
-    the Census tables before ever being offered as a candidate -- unlike
-    the shipped wordninja-humanize fallback (Granicus's
-    `_humanize_subdomain()`), this declines instead of guessing when
-    nothing validates (416 table-valid / 0 garbage of 649 in the
-    tournament, vs. 408 valid / 229 garbage for the shipped
-    wordninja-always approach). Tried unsplit first -- fixes Galesburg:
-    wordninja's own split ("Gales Burg") never validates, while the raw
-    label does -- and only falls back to a wordninja split when the raw
-    label itself doesn't validate. State is deliberately left to the
-    caller's `enrich_jurisdiction_text()` pass, which already has
-    domain/ZIP disambiguation this function doesn't need to duplicate."""
-    host = urlparse(url).netloc.lower()
-    parts = host.split(".")
-    if len(parts) <= 2 or parts[0] == "www":
-        return None
-    label = parts[0]
+def _validated_label_extract(label: str) -> Optional[str]:
+    """Bare (no state suffix) name derived from a subdomain LABEL (already
+    stripped of any platform-specific prefix, e.g. eScribe's "pub-"),
+    validated against the Census/StatsCan tables before ever being offered
+    as a candidate -- declines instead of guessing when nothing validates
+    (416 table-valid / 0 garbage of 649 in the original tournament, vs. 408
+    valid / 229 garbage for a bare wordninja-always approach). Three tiers,
+    tried in order, first hit wins:
 
+    1. The raw label unsplit (and a digit-stripped variant) -- fixes
+       Galesburg: wordninja's own split ("Gales Burg") never validates,
+       while the raw label does.
+    2. A wordninja split, with a trailing US-state or Canadian-province
+       code stripped and a leading "city"/"county"/"town"/"of" connector
+       word stripped, tried SPACED first (join with spaces -- catches
+       genuinely multi-word names like "Grand Valley", "Boulder County")
+       then GLUED as a fallback (join with no spaces -- catches names
+       wordninja over-splits into dictionary fragments that only validate
+       once reassembled, e.g. "townofbonnyville" -> town/of/bonny/ville ->
+       strip "town"/"of" -> spaced "Bonny Ville" doesn't validate, glued
+       "Bonnyville" does). Spaced MUST be tried before glued, not the
+       reverse: confirmed live against every real Granicus subdomain in
+       production, glued-first wrongly turns "cityofnorthport" into
+       "Northport" (a real but WRONG place -- a coincidental match) instead
+       of the correct spaced "North Port"; same failure mode on
+       "oakridgetn" -> wrongly "Oakridge" instead of correct "Oak Ridge".
+    3. Neither tier 2 candidate is accepted below 3 total letters -- a real
+       gap found adding the province-code list above: "citynmb" wordninja-
+       splits to ['city','n','mb'], and after stripping the leading "city"
+       and trailing province code "mb", the sole leftover word "n" was
+       found to validate against `places.csv` (a single-letter row that's
+       almost certainly a data artifact, not a real place) -- confirmed
+       live, 2026-08-18. No real municipality is meaningfully named 1-2
+       letters, so this floor is a safe, general guard rather than a
+       one-off patch for that specific label.
+
+    State/province is deliberately left to the caller's own
+    `enrich_jurisdiction_text()` pass (URL callers) or its own suffix
+    handling (label callers, e.g. `EscribeAssetFinder._jurisdiction_from_
+    subdomain()`), which already has domain/ZIP disambiguation this
+    function doesn't need to duplicate."""
     for candidate in (label, label.rstrip("0123456789")):
         if _table_lookup(candidate):
             return candidate.title()
@@ -1379,14 +1478,33 @@ def _validated_subdomain_extract(url: str) -> Optional[str]:
     words = wordninja.split(label)
     if not words:
         return None
-    if len(words) > 1 and words[-1].lower() in _STATE_ABBREVIATIONS_LOWER:
+    trailing = words[-1].lower()
+    if len(words) > 1 and (
+        trailing in _STATE_ABBREVIATIONS_LOWER
+        or trailing in _PROVINCE_ABBREVIATIONS_LOWER
+    ):
         words = words[:-1]
     while len(words) > 1 and words[0].lower() in ("city", "county", "town", "of"):
         words = words[1:]
     if not words:
         return None
-    name = " ".join(w.capitalize() for w in words)
-    return name if _table_lookup(name) else None
+    spaced = " ".join(w.capitalize() for w in words)
+    if len(spaced.replace(" ", "")) >= 3 and _table_lookup(spaced):
+        return spaced
+    glued = "".join(words).capitalize()
+    return glued if len(glued) >= 3 and _table_lookup(glued) else None
+
+
+def _validated_subdomain_extract(url: str) -> Optional[str]:
+    """URL-taking wrapper around `_validated_label_extract()` -- parses the
+    subdomain label out of `url` (declining on a bare domain or a "www"
+    subdomain, same as before) and delegates. See that function's own
+    docstring for the actual validation logic."""
+    host = urlparse(url).netloc.lower()
+    parts = host.split(".")
+    if len(parts) <= 2 or parts[0] == "www":
+        return None
+    return _validated_label_extract(parts[0])
 
 
 def validated_subdomain_extract(url: str) -> Optional[str]:
@@ -1397,6 +1515,16 @@ def validated_subdomain_extract(url: str) -> Optional[str]:
     "sfwmd" -> "S Fw, MD", see BACKLOG.md) instead of declining when
     nothing validates against the Census tables."""
     return _validated_subdomain_extract(url)
+
+
+def validated_label_extract(label: str) -> Optional[str]:
+    """Public wrapper around `_validated_label_extract()` for callers that
+    already have a bare subdomain label rather than a full URL -- e.g.
+    `EscribeAssetFinder._jurisdiction_from_subdomain()`, which extracts its
+    own label via `_SUBDOMAIN_RE` (eScribe's "pub-{label}" convention) and
+    would otherwise have to round-trip through a synthetic URL just to
+    reuse `validated_subdomain_extract()`."""
+    return _validated_label_extract(label)
 
 
 def extract_jurisdiction_chain(*, page_text: str, html: str, url: str) -> Optional[str]:
