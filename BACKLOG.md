@@ -399,128 +399,72 @@ anything) to build against it.
 
 ## Bugs
 
-- **[JUST-DO-IT] Jurisdiction-bleed, confirmed cross-platform (Granicus AND
-  eScribe) via two passes over the full `/coverage` sweep 2026-08-17 — far
-  more widespread than the first pass found.** First pass sorted all 871
-  rows by jurisdiction text and only caught pairs with a clean sibling
-  sitting adjacent alphabetically (8 cases). A second pass sorting by raw
-  jurisdiction *length* instead — a strictly better method, since a bled
-  row doesn't need a lucky clean twin nearby to be caught this way — found
-  27 rows over 40 characters, the large majority real bleed. This directly
-  confirms, with real live strings, 3 cases this file's own "residual gap"
-  entry (below, Granicus jurisdiction-bleed fix) had only ever named as
-  *hypothetical*:
+- ~~**[JUST-DO-IT] Jurisdiction-bleed, confirmed cross-platform (Granicus
+  AND eScribe)**~~ **Fixed 2026-08-17 — Canadian city/town data table
+  (5,028 real Statistics Canada rows) + a Title-Case/ALL-CAPS word-run
+  signal in `_looks_like_bleed()`. Full root-cause detail, the real
+  confirmed table, and both fixes' verification are in
+  `BACKLOG_DONE.md`.** Real, honestly-flagged residual gaps left open by
+  that fix, not silently closed — see the three entries directly below:
 
-  | Real city | What shows instead | Source |
-  |---|---|---|
-  | Sarasota, FL | "Sarasota Legacy Business PLEDGE OF PUBLIC" | sarasota.granicus.com |
-  | Hollywood, FL | "Hollywood Be Awarded As A Subrecipient O" | hollywoodfl.granicus.com |
-  | Hampton, VA | "Hampton Zoning Ordinance Regarding Standa" | hampton.granicus.com |
+- **[JUST-DO-IT] Jurisdiction-bleed fix can turn an honestly-garbled value
+  into a confidently WRONG one, when the bled text happens to contain a
+  different, unrelated but real city name — confirmed live 2026-08-17
+  with 2 real eScribe examples, newly surfaced by the Canadian-data fix
+  above (`BACKLOG_DONE.md`).** Shelburne, ON's raw stored value
+  ("Brantford regarding Professional Activity") now repairs to
+  "Brantford, ON" — a real place, but the WRONG city; the meeting is
+  Shelburne's. Uxbridge, ON's raw value ("Peterborough Attachments")
+  stays unrepaired today only incidentally (its tail is 1 word, below
+  the new fix's 4-word threshold) — if it had been long enough to
+  trigger, it would have confidently "repaired" to Peterborough the same
+  way. Neither of tonight's fixes could plausibly have caught this on
+  their own: distinguishing "a real city name" from "the CORRECT real
+  city for THIS meeting" isn't solvable from text shape alone — the
+  extraction itself (whatever pulled a different city's mention out of
+  agenda/policy-boilerplate text) is the real bug. This is an instance
+  of a pre-existing, accepted risk category the whole trim-repair design
+  already carries (the same shape as the already-shipped
+  Sarasota/Hollywood-style false positives, which trim confidently but
+  can still be wrong if the trimmed prefix happens to be a real-but-
+  unrelated place) — not something the Canadian-data fix introduced from
+  nothing, but the first time it's been confirmed live with real
+  examples. One real mitigation direction not yet attempted: eScribe
+  subdomains often literally contain the real city name
+  (`pub-shelburne.escribemeetings.com`) — cross-checking a trim-repair
+  candidate against a subdomain-derived candidate (only accepting the
+  trim when they agree, or preferring the subdomain when they disagree)
+  could catch this specific eScribe shape, mirroring how Granicus's
+  subdomain-per-customer convention already incidentally saves 4 of the
+  Title-Case-bleed cases per the earlier residual-gap entry — not
+  verified against enough real examples to build yet.
 
-  Plus the original 8 (Brampton, Shelburne→"Brantford...", Delta,
-  Gainesville, Kelowna, Mississauga, Oshawa, Uxbridge→"Peterborough
-  Attachments" — see git history for this entry's first version for the
-  full table) and a second, larger new batch, all eScribe, all Canadian,
-  confirmed by source:
+- **[NEEDS-AUDIT] Jurisdiction-bleed fix's single-word-tail gap: real,
+  confirmed-live cases with only 1 word of discarded tail stay unrepaired
+  (Brampton ON's "Brampton Meeting", the older Castle Rock CO's "Town of
+  Castle Rock Authorizing") — deliberate, not an oversight (`BACKLOG_DONE.md`).**
+  A single capitalized word is genuinely indistinguishable from a
+  legitimate short suffix using a word-count signal alone — confirmed by
+  direct testing that lowering the threshold to catch these would also
+  wrongly trim real long names ("Lake Washington School District" →
+  "Lake"). Would need a different, non-length-based signal (a small
+  dictionary of common bleed-continuation words like "Meeting"/
+  "Attachments"/"Authorizing"? a check against the actual agenda/page
+  text rather than just the tail's shape?) to close without that
+  regression — not attempted this pass.
 
-  | Real city | What shows instead | Source |
-  |---|---|---|
-  | Brock Township, ON | "Township of Brock.pdf Pulled from Council Information Index by Regional Councillor Pettingill Rescue Lake Simcoe Coalition Communication Number" (143 chars) | pub-townshipofbrock.escribemeetings.com |
-  | New Westminster, BC | "New Westminster. Recommendation THAT the goal of zero traffic fatalities and serious injuries" | pub-newwestcity.escribemeetings.com |
-  | Guelph, ON | "Guelph now hold a meeting that is closed to the public" | pub-guelph.escribemeetings.com |
-  | Thunder Bay, ON | "Thunder Bay be approved in accordance with Table" | pub-thunderbay.escribemeetings.com |
-  | Lethbridge, AB | "Lethbridge currently utilizes Standing Policy Committees" | pub-lethbridge.escribemeetings.com |
-  | Peterborough, ON | "Peterborough is committed to making meetings accessible for people of all abilities..." | pub-peterborough.escribemeetings.com |
-
-  Also real but not independently source-confirmed this pass (same
-  patterns, high confidence): Port Moody BC (×2), Kenora ON, Beaumont,
-  Cambridge, Richmond Hill ON, Elliot Lake ON, Hercules CA. **Not bleed —
-  legitimately long real entity names, left alone**: Capital Metropolitan
-  Transportation Authority TX, Lake Washington School District WA, Bay
-  Area Headquarters Authority, Lexington-Fayette Urban County Government,
-  and ~25 similar real long names in the same length-sorted scan —
-  flagging explicitly so a future length-threshold-based scan doesn't
-  mistake real long names for bleed.
-
-  **Root cause, confirmed by reading `app/utils/jurisdiction_enrich.py`
-  directly, not assumed — two independent causes, not one:**
-
-  1. **The large majority (every confirmed-Canadian case across both
-     passes) never reach the bleed check at all.**
-     `finalize_jurisdiction()`'s `_trim_repair()` only calls
-     `_looks_like_bleed()` on a candidate tail *after* the trimmed prefix
-     validates against `_table_lookup()` — and `_table_lookup()`'s tables
-     (`places.csv`/`counties.csv`/`county_subdivisions.csv` in
-     `app/utils/jurisdiction_data/`) are pure US Census Bureau data, no
-     Canadian equivalent exists anywhere in this repo. So for a Canadian
-     source, no cut of the string ever validates, the loop exhausts
-     without ever calling `_looks_like_bleed()`, and the raw bled text
-     falls through to `finalize_jurisdiction()`'s `"unverified"` bucket —
-     kept exactly as-is, the same bucket a real, correct Canadian name
-     like "Elliot Lake, ON" also lands in, since the system currently has
-     no way to tell a real unverifiable name from bled garbage on a
-     source it can't validate against anything. Confirmed this explains
-     even the heavily-lowercase tails (Guelph "now hold a meeting that
-     is...", Thunder Bay "be approved in accordance with...") that would
-     otherwise be expected to trip the lowercase check if it were ever
-     reached — it isn't reached at all for these, regardless of how
-     obviously bleed-shaped the tail is.
-  2. **The confirmed US/Granicus cases (Sarasota, Hollywood, Hampton,
-     Gainesville) do reach the check, and hit the already-known blind
-     spot.** Each city name alone validates against the US table, so
-     `_looks_like_bleed()` runs against the tail — and every one of these
-     4 tails happens to be pure Title-Case/ALL-CAPS with zero
-     lowercase-starting words ("Legacy Business PLEDGE OF PUBLIC", "Be
-     Awarded As A Subrecipient O", "Zoning Ordinance Regarding Standa",
-     "City Commission Regular Meeting AGENDA Thursday"), so the
-     lowercase/digit/roman-numeral-only heuristic correctly-by-its-own-
-     rule returns `False`. This is the exact residual gap already flagged
-     below for Sarasota/Hollywood/Hampton as hypothetical — now confirmed
-     live, plus Gainesville as a new eScribe instance of the same gap.
-     Two of these tails are also independently truncated mid-word
-     ("Standa", "O") — the same mid-word-truncation signal already
-     documented elsewhere in this file for title extraction, now
-     confirmed on jurisdiction text too.
-
-  One case doesn't cleanly fit either explanation and is flagged honestly
-  rather than force-fit: Peterborough, ON's tail ("is committed to making
-  meetings accessible...") is heavily lowercase, and "Peterborough" is
-  also a real US place (Peterborough, NH) that plausibly validates —
-  meaning this one may actually reach `_looks_like_bleed()` and still not
-  get trimmed, which neither explanation above accounts for. Worth
-  re-checking directly against current code once the two fixes below
-  land, rather than assuming it's just another #1 case.
-
-  **Fix directions, two independent pieces, not equal size:**
-  - **The real fix for #1**: add a Canadian city/county-level table to
-    `app/utils/jurisdiction_data/` (Statistics Canada's Census Subdivision
-    file is the direct equivalent of what `places.csv`/`counties.csv`
-    already are) and add its rows into the *same* files `_load_name_state_table()`
-    already reads — confirmed by reading that function directly that
-    nothing about the loading/lookup code is US-specific, it's purely a
-    property of the data today. Also confirmed no 2-letter abbreviation
-    collision exists between any of the 13 Canadian province/territory
-    codes and the 50 US state codes, and the existing
-    ambiguity-safety (`lookup_city_state()`/`lookup_county_state()`
-    already return `None` rather than guess on a name that maps to more
-    than one "state") extends for free to a real US/Canada name collision
-    once both live in one table — no new ambiguity-handling code needed,
-    just real data. **Note this is a different table from the
-    province-level one added to `archive/utils/jurisdiction_format.py`
-    the same night (Canada support on `/coverage`'s "Browse by state") —
-    that one is for state/province-level display and grouping; this one
-    is city/county-level and is what the bleed-repair logic actually
-    depends on. Easy to conflate, don't assume fixing one fixes the
-    other.**
-  - **The smaller fix for #2**: extend `_looks_like_bleed()`'s tail check
-    to also flag an unusually long run of consecutive Title-Case/ALL-CAPS
-    words as bleed-like even with zero lowercase signal — a generic
-    length/shape signal (several capitalized words in a row is itself
-    suspicious), not tied to any specific vocabulary or subject matter.
-
-  Not yet attempted this pass — flagging with full root-cause detail
-  rather than guessing at either fix blind, same "verify before fixing"
-  convention as the rest of this file.
+- **[NEEDS-AUDIT] Brock Township, ON's real bled value has the real place
+  name glued directly to a filename with no separator** ("Township of
+  Brock.pdf Pulled from Council Information Index by Regional
+  Councillor Pettingill..." — `pub-townshipofbrock.escribemeetings.com`),
+  **confirmed still unrepaired by the 2026-08-17 Canadian-data fix,
+  root-caused as a different bug neither fix targets (`BACKLOG_DONE.md`).**
+  No cut of the string ever isolates a bare "Brock" token for
+  `_table_lookup()` to validate, since it's always attached to ".pdf".
+  Reads as an extraction-side artifact (something concatenated a linked
+  PDF's filename onto the jurisdiction text with no space) rather than a
+  `jurisdiction_enrich.py` gap — not traced to its real source this
+  pass.
 
 - **[JUST-DO-IT] Same `/coverage` sweep also found 16 real pairs of a
   jurisdiction appearing twice — once bare, once with its state suffix —
@@ -839,39 +783,25 @@ anything) to build against it.
   One real gap found and left explicitly open by that fix, not silently
   closed:
 
-  **Residual gap: `_looks_like_bleed()`'s trim-repair gate still misses
+  ~~**Residual gap: `_looks_like_bleed()`'s trim-repair gate still misses
   pure Title-Case/ALL-CAPS bleed with no lowercase/digit/roman-numeral
-  signal in the discarded tail** — confirmed live-equivalent 2026-08-16 on
-  4 of the 9 Granicus cases (Sarasota, Punta Gorda, Castle Rock, Castle
-  Pines): `extract_jurisdiction_chain()`'s text-only tiers (stop-rule +
-  capitalization-walk) still produce a bled candidate for these
-  (`"City of Sarasota Legacy Business PLEDGE OF"`, `"Town of Castle Rock
-  Authorizing"`, etc.), and `_looks_like_bleed()` (`jurisdiction_enrich.py`)
-  declines to trim it because the discarded tail (`"Legacy Business PLEDGE
-  OF"`, `"Authorizing"`) is itself Title-Case/ALL-CAPS prose with no
-  lowercase-word/digit/roman-numeral signal — exactly the "Title-Case/
-  ALL-CAPS bleed" gap the 2026-08-15 Census-baseline audit already flagged
-  for Sarasota/Hollywood/Hampton (see that entry above) but never fixed.
-  **In production these 4 are currently saved by Granicus's own
-  subdomain-per-customer URL convention** (confirmed live-verified against
-  `tests/test_granicus.py`'s new
-  `test_extract_metadata_jurisdiction_bleed_regressions_via_subdomain_fallback`)
-  — `extract_jurisdiction_chain()`'s Census-validated subdomain tier
-  catches what the text tiers miss, since e.g. `sarasota.granicus.com`
-  validates "Sarasota" directly. That's real coverage, not nothing, but
-  it's incidental (works because Granicus subdomains usually *are* the
-  city name) rather than a fix to the trim heuristic itself — any Granicus
-  customer whose subdomain doesn't match the city name would still bleed.
-  No fix attempted this pass, same "verify against more real examples
-  before guessing a rule" call the original bug entry already made for
-  the capitalization-only PrimeGov approach — an ALL-CAPS-word signal
-  looks like a plausible next step (none of the confirmed legitimate long
-  names in the original entry — Lexington-Fayette Urban County Government,
-  Capital Metropolitan Transportation Authority, etc. — contain ALL-CAPS
-  words) but wasn't added without a way to re-verify it against the
-  73-case trim-reachable bucket the existing gate was tuned against
-  (`baseline_validation.csv`, no longer available in any session's
-  scratchpad).
+  signal in the discarded tail**~~ **Fixed 2026-08-17 as part of the
+  broader Canadian-data + Title-Case-bleed pass — see `BACKLOG_DONE.md`'s
+  "Jurisdiction-bleed, confirmed cross-platform" entry for the
+  `_MIN_BLEED_WORD_RUN = 4` signal and its calibration evidence.**
+  Directly re-verified against the two examples named here: Sarasota
+  (`"City of Sarasota Legacy Business PLEDGE OF"`) now repairs correctly
+  to `"City of Sarasota, FL"`. Castle Rock (`"Town of Castle Rock
+  Authorizing"`) does NOT — its discarded tail is only 1 word
+  ("Authorizing"), below the new threshold, so it falls into the
+  single-word-tail gap now tracked as its own live entry above (search
+  "single-word-tail gap" in this file). Punta Gorda/Castle Pines weren't
+  re-tested directly this pass (their exact raw strings weren't recorded
+  in this entry), but Castle Pines was already confirmed fixed via the
+  pre-existing lowercase signal (see `test_finalize_jurisdiction_fills_a_state_the_bled_original_never_could`
+  in `tests/test_jurisdiction_enrich.py`), and Punta Gorda's tail shape
+  ("Punta Gorda ..." off a Granicus body-regex bleed) matches the same
+  pattern the new signal was built and verified against.
 
 - **[NEEDS-AUDIT] Fountain Valley clip 607 shows a wrong title and jurisdiction today —
   real, confirmed, not yet root-caused. Found 2026-08-15 in the same
