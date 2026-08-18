@@ -306,9 +306,7 @@ class SwagitAssetFinder(AssetFinder):
         else:
             transcript_link = soup.select_one('a[href$="/transcript"]')
             if transcript_link and transcript_link.get("href"):
-                transcript_download_url = urljoin(
-                    final_url, transcript_link["href"]
-                )
+                transcript_download_url = urljoin(final_url, transcript_link["href"])
 
         if transcript_download_url:
             transcript_text = await self._fetch_transcript_download(

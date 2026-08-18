@@ -317,10 +317,7 @@ TRANSCRIPT_VARIANT_BASE_HTML = (
     "</body></html>"
 )
 
-SHORT_REAL_TRANSCRIPT_TEXT = (
-    "          [00:00:01]\n"
-    "HELLO AND WELCOME TO THE MEETING.\n"
-)
+SHORT_REAL_TRANSCRIPT_TEXT = "          [00:00:01]\nHELLO AND WELCOME TO THE MEETING.\n"
 
 
 async def test_resolve_finds_video_when_given_the_transcript_url_directly():
@@ -328,7 +325,9 @@ async def test_resolve_finds_video_when_given_the_transcript_url_directly():
     # pastes the `/transcript` URL, not the base `/videos/{id}` page.
     routes = {
         TRANSCRIPT_VARIANT_BASE_URL: FakeResponse(
-            status=200, text=TRANSCRIPT_VARIANT_BASE_HTML, url=TRANSCRIPT_VARIANT_BASE_URL
+            status=200,
+            text=TRANSCRIPT_VARIANT_BASE_HTML,
+            url=TRANSCRIPT_VARIANT_BASE_URL,
         ),
         TRANSCRIPT_VARIANT_URL: FakeResponse(
             status=200, text=SHORT_REAL_TRANSCRIPT_TEXT, url=TRANSCRIPT_VARIANT_URL
@@ -353,7 +352,9 @@ async def test_resolve_fetches_transcript_download_from_base_video_page_link():
     # `/videos/{id}` page, which itself links to the transcript download.
     routes = {
         TRANSCRIPT_VARIANT_BASE_URL: FakeResponse(
-            status=200, text=TRANSCRIPT_VARIANT_BASE_HTML, url=TRANSCRIPT_VARIANT_BASE_URL
+            status=200,
+            text=TRANSCRIPT_VARIANT_BASE_HTML,
+            url=TRANSCRIPT_VARIANT_BASE_URL,
         ),
         TRANSCRIPT_VARIANT_URL: FakeResponse(
             status=200, text=SHORT_REAL_TRANSCRIPT_TEXT, url=TRANSCRIPT_VARIANT_URL
