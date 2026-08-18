@@ -1,15 +1,3 @@
-http://buffalogrovevillageil.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1842&Format=Minutes
-http://burtonmi.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1640&Format=Minutes
-http://butlercountyoh.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2119&MediaPosition=&ID=9217&CssClass=
-http://carrollcountymd.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=3561&Format=Agenda
-http://cathedralcityca.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2116&MediaPosition=&ID=2817&CssClass=
-http://cfpua.iqm2.com:80/Citizens/SplitView.aspx?Mode=Video&MeetingID=1274&Format=Minutes
-http://clarkstoncityga.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1106&MinutesID=1141&Format=Minutes&MediaFileFormat=ismv
-http://cortlandcountyny.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=2800&Format=Agenda
-http://crevecoeurcitymo.iqm2.com:80/Citizens/SplitView.aspx?Mode=Video&MeetingID=5639&Format=Minutes
-http://cumberland.iqm2.com:80/Citizens/SplitView.aspx?Mode=Video&MeetingID=1477&Format=Agenda
-http://deschutescountyor.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=2751&Format=Agenda
-http://diamondbarca.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1648&MediaPosition=&ID=2309&CssClass=
 http://doravillecityga.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1102&Format=Agenda
 http://dormontpa.iqm2.com:80/Citizens/SplitView.aspx?Mode=Video&MeetingID=1357&AgendaID=1266&FileFormat=pdf&Format=Agenda&MediaFileFormat=mpeg4
 http://elcajonca.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1077&Format=Agenda
