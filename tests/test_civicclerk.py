@@ -26,7 +26,7 @@ async def test_resolve_real_event_with_video_and_agenda_bookmarks():
         result = await CivicClerkAssetFinder().resolve(url)
 
     assert result.platform == "civicclerk"
-    assert result.external_id == "civicclerk:20"
+    assert result.external_id == "civicclerk:clovisca.portal.civicclerk.com:20"
     assert result.title == "City Council Meeting"
     assert result.date == "2026-04-13"
     assert result.jurisdiction == "Clovis, CA"
@@ -131,7 +131,7 @@ async def test_resolve_real_event_with_populated_srt_captions():
     with mock_session(routes):
         result = await CivicClerkAssetFinder().resolve(url)
 
-    assert result.external_id == "civicclerk:585"
+    assert result.external_id == "civicclerk:emporiaks.portal.civicclerk.com:585"
     assert result.title == "Commission Meeting"
     assert result.date == "2026-07-22"
     assert result.jurisdiction == "Emporia, KS"

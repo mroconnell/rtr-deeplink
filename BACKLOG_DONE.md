@@ -461,6 +461,223 @@ done directly against the endpoint instead.
   all three render the repaired jurisdiction in the page title/header,
   with transcript content and dates unaffected.
 
+## CivicClerk/Granicus `external_id` wasn't host-namespaced — unrelated cities sharing a clip/event number silently merged onto one live page [Done 2026-08-18]
+
+Found by accident while pushing a routine batch of 20 pre-vetted short
+tier-3 meetings through the normal resolve+ingest pipeline: one push
+(`libertymo.portal.civicclerk.com/event/395/media`, Liberty, MO) came
+back pointing at an *existing* page slugged
+`montrose-co-2023-08-01-city-council-meeting` -- a different city, a
+different date, on the other side of the country. A fresh re-resolve of
+the same URL moments later correctly returned Liberty, MO's own title/
+jurisdiction, proving the resolver itself was fine and the corruption was
+happening at the ingest/matching layer.
+
+**Root cause**: `app/platforms/civicclerk.py` and `app/platforms/
+granicus.py` built `external_id` from just the bare per-customer clip/
+event number (`civicclerk:{event_id}`, `granicus:{clip_id}`). Both
+platforms are multi-tenant SaaS where every customer numbers events/clips
+independently starting near 1, so `external_id` was never actually
+globally unique -- just unique *within one customer*. `archive/db/
+crud.py`'s `_find_existing_page()` matches on `(platform, external_id)`
+alone, so whenever two unrelated customers happened to share a number, a
+later ingest for one would match the earlier page created for the other
+and silently overwrite its title/date/jurisdiction on the same row, plus
+add its own `TranscriptVersion` alongside the original's -- multiple
+real cities' transcripts stacked on one page with no field anywhere
+recording which version came from which city.
+
+**Confirmed blast radius**, queried directly from the live DB: 2 of 75
+CivicClerk pages corrupted (`civicclerk:395` had merged Montrose CO /
+Ashland WI / Liberty MO onto one row; `civicclerk:14` had merged Cass Co
+IA / Riverside County Sheriff's Office onto another) and 7 of 393
+Granicus pages (`granicus:607` Fort Myers FL + Fountain Valley CA;
+`granicus:3422` Napa CA + Santa Rosa CA; `granicus:555` Broward County FL
+Schools + Albuquerque NM; `granicus:453` merged 3 counties -- Baldwin AL,
+Bal Harbour FL, Brevard FL; `granicus:1046` North Miami Beach FL +
+Pembroke Pines FL; `granicus:267` Manatee County FL Schools + Pioneer
+Community Energy; `granicus:1452` Albemarle VA + Azusa CA). Checked and
+confirmed zero `SavedItem` rows referenced any of the 9 -- no real user's
+saved-meeting link was affected. 4 had a `TranscriptionJob` row (pure
+operational history).
+
+**Fix**: namespaced `external_id` by host in both adapters
+(`civicclerk:{netloc}:{event_id}`, `granicus:{netloc}:{clip_id}`) so
+future ingests can no longer collide across customers. `app/platforms/
+models.py`'s `ResolvedMeeting.external_id` docstring updated to state the
+host-namespacing requirement explicitly for any multi-tenant platform.
+Updated the 7 existing tests that asserted the old bare-ID format
+(`test_civicclerk.py` x2, `test_granicus.py` x2, `test_civicplus.py`,
+`test_legistar.py` x2) to the new namespaced strings; no test coverage
+gap existed for the collision itself since nothing previously exercised
+two different hosts sharing one clip/event ID.
+
+**A `crud.py`-level defense-in-depth guard was tried and reverted --
+lesson worth keeping.** The first instinct was to also harden
+`_find_existing_page()` itself: reject an `external_id` match unless the
+matched page's `source_url_normalized` host agrees with the incoming
+URL's host, so a *future* adapter making the same bare-ID mistake
+couldn't reproduce this corruption either. Traced through the two other
+real callers of `external_id`-based cross-host merging before shipping
+it, and both would have silently broken: `legistar.py`'s
+`_try_fallback_video_link()` path deliberately does `fallback.source_url
+= url`, keeping the *original* Legistar URL even though `platform`/
+`external_id` correctly point at the real delegated Granicus host; and
+`primegov.py` calls `YouTubeAssetFinder.resolve_video_id(video_id,
+source_url=url)`, doing the same for the original PrimeGov URL vs.
+youtube.com. Both are intentional, existing, working cross-host merges
+-- a netloc check would have turned each into a duplicate page instead.
+No test caught this because none exercises "same clip ingested once
+directly, once via a delegating platform, expect one page" at the crud
+layer. Globally-unique `external_id` at the adapter level (verified
+per-platform, where the real numbering scheme is actually known) is the
+correct fix; there's no cheap generic check at the shared `crud.py` layer
+that can't also break a legitimate case it doesn't know about.
+
+**Data repair**: since no `TranscriptVersion` row records its source
+host, there was no reliable way to un-mix which transcript belonged to
+which city after the fact. Deleted all 9 corrupted `MeetingPage` rows
+(cascading their `transcript_versions`/`meeting_page_url_aliases`/
+`transcription_jobs` first, no `ON DELETE CASCADE` at the DB level) and
+re-resolved + re-ingested all 20 distinct original host URLs fresh
+through the now-fixed adapters, producing 20 clean, correctly
+host-namespaced, separate pages. Re-queried both platforms for cross-host
+alias collisions afterward: 0 remaining on either. Old slugs (e.g.
+`montrose-co-2023-08-01-city-council-meeting`) now 404 rather than
+redirecting, accepted since nothing legitimately linked to them (they
+were serving mismatched content anyway) and no saved item pointed at
+them. Full suite green throughout (1005 passed, 9 skipped).
+
+## Cablecast: newer portal template (`/show/{id}`, no `/internetchannel` prefix) was unresolvable, AND once fixed inside the finder, still unreachable through the real production routing path [Done 2026-08-18]
+
+Found via the same tier-1/tier-2 "dead" list pilot campaign as the Swagit
+entry below (a background agent piloting `rtr-business/research/
+urls_cablecast_miss.txt`, 25 of 211 sampled). Two distinct, stacked bugs,
+both real and confirmed live -- fixing only the first would have left
+the whole thing silently non-functional in production.
+
+**Bug 1 (found and fixed by the pilot agent), inside
+`app/platforms/cablecast.py`.** A newer Cablecast portal template
+(confirmed on `satellitebeach.cablecast.tv`, also `carsonca`,
+`virginiabeach`, `rialtoca`, and others) drops the `/internetchannel`
+prefix and serves shows at bare `/show/{id}` instead of
+`/internetchannel/show/{id}`. That bare path is protected by an AWS WAF
+JavaScript challenge that returns empty content to any non-browser
+fetch (the adapter correctly never attempts to solve/bypass a WAF
+challenge -- out of scope, same policy as everywhere else in this
+codebase). But the site's *root* page (`/`) isn't WAF-protected, and its
+own `window.__remixContext` embeds a large "related shows" catalog (287
+real shows confirmed on `satellitebeach` alone, back to 2019) -- enough
+to find the requested show without ever touching the blocked path. Also
+found and fixed a real `showId` type mismatch discovered along the way:
+an `int` on the older `/internetchannel/show/` template (Detroit,
+Charlotte) but a `str` on this newer one (e.g. `satellitebeach`'s
+`"showId": "540"`) -- silently broke matching even after the URL-shape
+fix, until compared as strings on both sides. Fix: a root-page fallback
+fetch when the direct `/show/{id}` path 404s or is WAF-blocked, plus
+string-normalized `showId` comparison. 4 fixture-backed regression tests
+added to `tests/test_cablecast.py` with real fixtures.
+
+**Bug 2 (found in a follow-up check, after the pilot agent's fix landed)
+-- the fix above was real but completely unreachable in production.**
+`app/platforms/base.py`'s `detect_platform()` is what routes a URL to
+`cablecast.py` in the first place, and its check was `"cablecast.tv" in
+netloc and "/internetchannel/show/" in path` -- deliberately scoped
+narrow back on 2026-08-12 specifically to exclude other, unhandled
+`*.cablecast.tv` templates (Charlotte, NC's confirmed-different one).
+That narrow scoping meant a bare `/show/{id}` URL was classified as
+platform `"unknown"` and never reached `cablecast.py`'s new fallback
+logic at all, regardless of how correct that logic was -- confirmed live
+by re-running the exact URLs the pilot agent had just verified through
+`CablecastAssetFinder().resolve()` directly, but through the real
+`detect_platform()` -> `get_finder()` -> `resolve()` path every actual
+production caller uses (`scripts/bulk_ingest.py`'s pattern): 2 of 3
+"recovered" URLs (`virginiabeach`, `carsonca`) came back with `video_
+url=None` and a generic "this city isn't officially supported yet"
+message from `generic_fallback.py`, not the real Cablecast handling --
+because they were never routed there. Only `coralvision`'s URL (which
+happened to already use the old `/internetchannel/show/` shape) worked,
+by coincidence of URL shape, not because the real fix was reachable.
+**Lesson worth keeping**: verifying a finder fix by calling the finder
+class directly, rather than through the actual `detect_platform()` entry
+point real callers use, can hide a routing-layer gap that makes the fix
+inert in production -- re-test through the real entry point, not just
+the class under test, before calling a fix verified.
+
+**Fix**: widened `detect_platform()`'s cablecast condition to also match
+a bare `/show/{id}` path (checked precisely -- the segment after `/show/`
+must be all-digits, not just presence of the substring), while leaving
+every other `*.cablecast.tv` template correctly unclaimed (the pilot
+agent separately confirmed two other real template variants -- a
+login-gated `FrontDoor.aspx` ASP.NET portal, and a fully client-rendered
+SPA with no embedded state -- neither of which uses a `/show/` path at
+all, so this widening doesn't accidentally claim them). Re-verified:
+`detect_platform()` now correctly returns `"cablecast"` for all three
+URLs, full suite green (1005 passed, 9 skipped), and all three real
+meetings ingested successfully through the actual production path
+(`virginiabeach`: 1 segment, `carsonca`: 32 segments, `coralvision`: 302
+segments, all live at their real `/m/{slug}` pages).
+
+## Swagit `/videos/{id}/transcript` URLs resolved to "no video" — turned out to be a real, separate transcript resource, not a missing-video bug [Done 2026-08-18]
+
+Found by the user manually clicking through a "dead" list from an
+oversized queue scan (see this same date's `BACKLOG.md`/`CLAUDE_BACKLOG.md`
+entries for the two sibling bugs found the same way — a false-dead
+YouTube/ffprobe mismatch and a slow-host timeout, both in throwaway scan
+tooling, not the adapter). Swagit specifically turned out to be a real
+adapter gap, confirmed live, not a script bug: `app/platforms/swagit.py`
+correctly resolves `https://{customer}.new.swagit.com/videos/{id}`, but
+the same meeting's `/videos/{id}/transcript` URL variant resolved to
+`video_url=None`, `"No playable video found on this page."` — even
+though clicking it in a real browser clearly showed a working page.
+
+**Root cause, confirmed live against 3 real customers (huberheightsoh
+clip 267352, allentx clip 189248, amarillotx clip 317100), not
+assumed**: `/videos/{id}/transcript` isn't another view of the video
+page at all — it's a genuinely separate resource. Live response headers
+confirm `Content-Type: text/plain` / `Content-Disposition: attachment`,
+i.e. a real plain-text file download. The old adapter fed that
+plain-text download through the HTML-scraping resolve path meant for
+the video page; naturally no video markup exists there, so it silently
+resolved to nothing.
+
+**It's not just a bug fix — the plain-text file is a real, usable
+transcript source**, better than this app's Whisper fallback where
+available: a Swagit-hosted transcript (labeled "ASR voice-to-text" by
+one customer's own disclaimer, "uncorrected Closed Captioning" by
+another), with real second-offset timestamps roughly every 5 minutes and
+inline agenda-item markers matching the page's own `a.playerControl`
+chapter markers. Every base `/videos/{id}` page that has one links to it
+via a real `<a href="/videos/{id}/transcript">` — distinguishable from
+the page's unrelated in-page `href="#transcript"` anchor, confirmed
+absent on a real collincountytx meeting with no generated transcript, so
+this is a genuinely optional per-meeting resource, not something assumed
+to always exist.
+
+**Fix, in `app/platforms/swagit.py`**: (1) a `/transcript`-suffixed URL
+is normalized back to its base video page for video/metadata/chapter
+resolution, so it no longer tries to scrape video markup off the
+transcript download; (2) the transcript download (from either URL
+shape) is fetched separately and parsed by a new
+`_parse_swagit_transcript_download()` into real, timestamped
+`TranscriptSegment`s — now the highest-priority transcript source for
+this platform, ahead of the existing `#transcript-fragments` DOM path
+and the never-yet-observed caption-file path; (3) repeated disclaimer
+boilerplate is captured as a `transcript_warnings` note rather than
+treated as real transcript prose.
+
+**Verified live post-fix** against all 4 example URLs: video + real
+multi-line, correctly-timestamped transcript segments now resolve
+correctly for huberheightsoh, allentx, and amarillotx's `/transcript`
+URLs; collincountytx (confirmed to have no transcript available) is
+unaffected, still resolves video with the correct "no transcript"
+warning rather than a false positive. 4 new fixture-backed regression
+tests added to `tests/test_swagit.py`, one using real, verbatim-fetched
+transcript text (per this repo's synthetic-test convention — real
+content even though the fixture itself is hand-built). Full suite: 1002
+passed, 9 skipped (unrelated), up from 996 before this session's other
+fixes landed.
+
 ## Jurisdiction-bleed, second pass — trim-repair fall-through, consolidated-government spelling, entity-suffix allowlist [Done 2026-08-17]
 
 Same-night follow-up audit of the fix immediately below (the Canadian-data

@@ -28,7 +28,7 @@ async def test_resolve_real_blank_caption_meeting():
         result = await GranicusAssetFinder().resolve(url)
 
     assert result.platform == "granicus"
-    assert result.external_id == "granicus:3450"
+    assert result.external_id == "granicus:napacity.granicus.com:3450"
     assert result.title == "Bicycle and Pedestrian Advisory Commission"
     assert result.segments == []
     assert any("blank" in w.lower() for w in result.transcript_warnings)
@@ -298,7 +298,7 @@ async def test_resolve_real_meeting_with_spanish_captions():
     with mock_session(routes):
         result = await GranicusAssetFinder().resolve(url)
 
-    assert result.external_id == "granicus:2840"
+    assert result.external_id == "granicus:simivalley.granicus.com:2840"
     assert result.date == "2023-12-18"
     assert len(result.segments) > 100
     # Real content is Spanish -- detected from actual text, not any page

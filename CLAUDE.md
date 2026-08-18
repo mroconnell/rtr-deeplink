@@ -63,9 +63,12 @@ under everything else. This repo extracts and fixes just that part.
   MediaPlayer.php pages that only embed a legacy Flash/RTMP player — see
   BACKLOG_DONE.md), Whitehall OH
   (CivicClerk, agenda-only), Calgary AB (eScribe, video but no captions
-  yet). CivicClerk and eScribe still have *no* example anywhere with
-  populated captions despite checking several cities each — a real,
-  not-yet-closed gap, not just an unsearched one.
+  yet). eScribe's populated-captions gap closed 2026-08-18: Peel Region,
+  ON (`pub-peelregion.escribemeetings.com`, real "Regional Council"
+  meeting, iSiLIVE video) resolves with 1101 real caption segments, zero
+  warnings — add it to the sample sheet alongside the row above.
+  CivicClerk's own version of the same gap is still real and unconfirmed
+  either way, not addressed by this.
 - **Verify in-browser, not just via the API.** UI changes especially need
   an actual `mcp__Claude_Browser__*` check — several real bugs (duplicate
   chapter markers, a metadata-extraction ordering bug, a deep-link

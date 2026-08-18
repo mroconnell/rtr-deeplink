@@ -1079,6 +1079,31 @@ anything) to build against it.
   examples if this recurs, rather than adding a domain override per
   incident indefinitely.
 
+  **A fourth real case did show up, 2026-08-18** — user-shared
+  `bedfordoh.primegov.com/Portal/Meeting?meetingTemplateId=518` (real
+  video/captions both resolve correctly: YouTube embed, 1346 real
+  auto-caption segments; only `jurisdiction` is wrong). Confirmed live:
+  `jurisdiction` comes back `"County of Cuyahoga, OH"` instead of `"City
+  of Bedford, OH"`. Root cause, fetched and checked directly: the page's
+  letterhead is a small header table with "Bedford City Council" and
+  "County of Cuyahoga" in adjacent cells (identical styling, both near
+  the top) — but `_JURISDICTION_RE` only matches the literal `"(city|
+  county|town) of ..."` shape, so "Bedford City Council" (no "of") never
+  matches while "County of Cuyahoga" does, and wins via unscoped
+  first-match same as the OKC/Thousand Oaks/SLC cases. The real, correct
+  "City of Bedford" text does exist on the page (an ordinance title
+  further down in the agenda body) but sits after the false-positive
+  county match, so position-based tie-breaking still doesn't separate
+  them. **New failure shape worth noting**: unlike SLC/Holladay (a false
+  positive buried in unrelated body prose), this one's false positive is
+  *also* structurally a header/letterhead mention — just the wrong
+  entity within it (the parent county, not the specific city) — so a
+  "prefer the first header-shaped match" heuristic would not have fixed
+  this case even if one existed. No domain override added (SLC's
+  narrow-fix pattern doesn't generalize to a fourth incident per the
+  note above); left as a fourth confirmed data point for whenever the
+  structural fix gets revisited.
+
   ~~**Separately: PrimeGov never backfilled `title` from the page itself
   when YouTube's own extraction is empty**~~ **Fixed 2026-08-13 — full
   detail in `BACKLOG_DONE.md`.** Confirmed live on a real LA City
@@ -1089,6 +1114,51 @@ anything) to build against it.
   came through with no title at all whenever yt-dlp is blocked (the
   documented Render-IP gap), even though jurisdiction/date already had
   their own page-based fallbacks.
+
+- **[JUST-DO-IT] eScribe now has a real, confirmed positive caption
+  example — but its jurisdiction chain-extraction picks the wrong
+  government for two-tier (regional + constituent-town) sites.**
+  User-shared 2026-08-18:
+  `pub-peelregion.escribemeetings.com/Meeting.aspx?Id=c129beef-a3cf-49ae-827d-27c6b3a547a5&Agenda=Agenda&lang=English`
+  (Peel Region, ON "Regional Council" meeting). Resolves with real video
+  (iSiLIVE, `cdn1.isilive.ca`) **and 1101 real caption segments, zero
+  warnings** — this closes the "no eScribe example with populated
+  captions has ever been found" gap called out in `CLAUDE.md`/
+  `BACKLOG.md` (CivicClerk's own version of that same gap is separately
+  still unconfirmed either way, not addressed by this). Meeting `Id` is
+  an opaque GUID (`c129beef-...`), not a sequential/guessable number like
+  Granicus's `clip_id` or CivicClerk's `event_id` — no way to enumerate
+  more eScribe meetings by incrementing an ID; discovery would need each
+  customer's own calendar/index page. One incidental correlation that
+  might help elsewhere: the iSiLIVE `data-client_id` embed attribute
+  matched the eScribe subdomain label exactly (`peelregion` for both).
+
+  Real bug found alongside it: `jurisdiction` comes back `"Town of
+  Caledon, ON"` instead of `"Regional Municipality of Peel"`/"Peel
+  Region". Root cause, fetched and checked directly: Peel Region's
+  agenda covers infrastructure/committee items located within its three
+  constituent lower-tier municipalities (Caledon, Brampton, Mississauga),
+  so "Town of Caledon" appears validly and repeatedly in item text and
+  in a clerk-signature line near the top of the page — `_stoprule_extract`/
+  `_capitalization_walk_extract` (the shared chain in `app/utils/
+  jurisdiction_enrich.py`, tried in that order by `extract_jurisdiction_
+  chain()`) finds and validates it first, so the chain returns immediately
+  and never reaches its own tier-3 subdomain fallback
+  (`_jurisdiction_from_subdomain`), which *would* have correctly produced
+  "Peel Region" from the `peelregion` subdomain alone (confirmed by
+  reading `_jurisdiction_from_subdomain()`'s own wordninja-split logic
+  against that label). Structurally the same "first validated candidate
+  wins, positional order isn't a reliable signal" problem already
+  documented for PrimeGov's `_JURISDICTION_RE` above, but on a different
+  code path (the shared chain, not PrimeGov's own regex) and a distinct
+  new failure shape: here the false-positive candidate is a real,
+  legitimately-*mentioned* jurisdiction (a constituent town), just not
+  the meeting's *own* jurisdiction (its regional parent) — not stray
+  body prose or a copy-pasted address like the chain's other documented
+  false positives. Not fixed here (single example, and this exact
+  "tournament order" design is under active, carefully-tuned work per
+  the jurisdiction-bleed entries in `BACKLOG_DONE.md` — worth revisiting
+  together with those rather than patching in isolation).
 
 - ~~**`find_platform_link()`'s fallback delegation could self-loop into
   real infinite recursion**~~ **Fixed 2026-08-12 — full detail in
@@ -3968,6 +4038,360 @@ one item below is resolved as a result.
   `app/reporting.py`'s private `send_report_email()`, which is scoped to
   the resolver service. Not started — this is a scoped feature request,
   not yet designed in full or built.
+
+- **`detect_language_from_texts()` samples only the first 2000 characters
+  of the merged transcript, so a bad start-of-meeting stretch can mislabel
+  the whole page's language even when the rest is confidently English —
+  confirmed live 2026-08-17/18 on two real pages from
+  `scripts/transcribe_backlog_locally.py`'s local-Whisper batches.**
+  `/m/meeting-00bbd1` (Lincoln City, OR): only chunk 1 of 5 came back
+  low-confidence on Whisper's own per-chunk language guess (`cy` at 63%);
+  chunks 2-5 were confident `en` (99-100%). `/m/meeting-d09fc0` (Moraine
+  City, OH): the reverse pattern -- chunk 1 was confident `en` (100%), but
+  chunks 2-8 (a genuinely very quiet ~1.8h recording, repeated
+  "suspiciously quiet" ffmpeg warnings, several chunks under 30 segments
+  for 15 minutes of audio) kept guessing `cy` at low confidence. Both
+  pages still ended up with the whole meeting's `transcript_language`
+  field set to `cy` (Welsh) in the final ingest. Root cause, confirmed by
+  reading the code (not guessed): the per-chunk language values logged
+  during transcription are Whisper's own internal guesses and are never
+  used for the page-level language -- `transcribe_meeting()`
+  (`scripts/transcribe_backlog_locally.py`) instead calls
+  `detect_language_from_texts()` (`app/utils/vtt_parser.py`) on the full
+  merged-and-sorted segment text, which joins every segment's text and
+  hard-truncates to `[:2000]` characters before running `langdetect` on
+  that sample alone -- there is no chunk-level voting or weighting
+  anywhere in the pipeline. Since segments are sorted by start time, the
+  first ~2000 characters are dominated by whatever is at the start of the
+  meeting, so a bad opening stretch (dead air/music before the meeting is
+  gaveled in, an invocation or proclamation genuinely in another
+  language, or just a quiet/noisy chunk Whisper hallucinates
+  foreign-looking text from) can single-handedly decide the label for a
+  multi-hour, overwhelmingly-English meeting. This matches a real,
+  recurring pattern in these sources per the user directly (2026-08-18):
+  short (2-3 min) foreign-language stretches (proclamations, individual
+  speakers) and dead-air/music (meeting start, or a recess in 4+ hour
+  meetings) that Whisper isn't designed to handle well, embedded inside
+  meetings that are otherwise clearly one language throughout. Worth
+  fixing with a real per-chunk-text vote (or a length-weighted one) rather
+  than "first 2000 characters of whatever comes first" -- `vtt_parser.py`'s
+  function is shared with the scraped-caption adapters too, so check
+  whether they have the same 2000-char-of-whichever-track-sorts-first
+  exposure before changing it, not just the Whisper path.
+
+- **[JUST-DO-IT] `detect_hallucination_warnings()`'s repetition check is
+  diluted against total meeting length, so it structurally can't catch a
+  real hallucination loop shorter than ~50% of a long meeting, no matter
+  how blatant -- confirmed root cause (read the code, not guessed) plus
+  six live, currently-undetected examples across five different meetings
+  from this session's local-Whisper batches, on top of the already-fixed
+  Port Coquitlam case (`BACKLOG_DONE.md`) this detector exists to catch.**
+  None of the pages below show a hallucination warning; all were pushed
+  live as normal, clean transcripts.
+
+  **Root cause, confirmed by reading `worker/segment_utils.py`.**
+  `_repetition_run_ratio()` finds the single longest run of consecutive
+  near-duplicate segments (via `SequenceMatcher(...).ratio() >= 0.85`,
+  which *does* handle minor text variation, not just byte-identical
+  repeats -- an earlier draft of this entry wrongly assumed otherwise)
+  and divides by the **total segment count of the entire meeting**, then
+  flags only if that ratio is `>= 0.5`. That works fine for a short
+  meeting where a loop dominates most of it (Port Coquitlam: 2 chunks,
+  ~1572s total) -- but for any longer meeting, a loop has to eat *half the
+  entire recording* to ever trip the threshold. A blatant, obviously-fake
+  loop that's short relative to a multi-hour meeting mathematically
+  cannot cross 0.5 no matter how repetitive it is locally. Confirmed
+  numerically against three of the cases below: Moraine City's 93-cue
+  Welsh loop is 38.6% of its (short, 241-cue) meeting -- close, but still
+  under threshold; Cumberland County's 41-cue `"340,000,"` loop is only
+  3.2% of its 1,291-cue meeting; Haines City's 7-cue *exact-repeat* loop
+  (would trivially pass the 0.85 near-duplicate check on its own) is a
+  mere 1.3% of its 525-cue meeting. The near-duplicate matching genuinely
+  works -- the global-length dilution is what's actually broken.
+
+  - **Hermosa Beach, CA** (`hermosa-beach-ca-2026-02-03-city-council`) --
+    the worst case, two back-to-back loops. **`00:02:30` ->
+    `01:30:00`** ([deep link](https://redtaperecordings.com/m/hermosa-beach-ca-2026-02-03-city-council?t=150))
+    of 121 cues rotating between two differently-*length* phrasings of
+    `"Local government meeting. Common terms..."` (their low
+    cross-phrasing `SequenceMatcher` ratio, ~0.45, means this specific
+    sub-loop evades even the near-duplicate check, not just the length
+    dilution), immediately followed by **`01:00:30` -> `01:15:03`**
+    of 176 consecutive cues reading just `"Music"` (Whisper's own
+    non-speech tag, degenerately repeated once every ~5 seconds instead
+    of emitted once) -- both inside the same bad stretch, before the real
+    meeting abruptly starts at
+    [`?t=5400`](https://redtaperecordings.com/m/hermosa-beach-ca-2026-02-03-city-council?t=5400)
+    ("Good evening, everyone. And I called to order this February 3rd,
+    2026 regular meeting..."). `language=en` and zero
+    `transcript_warnings`, despite ~87 of this 6.14h meeting's first 90
+    minutes being fabricated.
+  - **Moraine City, OH** (`meeting-d09fc0`) -- roughly **`00:46:30` ->
+    `01:46:21`** ([deep link](https://redtaperecordings.com/m/meeting-d09fc0?t=2790),
+    real content resumes at
+    [`?t=6381`](https://redtaperecordings.com/m/meeting-d09fc0?t=6381))
+    of a genuinely very quiet ~1.8h recording (repeated "suspiciously
+    quiet" ffmpeg warnings across nearly every chunk, some down to
+    **-75dB** -- worse than Port Coquitlam's confirmed-broken -44/-45dB)
+    is fabricated Welsh-language text with zero connection to an Ohio
+    city council meeting -- `"Y Llywodraeth Cymru"` ("The Welsh
+    Government"), 98 occurrences total (93 of them one single unbroken
+    run, 40.7% of the page's 241 cues), plus nonsense Welsh sentences and
+    repeated isolated numbers (`"19."` x6 around `00:15:52`-`01:04:58`,
+    a possibly-related weaker instance of the same failure). This
+    directly explains the page's `transcript_language="cy"` mislabeling
+    filed above under the `detect_language_from_texts()` entry -- here
+    the language tag is actually *consistent* with a large fraction of
+    the transcript's real (fabricated) content, not just an unlucky
+    2000-character sample. Real content resumes cleanly at `01:46:21`.
+  - **North Kingstown School Committee, RI** (`meeting-89d6b1`) --
+    confirmed, not just a suspected mic-check: **`00:01:00` ->
+    `00:15:06`**, 80 consecutive cues of `"Test, test."` /
+    `"Test, test, test."` at a mechanically uniform ~10-second cadence
+    with **zero** real speech interspersed for the entire span (100%
+    local density) -- a real AV check would have pauses, adjustments,
+    someone else talking; this doesn't. 38% of the meeting's 210 total
+    cues. Real roll call starts immediately after, at `00:15:00`.
+  - **Cumberland County, NJ**
+    (`cumberland-county-nj-2020-01-28-board-of-county-commissioners-regular-board-meet`)
+    -- `"340,000,"` repeated exactly once per second for 41 straight
+    seconds, `00:53:21` -> `00:54:02`, 100% local density, only 3.2% of
+    the meeting's 1,291 total cues.
+  - **Haines City, FL** (`meeting-16157c`) -- `"You're in the process."`,
+    byte-identical, 7 times in 16 seconds (`00:09:42` -> `00:09:58`),
+    100% density -- the cleanest possible case for the near-duplicate
+    check (would trivially score 1.0), and it *still* wasn't flagged,
+    purely because 7/525 total cues is nowhere near 50%. The clearest
+    single proof that the global-ratio design, not the matching logic, is
+    the actual bug.
+  - **Lincoln City, OR** (`meeting-00bbd1`, previously only flagged above
+    for its `language=cy` mislabeling) -- also has real fabricated
+    content, just a smaller dose: a `"Yn ymwneud?"` ("relating to?")
+    cluster around `00:09:02`-`00:09:30`, plus an isolated fabricated
+    Welsh sentence at `00:10:21`. Confirms the language mislabeling
+    there wasn't purely a sampling-bad-luck metadata issue -- there's a
+    real, if minor, garbled patch underneath it too.
+
+  **Fix direction**: the near-duplicate matching (`SequenceMatcher` at
+  0.85) is the right primitive and doesn't need to change. What needs to
+  change is scoring a *sliding window* (or absolute run length in
+  seconds/cues, not just a ratio against the whole meeting) rather than
+  one global fraction -- so a short, obviously-looping stretch inside a
+  long meeting can trip it independent of how long the rest of the
+  meeting is.
+
+  **False-positive caution for whoever picks this up**: a cruder first
+  pass at this same scan (raw repeat count over the whole meeting, not
+  contiguous-run clustering) also flagged `"thank you"`, `"okay"`,
+  `"yes"`, and `"here"` recurring dozens of times each in several *other*
+  meetings from this session. Re-checked with actual clustering: those
+  don't show the same signature as the six cases above (100% local
+  density, zero real content interspersed) -- e.g. Halifax's 28 "thank
+  you"s are ~29 seconds apart on average (consistent with a chair
+  thanking distinct public commenters over a real 13-minute comment
+  period), and short 5-7x roll-call bursts of "yes"/"here" a few seconds
+  apart are consistent with distinct real speakers answering a roll call
+  in turn. Not proof either way without listening to the audio, but a
+  materially different pattern from the six confirmed cases -- any fix
+  should be validated against both sets (catch the six, don't flag
+  ordinary meetings) before shipping.
+
+  **Fix approach prototyped and empirically validated 2026-08-18 --
+  root cause is upstream of this detector, not a smarter detector.**
+  Rather than only improving `detect_hallucination_warnings()` after the
+  fact, the real fix is stopping Whisper from hallucinating on dead
+  audio in the first place: enable faster-whisper's built-in VAD
+  (`vad_filter=True`, Silero VAD under the hood -- a real
+  speech-vs-non-speech classifier, not a volume threshold, so it also
+  catches loud-but-non-speech audio like a musical intro, not just
+  literal silence) in `worker/transcription_engine.py`'s
+  `FasterWhisperEngine._transcribe_sync()`. Confirmed on the exact
+  Hermosa Beach clip behind the "Music" loop above: old settings
+  reproduce the fabricated `"Local government meeting. Common terms..."`
+  text directly; with `vad_filter=True` it correctly returns **zero
+  segments** instead (and ~7x faster, since it skips decoding
+  non-speech instead of attempting it). Same clean result on a
+  Moraine-City-zone clip: old settings burned 141s decoding nothing;
+  new settings took 1s to reach the same (correct) empty conclusion.
+
+  **A second, real bug was found *by* this same validation, independent
+  of the fix above** -- worth its own record since it would have been a
+  regression if shipped blind: `vad_filter=True` alone can merge two
+  genuinely separate real speech bursts, on either side of a real VAD-
+  skipped silent stretch, into one output segment -- keeping correct
+  *text* but assigning a wildly wrong *timestamp range* (the first
+  word's start to the last word's end, silent gap included). Reproduced
+  on North Kingstown RI's `meeting-89d6b1` chunk 1: one segment came
+  back as `[66.8s-735.9s]` (an 11-minute span) for what's actually two
+  distinct real utterances -- a lone word ("So") at 67.5s, then real
+  content resuming at 732.8s -- confirmed independent of every other
+  setting tried (`condition_on_previous_text` True or False, custom or
+  default `vad_parameters`: identical bug every time). Given this app's
+  entire product is deep-linking to an exact timestamp, a wrong segment
+  boundary is arguably worse than a missing one. **Fix**: also enable
+  `word_timestamps=True`, then re-split any segment wherever two
+  consecutive words have a gap larger than ~2s, using the real
+  surrounding word timestamps instead of trusting the model's own
+  reported `segment.start`/`segment.end`. Validated on the same North
+  Kingstown chunk: correctly split the broken 668-second segment into
+  `[67.5-67.9] "So"` and `[732.8-736.2] "folks, just a quick
+  reminder..."`, and caught several *other* smaller instances of the
+  same bug in the same chunk (25s and 83s hidden gaps) that weren't
+  otherwise obvious -- longest segment after the fix: 7.2s, versus 668s
+  before it.
+
+  Full validated combination: `vad_filter=True` + `word_timestamps=True`
+  + gap-based re-splitting (new code, not a library flag) +
+  `condition_on_previous_text=False` (kept as defense-in-depth for
+  within-chunk cascading per faster-whisper's own docstring, though
+  confirmed *not* the cause of the timestamp bug above -- reproduces
+  identically either way). Regression-checked clean against Buffalo,
+  NY's already-good transcript (352 sane, correctly-ordered segments,
+  same coherent content start-to-finish) and North Kingstown's real
+  content once past the fixed boundary (roll call, Pledge of Allegiance,
+  etc., all intact). Not yet wired into production
+  `worker/transcription_engine.py` or `scripts/
+  transcribe_backlog_locally.py` -- next step once Port Coquitlam's raw
+  (unfixed-audio, no left-channel retry) case finishes validating too.
+
+  **Two alternative approaches were considered and parked, not
+  rejected** -- allowed back if the above ever proves insufficient on a
+  case it doesn't handle:
+  - Skip trusting faster-whisper's internal VAD-region stitching
+    entirely: call Silero's `get_speech_timestamps()` directly, decode
+    each real speech region as its own separate clip, and place each
+    one using this app's own already-trusted `shift_segments()`
+    chunk-offset math (`worker/segment_utils.py`) instead of the
+    library's internal remapping. More control, more new code to
+    maintain.
+  - Physically strip non-speech out of the audio ourselves before
+    Whisper ever sees it (e.g. `ffmpeg silenceremove`), with fully
+    manual bookkeeping of what got cut so timestamps can be shifted back
+    correctly by hand. The most manual of the three, full control, but
+    the most new surface area for a first-party timestamp bug --
+    parked in favor of leaning on the library's already-tested
+    `word_timestamps` machinery instead, now that the gap-split fix
+    above is confirmed to work.
+
+## `scripts/transcribe_backlog_locally.py`'s "no usable audio/video source on re-resolve" skip has no retry -- confirmed a real, live meeting can get wrongly skipped by one transient failure (2026-08-18)
+
+**Confirmed live, 4/4 tested, not a hypothetical.** During this session's
+tier-3-queue local-Whisper batches, four meetings were logged as skipped
+with `"no usable audio/video source on re-resolve"`: Diamond Bar, CA;
+Genesee County, MI; Sullivan County, NY (all `iqm2`); and Brookhaven, NY
+(`civicclerk`, a slightly different failure -- `ffmpeg extraction failed`
+after a successful resolve, i.e. the same class of problem one step
+later in the pipeline). Re-running `finder.resolve()` against the exact
+same URLs, unchanged, minutes later: **all four succeeded immediately**,
+zero warnings, real `video_url`s -- and for Diamond Bar, CA specifically
+(which already had a real archived page from before this batch even
+ran, `city-of-diamond-bar-ca-2020-06-02-city-council-regular-meeting`),
+the stored `video_url` from that earlier successful resolve is still
+live and reachable today (confirmed via a direct `HEAD` request: `200
+OK`, 300MB, real `Content-Length`) -- meaning the video was never gone
+at any point; the pipeline just happened to hit one slow/flaky moment
+against that specific government server during the batch run and gave
+up permanently instead of retrying.
+
+**Why this is worse than an ordinary flaky-network bug for this
+specific script**: `scripts/transcribe_backlog_locally.py`'s `process_
+one()` treats every `transcribe_meeting()` failure identically (skip
+and move on to the next candidate) whether the underlying cause is
+"genuinely no video exists" or "the request timed out once." Diamond
+Bar, CA is the sharpest case: a page that had *already* been live on
+the site with a real video before this session touched it got a
+transcript-attach attempt today, hit one bad moment, and is now
+recorded as unresolvable -- even though nothing about the source
+actually changed. A page that already passed the bar to exist on the
+site is *more* suspicious to skip permanently on one failure, not less.
+
+**Fix direction**: add a single retry (with a short backoff) around the
+`finder.resolve()` / `extract_chunk_audio()` calls in `transcribe_
+meeting()` before concluding a candidate is genuinely infeasible --
+mirroring the retry-on-transient-failure pattern `_request_json()`
+already uses for the archive-side HTTP calls in this same script, just
+extended to the resolve/extraction side too, which currently has none.
+Worth checking whether `worker/main.py`'s own idle-time auto-
+transcription path has the same one-shot-no-retry gap, since it likely
+shares similar resolve/extract call shape.
+
+**A fifth case, same day, isolated further**: a 10-meeting `new.swagit.
+com`-heavy batch hit `ffmpeg extraction failed on chunk 1/1` on 4/10
+(Odessa/Midland/Cedar Hill TX, Grand Rapids MI) after a 120s timeout
+each. Retried all 4 immediately after: 3 succeeded on the very next
+attempt. Odessa specifically failed *twice* before succeeding on a
+third try, which ruled out one theory worth recording — it's not that
+the exact `ffmpeg` command is broken for this host: a manual `ffmpeg`
+invocation, byte-for-byte identical to `extract_chunk_audio()`'s own
+(`-headers ... -ss 0 -i <url> -t 900 -vn -ac 1 -ar 16000 -c:a libmp3lame
+-b:a 32k`) run standalone against the exact URL that had just failed
+inside the script, completed in ~12s both times it was tried. So the
+video/host/command are all fine; whatever caused the in-script hang to
+120s is specific to running under the script's actual asyncio/subprocess
+context, not the source. Consistent with (not proof of) a resource
+buildup across a long sequential batch in one process rather than a
+purely random network blip — worth keeping in mind if the fix above
+ends up being "add a retry" rather than "find and fix the root cause,"
+since a retry would paper over this either way.
+
+## Some Swagit meetings have no single "whole meeting" video file — pre-split into per-agenda-item clips instead (found 2026-08-18, real fix landed for a related bug, this part still open)
+
+**Confirmed live, not assumed.** While fixing a real bug in
+`app/platforms/swagit.py` (see `BACKLOG_DONE.md`'s 2026-08-18 entry —
+a dead legacy `player.src()` fallback URL was winning over the real
+video data on some pages), a deeper structural fact surfaced: Yolo
+County, CA's clip 324107 (and likely many other Swagit meetings with a
+populated agenda) isn't stored as one continuous recording at all. The
+page's real jwplayer `playlist: [...]` JSON has **12 separate entries**,
+one per agenda item (`" 9:00 A.M. CALL TO ORDER"`, `"CONSENT AGENDA"`,
+... `"CLOSED SESSION"`), each with its own distinct
+`archive-stream.granicus.com/.../{date}-{id}.360.mp4/playlist.m3u8`
+file. The bug fix above correctly picks a *real* file now instead of a
+dead one, but for a chaptered meeting like this it's only the *first*
+agenda item's own short clip -- confirmed live: resolved duration for
+this meeting came back as 2.1 minutes, not the real multi-hour meeting
+length. Verified this isn't a one-off: re-ran the same fixed resolver
+against all 43 URLs that had been hitting the dead-fallback bug -- 14
+resolved to a normal, plausible single-file duration (11 landed in the
+5-45min "short" range, 3 came back >45min), but the other **29** came
+back suspiciously short (many under a minute, one at flat 0.0 minutes),
+consistent with the same first-chapter-only pattern.
+
+**Not yet answered, needs real investigation before coding a fix**:
+does Swagit still serve a true full-session file anywhere for these
+customers (a different field/URL this session didn't find, possibly
+alongside the chaptered playlist -- worth checking whether the now-dead
+`player.src()`/`hls_path` fallback was *itself* originally meant to be
+that whole-meeting stream, since the current chaptered `playlist` looks
+like a newer addition it now loses to only because the old one is
+broken, not because it was always meant to win), or whether "pre-split
+into per-agenda-item clips, no single full recording" is simply how
+some Swagit customers' pages have always worked. If it's the latter,
+this app's whole per-chunk transcription/duration-probing pipeline
+(built around "one video_url, one continuous duration") would need a
+real design decision for this platform: concatenate all N clips into
+one virtual timeline before chunking (extra complexity, but keeps the
+rest of the pipeline unchanged), or treat each agenda-item clip as its
+own independently-transcribed unit and stitch the resulting segments
+back together using the clips' own real seq/title ordering (Swagit
+already provides that structure for free, arguably a cleaner fit than
+faking one continuous file).
+
+**Which URLs are affected**: the 29 still-short ones out of the 43-URL
+list already gathered this session (`alamoareampo`, `applevalleymn`,
+`baytowntx`, `belfastme`, `breaca`, `conejovalleyusdca`,
+`coronadousdca`, `delvalleisdtx`, `greenburghny`, `houstonisdtx`,
+`jacksonms`, `jupiterfl`, `lagov`, `lubbockisdtx`, `mahwahnj`,
+`missouricitytx`, `mobilityauthority`, `nassaucountysd`,
+`newportricheyfl`, `olatheks`, `pelhampublicschoolsny`, `planotx`,
+`princegeorgebc`, `sandovalcountynm`, `sedonaaz`, `siouxcityschools`,
+`wallercountytx`, `whiteplainsny`, `yolocountyca` -- all
+`{customer}.new.swagit.com/videos/{id}`), but likely a much broader
+set across Swagit generally, not just these 43 -- these just happen to
+be the ones that were already flagged dead by an unrelated bug and got
+a second look. Worth a fresh, broader live audit of Swagit meetings
+with populated agendas generally once the design question above is
+answered, not just this specific 29.
 
 ## Deprioritized ideas — allowed back if we wish (parked 2026-08-15)
 

@@ -55,7 +55,7 @@ async def test_listing_with_single_video_delegates_to_granicus():
         result = await CivicPlusAssetFinder().resolve(url)
 
     assert result.platform == "granicus"
-    assert result.external_id == "granicus:1201"
+    assert result.external_id == "granicus:westlakevillage.granicus.com:1201"
 
 
 async def test_no_video_rows_returns_warning():
