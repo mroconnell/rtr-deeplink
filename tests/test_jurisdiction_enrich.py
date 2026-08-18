@@ -823,3 +823,149 @@ def test_finalize_jurisdiction_single_word_bleed_tails_remain_a_known_residual_g
     result = je.finalize_jurisdiction("Town of Castle Rock Authorizing")
     assert result.jurisdiction == "Town of Castle Rock Authorizing"
     assert result.confidence == "unverified"
+
+
+# --- Second-pass fixes, 2026-08-17: `_trim_repair()` no longer falls
+# through past a literal-matching prefix, a real consolidated-government
+# formatting gap, and a positive-evidence entity-type-suffix allowlist
+# (see jurisdiction_enrich.py's own comments on `_trim_repair()`,
+# `_QUERY_GOVERNMENT_TYPE_RE`, and `_ENTITY_TYPE_SUFFIX_WORDS` for the
+# full reasoning). All real, confirmed via the production
+# GET /internal/jurisdiction/bleed-backfill-candidates audit, not
+# invented -- see BACKLOG.md's "Jurisdiction-bleed, confirmed
+# cross-platform" entry.
+
+
+def test_trim_repair_does_not_fall_through_past_a_literal_match_richmond_hill():
+    # Real false positive introduced by the first bleed-signal fix: the
+    # old "keep scanning shorter cuts" behavior correctly rejected the
+    # longest valid prefix "Richmond Hill" (a real, different place;
+    # tail "Single Source Award" is only 3 words, not bleed) but then
+    # kept going to the shorter "Richmond" (tail "Hill Single Source
+    # Award" is 4 words -> looked like bleed) and wrongly repaired to
+    # "Richmond" -- destroying "Richmond Hill". Must now stay whole.
+    result = je.finalize_jurisdiction("Richmond Hill Single Source Award")
+    assert result.jurisdiction == "Richmond Hill Single Source Award"
+    assert result.confidence == "unverified"
+
+
+def test_trim_repair_does_not_fall_through_past_a_literal_match_east_bay():
+    # Same shape as Richmond Hill above: "East Bay" (real place, tail
+    # "Regional Park District" not bleed) used to be skipped past in
+    # favor of the shorter "East" (a real OH township), mangling a real,
+    # legitimately-long agency name.
+    result = je.finalize_jurisdiction("East Bay Regional Park District, CA")
+    assert result.jurisdiction == "East Bay Regional Park District, CA"
+    assert result.confidence == "unverified"
+
+
+def test_trim_repair_still_finds_a_shorter_repair_past_a_heuristic_only_match():
+    # The literal-vs-heuristic distinction the two fixes above rely on
+    # must not become too conservative: "East Providence City" only
+    # "validates" via the secondary trailing-"City"-stripped candidate
+    # "East Providence" (the literal text "east providence city" isn't a
+    # real table key -- "City" here is really the start of "City
+    # Council" in the surrounding text, not part of the entity name), so
+    # its non-bleed 3-word tail must NOT stop the search the way a
+    # literal match would. Scanning should continue to the shorter,
+    # literal match "East Providence" (tail "City Council Live Stream",
+    # 4 words -> bleed), and repair to that.
+    result = je.finalize_jurisdiction("East Providence City Council Live Stream")
+    assert result.jurisdiction == "East Providence, RI"
+    assert result.confidence == "repaired"
+
+
+def test_finalize_jurisdiction_resolves_a_real_consolidated_government_page_spelling():
+    # Real raw jurisdiction text from an already-archived page: "Metro"
+    # (bare, no "Government") and spaces around the slash, neither of
+    # which the stored Census key ("louisville/jefferson county",
+    # produced from "Louisville/Jefferson County metro government
+    # (balance)") matched before this fix. Must resolve as a validated
+    # consolidated-government name, not get destructively trimmed to a
+    # bare, nationally-ambiguous "Louisville".
+    result = je.finalize_jurisdiction("Louisville / Jefferson County Metro")
+    assert result.jurisdiction == "Louisville / Jefferson County Metro"
+    assert result.confidence == "validated"
+
+    # Control case: Nashville-Davidson's own real archived spelling
+    # already matched before this fix (it strips down to "nashville-
+    # davidson" via the ordinary trailing-"County"-word strip, no slash
+    # or bare-"Metro" involved) -- confirms the new consolidated-
+    # government candidate tier doesn't change already-correct behavior.
+    result = je.finalize_jurisdiction("Nashville-Davidson County, TN")
+    assert result.jurisdiction == "Nashville-Davidson County, TN"
+    assert result.confidence == "validated"
+
+
+def test_finalize_jurisdiction_protects_a_real_special_district_entity_suffix():
+    # Real, confirmed residual gap as of the first bleed-signal fix: the
+    # longest real prefix ("St. Johns", a real place) has a tail ("River
+    # Water Management District") that's already 4 Title-Case words --
+    # indistinguishable BY SHAPE ALONE from real bleed like "Legacy
+    # Business PLEDGE OF PUBLIC". The entity-type-suffix allowlist adds
+    # positive evidence (the tail ends in a real government-entity-type
+    # word, "District") so this now correctly stays whole instead of
+    # being destructively trimmed to "St. Johns, FL" (losing the real
+    # water-management-district identity).
+    result = je.finalize_jurisdiction("St. Johns River Water Management District, FL")
+    assert result.jurisdiction == "St. Johns River Water Management District, FL"
+    assert result.confidence == "unverified"
+
+
+def test_finalize_jurisdiction_protects_a_real_water_utility_authority():
+    # Found while verifying the fix above, not explicitly reported: this
+    # real agency name (already cited in BACKLOG_DONE.md's audit as a
+    # "real, correct, legitimately-long agency name") was ALSO being
+    # wrongly trimmed to "Albuquerque, NM" by the shipped word-run-only
+    # signal -- confirmed via the real bleed-backfill-candidates audit,
+    # not previously covered by any test. "Albuquerque" is the only
+    # valid prefix (literal match), and its tail "Bernalillo County
+    # Water Utility Authority" (5 words) ends in "Authority" -- now
+    # protected.
+    result = je.finalize_jurisdiction(
+        "Albuquerque Bernalillo County Water Utility Authority"
+    )
+    assert (
+        result.jurisdiction == "Albuquerque Bernalillo County Water Utility Authority"
+    )
+    assert result.confidence == "unverified"
+
+
+def test_finalize_jurisdiction_entity_suffix_allowlist_does_not_protect_real_bleed():
+    # The entity-type-suffix allowlist is end-anchored, not "contains" --
+    # real bleed can legitimately contain one of the protected words
+    # (e.g. "Committee") without actually ENDING in a protected word or
+    # phrase. Kenora's real, already-correct repair must keep working:
+    # its tail "Committee of the Whole Agenda Thursday" contains
+    # "Committee" but ends in "Agenda Thursday", which isn't protected
+    # (and also independently trips the plain lowercase-word bleed
+    # signal via "of"/"the").
+    result = je.finalize_jurisdiction("Kenora Committee of the Whole Agenda Thursday")
+    assert result.jurisdiction == "Kenora, ON"
+    assert result.confidence == "repaired"
+
+    # Guelph's real "Committee of Adjustment" bleed case, same shape --
+    # both cases are already caught by the lowercase-word signal (the
+    # "of" in each tail) before the entity-suffix allowlist is even
+    # consulted, but asserted directly here since both phrases are also
+    # explicitly listed in `_ENTITY_TYPE_SUFFIX_PHRASES` for the ALL-CAPS
+    # case (not yet observed live) -- this confirms the mixed-case
+    # spelling these were actually found in still repairs correctly.
+    result = je.finalize_jurisdiction("Guelph Committee of Adjustment")
+    assert result.jurisdiction == "Guelph, ON"
+    assert result.confidence == "repaired"
+
+
+def test_ends_with_known_entity_suffix_is_end_anchored_not_contains():
+    # Direct unit test of the helper itself: a protected word appearing
+    # mid-tail (not at the end) must not count -- this is the exact
+    # distinction that keeps Kenora's real bleed case (above) from being
+    # wrongly protected just because "Committee" appears somewhere in
+    # the discarded text.
+    assert je._ends_with_known_entity_suffix("Water Management District") is True
+    assert je._ends_with_known_entity_suffix("District Meeting Agenda") is False
+    assert je._ends_with_known_entity_suffix("Committee of the Whole") is True
+    assert (
+        je._ends_with_known_entity_suffix("Committee of the Whole Agenda Thursday")
+        is False
+    )

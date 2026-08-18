@@ -87,6 +87,36 @@ _GOVERNMENT_TYPE_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Query-side counterpart to `_GOVERNMENT_TYPE_RE` above -- a real archived
+# page names a consolidated government in a shorter, less formal shape
+# than Census's own canonical "(balance)" row does, so a query needs its
+# own, more tolerant strip rather than reusing `_GOVERNMENT_TYPE_RE`
+# as-is. Confirmed real 2026-08-17 via the bleed-backfill-candidates
+# audit: a real archived jurisdiction reads "Louisville / Jefferson
+# County Metro" -- bare "Metro", no "Government" -- against the stored
+# key "louisville/jefferson county" (see `_normalize_name()` above for
+# how that key was produced from the Census row). Deliberately strips
+# only a BARE trailing government-type word (the same four roots
+# `_GOVERNMENT_TYPE_RE` knows, "government" now optional), not a general
+# pattern -- this is still the same closed, 8-row-nationally category,
+# just tolerating one more real-world spelling of it.
+_QUERY_GOVERNMENT_TYPE_RE = re.compile(
+    r"\s+(?:metropolitan|metro|unified|consolidated)(?:\s+government)?$",
+    re.IGNORECASE,
+)
+# Collapses a spaced slash ("Louisville / Jefferson County") to the
+# unspaced form the Census key uses ("Louisville/Jefferson County") --
+# Louisville/Jefferson is the only one of the 8 real consolidated-
+# government rows that uses "/" as its name separator at all (the rest
+# use "-"), so this only ever matters for that one real category, but
+# the normalization itself (collapsing incidental whitespace around a
+# slash) is safe generally.
+_SLASH_SPACING_RE = re.compile(r"\s*/\s*")
+
+
+def _normalize_slash_spacing(name: str) -> str:
+    return _SLASH_SPACING_RE.sub("/", name)
+
 
 def _normalize_name(name: str) -> str:
     """Strips a leading "City of "/"County of "/etc. and lowercases --
@@ -694,7 +724,32 @@ def _table_lookup(name: str) -> Optional[Tuple[str, List[str]]]:
     named "York". Also tries an abbreviation-expanded form
     (`_expand_abbreviations()`), a "Saint"->"St."-contracted form
     (`_contract_saints()`), and an ʻokina/apostrophe-stripped form
-    (`_strip_okina()`) when the raw name doesn't match as-is."""
+    (`_strip_okina()`) when the raw name doesn't match as-is.
+
+    Thin wrapper around `_table_lookup_strength()` that drops the
+    strength flag -- every caller except `_trim_repair()` only needs the
+    plain validity answer."""
+    hit = _table_lookup_strength(name)
+    return (hit[0], hit[1]) if hit else None
+
+
+def _table_lookup_strength(name: str) -> Optional[Tuple[str, List[str], bool]]:
+    """Same as `_table_lookup()`, plus a third element: whether the match
+    came from `name`'s own literal text (as typed, or with only a
+    deterministic leading "City of "/"County of "/etc. removed) rather
+    than a secondary, coincidental normalization -- a trailing generic
+    type-word strip, an abbreviation expansion, a "Saint"->"St."
+    contraction, or an ʻokina strip. `_trim_repair()` uses this
+    distinction to tell a genuine, literal place-name match (safe to stop
+    the search on) apart from a match that only exists because a
+    trailing word happened to look like a type word (not safe to stop
+    on, since it may be incidental -- see `_trim_repair()`'s own comment
+    for the real "East Providence City" case this exists for: the
+    literal text "East Providence City" isn't a real place, it only
+    "matches" via the secondary trailing-"City"-stripped candidate
+    "East Providence", which is coincidental here since "City" is really
+    the start of "City Council" in the surrounding sentence, not part of
+    the entity name)."""
     name = name.strip().rstrip(".,;:")
     if not name:
         return None
@@ -709,7 +764,15 @@ def _table_lookup(name: str) -> Optional[Tuple[str, List[str]]]:
         if county_first
         else [("place", _PLACE_STATES), ("county", _COUNTY_STATES)]
     ) + [("subdivision", _SUBDIVISION_STATES)]
-    candidates = list(_normalize_candidates(name))
+    base_candidates = _normalize_candidates(name)
+    # Only the FIRST base candidate is the literal/deterministic form --
+    # `_normalize_candidates()` puts the as-is (or leading-type-stripped)
+    # form first and only appends a second, trailing-type-stripped
+    # candidate as a fallback (see its own docstring). Everything past
+    # index 0 here, plus every abbreviation/saint/okina candidate below,
+    # is a secondary/heuristic candidate.
+    primary_candidate = base_candidates[0] if base_candidates else None
+    candidates = list(base_candidates)
     expanded = _expand_abbreviations(name)
     if expanded != name:
         candidates.extend(_normalize_candidates(expanded))
@@ -719,10 +782,26 @@ def _table_lookup(name: str) -> Optional[Tuple[str, List[str]]]:
     de_okina = _strip_okina(name)
     if de_okina != name:
         candidates.extend(_normalize_candidates(de_okina))
+    # Consolidated city-county government spellings ("Louisville /
+    # Jefferson County Metro" -> the Census key's own "louisville/
+    # jefferson county") -- see `_QUERY_GOVERNMENT_TYPE_RE`'s comment.
+    # Tried as a combination (slash collapsed AND government-type word
+    # stripped) as well as each alone, since a real page may only need
+    # one of the two.
+    slash_normalized = _normalize_slash_spacing(name)
+    gov_stripped = _QUERY_GOVERNMENT_TYPE_RE.sub("", name)
+    combined = _QUERY_GOVERNMENT_TYPE_RE.sub("", slash_normalized)
+    for variant in (slash_normalized, gov_stripped, combined):
+        if variant != name:
+            candidates.extend(_normalize_candidates(variant))
     for candidate in candidates:
         for label, table in tables:
             if candidate in table:
-                return label, sorted(set(table[candidate]))
+                return (
+                    label,
+                    sorted(set(table[candidate])),
+                    candidate == primary_candidate,
+                )
     return None
 
 
@@ -757,22 +836,132 @@ _ROMAN_NUMERAL_RE = re.compile(r"\b[IVXLC]{2,6}\.?\b")
 # (see BACKLOG.md for the honest accounting).
 _MIN_BLEED_WORD_RUN = 4
 
+# Residual gap fix #2, 2026-08-17 (same investigation as
+# `_MIN_BLEED_WORD_RUN` above, found via the bleed-backfill-candidates
+# audit): the word-count tier is one-sided -- it only has NEGATIVE
+# evidence for bleed, nothing that tells a real, long government-entity
+# name apart from real bleed prose that's coincidentally also all
+# Title-Case/ALL-CAPS. Confirmed real, live case this breaks: "St. Johns
+# River Water Management District, FL" -- "St. Johns" validates as a real
+# place, and its tail "River Water Management District" (4 words) is
+# indistinguishable BY SHAPE ALONE from "Legacy Business PLEDGE OF
+# PUBLIC" -- both are 4+ Title-Case/ALL-CAPS words. This adds positive
+# evidence: does the tail's own ending look like a real government-body
+# or special-district TYPE, rather than agenda/sentence prose?
+#
+# Every entry below is grounded in a real, already-archived jurisdiction
+# name (via this app's own live data, not invented) -- see
+# `_ends_with_known_entity_suffix()`'s docstring for the specific real
+# examples behind each one.
+#
+# Deliberately biased toward OVER-protecting, not under-protecting, per
+# the explicit call on this: a plain trailing-word check like this can
+# occasionally spare a genuine bleed tail that happens to end in one of
+# these words (leaving a bit of extra, cosmetic noise on the meeting-BODY
+# portion of the name), but that's a strictly smaller mistake than the
+# alternative -- trimming through to a shorter, wrong CITY. No real case
+# in the 652-row bleed-backfill-candidates corpus was found where this
+# list wrongly protects a genuine bleed tail (every currently-correct
+# trim's discarded tail ends in an agenda/prose word, not one of these --
+# see tests).
+_ENTITY_TYPE_SUFFIX_WORDS = {
+    # District: St. Johns River Water Management District (the case this
+    # was built for), Sioux City Community School District, Travis
+    # Central Appraisal District, Lake Washington School District.
+    "district",
+    # Authority: Bay Area Headquarters Authority, Capital Metropolitan
+    # Transportation Authority, Albuquerque Bernalillo County Water
+    # Utility Authority.
+    "authority",
+    # Commission: Washington Suburban Sanitary Commission, Metropolitan
+    # Airports Commission.
+    "commission",
+    # Government: Lexington-Fayette Urban County Government.
+    "government",
+    # Schools/School: Pelham Public Schools, Cecil County Public Schools
+    # ("Schools"); Lake Washington School District ("School", also
+    # covered by "district" above).
+    "schools",
+    "school",
+    # Transit: VIA Metropolitan Transit.
+    "transit",
+    # Utility: Albuquerque Bernalillo County Water Utility Authority
+    # (also covered by "authority", kept as its own entry since a page
+    # could plausibly truncate right after "Utility").
+    "utility",
+    # ISD/USD/CISD: a real, common Texas/California independent/unified
+    # school-district acronym, confirmed repeatedly in this app's own
+    # live archive -- Birdville/Carroll/Dallas/Del Valle/Frisco/Garland/
+    # Round Rock/Lake Travis/Richardson/Plano ISD (all TX), Bonita/Conejo
+    # Valley/Yorba Linda USD (all CA), Lamar CISD (TX). Bare "SD"/"FD"/
+    # "PD" deliberately excluded -- no confirmed real archived example of
+    # any of those as a trailing acronym was found (only a false-positive
+    # risk: "White Rock, SD" is South Dakota's state abbreviation, not a
+    # school-district acronym), so adding them would be guessing rather
+    # than grounding in real data, the one thing this whole fix is
+    # built not to do.
+    "isd",
+    "usd",
+    "cisd",
+}
+# Two-word committee-name endings -- confirmed real in this app's own
+# archive (Guelph's "Committee of Adjustment", Kenora's "Committee of
+# the Whole", both currently correctly protected already, but only via
+# the lowercase-word signal catching their "of"/"the"). Listed here too
+# as defense for the ALL-CAPS spelling of either ("COMMITTEE OF
+# ADJUSTMENT"/"COMMITTEE OF THE WHOLE") which would otherwise have zero
+# negative bleed signal left to catch it -- not yet observed in ALL-CAPS
+# form for these two specifically, but the same lowercase-signal blind
+# spot `_MIN_BLEED_WORD_RUN` itself exists to close for ordinary prose
+# bleed, applied here defensively rather than waiting for an incident.
+_ENTITY_TYPE_SUFFIX_PHRASES = (
+    "committee of adjustment",
+    "committee of the whole",
+)
+
+
+def _ends_with_known_entity_suffix(tail: str) -> bool:
+    """True when `tail` (a candidate trim-discard, already confirmed to
+    be all Title-Case/ALL-CAPS with no lowercase/digit/roman-numeral
+    signal by the time this is consulted -- see `_looks_like_bleed()`)
+    itself ENDS WITH a real government-body/special-district type word or
+    phrase, rather than merely containing one anywhere. End-anchored on
+    purpose: real confirmed bleed can legitimately contain one of these
+    words mid-tail without the tail actually being a real entity-type
+    name -- e.g. Kenora's real bleed case "Committee of the Whole Agenda
+    Thursday" contains "Committee" but correctly ends in "Agenda
+    Thursday", so a "contains" check would have wrongly protected it. An
+    "ends with" check does not."""
+    words = tail.split()
+    if not words:
+        return False
+    lowered = " ".join(w.strip(".,;:").lower() for w in words)
+    if any(lowered.endswith(phrase) for phrase in _ENTITY_TYPE_SUFFIX_PHRASES):
+        return True
+    last = words[-1].strip(".,;:").lower()
+    return last in _ENTITY_TYPE_SUFFIX_WORDS
+
 
 def _looks_like_bleed(tail: str) -> bool:
     """Sanity check on text a trim would discard: does it look like
     sentence/agenda bleed (lowercase prose, roman-numeral list markers,
-    digits, or an unusually long run of Title-Case/ALL-CAPS words) rather
-    than part of a real longer name? Confirmed against the 2026-08-15
-    audit's full "repaired_by_trim" bucket (73 cases): every one of the 16
-    cases the original (pre-2026-08-17) signals flagged was a correct
-    repair, and every one of the 57 they left alone was a real,
-    legitimately long name (e.g. "Bay Area Headquarters Authority") that a
-    bare trim would have mangled -- so this gate is required, not
-    optional, for the trim below to be safe. The word-count tier added
-    2026-08-17 (`_MIN_BLEED_WORD_RUN`) is calibrated the same way, against
-    real confirmed Title-Case/ALL-CAPS bleed tails and the real
+    digits, or an unusually long run of Title-Case/ALL-CAPS words with no
+    real government-entity-type ending) rather than part of a real
+    longer name? Confirmed against the 2026-08-15 audit's full
+    "repaired_by_trim" bucket (73 cases): every one of the 16 cases the
+    original (pre-2026-08-17) signals flagged was a correct repair, and
+    every one of the 57 they left alone was a real, legitimately long
+    name (e.g. "Bay Area Headquarters Authority") that a bare trim would
+    have mangled -- so this gate is required, not optional, for the trim
+    below to be safe. The word-count tier added 2026-08-17
+    (`_MIN_BLEED_WORD_RUN`) is calibrated the same way, against real
+    confirmed Title-Case/ALL-CAPS bleed tails and the real
     legitimately-long names that must stay untouched -- see that
-    constant's own comment for the exact evidence."""
+    constant's own comment for the exact evidence. The entity-type-suffix
+    check added later the same day (`_ends_with_known_entity_suffix()`)
+    is the positive-evidence counterpart to the word-count tier -- see
+    its own and `_ENTITY_TYPE_SUFFIX_WORDS`'s comments for why and the
+    real data behind it."""
     if _ROMAN_NUMERAL_RE.search(tail):
         return True
     if re.search(r"\d", tail):
@@ -780,7 +969,9 @@ def _looks_like_bleed(tail: str) -> bool:
     words = tail.split()
     if any(w[0].islower() for w in words if w):
         return True
-    return len(words) >= _MIN_BLEED_WORD_RUN
+    if len(words) < _MIN_BLEED_WORD_RUN:
+        return False
+    return not _ends_with_known_entity_suffix(tail)
 
 
 def _trim_repair(name: str) -> Optional[Tuple[str, str]]:
@@ -789,15 +980,71 @@ def _trim_repair(name: str) -> Optional[Tuple[str, str]]:
     like bleed (`_looks_like_bleed()`) -- never applied bare, since most
     of the audit's trim-reachable names were legitimate long entities a
     blind trim would have destroyed. Returns (repaired_name, table) or
-    None."""
+    None.
+
+    Stops at the FIRST (longest) prefix whose match is a genuine, literal
+    match -- not a secondary/heuristic one (see `_table_lookup_strength()`)
+    -- and decides right there: accepts it if its tail looks like bleed,
+    otherwise gives up without trimming rather than falling through to a
+    shorter, more-likely-spurious prefix. A prefix that only validates
+    via a secondary/heuristic candidate (trailing generic-type-word
+    strip, abbreviation expansion, etc.) does NOT stop the search on its
+    own when its tail doesn't look like bleed -- that match may be
+    coincidental, so scanning continues to shorter cuts looking for
+    either a literal match or a heuristic match with a genuinely
+    bleed-shaped tail.
+
+    Real bug fixed 2026-08-17, found via the bleed-backfill-candidates
+    audit: with the old "keep scanning shorter cuts regardless" behavior,
+    "Richmond Hill Single Source Award" correctly rejected the cut=2
+    prefix "Richmond Hill" (a real, LITERAL place-name match, tail
+    "Single Source Award" is only 3 words, not bleed) but then kept
+    going to cut=1 "Richmond" (also a literal match, tail "Hill Single
+    Source Award" is 4 words -> bleed=True) and wrongly repaired to
+    "Richmond" -- destroying "Richmond Hill", a real, different place.
+    Same shape broke "East Bay Regional Park District, CA": cut=2 "East
+    Bay" is a literal match, correctly rejected (tail "Regional Park
+    District", 3 words, not bleed), then cut=1 "East" (a real OH
+    township) wrongly fired, mangling a real, legitimately-long entity
+    name. Both are literal matches, so stopping the search at the first
+    one is correct and safe.
+
+    The literal-vs-heuristic distinction matters for a real case that a
+    blind "stop at any hit" would have broken: "East Providence City
+    Council Live Stream". Its longest hit, cut=3 "East Providence City",
+    only validates via the secondary trailing-"City"-stripped candidate
+    "East Providence" (the literal text "east providence city" isn't a
+    table key) -- "City" here is really the start of "City Council" in
+    the surrounding text, not part of the entity name. Its tail ("Council
+    Live Stream", 3 words) isn't bleed-shaped, so a blind stop-at-any-hit
+    fix would give up entirely and leave the whole bled string alone.
+    Since this hit is heuristic, not literal, the search instead keeps
+    going to cut=2 "East Providence" -- a literal match whose tail ("City
+    Council Live Stream", 4 words) IS bleed -- and correctly repairs to
+    "East Providence".
+
+    Net effect: strictly less aggressive than the pre-2026-08-17 code,
+    never more -- every case the old code correctly repaired still hits
+    either a literal match or the same longest bleed-tail heuristic match
+    it always found, so nothing already-correct regresses (verified
+    against the real bleed-backfill-candidates corpus, see tests +
+    BACKLOG.md)."""
     tokens = name.split()
     for cut in range(len(tokens) - 1, 0, -1):
         prefix = " ".join(tokens[:cut]).rstrip(".,;:")
         if not prefix:
             continue
-        hit = _table_lookup(prefix)
-        if hit and _looks_like_bleed(" ".join(tokens[cut:])):
-            return prefix, hit[0]
+        hit = _table_lookup_strength(prefix)
+        if not hit:
+            continue
+        table, states, is_primary = hit
+        if _looks_like_bleed(" ".join(tokens[cut:])):
+            return prefix, table
+        if is_primary:
+            return None
+        # Heuristic (non-literal) match with a non-bleed tail: may be
+        # coincidental (see docstring's East Providence example) -- keep
+        # scanning shorter cuts instead of stopping here.
     return None
 
 
