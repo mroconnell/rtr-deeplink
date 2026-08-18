@@ -1,15 +1,3 @@
-http://doravillecityga.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1102&Format=Agenda
-http://dormontpa.iqm2.com:80/Citizens/SplitView.aspx?Mode=Video&MeetingID=1357&AgendaID=1266&FileFormat=pdf&Format=Agenda&MediaFileFormat=mpeg4
-http://elcajonca.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1077&Format=Agenda
-http://forestlakecitymn.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1851&Format=Agenda
-http://geneseecountymi.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2505&MediaPosition=&ID=2292&CssClass=
-http://glencoevillageil.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1234&Format=Agenda
-http://grandjunctioncityco.iqm2.com:80/Citizens/SplitView.aspx?Mode=Video&MeetingID=1460&MinutesID=1457&Format=Minutes&MediaFileFormat=ismv
-http://graytownme.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=2429&Format=None&MediaFileFormat=wmv
-http://grundycountyil.iqm2.com:80/Citizens/SplitView.aspx?Mode=Video&MeetingID=3009&Format=Minutes
-http://hainescity.iqm2.com:80/Citizens/SplitView.aspx?Mode=Video&MeetingID=1916&Format=Agenda
-http://haymarkettownva.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1996&Format=Agenda
-http://hollyspringsga.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1023&Format=Agenda
 http://jonesboroga.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=2297&Format=Agenda.
 http://ledyardschoolct.iqm2.com:80/Citizens/SplitView.aspx?Mode=Video&MeetingID=1413&Format=Minutes
 http://leoniaboroughnj.iqm2.com:80/Citizens/SplitView.aspx?Mode=Video&MeetingID=1280&Format=None
