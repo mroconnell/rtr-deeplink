@@ -399,6 +399,34 @@ async def internal_jurisdiction_bleed_backfill_candidates(
     return await crud.list_jurisdiction_bleed_backfill_candidates()
 
 
+@app.post("/internal/jurisdiction/backfill-apply")
+async def internal_jurisdiction_backfill_apply(
+    dry_run: bool = True, authorization: Optional[str] = Header(None)
+):
+    """Write counterpart to GET /internal/jurisdiction/bleed-backfill-
+    candidates above -- actually backfills the 2026-08-17 Canadian-data +
+    Title-Case-bleed fixes (PRs #158/#161) onto MeetingPage rows archived
+    before either fix existed. Always recomputes candidates itself from
+    each row's own stored inputs (crud.apply_jurisdiction_bleed_backfill())
+    -- never trusts a client-supplied jurisdiction string, so a stale or
+    forged request can't write arbitrary text. Only patches the
+    `jurisdiction` and `jurisdiction_confidence` columns; every other field
+    on the row (title, video_url, segments, ...) is untouched. Narrower
+    than the GET audit above: only rows where the jurisdiction STRING
+    actually changes are touched -- a confidence-tier-only diff (e.g. null
+    -> "validated" with the same text) isn't worth a write and is skipped.
+
+    dry_run defaults to true (mirrors this repo's read-only-first pattern
+    for internal tooling, see /internal/schema-info's docstring) and
+    returns the exact before/after diff it *would* write without touching
+    the database. Pass ?dry_run=false to actually commit.
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    return await crud.apply_jurisdiction_bleed_backfill(dry_run=dry_run)
+
+
 @app.get("/internal/lookup")
 async def internal_lookup(
     normalized_url: str, authorization: Optional[str] = Header(None)
