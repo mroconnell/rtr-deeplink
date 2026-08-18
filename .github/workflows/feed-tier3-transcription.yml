@@ -46,6 +46,8 @@ jobs:
       actions: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.QUEUE_ADVANCE_PAT }}
 
       - uses: actions/setup-python@v5
         with:
@@ -62,17 +64,33 @@ jobs:
 
       # Was a direct `git push` to main -- broken since the 2026-08-14
       # branch ruleset (requires a PR + passing "test" check, blocks
-      # direct pushes; see BACKLOG_DONE.md). Every run's push was being
-      # silently rejected (GH013), so the queue never actually advanced.
-      # Fixed by routing through a PR instead. `allow_auto_merge` is off
-      # for this repo (confirmed via `gh api repos/.../rtr-deeplink`), so
-      # rather than flip that repo setting, this waits for the "test"
-      # check itself (dispatched manually -- see test.yml's
-      # workflow_dispatch comment for why that's necessary) and merges
+      # direct pushes; see BACKLOG_DONE.md). Fixed by routing through a
+      # PR instead. `allow_auto_merge` is off for this repo (confirmed
+      # via `gh api repos/.../rtr-deeplink`), so rather than flip that
+      # repo setting, this waits for the "test" check itself and merges
       # directly once it's green.
+      #
+      # Auth here is QUEUE_ADVANCE_PAT (a fine-grained PAT scoped to this
+      # repo only, Contents + Pull requests read/write, expires
+      # 2026-10-17 -- see BACKLOG_DONE.md), not the default GITHUB_TOKEN.
+      # Reason: a GITHUB_TOKEN-authored PR's author_association comes back
+      # "CONTRIBUTOR" on this public repo, so its real pull_request-
+      # triggered test.yml run sits stuck in action_required pending
+      # manual approval, and the main ruleset's required "test" check only
+      # ever credits that genuine pull_request-triggered run -- not a
+      # workflow_dispatch stand-in (confirmed live, 2026-08-18: two
+      # passing, correctly PR-linked workflow_dispatch test check-runs
+      # were still rejected with "the base branch policy prohibits the
+      # merge" until a human manually approved the stuck run). A PAT-
+      # authored PR should carry author_association OWNER instead and
+      # never hit that gate -- the workflow_dispatch dispatch-and-poll
+      # below (added in PR #144, run-selection-fixed in PR #172) is kept
+      # for now as a fallback until that's confirmed live for both
+      # workflows; remove it only after real evidence the natural
+      # pull_request-triggered run gets credited without it.
       - name: Advance queue via PR
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.QUEUE_ADVANCE_PAT }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -95,20 +113,13 @@ jobs:
             --head "$BRANCH")
           echo "Opened $PR_URL"
 
-          # This repo is public, and a GITHUB_TOKEN-authored PR's
-          # author_association comes back "CONTRIBUTOR" (confirmed live,
-          # 2026-08-18 -- see BACKLOG_DONE.md), so its auto-triggered
-          # pull_request run for test.yml gets gated behind manual
-          # approval by this repo's fork-PR-approval setting, same as a
-          # real outside contributor's would -- it does NOT just fail to
-          # trigger, contrary to what this comment used to claim.
-          # workflow_dispatch bypasses that approval gate, so this
-          # dispatches one explicitly -- but both runs now exist side by
-          # side on the same branch, so the run-selection below must
-          # filter to workflow_dispatch specifically, or it can grab the
-          # stuck, approval-pending pull_request run instead (confirmed
-          # live, 2026-08-18: this exact race blocked PR #171 until
-          # fixed).
+          # See the comment above this step: with QUEUE_ADVANCE_PAT this
+          # PR should be author_association OWNER, so its natural
+          # pull_request-triggered test.yml run should fire without
+          # hitting the approval gate. This still dispatches a
+          # workflow_dispatch run as a fallback and filters strictly to
+          # it (see PR #172) rather than assuming the natural run landed,
+          # since that hasn't been proven unattended yet.
           gh workflow run test.yml --ref "$BRANCH"
 
           echo "Waiting for the dispatched test.yml run to appear..."
