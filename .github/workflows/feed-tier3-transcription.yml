@@ -77,17 +77,23 @@ jobs:
       # "CONTRIBUTOR" on this public repo, so its real pull_request-
       # triggered test.yml run sits stuck in action_required pending
       # manual approval, and the main ruleset's required "test" check only
-      # ever credits that genuine pull_request-triggered run -- not a
-      # workflow_dispatch stand-in (confirmed live, 2026-08-18: two
-      # passing, correctly PR-linked workflow_dispatch test check-runs
-      # were still rejected with "the base branch policy prohibits the
-      # merge" until a human manually approved the stuck run). A PAT-
-      # authored PR should carry author_association OWNER instead and
-      # never hit that gate -- the workflow_dispatch dispatch-and-poll
-      # below (added in PR #144, run-selection-fixed in PR #172) is kept
-      # for now as a fallback until that's confirmed live for both
-      # workflows; remove it only after real evidence the natural
-      # pull_request-triggered run gets credited without it.
+      # ever credits that genuine pull_request-triggered run -- not the
+      # workflow_dispatch stand-in this step used to dispatch as a
+      # workaround (confirmed live, 2026-08-18: two passing, correctly
+      # PR-linked workflow_dispatch test check-runs were still rejected
+      # with "the base branch policy prohibits the merge" until a human
+      # manually approved the stuck run). A PAT-authored PR carries
+      # author_association OWNER instead and never hits that gate --
+      # confirmed live 2026-08-18 (PR #177: opened as OWNER, its natural
+      # pull_request-triggered test.yml run fired immediately with no
+      # approval needed, passed, and `gh pr merge --squash` succeeded on
+      # the first try). The workflow_dispatch dispatch-and-poll fallback
+      # (added in PR #144, run-selection-fixed in PR #172) is removed here
+      # as a result -- it's no longer needed, and QUEUE_ADVANCE_PAT
+      # doesn't have the `actions: write` scope it requires anyway
+      # (confirmed live: dispatching it with this PAT returns
+      # "HTTP 403: Resource not accessible by personal access token").
+      # `gh pr checks --watch` waits for the natural check instead.
       - name: Advance queue via PR
         env:
           GH_TOKEN: ${{ secrets.QUEUE_ADVANCE_PAT }}
@@ -113,30 +119,6 @@ jobs:
             --head "$BRANCH")
           echo "Opened $PR_URL"
 
-          # See the comment above this step: with QUEUE_ADVANCE_PAT this
-          # PR should be author_association OWNER, so its natural
-          # pull_request-triggered test.yml run should fire without
-          # hitting the approval gate. This still dispatches a
-          # workflow_dispatch run as a fallback and filters strictly to
-          # it (see PR #172) rather than assuming the natural run landed,
-          # since that hasn't been proven unattended yet.
-          gh workflow run test.yml --ref "$BRANCH"
-
-          echo "Waiting for the dispatched test.yml run to appear..."
-          RUN_ID=""
-          for i in $(seq 1 30); do
-            RUN_ID=$(gh run list --workflow=test.yml --branch="$BRANCH" --event=workflow_dispatch --limit=1 --json databaseId --jq '.[0].databaseId' || true)
-            if [ -n "$RUN_ID" ]; then
-              break
-            fi
-            sleep 5
-          done
-          if [ -z "$RUN_ID" ]; then
-            echo "Dispatched test.yml run never appeared -- leaving PR $PR_URL open for manual review." >&2
-            exit 1
-          fi
-
-          echo "Watching run $RUN_ID..."
-          gh run watch "$RUN_ID" --exit-status
+          gh pr checks "$BRANCH" --watch --fail-fast
 
           gh pr merge "$BRANCH" --squash --delete-branch
