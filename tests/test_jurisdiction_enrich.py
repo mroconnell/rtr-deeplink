@@ -925,7 +925,9 @@ def test_finalize_jurisdiction_protects_a_real_water_utility_authority():
     result = je.finalize_jurisdiction(
         "Albuquerque Bernalillo County Water Utility Authority"
     )
-    assert result.jurisdiction == "Albuquerque Bernalillo County Water Utility Authority"
+    assert (
+        result.jurisdiction == "Albuquerque Bernalillo County Water Utility Authority"
+    )
     assert result.confidence == "unverified"
 
 
@@ -963,4 +965,7 @@ def test_ends_with_known_entity_suffix_is_end_anchored_not_contains():
     assert je._ends_with_known_entity_suffix("Water Management District") is True
     assert je._ends_with_known_entity_suffix("District Meeting Agenda") is False
     assert je._ends_with_known_entity_suffix("Committee of the Whole") is True
-    assert je._ends_with_known_entity_suffix("Committee of the Whole Agenda Thursday") is False
+    assert (
+        je._ends_with_known_entity_suffix("Committee of the Whole Agenda Thursday")
+        is False
+    )
