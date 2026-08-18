@@ -456,6 +456,20 @@ def _default_looks_like_copied_agenda(
     return bool(seg_texts) and seg_texts == agenda_texts
 
 
+# Real incident, 2026-08-18: scripts/backfill_search_vocabulary.py passed
+# an entire 200-page batch's *union* of distinct words -- 62,000+ of them
+# -- to one call, which built one INSERT with one bound parameter per
+# word and hit PostgreSQL's hard 65535-bound-parameters-per-statement
+# protocol limit. A single ingest_resolution() call (one page's words,
+# a few hundred to a couple thousand) never came close, so this had never
+# been exercised before the backfill script's batch-sized calls existed.
+# Chunked here, in the shared helper, so every caller is protected, not
+# just the one that happened to trigger it -- 2000 is comfortably under
+# the hard limit with room for other statements on the same connection,
+# not tuned against any real measured ceiling.
+_VOCAB_UPSERT_CHUNK_SIZE = 2000
+
+
 async def _upsert_vocabulary_words(session, words: set) -> None:
     """Inserts any of `words` not already in `search_vocabulary`, ignoring
     duplicates -- many pages share common words, and the table is a
@@ -471,19 +485,21 @@ async def _upsert_vocabulary_words(session, words: set) -> None:
     # near this long -- guards against a pathological run (a pasted URL,
     # an ID string with no whitespace) exceeding the word column's
     # String(255) and failing the whole ingest transaction on Postgres.
-    words = {w for w in words if len(w) <= 255}
+    words = sorted({w for w in words if len(w) <= 255})
     if not words:
         return
     if session.bind.dialect.name == "postgresql":
         from sqlalchemy.dialects.postgresql import insert as dialect_insert
     else:
         from sqlalchemy.dialects.sqlite import insert as dialect_insert
-    stmt = (
-        dialect_insert(SearchVocabulary)
-        .values([{"word": w} for w in words])
-        .on_conflict_do_nothing()
-    )
-    await session.execute(stmt)
+    for start in range(0, len(words), _VOCAB_UPSERT_CHUNK_SIZE):
+        chunk = words[start : start + _VOCAB_UPSERT_CHUNK_SIZE]
+        stmt = (
+            dialect_insert(SearchVocabulary)
+            .values([{"word": w} for w in chunk])
+            .on_conflict_do_nothing()
+        )
+        await session.execute(stmt)
 
 
 async def _refresh_search_corpus(session, page: MeetingPage) -> None:
