@@ -6,6 +6,150 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Jurisdiction-bleed, second pass — trim-repair fall-through, consolidated-government spelling, entity-suffix allowlist [Done 2026-08-17]
+
+Same-night follow-up audit of the fix immediately below (the Canadian-data
++ Title-Case-bleed fix), run against the real production
+`GET /internal/jurisdiction/bleed-backfill-candidates` endpoint (added as
+part of that fix) rather than against a handful of hand-picked examples.
+Found real false positives the first fix introduced or left unaddressed,
+root-caused by tracing `_trim_repair()`'s cut-by-cut behavior directly
+(`app/utils/jurisdiction_enrich.py`), not guessed. Three independent
+fixes, verified by re-running `finalize_jurisdiction()` against all 652
+real rows the audit endpoint returned (with `netloc=None` — confirmed by
+diffing against the endpoint's own real-netloc output first that this
+changes only 7/652, all a single already-understood SLC authoritative-
+domain artifact, so a safe proxy) before and after each fix, plus the
+full `pytest` suite (996 passed, 9 skipped throughout).
+
+**Fix #1 — `_trim_repair()` no longer falls through past a literal
+match.** The function iterates candidate cuts longest-to-shortest,
+checking `_table_lookup()` at each; the bug was that when a cut's prefix
+validated but its tail was correctly judged NOT bleed, the old code kept
+scanning shorter cuts instead of stopping — letting a wrong, shorter,
+spurious match win later in the loop. Two real confirmed examples:
+"Richmond Hill Single Source Award" correctly rejected "Richmond Hill"
+(a real, different place; tail "Single Source Award" not bleed) but then
+wrongly repaired to "Richmond" via the shorter cut (tail "Hill Single
+Source Award", 4 words, looked like bleed) — destroying "Richmond Hill".
+"East Bay Regional Park District, CA" broke the same way, wrongly
+repairing to "East, CA" via a real OH township match at the shortest cut.
+
+Fixing this naively ("stop at the very first cut with ANY hit") broke a
+different real, already-correct repair: "East Providence City Council
+Live Stream" 's longest hit, "East Providence City", only validates via
+the ordinary trailing-"City"-word strip (the literal text "east
+providence city" isn't a real table key, only the stripped "east
+providence" is) — coincidental, since "City" here is really the start of
+"City Council" in the surrounding text. Its tail ("Council Live Stream",
+3 words) isn't bleed-shaped, so a blind stop would give up on the whole
+string, when the correct behavior is to keep scanning to the next cut
+("East Providence", a literal match with a genuinely bleed-shaped tail)
+and repair to that. Real fix: `_table_lookup()` was split into a new
+`_table_lookup_strength()` that also reports whether a match came from
+the name's own literal text (as typed, or with only a deterministic
+leading "City of "/etc. removed) versus a secondary/heuristic
+normalization (trailing type-word strip, abbreviation expansion, Saint
+contraction, ʻokina strip). `_trim_repair()` now stops the search only on
+a LITERAL match (accept if bleed, else give up entirely); a
+heuristic-only match with a non-bleed tail doesn't stop the search, since
+it may be coincidental. Verified: re-running against all 652 real audit
+rows, this change affects exactly the two bad cases (Richmond Hill, East
+Bay) — nothing else in the corpus moves, including East Providence and
+every other already-correct repair named in the original ask (Sarasota,
+Hollywood, Hampton, Gainesville, Lethbridge, Kelowna, Oshawa, Mississauga,
+Thunder Bay, Peterborough, Sooke, Squamish, Spruce Grove, all 6 Salt Lake
+City instances).
+
+**Fix #2 — real consolidated city-county governments now match page
+formatting.** "Louisville / Jefferson County Metro" (real archived raw
+text) didn't match the stored Census key ("louisville/jefferson county",
+derived from "Louisville/Jefferson County metro government (balance)")
+because of spaced-slash formatting and a bare "Metro" instead of "metro
+government". Added a query-side `_QUERY_GOVERNMENT_TYPE_RE` (strips a
+bare trailing metropolitan/metro/unified/consolidated, "government"
+optional) and slash-spacing normalization, tried as a new candidate tier
+in `_table_lookup_strength()`. Now resolves to
+`JurisdictionResult(jurisdiction="Louisville / Jefferson County Metro",
+confidence="validated")` — the real entity, correctly identified, rather
+than the old destructive "Louisville" (a nationally-ambiguous name,
+colliding with real places in CO/GA/KS/MS/NE/OH/TN/AL/IL). Control case
+re-verified unaffected: "Nashville-Davidson County, TN" already matched
+before this fix (it strips down via the ordinary trailing-"County" strip,
+no slash or bare-"Metro" involved) and still does.
+
+**Fix #3 — positive-evidence entity-type-suffix allowlist.**
+`_looks_like_bleed()`'s word-count tier (from the first fix, immediately
+below) was one-sided: only negative evidence for bleed (lowercase,
+digits, roman numerals, a long Title-Case/ALL-CAPS run), nothing to tell
+a real long government-entity name apart from real bleed prose that's
+also coincidentally all-capitalized. Real confirmed case: "St. Johns
+River Water Management District, FL" — "St. Johns" is the only valid
+(literal) prefix, and its tail "River Water Management District" (4
+words, all Title-Case) is shape-identical to real bleed like "Legacy
+Business PLEDGE OF PUBLIC". Added `_ends_with_known_entity_suffix()`: an
+END-ANCHORED (not "contains") check against a small set of real,
+evidence-grounded government-entity-type words (`district`, `authority`,
+`commission`, `government`, `schools`/`school`, `transit`, `utility`,
+`isd`/`usd`/`cisd`) and two committee-name phrases
+(`committee of adjustment`, `committee of the whole`). Every word is
+grounded in an already-archived real jurisdiction name (see
+`_ENTITY_TYPE_SUFFIX_WORDS`'s own comment for the specific real names
+behind each), not invented — including a confirmed live count of the ISD/
+USD/CISD acronym across 14 real archived TX/CA school districts. Bare
+"SD"/"FD"/"PD" acronyms were deliberately left out: no real archived
+example was found, and a bare "SD" risks colliding with the South Dakota
+state abbreviation (a real archived row, "White Rock, SD", would have
+been a false-positive trap). End-anchored specifically because real
+bleed can legitimately CONTAIN a protected word without ending in it —
+Kenora's real, correct repair ("Committee of the Whole Agenda Thursday" →
+"Kenora, ON") contains "Committee" but ends in "Agenda Thursday", so a
+"contains" check would have wrongly protected it; verified this still
+trims correctly after the fix, alongside Guelph's "Committee of
+Adjustment" case.
+
+Explicit design bias, per direct instruction: over-protect rather than
+under-protect. A plain trailing-word check like this can occasionally
+spare a genuine bleed tail that happens to end in a protected word
+(leaving a bit of extra, cosmetic noise on the meeting-BODY portion of a
+name) — but that's a strictly smaller mistake than the alternative
+(trimming through to a shorter, wrong CITY). No case in the 652-row real
+audit corpus was found where this allowlist wrongly protects a genuine
+bleed tail.
+
+**Bonus find, not in the original report, caught only by re-running the
+full 652-row audit after Fix #3:** "Albuquerque Bernalillo County Water
+Utility Authority" — already cited in this file's earlier entry (below)
+as a "real, correct, legitimately-long agency name" that must not be
+trimmed — was in fact STILL being wrongly repaired to "Albuquerque, NM"
+by the shipped word-run-only signal (confirmed via the real audit
+endpoint's `repaired_jurisdiction` field, not previously covered by any
+test). Fix #3 closes this too (tail "Bernalillo County Water Utility
+Authority" ends in "Authority").
+
+**Root cause named but deliberately NOT force-fixed:** none — all three
+named root causes got a real, verified fix this pass (unlike the first
+fix's own entry, which left three residual gaps still open in
+BACKLOG.md — those three are untouched by this pass and remain open as
+described there).
+
+**Verification:** `tests/test_jurisdiction_enrich.py` gained 8 new tests
+using the exact real strings from the audit
+(`test_trim_repair_does_not_fall_through_past_a_literal_match_richmond_hill`,
+`..._east_bay`,
+`test_trim_repair_still_finds_a_shorter_repair_past_a_heuristic_only_match`
+(East Providence), `test_finalize_jurisdiction_resolves_a_real_consolidated_government_page_spelling`
+(Louisville + Nashville-Davidson control),
+`test_finalize_jurisdiction_protects_a_real_special_district_entity_suffix`
+(St. Johns), `test_finalize_jurisdiction_protects_a_real_water_utility_authority`
+(Albuquerque), `test_finalize_jurisdiction_entity_suffix_allowlist_does_not_protect_real_bleed`
+(Kenora + Guelph), `test_ends_with_known_entity_suffix_is_end_anchored_not_contains`
+(direct unit test)). Full suite: 996 passed, 9 skipped. This was code-only
+— no already-archived production data was touched or re-processed; a
+real backfill decision (via the still-live
+`GET /internal/jurisdiction/bleed-backfill-candidates` endpoint) stays
+with the user.
+
 ## Jurisdiction-bleed, confirmed cross-platform — Canadian data table + Title-Case bleed fix [Done 2026-08-17]
 
 BACKLOG.md's "Jurisdiction-bleed, confirmed cross-platform" entry
