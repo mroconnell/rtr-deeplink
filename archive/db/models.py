@@ -76,9 +76,9 @@ class MeetingPage(Base):
     # scripts/backfill_search_corpus.py sweep. GIN-trigram-indexed on
     # Postgres by the migration that adds this column, but not via an
     # ORM-level `index=True` here -- see that migration for why. See
-    # BACKLOG.md's "Search: move to a materialized/indexed column" entry
-    # for why this exists and archive/db/crud.py's list_pages() for how
-    # it's queried.
+    # BACKLOG_DONE.md's "Search: move to a materialized/indexed column --
+    # full saga, closed" entry for why this exists and
+    # archive/db/crud.py's list_pages() for how it's queried.
     #
     # deferred=True is load-bearing, not an optimization: this column
     # holds every meeting's *entire* transcript text, and every

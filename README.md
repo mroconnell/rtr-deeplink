@@ -698,16 +698,26 @@ Three code paths, chosen per request:
 - **Fuzzy** (`fuzzy=true`, "Fuzzy search (…slower)" checkbox): each query
   word must be within a small edit distance of a real word in the
   meeting's text — so "traffic" still finds a transcript that says
-  "trafic" or "traffiq" (real transcription errors). Python-side by
-  necessity (bounded Levenshtein has no recall-safe SQL form), streamed
-  over `search_corpus` text one row at a time; phrases/exclusions still
-  narrow in SQL first. Opt-in and a few seconds archive-wide.
+  "trafic" or "traffiq" (real transcription errors). On Postgres with
+  `search_vocabulary` present (revision `c684908ce5ff`), this is
+  SQL-authoritative too: each word longer than 4 chars is trigram-matched
+  against that small, GIN-indexed table of distinct real words
+  (`crud._vocab_candidate_stmt()`), every candidate re-verified with the
+  same bounded-Levenshtein check for exact semantic parity, and the
+  confirmed words checked against `search_corpus` via the substring path
+  above — no full-archive scan. `list_pages()` feature-detects the table
+  (`crud._vocab_available()`) the same way it does `search_tsv`, falling
+  back to a Python-streamed scan over `search_corpus` text (SQLite dev/CI,
+  or Postgres before that migration) otherwise. Still opt-in and slower
+  than exact/full-text search — common short words can still take a few
+  seconds since several individually-common real-word matches may need
+  checking — but no longer scales with total archive size.
 
-`BACKLOG.md`'s "Search: move to a materialized/indexed column" entry has
-the full history — including the 2026-08-17 day this went from a Python
-scan over transcript JSON (which OOM-crashed the Archive on common terms)
-to the shape above — and the one remaining piece (2b: a vocabulary table
-to make fuzzy index-backed).
+`BACKLOG_DONE.md`'s "Search: move to a materialized/indexed column — full
+saga, closed" entry has the complete history, from the 2026-08-17 day
+this went from a Python scan over transcript JSON (which OOM-crashed the
+Archive on common terms) through exact-mode, full-text, and fuzzy all
+becoming SQL-backed.
 
 ## On-demand transcription
 

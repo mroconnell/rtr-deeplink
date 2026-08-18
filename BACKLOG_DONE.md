@@ -938,6 +938,256 @@ still the right follow-up so the next migration needs no shell step —
 this one was safe in either order, which is the property future
 migrations should keep.
 
+## Search: move to a materialized/indexed column — full saga, closed [Done 2026-08-17]
+
+[Moved from BACKLOG.md 2026-08-17] Built 2026-08-08: `/meetings` search
+(title, jurisdiction, agenda text, transcript text — exact and
+fuzzy/typo-tolerant modes, see `archive/utils/search.py`) originally
+worked by reading each candidate meeting's already-stored JSON and
+matching in Python at query time, deliberately, to avoid two things: a
+schema change (adding a column to the already-live `MeetingPage`/
+`TranscriptVersion` tables — no longer blocked on migration tooling
+itself once Alembic was adopted, but still a real production schema
+change to run deliberately) and a Postgres-only extension (trigram
+search needs `pg_trgm`, which the local SQLite dev fallback has no
+equivalent for — would make dev and prod behave differently for the
+same query, which this codebase avoids on principle elsewhere too).
+
+**Confirmed hit in production 2026-08-17**: user reported a 502 on
+`https://redtaperecordings.com/meetings?q=flock`. Plain `/meetings`
+(no `q`) loaded fine, isolating it to the keyword-search path.
+Sentry (added the day before, see WO-7 / commit `444cec6`) showed two
+`Instance failed: xhv2g — Ran out of memory (used over 512MB)` events
+at 7:10-7:11 AM the same day. Root cause in `archive/db/crud.py`'s
+`list_pages()`: with a keyword and no other filters, the SQL query
+matches every `MeetingPage` row, and the function then loads *every*
+`TranscriptVersion.segments` JSON blob for *every version* of *every*
+one of those pages into memory in one shot (`transcript_text_by_page`)
+before any matching happens — no per-page streaming, no early exit once
+`page_size` results are found, no cap on how much transcript JSON gets
+materialized at once. Multi-hour meeting transcripts are large
+(thousands of timestamped segments each), and this loads all versions
+of all meetings regardless of relevance, which was apparently enough
+real transcript volume by 2026-08-17 to blow a 512MB instance. So the
+"fine at today's scale (dozens of meetings)" original design assumption
+was already wrong in production by the time it was actually tested with
+a real, popular query term — not just a hypothetical hundreds/thousands
+-scale concern.
+
+**The materialized column shipped later the same day** — PRs #116
+(schema + GIN-trigram migration), #123 (one-time backfill, run by Ryan
+on the Render shell: 1,219 rows), #124 (`list_pages()` rewired to
+pre-filter in SQL via `_keyword_conditions_postgres()` against
+`MeetingPage.search_corpus`) — plus hotfix #127 (`deferred=True` on the
+column, after the freshly-backfilled corpus started riding along on
+every plain `select(MeetingPage)` and OOM-crashed the *browse* page —
+see this file's "Incident #2 same day" and "Incident: `search_corpus`
+column deployed before its migration ran" entries for both that and the
+migration-ordering outage from #116's deploy). **Result, measured live
+after #127 (2026-08-17 ~10:15 PT)**: browse is fixed for real — plain
+`/meetings` 37s→502 before, **0.6s** after; `?page=3` **0.4s**. But
+keyword search only went from *crashing* to *slow*: `?q=flock` 23.5s
+(~100 matches), `?q=budget` **35s** (~900 of 1,219 meetings match — 45
+result pages). No longer 502s, so not an outage, but far outside
+anything a visitor will wait for.
+
+**Step 1 shipped 2026-08-17 (same day, ~2h after the numbers above) —
+exact-mode search is now SQL-authoritative and O(page_size) in memory:**
+full detail in this file's "Search Step 1: SQL-authoritative
+`list_pages()`" entry. Short version: `ILIKE '%term%'` on
+`search_corpus` is *provably the same predicate* as `matches()`'s
+exact mode (same `build_corpus()` over the same four fields, lowercased
+on both sides), so the Python re-check over freshly-loaded transcript
+JSON was pure overhead — dropped. `has_agenda` moved into SQL, LIMIT/
+OFFSET + COUNT(*) pagination, default-version segments loaded only for
+the returned page's snippets (preserving the "never show a demoted
+version's text" rule), fuzzy words checked in Python over *streamed*
+corpus text (~5ms/doc measured, a few seconds archive-wide, off by
+default and UI-labeled "slower"). Also fixed: the worker's
+transcription-completion path never refreshed `search_corpus`, so
+freshly Whisper-transcribed meetings were silently unsearchable on
+prod. Verified against a real Postgres 16 + pg_trgm container with the
+full migration chain (GIN Bitmap Index Scan confirmed via EXPLAIN for
+the exact operator SQLAlchemy emits).
+
+**Step 1 live result was only half the win — and the follow-up (#131,
+same day) turned out NOT to move prod at all** (the bench it was built
+on didn't model prod's bottleneck): after #129 deployed, search no
+longer crashed (fuzzy and `"public comment"` 503→200, counts/snippets
+correct) but exact search on common terms was *still* 21–33s — now
+provably inside Postgres, on the predicate itself. Rare trigrams
+(`quokka`) 0.7s vs common ones ~25s regardless of match count: the
+trigram GIN can't be selective for trigrams every 300KB transcript
+contains, so every row is rechecked by scanning its whole document,
+twice (page query + separate COUNT). Reproduced on a real postgres:16
+with 1,219 × 300KB lowercase docs + the GIN index: the two cheap fixes
+shipped as #131 — **(a) `LIKE` instead of `ILIKE`** (the corpus is
+lowercased at write time and `parse_query()` lowercases terms, so
+identical semantics; ILIKE was case-folding every full document per row
+via locale — 7.7s→1.75s, same gap with the index disabled), and **(b)
+one query with `count(*) OVER ()`** instead of a separate COUNT (halves
+the scans). Combined bench: 15.4s→1.76s (8.8×). Two findings recorded,
+not fixed at the time: the planner **doesn't even use the GIN index**
+for these — the heap is tiny because the corpora are TOASTed, so the
+cost model sees "31 pages" and seq-scans, blind to detoast cost
+(irrelevant for common terms, where the index can't help anyway; means
+rare terms pay a full scan they needn't); and the same bench's stored
+`tsvector` column answered `@@ 'budget'` in **0.00s** (count) / **0.10s**
+(ranked page) / 0.15s (phrase) — i.e. Step 2a wasn't just ranking, it
+was the only path to sub-second on common terms; trigram GIN is
+structurally the wrong index for "does this huge doc contain this
+common word". **Live after #131: no measurable change** (`budget`
+27.5s, `flock` 34.5s, `"public comment"` 31.5s; rare `quokka` 0.2s,
+browse 0.24s; clean sequential runs, no warm-up effect) — the bench box
+was CPU-bound with the corpus in page cache; prod evidently isn't.
+
+**Resolved 2026-08-17 evening with real DB evidence (Ryan ran EXPLAIN +
+`pg_stat_statements` on the Render shell): the DB *is* the whole
+27–33s, and it runs 3–4× slower for the app than in isolation.**
+`EXPLAIN (ANALYZE, BUFFERS)` of the app's exact query, run
+interactively: **4.7s** (Bitmap Index Scan on the trigram GIN — the
+index *is* used, contrary to the bench-box guess above; 901 candidates,
+9 removed by recheck; `meeting_pages` is 77MB of which the heap is
+1.6MB — 98% TOAST; `shared_buffers = 64MB`). But `pg_stat_statements`
+for the same statements as the *app* ran them: **49 calls, mean 16.5s
+(page) + 16.7s (count) ≈ 33s per search, max 41s/46s** — and a bare
+`SELECT id … WHERE search_corpus ILIKE $1` from an app/script path:
+mean **32.9s**. Same query, same data: the difference is *load*. This
+Postgres had 64MB of buffers, cold TOAST reads at ~3MB/s (a 20-row
+snippet `segments` fetch: mean 2.8s, max 7.9s — `EXPLAIN` hid it
+because it never sends rows), and that day also absorbed the worker's
+5-minute sweeps (fixed the same day, see "Worker auto-transcription
+candidate sweep"), crawler searches (2 full 77MB scans each pre-#131),
+and **14 ad-hoc interactive queries over 10s each totalling 1,043s
+(17 min) of saturation** — so nothing stayed cached and every scan ran
+at a fraction of its isolated speed; #131's CPU savings were invisible
+against that. **Conclusion, a finding not a hypothesis: any design that
+reads the corpus per search is bounded by this DB's I/O; only answering
+from an index (a `tsvector` GIN — count and membership without
+touching TOAST) or a DB with enough RAM to keep the 77MB corpus
+resident escapes it.** `shared_buffers=64MB` implied Render's smallest
+Postgres tier; the next tier up (#143) made the whole working set
+cache-resident, see below.
+
+**Step 2a: relevance ranking + stemming via Postgres full-text search
+— built and shipped 2026-08-17.** Full detail in this file's "Search
+Step 2a" entry. Alembic revision `c1d2e3f4a5b6` adds
+`meeting_pages.search_tsv` as a `GENERATED ALWAYS AS
+(to_tsvector('english', left(search_corpus, 3e6))) STORED` column + GIN
+index (Postgres-only; no backfill script and no ingest change — Postgres
+computes it, closing the two seams that bit #116); `list_pages()`
+feature-detects the column at runtime (`_fts_available()`, cached 60s)
+and uses `search_tsv @@ websearch_to_tsquery('english', q)` when
+present, else the LIKE path — so code and migration deploy in either
+order, closing the third seam. Membership + count come from the GIN
+index without reading the corpus, so cost stops scaling with how common
+the word is; stemming, stopwords and `OR` came free (closing the
+separate "search bar has no OR support" backlog item — see below);
+`?sort=relevance` (`ts_rank_cd`) is opt-in with newest-first still the
+default. **Applied to prod 2026-08-17 ~15:10 PT**, minutes after #143's
+DB resize landed (`shared_buffers` 64→256MB). Final production numbers:
+`budget` 26–35s → 1.47s (RAM alone) → **0.39s** (FTS); `"public
+comment"` 503 → **0.39s**; `flock` 23–34s → **0.49s**; `flock OR drone`
+works; `budgets` stems; browse 0.21s. Fuzzy remained the one slow mode
+(opt-in, UI-labeled "slower") — `flock&fuzzy=true` was **10.7s** at this
+point, tracked as Step 2b below.
+
+**Step 2b: trigram-indexed `search_vocabulary` table for fast fuzzy
+search — built and shipped 2026-08-17/18.** Fuzzy was correct and no
+longer crashed after Step 1, but stayed inherently O(archive) CPU in
+Python (tokenize every corpus, ~4ms each) because `matches()`'s bounded
+Levenshtein against real corpus words has no recall-safe SQL equivalent
+over whole documents — `word_similarity()` on a 130KB doc is either
+useless (too loose a threshold lets everything through) or lossy (a
+selective threshold drops genuine 2-edit typos on 6-letter words). The
+fix: PRs #159 (schema — `SearchVocabulary`, a distinct, page-agnostic
+GIN-trigram-indexed word table, cross-dialect on the model like
+`search_corpus` itself since populating it needs a real
+application-level write path, unlike `search_tsv`'s generated column;
+`_refresh_search_corpus()` — already the single choke point keeping
+`search_corpus` in sync from both `ingest_resolution()` and the
+worker's transcription-completion path — extended to also upsert each
+corpus's words via the new `_upsert_vocabulary_words()`), #160
+(`scripts/backfill_search_vocabulary.py`, one-time sweep for
+pre-existing pages), #162 (`list_pages()` wired to use the vocabulary
+when available via the new `_vocab_available()`, mirroring
+`_fts_available()`'s exact feature-detect pattern: each fuzzy word
+longer than 4 chars is trigram-matched against the vocabulary
+(`_vocab_candidate_stmt()`, the `%` operator so the GIN index is
+actually usable), every candidate re-verified against the *exact*
+Levenshtein function `matches()` already uses — byte-for-byte parity,
+the trigram step is purely a fast candidate generator, never the final
+decision — and the confirmed real words checked against `search_corpus`
+via the already-fast Step 1 LIKE path; words ≤4 chars skip vocabulary
+lookup per `matches()`'s own "short words require exact" rule; a fuzzy
+term with zero real matches anywhere in the archive correctly fails the
+whole query via `sql_false()`, not a silently-skipped condition).
+
+**#159 deployed clean via WO-10's new `preDeployCommand`** — the first
+Archive migration to land after WO-10 shipped, and it worked exactly as
+designed: Render's pre-deploy hook ran `alembic upgrade head`
+automatically before the new code went live, so the "model column
+deployed ahead of its migration" outage class that hit #116 didn't
+repeat here. Confirmed via the Render Events log (`Starting pre-deploy:
+cd archive && alembic upgrade head` → migration applies → `Pre-deploy
+complete!` → app goes live) and `/internal/schema-info` afterward.
+
+**Real incident, 2026-08-18: the backfill script's first real run hit
+PostgreSQL's hard 65535-bound-parameters-per-statement protocol limit,
+fixed same-day as hotfix #163.** `_upsert_vocabulary_words()` built one
+`INSERT` with one bound parameter per word; real-time ingest only ever
+passes one page's distinct words at a time (a few hundred to a couple
+thousand), so this was never exercised near any limit before. The
+backfill script passes an entire *batch's* union of words (200 pages at
+once), and a real batch produced 62,000+ distinct words in one call —
+over the limit. Not a production outage (real-time ingest was never at
+risk, only the one-time backfill was blocked from completing). Fixed in
+the shared helper itself, not the script, so every caller is protected:
+`_upsert_vocabulary_words()` now chunks into batches of 2000 words per
+`INSERT`. New regression test reproduces the exact failure shape
+(70,000 words in one call), confirmed fixed against a real `postgres:16`
+container before merge. Backfill re-run afterward completed cleanly:
+1,243 pages → ~337,000 distinct vocabulary words across 7 batches, no
+errors.
+
+**Verified against real Postgres throughout** (a recurring practice for
+every step of this saga, given CI is SQLite-only and cannot exercise any
+of the Postgres-only paths): #162's own test suite (`tests/
+test_search_fuzzy_vocab.py`, 9 tests) caught two real things before
+merge — a genuine pytest-asyncio/asyncpg incompatibility unrelated to
+the search logic itself (fixed with `loop_scope="session"`, same fix
+`test_search_fts.py`/`test_list_pages_search_postgres.py` already
+needed), and a lesson repeated from earlier in this same saga: a bare
+`EXPLAIN` run through a bound parameter got a different, more
+conservative *generic* plan than an ad-hoc literal query — so the test
+suite asserts real timing (fuzzy search stays under a second against a
+5,000+ word synthetic vocabulary) rather than a fragile EXPLAIN
+plan-shape. Structurally, `search_vocabulary` holds distinct *words*,
+not per-meeting *transcripts*, so even its worst-case fallback plan
+scans a small, bounded table — never gigabytes of TOASTed transcript
+text the way `search_corpus`'s own worst case did.
+
+**Final measured production numbers (2026-08-18, after #163's backfill
+completed)**: real typo `trafic`→`traffic` **~2.2s** (was ~10s+ class of
+streamed Python before Step 2b existed at all); `budget&fuzzy=true`
+**~2.1s**; `flock&fuzzy=true` **~5s** (down from 10.7s at the end of
+Step 2a, but the smallest win of the three — `flock` has several short,
+common, genuinely-1-edit-distance real-word neighbors in the vocabulary,
+so its confirmed-candidate OR-set is larger than `trafic`'s or
+`budget`'s, and checking several individually-common words against
+`search_corpus` is real work even on the fast Step 1 path; recorded
+honestly as a real, unexplained-further variance rather than claimed as
+uniformly fixed). Fuzzy is no longer O(archive), but — unlike exact
+mode and FTS, which both went to sub-second — it did not reach
+sub-second uniformly; a real, live finding for whoever revisits fuzzy
+performance next, not a claimed final state.
+
+**Also closes** the separate "Search bar has no `OR` support" backlog
+item (Step 2a: `websearch_to_tsquery()` understands `a OR b` natively on
+the FTS path; `parse_query()` itself still has no OR, which only matters
+for the LIKE-fallback/fuzzy paths — dev/CI and pre-migration Postgres —
+where OR was never a live gap worth blocking on).
+
 ## Worker auto-transcription candidate sweep: from 102MB of transcript JSON every 5 idle minutes to one anti-join (2026-08-17)
 
 [Done 2026-08-17] Found while chasing prod search latency (below); Ryan
