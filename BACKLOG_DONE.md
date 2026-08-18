@@ -6,6 +6,67 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Jurisdiction-bleed backfill — write path + real production run [Done 2026-08-18]
+
+Data-repair pass closing the residual gap left by the two fixes below
+(Canadian-data + Title-Case-bleed, and the same-night trim-repair/
+consolidated-gov/entity-suffix second pass, PRs #158/#161): both fixes
+were explicitly scoped code-only and never re-processed rows already
+archived before they shipped, so 36 already-archived `MeetingPage` rows
+were still carrying the old, wrong `jurisdiction` text as of 2026-08-18.
+`GET /internal/jurisdiction/bleed-backfill-candidates` (added alongside
+#158) could size the gap but nothing could act on it — this closes that.
+
+Built as [PR #165](https://github.com/mroconnell/rtr-deeplink/pull/165):
+`POST /internal/jurisdiction/backfill-apply` (token-gated,
+`dry_run=true` default) and `crud.apply_jurisdiction_bleed_backfill()` —
+always recomputes candidates itself server-side from each row's own
+stored inputs (never trusts a client-supplied jurisdiction string), and
+writes only the `jurisdiction`/`jurisdiction_confidence` columns, only
+for rows where the jurisdiction TEXT actually changes. A
+confidence-tier-only diff (e.g. `null` → `"validated"` with the same
+string) is deliberately out of scope — most of the 646 raw candidates
+from the GET audit are exactly that, and aren't worth a write. Covered
+by 7 new integration tests (`tests/test_jurisdiction_backfill_apply.py`)
+against the real SQLite test DB — dry-run writes nothing, a real apply
+touches only the two columns (title/segments/etc. explicitly asserted
+unchanged), confidence-only diffs are skipped, and both auth-gating
+paths. Full suite: 1009 passed, 15 skipped. `scripts/
+backfill_jurisdiction_bleed.py` drives it end-to-end: dry-run, print the
+diff, require a typed `apply` confirmation, then write for real —
+built but not needed for this run, since the verification below was
+done directly against the endpoint instead.
+
+**Verification, run for real against production 2026-08-18:**
+- `GET /internal/jurisdiction/bleed-backfill-candidates` confirmed 36
+  text-changing candidates live (of 646 raw candidates / 1231 rows
+  checked), matching the task's expected count and examples exactly
+  (e.g. "Peterborough is committed to making meetings accessible for
+  people of all abilities..." → "Peterborough, ON"; "City of Salt Lake
+  City, UT" → "Salt Lake City, UT" ×6).
+- `POST .../backfill-apply?dry_run=true` returned the identical 36-row
+  diff (same slugs, same before/after strings) as the GET audit —
+  confirmed programmatically, not just eyeballed.
+- `POST .../backfill-apply?dry_run=false` applied all 36. Re-running the
+  GET audit afterward: text-changing candidates dropped to exactly 0;
+  confidence-only diffs (out of scope) were unaffected in kind, though
+  the just-repaired rows themselves now show up there instead (a
+  `"repaired"`-confidence value re-running as `"validated"` once the
+  string is already correct — expected, see
+  `apply_jurisdiction_bleed_backfill()`'s own docstring, and covered by
+  `test_apply_for_real_writes_only_jurisdiction_columns`).
+- Diffed `title` across all 36 rows before vs. after (both from the
+  audit endpoint's own payload and from the apply response's captured
+  pre-write title) — zero mismatches, confirming nothing outside the
+  two jurisdiction columns moved.
+- Live-loaded 3 of the actually-changed pages on redtaperecordings.com
+  (`/m/peterborough-is-committed-to-making-meetings-accessible-for-
+  people-of-all-abilit`, `/m/slc-live-meetings-2026-08-11-salt-lake-
+  city-council-truth-in-taxation-08-11-2026`, `/m/guelph-now-hold-a-
+  meeting-that-is-closed-to-the-public-2026-07-14-council-planni`) —
+  all three render the repaired jurisdiction in the page title/header,
+  with transcript content and dates unaffected.
+
 ## Jurisdiction-bleed, second pass — trim-repair fall-through, consolidated-government spelling, entity-suffix allowlist [Done 2026-08-17]
 
 Same-night follow-up audit of the fix immediately below (the Canadian-data
