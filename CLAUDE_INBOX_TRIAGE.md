@@ -64,3 +64,120 @@ run.
 Every finding from both the 2026-08-17 and 2026-08-18 runs has been
 promoted into `BACKLOG.md`/`CLAUDE_BACKLOG.md` per this file's own
 promotion convention above and removed from here.
+
+## 2026-08-19
+
+Reviewed all 26 threads currently under `label:rtr-claude` (the
+`-label:rtr-claude-processed` exclusion in the search query is unreliable
+per the open item above — Gmail only excludes a thread if *every*
+message in it carries the processed label, so a thread with one
+processed message and one new one still comes back; this run reviewed
+the full 26 and relied on dedup against `BACKLOG.md`/`CLAUDE_BACKLOG.md`/
+this file to avoid repeat write-ups, per Step 2's instructions). Two
+already-tracked items confirmed still duplicate (no new entry): the
+2026-08-12 Search Console "Videos structured data" alert (matches
+`CLAUDE_BACKLOG.md`'s existing Search Console section), and Sentry
+issue PYTHON-FASTAPI-A's 2026-08-18 16:29 UTC recurrence ("RuntimeError:
+Response content shorter than Content-Length") — same issue ID already
+covered by `BACKLOG.md`'s "[HUMAN] Archive service instability,
+2026-08-17" entry. Also confirmed stale/already-resolved: both "Feed
+tier 3" and "Feed Granicus auto-transcription queue" GitHub Actions
+failures from 2026-08-18 (5 separate emails) — checked current run
+history via the GitHub API directly: both workflows failed consistently
+through 2026-08-18 18:53-19:15 UTC, then started succeeding continuously
+from PR #176 ("Switch auto-transcription queue-advance workflows to
+QUEUE_ADVANCE_PAT") onward (2026-08-18 21:47 UTC) through the most
+recent runs as of this review (2026-08-19 13:05/13:30 UTC, both green)
+— already fixed, no new entry needed.
+
+Three new findings:
+
+- **Confirmed — Adapter health canary caught a real regression: Aurora,
+  CO's `aurora_tv` adapter no longer resolves real content.** The
+  2026-08-18 15:34 UTC scheduled "Adapter health canary" run
+  ([run 32155218602](https://github.com/mroconnell/rtr-deeplink/actions/runs/32155218602),
+  verified via the GitHub API's own job logs, not just the failure
+  email) shows 19/20 platforms OK, with one real failure: `FAIL aurora:
+  resolve returned no real content
+  (https://www.auroratv.org/video/regular-meeting-aurora-city-council-june-22-2026)`.
+  This is exactly the canary's intended job (see `CLAUDE_BACKLOG.md`'s
+  original canary proposal) working as designed, not a canary bug — the
+  other errors in the same log (`[youtube] ... Sign in to confirm you're
+  not a bot`) are the already-documented yt-dlp/YouTube blocking issue
+  (see `CLAUDE.md`'s yt-dlp bullet) and didn't cause any of the 19
+  passes to fail. **Impact**: `app/platforms/aurora.py` is the only
+  adapter for Aurora, CO's own Drupal-built video site
+  (auroratv.org) — if the canary's finding holds for the platform
+  generally (not just this one sample URL), every Aurora meeting fails
+  to resolve until fixed; scope beyond the one sample URL not yet
+  checked. Root cause not diagnosed — per `CLAUDE.md`'s adapter
+  convention this needs a live re-fetch of the actual page to see what
+  changed (most likely candidates given the adapter's own code: the
+  `drupal-settings-json` script tag structure changed, or the
+  `mp4_url`/`jw_data.caption_file_path` keys inside it moved) rather
+  than guessing from the canary's "no real content" message alone.
+  **Fix effort**: unknown until someone fetches the live page.
+
+- **Confirmed — new unhandled-exception path in the resolver's Archive
+  reverse-proxy streaming, distinct from the already-tracked proxy
+  `TimeoutError`.** New Sentry issue PYTHON-FASTAPI-Q ("ClientPayloadError:
+  Response payload is not completed: <TransferEncodingError: 400,
+  message='Not enough data to satisfy transfer length header.'>"),
+  `transaction = /m/{path:path}`, one real occurrence 2026-08-18 21:11
+  UTC (`https://redtaperecordings.com/m/hutto-tx-2026-04-07-apr-07-2026-planning-and-zoning`,
+  a crawler request — `browser = MJ12bot`). Traced to real code:
+  `app/main.py`'s `_proxy_to_archive()` → `body_iterator()`
+  ([app/main.py:1440-1445](app/main.py#L1440-L1445)) has no
+  try/except around `async for chunk in response.content.iter_chunked(65536)`.
+  When the upstream Archive→resolver stream gets cut short mid-response
+  (aiohttp's own parser raises `TransferEncodingError` on `feed_eof`),
+  the exception propagates unhandled — and because this happens *inside*
+  `StreamingResponse`'s body generator, after `response.status`/headers
+  have already been sent to the client, the existing try/except at
+  [app/main.py:1428-1438](app/main.py#L1428-L1438) (which returns a
+  clean 503) can't help — that one only guards the initial
+  `archive_client.proxy_get()` call, not the streaming loop after it.
+  **Impact**: low as observed (one bot-traffic hit, `handled=no` in
+  Sentry so it's presumably just a dropped connection to the crawler,
+  not user-visible breakage), but the same gap would hit a real visitor
+  the same way if the resolver-Archive connection drops mid-page-load —
+  they'd get a silently killed connection instead of a clean error.
+  **Fix effort**: small — wrap the `body_iterator()` loop in its own
+  try/except, log, and let the generator end cleanly instead of raising
+  into `StreamingResponse` machinery that's already committed to a
+  response.
+
+- **Unconfirmed / open question — new Render alert type on
+  `rtr-deeplink-archive` (production), not the same failure mode as the
+  already-tracked 2026-08-17 instability cluster.** "Server failure
+  detected on rtr-deeplink-archive: HTTP health check failed (timed out
+  after 5 seconds)", single occurrence, 2026-08-19 13:17 UTC. The
+  existing `BACKLOG.md` "[HUMAN] Archive service instability,
+  2026-08-17" entry covers memory-limit restarts, a proxy `TimeoutError`,
+  a `RuntimeError: Response content shorter than Content-Length`, and a
+  "database system is shutting down" error — but not a plain health-check
+  timeout, so this doesn't clearly match that already-diagnosed cluster.
+  Render's own alert text says this often self-resolves, and no
+  follow-up "still down" email arrived. Genuinely can't confirm real
+  duration or user impact without Render dashboard access (logs/metrics
+  aren't reachable from here). **Open question for Ryan**: worth a quick
+  check of the Archive's Render logs/memory graph around 13:17 UTC
+  2026-08-19 to see if this is a one-off blip or the start of a new
+  pattern.
+
+One item deliberately left uninvestigated as likely test/dev noise, not
+written up as a finding, but flagged here since it's not obviously
+nothing either: two near-identical "Transcription job 1 failed" emails
+(2026-08-19 12:51:08/12:51:09 UTC, one second apart) with clearly
+synthetic-looking data (`job_id: 1`, meeting titled "Some Meeting" /
+"(untitled)", `requester: requester@example.com` / `r@example.com`,
+`source_url: (unknown)`), landing in the same ~24h window as a
+"deploy failed for rtr-deeplink-staging" email (2026-08-19 02:28 UTC,
+commit "Advance tier 3 auto-transcription queue (#190)") and a "Server
+failure detected on test-redtaperecordings: Exited with status 3"
+email (2026-08-18 17:46 UTC). `rtr-deeplink-staging` is documented in
+`render.yaml` as intentionally disposable/free-tier and outside the
+tracked Blueprint; `test-redtaperecordings` isn't in `render.yaml` at
+all. Reads like manual testing against a non-production service, not a
+real incident, but this run has no way to confirm that vs. a real bug
+surfacing only on staging — flagging rather than guessing further.
