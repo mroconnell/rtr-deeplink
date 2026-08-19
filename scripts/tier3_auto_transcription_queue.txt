@@ -1,15 +1,3 @@
-http://tylercitytx.iqm2.com:80/Citizens/SplitView.aspx?Mode=Video&MeetingID=1316&Format=None
-http://wauwatosacitywi.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=3668&Format=Agenda
-http://wbmwdca.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2526&MediaPosition=&ID=4479&CssClass=
-http://wcwdca.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1118&MediaPosition=&ID=1541&CssClass=
-http://wilsoncountync.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1157&Format=Minutes
-http://woodstockga.iqm2.com:80/Citizens/SplitView.aspx?Mode=Video&MeetingID=1622&Format=Agenda
-https://alamogordonm.portal.civicclerk.com/event/2920/media
-https://albanyny.portal.civicclerk.com/event/138/media
-https://alpharettaga.portal.civicclerk.com/event/2829/media
-https://alpinecountyca.iqm2.com/Citizens/SplitView.aspx?MeetingID=2941&Mode=Video
-https://altuscityok.iqm2.com/Citizens/SplitView.aspx?MeetingID=2053&Mode=Video
-https://amherstny.iqm2.com/Citizens/SplitView.aspx?MeetingID=2826&Mode=Video
 https://anacorteswa.portal.civicclerk.com/event/1116/media
 https://arcataca.iqm2.com/Citizens/SplitView.aspx?MeetingID=1009&Mode=Video
 https://arlingtonheightsil.portal.civicclerk.com/event/5076/media
