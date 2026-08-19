@@ -1,15 +1,3 @@
-http://jonesboroga.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=2297&Format=Agenda.
-http://leoniaboroughnj.iqm2.com:80/Citizens/SplitView.aspx?Mode=Video&MeetingID=1280&Format=None
-http://lincolnri.iqm2.com:80/Citizens/SplitView.aspx?Mode=Video&MeetingID=1160&Format=Minutes
-http://liveoakca.iqm2.com:80/Citizens/SplitView.aspx?Mode=Video&MeetingID=1172&Format=Agenda
-http://medfordma.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1084&Format=Minutes
-http://nassaucountyny.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=2014&Format=Agenda
-http://norfolkcityva.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1276&Format=None
-http://orindaca.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2665&Me
-http://parkcityut.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=2540&Format=Agenda
-http://peekskillcityny.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=2510&Format=None&MediaFileFormat=wmv
-http://plainfieldcitynj.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1229&MediaPosition=&ID=4641&CssClass=
-http://prescottaz.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame&MeetingID=1613&MediaPosition&ID=2226&CssClass
 http://prparkdistrictil.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1094&Format=Agendahttp://prparkdistrictil.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1094&Format=Agenda
 http://ransonwv.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1048&Format=Agenda
 http://redbluffca.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1307&MinutesID=1224&Format=Minutes&MediaFileFormat=mp4
