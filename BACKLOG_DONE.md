@@ -6,6 +6,87 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Salvaged tier-1/tier-2 finds ingested; TelVue "ECTV" jurisdiction guess corrected from Scranton, PA to Everett, MA [Done 2026-08-18]
+
+Prompted by checking whether any real, content-confirmed tier-1/tier-2
+hosts from earlier investigation work had been left un-ingested. Three
+were: Bedford, OH (PrimeGov→YouTube, 1,346 segments) and Peel Region, ON
+(eScribe, 1,101 segments) had only ever been live-resolved to investigate
+the jurisdiction-bleed bugs they surfaced (see BACKLOG.md's PrimeGov
+`_JURISDICTION_RE` and eScribe two-tier-government entries), never
+pushed; both ingested via `bulk_ingest.py` and land with the
+already-documented wrong jurisdiction from those same bugs (Bedford →
+"County of Cuyahoga, OH", Peel Region → "Town of Caledon, ON") — expected,
+not a new issue.
+
+The third, TelVue org token `cT30AQ_xtOBQF0oJM2gIVCDX9kjgfWZb`
+(2,497-segment real transcript), was the one round-2 TelVue hit
+deliberately held back in the original entry below because its
+jurisdiction was only a nickname-match guess ("ECTV" → "Electric City
+Television" → Scranton, PA) with no confirming .gov link. Re-investigated
+via web search before ingesting, per that entry's own "worth a direct
+attempt" note — **the guess was wrong**: the same org token's other
+playlist entries include "ECTV Channel 3 Public Access Programs" (exact
+match to Everett, MA's real public-access channel — cityofeverett.com
+describes its own channel lineup as "Public Comcast (Channel 3)...
+Government Comcast (Channel 22)", not Scranton's Channel 19) and
+"Community Meeting on Stadium Development" (matches the real,
+well-documented 2025 Everett, MA Kraft Group/New England Revolution
+soccer-stadium community meetings). "ECTV" was an acronym collision
+between two unrelated real organizations (Scranton's "Electric City
+Television" and Everett, MA's "Everett Community Television"), not the
+same one.
+
+The held-back meeting's own title is a bare "City Council Meeting
+11-27-23" (no city name at all — same shape as the Fitchburg bug in the
+entry below), so `_guess_jurisdiction()`/`enrich_jurisdiction_text()`
+correctly return `None` for it and can't be fixed by title parsing alone.
+Added `_KNOWN_ORG_TOKEN_JURISDICTIONS`, a per-org-token map in
+`app/platforms/telvue.py` (the "may need a real per-customer jurisdiction
+map later" gap that file's own module comment already anticipated),
+used as a fallback only when the existing guess/enrich chain returns
+nothing — one confirmed entry (this token → "Everett, MA"), not a
+speculative table. Regression tests added
+(`tests/test_telvue.py::test_resolve_falls_back_to_known_org_token_jurisdiction`,
+`::test_resolve_unknown_org_token_has_no_jurisdiction`). Re-ingested after
+the fix; confirmed live on the public page (jurisdiction now reads
+"Everett, MA" — slug unchanged, `city-council-meeting-11-27-23`, same
+"slugs don't regenerate on re-ingest" tradeoff as Fitchburg). Full suite
+green (1027 passed, 15 skipped).
+
+**The other 5 untested tokens, tested same session**: found a real media
+ID for each via web search (same "quote the token" method), live-resolved
+each. One genuinely new real captioned jurisdiction: **Natick, MA**
+(`994DtmGEsi0VDYK3jJI2BJ72GfgNIpU2`, "Natick Select Board June 10, 2026",
+**3,865 real segments** — confirmed via dry-run then ingested for real,
+`/m/natick-natick-select-board-june-10-2026`). Surfaced a second real
+jurisdiction-guess bug fixing this one: the title has no dash-separated
+date (unlike Fitchburg/Ashland's shape), so `_guess_jurisdiction()` runs
+against the whole string including the date -- the bare `Board`
+alternative in `_BODY_SUFFIX_RE` matched before the two-word `Select
+Board`, producing "Natick Select" instead of "Natick". Fixed by adding
+`Select Board` as its own alternative ahead of bare `Board` (position, not
+alternation order, is what makes it win -- see the regex's own comment).
+Regression test added
+(`tests/test_telvue.py::test_guess_jurisdiction_handles_select_board`).
+
+Three more tokens got a real jurisdiction identified via search but no
+captions yet on the one real page tested for each -- correctly left
+un-ingested, same as Multnomah County/Emmett Township above:
+**Warren Township, NJ** (`GBRlyEOJkXtkfSrhIDK-uv2PonrUwFBn`, "Warren
+Township Committee Meeting December 11, 2025", real page, 0 segments) and
+**Rochester** -- city unconfirmed among NH/NY/MN, "Rochester Government
+Channel" (`dQtoDvlZYDOtqaf7eRn9z2lb1Nb6EZzu`, "Planning Board - 6/3/24",
+real page, 0 segments). One token (`AbfNhigIqnG-4roGCxaFupXEKfme9dfT`)
+and the **Kalamazoo, MI** token (`2bm0gzQWeVRzdCgvjXziXKwO3icSKh05`) both
+had every search-surfaced media ID come back "no video found" on live
+resolve (likely stale/removed content, not a real adapter gap) -- neither
+confirmed real or dead conclusively; would need a fresher media ID to
+settle either way.
+
+Full suite green throughout (1028 passed, 15 skipped after the Select
+Board fix).
+
 ## Cablecast/Swagit/CivicClerk stage-2 seeks, full-set real-content check: 180 confirmed real captioned jurisdictions [Done 2026-08-17]
 
 **Landed straight into this file instead of updating its own still-open
