@@ -1,15 +1,3 @@
-https://bouldercountyco.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=2146&Format=Minutes
-https://brazoriacountytx.iqm2.com/Citizens/SplitView.aspx?MeetingID=6527&Mode=Video
-https://brevardcountyfl.iqm2.com/Citizens/SplitView.aspx?MeetingID=1244&Mode=Video
-https://brookhavencityga.iqm2.com/Citizens/SplitView.aspx?MeetingID=1959&Mode=Video
-https://brookhavenny.portal.civicclerk.com/event/1284/media
-https://brookhaventownny.iqm2.com/Citizens/SplitView.aspx?MeetingID=1244&Mode=Video
-https://brunswickconc.portal.civicclerk.com/event/1940/media
-https://buckscopa.portal.civicclerk.com/event/406/media
-https://buffalogroveil.portal.civicclerk.com/event/657/media
-https://burgawnc.portal.civicclerk.com/event/340/media
-https://burlingtonvt.portal.civicclerk.com/event/6868/media
-https://burtonmi.iqm2.com/Citizens/SplitView.aspx?MeetingID=1640&Mode=Video
 https://buttecoca.portal.civicclerk.com/event/140/media
 https://calaverascountyca.iqm2.com/Citizens/SplitView.aspx?MeetingID=2416&Mode=Video
 https://capaz.portal.civicclerk.com/event/456/media
