@@ -1530,7 +1530,13 @@ def _validated_label_extract(label: str) -> Optional[str]:
     # (see that function's own comment) both call this same generic path,
     # and had no way to independently confirm an eScribe page's real
     # identity before this fix.
-    while len(words) > 1 and words[0].lower() in ("city", "county", "town", "of", "pub"):
+    while len(words) > 1 and words[0].lower() in (
+        "city",
+        "county",
+        "town",
+        "of",
+        "pub",
+    ):
         words = words[1:]
     if not words:
         return None

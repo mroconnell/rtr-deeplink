@@ -1185,6 +1185,9 @@ def test_tulare_county_visalia_remains_an_unconfirmed_residual_gap():
     import wordninja
 
     assert wordninja.split("tularecounty") == ["tul", "are", "county"]
-    assert je._validated_subdomain_extract(
-        "https://tularecounty.granicus.com/player/clip/1"
-    ) is None
+    assert (
+        je._validated_subdomain_extract(
+            "https://tularecounty.granicus.com/player/clip/1"
+        )
+        is None
+    )
