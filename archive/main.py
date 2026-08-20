@@ -378,6 +378,7 @@ async def internal_transcription_hallucination_candidates(
 
 @app.get("/internal/transcript-quality-audit")
 async def internal_transcript_quality_audit(
+    list_outcomes: Optional[str] = None,
     authorization: Optional[str] = Header(None),
 ):
     """Read-only aggregate: every archived page's transcript-quality outcome
@@ -389,11 +390,25 @@ async def internal_transcript_quality_audit(
     meetings have a low-quality/garbled/non-English transcript" without
     needing direct DATABASE_URL access (same reasoning as
     /internal/schema-info). Never re-transcribes or modifies anything.
+
+    `list_outcomes` (comma-separated bucket names, e.g.
+    "garbled_transcript,non_english_transcript") also returns the real
+    slug/source URL/platform/language/warnings for every page in those
+    buckets -- e.g. to target the real garbled pages directly with
+    scripts/transcribe_backlog_locally.py --url, or to eyeball whether any
+    non_english_transcript page is actually a garbled scraped caption
+    whose language got misdetected (the confirmed Fountain Valley, CA
+    pattern -- see CLAUDE.md).
     """
     if not _token_ok(authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
-    return await crud.get_transcript_quality_audit()
+    outcomes = (
+        {o.strip() for o in list_outcomes.split(",") if o.strip()}
+        if list_outcomes
+        else None
+    )
+    return await crud.get_transcript_quality_audit(list_outcomes=outcomes)
 
 
 @app.get("/internal/jurisdiction/bleed-backfill-candidates")
