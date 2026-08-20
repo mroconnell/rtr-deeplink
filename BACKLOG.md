@@ -32,6 +32,50 @@ calls, or at minimum a `CLAUDE.md` note warning worktree sessions to
 always set `DATABASE_URL` explicitly before running either service
 locally.
 
+## [HIGH PRIORITY] Jurisdiction misattribution: same-name-different-state/county collisions, likely in `jurisdiction_enrich.py`
+
+Found repeatedly during this session's government-first platform discovery
+work (see `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`) —
+**4 confirmed instances across 3 different platform adapters**, meaning
+this is very unlikely to be one adapter's bug and much more likely rooted
+in the shared `app/utils/jurisdiction_enrich.py` (name→state/county
+lookup tables, `lookup_county_state()`/`lookup_city_state()`/
+`resolve_state()`/`finalize_jurisdiction()` — used by every adapter, not
+platform-specific logic):
+
+- **Douglas, MI misattributed to "City of The Village, OK"** — a real
+  place-name collision (multiple "Douglas"/"The Village"-shaped names
+  across states) resolved to the wrong one.
+- **Courtenay (BC) misattributed to Burlington** — cross-country
+  misattribution, not even the same state/province.
+- **Tulare County misattributed to Visalia** — county-vs-city-within-that-
+  county confusion (Visalia is the Tulare County seat), a different
+  failure shape than the two above (nesting/containment, not a name
+  collision).
+- **Victorville misattributed to San Bernardino County** — same
+  city-vs-containing-county confusion as Tulare/Visalia, but inverted
+  (city collapsed into its county rather than county collapsed into a
+  city within it).
+
+Root cause not yet investigated at the code level — these were caught by
+spot-checking `jurisdiction` values against known-real cities/platforms
+during this session's discovery work, not by reading
+`jurisdiction_enrich.py` itself. Two distinct failure shapes visible
+already: (1) same/similar-name collisions across unrelated states
+(Douglas MI/OK, Courtenay/Burlington) — likely a name-table lookup picking
+the wrong state when a name isn't unique — and (2) city/county nesting
+collapsed into the wrong level (Tulare/Visalia, Victorville/San
+Bernardino County) — likely a different bug in how `resolve_state()`/
+`finalize_jurisdiction()` handles a county-seat or a city that shares
+identifying context with its containing county. Worth checking whether
+these are actually the same root cause or two separate ones before
+attempting a fix. High priority because jurisdiction is user-facing on
+every single Archive page (wrong city/state shown to a real visitor is a
+correctness bug, not just an internal data-quality one) and because 4
+confirmed hits from incidental spot-checking (not a targeted audit)
+suggests the real rate across the ~1,000+ meetings ingested this session
+is higher than 4.
+
 ## Stray demo-shaped tables found in `rtr_deeplink_db` during PITR test-restore verification (2026-08-17)
 
 Confirmed live 2026-08-17 during the WO-4 PITR test-restore verification

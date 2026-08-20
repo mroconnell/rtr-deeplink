@@ -82,6 +82,106 @@ URLs have no video; that remains a genuine "no video integration for this
 customer" outcome, not a hidden second bug. Full suite green (1029
 passed, 15 skipped, in a clean `origin/main` worktree).
 
+## No delete path existed for Archive MeetingPage rows; built one, used it to remove 3 real UAT tenant pages [Done 2026-08-19]
+
+Real cleanup need: during the gate-blindness recheck below, 3 PrimeGov
+vendor UAT/staging tenants (`uatlakeforest`, `uatopenspaceauthority`,
+`uatsanmateo` -- test environments, not real government customers, each
+serving stale 2021 sandbox content) got real-ingested into production
+alongside 339 genuine recoveries, since the recheck script had no way to
+distinguish a real tenant from a test one at the URL level.
+
+Investigating how to remove them surfaced two real findings, not just the
+cleanup itself:
+
+1. **No delete mechanism existed for `MeetingPage` rows at all.**
+   `archive/main.py` had exactly one delete-shaped route
+   (`/internal/account/delete-data`, Clerk right-to-deletion only) and
+   nothing for content. A first attempt to write a one-off DB script hit
+   a real near-miss: the local root `.env`'s `DATABASE_URL` connects to
+   `rtr_deeplink_db` (the **resolver's** database), not `rtr_archive`
+   (the Archive's real database) -- confirmed by hostname/dbname
+   inspection after the script failed with
+   `UndefinedColumnError: meeting_pages.meeting_body does not exist`
+   (an Archive-only column from a migration merged 2026-08-15, absent
+   from `rtr_deeplink_db`'s stray un-migrated Archive-shaped tables --
+   the exact same tables flagged in this file's "Stray demo-shaped
+   tables found in `rtr_deeplink_db`" entry). No write was attempted
+   before this was caught -- the query itself failed first. Confirms
+   direct local Postgres access isn't a safe default tool here; the
+   HTTP-API path (already this repo's established pattern for every
+   other admin operation) is the one that actually reaches the real
+   data.
+
+2. Built the real fix instead: `crud.delete_meeting_pages_by_slug()` +
+   `POST /internal/admin/delete-pages` (token-gated, `dry_run=true`
+   default, slug-only -- never a fuzzy match, so a typo can't take out
+   an unrelated real page), cascading through `TranscriptionJob` ->
+   `TranscriptVersion` -> `MeetingPageUrlAlias` -> `SavedItem` before the
+   `MeetingPage` row itself, since none of those foreign keys cascade at
+   the DB level. Built and tested in an isolated `git worktree` (the
+   shared checkout had unrelated real in-progress work from another
+   session at the time -- see `CLAUDE.md`'s multi-session bullet), PR
+   [#202](https://github.com/mroconnell/rtr-deeplink/pull/202), merged
+   after CI passed (one ruff-format fixup round).
+
+Used the new endpoint for real: found the 3 exact pages via
+`GET /internal/pages/all-urls` (matched on `source_url_normalized`),
+dry-run confirmed all 3, then deleted for real. Archive page count went
+1887 -> 1884, confirmed 0 UAT matches remaining afterward. The endpoint
+stays in place for any future cleanup of this kind -- not removed after
+use.
+
+## Archive-push gate silently dropped video-only resolves across 3 call sites [Done 2026-08-19]
+
+Found while doing government-first platform discovery/ingest work (see
+`~/Documents/rtr-business/research/ENUMERATION_METHODS.md` for the full
+discovery methodology): `scripts/bulk_ingest.py`'s decision of whether a
+resolve was "worth pushing" to the Archive checked only `result.segments
+or result.agenda_items or result.agenda_link` — never `result.video_url`.
+Several adapters can populate a real, playable `video_url` while all three
+of those stay empty: Cablecast (`app/platforms/cablecast.py` always sets
+`video_url=show["vodUrl"]` in the final `ResolvedMeeting`, but `segments`
+stays `[]` whenever no `vod_transcripts` fetch succeeds, and
+`agenda_items`/`agenda_link` are never set by this adapter at all), ChampDS
+(same shape), and PrimeGov's YouTube-delegated path when the linked video
+has zero captions. Confirmed live: re-resolving 78 URLs from a
+"confirmed no video" list built by directly checking each Cablecast
+tenant's page (not via bulk_ingest.py) found **all 78 had a real
+`video_url` bulk_ingest.py's gate had been silently skipping** — every one
+pushed successfully once the gate was bypassed
+(`scripts/tier3_auto_transcription_queue.txt`'s established gate-bypass
+pattern from `scripts/feed_tier3_auto_transcription.py`, generalized into
+a one-off script for this recheck). The same recheck against PrimeGov's
+38-URL "confirmed no video" list found 0 gate-blind cases — that list's
+negatives were genuine, confirming the bug is real but not universal
+across platforms.
+
+The identical `segments or agenda_items or agenda_link` gate turned out to
+exist in **three places**, not just the one-off script — meaning this bug
+was also live in production, not just an internal tooling gap:
+`app/main.py`'s live `/api/resolve` endpoint (the BackgroundTasks push
+right after a user's request, line ~679), `app/main.py`'s Archive
+re-check/backfill helper (`pushed = bool(...)`, line ~348), and
+`app/db/crud.py`'s `_worth_pushing()` (the retry-sweep gate feeding
+`get_pending_archive_pushes()`, consumed by the opportunistic sweep and
+`GET /admin/sweep-pending-pushes`). Fixed all three by adding
+`result.video_url` (or, in `crud.py`'s case, `payload.get("video_url")`,
+since that function reads the JSON payload directly) to the condition.
+Added a regression test
+(`test_pending_pushes_includes_video_only_resolutions` in
+`tests/test_app_db_crud.py`) alongside the existing agenda-only-resolution
+test, and confirmed the full existing suite (1034 passed, 15 skipped)
+still passes.
+
+Not yet addressed: whether any *production* users hit this gap before
+today (i.e. whether real video-only meetings resolved live via
+`/api/resolve` before this fix ever got silently dropped from the
+Archive) — no attempt made to retroactively find/backfill those, since
+the population most likely to have hit this (Cablecast/ChampDS/PrimeGov
+tenants) is exactly the population this session's own bulk re-ingest work
+already covers going forward.
+
 ## Salvaged tier-1/tier-2 finds ingested; TelVue "ECTV" jurisdiction guess corrected from Scranton, PA to Everett, MA [Done 2026-08-18]
 
 Prompted by checking whether any real, content-confirmed tier-1/tier-2

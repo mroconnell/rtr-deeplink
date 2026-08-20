@@ -345,7 +345,9 @@ async def _recheck_archived_page(
         logger.exception("Archive re-check resolve failed for %s", url)
         return {"error": "resolve_failed", "message": str(e)}
 
-    pushed = bool(result.segments or result.agenda_items or result.agenda_link)
+    pushed = bool(
+        result.segments or result.agenda_items or result.agenda_link or result.video_url
+    )
     if pushed and not dry_run:
         await archive_client.push(result.model_dump(), normalized)
 
@@ -662,8 +664,13 @@ async def resolve(
         resolve_duration_ms=int((time.monotonic() - start) * 1000),
     )
 
-    # Only push resolves with real content -- a transcript or agenda data --
-    # so test pastes and broken URLs don't create junk permanent pages.
+    # Only push resolves with real content -- a transcript, agenda data, or a
+    # video -- so test pastes and broken URLs don't create junk permanent
+    # pages. video_url is included alongside segments/agenda_items/
+    # agenda_link: several adapters (Cablecast, ChampDS, PrimeGov's
+    # YouTube-delegated path) can resolve a real video with all three of
+    # those still empty, and omitting video_url here silently dropped real,
+    # ingestable meetings in production (see BACKLOG_DONE.md).
     # Fired via BackgroundTasks (not a bare asyncio.create_task) so it can't
     # be garbage-collected mid-flight and ties into the response lifecycle
     # properly; never blocks the response the user is waiting on.
@@ -676,7 +683,7 @@ async def resolve(
     # itself failed (safe() swallows it) -- nothing to track against in
     # that case, so this falls back to the old best-effort behavior
     # rather than crashing on a None id.
-    if result.segments or result.agenda_items or result.agenda_link:
+    if result.segments or result.agenda_items or result.agenda_link or result.video_url:
         if resolution_id is not None:
             background_tasks.add_task(
                 _push_and_track, resolution_id, payload, normalized
