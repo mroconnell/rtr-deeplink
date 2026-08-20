@@ -4333,6 +4333,29 @@ one item below is resolved as a result.
     Welsh sentence at `00:10:21`. Confirms the language mislabeling
     there wasn't purely a sampling-bad-luck metadata issue -- there's a
     real, if minor, garbled patch underneath it too.
+  - **Vacaville, CA** (`vacaville-ca-2026-06-09-regular-meeting-of-the-city-council`,
+    version 1287) -- found live 2026-08-19, shipped to the public site
+    *after* the fix above was already prototyped/validated but still
+    unmerged: `00:00`-`06:29` is real dead air/pre-meeting silence (the
+    meeting doesn't actually start until "I do believe the vice mayor is
+    attempting to be online tonight..." at `06:33`), but the stored
+    transcript instead has "In this video, I will show you how to make
+    a new video." looped 5x (`00:58`-`01:33`), then a run of bare digits
+    (`"5." "6." "5."` ..., `03:42`-`04:34`), then a run of decimals
+    (`"1.3x." "1.4x."` ..., `05:36`-`06:00`) -- the app's own
+    `detect_hallucination_warnings()` correctly flagged it
+    (`already_flagged` would be true), so the *detection* side is
+    working; this is purely evidence the *prevention* fix (`vad_filter=
+    True`) still isn't deployed. `git show HEAD:worker/transcription_engine.py`
+    confirms zero mentions of `vad_filter` in the last-committed
+    version -- the fix genuinely only exists in the uncommitted working
+    tree, not "was live at some point and regressed." Traced while
+    investigating an unrelated on-demand-transcription request (job 256,
+    Redwood City CA, `jlevine@hlcsmc.org` -- see `BACKLOG_DONE.md`'s
+    2026-08-19 entry) whose own chunk 1 is a plausible but *not yet
+    confirmed* third instance of the same pattern (that meeting's
+    original pre-fix chunk-1 content was never pulled from
+    `transcription_jobs.partial_segments` to check).
 
   **Fix direction**: the near-duplicate matching (`SequenceMatcher` at
   0.85) is the right primitive and doesn't need to change. What needs to
@@ -4435,6 +4458,47 @@ one item below is resolved as a result.
     `word_timestamps` machinery instead, now that the gap-split fix
     above is confirmed to work.
 
+## `GET /internal/transcription/hallucination-candidates` returns 502 -- likely the same unbounded-full-scan pattern already fixed once in `find_auto_transcription_candidate` (found 2026-08-19)
+
+**Confirmed live, not a cold-start blip**: three separate calls against
+the deployed Archive service (`ARCHIVE_BASE_URL`), including one with a
+150s client timeout, all came back `502 Bad Gateway` from Render's own
+proxy -- consistent with the upstream request itself failing/timing out
+server-side, not a client-side network hiccup.
+
+**Likely root cause, by direct comparison to a bug already fixed once in
+a sibling function**: `crud.list_hallucination_candidate_transcript_
+versions()` (`archive/db/crud.py:952`) selects `TranscriptVersion.
+segments` -- the full per-cue JSON blob -- for *every* `source ==
+"transcribed"` row in one query, with no limit/pagination, then runs
+`detect_hallucination_warnings()` (CPU-bound Python, not SQL) over each
+one synchronously inside the request handler. This is the exact same
+shape `find_auto_transcription_candidate()` had before its 2026-08-17
+rewrite, which `pg_stat_statements` caught as the #1 consumer of
+production DB time specifically *because* it pulled every transcript's
+full `segments` JSON on a five-minute cadence (see that function's own
+docstring and `BACKLOG_DONE.md`) -- this audit endpoint pulls the same
+shape of data, just on-demand rather than on a timer, and the on-demand
+worker/backlog-script activity in this same session (job 256, the
+Vacaville entry above, and an ongoing local backlog-drain run) has been
+actively growing the `source == "transcribed"` population the whole
+time. Not yet confirmed by directly counting rows or checking Render's
+own service logs for an OOM/timeout signature -- worth doing before
+assuming this diagnosis over some other cause (e.g. a bad deploy,
+unrelated Archive-service outage).
+
+**Fix direction, if the diagnosis holds**: same shape as `find_auto_
+transcription_candidate()`'s own fix -- do the cheap SQL-level
+elimination first (e.g. only rows without `transcript_warnings` already
+carrying the hallucination marker, or a `LIMIT`/keyset-paginated batch)
+so `segments` is only ever pulled for genuine candidates, not the whole
+`source == "transcribed"` table at once. This endpoint is read-only
+audit tooling (per its own docstring, "a human decides what's worth
+re-running"), not on any user-facing path, so there's no urgency
+comparable to the auto-generation fix -- but it's currently unusable for
+exactly the audit purpose (sizing real hallucination exposure, like the
+Vacaville case above) it exists for.
+
 ## `scripts/transcribe_backlog_locally.py`'s "no usable audio/video source on re-resolve" skip has no retry -- confirmed a real, live meeting can get wrongly skipped by one transient failure (2026-08-18)
 
 **Confirmed live, 4/4 tested, not a hypothetical.** During this session's
@@ -4495,6 +4559,42 @@ buildup across a long sequential batch in one process rather than a
 purely random network blip — worth keeping in mind if the fix above
 ends up being "add a retry" rather than "find and fix the root cause,"
 since a retry would paper over this either way.
+
+**Two more cases, 2026-08-19, one of which weakens the "just retry"
+assumption above.** Plainfield, NJ (`iqm2`) hit the exact `"no usable
+audio/video source on re-resolve"` skip during a 10-meeting tier-3
+batch, despite a `--dry-run` earlier the same session confirming a real
+video/95min duration for the identical URL — a 6th confirmed instance
+of the same transient pattern, consistent with the fix direction above.
+**Brookhaven, NY (`civicclerk`) is the concerning one**: retried twice,
+back-to-back, immediately after the first failure (not just once, and
+not with any delay) — both retries failed identically, same `ffmpeg
+timed out extracting ... @ 0s` on chunk 1/2, same CDN host
+(`cpmedia.azureedge.net`), same ~120s timeout. Unlike every other case
+in this entry, one retry did not recover it. Doesn't disprove the
+"add a retry" fix direction above (a single retry is still very likely
+worth it given the other 5 cases), but does mean that fix alone won't
+be sufficient for every case — Brookhaven either needs more than one
+retry, a longer per-attempt timeout, or has a genuinely slower/more
+rate-limited CDN than the other hosts seen so far. Not re-attempted a
+third time this session; worth a fresh look (and worth checking whether
+it's this specific media file or `cpmedia.azureedge.net` generally)
+before assuming it's simply "still transient, just unlucky twice."
+
+## `tier3_auto_transcription_queue.txt` has at least one genuinely truncated URL, not just dead/never-formed ones (found 2026-08-19)
+
+While hand-picking real candidates for a local-Whisper batch, Orinda,
+CA's queue entry (line 8) turned out to be cut off mid-query-string:
+`http://orindaca.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2665&Me`
+— confirmed via `od -c` that the line genuinely ends `...&Me\n` in the
+file itself, not a display artifact. Distinct from the "URLs that look
+like they were never actually formed" pattern the user separately
+flagged for some iqm2/ClerkBase dead-list rows earlier this session
+(those were absent a real ID/params entirely, not a well-formed URL cut
+short mid-token) — this one clearly had the rest of a real query string
+and lost it. Single confirmed instance so far; worth a broader scan of
+the queue file for other lines that look implausibly short for their
+platform's usual URL shape before assuming it's isolated.
 
 ## Some Swagit meetings have no single "whole meeting" video file — pre-split into per-agenda-item clips instead (found 2026-08-18, real fix landed for a related bug, this part still open)
 
