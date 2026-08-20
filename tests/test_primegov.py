@@ -1,9 +1,25 @@
+import json
+from datetime import datetime
+
 import yt_dlp
 
+from app.platforms.base import register
+from app.platforms.granicus import GranicusAssetFinder
 from app.platforms.primegov import PrimeGovAssetFinder
+from app.platforms.swagit import SwagitAssetFinder
 from app.platforms.youtube import YouTubeAssetFinder
 
 from aiohttp_mock import FakeResponse, mock_session
+
+
+def _register_delegation_targets():
+    # resolve() now also delegates to Swagit/Granicus (see the new
+    # tenant-API fallback tests below) -- resolve_via_platform-style
+    # lookups go through base.py's registry, same pattern test_legistar.py
+    # and test_civicplus.py already use for their own Granicus delegation
+    # tests.
+    register(SwagitAssetFinder())
+    register(GranicusAssetFinder())
 
 # No fixture-based tests existed for this adapter before this file (see
 # BACKLOG.md's "zero test coverage" note). The `var videoUrl = "..."`
@@ -410,3 +426,357 @@ async def test_resolve_does_not_backfill_title_over_a_real_youtube_title(monkeyp
         result = await PrimeGovAssetFinder().resolve(PAGE_URL)
 
     assert result.title == "Oklahoma City Council Meeting - August 4, 2026"
+
+
+# --- Tenant-API delegation to Swagit/Granicus (real, confirmed-live gap) ---
+#
+# Real, confirmed-live gap found 2026-08-19: some PrimeGov tenants'
+# meetings have their real video hosted on Swagit or Granicus, not
+# YouTube -- the page itself never surfaces this (no `var videoUrl = ...`
+# at all), but PrimeGov's own per-tenant JSON API does:
+#   GET https://{tenant}.primegov.com/api/v2/PublicPortal/ListArchivedMeetings?year={YYYY}
+# returns each archived meeting, and a meeting whose `documentList[].
+# templateId` matches this page's own `meetingTemplateId` carries the
+# real video location in its own `videoUrl` field. Confirmed live via a
+# real `curl` against cambridgema.primegov.com and cross-checked against
+# ~/Documents/rtr-business/research/primegov_swagit_granicus_undetected.txt
+# (53 real meetings sourced the same way; 47/53 now resolve a real video
+# with this fix -- the remaining 6 are either a separate, not-yet-fixed
+# Granicus URL-shape gap (`MediaPlayer.php?event_id=...`, distinct from
+# the `clip_id`/`/videos/{id}` shapes GranicusAssetFinder already
+# recognizes) or genuine source-side issues unrelated to this adapter
+# (a stale/blocked Swagit link, a Granicus clip redirecting to its own
+# PermissionDenied.php) -- see BACKLOG.md).
+#
+# The JSON payload shapes below are real, trimmed API responses captured
+# live 2026-08-19 (not invented field structures) -- meeting id 428,
+# templateId 2163, and videoUrl "https://cambridgema.v3.swagit.com/
+# events/43940" all come directly from a real
+# `curl https://cambridgema.primegov.com/api/v2/PublicPortal/
+# ListArchivedMeetings?year=2026` response; brookhavenga/clip_id=76 comes
+# from the same research file's confirmed real finding. The Swagit/
+# Granicus page HTML each meeting delegates to, however, IS synthetic
+# (same convention test_swagit.py/test_granicus.py already use for their
+# own minimal fixtures) -- only enough markup for those adapters' own
+# already-tested parsing to find a title/video, not a captured real page.
+
+CURRENT_YEAR = datetime.now().year
+
+# Real confirmed finding (see
+# ~/Documents/rtr-business/research/primegov_swagit_granicus_undetected.txt):
+# baycountyfl's real video is a `/videos/{id}` Swagit URL -- the shape
+# SwagitAssetFinder was actually built and tested against, unlike the
+# `/events/{id}` shape covered separately below.
+BAYCOUNTY_URL = "https://baycountyfl.primegov.com/Portal/Meeting?meetingTemplateId=1847"
+BAYCOUNTY_API_URL = (
+    f"https://baycountyfl.primegov.com/api/v2/PublicPortal/"
+    f"ListArchivedMeetings?year={CURRENT_YEAR}"
+)
+# Real (trimmed) response shape, captured live 2026-08-19 -- see comment
+# block above.
+BAYCOUNTY_API_RESPONSE = json.dumps(
+    [
+        {
+            "id": 383,
+            "documentList": [{"id": 1, "templateId": 1847, "templateName": "Agenda"}],
+            "videoUrl": "https://baycountyfl.new.swagit.com/videos/371216",
+            "swagitId": "videos/371216",
+            "title": "BOCC Regular Meeting",
+            "date": "Jan 06, 2026",
+        },
+        {
+            "id": 384,
+            "documentList": [{"id": 2, "templateId": 1900, "templateName": "Agenda"}],
+            "videoUrl": None,
+            "title": "Other Meeting",
+        },
+    ]
+)
+
+SWAGIT_URL = "https://baycountyfl.new.swagit.com/videos/371216"
+# Synthetic (see comment block above) -- same minimal shape
+# tests/test_swagit.py's own BASE_HTML fixture uses.
+SWAGIT_HTML = (
+    "<html><head><title>Jan 06, 2026 BOCC Regular Meeting - "
+    "Panama City, FL</title></head>"
+    '<body><script>var playlist = [{"file": '
+    '"https://archive-stream.granicus.com/x/playlist.m3u8"}];</script></body></html>'
+)
+
+
+async def test_resolve_delegates_to_swagit_via_tenant_api_when_no_youtube_video():
+    _register_delegation_targets()
+    routes = {
+        BAYCOUNTY_URL: FakeResponse(
+            status=200, text=PAGE_HTML_NO_VIDEO, url=BAYCOUNTY_URL
+        ),
+        BAYCOUNTY_API_URL: FakeResponse(status=200, text=BAYCOUNTY_API_RESPONSE),
+        SWAGIT_URL: FakeResponse(status=200, text=SWAGIT_HTML, url=SWAGIT_URL),
+    }
+
+    with mock_session(routes):
+        result = await PrimeGovAssetFinder().resolve(BAYCOUNTY_URL)
+
+    assert result.platform == "swagit"  # delegated finder's own platform name
+    assert (
+        result.video_url == "https://archive-stream.granicus.com/x/playlist.m3u8"
+    )
+    # Same source_url-preserving choice as the YouTube delegation path --
+    # "View original source" keeps pointing at the real PrimeGov page, not
+    # the swagit.com URL discovered behind the scenes via the tenant API.
+    assert result.source_url == BAYCOUNTY_URL
+
+
+CAMBRIDGE_URL = "https://cambridgema.primegov.com/Portal/Meeting?meetingTemplateId=2163"
+CAMBRIDGE_API_URL = (
+    f"https://cambridgema.primegov.com/api/v2/PublicPortal/"
+    f"ListArchivedMeetings?year={CURRENT_YEAR}"
+)
+# Real (trimmed) response shape, captured live 2026-08-19.
+CAMBRIDGE_API_RESPONSE = json.dumps(
+    [
+        {
+            "id": 428,
+            "documentList": [
+                {"id": 15809, "templateId": 2163, "templateName": "Minutes"}
+            ],
+            "videoUrl": "https://cambridgema.v3.swagit.com/events/43940",
+            "swagitId": "events/43940",
+            "title": "Regular City Council Meeting",
+            "date": "Jan 12, 2026",
+        }
+    ]
+)
+
+
+async def test_resolve_declines_to_delegate_to_a_swagit_events_url():
+    # Real, confirmed-live bug found 2026-08-19 while verifying this fix
+    # (see the module-level comment on `_resolve_via_tenant_video_url`):
+    # a real `/events/{id}` Swagit URl -- cambridgema's own confirmed
+    # videoUrl -- serves a bogus placeholder video (the same
+    # "vault01/abilenetx/..." CDN path independently confirmed on 3 other
+    # real tenants) instead of the real meeting, when fetched the same
+    # way `/videos/{id}` pages are. Delegating would silently hand back a
+    # wrong-but-plausible video with no warning -- worse than the honest
+    # "no video found" this must fall back to instead. No SWAGIT_URL route
+    # is mocked here on purpose: if this guard were ever removed/broken,
+    # mock_session would raise a loud AssertionError (unmocked request)
+    # rather than this test silently passing on the wrong behavior.
+    routes = {
+        CAMBRIDGE_URL: FakeResponse(
+            status=200, text=PAGE_HTML_NO_VIDEO, url=CAMBRIDGE_URL
+        ),
+        CAMBRIDGE_API_URL: FakeResponse(status=200, text=CAMBRIDGE_API_RESPONSE),
+    }
+
+    with mock_session(routes):
+        result = await PrimeGovAssetFinder().resolve(CAMBRIDGE_URL)
+
+    assert result.platform == "primegov"
+    assert result.video_url is None
+    assert any("no video found" in w.lower() for w in result.video_warnings)
+
+
+BROOKHAVEN_URL = (
+    "https://brookhavenga.primegov.com/Portal/Meeting?meetingTemplateId=593"
+)
+BROOKHAVEN_API_URL = (
+    f"https://brookhavenga.primegov.com/api/v2/PublicPortal/"
+    f"ListArchivedMeetings?year={CURRENT_YEAR}"
+)
+# Real confirmed finding (see
+# ~/Documents/rtr-business/research/primegov_swagit_granicus_undetected.txt):
+# brookhavenga's real video is a protocol-relative Granicus MediaPlayer.php
+# URL -- kept protocol-relative here on purpose to also cover the
+# urljoin() normalization step, not just the already-absolute case the
+# Swagit test above covers.
+BROOKHAVEN_API_RESPONSE = json.dumps(
+    [
+        {
+            "id": 1,
+            "documentList": [{"id": 1, "templateId": 593, "templateName": "Agenda"}],
+            "videoUrl": "//brookhavenga.granicus.com/MediaPlayer.php?clip_id=76",
+        }
+    ]
+)
+
+GRANICUS_URL = "https://brookhavenga.granicus.com/MediaPlayer.php?clip_id=76"
+# Synthetic minimal Granicus page (see comment block above) -- enough for
+# GranicusAssetFinder's own already-tested parsing to find a title/video;
+# not a captured real page.
+GRANICUS_HTML = (
+    "<html><head><title>City Council Special Called Meeting</title></head>"
+    '<body><script>var url = "https://archive-stream.granicus.com/y/'
+    'playlist.m3u8";</script></body></html>'
+)
+
+
+async def test_resolve_delegates_to_granicus_via_tenant_api_when_no_youtube_video():
+    _register_delegation_targets()
+    routes = {
+        BROOKHAVEN_URL: FakeResponse(
+            status=200, text=PAGE_HTML_NO_VIDEO, url=BROOKHAVEN_URL
+        ),
+        BROOKHAVEN_API_URL: FakeResponse(status=200, text=BROOKHAVEN_API_RESPONSE),
+        GRANICUS_URL: FakeResponse(status=200, text=GRANICUS_HTML, url=GRANICUS_URL),
+        "https://brookhavenga.granicus.com/AgendaViewer.php?clip_id=76&embedded=1": FakeResponse(
+            status=404
+        ),
+    }
+
+    with mock_session(routes):
+        result = await PrimeGovAssetFinder().resolve(BROOKHAVEN_URL)
+
+    assert result.platform == "granicus"
+    assert result.video_url == "https://archive-stream.granicus.com/y/playlist.m3u8"
+    assert result.source_url == BROOKHAVEN_URL
+
+
+async def test_resolve_falls_back_to_honest_no_video_when_tenant_api_has_no_match():
+    # A meetingTemplateId genuinely not found in either of the two
+    # guessed-year archives, or in any other year the tenant has ever
+    # archived -- a real agenda-only page with no video anywhere, not a
+    # bug. GetArchivedMeetingYears returning [] here means the current/
+    # prior-year misses below are the only two requests made before
+    # giving up -- confirms the fallback doesn't loop forever.
+    url = "https://okc.primegov.com/Portal/Meeting?meetingTemplateId=99999"
+    api_url_current = (
+        f"https://okc.primegov.com/api/v2/PublicPortal/"
+        f"ListArchivedMeetings?year={CURRENT_YEAR}"
+    )
+    api_url_prior = (
+        f"https://okc.primegov.com/api/v2/PublicPortal/"
+        f"ListArchivedMeetings?year={CURRENT_YEAR - 1}"
+    )
+    years_url = "https://okc.primegov.com/api/v2/PublicPortal/GetArchivedMeetingYears"
+    routes = {
+        url: FakeResponse(status=200, text=PAGE_HTML_NO_VIDEO, url=url),
+        api_url_current: FakeResponse(status=200, text="[]"),
+        api_url_prior: FakeResponse(status=200, text="[]"),
+        years_url: FakeResponse(status=200, text="[]"),
+    }
+
+    with mock_session(routes):
+        result = await PrimeGovAssetFinder().resolve(url)
+
+    assert result.platform == "primegov"
+    assert result.video_url is None
+    assert any("no video found" in w.lower() for w in result.video_warnings)
+
+
+async def test_resolve_skips_tenant_api_entirely_when_url_has_no_meeting_template_id():
+    # No meetingTemplateId in the URL at all -- _extract_meeting_template_id
+    # returns None before any API request would be built, so this must
+    # resolve straight to the honest "no video" response with ZERO extra
+    # HTTP calls. mock_session's routes dict below deliberately contains
+    # only the page fetch itself -- an unmocked request raises
+    # AssertionError, so this test would fail loudly if the tenant-API
+    # fallback were ever (wrongly) attempted here.
+    url = "https://okc.primegov.com/Portal/Meeting?compiledMeetingDocumentFileId=123"
+    routes = {url: FakeResponse(status=200, text=PAGE_HTML_NO_VIDEO, url=url)}
+
+    with mock_session(routes):
+        result = await PrimeGovAssetFinder().resolve(url)
+
+    assert result.platform == "primegov"
+    assert result.video_url is None
+
+
+async def test_resolve_falls_back_to_archived_years_list_for_an_older_meeting():
+    # Real gap confirmed live 2026-08-19 on two real meetings
+    # (liveoakcity, sanjoseca) from Jan 2024: the current/prior-year guess
+    # misses a meeting old enough to no longer be "recent," so this checks
+    # the GetArchivedMeetingYears fallback actually reaches and matches an
+    # older year once the guessed years both come back empty. Years below
+    # are all computed relative to CURRENT_YEAR (not hardcoded) so this
+    # test stays correct regardless of which real year it's run in --
+    # OLD_YEAR is deliberately 2 years further back than the
+    # already-tried CURRENT_YEAR-1, so it's genuinely new territory for
+    # the fallback loop, not accidentally already covered.
+    old_year = CURRENT_YEAR - 2
+    url = "https://oldtenant.primegov.com/Portal/Meeting?meetingTemplateId=42"
+    api_url_current = (
+        f"https://oldtenant.primegov.com/api/v2/PublicPortal/"
+        f"ListArchivedMeetings?year={CURRENT_YEAR}"
+    )
+    api_url_prior = (
+        f"https://oldtenant.primegov.com/api/v2/PublicPortal/"
+        f"ListArchivedMeetings?year={CURRENT_YEAR - 1}"
+    )
+    years_url = (
+        "https://oldtenant.primegov.com/api/v2/PublicPortal/GetArchivedMeetingYears"
+    )
+    api_url_old_year = (
+        f"https://oldtenant.primegov.com/api/v2/PublicPortal/"
+        f"ListArchivedMeetings?year={old_year}"
+    )
+    old_meeting_response = json.dumps(
+        [
+            {
+                "id": 7,
+                "documentList": [{"id": 1, "templateId": 42, "templateName": "Agenda"}],
+                "videoUrl": "https://oldtenant.new.swagit.com/videos/1",
+            }
+        ]
+    )
+    routes = {
+        url: FakeResponse(status=200, text=PAGE_HTML_NO_VIDEO, url=url),
+        api_url_current: FakeResponse(status=200, text="[]"),
+        api_url_prior: FakeResponse(status=200, text="[]"),
+        # CURRENT_YEAR-1 is skipped by the fallback loop -- already
+        # covered by api_url_prior above -- so only old_year (the real
+        # match, in this synthetic scenario) needs its own route.
+        years_url: FakeResponse(
+            status=200,
+            text=json.dumps([CURRENT_YEAR - 1, old_year, old_year - 1]),
+        ),
+        api_url_old_year: FakeResponse(status=200, text=old_meeting_response),
+        "https://oldtenant.new.swagit.com/videos/1": FakeResponse(
+            status=200,
+            text="<html><head><title>Old Meeting - Old Tenant, ST</title></head>"
+            '<body><script>var playlist = [{"file": '
+            '"https://archive-stream.granicus.com/z/playlist.m3u8"}];</script>'
+            "</body></html>",
+            url="https://oldtenant.new.swagit.com/videos/1",
+        ),
+    }
+    _register_delegation_targets()
+
+    with mock_session(routes):
+        result = await PrimeGovAssetFinder().resolve(url)
+
+    assert result.platform == "swagit"
+    assert result.video_url == "https://archive-stream.granicus.com/z/playlist.m3u8"
+
+
+def test_extract_meeting_template_id_reads_the_query_param():
+    assert (
+        PrimeGovAssetFinder._extract_meeting_template_id(
+            "https://okc.primegov.com/Portal/Meeting?meetingTemplateId=68482"
+        )
+        == "68482"
+    )
+
+
+def test_extract_meeting_template_id_returns_none_when_absent():
+    assert (
+        PrimeGovAssetFinder._extract_meeting_template_id(
+            "https://okc.primegov.com/Portal/Meeting?compiledMeetingDocumentFileId=123"
+        )
+        is None
+    )
+
+
+def test_candidate_years_prioritizes_the_page_date_year():
+    assert PrimeGovAssetFinder._candidate_years("2024-01-17") == [
+        2024,
+        CURRENT_YEAR,
+        CURRENT_YEAR - 1,
+    ]
+
+
+def test_candidate_years_without_a_page_date_falls_back_to_recent_years():
+    assert PrimeGovAssetFinder._candidate_years(None) == [
+        CURRENT_YEAR,
+        CURRENT_YEAR - 1,
+    ]

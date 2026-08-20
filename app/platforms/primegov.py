@@ -1,16 +1,39 @@
 import re
-from typing import Optional
-from urllib.parse import urlparse
+from datetime import datetime
+from typing import List, Optional, Tuple
+from urllib.parse import parse_qs, urljoin, urlparse
 
 import aiohttp
 from bs4 import BeautifulSoup
 
-from .base import AssetFinder
+from .base import AssetFinder, detect_platform, get_finder
 from .models import ResolvedMeeting
 from .youtube import YouTubeAssetFinder
 from ..utils import jurisdiction_enrich
 
 _VIDEO_URL_VAR_RE = re.compile(r'var\s+videoUrl\s*=\s*"([A-Za-z0-9_-]{11})"')
+
+# Real, confirmed-live gap (2026-08-19): not every PrimeGov tenant's real
+# video is a YouTube embed -- some (e.g. cambridgema, baycountyfl,
+# calabasas) actually host on Swagit or Granicus instead, and the page
+# itself never surfaces that (no `var videoUrl = "..."` at all, since that
+# variable is only ever populated for the YouTube-embed case). But
+# PrimeGov's own per-tenant JSON API *does* know the real location:
+#   GET https://{tenant}.primegov.com/api/v2/PublicPortal/ListArchivedMeetings?year={YYYY}
+# returns every archived meeting for that year, and a meeting whose
+# `documentList[].templateId` matches this page's own `meetingTemplateId`
+# query-string value carries a top-level `videoUrl` field with the real
+# swagit.com/granicus.com URL when one exists (confirmed live against all
+# three examples above, and cross-checked against
+# ~/Documents/rtr-business/research/primegov_swagit_granicus_undetected.txt,
+# 53 real meetings sourced this same way). `GetArchivedMeetingYears` lists
+# every year the tenant has archives for, but querying all of them per
+# resolve would be wasteful -- almost every real case needs only the
+# current year, so this tries (in order) the year parsed from the page's
+# own header text via `_extract_date`, then the current calendar year,
+# then the year before, stopping at the first year whose archive actually
+# contains this meetingTemplateId. A meeting older than that is a real,
+# unaddressed gap -- see BACKLOG.md.
 
 # The PrimeGov page's own agenda header ("FORMAL AGENDA / CITY COUNCIL /
 # August 4, 2026", "REGULAR MEETING / Tuesday, July 07, 2026") -- confirmed
@@ -113,6 +136,16 @@ class PrimeGovAssetFinder(AssetFinder):
     calls YouTubeAssetFinder.resolve_video_id() directly with the
     original PrimeGov URL as source_url, so "View original source" keeps
     pointing back to the actual PrimeGov meeting page.
+
+    Not every PrimeGov tenant's real video is a YouTube embed, though --
+    see the module-level comment above `_VIDEO_URL_VAR_RE`'s sibling
+    constants for the confirmed-live gap this class also covers: when no
+    YouTube id is on the page, `resolve()` falls back to checking the
+    tenant's own ListArchivedMeetings API for a real Swagit/Granicus
+    videoUrl before giving up. Same source_url-preserving pattern as the
+    YouTube case -- the delegated finder's own `resolve()` is called
+    directly (not via `resolve_via_platform()`, which would leave
+    source_url pointing at swagit.com/granicus.com instead).
     """
 
     platform_name = "primegov"
@@ -135,6 +168,14 @@ class PrimeGovAssetFinder(AssetFinder):
 
         video_id = self._extract_video_id(html)
         if not video_id:
+            # No YouTube embed on the page -- checked first since it's
+            # free (already-fetched HTML, no extra request). Before
+            # concluding there's really no video, check whether this
+            # tenant's own API says otherwise (see the module-level
+            # comment on the real, confirmed gap this covers).
+            delegated = await self._resolve_via_tenant_video_url(html, url)
+            if delegated:
+                return delegated
             return ResolvedMeeting(
                 platform=self.platform_name,
                 source_url=url,
@@ -187,6 +228,210 @@ class PrimeGovAssetFinder(AssetFinder):
     def _extract_video_id(html: str) -> Optional[str]:
         match = _VIDEO_URL_VAR_RE.search(html)
         return match.group(1) if match else None
+
+    async def _resolve_via_tenant_video_url(
+        self, html: str, url: str
+    ) -> Optional[ResolvedMeeting]:
+        """Checks this tenant's own ListArchivedMeetings API for a real
+        Swagit/Granicus video when the page itself has no YouTube embed --
+        see the module-level comment for the confirmed-live gap and API
+        shape this covers. Returns None (not an error) whenever there's
+        nothing to delegate to, so the caller can fall through to its own
+        honest "no video found" response.
+        """
+        meeting_template_id = self._extract_meeting_template_id(url)
+        if not meeting_template_id:
+            return None
+
+        netloc = urlparse(url).netloc
+        tried_years = self._candidate_years(self._extract_date(html))
+        video_url = None
+        matched = False
+        async with aiohttp.ClientSession(headers=self.headers) as session:
+            for year in tried_years:
+                matched, video_url = await self._fetch_tenant_video_url(
+                    session, netloc, meeting_template_id, year
+                )
+                if matched:
+                    # A real meeting matching this URL's meetingTemplateId
+                    # was found in this year's archive -- stop here even
+                    # if it turns out to have no video (an honest
+                    # agenda-only meeting), rather than risk a same-id
+                    # collision by continuing to search other years.
+                    break
+
+            if not matched:
+                # None of the likely-recent years matched at all (not
+                # "matched with no video" -- genuinely never found this
+                # meetingTemplateId) -- confirmed live 2026-08-19 on two
+                # real older meetings (liveoakcity, sanjoseca, both from
+                # Jan 2024) that the current/current-1-year guess above
+                # misses. Fall back to the tenant's own full year list
+                # (GetArchivedMeetingYears) and try whatever wasn't
+                # already covered -- costs extra requests, but only ever
+                # in this already-slow "not found yet" path, not the
+                # common case.
+                for year in await self._fetch_archived_years(session, netloc):
+                    if year in tried_years:
+                        continue
+                    matched, video_url = await self._fetch_tenant_video_url(
+                        session, netloc, meeting_template_id, year
+                    )
+                    if matched:
+                        break
+        if not video_url:
+            return None
+
+        # video_url is sometimes protocol-relative ("//brookhavenga.
+        # granicus.com/MediaPlayer.php?clip_id=76" -- confirmed live) --
+        # urljoin against the original https:// PrimeGov page URL
+        # resolves that the same way a browser would.
+        normalized_url = urljoin(url, video_url)
+        platform = detect_platform(normalized_url)
+        if platform not in ("swagit", "granicus"):
+            # Confirmed live videoUrl values are always swagit.com or
+            # granicus.com -- an unrecognized shape here means either a
+            # third real host not seen yet or a malformed value, and
+            # either way there's no adapter to safely hand it to.
+            return None
+
+        if platform == "swagit" and urlparse(normalized_url).path.startswith(
+            "/events/"
+        ):
+            # Real, confirmed-live SwagitAssetFinder bug found 2026-08-19
+            # while verifying this fix, distinct from (and more serious
+            # than) the Granicus event_id gap noted above: a Swagit
+            # `/events/{id}` URL -- the shape PrimeGov's own API returns
+            # for some tenants, as opposed to the `/videos/{id}` shape
+            # SwagitAssetFinder was built and tested against -- doesn't
+            # 404 or come back empty. It genuinely embeds a *wrong* jwplayer
+            # m3u8 reference in its own static HTML: three independent real
+            # tenants (petalumaca, norwalkca, westjordan) all served the
+            # exact same "vault01/abilenetx/..." CDN path verbatim,
+            # confirmed live via direct `curl` against each -- a bogus
+            # placeholder, not any of those cities' own real recording.
+            # Delegating here would silently hand back a wrong-but-
+            # plausible-looking video with no warning, worse than this
+            # method's own honest "nothing found" (`return None` below,
+            # same as every other decline in this method) -- see
+            # BACKLOG.md for the real SwagitAssetFinder-side fix this
+            # still needs (`/events/{id}` support), tracked separately
+            # from this PrimeGov delegation.
+            return None
+
+        resolved = await get_finder(platform).resolve(normalized_url)
+        # Same source_url-preserving choice as the YouTube delegation
+        # above -- "View original source" should keep pointing at the
+        # PrimeGov page the user actually pasted, not the Swagit/Granicus
+        # URL discovered behind the scenes. Deliberately does NOT also
+        # apply this class's own title/date/jurisdiction overrides below
+        # (those exist specifically because YouTube's metadata is known
+        # unreliable here) -- Swagit/Granicus's own resolve() already
+        # extracts real title/date/jurisdiction from their own pages, a
+        # better source than PrimeGov's own header-scraping fallback.
+        resolved.source_url = url
+        return resolved
+
+    @staticmethod
+    def _extract_meeting_template_id(url: str) -> Optional[str]:
+        value = parse_qs(urlparse(url).query).get("meetingTemplateId", [None])[0]
+        return value if value and value.isdigit() else None
+
+    @staticmethod
+    def _candidate_years(page_date: Optional[str]) -> List[int]:
+        """Years to try against ListArchivedMeetings, in priority order:
+        the year parsed from the page's own header text (most likely
+        correct when available), then the current calendar year, then the
+        year before -- covers the common case (a recently-archived
+        meeting) in one request without querying every year the tenant
+        has ever had archives for. See the module-level comment on the
+        known limitation this leaves for older meetings.
+        """
+        years: List[int] = []
+        if page_date:
+            try:
+                years.append(int(page_date[:4]))
+            except ValueError:
+                pass
+        current_year = datetime.now().year
+        for year in (current_year, current_year - 1):
+            if year not in years:
+                years.append(year)
+        return years
+
+    @staticmethod
+    async def _fetch_archived_years(
+        session: aiohttp.ClientSession, netloc: str
+    ) -> List[int]:
+        """The tenant's own full list of years it has any archive for --
+        `GET .../api/v2/PublicPortal/GetArchivedMeetingYears`, confirmed
+        live to return a plain descending list (e.g.
+        `[2026,2025,2024,...,2015]`). Only called as a last-resort
+        fallback (see `_resolve_via_tenant_video_url`) once the
+        recent-years guess in `_candidate_years` has already come back
+        empty -- not worth the extra request otherwise.
+        """
+        api_url = f"https://{netloc}/api/v2/PublicPortal/GetArchivedMeetingYears"
+        try:
+            async with session.get(
+                api_url, timeout=aiohttp.ClientTimeout(total=15)
+            ) as response:
+                if response.status != 200:
+                    return []
+                years = await response.json(content_type=None)
+        except Exception:
+            return []
+        if not isinstance(years, list):
+            return []
+        return [year for year in years if isinstance(year, int)]
+
+    @staticmethod
+    async def _fetch_tenant_video_url(
+        session: aiohttp.ClientSession,
+        netloc: str,
+        meeting_template_id: str,
+        year: int,
+    ) -> Tuple[bool, Optional[str]]:
+        """Returns (matched, video_url) for one year's worth of this
+        tenant's archived meetings -- matched=True as soon as a meeting
+        whose documentList carries this meetingTemplateId is found, with
+        video_url being that meeting's own `videoUrl` field (real
+        confirmed shape: "https://{tenant}.new.swagit.com/videos/{id}",
+        "https://{tenant}.v3.swagit.com/events/{id}", or a swagit/
+        granicus URL, possibly protocol-relative). video_url is None
+        (matched still True) for a genuine agenda-only meeting with no
+        recording. Best-effort like every other adapter's opportunistic
+        API probe here -- any failure just means "nothing found," not a
+        raised exception.
+        """
+        api_url = (
+            f"https://{netloc}/api/v2/PublicPortal/ListArchivedMeetings"
+            f"?year={year}"
+        )
+        try:
+            async with session.get(
+                api_url, timeout=aiohttp.ClientTimeout(total=15)
+            ) as response:
+                if response.status != 200:
+                    return False, None
+                meetings = await response.json(content_type=None)
+        except Exception:
+            return False, None
+
+        if not isinstance(meetings, list):
+            return False, None
+
+        template_id = int(meeting_template_id)
+        for meeting in meetings:
+            if not isinstance(meeting, dict):
+                continue
+            for document in meeting.get("documentList") or []:
+                if (
+                    isinstance(document, dict)
+                    and document.get("templateId") == template_id
+                ):
+                    return True, meeting.get("videoUrl") or None
+        return False, None
 
     @staticmethod
     def _extract_title(html: str) -> Optional[str]:

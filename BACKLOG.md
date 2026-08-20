@@ -5,6 +5,84 @@ investigation detail behind each fix — lives in
 [BACKLOG_DONE.md](BACKLOG_DONE.md); items below link back to it for context
 where relevant.
 
+## [HIGH PRIORITY] Swagit adapter serves a wrong, bogus video for `/events/{id}` URLs
+
+Found 2026-08-19 while fixing PrimeGov's Swagit/Granicus video-delegation
+gap (see `BACKLOG_DONE.md`'s "PrimeGov never detected a real video hosted
+on Swagit/Granicus instead of YouTube" entry for the full context and how
+this was caught). Higher priority than the Granicus entry below because
+the failure mode is worse: this doesn't just fail to find a video, it
+silently returns a *wrong* one with no warning.
+
+Confirmed live on 3 independent real tenants (`petalumaca.new.swagit.com/
+events/43607`, `norwalkca.new.swagit.com/events/44163`,
+`westjordan.new.swagit.com/events/43963` — a 4th and 5th,
+`cambridgema.v3.swagit.com/events/43940` and
+`solvangca.v3.swagit.com/events/43961`, match the same pattern via
+PrimeGov's API but weren't independently `curl`-verified): each of these
+real, different cities' `/events/{id}` pages embeds the exact same
+jwplayer m3u8 reference verbatim in its own static HTML —
+`.../vault01/abilenetx/59d7e173-684b-4da4-9433-50d6e22555f1.mp4/
+playlist.m3u8` — which cannot be 3+ different cities' real recordings.
+`SwagitAssetFinder` was only ever built and tested against the
+`/videos/{id}` URL shape (see README.md's platform table and
+`tests/test_swagit.py`'s existing fixtures, all `/videos/{id}`) — the
+`/events/{id}` shape is a genuinely different, untested Swagit page
+template, and its own scan of that page's HTML happens to pick up this
+placeholder (unclear yet whether it's a "coming soon"/still-processing
+state, a stale demo left in a shared template, or something else on
+Swagit's side — not yet investigated further).
+
+PrimeGov's own delegation (`app/platforms/primegov.py`'s
+`_resolve_via_tenant_video_url()`) now has a narrow guard that declines to
+delegate specifically for this URL shape (`platform == "swagit" and
+urlparse(normalized_url).path.startswith("/events/")`), falling back to
+an honest "no video found" instead of shipping the wrong video — but that
+guard only protects PrimeGov's delegation path. A user who pastes a real
+`/events/{id}` Swagit URL directly (or reaches one through the generic
+fallback / a future new delegation path) still gets the wrong video today,
+with no warning at all. Needs its own live-testing pass across the
+`/events/{id}` cities above (and ideally more, per this project's own
+"several cities" testing rule) to understand the real page shape well
+enough to either extract the actual video correctly or at least detect
+and decline the bogus placeholder specifically, the way the Granicus
+36,000-cue-truncation warning below flags a different known-bad output
+rather than presenting it as complete.
+
+## [JUST-DO-IT] Granicus adapter doesn't recognize `MediaPlayer.php?event_id=...` URLs
+
+Found 2026-08-19 while fixing PrimeGov's Swagit/Granicus video-delegation
+gap (see `BACKLOG_DONE.md`'s "PrimeGov never detected a real video hosted
+on Swagit/Granicus instead of YouTube" entry for the full context) — that
+fix correctly discovers and passes real Granicus URLs through for 4
+PrimeGov tenants (`calabasas`, `elkgrove`, `emeryvilleca`,
+`nassaucountyfl`), but `GranicusAssetFinder` still fails to resolve them,
+confirmed independently of PrimeGov by calling
+`GranicusAssetFinder().resolve()` directly against the same URLs.
+
+Root cause: `_extract_clip_id()` (`app/platforms/granicus.py`) only
+recognizes three URL shapes — path-based `/player/clip/{id}`, path-based
+`/videos/{id}/`, and query-based `?clip_id={id}` (`MediaPlayer.php`). A
+real fourth shape exists: `MediaPlayer.php?event_id={id}`, confirmed live
+on all 4 cities above (e.g. `https://calabasas.granicus.com/MediaPlayer.
+php?event_id=1525`, which 302-redirects to `/player/event/1525?
+redirect=true` — a page `_extract_clip_id()` doesn't match at all, so
+`clip_id` comes back `None` and every clip_id-dependent step downstream
+(video URL guess, agenda items, minutes-date fallback) is skipped
+entirely). `scan_media_urls()`'s generic regex scan also finds nothing on
+the `/player/event/{id}` page itself in the one sample fetched so far
+(calabasas) — unconfirmed whether that's true of all 4, or just that one.
+
+Not fixed alongside the PrimeGov change per this project's own "test
+against a real URL before building an adapter" rule (`CLAUDE.md`) — this
+needs its own live-testing pass across the 4 confirmed `event_id` cities
+(and ideally more, per the same rule's "several from different cities"
+guidance) to understand whether `/player/event/{id}` has a scannable
+video URL at all, or needs a different discovery mechanism (e.g. a
+dedicated fetch of the `/player/event/{id}` page, mirroring
+`_fetch_video_from_player_page()`'s existing `/videos/{id}/player`
+fallback for the Flash-embed case).
+
 ## [JUST-DO-IT] Running a service from a `.claude/worktrees/` subdirectory silently inherits the shared checkout's `.env`
 
 Confirmed live 2026-08-17: starting `archive.main:app` locally from inside
