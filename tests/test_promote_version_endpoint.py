@@ -7,7 +7,6 @@ route layer, not crud.manually_promote_transcript_version() itself
 """
 
 from fastapi.testclient import TestClient
-from sqlalchemy import select
 
 import archive.main
 from archive.db import crud
