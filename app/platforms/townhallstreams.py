@@ -89,9 +89,7 @@ from ..utils import jurisdiction_enrich
 # only trace of it.
 TARGET_LANGUAGE = "en"
 
-_VIDEO_FILE_RE = re.compile(
-    r'file:\s*"(https://cdn\.townhallstreams\.com/vod/[^"]+)"'
-)
+_VIDEO_FILE_RE = re.compile(r'file:\s*"(https://cdn\.townhallstreams\.com/vod/[^"]+)"')
 _FILE_PATH_RE = re.compile(
     r"mp4:(?P<slug>[^/]+)/(?P<date>\d{4}-\d{2}-\d{2})_(?P<num_id>\d+)_(?P<title>[^/]+?)\.mp4"
 )
@@ -101,11 +99,57 @@ _FILE_PATH_RE = re.compile(
 # confirmed yet to justify reaching for the wider (US+Canada) private sets
 # inside jurisdiction_enrich.py.
 _US_STATE_ABBREVIATIONS = {
-    "al", "ak", "az", "ar", "ca", "co", "ct", "de", "fl", "ga", "hi", "id",
-    "il", "in", "ia", "ks", "ky", "la", "me", "md", "ma", "mi", "mn", "ms",
-    "mo", "mt", "ne", "nv", "nh", "nj", "nm", "ny", "nc", "nd", "oh", "ok",
-    "or", "pa", "ri", "sc", "sd", "tn", "tx", "ut", "vt", "va", "wa", "wv",
-    "wi", "wy", "dc",
+    "al",
+    "ak",
+    "az",
+    "ar",
+    "ca",
+    "co",
+    "ct",
+    "de",
+    "fl",
+    "ga",
+    "hi",
+    "id",
+    "il",
+    "in",
+    "ia",
+    "ks",
+    "ky",
+    "la",
+    "me",
+    "md",
+    "ma",
+    "mi",
+    "mn",
+    "ms",
+    "mo",
+    "mt",
+    "ne",
+    "nv",
+    "nh",
+    "nj",
+    "nm",
+    "ny",
+    "nc",
+    "nd",
+    "oh",
+    "ok",
+    "or",
+    "pa",
+    "ri",
+    "sc",
+    "sd",
+    "tn",
+    "tx",
+    "ut",
+    "vt",
+    "va",
+    "wa",
+    "wv",
+    "wi",
+    "wy",
+    "dc",
 }
 
 
@@ -155,9 +199,7 @@ class TownHallStreamsAssetFinder(AssetFinder):
                 else None
             )
 
-            jurisdiction = (
-                self._extract_jurisdiction(town_slug) if town_slug else None
-            )
+            jurisdiction = self._extract_jurisdiction(town_slug) if town_slug else None
 
             transcript_warnings: List[str] = ["No captions found for this video."]
             if location_id is not None and meeting_id is not None:

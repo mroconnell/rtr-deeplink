@@ -31,7 +31,9 @@ async def test_resolve_real_lisbon_maine_meeting():
 
     routes = {
         LISBON_URL: FakeResponse(status=200, text=html, url=LISBON_URL),
-        LISBON_TRANSCRIPT_URL: FakeResponse(status=200, text="", url=LISBON_TRANSCRIPT_URL),
+        LISBON_TRANSCRIPT_URL: FakeResponse(
+            status=200, text="", url=LISBON_TRANSCRIPT_URL
+        ),
     }
 
     with mock_session(routes):
