@@ -6,6 +6,82 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## eScribe: second real iSiLIVE page shape (`data-file_name`, ISIStandAlonePlayer.aspx) now recognized; confirmed it does NOT explain any of the 154 "genuine negative" Meeting.aspx URLs [Done 2026-08-19]
+
+`EscribeAssetFinder`'s video-player detection only ever matched
+`#isi_player[data-client_id][data-stream_name]`. A real, second iSiLIVE
+page shape exists that this selector missed entirely: standalone
+`Players/ISIStandAlonePlayer.aspx?Id=<guid>` pages, whose `#isi_player`
+div carries `data-file_name` instead of `data-stream_name`. Confirmed
+live on 5 real Canadian tenants by fetching the real page HTML directly
+(`curl`, no headless browser needed — same as the rest of this adapter):
+Caledon, Mississauga, Markham, Victoria, Edmonton — e.g. Caledon's real
+page (`pub-caledon.escribemeetings.com/Players/ISIStandAlonePlayer.aspx
+?Id=74f36aec-87b7-4596-953d-f21174b1a13a`) renders `<div id="isi_player"
+... data-client_id="caledon" data-file_name="Compact Encoder
+1105_Planning and Development Committee_2026-06-16-02-28.mp4">`.
+
+Fetched eScribe's own `//video.isilive.ca/cdn/isi_player.js` (the exact
+script every `#isi_player` page loads) to confirm how `data-file_name`
+should be turned into a URL, rather than guessing: it has a "legacy
+support for file_name / stream_name" block (`if (typeof(file_name) !=
+'undefined') { stream_name = file_name }`) that aliases `file_name`
+straight into the same `stream_name` variable used everywhere else for
+URL construction — i.e. `data-file_name` isn't a different pattern at
+all, just an alternate attribute name for the identical value. Confirmed
+this holds for real by fetching both `cdn1.isilive.ca`'s
+`.../playlist.m3u8` and `video.isilive.ca`'s `.vtt` for Caledon's exact
+`data-file_name` value using the adapter's existing (unchanged) URL
+construction: both returned 200, and the `.vtt` had real, populated,
+clean captions (a genuine positive-caption example for this page shape,
+not just a schema match — see CLAUDE.md's "don't claim a caption path
+works without a positive example" rule).
+
+Fix: `resolve()`'s player selector now also matches
+`#isi_player[data-client_id][data-file_name]` as a fallback when
+`data-stream_name` isn't present, and `stream_name` is read from whichever
+attribute exists (`player.get("data-stream_name") or
+player["data-file_name"]`) — everything downstream (m3u8/vtt URL
+construction, caption-language selection) is unchanged, since eScribe's
+own JS treats them as the same value. Regression test added
+(`tests/test_escribe.py::test_resolve_real_caledon_isistandaloneplayer_page`),
+fixture-backed with the real Caledon page HTML (trimmed of unrelated
+Google-tag/Cloudflare boilerplate, `#isi_player` div and script tags kept
+verbatim) and the first 19 real caption cues from the real Caledon `.vtt`
+fetched above (`tests/fixtures/escribe/
+caledon_isistandaloneplayer_{page.html,captions.vtt}`). Also confirmed
+this page shape carries no title/agenda markup at all (its own `<title>`
+is empty) — title/date come back `None` and jurisdiction correctly falls
+back to the subdomain (`Caledon, ON`), same as the existing "no video
+integration" fallback path.
+
+**Checked whether this explains any of the 154 eScribe URLs previously
+classified "genuine negative" (real video_url absent, not just gate-blind)
+out of the 186 in `~/Documents/rtr-business/research/
+escribe_186_nothing_found.txt`** (see `full_escribe_dryrun.log` in the
+same directory for the prior classification — 12/186 URLs re-checked here
+already had a `data-stream_name` player match, closely matching that
+prior "13 gate-blind" count, likely off-by-one from a since-changed
+meeting Id). **It does not.** Re-fetched all 186 real pages directly and
+checked both selectors: every single one is a `Meeting.aspx` URL (not an
+`ISIStandAlonePlayer.aspx` URL), and of those, 0 had a `data-file_name`
+player where the old `data-stream_name` selector found nothing — 174 had
+no `#isi_player` element at all (still a genuine "no video integration"
+outcome), 12 already had a `data-stream_name` match (already-known
+gate-blind cases, unrelated to this fix). Separately confirmed on 5 real
+tenants (the ones used to build the fix above) that a `Meeting.aspx` page
+and its own linked `ISIStandAlonePlayer.aspx` page for the *same meeting
+Id* consistently differ in exactly this way — the Meeting.aspx page always
+renders `data-stream_name`, only the separate standalone player page ever
+renders `data-file_name`. So `data-file_name` is real and worth handling
+(someone submitting an `ISIStandAlonePlayer.aspx` URL directly — e.g. a
+"share video" link, which these player pages sometimes rank on their own
+in search engines — would have silently gotten a "no video" result before
+this fix), but it is not the explanation for why those 154 Meeting.aspx
+URLs have no video; that remains a genuine "no video integration for this
+customer" outcome, not a hidden second bug. Full suite green (1029
+passed, 15 skipped, in a clean `origin/main` worktree).
+
 ## Salvaged tier-1/tier-2 finds ingested; TelVue "ECTV" jurisdiction guess corrected from Scranton, PA to Everett, MA [Done 2026-08-18]
 
 Prompted by checking whether any real, content-confirmed tier-1/tier-2

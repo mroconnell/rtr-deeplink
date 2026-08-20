@@ -383,6 +383,62 @@ def test_extract_metadata_jurisdiction_no_longer_bleeds_into_agenda_text():
         )
 
 
+# --- 2026-08-19: second real iSiLIVE page shape (Players/ISIStandAlonePlayer.aspx,
+# `data-file_name` instead of `data-stream_name`) -- see EscribeAssetFinder's own
+# class docstring and the comment above where `player` is selected in resolve().
+
+
+async def test_resolve_real_caledon_isistandaloneplayer_page():
+    # Real, live-confirmed 2026-08-19: pub-caledon.escribemeetings.com's
+    # Players/ISIStandAlonePlayer.aspx?Id=74f36aec-87b7-4596-953d-f21174b1a13a
+    # -- a genuinely different real page from the Meeting.aspx shape the rest
+    # of this file covers (that same meeting Id's own Meeting.aspx page still
+    # uses data-stream_name, confirmed separately). eSCRIBE's own
+    # video.isilive.ca/cdn/isi_player.js source (fetched live) treats
+    # data-file_name as a "legacy" synonym assigned straight into the same
+    # stream_name variable used for URL construction, and a real fetch of
+    # both cdn1.isilive.ca's playlist.m3u8 and video.isilive.ca's .vtt for
+    # this exact value returned 200 with real, populated captions --
+    # confirming the same URL-construction pattern applies unchanged.
+    url = (
+        "https://pub-caledon.escribemeetings.com/Players/ISIStandAlonePlayer.aspx"
+        "?Id=74f36aec-87b7-4596-953d-f21174b1a13a"
+    )
+    html = load_fixture("escribe", "caledon_isistandaloneplayer_page.html")
+    encoded = (
+        "Compact%20Encoder%201105_Planning%20and%20Development%20Committee_"
+        "2026-06-16-02-28.mp4"
+    )
+    vtt_url = f"https://video.isilive.ca/caledon/{encoded}.vtt"
+    vtt = load_fixture("escribe", "caledon_isistandaloneplayer_captions.vtt")
+
+    routes = {
+        url: FakeResponse(status=200, text=html, url=url),
+        vtt_url: FakeResponse(status=200, text=vtt, url=vtt_url),
+    }
+
+    with mock_session(routes):
+        result = await EscribeAssetFinder().resolve(url)
+
+    assert result.platform == "escribe"
+    assert result.video_url == (
+        f"https://cdn1.isilive.ca/vod/_definst_/mp4:caledon/{encoded}/playlist.m3u8"
+    )
+    assert result.video_format == "m3u8"
+    assert len(result.segments) == 19  # the trimmed real VTT fixture's cue count
+    assert result.segments[0].text == (
+        "Good afternoon, members of Council, staff members and members of"
+    )
+    # ISIStandAlonePlayer.aspx is a video-only page -- no title/agenda markup
+    # at all (confirmed live: its own <title> tag is empty) -- so title/date
+    # come back None and jurisdiction falls back to the subdomain, exactly
+    # like the "no video integration" case's fallback path.
+    assert result.title is None
+    assert result.date is None
+    assert result.jurisdiction == "Caledon, ON"
+    assert result.agenda_items == []
+
+
 def test_jurisdiction_from_subdomain_splits_concatenated_multiword_names():
     # WO-14 (BACKLOG.md, 2026-08-16): this fallback used to be a bare
     # `.replace("-", " ").title()`, which only helps a subdomain with
