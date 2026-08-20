@@ -332,6 +332,20 @@ def test_extract_jurisdiction_returns_none_when_neither_field_matches():
     assert CablecastAssetFinder._extract_jurisdiction(site, _UNKNOWN_DOMAIN_URL) is None
 
 
+def test_extract_jurisdiction_falls_back_to_known_domain_when_branding_is_generic():
+    # Real gap confirmed live 2026-08-19: Broomfield, CO's Cablecast site
+    # has no "City of"/"County of" phrase anywhere -- title is just
+    # "Channel 8" and pageDescription is empty. Falls back to the
+    # confirmed-domain registry (same one Detroit/Charlotte use) instead
+    # of dropping jurisdiction entirely.
+    site = {"title": "Channel 8", "pageDescription": ""}
+    broomfield_url = "http://broomfieldco.cablecast.tv/internetchannel/show/1674?site=1"
+    assert (
+        CablecastAssetFinder._extract_jurisdiction(site, broomfield_url)
+        == "Broomfield, CO"
+    )
+
+
 def test_extract_jurisdiction_omits_state_for_an_unconfirmed_city():
     # A city with no confirmed domain AND no unambiguous real-world match
     # (a fake name here) gets no state suffix -- an honest gap, not a

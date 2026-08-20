@@ -366,6 +366,15 @@ class CablecastAssetFinder(AssetFinder):
                     page_text=page_description,
                 )
                 return f"{city}, {state}" if state else city
+        # Some customers' Cablecast branding (title/pageDescription) is
+        # generic ("Channel 8") with no "City of"/"County of" phrase
+        # anywhere for the regex above to find -- confirmed live on
+        # Broomfield, CO 2026-08-19, same class of gap Detroit/Charlotte
+        # already hit. Falls back to the known-domain table (same pattern
+        # as lims.py/hyland.py) rather than dropping jurisdiction entirely.
+        known = jurisdiction_enrich.lookup_by_domain(urlparse(url).netloc)
+        if known:
+            return f"{known.name}, {known.state}"
         return None
 
     @staticmethod

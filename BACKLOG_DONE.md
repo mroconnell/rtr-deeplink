@@ -82,6 +82,46 @@ URLs have no video; that remains a genuine "no video integration for this
 customer" outcome, not a hidden second bug. Full suite green (1029
 passed, 15 skipped, in a clean `origin/main` worktree).
 
+## Cablecast jurisdiction extraction returned nothing for customers with generic site branding — Broomfield, CO [Done 2026-08-19]
+
+Found investigating a user report that `redtaperecordings.com/m/2026-08-18-city-council-study-session-august-18-2026`
+(source: `broomfieldco.cablecast.tv/show/1674?site=1`) had no jurisdiction.
+`app/platforms/cablecast.py`'s `_extract_jurisdiction()` only ever looked
+at the site's `pageDescription`/`title` fields for a `"City of"`/`"County
+of"`/`"Town of"` phrase — the same regex-only approach already fixed once
+before for the "jurisdiction hardcoded to Detroit for every customer" bug
+(see this file's own header comment in `tests/test_cablecast.py`).
+Broomfield's real site object has `title: "Channel 8"` and
+`pageDescription: ""` (confirmed live via the browser tool — the site's
+own WAF challenges a plain `curl`/`aiohttp` fetch with a 202, so an actual
+browser was needed to read `window.__remixContext`) — no jurisdiction
+phrase anywhere in either field, same "generic channel branding, no city
+name in the two fields checked" class of gap Detroit and Charlotte
+already hit. Confirmed genuinely Broomfield, CO from other fields on the
+same `site` object: `email: "media-communications@broomfield.org"`,
+`logo: ".../Broomfield%20CO%20Logo%20Tag.png"`, `facebookUrl`/`twitterUrl:
+"broomfield"`, `host: "broomfieldco.cablecast.tv"`.
+
+Fixed by adding `"broomfieldco.cablecast.tv": KnownJurisdiction("Broomfield",
+"county", "CO")` to `app/utils/jurisdiction_enrich.py`'s `_KNOWN_DOMAINS`
+table, and making `cablecast.py`'s `_extract_jurisdiction()` fall back to
+`jurisdiction_enrich.lookup_by_domain()` when the regex finds no match in
+either field — the same "no page-text found, but still return a real
+answer for a confirmed domain" pattern `lims.py`/`hyland.py` already use,
+just not previously wired up in `cablecast.py`. Before this fix,
+`lookup_by_domain()` was only ever reached *after* the regex already
+matched a name (as a state cross-check inside `resolve_state()`), so a
+domain entry alone could never rescue a customer whose branding has no
+jurisdiction phrase at all — this generalizes the domain table to also
+supply the *name*, not just confirm the state, whenever page-text
+extraction finds nothing (mirroring how `known_jurisdiction_display()`
+already does full name+state replacement for the `"authoritative"`
+strength tier, just for the *no match at all* case rather than the
+*confirmed-unreliable extraction* case). Added a regression test,
+`test_extract_jurisdiction_falls_back_to_known_domain_when_branding_is_generic`
+in `tests/test_cablecast.py`; full suite (1042 passed, 15 skipped) still
+green after the change.
+
 ## No delete path existed for Archive MeetingPage rows; built one, used it to remove 3 real UAT tenant pages [Done 2026-08-19]
 
 Real cleanup need: during the gate-blindness recheck below, 3 PrimeGov

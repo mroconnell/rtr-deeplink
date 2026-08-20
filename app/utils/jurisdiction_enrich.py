@@ -337,6 +337,17 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     "detroit-vod.cablecast.tv": KnownJurisdiction("Detroit", "city", "MI"),
     "reflect-detroit-vod.cablecast.tv": KnownJurisdiction("Detroit", "city", "MI"),
     "charlotte.cablecast.tv": KnownJurisdiction("Charlotte", "city", "NC"),
+    # Broomfield's Cablecast site branding is just "Channel 8" with an
+    # empty pageDescription -- no "City of"/"County of" phrase anywhere
+    # for cablecast.py's own regex extraction to find (confirmed live
+    # 2026-08-19, see BACKLOG.md). Real signals on the same site object
+    # instead: host "broomfieldco.cablecast.tv", email
+    # media-communications@broomfield.org, logo filename "Broomfield CO
+    # Logo Tag.png". Broomfield is a consolidated city-county in CO;
+    # "county" matches the page's own "County of Broomfield" phrasing
+    # used elsewhere on the same site (e.g. Granicus's confirmed
+    # jurisdiction text for other CO consolidated city-counties).
+    "broomfieldco.cablecast.tv": KnownJurisdiction("Broomfield", "county", "CO"),
     # "Minneapolis" is also a real, if much smaller, city in Kansas --
     # confirmed via app/utils/jurisdiction_data -- so a bare name lookup
     # alone would stay ambiguous for this real, confirmed LIMS customer.
