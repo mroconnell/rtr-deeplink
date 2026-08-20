@@ -1940,6 +1940,7 @@ DIRECT_PLATFORMS: dict[str, str] = {
     "seattle_channel": "Seattle Channel",
     "telvue": "TelVue",
     "hyland": "Hyland OnBase Agenda Online",
+    "townhallstreams": "Town Hall Streams",
 }
 
 # Platforms grouped under a single "Custom" row on /coverage -- each is a
@@ -2286,7 +2287,7 @@ _OUTCOME_LABELS: dict[str, str] = {
     "agenda_fallback": "Agenda only",
     "garbled_transcript": "Garbled transcript",
     "non_english_transcript": "Transcript (non-English)",
-    "success": "Real transcript",
+    "success": "Transcript (English)",
 }
 # Lower is better -- used to pick which of a jurisdiction's several pages
 # best represents it (same "prefer the most convincing real example"
