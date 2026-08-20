@@ -3062,20 +3062,32 @@ async def manually_promote_transcript_version(
     session/commit, same "always a top-level admin action" reasoning as
     `correct_transcript_version_language()` right below.
 
-    `clear_warnings=True` also resets the *promoted* version's own
-    `transcript_warnings` to `[]`. Real gap this closes -- found 2026-08-20
-    investigating why several YouTube pages (e.g.
-    nashua-2025-05-28-committee-on-infrastructure) stayed permanently
-    flagged `garbled_transcript` despite scripts/fetch_youtube_transcripts.py
-    successfully re-fetching and promoting them every day: `ingest_resolution()`
-    dedupes by content hash, so a re-fetch of the same underlying caption
-    track (via a different library than the original resolve) reuses the
-    existing, already-garbled-flagged version row instead of creating a
-    fresh one -- promoting it alone never cleared that stale flag, even
-    though the caller's whole point in promoting was "trust this over
-    whatever's already there." Never touches the *demoted* version's
-    warnings -- same "never destroys history" spirit as the rest of this
-    function; only the version now being vouched for gets its flag reset.
+    `clear_warnings=True` also strips any `_GARBLED_MARKER`/`_HALLUCINATION_MARKER`
+    entries from the *promoted* version's own `transcript_warnings` --
+    deliberately a filter, not a wipe (see 2026-08-20 correction below).
+    Real gap this closes -- found 2026-08-20 investigating why several
+    YouTube pages (e.g. nashua-2025-05-28-committee-on-infrastructure)
+    stayed permanently flagged `garbled_transcript` despite
+    scripts/fetch_youtube_transcripts.py successfully re-fetching and
+    promoting them every day: `ingest_resolution()` dedupes by content
+    hash, so a re-fetch of the same underlying caption track (via a
+    different library than the original resolve) reuses the existing,
+    already-garbled-flagged version row instead of creating a fresh one --
+    promoting it alone never cleared that stale flag, even though the
+    caller's whole point in promoting was "trust this over whatever's
+    already there." Never touches the *demoted* version's warnings -- same
+    "never destroys history" spirit as the rest of this function; only the
+    version now being vouched for gets its flag reset.
+
+    Correction same day: the first version of this simply reset
+    `transcript_warnings` to `[]` outright, which also silently discarded
+    unrelated, still-true informational warnings on the same list (e.g.
+    "These are YouTube's auto-generated captions..." from
+    app/platforms/youtube.py) -- a real regression caught live on the
+    first 6 pages this ran against in production, fixed here by filtering
+    only the two quality-blocking markers instead. See
+    `correct_transcript_version_warnings()` below for how those 6 pages'
+    dropped disclaimer text was restored.
     """
     async with async_session() as session:
         page = (
@@ -3092,9 +3104,67 @@ async def manually_promote_transcript_version(
 
         await promote_transcript_version(session, page.id, version_id)
         if clear_warnings:
-            version.transcript_warnings = []
+            version.transcript_warnings = [
+                w
+                for w in (version.transcript_warnings or [])
+                if _GARBLED_MARKER not in w and _HALLUCINATION_MARKER not in w
+            ]
         await session.commit()
         return {"slug": slug, "promoted_version_id": version_id}
+
+
+async def correct_transcript_version_warnings(
+    *, slug: str, warnings: list[str], version_id: Optional[int] = None
+) -> Optional[dict]:
+    """Admin correction for a TranscriptVersion's `transcript_warnings` list
+    -- same "public report, admin fixes" shape as
+    `correct_transcript_version_language()` right below (targets the
+    page's current default when `version_id` isn't given). Built 2026-08-20
+    specifically to restore informational warnings (e.g. the YouTube
+    auto-caption disclaimer) that `manually_promote_transcript_version()`'s
+    first `clear_warnings=True` implementation had wiped outright on 6 real
+    production pages before that was corrected to filter instead -- see
+    its docstring. General-purpose beyond that one-time fix: any other
+    future case needing a direct warnings correction (mirroring how
+    `correct_transcript_version_language()` already exists for the
+    language field) can reuse this rather than a new one-off.
+    """
+    async with async_session() as session:
+        page = (
+            (await session.execute(select(MeetingPage).where(MeetingPage.slug == slug)))
+            .scalars()
+            .first()
+        )
+        if page is None:
+            return None
+
+        if version_id is not None:
+            version = await session.get(TranscriptVersion, version_id)
+            if version is None or version.meeting_page_id != page.id:
+                return None
+        else:
+            version = (
+                (
+                    await session.execute(
+                        select(TranscriptVersion).where(
+                            TranscriptVersion.meeting_page_id == page.id,
+                            TranscriptVersion.is_default.is_(True),
+                        )
+                    )
+                )
+                .scalars()
+                .first()
+            )
+            if version is None:
+                return None
+
+        version.transcript_warnings = warnings
+        await session.commit()
+        return {
+            "slug": slug,
+            "version_id": version.id,
+            "transcript_warnings": version.transcript_warnings,
+        }
 
 
 async def correct_transcript_version_language(
