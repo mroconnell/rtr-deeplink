@@ -6,6 +6,107 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## YouTube transcript fetch `IpBlocked` alert: confirmed expected/self-clearing; found and fixed a real stale-garbled-flag bug while investigating [Done 2026-08-20]
+
+Triggered by a real launchd alert email: `scripts/fetch_youtube_transcripts.py`'s
+daily job aborted with `IpBlocked` from YouTube on video `OQ4V0B5rdwg`.
+
+**Part 1 — the abort itself is not a bug.** Confirmed via the macOS
+unified log (`log show`) that exactly one process ran that day (launchd
+PID 29812, 09:00:02–09:02:25, single instance, no overlapping runs). It
+processed 22 queued pages sequentially, successfully ingested 14, then
+hit a real `IpBlocked` and aborted — exactly the documented behavior in
+`scripts/fetch_youtube_transcripts.py`'s own `process_one()`: an
+IP-level block means every further request would fail too, so the whole
+run aborts rather than burning through the queue. Per-page latency had
+crept from 1-3s up to 11-15s just before the block, consistent with soft
+throttling before the hard block. Nothing lost — unprocessed pages stay
+in the Archive's `transcript-wanted` queue and get retried automatically
+the next day. This was only the 2nd abort ever recorded in that log (the
+1st, unrelated, was a network timeout). No code change; documenting here
+so a future occurrence isn't re-investigated as a mystery.
+
+**Part 2 — a real bug found while digging into why the queue kept
+repeating the same pages.** Via the live
+`GET /internal/transcript-quality-audit?list_outcomes=garbled_transcript`
+endpoint (built same day by a parallel session — see its own entry),
+found 7 pages permanently stuck flagged `garbled_transcript` despite
+`fetch_youtube_transcripts.py` successfully re-fetching and *explicitly
+promoting* them every single day. Directly confirmed:
+`city-of-sandy-2023-06-12-city-council-12-jun-2023` and
+`city-of-duncan-town-2025-01-22-committee-of-the-whole-meeting-...` both
+appeared in that very day's "INGESTED ... promoted to default" log lines,
+yet both were still in the live `garbled_transcript` bucket right after.
+`nashua-2025-05-28-committee-on-infrastructure`'s rendered transcript was
+checked directly in-browser and reads as completely coherent English —
+not garbled at all — yet still carried the `"looks garbled at the
+source"` warning.
+
+Root cause, traced through the actual code: the garbled flag originally
+gets attached during the *resolver's* own resolve (`is_likely_garbled()`
+in `app/utils/vtt_parser.py`, run on yt-dlp-fetched VTT cues in
+`app/platforms/youtube.py`). `fetch_youtube_transcripts.py` fetches the
+*same* underlying caption track via a different library
+(`youtube_transcript_api`) and pushes it through `POST /internal/ingest`
+→ `crud.ingest_resolution()`, which dedupes by
+`(meeting_page_id, language, source, content_hash)` — since both fetch
+paths pull the same caption content and neither sets `source` (both
+default `"scraped"`), the content hash matches the existing,
+already-garbled-flagged version, so no new version gets created; the old
+row (and its stale `transcript_warnings`) is reused as-is. The script's
+explicit follow-up `POST /internal/transcript-version/promote` only ever
+flipped `is_default` — it never touched `transcript_warnings` — so the
+stale flag (and the resulting perpetual re-appearance in
+`transcript-wanted`) never actually cleared, despite the script's own
+docstring already asserting that a genuinely-fetched real caption track
+should be trusted over whatever was already flagged bad.
+
+**Fix ([#224](https://github.com/mroconnell/rtr-deeplink/pull/224)):**
+added an opt-in `clear_warnings` flag to
+`POST /internal/transcript-version/promote` /
+`manually_promote_transcript_version()`, defaulting `False` so
+`scripts/transcribe_backlog_locally.py`'s existing opt-in `--promote` for
+human-reviewed Whisper re-transcriptions stays unaffected (a human
+promoting a Whisper transcript doesn't mean its hallucination flag was
+wrong). `fetch_youtube_transcripts.py` now passes `clear_warnings=True`.
+
+**Regression caught immediately after deploying #224, in production**:
+the first `clear_warnings=True` implementation reset a promoted version's
+`transcript_warnings` to `[]` outright — which also silently discarded
+an unrelated, still-true informational warning sharing the same list
+(the YouTube auto-caption disclaimer from `app/platforms/youtube.py`) on
+the first 6 pages it ran against live. Caught by a routine in-browser
+spot-check of `nashua-...` right after deploy — the garbled banner was
+gone as intended, but so was the "these are auto-generated captions"
+disclaimer, which shouldn't have been touched.
+
+**Follow-up fix
+([#225](https://github.com/mroconnell/rtr-deeplink/pull/225)):** changed
+`clear_warnings` to filter out only `_GARBLED_MARKER`/
+`_HALLUCINATION_MARKER` entries rather than wiping the whole list. Also
+added `POST /internal/transcript-version/correct-warnings` +
+`crud.correct_transcript_version_warnings()` (mirroring the existing
+correct-language admin-correction endpoint) and used it live to restore
+the dropped disclaimer text on the 6 affected pages
+(`nashua-2025-05-28-committee-on-infrastructure`,
+`city-of-sandy-2023-06-12-city-council-12-jun-2023`,
+`city-of-duncan-town-2025-01-22-committee-of-the-whole-meeting-...`,
+`city-of-lake-forest-2026-01-05-traffic-and-parking-commission-...`,
+`2026-01-08-archived-regular-town-council-meeting-...`,
+`city-of-visalia-ca-2026-01-06-board-of-supervisors-meeting-...`).
+
+**Verified end-to-end, live:** `/internal/transcript-quality-audit`'s
+`garbled_transcript` count went 10 → 4 (the 4 remaining are unrelated:
+1 telvue, 2 granicus, 1 iqm2 — a different, out-of-scope issue) and
+`success` went 1447 → 1453, exactly matching the 6 fixed pages. Re-checked
+in-browser after the follow-up fix: `nashua-...` shows both the correct
+YouTube disclaimer *and* no garbled warning.
+
+Both PRs isolated in a `git worktree` per this file's multi-session
+convention — another session was mid-edit on `BACKLOG.md` and
+`scripts/tier3_auto_transcription_queue.txt` in the main working tree at
+the time.
+
 ## Town Hall Streams: new platform adapter built (`townhallstreams.py`) — 7/7 real samples resolve, jurisdiction routed through the shared validator as required [Done 2026-08-20]
 
 Built the adapter BACKLOG.md's "New platform found: townhallstreams.com"
