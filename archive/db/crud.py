@@ -2326,7 +2326,9 @@ def _classify_page_outcome(
     return "success"
 
 
-async def get_transcript_quality_audit() -> dict:
+async def get_transcript_quality_audit(
+    list_outcomes: Optional[set[str]] = None,
+) -> dict:
     """Aggregate page counts per outcome bucket (same buckets as
     _classify_page_outcome above / app/db/outcomes.py's classify_outcome())
     across EVERY archived page, not just one best-example-per-jurisdiction
@@ -2337,11 +2339,21 @@ async def get_transcript_quality_audit() -> dict:
     cheap columns _classify_page_outcome already needs, never
     TranscriptVersion.segments -- see MeetingPage.search_corpus's own
     docstring on why that matters at this table's real production scale.
+
+    `list_outcomes`, if given, also returns identifying rows (slug, real
+    source URL, platform, language, warnings) for every page landing in
+    one of those buckets -- e.g. {"garbled_transcript"} to get the real
+    list of garbled pages to target directly (scripts/
+    transcribe_backlog_locally.py --url), rather than just their count.
+    Still never touches segments.
     """
     async with async_session() as session:
         rows = (
             await session.execute(
                 select(
+                    MeetingPage.slug,
+                    MeetingPage.source_url_normalized,
+                    MeetingPage.platform,
                     MeetingPage.video_url,
                     MeetingPage.agenda_items,
                     TranscriptVersion.content_hash,
@@ -2358,7 +2370,17 @@ async def get_transcript_quality_audit() -> dict:
         ).all()
 
     counts: dict[str, int] = {}
-    for video_url, agenda_items, content_hash, transcript_warnings, language in rows:
+    examples: list[dict] = []
+    for (
+        slug,
+        source_url_normalized,
+        platform,
+        video_url,
+        agenda_items,
+        content_hash,
+        transcript_warnings,
+        language,
+    ) in rows:
         outcome = _classify_page_outcome(
             video_url=video_url,
             agenda_items=agenda_items,
@@ -2366,8 +2388,22 @@ async def get_transcript_quality_audit() -> dict:
             default_transcript_warnings=transcript_warnings,
             default_transcript_language=language,
         )
+        if list_outcomes and outcome in list_outcomes:
+            examples.append(
+                {
+                    "slug": slug,
+                    "source_url_normalized": source_url_normalized,
+                    "platform": platform,
+                    "outcome": outcome,
+                    "language": language,
+                    "transcript_warnings": transcript_warnings,
+                }
+            )
         counts[outcome] = counts.get(outcome, 0) + 1
-    return {"total_pages": len(rows), "by_outcome": counts}
+    result = {"total_pages": len(rows), "by_outcome": counts}
+    if list_outcomes:
+        result["examples"] = examples
+    return result
 
 
 async def get_full_jurisdiction_coverage() -> list[dict]:
