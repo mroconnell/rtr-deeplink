@@ -1006,6 +1006,36 @@ def _looks_like_bleed(tail: str) -> bool:
     if re.search(r"\d", tail):
         return True
     words = tail.split()
+    if not words:
+        return False
+    # Real bug fixed 2026-08-19 (BACKLOG.md's jurisdiction-misattribution
+    # entry): a discarded tail that STARTS with "of" is never bleed --
+    # confirmed live via "The Village of Douglas, Michigan" (Douglas, MI's
+    # own real self-branding; Michigan officially designates it a Village,
+    # not a City) getting wrongly repaired to "The Village", a real but
+    # totally unrelated Oklahoma City suburb literally named "The
+    # Village". The cut landed right before "of Douglas, Michigan", and
+    # the plain lowercase-initial-word signal below treated that "of" as
+    # proof of agenda-prose bleed. "of" is never ordinary prose in this
+    # module's own vocabulary -- it is the one structural connector every
+    # OTHER jurisdiction-naming mechanism here already keys off of
+    # (`_LEADING_TYPE_RE`, `_split_entity_prefix()`, `_STOPRULE_TRIGGER_RE`,
+    # `_CHAIN_TAG_JURISDICTION_RE` all treat "<Type> of <Name>" as a real
+    # entity-naming pattern, never text to discard). A tail immediately
+    # starting with "of" means the untrimmed text reads "<candidate> of
+    # <continuation>" -- exactly the shape of a real, longer government
+    # name ("Village of X", "Housing Authority of the County of Y"), not
+    # bleed. Declining here (returning False) means `_trim_repair()` gives
+    # up on this cut rather than accepting a coincidental short match --
+    # the same conservative, "leave it unverified rather than mangle it"
+    # outcome already established for a literal match with a non-bleed
+    # tail elsewhere in this function (see East Bay/Richmond Hill in
+    # tests/test_jurisdiction_enrich.py). No real confirmed case needs
+    # this same exception for "the"/"and" -- kept narrow, grounded only in
+    # the one real case found, per this repo's own "ground fixes in real
+    # confirmed data" convention.
+    if words[0].strip(".,;:").lower() == "of":
+        return False
     if any(w[0].islower() for w in words if w):
         return True
     if len(words) < _MIN_BLEED_WORD_RUN:
@@ -1484,7 +1514,29 @@ def _validated_label_extract(label: str) -> Optional[str]:
         or trailing in _PROVINCE_ABBREVIATIONS_LOWER
     ):
         words = words[:-1]
-    while len(words) > 1 and words[0].lower() in ("city", "county", "town", "of"):
+    # "pub" joined this strip list 2026-08-19 (BACKLOG.md's jurisdiction-
+    # misattribution entry): eScribe's own real, confirmed subdomain
+    # convention is "pub-{city}.escribemeetings.com" (see
+    # `EscribeAssetFinder`'s own `_SUBDOMAIN_RE` module comment), so the
+    # raw label handed to this function is "pub-{city}" (or, after
+    # `_validated_subdomain_extract()`'s host split, "pub-{city}" as
+    # parts[0]) -- e.g. wordninja splits "pub-courtenay" to
+    # ['pub','courtenay']. Without stripping "pub" here, this generic
+    # (platform-agnostic) validator can never resolve ANY eScribe
+    # subdomain on its own, which matters beyond eScribe's own dedicated
+    # `_jurisdiction_from_subdomain()` fallback (which already strips
+    # "pub-" via its own regex): `extract_jurisdiction_chain()`'s
+    # subdomain tier and its cross-check against a text-mined candidate
+    # (see that function's own comment) both call this same generic path,
+    # and had no way to independently confirm an eScribe page's real
+    # identity before this fix.
+    while len(words) > 1 and words[0].lower() in (
+        "city",
+        "county",
+        "town",
+        "of",
+        "pub",
+    ):
         words = words[1:]
     if not words:
         return None
@@ -1527,6 +1579,24 @@ def validated_label_extract(label: str) -> Optional[str]:
     return _validated_label_extract(label)
 
 
+def _base_name_key(jurisdiction: str) -> str:
+    """Bare, normalized identity key for a finished jurisdiction string --
+    state suffix stripped, then normalized down to its bare proper name
+    (leading "City of "/etc. removed, or a trailing generic type word
+    removed when present) -- used by `extract_jurisdiction_chain()` to
+    compare a text-mined candidate's resolved identity against a
+    URL-derived subdomain hint's identity, ignoring formatting
+    differences ("City of Hercules, CA" vs. "Hercules", "San Bernardino
+    County" vs. "San Bernardino"). Uses the LAST (most-stripped) candidate
+    `_normalize_candidates()` returns, not the first -- unlike
+    `_table_lookup_strength()`'s literal-vs-heuristic distinction (which
+    cares whether a match came from the exact typed text), this is a pure
+    identity comparison, so the bare-est form is the right one to key on."""
+    base = _STATE_SUFFIX_RE.sub("", jurisdiction).strip().rstrip(".,;:")
+    candidates = _normalize_candidates(base)
+    return candidates[-1] if candidates else base.lower()
+
+
 def extract_jurisdiction_chain(*, page_text: str, html: str, url: str) -> Optional[str]:
     """Shared fallback chain for adapters whose own primary extraction
     found nothing: stop-rule body regex -> capitalization-bounded walk ->
@@ -1564,12 +1634,41 @@ def extract_jurisdiction_chain(*, page_text: str, html: str, url: str) -> Option
     (for gating) and again at the caller's own ingest-time call, so
     registry coverage is still applied, just not duplicated as a
     dedicated tier.
+
+    Cross-checked against a validated URL/subdomain hint since 2026-08-19
+    (BACKLOG.md's jurisdiction-misattribution entry): the "must validate"
+    gate above only catches a candidate that's outright garbage (the
+    Broward MPO case), not one that cleanly validates as a real, DIFFERENT
+    place than the page's own true jurisdiction -- confirmed live via two
+    separate real cases, both a stoprule/capitalization-walk match on a
+    genuine but unrelated "City/County of X" mention elsewhere on the page
+    (a correspondence item, cross-jurisdictional reference, or boilerplate
+    mention), not the page's own identity: "Courtenay (BC) misattributed
+    to Burlington" (Burlington is a real, validating place in 17
+    states/provinces -- ambiguous, but still "known" enough to pass the
+    validation gate) and "Victorville misattributed to San Bernardino
+    County" (both real, validating California entities). When the URL's
+    own subdomain independently and unambiguously validates to a real
+    place/county -- the same trustworthy identity signal the subdomain
+    tier below already relies on for its own answer -- a text-mined
+    candidate that names a demonstrably DIFFERENT place is discarded
+    instead of accepted, falling through to try the next tier and
+    ultimately reaching the subdomain tier's own (correct) answer rather
+    than a coincidentally-validating wrong one. A candidate that AGREES
+    with the subdomain hint (the overwhelmingly common case -- e.g.
+    hercules.granicus.com's own "City of Hercules" text) is unaffected;
+    so is every case with no subdomain hint available at all (most
+    Swagit/CivicClerk/generic_fallback pages), which is why this doesn't
+    touch the tournament-tuned recall for those.
     """
     netloc = urlparse(url).netloc
-    for extractor in (
-        lambda: _stoprule_extract(page_text),
-        lambda: _capitalization_walk_extract(html),
-        lambda: _validated_subdomain_extract(url),
+    subdomain_hint = _validated_subdomain_extract(url)
+    subdomain_hint_key = _base_name_key(subdomain_hint) if subdomain_hint else None
+
+    for tier, extractor in (
+        ("text", lambda: _stoprule_extract(page_text)),
+        ("text", lambda: _capitalization_walk_extract(html)),
+        ("subdomain", lambda: subdomain_hint),
     ):
         candidate = extractor()
         if not candidate:
@@ -1578,6 +1677,13 @@ def extract_jurisdiction_chain(*, page_text: str, html: str, url: str) -> Option
             candidate, netloc=netloc, page_text=page_text
         )
         result = finalize_jurisdiction(enriched, netloc=netloc)
-        if result.confidence in ("validated", "repaired", "authoritative"):
-            return result.jurisdiction
+        if result.confidence not in ("validated", "repaired", "authoritative"):
+            continue
+        if (
+            tier == "text"
+            and subdomain_hint_key
+            and _base_name_key(result.jurisdiction) != subdomain_hint_key
+        ):
+            continue
+        return result.jurisdiction
     return None
