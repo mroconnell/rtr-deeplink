@@ -405,8 +405,7 @@ class PrimeGovAssetFinder(AssetFinder):
         raised exception.
         """
         api_url = (
-            f"https://{netloc}/api/v2/PublicPortal/ListArchivedMeetings"
-            f"?year={year}"
+            f"https://{netloc}/api/v2/PublicPortal/ListArchivedMeetings?year={year}"
         )
         try:
             async with session.get(

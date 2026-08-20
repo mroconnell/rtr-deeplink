@@ -21,6 +21,7 @@ def _register_delegation_targets():
     register(SwagitAssetFinder())
     register(GranicusAssetFinder())
 
+
 # No fixture-based tests existed for this adapter before this file (see
 # BACKLOG.md's "zero test coverage" note). The `var videoUrl = "..."`
 # extraction pattern and the real video id below come from the actual
@@ -518,9 +519,7 @@ async def test_resolve_delegates_to_swagit_via_tenant_api_when_no_youtube_video(
         result = await PrimeGovAssetFinder().resolve(BAYCOUNTY_URL)
 
     assert result.platform == "swagit"  # delegated finder's own platform name
-    assert (
-        result.video_url == "https://archive-stream.granicus.com/x/playlist.m3u8"
-    )
+    assert result.video_url == "https://archive-stream.granicus.com/x/playlist.m3u8"
     # Same source_url-preserving choice as the YouTube delegation path --
     # "View original source" keeps pointing at the real PrimeGov page, not
     # the swagit.com URL discovered behind the scenes via the tenant API.
