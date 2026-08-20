@@ -449,6 +449,111 @@ each test delegates to is synthetic, same convention
 minimal fixtures. Full suite (`pytest`) passes with no regressions (1037
 passed, 15 skipped — the skips are pre-existing and unrelated).
 
+## On-demand transcription: retry-with-backoff, real per-chunk failure diagnostics, and a working operator alert [Done 2026-08-19]
+
+Traced end-to-end from a real early user's report: Jeremy Levine
+(jlevine@hlcsmc.org, Housing Leadership Council of San Mateo County)
+requested a transcript for a Redwood City, CA council meeting on
+2026-08-18. `transcription_jobs` row 256 showed `status=failed,
+priority=10 (correct, real-user tier), chunks_completed=1/27` — the
+worker's priority system worked exactly as designed (claimed almost
+immediately, not stuck behind idle batch work), but died on chunk 2 with
+`error_message="ffmpeg extraction failed"`, a fixed generic string with
+no real diagnostic behind it. A local dry-run (`scripts/
+transcribe_backlog_locally.py --chunk-seconds 60`) transcribed the exact
+same source end-to-end with zero failures across 395/395 chunks,
+including the region that failed in production — ruling out a broken/
+corrupt source and pointing at the cloud worker's 900s single-call ffmpeg
+extraction likely exceeding `media_probe.py`'s 120s subprocess timeout
+against a slow/rate-limited connection. A real (non-dry-run) local run at
+the verified-safe 60s chunk size (`--promote`) fixed this specific
+meeting's page immediately (4,479 segments, live).
+
+That still left the underlying gap: **no one was notified**, and the
+failure reason was too generic to diagnose from the DB alone. Investigating
+why surfaced a second, worse bug: `worker/main.py`'s `_send_failure_email()`
+had been **unreachable dead code since it was written** — the `elif
+result.get("status") == "failed"` check that called it only ran after
+the *success*-path `report_chunk_result()` call, which can only ever
+return `"completed"`/`"in_progress"`; the actual failure call sites
+(`success=False`) returned early without ever inspecting what they got
+back. So neither the existing requester-facing "we hit a snag" email nor
+any operator notification had ever actually fired for a real chunk
+failure, despite `send_transcription_failed_email()` existing, being
+wired in (on paper), and having its own passing tests (the tests mocked
+`_send_failure_email()` being *called*, not the fact that nothing in the
+real control flow ever called it).
+
+**Built, in one pass:**
+1. `app/platforms/media_probe.py`'s `extract_chunk_audio()` now returns
+   `(bool, Optional[str])` instead of a bare bool — the real reason
+   (ffmpeg's own stderr tail, a timeout note naming the actual
+   120s ceiling, "not found on PATH", or an empty-output-file note)
+   instead of one fixed string. Propagated through its three real callers
+   (`worker/main.py`, `scripts/transcribe_backlog_locally.py`, and the
+   in-progress `scripts/retranscribe_first_chunk.py`).
+2. `TranscriptionJob` gained `failure_history` (JSON list of
+   `{chunk_index, error, at}`, every attempt across the job's life, not
+   just the last one), `retry_count`, and `next_retry_at`
+   (`archive/alembic/versions/2026_08_19_1000-40645206a333_...py`,
+   `alembic check` confirmed clean against the model).
+3. `crud.report_chunk_result()`: once `MAX_CONSECUTIVE_CHUNK_FAILURES` is
+   hit, a real user-priority job (`priority >= PRIORITY_MEDIUM`) with
+   retries left (`MAX_JOB_RETRIES = 3`) is rescheduled (`status=
+   "retry_scheduled"`) with doubling backoff (`JOB_RETRY_BASE_DELAY =
+   1h`, capped at `JOB_RETRY_MAX_DELAY = 6h`) instead of failing outright
+   — directly motivated by job 256 itself: the exact same source
+   succeeded on a later manual re-run, so the original failure clearly
+   wasn't the source being genuinely broken. A `PRIORITY_LOW`
+   auto-generated job deliberately keeps the old immediate-fail behavior
+   (it already has its own separate page-level cooldown). `claim_next_
+   chunk()` now also claims a `retry_scheduled` job once `next_retry_at`
+   has passed, resuming at `chunks_completed` (never rewound) so a retry
+   picks up where it left off, not from scratch. A fresh submit for a
+   page already in `retry_scheduled` returns the existing job rather than
+   racing a second one.
+4. Fixed the dead-code bug directly: both `success=False` call sites in
+   `worker/main.py`'s `process_next_chunk()` now route their
+   `report_chunk_result()` result through a new `_handle_job_failure_
+   result()`, which actually calls `_send_failure_email()` when the
+   status comes back `"failed"` (and just logs a clear "rescheduled for
+   retry #N at T" line for `"retry_scheduled"`, no premature email). The
+   now-genuinely-unreachable `elif "failed"` branch after the *success*
+   path was removed.
+5. New `archive/utils/email.send_admin_job_failure_alert()` — separate
+   from the branded, deliberately-vague requester email, a plain `<pre>`
+   diagnostic dump (job id, requester, meeting/source URL, chunk
+   progress, retry count, last error, up to the last 10 failure_history
+   entries) sent to `TRANSCRIPTION_FAILURE_ALERT_EMAIL` (same "leave
+   unset to default" convention as `DAILY_REPORT_EMAIL_TO`, defaulting to
+   ryan@how-to-adu.com — see `.env.example`). Called from
+   `_send_failure_email()` alongside the existing requester email, only
+   on a truly terminal `"failed"` status.
+
+**Test coverage**: `tests/test_transcription_jobs.py` — replaced the one
+test asserting immediate-fail-after-budget (now real behavior only for a
+`PRIORITY_LOW` job, already covered by
+`test_find_auto_transcription_candidate_skips_page_in_cooldown`) with
+four covering the new mechanism: retry scheduled with correct
+`retry_count`/`next_retry_at`/`failure_history` contents, a
+`retry_scheduled` job claimed once `next_retry_at` passes (and *not*
+before), a duplicate submit during the backoff window returning the
+existing job, and true terminal failure once `MAX_JOB_RETRIES` is
+exhausted. `tests/test_worker_email_notifications.py` gained a test
+asserting `_send_failure_email()` passes the real diagnostics through to
+`send_admin_job_failure_alert()`. `tests/test_lifecycle_emails.py` gained
+two direct tests of the new email function (default recipient, env
+override). Full suite: 1040 passed, 15 skipped (pre-existing, unrelated)
+— up from before this change with no regressions; `alembic check` clean.
+
+**Not yet verified live**: the fix is deployed via the same code path
+already used for every prior `TranscriptionJob` change, but a *second*
+real production job actually exhausting its retry budget and correctly
+firing the admin alert hasn't been observed yet (job 256 itself was
+fixed via the manual local script before this retry logic existed, not
+by the new mechanism) — worth a real check next time a job genuinely
+fails end-to-end.
+
 ## Salvaged tier-1/tier-2 finds ingested; TelVue "ECTV" jurisdiction guess corrected from Scranton, PA to Everett, MA [Done 2026-08-18]
 
 Prompted by checking whether any real, content-confirmed tier-1/tier-2

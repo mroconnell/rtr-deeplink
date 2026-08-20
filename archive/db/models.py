@@ -162,10 +162,23 @@ class TranscriptionJob(Base):
         String(64), nullable=True, index=True
     )
 
-    # "pending_confirmation" -> "queued" -> "in_progress" -> "completed" | "failed"
+    # "pending_confirmation" -> "queued" -> "in_progress" ->
+    #     "completed" | "retry_scheduled" -> ... -> "completed" | "failed"
     # A requester already in the Resend audience skips straight to
     # "queued" (see archive/utils/email.py's check_audience_membership) --
     # "pending_confirmation" only applies to a first-time email address.
+    # "retry_scheduled" is a real chunk-processing budget exhaustion
+    # (MAX_CONSECUTIVE_CHUNK_FAILURES) for a real user-priority job that
+    # hasn't used up its retry budget yet (crud.MAX_JOB_RETRIES) -- see
+    # crud.report_chunk_result()'s escalating-backoff retry, added
+    # 2026-08-19 after a real user-submitted job (Redwood City, CA) died
+    # on a single slow/rate-limited chunk and a later manual re-run of the
+    # exact same source succeeded outright, confirming the failure wasn't
+    # the source being genuinely broken. claim_next_chunk() also claims a
+    # "retry_scheduled" job once next_retry_at has passed. A PRIORITY_LOW
+    # auto-generated job never enters this state -- it keeps the older
+    # immediate-"failed" behavior, since it already has its own separate
+    # page-level escalating cooldown (AUTO_TRANSCRIPTION_BASE_COOLDOWN).
     status: Mapped[str] = mapped_column(
         String(24), nullable=False, default="pending_confirmation", index=True
     )
@@ -209,7 +222,35 @@ class TranscriptionJob(Base):
     consecutive_chunk_failures: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0
     )
+    # Last failure's message only -- kept for backward-compatible display
+    # (e.g. _job_dict()'s existing "error_message" field). failure_history
+    # below is the real per-attempt record; this is redundant with its
+    # last entry but cheap to keep as the simple single-value case.
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # Every chunk failure across this job's whole life (survives a retry
+    # reset of consecutive_chunk_failures), each entry
+    # {"chunk_index": int, "error": str, "at": iso8601 str} -- added
+    # 2026-08-19 because error_message alone (overwritten on every
+    # failure, and previously a fixed "ffmpeg extraction failed" string
+    # with no real detail -- see media_probe.extract_chunk_audio()) made
+    # it impossible to tell "this job failed the same way three times" from
+    # "three different real problems" after the fact. Not JOIN-queried
+    # anywhere, so a plain JSON column (matching partial_segments'
+    # precedent above) rather than a separate table.
+    failure_history: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    # How many times this job has been rescheduled after exhausting
+    # MAX_CONSECUTIVE_CHUNK_FAILURES -- see crud.MAX_JOB_RETRIES. Only
+    # ever incremented for a PRIORITY_MEDIUM+ (real user-submitted) job;
+    # stays 0 for a PRIORITY_LOW auto-job, which fails immediately instead.
+    retry_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    # Set (status="retry_scheduled") when a retry is pending, cleared back
+    # to NULL the moment claim_next_chunk() actually claims it. NULL in
+    # every other status.
+    next_retry_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     transcript_version_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("transcript_versions.id"), nullable=True
