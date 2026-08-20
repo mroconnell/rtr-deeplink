@@ -3849,3 +3849,112 @@ async def delete_account_data(clerk_user_id: str) -> int:
             await session.delete(row)
         await session.commit()
         return count
+
+
+async def delete_meeting_pages_by_slug(slugs: list[str], *, dry_run: bool) -> dict:
+    """Permanently removes one or more MeetingPage rows by slug, plus every
+    row that references them (TranscriptionJob, TranscriptVersion,
+    MeetingPageUrlAlias, SavedItem) -- there's no DB-level ON DELETE CASCADE
+    on any of those foreign keys, so a plain `session.delete(page)` would
+    fail with a real FK violation, not silently cascade. TranscriptionJob is
+    deleted before TranscriptVersion since a job can reference a version via
+    `transcript_version_id`.
+
+    Built for one specific real cleanup (3 PrimeGov UAT/staging tenant
+    pages accidentally real-ingested during a bulk gate-blindness recheck,
+    see BACKLOG_DONE.md), not a general content-moderation tool -- slug is
+    required (not a fuzzy match) so a typo can't take out an unrelated real
+    page. `dry_run=True` (the default, matching this file's existing
+    read-only-first convention -- see backfill_apply's docstring) reports
+    exactly what would be deleted without touching anything.
+
+    Returns {"dry_run": bool, "found": [...], "not_found": [...], "deleted": int}.
+    """
+    async with async_session() as session:
+        found: list[dict] = []
+        not_found: list[str] = []
+        for slug in slugs:
+            page = (
+                await session.execute(
+                    select(MeetingPage).where(MeetingPage.slug == slug)
+                )
+            ).scalar_one_or_none()
+            if page is None:
+                not_found.append(slug)
+                continue
+            found.append(
+                {
+                    "slug": page.slug,
+                    "title": page.title,
+                    "platform": page.platform,
+                    "source_url_normalized": page.source_url_normalized,
+                }
+            )
+            if dry_run:
+                continue
+
+            jobs = (
+                (
+                    await session.execute(
+                        select(TranscriptionJob).where(
+                            TranscriptionJob.meeting_page_id == page.id
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            for job in jobs:
+                await session.delete(job)
+
+            versions = (
+                (
+                    await session.execute(
+                        select(TranscriptVersion).where(
+                            TranscriptVersion.meeting_page_id == page.id
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            for version in versions:
+                await session.delete(version)
+
+            aliases = (
+                (
+                    await session.execute(
+                        select(MeetingPageUrlAlias).where(
+                            MeetingPageUrlAlias.meeting_page_id == page.id
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            for alias in aliases:
+                await session.delete(alias)
+
+            saved = (
+                (
+                    await session.execute(
+                        select(SavedItem).where(SavedItem.meeting_page_id == page.id)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            for item in saved:
+                await session.delete(item)
+
+            await session.delete(page)
+
+        if not dry_run:
+            await session.commit()
+
+        return {
+            "dry_run": dry_run,
+            "found": found,
+            "not_found": not_found,
+            "deleted": 0 if dry_run else len(found),
+        }

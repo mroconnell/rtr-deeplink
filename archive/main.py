@@ -785,6 +785,29 @@ async def internal_delete_account_data(
     return {"deleted": count}
 
 
+class DeletePagesRequest(BaseModel):
+    slugs: list[str]
+
+
+@app.post("/internal/admin/delete-pages")
+async def internal_delete_pages(
+    req: DeletePagesRequest,
+    dry_run: bool = True,
+    authorization: Optional[str] = Header(None),
+):
+    """Permanently removes MeetingPage rows by slug -- see
+    crud.delete_meeting_pages_by_slug()'s own docstring for the cascade
+    detail and why this exists (a real 2026-08-19 cleanup: 3 PrimeGov
+    UAT/staging tenant pages accidentally real-ingested during a bulk
+    gate-blindness recheck, not a general content-moderation tool). Slug
+    only, never a fuzzy match, so a typo can't take out an unrelated real
+    page. dry_run defaults true, matching this file's existing read-only-
+    first convention (see /internal/jurisdiction/backfill-apply)."""
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    return await crud.delete_meeting_pages_by_slug(req.slugs, dry_run=dry_run)
+
+
 def _pick_active_version(page: dict, version: Optional[int]) -> Optional[dict]:
     versions = page["versions"]
     if not versions:
