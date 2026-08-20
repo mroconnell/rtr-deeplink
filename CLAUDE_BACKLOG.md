@@ -447,6 +447,73 @@ jurisdiction work itself would unlock.
   known customer directories if either platform publishes one) before
   assuming there's more to find there versus the Census-driven approach
   above finding it more systematically.
+- **Civic-tech/intelligence-aggregator sites as a candidate-URL source —
+  raised by the user 2026-08-19 via a researcher note, followed up with
+  real web research the same day.** The note named two products (Hamlet,
+  "Curated Civic Data") plus CHiME/AMI as ASR research corpora. Findings:
+  - **Hamlet (myhamlet.com) is real** — AI civic-intelligence platform,
+    3,000+ local governments, ~30,000+ meeting transcripts, freemium
+    search UI (basic search free, 14-day trial for full transcripts/
+    alerts). Customer base (real estate developers, data center
+    operators, journalists, nonprofits) matches the note. **No public
+    API or bulk-licensing page found** — nothing suggesting a scrapable
+    jurisdiction list or dev access beyond the search UI itself. No
+    associated open-source project.
+  - **"Curated Civic Data" doesn't exist under that name.** Closest real
+    matches, likely what the note actually meant: **GatherGov**
+    (gathergov.com/api) has an actual documented API — Transcript,
+    Search, and Custom endpoints, docs at `api.gathergov.com/docs`,
+    covering 6,200+ municipalities / 1,600+ counties / "94%+ of the US
+    population" — and is positioned explicitly for "real estate and
+    hyper-local municipality intelligence," closer to the note's
+    monetization claim than Hamlet is. No pricing or free tier listed;
+    gated behind a demo request, so still unconfirmed whether the API
+    is usable without a paid contract. Also found: **Curate**
+    (curatesolutions.com, now part of FiscalNote — minutes/agendas from
+    12,000+ entities into a dashboard/digest, a documents product, not
+    video/transcript) and **CivicTranscript** (civictranscript.com,
+    per-jurisdiction transcript search e.g. `solvang.civictranscript.com`,
+    no API found). All four are paid/gated — none expose a free
+    jurisdiction list or bulk API without a sales conversation, so none
+    of them directly solve "enumerate more meeting hosts" for free.
+  - **CHiME/AMI confirmed as real ASR research corpora** but they don't
+    lean on *government* meetings specifically enough to be a useful
+    jurisdiction-discovery lead — a dead end for this specific purpose,
+    despite being real datasets.
+  - **The one genuinely actionable find: [LocalView]
+    (https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/NJTBEM)**,
+    an academic dataset (Barari & Simko, *Scientific Data*, 2023). Free,
+    **CC-BY-4.0, no login required**, downloadable as Parquet/CSV/JSON/
+    Stata/RDS. Covers 139,616 YouTube videos + transcripts from **2,861
+    distinct local governments**, 2006–2022, with fields for state,
+    place name, FIPS code, **YouTube video ID and channel ID**, meeting
+    date, and full transcript/caption text. This is directly a
+    jurisdiction→YouTube-channel candidate list, and this repo's
+    resolver already handles YouTube natively (`YouTubeAssetFinder`, see
+    CLAUDE.md's PrimeGov-wrapper note) — no new adapter needed, just a
+    candidate-URL feed. Real caveat: data stops at 2022, so it's a
+    historical-coverage snapshot, not live discovery of brand-new
+    channels — though the channel IDs are very likely still active and
+    could be probed for newer uploads the same way the Census-place
+    idea above proposes probing subdomains.
+  - **Also found (real, active, but Chicago-scoped): [City-Bureau/
+    city-scrapers](https://github.com/City-Bureau/city-scrapers)**,
+    Scrapy-based, 2,570 commits, actively maintained. Ships a template
+    repo for adapting to other cities but doesn't itself cover a
+    national list.
+
+  **Before building anything with LocalView:** same "test against real,
+  live data first" convention as everywhere else in this repo — pull the
+  actual dataset (or a year slice), spot-check a sample of its YouTube
+  channel IDs against jurisdictions already in the sample sheet /
+  `app/utils/jurisdiction_data/places.csv` for overlap vs. new coverage,
+  and confirm a handful of those channels are still live and posting
+  before treating this as a real candidate-URL source. Also worth
+  cross-checking `~/Documents/rtr-business/research/CDX_QUERIES.md` and
+  `HYLAND_DISCOVERY.md` first, per [[reference_source_discovery_research]]
+  — this may turn out to substantially overlap with archive.org-sourced
+  YouTube coverage already pulled in past sessions rather than being
+  wholly new.
 
 - **"Famous moments in public comment" curated collection page.** A
   hand-curated, permanent page of notable public-hearing moments (the
