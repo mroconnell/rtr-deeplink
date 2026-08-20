@@ -172,17 +172,24 @@ async def extract_chunk_audio(
     duration: float,
     source_page_url: str,
     out_path: Path,
-) -> bool:
+) -> tuple[bool, Optional[str]]:
     """Extract just [start, start+duration) as small mono 16kHz mp3 audio.
     For a direct file this is an HTTP Range fetch of just that slice; for
     HLS, ffmpeg only pulls the .ts segments covering that window off the
     playlist -- not a full re-download per chunk either way. `-ss` before
     `-i` (fast, input-side seeking) rather than after -- chunk boundaries
     don't need frame accuracy, and HLS segment granularity makes
-    frame-accurate seeking moot regardless. Returns True on success; the
-    caller is responsible for treating a False/exception as a retryable
-    per-chunk failure, not a fatal job error (see archive/db/crud.py's
-    consecutive_chunk_failures budget).
+    frame-accurate seeking moot regardless. Returns (True, None) on
+    success, or (False, reason) on failure -- the caller is responsible
+    for treating a failure as a retryable per-chunk failure, not a fatal
+    job error (see archive/db/crud.py's consecutive_chunk_failures
+    budget). `reason` is a short, real diagnostic (timeout, ffmpeg's own
+    stderr tail, an empty-output-file note) rather than a fixed generic
+    string -- real gap closed 2026-08-19: every chunk failure previously
+    stored the same static "ffmpeg extraction failed" in
+    TranscriptionJob.error_message regardless of *why*, which made a
+    genuinely-broken source indistinguishable from a slow/rate-limited one
+    from the DB row alone (see BACKLOG.md).
 
     A stereo source whose left/right channels are (near-)phase-inverted
     is a real, confirmed failure mode of the plain `-ac 1` downmix below
@@ -224,23 +231,33 @@ async def extract_chunk_audio(
             "32k",
             str(out_path),
         )
-    except (FileNotFoundError, asyncio.TimeoutError):
-        logger.exception(
-            "ffmpeg unavailable or timed out extracting %s @ %ss", media_url, start
+    except FileNotFoundError:
+        logger.exception("ffmpeg not found extracting %s @ %ss", media_url, start)
+        return False, "ffmpeg not found on PATH"
+    except asyncio.TimeoutError:
+        logger.exception("ffmpeg timed out extracting %s @ %ss", media_url, start)
+        return (
+            False,
+            f"ffmpeg timed out after {_SUBPROCESS_TIMEOUT_SECONDS}s (source likely slow or rate-limited)",
         )
-        return False
 
     if returncode != 0:
+        stderr_tail = stderr.decode(errors="replace")[-500:].strip()
         logger.warning(
             "ffmpeg extraction failed (%s) for %s @ %ss: %s",
             returncode,
             media_url,
             start,
-            stderr.decode(errors="replace")[:500],
+            stderr_tail,
         )
-        return False
+        return (
+            False,
+            f"ffmpeg exited {returncode}: {stderr_tail}"
+            if stderr_tail
+            else f"ffmpeg exited {returncode}",
+        )
     if not (out_path.exists() and out_path.stat().st_size > 0):
-        return False
+        return False, "ffmpeg reported success but produced no audio output"
 
     mean_volume = await _mean_volume_db(out_path)
     if mean_volume is not None and mean_volume < _SUSPICIOUSLY_QUIET_MEAN_VOLUME_DB:
@@ -279,7 +296,7 @@ async def extract_chunk_audio(
             logger.exception(
                 "Left-channel fallback extraction failed for %s @ %ss", media_url, start
             )
-            return True  # keep the original (quiet, but present) mono result
+            return True, None  # keep the original (quiet, but present) mono result
         if returncode2 == 0 and left_path.exists() and left_path.stat().st_size > 0:
             left_volume = await _mean_volume_db(left_path)
             if left_volume is not None and left_volume > mean_volume + 10:
@@ -304,4 +321,4 @@ async def extract_chunk_audio(
                 start,
                 stderr2.decode(errors="replace")[:500],
             )
-    return True
+    return True, None

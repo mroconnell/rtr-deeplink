@@ -143,6 +143,43 @@ async def test_claim_next_chunk_prefers_higher_priority_over_older_job():
     await _drain_job(old_job["job_id"], old_job["total_chunks"])
 
 
+def test_claim_next_chunk_locks_for_update_skip_locked_on_postgres_only():
+    # Real fix, 2026-08-20: claim_next_chunk() used to be a plain
+    # SELECT-then-UPDATE, safe for exactly one worker process (its own
+    # docstring said so) but with a real TOCTOU window if a second
+    # process ever called it concurrently -- both could read the same
+    # row before either committed its claim. Multi-worker concurrency is
+    # now the whole point (see BACKLOG.md's "Render worker plan sizing"
+    # follow-up), so the claim query must take FOR UPDATE SKIP LOCKED so
+    # two concurrent transactions lock, not double-claim, the same row.
+    # No live Postgres available to this suite (SQLite-only, see
+    # tests/conftest.py), so this pins the compiled SQL shape instead --
+    # same pattern as test_auto_candidate_and_cooldown_queries_never_
+    # touch_transcript_json() above. SQLite doesn't support SKIP LOCKED
+    # at all (matches _fts_available()'s dialect gate), so the gate is
+    # required, not just an optimization.
+    from sqlalchemy import select
+    from sqlalchemy.dialects import postgresql
+
+    from archive.db.models import TranscriptionJob
+
+    base_stmt = (
+        select(TranscriptionJob)
+        .order_by(TranscriptionJob.priority.desc(), TranscriptionJob.created_at.asc())
+        .limit(1)
+    )
+
+    locked_sql = str(
+        base_stmt.with_for_update(skip_locked=True).compile(
+            dialect=postgresql.dialect()
+        )
+    )
+    assert "FOR UPDATE SKIP LOCKED" in locked_sql, locked_sql
+
+    unlocked_sql = str(base_stmt.compile(dialect=postgresql.dialect()))
+    assert "FOR UPDATE" not in unlocked_sql, unlocked_sql
+
+
 async def test_confirm_unknown_token_returns_none():
     assert await crud.confirm_transcription_job("definitely-not-a-real-token") is None
 
@@ -753,7 +790,14 @@ async def test_completed_job_does_not_flag_a_real_clean_transcript():
     assert transcribed["transcript_warnings"] == []
 
 
-async def test_chunk_failures_fail_the_job_after_budget_exhausted():
+async def test_chunk_failures_schedule_a_retry_for_priority_medium_job():
+    # Real behavior change 2026-08-19 (see BACKLOG.md/BACKLOG_DONE.md): a
+    # real user-submitted job (default priority == PRIORITY_MEDIUM) used to
+    # fail outright the moment MAX_CONSECUTIVE_CHUNK_FAILURES was hit.
+    # After a real case (job 256, Redwood City CA) died on one slow/
+    # rate-limited chunk and a later manual re-run of the exact same
+    # source succeeded outright, it no longer fails immediately -- it gets
+    # rescheduled with a growing backoff instead (crud.MAX_JOB_RETRIES).
     url = "https://example.granicus.com/player/clip/tj-6"
     job = await crud.create_transcription_job(
         payload=_payload("granicus:tj-6", url),
@@ -772,14 +816,160 @@ async def test_chunk_failures_fail_the_job_after_budget_exhausted():
         claim = await crud.claim_next_chunk()
         assert claim["job_id"] == job["job_id"]
         result = await crud.report_chunk_result(
-            claim["job_id"], success=False, error="ffmpeg exploded"
+            claim["job_id"],
+            success=False,
+            chunk_index=claim["chunk_index"],
+            error="ffmpeg exploded",
         )
 
+    assert result["status"] == "retry_scheduled"
+    assert result["retry_count"] == 1
+    assert result["next_retry_at"] is not None
+
+    status = await crud.get_transcription_job_status(job["job_id"])
+    assert status["status"] == "retry_scheduled"
+    assert status["retry_count"] == 1
+    # Every chunk failure recorded, with the chunk index that failed --
+    # error_message alone (overwritten each time) couldn't tell this
+    # apart from a job that failed the same way once.
+    assert len(status["failure_history"]) == crud.MAX_CONSECUTIVE_CHUNK_FAILURES
+    assert [e["chunk_index"] for e in status["failure_history"]] == [0, 0, 0]
+    assert all(e["error"] == "ffmpeg exploded" for e in status["failure_history"])
+
+    # Not claimable yet -- next_retry_at is in the future.
+    assert await crud.claim_next_chunk() is None
+
+
+async def test_retry_scheduled_job_is_claimed_once_next_retry_at_passes():
+    from datetime import datetime, timedelta, timezone
+
+    from archive.db.engine import async_session
+    from archive.db.models import TranscriptionJob
+
+    url = "https://example.granicus.com/player/clip/tj-retry-claim"
+    job = await crud.create_transcription_job(
+        payload=_payload("granicus:tj-retry-claim", url),
+        input_url_normalized=url,
+        requester_email="retry-claim@example.com",
+        media_url="https://example.com/v.m3u8",
+        media_kind="video",
+        probed_duration_seconds=900,
+        chunk_size_seconds=900,
+        skip_confirmation=True,
+    )
+    for i in range(crud.MAX_CONSECUTIVE_CHUNK_FAILURES):
+        claim = await crud.claim_next_chunk()
+        result = await crud.report_chunk_result(
+            claim["job_id"],
+            success=False,
+            chunk_index=claim["chunk_index"],
+            error="boom",
+        )
+    assert result["status"] == "retry_scheduled"
+    assert await crud.claim_next_chunk() is None  # still in the future
+
+    async with async_session() as session:
+        row = await session.get(TranscriptionJob, job["job_id"])
+        row.next_retry_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+        await session.commit()
+
+    claim = await crud.claim_next_chunk()
+    assert claim is not None and claim["job_id"] == job["job_id"]
+    # chunks_completed was never advanced by the failed attempts -- resumes
+    # at chunk 0, not wherever it happened to fail.
+    assert claim["chunk_index"] == 0
+
+    status = await crud.get_transcription_job_status(job["job_id"])
+    assert status["status"] == "in_progress"
+
+    await crud.report_chunk_result(job["job_id"], success=True, shifted_segments=[])
+
+
+async def test_duplicate_request_during_retry_scheduled_returns_existing_job():
+    # A job waiting out its retry backoff is still "an active request for
+    # this page" -- a fresh submit in that window must not race it with a
+    # second job for the same page.
+    url = "https://example.granicus.com/player/clip/tj-retry-duplicate"
+    payload = _payload("granicus:tj-retry-duplicate", url)
+    job = await crud.create_transcription_job(
+        payload=payload,
+        input_url_normalized=url,
+        requester_email="first@example.com",
+        media_url="https://example.com/v.m3u8",
+        media_kind="video",
+        probed_duration_seconds=900,
+        chunk_size_seconds=900,
+        skip_confirmation=True,
+    )
+    result = None
+    for i in range(crud.MAX_CONSECUTIVE_CHUNK_FAILURES):
+        claim = await crud.claim_next_chunk()
+        result = await crud.report_chunk_result(
+            claim["job_id"],
+            success=False,
+            chunk_index=claim["chunk_index"],
+            error="boom",
+        )
+    assert result["status"] == "retry_scheduled"
+
+    again = await crud.create_transcription_job(
+        payload=payload,
+        input_url_normalized=url,
+        requester_email="second@example.com",
+        media_url="https://example.com/v.m3u8",
+        media_kind="video",
+        probed_duration_seconds=900,
+        chunk_size_seconds=900,
+        skip_confirmation=True,
+    )
+    assert again["job_id"] == job["job_id"]
+    assert again["status"] == "retry_scheduled"
+
+
+async def test_job_truly_fails_after_retry_budget_exhausted():
+    from datetime import datetime, timedelta, timezone
+
+    from archive.db.engine import async_session
+    from archive.db.models import TranscriptionJob
+
+    url = "https://example.granicus.com/player/clip/tj-retry-exhausted"
+    job = await crud.create_transcription_job(
+        payload=_payload("granicus:tj-retry-exhausted", url),
+        input_url_normalized=url,
+        requester_email="exhausted@example.com",
+        media_url="https://example.com/v.m3u8",
+        media_kind="video",
+        probed_duration_seconds=900,
+        chunk_size_seconds=900,
+        skip_confirmation=True,
+    )
+
+    result = None
+    for retry_round in range(crud.MAX_JOB_RETRIES + 1):
+        for i in range(crud.MAX_CONSECUTIVE_CHUNK_FAILURES):
+            claim = await crud.claim_next_chunk()
+            if claim is None:
+                # Backoff window not elapsed yet -- force it open, same as
+                # test_retry_scheduled_job_is_claimed_once_next_retry_at_passes.
+                async with async_session() as session:
+                    row = await session.get(TranscriptionJob, job["job_id"])
+                    row.next_retry_at = datetime.now(timezone.utc) - timedelta(
+                        seconds=1
+                    )
+                    await session.commit()
+                claim = await crud.claim_next_chunk()
+            assert claim["job_id"] == job["job_id"]
+            result = await crud.report_chunk_result(
+                claim["job_id"],
+                success=False,
+                chunk_index=claim["chunk_index"],
+                error="still exploding",
+            )
+
     assert result["status"] == "failed"
+    assert result["retry_count"] == crud.MAX_JOB_RETRIES
     status = await crud.get_transcription_job_status(job["job_id"])
     assert status["status"] == "failed"
-
-    # a failed job no longer shows up to claim_next_chunk
     assert await crud.claim_next_chunk() is None
 
 

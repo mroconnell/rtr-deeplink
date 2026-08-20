@@ -2911,6 +2911,23 @@ PRIORITY_MEDIUM = 10  # every real user-submitted request today
 STALE_CLAIM_AFTER = timedelta(minutes=5)
 MAX_CONSECUTIVE_CHUNK_FAILURES = 3
 
+# Escalating-backoff retry for a real user-submitted (PRIORITY_MEDIUM+) job
+# that's exhausted MAX_CONSECUTIVE_CHUNK_FAILURES -- added 2026-08-19 after
+# a real case (job 256, Redwood City CA, requested by an early user)
+# failed on a single ffmpeg timeout and a later manual re-run of the exact
+# same source succeeded outright, confirming the source wasn't genuinely
+# broken. A PRIORITY_LOW auto-generated job deliberately does NOT use
+# this -- it keeps the older immediate-"failed" behavior, since it already
+# has its own separate page-level escalating cooldown
+# (AUTO_TRANSCRIPTION_BASE_COOLDOWN) that re-tries the page later anyway;
+# duplicating both mechanisms on the same job would just double-count the
+# backoff. Doubling per retry, same shape as that cooldown, scaled to
+# hours instead of days since a stalled *specific request* someone is
+# waiting on deserves a much faster second look than idle backlog work.
+MAX_JOB_RETRIES = 3
+JOB_RETRY_BASE_DELAY = timedelta(hours=1)
+JOB_RETRY_MAX_DELAY = timedelta(hours=6)
+
 # Escalating backoff for auto-generated transcription jobs (worker/main.py's
 # idle-time candidate search) -- decided 2026-08-09 over a flat cooldown or
 # a hard give-up-forever cap: each consecutive failure for the same page
@@ -3063,6 +3080,11 @@ async def create_transcription_job(
 
         not_expired_pending = or_(
             TranscriptionJob.status.in_(SPENDING_JOB_STATUSES),
+            # A job waiting out its retry backoff is still "this page has
+            # an active request in flight" -- a fresh submit during that
+            # window should find the existing job, not start a second one
+            # racing it once the retry fires.
+            TranscriptionJob.status == "retry_scheduled",
             and_(
                 TranscriptionJob.status == "pending_confirmation",
                 TranscriptionJob.created_at
@@ -3308,40 +3330,54 @@ async def claim_next_chunk() -> Optional[dict]:
     """Atomically claims the oldest queued/in_progress job with no live
     claim, marking it in_progress and stamping claimed_at so a second
     concurrent caller won't also pick it up. The staleness window
-    (STALE_CLAIM_AFTER) exists for a crashed/restarted worker process, not
-    a multi-worker race -- only one worker process is planned (see the
-    plan this was built from), so this is a safety net, not load-bearing
-    concurrency control. Returns everything the worker needs to process
-    one chunk, or None if nothing's claimable right now.
+    (STALE_CLAIM_AFTER) exists for a crashed/restarted worker process.
+
+    Genuine multi-worker concurrency (several worker processes/replicas
+    calling this at once, to use more than one CPU -- see BACKLOG.md's
+    "Render worker plan sizing" follow-up) is now real, not hypothetical,
+    so the SELECT below takes `FOR UPDATE SKIP LOCKED` on Postgres: two
+    concurrent transactions each lock the row they're about to claim, so
+    neither can select a row the other is mid-claim on, and SKIP LOCKED
+    means a caller that would've collided just falls through to the next
+    candidate instead of blocking on the lock. Without this, the previous
+    plain SELECT-then-UPDATE had a real TOCTOU window where two processes
+    could both read the same row before either committed. Same dialect
+    gate as _fts_available() -- SQLite (dev/CI) doesn't support SKIP
+    LOCKED, and doesn't need to: nothing there runs more than one process
+    against the same DB file.
     """
     now = datetime.now(timezone.utc)
     stale_before = now - STALE_CLAIM_AFTER
 
     async with async_session() as session:
-        job = (
-            (
-                await session.execute(
-                    select(TranscriptionJob)
-                    .where(
-                        TranscriptionJob.status.in_(("queued", "in_progress")),
-                        (TranscriptionJob.claimed_at.is_(None))
-                        | (TranscriptionJob.claimed_at < stale_before),
-                    )
-                    .order_by(
-                        TranscriptionJob.priority.desc(),
-                        TranscriptionJob.created_at.asc(),
-                    )
-                    .limit(1)
-                )
+        stmt = (
+            select(TranscriptionJob)
+            .where(
+                or_(
+                    TranscriptionJob.status.in_(("queued", "in_progress")),
+                    and_(
+                        TranscriptionJob.status == "retry_scheduled",
+                        TranscriptionJob.next_retry_at <= now,
+                    ),
+                ),
+                (TranscriptionJob.claimed_at.is_(None))
+                | (TranscriptionJob.claimed_at < stale_before),
             )
-            .scalars()
-            .first()
+            .order_by(
+                TranscriptionJob.priority.desc(),
+                TranscriptionJob.created_at.asc(),
+            )
+            .limit(1)
         )
+        if session.bind.dialect.name == "postgresql":
+            stmt = stmt.with_for_update(skip_locked=True)
+        job = (await session.execute(stmt)).scalars().first()
         if job is None:
             return None
 
         job.status = "in_progress"
         job.claimed_at = now
+        job.next_retry_at = None
         page = await session.get(MeetingPage, job.meeting_page_id)
         await session.commit()
 
@@ -3372,15 +3408,31 @@ async def report_chunk_result(
     shifted_segments: Optional[list] = None,
     drop_previous_tail: int = 0,
     error: Optional[str] = None,
+    chunk_index: Optional[int] = None,
 ) -> dict:
     """Called by the worker after attempting one chunk. On success, appends
     already-offset segments and advances progress; if that was the last
     chunk, finalizes the job (writes the TranscriptVersion, promotes it,
     caller -- archive/main.py -- sends the completion email afterward using
     this function's returned `completed`/`transcript_version_id`). On
-    failure, counts toward MAX_CONSECUTIVE_CHUNK_FAILURES before giving up
-    on the whole job -- a single flaky chunk (transient network blip)
+    failure, counts toward MAX_CONSECUTIVE_CHUNK_FAILURES before doing
+    anything further -- a single flaky chunk (transient network blip)
     shouldn't fail an otherwise-fine multi-hour job.
+
+    Once that budget's exhausted, a real user-priority job (priority >=
+    PRIORITY_MEDIUM) with retries left gets rescheduled (status
+    "retry_scheduled", see MAX_JOB_RETRIES/JOB_RETRY_BASE_DELAY's own
+    comment) rather than failed outright -- added 2026-08-19 after a real
+    case where the exact same source succeeded on a later manual re-run,
+    meaning the original failure wasn't the source being genuinely broken.
+    A PRIORITY_LOW auto-generated job, or a user job that's used up its
+    retries, still goes straight to "failed" -- the terminal outcome
+    worker/main.py's failure email (now actually reachable, see that
+    module's own note) fires on.
+
+    `chunk_index` (optional, for the failure_history entry only -- callers
+    written before 2026-08-19 that omit it still work, just with a null
+    chunk_index in that one history entry).
 
     `drop_previous_tail` (default 0, a pure no-op -- existing callers/tests
     are unaffected): the caller (worker/main.py) has already compared this
@@ -3403,12 +3455,37 @@ async def report_chunk_result(
         if not success:
             job.consecutive_chunk_failures += 1
             job.error_message = error
+            job.failure_history = [
+                *job.failure_history,
+                {
+                    "chunk_index": chunk_index,
+                    "error": error,
+                    "at": datetime.now(timezone.utc).isoformat(),
+                },
+            ]
             if job.consecutive_chunk_failures >= MAX_CONSECUTIVE_CHUNK_FAILURES:
-                job.status = "failed"
+                if (
+                    job.priority >= PRIORITY_MEDIUM
+                    and job.retry_count < MAX_JOB_RETRIES
+                ):
+                    job.retry_count += 1
+                    delay = min(
+                        JOB_RETRY_BASE_DELAY * (2 ** (job.retry_count - 1)),
+                        JOB_RETRY_MAX_DELAY,
+                    )
+                    job.status = "retry_scheduled"
+                    job.next_retry_at = datetime.now(timezone.utc) + delay
+                    job.consecutive_chunk_failures = 0  # fresh budget for the retry
+                else:
+                    job.status = "failed"
             await session.commit()
             return {
                 "status": job.status,
                 "consecutive_chunk_failures": job.consecutive_chunk_failures,
+                "retry_count": job.retry_count,
+                "next_retry_at": job.next_retry_at.isoformat()
+                if job.next_retry_at
+                else None,
             }
 
         job.consecutive_chunk_failures = 0
@@ -3488,6 +3565,14 @@ def _job_dict(job: TranscriptionJob, page: Optional[MeetingPage]) -> dict:
         # empty -- the data already exists on the model (set in
         # report_chunk_result() above), it just never got surfaced here.
         "transcript_version_id": job.transcript_version_id,
+        # Added 2026-08-19 for worker/main.py's admin failure alert (see
+        # email.send_admin_job_failure_alert()) -- source_url is the
+        # original government meeting URL, distinct from meeting_page_slug
+        # (this app's own /m/ page).
+        "source_url": page.source_url_normalized if page else None,
+        "retry_count": job.retry_count,
+        "failure_history": job.failure_history,
+        "created_at": job.created_at.isoformat() if job.created_at else None,
     }
 
 

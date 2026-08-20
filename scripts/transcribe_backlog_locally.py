@@ -519,7 +519,7 @@ async def transcribe_meeting(
             start = chunk_start(idx, chunk_size_seconds)
             dur = chunk_duration(idx, chunk_size_seconds, duration)
             audio_path = Path(tmpdir) / f"chunk_{idx}.mp3"
-            extracted = await extract_chunk_audio(
+            extracted, extraction_error = await extract_chunk_audio(
                 result.video_url,
                 start=start,
                 duration=dur,
@@ -529,7 +529,8 @@ async def transcribe_meeting(
             if not extracted:
                 return {
                     "ok": False,
-                    "reason": f"ffmpeg extraction failed on chunk {idx + 1}/{total_chunks}",
+                    "reason": f"ffmpeg extraction failed on chunk {idx + 1}/{total_chunks}"
+                    + (f": {extraction_error}" if extraction_error else ""),
                 }
 
             raw_segments = await engine.transcribe_chunk(audio_path)

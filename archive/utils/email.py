@@ -328,6 +328,72 @@ async def send_transcription_failed_email(
     )
 
 
+async def send_admin_job_failure_alert(
+    *,
+    job_id: int,
+    requester_email: str,
+    meeting_title: str,
+    page_url: str,
+    source_url: Optional[str],
+    chunks_completed: Optional[int],
+    total_chunks: Optional[int],
+    retry_count: int,
+    error_message: Optional[str],
+    failure_history: list,
+    created_at: Optional[str],
+) -> bool:
+    """Operator-facing alert for a TranscriptionJob that gave up for good,
+    separate from send_transcription_failed_email()'s branded "sorry, try
+    again" copy above -- that email tells the requester nothing actionable
+    happened wrong, on purpose, but that also means it carries none of the
+    real diagnostics (which chunk, which error, how many retries) an
+    operator actually needs to follow up. Real gap flagged 2026-08-19: job
+    256 (a Redwood City, CA meeting, requested by a real early user) failed
+    silently -- worker/main.py's failure-email call site turned out to be
+    unreachable dead code (see that module's own note), so *neither* email
+    had ever actually gone out for a real chunk-processing failure. Sent
+    to TRANSCRIPTION_FAILURE_ALERT_EMAIL (default ryan@how-to-adu.com,
+    same "leave unset to default" convention as DAILY_REPORT_EMAIL_TO --
+    see .env.example) rather than reusing RESEND_REPLY_TO_ADDRESS, which
+    is a CC on the requester's own branded email and not meant to carry a
+    plain diagnostic dump.
+
+    Plain, scannable HTML (a <pre> block) rather than the marketing-styled
+    wrapper the requester-facing emails use -- this is read by one person
+    debugging a real failure, not a visitor.
+    """
+    to = os.environ.get("TRANSCRIPTION_FAILURE_ALERT_EMAIL", "ryan@how-to-adu.com")
+    recent_failures = (
+        "\n".join(
+            f"  chunk {entry.get('chunk_index')}: {entry.get('error')}  ({entry.get('at')})"
+            for entry in failure_history[-10:]
+        )
+        or "  (no per-chunk history recorded)"
+    )
+    report = f"""\
+job_id:            {job_id}
+status:            failed (gave up after {retry_count} retr{"y" if retry_count == 1 else "ies"})
+requester:         {requester_email}
+meeting:           {meeting_title}
+page:              {page_url}
+source_url:        {source_url or "(unknown)"}
+chunks_completed:  {chunks_completed} / {total_chunks}
+created_at:        {created_at or "(unknown)"}
+last error:        {error_message or "(none recorded)"}
+
+recent chunk failures:
+{recent_failures}
+"""
+    body_html = (
+        '<pre style="font-family:ui-monospace,Menlo,Consolas,monospace;'
+        'font-size:13px;color:#2c3e50;white-space:pre-wrap;">'
+        f"{html.escape(report)}</pre>"
+    )
+    return await _send(
+        to, f"Transcription job {job_id} failed: {meeting_title}", body_html
+    )
+
+
 def _digest_subject(groups: list) -> str:
     """Draft copy, not yet approved in marketing/LIFECYCLE_EMAILS.md --
     that doc's subject ('Somebody said "[keyword]"') was written for

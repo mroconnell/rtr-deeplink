@@ -138,6 +138,71 @@ async def test_send_transcription_failed_email_omits_cc_when_reply_to_unset(
     assert "cc" not in captured["json"]
 
 
+async def test_send_admin_job_failure_alert_defaults_to_ryan_how_to_adu(monkeypatch):
+    monkeypatch.setattr(email_module, "_api_key", lambda: "test-key")
+    monkeypatch.setenv("RESEND_FROM_ADDRESS", "Ryan <ryan@ally.redtaperecordings.com>")
+    monkeypatch.delenv("TRANSCRIPTION_FAILURE_ALERT_EMAIL", raising=False)
+
+    captured = {}
+    monkeypatch.setattr(
+        email_module.aiohttp, "ClientSession", lambda: _FakeSession(captured)
+    )
+
+    ok = await email_module.send_admin_job_failure_alert(
+        job_id=256,
+        requester_email="jlevine@hlcsmc.org",
+        meeting_title="June 8, 2026 City Council Meeting",
+        page_url="https://redtaperecordings.com/m/redwood-city",
+        source_url="https://redwoodcity-ca.granicus.com/player/clip/3690",
+        chunks_completed=1,
+        total_chunks=27,
+        retry_count=0,
+        error_message="ffmpeg extraction failed",
+        failure_history=[
+            {
+                "chunk_index": 1,
+                "error": "ffmpeg timed out",
+                "at": "2026-08-18T18:10:00+00:00",
+            }
+        ],
+        created_at="2026-08-18T18:03:48+00:00",
+    )
+    assert ok is True
+    assert captured["json"]["to"] == ["ryan@how-to-adu.com"]
+    assert "256" in captured["json"]["subject"]
+    body = captured["json"]["html"]
+    assert "jlevine@hlcsmc.org" in body
+    assert "redwoodcity-ca.granicus.com" in body
+    assert "1 / 27" in body
+    assert "ffmpeg timed out" in body
+
+
+async def test_send_admin_job_failure_alert_respects_env_override(monkeypatch):
+    monkeypatch.setattr(email_module, "_api_key", lambda: "test-key")
+    monkeypatch.setenv("RESEND_FROM_ADDRESS", "Ryan <ryan@ally.redtaperecordings.com>")
+    monkeypatch.setenv("TRANSCRIPTION_FAILURE_ALERT_EMAIL", "ops@example.com")
+
+    captured = {}
+    monkeypatch.setattr(
+        email_module.aiohttp, "ClientSession", lambda: _FakeSession(captured)
+    )
+
+    await email_module.send_admin_job_failure_alert(
+        job_id=1,
+        requester_email="r@example.com",
+        meeting_title="T",
+        page_url="https://redtaperecordings.com/m/t",
+        source_url=None,
+        chunks_completed=None,
+        total_chunks=None,
+        retry_count=0,
+        error_message=None,
+        failure_history=[],
+        created_at=None,
+    )
+    assert captured["json"]["to"] == ["ops@example.com"]
+
+
 # --- app/main.py: "Thanks" (Clerk user.created webhook) ----------------
 
 _TEST_SECRET = "whsec_C2FVsBQIhrscChlQIMV+b5sSYspob7oD"
