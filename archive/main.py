@@ -705,6 +705,30 @@ async def internal_correct_language(
     return result
 
 
+class CorrectWarningsRequest(BaseModel):
+    slug: str
+    transcript_warnings: list[str]
+    version_id: Optional[int] = None
+
+
+@app.post("/internal/transcript-version/correct-warnings")
+async def internal_correct_warnings(
+    req: CorrectWarningsRequest, authorization: Optional[str] = Header(None)
+):
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    result = await crud.correct_transcript_version_warnings(
+        slug=req.slug, warnings=req.transcript_warnings, version_id=req.version_id
+    )
+    if result is None:
+        return JSONResponse(
+            {"error": "not_found", "message": "No matching meeting page/version."},
+            status_code=404,
+        )
+    return result
+
+
 class SaveMeetingRequest(BaseModel):
     clerk_user_id: str
     slug: str
