@@ -377,7 +377,9 @@ async def internal_transcription_hallucination_candidates(
 
 
 @app.get("/internal/transcript-quality-audit")
-async def internal_transcript_quality_audit(authorization: Optional[str] = Header(None)):
+async def internal_transcript_quality_audit(
+    authorization: Optional[str] = Header(None),
+):
     """Read-only aggregate: every archived page's transcript-quality outcome
     bucket (success / garbled_transcript / non_english_transcript /
     blank_transcript / agenda_fallback / no_video -- same buckets as
