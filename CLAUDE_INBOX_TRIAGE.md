@@ -181,3 +181,112 @@ tracked Blueprint; `test-redtaperecordings` isn't in `render.yaml` at
 all. Reads like manual testing against a non-production service, not a
 real incident, but this run has no way to confirm that vs. a real bug
 surfacing only on staging — flagging rather than guessing further.
+
+## 2026-08-20
+
+Reviewed the 16 threads under `label:rtr-claude -label:rtr-claude-processed`
+(same Gmail thread-labeling quirk as the 2026-08-19 run means this list
+still mixes genuinely-new messages into partly-processed threads — handled
+the same way, by reading full thread bodies and relying on dedup rather than
+trusting the label alone). Skipped without write-up: two GitHub Actions
+"PR run failed: Test" emails, both for individual feature branches (PrimeGov
+fix #206, admin delete-by-slug endpoint), not `main` or a scheduled workflow
+— normal dev-iteration noise per Step 2's rule. Skipped as purely
+informational: a saved-search "affordable housing" digest, the
+`ryan@ally.redtaperecordings.com` daily report (6 reports run, 0 new users),
+and a "YouTube transcripts: 2 added" activity digest whose 3 failures are
+all `TranscriptsDisabled` — a known, already-documented YouTube limitation
+(see `CLAUDE.md`'s yt-dlp bullet), not a bug. Skipped as already known/
+intentional: the "free Render database expires soon" notice for
+`rtr-deeplink-staging-db` — `render.yaml`'s databases section already
+documents this exact 9/9/2026 expiration as deliberate, disposable,
+out-of-Blueprint infrastructure, not a gap to fix. Skipped as duplicates of
+already-tracked items (no new entry): another "Server failure detected on
+test-redtaperecordings" email (2026-08-19 18:17:43 UTC, "Exited with status
+3") — same already-flagged likely-test-noise pattern as the 2026-08-19
+section above, no new signal; and another "Server failure detected on
+rtr-deeplink-archive: HTTP health check failed (timed out after 5 seconds)"
+email — this is the *exact same* 2026-08-19 13:17:28 UTC occurrence already
+sitting in this file's own 2026-08-19 "Unconfirmed / open question" entry
+above, not a new one (same timestamp, same text). Repeated
+"deploy failed for rtr-deeplink-staging" emails (2026-08-19 14:07 for the
+prior day's own doc-only triage PR #195, and 2026-08-20 04:07 for PR #206)
+are folded into the first finding below rather than written up separately.
+
+Two new findings:
+
+- **Confirmed — Render account-wide build-pipeline spend limit hit $0.00,
+  causing simultaneous deploy failures across four services including
+  both production web services.** Render's own "[Important] Build failed
+  on your Render account" email (2026-08-19 20:23:32 UTC) states plainly:
+  "A deploy initiated on your Render account, My Workspace, failed because
+  your account has reached its custom build pipeline minute spend limit of
+  $0.00, ... Your build minutes will reset at the beginning of the next
+  billing cycle, 09/01/26." At the identical timestamp (20:23:32-33 UTC),
+  four separate "deploy failed" emails named `rtr-transcription-worker`,
+  `rtr-deeplink-archive` (production), `rtr-deeplink` (production), and
+  `rtr-deeplink-archive-staging` — all for the same commit, PR #199
+  ("Queue 31 confirmed CivicWeb meeting URLs..."). This is a real,
+  traceable root cause directly from Render's own text, not a guess, and
+  it names the two tracked production services in `render.yaml`
+  (`rtr-deeplink`, `rtr-deeplink-archive`) explicitly — this is not the
+  already-flagged staging/test noise pattern from the 2026-08-19 entry
+  above. **Impact**: if the limit was still at $0 today, every future push
+  to `main` would fail to deploy to production until either Ryan manually
+  raises the pipeline minute spend limit
+  (https://dashboard.render.com/settings/spend-limit) or the billing cycle
+  resets 2026-09-01 — up to ~12 days of blocked production deploys,
+  including the real `render.yaml`-driven Alembic `preDeployCommand`
+  safety net (WO-10) never running for the archive service either.
+  **Some circumstantial evidence this may have already self-resolved**:
+  the next push to `main` after this (PR #206, "Fix PrimeGov to detect
+  real Swagit/Granicus video via tenant API," commit c5fe898, attempted
+  deploy 2026-08-20 04:07:52 UTC) only produced a deploy-failed email for
+  the untracked `rtr-deeplink-staging` service — no failure email arrived
+  for `rtr-deeplink`, `rtr-deeplink-archive`, or `rtr-transcription-worker`
+  on that same push, which is what you'd expect if the account-wide limit
+  had been raised in between (an account-wide $0 limit would have failed
+  all four services again, not just staging). Not confirmed either way —
+  Render's dashboard/billing usage isn't reachable from this session, and
+  the absence of a further failure email doesn't itself prove success.
+  **Open question for Ryan**: worth a 30-second check of
+  https://dashboard.render.com/settings/spend-limit to confirm current
+  status, and to verify PR #199's and PR #206's real code changes (the
+  CivicWeb batch queue and the PrimeGov video-detection fix) are actually
+  live in production, not silently stuck on stale code since 2026-08-19
+  20:23 UTC.
+
+- **Unconfirmed — new Sentry issue (PYTHON-FASTAPI-R): a worker
+  transcription chunk failed on invalid/corrupt audio data that passed
+  the existing ffmpeg-success check.** `InvalidDataError: [Errno
+  1094995529] Invalid data found when processing input:
+  '/tmp/rtr_transcribe_hwou97hq/chunk_1.mp3'`, 2026-08-19 15:57:32 UTC,
+  `server_name = srv-d9rluvqfngtc73dmrbug` (the transcription worker),
+  `handled = yes`, application log message "Job 287: transcription failed
+  for chunk 2/21 (will retry on next poll)". Traced to real code:
+  `worker/main.py`'s per-chunk loop only guards against `ffmpeg` failure
+  by checking `extract_chunk_audio()`'s return truthiness (around
+  worker/main.py:237-243, logging "ffmpeg extraction failed ... will
+  retry" when falsy) — this occurrence got past that check (extraction
+  reported success) but the resulting file was invalid when
+  `faster-whisper`/PyAV tried to decode it moments later inside
+  `transcription_engine.py`'s `_transcribe_sync()` → `av.container.core.open`,
+  landing in the broader `except Exception` at worker/main.py:250-256
+  (which logs and lets the job retry on the next poll, hence
+  `handled = yes` — no crash). Real gap: `extract_chunk_audio()` can
+  apparently produce a file it considers successful that's actually
+  truncated or corrupt (most likely an interrupted read from the source
+  media stream during ffmpeg's extraction), and nothing sanity-checks the
+  output beyond ffmpeg's own exit status. **Impact**: caught and retried
+  automatically, so not a crash or user-visible failure by itself — but
+  whether job 287's retry actually succeeded for chunk 2/21 is unconfirmed
+  from this session (no Archive/worker DB access to check job status).
+  Sentry flagged this as a brand-new issue (first occurrence of this exact
+  signature), so it may be a one-off transient blip rather than a
+  recurring pattern — can't tell from one data point. **Fix effort**: if
+  it does recur, a plausible mitigation is having `extract_chunk_audio()`
+  sanity-check its own output (non-zero size, or a quick `ffprobe`) rather
+  than trusting ffmpeg's exit code alone, so a corrupt chunk gets retried
+  immediately instead of failing over to the whisper-decode step first.
+  **Open question**: has job 287 (or this exact error signature) recurred
+  since, and did the retry for chunk 2/21 actually complete?
