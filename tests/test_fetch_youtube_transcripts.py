@@ -178,7 +178,16 @@ async def test_process_one_promotes_after_a_successful_push(monkeypatch):
         f"{base}/internal/transcript-version/promote",
     ]
     promote_body = calls[1][1]
-    assert promote_body == {"slug": "promote-test-meeting", "version_id": 42}
+    assert promote_body == {
+        "slug": "promote-test-meeting",
+        "version_id": 42,
+        # Real gap fixed 2026-08-20: dedup-by-content-hash in
+        # ingest_resolution() can reuse an existing, already-garbled-flagged
+        # version row on re-fetch, so this script always asks the promote
+        # endpoint to also clear that stale warning -- see _promote()'s
+        # docstring.
+        "clear_warnings": True,
+    }
 
 
 async def test_process_one_skips_promote_when_ingest_had_no_segments(monkeypatch):

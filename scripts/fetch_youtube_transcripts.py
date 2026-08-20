@@ -208,10 +208,21 @@ async def _promote(session: aiohttp.ClientSession, slug: str, version_id: int) -
     one is_default. A no-op (not an error) when the pushed version was
     already the default (e.g. the original "no transcript at all" case,
     where ingest_resolution() already made it the default at creation).
+
+    Passes clear_warnings=True: real gap fixed 2026-08-20 -- ingest_resolution()
+    dedupes by content hash, so when this script re-fetches the same
+    underlying caption track (via youtube-transcript-api, a different
+    library than whatever originally resolved the page), it reuses the
+    existing version row rather than creating a fresh one -- meaning any
+    stale garbled/hallucination warning on it survived promotion until
+    now, despite that being exactly the "trust this over whatever's
+    already there" case described above. See
+    manually_promote_transcript_version()'s docstring for the confirmed
+    example (nashua-2025-05-28-committee-on-infrastructure).
     """
     async with session.post(
         f"{_base_url()}/internal/transcript-version/promote",
-        json={"slug": slug, "version_id": version_id},
+        json={"slug": slug, "version_id": version_id, "clear_warnings": True},
         headers=_headers(),
         timeout=INGEST_TIMEOUT,
     ) as response:
