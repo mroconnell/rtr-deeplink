@@ -3938,9 +3938,7 @@ async def delete_meeting_pages_by_slug(slugs: list[str], *, dry_run: bool) -> di
             saved = (
                 (
                     await session.execute(
-                        select(SavedItem).where(
-                            SavedItem.meeting_page_id == page.id
-                        )
+                        select(SavedItem).where(SavedItem.meeting_page_id == page.id)
                     )
                 )
                 .scalars()
