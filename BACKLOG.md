@@ -32,49 +32,37 @@ calls, or at minimum a `CLAUDE.md` note warning worktree sessions to
 always set `DATABASE_URL` explicitly before running either service
 locally.
 
-## [HIGH PRIORITY] Jurisdiction misattribution: same-name-different-state/county collisions, likely in `jurisdiction_enrich.py`
+## Tulare County/Visalia jurisdiction misattribution — not confirmed fixed, no known real hosting domain found
 
-Found repeatedly during this session's government-first platform discovery
-work (see `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`) —
-**4 confirmed instances across 3 different platform adapters**, meaning
-this is very unlikely to be one adapter's bug and much more likely rooted
-in the shared `app/utils/jurisdiction_enrich.py` (name→state/county
-lookup tables, `lookup_county_state()`/`lookup_city_state()`/
-`resolve_state()`/`finalize_jurisdiction()` — used by every adapter, not
-platform-specific logic):
+Residual gap from BACKLOG_DONE.md's "Jurisdiction misattribution" entry
+(2026-08-19): of 4 real confirmed jurisdiction-misattribution instances
+investigated that session, 3 were root-caused and fixed (Douglas MI/"The
+Village, OK", Courtenay BC/Burlington, Victorville/San Bernardino
+County), but "Tulare County misattributed to Visalia" (Visalia is Tulare
+County's real, correct county seat) was not.
 
-- **Douglas, MI misattributed to "City of The Village, OK"** — a real
-  place-name collision (multiple "Douglas"/"The Village"-shaped names
-  across states) resolved to the wrong one.
-- **Courtenay (BC) misattributed to Burlington** — cross-country
-  misattribution, not even the same state/province.
-- **Tulare County misattributed to Visalia** — county-vs-city-within-that-
-  county confusion (Visalia is the Tulare County seat), a different
-  failure shape than the two above (nesting/containment, not a name
-  collision).
-- **Victorville misattributed to San Bernardino County** — same
-  city-vs-containing-county confusion as Tulare/Visalia, but inverted
-  (city collapsed into its county rather than county collapsed into a
-  city within it).
+The fix for the other two cross-jurisdiction cases
+(`extract_jurisdiction_chain()`'s new cross-check in
+`app/utils/jurisdiction_enrich.py`) only engages when the page's own URL
+carries a subdomain that independently validates against the Census
+tables — no such domain could be found for Tulare County specifically.
+Checked live 2026-08-19: `tularecounty.granicus.com`,
+`tulare.granicus.com`, and `tularecounty.civicweb.net` are all dead
+(`NotFound`/no DNS); `tularecounty.swagit.com` redirects to a 404;
+`tularecounty.legistar.com` does resolve (200) but wasn't investigated
+further. Even a plausible `tularecounty`-shaped subdomain wouldn't
+validate through the existing wordninja-based subdomain validator
+regardless of the cross-check fix — `wordninja.split("tularecounty")`
+mis-segments to `['tul', 'are', 'county']` rather than
+`['tulare', 'county']` (confirmed live), a separate, narrower dictionary
+gap in `_validated_label_extract()`.
 
-Root cause not yet investigated at the code level — these were caught by
-spot-checking `jurisdiction` values against known-real cities/platforms
-during this session's discovery work, not by reading
-`jurisdiction_enrich.py` itself. Two distinct failure shapes visible
-already: (1) same/similar-name collisions across unrelated states
-(Douglas MI/OK, Courtenay/Burlington) — likely a name-table lookup picking
-the wrong state when a name isn't unique — and (2) city/county nesting
-collapsed into the wrong level (Tulare/Visalia, Victorville/San
-Bernardino County) — likely a different bug in how `resolve_state()`/
-`finalize_jurisdiction()` handles a county-seat or a city that shares
-identifying context with its containing county. Worth checking whether
-these are actually the same root cause or two separate ones before
-attempting a fix. High priority because jurisdiction is user-facing on
-every single Archive page (wrong city/state shown to a real visitor is a
-correctness bug, not just an internal data-quality one) and because 4
-confirmed hits from incidental spot-checking (not a targeted audit)
-suggests the real rate across the ~1,000+ meetings ingested this session
-is higher than 4.
+Next step: find the real originating URL for this misattribution (check
+`tularecounty.legistar.com` first, or the original session's own
+discovery notes if recoverable) and either (a) confirm the existing
+cross-check fix already covers it once the real subdomain is known, or
+(b) if the real subdomain is `tularecounty`-shaped, first fix the
+wordninja mis-segmentation before the cross-check can engage at all.
 
 ## Stray demo-shaped tables found in `rtr_deeplink_db` during PITR test-restore verification (2026-08-17)
 

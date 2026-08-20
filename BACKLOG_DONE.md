@@ -182,6 +182,155 @@ the population most likely to have hit this (Cablecast/ChampDS/PrimeGov
 tenants) is exactly the population this session's own bulk re-ingest work
 already covers going forward.
 
+## Jurisdiction misattribution: 2 real, separate root causes found and fixed in `jurisdiction_enrich.py` (3 of 4 confirmed cases) [Done 2026-08-19]
+
+Investigated 4 real, confirmed instances of a jurisdiction being stored as
+a wrong-but-real place (Douglas, MI → "The Village, OK"; Courtenay, BC →
+Burlington; Tulare County → Visalia; Victorville → San Bernardino County),
+all found via incidental spot-checking against real archived pages, not a
+targeted audit. The original write-up guessed two failure shapes (same-name
+collision across states vs. city/county nesting) — traced the actual code
+path each case would hit rather than assuming, and found the real split is
+different from that guess: **two bugs, in two different functions**, but
+not split along the name-collision/nesting line at all.
+
+**Root cause #1 — `_trim_repair()`'s `_looks_like_bleed()` treated a
+discarded tail starting with "of" as proof of agenda-prose bleed.**
+Explains Douglas, MI only. Douglas, MI is a real Michigan *Village* (not a
+City — confirmed, Allegan County), so a page carrying its real, correct
+self-branding "The Village of Douglas, Michigan" got destructively
+repaired: `_trim_repair()` found "The Village" validates directly
+(`_table_lookup("The Village") == ("place", ["OK"])` — a real, unrelated
+Oklahoma City suburb literally named "The Village"), and its own bleed
+check saw the discarded tail "of Douglas, Michigan" start with a
+lowercase word ("of") and treated that as agenda-prose evidence. But "of"
+is never ordinary prose in this module's own vocabulary — it's the one
+structural connector every OTHER jurisdiction-naming mechanism in this
+file already keys off of (`_LEADING_TYPE_RE`, `_split_entity_prefix()`,
+`_STOPRULE_TRIGGER_RE`, `_CHAIN_TAG_JURISDICTION_RE` all treat "\<Type\> of
+\<Name\>" as a real naming pattern, never text to discard). Reproduced
+directly against the real code before touching anything:
+`finalize_jurisdiction("The Village of Douglas, Michigan")` returned
+`jurisdiction='The Village, OK', confidence='repaired'` on the
+pre-fix code.
+
+**Fixed**: `_looks_like_bleed()` now returns `False` immediately when the
+tail's first word (punctuation-stripped) is exactly "of" — matching the
+same conservative "give up rather than mangle it" behavior this function
+already uses for a literal match with a non-bleed tail elsewhere (the
+East Bay/Richmond Hill cases). Kept deliberately narrow (only "of", not
+also "the"/"and") since only one real case grounds it. Verified:
+`finalize_jurisdiction("The Village of Douglas, Michigan")` now returns
+the name unchanged, confidence "unverified" (correctly declining to guess
+rather than mangling it into a different real place).
+
+**Root cause #2 — `extract_jurisdiction_chain()`'s stoprule/
+capitalization-walk tiers accept the FIRST "City/County/Town of X" match
+anywhere in page text/HTML, with no check that it's the page's own
+identity rather than an unrelated mention elsewhere** (a correspondence
+item, cross-jurisdictional reference, boilerplate). Explains
+Courtenay/Burlington and Victorville/San Bernardino County — neither has
+any token overlap with its wrong value, so no single-string trim (root
+cause #1) could produce either; this is a genuinely separate bug. The
+existing "must validate against the Census tables" gate on this chain
+(built earlier for the Broward MPO/"Fort Lauderdale That'S Identified"
+false positive, see this file's own 2026-08-15 entry) only catches a
+candidate that's outright garbage — it does nothing when the wrong
+candidate is a clean, validating, REAL place, which is the common case
+for an unrelated correspondence/cross-reference mention. Reproduced
+synthetically against the real code (a Courtenay eScribe page whose text
+mentions "City of Burlington" in an unrelated correspondence item, and a
+Victorville Granicus page whose text mentions "County of San Bernardino"
+before "City of Victorville") — both wrongly returned the unrelated
+place, pre-fix.
+
+**Fixed**: `extract_jurisdiction_chain()` now computes a validated
+subdomain-derived hint up front (`_validated_subdomain_extract(url)` —
+the same trustworthy identity signal its own tier-3 fallback already
+relies on) and cross-checks every stoprule/capitalization-walk candidate
+against it via a new `_base_name_key()` helper (state suffix + type-word
+formatting stripped, so "City of Hercules, CA" and "Hercules" compare
+equal). A text-mined candidate that disagrees with an available,
+unambiguous subdomain hint is discarded rather than accepted, falling
+through to the next tier — ultimately reaching the subdomain tier's own
+correct answer instead of a coincidentally-validating wrong one. A
+candidate that AGREES with the hint (the overwhelming majority of real
+pages, e.g. hercules.granicus.com's own "City of Hercules" text) is
+unaffected, and so is any page with no validating subdomain hint at all
+(most Swagit/CivicClerk/generic_fallback pages) — this is why the fix
+doesn't touch the tournament-tuned recall (361/649, 326/649) for those.
+One prerequisite fix was needed to make the cross-check work for eScribe
+specifically: the generic `_validated_label_extract()` didn't know
+eScribe's own real "pub-{city}" subdomain convention (only
+`EscribeAssetFinder._jurisdiction_from_subdomain()`'s dedicated regex
+did), so `_validated_subdomain_extract("pub-courtenay.escribemeetings.com")`
+returned `None` even though "Courtenay" is a real, valid place — added
+"pub" to the same leading-connector-strip list that already handles
+"city"/"county"/"town"/"of".
+
+Verified live 2026-08-19: fetched a real Courtenay eScribe meeting page
+directly (`pub-courtenay.escribemeetings.com`) to check for the real
+originating text — it turned out to carry no "City/County of X" phrase at
+all (just a bare venue address, "CVRD Civic Room, 770 Harmston Ave,
+Courtenay"), so the exact real page that produced the historical
+misattribution couldn't be recovered this session. The regression tests
+for both Courtenay and Victorville therefore use synthetic page text
+(clearly commented as such), but every place name and domain involved is
+real and independently confirmed live: `pub-courtenay.escribemeetings.com`
+and `victorville.granicus.com` are both real, live tenants (the latter
+already queued in `scripts/granicus_auto_transcription_queue.txt`), and
+"Burlington"/"San Bernardino County" are both real, validating places a
+real page could plausibly mention.
+
+**Tulare County/Visalia (the 4th case) — NOT confirmed fixed.** No real,
+live, validating subdomain for Tulare County's own meeting hosting could
+be found: `tularecounty.granicus.com`, `tulare.granicus.com`,
+`tularecounty.civicweb.net`, and `tularecounty.swagit.com` were all
+checked live 2026-08-19 and are either dead (`NotFound`/`404`) or
+generic-error responses, not confirmed real Tulare County tenants
+(`tularecounty.legistar.com` did resolve 200, unconfirmed further this
+session). Since root cause #2's cross-check fix only engages when a
+validating subdomain hint exists to compare against, and no such hint
+could be confirmed for this specific pairing, this case is left open —
+see the narrower BACKLOG.md entry filed for it. A secondary, real finding
+along the way: even a plausible `tularecounty`-shaped subdomain wouldn't
+validate through the existing `_validated_label_extract()` wordninja
+tier regardless — `wordninja.split("tularecounty")` mis-segments to
+`['tul', 'are', 'county']` rather than `['tulare', 'county']` (confirmed
+live), a separate, narrower dictionary gap, not addressed here.
+
+**Regression tests added** to `tests/test_jurisdiction_enrich.py`: direct
+Douglas MI/"The Village" repro (with and without a leading "The"), a
+direct `_looks_like_bleed()` unit test for the "of"-tail exception, real
+Courtenay/Burlington and Victorville/San Bernardino County
+`extract_jurisdiction_chain()` repros, a control confirming an agreeing
+candidate (Hercules) is unaffected, a control confirming a page with no
+subdomain hint at all (Oklahoma City) is unaffected, a `_base_name_key()`
+unit test, and an honestly-labeled Tulare/Visalia residual-gap test
+documenting exactly what's still unconfirmed and why. Full suite: 1036
+passed (up from 1028), 15 pre-existing skips, no regressions — verified
+both the jurisdiction-specific files (145 passed) and the full repo suite.
+
+**Backfill mechanism, checked not updated**: neither existing mechanism
+retroactively fixes already-archived rows carrying one of these wrong
+values, and neither needed code changes for that reason (they operate at
+a different layer than either bug). `GET /internal/jurisdiction/
+bleed-backfill-candidates` + `POST /internal/jurisdiction/backfill-apply`
+(`archive/db/crud.py`) only re-run `finalize_jurisdiction()` against the
+*already-stored* jurisdiction text — for root cause #1, that stored text
+IS the already-wrong repaired value ("The Village, OK"), so re-validating
+it just confirms it's "validated" (a real OK place) and changes nothing;
+for root cause #2, the bug lives further upstream in the adapter's own
+`extract_jurisdiction_chain()` call at resolve time, which this backfill
+never re-runs at all. The mechanism that WOULD actually fix an
+already-archived bad row is `app/main.py`'s `_recheck_archived_page()`
+(`/admin/recheck-archive-page`, and `scripts/backfill_archived_pages.py`'s
+corpus-wide sweep) — it does a full live re-resolve, re-fetching the real
+page and re-running the adapter's own extraction from scratch, so it
+picks up both of today's fixes automatically without needing any changes
+of its own. No backfill/recheck was run against production this session
+— left for the primary session to decide whether/when to run it.
+
 ## Salvaged tier-1/tier-2 finds ingested; TelVue "ECTV" jurisdiction guess corrected from Scranton, PA to Everett, MA [Done 2026-08-18]
 
 Prompted by checking whether any real, content-confirmed tier-1/tier-2
