@@ -3048,7 +3048,7 @@ async def promote_transcript_version(session, page_id: int, version_id: int) -> 
 
 
 async def manually_promote_transcript_version(
-    *, slug: str, version_id: int
+    *, slug: str, version_id: int, clear_warnings: bool = False
 ) -> Optional[dict]:
     """Admin action: make `version_id` this page's default TranscriptVersion.
     Real gap this closes -- found 2026-08-12 fixing a real stale ALL-CAPS
@@ -3061,6 +3061,21 @@ async def manually_promote_transcript_version(
     path to become the default at all without this. Standalone
     session/commit, same "always a top-level admin action" reasoning as
     `correct_transcript_version_language()` right below.
+
+    `clear_warnings=True` also resets the *promoted* version's own
+    `transcript_warnings` to `[]`. Real gap this closes -- found 2026-08-20
+    investigating why several YouTube pages (e.g.
+    nashua-2025-05-28-committee-on-infrastructure) stayed permanently
+    flagged `garbled_transcript` despite scripts/fetch_youtube_transcripts.py
+    successfully re-fetching and promoting them every day: `ingest_resolution()`
+    dedupes by content hash, so a re-fetch of the same underlying caption
+    track (via a different library than the original resolve) reuses the
+    existing, already-garbled-flagged version row instead of creating a
+    fresh one -- promoting it alone never cleared that stale flag, even
+    though the caller's whole point in promoting was "trust this over
+    whatever's already there." Never touches the *demoted* version's
+    warnings -- same "never destroys history" spirit as the rest of this
+    function; only the version now being vouched for gets its flag reset.
     """
     async with async_session() as session:
         page = (
@@ -3076,6 +3091,8 @@ async def manually_promote_transcript_version(
             return None
 
         await promote_transcript_version(session, page.id, version_id)
+        if clear_warnings:
+            version.transcript_warnings = []
         await session.commit()
         return {"slug": slug, "promoted_version_id": version_id}
 

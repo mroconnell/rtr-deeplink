@@ -648,6 +648,17 @@ async def internal_transcription_status(
 class PromoteVersionRequest(BaseModel):
     slug: str
     version_id: int
+    # Opt-in only -- a caller re-pushing content it fetched independently
+    # (e.g. scripts/fetch_youtube_transcripts.py re-fetching via a
+    # different library than the original resolve) can assert that this
+    # promotion should also clear any stale garbled/hallucination warning
+    # already on the version, since dedup-by-content-hash in
+    # ingest_resolution() reuses the existing version row -- and its old
+    # warnings -- rather than creating a fresh one. Left False by default
+    # so scripts/transcribe_backlog_locally.py's own opt-in --promote for
+    # human-reviewed Whisper re-transcriptions is unaffected: a human
+    # promoting a version doesn't mean its hallucination flag was wrong.
+    clear_warnings: bool = False
 
 
 @app.post("/internal/transcript-version/promote")
@@ -658,7 +669,9 @@ async def internal_promote_version(
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
     result = await crud.manually_promote_transcript_version(
-        slug=req.slug, version_id=req.version_id
+        slug=req.slug,
+        version_id=req.version_id,
+        clear_warnings=req.clear_warnings,
     )
     if result is None:
         return JSONResponse(
