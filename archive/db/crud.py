@@ -2326,6 +2326,50 @@ def _classify_page_outcome(
     return "success"
 
 
+async def get_transcript_quality_audit() -> dict:
+    """Aggregate page counts per outcome bucket (same buckets as
+    _classify_page_outcome above / app/db/outcomes.py's classify_outcome())
+    across EVERY archived page, not just one best-example-per-jurisdiction
+    row like get_full_jurisdiction_coverage() below returns -- for
+    answering "how many archived meetings have a low-quality/garbled/
+    non-English/missing transcript" without needing direct DATABASE_URL
+    access (same reasoning as /internal/schema-info). Reads only the same
+    cheap columns _classify_page_outcome already needs, never
+    TranscriptVersion.segments -- see MeetingPage.search_corpus's own
+    docstring on why that matters at this table's real production scale.
+    """
+    async with async_session() as session:
+        rows = (
+            await session.execute(
+                select(
+                    MeetingPage.video_url,
+                    MeetingPage.agenda_items,
+                    TranscriptVersion.content_hash,
+                    TranscriptVersion.transcript_warnings,
+                    TranscriptVersion.language,
+                ).outerjoin(
+                    TranscriptVersion,
+                    and_(
+                        TranscriptVersion.meeting_page_id == MeetingPage.id,
+                        TranscriptVersion.is_default.is_(True),
+                    ),
+                )
+            )
+        ).all()
+
+    counts: dict[str, int] = {}
+    for video_url, agenda_items, content_hash, transcript_warnings, language in rows:
+        outcome = _classify_page_outcome(
+            video_url=video_url,
+            agenda_items=agenda_items,
+            default_content_hash=content_hash,
+            default_transcript_warnings=transcript_warnings,
+            default_transcript_language=language,
+        )
+        counts[outcome] = counts.get(outcome, 0) + 1
+    return {"total_pages": len(rows), "by_outcome": counts}
+
+
 async def get_full_jurisdiction_coverage() -> list[dict]:
     """One row per distinct jurisdiction, same population as
     get_jurisdiction_coverage() above, with the full column spec from

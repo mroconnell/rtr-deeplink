@@ -376,6 +376,24 @@ async def internal_transcription_hallucination_candidates(
     return {"candidates": await crud.list_hallucination_candidate_transcript_versions()}
 
 
+@app.get("/internal/transcript-quality-audit")
+async def internal_transcript_quality_audit(authorization: Optional[str] = Header(None)):
+    """Read-only aggregate: every archived page's transcript-quality outcome
+    bucket (success / garbled_transcript / non_english_transcript /
+    blank_transcript / agenda_fallback / no_video -- same buckets as
+    /coverage's per-jurisdiction outcome column and app/db/outcomes.py's
+    classify_outcome()), counted across the whole archive rather than one
+    best example per jurisdiction. Added to answer "how many archived
+    meetings have a low-quality/garbled/non-English transcript" without
+    needing direct DATABASE_URL access (same reasoning as
+    /internal/schema-info). Never re-transcribes or modifies anything.
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    return await crud.get_transcript_quality_audit()
+
+
 @app.get("/internal/jurisdiction/bleed-backfill-candidates")
 async def internal_jurisdiction_bleed_backfill_candidates(
     authorization: Optional[str] = Header(None),
