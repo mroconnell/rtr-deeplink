@@ -97,6 +97,7 @@ CANARY_URLS: dict[str, str] = {
     "seattlechannel": "https://www.seattlechannel.org/videos?videoid=x184865",
     "slc": "https://www.slc.gov/council/march-3-2026-meeting-recap/",
     "telvue": "https://videoplayer.telvue.com/player/w9sPsSE7vna3XTN_39bs1rEXjVWF0kfP/media/1040134",
+    "townhallstreams": "https://townhallstreams.com/stream.php?location_id=94&id=75799",
     "viebit": "https://councilnyc.viebit.com/vod/?s=true&v=NYCC-250-8-1_260722-110636.mp4",
     "youtube": "https://www.youtube.com/watch?v=uNDJRR3ywVo",
 }

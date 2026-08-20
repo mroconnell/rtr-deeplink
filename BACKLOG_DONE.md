@@ -6,6 +6,100 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Town Hall Streams: new platform adapter built (`townhallstreams.py`) — 7/7 real samples resolve, jurisdiction routed through the shared validator as required [Done 2026-08-20]
+
+Built the adapter BACKLOG.md's "New platform found: townhallstreams.com"
+entry (2026-08-19/20) approved but hadn't yet built. Followed this repo's
+"test against a real URL first" rule throughout — re-fetched all 7 of
+that entry's sample URLs live (2026-08-20, in a `git worktree` isolated
+from any other session working this repo — see `CLAUDE.md`'s multi-
+session bullet) before writing any parsing code, confirming the earlier
+investigation's findings still held rather than trusting them secondhand.
+
+**What was confirmed live (2026-08-20), beyond what the original entry
+already established:**
+- The CDN's `playlist.m3u8` has NO Referer/Origin gating at all
+  (`Access-Control-Allow-Origin: *`, 200 OK with or without a browser
+  User-Agent) — unlike Granicus/Viebit, this needs no special headers or
+  iframe workaround. Played natively via the existing `video_format=
+  "m3u8"` hls.js pathway, no frontend changes needed.
+- The transcript AJAX endpoint (`get_transcriptions`) is still empty on
+  every sample — now 7/7, not the original entry's 2/2. Its client-side
+  JS (`checkTranscriptions()`) dumps a real response as a raw HTML
+  fragment via `.html(response)`, with no per-cue timestamp shape visible
+  anywhere in the code that consumes it — confirming the original entry's
+  "unconfirmed-positive, don't invent a parser" call was correct, not
+  overcautious. `_check_for_transcript()` fetches it but never attempts
+  to parse a non-empty response into segments; it surfaces a
+  `transcript_warnings` entry instead, so a real positive response
+  doesn't go unnoticed if one ever shows up (tracked as a residual gap in
+  `BACKLOG.md`, since no parser exists yet).
+
+**Jurisdiction — routed through the shared validator exactly as the
+original entry required, live-verified against all 7 real slugs through
+the actual adapter (not just the bare `jurisdiction_enrich` function in
+isolation):**
+`_extract_jurisdiction()` calls `jurisdiction_enrich.
+validated_label_extract(town_slug)` for the bare validated city name
+(mirrors `GranicusAssetFinder._humanize_subdomain()`'s already-established
+pattern), then independently `wordninja.split()`s the same slug to check
+whether its OWN last token is a real US state abbreviation — real vendor-
+embedded data, not a guess, and the one signal `validated_label_extract()`
+discards once it's used internally to strip the name. Falls back to
+`resolve_state()`'s Census-unambiguous-name lookup when the slug carries
+no state token at all. Confirmed live, through `resolve_via_platform()`
+end to end (not the jurisdiction function alone):
+- `lisbon_me` → **Lisbon, ME** (state from the slug's own suffix)
+- `oob_maine` → **None** — correctly declines; "oob" isn't a real
+  word/name
+- `mansfield_ct` → **Mansfield, CT**
+- `newboston` → **New Boston** (no state — the slug carries none, and
+  "New Boston" is genuinely ambiguous nationally, so `resolve_state()`
+  correctly declines rather than guessing NH)
+- `hurlockmd` → **Hurlock, MD** (no underscore in the slug; `wordninja`
+  still splits the glued `md` off correctly)
+- `northgreenbush` → **North Greenbush** (no state — same "genuinely
+  ambiguous, not the by-eye guess" case as New Boston)
+- `troy_nh` → **Troy, NH**
+
+Exactly the 6/7-validate-1-decline result the original BACKLOG.md entry
+predicted from testing the bare validator function alone — this run
+confirms the same result holds through the real, full adapter path
+(`detect_platform()` → `get_finder()` → `resolve()`), not just the
+narrower function call.
+
+**Video/title/date**, all derived from the video URL's own path
+(`mp4:{town_slug}/{date}_{numeric_id}_{Meeting_Title}.mp4`) since the
+page itself carries no other identifying text (confirmed: `<title>` is
+the generic "Stream Video - Town Hall Streams" on every one of the 7
+samples) — real, human-readable across all 7 (e.g. "Town Council Special
+Meeting", "Planning and Zoning Commission Meeting", "Board of
+Selectmen"); one genuine edge case left as-is rather than treated as a
+parse failure: `id 21880`'s real title is the single word "B".
+
+**Registered**: `detect_platform()` (`app/platforms/base.py`) on
+`townhallstreams.com`, `register_all_finders()`
+(`app/platforms/__init__.py`), and `scripts/adapter_canary.py`'s
+`CANARY_URLS` (the Lisbon, ME sample — richest confirmed positive
+signal, matching how every other platform's canary URL was picked).
+
+**Tests**: `tests/test_townhallstreams.py`, fixture-backed against 3 real
+fetched pages (`tests/fixtures/townhallstreams/`) — Lisbon ME (happy
+path), Old Orchard Beach ME (the `oob_maine` decline case), New Boston NH
+(the no-state-in-slug case) — plus one synthetic case (a non-empty
+transcript response, since no real positive example exists to fixture
+against) and one synthetic "video config not found" case. Added a
+`townhallstreams` row to `tests/test_base.py`'s `detect_platform`
+parametrize list. Full suite (1068 passed, 15 skipped) verified green
+before merging.
+
+**Docs updated in the same PR** (per `CLAUDE.md`'s "a PR that ships a
+feature must update every doc that named it as unbuilt" rule): added a
+"Town Hall Streams" row to README.md's "Supported platforms" table; moved
+this entry itself from `BACKLOG.md` to here, splitting the still-open
+transcript-format and enumeration-scaling gaps back out as their own live
+`BACKLOG.md` entry.
+
 ## eScribe: second real iSiLIVE page shape (`data-file_name`, ISIStandAlonePlayer.aspx) now recognized; confirmed it does NOT explain any of the 154 "genuine negative" Meeting.aspx URLs [Done 2026-08-19]
 
 `EscribeAssetFinder`'s video-player detection only ever matched
