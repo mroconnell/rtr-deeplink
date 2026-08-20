@@ -331,6 +331,124 @@ picks up both of today's fixes automatically without needing any changes
 of its own. No backfill/recheck was run against production this session
 — left for the primary session to decide whether/when to run it.
 
+## PrimeGov never detected a real video hosted on Swagit/Granicus instead of YouTube [Done 2026-08-19]
+
+`app/platforms/primegov.py` only ever looked for a YouTube embed (`var
+videoUrl = "{11-char-id}";`) — the module's own docstring already
+documented that as PrimeGov's one real video-hosting mechanism. Confirmed
+live 2026-08-19 that's wrong for a real subset of tenants: `curl
+https://cambridgema.primegov.com/api/v2/PublicPortal/ListArchivedMeetings?year=2026`
+returns real meeting objects carrying `"videoUrl":
+"https://cambridgema.v3.swagit.com/events/43940"` directly in the JSON —
+PrimeGov's own per-tenant API already knows the real video location even
+on pages whose HTML never surfaces it at all (no `var videoUrl` present).
+A saved discovery list, `~/Documents/rtr-business/research/
+primegov_swagit_granicus_undetected.txt`, had 53 real, API-confirmed-video
+meeting URLs this gap affected (e.g. `baycountyfl.primegov.com/Portal/
+Meeting?meetingTemplateId=1847` → real video at
+`https://baycountyfl.new.swagit.com/videos/371216`;
+`calabasas.primegov.com/Portal/Meeting?meetingTemplateId=355` → real video
+at `https://calabasas.granicus.com/MediaPlayer.php?event_id=1525`) — every
+one of these previously resolved as "no video found" despite a real
+recording existing.
+
+**Fix**: when the page has no YouTube id, `resolve()` now falls back to
+the tenant's own API. A page's `meetingTemplateId` query-string value
+(`PrimeGovAssetFinder._extract_meeting_template_id()`) is matched against
+`documentList[].templateId` in the tenant's
+`GET /api/v2/PublicPortal/ListArchivedMeetings?year={YYYY}` response —
+confirmed live that a matching meeting's own `videoUrl` field is the real
+answer, and that this field is sometimes protocol-relative (e.g.
+`//brookhavenga.granicus.com/MediaPlayer.php?clip_id=76`), resolved via
+`urljoin()` against the original PrimeGov page URL. Year selection
+(`_candidate_years()`) tries the year parsed from the page's own header
+text first, then the current and prior calendar year — covers the common
+case in one request — and, only if none of those match at all,
+`_fetch_archived_years()` falls back to the tenant's own
+`GetArchivedMeetingYears` list and tries whatever wasn't already covered
+(confirmed needed live: two real meetings, `liveoakcity` and `sanjoseca`,
+were both from January 2024, outside the recent-year guess). Once a real
+`swagit.com`/`granicus.com` URL is found, `detect_platform()` +
+`get_finder()` (`app/platforms/base.py`) delegate to the real adapter's
+own `resolve()` directly — same pattern as the existing YouTube
+delegation, including the same deliberate quirk: `source_url` is reset
+back to the original PrimeGov URL after delegating, not left as the
+discovered Swagit/Granicus URL, so "View original source" still points at
+the page the user actually pasted. Does *not* apply this class's own
+title/date/jurisdiction overrides (those exist specifically to correct
+YouTube's known-unreliable metadata) — Swagit/Granicus's own `resolve()`
+already extracts real metadata from their own pages, a better source.
+
+**A second real bug was caught while verifying this fix, and gated
+rather than shipped**: an initial pass delegated to Swagit for *any*
+swagit.com videoUrl regardless of URL shape, and a first concurrent
+batch test showed 47/53 resolving. Re-checking those results individually
+(sequential, not concurrent, to rule out a rate-limit artifact) surfaced
+that 5 of them — all real `/events/{id}` Swagit URLs (`cambridgema`,
+`cityofpetaluma`, `cityofsolvang`, `norwalk`, `westjordan`) — had all
+resolved to the *exact same* CDN path
+(`.../vault01/abilenetx/59d7e173-....mp4/playlist.m3u8`), which cannot be
+5 different cities' real recordings. Confirmed live via direct `curl`
+against 3 of the 5 pages independently: each one's own static HTML
+genuinely embeds that identical bogus placeholder m3u8 — a real
+`SwagitAssetFinder` bug, since that adapter was only ever built/tested
+against the `/videos/{id}` URL shape (see README.md's platform table), not
+this `/events/{id}` variant PrimeGov's API sometimes returns. Delegating
+blind would have silently shipped a wrong-but-plausible video with no
+warning — worse than an honest "no video found" — so
+`_resolve_via_tenant_video_url()` now declines to delegate specifically
+when the discovered URL is swagit.com **and** `/events/`-shaped, falling
+through to the same honest failure as every other decline in that method.
+This is a real, separate, still-open `SwagitAssetFinder` gap (`/events/{id}`
+support), split out as its own `BACKLOG.md` entry rather than fixed here.
+
+**Verified against the real 53-URL list** (dry-run only, via `python
+scripts/bulk_ingest.py <urls> --dry-run`, plus a direct sequential
+resolve-and-inspect pass — nothing was pushed to the Archive): **42/53
+now resolve a real, correct video, up from 0/53 before this fix.** The
+remaining 11 are not fixed by this change:
+- 5 (`cambridgema`, `cityofpetaluma`, `cityofsolvang`, `norwalk`,
+  `westjordan`) are the Swagit `/events/{id}` gap above — this fix
+  correctly declines rather than serving the wrong video.
+- 4 (`calabasas`, `elkgrove`, `emeryvilleca`, `nassaucountyfl`) hit a
+  separate, real `GranicusAssetFinder` gap confirmed live in the course of
+  this fix — `MediaPlayer.php?event_id=...` is a genuine third Granicus
+  URL shape (distinct from the `clip_id`/`/videos/{id}` shapes
+  `_extract_clip_id()` already recognizes) that redirects to
+  `/player/event/{id}`, which `GranicusAssetFinder` doesn't parse at all.
+  Unlike the Swagit case above, this one fails *safely* — no video URL is
+  found at all, not a wrong one — confirmed by calling
+  `GranicusAssetFinder().resolve()` directly against the same URLs with
+  the same result. This PrimeGov fix correctly finds and passes the real
+  URL through in all 4 cases; the miss is entirely inside `granicus.py`'s
+  own URL handling. Split out as its own live entry in `BACKLOG.md` rather
+  than fixed here, per this project's own "test against a real URL before
+  building an adapter" rule — it deserves its own live-testing pass across
+  `event_id`-shaped cities, not a blind patch alongside this unrelated fix.
+- 2 are genuine source-side issues, not code gaps: `torranceca`'s real
+  Granicus clip (`torrance.granicus.com/MediaPlayer.php?clip_id=14381`)
+  redirects to Granicus's own `/panes/PermissionDenied.php` even with a
+  real browser User-Agent (confirmed by calling `GranicusAssetFinder`
+  directly, independent of PrimeGov) — access-restricted at the source.
+  `ranchocucamonga`'s real Swagit URL
+  (`https://cityofrc.new.swagit.com/videos/371481`) returned a 403/404
+  inconsistently across repeated live checks — a transient block/rate
+  limit on Swagit's own site, not a resolution bug (the API-reported URL
+  itself, confirmed via `curl`, matches the research file's independently
+  confirmed finding exactly).
+
+Added `tests/test_primegov.py` regression coverage for the new delegation
+path (Swagit and Granicus, both directions of the year-fallback logic,
+the `/events/{id}` decline, the "no meetingTemplateId at all" no-op case,
+and the "genuinely no match anywhere" honest-failure case) — the real
+JSON API response shapes used are trimmed captures of the actual live
+`baycountyfl`/`brookhavenga`/`cambridgema` responses fetched during this
+session, not invented field structures; the Swagit/Granicus page HTML
+each test delegates to is synthetic, same convention
+`tests/test_swagit.py`/`tests/test_granicus.py` already use for their own
+minimal fixtures. Full suite (`pytest`) passes with no regressions (1037
+passed, 15 skipped — the skips are pre-existing and unrelated).
+
 ## Salvaged tier-1/tier-2 finds ingested; TelVue "ECTV" jurisdiction guess corrected from Scranton, PA to Everett, MA [Done 2026-08-18]
 
 Prompted by checking whether any real, content-confirmed tier-1/tier-2
