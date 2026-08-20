@@ -213,6 +213,13 @@ def detect_platform(url: str) -> str:
         # see hyland.py's own module docstring for the rest of the
         # investigation.
         return "hyland"
+    if "townhallstreams.com" in netloc:
+        # A small, real, multi-town government video vendor -- confirmed
+        # live 2026-08-19/20 across 7 real towns, found by accident (not
+        # this repo's usual enumeration methods) -- see
+        # townhallstreams.py's own module docstring and BACKLOG.md for the
+        # investigation.
+        return "townhallstreams"
     return "unknown"
 
 

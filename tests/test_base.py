@@ -33,6 +33,10 @@ from app.platforms.base import (
         # scoped to the "-meeting-recap" path pattern only, not the whole
         # domain.
         ("https://www.slc.gov/council/agendas/", "unknown"),
+        (
+            "https://townhallstreams.com/stream.php?location_id=94&id=75799",
+            "townhallstreams",
+        ),
         ("https://example.com/some/random/page", "unknown"),
     ],
 )

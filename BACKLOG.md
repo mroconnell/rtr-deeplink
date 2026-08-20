@@ -142,89 +142,29 @@ cross-check fix already covers it once the real subdomain is known, or
 (b) if the real subdomain is `tularecounty`-shaped, first fix the
 wordninja mis-segmentation before the cross-check can engage at all.
 
-## New platform found: townhallstreams.com — real, live, multi-town video vendor; adapter approved but not yet built (2026-08-19/20)
+## Town Hall Streams: real transcript endpoint still unconfirmed-positive; 88-id Wayback population not yet ingested (2026-08-20)
 
-**Found by accident, not by any of this repo's usual discovery methods.**
-The user manually navigated a real Maine town's ClerkBase page
-(`clerkshq.com/Lisbon-ME`) looking for video, didn't find it there, and
-separately supplied two real `townhallstreams.com` URLs for the same
-town found some other way — confirmed live the ClerkBase page itself has
-zero reference to `townhallstreams` anywhere in its HTML, so this isn't
-a cross-link discoverable from an existing supported platform. Full
-investigation detail and methodology lives in
-`~/Documents/rtr-business/research/ENUMERATION_METHODS.md`'s §12; this
-entry is the actionable summary for building the adapter itself.
+Residual gaps left behind by the townhallstreams.com adapter build (see
+`BACKLOG_DONE.md`'s "Town Hall Streams: new platform adapter built" entry
+for the full investigation and what was actually shipped).
 
-**What it is:** a small, real, live, multi-town government video vendor.
-One meeting per `stream.php?location_id={town}&id={meeting}` URL. Real
-HLS video via a `jwplayer(...).setup({file: "..."})` call embedded
-directly in the page:
-```
-https://cdn.townhallstreams.com/vod/_definst_/mp4:{town_slug}/{date}_{numeric_id}_{Meeting_Title}.mp4/playlist.m3u8
-```
-The video filename itself is a rich, structured metadata source — date,
-an internal numeric id, and the meeting title (underscore-separated,
-human-readable once split) — very likely a better title/date source
-than anything else on the page, which otherwise carries no
-jurisdiction-identifying text at all (just the vendor's own generic
-marketing chrome, confirmed via direct fetch).
-
-A real captions/transcript AJAX endpoint exists in every page's own JS
-(`stream.php?full=1&location_id={X}&id={Y}&action=get_transcriptions`,
-plain GET, no auth) but returned empty on every meeting checked so far
-(2 real Lisbon, ME meetings) — the page's own JS treats an empty
-response as the normal "not captioned yet" case, not an error. Per this
-repo's own "don't claim a data path works without a positive example"
-convention (`CLAUDE.md`), treat this as a real but **unconfirmed-
-positive** path — build support for it, but don't assume it will ever
-return content until a real populated response is found.
-
-**Enumeration:** `location_id` looks sequential per town. A Wayback CDX
-scan (`url=townhallstreams.com/stream.php*`) surfaced 88 distinct
-`location_id` values (range 28–175) across its crawl history — a real,
-cheap starting population for scaling past the 7 confirmed samples once
-the adapter exists, same CDX-domain-scan method already used
-successfully for every other platform in this repo (see
-`ENUMERATION_METHODS.md`).
-
-**Jurisdiction — a real trap already caught once, must not repeat it.**
-The only jurisdiction signal anywhere is the `{town_slug}` segment of
-the video file path (e.g. `mansfield_ct`, `troy_nh`, `newboston`,
-`oob_maine`). Manually decoding 7 of these by eye got all 7 "right" by
-luck/general knowledge, but 2 (`newboston` → "New Boston, NH",
-`northgreenbush` → "North Greenbush, NY") had **zero state information
-in the slug at all** — the state was supplied entirely from the person
-doing the lookup recognizing a real town name, not from the data.
-Live-tested this repo's own `jurisdiction_enrich.validated_label_extract()`
-against all 7 raw slugs directly: it validates 6/7 correctly (including
-both no-state-in-slug cases, via its existing wordninja-split-then-
-Census-validate pipeline) and correctly **declines** `oob_maine` (the
-"oob" abbreviation isn't a real word/name, so it won't validate) —
-exactly the case a human guess got right only by outside knowledge the
-validator has no way to check. **The adapter must route jurisdiction
-through that shared, validated function — never a by-eye slug decode**
-— this is precisely the class of bug this same session's "jurisdiction
-misattribution" fix (see `BACKLOG_DONE.md`) was built to prevent, and it
-would be a real regression to reintroduce it here on day one of a new
-adapter.
-
-**7 real, live-confirmed sample URLs** (re-verify live before building,
-per this project's "test against a real URL first" rule — these were
-confirmed live as of 2026-08-19/20, not guaranteed still up):
-1. Lisbon, ME — `townhallstreams.com/stream.php?location_id=94&id=75799`
-2. Old Orchard Beach, ME — `...?location_id=47&id=21880`
-3. Mansfield, CT — `...?location_id=69&id=26034`
-4. New Boston, NH — `...?location_id=108&id=35970`
-5. Hurlock, MD — `...?location_id=116&id=36006`
-6. North Greenbush, NY — `...?location_id=124&id=44331`
-7. Troy, NH — `...?location_id=169&id=67490`
-
-**Status:** user has explicitly approved building a real adapter for
-this platform. Not yet started — no adapter file, no `detect_platform()`
-entry in `app/platforms/base.py`, no fixture tests exist yet. Follow
-this repo's established "build, hand a small sample back to the user to
-spot-check, iterate" workflow (used successfully for every other
-platform this session) rather than building the full thing in one pass.
+- **Transcript AJAX endpoint still empty on every real sample checked** —
+  now 7/7, not 2/2 (all 7 of BACKLOG_DONE's sample URLs re-checked live
+  2026-08-20). `townhallstreams.py`'s `_check_for_transcript()`
+  deliberately does NOT parse a non-empty response (no confirmed format
+  exists — the page's own JS just dumps it as a raw HTML fragment via
+  `.html(response)`, no per-cue timestamp shape visible anywhere in the
+  client code) — it only surfaces a `transcript_warnings` entry so a real
+  positive example doesn't go unnoticed if one ever appears. No actual
+  parser exists yet; build one once a real positive response is found.
+- **Enumeration not yet done.** A Wayback CDX scan already surfaced 88
+  distinct `location_id` values (range 28–175) as a real, cheap starting
+  population for scaling past the 7 confirmed samples (same CDX-domain-
+  scan method as every other platform, see
+  `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`'s §12) — the
+  adapter itself is done and live-tested, but nothing has actually walked
+  that population to find real meeting `id`s per town or bulk-ingested
+  them into the Archive yet.
 
 ## Stray demo-shaped tables found in `rtr_deeplink_db` during PITR test-restore verification (2026-08-17)
 
