@@ -254,7 +254,10 @@ Two new findings:
   status, and to verify PR #199's and PR #206's real code changes (the
   CivicWeb batch queue and the PrimeGov video-detection fix) are actually
   live in production, not silently stuck on stale code since 2026-08-19
-  20:23 UTC.
+  20:23 UTC. **Resolved 2026-08-20**: Ryan confirmed directly (live, this
+  same day) that he upgraded the Render account's build-pipeline spend
+  limit for more pipeline minutes — open question above answered, no
+  further action needed on this finding.
 
 - **Unconfirmed — new Sentry issue (PYTHON-FASTAPI-R): a worker
   transcription chunk failed on invalid/corrupt audio data that passed
