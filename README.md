@@ -1023,9 +1023,12 @@ announced — see `BACKLOG.md`.
 
 **Setup** (the human half — none of this can be automated):
 
-1. Create the account: for Bluesky, sign up (e.g. `rtr.bsky.social`, or
-   set a custom domain handle later); for Mastodon, pick an instance and
-   register there.
+1. Create the account: for Bluesky this is done — the real account is
+   [`redtaperecordings.bsky.social`](https://bsky.app/profile/redtaperecordings.bsky.social),
+   registered 2026-08-21 (a custom `@redtaperecordings.com` domain
+   handle can be set later without changing anything here except the
+   `BLUESKY_HANDLE` value). For Mastodon, pick an instance and register
+   there.
 2. Get credentials: Bluesky — Settings → App Passwords → create one
    (never use the real account password); Mastodon — Preferences →
    Development → New application with the `write:statuses` scope, copy

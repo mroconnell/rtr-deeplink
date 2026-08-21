@@ -16,14 +16,22 @@ network) so re-ingests/backfills/races can never double-post. But both
 network clients are exactly the kind of schema-verified-but-not-
 content-verified path this repo flags: written against the documented
 Bluesky XRPC / Mastodon `/api/v1/statuses` APIs, **zero real posts ever
-made** — no account or credentials existed at build time. Remaining
-steps, all needing Ryan: (1) create the account(s) (Bluesky app
-password / Mastodon app token — see README setup steps), (2) set the
-env vars on the Archive Render service, (3) watch the first real
-announcement land and check the link facet renders as a clickable
-permalink on Bluesky (the facet byte-offset math is the most
-plausible-but-unconfirmed part). Until then treat the clients as
-best-effort.
+made** — no account or credentials existed at build time. Step (1) is
+now done for Bluesky: Ryan registered
+[`redtaperecordings.bsky.social`](https://bsky.app/profile/redtaperecordings.bsky.social)
+2026-08-21 (not independently confirmed from the build session itself —
+`bsky.social` is egress-blocked in the Claude Code sandbox, so even the
+unauthenticated `resolveHandle` check couldn't run; that same block
+means live verification can only ever happen from the deployed Archive
+service or Ryan's own machine, never from a sandboxed session).
+Remaining steps, all needing Ryan: (2) create an app password
+(Settings → App Passwords — never the real account password) and set
+`BLUESKY_HANDLE=redtaperecordings.bsky.social` +
+`BLUESKY_APP_PASSWORD` on the Archive Render service, after this
+branch merges, (3) watch the first real announcement land and check
+the link facet renders as a clickable permalink on Bluesky (the facet
+byte-offset math is the most plausible-but-unconfirmed part). Until
+then treat the clients as best-effort.
 
 Known residual gap, deliberate v1 scope: only page *creation* can
 trigger a post. A page first created agenda-only (or with a garbled
