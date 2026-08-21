@@ -3783,6 +3783,59 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 
 ## On-demand transcription — real gaps left open
 
+- **`list_transcription_backlog_candidates()` still does a real N+1 query
+  pattern, found 2026-08-21 while building the daily-report summary
+  query.** Unlike `find_auto_transcription_candidate()` (rewritten
+  2026-08-17 to a SQL `_good_default_transcript_exists()` predicate after
+  its old Python-scan shape was confirmed the #1 consumer of production
+  DB time — see BACKLOG_DONE.md), `list_transcription_backlog_
+  candidates()` (`archive/db/crud.py`) still does `SELECT * FROM
+  meeting_pages`, then a separate `_has_good_transcript()` +
+  `_in_auto_transcription_cooldown()` DB round trip *per page* in a
+  Python loop — its own docstring already says so ("Full Python-side
+  scan over every page, same 'fine at today's scale, revisit at real
+  scale' reasoning"). Each individual query is cheap
+  (`_has_good_transcript()` only selects `content_hash`/
+  `transcript_warnings`, never `segments`), so this isn't the
+  102MB-JSON-load class of incident the search/candidate-sweep entries
+  above describe — but it's still O(n) round trips, and `GET
+  /internal/transcription-backlog` (the route built on this function)
+  now gets hit **hourly** by `scripts/bulk_queue_transcription_backlog.py`'s
+  own scheduled workflow (added the same day, see the entry below) where
+  previously only a human ran `scripts/transcribe_backlog_locally.py`
+  occasionally. Not fixed here — `crud.get_transcription_queue_summary()`
+  (added the same day, for the daily report) needed only a *count*, not
+  the full candidate list, so it reuses the fast
+  `_good_default_transcript_exists()` predicate directly rather than
+  inheriting this function's slower shape. Worth rewriting
+  `list_transcription_backlog_candidates()` the same way
+  `find_auto_transcription_candidate()` was, if hourly production load
+  ever makes this a real, measured problem (check `pg_stat_statements`
+  the same way the 2026-08-17 fix was diagnosed, don't assume).
+
+- **Worker daily activity report, added 2026-08-21.** `GET /internal/
+  send-worker-daily-report` (Archive service) emails a 24h digest
+  (chunks completed, jobs finished, segments transcribed) plus a current-
+  queue snapshot (active jobs, remaining chunks, meetings with no
+  transcript, tier-3 queue remaining) — see README.md's matching entry
+  for the full design and why it needed one new table
+  (`WorkerReportSnapshot`, a single overwritten row) rather than a Render
+  log-parsing script: `chunks_completed` has no per-chunk timestamp
+  anywhere in the schema, so a real 24h delta needs *some* stored
+  reference point, and diffing against a DB snapshot avoids introducing
+  a brand-new Render API key + log-pagination dependency this repo
+  doesn't otherwise have, for a number that's already implicit in
+  existing columns. Triggered by `.github/workflows/
+  worker-daily-report.yml`, a plain `curl` ping — same "GitHub Actions
+  never touches Resend credentials directly" pattern
+  `/admin/send-search-alerts` already established, not a new script with
+  its own copy of `RESEND_API_KEY`. **Not yet live-verified against a
+  real Resend send** (unit-tested against a mocked
+  `email_utils.send_worker_daily_report`, real DB) — worth confirming
+  the first real scheduled send actually lands before assuming this is
+  fully working end to end, same "don't claim a path works without a
+  positive example" convention as everywhere else in this file.
+
 - **Second transcription worker added for backlog catch-up, 2026-08-21 —
   residual auto-gen TOCTOU gap now recorded, not fixed at the DB layer.**
   `render.yaml` now defines a second `type: worker` service

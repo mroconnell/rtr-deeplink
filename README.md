@@ -933,6 +933,33 @@ script's own module docstring) — tied to the backlog catch-up window this
 second worker exists for, and `BACKLOG.md` for the residual auto-
 generation race this pairs with.
 
+**Daily activity report, added 2026-08-21.** `GET /internal/send-worker-
+daily-report` (Archive service, token-gated like every other
+`/internal/*` route) composes and emails a plain-text-style HTML digest —
+chunks completed, jobs finished, and (Postgres only) segments transcribed
+in the last 24 hours, plus a snapshot of what's still ahead: active jobs,
+remaining chunks in those jobs, meetings on the site with no transcript,
+and how many URLs are still sitting in the tier-3 discovery queue
+(`scripts/tier3_auto_transcription_queue.txt`, read directly off disk —
+this service's own deploy already checks out the whole repo). Triggered
+daily by `.github/workflows/worker-daily-report.yml`, which is a plain
+`curl` ping — same pattern `/admin/send-search-alerts` already
+established: GitHub Actions never touches `RESEND_API_KEY` or
+`DATABASE_URL` directly, it just pings an already-running Render service
+that already holds those credentials, rather than a new script
+duplicating them as fresh GitHub secrets.
+
+The 24h chunk-completion figure needs a real reference point to diff
+against, since `TranscriptionJob.chunks_completed` has no per-chunk
+timestamp anywhere in the schema — `WorkerReportSnapshot`
+(`archive/db/models.py`, one row, overwritten on every send) holds
+exactly that: the cumulative all-time totals as of the last report. The
+first-ever send has nothing to diff against and reports "n/a (first
+report)" for that one figure rather than a misleading number.
+`GET /internal/transcription-queue-stats` exposes the same live summary
+read-only (no snapshot advance), for anything else that wants it later
+(a dashboard, say) without needing to trigger a real email.
+
 ## Accounts (Clerk)
 
 Shipped 2026-08-11, phase 1: sign in and save meetings/searches to your

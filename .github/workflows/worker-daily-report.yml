@@ -1,0 +1,39 @@
+# Triggers the transcription-worker daily activity report (GET
+# /internal/send-worker-daily-report, archive/main.py) instead of a
+# Render Cron Job service -- same reasoning as .github/workflows/
+# daily-report.yml and send-search-alerts.yml (Render Cron Jobs have no
+# free tier), reusing the rtr-deeplink-archive service that's already
+# running/paid for and already holds the real Resend credentials. No new
+# script, no new copy of RESEND_API_KEY anywhere -- this workflow is a
+# plain curl ping, same shape as send-search-alerts.yml's own trigger
+# step.
+#
+# Requires three repo secrets (Settings -> Secrets and variables ->
+# Actions), all already set up for other workflows in this repo:
+#   ARCHIVE_BASE_URL                   -- already used by feed-tier3-transcription.yml
+#   ARCHIVE_INGEST_TOKEN                -- already used by feed-tier3-transcription.yml
+#   AUTO_TRANSCRIPTION_REQUESTER_EMAIL  -- already used by bulk-queue-transcription-backlog.yml;
+#     reused here as the report's recipient too, same "activity digest"
+#     address worker/main.py's own env var of the same name already uses
+#
+# Cron time deliberately offset from daily-report.yml (23:30 UTC) and
+# send-search-alerts.yml (23:35 UTC) so the three scheduled jobs don't
+# land in the same minute.
+name: Send worker daily report
+
+on:
+  schedule:
+    - cron: "40 23 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call /internal/send-worker-daily-report
+        run: |
+          curl --fail-with-body --silent --show-error \
+            -H "Authorization: Bearer ${{ secrets.ARCHIVE_INGEST_TOKEN }}" \
+            --get \
+            --data-urlencode "to=${{ secrets.AUTO_TRANSCRIPTION_REQUESTER_EMAIL }}" \
+            "${{ secrets.ARCHIVE_BASE_URL }}/internal/send-worker-daily-report"

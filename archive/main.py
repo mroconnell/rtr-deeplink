@@ -333,6 +333,92 @@ async def internal_transcription_backlog(
     return {"pages": await crud.list_transcription_backlog_candidates(limit=limit)}
 
 
+# Repo root -- this service's build/deploy checks out the whole repo (see
+# render.yaml's rtr-deeplink-archive buildCommand), so a plain tracked
+# file like the tier-3 queue is physically present on disk here, same as
+# every adapter module this service already imports from app/platforms.
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+_TIER3_QUEUE_FILE = _REPO_ROOT / "scripts" / "tier3_auto_transcription_queue.txt"
+
+
+def _tier3_queue_remaining() -> int:
+    """Plain line count of the tracked tier-3 discovery queue file --
+    each line is one URL still waiting to be fed into the Archive by
+    scripts/feed_tier3_auto_transcription.py (see that script's own
+    docstring). Not a DB query at all; this file lives in git, not the
+    database. Returns 0 rather than raising if the file's ever missing
+    (e.g. a stale build) -- this is one line of an ops report, not
+    something that should 500 the whole route over a missing file.
+    """
+    try:
+        return sum(
+            1 for line in _TIER3_QUEUE_FILE.read_text().splitlines() if line.strip()
+        )
+    except OSError:
+        return 0
+
+
+@app.get("/internal/transcription-queue-stats")
+async def internal_transcription_queue_stats(
+    authorization: Optional[str] = Header(None),
+):
+    """Real-time snapshot of transcription workload -- see
+    crud.get_transcription_queue_summary()'s own docstring for exactly
+    what each field means and how it's computed. Read-only, side-effect
+    free (unlike /internal/send-worker-daily-report below, which advances
+    the report snapshot) -- safe to call as often as wanted, e.g. for a
+    future dashboard, not just the daily report.
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    summary = await crud.get_transcription_queue_summary()
+    summary["tier3_queue_remaining"] = _tier3_queue_remaining()
+    return summary
+
+
+@app.get("/internal/send-worker-daily-report")
+async def internal_send_worker_daily_report(
+    to: str, authorization: Optional[str] = Header(None)
+):
+    """Composes and sends the transcription-worker daily activity report
+    (email_utils.send_worker_daily_report()), then advances the stored
+    snapshot (crud.get_and_advance_worker_report_snapshot()) so the NEXT
+    send's 24h delta is measured from this moment, not from whenever the
+    snapshot was last touched. Triggered by .github/workflows/
+    worker-daily-report.yml -- same "GitHub Actions just pings an
+    already-running Render service that already holds the real Resend
+    credentials" pattern /admin/send-search-alerts (app/main.py) already
+    established, not a new script with its own copy of RESEND_API_KEY.
+
+    `to` is a required query param rather than a fixed env var -- keeps
+    this route reusable (a different recipient without touching Render
+    config) the same way /admin/recheck-archive-page?url= takes its
+    target as a param instead of hardcoding one.
+
+    GET despite the real side effect (advancing the snapshot, sending an
+    email) -- same precedent as /admin/send-search-alerts and
+    /admin/recheck-archive-page, both of which are also side-effecting
+    GETs on this codebase's existing token-gated internal/admin surface,
+    not a REST purity violation introduced here.
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    summary = await crud.get_transcription_queue_summary()
+    summary["tier3_queue_remaining"] = _tier3_queue_remaining()
+
+    previous = await crud.get_and_advance_worker_report_snapshot(
+        cumulative_chunks_completed=summary["cumulative_chunks_completed_all_time"],
+        cumulative_jobs_completed=summary["cumulative_jobs_completed_all_time"],
+    )
+
+    sent = await email_utils.send_worker_daily_report(
+        to, summary=summary, previous=previous
+    )
+    return {"sent": sent, "summary": summary}
+
+
 @app.get("/internal/transcription/completed-multichunk")
 async def internal_transcription_completed_multichunk(
     authorization: Optional[str] = Header(None),

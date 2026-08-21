@@ -376,3 +376,38 @@ class SearchVocabulary(Base):
     __tablename__ = "search_vocabulary"
 
     word: Mapped[str] = mapped_column(String(255), primary_key=True)
+
+
+class WorkerReportSnapshot(Base):
+    """Single-row cumulative snapshot backing the worker daily activity
+    report (archive/main.py's `GET /internal/send-worker-daily-report`,
+    scripts/... none -- this route is the only writer/reader). Always
+    exactly one row (id=1 by convention, enforced by the route always
+    updating that row rather than inserting a new one) -- overwritten on
+    every report send, never appended to, so this table is a snapshot,
+    not a log.
+
+    Why this exists: `TranscriptionJob.chunks_completed` is already a
+    real, monotonically-increasing per-job counter (never decremented --
+    see `report_chunk_result()`), so `SUM(chunks_completed)` across every
+    job, ever, is a genuine all-time cumulative total with zero schema
+    change needed for that part. But there's no per-chunk timestamp
+    anywhere in this schema, so answering "how many chunks completed in
+    the last 24h" needs *some* stored reference point to diff the current
+    cumulative total against -- this table holds exactly that reference
+    point (the totals as of the last report), nothing else. Cheaper and
+    simpler than a real per-chunk event-log table for a single daily
+    number, and avoids the alternative of parsing Render's own worker
+    logs (a new external API dependency this repo doesn't otherwise have)
+    just to reconstruct a count that's already implicit in existing
+    columns.
+    """
+
+    __tablename__ = "worker_report_snapshots"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    cumulative_chunks_completed: Mapped[int] = mapped_column(Integer, nullable=False)
+    cumulative_jobs_completed: Mapped[int] = mapped_column(Integer, nullable=False)
+    recorded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
