@@ -423,18 +423,30 @@ def test_finalize_jurisdiction_domain_registry_resolves_distinct_same_name_count
     # Cook County's customer slug is "cocookmn" (Minnesota), not
     # Illinois; Frederick County's is "fcva" (Virginia), not Maryland;
     # Glendale's is "glendale-az" (Arizona), not California.
-    assert je.finalize_jurisdiction(
-        "Washington County", netloc="washingtoncounty.civicweb.net"
-    ).jurisdiction == "Washington County, OR"
-    assert je.finalize_jurisdiction(
-        "Cook County", netloc="cocookmn.civicweb.net"
-    ).jurisdiction == "Cook County, MN"
-    assert je.finalize_jurisdiction(
-        "Frederick County", netloc="fcva.granicus.com"
-    ).jurisdiction == "Frederick County, VA"
-    assert je.finalize_jurisdiction(
-        "Glendale", netloc="glendale-az.granicus.com"
-    ).jurisdiction == "Glendale, AZ"
+    assert (
+        je.finalize_jurisdiction(
+            "Washington County", netloc="washingtoncounty.civicweb.net"
+        ).jurisdiction
+        == "Washington County, OR"
+    )
+    assert (
+        je.finalize_jurisdiction(
+            "Cook County", netloc="cocookmn.civicweb.net"
+        ).jurisdiction
+        == "Cook County, MN"
+    )
+    assert (
+        je.finalize_jurisdiction(
+            "Frederick County", netloc="fcva.granicus.com"
+        ).jurisdiction
+        == "Frederick County, VA"
+    )
+    assert (
+        je.finalize_jurisdiction(
+            "Glendale", netloc="glendale-az.granicus.com"
+        ).jurisdiction
+        == "Glendale, AZ"
+    )
 
 
 def test_finalize_jurisdiction_preserves_state_suffix_through_a_repair():
