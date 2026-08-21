@@ -329,7 +329,9 @@ async def main() -> None:
         logger.error("ARCHIVE_BASE_URL is not set (check the repo's .env). Stopping.")
         sys.exit(1)
     if not os.environ.get("ARCHIVE_INGEST_TOKEN"):
-        logger.error("ARCHIVE_INGEST_TOKEN is not set (check the repo's .env). Stopping.")
+        logger.error(
+            "ARCHIVE_INGEST_TOKEN is not set (check the repo's .env). Stopping."
+        )
         sys.exit(1)
     requester_email = os.environ.get("AUTO_TRANSCRIPTION_REQUESTER_EMAIL", "")
     if not requester_email:
