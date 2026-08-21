@@ -14,7 +14,9 @@ ingests produces at most one post per network.
 bucket -- real video + real transcript, no garbled/hallucination
 warning, English-or-undetected language -- plus a minimum segment count,
 because a technically-successful 3-line caption file is not something
-worth announcing publicly. See payload_is_high_quality().
+worth announcing publicly, plus a provenance bar (nothing that came out
+of generic_fallback.py's scan-any-page path is ever announced, however
+good its transcript looks). See payload_is_high_quality().
 
 Error handling is deliberately at-most-once, not at-least-once: a
 claimed post that then fails at the network stays "failed" in the
@@ -111,7 +113,24 @@ def payload_is_high_quality(payload: dict) -> bool:
     resolve. Real meetings run hundreds-to-thousands of segments;
     SOCIAL_MIN_SEGMENTS=50 keeps out caption stubs without excluding any
     plausible real meeting.
+
+    So is the provenance bar below, added 2026-08-21 (WO-21) and the one
+    thing here that isn't about transcript quality at all. Everything
+    else on this list asks "is this content good?"; that question is
+    orthogonal to "do we actually know what this is?", and a
+    generic_fallback resolve can score perfectly on all of it -- real
+    video, thousands of clean English segments -- while nothing whatsoever
+    has verified that the page it scraped is a genuine government meeting.
+    Publishing that from the project's own accounts is a different and
+    worse failure than announcing a mediocre transcript, and it's exactly
+    the risk BACKLOG.md's "Trust & safety" section threat-models (that
+    section predates this pipeline entirely). Both halves of the check are
+    load-bearing: `platform == "unknown"` alone silently misses the
+    YouTube-delegated fallback path, which is the *most* common real
+    outcome -- see ResolvedMeeting.best_effort's own docstring.
     """
+    if payload.get("best_effort") or payload.get("platform") == "unknown":
+        return False
     if not payload.get("video_url"):
         return False
     segments = payload.get("segments") or []

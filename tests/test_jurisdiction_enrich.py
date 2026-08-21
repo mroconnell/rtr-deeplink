@@ -1235,7 +1235,7 @@ def test_base_name_key_normalizes_formatting_differences_for_comparison():
     )
 
 
-def test_tulare_county_visalia_remains_an_unconfirmed_residual_gap():
+def test_tulare_county_label_now_validates_via_trailing_county_strip():
     # The 4th BACKLOG.md case, "Tulare County misattributed to Visalia"
     # (Visalia is Tulare County's real, correct county seat) -- honestly
     # NOT confirmed fixed this session. Unlike Courtenay and Victorville
@@ -1246,14 +1246,25 @@ def test_tulare_county_visalia_remains_an_unconfirmed_residual_gap():
     # either dead or not real Tulare County tenants), so there is no
     # confirmed real URL to build a real regression test against, and
     # `extract_jurisdiction_chain()`'s cross-check fix above only engages
-    # when a validating subdomain hint exists to compare against. Even a
-    # plausible synthetic "tularecounty.granicus.com" doesn't validate:
-    # `wordninja.split("tularecounty")` mis-segments to
+    # when a validating subdomain hint exists to compare against. On top of
+    # that, a plausible synthetic "tularecounty.granicus.com" used not to
+    # validate either: `wordninja.split("tularecounty")` mis-segments to
     # ['tul','are','county'] rather than ['tulare','county'] (confirmed
-    # live), a separate, narrower wordninja dictionary gap, not something
-    # this fix addresses. Documented here, not silently dropped, so a
-    # later session with the real originating URL can pick this up --
-    # left as its own narrower BACKLOG.md entry.
+    # live), so neither the spaced ("Tul Are County") nor glued
+    # ("Tularecounty") candidate matched.
+    #
+    # That second half is now closed by `_validated_label_extract()`'s
+    # tier 4 (trailing "county" stripped, then re-attached to the GLUED
+    # remainder -- added 2026-08-21/WO-22 for the real `pitkincounty`
+    # open.media tenant): "Tulare County" validates against the real
+    # county table even though wordninja still mis-segments the label
+    # exactly as before, asserted below. The BACKLOG.md entry itself stays
+    # open -- no real, live Tulare County meeting-hosting subdomain has
+    # ever been found (tularecounty.granicus.com, tulare.granicus.com,
+    # tularecounty.civicweb.net and tularecounty.swagit.com were all
+    # checked live 2026-08-19 and are dead or not real Tulare County
+    # tenants), so this is a synthetic label test of the shared helper,
+    # not evidence the original misattribution is fixed in the wild.
     import wordninja
 
     assert wordninja.split("tularecounty") == ["tul", "are", "county"]
@@ -1261,7 +1272,7 @@ def test_tulare_county_visalia_remains_an_unconfirmed_residual_gap():
         je._validated_subdomain_extract(
             "https://tularecounty.granicus.com/player/clip/1"
         )
-        is None
+        == "Tulare County"
     )
 
 
@@ -1400,3 +1411,123 @@ def test_validated_label_extract_resolves_ontario_regional_municipalities():
     assert je.validated_label_extract("pub-peelregion") == "Peel Region"
     assert je.validated_label_extract("pub-durhamregion") == "Durham Region"
     assert je.validated_label_extract("pub-waterlooregion") == "Waterloo Region"
+
+
+# --- WO-22, 2026-08-21: the subdomain cross-check above (PR #254) turned
+# out to override an otherwise-validated jurisdiction with ANY subdomain
+# label that happens to validate, with no check that the label is
+# plausibly a place name rather than an acronym or a website word. Found
+# by running the real production bleed-backfill audit (BACKLOG.md's
+# "Bare/state-suffixed jurisdiction duplicates" entry) BEFORE its write
+# step -- both cases below are real production rows (page_id 250 and
+# 1108), reproduced verbatim here.
+
+
+def test_finalize_jurisdiction_rejects_acronym_subdomain_with_impossible_state():
+    # Real production row (page_id 250): a BART board-of-directors meeting
+    # on bart.legistar.com. "Bart" is a real Census SUBDIVISION -- a tiny
+    # township in PENNSYLVANIA -- colliding with the Bay Area transit
+    # agency's acronym, so the subdomain cross-check "repaired" an
+    # already-correct "Alameda County, CA" into "Bart, CA": a PA township
+    # welded to a CA suffix, geographically impossible on its face. The
+    # state-consistency guard rejects the override (CA isn't among
+    # _table_lookup("Bart")'s own states) and the text-derived value
+    # stands.
+    assert je._table_lookup("Bart") == ("subdivision", ["PA"])
+    result = je.finalize_jurisdiction("Alameda County, CA", netloc="bart.legistar.com")
+    assert result.jurisdiction == "Alameda County, CA"
+
+
+def test_finalize_jurisdiction_rejects_generic_website_word_subdomain():
+    # Real production row (page_id 1108): agenda.modestogov.com is
+    # Modesto, CA's own agenda host. "Agenda" is a real small town in
+    # KANSAS, so the cross-check turned a correct "Modesto, CA" into
+    # "Agenda, CA". Killed twice over now -- by _GENERIC_SUBDOMAIN_WORDS
+    # (a website word is never a jurisdiction hint) and, independently, by
+    # the same state-consistency guard as the BART case above.
+    assert je._table_lookup("agenda") == ("place", ["KS"])
+    assert je.validated_label_extract("agenda") is None
+    result = je.finalize_jurisdiction("Modesto, CA", netloc="agenda.modestogov.com")
+    assert result.jurisdiction == "Modesto, CA"
+
+
+def test_generic_subdomain_words_are_whole_label_only():
+    # Control for the stoplist: it must reject only a label that IS a
+    # generic word, never one that merely contains one. "councilbluffsia"
+    # is a real Iowa city's glued name+state slug and must keep resolving,
+    # even though "council" alone (a real Idaho city, hence the collision)
+    # is now declined.
+    assert je.validated_label_extract("council") is None
+    assert je.validated_label_extract("councilbluffsia") == "Council Bluffs"
+
+
+def test_finalize_jurisdiction_subdomain_override_survives_when_state_agrees():
+    # Real, confirmed-live control (clearwater.granicus.com clip 5244,
+    # re-verified live 2026-08-21 while investigating the two rows above):
+    # this row is the OPPOSITE case -- the subdomain override is CORRECT
+    # and must survive the new guard. The page is City of Clearwater, FL's
+    # own "Council Work Session on 2026-06-01 1:30 PM" (its agenda PDF
+    # lives at legistar2.granicus.com/clearwater/...), and the stored
+    # "City of New Port Richey, FL" came from agenda item 4.1 on that
+    # page -- an interlocal gas-franchise agreement WITH the City of New
+    # Port Richey, the only mention of that city anywhere on it. Same
+    # shape as the Peel Region/Caledon case above (a real, validating
+    # OTHER government named in this meeting's own agenda text), and FL is
+    # among Clearwater's real states, so the guard is a no-op here.
+    assert "FL" in je._table_lookup("clearwater")[1]
+    result = je.finalize_jurisdiction(
+        "City of New Port Richey, FL", netloc="clearwater.granicus.com"
+    )
+    assert result.jurisdiction == "Clearwater, FL"
+    assert result.confidence == "repaired"
+
+
+# --- WO-22, 2026-08-21: two confirmed real failing inputs to
+# `_validated_label_extract()`, both left behind by Wave 4 adapters. See
+# that function's tiers 4 and 5 for the full reasoning.
+
+
+def test_validated_label_extract_strips_trailing_state_code_from_raw_label():
+    # Real SuiteOne Media tenants (PR #263, fixtures in
+    # tests/fixtures/suiteone/): wordninja's cost minimization absorbs the
+    # trailing state letters into a non-word chunk -- "stmarysga" ->
+    # ['st','mary','sga'], "camaswa" -> ['ca','maswa'] -- so the existing
+    # trailing-code strip, which only inspects words[-1] AFTER the split,
+    # could never fire. Stripping the code off the RAW label first
+    # validates both.
+    import wordninja
+
+    assert wordninja.split("stmarysga") == ["st", "mary", "sga"]
+    assert wordninja.split("camaswa") == ["ca", "maswa"]
+    assert je.validated_label_extract("stmarysga") == "St Marys"
+    assert je.validated_label_extract("camaswa") == "Camas"
+    # The caller also needs the code that was stripped, since it can't
+    # re-derive it safely itself (see the control below).
+    assert je.validated_label_extract_with_state("stmarysga") == ("St Marys", "GA")
+    assert je.validated_label_extract_with_state("camaswa") == ("Camas", "WA")
+
+
+def test_raw_label_state_strip_is_last_resort_only():
+    # Control for the tier above: a real name that merely ENDS in
+    # state-code-shaped letters must never be split by it. "Tacoma" ends
+    # in "ma" and is emphatically not in Massachusetts; "Oakland" ends in
+    # "nd". Both validate whole at tier 1 and never reach the strip, so
+    # neither reports a stripped state.
+    assert je.validated_label_extract_with_state("tacoma") == ("Tacoma", None)
+    assert je.validated_label_extract_with_state("oakland") == ("Oakland", None)
+
+
+def test_validated_label_extract_strips_trailing_county_and_reattaches_it():
+    # Real open.media tenant (PR #265): "pitkincounty" is Pitkin County,
+    # CO -- PR #265's own writeup flagged it as the one real subdomain
+    # among all 10 known tenants this helper couldn't validate, because
+    # the connector-word strip only ever removed a LEADING "county". The
+    # type word is re-attached rather than dropped: "Pitkin" also
+    # validates on its own as a real, tiny, unrelated town INSIDE that
+    # same county, so a bare trailing strip would name the wrong
+    # government.
+    import wordninja
+
+    assert wordninja.split("pitkincounty") == ["pit", "kin", "county"]
+    assert je._table_lookup("Pitkin") == ("place", ["CO"])
+    assert je.validated_label_extract("pitkincounty") == "Pitkin County"

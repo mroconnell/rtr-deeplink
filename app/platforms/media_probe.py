@@ -116,14 +116,32 @@ async def probe_duration(media_url: str, *, source_page_url: str) -> Optional[fl
         return None
 
 
-async def _mean_volume_db(path: Path) -> Optional[float]:
+async def _mean_volume_db(path: Path) -> tuple[bool, Optional[float]]:
     """Runs ffmpeg's own `volumedetect` filter against an already-local
     file (no network involved, just decoding a small mp3 already on
-    disk) and returns its reported mean_volume in dB, or None if it
-    couldn't be parsed. Used by extract_chunk_audio() below to detect a
-    real, confirmed failure mode -- see its own docstring."""
+    disk). Returns `(decodable, mean_volume_db)`.
+
+    Two genuinely different outcomes, which this deliberately keeps
+    apart (they were conflated into a single `None` until 2026-08-21 --
+    see extract_chunk_audio()'s docstring for the real Sentry occurrence
+    that cost):
+
+    * `(False, None)` -- ffmpeg exited non-zero, i.e. it could not decode
+      the file *at all*. Since this filter graph fully decodes the file
+      and writes nothing (`-f null -`), a non-zero exit here means the
+      bytes on disk aren't playable media, full stop.
+    * `(True, x)` / `(True, None)` -- ffmpeg decoded the file fine; the
+      volume was parsed, or it wasn't (an ffmpeg version that words the
+      line differently, an unexpected stderr shape). "Decoded but
+      unparseable" must not be mistaken for corruption, hence True.
+
+    ffmpeg missing from PATH or timing out also yields `(True, None)`,
+    on purpose: neither says anything about *the file*, and reporting a
+    broken environment as a corrupt chunk would send the caller's
+    retry/failure budget after the wrong thing.
+    """
     try:
-        _returncode, _stdout, stderr = await _run(
+        returncode, _stdout, stderr = await _run(
             "ffmpeg",
             "-i",
             str(path),
@@ -134,14 +152,24 @@ async def _mean_volume_db(path: Path) -> Optional[float]:
             "-",
         )
     except (FileNotFoundError, asyncio.TimeoutError):
-        return None
+        return True, None
+
+    if returncode != 0:
+        logger.warning(
+            "ffmpeg could not decode %s (exit %s): %s",
+            path,
+            returncode,
+            stderr.decode(errors="replace")[-500:].strip(),
+        )
+        return False, None
+
     for line in stderr.decode(errors="replace").splitlines():
         if "mean_volume:" in line:
             try:
-                return float(line.split("mean_volume:")[1].strip().split(" ")[0])
+                return True, float(line.split("mean_volume:")[1].strip().split(" ")[0])
             except (IndexError, ValueError):
-                return None
-    return None
+                return True, None
+    return True, None
 
 
 # Real, confirmed threshold, not guessed: a known-good real meeting
@@ -190,6 +218,28 @@ async def extract_chunk_audio(
     TranscriptionJob.error_message regardless of *why*, which made a
     genuinely-broken source indistinguishable from a slow/rate-limited one
     from the DB row alone (see BACKLOG.md).
+
+    **ffmpeg's exit code alone is not proof the output is usable.** Real,
+    confirmed occurrence (Sentry PYTHON-FASTAPI-R, 2026-08-19 15:57:32
+    UTC, job 287 chunk 2/21): ffmpeg exited 0 and wrote a non-empty
+    chunk_1.mp3, then faster-whisper's PyAV open of that same file raised
+    `InvalidDataError: [Errno 1094995529] Invalid data found when
+    processing input` -- almost certainly an interrupted read from the
+    source stream mid-extraction. The corruption was in fact already
+    being observed one line later, by the `volumedetect` pass below
+    (which fully decodes the file): ffmpeg exits non-zero on an
+    undecodable input, and that exit code was simply discarded. So the
+    guard costs no extra subprocess -- `_mean_volume_db()` now reports
+    decodability alongside the volume, and an undecodable file becomes a
+    normal retryable `(False, reason)` here instead of an exception
+    thrown from deep inside whisper. Verified against real ffmpeg
+    2026-08-21: a severely truncated/garbage mp3 exits 183 (= the low
+    byte of AVERROR_INVALIDDATA, the *same* error code PyAV surfaces as
+    errno 1094995529), while a valid file exits 0. Honest limit: a file
+    truncated only at its *tail* still decodes cleanly (confirmed -- the
+    first 1000 bytes of a real 12.6KB mp3 exit 0 with a correct
+    mean_volume), and PyAV opens those too, so this catches
+    "not playable at all," not "shorter than requested."
 
     A stereo source whose left/right channels are (near-)phase-inverted
     is a real, confirmed failure mode of the plain `-ac 1` downmix below
@@ -259,7 +309,21 @@ async def extract_chunk_audio(
     if not (out_path.exists() and out_path.stat().st_size > 0):
         return False, "ffmpeg reported success but produced no audio output"
 
-    mean_volume = await _mean_volume_db(out_path)
+    decodable, mean_volume = await _mean_volume_db(out_path)
+    if not decodable:
+        logger.warning(
+            "Chunk audio at %ss for %s exists (%s bytes) but isn't decodable -- "
+            "reporting a retryable chunk failure rather than handing it to whisper",
+            start,
+            media_url,
+            out_path.stat().st_size,
+        )
+        return (
+            False,
+            "ffmpeg reported success but the output file isn't decodable "
+            "(likely truncated/corrupt)",
+        )
+
     if mean_volume is not None and mean_volume < _SUSPICIOUSLY_QUIET_MEAN_VOLUME_DB:
         logger.warning(
             "Chunk audio at %ss looks suspiciously quiet after mono downmix (%.1fdB) -- "
@@ -298,7 +362,11 @@ async def extract_chunk_audio(
             )
             return True, None  # keep the original (quiet, but present) mono result
         if returncode2 == 0 and left_path.exists() and left_path.stat().st_size > 0:
-            left_volume = await _mean_volume_db(left_path)
+            # An undecodable *fallback* extraction isn't worth failing the
+            # chunk over -- the already-verified original mono file below is
+            # still usable, so this only cares whether a real, louder volume
+            # came back.
+            _left_decodable, left_volume = await _mean_volume_db(left_path)
             if left_volume is not None and left_volume > mean_volume + 10:
                 # A real, meaningfully louder single channel -- confirms this
                 # was cancellation, not a genuinely quiet source (where a

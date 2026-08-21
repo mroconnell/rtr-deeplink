@@ -96,22 +96,23 @@ async def test_resolve_lorain_video_with_no_captions():
     assert result.transcript_warnings == ["No captions found for this video."]
 
 
-async def test_resolve_st_marys_ga_no_video_yet_and_declines_jurisdiction():
+async def test_resolve_st_marys_ga_no_video_yet_and_resolves_glued_jurisdiction():
     # Real page fetched live 2026-08-21 -- St Marys, GA event id 1000
     # ("Orange Hall Management Committee") is a real, confirmed case of
     # the SAME page shape served with `var src = '';` -- this vendor's own
-    # signal for "no recording yet", not a parse failure. Also confirms a
-    # real, still-open residual gap flagged during this adapter's build:
-    # "stmarysga" wordninja-splits to ['st', 'mary', 'sga'], whose last
-    # token isn't a real 2-letter state code and whose glued/spaced
-    # remainders don't validate either (the real state letters get
-    # absorbed into the non-word "sga" chunk) -- so
-    # jurisdiction_enrich.validated_subdomain_extract() never produces a
-    # name to attach a state to, and this adapter deliberately doesn't add
-    # new jurisdiction-parsing logic to work around it (see the module
-    # docstring). The correct, honest result is jurisdiction=None, not a
-    # guess -- even though "St Marys, GA" is a real, confirmed-unambiguous
-    # place.
+    # signal for "no recording yet", not a parse failure.
+    #
+    # Also the regression test for the residual jurisdiction gap this
+    # adapter originally shipped with, closed 2026-08-21 (WO-22) in the
+    # shared module: "stmarysga" wordninja-splits to ['st','mary','sga'],
+    # whose last token isn't a real 2-letter state code and whose
+    # glued/spaced remainders don't validate either (the real state
+    # letters get absorbed into the non-word "sga" chunk), so this used to
+    # produce jurisdiction=None. `jurisdiction_enrich`'s new tier-5 raw-
+    # label state strip ("stmarysga" -> "stmarys" -> "St Marys") resolves
+    # the name, and this adapter now asks that module for the code it
+    # stripped ("GA") rather than re-deriving it -- giving the real,
+    # confirmed-correct "St Marys, GA".
     event_html = load_fixture("suiteone", "stmarysga_event.html")
 
     routes = {
@@ -128,8 +129,8 @@ async def test_resolve_st_marys_ga_no_video_yet_and_declines_jurisdiction():
     assert result.video_warnings == ["No playable video found for this event."]
     # Home page fetch 404s -- date degrades to None rather than raising.
     assert result.date is None
-    # Confirmed residual gap -- see docstring above.
-    assert result.jurisdiction is None
+    # Was None until the WO-22 shared-module fix -- see docstring above.
+    assert result.jurisdiction == "St Marys, GA"
 
 
 async def test_resolve_holladay_ut_agenda_link_and_real_captions():
