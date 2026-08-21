@@ -72,7 +72,9 @@
           <a href="/m/{{ m.slug }}">{{ m.title or "Untitled meeting" }}</a>
           <span class="calendar-candidate-date">
             {%- if m.meeting_body %}{{ m.meeting_body }}{% endif -%}
-            {%- if m.date %}{% if m.meeting_body %} &middot; {% endif %}{{ m.date }}{% endif -%}
+            {#- Semantic <time> on the meeting date -- see meeting_date_html()
+               in archive/main.py. #}
+            {%- if m.date %}{% if m.meeting_body %} &middot; {% endif %}{{ m.date|meeting_date_html }}{% endif -%}
           </span>
         </div>
         {% if m.has_transcript %}

@@ -7,6 +7,11 @@
    info, trust line as-is" same as an old pre-this-fix link. #}
 {% block body_attrs %} data-version-id="{{ active_version.id if active_version else '' }}"{% endblock %}
 {% block meta %}
+  {#- Validated/normalized "YYYY-MM-DD" (or None) -- every machine-readable
+     use of the date on this page goes through this, never page.date raw.
+     See iso_meeting_date()'s docstring (archive/utils/date_status.py) for
+     the Search Console "invalid datetime value" flag this closes off. #}
+  {% set iso_date = page.date|iso_date %}
   {% set description = (page.title or "A public meeting") ~ (page.jurisdiction and (" in " ~ (page.jurisdiction|jurisdiction_display)) or "") ~ (page.date and (" on " ~ page.date) or "") ~ ", with video and transcript." %}
   <meta name="description" content="{{ description }}">
   {% if page.platform == "unknown" or page_is_empty %}
@@ -42,8 +47,18 @@
   {% set thumbnail_url = page.video_url|youtube_thumbnail_url %}
   {% if thumbnail_url %}
   <meta property="og:image" content="{{ thumbnail_url }}">
-  <meta name="twitter:card" content="summary_large_image">
   {% endif %}
+  {#- twitter:card is emitted unconditionally (fixed 2026-08-21) -- it used
+     to sit inside the thumbnail guard above, so every non-YouTube page
+     (the majority of the Archive, since youtube_thumbnail_url() only
+     derives an i.ytimg.com URL from a YouTube video id) emitted no
+     twitter:card at all and shared links rendered as a bare URL rather
+     than a card. "summary" is the correct type for an imageless card --
+     X/Bluesky/Mastodon all still render title + description from the
+     og:* tags above -- and "summary_large_image" without an image is
+     invalid, hence the branch rather than one fixed value. Matters more
+     now that PR #266 auto-posts new pages to Bluesky/Mastodon. #}
+  <meta name="twitter:card" content="{{ 'summary_large_image' if thumbnail_url else 'summary' }}">
   {% if page.video_url %}
   {#- schema.org VideoObject for search-engine rich-result eligibility.
      contentUrl is used for a direct playable file (mp4/m3u8, this app's
@@ -70,13 +85,17 @@
     {% if public_base_url -%}
     "url": {{ (public_base_url ~ "/m/" ~ page.slug)|tojson }},
     {% endif -%}
-    {% if page.date -%}
+    {% if iso_date -%}
     {#- Cheap interim fix for Google Rich Results' "missing timezone"
        uploadDate flag (BACKLOG.md) -- date is stored as a bare YYYY-MM-DD
        string with no real time-of-day captured anywhere in the app today,
        so this isn't literally accurate, just schema-valid; the real fix
-       (per-adapter time-of-day capture) is a bigger, separate project. #}
-    "uploadDate": {{ (page.date ~ "T00:00:00Z")|tojson }},
+       (per-adapter time-of-day capture) is a bigger, separate project.
+       Gated on iso_date rather than page.date since 2026-08-21: an
+       unvalidated free-string date used to be concatenated straight into
+       this value, which is the directly-fixable half of the companion
+       "invalid datetime value" flag in the same Search Console entry. #}
+    "uploadDate": {{ (iso_date ~ "T00:00:00Z")|tojson }},
     {% endif -%}
     {% if active_version and active_version.language -%}
     "inLanguage": {{ active_version.language|tojson }},
@@ -133,8 +152,15 @@
     "@context": "https://schema.org",
     "@type": "Event",
     "name": {{ (page.title or "Meeting")|tojson }},
-    {% if page.date -%}
-    "startDate": {{ page.date|tojson }},
+    {#- Same validated value as uploadDate above -- schema.org startDate is
+       an ISO 8601 Date/DateTime, so a free-string date can't go in raw
+       here either. Kept as a bare date (no synthetic T00:00:00Z) because
+       Event.startDate legitimately accepts a date-only value and this app
+       captures no real time of day; that's an honest "we know the day,
+       not the hour," unlike the video's uploadDate, which Google's video
+       rich-result validator specifically wants timezone-qualified. #}
+    {% if iso_date -%}
+    "startDate": {{ iso_date|tojson }},
     {% endif -%}
     {% if page.jurisdiction -%}
     "location": {
@@ -215,6 +241,11 @@
      present, and wireSourceDisclaimerPointer() null-guards both
      elements regardless. #}
   {% set show_transcribe_cta = page.video_url and not (active_version and active_version.segments and active_version.source == "transcribed") %}
+  {#- Re-derived here because Jinja blocks have separate scopes -- the meta
+     block's own `iso_date` isn't visible in this one (same reason the Clip
+     guard duplicates the agenda section's unreliable_timestamps
+     expression). Same filter, same value. #}
+  {% set iso_date = page.date|iso_date %}
   <main class="meeting-page">
     <div class="meta">
       <h1>
@@ -228,7 +259,13 @@
       <p>
         {%- if page.meeting_body %}{{ page.meeting_body }}{% if page.jurisdiction %} &middot; {% endif %}{% endif -%}
         {%- if page.jurisdiction %}{{ page.jurisdiction|jurisdiction_display }}{% endif -%}
-        {%- if page.date %}{% if page.jurisdiction or page.meeting_body %} &middot; {% endif %}{{ page.date }}{% endif -%}
+        {#- Semantic <time> on the meeting date (2026-08-21, CLAUDE_BACKLOG.md's
+           SEO/accessibility Tier 3) -- machine-readable for crawlers and
+           assistive tech; the visible text is unchanged. See
+           meeting_date_html() in archive/main.py for the unparseable-date
+           fallback. Meeting dates only: transcript/agenda offsets are
+           durations, not datetimes -- see that filter's own note. #}
+        {%- if page.date %}{% if page.jurisdiction or page.meeting_body %} &middot; {% endif %}{{ page.date|meeting_date_html }}{% endif -%}
         {%- if hub_slug %} &middot; <a href="/j/{{ hub_slug }}">More {{ page.jurisdiction|jurisdiction_display }} meetings</a>{% endif -%}
         {%- if state_slug %} &middot; <a href="/state/{{ state_slug }}">More {{ state_name }} meetings</a>{% endif -%}
       </p>
@@ -239,9 +276,9 @@
          visitor to guess. Only rendered when the status is set, so
          ordinary pages are untouched. #}
       {% if date_status == "upcoming" %}
-      <p class="date-status-notice date-status-upcoming" role="note"><span class="date-status-pill" title="This meeting hasn't happened yet, so we can't have video or a transcript for it yet">Upcoming</span> This meeting hasn't happened yet{% if page.date %} (scheduled {{ page.date }}){% endif %}. Video and a transcript will appear here once the source publishes them{% if page.source_url %} &mdash; use &ldquo;Refresh this page&rdquo; below to check{% endif %}.</p>
+      <p class="date-status-notice date-status-upcoming" role="note"><span class="date-status-pill" title="This meeting hasn't happened yet, so we can't have video or a transcript for it yet">Upcoming</span> This meeting hasn't happened yet{% if page.date %} (scheduled {{ page.date|meeting_date_html }}){% endif %}. Video and a transcript will appear here once the source publishes them{% if page.source_url %} &mdash; use &ldquo;Refresh this page&rdquo; below to check{% endif %}.</p>
       {% elif date_status == "recent" %}
-      <p class="date-status-notice date-status-recent" role="note"><span class="date-status-pill" title="Recent meetings sometimes don't have final video or captions from the source yet">Recent</span> This meeting was held recently{% if page.date %} ({{ page.date }}){% endif %}. Governments often publish video and captions days to weeks afterward{% if page.source_url %} &mdash; use &ldquo;Refresh this page&rdquo; below to check for them{% endif %}.</p>
+      <p class="date-status-notice date-status-recent" role="note"><span class="date-status-pill" title="Recent meetings sometimes don't have final video or captions from the source yet">Recent</span> This meeting was held recently{% if page.date %} ({{ page.date|meeting_date_html }}){% endif %}. Governments often publish video and captions days to weeks afterward{% if page.source_url %} &mdash; use &ldquo;Refresh this page&rdquo; below to check for them{% endif %}.</p>
       {% endif %}
       {% if page.source_url %}
       <p class="source-link"><a href="{{ page.source_url }}" target="_blank" rel="noopener noreferrer">View original source &rarr;</a></p>

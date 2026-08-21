@@ -350,6 +350,162 @@ Full suite green: 1168 passed, 15 skipped. `alembic upgrade head` +
 `alembic check` verified clean against a fresh migration-built SQLite,
 and `downgrade -1` + re-upgrade verified too.
 
+## Growth/discoverability bundle: real landing-page example, imageless twitter:card, semantic `<time>`, validated meeting dates (WO-27) [Done 2026-08-21]
+
+Four small, independently-shipped wins promoted out of
+`CLAUDE_BACKLOG.md` (the first two from "Growth mechanics", the third
+from "SEO / LLM-discoverability" Tier 3) plus the `uploadDate` half of
+`BACKLOG.md`'s Search Console structured-data entry. No new
+dependencies, no schema change, no new infrastructure.
+
+**1. A real, live-verified example URL under the landing-page paste box**
+(`app/templates/index.html`, `app/static/style.css`). The only "try
+this" affordance before this was the input's `placeholder` — and it was
+a **fabricated URL**: `https://citycouncil.granicus.com/player/clip/1234`
+is not a real Granicus customer subdomain and clip 1234 was invented, so
+a visitor who literally copied it got a failure. It also vanished the
+moment anyone typed. Now a permanently-visible card sits under the box
+with the real example the user proposed 2026-08-10, styled as a cassette
+insert (a `dymo-label-small` "TRY THIS" straddling the card's top edge,
+the URL mono-faced and `user-select: all` so one drag grabs it whole).
+Deliberately **not** a clickable `<a>`, per the user's own reasoning: the
+point is to model "paste this into the box above," not tempt a
+first-time visitor to click through to granicus.com and leave. The two
+open questions in the original entry were decided as **one fixed
+example** (rotation adds a cache-busting concern and a second failure
+mode for no clear gain at this stage) and **yes, state what you get**
+("the video plus its full transcript, every line clickable and
+linkable"), so the example sets expectations as well as demonstrating
+the paste action. The placeholder is now just a shape hint
+("Paste a meeting URL…").
+
+**Live-verified before shipping**, per this repo's first convention — a
+broken example on the landing page is worse than none. The Jacksonville
+URL (`https://jaxcityc.granicus.com/player/clip/7447?redirect=true&view_id=1`)
+was resolved end to end through the real granicus adapter on 2026-08-21:
+"Neighborhoods, Community Services, Public Health and Safety Committee",
+City of Jacksonville, Florida, 2026-08-03, a real m3u8 video **and 2177
+real caption segments**, zero warnings — both halves of what the copy
+promises. No fallback candidate was needed. Anyone changing this example
+should re-resolve the replacement first and prefer another confirmed
+sample with both real video and a populated transcript.
+
+**2. `twitter:card` emitted even when there's no image**
+(`archive/templates/meeting_page.html`). The tag shipped 2026-08-14
+*inside* the `{% if thumbnail_url %}` guard alongside `og:image` — and
+`thumbnail_url` is YouTube-only (`archive/utils/video_thumbnail.py`
+derives an `i.ytimg.com` URL from a YouTube video id and returns `None`
+for everything else), so **every non-YouTube meeting page — the majority
+of the Archive — emitted no `twitter:card` at all** and shared links
+rendered as bare text rather than a card. Now unconditional:
+`summary_large_image` when there is an image, plain `summary` when there
+isn't (`summary_large_image` without an image is invalid, hence the
+branch rather than one fixed value). X/Bluesky/Mastodon all still render
+title + description from the `og:*` tags on an imageless card. Matters
+more now that PR #266 auto-posts new pages to Bluesky/Mastodon. This
+does **not** close the separate, still-open "no thumbnail on mp4/m3u8
+pages" gap — that needs real ffmpeg frame extraction and somewhere to
+host frames; see `CLAUDE_BACKLOG.md`.
+
+**3. Semantic `<time datetime="...">` on meeting dates.**
+`grep -rn "<time" archive/templates/ app/templates/` returned **zero
+hits** before this — the codebase had no semantic time markup anywhere.
+Added to all five templates that render a meeting date
+(`meeting_page.html` including its Upcoming/Recent notices,
+`meeting_list.html`, `jurisdiction_page.html`, `state_page.html`,
+`saved_items.html`) via one shared `meeting_date_html` Jinja filter
+rather than an inline `{% if %}` repeated five times, so the
+fallback branch can't drift between them and is unit-testable directly.
+Visible text is unchanged everywhere.
+
+**Scoped to dates, not transcript/agenda offsets** — the
+`CLAUDE_BACKLOG.md` entry originally named the `[12:34]` timestamps, but
+those are **durations, not datetimes**: HTML's `datetime` attribute would
+need `PT12M34S` for them, which expresses "this lasted 12m34s," not
+"this moment is 12m34s into the video" — it doesn't actually say what
+the timestamp means. Left alone deliberately, with that reasoning
+recorded back in `CLAUDE_BACKLOG.md`.
+
+**4. Meeting dates validated before any machine-readable emission** —
+the directly-fixable half of `BACKLOG.md`'s Search Console `uploadDate`
+"invalid datetime value" flag. What the audit turned up: **`date` is an
+unvalidated free string the entire way down** — `Optional[str]` on
+`ResolvedMeeting` (`app/platforms/models.py`), `Optional[str]` on
+`IngestRequest` and `ResolvedMeetingIn` (`archive/main.py`), a
+`String(20)` column (`archive/db/models.py`). Nothing anywhere would
+have rejected a bad value on the way in, and the template concatenated
+it straight into `"uploadDate": page.date ~ "T00:00:00Z"` and into
+Event `"startDate"`. Reading every adapter: all of them are
+*structurally* constrained to emit `YYYY-MM-DD` or `None` today (each
+goes through `strftime("%Y-%m-%d")` or an anchored ISO regex — including
+every branch of `generic_fallback.py`'s date extraction), so no
+*current* adapter can produce a bad value — but that says nothing about
+rows written by an older adapter version or pushed through one of the
+`scripts/` ingest paths, which is exactly why the flag couldn't be
+dismissed from code reading alone.
+
+Both JSON-LD values now go through `iso_meeting_date()`
+(`archive/utils/date_status.py`, built on the existing tolerant
+`parse_meeting_date()`) and are **omitted entirely** when the stored
+date isn't a real date, rather than emitting garbage. It *normalizes*
+rather than only rejecting, so a stored `"2026-08-03T00:00:00"` is
+repaired to `"2026-08-03"` on render instead of dropped. `startDate`
+stays a bare date (schema.org Event accepts date-only, and this app
+captures no real time of day — an honest "we know the day, not the
+hour"), while `uploadDate` keeps its synthetic `T00:00:00Z` because
+Google's video validator specifically wants a timezone.
+
+**And the production question itself is now one command away.**
+`GET /internal/date-format-audit` (token-gated like every `/internal/*`
+route, read-only, modeled on `/internal/transcript-quality-audit`)
+buckets every archived page's `date` as `null` / `iso_date` /
+`parseable_non_iso` / `unparseable` and returns slug + stored value for
+anything in the last two, capped so the response stays small on a table
+of any size. Reads two cheap columns, never `TranscriptVersion.segments`.
+Running it against real production is the one remaining step and needs
+someone with the token — split back out as a live `[HUMAN]` residual in
+`BACKLOG.md` with the exact `curl` and how to read the result, per this
+repo's own convention rather than guessing at an answer.
+
+**Verification.** Full `pytest` green (1159 passed, 15 skipped),
+`ruff format`/`ruff check` clean. 11 new tests in
+`tests/test_meeting_page_structured_data.py` covering the imageless
+`summary` card on both an m3u8 page and a no-video-at-all page, the
+`meeting_date_html` filter's three branches (valid / normalized /
+unparseable-and-escaped), a rendered page's `<time>` element plus valid
+`uploadDate`, an unparseable date emitting neither `<time>` nor
+`uploadDate` nor `startDate`, and the audit's bucketing.
+
+**Then verified in a real browser** (per this file's own convention that
+UI changes need a rendered-page check, not just JSON), running both
+services locally against a scratch SQLite DB with `DATABASE_URL` set
+explicitly — see CLAUDE.md's worktree/`.env` warning:
+- Landing page: the example card renders as designed at desktop width
+  and wraps cleanly inside the card at 375px with no horizontal page
+  scroll (`documentElement.scrollWidth > clientWidth` is `false`).
+- A real m3u8 (non-YouTube) Jacksonville meeting page's `<head>`:
+  `twitter:card = summary` now present where it previously emitted
+  nothing, `<time datetime="2026-08-03">2026-08-03</time>` in the
+  rendered DOM, `uploadDate = "2026-08-03T00:00:00Z"`.
+- A deliberately malformed-date page (`date = "Meeting cancelled"`,
+  ingested to reproduce the exact bug shape): zero `<time>` elements,
+  **no `startDate` key at all** in the Event JSON-LD — that page would
+  previously have emitted `"startDate": "Meeting cancelled"`, a live
+  instance of the flagged bug class — while the human-readable text
+  still reads "Meeting cancelled" so nothing is hidden from a reader.
+- `/meetings`: the good row renders `<time>`, the malformed row falls
+  back to plain text, in the same list.
+- The audit endpoint returned the malformed row correctly
+  (`by_shape.unparseable = 1`, `suspect_rows` naming it) and 404s
+  without a token.
+
+**Docs updated**: `CLAUDE_BACKLOG.md` (example-URL bullet closed;
+`twitter:card` regression struck from the share-previews bullet with the
+image gap left open; `<time>` Tier 3 item rewritten to record the
+dates/durations split), `BACKLOG.md` (Search Console entry's
+`uploadDate` sub-bullets, with the production check split out as a live
+`[HUMAN]` residual), this file.
+
 ## Social auto-posting (Bluesky/Mastodon) built, and Bluesky live-verified with a real first post [Done 2026-08-21]
 
 User request 2026-08-21 ("auto publish posts whenever we resolve a high

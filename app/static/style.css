@@ -142,6 +142,50 @@ body {
 
 .subtitle { color: var(--muted); }
 
+/* The landing page's worked example under the paste box (index.html).
+   Shaped like the paper insert that comes in a cassette case -- a plain
+   card, left-aligned so a long URL stays readable inside the otherwise
+   centered .center-page, with the same red dymo label the rest of the
+   site uses for a hand-stuck-on annotation. The URL itself is
+   deliberately NOT an <a>: it's mono-faced and `user-select: all` so one
+   click-drag grabs the whole thing to paste, which is the action being
+   modeled, rather than a link that would send a first-time visitor off
+   to granicus.com. */
+.example-url {
+  margin: 2.25rem 0 0;
+  padding: 1rem 1.15rem 1.15rem;
+  text-align: left;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+}
+.example-url .dymo-label-small {
+  /* Lifted to straddle the card's top edge, like a label stuck on the
+     spine rather than printed inside it. */
+  margin: -1.75rem 0 0.75rem;
+}
+.example-url-lead {
+  margin: 0 0 0.4rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+.example-url-value {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  color: var(--primary);
+  /* Long, query-string-laden URLs must wrap instead of widening the
+     card past the viewport -- confirmed needed at 375px. */
+  overflow-wrap: anywhere;
+  user-select: all;
+  -webkit-user-select: all;
+}
+.example-url-note {
+  margin: 0.55rem 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
 .error { color: var(--secondary); }
 .status { color: var(--muted); margin: 1rem 0; }
 
