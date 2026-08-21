@@ -239,17 +239,23 @@ each other directly:**
   using the same models as `archive/db/`, since it's really just Archive
   logic that needs a long-running process instead of a web request.
 
-**How a table gets created in the first place: `create_all()`, no
-migration needed.** Every app startup calls `Base.metadata.create_all()`
+**How a table used to get created: `create_all()` — no longer true in
+production.** Every app startup calls `Base.metadata.create_all()`
 (`app/db/engine.py`'s and `archive/db/engine.py`'s `init_models()`), which
 looks at every model class defined in `models.py` and runs `CREATE TABLE
-IF NOT EXISTS` for each one. So adding a brand-new table is genuinely
-zero-friction: write the class, deploy, and the table just appears in
-production the next time the service restarts. `ProblemReport` and
-`TranscriptionJob` both shipped this way.
+IF NOT EXISTS` for each one. That made adding a brand-new table
+zero-friction: write the class, deploy, and the table just appeared in
+production on the next restart. `ProblemReport` and `TranscriptionJob`
+both shipped that way. **Both services' `init_models()` now return early
+on Postgres** (archive 2026-08-17, resolver 2026-08-21) — `create_all()`
+runs only on the local/test SQLite path, and Alembic is the sole writer
+to the production schema. The convenience was exactly what let
+`alembic_version` drift silently behind reality; see the incident below
+and `CLAUDE.md`'s migration bullet.
 
-**Where that stops working: changing a table that already has real rows
-in it.** `create_all()` only ever adds tables it doesn't see yet — it has
+**Where `create_all()` stopped working even before that: changing a
+table that already has real rows in it.** It only ever adds tables it
+doesn't see yet — it has
 no idea how to add a column to a table that already exists, so if you add
 a field to an existing model and just redeploy, nothing happens to
 production at all; the app will start throwing "column does not exist"
@@ -421,6 +427,21 @@ distinguishable from a typo):
 - `GET /admin/sweep-pending-pushes` — on-demand version of the durable
   Archive-push retry mechanism (below), for checking on or forcing it
   directly. Returns exactly which resolutions it found and retried.
+- `GET /admin/schema-info` — read-only introspection of this service's
+  real live schema: the *actual* reflected columns on every table (via
+  SQLAlchemy's `Inspector` against a real connection) next to what
+  `app/db/models.py` expects, with `mismatched_tables` /
+  `schema_matches_models` calling out any difference, plus whatever
+  `alembic_version` currently says as context rather than as truth. The
+  resolver's port of the Archive's `/internal/schema-info` (described
+  under "Permanent pages" below), added 2026-08-21 so confirming
+  production's real schema — specifically whether `meeting_resolutions`
+  has `jurisdiction_confidence`, and what the resolver's untouched
+  `alembic_version` actually holds — doesn't need Render shell access.
+  See `app/alembic/README.md`'s runbook for how to read it. Note
+  `actual_columns` reflects the whole database, which the Archive
+  shares, so its tables appear here too; they aren't counted as
+  mismatches since `app/db/models.py` says nothing about them.
 
 **Durable Archive pushes**: a successful resolve's push to the Archive is
 fired via `BackgroundTasks`, so a resolver process restart (a deploy, a

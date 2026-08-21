@@ -1619,6 +1619,84 @@ async def admin_stats(token: str = "", authorization: Optional[str] = Header(Non
     return stats
 
 
+@app.get("/admin/schema-info")
+async def admin_schema_info(
+    token: str = "", authorization: Optional[str] = Header(None)
+):
+    """Read-only DB introspection, so confirming this service's real
+    production schema state doesn't require someone with DATABASE_URL
+    access to run psql/alembic commands on Render's shell and paste the
+    output back by hand. Ported from the Archive's own
+    `GET /internal/schema-info` (added 2026-08-10 after the incident
+    where trusting a doc's stale account of "what production's state is"
+    instead of checking it directly caused a real, contained mistake --
+    see `archive/alembic/README.md`); mounted under `/admin/` because
+    this service has no `/internal/*` namespace.
+
+    Compares actual reflected columns (via SQLAlchemy's Inspector
+    against a live connection -- the real, current truth) against what
+    `app/db/models.py`'s `Base.metadata` currently expects. That
+    comparison is the signal that actually matters here -- whether they
+    match -- independent of whatever `alembic_version`'s own bookkeeping
+    row claims, which is exactly the value that goes stale.
+    `alembic_version` is still reported too (useful context), just not
+    treated as ground truth on its own.
+
+    Two specific questions this exists to answer before anyone runs the
+    one-time `alembic stamp` described in `app/alembic/README.md`:
+    (1) does `meeting_resolutions` really have `jurisdiction_confidence`
+    (the column migration `a9207c0eb761` adds), and (2) does an
+    `alembic_version` table exist here at all, and if so what row is in
+    it. A 2026-08-11 `information_schema` query found an
+    `alembic_version` table already present on this service's Postgres
+    (BACKLOG_DONE.md) -- whether it holds a row was never established.
+    Note the `actual_columns` map covers the whole database, which the
+    Archive service shares: its tables show up here too and are
+    deliberately not treated as a mismatch, since this service's models
+    say nothing about them.
+    """
+    if not _admin_token_ok(token, authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    from sqlalchemy import inspect as sa_inspect, text
+
+    from .db.engine import engine
+    from .db.models import Base
+
+    async with engine.connect() as conn:
+        actual_columns = await conn.run_sync(
+            lambda sync_conn: {
+                table_name: sorted(
+                    col["name"] for col in sa_inspect(sync_conn).get_columns(table_name)
+                )
+                for table_name in sa_inspect(sync_conn).get_table_names()
+            }
+        )
+        alembic_version = None
+        if "alembic_version" in actual_columns:
+            result = await conn.execute(text("SELECT version_num FROM alembic_version"))
+            row = result.first()
+            alembic_version = row[0] if row else None
+
+    expected_columns = {
+        table.name: sorted(col.name for col in table.columns)
+        for table in Base.metadata.sorted_tables
+    }
+    mismatched_tables = [
+        name
+        for name, cols in expected_columns.items()
+        if actual_columns.get(name) != cols
+    ]
+
+    return {
+        "alembic_version": alembic_version,
+        "expected_columns": expected_columns,
+        "actual_columns": actual_columns,
+        "mismatched_tables": mismatched_tables,
+        "schema_matches_models": not mismatched_tables,
+    }
+
+
 @app.get("/admin/daily-report")
 async def admin_daily_report(
     token: str = "", dry_run: bool = False, authorization: Optional[str] = Header(None)

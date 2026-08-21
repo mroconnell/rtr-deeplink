@@ -99,6 +99,24 @@ jobs:
           alembic upgrade head
           alembic check
 
+      # Same check for the resolver (WO-10's resolver half, 2026-08-21).
+      # app/db/engine.py's create_all() is now a no-op on Postgres too, so
+      # the resolver's models and its migrations (app/alembic/, 2
+      # revisions) have to agree for the same reason the archive's do.
+      # Its own SQLite file, not the archive's: both env.py files resolve
+      # DATABASE_URL themselves and would otherwise stamp two unrelated
+      # migration histories into one alembic_version table. Verified
+      # clean locally before this step was added -- the models' only
+      # post-baseline column (jurisdiction_confidence) is covered by
+      # a9207c0eb761.
+      - name: alembic check (resolver models == migrations)
+        working-directory: app
+        env:
+          DATABASE_URL: sqlite+aiosqlite:///./ci_alembic_check_app.db
+        run: |
+          alembic upgrade head
+          alembic check
+
       - uses: actions/setup-node@v4
         with:
           node-version: "22"

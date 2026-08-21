@@ -206,15 +206,25 @@ under everything else. This repo extracts and fixes just that part.
   `crud._fts_available()` is the model — either order deploys safely),
   and **a generated/computed column beats "column + backfill script"**
   when Postgres can compute the value (no ingest change, no one-time
-  script, no seam). **The resolver (`app/`) is NOT there yet**: its
-  `create_all()` still runs on Postgres and its Alembic history
-  (`app/alembic/`, 2 revisions) has never been stamped in prod — the
-  one-time `alembic stamp head` on the resolver's Render shell (per
-  `app/alembic/README.md`, after confirming `alembic current` is empty
-  and the real columns match head) is what unlocks adding the same
-  `preDeployCommand` there; tracked in `BACKLOG.md`. Until then a new
-  *resolver* table still appears via `create_all()`, and an altered
-  resolver table still needs a hand-run migration.
+  script, no seam). **The resolver (`app/`) is most of the way there as
+  of 2026-08-21 (WO-24), with one human step left**: its `create_all()`
+  is now a no-op on Postgres too, CI runs a second `alembic check` with
+  `working-directory: app`, and `GET /admin/schema-info` (the resolver's
+  port of the Archive's `/internal/schema-info`, same admin-token gate
+  as every other `/admin/*` route) reports its real reflected columns
+  and `alembic_version` without needing shell access. What's still
+  missing is the `preDeployCommand`, because the resolver's Alembic
+  history (`app/alembic/`, 2 revisions) has never been stamped in prod —
+  **follow `app/alembic/README.md`'s "The runbook" for that one-time
+  step, and stamp the literal revision `a9207c0eb761`, never the word
+  `head`** (`head` was the baseline when older docs said "stamp head";
+  a second revision landed 2026-08-15 and silently made that advice
+  dangerous — same shape as the 2026-08-09 Archive incident). Don't
+  expect `alembic current` to be empty either; a real 2026-08-11 query
+  found an `alembic_version` table already present there. Until the
+  stamp lands, an altered resolver table still needs a hand-run
+  migration — and a *new* resolver table no longer appears on its own,
+  since `create_all()` no longer runs in prod. Tracked in `BACKLOG.md`.
 - **`app/db/outcomes.py` classifies reporting outcomes from real signal on
   the row where one exists, and falls back to substring-matching
   `transcript_warnings` only where it doesn't.** `agenda_fallback` is
