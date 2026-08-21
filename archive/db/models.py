@@ -1,7 +1,17 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -127,6 +137,45 @@ class TranscriptVersion(Base):
     # push that didn't actually change anything, without relying on the
     # weaker "segment count" proxy (see BACKLOG.md / plan notes).
     content_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class SocialPost(Base):
+    """One row per (meeting page, network) social-media announcement --
+    the dedup ledger for archive/utils/social.py's auto-posting. A row is
+    inserted ("claimed") *before* the network call, so the unique
+    constraint makes posting at-most-once even if the same page is
+    ingested twice concurrently (e.g. the resolver's push-retry sweep
+    racing a fresh resolve) -- a duplicate public post is worse than a
+    silently skipped one, hence claim-first rather than post-then-record.
+    A failed post keeps its row (status="failed", error populated) for
+    /admin visibility rather than being retried automatically; see
+    social.py's module docstring.
+    """
+
+    __tablename__ = "social_posts"
+    __table_args__ = (
+        UniqueConstraint("meeting_page_id", "network", name="uq_social_post_target"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    meeting_page_id: Mapped[int] = mapped_column(
+        ForeignKey("meeting_pages.id"), nullable=False, index=True
+    )
+    # "bluesky" | "mastodon" -- plain string, not an enum, so a new
+    # network never needs a migration (same reasoning as
+    # MeetingPage.jurisdiction_confidence).
+    network: Mapped[str] = mapped_column(String(20), nullable=False)
+
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
+    # The network's own identifier/permalink for the created post (an
+    # at:// URI for Bluesky, the status URL for Mastodon) -- null until a
+    # post actually succeeds.
+    post_uri: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

@@ -8,7 +8,7 @@ from typing import List, Optional
 from urllib.parse import quote
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, Header, Request
+from fastapi import BackgroundTasks, FastAPI, Header, Request
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -42,6 +42,7 @@ _init_sentry()
 from .db import crud
 from .db.engine import init_models
 from .utils import email as email_utils
+from .utils import social
 from .utils.clerk_auth import clerk_frontend_api_url, get_clerk_user_id
 from .utils.date_status import meeting_date_status
 from .utils.jurisdiction_format import (
@@ -625,13 +626,24 @@ class IngestRequest(BaseModel):
 
 @app.post("/internal/ingest")
 async def internal_ingest(
-    req: IngestRequest, authorization: Optional[str] = Header(None)
+    req: IngestRequest,
+    background_tasks: BackgroundTasks,
+    authorization: Optional[str] = Header(None),
 ):
     if not _token_ok(authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
     payload = req.model_dump(exclude={"input_url_normalized"})
     result = await crud.ingest_resolution(payload, req.input_url_normalized)
+    # Social auto-announce -- only a freshly *created* page can trigger it
+    # (re-ingests/backfills never can, see _find_or_create_page()'s
+    # docstring); the quality gate, env-based enablement, and per-network
+    # dedup all live inside announce_new_page() itself. BackgroundTasks so
+    # a slow/down social API can never delay the resolver's push.
+    if result.get("created"):
+        background_tasks.add_task(
+            social.announce_new_page, result["page_id"], result["slug"], payload
+        )
     return result
 
 

@@ -5,6 +5,44 @@ investigation detail behind each fix — lives in
 [BACKLOG_DONE.md](BACKLOG_DONE.md); items below link back to it for context
 where relevant.
 
+## Social auto-posting shipped 2026-08-17 but NOT yet live-verified — needs a real account + one watched first post
+
+The pipeline is built and unit-tested (`archive/utils/social.py`,
+`SocialPost` table, `/internal/ingest` hook — see README's "Social
+auto-posting" section): a freshly *created* Archive page whose resolve
+matches `outcomes.py`'s `success` bucket (plus a ≥50-segment floor) gets
+announced on Bluesky and/or Mastodon, claim-first-deduped per (page,
+network) so re-ingests/backfills/races can never double-post. But both
+network clients are exactly the kind of schema-verified-but-not-
+content-verified path this repo flags: written against the documented
+Bluesky XRPC / Mastodon `/api/v1/statuses` APIs, **zero real posts ever
+made** — no account or credentials existed at build time. Step (1) is
+now done for Bluesky: Ryan registered
+[`redtaperecordings.bsky.social`](https://bsky.app/profile/redtaperecordings.bsky.social)
+2026-08-21 (not independently confirmed from the build session itself —
+`bsky.social` is egress-blocked in the Claude Code sandbox, so even the
+unauthenticated `resolveHandle` check couldn't run; that same block
+means live verification can only ever happen from the deployed Archive
+service or Ryan's own machine, never from a sandboxed session).
+Remaining steps, all needing Ryan: (2) create an app password
+(Settings → App Passwords — never the real account password) and set
+`BLUESKY_HANDLE=redtaperecordings.bsky.social` +
+`BLUESKY_APP_PASSWORD` on the Archive Render service, after this
+branch merges, (3) watch the first real announcement land and check
+the link facet renders as a clickable permalink on Bluesky (the facet
+byte-offset math is the most plausible-but-unconfirmed part). Until
+then treat the clients as best-effort.
+
+Known residual gap, deliberate v1 scope: only page *creation* can
+trigger a post. A page first created agenda-only (or with a garbled
+transcript) that later gains a real, high-quality transcript — via a
+re-resolve, a caption source catching up, or an on-demand Whisper job
+(the worker writes transcripts through `report_chunk_result()`, which
+never touches this hook at all) — is never announced. If real
+announcements prove worth having, the upgrade-triggered case is the
+natural phase 2; the `SocialPost` claim table already supports it
+without schema changes.
+
 ## ~25 smaller consolidated city-county governments still need a real domain -- 13 of ~38 already done, see BACKLOG_DONE.md, 2026-08-20/21
 
 Real, structurally different gap from ordinary domain-guessing: a
