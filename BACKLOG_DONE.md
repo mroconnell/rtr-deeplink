@@ -506,6 +506,94 @@ dates/durations split), `BACKLOG.md` (Search Console entry's
 `uploadDate` sub-bullets, with the production check split out as a live
 `[HUMAN]` residual), this file.
 
+## Adapter canary coverage gap closed + enforced in CI, and `CLAUDE_BACKLOG.md`'s two reliability items promoted (WO-26) [Done 2026-08-21]
+
+Three things in one pass: a real monitoring gap, the guardrail that makes
+it un-repeatable, and two weeks of doc drift.
+
+**The gap.** `scripts/adapter_canary.py`'s `CANARY_URLS` had 22 entries
+against 27 platforms registered by `register_all_finders()`. Two of the
+five missing are deliberate, documented exclusions (swagit, civicplus —
+see below). The other three were simple omissions: `destinyhosted`
+(PR #244), `suiteone` (PR #263), and `open_media` (PR #265) all shipped
+new adapters without a canary entry, so three of this repo's newest,
+least-proven adapters were the only ones with no daily live check at all.
+`castus` (PR #264) is the counter-example that shows it was pure
+oversight, not policy — that PR added its canary row in the same PR.
+
+**Fixed, each URL verified live before committing it** (per this repo's
+"never claim it works without a real confirmed example" rule — an
+unverified canary entry is worse than no entry, since it becomes a daily
+false alarm):
+
+- `destinyhosted` → The Woodlands Township, TX (`public.destinyhosted.com/
+  agenda_publish.cfm?id=96635&mt=ALL&get_month=8&get_year=2026&dsp=ag&
+  seq=4147`), the exact real URL `tests/test_destinyhosted.py`'s fixture
+  shape came from. Live: 33 segments, video via the onclick-Swagit
+  delegation, 11 agenda items, reports `platform="swagit"` on success
+  (the delegation's identity survives, by design).
+- `suiteone` → Holladay, UT (`holladayut.suiteonemedia.com/event/?id=2652`),
+  the strongest of `tests/test_suiteone.py`'s six confirmed tenants. Live:
+  1616 real caption segments, real agenda PDF link, zero warnings.
+- `open_media` → Eugene, OR (`eugene.open.media/sessions/344982/...`).
+  Live: 2626 segments via the YouTube delegation. Goodyear AZ (346555,
+  1382 segments) and Cortez CO (346252, 1986 segments) were both also
+  live-verified as backups if Eugene ever goes stale — recorded here so a
+  later session doesn't have to re-derive them.
+
+Nothing turned out stale: all three suggested candidates resolved on the
+first try, and the full canary run is now **25/25 platforms OK** live
+against real government sites.
+
+**Three canary keys were also renamed to their real registered
+`platform_name`**: `aurora` → `aurora_tv`, `seattlechannel` →
+`seattle_channel`, `generic_fallback` → `unknown`. Cosmetic on its own,
+but it's what lets the new coverage test be a straight set comparison
+against `base._REGISTRY` instead of carrying an alias map that would
+itself become a thing to forget.
+
+**The guardrail (the more valuable half).** `tests/test_adapter_canary.py`
+now asserts every registered platform appears in either `CANARY_URLS` or
+the new `CANARY_EXCLUSIONS` dict — the `alembic check` of adapter
+monitoring, failing at PR time rather than silently going unmonitored for
+weeks. Verified it actually bites by removing the `suiteone` entry
+in-process and watching the assertion fire with the fix instructions in
+its message. Three smaller companions: canary keys must be real
+registered platform names, no platform may be in both sets, and every
+exclusion must state a reason (the reason is the whole point — it's what
+distinguishes "deliberately can't be canaried" from "somebody silenced a
+failing entry"). `CANARY_EXCLUSIONS` lives next to `CANARY_URLS` in the
+script and carries the previously-comment-only reasoning for swagit (no
+real Swagit meeting URL exists anywhere in this repo's text — though it's
+now partially covered *indirectly*, since the destinyhosted canary URL
+delegates into the real Swagit adapter) and civicplus (only ever-verified
+site DNS-fails since 2026-08-07, replacement candidate still unverified).
+
+**The doc drift.** `CLAUDE_BACKLOG.md`'s entire "Reliability / engineering
+health" section still described both of its items as open, calling the
+canary "still the highest-value remaining item" — under a status header
+dated 2026-08-08. Both had shipped:
+
+- **Adapter health canary / synthetic monitoring** — shipped 2026-08-16 as
+  WO-13 (PR #87; full build detail in this file's "WO-13 · Adapter health
+  canary" entry below). Real daily run history since:
+  success 08-17, **failure 08-18**, success 08-19/08-20/08-21.
+- **Error monitoring (Sentry or similar)** — live: `sentry-sdk>=2.0` in
+  `requirements.in`, a per-service `_init_sentry()` in `app/main.py`,
+  `archive/main.py`, and `worker/main.py`, `SENTRY_DSN` set on all three
+  Render services, and real production issues already triaged by ID in
+  `CLAUDE_INBOX_TRIAGE.md` (`PYTHON-FASTAPI-A`, `-R`, `-T`). One
+  genuinely-still-open piece stays live in `BACKLOG.md`: nobody has ever
+  forced an exception and *watched* it land in the dashboard, WO-7's own
+  stated acceptance criterion.
+
+Both bullets removed from `CLAUDE_BACKLOG.md` per the promotion
+convention, with a dated status note there pointing here.
+
+**One residual, deliberately left open in `BACKLOG.md`** (next to the
+existing `[HUMAN] ALERT_WEBHOOK_URL` item): that 2026-08-18 failure
+notified nobody. See that entry for the specifics.
+
 ## Social auto-posting (Bluesky/Mastodon) built, and Bluesky live-verified with a real first post [Done 2026-08-21]
 
 User request 2026-08-21 ("auto publish posts whenever we resolve a high

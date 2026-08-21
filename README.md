@@ -103,6 +103,22 @@ the transcription job lifecycle is genuinely DB-state-machine logic
 (claim/report/finalize/promote) that a pure-function test can't exercise
 honestly. Every adapter now has real fixture-backed test coverage.
 
+The suite is deliberately network-free, which leaves one thing it can't
+catch: a government site quietly changing structure under a working
+adapter. That's what `scripts/adapter_canary.py` is for — it re-resolves
+one real, known-good meeting URL per platform against the live site
+(in-process, so no production cache/Archive noise) and exits non-zero if
+any comes back empty or broken. `.github/workflows/adapter-canary.yml`
+runs it daily at 15:00 UTC. Adding a new platform adapter therefore means
+adding a live-verified URL to that script's `CANARY_URLS` — or an entry to
+its `CANARY_EXCLUSIONS` saying why no such URL exists;
+`tests/test_adapter_canary.py` fails the build if a registered platform
+has neither.
+
+```bash
+python scripts/adapter_canary.py   # real network calls, ~1 min
+```
+
 `shared_static/deep_link.js` (the `t`/`line`/`version` deep-link contract
 both `app/static/player.js` and `archive/static/meeting_page.js` depend
 on) has its own separate JS suite, since it's the one piece of this repo
