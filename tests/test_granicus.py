@@ -34,6 +34,53 @@ async def test_resolve_real_blank_caption_meeting():
     assert any("blank" in w.lower() for w in result.transcript_warnings)
 
 
+async def test_resolve_event_id_meeting_reports_honest_no_video_status():
+    # Real Calabasas CA event_id=1525 (fetched live 2026-08-21, both via
+    # plain HTTP and a rendered-browser check). Found via BACKLOG.md's
+    # Granicus event_id entry: PrimeGov's own video delegation correctly
+    # discovers and passes through this URL shape (MediaPlayer.php?
+    # event_id=..., the fourth known Granicus URL shape, distinct from
+    # clip_id-based ones) for a meeting whose PrimeGov API record shows
+    # streamCompleted=False and mediaManagerClipPubliclyAvailable=False --
+    # confirmed by fetching the real post-redirect /player/event/{id}
+    # page directly: no video-player library loads at all, no video
+    # element or media URL anywhere on the page, only Granicus's own
+    # real, static `<div id="player-error">` reading "The event you
+    # selected is not currently in progress." This meeting genuinely has
+    # no video yet, not merely one this scanner failed to find, so the
+    # fix here is an honest, specific "no video" result rather than a
+    # guessed video URL.
+    url = "https://calabasas.granicus.com/MediaPlayer.php?event_id=1525"
+    html = load_fixture("granicus", "calabasas_event1525.html")
+
+    routes = {
+        url: FakeResponse(status=200, text=html, url=url),
+    }
+
+    with mock_session(routes):
+        result = await GranicusAssetFinder().resolve(url)
+
+    assert result.title == "City Council Regular Meeting"
+    assert result.jurisdiction == "City of Calabasas, CA"
+    # "event:" infix keeps this permanently distinct from a real
+    # clip_id-based external_id (always a bare number after the netloc) --
+    # event_id and clip_id are separate number spaces on the same tenant.
+    assert result.external_id == "granicus:calabasas.granicus.com:event:1525"
+    assert result.video_url is None
+    assert result.video_format is None
+    assert result.video_warnings == [
+        "The event you selected is not currently in progress."
+    ]
+    # No clip_id means every clip_id-dependent path (agenda items,
+    # minutes-date fallback, video-player-page fallback) is correctly
+    # skipped rather than firing against a wrong/coincidentally-colliding
+    # number -- implicitly proven here too, since `routes` above mocks
+    # only the one request and mock_session raises AssertionError on any
+    # other request the code might have (wrongly) made.
+    assert result.agenda_items == []
+    assert result.agenda_link is None
+
+
 async def test_resolve_humanizes_valid_city_subdomain_when_no_page_text_jurisdiction():
     # No "City/County of X" text anywhere on the page (unlike the Napa
     # fixture reused elsewhere in this file) -- forces the subdomain
@@ -440,6 +487,53 @@ def test_extract_clip_id_handles_all_url_shapes():
         == "789"
     )
     assert extract("https://city.granicus.com/AboutUs.php") is None
+
+
+def test_extract_clip_id_never_matches_event_id_shape():
+    # Real bug this guards against: event_id and clip_id are separate,
+    # non-interchangeable number spaces on the same Granicus tenant (see
+    # _extract_event_id's docstring) -- _extract_clip_id must never
+    # accidentally match the event_id shape and hand back a number that
+    # could coincidentally collide with an unrelated real clip.
+    extract = GranicusAssetFinder._extract_clip_id
+    assert (
+        extract("https://calabasas.granicus.com/MediaPlayer.php?event_id=1525") is None
+    )
+    assert extract("https://calabasas.granicus.com/player/event/1525") is None
+    assert (
+        extract("https://calabasas.granicus.com/player/event/1525?redirect=true")
+        is None
+    )
+
+
+def test_extract_event_id_handles_query_and_path_shapes():
+    # Real URLs confirmed live 2026-08-21 across 4 cities discovered via
+    # PrimeGov's own video delegation: the query shape is what PrimeGov's
+    # ListArchivedMeetings API hands back as `videoUrl`, and it
+    # 302-redirects to the path shape (see _fetch_page's docstring for
+    # why callers must use the post-redirect final_url).
+    extract = GranicusAssetFinder._extract_event_id
+    assert (
+        extract("https://calabasas.granicus.com/MediaPlayer.php?event_id=1525")
+        == "1525"
+    )
+    assert (
+        extract("https://calabasas.granicus.com/player/event/1525?redirect=true")
+        == "1525"
+    )
+    assert (
+        extract("https://elkgrove.granicus.com/MediaPlayer.php?event_id=2583") == "2583"
+    )
+    assert (
+        extract("https://emeryville.granicus.com/MediaPlayer.php?event_id=1108")
+        == "1108"
+    )
+    assert (
+        extract("https://nassaufl.granicus.com/MediaPlayer.php?event_id=2741") == "2741"
+    )
+    assert extract("https://city.granicus.com/AboutUs.php") is None
+    # Never matches a real clip_id URL, symmetric with the guard above.
+    assert extract("https://city.granicus.com/player/clip/1234") is None
 
 
 def test_extract_metadata_ignores_previous_meeting_date_reference():

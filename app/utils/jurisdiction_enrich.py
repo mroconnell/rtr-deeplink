@@ -528,6 +528,67 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     # meeting-body TYPE the way Granicus/CivicClerk do, so this is
     # registered as "county" directly rather than inferred per-resolve.
     "netapps.ocfl.net": KnownJurisdiction("Orange", "county", "FL"),
+    # --- 2026-08-21 batch: added alongside the `_fill_missing_state()`
+    # fix in `finalize_jurisdiction()`'s "already validated" branch above
+    # (BACKLOG.md's "16 real pairs of a jurisdiction appearing twice"
+    # entry). Each entry below is grounded in real evidence found while
+    # investigating that entry's 16 examples, not a guess -- see each
+    # comment for the specific confirmation. Several of these are NOT the
+    # state the original bare/suffixed "duplicate" pairing assumed
+    # (Cook County, Frederick County, Glendale, Washington County) --
+    # the bare row turned out to be a genuinely different, unrelated real
+    # jurisdiction that happened to share an ambiguous name with an
+    # already-archived suffixed one, not a duplicate of it. Registering
+    # the correct state here fixes both: future re-resolves of that exact
+    # domain, and (via the existing `/internal/jurisdiction/backfill-apply`
+    # endpoint, which already re-runs `finalize_jurisdiction()` against
+    # each row's own stored `source_url_normalized`) the already-published
+    # row -- no new backfill mechanism needed.
+    #
+    # Jacksonville/Memphis/Nassau County/Redmond/Bakersfield/Dublin/Albany:
+    # confirmed by finding a SECOND already-archived page on the exact
+    # same customer domain (Jacksonville, Memphis, Nassau County) or an
+    # exact/near-exact domain match (Redmond, Bakersfield, Dublin: same
+    # netloc; Albany: same "albanyca" customer slug, one on Granicus one
+    # on PrimeGov) whose OWN stored jurisdiction already carries the real
+    # state -- about as strong a real-data confirmation as this registry
+    # gets, short of an "authoritative" override.
+    "jaxcityc.granicus.com": KnownJurisdiction("Jacksonville", "city", "FL"),
+    "memphis.granicus.com": KnownJurisdiction("Memphis", "city", "TN"),
+    "nassaufl.granicus.com": KnownJurisdiction("Nassau", "county", "FL"),
+    "redmondor.portal.civicclerk.com": KnownJurisdiction("Redmond", "city", "OR"),
+    "pub-bakersfield.escribemeetings.com": KnownJurisdiction(
+        "Bakersfield", "city", "CA"
+    ),
+    "dublin.granicus.com": KnownJurisdiction("Dublin", "city", "CA"),
+    "albanyca.granicus.com": KnownJurisdiction("Albany", "city", "CA"),
+    # Harris County, TX: the bare page's own real Granicus clip page
+    # (confirmed live) is titled for "...Metropolitan Transit Authority"
+    # committees -- METRO, the real, well-known Metropolitan Transit
+    # Authority of Harris County, Texas. "Harris County" is only
+    # nationally ambiguous between GA and TX, and no real evidence ties a
+    # METRO transit authority to Harris County, GA.
+    "ridemetro.granicus.com": KnownJurisdiction("Harris", "county", "TX"),
+    # Washington County, OR (NOT VA, despite the original pairing's
+    # assumption): confirmed live -- this exact domain's own page
+    # literally renders `<div id="mottotext">Oregon</div>` right next to
+    # its own "Washington County" branding.
+    "washingtoncounty.civicweb.net": KnownJurisdiction("Washington", "county", "OR"),
+    # Cook County, MN (NOT IL): confirmed via this domain's own customer
+    # slug, "cocookmn" -- "Co[unty of] Cook, MN" -- a real, if much
+    # smaller, Minnesota county (seat: Grand Marais), genuinely distinct
+    # from the Chicago-area Cook County, IL already archived under a
+    # different domain.
+    "cocookmn.civicweb.net": KnownJurisdiction("Cook", "county", "MN"),
+    # Frederick County, VA (NOT MD): confirmed via this domain's own
+    # customer slug, "fcva" -- "F[rederick] C[ounty], VA" -- genuinely
+    # distinct from Frederick County, MD already archived under a
+    # different (`frederick.granicus.com`) domain.
+    "fcva.granicus.com": KnownJurisdiction("Frederick", "county", "VA"),
+    # Glendale, AZ (NOT CA): confirmed via this domain's own customer
+    # slug, "glendale-az" -- genuinely distinct from Glendale, CA already
+    # archived under a different (PrimeGov) domain.
+    "glendale-az.granicus.com": KnownJurisdiction("Glendale", "city", "AZ"),
 }
 
 
@@ -1251,6 +1312,41 @@ def finalize_jurisdiction(
     mechanisms that DO change the value, and BACKLOG.md's "Census-table
     baseline validation" entry for the real data (649 archived rows) this
     design was built and tuned against.
+
+    Cross-checked against a validated subdomain-derived candidate since
+    2026-08-21 (BACKLOG.md's jurisdiction-bleed entries), the same idea
+    `extract_jurisdiction_chain()` already applies to its own per-tier
+    candidates (see that function's own docstring), just moved one level
+    down so a caller that invokes THIS function directly on already-
+    stored text -- `archive/db/crud.py`'s backfill/reprocessing passes,
+    not just a fresh chain-based resolve -- gets the same protection.
+    Two distinct real, confirmed-live failure shapes this closes:
+
+    1. `_trim_repair()` can confidently trim a bled raw value down to a
+       real, but WRONG, place when the discarded tail happens to mention
+       a different real city -- confirmed live on Shelburne, ON's stored
+       "Brantford regarding Professional Activity" (eScribe subdomain
+       `pub-shelburne...`), which trims to "Brantford" (a real Ontario
+       town, just not THIS meeting's) before this fix.
+    2. A raw value can validate directly (no repair needed at all) as a
+       real place that's genuinely mentioned on the page, but isn't the
+       meeting's OWN jurisdiction -- confirmed live on Peel Region, ON's
+       "Town of Caledon" (eScribe subdomain `pub-peelregion...`): Caledon
+       is a real constituent lower-tier town inside the Peel Region
+       agenda, validates outright, and used to be returned as-is before
+       ever reaching the subdomain's own correct "Peel Region" identity.
+
+    In both cases, when a validated subdomain-derived candidate exists
+    (see `_validated_subdomain_extract_from_netloc()`) and disagrees with
+    the text-derived name (`_base_name_key()`, the same identity
+    comparison the chain's own cross-check uses), the subdomain's own
+    validated identity wins outright -- it's an independent, per-customer
+    signal (the domain the customer itself registered), not just another
+    guess at parsing the same page text that produced the wrong answer in
+    the first place. When they agree (the overwhelmingly common case) or
+    no subdomain hint validates at all (most non-eScribe/Granicus pages,
+    or an eScribe regional-tier customer not yet in the place tables --
+    see BACKLOG.md's StatsCan completeness gap), this is a pure no-op.
     """
     known = lookup_by_domain(netloc) if netloc else None
 
@@ -1261,6 +1357,11 @@ def finalize_jurisdiction(
         if known:
             return JurisdictionResult(f"{known.name}, {known.state}", None, "fallback")
         return JurisdictionResult(raw_jurisdiction, None, "blank")
+
+    subdomain_hint = (
+        _validated_subdomain_extract_from_netloc(netloc) if netloc else None
+    )
+    subdomain_hint_key = _base_name_key(subdomain_hint) if subdomain_hint else None
 
     # Preprocessing: strip noise shapes _trim_repair() below can't reach
     # (a leading date only trims from the right; a glued file extension
@@ -1284,11 +1385,48 @@ def finalize_jurisdiction(
     suffix = f", {state_match.group(1).upper()}" if state_match else ""
 
     if _table_lookup(base):
-        return JurisdictionResult(raw_jurisdiction, None, "validated")
+        if subdomain_hint_key and _base_name_key(base) != subdomain_hint_key:
+            return JurisdictionResult(
+                f"{subdomain_hint}{_fill_missing_state(subdomain_hint, suffix, netloc)}",
+                None,
+                "repaired",
+            )
+        # Real bug found 2026-08-21 via a /coverage sort-adjacency scan
+        # (BACKLOG.md's "16 real pairs of a jurisdiction appearing twice"
+        # entry): unlike the `_trim_repair()`/`_split_entity_prefix()`
+        # branches below, this fast path used to return `raw_jurisdiction`
+        # completely unchanged whenever the bare name ALREADY validates
+        # against the place/county table -- including when that
+        # validation is only nationally-ambiguous (e.g. "Albany" matches
+        # 14 different states' worth of real places), so no state was
+        # ever attempted here even though `_fill_missing_state()` was
+        # right there and already used by every other repair path. That
+        # silently produced two different stored jurisdiction strings for
+        # the same real government -- one adapter/extraction happened to
+        # find a state suffix in the raw text ("Dublin, CA"), another
+        # extraction of the exact same customer's site
+        # (`dublin.granicus.com`, confirmed live) didn't, and the second
+        # one got permanently stuck bare ("Dublin") since this branch
+        # never gave `resolve_state()` a chance to try. `_fill_missing_state()`
+        # is a safe no-op call here: it only ever adds a suffix when
+        # `resolve_state()` confidently resolves one (an unambiguous
+        # name-only match, or -- the common case for these bare rows -- a
+        # confirmed `netloc` registry entry), and returns "" (no change)
+        # for a genuinely ambiguous name with no netloc evidence, so an
+        # already-correct bare "unverified"-shaped case can't regress.
+        return JurisdictionResult(
+            f"{base}{_fill_missing_state(base, suffix, netloc)}"
+            if not suffix
+            else raw_jurisdiction,
+            None,
+            "validated",
+        )
 
     trimmed = _trim_repair(base)
     if trimmed:
         repaired_name, _table = trimmed
+        if subdomain_hint_key and _base_name_key(repaired_name) != subdomain_hint_key:
+            repaired_name = subdomain_hint
         return JurisdictionResult(
             f"{repaired_name}{_fill_missing_state(repaired_name, suffix, netloc)}",
             None,
@@ -1593,16 +1731,28 @@ def _validated_label_extract(label: str) -> Optional[str]:
     return glued if len(glued) >= 3 and _table_lookup(glued) else None
 
 
+def _validated_subdomain_extract_from_netloc(netloc: str) -> Optional[str]:
+    """Same logic as `_validated_subdomain_extract()` below, but taking an
+    already-parsed netloc directly rather than a full URL -- split out
+    2026-08-21 (BACKLOG.md's jurisdiction-bleed entries: "trim-repair can
+    turn a bled value into a confidently WRONG real city" and "eScribe's
+    chain picks the wrong government for a two-tier regional site") so
+    `finalize_jurisdiction()` can compute the same subdomain-derived
+    cross-check candidate it already has `netloc` for, without
+    constructing a throwaway URL just to re-parse it back apart."""
+    host = netloc.lower()
+    parts = host.split(".")
+    if len(parts) <= 2 or parts[0] == "www":
+        return None
+    return _validated_label_extract(parts[0])
+
+
 def _validated_subdomain_extract(url: str) -> Optional[str]:
     """URL-taking wrapper around `_validated_label_extract()` -- parses the
     subdomain label out of `url` (declining on a bare domain or a "www"
     subdomain, same as before) and delegates. See that function's own
     docstring for the actual validation logic."""
-    host = urlparse(url).netloc.lower()
-    parts = host.split(".")
-    if len(parts) <= 2 or parts[0] == "www":
-        return None
-    return _validated_label_extract(parts[0])
+    return _validated_subdomain_extract_from_netloc(urlparse(url).netloc)
 
 
 def validated_subdomain_extract(url: str) -> Optional[str]:

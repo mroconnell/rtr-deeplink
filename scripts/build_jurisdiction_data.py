@@ -284,6 +284,72 @@ def build_canada_places(canada_source_dir: Path) -> None:
     )
 
 
+# Real, curated, bounded addition (2026-08-21, BACKLOG.md's "StatsCan/
+# Census table completeness gap" entry, confirmed still open per that
+# entry's own list): Ontario's upper-tier "regional municipality"
+# governments -- Durham, Peel, and Waterloo -- aren't census subdivisions
+# (build_canada_places() above only reads SGC "Level 4 / Census
+# subdivision" rows, the lower-tier city/town level: Caledon, Brampton,
+# Mississauga, etc.), they're "Level 3 / Census division" rows in the SAME
+# real SGC 2021 structure file this module already downloads -- confirmed
+# directly by grepping it: codes 3518 (Durham), 3521 (Peel), and 3530
+# (Waterloo) all appear under Ontario's "35" province prefix with the
+# Class titles "Durham"/"Peel"/"Waterloo" (bare, no "Regional
+# Municipality" annotation in this particular StatsCan file). Only these
+# three, not the other 5 real Ontario regional municipalities a 2019
+# provincial review also names (Halton, Muskoka, Niagara, Oxford, York,
+# per Wikipedia's "Regional municipality" article, citing that review) --
+# BACKLOG.md's own completeness-gap audit (a full sweep of all 176 real
+# eScribe + 253 real Granicus subdomains in production) only confirmed
+# Durham/Peel/Waterloo as customers actually live on this app today, so
+# only those three are added here rather than guessing the other five are
+# needed too, per this repo's "ground fixes in real confirmed data, don't
+# speculate ahead of it" convention (see e.g. the StatsCan/Census
+# completeness gap entry itself, or the Tulare County residual-gap test in
+# tests/test_jurisdiction_enrich.py for the same discipline applied
+# elsewhere).
+#
+# Both the "X Region" and "Region of X" forms are added for each --
+# BACKLOG.md's own gap description already names both shapes ("Durham
+# Region", "Region of Waterloo"), and a real eScribe/Granicus subdomain's
+# wordninja split (see `_validated_label_extract()` in
+# app/utils/jurisdiction_enrich.py) naturally produces the "X Region"
+# shape from a label like "peelregion" -- confirmed live for Peel
+# specifically (pub-peelregion.escribemeetings.com, BACKLOG_DONE.md).
+# Real municipal/self-branding usage for a page's own body text can go
+# either way (e.g. Waterloo's own regional government uses
+# "regionofwaterloo.ca" as its domain), so both forms are stored as
+# independent, equally-real rows rather than picking just one.
+_ONTARIO_REGIONAL_MUNICIPALITIES = ["Durham", "Peel", "Waterloo"]
+
+
+def build_canada_regional_municipalities() -> None:
+    """Appends the curated list above into the same places.csv
+    build_canada_places() just wrote to -- additive, same union-with-
+    existing-rows pattern that function already uses, so re-running just
+    this step doesn't require re-downloading anything."""
+    places_path = OUT_DIR / "places.csv"
+    existing_rows: List[Tuple[str, str]] = []
+    if places_path.exists():
+        with open(places_path, encoding="utf-8") as f:
+            existing_rows = [(r["name"], r["state"]) for r in csv.DictReader(f)]
+
+    new_rows: List[Tuple[str, str]] = []
+    for name in _ONTARIO_REGIONAL_MUNICIPALITIES:
+        new_rows.append((f"{name} Region", "ON"))
+        new_rows.append((f"Region of {name}", "ON"))
+
+    combined = sorted(set(existing_rows) | set(new_rows))
+    with open(places_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["name", "state"])
+        writer.writerows(combined)
+    print(
+        f"places.csv: added {len(set(new_rows) - set(existing_rows))} Ontario "
+        f"regional-municipality rows ({len(combined)} total, was {len(existing_rows)})"
+    )
+
+
 def build_zcta_place(source_dir: Path, fips_to_usps: dict) -> None:
     rows = _read_pipe_delimited(source_dir, "tab20_zcta520_place20_natl.txt")
     out_rows = []
@@ -326,3 +392,4 @@ if __name__ == "__main__":
     build_zcta_place(source, fips_to_usps)
     if canada_dir:
         build_canada_places(canada_dir)
+        build_canada_regional_municipalities()

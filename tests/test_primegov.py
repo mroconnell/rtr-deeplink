@@ -695,32 +695,63 @@ CAMBRIDGE_API_RESPONSE = json.dumps(
 )
 
 
-async def test_resolve_declines_to_delegate_to_a_swagit_events_url():
-    # Real, confirmed-live bug found 2026-08-19 while verifying this fix
-    # (see the module-level comment on `_resolve_via_tenant_video_url`):
-    # a real `/events/{id}` Swagit URl -- cambridgema's own confirmed
-    # videoUrl -- serves a bogus placeholder video (the same
-    # "vault01/abilenetx/..." CDN path independently confirmed on 3 other
-    # real tenants) instead of the real meeting, when fetched the same
-    # way `/videos/{id}` pages are. Delegating would silently hand back a
-    # wrong-but-plausible video with no warning -- worse than the honest
-    # "no video found" this must fall back to instead. No SWAGIT_URL route
-    # is mocked here on purpose: if this guard were ever removed/broken,
-    # mock_session would raise a loud AssertionError (unmocked request)
-    # rather than this test silently passing on the wrong behavior.
+CAMBRIDGE_SWAGIT_URL = "https://cambridgema.v3.swagit.com/events/43940"
+# Real (trimmed) `<script>` excerpt, independently curl-fetched live
+# 2026-08-21 from this exact URL -- byte-identical dead "abilenetx"
+# placeholder line to the 4 other real tenants confirmed to match this
+# pattern (see swagit.py's `_is_swagit_events_template_dead_candidate`
+# and tests/test_swagit.py's own fixture for the full writeup). Real
+# <title> tag confirmed live too: "Jan 12, 2026 Regular City Council
+# Meeting - Cambridge, MA".
+CAMBRIDGE_SWAGIT_HTML = (
+    "<html><head><title>Jan 12, 2026 Regular City Council Meeting - "
+    "Cambridge, MA</title></head><body><script>"
+    '// player.src({type: "application/x-mpegURL", src: "https://stream.'
+    "us-central1-b.swagit.com/on-demand/_definst_/mp4:vault01/abilenetx/"
+    '59d7e173-684b-4da4-9433-50d6e22555f1.mp4/playlist.m3u8"});\n'
+    'player.src({type: "application/x-mpegURL", src: "https://edge-f.'
+    'swagit.com/live-edge/cambridgema/live-1-a/playlist.m3u8"});'
+    "</script></body></html>"
+)
+
+
+async def test_resolve_delegates_to_swagit_events_url_and_gets_an_honest_decline():
+    # Real, confirmed-live bug found 2026-08-19: a real `/events/{id}`
+    # Swagit URL -- cambridgema's own confirmed videoUrl -- used to serve
+    # a bogus placeholder video (the same "vault01/abilenetx/..." CDN path
+    # independently confirmed on 4 other real tenants) with no warning at
+    # all when delegated to the same way `/videos/{id}` pages are. This
+    # was worked around here with an early decline (this method returning
+    # None before ever delegating) until the root cause was fixed at the
+    # source 2026-08-21: SwagitAssetFinder itself now detects and declines
+    # both of this page template's non-viable candidates (see
+    # `_is_swagit_events_template_dead_candidate`), so delegating here is
+    # now safe -- confirmed by this test actually exercising the real
+    # SwagitAssetFinder.resolve() path (not skipping it) and getting back
+    # an honest "no video" with the specific live-event-page warning,
+    # never the bogus placeholder.
+    _register_delegation_targets()
     routes = {
         CAMBRIDGE_URL: FakeResponse(
             status=200, text=PAGE_HTML_NO_VIDEO, url=CAMBRIDGE_URL
         ),
         CAMBRIDGE_API_URL: FakeResponse(status=200, text=CAMBRIDGE_API_RESPONSE),
+        CAMBRIDGE_SWAGIT_URL: FakeResponse(
+            status=200, text=CAMBRIDGE_SWAGIT_HTML, url=CAMBRIDGE_SWAGIT_URL
+        ),
     }
 
     with mock_session(routes):
         result = await PrimeGovAssetFinder().resolve(CAMBRIDGE_URL)
 
-    assert result.platform == "primegov"
+    assert result.platform == "swagit"  # delegated finder's own platform name
     assert result.video_url is None
-    assert any("no video found" in w.lower() for w in result.video_warnings)
+    assert not any("abilenetx" in (w or "") for w in result.video_warnings)
+    assert any("live-event page" in w for w in result.video_warnings)
+    # Same source_url-preserving choice as every other delegation path in
+    # this module -- "View original source" keeps pointing at the real
+    # PrimeGov page, not the swagit.com URL discovered behind the scenes.
+    assert result.source_url == CAMBRIDGE_URL
 
 
 BROOKHAVEN_URL = (
