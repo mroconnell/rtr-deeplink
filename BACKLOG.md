@@ -295,6 +295,49 @@ for the full investigation and what was actually shipped).
   that population to find real meeting `id`s per town or bulk-ingested
   them into the Archive yet.
 
+## SuiteOne Media: real, confirmed jurisdiction gap on 2 tenants; unconfirmed CDX leads and PDF-transcript fallback (2026-08-21)
+
+Residual gaps left behind by the new SuiteOne Media (suiteonemedia.com)
+adapter build — see `BACKLOG_DONE.md`'s "SuiteOne Media: new platform
+adapter built" entry for the full investigation and what was actually
+shipped (`app/platforms/suiteone.py`).
+
+- **`stmarysga` (St Marys, GA) and `camaswa` (Camas, WA) can't recover a
+  jurisdiction through the shared `jurisdiction_enrich` pipeline at all.**
+  wordninja splits "stmarysga" as `['st', 'mary', 'sga']` and "camaswa" as
+  `['ca', 'maswa']` — neither's last token is a real 2-letter state code
+  (the real trailing state letters get absorbed into a longer non-word
+  chunk, "sga"/"maswa", by wordninja's own dictionary-cost minimization),
+  so `jurisdiction_enrich.validated_subdomain_extract()` never produces a
+  bare name to attach a state to, and both end up `jurisdiction=None`.
+  Confirmed by hand that stripping the real trailing state code first
+  ("stmarys" / "camas") validates correctly ("St Marys" / "Camas") — so
+  the underlying place names are real and resolvable, just not through
+  this shared function as it stands today. Fixing this generically (e.g.
+  trying a manual last-2-letters-against-known-US-state-codes strip
+  before handing the remainder to `validated_label_extract()`, independent
+  of whatever wordninja itself produced) would belong in
+  `jurisdiction_enrich.py` itself, since other adapters using the same
+  glued-slug shape would benefit too — not done here since this repo's
+  own convention for this platform was "reuse jurisdiction_enrich
+  directly, don't write new jurisdiction-parsing logic."
+- **5 of the 11 CDX-derived tenant leads never got individually verified
+  live**: `mcallentx`, `southbendin`, `prescottaz`, `richlandwa`,
+  `laytonut` all 404 on their home page as of 2026-08-21 — dead leads (or
+  a since-retired customer), not a bug in the adapter. The other 6
+  (`lorainoh`, `pacificgroveca`, `tuscaloosaal`, `camaswa`, `holladayut`,
+  `stmarysga`) are confirmed live and are what `tests/fixtures/suiteone/`
+  is built from.
+- **No confirmed real case of the `/event/GetDocumentFile/{title}?did=N`
+  endpoint serving a "Transcript" PDF on a meeting that has NO real VTT
+  captions.** The one confirmed real "Transcript" PDF (Pacific Grove,
+  event 2099) sits alongside that same event's real, populated VTT — so
+  there's no positive example yet of this being the *only* transcript
+  source for a meeting. `suiteone.py` deliberately does not attempt to
+  fetch/link that PDF as a fallback (per this repo's "don't claim a data
+  path works without a positive example" convention) — worth building
+  once a real VTT-less-but-Transcript-PDF-present meeting is found.
+
 ## Stray demo-shaped tables found in `rtr_deeplink_db` during PITR test-restore verification (2026-08-17)
 
 Confirmed live 2026-08-17 during the WO-4 PITR test-restore verification
@@ -3017,49 +3060,25 @@ that added this reorg, for which ones are new).
   investigated further this session — still the first real lead to build
   an adapter against, not a build.
 
-- **[LATER] Two more video platforms with zero support anywhere in the
-  resolver, first sighted 2026-08-21 via the same destinyhosted.com
-  enumeration, now population-sized via Wayback CDX (see
-  BACKLOG_DONE.md)** — neither in `detect_platform()`, no adapter file,
-  not in `generic_fallback.py`'s curated-pointer list:
-  - **`open.media` may not need its own adapter at all** — confirmed live
-    that Goodyear, AZ's page (`goodyearaz.open.media/sessions/346555`)
-    directly iframes `public.destinyhosted.com/agenda_publish.cfm?
-    id=46639` (the same tenant already in the destinyhosted table) for
-    its agenda, and its own video is a YouTube id in the old
-    `youtube.com/v/{id}` embed shape — which `YouTubeAssetFinder`'s
-    `_VIDEO_ID_RE` now recognizes (fixed same day, see BACKLOG_DONE.md),
-    so generic_fallback's existing tier-1 YouTube detection may already
-    resolve open.media pages with no dedicated code at all. Not yet
-    confirmed whether every open.media tenant pairs a YouTube embed with
-    a destinyhosted (or other) agenda backend the same way, or whether
-    some host their own video directly — worth checking a few more of
-    the 10 real tenant subdomains found via CDX (`arapahoe`, `cortez`,
-    `eugene`, `larimer`, `litchfield-park`, `pitkincounty`,
-    `santabarbaraca`, `surpriseaz`, `townofgeorgetown`, plus the
-    confirmed `goodyearaz`) before assuming this generalizes.
-  - SuiteOne Media — **131 distinct tenant subdomains found via CDX**,
-    a real recurring signal per this file's own "collect edge-case URLs"
-    convention, and a meaningfully larger population than several
-    platforms that already have dedicated adapters. A large fraction are
-    **court AV systems, not city-council meetings** — clear from naming
-    (`azscottsdaleccrt1`–`9`, `chandlerazmcrt1`–`7`,
-    `coloradospringsmcrtdiv1`–`5`, `pinalcoazsupcrt1`–`16`); real
-    city/county meeting tenants also present: `lorainoh` (id shape
-    `/event/?id=N`, confirmed live with real video), `pacificgroveca`
-    (same shape, confirmed), `mcallentx`, `southbendin`, `tuscaloosaal`,
-    `prescottaz`, `richlandwa`, `camaswa`, `holladayut`, `laytonut`,
-    `stmarysga`. A second, separate id space exists on the same domain:
-    `/event/GetAgendaFile/{title}?aid=N` serves agenda PDFs directly
-    (confirmed on `tuscaloosaal`, `holladayut`, `stmarysga`,
-    `pacificgroveca`) — likely a real, easy jurisdiction/agenda-metadata
-    source alongside whatever the video adapter turns out to need.
-
-  Real customer URLs are in hand for both. No adapter built this
-  session; worth a first real look before committing further (per this
-  file's own working conventions: test against the real URL first) —
-  SuiteOne Media's 131-tenant population, even after subtracting the
-  court-system tenants, looks like the stronger candidate of the two.
+- **[LATER] `open.media` may not need its own adapter at all** — first
+  sighted 2026-08-21 via the same destinyhosted.com enumeration that
+  turned up SuiteOne Media below (see BACKLOG_DONE.md for the population
+  sizing of both). Not in `detect_platform()`, no adapter file, not in
+  `generic_fallback.py`'s curated-pointer list. Confirmed live that
+  Goodyear, AZ's page (`goodyearaz.open.media/sessions/346555`) directly
+  iframes `public.destinyhosted.com/agenda_publish.cfm?id=46639` (the
+  same tenant already in the destinyhosted table) for its agenda, and its
+  own video is a YouTube id in the old `youtube.com/v/{id}` embed shape —
+  which `YouTubeAssetFinder`'s `_VIDEO_ID_RE` now recognizes (fixed same
+  day, see BACKLOG_DONE.md), so generic_fallback's existing tier-1
+  YouTube detection may already resolve open.media pages with no
+  dedicated code at all. Not yet confirmed whether every open.media
+  tenant pairs a YouTube embed with a destinyhosted (or other) agenda
+  backend the same way, or whether some host their own video directly —
+  worth checking a few more of the 10 real tenant subdomains found via
+  CDX (`arapahoe`, `cortez`, `eugene`, `larimer`, `litchfield-park`,
+  `pitkincounty`, `santabarbaraca`, `surpriseaz`, `townofgeorgetown`, plus
+  the confirmed `goodyearaz`) before assuming this generalizes.
 
 - **[LATER] Vimeo's real-world prevalence among small local governments is
   now quantified for the first time — worth deciding if the existing
