@@ -85,25 +85,27 @@ from ..utils.vtt_parser import (
 # glued non-state remainder validates as "Lorain" and whose own last
 # token "oh" is a real state code, giving "Lorain, OH".
 #
-# **A real, confirmed residual gap**: `stmarysga` (St Marys, GA) and
-# `camaswa` (Camas, WA) -- specifically flagged as worth checking since
-# they're the least obviously-splittable of the known real tenants --
-# both fail to validate via this shared pipeline at all. wordninja splits
-# "stmarysga" as ['st', 'mary', 'sga'] and "camaswa" as ['ca', 'maswa']:
-# neither's last token is a real 2-letter state code (the trailing state
-# letters get absorbed into a longer, non-word chunk -- "sga"/"maswa" --
-# by wordninja's own dictionary-cost minimization instead of splitting
-# cleanly), so `validated_subdomain_extract()` never even produces a bare
-# name to attach a state to. Confirmed directly: stripping the real
-# trailing state code by hand first ("stmarys" / "camas") DOES validate
-# correctly ("St Marys" / "Camas") -- but doing that generically would be
-# new jurisdiction-parsing logic, which this adapter deliberately doesn't
-# add (see CLAUDE.md's "reuse jurisdiction_enrich directly" instruction
-# for this platform). So `jurisdiction` is honestly `None` for these two
-# real, confirmed-live tenants today -- declining rather than guessing,
-# same as every other adapter's stated policy -- tracked in BACKLOG.md as
-# a real, still-open residual gap for a future session that's willing to
-# extend the shared module itself.
+# **The residual gap this adapter shipped with, closed 2026-08-21 in the
+# shared module (WO-22)**: `stmarysga` (St Marys, GA) and `camaswa`
+# (Camas, WA) -- specifically flagged as worth checking since they're the
+# least obviously-splittable of the known real tenants -- used to fail to
+# validate via this shared pipeline at all. wordninja splits "stmarysga"
+# as ['st', 'mary', 'sga'] and "camaswa" as ['ca', 'maswa']: neither's
+# last token is a real 2-letter state code (the trailing state letters get
+# absorbed into a longer, non-word chunk -- "sga"/"maswa" -- by
+# wordninja's own dictionary-cost minimization instead of splitting
+# cleanly), so `validated_subdomain_extract()` never even produced a bare
+# name to attach a state to. Fixed where the original writeup said it
+# belonged -- in `jurisdiction_enrich._validated_label_extract_with_state()`
+# itself (its tier 5: strip a trailing state/province code off the RAW
+# label before wordninja sees it, accept only if the remainder validates),
+# not by adding jurisdiction-parsing logic here. This adapter's only
+# change is to ask for the code that strip removed
+# (`validated_label_extract_with_state()`) instead of re-deriving it: it
+# CAN'T be re-derived safely from the raw tenant alone, since "tacoma"
+# also ends in a real state code and is emphatically not in Massachusetts
+# -- the trailing letters are only trustworthy when the name without them
+# is what actually validated, which only the shared module knows.
 #
 # **A second document endpoint, confirmed real but only lightly used
 # here**: `/event/GetAgendaFile/Agenda?aid={N}` (an `<object data="...">`
@@ -405,15 +407,23 @@ class SuiteOneAssetFinder(AssetFinder):
 
     @staticmethod
     def _extract_jurisdiction(tenant: str) -> Optional[str]:
-        name = jurisdiction_enrich.validated_subdomain_extract(
-            f"https://{tenant}.suiteonemedia.com/event/"
-        )
-        if not name:
+        hit = jurisdiction_enrich.validated_label_extract_with_state(tenant)
+        if not hit:
             return None
+        name, stripped_state = hit
 
         words = wordninja.split(tenant)
         if words and len(words) > 1 and words[-1].lower() in _US_STATE_ABBREVIATIONS:
             return f"{name}, {words[-1].upper()}"
 
         state = jurisdiction_enrich.resolve_state(name, "city")
-        return f"{name}, {state}" if state else name
+        if state:
+            return f"{name}, {state}"
+        # Last resort: the state/province code the shared module itself
+        # stripped off the raw tenant slug to make the name validate --
+        # the only signal left for a glued name+state tenant whose own
+        # name is nationally ambiguous ("stmarysga" -> "St Marys", a real
+        # name in 7 states/provinces, so `resolve_state()` correctly
+        # declines to guess). See this module's own comment above for why
+        # this code can't be re-derived here from `tenant` directly.
+        return f"{name}, {stripped_state}" if stripped_state else name
