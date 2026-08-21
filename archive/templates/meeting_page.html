@@ -74,7 +74,11 @@
     "@type": "VideoObject",
     "name": {{ (page.title or "Meeting")|tojson }},
     "description": {{ description|tojson }},
-    {% if page.video_format == "youtube" -%}
+    {#- "vimeo" belongs on the embedUrl side for the same reason
+       "youtube" does: vimeo.py stores a player.vimeo.com/video/{id}
+       iframe page, never a real media file, so calling it contentUrl
+       would be a claim Google can check and find false. #}
+    {% if page.video_format in ("youtube", "vimeo") -%}
     "embedUrl": {{ page.video_url|tojson }},
     {% else -%}
     "contentUrl": {{ page.video_url|tojson }},
@@ -191,6 +195,11 @@
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.4.12/dist/hls.min.js"></script>
   {% elif page.video_format == "youtube" %}
   <script src="https://www.youtube.com/iframe_api"></script>
+  {% elif page.video_format == "vimeo" %}
+  {#- Same pattern as the YouTube IFrame API above. meeting_page.js also
+     has its own lazy loader (loadVimeoPlayerSdk) that no-ops when the
+     SDK is already present, so this is a head start, not a dependency. #}
+  <script src="https://player.vimeo.com/api/player.js"></script>
   {% endif %}
 {% endblock %}
 {% block content %}
@@ -307,6 +316,12 @@
         <div id="videoWrapper" class="video-wrapper" data-video-url="{{ page.video_url }}" data-video-format="{{ page.video_format }}">
           {% if page.video_format == "youtube" %}
           <div id="youtubePlayerContainer" class="youtube-player-container"></div>
+          {% elif page.video_format == "vimeo" %}
+          {#- Vimeo's iframe is created by meeting_page.js's
+             initVimeoVideo() rather than server-rendered like Viebit's,
+             so the deep-link `#t=` fragment is part of the very first
+             src the browser loads (see that function's own comment). #}
+          <div id="vimeoPlayerContainer" class="youtube-player-container vimeo-player-container"></div>
           {% elif page.video_format == "viebit" %}
           <iframe id="viebitFrame" class="viebit-player-container" allow="autoplay; fullscreen" allowfullscreen title="Meeting video"></iframe>
           {% elif page.video_format == "m3u8" %}

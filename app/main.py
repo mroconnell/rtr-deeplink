@@ -1228,6 +1228,22 @@ _YOUTUBE_DELEGATED_UNREADABLE_MEDIA_MESSAGE_TEMPLATE = (
 )
 
 
+# Vimeo is the same structural shape as the two above -- video_url is a
+# player.vimeo.com iframe page, never a media file -- but for a
+# different, worth-stating reason: the real progressive media URL exists,
+# it just lives behind the same signed `player.vimeo.com/video/{id}/config`
+# response that 403s every non-browser client, which is also why captions
+# can't be fetched (see vimeo.py's module docstring -- one wall, not two
+# separate problems). No "open it directly on Vimeo" link: unlike the
+# YouTube case, nothing extra is available there that the embedded player
+# above doesn't already offer.
+_VIMEO_UNREADABLE_MEDIA_MESSAGE = (
+    "This meeting's video is hosted on Vimeo, which doesn't hand out audio to anything but its "
+    "own player — so we can't transcribe it here. You can still jump to specific timestamps "
+    "with the player above, and turn on captions with its CC button if this meeting has them."
+)
+
+
 def _unreadable_media_message(result: ResolvedMeeting, requested_platform: str) -> str:
     # video_url for a YouTube result is an iframe-embed page
     # (youtube.com/embed/{id}), never a real media file -- ffprobe can
@@ -1244,6 +1260,8 @@ def _unreadable_media_message(result: ResolvedMeeting, requested_platform: str) 
     # visitor's own URL was directly youtube.com/youtu.be, or this is a
     # generic_fallback result (best_effort) where the page itself has no
     # other branded identity and the video genuinely is youtube.com.
+    if result.video_format == "vimeo":
+        return _VIMEO_UNREADABLE_MEDIA_MESSAGE
     if result.video_format == "youtube" and (
         requested_platform == "youtube" or result.best_effort
     ):

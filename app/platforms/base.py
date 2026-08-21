@@ -52,6 +52,14 @@ def detect_platform(url: str) -> str:
     adapter per platform, not per city, since cities on the same platform
     share the same page structure.
     """
+    # Function-level to break a real import cycle: `vimeo.py` imports
+    # `AssetFinder`/`CalendarPageError` from this module, so this module
+    # can't import it at the top. Vimeo is the one platform whose
+    # detection needs real URL-shape parsing rather than a domain match
+    # (see its case below for why), and that parsing belongs with the
+    # adapter, not copy-pasted here.
+    from .vimeo import is_vimeo_host, is_vimeo_listing, parse_vimeo_video
+
     netloc = urlparse(url).netloc.lower()
     path = urlparse(url).path.lower()
 
@@ -261,6 +269,33 @@ def detect_platform(url: str) -> str:
         # title and jurisdiction -- see openmedia.py's own module
         # docstring for the full investigation.
         return "open_media"
+    if "chicityclerkelms.chicago.gov" in netloc:
+        # Chicago's City Clerk "ELMS" legislative portal -- a real,
+        # single-tenant city platform (not a vendor product), confirmed
+        # live 2026-08-10/11/12 and built out 2026-08-21 (WO-29). Its
+        # video is injected client-side from a separate public JSON API
+        # (the raw page HTML has zero mention of the real Vimeo link) --
+        # see chicago_elms.py's own module docstring.
+        return "chicago_elms"
+    if is_vimeo_host(netloc) and (
+        parse_vimeo_video(url) is not None or is_vimeo_listing(url)
+    ):
+        # Vimeo, registered 2026-08-21 (WO-29) after full playback support
+        # landed in app/static/player.js -- before that, a Vimeo link was
+        # only ever a dead-end "we think the video is here" pointer from
+        # generic_fallback.py (which still handles the pointer case for
+        # any Vimeo shape this doesn't claim).
+        #
+        # Deliberately NOT a bare "vimeo.com in netloc" check, unlike
+        # every vendor-domain case above: vimeo.com is a general-purpose
+        # video host, so a city site's "vimeo.com/cityname" footer link
+        # is a real, confirmed false-positive class (the same one that
+        # makes "youtube" an excluded platform in
+        # `generic_fallback._try_delegate_to_known_platform()`). Only URL
+        # shapes that carry a real video id, or one of the two listing
+        # shapes confirmed to server-render a real meeting list, are
+        # claimed -- see vimeo.py's own module docstring.
+        return "vimeo"
     if "suiteonemedia.com" in netloc:
         # SuiteOne Media -- a small, real, multi-tenant civic video vendor,
         # confirmed live 2026-08-21 across 6 real tenants (pacificgroveca,

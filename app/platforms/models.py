@@ -42,7 +42,12 @@ class ResolvedMeeting(BaseModel):
         None  # m3u8/mp4 URL playable by hls.js/<video>, OR a youtube.com/embed/{id} URL
     )
     video_format: Optional[str] = (
-        None  # "m3u8" | "mp4" | "youtube" | None -- "youtube" needs the iframe+Player-API pathway, not <video>
+        # "m3u8" | "mp4" | "youtube" | "vimeo" | "viebit" | None.
+        # "youtube" and "vimeo" each need their own iframe + cross-frame
+        # Player API pathway rather than <video>, and "viebit" needs a
+        # plain iframe reloaded with ?t= (no API exists there at all) --
+        # see app/static/player.js's initVideo() for all four branches.
+        None
     )
     segments: List[TranscriptSegment] = []
     # Agenda/chapter markers (Granicus's AgendaViewer.php, CivicClerk's

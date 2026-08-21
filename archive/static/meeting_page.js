@@ -225,6 +225,94 @@ function wireSharedControls(adapter, { liveTracking = true } = {}) {
   }
 }
 
+// Vimeo (Chicago ELMS delegates here too) -- iframe + Vimeo's own Player
+// SDK, not native <video>/hls.js. Mirrors app/static/player.js's
+// identical adapter/initializer -- see that file's comments and
+// vimeo.py's module docstring for the full "why", including why this one
+// is wired with liveTracking ON (a real, confirmed cross-frame
+// play/pause/seek/timeupdate API) unlike the Viebit adapter below.
+let _vimeoSdkLoadPromise = null;
+
+function loadVimeoPlayerSdk() {
+  if (window.Vimeo && window.Vimeo.Player) return Promise.resolve();
+  if (_vimeoSdkLoadPromise) return _vimeoSdkLoadPromise;
+  _vimeoSdkLoadPromise = new Promise((resolve, reject) => {
+    const tag = document.createElement('script');
+    tag.src = 'https://player.vimeo.com/api/player.js';
+    tag.onload = () => resolve();
+    tag.onerror = () => reject(new Error('Vimeo Player SDK failed to load'));
+    document.head.appendChild(tag);
+  });
+  return _vimeoSdkLoadPromise;
+}
+
+function isVimeoEmbedUrl(embedUrl) {
+  return /^https:\/\/player\.vimeo\.com\/video\/\d+(?:\?|$)/.test(embedUrl || '');
+}
+
+function buildVimeoEmbedUrl(embedUrl) {
+  const deepLinkTime = getDeepLinkTime();
+  if (deepLinkTime === null) return embedUrl;
+  return `${embedUrl}#t=${Math.max(0, Math.floor(deepLinkTime))}s`;
+}
+
+function createVimeoAdapter(player) {
+  const listeners = { play: [], pause: [], timeupdate: [] };
+  const fire = (name) => listeners[name].forEach((fn) => fn());
+  let lastKnownTime = 0;
+
+  const track = (data) => {
+    if (data && typeof data.seconds === 'number') lastKnownTime = data.seconds;
+  };
+  player.on('play', () => fire('play'));
+  player.on('pause', () => fire('pause'));
+  player.on('ended', () => fire('pause'));
+  player.on('timeupdate', (data) => { track(data); fire('timeupdate'); });
+  player.on('seeked', (data) => { track(data); fire('timeupdate'); });
+
+  return {
+    get currentTime() { return lastKnownTime; },
+    set currentTime(t) {
+      lastKnownTime = Math.max(0, t);
+      player.setCurrentTime(lastKnownTime).catch(() => {});
+    },
+    play: () => player.play().catch(() => {}),
+    pause: () => player.pause().catch(() => {}),
+    addEventListener: (evt, handler) => { if (listeners[evt]) listeners[evt].push(handler); },
+  };
+}
+
+async function initVimeoVideo(embedUrl) {
+  const container = document.getElementById('vimeoPlayerContainer');
+  if (!isVimeoEmbedUrl(embedUrl) || !container) return;
+
+  try {
+    await loadVimeoPlayerSdk();
+  } catch (e) {
+    return;
+  }
+
+  const iframe = document.createElement('iframe');
+  iframe.src = buildVimeoEmbedUrl(embedUrl);
+  iframe.setAttribute('allow', 'autoplay; fullscreen; picture-in-picture');
+  iframe.setAttribute('allowfullscreen', '');
+  iframe.setAttribute('title', 'Meeting video');
+  container.replaceChildren(iframe);
+
+  let player;
+  try {
+    player = new Vimeo.Player(iframe);
+    await player.ready();
+  } catch (e) {
+    return;
+  }
+
+  const adapter = createVimeoAdapter(player);
+  activeVideoAdapter = adapter;
+  wireSharedControls(adapter);
+  applyDeepLink(adapter);
+}
+
 // Viebit (NYC Council, via Legistar delegation) -- iframe-embedded, not
 // native <video>/hls.js. Mirrors app/static/player.js's identical
 // adapter/initializer -- see that file's comments and viebit.py's module
@@ -676,6 +764,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const videoFormat = wrapper.dataset.videoFormat;
   if (videoFormat === 'youtube') {
     initYouTubeVideo(videoUrl);
+  } else if (videoFormat === 'vimeo') {
+    initVimeoVideo(videoUrl);
   } else if (videoFormat === 'viebit') {
     initViebitVideo(videoUrl);
   } else if (videoUrl) {

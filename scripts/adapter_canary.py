@@ -75,6 +75,16 @@ CANARY_URLS: dict[str, str] = {
     "cablecast": "http://charlotte.cablecast.tv/internetchannel/show/2451?site=1",
     "castus": "https://cloud.castus.tv/vod/comm7tv/video/6a83b3f9d94c83000226f83d?page=HOME",
     "champds": "https://play.champds.com/atlantaga/event/1227",
+    # Chicago's 2026-07-15 City Council meeting -- live-verified 2026-08-21
+    # (WO-29). Watch for two distinct failure shapes here: the ELMS API
+    # itself changing, or Vimeo's public oEmbed endpoint starting to
+    # refuse this app's server IP (the metadata half comes from there, see
+    # vimeo.py). A resolve with a real video_url but no title/date points
+    # at the second.
+    "chicago_elms": (
+        "https://chicityclerkelms.chicago.gov/Meeting/"
+        "?meetingId=DF5C52EA-0D6B-F111-A823-001DD8019941"
+    ),
     "civicclerk": "https://emporiaks.portal.civicclerk.com/event/585/media",
     "civicweb": "https://dallascounty.civicweb.net/Portal/MeetingInformation.aspx?Org=Cal&Id=2108",
     "clerkbase": (
@@ -127,6 +137,12 @@ CANARY_URLS: dict[str, str] = {
     # registry keys directly.
     "unknown": "https://www.crrma.org/information/meetings/board/2025-11-12",
     "viebit": "https://councilnyc.viebit.com/vod/?s=true&v=NYCC-250-8-1_260722-110636.mp4",
+    # Salisbury, NC's real 7/21/2026 City Council meeting -- the one city
+    # in the WO-29 investigation confirmed (via a real browser) to have
+    # populated English captions inside the Vimeo player. This adapter is
+    # video-only by design (see vimeo.py), so `has_real_content()` here is
+    # satisfied by video + metadata, not segments.
+    "vimeo": "https://vimeo.com/1212025580",
     "youtube": "https://www.youtube.com/watch?v=uNDJRR3ywVo",
 }
 

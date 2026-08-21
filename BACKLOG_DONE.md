@@ -6,6 +6,183 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Vimeo playback built, plus a Vimeo adapter and Chicago's City Clerk ELMS (WO-29) [Done 2026-08-21]
+
+Closes the single largest *unbuilt* platform item in this file: Vimeo
+playback. Vimeo was recognized before this — but only as a dead end.
+`generic_fallback.py`'s `_VIMEO_VIDEO_LINK_RE` could say "we think the
+video is here: `<link>`" and stop, because `detect_platform()` had no
+Vimeo case and `app/static/player.js`'s `initVideo()` had no Vimeo
+branch (only `youtube`, `viebit`, `m3u8`, and native `<video>`).
+
+**Eight separately-confirmed real jurisdictions were blocked on that one
+gap**, in three distinct URL shapes — Chicago IL (ELMS, showcase shape),
+Salisbury NC / Rockland ME / Spokane WA / Corvallis OR / Wilson NC
+(channel shape), Sebastopol CA (`vimeo.com/{id}/{privacy-hash}`), and El
+Paso TX (13 enumerated per-body showcases). Chicago and El Paso are both
+on this file's own "50 largest US cities" gap list. The 200-row dotgov
+coverage-map sample's 6/200 Vimeo fingerprint hits — extrapolated, still
+explicitly unconfirmed, to roughly 290 jurisdictions nationally — is the
+order-of-magnitude reason this was worth building rather than leaving as
+a pointer.
+
+### The question this hinged on, and the real answer
+
+Whether Vimeo's Player SDK actually works against a **showcase** embed
+specifically was an open assumption, not a known fact — no prior work in
+this repo had checked it, and the degraded Viebit precedent (a real
+player bundle pulled and read, provably no postMessage-reachable seek
+API at all) meant "it ships a documented SDK" was not enough to go on.
+
+**Checked in a real browser first, before any code was written.** A
+throwaway page loading `player.vimeo.com/api/player.js` against Chicago's
+real 2026-07-16 Budget Committee video
+(`player.vimeo.com/video/1210310337`, reached from a showcase URL):
+
+- `ready()` resolved
+- `getDuration()` → **19958** (5h32m — the real meeting length)
+- `setCurrentTime(125)` → resolved at 125; `getCurrentTime()` → 125
+- `play()` resolved, and real `play` / `timeupdate` events fired with
+  advancing `seconds` values
+- `getTextTracks()` → `[]` (no captions on this Chicago video, matching
+  its empty `transcriptLink`)
+
+Re-run against Salisbury NC's channel-hosted meeting
+(`vimeo.com/1212025580`): identical, plus `getTextTracks()` reporting a
+real populated `"English (auto-generated)"` track. **A showcase embed
+behaves exactly like an ordinary one.**
+
+**So this shipped with full `wireSharedControls(adapter)` — liveTracking
+ON**, not Viebit's `{ liveTracking: false }` degraded mode. One real
+fidelity note baked into the adapter: Vimeo's `getCurrentTime()` is a
+Promise, while every shared control here reads `adapter.currentTime`
+synchronously, so `createVimeoAdapter()` keeps a cached position
+refreshed from the player's own `timeupdate`/`seeked` events (~4/sec
+during playback). That's a real live position, unlike the Viebit
+adapter's "last thing we told it to do" — which is exactly why this one
+is safe to wire with tracking on.
+
+### What shipped
+
+- **`app/platforms/vimeo.py`** — parses all six real URL shapes
+  (`/{id}`, `/{id}/{hash}`, `/channels/{c}/{id}`,
+  `/showcase/{s}?video={id}`, `/showcase/{s}/video/{id}`,
+  `player.vimeo.com/video/{id}?h=`), builds the embed URL (carrying the
+  privacy hash, without which Sebastopol's player refuses to load), and
+  gets real metadata from **Vimeo's public oEmbed endpoint** —
+  `vimeo.com/api/oembed.json?url=...`, unauthenticated, plain-`aiohttp`
+  fetchable, confirmed live to return real `title`/`duration`/
+  `upload_date`/`author_name` for every shape including the
+  privacy-hashed one. (It rejects a showcase URL outright — 404 — so the
+  adapter always normalizes to `vimeo.com/{id}` first.)
+- **Listing pages become a real pick-list, not a failure.** Both
+  `/showcase/{id}` and `/channels/{name}` are plain 200s whose raw HTML
+  embeds a real JSON-LD `ItemList` of `VideoObject`s (name + url/embedUrl
+  + uploadDate) — parsed into `CalendarPageError` candidates. Verified in
+  a real browser: pasting `vimeo.com/channels/coscouncil` renders 12 real
+  Salisbury meetings with correct titles and dates, and clicking one
+  resolves and plays it. **This directly corrects a claim elsewhere in
+  BACKLOG.md** that "`vimeo.com/showcase/{id}` pages are JS-rendered
+  (`curl` returns only the showcase's own title, no individual video
+  data)" — that was true of the *visible* markup, but the structured blob
+  is server-rendered and was never checked.
+- **`app/platforms/chicago_elms.py`** — the public, unauthenticated
+  `api.chicityclerkelms.chicago.gov/meeting-agenda/{GUID}` API this file
+  already had fully traced. Delegates video to `vimeo.py` while keeping
+  the original ELMS URL as `source_url` and re-asserting
+  `platform = "chicago_elms"` (so `/coverage` and `/admin/stats` show a
+  real Chicago row rather than folding into generic Vimeo), and overrides
+  metadata with ELMS's own far better `body`/`date`/jurisdiction.
+- **Frontend, both surfaces**: a Vimeo branch in `initVideo()` in
+  `app/static/player.js` AND `archive/static/meeting_page.js`, plus a
+  container in `app/templates/meeting.html` and
+  `archive/templates/meeting_page.html`. The iframe is built in JS rather
+  than server-rendered, specifically so Vimeo's documented `#t={n}s`
+  fragment is part of the very first `src` the browser loads — the same
+  reasoning `buildYouTubePlayerVars()` folds `start` in for, and a direct
+  response to the real 2026-08-10 LIMS deep-link race.
+- **Honest transcription copy**: `_unreadable_media_message()` gains a
+  Vimeo branch, and the Archive's `/coverage`
+  `audio_transcript_possible` column now excludes `vimeo` alongside
+  `youtube` for the same structural reason. The Archive's `VideoObject`
+  JSON-LD puts a Vimeo URL under `embedUrl`, not `contentUrl` — it's an
+  iframe page, and claiming otherwise is a claim Google can check.
+- **Canary + tests**: real live-verified `CANARY_URLS` entries for both
+  platforms (both confirmed passing live), and fixture-backed suites
+  (`tests/test_vimeo.py`, `tests/test_chicago_elms.py`, 38 tests) built
+  from unmodified real captures in `tests/fixtures/vimeo/` and
+  `tests/fixtures/chicago_elms/`.
+
+### Sebastopol fell out for free, exactly as predicted
+
+This file predicted that once Vimeo playback existed,
+`generic_fallback.py`'s existing `_try_delegate_to_known_platform()`
+would pick up Sebastopol CA's WordPress events page "for free, no
+page-specific work needed." Confirmed live: it now resolves with a real
+playable video plus the page's own agenda PDF, and
+`tests/test_generic_fallback.py`'s old pointer-asserting test was
+rewritten to assert the delegation instead.
+
+`detect_platform()`'s Vimeo case is deliberately **not** a bare
+`"vimeo.com" in netloc` check, unlike every vendor-domain case around
+it: vimeo.com is a general-purpose host, so a city site's
+`vimeo.com/cityname` footer link is a real false-positive class (the
+same one that makes `"youtube"` an excluded platform in that same
+delegation scan). Only shapes carrying a real video id, plus the two
+listing shapes, are claimed. Confirmed live that
+`vimeo.com/rocklandmaine` still classifies as `unknown`.
+
+### In-browser verification (CLAUDE.md's explicit requirement)
+
+Both services run locally against **scratch SQLite files with
+`DATABASE_URL` set explicitly** (the documented worktree/`.env`
+footgun). Driven with `mcp__Claude_Browser__*`, not just read as JSON:
+
+- Chicago ELMS `/meeting?url=...` — real chamber video plays; "Go to
+  time" `1:23:45` moved the real player to `getCurrentTime() === 5025`
+  and updated the URL to `&t=5025`; the "Share video at ..." label
+  tracked live to `1:23:52` during playback and `video-at-rest` cleared
+  on the real `play` event.
+- Deep link on a cold load — `&t=3600` produced
+  `src="...#t=3600s"` and `getCurrentTime() === 3600`.
+- `vimeo.com/channels/coscouncil` — the calendar pick-list renders 12
+  real meetings; clicking one loads and plays it.
+- Sebastopol's real city page with `&t=900` — real player, cued to 900.
+- The permanent Archive page (through the resolver's `/m/*` proxy) with
+  `?t=2400` — player cued to 40:00, and clicking a `[1:23:45]` agenda
+  item seeked the real player to 5025 and updated URL + label.
+- `POST /api/transcription/check-feasibility` returns the new honest
+  Vimeo message rather than the generic "couldn't read it."
+
+### What deliberately did NOT ship, and why
+
+**Captions.** Real populated English WebVTT exists on at least one of
+these meetings — Salisbury NC's, confirmed via a real browser through a
+signed `captions.vimeo.com/captions/{id}.vtt?expires=...&sig=...` URL.
+It is not server-fetchable: that URL only appears in
+`player.vimeo.com/video/{id}/config`, which returns **403** to every
+non-browser client, and `vimeo.com/{id}` sometimes serves a real
+Cloudflare "Verify you are human" challenge (hit live on Spokane) that
+this app must never attempt to auto-solve. Per this repo's "don't claim
+a caption path works without a positive example" rule, the adapter is
+video-only and says so in a `transcript_warnings` line that also tells
+the viewer the player's own CC button still works.
+
+**On-demand Whisper transcription is the same blocker, not a second
+one** — it needs a real probeable media file, which lives behind that
+identical signed config. Both remain open in BACKLOG.md as one item.
+
+**Chicago's agenda item text.** `agenda.groups[].items[]` is genuinely
+rich — 473 real items on the confirmed City Council sample, with matter
+titles, actions and vote types — but carries **no time offsets of any
+kind**. Unlike LIMS/Hyland/IQM2 there is nothing to join against a video
+position, so `agenda_items` stays empty rather than shipping 473 rows
+that all seek to 0:00; the real Agenda PDF goes in `agenda_link`
+instead. `tests/test_chicago_elms.py` asserts this directly against the
+real fixture. Surfacing that text as untimestamped agenda *text* needs a
+new `ResolvedMeeting` field plus an Archive schema change — split out as
+its own live entry in BACKLOG.md rather than smuggled in here.
+
 ## Worker could hand whisper a chunk `extract_chunk_audio()` called successful but that was actually corrupt (Sentry PYTHON-FASTAPI-R) [Done 2026-08-21]
 
 Original entry, kept verbatim below the fix (WO-25) so the traced

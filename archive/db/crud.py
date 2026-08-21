@@ -2487,6 +2487,14 @@ DIRECT_PLATFORMS: dict[str, str] = {
     "telvue": "TelVue",
     "hyland": "Hyland OnBase Agenda Online",
     "townhallstreams": "Town Hall Streams",
+    # Not a civic-video vendor like everything else in this dict -- Vimeo
+    # is a general-purpose video host that a real, confirmed set of small
+    # local governments use directly as their meeting-video platform
+    # (WO-29, 2026-08-21). Listed here rather than under CUSTOM_PLATFORMS
+    # because MeetingPage.platform really is "vimeo" for these rows, and
+    # because it genuinely is one shared platform across many cities,
+    # which is what this table's rows mean.
+    "vimeo": "Vimeo",
 }
 
 # Platforms grouped under a single "Custom" row on /coverage -- each is a
@@ -2515,6 +2523,13 @@ CUSTOM_PLATFORMS: dict[str, str] = {
     "lims": "Minneapolis LIMS",
     "clerkbase": "ClerkBase (clerkshq.com)",
     "aurora_tv": "Aurora, CO (auroratv.org)",
+    # Chicago's own City Clerk legislative portal -- a single-city
+    # scraper like the four above. Unlike lims/slc/clerkbase it does NOT
+    # end up labeled by whatever it delegates to: chicago_elms.py sets
+    # `resolved.platform` back to its own name after taking the video
+    # from vimeo.py, so these rows are matched by MeetingPage.platform
+    # directly (same as ca_legislature/aurora_tv).
+    "chicago_elms": "Chicago City Clerk (ELMS)",
 }
 
 # YouTube is deliberately never its own /coverage row -- a viewer already
@@ -3139,12 +3154,16 @@ async def get_full_jurisdiction_coverage() -> list[dict]:
                 # page, never a real media file), so the on-demand
                 # Whisper path can never succeed for it regardless of
                 # whether anyone has actually tried yet -- see that
-                # function's own docstring for the full trace. A live
-                # ffprobe check per row here would be far too expensive
-                # for a full coverage table; this is the same structural
-                # approximation the resolver itself already relies on.
+                # function's own docstring for the full trace. "vimeo"
+                # (added 2026-08-21, WO-29) is the same shape for the
+                # same reason: a player.vimeo.com iframe page, with the
+                # real media behind a signed config that 403s every
+                # non-browser client. A live ffprobe check per row here
+                # would be far too expensive for a full coverage table;
+                # this is the same structural approximation the resolver
+                # itself already relies on.
                 "audio_transcript_possible": video_url is not None
-                and video_format != "youtube",
+                and video_format not in ("youtube", "vimeo"),
                 "detail_platform": detail_label,
                 "video_platform": video_label,
                 "outcome": outcome,
