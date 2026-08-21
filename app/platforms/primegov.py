@@ -539,9 +539,7 @@ class PrimeGovAssetFinder(AssetFinder):
         )
 
     @staticmethod
-    def _extract_council_header_jurisdiction(
-        text: str, netloc: str
-    ) -> Optional[str]:
+    def _extract_council_header_jurisdiction(text: str, netloc: str) -> Optional[str]:
         """Tried BEFORE `_JURISDICTION_RE` -- see `_COUNCIL_HEADER_RE`'s own
         module comment for the real Bedford/Cuyahoga bug this exists for.
 
@@ -565,7 +563,9 @@ class PrimeGovAssetFinder(AssetFinder):
             return None
         words, type_word = match.group(1), match.group(2)
         full_run = f"{words} {type_word}"
-        name = full_run if jurisdiction_enrich.is_literal_known_place(full_run) else words
+        name = (
+            full_run if jurisdiction_enrich.is_literal_known_place(full_run) else words
+        )
         candidate = f"{type_word.capitalize()} of {name}"
         enriched = jurisdiction_enrich.enrich_jurisdiction_text(
             candidate, netloc=netloc, page_text=text
