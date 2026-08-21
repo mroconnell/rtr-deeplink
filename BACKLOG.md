@@ -738,37 +738,16 @@ anything) to build against it.
   `BACKLOG_DONE.md`.** Real, honestly-flagged residual gaps left open by
   that fix, not silently closed — see the three entries directly below:
 
-- **[JUST-DO-IT] Jurisdiction-bleed fix can turn an honestly-garbled value
+- ~~**[JUST-DO-IT] Jurisdiction-bleed fix can turn an honestly-garbled value
   into a confidently WRONG one, when the bled text happens to contain a
   different, unrelated but real city name — confirmed live 2026-08-17
   with 2 real eScribe examples, newly surfaced by the Canadian-data fix
-  above (`BACKLOG_DONE.md`).** Shelburne, ON's raw stored value
-  ("Brantford regarding Professional Activity") now repairs to
-  "Brantford, ON" — a real place, but the WRONG city; the meeting is
-  Shelburne's. Uxbridge, ON's raw value ("Peterborough Attachments")
-  stays unrepaired today only incidentally (its tail is 1 word, below
-  the new fix's 4-word threshold) — if it had been long enough to
-  trigger, it would have confidently "repaired" to Peterborough the same
-  way. Neither of tonight's fixes could plausibly have caught this on
-  their own: distinguishing "a real city name" from "the CORRECT real
-  city for THIS meeting" isn't solvable from text shape alone — the
-  extraction itself (whatever pulled a different city's mention out of
-  agenda/policy-boilerplate text) is the real bug. This is an instance
-  of a pre-existing, accepted risk category the whole trim-repair design
-  already carries (the same shape as the already-shipped
-  Sarasota/Hollywood-style false positives, which trim confidently but
-  can still be wrong if the trimmed prefix happens to be a real-but-
-  unrelated place) — not something the Canadian-data fix introduced from
-  nothing, but the first time it's been confirmed live with real
-  examples. One real mitigation direction not yet attempted: eScribe
-  subdomains often literally contain the real city name
-  (`pub-shelburne.escribemeetings.com`) — cross-checking a trim-repair
-  candidate against a subdomain-derived candidate (only accepting the
-  trim when they agree, or preferring the subdomain when they disagree)
-  could catch this specific eScribe shape, mirroring how Granicus's
-  subdomain-per-customer convention already incidentally saves 4 of the
-  Title-Case-bleed cases per the earlier residual-gap entry — not
-  verified against enough real examples to build yet.
+  above (`BACKLOG_DONE.md`).**~~ **Fixed 2026-08-21 — see `BACKLOG_DONE.md`'s
+  "jurisdiction-bleed, gate-blindness recovery" entry.** `finalize_jurisdiction()`
+  now cross-checks its own trim-repair result against a validated
+  subdomain-derived candidate (the mitigation direction this entry
+  originally identified but hadn't verified), preferring the subdomain's
+  identity when they disagree.
 
 - **[NEEDS-AUDIT] Jurisdiction-bleed fix's single-word-tail gap, narrowed
   2026-08-18: "Brampton Meeting" and "Peterborough Attachments" are now
@@ -794,21 +773,29 @@ anything) to build against it.
   subdomains currently in production (`/internal/pages/all-urls`), not
   guessed: **Lloydminster** (AB/SK) and **Paso Robles** (CA) are
   unambiguous, well-known real places simply missing from the table;
-  **Durham Region / Peel Region / Region of Waterloo** are a whole
+  ~~**Durham Region / Peel Region / Region of Waterloo** are a whole
   category — Ontario's upper-tier "regional municipality" entities — the
-  table doesn't include under that name; **Chatham-Kent / Arran-Elderslie
-  / Blue Mountains** are real Ontario municipalities lost purely on a
-  hyphen-formatting mismatch (table likely has them as literal
-  "Chatham-Kent" etc., and the wordninja-reconstructed candidate doesn't
-  preserve the hyphen). Scope note: this can't retroactively blank an
-  already-published page (the existing backfill endpoint only re-runs
-  `finalize_jurisdiction()` on stored text, never re-invokes subdomain
-  extraction) — it only affects a future new meeting from these ~9
-  customers, or an explicit re-feed. Fix is adding these to
-  `places.csv`/`counties.csv` (a data-completeness gap, not a logic
-  bug) — not attempted this pass, deliberately deferred per the decision
-  to accept "decline over guess" for eScribe the same way this repo
-  already accepted it for Granicus.
+  table doesn't include under that name~~ **partially fixed 2026-08-21 —
+  see `BACKLOG_DONE.md`'s "jurisdiction-bleed, gate-blindness recovery"
+  entry.** `scripts/build_jurisdiction_data.py`'s new
+  `build_canada_regional_municipalities()` adds these 3 (both the "X
+  Region" and "Region of X" real name forms) as a small curated list,
+  grounded in StatsCan's own SGC 2021 structure file (Census division
+  codes 3518/3521/3530) plus a 2019 provincial review Wikipedia cites —
+  deliberately only these 3 confirmed-in-production customers, not the
+  other 5 real Ontario regional municipalities that review also names
+  (Halton, Muskoka, Niagara, Oxford, York), since no eScribe/Granicus
+  customer for those has actually been confirmed live yet; **Chatham-Kent
+  / Arran-Elderslie / Blue Mountains** are real Ontario municipalities
+  lost purely on a hyphen-formatting mismatch (table likely has them as
+  literal "Chatham-Kent" etc., and the wordninja-reconstructed candidate
+  doesn't preserve the hyphen) — still open, not addressed by this pass.
+  Scope note (still applies to the still-open Lloydminster/Paso Robles/
+  hyphen cases): this can't retroactively blank an already-published page
+  (the existing backfill endpoint only re-runs `finalize_jurisdiction()`
+  on stored text, never re-invokes subdomain extraction) — it only
+  affects a future new meeting from these customers, or an explicit
+  re-feed.
 
 - **[NEEDS-AUDIT] "RochestercityMN" root-caused, 2026-08-18 — a real page-
   title data-quality quirk on ONE specific customer, not an adapter code
@@ -1476,9 +1463,20 @@ anything) to build against it.
   documented Render-IP gap), even though jurisdiction/date already had
   their own page-based fallbacks.
 
-- **[JUST-DO-IT] eScribe now has a real, confirmed positive caption
+- ~~**[JUST-DO-IT] eScribe now has a real, confirmed positive caption
   example — but its jurisdiction chain-extraction picks the wrong
-  government for two-tier (regional + constituent-town) sites.**
+  government for two-tier (regional + constituent-town) sites.**~~
+  **Fixed 2026-08-21 — see `BACKLOG_DONE.md`'s "jurisdiction-bleed,
+  gate-blindness recovery" entry.** `finalize_jurisdiction()` now
+  cross-checks its top-level literal-match branch (not just
+  `_trim_repair()`) against a validated subdomain-derived candidate, and
+  `scripts/build_jurisdiction_data.py` now includes Ontario's real
+  Durham/Peel/Waterloo regional municipalities (the StatsCan
+  completeness gap this bug's own root cause depended on — see the
+  "StatsCan/Census table completeness gap" entry above, now partially
+  closed for these 3 confirmed-in-production customers). Together these
+  make the `peelregion` subdomain resolve to "Peel Region, ON" and
+  override the constituent-town "Town of Caledon" text match.
   User-shared 2026-08-18:
   `pub-peelregion.escribemeetings.com/Meeting.aspx?Id=c129beef-a3cf-49ae-827d-27c6b3a547a5&Agenda=Agenda&lang=English`
   (Peel Region, ON "Regional Council" meeting). Resolves with real video
@@ -1516,10 +1514,13 @@ anything) to build against it.
   legitimately-*mentioned* jurisdiction (a constituent town), just not
   the meeting's *own* jurisdiction (its regional parent) — not stray
   body prose or a copy-pasted address like the chain's other documented
-  false positives. Not fixed here (single example, and this exact
-  "tournament order" design is under active, carefully-tuned work per
-  the jurisdiction-bleed entries in `BACKLOG_DONE.md` — worth revisiting
-  together with those rather than patching in isolation).
+  false positives. Fixed 2026-08-21 (see strikethrough above) by
+  extending `finalize_jurisdiction()`'s existing subdomain cross-check
+  (previously only applied inside `_trim_repair()`, added 2026-08-19 for
+  the Courtenay/Victorville cases) to its top-level literal-match branch
+  too, plus adding the 3 confirmed-in-production Ontario regional
+  municipalities the cross-check's own subdomain candidate needed to
+  validate at all.
 
 - ~~**`find_platform_link()`'s fallback delegation could self-loop into
   real infinite recursion**~~ **Fixed 2026-08-12 — full detail in

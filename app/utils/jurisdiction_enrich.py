@@ -258,6 +258,41 @@ def lookup_city_state(name: str) -> Optional[str]:
     return None
 
 
+def is_literal_known_place(name: str) -> bool:
+    """True only when `name`, taken exactly as typed (just lowercased --
+    no leading/trailing generic-type-word stripping at all), is a real
+    known US place or county name. Deliberately narrower than
+    `lookup_city_state()`/`lookup_county_state()` (and the internal
+    `_table_lookup()` this module's own validation/repair machinery
+    uses everywhere else), both of which also accept a SECONDARY match
+    via a trailing-type-word strip (see `_normalize_candidates()`) --
+    that secondary path is exactly what makes "Bedford City" coincidentally
+    "validate" (only "Bedford" is real; "City" merely stripped away as a
+    trailing generic type word), which is fine for state-filling but wrong
+    for a caller that needs to know whether a trailing "City"/"Town"/
+    etc.-shaped word is genuinely PART of the proper name (Oklahoma City,
+    Carson City, Jersey City, Rapid City) or just a separable type suffix
+    (Bedford City, Thousand Oaks City) sitting next to it in the source
+    text.
+
+    Built for `app/platforms/primegov.py`'s "{Name} City/Town/Village
+    Council" header extraction (2026-08-21, BACKLOG.md's Bedford/Cuyahoga
+    entry) -- confirmed live on bedfordoh.primegov.com and
+    okc.primegov.com/toaks.primegov.com's own real inner `<title>` tags
+    (see that adapter's own module comment): a bare regex capturing "the
+    words before Council" can't itself tell whether the last of those
+    words is part of the city's real name or just the letterhead's own
+    "City Council" phrasing, and guessing wrong in either direction is a
+    real, confirmed failure mode (stripping "City" off "Oklahoma City"
+    leaves "Oklahoma", which coincidentally collides with a real but
+    totally unrelated place, "Oklahoma borough, PA" -- see
+    `_normalize_candidates()`'s own docstring for that exact historical
+    bug). This function lets a caller check the un-stripped form on its
+    own merits first, before ever falling back to the stripped one."""
+    key = name.strip().lower()
+    return key in _PLACE_STATES or key in _COUNTY_STATES
+
+
 def lookup_county_by_zip(zip_code: str) -> Optional[Tuple[str, str]]:
     """(county_name, state) for the real county with the largest overlap
     with this ZIP -- picked via AREALAND_PART, since ~30% of real ZCTAs
@@ -1216,6 +1251,41 @@ def finalize_jurisdiction(
     mechanisms that DO change the value, and BACKLOG.md's "Census-table
     baseline validation" entry for the real data (649 archived rows) this
     design was built and tuned against.
+
+    Cross-checked against a validated subdomain-derived candidate since
+    2026-08-21 (BACKLOG.md's jurisdiction-bleed entries), the same idea
+    `extract_jurisdiction_chain()` already applies to its own per-tier
+    candidates (see that function's own docstring), just moved one level
+    down so a caller that invokes THIS function directly on already-
+    stored text -- `archive/db/crud.py`'s backfill/reprocessing passes,
+    not just a fresh chain-based resolve -- gets the same protection.
+    Two distinct real, confirmed-live failure shapes this closes:
+
+    1. `_trim_repair()` can confidently trim a bled raw value down to a
+       real, but WRONG, place when the discarded tail happens to mention
+       a different real city -- confirmed live on Shelburne, ON's stored
+       "Brantford regarding Professional Activity" (eScribe subdomain
+       `pub-shelburne...`), which trims to "Brantford" (a real Ontario
+       town, just not THIS meeting's) before this fix.
+    2. A raw value can validate directly (no repair needed at all) as a
+       real place that's genuinely mentioned on the page, but isn't the
+       meeting's OWN jurisdiction -- confirmed live on Peel Region, ON's
+       "Town of Caledon" (eScribe subdomain `pub-peelregion...`): Caledon
+       is a real constituent lower-tier town inside the Peel Region
+       agenda, validates outright, and used to be returned as-is before
+       ever reaching the subdomain's own correct "Peel Region" identity.
+
+    In both cases, when a validated subdomain-derived candidate exists
+    (see `_validated_subdomain_extract_from_netloc()`) and disagrees with
+    the text-derived name (`_base_name_key()`, the same identity
+    comparison the chain's own cross-check uses), the subdomain's own
+    validated identity wins outright -- it's an independent, per-customer
+    signal (the domain the customer itself registered), not just another
+    guess at parsing the same page text that produced the wrong answer in
+    the first place. When they agree (the overwhelmingly common case) or
+    no subdomain hint validates at all (most non-eScribe/Granicus pages,
+    or an eScribe regional-tier customer not yet in the place tables --
+    see BACKLOG.md's StatsCan completeness gap), this is a pure no-op.
     """
     known = lookup_by_domain(netloc) if netloc else None
 
@@ -1226,6 +1296,11 @@ def finalize_jurisdiction(
         if known:
             return JurisdictionResult(f"{known.name}, {known.state}", None, "fallback")
         return JurisdictionResult(raw_jurisdiction, None, "blank")
+
+    subdomain_hint = (
+        _validated_subdomain_extract_from_netloc(netloc) if netloc else None
+    )
+    subdomain_hint_key = _base_name_key(subdomain_hint) if subdomain_hint else None
 
     # Preprocessing: strip noise shapes _trim_repair() below can't reach
     # (a leading date only trims from the right; a glued file extension
@@ -1249,11 +1324,19 @@ def finalize_jurisdiction(
     suffix = f", {state_match.group(1).upper()}" if state_match else ""
 
     if _table_lookup(base):
+        if subdomain_hint_key and _base_name_key(base) != subdomain_hint_key:
+            return JurisdictionResult(
+                f"{subdomain_hint}{_fill_missing_state(subdomain_hint, suffix, netloc)}",
+                None,
+                "repaired",
+            )
         return JurisdictionResult(raw_jurisdiction, None, "validated")
 
     trimmed = _trim_repair(base)
     if trimmed:
         repaired_name, _table = trimmed
+        if subdomain_hint_key and _base_name_key(repaired_name) != subdomain_hint_key:
+            repaired_name = subdomain_hint
         return JurisdictionResult(
             f"{repaired_name}{_fill_missing_state(repaired_name, suffix, netloc)}",
             None,
@@ -1558,16 +1641,28 @@ def _validated_label_extract(label: str) -> Optional[str]:
     return glued if len(glued) >= 3 and _table_lookup(glued) else None
 
 
+def _validated_subdomain_extract_from_netloc(netloc: str) -> Optional[str]:
+    """Same logic as `_validated_subdomain_extract()` below, but taking an
+    already-parsed netloc directly rather than a full URL -- split out
+    2026-08-21 (BACKLOG.md's jurisdiction-bleed entries: "trim-repair can
+    turn a bled value into a confidently WRONG real city" and "eScribe's
+    chain picks the wrong government for a two-tier regional site") so
+    `finalize_jurisdiction()` can compute the same subdomain-derived
+    cross-check candidate it already has `netloc` for, without
+    constructing a throwaway URL just to re-parse it back apart."""
+    host = netloc.lower()
+    parts = host.split(".")
+    if len(parts) <= 2 or parts[0] == "www":
+        return None
+    return _validated_label_extract(parts[0])
+
+
 def _validated_subdomain_extract(url: str) -> Optional[str]:
     """URL-taking wrapper around `_validated_label_extract()` -- parses the
     subdomain label out of `url` (declining on a bare domain or a "www"
     subdomain, same as before) and delegates. See that function's own
     docstring for the actual validation logic."""
-    host = urlparse(url).netloc.lower()
-    parts = host.split(".")
-    if len(parts) <= 2 or parts[0] == "www":
-        return None
-    return _validated_label_extract(parts[0])
+    return _validated_subdomain_extract_from_netloc(urlparse(url).netloc)
 
 
 def validated_subdomain_extract(url: str) -> Optional[str]:

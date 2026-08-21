@@ -439,6 +439,66 @@ async def test_resolve_real_caledon_isistandaloneplayer_page():
     assert result.agenda_items == []
 
 
+# --- 2026-08-21: eScribe's first-ever confirmed populated-caption example
+# (BACKLOG.md/BACKLOG_DONE.md) -- also the real page that surfaced the
+# "two-tier regional site" jurisdiction bug the chain-level subdomain
+# cross-check now fixes (app/utils/jurisdiction_enrich.py).
+
+
+async def test_resolve_real_peel_region_meeting_gets_regional_jurisdiction_not_caledon():
+    # Real, live-confirmed 2026-08-18/21:
+    # pub-peelregion.escribemeetings.com/Meeting.aspx?Id=c129beef-a3cf-49ae-
+    # 827d-27c6b3a547a5 -- a real Peel Region, ON "Regional Council"
+    # meeting. Fixture is trimmed from the real ~225KB page (title,
+    # #isi_player div, and the real clerk-signature agenda-item line kept
+    # verbatim -- the rest of the page's ~90 unrelated agenda items
+    # dropped): `Kevin Klingenberg, Municipal Clerk, Town of Caledon` is
+    # the real text `_stoprule_extract()`/`_capitalization_walk_extract()`
+    # both find and validate FIRST on the real page (confirmed directly,
+    # not assumed) -- Caledon is a real constituent lower-tier town within
+    # Peel Region's own agenda, not the meeting's own jurisdiction.
+    #
+    # Before the subdomain cross-check fix, this resolved as "Caledon, ON"
+    # -- now the `peelregion` subdomain's own validated identity (resolvable
+    # since scripts/build_jurisdiction_data.py added Ontario's real Durham/
+    # Peel/Waterloo regional municipalities) wins instead.
+    #
+    # Video/captions must keep resolving exactly as before -- this bug's
+    # fix must not regress the very page that closed the "no eScribe
+    # example with populated captions" gap. VTT is trimmed to its first 20
+    # real cues (same convention as the Caledon fixture above).
+    url = (
+        "https://pub-peelregion.escribemeetings.com/Meeting.aspx"
+        "?Id=c129beef-a3cf-49ae-827d-27c6b3a547a5&Agenda=Agenda&lang=English"
+    )
+    html = load_fixture("escribe", "peel_region_page.html")
+    encoded = "New%20Encoder_Regional%20Council_2026-07-09-09-30.mp4"
+    vtt_url = f"https://video.isilive.ca/peelregion/{encoded}.vtt"
+    vtt = load_fixture("escribe", "peel_region_captions.vtt")
+
+    routes = {
+        url: FakeResponse(status=200, text=html, url=url),
+        vtt_url: FakeResponse(status=200, text=vtt, url=vtt_url),
+    }
+
+    with mock_session(routes):
+        result = await EscribeAssetFinder().resolve(url)
+
+    assert result.platform == "escribe"
+    assert result.title == "Regional Council"
+    assert result.date == "2026-07-09"
+    assert result.jurisdiction == "Peel Region, ON"
+    assert result.video_url == (
+        f"https://cdn1.isilive.ca/vod/_definst_/mp4:peelregion/{encoded}/playlist.m3u8"
+    )
+    assert result.video_format == "m3u8"
+    assert len(result.segments) == 20  # the trimmed real VTT fixture's cue count
+    assert result.segments[0].text == (
+        "Good morning everyone and welcome. We are at the appointed"
+    )
+    assert not result.transcript_warnings
+
+
 def test_jurisdiction_from_subdomain_splits_concatenated_multiword_names():
     # WO-14 (BACKLOG.md, 2026-08-16): this fallback used to be a bare
     # `.replace("-", " ").title()`, which only helps a subdomain with

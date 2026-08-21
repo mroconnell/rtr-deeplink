@@ -6074,6 +6074,7 @@ Durant city,MS
 Durant city,OK
 Durbin town,WV
 Durham,NB
+Durham Region,ON
 Durham city,KS
 Durham city,NC
 Durham city,OR
@@ -16714,6 +16715,7 @@ Peculiar city,MO
 Peebles village,OH
 Peekskill city,NY
 Peel,NB
+Peel Region,ON
 Peepeekisis 81,SK
 Peerless Trout 238,AB
 Peetz town,CO
@@ -18027,6 +18029,9 @@ Regina Beach,SK
 "Region 4, Unorganized",NT
 "Region 5, Unorganized",NT
 "Region 6, Unorganized",NT
+Region of Durham,ON
+Region of Peel,ON
+Region of Waterloo,ON
 Register town,GA
 Rehobeth town,AL
 Rehoboth Beach city,DE
@@ -23149,6 +23154,7 @@ Waterhen 130,SK
 Waterhen 45,MB
 Waterloo,ON
 Waterloo,QC
+Waterloo Region,ON
 Waterloo city,IA
 Waterloo city,IL
 Waterloo city,WI

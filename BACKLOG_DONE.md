@@ -6,6 +6,128 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Jurisdiction-bleed, gate-blindness recovery: subdomain cross-check now also covers `finalize_jurisdiction()`'s top-level literal-match branch, closing Shelburne/Peel Region [Done 2026-08-21]
+
+Two of the three explicitly-flagged "under active, carefully-tuned work"
+entries from `BACKLOG.md` (the third, PrimeGov's Bedford/Cuyahoga case, is
+a separate code path — `app/platforms/primegov.py`'s own regex, not this
+shared chain — and is being fixed in a separate PR). Re-read
+`app/utils/jurisdiction_enrich.py`'s full "tournament order" design and
+every jurisdiction-bleed entry in this file before touching anything, per
+the explicit instruction not to patch this blind.
+
+**Both real cases, fetched and checked directly, not assumed:**
+
+1. **Shelburne, ON** (`pub-shelburne.escribemeetings.com`) — the raw
+   stored value `"Brantford regarding Professional Activity"` trim-repairs
+   confidently to `"Brantford, ON"`: a real Ontario town, just the WRONG
+   one (the meeting is Shelburne's). Root cause: `"regarding"` is
+   lowercase-initial, so `_looks_like_bleed()` correctly flags the
+   discarded tail as bleed, and `"Brantford"` genuinely validates against
+   the real StatsCan places table on its own — `_trim_repair()` has no way
+   to know it's the WRONG real place, since distinguishing "a real city
+   name" from "the correct real city for THIS meeting" isn't solvable from
+   text shape alone.
+
+2. **Peel Region, ON** (`pub-peelregion.escribemeetings.com/Meeting.aspx
+   ?Id=c129beef-a3cf-49ae-827d-27c6b3a547a5&Agenda=Agenda&lang=English`,
+   fetched live) — a real Peel Region "Regional Council" meeting (real
+   video, 1101 real caption segments, unaffected by this fix — see this
+   file's own "eScribe's first real populated-caption example" entry)
+   resolves `jurisdiction` as `"Town of Caledon, ON"` instead of "Peel
+   Region"/"Regional Municipality of Peel". Root cause: Peel Region's own
+   real agenda covers items in its three constituent lower-tier
+   municipalities (Caledon, Brampton, Mississauga), and carries a real
+   clerk-signature line (`"Kevin Klingenberg, Municipal Clerk, Town of
+   Caledon"`) that both `_stoprule_extract()` and
+   `_capitalization_walk_extract()` find and validate FIRST — confirmed
+   directly against the real page text, not assumed. `"Town of Caledon"`
+   validates outright (no repair needed at all), so it's accepted at
+   `finalize_jurisdiction()`'s TOP-LEVEL literal-match branch, before ever
+   reaching the chain's own tier-3 subdomain fallback.
+
+**Why the existing subdomain cross-check (added 2026-08-19 for the
+Courtenay/Victorville cases) didn't already catch either of these**:
+`extract_jurisdiction_chain()`'s own cross-check only ever runs on
+candidates the CHAIN produces, comparing them against a subdomain hint
+computed from the URL — but (a) Shelburne's bug is hit via
+`finalize_jurisdiction()` called DIRECTLY on already-stored text
+(`archive/db/crud.py`'s backfill/reprocessing passes, not a fresh
+chain-based resolve), which never goes through the chain's own
+cross-check at all; and (b) even routed through the chain, Peel Region's
+own subdomain candidate (`_validated_subdomain_extract("peelregion")` →
+wordninja-splits to "Peel Region") used to fail to VALIDATE at all,
+since "Peel Region" wasn't in the Census/StatsCan place tables — this is
+the exact "StatsCan/Census table completeness gap" `BACKLOG.md` had
+already flagged as open (Ontario's upper-tier "regional municipality"
+entities aren't census SUBDIVISIONS, the level
+`build_canada_places()` reads).
+
+**Fix, two parts:**
+
+1. `app/utils/jurisdiction_enrich.py`'s `finalize_jurisdiction()` now
+   computes a subdomain-derived candidate itself (a new
+   `_validated_subdomain_extract_from_netloc()`, sharing the existing
+   `_validated_label_extract()` logic without needing a throwaway URL to
+   re-parse) and cross-checks it against BOTH its top-level literal-match
+   branch AND its `_trim_repair()` branch (previously only the latter was
+   even a candidate for this treatment, and neither actually had it) —
+   when a validated subdomain hint disagrees with the text-derived name
+   (`_base_name_key()`, the same identity comparison the chain's own
+   cross-check already uses), the subdomain's own validated identity wins
+   outright. When they agree (the overwhelmingly common case) or no
+   subdomain hint validates at all, this is a pure no-op — confirmed via
+   explicit regression tests for both the fixed cases and every
+   already-passing agreement case (Hercules, Galesburg, San Diego,
+   Peterborough's OWN subdomain, Courtenay, Victorville).
+2. `scripts/build_jurisdiction_data.py` gains
+   `build_canada_regional_municipalities()`, a small curated addition (not
+   a re-download of the full source files — additive to the already-
+   checked-in `places.csv`) covering the 3 Ontario regional municipalities
+   BACKLOG.md's own completeness-gap audit had already confirmed live in
+   production: Durham, Peel, Waterloo. Grounded in real data two ways: the
+   StatsCan SGC 2021 structure file itself (fetched live,
+   `www.statcan.gc.ca/en/statistical-programs/document/sgc-cgt-2021-
+   structure-eng.csv`) confirms these as real Census division codes
+   3518/3521/3530 under Ontario's "35" prefix, and Wikipedia's "Regional
+   municipality" article (citing a real 2019 provincial review) confirms
+   the "regional municipality" designation and both common name forms
+   ("Durham Region", "Region of Waterloo"). Deliberately only these 3, not
+   the other 5 real Ontario regional municipalities the same review names
+   (Halton, Muskoka, Niagara, Oxford, York) — no confirmed eScribe/Granicus
+   customer for those has turned up yet, so adding them would be
+   speculating ahead of real data. Both the "X Region" and "Region of X"
+   forms are added per name, since real municipal self-branding uses both
+   (e.g. Waterloo's own regional government's domain is
+   `regionofwaterloo.ca`) and a real subdomain's wordninja split naturally
+   produces the "X Region" shape.
+
+**Bonus fix confirmed, not separately requested**: Uxbridge, ON's raw
+value (`"Peterborough Attachments"`, same bled shape as Peterborough's
+own, already-fixed case) was noted in this file's original bug write-up
+as only "incidentally" safe — its tail was short enough to dodge the
+word-run threshold, but "would have confidently repaired to Peterborough
+the same way" if it had been long enough. With the subdomain cross-check
+now covering the trim-repair branch, this is closed too: Uxbridge's own
+subdomain (`pub-uxbridge.escribemeetings.com`) now overrides even a
+hypothetical long-enough bleed tail, confirmed via a direct regression
+test (`test_finalize_jurisdiction_trim_repair_protects_uxbridge_from_
+peterborough_bleed`).
+
+**Verification**: real, fixture-backed regression tests added in
+`tests/test_jurisdiction_enrich.py` (both real bug cases, the Uxbridge
+bonus case, and explicit "agrees with subdomain is unaffected" controls
+for both the top-level and trim-repair branches) and
+`tests/test_escribe.py` (`test_resolve_real_peel_region_meeting_gets_
+regional_jurisdiction_not_caledon` — a real, trimmed fixture built from
+the actual live Peel Region page and its actual first-20-cues VTT,
+confirming video/caption resolution is unaffected: still 20 real
+segments, same first cue text, `video_url`/`video_format` unchanged).
+Every existing test in the file (Sarasota, Hollywood, Castle Pines, the
+SLC domain override, Courtenay, Victorville, Hercules, Galesburg, San
+Diego, Peterborough's own case, etc.) re-verified passing unchanged —
+full suite (`pytest`) green.
+
 ## Aurora, CO `aurora_tv` canary failure (2026-08-18) confirmed a one-off transient blip, not a persisting regression [Done 2026-08-21]
 
 Promoted from `CLAUDE_INBOX_TRIAGE.md`'s 2026-08-19 run, which flagged
