@@ -4871,46 +4871,17 @@ one item below is resolved as a result.
     `word_timestamps` machinery instead, now that the gap-split fix
     above is confirmed to work.
 
-## `GET /internal/transcription/hallucination-candidates` returns 502 -- likely the same unbounded-full-scan pattern already fixed once in `find_auto_transcription_candidate` (found 2026-08-19)
+## ~~`GET /internal/transcription/hallucination-candidates` returns 502~~
 
-**Confirmed live, not a cold-start blip**: three separate calls against
-the deployed Archive service (`ARCHIVE_BASE_URL`), including one with a
-150s client timeout, all came back `502 Bad Gateway` from Render's own
-proxy -- consistent with the upstream request itself failing/timing out
-server-side, not a client-side network hiccup.
-
-**Likely root cause, by direct comparison to a bug already fixed once in
-a sibling function**: `crud.list_hallucination_candidate_transcript_
-versions()` (`archive/db/crud.py:952`) selects `TranscriptVersion.
-segments` -- the full per-cue JSON blob -- for *every* `source ==
-"transcribed"` row in one query, with no limit/pagination, then runs
-`detect_hallucination_warnings()` (CPU-bound Python, not SQL) over each
-one synchronously inside the request handler. This is the exact same
-shape `find_auto_transcription_candidate()` had before its 2026-08-17
-rewrite, which `pg_stat_statements` caught as the #1 consumer of
-production DB time specifically *because* it pulled every transcript's
-full `segments` JSON on a five-minute cadence (see that function's own
-docstring and `BACKLOG_DONE.md`) -- this audit endpoint pulls the same
-shape of data, just on-demand rather than on a timer, and the on-demand
-worker/backlog-script activity in this same session (job 256, the
-Vacaville entry above, and an ongoing local backlog-drain run) has been
-actively growing the `source == "transcribed"` population the whole
-time. Not yet confirmed by directly counting rows or checking Render's
-own service logs for an OOM/timeout signature -- worth doing before
-assuming this diagnosis over some other cause (e.g. a bad deploy,
-unrelated Archive-service outage).
-
-**Fix direction, if the diagnosis holds**: same shape as `find_auto_
-transcription_candidate()`'s own fix -- do the cheap SQL-level
-elimination first (e.g. only rows without `transcript_warnings` already
-carrying the hallucination marker, or a `LIMIT`/keyset-paginated batch)
-so `segments` is only ever pulled for genuine candidates, not the whole
-`source == "transcribed"` table at once. This endpoint is read-only
-audit tooling (per its own docstring, "a human decides what's worth
-re-running"), not on any user-facing path, so there's no urgency
-comparable to the auto-generation fix -- but it's currently unusable for
-exactly the audit purpose (sizing real hallucination exposure, like the
-Vacaville case above) it exists for.
+**Fixed 2026-08-21** — diagnosis (same unbounded-full-scan shape as
+`find_auto_transcription_candidate` before its 2026-08-17 rewrite)
+confirmed by code review; fixed with a data-shaped split (small
+already-flagged set pulled in full, big not-yet-flagged population
+bounded by `limit`/keyset `after_id` pagination) rather than a pure SQL
+predicate, since this endpoint's whole job is running
+`detect_hallucination_warnings()` itself. Full root-cause writeup, the
+NULL-`transcript_warnings` bug caught while fixing it, and test
+verification detail in `BACKLOG_DONE.md`.
 
 ## `scripts/transcribe_backlog_locally.py`'s "no usable audio/video source on re-resolve" skip has no retry -- confirmed a real, live meeting can get wrongly skipped by one transient failure (2026-08-18)
 
