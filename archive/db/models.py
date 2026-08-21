@@ -10,6 +10,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    false,
     func,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -78,6 +79,44 @@ class MeetingPage(Base):
     # point, corrected the same day this column was added.
     video_warnings: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
     agenda_link: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Mirrors ResolvedMeeting.best_effort (app/platforms/models.py): True
+    # when the resolve behind this page came from generic_fallback.py's
+    # best-effort page scan rather than a real, vendor-specific adapter.
+    # Added 2026-08-21 (WO-21); until then the resolver sent this field on
+    # every push and archive/main.py's IngestRequest silently dropped it,
+    # so the Archive had no idea which of its pages were unverified --
+    # `grep -rn best_effort archive/` returned nothing at all.
+    #
+    # NOT the same question as `platform == "unknown"`, and that
+    # difference is the whole reason this column exists rather than
+    # reusing the platform check: generic_fallback delegates to
+    # YouTubeAssetFinder whenever it finds a YouTube embed, and that
+    # result's `platform` is "youtube", not "unknown" -- the most common
+    # real fallback outcome. See ResolvedMeeting.best_effort's own
+    # docstring for the same warning at the resolver end.
+    #
+    # Three deliberate choices here, all deploy-safety related (see
+    # CLAUDE.md's Alembic bullet and the 2026-08-17 UndefinedColumnError
+    # outage in BACKLOG_DONE.md):
+    #   * server_default, no Python-side `default=` -- an ORM insert that
+    #     doesn't set the attribute omits the column from the INSERT
+    #     entirely, so ingest still works against a database where the
+    #     migration hasn't run yet.
+    #   * deferred=True -- keeps the column out of every plain
+    #     `select(MeetingPage)` (the /m/{slug} render, list_pages(), the
+    #     sitemap, the hubs). Pre-migration, those all keep working
+    #     untouched instead of failing on an unknown column. Unlike
+    #     search_corpus's deferral this isn't about payload size (it's one
+    #     boolean); nothing reads it as a loaded attribute -- the one
+    #     reader, crud.list_low_trust_pages(), selects it explicitly.
+    #   * crud._best_effort_available() gates both the write and the read
+    #     on the column actually existing, the same feature-detect
+    #     discipline crud._fts_available() uses for search_tsv, so this
+    #     code and its migration are safe to deploy in either order.
+    best_effort: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=false(), deferred=True
+    )
 
     # Precomputed, lowercased title+jurisdiction+agenda+all-transcript-
     # versions text (archive/utils/search.py's compute_search_corpus()) --
