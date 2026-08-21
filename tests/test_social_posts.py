@@ -3,10 +3,10 @@ crud/ingest plumbing it rides on (the `created` flag, the SocialPost
 claim-first dedup).
 
 The two network clients (_post_to_bluesky/_post_to_mastodon) are
-monkeypatched here, not exercised -- they are written against the
-documented Bluesky XRPC / Mastodon statuses APIs but have never made a
-real post (no account/credentials existed when this was built, see
-BACKLOG.md's live-verification entry). What IS real in these tests: the
+monkeypatched here, not exercised. The Bluesky one is live-verified
+separately (first real post 2026-08-21, see BACKLOG_DONE.md); the
+Mastodon one has still never made a real post -- no account exists, see
+BACKLOG.md's residuals entry. What IS real in these tests: the
 fixture SQLite DB, crud.ingest_resolution()'s created/page_id plumbing,
 the SocialPost unique-constraint dedup, and the quality gate/composition
 logic. The Fountain Valley garbled-warning text used below is the real

@@ -21,13 +21,15 @@ claimed post that then fails at the network stays "failed" in the
 SocialPost table and is never retried automatically. A missed
 announcement is a shrug; a duplicate post on a public account is spam.
 
-NOT YET LIVE-VERIFIED (2026-08-17): both clients are written against the
-documented, stable public APIs (Bluesky's com.atproto XRPC endpoints,
-Mastodon's /api/v1/statuses) but no real account/credentials existed at
-build time, so neither has made a real post yet -- the same
+Live-verification status (2026-08-21): the Bluesky client IS
+live-verified -- a real prod resolve created a page and
+redtaperecordings.bsky.social made its first real post the day this
+shipped (see BACKLOG_DONE.md's "Social auto-posting" entry). The
+Mastodon client is NOT: written against the documented /api/v1/statuses
+API but zero real posts ever made (no account exists) -- the same
 "schema-verified but not content-verified" flag this repo uses for
-unproven adapter fields (see CLAUDE.md). BACKLOG.md tracks the live
-verification step.
+unproven adapter fields (see CLAUDE.md). BACKLOG.md tracks that, plus
+the facet-clickability spot-check on the first Bluesky post.
 
 Config (all optional -- unset network = that network silently disabled):
   BLUESKY_HANDLE / BLUESKY_APP_PASSWORD  e.g. rtr.bsky.social + an app
