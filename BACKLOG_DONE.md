@@ -6,6 +6,61 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Real Charlotte, NC Cablecast meeting mis-attributed to Detroit, MI on a live Archive page — stale ingest, not a live bug; found via user's own manual 50-largest-cities research, fixed and verified [Done 2026-08-20]
+
+Found while cross-referencing the user's manually-researched table of the
+50 largest US cities' meeting coverage against this repo's own jurisdiction
+data (see `~/Documents/rtr-business/research/jurisdiction_coverage.csv`
+work). The user's notes flagged Charlotte City Council as "hardcoded as
+Detroit - needs debug" with example URL
+`https://charlotte.cablecast.tv/internetchannel/show/2451?site=1`.
+
+**Confirmed real**: that exact URL was stored in the Archive under slug
+`detroit-mi-2026-06-22-council-meeting-june-22-2026`
+(https://redtaperecordings.com/m/detroit-mi-2026-06-22-council-meeting-june-22-2026) —
+a real June 22, 2026 Charlotte City Council meeting attributed to Detroit,
+MI throughout its page (title, breadcrumb, `/j/` link).
+
+**Root cause confirmed NOT a live bug**: `app/utils/jurisdiction_enrich.py`'s
+`_KNOWN_DOMAINS` registry already has the correct
+`"charlotte.cablecast.tv": KnownJurisdiction("Charlotte", "city", "NC")`
+entry, and a fresh live resolve of that exact URL (via
+`finder.resolve(url)`, this session) correctly returned
+`jurisdiction="Charlotte, NC"`. A sibling page from the same domain
+(`show/2440`, `charlotte-nc-2026-05-15-peace-officers-memorial-...`) was
+already correctly attributed — confirming this was an isolated stale
+ingest that predated whatever fix made `charlotte.cablecast.tv` resolve
+correctly, never refreshed since (the resolver only ever re-derives
+jurisdiction for a page when something re-triggers a resolve — see
+`app/main.py`'s `_recheck_archived_page()` docstring: "an adapter/
+jurisdiction fix only ever reaches a page that gets re-resolved after it
+shipped, never retroactively").
+
+**Fixed live**: re-resolved the URL and pushed via the same
+`archive/main.py` `/internal/ingest` path `_recheck_archived_page()` uses
+(the `/admin/recheck-archive-page` endpoint itself lives on the deployed
+resolver service, which has no locally-configured base URL to call
+directly from this session, so the equivalent resolve+push was run
+directly instead). `archive/db/crud.py`'s `_find_or_create_page()` matches
+existing pages by `(platform, external_id, source_url_normalized)`, not by
+slug, and its update branch explicitly keeps the slug stable while
+refreshing `jurisdiction`/`meeting_body`/`jurisdiction_confidence` in
+place — so the fix corrected the page's real attribution without changing
+its URL. Verified live afterward: the page now reads "Charlotte, NC"
+throughout (title tag: "Council Meeting - June 22, 2026 — Charlotte, NC
+(2026-06-22)"; breadcrumb links to `/j/charlotte-nc` and
+`/state/north-carolina`; transcript text itself is clearly a Charlotte
+council meeting, e.g. "Charlotte continues to grow").
+
+**Real residual gap, not addressed here**: this was found by checking one
+specific URL a human had already flagged, not a systematic sweep. Whether
+other Cablecast (or other-platform) pages carry a similarly stale,
+pre-domain-registry-fix jurisdiction is unconfirmed either way —
+`scripts/backfill_archived_pages.py` (mentioned in
+`_recheck_archived_page()`'s own docstring as the tool built for exactly
+this, a corpus-wide re-resolve sweep) would be the way to check, not yet
+run for this.
+
 ## YouTube transcript fetch `IpBlocked` alert: confirmed expected/self-clearing; found and fixed a real stale-garbled-flag bug while investigating [Done 2026-08-20]
 
 Triggered by a real launchd alert email: `scripts/fetch_youtube_transcripts.py`'s
