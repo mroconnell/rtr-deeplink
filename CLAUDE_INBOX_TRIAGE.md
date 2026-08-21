@@ -46,20 +46,36 @@ itself go in the entry as questions, not silently guessed at further.
 
 ## Open item
 
-**Gmail OAuth reauthorization — two runs running as of 2026-08-18, still
-not fixed.** The 2026-08-17 run's `label_thread` calls failed partway
-through with "requires re-authorization" (token expired); the 2026-08-18
-run's calls failed immediately for the same reason (one call also came
-back "Denied by user"), and Ryan confirmed live mid-run to skip
-relabeling entirely rather than keep retrying a broken write path.
-Read-only calls (`search_threads`/`get_message`) worked fine both runs —
-only `label_thread` (write) failed, so whatever grants Gmail write scope
-specifically needs to actually stick, not just a general reauth. Until
-this is fixed, `label:rtr-claude -label:rtr-claude-processed` will keep
-returning the same growing backlog of already-reviewed threads (34 as of
-2026-08-17, 68 as of 2026-08-18) for every run to re-review from scratch.
-Needs Ryan to reauthorize the Gmail connector before the next scheduled
-run.
+**Gmail write scope — DECLINED 2026-08-21. The Routine stays read-only,
+permanently. Don't propose reauthorizing it.** Ryan's explicit decision:
+an unattended daily job that opens and merges its own PRs should not also
+hold write access to his mailbox. That's a deliberate blast-radius
+choice, not an unfixed permission problem, and it supersedes this item's
+earlier framing ("needs Ryan to reauthorize the Gmail connector").
+
+What that leaves is a **code** problem, not a permissions one. Read-only
+calls (`search_threads`/`get_message`) work fine; `label_thread` (write)
+does not and now never will. So the Routine can't mark a thread
+processed, and `label:rtr-claude -label:rtr-claude-processed` keeps
+returning the same growing backlog for every run to re-review from
+scratch — 34 threads as of 2026-08-17, 68 as of 2026-08-18, growing.
+
+**The fix needs no Gmail write at all**: the Routine already opens a PR
+every run, so it can keep its own processed-message-ID ledger *in the
+repo* — a sidecar file beside this one — and dedupe against that instead
+of against a Gmail label. Notes for whoever builds it:
+
+- Store **message** IDs, not thread IDs. Gmail's thread-level label
+  semantics are exactly what made the existing query unreliable: a
+  thread with one processed and one new message still comes back.
+- Pair the ledger with a lookback window rather than relying on dates
+  alone — mail arrives out of order, so a pure "newer than last run"
+  filter would silently drop late-delivered alerts.
+- Prune IDs older than the lookback window so the file doesn't grow
+  without bound.
+- Add the ledger to `render.yaml`'s `buildFilter.ignoredPaths` alongside
+  the other triage/backlog docs, so the Routine's own commits still
+  never trigger a redeploy.
 
 Every finding from both the 2026-08-17 and 2026-08-18 runs has been
 promoted into `BACKLOG.md`/`CLAUDE_BACKLOG.md` per this file's own

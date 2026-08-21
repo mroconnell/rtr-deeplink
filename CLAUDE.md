@@ -206,25 +206,35 @@ under everything else. This repo extracts and fixes just that part.
   `crud._fts_available()` is the model — either order deploys safely),
   and **a generated/computed column beats "column + backfill script"**
   when Postgres can compute the value (no ingest change, no one-time
-  script, no seam). **The resolver (`app/`) is most of the way there as
-  of 2026-08-21 (WO-24), with one human step left**: its `create_all()`
-  is now a no-op on Postgres too, CI runs a second `alembic check` with
-  `working-directory: app`, and `GET /admin/schema-info` (the resolver's
-  port of the Archive's `/internal/schema-info`, same admin-token gate
-  as every other `/admin/*` route) reports its real reflected columns
-  and `alembic_version` without needing shell access. What's still
-  missing is the `preDeployCommand`, because the resolver's Alembic
-  history (`app/alembic/`, 2 revisions) has never been stamped in prod —
-  **follow `app/alembic/README.md`'s "The runbook" for that one-time
-  step, and stamp the literal revision `a9207c0eb761`, never the word
-  `head`** (`head` was the baseline when older docs said "stamp head";
-  a second revision landed 2026-08-15 and silently made that advice
-  dangerous — same shape as the 2026-08-09 Archive incident). Don't
-  expect `alembic current` to be empty either; a real 2026-08-11 query
-  found an `alembic_version` table already present there. Until the
-  stamp lands, an altered resolver table still needs a hand-run
-  migration — and a *new* resolver table no longer appears on its own,
-  since `create_all()` no longer runs in prod. Tracked in `BACKLOG.md`.
+  script, no seam). **The resolver (`app/`) is now on the same footing,
+  as of 2026-08-21 (WO-24)**: its `create_all()` is a no-op on Postgres,
+  CI runs a second `alembic check` with `working-directory: app`, and
+  `render.yaml` carries `preDeployCommand: cd app && alembic upgrade
+  head` for the resolver service too. So both services now get the same
+  guarantee — a schema change without a migration fails before merge,
+  and migrations run before the new build serves traffic.
+  `GET /admin/schema-info` (the resolver's port of the Archive's
+  `/internal/schema-info`, same admin-token gate as every other
+  `/admin/*` route) reports its real reflected columns and
+  `alembic_version` without needing shell access.
+  **A stale premise worth knowing about, since it survived in these docs
+  for ~11 days:** they claimed the resolver's Alembic history "has never
+  been stamped in prod" and that a one-time manual `alembic stamp` on the
+  Render shell was the blocker. That was wrong. The first real call to
+  `/admin/schema-info` (2026-08-21) returned `alembic_version:
+  a9207c0eb761` — already at head, `schema_matches_models: true`, zero
+  mismatched tables. Nobody had recorded the stamp. The lesson isn't
+  about Alembic: **when a doc asserts a fact about production that
+  nothing in the repo can verify, build the read-only endpoint that
+  answers it before acting on the assertion.** Two sessions nearly
+  opened a Render shell to run a destructive-ish command against a
+  premise that a single `curl` disproved.
+  **If you ever do need to stamp this history: name the literal revision
+  (`a9207c0eb761` today), never the word `head`** — `head` was the
+  baseline when older docs said "stamp head", a second revision landed
+  2026-08-15, and that silently turned the advice into the same shape as
+  the 2026-08-09 Archive incident. `app/alembic/README.md`'s runbook has
+  the full decision table.
 - **`app/db/outcomes.py` classifies reporting outcomes from real signal on
   the row where one exists, and falls back to substring-matching
   `transcript_warnings` only where it doesn't.** `agenda_fallback` is
