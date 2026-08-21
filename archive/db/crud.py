@@ -2,7 +2,7 @@ import hashlib
 import math
 import secrets
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from typing import Any, Optional, Set
 from urllib.parse import urlparse
 
 from sqlalchemy import (
@@ -1396,7 +1396,12 @@ async def list_jurisdiction_bleed_backfill_candidates() -> dict:
         return {"total_checked": len(rows), "candidates": candidates}
 
 
-async def apply_jurisdiction_bleed_backfill(*, dry_run: bool = True) -> dict:
+async def apply_jurisdiction_bleed_backfill(
+    *,
+    dry_run: bool = True,
+    only_ids: Optional[Set[int]] = None,
+    exclude_ids: Optional[Set[int]] = None,
+) -> dict:
     """Write counterpart to list_jurisdiction_bleed_backfill_candidates()
     above -- actually patches MeetingPage.jurisdiction /
     jurisdiction_confidence for rows where finalize_jurisdiction() produces
@@ -1418,6 +1423,21 @@ async def apply_jurisdiction_bleed_backfill(*, dry_run: bool = True) -> dict:
     diff without writing anything -- mirrors this repo's existing
     read-only-first pattern for internal tooling. dry_run=False commits the
     updates and returns the same before/after shape for an audit trail.
+
+    `only_ids` / `exclude_ids` (sets of MeetingPage ids) narrow which rows
+    may be written -- added 2026-08-21 (WO-22) for a real, concrete need:
+    the production audit's candidate set was NOT uniformly safe to apply
+    (BACKLOG.md's "Bare/state-suffixed jurisdiction duplicates" entry --
+    the 83 text-changing rows included two confidently-wrong subdomain
+    repairs, "Alameda County, CA" -> "Bart, CA" and "Modesto, CA" ->
+    "Agenda, CA"), and with no per-id filter the only options were "apply
+    everything" or "apply nothing". Both are applied to the recomputed
+    candidate list, not to the SELECT: every row is still re-checked
+    against today's finalize_jurisdiction() and the filters only decide
+    what may be WRITTEN, so a caller can't use them to smuggle in a row
+    the recompute wouldn't have changed anyway. `exclude_ids` wins over
+    `only_ids` when a row is in both (deny beats allow -- the safer
+    reading of a contradictory request).
     """
     async with async_session() as session:
         rows = (
@@ -1434,10 +1454,16 @@ async def apply_jurisdiction_bleed_backfill(*, dry_run: bool = True) -> dict:
         ).all()
 
         changes = []
+        skipped_by_filter = 0
         for page_id, slug, title, jurisdiction, confidence, source_url in rows:
             netloc = urlparse(source_url).netloc if source_url else None
             result = finalize_jurisdiction(jurisdiction, netloc=netloc)
             if result.jurisdiction == jurisdiction:
+                continue
+            if (only_ids is not None and page_id not in only_ids) or (
+                exclude_ids is not None and page_id in exclude_ids
+            ):
+                skipped_by_filter += 1
                 continue
             changes.append(
                 {
@@ -1466,7 +1492,12 @@ async def apply_jurisdiction_bleed_backfill(*, dry_run: bool = True) -> dict:
                 ]
             await session.commit()
 
-        return {"dry_run": dry_run, "applied_count": len(changes), "changes": changes}
+        return {
+            "dry_run": dry_run,
+            "applied_count": len(changes),
+            "skipped_by_filter": skipped_by_filter,
+            "changes": changes,
+        }
 
 
 async def get_page_by_slug(slug: str) -> Optional[dict]:

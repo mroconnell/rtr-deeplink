@@ -4,7 +4,7 @@ import secrets
 from contextlib import asynccontextmanager
 from datetime import timezone
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Set
 from urllib.parse import quote
 
 from dotenv import load_dotenv
@@ -224,6 +224,22 @@ def _parse_optional_bool(value: Optional[str]) -> Optional[bool]:
     if not value:
         return None
     return value == "true"
+
+
+def _parse_id_filter(raw: Optional[str]) -> Optional[Set[int]]:
+    """Comma-separated `meeting_page_id`s -> a set, for POST /internal/
+    jurisdiction/backfill-apply's only_ids/exclude_ids. None (param absent)
+    stays None, meaning "no filter at all" -- distinct from an empty set,
+    which for only_ids legitimately means "no row is allowed through".
+
+    Raises ValueError on any non-integer token rather than skipping it: a
+    silently-dropped id in `exclude_ids` would fail OPEN (writing a row the
+    operator explicitly asked to hold back) on an endpoint whose whole
+    reason for existing is that part of the candidate set is known-wrong.
+    """
+    if raw is None:
+        return None
+    return {int(part.strip()) for part in raw.split(",") if part.strip()}
 
 
 def _token_ok(authorization: Optional[str]) -> bool:
@@ -608,7 +624,10 @@ async def internal_jurisdiction_bleed_backfill_candidates(
 
 @app.post("/internal/jurisdiction/backfill-apply")
 async def internal_jurisdiction_backfill_apply(
-    dry_run: bool = True, authorization: Optional[str] = Header(None)
+    dry_run: bool = True,
+    only_ids: Optional[str] = None,
+    exclude_ids: Optional[str] = None,
+    authorization: Optional[str] = Header(None),
 ):
     """Write counterpart to GET /internal/jurisdiction/bleed-backfill-
     candidates above -- actually backfills the 2026-08-17 Canadian-data +
@@ -627,11 +646,34 @@ async def internal_jurisdiction_backfill_apply(
     for internal tooling, see /internal/schema-info's docstring) and
     returns the exact before/after diff it *would* write without touching
     the database. Pass ?dry_run=false to actually commit.
+
+    `only_ids` / `exclude_ids` (comma-separated `meeting_page_id`s, the
+    same ids the GET audit above returns) apply a SUBSET of the candidate
+    set -- added 2026-08-21 (WO-22) because the real production candidate
+    set turned out not to be uniformly safe: a handful of rows were
+    confidently-wrong repairs while the large majority were plain, safe
+    state-suffix appends, and without a filter the only choices were all
+    or nothing (see BACKLOG.md's "Bare/state-suffixed jurisdiction
+    duplicates" entry). Ids are only ever a filter over rows this endpoint
+    recomputed itself -- an unknown or unchanged id simply matches
+    nothing, and no caller-supplied jurisdiction text is accepted here any
+    more than before. `exclude_ids` wins if an id appears in both.
     """
     if not _token_ok(authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
-    return await crud.apply_jurisdiction_bleed_backfill(dry_run=dry_run)
+    try:
+        only = _parse_id_filter(only_ids)
+        exclude = _parse_id_filter(exclude_ids)
+    except ValueError:
+        return JSONResponse(
+            {"detail": "only_ids/exclude_ids must be comma-separated integers"},
+            status_code=400,
+        )
+
+    return await crud.apply_jurisdiction_bleed_backfill(
+        dry_run=dry_run, only_ids=only, exclude_ids=exclude
+    )
 
 
 @app.get("/internal/lookup")
