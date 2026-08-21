@@ -9,7 +9,7 @@
     <p class="subtitle">Paste a public meeting URL to view its video with clickable deep links to any moment. If a transcript or agenda are available, we'll load that under the video to make it easier to skip around to the parts that you're interested in.</p>
     <form id="urlForm" class="mb-3">
       <div class="input-group">
-        <input type="url" id="urlInput" class="form-control" placeholder="https://citycouncil.granicus.com/player/clip/1234" required>
+        <input type="text" id="urlInput" class="form-control" placeholder="https://citycouncil.granicus.com/player/clip/1234" required>
         <button type="submit" class="cassette-btn">
           <span class="cassette-reel"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7" fill="#fff" stroke="#bbb" stroke-width="2"/><circle cx="9" cy="9" r="2.2" fill="#bbb"/></svg></span>
           <span class="cassette-label">Look Up</span>
@@ -24,10 +24,37 @@
   <script>
     document.getElementById('urlForm').addEventListener('submit', (e) => {
       e.preventDefault();
-      const url = document.getElementById('urlInput').value.trim();
-      if (!url) return;
-      trackEvent('submit_meeting_url');
-      window.location.href = '/meeting?url=' + encodeURIComponent(url);
+      const raw = document.getElementById('urlInput').value.trim();
+      if (!raw) return;
+
+      let isUrl = true;
+      try {
+        new URL(raw);
+      } catch {
+        isUrl = false;
+      }
+
+      if (isUrl) {
+        trackEvent('submit_meeting_url');
+        window.location.href = '/meeting?url=' + encodeURIComponent(raw);
+        return;
+      }
+
+      // Not URL-shaped -- still log it (fire-and-forget, best-effort) so
+      // exploratory searches show up in the same reporting log real
+      // resolve attempts do, then point them at meeting search instead
+      // of pretending this was a meeting URL.
+      fetch('/api/log-invalid-query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: raw }),
+      }).catch(() => {});
+
+      const errorEl = document.getElementById('formError');
+      errorEl.innerHTML = 'That doesn\'t look like a meeting URL. Paste a link to a specific meeting, or <a href="/meetings?q=' +
+        encodeURIComponent(raw) + '">search meetings for &ldquo;' +
+        raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '&rdquo;</a>.';
+      errorEl.hidden = false;
     });
   </script>
 {% endblock %}

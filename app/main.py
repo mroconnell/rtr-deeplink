@@ -694,6 +694,36 @@ async def resolve(
     return payload
 
 
+class InvalidQueryRequest(BaseModel):
+    query: str
+
+
+@app.post("/api/log-invalid-query")
+@limiter.limit("20/minute")
+async def log_invalid_query(request: Request, req: InvalidQueryRequest):
+    """Homepage lookup box, non-URL branch: the input isn't URL-shaped, so
+    the frontend never calls /api/resolve at all -- it shows the "paste a
+    URL" gate instead and fires this in the background so exploratory
+    free-text searches (a city name, a topic) still land in the same
+    meeting_resolutions reporting log as real resolve attempts, rather
+    than vanishing client-side the way they did before. status is its own
+    outcome bucket ("invalid_query") -- classify_outcome() (app/db/
+    outcomes.py) just returns row.status unchanged for any non-"success"
+    value, so no changes needed there or in get_stats()/  /admin/log.
+    """
+    query = req.query.strip()[:500]
+    if not query:
+        return {"status": "ok"}
+    await safe(
+        crud.log_resolution,
+        input_url=query,
+        input_url_normalized=query,
+        input_platform="invalid_query",
+        status="invalid_query",
+    )
+    return {"status": "ok"}
+
+
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
