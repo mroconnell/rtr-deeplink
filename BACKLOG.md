@@ -3165,26 +3165,6 @@ that added this reorg, for which ones are new).
   destinyhosted-linked agenda) is found — check the sample sheet or a
   fresh dotgov/CDX pass first.
 
-- **[LATER] `open.media` may not need its own adapter at all** — first
-  sighted 2026-08-21 via the same destinyhosted.com enumeration that
-  turned up SuiteOne Media below (see BACKLOG_DONE.md for the population
-  sizing of both). Not in `detect_platform()`, no adapter file, not in
-  `generic_fallback.py`'s curated-pointer list. Confirmed live that
-  Goodyear, AZ's page (`goodyearaz.open.media/sessions/346555`) directly
-  iframes `public.destinyhosted.com/agenda_publish.cfm?id=46639` (the
-  same tenant already in the destinyhosted table) for its agenda, and its
-  own video is a YouTube id in the old `youtube.com/v/{id}` embed shape —
-  which `YouTubeAssetFinder`'s `_VIDEO_ID_RE` now recognizes (fixed same
-  day, see BACKLOG_DONE.md), so generic_fallback's existing tier-1
-  YouTube detection may already resolve open.media pages with no
-  dedicated code at all. Not yet confirmed whether every open.media
-  tenant pairs a YouTube embed with a destinyhosted (or other) agenda
-  backend the same way, or whether some host their own video directly —
-  worth checking a few more of the 10 real tenant subdomains found via
-  CDX (`arapahoe`, `cortez`, `eugene`, `larimer`, `litchfield-park`,
-  `pitkincounty`, `santabarbaraca`, `surpriseaz`, `townofgeorgetown`, plus
-  the confirmed `goodyearaz`) before assuming this generalizes.
-
 - **[LATER] Vimeo's real-world prevalence among small local governments is
   now quantified for the first time — worth deciding if the existing
   pointer-only handling is enough (2026-08-18).** Not an "add support"

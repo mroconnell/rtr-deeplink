@@ -26,6 +26,7 @@ def register_all_finders() -> None:
     from .iqm2 import IQM2AssetFinder
     from .legistar import LegistarAssetFinder
     from .lims import LimsAssetFinder
+    from .openmedia import OpenMediaAssetFinder
     from .primegov import PrimeGovAssetFinder
     from .seattlechannel import SeattleChannelAssetFinder
     from .slc import SlcAssetFinder
@@ -59,6 +60,7 @@ def register_all_finders() -> None:
     register(TelvueAssetFinder())
     register(HylandAssetFinder())
     register(TownHallStreamsAssetFinder())
+    register(OpenMediaAssetFinder())
     register(CastusAssetFinder())
     register(SuiteOneAssetFinder())
     # Registered under "unknown" -- the exact string detect_platform()
