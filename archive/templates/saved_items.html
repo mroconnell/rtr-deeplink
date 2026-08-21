@@ -22,7 +22,9 @@
               <span class="calendar-candidate-date">
                 {%- if m.meeting_body %}{{ m.meeting_body }}{% if m.jurisdiction %} &middot; {% endif %}{% endif -%}
                 {%- if m.jurisdiction %}{{ m.jurisdiction|jurisdiction_display }}{% endif -%}
-                {%- if m.date %} &middot; {{ m.date }}{% endif -%}
+                {#- Semantic <time> on the meeting date -- see
+                   meeting_date_html() in archive/main.py. #}
+                {%- if m.date %} &middot; {{ m.date|meeting_date_html }}{% endif -%}
               </span>
             </div>
           </div>

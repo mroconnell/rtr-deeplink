@@ -13,7 +13,7 @@ from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from markupsafe import Markup
+from markupsafe import Markup, escape
 from pydantic import BaseModel, field_validator
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -44,7 +44,7 @@ from .db.engine import init_models
 from .utils import email as email_utils
 from .utils import social
 from .utils.clerk_auth import clerk_frontend_api_url, get_clerk_user_id
-from .utils.date_status import meeting_date_status
+from .utils.date_status import iso_meeting_date, meeting_date_status
 from .utils.jurisdiction_format import (
     STATE_SLUG_TO_ABBR,
     US_STATE_ABBR_TO_NAME,
@@ -162,6 +162,39 @@ templates.env.filters["youtube_thumbnail_url"] = youtube_thumbnail_url
 # rendered as the literal "364:47" instead of "6:04:47". See
 # archive/utils/segment_time.py's own docstring.
 templates.env.filters["segment_time"] = format_segment_time
+# Normalized "YYYY-MM-DD" (or None) for a MeetingPage.date -- gates both
+# the `<time datetime="...">` markup on visible meeting dates and the
+# JSON-LD uploadDate/startDate values, neither of which may ever emit an
+# unvalidated free-string date. See iso_meeting_date's own docstring.
+#
+# Deliberately NOT applied to transcript/agenda offsets ("[12:34]"): those
+# are durations, not datetimes -- HTML's <time datetime> would need
+# "PT12M34S" for them, a different and much less obviously-valuable change.
+# See CLAUDE_BACKLOG.md's SEO Tier 3 entry.
+templates.env.filters["iso_date"] = iso_meeting_date
+
+
+def meeting_date_html(raw: Optional[str]) -> Markup:
+    """A visible meeting date wrapped in semantic `<time datetime="...">`
+    (2026-08-21, CLAUDE_BACKLOG.md's SEO/accessibility Tier 3 item -- this
+    codebase previously had no `<time>` markup anywhere), falling back to
+    the plain text when the stored date isn't parseable: a `datetime`
+    attribute that isn't a valid HTML date string is worse than no `<time>`
+    element at all.
+
+    One filter rather than an inline `{% if %}` repeated across the five
+    templates that render a meeting date, so the fallback branch can't
+    drift between them -- and so it's unit-testable directly. Markup.format
+    escapes its arguments, so an odd stored `date` string can't inject
+    markup through the visible half.
+    """
+    iso = iso_meeting_date(raw)
+    if not iso:
+        return Markup(escape(raw or ""))
+    return Markup('<time datetime="{}">{}</time>').format(iso, raw)
+
+
+templates.env.filters["meeting_date_html"] = meeting_date_html
 
 
 @app.exception_handler(StarletteHTTPException)
@@ -512,6 +545,42 @@ async def internal_transcript_quality_audit(
         else None
     )
     return await crud.get_transcript_quality_audit(list_outcomes=outcomes)
+
+
+@app.get("/internal/date-format-audit")
+async def internal_date_format_audit(
+    limit: int = 200,
+    authorization: Optional[str] = Header(None),
+):
+    """Read-only: every archived page's `date` bucketed by shape (null /
+    iso_date / parseable_non_iso / unparseable), plus the real slug and
+    stored value for anything that isn't a clean "YYYY-MM-DD".
+
+    Exists to settle, in one call, BACKLOG.md's long-open Search Console
+    question -- whether the `uploadDate` "invalid datetime value" flag is
+    caused by a real malformed row from a bad adapter extraction, or was
+    only ever the (since-fixed) missing-timezone problem in the same
+    JSON-LD block. Same reasoning and structure as
+    GET /internal/transcript-quality-audit above: answers a "how big is
+    this really" question without needing direct DATABASE_URL access.
+    Never writes anything.
+
+    Run it as:
+
+        curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" \\
+             "$ARCHIVE_BASE_URL/internal/date-format-audit"
+
+    Reading the result: `by_shape.unparseable > 0` means real malformed
+    rows exist and the flag has a live cause worth chasing to the adapter
+    that wrote them. All-zero for both non-ISO buckets means no stored
+    value can be producing it, and the flag should clear on recrawl now
+    that the template validates before emitting (see meeting_page.html's
+    uploadDate comment).
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    return await crud.get_meeting_date_format_audit(limit=max(1, min(limit, 2000)))
 
 
 @app.get("/internal/jurisdiction/bleed-backfill-candidates")

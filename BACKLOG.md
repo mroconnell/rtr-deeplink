@@ -1606,11 +1606,32 @@ anything) to build against it.
     instead — see the new entry immediately below.
   - ~~`uploadDate` missing a timezone~~ **Fixed 2026-08-14 — full detail
     in `BACKLOG_DONE.md`'s "Wave 1" entry.** Now emits
-    `date + "T00:00:00Z"`. **Still open**: the separate "invalid
-    datetime value" flag suggests at least one real row has a
-    non-`YYYY-MM-DD` value in `date` (a bad adapter extraction) — never
-    cross-checked against actual production values, so it's not known
-    whether this is already fixed as a side effect or still live.
+    `date + "T00:00:00Z"`.
+  - ~~`uploadDate` "invalid datetime value"~~ **Template side fixed
+    2026-08-21 (WO-27) — full detail in `BACKLOG_DONE.md`.** The template
+    used to concatenate `page.date` into `uploadDate` (and into Event
+    `startDate`) with no validation anywhere in the chain — `date` is a
+    free `Optional[str]` on `ResolvedMeeting`, on `IngestRequest`, and a
+    `String(20)` column — so a malformed stored value went straight into
+    the emitted markup. Both now go through
+    `iso_meeting_date()` and are simply omitted when the stored date
+    isn't a real date. **[HUMAN] Residual, one command away**: nobody has
+    yet checked whether any *real* production row actually holds such a
+    value (the original open question). `GET /internal/date-format-audit`
+    was built to answer it in one call — run:
+
+    ```bash
+    curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" \
+         "$ARCHIVE_BASE_URL/internal/date-format-audit"
+    ```
+
+    `by_shape.unparseable > 0` means real malformed rows exist and
+    `suspect_rows` names them (slug + stored value) — chase those to the
+    adapter that wrote them and consider a backfill. All-zero across both
+    `unparseable` and `parseable_non_iso` means no stored value could have
+    been the cause, and the flag should clear on recrawl from the template
+    fix alone. Either way, close this out once the audit has actually been
+    run.
   - ~~All 6 `Clip` entries on the real Minneapolis LIMS test page flag
     "Missing field endOffset"~~ **Fixed 2026-08-14 — full detail in
     `BACKLOG_DONE.md`'s "Wave 1" entry.** LIMS's `_flatten_timestamps()`
