@@ -3843,8 +3843,20 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   could have caught it — the mistake only surfaced by actually curling
   the route against real production, confirming this file's own "verify
   against a real case, don't guess" convention applies to reporting
-  endpoints too, not just adapters. Re-verifying live against production
-  after this fix, not just trusting the corrected SQL by inspection.
+  endpoints too, not just adapters.
+
+  **Live-verified working end to end after the fix, 2026-08-21, same
+  day**: real manual trigger (`workflow_dispatch`) against production
+  returned `{"sent": true, "summary": {"active_jobs": 1,
+  "remaining_chunks_in_active_jobs": 1,
+  "cumulative_chunks_completed_all_time": 2986,
+  "cumulative_jobs_completed_all_time": 281, "jobs_completed_last_24h":
+  34, "segments_added_last_24h": 90441, "backlog_no_transcript": 638,
+  "tier3_queue_remaining": 1630}}` — a real Resend send, real numbers,
+  `json_array_length` computing correctly. First scheduled run is
+  23:40 UTC tonight; this manual trigger already exercised the exact
+  same code path, so that run is expected to succeed too, not a new
+  unknown.
 
 - **Second transcription worker added for backlog catch-up, 2026-08-21 —
   residual auto-gen TOCTOU gap now recorded, not fixed at the DB layer.**
