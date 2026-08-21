@@ -119,10 +119,24 @@ under everything else. This repo extracts and fixes just that part.
   `BACKLOG.md`/`CLAUDE_BACKLOG.md` proper, same pattern as this bullet's
   `CLAUDE_BACKLOG.md` promotion step, then deletes it from the triage
   file rather than marking it done in place. `render.yaml`'s
-  `buildFilter.ignoredPaths` (all three services) excludes all four of
-  these backlog/triage docs from triggering a Render redeploy, so this
-  auto-merging is safe from a production standpoint even with zero human
-  review — see that file's own comment.
+  `buildFilter.ignoredPaths` (every service block) excludes all of these
+  backlog/triage docs — plus the ledger file below — from triggering a
+  Render redeploy, so this auto-merging is safe from a production
+  standpoint even with zero human review; see that file's own comment.
+  **The Routine dedupes against a repo-side ledger, not a Gmail label
+  (WO-33, 2026-08-21).** It holds *no Gmail write scope* — Ryan's
+  explicit, permanent decision: an unattended job that merges its own PRs
+  shouldn't also be able to write to his mailbox — so `label_thread` and
+  the old `label:rtr-claude -label:rtr-claude-processed` query are gone
+  for good. Don't propose reauthorizing it. Instead it searches a
+  30-day lookback window and filters candidates through
+  `CLAUDE_INBOX_TRIAGE_SEEN.txt` via `scripts/inbox_triage_ledger.py`,
+  committing the updated ledger in the same PR. Message IDs, not thread
+  IDs: Gmail's label semantics are thread-level, which is what made the
+  old query unreliable (a thread with one processed and one new message
+  still came back). See `CLAUDE_INBOX_TRIAGE.md`'s "Dedupe protocol"
+  section and the script's docstring for the reasoning behind the
+  window/prune/append-only choices.
 - **Don't claim a caption/data path works without a positive example.**
   Several adapters have fields that are schema-verified but not
   content-verified (e.g. CivicClerk's `closedCaptionTracks`, Swagit's

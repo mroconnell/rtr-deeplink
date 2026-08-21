@@ -1,0 +1,14 @@
+# Processed-message-ID ledger for the daily Gmail inbox-triage Routine.
+# Written by scripts/inbox_triage_ledger.py -- see that file's docstring
+# and CLAUDE_INBOX_TRIAGE.md's "Dedupe protocol" section. This replaces
+# the `rtr-claude-processed` Gmail label, which is unavailable for good
+# (the Routine holds no Gmail write scope, by Ryan's 2026-08-21 decision).
+#
+# One entry per line: <message-date>\t<gmail-message-id>. Append-only in
+# normal operation; only `prune` ever rewrites the file. A line whose
+# first field isn't a YYYY-MM-DD date is treated as a bare, undated
+# message ID: still counted as seen, never pruned.
+#
+# Editing by hand is fine (deleting a line makes that message eligible
+# for re-review), but don't reorder or reformat wholesale -- an append
+# merges cleanly across concurrent sessions and a rewrite doesn't.
