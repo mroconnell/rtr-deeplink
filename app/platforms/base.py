@@ -226,6 +226,16 @@ def detect_platform(url: str) -> str:
         # see hyland.py's own module docstring for the rest of the
         # investigation.
         return "hyland"
+    if "castus.tv" in netloc and "/vod/" in path:
+        # Castus -- a real PEG/government-access video platform, confirmed
+        # live 2026-08-21 (WO-19) against one real customer, Billings, MT's
+        # comm7tv channel (cloud.castus.tv/vod/comm7tv/video/{id}). Scoped
+        # to the confirmed `/vod/{tenant}/video/{id}` template specifically
+        # (not the bare domain), the same static-shell-over-a-real-JSON-API
+        # shape as champds.py -- see castus.py's own module docstring for
+        # the full investigation (the SPA's webpack bundles, not a headless
+        # browser, are what solved the tenant-slug -> channel-id mapping).
+        return "castus"
     if "townhallstreams.com" in netloc:
         # A small, real, multi-town government video vendor -- confirmed
         # live 2026-08-19/20 across 7 real towns, found by accident (not

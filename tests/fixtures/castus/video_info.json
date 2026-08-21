@@ -1,0 +1,95 @@
+{
+  "response": {
+    "success": true,
+    "message": "",
+    "code": 200,
+    "payload": {
+      "file": {
+        "_id": "6a83b3f9d94c83000226f83d",
+        "date": "2026-08-19T18:03:00.722Z",
+        "original_date": "2026-08-18T01:23:04.212Z",
+        "captioned": [
+          true
+        ],
+        "transcoding": false,
+        "transcoded": true,
+        "metadata": {
+          "guid": "b801be19-1600-4613-97d1-63b320aebdad",
+          "hd": "1080",
+          "file type": "video/quicktime",
+          "duration": "6380.103000",
+          "filename": "Billings City Council Work Session - August 17, 2026"
+        },
+        "user": "5fb29792d339f4000892b300",
+        "agenda": [
+          {
+            "hyperlinks": [
+              {
+                "text": "Work Session Agenda",
+                "link": "https://public.destinyhosted.com/24568/agenda/agenda.cfm?seq=2036"
+              }
+            ],
+            "attachments": [],
+            "time": 16,
+            "title": "PROCLAMATION:",
+            "text": "Billings Navy Week - August 17-23",
+            "duration": 919.99
+          },
+          {
+            "hyperlinks": [],
+            "attachments": [],
+            "time": 936,
+            "title": "PUBLIC COMMENT ON ALL ITEMS.",
+            "text": "",
+            "duration": 534.99
+          },
+          {
+            "hyperlinks": [
+              {
+                "text": "West End Water System Update and Naming",
+                "link": "https://public.destinyhosted.com/24568/agenda/agenda-item.cfm?seq=12544&rev=0"
+              }
+            ],
+            "attachments": [],
+            "time": 1471,
+            "title": "1.  West End Water System Update and Naming.",
+            "text": "-Public Comment",
+            "duration": 4723.99
+          },
+          {
+            "hyperlinks": [],
+            "attachments": [],
+            "time": 6195,
+            "title": "HIGHLIGHT UPCOMING AGENDA ITEMS OF COUNCIL INTEREST:",
+            "text": "",
+            "duration": 31.99
+          },
+          {
+            "hyperlinks": [],
+            "attachments": [],
+            "time": 6227,
+            "title": "COUNCIL DISCUSSION:",
+            "text": "",
+            "duration": 41.99
+          },
+          {
+            "hyperlinks": [],
+            "attachments": [],
+            "time": 6269,
+            "title": "PUBLIC COMMENT on \"NON-AGENDA ITEMS\".",
+            "text": "",
+            "duration": 70.99
+          },
+          {
+            "hyperlinks": [],
+            "attachments": [],
+            "time": 6340,
+            "title": "ADJOURN:",
+            "text": "",
+            "duration": 41
+          }
+        ]
+      }
+    }
+  }
+}

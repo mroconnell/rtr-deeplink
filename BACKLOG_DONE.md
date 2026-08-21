@@ -6,6 +6,129 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Castus (cloud.castus.tv): investigation spike solved the tenant-slug → channel-id gap and became a full new platform adapter (`castus.py`) [Done 2026-08-21]
+
+WO-19, scoped as an investigation-first spike (not necessarily a full
+build) into `BACKLOG.md`'s "Castus has zero support anywhere in the
+resolver" entry (2026-08-21, added the same day from the destinyhosted.com
+enumeration). Re-verified the entry's one real customer URL live rather
+than trusting it secondhand
+(`https://cloud.castus.tv/vod/comm7tv/video/6a83b3f9d94c83000226f83d?page=HOME`,
+a Billings, MT City Council Work Session) before writing any code, per
+this repo's "test against a real URL first" rule.
+
+**Confirmed live**: the static page is a pure JS-redirect shell into a
+client-rendered React SPA behind a hash router — a plain `curl`/`aiohttp`
+GET only ever sees a tiny `redirect()` script, matching the entry's
+earlier finding. Unlike Minneapolis LIMS/Salt Lake City
+(`app/platforms/headless_browser.py`), this did NOT end up needing a real
+headless-browser fetch at resolve time — the investigation's first goal
+(solve the tenant-slug → internal-channel-id mapping without a real
+browser per video) succeeded, so this became a full adapter build rather
+than a documentation-only stop, per WO-19's own explicit "either outcome
+is valid" framing.
+
+**How it was solved**: fetched the SPA's own webpack bundles once by hand
+(`/vod/static/js/main.*.chunk.js`, `.../2.*.chunk.js` — read as plain
+text, never executed) and read the real API calls directly out of the
+(only lightly minified) JS rather than guessing endpoint shapes. Found:
+- `POST https://imd0mxanj2.execute-api.us-west-2.amazonaws.com/upload/info`
+  `{"file": "{videoId}"}` — a GLOBAL, plain, unauthenticated endpoint
+  (same hardcoded constant for every tenant, confirmed by reading the
+  bundle's own base-URL table) that returns everything needed for one
+  video: `metadata.filename` (real title, often
+  "{title} - {Month DD, YYYY}"), `transcoded`/`captioned` readiness
+  flags, the internal channel id (`user`), and — better than expected —
+  an embedded `agenda` array identical in shape to the separately-
+  confirmed `api.castus.tv/ccs/v1/agenda/{videoId}` endpoint, making that
+  second endpoint redundant for resolving one video (not called by the
+  adapter, to save a request).
+- Confirmed live (re-verified, not just trusted from the entry): HLS
+  video at `https://dlttx48mxf9m3.cloudfront.net/outputs/{videoId}/
+  Default/HLS/out.m3u8`, captions at `https://dlttx48mxf9m3.cloudfront.net/
+  captions/{videoId}.vtt` — both on a CloudFront host confirmed (via the
+  bundle) to be a single shared constant across every Castus tenant, not
+  tenant-specific.
+- Confirmed `app/utils/vtt_parser.py`'s existing generic `_TAG_RE`
+  (built for a different platform's similar tag shape) already strips
+  this VTT's real AWS-Transcribe-style inline tags
+  (`<v.Male.spk1.Speaker1><c.CONF_HIGH>word</c>`) cleanly with zero new
+  caption-parsing code, confirmed via a direct `parse_vtt()` call against
+  a real trimmed cue, not assumed.
+- **The tenant-slug → channel-id mapping itself, the investigation's main
+  ask**: `GET https://837sc3bew0.execute-api.us-west-2.amazonaws.com/
+  {tenantSlug}` (also a global bundle constant, called by the SPA once per
+  page load, keyed off the URL's own first path segment) returns real
+  per-tenant config including `user` — confirmed live to be the exact
+  same internal channel id (`5fb29792d339f4000892b300`) that `/upload/
+  info` independently returns for a video from that tenant. Documented in
+  full in `castus.py`'s own module docstring for a future per-tenant
+  feature (e.g. browsing a whole channel's library), but NOT called by
+  this adapter itself — `/upload/info` already returns the channel id
+  directly for whatever video was actually requested, so the tenant-config
+  round trip buys nothing for resolving one video by id.
+
+**Jurisdiction — corrects the entry's unverified "bilmt" folder-name
+guess**: the tenant slug itself is opaque channel branding ("comm7tv"),
+not a place name. The real signal is each agenda item's own
+`hyperlinks`, which on this real customer point at
+`public.destinyhosted.com/24568/agenda/...` (Destiny Software's
+AgendaQuick — see `destinyhosted.py`). Fetching that one linked page and
+running it through the same `jurisdiction_enrich.extract_jurisdiction_chain()`
+every other free-text adapter already uses confirms "City of Billings"
+live, and the page's own address block ("Billings, MT 59103") and body
+text independently confirm the state — **the real jurisdiction is
+Billings, MT**, not the "bilmt" placeholder. One genuine residual gap
+found along the way: `enrich_jurisdiction_text()`'s own ZIP-anchored
+state fallback couldn't fill in "MT" automatically here, since 59103 is a
+City Clerk PO Box ZIP, not one the Census place-level ZCTA table covers —
+worked around with a small known-destinyhosted-tenant-id map
+(`_KNOWN_DESTINYHOSTED_TENANT_JURISDICTIONS`), the same pattern
+`telvue.py`'s own `_KNOWN_ORG_TOKEN_JURISDICTIONS` already established,
+seeded with just this one confirmed tenant (id 24568).
+
+**Built**: `app/platforms/castus.py` (`CastusAssetFinder`) — HLS
+`video_format="m3u8"` via the CDN URL above, captions via the existing
+`parse_vtt()` pipeline, `agenda_items` from `/upload/info`'s embedded
+`agenda` field, jurisdiction via the destinyhosted cross-check above
+(falling back to a best-effort tenant-slug parse, unconfirmed against any
+real second example — see the function's own docstring). Registered in
+`detect_platform()` (`app/platforms/base.py`, scoped to `castus.tv` +
+`/vod/` path) and `register_all_finders()`
+(`app/platforms/__init__.py`). Added a `castus` row to `scripts/
+adapter_canary.py`'s `CANARY_URLS` and to `tests/test_base.py`'s
+`detect_platform` parametrize list.
+
+**A real, new kind of test infra gap surfaced along the way**: every
+existing adapter here only ever does `session.get()` — this is the first
+one whose real endpoint (`/upload/info`) is POST-only (confirmed live: a
+plain GET returns "Cannot GET /upload/info"). `tests/aiohttp_mock.py`'s
+`mock_session()` only patched `.get()`; extended it with an optional
+`post_routes` parameter (backward compatible — every existing GET-only
+adapter test is unaffected, since `.post()` is only patched when a caller
+actually passes some) rather than adding a parallel mock helper.
+
+**Tests**: `tests/test_castus.py`, fixture-backed against the one real
+sample (`tests/fixtures/castus/`) — a trimmed real `/upload/info`
+response (its own `views`/`comments`/`likes`/`watchBuys` arrays dropped
+entirely before committing, since they carry real site visitors' IP
+addresses/user agents that the adapter never reads and have no business
+in a fixture regardless), captions trimmed to 30 real cues (same
+convention as `test_telvue.py`), and the real, full, public destinyhosted
+agenda page (no PII concerns — it's a public government page). Plus one
+synthetic case (a not-found video id) and one direct unit test of the
+tenant-slug jurisdiction fallback confirming it correctly declines on
+this adapter's own real ("comm7tv") tenant slug rather than guessing.
+Full suite (1120 passed, 15 skipped) verified green, plus `ruff format`/
+`ruff check` clean, before merging.
+
+**Docs updated in the same PR** (per `CLAUDE.md`'s "a PR that ships a
+feature must update every doc that named it as unbuilt" rule): added a
+"Castus" row to README.md's "Supported platforms" table; moved this entry
+itself from `BACKLOG.md` to here, splitting the still-open tenant-slug-
+jurisdiction-fallback gap back out as its own live `BACKLOG.md` entry
+since it's unconfirmed against any real second customer.
+
 ## Five bundled easy-win fixes: Archive proxy streaming error handling, `proxy_get()` session leak, stale HEAD-405 doc, worktree `.env` warning, Event JSON-LD gaps [Done 2026-08-21]
 
 Five small, independent, already-root-caused fixes shipped together as one

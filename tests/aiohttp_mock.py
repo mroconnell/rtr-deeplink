@@ -73,10 +73,20 @@ class FakeResponse:
 
 
 @contextmanager
-def mock_session(routes: dict):
+def mock_session(routes: dict, post_routes: dict = None):
     """routes: {url: FakeResponse}. url defaults to response.url == the
     request url unless the FakeResponse was built with a different `url`
-    (simulating a redirect)."""
+    (simulating a redirect).
+
+    post_routes: same shape, for `session.post(url, ...)` calls -- added
+    for castus.py (WO-19), the first adapter here that needs a POST (its
+    real `/upload/info` endpoint takes no GET form at all, confirmed live:
+    a plain GET returns "Cannot GET /upload/info"). Kept as a separate,
+    optional dict rather than folding into `routes` so every existing
+    GET-only adapter test is unaffected -- `session.post()` is only
+    patched (and only raises on an unmocked call) when a caller actually
+    passes some.
+    """
 
     def fake_get(self, url, **kwargs):
         key = str(url)
@@ -89,5 +99,20 @@ def mock_session(routes: dict):
             response.url = key
         return response
 
+    def fake_post(self, url, **kwargs):
+        key = str(url)
+        if key not in (post_routes or {}):
+            raise AssertionError(
+                f"Unmocked POST in test: {key}\nKnown POST routes: {sorted(post_routes or {})}"
+            )
+        response = post_routes[key]
+        if not response.url:
+            response.url = key
+        return response
+
     with mock.patch.object(aiohttp.ClientSession, "get", fake_get):
-        yield
+        if post_routes is not None:
+            with mock.patch.object(aiohttp.ClientSession, "post", fake_post):
+                yield
+        else:
+            yield
