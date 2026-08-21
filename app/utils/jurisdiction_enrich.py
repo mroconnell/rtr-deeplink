@@ -1296,6 +1296,62 @@ def _fill_missing_state(name: str, existing_suffix: str, netloc: Optional[str]) 
     return f", {state}" if state else ""
 
 
+def _subdomain_override(
+    hint: str, existing_suffix: str, netloc: Optional[str]
+) -> Optional[str]:
+    """The finished "<subdomain hint><state suffix>" string to override a
+    disagreeing text-derived jurisdiction with -- or None when that
+    override would produce a geographically impossible pairing, in which
+    case `finalize_jurisdiction()` keeps its own text-derived answer
+    instead.
+
+    The guard exists because of a real, confirmed-live class of wrong
+    repairs the 2026-08-21 subdomain cross-check (see
+    `finalize_jurisdiction()`'s docstring) introduced: it accepted ANY
+    subdomain label that validates against the place tables, with no check
+    that the label is plausibly this page's own government. Two real
+    production rows, both found by the bleed-backfill audit before the
+    write step was ever run:
+
+    - `bart.legistar.com` (a real BART board-of-directors meeting, the Bay
+      Area transit agency) whose already-correct "Alameda County, CA" was
+      "repaired" to **"Bart, CA"** -- "Bart" is a real Census SUBDIVISION,
+      a tiny township in PENNSYLVANIA, colliding with the agency acronym.
+    - `agenda.modestogov.com` (Modesto, CA's own agenda host) whose
+      "Modesto, CA" was "repaired" to **"Agenda, CA"** -- "Agenda" is a
+      real town in KANSAS, colliding with the literal website word.
+
+    Both are impossible on their face: a PA township welded to ", CA", a
+    KS town welded to ", CA". `_fill_missing_state()` returns an existing
+    suffix completely unchanged (never overriding a state that already
+    survived from the raw text), which is exactly how the mismatched pair
+    gets assembled -- so the check is: whatever suffix would actually be
+    attached must be one of the hint's OWN `_table_lookup()` states.
+
+    Deliberately NOT an edit-distance or containment check between the
+    current and candidate values, which would be the obvious other guard
+    and would revert the cross-check entirely: both real cases it was
+    built for ("Brantford..." -> "Shelburne", "Town of Caledon" -> "Peel
+    Region") are correct repairs that share zero characters with the value
+    they replace. A hint with no resolvable state at all is left alone too
+    -- there is no pairing to contradict, and the Shelburne case is
+    exactly that (genuinely ambiguous NS/ON, so it correctly declines to
+    guess a province and returns a bare name).
+
+    The `agenda` case is additionally killed one level down by
+    `_GENERIC_SUBDOMAIN_WORDS`, which declines website words as labels
+    before they ever become a hint; this guard is the general one, since
+    no stoplist can enumerate every acronym-shaped collision like "bart".
+    """
+    final_suffix = _fill_missing_state(hint, existing_suffix, netloc)
+    if final_suffix:
+        hit = _table_lookup(hint)
+        code = final_suffix.lstrip(", ").strip().upper()
+        if hit and code not in {s.upper() for s in hit[1]}:
+            return None
+    return f"{hint}{final_suffix}"
+
+
 def finalize_jurisdiction(
     raw_jurisdiction: Optional[str], *, netloc: Optional[str] = None
 ) -> JurisdictionResult:
@@ -1347,6 +1403,14 @@ def finalize_jurisdiction(
     no subdomain hint validates at all (most non-eScribe/Granicus pages,
     or an eScribe regional-tier customer not yet in the place tables --
     see BACKLOG.md's StatsCan completeness gap), this is a pure no-op.
+
+    That override is itself guarded, since 2026-08-21 (same day, later
+    pass): `_subdomain_override()` refuses a hint whose state suffix
+    couldn't possibly belong to it, which is what a subdomain that's
+    really an acronym ("bart") or a website word ("agenda") produces --
+    see that function for the two real production rows it was built from.
+    A rejected override falls through to this function's own text-derived
+    answer, exactly as it behaved before the cross-check existed.
     """
     known = lookup_by_domain(netloc) if netloc else None
 
@@ -1386,11 +1450,9 @@ def finalize_jurisdiction(
 
     if _table_lookup(base):
         if subdomain_hint_key and _base_name_key(base) != subdomain_hint_key:
-            return JurisdictionResult(
-                f"{subdomain_hint}{_fill_missing_state(subdomain_hint, suffix, netloc)}",
-                None,
-                "repaired",
-            )
+            override = _subdomain_override(subdomain_hint, suffix, netloc)
+            if override:
+                return JurisdictionResult(override, None, "repaired")
         # Real bug found 2026-08-21 via a /coverage sort-adjacency scan
         # (BACKLOG.md's "16 real pairs of a jurisdiction appearing twice"
         # entry): unlike the `_trim_repair()`/`_split_entity_prefix()`
@@ -1426,7 +1488,12 @@ def finalize_jurisdiction(
     if trimmed:
         repaired_name, _table = trimmed
         if subdomain_hint_key and _base_name_key(repaired_name) != subdomain_hint_key:
-            repaired_name = subdomain_hint
+            override = _subdomain_override(subdomain_hint, suffix, netloc)
+            if override:
+                return JurisdictionResult(override, None, "repaired")
+            # Override rejected as an impossible pairing (see
+            # `_subdomain_override()`) -- fall through to the plain trim
+            # result, the pre-cross-check behavior.
         return JurisdictionResult(
             f"{repaired_name}{_fill_missing_state(repaired_name, suffix, netloc)}",
             None,
@@ -1640,14 +1707,89 @@ def _capitalization_walk_extract(html: str) -> Optional[str]:
     return f"{match.group(1).capitalize()} of {' '.join(kept)}"
 
 
+# Website words that are not place names, even though several of them
+# DO validate against the Census/StatsCan tables as real (tiny) places --
+# confirmed live 2026-08-21: "agenda" is a real Kansas town, "council" a
+# real Idaho city, "media" a real Illinois/Pennsylvania borough, "portal"
+# a real Georgia/North Dakota town. A subdomain label that is exactly one
+# of these is a vendor/site-structure word ("agenda.modestogov.com" is
+# Modesto's own agenda host, not the town of Agenda, KS), so this
+# function declines rather than handing back a confidently-wrong
+# validated candidate -- the same "decline instead of guessing" policy
+# the rest of this function already runs on, and the same closed,
+# curated-stoplist idiom already used by `_KNOWN_JUNK_TAIL_WORDS` and the
+# leading connector-word strip below. Deliberately whole-label only: a
+# label that merely CONTAINS one of these words ("councilbluffsia" ->
+# "Council Bluffs, IA", a real city) is untouched. The cost of a false
+# positive here is a decline, not a wrong answer -- a real city named
+# Council, ID on `council.granicus.com` would simply fall back to the
+# page's own text-derived jurisdiction instead.
+_GENERIC_SUBDOMAIN_WORDS = frozenset(
+    {
+        "agenda",
+        "agendas",
+        "archive",
+        "clerk",
+        "council",
+        "live",
+        "media",
+        "meeting",
+        "meetings",
+        "portal",
+        "public",
+        "stream",
+        "video",
+        "videos",
+        "webcast",
+        "webcasts",
+    }
+)
+
+# Trailing connector words stripped by `_validated_label_extract()`'s tier
+# 4, mirroring the LEADING strip that has always been there. Kept as its
+# own, narrower list than the leading one on purpose: "of"/"pub" are never
+# meaningful as a trailing word, and unlike the leading strip this tier
+# always re-attaches the type word to the candidate it looks up (see that
+# function's own comment for why dropping it outright would be actively
+# wrong for a real county tenant).
+_TRAILING_TYPE_WORDS = ("city", "county", "town")
+
+
 def _validated_label_extract(label: str) -> Optional[str]:
+    """Bare (no state suffix) name derived from a subdomain LABEL -- thin
+    wrapper around `_validated_label_extract_with_state()` that drops the
+    stripped state/province code, for the many callers that only want the
+    name. See that function for the actual logic."""
+    hit = _validated_label_extract_with_state(label)
+    return hit[0] if hit else None
+
+
+def _validated_label_extract_with_state(
+    label: str, *, _allow_state_strip: bool = True
+) -> Optional[Tuple[str, Optional[str]]]:
     """Bare (no state suffix) name derived from a subdomain LABEL (already
     stripped of any platform-specific prefix, e.g. eScribe's "pub-"),
     validated against the Census/StatsCan tables before ever being offered
     as a candidate -- declines instead of guessing when nothing validates
     (416 table-valid / 0 garbage of 649 in the original tournament, vs. 408
-    valid / 229 garbage for a bare wordninja-always approach). Three tiers,
-    tried in order, first hit wins:
+    valid / 229 garbage for a bare wordninja-always approach).
+
+    Returns `(name, state_code)` where `state_code` is the 2-letter
+    US-state/Canadian-province code this function itself had to strip off
+    the label to make it validate (tiers 2 and 5 below), or None when no
+    code was stripped -- a caller that needs the state (e.g.
+    `app/platforms/suiteone.py`'s `_extract_jurisdiction()`) can't
+    re-derive it safely on its own, since "is the label's trailing 2
+    letters a state code" is only trustworthy when the name *without* them
+    is what actually validated: "tacoma" ends in "ma" but is emphatically
+    not in Massachusetts. Most callers want the name alone and go through
+    `_validated_label_extract()`/`validated_label_extract()` instead.
+
+    A label that is exactly a generic website word (`_GENERIC_SUBDOMAIN_
+    WORDS`) is declined up front, before any tier runs -- see that
+    constant's own comment for the real confirmed cases.
+
+    Five tiers, tried in order, first hit wins:
 
     1. The raw label unsplit (and a digit-stripped variant) -- fixes
        Galesburg: wordninja's own split ("Gales Burg") never validates,
@@ -1675,15 +1817,47 @@ def _validated_label_extract(label: str) -> Optional[str]:
        live, 2026-08-18. No real municipality is meaningfully named 1-2
        letters, so this floor is a safe, general guard rather than a
        one-off patch for that specific label.
+    4. A TRAILING connector word ("city"/"county"/"town") stripped, then
+       the glued remainder looked up with that word RE-ATTACHED -- the
+       mirror image of tier 2's leading strip, added 2026-08-21 for
+       `pitkincounty` (a real open.media tenant, Pitkin County, CO --
+       PR #265's own writeup flagged this as the one real subdomain among
+       all 10 known tenants this function couldn't validate). wordninja
+       splits it ['pit','kin','county'], so tier 2's spaced ("Pit Kin
+       County") and glued ("Pitkincounty") candidates both fail. The
+       type word is deliberately re-attached rather than dropped:
+       "Pitkin" ALSO validates on its own (a real, tiny, unrelated town
+       inside that same county), so a bare trailing strip would return a
+       confidently-wrong different government -- exactly the collision
+       shape `_GENERIC_SUBDOMAIN_WORDS` above exists for.
+    5. Last resort, after every tier above declines: a trailing 2-letter
+       state/province code stripped off the RAW label, before wordninja
+       ever sees it, and the whole function retried once on the
+       remainder. Real gap this closes (confirmed live 2026-08-21 on two
+       real SuiteOne Media tenants shipped in PR #263): wordninja's own
+       cost minimization absorbs the trailing state letters into a longer
+       non-word chunk -- "stmarysga" -> ['st','mary','sga'], "camaswa" ->
+       ['ca','maswa'] -- so tier 2's trailing-code strip, which only ever
+       inspects `words[-1]` AFTER the split, can never fire on them.
+       Stripping first gives "stmarys" -> "St Marys" and "camas" ->
+       "Camas", both real and correct. Only ever a last resort, and still
+       accepted only if the remainder validates, so it can't override an
+       answer any earlier tier already found: a real name that happens to
+       end in state-code-shaped letters ("oakland" -> "nd", "tacoma" ->
+       "ma") validates whole at tier 1 and never reaches here. Retried
+       exactly once (`_allow_state_strip`), never recursively.
 
-    State/province is deliberately left to the caller's own
+    State/province is otherwise deliberately left to the caller's own
     `enrich_jurisdiction_text()` pass (URL callers) or its own suffix
     handling (label callers, e.g. `EscribeAssetFinder._jurisdiction_from_
     subdomain()`), which already has domain/ZIP disambiguation this
     function doesn't need to duplicate."""
+    if label.strip().lower().rstrip("0123456789") in _GENERIC_SUBDOMAIN_WORDS:
+        return None
+
     for candidate in (label, label.rstrip("0123456789")):
         if _table_lookup(candidate):
-            return candidate.title()
+            return candidate.title(), None
 
     try:
         import wordninja
@@ -1692,11 +1866,13 @@ def _validated_label_extract(label: str) -> Optional[str]:
     words = wordninja.split(label)
     if not words:
         return None
+    stripped_state: Optional[str] = None
     trailing = words[-1].lower()
     if len(words) > 1 and (
         trailing in _STATE_ABBREVIATIONS_LOWER
         or trailing in _PROVINCE_ABBREVIATIONS_LOWER
     ):
+        stripped_state = trailing.upper()
         words = words[:-1]
     # "pub" joined this strip list 2026-08-19 (BACKLOG.md's jurisdiction-
     # misattribution entry): eScribe's own real, confirmed subdomain
@@ -1726,9 +1902,32 @@ def _validated_label_extract(label: str) -> Optional[str]:
         return None
     spaced = " ".join(w.capitalize() for w in words)
     if len(spaced.replace(" ", "")) >= 3 and _table_lookup(spaced):
-        return spaced
+        return spaced, stripped_state
     glued = "".join(words).capitalize()
-    return glued if len(glued) >= 3 and _table_lookup(glued) else None
+    if len(glued) >= 3 and _table_lookup(glued):
+        return glued, stripped_state
+
+    # Tier 4: trailing connector word, type word re-attached (see docstring).
+    if len(words) > 1 and words[-1].lower() in _TRAILING_TYPE_WORDS:
+        type_word = words[-1].capitalize()
+        body = words[:-1]
+        glued_body = "".join(body).capitalize()
+        typed = f"{glued_body} {type_word}"
+        if len(glued_body) >= 3 and _table_lookup(typed):
+            return typed, stripped_state
+
+    # Tier 5: trailing state/province code stripped off the RAW label,
+    # before wordninja ever sees it (see docstring). Length floor keeps the
+    # same >= 3-letter guarantee the tiers above run on.
+    if _allow_state_strip and len(label) >= 5:
+        tail = label[-2:].lower()
+        if tail in _STATE_ABBREVIATIONS_LOWER or tail in _PROVINCE_ABBREVIATIONS_LOWER:
+            retry = _validated_label_extract_with_state(
+                label[:-2], _allow_state_strip=False
+            )
+            if retry:
+                return retry[0], retry[1] or tail.upper()
+    return None
 
 
 def _validated_subdomain_extract_from_netloc(netloc: str) -> Optional[str]:
@@ -1773,6 +1972,19 @@ def validated_label_extract(label: str) -> Optional[str]:
     would otherwise have to round-trip through a synthetic URL just to
     reuse `validated_subdomain_extract()`."""
     return _validated_label_extract(label)
+
+
+def validated_label_extract_with_state(
+    label: str,
+) -> Optional[Tuple[str, Optional[str]]]:
+    """Public wrapper around `_validated_label_extract_with_state()`, for a
+    caller that also needs the 2-letter state/province code this module
+    stripped off the label to make it validate -- today only
+    `app/platforms/suiteone.py`'s `_extract_jurisdiction()`, whose real
+    tenants include glued name+state slugs ("camaswa", "stmarysga") that
+    only resolve via that strip. See that function's docstring for why the
+    caller can't safely re-derive the code on its own."""
+    return _validated_label_extract_with_state(label)
 
 
 def _base_name_key(jurisdiction: str) -> str:

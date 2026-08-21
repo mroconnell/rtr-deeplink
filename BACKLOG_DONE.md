@@ -110,6 +110,133 @@ Original entry, verbatim:
 > of failing over to the whisper-decode step first. Not fixed yet —
 > logged as a real, traced gap, not designed/built this pass.
 
+## WO-22: subdomain cross-check produced confidently-wrong jurisdictions; two glued-slug gaps closed; backfill-apply gained an id filter [Done 2026-08-21]
+
+Three related pieces of the same jurisdiction pipeline, all found by real
+signal (a production audit run, and two adapter builds' own written-down
+residuals) rather than by reading code.
+
+**1. The subdomain cross-check overrode good jurisdictions with acronyms
+and website words.** PR #254 (merged earlier the same day) taught
+`finalize_jurisdiction()` to prefer a validated subdomain-derived
+candidate over a disagreeing text-derived one — correct for its two real
+cases (Shelburne/Brantford, Peel Region/Caledon), but it accepted *any*
+subdomain label that validates against the Census/StatsCan tables, with
+no check that the label is plausibly a place name. Reproduced live
+against the real tables:
+
+- `_validated_label_extract('bart')` → `'Bart'` (a real Census
+  SUBDIVISION — a tiny township in **Pennsylvania**), so
+  `finalize_jurisdiction('Alameda County, CA', netloc='bart.legistar.com')`
+  → **"Bart, CA"**. That's the Bay Area transit agency's acronym
+  colliding with a PA township, welded to a CA suffix. Real production
+  row, `page_id 250`.
+- `_validated_label_extract('agenda')` → `'Agenda'` (a real town in
+  **Kansas**), so `finalize_jurisdiction('Modesto, CA',
+  netloc='agenda.modestogov.com')` → **"Agenda, CA"**. `agenda.` is
+  Modesto's own agenda host. Real production row, `page_id 1108`.
+
+Both fixes are in `app/utils/jurisdiction_enrich.py`:
+
+- **State-consistency guard** (`_subdomain_override()`, the primary fix):
+  the state suffix that would actually be attached must be one of the
+  hint's own `_table_lookup()` states. `_fill_missing_state()` returns an
+  existing suffix completely unchanged, which is exactly how a PA
+  township ends up wearing ", CA" — the cheapest possible tell that the
+  override is wrong. Kills both cases outright; a rejected override falls
+  through to the text-derived answer, the pre-#254 behavior. Verified not
+  to regress either case #254 existed for: `_table_lookup('shelburne')` →
+  `['NS','ON']` and `_table_lookup('peel region')` → `['ON']` both
+  survive (Shelburne resolves to a bare, province-less "Shelburne"
+  because it's genuinely ambiguous, so there's no pairing to contradict).
+- **Generic-subdomain stoplist** (`_GENERIC_SUBDOMAIN_WORDS`, secondary):
+  a label that *is* a website word ("agenda", "meetings", "video",
+  "portal", "clerk", "council", "media", "live", "stream", "archive",
+  "public", "webcast", …) is declined before any tier runs. Four of those
+  really do validate as tiny real places today (Agenda KS, Council ID,
+  Media IL/PA, Portal GA/ND). Whole-label only: "councilbluffsia" still
+  resolves. Same closed-curated-stoplist idiom already used by
+  `_KNOWN_JUNK_TAIL_WORDS` and the leading connector-word strip.
+- **Deliberately NOT an edit-distance/containment guard between the
+  current and candidate values**, which was the obvious alternative and
+  would have reverted #254 wholesale: "Brantford…" → "Shelburne" and
+  "Town of Caledon" → "Peel Region" are both correct and share zero
+  characters with what they replace.
+
+**The third suspect row turned out to be a correct repair, not a wrong
+one.** `page_id 279`, "City of New Port Richey, FL" → "Clearwater, FL",
+passes the state guard (FL *is* among Clearwater's states) and BACKLOG.md
+had it flagged as "looks like a wrong reassignment". Settled live instead
+of guessed: the page's real `source_url` is
+`clearwater.granicus.com/player/clip/5244`, its title is "Council Work
+Session on 2026-06-01 1:30 PM", its agenda PDF is under
+`legistar2.granicus.com/clearwater/`, and the string "New Port Richey"
+appears on the source page exactly once — inside agenda item 4.1, an
+interlocal gas-franchise agreement *with* the City of New Port Richey.
+(The archive's own real New Port Richey page is a separate Swagit tenant,
+`newportricheyfl.new.swagit.com`.) So this is the same shape as Peel
+Region/Caledon: a real, validating OTHER government named in this
+meeting's own agenda text. Kept as a regression test.
+
+**2. Two confirmed-real failing inputs to `_validated_label_extract()`,
+one from each of two Wave 4 adapter builds** — both fixed in the shared
+module, which is where both builds' own writeups said the fix belonged:
+
+- **Tier 5, trailing state code on the RAW label.** `stmarysga` →
+  `['st','mary','sga']` and `camaswa` → `['ca','maswa']` (real SuiteOne
+  Media tenants, PR #263): wordninja's cost minimization absorbs the
+  trailing state letters into a non-word chunk, so the existing
+  trailing-code strip — which only inspects `words[-1]` *after* the split
+  — could never fire. Now, as a last resort after every other tier
+  declines, the code is stripped off the raw label first ("stmarys" →
+  "St Marys", "camas" → "Camas") and retried exactly once. Safe by
+  construction: a real name that merely ends in code-shaped letters
+  ("tacoma" → "ma", "oakland" → "nd") validates whole at tier 1 and never
+  reaches it.
+- **Tier 4, trailing connector word.** The connector strip only ever
+  removed a *leading* "city"/"county"/"town", so `pitkincounty` (a real
+  open.media tenant, PR #265, which flagged this as the one subdomain of
+  10 the helper couldn't validate) failed. The type word is now stripped
+  and **re-attached** to the glued remainder → "Pitkin County". Dropping
+  it outright would have been actively wrong: "Pitkin" also validates on
+  its own as a real, tiny, unrelated town inside that same county. This
+  also incidentally closes the wordninja half of the Tulare County entry
+  in BACKLOG.md (`['tul','are','county']` → "Tulare County"); the rest of
+  that entry stays open.
+- `app/platforms/suiteone.py` is the one adapter that changed, and only
+  to *ask* for the state code the module stripped
+  (`validated_label_extract_with_state()`) instead of re-deriving it — it
+  can't be re-derived safely from the raw tenant slug, since "tacoma"
+  ends in a real state code too. Result: "St Marys, GA" and "Camas, WA",
+  both real and confirmed, where the adapter used to honestly return
+  None.
+
+**3. `POST /internal/jurisdiction/backfill-apply` gained
+`only_ids`/`exclude_ids`** (comma-separated `meeting_page_id`s, threaded
+through `archive/db/crud.py`'s `apply_jurisdiction_bleed_backfill()`).
+The real need: the production candidate set is not uniformly safe, and
+without a filter the only options were all-or-nothing. Both filters apply
+to the *recomputed* candidate list, never to the SELECT — every row is
+still re-derived from its own stored inputs, so a filter can only narrow
+what gets written, never smuggle in a row the recompute wouldn't have
+changed. `exclude_ids` wins over `only_ids` (deny beats allow), a
+non-integer id 400s rather than being silently dropped (a dropped
+`exclude_ids` token would fail *open*, writing a row the operator asked
+to hold back), and the response carries a `skipped_by_filter` count.
+
+**Also corrected a real doc error in BACKLOG.md's own entry**: it cited
+the production audit's 635 candidates in a way that implied that was the
+write blast radius. It isn't — the real write path is **83 rows**, since
+`apply_jurisdiction_bleed_backfill()` skips every row whose string is
+unchanged, so the 552 confidence-only diffs are never written. The GET
+audit reports both kinds because it compares string *and* confidence.
+
+Test plan: `pytest` 1165 passed / 15 skipped (was 1150 passed before this
+change), 15 new/updated tests across
+`tests/test_jurisdiction_enrich.py`, `tests/test_jurisdiction_backfill_apply.py`,
+`tests/test_suiteone.py`. `ruff format`/`ruff check` clean. Docs updated:
+`README.md` (SuiteOne row), `BACKLOG.md` (three entries), this file.
+
 ## Social auto-posting (Bluesky/Mastodon) built, and Bluesky live-verified with a real first post [Done 2026-08-21]
 
 User request 2026-08-21 ("auto publish posts whenever we resolve a high
@@ -220,7 +347,11 @@ of the 6 real tenants — `stmarysga`, `camaswa`, specifically flagged by
 the work order as the least obviously-splittable — fail to validate via
 this shared pipeline at all (see `BACKLOG.md`'s residual-gap entry for
 the detail); `jurisdiction` is honestly `None` for both rather than
-guessed, same as every other adapter's stated policy.
+guessed, same as every other adapter's stated policy. **[Closed later the
+same day — see this file's "WO-22" entry: the shared module now strips a
+trailing state code off the raw label before wordninja sees it, and this
+adapter asks it for the code it stripped, giving the real "St Marys, GA"
+and "Camas, WA".]**
 
 **A second document endpoint, confirmed real**: `/event/GetAgendaFile/
 Agenda?aid={N}` (an `<object data="...">` PDF embed) is a real, separate
@@ -452,12 +583,17 @@ customized `<title>` ("Pitkin County | {meeting title}"), so the
 subdomain fallback is never actually reached; confirmed by running a real
 saved Pitkin County session page through
 `OpenMediaAssetFinder._extract_title_and_jurisdiction()` directly, which
-correctly returned `"Pitkin County, CO"`. Still a real, narrow gap in the
-shared helper itself (would matter for some *other*, not-yet-seen tenant
-whose title is also an uncustomized vendor default AND whose subdomain
-ends in "county") — not fixed here since it's outside this platform's own
-adapter code, just noted for whoever next touches
-`jurisdiction_enrich._validated_label_extract()`.
+correctly returned `"Pitkin County, CO"`. ~~Still a real, narrow gap in
+the shared helper itself (would matter for some *other*, not-yet-seen
+tenant whose title is also an uncustomized vendor default AND whose
+subdomain ends in "county") — not fixed here since it's outside this
+platform's own adapter code, just noted for whoever next touches
+`jurisdiction_enrich._validated_label_extract()`.~~ **Fixed in that
+helper later the same day (see this file's "WO-22" entry): its new tier 4
+strips a trailing "county"/"city"/"town" and re-attaches the type word, so
+`validated_label_extract("pitkincounty")` now returns "Pitkin County"
+rather than nothing — and deliberately not the bare "Pitkin", which is a
+real, different, tiny town inside that same county.**
 
 Fixture-backed regression coverage: `tests/test_openmedia.py` (8 tests),
 real fixture HTML saved from Goodyear/Eugene/Cortez under
@@ -1054,7 +1190,14 @@ entities aren't census SUBDIVISIONS, the level
    when a validated subdomain hint disagrees with the text-derived name
    (`_base_name_key()`, the same identity comparison the chain's own
    cross-check already uses), the subdomain's own validated identity wins
-   outright. When they agree (the overwhelmingly common case) or no
+   outright. **[Amended later the same day by WO-22 (see this file's own
+   entry): "wins outright" was too strong — a subdomain that's really an
+   acronym ("bart") or a website word ("agenda") also validates, and this
+   produced two real, confidently-wrong production repairs. The override
+   is now refused when the state suffix it would attach isn't one of the
+   hint's own states, and website words are declined as hints entirely.
+   Both cases this entry was written for still pass unchanged.]** When
+   they agree (the overwhelmingly common case) or no
    subdomain hint validates at all, this is a pure no-op — confirmed via
    explicit regression tests for both the fixed cases and every
    already-passing agreement case (Hercules, Galesburg, San Diego,
