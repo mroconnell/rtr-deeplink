@@ -740,32 +740,34 @@ anything) to build against it.
 
 ## Bugs
 
-- **[NEEDS-AUDIT] Worker can produce a chunk `extract_chunk_audio()` calls
-  successful that's actually truncated/corrupt — surfaced via Sentry issue
-  PYTHON-FASTAPI-R, 2026-08-19 15:57:32 UTC, promoted from
-  `CLAUDE_INBOX_TRIAGE.md`.** Real error: `InvalidDataError: [Errno
-  1094995529] Invalid data found when processing input:
-  '/tmp/rtr_transcribe_hwou97hq/chunk_1.mp3'`, `server_name =
-  srv-d9rluvqfngtc73dmrbug` (the transcription worker), `handled = yes`,
-  app log "Job 287: transcription failed for chunk 2/21 (will retry on
-  next poll)". Root cause traced to real code: `worker/main.py`'s
-  per-chunk loop (~lines 237-243) only guards `extract_chunk_audio()`'s
-  ffmpeg call via return-value truthiness — this occurrence got past that
-  check (ffmpeg reported success) but the resulting file was invalid when
-  `transcription_engine.py`'s `_transcribe_sync()` tried to decode it via
-  PyAV (`av.container.core.open`), landing in the broader `except
-  Exception` at worker/main.py:250-256 (logs + retries next poll, hence
-  `handled = yes`, not a crash). **Impact**: caught/retried automatically,
-  not user-visible by itself; whether job 287's retry for chunk 2/21
-  actually succeeded is unconfirmed (no DB access from the triage
-  Routine). First occurrence of this exact signature as of 2026-08-19 —
-  may be a one-off transient (likely an interrupted read from the source
-  media stream during ffmpeg extraction), not yet confirmed as recurring.
-  **Fix, if it recurs**: have `extract_chunk_audio()` sanity-check its own
-  output (non-zero size, or a quick `ffprobe`) rather than trusting
-  ffmpeg's exit code alone, so a corrupt chunk retries immediately instead
-  of failing over to the whisper-decode step first. Not fixed yet —
-  logged as a real, traced gap, not designed/built this pass.
+- ~~**[NEEDS-AUDIT] Worker can produce a chunk `extract_chunk_audio()` calls
+  successful that's actually truncated/corrupt (Sentry PYTHON-FASTAPI-R)**~~
+  **Fixed 2026-08-21 (WO-25) — see `BACKLOG_DONE.md`.** Root cause was
+  narrower than that entry assumed: the size check and an ffprobe helper it
+  proposed adding both already existed; `_mean_volume_db()` was already
+  fully decoding the extracted file and *discarding ffmpeg's exit code*.
+  It now reports decodability, and `extract_chunk_audio()` returns a
+  retryable `(False, reason)` instead of letting whisper's PyAV raise.
+  One real residual, split out per convention:
+
+- **[NEEDS-AUDIT] A chunk truncated only at its *tail* still passes the
+  new decodability guard — confirmed with real ffmpeg 2026-08-21, not
+  assumed.** The first 1000 bytes of a real 12.6KB mp3 decode cleanly
+  (exit 0, correct `mean_volume`), and PyAV opens such files too, so a
+  chunk that's valid-but-short reaches whisper and silently transcribes
+  only the part that survived. The obvious guard — reuse
+  `probe_duration()` on the extracted file and compare against the
+  requested `duration` — was considered during WO-25 and deliberately not
+  built, because two *legitimate* cases produce a short chunk:
+  `extract_chunk_audio()`'s fast input-side `-ss` seek makes real HLS
+  chunk durations differ from the requested value (the same behavior
+  behind the seam-dedup logic in `worker/main.py` /
+  `tests/test_worker_segment_utils.py`), and the final chunk of a job is
+  legitimately short. A tolerance loose enough to accommodate both may
+  not be tight enough to catch a meaningful truncation — worth measuring
+  real per-chunk `probe_duration()` deltas across a few live HLS and
+  direct-file jobs *before* picking one, rather than guessing a number.
+  Not observed in production yet; logged as a real, measured gap.
 
 - ~~**[JUST-DO-IT] Jurisdiction-bleed, confirmed cross-platform (Granicus
   AND eScribe)**~~ **Fixed 2026-08-17 — Canadian city/town data table
