@@ -114,6 +114,46 @@ _BOILERPLATE_RE = re.compile(
     r"<(script|style)\b[^>]*>.*?</\1>", re.IGNORECASE | re.DOTALL
 )
 
+# A 4th real false-positive case, confirmed live 2026-08-18/21:
+# bedfordoh.primegov.com/Portal/Meeting?meetingTemplateId=518 resolves
+# `jurisdiction` as "County of Cuyahoga, OH" instead of "City of Bedford,
+# OH". Root cause, fetched and checked directly: the page's letterhead is
+# a small header table with "Bedford City Council" and "County of
+# Cuyahoga" in adjacent rows of the SAME 3-column table (identical
+# styling -- confirmed via the real raw HTML, both `<td>` cells share the
+# same `color:#999999; font-weight:bold; font-family:Times New Roman`
+# span). _JURISDICTION_RE only ever matches the literal "(city|county|
+# town) of ..." shape, so "Bedford City Council" (no "of") never matches
+# while "County of Cuyahoga" does, and wins via unscoped first-match --
+# same root cause as the OKC/Thousand Oaks/SLC false positives, but here
+# (unlike those) the false positive is ALSO a genuine letterhead mention,
+# just the wrong entity within it (the parent county, not the specific
+# city), so no position-based or "prefer the header" heuristic would have
+# separated them.
+#
+# This regex targets that bare "{Name} City/Town/Village Council" header
+# shape specifically, tried BEFORE _JURISDICTION_RE (see
+# `_extract_jurisdiction()` below) so the meeting's own governing body
+# wins over an adjacent parent-jurisdiction mention. Scoped narrowly, per
+# the explicit lesson the 3 earlier incidents already taught (an unscoped
+# body-text search recreates this exact bug in a new shape): the
+# `[A-Za-z.'-]`/`[ \t]` character classes never cross a `<`/`>` tag
+# boundary or a newline, so a match only fires when the name and "City/
+# Town/Village Council" sit in ONE unbroken run of text -- confirmed this
+# does NOT match OKC's "CITY COUNCIL" (its own separate `<td>`, no name in
+# the same cell) or Thousand Oaks's bare "City Council" (no name precedes
+# it at all), via both real fixtures in tests/test_primegov.py. A match is
+# also required to validate against the real Census places/counties table
+# before `_extract_jurisdiction()` accepts it (see
+# `_extract_council_header_jurisdiction()` below) -- a stray body-prose
+# mention ("addressed the Springfield City Council last month") is
+# discarded unless "Springfield" itself is real, so this can't silently
+# store confident garbage the way an unvalidated regex could.
+_COUNCIL_HEADER_RE = re.compile(
+    r"\b([A-Z][A-Za-z.'-]{1,30}(?:[ \t]+[A-Z][A-Za-z.'-]{1,30}){0,2})"
+    r"[ \t]+(City|Town|Village)[ \t]+Council\b"
+)
+
 
 class PrimeGovAssetFinder(AssetFinder):
     """PrimeGov doesn't host video itself -- confirmed live (LA City's
@@ -465,6 +505,12 @@ class PrimeGovAssetFinder(AssetFinder):
     @staticmethod
     def _extract_jurisdiction(html: str, url: str) -> Optional[str]:
         text = _BOILERPLATE_RE.sub("", html)
+        netloc = urlparse(url).netloc
+        council_jurisdiction = PrimeGovAssetFinder._extract_council_header_jurisdiction(
+            text, netloc
+        )
+        if council_jurisdiction:
+            return council_jurisdiction
         match = _JURISDICTION_RE.search(text)
         if not match:
             return None
@@ -489,5 +535,42 @@ class PrimeGovAssetFinder(AssetFinder):
         # Blvd., Thousand Oaks, CA 91362") could in principle appear
         # anywhere the jurisdiction match itself is now allowed to.
         return jurisdiction_enrich.enrich_jurisdiction_text(
-            jurisdiction, netloc=urlparse(url).netloc, page_text=text
+            jurisdiction, netloc=netloc, page_text=text
         )
+
+    @staticmethod
+    def _extract_council_header_jurisdiction(
+        text: str, netloc: str
+    ) -> Optional[str]:
+        """Tried BEFORE `_JURISDICTION_RE` -- see `_COUNCIL_HEADER_RE`'s own
+        module comment for the real Bedford/Cuyahoga bug this exists for.
+
+        The captured words before "Council" are genuinely ambiguous on
+        their own: "Oklahoma City Council" needs "City" kept as part of
+        the real proper name ("Oklahoma City"), while "Bedford City
+        Council" needs it dropped (there's no real place called "Bedford
+        City" -- only "Bedford"). Rather than guess, both readings are
+        built and `jurisdiction_enrich.is_literal_known_place()` -- a
+        literal, un-stripped table lookup -- decides which one is real:
+        confirmed live, "oklahoma city" is a real table key on its own,
+        "bedford city" is not (only "bedford" is, via a trailing-word
+        strip that isn't safe to assume here). Whichever name is chosen
+        still has to pass the normal validate-or-repair pipeline
+        (`jurisdiction_enrich.finalize_jurisdiction()`) before this
+        returns anything, so a stray body-prose "X City Council" mention
+        is discarded unless X is itself a real, known place.
+        """
+        match = _COUNCIL_HEADER_RE.search(text)
+        if not match:
+            return None
+        words, type_word = match.group(1), match.group(2)
+        full_run = f"{words} {type_word}"
+        name = full_run if jurisdiction_enrich.is_literal_known_place(full_run) else words
+        candidate = f"{type_word.capitalize()} of {name}"
+        enriched = jurisdiction_enrich.enrich_jurisdiction_text(
+            candidate, netloc=netloc, page_text=text
+        )
+        result = jurisdiction_enrich.finalize_jurisdiction(enriched, netloc=netloc)
+        if result.confidence in ("validated", "repaired", "authoritative"):
+            return result.jurisdiction
+        return None

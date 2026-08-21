@@ -258,6 +258,41 @@ def lookup_city_state(name: str) -> Optional[str]:
     return None
 
 
+def is_literal_known_place(name: str) -> bool:
+    """True only when `name`, taken exactly as typed (just lowercased --
+    no leading/trailing generic-type-word stripping at all), is a real
+    known US place or county name. Deliberately narrower than
+    `lookup_city_state()`/`lookup_county_state()` (and the internal
+    `_table_lookup()` this module's own validation/repair machinery
+    uses everywhere else), both of which also accept a SECONDARY match
+    via a trailing-type-word strip (see `_normalize_candidates()`) --
+    that secondary path is exactly what makes "Bedford City" coincidentally
+    "validate" (only "Bedford" is real; "City" merely stripped away as a
+    trailing generic type word), which is fine for state-filling but wrong
+    for a caller that needs to know whether a trailing "City"/"Town"/
+    etc.-shaped word is genuinely PART of the proper name (Oklahoma City,
+    Carson City, Jersey City, Rapid City) or just a separable type suffix
+    (Bedford City, Thousand Oaks City) sitting next to it in the source
+    text.
+
+    Built for `app/platforms/primegov.py`'s "{Name} City/Town/Village
+    Council" header extraction (2026-08-21, BACKLOG.md's Bedford/Cuyahoga
+    entry) -- confirmed live on bedfordoh.primegov.com and
+    okc.primegov.com/toaks.primegov.com's own real inner `<title>` tags
+    (see that adapter's own module comment): a bare regex capturing "the
+    words before Council" can't itself tell whether the last of those
+    words is part of the city's real name or just the letterhead's own
+    "City Council" phrasing, and guessing wrong in either direction is a
+    real, confirmed failure mode (stripping "City" off "Oklahoma City"
+    leaves "Oklahoma", which coincidentally collides with a real but
+    totally unrelated place, "Oklahoma borough, PA" -- see
+    `_normalize_candidates()`'s own docstring for that exact historical
+    bug). This function lets a caller check the un-stripped form on its
+    own merits first, before ever falling back to the stripped one."""
+    key = name.strip().lower()
+    return key in _PLACE_STATES or key in _COUNTY_STATES
+
+
 def lookup_county_by_zip(zip_code: str) -> Optional[Tuple[str, str]]:
     """(county_name, state) for the real county with the largest overlap
     with this ZIP -- picked via AREALAND_PART, since ~30% of real ZCTAs
