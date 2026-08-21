@@ -57,12 +57,20 @@ would land in pending_confirmation and need a manual confirmation-email
 click before it's ever claimable, defeating the entire point of this
 script.
 
-Manually re-run, not cron'd -- the two-worker setup this feeds is meant
-as a temporary catch-up measure, so this stays a hand-run tool to top the
-queue back up whenever it drains, not a new scheduled GitHub Actions
-workflow. A scheduled version is a natural follow-up if the backlog turns
-out to need sustained automated feeding beyond this catch-up window --
-not built now, see BACKLOG.md.
+Runs hourly via .github/workflows/bulk-queue-transcription-backlog.yml
+(added 2026-08-21, after a live run confirmed both workers genuinely idle
+between manual runs -- see BACKLOG.md's matching entry) -- also safe to
+run by hand any time the queue needs an immediate top-up rather than
+waiting for the next scheduled run. Server-side dedup
+(create_transcription_job() returns the existing job for a page instead
+of creating a duplicate) plus the too_many_active_jobs early-stop above
+are what make hourly safe: a page that already has an active job is a
+no-op here, and the run stops on its own once real headroom under
+MAX_CONCURRENT_TRANSCRIPTION_JOBS is used up, so this doesn't pile up an
+ever-growing queue between runs. Tied to the backlog catch-up window this
+second worker exists for -- revisit the cadence (or disable the workflow)
+once BACKLOG.md's backlog figure is worked down and a single worker's own
+idle-time trickle is enough again.
 
 Usage (from the repo root, with the venv active):
     python scripts/bulk_queue_transcription_backlog.py --dry-run

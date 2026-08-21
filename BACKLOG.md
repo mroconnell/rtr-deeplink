@@ -3962,16 +3962,32 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   `too_many_active_jobs` during the catch-up window, and LOW priority
   means any such real request still jumps the queue ahead of already-queued
   backlog jobs at the very next claim, regardless of how full the batch is.
-  Manually re-run (not cron'd) for now, since the two-worker setup itself
-  is meant to be temporary — revisit a scheduled version if the backlog
-  turns out to need sustained automated feeding beyond this catch-up
-  window. **Not yet live-verified**: added and unit-tested (existing
-  `tests/test_transcription_create_job_clerk_verified.py` and friends all
-  still pass against the new optional `priority` field), but no real run
-  against production has happened yet — first real run should confirm the
-  verification queries in the implementation plan (two distinct `job_id`s
-  `in_progress` at once, zero duplicate-`meeting_page_id` PRIORITY_LOW
-  rows) before trusting this at scale.
+  **Live-verified 2026-08-21, same day**: a manual run against production
+  created 4 brand-new jobs (482/483/484/485) and correctly deduped a 5th
+  candidate onto an already-in-progress job (476) instead of duplicating
+  it; watching both workers' real Render logs directly confirmed the
+  no-collision design end to end — worker-2 claimed job 476's chunk 4,
+  hit a real (unrelated) ffmpeg timeout, released the claim, and worker-1
+  picked up the same chunk 3 seconds later and completed it; worker-2 then
+  picked up newly-created job 482 once the manual push landed. Two
+  distinct `job_id`s `in_progress` at once, confirmed live, not just in
+  theory.
+
+  **Runs hourly now, not manually**: `.github/workflows/bulk-queue-
+  transcription-backlog.yml` (added 2026-08-21, same day) — the first
+  manual run above also confirmed worker-2 sits genuinely idle for
+  multi-minute stretches between whenever someone happens to re-run this
+  by hand, which defeats the point of having a second worker. Hourly is
+  safe because of the same two properties noted above:
+  `create_transcription_job()`'s server-side dedup (a page with an
+  already-active job is a no-op, not a duplicate) and the
+  `too_many_active_jobs` early-stop, so this can't pile up an
+  ever-growing queue between runs. New repo secret:
+  `AUTO_TRANSCRIPTION_REQUESTER_EMAIL` (Settings → Secrets and variables
+  → Actions), same address as the Render-side env var of the same name.
+  Tied to the backlog catch-up window this second worker exists for —
+  revisit the cadence (or disable the workflow) once this backlog figure
+  is worked down.
 
 - ~~**[JUST-DO-IT] `find_auto_transcription_candidate()` streams the
   entire transcript corpus through the DB every 5 idle minutes — an N+1

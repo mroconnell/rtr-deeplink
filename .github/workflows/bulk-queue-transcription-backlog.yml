@@ -1,0 +1,71 @@
+# Keeps the on-demand-transcription job queue topped up so both cloud
+# workers (rtr-transcription-worker / rtr-transcription-worker-2, see
+# render.yaml) always have real, independent work to grab -- not just the
+# single-job-at-a-time idle-time trickle worker/main.py's own
+# maybe_generate_auto_job() produces on its own. See BACKLOG.md's "Second
+# transcription worker added for backlog catch-up" entry for the fuller
+# reasoning, and scripts/bulk_queue_transcription_backlog.py's own module
+# docstring for exactly what this calls and why.
+#
+# Unlike feed-tier3-transcription.yml / feed-granicus-transcription.yml,
+# this makes no repo changes (it creates TranscriptionJob rows over HTTP,
+# nothing tracked in git) -- so no PR-advance step, no QUEUE_ADVANCE_PAT,
+# no write permissions needed here at all.
+#
+# Cadence: hourly, offset a few minutes past the hour so it doesn't land
+# in the same minute as other scheduled workflows. The script's own
+# BATCH_SIZE=8 default and MAX_CONCURRENT_TRANSCRIPTION_JOBS=15 cap (see
+# its own docstring) make this safe to run this often -- a page that
+# already has an active job is deduped server-side
+# (create_transcription_job(), not re-queued), and the run stops early on
+# a too_many_active_jobs response, so this naturally self-limits rather
+# than piling up an ever-growing queue.
+#
+# Runs on GitHub's own runners (ubuntu-latest, which already has
+# ffmpeg/ffprobe on PATH for the script's probe_duration() calls) -- same
+# reasoning as feed-tier3-transcription.yml/feed-granicus-transcription.yml
+# for why no residential-IP requirement applies here (YouTube-backed
+# candidates are skipped by this script directly, same reasoning as
+# scripts/transcribe_backlog_locally.py's own YouTube pre-filter).
+#
+# Tied to the backlog catch-up window this second worker exists for --
+# revisit (reduce cadence, or disable) once BACKLOG.md's ~1600+ backlog
+# figure is worked down and a single worker's own idle-time trickle is
+# enough again.
+#
+# Requires three repo secrets (Settings -> Secrets and variables ->
+# Actions):
+#   ARCHIVE_BASE_URL                 -- already used by feed-tier3-transcription.yml
+#   ARCHIVE_INGEST_TOKEN              -- already used by feed-tier3-transcription.yml
+#   AUTO_TRANSCRIPTION_REQUESTER_EMAIL -- same address worker/main.py's own
+#     AUTO_TRANSCRIPTION_REQUESTER_EMAIL env var uses on Render, reused
+#     here as the requester_email on every job this script creates (see
+#     that script's own module docstring for why -- same "activity
+#     digest, not a dedicated no-reply mailbox" reasoning worker/main.py
+#     already documents)
+name: Keep transcription backlog queue topped up
+
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  top-up:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Top up the queue
+        env:
+          ARCHIVE_BASE_URL: ${{ secrets.ARCHIVE_BASE_URL }}
+          ARCHIVE_INGEST_TOKEN: ${{ secrets.ARCHIVE_INGEST_TOKEN }}
+          AUTO_TRANSCRIPTION_REQUESTER_EMAIL: ${{ secrets.AUTO_TRANSCRIPTION_REQUESTER_EMAIL }}
+        run: python scripts/bulk_queue_transcription_backlog.py
