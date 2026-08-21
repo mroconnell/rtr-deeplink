@@ -1208,11 +1208,13 @@ title is truncated with an ellipsis, and the footer is dropped before
 the title would be gutted. A proper Bluesky link facet makes the URL
 clickable.
 
-> **Not yet live-verified**: both clients are written against the
-> documented public APIs but had no real account/credentials at build
-> time — the first real post after setup should be watched (see the
-> `BACKLOG.md` entry) the same way any schema-verified-but-not-
-> content-verified path in this repo is treated.
+> **Live status**: Bluesky posting is live-verified — the first real
+> post from `redtaperecordings.bsky.social` landed 2026-08-21 off a
+> real prod resolve (see `BACKLOG_DONE.md`). The Mastodon client is
+> written against the documented API but has never made a real post
+> (no account exists yet) — treat it as best-effort until one is
+> watched, same as any schema-verified-but-not-content-verified path
+> in this repo; see `BACKLOG.md` for the open residuals.
 
 ## Supported platforms
 

@@ -6,6 +6,51 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Social auto-posting (Bluesky/Mastodon) built, and Bluesky live-verified with a real first post [Done 2026-08-21]
+
+User request 2026-08-21 ("auto publish posts whenever we resolve a high
+quality meeting"), built and merged the same day (PR #266), first real
+post confirmed the same day. Pipeline (`archive/utils/social.py`,
+`SocialPost` table, `/internal/ingest` hook — README's "Social
+auto-posting" section has the operating description): a freshly
+*created* Archive page whose ingest payload matches `outcomes.py`'s
+`success` bucket (real video + transcript, no garbled/hallucination
+warning, English-or-undetected language) plus a ≥`SOCIAL_MIN_SEGMENTS`
+(50) floor gets announced with Ryan's own wording ("Somebody looked up
+{title} — you can now search a transcript of that meeting and link to
+specific timestamps at {url}"), claim-first-deduped per (page, network)
+under a unique constraint, spaced ≥`SOCIAL_MIN_POST_INTERVAL_SECONDS`
+(180s) apart with in-window candidates dropped (not queued — a sleeping
+task dies silently with the process on deploy, the Archive-push
+silent-loss shape already documented here). Only page *creation* can
+trigger a post, so the resolver's push-retry sweep, stale rechecks, and
+the corpus-wide backfill can never announce an old page.
+
+**Verification**: 16 unit/integration tests (`tests/test_social_posts.py`
+— quality gate, truncation ladder, created-flag plumbing, claim dedup,
+failure handling, buffer) against the fixture DB with the network
+clients monkeypatched; then live end-to-end 2026-08-21: Ryan registered
+[`redtaperecordings.bsky.social`](https://bsky.app/profile/redtaperecordings.bsky.social),
+set the env vars on the Archive Render service post-merge, ran a real
+resolve in prod, and the account made its first real post. That closes
+the "zero real posts ever made" flag for the Bluesky client
+specifically. Residuals split back into `BACKLOG.md` per convention:
+the facet-clickability spot-check on that first post, the still-unverified
+Mastodon client, and the deliberate creation-only trigger scope.
+
+Two build-time incidents worth remembering: (1) the first CI run on
+PR #266 failed on `alembic check` — the `SocialPost` table initially
+shipped with no migration on the strength of this file's *pre-WO-10*
+"a brand-new table needs no manual migration" guidance, which a
+session-start CLAUDE.md snapshot still carried; WO-10 (2026-08-17) had
+made archive prod schema Alembic-only, so without the migration the
+table would simply never have existed in prod. CI caught it exactly as
+WO-10 intended, pre-merge; migration `b7a2c9d4e1f3` fixed it. (2)
+`bsky.social` is egress-blocked in the Claude Code sandbox (even
+unauthenticated `resolveHandle`), so live verification of anything
+Bluesky-side can only ever happen from the deployed Archive or Ryan's
+machine — recorded so a future session doesn't burn time retrying it.
+
 ## SuiteOne Media: new platform adapter built (`app/platforms/suiteone.py`) [Done 2026-08-21]
 
 WO-17. Promotes the SuiteOne Media candidate from `BACKLOG.md`'s
