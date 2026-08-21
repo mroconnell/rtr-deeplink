@@ -7,16 +7,86 @@ suite stays network-free). The acceptance criterion this satisfies:
 deliberately breaking one adapter's parsing (here, a fake finder returning
 an empty ResolvedMeeting) must produce a real reported failure, not a
 silent pass.
+
+Plus a second, different kind of check added 2026-08-21 (WO-26): the
+canary's *coverage* itself, asserting every platform `register_all_finders()`
+registers has an explicit canary decision (a URL, or a documented
+exclusion). That one needs no fakes or network either -- it only compares
+two in-process sets.
 """
 
+from app.platforms import base, register_all_finders
 from app.platforms.base import CalendarPageError
 from app.platforms.models import ResolvedMeeting
 from scripts.adapter_canary import (
+    CANARY_EXCLUSIONS,
+    CANARY_URLS,
     check_platform,
     format_report,
     has_real_content,
     run_canary,
 )
+
+
+def _registered_platforms() -> set[str]:
+    # base._REGISTRY read directly on purpose: its keys *are* the
+    # `AssetFinder.platform_name` values `get_finder()` resolves against,
+    # which is exactly what CANARY_URLS has to be keyed by. Deriving the
+    # list any other way (parsing __init__.py, listing app/platforms/*.py)
+    # could drift from what's actually registered, which is the whole
+    # thing this test exists to prevent. register_all_finders() is safe to
+    # call repeatedly -- register() just overwrites the same keys.
+    register_all_finders()
+    return set(base._REGISTRY)
+
+
+def test_every_registered_platform_is_canaried_or_explicitly_excluded():
+    """The canary is only as good as its coverage, and nothing used to
+    enforce that: three of the four adapters added between 2026-08-19 and
+    2026-08-21 (destinyhosted, suiteone, open_media) shipped with no
+    CANARY_URLS entry at all and went unmonitored until this test was
+    written. This is the `alembic check` of adapter monitoring -- a new
+    platform without a canary decision fails CI at PR time.
+
+    Adding a platform means adding either a real, live-verified URL to
+    CANARY_URLS or an entry to CANARY_EXCLUSIONS explaining why one can't
+    exist -- never a guessed URL, which would just become a daily false
+    alarm (see scripts/adapter_canary.py's own comments).
+    """
+    uncovered = _registered_platforms() - set(CANARY_URLS) - set(CANARY_EXCLUSIONS)
+
+    assert not uncovered, (
+        f"Platform(s) {sorted(uncovered)} are registered in "
+        "register_all_finders() but have no adapter-canary decision. Add a "
+        "real, live-verified meeting URL to CANARY_URLS in "
+        "scripts/adapter_canary.py, or add the platform to "
+        "CANARY_EXCLUSIONS there with the reason no such URL exists."
+    )
+
+
+def test_canary_keys_are_real_registered_platform_names():
+    # Keys must be the registered `AssetFinder.platform_name`, not a
+    # prettier label -- otherwise the coverage test above would pass while
+    # actually monitoring nothing under that name. Three real keys are
+    # non-obvious ("aurora_tv", "seattle_channel", "unknown"), and this
+    # also catches a platform being renamed or dropped out from under a
+    # stale canary entry.
+    registered = _registered_platforms()
+
+    assert not set(CANARY_URLS) - registered
+    assert not set(CANARY_EXCLUSIONS) - registered
+
+
+def test_no_platform_is_both_canaried_and_excluded():
+    assert not set(CANARY_URLS) & set(CANARY_EXCLUSIONS)
+
+
+def test_every_exclusion_states_a_reason():
+    # The reason is the whole point of the exclusion set: it's what lets a
+    # later session tell "deliberately can't be canaried" apart from
+    # "somebody silenced a failing entry."
+    for platform, reason in CANARY_EXCLUSIONS.items():
+        assert reason.strip(), f"{platform} is excluded with no reason given"
 
 
 def _meeting(**overrides) -> ResolvedMeeting:

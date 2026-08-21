@@ -421,7 +421,20 @@ else; do whenever convenient, no particular order.
   shared by all three cron workflows: daily-report, send-search-alerts,
   adapter-canary) — optional, still unset. Without it, a workflow failure
   still surfaces via GitHub's own failed-scheduled-workflow email, so
-  this is a nice-to-have, not a real gap.
+  this is a nice-to-have, not a real gap. **One concrete missed alert on
+  file now, though** (checked 2026-08-21 while doing WO-26): the adapter
+  canary's only failure in its visible run history — run 32155218602,
+  2026-08-18 — logged `19/20 platforms OK` / `FAIL aurora: resolve
+  returned no real content`, then `##[warning]Adapter canary failed and
+  ALERT_WEBHOOK_URL isn't set`. Nothing sent anywhere. It passed again on
+  08-19 with no code change, so it was almost certainly a transient
+  auroratv.org blip rather than an adapter regression — but nobody looked
+  at the time, which is exactly the outcome the webhook exists to prevent:
+  the one real signal the canary has ever produced went to nobody, and the
+  "was it transient or real?" question could only be answered three days
+  late, from logs. That turns this from an abstract nice-to-have into a
+  known, already-realized gap — still `[HUMAN]`-only, since the secret
+  can't be set from a Claude Code session.
 - **[HUMAN] Confirm Render's health-check gate actually fails a deploy** when
   `/api/health` (resolver or Archive) reports unhealthy (WO-6) — the 503
   logic is unit-tested, but nobody has watched a real Render deploy

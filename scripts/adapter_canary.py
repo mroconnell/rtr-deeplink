@@ -29,6 +29,10 @@ tests/test_<platform>.py) -- not a guess. A URL going stale (the source
 city removing an old meeting) is a real, expected failure mode distinct
 from an adapter bug; if a canary run starts failing, check the URL still
 resolves in a browser before assuming the adapter regressed.
+
+Every registered platform must appear in either CANARY_URLS or
+CANARY_EXCLUSIONS -- `tests/test_adapter_canary.py` enforces that in CI,
+so a newly-added adapter can't silently ship unmonitored.
 """
 
 import asyncio
@@ -54,23 +58,19 @@ from app.platforms.models import ResolvedMeeting  # noqa: E402
 # stronger fully-populated one; the stronger one is used here so a real
 # regression is more likely to actually change the outcome).
 #
-# swagit and civicplus are deliberately absent:
-# - swagit: no real Swagit meeting URL appears anywhere in this repo's
-#   text (tests/test_swagit.py's own header says so explicitly -- "no
-#   real Swagit meeting has ever been observed with a caption file at
-#   all"), only a described-but-not-recorded Dublin, CA example.
-# - civicplus: the one real site this adapter was ever confirmed against
-#   (ca-westlakevillage.civicplus.com) already had a documented fixture
-#   note (tests/fixtures/civicplus/README.md) saying it stopped resolving
-#   as of 2026-08-07 -- re-confirmed live 2026-08-16 building this canary
-#   (DNS failure, not an adapter bug). BACKLOG.md's Platform coverage
-#   section has a real untested replacement candidate (Maricopa County,
-#   AZ's CivicPlus AgendaCenter) -- add civicplus back here once that (or
-#   another) real site is actually verified against the live adapter.
-# Per this repo's "never claim it works without a real confirmed example"
-# convention, don't guess at either URL.
+# **Every key here must be exactly the platform's registered
+# `AssetFinder.platform_name`** (the key `register_all_finders()` puts in
+# base.py's registry), not a prettier label -- three of them are less
+# obvious than they look ("aurora_tv", "seattle_channel", and "unknown"
+# for the generic fallback). `tests/test_adapter_canary.py`'s coverage
+# test asserts exactly that, and also asserts that every registered
+# platform appears either here or in CANARY_EXCLUSIONS below -- so a new
+# adapter that forgets its canary entry fails CI at PR time instead of
+# silently going unmonitored (which is what happened to destinyhosted,
+# suiteone, and open_media, all added blind between 2026-08-19 and
+# 2026-08-21 and only caught by that test being written).
 CANARY_URLS: dict[str, str] = {
-    "aurora": "https://www.auroratv.org/video/regular-meeting-aurora-city-council-june-22-2026",
+    "aurora_tv": "https://www.auroratv.org/video/regular-meeting-aurora-city-council-june-22-2026",
     "ca_legislature": "https://www.senate.ca.gov/media/senate-floor-session-20260806",
     "cablecast": "http://charlotte.cablecast.tv/internetchannel/show/2451?site=1",
     "castus": "https://cloud.castus.tv/vod/comm7tv/video/6a83b3f9d94c83000226f83d?page=HOME",
@@ -81,11 +81,20 @@ CANARY_URLS: dict[str, str] = {
         "https://clerkshq.com/YellowSprings-OH?docId=feb07_22ag&"
         "path=ArchAgenda_VilCouncil%2C2022_COUNCIL_AGENDAS%2Cfeb07_22ag%2C"
     ),
+    # The Woodlands Township, TX -- the exact real URL
+    # tests/test_destinyhosted.py's fixture shape was taken from, and the
+    # one real confirmed case of this CMS's onclick-Swagit delegation
+    # actually producing a video (most destinyhosted tenants are
+    # agenda-only). A successful resolve here reports platform "swagit",
+    # since the delegation's own identity survives on purpose.
+    "destinyhosted": (
+        "https://public.destinyhosted.com/agenda_publish.cfm"
+        "?id=96635&mt=ALL&get_month=8&get_year=2026&dsp=ag&seq=4147"
+    ),
     "escribe": (
         "https://pub-bakersfield.escribemeetings.com/Meeting.aspx?"
         "Id=981f78d7-8211-4b4b-b066-5f93b4fd5e74&Agenda=Agenda&lang=English"
     ),
-    "generic_fallback": "https://www.crrma.org/information/meetings/board/2025-11-12",
     "granicus": "https://simivalley.granicus.com/player/clip/2840",
     "hyland": "https://mccobagenda.databankcloud.com/AgendaOnline/Meetings/ViewMeeting?id=4694&doctype=3",
     "iqm2": "https://sccgov.iqm2.com/citizens/Detail_Meeting.aspx?ID=17601",
@@ -94,13 +103,64 @@ CANARY_URLS: dict[str, str] = {
         "&GUID=E6E474AC-A2A9-4CE4-BCF0-5B118522E3BE&Options=info|"
     ),
     "lims": "https://lims.minneapolismn.gov/MarkedAgenda/CI/6133",
+    # Eugene, OR -- the richest of tests/test_openmedia.py's three real
+    # tenants (Goodyear AZ and Cortez CO are the other two, both also
+    # live-verified 2026-08-21 if this one ever goes stale). open.media
+    # embeds YouTube, so a failure here can also mean yt-dlp needs an
+    # update rather than an open.media change -- check that first.
+    "open_media": (
+        "https://eugene.open.media/sessions/344982/"
+        "city-council-work-session-july-15-2026"
+    ),
     "primegov": "https://okc.primegov.com/Portal/Meeting?meetingTemplateId=68482",
-    "seattlechannel": "https://www.seattlechannel.org/videos?videoid=x184865",
+    "seattle_channel": "https://www.seattlechannel.org/videos?videoid=x184865",
     "slc": "https://www.slc.gov/council/march-3-2026-meeting-recap/",
+    # Holladay, UT -- the strongest of tests/test_suiteone.py's six
+    # confirmed-live tenants: real populated WebVTT captions *and* a real
+    # agenda PDF on the same event.
+    "suiteone": "https://holladayut.suiteonemedia.com/event/?id=2652",
     "telvue": "https://videoplayer.telvue.com/player/w9sPsSE7vna3XTN_39bs1rEXjVWF0kfP/media/1040134",
     "townhallstreams": "https://townhallstreams.com/stream.php?location_id=94&id=75799",
+    # "unknown" is generic_fallback.py's registered platform_name -- the
+    # exact string detect_platform() returns for an unmatched host, not a
+    # placeholder. Kept under that key so the coverage test can compare
+    # registry keys directly.
+    "unknown": "https://www.crrma.org/information/meetings/board/2025-11-12",
     "viebit": "https://councilnyc.viebit.com/vod/?s=true&v=NYCC-250-8-1_260722-110636.mp4",
     "youtube": "https://www.youtube.com/watch?v=uNDJRR3ywVo",
+}
+
+# Registered platforms that deliberately have no canary URL, each with the
+# real reason why. Per this repo's "never claim it works without a real
+# confirmed example" convention, don't guess at a URL for either of these
+# -- a canary entry that was never verified live is worse than no entry,
+# since it produces a daily false alarm.
+#
+# Keep this in sync with CANARY_URLS: tests/test_adapter_canary.py asserts
+# every registered platform appears in exactly one of the two, so removing
+# a platform from here without adding a URL (or vice versa) fails CI.
+CANARY_EXCLUSIONS: dict[str, str] = {
+    "swagit": (
+        "No real Swagit meeting URL appears anywhere in this repo's text "
+        "(tests/test_swagit.py's own header says so explicitly -- 'no real "
+        "Swagit meeting has ever been observed with a caption file at "
+        "all'), only a described-but-not-recorded Dublin, CA example. "
+        "Partially covered indirectly: the destinyhosted canary URL "
+        "delegates into the real Swagit adapter, so a total Swagit "
+        "parsing break would surface there -- but as a destinyhosted "
+        "failure, not a swagit one."
+    ),
+    "civicplus": (
+        "The one real site this adapter was ever confirmed against "
+        "(ca-westlakevillage.civicplus.com) already had a documented "
+        "fixture note (tests/fixtures/civicplus/README.md) saying it "
+        "stopped resolving as of 2026-08-07 -- re-confirmed live "
+        "2026-08-16 building this canary (DNS failure, not an adapter "
+        "bug). BACKLOG.md's Platform coverage section has a real untested "
+        "replacement candidate (Maricopa County, AZ's CivicPlus "
+        "AgendaCenter) -- add civicplus back to CANARY_URLS once that (or "
+        "another) real site is actually verified against the live adapter."
+    ),
 }
 
 

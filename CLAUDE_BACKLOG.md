@@ -10,25 +10,18 @@ here.
 **Status (2026-08-08):** 6 of the original 12 items are done — test suite,
 rate limiting, schema.org markup, transcript export, RSS feed, and
 report-a-problem all shipped, each with real bugs caught along the way (see
-`BACKLOG_DONE.md`'s entries dated 2026-08-07/08 for the full writeups). This
-file now holds only the 6 still-open ones.
+`BACKLOG_DONE.md`'s entries dated 2026-08-07/08 for the full writeups).
 
-## Reliability / engineering health
-
-- **Adapter health canary / synthetic monitoring.** A scheduled job that
-  re-resolves ~1 known-good sample URL per platform on a timer and alerts
-  (email to Ryan, or a Slack webhook) on failure. Given how many real
-  breakages have already surfaced this way — Mountain View's redirect bug,
-  YouTube's caption-fetch blocking, yt-dlp being an unpinned moving target —
-  better to find out from a canary than from a user's dead link. Still the
-  highest-value remaining item: the test suite protects against
-  *regressions* on known-good cases, but won't catch a government site
-  changing its page structure out from under a working adapter, which is how
-  every real breakage so far has actually been found.
-- **Error monitoring (Sentry or similar)** in both the resolver and Archive,
-  beyond the current `logger.error` calls — production exceptions currently
-  only surface if someone happens to check Render logs. A smaller,
-  complementary piece of the same reliability gap as the canary above.
+**Status (2026-08-21):** the whole "Reliability / engineering health"
+section is now done and has been moved to `BACKLOG_DONE.md` (see its
+"CLAUDE_BACKLOG reliability items" entry) — both the adapter health canary
+(shipped 2026-08-16 as WO-13, with real daily run history including a real
+failure on 2026-08-18) and Sentry error monitoring (live on all three
+services, with real production issue IDs already triaged). Both had sat
+here described as open for two weeks after shipping, which is exactly the
+doc-drift `CLAUDE.md`'s own promotion rule exists to prevent; the entries
+below this line have *not* been re-checked against the current repo state
+with the same rigor, so verify before assuming any of them is still open.
 
 ## Growth mechanics
 
