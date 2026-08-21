@@ -1,15 +1,3 @@
-https://dupage.granicus.com/player/clip/14648
-https://dupageforest.granicus.com/player/clip/1274
-https://durhamcounty.granicus.com/player/clip/1534?view_id=2
-https://eaglecounty.granicus.com/player/clip/1219?view_id=23
-https://eastgreenwichri.granicus.com/player/clip/393?view_id=1
-https://eastlansing.granicus.com/player/clip/1211?view_id=2
-https://eauclairewi.granicus.com/player/clip/622
-https://eden-prairie.granicus.com/player/clip/1953
-https://edina.granicus.com/player/clip/4299
-https://edmondswa.granicus.com/player/clip/163
-https://edwardsaquifer.granicus.com/player/clip/790?view_id=2
-https://elbertcounty.granicus.com/player/clip/419
 https://eldorado.granicus.com/player/clip/2437
 https://elmonte.granicus.com/player/clip/1360
 https://elsegundo.granicus.com/player/clip/4977?view_id=10
