@@ -29,14 +29,28 @@ below were done in one PR because step 2's precondition was already
 met that day (Ryan ran `alembic upgrade head` on the archive twice, so
 `alembic_version` == head == `c1d2e3f4a5b6`, and `alembic check` on a
 fresh `upgrade head` DB showed no missing model tables/columns). **What
-remains of WO-10 is the resolver half, and it is Ryan-gated**: the
-resolver's Alembic history (`app/alembic/`, 2 revisions) has never been
-stamped in prod, so its `preDeployCommand` would fail on first run
-(exactly the "step 3 before step 2" warning below). The one-time step —
-on the `rtr-deeplink` service's Render shell, `cd app && alembic
-current` (expect empty), confirm real columns match head via `GET
-/admin/stats`, then `alembic stamp head` — then a follow-up PR adds the
-same `preDeployCommand` and gates `app/db/engine.py`'s `create_all()`.
+remains of WO-10 is the resolver half, and it is Ryan-gated**. Its
+*code* landed 2026-08-21 (WO-24): `app/db/engine.py`'s `create_all()`
+is a no-op on Postgres, CI runs a second `alembic check` with
+`working-directory: app`, and `GET /admin/schema-info` on the resolver
+(a port of the Archive's `/internal/schema-info`) reports its real
+reflected columns and `alembic_version` without shell access. What's
+left is the one human step: the resolver's Alembic history
+(`app/alembic/`, 2 revisions) has never been stamped in prod, so its
+`preDeployCommand` would fail on first run (exactly the "step 3 before
+step 2" warning below). **The runbook is `app/alembic/README.md`'s "The
+runbook" section — it branches, so don't shortcut it.** Two corrections
+to what this file used to say: stamp the literal revision
+`a9207c0eb761`, **never** the word `head` (head moved on 2026-08-15,
+and stamping it would claim production has `jurisdiction_confidence`
+whether or not it does — the 2026-08-09 archive incident's exact
+shape), and don't "expect empty" from `alembic current` (a 2026-08-11
+`information_schema` query found an `alembic_version` table already
+present there). Start by curling `/admin/schema-info`: if
+`jurisdiction_confidence` is missing from `meeting_resolutions`, that's
+a live silent-degradation bug, not just a migration chore — see
+`BACKLOG.md`'s entry for why. Then the `render.yaml`
+`preDeployCommand` (already written, held back deliberately) can merge.
 Tracked in `BACKLOG.md`'s "Schema-migration deploy ordering" entry.
 Full detail: `BACKLOG_DONE.md`'s "WO-10" entry. The original work-order
 text is kept below for the resolver follow-up.
@@ -68,10 +82,14 @@ work order in the whole plan.
 3. **Never grep a gitignored file with a broad pattern.** A real incident
    echoed a token's plaintext value into a transcript and forced a
    rotation in three places. If you need an env var's value, ask Ryan.
-4. **Schema changes are not automatic.** `create_all()` handles new
-   tables; altering an existing table needs Alembic, run by hand against
-   prod. This is exactly what WO-10 below fixes — read it fully before
-   starting, the order matters.
+4. **Schema changes are not automatic.** *(Largely fixed — this is the
+   pre-WO-10 state, kept because the resolver's last step is still
+   open.)* `create_all()` no longer runs on Postgres in **either**
+   service as of 2026-08-21, so every prod schema change needs an
+   Alembic migration. The Archive applies them automatically on deploy
+   (`preDeployCommand`); the resolver still needs a hand-run migration
+   for an altered table until its one-time stamp happens. Read WO-10
+   below fully before starting, the order matters.
 
 **Definition of done:**
 
@@ -118,18 +136,24 @@ currently presents `create_all()` as the deliberate zero-friction path for
 new tables. That guidance is what makes the drift invisible. Updating
 `CLAUDE.md` is part of this work order, not an afterthought.
 
-**Strict order — do not reorder:**
+**Strict order — do not reorder:** *(step 1 is done for both services;
+step 2 is done for the archive and is the resolver's remaining gate.)*
 
-1. Gate `create_all()` to SQLite/dev only. Verify no fresh-table path in
-   prod depends on it. **Land and deploy this alone.**
+1. ~~Gate `create_all()` to SQLite/dev only. Verify no fresh-table path in
+   prod depends on it. **Land and deploy this alone.**~~ Done — archive
+   2026-08-17, resolver 2026-08-21.
 2. One-time reconciliation: run `alembic current` against **both** prod
-   services, compare against `head`, and stamp/upgrade until they genuinely
-   agree. Use `/internal/schema-info` to confirm real reflected columns
-   rather than trusting `alembic_version`. Requires prod `DATABASE_URL` —
-   Ryan's involvement. `app/alembic/README.md:53-56` says the resolver's
-   history has never been stamped in prod; confirm whether that's still true.
-2. Only then add a `preDeployCommand` running `alembic upgrade head` per web
-   service, so schema lands before code.
+   services, compare against the specific revision the real schema
+   matches, and stamp/upgrade until they genuinely agree. Confirm real
+   reflected columns rather than trusting `alembic_version` — the
+   archive's `/internal/schema-info`, and now the resolver's own
+   `/admin/schema-info`. Requires prod shell/`DATABASE_URL` access —
+   Ryan's involvement. **Done for the archive; still open for the
+   resolver**, whose branching runbook is in `app/alembic/README.md`.
+   Note the stamp target is the literal `a9207c0eb761`, not `head`.
+3. Only then add a `preDeployCommand` running `alembic upgrade head` per web
+   service, so schema lands before code. Done for the archive; written
+   but deliberately held for the resolver until step 2 lands.
 
 **Acceptance.** A test migration adding a column deploys cleanly with no
 manual step. `alembic current` equals `head` on both services. Automating
