@@ -6,6 +6,88 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## SuiteOne Media: new platform adapter built (`app/platforms/suiteone.py`) [Done 2026-08-21]
+
+WO-17. Promotes the SuiteOne Media candidate from `BACKLOG.md`'s
+"Two more video platforms" entry (131 CDX-derived tenant subdomains,
+found the same session as the destinyhosted.com enumeration) into a real
+adapter, per this repo's "test against a real URL first" rule — re-verified
+the two page-structure-confirmed samples from that prior investigation
+(`pacificgroveca` event 2099, `lorainoh` event 2794) still hold, then
+fetched and confirmed 4 more of the 9 not-yet-verified CDX leads live:
+`tuscaloosaal`, `camaswa`, `holladayut`, `stmarysga` (the other 5 —
+`mcallentx`, `southbendin`, `prescottaz`, `richlandwa`, `laytonut` — all
+404 on their home page; dead leads, not wired up anywhere). 6 tenants
+confirmed live total, real fixtures saved under `tests/fixtures/suiteone/`
+from actual fetches (not synthetic), 7 tests in `tests/test_suiteone.py`.
+
+**Video**: every event page (`https://{tenant}.suiteonemedia.com/event/
+?id={N}`) embeds a plain, static-HTML JW Player setup with a hardcoded
+`var src = 'https://s3.amazonaws.com/suiteone.{tenant}.videofiles/{hash}.mp4';`
+— a direct, unauthenticated S3 mp4, no JS execution needed. Confirmed the
+same page shape is served with `var src = '';` when a meeting genuinely
+has no recording yet (St Marys, GA event 1000, "Orange Hall Management
+Committee") — treated as a real per-meeting negative (`video_warnings`),
+not a parse failure.
+
+**Captions**: when present, the same JW Player config's `tracks` array
+points at `https://{tenant}.suiteonemedia.com/Event/GetCaptions/
+?eventId={id}` — real, populated WebVTT confirmed on 2 of the 6 tenants
+(Pacific Grove CA: 70 real cues of dialogue; Holladay UT: 1616 real
+cues). One real gotcha hit building this: that URL carries no file
+extension at all (bare `?eventId=N`), so the shared
+`parse_captions_by_extension()` dispatch every other adapter uses (which
+sniffs the URL's own extension) can never identify it — `suiteone.py`
+parses it directly with `parse_vtt()` instead, since the format is
+confirmed WebVTT on every real sample checked. The `tracks` key is
+omitted entirely (not an empty array) on a meeting with no captions —
+confirmed on Lorain, OH event 2794.
+
+**Date — the one real gap in this vendor's own event page, worked around
+via a second fetch**: the event page itself carries no date anywhere
+(checked full HTML on all 6 tenants — no h1-adjacent text, no JSON-LD, no
+meta tag). The only place a date exists is the tenant's own home/calendar
+page, in a `<tr>` whose event-id `<a href="/event/?id={id}">` link sits
+alongside a sibling `<td class="text-nowrap" data-sort="{.NET ticks}">`
+holding real, human-readable text ("Jan 02, 2025 | 09:00 AM") — confirmed
+byte-identical shape across 3 tenants' home pages (Pacific Grove, Lorain,
+Tuscaloosa). Parsed from the display text, never the `.NET ticks`
+`data-sort` value (which would need epoch conversion the display text
+avoids entirely). Degrades to `date=None` — never raises — when the
+event isn't found on the currently-visible home listing (an older
+meeting likely paginated off it) or the home-page fetch itself fails.
+
+**Jurisdiction**: no real city-name text anywhere on the page — only the
+raw tenant subdomain in a logo/asset path. Reused
+`jurisdiction_enrich.validated_subdomain_extract()` directly (per this
+platform's own instruction not to write new jurisdiction-parsing logic),
+plus `townhallstreams.py`'s already-established "check the raw slug's own
+wordninja-split last token against a real US state abbreviation" trick
+for the same "concatenated slug, maybe with a trailing state code" shape.
+Works end to end on 4 of the 6 real tenants (e.g. "lorainoh" wordninja-
+splits to `['lora', 'in', 'oh']`, glues to the validating "Lorain", and
+its own last token "oh" is a real state code, giving "Lorain, OH"). Two
+of the 6 real tenants — `stmarysga`, `camaswa`, specifically flagged by
+the work order as the least obviously-splittable — fail to validate via
+this shared pipeline at all (see `BACKLOG.md`'s residual-gap entry for
+the detail); `jurisdiction` is honestly `None` for both rather than
+guessed, same as every other adapter's stated policy.
+
+**A second document endpoint, confirmed real**: `/event/GetAgendaFile/
+Agenda?aid={N}` (an `<object data="...">` PDF embed) is a real, separate
+agenda PDF, confirmed present on 3 of 6 sampled events (Holladay UT,
+both sampled St Marys GA events) — surfaced as `agenda_link`. A more
+general `/event/GetDocumentFile/{title}?did={N}` also exists (confirmed
+serving a real "Transcript" PDF on Pacific Grove, and assorted unrelated
+document titles on St Marys) but isn't surfaced anywhere — no confirmed
+real case yet of a meeting having that PDF but no real VTT captions, so
+building a fallback to it would be a guess (see `BACKLOG.md`'s residual
+entry).
+
+Registered in `detect_platform()` (`app/platforms/base.py`) and
+`register_all_finders()` (`app/platforms/__init__.py`) as `"suiteone"`.
+README's "Supported platforms" table updated with the new row.
+
 ## open.media registered as its own platform (WO-18) [Done 2026-08-21]
 
 Follows up on this file's own "YouTube's old `/v/{id}` embed shape
