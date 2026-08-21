@@ -450,7 +450,9 @@ EVENTS_TEMPLATE_HTML = (
 
 
 async def test_resolve_declines_the_bogus_events_template_placeholder_video():
-    routes = {EVENTS_URL: FakeResponse(status=200, text=EVENTS_TEMPLATE_HTML, url=EVENTS_URL)}
+    routes = {
+        EVENTS_URL: FakeResponse(status=200, text=EVENTS_TEMPLATE_HTML, url=EVENTS_URL)
+    }
 
     with mock_session(routes):
         result = await SwagitAssetFinder().resolve(EVENTS_URL)

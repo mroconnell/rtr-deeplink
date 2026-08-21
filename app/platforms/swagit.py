@@ -343,9 +343,7 @@ class SwagitAssetFinder(AssetFinder):
             u for u in media_urls if _is_swagit_events_template_dead_candidate(u)
         ]
         if dead_template_candidates:
-            media_urls = [
-                u for u in media_urls if u not in dead_template_candidates
-            ]
+            media_urls = [u for u in media_urls if u not in dead_template_candidates]
 
         video_url, video_format = None, None
         for candidate in media_urls:
