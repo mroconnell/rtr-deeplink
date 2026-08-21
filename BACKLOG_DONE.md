@@ -6,6 +6,38 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Aurora, CO `aurora_tv` canary failure (2026-08-18) confirmed a one-off transient blip, not a persisting regression [Done 2026-08-21]
+
+Promoted from `CLAUDE_INBOX_TRIAGE.md`'s 2026-08-19 run, which flagged
+the scheduled adapter-health canary's 2026-08-18 failure ("FAIL aurora:
+resolve returned no real content" against
+`https://www.auroratv.org/video/regular-meeting-aurora-city-council-june-22-2026`,
+[run 32155218602](https://github.com/mroconnell/rtr-deeplink/actions/runs/32155218602)).
+Investigated per this repo's "test against a real live URL first"
+convention, not guessed: fetched the live page directly (`curl`,
+2026-08-21) — the `drupal-settings-json` blob is present and unchanged in
+shape, `mp4_url` (`https://reflect-aurora.cablecast.tv/store-4/13040-
+EDITED-Regular-Meeting-of-v2/vod.mp4`) resolves `HTTP 200` via CloudFront,
+and `jw_data.caption_file_path` is a real, populated VTT URL on
+`auroratv.org`'s own domain. Ran `app/platforms/aurora.py`'s actual
+`AuroraTvAssetFinder.resolve()` against the same URL directly (not just
+inspecting the page): real title ("Regular Meeting of the Aurora City
+Council, June 22, 2026"), real date (`2026-06-22`), real `video_url`,
+**5,310 real transcript segments**, zero warnings — a clean pass against
+`scripts/adapter_canary.py`'s own `has_real_content()` check. Cross-
+checked the canary's own run history via `gh run list`: 2026-08-17
+success, **2026-08-18 failure (the one flagged)**, 2026-08-19 success,
+2026-08-20 success — the failure is bracketed on both sides by real
+passes against the same URL, not a sustained regression. `aurora.py`
+itself hasn't been touched since a ruff reformat (`#96`), consistent with
+nothing in this app's own code changing either. **Conclusion**: a real,
+one-off transient failure on 2026-08-18 (most likely a brief hiccup at
+`auroratv.org` or its CloudFront-fronted Cablecast storage — genuinely
+can't pin down which after the fact, since neither host logs anything
+this app can access), not a code regression — no fix needed. Verifies
+the canary is working as designed (correctly caught a real, if transient,
+failure) without indicating any actual adapter bug.
+
 ## Consolidated city-county domain lookup: 13 real, verified domains applied; smaller ones deliberately left open [Done 2026-08-21]
 
 Closes part of the gap flagged in this file's "~38 consolidated

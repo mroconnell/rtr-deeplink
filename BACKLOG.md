@@ -969,30 +969,6 @@ anything) to build against it.
   gone unnoticed. Worth reprioritizing given this concrete
   monitoring-blackout evidence, even though nothing user-visible failed.
 
-- **[JUST-DO-IT] Aurora, CO's `aurora_tv` adapter no longer resolves real
-  content — caught by the adapter-health canary, 2026-08-18, promoted from
-  `CLAUDE_INBOX_TRIAGE.md`'s 2026-08-19 run.** The scheduled canary run
-  ([run 32155218602](https://github.com/mroconnell/rtr-deeplink/actions/runs/32155218602))
-  showed 19/20 platforms OK, with one real failure: `FAIL aurora: resolve
-  returned no real content
-  (https://www.auroratv.org/video/regular-meeting-aurora-city-council-june-22-2026)`.
-  This is the canary doing its job, not a canary bug — the run's other
-  errors are the already-documented yt-dlp/YouTube blocking issue (see
-  this file's yt-dlp entries / `CLAUDE.md`'s yt-dlp bullet) and didn't
-  affect this result. [app/platforms/aurora.py](app/platforms/aurora.py)
-  hasn't been touched since a ruff reformat (`#96`) — the adapter itself
-  is unchanged, so either `auroratv.org` or its underlying Cablecast/
-  CloudFront storage (see `BACKLOG_DONE.md`'s original Aurora adapter
-  entry for that dependency) changed shape. **Impact**: this is the only
-  adapter for Aurora, CO's own video site — if the regression holds
-  beyond this one sample URL, every Aurora meeting fails to resolve until
-  fixed; scope beyond the one sample not yet checked. **Next step, per
-  this repo's "test against a real live URL first" convention**: fetch
-  the live page fresh and see what changed — most likely candidates given
-  the adapter's own code are the `drupal-settings-json` script tag
-  structure, or the `mp4_url`/`jw_data.caption_file_path` keys inside it
-  moving. Root cause not yet diagnosed; fix effort unknown until then.
-
 - **[JUST-DO-IT] Archive reverse-proxy streaming has no error handling
   once the response body starts streaming — a cut-short upstream
   connection raises an unhandled exception instead of failing cleanly,
@@ -1601,6 +1577,13 @@ anything) to build against it.
     extracted frames, which is a real new decision (this app hosts no
     images today). Re-check Search Console once YouTube-backed pages
     are re-crawled to confirm the critical flag actually clears there.
+    **Update 2026-08-21, from a real Search Console "Videos" enhancement
+    report screenshot**: "No thumbnail URL provided" is now down to just
+    1 video site-wide — but this is NOT confirmation the mp4/m3u8 gap
+    above is closed (it isn't; `archive/utils/video_thumbnail.py` still
+    only handles YouTube-backed pages, unchanged since the 2026-08-14
+    fix). The same report shows a much larger, likely-explanatory issue
+    instead — see the new entry immediately below.
   - ~~`uploadDate` missing a timezone~~ **Fixed 2026-08-14 — full detail
     in `BACKLOG_DONE.md`'s "Wave 1" entry.** Now emits
     `date + "T00:00:00Z"`. **Still open**: the separate "invalid
@@ -1613,6 +1596,54 @@ anything) to build against it.
     `BACKLOG_DONE.md`'s "Wave 1" entry.** LIMS's `_flatten_timestamps()`
     now sets each item's `end` to the next item's `start`, matching
     Granicus/IQM2's convention, instead of always equaling `start`.
+
+- **[JUST-DO-IT] Search Console "Video isn't on a watch page" (947 videos
+  and growing, from 23 in an earlier screenshot the same session) —
+  root-caused via real example URLs Ryan pulled from the report plus
+  direct code inspection, 2026-08-21. Fix shipped same day — see
+  `BACKLOG_DONE.md`.** All 10 real example URLs Search Console gave (San
+  Carlos CA/IQM2 mp4, Calvert County MD & Cedar Rapids IA/Granicus-Swagit
+  m3u8, Redlands CA & Riverview MI & Hopkins MN (Edina)/Cablecast m3u8,
+  Greenbelt MD & Hartford City IN/Azure CDN mp4, Peterborough ON/
+  isilive.ca m3u8, Leon Valley TX/Cablecast m3u8) were **every one
+  non-YouTube** — confirmed this is the same population as the mp4/m3u8
+  `thumbnailUrl` gap above, not a scattered issue, and explains that
+  entry's near-zero thumbnail count as a downstream symptom (Google
+  doesn't get far enough to check `thumbnailUrl` on a video it's already
+  excluded here).
+
+  **Real root cause, confirmed in code**:
+  [archive/templates/meeting_page.html:274](archive/templates/meeting_page.html#L274)
+  used to render every non-YouTube/non-viebit video as a bare
+  `<video id="meetingVideo" controls playsinline preload="auto"></video>`
+  — no `src` attribute, no `<source>` child, in the server-rendered HTML
+  Googlebot first parses. The real URL only existed in the page's JSON-LD
+  `contentUrl` (line 65) until JavaScript ran. And when it did
+  ([archive/static/meeting_page.js:51-57](archive/static/meeting_page.js#L51-L57)):
+  for `.m3u8` sources, `hls.attachMedia(video)` uses Media Source
+  Extensions, which sets the real DOM `video.src` to an opaque `blob:`
+  URL — never the real, fetchable m3u8 URL at all, in *any* browser
+  (7 of the 10 examples are this case). For direct `.mp4` (3 of 10,
+  IQM2/Azure CDN), `video.src = videoUrl` did eventually set the real
+  URL, but only after JS executed — the initial HTML still shipped with
+  no src. Either way, there was no reliable, server-rendered `<video
+  src>`/`<source src>` for Google to match against the JSON-LD
+  `contentUrl` and confirm the page genuinely hosts that video — exactly
+  what "watch page" verification needs. (YouTube pages don't hit this:
+  Google can verify those independently against its own already-indexed
+  YouTube watch page, regardless of how the iframe is populated.)
+
+  **Fix shipped 2026-08-21**: `meeting_page.html` now renders the real
+  URL server-side too — a `<source src="{{ page.video_url }}"
+  type="application/vnd.apple.mpegurl">` for `.m3u8`, and `src="{{
+  page.video_url }}"` directly on the `<video>` tag for `.mp4` —
+  matching `contentUrl`, while `meeting_page.js`'s existing hls.js/`.src`
+  logic is untouched for actual playback (`<source>` and a later
+  `.src`/`hls.attachMedia()` call coexist fine — the browser just uses
+  whichever the JS ends up wiring up). **Not yet confirmed on a re-crawl**
+  — Search Console needs to re-index affected pages before the flag
+  count can be checked; that's the real verification, not just the code
+  landing.
 
 - ~~**[DONE?] `sitemap.xml` includes `generic_fallback` pages that the page template
   itself `noindex`es**~~ **Fixed 2026-08-17 — full detail in

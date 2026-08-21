@@ -92,60 +92,9 @@ recent runs as of this review (2026-08-19 13:05/13:30 UTC, both green)
 
 Three new findings:
 
-- **Confirmed — Adapter health canary caught a real regression: Aurora,
-  CO's `aurora_tv` adapter no longer resolves real content.** The
-  2026-08-18 15:34 UTC scheduled "Adapter health canary" run
-  ([run 32155218602](https://github.com/mroconnell/rtr-deeplink/actions/runs/32155218602),
-  verified via the GitHub API's own job logs, not just the failure
-  email) shows 19/20 platforms OK, with one real failure: `FAIL aurora:
-  resolve returned no real content
-  (https://www.auroratv.org/video/regular-meeting-aurora-city-council-june-22-2026)`.
-  This is exactly the canary's intended job (see `CLAUDE_BACKLOG.md`'s
-  original canary proposal) working as designed, not a canary bug — the
-  other errors in the same log (`[youtube] ... Sign in to confirm you're
-  not a bot`) are the already-documented yt-dlp/YouTube blocking issue
-  (see `CLAUDE.md`'s yt-dlp bullet) and didn't cause any of the 19
-  passes to fail. **Impact**: `app/platforms/aurora.py` is the only
-  adapter for Aurora, CO's own Drupal-built video site
-  (auroratv.org) — if the canary's finding holds for the platform
-  generally (not just this one sample URL), every Aurora meeting fails
-  to resolve until fixed; scope beyond the one sample URL not yet
-  checked. Root cause not diagnosed — per `CLAUDE.md`'s adapter
-  convention this needs a live re-fetch of the actual page to see what
-  changed (most likely candidates given the adapter's own code: the
-  `drupal-settings-json` script tag structure changed, or the
-  `mp4_url`/`jw_data.caption_file_path` keys inside it moved) rather
-  than guessing from the canary's "no real content" message alone.
-  **Fix effort**: unknown until someone fetches the live page.
-
-- **Confirmed — new unhandled-exception path in the resolver's Archive
-  reverse-proxy streaming, distinct from the already-tracked proxy
-  `TimeoutError`.** New Sentry issue PYTHON-FASTAPI-Q ("ClientPayloadError:
-  Response payload is not completed: <TransferEncodingError: 400,
-  message='Not enough data to satisfy transfer length header.'>"),
-  `transaction = /m/{path:path}`, one real occurrence 2026-08-18 21:11
-  UTC (`https://redtaperecordings.com/m/hutto-tx-2026-04-07-apr-07-2026-planning-and-zoning`,
-  a crawler request — `browser = MJ12bot`). Traced to real code:
-  `app/main.py`'s `_proxy_to_archive()` → `body_iterator()`
-  ([app/main.py:1440-1445](app/main.py#L1440-L1445)) has no
-  try/except around `async for chunk in response.content.iter_chunked(65536)`.
-  When the upstream Archive→resolver stream gets cut short mid-response
-  (aiohttp's own parser raises `TransferEncodingError` on `feed_eof`),
-  the exception propagates unhandled — and because this happens *inside*
-  `StreamingResponse`'s body generator, after `response.status`/headers
-  have already been sent to the client, the existing try/except at
-  [app/main.py:1428-1438](app/main.py#L1428-L1438) (which returns a
-  clean 503) can't help — that one only guards the initial
-  `archive_client.proxy_get()` call, not the streaming loop after it.
-  **Impact**: low as observed (one bot-traffic hit, `handled=no` in
-  Sentry so it's presumably just a dropped connection to the crawler,
-  not user-visible breakage), but the same gap would hit a real visitor
-  the same way if the resolver-Archive connection drops mid-page-load —
-  they'd get a silently killed connection instead of a clean error.
-  **Fix effort**: small — wrap the `body_iterator()` loop in its own
-  try/except, log, and let the generator end cleanly instead of raising
-  into `StreamingResponse` machinery that's already committed to a
-  response.
+The Aurora adapter-canary regression and the Archive reverse-proxy
+streaming crash (both **Confirmed**) were promoted into `BACKLOG.md`'s
+"Bugs" section 2026-08-21 — see that file for full write-ups.
 
 - **Unconfirmed / open question — new Render alert type on
   `rtr-deeplink-archive` (production), not the same failure mode as the
