@@ -203,3 +203,123 @@ async def test_backfill_apply_endpoint_writes_when_dry_run_false():
             await session.execute(select(MeetingPage).where(MeetingPage.slug == slug))
         ).scalar_one()
         assert page.jurisdiction == "Guelph, ON"
+
+
+# --- WO-22, 2026-08-21: only_ids/exclude_ids. Added because the real
+# production candidate set turned out NOT to be uniformly safe to apply --
+# 83 of the audit's 635 candidates are jurisdiction-TEXT changes (the
+# other 552 are confidence-only diffs this function already skips), and a
+# handful of those 83 were confidently-wrong subdomain repairs
+# (BACKLOG.md's "Bare/state-suffixed jurisdiction duplicates" entry). With
+# no filter the only choices were "apply all 83" or "apply nothing".
+
+_STALE_TEXT = "Guelph now hold a meeting that is closed to the public"
+
+
+async def _seed_two_stale_rows(tag: str):
+    """Two independently-repairable rows, so a filter has something real to
+    include/exclude between."""
+    first = await _seed_stale(
+        f"escribe:{tag}-a",
+        f"https://pub-guelph.escribemeetings.com/{tag}-a",
+        _STALE_TEXT,
+        "unverified",
+    )
+    second = await _seed_stale(
+        f"escribe:{tag}-b",
+        f"https://pub-guelph.escribemeetings.com/{tag}-b",
+        _STALE_TEXT,
+        "unverified",
+    )
+    return first, second
+
+
+async def _page_for(slug: str) -> MeetingPage:
+    async with async_session() as session:
+        from sqlalchemy import select
+
+        return (
+            await session.execute(select(MeetingPage).where(MeetingPage.slug == slug))
+        ).scalar_one()
+
+
+async def test_apply_only_ids_writes_just_that_row():
+    keep, skip = await _seed_two_stale_rows("only-ids")
+    keep_id = (await _page_for(keep)).id
+
+    result = await crud.apply_jurisdiction_bleed_backfill(
+        dry_run=False, only_ids={keep_id}
+    )
+    assert [c["slug"] for c in result["changes"]] == [keep]
+    # The other real candidate rows were held back, and the response says
+    # so rather than letting them silently vanish from the count.
+    assert result["skipped_by_filter"] >= 1
+
+    assert (await _page_for(keep)).jurisdiction == "Guelph, ON"
+    assert (await _page_for(skip)).jurisdiction == _STALE_TEXT
+
+
+async def test_apply_exclude_ids_holds_back_just_that_row():
+    write, hold = await _seed_two_stale_rows("exclude-ids")
+    hold_id = (await _page_for(hold)).id
+
+    result = await crud.apply_jurisdiction_bleed_backfill(
+        dry_run=False, exclude_ids={hold_id}
+    )
+    assert any(c["slug"] == write for c in result["changes"])
+    assert all(c["slug"] != hold for c in result["changes"])
+
+    assert (await _page_for(hold)).jurisdiction == _STALE_TEXT
+
+
+async def test_exclude_ids_wins_over_only_ids_for_the_same_row():
+    # Contradictory request -- deny beats allow, the safer reading.
+    slug, _other = await _seed_two_stale_rows("both-filters")
+    page_id = (await _page_for(slug)).id
+
+    result = await crud.apply_jurisdiction_bleed_backfill(
+        dry_run=False, only_ids={page_id}, exclude_ids={page_id}
+    )
+    assert result["changes"] == []
+    assert (await _page_for(slug)).jurisdiction == _STALE_TEXT
+
+
+async def test_only_ids_cannot_force_an_unchanged_row_to_be_written():
+    # The filters narrow the recomputed candidate set; they never add to
+    # it. A row finalize_jurisdiction() wouldn't change stays untouched
+    # even when named explicitly.
+    slug = await _seed_stale(
+        "escribe:only-ids-clean",
+        "https://pub-clean.escribemeetings.com/only-ids-clean",
+        "City of Sunnyvale, CA",
+        None,
+    )
+    page_id = (await _page_for(slug)).id
+    result = await crud.apply_jurisdiction_bleed_backfill(
+        dry_run=False, only_ids={page_id}
+    )
+    assert result["changes"] == []
+
+
+async def test_backfill_apply_endpoint_threads_only_ids_through():
+    keep, skip = await _seed_two_stale_rows("endpoint-only-ids")
+    keep_id = (await _page_for(keep)).id
+
+    response = client.post(
+        f"/internal/jurisdiction/backfill-apply?dry_run=false&only_ids={keep_id}",
+        headers={"Authorization": "Bearer test-token"},
+    )
+    assert response.status_code == 200
+    assert [c["slug"] for c in response.json()["changes"]] == [keep]
+
+    assert (await _page_for(skip)).jurisdiction == _STALE_TEXT
+
+
+def test_backfill_apply_endpoint_rejects_non_integer_id_filter():
+    # Fails closed rather than silently dropping the bad token: a dropped
+    # id in exclude_ids would write a row the operator asked to hold back.
+    response = client.post(
+        "/internal/jurisdiction/backfill-apply?exclude_ids=12,not-an-id",
+        headers={"Authorization": "Bearer test-token"},
+    )
+    assert response.status_code == 400
