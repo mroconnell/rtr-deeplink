@@ -285,97 +285,14 @@ exact error string that same BACKLOG.md entry already documents and
 explains, just two new real-world recurrences on different Granicus
 customers, not a new bug.
 
-Two new findings, plus one reinforcement of an existing open item:
-
-- **Confirmed — root cause found for the recurring "Unclosed connector"
-  Sentry cluster, which the existing `BACKLOG.md` "[HUMAN] Archive service
-  instability, 2026-08-17" entry flagged but left unexplained.** Two fresh
-  Sentry issues, both 2026-08-20/21, tagged with unrelated-looking
-  transactions: PYTHON-FASTAPI-V ("Unclosed connector", `transaction =
-  /m/{path:path}`, `url = .../m/detroit-mi-2026-06-22-council-meeting-
-  june-22-2026`, 2026-08-21 05:25 UTC) and PYTHON-FASTAPI-S ("Unclosed
-  connector", `transaction = /api/health`, 2026-08-20 19:46 UTC). Traced to
-  real code: `app/archive_client.py:339-363`'s `proxy_get()` — the function
-  every `/m/*`/`/meetings`/sitemap/feed proxy route goes through (via
-  `_proxy_to_archive()`, `app/main.py:1419-1459`) — creates its
-  `aiohttp.ClientSession` directly (`session =
-  aiohttp.ClientSession(timeout=PROXY_TIMEOUT)`, line 361) instead of via
-  `async with`, then calls `response = await session.get(url,
-  headers=headers)` (line 362) with **no try/except around that call**. If
-  `session.get()` itself throws — a timeout, connection reset, or DNS
-  failure before headers come back, all realistic given the Archive's own
-  documented instability history — the exception propagates straight out
-  of `proxy_get()`, is caught by `_proxy_to_archive()`'s outer
-  try/except (`app/main.py:1435-1445`, which correctly returns a clean 503
-  to the browser), but the `session` object created on line 361 is never
-  referenced again and never closed — it leaks until Python's garbage
-  collector eventually finalizes it, which is when aiohttp actually emits
-  the "Unclosed connector" warning. That GC-triggered timing is also why
-  the Sentry `transaction` tag looks arbitrary/misleading (`/api/health`
-  has no `aiohttp` call in it at all — see `app/main.py:434-452`, a plain
-  DB `SELECT 1`): Sentry is tagging whichever request happened to be
-  executing when the leaked connector's finalizer ran, not the request
-  that actually created the leak. This also means the existing
-  `BACKLOG.md` entry's read of the 2026-08-17 cluster ("very likely
-  explained by" that evening's one-off WO-10 OOM outage) undersells it —
-  these two fresh instances, three days later and unrelated to that
-  outage, show this is an ongoing, recurring leak, not a symptom that
-  resolved with the OOM fix. **Impact**: each leaked session holds an open
-  TCP connector/socket on the resolver service until GC runs; frequency
-  scales with how often Archive proxy calls fail (timeouts, connection
-  resets), which the existing entry's own cluster shows isn't rare during
-  Archive instability — a slow accumulation of unclosed connections on the
-  resolver, not an immediate crash. **Fix effort**: small — wrap
-  `proxy_get()`'s `session.get()` call in a try/except that closes the
-  session and re-raises on failure (the same "close in a finally" shape
-  `_proxy_to_archive()`'s own `body_iterator()` already uses for the
-  success path).
-
-- **Confirmed — new Search Console alert type ("Events structured data
-  issues", 8 issues, 2026-08-21 07:46 UTC) surfaces two real, cheaply
-  fixable gaps in the `Event` JSON-LD block, alongside one already-
-  intentional non-issue.** Flagged fields: missing `image`, `endDate`,
-  `organizer`, `description`, `eventStatus`. Traced directly against
-  `archive/templates/meeting_page.html`'s `Event` block (lines 131-159):
-  - `eventStatus` is **not a bug** — the block's own comment (lines
-    152-159) explains this is deliberately omitted because it (along with
-    `eventAttendanceMode`/`offers`) opts into Google's stricter Event
-    *rich-result* requirements (real address, ticketing info) this app
-    has no data for and isn't trying to qualify for. Already an
-    intentional, documented decision, correctly not re-litigated here.
-  - `description` **is a real bug**: the template already computes a
-    `description` variable in scope (`{% block meta %}`, line 10, also
-    used for `<meta name="description">` and `og:description`), but the
-    `Event` block only emits it in an `{% else %}` branch mutually
-    exclusive with `url` (lines 145-149: `{% if public_base_url %}"url":
-    ...{% else %}"description": ...{% endif %}`). Since `public_base_url`
-    is set in production (the same guard already gates the canonical
-    link/`og:url` above, which are confirmed live), `description` never
-    actually renders in the `Event` JSON-LD in practice — exactly
-    matching Search Console's "Missing field 'description'" flag. Fix is
-    trivial: emit both `url` and `description` unconditionally (or
-    `description` unconditionally, `url` still gated), not as an
-    either/or.
-  - `image` **is a real, cheap fix**: the `Event` block has no `image`
-    field at all, but the template already computes `thumbnail_url` in
-    scope (line 42, `page.video_url|youtube_thumbnail_url`) and reuses it
-    for `og:image`/`twitter:card`/`VideoObject.thumbnailUrl` above — same
-    YouTube-only-for-now caveat as those existing uses (mp4/m3u8 pages
-    still have no thumbnail pending the tracked `ffmpeg`-frame-extraction
-    work). Adding `{% if thumbnail_url %}"image": {{
-    thumbnail_url|tojson }}{% endif %}` to the `Event` block costs
-    nothing new — the data's already computed for this exact template.
-  - `organizer`/`endDate` have no natural real data source without more
-    work (no end-time/duration captured for the *event* itself — separate
-    from `VideoObject.duration`, which is the video's own runtime, not
-    the meeting's; `page.jurisdiction` could plausibly back an
-    `organizer: {"@type": "Organization", ...}` but that wasn't checked
-    for accuracy). **Impact**: Google's own email labels all of this
-    "non-critical" — "suggestions for improvement," not blocking
-    indexing. **Fix effort**: `description` fix and `image` addition are
-    both trivial (a few lines in an already-open template); `organizer`/
-    `endDate` need more thought before building, lower priority given
-    Google's own severity framing.
+One new finding, plus one reinforcement of an existing open item. (Two
+other 2026-08-21 findings from this run — the "Unclosed connector" Sentry
+cluster root cause and the "Events structured data issues" Search Console
+alert — were fixed directly the same day they were reviewed, so they
+never sat in `BACKLOG.md` as open items; the full write-up for both is in
+`BACKLOG_DONE.md`'s 2026-08-21 "Five bundled easy-win fixes" entry. Per
+this file's own promotion convention, they're removed from here rather
+than left as stale entries.)
 
 - **Reinforcing an existing open item — second real occurrence of the
   Render "HTTP health check failed" alert on `rtr-deeplink-archive`,

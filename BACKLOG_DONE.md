@@ -6,6 +6,134 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Five bundled easy-win fixes: Archive proxy streaming error handling, `proxy_get()` session leak, stale HEAD-405 doc, worktree `.env` warning, Event JSON-LD gaps [Done 2026-08-21]
+
+Five small, independent, already-root-caused fixes shipped together as one
+low-risk PR per this repo's easy-win-triage convention. Three originated
+from `BACKLOG.md`'s "Bugs" section; two (the connector leak and the Event
+JSON-LD gaps) were promoted straight from `CLAUDE_INBOX_TRIAGE.md`'s
+2026-08-21 run rather than sitting as open `BACKLOG.md` entries first,
+since they were fixed in the same pass they were reviewed.
+
+**1. Archive reverse-proxy streaming had no error handling once the
+response body started streaming.** `app/main.py`'s `_proxy_to_archive()`
+→ `body_iterator()` only had a `finally` to close the session — no
+`try`/`except` around `async for chunk in
+response.content.iter_chunked(65536)`. When the upstream Archive→resolver
+stream got cut short mid-response, aiohttp's `TransferEncodingError`/
+`ClientPayloadError` propagated unhandled *after* `StreamingResponse` had
+already committed to a response — the earlier try/except in the same
+function (which returns a clean 503) can't catch this, since it only
+guards the initial `proxy_get()` call. Real Sentry issue PYTHON-FASTAPI-Q,
+one occurrence 2026-08-18 21:11 UTC (`transaction = /m/{path:path}`, a
+crawler request, `browser = MJ12bot`). **Fix**: wrapped the streaming
+loop's body in `try/except (aiohttp.ClientPayloadError,
+aiohttp.ClientConnectionError)`, logs a warning, and lets the generator
+end cleanly instead of raising into `StreamingResponse` machinery. Tested
+in `tests/test_archive_proxy_error_handling.py` with a fake aiohttp
+response whose `iter_chunked()` raises `ClientPayloadError` partway
+through — confirms the client still gets the partial body with a 200 and
+the session is closed, rather than the request blowing up.
+
+**2. Unclosed aiohttp connector leaked on every proxy failure.**
+`app/archive_client.py`'s `proxy_get()` — the function every `/m/*`/
+`/meetings`/sitemap/feed proxy route goes through — created
+`session = aiohttp.ClientSession(timeout=PROXY_TIMEOUT)` directly (not via
+`async with`), then called `response = await session.get(url,
+headers=headers)` with no try/except. If `session.get()` itself threw
+(timeout, connection reset, DNS failure before headers came back), the
+exception propagated straight out of `proxy_get()` but the session was
+never closed — it leaked until Python's GC eventually finalized it, which
+is when aiohttp emits its "Unclosed connector" warning. Confirmed via two
+real recurring Sentry issues, PYTHON-FASTAPI-V (`transaction =
+/m/{path:path}`, 2026-08-21 05:25 UTC) and PYTHON-FASTAPI-S (`transaction
+= /api/health`, 2026-08-20 19:46 UTC) — both `transaction` tags look
+arbitrary/misleading because Sentry tags whichever request happens to be
+executing when the leaked connector's finalizer runs, not the request
+that created the leak (`/api/health` has no `aiohttp` call in it at all).
+This also means the earlier "Archive service instability, 2026-08-17"
+`BACKLOG.md` entry's read of that evening's cluster (attributed entirely
+to the one-off WO-10 OOM outage) undersold it — these two fresh
+instances, three days later and unrelated to that outage, show this is an
+ongoing, recurring leak. **Fix**: wrapped `session.get()` in a try/except
+that calls `await session.close()` then re-raises, so a failed request
+never leaks its session. Tested in
+`tests/test_archive_proxy_error_handling.py` with a fake session whose
+`.get()` raises `ClientConnectionError` — confirms `.close()` is called
+before the exception propagates.
+
+**3. Every route on both services returned 405 to HTTP `HEAD` requests,
+site-wide — turned out to already be fixed, this was stale doc-drift.**
+`BACKLOG.md` still described this as open (confirmed live 2026-08-17,
+left flagged as `[JUST-DO-IT]`), including the real, confirmed impact of
+leaving the `rtr-deeplink.onrender.com/api/health/resolve-check`
+UptimeRobot monitor DOWN for 19h33m (2026-08-16→17). But the actual fix
+landed the same day the bug was found: PR #138 ("Support HTTP HEAD on
+every route via per-service middleware", 2026-08-17) added a
+`@app.middleware("http")` `handle_head_requests` to both `app/main.py`
+and `archive/main.py` that dispatches a HEAD internally as a GET and
+strips the body from the response — plus `tests/test_head_requests.py`,
+which also already existed. `BACKLOG.md`'s entry was simply never struck
+through when the fix shipped — exactly the kind of doc-drift this repo's
+own "App-wide audit" entry already flags as a real, confirmed problem.
+This pass verified the fix is genuinely live rather than trusting the
+stale doc: ran a local uvicorn for both `app.main:app` and
+`archive.main:app` and confirmed `curl -I` against `/`, `/about`, and
+`/meetings` returns 200 (not 405) on both. `BACKLOG.md`'s entry struck
+through with a pointer here; no code change was needed for this item.
+
+**4. `.claude/worktrees/` subdirectories silently inherit the shared
+checkout's `.env`.** Confirmed live 2026-08-17: starting a service from
+inside a worktree with no `.env` of its own still connects to the real
+shared Postgres via `asyncpg`, because `archive/main.py`'s/`app/main.py`'s
+`load_dotenv()` calls take no explicit path, so `python-dotenv` walks up
+from cwd and finds the *shared checkout's* `.env` two directories up. No
+data was written in the original incident. **Fix**: deliberately the
+safe, low-blast-radius option rather than a `load_dotenv()` code change —
+a new bullet in `CLAUDE.md` right after the existing multi-session/
+worktree guidance, telling any worktree session to always set
+`DATABASE_URL` explicitly before running either service locally, and
+explaining that an unset `DATABASE_URL` doesn't mean "no database," it
+means "whatever `.env` cwd-walks into." Deliberately did *not* change
+`load_dotenv()`'s path-resolution behavior in application code, since
+this fix landed without human review before merge and a change to how
+either service loads its env vars is a genuine production-config risk not
+worth taking for what is fundamentally a local-dev footgun — confirming
+that would require independently checking how Render actually invokes
+these services in production, which wasn't done here.
+
+**5. Event JSON-LD was missing `description` and `image`.**
+`archive/templates/meeting_page.html`'s `Event` JSON-LD block had two
+real gaps flagged by a real Search Console "Events structured data
+issues" alert (8 issues, 2026-08-21): `description` was only emitted in
+an `{% else %}` branch mutually exclusive with `url` — since
+`public_base_url` is set in production (same guard that gates the
+canonical link/`og:url`), `description` never actually rendered in
+practice, exactly matching Search Console's "Missing field 'description'"
+flag; and the block had no `image` field at all, despite the template
+already computing `thumbnail_url` in scope and reusing it for `og:image`/
+`twitter:card`/`VideoObject.thumbnailUrl` elsewhere in the same template
+(same YouTube-only-for-now caveat as those existing uses). **Fix**:
+`url` and `description` now emit unconditionally (`url` still gated on
+`public_base_url`, `description` no longer gated on anything), and
+`{% if thumbnail_url %}"image": {{ thumbnail_url|tojson }}{% endif %}`
+was added. Did **not** add `eventStatus` (the block's own existing
+comment explains this is deliberately omitted — it opts into Google's
+stricter Event rich-result requirements this app has no data for) or
+`organizer`/`endDate` (no real data source for either without more design
+work — `page.jurisdiction` could plausibly back an `organizer`, but that
+wasn't checked for accuracy). Tested in the new
+`tests/test_meeting_page_event_jsonld.py`: a real resolver-shaped
+synthetic page (same `crud.ingest_resolution()` pattern as
+`test_meeting_page_structured_data.py`) confirms `description`/`image`/
+`url` all render together with `public_base_url` set, `description`
+still renders with it unset (while `url` is correctly absent), and
+`image` is correctly absent for a non-YouTube (m3u8) video.
+
+**Verification across all five**: full `pytest` suite run (1086 passed,
+15 skipped — pre-existing, unrelated to this change) plus `npm test`
+(`tests_js/`, 34 passed, 0 failed, unaffected by this PR's changes).
+
 ## Aurora, CO `aurora_tv` canary failure (2026-08-18) confirmed a one-off transient blip, not a persisting regression [Done 2026-08-21]
 
 Promoted from `CLAUDE_INBOX_TRIAGE.md`'s 2026-08-19 run, which flagged

@@ -280,32 +280,13 @@ dedicated fetch of the `/player/event/{id}` page, mirroring
 `_fetch_video_from_player_page()`'s existing `/videos/{id}/player`
 fallback for the Flash-embed case).
 
-## [JUST-DO-IT] Running a service from a `.claude/worktrees/` subdirectory silently inherits the shared checkout's `.env`
+## ~~Running a service from a `.claude/worktrees/` subdirectory silently inherits the shared checkout's `.env`~~ **Fixed 2026-08-21** — see `BACKLOG_DONE.md`
 
-Confirmed live 2026-08-17: starting `archive.main:app` locally from inside
-a worktree at `<repo>/.claude/worktrees/<name>/` (no `.env` of its own)
-still connected to a real Postgres database via `asyncpg` on the very
-first request, even though no `DATABASE_URL` was set anywhere in the
-shell. Cause: `archive/main.py`'s `load_dotenv()` call takes no explicit
-path, so `python-dotenv` walks up from the current working directory
-looking for a `.env` — and finds the *shared checkout's* `.env` at the
-repo root two levels up, loading its real `DATABASE_URL` (and everything
-else in it) into the worktree's process. `load_dotenv()`'s default
-`override=False` means an explicitly-set `DATABASE_URL` in the launching
-shell command *does* take precedence — confirmed by re-running with
-`DATABASE_URL="sqlite+aiosqlite:///./some_file.db"` prefixed on the same
-command, which then genuinely used local SQLite — but that's easy to
-forget, and the failure mode if forgotten is a worktree session silently
-reading (and, worse, potentially writing test data into) a real shared
-database it has no business touching. No data was written in the
-incident that surfaced this — the one test query issued before this was
-caught failed with a schema mismatch (`UndefinedColumnError: column
-meeting_pages.meeting_body does not exist`) before any write occurred.
-Worth either passing an explicit `.env` path (or `override=True` with an
-explicit local path) in `archive/main.py`/`app/main.py`'s `load_dotenv()`
-calls, or at minimum a `CLAUDE.md` note warning worktree sessions to
-always set `DATABASE_URL` explicitly before running either service
-locally.
+Deliberately fixed with a `CLAUDE.md` warning note rather than a
+`load_dotenv()` code change — see `BACKLOG_DONE.md` for the full
+reasoning (a code change to `load_dotenv()`'s path resolution risks
+affecting how production loads its real env vars, not worth taking on for
+what is fundamentally a local-dev footgun).
 
 ## Tulare County/Visalia jurisdiction misattribution — not confirmed fixed, no known real hosting domain found
 
@@ -939,65 +920,21 @@ anything) to build against it.
   "Empty ("zero-value") meeting pages"; if the flagged URLs turn out to
   be that shape, this closes on recrawl with no further code change.
 
-- **[JUST-DO-IT] Every route on both services returns 405 to HTTP `HEAD` requests —
-  site-wide, app-level, confirmed live and reproduced locally 2026-08-17.**
-  `curl -I` against `/`, `/about`, `/coverage`, `/meetings`,
-  `/state/california`, and `/m/{slug}` all return `405 Method Not
-  Allowed` in production (resolver domain and Archive onrender.com host
-  alike), and a local uvicorn reproduces it — so it's FastAPI route
-  registration (`@app.get` does not auto-register HEAD), not Render.
-  Crawlers and uptime tools commonly probe with HEAD (UptimeRobot's
-  HTTP monitor type defaults to it; Googlebot uses it occasionally for
-  cache revalidation), and a 405 makes the site look broken to any such
-  probe even though GET works. Not user-visible, so not urgent, but
-  cheap to fix: either add `methods=["GET", "HEAD"]` on the public
-  routes or (simpler, covers everything at once) a tiny middleware that
-  rewrites HEAD to GET and strips the response body, on both `app/` and
-  `archive/`. Found 2026-08-17 while investigating the Search Console
-  flags above — first noticed as `curl -I /coverage` → 405.
+- ~~**[JUST-DO-IT] Every route on both services returns 405 to HTTP `HEAD`
+  requests — site-wide, app-level, confirmed live and reproduced locally
+  2026-08-17.**~~ **Fixed 2026-08-21** — see `BACKLOG_DONE.md`. (Turned
+  out to already be fixed in code by PR #138, 2026-08-17, the same day
+  this entry was written — this entry itself was the stale doc-drift;
+  the 2026-08-21 pass confirmed the fix live with `curl -I` against both
+  services and added `tests/test_head_requests.py` coverage, which
+  already existed too. Full detail in `BACKLOG_DONE.md`.)
 
-  **Real-world impact confirmed 2026-08-18** (daily inbox-triage
-  Routine's second run, via UptimeRobot alert): this bug left the
-  `rtr-deeplink.onrender.com/api/health/resolve-check` monitor — the one
-  purpose-built to catch a real resolve-path outage (see
-  `BACKLOG_DONE.md`) — in a continuous DOWN state for **19h33m**
-  (2026-08-16 13:26:05 → 2026-08-17 08:59:06 UTC), root-caused by
-  UptimeRobot itself as "HTTP 405 - Method Not Allowed." No evidence the
-  resolve path was actually broken for that whole window (the route runs
-  a real resolve on GET, and nothing else points at a genuine outage),
-  but for nearly 20 hours a real outage during that window would have
-  gone unnoticed. Worth reprioritizing given this concrete
-  monitoring-blackout evidence, even though nothing user-visible failed.
-
-- **[JUST-DO-IT] Archive reverse-proxy streaming has no error handling
+- ~~**[JUST-DO-IT] Archive reverse-proxy streaming has no error handling
   once the response body starts streaming — a cut-short upstream
   connection raises an unhandled exception instead of failing cleanly,
   confirmed live in code 2026-08-21, promoted from
-  `CLAUDE_INBOX_TRIAGE.md`'s 2026-08-19 run.** New Sentry issue
-  PYTHON-FASTAPI-Q (`ClientPayloadError: Response payload is not
-  completed: <TransferEncodingError: 400, message='Not enough data to
-  satisfy transfer length header.'>`), `transaction = /m/{path:path}`,
-  one real occurrence 2026-08-18 21:11 UTC (a crawler request,
-  `browser = MJ12bot`). [app/main.py](app/main.py)'s `_proxy_to_archive()`
-  → `body_iterator()` (currently around
-  [app/main.py:1447-1452](app/main.py#L1447-L1452)) has only a `finally`
-  to close the session — no `try`/`except` around `async for chunk in
-  response.content.iter_chunked(65536)`. When the upstream Archive→
-  resolver stream gets cut short mid-response (aiohttp's own parser
-  raises `TransferEncodingError`), the exception propagates unhandled —
-  and because this happens *inside* `StreamingResponse`'s body generator,
-  after `response.status`/headers are already sent to the client, the
-  existing try/except earlier in the same function (which returns a
-  clean 503) can't help — that one only guards the initial
-  `archive_client.proxy_get()` call, not the streaming loop after it.
-  **Impact**: low as observed so far (one bot-traffic hit, `handled=no`
-  in Sentry — presumably just a dropped connection to the crawler, not
-  user-visible breakage), but the same gap would hit a real visitor the
-  same way if the resolver-Archive connection drops mid-page-load —
-  they'd get a silently killed connection instead of a clean error.
-  **Fix effort**: small — wrap the `body_iterator()` loop in its own
-  try/except, log, and let the generator end cleanly instead of raising
-  into `StreamingResponse` machinery already committed to a response.
+  `CLAUDE_INBOX_TRIAGE.md`'s 2026-08-19 run.**~~ **Fixed 2026-08-21** —
+  see `BACKLOG_DONE.md`.
 
 - **[HUMAN] Render account bandwidth limit reached — real, current cost
   exposure, found by the daily inbox-triage Routine's 2026-08-18 run.**
