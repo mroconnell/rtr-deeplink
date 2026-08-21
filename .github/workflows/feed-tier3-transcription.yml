@@ -1,4 +1,4 @@
-# Feeds 12 "tier 3" pages every 6 hours into the worker's existing
+# Feeds 48 "tier 3" pages every 6 hours into the worker's existing
 # auto-transcription idle-time mechanism (worker/main.py's
 # maybe_generate_auto_job(), see BACKLOG_DONE.md's 2026-08-09 entry) --
 # same pattern as feed-granicus-transcription.yml, for a different
@@ -19,12 +19,16 @@
 # rtr-business/research/video_hosting_catalog_combined.csv for the full
 # per-URL data this queue was built from.
 #
-# Batch size (12/6h) reuses feed-granicus-transcription.yml's cadence as
-# a starting default, not independently derived from this queue's real
-# median video length -- see feed_tier3_auto_transcription.py's own
-# docstring. Cron minute (:43) deliberately offset from the Granicus
-# job's :13 so the two scheduled jobs don't land in the same minute
-# (same reasoning as daily-report.yml / send-search-alerts.yml's offset).
+# Batch size (48/6h = 192/day) raised 2026-08-21 from the original
+# 12/6h -- sized to roughly match the two transcription workers' real
+# combined throughput (~10x realtime) now that a second one exists
+# (rtr-transcription-worker-2, render.yaml), instead of the old rate
+# being the actual bottleneck ahead of either worker -- see
+# feed_tier3_auto_transcription.py's own docstring for the real
+# measurements this was sized from. Cron minute (:43) deliberately
+# offset from the Granicus job's :13 so the two scheduled jobs don't
+# land in the same minute (same reasoning as daily-report.yml /
+# send-search-alerts.yml's offset).
 #
 # Requires the same two repo secrets feed-granicus-transcription.yml
 # already uses (Settings -> Secrets and variables -> Actions):

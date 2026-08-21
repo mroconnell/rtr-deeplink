@@ -3989,6 +3989,40 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   revisit the cadence (or disable the workflow) once this backlog figure
   is worked down.
 
+- **Tier-3 feed rate raised to match real two-worker throughput,
+  2026-08-21 — real measurements, not a guess.** Real scope, checked
+  live: 644 meetings on the site have no transcript
+  (`/meetings?has_transcript=false`, paged through in full), 562 of
+  those are currently eligible candidates (447 HLS, 91 direct MP4, 20
+  YouTube — only ~3.6% blocked on the separate residential-IP caption
+  path, 3 MP3), and a separate 1,630-URL tier-3 *discovery* queue
+  (`scripts/tier3_auto_transcription_queue.txt`) hadn't even reached the
+  Archive yet. At the old feed rate (12 pages/6h = 48/day,
+  `feed_tier3_auto_transcription.py`), draining that 1,630-entry queue
+  would've taken **~34 days** just to get the pages *into* the Archive —
+  regardless of how fast either worker could transcribe, since a page
+  isn't a transcription candidate until it's a real `MeetingPage` row.
+  Meanwhile real production measurements the same day showed each
+  worker processing a real 900s chunk in ~180-200s (**~5x realtime**,
+  ~10x combined for both), and a real 25-page sample of this exact queue
+  averaged ~70 minutes/meeting at an 88% feasibility rate — so the old
+  feed rate was the actual bottleneck, not worker capacity, by roughly
+  4-5x. Raised `BATCH_SIZE` 12 → 48 (192/day) in
+  `feed_tier3_auto_transcription.py` — sized to roughly match, not
+  wildly exceed, the two workers' real combined throughput; see that
+  script's own docstring for the full math. Estimated result: ~8.5 days
+  to feed the full 1,630-entry queue at the new rate, with the two
+  workers keeping pace with it rather than idling on a starved queue —
+  call it **~9-10 days for the whole combined backlog** (644 already-live
+  + 1,630 tier-3) at current throughput, not the ~34+ days the old
+  mismatch implied. Real quality caveat carried over from the "tiny"
+  model findings above still applies to all of this — quantity isn't the
+  only axis that matters here, and speed doesn't change the existing
+  quality tradeoffs already documented. Revisit if either side's real
+  throughput changes materially (worker plan/model-size/count change, or
+  this platform mix's real average duration turning out different at a
+  larger sample size).
+
 - ~~**[JUST-DO-IT] `find_auto_transcription_candidate()` streams the
   entire transcript corpus through the DB every 5 idle minutes — an N+1
   that loads full `segments` JSON per page.**~~ **Fixed 2026-08-17 (same
