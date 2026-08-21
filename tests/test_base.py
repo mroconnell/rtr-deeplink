@@ -21,6 +21,8 @@ from app.platforms.base import (
         ("https://yountvilleca.new.swagit.com/videos/394093", "swagit"),
         ("https://dublin.ca.gov/swagit-video-player?video_id=1", "swagit"),
         ("https://richmond.escribemeetings.com/Meeting.aspx?Id=1", "escribe"),
+        ("https://public.destinyhosted.com/agenda_publish.cfm?id=96635", "destinyhosted"),
+        ("https://public.destinyhosted.com/76793/agenda/agenda.cfm?seq=357", "destinyhosted"),
         ("https://assembly.ca.gov/media/2026", "ca_legislature"),
         ("https://senate.ca.gov/media/2026", "ca_legislature"),
         ("https://www.youtube.com/watch?v=abc123", "youtube"),
@@ -65,6 +67,47 @@ def test_find_platform_link_finds_a_swagit_link_in_a_plain_a_tag():
     html = '<html><body><a href="http://austintx.swagit.com/play/1/0/">Video</a></body></html>'
     result = find_platform_link(html, "https://www.austintexas.gov/council/2026/x-reg")
     assert result == ("http://austintx.swagit.com/play/1/0/", "swagit")
+
+
+def test_find_platform_link_finds_a_swagit_link_in_an_onclick_js_modal():
+    # Real shape confirmed live 2026-08-21: Destiny AgendaQuick
+    # (destinyhosted.com) renders its Swagit video link as
+    # `href="#" onclick="swagitPlay('https://...')"`, never as a literal
+    # href/src -- e.g. The Woodlands Township, TX (id=96635). Same class
+    # of gap as Legistar's window.open()/OpenTelerikWindow() onclick
+    # handling in legistar.py, but generalized here since this shared
+    # helper has more than one caller.
+    html = (
+        '<html><body><a href="#" '
+        'onclick="swagitPlay(\'https://woodlandstx.new.swagit.com/videos/396312#123\'); '
+        'return false;">Video</a></body></html>'
+    )
+    result = find_platform_link(html, "https://public.destinyhosted.com/agenda_publish.cfm?id=96635")
+    assert result == (
+        "https://woodlandstx.new.swagit.com/videos/396312#123",
+        "swagit",
+    )
+
+
+def test_find_platform_link_skips_a_different_link_on_the_same_platform():
+    # Real bug, confirmed live 2026-08-21, the moment destinyhosted.com
+    # became its own registered platform rather than "unknown": a
+    # destinyhosted agenda page's own pagination/month-nav links are also
+    # destinyhosted.com URLs (a different page, not the same URL, so the
+    # existing exact-URL same-page check doesn't catch it) -- matched
+    # *before* the real onclick swagitPlay(...) link further down the DOM,
+    # silently breaking every destinyhosted resolve. A same-platform
+    # candidate is never a real delegation target, exact-URL match or not.
+    html = (
+        '<html><body>'
+        '<a href="https://public.destinyhosted.com/agenda_publish.cfm?id=96635&get_month=7">Prev month</a>'
+        '<a href="#" onclick="swagitPlay(\'https://woodlandstx.new.swagit.com/videos/396312\')">Video</a>'
+        '</body></html>'
+    )
+    result = find_platform_link(
+        html, "https://public.destinyhosted.com/agenda_publish.cfm?id=96635&get_month=8"
+    )
+    assert result == ("https://woodlandstx.new.swagit.com/videos/396312", "swagit")
 
 
 def test_find_platform_link_resolves_relative_hrefs_to_absolute():
