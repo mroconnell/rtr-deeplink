@@ -909,11 +909,20 @@ async def get_transcription_queue_summary() -> dict:
     trip per MeetingPage, a real, pre-existing N+1 this doesn't need to
     inherit for a simple count).
 
-    `segments_added_last_24h` is Postgres-only (`jsonb_array_length`
+    `segments_added_last_24h` is Postgres-only (`json_array_length`
     computed server-side, never loading the segments JSON into Python --
     same "don't move the blob" discipline as `_good_default_transcript_
     exists()`) -- None on SQLite (dev/test), same dialect-feature-detect
-    pattern as `_fts_available()`.
+    pattern as `_fts_available()`. `json_array_length`, not
+    `jsonb_array_length` -- confirmed live 2026-08-21 (real production
+    500, `UndefinedFunctionError: function jsonb_array_length(json) does
+    not exist`): `TranscriptVersion.segments` is a plain SQLAlchemy
+    `JSON` column, which maps to Postgres `json`, not `jsonb` -- the two
+    types have separate, non-interchangeable function families. This
+    Postgres-only branch has no SQLite equivalent to exercise it in the
+    test suite (dialect-gated to None there by design), so this specific
+    mistake wasn't caught until a real request hit it -- worth a live
+    curl re-check after any future change here, not just `pytest`.
     """
     async with async_session() as session:
         active_rows = (
@@ -962,7 +971,7 @@ async def get_transcription_queue_summary() -> dict:
                     select(
                         func.coalesce(
                             func.sum(
-                                func.jsonb_array_length(TranscriptVersion.segments)
+                                func.json_array_length(TranscriptVersion.segments)
                             ),
                             0,
                         )
