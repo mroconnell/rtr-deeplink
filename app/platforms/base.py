@@ -350,14 +350,13 @@ def find_platform_link(
             if not value:
                 continue
             candidate = urljoin(page_url, value)
-            if urlparse(candidate)._replace(fragment="").geturl() == page_url_no_fragment:
+            if (
+                urlparse(candidate)._replace(fragment="").geturl()
+                == page_url_no_fragment
+            ):
                 continue
             platform = detect_platform(candidate)
-            if (
-                platform == "unknown"
-                or platform in exclude
-                or platform == own_platform
-            ):
+            if platform == "unknown" or platform in exclude or platform == own_platform:
                 continue
             return candidate, platform
     return None
