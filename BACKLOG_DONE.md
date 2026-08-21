@@ -6,6 +6,129 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Meeting-URL discovery for the 212 domain-finder hits: real "one/two hop from tenant" tooling built, a Legistar bug found via live dry-run, Municode Meetings' real (not assumed) fallback behavior confirmed, and a new destinyhosted.com lead resolved to a real Swagit meeting [Done 2026-08-21]
+
+Follow-on to `find_gov_domains.py`'s 212 real government domains found for
+previously-unknown jurisdictions. None of those 212 `meeting_url`s are an
+individual, resolvable meeting -- every one is a calendar/homepage, and
+`civicclerk.py`/`civicweb.py`/`legistar.py` all require an existing
+event ID already in the URL (none auto-enumerate a calendar). Built the
+"given a bare tenant, find one real meeting" hop, verified end-to-end via
+`scripts/bulk_ingest.py --dry-run`, then found a much bigger structural
+win by reusing this project's own existing `discover_from_dotgov.py`/
+`dotgov_probe.py` crawler (built for the original CISA `.gov` sweep)
+against the same 212 domains, rather than re-inventing a cruder one-hop
+crawl.
+
+**`~/Documents/rtr-business/research/meeting_url_finder.py`** (new,
+standalone, resumable, same conventions as `find_gov_domains.py`) ports
+two already-proven methods from this directory's own prior research
+scripts (`civicclerk_live_lookup.py`, `civicweb_meetingtypelist_lookup.py`)
+and adds one new one:
+- **Legistar** has a real, public, unauthenticated API not previously
+  documented anywhere in this repo:
+  `https://webapi.legistar.com/v1/{tenant}/events`. **Real bug found via
+  a live dry-run failure, not assumed**: the first version queried
+  `$orderby=EventDate desc` with no date filter, which can return a
+  *future*, not-yet-happened meeting -- confirmed live on
+  `dekalbcountyga`, whose top result (`EventDate: 2026-08-25`, `today`
+  was 2026-08-21) had a real `a.videolink` element on the page with
+  `onclick=None` and text "Not available", despite the API's own
+  `EventVideoStatus: "Public"` field (confirmed via direct inspection:
+  that field means "video is expected to be public," not "a video exists
+  right now"). Fixed by adding `$filter=EventDate lt datetime'{today}'`,
+  matching the same reasoning CivicClerk's own script already applies.
+  After the fix: 5/5 Legistar tenants got a real past meeting; 2/5
+  (Cleveland County OK, Baldwin County AL) resolved cleanly end-to-end via
+  `bulk_ingest.py --dry-run` (real titles/dates, delegating to Granicus);
+  the other 3 (DeKalb GA, Waukesha WI, Dane WI) are genuine per-tenant
+  negatives -- confirmed by hand, their specific chosen meeting's own
+  `a.videolink` really does say "Not available" on the live page, not a
+  script bug.
+- **CivicClerk**: 3/3 tenants attempted, 2 found (Pueblo County CO,
+  Columbia city SC), 1 honest negative (Carroll County GA, checked, no
+  video in the 10 most recent events). Both found rows resolved cleanly
+  via `bulk_ingest.py --dry-run`.
+- **CivicWeb**: 1/1 found (Walton County FL), resolved cleanly (delegates
+  to a specific YouTube video, not a channel).
+- **Granicus, Viebit** (1 tenant each): no established "bare tenant ->
+  real meeting" method exists anywhere in this repo for either (confirmed
+  via research, not assumed) -- logged as `no_method_available` with the
+  specific reason, not silently skipped. Real follow-on work, not done
+  here.
+- **Municode Meetings** (2 tenants, Sheboygan County WI + Walton County
+  GA): confirmed **no adapter is registered at all** in `app/platforms/`
+  (no file, no `__init__.py`/`base.py` reference), correcting an earlier
+  assumption in this same file's "50 largest cities" entry that this
+  would cleanly raise `UnsupportedPlatformError`. Traced the real code
+  path instead: `detect_platform()` has no branch for
+  `municodemeetings.com` at all, so it returns `"unknown"`, which
+  `register_all_finders()` maps to `GenericFallbackAssetFinder` (not an
+  error) -- whose tier-1 check scans for any embedded YouTube video ID in
+  the page HTML. Municode Meetings' real meeting-detail pages embed video
+  via `<iframe id="mcc_agenda_video" src="...">` (already documented in
+  `MUNICODE_MEETINGS_ENUMERATION.md`, confirmed YouTube on a live Bristol
+  RI example), so these tenants may already resolve today at reduced
+  quality (no dedicated jurisdiction/agenda parsing) rather than failing
+  outright. Found a real, live example via the existing
+  `municode_meetings_video_finder.py` crawler (Walton County GA ->
+  `https://waltoncounty-ga.municodemeetings.com/bc-pc/page/planning-commission-meeting-13`
+  -> a real YouTube embed) and confirmed `detect_platform()` does return
+  `"unknown"` for it as predicted; the actual end-to-end resolve hit a
+  real, persistent YouTube `429 Too Many Requests` from this session's
+  own IP before a clean success could be confirmed (this repo has
+  extensive prior documentation of YouTube rate-limiting/IP-blocking
+  elsewhere in BACKLOG_DONE.md) -- routing confirmed, final resolve not
+  yet re-verified. A dedicated Municode Meetings adapter is still the
+  better long-term fix (real jurisdiction/agenda parsing), but the gap is
+  softer than assumed.
+- Separately, re-classifying all 212 domains through the real
+  `detect_platform()` (via the new
+  `~/Documents/rtr-business/research/classify_platforms.py`, built to be
+  reusable against any future domain list, not just today's) surfaced **7
+  direct YouTube links** the original domain-finder's homepage crawl had
+  already found but weren't in the original hand-picked 13 -- these need
+  no "hop" at all. 3 were channel/streams pages (correctly rejected, no
+  video ID); the other 4 individual-video URLs hit the same YouTube 429
+  as above before a clean dry-run could confirm them.
+
+**Bigger structural win**: rather than build a second, cruder "crawl the
+homepage for a meeting link" step, reused this project's own already-
+mature `discover_from_dotgov.py`/`dotgov_probe.py` (built for the
+original 9,766-row CISA `.gov` sweep, see `DOTGOV_DISCOVERY.md`) directly
+against the 212 domain-finder hits, by reshaping them into that script's
+expected input CSV. Real result: **97 of 212 (46%) came back
+`has_video=yes`** via that crawler's calibrated vendor/self-hosted-video
+detection -- a large jump over the ~18 found by hand-checking known
+platform domain suffixes alone. All 97 merged into
+`jurisdiction_coverage.csv` (`shares_video=True`, plus `agenda_url`/
+`platforms` where not already populated, never overriding an existing
+value). Turning each of those 97 into a fully resolvable individual
+meeting URL (most `agenda_url`s are a landing page, not the specific
+video URL itself -- only 5/97 detect as an immediately-resolvable known
+platform via `detect_platform()`) is real follow-on work, not done this
+session.
+
+**`destinyhosted.com` (Destiny AgendaQuick) resolved -- not a new
+platform to build, an aggregator that links to already-supported ones.**
+Found as a recurring host across `domain_finder_results.csv` (2 tenants)
+via the new, reusable
+`~/Documents/rtr-business/research/find_recurring_unknown_domains.py`
+(imports `detect_platform()` directly from this repo so it can never
+drift out of sync with the real platform list). Manually fetched both
+real URLs (Pinal County AZ, Knox County TN) rather than assuming: Pinal
+County's page links to 4 real, specific Swagit video URLs on
+`pinalcountyaz.new.swagit.com` (already supported) plus one specific
+YouTube live video -- confirmed by checking the raw HTML for actual
+`href` targets, not a page-summary tool's prose (a real false-positive
+risk flagged mid-investigation: a generic tool summary can't distinguish
+a specific-video link from a channel/nav link). Knox County's page
+loaded fine but genuinely has no video linked this month -- a real
+negative. Pushed one of Pinal County's real Swagit URLs through
+`bulk_ingest.py --dry-run` and confirmed it resolves cleanly (real title,
+real date). No adapter work needed; `destinyhosted.com` itself doesn't
+need one.
+
 ## Real Charlotte, NC Cablecast meeting mis-attributed to Detroit, MI on a live Archive page — stale ingest, not a live bug; found via user's own manual 50-largest-cities research, fixed and verified [Done 2026-08-20]
 
 Found while cross-referencing the user's manually-researched table of the
