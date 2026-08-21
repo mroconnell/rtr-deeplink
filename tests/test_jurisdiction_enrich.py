@@ -1263,3 +1263,140 @@ def test_tulare_county_visalia_remains_an_unconfirmed_residual_gap():
         )
         is None
     )
+
+
+# --- Bugs #1 and #3, fixed 2026-08-21: `finalize_jurisdiction()` now
+# cross-checks BOTH its top-level literal-match branch and its
+# `_trim_repair()` branch against a validated subdomain-derived candidate,
+# not just `extract_jurisdiction_chain()`'s own per-tier candidates (that
+# cross-check, added 2026-08-19 for Courtenay/Victorville above, only ever
+# ran on candidates the chain itself produced -- a caller that invokes
+# `finalize_jurisdiction()` directly on already-stored text, e.g.
+# `archive/db/crud.py`'s backfill/reprocessing passes, got no such
+# protection at all). See that function's own updated docstring for the
+# full reasoning; both real cases below are root-caused and described in
+# BACKLOG_DONE.md's "jurisdiction-bleed" entries.
+
+
+def test_finalize_jurisdiction_trim_repair_prefers_subdomain_over_wrong_real_city():
+    # Bug #1, real confirmed-live case: Shelburne, ON's raw stored value
+    # ("Brantford regarding Professional Activity", real eScribe subdomain
+    # pub-shelburne.escribemeetings.com) used to trim-repair confidently to
+    # "Brantford" -- a real Ontario town, just not Shelburne's -- since
+    # "regarding" is bleed-shaped (lowercase-initial word) and "Brantford"
+    # validates on its own. The subdomain's own validated identity
+    # ("Shelburne") now wins outright since it disagrees with the trim.
+    # No province suffix: "Shelburne" is genuinely ambiguous (both a real
+    # Nova Scotia town and a real Ontario town validate), so this
+    # correctly declines to guess a state -- same "decline rather than
+    # guess" policy as `test_extract_jurisdiction_chain_courtenay_bc_not_burlington()`
+    # above.
+    result = je.finalize_jurisdiction(
+        "Brantford regarding Professional Activity",
+        netloc="pub-shelburne.escribemeetings.com",
+    )
+    assert result.jurisdiction == "Shelburne"
+    assert result.confidence == "repaired"
+
+
+def test_finalize_jurisdiction_trim_repair_agrees_with_subdomain_is_unaffected():
+    # Control for the fix above: Peterborough's OWN real eScribe subdomain
+    # (pub-peterborough.escribemeetings.com) trims the exact same
+    # "Peterborough Attachments" shape down to "Peterborough" -- here the
+    # subdomain-derived candidate AGREES with the trim result, so the
+    # cross-check is a pure no-op and this must still repair exactly as
+    # `test_finalize_jurisdiction_known_junk_tail_words_are_repaired()`
+    # (tested before this fix existed) already established.
+    result = je.finalize_jurisdiction(
+        "Peterborough Attachments", netloc="pub-peterborough.escribemeetings.com"
+    )
+    assert result.jurisdiction == "Peterborough, ON"
+    assert result.confidence == "repaired"
+
+
+def test_finalize_jurisdiction_trim_repair_protects_uxbridge_from_peterborough_bleed():
+    # Same real bled text as Peterborough's own case above ("Peterborough
+    # Attachments"), but on a DIFFERENT real eScribe customer's domain
+    # (Uxbridge, ON) -- this is the exact scenario BACKLOG_DONE.md's
+    # original bug writeup warned was only "incidentally" safe (Uxbridge's
+    # real tail happened to be short enough to dodge the word-run
+    # threshold): if the tail had been long enough to trigger the trim, it
+    # "would have confidently repaired to Peterborough the same way" --
+    # i.e. a real but WRONG city, same shape as Shelburne/Brantford. With
+    # the subdomain cross-check now in place, even a hypothetical
+    # long-enough bleed tail can't do that: the domain's own validated
+    # identity ("Uxbridge") wins over the coincidentally-real trim result.
+    result = je.finalize_jurisdiction(
+        "Peterborough Attachments", netloc="pub-uxbridge.escribemeetings.com"
+    )
+    assert result.jurisdiction == "Uxbridge, ON"
+    assert result.confidence == "repaired"
+
+
+def test_finalize_jurisdiction_top_level_match_prefers_subdomain_for_two_tier_region():
+    # Bug #3, real confirmed-live case: Peel Region, ON
+    # (pub-peelregion.escribemeetings.com, a real "Regional Council"
+    # meeting with 1101 real caption segments -- eScribe's first-ever
+    # confirmed populated-caption example) has a real agenda mentioning
+    # "Town of Caledon" (a real, validating constituent lower-tier town)
+    # repeatedly -- that text VALIDATES DIRECTLY (no trim/repair needed at
+    # all), so it used to be accepted at finalize_jurisdiction()'s
+    # top-level literal-match branch before ever reaching a subdomain
+    # cross-check. Now that the top-level branch is cross-checked too,
+    # the subdomain's own validated identity ("Peel Region", now resolvable
+    # since scripts/build_jurisdiction_data.py added Ontario's real
+    # Durham/Peel/Waterloo regional municipalities -- see BACKLOG_DONE.md)
+    # wins over the constituent-town mention.
+    result = je.finalize_jurisdiction(
+        "Town of Caledon, ON", netloc="pub-peelregion.escribemeetings.com"
+    )
+    assert result.jurisdiction == "Peel Region, ON"
+    assert result.confidence == "repaired"
+
+
+def test_finalize_jurisdiction_top_level_match_agrees_with_subdomain_is_unaffected():
+    # Control: Caledon's OWN real eScribe subdomain (Caledon is a real
+    # eScribe/iSiLIVE customer in its own right -- see BACKLOG_DONE.md's
+    # eScribe caption-fix entry) agrees with its own "Town of Caledon"
+    # text, so the cross-check must be a pure no-op here.
+    result = je.finalize_jurisdiction(
+        "Town of Caledon, ON", netloc="pub-caledon.escribemeetings.com"
+    )
+    assert result.jurisdiction == "Town of Caledon, ON"
+    assert result.confidence == "validated"
+
+
+def test_extract_jurisdiction_chain_peel_region_not_caledon():
+    # End-to-end version of the top-level cross-check test above, through
+    # the real chain a live eScribe resolve actually calls
+    # (app/platforms/escribe.py's own `_extract_metadata()`). Page text is
+    # synthetic (trimmed to the one real, confirmed shape: "Town of
+    # Caledon" appearing in Peel Region's own agenda body, see
+    # BACKLOG.md/BACKLOG_DONE.md for the real page's full description) --
+    # reuses the real, confirmed subdomain/jurisdiction relationship, not
+    # an invented one.
+    page_text = (
+        "Regional Council Agenda. Report from the Town of Caledon "
+        "regarding regional infrastructure funding. Item 5.2."
+    )
+    html = f"<html><body><p>{page_text}</p></body></html>"
+    result = je.extract_jurisdiction_chain(
+        page_text=page_text,
+        html=html,
+        url="https://pub-peelregion.escribemeetings.com/Meeting.aspx?Id=1",
+    )
+    assert result == "Peel Region, ON"
+
+
+def test_validated_label_extract_resolves_ontario_regional_municipalities():
+    # Direct unit test of the new curated data
+    # (scripts/build_jurisdiction_data.py's
+    # build_canada_regional_municipalities()) -- confirms all 3 real,
+    # confirmed-in-production customers (BACKLOG.md's StatsCan
+    # completeness-gap entry: a full sweep of all 176 real eScribe + 253
+    # real Granicus subdomains found Durham/Peel/Waterloo regional
+    # municipalities among them) now resolve via the real wordninja-split
+    # subdomain shape.
+    assert je.validated_label_extract("pub-peelregion") == "Peel Region"
+    assert je.validated_label_extract("pub-durhamregion") == "Durham Region"
+    assert je.validated_label_extract("pub-waterlooregion") == "Waterloo Region"
