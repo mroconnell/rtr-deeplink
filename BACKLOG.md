@@ -392,6 +392,20 @@ else; do whenever convenient, no particular order.
 - **[HUMAN] P5: confirm a real `send-search-alerts` cron run actually sent a real
   email** to a real saved search — the workflow runs daily and reports
   success, but nobody's checked an inbox for the actual email.
+- **[HUMAN] Render "HTTP health check failed (timed out after 5 seconds)"
+  on `rtr-deeplink-archive` (production) has now recurred twice — 2026-08-19
+  13:17:28 UTC and 2026-08-20 21:38:36 UTC, ~32 hours apart — promoted from
+  `CLAUDE_INBOX_TRIAGE.md`.** Distinct from the already-diagnosed 2026-08-17
+  instability cluster (memory-limit restarts, proxy `TimeoutError`,
+  `RuntimeError: Response content shorter than Content-Length`, DB-shutdown
+  error) — this is a plain health-check timeout, no matching root cause
+  identified yet. Neither occurrence had a "still down" follow-up email, and
+  Render's own alert text says this class of alert often self-resolves, so
+  real duration/user impact is unconfirmed without Render dashboard/log
+  access. Two occurrences ~32h apart is mild evidence toward a pattern
+  rather than a one-off blip, not proof either way. Worth a quick check of
+  the Archive's Render logs/memory graph around both timestamps next time
+  anyone's in the Render dashboard.
 - **[JUST-DO-IT] `rtr-business/BUSINESS_OVERVIEW.md` still says "Not built yet: ...
   saved-search alert emails"** — stale; that feature shipped 2026-08-13
   (PR #30) and runs daily. `README.md`'s own copy of this claim was
@@ -662,6 +676,33 @@ anything) to build against it.
 
 ## Bugs
 
+- **[NEEDS-AUDIT] Worker can produce a chunk `extract_chunk_audio()` calls
+  successful that's actually truncated/corrupt — surfaced via Sentry issue
+  PYTHON-FASTAPI-R, 2026-08-19 15:57:32 UTC, promoted from
+  `CLAUDE_INBOX_TRIAGE.md`.** Real error: `InvalidDataError: [Errno
+  1094995529] Invalid data found when processing input:
+  '/tmp/rtr_transcribe_hwou97hq/chunk_1.mp3'`, `server_name =
+  srv-d9rluvqfngtc73dmrbug` (the transcription worker), `handled = yes`,
+  app log "Job 287: transcription failed for chunk 2/21 (will retry on
+  next poll)". Root cause traced to real code: `worker/main.py`'s
+  per-chunk loop (~lines 237-243) only guards `extract_chunk_audio()`'s
+  ffmpeg call via return-value truthiness — this occurrence got past that
+  check (ffmpeg reported success) but the resulting file was invalid when
+  `transcription_engine.py`'s `_transcribe_sync()` tried to decode it via
+  PyAV (`av.container.core.open`), landing in the broader `except
+  Exception` at worker/main.py:250-256 (logs + retries next poll, hence
+  `handled = yes`, not a crash). **Impact**: caught/retried automatically,
+  not user-visible by itself; whether job 287's retry for chunk 2/21
+  actually succeeded is unconfirmed (no DB access from the triage
+  Routine). First occurrence of this exact signature as of 2026-08-19 —
+  may be a one-off transient (likely an interrupted read from the source
+  media stream during ffmpeg extraction), not yet confirmed as recurring.
+  **Fix, if it recurs**: have `extract_chunk_audio()` sanity-check its own
+  output (non-zero size, or a quick `ffprobe`) rather than trusting
+  ffmpeg's exit code alone, so a corrupt chunk retries immediately instead
+  of failing over to the whisper-decode step first. Not fixed yet —
+  logged as a real, traced gap, not designed/built this pass.
+
 - ~~**[JUST-DO-IT] Jurisdiction-bleed, confirmed cross-platform (Granicus
   AND eScribe)**~~ **Fixed 2026-08-17 — Canadian city/town data table
   (5,028 real Statistics Canada rows) + a Title-Case/ALL-CAPS word-run
@@ -773,27 +814,56 @@ anything) to build against it.
 - **[JUST-DO-IT] Bare/state-suffixed jurisdiction duplicates: root cause
   fixed and 12 of 16 examples resolved 2026-08-21 (see BACKLOG_DONE.md's
   matching entry for the full investigation) — two residuals still
-  open.** (1) **Backfill not yet run against production.** The fix
-  reuses the already-existing `GET
-  /internal/jurisdiction/bleed-backfill-candidates` /
-  `POST /internal/jurisdiction/backfill-apply` endpoints (no new code) —
-  but this couldn't be merged/deployed as part of that investigation
-  (scope limit for that session), so the already-published duplicate
-  rows are still live and wrong today. Once the fix PR merges and
-  deploys: run the GET audit first to sanity-check the expected diff
-  (~13 rows: the 12 newly-registered domains from BACKLOG_DONE.md's
-  entry, minus any where a page was re-resolved in the meantime, plus
-  any other row `_fill_missing_state()` now happens to resolve), then
-  `POST .../backfill-apply?dry_run=false` to actually write it. (2)
-  **3 of the original 16 examples (Ashland, Milton, San Jose) still have
-  no confirmed real state** — each was checked live (their real source
-  page and, where relevant, its channel-root page) and none carries
-  reliable state-identifying text; Ashland sits on a shared/generic
-  TelVue player domain, San Jose's Granicus pages are silent on state
-  entirely, and Milton is genuinely uncertain between FL and eScribe's
-  real Ontario, Canada customer base. Needs either a positive text match
-  found some other way, or a second confirmed example before a domain
-  registry entry can be added without guessing.
+  open, and a NEW real bug found 2026-08-21 running the GET audit that
+  BLOCKS just running the backfill as originally planned.** (1)
+  **Backfill audit run against production 2026-08-21 — found far more
+  candidates than expected, some of them genuinely wrong, so the write
+  step (`POST .../backfill-apply?dry_run=false`) was deliberately NOT
+  run.** `GET /internal/jurisdiction/bleed-backfill-candidates` returned
+  635 candidates (not the ~13 expected), of which 552 are confidence-field-
+  only changes (identical jurisdiction text, `current_confidence: None`
+  → a real confidence value — likely harmless, a one-time backfill of a
+  field that didn't exist yet when those rows were first written) and 83
+  are real jurisdiction-text changes. Of those 83, 68 are simple, clearly-
+  safe state-suffix appends (e.g. "Dublin" → "Dublin, CA", "Airdrie" →
+  "Airdrie, AB") — but the remaining 15 include **at least two confirmed-
+  wrong repairs that would corrupt already-correct live pages**: `page_id
+  250` ("Alameda County, CA" → **"Bart, CA"** — a BART board-of-directors
+  meeting; "Bart" is coincidentally a real tiny Census place name
+  unrelated to this meeting, an acronym/place-name collision, not a
+  repair) and `page_id 1108` ("Modesto, CA" → **"Agenda, CA"** — "Agenda"
+  is a real small Kansas town name that happens to collide with the
+  literal word "agenda" appearing somewhere in the source text). Also
+  suspect in the same 15, not yet independently confirmed either way:
+  `page_id 279` ("City of New Port Richey, FL" → "Clearwater, FL" — two
+  distinct real FL cities, looks like a wrong reassignment, not a
+  repair), plus several consolidated-city-county cases that silently
+  drop the state suffix instead of adding one (`Jefferson County` →
+  `Louisville`, `Davidson County` → `Nashville`, `Louisville / Jefferson
+  County Metro` → `Louisville`) inconsistent with `Nashville-Davidson
+  County, TN` → `Nashville, TN` right above them getting a proper suffix.
+  **Real, newly-confirmed gap**: `finalize_jurisdiction()`'s repair path
+  validates a candidate purely against the Census/StatsCan place table
+  with no guard against a short, common, or acronym-shaped string
+  coincidentally matching an unrelated real small place — this is a
+  distinct failure mode from anything the original jurisdiction-bleed
+  investigations found, and needs its own fix (something like: require a
+  minimum edit-distance/containment relationship between the current and
+  candidate values, or exclude single common-English-word matches) before
+  this backfill can be safely applied in bulk. **Until that guard exists,
+  do NOT run `backfill-apply?dry_run=false` against the full candidate
+  set** — at most, the 68 confirmed-safe simple-suffix-append rows could
+  be applied individually/filtered, but the endpoint has no per-ID filter
+  today, so even that needs a small endpoint change first. (2) **3 of the
+  original 16 examples (Ashland, Milton, San Jose) still have no
+  confirmed real state** — each was checked live (their real source page
+  and, where relevant, its channel-root page) and none carries reliable
+  state-identifying text; Ashland sits on a shared/generic TelVue player
+  domain, San Jose's Granicus pages are silent on state entirely, and
+  Milton is genuinely uncertain between FL and eScribe's real Ontario,
+  Canada customer base. Needs either a positive text match found some
+  other way, or a second confirmed example before a domain registry
+  entry can be added without guessing.
 
 - **[NEEDS-AUDIT] Same sweep found one likely truncation case — the
   opposite failure from bleed (losing real characters, not gaining
