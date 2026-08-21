@@ -738,7 +738,14 @@ Archive web services already handle per request. Neither of those is a
 place to run something that might take hours, so a third, persistent
 service (`worker/`, a Render Background Worker — the first paid, always-on
 piece of infrastructure this project has needed) exists just to grind
-through transcription jobs in the background.
+through transcription jobs in the background. A second, identically-
+configured replica (`rtr-transcription-worker-2` in `render.yaml`) can run
+alongside it during a backlog catch-up window — real, distinct Render
+services rather than `numInstances` scaling on one, since the two need to
+differ in exactly one env var; see that file's own comment on the second
+service block for why, and `claim_next_chunk()`'s docstring
+(`archive/db/crud.py`) for why job/chunk claiming is already safe for any
+number of concurrent worker processes.
 
 **The flow, end to end:**
 1. **Feasibility check** (`POST /api/transcription/check-feasibility`,
@@ -885,6 +892,44 @@ pushed successfully, and the AI TRANSCRIPT disclaimer + real timestamped
 segments (starting "We're live." at 0:00, ending with real adjournment/
 motion dialogue) are live on the actual public page. The meeting no
 longer appears in a follow-up `/internal/transcription-backlog` call.
+
+**Giving both cloud workers real concurrent work, added 2026-08-21.**
+`worker/`'s own idle-time auto-generation (`maybe_generate_auto_job()`)
+only ever keeps ~1 job in flight at a time — it's only invoked once the
+entire active job table is empty. A single job's chunks are inherently
+serial (`claim_next_chunk()` claims one job's next chunk at a time), so a
+second worker (`rtr-transcription-worker-2`, see "Why this needs a third
+service" above) only gets real parallel throughput once ≥2 different jobs
+are queued at once. `scripts/bulk_queue_transcription_backlog.py` closes
+that gap: it pulls several candidates from the same
+`GET /internal/transcription-backlog` endpoint the script above uses and
+creates several real `TranscriptionJob` rows at once via
+`POST /internal/transcription/create-job`, at the low-priority tier that
+route now exposes (`priority`, added to `TranscriptionCreateJobRequest` —
+previously only `worker/main.py`'s own in-process auto-generation call
+could use `PRIORITY_LOW`).
+
+```bash
+python scripts/bulk_queue_transcription_backlog.py --dry-run
+python scripts/bulk_queue_transcription_backlog.py
+python scripts/bulk_queue_transcription_backlog.py --limit 4
+```
+
+Batch size defaults to 8, deliberately well under `archive/db/crud.py`'s
+global `MAX_CONCURRENT_TRANSCRIPTION_JOBS = 15` (shared across every
+priority tier) — leaves real headroom so a live visitor's own
+transcription request never hits `too_many_active_jobs` during a catch-up
+run, and `PRIORITY_LOW` means a real request still jumps the queue ahead
+of whatever this script queued at the very next claim, regardless of how
+full the batch is. `clerk_verified=True` on each created job (this script
+holds `ARCHIVE_INGEST_TOKEN`, the same trusted-internal-caller position
+the resolver itself is in after its own real Clerk check) skips the
+confirmation-email step entirely — without it, a job would sit at
+`pending_confirmation` until someone clicked a link, defeating the
+purpose. Manually re-run, not cron'd, since the two-worker setup this
+feeds is meant to be temporary — see the script's own module docstring for
+the full reasoning, and `BACKLOG.md` for the residual auto-generation
+race this pairs with.
 
 ## Accounts (Clerk)
 
@@ -1438,11 +1483,14 @@ shared_static/
 
 `worker/` is a third, independent service (own `requirements.txt`, own
 Docker-based deploy — see "On-demand transcription" above) for processing
-transcription jobs. Unlike the resolver/Archive split, it deliberately
-imports from both of the other two: `archive.db`/`archive.utils.email`
-directly (it *is* Archive backend logic, just in a process shape the
-Archive's own web dyno can't offer) and `app.platforms` (read-only, to
-re-resolve a fresh media URL before each chunk).
+transcription jobs — it can run as more than one Render service from this
+same codebase (`rtr-transcription-worker` / `rtr-transcription-worker-2`
+in `render.yaml`) sharing one job queue, see that file's own comment.
+Unlike the resolver/Archive split, it deliberately imports from both of
+the other two: `archive.db`/`archive.utils.email` directly (it *is*
+Archive backend logic, just in a process shape the Archive's own web dyno
+can't offer) and `app.platforms` (read-only, to re-resolve a fresh media
+URL before each chunk).
 
 ```
 worker/

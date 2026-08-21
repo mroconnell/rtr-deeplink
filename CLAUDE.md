@@ -227,6 +227,14 @@ under everything else. This repo extracts and fixes just that part.
   substring intact (or update `outcomes.py` to match) — otherwise that
   warning silently stops being classified correctly and falls through to
   a more generic bucket.
+- **`render.yaml` can define more than one `type: worker` transcription
+  service** (`rtr-transcription-worker` / `rtr-transcription-worker-2`,
+  added 2026-08-21 for backlog catch-up) — a distinct service block per
+  worker, not `numInstances` scaling on one, since the two need to differ
+  in exactly one env var (`AUTO_TRANSCRIPTION_REQUESTER_EMAIL`); see that
+  file's own comment on the second block for the full reasoning, and
+  `BACKLOG.md`'s matching entry for the residual auto-generation race
+  this avoids.
 
 - **This repo is sometimes worked on by more than one session/dev at the
   same time — check before assuming the working tree is yours alone.**

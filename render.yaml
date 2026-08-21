@@ -287,6 +287,78 @@ services:
       - key: AUTO_TRANSCRIPTION_REQUESTER_EMAIL
         sync: false  # optional -- idle-time auto-generation (worker/main.py) is silently disabled when unset; set to receive its completion-email activity digest
 
+  # Second replica of the transcription worker above -- added 2026-08-21
+  # to work down the ~1600+-meeting untranscribed backlog faster during a
+  # bounded catch-up window (see BACKLOG.md's matching entry). A real,
+  # distinct `type: worker` service, not `numInstances` on
+  # rtr-transcription-worker -- Render's numInstances gives every replica
+  # of one service block IDENTICAL env vars, and this one needs to differ
+  # in exactly one: AUTO_TRANSCRIPTION_REQUESTER_EMAIL is deliberately
+  # left UNSET below.
+  #
+  # Why that specific omission matters: claim_next_chunk()'s FOR UPDATE
+  # SKIP LOCKED (archive/db/crud.py) already makes chunk-claiming safe for
+  # any number of concurrent worker processes -- that's not what this
+  # avoids. What it avoids is a SEPARATE, unguarded race in idle-time
+  # auto-generation: maybe_generate_auto_job() -> find_auto_transcription_
+  # candidate() (a plain, unlocked SELECT) -> create_transcription_job()
+  # (its own separate, unlocked "does a job already exist for this page"
+  # check-then-insert) -- two worker processes both idle at the same
+  # moment (routine, once the queue drains) and both configured with a
+  # real AUTO_TRANSCRIPTION_REQUESTER_EMAIL could both pass that check for
+  # the same candidate page before either commits, creating two duplicate
+  # low-priority jobs (real wasted compute, two completion emails -- see
+  # BACKLOG.md). Leaving this var unset here means this replica's own
+  # maybe_generate_auto_job() always short-circuits (worker/main.py, `if
+  # not AUTO_TRANSCRIPTION_REQUESTER_EMAIL: return False`) and never
+  # reaches create_transcription_job() at all -- the race is structurally
+  # impossible on this pair, not just mitigated. It's still pure
+  # chunk-processing capacity: claim_next_chunk()/report_chunk_result()
+  # are unaffected and already safe (see rtr-transcription-worker's own
+  # comment above, and claim_next_chunk()'s own docstring).
+  #
+  # Every other env var below MUST match rtr-transcription-worker's
+  # corresponding value exactly (same DB, same outbound email identity,
+  # same public base URL) -- set by hand in Render's dashboard for THIS
+  # service too; sync: false vars are never copied between services by a
+  # Blueprint sync. Meant to be temporary, for the backlog catch-up window
+  # -- revisit (scale back down to one worker) once BACKLOG.md's ~1600+
+  # figure is worked down; see that file's matching entry.
+  - type: worker
+    name: rtr-transcription-worker-2
+    runtime: docker
+    dockerfilePath: worker/Dockerfile
+    dockerContext: .
+    # See rtr-deeplink's matching buildFilter comment above -- same reason.
+    buildFilter:
+      ignoredPaths:
+        - BACKLOG.md
+        - BACKLOG_DONE.md
+        - CLAUDE_BACKLOG.md
+        - CLAUDE_INBOX_TRIAGE.md
+    plan: standard
+    envVars:
+      - key: DATABASE_URL
+        sync: false  # MUST be the exact same value as rtr-deeplink-archive's / rtr-transcription-worker's DATABASE_URL -- not a separate database
+      - key: EXPECTED_DB_HOST
+        value: dpg-d9r06nqjobas739hlc8g-a
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_AUDIENCE_ID
+        sync: false
+      - key: RESEND_FROM_ADDRESS
+        sync: false
+      - key: RESEND_REPLY_TO_ADDRESS
+        sync: false
+      - key: HF_TOKEN
+        sync: false  # optional -- see rtr-transcription-worker's matching comment
+      # AUTO_TRANSCRIPTION_REQUESTER_EMAIL is deliberately NOT set here --
+      # see the block comment above. Left out of the list entirely (not
+      # present with an empty value) so this replica's idle-time
+      # auto-generation path never activates.
+
 databases:
   # WO-4 (AUDIT_EXECUTION_BRIEF.md, 2026-08-16): brings the one paid,
   # persistent-data resource into tracked config -- confirmed live via

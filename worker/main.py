@@ -455,11 +455,17 @@ async def run_forever() -> None:
                     empty_polls,
                 )
 
-            # process_next_chunk() returning False means claim_next_chunk()
-            # found no queued/in_progress job at all -- with only ever one
-            # worker process (see claim_next_chunk()'s own docstring), that
-            # already IS "the queue is completely empty", not just "nothing
-            # claimable right now". Gated separately by
+            # process_next_chunk() returning False means *this* worker's
+            # own claim_next_chunk() call found nothing claimable right
+            # now -- with a second worker process now possible (see
+            # render.yaml's rtr-transcription-worker-2), that's no longer
+            # proof the queue is globally empty, just that nothing was
+            # available to this process at this instant (the other worker
+            # could be mid-claim on the last row, or claim something a
+            # moment later). claim_next_chunk()'s SKIP LOCKED already makes
+            # an auto-generation check firing here harmless even if that
+            # happens -- create_transcription_job() only ever adds a job,
+            # it never steps on one already in flight. Gated separately by
             # AUTO_GENERATION_CHECK_INTERVAL_SECONDS so this doesn't run on
             # every single empty poll.
             now = time.monotonic()
