@@ -46,6 +46,11 @@ def test_extract_video_id_handles_every_real_url_shape():
         f"https://www.youtube.com/embed/{REAL_VIDEO_ID}": REAL_VIDEO_ID,
         f"https://www.youtube.com/shorts/{REAL_VIDEO_ID}": REAL_VIDEO_ID,
         f"https://www.youtube.com/live/{REAL_VIDEO_ID}": REAL_VIDEO_ID,
+        # Old Flash-era embed shape -- confirmed live 2026-08-21 on a real
+        # open.media page (Goodyear, AZ: goodyearaz.open.media/sessions/
+        # 346555), whose own YouTube embed is literally
+        # `youtube.com/v/OU-H69iuvLU`, not one of the shapes above.
+        f"https://www.youtube.com/v/{REAL_VIDEO_ID}": REAL_VIDEO_ID,
         "https://example.com/not-youtube": None,
     }
     for url, expected in cases.items():

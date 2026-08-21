@@ -3141,22 +3141,47 @@ that added this reorg, for which ones are new).
 
 - **[LATER] Two more video platforms with zero support anywhere in the
   resolver, first sighted 2026-08-21 via the same destinyhosted.com
-  enumeration (see BACKLOG_DONE.md)** — neither in `detect_platform()`,
-  no adapter file, not in `generic_fallback.py`'s curated-pointer list:
-  - `open.media` — destinyhosted tenant id=46639 (Goodyear, AZ) links to
-    `https://goodyearaz.open.media/sessions/346555?embedInPoint=0`. 1 hit.
-  - SuiteOne Media — 2 hits, a real recurring signal per this file's own
-    "collect edge-case URLs" convention: destinyhosted tenant id=56724
-    (Lorain, OH) → `https://lorainoh.suiteonemedia.com/event/?id=3005`,
-    and id=72243 (Pacific Grove, CA) →
-    `https://pacificgroveca.suiteonemedia.com/event?id=2450`.
+  enumeration, now population-sized via Wayback CDX (see
+  BACKLOG_DONE.md)** — neither in `detect_platform()`, no adapter file,
+  not in `generic_fallback.py`'s curated-pointer list:
+  - **`open.media` may not need its own adapter at all** — confirmed live
+    that Goodyear, AZ's page (`goodyearaz.open.media/sessions/346555`)
+    directly iframes `public.destinyhosted.com/agenda_publish.cfm?
+    id=46639` (the same tenant already in the destinyhosted table) for
+    its agenda, and its own video is a YouTube id in the old
+    `youtube.com/v/{id}` embed shape — which `YouTubeAssetFinder`'s
+    `_VIDEO_ID_RE` now recognizes (fixed same day, see BACKLOG_DONE.md),
+    so generic_fallback's existing tier-1 YouTube detection may already
+    resolve open.media pages with no dedicated code at all. Not yet
+    confirmed whether every open.media tenant pairs a YouTube embed with
+    a destinyhosted (or other) agenda backend the same way, or whether
+    some host their own video directly — worth checking a few more of
+    the 10 real tenant subdomains found via CDX (`arapahoe`, `cortez`,
+    `eugene`, `larimer`, `litchfield-park`, `pitkincounty`,
+    `santabarbaraca`, `surpriseaz`, `townofgeorgetown`, plus the
+    confirmed `goodyearaz`) before assuming this generalizes.
+  - SuiteOne Media — **131 distinct tenant subdomains found via CDX**,
+    a real recurring signal per this file's own "collect edge-case URLs"
+    convention, and a meaningfully larger population than several
+    platforms that already have dedicated adapters. A large fraction are
+    **court AV systems, not city-council meetings** — clear from naming
+    (`azscottsdaleccrt1`–`9`, `chandlerazmcrt1`–`7`,
+    `coloradospringsmcrtdiv1`–`5`, `pinalcoazsupcrt1`–`16`); real
+    city/county meeting tenants also present: `lorainoh` (id shape
+    `/event/?id=N`, confirmed live with real video), `pacificgroveca`
+    (same shape, confirmed), `mcallentx`, `southbendin`, `tuscaloosaal`,
+    `prescottaz`, `richlandwa`, `camaswa`, `holladayut`, `laytonut`,
+    `stmarysga`. A second, separate id space exists on the same domain:
+    `/event/GetAgendaFile/{title}?aid=N` serves agenda PDFs directly
+    (confirmed on `tuscaloosaal`, `holladayut`, `stmarysga`,
+    `pacificgroveca`) — likely a real, easy jurisdiction/agenda-metadata
+    source alongside whatever the video adapter turns out to need.
 
-  Both genuinely unhandled, not just unbuilt — real customer URLs are
-  already in hand for both (unlike Castus above, which still needs one),
-  but no adapter built this session; worth a first real look before
-  assuming either is worth the effort (per this file's own working
-  conventions: test against the real URL first, and a `[LATER]` gap isn't
-  automatically worth building until the population is sized).
+  Real customer URLs are in hand for both. No adapter built this
+  session; worth a first real look before committing further (per this
+  file's own working conventions: test against the real URL first) —
+  SuiteOne Media's 131-tenant population, even after subtracting the
+  court-system tenants, looks like the stronger candidate of the two.
 
 - **[LATER] Vimeo's real-world prevalence among small local governments is
   now quantified for the first time — worth deciding if the existing
