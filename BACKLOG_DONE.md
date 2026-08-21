@@ -6,6 +6,112 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Swagit adapter served a wrong, bogus video for `/events/{id}` URLs — root cause found, fixed at the source, PrimeGov's workaround guard removed [Done 2026-08-21]
+
+Root-caused the `[HIGH PRIORITY]` entry this replaces. Fetched all 5 real
+`/events/{id}` tenants live via `curl` — the 3 originally confirmed
+(`petalumaca.new.swagit.com/events/43607`, `norwalkca.new.swagit.com/
+events/44163`, `westjordan.new.swagit.com/events/43963`) plus the 2 that
+had previously only matched via PrimeGov's API
+(`cambridgema.v3.swagit.com/events/43940`, `solvangca.v3.swagit.com/
+events/43961`, now independently `curl`-verified live too) — and read the
+real page structure closely against `/videos/{id}`'s already-working one.
+
+**What the placeholder actually is.** `/events/{id}` is a genuinely
+different Swagit page template from `/videos/{id}` — a *live-event*
+stream page, not an archived on-demand recording, confirmed straight from
+the template's own (dead, JS-commented-out) error-handler text, byte-
+identical on all 5 real tenants:
+
+> Our live stream is not currently active. Please check back during a
+> regularly scheduled meeting or view our on-demand content for
+> previously run meetings.
+
+Every one of the 5 pages embeds the exact same pair of `player.src(...)`
+lines back to back: a dead, commented-out (`//`) reference to a generic
+Swagit demo/QA recording (tenant `abilenetx`) — byte-identical across all
+5 real cities, confirmed dead template code, never real per-tenant
+content — immediately followed by the real, active line, which points to
+a genuine **per-tenant live-channel stream**
+(`edge-f.swagit.com/live[-edge]/{tenant}/live-1-a/playlist.m3u8`). That
+live URL was independently `curl`-verified to `404` on all 5 tenants —
+every sample was a meeting that had already happened by the time it was
+checked, so the live channel is naturally inactive. `scan_media_urls()`'s
+generic regex scan has no notion of JS comments, so it picked up the dead
+placeholder line (which sits first in document order, ahead of the real
+line) as a valid HLS candidate — the exact root cause of the wrong-video
+bug. No reference to `/videos/{id}` or `archive-stream.granicus.com` (the
+real archived-recording CDN — see `SwagitAssetFinder`'s own docstring)
+appears anywhere in any of the 5 pages' HTML either, so there's no
+discoverable link from an `/events/{id}` page to wherever (or whether) a
+recording was ever archived — this is the "genuinely undiscoverable"
+outcome the original entry flagged as a legitimate possibility, confirmed
+rather than assumed.
+
+Also confirmed live: `/events/{id}`'s `<title>` tag follows the identical
+"{Date}, {Title} - {City}, {State}" shape as `/videos/{id}` (metadata
+extraction needed no changes), and real chapter markers
+(`a.playerControl[data-ts][data-title]`) are present on this template too
+(28 of them on the real Norwalk page) but every one carries a blank
+`data-ts=""` — no recording to offset into — so the existing `if not ts:
+continue` guard in `resolve()` already (and correctly) excludes them from
+`agenda_items` without any code change.
+
+**Fix**: `app/platforms/swagit.py` adds
+`_is_swagit_events_template_dead_candidate()`, matching either the exact
+bogus `vault01/abilenetx/59d7e173-...` placeholder path or any
+`edge-f.swagit.com/live/` or `/live-edge/` URL, and filters both out of
+`media_urls` before video selection runs — so neither can ever win any of
+the three existing selection passes, the same way the pre-existing dead
+legacy-host placeholder (`107.178.209.195`, see the class docstring) is
+handled, except this pair has no good same-page fallback so exclusion
+(not just deprioritization) is required. When every remaining candidate
+was filtered out this way, `resolve()` now appends a specific warning
+("This is a Swagit live-event page (`/events/{id}`), not an archived
+on-demand recording...") instead of the generic "No playable video found"
+— mirroring the Granicus 36,000-cue-truncation pattern of flagging a
+known-bad outcome explicitly rather than presenting it as complete.
+Live-verified against all 5 real tenants post-fix: every one now resolves
+`video_url=None` with the specific warning and zero mention of
+`abilenetx`, while `jurisdiction`/`date`/`title` still resolve correctly
+(e.g. Cambridge, MA / 2026-01-12 / "Regular City Council Meeting").
+
+**`app/platforms/primegov.py`'s guard removed, not just simplified.**
+Its narrow `platform == "swagit" and path.startswith("/events/"): return
+None` early-decline (added when this bug was first found, before the
+root cause was known) is no longer needed now that `SwagitAssetFinder`
+itself handles the case safely — confirmed live end-to-end:
+`PrimeGovAssetFinder().resolve()` against
+`https://cambridgema.primegov.com/Portal/Meeting?meetingTemplateId=2163`
+now delegates all the way through to the real Swagit `/events/43940`
+page and comes back with `platform="swagit"`, `video_url=None`, the
+specific live-event warning, `source_url` correctly preserved as the
+original PrimeGov URL, and better metadata (Cambridge, MA / 2026-01-12)
+than PrimeGov's own page-scraping fallback would have given. Removing
+the guard (rather than leaving it in place) also closes the actual gap
+the original entry called out: the guard only ever protected PrimeGov's
+one delegation path, not a user pasting an `/events/{id}` URL directly or
+reaching one through `generic_fallback.py`'s any-known-platform-link
+scan — both of those already went through `SwagitAssetFinder.resolve()`
+directly and are now covered by the same fix, no separate change needed
+in either.
+
+**Tests**: `tests/test_swagit.py` adds
+`test_resolve_declines_the_bogus_events_template_placeholder_video`
+(real, trimmed `<script>` excerpt from the live Petaluma fetch, plus a
+real blank-`data-ts` chapter marker) and
+`test_is_swagit_events_template_dead_candidate_matches_real_placeholder_and_live_urls`.
+`tests/test_primegov.py`'s old
+`test_resolve_declines_to_delegate_to_a_swagit_events_url` (which
+asserted the now-removed guard's decline-without-fetching behavior) is
+replaced with
+`test_resolve_delegates_to_swagit_events_url_and_gets_an_honest_decline`,
+which now actually exercises the real delegated `SwagitAssetFinder.
+resolve()` call against a live-captured Cambridge fixture and asserts the
+honest decline, rather than asserting the request never happens. All 19
+`test_swagit.py` tests and all 33 `test_primegov.py` tests pass; full
+suite (`pytest`) passes, 1082 passed / 15 skipped, no regressions.
+
 ## Aurora, CO `aurora_tv` canary failure (2026-08-18) confirmed a one-off transient blip, not a persisting regression [Done 2026-08-21]
 
 Promoted from `CLAUDE_INBOX_TRIAGE.md`'s 2026-08-19 run, which flagged

@@ -4,6 +4,7 @@ from app.platforms.models import TranscriptSegment
 from app.platforms.swagit import (
     SwagitAssetFinder,
     _group_word_fragments,
+    _is_swagit_events_template_dead_candidate,
     _parse_swagit_transcript_download,
 )
 
@@ -397,3 +398,101 @@ def test_extract_metadata_strips_a_closed_session_marker_from_jurisdiction():
     )
     title, date, jurisdiction = SwagitAssetFinder._extract_metadata(soup)
     assert jurisdiction == "Long Beach, CA"
+
+
+# Real, confirmed-live bug (BACKLOG.md's "[HIGH PRIORITY] Swagit adapter
+# serves a wrong, bogus video for /events/{id} URLs" entry, root-caused and
+# fixed 2026-08-21). Fixture content below is a trimmed, verbatim excerpt
+# of the real `<script>` block independently `curl`-fetched live from all
+# 5 real tenants confirmed to match this exact pattern: petalumaca.new.
+# swagit.com/events/43607 (Jan 1, 2026 "Airport Commission Meeting -
+# Canceled"), norwalkca.new.swagit.com/events/44163 (Jan 14, 2026
+# "Planning Commission Special Meeting"), westjordan.new.swagit.com/
+# events/43963 (Jan 5, 2026 "Oath of Office Ceremony"), cambridgema.v3.
+# swagit.com/events/43940 (Jan 12, 2026 "Regular City Council Meeting"),
+# and solvangca.v3.swagit.com/events/43961 (Jan 5, 2026 "Planning
+# Commission Regular Meeting") -- the last two only matched via PrimeGov's
+# API before this session, independently curl-verified live here too.
+# Every one of the 5 embeds this exact byte-identical pair of
+# `player.src(...)` lines: a dead, JS-commented-out reference to a generic
+# Swagit demo/QA recording (tenant "abilenetx"), immediately followed by
+# the real (uncommented) line pointing at this tenant's own live-channel
+# stream. `https://edge-f.swagit.com/live/petalumaca/live-1-a/playlist.m3u8`
+# (and each other tenant's equivalent) was independently curl-verified
+# live to 404 -- confirming it's a live-broadcast-only URL, dead for any
+# meeting that already happened, not a second real archived-video
+# candidate. Real chapter markers (`a.playerControl[data-ts][data-title]`)
+# are present on this page template too (confirmed on the real Norwalk
+# page, 28 of them) but every one has a blank `data-ts=""` -- there's no
+# recording to offset into -- so the existing `if not ts: continue` guard
+# already (and correctly) excludes them from agenda_items, exercised below
+# too since it was a previously-unconfirmed real content shape.
+REAL_EVENTS_TEMPLATE_SCRIPT = """
+      player.on('error', function() {
+        if (player.error().code == 4) {
+          // $(".embed-responsive-item").html('<div class="text"><p>Our live stream is not currently active. Please check back during a regularly scheduled meeting or view our on-demand content for previously run meetings.</p></div>');
+        }
+      });
+      // player.src({type: "application/x-mpegURL", src: "https://stream.us-central1-b.swagit.com/on-demand/_definst_/mp4:vault01/abilenetx/59d7e173-684b-4da4-9433-50d6e22555f1.mp4/playlist.m3u8"});
+      player.src({type: "application/x-mpegURL", src: "https://edge-f.swagit.com/live/petalumaca/live-1-a/playlist.m3u8"});
+"""
+
+EVENTS_URL = "https://petalumaca.new.swagit.com/events/43607"
+
+EVENTS_TEMPLATE_HTML = (
+    "<html><head><title>Jan 01, 2026 Airport Commission Meeting - Canceled - "
+    "Petaluma, CA</title></head><body>"
+    f"<script>{REAL_EVENTS_TEMPLATE_SCRIPT}</script>"
+    '<a class="playerControl" data-id="1" data-ts="" data-end-ts="16:00" '
+    'data-title="CALL TO ORDER" href="/play/43607/">Call to Order</a>'
+    "</body></html>"
+)
+
+
+async def test_resolve_declines_the_bogus_events_template_placeholder_video():
+    routes = {EVENTS_URL: FakeResponse(status=200, text=EVENTS_TEMPLATE_HTML, url=EVENTS_URL)}
+
+    with mock_session(routes):
+        result = await SwagitAssetFinder().resolve(EVENTS_URL)
+
+    # Before the fix, document-order scanning picked the dead
+    # JS-commented "abilenetx" placeholder as video_url with NO warning at
+    # all -- the worst failure mode (a wrong, plausible-looking video),
+    # not just a missing one.
+    assert result.video_url is None
+    assert not any("abilenetx" in (w or "") for w in result.video_warnings)
+    assert any(
+        "live-event page" in w and "/events/" in w for w in result.video_warnings
+    )
+    # Real chapter markers exist on this page template but all carry a
+    # blank data-ts (no recording to offset into) -- correctly excluded,
+    # not fabricated with a fake 0.0 offset.
+    assert result.agenda_items == []
+    # Metadata extraction (title/date/jurisdiction) is unaffected -- the
+    # <title> tag follows the same shape as /videos/{id} pages.
+    assert result.jurisdiction == "Petaluma, CA"
+    assert result.date == "2026-01-01"
+
+
+def test_is_swagit_events_template_dead_candidate_matches_real_placeholder_and_live_urls():
+    # The exact bogus URL confirmed byte-identical across all 5 real
+    # /events/{id} tenants.
+    assert _is_swagit_events_template_dead_candidate(
+        "https://stream.us-central1-b.swagit.com/on-demand/_definst_/"
+        "mp4:vault01/abilenetx/59d7e173-684b-4da4-9433-50d6e22555f1.mp4/"
+        "playlist.m3u8"
+    )
+    # Real per-tenant live-stream URLs, both path shapes confirmed live
+    # (petalumaca/westjordan/solvangca use "/live/", norwalkca/cambridgema
+    # use "/live-edge/").
+    assert _is_swagit_events_template_dead_candidate(
+        "https://edge-f.swagit.com/live/petalumaca/live-1-a/playlist.m3u8"
+    )
+    assert _is_swagit_events_template_dead_candidate(
+        "https://edge-f.swagit.com/live-edge/norwalkca/live-1-a/playlist.m3u8"
+    )
+    # A real archived /videos/{id} page's genuine video URL must not be
+    # caught by this filter.
+    assert not _is_swagit_events_template_dead_candidate(
+        "https://archive-stream.granicus.com/x/playlist.m3u8"
+    )

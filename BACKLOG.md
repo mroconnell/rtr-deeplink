@@ -202,49 +202,22 @@ worth raising `_SUBPROCESS_TIMEOUT_SECONDS` to match Granicus's own
 slot for minutes on every genuinely-dead asset, trading a fast, clear
 failure for a slow, identical one.
 
-## [HIGH PRIORITY] Swagit adapter serves a wrong, bogus video for `/events/{id}` URLs
+## ~~[HIGH PRIORITY] Swagit adapter serves a wrong, bogus video for `/events/{id}` URLs~~
 
-Found 2026-08-19 while fixing PrimeGov's Swagit/Granicus video-delegation
-gap (see `BACKLOG_DONE.md`'s "PrimeGov never detected a real video hosted
-on Swagit/Granicus instead of YouTube" entry for the full context and how
-this was caught). Higher priority than the Granicus entry below because
-the failure mode is worse: this doesn't just fail to find a video, it
-silently returns a *wrong* one with no warning.
-
-Confirmed live on 3 independent real tenants (`petalumaca.new.swagit.com/
-events/43607`, `norwalkca.new.swagit.com/events/44163`,
-`westjordan.new.swagit.com/events/43963` — a 4th and 5th,
-`cambridgema.v3.swagit.com/events/43940` and
-`solvangca.v3.swagit.com/events/43961`, match the same pattern via
-PrimeGov's API but weren't independently `curl`-verified): each of these
-real, different cities' `/events/{id}` pages embeds the exact same
-jwplayer m3u8 reference verbatim in its own static HTML —
-`.../vault01/abilenetx/59d7e173-684b-4da4-9433-50d6e22555f1.mp4/
-playlist.m3u8` — which cannot be 3+ different cities' real recordings.
-`SwagitAssetFinder` was only ever built and tested against the
-`/videos/{id}` URL shape (see README.md's platform table and
-`tests/test_swagit.py`'s existing fixtures, all `/videos/{id}`) — the
-`/events/{id}` shape is a genuinely different, untested Swagit page
-template, and its own scan of that page's HTML happens to pick up this
-placeholder (unclear yet whether it's a "coming soon"/still-processing
-state, a stale demo left in a shared template, or something else on
-Swagit's side — not yet investigated further).
-
-PrimeGov's own delegation (`app/platforms/primegov.py`'s
-`_resolve_via_tenant_video_url()`) now has a narrow guard that declines to
-delegate specifically for this URL shape (`platform == "swagit" and
-urlparse(normalized_url).path.startswith("/events/")`), falling back to
-an honest "no video found" instead of shipping the wrong video — but that
-guard only protects PrimeGov's delegation path. A user who pastes a real
-`/events/{id}` Swagit URL directly (or reaches one through the generic
-fallback / a future new delegation path) still gets the wrong video today,
-with no warning at all. Needs its own live-testing pass across the
-`/events/{id}` cities above (and ideally more, per this project's own
-"several cities" testing rule) to understand the real page shape well
-enough to either extract the actual video correctly or at least detect
-and decline the bogus placeholder specifically, the way the Granicus
-36,000-cue-truncation warning below flags a different known-bad output
-rather than presenting it as complete.
+**Fixed 2026-08-21** — root cause found: `/events/{id}` is a genuinely
+different Swagit page template from `/videos/{id}`, a *live-event*
+stream page (confirmed straight from the template's own dead error-
+handler text) with no archived recording linked from it at all. Its two
+embedded candidates — a dead, byte-identical-across-every-tenant demo
+placeholder and a real per-tenant live-channel stream that 404s once the
+meeting's over — are both now detected and declined by
+`SwagitAssetFinder` with a specific warning instead of silently served.
+`PrimeGov`'s workaround guard was removed too, since the fix covers its
+delegation path directly (confirmed live end-to-end). All 5 real tenants
+(`petalumaca`, `norwalkca`, `westjordan`, `cambridgema`, `solvangca`)
+independently `curl`-verified. Full root-cause writeup, live-fetch
+detail, and test coverage in `BACKLOG_DONE.md`'s "Swagit adapter served a
+wrong, bogus video for `/events/{id}` URLs" entry.
 
 ## [JUST-DO-IT] Granicus adapter doesn't recognize `MediaPlayer.php?event_id=...` URLs
 

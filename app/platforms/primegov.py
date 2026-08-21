@@ -295,30 +295,30 @@ class PrimeGovAssetFinder(AssetFinder):
             # either way there's no adapter to safely hand it to.
             return None
 
-        if platform == "swagit" and urlparse(normalized_url).path.startswith(
-            "/events/"
-        ):
-            # Real, confirmed-live SwagitAssetFinder bug found 2026-08-19
-            # while verifying this fix, distinct from (and more serious
-            # than) the Granicus event_id gap noted above: a Swagit
-            # `/events/{id}` URL -- the shape PrimeGov's own API returns
-            # for some tenants, as opposed to the `/videos/{id}` shape
-            # SwagitAssetFinder was built and tested against -- doesn't
-            # 404 or come back empty. It genuinely embeds a *wrong* jwplayer
-            # m3u8 reference in its own static HTML: three independent real
-            # tenants (petalumaca, norwalkca, westjordan) all served the
-            # exact same "vault01/abilenetx/..." CDN path verbatim,
-            # confirmed live via direct `curl` against each -- a bogus
-            # placeholder, not any of those cities' own real recording.
-            # Delegating here would silently hand back a wrong-but-
-            # plausible-looking video with no warning, worse than this
-            # method's own honest "nothing found" (`return None` below,
-            # same as every other decline in this method) -- see
-            # BACKLOG.md for the real SwagitAssetFinder-side fix this
-            # still needs (`/events/{id}` support), tracked separately
-            # from this PrimeGov delegation.
-            return None
-
+        # A Swagit `/events/{id}` URL -- the shape PrimeGov's own API
+        # returns for some tenants, as opposed to the `/videos/{id}` shape
+        # SwagitAssetFinder was originally built and tested against -- used
+        # to make this delegation silently hand back a specific WRONG video
+        # (a bogus "abilenetx" demo placeholder byte-identical across every
+        # real tenant checked, confirmed live via direct `curl` against
+        # petalumaca/norwalkca/westjordan) with no warning at all: a real,
+        # confirmed-live SwagitAssetFinder bug found 2026-08-19 while
+        # building this delegation, previously worked around here with an
+        # early decline (`return None`, same as this method's other honest
+        # "nothing found" cases) rather than risk shipping it. Root-caused
+        # and fixed at the source 2026-08-21 (see swagit.py's
+        # `_is_swagit_events_template_dead_candidate` and BACKLOG_DONE.md):
+        # `/events/{id}` is Swagit's own live-event page template, not an
+        # archived on-demand recording, and SwagitAssetFinder now detects
+        # and declines both of its non-viable candidates (the dead
+        # placeholder and the tenant's real but always-404-once-the-
+        # meeting's-over live-channel stream) with a specific warning
+        # instead of guessing. Delegating unconditionally is now safe --
+        # the guard that used to live here is no longer needed, since the
+        # fix lives in the finder actually doing the parsing rather than
+        # in every caller that might reach it (generic_fallback.py's page
+        # scan and a future new delegation path both had the same exposure
+        # this guard never protected).
         resolved = await get_finder(platform).resolve(normalized_url)
         # Same source_url-preserving choice as the YouTube delegation
         # above -- "View original source" should keep pointing at the
