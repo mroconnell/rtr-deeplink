@@ -293,3 +293,152 @@ Two new findings:
   immediately instead of failing over to the whisper-decode step first.
   **Open question**: has job 287 (or this exact error signature) recurred
   since, and did the retry for chunk 2/21 actually complete?
+
+## 2026-08-21
+
+Reviewed the 18 threads under `label:rtr-claude` (same thread-labeling
+quirk as prior runs — `-label:rtr-claude-processed` still isn't reliable,
+so this run read full bodies and relied on dedup rather than trusting the
+label). Skipped without write-up: six GitHub Actions "PR run failed: Test"
+emails, all for individual feature branches (second transcription worker,
+stale-garbled-warnings clear, Town Hall Streams adapter, transcript-quality
+audit endpoint, on-demand-transcription retry/backoff, faster-whisper
+vad_filter), not `main` or a scheduled workflow — normal dev-iteration
+noise per Step 2's rule. Skipped as duplicates of already-tracked items (no
+new entry): another "deploy failed for rtr-deeplink-staging" email
+(2026-08-20 15:23, commit "Cablecast:...") — same already-flagged
+untracked/disposable-staging noise pattern as prior runs; another "Server
+failure detected on test-redtaperecordings" email (2026-08-20 20:23:54
+UTC, "Exited with status 3") — same already-flagged likely-test-noise
+pattern; the "⚠️ YouTube transcript fetch failed" `IpBlocked` alert
+(2026-08-20 16:02, video `OQ4V0B5rdwg`) — this is the *exact* alert
+`BACKLOG_DONE.md`'s "YouTube transcript fetch `IpBlocked` alert: confirmed
+expected/self-clearing... [Done 2026-08-20]" entry already investigated
+and closed (same video ID); and the Search Console "No thumbnail URL
+provided" video-indexing alert (2026-08-20 23:13, one affected video, a
+Cablecast m3u8 URL) — duplicates the already-tracked mp4/m3u8-thumbnail
+gap (`BACKLOG.md`'s SEO Tier 1 residual / `CLAUDE_BACKLOG.md`'s "Social
+share previews"); Ryan already replied to this thread himself with the
+affected-video example, so no action needed from this Routine either way.
+Also treated as duplicates rather than new findings, since both match an
+already-documented root cause precisely: Sentry issue PYTHON-FASTAPI-T
+("TimeoutError... ffprobe unavailable or timed out",
+`archive-stream.granicus.com/.../fountainvalley_237a7820...`, 2026-08-21
+04:32 UTC) is the *same* Fountain Valley Granicus asset `BACKLOG.md`'s
+existing "Root cause nailed down precisely" entry (the `media_probe.py`
+ffprobe/120s-timeout writeup, ~line 120) already root-caused as a Granicus
+gateway-timeout/cold-storage-rehydration issue "not fixable from this
+app's side by retrying faster"; and transcription job-failure emails for
+job 410 (City of San Diego, `sandiego.granicus.com/player/clip/9386`) and
+job 413 (San Diego County, `sdcounty.granicus.com/player/clip/3926`), both
+"ffmpeg timed out after 120s (source likely slow or rate-limited)" — the
+exact error string that same BACKLOG.md entry already documents and
+explains, just two new real-world recurrences on different Granicus
+customers, not a new bug.
+
+Two new findings, plus one reinforcement of an existing open item:
+
+- **Confirmed — root cause found for the recurring "Unclosed connector"
+  Sentry cluster, which the existing `BACKLOG.md` "[HUMAN] Archive service
+  instability, 2026-08-17" entry flagged but left unexplained.** Two fresh
+  Sentry issues, both 2026-08-20/21, tagged with unrelated-looking
+  transactions: PYTHON-FASTAPI-V ("Unclosed connector", `transaction =
+  /m/{path:path}`, `url = .../m/detroit-mi-2026-06-22-council-meeting-
+  june-22-2026`, 2026-08-21 05:25 UTC) and PYTHON-FASTAPI-S ("Unclosed
+  connector", `transaction = /api/health`, 2026-08-20 19:46 UTC). Traced to
+  real code: `app/archive_client.py:339-363`'s `proxy_get()` — the function
+  every `/m/*`/`/meetings`/sitemap/feed proxy route goes through (via
+  `_proxy_to_archive()`, `app/main.py:1419-1459`) — creates its
+  `aiohttp.ClientSession` directly (`session =
+  aiohttp.ClientSession(timeout=PROXY_TIMEOUT)`, line 361) instead of via
+  `async with`, then calls `response = await session.get(url,
+  headers=headers)` (line 362) with **no try/except around that call**. If
+  `session.get()` itself throws — a timeout, connection reset, or DNS
+  failure before headers come back, all realistic given the Archive's own
+  documented instability history — the exception propagates straight out
+  of `proxy_get()`, is caught by `_proxy_to_archive()`'s outer
+  try/except (`app/main.py:1435-1445`, which correctly returns a clean 503
+  to the browser), but the `session` object created on line 361 is never
+  referenced again and never closed — it leaks until Python's garbage
+  collector eventually finalizes it, which is when aiohttp actually emits
+  the "Unclosed connector" warning. That GC-triggered timing is also why
+  the Sentry `transaction` tag looks arbitrary/misleading (`/api/health`
+  has no `aiohttp` call in it at all — see `app/main.py:434-452`, a plain
+  DB `SELECT 1`): Sentry is tagging whichever request happened to be
+  executing when the leaked connector's finalizer ran, not the request
+  that actually created the leak. This also means the existing
+  `BACKLOG.md` entry's read of the 2026-08-17 cluster ("very likely
+  explained by" that evening's one-off WO-10 OOM outage) undersells it —
+  these two fresh instances, three days later and unrelated to that
+  outage, show this is an ongoing, recurring leak, not a symptom that
+  resolved with the OOM fix. **Impact**: each leaked session holds an open
+  TCP connector/socket on the resolver service until GC runs; frequency
+  scales with how often Archive proxy calls fail (timeouts, connection
+  resets), which the existing entry's own cluster shows isn't rare during
+  Archive instability — a slow accumulation of unclosed connections on the
+  resolver, not an immediate crash. **Fix effort**: small — wrap
+  `proxy_get()`'s `session.get()` call in a try/except that closes the
+  session and re-raises on failure (the same "close in a finally" shape
+  `_proxy_to_archive()`'s own `body_iterator()` already uses for the
+  success path).
+
+- **Confirmed — new Search Console alert type ("Events structured data
+  issues", 8 issues, 2026-08-21 07:46 UTC) surfaces two real, cheaply
+  fixable gaps in the `Event` JSON-LD block, alongside one already-
+  intentional non-issue.** Flagged fields: missing `image`, `endDate`,
+  `organizer`, `description`, `eventStatus`. Traced directly against
+  `archive/templates/meeting_page.html`'s `Event` block (lines 131-159):
+  - `eventStatus` is **not a bug** — the block's own comment (lines
+    152-159) explains this is deliberately omitted because it (along with
+    `eventAttendanceMode`/`offers`) opts into Google's stricter Event
+    *rich-result* requirements (real address, ticketing info) this app
+    has no data for and isn't trying to qualify for. Already an
+    intentional, documented decision, correctly not re-litigated here.
+  - `description` **is a real bug**: the template already computes a
+    `description` variable in scope (`{% block meta %}`, line 10, also
+    used for `<meta name="description">` and `og:description`), but the
+    `Event` block only emits it in an `{% else %}` branch mutually
+    exclusive with `url` (lines 145-149: `{% if public_base_url %}"url":
+    ...{% else %}"description": ...{% endif %}`). Since `public_base_url`
+    is set in production (the same guard already gates the canonical
+    link/`og:url` above, which are confirmed live), `description` never
+    actually renders in the `Event` JSON-LD in practice — exactly
+    matching Search Console's "Missing field 'description'" flag. Fix is
+    trivial: emit both `url` and `description` unconditionally (or
+    `description` unconditionally, `url` still gated), not as an
+    either/or.
+  - `image` **is a real, cheap fix**: the `Event` block has no `image`
+    field at all, but the template already computes `thumbnail_url` in
+    scope (line 42, `page.video_url|youtube_thumbnail_url`) and reuses it
+    for `og:image`/`twitter:card`/`VideoObject.thumbnailUrl` above — same
+    YouTube-only-for-now caveat as those existing uses (mp4/m3u8 pages
+    still have no thumbnail pending the tracked `ffmpeg`-frame-extraction
+    work). Adding `{% if thumbnail_url %}"image": {{
+    thumbnail_url|tojson }}{% endif %}` to the `Event` block costs
+    nothing new — the data's already computed for this exact template.
+  - `organizer`/`endDate` have no natural real data source without more
+    work (no end-time/duration captured for the *event* itself — separate
+    from `VideoObject.duration`, which is the video's own runtime, not
+    the meeting's; `page.jurisdiction` could plausibly back an
+    `organizer: {"@type": "Organization", ...}` but that wasn't checked
+    for accuracy). **Impact**: Google's own email labels all of this
+    "non-critical" — "suggestions for improvement," not blocking
+    indexing. **Fix effort**: `description` fix and `image` addition are
+    both trivial (a few lines in an already-open template); `organizer`/
+    `endDate` need more thought before building, lower priority given
+    Google's own severity framing.
+
+- **Reinforcing an existing open item — second real occurrence of the
+  Render "HTTP health check failed" alert on `rtr-deeplink-archive`,
+  distinct timestamp from the first.** This file's own 2026-08-19
+  "Unconfirmed / open question" entry above has one occurrence (2026-08-19
+  13:17:28 UTC) and asks whether it's a one-off blip or a new pattern. A
+  second, clearly separate occurrence just landed: 2026-08-20 21:38:36
+  UTC, same alert text ("HTTP health check failed (timed out after 5
+  seconds)"), same service. Two occurrences roughly 32 hours apart is at
+  least mild evidence toward "pattern" rather than "one-off," though still
+  not enough to confirm duration or real user impact without Render
+  dashboard/log access (not reachable from this session). Doesn't change
+  the original open question, just adds a data point to it — worth
+  keeping in mind when Ryan does check the Render dashboard per that
+  entry's ask.
