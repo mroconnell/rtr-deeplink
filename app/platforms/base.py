@@ -233,6 +233,24 @@ def detect_platform(url: str) -> str:
         # townhallstreams.py's own module docstring and BACKLOG.md for the
         # investigation.
         return "townhallstreams"
+    if netloc.endswith("open.media"):
+        # open.media (OMP Network) -- confirmed live 2026-08-21 across 6
+        # real tenant subdomains (goodyearaz, eugene, cortez,
+        # santabarbaraca, surpriseaz, townofgeorgetown). Already resolved
+        # correctly via generic_fallback.py's own YouTube-embed detection
+        # before this was registered (the real video id is present in a
+        # raw, un-rendered `<meta property="og:video">` tag on every
+        # tenant checked, not only in the client-rendered `<iframe>` the
+        # visible player injects) -- registered as its own platform so
+        # these resolves are attributed to "open_media" rather than
+        # counted as generic/unknown, and so a real, confirmed
+        # jurisdiction-extraction bug (generic_fallback.py's
+        # `_TITLE_TAG_PIPE_RE` assumes the opposite title-tag order from
+        # this platform's real "{Jurisdiction} | {Meeting title}" shape)
+        # gets its own correct extractor instead of silently swapping
+        # title and jurisdiction -- see openmedia.py's own module
+        # docstring for the full investigation.
+        return "open_media"
     return "unknown"
 
 

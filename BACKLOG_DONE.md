@@ -6,6 +6,112 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## open.media registered as its own platform (WO-18) [Done 2026-08-21]
+
+Follows up on this file's own "YouTube's old `/v/{id}` embed shape
+recognized; three more video platforms found and sized via Wayback CDX"
+entry below, which left `open.media` as an open, unconfirmed lead
+(`BACKLOG.md`'s "Two more video platforms" entry). This work order's
+first, required step was checking whether it needed any new code at
+all — per this repo's "never build a platform adapter from assumption"
+convention, run the real resolver pipeline against a real URL before
+writing anything.
+
+**It already resolved.** Running `GenericFallbackAssetFinder().resolve()`
+against `https://goodyearaz.open.media/sessions/346555` (via a real
+script, not just reading code) returned a real video (1382 real caption
+segments) with `platform="youtube"` — the same-day `/v/{id}` embed-shape
+fix (this file's entry below) was exactly what made this possible: the
+page's raw HTML carries `<meta property="og:video" content="https://
+www.youtube.com/v/{id}">`, which `YouTubeAssetFinder`'s regex now
+recognizes via its `v/` alternative. Confirmed this ISN'T reachable via a
+plain server-rendered `<iframe src="youtube.com/embed/...">` the way it
+might look from the DOM — the real, visible player iframe (`#youtube-mode`
+→ `#ytplayer`) is injected client-side (confirmed via a real browser DOM
+read); the raw HTML fetch (matching what `generic_fallback.py`/
+`openmedia.py` actually do) never contains it, only the `og:video` meta
+tag. open.media also fronts requests with a UA-based bot check — a bare/
+default-UA request 403s live, a modern desktop Chrome UA gets a clean 200
+— the same class of gap as `generic_fallback.py`'s own
+cityofsebastopol.gov fix.
+
+**But a real, confirmed bug surfaced in the generic-fallback path**:
+`generic_fallback.py`'s `_backfill_metadata_from_page()` unconditionally
+overrides `jurisdiction` from its own `_TITLE_TAG_PIPE_RE`, built for
+CRRMA's `<title>Org | Jurisdiction</title>` shape — the FIRST group is
+treated as the org/title, the SECOND as jurisdiction. open.media's real,
+confirmed `<title>` shape is the *opposite* order,
+`"{Jurisdiction} | {Meeting title}"` (e.g. "City of Goodyear, Arizona |
+Planning & Zoning Commission - 08/19/2026"), so running the real Goodyear
+page through the unmodified generic-fallback path stored the real
+meeting title ("Planning & Zoning Commission - 08/19/2026") into
+`jurisdiction`, not a real jurisdiction at all — reproduced live, not
+hypothesized.
+
+**Fix**: registered open.media as its own platform (`open_media` in
+`app/platforms/base.py`'s `detect_platform()`, `netloc.endswith
+("open.media")`) backed by a thin `app/platforms/openmedia.py`
+`AssetFinder` — a wrapper platform like CivicWeb/PrimeGov/LIMS (delegates
+straight to `YouTubeAssetFinder.resolve_video_id()`, original open.media
+URL preserved as `source_url`), not a redundant video-extraction adapter,
+per CLAUDE.md's "when a platform turns out to be a wrapper around
+another" convention. Its own title/jurisdiction extraction reads the
+`<title>` tag in the CORRECT (reverse-from-CRRMA) order, and:
+- **Title** comes from `og:title` (confirmed present and equal to the
+  real, clean meeting title — no date suffix — on every tenant checked),
+  not yt-dlp's own metadata, since that's a real, page-native signal
+  independent of whether yt-dlp itself is blocked (a real, documented
+  risk on Render — see youtube.py's own docstring).
+- **Jurisdiction** always overrides whatever `YouTubeAssetFinder` set
+  (its own `info.get("uploader")`, a channel name — the same class of bug
+  already fixed for PrimeGov/CivicWeb/LIMS), preferring the pre-pipe
+  `<title>` half when it's a real jurisdiction, falling back to the
+  tenant subdomain (`jurisdiction_enrich.validated_subdomain_extract()`,
+  the same Census-validated mechanism eScribe/Granicus already use) when
+  it isn't — confirmed necessary and correct live on Cortez, CO
+  (cortez.open.media), whose `<title>` is still the vendor's own
+  un-customized default ("Cortez Open.Media Software | ..."), unlike
+  every other tenant checked.
+- **Agenda** comes from a `<iframe id="document">` present on every
+  tenant page checked — either a direct link to another already-
+  registered platform (Goodyear links straight to a destinyhosted.com
+  AgendaQuick page) or this tenant's own pdf.js viewer wrapping a direct
+  S3-hosted PDF as its `?file=` query param (confirmed on Eugene, Cortez,
+  Santa Barbara, Surprise) — unwrapped to the raw PDF URL rather than
+  left pointing at the pdf.js viewer page.
+
+**Verified live against 7 real tenants** (beyond the originally-confirmed
+Goodyear/Eugene/Cortez): Santa Barbara CA, Surprise AZ, Georgetown CO, and
+Pitkin County CO — each resolves a real video with real captions
+(1382–3702 segments across the first 6), a correct title, and a correctly
+state-qualified jurisdiction. Santa Barbara's `og:video` uses a third
+confirmed shape, `https://youtube.com/live/{id}?feature=share` (no
+`www.`), also matched by the existing regex with no changes needed.
+Pitkin County is a real county-government tenant (not city), worth
+calling out specifically: its bare subdomain label ("pitkincounty") is
+the one case among all 10 known tenant subdomains that
+`jurisdiction_enrich.validated_label_extract()` fails to validate (the
+shared helper only strips a *leading* "county"/"town"/etc. connector
+word, not a trailing one) — but this turned out not to matter in
+practice, since Pitkin County's real session pages carry a properly
+customized `<title>` ("Pitkin County | {meeting title}"), so the
+subdomain fallback is never actually reached; confirmed by running a real
+saved Pitkin County session page through
+`OpenMediaAssetFinder._extract_title_and_jurisdiction()` directly, which
+correctly returned `"Pitkin County, CO"`. Still a real, narrow gap in the
+shared helper itself (would matter for some *other*, not-yet-seen tenant
+whose title is also an uncustomized vendor default AND whose subdomain
+ends in "county") — not fixed here since it's outside this platform's own
+adapter code, just noted for whoever next touches
+`jurisdiction_enrich._validated_label_extract()`.
+
+Fixture-backed regression coverage: `tests/test_openmedia.py` (8 tests),
+real fixture HTML saved from Goodyear/Eugene/Cortez under
+`tests/fixtures/openmedia/` (fetched via a real Chrome-UA'd request, not
+a bare `curl`, which 403s). Confirms both the correct title/jurisdiction
+split (proving the CRRMA-order bug can't reoccur here) and the pdf.js
+`?file=` unwrapping.
+
 ## Five bundled easy-win fixes: Archive proxy streaming error handling, `proxy_get()` session leak, stale HEAD-405 doc, worktree `.env` warning, Event JSON-LD gaps [Done 2026-08-21]
 
 Five small, independent, already-root-caused fixes shipped together as one
