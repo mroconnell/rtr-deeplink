@@ -260,6 +260,25 @@ under everything else. This repo extracts and fixes just that part.
   branch just hasn't caught up to yet, not a real conflict; `git pull
   --rebase` handles the genuine case cleanly as long as your change and
   theirs touch different regions of the file.
+- **A `.claude/worktrees/<name>/` subdirectory silently inherits the
+  shared checkout's `.env` if you run either service from inside it
+  without setting `DATABASE_URL` explicitly.** Confirmed live 2026-08-17:
+  starting `archive.main:app`/`app.main:app` from a worktree with no
+  `.env` of its own still connected to the real shared Postgres via
+  `asyncpg`, because `archive/main.py`'s/`app/main.py`'s `load_dotenv()`
+  calls take no explicit path, so `python-dotenv` walks up from cwd and
+  finds the *shared checkout's* `.env` two directories up.
+  `load_dotenv()`'s default `override=False` means an explicitly-set
+  `DATABASE_URL` in the launching shell command *does* take precedence
+  (confirmed by re-running with `DATABASE_URL="sqlite+aiosqlite:///./
+  some_file.db"` prefixed on the command) — so **always set
+  `DATABASE_URL` explicitly before running either service locally from a
+  worktree**; don't assume an unset `DATABASE_URL` means "no database," it
+  means "whatever `.env` cwd-walks into." No data was written in the
+  original incident (a test query failed with a schema mismatch before
+  any write occurred), but the failure mode if forgotten is a worktree
+  session silently reading — or writing test data into — a real shared
+  database it has no business touching.
 - **Never `grep`/`cat`/`Read` a gitignored file (`.env`, credentials,
   anything matching `.gitignore`) with a pattern broad enough that a
   secret's plaintext value could end up echoed into the conversation.**

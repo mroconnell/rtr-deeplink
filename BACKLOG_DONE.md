@@ -6,6 +6,347 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Five bundled easy-win fixes: Archive proxy streaming error handling, `proxy_get()` session leak, stale HEAD-405 doc, worktree `.env` warning, Event JSON-LD gaps [Done 2026-08-21]
+
+Five small, independent, already-root-caused fixes shipped together as one
+low-risk PR per this repo's easy-win-triage convention. Three originated
+from `BACKLOG.md`'s "Bugs" section; two (the connector leak and the Event
+JSON-LD gaps) were promoted straight from `CLAUDE_INBOX_TRIAGE.md`'s
+2026-08-21 run rather than sitting as open `BACKLOG.md` entries first,
+since they were fixed in the same pass they were reviewed.
+
+**1. Archive reverse-proxy streaming had no error handling once the
+response body started streaming.** `app/main.py`'s `_proxy_to_archive()`
+→ `body_iterator()` only had a `finally` to close the session — no
+`try`/`except` around `async for chunk in
+response.content.iter_chunked(65536)`. When the upstream Archive→resolver
+stream got cut short mid-response, aiohttp's `TransferEncodingError`/
+`ClientPayloadError` propagated unhandled *after* `StreamingResponse` had
+already committed to a response — the earlier try/except in the same
+function (which returns a clean 503) can't catch this, since it only
+guards the initial `proxy_get()` call. Real Sentry issue PYTHON-FASTAPI-Q,
+one occurrence 2026-08-18 21:11 UTC (`transaction = /m/{path:path}`, a
+crawler request, `browser = MJ12bot`). **Fix**: wrapped the streaming
+loop's body in `try/except (aiohttp.ClientPayloadError,
+aiohttp.ClientConnectionError)`, logs a warning, and lets the generator
+end cleanly instead of raising into `StreamingResponse` machinery. Tested
+in `tests/test_archive_proxy_error_handling.py` with a fake aiohttp
+response whose `iter_chunked()` raises `ClientPayloadError` partway
+through — confirms the client still gets the partial body with a 200 and
+the session is closed, rather than the request blowing up.
+
+**2. Unclosed aiohttp connector leaked on every proxy failure.**
+`app/archive_client.py`'s `proxy_get()` — the function every `/m/*`/
+`/meetings`/sitemap/feed proxy route goes through — created
+`session = aiohttp.ClientSession(timeout=PROXY_TIMEOUT)` directly (not via
+`async with`), then called `response = await session.get(url,
+headers=headers)` with no try/except. If `session.get()` itself threw
+(timeout, connection reset, DNS failure before headers came back), the
+exception propagated straight out of `proxy_get()` but the session was
+never closed — it leaked until Python's GC eventually finalized it, which
+is when aiohttp emits its "Unclosed connector" warning. Confirmed via two
+real recurring Sentry issues, PYTHON-FASTAPI-V (`transaction =
+/m/{path:path}`, 2026-08-21 05:25 UTC) and PYTHON-FASTAPI-S (`transaction
+= /api/health`, 2026-08-20 19:46 UTC) — both `transaction` tags look
+arbitrary/misleading because Sentry tags whichever request happens to be
+executing when the leaked connector's finalizer runs, not the request
+that created the leak (`/api/health` has no `aiohttp` call in it at all).
+This also means the earlier "Archive service instability, 2026-08-17"
+`BACKLOG.md` entry's read of that evening's cluster (attributed entirely
+to the one-off WO-10 OOM outage) undersold it — these two fresh
+instances, three days later and unrelated to that outage, show this is an
+ongoing, recurring leak. **Fix**: wrapped `session.get()` in a try/except
+that calls `await session.close()` then re-raises, so a failed request
+never leaks its session. Tested in
+`tests/test_archive_proxy_error_handling.py` with a fake session whose
+`.get()` raises `ClientConnectionError` — confirms `.close()` is called
+before the exception propagates.
+
+**3. Every route on both services returned 405 to HTTP `HEAD` requests,
+site-wide — turned out to already be fixed, this was stale doc-drift.**
+`BACKLOG.md` still described this as open (confirmed live 2026-08-17,
+left flagged as `[JUST-DO-IT]`), including the real, confirmed impact of
+leaving the `rtr-deeplink.onrender.com/api/health/resolve-check`
+UptimeRobot monitor DOWN for 19h33m (2026-08-16→17). But the actual fix
+landed the same day the bug was found: PR #138 ("Support HTTP HEAD on
+every route via per-service middleware", 2026-08-17) added a
+`@app.middleware("http")` `handle_head_requests` to both `app/main.py`
+and `archive/main.py` that dispatches a HEAD internally as a GET and
+strips the body from the response — plus `tests/test_head_requests.py`,
+which also already existed. `BACKLOG.md`'s entry was simply never struck
+through when the fix shipped — exactly the kind of doc-drift this repo's
+own "App-wide audit" entry already flags as a real, confirmed problem.
+This pass verified the fix is genuinely live rather than trusting the
+stale doc: ran a local uvicorn for both `app.main:app` and
+`archive.main:app` and confirmed `curl -I` against `/`, `/about`, and
+`/meetings` returns 200 (not 405) on both. `BACKLOG.md`'s entry struck
+through with a pointer here; no code change was needed for this item.
+
+**4. `.claude/worktrees/` subdirectories silently inherit the shared
+checkout's `.env`.** Confirmed live 2026-08-17: starting a service from
+inside a worktree with no `.env` of its own still connects to the real
+shared Postgres via `asyncpg`, because `archive/main.py`'s/`app/main.py`'s
+`load_dotenv()` calls take no explicit path, so `python-dotenv` walks up
+from cwd and finds the *shared checkout's* `.env` two directories up. No
+data was written in the original incident. **Fix**: deliberately the
+safe, low-blast-radius option rather than a `load_dotenv()` code change —
+a new bullet in `CLAUDE.md` right after the existing multi-session/
+worktree guidance, telling any worktree session to always set
+`DATABASE_URL` explicitly before running either service locally, and
+explaining that an unset `DATABASE_URL` doesn't mean "no database," it
+means "whatever `.env` cwd-walks into." Deliberately did *not* change
+`load_dotenv()`'s path-resolution behavior in application code, since
+this fix landed without human review before merge and a change to how
+either service loads its env vars is a genuine production-config risk not
+worth taking for what is fundamentally a local-dev footgun — confirming
+that would require independently checking how Render actually invokes
+these services in production, which wasn't done here.
+
+**5. Event JSON-LD was missing `description` and `image`.**
+`archive/templates/meeting_page.html`'s `Event` JSON-LD block had two
+real gaps flagged by a real Search Console "Events structured data
+issues" alert (8 issues, 2026-08-21): `description` was only emitted in
+an `{% else %}` branch mutually exclusive with `url` — since
+`public_base_url` is set in production (same guard that gates the
+canonical link/`og:url`), `description` never actually rendered in
+practice, exactly matching Search Console's "Missing field 'description'"
+flag; and the block had no `image` field at all, despite the template
+already computing `thumbnail_url` in scope and reusing it for `og:image`/
+`twitter:card`/`VideoObject.thumbnailUrl` elsewhere in the same template
+(same YouTube-only-for-now caveat as those existing uses). **Fix**:
+`url` and `description` now emit unconditionally (`url` still gated on
+`public_base_url`, `description` no longer gated on anything), and
+`{% if thumbnail_url %}"image": {{ thumbnail_url|tojson }}{% endif %}`
+was added. Did **not** add `eventStatus` (the block's own existing
+comment explains this is deliberately omitted — it opts into Google's
+stricter Event rich-result requirements this app has no data for) or
+`organizer`/`endDate` (no real data source for either without more design
+work — `page.jurisdiction` could plausibly back an `organizer`, but that
+wasn't checked for accuracy). Tested in the new
+`tests/test_meeting_page_event_jsonld.py`: a real resolver-shaped
+synthetic page (same `crud.ingest_resolution()` pattern as
+`test_meeting_page_structured_data.py`) confirms `description`/`image`/
+`url` all render together with `public_base_url` set, `description`
+still renders with it unset (while `url` is correctly absent), and
+`image` is correctly absent for a non-YouTube (m3u8) video.
+
+**Verification across all five**: full `pytest` suite run (1086 passed,
+15 skipped — pre-existing, unrelated to this change) plus `npm test`
+(`tests_js/`, 34 passed, 0 failed, unaffected by this PR's changes).
+## Granicus adapter doesn't recognize `MediaPlayer.php?event_id=...` URLs [Fixed 2026-08-21]
+
+Root cause turned out to be more interesting than "an unrecognized URL
+shape" — it's a **genuinely different, non-interchangeable id namespace**,
+and the real pages behind it genuinely have no video, not merely one this
+scanner failed to find.
+
+**Live investigation** (all 4 required cities fetched directly, both via
+plain HTTP `curl` with redirects followed and, for Calabasas, a real
+rendered-browser check via `mcp__Claude_Browser__*` per this repo's own
+convention):
+- `https://calabasas.granicus.com/MediaPlayer.php?event_id=1525` →
+  302-redirects to `/player/event/1525?redirect=true`.
+- `https://elkgrove.granicus.com/MediaPlayer.php?event_id=2583` — same
+  shape.
+- `https://emeryville.granicus.com/MediaPlayer.php?event_id=1108` — same
+  shape. **Correction to the original BACKLOG.md entry**: the real
+  Granicus subdomain is `emeryville.granicus.com`, not
+  `emeryvilleca.granicus.com` (the PrimeGov tenant name) — that subdomain
+  404s (`/core/error/NotFound.aspx`), confirmed live.
+- `https://nassaufl.granicus.com/MediaPlayer.php?event_id=2741` — same
+  shape; real Granicus subdomain is `nassaufl.granicus.com`, not
+  `nassaucountyfl.granicus.com` (again, the PrimeGov tenant name).
+
+Every one of these 4 pages, fetched fully (including the browser-rendered
+check on Calabasas, which confirmed real network requests — no hidden
+AJAX call to check live status, no video-player JS library loaded at
+all): zero `.m3u8`/`.mp4`/video-element references anywhere, an inline
+`<script>video_url=""</script>` left empty, and a real, static,
+server-rendered `<div id="player-error"><span>The event you selected is
+not currently in progress.</span></div>` — the *only* content in the
+page's video section.
+
+**Why**: cross-checked against PrimeGov's own
+`GetArchivedMeetingYears`/`ListArchivedMeetings` API for all 4 tenants
+(15 total real `event_id` examples found across them, not just the 4
+required ones) — every single `event_id`-shaped `videoUrl` corresponds to
+a meeting with `streamCompleted: false` and
+`mediaManagerClipPubliclyAvailable: false`, while every `clip_id`-shaped
+one has both `true`. `event_id` is Granicus's identifier for a
+*scheduled* meeting/live-stream slot, assigned from a completely separate
+number space from `clip_id` (the archived-recording identifier) on the
+same tenant — e.g. Calabasas `event_id=1525` vs. real `clip_id`s in the
+7000s-8000s range for the same city, confirmed via that tenant's own
+`ViewPublisher.php` archive listing. So `MediaPlayer.php?event_id=...`
+genuinely means "this meeting hasn't been streamed live yet, or was
+streamed but never got archived into a public clip" — not a shape gap in
+this app's own scanner.
+
+**What was built** (`app/platforms/granicus.py`): added
+`_extract_event_id()` as a fully separate extraction path from
+`_extract_clip_id()` — deliberately never merged or conflated, since
+treating an `event_id` as a `clip_id` would risk either a wasted request
+or a coincidental collision with a real, unrelated clip on the same
+tenant (silently showing the wrong meeting's video). Added
+`_extract_live_status_message()`, which reads the real
+`#player-error` text directly off the page when present. In `resolve()`:
+when there's no `clip_id`, `event_id` is looked up and used only for a
+distinctly-namespaced `external_id` (`granicus:{netloc}:event:{id}`, an
+"event:" infix that can never collide with a real
+`granicus:{netloc}:{clip_id}` id, which is always a bare number); the
+"no playable video found" warning now prefers Granicus's own real,
+specific status message when the page has one, over the previous generic
+message (which implied a video existed somewhere this app merely failed
+to find — inaccurate for this case). Every `clip_id`-dependent path
+(video-URL guess, `AgendaViewer.php`, `MinutesViewer.php`, the
+`/videos/{id}/player` fallback) correctly stays skipped, since none of
+that data exists yet either — confirmed via the regression test below,
+whose mock strictly errors on any unmocked request the code might
+(wrongly) make.
+
+**Verified live** (direct `GranicusAssetFinder().resolve()` calls, not
+just page fetches) against all 4 required cities: each now returns a real
+title and jurisdiction pulled from the page (e.g. Calabasas: "City
+Council Regular Meeting", "City of Calabasas, CA"), a correctly-namespaced
+`external_id`, `video_url=None`, and the single accurate warning "The
+event you selected is not currently in progress." — instead of the prior
+silent near-total failure. Also re-verified a real `clip_id` URL on the
+same tenant (`calabasas.granicus.com/MediaPlayer.php?clip_id=8117`) still
+resolves a working `.m3u8` with zero warnings, confirming the 3
+already-supported shapes didn't regress.
+
+**Tests added** (`tests/test_granicus.py`, real fixture
+`tests/fixtures/granicus/calabasas_event1525.html` captured live
+2026-08-21): `test_resolve_event_id_meeting_reports_honest_no_video_status`
+(full `resolve()` against the real Calabasas fixture),
+`test_extract_event_id_handles_query_and_path_shapes` (all 4 real
+confirmed URLs, both query and post-redirect path forms), and
+`test_extract_clip_id_never_matches_event_id_shape` (guards the
+never-conflate invariant). Full suite: 1083 passed, 15 skipped (up from
+1080 passed pre-fix; no regressions).
+
+**Residual gap, not addressed by this fix**: when PrimeGov delegates one
+of these `event_id` URLs to `GranicusAssetFinder` (see
+`app/platforms/primegov.py`'s `_resolve_via_tenant_video_url`),
+PrimeGov's own API record already has the real meeting date and a
+possibly-better title (e.g. "City Council Regular Meeting - Closed
+Session (Amended Agenda)" for Calabasas `event_id=1525`, dated Jan 28,
+2026) that `GranicusAssetFinder` has no way to see from the Granicus page
+alone (no date-shaped text anywhere on it). `GranicusAssetFinder`'s
+result is honest but incomplete for this case; PrimeGov's own
+`resolve_via_platform` delegation deliberately doesn't override
+title/date from a successfully-resolved Granicus/Swagit page (see that
+method's comment) since that's normally the *better* source — true for
+`clip_id` pages, not for this `event_id` case. Left open rather than
+guessed at in this pass, since fixing it well means PrimeGov threading
+its own already-fetched meeting record's date/title through to the
+delegated resolve specifically for this one sub-case, which is its own
+scoped follow-up.
+## Swagit adapter served a wrong, bogus video for `/events/{id}` URLs — root cause found, fixed at the source, PrimeGov's workaround guard removed [Done 2026-08-21]
+
+Root-caused the `[HIGH PRIORITY]` entry this replaces. Fetched all 5 real
+`/events/{id}` tenants live via `curl` — the 3 originally confirmed
+(`petalumaca.new.swagit.com/events/43607`, `norwalkca.new.swagit.com/
+events/44163`, `westjordan.new.swagit.com/events/43963`) plus the 2 that
+had previously only matched via PrimeGov's API
+(`cambridgema.v3.swagit.com/events/43940`, `solvangca.v3.swagit.com/
+events/43961`, now independently `curl`-verified live too) — and read the
+real page structure closely against `/videos/{id}`'s already-working one.
+
+**What the placeholder actually is.** `/events/{id}` is a genuinely
+different Swagit page template from `/videos/{id}` — a *live-event*
+stream page, not an archived on-demand recording, confirmed straight from
+the template's own (dead, JS-commented-out) error-handler text, byte-
+identical on all 5 real tenants:
+
+> Our live stream is not currently active. Please check back during a
+> regularly scheduled meeting or view our on-demand content for
+> previously run meetings.
+
+Every one of the 5 pages embeds the exact same pair of `player.src(...)`
+lines back to back: a dead, commented-out (`//`) reference to a generic
+Swagit demo/QA recording (tenant `abilenetx`) — byte-identical across all
+5 real cities, confirmed dead template code, never real per-tenant
+content — immediately followed by the real, active line, which points to
+a genuine **per-tenant live-channel stream**
+(`edge-f.swagit.com/live[-edge]/{tenant}/live-1-a/playlist.m3u8`). That
+live URL was independently `curl`-verified to `404` on all 5 tenants —
+every sample was a meeting that had already happened by the time it was
+checked, so the live channel is naturally inactive. `scan_media_urls()`'s
+generic regex scan has no notion of JS comments, so it picked up the dead
+placeholder line (which sits first in document order, ahead of the real
+line) as a valid HLS candidate — the exact root cause of the wrong-video
+bug. No reference to `/videos/{id}` or `archive-stream.granicus.com` (the
+real archived-recording CDN — see `SwagitAssetFinder`'s own docstring)
+appears anywhere in any of the 5 pages' HTML either, so there's no
+discoverable link from an `/events/{id}` page to wherever (or whether) a
+recording was ever archived — this is the "genuinely undiscoverable"
+outcome the original entry flagged as a legitimate possibility, confirmed
+rather than assumed.
+
+Also confirmed live: `/events/{id}`'s `<title>` tag follows the identical
+"{Date}, {Title} - {City}, {State}" shape as `/videos/{id}` (metadata
+extraction needed no changes), and real chapter markers
+(`a.playerControl[data-ts][data-title]`) are present on this template too
+(28 of them on the real Norwalk page) but every one carries a blank
+`data-ts=""` — no recording to offset into — so the existing `if not ts:
+continue` guard in `resolve()` already (and correctly) excludes them from
+`agenda_items` without any code change.
+
+**Fix**: `app/platforms/swagit.py` adds
+`_is_swagit_events_template_dead_candidate()`, matching either the exact
+bogus `vault01/abilenetx/59d7e173-...` placeholder path or any
+`edge-f.swagit.com/live/` or `/live-edge/` URL, and filters both out of
+`media_urls` before video selection runs — so neither can ever win any of
+the three existing selection passes, the same way the pre-existing dead
+legacy-host placeholder (`107.178.209.195`, see the class docstring) is
+handled, except this pair has no good same-page fallback so exclusion
+(not just deprioritization) is required. When every remaining candidate
+was filtered out this way, `resolve()` now appends a specific warning
+("This is a Swagit live-event page (`/events/{id}`), not an archived
+on-demand recording...") instead of the generic "No playable video found"
+— mirroring the Granicus 36,000-cue-truncation pattern of flagging a
+known-bad outcome explicitly rather than presenting it as complete.
+Live-verified against all 5 real tenants post-fix: every one now resolves
+`video_url=None` with the specific warning and zero mention of
+`abilenetx`, while `jurisdiction`/`date`/`title` still resolve correctly
+(e.g. Cambridge, MA / 2026-01-12 / "Regular City Council Meeting").
+
+**`app/platforms/primegov.py`'s guard removed, not just simplified.**
+Its narrow `platform == "swagit" and path.startswith("/events/"): return
+None` early-decline (added when this bug was first found, before the
+root cause was known) is no longer needed now that `SwagitAssetFinder`
+itself handles the case safely — confirmed live end-to-end:
+`PrimeGovAssetFinder().resolve()` against
+`https://cambridgema.primegov.com/Portal/Meeting?meetingTemplateId=2163`
+now delegates all the way through to the real Swagit `/events/43940`
+page and comes back with `platform="swagit"`, `video_url=None`, the
+specific live-event warning, `source_url` correctly preserved as the
+original PrimeGov URL, and better metadata (Cambridge, MA / 2026-01-12)
+than PrimeGov's own page-scraping fallback would have given. Removing
+the guard (rather than leaving it in place) also closes the actual gap
+the original entry called out: the guard only ever protected PrimeGov's
+one delegation path, not a user pasting an `/events/{id}` URL directly or
+reaching one through `generic_fallback.py`'s any-known-platform-link
+scan — both of those already went through `SwagitAssetFinder.resolve()`
+directly and are now covered by the same fix, no separate change needed
+in either.
+
+**Tests**: `tests/test_swagit.py` adds
+`test_resolve_declines_the_bogus_events_template_placeholder_video`
+(real, trimmed `<script>` excerpt from the live Petaluma fetch, plus a
+real blank-`data-ts` chapter marker) and
+`test_is_swagit_events_template_dead_candidate_matches_real_placeholder_and_live_urls`.
+`tests/test_primegov.py`'s old
+`test_resolve_declines_to_delegate_to_a_swagit_events_url` (which
+asserted the now-removed guard's decline-without-fetching behavior) is
+replaced with
+`test_resolve_delegates_to_swagit_events_url_and_gets_an_honest_decline`,
+which now actually exercises the real delegated `SwagitAssetFinder.
+resolve()` call against a live-captured Cambridge fixture and asserts the
+honest decline, rather than asserting the request never happens. All 19
+`test_swagit.py` tests and all 33 `test_primegov.py` tests pass; full
+suite (`pytest`) passes, 1082 passed / 15 skipped, no regressions.
 ## Fountain Valley clip 607's wrong title/jurisdiction: investigated, confirmed already fixed by the 2026-08-18 `external_id` host-namespacing fix -- BACKLOG.md entry was stale doc-drift [Done 2026-08-21]
 
 Investigated BACKLOG.md's "[NEEDS-AUDIT] Fountain Valley clip 607 shows a
@@ -13827,3 +14168,104 @@ audit, extraction tournament, and design rationale this work grew out of.
   any dispatch happens — worth a follow-up if that gap ever matters in
   practice, not addressed here since the brief scoped this WO to "the
   resolve entrypoint" specifically.
+
+## `GET /internal/transcription/hallucination-candidates` 502 fixed — same unbounded-full-scan shape as `find_auto_transcription_candidate`, fixed with a data-shaped split instead of a pure SQL predicate (2026-08-21)
+
+**Diagnosis confirmed** by direct code review (no production DB access
+used, per this session's own instructions — see `CLAUDE.md`'s raw-SQL
+warning): `archive/db/crud.py`'s `list_hallucination_candidate_transcript_
+versions()` selected `TranscriptVersion.segments` — the full per-cue JSON
+blob — for *every* `source == "transcribed"` row in one query, no
+limit/pagination, then ran `detect_hallucination_warnings()`
+(`archive/utils/transcription_quality.py`) synchronously inside the async
+request handler. That function is genuinely CPU-bound per row (string
+joins over every segment's text, a regex scan for long character runs,
+and `unicodedata.name()` called per character for the non-Latin-script
+ratio check) — confirming this really is the same shape
+`find_auto_transcription_candidate()` had before its 2026-08-17 rewrite
+(`pg_stat_statements`' #1 production-DB-time consumer at the time), just
+triggered on-demand by a request instead of a 5-minute idle-loop timer.
+
+**Real difference from that sibling fix, and why the fix isn't identical**:
+`find_auto_transcription_candidate()` could be rewritten to a pure
+SQL-level predicate (`_good_default_transcript_exists()`) because "does
+this page have a good transcript" is decidable from `content_hash`/
+`transcript_warnings` alone. This audit endpoint's entire job is running
+`detect_hallucination_warnings()` itself — there's no SQL predicate that
+replaces it, so segments can't be eliminated entirely for the population
+that still needs scanning. Fix is data-shaped instead of predicate-shaped:
+
+- Rows that **already carry** the hallucination marker in stored
+  `transcript_warnings` are a small, slow-growing set (only real
+  hallucination-loop transcripts get flagged, by this same check, at
+  ingest/finalize time). Selected via a SQL `cast(...).like()` text match
+  (the same pattern `_good_default_transcript_exists()` already uses for
+  the garbled/hallucination markers) — this branch never touches
+  `segments` at the SQL level; segments is then pulled only for this
+  small already-flagged set, and still re-run through detection so a row
+  that stops tripping updated detection logic falls back out rather than
+  reporting stale state.
+- Rows **not yet flagged** are the big, actively-growing population
+  (every clean `"transcribed"` version, plus any pre-2026-08-16
+  hallucinated one that was never caught) — this was the unbounded part.
+  Bounded by a new `limit` (default 500) + keyset pagination on
+  `TranscriptVersion.id` (`after_id`), same shape
+  `list_transcription_backlog_candidates()`'s own `limit` param already
+  uses elsewhere in this file. `GET /internal/transcription/
+  hallucination-candidates` now accepts `limit`/`after_id` query params
+  and passes them straight through — a caller auditing the full backlog
+  pages through by repeatedly passing the previous batch's max
+  `version_id` as the next `after_id`.
+
+**A real NULL-handling bug caught while writing this, not by inspection
+alone**: `transcript_warnings` is a nullable column, and Postgres/SQLite
+both evaluate `NULL LIKE '...'` (and its negation) to `NULL`, not
+`False`. A naive `~cast(transcript_warnings, Text).like(...)` predicate
+for "not yet flagged" would have silently dropped every NULL-warnings row
+out of *both* branches (`WHERE NULL` is falsy) — meaning a real
+hallucinated transcript whose row happened to have no `transcript_
+warnings` value at all would never be scanned or surfaced, not just
+scanned-and-cleared. Guarded explicitly, same as
+`_good_default_transcript_exists()` already does for the same column:
+`already_flagged` requires `transcript_warnings IS NOT NULL AND ... LIKE
+...`; "not yet flagged" is `transcript_warnings IS NULL OR NOT (... LIKE
+...)`. Caught and regression-tested (see below) before this ever reached
+review, not found live.
+
+**Verification**: `tests/test_transcription_jobs.py`'s existing
+`test_list_hallucination_candidate_transcript_versions_filters_correctly`
+(real DB integration test, not mocked, against the isolated SQLite file —
+exercises a cloud-worker-produced already-flagged candidate, a
+local-script pre-fix unflagged candidate using the real Port Coquitlam
+repetition-loop hallucination shape, and a clean transcript that must NOT
+appear) still passes unchanged against the rewritten query — confirms the
+SQL-level split didn't change which rows the endpoint surfaces, the part
+that actually matters for this audit tool's purpose. Two new tests added
+alongside it:
+`test_hallucination_candidates_limit_bounds_unflagged_scan_not_flagged`
+(creates 3 unflagged + 1 already-flagged hallucinated version, confirms
+`limit=2` bounds only the unflagged side across two keyset-paginated
+pages while the flagged one appears on both) and
+`test_hallucination_candidates_null_transcript_warnings_still_scanned`
+(writes `transcript_warnings=NULL` directly against the test DB — neither
+`ingest_resolution()` nor `report_chunk_result()` ever produce that state
+themselves, both coerce a missing value to `[]` — and confirms the row is
+still caught as a candidate, regression-testing the NULL-handling bug
+above). Full suite: 1082 passed, 15 skipped (unchanged skip count from
+before this change), 0 failures.
+
+Not verified against a live deploy or the real production population as
+part of this session (no `DATABASE_URL`/`ARCHIVE_BASE_URL` access used,
+per this session's own scope) — the 4 real candidates already known from
+prior manual investigation (`revised-long-beach-ca-2026-08-04-...`
+version 176, `san-diego-county-ca-2026-06-24-board-of-supervisors`
+version 240, `meeting-38ca49` version 246,
+`kitchener-2026-05-05-heritage-kitchener-committee` version 981, all per
+`BACKLOG.md`'s prior write-up) were cross-checked conceptually against
+the rewritten query logic (all four are `source == "transcribed"` rows
+that would fall into either the already-flagged or not-yet-flagged branch
+depending on whether they'd been re-scanned before, neither branch
+filters on anything but `source` and the warning-marker presence) and
+against the repetition-loop/non-Latin-script shapes the fixture tests
+above already cover, but a real post-deploy call against the live Archive
+service is the next step to fully close this out.

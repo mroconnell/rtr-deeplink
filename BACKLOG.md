@@ -202,110 +202,42 @@ worth raising `_SUBPROCESS_TIMEOUT_SECONDS` to match Granicus's own
 slot for minutes on every genuinely-dead asset, trading a fast, clear
 failure for a slow, identical one.
 
-## [HIGH PRIORITY] Swagit adapter serves a wrong, bogus video for `/events/{id}` URLs
+## ~~[HIGH PRIORITY] Swagit adapter serves a wrong, bogus video for `/events/{id}` URLs~~
 
-Found 2026-08-19 while fixing PrimeGov's Swagit/Granicus video-delegation
-gap (see `BACKLOG_DONE.md`'s "PrimeGov never detected a real video hosted
-on Swagit/Granicus instead of YouTube" entry for the full context and how
-this was caught). Higher priority than the Granicus entry below because
-the failure mode is worse: this doesn't just fail to find a video, it
-silently returns a *wrong* one with no warning.
+**Fixed 2026-08-21** — root cause found: `/events/{id}` is a genuinely
+different Swagit page template from `/videos/{id}`, a *live-event*
+stream page (confirmed straight from the template's own dead error-
+handler text) with no archived recording linked from it at all. Its two
+embedded candidates — a dead, byte-identical-across-every-tenant demo
+placeholder and a real per-tenant live-channel stream that 404s once the
+meeting's over — are both now detected and declined by
+`SwagitAssetFinder` with a specific warning instead of silently served.
+`PrimeGov`'s workaround guard was removed too, since the fix covers its
+delegation path directly (confirmed live end-to-end). All 5 real tenants
+(`petalumaca`, `norwalkca`, `westjordan`, `cambridgema`, `solvangca`)
+independently `curl`-verified. Full root-cause writeup, live-fetch
+detail, and test coverage in `BACKLOG_DONE.md`'s "Swagit adapter served a
+wrong, bogus video for `/events/{id}` URLs" entry.
 
-Confirmed live on 3 independent real tenants (`petalumaca.new.swagit.com/
-events/43607`, `norwalkca.new.swagit.com/events/44163`,
-`westjordan.new.swagit.com/events/43963` — a 4th and 5th,
-`cambridgema.v3.swagit.com/events/43940` and
-`solvangca.v3.swagit.com/events/43961`, match the same pattern via
-PrimeGov's API but weren't independently `curl`-verified): each of these
-real, different cities' `/events/{id}` pages embeds the exact same
-jwplayer m3u8 reference verbatim in its own static HTML —
-`.../vault01/abilenetx/59d7e173-684b-4da4-9433-50d6e22555f1.mp4/
-playlist.m3u8` — which cannot be 3+ different cities' real recordings.
-`SwagitAssetFinder` was only ever built and tested against the
-`/videos/{id}` URL shape (see README.md's platform table and
-`tests/test_swagit.py`'s existing fixtures, all `/videos/{id}`) — the
-`/events/{id}` shape is a genuinely different, untested Swagit page
-template, and its own scan of that page's HTML happens to pick up this
-placeholder (unclear yet whether it's a "coming soon"/still-processing
-state, a stale demo left in a shared template, or something else on
-Swagit's side — not yet investigated further).
+## ~~[JUST-DO-IT] Granicus adapter doesn't recognize `MediaPlayer.php?event_id=...` URLs~~ **Fixed 2026-08-21** — see `BACKLOG_DONE.md`
 
-PrimeGov's own delegation (`app/platforms/primegov.py`'s
-`_resolve_via_tenant_video_url()`) now has a narrow guard that declines to
-delegate specifically for this URL shape (`platform == "swagit" and
-urlparse(normalized_url).path.startswith("/events/")`), falling back to
-an honest "no video found" instead of shipping the wrong video — but that
-guard only protects PrimeGov's delegation path. A user who pastes a real
-`/events/{id}` Swagit URL directly (or reaches one through the generic
-fallback / a future new delegation path) still gets the wrong video today,
-with no warning at all. Needs its own live-testing pass across the
-`/events/{id}` cities above (and ideally more, per this project's own
-"several cities" testing rule) to understand the real page shape well
-enough to either extract the actual video correctly or at least detect
-and decline the bogus placeholder specifically, the way the Granicus
-36,000-cue-truncation warning below flags a different known-bad output
-rather than presenting it as complete.
+Full writeup, root cause (the pages genuinely have no video yet —
+`event_id` is a separate, non-interchangeable Granicus id namespace from
+`clip_id`, confirmed via PrimeGov's own API showing
+`streamCompleted: false` on every real example), the 4 verified cities
+(with 2 real subdomain-name corrections: `emeryville.granicus.com` and
+`nassaufl.granicus.com`, not the PrimeGov tenant names), and the one
+residual gap left open (PrimeGov's own better date/title not threaded
+through for this specific sub-case) are all in `BACKLOG_DONE.md`'s
+matching entry.
 
-## [JUST-DO-IT] Granicus adapter doesn't recognize `MediaPlayer.php?event_id=...` URLs
+## ~~Running a service from a `.claude/worktrees/` subdirectory silently inherits the shared checkout's `.env`~~ **Fixed 2026-08-21** — see `BACKLOG_DONE.md`
 
-Found 2026-08-19 while fixing PrimeGov's Swagit/Granicus video-delegation
-gap (see `BACKLOG_DONE.md`'s "PrimeGov never detected a real video hosted
-on Swagit/Granicus instead of YouTube" entry for the full context) — that
-fix correctly discovers and passes real Granicus URLs through for 4
-PrimeGov tenants (`calabasas`, `elkgrove`, `emeryvilleca`,
-`nassaucountyfl`), but `GranicusAssetFinder` still fails to resolve them,
-confirmed independently of PrimeGov by calling
-`GranicusAssetFinder().resolve()` directly against the same URLs.
-
-Root cause: `_extract_clip_id()` (`app/platforms/granicus.py`) only
-recognizes three URL shapes — path-based `/player/clip/{id}`, path-based
-`/videos/{id}/`, and query-based `?clip_id={id}` (`MediaPlayer.php`). A
-real fourth shape exists: `MediaPlayer.php?event_id={id}`, confirmed live
-on all 4 cities above (e.g. `https://calabasas.granicus.com/MediaPlayer.
-php?event_id=1525`, which 302-redirects to `/player/event/1525?
-redirect=true` — a page `_extract_clip_id()` doesn't match at all, so
-`clip_id` comes back `None` and every clip_id-dependent step downstream
-(video URL guess, agenda items, minutes-date fallback) is skipped
-entirely). `scan_media_urls()`'s generic regex scan also finds nothing on
-the `/player/event/{id}` page itself in the one sample fetched so far
-(calabasas) — unconfirmed whether that's true of all 4, or just that one.
-
-Not fixed alongside the PrimeGov change per this project's own "test
-against a real URL before building an adapter" rule (`CLAUDE.md`) — this
-needs its own live-testing pass across the 4 confirmed `event_id` cities
-(and ideally more, per the same rule's "several from different cities"
-guidance) to understand whether `/player/event/{id}` has a scannable
-video URL at all, or needs a different discovery mechanism (e.g. a
-dedicated fetch of the `/player/event/{id}` page, mirroring
-`_fetch_video_from_player_page()`'s existing `/videos/{id}/player`
-fallback for the Flash-embed case).
-
-## [JUST-DO-IT] Running a service from a `.claude/worktrees/` subdirectory silently inherits the shared checkout's `.env`
-
-Confirmed live 2026-08-17: starting `archive.main:app` locally from inside
-a worktree at `<repo>/.claude/worktrees/<name>/` (no `.env` of its own)
-still connected to a real Postgres database via `asyncpg` on the very
-first request, even though no `DATABASE_URL` was set anywhere in the
-shell. Cause: `archive/main.py`'s `load_dotenv()` call takes no explicit
-path, so `python-dotenv` walks up from the current working directory
-looking for a `.env` — and finds the *shared checkout's* `.env` at the
-repo root two levels up, loading its real `DATABASE_URL` (and everything
-else in it) into the worktree's process. `load_dotenv()`'s default
-`override=False` means an explicitly-set `DATABASE_URL` in the launching
-shell command *does* take precedence — confirmed by re-running with
-`DATABASE_URL="sqlite+aiosqlite:///./some_file.db"` prefixed on the same
-command, which then genuinely used local SQLite — but that's easy to
-forget, and the failure mode if forgotten is a worktree session silently
-reading (and, worse, potentially writing test data into) a real shared
-database it has no business touching. No data was written in the
-incident that surfaced this — the one test query issued before this was
-caught failed with a schema mismatch (`UndefinedColumnError: column
-meeting_pages.meeting_body does not exist`) before any write occurred.
-Worth either passing an explicit `.env` path (or `override=True` with an
-explicit local path) in `archive/main.py`/`app/main.py`'s `load_dotenv()`
-calls, or at minimum a `CLAUDE.md` note warning worktree sessions to
-always set `DATABASE_URL` explicitly before running either service
-locally.
+Deliberately fixed with a `CLAUDE.md` warning note rather than a
+`load_dotenv()` code change — see `BACKLOG_DONE.md` for the full
+reasoning (a code change to `load_dotenv()`'s path resolution risks
+affecting how production loads its real env vars, not worth taking on for
+what is fundamentally a local-dev footgun).
 
 ## Tulare County/Visalia jurisdiction misattribution — not confirmed fixed, no known real hosting domain found
 
@@ -949,65 +881,21 @@ anything) to build against it.
   "Empty ("zero-value") meeting pages"; if the flagged URLs turn out to
   be that shape, this closes on recrawl with no further code change.
 
-- **[JUST-DO-IT] Every route on both services returns 405 to HTTP `HEAD` requests —
-  site-wide, app-level, confirmed live and reproduced locally 2026-08-17.**
-  `curl -I` against `/`, `/about`, `/coverage`, `/meetings`,
-  `/state/california`, and `/m/{slug}` all return `405 Method Not
-  Allowed` in production (resolver domain and Archive onrender.com host
-  alike), and a local uvicorn reproduces it — so it's FastAPI route
-  registration (`@app.get` does not auto-register HEAD), not Render.
-  Crawlers and uptime tools commonly probe with HEAD (UptimeRobot's
-  HTTP monitor type defaults to it; Googlebot uses it occasionally for
-  cache revalidation), and a 405 makes the site look broken to any such
-  probe even though GET works. Not user-visible, so not urgent, but
-  cheap to fix: either add `methods=["GET", "HEAD"]` on the public
-  routes or (simpler, covers everything at once) a tiny middleware that
-  rewrites HEAD to GET and strips the response body, on both `app/` and
-  `archive/`. Found 2026-08-17 while investigating the Search Console
-  flags above — first noticed as `curl -I /coverage` → 405.
+- ~~**[JUST-DO-IT] Every route on both services returns 405 to HTTP `HEAD`
+  requests — site-wide, app-level, confirmed live and reproduced locally
+  2026-08-17.**~~ **Fixed 2026-08-21** — see `BACKLOG_DONE.md`. (Turned
+  out to already be fixed in code by PR #138, 2026-08-17, the same day
+  this entry was written — this entry itself was the stale doc-drift;
+  the 2026-08-21 pass confirmed the fix live with `curl -I` against both
+  services and added `tests/test_head_requests.py` coverage, which
+  already existed too. Full detail in `BACKLOG_DONE.md`.)
 
-  **Real-world impact confirmed 2026-08-18** (daily inbox-triage
-  Routine's second run, via UptimeRobot alert): this bug left the
-  `rtr-deeplink.onrender.com/api/health/resolve-check` monitor — the one
-  purpose-built to catch a real resolve-path outage (see
-  `BACKLOG_DONE.md`) — in a continuous DOWN state for **19h33m**
-  (2026-08-16 13:26:05 → 2026-08-17 08:59:06 UTC), root-caused by
-  UptimeRobot itself as "HTTP 405 - Method Not Allowed." No evidence the
-  resolve path was actually broken for that whole window (the route runs
-  a real resolve on GET, and nothing else points at a genuine outage),
-  but for nearly 20 hours a real outage during that window would have
-  gone unnoticed. Worth reprioritizing given this concrete
-  monitoring-blackout evidence, even though nothing user-visible failed.
-
-- **[JUST-DO-IT] Archive reverse-proxy streaming has no error handling
+- ~~**[JUST-DO-IT] Archive reverse-proxy streaming has no error handling
   once the response body starts streaming — a cut-short upstream
   connection raises an unhandled exception instead of failing cleanly,
   confirmed live in code 2026-08-21, promoted from
-  `CLAUDE_INBOX_TRIAGE.md`'s 2026-08-19 run.** New Sentry issue
-  PYTHON-FASTAPI-Q (`ClientPayloadError: Response payload is not
-  completed: <TransferEncodingError: 400, message='Not enough data to
-  satisfy transfer length header.'>`), `transaction = /m/{path:path}`,
-  one real occurrence 2026-08-18 21:11 UTC (a crawler request,
-  `browser = MJ12bot`). [app/main.py](app/main.py)'s `_proxy_to_archive()`
-  → `body_iterator()` (currently around
-  [app/main.py:1447-1452](app/main.py#L1447-L1452)) has only a `finally`
-  to close the session — no `try`/`except` around `async for chunk in
-  response.content.iter_chunked(65536)`. When the upstream Archive→
-  resolver stream gets cut short mid-response (aiohttp's own parser
-  raises `TransferEncodingError`), the exception propagates unhandled —
-  and because this happens *inside* `StreamingResponse`'s body generator,
-  after `response.status`/headers are already sent to the client, the
-  existing try/except earlier in the same function (which returns a
-  clean 503) can't help — that one only guards the initial
-  `archive_client.proxy_get()` call, not the streaming loop after it.
-  **Impact**: low as observed so far (one bot-traffic hit, `handled=no`
-  in Sentry — presumably just a dropped connection to the crawler, not
-  user-visible breakage), but the same gap would hit a real visitor the
-  same way if the resolver-Archive connection drops mid-page-load —
-  they'd get a silently killed connection instead of a clean error.
-  **Fix effort**: small — wrap the `body_iterator()` loop in its own
-  try/except, log, and let the generator end cleanly instead of raising
-  into `StreamingResponse` machinery already committed to a response.
+  `CLAUDE_INBOX_TRIAGE.md`'s 2026-08-19 run.**~~ **Fixed 2026-08-21** —
+  see `BACKLOG_DONE.md`.
 
 - **[HUMAN] Render account bandwidth limit reached — real, current cost
   exposure, found by the daily inbox-triage Routine's 2026-08-18 run.**
@@ -4915,46 +4803,17 @@ one item below is resolved as a result.
     `word_timestamps` machinery instead, now that the gap-split fix
     above is confirmed to work.
 
-## `GET /internal/transcription/hallucination-candidates` returns 502 -- likely the same unbounded-full-scan pattern already fixed once in `find_auto_transcription_candidate` (found 2026-08-19)
+## ~~`GET /internal/transcription/hallucination-candidates` returns 502~~
 
-**Confirmed live, not a cold-start blip**: three separate calls against
-the deployed Archive service (`ARCHIVE_BASE_URL`), including one with a
-150s client timeout, all came back `502 Bad Gateway` from Render's own
-proxy -- consistent with the upstream request itself failing/timing out
-server-side, not a client-side network hiccup.
-
-**Likely root cause, by direct comparison to a bug already fixed once in
-a sibling function**: `crud.list_hallucination_candidate_transcript_
-versions()` (`archive/db/crud.py:952`) selects `TranscriptVersion.
-segments` -- the full per-cue JSON blob -- for *every* `source ==
-"transcribed"` row in one query, with no limit/pagination, then runs
-`detect_hallucination_warnings()` (CPU-bound Python, not SQL) over each
-one synchronously inside the request handler. This is the exact same
-shape `find_auto_transcription_candidate()` had before its 2026-08-17
-rewrite, which `pg_stat_statements` caught as the #1 consumer of
-production DB time specifically *because* it pulled every transcript's
-full `segments` JSON on a five-minute cadence (see that function's own
-docstring and `BACKLOG_DONE.md`) -- this audit endpoint pulls the same
-shape of data, just on-demand rather than on a timer, and the on-demand
-worker/backlog-script activity in this same session (job 256, the
-Vacaville entry above, and an ongoing local backlog-drain run) has been
-actively growing the `source == "transcribed"` population the whole
-time. Not yet confirmed by directly counting rows or checking Render's
-own service logs for an OOM/timeout signature -- worth doing before
-assuming this diagnosis over some other cause (e.g. a bad deploy,
-unrelated Archive-service outage).
-
-**Fix direction, if the diagnosis holds**: same shape as `find_auto_
-transcription_candidate()`'s own fix -- do the cheap SQL-level
-elimination first (e.g. only rows without `transcript_warnings` already
-carrying the hallucination marker, or a `LIMIT`/keyset-paginated batch)
-so `segments` is only ever pulled for genuine candidates, not the whole
-`source == "transcribed"` table at once. This endpoint is read-only
-audit tooling (per its own docstring, "a human decides what's worth
-re-running"), not on any user-facing path, so there's no urgency
-comparable to the auto-generation fix -- but it's currently unusable for
-exactly the audit purpose (sizing real hallucination exposure, like the
-Vacaville case above) it exists for.
+**Fixed 2026-08-21** — diagnosis (same unbounded-full-scan shape as
+`find_auto_transcription_candidate` before its 2026-08-17 rewrite)
+confirmed by code review; fixed with a data-shaped split (small
+already-flagged set pulled in full, big not-yet-flagged population
+bounded by `limit`/keyset `after_id` pagination) rather than a pure SQL
+predicate, since this endpoint's whole job is running
+`detect_hallucination_warnings()` itself. Full root-cause writeup, the
+NULL-`transcript_warnings` bug caught while fixing it, and test
+verification detail in `BACKLOG_DONE.md`.
 
 ## `scripts/transcribe_backlog_locally.py`'s "no usable audio/video source on re-resolve" skip has no retry -- confirmed a real, live meeting can get wrongly skipped by one transient failure (2026-08-18)
 

@@ -1,7 +1,7 @@
 import re
 from datetime import datetime
 from typing import List, Optional, Tuple
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 import aiohttp
 from bs4 import BeautifulSoup
@@ -106,6 +106,52 @@ _TRANSCRIPT_URL_SUFFIX_RE = re.compile(r"/transcript/?(?:\?.*)?$", re.IGNORECASE
 _TRANSCRIPT_TIMESTAMP_LINE_RE = re.compile(r"^\[(\d{1,2}):(\d{2}):(\d{2})\]$")
 _TRANSCRIPT_BRACKET_LINE_RE = re.compile(r"^\[.*\]$")
 
+# Real, confirmed-live bug (found 2026-08-19, root-caused 2026-08-21 --
+# see BACKLOG.md/BACKLOG_DONE.md): Swagit's `/events/{id}` URL shape is a
+# genuinely different page template from `/videos/{id}` -- a *live-event*
+# page, not an archived on-demand recording, confirmed by the template's
+# own dead error-handler text (see `resolve()`'s comment above
+# `media_urls` below for the full writeup). Every one of 5 real tenants
+# checked (petalumaca #43607, norwalkca #44163, westjordan #43963,
+# cambridgema #43940, solvangca #43961 -- all 5 independently curl-
+# verified live, not just the first 3 as BACKLOG.md originally recorded)
+# embeds this exact byte-identical dead JS-commented `player.src(...)`
+# line crediting a generic Swagit demo/QA recording (tenant "abilenetx")
+# that cannot belong to any real customer -- confirmed dead template
+# code, not real per-tenant content, since it's inside a `//` JS comment
+# that `scan_media_urls`'s generic regex scan (unaware of JS syntax)
+# still picks up as a valid HLS candidate.
+_SWAGIT_EVENTS_TEMPLATE_PLACEHOLDER_RE = re.compile(
+    r"vault01/abilenetx/59d7e173-684b-4da4-9433-50d6e22555f1\.mp4", re.IGNORECASE
+)
+
+
+def _is_swagit_events_template_dead_candidate(url: str) -> bool:
+    """True for either of the two non-viable media candidates Swagit's
+    `/events/{id}` live-event page template embeds -- see the module-
+    level comment above `_SWAGIT_EVENTS_TEMPLATE_PLACEHOLDER_RE` and
+    `resolve()`'s own comment for the full live-verified writeup:
+
+    1. The dead, byte-identical-across-every-tenant "abilenetx" demo
+       placeholder left in a JS comment (never real content).
+    2. The real (uncommented) `player.src(...)` line right below it,
+       which points to a genuine per-tenant *live-channel* stream
+       (`edge-f.swagit.com/live[-edge]/{tenant}/live-1-a/playlist.m3u8`)
+       -- but that's only ever valid while a meeting is actively
+       broadcasting: confirmed live, it 404s on all 5 tenants above (all
+       real meetings that had already happened by the time they were
+       checked), and even when it does work it's a live stream, not an
+       archived on-demand recording this app's transcript/deep-link
+       model expects.
+    """
+    if _SWAGIT_EVENTS_TEMPLATE_PLACEHOLDER_RE.search(url):
+        return True
+    parsed = urlparse(url)
+    path = parsed.path.lower()
+    return parsed.netloc.lower() == "edge-f.swagit.com" and path.startswith(
+        ("/live/", "/live-edge/")
+    )
+
 
 def _parse_swagit_transcript_download(
     text: str,
@@ -199,6 +245,17 @@ class SwagitAssetFinder(AssetFinder):
         sample. A meeting page that has no generated transcript simply
         has no `/transcript` link to find, so this is skipped rather than
         guessed at.
+      - `/events/{id}` is a genuinely different, LIVE-event page template
+        from `/videos/{id}` above (confirmed live 2026-08-21 against 5
+        real tenants — see `_is_swagit_events_template_dead_candidate`'s
+        docstring and `resolve()`'s own comment for the full writeup).
+        It has no discoverable archived recording at all: its only two
+        embedded media candidates are a dead, byte-identical-across-every-
+        tenant demo placeholder and a per-tenant live-channel stream that
+        404s once the meeting is over. Both are excluded from video
+        selection so this never again silently serves the wrong (bogus
+        placeholder) video, the way it did before this was found and
+        fixed — see BACKLOG_DONE.md.
     """
 
     platform_name = "swagit"
@@ -268,6 +325,26 @@ class SwagitAssetFinder(AssetFinder):
         # back to plain document-order scanning when none exists (e.g. a
         # page structure not yet seen).
         media_urls = scan_media_urls(html, final_url)
+
+        # Real, confirmed-live bug (found 2026-08-19, root-caused
+        # 2026-08-21): a `/events/{id}` page's own dead template
+        # candidates (see `_is_swagit_events_template_dead_candidate`'s
+        # docstring for the full writeup) must never be selected as
+        # video_url -- the bogus "abilenetx" placeholder is a specific,
+        # plausible-looking WRONG video (not just a missing one), and the
+        # real per-tenant live-stream URL beneath it is dead 404 for any
+        # meeting that isn't currently broadcasting (every real case
+        # checked). Filtered out up front so neither can win any of the
+        # three selection passes below, the same way the dead legacy-host
+        # candidate just above is deprioritized rather than excluded --
+        # except this pair has no good candidate to fall back to on the
+        # same page, so exclusion (not just deprioritization) is required.
+        dead_template_candidates = [
+            u for u in media_urls if _is_swagit_events_template_dead_candidate(u)
+        ]
+        if dead_template_candidates:
+            media_urls = [u for u in media_urls if u not in dead_template_candidates]
+
         video_url, video_format = None, None
         for candidate in media_urls:
             if (
@@ -288,7 +365,28 @@ class SwagitAssetFinder(AssetFinder):
                     video_url, video_format = candidate, "mp4"
                     break
         if not video_url:
-            video_warnings.append("No playable video found on this page.")
+            if dead_template_candidates:
+                # Confirmed live on all 5 tenants above, straight from
+                # this Swagit template's own (dead, JS-commented) error
+                # handler text: "Our live stream is not currently active.
+                # Please check back during a regularly scheduled meeting
+                # or view our on-demand content for previously run
+                # meetings." -- i.e. Swagit's own template concedes
+                # `/events/{id}` is a live-only page and directs viewers
+                # elsewhere ("on-demand content") for an archived
+                # recording, which this page never itself links to (no
+                # `/videos/{id}` or archive-stream.granicus.com reference
+                # found on any of the 5 real pages checked).
+                video_warnings.append(
+                    "This is a Swagit live-event page (`/events/{id}`), not an "
+                    "archived on-demand recording -- Swagit's own page confirms "
+                    "the live stream isn't currently active, and no archived "
+                    "video is linked from this page. If this meeting was later "
+                    "archived, look for it under this tenant's /videos/{id} "
+                    "page instead."
+                )
+            else:
+                video_warnings.append("No playable video found on this page.")
 
         segments: List[TranscriptSegment] = []
 

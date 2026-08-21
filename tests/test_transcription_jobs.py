@@ -632,6 +632,180 @@ async def test_list_hallucination_candidate_transcript_versions_filters_correctl
     assert local_row["job_id"] is None
 
 
+async def test_hallucination_candidates_limit_bounds_unflagged_scan_not_flagged():
+    # Regression test for the 2026-08-21 502 fix (BACKLOG_DONE.md): the
+    # previous version of list_hallucination_candidate_transcript_versions()
+    # pulled every source=="transcribed" row's full `segments` in one
+    # unbounded query. The rewrite bounds only the NOT-yet-flagged
+    # population (limit/after_id) since that's the big, actively-growing
+    # side -- the small already-flagged population is still returned in
+    # full regardless of `limit`, since it's cheap and never grows fast
+    # (see the function's own docstring). This exercises both halves of
+    # that claim against the real DB, not just by reading the SQL.
+    anchor_url = "https://example.granicus.com/player/clip/tj-halluc-page-anchor"
+    anchor_result = await crud.ingest_resolution(
+        {
+            "platform": "granicus",
+            "source_url": anchor_url,
+            "external_id": "granicus:tj-halluc-page-anchor",
+            "title": "T",
+            "date": "2026-01-01",
+            "jurisdiction": "City of Test",
+            "video_url": "https://example.com/v.m3u8",
+            "video_format": "m3u8",
+            "segments": [{"start": 0.0, "end": 1.0, "text": "anchor", "speaker": None}],
+            "agenda_items": [],
+            "transcript_language": "en",
+            "transcript_warnings": [],
+            "source": "transcribed",
+        },
+        anchor_url,
+    )
+    after_id = anchor_result["version_id"]  # everything below is created after this
+
+    hallucinated_segments = [
+        {
+            "start": 0.0,
+            "end": 30.0,
+            "text": "Public comment, motion, second, aye, nay, abstain,",
+            "speaker": None,
+        },
+    ] + [
+        {
+            "start": 240.0 + i * 10,
+            "end": 250.0 + i * 10,
+            "text": "So, we are going to take a look at what we are going to do.",
+            "speaker": None,
+        }
+        for i in range(44)
+    ]
+
+    unflagged_ids = []
+    for n in range(3):
+        url = f"https://example.granicus.com/player/clip/tj-halluc-page-{n}"
+        result = await crud.ingest_resolution(
+            {
+                "platform": "granicus",
+                "source_url": url,
+                "external_id": f"granicus:tj-halluc-page-{n}",
+                "title": "T",
+                "date": "2026-01-01",
+                "jurisdiction": "City of Test",
+                "video_url": "https://example.com/v.m3u8",
+                "video_format": "m3u8",
+                "segments": hallucinated_segments,
+                "agenda_items": [],
+                "transcript_language": "en",
+                "transcript_warnings": [],  # not yet flagged
+                "source": "transcribed",
+            },
+            url,
+        )
+        unflagged_ids.append(result["version_id"])
+
+    flagged_url = "https://example.granicus.com/player/clip/tj-halluc-page-flagged"
+    flagged_job = await crud.create_transcription_job(
+        payload=_payload("granicus:tj-halluc-page-flagged", flagged_url),
+        input_url_normalized=flagged_url,
+        requester_email="halluc-page-flagged@example.com",
+        media_url="https://example.com/v.m3u8",
+        media_kind="video",
+        probed_duration_seconds=900,
+        chunk_size_seconds=900,
+        skip_confirmation=True,
+    )
+    claim = await crud.claim_next_chunk()
+    assert claim["job_id"] == flagged_job["job_id"]
+    flagged_result = await crud.report_chunk_result(
+        flagged_job["job_id"], success=True, shifted_segments=hallucinated_segments
+    )
+    flagged_id = flagged_result["transcript_version_id"]  # already carries the marker
+
+    # First page: limit=2 over the unflagged population -- only the two
+    # lowest unflagged version_ids should appear, but the flagged one
+    # (much cheaper, unbounded) should appear on every page regardless.
+    page1 = await crud.list_hallucination_candidate_transcript_versions(
+        limit=2, after_id=after_id
+    )
+    page1_ids = {row["version_id"] for row in page1}
+    assert page1_ids == {unflagged_ids[0], unflagged_ids[1], flagged_id}
+
+    # Second page, keyset-paginated from the first page's max unflagged id:
+    # the third unflagged row now appears; the flagged one still does too.
+    page2 = await crud.list_hallucination_candidate_transcript_versions(
+        limit=2, after_id=unflagged_ids[1]
+    )
+    page2_ids = {row["version_id"] for row in page2}
+    assert page2_ids == {unflagged_ids[2], flagged_id}
+
+
+async def test_hallucination_candidates_null_transcript_warnings_still_scanned():
+    # Regression test: transcript_warnings is a nullable column
+    # (archive/db/models.py), and `NULL LIKE '...'` (and its negation) is
+    # SQL NULL, not False -- a naive `~cast(...).like(...)` predicate for
+    # "not yet flagged" would silently drop every NULL-warnings row out of
+    # WHERE entirely, meaning a real hallucinated transcript with no
+    # transcript_warnings value at all (plausible for older rows) would
+    # never be scanned, let alone surfaced. Exercised here by writing NULL
+    # directly (ingest_resolution/report_chunk_result both coerce a
+    # missing value to [] rather than None, so this state has to be
+    # constructed directly against the same test DB to reproduce it).
+    from archive.db.engine import async_session
+    from archive.db.models import TranscriptVersion
+    from sqlalchemy import update
+
+    url = "https://example.granicus.com/player/clip/tj-halluc-null-warnings"
+    hallucinated_segments = [
+        {
+            "start": 0.0,
+            "end": 30.0,
+            "text": "Public comment, motion, second, aye, nay, abstain,",
+            "speaker": None,
+        },
+    ] + [
+        {
+            "start": 240.0 + i * 10,
+            "end": 250.0 + i * 10,
+            "text": "So, we are going to take a look at what we are going to do.",
+            "speaker": None,
+        }
+        for i in range(44)
+    ]
+    result = await crud.ingest_resolution(
+        {
+            "platform": "granicus",
+            "source_url": url,
+            "external_id": "granicus:tj-halluc-null-warnings",
+            "title": "T",
+            "date": "2026-01-01",
+            "jurisdiction": "City of Test",
+            "video_url": "https://example.com/v.m3u8",
+            "video_format": "m3u8",
+            "segments": hallucinated_segments,
+            "agenda_items": [],
+            "transcript_language": "en",
+            "transcript_warnings": [],
+            "source": "transcribed",
+        },
+        url,
+    )
+    version_id = result["version_id"]
+
+    async with async_session() as session:
+        await session.execute(
+            update(TranscriptVersion)
+            .where(TranscriptVersion.id == version_id)
+            .values(transcript_warnings=None)
+        )
+        await session.commit()
+
+    audited = await crud.list_hallucination_candidate_transcript_versions()
+    audited_version_ids = {row["version_id"] for row in audited}
+    assert version_id in audited_version_ids
+    row = next(r for r in audited if r["version_id"] == version_id)
+    assert row["already_flagged"] is False
+
+
 async def test_completed_job_detects_language_from_transcribed_text():
     # Real gap closed alongside the search-language fix earlier this
     # session (see BACKLOG_DONE.md): a transcribed version used to always
