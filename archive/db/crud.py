@@ -2986,9 +2986,16 @@ PRIORITY_MEDIUM = 10  # every real user-submitted request today
 # meant the countdown kept resetting (each auto-restart re-claimed the
 # job, pushing "stale" 10 more minutes out every time) -- annoying to
 # wait out mid-debugging. 5 minutes is still comfortably longer than a
-# single chunk should ever legitimately take with the "tiny" model, and
-# the only real instance of this repo's single worker process, so there's
-# no concurrent-worker race this protects against, just crash detection.
+# single chunk should ever legitimately take with the "tiny" model. This
+# is still purely crash detection, not a concurrent-worker guard -- that's
+# claim_next_chunk()'s own FOR UPDATE SKIP LOCKED below, which already
+# stops two worker processes (a second one is real now, see render.yaml's
+# rtr-transcription-worker-2) from double-claiming the same row. This
+# window only matters for a worker that crashes mid-chunk without ever
+# calling report_chunk_result() to release its claim -- after it elapses,
+# *some* worker (the other replica, or this one after a restart) can
+# reclaim the row; which worker that ends up being isn't what this timer
+# is about.
 STALE_CLAIM_AFTER = timedelta(minutes=5)
 MAX_CONSECUTIVE_CHUNK_FAILURES = 3
 

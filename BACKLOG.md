@@ -3905,6 +3905,74 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 
 ## On-demand transcription — real gaps left open
 
+- **Second transcription worker added for backlog catch-up, 2026-08-21 —
+  residual auto-gen TOCTOU gap now recorded, not fixed at the DB layer.**
+  `render.yaml` now defines a second `type: worker` service
+  (`rtr-transcription-worker-2`) alongside the original, to work down the
+  ~1600+ archived-but-untranscribed meeting backlog faster. It's a real,
+  distinct service block (not `numInstances` on the original) specifically
+  because Render gives every `numInstances` replica of one service block
+  IDENTICAL env vars, and this pair needs to differ in exactly one:
+  `AUTO_TRANSCRIPTION_REQUESTER_EMAIL` is deliberately left unset on the
+  new service.
+
+  **Why that one omission matters.** `claim_next_chunk()`
+  (`archive/db/crud.py`) already uses `FOR UPDATE SKIP LOCKED` and is
+  genuinely safe for any number of concurrent worker processes — confirmed
+  by reading its own docstring, no code change needed there. The real,
+  separate race lives in idle-time auto-generation:
+  `maybe_generate_auto_job()` → `find_auto_transcription_candidate()` (a
+  plain, unlocked SELECT) → `create_transcription_job()`'s own separate,
+  unlocked "does an active job already exist for this page" check-then-
+  insert, no unique constraint or row lock guarding it. Two worker
+  processes both idle at the same moment — which happens routinely once
+  the queue trickles down to empty — and both configured with a real
+  `AUTO_TRANSCRIPTION_REQUESTER_EMAIL` could both pass that check for the
+  same candidate page before either commits, creating two duplicate
+  low-priority jobs. Confirmed downstream cost: `report_chunk_result()`'s
+  completion path creates a new `TranscriptVersion` with no content-hash
+  dedup against a same-source in-flight duplicate (unlike `/internal/
+  ingest`'s push path, which does dedupe by hash) — real wasted compute
+  and two completion emails, though `promote_transcript_version()` still
+  cleanly settles on one final default version, so it's wasteful, not
+  data-corrupting.
+
+  **This is avoided by construction here, not fixed at the DB layer**:
+  leaving `AUTO_TRANSCRIPTION_REQUESTER_EMAIL` unset on the second worker
+  means its own `maybe_generate_auto_job()` always short-circuits
+  (`worker/main.py`, `if not AUTO_TRANSCRIPTION_REQUESTER_EMAIL: return
+  False`) and never reaches `create_transcription_job()` — the race is
+  structurally impossible on this specific pair. **A future third
+  auto-gen-enabled worker (or setting that var on this second one) would
+  reintroduce it immediately** — the real fix, if this pattern needs to
+  scale past two workers, is a unique partial index / row lock in
+  `create_transcription_job()`'s existing-job check, not another
+  env-var-omission trick. Not built now since it's not needed at N=2 with
+  this specific split.
+
+  **Bulk backlog concurrency**: `scripts/bulk_queue_transcription_
+  backlog.py` (new) pulls candidates from the existing `GET /internal/
+  transcription-backlog` and creates up to 8 `TranscriptionJob` rows per
+  run via `POST /internal/transcription/create-job` at the newly-exposed
+  `priority=PRIORITY_LOW` (that field was added to
+  `TranscriptionCreateJobRequest` — previously only `worker/main.py`'s own
+  direct in-process call could ever use that tier). 8, not closer to
+  `MAX_CONCURRENT_TRANSCRIPTION_JOBS=15`, deliberately leaves ~7 slots free
+  so a real live visitor's own transcription request never hits
+  `too_many_active_jobs` during the catch-up window, and LOW priority
+  means any such real request still jumps the queue ahead of already-queued
+  backlog jobs at the very next claim, regardless of how full the batch is.
+  Manually re-run (not cron'd) for now, since the two-worker setup itself
+  is meant to be temporary — revisit a scheduled version if the backlog
+  turns out to need sustained automated feeding beyond this catch-up
+  window. **Not yet live-verified**: added and unit-tested (existing
+  `tests/test_transcription_create_job_clerk_verified.py` and friends all
+  still pass against the new optional `priority` field), but no real run
+  against production has happened yet — first real run should confirm the
+  verification queries in the implementation plan (two distinct `job_id`s
+  `in_progress` at once, zero duplicate-`meeting_page_id` PRIORITY_LOW
+  rows) before trusting this at scale.
+
 - ~~**[JUST-DO-IT] `find_auto_transcription_candidate()` streams the
   entire transcript corpus through the DB every 5 idle minutes — an N+1
   that loads full `segments` JSON per page.**~~ **Fixed 2026-08-17 (same

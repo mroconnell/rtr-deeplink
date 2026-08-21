@@ -14,7 +14,7 @@ from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from markupsafe import Markup
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 load_dotenv()
@@ -573,6 +573,27 @@ class TranscriptionCreateJobRequest(BaseModel):
     # so it should skip the confirm-by-email step the same way an
     # existing newsletter subscriber's email already does below.
     clerk_verified: bool = False
+    # Optional -- omitted (the default) preserves every existing caller's
+    # behavior exactly, since crud.create_transcription_job() itself
+    # defaults to PRIORITY_MEDIUM when no priority= kwarg is passed. Added
+    # 2026-08-21 so scripts/bulk_queue_transcription_backlog.py can
+    # explicitly submit at PRIORITY_LOW over this HTTP surface --
+    # previously only worker/main.py's own in-process auto-generation
+    # call could ever use that tier (see crud.PRIORITY_LOW's own
+    # "reserved for future self-generated/idle-time batch work" comment --
+    # this is exactly that future use). Restricted to the two tiers that
+    # actually exist today so this internal, token-gated route can't be
+    # used to sneak a job in above PRIORITY_MEDIUM.
+    priority: Optional[int] = None
+
+    @field_validator("priority")
+    @classmethod
+    def _validate_priority(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v not in (crud.PRIORITY_LOW, crud.PRIORITY_MEDIUM):
+            raise ValueError(
+                f"priority must be {crud.PRIORITY_LOW} or {crud.PRIORITY_MEDIUM}"
+            )
+        return v
 
 
 @app.post("/internal/transcription/create-job")
@@ -596,6 +617,7 @@ async def internal_transcription_create_job(
         probed_duration_seconds=req.probed_duration_seconds,
         chunk_size_seconds=req.chunk_size_seconds,
         skip_confirmation=skip_confirmation,
+        **({"priority": req.priority} if req.priority is not None else {}),
     )
 
     if job.get("status") == "pending_confirmation":
