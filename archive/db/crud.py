@@ -949,14 +949,16 @@ async def list_completed_multichunk_transcription_jobs() -> list[dict]:
         ]
 
 
-async def list_hallucination_candidate_transcript_versions() -> list[dict]:
+async def list_hallucination_candidate_transcript_versions(
+    *, limit: int = 500, after_id: Optional[int] = None
+) -> list[dict]:
     """Retroactive audit, same role as list_completed_multichunk_transcription_
     jobs() above plays for the seam-duplication bug: re-runs
     detect_hallucination_warnings() (archive/utils/transcription_quality.py --
     the same function report_chunk_result() now calls at finalize time, and
     scripts/transcribe_backlog_locally.py's transcribe_meeting() calls
-    directly) against the *stored* segments of every already-completed
-    source=="transcribed" TranscriptVersion, to find which ones would trip
+    directly) against the *stored* segments of already-completed
+    source=="transcribed" TranscriptVersions, to find which ones would trip
     the check today but shipped before it existed (or before this specific
     row was ever re-evaluated). See BACKLOG.md's phase-cancellation write-up
     -- this was flagged there as open/not yet built.
@@ -983,29 +985,106 @@ async def list_hallucination_candidate_transcript_versions() -> list[dict]:
     Read-only and audit-only, on purpose, same as the seam-duplication
     audit: sizes the real exposure without touching anything. A human
     decides what (if anything) from this list is worth re-running.
+
+    Rewritten 2026-08-21 after this endpoint was confirmed live-502ing --
+    the previous version pulled TranscriptVersion.segments (the full
+    per-cue JSON blob) for *every* source=="transcribed" row in one query
+    with no limit, then ran detect_hallucination_warnings() (CPU-bound
+    Python) over each synchronously in the request handler. Exact same
+    shape find_auto_transcription_candidate() had before its own
+    2026-08-17 rewrite (see that function's docstring), which
+    pg_stat_statements caught as the #1 consumer of production DB time for
+    the same reason: pulling every transcript's full segments JSON on a
+    recurring basis. Unlike that function's fix, this audit's whole job is
+    to run real CPU-bound detection over segments -- there's no SQL-only
+    predicate that replaces detect_hallucination_warnings() itself, so the
+    elimination has to be data-shaped instead:
+
+    - Rows that ALREADY carry the hallucination marker in stored
+      transcript_warnings are a small, slow-growing set (only real
+      hallucination-loop transcripts get flagged, by this same check,
+      at ingest/finalize time -- see _has_real_warning_free_transcript()).
+      Selected via the same cast(...).like() text-match
+      _good_default_transcript_exists() already uses, so this branch never
+      touches `segments` at the SQL level; segments is then pulled ONLY
+      for this small already-flagged set (still re-run through detection
+      below, so a row that stops tripping the check under updated
+      detection logic falls back out rather than reporting stale state).
+    - Rows NOT yet flagged are the big, actively-growing population (every
+      clean "transcribed" version, plus any pre-2026-08-16 hallucinated one
+      that was never caught) -- this is what made the previous version
+      unbounded. Bounded here by `limit` + keyset pagination on
+      TranscriptVersion.id (`after_id`), same shape as
+      list_transcription_backlog_candidates()'s own `limit` param, so a
+      single call can only ever pull `limit` rows' worth of segments no
+      matter how large this population gets. A caller auditing the full
+      backlog pages through by repeatedly passing the previous batch's
+      max version_id as the next after_id.
     """
+    warnings_text = cast(TranscriptVersion.transcript_warnings, Text)
+    # NULL transcript_warnings must count as "not flagged", guarded
+    # explicitly same as _good_default_transcript_exists() above --
+    # `NULL LIKE ...` (and its negation) is NULL, not False, and a bare
+    # `~warnings_text.like(...)` would silently drop every NULL-warnings
+    # row out of BOTH branches (WHERE NULL is falsy) rather than routing
+    # it into the unflagged/candidate-scan side where it belongs.
+    already_flagged_clause = and_(
+        TranscriptVersion.transcript_warnings.is_not(None),
+        warnings_text.like(f"%{_HALLUCINATION_MARKER}%"),
+    )
+    not_flagged_clause = or_(
+        TranscriptVersion.transcript_warnings.is_(None),
+        ~warnings_text.like(f"%{_HALLUCINATION_MARKER}%"),
+    )
+
+    base_columns = (
+        TranscriptVersion.id,
+        TranscriptVersion.meeting_page_id,
+        TranscriptVersion.language,
+        TranscriptVersion.is_default,
+        TranscriptVersion.segments,
+        TranscriptVersion.transcript_warnings,
+        TranscriptVersion.created_at,
+        MeetingPage.slug,
+        MeetingPage.title,
+        TranscriptionJob.id,
+    )
+
     async with async_session() as session:
-        rows = (
+        flagged_query = (
+            select(*base_columns)
+            .join(MeetingPage, MeetingPage.id == TranscriptVersion.meeting_page_id)
+            .outerjoin(
+                TranscriptionJob,
+                TranscriptionJob.transcript_version_id == TranscriptVersion.id,
+            )
+            .where(
+                TranscriptVersion.source == "transcribed",
+                already_flagged_clause,
+            )
+        )
+        unflagged_query = (
+            select(*base_columns)
+            .join(MeetingPage, MeetingPage.id == TranscriptVersion.meeting_page_id)
+            .outerjoin(
+                TranscriptionJob,
+                TranscriptionJob.transcript_version_id == TranscriptVersion.id,
+            )
+            .where(
+                TranscriptVersion.source == "transcribed",
+                not_flagged_clause,
+            )
+        )
+        if after_id is not None:
+            flagged_query = flagged_query.where(TranscriptVersion.id > after_id)
+            unflagged_query = unflagged_query.where(TranscriptVersion.id > after_id)
+
+        flagged_rows = (
+            await session.execute(flagged_query.order_by(TranscriptVersion.id.asc()))
+        ).all()
+        unflagged_rows = (
             await session.execute(
-                select(
-                    TranscriptVersion.id,
-                    TranscriptVersion.meeting_page_id,
-                    TranscriptVersion.language,
-                    TranscriptVersion.is_default,
-                    TranscriptVersion.segments,
-                    TranscriptVersion.transcript_warnings,
-                    TranscriptVersion.created_at,
-                    MeetingPage.slug,
-                    MeetingPage.title,
-                    TranscriptionJob.id,
-                )
-                .join(MeetingPage, MeetingPage.id == TranscriptVersion.meeting_page_id)
-                .outerjoin(
-                    TranscriptionJob,
-                    TranscriptionJob.transcript_version_id == TranscriptVersion.id,
-                )
-                .where(TranscriptVersion.source == "transcribed")
-                .order_by(TranscriptVersion.id.asc())
+                unflagged_query.order_by(TranscriptVersion.id.asc()).limit(limit)
             )
         ).all()
 
@@ -1021,7 +1100,7 @@ async def list_hallucination_candidate_transcript_versions() -> list[dict]:
             slug,
             title,
             job_id,
-        ) in rows:
+        ) in [*flagged_rows, *unflagged_rows]:
             warnings = detect_hallucination_warnings(segments or [])
             if not warnings:
                 continue
@@ -1046,6 +1125,7 @@ async def list_hallucination_candidate_transcript_versions() -> list[dict]:
                 }
             )
 
+        candidates.sort(key=lambda c: c["version_id"])
         return candidates
 
 

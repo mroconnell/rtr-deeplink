@@ -13648,3 +13648,104 @@ audit, extraction tournament, and design rationale this work grew out of.
   any dispatch happens — worth a follow-up if that gap ever matters in
   practice, not addressed here since the brief scoped this WO to "the
   resolve entrypoint" specifically.
+
+## `GET /internal/transcription/hallucination-candidates` 502 fixed — same unbounded-full-scan shape as `find_auto_transcription_candidate`, fixed with a data-shaped split instead of a pure SQL predicate (2026-08-21)
+
+**Diagnosis confirmed** by direct code review (no production DB access
+used, per this session's own instructions — see `CLAUDE.md`'s raw-SQL
+warning): `archive/db/crud.py`'s `list_hallucination_candidate_transcript_
+versions()` selected `TranscriptVersion.segments` — the full per-cue JSON
+blob — for *every* `source == "transcribed"` row in one query, no
+limit/pagination, then ran `detect_hallucination_warnings()`
+(`archive/utils/transcription_quality.py`) synchronously inside the async
+request handler. That function is genuinely CPU-bound per row (string
+joins over every segment's text, a regex scan for long character runs,
+and `unicodedata.name()` called per character for the non-Latin-script
+ratio check) — confirming this really is the same shape
+`find_auto_transcription_candidate()` had before its 2026-08-17 rewrite
+(`pg_stat_statements`' #1 production-DB-time consumer at the time), just
+triggered on-demand by a request instead of a 5-minute idle-loop timer.
+
+**Real difference from that sibling fix, and why the fix isn't identical**:
+`find_auto_transcription_candidate()` could be rewritten to a pure
+SQL-level predicate (`_good_default_transcript_exists()`) because "does
+this page have a good transcript" is decidable from `content_hash`/
+`transcript_warnings` alone. This audit endpoint's entire job is running
+`detect_hallucination_warnings()` itself — there's no SQL predicate that
+replaces it, so segments can't be eliminated entirely for the population
+that still needs scanning. Fix is data-shaped instead of predicate-shaped:
+
+- Rows that **already carry** the hallucination marker in stored
+  `transcript_warnings` are a small, slow-growing set (only real
+  hallucination-loop transcripts get flagged, by this same check, at
+  ingest/finalize time). Selected via a SQL `cast(...).like()` text match
+  (the same pattern `_good_default_transcript_exists()` already uses for
+  the garbled/hallucination markers) — this branch never touches
+  `segments` at the SQL level; segments is then pulled only for this
+  small already-flagged set, and still re-run through detection so a row
+  that stops tripping updated detection logic falls back out rather than
+  reporting stale state.
+- Rows **not yet flagged** are the big, actively-growing population
+  (every clean `"transcribed"` version, plus any pre-2026-08-16
+  hallucinated one that was never caught) — this was the unbounded part.
+  Bounded by a new `limit` (default 500) + keyset pagination on
+  `TranscriptVersion.id` (`after_id`), same shape
+  `list_transcription_backlog_candidates()`'s own `limit` param already
+  uses elsewhere in this file. `GET /internal/transcription/
+  hallucination-candidates` now accepts `limit`/`after_id` query params
+  and passes them straight through — a caller auditing the full backlog
+  pages through by repeatedly passing the previous batch's max
+  `version_id` as the next `after_id`.
+
+**A real NULL-handling bug caught while writing this, not by inspection
+alone**: `transcript_warnings` is a nullable column, and Postgres/SQLite
+both evaluate `NULL LIKE '...'` (and its negation) to `NULL`, not
+`False`. A naive `~cast(transcript_warnings, Text).like(...)` predicate
+for "not yet flagged" would have silently dropped every NULL-warnings row
+out of *both* branches (`WHERE NULL` is falsy) — meaning a real
+hallucinated transcript whose row happened to have no `transcript_
+warnings` value at all would never be scanned or surfaced, not just
+scanned-and-cleared. Guarded explicitly, same as
+`_good_default_transcript_exists()` already does for the same column:
+`already_flagged` requires `transcript_warnings IS NOT NULL AND ... LIKE
+...`; "not yet flagged" is `transcript_warnings IS NULL OR NOT (... LIKE
+...)`. Caught and regression-tested (see below) before this ever reached
+review, not found live.
+
+**Verification**: `tests/test_transcription_jobs.py`'s existing
+`test_list_hallucination_candidate_transcript_versions_filters_correctly`
+(real DB integration test, not mocked, against the isolated SQLite file —
+exercises a cloud-worker-produced already-flagged candidate, a
+local-script pre-fix unflagged candidate using the real Port Coquitlam
+repetition-loop hallucination shape, and a clean transcript that must NOT
+appear) still passes unchanged against the rewritten query — confirms the
+SQL-level split didn't change which rows the endpoint surfaces, the part
+that actually matters for this audit tool's purpose. Two new tests added
+alongside it:
+`test_hallucination_candidates_limit_bounds_unflagged_scan_not_flagged`
+(creates 3 unflagged + 1 already-flagged hallucinated version, confirms
+`limit=2` bounds only the unflagged side across two keyset-paginated
+pages while the flagged one appears on both) and
+`test_hallucination_candidates_null_transcript_warnings_still_scanned`
+(writes `transcript_warnings=NULL` directly against the test DB — neither
+`ingest_resolution()` nor `report_chunk_result()` ever produce that state
+themselves, both coerce a missing value to `[]` — and confirms the row is
+still caught as a candidate, regression-testing the NULL-handling bug
+above). Full suite: 1082 passed, 15 skipped (unchanged skip count from
+before this change), 0 failures.
+
+Not verified against a live deploy or the real production population as
+part of this session (no `DATABASE_URL`/`ARCHIVE_BASE_URL` access used,
+per this session's own scope) — the 4 real candidates already known from
+prior manual investigation (`revised-long-beach-ca-2026-08-04-...`
+version 176, `san-diego-county-ca-2026-06-24-board-of-supervisors`
+version 240, `meeting-38ca49` version 246,
+`kitchener-2026-05-05-heritage-kitchener-committee` version 981, all per
+`BACKLOG.md`'s prior write-up) were cross-checked conceptually against
+the rewritten query logic (all four are `source == "transcribed"` rows
+that would fall into either the already-flagged or not-yet-flagged branch
+depending on whether they'd been re-scanned before, neither branch
+filters on anything but `source` and the warning-marker presence) and
+against the repetition-loop/non-Latin-script shapes the fixture tests
+above already cover, but a real post-deploy call against the live Archive
+service is the next step to fully close this out.
