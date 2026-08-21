@@ -813,14 +813,14 @@ class GranicusAssetFinder(AssetFinder):
                 external_id=(
                     f"granicus:{urlparse(final_url).netloc}:{clip_id}"
                     if clip_id
+                    # "event:" infix keeps this permanently distinct
+                    # from a real clip_id-based id above (always a
+                    # bare number) -- event_id and clip_id are
+                    # separate number spaces on the same tenant (see
+                    # _extract_event_id's docstring), so this must
+                    # never collide with or be mistaken for a real
+                    # archived clip's external_id.
                     else (
-                        # "event:" infix keeps this permanently distinct
-                        # from a real clip_id-based id above (always a
-                        # bare number) -- event_id and clip_id are
-                        # separate number spaces on the same tenant (see
-                        # _extract_event_id's docstring), so this must
-                        # never collide with or be mistaken for a real
-                        # archived clip's external_id.
                         f"granicus:{urlparse(final_url).netloc}:event:{event_id}"
                         if event_id
                         else None

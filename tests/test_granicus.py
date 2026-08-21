@@ -497,8 +497,7 @@ def test_extract_clip_id_never_matches_event_id_shape():
     # could coincidentally collide with an unrelated real clip.
     extract = GranicusAssetFinder._extract_clip_id
     assert (
-        extract("https://calabasas.granicus.com/MediaPlayer.php?event_id=1525")
-        is None
+        extract("https://calabasas.granicus.com/MediaPlayer.php?event_id=1525") is None
     )
     assert extract("https://calabasas.granicus.com/player/event/1525") is None
     assert (
@@ -523,16 +522,14 @@ def test_extract_event_id_handles_query_and_path_shapes():
         == "1525"
     )
     assert (
-        extract("https://elkgrove.granicus.com/MediaPlayer.php?event_id=2583")
-        == "2583"
+        extract("https://elkgrove.granicus.com/MediaPlayer.php?event_id=2583") == "2583"
     )
     assert (
         extract("https://emeryville.granicus.com/MediaPlayer.php?event_id=1108")
         == "1108"
     )
     assert (
-        extract("https://nassaufl.granicus.com/MediaPlayer.php?event_id=2741")
-        == "2741"
+        extract("https://nassaufl.granicus.com/MediaPlayer.php?event_id=2741") == "2741"
     )
     assert extract("https://city.granicus.com/AboutUs.php") is None
     # Never matches a real clip_id URL, symmetric with the guard above.
