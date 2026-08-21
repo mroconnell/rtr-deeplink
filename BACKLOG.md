@@ -54,6 +54,26 @@ in the backlog script if it's confirmed volume-triggered, (3) having
 403 specifically (distinct log line) instead of it looking identical to
 an ordinary slow-source timeout.
 
+**Update 2026-08-20/21, real counter-evidence against the IP-block
+theory above.** The residential-IP `curl` 403 is still real (reconfirmed
+directly against the same URL over an hour later, still blocking), but
+submitting King County clip 11547 through the *production* on-demand
+transcription flow (`POST /api/transcription/submit` on the resolver,
+which runs the actual `ffmpeg` extraction from the worker's Render IP,
+not this Mac's) hit the **identical** `"ffmpeg timed out after 120s"`
+failure on chunk 1 (job 433, `failure_history`) -- from a completely
+different IP that made exactly one request to Granicus, not a burst.
+That rules out "this specific residential IP got rate-limited by volume"
+as the sole explanation, at least for this specific clip: either the
+block is broader than one IP (ASN-level, or targeting datacenter/cloud
+egress ranges generally), or -- now the more likely read -- this
+particular Granicus stream is just genuinely slow/flaky at the source,
+independent of who's asking. The residential-IP CloudFront 403 above is
+still unexplained on its own terms and still worth understanding, but
+don't assume fixing/waiting out an IP-specific block will also fix King
+County specifically -- treat these as two candidate causes, not one
+confirmed one, until further evidence sorts them out.
+
 ## [HIGH PRIORITY] Swagit adapter serves a wrong, bogus video for `/events/{id}` URLs
 
 Found 2026-08-19 while fixing PrimeGov's Swagit/Granicus video-delegation
