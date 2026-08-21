@@ -243,6 +243,13 @@ def detect_platform(url: str) -> str:
         # townhallstreams.py's own module docstring and BACKLOG.md for the
         # investigation.
         return "townhallstreams"
+    if "suiteonemedia.com" in netloc:
+        # SuiteOne Media -- a small, real, multi-tenant civic video vendor,
+        # confirmed live 2026-08-21 across 6 real tenants (pacificgroveca,
+        # lorainoh, tuscaloosaal, camaswa, holladayut, stmarysga) -- see
+        # suiteone.py's own module docstring for the real page structure
+        # this was built against.
+        return "suiteone"
     return "unknown"
 
 
