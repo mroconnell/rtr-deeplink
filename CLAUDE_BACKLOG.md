@@ -33,8 +33,13 @@ items).
   `twitter:card` at all~~ — partially shipped 2026-08-14: YouTube-backed
   pages now unfurl with the video's real `i.ytimg.com` thumbnail (see
   `BACKLOG_DONE.md`'s "VideoObject.thumbnailUrl + Clip key moments"
-  entry). **Still open, the original idea's real remainder**: mp4/m3u8
-  pages (the majority) still render as bare text cards, and a
+  entry). ~~The `twitter:card` half regressed the non-YouTube majority,
+  though: that tag shipped *inside* the thumbnail guard, so every
+  non-YouTube page emitted none at all~~ — **fixed 2026-08-21 (WO-27),
+  see `BACKLOG_DONE.md`**; every page now emits a card
+  (`summary_large_image` with an image, `summary` without). **Still
+  open, the original idea's real remainder**: mp4/m3u8
+  pages (the majority) still have no *image* to put on that card, and a
   *generated* branded share-card (jurisdiction + meeting title + maybe a
   quoted transcript line) would beat a raw video frame even where the
   thumbnail now exists — overlaps with "Quote-clip sharing" below.
@@ -71,26 +76,13 @@ items).
   promising specific content needs to actually deliver it) — not just a
   copy swap today.
 
-- **A real example URL under the paste box on the landing page.**
-  Proposed by the user (2026-08-10): plain text (deliberately not a
-  clickable link — the point is to model "paste this into the box
-  above," not tempt a visitor to click through and leave), e.g. "For
-  example: paste this into the box above:
-  `https://jaxcityc.granicus.com/player/clip/7447?redirect=true&view_id=1`".
-  A first-time visitor landing on a bare paste box with no context has
-  to already know what kind of URL this tool wants — a real, working
-  example removes that guesswork immediately, and ties directly into
-  the growth mechanism this section is about (a visitor who
-  successfully resolves something on their first try is far more likely
-  to share the result). Open questions before building: one fixed
-  example vs. rotating through a few (a rotating set could double as
-  implicit "look how many platforms we support," but adds real
-  complexity — a template pick, cache-busting concerns — for a first
-  pass); whether it should link to a currently-live, well-known meeting
-  (Jacksonville) or something more universally recognizable; and whether
-  copy should explicitly say what the visitor will get (video + real
-  transcript) so the example also sets expectations, not just
-  demonstrates the paste action.
+- ~~**A real example URL under the paste box on the landing page.**~~
+  **Built 2026-08-21 (WO-27) — see `BACKLOG_DONE.md`.** Shipped with the
+  user's own design (plain text, not a link) and the two open questions
+  decided as: one fixed example, and copy that does state what the
+  visitor gets. Also replaced the fabricated `citycouncil.granicus.com/
+  player/clip/1234` placeholder that was the only "try this" affordance
+  before it.
 
 ## Utility for the actual audience
 
@@ -360,11 +352,20 @@ alongside the other Wave 1 fixes — full detail in `BACKLOG_DONE.md`.
   navigation aid for an agent trying to *use* the tool on a visitor's
   behalf (site shape, URL patterns like `/m/{slug}`), not an SEO play —
   set expectations accordingly.
-- **Semantic `<time datetime="...">` on visible transcript/agenda
-  timestamps** (currently plain `<a>`/`<span>` text like `[12:34]`). Cheap,
-  template-only, and directly mirrors the WCAG-driven pattern `BACKLOG.md`'s
-  own accessibility-standards research already found valuable on
-  Portland.gov — applying the same discipline to this site's own markup.
+- **Semantic `<time datetime="...">`.** ~~Nothing in this codebase used
+  `<time>` anywhere.~~ **Meeting dates done 2026-08-21 (WO-27) — see
+  `BACKLOG_DONE.md`**: `page.date` and its list/hub/state/saved
+  equivalents now render through a `meeting_date_html` filter, validated
+  so an unparseable stored date falls back to plain text rather than an
+  invalid `datetime` attribute. **Deliberately still open, and not
+  obviously worth doing**: the *transcript/agenda offsets* this entry
+  originally named (`[12:34]`). Those are **durations, not datetimes** —
+  HTML's `datetime` attribute would need `PT12M34S` for them, which is a
+  different change with a much weaker case: a duration-valued `<time>`
+  says "this lasted 12m34s," not "this moment is 12m34s into the video,"
+  so it doesn't actually express what the timestamp means, and no
+  crawler or screen reader is known to do anything useful with it here.
+  Pick this up only with a concrete consumer in mind.
 - **Explicit AI-crawler naming in `robots.txt`.** Already permissive via
   `User-agent: *`; this would only add documentation value, not function.
 

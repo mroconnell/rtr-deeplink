@@ -22,7 +22,7 @@ from sqlalchemy.orm import aliased
 
 from app.utils.jurisdiction_enrich import finalize_jurisdiction
 
-from ..utils.date_status import meeting_date_status
+from ..utils.date_status import iso_meeting_date, meeting_date_status
 from ..utils.jurisdiction_format import (
     US_STATE_ABBR_TO_NAME,
     format_jurisdiction_display,
@@ -2951,6 +2951,78 @@ async def get_transcript_quality_audit(
     if list_outcomes:
         result["examples"] = examples
     return result
+
+
+async def get_meeting_date_format_audit(limit: int = 200) -> dict:
+    """Read-only audit answering, in one call, the question BACKLOG.md's
+    Google Search Console entry has left open since 2026-08-12: does any
+    real production row hold a `MeetingPage.date` that isn't a plain
+    "YYYY-MM-DD"? That's what the `uploadDate` "invalid datetime value"
+    flag would need to be caused by a stored value, and the entry
+    explicitly notes it has never been cross-checked against production.
+
+    Why nothing already answers it: `date` is an unvalidated free string
+    the whole way down -- `Optional[str]` on ResolvedMeeting
+    (app/platforms/models.py), `Optional[str]` on IngestRequest
+    (archive/main.py), a `String(20)` column here -- so no layer would have
+    rejected a bad value on the way in. Every *adapter* is structurally
+    constrained to emit "YYYY-MM-DD" or None today (each goes through
+    strftime("%Y-%m-%d") or an anchored ISO regex), but that says nothing
+    about rows written by an older adapter version, or pushed by one of
+    the scripts/ ingest paths.
+
+    Buckets every page by shape:
+      - `null` -- no date at all (legitimate; emits no uploadDate)
+      - `iso_date` -- a clean "YYYY-MM-DD"
+      - `parseable_non_iso` -- normalizes to a real date but isn't stored
+        bare (e.g. a stored "2026-08-03T00:00:00"); the template's
+        iso_date filter now repairs these on render
+      - `unparseable` -- the real smoking gun, if any exist
+
+    Returns identifying rows (capped by `limit`) for the last two buckets
+    only, so this stays a small response on a table of any size. Reads two
+    cheap columns, never TranscriptVersion.segments -- see
+    get_transcript_quality_audit()'s own docstring on why that matters
+    here. Never writes anything; a human decides what (if anything) to
+    backfill.
+    """
+    async with async_session() as session:
+        rows = (await session.execute(select(MeetingPage.slug, MeetingPage.date))).all()
+
+    counts = {
+        "null": 0,
+        "iso_date": 0,
+        "parseable_non_iso": 0,
+        "unparseable": 0,
+    }
+    suspect_rows: list[dict] = []
+    for slug, raw in rows:
+        if not raw:
+            counts["null"] += 1
+            continue
+        normalized = iso_meeting_date(raw)
+        if normalized == raw:
+            counts["iso_date"] += 1
+            continue
+        bucket = "parseable_non_iso" if normalized else "unparseable"
+        counts[bucket] += 1
+        if len(suspect_rows) < limit:
+            suspect_rows.append(
+                {
+                    "slug": slug,
+                    "stored_date": raw,
+                    "normalized_date": normalized,
+                    "bucket": bucket,
+                }
+            )
+
+    return {
+        "total_pages": len(rows),
+        "by_shape": counts,
+        "suspect_rows": suspect_rows,
+        "suspect_rows_truncated": (counts["parseable_non_iso"] + counts["unparseable"])
+        > len(suspect_rows),
+    }
 
 
 async def get_full_jurisdiction_coverage() -> list[dict]:

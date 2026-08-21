@@ -42,6 +42,37 @@ def parse_meeting_date(raw: Optional[str]) -> Optional[date]:
         return None
 
 
+def iso_meeting_date(raw: Optional[str]) -> Optional[str]:
+    """Normalized "YYYY-MM-DD" for a MeetingPage.date, or None if it isn't
+    a real, parseable date.
+
+    Two template jobs, both needing exactly this guarantee (2026-08-21):
+
+    1. `<time datetime="...">` on visible meeting dates -- a `datetime`
+       attribute that isn't a valid HTML date string is worse than no
+       `<time>` element at all, so the templates fall back to plain text
+       when this returns None.
+    2. The VideoObject `uploadDate` / Event `startDate` JSON-LD on
+       /m/{slug}, which used to interpolate `page.date` verbatim. That's
+       the direct, fixable-now half of Google Search Console's `uploadDate`
+       "invalid datetime value" flag (BACKLOG.md): every adapter today is
+       structurally constrained to emit "YYYY-MM-DD" or None (they all go
+       through strftime("%Y-%m-%d") or an anchored ISO regex), but nothing
+       between an adapter and this template ever *validated* that --
+       `date` is a free `Optional[str]` on ResolvedMeeting, on
+       IngestRequest, and as a String(20) column -- so any older row, or
+       any push from a script, could carry something else straight into
+       the emitted markup. Now it can't.
+
+    Deliberately reuses parse_meeting_date's tolerance rather than a strict
+    regex, so a value like "2026-08-03T00:00:00" is *normalized* to
+    "2026-08-03" instead of dropped -- fixing such a row's markup rather
+    than silently omitting the field.
+    """
+    parsed = parse_meeting_date(raw)
+    return parsed.isoformat() if parsed else None
+
+
 def meeting_date_status(
     raw_date: Optional[str],
     *,

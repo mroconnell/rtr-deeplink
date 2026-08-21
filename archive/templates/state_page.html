@@ -55,7 +55,9 @@
           <a href="/m/{{ m.slug }}">{{ m.title or "Untitled meeting" }}</a>
           <span class="calendar-candidate-date">
             {%- if m.jurisdiction %}{{ m.jurisdiction|jurisdiction_display }}{% endif -%}
-            {%- if m.date %} &middot; {{ m.date }}{% endif -%}
+            {#- Semantic <time> on the meeting date -- see meeting_date_html()
+               in archive/main.py. #}
+            {%- if m.date %} &middot; {{ m.date|meeting_date_html }}{% endif -%}
           </span>
         </div>
         {% if m.has_transcript %}

@@ -9,7 +9,13 @@
     <p class="subtitle">Paste a public meeting URL to view its video with clickable deep links to any moment. If a transcript or agenda are available, we'll load that under the video to make it easier to skip around to the parts that you're interested in.</p>
     <form id="urlForm" class="mb-3">
       <div class="input-group">
-        <input type="text" id="urlInput" class="form-control" placeholder="https://citycouncil.granicus.com/player/clip/1234" required>
+        {#- Placeholder was a fabricated URL until 2026-08-21
+           (citycouncil.granicus.com is not a real Granicus customer
+           subdomain, clip 1234 was invented). Now the real example lives
+           in .example-url below -- permanently visible, unlike a
+           placeholder, which vanishes the moment anyone types. This one
+           just describes the shape. #}
+        <input type="text" id="urlInput" class="form-control" placeholder="Paste a meeting URL&hellip;" required>
         <button type="submit" class="cassette-btn">
           <span class="cassette-reel"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7" fill="#fff" stroke="#bbb" stroke-width="2"/><circle cx="9" cy="9" r="2.2" fill="#bbb"/></svg></span>
           <span class="cassette-label">Look Up</span>
@@ -18,6 +24,28 @@
       </div>
     </form>
     <p id="formError" class="error" hidden></p>
+    {#- A real, live-verified example URL (user's own proposal, 2026-08-10 --
+       see CLAUDE_BACKLOG.md's "Growth mechanics" section). Deliberately
+       plain text and NOT a clickable <a>: the point is to model "paste
+       this into the box above," not tempt a first-time visitor to click
+       through to granicus.com and leave. One fixed example rather than a
+       rotating set (rotation adds a cache-busting concern and a second
+       failure mode for no clear gain at this stage), and the copy states
+       what you actually get, so the example sets expectations as well as
+       demonstrating the paste action.
+
+       Verified live 2026-08-21 end to end: resolves on the granicus
+       adapter to a real m3u8 video plus 2177 real caption segments, zero
+       warnings. Re-verify before changing it -- a broken example here is
+       worse than none. If it ever dies, pick another confirmed sample
+       with BOTH real video and a populated transcript (see CLAUDE.md's
+       sample-sheet convention and tests/fixtures/). #}
+    <div class="example-url">
+      <span class="dymo-label-small">TRY THIS</span>
+      <p class="example-url-lead">For example, paste this into the box above:</p>
+      <p class="example-url-value">https://jaxcityc.granicus.com/player/clip/7447?redirect=true&amp;view_id=1</p>
+      <p class="example-url-note">A real Jacksonville, FL city council committee meeting &mdash; you&rsquo;ll get the video plus its full transcript, every line clickable and linkable.</p>
+    </div>
   </main>
 {% endblock %}
 {% block scripts %}

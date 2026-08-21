@@ -200,6 +200,28 @@ async def test_m3u8_page_has_no_thumbnail_but_valid_json(monkeypatch):
     # timestamps still gets key moments.
     assert len(data["hasPart"]) == 2
     assert '<meta property="og:image"' not in response.text
+    # ...but a twitter:card is still emitted (fixed 2026-08-21): it used to
+    # live inside the thumbnail guard, so every non-YouTube page -- the
+    # majority of the Archive -- shipped none at all. "summary", not
+    # "summary_large_image", since there's no image to make large.
+    assert '<meta name="twitter:card" content="summary">' in response.text
+
+
+async def test_twitter_card_summary_when_no_image_at_all():
+    # A page with no video at all (so no thumbnail, and no VideoObject
+    # block either) still gets a card type -- the fix is not scoped to
+    # "has a video but no thumbnail".
+    slug = await _make_page(
+        "sd-no-video-card",
+        platform="granicus",
+        video_url=None,
+        video_format=None,
+    )
+
+    response = archive_client.get(f"/m/{slug}")
+    assert response.status_code == 200
+    assert '<meta name="twitter:card" content="summary">' in response.text
+    assert "summary_large_image" not in response.text
 
 
 async def test_html_in_item_text_stripped_from_clip_name(monkeypatch):
@@ -250,3 +272,105 @@ async def test_long_item_text_truncated_in_clip_name(monkeypatch):
     response = archive_client.get(f"/m/{slug}")
     data = _get_json_ld(response.text)
     assert len(data["hasPart"][1]["name"]) <= 103  # 100 + ellipsis
+
+
+# --- meeting-date markup + validation ------------------------------------
+#
+# Synthetic in the same sense as everything above (rendering logic, not
+# adapter parsing), but the malformed-date shapes below are deliberately
+# NOT invented failure modes: `date` is an unvalidated free string end to
+# end (Optional[str] on ResolvedMeeting and IngestRequest, String(20) as a
+# column), so nothing between an adapter and the template would reject
+# one. What's still unconfirmed is whether any *real* production row holds
+# one -- that's exactly what /internal/date-format-audit exists to answer;
+# see BACKLOG.md's Search Console entry.
+
+
+def test_meeting_date_html_wraps_valid_date():
+    assert (
+        archive.main.meeting_date_html("2026-01-01")
+        == '<time datetime="2026-01-01">2026-01-01</time>'
+    )
+
+
+def test_meeting_date_html_normalizes_datetime_shaped_value():
+    # A stored "YYYY-MM-DDTHH:MM:SS" still gets a valid datetime attribute
+    # (normalized), with the visible text left exactly as stored.
+    assert (
+        archive.main.meeting_date_html("2026-01-01T00:00:00")
+        == '<time datetime="2026-01-01">2026-01-01T00:00:00</time>'
+    )
+
+
+def test_meeting_date_html_falls_back_to_plain_escaped_text():
+    # An invalid `datetime` attribute is worse than no <time> element, so
+    # an unparseable date renders as plain text -- escaped, since this
+    # filter returns Markup.
+    assert archive.main.meeting_date_html("TBD") == "TBD"
+    assert archive.main.meeting_date_html(None) == ""
+    assert "<" not in archive.main.meeting_date_html("<b>x</b>")
+
+
+async def test_page_renders_semantic_time_and_valid_upload_date():
+    slug = await _make_page("sd-time-markup")
+
+    response = archive_client.get(f"/m/{slug}")
+    assert '<time datetime="2026-01-01">2026-01-01</time>' in response.text
+    data = _get_json_ld(response.text)
+    assert data["uploadDate"] == "2026-01-01T00:00:00Z"
+
+
+async def test_unparseable_date_emits_no_upload_date_and_no_time_element():
+    # The directly-fixable half of Search Console's `uploadDate` "invalid
+    # datetime value" flag: this used to interpolate the stored string
+    # verbatim, producing "Meeting cancelledT00:00:00Z" in the JSON-LD.
+    slug = await _make_page("sd-bad-date", date="Meeting cancelled")
+
+    response = archive_client.get(f"/m/{slug}")
+    assert response.status_code == 200
+    assert "<time" not in response.text
+    assert "Meeting cancelled" in response.text  # still shown to a human
+    data = _get_json_ld(response.text)
+    assert "uploadDate" not in data
+    # ...and the Event block's startDate is gated the same way.
+    events = [
+        json.loads(m)
+        for m in re.findall(
+            r'<script type="application/ld\+json">\s*(\{.*?\})\s*</script>',
+            response.text,
+            re.DOTALL,
+        )
+    ]
+    event = next(e for e in events if e["@type"] == "Event")
+    assert "startDate" not in event
+
+
+async def test_date_format_audit_buckets_by_shape():
+    await _make_page("sd-audit-clean", date="2026-02-02")
+    await _make_page("sd-audit-non-iso", date="2026-02-03T00:00:00")
+    await _make_page("sd-audit-bad", date="not a date")
+    await _make_page("sd-audit-null", date=None)
+
+    result = await crud.get_meeting_date_format_audit()
+    shapes = result["by_shape"]
+    # Other tests in this module create pages too, so assert on this
+    # module's own rows rather than exact archive-wide totals.
+    assert shapes["iso_date"] >= 1
+    assert shapes["parseable_non_iso"] >= 1
+    assert shapes["unparseable"] >= 1
+    assert shapes["null"] >= 1
+
+    # Keyed on the stored value, not the slug: crud._find_or_create_page()
+    # derives a slug from jurisdiction/date/title, not from external_id.
+    by_stored = {r["stored_date"]: r for r in result["suspect_rows"]}
+    non_iso = by_stored["2026-02-03T00:00:00"]
+    assert non_iso["bucket"] == "parseable_non_iso"
+    assert non_iso["normalized_date"] == "2026-02-03"
+    assert non_iso["slug"]
+    bad = by_stored["not a date"]
+    assert bad["bucket"] == "unparseable"
+    assert bad["normalized_date"] is None
+    # Clean and null rows are never listed -- the audit's whole point is a
+    # short response naming only what's actually suspect.
+    assert "2026-02-02" not in by_stored
+    assert None not in by_stored
