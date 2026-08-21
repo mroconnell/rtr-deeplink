@@ -1027,27 +1027,60 @@ anything) to build against it.
   `upgrade head` runs that day, and `alembic check` against a fresh
   `upgrade head` DB reported no missing model tables/columns.
 
-  **What's still open — the resolver half, Ryan-gated:** `app/`'s Alembic
-  history (`app/alembic/`, 2 revisions) has never been stamped in
-  production, so the same `preDeployCommand` there would fail on its
-  first run (it would try the baseline `CREATE TABLE`s against tables
-  that already exist — the brief's "step 3 before step 2" warning). One
-  shell step unlocks it, on the **`rtr-deeplink`** (resolver) service's
-  Render shell, not the archive's: `cd app && alembic current` (expect
-  empty), confirm the real columns match head (`GET /admin/stats`
-  returning `pending_archive_pushes` cleanly is the documented check —
-  see `app/alembic/README.md`), then `cd app && alembic stamp head`. Then
-  a small PR: add `preDeployCommand: cd app && alembic upgrade head` to
-  the `rtr-deeplink` service (a comment marks the exact spot in
-  `render.yaml`), gate `app/db/engine.py`'s `create_all()` to
-  non-Postgres the way archive's is, and extend the CI `alembic check`
-  step to `app/`. Until then a new *resolver* table still appears via
-  `create_all()` and an altered resolver table still needs a hand-run
-  migration — the resolver has never had a schema incident, which is why
-  it's the half that could wait. Also still true: `scripts/
-  backfill_search_corpus.py`-style one-time backfills remain manual —
-  prefer generated columns (the `search_tsv` pattern) so there's nothing
-  to backfill.
+  **The resolver half's code landed 2026-08-21 (WO-24)**: `GET
+  /admin/schema-info` on the resolver (a port of the Archive's
+  `/internal/schema-info`, gated on `_admin_token_ok`, 404 on a bad
+  token), `app/db/engine.py`'s `create_all()` now a no-op on Postgres
+  the way archive's is, and a second CI `alembic check` step with
+  `working-directory: app` (verified passing locally — the models' only
+  post-baseline column, `jurisdiction_confidence`, is covered by
+  `a9207c0eb761`). The `render.yaml` `preDeployCommand` is written but
+  **must not merge before the stamp below** — see that PR's separate,
+  clearly-marked commit.
+
+  **What's still open — [HUMAN] one shell step, Ryan-gated:** `app/`'s
+  Alembic history (`app/alembic/`, 2 revisions) has still never been
+  stamped in production, so `preDeployCommand: cd app && alembic upgrade
+  head` would fail on its first run (baseline `CREATE TABLE`s against
+  tables that already exist — the brief's "step 3 before step 2"
+  warning). **The precise runbook is now in `app/alembic/README.md`
+  ("The runbook") — follow it rather than a one-line recipe**, because
+  the answer genuinely branches. Two corrections to what this entry
+  previously said:
+
+  - **Stamp the literal revision `a9207c0eb761`, never `head`.** This
+    entry (and `render.yaml`'s comment) used to say `alembic stamp
+    head`, correct when written 2026-08-10 because the baseline *was*
+    head — then `a9207c0eb761` landed 08-15 and silently invalidated it.
+    Stamping `head` now would claim production has
+    `jurisdiction_confidence` whether or not it does: the exact shape of
+    the 2026-08-09 Archive incident (`archive/alembic/README.md`, "'head'
+    isn't a fixed name").
+  - **Don't "expect empty" from `alembic current`** — a 2026-08-11
+    `information_schema` query (`BACKLOG_DONE.md`) found an
+    `alembic_version` table already present on the resolver's Postgres.
+    Whether it holds a row is unknown. Read the real output.
+
+  **First thing to curl, and how to read it:** `GET /admin/schema-info`
+  with the admin token answers both unknowns at once — whether
+  `actual_columns.meeting_resolutions` contains `jurisdiction_confidence`,
+  and what `alembic_version` really holds. **If that column turns out to
+  be missing, that's a live silent-degradation bug, not a migration
+  chore:** `crud.log_resolution()` sets it on every insert and
+  `app/main.py` only ever calls it through `safe()`, which swallows the
+  exception — so every reporting-log row (and the resolve cache reading
+  off that table) would have been failing to write since 2026-08-15,
+  invisibly, and `/admin/stats` would be 503ing too (`get_stats()` does
+  `select(MeetingResolution)`, full entity). A cleanly-responding
+  `/admin/stats` is decent evidence the column *is* there; the endpoint
+  is the direct confirmation.
+
+  Until the stamp happens, an altered resolver table still needs a
+  hand-run migration — but note a new resolver *table* no longer appears
+  on its own now that `create_all()` is Postgres-gated. Also still true:
+  `scripts/backfill_search_corpus.py`-style one-time backfills remain
+  manual — prefer generated columns (the `search_tsv` pattern) so
+  there's nothing to backfill.
 
 - **[HUMAN] Search Console "Page indexed without content" (alert 2026-08-17)
   is still genuinely unexplained — and specifically NOT explained by
