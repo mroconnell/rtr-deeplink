@@ -110,7 +110,9 @@ async def test_proxy_to_archive_stream_cut_short_ends_cleanly(monkeypatch):
         error=aiohttp.ClientPayloadError("Response payload is not completed"),
     )
 
-    async def _fake_proxy_get(internal_path, query_string, cookie_header=None):
+    async def _fake_proxy_get(
+        internal_path, query_string, cookie_header=None, extra_headers=None
+    ):
         return fake_session, fake_response
 
     monkeypatch.setattr(app.main.archive_client, "proxy_get", _fake_proxy_get)
@@ -125,7 +127,9 @@ async def test_proxy_to_archive_stream_completes_normally(monkeypatch):
     fake_session = _FakeSession()
     fake_response = _FakeResponse(chunks=[b"hello ", b"world"], error=None)
 
-    async def _fake_proxy_get(internal_path, query_string, cookie_header=None):
+    async def _fake_proxy_get(
+        internal_path, query_string, cookie_header=None, extra_headers=None
+    ):
         return fake_session, fake_response
 
     monkeypatch.setattr(app.main.archive_client, "proxy_get", _fake_proxy_get)
@@ -134,3 +138,49 @@ async def test_proxy_to_archive_stream_completes_normally(monkeypatch):
     assert response.status_code == 200
     assert response.content == b"hello world"
     assert fake_session.closed is True
+
+
+# --- conditional-request forwarding (WO-28) -----------------------------
+
+
+class _EmptyChunkIter:
+    async def iter_chunked(self, _size):
+        return
+        yield
+
+
+def test_m_route_forwards_if_none_match_but_static_does_not(monkeypatch):
+    """/m/{slug}/card.jpg is the first proxied route that returns a real
+    ETag, so a client's If-None-Match has to reach the Archive or a 304
+    can never happen through the public domain -- Googlebot and every
+    social scraper would re-stream the full image through two services on
+    each refetch. Deliberately opt-in per call site (like cookie_header),
+    so the static-asset route keeps sending nothing extra."""
+    captured = []
+
+    async def _fake_proxy_get(
+        path, query_string, cookie_header=None, extra_headers=None
+    ):
+        captured.append((path, extra_headers))
+
+        class _FakeResponse:
+            status = 200
+            headers = {}
+            content = _EmptyChunkIter()
+
+        class _FakeSession:
+            async def close(self):
+                pass
+
+        return _FakeSession(), _FakeResponse()
+
+    monkeypatch.setattr(app.main.archive_client, "proxy_get", _fake_proxy_get)
+
+    app_client.get("/m/some-slug/card.jpg", headers={"If-None-Match": '"abc"'})
+    app_client.get("/m/some-slug")
+    app_client.get("/archive-static/style.css", headers={"If-None-Match": '"abc"'})
+
+    assert captured[0] == ("m/some-slug/card.jpg", {"If-None-Match": '"abc"'})
+    # No header on the request -> nothing invented.
+    assert captured[1] == ("m/some-slug", None)
+    assert captured[2] == ("static/style.css", None)

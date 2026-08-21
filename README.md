@@ -1291,6 +1291,76 @@ clickable.
 > watched, same as any schema-verified-but-not-content-verified path
 > in this repo; see `BACKLOG.md` for the open residuals.
 
+## Meeting card images (`og:image` / `thumbnailUrl`)
+
+Every meeting page needs one image: search engines require a
+`VideoObject.thumbnailUrl` before a video is eligible for a rich result
+at all, and Bluesky/Mastodon (see "Social auto-posting" above) build
+their link cards from `og:image`. YouTube-backed pages had one from
+2026-08-14 (a free, predictable `i.ytimg.com` URL). Every *other* page —
+direct mp4/m3u8, the majority of the Archive — got a real one on
+2026-08-21: a frame pulled out of the meeting's own video with `ffmpeg`.
+
+**Which frame** (`archive/utils/video_thumbnail.py`'s
+`target_offset_seconds()`), in priority order:
+
+1. **The shared moment, plus 20 seconds.** When the URL carries `?t=N` —
+   someone shared that exact moment — the card shows the frame at
+   `N + 20s`, landing *inside* the relevant content rather than on the
+   transition into it. Verified against the real San Carlos meeting:
+   `?t=982` produces a frame whose on-screen overlay reads
+   "7. CONSENT CALENDAR", the item that timestamp points at.
+2. **Otherwise, 300 seconds before the end.** Meetings routinely open
+   with several minutes of dead air behind a static "meeting will begin
+   shortly" placeholder, so an early-offset frame is frequently a literal
+   blank slate; near the end there is reliably a real chamber with real
+   people in it. Needs a duration, which comes from `ffprobe`
+   (`probe_duration()`).
+3. **Otherwise halfway through**, when the video is too short for (2) to
+   mean anything — or a fixed 600s when `ffprobe` couldn't report a
+   duration at all, since "halfway" isn't computable without one.
+
+**Where the bytes live**: a `meeting_page_thumbnails` table, keyed
+`(meeting_page_id, offset_seconds)`, one row per extracted frame with the
+JPEG stored directly (`archive/db/models.py`). This repo has no object
+storage, no persistent disk and no image library, and ~1200 pages × one
+~30-55KB frame is not enough volume to justify adding a vendor. The
+unique constraint doubles as the cache: a per-timestamp card is extracted
+once and every later fetch is one indexed row read. `MAX_FRAMES_PER_PAGE`
+(12) bounds what a crawl over many distinct `?t=` values can store, and
+timestamps are quantized into 20s buckets before extraction for the same
+reason.
+
+**Serving**: `GET /m/{slug}/card.jpg?t=N` (proxied like `/m/*`) with
+`Cache-Control` and a stored `ETag`, so a conditional refetch — which
+Googlebot and every social scraper do — costs a 304 without ever loading
+the image bytes. YouTube-backed pages 302 to their `i.ytimg.com`
+thumbnail, so one card URL shape covers every page.
+
+**Extraction never touches the render path.** A page render only *queues*
+work (FastAPI `BackgroundTasks`) — new pages warm at ingest, older ones
+the first time anyone loads them. The card route degrades in order: the
+exact per-timestamp frame → the page's stored default frame → 404, and a
+miss queues the precise extraction so the *next* fetch is exact. A page
+only advertises `og:image`/`thumbnailUrl` once a frame is actually stored
+(`crud.has_thumbnail()`) — a card URL that would 404 is worse than none,
+since validators and scrapers fetch it. At most 2 extractions run at
+once, a failing source is retried at most once every 6 hours, and none of
+that can delay a response.
+
+```bash
+# Warm default frames for already-archived pages (dry_run defaults true)
+curl -X POST -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" \
+     "$ARCHIVE_BASE_URL/internal/thumbnails/backfill?limit=10&dry_run=false"
+```
+
+**`ffmpeg` availability**: `GET /api/health` on the Archive now reports
+`media_tools` (the real `ffmpeg`/`ffprobe` versions on PATH, or `null`).
+It's informational and never fails the check — Render gates deploys on
+this endpoint, and a service that serves every page but can't generate
+new thumbnails is healthy; those pages simply carry no `og:image`, which
+is exactly where they were before this feature.
+
 ## Supported platforms
 
 Most local governments don't build their own video/meeting-minutes
@@ -1574,6 +1644,8 @@ archive/
   main.py                 FastAPI app: /internal/lookup, /internal/ingest,
                            /internal/transcription/* (all token-gated),
                            /m/{slug}, /m/{slug}/transcript.{txt,srt},
+                           /m/{slug}/card.jpg (see "Meeting card images"
+                           above),
                            /meetings, /coverage, /state/{slug}, /j/{slug},
                            /sitemap.xml, /feed.xml,
                            /api/health, /account/saved, and the token-gated
@@ -1586,7 +1658,9 @@ archive/
     models.py               MeetingPage, TranscriptVersion,
                            MeetingPageUrlAlias, TranscriptionJob (see "On-
                            demand transcription" above), SavedItem (see
-                           "Accounts (Clerk)" above)
+                           "Accounts (Clerk)" above),
+                           MeetingPageThumbnail (extracted video frames,
+                           see "Meeting card images" above)
     crud.py                  identity matching/dedup, slug generation,
                            content-hash version dedup, list_pages()
                            (paginated + filtered, backs /meetings),
@@ -1630,6 +1704,14 @@ archive/
     clerk_auth.py             deliberate duplicate of
                            app/utils/clerk_auth.py -- see "Accounts
                            (Clerk)" above
+    video_thumbnail.py       which frame a meeting card shows and the
+                           background extraction that produces it, plus
+                           the free i.ytimg.com URL for YouTube-backed
+                           pages -- see "Meeting card images" above
+    clips.py                  schema.org Clip entries out of stored
+                           agenda_items, including the endOffset
+                           resolution for a run of items sharing one
+                           source timestamp
   templates/
     meeting_page.html        SSR permanent page + transcript-version
                            picker (real content on first byte, for

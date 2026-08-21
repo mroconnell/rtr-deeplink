@@ -7,6 +7,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Integer,
+    LargeBinary,
     String,
     Text,
     UniqueConstraint,
@@ -150,6 +151,80 @@ class MeetingPage(Base):
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False,
+    )
+
+
+class MeetingPageThumbnail(Base):
+    """One extracted video frame, stored as raw JPEG bytes, used as a
+    meeting page's `og:image` / `VideoObject.thumbnailUrl` / `Event.image`
+    (served by GET /m/{slug}/card.jpg).
+
+    **Why bytes in Postgres.** Verified absent before choosing this
+    (2026-08-21): this repo has no object storage, no persistent disk, no
+    image-processing library, and no image column anywhere. Adding a
+    vendor (S3/R2/Cloudinary) for what is ~1200 pages x one ~30-120KB
+    JPEG -- the real San Carlos IQM2 mp4 measured 30KB at 640x480 -- would
+    be a bigger, more permanent decision than the problem warrants. A
+    plain table also *is* the cache: the unique constraint on
+    `(meeting_page_id, offset_seconds)` means a per-timestamp card is
+    extracted at most once and every later fetch is one indexed row read.
+
+    **Why a row per offset rather than one per page.** The share link a
+    person actually posts usually carries `?t=N` -- the moment they cared
+    about -- and the card should show *that* moment, not a generic still.
+    See archive/utils/video_thumbnail.py's target_offset_seconds() for the
+    three targeting tiers and archive/main.py's card route for how a
+    per-timestamp miss degrades to the default frame instead of failing.
+
+    `is_default` marks the one row per page used when the request carries
+    no timestamp (same one-flagged-row shape as
+    TranscriptVersion.is_default) -- necessary because the default
+    offset is derived from the video's real duration, which is only known
+    at extraction time, so "the default frame" can't be recomputed from
+    the URL alone on a later request without another ffprobe call.
+    """
+
+    __tablename__ = "meeting_page_thumbnails"
+    __table_args__ = (
+        UniqueConstraint(
+            "meeting_page_id", "offset_seconds", name="uq_thumbnail_page_offset"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    meeting_page_id: Mapped[int] = mapped_column(
+        ForeignKey("meeting_pages.id"), nullable=False, index=True
+    )
+    # Seconds into the video this frame was grabbed at -- the *resolved*
+    # target (see target_offset_seconds()), not the raw `?t=` a visitor
+    # asked for.
+    offset_seconds: Mapped[int] = mapped_column(Integer, nullable=False)
+    is_default: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=false()
+    )
+
+    # deferred=True for the same load-bearing reason as
+    # MeetingPage.search_corpus: this is the only column in the schema
+    # holding a six-figure-byte blob, and nothing except the card route
+    # itself ever wants the bytes. A relationship-less design plus
+    # deferral means no /meetings, sitemap, hub or /m/{slug} query can
+    # ever accidentally drag image data into memory -- the exact shape of
+    # the 2026-08-17 OOM crash (see BACKLOG_DONE.md).
+    image_bytes: Mapped[bytes] = mapped_column(
+        LargeBinary, nullable=False, deferred=True
+    )
+    content_type: Mapped[str] = mapped_column(
+        String(30), nullable=False, server_default="image/jpeg"
+    )
+    # sha256 of image_bytes, served as the HTTP ETag so a repeat fetch
+    # from a social scraper or Googlebot costs a 304 rather than a
+    # re-download. Stored rather than computed per request so the bytes
+    # don't have to be loaded to answer a conditional GET.
+    etag: Mapped[str] = mapped_column(String(64), nullable=False)
+    byte_size: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
 

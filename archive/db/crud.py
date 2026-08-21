@@ -49,6 +49,7 @@ from ..utils.url_normalize import normalize_url
 from .engine import async_session
 from .models import (
     MeetingPage,
+    MeetingPageThumbnail,
     MeetingPageUrlAlias,
     SavedItem,
     SearchVocabulary,
@@ -4836,3 +4837,286 @@ async def delete_meeting_pages_by_slug(slugs: list[str], *, dry_run: bool) -> di
             "not_found": not_found,
             "deleted": 0 if dry_run else len(found),
         }
+
+
+# --- Meeting card frames (WO-28) ----------------------------------------
+
+_THUMBNAILS_CHECK_TTL = timedelta(minutes=1)
+_thumbnails_state: dict[str, Any] = {"available": False, "checked_at": None}
+
+
+async def _thumbnails_available(session) -> bool:
+    """True when the meeting_page_thumbnails table really exists on the
+    connected database.
+
+    Exactly the discipline _best_effort_available() applies to a column,
+    applied to a table: on SQLite (dev/CI) create_all() builds it from
+    today's model so it is always present, while on Postgres the schema is
+    migration-driven and can genuinely lag the code. render.yaml's
+    preDeployCommand normally closes that window before the new build
+    serves, but "normally" is not a guarantee worth a 500 on a public
+    page -- and this is the pattern CLAUDE.md's migration bullet asks for
+    (code and migration deployable in either order). Cached for
+    _THUMBNAILS_CHECK_TTL so running the migration against a live service
+    flips this on within a minute with no restart.
+    """
+    if session.bind.dialect.name != "postgresql":
+        return True
+    now = datetime.now(timezone.utc)
+    checked_at = _thumbnails_state["checked_at"]
+    if checked_at is not None and now - checked_at < _THUMBNAILS_CHECK_TTL:
+        return bool(_thumbnails_state["available"])
+    row = (
+        await session.execute(
+            text(
+                "SELECT 1 FROM information_schema.tables "
+                "WHERE table_name = 'meeting_page_thumbnails'"
+            )
+        )
+    ).first()
+    _thumbnails_state["available"] = row is not None
+    _thumbnails_state["checked_at"] = now
+    return bool(_thumbnails_state["available"])
+
+
+async def get_page_card_target(slug: str) -> Optional[dict]:
+    """The bare minimum GET /m/{slug}/card.jpg needs about a page: its id
+    and the three fields an extraction takes. Deliberately NOT
+    get_page_by_slug(), which also loads every TranscriptVersion's full
+    segments blob -- an image route hit by crawlers has no business
+    pulling a meeting's entire transcript into memory to decide which
+    frame to serve."""
+    async with async_session() as session:
+        row = (
+            await session.execute(
+                select(
+                    MeetingPage.id,
+                    MeetingPage.video_url,
+                    MeetingPage.video_format,
+                    MeetingPage.source_url_normalized,
+                ).where(MeetingPage.slug == slug)
+            )
+        ).first()
+        if row is None:
+            return None
+        return {
+            "id": row[0],
+            "video_url": row[1],
+            "video_format": row[2],
+            "source_url": row[3],
+        }
+
+
+async def get_thumbnail_meta(
+    page_id: int, *, offset_seconds: Optional[int] = None
+) -> Optional[dict]:
+    """Everything about a stored card frame EXCEPT its bytes -- id,
+    offset, etag, content type, size. `offset_seconds=None` asks for the
+    page's default frame. Separate from get_thumbnail_bytes() so a
+    conditional GET (If-None-Match) can be answered with a 304 without
+    ever loading the image.
+    """
+    async with async_session() as session:
+        if not await _thumbnails_available(session):
+            return None
+        stmt = select(
+            MeetingPageThumbnail.id,
+            MeetingPageThumbnail.offset_seconds,
+            MeetingPageThumbnail.etag,
+            MeetingPageThumbnail.content_type,
+            MeetingPageThumbnail.byte_size,
+        ).where(MeetingPageThumbnail.meeting_page_id == page_id)
+        if offset_seconds is None:
+            stmt = stmt.where(MeetingPageThumbnail.is_default.is_(True))
+        else:
+            stmt = stmt.where(MeetingPageThumbnail.offset_seconds == offset_seconds)
+        row = (await session.execute(stmt.limit(1))).first()
+        if row is None:
+            return None
+        return {
+            "id": row[0],
+            "offset_seconds": row[1],
+            "etag": row[2],
+            "content_type": row[3],
+            "byte_size": row[4],
+        }
+
+
+async def get_thumbnail_bytes(thumbnail_id: int) -> Optional[bytes]:
+    async with async_session() as session:
+        if not await _thumbnails_available(session):
+            return None
+        row = (
+            await session.execute(
+                select(MeetingPageThumbnail.image_bytes).where(
+                    MeetingPageThumbnail.id == thumbnail_id
+                )
+            )
+        ).first()
+        return row[0] if row else None
+
+
+async def has_thumbnail(page_id: int) -> bool:
+    """Whether this page has ANY stored frame yet -- what /m/{slug} checks
+    before advertising an og:image at all. Emitting a card URL that would
+    404 is worse than emitting none: Google's validator and every social
+    scraper would fetch it, and a broken og:image is its own flag."""
+    async with async_session() as session:
+        if not await _thumbnails_available(session):
+            return False
+        row = (
+            await session.execute(
+                select(MeetingPageThumbnail.id)
+                .where(MeetingPageThumbnail.meeting_page_id == page_id)
+                .limit(1)
+            )
+        ).first()
+        return row is not None
+
+
+async def count_thumbnails(page_id: int) -> int:
+    async with async_session() as session:
+        if not await _thumbnails_available(session):
+            return 0
+        return int(
+            (
+                await session.execute(
+                    select(func.count())
+                    .select_from(MeetingPageThumbnail)
+                    .where(MeetingPageThumbnail.meeting_page_id == page_id)
+                )
+            ).scalar_one()
+        )
+
+
+async def store_thumbnail(
+    page_id: int,
+    *,
+    offset_seconds: int,
+    image_bytes: bytes,
+    etag: str,
+    is_default: bool,
+) -> bool:
+    """Insert one extracted frame. Returns False (never raises) when the
+    table isn't there yet, when the page already has MAX_FRAMES_PER_PAGE
+    frames, or when a concurrent writer got there first -- all normal
+    outcomes for a best-effort background warm.
+
+    A page has at most one is_default row, same invariant
+    TranscriptVersion.is_default keeps: storing a new default clears the
+    old one rather than adding a second.
+    """
+    from ..utils.video_thumbnail import MAX_FRAMES_PER_PAGE
+
+    async with async_session() as session:
+        if not await _thumbnails_available(session):
+            return False
+        existing = (
+            await session.execute(
+                select(MeetingPageThumbnail).where(
+                    MeetingPageThumbnail.meeting_page_id == page_id,
+                    MeetingPageThumbnail.offset_seconds == offset_seconds,
+                )
+            )
+        ).scalar_one_or_none()
+        if existing is not None:
+            return False
+        count = int(
+            (
+                await session.execute(
+                    select(func.count())
+                    .select_from(MeetingPageThumbnail)
+                    .where(MeetingPageThumbnail.meeting_page_id == page_id)
+                )
+            ).scalar_one()
+        )
+        if count >= MAX_FRAMES_PER_PAGE:
+            return False
+        if is_default:
+            for row in (
+                (
+                    await session.execute(
+                        select(MeetingPageThumbnail).where(
+                            MeetingPageThumbnail.meeting_page_id == page_id,
+                            MeetingPageThumbnail.is_default.is_(True),
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            ):
+                row.is_default = False
+        session.add(
+            MeetingPageThumbnail(
+                meeting_page_id=page_id,
+                offset_seconds=offset_seconds,
+                is_default=is_default,
+                image_bytes=image_bytes,
+                content_type="image/jpeg",
+                etag=etag,
+                byte_size=len(image_bytes),
+            )
+        )
+        try:
+            await session.commit()
+        except IntegrityError:
+            # Two background warms raced on the same (page, offset). The
+            # unique constraint is the arbiter; the loser just stops.
+            await session.rollback()
+            return False
+        return True
+
+
+async def list_pages_missing_default_thumbnail(limit: int = 25) -> list[dict]:
+    """Pages with a real, extractable video and no default frame stored
+    yet -- the work queue for POST /internal/thumbnails/backfill.
+
+    Newest first, because a page that was archived recently is the one
+    most likely to be shared or crawled next. YouTube-backed pages are
+    excluded in SQL (they already have a free i.ytimg.com thumbnail and
+    their video_url is an embed URL ffmpeg cannot read) rather than
+    fetched and filtered in Python.
+    """
+    async with async_session() as session:
+        if not await _thumbnails_available(session):
+            return []
+        has_default = (
+            select(MeetingPageThumbnail.id)
+            .where(
+                MeetingPageThumbnail.meeting_page_id == MeetingPage.id,
+                MeetingPageThumbnail.is_default.is_(True),
+            )
+            .exists()
+        )
+        rows = (
+            await session.execute(
+                select(
+                    MeetingPage.id,
+                    MeetingPage.slug,
+                    MeetingPage.video_url,
+                    MeetingPage.video_format,
+                    MeetingPage.source_url_normalized,
+                )
+                .where(
+                    MeetingPage.video_url.isnot(None),
+                    MeetingPage.video_url != "",
+                    or_(
+                        MeetingPage.video_format.is_(None),
+                        MeetingPage.video_format != "youtube",
+                    ),
+                    ~has_default,
+                )
+                .order_by(MeetingPage.created_at.desc())
+                .limit(limit)
+            )
+        ).all()
+        return [
+            {
+                "id": r[0],
+                "slug": r[1],
+                "video_url": r[2],
+                "video_format": r[3],
+                "source_url": r[4],
+            }
+            for r in rows
+        ]

@@ -10,7 +10,7 @@ from urllib.parse import quote
 from dotenv import load_dotenv
 from fastapi import BackgroundTasks, FastAPI, Header, Request
 from fastapi.exception_handlers import http_exception_handler
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from markupsafe import Markup, escape
@@ -57,6 +57,8 @@ from .utils.language import language_display_name
 from .utils.render_warnings import render_warnings_html
 from .utils.segment_time import format_segment_time
 from .utils.transcript_export import to_srt, to_txt
+from .utils import video_thumbnail
+from .utils.clips import clip_entries
 from .utils.video_thumbnail import youtube_thumbnail_url
 
 logger = logging.getLogger("rtr_archive")
@@ -156,6 +158,11 @@ templates.env.filters["source_label"] = lambda source: (
 )
 templates.env.filters["jurisdiction_display"] = format_jurisdiction_display
 templates.env.filters["youtube_thumbnail_url"] = youtube_thumbnail_url
+# schema.org Clip entries (start/end/text) out of stored agenda_items --
+# see archive/utils/clips.py for the real Search Console endOffset
+# warnings this resolves and why the look-ahead isn't done in the
+# template.
+templates.env.filters["clip_entries"] = clip_entries
 # Real bug, confirmed live: meeting_page.html used to render agenda-item/
 # transcript-segment timestamps with a naive "%d:%02d"|format(seconds //
 # 60, seconds % 60), which has no hour rollover -- a segment at 21887s
@@ -270,7 +277,47 @@ async def health():
         return JSONResponse(
             {"status": "error", "reason": "database unreachable"}, status_code=503
         )
-    return {"status": "ok"}
+    return {"status": "ok", "media_tools": await _media_tools()}
+
+
+# Probed once per process and cached: the answer cannot change while the
+# service is running, and /api/health is Render's deploy gate -- polled
+# often enough that spawning two subprocesses per call would be a real,
+# pointless cost.
+_media_tools_cache: Optional[dict] = None
+
+
+async def _media_tools() -> dict:
+    """Reports whether ffmpeg/ffprobe are actually on PATH *in this
+    service*, alongside the health check that was already here.
+
+    This settled a real unknown rather than documenting a known one
+    (2026-08-21, WO-28). Before the meeting-card frames, the Archive was
+    a plain `runtime: python` service that shelled out to no binary at
+    all -- render.yaml records a confirmed-live ffprobe check on the
+    *resolver* and worker/Dockerfile installs ffmpeg explicitly, but
+    nothing confirmed either binary here. Card extraction runs
+    Archive-side (that's where the page, the DB and the route live), so
+    the answer is load-bearing, and one `curl $ARCHIVE_BASE_URL/api/health`
+    now answers it against the deployed service instead of requiring a
+    Render shell.
+
+    Deliberately informational: a missing binary must NOT fail this
+    endpoint. Render gates deploys on it, and a service that serves every
+    page perfectly and merely cannot generate new thumbnails is healthy.
+    Pages degrade to no og:image (see meeting_page.html), which is exactly
+    where they were before this feature.
+    """
+    global _media_tools_cache
+    if _media_tools_cache is None:
+        from app.platforms.media_probe import binary_versions
+
+        try:
+            _media_tools_cache = await binary_versions()
+        except Exception:
+            logger.exception("ffmpeg/ffprobe availability probe failed")
+            _media_tools_cache = {"ffmpeg": None, "ffprobe": None}
+    return _media_tools_cache
 
 
 @app.get("/internal/schema-info")
@@ -815,7 +862,50 @@ async def internal_ingest(
         background_tasks.add_task(
             social.announce_new_page, result["page_id"], result["slug"], payload
         )
+    # Warm the page's default card frame (WO-28). BackgroundTasks for the
+    # same reason as the social post above, only more so: this runs
+    # ffprobe and then ffmpeg against a government CDN, where a slow or
+    # rate-limited source is routine -- it can never be allowed to delay
+    # the resolver's push. Fired on re-ingest too, not just creation:
+    # extract_and_store() no-ops when the frame already exists, and a
+    # re-ingest is exactly when a page that previously had no video (or a
+    # broken one) may finally have gained a usable one.
+    _schedule_card_warm(
+        background_tasks,
+        page_id=result["page_id"],
+        video_url=payload.get("video_url"),
+        video_format=payload.get("video_format"),
+        source_url=payload.get("source_url") or req.input_url_normalized,
+    )
     return result
+
+
+def _schedule_card_warm(
+    background_tasks: BackgroundTasks,
+    *,
+    page_id: Optional[int],
+    video_url: Optional[str],
+    video_format: Optional[str],
+    source_url: Optional[str],
+    timestamp: Optional[int] = None,
+) -> None:
+    """Queue one best-effort card-frame extraction, or do nothing.
+
+    One helper rather than the same four-line guard at each of the three
+    call sites (ingest, /m/{slug}, the card route), so "is there anything
+    ffmpeg could even open here" can't drift between them -- and so the
+    template render path's version of this is provably a queue-and-return,
+    never a subprocess.
+    """
+    if not page_id or not video_thumbnail.is_extractable(video_url, video_format):
+        return
+    background_tasks.add_task(
+        video_thumbnail.extract_and_store,
+        page_id=page_id,
+        video_url=video_url,
+        source_page_url=source_url or video_url,
+        timestamp=timestamp,
+    )
 
 
 class ResolvedMeetingIn(BaseModel):
@@ -1208,7 +1298,13 @@ def _pick_active_version(page: dict, version: Optional[int]) -> Optional[dict]:
 
 
 @app.get("/m/{slug}")
-async def meeting_page(request: Request, slug: str, version: Optional[int] = None):
+async def meeting_page(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    slug: str,
+    version: Optional[int] = None,
+    t: Optional[int] = None,
+):
     page = await crud.get_page_by_slug(slug)
     if page is None:
         logger.warning(
@@ -1245,6 +1341,22 @@ async def meeting_page(request: Request, slug: str, version: Optional[int] = Non
         or page["versions"]
     )
 
+    # One cheap indexed existence check, no image bytes loaded (see
+    # crud.has_thumbnail()). When nothing is stored yet and the page has a
+    # real media file, queue an extraction *as a background task* -- the
+    # render path must never wait on ffmpeg. Legacy pages therefore warm
+    # themselves the first time anyone (or Googlebot) looks at them;
+    # freshly ingested ones were already warmed at ingest.
+    card_available = await crud.has_thumbnail(page["id"])
+    if not card_available:
+        _schedule_card_warm(
+            background_tasks,
+            page_id=page["id"],
+            video_url=page["video_url"],
+            video_format=page["video_format"],
+            source_url=page["source_url"],
+        )
+
     return templates.TemplateResponse(
         request,
         "meeting_page.html",
@@ -1279,8 +1391,147 @@ async def meeting_page(request: Request, slug: str, version: Optional[int] = Non
             # For the "More {Jurisdiction} meetings" link to /j/{slug} --
             # None (link omitted) when the page has no jurisdiction at all.
             "hub_slug": jurisdiction_hub_slug(page.get("jurisdiction")),
+            # og:image / VideoObject.thumbnailUrl / Event.image for
+            # non-YouTube pages (WO-28). Only true once a real frame is
+            # actually stored -- advertising a card URL that would 404 is
+            # worse than advertising none, since Google's validator and
+            # every social scraper fetch it. `card_t` is the visitor's own
+            # `?t=`, passed through unchanged so the card URL matches the
+            # link that was shared; the +20s lead lives in the card route.
+            "card_available": card_available,
+            "card_t": t if (t is not None and t >= 0) else None,
         },
     )
+
+
+@app.get("/m/{slug}/card.jpg")
+async def meeting_card_image(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    slug: str,
+    t: Optional[int] = None,
+):
+    """The social/SEO card image for a meeting page: a real frame out of
+    the meeting's own video (see archive/utils/video_thumbnail.py for the
+    three targeting tiers and archive/db/models.py for why the bytes live
+    in Postgres).
+
+    **Degrades, never blocks.** The chain is: the exact per-timestamp
+    frame, else the page's stored default frame, else 404 -- and a miss
+    queues the extraction as a background task so the *next* fetch is
+    precise. Nothing here waits on ffmpeg: a social scraper's fetch
+    timeout is a few seconds, and a Granicus stall is routinely much
+    longer than that.
+
+    YouTube-backed pages redirect to their free i.ytimg.com thumbnail
+    instead, so the route is a single stable card URL for every page shape
+    even though only one of them involves extraction.
+    """
+    page = await crud.get_page_card_target(slug)
+    if page is None:
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    youtube_url = youtube_thumbnail_url(page["video_url"])
+    if youtube_url:
+        return RedirectResponse(youtube_url, status_code=302)
+
+    timestamp = t if (t is not None and t >= 0) else None
+    meta = None
+    if timestamp is not None:
+        offset = video_thumbnail.target_offset_seconds(timestamp=timestamp)
+        meta = await crud.get_thumbnail_meta(page["id"], offset_seconds=offset)
+        if meta is None:
+            # Queue the precise frame, serve the default one meanwhile --
+            # a slightly-wrong real frame now beats a correct one that
+            # doesn't exist until after the scraper gave up.
+            _schedule_card_warm(
+                background_tasks,
+                page_id=page["id"],
+                video_url=page["video_url"],
+                video_format=page["video_format"],
+                source_url=page["source_url"],
+                timestamp=timestamp,
+            )
+    if meta is None:
+        meta = await crud.get_thumbnail_meta(page["id"])
+    if meta is None:
+        _schedule_card_warm(
+            background_tasks,
+            page_id=page["id"],
+            video_url=page["video_url"],
+            video_format=page["video_format"],
+            source_url=page["source_url"],
+        )
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    etag = f'"{meta["etag"]}"'
+    # A frame for a given (page, offset) is immutable once stored, so a
+    # conditional GET can be answered without ever loading the bytes --
+    # which matters: Googlebot and three social networks all refetch these.
+    if request.headers.get("if-none-match") == etag:
+        return Response(status_code=304, headers={"ETag": etag})
+
+    data = await crud.get_thumbnail_bytes(meta["id"])
+    if data is None:
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    return Response(
+        content=data,
+        media_type=meta["content_type"],
+        headers={
+            "ETag": etag,
+            # A day at the edge, a week stale-while-revalidate: the image
+            # itself never changes, and the only thing that *can* change
+            # is which frame a `?t=` maps to once its precise extraction
+            # lands -- worth picking up, not worth revalidating hourly.
+            "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
+            "X-Card-Offset-Seconds": str(meta["offset_seconds"]),
+        },
+    )
+
+
+@app.post("/internal/thumbnails/backfill")
+async def internal_thumbnails_backfill(
+    limit: int = 10,
+    dry_run: bool = True,
+    authorization: Optional[str] = Header(None),
+):
+    """Warm default card frames for already-archived pages, newest first.
+
+    Needed because nothing else reaches them: new pages warm at ingest and
+    legacy pages warm when someone loads them, but the ~1200 pages already
+    in the Archive would otherwise sit imageless until a crawler happened
+    by. Runs the extractions inline (not BackgroundTasks) so the response
+    reports what actually happened -- it is an operator endpoint called by
+    hand with a small `limit`, not something on a request path.
+    dry_run defaults true, matching this file's read-only-first
+    convention (see /internal/jurisdiction/backfill-apply).
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    candidates = await crud.list_pages_missing_default_thumbnail(limit=max(1, limit))
+    if dry_run:
+        return {
+            "dry_run": True,
+            "candidates": [
+                {"slug": c["slug"], "video_url": c["video_url"]} for c in candidates
+            ],
+        }
+
+    results = []
+    for candidate in candidates:
+        offset = await video_thumbnail.extract_and_store(
+            page_id=candidate["id"],
+            video_url=candidate["video_url"],
+            source_page_url=candidate["source_url"] or candidate["video_url"],
+        )
+        results.append({"slug": candidate["slug"], "offset_seconds": offset})
+    return {
+        "dry_run": False,
+        "attempted": len(results),
+        "stored": sum(1 for r in results if r["offset_seconds"] is not None),
+        "results": results,
+    }
 
 
 @app.get("/m/{slug}/transcript.{ext}")
