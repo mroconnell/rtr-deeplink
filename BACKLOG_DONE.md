@@ -38,6 +38,77 @@ this app can access), not a code regression — no fix needed. Verifies
 the canary is working as designed (correctly caught a real, if transient,
 failure) without indicating any actual adapter bug.
 
+## YouTube's old `/v/{id}` embed shape recognized; three more video platforms found and sized via Wayback CDX (Castus, open.media, SuiteOne Media) [Done 2026-08-21]
+
+Direct follow-on to the destinyhosted.com investigation (see this file's
+own "Meeting-URL discovery for the 212 domain-finder hits..." entry
+below): its `open.media`/Castus/SuiteOne Media leads were each real
+customer URLs, not investigated further at the time. Chased each one
+live.
+
+**Real bug found and fixed**: `YouTubeAssetFinder._VIDEO_ID_RE`
+recognized `watch?v=`, `embed/`, `shorts/`, `live/`, and `youtu.be/`, but
+not the old Flash-era `youtube.com/v/{id}` embed shape — confirmed live
+on Goodyear, AZ's real `open.media` page
+(`goodyearaz.open.media/sessions/346555`), whose actual embed is
+literally `youtube.com/v/OU-H69iuvLU`. Added `v/` to the same regex
+alternation (`app/platforms/youtube.py`); regression test added using
+the real id. Full suite passes.
+
+**`open.media` may not need its own adapter at all.** The same Goodyear
+page directly iframes `public.destinyhosted.com/agenda_publish.cfm?
+id=46639` (the exact same tenant already in the destinyhosted table) for
+its agenda — open.media appears to be a video front-end some
+destinyhosted tenants pair with, not an independent platform with its
+own agenda system. With the `/v/{id}` fix above, generic_fallback's
+existing tier-1 YouTube detection may already resolve these pages with
+zero new code. Not yet confirmed to generalize past this one tenant — 10
+real tenant subdomains found via Wayback CDX (`domain=open.media`, 2,867
+captures): `arapahoe`, `atdenver` (no real content ever crawled),
+`cortez`, `eugene` (same), `goodyearaz`, `larimer`, `litchfield-park`
+(same), `pitkincounty` (real captures found at `/embed/sessions/{id}`, a
+different path shape than the rest), `santabarbaraca`, `surpriseaz`,
+`townofgeorgetown` (same). Real per-tenant session URLs confirmed live
+via CDX for `cortez`, `larimer`, `santabarbaraca`, `surpriseaz`,
+`pitkincounty` — not yet fetched/inspected individually.
+
+**Castus's older product (`{tenant}.vod.castus.tv`, ~85 tenant
+subdomains found via CDX under `castus.tv`, 14,842 total captures) is now
+completely dead — DNS doesn't resolve at all**, confirmed live
+(`sudbury.vod.castus.tv`, `comm7tv.vod.castus.tv` both fail to resolve).
+That population (mostly Massachusetts/Washington public-access stations:
+`sudbury`, `watertown`, `bellevue`, `burien`, `seatac`, `tukwila`,
+`issaquah-school`, `sammamish`, and ~75 more) is historical only. The
+*current* product lives at `cloud.castus.tv/vod/{tenant}/video/{guid}`
+(where the one real lead, `comm7tv`, is — also present in the dead
+subdomain list, suggesting some tenants migrated rather than churned) —
+a JS SPA that returns a bare 404 to a plain `curl`/no-JS fetch, so CDX/
+`curl` can't enumerate or verify it the way the other platforms here
+work; visually confirmed real ("strong video") by the user directly.
+Sizing or resolving this product needs a browser-driven check, not CDX.
+
+**SuiteOne Media sized at 131 distinct tenant subdomains** (CDX,
+`domain=suiteonemedia.com`, 37,259 total captures) — a real, meaningfully
+large population, bigger than several platforms this repo already has
+dedicated adapters for. A large fraction are court AV systems, not
+city-council meetings, identifiable purely from tenant naming
+(`azscottsdaleccrt1`–`9`, `chandlerazmcrt1`–`7`,
+`coloradospringsmcrtdiv1`–`5`, `pinalcoazsupcrt1`–`16`, and similar
+`mcrt`/`supcrt`/`ccrt`/`jc` suffixes). Real city/county tenants confirmed
+live with actual meeting content: `lorainoh` (user-confirmed,
+`/event/?id=2996`), `pacificgroveca` (`/event/?id=900`, confirmed via
+CDX), plus CDX-confirmed-real (not yet individually verified)
+`mcallentx`, `southbendin`, `tuscaloosaal`, `prescottaz`, `richlandwa`,
+`camaswa`, `holladayut`, `laytonut`, `stmarysga`, `stockbridgega`. A
+second, separate endpoint/id-space exists on the same domain serving
+agenda PDFs directly — `/event/GetAgendaFile/{title}?aid=N` — confirmed
+real on `tuscaloosaal`, `holladayut`, `stmarysga`, `pacificgroveca`.
+
+Not investigated further this session (no adapter attempted for any of
+the three) — see `BACKLOG.md`'s updated entry for the real next-step
+recommendation (SuiteOne Media looks like the strongest candidate of the
+three, once the court-system tenants are subtracted).
+
 ## Consolidated city-county domain lookup: 13 real, verified domains applied; smaller ones deliberately left open [Done 2026-08-21]
 
 Closes part of the gap flagged in this file's "~38 consolidated
