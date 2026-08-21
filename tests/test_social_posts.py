@@ -104,6 +104,90 @@ def test_undetected_language_still_passes():
     assert social.payload_is_high_quality(_quality_payload(transcript_language=None))
 
 
+# --- provenance gate (WO-21) --------------------------------------------
+#
+# These payloads are deliberately *perfect* on every quality axis above --
+# real video, 60 clean segments, English, no warnings. That's the whole
+# point: before this gate existed, an unverified generic_fallback scrape
+# of an arbitrary URL scored full marks here and got announced from the
+# project's own public accounts. See BACKLOG.md's "Trust & safety"
+# section for the threat model.
+
+
+def test_best_effort_payload_never_posts():
+    assert not social.payload_is_high_quality(_quality_payload(best_effort=True))
+
+
+def test_unknown_platform_payload_never_posts():
+    # "unknown" is the exact platform_name generic_fallback.py registers
+    # under (app/platforms/generic_fallback.py).
+    assert not social.payload_is_high_quality(
+        _quality_payload(platform="unknown", best_effort=True)
+    )
+
+
+def test_best_effort_youtube_delegated_payload_never_posts():
+    """The case a platform-only check silently misses, and the most
+    common real generic_fallback outcome: the fallback found a YouTube
+    embed and delegated to YouTubeAssetFinder, so `platform` comes back
+    as "youtube" -- indistinguishable from a genuine YouTube resolve
+    except for best_effort. See ResolvedMeeting.best_effort's own
+    docstring (app/platforms/models.py) and generic_fallback.py's comment
+    at the delegation site."""
+    payload = _quality_payload(platform="youtube", best_effort=True)
+    # Sanity: this payload is otherwise flawless -- only provenance
+    # disqualifies it.
+    assert social.payload_is_high_quality({**payload, "best_effort": False})
+    assert not social.payload_is_high_quality(payload)
+
+
+async def test_announce_skips_best_effort_page_and_leaves_no_claim(monkeypatch):
+    """End-to-end through the real ingest path: a best_effort page is
+    created normally (it still gets a public page -- that's deliberate,
+    see BACKLOG.md) but is never announced."""
+    monkeypatch.setenv("BLUESKY_HANDLE", "rtr.test")
+    monkeypatch.setenv("BLUESKY_APP_PASSWORD", "test-app-password")
+    monkeypatch.setenv("PUBLIC_BASE_URL", "https://redtaperecordings.com")
+    monkeypatch.setenv("SOCIAL_MIN_POST_INTERVAL_SECONDS", "0")
+
+    url = "https://example.org/city-council/social-best-effort"
+    payload = _quality_payload(
+        platform="youtube",
+        external_id=None,
+        source_url=url,
+        best_effort=True,
+    )
+    result = await crud.ingest_resolution(payload, url)
+    assert result["created"] is True
+
+    async def fail_if_called(text, link_url):
+        raise AssertionError("a best_effort page must never be announced")
+
+    monkeypatch.setattr(social, "_post_to_bluesky", fail_if_called)
+    await social.announce_new_page(result["page_id"], result["slug"], payload)
+
+    # Skipped before any claim, same as every other quality skip.
+    claim = await crud.claim_social_post(result["page_id"], "bluesky")
+    assert claim is not None
+
+
+async def test_ingest_request_model_preserves_best_effort():
+    """The actual regression this whole work order started from:
+    /internal/ingest hands announce_new_page() `req.model_dump()`, not the
+    raw request body, so a field missing from IngestRequest is silently
+    gone by the time the social gate runs. Before WO-21 that was exactly
+    best_effort's fate -- Pydantic dropped it on every single ingest."""
+    from archive.main import IngestRequest
+
+    req = IngestRequest(
+        **_quality_payload(best_effort=True),
+        input_url_normalized="https://example.org/x",
+    )
+    payload = req.model_dump(exclude={"input_url_normalized"})
+    assert payload["best_effort"] is True
+    assert not social.payload_is_high_quality(payload)
+
+
 # --- composition --------------------------------------------------------
 
 

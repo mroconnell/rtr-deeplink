@@ -622,6 +622,42 @@ async def internal_jurisdiction_bleed_backfill_candidates(
     return await crud.list_jurisdiction_bleed_backfill_candidates()
 
 
+@app.get("/internal/low-trust-pages")
+async def internal_low_trust_pages(
+    limit: int = 200,
+    offset: int = 0,
+    authorization: Optional[str] = Header(None),
+):
+    """Read-only review queue: every archived page whose provenance was
+    never actually verified -- `platform == "unknown"` (generic_fallback's
+    own registered name), `best_effort` (the same fallback path, including
+    the YouTube-delegated results whose platform reads "youtube" instead --
+    the most common real case, which is why a platform-only check isn't
+    enough), or a `jurisdiction_confidence` of "unverified"/"blank".
+
+    Exists because the resolve -> Archive -> public page -> social
+    announcement pipeline is fully automatic end to end, with nothing
+    that could ever answer "what has this thing published that nobody
+    verified?" Same read-only, size-the-problem role as
+    GET /internal/jurisdiction/bleed-backfill-candidates above (this
+    route's own template), and it never modifies anything -- a human
+    decides what, if anything, to do with each row.
+
+    Deliberately does NOT change what the public site shows. The noindex
+    condition in meeting_page.html, the sitemap filter
+    (crud.list_all_page_slugs()) and the /j/* hub filter
+    (crud._hub_base_conditions()) were all left exactly as they were, by
+    explicit product decision -- see BACKLOG.md's entry. Most best_effort
+    pages are legitimate small cities that happened to resolve via the
+    fallback, and pulling them out of Google would cost real reach for no
+    proportionate trust gain.
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    return await crud.list_low_trust_pages(limit=limit, offset=offset)
+
+
 @app.post("/internal/jurisdiction/backfill-apply")
 async def internal_jurisdiction_backfill_apply(
     dry_run: bool = True,
@@ -722,6 +758,30 @@ class IngestRequest(BaseModel):
     # no matching columns (fixed 2026-08-10, see BACKLOG_DONE.md).
     video_warnings: List[str] = []
     agenda_link: Optional[str] = None
+    # Also mirrors ResolvedMeeting -- and was also silently dropped by
+    # Pydantic on every single ingest until 2026-08-21 (WO-21), the exact
+    # same failure shape as video_warnings/agenda_link above. The
+    # resolver has always *sent* it (app/main.py pushes
+    # `result.model_dump()`, and best_effort is a real field on
+    # ResolvedMeeting); this model just had no matching field, so it
+    # never survived the boundary and `grep -rn best_effort archive/`
+    # found nothing at all.
+    #
+    # This one is a trust signal, not a display detail: it marks a
+    # resolve that came out of generic_fallback.py's scan-any-page path
+    # instead of a real vendor adapter. Two things read it now --
+    # crud.ingest_resolution() persists it to MeetingPage.best_effort for
+    # GET /internal/low-trust-pages, and social.payload_is_high_quality()
+    # refuses to publicly announce a page carrying it. Note the second
+    # one works off this parsed model's dump and therefore needs *only*
+    # this field, not the column: the social gate is safe even against a
+    # database where the migration hasn't run.
+    #
+    # Defaults False, so every partial pusher that omits it
+    # (scripts/fetch_youtube_transcripts.py and friends) is unaffected --
+    # and crud only ever lets this SET the flag, never clear one, for
+    # exactly that reason (see _find_or_create_page()).
+    best_effort: bool = False
     input_url_normalized: str
     # Archive-only -- not part of ResolvedMeeting (app/platforms/models.py),
     # so every normal resolver push/bulk_ingest.py/fetch_youtube_transcripts.py
@@ -777,6 +837,15 @@ class ResolvedMeetingIn(BaseModel):
     agenda_items: List[TranscriptSegmentIn] = []
     transcript_language: Optional[str] = None
     transcript_warnings: List[str] = []
+    # Added alongside IngestRequest.best_effort (2026-08-21, WO-21) rather
+    # than left to diverge: this payload also reaches
+    # crud._find_or_create_page() (via create_transcription_job()), and
+    # that call can genuinely *create* a MeetingPage -- a "Request
+    # Transcript from Audio" on a fallback-resolved URL nobody had
+    # archived yet. Without the field here, exactly those pages -- the
+    # ones with no vendor adapter behind them at all -- would be the ones
+    # created unflagged.
+    best_effort: bool = False
 
 
 class TranscriptionCreateJobRequest(BaseModel):

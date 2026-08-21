@@ -5,6 +5,59 @@ investigation detail behind each fix — lives in
 [BACKLOG_DONE.md](BACKLOG_DONE.md); items below link back to it for context
 where relevant.
 
+## `best_effort` residuals: no backfill for pre-2026-08-21 pages, the flag never clears itself, and the low-trust queue has no UI
+
+WO-21 (2026-08-21) plumbed `ResolvedMeeting.best_effort` through to the
+Archive — a real `meeting_pages.best_effort` column, a provenance gate on
+social auto-posting, and `GET /internal/low-trust-pages` — see
+`BACKLOG_DONE.md`'s entry for the full build. Four real residuals:
+
+- **Every page archived before 2026-08-21 has `best_effort = false`,
+  and no backfill is possible.** Not an oversight and not a script
+  somebody forgot to run: `best_effort` records *how a resolve was
+  performed*, and nothing on the stored row preserves that. A fallback
+  result that delegated to YouTube is byte-for-byte indistinguishable
+  from a native YouTube resolve on `meeting_pages`. Historical rows only
+  become accurate as they're re-ingested. The `platform == "unknown"`
+  and `jurisdiction_confidence` halves of the audit endpoint do cover
+  old rows from a different angle, so the queue isn't blind to history —
+  it just under-reports the delegated case for anything old. A
+  re-resolve sweep (`scripts/backfill_archived_pages.py`) would fix it
+  properly for any page it touches.
+- **The flag is sticky: a re-ingest can set it, never clear it.**
+  Deliberate (see `_find_or_create_page()`'s comment) — every
+  transcript-only pusher sends a partial payload where `best_effort`
+  defaults to `False`, and an unconditional overwrite would let them
+  silently un-flag genuinely unverified pages. The cost is the mirror
+  image: a page later re-resolved by a real vendor adapter keeps the
+  flag, so the review queue needs pruning by hand rather than draining
+  itself. Fixing this properly means distinguishing a full resolve from a
+  partial push at the ingest boundary, which nothing does today.
+- **The queue is a JSON endpoint, not a workflow.** There's no way to
+  mark a page reviewed/approved, so re-reading it means re-triaging the
+  same rows. That's the natural next slice if the queue turns out to be
+  used at all; a `reviewed_at` column plus a `?unreviewed=true` filter
+  would be the cheap version.
+- **`jurisdiction_confidence IS NULL` is not counted as low-trust.** The
+  endpoint matches `"unverified"`/`"blank"` only. Pages archived before
+  the column existed (pre-2026-08-15) have NULL, which means "we never
+  asked", not "we asked and got nothing" — lumping them in would swamp
+  the queue with rows whose jurisdiction is probably fine. Revisit if the
+  queue proves too narrow rather than too noisy.
+
+**Explicitly NOT to be "fixed" by a later session**: the `noindex`
+condition (`archive/templates/meeting_page.html`), the sitemap filter
+(`crud.list_all_page_slugs()`) and the `/j/*` hub filter
+(`crud._hub_base_conditions()`) were all left untouched on purpose, by
+the user's own product decision — they want unverified pages *stopped
+from being amplified* (the social gate) and *auditable* (the queue), but
+still indexed. Most `best_effort` pages are legitimate small cities that
+merely happened to resolve via the fallback rather than a vendor
+adapter, and pulling them out of Google would cost real reach for no
+proportionate trust gain. Widening any of those three to include
+`best_effort` would reverse a decision that was made deliberately, with
+the tradeoff understood.
+
 ## Social auto-posting residuals: facet-clickability spot-check, Mastodon client still unverified, upgrade-triggered posts never announce
 
 Bluesky auto-posting went live 2026-08-21 — a real prod resolve created
@@ -707,8 +760,8 @@ anything) to build against it.
   suspicious page — genuinely built, not aspirational, just reactive
   (after publication) rather than preventive.
 
-  **Mitigation options worth weighing, not yet decided or built (except
-  the first, built 2026-08-11 — see BACKLOG_DONE.md):**
+  **Mitigation options worth weighing (the first two are built — 2026-08-11
+  and 2026-08-21, see BACKLOG_DONE.md — the rest are not decided):**
   - ~~**noindex generic_fallback/`best_effort` pages by default**~~ Built
     2026-08-11: `archive/templates/meeting_page.html`'s meta block now
     renders `<meta name="robots" content="noindex">` whenever
@@ -717,11 +770,30 @@ anything) to build against it.
     doesn't block anything, just stops amplifying the least-verified
     content until a human's looked at it. The rest of this section's
     threat model (fake-jurisdiction risk, curated-list idea, trust tiers)
-    is still open.
+    is still open. **Known, deliberate limit (confirmed 2026-08-21):
+    this condition only ever tested `platform == "unknown"`, so it never
+    covered the YouTube-delegated fallback path — the most common real
+    generic_fallback outcome, whose `platform` is `"youtube"`. WO-21
+    plumbed a real `best_effort` signal into the Archive but deliberately
+    did NOT widen this condition; see that entry below for why.**
+  - ~~**Don't auto-announce unverified pages on social**~~ Built
+    2026-08-21 (WO-21, see BACKLOG_DONE.md). PR #266's Bluesky/Mastodon
+    auto-posting shipped with a quality gate that checked video, segment
+    count, warnings and language but nothing about *provenance* — so a
+    generic_fallback scrape of an arbitrary URL with a good transcript
+    got announced from the project's own public accounts. This section's
+    threat model predates that pipeline entirely, which is exactly how
+    the gap got there. `payload_is_high_quality()` now refuses anything
+    carrying `best_effort` or `platform == "unknown"`.
   - **Manual review before a brand-new jurisdiction goes live/indexed**
     — especially for `generic_fallback`/`best_effort` results. Real cost:
     turns part of the pipeline from fully automatic into something
     needing a human in the loop, at least for first-time jurisdictions.
+    **Partially approached from the other side 2026-08-21**:
+    `GET /internal/low-trust-pages` gives an after-the-fact review queue
+    (unverified provenance, unverified jurisdiction) without making the
+    pipeline synchronous. A genuine *pre*-publication hold is still
+    unbuilt.
   - **Platform-based trust tiers** instead of domain allowlisting — the
     named-vendor adapters (Granicus, Legistar, CivicClerk, Swagit,
     PrimeGov, etc.) all target products specifically sold to local
@@ -3104,14 +3176,23 @@ that added this reorg, for which ones are new).
     confirmed in this file's own residual note only exists client-side.
     Doesn't change the real conclusion (still needs its own headless
     trigger idea), just corrects the "empty" description.
-  - **Video-only best-effort results are never archived** — the push
-    gate (`app/main.py`, `segments or agenda_items or agenda_link`)
-    predates the rebuild, but matters more now that the fallback finds
-    more videos: e.g. a Tarrant resolve on Render (yt-dlp blocked → no
-    segments; no agenda `<a>` on the page) produces a real video no
-    permanent page will record. Deliberately not widened — the gate's
-    junk-page rationale stands — but worth revisiting if pointer/video-
-    only pages turn out to be worth archiving.
+  - ~~**Video-only best-effort results are never archived**~~ **Stale —
+    corrected 2026-08-21 (WO-21).** This entry claimed the push gate was
+    `segments or agenda_items or agenda_link` and had been "deliberately
+    not widened." Both halves were out of date: PR #204 (commit
+    `7975288`, 2026-08-19, "Fix Archive-push gate to include video_url")
+    widened it, and `app/main.py:686` reads
+    `if result.segments or result.agenda_items or result.agenda_link or
+    result.video_url:` today. The original example — a Tarrant resolve on
+    Render where yt-dlp is blocked (no segments) and the page has no
+    agenda `<a>` — now produces a page that *is* archived on the strength
+    of its video alone. Left here rather than deleted because this exact
+    entry is a confirmed instance of the doc-drift the "App-wide audit"
+    entry flags, and because the widened gate is the direct upstream
+    cause of the trust gap WO-21 then had to close: more best-effort
+    results reaching the Archive is precisely what made an unverified
+    page's exposure (public page, sitemap, and as of PR #266 an automatic
+    social announcement) worth gating on provenance.
   - **Backstop expansion candidates**: `scan_page_for_video_evidence()`
     is wired into eScribe only. Each further adapter opt-in needs its
     own real no-video example plus a wrong-video risk check (Cablecast's
