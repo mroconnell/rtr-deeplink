@@ -270,8 +270,23 @@
           <div id="youtubePlayerContainer" class="youtube-player-container"></div>
           {% elif page.video_format == "viebit" %}
           <iframe id="viebitFrame" class="viebit-player-container" allow="autoplay; fullscreen" allowfullscreen title="Meeting video"></iframe>
+          {% elif page.video_format == "m3u8" %}
+          {#- Real src/source server-rendered here, not left to JS alone --
+             found 2026-08-21 (BACKLOG.md) that Google's Search Console
+             flags these pages as "Video isn't on a watch page" because
+             the <video> tag used to ship with no src at all: hls.js
+             (meeting_page.js) attaches media via MediaSource, which sets
+             the DOM video.src to an opaque blob: URL that never matches
+             the real URL in this page's own VideoObject.contentUrl above.
+             A real <source> here doesn't change playback (hls.js still
+             attaches on top for browsers that need it; Safari's native
+             HLS support uses this directly) -- it just gives crawlers a
+             real, matching URL to find without needing JS to run first. #}
+          <video id="meetingVideo" controls playsinline preload="auto">
+            <source src="{{ page.video_url }}" type="application/vnd.apple.mpegurl">
+          </video>
           {% else %}
-          <video id="meetingVideo" controls playsinline preload="auto"></video>
+          <video id="meetingVideo" controls playsinline preload="auto" src="{{ page.video_url }}"></video>
           {% endif %}
         </div>
         {% if page.agenda_items or (active_version and active_version.segments) %}
