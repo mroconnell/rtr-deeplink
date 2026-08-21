@@ -217,6 +217,163 @@ negative. Pushed one of Pinal County's real Swagit URLs through
 real date). No adapter work needed; `destinyhosted.com` itself doesn't
 need one.
 
+**Follow-up, 2026-08-21 (same day, later session): the "no adapter
+needed" conclusion above was right, but incomplete — a real, live-
+confirmed gap was hiding behind it, found and fixed.** The 2-tenant
+sample above only checked Pinal County's *bare calendar* page
+(`agenda_publish.cfm?id=X`, no `dsp=`/`seq=`), which happens to render
+its Swagit link as a plain `<a href>`. Prompted by the user supplying a
+batch of real *specific-meeting* URLs (`dsp=ag&seq=NNNN` shape) across 5
+more tenants, a live `bulk_ingest.py --dry-run` against those came back
+`platform=unknown, segments=0` for every one — a real regression from
+what the plain-calendar-page check implied.
+
+**Root cause, confirmed live**: on a meeting-detail page, Destiny
+AgendaQuick renders its Swagit video link as `href="#"
+onclick="swagitPlay('https://{tenant}.new.swagit.com/videos/{id}#{frag}
+')"` — never a literal href. `base.find_platform_link()` (the shared
+helper `generic_fallback.py`'s tier-3 delegation and `legistar.py`'s own
+fallback both use) only ever checked `href`/`src` attributes, so it
+silently found nothing on every affected page, even though the real
+video URL was sitting right there in the HTML. Same general shape this
+codebase already has precedent for (Legistar's own
+`window.open(...)`/`OpenTelerikWindow(...)` onclick handling in
+`legistar.py`'s `_find_video_links()`), just not one `find_platform_link()`
+itself handled. Fixed generally rather than with a destinyhosted-specific
+branch (per this file's own "wrapper platform" convention): `find_platform_link()`
+now also checks each candidate tag's `onclick` attribute for a
+`someFunc('https://...')`-shaped call (`_ONCLICK_URL_RE`), tried as an
+*additional* candidate alongside href/src, not a replacement — see
+`app/platforms/base.py`. A regression test was added
+(`test_find_platform_link_finds_a_swagit_link_in_an_onclick_js_modal`,
+`tests/test_base.py`) using the real Woodlands Township, TX shape. Full
+suite (1075 tests) passes; `test_legistar.py` specifically re-verified
+unaffected, since it's the other real caller of this shared helper.
+
+**Enumeration, via Wayback CDX rather than assumption** (this repo's own
+"test against real URLs" rule, extended to *finding* the real URLs
+first): `public.destinyhosted.com/agenda_publish.cfm` alone has **78,366
+captures** in CDX; extracting distinct numeric `id=` (tenant) values from
+every captured URL found **62** (61 live, 1 — `id=22546` — a genuine dead
+tenant returning "Database Offline"). Cross-checked against a second,
+independent signal: distinct 4–6-char document-folder-name prefixes
+(`/{code}docs/`, `/{code}shareddocs/`) scraped from the same CDX capture
+set, e.g. `pinal`, `knox`, `wilco` (a real, confirmed Williamson County TX
+self-nickname), `woodl` (The Woodlands Township TX) — 56 distinct codes,
+broadly consistent with (not identical to — different capture population)
+the 62 numeric ids. Live-fetched all 61 live ids' bare calendar pages
+(`curl`, 8-way parallel, all 200s) and scanned each for an outbound
+Swagit link, a doc-folder code, or any other non-destinyhosted/non-swagit
+external host. Real, geographically skewed population confirmed this way:
+overwhelmingly Arizona and Texas municipalities/counties, with scattered
+others (MN, OH, OK, FL, WA, WI, MT, NY). **18/61 tenants have a confirmed,
+live Swagit video link** (up from the 1 previously confirmed — Pinal
+County): Baytown TX, Chandler AZ, Edmond OK, Fort Pierce FL, Glendale AZ,
+Huber Heights OH, La Paz County AZ, Lubbock TX, Mankato Area Public
+Schools MN, Marana AZ, Navajo County AZ, Oro Valley AZ, Nueces County TX,
+Schertz TX, San Patricio County TX, Pinal County AZ, Williamson County TX,
+The Woodlands Township TX. Knox County TN remains a confirmed real
+negative (no video this month, unchanged from the original check).
+
+**Adapter decision, now fully confirmed rather than provisional**: still
+no *redundant parser* — `destinyhosted.com` is a pure agenda/minutes CMS
+(Destiny Software's "AgendaQuick" product), video-vendor-agnostic, and
+nothing about its own page structure needs bespoke parsing. Beyond Swagit
+(18/61, its most common integration — confirmed via a formal built-in
+integration: `swagit_meeting_list.cfm`/`swagit_return_data.cfm`/
+`swagit_meeting_details.cfm` endpoints and a per-tenant
+`/{id}/agenda/assets/js/swagit.js` script, not just an incidental
+outbound link), individual tenants were also found linking to YouTube,
+Granicus, Cablecast/Castus (`cloud.castus.tv` — a real first customer
+example for BACKLOG.md's existing "Castus has zero support anywhere"
+`[LATER]` entry, see there), and two platforms with **no support
+anywhere in this repo at all, first sighted here**: `open.media`
+(Goodyear, AZ) and SuiteOne Media (2 hits: Lorain OH, Pacific Grove CA) —
+logged as new `[LATER]` entries in `BACKLOG.md` rather than investigated
+further this session.
+
+**A thin `destinyhosted.py` *was* added, though — not to parse anything,
+but to register `destinyhosted.com` as its own platform identity**, once
+a second real gap surfaced (below) that a plain "unknown" classification
+couldn't fix. `DestinyHostedAssetFinder.resolve()` just delegates
+unchanged to `GenericFallbackAssetFinder`'s own tiers, only substituting
+`platform="destinyhosted"` when nothing deeper resolves — a successful
+inner delegation's real platform (e.g. `"swagit"`) is never masked.
+
+**Second real gap, found live from a lead the user supplied mid-session:
+Roswell, NM's public agenda page
+(`www.roswell-nm.gov/AgendaCenter/...`) is CivicPlus's "AgendaCenter"
+product self-hosted on the city's own domain rather than a
+`*.civicplus.com` subdomain — so `detect_platform()`'s civicplus check
+(a netloc-substring match) never fires — and its real backend turned out
+to be `public.destinyhosted.com/76793/agenda/...`** (a different,
+path-based URL shape — `/{id}/agenda/...` — from the query-string
+`agenda_publish.cfm?id=X` shape the CDX enumeration above was built
+around; confirms `id=76793`'s jurisdiction, previously unidentified in
+the 61-tenant table). With `destinyhosted.com` still classified as
+`"unknown"` at the time, `find_platform_link()` — scanning Roswell's own
+page for a link to a platform it recognizes — skipped the destinyhosted
+link outright (its own `platform == "unknown"` filter), so a real
+two-hop wrapper chain (CivicPlus AgendaCenter → destinyhosted →
+[video platform]) had no way to resolve past the first hop. Fixed by
+adding a `destinyhosted.com` branch to `detect_platform()` and
+registering `DestinyHostedAssetFinder` under `platform_name =
+"destinyhosted"`, so a destinyhosted link found on any other page is now
+a recognized one-more-hop delegation target. (Roswell's own specific
+meeting checked has no video this month — an honest per-tenant negative
+matching Knox County's, not a live end-to-end video confirmation of this
+specific chain — but the mechanism itself was verified two other ways:
+`get_finder("destinyhosted").resolve()` on a real, known video-bearing
+tenant URL still correctly returns `platform="swagit"` with real
+video/segments, and a synthetic-but-real-shaped page built the same way
+this repo's fixture tests always are exercises the actual two-hop path.)
+
+**That same `detect_platform()` addition immediately caused a real
+regression of its own, caught before landing**: a destinyhosted agenda
+page's *own* pagination/month-navigation links are also
+`destinyhosted.com` URLs, which now also classify as `"destinyhosted"`
+rather than `"unknown"` — and since `find_platform_link()` returns the
+*first* recognized match in document order, and those nav links
+typically appear before the real onclick video link further down the
+DOM, every destinyhosted resolve broke silently the moment
+`destinyhosted.com` stopped being `"unknown"` (confirmed live: The
+Woodlands Township, TX regressed from a real resolved video back to
+`video_url=None`). The existing "skip a candidate that resolves back to
+the exact same page URL" protection (`find_platform_link()`'s docstring,
+originally built for a Columbus, OH Legistar infinite-recursion bug) only
+covers the *identical* URL, not *a different page on the same platform*
+— generalized the fix to match: `find_platform_link()` now also skips
+any candidate whose own `detect_platform()` result equals the current
+page's own platform, closing this for every caller, not just
+destinyhosted. Two regression tests added
+(`test_find_platform_link_skips_a_different_link_on_the_same_platform`
+in `tests/test_base.py`; `tests/test_destinyhosted.py`'s own two tests
+cover the full delegate-through vs. honest-negative behavior with real
+mocked HTTP fixtures). Full suite (1080 tests) passes; the original
+17-tenant real-URL batch was re-dry-run end-to-end after this fix and
+confirmed unchanged (still 17/17 `platform=swagit`).
+
+**17 real new meetings, across 17 real new jurisdictions never
+previously in the Archive, ingested for real** (not dry-run) via
+`bulk_ingest.py` against the confirmed-video tenants above (one real,
+current specific meeting per tenant; Pinal County's own re-ingest hit a
+transient YouTube-side `429 Too Many Requests` mid-session and was left
+alone since that jurisdiction was already covered). Spot-verified one
+in-browser (not just via the API, per this file's own convention): The
+Woodlands Township, TX's "Aug 17, 2026 Budget Workshop #1" page renders
+a real video player, a real chapter-marked agenda with deep-link
+timestamps, and a real transcript.
+
+**Known, deliberately-not-fixed quirk carried over from the existing
+Legistar/CivicPlus delegation pattern**: resolving a *bare* calendar URL
+(`agenda_publish.cfm?id=X` with no `dsp=`/`seq=`) delegates to whichever
+Swagit link is first in document order — normally the most recent
+meeting, but not guaranteed to be the specific meeting a caller might
+have meant by a bare tenant URL. Specific `dsp=ag&seq=NNNN` meeting-detail
+URLs are unambiguous and preferred; not worth a `CalendarPageError`-style
+special case for a generic-fallback-routed platform with no per-tenant
+adapter of its own.
+
 ## Real Charlotte, NC Cablecast meeting mis-attributed to Detroit, MI on a live Archive page — stale ingest, not a live bug; found via user's own manual 50-largest-cities research, fixed and verified [Done 2026-08-20]
 
 Found while cross-referencing the user's manually-researched table of the

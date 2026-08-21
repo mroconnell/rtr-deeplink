@@ -29,6 +29,28 @@ small Georgia ones (Cusseta/Chattahoochee County, Georgetown/Quitman
 County, Preston/Webster County, Statenville/Echols County) -- lower
 population, lower priority, real gap not yet closed.
 
+## Domain guesser matched a same-named US state's real portal instead of the county's -- fixed at the source, 6 wrong rows reverted, 2026-08-21
+
+`find_gov_domains.py`'s unqualified `{bare_name}.gov` candidate
+systematically collides with a state's own real portal whenever a
+county's bare name (after stripping "County"/"Parish"/etc.) is itself a
+full US state name -- most states are literally hosted at
+`{statename}.gov`. Confirmed live: 6 rows in `jurisdiction_coverage.csv`
+had a wrong domain from this -- Delaware County PA/OH/IN and Oklahoma
+County, Utah County, Nevada County CA all got the matching *state's*
+portal (`delaware.gov`, `oklahoma.gov`, `utah.gov`, `nevada.gov`) instead
+of their own county government's site. The guesser's own
+bare-name-appears-on-page anti-false-positive check (added earlier this
+session for the `townof`/`cityof` false-positive class) can't catch this
+one -- the state's own name trivially appears on the state's own
+homepage. All 6 rows' domain-derived fields were reverted to blank in
+`jurisdiction_coverage.csv` (a research file, not under git); the root
+cause is fixed in `find_gov_domains.py` (skip the unqualified `{s}.gov`
+candidate when the bare name is a US state name; qualified variants like
+`{s}{st}.gov`/`{s}county.gov` are unaffected). No real domain re-found
+for these 6 yet -- lower priority given their small remaining population,
+open if revisited.
+
 ## Real per-tenant/platform gaps found across several of the 50 largest US cities -- from the user's own manual research table, 2026-08-20
 
 Distinct from the "no domain found yet" jurisdiction-coverage work
@@ -946,6 +968,60 @@ anything) to build against it.
   but for nearly 20 hours a real outage during that window would have
   gone unnoticed. Worth reprioritizing given this concrete
   monitoring-blackout evidence, even though nothing user-visible failed.
+
+- **[JUST-DO-IT] Aurora, CO's `aurora_tv` adapter no longer resolves real
+  content — caught by the adapter-health canary, 2026-08-18, promoted from
+  `CLAUDE_INBOX_TRIAGE.md`'s 2026-08-19 run.** The scheduled canary run
+  ([run 32155218602](https://github.com/mroconnell/rtr-deeplink/actions/runs/32155218602))
+  showed 19/20 platforms OK, with one real failure: `FAIL aurora: resolve
+  returned no real content
+  (https://www.auroratv.org/video/regular-meeting-aurora-city-council-june-22-2026)`.
+  This is the canary doing its job, not a canary bug — the run's other
+  errors are the already-documented yt-dlp/YouTube blocking issue (see
+  this file's yt-dlp entries / `CLAUDE.md`'s yt-dlp bullet) and didn't
+  affect this result. [app/platforms/aurora.py](app/platforms/aurora.py)
+  hasn't been touched since a ruff reformat (`#96`) — the adapter itself
+  is unchanged, so either `auroratv.org` or its underlying Cablecast/
+  CloudFront storage (see `BACKLOG_DONE.md`'s original Aurora adapter
+  entry for that dependency) changed shape. **Impact**: this is the only
+  adapter for Aurora, CO's own video site — if the regression holds
+  beyond this one sample URL, every Aurora meeting fails to resolve until
+  fixed; scope beyond the one sample not yet checked. **Next step, per
+  this repo's "test against a real live URL first" convention**: fetch
+  the live page fresh and see what changed — most likely candidates given
+  the adapter's own code are the `drupal-settings-json` script tag
+  structure, or the `mp4_url`/`jw_data.caption_file_path` keys inside it
+  moving. Root cause not yet diagnosed; fix effort unknown until then.
+
+- **[JUST-DO-IT] Archive reverse-proxy streaming has no error handling
+  once the response body starts streaming — a cut-short upstream
+  connection raises an unhandled exception instead of failing cleanly,
+  confirmed live in code 2026-08-21, promoted from
+  `CLAUDE_INBOX_TRIAGE.md`'s 2026-08-19 run.** New Sentry issue
+  PYTHON-FASTAPI-Q (`ClientPayloadError: Response payload is not
+  completed: <TransferEncodingError: 400, message='Not enough data to
+  satisfy transfer length header.'>`), `transaction = /m/{path:path}`,
+  one real occurrence 2026-08-18 21:11 UTC (a crawler request,
+  `browser = MJ12bot`). [app/main.py](app/main.py)'s `_proxy_to_archive()`
+  → `body_iterator()` (currently around
+  [app/main.py:1447-1452](app/main.py#L1447-L1452)) has only a `finally`
+  to close the session — no `try`/`except` around `async for chunk in
+  response.content.iter_chunked(65536)`. When the upstream Archive→
+  resolver stream gets cut short mid-response (aiohttp's own parser
+  raises `TransferEncodingError`), the exception propagates unhandled —
+  and because this happens *inside* `StreamingResponse`'s body generator,
+  after `response.status`/headers are already sent to the client, the
+  existing try/except earlier in the same function (which returns a
+  clean 503) can't help — that one only guards the initial
+  `archive_client.proxy_get()` call, not the streaming loop after it.
+  **Impact**: low as observed so far (one bot-traffic hit, `handled=no`
+  in Sentry — presumably just a dropped connection to the crawler, not
+  user-visible breakage), but the same gap would hit a real visitor the
+  same way if the resolver-Archive connection drops mid-page-load —
+  they'd get a silently killed connection instead of a clean error.
+  **Fix effort**: small — wrap the `body_iterator()` loop in its own
+  try/except, log, and let the generator end cleanly instead of raising
+  into `StreamingResponse` machinery already committed to a response.
 
 - **[HUMAN] Render account bandwidth limit reached — real, current cost
   exposure, found by the daily inbox-triage Routine's 2026-08-18 run.**
@@ -3022,7 +3098,34 @@ that added this reorg, for which ones are new).
   real, in-use PEG/government-access video platform worth a first look
   once a real customer URL is in hand, the same "test against a real live
   URL first" rule this file's own working conventions require for any
-  new adapter.
+  new adapter. **A real customer URL is now in hand** (2026-08-21, via
+  the destinyhosted.com enumeration — see BACKLOG_DONE.md): destinyhosted
+  tenant id=24568 links to
+  `https://cloud.castus.tv/vod/comm7tv/video/6a83b3f9d94c83000226f83d?page=HOME`
+  — jurisdiction not independently confirmed (destinyhosted's own
+  `/{code}docs/` folder-name convention suggests `bilmt`, but that wasn't
+  cross-checked against real page text, so treat as unconfirmed). Not
+  investigated further this session — still the first real lead to build
+  an adapter against, not a build.
+
+- **[LATER] Two more video platforms with zero support anywhere in the
+  resolver, first sighted 2026-08-21 via the same destinyhosted.com
+  enumeration (see BACKLOG_DONE.md)** — neither in `detect_platform()`,
+  no adapter file, not in `generic_fallback.py`'s curated-pointer list:
+  - `open.media` — destinyhosted tenant id=46639 (Goodyear, AZ) links to
+    `https://goodyearaz.open.media/sessions/346555?embedInPoint=0`. 1 hit.
+  - SuiteOne Media — 2 hits, a real recurring signal per this file's own
+    "collect edge-case URLs" convention: destinyhosted tenant id=56724
+    (Lorain, OH) → `https://lorainoh.suiteonemedia.com/event/?id=3005`,
+    and id=72243 (Pacific Grove, CA) →
+    `https://pacificgroveca.suiteonemedia.com/event?id=2450`.
+
+  Both genuinely unhandled, not just unbuilt — real customer URLs are
+  already in hand for both (unlike Castus above, which still needs one),
+  but no adapter built this session; worth a first real look before
+  assuming either is worth the effort (per this file's own working
+  conventions: test against the real URL first, and a `[LATER]` gap isn't
+  automatically worth building until the population is sized).
 
 - **[LATER] Vimeo's real-world prevalence among small local governments is
   now quantified for the first time — worth deciding if the existing

@@ -15,6 +15,7 @@ def register_all_finders() -> None:
     from .champds import ChampDSAssetFinder
     from .clerkbase import ClerkBaseAssetFinder
     from .civicclerk import CivicClerkAssetFinder
+    from .destinyhosted import DestinyHostedAssetFinder
     from .civicweb import CivicWebAssetFinder
     from .civicplus import CivicPlusAssetFinder
     from .escribe import EscribeAssetFinder
@@ -35,6 +36,7 @@ def register_all_finders() -> None:
 
     register(GranicusAssetFinder())
     register(CivicClerkAssetFinder())
+    register(DestinyHostedAssetFinder())
     register(SwagitAssetFinder())
     register(EscribeAssetFinder())
     register(CaliforniaLegislatureAssetFinder())
