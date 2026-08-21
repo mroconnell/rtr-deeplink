@@ -6,6 +6,94 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Consolidated city-county domain lookup: 13 real, verified domains applied; smaller ones deliberately left open [Done 2026-08-21]
+
+Closes part of the gap flagged in this file's "~38 consolidated
+city-county governments" entry above. Verified via real HTTP fetches
+(not guessed) and applied directly to `jurisdiction_coverage.csv` for
+the county rows whose real government domain shares no text with the
+county's own Census name: Marion County, IN -> `indy.gov`; Davidson
+County, TN -> `nashville.gov`; Jefferson County, KY -> `louisvilleky.gov`;
+Muscogee County, GA -> `columbusga.gov`; Fayette County, KY ->
+`lexingtonky.gov`; Duval County, FL -> `jacksonville.gov`; Clarke County,
+GA -> `athensclarkecounty.com`; Richmond County, GA -> `augustaga.gov`;
+Wyandotte County, KS -> `wycokck.org`; East Baton Rouge Parish, LA ->
+`brla.gov`; Orleans Parish, LA -> `nola.gov`. **Real near-miss caught and
+fixed**: an initial substring match was too loose and also overwrote 5
+unrelated same-*named* places that happen to contain the county's short
+name as a substring (Marion *city*, IN; Jeffersonville *city*, KY;
+LaFayette *city*, KY; Clarkesville *city*, GA; Richmond Hill *city*, GA)
+-- caught before merging further work on top of it, reverted, redone with
+exact `(city_name, state)` matching. Smaller/harder-to-verify members of
+the ~38 (Anaconda/Deer Lodge County MT, Butte/Silver Bow County MT,
+Houma/Terrebonne Parish LA, Hartsville/Trousdale County TN,
+Lynchburg/Moore County TN, several small Georgia ones) deliberately left
+unresolved rather than guessed -- lower population, lower priority, real
+residual gap still open.
+
+## Meeting-URL discovery + real push/queue pipeline for the dotgov crawl's 97 has_video=yes jurisdictions [Done 2026-08-21]
+
+Follow-on to this file's "212 domain-finder hits" entry above (97 of 212
+came back `has_video=yes` from reusing `discover_from_dotgov.py`). 5 of
+97 already had a directly-resolvable `agenda_url`; this covers the other
+92, built as `~/Documents/rtr-business/research/resolve_and_tier_92.py`.
+
+**Method**: for each of the 92, fetch `agenda_url`, extract every link on
+the page, and either (a) if it lands on a Legistar/CivicClerk/CivicWeb
+tenant, use `meeting_url_finder.py`'s already-proven per-tenant listing
+API instead of trusting the specific link (confirmed live this was
+necessary: a raw scrape of Fresno's page found its own Legistar
+*calendar* page, which correctly raised `CalendarPageError` instead of
+resolving a real meeting), or (b) for every other platform (no listing
+API exists in this repo for Granicus/YouTube/Vimeo/etc.), take the first
+link matching a known platform's domain and let the real
+`detect_platform()`/`finder.resolve()` pipeline validate or reject it,
+rather than trying to out-guess every platform's real link shape (real
+finding along the way: Wake County, NC's actual Granicus reference was a
+`granicus.com/boards/w/{hash}` committee-board widget, not the
+`/player/clip/{id}` shape an earlier, narrower version of this regex
+assumed -- missed it entirely until broadened to match on domain alone).
+
+**Real yield: 6 pushed for real, 1 queued, 85 honest negatives (mostly
+YouTube channel/subscribe links or empty board-widget pages, not a
+specific meeting -- confirmed per-row, not assumed).** Pushed (verified
+live afterward via `/internal/pages/all-urls`): Polk County FL and
+Baldwin County AL (Legistar, delegates to Granicus -- landed under the
+delegated Granicus URL as `source_url_normalized`, the same known
+Legistar-delegation quirk already documented elsewhere in this repo),
+Pinal County AZ (Swagit), Champaign County IL (Cablecast, **209 real
+transcript segments already present** -- the only one of these six that
+actually has a transcript today, not just video), Roseville CA and
+Lancaster County SC (CivicClerk). Queued to
+`scripts/granicus_auto_transcription_queue.txt`: Multnomah County OR.
+
+**Self-correction on tier terminology, caught before reporting stale
+numbers**: an early pass in this script's own tier-classification logic
+had an overly broad fallback branch that labeled any push with real
+agenda content as "tier1," which doesn't match the actual meaning of
+tier1 in this project (a real transcript already exists, `segments > 0`)
+-- confirmed by checking the underlying `segments` column directly:
+5 of the 6 real pushes above have `segments=0` (video present, no
+transcript yet), only Champaign County IL has `segments=209`. This
+didn't require undoing anything -- pushing a real video-only page is
+still correct (matches `feed_tier3_auto_transcription.py`'s own
+documented assumption that a real, already-ingested video-only page gets
+picked up automatically by the worker's platform-agnostic
+`find_auto_transcription_candidate()` scan, without needing a queue-file
+entry once it's a real MeetingPage) -- only the reporting/label was
+imprecise, corrected before merging into `jurisdiction_coverage.csv`
+(`transcribed=True` set only for Champaign County IL; the other 5 stay
+`shares_video=True` with `transcribed` left blank/unknown, honestly).
+
+**Real residual gap, not solved here**: 85 of 92 remain genuinely
+unresolved -- most municipal sites link prominently to their video
+*channel*/portal but don't expose a single easily-scraped link to one
+*specific* meeting the way a listing API does. Closing more of this gap
+needs either a real per-platform listing method for Granicus/YouTube-
+channel-to-latest-video/Vimeo (the way `meeting_url_finder.py` already
+has for Legistar/CivicClerk/CivicWeb), or manual review -- not attempted
+this session.
+
 ## Meeting-URL discovery for the 212 domain-finder hits: real "one/two hop from tenant" tooling built, a Legistar bug found via live dry-run, Municode Meetings' real (not assumed) fallback behavior confirmed, and a new destinyhosted.com lead resolved to a real Swagit meeting [Done 2026-08-21]
 
 Follow-on to `find_gov_domains.py`'s 212 real government domains found for
