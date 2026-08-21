@@ -12,6 +12,7 @@ def register_all_finders() -> None:
     from .base import register
     from .ca_legislature import CaliforniaLegislatureAssetFinder
     from .cablecast import CablecastAssetFinder
+    from .castus import CastusAssetFinder
     from .champds import ChampDSAssetFinder
     from .clerkbase import ClerkBaseAssetFinder
     from .civicclerk import CivicClerkAssetFinder
@@ -60,6 +61,7 @@ def register_all_finders() -> None:
     register(HylandAssetFinder())
     register(TownHallStreamsAssetFinder())
     register(OpenMediaAssetFinder())
+    register(CastusAssetFinder())
     register(SuiteOneAssetFinder())
     # Registered under "unknown" -- the exact string detect_platform()
     # already returns for anything unmatched -- so get_finder("unknown")

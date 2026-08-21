@@ -73,6 +73,7 @@ CANARY_URLS: dict[str, str] = {
     "aurora": "https://www.auroratv.org/video/regular-meeting-aurora-city-council-june-22-2026",
     "ca_legislature": "https://www.senate.ca.gov/media/senate-floor-session-20260806",
     "cablecast": "http://charlotte.cablecast.tv/internetchannel/show/2451?site=1",
+    "castus": "https://cloud.castus.tv/vod/comm7tv/video/6a83b3f9d94c83000226f83d?page=HOME",
     "champds": "https://play.champds.com/atlantaga/event/1227",
     "civicclerk": "https://emporiaks.portal.civicclerk.com/event/585/media",
     "civicweb": "https://dallascounty.civicweb.net/Portal/MeetingInformation.aspx?Org=Cal&Id=2108",

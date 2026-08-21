@@ -3107,28 +3107,25 @@ that added this reorg, for which ones are new).
     artifact worth guessing a general dedup rule from a single example.
     **Deliberately not a bug to fix** — no code change made.
 
-- **[LATER] Castus has zero support anywhere in the resolver — first real
-  signal it exists in the wild, from the `rtr-business/research`
-  government-first coverage-map crawl (2026-08-18).** Not in
-  `detect_platform()` (`app/platforms/base.py`), no adapter file, not in
-  `generic_fallback.py`'s curated-pointer list — genuinely unhandled, not
-  just unbuilt. 1 hit (`castus`) out of a 200-row national-ish sample of
-  `.gov` city/county homepages (`dotgov_probe.py`'s fingerprint list,
-  extrapolated in `discover_from_dotgov.sh`'s `coverage_map.csv`) — too
-  small an n to size the opportunity yet (the full ~9,766-row run this
-  checkpoint fed into will give a real count), but confirms Castus is a
-  real, in-use PEG/government-access video platform worth a first look
-  once a real customer URL is in hand, the same "test against a real live
-  URL first" rule this file's own working conventions require for any
-  new adapter. **A real customer URL is now in hand** (2026-08-21, via
-  the destinyhosted.com enumeration — see BACKLOG_DONE.md): destinyhosted
-  tenant id=24568 links to
-  `https://cloud.castus.tv/vod/comm7tv/video/6a83b3f9d94c83000226f83d?page=HOME`
-  — jurisdiction not independently confirmed (destinyhosted's own
-  `/{code}docs/` folder-name convention suggests `bilmt`, but that wasn't
-  cross-checked against real page text, so treat as unconfirmed). Not
-  investigated further this session — still the first real lead to build
-  an adapter against, not a build.
+- **Castus (`castus.py`) tenant-slug jurisdiction fallback is unconfirmed
+  against any real second customer.** WO-19 (2026-08-21, see
+  BACKLOG_DONE.md's Castus entry) built a full adapter — jurisdiction on
+  the one real confirmed customer (Billings, MT, "comm7tv") comes from
+  cross-checking a destinyhosted.com hyperlink found in that meeting's
+  own agenda items, not the tenant slug itself (which is opaque channel
+  branding, not a place name, on this one sample). `castus.py`'s
+  `_jurisdiction_from_tenant_slug()` is a best-effort fallback for a
+  future tenant with no destinyhosted (or otherwise-recognized) agenda
+  hyperlink at all, and whose slug genuinely does look like a place name
+  (e.g. a hypothetical "cityofsomewhereca") — real, generic
+  Census-backed logic, but nothing has actually exercised it against a
+  real second Castus customer yet. Also unconfirmed: whether every real
+  Castus customer's agenda items carry a destinyhosted (or any other
+  jurisdiction-bearing) hyperlink at all, or whether "comm7tv" happened to
+  have one by coincidence of also using destinyhosted for agendas.
+  Revisit once a second real customer (ideally one *without* a
+  destinyhosted-linked agenda) is found — check the sample sheet or a
+  fresh dotgov/CDX pass first.
 
 - **[LATER] Vimeo's real-world prevalence among small local governments is
   now quantified for the first time — worth deciding if the existing
