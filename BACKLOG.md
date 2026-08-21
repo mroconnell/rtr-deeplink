@@ -5,6 +5,85 @@ investigation detail behind each fix — lives in
 [BACKLOG_DONE.md](BACKLOG_DONE.md); items below link back to it for context
 where relevant.
 
+## Real per-tenant/platform gaps found across several of the 50 largest US cities -- from the user's own manual research table, 2026-08-20
+
+Distinct from the "no domain found yet" jurisdiction-coverage work
+(`~/Documents/rtr-business/research/jurisdiction_coverage.csv`) -- these
+cities' government video/meeting URLs are already known, but our
+platform genuinely can't turn them into a working page yet, either
+because the site shape isn't one of our adapters' patterns, or because a
+*supported* platform's tenant has a real, tenant-specific quirk. One
+related finding from the same table (Charlotte, NC mis-attributed to
+Detroit, MI) turned out to be an already-fixable stale-ingest issue, not
+an adapter gap -- see its own entry in `BACKLOG_DONE.md`, not repeated
+here.
+
+**Genuinely unsupported site shapes (real adapter work, not a quirk):**
+- **Phoenix, AZ** -- Legistar meeting detail pages
+  (`phoenix.legistar.com/MeetingDetail.aspx?ID=...`) always report video
+  as "unavailable," but the real video exists on a separate, apparently
+  unlinked YouTube channel (confirmed real example: the July 1, 2026
+  meeting's actual recording is `https://www.youtube.com/watch?v=srjuXI5vGuw`).
+  Given the city's size/prominence, may be worth a hardcoded per-tenant
+  YouTube-channel mapping rather than waiting on a general fix.
+- **Philadelphia, PA** -- same shape as Phoenix: Legistar reports no
+  video; the real recording is on YouTube but not linked from the
+  Legistar page.
+- **El Paso, TX** (`elpasotexas.gov/videos`) -- each government body gets
+  its own Vimeo landing page rather than one consistent embed pattern;
+  no adapter attempted yet.
+- **Portland, OR** (`portland.gov/council/agenda/...`) -- not supported,
+  needs real adapter work against Portland's own agenda-page structure.
+- **Tucson, AZ** ("Mayor and Council," Hyland-hosted at
+  `tucsonaz.hylandcloud.com`) -- video lives on a separately-hosted
+  YouTube channel; audio + minutes are paired by matching filenames on a
+  *different* page
+  (`tucsonaz.gov/Departments/Clerks/Boards-Committees-Commissions/...?run=pastminutesaudio`),
+  not attached to the Hyland agenda item itself.
+- **Seattle, WA** (`seattlechannel.org`) -- "Seattle Channel," a custom
+  city-run video platform, not yet triaged against any existing adapter.
+- **Chicago, IL** (`chicityclerkelms.chicago.gov`) -- custom domain/
+  platform shape, not yet triaged.
+
+**Supported platform, but a real tenant-specific gap:**
+- **Atlanta, GA** -- ChampDS (`play.champds.com/atlantaga`), a platform
+  this repo already supports elsewhere, but user-confirmed "not working"
+  for this specific tenant -- worth a live recheck against a real
+  Atlanta ChampDS event URL to find the actual failure mode.
+- **Omaha, NE** -- videos and minutes/journals are hosted on separate
+  pages under `cityclerk.cityofomaha.org`, not paired the way our
+  ingest expects.
+- **Tampa, FL** -- video/agenda live at `tampa.gov`, but transcripts are
+  posted separately at `apps.tampagov.net/cttv_cc_webapp/` and need to be
+  matched back to the right meeting.
+- **Virginia Beach, VA** (`onboardgov.virginiabeach.gov`) -- user's own
+  note: "difficult challenge," not yet triaged.
+- **Baltimore, MD** -- Legistar; user-confirmed only a handful of
+  meetings have video actually attached, most real video is on YouTube
+  instead and not linked from Legistar.
+- **Kansas City, MO** -- Granicus/Legistar, already partially working per
+  the user, but oddly only the Transportation Infrastructure and
+  Operations Committee is coming through; other committees' meetings
+  are real and missing.
+- **Detroit, MI** -- Cablecast, user flagged as "not working well"
+  independent of the separate Charlotte/Detroit mis-attribution bug
+  (`BACKLOG_DONE.md`) -- worth its own live recheck.
+- **Austin, TX** -- `austintexas.gov/council/...`, user-flagged as
+  "in progress, use this to improve unsupported page" -- a real page
+  shape to test a fix against.
+- **San Antonio, TX** (Swagit, `sanantoniotx.new.swagit.com`) and
+  **Columbus, OH** (Legistar, `columbus.legistar.com`) -- both on
+  already-supported platforms, but not yet spot-checked against these
+  specific tenants; may just work, unconfirmed either way.
+
+**Not yet re-checked, may already be fine (worth a quick live verify
+before assuming any of these need work):** New York City itself
+(`legistar.council.nyc.gov` is the real calendar; this repo's own
+Archive currently only has 2 old Viebit clips under a
+`councilnyc.viebit.com` tenant that never matched a jurisdiction --
+possibly the same class of gap as the Charlotte mis-attribution, not
+confirmed).
+
 ## [JUST-DO-IT] Some old/archived Granicus clips' `chunklist.m3u8` genuinely times out at Granicus's own origin (real 504, not a rate limit) -- root cause confirmed 2026-08-21, corrects two earlier wrong theories in this same entry
 
 **Root cause nailed down precisely, superseding both earlier theories
