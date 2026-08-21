@@ -49,6 +49,22 @@ items).
   generate a shareable image/card of that quote + timestamp + a link back
   to that exact moment — a much stronger viral unit than a bare link, and
   journalists/advocates already do this manually with screenshots.
+- **Social auto-posting: durable queue instead of drop-on-burst.**
+  Discussed with Ryan 2026-08-21 while building the between-posts buffer
+  (`SOCIAL_MIN_POST_INTERVAL_SECONDS`, see README's "Social
+  auto-posting" section); his call was "fine for now" on the shipped
+  drop-based design, so this is parked, not accepted. Today a burst of
+  qualifying new pages posts one announcement per 180s window and
+  permanently drops the rest (a page's only shot is at creation). If
+  dropped bursts ever start feeling like lost reach, the upgrade path is
+  already shaped: claim burst candidates as `status="queued"` rows in
+  the existing `SocialPost` table and release the oldest whenever the
+  window is open, driven opportunistically off ingest traffic — the
+  exact durable-sweep pattern `app/main.py`'s Archive push-retry already
+  uses, so it survives restarts without a scheduler or sleeping tasks.
+  Must ship with a max-age cutoff (e.g. skip anything queued >24h) —
+  "Somebody looked up X" reads wrong days late, and 500 queued posts at
+  180s spacing is a full day of nonstop posting without one.
 - **Newsletter subscribe copy is generic — could be more specific about
   what a subscriber actually gets.** Current copy (`app/templates/
   subscribe.html`, `app/templates/base.html`'s footer prompt): "Get
