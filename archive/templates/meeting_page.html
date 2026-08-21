@@ -143,10 +143,12 @@
     },
     {% endif -%}
     {% if public_base_url -%}
-    "url": {{ (public_base_url ~ "/m/" ~ page.slug)|tojson }}
-    {%- else -%}
+    "url": {{ (public_base_url ~ "/m/" ~ page.slug)|tojson }},
+    {% endif -%}
+    {% if thumbnail_url -%}
+    "image": {{ thumbnail_url|tojson }},
+    {% endif -%}
     "description": {{ description|tojson }}
-    {%- endif %}
   }
   </script>
   {#- Deliberately not "eventStatus"/"eventAttendanceMode"/"offers" --

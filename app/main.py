@@ -1478,6 +1478,20 @@ async def _proxy_to_archive(
         try:
             async for chunk in response.content.iter_chunked(65536):
                 yield chunk
+        except (aiohttp.ClientPayloadError, aiohttp.ClientConnectionError):
+            # The upstream Archive->resolver stream got cut short mid-
+            # response (e.g. aiohttp's own TransferEncodingError) -- this
+            # happens *after* StreamingResponse has already committed to
+            # sending a response, so raising here would propagate an
+            # unhandled exception into StreamingResponse's machinery
+            # instead of just ending the response body. Log and let the
+            # generator end cleanly (Sentry PYTHON-FASTAPI-Q, one
+            # occurrence 2026-08-18, transaction = /m/{path:path}).
+            logger.warning(
+                "Archive proxy stream for %s was cut short mid-response.",
+                internal_path,
+                exc_info=True,
+            )
         finally:
             await session.close()
 
