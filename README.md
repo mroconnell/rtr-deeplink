@@ -926,10 +926,12 @@ holds `ARCHIVE_INGEST_TOKEN`, the same trusted-internal-caller position
 the resolver itself is in after its own real Clerk check) skips the
 confirmation-email step entirely — without it, a job would sit at
 `pending_confirmation` until someone clicked a link, defeating the
-purpose. Manually re-run, not cron'd, since the two-worker setup this
-feeds is meant to be temporary — see the script's own module docstring for
-the full reasoning, and `BACKLOG.md` for the residual auto-generation
-race this pairs with.
+purpose. Runs hourly via `.github/workflows/bulk-queue-transcription-
+backlog.yml` (also safe to run by hand any time — server-side dedup and
+the `too_many_active_jobs` early-stop are what make hourly safe, see the
+script's own module docstring) — tied to the backlog catch-up window this
+second worker exists for, and `BACKLOG.md` for the residual auto-
+generation race this pairs with.
 
 ## Accounts (Clerk)
 
