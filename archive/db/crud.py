@@ -53,6 +53,7 @@ from .models import (
     SearchVocabulary,
     TranscriptionJob,
     TranscriptVersion,
+    WorkerReportSnapshot,
 )
 
 
@@ -894,6 +895,143 @@ async def list_transcription_backlog_candidates(
                 break
 
     return candidates
+
+
+async def get_transcription_queue_summary() -> dict:
+    """Real-time snapshot of transcription workload, for operator
+    reporting (archive/main.py's `GET /internal/send-worker-daily-report`).
+    Every field here is either a cheap integer aggregate over
+    TranscriptionJob (never touches `partial_segments`) or the same fast
+    `_good_default_transcript_exists()` SQL predicate
+    find_auto_transcription_candidate() already uses -- deliberately NOT
+    list_transcription_backlog_candidates()'s slower per-page Python-loop
+    query above (see BACKLOG.md: that function still does one DB round
+    trip per MeetingPage, a real, pre-existing N+1 this doesn't need to
+    inherit for a simple count).
+
+    `segments_added_last_24h` is Postgres-only (`jsonb_array_length`
+    computed server-side, never loading the segments JSON into Python --
+    same "don't move the blob" discipline as `_good_default_transcript_
+    exists()`) -- None on SQLite (dev/test), same dialect-feature-detect
+    pattern as `_fts_available()`.
+    """
+    async with async_session() as session:
+        active_rows = (
+            await session.execute(
+                select(
+                    TranscriptionJob.total_chunks, TranscriptionJob.chunks_completed
+                ).where(
+                    TranscriptionJob.status.in_(
+                        ("queued", "in_progress", "retry_scheduled")
+                    )
+                )
+            )
+        ).all()
+        active_jobs = len(active_rows)
+        remaining_chunks = sum(total - done for total, done in active_rows)
+
+        cumulative_chunks_completed = (
+            await session.execute(
+                select(func.coalesce(func.sum(TranscriptionJob.chunks_completed), 0))
+            )
+        ).scalar()
+        cumulative_jobs_completed = (
+            await session.execute(
+                select(func.count())
+                .select_from(TranscriptionJob)
+                .where(TranscriptionJob.status == "completed")
+            )
+        ).scalar()
+
+        day_ago = datetime.now(timezone.utc) - timedelta(hours=24)
+        jobs_completed_last_24h = (
+            await session.execute(
+                select(func.count())
+                .select_from(TranscriptionJob)
+                .where(
+                    TranscriptionJob.status == "completed",
+                    TranscriptionJob.updated_at >= day_ago,
+                )
+            )
+        ).scalar()
+
+        segments_added_last_24h = None
+        if session.bind.dialect.name == "postgresql":
+            segments_added_last_24h = (
+                await session.execute(
+                    select(
+                        func.coalesce(
+                            func.sum(
+                                func.jsonb_array_length(TranscriptVersion.segments)
+                            ),
+                            0,
+                        )
+                    ).where(
+                        TranscriptVersion.source == "transcribed",
+                        TranscriptVersion.created_at >= day_ago,
+                    )
+                )
+            ).scalar()
+
+        backlog_no_transcript = (
+            await session.execute(
+                select(func.count())
+                .select_from(MeetingPage)
+                .where(~_good_default_transcript_exists())
+            )
+        ).scalar()
+
+        return {
+            "active_jobs": active_jobs,
+            "remaining_chunks_in_active_jobs": remaining_chunks,
+            "cumulative_chunks_completed_all_time": cumulative_chunks_completed,
+            "cumulative_jobs_completed_all_time": cumulative_jobs_completed,
+            "jobs_completed_last_24h": jobs_completed_last_24h,
+            "segments_added_last_24h": segments_added_last_24h,
+            "backlog_no_transcript": backlog_no_transcript,
+        }
+
+
+async def get_and_advance_worker_report_snapshot(
+    *, cumulative_chunks_completed: int, cumulative_jobs_completed: int
+) -> Optional[dict]:
+    """Reads the previous worker-report snapshot (None the very first time
+    this ever runs -- see WorkerReportSnapshot's own docstring), then
+    overwrites it with the current cumulative totals -- single row, id=1
+    by convention, updated in place rather than appended to. Returns the
+    PREVIOUS snapshot (before overwriting) so the caller can diff
+    "current cumulative total" against "yesterday's cumulative total" for
+    a real 24h chunk-completion delta. Commits unconditionally (read and
+    write happen in the same call) -- there's only ever one caller
+    (the report-send route), so no risk of two callers racing to
+    advance this the same way claim_next_chunk() has to guard against.
+    """
+    async with async_session() as session:
+        previous = await session.get(WorkerReportSnapshot, 1)
+        previous_dict = (
+            {
+                "cumulative_chunks_completed": previous.cumulative_chunks_completed,
+                "cumulative_jobs_completed": previous.cumulative_jobs_completed,
+                "recorded_at": previous.recorded_at,
+            }
+            if previous is not None
+            else None
+        )
+
+        if previous is not None:
+            previous.cumulative_chunks_completed = cumulative_chunks_completed
+            previous.cumulative_jobs_completed = cumulative_jobs_completed
+            previous.recorded_at = datetime.now(timezone.utc)
+        else:
+            session.add(
+                WorkerReportSnapshot(
+                    id=1,
+                    cumulative_chunks_completed=cumulative_chunks_completed,
+                    cumulative_jobs_completed=cumulative_jobs_completed,
+                )
+            )
+        await session.commit()
+        return previous_dict
 
 
 async def list_completed_multichunk_transcription_jobs() -> list[dict]:

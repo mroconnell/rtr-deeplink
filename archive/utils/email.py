@@ -567,3 +567,49 @@ async def send_youtube_transcript_failure(to: str, *, error_message: str) -> boo
         "running the launchd job for the full detail.</p>"
     )
     return await _send(to, "⚠️ YouTube transcript fetch failed", body)
+
+
+async def send_worker_daily_report(
+    to: str, *, summary: dict, previous: Optional[dict]
+) -> bool:
+    """Daily activity digest for the transcription worker(s) -- see
+    archive/main.py's GET /internal/send-worker-daily-report, triggered by
+    .github/workflows/worker-daily-report.yml. Same "internal ops
+    notification, plain HTML, sent every day even when nothing happened"
+    pattern as send_youtube_transcript_report() above -- silence itself
+    should never be the only signal a scheduled job stopped firing.
+
+    `chunks_completed_last_24h` is None (rendered as "n/a (first report)")
+    only on the very first-ever send, when there's no previous snapshot to
+    diff against -- every subsequent send has a real number.
+    """
+    chunks_24h = (
+        summary["cumulative_chunks_completed_all_time"]
+        - previous["cumulative_chunks_completed"]
+        if previous is not None
+        else None
+    )
+    chunks_24h_str = (
+        f"{chunks_24h:,}" if chunks_24h is not None else "n/a (first report)"
+    )
+    segments_24h = summary["segments_added_last_24h"]
+    segments_24h_str = f"{segments_24h:,}" if segments_24h is not None else "n/a"
+
+    body = (
+        "<h2>Transcription worker activity, last 24 hours</h2>"
+        '<table cellpadding="6" style="border-collapse: collapse">'
+        f"<tr><td>Chunks completed</td><td><strong>{chunks_24h_str}</strong></td></tr>"
+        f"<tr><td>Jobs finished</td><td><strong>{summary['jobs_completed_last_24h']:,}</strong></td></tr>"
+        f"<tr><td>Segments transcribed</td><td><strong>{segments_24h_str}</strong></td></tr>"
+        "</table>"
+        "<h2>Current queue</h2>"
+        '<table cellpadding="6" style="border-collapse: collapse">'
+        f"<tr><td>Active jobs</td><td><strong>{summary['active_jobs']:,}</strong></td></tr>"
+        f"<tr><td>Remaining chunks in active jobs</td><td><strong>{summary['remaining_chunks_in_active_jobs']:,}</strong></td></tr>"
+        f"<tr><td>Meetings on the site with no transcript</td><td><strong>{summary['backlog_no_transcript']:,}</strong></td></tr>"
+        f"<tr><td>Still in the tier-3 discovery queue (not yet archived)</td><td><strong>{summary['tier3_queue_remaining']:,}</strong></td></tr>"
+        "</table>"
+        f'<p style="color:#666">All-time cumulative: {summary["cumulative_chunks_completed_all_time"]:,} chunks, '
+        f"{summary['cumulative_jobs_completed_all_time']:,} jobs completed.</p>"
+    )
+    return await _send(to, "Transcription worker daily report", body)
