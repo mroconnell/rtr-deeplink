@@ -354,6 +354,8 @@ async def internal_transcription_completed_multichunk(
 
 @app.get("/internal/transcription/hallucination-candidates")
 async def internal_transcription_hallucination_candidates(
+    limit: int = 500,
+    after_id: Optional[int] = None,
     authorization: Optional[str] = Header(None),
 ):
     """Read-only audit list: every already-completed source=="transcribed"
@@ -369,11 +371,25 @@ async def internal_transcription_hallucination_candidates(
     audit's own template for this one) -- answers the audit without
     needing direct DATABASE_URL access. Never re-transcribes or modifies
     anything itself; a human decides what's worth re-running.
+
+    Rewritten 2026-08-21 -- this endpoint was confirmed live-502ing
+    (see BACKLOG_DONE.md) because crud.list_hallucination_candidate_
+    transcript_versions() pulled every source=="transcribed" row's full
+    segments JSON in one unbounded query. It now only pulls segments for
+    rows already carrying the hallucination marker (a small, trusted set)
+    plus up to `limit` not-yet-flagged rows (default 500) -- pass
+    `after_id` (the previous batch's max version_id) to page through the
+    rest, same keyset-pagination shape as other batch audit endpoints in
+    this file.
     """
     if not _token_ok(authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
-    return {"candidates": await crud.list_hallucination_candidate_transcript_versions()}
+    return {
+        "candidates": await crud.list_hallucination_candidate_transcript_versions(
+            limit=limit, after_id=after_id
+        )
+    }
 
 
 @app.get("/internal/transcript-quality-audit")

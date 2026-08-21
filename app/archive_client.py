@@ -359,7 +359,16 @@ async def proxy_get(path: str, query_string: str, cookie_header: Optional[str] =
 
     headers = {"Cookie": cookie_header} if cookie_header else None
     session = aiohttp.ClientSession(timeout=PROXY_TIMEOUT)
-    response = await session.get(url, headers=headers)
+    try:
+        response = await session.get(url, headers=headers)
+    except Exception:
+        # session.get() itself can raise (timeout, connection reset, DNS
+        # failure) before headers ever come back -- if we don't close the
+        # session here it leaks until GC finalizes it, which is when
+        # aiohttp emits its "Unclosed connector" warning (confirmed via
+        # Sentry issues PYTHON-FASTAPI-V/PYTHON-FASTAPI-S, 2026-08-20/21).
+        await session.close()
+        raise
     return session, response
 
 

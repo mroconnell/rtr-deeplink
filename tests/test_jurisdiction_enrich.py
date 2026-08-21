@@ -377,6 +377,78 @@ def test_finalize_jurisdiction_repairs_trailing_bleed():
     assert result.confidence == "repaired"
 
 
+def test_finalize_jurisdiction_fills_missing_state_when_base_name_already_validates():
+    # Real bug, found 2026-08-21 (BACKLOG.md's "16 real pairs of a
+    # jurisdiction appearing twice" entry): a bare name that already
+    # validates against the place/county table (even ambiguously, e.g.
+    # "Albany" matches 14 different real states) used to be returned
+    # completely unchanged, since only the `_trim_repair()`/
+    # `_split_entity_prefix()` branches called `_fill_missing_state()` --
+    # this fast "validated" path never did. Confirmed live: the exact
+    # same real customer domain (`dublin.granicus.com`) produced both a
+    # correctly state-suffixed "Dublin, CA" page and a permanently bare
+    # "Dublin" page, purely because one extraction happened to find a
+    # comma-state in the raw text and the other didn't.
+    #
+    # No netloc -> stays ambiguous, no guess (same safety
+    # `_fill_missing_state()`/`resolve_state()` already guarantee
+    # elsewhere -- "Albany" alone is genuinely ambiguous nationally).
+    result = je.finalize_jurisdiction("Albany", netloc=None)
+    assert result.jurisdiction == "Albany"
+    assert result.confidence == "validated"
+
+    # A netloc that resolves unambiguously via the domain registry DOES
+    # now get the state filled in -- this is the real fix.
+    result = je.finalize_jurisdiction("Dublin", netloc="dublin.granicus.com")
+    assert result.jurisdiction == "Dublin, CA"
+    assert result.confidence == "validated"
+
+    # Already has a state suffix -- unaffected, same as before (this
+    # fast path's other branch never called `_fill_missing_state()` and
+    # still doesn't).
+    result = je.finalize_jurisdiction("Dublin, OH", netloc="dublin.granicus.com")
+    assert result.jurisdiction == "Dublin, OH"
+    assert result.confidence == "validated"
+
+
+def test_finalize_jurisdiction_domain_registry_resolves_distinct_same_name_counties():
+    # Real finding from the same 2026-08-21 investigation: several of the
+    # 16 "duplicate" pairs turned out NOT to be duplicates at all -- the
+    # bare row was a genuinely different, unrelated real jurisdiction
+    # that happened to share an ambiguous name with an already-archived
+    # suffixed one. Confirmed live via each domain's own real page
+    # content/customer slug (see jurisdiction_enrich.py's registry
+    # comments for the specific evidence): Washington County's own page
+    # literally renders `<div id="mottotext">Oregon</div>`, not Virginia;
+    # Cook County's customer slug is "cocookmn" (Minnesota), not
+    # Illinois; Frederick County's is "fcva" (Virginia), not Maryland;
+    # Glendale's is "glendale-az" (Arizona), not California.
+    assert (
+        je.finalize_jurisdiction(
+            "Washington County", netloc="washingtoncounty.civicweb.net"
+        ).jurisdiction
+        == "Washington County, OR"
+    )
+    assert (
+        je.finalize_jurisdiction(
+            "Cook County", netloc="cocookmn.civicweb.net"
+        ).jurisdiction
+        == "Cook County, MN"
+    )
+    assert (
+        je.finalize_jurisdiction(
+            "Frederick County", netloc="fcva.granicus.com"
+        ).jurisdiction
+        == "Frederick County, VA"
+    )
+    assert (
+        je.finalize_jurisdiction(
+            "Glendale", netloc="glendale-az.granicus.com"
+        ).jurisdiction
+        == "Glendale, AZ"
+    )
+
+
 def test_finalize_jurisdiction_preserves_state_suffix_through_a_repair():
     result = je.finalize_jurisdiction(
         "City of Boston to accept and expend the amount of, MA"

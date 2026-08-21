@@ -528,6 +528,67 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     # meeting-body TYPE the way Granicus/CivicClerk do, so this is
     # registered as "county" directly rather than inferred per-resolve.
     "netapps.ocfl.net": KnownJurisdiction("Orange", "county", "FL"),
+    # --- 2026-08-21 batch: added alongside the `_fill_missing_state()`
+    # fix in `finalize_jurisdiction()`'s "already validated" branch above
+    # (BACKLOG.md's "16 real pairs of a jurisdiction appearing twice"
+    # entry). Each entry below is grounded in real evidence found while
+    # investigating that entry's 16 examples, not a guess -- see each
+    # comment for the specific confirmation. Several of these are NOT the
+    # state the original bare/suffixed "duplicate" pairing assumed
+    # (Cook County, Frederick County, Glendale, Washington County) --
+    # the bare row turned out to be a genuinely different, unrelated real
+    # jurisdiction that happened to share an ambiguous name with an
+    # already-archived suffixed one, not a duplicate of it. Registering
+    # the correct state here fixes both: future re-resolves of that exact
+    # domain, and (via the existing `/internal/jurisdiction/backfill-apply`
+    # endpoint, which already re-runs `finalize_jurisdiction()` against
+    # each row's own stored `source_url_normalized`) the already-published
+    # row -- no new backfill mechanism needed.
+    #
+    # Jacksonville/Memphis/Nassau County/Redmond/Bakersfield/Dublin/Albany:
+    # confirmed by finding a SECOND already-archived page on the exact
+    # same customer domain (Jacksonville, Memphis, Nassau County) or an
+    # exact/near-exact domain match (Redmond, Bakersfield, Dublin: same
+    # netloc; Albany: same "albanyca" customer slug, one on Granicus one
+    # on PrimeGov) whose OWN stored jurisdiction already carries the real
+    # state -- about as strong a real-data confirmation as this registry
+    # gets, short of an "authoritative" override.
+    "jaxcityc.granicus.com": KnownJurisdiction("Jacksonville", "city", "FL"),
+    "memphis.granicus.com": KnownJurisdiction("Memphis", "city", "TN"),
+    "nassaufl.granicus.com": KnownJurisdiction("Nassau", "county", "FL"),
+    "redmondor.portal.civicclerk.com": KnownJurisdiction("Redmond", "city", "OR"),
+    "pub-bakersfield.escribemeetings.com": KnownJurisdiction(
+        "Bakersfield", "city", "CA"
+    ),
+    "dublin.granicus.com": KnownJurisdiction("Dublin", "city", "CA"),
+    "albanyca.granicus.com": KnownJurisdiction("Albany", "city", "CA"),
+    # Harris County, TX: the bare page's own real Granicus clip page
+    # (confirmed live) is titled for "...Metropolitan Transit Authority"
+    # committees -- METRO, the real, well-known Metropolitan Transit
+    # Authority of Harris County, Texas. "Harris County" is only
+    # nationally ambiguous between GA and TX, and no real evidence ties a
+    # METRO transit authority to Harris County, GA.
+    "ridemetro.granicus.com": KnownJurisdiction("Harris", "county", "TX"),
+    # Washington County, OR (NOT VA, despite the original pairing's
+    # assumption): confirmed live -- this exact domain's own page
+    # literally renders `<div id="mottotext">Oregon</div>` right next to
+    # its own "Washington County" branding.
+    "washingtoncounty.civicweb.net": KnownJurisdiction("Washington", "county", "OR"),
+    # Cook County, MN (NOT IL): confirmed via this domain's own customer
+    # slug, "cocookmn" -- "Co[unty of] Cook, MN" -- a real, if much
+    # smaller, Minnesota county (seat: Grand Marais), genuinely distinct
+    # from the Chicago-area Cook County, IL already archived under a
+    # different domain.
+    "cocookmn.civicweb.net": KnownJurisdiction("Cook", "county", "MN"),
+    # Frederick County, VA (NOT MD): confirmed via this domain's own
+    # customer slug, "fcva" -- "F[rederick] C[ounty], VA" -- genuinely
+    # distinct from Frederick County, MD already archived under a
+    # different (`frederick.granicus.com`) domain.
+    "fcva.granicus.com": KnownJurisdiction("Frederick", "county", "VA"),
+    # Glendale, AZ (NOT CA): confirmed via this domain's own customer
+    # slug, "glendale-az" -- genuinely distinct from Glendale, CA already
+    # archived under a different (PrimeGov) domain.
+    "glendale-az.granicus.com": KnownJurisdiction("Glendale", "city", "AZ"),
 }
 
 
@@ -1330,7 +1391,36 @@ def finalize_jurisdiction(
                 None,
                 "repaired",
             )
-        return JurisdictionResult(raw_jurisdiction, None, "validated")
+        # Real bug found 2026-08-21 via a /coverage sort-adjacency scan
+        # (BACKLOG.md's "16 real pairs of a jurisdiction appearing twice"
+        # entry): unlike the `_trim_repair()`/`_split_entity_prefix()`
+        # branches below, this fast path used to return `raw_jurisdiction`
+        # completely unchanged whenever the bare name ALREADY validates
+        # against the place/county table -- including when that
+        # validation is only nationally-ambiguous (e.g. "Albany" matches
+        # 14 different states' worth of real places), so no state was
+        # ever attempted here even though `_fill_missing_state()` was
+        # right there and already used by every other repair path. That
+        # silently produced two different stored jurisdiction strings for
+        # the same real government -- one adapter/extraction happened to
+        # find a state suffix in the raw text ("Dublin, CA"), another
+        # extraction of the exact same customer's site
+        # (`dublin.granicus.com`, confirmed live) didn't, and the second
+        # one got permanently stuck bare ("Dublin") since this branch
+        # never gave `resolve_state()` a chance to try. `_fill_missing_state()`
+        # is a safe no-op call here: it only ever adds a suffix when
+        # `resolve_state()` confidently resolves one (an unambiguous
+        # name-only match, or -- the common case for these bare rows -- a
+        # confirmed `netloc` registry entry), and returns "" (no change)
+        # for a genuinely ambiguous name with no netloc evidence, so an
+        # already-correct bare "unverified"-shaped case can't regress.
+        return JurisdictionResult(
+            f"{base}{_fill_missing_state(base, suffix, netloc)}"
+            if not suffix
+            else raw_jurisdiction,
+            None,
+            "validated",
+        )
 
     trimmed = _trim_repair(base)
     if trimmed:
