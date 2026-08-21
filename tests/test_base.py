@@ -45,6 +45,10 @@ from app.platforms.base import (
             "https://townhallstreams.com/stream.php?location_id=94&id=75799",
             "townhallstreams",
         ),
+        (
+            "https://cloud.castus.tv/vod/comm7tv/video/6a83b3f9d94c83000226f83d?page=HOME",
+            "castus",
+        ),
         ("https://example.com/some/random/page", "unknown"),
     ],
 )
