@@ -5,6 +5,37 @@ investigation detail behind each fix — lives in
 [BACKLOG_DONE.md](BACKLOG_DONE.md); items below link back to it for context
 where relevant.
 
+## ~38 consolidated city-county governments need a hardcoded name lookup, not guessing -- `~/Documents/rtr-business/research/find_gov_domains.py` can't find these by design, 2026-08-20
+
+`find_gov_domains.py` (the standalone, independently-runnable domain
+finder built this session for `jurisdiction_coverage.csv`'s "no domain"
+gap) guesses a jurisdiction's real domain from its own Census name. That
+already got one real fix this session: it used to also try
+`cityof{name}.gov`/`townof{name}.gov`/`villageof{name}.gov` for *county*
+targets, which reliably found the wrong, same-named-but-different
+government instead (confirmed live: Dane County, WI matched
+`townofdane.gov`, a real, separate Town of Dane; Lancaster County, PA
+matched `cityoflancasterpa.gov`, the City of Lancaster; 12 total
+contaminated county rows found and corrected -- county targets now only
+try county-shaped candidates).
+
+**Real, structurally different residual gap, not fixable by adjusting
+candidate patterns**: true consolidated city-county governments (~38
+nationally -- Indianapolis/Marion County IN, Nashville/Davidson County
+TN, Louisville/Jefferson County KY, Augusta/Richmond County GA,
+Athens/Clarke County GA, Butte/Silver Bow County MT, etc.) have a real
+domain that shares **no text at all** with the county's own Census name
+-- confirmed live: Marion County, IN's real domain is `indy.gov`
+(Indianapolis's brand), which no guess built from the string "Marion"
+could ever produce. This needs a small, explicit (county name -> real
+consolidated-government domain) lookup table, not a smarter guesser --
+Wikipedia's "consolidated city-county" list is the natural real,
+public source for the roughly 38 entries. Not built yet; flagged rather
+than guessed at. San Francisco County, CA and Denver County, CO are
+NOT part of this gap -- both already have a correct domain from an
+earlier pass (their county's Census name is the same word as the
+consolidated city, so ordinary guessing already works for them).
+
 ## Real per-tenant/platform gaps found across several of the 50 largest US cities -- from the user's own manual research table, 2026-08-20
 
 Distinct from the "no domain found yet" jurisdiction-coverage work
