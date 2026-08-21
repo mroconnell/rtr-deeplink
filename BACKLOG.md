@@ -851,20 +851,30 @@ anything) to build against it.
   a human should confirm the approach before writing it, same as any
   re-resolve script that writes to already-public pages.
 
-- **[JUST-DO-IT] Same `/coverage` sweep also found 16 real pairs of a
-  jurisdiction appearing twice — once bare, once with its state suffix —
-  a different, simpler bug than the bleed cases above.** E.g. "Albany"
-  and "Albany, CA" both exist as separate values on real archived pages;
-  same pattern for Ashland/WI, Bakersfield/CA, Cook County/IL, Dublin/CA,
-  Frederick County/MD, Glendale/CA, Harris County/TX, Jacksonville/FL,
-  Memphis/TN, Milton/FL, Minneapolis/MN, Nassau County/FL, Redmond/OR,
-  San Jose/CA, and Washington County/VA. Not investigated further this
-  pass (found via a sort-adjacency scan while looking for bleed
-  specifically, not a dedicated audit) — likely either older archived
-  pages that predate `normalize_state_suffix()`'s adoption, or a source
-  whose raw jurisdiction text never had a state to begin with and no
-  fallback fired. Worth a real backfill sweep once root-caused, same
-  shape as this repo's existing stale-archive-backfill pattern.
+- **[JUST-DO-IT] Bare/state-suffixed jurisdiction duplicates: root cause
+  fixed and 12 of 16 examples resolved 2026-08-21 (see BACKLOG_DONE.md's
+  matching entry for the full investigation) — two residuals still
+  open.** (1) **Backfill not yet run against production.** The fix
+  reuses the already-existing `GET
+  /internal/jurisdiction/bleed-backfill-candidates` /
+  `POST /internal/jurisdiction/backfill-apply` endpoints (no new code) —
+  but this couldn't be merged/deployed as part of that investigation
+  (scope limit for that session), so the already-published duplicate
+  rows are still live and wrong today. Once the fix PR merges and
+  deploys: run the GET audit first to sanity-check the expected diff
+  (~13 rows: the 12 newly-registered domains from BACKLOG_DONE.md's
+  entry, minus any where a page was re-resolved in the meantime, plus
+  any other row `_fill_missing_state()` now happens to resolve), then
+  `POST .../backfill-apply?dry_run=false` to actually write it. (2)
+  **3 of the original 16 examples (Ashland, Milton, San Jose) still have
+  no confirmed real state** — each was checked live (their real source
+  page and, where relevant, its channel-root page) and none carries
+  reliable state-identifying text; Ashland sits on a shared/generic
+  TelVue player domain, San Jose's Granicus pages are silent on state
+  entirely, and Milton is genuinely uncertain between FL and eScribe's
+  real Ontario, Canada customer base. Needs either a positive text match
+  found some other way, or a second confirmed example before a domain
+  registry entry can be added without guessing.
 
 - **[NEEDS-AUDIT] Same sweep found one likely truncation case — the
   opposite failure from bleed (losing real characters, not gaining
@@ -1279,35 +1289,6 @@ anything) to build against it.
   in `tests/test_jurisdiction_enrich.py`), and Punta Gorda's tail shape
   ("Punta Gorda ..." off a Granicus body-regex bleed) matches the same
   pattern the new signal was built and verified against.
-
-- **[NEEDS-AUDIT] Fountain Valley clip 607 shows a wrong title and jurisdiction today —
-  real, confirmed, not yet root-caused. Found 2026-08-15 in the same
-  `/coverage` scan.** This is the same Granicus clip already extensively
-  documented elsewhere in this file and `BACKLOG_DONE.md` for its garbled/
-  Portuguese-misdetected transcript
-  (`fountainvalley.granicus.com/MediaPlayer.php?clip_id=607`, "View
-  original source" link confirmed live from
-  [/m/city-of-fountain-valley-city-council-meeting-jun-16th-2026](https://redtaperecordings.com/m/city-of-fountain-valley-city-council-meeting-jun-16th-2026)),
-  but the title/jurisdiction mismatch itself has never been flagged
-  before. Live today the page displays title "COMMUNITY REDEVELOPMENT
-  AGENCY - SPECIAL MEETING," jurisdiction "Ft. Myers, FL.," date
-  "2025-08-11" — none of which match the URL slug (which encodes
-  "city-of-fountain-valley-city-council-meeting-jun-16th-2026"). Checked
-  the actual live Granicus source page via `curl` before writing this up:
-  its real `<title>` today is the clean "City Council Meeting - Jun 16th,
-  2026" (matching the slug), and a full-text search of that page's raw
-  HTML for "Ft. Myers" or "Community Redevelopment Agency" finds nothing
-  — whatever produced the stored title/jurisdiction isn't visible on the
-  source page as it exists now. The transcript content itself does read
-  as genuine Fountain Valley material (a real Orange County Power
-  Authority presentation to the city council). **Root cause not
-  determined this pass** — candidates not yet distinguished: a stale
-  resolve from before the source page's title changed, some kind of
-  cross-page data contamination (compare the Dublin/Yountville
-  version-promotion bugs already fixed and documented in
-  `BACKLOG_DONE.md`, a different bug class but the same general area of
-  code), or something else entirely. Worth a real investigation, not a
-  guessed fix — flagging as a genuine "how did this happen" question.
 
 - **[JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a real, useful
   place to spot resolver bugs by eyeballing outliers — confirmed by

@@ -6,6 +6,185 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Fountain Valley clip 607's wrong title/jurisdiction: investigated, confirmed already fixed by the 2026-08-18 `external_id` host-namespacing fix -- BACKLOG.md entry was stale doc-drift [Done 2026-08-21]
+
+Investigated BACKLOG.md's "[NEEDS-AUDIT] Fountain Valley clip 607 shows a
+wrong title and jurisdiction today" entry (found 2026-08-15, root cause
+explicitly flagged as unknown at the time -- title "COMMUNITY
+REDEVELOPMENT AGENCY - SPECIAL MEETING," jurisdiction "Ft. Myers, FL.,"
+date "2025-08-11" showing on the page for
+`fountainvalley.granicus.com/MediaPlayer.php?clip_id=607`, none of which
+matched the real source page).
+
+**Finding: the bug was already fixed, three days after it was flagged,
+by an unrelated investigation that happened to touch the exact same
+Granicus clip -- but the BACKLOG.md entry was never updated to say so.**
+Fetched the live URL named in the entry
+(`redtaperecordings.com/m/city-of-fountain-valley-city-council-meeting-jun-16th-2026`)
+directly: it now 404s. That's the exact documented behavior of the
+2026-08-18 "CivicClerk/Granicus `external_id` wasn't host-namespaced"
+fix's data repair (see this file's own entry for that date): "Old slugs
+... now 404 rather than redirecting." And that entry's own **confirmed
+blast radius list explicitly names this clip**: "`granicus:607` Fort
+Myers FL + Fountain Valley CA" was one of the 9 corrupted `MeetingPage`
+rows deleted and re-resolved fresh through the newly-fixed adapter.
+
+**Confirmed the repair holds today**, live: found the real current page
+via the site's own `/j/fountain-valley-ca` hub
+(`/m/city-of-fountain-valley-ca-city-council-meeting-jun-16th-2026`, a
+different slug than the stale one named in the original entry) --
+title "City Council Meeting - Jun 16th, 2026", jurisdiction "Fountain
+Valley, CA", `clip_id=607` in the embedded player, zero occurrences of
+"Ft. Myers" or "Community Redevelopment Agency" anywhere on the page.
+Exactly matches what the real Granicus source page has always shown
+(confirmed via direct fetch in the original entry too) -- the mismatch
+was never actually a live discrepancy between this app and its source,
+it was stale/corrupted data from the `external_id` collision bug,
+already repaired.
+
+**Root cause, in full** (already documented in the 2026-08-18 entry, not
+new): `civicclerk.py`/`granicus.py` built `external_id` from just the
+bare per-customer clip/event number before that fix, and both platforms
+are multi-tenant SaaS where every customer numbers independently
+starting near 1 -- Fountain Valley, CA and Fort Myers, FL both happened
+to use clip id 607 on their respective (different-host) Granicus
+instances, so `_find_existing_page()`'s `(platform, external_id)` match
+silently merged the two cities onto one `MeetingPage` row, each ingest
+overwriting the other's title/date/jurisdiction. This answers the
+original entry's open "how did this happen" question directly: it was
+the confirmed cross-host collision bug, not a stale resolve or a
+different, undiscovered contamination path (the Dublin/Yountville
+version-promotion bugs it also floated as a candidate are a different
+bug class entirely -- those affect which `TranscriptVersion` is
+*default*, not `MeetingPage`-level title/date/jurisdiction, which live on
+the page row itself and are simply overwritten by whichever ingest ran
+last).
+
+**No code change needed this pass** -- purely a documentation-drift
+close-out, exactly the kind of gap CLAUDE.md's own "a PR that ships a
+feature must update every doc that named it as unbuilt" convention
+exists to prevent (the 2026-08-18 fix's own PR just never cross-checked
+this specific already-open BACKLOG.md entry against its own repair
+list). BACKLOG.md's stale entry removed.
+
+## Root-caused the 16 bare/state-suffixed jurisdiction duplicates -- `finalize_jurisdiction()`'s "already validated" fast path never tried to fill a missing state [Done 2026-08-21]
+
+Investigated BACKLOG.md's "16 real pairs of a jurisdiction appearing twice --
+once bare, once with its state suffix" entry (found 2026-08-15 via a
+`/coverage` sort-adjacency scan, never root-caused at the time): Albany,
+Ashland/WI, Bakersfield/CA, Cook County/IL, Dublin/CA, Frederick County/MD,
+Glendale/CA, Harris County/TX, Jacksonville/FL, Memphis/TN, Milton/FL,
+Minneapolis/MN, Nassau County/FL, Redmond/OR, San Jose/CA, Washington
+County/VA.
+
+**Root cause, confirmed by direct testing**: `app/utils/jurisdiction_enrich.py`'s
+`finalize_jurisdiction()` has a fast "already validates" path -- when a
+jurisdiction's base name (after stripping any existing state suffix)
+matches the place/county table AT ALL, even only ambiguously across many
+states, it returned the raw string completely unchanged:
+
+```python
+if _table_lookup(base):
+    return JurisdictionResult(raw_jurisdiction, None, "validated")
+```
+
+Unlike the `_trim_repair()`/`_split_entity_prefix()` branches right below
+it, this path never called `_fill_missing_state()` -- so a bare name that
+validates (e.g. "Albany" matches 14 different real states' worth of
+places) never got the chance `resolve_state()` gives every other
+extraction shape: try the page's own `netloc` against the domain
+registry, or an unambiguous name-only match. Confirmed live: the exact
+same real customer domain, `dublin.granicus.com`, had produced BOTH a
+correctly state-suffixed "Dublin, CA" page (one clip's raw extraction
+happened to include a comma-state) and a permanently bare "Dublin" page
+(another clip's raw extraction didn't) -- same government, same domain,
+two different stored jurisdiction values, purely because this one branch
+never gave the bare one a second chance.
+
+**Fix**: `finalize_jurisdiction()` now calls `_fill_missing_state()` in
+this branch too, exactly like the repair branches already do (`app/utils/jurisdiction_enrich.py`).
+Safe by construction, not just by testing: `_fill_missing_state()` only
+ever adds a suffix when `resolve_state()` confidently resolves one (an
+unambiguous name-only match, or a confirmed `netloc` registry hit) and
+returns `""` (no change) otherwise, so an already-correct bare/ambiguous
+value can't regress -- verified directly: `finalize_jurisdiction("Albany",
+netloc=None)` still returns bare "Albany", unchanged.
+
+**Investigated all 16 examples live** (fetched each pair's real archived
+page, followed its "View original source" link, in several cases fetched
+the real source page's own content) rather than guessing a fix from the
+pattern alone, per this file's own working conventions. Found:
+
+- **12 of 16 resolve with real, verifiable evidence, now registered in
+  `_KNOWN_DOMAINS`** (`app/utils/jurisdiction_enrich.py`): Jacksonville,
+  Memphis, Nassau County, Redmond, Bakersfield, Dublin, and Albany were
+  each confirmed by finding a SECOND already-archived page on the exact
+  same (or, for Albany, an exact-slug-matching cross-platform) customer
+  domain whose own stored jurisdiction already carries the real state.
+  Harris County was confirmed via the bare page's own real Granicus clip
+  title ("...Metropolitan Transit Authority" -- METRO, the real transit
+  authority of Harris County, Texas; Harris County is only nationally
+  ambiguous between GA and TX, and nothing ties METRO to Georgia).
+- **4 of those 12 turned out NOT to be duplicates of the assumed sibling
+  at all -- a real, surprising finding, not just a state correction**:
+  Washington County's own real page literally renders `<div
+  id="mottotext">Oregon</div>`, not Virginia (`washingtoncounty.civicweb.net`,
+  vs. the already-archived "Washington County, VA" under a different,
+  unrelated domain). Cook County's real customer domain slug is
+  "cocookmn" -- Cook County, **Minnesota** (a real, smaller county, seat
+  Grand Marais), not the Chicago-area Cook County, IL already archived
+  elsewhere. Frederick County's domain slug is "fcva" -- **Virginia**, not
+  the Frederick County, MD already archived elsewhere. Glendale's domain
+  slug is "glendale-az" -- **Arizona**, not the Glendale, CA already
+  archived elsewhere. In all four cases the bare row was a genuinely
+  different, unrelated real government that happened to share an
+  ambiguous name with an already-archived, correctly-suffixed one --
+  fixed by registering that row's own correct state, not by merging it
+  with the sibling.
+- **Minneapolis/MN already had a registry entry** (`lims.minneapolismn.gov`,
+  added for an earlier fix) -- the code fix alone is enough to correct
+  this one going forward and on backfill, no new registry entry needed.
+  Directly verified: `finalize_jurisdiction("Minneapolis",
+  netloc="lims.minneapolismn.gov").jurisdiction == "Minneapolis, MN"`.
+- **3 of 16 (Ashland, Milton, San Jose) could NOT be confirmed with real
+  evidence this pass** -- left unregistered rather than guessed. Ashland's
+  bare page is hosted on `videoplayer.telvue.com`, a shared/generic TelVue
+  player domain with no customer-identifying subdomain (TelVue
+  jurisdictions are already flagged elsewhere in this file as
+  guess-prone -- see the ECTV Scranton/Everett correction). San Jose's
+  bare page (`sanjose.granicus.com`) and its root channel page were
+  fetched directly and contain no state-identifying text at all (title is
+  just "Planning Director's Hearing" / "CivicCenter Television Streaming
+  Video"). Milton's bare page (`pub-milton.escribemeetings.com`) is
+  similarly silent on state, and eScribe's real, confirmed Canadian
+  customer base (this file's own eScribe/Ontario entries) means "Milton,
+  ON" is a live, real possibility alongside "Milton, FL" -- picking either
+  without more evidence would be a guess. Left as a smaller residual item
+  in BACKLOG.md.
+
+**Reuses the existing backfill mechanism, no new endpoint built.** The
+already-existing `GET /internal/jurisdiction/bleed-backfill-candidates` /
+`POST /internal/jurisdiction/backfill-apply` (`archive/main.py`, built for
+an earlier jurisdiction fix) already re-runs `finalize_jurisdiction()`
+against each row's own stored `jurisdiction` + `source_url_normalized` --
+exactly what's needed to pick up both this code fix and the 12 new
+registry entries with zero new code. **Not yet run against production
+this pass** -- this session couldn't merge/deploy the fix (explicit
+scope limit), and the backfill endpoint only sees the fix once it's live.
+Tracked as a residual item in BACKLOG.md: after this PR merges and
+deploys, run the GET audit first to confirm the expected ~13 rows (12
+newly-registered domains' rows + any others `_fill_missing_state()` now
+resolves), then `POST .../backfill-apply?dry_run=false`.
+
+**Verification**: two new regression tests added to
+`tests/test_jurisdiction_enrich.py` --
+`test_finalize_jurisdiction_fills_missing_state_when_base_name_already_validates`
+(the core fix, plus the "no netloc -> stays ambiguous" and "already has a
+suffix -> unaffected" safety cases) and
+`test_finalize_jurisdiction_domain_registry_resolves_distinct_same_name_counties`
+(the four not-actually-duplicates). Full suite green: 1082 passed, 15
+skipped (was 1080 passed before this change).
+
 ## Aurora, CO `aurora_tv` canary failure (2026-08-18) confirmed a one-off transient blip, not a persisting regression [Done 2026-08-21]
 
 Promoted from `CLAUDE_INBOX_TRIAGE.md`'s 2026-08-19 run, which flagged
