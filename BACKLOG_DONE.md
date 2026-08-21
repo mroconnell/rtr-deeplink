@@ -6,6 +6,110 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Worker could hand whisper a chunk `extract_chunk_audio()` called successful but that was actually corrupt (Sentry PYTHON-FASTAPI-R) [Done 2026-08-21]
+
+Original entry, kept verbatim below the fix (WO-25) so the traced
+investigation survives — **with one correction called out first, because
+the proposed fix was wrong about what already existed**:
+
+**Correction to the original "Fix, if it recurs" suggestion.** It
+proposed making `extract_chunk_audio()` "sanity-check its own output
+(non-zero size, or a quick `ffprobe`)". Both of those already existed at
+the time it was written, and neither would have caught this occurrence:
+
+* The non-zero size check was already there (`media_probe.py`, "ffmpeg
+  reported success but produced no audio output"). The production file
+  was non-empty — 400-odd bytes of unplayable data passes a size check
+  exactly as a healthy chunk does.
+* `probe_duration()` was already an ffprobe helper on the same module,
+  and `_run()` the shared subprocess wrapper — so "add a quick ffprobe"
+  read as new work when the plumbing was sitting there.
+
+The entry also located `extract_chunk_audio()` in `worker/`; it actually
+lives in `app/platforms/media_probe.py` (deliberately, so `app/` never
+depends on `worker/` — see that module's own docstring).
+
+**Actual root cause: a discarded exit code, not a missing check.**
+`_mean_volume_db()` — added earlier for the Port Coquitlam phase-
+cancellation fix — *already fully decodes* the extracted file
+(`ffmpeg -i <path> -af volumedetect -f null -`). An undecodable file
+makes that decode fail, and real ffmpeg exits non-zero on it. The
+function threw the return code away (`_returncode, _stdout, stderr =
+await _run(...)`), found no `mean_volume:` line in stderr, returned
+`None`, and the caller's `if mean_volume is not None and ...` read that
+`None` as "nothing to worry about" and returned `(True, None)`. **The
+corruption was already being detected by an existing subprocess and then
+dropped on the floor**, one line before the file was handed to whisper.
+
+**Fix shipped**: `_mean_volume_db()` now returns
+`tuple[bool, Optional[float]]` — `(decodable, mean_volume_db)` —
+separating "ffmpeg couldn't decode this at all" (`False`) from "decoded
+fine, volume just wasn't parseable" (`True, None`). ffmpeg missing from
+PATH or timing out also yields `(True, None)` on purpose: neither says
+anything about *the file*, and blaming a broken environment on the
+source media would burn the job's chunk-failure budget chasing the wrong
+thing. `extract_chunk_audio()` returns `(False, "ffmpeg reported success
+but the output file isn't decodable (likely truncated/corrupt)")` on the
+`False` case, which `worker/main.py`'s existing per-chunk handler already
+treats as a retryable failure carrying the real reason string into
+`TranscriptionJob.error_message` — exactly what the 2026-08-19
+`error_message` work was built for. **Zero new subprocesses, zero new
+dependencies**; the decode was already being paid for.
+
+**Verification** (`tests/test_media_probe.py`, 4 new tests): real ffmpeg
+2026-08-21 confirms the mechanism end-to-end — a real 3s 16kHz mono
+32kbps mp3 exits 0 with `mean_volume: -21.5 dB`, and the same file
+truncated to its first 200 bytes exits **183**, which is the low byte of
+`AVERROR_INVALIDDATA` — *the same error code* PyAV surfaced as errno
+1094995529 in the Sentry event. That live test skips where ffmpeg is
+absent (it is installed on the worker, which is where this code runs);
+mocked tests carry the branch on any machine, and were confirmed to fail
+against the pre-fix code. Also covered: a decodable chunk still succeeds
+(so the guard can't quietly start failing healthy chunks), and a missing
+ffmpeg is not reported as a corrupt file.
+
+**Honest limit, deliberately not overclaimed**: this catches "not
+playable at all," not "shorter than requested." Confirmed with real
+ffmpeg — the first 1000 bytes of that same 12.6KB mp3 still exit 0 with a
+correct `mean_volume`, and PyAV opens such files too, so a *tail*-
+truncated chunk passes this guard. A `probe_duration()`-based
+duration-tolerance check was considered for that and deliberately not
+built: `extract_chunk_audio()`'s fast input-side `-ss` seek makes real
+HLS chunk durations legitimately differ from the requested value (see
+`worker/main.py`'s seam-dedup note and `tests/test_worker_segment_utils.py`),
+and the final chunk is legitimately short — so a tolerance tight enough
+to catch truncation would risk failing real, healthy chunks. Split back
+out as a live `BACKLOG.md` entry rather than silently closed.
+
+Original entry, verbatim:
+
+> **[NEEDS-AUDIT] Worker can produce a chunk `extract_chunk_audio()` calls
+> successful that's actually truncated/corrupt — surfaced via Sentry issue
+> PYTHON-FASTAPI-R, 2026-08-19 15:57:32 UTC, promoted from
+> `CLAUDE_INBOX_TRIAGE.md`.** Real error: `InvalidDataError: [Errno
+> 1094995529] Invalid data found when processing input:
+> '/tmp/rtr_transcribe_hwou97hq/chunk_1.mp3'`, `server_name =
+> srv-d9rluvqfngtc73dmrbug` (the transcription worker), `handled = yes`,
+> app log "Job 287: transcription failed for chunk 2/21 (will retry on
+> next poll)". Root cause traced to real code: `worker/main.py`'s
+> per-chunk loop (~lines 237-243) only guards `extract_chunk_audio()`'s
+> ffmpeg call via return-value truthiness — this occurrence got past that
+> check (ffmpeg reported success) but the resulting file was invalid when
+> `transcription_engine.py`'s `_transcribe_sync()` tried to decode it via
+> PyAV (`av.container.core.open`), landing in the broader `except
+> Exception` at worker/main.py:250-256 (logs + retries next poll, hence
+> `handled = yes`, not a crash). **Impact**: caught/retried automatically,
+> not user-visible by itself; whether job 287's retry for chunk 2/21
+> actually succeeded is unconfirmed (no DB access from the triage
+> Routine). First occurrence of this exact signature as of 2026-08-19 —
+> may be a one-off transient (likely an interrupted read from the source
+> media stream during ffmpeg extraction), not yet confirmed as recurring.
+> **Fix, if it recurs**: have `extract_chunk_audio()` sanity-check its own
+> output (non-zero size, or a quick `ffprobe`) rather than trusting
+> ffmpeg's exit code alone, so a corrupt chunk retries immediately instead
+> of failing over to the whisper-decode step first. Not fixed yet —
+> logged as a real, traced gap, not designed/built this pass.
+
 ## `best_effort` reaches the Archive: unverified pages stop auto-posting to social, and get a review queue (WO-21) [Done 2026-08-21]
 
 **The gap, verified in real code before anything was written, not
