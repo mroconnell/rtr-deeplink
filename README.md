@@ -1017,9 +1017,12 @@ trigger a post, and a `SocialPost` table row per (page, network),
 claimed *before* the network call under a unique constraint, makes
 posting at-most-once even under a race. A failed post is recorded and
 deliberately never retried automatically (a missed announcement is
-cheap; a duplicate on a public feed isn't). Known residual: a page
-created agenda-only that gains a real transcript *later* never gets
-announced — see `BACKLOG.md`.
+cheap; a duplicate on a public feed isn't). Announcements are also
+spaced at least `SOCIAL_MIN_POST_INTERVAL_SECONDS` apart (default 180s):
+a burst of qualifying new pages — several lookups at once, or a bulk
+seed — posts at most one per window, with the rest skipped outright
+rather than queued. Known residual: a page created agenda-only that
+gains a real transcript *later* never gets announced — see `BACKLOG.md`.
 
 **Setup** (the human half — none of this can be automated):
 

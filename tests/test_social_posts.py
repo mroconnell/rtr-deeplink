@@ -14,8 +14,23 @@ adapter warning wording (granicus.py's, the same substring outcomes.py
 and crud.py both match on), not an invented string.
 """
 
+from datetime import datetime, timedelta, timezone
+
+import pytest
+
 from archive.db import crud
 from archive.utils import social
+
+
+@pytest.fixture(autouse=True)
+def _reset_post_buffer():
+    """The between-posts buffer's timestamp is module-global in-memory
+    state (see social._last_announce_at) -- without this reset, whichever
+    announce test runs first would silently suppress every later one."""
+    social._last_announce_at = None
+    yield
+    social._last_announce_at = None
+
 
 # The adapters' real garbled-source warning shape (see granicus.py and
 # crud._GARBLED_MARKER) -- confirmed real-world case: Fountain Valley,
@@ -165,6 +180,9 @@ async def test_announce_posts_once_and_dedups(monkeypatch):
     monkeypatch.setenv("BLUESKY_APP_PASSWORD", "test-app-password")
     monkeypatch.setenv("PUBLIC_BASE_URL", "https://redtaperecordings.com")
     monkeypatch.delenv("MASTODON_BASE_URL", raising=False)
+    # Buffer off so this tests the SocialPost claim dedup in isolation --
+    # the buffer has its own test below.
+    monkeypatch.setenv("SOCIAL_MIN_POST_INTERVAL_SECONDS", "0")
 
     url = "https://example.granicus.com/player/clip/social-announce-once"
     payload = _quality_payload(
@@ -222,6 +240,9 @@ async def test_failed_post_records_failure_and_never_retries(monkeypatch):
     monkeypatch.setenv("BLUESKY_HANDLE", "rtr.test")
     monkeypatch.setenv("BLUESKY_APP_PASSWORD", "test-app-password")
     monkeypatch.setenv("PUBLIC_BASE_URL", "https://redtaperecordings.com")
+    # Buffer off: the second announce here must reach the claim check to
+    # prove no-retry comes from the burned claim, not from the buffer.
+    monkeypatch.setenv("SOCIAL_MIN_POST_INTERVAL_SECONDS", "0")
 
     url = "https://example.granicus.com/player/clip/social-post-fails"
     payload = _quality_payload(external_id="granicus:social-post-fails", source_url=url)
@@ -260,3 +281,59 @@ async def test_announce_noop_when_no_network_configured(monkeypatch):
     # Nothing claimed -- the feature was entirely inert.
     claim = await crud.claim_social_post(result["page_id"], "bluesky")
     assert claim is not None
+
+
+async def test_post_buffer_spaces_burst_and_burns_no_claim(monkeypatch):
+    """A burst of qualifying first-ingests (e.g. a bulk seed) posts at
+    most one announcement per SOCIAL_MIN_POST_INTERVAL_SECONDS window --
+    the default-180s buffer, user request 2026-08-21. The skipped
+    candidate must not burn its SocialPost claim, and once the window
+    has elapsed announcements flow again."""
+    monkeypatch.setenv("BLUESKY_HANDLE", "rtr.test")
+    monkeypatch.setenv("BLUESKY_APP_PASSWORD", "test-app-password")
+    monkeypatch.setenv("PUBLIC_BASE_URL", "https://redtaperecordings.com")
+    # Default interval (180s) deliberately NOT overridden -- this test
+    # exercises the shipped default, moving the clock instead of the env.
+
+    url_a = "https://example.granicus.com/player/clip/social-buffer-a"
+    url_b = "https://example.granicus.com/player/clip/social-buffer-b"
+    page_a = await crud.ingest_resolution(
+        _quality_payload(external_id="granicus:social-buffer-a", source_url=url_a),
+        url_a,
+    )
+    payload_b = _quality_payload(
+        external_id="granicus:social-buffer-b", source_url=url_b
+    )
+    page_b = await crud.ingest_resolution(payload_b, url_b)
+
+    posted = []
+
+    async def fake_bluesky(text, link_url):
+        posted.append(link_url)
+        return "at://did:plc:test/app.bsky.feed.post/buffer"
+
+    monkeypatch.setattr(social, "_post_to_bluesky", fake_bluesky)
+
+    payload_a = _quality_payload(
+        external_id="granicus:social-buffer-a", source_url=url_a
+    )
+    await social.announce_new_page(page_a["page_id"], page_a["slug"], payload_a)
+    await social.announce_new_page(page_b["page_id"], page_b["slug"], payload_b)
+    assert len(posted) == 1  # page B landed inside the window -> skipped
+
+    # The skip happened before any claim, so page B's (page, network)
+    # slot is still open...
+    claim = await crud.claim_social_post(page_b["page_id"], "bluesky")
+    assert claim is not None
+    # ...and once the window has elapsed (timestamp backdated past the
+    # 180s default instead of a real sleep), a fresh candidate posts
+    # normally. Page B itself can't (its claim was just burned above) --
+    # which is fine, this asserts the *buffer* reopens, on a third page.
+    social._last_announce_at = datetime.now(timezone.utc) - timedelta(seconds=181)
+    url_c = "https://example.granicus.com/player/clip/social-buffer-c"
+    payload_c = _quality_payload(
+        external_id="granicus:social-buffer-c", source_url=url_c
+    )
+    page_c = await crud.ingest_resolution(payload_c, url_c)
+    await social.announce_new_page(page_c["page_id"], page_c["slug"], payload_c)
+    assert len(posted) == 2

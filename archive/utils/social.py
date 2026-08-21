@@ -37,6 +37,9 @@ Config (all optional -- unset network = that network silently disabled):
       access token (Preferences > Development > New application, scope
       write:statuses)
   SOCIAL_MIN_SEGMENTS                    default 50
+  SOCIAL_MIN_POST_INTERVAL_SECONDS       default 180; minimum spacing
+      between announcements (candidates inside the window are skipped,
+      not queued -- see _last_announce_at's comment); 0 disables
   PUBLIC_BASE_URL                        required -- posts link to
       {PUBLIC_BASE_URL}/m/{slug}; nothing posts without it
 """
@@ -60,6 +63,23 @@ _TIMEOUT = aiohttp.ClientTimeout(total=20)
 _POST_CHAR_LIMIT = 300
 
 _DEFAULT_MIN_SEGMENTS = 50
+
+# Minimum spacing between announcements (user request 2026-08-21) -- a
+# burst of qualifying first-ingests (several people pasting URLs at once,
+# or a bulk-seed script creating many new pages) posts at most one
+# announcement per window; the rest are skipped outright, not queued. No
+# queue on purpose: a sleeping "post later" task dies silently with the
+# process on any deploy/restart -- the exact silent-loss shape the
+# Archive push path already got bitten by (see BACKLOG_DONE.md) -- and a
+# skipped announcement is this feature's accepted-cheap outcome anyway
+# (same reasoning as the no-retry-on-failure rule in the module
+# docstring). In-memory timestamp, not persisted: same single-instance
+# tradeoff as app/main.py's _last_push_sweep_at gate, so a restart can
+# admit one extra post inside the window -- harmless. Skipped candidates
+# never burn a SocialPost claim, but since only page *creation* triggers
+# an announce, a skip is still permanent for that page.
+_DEFAULT_MIN_POST_INTERVAL_SECONDS = 180
+_last_announce_at: datetime | None = None
 
 
 def enabled_networks() -> list[str]:
@@ -226,11 +246,37 @@ async def _post_to_mastodon(text: str, idempotency_key: str) -> str:
     return status.get("url", "")
 
 
+def _within_post_buffer(now: datetime) -> bool:
+    """True if a previous announcement went out too recently (see
+    _last_announce_at's comment for the full design). Checked only after
+    the quality gate, so a skipped low-quality candidate never consumes
+    the window; on a pass the timestamp is set *before* the network
+    calls -- the check-then-set pair runs with no await between them, so
+    concurrent announce tasks on the one event loop can't both pass.
+    SOCIAL_MIN_POST_INTERVAL_SECONDS=0 disables the buffer entirely.
+    The whole announcement (all networks) counts as one event: the
+    per-network posts for a single meeting go out back-to-back on
+    purpose, the buffer spaces *meetings*."""
+    global _last_announce_at
+    interval = float(
+        os.environ.get(
+            "SOCIAL_MIN_POST_INTERVAL_SECONDS",
+            str(_DEFAULT_MIN_POST_INTERVAL_SECONDS),
+        )
+    )
+    if interval > 0 and _last_announce_at is not None:
+        if (now - _last_announce_at).total_seconds() < interval:
+            return True
+    _last_announce_at = now
+    return False
+
+
 async def announce_new_page(page_id: int, slug: str, payload: dict) -> None:
     """The BackgroundTasks entry point -- called only for a freshly
     *created* page (see /internal/ingest in archive/main.py). Applies the
-    quality gate, then claims + posts per enabled network. Never raises:
-    a social failure must not surface anywhere near the ingest path.
+    quality gate and the between-posts buffer, then claims + posts per
+    enabled network. Never raises: a social failure must not surface
+    anywhere near the ingest path.
     """
     try:
         networks = enabled_networks()
@@ -246,6 +292,13 @@ async def announce_new_page(page_id: int, slug: str, payload: dict) -> None:
             )
             return
         if not payload_is_high_quality(payload):
+            return
+        if _within_post_buffer(datetime.now(timezone.utc)):
+            logger.info(
+                "Skipping social announce for /m/%s -- inside the "
+                "between-posts buffer.",
+                slug,
+            )
             return
 
         page_url = f"{base_url}/m/{slug}"
