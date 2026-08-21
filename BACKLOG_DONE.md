@@ -646,6 +646,76 @@ Every existing test in the file (Sarasota, Hollywood, Castle Pines, the
 SLC domain override, Courtenay, Victorville, Hercules, Galesburg, San
 Diego, Peterborough's own case, etc.) re-verified passing unchanged —
 full suite (`pytest`) green.
+## PrimeGov's Bedford/Cuyahoga false positive: a new "{Name} City/Town/Village Council" header tier now wins over an adjacent letterhead mismatch [Done 2026-08-21]
+
+One of three jurisdiction-extraction bugs tackled this session (the other
+two, both eScribe's shared `jurisdiction_enrich.py` chain, are a separate
+PR — see that PR's own writeup for the Shelburne/Peel Region cases). This
+one is a separate code path (`app/platforms/primegov.py`'s own
+`_JURISDICTION_RE`), not the shared chain.
+
+**Real case, fetched live** (`bedfordoh.primegov.com/Portal/Meeting
+?meetingTemplateId=518` — real video/captions both resolve correctly,
+YouTube embed with real auto-captions; only `jurisdiction` was wrong):
+`jurisdiction` came back `"County of Cuyahoga, OH"` instead of `"City of
+Bedford, OH"`. Root cause, confirmed via the real raw HTML: the page's
+letterhead is a 3-column table whose middle column carries, in adjacent
+rows with IDENTICAL styling (`color:#999999`, bold, Times New Roman
+10pt), `"Bedford City Council"` (row 1) directly above `"County of
+Cuyahoga"` (row 2). `_JURISDICTION_RE` only ever matches the literal
+`"(city|county|town) of ..."` shape, so `"Bedford City Council"` (no
+"of") never matches while `"County of Cuyahoga"` does, and wins via
+unscoped first-match — the 4th confirmed case of this class (after
+OKC/Thousand Oaks/SLC), but unlike those 3, this false positive is ALSO
+structurally a genuine letterhead mention, just the wrong entity within
+it — so no "prefer the header" or position-based heuristic (already
+proven not to generalize for the earlier 3, see this file's earlier
+PrimeGov entries) would have separated them.
+
+**Fix**: a new `_COUNCIL_HEADER_RE` regex, tried BEFORE
+`_JURISDICTION_RE`, matches the bare `"{Name} City/Town/Village Council"`
+header shape directly. Scoped narrowly per the explicit lesson the
+earlier 3 incidents taught (an unscoped body-text search recreates this
+exact bug in a new shape): its character classes never cross a `<`/`>`
+tag boundary or a newline, so it only matches when the name and "City/
+Town/Village Council" sit in ONE unbroken run of text — confirmed this
+does NOT match OKC's real `"CITY COUNCIL"` (its own separate `<td>`, no
+name in the same cell, and ALL-CAPS besides — the regex is deliberately
+case-sensitive) or Thousand Oaks's real bare `"City Council"` (no name
+precedes it at all), via both real fixtures already in
+`tests/test_primegov.py`.
+
+The captured name is genuinely ambiguous on its own: `"Oklahoma City
+Council"` needs `"City"` kept as part of the real proper name ("Oklahoma
+City"), while `"Bedford City Council"` needs it dropped (there's no real
+place called "Bedford City" — only "Bedford"). Rather than guess, both
+readings are built and a new `jurisdiction_enrich.is_literal_known_place()`
+helper — a literal, un-stripped table lookup, distinct from the existing
+`lookup_city_state()`/`_table_lookup()` which also accept a secondary
+trailing-strip match — decides which is real: confirmed live, `"oklahoma
+city"` is a real table key on its own, `"bedford city"` is not. Whichever
+name is chosen still has to pass the normal validate-or-repair pipeline
+(`jurisdiction_enrich.finalize_jurisdiction()`) before being accepted, so
+a stray body-prose `"X City Council"` mention is discarded unless X is
+itself a real, known place — confirmed via a direct regression test using
+a made-up name.
+
+**Verification**: real, fixture-backed regression tests added in
+`tests/test_primegov.py` — a real, trimmed fixture built from the actual
+live Bedford letterhead HTML (`BEDFORD_HEADER_HTML`), both a unit test on
+the fixture and an end-to-end `resolve()` test; explicit regression
+guards confirming the new tier does NOT fire on OKC's real all-caps
+header or Thousand Oaks's real bare "City Council" (both re-verified
+against the real fixtures already in the file); a direct unit test of the
+"Oklahoma City" vs. "Bedford" disambiguation; and a discard test for an
+unvalidated body mention. Every existing test in the file (OKC,
+Thousand Oaks, SLC/Holladay, the SLC domain override, the Ft. Worth
+abbreviation case, etc.) re-verified passing unchanged. Left genuinely
+open, not overclaimed: the broader SLC/OKC/Thousand-Oaks-style false
+positive (an unrelated body-prose mention winning via unscoped
+first-match, with no letterhead/adjacency shape at all) is a different
+failure mode this fix does not address — see `BACKLOG.md`'s PrimeGov
+entry, still open.
 
 ## Aurora, CO `aurora_tv` canary failure (2026-08-18) confirmed a one-off transient blip, not a persisting regression [Done 2026-08-21]
 

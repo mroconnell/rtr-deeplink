@@ -1296,12 +1296,23 @@ anything) to build against it.
   examples if this recurs, rather than adding a domain override per
   incident indefinitely.
 
-  **A fourth real case did show up, 2026-08-18** — user-shared
+  ~~**A fourth real case did show up, 2026-08-18** — user-shared
   `bedfordoh.primegov.com/Portal/Meeting?meetingTemplateId=518` (real
   video/captions both resolve correctly: YouTube embed, 1346 real
   auto-caption segments; only `jurisdiction` is wrong). Confirmed live:
   `jurisdiction` comes back `"County of Cuyahoga, OH"` instead of `"City
-  of Bedford, OH"`. Root cause, fetched and checked directly: the page's
+  of Bedford, OH"`.~~ **Fixed 2026-08-21 — see `BACKLOG_DONE.md`'s
+  "PrimeGov Bedford/Cuyahoga" entry.** A new, narrowly-scoped
+  `_COUNCIL_HEADER_RE` tier (tried before `_JURISDICTION_RE`) matches the
+  bare "{Name} City/Town/Village Council" header shape and now wins over
+  the adjacent "County of Cuyahoga" letterhead cell. This closes the
+  specific letterhead-adjacency failure shape below, not the whole class
+  of SLC/OKC/Thousand-Oaks-style false positive (a genuine body-prose
+  mention winning by unscoped first-match, unrelated to a letterhead) --
+  that broader structural gap is still open, see this entry's own opening
+  paragraph above.
+
+  Root cause, fetched and checked directly: the page's
   letterhead is a small header table with "Bedford City Council" and
   "County of Cuyahoga" in adjacent cells (identical styling, both near
   the top) — but `_JURISDICTION_RE` only matches the literal `"(city|
@@ -1316,10 +1327,7 @@ anything) to build against it.
   *also* structurally a header/letterhead mention — just the wrong
   entity within it (the parent county, not the specific city) — so a
   "prefer the first header-shaped match" heuristic would not have fixed
-  this case even if one existed. No domain override added (SLC's
-  narrow-fix pattern doesn't generalize to a fourth incident per the
-  note above); left as a fourth confirmed data point for whenever the
-  structural fix gets revisited.
+  this case even if one existed.
 
   ~~**Separately: PrimeGov never backfilled `title` from the page itself
   when YouTube's own extraction is empty**~~ **Fixed 2026-08-13 — full
