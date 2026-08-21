@@ -2,7 +2,7 @@ import hashlib
 import math
 import secrets
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from typing import Any, Optional, Set
 from urllib.parse import urlparse
 
 from sqlalchemy import (
@@ -304,6 +304,54 @@ async def _ensure_alias(session, url_normalized: str, meeting_page_id: int) -> N
         )
 
 
+# --- best_effort column feature-detect -----------------------------------
+#
+# meeting_pages.best_effort is a real, mapped column (unlike search_tsv),
+# but it's brand new as of 2026-08-21 and every reference to it -- the
+# ingest write below and list_low_trust_pages()'s read -- goes through
+# this gate, so the code and its Alembic migration are safe to deploy in
+# either order. Byte-for-byte the same caching/TTL shape as
+# _fts_available() above; see MeetingPage.best_effort's own comment for
+# the two other halves of that safety (server_default + deferred=True).
+
+_BEST_EFFORT_CHECK_TTL = timedelta(seconds=60)
+_best_effort_state: dict[str, Any] = {"available": None, "checked_at": None}
+
+
+async def _best_effort_available(session) -> bool:
+    """True when meeting_pages.best_effort really exists on the connected
+    database.
+
+    Inverted relative to _fts_available() on the SQLite branch, and
+    deliberately so: search_tsv is a Postgres-only generated column that
+    SQLite can never have, whereas best_effort is an ordinary
+    cross-dialect column that dev/CI's SQLite gets from create_all() built
+    straight off today's model -- so on SQLite it is always present by
+    construction and there's nothing to detect. Only Postgres, where the
+    schema is migration-driven and can genuinely lag the code by one
+    deploy, needs the information_schema lookup. Cached for
+    _BEST_EFFORT_CHECK_TTL so running the migration against a live service
+    flips this on within a minute with no restart.
+    """
+    if session.bind.dialect.name != "postgresql":
+        return True
+    now = datetime.now(timezone.utc)
+    checked_at = _best_effort_state["checked_at"]
+    if checked_at is not None and now - checked_at < _BEST_EFFORT_CHECK_TTL:
+        return bool(_best_effort_state["available"])
+    row = (
+        await session.execute(
+            text(
+                "SELECT 1 FROM information_schema.columns "
+                "WHERE table_name = 'meeting_pages' AND column_name = 'best_effort'"
+            )
+        )
+    ).first()
+    _best_effort_state["available"] = row is not None
+    _best_effort_state["checked_at"] = now
+    return bool(_best_effort_state["available"])
+
+
 async def _unique_slug(session, base: str) -> str:
     slug = base
     for _ in range(5):
@@ -384,6 +432,13 @@ async def _find_or_create_page(
             video_warnings=payload.get("video_warnings") or [],
             agenda_link=payload.get("agenda_link"),
         )
+        # Set only when both true, never as a constructor kwarg: an
+        # unset attribute is omitted from the INSERT and the column's
+        # server_default supplies False, so an ingest against a database
+        # where the migration hasn't landed yet still succeeds (see
+        # MeetingPage.best_effort's comment).
+        if payload.get("best_effort") and await _best_effort_available(session):
+            page.best_effort = True
         session.add(page)
         await session.flush()  # assigns page.id
     else:
@@ -432,6 +487,25 @@ async def _find_or_create_page(
         if payload.get("video_warnings"):
             page.video_warnings = payload["video_warnings"]
         page.agenda_link = payload.get("agenda_link") or page.agenda_link
+        # Truthy-gated, i.e. this flag can be *set* by a re-ingest but
+        # never cleared by one -- same shape as agenda_items /
+        # video_warnings just above, and for the same concrete reason,
+        # sharpened by what this particular field means. Every
+        # transcript-only pusher (scripts/fetch_youtube_transcripts.py,
+        # transcribe_backlog_locally.py, retranscribe_first_chunk.py)
+        # sends a partial payload with no best_effort key at all, which
+        # IngestRequest defaults to False; an unconditional overwrite
+        # would let any of them silently un-flag a genuinely unverified
+        # page. For a trust signal specifically, erring toward
+        # still-flagged is the safe direction -- a stale True costs one
+        # extra row in the /internal/low-trust-pages review queue, while
+        # a wrongly-cleared True is exactly the blind spot this whole
+        # column exists to close. Accepted residual (logged in
+        # BACKLOG.md): a page later re-resolved by a real adapter keeps
+        # the flag until a human clears it, so the queue needs pruning by
+        # hand rather than draining itself.
+        if payload.get("best_effort") and await _best_effort_available(session):
+            page.best_effort = True
         # Reassigning a column to its *current* value doesn't dirty it
         # for SQLAlchemy's purposes, so `onupdate=func.now()` silently
         # never fires on a re-ingest whose content is byte-identical to
@@ -577,7 +651,8 @@ async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) 
     existing one) from a resolver push. `payload` is the resolver's
     ResolvedMeeting.model_dump() shape: platform, source_url, external_id,
     title, date, jurisdiction, video_url, video_format, segments,
-    agenda_items, transcript_language, transcript_warnings. `source` is an
+    agenda_items, transcript_language, transcript_warnings, best_effort.
+    `source` is an
     optional extra key (not part of ResolvedMeeting itself -- Archive-only)
     defaulting to "scraped" when absent, same as every existing caller
     (the resolver's own push, bulk_ingest.py, fetch_youtube_transcripts.py
@@ -1340,6 +1415,155 @@ async def list_hallucination_candidate_transcript_versions(
         return candidates
 
 
+# The two jurisdiction_confidence tiers that mean "we never actually
+# confirmed this jurisdiction against anything" -- see
+# app/utils/jurisdiction_enrich.py's JurisdictionResult.confidence and
+# MeetingPage.jurisdiction_confidence's own comment for the full ladder
+# ("authoritative"/"validated"/"repaired"/"fallback"/"unverified"/
+# "blank"). "fallback" is deliberately NOT here: it means a real value
+# was derived, just not from an authoritative source, which is a
+# different (and much larger) bucket than "unverified".
+_LOW_TRUST_CONFIDENCES = ("unverified", "blank")
+
+_LOW_TRUST_DEFAULT_LIMIT = 200
+_LOW_TRUST_MAX_LIMIT = 1000
+
+
+async def list_low_trust_pages(
+    *, limit: int = _LOW_TRUST_DEFAULT_LIMIT, offset: int = 0
+) -> dict:
+    """Read-only audit list backing GET /internal/low-trust-pages
+    (archive/main.py) -- every archived page whose provenance was never
+    really verified, so a human can review what the fully-automatic
+    pipeline has published. Same read-only-audit role and response shape
+    as list_jurisdiction_bleed_backfill_candidates() above, this
+    function's own template; never writes anything.
+
+    Three independent reasons put a page in this list, OR'd together
+    because they genuinely overlap rather than nest:
+
+    * `platform == "unknown"` -- the string generic_fallback.py registers
+      under, i.e. a page built by best-effort-scanning an arbitrary URL
+      with no vendor adapter involved.
+    * `best_effort` -- the resolver's own flag for the same fallback
+      path, and NOT redundant with the above: generic_fallback delegates
+      to YouTubeAssetFinder whenever the page embeds a YouTube video, and
+      those results carry platform "youtube". That delegated case is the
+      most common real fallback outcome, so a platform-only check misses
+      most of what this list is for (see MeetingPage.best_effort).
+    * `jurisdiction_confidence` in _LOW_TRUST_CONFIDENCES -- the page is
+      published under a jurisdiction name nothing ever validated, which
+      is the specific fabricated-jurisdiction risk BACKLOG.md's "Trust &
+      safety" section threat-modeled.
+
+    Explicitly NOT a filter on anything user-facing. This does not change
+    what's indexed, what's in the sitemap, or what a /j/* hub lists --
+    that was a deliberate product decision (see BACKLOG.md's entry): most
+    best_effort pages are real small cities that merely happened to
+    resolve via the fallback, and de-indexing them would cost real reach.
+    This endpoint exists so "what's low-trust?" is answerable without
+    making the pipeline synchronous or gated.
+
+    Paginated (unlike the jurisdiction audit, which is bounded by how few
+    rows can be stale): the low-trust set is a standing slice of the whole
+    archive, not a one-off backfill batch, so it can be large. `total` is
+    the full match count regardless of the page returned.
+    """
+    limit = max(1, min(int(limit), _LOW_TRUST_MAX_LIMIT))
+    offset = max(0, int(offset))
+
+    async with async_session() as session:
+        best_effort_available = await _best_effort_available(session)
+
+        conditions = [
+            MeetingPage.platform == "unknown",
+            MeetingPage.jurisdiction_confidence.in_(_LOW_TRUST_CONFIDENCES),
+        ]
+        if best_effort_available:
+            conditions.append(MeetingPage.best_effort.is_(True))
+        where = or_(*conditions)
+
+        total = (
+            await session.execute(
+                select(func.count()).select_from(MeetingPage).where(where)
+            )
+        ).scalar_one()
+
+        columns = [
+            MeetingPage.id,
+            MeetingPage.slug,
+            MeetingPage.title,
+            MeetingPage.platform,
+            MeetingPage.jurisdiction,
+            MeetingPage.jurisdiction_confidence,
+            MeetingPage.source_url_normalized,
+            MeetingPage.video_url,
+            MeetingPage.created_at,
+        ]
+        if best_effort_available:
+            columns.append(MeetingPage.best_effort)
+
+        rows = (
+            await session.execute(
+                select(*columns)
+                .where(where)
+                # Newest first: a review queue is most useful pointed at
+                # what the pipeline published most recently.
+                .order_by(MeetingPage.created_at.desc(), MeetingPage.id.desc())
+                .limit(limit)
+                .offset(offset)
+            )
+        ).all()
+
+        pages = []
+        for row in rows:
+            values = row._mapping
+            best_effort = (
+                bool(values[MeetingPage.best_effort])
+                if best_effort_available
+                else False
+            )
+            confidence = values[MeetingPage.jurisdiction_confidence]
+            platform = values[MeetingPage.platform]
+            reasons = []
+            if platform == "unknown":
+                reasons.append("unknown_platform")
+            if best_effort:
+                reasons.append("best_effort")
+            if confidence in _LOW_TRUST_CONFIDENCES:
+                reasons.append("unverified_jurisdiction")
+            created_at = values[MeetingPage.created_at]
+            pages.append(
+                {
+                    "meeting_page_id": values[MeetingPage.id],
+                    "slug": values[MeetingPage.slug],
+                    "title": values[MeetingPage.title],
+                    "platform": platform,
+                    "best_effort": best_effort,
+                    "jurisdiction": values[MeetingPage.jurisdiction],
+                    "jurisdiction_confidence": confidence,
+                    "source_url": values[MeetingPage.source_url_normalized],
+                    "has_video": bool(values[MeetingPage.video_url]),
+                    "created_at": created_at.isoformat() if created_at else None,
+                    "reasons": reasons,
+                }
+            )
+
+        return {
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+            # False only in the one-deploy window where this code is live
+            # but its migration hasn't run yet -- in which case the
+            # best_effort half of the query is simply absent and every
+            # row reports best_effort=false. Surfaced rather than hidden
+            # so a caller can tell "no best_effort pages" apart from "the
+            # column isn't there yet."
+            "best_effort_column_available": best_effort_available,
+            "pages": pages,
+        }
+
+
 async def list_jurisdiction_bleed_backfill_candidates() -> dict:
     """Read-only audit, same role/template as
     list_hallucination_candidate_transcript_versions() above: re-runs
@@ -1396,7 +1620,12 @@ async def list_jurisdiction_bleed_backfill_candidates() -> dict:
         return {"total_checked": len(rows), "candidates": candidates}
 
 
-async def apply_jurisdiction_bleed_backfill(*, dry_run: bool = True) -> dict:
+async def apply_jurisdiction_bleed_backfill(
+    *,
+    dry_run: bool = True,
+    only_ids: Optional[Set[int]] = None,
+    exclude_ids: Optional[Set[int]] = None,
+) -> dict:
     """Write counterpart to list_jurisdiction_bleed_backfill_candidates()
     above -- actually patches MeetingPage.jurisdiction /
     jurisdiction_confidence for rows where finalize_jurisdiction() produces
@@ -1418,6 +1647,21 @@ async def apply_jurisdiction_bleed_backfill(*, dry_run: bool = True) -> dict:
     diff without writing anything -- mirrors this repo's existing
     read-only-first pattern for internal tooling. dry_run=False commits the
     updates and returns the same before/after shape for an audit trail.
+
+    `only_ids` / `exclude_ids` (sets of MeetingPage ids) narrow which rows
+    may be written -- added 2026-08-21 (WO-22) for a real, concrete need:
+    the production audit's candidate set was NOT uniformly safe to apply
+    (BACKLOG.md's "Bare/state-suffixed jurisdiction duplicates" entry --
+    the 83 text-changing rows included two confidently-wrong subdomain
+    repairs, "Alameda County, CA" -> "Bart, CA" and "Modesto, CA" ->
+    "Agenda, CA"), and with no per-id filter the only options were "apply
+    everything" or "apply nothing". Both are applied to the recomputed
+    candidate list, not to the SELECT: every row is still re-checked
+    against today's finalize_jurisdiction() and the filters only decide
+    what may be WRITTEN, so a caller can't use them to smuggle in a row
+    the recompute wouldn't have changed anyway. `exclude_ids` wins over
+    `only_ids` when a row is in both (deny beats allow -- the safer
+    reading of a contradictory request).
     """
     async with async_session() as session:
         rows = (
@@ -1434,10 +1678,16 @@ async def apply_jurisdiction_bleed_backfill(*, dry_run: bool = True) -> dict:
         ).all()
 
         changes = []
+        skipped_by_filter = 0
         for page_id, slug, title, jurisdiction, confidence, source_url in rows:
             netloc = urlparse(source_url).netloc if source_url else None
             result = finalize_jurisdiction(jurisdiction, netloc=netloc)
             if result.jurisdiction == jurisdiction:
+                continue
+            if (only_ids is not None and page_id not in only_ids) or (
+                exclude_ids is not None and page_id in exclude_ids
+            ):
+                skipped_by_filter += 1
                 continue
             changes.append(
                 {
@@ -1466,7 +1716,12 @@ async def apply_jurisdiction_bleed_backfill(*, dry_run: bool = True) -> dict:
                 ]
             await session.commit()
 
-        return {"dry_run": dry_run, "applied_count": len(changes), "changes": changes}
+        return {
+            "dry_run": dry_run,
+            "applied_count": len(changes),
+            "skipped_by_filter": skipped_by_filter,
+            "changes": changes,
+        }
 
 
 async def get_page_by_slug(slug: str) -> Optional[dict]:

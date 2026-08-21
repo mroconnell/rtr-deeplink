@@ -4,7 +4,7 @@ import secrets
 from contextlib import asynccontextmanager
 from datetime import timezone
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Set
 from urllib.parse import quote
 
 from dotenv import load_dotenv
@@ -191,6 +191,22 @@ def _parse_optional_bool(value: Optional[str]) -> Optional[bool]:
     if not value:
         return None
     return value == "true"
+
+
+def _parse_id_filter(raw: Optional[str]) -> Optional[Set[int]]:
+    """Comma-separated `meeting_page_id`s -> a set, for POST /internal/
+    jurisdiction/backfill-apply's only_ids/exclude_ids. None (param absent)
+    stays None, meaning "no filter at all" -- distinct from an empty set,
+    which for only_ids legitimately means "no row is allowed through".
+
+    Raises ValueError on any non-integer token rather than skipping it: a
+    silently-dropped id in `exclude_ids` would fail OPEN (writing a row the
+    operator explicitly asked to hold back) on an endpoint whose whole
+    reason for existing is that part of the candidate set is known-wrong.
+    """
+    if raw is None:
+        return None
+    return {int(part.strip()) for part in raw.split(",") if part.strip()}
 
 
 def _token_ok(authorization: Optional[str]) -> bool:
@@ -537,9 +553,48 @@ async def internal_jurisdiction_bleed_backfill_candidates(
     return await crud.list_jurisdiction_bleed_backfill_candidates()
 
 
+@app.get("/internal/low-trust-pages")
+async def internal_low_trust_pages(
+    limit: int = 200,
+    offset: int = 0,
+    authorization: Optional[str] = Header(None),
+):
+    """Read-only review queue: every archived page whose provenance was
+    never actually verified -- `platform == "unknown"` (generic_fallback's
+    own registered name), `best_effort` (the same fallback path, including
+    the YouTube-delegated results whose platform reads "youtube" instead --
+    the most common real case, which is why a platform-only check isn't
+    enough), or a `jurisdiction_confidence` of "unverified"/"blank".
+
+    Exists because the resolve -> Archive -> public page -> social
+    announcement pipeline is fully automatic end to end, with nothing
+    that could ever answer "what has this thing published that nobody
+    verified?" Same read-only, size-the-problem role as
+    GET /internal/jurisdiction/bleed-backfill-candidates above (this
+    route's own template), and it never modifies anything -- a human
+    decides what, if anything, to do with each row.
+
+    Deliberately does NOT change what the public site shows. The noindex
+    condition in meeting_page.html, the sitemap filter
+    (crud.list_all_page_slugs()) and the /j/* hub filter
+    (crud._hub_base_conditions()) were all left exactly as they were, by
+    explicit product decision -- see BACKLOG.md's entry. Most best_effort
+    pages are legitimate small cities that happened to resolve via the
+    fallback, and pulling them out of Google would cost real reach for no
+    proportionate trust gain.
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    return await crud.list_low_trust_pages(limit=limit, offset=offset)
+
+
 @app.post("/internal/jurisdiction/backfill-apply")
 async def internal_jurisdiction_backfill_apply(
-    dry_run: bool = True, authorization: Optional[str] = Header(None)
+    dry_run: bool = True,
+    only_ids: Optional[str] = None,
+    exclude_ids: Optional[str] = None,
+    authorization: Optional[str] = Header(None),
 ):
     """Write counterpart to GET /internal/jurisdiction/bleed-backfill-
     candidates above -- actually backfills the 2026-08-17 Canadian-data +
@@ -558,11 +613,34 @@ async def internal_jurisdiction_backfill_apply(
     for internal tooling, see /internal/schema-info's docstring) and
     returns the exact before/after diff it *would* write without touching
     the database. Pass ?dry_run=false to actually commit.
+
+    `only_ids` / `exclude_ids` (comma-separated `meeting_page_id`s, the
+    same ids the GET audit above returns) apply a SUBSET of the candidate
+    set -- added 2026-08-21 (WO-22) because the real production candidate
+    set turned out not to be uniformly safe: a handful of rows were
+    confidently-wrong repairs while the large majority were plain, safe
+    state-suffix appends, and without a filter the only choices were all
+    or nothing (see BACKLOG.md's "Bare/state-suffixed jurisdiction
+    duplicates" entry). Ids are only ever a filter over rows this endpoint
+    recomputed itself -- an unknown or unchanged id simply matches
+    nothing, and no caller-supplied jurisdiction text is accepted here any
+    more than before. `exclude_ids` wins if an id appears in both.
     """
     if not _token_ok(authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
-    return await crud.apply_jurisdiction_bleed_backfill(dry_run=dry_run)
+    try:
+        only = _parse_id_filter(only_ids)
+        exclude = _parse_id_filter(exclude_ids)
+    except ValueError:
+        return JSONResponse(
+            {"detail": "only_ids/exclude_ids must be comma-separated integers"},
+            status_code=400,
+        )
+
+    return await crud.apply_jurisdiction_bleed_backfill(
+        dry_run=dry_run, only_ids=only, exclude_ids=exclude
+    )
 
 
 @app.get("/internal/lookup")
@@ -611,6 +689,30 @@ class IngestRequest(BaseModel):
     # no matching columns (fixed 2026-08-10, see BACKLOG_DONE.md).
     video_warnings: List[str] = []
     agenda_link: Optional[str] = None
+    # Also mirrors ResolvedMeeting -- and was also silently dropped by
+    # Pydantic on every single ingest until 2026-08-21 (WO-21), the exact
+    # same failure shape as video_warnings/agenda_link above. The
+    # resolver has always *sent* it (app/main.py pushes
+    # `result.model_dump()`, and best_effort is a real field on
+    # ResolvedMeeting); this model just had no matching field, so it
+    # never survived the boundary and `grep -rn best_effort archive/`
+    # found nothing at all.
+    #
+    # This one is a trust signal, not a display detail: it marks a
+    # resolve that came out of generic_fallback.py's scan-any-page path
+    # instead of a real vendor adapter. Two things read it now --
+    # crud.ingest_resolution() persists it to MeetingPage.best_effort for
+    # GET /internal/low-trust-pages, and social.payload_is_high_quality()
+    # refuses to publicly announce a page carrying it. Note the second
+    # one works off this parsed model's dump and therefore needs *only*
+    # this field, not the column: the social gate is safe even against a
+    # database where the migration hasn't run.
+    #
+    # Defaults False, so every partial pusher that omits it
+    # (scripts/fetch_youtube_transcripts.py and friends) is unaffected --
+    # and crud only ever lets this SET the flag, never clear one, for
+    # exactly that reason (see _find_or_create_page()).
+    best_effort: bool = False
     input_url_normalized: str
     # Archive-only -- not part of ResolvedMeeting (app/platforms/models.py),
     # so every normal resolver push/bulk_ingest.py/fetch_youtube_transcripts.py
@@ -666,6 +768,15 @@ class ResolvedMeetingIn(BaseModel):
     agenda_items: List[TranscriptSegmentIn] = []
     transcript_language: Optional[str] = None
     transcript_warnings: List[str] = []
+    # Added alongside IngestRequest.best_effort (2026-08-21, WO-21) rather
+    # than left to diverge: this payload also reaches
+    # crud._find_or_create_page() (via create_transcription_job()), and
+    # that call can genuinely *create* a MeetingPage -- a "Request
+    # Transcript from Audio" on a fallback-resolved URL nobody had
+    # archived yet. Without the field here, exactly those pages -- the
+    # ones with no vendor adapter behind them at all -- would be the ones
+    # created unflagged.
+    best_effort: bool = False
 
 
 class TranscriptionCreateJobRequest(BaseModel):

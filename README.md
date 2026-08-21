@@ -551,6 +551,29 @@ so it isn't reachable at the public custom domain. Example:
 curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" "$ARCHIVE_BASE_URL/internal/schema-info"
 ```
 
+**Auditing what the pipeline published unverified**: `GET
+/internal/low-trust-pages` (token-gated the same way, and reachable only
+at the Archive service's own base URL for the same reason as above)
+lists every archived page whose provenance was never actually confirmed
+— `platform == "unknown"` (the name `generic_fallback.py` registers
+under), `best_effort` (the resolver's own flag for that path, which also
+covers the fallback results that delegate to YouTube and therefore
+report `platform = "youtube"`), or a `jurisdiction_confidence` of
+`unverified`/`blank`. Each row carries a `reasons` list saying which of
+the three caught it, plus slug, title, platform, jurisdiction, source
+URL and creation date; `?limit=`/`?offset=` paginate and `total` is the
+full match count. Exists because the resolve → Archive → public page →
+social announcement path is fully automatic end to end, with nothing
+that could otherwise answer "what has this published that nobody
+looked at?" It's read-only and changes nothing: these pages stay live,
+indexed, and in the sitemap by design (see `BACKLOG.md`) — the
+`best_effort` flag's one enforcement effect is that social auto-posting
+refuses to announce them.
+
+```bash
+curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" "$ARCHIVE_BASE_URL/internal/low-trust-pages?limit=50"
+```
+
 **Redirect hits are logged too** — `status="archive_redirect"` — so
 `/admin/stats`' totals don't develop a blind spot as more traffic migrates
 to Archive-redirects over time; `classify_outcome()` in `app/db/outcomes.py`
@@ -1182,6 +1205,21 @@ because a technically-successful caption stub isn't worth a public post.
 Agenda-only pages, garbled transcripts (e.g. the Fountain Valley case),
 and non-English detections never post.
 
+**Provenance is a separate bar, and it's absolute**: nothing that came
+out of `generic_fallback.py`'s scan-any-page path is ever announced —
+`best_effort`, or `platform == "unknown"` — however good its transcript
+looks. Everything else on the list above asks "is this content good?",
+which is a different question from "do we actually know what this is?",
+and a fallback resolve can score perfectly on all of it while nothing has
+verified the scraped page is a genuine government meeting. Both checks
+are needed, not one: the fallback delegates to YouTube whenever it finds
+an embed, and those results carry `platform = "youtube"`, so a
+platform-only check misses the most common real case (see
+`ResolvedMeeting.best_effort`). Added 2026-08-21 — the pipeline shipped
+without it, see `BACKLOG_DONE.md`. Note this deliberately does *not*
+extend to `noindex`/sitemap/hub visibility: those pages stay indexed on
+purpose, see `BACKLOG.md`.
+
 **When it fires**: only when `/internal/ingest` *creates* the page.
 Re-ingests — the resolver's push-retry sweep, stale-page rechecks,
 `scripts/backfill_archived_pages.py`'s corpus-wide re-resolve — can never
@@ -1270,7 +1308,7 @@ platform share the same page/API structure. Detection lives in
 | Town Hall Streams (townhallstreams.com) | `townhallstreams.py` | Confirmed live 2026-08-20 against 7 real towns — a plain `jwplayer(...).setup({file: "..."})` call in static HTML embeds a directly-fetchable HLS URL (no Referer/Origin gating, confirmed via direct `curl`), no JS execution needed. The page itself carries no jurisdiction/title/date text at all — everything comes from the video URL's own path, `mp4:{town_slug}/{date}_{numeric_id}_{Meeting_Title}.mp4`. Jurisdiction is routed through the shared, Census-validated `jurisdiction_enrich.validated_label_extract()` (never a by-eye slug decode — 2 of 7 real slugs carry zero state information at all, see BACKLOG_DONE.md), with a `wordninja`-split check of the slug's own trailing token for a real state abbreviation, falling back to a Census unambiguous-name lookup | A real `get_transcriptions` AJAX endpoint exists but returned empty on all 7 real meetings checked — treated as best-effort/unconfirmed per this repo's convention: a genuinely non-empty response is surfaced as a `transcript_warnings` entry (not silently dropped, and not guess-parsed) since no real positive example has been found yet to build an actual parser against |
 | open.media (`{tenant}.open.media`) | `openmedia.py` | Confirmed live 2026-08-21 across 7 real tenants (Goodyear AZ, Eugene OR, Cortez CO, Santa Barbara CA, Surprise AZ, Georgetown CO, Pitkin County CO) — a YouTube-delegating platform, doesn't host video itself. Requires a modern desktop Chrome User-Agent (a bare/default UA 403s — same class of bot-check gap as `generic_fallback.py`'s own cityofsebastopol.gov fix). The visible player iframe is injected client-side and invisible to a plain fetch, but every tenant checked also carries a real `<meta property="og:video">` tag in the raw, un-rendered HTML pointing at the same video (`youtube.com/v/{id}` or `youtube.com/live/{id}`) — already a shape `YouTubeAssetFinder`'s own regex recognizes, so no headless-browser fetch is needed. Delegates to `YouTubeAssetFinder.resolve_video_id()`, original open.media URL preserved as `source_url` (the PrimeGov/CivicWeb pattern) | Whatever YouTube provides. Title comes from the page's own `og:title` (plain meeting title, no date suffix, independent of whether yt-dlp itself is blocked) rather than YouTube's metadata. Jurisdiction comes from the pre-pipe half of `<title>` ("{Jurisdiction} \| {Meeting title}" — the reverse order from `generic_fallback.py`'s own CRRMA-shaped title parsing, so that shared helper isn't reused here), falling back to the tenant subdomain itself (run through the same Census-validated `jurisdiction_enrich.validated_subdomain_extract()` eScribe/Granicus use) when the tenant has never customized its `<title>` away from the vendor's own default — confirmed real and live on Cortez, CO. Agenda comes from a `<iframe id="document">` present on every tenant checked — either a direct link to another already-registered platform (Goodyear links straight to a destinyhosted.com AgendaQuick page) or this tenant's own pdf.js viewer wrapping a direct S3-hosted PDF as its `?file=` query param (Eugene/Cortez/Santa Barbara/Surprise), unwrapped to the raw PDF URL |
 | Castus (cloud.castus.tv) | `castus.py` | Confirmed live 2026-08-21 (WO-19) against one real customer (Billings, MT's "comm7tv" channel). The static page is a pure JS-redirect shell into a client-rendered React SPA — no headless browser needed, though: the SPA's own webpack bundles were fetched once and read directly, surfacing a plain, unauthenticated `POST .../upload/info {"file": videoId}` API that returns everything needed for one video (title/duration/readiness flags/an embedded `agenda` array) from a global endpoint shared by every tenant, plus a global CloudFront CDN (`outputs/{id}/Default/HLS/out.m3u8`) for the HLS video itself. Also solves the tenant-slug → internal-channel-id mapping this platform's first investigation pass had flagged as unsolved (see `castus.py`'s own module docstring for the endpoint, unused by this adapter but documented for a future per-tenant feature) | Real, populated AWS-Transcribe-style VTT (`captions/{videoId}.vtt` on the same CDN) with per-word confidence/speaker inline tags — `parse_vtt()`'s existing generic tag-stripping already handles this shape with no Castus-specific code. Real per-item `agenda_items` come from `/upload/info`'s own embedded `agenda` array (a separate `api.castus.tv/ccs/v1/agenda/{id}` endpoint returns the same data independently but isn't called, to save a request). Jurisdiction is cross-checked by fetching whichever destinyhosted.com page an agenda item's own hyperlinks point at (Destiny Software's AgendaQuick — real "City of Billings" text confirmed live), with a small known-tenant map filling in the state where the page's own ZIP isn't a real Census-covered ZCTA; falls back to a best-effort tenant-slug parse otherwise (unconfirmed against any real second example) |
-| SuiteOne Media (suiteonemedia.com) | `suiteone.py` | Confirmed live 2026-08-21 across 6 real tenants (`pacificgroveca`, `lorainoh` from a prior investigation, plus `tuscaloosaal`, `camaswa`, `holladayut`, `stmarysga` newly confirmed live this session; 5 other CDX-derived leads — `mcallentx`, `southbendin`, `prescottaz`, `richlandwa`, `laytonut` — 404 and aren't registered). A plain, static-HTML JW Player setup embeds a direct, unauthenticated S3 mp4 (`var src = '...'` — genuinely empty when a meeting has no recording yet, confirmed on a real St Marys, GA event, not a parse failure). Jurisdiction reuses `jurisdiction_enrich.validated_subdomain_extract()` directly plus the same wordninja-last-token state check `townhallstreams.py` established — 2 of the 6 tenants (`stmarysga`, `camaswa`) are a real, confirmed, still-open gap: wordninja mis-splits their trailing state letters into a non-word chunk, so no jurisdiction can be recovered without new parsing logic this adapter deliberately doesn't add (see `suiteone.py`'s own module docstring and BACKLOG.md) | Real, populated WebVTT at a JW Player `tracks[].file` URL (`/Event/GetCaptions/?eventId={id}`, no file extension — parsed directly as VTT rather than through the usual extension-sniffed dispatch) — confirmed on 2 of the 6 tenants (Pacific Grove CA, Holladay UT); omitted entirely (not an empty array) when a meeting has none. A separate `/event/GetAgendaFile/Agenda?aid={N}` PDF embed, confirmed on 3 of 6 sampled events, is surfaced as `agenda_link` |
+| SuiteOne Media (suiteonemedia.com) | `suiteone.py` | Confirmed live 2026-08-21 across 6 real tenants (`pacificgroveca`, `lorainoh` from a prior investigation, plus `tuscaloosaal`, `camaswa`, `holladayut`, `stmarysga` newly confirmed live this session; 5 other CDX-derived leads — `mcallentx`, `southbendin`, `prescottaz`, `richlandwa`, `laytonut` — 404 and aren't registered). A plain, static-HTML JW Player setup embeds a direct, unauthenticated S3 mp4 (`var src = '...'` — genuinely empty when a meeting has no recording yet, confirmed on a real St Marys, GA event, not a parse failure). Jurisdiction reuses `jurisdiction_enrich.validated_label_extract_with_state()` directly plus the same wordninja-last-token state check `townhallstreams.py` established. The 2 tenants that originally couldn't resolve at all (`stmarysga`, `camaswa` — wordninja mis-splits their trailing state letters into a non-word chunk) were fixed 2026-08-21 in the shared module itself, not here: its new tier-5 strip removes a trailing state/province code from the raw label *before* wordninja sees it, and this adapter asks that module for the code it stripped rather than re-deriving it (the raw trailing letters aren't trustworthy on their own — "tacoma" ends in a real state code too). Both now resolve correctly ("St Marys, GA", "Camas, WA") — see `suiteone.py`'s own module docstring and BACKLOG_DONE.md | Real, populated WebVTT at a JW Player `tracks[].file` URL (`/Event/GetCaptions/?eventId={id}`, no file extension — parsed directly as VTT rather than through the usual extension-sniffed dispatch) — confirmed on 2 of the 6 tenants (Pacific Grove CA, Holladay UT); omitted entirely (not an empty array) when a meeting has none. A separate `/event/GetAgendaFile/Agenda?aid={N}` PDF embed, confirmed on 3 of 6 sampled events, is surfaced as `agenda_link` |
 
 **Every URL `detect_platform()` doesn't recognize** goes to
 `generic_fallback.py`'s `GenericFallbackAssetFinder`, registered under
@@ -1341,6 +1379,15 @@ here: `<link>`" lines instead of a declarative warning box, and a manual
 timestamp-entry box in place of the live playhead-tracking reader other
 platforms get (deep-link reliability isn't confirmed here, so there's no
 adapter-driven "current time" to honestly display).
+
+Since 2026-08-21 that flag also survives the push to the Archive
+(`meeting_pages.best_effort`), where it does two things: it disqualifies
+the page from social auto-posting entirely, and it lists the page in
+`GET /internal/low-trust-pages` for review. It deliberately does *not*
+affect indexing, the sitemap, or hub listings — see `BACKLOG.md`. Note
+the flag, not `platform`, is the signal to check anywhere this matters:
+a fallback resolve that delegates to `YouTubeAssetFinder` reports
+`platform = "youtube"`, and that's the most common real case.
 
 **Not implemented**: BoardDocs (deliberately excluded — it's a
 document/agenda platform with no reliable video, not worth an adapter).

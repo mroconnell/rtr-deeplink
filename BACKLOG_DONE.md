@@ -6,6 +6,350 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Worker could hand whisper a chunk `extract_chunk_audio()` called successful but that was actually corrupt (Sentry PYTHON-FASTAPI-R) [Done 2026-08-21]
+
+Original entry, kept verbatim below the fix (WO-25) so the traced
+investigation survives — **with one correction called out first, because
+the proposed fix was wrong about what already existed**:
+
+**Correction to the original "Fix, if it recurs" suggestion.** It
+proposed making `extract_chunk_audio()` "sanity-check its own output
+(non-zero size, or a quick `ffprobe`)". Both of those already existed at
+the time it was written, and neither would have caught this occurrence:
+
+* The non-zero size check was already there (`media_probe.py`, "ffmpeg
+  reported success but produced no audio output"). The production file
+  was non-empty — 400-odd bytes of unplayable data passes a size check
+  exactly as a healthy chunk does.
+* `probe_duration()` was already an ffprobe helper on the same module,
+  and `_run()` the shared subprocess wrapper — so "add a quick ffprobe"
+  read as new work when the plumbing was sitting there.
+
+The entry also located `extract_chunk_audio()` in `worker/`; it actually
+lives in `app/platforms/media_probe.py` (deliberately, so `app/` never
+depends on `worker/` — see that module's own docstring).
+
+**Actual root cause: a discarded exit code, not a missing check.**
+`_mean_volume_db()` — added earlier for the Port Coquitlam phase-
+cancellation fix — *already fully decodes* the extracted file
+(`ffmpeg -i <path> -af volumedetect -f null -`). An undecodable file
+makes that decode fail, and real ffmpeg exits non-zero on it. The
+function threw the return code away (`_returncode, _stdout, stderr =
+await _run(...)`), found no `mean_volume:` line in stderr, returned
+`None`, and the caller's `if mean_volume is not None and ...` read that
+`None` as "nothing to worry about" and returned `(True, None)`. **The
+corruption was already being detected by an existing subprocess and then
+dropped on the floor**, one line before the file was handed to whisper.
+
+**Fix shipped**: `_mean_volume_db()` now returns
+`tuple[bool, Optional[float]]` — `(decodable, mean_volume_db)` —
+separating "ffmpeg couldn't decode this at all" (`False`) from "decoded
+fine, volume just wasn't parseable" (`True, None`). ffmpeg missing from
+PATH or timing out also yields `(True, None)` on purpose: neither says
+anything about *the file*, and blaming a broken environment on the
+source media would burn the job's chunk-failure budget chasing the wrong
+thing. `extract_chunk_audio()` returns `(False, "ffmpeg reported success
+but the output file isn't decodable (likely truncated/corrupt)")` on the
+`False` case, which `worker/main.py`'s existing per-chunk handler already
+treats as a retryable failure carrying the real reason string into
+`TranscriptionJob.error_message` — exactly what the 2026-08-19
+`error_message` work was built for. **Zero new subprocesses, zero new
+dependencies**; the decode was already being paid for.
+
+**Verification** (`tests/test_media_probe.py`, 4 new tests): real ffmpeg
+2026-08-21 confirms the mechanism end-to-end — a real 3s 16kHz mono
+32kbps mp3 exits 0 with `mean_volume: -21.5 dB`, and the same file
+truncated to its first 200 bytes exits **183**, which is the low byte of
+`AVERROR_INVALIDDATA` — *the same error code* PyAV surfaced as errno
+1094995529 in the Sentry event. That live test skips where ffmpeg is
+absent (it is installed on the worker, which is where this code runs);
+mocked tests carry the branch on any machine, and were confirmed to fail
+against the pre-fix code. Also covered: a decodable chunk still succeeds
+(so the guard can't quietly start failing healthy chunks), and a missing
+ffmpeg is not reported as a corrupt file.
+
+**Honest limit, deliberately not overclaimed**: this catches "not
+playable at all," not "shorter than requested." Confirmed with real
+ffmpeg — the first 1000 bytes of that same 12.6KB mp3 still exit 0 with a
+correct `mean_volume`, and PyAV opens such files too, so a *tail*-
+truncated chunk passes this guard. A `probe_duration()`-based
+duration-tolerance check was considered for that and deliberately not
+built: `extract_chunk_audio()`'s fast input-side `-ss` seek makes real
+HLS chunk durations legitimately differ from the requested value (see
+`worker/main.py`'s seam-dedup note and `tests/test_worker_segment_utils.py`),
+and the final chunk is legitimately short — so a tolerance tight enough
+to catch truncation would risk failing real, healthy chunks. Split back
+out as a live `BACKLOG.md` entry rather than silently closed.
+
+Original entry, verbatim:
+
+> **[NEEDS-AUDIT] Worker can produce a chunk `extract_chunk_audio()` calls
+> successful that's actually truncated/corrupt — surfaced via Sentry issue
+> PYTHON-FASTAPI-R, 2026-08-19 15:57:32 UTC, promoted from
+> `CLAUDE_INBOX_TRIAGE.md`.** Real error: `InvalidDataError: [Errno
+> 1094995529] Invalid data found when processing input:
+> '/tmp/rtr_transcribe_hwou97hq/chunk_1.mp3'`, `server_name =
+> srv-d9rluvqfngtc73dmrbug` (the transcription worker), `handled = yes`,
+> app log "Job 287: transcription failed for chunk 2/21 (will retry on
+> next poll)". Root cause traced to real code: `worker/main.py`'s
+> per-chunk loop (~lines 237-243) only guards `extract_chunk_audio()`'s
+> ffmpeg call via return-value truthiness — this occurrence got past that
+> check (ffmpeg reported success) but the resulting file was invalid when
+> `transcription_engine.py`'s `_transcribe_sync()` tried to decode it via
+> PyAV (`av.container.core.open`), landing in the broader `except
+> Exception` at worker/main.py:250-256 (logs + retries next poll, hence
+> `handled = yes`, not a crash). **Impact**: caught/retried automatically,
+> not user-visible by itself; whether job 287's retry for chunk 2/21
+> actually succeeded is unconfirmed (no DB access from the triage
+> Routine). First occurrence of this exact signature as of 2026-08-19 —
+> may be a one-off transient (likely an interrupted read from the source
+> media stream during ffmpeg extraction), not yet confirmed as recurring.
+> **Fix, if it recurs**: have `extract_chunk_audio()` sanity-check its own
+> output (non-zero size, or a quick `ffprobe`) rather than trusting
+> ffmpeg's exit code alone, so a corrupt chunk retries immediately instead
+> of failing over to the whisper-decode step first. Not fixed yet —
+> logged as a real, traced gap, not designed/built this pass.
+
+## WO-22: subdomain cross-check produced confidently-wrong jurisdictions; two glued-slug gaps closed; backfill-apply gained an id filter [Done 2026-08-21]
+
+Three related pieces of the same jurisdiction pipeline, all found by real
+signal (a production audit run, and two adapter builds' own written-down
+residuals) rather than by reading code.
+
+**1. The subdomain cross-check overrode good jurisdictions with acronyms
+and website words.** PR #254 (merged earlier the same day) taught
+`finalize_jurisdiction()` to prefer a validated subdomain-derived
+candidate over a disagreeing text-derived one — correct for its two real
+cases (Shelburne/Brantford, Peel Region/Caledon), but it accepted *any*
+subdomain label that validates against the Census/StatsCan tables, with
+no check that the label is plausibly a place name. Reproduced live
+against the real tables:
+
+- `_validated_label_extract('bart')` → `'Bart'` (a real Census
+  SUBDIVISION — a tiny township in **Pennsylvania**), so
+  `finalize_jurisdiction('Alameda County, CA', netloc='bart.legistar.com')`
+  → **"Bart, CA"**. That's the Bay Area transit agency's acronym
+  colliding with a PA township, welded to a CA suffix. Real production
+  row, `page_id 250`.
+- `_validated_label_extract('agenda')` → `'Agenda'` (a real town in
+  **Kansas**), so `finalize_jurisdiction('Modesto, CA',
+  netloc='agenda.modestogov.com')` → **"Agenda, CA"**. `agenda.` is
+  Modesto's own agenda host. Real production row, `page_id 1108`.
+
+Both fixes are in `app/utils/jurisdiction_enrich.py`:
+
+- **State-consistency guard** (`_subdomain_override()`, the primary fix):
+  the state suffix that would actually be attached must be one of the
+  hint's own `_table_lookup()` states. `_fill_missing_state()` returns an
+  existing suffix completely unchanged, which is exactly how a PA
+  township ends up wearing ", CA" — the cheapest possible tell that the
+  override is wrong. Kills both cases outright; a rejected override falls
+  through to the text-derived answer, the pre-#254 behavior. Verified not
+  to regress either case #254 existed for: `_table_lookup('shelburne')` →
+  `['NS','ON']` and `_table_lookup('peel region')` → `['ON']` both
+  survive (Shelburne resolves to a bare, province-less "Shelburne"
+  because it's genuinely ambiguous, so there's no pairing to contradict).
+- **Generic-subdomain stoplist** (`_GENERIC_SUBDOMAIN_WORDS`, secondary):
+  a label that *is* a website word ("agenda", "meetings", "video",
+  "portal", "clerk", "council", "media", "live", "stream", "archive",
+  "public", "webcast", …) is declined before any tier runs. Four of those
+  really do validate as tiny real places today (Agenda KS, Council ID,
+  Media IL/PA, Portal GA/ND). Whole-label only: "councilbluffsia" still
+  resolves. Same closed-curated-stoplist idiom already used by
+  `_KNOWN_JUNK_TAIL_WORDS` and the leading connector-word strip.
+- **Deliberately NOT an edit-distance/containment guard between the
+  current and candidate values**, which was the obvious alternative and
+  would have reverted #254 wholesale: "Brantford…" → "Shelburne" and
+  "Town of Caledon" → "Peel Region" are both correct and share zero
+  characters with what they replace.
+
+**The third suspect row turned out to be a correct repair, not a wrong
+one.** `page_id 279`, "City of New Port Richey, FL" → "Clearwater, FL",
+passes the state guard (FL *is* among Clearwater's states) and BACKLOG.md
+had it flagged as "looks like a wrong reassignment". Settled live instead
+of guessed: the page's real `source_url` is
+`clearwater.granicus.com/player/clip/5244`, its title is "Council Work
+Session on 2026-06-01 1:30 PM", its agenda PDF is under
+`legistar2.granicus.com/clearwater/`, and the string "New Port Richey"
+appears on the source page exactly once — inside agenda item 4.1, an
+interlocal gas-franchise agreement *with* the City of New Port Richey.
+(The archive's own real New Port Richey page is a separate Swagit tenant,
+`newportricheyfl.new.swagit.com`.) So this is the same shape as Peel
+Region/Caledon: a real, validating OTHER government named in this
+meeting's own agenda text. Kept as a regression test.
+
+**2. Two confirmed-real failing inputs to `_validated_label_extract()`,
+one from each of two Wave 4 adapter builds** — both fixed in the shared
+module, which is where both builds' own writeups said the fix belonged:
+
+- **Tier 5, trailing state code on the RAW label.** `stmarysga` →
+  `['st','mary','sga']` and `camaswa` → `['ca','maswa']` (real SuiteOne
+  Media tenants, PR #263): wordninja's cost minimization absorbs the
+  trailing state letters into a non-word chunk, so the existing
+  trailing-code strip — which only inspects `words[-1]` *after* the split
+  — could never fire. Now, as a last resort after every other tier
+  declines, the code is stripped off the raw label first ("stmarys" →
+  "St Marys", "camas" → "Camas") and retried exactly once. Safe by
+  construction: a real name that merely ends in code-shaped letters
+  ("tacoma" → "ma", "oakland" → "nd") validates whole at tier 1 and never
+  reaches it.
+- **Tier 4, trailing connector word.** The connector strip only ever
+  removed a *leading* "city"/"county"/"town", so `pitkincounty` (a real
+  open.media tenant, PR #265, which flagged this as the one subdomain of
+  10 the helper couldn't validate) failed. The type word is now stripped
+  and **re-attached** to the glued remainder → "Pitkin County". Dropping
+  it outright would have been actively wrong: "Pitkin" also validates on
+  its own as a real, tiny, unrelated town inside that same county. This
+  also incidentally closes the wordninja half of the Tulare County entry
+  in BACKLOG.md (`['tul','are','county']` → "Tulare County"); the rest of
+  that entry stays open.
+- `app/platforms/suiteone.py` is the one adapter that changed, and only
+  to *ask* for the state code the module stripped
+  (`validated_label_extract_with_state()`) instead of re-deriving it — it
+  can't be re-derived safely from the raw tenant slug, since "tacoma"
+  ends in a real state code too. Result: "St Marys, GA" and "Camas, WA",
+  both real and confirmed, where the adapter used to honestly return
+  None.
+
+**3. `POST /internal/jurisdiction/backfill-apply` gained
+`only_ids`/`exclude_ids`** (comma-separated `meeting_page_id`s, threaded
+through `archive/db/crud.py`'s `apply_jurisdiction_bleed_backfill()`).
+The real need: the production candidate set is not uniformly safe, and
+without a filter the only options were all-or-nothing. Both filters apply
+to the *recomputed* candidate list, never to the SELECT — every row is
+still re-derived from its own stored inputs, so a filter can only narrow
+what gets written, never smuggle in a row the recompute wouldn't have
+changed. `exclude_ids` wins over `only_ids` (deny beats allow), a
+non-integer id 400s rather than being silently dropped (a dropped
+`exclude_ids` token would fail *open*, writing a row the operator asked
+to hold back), and the response carries a `skipped_by_filter` count.
+
+**Also corrected a real doc error in BACKLOG.md's own entry**: it cited
+the production audit's 635 candidates in a way that implied that was the
+write blast radius. It isn't — the real write path is **83 rows**, since
+`apply_jurisdiction_bleed_backfill()` skips every row whose string is
+unchanged, so the 552 confidence-only diffs are never written. The GET
+audit reports both kinds because it compares string *and* confidence.
+
+Test plan: `pytest` 1165 passed / 15 skipped (was 1150 passed before this
+change), 15 new/updated tests across
+`tests/test_jurisdiction_enrich.py`, `tests/test_jurisdiction_backfill_apply.py`,
+`tests/test_suiteone.py`. `ruff format`/`ruff check` clean. Docs updated:
+`README.md` (SuiteOne row), `BACKLOG.md` (three entries), this file.
+
+## `best_effort` reaches the Archive: unverified pages stop auto-posting to social, and get a review queue (WO-21) [Done 2026-08-21]
+
+**The gap, verified in real code before anything was written, not
+assumed.** `ResolvedMeeting.best_effort` (`app/platforms/models.py:96`)
+is set to `True` by `app/platforms/generic_fallback.py` on every result
+that adapter produces — its own comment at ~385-388 spells out why it
+exists rather than reusing a platform check: on the YouTube-delegated
+path `platform` becomes `"youtube"`, not `"unknown"`, and *that is the
+most common real outcome*, so `platform == "unknown"` alone silently
+misses most of the fallback's output.
+
+The resolver has always **sent** the field — `app/main.py` pushes
+`result.model_dump()`, and `best_effort` is a real field on
+`ResolvedMeeting`. It just never **arrived**: `archive/main.py`'s
+`IngestRequest` had no matching field, so Pydantic dropped it at the
+`/internal/ingest` boundary, and `MeetingPage` had no column.
+`grep -rn "best_effort" archive/` returned zero hits.
+
+**The specific thing that made this urgent rather than tidy**: PR #266
+(merged earlier the same day) auto-posts brand-new Archive pages to
+Bluesky/Mastodon. Its `payload_is_high_quality()` gated on video +
+segment count + warnings + language — every axis of *transcript
+quality*, and nothing at all about *provenance*. Those are orthogonal
+questions, and a generic_fallback scrape of an arbitrary URL can score
+full marks on all of them: real video, thousands of clean English
+segments, zero warnings, nothing whatsoever having verified the page is a
+genuine government meeting. That got announced from the project's own
+public accounts automatically. `BACKLOG.md`'s "Trust & safety" section
+threat-models exactly this risk and predates the social pipeline
+entirely, which is how the gap arrived unnoticed. Upstream contributor:
+PR #204 (2026-08-19) widened the Archive push gate to include
+`video_url`, so materially more best-effort results reach the Archive
+than when that section was written.
+
+**A question answered from the code rather than guessed at, since it
+decided how much work this was**: does `best_effort` survive to where
+`social.py` can see it? No. `/internal/ingest` builds
+`payload = req.model_dump(exclude={"input_url_normalized"})` and passes
+*that* to `announce_new_page()` — the parsed model, not the raw request
+body. A one-line `payload.get("best_effort")` gate would have read
+`None` forever. The `IngestRequest` field was a prerequisite, not an
+optional extra. (It's still true that the social fix needs only the
+Pydantic field and not the column — worth knowing, since it means the
+amplification stopped the moment this deployed, independent of the
+migration.)
+
+**Built:**
+
+- `IngestRequest.best_effort: bool = False` (and the same on
+  `ResolvedMeetingIn`, which also reaches `_find_or_create_page()` via
+  `create_transcription_job()` — a "Request Transcript from Audio" on a
+  fallback-resolved URL can create a page too, and those are exactly the
+  pages that would otherwise be created unflagged).
+- `social.payload_is_high_quality()` refuses `best_effort` **or**
+  `platform == "unknown"`. Both halves, deliberately: the platform check
+  alone misses the delegated case, and the flag alone misses any
+  pre-existing path that registers as "unknown".
+- `MeetingPage.best_effort` + Alembic revision `d4e5f6a7b8c9`
+  (`add_best_effort_to_meeting_pages`). A plain `nullable=False` column
+  with a constant `server_default` — catalog-only on Postgres 11+, no
+  table rewrite, so it's safe under the unattended `preDeployCommand`
+  unlike the `search_tsv` add that held an ACCESS EXCLUSIVE lock ~30s.
+- **Either-deploy-order safety, per CLAUDE.md's rule and the 2026-08-17
+  `UndefinedColumnError` outage behind it**, via three choices that only
+  work together: `crud._best_effort_available()` feature-detects the
+  column (same caching/TTL shape as `_fts_available()`, inverted on the
+  SQLite branch — SQLite always has it from `create_all()`, only
+  Postgres can lag); no Python-side `default=` on the mapping, so an
+  unset attribute is omitted from the INSERT entirely; and
+  `deferred=True`, so no plain `select(MeetingPage)` — the `/m/{slug}`
+  render, `list_pages()`, the sitemap, the hubs — ever names the column.
+  Verified with a test that forces the feature-detect False and asserts
+  both ingest and the audit still work (flagged synthetic in the test
+  itself: SQLite can't genuinely lack the column).
+- `GET /internal/low-trust-pages` — token-gated, read-only, paginated,
+  modelled on `GET /internal/jurisdiction/bleed-backfill-candidates`.
+  Returns `platform == "unknown" OR best_effort OR
+  jurisdiction_confidence IN ('unverified','blank')`, with a `reasons`
+  list per row so it's obvious which condition caught it, and a
+  `best_effort_column_available` flag so "no best_effort pages" is
+  distinguishable from "the migration hasn't run".
+- Write semantics: a re-ingest can **set** the flag, never clear it —
+  every transcript-only pusher sends a partial payload where the field
+  defaults to `False`, and for a trust signal the safe direction is
+  still-flagged. Same truthy-gated shape `agenda_items`/`video_warnings`
+  already use, for the same reason. Residual logged.
+
+**Explicitly not done, by the user's own product decision**: the
+`noindex` condition, the sitemap filter (`crud.list_all_page_slugs()`)
+and the `/j/*` hub filter (`crud._hub_base_conditions()`) were left
+exactly as they were. Stop the amplification and build the audit queue,
+but keep current pages indexed — most `best_effort` pages are legitimate
+small cities that just happened to resolve via the fallback, and removing
+them from Google would cost real reach. Recorded in `BACKLOG.md` too, so
+a later session doesn't "helpfully" widen it.
+
+**Also corrected in the same pass**: `BACKLOG.md`'s "Video-only
+best-effort results are never archived" residual, which claimed the push
+gate was `segments or agenda_items or agenda_link` and had been
+"deliberately not widened". Stale since PR #204 (commit `7975288`,
+2026-08-19) — `app/main.py:686` includes `or result.video_url` today.
+
+**Tests**: 6 new provenance-gate tests in `tests/test_social_posts.py`
+(including the flawless-except-provenance YouTube-delegated payload, and
+one asserting `IngestRequest.model_dump()` actually preserves the field —
+the exact regression this started from), plus
+`tests/test_low_trust_pages.py` (11 tests: auth, each of the three
+reasons in isolation, the sticky-flag re-ingest case, a clean page
+correctly absent, pagination/clamping, and the pre-migration branch).
+Full suite green: 1168 passed, 15 skipped. `alembic upgrade head` +
+`alembic check` verified clean against a fresh migration-built SQLite,
+and `downgrade -1` + re-upgrade verified too.
+
 ## Adapter canary coverage gap closed + enforced in CI, and `CLAUDE_BACKLOG.md`'s two reliability items promoted (WO-26) [Done 2026-08-21]
 
 Three things in one pass: a real monitoring gap, the guardrail that makes
@@ -204,7 +548,11 @@ of the 6 real tenants — `stmarysga`, `camaswa`, specifically flagged by
 the work order as the least obviously-splittable — fail to validate via
 this shared pipeline at all (see `BACKLOG.md`'s residual-gap entry for
 the detail); `jurisdiction` is honestly `None` for both rather than
-guessed, same as every other adapter's stated policy.
+guessed, same as every other adapter's stated policy. **[Closed later the
+same day — see this file's "WO-22" entry: the shared module now strips a
+trailing state code off the raw label before wordninja sees it, and this
+adapter asks it for the code it stripped, giving the real "St Marys, GA"
+and "Camas, WA".]**
 
 **A second document endpoint, confirmed real**: `/event/GetAgendaFile/
 Agenda?aid={N}` (an `<object data="...">` PDF embed) is a real, separate
@@ -436,12 +784,17 @@ customized `<title>` ("Pitkin County | {meeting title}"), so the
 subdomain fallback is never actually reached; confirmed by running a real
 saved Pitkin County session page through
 `OpenMediaAssetFinder._extract_title_and_jurisdiction()` directly, which
-correctly returned `"Pitkin County, CO"`. Still a real, narrow gap in the
-shared helper itself (would matter for some *other*, not-yet-seen tenant
-whose title is also an uncustomized vendor default AND whose subdomain
-ends in "county") — not fixed here since it's outside this platform's own
-adapter code, just noted for whoever next touches
-`jurisdiction_enrich._validated_label_extract()`.
+correctly returned `"Pitkin County, CO"`. ~~Still a real, narrow gap in
+the shared helper itself (would matter for some *other*, not-yet-seen
+tenant whose title is also an uncustomized vendor default AND whose
+subdomain ends in "county") — not fixed here since it's outside this
+platform's own adapter code, just noted for whoever next touches
+`jurisdiction_enrich._validated_label_extract()`.~~ **Fixed in that
+helper later the same day (see this file's "WO-22" entry): its new tier 4
+strips a trailing "county"/"city"/"town" and re-attaches the type word, so
+`validated_label_extract("pitkincounty")` now returns "Pitkin County"
+rather than nothing — and deliberately not the bare "Pitkin", which is a
+real, different, tiny town inside that same county.**
 
 Fixture-backed regression coverage: `tests/test_openmedia.py` (8 tests),
 real fixture HTML saved from Goodyear/Eugene/Cortez under
@@ -1038,7 +1391,14 @@ entities aren't census SUBDIVISIONS, the level
    when a validated subdomain hint disagrees with the text-derived name
    (`_base_name_key()`, the same identity comparison the chain's own
    cross-check already uses), the subdomain's own validated identity wins
-   outright. When they agree (the overwhelmingly common case) or no
+   outright. **[Amended later the same day by WO-22 (see this file's own
+   entry): "wins outright" was too strong — a subdomain that's really an
+   acronym ("bart") or a website word ("agenda") also validates, and this
+   produced two real, confidently-wrong production repairs. The override
+   is now refused when the state suffix it would attach isn't one of the
+   hint's own states, and website words are declined as hints entirely.
+   Both cases this entry was written for still pass unchanged.]** When
+   they agree (the overwhelmingly common case) or no
    subdomain hint validates at all, this is a pure no-op — confirmed via
    explicit regression tests for both the fixed cases and every
    already-passing agreement case (Hercules, Galesburg, San Diego,

@@ -5,6 +5,59 @@ investigation detail behind each fix — lives in
 [BACKLOG_DONE.md](BACKLOG_DONE.md); items below link back to it for context
 where relevant.
 
+## `best_effort` residuals: no backfill for pre-2026-08-21 pages, the flag never clears itself, and the low-trust queue has no UI
+
+WO-21 (2026-08-21) plumbed `ResolvedMeeting.best_effort` through to the
+Archive — a real `meeting_pages.best_effort` column, a provenance gate on
+social auto-posting, and `GET /internal/low-trust-pages` — see
+`BACKLOG_DONE.md`'s entry for the full build. Four real residuals:
+
+- **Every page archived before 2026-08-21 has `best_effort = false`,
+  and no backfill is possible.** Not an oversight and not a script
+  somebody forgot to run: `best_effort` records *how a resolve was
+  performed*, and nothing on the stored row preserves that. A fallback
+  result that delegated to YouTube is byte-for-byte indistinguishable
+  from a native YouTube resolve on `meeting_pages`. Historical rows only
+  become accurate as they're re-ingested. The `platform == "unknown"`
+  and `jurisdiction_confidence` halves of the audit endpoint do cover
+  old rows from a different angle, so the queue isn't blind to history —
+  it just under-reports the delegated case for anything old. A
+  re-resolve sweep (`scripts/backfill_archived_pages.py`) would fix it
+  properly for any page it touches.
+- **The flag is sticky: a re-ingest can set it, never clear it.**
+  Deliberate (see `_find_or_create_page()`'s comment) — every
+  transcript-only pusher sends a partial payload where `best_effort`
+  defaults to `False`, and an unconditional overwrite would let them
+  silently un-flag genuinely unverified pages. The cost is the mirror
+  image: a page later re-resolved by a real vendor adapter keeps the
+  flag, so the review queue needs pruning by hand rather than draining
+  itself. Fixing this properly means distinguishing a full resolve from a
+  partial push at the ingest boundary, which nothing does today.
+- **The queue is a JSON endpoint, not a workflow.** There's no way to
+  mark a page reviewed/approved, so re-reading it means re-triaging the
+  same rows. That's the natural next slice if the queue turns out to be
+  used at all; a `reviewed_at` column plus a `?unreviewed=true` filter
+  would be the cheap version.
+- **`jurisdiction_confidence IS NULL` is not counted as low-trust.** The
+  endpoint matches `"unverified"`/`"blank"` only. Pages archived before
+  the column existed (pre-2026-08-15) have NULL, which means "we never
+  asked", not "we asked and got nothing" — lumping them in would swamp
+  the queue with rows whose jurisdiction is probably fine. Revisit if the
+  queue proves too narrow rather than too noisy.
+
+**Explicitly NOT to be "fixed" by a later session**: the `noindex`
+condition (`archive/templates/meeting_page.html`), the sitemap filter
+(`crud.list_all_page_slugs()`) and the `/j/*` hub filter
+(`crud._hub_base_conditions()`) were all left untouched on purpose, by
+the user's own product decision — they want unverified pages *stopped
+from being amplified* (the social gate) and *auditable* (the queue), but
+still indexed. Most `best_effort` pages are legitimate small cities that
+merely happened to resolve via the fallback rather than a vendor
+adapter, and pulling them out of Google would cost real reach for no
+proportionate trust gain. Widening any of those three to include
+`best_effort` would reverse a decision that was made deliberately, with
+the tradeoff understood.
+
 ## Social auto-posting residuals: facet-clickability spot-check, Mastodon client still unverified, upgrade-triggered posts never announce
 
 Bluesky auto-posting went live 2026-08-21 — a real prod resolve created
@@ -286,12 +339,20 @@ Checked live 2026-08-19: `tularecounty.granicus.com`,
 `tulare.granicus.com`, and `tularecounty.civicweb.net` are all dead
 (`NotFound`/no DNS); `tularecounty.swagit.com` redirects to a 404;
 `tularecounty.legistar.com` does resolve (200) but wasn't investigated
-further. Even a plausible `tularecounty`-shaped subdomain wouldn't
+further. ~~Even a plausible `tularecounty`-shaped subdomain wouldn't
 validate through the existing wordninja-based subdomain validator
 regardless of the cross-check fix — `wordninja.split("tularecounty")`
 mis-segments to `['tul', 'are', 'county']` rather than
 `['tulare', 'county']` (confirmed live), a separate, narrower dictionary
-gap in `_validated_label_extract()`.
+gap in `_validated_label_extract()`.~~ **That second half is fixed as of
+2026-08-21 (WO-22)**: wordninja still mis-segments the label exactly as
+described, but `_validated_label_extract()`'s new tier 4 strips the
+trailing "county" and re-attaches it to the glued remainder, so
+`tularecounty` now validates as "Tulare County" (unit-tested in
+`tests/test_jurisdiction_enrich.py`). The entry stays open for the half
+that still blocks it — no real, live Tulare County meeting-hosting
+subdomain is known, so there's still nothing to run the cross-check
+against.
 
 Next step: find the real originating URL for this misattribution (check
 `tularecounty.legistar.com` first, or the original session's own
@@ -324,32 +385,16 @@ for the full investigation and what was actually shipped).
   that population to find real meeting `id`s per town or bulk-ingested
   them into the Archive yet.
 
-## SuiteOne Media: real, confirmed jurisdiction gap on 2 tenants; unconfirmed CDX leads and PDF-transcript fallback (2026-08-21)
+## SuiteOne Media: unconfirmed CDX leads and PDF-transcript fallback (2026-08-21)
 
 Residual gaps left behind by the new SuiteOne Media (suiteonemedia.com)
 adapter build — see `BACKLOG_DONE.md`'s "SuiteOne Media: new platform
 adapter built" entry for the full investigation and what was actually
-shipped (`app/platforms/suiteone.py`).
+shipped (`app/platforms/suiteone.py`). The jurisdiction gap that used to
+head this list (`stmarysga`/`camaswa` recovering no jurisdiction at all)
+was fixed 2026-08-21 in `jurisdiction_enrich.py` itself, exactly where
+that entry said it belonged — see `BACKLOG_DONE.md`'s "WO-22" entry.
 
-- **`stmarysga` (St Marys, GA) and `camaswa` (Camas, WA) can't recover a
-  jurisdiction through the shared `jurisdiction_enrich` pipeline at all.**
-  wordninja splits "stmarysga" as `['st', 'mary', 'sga']` and "camaswa" as
-  `['ca', 'maswa']` — neither's last token is a real 2-letter state code
-  (the real trailing state letters get absorbed into a longer non-word
-  chunk, "sga"/"maswa", by wordninja's own dictionary-cost minimization),
-  so `jurisdiction_enrich.validated_subdomain_extract()` never produces a
-  bare name to attach a state to, and both end up `jurisdiction=None`.
-  Confirmed by hand that stripping the real trailing state code first
-  ("stmarys" / "camas") validates correctly ("St Marys" / "Camas") — so
-  the underlying place names are real and resolvable, just not through
-  this shared function as it stands today. Fixing this generically (e.g.
-  trying a manual last-2-letters-against-known-US-state-codes strip
-  before handing the remainder to `validated_label_extract()`, independent
-  of whatever wordninja itself produced) would belong in
-  `jurisdiction_enrich.py` itself, since other adapters using the same
-  glued-slug shape would benefit too — not done here since this repo's
-  own convention for this platform was "reuse jurisdiction_enrich
-  directly, don't write new jurisdiction-parsing logic."
 - **5 of the 11 CDX-derived tenant leads never got individually verified
   live**: `mcallentx`, `southbendin`, `prescottaz`, `richlandwa`,
   `laytonut` all 404 on their home page as of 2026-08-21 — dead leads (or
@@ -728,8 +773,8 @@ anything) to build against it.
   suspicious page — genuinely built, not aspirational, just reactive
   (after publication) rather than preventive.
 
-  **Mitigation options worth weighing, not yet decided or built (except
-  the first, built 2026-08-11 — see BACKLOG_DONE.md):**
+  **Mitigation options worth weighing (the first two are built — 2026-08-11
+  and 2026-08-21, see BACKLOG_DONE.md — the rest are not decided):**
   - ~~**noindex generic_fallback/`best_effort` pages by default**~~ Built
     2026-08-11: `archive/templates/meeting_page.html`'s meta block now
     renders `<meta name="robots" content="noindex">` whenever
@@ -738,11 +783,30 @@ anything) to build against it.
     doesn't block anything, just stops amplifying the least-verified
     content until a human's looked at it. The rest of this section's
     threat model (fake-jurisdiction risk, curated-list idea, trust tiers)
-    is still open.
+    is still open. **Known, deliberate limit (confirmed 2026-08-21):
+    this condition only ever tested `platform == "unknown"`, so it never
+    covered the YouTube-delegated fallback path — the most common real
+    generic_fallback outcome, whose `platform` is `"youtube"`. WO-21
+    plumbed a real `best_effort` signal into the Archive but deliberately
+    did NOT widen this condition; see that entry below for why.**
+  - ~~**Don't auto-announce unverified pages on social**~~ Built
+    2026-08-21 (WO-21, see BACKLOG_DONE.md). PR #266's Bluesky/Mastodon
+    auto-posting shipped with a quality gate that checked video, segment
+    count, warnings and language but nothing about *provenance* — so a
+    generic_fallback scrape of an arbitrary URL with a good transcript
+    got announced from the project's own public accounts. This section's
+    threat model predates that pipeline entirely, which is exactly how
+    the gap got there. `payload_is_high_quality()` now refuses anything
+    carrying `best_effort` or `platform == "unknown"`.
   - **Manual review before a brand-new jurisdiction goes live/indexed**
     — especially for `generic_fallback`/`best_effort` results. Real cost:
     turns part of the pipeline from fully automatic into something
     needing a human in the loop, at least for first-time jurisdictions.
+    **Partially approached from the other side 2026-08-21**:
+    `GET /internal/low-trust-pages` gives an after-the-fact review queue
+    (unverified provenance, unverified jurisdiction) without making the
+    pipeline synchronous. A genuine *pre*-publication hold is still
+    unbuilt.
   - **Platform-based trust tiers** instead of domain allowlisting — the
     named-vendor adapters (Granicus, Legistar, CivicClerk, Swagit,
     PrimeGov, etc.) all target products specifically sold to local
@@ -761,32 +825,34 @@ anything) to build against it.
 
 ## Bugs
 
-- **[NEEDS-AUDIT] Worker can produce a chunk `extract_chunk_audio()` calls
-  successful that's actually truncated/corrupt — surfaced via Sentry issue
-  PYTHON-FASTAPI-R, 2026-08-19 15:57:32 UTC, promoted from
-  `CLAUDE_INBOX_TRIAGE.md`.** Real error: `InvalidDataError: [Errno
-  1094995529] Invalid data found when processing input:
-  '/tmp/rtr_transcribe_hwou97hq/chunk_1.mp3'`, `server_name =
-  srv-d9rluvqfngtc73dmrbug` (the transcription worker), `handled = yes`,
-  app log "Job 287: transcription failed for chunk 2/21 (will retry on
-  next poll)". Root cause traced to real code: `worker/main.py`'s
-  per-chunk loop (~lines 237-243) only guards `extract_chunk_audio()`'s
-  ffmpeg call via return-value truthiness — this occurrence got past that
-  check (ffmpeg reported success) but the resulting file was invalid when
-  `transcription_engine.py`'s `_transcribe_sync()` tried to decode it via
-  PyAV (`av.container.core.open`), landing in the broader `except
-  Exception` at worker/main.py:250-256 (logs + retries next poll, hence
-  `handled = yes`, not a crash). **Impact**: caught/retried automatically,
-  not user-visible by itself; whether job 287's retry for chunk 2/21
-  actually succeeded is unconfirmed (no DB access from the triage
-  Routine). First occurrence of this exact signature as of 2026-08-19 —
-  may be a one-off transient (likely an interrupted read from the source
-  media stream during ffmpeg extraction), not yet confirmed as recurring.
-  **Fix, if it recurs**: have `extract_chunk_audio()` sanity-check its own
-  output (non-zero size, or a quick `ffprobe`) rather than trusting
-  ffmpeg's exit code alone, so a corrupt chunk retries immediately instead
-  of failing over to the whisper-decode step first. Not fixed yet —
-  logged as a real, traced gap, not designed/built this pass.
+- ~~**[NEEDS-AUDIT] Worker can produce a chunk `extract_chunk_audio()` calls
+  successful that's actually truncated/corrupt (Sentry PYTHON-FASTAPI-R)**~~
+  **Fixed 2026-08-21 (WO-25) — see `BACKLOG_DONE.md`.** Root cause was
+  narrower than that entry assumed: the size check and an ffprobe helper it
+  proposed adding both already existed; `_mean_volume_db()` was already
+  fully decoding the extracted file and *discarding ffmpeg's exit code*.
+  It now reports decodability, and `extract_chunk_audio()` returns a
+  retryable `(False, reason)` instead of letting whisper's PyAV raise.
+  One real residual, split out per convention:
+
+- **[NEEDS-AUDIT] A chunk truncated only at its *tail* still passes the
+  new decodability guard — confirmed with real ffmpeg 2026-08-21, not
+  assumed.** The first 1000 bytes of a real 12.6KB mp3 decode cleanly
+  (exit 0, correct `mean_volume`), and PyAV opens such files too, so a
+  chunk that's valid-but-short reaches whisper and silently transcribes
+  only the part that survived. The obvious guard — reuse
+  `probe_duration()` on the extracted file and compare against the
+  requested `duration` — was considered during WO-25 and deliberately not
+  built, because two *legitimate* cases produce a short chunk:
+  `extract_chunk_audio()`'s fast input-side `-ss` seek makes real HLS
+  chunk durations differ from the requested value (the same behavior
+  behind the seam-dedup logic in `worker/main.py` /
+  `tests/test_worker_segment_utils.py`), and the final chunk of a job is
+  legitimately short. A tolerance loose enough to accommodate both may
+  not be tight enough to catch a meaningful truncation — worth measuring
+  real per-chunk `probe_duration()` deltas across a few live HLS and
+  direct-file jobs *before* picking one, rather than guessing a number.
+  Not observed in production yet; logged as a real, measured gap.
 
 - ~~**[JUST-DO-IT] Jurisdiction-bleed, confirmed cross-platform (Granicus
   AND eScribe)**~~ **Fixed 2026-08-17 — Canadian city/town data table
@@ -898,49 +964,46 @@ anything) to build against it.
 
 - **[JUST-DO-IT] Bare/state-suffixed jurisdiction duplicates: root cause
   fixed and 12 of 16 examples resolved 2026-08-21 (see BACKLOG_DONE.md's
-  matching entry for the full investigation) — two residuals still
-  open, and a NEW real bug found 2026-08-21 running the GET audit that
-  BLOCKS just running the backfill as originally planned.** (1)
-  **Backfill audit run against production 2026-08-21 — found far more
-  candidates than expected, some of them genuinely wrong, so the write
-  step (`POST .../backfill-apply?dry_run=false`) was deliberately NOT
-  run.** `GET /internal/jurisdiction/bleed-backfill-candidates` returned
-  635 candidates (not the ~13 expected), of which 552 are confidence-field-
-  only changes (identical jurisdiction text, `current_confidence: None`
-  → a real confidence value — likely harmless, a one-time backfill of a
-  field that didn't exist yet when those rows were first written) and 83
-  are real jurisdiction-text changes. Of those 83, 68 are simple, clearly-
-  safe state-suffix appends (e.g. "Dublin" → "Dublin, CA", "Airdrie" →
-  "Airdrie, AB") — but the remaining 15 include **at least two confirmed-
-  wrong repairs that would corrupt already-correct live pages**: `page_id
-  250` ("Alameda County, CA" → **"Bart, CA"** — a BART board-of-directors
-  meeting; "Bart" is coincidentally a real tiny Census place name
-  unrelated to this meeting, an acronym/place-name collision, not a
-  repair) and `page_id 1108` ("Modesto, CA" → **"Agenda, CA"** — "Agenda"
-  is a real small Kansas town name that happens to collide with the
-  literal word "agenda" appearing somewhere in the source text). Also
-  suspect in the same 15, not yet independently confirmed either way:
-  `page_id 279` ("City of New Port Richey, FL" → "Clearwater, FL" — two
-  distinct real FL cities, looks like a wrong reassignment, not a
-  repair), plus several consolidated-city-county cases that silently
-  drop the state suffix instead of adding one (`Jefferson County` →
-  `Louisville`, `Davidson County` → `Nashville`, `Louisville / Jefferson
-  County Metro` → `Louisville`) inconsistent with `Nashville-Davidson
-  County, TN` → `Nashville, TN` right above them getting a proper suffix.
-  **Real, newly-confirmed gap**: `finalize_jurisdiction()`'s repair path
-  validates a candidate purely against the Census/StatsCan place table
-  with no guard against a short, common, or acronym-shaped string
-  coincidentally matching an unrelated real small place — this is a
-  distinct failure mode from anything the original jurisdiction-bleed
-  investigations found, and needs its own fix (something like: require a
-  minimum edit-distance/containment relationship between the current and
-  candidate values, or exclude single common-English-word matches) before
-  this backfill can be safely applied in bulk. **Until that guard exists,
-  do NOT run `backfill-apply?dry_run=false` against the full candidate
-  set** — at most, the 68 confirmed-safe simple-suffix-append rows could
-  be applied individually/filtered, but the endpoint has no per-ID filter
-  today, so even that needs a small endpoint change first. (2) **3 of the
-  original 16 examples (Ashland, Milton, San Jose) still have no
+  matching entry for the full investigation) — the production backfill
+  itself is still unrun, plus two residuals below.** (1) **Backfill audit
+  run against production 2026-08-21 — the write step
+  (`POST .../backfill-apply?dry_run=false`) was deliberately NOT run,
+  because the candidate set wasn't uniformly safe.** `GET /internal/
+  jurisdiction/bleed-backfill-candidates` returned 635 candidates (not
+  the ~13 expected), but **635 is NOT the write blast radius — 83 is**:
+  the GET audit reports a row whose string *or* confidence tier would
+  change, while `apply_jurisdiction_bleed_backfill()` skips any row whose
+  string is unchanged (`archive/db/crud.py`, the `if result.jurisdiction
+  == jurisdiction: continue` guard), so the 552 confidence-only diffs
+  (identical jurisdiction text, `current_confidence: None` → a real
+  confidence value, a field that didn't exist yet when those rows were
+  written) are never written by this endpoint at all. Of the 83 real
+  text changes, 68 are simple, clearly-safe state-suffix appends (e.g.
+  "Dublin" → "Dublin, CA", "Airdrie" → "Airdrie, AB") — the remaining 15
+  are what held the run back, including two confirmed-wrong repairs
+  (`page_id 250` "Alameda County, CA" → "Bart, CA"; `page_id 1108`
+  "Modesto, CA" → "Agenda, CA"). **Both of those are fixed in code as of
+  2026-08-21 (WO-22 — state-consistency guard + generic-subdomain
+  stoplist, see BACKLOG_DONE.md), and `backfill-apply` now takes
+  `only_ids`/`exclude_ids` so a verified subset can be applied on its
+  own.** Two things still to do here, in order: **(a)** re-run the GET
+  audit after WO-22 deploys and re-check what's left of those 15 —
+  specifically the consolidated-city-county cases that silently drop the
+  state suffix instead of adding one (`Jefferson County` → `Louisville`,
+  `Davidson County` → `Nashville`, `Louisville / Jefferson County Metro`
+  → `Louisville`), inconsistent with `Nashville-Davidson County, TN` →
+  `Nashville, TN` right above them getting a proper suffix; those were
+  never diagnosed and WO-22 did not address them. **(b)** then actually
+  run the write step, `only_ids`-filtered to the rows confirmed safe.
+  (`page_id 279`, "City of New Port Richey, FL" → "Clearwater, FL", was
+  the third suspect and is now **confirmed CORRECT, not a wrong
+  reassignment** — verified live: the page is City of Clearwater FL's own
+  Council Work Session on `clearwater.granicus.com` clip 5244, and "New
+  Port Richey" appears on it exactly once, inside agenda item 4.1, an
+  interlocal gas-franchise agreement with that city. Same shape as the
+  Peel Region/Caledon case. It's a repair to apply, not one to hold
+  back.) (2) **3 of the original 16 examples (Ashland, Milton, San Jose)
+  still have no
   confirmed real state** — each was checked live (their real source page
   and, where relevant, its channel-root page) and none carries reliable
   state-identifying text; Ashland sits on a shared/generic TelVue player
@@ -3105,14 +3168,23 @@ that added this reorg, for which ones are new).
     confirmed in this file's own residual note only exists client-side.
     Doesn't change the real conclusion (still needs its own headless
     trigger idea), just corrects the "empty" description.
-  - **Video-only best-effort results are never archived** — the push
-    gate (`app/main.py`, `segments or agenda_items or agenda_link`)
-    predates the rebuild, but matters more now that the fallback finds
-    more videos: e.g. a Tarrant resolve on Render (yt-dlp blocked → no
-    segments; no agenda `<a>` on the page) produces a real video no
-    permanent page will record. Deliberately not widened — the gate's
-    junk-page rationale stands — but worth revisiting if pointer/video-
-    only pages turn out to be worth archiving.
+  - ~~**Video-only best-effort results are never archived**~~ **Stale —
+    corrected 2026-08-21 (WO-21).** This entry claimed the push gate was
+    `segments or agenda_items or agenda_link` and had been "deliberately
+    not widened." Both halves were out of date: PR #204 (commit
+    `7975288`, 2026-08-19, "Fix Archive-push gate to include video_url")
+    widened it, and `app/main.py:686` reads
+    `if result.segments or result.agenda_items or result.agenda_link or
+    result.video_url:` today. The original example — a Tarrant resolve on
+    Render where yt-dlp is blocked (no segments) and the page has no
+    agenda `<a>` — now produces a page that *is* archived on the strength
+    of its video alone. Left here rather than deleted because this exact
+    entry is a confirmed instance of the doc-drift the "App-wide audit"
+    entry flags, and because the widened gate is the direct upstream
+    cause of the trust gap WO-21 then had to close: more best-effort
+    results reaching the Archive is precisely what made an unverified
+    page's exposure (public page, sitemap, and as of PR #266 an automatic
+    social announcement) worth gating on provenance.
   - **Backstop expansion candidates**: `scan_page_for_video_evidence()`
     is wired into eScribe only. Each further adapter opt-in needs its
     own real no-video example plus a wrong-video risk check (Cablecast's
