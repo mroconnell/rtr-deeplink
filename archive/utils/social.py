@@ -106,23 +106,44 @@ def payload_is_high_quality(payload: dict) -> bool:
     return True
 
 
+# If truncating the title (with the footer kept) would leave less than
+# this much of it, drop the footer first instead -- "Pla…" mid-sentence
+# reads worse than losing the jurisdiction/date line.
+_MIN_TRUNCATED_TITLE = 20
+
+
 def compose_post(
     title, jurisdiction, date, url: str, limit: int = _POST_CHAR_LIMIT
 ) -> str:
     """One post text valid for every enabled network (<= 300 chars, the
-    strictest limit -- see _POST_CHAR_LIMIT). The permalink always
-    survives whole; the headline (jurisdiction/title/date) is what gets
-    truncated if something absurdly long comes through."""
-    headline_parts = [p.strip() for p in (jurisdiction, title) if p and p.strip()]
-    headline = " — ".join(headline_parts) or "A public meeting"
-    if date:
-        headline = f"{headline} ({date})"
+    strictest limit -- see _POST_CHAR_LIMIT). Wording is Ryan's
+    (2026-08-21). The sentence and the permalink always survive whole;
+    when the total runs over the limit (the sentence's ~106 fixed chars +
+    a full-length slug URL leave a real but finite title budget), the
+    ladder is: truncate the title with an ellipsis, and if that would
+    gut the title below _MIN_TRUNCATED_TITLE chars, drop the
+    jurisdiction/date footer line instead and give the title the larger
+    budget."""
+    name = (title or "").strip() or "a public meeting"
+    footer_parts = [p.strip() for p in (jurisdiction, date) if p and p.strip()]
+    footer = "\n\n" + " — ".join(footer_parts) if footer_parts else ""
 
-    tail = f"\n\nFull video + searchable transcript:\n{url}"
-    budget = limit - len(tail)
-    if len(headline) > budget:
-        headline = headline[: budget - 1].rstrip() + "…"
-    return headline + tail
+    def build(n: str, f: str) -> str:
+        return (
+            f"Somebody looked up {n} — you can now search a transcript of "
+            f"that meeting and link to specific timestamps at {url}{f}"
+        )
+
+    text = build(name, footer)
+    if len(text) <= limit:
+        return text
+
+    budget = limit - len(build("", footer)) - 1  # -1 for the ellipsis
+    if budget < _MIN_TRUNCATED_TITLE:
+        footer = ""
+        budget = limit - len(build("", "")) - 1
+    truncated = name[: max(budget, 1)].rstrip() + "…"
+    return build(truncated, footer)
 
 
 async def _post_to_bluesky(text: str, link_url: str) -> str:

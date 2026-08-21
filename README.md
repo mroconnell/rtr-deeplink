@@ -1040,9 +1040,14 @@ announced — see `BACKLOG.md`.
    posts link to `{PUBLIC_BASE_URL}/m/{slug}`.
 
 Either network can be enabled alone; each posts and dedups
-independently. Post text is composed once, capped at 300 characters
-(Bluesky's limit, the stricter of the two), with the permalink always
-kept intact and a proper Bluesky link facet so the URL is clickable.
+independently. Post text is composed once ("Somebody looked up
+{title} — you can now search a transcript of that meeting and link to
+specific timestamps at {url}", plus a "{jurisdiction} — {date}" footer
+line), capped at 300 characters (Bluesky's limit, the stricter of the
+two). The sentence and permalink always survive whole — an over-long
+title is truncated with an ellipsis, and the footer is dropped before
+the title would be gutted. A proper Bluesky link facet makes the URL
+clickable.
 
 > **Not yet live-verified**: both clients are written against the
 > documented public APIs but had no real account/credentials at build

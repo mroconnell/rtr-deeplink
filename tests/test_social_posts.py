@@ -92,31 +92,54 @@ def test_undetected_language_still_passes():
 # --- composition --------------------------------------------------------
 
 
-def test_compose_post_includes_headline_and_url():
+def test_compose_post_full_sentence_and_footer():
+    url = "https://redtaperecordings.com/m/dublin-ca-2026-08-01"
     text = social.compose_post(
-        "City Council Regular Meeting",
-        "City of Dublin, CA",
-        "2026-08-01",
-        "https://redtaperecordings.com/m/dublin-ca-2026-08-01",
+        "City Council Regular Meeting", "City of Dublin, CA", "2026-08-01", url
     )
-    assert "City of Dublin, CA — City Council Regular Meeting (2026-08-01)" in text
-    assert text.endswith("https://redtaperecordings.com/m/dublin-ca-2026-08-01")
+    assert text.startswith("Somebody looked up City Council Regular Meeting — ")
+    assert f"link to specific timestamps at {url}" in text
+    assert text.endswith("\n\nCity of Dublin, CA — 2026-08-01")
     assert len(text) <= 300
 
 
-def test_compose_post_truncates_long_headline_never_url():
+def test_compose_post_truncates_long_title_keeps_url_and_footer():
     url = "https://redtaperecordings.com/m/some-city-2026-08-01"
-    text = social.compose_post("An Absurdly Long Meeting Title " * 20, None, None, url)
+    text = social.compose_post(
+        "An Absurdly Long Meeting Title " * 20, "City of Test, CA", "2026-08-01", url
+    )
     assert len(text) <= 300
-    assert text.endswith(url)  # the permalink always survives whole
+    assert url in text  # the permalink always survives whole
     assert "…" in text
+    # A short footer fits within the ladder's first rung, so it survives.
+    assert text.endswith("\n\nCity of Test, CA — 2026-08-01")
+
+
+def test_compose_post_drops_footer_before_gutting_title():
+    # A worst-case slug (this repo caps slugs well under this, but the
+    # composition shouldn't depend on that) plus a long jurisdiction:
+    # keeping the footer would leave the title under _MIN_TRUNCATED_TITLE
+    # chars, so the footer goes first and the title keeps the larger
+    # budget.
+    url = "https://redtaperecordings.com/m/" + "x" * 140
+    jurisdiction = "Housing Authority of the County of Santa Clara, CA"
+    text = social.compose_post(
+        "Planning Commission Special Meeting and Joint Study Session",
+        jurisdiction,
+        "2026-08-19",
+        url,
+    )
+    assert len(text) <= 300
+    assert url in text
+    assert jurisdiction not in text  # footer dropped, not the title's core
+    assert "Planning Commission" in text
 
 
 def test_compose_post_handles_all_blank_metadata():
     url = "https://redtaperecordings.com/m/x"
     text = social.compose_post(None, None, None, url)
-    assert text.endswith(url)
-    assert "A public meeting" in text
+    assert text.startswith("Somebody looked up a public meeting — ")
+    assert text.endswith(url)  # no footer when there's nothing to put in it
 
 
 # --- ingest plumbing + end-to-end announce ------------------------------
