@@ -6,6 +6,116 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Granicus adapter doesn't recognize `MediaPlayer.php?event_id=...` URLs [Fixed 2026-08-21]
+
+Root cause turned out to be more interesting than "an unrecognized URL
+shape" — it's a **genuinely different, non-interchangeable id namespace**,
+and the real pages behind it genuinely have no video, not merely one this
+scanner failed to find.
+
+**Live investigation** (all 4 required cities fetched directly, both via
+plain HTTP `curl` with redirects followed and, for Calabasas, a real
+rendered-browser check via `mcp__Claude_Browser__*` per this repo's own
+convention):
+- `https://calabasas.granicus.com/MediaPlayer.php?event_id=1525` →
+  302-redirects to `/player/event/1525?redirect=true`.
+- `https://elkgrove.granicus.com/MediaPlayer.php?event_id=2583` — same
+  shape.
+- `https://emeryville.granicus.com/MediaPlayer.php?event_id=1108` — same
+  shape. **Correction to the original BACKLOG.md entry**: the real
+  Granicus subdomain is `emeryville.granicus.com`, not
+  `emeryvilleca.granicus.com` (the PrimeGov tenant name) — that subdomain
+  404s (`/core/error/NotFound.aspx`), confirmed live.
+- `https://nassaufl.granicus.com/MediaPlayer.php?event_id=2741` — same
+  shape; real Granicus subdomain is `nassaufl.granicus.com`, not
+  `nassaucountyfl.granicus.com` (again, the PrimeGov tenant name).
+
+Every one of these 4 pages, fetched fully (including the browser-rendered
+check on Calabasas, which confirmed real network requests — no hidden
+AJAX call to check live status, no video-player JS library loaded at
+all): zero `.m3u8`/`.mp4`/video-element references anywhere, an inline
+`<script>video_url=""</script>` left empty, and a real, static,
+server-rendered `<div id="player-error"><span>The event you selected is
+not currently in progress.</span></div>` — the *only* content in the
+page's video section.
+
+**Why**: cross-checked against PrimeGov's own
+`GetArchivedMeetingYears`/`ListArchivedMeetings` API for all 4 tenants
+(15 total real `event_id` examples found across them, not just the 4
+required ones) — every single `event_id`-shaped `videoUrl` corresponds to
+a meeting with `streamCompleted: false` and
+`mediaManagerClipPubliclyAvailable: false`, while every `clip_id`-shaped
+one has both `true`. `event_id` is Granicus's identifier for a
+*scheduled* meeting/live-stream slot, assigned from a completely separate
+number space from `clip_id` (the archived-recording identifier) on the
+same tenant — e.g. Calabasas `event_id=1525` vs. real `clip_id`s in the
+7000s-8000s range for the same city, confirmed via that tenant's own
+`ViewPublisher.php` archive listing. So `MediaPlayer.php?event_id=...`
+genuinely means "this meeting hasn't been streamed live yet, or was
+streamed but never got archived into a public clip" — not a shape gap in
+this app's own scanner.
+
+**What was built** (`app/platforms/granicus.py`): added
+`_extract_event_id()` as a fully separate extraction path from
+`_extract_clip_id()` — deliberately never merged or conflated, since
+treating an `event_id` as a `clip_id` would risk either a wasted request
+or a coincidental collision with a real, unrelated clip on the same
+tenant (silently showing the wrong meeting's video). Added
+`_extract_live_status_message()`, which reads the real
+`#player-error` text directly off the page when present. In `resolve()`:
+when there's no `clip_id`, `event_id` is looked up and used only for a
+distinctly-namespaced `external_id` (`granicus:{netloc}:event:{id}`, an
+"event:" infix that can never collide with a real
+`granicus:{netloc}:{clip_id}` id, which is always a bare number); the
+"no playable video found" warning now prefers Granicus's own real,
+specific status message when the page has one, over the previous generic
+message (which implied a video existed somewhere this app merely failed
+to find — inaccurate for this case). Every `clip_id`-dependent path
+(video-URL guess, `AgendaViewer.php`, `MinutesViewer.php`, the
+`/videos/{id}/player` fallback) correctly stays skipped, since none of
+that data exists yet either — confirmed via the regression test below,
+whose mock strictly errors on any unmocked request the code might
+(wrongly) make.
+
+**Verified live** (direct `GranicusAssetFinder().resolve()` calls, not
+just page fetches) against all 4 required cities: each now returns a real
+title and jurisdiction pulled from the page (e.g. Calabasas: "City
+Council Regular Meeting", "City of Calabasas, CA"), a correctly-namespaced
+`external_id`, `video_url=None`, and the single accurate warning "The
+event you selected is not currently in progress." — instead of the prior
+silent near-total failure. Also re-verified a real `clip_id` URL on the
+same tenant (`calabasas.granicus.com/MediaPlayer.php?clip_id=8117`) still
+resolves a working `.m3u8` with zero warnings, confirming the 3
+already-supported shapes didn't regress.
+
+**Tests added** (`tests/test_granicus.py`, real fixture
+`tests/fixtures/granicus/calabasas_event1525.html` captured live
+2026-08-21): `test_resolve_event_id_meeting_reports_honest_no_video_status`
+(full `resolve()` against the real Calabasas fixture),
+`test_extract_event_id_handles_query_and_path_shapes` (all 4 real
+confirmed URLs, both query and post-redirect path forms), and
+`test_extract_clip_id_never_matches_event_id_shape` (guards the
+never-conflate invariant). Full suite: 1083 passed, 15 skipped (up from
+1080 passed pre-fix; no regressions).
+
+**Residual gap, not addressed by this fix**: when PrimeGov delegates one
+of these `event_id` URLs to `GranicusAssetFinder` (see
+`app/platforms/primegov.py`'s `_resolve_via_tenant_video_url`),
+PrimeGov's own API record already has the real meeting date and a
+possibly-better title (e.g. "City Council Regular Meeting - Closed
+Session (Amended Agenda)" for Calabasas `event_id=1525`, dated Jan 28,
+2026) that `GranicusAssetFinder` has no way to see from the Granicus page
+alone (no date-shaped text anywhere on it). `GranicusAssetFinder`'s
+result is honest but incomplete for this case; PrimeGov's own
+`resolve_via_platform` delegation deliberately doesn't override
+title/date from a successfully-resolved Granicus/Swagit page (see that
+method's comment) since that's normally the *better* source — true for
+`clip_id` pages, not for this `event_id` case. Left open rather than
+guessed at in this pass, since fixing it well means PrimeGov threading
+its own already-fetched meeting record's date/title through to the
+delegated resolve specifically for this one sub-case, which is its own
+scoped follow-up.
+
 ## Aurora, CO `aurora_tv` canary failure (2026-08-18) confirmed a one-off transient blip, not a persisting regression [Done 2026-08-21]
 
 Promoted from `CLAUDE_INBOX_TRIAGE.md`'s 2026-08-19 run, which flagged

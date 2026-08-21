@@ -246,39 +246,17 @@ and decline the bogus placeholder specifically, the way the Granicus
 36,000-cue-truncation warning below flags a different known-bad output
 rather than presenting it as complete.
 
-## [JUST-DO-IT] Granicus adapter doesn't recognize `MediaPlayer.php?event_id=...` URLs
+## ~~[JUST-DO-IT] Granicus adapter doesn't recognize `MediaPlayer.php?event_id=...` URLs~~ **Fixed 2026-08-21** — see `BACKLOG_DONE.md`
 
-Found 2026-08-19 while fixing PrimeGov's Swagit/Granicus video-delegation
-gap (see `BACKLOG_DONE.md`'s "PrimeGov never detected a real video hosted
-on Swagit/Granicus instead of YouTube" entry for the full context) — that
-fix correctly discovers and passes real Granicus URLs through for 4
-PrimeGov tenants (`calabasas`, `elkgrove`, `emeryvilleca`,
-`nassaucountyfl`), but `GranicusAssetFinder` still fails to resolve them,
-confirmed independently of PrimeGov by calling
-`GranicusAssetFinder().resolve()` directly against the same URLs.
-
-Root cause: `_extract_clip_id()` (`app/platforms/granicus.py`) only
-recognizes three URL shapes — path-based `/player/clip/{id}`, path-based
-`/videos/{id}/`, and query-based `?clip_id={id}` (`MediaPlayer.php`). A
-real fourth shape exists: `MediaPlayer.php?event_id={id}`, confirmed live
-on all 4 cities above (e.g. `https://calabasas.granicus.com/MediaPlayer.
-php?event_id=1525`, which 302-redirects to `/player/event/1525?
-redirect=true` — a page `_extract_clip_id()` doesn't match at all, so
-`clip_id` comes back `None` and every clip_id-dependent step downstream
-(video URL guess, agenda items, minutes-date fallback) is skipped
-entirely). `scan_media_urls()`'s generic regex scan also finds nothing on
-the `/player/event/{id}` page itself in the one sample fetched so far
-(calabasas) — unconfirmed whether that's true of all 4, or just that one.
-
-Not fixed alongside the PrimeGov change per this project's own "test
-against a real URL before building an adapter" rule (`CLAUDE.md`) — this
-needs its own live-testing pass across the 4 confirmed `event_id` cities
-(and ideally more, per the same rule's "several from different cities"
-guidance) to understand whether `/player/event/{id}` has a scannable
-video URL at all, or needs a different discovery mechanism (e.g. a
-dedicated fetch of the `/player/event/{id}` page, mirroring
-`_fetch_video_from_player_page()`'s existing `/videos/{id}/player`
-fallback for the Flash-embed case).
+Full writeup, root cause (the pages genuinely have no video yet —
+`event_id` is a separate, non-interchangeable Granicus id namespace from
+`clip_id`, confirmed via PrimeGov's own API showing
+`streamCompleted: false` on every real example), the 4 verified cities
+(with 2 real subdomain-name corrections: `emeryville.granicus.com` and
+`nassaufl.granicus.com`, not the PrimeGov tenant names), and the one
+residual gap left open (PrimeGov's own better date/title not threaded
+through for this specific sub-case) are all in `BACKLOG_DONE.md`'s
+matching entry.
 
 ## [JUST-DO-IT] Running a service from a `.claude/worktrees/` subdirectory silently inherits the shared checkout's `.env`
 
