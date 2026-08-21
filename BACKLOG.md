@@ -3829,12 +3829,22 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   worker-daily-report.yml`, a plain `curl` ping — same "GitHub Actions
   never touches Resend credentials directly" pattern
   `/admin/send-search-alerts` already established, not a new script with
-  its own copy of `RESEND_API_KEY`. **Not yet live-verified against a
-  real Resend send** (unit-tested against a mocked
-  `email_utils.send_worker_daily_report`, real DB) — worth confirming
-  the first real scheduled send actually lands before assuming this is
-  fully working end to end, same "don't claim a path works without a
-  positive example" convention as everywhere else in this file.
+  its own copy of `RESEND_API_KEY`.
+
+  **First real manual trigger (same day) found a real bug the test suite
+  couldn't catch**: `crud.get_transcription_queue_summary()`'s
+  `segments_added_last_24h` query used `jsonb_array_length()`, but
+  `TranscriptVersion.segments` is a plain SQLAlchemy `JSON` column
+  (Postgres `json`, not `jsonb`) — a real 500 in production,
+  `UndefinedFunctionError: function jsonb_array_length(json) does not
+  exist`. Fixed to `json_array_length()`. This specific branch is
+  Postgres-only and dialect-gated to `None` on SQLite by design, so
+  nothing in `tests/test_worker_daily_report.py` (SQLite fixture DB)
+  could have caught it — the mistake only surfaced by actually curling
+  the route against real production, confirming this file's own "verify
+  against a real case, don't guess" convention applies to reporting
+  endpoints too, not just adapters. Re-verifying live against production
+  after this fix, not just trusting the corrected SQL by inspection.
 
 - **Second transcription worker added for backlog catch-up, 2026-08-21 —
   residual auto-gen TOCTOU gap now recorded, not fixed at the DB layer.**
