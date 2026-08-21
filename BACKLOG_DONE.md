@@ -6,6 +6,119 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## `best_effort` reaches the Archive: unverified pages stop auto-posting to social, and get a review queue (WO-21) [Done 2026-08-21]
+
+**The gap, verified in real code before anything was written, not
+assumed.** `ResolvedMeeting.best_effort` (`app/platforms/models.py:96`)
+is set to `True` by `app/platforms/generic_fallback.py` on every result
+that adapter produces — its own comment at ~385-388 spells out why it
+exists rather than reusing a platform check: on the YouTube-delegated
+path `platform` becomes `"youtube"`, not `"unknown"`, and *that is the
+most common real outcome*, so `platform == "unknown"` alone silently
+misses most of the fallback's output.
+
+The resolver has always **sent** the field — `app/main.py` pushes
+`result.model_dump()`, and `best_effort` is a real field on
+`ResolvedMeeting`. It just never **arrived**: `archive/main.py`'s
+`IngestRequest` had no matching field, so Pydantic dropped it at the
+`/internal/ingest` boundary, and `MeetingPage` had no column.
+`grep -rn "best_effort" archive/` returned zero hits.
+
+**The specific thing that made this urgent rather than tidy**: PR #266
+(merged earlier the same day) auto-posts brand-new Archive pages to
+Bluesky/Mastodon. Its `payload_is_high_quality()` gated on video +
+segment count + warnings + language — every axis of *transcript
+quality*, and nothing at all about *provenance*. Those are orthogonal
+questions, and a generic_fallback scrape of an arbitrary URL can score
+full marks on all of them: real video, thousands of clean English
+segments, zero warnings, nothing whatsoever having verified the page is a
+genuine government meeting. That got announced from the project's own
+public accounts automatically. `BACKLOG.md`'s "Trust & safety" section
+threat-models exactly this risk and predates the social pipeline
+entirely, which is how the gap arrived unnoticed. Upstream contributor:
+PR #204 (2026-08-19) widened the Archive push gate to include
+`video_url`, so materially more best-effort results reach the Archive
+than when that section was written.
+
+**A question answered from the code rather than guessed at, since it
+decided how much work this was**: does `best_effort` survive to where
+`social.py` can see it? No. `/internal/ingest` builds
+`payload = req.model_dump(exclude={"input_url_normalized"})` and passes
+*that* to `announce_new_page()` — the parsed model, not the raw request
+body. A one-line `payload.get("best_effort")` gate would have read
+`None` forever. The `IngestRequest` field was a prerequisite, not an
+optional extra. (It's still true that the social fix needs only the
+Pydantic field and not the column — worth knowing, since it means the
+amplification stopped the moment this deployed, independent of the
+migration.)
+
+**Built:**
+
+- `IngestRequest.best_effort: bool = False` (and the same on
+  `ResolvedMeetingIn`, which also reaches `_find_or_create_page()` via
+  `create_transcription_job()` — a "Request Transcript from Audio" on a
+  fallback-resolved URL can create a page too, and those are exactly the
+  pages that would otherwise be created unflagged).
+- `social.payload_is_high_quality()` refuses `best_effort` **or**
+  `platform == "unknown"`. Both halves, deliberately: the platform check
+  alone misses the delegated case, and the flag alone misses any
+  pre-existing path that registers as "unknown".
+- `MeetingPage.best_effort` + Alembic revision `d4e5f6a7b8c9`
+  (`add_best_effort_to_meeting_pages`). A plain `nullable=False` column
+  with a constant `server_default` — catalog-only on Postgres 11+, no
+  table rewrite, so it's safe under the unattended `preDeployCommand`
+  unlike the `search_tsv` add that held an ACCESS EXCLUSIVE lock ~30s.
+- **Either-deploy-order safety, per CLAUDE.md's rule and the 2026-08-17
+  `UndefinedColumnError` outage behind it**, via three choices that only
+  work together: `crud._best_effort_available()` feature-detects the
+  column (same caching/TTL shape as `_fts_available()`, inverted on the
+  SQLite branch — SQLite always has it from `create_all()`, only
+  Postgres can lag); no Python-side `default=` on the mapping, so an
+  unset attribute is omitted from the INSERT entirely; and
+  `deferred=True`, so no plain `select(MeetingPage)` — the `/m/{slug}`
+  render, `list_pages()`, the sitemap, the hubs — ever names the column.
+  Verified with a test that forces the feature-detect False and asserts
+  both ingest and the audit still work (flagged synthetic in the test
+  itself: SQLite can't genuinely lack the column).
+- `GET /internal/low-trust-pages` — token-gated, read-only, paginated,
+  modelled on `GET /internal/jurisdiction/bleed-backfill-candidates`.
+  Returns `platform == "unknown" OR best_effort OR
+  jurisdiction_confidence IN ('unverified','blank')`, with a `reasons`
+  list per row so it's obvious which condition caught it, and a
+  `best_effort_column_available` flag so "no best_effort pages" is
+  distinguishable from "the migration hasn't run".
+- Write semantics: a re-ingest can **set** the flag, never clear it —
+  every transcript-only pusher sends a partial payload where the field
+  defaults to `False`, and for a trust signal the safe direction is
+  still-flagged. Same truthy-gated shape `agenda_items`/`video_warnings`
+  already use, for the same reason. Residual logged.
+
+**Explicitly not done, by the user's own product decision**: the
+`noindex` condition, the sitemap filter (`crud.list_all_page_slugs()`)
+and the `/j/*` hub filter (`crud._hub_base_conditions()`) were left
+exactly as they were. Stop the amplification and build the audit queue,
+but keep current pages indexed — most `best_effort` pages are legitimate
+small cities that just happened to resolve via the fallback, and removing
+them from Google would cost real reach. Recorded in `BACKLOG.md` too, so
+a later session doesn't "helpfully" widen it.
+
+**Also corrected in the same pass**: `BACKLOG.md`'s "Video-only
+best-effort results are never archived" residual, which claimed the push
+gate was `segments or agenda_items or agenda_link` and had been
+"deliberately not widened". Stale since PR #204 (commit `7975288`,
+2026-08-19) — `app/main.py:686` includes `or result.video_url` today.
+
+**Tests**: 6 new provenance-gate tests in `tests/test_social_posts.py`
+(including the flawless-except-provenance YouTube-delegated payload, and
+one asserting `IngestRequest.model_dump()` actually preserves the field —
+the exact regression this started from), plus
+`tests/test_low_trust_pages.py` (11 tests: auth, each of the three
+reasons in isolation, the sticky-flag re-ingest case, a clean page
+correctly absent, pagination/clamping, and the pre-migration branch).
+Full suite green: 1168 passed, 15 skipped. `alembic upgrade head` +
+`alembic check` verified clean against a fresh migration-built SQLite,
+and `downgrade -1` + re-upgrade verified too.
+
 ## Social auto-posting (Bluesky/Mastodon) built, and Bluesky live-verified with a real first post [Done 2026-08-21]
 
 User request 2026-08-21 ("auto publish posts whenever we resolve a high

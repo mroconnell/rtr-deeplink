@@ -535,6 +535,29 @@ so it isn't reachable at the public custom domain. Example:
 curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" "$ARCHIVE_BASE_URL/internal/schema-info"
 ```
 
+**Auditing what the pipeline published unverified**: `GET
+/internal/low-trust-pages` (token-gated the same way, and reachable only
+at the Archive service's own base URL for the same reason as above)
+lists every archived page whose provenance was never actually confirmed
+— `platform == "unknown"` (the name `generic_fallback.py` registers
+under), `best_effort` (the resolver's own flag for that path, which also
+covers the fallback results that delegate to YouTube and therefore
+report `platform = "youtube"`), or a `jurisdiction_confidence` of
+`unverified`/`blank`. Each row carries a `reasons` list saying which of
+the three caught it, plus slug, title, platform, jurisdiction, source
+URL and creation date; `?limit=`/`?offset=` paginate and `total` is the
+full match count. Exists because the resolve → Archive → public page →
+social announcement path is fully automatic end to end, with nothing
+that could otherwise answer "what has this published that nobody
+looked at?" It's read-only and changes nothing: these pages stay live,
+indexed, and in the sitemap by design (see `BACKLOG.md`) — the
+`best_effort` flag's one enforcement effect is that social auto-posting
+refuses to announce them.
+
+```bash
+curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" "$ARCHIVE_BASE_URL/internal/low-trust-pages?limit=50"
+```
+
 **Redirect hits are logged too** — `status="archive_redirect"` — so
 `/admin/stats`' totals don't develop a blind spot as more traffic migrates
 to Archive-redirects over time; `classify_outcome()` in `app/db/outcomes.py`
@@ -1166,6 +1189,21 @@ because a technically-successful caption stub isn't worth a public post.
 Agenda-only pages, garbled transcripts (e.g. the Fountain Valley case),
 and non-English detections never post.
 
+**Provenance is a separate bar, and it's absolute**: nothing that came
+out of `generic_fallback.py`'s scan-any-page path is ever announced —
+`best_effort`, or `platform == "unknown"` — however good its transcript
+looks. Everything else on the list above asks "is this content good?",
+which is a different question from "do we actually know what this is?",
+and a fallback resolve can score perfectly on all of it while nothing has
+verified the scraped page is a genuine government meeting. Both checks
+are needed, not one: the fallback delegates to YouTube whenever it finds
+an embed, and those results carry `platform = "youtube"`, so a
+platform-only check misses the most common real case (see
+`ResolvedMeeting.best_effort`). Added 2026-08-21 — the pipeline shipped
+without it, see `BACKLOG_DONE.md`. Note this deliberately does *not*
+extend to `noindex`/sitemap/hub visibility: those pages stay indexed on
+purpose, see `BACKLOG.md`.
+
 **When it fires**: only when `/internal/ingest` *creates* the page.
 Re-ingests — the resolver's push-retry sweep, stale-page rechecks,
 `scripts/backfill_archived_pages.py`'s corpus-wide re-resolve — can never
@@ -1325,6 +1363,15 @@ here: `<link>`" lines instead of a declarative warning box, and a manual
 timestamp-entry box in place of the live playhead-tracking reader other
 platforms get (deep-link reliability isn't confirmed here, so there's no
 adapter-driven "current time" to honestly display).
+
+Since 2026-08-21 that flag also survives the push to the Archive
+(`meeting_pages.best_effort`), where it does two things: it disqualifies
+the page from social auto-posting entirely, and it lists the page in
+`GET /internal/low-trust-pages` for review. It deliberately does *not*
+affect indexing, the sitemap, or hub listings — see `BACKLOG.md`. Note
+the flag, not `platform`, is the signal to check anywhere this matters:
+a fallback resolve that delegates to `YouTubeAssetFinder` reports
+`platform = "youtube"`, and that's the most common real case.
 
 **Not implemented**: BoardDocs (deliberately excluded — it's a
 document/agenda platform with no reliable video, not worth an adapter).
