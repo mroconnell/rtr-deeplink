@@ -5,13 +5,29 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 from urllib.parse import urlparse
 
-from sqlalchemy import Text, and_, cast, func, or_, select
+from sqlalchemy import (
+    Text,
+    and_,
+    cast,
+    exists,
+    false,
+    func,
+    literal_column,
+    or_,
+    select,
+    text,
+)
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import aliased
 
 from app.utils.jurisdiction_enrich import finalize_jurisdiction
 
+from ..utils.date_status import meeting_date_status
 from ..utils.jurisdiction_format import (
     US_STATE_ABBR_TO_NAME,
+    format_jurisdiction_display,
+    is_canadian_abbr,
+    jurisdiction_hub_slug,
     jurisdiction_search_terms,
     normalize_state_suffix,
     state_abbr_from_jurisdiction,
@@ -19,6 +35,8 @@ from ..utils.jurisdiction_format import (
 )
 from ..utils.language import detect_language_from_texts
 from ..utils.search import (
+    _fuzzy_threshold,
+    _levenshtein,
     compute_search_corpus,
     find_snippet,
     matches,
@@ -33,9 +51,11 @@ from .models import (
     MeetingPage,
     MeetingPageUrlAlias,
     SavedItem,
+    SearchVocabulary,
     SocialPost,
     TranscriptionJob,
     TranscriptVersion,
+    WorkerReportSnapshot,
 )
 
 
@@ -70,30 +90,68 @@ def _has_real_warning_free_transcript(warnings: Optional[list]) -> bool:
     )
 
 
+# sha256 of the empty string: what _content_hash() yields for a version
+# whose segments are [] or all-empty-text. Both paths that create a
+# TranscriptVersion (ingest_resolution(), report_chunk_result()) set
+# content_hash via _content_hash(), so "has real content" is decidable
+# from this indexed 64-char column without ever reading `segments` --
+# which matters: segments is the full transcript JSON (102MB across
+# prod's default versions, 2026-08-17), and reading it just to test
+# emptiness was what made _has_good_transcript()'s callers the #1
+# consumer of production DB time (see BACKLOG_DONE.md).
+_EMPTY_CONTENT_HASH = _content_hash([])
+
+
+def _good_default_transcript_exists():
+    """SQL `EXISTS` for "this MeetingPage has a real, non-garbled default
+    transcript" -- the same decision _has_good_transcript() makes, as a
+    correlated subquery usable in a WHERE clause, and touching only
+    is_default / content_hash / transcript_warnings, never `segments`.
+    transcript_warnings is a small JSON list; the two quality markers are
+    plain ASCII substrings so a text-cast LIKE is exact on both Postgres
+    (json::text is the stored text verbatim) and SQLite. NULL warnings
+    means "no warnings", i.e. good -- guarded explicitly, since
+    `NOT (NULL LIKE ...)` is NULL and would silently drop those rows."""
+    warnings_text = cast(TranscriptVersion.transcript_warnings, Text)
+    return exists().where(
+        TranscriptVersion.meeting_page_id == MeetingPage.id,
+        TranscriptVersion.is_default.is_(True),
+        TranscriptVersion.content_hash != _EMPTY_CONTENT_HASH,
+        or_(
+            TranscriptVersion.transcript_warnings.is_(None),
+            and_(
+                ~warnings_text.like(f"%{_GARBLED_MARKER}%"),
+                ~warnings_text.like(f"%{_HALLUCINATION_MARKER}%"),
+            ),
+        ),
+    )
+
+
 async def _has_good_transcript(session, meeting_page_id: int) -> bool:
     """True if this page's default TranscriptVersion has real, non-garbled
     content -- used to pick the Archive recheck cadence (see
     ARCHIVE_RECHECK_AFTER's has_transcript branch in app/main.py): a page
     missing a real transcript benefits from being rechecked often, since
     the government source's own captions may catch up at any time; a page
-    that already has a good one doesn't."""
-    version = (
-        (
-            await session.execute(
-                select(TranscriptVersion).where(
-                    and_(
-                        TranscriptVersion.meeting_page_id == meeting_page_id,
-                        TranscriptVersion.is_default.is_(True),
-                    )
+    that already has a good one doesn't. Reads only content_hash +
+    transcript_warnings -- see _EMPTY_CONTENT_HASH for why not segments;
+    keep this and _good_default_transcript_exists() making the same
+    decision."""
+    row = (
+        await session.execute(
+            select(
+                TranscriptVersion.content_hash, TranscriptVersion.transcript_warnings
+            ).where(
+                and_(
+                    TranscriptVersion.meeting_page_id == meeting_page_id,
+                    TranscriptVersion.is_default.is_(True),
                 )
             )
         )
-        .scalars()
-        .first()
-    )
-    if version is None or not version.segments:
+    ).first()
+    if row is None or row[0] == _EMPTY_CONTENT_HASH:
         return False
-    return _has_real_warning_free_transcript(version.transcript_warnings)
+    return _has_real_warning_free_transcript(row[1])
 
 
 async def lookup_page_for_url(url_normalized: str) -> Optional[dict]:
@@ -174,6 +232,30 @@ async def _find_existing_page(
             return page
 
     if external_id:
+        # NOTE: external_id is trusted as-is for this match -- it must
+        # already be globally unique across every real source it can come
+        # from, not just unique within one adapter's own output. A bare
+        # per-customer clip/event number on a multi-tenant platform (e.g.
+        # civicclerk.py's/granicus.py's own event/clip IDs, which restart
+        # near 1 for every separate customer) is NOT globally unique and
+        # must be host-namespaced by the adapter itself -- see those two
+        # files' own external_id comments for the real, confirmed-live
+        # 2026-08-18 incident this describes (multiple unrelated cities
+        # silently merged onto one row, each overwriting the other's
+        # title/date/jurisdiction, see BACKLOG.md).
+        #
+        # A netloc cross-check was tried here as a second line of defense
+        # and reverted: `source_url` is *deliberately* set to a different
+        # host than the real content for two legitimate existing cases --
+        # legistar.py's `fallback.source_url = url` keeps the original
+        # Legistar URL while platform/external_id point at the real
+        # Granicus host, and primegov.py's
+        # `YouTubeAssetFinder.resolve_video_id(video_id, source_url=url)`
+        # does the same for the original PrimeGov URL vs. youtube.com. A
+        # netloc check would have silently broken both of those intended
+        # cross-host merges into duplicate pages instead. Globally-unique
+        # external_id at the adapter level is the real fix; there's no
+        # cheap, generic way to also verify it here.
         page = (
             (
                 await session.execute(
@@ -408,6 +490,52 @@ def _default_looks_like_copied_agenda(
     return bool(seg_texts) and seg_texts == agenda_texts
 
 
+# Real incident, 2026-08-18: scripts/backfill_search_vocabulary.py passed
+# an entire 200-page batch's *union* of distinct words -- 62,000+ of them
+# -- to one call, which built one INSERT with one bound parameter per
+# word and hit PostgreSQL's hard 65535-bound-parameters-per-statement
+# protocol limit. A single ingest_resolution() call (one page's words,
+# a few hundred to a couple thousand) never came close, so this had never
+# been exercised before the backfill script's batch-sized calls existed.
+# Chunked here, in the shared helper, so every caller is protected, not
+# just the one that happened to trigger it -- 2000 is comfortably under
+# the hard limit with room for other statements on the same connection,
+# not tuned against any real measured ceiling.
+_VOCAB_UPSERT_CHUNK_SIZE = 2000
+
+
+async def _upsert_vocabulary_words(session, words: set) -> None:
+    """Inserts any of `words` not already in `search_vocabulary`, ignoring
+    duplicates -- many pages share common words, and the table is a
+    distinct, page-agnostic set (see SearchVocabulary's docstring for
+    why no page association is needed). Dialect-dispatched because
+    `ON CONFLICT DO NOTHING` needs the dialect-specific `insert()`
+    construct; runs on both SQLite and Postgres so the write path stays
+    dialect-agnostic and testable without a live Postgres, same
+    principle as search_corpus itself -- only the *query* side
+    (crud._vocab_available()) is Postgres-only.
+    """
+    # No real English word or plausible transcription token is anywhere
+    # near this long -- guards against a pathological run (a pasted URL,
+    # an ID string with no whitespace) exceeding the word column's
+    # String(255) and failing the whole ingest transaction on Postgres.
+    words = sorted({w for w in words if len(w) <= 255})
+    if not words:
+        return
+    if session.bind.dialect.name == "postgresql":
+        from sqlalchemy.dialects.postgresql import insert as dialect_insert
+    else:
+        from sqlalchemy.dialects.sqlite import insert as dialect_insert
+    for start in range(0, len(words), _VOCAB_UPSERT_CHUNK_SIZE):
+        chunk = words[start : start + _VOCAB_UPSERT_CHUNK_SIZE]
+        stmt = (
+            dialect_insert(SearchVocabulary)
+            .values([{"word": w} for w in chunk])
+            .on_conflict_do_nothing()
+        )
+        await session.execute(stmt)
+
+
 async def _refresh_search_corpus(session, page: MeetingPage) -> None:
     """Recompute `page.search_corpus` from the page's current metadata +
     every linked TranscriptVersion's segments (flushed, not necessarily
@@ -421,6 +549,11 @@ async def _refresh_search_corpus(session, page: MeetingPage) -> None:
     (where the corpus is the authoritative match, see list_pages()) that
     meeting's transcript text was silently unsearchable until something
     re-ingested the page.
+
+    Also upserts the corpus's distinct real words into `search_vocabulary`
+    (Search Step 2b) -- the same choke point that keeps search_corpus
+    itself in sync is the natural place to keep the vocabulary in sync
+    too, rather than duplicating this call at both real call sites.
     """
     all_segments = (
         (
@@ -436,6 +569,7 @@ async def _refresh_search_corpus(session, page: MeetingPage) -> None:
     page.search_corpus = compute_search_corpus(
         page.title, page.jurisdiction, page.agenda_items, all_segments
     )
+    await _upsert_vocabulary_words(session, tokenize(page.search_corpus))
 
 
 async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) -> dict:
@@ -827,6 +961,152 @@ async def list_transcription_backlog_candidates(
     return candidates
 
 
+async def get_transcription_queue_summary() -> dict:
+    """Real-time snapshot of transcription workload, for operator
+    reporting (archive/main.py's `GET /internal/send-worker-daily-report`).
+    Every field here is either a cheap integer aggregate over
+    TranscriptionJob (never touches `partial_segments`) or the same fast
+    `_good_default_transcript_exists()` SQL predicate
+    find_auto_transcription_candidate() already uses -- deliberately NOT
+    list_transcription_backlog_candidates()'s slower per-page Python-loop
+    query above (see BACKLOG.md: that function still does one DB round
+    trip per MeetingPage, a real, pre-existing N+1 this doesn't need to
+    inherit for a simple count).
+
+    `segments_added_last_24h` is Postgres-only (`json_array_length`
+    computed server-side, never loading the segments JSON into Python --
+    same "don't move the blob" discipline as `_good_default_transcript_
+    exists()`) -- None on SQLite (dev/test), same dialect-feature-detect
+    pattern as `_fts_available()`. `json_array_length`, not
+    `jsonb_array_length` -- confirmed live 2026-08-21 (real production
+    500, `UndefinedFunctionError: function jsonb_array_length(json) does
+    not exist`): `TranscriptVersion.segments` is a plain SQLAlchemy
+    `JSON` column, which maps to Postgres `json`, not `jsonb` -- the two
+    types have separate, non-interchangeable function families. This
+    Postgres-only branch has no SQLite equivalent to exercise it in the
+    test suite (dialect-gated to None there by design), so this specific
+    mistake wasn't caught until a real request hit it -- worth a live
+    curl re-check after any future change here, not just `pytest`.
+    """
+    async with async_session() as session:
+        active_rows = (
+            await session.execute(
+                select(
+                    TranscriptionJob.total_chunks, TranscriptionJob.chunks_completed
+                ).where(
+                    TranscriptionJob.status.in_(
+                        ("queued", "in_progress", "retry_scheduled")
+                    )
+                )
+            )
+        ).all()
+        active_jobs = len(active_rows)
+        remaining_chunks = sum(total - done for total, done in active_rows)
+
+        cumulative_chunks_completed = (
+            await session.execute(
+                select(func.coalesce(func.sum(TranscriptionJob.chunks_completed), 0))
+            )
+        ).scalar()
+        cumulative_jobs_completed = (
+            await session.execute(
+                select(func.count())
+                .select_from(TranscriptionJob)
+                .where(TranscriptionJob.status == "completed")
+            )
+        ).scalar()
+
+        day_ago = datetime.now(timezone.utc) - timedelta(hours=24)
+        jobs_completed_last_24h = (
+            await session.execute(
+                select(func.count())
+                .select_from(TranscriptionJob)
+                .where(
+                    TranscriptionJob.status == "completed",
+                    TranscriptionJob.updated_at >= day_ago,
+                )
+            )
+        ).scalar()
+
+        segments_added_last_24h = None
+        if session.bind.dialect.name == "postgresql":
+            segments_added_last_24h = (
+                await session.execute(
+                    select(
+                        func.coalesce(
+                            func.sum(
+                                func.json_array_length(TranscriptVersion.segments)
+                            ),
+                            0,
+                        )
+                    ).where(
+                        TranscriptVersion.source == "transcribed",
+                        TranscriptVersion.created_at >= day_ago,
+                    )
+                )
+            ).scalar()
+
+        backlog_no_transcript = (
+            await session.execute(
+                select(func.count())
+                .select_from(MeetingPage)
+                .where(~_good_default_transcript_exists())
+            )
+        ).scalar()
+
+        return {
+            "active_jobs": active_jobs,
+            "remaining_chunks_in_active_jobs": remaining_chunks,
+            "cumulative_chunks_completed_all_time": cumulative_chunks_completed,
+            "cumulative_jobs_completed_all_time": cumulative_jobs_completed,
+            "jobs_completed_last_24h": jobs_completed_last_24h,
+            "segments_added_last_24h": segments_added_last_24h,
+            "backlog_no_transcript": backlog_no_transcript,
+        }
+
+
+async def get_and_advance_worker_report_snapshot(
+    *, cumulative_chunks_completed: int, cumulative_jobs_completed: int
+) -> Optional[dict]:
+    """Reads the previous worker-report snapshot (None the very first time
+    this ever runs -- see WorkerReportSnapshot's own docstring), then
+    overwrites it with the current cumulative totals -- single row, id=1
+    by convention, updated in place rather than appended to. Returns the
+    PREVIOUS snapshot (before overwriting) so the caller can diff
+    "current cumulative total" against "yesterday's cumulative total" for
+    a real 24h chunk-completion delta. Commits unconditionally (read and
+    write happen in the same call) -- there's only ever one caller
+    (the report-send route), so no risk of two callers racing to
+    advance this the same way claim_next_chunk() has to guard against.
+    """
+    async with async_session() as session:
+        previous = await session.get(WorkerReportSnapshot, 1)
+        previous_dict = (
+            {
+                "cumulative_chunks_completed": previous.cumulative_chunks_completed,
+                "cumulative_jobs_completed": previous.cumulative_jobs_completed,
+                "recorded_at": previous.recorded_at,
+            }
+            if previous is not None
+            else None
+        )
+
+        if previous is not None:
+            previous.cumulative_chunks_completed = cumulative_chunks_completed
+            previous.cumulative_jobs_completed = cumulative_jobs_completed
+            previous.recorded_at = datetime.now(timezone.utc)
+        else:
+            session.add(
+                WorkerReportSnapshot(
+                    id=1,
+                    cumulative_chunks_completed=cumulative_chunks_completed,
+                    cumulative_jobs_completed=cumulative_jobs_completed,
+                )
+            )
+        await session.commit()
+        return previous_dict
+
+
 async def list_completed_multichunk_transcription_jobs() -> list[dict]:
     """Every completed TranscriptionJob with total_chunks > 1 -- i.e. every
     on-demand transcription that actually went through the real per-chunk
@@ -880,14 +1160,16 @@ async def list_completed_multichunk_transcription_jobs() -> list[dict]:
         ]
 
 
-async def list_hallucination_candidate_transcript_versions() -> list[dict]:
+async def list_hallucination_candidate_transcript_versions(
+    *, limit: int = 500, after_id: Optional[int] = None
+) -> list[dict]:
     """Retroactive audit, same role as list_completed_multichunk_transcription_
     jobs() above plays for the seam-duplication bug: re-runs
     detect_hallucination_warnings() (archive/utils/transcription_quality.py --
     the same function report_chunk_result() now calls at finalize time, and
     scripts/transcribe_backlog_locally.py's transcribe_meeting() calls
-    directly) against the *stored* segments of every already-completed
-    source=="transcribed" TranscriptVersion, to find which ones would trip
+    directly) against the *stored* segments of already-completed
+    source=="transcribed" TranscriptVersions, to find which ones would trip
     the check today but shipped before it existed (or before this specific
     row was ever re-evaluated). See BACKLOG.md's phase-cancellation write-up
     -- this was flagged there as open/not yet built.
@@ -914,29 +1196,106 @@ async def list_hallucination_candidate_transcript_versions() -> list[dict]:
     Read-only and audit-only, on purpose, same as the seam-duplication
     audit: sizes the real exposure without touching anything. A human
     decides what (if anything) from this list is worth re-running.
+
+    Rewritten 2026-08-21 after this endpoint was confirmed live-502ing --
+    the previous version pulled TranscriptVersion.segments (the full
+    per-cue JSON blob) for *every* source=="transcribed" row in one query
+    with no limit, then ran detect_hallucination_warnings() (CPU-bound
+    Python) over each synchronously in the request handler. Exact same
+    shape find_auto_transcription_candidate() had before its own
+    2026-08-17 rewrite (see that function's docstring), which
+    pg_stat_statements caught as the #1 consumer of production DB time for
+    the same reason: pulling every transcript's full segments JSON on a
+    recurring basis. Unlike that function's fix, this audit's whole job is
+    to run real CPU-bound detection over segments -- there's no SQL-only
+    predicate that replaces detect_hallucination_warnings() itself, so the
+    elimination has to be data-shaped instead:
+
+    - Rows that ALREADY carry the hallucination marker in stored
+      transcript_warnings are a small, slow-growing set (only real
+      hallucination-loop transcripts get flagged, by this same check,
+      at ingest/finalize time -- see _has_real_warning_free_transcript()).
+      Selected via the same cast(...).like() text-match
+      _good_default_transcript_exists() already uses, so this branch never
+      touches `segments` at the SQL level; segments is then pulled ONLY
+      for this small already-flagged set (still re-run through detection
+      below, so a row that stops tripping the check under updated
+      detection logic falls back out rather than reporting stale state).
+    - Rows NOT yet flagged are the big, actively-growing population (every
+      clean "transcribed" version, plus any pre-2026-08-16 hallucinated one
+      that was never caught) -- this is what made the previous version
+      unbounded. Bounded here by `limit` + keyset pagination on
+      TranscriptVersion.id (`after_id`), same shape as
+      list_transcription_backlog_candidates()'s own `limit` param, so a
+      single call can only ever pull `limit` rows' worth of segments no
+      matter how large this population gets. A caller auditing the full
+      backlog pages through by repeatedly passing the previous batch's
+      max version_id as the next after_id.
     """
+    warnings_text = cast(TranscriptVersion.transcript_warnings, Text)
+    # NULL transcript_warnings must count as "not flagged", guarded
+    # explicitly same as _good_default_transcript_exists() above --
+    # `NULL LIKE ...` (and its negation) is NULL, not False, and a bare
+    # `~warnings_text.like(...)` would silently drop every NULL-warnings
+    # row out of BOTH branches (WHERE NULL is falsy) rather than routing
+    # it into the unflagged/candidate-scan side where it belongs.
+    already_flagged_clause = and_(
+        TranscriptVersion.transcript_warnings.is_not(None),
+        warnings_text.like(f"%{_HALLUCINATION_MARKER}%"),
+    )
+    not_flagged_clause = or_(
+        TranscriptVersion.transcript_warnings.is_(None),
+        ~warnings_text.like(f"%{_HALLUCINATION_MARKER}%"),
+    )
+
+    base_columns = (
+        TranscriptVersion.id,
+        TranscriptVersion.meeting_page_id,
+        TranscriptVersion.language,
+        TranscriptVersion.is_default,
+        TranscriptVersion.segments,
+        TranscriptVersion.transcript_warnings,
+        TranscriptVersion.created_at,
+        MeetingPage.slug,
+        MeetingPage.title,
+        TranscriptionJob.id,
+    )
+
     async with async_session() as session:
-        rows = (
+        flagged_query = (
+            select(*base_columns)
+            .join(MeetingPage, MeetingPage.id == TranscriptVersion.meeting_page_id)
+            .outerjoin(
+                TranscriptionJob,
+                TranscriptionJob.transcript_version_id == TranscriptVersion.id,
+            )
+            .where(
+                TranscriptVersion.source == "transcribed",
+                already_flagged_clause,
+            )
+        )
+        unflagged_query = (
+            select(*base_columns)
+            .join(MeetingPage, MeetingPage.id == TranscriptVersion.meeting_page_id)
+            .outerjoin(
+                TranscriptionJob,
+                TranscriptionJob.transcript_version_id == TranscriptVersion.id,
+            )
+            .where(
+                TranscriptVersion.source == "transcribed",
+                not_flagged_clause,
+            )
+        )
+        if after_id is not None:
+            flagged_query = flagged_query.where(TranscriptVersion.id > after_id)
+            unflagged_query = unflagged_query.where(TranscriptVersion.id > after_id)
+
+        flagged_rows = (
+            await session.execute(flagged_query.order_by(TranscriptVersion.id.asc()))
+        ).all()
+        unflagged_rows = (
             await session.execute(
-                select(
-                    TranscriptVersion.id,
-                    TranscriptVersion.meeting_page_id,
-                    TranscriptVersion.language,
-                    TranscriptVersion.is_default,
-                    TranscriptVersion.segments,
-                    TranscriptVersion.transcript_warnings,
-                    TranscriptVersion.created_at,
-                    MeetingPage.slug,
-                    MeetingPage.title,
-                    TranscriptionJob.id,
-                )
-                .join(MeetingPage, MeetingPage.id == TranscriptVersion.meeting_page_id)
-                .outerjoin(
-                    TranscriptionJob,
-                    TranscriptionJob.transcript_version_id == TranscriptVersion.id,
-                )
-                .where(TranscriptVersion.source == "transcribed")
-                .order_by(TranscriptVersion.id.asc())
+                unflagged_query.order_by(TranscriptVersion.id.asc()).limit(limit)
             )
         ).all()
 
@@ -952,7 +1311,7 @@ async def list_hallucination_candidate_transcript_versions() -> list[dict]:
             slug,
             title,
             job_id,
-        ) in rows:
+        ) in [*flagged_rows, *unflagged_rows]:
             warnings = detect_hallucination_warnings(segments or [])
             if not warnings:
                 continue
@@ -977,7 +1336,137 @@ async def list_hallucination_candidate_transcript_versions() -> list[dict]:
                 }
             )
 
+        candidates.sort(key=lambda c: c["version_id"])
         return candidates
+
+
+async def list_jurisdiction_bleed_backfill_candidates() -> dict:
+    """Read-only audit, same role/template as
+    list_hallucination_candidate_transcript_versions() above: re-runs
+    finalize_jurisdiction() (app/utils/jurisdiction_enrich.py) against
+    every already-archived MeetingPage's CURRENT stored `jurisdiction`
+    value, to size how many pages a future backfill of the 2026-08-17
+    Canadian-data + Title-Case-bleed fixes (BACKLOG.md's
+    "Jurisdiction-bleed, confirmed cross-platform" entry) would actually
+    touch. This session's own fixes are code-only and were explicitly
+    scoped to NOT re-process already-archived pages -- see that entry --
+    so this just answers "how many, if someone chooses to" without
+    changing anything itself.
+
+    A row counts as a candidate when re-running finalize_jurisdiction()
+    on its own already-stored value produces a *different* jurisdiction
+    string or a *better* confidence tier than what's on the row today --
+    safe to compare directly since the stored value is already whatever
+    the LAST finalize_jurisdiction() run produced for it (see
+    _find_or_create_page()'s own call), so re-running it now is
+    idempotent for any row neither fix actually changes.
+    """
+    async with async_session() as session:
+        rows = (
+            await session.execute(
+                select(
+                    MeetingPage.id,
+                    MeetingPage.slug,
+                    MeetingPage.title,
+                    MeetingPage.jurisdiction,
+                    MeetingPage.jurisdiction_confidence,
+                    MeetingPage.source_url_normalized,
+                ).where(MeetingPage.jurisdiction.is_not(None))
+            )
+        ).all()
+
+        candidates = []
+        for page_id, slug, title, jurisdiction, confidence, source_url in rows:
+            netloc = urlparse(source_url).netloc if source_url else None
+            result = finalize_jurisdiction(jurisdiction, netloc=netloc)
+            if result.jurisdiction == jurisdiction and result.confidence == confidence:
+                continue
+            candidates.append(
+                {
+                    "meeting_page_id": page_id,
+                    "slug": slug,
+                    "title": title,
+                    "current_jurisdiction": jurisdiction,
+                    "current_confidence": confidence,
+                    "repaired_jurisdiction": result.jurisdiction,
+                    "repaired_confidence": result.confidence,
+                }
+            )
+
+        return {"total_checked": len(rows), "candidates": candidates}
+
+
+async def apply_jurisdiction_bleed_backfill(*, dry_run: bool = True) -> dict:
+    """Write counterpart to list_jurisdiction_bleed_backfill_candidates()
+    above -- actually patches MeetingPage.jurisdiction /
+    jurisdiction_confidence for rows where finalize_jurisdiction() produces
+    a genuinely different jurisdiction STRING today (BACKLOG.md's
+    "Jurisdiction-bleed, confirmed cross-platform" backfill). Deliberately
+    narrower than the read-only audit: a confidence-tier-only change (e.g.
+    null -> "validated" with the same string) isn't worth a write and is
+    excluded here, unlike the audit above which reports both kinds.
+
+    Always recomputes candidates itself from each row's own stored
+    `jurisdiction` + `source_url_normalized` -- never accepts a
+    caller-supplied jurisdiction string to write, so a stale or forged
+    request body can't push arbitrary text into the column. Only the
+    `jurisdiction` and `jurisdiction_confidence` columns are touched; every
+    other MeetingPage field (title, video_url, segments, ...) is left
+    alone.
+
+    dry_run=True (the default) computes and returns the exact before/after
+    diff without writing anything -- mirrors this repo's existing
+    read-only-first pattern for internal tooling. dry_run=False commits the
+    updates and returns the same before/after shape for an audit trail.
+    """
+    async with async_session() as session:
+        rows = (
+            await session.execute(
+                select(
+                    MeetingPage.id,
+                    MeetingPage.slug,
+                    MeetingPage.title,
+                    MeetingPage.jurisdiction,
+                    MeetingPage.jurisdiction_confidence,
+                    MeetingPage.source_url_normalized,
+                ).where(MeetingPage.jurisdiction.is_not(None))
+            )
+        ).all()
+
+        changes = []
+        for page_id, slug, title, jurisdiction, confidence, source_url in rows:
+            netloc = urlparse(source_url).netloc if source_url else None
+            result = finalize_jurisdiction(jurisdiction, netloc=netloc)
+            if result.jurisdiction == jurisdiction:
+                continue
+            changes.append(
+                {
+                    "meeting_page_id": page_id,
+                    "slug": slug,
+                    "title": title,
+                    "before": {
+                        "jurisdiction": jurisdiction,
+                        "jurisdiction_confidence": confidence,
+                    },
+                    "after": {
+                        "jurisdiction": result.jurisdiction,
+                        "jurisdiction_confidence": result.confidence,
+                    },
+                }
+            )
+
+        if not dry_run and changes:
+            for change in changes:
+                page = await session.get(MeetingPage, change["meeting_page_id"])
+                if page is None:
+                    continue
+                page.jurisdiction = change["after"]["jurisdiction"]
+                page.jurisdiction_confidence = change["after"][
+                    "jurisdiction_confidence"
+                ]
+            await session.commit()
+
+        return {"dry_run": dry_run, "applied_count": len(changes), "changes": changes}
 
 
 async def get_page_by_slug(slug: str) -> Optional[dict]:
@@ -1079,17 +1568,22 @@ def _keyword_conditions(keyword: str, fuzzy: bool) -> tuple[list, list[str]]:
     SQL. Runs identically on Postgres (where the GIN trigram index makes
     it fast) and SQLite (dev/CI, unindexed but the same code path).
 
-    Fuzzy words are the one thing SQL can't decide: matches()'s bounded
-    Levenshtein against real corpus words has no recall-safe SQL
+    Fuzzy words are the one thing this function can't decide: matches()'s
+    bounded Levenshtein against real corpus words has no recall-safe SQL
     equivalent -- pg_trgm's word_similarity() over a multi-hundred-KB
-    document is either too loose to narrow anything (at the recall-safe
-    0.15 threshold the earlier version used) or drops genuine 2-edit
-    typos (anything selective), and costs tens of ms of server CPU per
-    row either way. So fuzzy words are returned for the caller to check
-    in Python over the corpus text -- streamed one row at a time (see
-    list_pages()), never the transcript JSON. The real fix for fuzzy is a
-    trigram-indexed vocabulary table (BACKLOG.md's search entry, "Step
-    2b"); until then fuzzy stays the opt-in, UI-labeled "slower" mode.
+    document is either too loose to narrow anything (at a recall-safe
+    threshold) or drops genuine 2-edit typos (anything selective), and
+    costs tens of ms of server CPU per row either way. So fuzzy words are
+    returned for the caller to check in Python over the corpus text --
+    streamed one row at a time (see list_pages()), never the transcript
+    JSON. This is now only the fallback path: on Postgres with
+    search_vocabulary present, list_pages() uses
+    _fuzzy_keyword_conditions_via_vocabulary() instead, which makes fuzzy
+    SQL-authoritative too (a small trigram-indexed word table, not
+    word_similarity() over whole documents) -- see that function's
+    docstring and BACKLOG_DONE.md's search entry. This function's fuzzy
+    branch still runs on SQLite (dev/CI) or Postgres before that
+    migration, where fuzzy stays the opt-in, UI-labeled "slower" mode.
     """
     phrases, words, excluded_phrases, excluded_words = parse_query(keyword)
     conditions = [_corpus_contains(p) for p in phrases]
@@ -1099,6 +1593,214 @@ def _keyword_conditions(keyword: str, fuzzy: bool) -> tuple[list, list[str]]:
         return conditions, list(words)
     conditions += [_corpus_contains(w) for w in words]
     return conditions, []
+
+
+# --- Search Step 2a: Postgres full-text search over search_corpus ---------
+#
+# meeting_pages.search_tsv is a GENERATED tsvector column added by Alembic
+# revision c1d2e3f4a5b6, Postgres-only, and deliberately NOT mapped on the
+# MeetingPage model (so SQLite / create_all() / ORM inserts never see it).
+# It's referenced only through the literal below, and only after
+# _fts_available() has confirmed the column exists on the connected DB --
+# which is what lets the migration and this code deploy in either order
+# (the 2026-08-17 UndefinedColumnError incident was exactly a model column
+# arriving before its migration; see BACKLOG_DONE.md).
+
+_SEARCH_TSV = literal_column("meeting_pages.search_tsv")
+_FTS_CONFIG = "english"
+_FTS_CHECK_TTL = timedelta(seconds=60)
+_fts_state: dict[str, Any] = {"available": None, "checked_at": None}
+
+
+async def _fts_available(session) -> bool:
+    """True when the connected DB is Postgres AND meeting_pages.search_tsv
+    exists. Cached for _FTS_CHECK_TTL so a search costs at most one extra
+    ~1ms information_schema lookup a minute, and so running the migration
+    against a live service flips FTS on within a minute with no restart.
+    Always False on SQLite (dev/CI) -- the LIKE path stays the tested,
+    dialect-agnostic fallback there."""
+    if session.bind.dialect.name != "postgresql":
+        return False
+    now = datetime.now(timezone.utc)
+    checked_at = _fts_state["checked_at"]
+    if checked_at is not None and now - checked_at < _FTS_CHECK_TTL:
+        return bool(_fts_state["available"])
+    row = (
+        await session.execute(
+            text(
+                "SELECT 1 FROM information_schema.columns "
+                "WHERE table_name = 'meeting_pages' AND column_name = 'search_tsv'"
+            )
+        )
+    ).first()
+    _fts_state["available"] = row is not None
+    _fts_state["checked_at"] = now
+    return bool(_fts_state["available"])
+
+
+def _fts_query(keyword: str):
+    """The tsquery for a user's search string. websearch_to_tsquery()
+    natively understands the syntax parse_query() already accepts --
+    "quoted phrase" (adjacency), -word / -"phrase" (exclusion), bare words
+    ANDed -- and adds `OR` (BACKLOG.md's "no OR support" gap closes for
+    free), stemming (budget/budgets/budgeting) and stopword removal via
+    the 'english' config. `+`/`&`/`and` (parse_query()'s no-ops) become
+    punctuation/stopwords, i.e. still no-ops. Never raises on odd input
+    (unbalanced quotes etc.) -- that's why it's used over to_tsquery()."""
+    return func.websearch_to_tsquery(_FTS_CONFIG, keyword)
+
+
+def _fts_condition(keyword: str):
+    """`search_tsv @@ websearch_to_tsquery(...)` -- answered from the GIN
+    index on the tsvector; never reads search_corpus, which is why it
+    stays fast on a common word where the trigram LIKE path had to
+    detoast and scan every candidate's whole document (16.5s mean under
+    load on prod, 2026-08-17)."""
+    return _SEARCH_TSV.op("@@")(_fts_query(keyword))
+
+
+def _fts_rank(keyword: str):
+    """ts_rank_cd(search_tsv, query): cover-density relevance, for
+    sort=relevance. Reads the tsvector (not the corpus) for each matched
+    row, so it's the one FTS operation that scales with match count --
+    opt-in, default order stays newest-first."""
+    return func.ts_rank_cd(_SEARCH_TSV, _fts_query(keyword))
+
+
+# --- Search Step 2b: trigram-indexed vocabulary for fast fuzzy search -----
+#
+# search_vocabulary is a real table (unlike search_tsv's generated column),
+# added by Alembic revision c684908ce5ff, populated by
+# _upsert_vocabulary_words() (called from _refresh_search_corpus()) and
+# cross-dialect on the model -- but only ever *queried* on Postgres, same
+# "feature-detect, don't assume the migration has run" discipline as
+# _fts_available(), gated by _vocab_available() below.
+
+_VOCAB_CHECK_TTL = timedelta(seconds=60)
+_vocab_state: dict[str, Any] = {"available": None, "checked_at": None}
+
+# pg_trgm's own default. A recall-safe *first pass* only -- every
+# candidate this turns up still gets re-verified against the exact same
+# _levenshtein()/_fuzzy_threshold() matches() itself uses, so a threshold
+# that's too loose costs a few wasted candidate checks, never a wrong
+# answer. Needs the same real-data tuning pass Step 1's fuzzy work got
+# once this has run against production for a while -- see BACKLOG.md.
+_VOCAB_SIMILARITY_THRESHOLD = 0.3
+_VOCAB_CANDIDATE_LIMIT = 50
+
+
+async def _vocab_available(session) -> bool:
+    """True when the connected DB is Postgres AND search_vocabulary
+    exists. Byte-for-byte mirror of _fts_available()'s caching/dialect/
+    fallback shape -- see that function's docstring; the only difference
+    is checking information_schema.tables (a whole table) rather than
+    .columns (search_tsv is a column on an existing table)."""
+    if session.bind.dialect.name != "postgresql":
+        return False
+    now = datetime.now(timezone.utc)
+    checked_at = _vocab_state["checked_at"]
+    if checked_at is not None and now - checked_at < _VOCAB_CHECK_TTL:
+        return bool(_vocab_state["available"])
+    row = (
+        await session.execute(
+            text(
+                "SELECT 1 FROM information_schema.tables "
+                "WHERE table_name = 'search_vocabulary'"
+            )
+        )
+    ).first()
+    _vocab_state["available"] = row is not None
+    _vocab_state["checked_at"] = now
+    return bool(_vocab_state["available"])
+
+
+def _vocab_candidate_stmt(term: str, limit: int):
+    """Pure statement builder, no DB access -- unit-testable via
+    .compile() the same way _fts_condition() is. The `%` operator (not a
+    bare `similarity() > threshold` call) is what makes the planner use
+    search_vocabulary's GIN trigram index; it reads
+    pg_trgm.similarity_threshold, which the caller must SET LOCAL first.
+    `term` is bound as a parameter (SQLAlchemy's normal Core behavior),
+    never string-interpolated -- it's user search input."""
+    return (
+        select(SearchVocabulary.word)
+        .where(SearchVocabulary.word.op("%")(term))
+        .order_by(func.similarity(SearchVocabulary.word, term).desc())
+        .limit(limit)
+    )
+
+
+async def _fuzzy_keyword_conditions_via_vocabulary(session, keyword: str) -> list:
+    """SQL-authoritative fuzzy search: the vocabulary-lookup replacement
+    for _keyword_conditions()'s Python-streamed fuzzy path. Phrases and
+    exclusions are always exact (matches()'s own rule, unaffected by
+    fuzzy) so they go through _corpus_contains() exactly as
+    _keyword_conditions() already does.
+
+    Each unquoted word:
+    - _fuzzy_threshold(word) == 0 (<=4 chars, matches()'s own "short
+      words require exact" rule) -- no vocabulary lookup needed, becomes
+      a plain _corpus_contains(word) exact condition. Note: matches()'s
+      own fuzzy branch checks *token* membership for these
+      (`word in corpus_words`), while _corpus_contains() is a substring
+      check -- the same deliberate substring-is-the-system's-canonical-
+      "contains" redefinition Step 1 already made for every other exact
+      term, extended here for consistency rather than reintroducing a
+      token-boundary special case.
+    - otherwise -- queries search_vocabulary via _vocab_candidate_stmt()
+      (a small, index-accelerated candidate set), re-verifies every
+      candidate against the *exact* _levenshtein()/_fuzzy_threshold()
+      matches() uses (byte-for-byte parity -- the trigram step is purely
+      a fast candidate generator, never the final decision), then becomes
+      an OR of _corpus_contains() over the confirmed real words. A term
+      with zero confirmed candidates becomes `false()`, not a skipped
+      condition -- a fuzzy term with no real match anywhere in the
+      archive must fail the whole AND, exactly like _keyword_conditions()
+      already requires (via matches()'s "not any(...)" semantics).
+
+    Returns conditions only, no fuzzy_words list -- nothing downstream in
+    list_pages() needs Python-side streaming after this.
+    """
+    phrases, words, excluded_phrases, excluded_words = parse_query(keyword)
+    conditions = [_corpus_contains(p) for p in phrases]
+    conditions += [~_corpus_contains(p) for p in excluded_phrases]
+    conditions += [~_corpus_contains(w) for w in excluded_words]
+
+    fuzzy_words = [w for w in words if _fuzzy_threshold(w) > 0]
+    conditions += [_corpus_contains(w) for w in words if _fuzzy_threshold(w) == 0]
+
+    if fuzzy_words:
+        # Scoped to this transaction only (SET LOCAL), never leaks to any
+        # other query on this connection. Postgres doesn't support a bind
+        # parameter here (SET doesn't accept $1-style placeholders) --
+        # safe to interpolate since this is a fixed module constant, not
+        # user input.
+        await session.execute(
+            text(
+                f"SET LOCAL pg_trgm.similarity_threshold = {_VOCAB_SIMILARITY_THRESHOLD}"
+            )
+        )
+        for term in fuzzy_words:
+            threshold = _fuzzy_threshold(term)
+            candidates = (
+                (
+                    await session.execute(
+                        _vocab_candidate_stmt(term, _VOCAB_CANDIDATE_LIMIT)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            confirmed = [
+                w
+                for w in candidates
+                if w == term or _levenshtein(term, w, threshold) <= threshold
+            ]
+            conditions.append(
+                or_(*(_corpus_contains(w) for w in confirmed)) if confirmed else false()
+            )
+
+    return conditions
 
 
 def _has_agenda_condition():
@@ -1119,6 +1821,47 @@ def _has_agenda_condition():
     )
 
 
+def _is_empty_page_condition():
+    """SQL predicate for a "zero-value" page: no video, no agenda items, no
+    agenda link, and no TranscriptVersion of any kind. Such a page has
+    nothing a visitor can watch or read -- just a title/date shell.
+
+    Deliberately a *query-time* predicate, not a stored flag or a delete
+    (Ryan's call, 2026-08-17 -- see CLAUDE_BACKLOG.md's "Archive
+    hygiene" section for the live numbers behind it): 17 of ~1,200 prod
+    pages matched at the time, several of them recent or not-yet-held
+    meetings whose source will publish video/captions days-to-weeks later
+    (the exact case ARCHIVE_RECHECK_AFTER exists for). Evaluating "empty"
+    live means such a page reappears in browse/sitemap/feed the moment a
+    recheck fills anything in, with no un-hide step, and a future-dated
+    meeting is never permanently judged. It also needs no schema change
+    (a new column would be an Alembic-migration case, see CLAUDE.md), and
+    hard-deleting would orphan SavedItem rows and break already-shared
+    /m/ links. The page itself keeps serving at /m/{slug} regardless --
+    meeting_page.html just noindexes it while it's empty.
+
+    "Any TranscriptVersion", not "a default one": a version that exists
+    but was demoted still means the page holds real text.
+    """
+    # Aliased + explicitly correlated to MeetingPage only: list_pages()
+    # already outer-joins TranscriptVersion (the default version) in the
+    # outer query, and without the alias SQLAlchemy auto-correlates that
+    # table away too, leaving the subquery with no FROM at all.
+    any_version = aliased(TranscriptVersion)
+    has_any_version = (
+        select(any_version.id)
+        .where(any_version.meeting_page_id == MeetingPage.id)
+        .correlate(MeetingPage)
+        .exists()
+    )
+    return and_(
+        or_(MeetingPage.video_url.is_(None), MeetingPage.video_url == ""),
+        or_(MeetingPage.agenda_link.is_(None), MeetingPage.agenda_link == ""),
+        ~_has_agenda_condition(),
+        ~has_any_version,
+    )
+
+
 async def list_pages(
     *,
     page: int = 1,
@@ -1131,6 +1874,7 @@ async def list_pages(
     keyword: Optional[str] = None,
     fuzzy: bool = False,
     created_after: Optional[datetime] = None,
+    sort: str = "newest",
 ) -> dict:
     """Paginated meeting list behind /meetings (and the saved-search alert
     sweep, via find_new_matches_for_saved_search()).
@@ -1138,23 +1882,53 @@ async def list_pages(
     Every filter is applied in SQL -- jurisdiction (via
     jurisdiction_search_terms()'s state-name expansion), date range,
     created_after, has_transcript, has_agenda (_has_agenda_condition()),
-    and exact-mode keyword search (_keyword_conditions() against the
-    materialized `MeetingPage.search_corpus`, GIN-trigram-indexed on
-    Postgres). Pagination is LIMIT/OFFSET plus one COUNT(*), so a plain
-    browse or an exact search costs O(page_size) memory no matter how many
-    meetings match -- the 2026-08-17 rewrite, after the previous shape
-    (SQL pre-filter, then load every candidate's full transcript JSON for
-    a Python re-check, then paginate in Python) OOM-crashed the Archive on
-    common terms and took 25-35s when it survived. See BACKLOG_DONE.md.
+    and keyword search. Pagination is LIMIT/OFFSET plus one COUNT(*), so a
+    plain browse or a keyword search costs O(page_size) memory no matter
+    how many meetings match -- the 2026-08-17 rewrite, after the previous
+    shape (SQL pre-filter, then load every candidate's full transcript
+    JSON for a Python re-check, then paginate in Python) OOM-crashed the
+    Archive on common terms and took 25-35s when it survived. See
+    BACKLOG_DONE.md.
 
-    Fuzzy mode is the one exception: unquoted words are matched in Python
-    by matches()'s bounded Levenshtein against each candidate's
-    `search_corpus` *text* (not transcript JSON), streamed one row at a
-    time so memory stays bounded, and paginated in Python. Phrases and
-    exclusions still narrow in SQL first. Measured ~5ms/doc CPU, so a few
-    seconds across the whole archive -- slow but no longer a crash; the
-    UI already labels fuzzy "slower". Why SQL can't do this: see
-    _keyword_conditions().
+    Keyword search has two SQL forms, chosen per request by
+    _fts_available() (Search Step 2a, 2026-08-17):
+    - **Full-text (Postgres with the search_tsv column present)**:
+      `search_tsv @@ websearch_to_tsquery('english', keyword)` -- answered
+      from the GIN index on the generated tsvector without reading the
+      corpus, so cost no longer scales with how common the word is
+      (the trigram LIKE path had to detoast + scan every candidate's whole
+      document: 16.5s mean under real load on prod for "budget"). Adds
+      stemming, stopword removal and `OR`; phrases/exclusions keep their
+      meaning. Semantics therefore differ slightly from matches(): a
+      substring inside a longer word ("cat" in "concatenate") no longer
+      matches, an all-stopword query ("the") matches nothing.
+    - **LIKE (SQLite, or Postgres before the migration has run)**:
+      _keyword_conditions() against `search_corpus` -- byte-for-byte
+      matches()'s exact mode. This is what dev/CI exercise.
+    `sort="relevance"` (only meaningful with a keyword, FTS only) orders
+    by ts_rank_cd(); the default "newest" keeps created_at DESC so the
+    UX doesn't change under anyone.
+
+    Fuzzy mode has its own two-tier fallback (Search Step 2b, once
+    Alembic revision c684908ce5ff is applied):
+    - **Vocabulary-backed (Postgres with search_vocabulary present)**:
+      SQL-authoritative, same as exact/FTS -- see
+      _fuzzy_keyword_conditions_via_vocabulary(). Each fuzzy word is
+      trigram-matched against the small, GIN-indexed vocabulary table,
+      re-verified with the exact same Levenshtein check matches() uses,
+      and the confirmed real words are checked against search_corpus via
+      the already-fast Step 1 LIKE path. O(page_size) memory, like
+      everything else.
+    - **Python-streamed (SQLite dev/CI, or Postgres before that
+      migration)**: unquoted words are matched in Python by matches()'s
+      bounded Levenshtein against each candidate's `search_corpus` text
+      (not transcript JSON), streamed one row at a time so memory stays
+      bounded, and paginated in Python. Measured ~5ms/doc CPU, so a few
+      seconds across the whole archive -- slow but no longer a crash; the
+      UI already labels fuzzy "slower". Why SQL alone can't do this
+      without a vocabulary table: see _keyword_conditions().
+    Phrases and exclusions are always exact and always narrow in SQL
+    first, in both tiers.
 
     Snippets are built only for the page of rows actually returned, from
     the *default* transcript version's segments (loaded for those <=
@@ -1173,11 +1947,22 @@ async def list_pages(
     MeetingPage.created_at (when archived), a different axis from
     date_from/date_to (when the meeting happened) -- used by the alert
     sweep's "new since last check".
+
+    Empty pages (_is_empty_page_condition(): no video, no agenda, no
+    transcript) are excluded by default -- a plain browse or keyword
+    search shouldn't surface a title-only shell. The exclusion is
+    deliberately *off* whenever has_transcript or has_agenda is set
+    explicitly: `has_transcript=false` is how gaps get found and worked
+    on, so it must keep showing everything without a transcript, empties
+    included (Ryan, 2026-08-17). `has_transcript=true`/`has_agenda=true`
+    already imply non-empty, so nothing is lost there either.
     """
     page = max(1, page)
     page_size = max(1, min(page_size, 100))
 
     conditions = []
+    if has_transcript is None and has_agenda is None:
+        conditions.append(~_is_empty_page_condition())
     if jurisdiction:
         terms = jurisdiction_search_terms(jurisdiction)
         conditions.append(
@@ -1197,11 +1982,6 @@ async def list_pages(
         conditions.append(_has_agenda_condition())
     elif has_agenda is False:
         conditions.append(~_has_agenda_condition())
-    fuzzy_words: list[str] = []
-    if keyword:
-        keyword_conditions, fuzzy_words = _keyword_conditions(keyword, fuzzy)
-        conditions.extend(keyword_conditions)
-
     # Explicit columns, not the MeetingPage entity: keeps every row light
     # (no identity map, no chance of a deferred column sneaking back in)
     # and lets the fuzzy path stream + discard each corpus as it goes.
@@ -1224,17 +2004,40 @@ async def list_pages(
         TranscriptVersion.id,
         TranscriptVersion.transcript_warnings,
     ]
-    if fuzzy_words:
-        columns.append(MeetingPage.search_corpus)
-    stmt = (
-        select(*columns)
-        .outerjoin(TranscriptVersion, default_version)
-        .order_by(MeetingPage.created_at.desc(), MeetingPage.id.desc())
-    )
-    if conditions:
-        stmt = stmt.where(and_(*conditions))
 
     async with async_session() as session:
+        # Keyword form is decided here, per request, because detecting the
+        # FTS column / vocabulary table needs a session. Fuzzy mode never
+        # uses FTS. When search_vocabulary is available (Step 2b), fuzzy
+        # is SQL-authoritative too -- see
+        # _fuzzy_keyword_conditions_via_vocabulary() -- and fuzzy_words
+        # stays empty, same as the FTS branch. Only pre-migration Postgres
+        # or SQLite (dev/CI) still falls through to the Python-streamed
+        # path below.
+        fuzzy_words: list[str] = []
+        order_by = [MeetingPage.created_at.desc(), MeetingPage.id.desc()]
+        if keyword:
+            if not fuzzy and await _fts_available(session):
+                conditions.append(_fts_condition(keyword))
+                if sort == "relevance":
+                    order_by.insert(0, _fts_rank(keyword).desc())
+            elif fuzzy and await _vocab_available(session):
+                conditions.extend(
+                    await _fuzzy_keyword_conditions_via_vocabulary(session, keyword)
+                )
+            else:
+                keyword_conditions, fuzzy_words = _keyword_conditions(keyword, fuzzy)
+                conditions.extend(keyword_conditions)
+        if fuzzy_words:
+            columns.append(MeetingPage.search_corpus)
+        stmt = (
+            select(*columns)
+            .outerjoin(TranscriptVersion, default_version)
+            .order_by(*order_by)
+        )
+        if conditions:
+            stmt = stmt.where(and_(*conditions))
+
         if fuzzy_words:
             # Python-authoritative for the fuzzy words; stream so at most
             # one corpus text is in memory at a time. `keyword` is passed
@@ -1332,6 +2135,14 @@ async def list_pages(
                 ),
                 "has_agenda": bool(agenda_items),
                 "snippet": _snippet_for(page_id, agenda_items),
+                # "upcoming" / "recent" / None -- drives the date pill in
+                # meeting_list.html. Any version at all counts as "has a
+                # transcript" for this purpose (a garbled one is still
+                # something the source published, so there's nothing left
+                # to wait for), unlike the quality-gated badge above.
+                "date_status": meeting_date_status(
+                    date, has_transcript=version_id is not None
+                ),
             }
             for (
                 page_id,
@@ -1399,7 +2210,15 @@ async def find_new_matches_for_saved_search(
 # those rows stays permanently exampleless, not because nothing's
 # supported but because the label itself never occurs -- coverage.html
 # adds a short note about these wrapper platforms instead of a row that
-# can never have a demo.
+# can never have a demo. iqm2 and hyland both *can* embed/delegate a
+# video from elsewhere (a raw Granicus HLS URL for iqm2; an occasional
+# YouTube fallback for hyland -- see each adapter's own docstring) but,
+# unlike the routers above, neither overrides ResolvedMeeting.platform
+# when doing so -- confirmed by reading both adapters' resolve() end to
+# end, platform=self.platform_name on every return path -- so they're
+# genuine direct rows, not YouTube-delegation lookalikes. clerkbase is
+# the opposite case -- see CUSTOM_PLATFORMS below, it's deliberately not
+# here.
 DIRECT_PLATFORMS: dict[str, str] = {
     "granicus": "Granicus",
     "civicclerk": "CivicClerk",
@@ -1407,23 +2226,39 @@ DIRECT_PLATFORMS: dict[str, str] = {
     "viebit": "Viebit",
     "escribe": "eScribe",
     "cablecast": "Cablecast",
+    "champds": "CHAMP/ChampDS",
+    "iqm2": "IQM2",
+    "seattle_channel": "Seattle Channel",
+    "telvue": "TelVue",
+    "hyland": "Hyland OnBase Agenda Online",
+    "townhallstreams": "Town Hall Streams",
 }
 
 # Platforms grouped under a single "Custom" row on /coverage -- each is a
 # real, distinct scraper this app built (not a shared vendor product),
-# but two of the four (lims, slc) delegate to YouTubeAssetFinder for the
-# actual video the exact same way lims.py/slc.py's own resolve() does
-# (see their docstrings) -- MeetingPage.platform ends up "youtube" for a
-# page from either of them, indistinguishable by platform alone from a
-# raw pasted YouTube link. _entry_platform_from_source_url() below
-# recovers which of the two it actually was from the page's own
-# source_url_normalized instead. ca_legislature and aurora_tv don't have
-# this problem (they self-host video, no YouTube delegation), so they're
-# matched by MeetingPage.platform directly, same as DIRECT_PLATFORMS.
+# but three of the five (lims, slc, clerkbase) delegate to
+# YouTubeAssetFinder for the actual video the exact same way
+# lims.py/slc.py/clerkbase.py's own resolve() does (see their docstrings)
+# -- MeetingPage.platform ends up "youtube" for a page from any of the
+# three, indistinguishable by platform alone from a raw pasted YouTube
+# link. _entry_platform_from_source_url() below recovers which one it
+# actually was from the page's own source_url_normalized instead.
+# Unlike lims/slc, clerkbase has *no* success path that keeps its own
+# "clerkbase" platform label -- confirmed by reading clerkbase.py's
+# resolve() end to end, "clerkbase" only appears on its no-video error
+# return, which is never pushed to the Archive (a push requires real
+# segments/agenda_items) -- so without this special-casing, a
+# "clerkbase" DIRECT_PLATFORMS row would be permanently exampleless for
+# a structural reason, not just because no example has shown up yet
+# (the same gap this section already fixed for lims/slc). ca_legislature
+# and aurora_tv don't have this problem (they self-host video, no
+# YouTube delegation), so they're matched by MeetingPage.platform
+# directly, same as DIRECT_PLATFORMS.
 CUSTOM_PLATFORMS: dict[str, str] = {
     "ca_legislature": "California State Legislature",
     "slc": "Salt Lake City meeting recaps",
     "lims": "Minneapolis LIMS",
+    "clerkbase": "ClerkBase (clerkshq.com)",
     "aurora_tv": "Aurora, CO (auroratv.org)",
 }
 
@@ -1433,7 +2268,7 @@ CUSTOM_PLATFORMS: dict[str, str] = {
 # pasting the government page that embeds/links it instead (a Granicus/
 # Swagit/etc. page, or one of the CUSTOM_PLATFORMS above) wherever one
 # exists. See coverage.html's own footer note.
-_YOUTUBE_DELEGATING_CUSTOM_PLATFORMS = frozenset({"lims", "slc"})
+_YOUTUBE_DELEGATING_CUSTOM_PLATFORMS = frozenset({"lims", "slc", "clerkbase"})
 
 # How many example rows to show per platform on /coverage. Granicus gets
 # more because it's this app's most common platform by a wide margin (see
@@ -1477,12 +2312,12 @@ def _select_examples(examples: list[dict], count: int) -> list[dict]:
 
 def _entry_platform_from_source_url(source_url_normalized: str) -> Optional[str]:
     """Minimal, deliberately duplicated subset of app/platforms/base.py's
-    detect_platform() -- just enough to recognize the two YouTube-
+    detect_platform() -- just enough to recognize the three YouTube-
     delegating custom scrapers (see CUSTOM_PLATFORMS above) from a page's
     own source_url_normalized. archive/ deliberately doesn't import from
     app/ (see README's project structure notes on this directory's other
     deliberately-duplicated utils, e.g. url_normalize.py/language.py) --
-    this stays scoped to exactly the two cases get_platform_coverage()
+    this stays scoped to exactly the three cases get_platform_coverage()
     needs, not a general URL classifier.
     """
     netloc = urlparse(source_url_normalized).netloc.lower()
@@ -1491,6 +2326,8 @@ def _entry_platform_from_source_url(source_url_normalized: str) -> Optional[str]
         return "lims"
     if netloc.endswith("slc.gov") and "-meeting-recap" in path:
         return "slc"
+    if "clerkshq.com" in netloc:
+        return "clerkbase"
     return None
 
 
@@ -1641,16 +2478,394 @@ async def get_jurisdiction_coverage() -> list[dict]:
     return result
 
 
+# --- get_full_jurisdiction_coverage() and its helpers -----------------------
+# BACKLOG.md's "Coverage page -- a public, sortable/filterable table" entry:
+# one row per successfully-archived jurisdiction (same population as
+# get_jurisdiction_coverage() above, sharing its `MeetingPage.jurisdiction
+# is not None` gate), but with the fuller per-jurisdiction column spec that
+# function was never meant to carry -- video/agenda/transcript yes-no
+# columns, a two-column provider split, an outcome bucket, and a
+# last-verified date. Deliberately a new function rather than growing
+# get_jurisdiction_coverage() itself: that one backs the existing "Every
+# place we've covered" table and its own tests, which should keep behaving
+# exactly as before.
+
+
+# Domains recovering a YouTube-delegating wrapper platform's own real
+# identity from a page's source_url_normalized -- superset of
+# _entry_platform_from_source_url() above (which only recognizes lims/slc/
+# clerkbase, the three CUSTOM_PLATFORMS entries with their own /coverage
+# row). PrimeGov and CivicWeb are added here too: real, confirmed-live
+# wrapper platforms (README's "Supported platforms" table) that preserve
+# their own source_url on delegation the same way lims/slc/clerkbase do
+# (see primegov.py/civicweb.py's own docstrings), but that don't have a
+# DIRECT_PLATFORMS/CUSTOM_PLATFORMS row of their own today -- not a gap
+# this function needs to fix, just two more identities worth recovering
+# for the "Detail page" column below, which is the entire reason this
+# split exists (BACKLOG.md's "Provider, split into two columns" spec).
+def _wrapper_detail_label(source_url_normalized: str) -> Optional[str]:
+    netloc = urlparse(source_url_normalized).netloc.lower()
+    path = urlparse(source_url_normalized).path.lower()
+    if "lims.minneapolismn.gov" in netloc:
+        return "Minneapolis LIMS"
+    if netloc.endswith("slc.gov") and "-meeting-recap" in path:
+        return "Salt Lake City meeting recaps"
+    if "clerkshq.com" in netloc:
+        return "ClerkBase (clerkshq.com)"
+    if netloc.endswith("primegov.com"):
+        return "PrimeGov"
+    if netloc.endswith("civicweb.net"):
+        return "CivicWeb"
+    return None
+
+
+_PLATFORM_LABELS: dict[str, str] = {**DIRECT_PLATFORMS, **CUSTOM_PLATFORMS}
+
+
+def _platform_split(
+    platform: str, source_url_normalized: str, video_url: Optional[str]
+) -> tuple[str, str]:
+    """Returns (detail_page_label, video_label) for one MeetingPage row.
+
+    Only genuinely splits into two different labels when there's real
+    recoverable evidence they differ (the YouTube-wrapper case, or a
+    generic_fallback "unknown" row where the raw video host is at least
+    visible even though it isn't a named platform this app has an adapter
+    for) -- everywhere else both columns show the same label, which is the
+    honest answer given what's actually stored. Per CLAUDE.md's
+    wrapper-platform bullet, a Legistar/CivicPlus-delegated row's
+    MeetingPage.platform is already overwritten to the delegated platform
+    (e.g. "granicus") by the time it's ingested, and source_url_normalized
+    is the delegated platform's own URL too -- this app genuinely has no
+    stored way to tell, post-hoc, that a given Granicus row arrived via a
+    Legistar page rather than a directly-pasted Granicus link. Showing
+    "Detail page: Granicus; Video: Granicus" for that row isn't a missed
+    split, it's the real limit of what's recoverable from stored data.
+    """
+    if platform == "youtube":
+        wrapper = _wrapper_detail_label(source_url_normalized)
+        if wrapper:
+            return wrapper, "YouTube"
+        return "YouTube", "YouTube"
+    if platform == "unknown":
+        # generic_fallback.py's own scan for a directly playable media URL
+        # (no named platform/adapter involved) -- the raw host is real,
+        # derivable signal even though it isn't a platform this app has
+        # code for, so it's shown as-is rather than guessed at (e.g. never
+        # labeled "Vimeo" without a confirmed vimeo.com host -- see
+        # CLAUDE.md's "don't claim a data path works without a positive
+        # example" convention).
+        if video_url:
+            host = urlparse(video_url).netloc or "Custom/Generic"
+            return "Custom/Generic", host
+        return "Custom/Generic", "Custom/Generic"
+    label = _PLATFORM_LABELS.get(platform, platform)
+    return label, label
+
+
+# Mirrors app/db/outcomes.py's classify_outcome() bucket names/ordering, but
+# reads MeetingPage/TranscriptVersion (archive/db/models.py) instead of a
+# MeetingResolution row (app/db/models.py, a different schema on a
+# different service's DB) -- archive/ deliberately doesn't import from
+# app/ (see README's project-structure notes on other deliberately-
+# duplicated utils), and the inputs differ anyway (a page's already-
+# persisted state here vs. a fresh resolve() payload there). Same bucket
+# keys, so a reader comparing the two /admin/stats-style views gets the
+# same mental model.
+_OUTCOME_LABELS: dict[str, str] = {
+    "no_video": "No video",
+    "blank_transcript": "Blank/no transcript",
+    "agenda_fallback": "Agenda only",
+    "garbled_transcript": "Garbled transcript",
+    "non_english_transcript": "Transcript (non-English)",
+    "success": "Transcript (English)",
+}
+# Lower is better -- used to pick which of a jurisdiction's several pages
+# best represents it (same "prefer the most convincing real example"
+# intent as _select_examples() above, just scored on the fuller bucket
+# list instead of a single has_transcript bool).
+_OUTCOME_RANK: dict[str, int] = {
+    "success": 0,
+    "non_english_transcript": 1,
+    "garbled_transcript": 2,
+    "agenda_fallback": 3,
+    "blank_transcript": 4,
+    "no_video": 5,
+}
+
+
+def _classify_page_outcome(
+    *,
+    video_url: Optional[str],
+    agenda_items: Optional[list],
+    default_content_hash: Optional[str],
+    default_transcript_warnings: Optional[list],
+    default_transcript_language: Optional[str],
+) -> str:
+    if not video_url:
+        return "no_video"
+    if default_content_hash is None or default_content_hash == _EMPTY_CONTENT_HASH:
+        if agenda_items:
+            return "agenda_fallback"
+        return "blank_transcript"
+    if default_transcript_warnings and any(
+        _GARBLED_MARKER in w or _HALLUCINATION_MARKER in w
+        for w in default_transcript_warnings
+    ):
+        return "garbled_transcript"
+    if default_transcript_language and default_transcript_language != "en":
+        return "non_english_transcript"
+    return "success"
+
+
+async def get_transcript_quality_audit(
+    list_outcomes: Optional[set[str]] = None,
+) -> dict:
+    """Aggregate page counts per outcome bucket (same buckets as
+    _classify_page_outcome above / app/db/outcomes.py's classify_outcome())
+    across EVERY archived page, not just one best-example-per-jurisdiction
+    row like get_full_jurisdiction_coverage() below returns -- for
+    answering "how many archived meetings have a low-quality/garbled/
+    non-English/missing transcript" without needing direct DATABASE_URL
+    access (same reasoning as /internal/schema-info). Reads only the same
+    cheap columns _classify_page_outcome already needs, never
+    TranscriptVersion.segments -- see MeetingPage.search_corpus's own
+    docstring on why that matters at this table's real production scale.
+
+    `list_outcomes`, if given, also returns identifying rows (slug, real
+    source URL, platform, language, warnings) for every page landing in
+    one of those buckets -- e.g. {"garbled_transcript"} to get the real
+    list of garbled pages to target directly (scripts/
+    transcribe_backlog_locally.py --url), rather than just their count.
+    Still never touches segments.
+    """
+    async with async_session() as session:
+        rows = (
+            await session.execute(
+                select(
+                    MeetingPage.slug,
+                    MeetingPage.source_url_normalized,
+                    MeetingPage.platform,
+                    MeetingPage.video_url,
+                    MeetingPage.agenda_items,
+                    TranscriptVersion.content_hash,
+                    TranscriptVersion.transcript_warnings,
+                    TranscriptVersion.language,
+                ).outerjoin(
+                    TranscriptVersion,
+                    and_(
+                        TranscriptVersion.meeting_page_id == MeetingPage.id,
+                        TranscriptVersion.is_default.is_(True),
+                    ),
+                )
+            )
+        ).all()
+
+    counts: dict[str, int] = {}
+    examples: list[dict] = []
+    for (
+        slug,
+        source_url_normalized,
+        platform,
+        video_url,
+        agenda_items,
+        content_hash,
+        transcript_warnings,
+        language,
+    ) in rows:
+        outcome = _classify_page_outcome(
+            video_url=video_url,
+            agenda_items=agenda_items,
+            default_content_hash=content_hash,
+            default_transcript_warnings=transcript_warnings,
+            default_transcript_language=language,
+        )
+        if list_outcomes and outcome in list_outcomes:
+            examples.append(
+                {
+                    "slug": slug,
+                    "source_url_normalized": source_url_normalized,
+                    "platform": platform,
+                    "outcome": outcome,
+                    "language": language,
+                    "transcript_warnings": transcript_warnings,
+                }
+            )
+        counts[outcome] = counts.get(outcome, 0) + 1
+    result = {"total_pages": len(rows), "by_outcome": counts}
+    if list_outcomes:
+        result["examples"] = examples
+    return result
+
+
+async def get_full_jurisdiction_coverage() -> list[dict]:
+    """One row per distinct jurisdiction, same population as
+    get_jurisdiction_coverage() above, with the full column spec from
+    BACKLOG.md's "Coverage page" entry: video-embeds / agenda-embedded /
+    instant-transcript-from-source / transcript-from-audio-possible
+    (yes/no each), a two-column "detail page" vs "video" provider split
+    (see _platform_split()), an outcome bucket (see _classify_page_outcome,
+    mirroring app/db/outcomes.py's classify_outcome()), and a last-verified
+    date. A jurisdiction with several archived pages gets its yes/no
+    columns computed as "true if ANY of its pages has this" (this is a
+    "did we ever manage this for this city" roster, not a per-meeting
+    one), but its platform-split/outcome/example columns come from
+    whichever single page best represents it (lowest _OUTCOME_RANK, i.e.
+    the most convincing real example) -- same spirit as
+    get_jurisdiction_coverage()'s own has_transcript-preferred example
+    pick, just scored on the fuller outcome bucket instead of one bool.
+
+    Reads only the columns each computation actually needs (never
+    TranscriptVersion.segments, the heavy JSON column -- see
+    MeetingPage.search_corpus's own docstring on why that matters at this
+    table's real production scale) via an EXISTS subquery for "a real
+    source-provided (source='scraped') transcript exists on ANY version of
+    this page" (not just the default one -- a page's default can be
+    promoted to a later 'transcribed' version via
+    manually_promote_transcript_version() without deleting the original
+    scraped one, so checking only the default would wrongly say "no" for
+    a page that still has a real scraped transcript sitting non-default),
+    plus a plain outerjoin on the default version for the outcome-bucket
+    fields (content_hash/transcript_warnings/language), which are always
+    about "what does /m/{slug} show by default right now."
+    """
+    # Aliased + explicitly correlated to MeetingPage only, same reason as
+    # _is_empty_page_condition()'s identical pattern above: the outer query
+    # below already outerjoins TranscriptVersion (the default version), so
+    # without the alias SQLAlchemy auto-correlates that join away too,
+    # leaving this subquery with no FROM at all.
+    any_scraped_version = aliased(TranscriptVersion)
+    has_scraped_transcript = (
+        select(any_scraped_version.id)
+        .where(
+            any_scraped_version.meeting_page_id == MeetingPage.id,
+            any_scraped_version.source == "scraped",
+            any_scraped_version.content_hash != _EMPTY_CONTENT_HASH,
+        )
+        .correlate(MeetingPage)
+        .exists()
+    )
+    async with async_session() as session:
+        stmt = (
+            select(
+                MeetingPage.jurisdiction,
+                MeetingPage.slug,
+                MeetingPage.title,
+                MeetingPage.platform,
+                MeetingPage.source_url_normalized,
+                MeetingPage.video_url,
+                MeetingPage.video_format,
+                MeetingPage.agenda_items,
+                MeetingPage.updated_at,
+                has_scraped_transcript.label("has_scraped_transcript"),
+                TranscriptVersion.content_hash,
+                TranscriptVersion.transcript_warnings,
+                TranscriptVersion.language,
+            )
+            .outerjoin(
+                TranscriptVersion,
+                and_(
+                    TranscriptVersion.meeting_page_id == MeetingPage.id,
+                    TranscriptVersion.is_default.is_(True),
+                ),
+            )
+            .where(MeetingPage.jurisdiction.is_not(None))
+        )
+        rows = (await session.execute(stmt)).all()
+
+    by_jurisdiction: dict[str, list[dict]] = {}
+    for (
+        jurisdiction,
+        slug,
+        title,
+        platform,
+        source_url_normalized,
+        video_url,
+        video_format,
+        agenda_items,
+        updated_at,
+        has_scraped,
+        content_hash,
+        transcript_warnings,
+        language,
+    ) in rows:
+        detail_label, video_label = _platform_split(
+            platform, source_url_normalized, video_url
+        )
+        outcome = _classify_page_outcome(
+            video_url=video_url,
+            agenda_items=agenda_items,
+            default_content_hash=content_hash,
+            default_transcript_warnings=transcript_warnings,
+            default_transcript_language=language,
+        )
+        by_jurisdiction.setdefault(jurisdiction, []).append(
+            {
+                "slug": slug,
+                "title": title,
+                "video_embeds": video_url is not None,
+                "agenda_embedded": bool(agenda_items),
+                "instant_transcript": bool(has_scraped),
+                # Mirrors app/main.py's own _unreadable_media_message()
+                # reasoning: a video_format=="youtube" result is
+                # structurally unprobeable by ffprobe (an iframe-embed
+                # page, never a real media file), so the on-demand
+                # Whisper path can never succeed for it regardless of
+                # whether anyone has actually tried yet -- see that
+                # function's own docstring for the full trace. A live
+                # ffprobe check per row here would be far too expensive
+                # for a full coverage table; this is the same structural
+                # approximation the resolver itself already relies on.
+                "audio_transcript_possible": video_url is not None
+                and video_format != "youtube",
+                "detail_platform": detail_label,
+                "video_platform": video_label,
+                "outcome": outcome,
+                "updated_at": updated_at,
+            }
+        )
+
+    result = []
+    for jurisdiction in sorted(by_jurisdiction, key=str.casefold):
+        pages = by_jurisdiction[jurisdiction]
+        best = min(pages, key=lambda p: _OUTCOME_RANK[p["outcome"]])
+        last_verified = max(p["updated_at"] for p in pages)
+        result.append(
+            {
+                "jurisdiction": jurisdiction,
+                "video_embeds": any(p["video_embeds"] for p in pages),
+                "agenda_embedded": any(p["agenda_embedded"] for p in pages),
+                "instant_transcript": any(p["instant_transcript"] for p in pages),
+                "audio_transcript_possible": any(
+                    p["audio_transcript_possible"] for p in pages
+                ),
+                "detail_platform": best["detail_platform"],
+                "video_platform": best["video_platform"],
+                "outcome": best["outcome"],
+                "outcome_label": _OUTCOME_LABELS[best["outcome"]],
+                "last_verified": last_verified,
+                "example": {"slug": best["slug"], "title": best["title"]},
+                "page_count": len(pages),
+            }
+        )
+    return result
+
+
 async def get_state_coverage_index() -> list[dict]:
-    """One row per US state with >= 1 indexable archived meeting, for the
-    /state/{slug} landing pages: /coverage's "Browse by state" section and
-    sitemap.xml's per-state entries. Excludes platform == "unknown"
-    (generic_fallback) pages -- state pages are an indexable SEO surface
-    and carry the same trust posture as the sitemap (see
-    list_all_page_slugs() below). Jurisdictions without a recognized
-    ", ST" suffix (school districts, state agencies, non-US) simply don't
-    group into any state -- a documented limitation, not a bug.
-    Sorted by state name."""
+    """One row per US state or Canadian province/territory with >= 1
+    indexable archived meeting, for the /state/{slug} landing pages:
+    /coverage's "Browse by state" section and sitemap.xml's per-state
+    entries. Excludes platform == "unknown" (generic_fallback) pages --
+    state pages are an indexable SEO surface and carry the same trust
+    posture as the sitemap (see list_all_page_slugs() below).
+    Jurisdictions without a recognized ", ST" suffix (school districts,
+    state agencies, non-US/non-Canada) simply don't group into any state
+    -- a documented limitation, not a bug. Sorted by name within each of
+    two country groups (US first, matching /coverage's existing "Browse
+    by state" heading; Canada second under its own "country": "CA" rows)
+    -- each row's "country" field ("US"/"CA", from is_canadian_abbr())
+    is what lets coverage.html render the two as separate sections
+    without a second query."""
     async with async_session() as session:
         stmt = select(MeetingPage.jurisdiction, MeetingPage.updated_at).where(
             MeetingPage.jurisdiction.is_not(None),
@@ -1676,19 +2891,27 @@ async def get_state_coverage_index() -> list[dict]:
             "abbr": abbr,
             "name": US_STATE_ABBR_TO_NAME[abbr],
             "slug": state_slug_from_abbr(abbr),
+            "country": "CA" if is_canadian_abbr(abbr) else "US",
             "jurisdiction_count": len(entry["jurisdictions"]),
             "page_count": entry["page_count"],
             "last_updated": entry["last_updated"],
         }
         for abbr, entry in by_state.items()
     ]
-    result.sort(key=lambda s: s["name"])
+    result.sort(key=lambda s: (s["country"] != "US", s["name"]))
     return result
 
 
 async def get_state_page_data(abbr: str) -> Optional[dict]:
-    """Everything /state/{slug} renders, or None when the state has no
-    indexable pages (the route 404s). Anchored suffix match on the stored
+    """Everything /state/{slug} renders, or None when the state/province
+    has no indexable pages (the route 404s). `abbr` works for either a US
+    state or a Canadian province/territory -- US_STATE_ABBR_TO_NAME
+    combines both (see jurisdiction_format.py), so no country-specific
+    branch is needed here just to resolve a display name; a Canadian
+    jurisdiction's own ", AB"-style suffix already carries a "(Canada)"
+    display marker wherever it's rendered through the jurisdiction_display
+    filter (see format_jurisdiction_display()), so state_page.html itself
+    needed no template changes. Anchored suffix match on the stored
     jurisdiction -- normalize_state_suffix() guarantees the canonical
     ", CA" form at write time, so LIKE '%, CA' can't false-positive the
     way list_pages()'s substring ilike would ("Decatur, GA" contains
@@ -1740,16 +2963,25 @@ async def get_state_page_data(abbr: str) -> Optional[dict]:
     if not pages:
         return None
 
-    by_jurisdiction: dict[str, list[dict]] = {}
+    # Grouped by hub slug (jurisdiction_hub_slug(), i.e. the display form),
+    # not the raw string -- since 2026-08-17 each row links to its /j/{slug}
+    # hub, and raw variants of one government ("City of Napa, CA" /
+    # "Napa, CA") must be one row pointing at one hub, not two rows with
+    # the same display name. `jurisdiction` stays the first raw string
+    # seen, for the jurisdiction_display filter and any raw-string uses.
+    by_hub: dict[str, list[dict]] = {}
     for p in pages:
-        by_jurisdiction.setdefault(p["jurisdiction"], []).append(p)
+        by_hub.setdefault(jurisdiction_hub_slug(p["jurisdiction"]) or "", []).append(p)
     jurisdictions = []
-    for jurisdiction in sorted(by_jurisdiction, key=str.casefold):
-        examples = by_jurisdiction[jurisdiction]
+    for hub_slug in sorted(
+        by_hub, key=lambda s: by_hub[s][0]["jurisdiction"].casefold()
+    ):
+        examples = by_hub[hub_slug]
         example = next((e for e in examples if e["has_transcript"]), examples[0])
         jurisdictions.append(
             {
-                "jurisdiction": jurisdiction,
+                "jurisdiction": examples[0]["jurisdiction"],
+                "hub_slug": hub_slug or None,
                 "example": example,
                 "page_count": len(examples),
             }
@@ -1766,12 +2998,194 @@ async def get_state_page_data(abbr: str) -> Optional[dict]:
     }
 
 
+# --- Jurisdiction hub pages: /j/{slug} -----------------------------------
+#
+# One landing page per government ("Napa, CA -- public meeting video &
+# transcripts"), grouped by jurisdiction_hub_slug() (the display form's
+# slug, so raw-string variants of one government consolidate) rather than
+# by the raw stored string. Built 2026-08-17 on top of the state pages;
+# same posture as those and the sitemap: platform == "unknown" and empty
+# pages are excluded throughout.
+#
+# The archive is wide and shallow (measured 2026-08-17 from the live
+# /state/* tables: 574 stateful jurisdictions, 439 with exactly ONE
+# meeting, 110 with two, 25 with three+, two with 10+ -- San Diego 42,
+# Napa 24). A one-meeting "hub" is a near-duplicate of that meeting's own
+# page, i.e. thin/doorway content to a crawler. So every hub *renders*
+# (useful navigation, and every /m/* page links to its hub) but only hubs
+# with >= JURISDICTION_HUB_MIN_INDEXABLE meetings are indexable (no
+# noindex) and listed in sitemap.xml. Evaluated live per request, so a
+# singleton hub becomes indexable by itself the moment a second meeting
+# lands -- the bulk-ingest scripts add depth over time and this tracks
+# it with no code change. One dial; 3 is the conservative alternative.
+JURISDICTION_HUB_MIN_INDEXABLE = 2
+
+
+def _hub_base_conditions():
+    return (
+        MeetingPage.jurisdiction.is_not(None),
+        MeetingPage.platform != "unknown",
+        ~_is_empty_page_condition(),
+    )
+
+
+async def _hub_groups(session) -> dict[str, dict]:
+    """slug -> {display, jurisdictions: [raw strings], page_count,
+    last_updated, state_abbr}, from one GROUP BY over indexable, non-empty
+    pages. A few hundred rows -- cheap enough to run per request (no
+    cache, so nothing can go stale), same approach the state pages use."""
+    stmt = (
+        select(
+            MeetingPage.jurisdiction,
+            func.count(),
+            func.max(MeetingPage.updated_at),
+        )
+        .where(*_hub_base_conditions())
+        .group_by(MeetingPage.jurisdiction)
+    )
+    rows = (await session.execute(stmt)).all()
+    groups: dict[str, dict] = {}
+    for jurisdiction, count, last_updated in rows:
+        slug = jurisdiction_hub_slug(jurisdiction)
+        if not slug:
+            continue
+        g = groups.setdefault(
+            slug,
+            {
+                "slug": slug,
+                "display": format_jurisdiction_display(jurisdiction),
+                "jurisdictions": [],
+                "page_count": 0,
+                "last_updated": last_updated,
+                "state_abbr": state_abbr_from_jurisdiction(jurisdiction),
+            },
+        )
+        g["jurisdictions"].append(jurisdiction)
+        g["page_count"] += count
+        if last_updated and (
+            g["last_updated"] is None or last_updated > g["last_updated"]
+        ):
+            g["last_updated"] = last_updated
+    return groups
+
+
+async def get_jurisdiction_hub_data(slug: str) -> Optional[dict]:
+    """Everything /j/{slug} renders, or None when no indexable page maps to
+    this slug (the route 404s). Every meeting for the hub's raw
+    jurisdiction strings, newest first; counts, date range, transcript
+    count, a by-body breakdown (meeting_body, e.g. "City Council" x 30 --
+    None when the split never happened); the state for the breadcrumb and
+    "Part of {State}" link; and `indexable`, the threshold verdict the
+    template turns into a robots meta and the sitemap uses to include the
+    hub. Loads every meeting for one government -- San Diego's 42 is the
+    current maximum, so no pagination; the "search all" link to
+    /meetings?jurisdiction= covers a future 500-meeting city."""
+    async with async_session() as session:
+        groups = await _hub_groups(session)
+        group = groups.get(slug)
+        if group is None:
+            return None
+        stmt = (
+            select(
+                MeetingPage.slug,
+                MeetingPage.title,
+                MeetingPage.date,
+                MeetingPage.jurisdiction,
+                MeetingPage.meeting_body,
+                TranscriptVersion.id,
+                TranscriptVersion.transcript_warnings,
+            )
+            .outerjoin(
+                TranscriptVersion,
+                and_(
+                    TranscriptVersion.meeting_page_id == MeetingPage.id,
+                    TranscriptVersion.is_default.is_(True),
+                ),
+            )
+            .where(
+                MeetingPage.jurisdiction.in_(group["jurisdictions"]),
+                *_hub_base_conditions(),
+            )
+            .order_by(
+                MeetingPage.date.desc().nulls_last(), MeetingPage.created_at.desc()
+            )
+        )
+        rows = (await session.execute(stmt)).all()
+
+    pages = [
+        {
+            "slug": page_slug,
+            "title": title,
+            "date": date,
+            "jurisdiction": jurisdiction,
+            "meeting_body": meeting_body,
+            "has_transcript": version_id is not None
+            and _has_real_warning_free_transcript(warnings),
+        }
+        for page_slug, title, date, jurisdiction, meeting_body, version_id, warnings in rows
+    ]
+    if not pages:
+        return None
+    body_counts: dict[str, int] = {}
+    for p in pages:
+        if p["meeting_body"]:
+            body_counts[p["meeting_body"]] = body_counts.get(p["meeting_body"], 0) + 1
+    bodies = sorted(body_counts.items(), key=lambda kv: (-kv[1], kv[0]))
+    dates = sorted(p["date"] for p in pages if p["date"])
+    abbr = group["state_abbr"]
+    return {
+        "slug": slug,
+        "display": group["display"],
+        "pages": pages,
+        "total_pages": len(pages),
+        "transcript_count": sum(1 for p in pages if p["has_transcript"]),
+        "bodies": [{"name": n, "count": c} for n, c in bodies],
+        "earliest_date": dates[0] if dates else None,
+        "latest_date": dates[-1] if dates else None,
+        "state_abbr": abbr,
+        "state_name": US_STATE_ABBR_TO_NAME.get(abbr) if abbr else None,
+        "state_slug": state_slug_from_abbr(abbr) if abbr else None,
+        "indexable": len(pages) >= JURISDICTION_HUB_MIN_INDEXABLE,
+        "min_indexable": JURISDICTION_HUB_MIN_INDEXABLE,
+        # The raw strings, for the /meetings?jurisdiction= "search all" link
+        # (the first is as good as any -- list_pages()'s jurisdiction
+        # filter is a substring match).
+        "search_jurisdiction": group["jurisdictions"][0],
+    }
+
+
+async def list_indexable_hub_entries() -> list[dict]:
+    """[{slug, display, last_updated}] for every hub at or above
+    JURISDICTION_HUB_MIN_INDEXABLE -- sitemap.xml's /j/ entries (real
+    lastmod, same as the state entries). Sorted by slug for a stable
+    file."""
+    async with async_session() as session:
+        groups = await _hub_groups(session)
+    return sorted(
+        (
+            {
+                "slug": g["slug"],
+                "display": g["display"],
+                "last_updated": g["last_updated"],
+            }
+            for g in groups.values()
+            if g["page_count"] >= JURISDICTION_HUB_MIN_INDEXABLE
+        ),
+        key=lambda g: g["slug"],
+    )
+
+
 async def list_all_page_slugs() -> list[dict]:
     """Every indexable page's slug + updated_at, unpaginated -- for
     sitemap.xml. Excludes platform == "unknown" (generic_fallback) pages:
     meeting_page.html noindexes exactly those, so listing them in the
     sitemap sends Google contradictory signals (the real Search Console
     "Excluded by 'noindex' tag ... in a sitemap" alert, 2026-08-17).
+    Same reasoning for empty pages (_is_empty_page_condition()): the
+    template noindexes those too, and they're the likeliest source of
+    Search Console's "Page indexed without content" (see
+    CLAUDE_BACKLOG.md); a page that later fills in reappears here on its
+    own since the predicate is evaluated live.
     Fine as a single query at hundreds/thousands of rows; revisit (batching,
     a sitemap index + sub-sitemaps) only once actually approaching the
     ~50k-URL point where Google expects that split."""
@@ -1779,7 +3193,10 @@ async def list_all_page_slugs() -> list[dict]:
         rows = (
             await session.execute(
                 select(MeetingPage.slug, MeetingPage.updated_at)
-                .where(MeetingPage.platform != "unknown")
+                .where(
+                    MeetingPage.platform != "unknown",
+                    ~_is_empty_page_condition(),
+                )
                 .order_by(MeetingPage.updated_at.desc())
             )
         ).all()
@@ -1792,9 +3209,18 @@ async def list_recent_pages_for_feed(
     """Most-recently-archived pages for feed.xml -- a separate, deliberately
     simple query rather than reusing list_pages()'s pagination/multi-filter
     machinery, since a feed only ever wants "the last N, optionally scoped
-    to one jurisdiction," newest first, with no page number to track."""
+    to one jurisdiction," newest first, with no page number to track.
+    Empty pages are excluded, same as list_pages()'s default browse -- a
+    feed entry a subscriber can't watch or read anything on is just
+    noise (and a subscriber's reader would never re-fetch it once the
+    source fills the page in)."""
     limit = max(1, min(limit, 100))
-    stmt = select(MeetingPage).order_by(MeetingPage.created_at.desc()).limit(limit)
+    stmt = (
+        select(MeetingPage)
+        .where(~_is_empty_page_condition())
+        .order_by(MeetingPage.created_at.desc())
+        .limit(limit)
+    )
     if jurisdiction:
         terms = jurisdiction_search_terms(jurisdiction)
         stmt = stmt.where(
@@ -1851,11 +3277,35 @@ PRIORITY_MEDIUM = 10  # every real user-submitted request today
 # meant the countdown kept resetting (each auto-restart re-claimed the
 # job, pushing "stale" 10 more minutes out every time) -- annoying to
 # wait out mid-debugging. 5 minutes is still comfortably longer than a
-# single chunk should ever legitimately take with the "tiny" model, and
-# the only real instance of this repo's single worker process, so there's
-# no concurrent-worker race this protects against, just crash detection.
+# single chunk should ever legitimately take with the "tiny" model. This
+# is still purely crash detection, not a concurrent-worker guard -- that's
+# claim_next_chunk()'s own FOR UPDATE SKIP LOCKED below, which already
+# stops two worker processes (a second one is real now, see render.yaml's
+# rtr-transcription-worker-2) from double-claiming the same row. This
+# window only matters for a worker that crashes mid-chunk without ever
+# calling report_chunk_result() to release its claim -- after it elapses,
+# *some* worker (the other replica, or this one after a restart) can
+# reclaim the row; which worker that ends up being isn't what this timer
+# is about.
 STALE_CLAIM_AFTER = timedelta(minutes=5)
 MAX_CONSECUTIVE_CHUNK_FAILURES = 3
+
+# Escalating-backoff retry for a real user-submitted (PRIORITY_MEDIUM+) job
+# that's exhausted MAX_CONSECUTIVE_CHUNK_FAILURES -- added 2026-08-19 after
+# a real case (job 256, Redwood City CA, requested by an early user)
+# failed on a single ffmpeg timeout and a later manual re-run of the exact
+# same source succeeded outright, confirming the source wasn't genuinely
+# broken. A PRIORITY_LOW auto-generated job deliberately does NOT use
+# this -- it keeps the older immediate-"failed" behavior, since it already
+# has its own separate page-level escalating cooldown
+# (AUTO_TRANSCRIPTION_BASE_COOLDOWN) that re-tries the page later anyway;
+# duplicating both mechanisms on the same job would just double-count the
+# backoff. Doubling per retry, same shape as that cooldown, scaled to
+# hours instead of days since a stalled *specific request* someone is
+# waiting on deserves a much faster second look than idle backlog work.
+MAX_JOB_RETRIES = 3
+JOB_RETRY_BASE_DELAY = timedelta(hours=1)
+JOB_RETRY_MAX_DELAY = timedelta(hours=6)
 
 # Escalating backoff for auto-generated transcription jobs (worker/main.py's
 # idle-time candidate search) -- decided 2026-08-09 over a flat cooldown or
@@ -1896,7 +3346,7 @@ async def promote_transcript_version(session, page_id: int, version_id: int) -> 
 
 
 async def manually_promote_transcript_version(
-    *, slug: str, version_id: int
+    *, slug: str, version_id: int, clear_warnings: bool = False
 ) -> Optional[dict]:
     """Admin action: make `version_id` this page's default TranscriptVersion.
     Real gap this closes -- found 2026-08-12 fixing a real stale ALL-CAPS
@@ -1909,6 +3359,33 @@ async def manually_promote_transcript_version(
     path to become the default at all without this. Standalone
     session/commit, same "always a top-level admin action" reasoning as
     `correct_transcript_version_language()` right below.
+
+    `clear_warnings=True` also strips any `_GARBLED_MARKER`/`_HALLUCINATION_MARKER`
+    entries from the *promoted* version's own `transcript_warnings` --
+    deliberately a filter, not a wipe (see 2026-08-20 correction below).
+    Real gap this closes -- found 2026-08-20 investigating why several
+    YouTube pages (e.g. nashua-2025-05-28-committee-on-infrastructure)
+    stayed permanently flagged `garbled_transcript` despite
+    scripts/fetch_youtube_transcripts.py successfully re-fetching and
+    promoting them every day: `ingest_resolution()` dedupes by content
+    hash, so a re-fetch of the same underlying caption track (via a
+    different library than the original resolve) reuses the existing,
+    already-garbled-flagged version row instead of creating a fresh one --
+    promoting it alone never cleared that stale flag, even though the
+    caller's whole point in promoting was "trust this over whatever's
+    already there." Never touches the *demoted* version's warnings -- same
+    "never destroys history" spirit as the rest of this function; only the
+    version now being vouched for gets its flag reset.
+
+    Correction same day: the first version of this simply reset
+    `transcript_warnings` to `[]` outright, which also silently discarded
+    unrelated, still-true informational warnings on the same list (e.g.
+    "These are YouTube's auto-generated captions..." from
+    app/platforms/youtube.py) -- a real regression caught live on the
+    first 6 pages this ran against in production, fixed here by filtering
+    only the two quality-blocking markers instead. See
+    `correct_transcript_version_warnings()` below for how those 6 pages'
+    dropped disclaimer text was restored.
     """
     async with async_session() as session:
         page = (
@@ -1924,8 +3401,68 @@ async def manually_promote_transcript_version(
             return None
 
         await promote_transcript_version(session, page.id, version_id)
+        if clear_warnings:
+            version.transcript_warnings = [
+                w
+                for w in (version.transcript_warnings or [])
+                if _GARBLED_MARKER not in w and _HALLUCINATION_MARKER not in w
+            ]
         await session.commit()
         return {"slug": slug, "promoted_version_id": version_id}
+
+
+async def correct_transcript_version_warnings(
+    *, slug: str, warnings: list[str], version_id: Optional[int] = None
+) -> Optional[dict]:
+    """Admin correction for a TranscriptVersion's `transcript_warnings` list
+    -- same "public report, admin fixes" shape as
+    `correct_transcript_version_language()` right below (targets the
+    page's current default when `version_id` isn't given). Built 2026-08-20
+    specifically to restore informational warnings (e.g. the YouTube
+    auto-caption disclaimer) that `manually_promote_transcript_version()`'s
+    first `clear_warnings=True` implementation had wiped outright on 6 real
+    production pages before that was corrected to filter instead -- see
+    its docstring. General-purpose beyond that one-time fix: any other
+    future case needing a direct warnings correction (mirroring how
+    `correct_transcript_version_language()` already exists for the
+    language field) can reuse this rather than a new one-off.
+    """
+    async with async_session() as session:
+        page = (
+            (await session.execute(select(MeetingPage).where(MeetingPage.slug == slug)))
+            .scalars()
+            .first()
+        )
+        if page is None:
+            return None
+
+        if version_id is not None:
+            version = await session.get(TranscriptVersion, version_id)
+            if version is None or version.meeting_page_id != page.id:
+                return None
+        else:
+            version = (
+                (
+                    await session.execute(
+                        select(TranscriptVersion).where(
+                            TranscriptVersion.meeting_page_id == page.id,
+                            TranscriptVersion.is_default.is_(True),
+                        )
+                    )
+                )
+                .scalars()
+                .first()
+            )
+            if version is None:
+                return None
+
+        version.transcript_warnings = warnings
+        await session.commit()
+        return {
+            "slug": slug,
+            "version_id": version.id,
+            "transcript_warnings": version.transcript_warnings,
+        }
 
 
 async def correct_transcript_version_language(
@@ -2009,6 +3546,11 @@ async def create_transcription_job(
 
         not_expired_pending = or_(
             TranscriptionJob.status.in_(SPENDING_JOB_STATUSES),
+            # A job waiting out its retry backoff is still "this page has
+            # an active request in flight" -- a fresh submit during that
+            # window should find the existing job, not start a second one
+            # racing it once the retry fires.
+            TranscriptionJob.status == "retry_scheduled",
             and_(
                 TranscriptionJob.status == "pending_confirmation",
                 TranscriptionJob.created_at
@@ -2076,34 +3618,24 @@ def _aware(dt: datetime) -> datetime:
     return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
-async def _in_auto_transcription_cooldown(session, meeting_page_id: int) -> bool:
-    """True if this page has failed auto/manual transcription recently
-    enough that it shouldn't be tried again yet -- see
-    AUTO_TRANSCRIPTION_BASE_COOLDOWN's docstring for the escalating-backoff
-    reasoning. Counts *consecutive* failures walking back from the most
-    recent job, stopping at the first non-"failed" one (a "completed" job
-    means this page already has what it needs; an older failure before a
-    completed one is stale history, not part of the current streak)."""
-    jobs = (
-        (
-            await session.execute(
-                select(TranscriptionJob)
-                .where(TranscriptionJob.meeting_page_id == meeting_page_id)
-                .order_by(TranscriptionJob.created_at.desc())
-            )
-        )
-        .scalars()
-        .all()
-    )
-
+def _cooldown_active(jobs_newest_first: list[tuple], now: datetime) -> bool:
+    """The escalating-backoff decision on a page's TranscriptionJob history
+    -- `jobs_newest_first` is [(status, updated_at), ...] ordered by
+    created_at DESC. Counts *consecutive* failures walking back from the
+    most recent job, stopping at the first non-"failed" one (a "completed"
+    job means this page already has what it needs; an older failure before
+    a completed one is stale history, not part of the current streak).
+    Pure so find_auto_transcription_candidate() can evaluate it over a
+    batch it fetched in one query, and _in_auto_transcription_cooldown()
+    over a single page."""
     consecutive_failures = 0
     most_recent_failed_at = None
-    for job in jobs:
-        if job.status != "failed":
+    for status, updated_at in jobs_newest_first:
+        if status != "failed":
             break
         consecutive_failures += 1
         if most_recent_failed_at is None:
-            most_recent_failed_at = job.updated_at
+            most_recent_failed_at = updated_at
 
     if consecutive_failures == 0:
         return False
@@ -2112,7 +3644,25 @@ async def _in_auto_transcription_cooldown(session, meeting_page_id: int) -> bool
         AUTO_TRANSCRIPTION_BASE_COOLDOWN * (2 ** (consecutive_failures - 1)),
         AUTO_TRANSCRIPTION_MAX_COOLDOWN,
     )
-    return datetime.now(timezone.utc) < _aware(most_recent_failed_at) + cooldown
+    return now < _aware(most_recent_failed_at) + cooldown
+
+
+async def _in_auto_transcription_cooldown(session, meeting_page_id: int) -> bool:
+    """True if this page has failed auto/manual transcription recently
+    enough that it shouldn't be tried again yet -- see
+    AUTO_TRANSCRIPTION_BASE_COOLDOWN's docstring for the escalating-backoff
+    reasoning and _cooldown_active() for the rule. Selects only
+    status/updated_at: TranscriptionJob carries `partial_segments` (a whole
+    in-progress transcript as JSON), which the previous full-entity select
+    dragged along for every job of every page checked."""
+    jobs = (
+        await session.execute(
+            select(TranscriptionJob.status, TranscriptionJob.updated_at)
+            .where(TranscriptionJob.meeting_page_id == meeting_page_id)
+            .order_by(TranscriptionJob.created_at.desc())
+        )
+    ).all()
+    return _cooldown_active([tuple(j) for j in jobs], datetime.now(timezone.utc))
 
 
 async def find_auto_transcription_candidate() -> Optional[dict]:
@@ -2122,34 +3672,63 @@ async def find_auto_transcription_candidate() -> Optional[dict]:
     completely empty before calling this -- this function only picks a
     candidate, it doesn't check that itself.
 
-    Full Python-side scan over every page, deliberately -- fine at today's
-    scale (dozens of meetings) and only ever called at most once every
-    AUTO_GENERATION_CHECK_INTERVAL_SECONDS (see worker/main.py), same
-    "acceptable now, revisit at real scale" reasoning as /meetings' own
-    search scan (BACKLOG.md's materialized-search-column entry).
+    Two light queries, no transcript data moved -- rewritten 2026-08-17
+    after `pg_stat_statements` showed the previous shape (load every
+    MeetingPage, then per page call _has_good_transcript() -- which
+    selected the full TranscriptVersion incl. its `segments` JSON -- and
+    _in_auto_transcription_cooldown()) as the #1 consumer of production
+    DB time: 218,480 calls / 47 minutes, i.e. all 102MB of transcript JSON
+    pulled through a 64MB-shared_buffers Postgres every 5 idle minutes to
+    make one decision. Now: (1) the pages *lacking* a good default
+    transcript, in SQL via _good_default_transcript_exists() -- the same
+    filter shape /meetings' has_transcript=False uses -- ordered
+    created_at ASC (a few hundred light rows, not 1,219 + their
+    transcripts); (2) those pages' TranscriptionJob status/updated_at
+    history in one query; then the cooldown rule in Python per candidate
+    until one passes. Same "oldest page without a good transcript and not
+    in cooldown" result as before.
     """
     async with async_session() as session:
-        pages = (
-            (
-                await session.execute(
-                    select(MeetingPage).order_by(MeetingPage.created_at.asc())
+        candidates = (
+            await session.execute(
+                select(
+                    MeetingPage.id,
+                    MeetingPage.slug,
+                    MeetingPage.source_url_normalized,
+                    MeetingPage.platform,
                 )
+                .where(~_good_default_transcript_exists())
+                .order_by(MeetingPage.created_at.asc())
             )
-            .scalars()
-            .all()
-        )
+        ).all()
+        if not candidates:
+            return None
 
-        for page in pages:
-            if await _has_good_transcript(session, page.id):
-                continue
-            if await _in_auto_transcription_cooldown(session, page.id):
-                continue
-            return {
-                "meeting_page_id": page.id,
-                "slug": page.slug,
-                "source_url": page.source_url_normalized,
-                "platform": page.platform,
-            }
+        job_rows = (
+            await session.execute(
+                select(
+                    TranscriptionJob.meeting_page_id,
+                    TranscriptionJob.status,
+                    TranscriptionJob.updated_at,
+                )
+                .where(TranscriptionJob.meeting_page_id.in_([c[0] for c in candidates]))
+                .order_by(TranscriptionJob.created_at.desc())
+            )
+        ).all()
+    jobs_by_page: dict[int, list[tuple]] = {}
+    for page_id, status, updated_at in job_rows:
+        jobs_by_page.setdefault(page_id, []).append((status, updated_at))
+
+    now = datetime.now(timezone.utc)
+    for page_id, slug, source_url, platform in candidates:
+        if _cooldown_active(jobs_by_page.get(page_id, []), now):
+            continue
+        return {
+            "meeting_page_id": page_id,
+            "slug": slug,
+            "source_url": source_url,
+            "platform": platform,
+        }
     return None
 
 
@@ -2217,40 +3796,54 @@ async def claim_next_chunk() -> Optional[dict]:
     """Atomically claims the oldest queued/in_progress job with no live
     claim, marking it in_progress and stamping claimed_at so a second
     concurrent caller won't also pick it up. The staleness window
-    (STALE_CLAIM_AFTER) exists for a crashed/restarted worker process, not
-    a multi-worker race -- only one worker process is planned (see the
-    plan this was built from), so this is a safety net, not load-bearing
-    concurrency control. Returns everything the worker needs to process
-    one chunk, or None if nothing's claimable right now.
+    (STALE_CLAIM_AFTER) exists for a crashed/restarted worker process.
+
+    Genuine multi-worker concurrency (several worker processes/replicas
+    calling this at once, to use more than one CPU -- see BACKLOG.md's
+    "Render worker plan sizing" follow-up) is now real, not hypothetical,
+    so the SELECT below takes `FOR UPDATE SKIP LOCKED` on Postgres: two
+    concurrent transactions each lock the row they're about to claim, so
+    neither can select a row the other is mid-claim on, and SKIP LOCKED
+    means a caller that would've collided just falls through to the next
+    candidate instead of blocking on the lock. Without this, the previous
+    plain SELECT-then-UPDATE had a real TOCTOU window where two processes
+    could both read the same row before either committed. Same dialect
+    gate as _fts_available() -- SQLite (dev/CI) doesn't support SKIP
+    LOCKED, and doesn't need to: nothing there runs more than one process
+    against the same DB file.
     """
     now = datetime.now(timezone.utc)
     stale_before = now - STALE_CLAIM_AFTER
 
     async with async_session() as session:
-        job = (
-            (
-                await session.execute(
-                    select(TranscriptionJob)
-                    .where(
-                        TranscriptionJob.status.in_(("queued", "in_progress")),
-                        (TranscriptionJob.claimed_at.is_(None))
-                        | (TranscriptionJob.claimed_at < stale_before),
-                    )
-                    .order_by(
-                        TranscriptionJob.priority.desc(),
-                        TranscriptionJob.created_at.asc(),
-                    )
-                    .limit(1)
-                )
+        stmt = (
+            select(TranscriptionJob)
+            .where(
+                or_(
+                    TranscriptionJob.status.in_(("queued", "in_progress")),
+                    and_(
+                        TranscriptionJob.status == "retry_scheduled",
+                        TranscriptionJob.next_retry_at <= now,
+                    ),
+                ),
+                (TranscriptionJob.claimed_at.is_(None))
+                | (TranscriptionJob.claimed_at < stale_before),
             )
-            .scalars()
-            .first()
+            .order_by(
+                TranscriptionJob.priority.desc(),
+                TranscriptionJob.created_at.asc(),
+            )
+            .limit(1)
         )
+        if session.bind.dialect.name == "postgresql":
+            stmt = stmt.with_for_update(skip_locked=True)
+        job = (await session.execute(stmt)).scalars().first()
         if job is None:
             return None
 
         job.status = "in_progress"
         job.claimed_at = now
+        job.next_retry_at = None
         page = await session.get(MeetingPage, job.meeting_page_id)
         await session.commit()
 
@@ -2281,15 +3874,31 @@ async def report_chunk_result(
     shifted_segments: Optional[list] = None,
     drop_previous_tail: int = 0,
     error: Optional[str] = None,
+    chunk_index: Optional[int] = None,
 ) -> dict:
     """Called by the worker after attempting one chunk. On success, appends
     already-offset segments and advances progress; if that was the last
     chunk, finalizes the job (writes the TranscriptVersion, promotes it,
     caller -- archive/main.py -- sends the completion email afterward using
     this function's returned `completed`/`transcript_version_id`). On
-    failure, counts toward MAX_CONSECUTIVE_CHUNK_FAILURES before giving up
-    on the whole job -- a single flaky chunk (transient network blip)
+    failure, counts toward MAX_CONSECUTIVE_CHUNK_FAILURES before doing
+    anything further -- a single flaky chunk (transient network blip)
     shouldn't fail an otherwise-fine multi-hour job.
+
+    Once that budget's exhausted, a real user-priority job (priority >=
+    PRIORITY_MEDIUM) with retries left gets rescheduled (status
+    "retry_scheduled", see MAX_JOB_RETRIES/JOB_RETRY_BASE_DELAY's own
+    comment) rather than failed outright -- added 2026-08-19 after a real
+    case where the exact same source succeeded on a later manual re-run,
+    meaning the original failure wasn't the source being genuinely broken.
+    A PRIORITY_LOW auto-generated job, or a user job that's used up its
+    retries, still goes straight to "failed" -- the terminal outcome
+    worker/main.py's failure email (now actually reachable, see that
+    module's own note) fires on.
+
+    `chunk_index` (optional, for the failure_history entry only -- callers
+    written before 2026-08-19 that omit it still work, just with a null
+    chunk_index in that one history entry).
 
     `drop_previous_tail` (default 0, a pure no-op -- existing callers/tests
     are unaffected): the caller (worker/main.py) has already compared this
@@ -2312,12 +3921,37 @@ async def report_chunk_result(
         if not success:
             job.consecutive_chunk_failures += 1
             job.error_message = error
+            job.failure_history = [
+                *job.failure_history,
+                {
+                    "chunk_index": chunk_index,
+                    "error": error,
+                    "at": datetime.now(timezone.utc).isoformat(),
+                },
+            ]
             if job.consecutive_chunk_failures >= MAX_CONSECUTIVE_CHUNK_FAILURES:
-                job.status = "failed"
+                if (
+                    job.priority >= PRIORITY_MEDIUM
+                    and job.retry_count < MAX_JOB_RETRIES
+                ):
+                    job.retry_count += 1
+                    delay = min(
+                        JOB_RETRY_BASE_DELAY * (2 ** (job.retry_count - 1)),
+                        JOB_RETRY_MAX_DELAY,
+                    )
+                    job.status = "retry_scheduled"
+                    job.next_retry_at = datetime.now(timezone.utc) + delay
+                    job.consecutive_chunk_failures = 0  # fresh budget for the retry
+                else:
+                    job.status = "failed"
             await session.commit()
             return {
                 "status": job.status,
                 "consecutive_chunk_failures": job.consecutive_chunk_failures,
+                "retry_count": job.retry_count,
+                "next_retry_at": job.next_retry_at.isoformat()
+                if job.next_retry_at
+                else None,
             }
 
         job.consecutive_chunk_failures = 0
@@ -2397,6 +4031,14 @@ def _job_dict(job: TranscriptionJob, page: Optional[MeetingPage]) -> dict:
         # empty -- the data already exists on the model (set in
         # report_chunk_result() above), it just never got surfaced here.
         "transcript_version_id": job.transcript_version_id,
+        # Added 2026-08-19 for worker/main.py's admin failure alert (see
+        # email.send_admin_job_failure_alert()) -- source_url is the
+        # original government meeting URL, distinct from meeting_page_slug
+        # (this app's own /m/ page).
+        "source_url": page.source_url_normalized if page else None,
+        "retry_count": job.retry_count,
+        "failure_history": job.failure_history,
+        "created_at": job.created_at.isoformat() if job.created_at else None,
     }
 
 
@@ -2758,3 +4400,112 @@ async def delete_account_data(clerk_user_id: str) -> int:
             await session.delete(row)
         await session.commit()
         return count
+
+
+async def delete_meeting_pages_by_slug(slugs: list[str], *, dry_run: bool) -> dict:
+    """Permanently removes one or more MeetingPage rows by slug, plus every
+    row that references them (TranscriptionJob, TranscriptVersion,
+    MeetingPageUrlAlias, SavedItem) -- there's no DB-level ON DELETE CASCADE
+    on any of those foreign keys, so a plain `session.delete(page)` would
+    fail with a real FK violation, not silently cascade. TranscriptionJob is
+    deleted before TranscriptVersion since a job can reference a version via
+    `transcript_version_id`.
+
+    Built for one specific real cleanup (3 PrimeGov UAT/staging tenant
+    pages accidentally real-ingested during a bulk gate-blindness recheck,
+    see BACKLOG_DONE.md), not a general content-moderation tool -- slug is
+    required (not a fuzzy match) so a typo can't take out an unrelated real
+    page. `dry_run=True` (the default, matching this file's existing
+    read-only-first convention -- see backfill_apply's docstring) reports
+    exactly what would be deleted without touching anything.
+
+    Returns {"dry_run": bool, "found": [...], "not_found": [...], "deleted": int}.
+    """
+    async with async_session() as session:
+        found: list[dict] = []
+        not_found: list[str] = []
+        for slug in slugs:
+            page = (
+                await session.execute(
+                    select(MeetingPage).where(MeetingPage.slug == slug)
+                )
+            ).scalar_one_or_none()
+            if page is None:
+                not_found.append(slug)
+                continue
+            found.append(
+                {
+                    "slug": page.slug,
+                    "title": page.title,
+                    "platform": page.platform,
+                    "source_url_normalized": page.source_url_normalized,
+                }
+            )
+            if dry_run:
+                continue
+
+            jobs = (
+                (
+                    await session.execute(
+                        select(TranscriptionJob).where(
+                            TranscriptionJob.meeting_page_id == page.id
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            for job in jobs:
+                await session.delete(job)
+
+            versions = (
+                (
+                    await session.execute(
+                        select(TranscriptVersion).where(
+                            TranscriptVersion.meeting_page_id == page.id
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            for version in versions:
+                await session.delete(version)
+
+            aliases = (
+                (
+                    await session.execute(
+                        select(MeetingPageUrlAlias).where(
+                            MeetingPageUrlAlias.meeting_page_id == page.id
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            for alias in aliases:
+                await session.delete(alias)
+
+            saved = (
+                (
+                    await session.execute(
+                        select(SavedItem).where(SavedItem.meeting_page_id == page.id)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            for item in saved:
+                await session.delete(item)
+
+            await session.delete(page)
+
+        if not dry_run:
+            await session.commit()
+
+        return {
+            "dry_run": dry_run,
+            "found": found,
+            "not_found": not_found,
+            "deleted": 0 if dry_run else len(found),
+        }

@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}{{ display }} public meeting videos & transcripts | Red Tape Recordings{% endblock %}
+{% block meta %}
+  <meta name="description" content="{{ total_pages }} archived {{ display }} public meeting{{ 's' if total_pages != 1 else '' }}{% if bodies %} — {{ bodies[0].name }}{% if bodies|length > 1 %} and {{ bodies|length - 1 }} other bod{{ 'ies' if bodies|length - 1 != 1 else 'y' }}{% endif %}{% endif %} — with video{% if transcript_count %}, searchable transcripts{% endif %} and deep links to specific moments.">
+  <link rel="alternate" type="application/rss+xml" title="Newly archived {{ display }} meetings" href="/feed.xml?jurisdiction={{ search_jurisdiction|urlencode }}">
+  {#- Below JURISDICTION_HUB_MIN_INDEXABLE meetings the hub still renders
+     (it's real navigation, and every /m/* page links here) but tells
+     crawlers not to index it: a one-meeting hub is a near-duplicate of
+     that meeting's own page -- thin/doorway content. Evaluated live, so
+     the tag disappears by itself once a second meeting lands. Same
+     posture as sitemap.xml, which lists only indexable hubs. #}
+  {% if not indexable %}
+  <meta name="robots" content="noindex">
+  {% endif %}
+  {% if public_base_url %}
+  <link rel="canonical" href="{{ public_base_url }}/j/{{ slug }}">
+  <meta property="og:url" content="{{ public_base_url }}/j/{{ slug }}">
+  {% endif %}
+  <meta property="og:title" content="{{ display }} public meeting videos & transcripts">
+  <meta property="og:description" content="Watch and search {{ total_pages }} archived {{ display }} government meeting{{ 's' if total_pages != 1 else '' }} with transcripts and deep links to specific moments.">
+  <meta property="og:type" content="website">
+  {#- BreadcrumbList: Home > State > Jurisdiction (State omitted for a
+     stateless jurisdiction). Cheap, real structured data -- Google
+     renders it in the result and it states the hierarchy the state
+     pages + hubs already form. Absolute URLs need public_base_url, same
+     guard as the canonical. #}
+  {% if public_base_url %}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {"@type": "ListItem", "position": 1, "name": "Red Tape Recordings", "item": {{ (public_base_url ~ "/")|tojson }}},
+      {%- if state_slug %}
+      {"@type": "ListItem", "position": 2, "name": {{ state_name|tojson }}, "item": {{ (public_base_url ~ "/state/" ~ state_slug)|tojson }}},
+      {"@type": "ListItem", "position": 3, "name": {{ display|tojson }}, "item": {{ (public_base_url ~ "/j/" ~ slug)|tojson }}}
+      {%- else %}
+      {"@type": "ListItem", "position": 2, "name": {{ display|tojson }}, "item": {{ (public_base_url ~ "/j/" ~ slug)|tojson }}}
+      {%- endif %}
+    ]
+  }
+  </script>
+  {% endif %}
+{% endblock %}
+{% block content %}
+  <main class="about-page">
+    <nav aria-label="Breadcrumb" class="hub-breadcrumb">
+      <a href="/">Home</a>
+      {%- if state_slug %} &rsaquo; <a href="/state/{{ state_slug }}">{{ state_name }}</a>{% endif %}
+      &rsaquo; <span>{{ display }}</span>
+    </nav>
+    <h1>{{ display }} public meetings</h1>
+    <p class="about-lede">
+      Video, transcripts, and deep links for {{ total_pages }} archived {{ display }} public meeting{{ 's' if total_pages != 1 else '' }}
+      {%- if earliest_date and latest_date and earliest_date != latest_date %} from {{ earliest_date }} to {{ latest_date }}{% elif latest_date %} ({{ latest_date }}){% endif %}
+      {%- if transcript_count %} &mdash; {{ transcript_count }} with a searchable transcript{% endif %}.
+    </p>
+    {% if bodies %}
+    <p class="hub-bodies">
+      {%- for b in bodies %}{{ b.name }} <span class="hub-body-count">({{ b.count }})</span>{% if not loop.last %} &middot; {% endif %}{% endfor -%}
+    </p>
+    {% endif %}
+    {% if not indexable %}
+    <p class="hub-thin-note">Only {{ total_pages }} meeting{{ 's' if total_pages != 1 else '' }} archived so far for {{ display }}. Know of another? <a href="/">Paste its link</a> and it'll join this page.</p>
+    {% endif %}
+
+    <h2>All archived {{ display }} meetings</h2>
+    <div class="meeting-list">
+      {% for m in pages %}
+      <div class="calendar-candidate meeting-result-row">
+        <div class="calendar-candidate-main">
+          <a href="/m/{{ m.slug }}">{{ m.title or "Untitled meeting" }}</a>
+          <span class="calendar-candidate-date">
+            {%- if m.meeting_body %}{{ m.meeting_body }}{% endif -%}
+            {%- if m.date %}{% if m.meeting_body %} &middot; {% endif %}{{ m.date }}{% endif -%}
+          </span>
+        </div>
+        {% if m.has_transcript %}
+        <span class="transcript-badge" title="A transcript is available for this meeting">&#10003; Transcript</span>
+        {% else %}
+        <span class="transcript-badge transcript-badge-placeholder" aria-hidden="true">&#10003; Transcript</span>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+
+    <p style="margin-top: 1.5rem;">
+      <a href="/meetings?jurisdiction={{ search_jurisdiction|urlencode }}">Search within {{ display }} meetings &rarr;</a>
+      {%- if state_slug %}
+      &nbsp;&middot;&nbsp;
+      <a href="/state/{{ state_slug }}">All {{ state_name }} governments</a>
+      {%- endif %}
+      &nbsp;&middot;&nbsp;
+      <a href="/coverage">All coverage</a>
+    </p>
+  </main>
+{% endblock %}

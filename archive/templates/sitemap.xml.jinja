@@ -11,6 +11,12 @@
     <lastmod>{{ s.last_updated.strftime('%Y-%m-%d') }}</lastmod>
   </url>
 {%- endfor %}
+{%- for h in hubs %}
+  <url>
+    <loc>{{ base_url }}/j/{{ h.slug }}</loc>
+    <lastmod>{{ h.last_updated.strftime('%Y-%m-%d') }}</lastmod>
+  </url>
+{%- endfor %}
 {%- for entry in entries %}
   <url>
     <loc>{{ base_url }}/m/{{ entry.slug }}</loc>

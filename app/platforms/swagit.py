@@ -1,6 +1,7 @@
 import re
 from datetime import datetime
-from typing import List
+from typing import List, Optional, Tuple
+from urllib.parse import urljoin, urlparse
 
 import aiohttp
 from bs4 import BeautifulSoup
@@ -67,6 +68,140 @@ def _group_word_fragments(
     return grouped
 
 
+# A Swagit meeting page (`/videos/{id}`) that has a generated transcript
+# links to a *separate* download endpoint at `/videos/{id}/transcript`,
+# confirmed live 2026-08-18 against three real customers on three
+# different meetings (huberheightsoh clip 267352, allentx clip 189248,
+# amarillotx clip 317100): that endpoint is not another HTML page at all
+# -- it's a `Content-Type: text/plain` / `Content-Disposition: attachment`
+# download of a real, Swagit-hosted plain-text transcript (voice-to-text
+# ASR for huberheightsoh's meeting, "uncorrected Closed Captioning" per
+# allentx's own closing disclaimer line -- the provenance varies by
+# customer/meeting, always stated in a "* This transcript was ..." line at
+# the top and/or bottom). This is what caused the reported bug: pasting
+# the `/transcript` URL itself into this app fed that plain-text download
+# through the HTML-scraping resolve() path meant for `/videos/{id}` pages
+# -- no video markup, no #transcript-fragments DOM, so it silently
+# resolved to "no video". Confirmed NOT a same-video-different-view case:
+# the two URLs are genuinely different resources (an HTML page vs. a
+# plain-text file), so the fix normalizes a `/transcript` URL back to its
+# base video page for video/metadata/chapters, and *also* fetches the
+# transcript download (from either URL shape) as a real transcript
+# source. Every checked meeting that offers one links to it via a plain
+# `<a href="/videos/{id}/transcript">` button distinguishable from the
+# page's unrelated `href="#transcript"` in-page anchor (confirmed absent
+# entirely on a real collincountytx meeting with no generated transcript
+# -- so this is genuinely optional per meeting, not skipped on a guess).
+_TRANSCRIPT_URL_SUFFIX_RE = re.compile(r"/transcript/?(?:\?.*)?$", re.IGNORECASE)
+
+# Within the downloaded transcript text, a line that is *only* a
+# "[HH:MM:SS]" bracket is a real timestamp anchor (observed roughly every
+# 5 minutes on all three confirmed examples -- coarse compared to a real
+# VTT file, but still a genuine second-offset from the source, not
+# fabricated). A line that's bracket-wrapped but isn't a timestamp (e.g.
+# "[1. Call to Order]") is an inline agenda-item marker matching the same
+# titles already available with real second-offsets via this page's own
+# `a.playerControl[data-title]` chapters -- skipped here rather than
+# duplicated into agenda_items from lower-resolution text.
+_TRANSCRIPT_TIMESTAMP_LINE_RE = re.compile(r"^\[(\d{1,2}):(\d{2}):(\d{2})\]$")
+_TRANSCRIPT_BRACKET_LINE_RE = re.compile(r"^\[.*\]$")
+
+# Real, confirmed-live bug (found 2026-08-19, root-caused 2026-08-21 --
+# see BACKLOG.md/BACKLOG_DONE.md): Swagit's `/events/{id}` URL shape is a
+# genuinely different page template from `/videos/{id}` -- a *live-event*
+# page, not an archived on-demand recording, confirmed by the template's
+# own dead error-handler text (see `resolve()`'s comment above
+# `media_urls` below for the full writeup). Every one of 5 real tenants
+# checked (petalumaca #43607, norwalkca #44163, westjordan #43963,
+# cambridgema #43940, solvangca #43961 -- all 5 independently curl-
+# verified live, not just the first 3 as BACKLOG.md originally recorded)
+# embeds this exact byte-identical dead JS-commented `player.src(...)`
+# line crediting a generic Swagit demo/QA recording (tenant "abilenetx")
+# that cannot belong to any real customer -- confirmed dead template
+# code, not real per-tenant content, since it's inside a `//` JS comment
+# that `scan_media_urls`'s generic regex scan (unaware of JS syntax)
+# still picks up as a valid HLS candidate.
+_SWAGIT_EVENTS_TEMPLATE_PLACEHOLDER_RE = re.compile(
+    r"vault01/abilenetx/59d7e173-684b-4da4-9433-50d6e22555f1\.mp4", re.IGNORECASE
+)
+
+
+def _is_swagit_events_template_dead_candidate(url: str) -> bool:
+    """True for either of the two non-viable media candidates Swagit's
+    `/events/{id}` live-event page template embeds -- see the module-
+    level comment above `_SWAGIT_EVENTS_TEMPLATE_PLACEHOLDER_RE` and
+    `resolve()`'s own comment for the full live-verified writeup:
+
+    1. The dead, byte-identical-across-every-tenant "abilenetx" demo
+       placeholder left in a JS comment (never real content).
+    2. The real (uncommented) `player.src(...)` line right below it,
+       which points to a genuine per-tenant *live-channel* stream
+       (`edge-f.swagit.com/live[-edge]/{tenant}/live-1-a/playlist.m3u8`)
+       -- but that's only ever valid while a meeting is actively
+       broadcasting: confirmed live, it 404s on all 5 tenants above (all
+       real meetings that had already happened by the time they were
+       checked), and even when it does work it's a live stream, not an
+       archived on-demand recording this app's transcript/deep-link
+       model expects.
+    """
+    if _SWAGIT_EVENTS_TEMPLATE_PLACEHOLDER_RE.search(url):
+        return True
+    parsed = urlparse(url)
+    path = parsed.path.lower()
+    return parsed.netloc.lower() == "edge-f.swagit.com" and path.startswith(
+        ("/live/", "/live-edge/")
+    )
+
+
+def _parse_swagit_transcript_download(
+    text: str,
+) -> Tuple[List[TranscriptSegment], List[str]]:
+    """Parses the plain-text body of a Swagit `/videos/{id}/transcript`
+    download into (segments, source_notes). Pure function, no I/O.
+
+    Groups prose lines under the most recent "[HH:MM:SS]" anchor into one
+    multi-line segment per anchor (rather than emitting many
+    identically-timestamped micro-segments) since that's the real
+    granularity of the source -- confirmed live, timestamps land roughly
+    every 5 minutes, not per line or per sentence.
+    """
+    disclaimers: List[str] = []
+    blocks: List[Tuple[float, List[str]]] = []
+    current_start = 0.0
+    current_lines: List[str] = []
+
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        if line.startswith("*"):
+            note = line.lstrip("*").strip()
+            if note and note not in disclaimers:
+                disclaimers.append(note)
+            continue
+        ts_match = _TRANSCRIPT_TIMESTAMP_LINE_RE.match(line)
+        if ts_match:
+            if current_lines:
+                blocks.append((current_start, current_lines))
+                current_lines = []
+            hh, mm, ss = (int(g) for g in ts_match.groups())
+            current_start = float(hh * 3600 + mm * 60 + ss)
+            continue
+        if _TRANSCRIPT_BRACKET_LINE_RE.match(line):
+            continue
+        current_lines.append(line)
+    if current_lines:
+        blocks.append((current_start, current_lines))
+
+    segments: List[TranscriptSegment] = []
+    for i, (start, lines) in enumerate(blocks):
+        end = blocks[i + 1][0] if i + 1 < len(blocks) else start
+        segments.append(
+            TranscriptSegment(start=start, end=max(end, start), text=" ".join(lines))
+        )
+    return segments, disclaimers
+
+
 class SwagitAssetFinder(AssetFinder):
     """Resolves video + chapter markers for a Swagit meeting page.
 
@@ -101,6 +236,26 @@ class SwagitAssetFinder(AssetFinder):
         whether it's ever server-rendered or requires a separate call; see
         BACKLOG.md. Attempted defensively below and simply yields nothing
         when absent.
+      - A genuine, separate transcript resource: `/videos/{id}/transcript`
+        (confirmed live 2026-08-18, see `_parse_swagit_transcript_download`
+        above) is a real plain-text download, not another HTML page —
+        preferred over both #transcript-fragments and the never-yet-seen
+        caption-file path below when available, since it's now confirmed
+        present across three different customers rather than a single
+        sample. A meeting page that has no generated transcript simply
+        has no `/transcript` link to find, so this is skipped rather than
+        guessed at.
+      - `/events/{id}` is a genuinely different, LIVE-event page template
+        from `/videos/{id}` above (confirmed live 2026-08-21 against 5
+        real tenants — see `_is_swagit_events_template_dead_candidate`'s
+        docstring and `resolve()`'s own comment for the full writeup).
+        It has no discoverable archived recording at all: its only two
+        embedded media candidates are a dead, byte-identical-across-every-
+        tenant demo placeholder and a per-tenant live-channel stream that
+        404s once the meeting is over. Both are excluded from video
+        selection so this never again silently serves the wrong (bogus
+        placeholder) video, the way it did before this was found and
+        fixed — see BACKLOG_DONE.md.
     """
 
     platform_name = "swagit"
@@ -117,9 +272,23 @@ class SwagitAssetFinder(AssetFinder):
         video_warnings: List[str] = []
         transcript_warnings: List[str] = []
 
+        # Real bug found live 2026-08-18: `/videos/{id}/transcript` is not
+        # a view of the same page, it's a distinct plain-text download
+        # (see the class docstring and `_parse_swagit_transcript_download`
+        # above). Fetching it through this same HTML-scraping path meant
+        # for `/videos/{id}` silently resolved to "no video" -- no video
+        # markup exists in a plain-text file. Normalize back to the base
+        # video page for video/metadata/chapters; the transcript text
+        # itself (from whichever URL shape the caller passed) is fetched
+        # separately below.
+        transcript_url_requested = bool(_TRANSCRIPT_URL_SUFFIX_RE.search(url))
+        fetch_url = (
+            _TRANSCRIPT_URL_SUFFIX_RE.sub("", url) if transcript_url_requested else url
+        )
+
         async with aiohttp.ClientSession() as session:
             async with session.get(
-                url,
+                fetch_url,
                 headers=self.headers,
                 allow_redirects=True,
                 timeout=aiohttp.ClientTimeout(total=30),
@@ -141,23 +310,116 @@ class SwagitAssetFinder(AssetFinder):
                 page_text=soup.get_text(" ", strip=True), html=html, url=final_url
             )
 
+        # Real bug found live 2026-08-18, confirmed on yolocountyca (clip
+        # 324107), whiteplainsny (292830), and others: some Swagit pages
+        # embed an early, dead `player.src(...)` fallback pointing at a
+        # decommissioned legacy host (`107.178.209.195`, a bare Google
+        # Cloud VM with no working HTTP response at all) *before* the
+        # real jwplayer `playlist: [...]` JSON blob later in the same
+        # page (see this class's own docstring -- the actual video file
+        # is always served from Granicus's archive-stream CDN). Both are
+        # `.m3u8`-shaped, so the naive "first HLS candidate in document
+        # order" scan below picks the dead one. Since every confirmed-
+        # working Swagit page resolves to an `archive-stream.granicus.com`
+        # URL, prefer any candidate on that host outright, and only fall
+        # back to plain document-order scanning when none exists (e.g. a
+        # page structure not yet seen).
         media_urls = scan_media_urls(html, final_url)
+
+        # Real, confirmed-live bug (found 2026-08-19, root-caused
+        # 2026-08-21): a `/events/{id}` page's own dead template
+        # candidates (see `_is_swagit_events_template_dead_candidate`'s
+        # docstring for the full writeup) must never be selected as
+        # video_url -- the bogus "abilenetx" placeholder is a specific,
+        # plausible-looking WRONG video (not just a missing one), and the
+        # real per-tenant live-stream URL beneath it is dead 404 for any
+        # meeting that isn't currently broadcasting (every real case
+        # checked). Filtered out up front so neither can win any of the
+        # three selection passes below, the same way the dead legacy-host
+        # candidate just above is deprioritized rather than excluded --
+        # except this pair has no good candidate to fall back to on the
+        # same page, so exclusion (not just deprioritization) is required.
+        dead_template_candidates = [
+            u for u in media_urls if _is_swagit_events_template_dead_candidate(u)
+        ]
+        if dead_template_candidates:
+            media_urls = [u for u in media_urls if u not in dead_template_candidates]
+
         video_url, video_format = None, None
         for candidate in media_urls:
-            if media_type(candidate) == "video" and is_hls_url(candidate):
+            if (
+                media_type(candidate) == "video"
+                and is_hls_url(candidate)
+                and "archive-stream.granicus.com" in candidate
+            ):
                 video_url, video_format = candidate, "m3u8"
                 break
+        if not video_url:
+            for candidate in media_urls:
+                if media_type(candidate) == "video" and is_hls_url(candidate):
+                    video_url, video_format = candidate, "m3u8"
+                    break
         if not video_url:
             for candidate in media_urls:
                 if media_type(candidate) == "video":
                     video_url, video_format = candidate, "mp4"
                     break
         if not video_url:
-            video_warnings.append("No playable video found on this page.")
+            if dead_template_candidates:
+                # Confirmed live on all 5 tenants above, straight from
+                # this Swagit template's own (dead, JS-commented) error
+                # handler text: "Our live stream is not currently active.
+                # Please check back during a regularly scheduled meeting
+                # or view our on-demand content for previously run
+                # meetings." -- i.e. Swagit's own template concedes
+                # `/events/{id}` is a live-only page and directs viewers
+                # elsewhere ("on-demand content") for an archived
+                # recording, which this page never itself links to (no
+                # `/videos/{id}` or archive-stream.granicus.com reference
+                # found on any of the 5 real pages checked).
+                video_warnings.append(
+                    "This is a Swagit live-event page (`/events/{id}`), not an "
+                    "archived on-demand recording -- Swagit's own page confirms "
+                    "the live stream isn't currently active, and no archived "
+                    "video is linked from this page. If this meeting was later "
+                    "archived, look for it under this tenant's /videos/{id} "
+                    "page instead."
+                )
+            else:
+                video_warnings.append("No playable video found on this page.")
 
         segments: List[TranscriptSegment] = []
 
-        fragments = soup.select("#transcript-fragments a[data-ts]")
+        # Highest-priority real transcript source: the `/transcript`
+        # download endpoint (see class docstring + module-level parsing
+        # helpers above). Trust the original URL directly when the caller
+        # passed the `/transcript` shape themselves -- no need to re-find
+        # the link on the page in that case. Otherwise look for the real
+        # download link (`href` ending in "/transcript", distinct from
+        # the page's own unrelated `href="#transcript"` in-page anchor)
+        # and only fetch it if present, since not every meeting has one.
+        transcript_download_url = None
+        if transcript_url_requested:
+            transcript_download_url = url
+        else:
+            transcript_link = soup.select_one('a[href$="/transcript"]')
+            if transcript_link and transcript_link.get("href"):
+                transcript_download_url = urljoin(final_url, transcript_link["href"])
+
+        if transcript_download_url:
+            transcript_text = await self._fetch_transcript_download(
+                transcript_download_url
+            )
+            if transcript_text:
+                downloaded_segments, source_notes = _parse_swagit_transcript_download(
+                    transcript_text
+                )
+                if downloaded_segments:
+                    segments = downloaded_segments
+                    for note in source_notes:
+                        transcript_warnings.append(f"Transcript source note: {note}")
+
+        fragments = [] if segments else soup.select("#transcript-fragments a[data-ts]")
         if fragments:
             # Confirmed live 2026-08-08 against a real Dublin, CA meeting
             # (clip 372020, 36,085 fragments) -- this DOM path is real,
@@ -305,6 +567,26 @@ class SwagitAssetFinder(AssetFinder):
             video_warnings=video_warnings,
             transcript_warnings=transcript_warnings,
         )
+
+    @staticmethod
+    async def _fetch_transcript_download(transcript_url: str) -> Optional[str]:
+        """Fetches the plain-text body of a Swagit `/videos/{id}/transcript`
+        download. Opens its own short-lived session, same reasoning as
+        `_fetch_captions` below. Real responses report `Content-Length: 0`
+        with the actual body sent chunked (confirmed live 2026-08-18) --
+        `.text()` handles that correctly, so no special-casing needed here
+        beyond not trusting that header."""
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    transcript_url, timeout=aiohttp.ClientTimeout(total=20)
+                ) as response:
+                    if response.status != 200:
+                        return None
+                    raw = await response.read()
+        except Exception:
+            return None
+        return decode_vtt_bytes(raw)
 
     @staticmethod
     async def _fetch_captions(caption_url: str):

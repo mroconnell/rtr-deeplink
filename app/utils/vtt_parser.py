@@ -52,6 +52,20 @@ def parse_vtt(content: str) -> List[Dict[str, Any]]:
             i += 1
             continue
 
+        # A WebVTT NOTE (comment) block -- per the spec (section 4.3), the
+        # keyword is "NOTE" alone or followed by whitespace, and the block
+        # runs through any continuation lines up to the next blank line.
+        # Real example: a Tavares FL CivicClerk BCC meeting stores segments
+        # with literal `NOTE Confidence: 0.962116034285714` lines alternating
+        # with real cue text -- without this check, parse_vtt had no
+        # special-case for a NOTE line and silently absorbed it as text onto
+        # whatever cue was open.
+        if line == "NOTE" or line.startswith("NOTE ") or line.startswith("NOTE\t"):
+            i += 1
+            while i < n and lines[i].strip():
+                i += 1
+            continue
+
         timestamp_match = _TIMESTAMP_LINE_RE.match(line)
 
         if timestamp_match:
@@ -93,6 +107,19 @@ def parse_vtt(content: str) -> List[Dict[str, Any]]:
 
     if current_cue:
         cues.append(current_cue)
+
+    # Inline WebVTT tags (voice tags like <v.Male.spk3 Speaker2>, but also
+    # <c>, <b>, <i>, timestamp tags, etc.) are never valid transcript text --
+    # strip them here rather than leaving that only to dedupe_rollup_cues()/
+    # strip_unknown_caption_markup(), neither of which runs on this path.
+    # Real example: a platform="unknown" meeting (Orange County FL, via
+    # generic_fallback.py -> parse_vtt()) has raw `<v.Male.spk3 Speaker2>`
+    # tags inline in its real, currently-live captions.vtt files (confirmed
+    # live 2026-08-17: otv.ocfl.net's real VTT output for a July 2026 BCC
+    # budget session has 1098 such tags). Reuses the same _TAG_RE already
+    # defined below in this file for dedupe_rollup_cues().
+    for cue in cues:
+        cue["text"] = _TAG_RE.sub("", cue["text"])
 
     normalize_shouting_caption(cues)
     normalize_speaker_change_marker(cues)
@@ -470,6 +497,10 @@ _COMMON_SHORT_WORDS = {
 }
 _GARBLED_MIN_SAMPLE_WORDS = 40
 _GARBLED_JUNK_RATIO_MAX = 0.06
+# Four offsets across the transcript rather than just its start -- see the
+# is_likely_garbled docstring for why a single leading prefix isn't enough.
+_GARBLED_SAMPLE_OFFSETS = (0.0, 0.25, 0.5, 0.75)
+_GARBLED_SAMPLE_SLICE_CHARS = 1000
 
 
 def is_likely_garbled(cues: List[Dict[str, Any]]) -> bool:
@@ -483,8 +514,27 @@ def is_likely_garbled(cues: List[Dict[str, Any]]) -> bool:
     while four independently-confirmed clean real sources (Boston, San
     Diego, DC, San Francisco) all sit under 2%. The 6% threshold sits with
     real margin on both sides of that gap.
+
+    Sampled at four offsets (start, ~25%, ~50%, ~75%) instead of a single
+    leading prefix -- a real confirmed case (Cincinnati OH, "budget and
+    finance committee" 2023-02-13, 98,449 chars of joined cue text) stays
+    clean through roughly the first quarter of the transcript and then
+    degrades into binary-looking junk for most of what follows. A fixed
+    4000-char prefix (~4% of that transcript) never got far enough to see
+    it: sampling just the old prefix on this real transcript's text gives a
+    ~1.3% junk ratio (well under threshold, so it went unflagged), while
+    sampling all four offsets gives ~42% (correctly flagged). Verified
+    directly against this real transcript's text (fetched from the live,
+    public `/m/{slug}/transcript.txt` export) while building this fix.
     """
-    sample = " ".join(c["text"] for c in cues)[:4000]
+    full_text = " ".join(c["text"] for c in cues)
+    sample = "".join(
+        full_text[
+            int(len(full_text) * offset) : int(len(full_text) * offset)
+            + _GARBLED_SAMPLE_SLICE_CHARS
+        ]
+        for offset in _GARBLED_SAMPLE_OFFSETS
+    )
     words = re.findall(r"[A-Za-z0-9']+", sample)
     alpha_words = [w for w in words if re.search(r"[A-Za-z]", w)]
     if len(alpha_words) < _GARBLED_MIN_SAMPLE_WORDS:

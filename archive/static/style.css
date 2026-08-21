@@ -799,6 +799,35 @@ mark.search-match.current { background: #f97316; color: #fff; }
   visibility: hidden;
 }
 
+/* "Upcoming" / "Recent" date-status pill (archive/utils/date_status.py):
+   inline next to the date on /meetings rows and leading the notice on a
+   meeting page. Same mono/uppercase voice as .transcript-badge but flat,
+   untilted and neutral-toned -- it's a status note, not the "we have it"
+   stamp, and shouldn't compete with the real transcript badge. */
+.date-status-pill {
+  display: inline-block;
+  vertical-align: 0.1em;
+  padding: 0.05em 0.45em;
+  border: 1px solid var(--muted);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  line-height: 1.5;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.date-status-notice {
+  margin: 0.4rem 0 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.date-status-notice .date-status-pill {
+  margin-right: 0.35em;
+}
+
 /* --- About page --- */
 .about-page {
   max-width: 640px;
@@ -1245,6 +1274,30 @@ mark.search-match.current { background: #f97316; color: #fff; }
   color: var(--muted);
   text-align: right;
   padding-right: 0.75rem;
+  /* Only ever holds a small integer -- no reason to compete for space
+     with the title/transcript columns below, which actually need room. */
+  width: 2rem;
+  max-width: 2rem;
+  font-size: 0.8rem;
+}
+/* "Example meeting" (title) and "Transcript" columns used to have no
+   width constraint at all, so a long meeting title could stretch the
+   whole table wide enough to force horizontal scroll and push the
+   Transcript column off-screen on the live /coverage page. Capping
+   both with max-width + ellipsis keeps every row a predictable width
+   regardless of title length; the full title is still available via
+   the link's title="" tooltip and the /m/{slug} page itself. */
+.coverage-table .coverage-title-col {
+  max-width: 14rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.coverage-table .coverage-transcript-col {
+  max-width: 9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 /* Bootstrap 5.3's own table-striped overlay (rgba(0,0,0,.05)) applied
    directly to the frozen column too, since its own explicit background
@@ -1273,6 +1326,36 @@ thead .row-number-col { z-index: 2; background: var(--bg); }
 .coverage-table th.sortable-col[aria-sort="ascending"]::after { content: '\2191'; color: var(--fg); }
 .coverage-table th.sortable-col[aria-sort="descending"]::after { content: '\2193'; color: var(--fg); }
 
+/* --- /coverage's "Full jurisdiction detail table" filter row --- */
+.coverage-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  margin: 1rem 0 0.5rem;
+}
+.coverage-filters input[type="search"] { max-width: 16rem; }
+.coverage-filters select { max-width: 14rem; }
+.coverage-filter-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-weight: 400;
+}
+.coverage-filter-count {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 0.5rem;
+}
+.coverage-table .coverage-yesno-col {
+  text-align: center;
+  color: var(--muted);
+  width: 1px;
+  white-space: nowrap;
+}
+
 /* "Browse by state" link list on /coverage -- compact flex-wrapped rows
    instead of a tall one-per-line bullet list (up to ~40 states). */
 .state-links {
@@ -1283,3 +1366,13 @@ thead .row-number-col { z-index: 2; background: var(--bg); }
   flex-wrap: wrap;
   gap: 0.4rem 1.25rem;
 }
+
+/* Jurisdiction hub pages (/j/{slug}) -- breadcrumb trail, the per-body
+   count line ("City Council (30) · Planning Commission (12)"), and the
+   below-threshold note (see crud.JURISDICTION_HUB_MIN_INDEXABLE). */
+.hub-breadcrumb { font-size: 0.9rem; margin-bottom: 0.5rem; }
+.hub-breadcrumb a { text-decoration: none; }
+.hub-breadcrumb a:hover { text-decoration: underline; }
+.hub-bodies { color: var(--fg-muted, #555); margin-top: -0.25rem; }
+.hub-body-count { opacity: 0.75; }
+.hub-thin-note { font-style: italic; }

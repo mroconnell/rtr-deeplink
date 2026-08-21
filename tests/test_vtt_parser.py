@@ -103,6 +103,69 @@ def test_parse_vtt_real_bakersfield_fixture_with_numbered_cues():
     assert not any(re.search(r"\n\d+$", c["text"]) for c in cues)
 
 
+def test_parse_vtt_strips_inline_voice_tags_real_ocfl_fixture():
+    # Real captions.vtt fetched live 2026-08-17 from otv.ocfl.net (Orange
+    # County FL's live captioning host, discovered via the real
+    # netapps.ocfl.net meeting-listing fixture's own vtt links), trimmed to
+    # its first 12 cues. Confirms the real, currently-live bug documented
+    # in BACKLOG.md: a platform="unknown" meeting parsed via
+    # generic_fallback.py -> parse_vtt() (meeting-7ac1da, a different OCFL
+    # meeting already archived with this exact same raw <v.Male.spkN
+    # SpeakerN> tag shape, where the tags being left in mangled a real
+    # person's name into "misbranded rigors") has these tags inline in its
+    # real source VTT -- parse_vtt() itself did no tag-stripping at all
+    # before this fix.
+    content = load_fixture("generic_fallback", "ocfl_bcc071626aa_captions.vtt")
+    cues = parse_vtt(content)
+    assert len(cues) == 12
+    assert (
+        cues[0]["text"] == ">> Good morning, everyone.\nAnd welcome all of you to the"
+    )
+    assert (
+        cues[2]["text"] == ">> Budget Work Session, July,\nthe 16th 2026, we're in the"
+    )
+    # No raw voice tag should survive into any cue's rendered text.
+    assert not any("<v." in c["text"] for c in cues)
+    assert not any("<" in c["text"] for c in cues)
+
+
+def test_parse_vtt_skips_note_blocks_synthetic():
+    # Real WebVTT NOTE (comment) blocks are a spec-defined construct
+    # (section 4.3) confirmed present in this exact shape in a real
+    # archived meeting -- Tavares FL CivicClerk BCC meeting, 2024-06-11
+    # (tavares-fl-2024-06-11-bcc-regular-board-meeting): its already-parsed
+    # stored segments (fetched live from the meeting's public
+    # /m/{slug}/transcript.txt export while building this fix) alternate
+    # real spoken text with literal `NOTE Confidence: 0.962116034285714`
+    # lines, e.g. "Good morning and welcome to the June 11th, NOTE
+    # Confidence: 0.962116034285714 2024 meeting of the Board ...". The
+    # real source VTT hasn't itself been independently re-fetched (see
+    # BACKLOG.md's own caveat on this entry), so this test is synthetic: it
+    # reconstructs real WebVTT NOTE-block syntax around real confirmed cue
+    # text and the real confidence value seen in production, rather than
+    # replaying an actual captured .vtt file byte-for-byte.
+    content = (
+        "WEBVTT\n\n"
+        "NOTE Confidence: 0.962116034285714\n\n"
+        "00:00:02.450 --> 00:00:02.480\n"
+        "Good morning and welcome to the June 11th,\n\n"
+        "NOTE\n"
+        "This is a multi-line comment block\n"
+        "that should also be skipped entirely.\n\n"
+        "00:00:02.480 --> 00:00:02.500\n"
+        "2024 meeting of the Board\n\n"
+        "NOTE Confidence: 0.962116034285714\n\n"
+        "00:00:02.500 --> 00:00:02.510\n"
+        "of County Commissioners."
+    )
+    cues = parse_vtt(content)
+    assert len(cues) == 3
+    assert cues[0]["text"] == "Good morning and welcome to the June 11th,"
+    assert cues[1]["text"] == "2024 meeting of the Board"
+    assert cues[2]["text"] == "of County Commissioners."
+    assert not any("NOTE" in c["text"] for c in cues)
+
+
 def test_decode_vtt_bytes_real_blank_placeholder():
     # Real 8-byte "WEBVTT\n\n" placeholder Granicus serves when a meeting
     # was never captioned -- fetched live from napacity.granicus.com's
@@ -156,6 +219,56 @@ def test_is_likely_garbled_false_for_clean_transcript():
 def test_is_likely_garbled_false_below_min_sample_size():
     cues = [{"start": 0, "end": 1, "text": "tm Oa sd"}]
     assert is_likely_garbled(cues) is False
+
+
+def test_is_likely_garbled_true_for_clean_prefix_then_garbled_tail():
+    # Real confirmed case (Cincinnati OH, "budget and finance committee"
+    # 2023-02-13, see BACKLOG.md and vtt_parser.py's is_likely_garbled
+    # docstring): 98,449 chars of real joined cue text that stays clean
+    # through roughly the first quarter, then degrades into binary-looking
+    # junk for most of what follows. No raw fixture .vtt exists for this
+    # meeting (it delegates Legistar -> Granicus, and only the already-
+    # rendered plain-text export was available to check against), so this
+    # test is built from real text: the clean prefix below is the real
+    # opening dialogue and the garbled tail is the real corrupted content,
+    # both fetched live from the meeting's public
+    # /m/{slug}/transcript.txt export on redtaperecordings.com while
+    # building this fix -- only the surrounding structure (splitting into
+    # a handful of discrete cues, and interior padding to reproduce the
+    # real ~98K-char total length/offsets) is synthetic. Confirmed against
+    # this real text that the *old* single-4000-char-prefix sampling gives
+    # a ~1.3% junk ratio (misses it, well under the 6% threshold) while
+    # the new four-offset sampling gives ~42% (correctly flags it).
+    clean_prefix = (
+        ">> Councilmember Harris: if councilmembers can take their seats. "
+        ">> Councilmember Harris: all right. We will begin. Welcome to "
+        "budget and finance. I'm your budget chair, reggie harris. I'm "
+        "joined today by PRESIDENT Pro tem parks, and councilmember "
+        "warble and councilmember johnson. Vice mayor lemon-kearney, "
+        "councilmember owens, councilmember keating and jeffreys, from "
+        "the administration, sorry, we can't hear you. sorry about that "
+        "I'm mark, a member of the common ground usa, an organization "
+        "for the prudent management of land holdings and other public "
+        "ownership and this is about the plans to sell off the "
+        "cincinnati southern. And just pointing to the best explain I "
+        "did a radio show over s"
+    )
+    garbled_fragment = (
+        "6~\x7fkf}IXFpu;f[So1d ko/8#\n:wb0oi>3I7\n]O?3/8ns\"ZeHr/I/w'dx6t\n"
+        '"w6tp^Nngzhur+6zg\n^NQn:f&IFRe~dn\x7fDf1!\n\x7fk\ntCu\n'
+        "w_MRrHnw6tp^NngzhIXf\nTr+6~g>mGjr+6~g>mGjr+6~g>mGjr+6~g>mGjr+6~"
+        'g>Ogm?,f1?Mm?$b\n?Iv^nq>wrc12f\x7f+Df{" c\n0"\nu\x7fk=\n'
+        "~LfYf\x7f+Db3qp^s:j\x7fk=g\x7f+6~\x7fkf}IXFpu;f[So1d ko/8#\n"
+    )
+    # Real total length was 98,449 chars, clean through ~28%; pad with
+    # filler (itself alternating real-shaped clean/garbled blocks) so the
+    # 0/25/50/75% sample offsets land in the same real regions confirmed
+    # above rather than only ever hitting index 0.
+    padding_clean = "the meeting will come to order. " * 200
+    padding_garbled = garbled_fragment * 40
+    full_text = clean_prefix + padding_clean + padding_garbled
+    cues = [{"start": 0, "end": 1, "text": full_text}]
+    assert is_likely_garbled(cues) is True
 
 
 def test_normalize_shouting_caption_recases_all_caps_track():

@@ -278,6 +278,48 @@ request, deliberately not built as part of it — see `BACKLOG_DONE.md`'s
   phrase match against agenda text would miss most real discussion,
   which paraphrases rather than reads the agenda aloud) and whether this
   needs an LLM pass over the transcript or something simpler.
+- **Reader-facing low-confidence/quality flag on Whisper-generated
+  transcripts -- raised by the user 2026-08-18, alongside a real bug this
+  same conversation found and moved to `BACKLOG.md` (the
+  `detect_language_from_texts()` first-2000-characters mislabeling
+  entry).** Today `detect_hallucination_warnings()`'s output
+  (`transcript_warnings`, `_GARBLED_MARKER`) only feeds
+  `app/db/outcomes.py`'s internal admin-reporting classification -- not
+  shown to readers at all. The user's framing: something like Wikipedia's
+  confidence banners ("this section needs more detail" / "needs human
+  verification") -- surface *and* explicitly acknowledge that a given
+  transcript (or section of one) hasn't been human-verified, rather than
+  presenting AI-generated text with the same visual confidence as a real
+  scraped government caption. Root cause context from the user, worth
+  keeping when this gets designed: these sources often have short (2-3
+  min) genuinely-foreign-language stretches (proclamations, a single
+  speaker) or dead air/loud music (meeting open, or a recess in a 4+ hour
+  meeting) that Whisper isn't built to handle well, embedded in meetings
+  that are otherwise clearly one language throughout -- so a good flag
+  should probably be scoped to the *offending stretch*, not just a
+  whole-page badge. Not designed yet -- open questions: page-level banner
+  vs. inline per-segment/per-chunk marking (today's warnings are
+  chunk-scoped, not whole-page), and whether it should also fire on the
+  language-mislabeling failure mode even when
+  `detect_hallucination_warnings()` itself sees nothing wrong (a
+  confidently-wrong language label isn't currently a "warning" at all).
+- **Compare `large-v2`/`large-v3` faster-whisper output against the
+  production `small`/`tiny` defaults on a real bad chunk -- raised by the
+  user 2026-08-18, not yet run.** Proposed protocol (the user's own): once
+  a specific meeting/chunk is confirmed low-quality (e.g. via the
+  reader-facing flag above once it exists, or by manual review), re-run
+  just that chunk -- not the whole meeting -- through both the
+  currently-used model size and `large-v2`/`large-v3`, then compare
+  outputs by eye. Needs a small standalone harness against
+  `FasterWhisperEngine` (`worker/transcription_engine.py`) rather than a
+  full `transcribe_backlog_locally.py` run, to target one chunk cheaply.
+  Purpose: find out whether the quiet-audio/hallucination pattern above
+  is a `small`-model-specific weakness `large-v2` genuinely does better
+  on, or a more fundamental Whisper-family limitation on real crowd
+  noise/music that a bigger model won't meaningfully fix -- informs
+  whether it's worth widening `_pick_default_model_size()`'s RAM tiers or
+  whether the reader-facing flag above is the more honest fix regardless
+  of model size.
 
 ## SEO / LLM-discoverability
 
@@ -367,26 +409,6 @@ share-card pair (Growth mechanics' "Social share previews" +
 session's discussion reinforces their priority rather than changing
 their content). The two genuinely new:
 
-- **Jurisdiction hub pages (`/j/{slug}`).** A server-rendered per-city/
-  county landing page ("Oakland City Council meetings — video,
-  transcripts, deep links") listing that jurisdiction's archived
-  meetings, built over the same `list_pages()` query `/meetings`'
-  jurisdiction filter already runs — the new work is a stable URL,
-  page copy, `<title>`/meta-description, and sitemap inclusion, not new
-  querying. Targets the "[city] council meeting video/transcript"
-  searches future users type today, and doubles as the hook page for
-  city-specific outreach (stronger than linking a filtered `/meetings`
-  URL). Foundation is real: transcript text is confirmed server-rendered
-  on `/m/*` pages (`archive/templates/meeting_page.html:328`, verified
-  2026-08-14), so these pages sit on genuinely indexable surface. Open
-  questions before building: slug scheme, given stored jurisdiction
-  strings are still messy (see `BACKLOG.md`'s open casing/no-state
-  items — a hub page per raw string variant would fragment instead of
-  consolidate); minimum-meeting-count threshold before a hub page
-  exists (a one-meeting "hub" is thin-content risk); and whether hub
-  pages join `sitemap.xml` immediately or after a corpus-growth pass
-  gives them real content.
-
 ## Data sourcing / coverage growth (2026-08-15)
 
 Raised by the user after the jurisdiction pipeline shipped, asking what
@@ -441,6 +463,73 @@ jurisdiction work itself would unlock.
   known customer directories if either platform publishes one) before
   assuming there's more to find there versus the Census-driven approach
   above finding it more systematically.
+- **Civic-tech/intelligence-aggregator sites as a candidate-URL source —
+  raised by the user 2026-08-19 via a researcher note, followed up with
+  real web research the same day.** The note named two products (Hamlet,
+  "Curated Civic Data") plus CHiME/AMI as ASR research corpora. Findings:
+  - **Hamlet (myhamlet.com) is real** — AI civic-intelligence platform,
+    3,000+ local governments, ~30,000+ meeting transcripts, freemium
+    search UI (basic search free, 14-day trial for full transcripts/
+    alerts). Customer base (real estate developers, data center
+    operators, journalists, nonprofits) matches the note. **No public
+    API or bulk-licensing page found** — nothing suggesting a scrapable
+    jurisdiction list or dev access beyond the search UI itself. No
+    associated open-source project.
+  - **"Curated Civic Data" doesn't exist under that name.** Closest real
+    matches, likely what the note actually meant: **GatherGov**
+    (gathergov.com/api) has an actual documented API — Transcript,
+    Search, and Custom endpoints, docs at `api.gathergov.com/docs`,
+    covering 6,200+ municipalities / 1,600+ counties / "94%+ of the US
+    population" — and is positioned explicitly for "real estate and
+    hyper-local municipality intelligence," closer to the note's
+    monetization claim than Hamlet is. No pricing or free tier listed;
+    gated behind a demo request, so still unconfirmed whether the API
+    is usable without a paid contract. Also found: **Curate**
+    (curatesolutions.com, now part of FiscalNote — minutes/agendas from
+    12,000+ entities into a dashboard/digest, a documents product, not
+    video/transcript) and **CivicTranscript** (civictranscript.com,
+    per-jurisdiction transcript search e.g. `solvang.civictranscript.com`,
+    no API found). All four are paid/gated — none expose a free
+    jurisdiction list or bulk API without a sales conversation, so none
+    of them directly solve "enumerate more meeting hosts" for free.
+  - **CHiME/AMI confirmed as real ASR research corpora** but they don't
+    lean on *government* meetings specifically enough to be a useful
+    jurisdiction-discovery lead — a dead end for this specific purpose,
+    despite being real datasets.
+  - **The one genuinely actionable find: [LocalView]
+    (https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/NJTBEM)**,
+    an academic dataset (Barari & Simko, *Scientific Data*, 2023). Free,
+    **CC-BY-4.0, no login required**, downloadable as Parquet/CSV/JSON/
+    Stata/RDS. Covers 139,616 YouTube videos + transcripts from **2,861
+    distinct local governments**, 2006–2022, with fields for state,
+    place name, FIPS code, **YouTube video ID and channel ID**, meeting
+    date, and full transcript/caption text. This is directly a
+    jurisdiction→YouTube-channel candidate list, and this repo's
+    resolver already handles YouTube natively (`YouTubeAssetFinder`, see
+    CLAUDE.md's PrimeGov-wrapper note) — no new adapter needed, just a
+    candidate-URL feed. Real caveat: data stops at 2022, so it's a
+    historical-coverage snapshot, not live discovery of brand-new
+    channels — though the channel IDs are very likely still active and
+    could be probed for newer uploads the same way the Census-place
+    idea above proposes probing subdomains.
+  - **Also found (real, active, but Chicago-scoped): [City-Bureau/
+    city-scrapers](https://github.com/City-Bureau/city-scrapers)**,
+    Scrapy-based, 2,570 commits, actively maintained. Ships a template
+    repo for adapting to other cities but doesn't itself cover a
+    national list.
+
+  **Before building anything with LocalView:** same "test against real,
+  live data first" convention as everywhere else in this repo — pull the
+  actual dataset (or a year slice), spot-check a sample of its YouTube
+  channel IDs against jurisdictions already in the sample sheet /
+  `app/utils/jurisdiction_data/places.csv` for overlap vs. new coverage,
+  and confirm a handful of those channels are still live and posting
+  before treating this as a real candidate-URL source. Also worth
+  cross-checking `~/Documents/rtr-business/research/CDX_QUERIES.md` and
+  `HYLAND_DISCOVERY.md` first, per [[reference_source_discovery_research]]
+  — this may turn out to substantially overlap with archive.org-sourced
+  YouTube coverage already pulled in past sessions rather than being
+  wholly new.
 
 - **"Famous moments in public comment" curated collection page.** A
   hand-curated, permanent page of notable public-hearing moments (the
@@ -485,24 +574,36 @@ site-wide for `redtaperecordings.com`:
   `noindex`es exactly those `generic_fallback` (`platform == "unknown"`)
   pages. Full write-up and fix direction now in `BACKLOG.md`, right after
   the existing 2026-08-12 Search Console entry.
-- **"Page indexed without content" — still open, unconfirmed, but with a
-  concrete named candidate now (found by the daily inbox-triage Routine's
-  2026-08-17 second-pass run).** `meeting_page.html`'s transcript text is
-  confirmed server-rendered (verified 2026-08-14, see "SEO /
-  LLM-discoverability" above), which rules out the obvious
-  client-side-render explanation for `/m/*` pages specifically. More
-  plausible: a real meeting with neither transcript nor agenda items
-  rendering as a genuinely thin page — title, date, video embed, no real
-  text body. This file's own "Agenda/minutes PDF text extraction" section
-  already documents exactly this shape on a real page: the Napa City
-  Council/Housing Authority case, which today "has literally nothing
-  describing what was discussed beyond the raw video and a bare link."
-  Not confirmed as the actual page(s) Search Console flagged — just the
+- **"Page indexed without content" — likely resolved by PR #136's
+  empty-page exclusion (shipped 2026-08-17, same day as this finding);
+  not confirmed done, needs a Search Console re-crawl to confirm the flag
+  actually clears.** `meeting_page.html`'s transcript text is confirmed
+  server-rendered (verified 2026-08-14, see "SEO / LLM-discoverability"
+  above), which rules out the obvious client-side-render explanation for
+  `/m/*` pages specifically. The plausible shape was a real meeting with
+  neither transcript nor agenda items rendering as a genuinely thin
+  page — title, date, video embed, no real text body. This file's own
+  "Agenda/minutes PDF text extraction" section already documents exactly
+  this shape on a real page: the Napa City Council/Housing Authority
+  case, which today "has literally nothing describing what was discussed
+  beyond the raw video and a bare link." This bullet originally framed
+  the fix as a choice between "exclude truly-empty pages from the
+  sitemap" and "just a handful of real thin meetings that improve as
+  caption/agenda coverage grows" — `BACKLOG_DONE.md`'s "Empty
+  ('zero-value') meeting pages excluded from browse/sitemap/feed" entry
+  (PR #136) built the former: pages with no video, no agenda, and no
+  transcript version (17 of ~1,200 live at the time) now get `noindex`ed
+  and excluded from `/meetings`, the sitemap, and the feed at query time
+  (`_is_empty_page_condition()` in `archive/db/crud.py`, the noindex meta
+  tag in `archive/templates/meeting_page.html`), and that entry
+  explicitly names this Search Console finding as the target. Still not
+  confirmed as the actual page(s) Search Console flagged — just the
   closest known real example of the shape that would produce this
-  symptom. Needs the actual report's URL list to confirm before deciding
-  between "exclude truly-empty pages from the sitemap" vs. "just a
-  handful of real thin meetings that improve as caption/agenda coverage
-  grows."
+  symptom, and the auth-walled Search Console dashboard itself hasn't
+  been re-checked. See `BACKLOG.md`'s matching ClerkBase-theory
+  `[HUMAN]` entry, which already carries the same "closes on recrawl with
+  no further code change, if the flagged URLs turn out to be this shape"
+  caveat.
 - **"Page with redirect" — application code ruled out (same 2026-08-17
   second-pass run), still open on the real cause.** Its own separate
   alert, received 2026-08-16, one day before the other two. Grepped both

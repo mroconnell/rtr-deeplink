@@ -328,6 +328,72 @@ async def send_transcription_failed_email(
     )
 
 
+async def send_admin_job_failure_alert(
+    *,
+    job_id: int,
+    requester_email: str,
+    meeting_title: str,
+    page_url: str,
+    source_url: Optional[str],
+    chunks_completed: Optional[int],
+    total_chunks: Optional[int],
+    retry_count: int,
+    error_message: Optional[str],
+    failure_history: list,
+    created_at: Optional[str],
+) -> bool:
+    """Operator-facing alert for a TranscriptionJob that gave up for good,
+    separate from send_transcription_failed_email()'s branded "sorry, try
+    again" copy above -- that email tells the requester nothing actionable
+    happened wrong, on purpose, but that also means it carries none of the
+    real diagnostics (which chunk, which error, how many retries) an
+    operator actually needs to follow up. Real gap flagged 2026-08-19: job
+    256 (a Redwood City, CA meeting, requested by a real early user) failed
+    silently -- worker/main.py's failure-email call site turned out to be
+    unreachable dead code (see that module's own note), so *neither* email
+    had ever actually gone out for a real chunk-processing failure. Sent
+    to TRANSCRIPTION_FAILURE_ALERT_EMAIL (default ryan@how-to-adu.com,
+    same "leave unset to default" convention as DAILY_REPORT_EMAIL_TO --
+    see .env.example) rather than reusing RESEND_REPLY_TO_ADDRESS, which
+    is a CC on the requester's own branded email and not meant to carry a
+    plain diagnostic dump.
+
+    Plain, scannable HTML (a <pre> block) rather than the marketing-styled
+    wrapper the requester-facing emails use -- this is read by one person
+    debugging a real failure, not a visitor.
+    """
+    to = os.environ.get("TRANSCRIPTION_FAILURE_ALERT_EMAIL", "ryan@how-to-adu.com")
+    recent_failures = (
+        "\n".join(
+            f"  chunk {entry.get('chunk_index')}: {entry.get('error')}  ({entry.get('at')})"
+            for entry in failure_history[-10:]
+        )
+        or "  (no per-chunk history recorded)"
+    )
+    report = f"""\
+job_id:            {job_id}
+status:            failed (gave up after {retry_count} retr{"y" if retry_count == 1 else "ies"})
+requester:         {requester_email}
+meeting:           {meeting_title}
+page:              {page_url}
+source_url:        {source_url or "(unknown)"}
+chunks_completed:  {chunks_completed} / {total_chunks}
+created_at:        {created_at or "(unknown)"}
+last error:        {error_message or "(none recorded)"}
+
+recent chunk failures:
+{recent_failures}
+"""
+    body_html = (
+        '<pre style="font-family:ui-monospace,Menlo,Consolas,monospace;'
+        'font-size:13px;color:#2c3e50;white-space:pre-wrap;">'
+        f"{html.escape(report)}</pre>"
+    )
+    return await _send(
+        to, f"Transcription job {job_id} failed: {meeting_title}", body_html
+    )
+
+
 def _digest_subject(groups: list) -> str:
     """Draft copy, not yet approved in marketing/LIFECYCLE_EMAILS.md --
     that doc's subject ('Somebody said "[keyword]"') was written for
@@ -501,3 +567,49 @@ async def send_youtube_transcript_failure(to: str, *, error_message: str) -> boo
         "running the launchd job for the full detail.</p>"
     )
     return await _send(to, "⚠️ YouTube transcript fetch failed", body)
+
+
+async def send_worker_daily_report(
+    to: str, *, summary: dict, previous: Optional[dict]
+) -> bool:
+    """Daily activity digest for the transcription worker(s) -- see
+    archive/main.py's GET /internal/send-worker-daily-report, triggered by
+    .github/workflows/worker-daily-report.yml. Same "internal ops
+    notification, plain HTML, sent every day even when nothing happened"
+    pattern as send_youtube_transcript_report() above -- silence itself
+    should never be the only signal a scheduled job stopped firing.
+
+    `chunks_completed_last_24h` is None (rendered as "n/a (first report)")
+    only on the very first-ever send, when there's no previous snapshot to
+    diff against -- every subsequent send has a real number.
+    """
+    chunks_24h = (
+        summary["cumulative_chunks_completed_all_time"]
+        - previous["cumulative_chunks_completed"]
+        if previous is not None
+        else None
+    )
+    chunks_24h_str = (
+        f"{chunks_24h:,}" if chunks_24h is not None else "n/a (first report)"
+    )
+    segments_24h = summary["segments_added_last_24h"]
+    segments_24h_str = f"{segments_24h:,}" if segments_24h is not None else "n/a"
+
+    body = (
+        "<h2>Transcription worker activity, last 24 hours</h2>"
+        '<table cellpadding="6" style="border-collapse: collapse">'
+        f"<tr><td>Chunks completed</td><td><strong>{chunks_24h_str}</strong></td></tr>"
+        f"<tr><td>Jobs finished</td><td><strong>{summary['jobs_completed_last_24h']:,}</strong></td></tr>"
+        f"<tr><td>Segments transcribed</td><td><strong>{segments_24h_str}</strong></td></tr>"
+        "</table>"
+        "<h2>Current queue</h2>"
+        '<table cellpadding="6" style="border-collapse: collapse">'
+        f"<tr><td>Active jobs</td><td><strong>{summary['active_jobs']:,}</strong></td></tr>"
+        f"<tr><td>Remaining chunks in active jobs</td><td><strong>{summary['remaining_chunks_in_active_jobs']:,}</strong></td></tr>"
+        f"<tr><td>Meetings on the site with no transcript</td><td><strong>{summary['backlog_no_transcript']:,}</strong></td></tr>"
+        f"<tr><td>Still in the tier-3 discovery queue (not yet archived)</td><td><strong>{summary['tier3_queue_remaining']:,}</strong></td></tr>"
+        "</table>"
+        f'<p style="color:#666">All-time cumulative: {summary["cumulative_chunks_completed_all_time"]:,} chunks, '
+        f"{summary['cumulative_jobs_completed_all_time']:,} jobs completed.</p>"
+    )
+    return await _send(to, "Transcription worker daily report", body)

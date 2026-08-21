@@ -14,7 +14,7 @@ from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from markupsafe import Markup
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 load_dotenv()
@@ -44,15 +44,18 @@ from .db.engine import init_models
 from .utils import email as email_utils
 from .utils import social
 from .utils.clerk_auth import clerk_frontend_api_url, get_clerk_user_id
+from .utils.date_status import meeting_date_status
 from .utils.jurisdiction_format import (
     STATE_SLUG_TO_ABBR,
     US_STATE_ABBR_TO_NAME,
     format_jurisdiction_display,
+    jurisdiction_hub_slug,
     state_abbr_from_jurisdiction,
     state_slug_from_abbr,
 )
 from .utils.language import language_display_name
 from .utils.render_warnings import render_warnings_html
+from .utils.segment_time import format_segment_time
 from .utils.transcript_export import to_srt, to_txt
 from .utils.video_thumbnail import youtube_thumbnail_url
 
@@ -71,6 +74,40 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="rtr-archive", lifespan=lifespan)
+
+
+@app.middleware("http")
+async def handle_head_requests(request: Request, call_next):
+    """Same fix as app/main.py's identically-named middleware (deliberate
+    duplicate per this repo's own convention of not sharing code between
+    the two services) -- every route here is declared with
+    @app.get(...)/@app.post(...) etc, and FastAPI/Starlette does *not*
+    automatically answer a bare HTTP HEAD for a GET route, so a HEAD
+    (uptime checks, some crawlers, `curl -I`) 405s on all 19 routes with
+    no handling at all. Dispatch a HEAD internally as a GET (rewriting
+    `request.scope["method"]` before it reaches routing) and return the
+    real response's status/headers with the body stripped -- per RFC 9110
+    4.2, HEAD's response must carry the same headers a GET would
+    (including Content-Length), just no body.
+
+    Note: `call_next`'s returned object is always Starlette's internal
+    `_StreamingResponse` wrapper, whose own `.background` is hardcoded to
+    `None` -- any real background work a route attaches runs as part of
+    the real handler's own response inside `call_next`'s concurrent
+    dispatch, independent of the empty response built here, so there's
+    nothing to carry over."""
+    if request.method != "HEAD":
+        return await call_next(request)
+    request.scope["method"] = "GET"
+    response = await call_next(request)
+    return Response(
+        content=b"",
+        status_code=response.status_code,
+        headers=dict(response.headers),
+        media_type=response.media_type,
+    )
+
+
 app.mount("/static", StaticFiles(directory=APP_DIR / "static"), name="static")
 # Deep-link JS shared with the resolver service (app/main.py mounts the
 # same top-level directory identically) -- see shared_static/deep_link.js's
@@ -119,6 +156,12 @@ templates.env.filters["source_label"] = lambda source: (
 )
 templates.env.filters["jurisdiction_display"] = format_jurisdiction_display
 templates.env.filters["youtube_thumbnail_url"] = youtube_thumbnail_url
+# Real bug, confirmed live: meeting_page.html used to render agenda-item/
+# transcript-segment timestamps with a naive "%d:%02d"|format(seconds //
+# 60, seconds % 60), which has no hour rollover -- a segment at 21887s
+# rendered as the literal "364:47" instead of "6:04:47". See
+# archive/utils/segment_time.py's own docstring.
+templates.env.filters["segment_time"] = format_segment_time
 
 
 @app.exception_handler(StarletteHTTPException)
@@ -291,6 +334,92 @@ async def internal_transcription_backlog(
     return {"pages": await crud.list_transcription_backlog_candidates(limit=limit)}
 
 
+# Repo root -- this service's build/deploy checks out the whole repo (see
+# render.yaml's rtr-deeplink-archive buildCommand), so a plain tracked
+# file like the tier-3 queue is physically present on disk here, same as
+# every adapter module this service already imports from app/platforms.
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+_TIER3_QUEUE_FILE = _REPO_ROOT / "scripts" / "tier3_auto_transcription_queue.txt"
+
+
+def _tier3_queue_remaining() -> int:
+    """Plain line count of the tracked tier-3 discovery queue file --
+    each line is one URL still waiting to be fed into the Archive by
+    scripts/feed_tier3_auto_transcription.py (see that script's own
+    docstring). Not a DB query at all; this file lives in git, not the
+    database. Returns 0 rather than raising if the file's ever missing
+    (e.g. a stale build) -- this is one line of an ops report, not
+    something that should 500 the whole route over a missing file.
+    """
+    try:
+        return sum(
+            1 for line in _TIER3_QUEUE_FILE.read_text().splitlines() if line.strip()
+        )
+    except OSError:
+        return 0
+
+
+@app.get("/internal/transcription-queue-stats")
+async def internal_transcription_queue_stats(
+    authorization: Optional[str] = Header(None),
+):
+    """Real-time snapshot of transcription workload -- see
+    crud.get_transcription_queue_summary()'s own docstring for exactly
+    what each field means and how it's computed. Read-only, side-effect
+    free (unlike /internal/send-worker-daily-report below, which advances
+    the report snapshot) -- safe to call as often as wanted, e.g. for a
+    future dashboard, not just the daily report.
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    summary = await crud.get_transcription_queue_summary()
+    summary["tier3_queue_remaining"] = _tier3_queue_remaining()
+    return summary
+
+
+@app.get("/internal/send-worker-daily-report")
+async def internal_send_worker_daily_report(
+    to: str, authorization: Optional[str] = Header(None)
+):
+    """Composes and sends the transcription-worker daily activity report
+    (email_utils.send_worker_daily_report()), then advances the stored
+    snapshot (crud.get_and_advance_worker_report_snapshot()) so the NEXT
+    send's 24h delta is measured from this moment, not from whenever the
+    snapshot was last touched. Triggered by .github/workflows/
+    worker-daily-report.yml -- same "GitHub Actions just pings an
+    already-running Render service that already holds the real Resend
+    credentials" pattern /admin/send-search-alerts (app/main.py) already
+    established, not a new script with its own copy of RESEND_API_KEY.
+
+    `to` is a required query param rather than a fixed env var -- keeps
+    this route reusable (a different recipient without touching Render
+    config) the same way /admin/recheck-archive-page?url= takes its
+    target as a param instead of hardcoding one.
+
+    GET despite the real side effect (advancing the snapshot, sending an
+    email) -- same precedent as /admin/send-search-alerts and
+    /admin/recheck-archive-page, both of which are also side-effecting
+    GETs on this codebase's existing token-gated internal/admin surface,
+    not a REST purity violation introduced here.
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    summary = await crud.get_transcription_queue_summary()
+    summary["tier3_queue_remaining"] = _tier3_queue_remaining()
+
+    previous = await crud.get_and_advance_worker_report_snapshot(
+        cumulative_chunks_completed=summary["cumulative_chunks_completed_all_time"],
+        cumulative_jobs_completed=summary["cumulative_jobs_completed_all_time"],
+    )
+
+    sent = await email_utils.send_worker_daily_report(
+        to, summary=summary, previous=previous
+    )
+    return {"sent": sent, "summary": summary}
+
+
 @app.get("/internal/transcription/completed-multichunk")
 async def internal_transcription_completed_multichunk(
     authorization: Optional[str] = Header(None),
@@ -312,6 +441,8 @@ async def internal_transcription_completed_multichunk(
 
 @app.get("/internal/transcription/hallucination-candidates")
 async def internal_transcription_hallucination_candidates(
+    limit: int = 500,
+    after_id: Optional[int] = None,
     authorization: Optional[str] = Header(None),
 ):
     """Read-only audit list: every already-completed source=="transcribed"
@@ -327,11 +458,111 @@ async def internal_transcription_hallucination_candidates(
     audit's own template for this one) -- answers the audit without
     needing direct DATABASE_URL access. Never re-transcribes or modifies
     anything itself; a human decides what's worth re-running.
+
+    Rewritten 2026-08-21 -- this endpoint was confirmed live-502ing
+    (see BACKLOG_DONE.md) because crud.list_hallucination_candidate_
+    transcript_versions() pulled every source=="transcribed" row's full
+    segments JSON in one unbounded query. It now only pulls segments for
+    rows already carrying the hallucination marker (a small, trusted set)
+    plus up to `limit` not-yet-flagged rows (default 500) -- pass
+    `after_id` (the previous batch's max version_id) to page through the
+    rest, same keyset-pagination shape as other batch audit endpoints in
+    this file.
     """
     if not _token_ok(authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
-    return {"candidates": await crud.list_hallucination_candidate_transcript_versions()}
+    return {
+        "candidates": await crud.list_hallucination_candidate_transcript_versions(
+            limit=limit, after_id=after_id
+        )
+    }
+
+
+@app.get("/internal/transcript-quality-audit")
+async def internal_transcript_quality_audit(
+    list_outcomes: Optional[str] = None,
+    authorization: Optional[str] = Header(None),
+):
+    """Read-only aggregate: every archived page's transcript-quality outcome
+    bucket (success / garbled_transcript / non_english_transcript /
+    blank_transcript / agenda_fallback / no_video -- same buckets as
+    /coverage's per-jurisdiction outcome column and app/db/outcomes.py's
+    classify_outcome()), counted across the whole archive rather than one
+    best example per jurisdiction. Added to answer "how many archived
+    meetings have a low-quality/garbled/non-English transcript" without
+    needing direct DATABASE_URL access (same reasoning as
+    /internal/schema-info). Never re-transcribes or modifies anything.
+
+    `list_outcomes` (comma-separated bucket names, e.g.
+    "garbled_transcript,non_english_transcript") also returns the real
+    slug/source URL/platform/language/warnings for every page in those
+    buckets -- e.g. to target the real garbled pages directly with
+    scripts/transcribe_backlog_locally.py --url, or to eyeball whether any
+    non_english_transcript page is actually a garbled scraped caption
+    whose language got misdetected (the confirmed Fountain Valley, CA
+    pattern -- see CLAUDE.md).
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    outcomes = (
+        {o.strip() for o in list_outcomes.split(",") if o.strip()}
+        if list_outcomes
+        else None
+    )
+    return await crud.get_transcript_quality_audit(list_outcomes=outcomes)
+
+
+@app.get("/internal/jurisdiction/bleed-backfill-candidates")
+async def internal_jurisdiction_bleed_backfill_candidates(
+    authorization: Optional[str] = Header(None),
+):
+    """Read-only audit list: every already-archived MeetingPage whose
+    stored `jurisdiction` would come out differently (a different string,
+    or a better confidence tier) if re-run through today's
+    finalize_jurisdiction() (app/utils/jurisdiction_enrich.py) -- real
+    candidates for the 2026-08-17 Canadian-data + Title-Case-bleed fixes
+    (BACKLOG.md's "Jurisdiction-bleed, confirmed cross-platform" entry)
+    having already shipped to a live public page before either fix
+    existed. Same reasoning and structure as
+    GET /internal/transcription/hallucination-candidates above (that
+    audit's own template for this one) -- answers "how big would a
+    backfill be" without needing direct DATABASE_URL access. Never
+    re-writes anything itself; a human decides what's worth backfilling.
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    return await crud.list_jurisdiction_bleed_backfill_candidates()
+
+
+@app.post("/internal/jurisdiction/backfill-apply")
+async def internal_jurisdiction_backfill_apply(
+    dry_run: bool = True, authorization: Optional[str] = Header(None)
+):
+    """Write counterpart to GET /internal/jurisdiction/bleed-backfill-
+    candidates above -- actually backfills the 2026-08-17 Canadian-data +
+    Title-Case-bleed fixes (PRs #158/#161) onto MeetingPage rows archived
+    before either fix existed. Always recomputes candidates itself from
+    each row's own stored inputs (crud.apply_jurisdiction_bleed_backfill())
+    -- never trusts a client-supplied jurisdiction string, so a stale or
+    forged request can't write arbitrary text. Only patches the
+    `jurisdiction` and `jurisdiction_confidence` columns; every other field
+    on the row (title, video_url, segments, ...) is untouched. Narrower
+    than the GET audit above: only rows where the jurisdiction STRING
+    actually changes are touched -- a confidence-tier-only diff (e.g. null
+    -> "validated" with the same text) isn't worth a write and is skipped.
+
+    dry_run defaults to true (mirrors this repo's read-only-first pattern
+    for internal tooling, see /internal/schema-info's docstring) and
+    returns the exact before/after diff it *would* write without touching
+    the database. Pass ?dry_run=false to actually commit.
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    return await crud.apply_jurisdiction_bleed_backfill(dry_run=dry_run)
 
 
 @app.get("/internal/lookup")
@@ -456,6 +687,27 @@ class TranscriptionCreateJobRequest(BaseModel):
     # so it should skip the confirm-by-email step the same way an
     # existing newsletter subscriber's email already does below.
     clerk_verified: bool = False
+    # Optional -- omitted (the default) preserves every existing caller's
+    # behavior exactly, since crud.create_transcription_job() itself
+    # defaults to PRIORITY_MEDIUM when no priority= kwarg is passed. Added
+    # 2026-08-21 so scripts/bulk_queue_transcription_backlog.py can
+    # explicitly submit at PRIORITY_LOW over this HTTP surface --
+    # previously only worker/main.py's own in-process auto-generation
+    # call could ever use that tier (see crud.PRIORITY_LOW's own
+    # "reserved for future self-generated/idle-time batch work" comment --
+    # this is exactly that future use). Restricted to the two tiers that
+    # actually exist today so this internal, token-gated route can't be
+    # used to sneak a job in above PRIORITY_MEDIUM.
+    priority: Optional[int] = None
+
+    @field_validator("priority")
+    @classmethod
+    def _validate_priority(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v not in (crud.PRIORITY_LOW, crud.PRIORITY_MEDIUM):
+            raise ValueError(
+                f"priority must be {crud.PRIORITY_LOW} or {crud.PRIORITY_MEDIUM}"
+            )
+        return v
 
 
 @app.post("/internal/transcription/create-job")
@@ -479,6 +731,7 @@ async def internal_transcription_create_job(
         probed_duration_seconds=req.probed_duration_seconds,
         chunk_size_seconds=req.chunk_size_seconds,
         skip_confirmation=skip_confirmation,
+        **({"priority": req.priority} if req.priority is not None else {}),
     )
 
     if job.get("status") == "pending_confirmation":
@@ -531,6 +784,17 @@ async def internal_transcription_status(
 class PromoteVersionRequest(BaseModel):
     slug: str
     version_id: int
+    # Opt-in only -- a caller re-pushing content it fetched independently
+    # (e.g. scripts/fetch_youtube_transcripts.py re-fetching via a
+    # different library than the original resolve) can assert that this
+    # promotion should also clear any stale garbled/hallucination warning
+    # already on the version, since dedup-by-content-hash in
+    # ingest_resolution() reuses the existing version row -- and its old
+    # warnings -- rather than creating a fresh one. Left False by default
+    # so scripts/transcribe_backlog_locally.py's own opt-in --promote for
+    # human-reviewed Whisper re-transcriptions is unaffected: a human
+    # promoting a version doesn't mean its hallucination flag was wrong.
+    clear_warnings: bool = False
 
 
 @app.post("/internal/transcript-version/promote")
@@ -541,7 +805,9 @@ async def internal_promote_version(
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
     result = await crud.manually_promote_transcript_version(
-        slug=req.slug, version_id=req.version_id
+        slug=req.slug,
+        version_id=req.version_id,
+        clear_warnings=req.clear_warnings,
     )
     if result is None:
         return JSONResponse(
@@ -566,6 +832,30 @@ async def internal_correct_language(
 
     result = await crud.correct_transcript_version_language(
         slug=req.slug, language=req.language, version_id=req.version_id
+    )
+    if result is None:
+        return JSONResponse(
+            {"error": "not_found", "message": "No matching meeting page/version."},
+            status_code=404,
+        )
+    return result
+
+
+class CorrectWarningsRequest(BaseModel):
+    slug: str
+    transcript_warnings: list[str]
+    version_id: Optional[int] = None
+
+
+@app.post("/internal/transcript-version/correct-warnings")
+async def internal_correct_warnings(
+    req: CorrectWarningsRequest, authorization: Optional[str] = Header(None)
+):
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    result = await crud.correct_transcript_version_warnings(
+        slug=req.slug, warnings=req.transcript_warnings, version_id=req.version_id
     )
     if result is None:
         return JSONResponse(
@@ -703,6 +993,29 @@ async def internal_delete_account_data(
     return {"deleted": count}
 
 
+class DeletePagesRequest(BaseModel):
+    slugs: list[str]
+
+
+@app.post("/internal/admin/delete-pages")
+async def internal_delete_pages(
+    req: DeletePagesRequest,
+    dry_run: bool = True,
+    authorization: Optional[str] = Header(None),
+):
+    """Permanently removes MeetingPage rows by slug -- see
+    crud.delete_meeting_pages_by_slug()'s own docstring for the cascade
+    detail and why this exists (a real 2026-08-19 cleanup: 3 PrimeGov
+    UAT/staging tenant pages accidentally real-ingested during a bulk
+    gate-blindness recheck, not a general content-moderation tool). Slug
+    only, never a fuzzy match, so a typo can't take out an unrelated real
+    page. dry_run defaults true, matching this file's existing read-only-
+    first convention (see /internal/jurisdiction/backfill-apply)."""
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    return await crud.delete_meeting_pages_by_slug(req.slugs, dry_run=dry_run)
+
+
 def _pick_active_version(page: dict, version: Optional[int]) -> Optional[dict]:
     versions = page["versions"]
     if not versions:
@@ -739,12 +1052,31 @@ async def meeting_page(request: Request, slug: str, version: Optional[int] = Non
 
     state_abbr = state_abbr_from_jurisdiction(page["jurisdiction"])
 
+    # Python twin of crud._is_empty_page_condition() (no video, no agenda
+    # items/link, no transcript version at all) -- the template noindexes
+    # such a page, matching its exclusion from /meetings, the sitemap and
+    # the feed. Kept in lockstep with the SQL predicate on purpose; a
+    # divergence would put a noindexed page back in the sitemap, the
+    # exact Search Console contradiction the 2026-08-17 fix removed.
+    page_is_empty = not (
+        page["video_url"]
+        or page["agenda_items"]
+        or page["agenda_link"]
+        or page["versions"]
+    )
+
     return templates.TemplateResponse(
         request,
         "meeting_page.html",
         {
             "page": page,
             "active_version": active_version,
+            "page_is_empty": page_is_empty,
+            # "upcoming" / "recent" / None -- drives the notice under the
+            # title explaining why a page may not have video/captions yet.
+            "date_status": meeting_date_status(
+                page["date"], has_transcript=bool(page["versions"])
+            ),
             # The <html lang> attribute should reflect what's actually on
             # the page, not always English -- a transcript's real language
             # comes from its TranscriptVersion, not a sitewide constant.
@@ -764,6 +1096,9 @@ async def meeting_page(request: Request, slug: str, version: Optional[int] = Non
             # ", ST" suffix, and the template omits the link.
             "state_name": US_STATE_ABBR_TO_NAME[state_abbr] if state_abbr else None,
             "state_slug": state_slug_from_abbr(state_abbr) if state_abbr else None,
+            # For the "More {Jurisdiction} meetings" link to /j/{slug} --
+            # None (link omitted) when the page has no jurisdiction at all.
+            "hub_slug": jurisdiction_hub_slug(page.get("jurisdiction")),
         },
     )
 
@@ -827,10 +1162,16 @@ async def meetings_index(
     fuzzy: Optional[str] = None,
     has_agenda: Optional[str] = None,
     has_transcript: Optional[str] = None,
+    # Search Step 2a: "relevance" orders keyword results by ts_rank_cd()
+    # (Postgres full-text search only -- see crud.list_pages()); anything
+    # else, incl. the tolerated empty string, means the default newest-
+    # first. Same tolerant-string shape as the three bools above.
+    sort: Optional[str] = None,
 ):
     fuzzy_bool = fuzzy == "true"
     has_agenda_bool = _parse_optional_bool(has_agenda)
     has_transcript_bool = _parse_optional_bool(has_transcript)
+    sort_relevance = sort == "relevance"
     result = await crud.list_pages(
         page=page,
         jurisdiction=jurisdiction,
@@ -840,6 +1181,7 @@ async def meetings_index(
         has_transcript=has_transcript_bool,
         keyword=q,
         fuzzy=fuzzy_bool,
+        sort="relevance" if sort_relevance else "newest",
     )
     return templates.TemplateResponse(
         request,
@@ -853,6 +1195,7 @@ async def meetings_index(
             "fuzzy": fuzzy_bool,
             "has_agenda": has_agenda_bool,
             "has_transcript": has_transcript_bool,
+            "sort_relevance": sort_relevance,
             "active_account": get_clerk_user_id(request),
         },
     )
@@ -874,6 +1217,22 @@ async def coverage(request: Request):
     coverage_rows = await crud.get_platform_coverage()
     jurisdictions = await crud.get_jurisdiction_coverage()
     states = await crud.get_state_coverage_index()
+    full_jurisdictions = await crud.get_full_jurisdiction_coverage()
+    # Distinct filter-dropdown option lists, derived from the real rows
+    # rather than DIRECT_PLATFORMS/CUSTOM_PLATFORMS directly -- this table
+    # can show labels those dicts don't have (e.g. "PrimeGov", a raw
+    # video_url host for a generic_fallback row), so the dropdowns should
+    # only ever offer options a filter click can actually match something.
+    detail_platform_options = sorted(
+        {row["detail_platform"] for row in full_jurisdictions}, key=str.casefold
+    )
+    video_platform_options = sorted(
+        {row["video_platform"] for row in full_jurisdictions}, key=str.casefold
+    )
+    outcome_options = sorted(
+        {(row["outcome"], row["outcome_label"]) for row in full_jurisdictions},
+        key=lambda o: o[1],
+    )
     return templates.TemplateResponse(
         request,
         "coverage.html",
@@ -881,6 +1240,10 @@ async def coverage(request: Request):
             "coverage": coverage_rows,
             "jurisdictions": jurisdictions,
             "states": states,
+            "full_jurisdictions": full_jurisdictions,
+            "detail_platform_options": detail_platform_options,
+            "video_platform_options": video_platform_options,
+            "outcome_options": outcome_options,
             "active_account": get_clerk_user_id(request),
         },
     )
@@ -907,6 +1270,27 @@ async def state_page(request: Request, state_slug: str):
     )
 
 
+@app.get("/j/{hub_slug}")
+async def jurisdiction_page(request: Request, hub_slug: str):
+    """Per-government hub: every archived meeting for one jurisdiction
+    (see crud.get_jurisdiction_hub_data() -- grouped by
+    jurisdiction_hub_slug(), so raw-string variants of one city land on one
+    page). 404s for an unknown slug or one with no indexable meetings, same
+    in-route pattern as /m/{slug} and /state/{slug}. Below
+    crud.JURISDICTION_HUB_MIN_INDEXABLE meetings the page renders with a
+    noindex (thin-content posture) and stays out of sitemap.xml."""
+    data = await crud.get_jurisdiction_hub_data(hub_slug)
+    if data is None:
+        return templates.TemplateResponse(
+            request, "not_found.html", {}, status_code=404
+        )
+    return templates.TemplateResponse(
+        request,
+        "jurisdiction_page.html",
+        {**data, "active_account": get_clerk_user_id(request)},
+    )
+
+
 # Public, indexable static pages -- not MeetingPage rows, so they have no
 # real lastmod and aren't produced by list_all_page_slugs(). Deliberately
 # excludes /account/saved, /alerts/unsubscribe, /meeting (already
@@ -920,10 +1304,12 @@ async def sitemap():
     base = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
     entries = await crud.list_all_page_slugs()
     states = await crud.get_state_coverage_index()
+    hubs = await crud.list_indexable_hub_entries()
     body = templates.get_template("sitemap.xml.jinja").render(
         base_url=base,
         entries=entries,
         states=states,
+        hubs=hubs,
         static_paths=_SITEMAP_STATIC_PATHS,
     )
     return Response(content=body, media_type="application/xml")

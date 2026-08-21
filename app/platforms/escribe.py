@@ -5,7 +5,6 @@ from typing import Dict, List, Optional
 from urllib.parse import quote, urlparse
 
 import aiohttp
-import wordninja
 from bs4 import BeautifulSoup
 from langdetect import detect as detect_language, LangDetectException
 
@@ -47,6 +46,20 @@ class EscribeAssetFinder(AssetFinder):
         browser needed, just BeautifulSoup.
       - Perry, GA: no video/iSiLIVE integration at all -- just a plain-text
         link to a live Vimeo stream, no archive shown anywhere on the page.
+      - A second real iSiLIVE page shape, confirmed live 2026-08-19: eScribe
+        also serves standalone `Players/ISIStandAlonePlayer.aspx?Id=<guid>`
+        video-only pages (linked from a Meeting.aspx page's "watch video"
+        modal, same meeting Id, but a genuinely separate URL/page) whose
+        `#isi_player` div carries `data-file_name` instead of
+        `data-stream_name` -- confirmed on 5 real live Canadian tenants
+        (Caledon, Mississauga, Markham, Victoria, Edmonton). Every Meeting.aspx
+        page checked for the same meeting Id still used `data-stream_name` as
+        before, so this shape is specific to someone submitting an
+        ISIStandAlonePlayer.aspx URL directly, not a hidden variant of the
+        regular Meeting.aspx page. `data-file_name`'s value plugs into the
+        exact same cdn1.isilive.ca/video.isilive.ca URL construction as
+        `data-stream_name` -- confirmed by fetching both a real playlist.m3u8
+        and a real, populated .vtt for Caledon's value.
     So "no video found" is an expected, common, non-error outcome for this
     platform, not a bug to chase -- this adapter must degrade gracefully
     rather than assume video is always present the way Granicus/Swagit do.
@@ -77,7 +90,32 @@ class EscribeAssetFinder(AssetFinder):
             title, date, jurisdiction = self._extract_metadata(soup, url, html)
             agenda_items = self._extract_agenda_items(soup, html)
 
-            player = soup.select_one("#isi_player[data-client_id][data-stream_name]")
+            # Real second page shape confirmed live 2026-08-19: eScribe's own
+            # `isi_player.js` (fetched from //video.isilive.ca/cdn/isi_player.js)
+            # treats `data-file_name` as a "legacy" synonym for `stream_name`
+            # ("legacy support for file_name / stream_name" -- `if
+            # typeof(file_name) != 'undefined') { stream_name = file_name }`),
+            # used on a genuinely different real page:
+            # `Players/ISIStandAlonePlayer.aspx?Id=<guid>`, a standalone
+            # video-only page eScribe's own Meeting.aspx page links to (a
+            # "watch video" modal, same meeting Id) rather than embedding
+            # directly. Confirmed on 5 real live tenants (Caledon, Mississauga,
+            # Markham, Victoria, Edmonton): each one's own Meeting.aspx page
+            # embeds `data-stream_name` (the shape already handled below), but
+            # the linked ISIStandAlonePlayer.aspx page for that exact same
+            # meeting Id embeds `data-file_name` instead with the identical
+            # value eScribe's own JS would have used for `stream_name` --
+            # confirmed by fetching both cdn1.isilive.ca's playlist.m3u8 (200)
+            # and video.isilive.ca's .vtt (200, real populated captions) for
+            # Caledon's data-file_name value using the exact same URL
+            # construction as the data-stream_name path below. So a URL
+            # someone submits that happens to *be* an ISIStandAlonePlayer.aspx
+            # page (e.g. a "share video" link, distinct from the Meeting.aspx
+            # URLs this adapter is normally given) needs the same attribute
+            # accepted, not a different construction.
+            player = soup.select_one(
+                "#isi_player[data-client_id][data-stream_name]"
+            ) or soup.select_one("#isi_player[data-client_id][data-file_name]")
             video_url, video_format = None, None
             video_link: Optional[str] = None
             video_link_recognized = False
@@ -152,7 +190,9 @@ class EscribeAssetFinder(AssetFinder):
                     )
             else:
                 client_id = player["data-client_id"]
-                stream_name = player["data-stream_name"]
+                # data-file_name is the ISIStandAlonePlayer.aspx variant --
+                # see the comment above where `player` is selected.
+                stream_name = player.get("data-stream_name") or player["data-file_name"]
                 encoded_stream = quote(stream_name, safe="")
                 video_url = f"https://cdn1.isilive.ca/vod/_definst_/mp4:{client_id}/{encoded_stream}/playlist.m3u8"
                 video_format = "m3u8"
@@ -305,19 +345,28 @@ class EscribeAssetFinder(AssetFinder):
         # so a multi-word city collapsed into one mashed-together word
         # ("Thunderbay", "Portmoody" instead of "Thunder Bay"/"Port Moody").
         # wordninja-split the same way Granicus's _humanize_subdomain() does.
-        # Deliberately NOT gated on Census-table validation like Granicus's
-        # version (jurisdiction_enrich.validated_subdomain_extract()) --
-        # eScribe serves real Canadian customers (Mississauga, Oshawa, Port
-        # Moody, Thunder Bay, all confirmed live) that the US-only Census
-        # tables can't validate by construction (see BACKLOG.md's WO-16), so
-        # gating on validation here would make this fallback *decline* on
-        # exactly the customers it most needs to cover.
-        words = wordninja.split(label)
-        while len(words) > 1 and words[0].lower() in ("city", "county", "town", "of"):
-            words = words[1:]
-        if not words:
-            return None
-        return " ".join(w.capitalize() for w in words)
+        #
+        # Was deliberately NOT gated on Census-table validation at first --
+        # eScribe serves real Canadian customers the then-US-only Census
+        # tables couldn't validate by construction. That reasoning went
+        # stale the very next day: PR #158 (2026-08-17) added 5,028 real
+        # StatsCan places to the same table `validated_label_extract()`
+        # checks against. Left ungated, this produced a real, confirmed-live
+        # bug of its own (2026-08-18): re-resolving "townofbonnyville" with
+        # this function's own wordninja split gives "Bonny Ville" -- a
+        # different, confidently WRONG string, not the almost-right
+        # "Townofbonnyville" it started from. Now delegates to the same
+        # gated, validated logic Granicus's `_humanize_subdomain()` already
+        # uses (`jurisdiction_enrich.validated_label_extract()`), rather
+        # than reimplementing wordninja-split-and-guess locally -- declining
+        # (returning None) on a subdomain that doesn't validate rather than
+        # asserting a wrong name. Known, honestly-flagged residual gap: a
+        # handful of real Ontario "regional municipality" names (Durham
+        # Region, Peel Region, Region of Waterloo) and hyphenated municipal
+        # names (Chatham-Kent, Arran-Elderslie) aren't in the StatsCan table
+        # under this exact form, so they now decline instead of returning
+        # their previous (accurate but unvalidated) guess -- see BACKLOG.md.
+        return jurisdiction_enrich.validated_label_extract(label)
 
     @staticmethod
     def _extract_agenda_items(

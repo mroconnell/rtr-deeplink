@@ -22,6 +22,7 @@
     <form method="get" action="/meetings" class="meeting-search-form">
       <input type="text" name="q" value="{{ q }}" placeholder="Search title, jurisdiction, agenda, or transcript&hellip;" aria-label="Search meetings">
       {% if fuzzy %}<input type="hidden" name="fuzzy" value="true">{% endif %}
+      {% if sort_relevance %}<input type="hidden" name="sort" value="relevance">{% endif %}
       <button type="submit" class="cassette-btn">Search</button>
     </form>
     <div class="subtitle search-hint">
@@ -36,6 +37,7 @@
           <li>Put a phrase in <code>"quotes"</code> to match it exactly, e.g. <code>"data center"</code>.</li>
           <li>Every word is required by default &mdash; <code>traffic downtown</code> finds meetings with both.</li>
           <li>Put <code>-</code> in front of a word or phrase to exclude it &mdash; <code>traffic -parking</code> or <code>-"data center"</code>.</li>
+          <li><code>OR</code> matches either side &mdash; <code>flock OR camera</code> finds meetings with at least one. Word forms match too: <code>budget</code> also finds &ldquo;budgets&rdquo; and &ldquo;budgeting&rdquo;.</li>
           <li><code>+</code>, <code>&amp;</code>, and <code>AND</code> are also understood, but don't change anything &mdash; every word's already required.</li>
         </ul>
       </div>
@@ -81,6 +83,10 @@
             <input type="checkbox" name="fuzzy" value="true"{% if fuzzy %} checked{% endif %}>
             Fuzzy search (tolerates transcript typos, slower)
           </label>
+          <label class="checkbox-filter">
+            <input type="checkbox" name="sort" value="relevance"{% if sort_relevance %} checked{% endif %}>
+            Sort by relevance (default: newest first)
+          </label>
         </div>
         <div class="filters-row filters-row-actions">
           <button type="submit" class="cassette-btn">Apply filters</button>
@@ -100,6 +106,11 @@
             {%- if m.jurisdiction %}{{ m.jurisdiction|jurisdiction_display }}{% endif -%}
             {%- if m.date %} &middot; {{ m.date }}{% endif -%}
             {%- if not m.has_transcript and m.has_agenda %} &middot; agenda only{% endif -%}
+            {#- Date-status pill (archive/utils/date_status.py): tells a
+               browser *why* a row has no transcript badge when the answer
+               is "too early", not "the source never had one". #}
+            {%- if m.date_status == "upcoming" %} <span class="date-status-pill" title="This meeting hasn't happened yet; video and captions will appear once the source publishes them">Upcoming</span>{% endif -%}
+            {%- if m.date_status == "recent" %} <span class="date-status-pill" title="Held within the last 30 days; captions may still be published by the source">Recent</span>{% endif -%}
           </span>
           {% if m.snippet %}
           <p class="search-snippet">{{ m.snippet | safe }}</p>
@@ -139,6 +150,7 @@
       {% if date_from %}{% set _ = qs_parts.append("date_from=" + date_from|urlencode) %}{% endif %}
       {% if date_to %}{% set _ = qs_parts.append("date_to=" + date_to|urlencode) %}{% endif %}
       {% if fuzzy %}{% set _ = qs_parts.append("fuzzy=true") %}{% endif %}
+      {% if sort_relevance %}{% set _ = qs_parts.append("sort=relevance") %}{% endif %}
       {% if has_agenda %}{% set _ = qs_parts.append("has_agenda=true") %}{% endif %}
       {% if has_transcript %}{% set _ = qs_parts.append("has_transcript=true") %}{% endif %}
       {% set qs = qs_parts|join("&") %}

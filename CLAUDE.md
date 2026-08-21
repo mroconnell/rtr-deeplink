@@ -63,9 +63,12 @@ under everything else. This repo extracts and fixes just that part.
   MediaPlayer.php pages that only embed a legacy Flash/RTMP player — see
   BACKLOG_DONE.md), Whitehall OH
   (CivicClerk, agenda-only), Calgary AB (eScribe, video but no captions
-  yet). CivicClerk and eScribe still have *no* example anywhere with
-  populated captions despite checking several cities each — a real,
-  not-yet-closed gap, not just an unsearched one.
+  yet). eScribe's populated-captions gap closed 2026-08-18: Peel Region,
+  ON (`pub-peelregion.escribemeetings.com`, real "Regional Council"
+  meeting, iSiLIVE video) resolves with 1101 real caption segments, zero
+  warnings — add it to the sample sheet alongside the row above.
+  CivicClerk's own version of the same gap is still real and unconfirmed
+  either way, not addressed by this.
 - **Verify in-browser, not just via the API.** UI changes especially need
   an actual `mcp__Claude_Browser__*` check — several real bugs (duplicate
   chapter markers, a metadata-extraction ordering bug, a deep-link
@@ -81,6 +84,14 @@ under everything else. This repo extracts and fixes just that part.
   item left behind a real residual gap (a follow-up not yet built, an
   edge case still unfixed), split that part back out as its own live
   entry in `BACKLOG.md`, cross-linking to `BACKLOG_DONE.md` for context.
+- **A PR that ships a feature must update every doc that named it as
+  unbuilt, and the PR description must list which.** `README.md`,
+  `BACKLOG.md`, and this file all describe real, current gaps — a PR that
+  closes one of those gaps but leaves the doc still describing it as
+  future/unbuilt work recreates exactly the kind of doc-drift this repo's
+  own "App-wide audit" backlog entry already flagged as a real, confirmed
+  problem (see this file's pytest-suite bullet above for one concrete
+  instance of it), not a hypothetical one.
 - **`CLAUDE_BACKLOG.md` is a separate, unreviewed suggestions list**,
   distinct from `BACKLOG.md`. When asked to brainstorm improvements/
   features rather than record a bug or gap found while working, write them
@@ -172,22 +183,38 @@ under everything else. This repo extracts and fixes just that part.
   you fix a bug found via live testing, consider adding a fixture-backed
   regression test for it in the same pass, the way the Simi Valley
   Spanish-caption and blank-VTT cases already are.
-- **A brand-new table still needs no manual migration** — `init_models()`
-  in both `app/db/engine.py` and `archive/db/engine.py` runs
-  `Base.metadata.create_all()` unconditionally on every startup, so a new
-  table (e.g. `ProblemReport`, added 2026-08-08) just appears in prod
-  Postgres the next time the service restarts/deploys. **Altering an
-  existing table is a different story** — `create_all` can't do that,
-  and this repo hit that wall for real (the job-priority column, the
-  materialized search column), which is why `archive/` adopted Alembic
-  2026-08-09 (`archive/alembic/`, see BACKLOG_DONE.md) as the real
-  source of truth for *that* kind of change going forward. `init_models()`
-  itself wasn't touched and still runs the same way — Alembic is
-  additive, not a replacement for the zero-friction `create_all()` path
-  fresh local/test databases use. See `archive/alembic/README.md` for
-  how to write a new migration and the one-time production-adoption step
-  (`alembic stamp head`) that hasn't been run yet — needs real production
-  `DATABASE_URL` access this session doesn't have.
+- **Every Archive schema change needs an Alembic migration — and that's
+  all it needs (WO-10, landed 2026-08-17).** For `archive/`: write the
+  migration in `archive/alembic/versions/` (see `archive/alembic/README.md`
+  for how), and `render.yaml`'s `preDeployCommand: cd archive && alembic
+  upgrade head` runs it *before* the new build starts serving — no shell
+  step, no human in the loop, and a failed migration cancels the deploy
+  and leaves the old build running. `archive/db/engine.py`'s
+  `init_models()` is a **no-op on Postgres** now: `create_all()` runs
+  only for the local/test SQLite path, so a model change without a
+  migration fails loudly in prod instead of half-working — and CI runs
+  `alembic check` against a fresh migration-built SQLite on every PR
+  (`.github/workflows/test.yml`), so it fails *before* merge. This
+  replaces the earlier guidance that "a brand-new table needs no manual
+  migration because `create_all()` runs at startup": that convenience was
+  precisely what let `alembic_version` drift silently and produced four
+  incidents (2026-08-09/10/13, and the 2026-08-17 `UndefinedColumnError`
+  outage when a model column deployed ~13 minutes ahead of its
+  `ALTER TABLE` — see BACKLOG_DONE.md). Two rules that follow: **never
+  reference a new column in code the same deploy it's added unless the
+  code tolerates its absence** (the `search_tsv` feature-detect pattern in
+  `crud._fts_available()` is the model — either order deploys safely),
+  and **a generated/computed column beats "column + backfill script"**
+  when Postgres can compute the value (no ingest change, no one-time
+  script, no seam). **The resolver (`app/`) is NOT there yet**: its
+  `create_all()` still runs on Postgres and its Alembic history
+  (`app/alembic/`, 2 revisions) has never been stamped in prod — the
+  one-time `alembic stamp head` on the resolver's Render shell (per
+  `app/alembic/README.md`, after confirming `alembic current` is empty
+  and the real columns match head) is what unlocks adding the same
+  `preDeployCommand` there; tracked in `BACKLOG.md`. Until then a new
+  *resolver* table still appears via `create_all()`, and an altered
+  resolver table still needs a hand-run migration.
 - **`app/db/outcomes.py` classifies reporting outcomes from real signal on
   the row where one exists, and falls back to substring-matching
   `transcript_warnings` only where it doesn't.** `agenda_fallback` is
@@ -200,6 +227,14 @@ under everything else. This repo extracts and fixes just that part.
   substring intact (or update `outcomes.py` to match) — otherwise that
   warning silently stops being classified correctly and falls through to
   a more generic bucket.
+- **`render.yaml` can define more than one `type: worker` transcription
+  service** (`rtr-transcription-worker` / `rtr-transcription-worker-2`,
+  added 2026-08-21 for backlog catch-up) — a distinct service block per
+  worker, not `numInstances` scaling on one, since the two need to differ
+  in exactly one env var (`AUTO_TRANSCRIPTION_REQUESTER_EMAIL`); see that
+  file's own comment on the second block for the full reasoning, and
+  `BACKLOG.md`'s matching entry for the residual auto-generation race
+  this avoids.
 
 - **This repo is sometimes worked on by more than one session/dev at the
   same time — check before assuming the working tree is yours alone.**
@@ -225,6 +260,25 @@ under everything else. This repo extracts and fixes just that part.
   branch just hasn't caught up to yet, not a real conflict; `git pull
   --rebase` handles the genuine case cleanly as long as your change and
   theirs touch different regions of the file.
+- **A `.claude/worktrees/<name>/` subdirectory silently inherits the
+  shared checkout's `.env` if you run either service from inside it
+  without setting `DATABASE_URL` explicitly.** Confirmed live 2026-08-17:
+  starting `archive.main:app`/`app.main:app` from a worktree with no
+  `.env` of its own still connected to the real shared Postgres via
+  `asyncpg`, because `archive/main.py`'s/`app/main.py`'s `load_dotenv()`
+  calls take no explicit path, so `python-dotenv` walks up from cwd and
+  finds the *shared checkout's* `.env` two directories up.
+  `load_dotenv()`'s default `override=False` means an explicitly-set
+  `DATABASE_URL` in the launching shell command *does* take precedence
+  (confirmed by re-running with `DATABASE_URL="sqlite+aiosqlite:///./
+  some_file.db"` prefixed on the command) — so **always set
+  `DATABASE_URL` explicitly before running either service locally from a
+  worktree**; don't assume an unset `DATABASE_URL` means "no database," it
+  means "whatever `.env` cwd-walks into." No data was written in the
+  original incident (a test query failed with a schema mismatch before
+  any write occurred), but the failure mode if forgotten is a worktree
+  session silently reading — or writing test data into — a real shared
+  database it has no business touching.
 - **Never `grep`/`cat`/`Read` a gitignored file (`.env`, credentials,
   anything matching `.gitignore`) with a pattern broad enough that a
   secret's plaintext value could end up echoed into the conversation.**

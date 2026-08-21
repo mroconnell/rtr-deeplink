@@ -1,17 +1,20 @@
-"""Canonicalizes a trailing US state name in a free-text `jurisdiction`
-string to its 2-letter abbreviation, so /meetings doesn't show the same
-state in two different forms across rows (e.g. "San Diego, California" on
-one row, "Dublin, CA" on another). `jurisdiction` is a single free-text
-column (see BACKLOG.md) with no separate city/state fields, so this only
-ever touches the trailing comma-separated component -- the rest of the
-string (city/county/body name) is unbounded free text and is passed
-through byte-for-byte unchanged, since blindly reformatting it risks
-mangling a real name with no easy undo (acronyms, apostrophes, multi-word
-names -- see BACKLOG.md's fuller reasoning on why city/title casing is
-deliberately *not* touched here).
+"""Canonicalizes a trailing US state or Canadian province/territory name
+in a free-text `jurisdiction` string to its 2-letter abbreviation, so
+/meetings doesn't show the same state in two different forms across rows
+(e.g. "San Diego, California" on one row, "Dublin, CA" on another) --
+same idea for "Calgary, Alberta" vs. "Airdrie, AB". `jurisdiction` is a
+single free-text column (see BACKLOG.md) with no separate city/state
+fields, so this only ever touches the trailing comma-separated component
+-- the rest of the string (city/county/body name) is unbounded free text
+and is passed through byte-for-byte unchanged, since blindly reformatting
+it risks mangling a real name with no easy undo (acronyms, apostrophes,
+multi-word names -- see BACKLOG.md's fuller reasoning on why city/title
+casing is deliberately *not* touched here).
 """
 
 from typing import Optional
+
+from .slugify import slugify_text
 
 US_STATE_NAME_TO_ABBR = {
     "alabama": "AL",
@@ -68,27 +71,99 @@ US_STATE_NAME_TO_ABBR = {
 }
 
 
-_VALID_STATE_ABBRS = set(US_STATE_NAME_TO_ABBR.values())
+# Canadian provinces/territories -- added 2026-08-17 alongside a "Browse
+# by state" Canada grouping and a Canadian-jurisdiction display suffix
+# (see format_jurisdiction_display() below). Kept as its own source dict,
+# separate from US_STATE_NAME_TO_ABBR above, rather than merged into it --
+# this repo already has several already-archived, real Canadian
+# jurisdictions ("Airdrie, AB", "Amherstburg, ON", "Calgary, AB", "Elliot
+# Lake, ON" -- confirmed live on /coverage) that state_abbr_from_jurisdiction()
+# couldn't previously group under any state page at all. 13 entries: all
+# 10 provinces plus the 3 territories (Yukon, Northwest Territories,
+# Nunavut) -- grouped together the same way "provinces and territories" is
+# the real, commonly-used umbrella term in Canada, not a simplification.
+CA_PROVINCE_NAME_TO_ABBR = {
+    "alberta": "AB",
+    "british columbia": "BC",
+    "manitoba": "MB",
+    "new brunswick": "NB",
+    "newfoundland and labrador": "NL",
+    "northwest territories": "NT",
+    "nova scotia": "NS",
+    "nunavut": "NU",
+    "ontario": "ON",
+    "prince edward island": "PE",
+    "quebec": "QC",
+    "saskatchewan": "SK",
+    "yukon": "YT",
+}
+
+# Every US state/DC abbr plus every Canadian province/territory abbr --
+# the two abbr sets don't overlap (confirmed: no Canadian province code
+# collides with a US postal abbreviation), so a plain union is safe. Used
+# by state_abbr_from_jurisdiction()/normalize_state_suffix() below to
+# recognize either country's suffix without either function needing to
+# know which country it's looking at.
+_VALID_STATE_ABBRS = set(US_STATE_NAME_TO_ABBR.values()) | set(
+    CA_PROVINCE_NAME_TO_ABBR.values()
+)
 
 # "CA" -> "California". Inverted from the dict above rather than
 # hand-maintained; a naive .title() on "district of columbia" would yield
-# "District Of Columbia", hence the override.
+# "District Of Columbia", hence the override. Combined with the Canadian
+# provinces/territories below into one lookup, since the overwhelming
+# majority of call sites (state_slug_from_abbr(), meeting_page.html's
+# "More {State} meetings" link, get_state_page_data()'s "name" field, ...)
+# just need "abbr -> display name" and shouldn't have to care which
+# country -- see is_canadian_abbr() below for the few call sites that
+# genuinely do (the /coverage "Browse by state" Canada grouping, the
+# Canadian display suffix).
 US_STATE_ABBR_TO_NAME = {
     abbr: name.title() for name, abbr in US_STATE_NAME_TO_ABBR.items()
 }
 US_STATE_ABBR_TO_NAME["DC"] = "District of Columbia"
+US_STATE_ABBR_TO_NAME.update(
+    {abbr: name.title() for name, abbr in CA_PROVINCE_NAME_TO_ABBR.items()}
+)
+# Same naive-.title() problem as DC above -- "newfoundland and
+# labrador".title() would yield "... And Labrador".
+US_STATE_ABBR_TO_NAME["NL"] = "Newfoundland and Labrador"
 
-# "california" / "district-of-columbia" -> "CA" / "DC", for /state/{slug}.
+# "california" / "alberta" -> "CA" / "AB", for /state/{slug}. Combined
+# the same way as US_STATE_ABBR_TO_NAME above -- a province slug just
+# works at /state/{slug} with no separate route/lookup needed.
 STATE_SLUG_TO_ABBR = {
     name.replace(" ", "-"): abbr for name, abbr in US_STATE_NAME_TO_ABBR.items()
 }
+STATE_SLUG_TO_ABBR.update(
+    {name.replace(" ", "-"): abbr for name, abbr in CA_PROVINCE_NAME_TO_ABBR.items()}
+)
+
+_CANADIAN_ABBRS = set(CA_PROVINCE_NAME_TO_ABBR.values())
+
+
+def is_canadian_abbr(abbr: Optional[str]) -> bool:
+    """True for a Canadian province/territory abbreviation ("AB", "ON",
+    ...); False for a US state/DC abbreviation, None, or anything else.
+    The few call sites that need to know *which country* a recognized
+    abbr belongs to -- crud.py's get_state_coverage_index() (the
+    /coverage "Browse by state" Canada grouping) and
+    format_jurisdiction_display() below (the Canadian display suffix) --
+    use this instead of a second name/abbr lookup table, since
+    US_STATE_ABBR_TO_NAME/STATE_SLUG_TO_ABBR above already combine both
+    countries for the far more common "just give me the name/slug" case.
+    """
+    return abbr in _CANADIAN_ABBRS
 
 
 def state_abbr_from_jurisdiction(jurisdiction: Optional[str]) -> Optional[str]:
-    """ "Napa, CA" -> "CA". None when the text after the last comma isn't
-    exactly a valid 2-letter state abbreviation -- the stored form is
-    canonical uppercase via `normalize_state_suffix()` at write time, so
-    this deliberately doesn't re-run full-name or case repairs."""
+    """ "Napa, CA" -> "CA", "Calgary, AB" -> "AB". None when the text after
+    the last comma isn't exactly a valid 2-letter US state or Canadian
+    province/territory abbreviation -- the stored form is canonical
+    uppercase via `normalize_state_suffix()` at write time, so this
+    deliberately doesn't re-run full-name or case repairs. Callers that
+    need to know which country an abbr belongs to should follow up with
+    `is_canadian_abbr()`."""
     if not jurisdiction or "," not in jurisdiction:
         return None
     _, _, suffix = jurisdiction.rpartition(",")
@@ -103,12 +178,18 @@ def state_slug_from_abbr(abbr: str) -> str:
 
 
 def normalize_state_suffix(jurisdiction: Optional[str]) -> Optional[str]:
-    """ "San Diego, California" -> "San Diego, CA". Only fires when the
-    text after the *last* comma is exactly a recognized full state name
+    """ "San Diego, California" -> "San Diego, CA", "Calgary, Alberta" ->
+    "Calgary, AB". Only fires when the text after the *last* comma is
+    exactly a recognized full US state or Canadian province/territory name
     (case-insensitive) -- state-less ("Illinois General Assembly") or
-    unrecognized trailing text passes through unchanged.
+    unrecognized trailing text passes through unchanged. This runs at
+    ingest/write time (see `crud.py`'s call site), so adding Canadian
+    province recognition here is a real ingest-time behavior change, not
+    just a display tweak -- it's what makes a freshly-ingested "Calgary,
+    Alberta" or "Airdrie, Alberta" get canonicalized to ", AB" the same
+    way a US state name always has been.
 
-    Also re-cases an already-2-letter suffix that's a real state
+    Also re-cases an already-2-letter suffix that's a real state/province
     abbreviation but not uppercase (e.g. "Colorado Springs, Co") -- real
     bug found live 2026-08-13: Colorado Springs' own Granicus RSS channel
     title carries the state as "Co", which the full-name lookup above
@@ -123,7 +204,9 @@ def normalize_state_suffix(jurisdiction: Optional[str]) -> Optional[str]:
         return jurisdiction
     prefix, _, suffix = jurisdiction.rpartition(",")
     suffix = suffix.strip()
-    abbr = US_STATE_NAME_TO_ABBR.get(suffix.lower())
+    abbr = US_STATE_NAME_TO_ABBR.get(suffix.lower()) or CA_PROVINCE_NAME_TO_ABBR.get(
+        suffix.lower()
+    )
     if abbr:
         return f"{prefix.strip()}, {abbr}"
     if (
@@ -141,17 +224,23 @@ def jurisdiction_search_terms(term: str) -> list[str]:
     `normalize_state_suffix()` above means almost always holds the 2-letter
     abbreviation, not the full state name -- so a natural search like
     "California" structurally could never match "Sacramento County, CA".
-    Expands a search term that's exactly a recognized full state name (e.g.
-    "California") to also include its abbreviation ("CA"), so a caller can
-    OR both together. Returns just `[term]`, unchanged, for anything that
-    isn't a bare full-name match (partial text, an abbreviation already, a
-    city name, etc.) -- deliberately doesn't touch those, since the original
-    term still needs to keep matching state-legislature-style jurisdictions
-    that were never comma-normalized (e.g. "California State Assembly" has
-    no trailing ", California" for normalize_state_suffix to have touched).
+    Expands a search term that's exactly a recognized full state or
+    province/territory name (e.g. "California" or "Alberta") to also
+    include its abbreviation ("CA"/"AB"), so a caller can OR both
+    together -- also what makes /state/{slug}'s "Search all {name}
+    meetings" link work for a Canadian province page. Returns just
+    `[term]`, unchanged, for anything that isn't a bare full-name match
+    (partial text, an abbreviation already, a city name, etc.) --
+    deliberately doesn't touch those, since the original term still needs
+    to keep matching state-legislature-style jurisdictions that were never
+    comma-normalized (e.g. "California State Assembly" has no trailing ",
+    California" for normalize_state_suffix to have touched).
     """
-    abbr = US_STATE_NAME_TO_ABBR.get(term.strip().lower())
-    if abbr and abbr != term.strip().upper():
+    stripped = term.strip()
+    abbr = US_STATE_NAME_TO_ABBR.get(stripped.lower()) or CA_PROVINCE_NAME_TO_ABBR.get(
+        stripped.lower()
+    )
+    if abbr and abbr != stripped.upper():
         return [term, abbr]
     return [term]
 
@@ -176,12 +265,58 @@ def format_jurisdiction_display(jurisdiction: Optional[str]) -> Optional[str]:
     left completely untouched -- the "and County of" phrasing is real,
     non-redundant information (unlike a plain "City of"), same reasoning
     as why "County of X" alone is already preserved above.
+
+    Also appends " (Canada)" for a jurisdiction whose trailing ", ST"
+    suffix is a Canadian province/territory abbreviation (e.g. "Calgary,
+    AB" -> "Calgary, AB (Canada)") -- added 2026-08-17 alongside the
+    "Browse by state" Canada grouping, since a bare 2-letter province code
+    reads as a typo'd US state to a reader who doesn't recognize it.
+    Picked over a ", Canada" third comma segment specifically to avoid
+    reading like a third address component ("City, ST, Canada") next to
+    the existing "City, ST" convention. Applied last, after any prefix
+    stripping above, so it's consistent regardless of which earlier branch
+    produced the base string.
     """
     if not jurisdiction:
         return jurisdiction
     if jurisdiction.lower().startswith("city and county of "):
-        return jurisdiction
-    for prefix in _DROPPED_DISPLAY_PREFIXES:
-        if jurisdiction.lower().startswith(prefix.lower()):
-            return jurisdiction[len(prefix) :]
-    return jurisdiction
+        result = jurisdiction
+    else:
+        result = jurisdiction
+        for prefix in _DROPPED_DISPLAY_PREFIXES:
+            if jurisdiction.lower().startswith(prefix.lower()):
+                result = jurisdiction[len(prefix) :]
+                break
+    abbr = state_abbr_from_jurisdiction(result)
+    if abbr and is_canadian_abbr(abbr):
+        return f"{result} (Canada)"
+    return result
+
+
+_CANADA_DISPLAY_SUFFIX = " (Canada)"
+
+
+def jurisdiction_hub_slug(jurisdiction: Optional[str]) -> Optional[str]:
+    """The stable `/j/{slug}` for a stored jurisdiction string, e.g.
+    "Napa, CA" -> "napa-ca", "County of Napa, CA" -> "county-of-napa-ca",
+    "California State Senate" -> "california-state-senate". None for an
+    empty/None jurisdiction (such pages belong to no hub).
+
+    Built from the *display* form (format_jurisdiction_display()), not the
+    raw string, on purpose: that's what makes raw variants of one
+    government -- "City of Napa, CA" / "Napa, CA" / casing differences --
+    collapse into a single hub instead of one thin page per spelling (the
+    fragmentation risk CLAUDE_BACKLOG.md's hub-page idea flagged), while
+    the distinctions the display form deliberately keeps ("County of X",
+    "City and County of X") stay separate hubs, because they are separate
+    governments. The " (Canada)" display marker is stripped first -- it's
+    presentation, and the ", AB" suffix already carries the identity.
+    Uses the same slug rule as MeetingPage.slug (slugify_text()), so a hub
+    slug and a meeting slug for the same city share a prefix.
+    """
+    display = format_jurisdiction_display(jurisdiction)
+    if not display:
+        return None
+    if display.endswith(_CANADA_DISPLAY_SUFFIX):
+        display = display[: -len(_CANADA_DISPLAY_SUFFIX)]
+    return slugify_text(display) or None

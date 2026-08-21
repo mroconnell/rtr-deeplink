@@ -106,6 +106,40 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="rtr-deeplink", lifespan=lifespan)
 
+
+@app.middleware("http")
+async def handle_head_requests(request: Request, call_next):
+    """Every route here is declared with @app.get(...)/@app.post(...) etc,
+    and FastAPI/Starlette does *not* automatically answer a bare HTTP HEAD
+    for a GET route the way some frameworks do -- with no handling at all,
+    a HEAD (used by uptime checks like UptimeRobot, some crawlers, `curl
+    -I`) 405s on every one of this app's 27 routes. Rather than annotating
+    each route individually, dispatch a HEAD request internally as a GET
+    (rewriting `request.scope["method"]` before it reaches routing, so the
+    real GET handler runs unmodified) and return the real response's
+    status/headers with the body stripped -- per RFC 9110 4.2 HEAD's
+    response must have the same headers a GET would have (including
+    Content-Length), just no body. This also covers every route added
+    later with no further changes needed.
+
+    Note: `call_next`'s returned object is always Starlette's internal
+    `_StreamingResponse` wrapper, whose own `.background` is hardcoded to
+    `None` -- any real BackgroundTasks a route attaches (e.g. /api/resolve's
+    Archive push) run as part of the real handler's own response inside
+    `call_next`'s concurrent dispatch, independent of the empty response
+    built here, so there's nothing to carry over."""
+    if request.method != "HEAD":
+        return await call_next(request)
+    request.scope["method"] = "GET"
+    response = await call_next(request)
+    return Response(
+        content=b"",
+        status_code=response.status_code,
+        headers=dict(response.headers),
+        media_type=response.media_type,
+    )
+
+
 # /api/resolve is public and unauthenticated, and every call fans out to
 # fetch a real government meeting site -- rate limiting protects both that
 # site (being a good citizen about how hard we hit it) and this app's own
@@ -311,7 +345,9 @@ async def _recheck_archived_page(
         logger.exception("Archive re-check resolve failed for %s", url)
         return {"error": "resolve_failed", "message": str(e)}
 
-    pushed = bool(result.segments or result.agenda_items or result.agenda_link)
+    pushed = bool(
+        result.segments or result.agenda_items or result.agenda_link or result.video_url
+    )
     if pushed and not dry_run:
         await archive_client.push(result.model_dump(), normalized)
 
@@ -628,8 +664,13 @@ async def resolve(
         resolve_duration_ms=int((time.monotonic() - start) * 1000),
     )
 
-    # Only push resolves with real content -- a transcript or agenda data --
-    # so test pastes and broken URLs don't create junk permanent pages.
+    # Only push resolves with real content -- a transcript, agenda data, or a
+    # video -- so test pastes and broken URLs don't create junk permanent
+    # pages. video_url is included alongside segments/agenda_items/
+    # agenda_link: several adapters (Cablecast, ChampDS, PrimeGov's
+    # YouTube-delegated path) can resolve a real video with all three of
+    # those still empty, and omitting video_url here silently dropped real,
+    # ingestable meetings in production (see BACKLOG_DONE.md).
     # Fired via BackgroundTasks (not a bare asyncio.create_task) so it can't
     # be garbage-collected mid-flight and ties into the response lifecycle
     # properly; never blocks the response the user is waiting on.
@@ -642,7 +683,7 @@ async def resolve(
     # itself failed (safe() swallows it) -- nothing to track against in
     # that case, so this falls back to the old best-effort behavior
     # rather than crashing on a None id.
-    if result.segments or result.agenda_items or result.agenda_link:
+    if result.segments or result.agenda_items or result.agenda_link or result.video_url:
         if resolution_id is not None:
             background_tasks.add_task(
                 _push_and_track, resolution_id, payload, normalized
@@ -651,6 +692,36 @@ async def resolve(
             background_tasks.add_task(archive_client.push, payload, normalized)
 
     return payload
+
+
+class InvalidQueryRequest(BaseModel):
+    query: str
+
+
+@app.post("/api/log-invalid-query")
+@limiter.limit("20/minute")
+async def log_invalid_query(request: Request, req: InvalidQueryRequest):
+    """Homepage lookup box, non-URL branch: the input isn't URL-shaped, so
+    the frontend never calls /api/resolve at all -- it shows the "paste a
+    URL" gate instead and fires this in the background so exploratory
+    free-text searches (a city name, a topic) still land in the same
+    meeting_resolutions reporting log as real resolve attempts, rather
+    than vanishing client-side the way they did before. status is its own
+    outcome bucket ("invalid_query") -- classify_outcome() (app/db/
+    outcomes.py) just returns row.status unchanged for any non-"success"
+    value, so no changes needed there or in get_stats()/  /admin/log.
+    """
+    query = req.query.strip()[:500]
+    if not query:
+        return {"status": "ok"}
+    await safe(
+        crud.log_resolution,
+        input_url=query,
+        input_url_normalized=query,
+        input_platform="invalid_query",
+        status="invalid_query",
+    )
+    return {"status": "ok"}
 
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -1407,6 +1478,20 @@ async def _proxy_to_archive(
         try:
             async for chunk in response.content.iter_chunked(65536):
                 yield chunk
+        except (aiohttp.ClientPayloadError, aiohttp.ClientConnectionError):
+            # The upstream Archive->resolver stream got cut short mid-
+            # response (e.g. aiohttp's own TransferEncodingError) -- this
+            # happens *after* StreamingResponse has already committed to
+            # sending a response, so raising here would propagate an
+            # unhandled exception into StreamingResponse's machinery
+            # instead of just ending the response body. Log and let the
+            # generator end cleanly (Sentry PYTHON-FASTAPI-Q, one
+            # occurrence 2026-08-18, transaction = /m/{path:path}).
+            logger.warning(
+                "Archive proxy stream for %s was cut short mid-response.",
+                internal_path,
+                exc_info=True,
+            )
         finally:
             await session.close()
 
@@ -1455,6 +1540,15 @@ async def coverage(request: Request):
 async def archive_state_page(path: str, request: Request):
     return await _proxy_to_archive(
         f"state/{path}", str(request.query_params), request.headers.get("cookie")
+    )
+
+
+@app.get("/j/{path:path}")
+async def archive_jurisdiction_page(path: str, request: Request):
+    # Per-government hub pages (archive/main.py's /j/{hub_slug}) -- same
+    # proxy shape as /state/*.
+    return await _proxy_to_archive(
+        f"j/{path}", str(request.query_params), request.headers.get("cookie")
     )
 
 

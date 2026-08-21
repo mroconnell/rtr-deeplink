@@ -172,12 +172,19 @@ async def process_one(
         return {"url": url, "status": "failed", "detail": f"resolve raised: {e}"}
 
     # Same gate app/main.py's /api/resolve already uses to decide whether a
-    # resolve is worth pushing to the Archive at all.
-    if not (result.segments or result.agenda_items or result.agenda_link):
+    # resolve is worth pushing to the Archive at all. Includes video_url --
+    # a video-only resolve (no transcript/agenda yet) is still real content
+    # worth an Archive page; several adapters (Cablecast, ChampDS, PrimeGov's
+    # YouTube-delegated path) can populate video_url with segments/
+    # agenda_items/agenda_link all empty, and omitting it here silently
+    # dropped real, ingestable meetings (see BACKLOG_DONE.md).
+    if not (
+        result.segments or result.agenda_items or result.agenda_link or result.video_url
+    ):
         return {
             "url": url,
             "status": "skipped",
-            "detail": f"platform={result.platform}, no transcript, agenda items, or agenda link found",
+            "detail": f"platform={result.platform}, no transcript, agenda items, agenda link, or video found",
         }
 
     normalized = normalize_url(url)

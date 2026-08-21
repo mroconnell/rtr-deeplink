@@ -43,26 +43,297 @@ announcements prove worth having, the upgrade-triggered case is the
 natural phase 2; the `SocialPost` claim table already supports it
 without schema changes.
 
-## [JUST-DO-IT] Transcript segment timestamps unintuitive past 59 minutes — don't match video player's hh:mm:ss
+## ~25 smaller consolidated city-county governments still need a real domain -- 13 of ~38 already done, see BACKLOG_DONE.md, 2026-08-20/21
 
-Confirmed live 2026-08-17 on a long meeting: transcript segment labels
-past the one-hour mark show as raw, un-rolled-over minutes:seconds
-(e.g. `[364:47]`, `[364:49]`) instead of `6:04:47`-style hh:mm:ss — while
-the `<video>` element's own native controls just above it show
-`6:05:03 / 6:05:06`, so the two clocks on the same page disagree and the
-segment timestamps take real effort to parse on a multi-hour meeting.
+Real, structurally different gap from ordinary domain-guessing: a
+consolidated city-county's real domain often shares **no text at all**
+with the county's own Census name (Marion County, IN's real domain is
+`indy.gov`, Indianapolis's brand -- no guess built from the string
+"Marion" could ever produce that). 13 of the ~38 nationally have been
+found and verified (Marion/Indianapolis IN, Davidson/Nashville TN,
+Jefferson/Louisville KY, Muscogee/Columbus GA, Fayette/Lexington KY,
+Duval/Jacksonville FL, Clarke/Athens GA, Richmond/Augusta GA, Wyandotte/
+Kansas City KS, East Baton Rouge Parish LA, Orleans Parish/New Orleans
+LA -- see BACKLOG_DONE.md's "Consolidated city-county domain lookup"
+entry for the real near-miss caught applying these). San Francisco
+County, CA and Denver County, CO were never part of this gap -- their
+county's Census name is the same word as the consolidated city, so
+ordinary guessing already works for them.
 
-Root cause not yet established. `formatTime()` in
-[player.js](app/static/player.js:59) — used for segment links, agenda
-items, the plain-text transcript download, and the "share at" label — has
-had an `h > 0 ? `${h}:${pad(m)}:${pad(s)}`` branch since it was first
-added, and that branch can't produce a bare `364:47`-shaped string for
-any input, since `m` is only unpadded/unbounded when `h === 0`, which
-requires `seconds < 3600`. So either production was serving a stale
-bundle at the time of the screenshot, or these particular segment labels
-are reaching the page through some other path than `formatTime()` — not
-confirmed either way yet. Needs checking against a fresh reload of the
-same meeting before assuming which.
+**Still open**: the smaller/harder-to-verify remainder -- Anaconda/Deer
+Lodge County MT, Butte/Silver Bow County MT, Houma/Terrebonne Parish LA,
+Hartsville/Trousdale County TN, Lynchburg/Moore County TN, and several
+small Georgia ones (Cusseta/Chattahoochee County, Georgetown/Quitman
+County, Preston/Webster County, Statenville/Echols County) -- lower
+population, lower priority, real gap not yet closed.
+
+## Domain guesser matched a same-named US state's real portal instead of the county's -- fixed at the source, 6 wrong rows reverted, 2026-08-21
+
+`find_gov_domains.py`'s unqualified `{bare_name}.gov` candidate
+systematically collides with a state's own real portal whenever a
+county's bare name (after stripping "County"/"Parish"/etc.) is itself a
+full US state name -- most states are literally hosted at
+`{statename}.gov`. Confirmed live: 6 rows in `jurisdiction_coverage.csv`
+had a wrong domain from this -- Delaware County PA/OH/IN and Oklahoma
+County, Utah County, Nevada County CA all got the matching *state's*
+portal (`delaware.gov`, `oklahoma.gov`, `utah.gov`, `nevada.gov`) instead
+of their own county government's site. The guesser's own
+bare-name-appears-on-page anti-false-positive check (added earlier this
+session for the `townof`/`cityof` false-positive class) can't catch this
+one -- the state's own name trivially appears on the state's own
+homepage. All 6 rows' domain-derived fields were reverted to blank in
+`jurisdiction_coverage.csv` (a research file, not under git); the root
+cause is fixed in `find_gov_domains.py` (skip the unqualified `{s}.gov`
+candidate when the bare name is a US state name; qualified variants like
+`{s}{st}.gov`/`{s}county.gov` are unaffected). No real domain re-found
+for these 6 yet -- lower priority given their small remaining population,
+open if revisited.
+
+## Real per-tenant/platform gaps found across several of the 50 largest US cities -- from the user's own manual research table, 2026-08-20
+
+Distinct from the "no domain found yet" jurisdiction-coverage work
+(`~/Documents/rtr-business/research/jurisdiction_coverage.csv`) -- these
+cities' government video/meeting URLs are already known, but our
+platform genuinely can't turn them into a working page yet, either
+because the site shape isn't one of our adapters' patterns, or because a
+*supported* platform's tenant has a real, tenant-specific quirk. One
+related finding from the same table (Charlotte, NC mis-attributed to
+Detroit, MI) turned out to be an already-fixable stale-ingest issue, not
+an adapter gap -- see its own entry in `BACKLOG_DONE.md`, not repeated
+here.
+
+**Genuinely unsupported site shapes (real adapter work, not a quirk):**
+- **Phoenix, AZ** -- Legistar meeting detail pages
+  (`phoenix.legistar.com/MeetingDetail.aspx?ID=...`) always report video
+  as "unavailable," but the real video exists on a separate, apparently
+  unlinked YouTube channel (confirmed real example: the July 1, 2026
+  meeting's actual recording is `https://www.youtube.com/watch?v=srjuXI5vGuw`).
+  Given the city's size/prominence, may be worth a hardcoded per-tenant
+  YouTube-channel mapping rather than waiting on a general fix.
+- **Philadelphia, PA** -- same shape as Phoenix: Legistar reports no
+  video; the real recording is on YouTube but not linked from the
+  Legistar page.
+- **El Paso, TX** (`elpasotexas.gov/videos`) -- each government body gets
+  its own Vimeo landing page rather than one consistent embed pattern;
+  no adapter attempted yet.
+- **Portland, OR** (`portland.gov/council/agenda/...`) -- not supported,
+  needs real adapter work against Portland's own agenda-page structure.
+- **Tucson, AZ** ("Mayor and Council," Hyland-hosted at
+  `tucsonaz.hylandcloud.com`) -- video lives on a separately-hosted
+  YouTube channel; audio + minutes are paired by matching filenames on a
+  *different* page
+  (`tucsonaz.gov/Departments/Clerks/Boards-Committees-Commissions/...?run=pastminutesaudio`),
+  not attached to the Hyland agenda item itself.
+- **Seattle, WA** (`seattlechannel.org`) -- "Seattle Channel," a custom
+  city-run video platform, not yet triaged against any existing adapter.
+- **Chicago, IL** (`chicityclerkelms.chicago.gov`) -- custom domain/
+  platform shape, not yet triaged.
+
+**Supported platform, but a real tenant-specific gap:**
+- **Atlanta, GA** -- ChampDS (`play.champds.com/atlantaga`), a platform
+  this repo already supports elsewhere, but user-confirmed "not working"
+  for this specific tenant -- worth a live recheck against a real
+  Atlanta ChampDS event URL to find the actual failure mode.
+- **Omaha, NE** -- videos and minutes/journals are hosted on separate
+  pages under `cityclerk.cityofomaha.org`, not paired the way our
+  ingest expects.
+- **Tampa, FL** -- video/agenda live at `tampa.gov`, but transcripts are
+  posted separately at `apps.tampagov.net/cttv_cc_webapp/` and need to be
+  matched back to the right meeting.
+- **Virginia Beach, VA** (`onboardgov.virginiabeach.gov`) -- user's own
+  note: "difficult challenge," not yet triaged.
+- **Baltimore, MD** -- Legistar; user-confirmed only a handful of
+  meetings have video actually attached, most real video is on YouTube
+  instead and not linked from Legistar.
+- **Kansas City, MO** -- Granicus/Legistar, already partially working per
+  the user, but oddly only the Transportation Infrastructure and
+  Operations Committee is coming through; other committees' meetings
+  are real and missing.
+- **Detroit, MI** -- Cablecast, user flagged as "not working well"
+  independent of the separate Charlotte/Detroit mis-attribution bug
+  (`BACKLOG_DONE.md`) -- worth its own live recheck.
+- **Austin, TX** -- `austintexas.gov/council/...`, user-flagged as
+  "in progress, use this to improve unsupported page" -- a real page
+  shape to test a fix against.
+- **San Antonio, TX** (Swagit, `sanantoniotx.new.swagit.com`) and
+  **Columbus, OH** (Legistar, `columbus.legistar.com`) -- both on
+  already-supported platforms, but not yet spot-checked against these
+  specific tenants; may just work, unconfirmed either way.
+
+**Not yet re-checked, may already be fine (worth a quick live verify
+before assuming any of these need work):** New York City itself
+(`legistar.council.nyc.gov` is the real calendar; this repo's own
+Archive currently only has 2 old Viebit clips under a
+`councilnyc.viebit.com` tenant that never matched a jurisdiction --
+possibly the same class of gap as the Charlotte mis-attribution, not
+confirmed).
+
+## [JUST-DO-IT] Some old/archived Granicus clips' `chunklist.m3u8` genuinely times out at Granicus's own origin (real 504, not a rate limit) -- root cause confirmed 2026-08-21, corrects two earlier wrong theories in this same entry
+
+**Root cause nailed down precisely, superseding both earlier theories
+below (kept for the record, not because they're still believed).**
+Reproduced directly with `ffprobe -v verbose` against the real resolved
+`archive-stream.granicus.com` URL for Fountain Valley CA clip 607: with
+the app's own real request headers (`realistic_headers()` in
+`media_probe.py` -- a real desktop User-Agent plus a `Referer` matching
+the meeting's own Granicus subdomain), `ffprobe` successfully parses the
+top-level `playlist.m3u8`, follows it to the real `chunklist.m3u8` (the
+actual segment index), and **that specific request hangs for minutes
+before Granicus's own CloudFront edge gives up and returns a real `504
+Gateway Timeout`** (one run: 6 minutes; a later run against the same
+clip: ~4 minutes, same 5XX). This is Granicus's own origin failing to
+answer in time for this specific archived asset -- not a rate limit, not
+a block, and not fixable from this app's side by retrying faster or
+pacing requests differently. `media_probe.py`'s own `_SUBPROCESS_TIMEOUT_
+SECONDS` (120s) is shorter than Granicus's own gateway timeout, so in
+production this always looks like our own "ffmpeg timed out after 120s"
+first -- we never actually see the 504 that eventually would have
+arrived, just our own earlier giving-up.
+
+**Two earlier theories in this entry's history, now understood
+correctly:**
+1. *"CloudFront blocks a residential IP after rapid requests"* (original
+   finding) -- the fast 403 behind this was real, but caused by
+   something much simpler: the very first live test used a plain `curl`
+   with no `Referer` header at all. Granicus's CloudFront distribution
+   enforces hotlink protection (a `Referer` matching the meeting's own
+   subdomain) and fast-rejects with 403 when it's missing/wrong --
+   confirmed directly: the same bare-header `curl`/`ffprobe` call
+   against Fountain Valley's real URL got an instant 403 (144ms) just
+   now, while the *exact same URL* with the real `Referer` the app
+   actually sends took over a minute before genuinely hanging on the
+   chunklist. Not a rate limit or an IP block at all -- just a
+   self-inflicted missing header in ad hoc testing.
+2. *"Not IP-specific, since Render's worker hit the same timeout"*
+   (first update) -- correct as far as it went (the failure isn't
+   IP-specific), but attributed to generic "source flakiness" rather
+   than the precise mechanism above.
+
+**Real, if partial, good news: this seems to sometimes clear on its
+own.** King County clip 11547 failed identically (ffmpeg timeout / 504
+signature) on two earlier attempts (from this Mac, and from Render's
+worker, job 433) over about a day -- then, on a later direct `ffprobe`
+retest, resolved cleanly with a real duration (6578s) and no hang at
+all. Consistent with (not proven to be) an on-demand rehydration/cold-
+storage delay on Granicus's own archival backend for older, rarely-
+accessed clips -- the first request(s) trigger a slow wake-up that can
+outlast even CloudFront's own gateway timeout, and a later request
+succeeds once whatever needed to warm up has. Fountain Valley clip 607,
+by contrast, failed the same way on *every* attempt across the same
+session (at least 4 separate tries, spread over roughly an hour) --
+consistent with this specific archived asset being genuinely broken/
+gone at the source rather than just cold, matching this same meeting's
+already-known history as a real edge case (see CLAUDE.md's "genuinely
+garbled at the source" / legacy-Flash-player note on this exact
+meeting).
+
+**Not fixed, and may not be fixable from this app's side.** Real
+implications: (1) a "ffmpeg timed out" failure on a Granicus meeting
+should not be assumed fixable by retrying immediately -- for a
+cold-storage-shaped case it may need hours, for a genuinely-dead asset
+it may never succeed; (2) worth having `process_one()`/`extract_chunk_
+audio()` and `probe_duration()` distinguish a real 5XX-after-a-long-hang
+from an ordinary connection-level timeout in their logging, so this
+specific pattern doesn't keep getting rediscovered from scratch; (3) not
+worth raising `_SUBPROCESS_TIMEOUT_SECONDS` to match Granicus's own
+~4-6 minute gateway timeout blindly -- that would tie up a worker chunk
+slot for minutes on every genuinely-dead asset, trading a fast, clear
+failure for a slow, identical one.
+
+## ~~[HIGH PRIORITY] Swagit adapter serves a wrong, bogus video for `/events/{id}` URLs~~
+
+**Fixed 2026-08-21** — root cause found: `/events/{id}` is a genuinely
+different Swagit page template from `/videos/{id}`, a *live-event*
+stream page (confirmed straight from the template's own dead error-
+handler text) with no archived recording linked from it at all. Its two
+embedded candidates — a dead, byte-identical-across-every-tenant demo
+placeholder and a real per-tenant live-channel stream that 404s once the
+meeting's over — are both now detected and declined by
+`SwagitAssetFinder` with a specific warning instead of silently served.
+`PrimeGov`'s workaround guard was removed too, since the fix covers its
+delegation path directly (confirmed live end-to-end). All 5 real tenants
+(`petalumaca`, `norwalkca`, `westjordan`, `cambridgema`, `solvangca`)
+independently `curl`-verified. Full root-cause writeup, live-fetch
+detail, and test coverage in `BACKLOG_DONE.md`'s "Swagit adapter served a
+wrong, bogus video for `/events/{id}` URLs" entry.
+
+## ~~[JUST-DO-IT] Granicus adapter doesn't recognize `MediaPlayer.php?event_id=...` URLs~~ **Fixed 2026-08-21** — see `BACKLOG_DONE.md`
+
+Full writeup, root cause (the pages genuinely have no video yet —
+`event_id` is a separate, non-interchangeable Granicus id namespace from
+`clip_id`, confirmed via PrimeGov's own API showing
+`streamCompleted: false` on every real example), the 4 verified cities
+(with 2 real subdomain-name corrections: `emeryville.granicus.com` and
+`nassaufl.granicus.com`, not the PrimeGov tenant names), and the one
+residual gap left open (PrimeGov's own better date/title not threaded
+through for this specific sub-case) are all in `BACKLOG_DONE.md`'s
+matching entry.
+
+## ~~Running a service from a `.claude/worktrees/` subdirectory silently inherits the shared checkout's `.env`~~ **Fixed 2026-08-21** — see `BACKLOG_DONE.md`
+
+Deliberately fixed with a `CLAUDE.md` warning note rather than a
+`load_dotenv()` code change — see `BACKLOG_DONE.md` for the full
+reasoning (a code change to `load_dotenv()`'s path resolution risks
+affecting how production loads its real env vars, not worth taking on for
+what is fundamentally a local-dev footgun).
+
+## Tulare County/Visalia jurisdiction misattribution — not confirmed fixed, no known real hosting domain found
+
+Residual gap from BACKLOG_DONE.md's "Jurisdiction misattribution" entry
+(2026-08-19): of 4 real confirmed jurisdiction-misattribution instances
+investigated that session, 3 were root-caused and fixed (Douglas MI/"The
+Village, OK", Courtenay BC/Burlington, Victorville/San Bernardino
+County), but "Tulare County misattributed to Visalia" (Visalia is Tulare
+County's real, correct county seat) was not.
+
+The fix for the other two cross-jurisdiction cases
+(`extract_jurisdiction_chain()`'s new cross-check in
+`app/utils/jurisdiction_enrich.py`) only engages when the page's own URL
+carries a subdomain that independently validates against the Census
+tables — no such domain could be found for Tulare County specifically.
+Checked live 2026-08-19: `tularecounty.granicus.com`,
+`tulare.granicus.com`, and `tularecounty.civicweb.net` are all dead
+(`NotFound`/no DNS); `tularecounty.swagit.com` redirects to a 404;
+`tularecounty.legistar.com` does resolve (200) but wasn't investigated
+further. Even a plausible `tularecounty`-shaped subdomain wouldn't
+validate through the existing wordninja-based subdomain validator
+regardless of the cross-check fix — `wordninja.split("tularecounty")`
+mis-segments to `['tul', 'are', 'county']` rather than
+`['tulare', 'county']` (confirmed live), a separate, narrower dictionary
+gap in `_validated_label_extract()`.
+
+Next step: find the real originating URL for this misattribution (check
+`tularecounty.legistar.com` first, or the original session's own
+discovery notes if recoverable) and either (a) confirm the existing
+cross-check fix already covers it once the real subdomain is known, or
+(b) if the real subdomain is `tularecounty`-shaped, first fix the
+wordninja mis-segmentation before the cross-check can engage at all.
+
+## Town Hall Streams: real transcript endpoint still unconfirmed-positive; 88-id Wayback population not yet ingested (2026-08-20)
+
+Residual gaps left behind by the townhallstreams.com adapter build (see
+`BACKLOG_DONE.md`'s "Town Hall Streams: new platform adapter built" entry
+for the full investigation and what was actually shipped).
+
+- **Transcript AJAX endpoint still empty on every real sample checked** —
+  now 7/7, not 2/2 (all 7 of BACKLOG_DONE's sample URLs re-checked live
+  2026-08-20). `townhallstreams.py`'s `_check_for_transcript()`
+  deliberately does NOT parse a non-empty response (no confirmed format
+  exists — the page's own JS just dumps it as a raw HTML fragment via
+  `.html(response)`, no per-cue timestamp shape visible anywhere in the
+  client code) — it only surfaces a `transcript_warnings` entry so a real
+  positive example doesn't go unnoticed if one ever appears. No actual
+  parser exists yet; build one once a real positive response is found.
+- **Enumeration not yet done.** A Wayback CDX scan already surfaced 88
+  distinct `location_id` values (range 28–175) as a real, cheap starting
+  population for scaling past the 7 confirmed samples (same CDX-domain-
+  scan method as every other platform, see
+  `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`'s §12) — the
+  adapter itself is done and live-tested, but nothing has actually walked
+  that population to find real meeting `id`s per town or bulk-ingested
+  them into the Archive yet.
+
+## Stray demo-shaped tables found in `rtr_deeplink_db` during PITR test-restore verification (2026-08-17)
 
 Confirmed live 2026-08-17 during the WO-4 PITR test-restore verification
 (see `BACKLOG_DONE.md`): the Postgres server backing `rtr-deeplink-db`
@@ -135,9 +406,44 @@ else; do whenever convenient, no particular order.
   events** in the GA dashboard's last-30-days view — these all fire
   client-side per the code and were checked via `window.dataLayer`
   locally, but never cross-checked against the live GA property itself.
+  **Partly confirmed 2026-08-17 (Ryan, GA Realtime + the Aug 10–17
+  reports)**: `submit_meeting_url` (185 that week), `resolve_result` and
+  `copy_link_to_time` (17) all arrive; the 1:1 submit→result on Aug 17
+  shows the funnel isn't dropping. `video_play` / `transcript_seek` still
+  unconfirmed in the dashboard — but the bigger finding was *why* they'd
+  be near-zero anyway: those events only existed on the resolver's
+  ephemeral `/meeting` page, while the Archive's 1,200+ permanent `/m/*`
+  pages (where sitemap/search/shared-link traffic lands) emitted **no
+  custom events at all** — GA for Aug 17 with Ryan filtered out showed
+  only page_view/session_start/first_visit/scroll/user_engagement.
+  **Fixed the same day**: `archive/static/meeting_page.js` now fires the
+  same `video_play` / `transcript_seek` / `copy_link_to_time` (identical
+  names, no extra params — `page_location` already separates surfaces)
+  plus `save_meeting` (`action: save|unsave`, only on a confirmed server
+  flip); 5 jsdom tests exercise the real boot path; verified in-browser
+  through the resolver→archive proxy. What's left of this item: watch
+  the next week's GA for those four names on `/m/*` page paths — the
+  first real answer to "does anyone use the deep links". Also worth one
+  look: the Aug 10–16 daily split of `submit_meeting_url` (185 vs 1 on
+  Aug 17) — evenly-spaced round-the-clock = a bot on the form; clustered
+  on outreach days = the first-10 campaign working.
 - **[HUMAN] P5: confirm a real `send-search-alerts` cron run actually sent a real
   email** to a real saved search — the workflow runs daily and reports
   success, but nobody's checked an inbox for the actual email.
+- **[HUMAN] Render "HTTP health check failed (timed out after 5 seconds)"
+  on `rtr-deeplink-archive` (production) has now recurred twice — 2026-08-19
+  13:17:28 UTC and 2026-08-20 21:38:36 UTC, ~32 hours apart — promoted from
+  `CLAUDE_INBOX_TRIAGE.md`.** Distinct from the already-diagnosed 2026-08-17
+  instability cluster (memory-limit restarts, proxy `TimeoutError`,
+  `RuntimeError: Response content shorter than Content-Length`, DB-shutdown
+  error) — this is a plain health-check timeout, no matching root cause
+  identified yet. Neither occurrence had a "still down" follow-up email, and
+  Render's own alert text says this class of alert often self-resolves, so
+  real duration/user impact is unconfirmed without Render dashboard/log
+  access. Two occurrences ~32h apart is mild evidence toward a pattern
+  rather than a one-off blip, not proof either way. Worth a quick check of
+  the Archive's Render logs/memory graph around both timestamps next time
+  anyone's in the Render dashboard.
 - **[JUST-DO-IT] `rtr-business/BUSINESS_OVERVIEW.md` still says "Not built yet: ...
   saved-search alert emails"** — stale; that feature shipped 2026-08-13
   (PR #30) and runs daily. `README.md`'s own copy of this claim was
@@ -408,35 +714,243 @@ anything) to build against it.
 
 ## Bugs
 
-- **[HUMAN] Schema-migration deploy ordering has now caused a real, sitewide
-  Archive outage (2026-08-17, ~09:25–09:38 PT) — the third schema-change
-  incident in this repo's history, and the strongest evidence yet for
-  WO-10 ("migrations survive deploys", the one open wave in
-  `AUDIT_EXECUTION_BRIEF.md`).** Full incident record in
-  `BACKLOG_DONE.md`'s "search_corpus column deployed before its
-  migration ran" entry; the short version: PR #116 added
-  `MeetingPage.search_corpus` + an Alembic migration, deployed, and for
-  ~13 minutes every `meeting_pages` read on the Archive
-  (`/m/*`, `/meetings`, `/feed.xml`, and the worker's own polling
-  queries) raised `UndefinedColumnError: column meeting_pages.search_corpus
-  does not exist`, because `create_all()` can't ALTER an existing table
-  and the migration hadn't been run against prod yet. Recovered once
-  the migration was applied. **What's still open, the actual ask**: a
-  mechanism — not a documented rule, which already existed and was
-  followed in spirit (the PR was explicitly "schema-only, safe to deploy
-  alone") but couldn't prevent the ORM from selecting the new column the
-  instant the model changed — that makes "model references a column
-  prod doesn't have" impossible to deploy: e.g. `alembic upgrade head`
-  as part of the Archive's Render `preDeployCommand`/build step
-  (Render's own supported hook for exactly this), or at minimum a
-  startup assertion comparing `alembic current` to `head` that fails the
-  health check so the deploy is blocked (WO-6's gate) rather than
-  serving 500s. This is what WO-10 should build; today's incident is its
-  motivating example. Also worth capturing in that work: the
-  `python scripts/backfill_search_corpus.py` one-time step Ryan ran by
-  hand on the Render shell (1,219 rows) is the second manual
-  prod-shell step in two days (`alembic upgrade head` being the first) —
-  fine for now, but a pattern WO-10 should absorb.
+- **[NEEDS-AUDIT] Worker can produce a chunk `extract_chunk_audio()` calls
+  successful that's actually truncated/corrupt — surfaced via Sentry issue
+  PYTHON-FASTAPI-R, 2026-08-19 15:57:32 UTC, promoted from
+  `CLAUDE_INBOX_TRIAGE.md`.** Real error: `InvalidDataError: [Errno
+  1094995529] Invalid data found when processing input:
+  '/tmp/rtr_transcribe_hwou97hq/chunk_1.mp3'`, `server_name =
+  srv-d9rluvqfngtc73dmrbug` (the transcription worker), `handled = yes`,
+  app log "Job 287: transcription failed for chunk 2/21 (will retry on
+  next poll)". Root cause traced to real code: `worker/main.py`'s
+  per-chunk loop (~lines 237-243) only guards `extract_chunk_audio()`'s
+  ffmpeg call via return-value truthiness — this occurrence got past that
+  check (ffmpeg reported success) but the resulting file was invalid when
+  `transcription_engine.py`'s `_transcribe_sync()` tried to decode it via
+  PyAV (`av.container.core.open`), landing in the broader `except
+  Exception` at worker/main.py:250-256 (logs + retries next poll, hence
+  `handled = yes`, not a crash). **Impact**: caught/retried automatically,
+  not user-visible by itself; whether job 287's retry for chunk 2/21
+  actually succeeded is unconfirmed (no DB access from the triage
+  Routine). First occurrence of this exact signature as of 2026-08-19 —
+  may be a one-off transient (likely an interrupted read from the source
+  media stream during ffmpeg extraction), not yet confirmed as recurring.
+  **Fix, if it recurs**: have `extract_chunk_audio()` sanity-check its own
+  output (non-zero size, or a quick `ffprobe`) rather than trusting
+  ffmpeg's exit code alone, so a corrupt chunk retries immediately instead
+  of failing over to the whisper-decode step first. Not fixed yet —
+  logged as a real, traced gap, not designed/built this pass.
+
+- ~~**[JUST-DO-IT] Jurisdiction-bleed, confirmed cross-platform (Granicus
+  AND eScribe)**~~ **Fixed 2026-08-17 — Canadian city/town data table
+  (5,028 real Statistics Canada rows) + a Title-Case/ALL-CAPS word-run
+  signal in `_looks_like_bleed()`. Full root-cause detail, the real
+  confirmed table, and both fixes' verification are in
+  `BACKLOG_DONE.md`.** Real, honestly-flagged residual gaps left open by
+  that fix, not silently closed — see the three entries directly below:
+
+- ~~**[JUST-DO-IT] Jurisdiction-bleed fix can turn an honestly-garbled value
+  into a confidently WRONG one, when the bled text happens to contain a
+  different, unrelated but real city name — confirmed live 2026-08-17
+  with 2 real eScribe examples, newly surfaced by the Canadian-data fix
+  above (`BACKLOG_DONE.md`).**~~ **Fixed 2026-08-21 — see `BACKLOG_DONE.md`'s
+  "jurisdiction-bleed, gate-blindness recovery" entry.** `finalize_jurisdiction()`
+  now cross-checks its own trim-repair result against a validated
+  subdomain-derived candidate (the mitigation direction this entry
+  originally identified but hadn't verified), preferring the subdomain's
+  identity when they disagree.
+
+- **[NEEDS-AUDIT] Jurisdiction-bleed fix's single-word-tail gap, narrowed
+  2026-08-18: "Brampton Meeting" and "Peterborough Attachments" are now
+  fixed (a closed, curated stoplist — see `BACKLOG_DONE.md`'s "jurisdiction-
+  bleed, third pass" entry); Castle Rock CO's "Town of Castle Rock
+  Authorizing" is the one real case still open** — no confirmed second
+  example of "Authorizing" as a bleed tail exists yet, so it stays off the
+  stoplist per this repo's "don't guess, ground in real data" convention
+  rather than being added speculatively. A single capitalized word is
+  still genuinely indistinguishable from a legitimate short suffix using a
+  word-count signal alone — confirmed by direct testing that lowering
+  `_MIN_BLEED_WORD_RUN` to catch it would also wrongly trim real long
+  names ("Lake Washington School District" → "Lake"). Closable the same
+  way as "Meeting"/"Attachments" the moment a second real confirmed
+  example of "Authorizing"-shaped bleed turns up.
+
+- **[NEEDS-AUDIT] StatsCan/Census table completeness gap, surfaced
+  2026-08-18 by gating eScribe's subdomain extraction (`BACKLOG_DONE.md`'s
+  "jurisdiction-bleed, third pass" entry): a handful of real, currently-
+  correct eScribe customer names would decline to blank on a FUTURE
+  re-resolve, because the table PR #158 added doesn't cover them yet.**
+  Confirmed via a full sweep of all 176 real eScribe + 253 real Granicus
+  subdomains currently in production (`/internal/pages/all-urls`), not
+  guessed: **Lloydminster** (AB/SK) and **Paso Robles** (CA) are
+  unambiguous, well-known real places simply missing from the table;
+  ~~**Durham Region / Peel Region / Region of Waterloo** are a whole
+  category — Ontario's upper-tier "regional municipality" entities — the
+  table doesn't include under that name~~ **partially fixed 2026-08-21 —
+  see `BACKLOG_DONE.md`'s "jurisdiction-bleed, gate-blindness recovery"
+  entry.** `scripts/build_jurisdiction_data.py`'s new
+  `build_canada_regional_municipalities()` adds these 3 (both the "X
+  Region" and "Region of X" real name forms) as a small curated list,
+  grounded in StatsCan's own SGC 2021 structure file (Census division
+  codes 3518/3521/3530) plus a 2019 provincial review Wikipedia cites —
+  deliberately only these 3 confirmed-in-production customers, not the
+  other 5 real Ontario regional municipalities that review also names
+  (Halton, Muskoka, Niagara, Oxford, York), since no eScribe/Granicus
+  customer for those has actually been confirmed live yet; **Chatham-Kent
+  / Arran-Elderslie / Blue Mountains** are real Ontario municipalities
+  lost purely on a hyphen-formatting mismatch (table likely has them as
+  literal "Chatham-Kent" etc., and the wordninja-reconstructed candidate
+  doesn't preserve the hyphen) — still open, not addressed by this pass.
+  Scope note (still applies to the still-open Lloydminster/Paso Robles/
+  hyphen cases): this can't retroactively blank an already-published page
+  (the existing backfill endpoint only re-runs `finalize_jurisdiction()`
+  on stored text, never re-invokes subdomain extraction) — it only
+  affects a future new meeting from these customers, or an explicit
+  re-feed.
+
+- **[NEEDS-AUDIT] "RochestercityMN" root-caused, 2026-08-18 — a real page-
+  title data-quality quirk on ONE specific customer, not an adapter code
+  bug.** Investigated (not fixed, per this repo's "never build from
+  assumption" rule and the specific ask that flagged this as
+  out-of-scope-until-investigated): the real source is `app/platforms/
+  iqm2.py`'s `_TITLE_RE`, which captures the jurisdiction verbatim from
+  the page's own `<title>` tag (format `"{date} {time} {meeting_name} -
+  Web Outline - {jurisdiction}"`). Rochester, MN's specific IQM2 tenant
+  (`rochestercitymn.iqm2.com`) has "RochestercityMN" literally glued
+  together as-is in its own page title — confirmed by checking IQM2's
+  other real customer, Santa Clara County, CA, whose title correctly
+  reads "...- Web Outline - The County of Santa Clara, California" (proper
+  spacing, extraction working as designed). Not a Python f-string
+  join-character bug as originally suspected — the regex is capturing
+  exactly what's on the page; the glued text originates at IQM2's own
+  vendor/tenant configuration for this one city. Only one example found
+  (this is IQM2's only other confirmed customer besides Santa Clara), so
+  not enough real data to design a general fix — if a second glued-title
+  IQM2 customer turns up, this is the same shape of problem as eScribe's
+  glued-subdomain fix above and could reuse `validated_label_extract()`
+  the same way.
+
+- **[JUST-DO-IT] The originally-reported eScribe subdomain rows (Bonnyville
+  AB, Grand Valley ON, Point Edward ON, Boulder County CO, Beaumont AB,
+  Mackenzie BC — "Townofbonnyville" and siblings) are STILL wrong in the
+  live archive today** — this round's fix (`BACKLOG_DONE.md`'s
+  "jurisdiction-bleed, third pass" entry) only corrects the CODE, so a
+  FUTURE resolve of these customers comes out right; it doesn't touch what's
+  already stored. Unlike the trim-repair/date/extension cases in the same
+  fix (which the existing `POST /internal/jurisdiction/backfill-apply`,
+  PR #165, can text-patch directly since the bled tail is still separable
+  by word), these rows have no recoverable signal once glued together —
+  "Townofbonnyville" cannot be turned into "Bonnyville" by re-running
+  `finalize_jurisdiction()` on the stored string alone; it needs an actual
+  re-resolve (`EscribeAssetFinder.resolve(url)` against the real source
+  URL, now with the corrected subdomain logic, then re-ingest) — a heavier
+  mechanism closer to `scripts/feed_granicus_auto_transcription.py`'s
+  re-feed pattern than to #165's text-only endpoint. Not built this pass;
+  a human should confirm the approach before writing it, same as any
+  re-resolve script that writes to already-public pages.
+
+- **[JUST-DO-IT] Bare/state-suffixed jurisdiction duplicates: root cause
+  fixed and 12 of 16 examples resolved 2026-08-21 (see BACKLOG_DONE.md's
+  matching entry for the full investigation) — two residuals still
+  open, and a NEW real bug found 2026-08-21 running the GET audit that
+  BLOCKS just running the backfill as originally planned.** (1)
+  **Backfill audit run against production 2026-08-21 — found far more
+  candidates than expected, some of them genuinely wrong, so the write
+  step (`POST .../backfill-apply?dry_run=false`) was deliberately NOT
+  run.** `GET /internal/jurisdiction/bleed-backfill-candidates` returned
+  635 candidates (not the ~13 expected), of which 552 are confidence-field-
+  only changes (identical jurisdiction text, `current_confidence: None`
+  → a real confidence value — likely harmless, a one-time backfill of a
+  field that didn't exist yet when those rows were first written) and 83
+  are real jurisdiction-text changes. Of those 83, 68 are simple, clearly-
+  safe state-suffix appends (e.g. "Dublin" → "Dublin, CA", "Airdrie" →
+  "Airdrie, AB") — but the remaining 15 include **at least two confirmed-
+  wrong repairs that would corrupt already-correct live pages**: `page_id
+  250` ("Alameda County, CA" → **"Bart, CA"** — a BART board-of-directors
+  meeting; "Bart" is coincidentally a real tiny Census place name
+  unrelated to this meeting, an acronym/place-name collision, not a
+  repair) and `page_id 1108` ("Modesto, CA" → **"Agenda, CA"** — "Agenda"
+  is a real small Kansas town name that happens to collide with the
+  literal word "agenda" appearing somewhere in the source text). Also
+  suspect in the same 15, not yet independently confirmed either way:
+  `page_id 279` ("City of New Port Richey, FL" → "Clearwater, FL" — two
+  distinct real FL cities, looks like a wrong reassignment, not a
+  repair), plus several consolidated-city-county cases that silently
+  drop the state suffix instead of adding one (`Jefferson County` →
+  `Louisville`, `Davidson County` → `Nashville`, `Louisville / Jefferson
+  County Metro` → `Louisville`) inconsistent with `Nashville-Davidson
+  County, TN` → `Nashville, TN` right above them getting a proper suffix.
+  **Real, newly-confirmed gap**: `finalize_jurisdiction()`'s repair path
+  validates a candidate purely against the Census/StatsCan place table
+  with no guard against a short, common, or acronym-shaped string
+  coincidentally matching an unrelated real small place — this is a
+  distinct failure mode from anything the original jurisdiction-bleed
+  investigations found, and needs its own fix (something like: require a
+  minimum edit-distance/containment relationship between the current and
+  candidate values, or exclude single common-English-word matches) before
+  this backfill can be safely applied in bulk. **Until that guard exists,
+  do NOT run `backfill-apply?dry_run=false` against the full candidate
+  set** — at most, the 68 confirmed-safe simple-suffix-append rows could
+  be applied individually/filtered, but the endpoint has no per-ID filter
+  today, so even that needs a small endpoint change first. (2) **3 of the
+  original 16 examples (Ashland, Milton, San Jose) still have no
+  confirmed real state** — each was checked live (their real source page
+  and, where relevant, its channel-root page) and none carries reliable
+  state-identifying text; Ashland sits on a shared/generic TelVue player
+  domain, San Jose's Granicus pages are silent on state entirely, and
+  Milton is genuinely uncertain between FL and eScribe's real Ontario,
+  Canada customer base. Needs either a positive text match found some
+  other way, or a second confirmed example before a domain registry
+  entry can be added without guessing.
+
+- **[NEEDS-AUDIT] Same sweep found one likely truncation case — the
+  opposite failure from bleed (losing real characters, not gaining
+  fake ones).** A bare "Pitt" appears as its own jurisdiction value on a
+  real archived page, separate from "Pittsburg, CA" which also exists
+  correctly elsewhere in the table — "Pitt" isn't a real jurisdiction on
+  its own, so this reads as "Pittsburg, CA" chopped off mid-word. Only
+  one example found; not enough to root-cause confidently yet (could be
+  a regex length cap cutting a word in half, matching the
+  mid-word-truncation signal already documented elsewhere in this file
+  for title extraction — or something else). Worth watching for a second
+  example before designing a fix.
+
+- ~~**[HUMAN] Schema-migration deploy ordering has now caused a real,
+  sitewide Archive outage (2026-08-17)** — the ask was a *mechanism*
+  making "model references a column prod doesn't have" impossible to
+  deploy.~~ **Built for the Archive the same evening (WO-10, PR pending
+  merge as of this edit — full detail in `BACKLOG_DONE.md`'s "WO-10"
+  entry)**: `render.yaml` `preDeployCommand: cd archive && alembic
+  upgrade head` (schema lands before the code goes live; a failing
+  migration cancels the deploy and keeps the old build), `archive/db/
+  engine.py`'s `create_all()` a no-op on Postgres (Alembic is the only
+  writer to the prod schema), and CI `alembic check` on every PR (a model
+  edit without a migration fails before merge). Precondition verified
+  before automating: archive `alembic_version` == head after Ryan's two
+  `upgrade head` runs that day, and `alembic check` against a fresh
+  `upgrade head` DB reported no missing model tables/columns.
+
+  **What's still open — the resolver half, Ryan-gated:** `app/`'s Alembic
+  history (`app/alembic/`, 2 revisions) has never been stamped in
+  production, so the same `preDeployCommand` there would fail on its
+  first run (it would try the baseline `CREATE TABLE`s against tables
+  that already exist — the brief's "step 3 before step 2" warning). One
+  shell step unlocks it, on the **`rtr-deeplink`** (resolver) service's
+  Render shell, not the archive's: `cd app && alembic current` (expect
+  empty), confirm the real columns match head (`GET /admin/stats`
+  returning `pending_archive_pushes` cleanly is the documented check —
+  see `app/alembic/README.md`), then `cd app && alembic stamp head`. Then
+  a small PR: add `preDeployCommand: cd app && alembic upgrade head` to
+  the `rtr-deeplink` service (a comment marks the exact spot in
+  `render.yaml`), gate `app/db/engine.py`'s `create_all()` to
+  non-Postgres the way archive's is, and extend the CI `alembic check`
+  step to `app/`. Until then a new *resolver* table still appears via
+  `create_all()` and an altered resolver table still needs a hand-run
+  migration — the resolver has never had a schema incident, which is why
+  it's the half that could wait. Also still true: `scripts/
+  backfill_search_corpus.py`-style one-time backfills remain manual —
+  prefer generated columns (the `search_tsv` pattern) so there's nothing
+  to backfill.
 
 - **[HUMAN] Search Console "Page indexed without content" (alert 2026-08-17)
   is still genuinely unexplained — and specifically NOT explained by
@@ -455,24 +969,77 @@ anything) to build against it.
   Indexing", then see whether the flag clears on recrawl of the
   now-real content; if it does, this is closed with no code change. If
   the flag list has *other* URLs beyond that one, paste them — that
-  would point at a broader thin-content shape worth chasing.
+  would point at a broader thin-content shape worth chasing. Partial
+  mitigation shipped 2026-08-17 regardless: genuinely empty pages (no
+  video/agenda/transcript — 17 live at the time) are now `noindex`ed and
+  excluded from browse/sitemap/feed at query time, see `BACKLOG_DONE.md`
+  "Empty ("zero-value") meeting pages"; if the flagged URLs turn out to
+  be that shape, this closes on recrawl with no further code change.
 
-- **[JUST-DO-IT] Every route on both services returns 405 to HTTP `HEAD` requests —
-  site-wide, app-level, confirmed live and reproduced locally 2026-08-17.**
-  `curl -I` against `/`, `/about`, `/coverage`, `/meetings`,
-  `/state/california`, and `/m/{slug}` all return `405 Method Not
-  Allowed` in production (resolver domain and Archive onrender.com host
-  alike), and a local uvicorn reproduces it — so it's FastAPI route
-  registration (`@app.get` does not auto-register HEAD), not Render.
-  Crawlers and uptime tools commonly probe with HEAD (UptimeRobot's
-  HTTP monitor type defaults to it; Googlebot uses it occasionally for
-  cache revalidation), and a 405 makes the site look broken to any such
-  probe even though GET works. Not user-visible, so not urgent, but
-  cheap to fix: either add `methods=["GET", "HEAD"]` on the public
-  routes or (simpler, covers everything at once) a tiny middleware that
-  rewrites HEAD to GET and strips the response body, on both `app/` and
-  `archive/`. Found 2026-08-17 while investigating the Search Console
-  flags above — first noticed as `curl -I /coverage` → 405.
+- ~~**[JUST-DO-IT] Every route on both services returns 405 to HTTP `HEAD`
+  requests — site-wide, app-level, confirmed live and reproduced locally
+  2026-08-17.**~~ **Fixed 2026-08-21** — see `BACKLOG_DONE.md`. (Turned
+  out to already be fixed in code by PR #138, 2026-08-17, the same day
+  this entry was written — this entry itself was the stale doc-drift;
+  the 2026-08-21 pass confirmed the fix live with `curl -I` against both
+  services and added `tests/test_head_requests.py` coverage, which
+  already existed too. Full detail in `BACKLOG_DONE.md`.)
+
+- ~~**[JUST-DO-IT] Archive reverse-proxy streaming has no error handling
+  once the response body starts streaming — a cut-short upstream
+  connection raises an unhandled exception instead of failing cleanly,
+  confirmed live in code 2026-08-21, promoted from
+  `CLAUDE_INBOX_TRIAGE.md`'s 2026-08-19 run.**~~ **Fixed 2026-08-21** —
+  see `BACKLOG_DONE.md`.
+
+- **[HUMAN] Render account bandwidth limit reached — real, current cost
+  exposure, found by the daily inbox-triage Routine's 2026-08-18 run.**
+  Render's Hobby-plan bandwidth (5GB/month, shared account-wide across
+  `rtr-deeplink`, `rtr-deeplink-archive`, and the worker) hit "Approaching
+  Bandwidth Limit" (>70% used) 2026-08-17 12:13 UTC, then "Reached the
+  Bandwidth Limit" (100%) 2026-08-18 12:17 UTC — roughly 30% of a whole
+  month's allowance used in about 24 hours. Overage is now auto-billed at
+  $15 per additional 100GB, uncapped, resetting at the start of next
+  calendar month. **Open question for Ryan, not resolvable from here**:
+  is this expected (real traffic growth from the first-10
+  outreach/clips campaign — arguably good news) or something to check (a
+  proxy/redirect loop, or the Archive serving full video bytes through
+  `archive_client.py`'s proxy rather than just embedding a player/link)?
+  Render's dashboard bandwidth breakdown would answer this in under a
+  minute but requires the actual dashboard login.
+
+- **[HUMAN] Archive service instability, 2026-08-17 ~14:10-22:04 UTC —
+  mostly already-explained, but two pieces aren't, found by the daily
+  inbox-triage Routine's 2026-08-18 run.** Sentry showed a cluster of
+  production errors that evening: "Unclosed client session"/"Unclosed
+  connection" (resolver's `/api/health` complaining about
+  `archive_client.py` connections to `rtr-deeplink-archive.onrender.com`
+  never closing), a proxy `TimeoutError`
+  (`app/archive_client.py:362`, `proxy_get()` on `/meetings`),
+  "RuntimeError: Response content shorter than Content-Length" (Archive's
+  `/`, almost certainly Render's own health probe), and
+  "CannotConnectNowError: the database system is shutting down" (Archive's
+  `/api/health` DB connection). Most of this cluster is very likely
+  explained by `BACKLOG_DONE.md`'s already-documented WO-10 outage that
+  same evening (PR #116's model column deploying ~13 minutes ahead of its
+  `ALTER TABLE`, causing `UndefinedColumnError` on every `meeting_pages`
+  read — Sentry's own error for that is timestamped 16:26 UTC, right in
+  the middle of this cluster). **Two things aren't accounted for by that
+  explanation**: (a) four separate "Web Service rtr-deeplink-archive
+  exceeded its memory limit" restart emails fired at 14:10, 14:15, 14:23,
+  and 17:08 UTC — the first one **nearly 2.5 hours before** the first
+  `UndefinedColumnError` alert (16:26 UTC), so an OOM-driven trigger
+  *preceding* (and possibly contributing to) the schema-read errors is a
+  real, currently-unexplained possibility, not just downstream fallout
+  from them; (b) WO-10's own fix deploy (PR #156) itself failed to deploy
+  at 23:54:28 UTC that same evening ("We encountered an error during the
+  deploy process... your latest changes may not be live") — though
+  `render.yaml` on `main` today confirms `preDeployCommand` is live, so a
+  later attempt clearly succeeded, and the first attempt's own failure
+  reason was never surfaced. **Open question for Ryan**: worth a quick
+  look at Render's memory graph for the Archive around 14:00-17:00 UTC on
+  2026-08-17 to check whether OOM genuinely preceded/triggered the
+  schema-read cascade, or whether the timing is coincidental.
 
 - **[JUST-DO-IT] `is_likely_garbled()` only samples the transcript's first 4000
   characters, so a transcript that starts clean and degrades later is
@@ -686,68 +1253,25 @@ anything) to build against it.
   One real gap found and left explicitly open by that fix, not silently
   closed:
 
-  **Residual gap: `_looks_like_bleed()`'s trim-repair gate still misses
+  ~~**Residual gap: `_looks_like_bleed()`'s trim-repair gate still misses
   pure Title-Case/ALL-CAPS bleed with no lowercase/digit/roman-numeral
-  signal in the discarded tail** — confirmed live-equivalent 2026-08-16 on
-  4 of the 9 Granicus cases (Sarasota, Punta Gorda, Castle Rock, Castle
-  Pines): `extract_jurisdiction_chain()`'s text-only tiers (stop-rule +
-  capitalization-walk) still produce a bled candidate for these
-  (`"City of Sarasota Legacy Business PLEDGE OF"`, `"Town of Castle Rock
-  Authorizing"`, etc.), and `_looks_like_bleed()` (`jurisdiction_enrich.py`)
-  declines to trim it because the discarded tail (`"Legacy Business PLEDGE
-  OF"`, `"Authorizing"`) is itself Title-Case/ALL-CAPS prose with no
-  lowercase-word/digit/roman-numeral signal — exactly the "Title-Case/
-  ALL-CAPS bleed" gap the 2026-08-15 Census-baseline audit already flagged
-  for Sarasota/Hollywood/Hampton (see that entry above) but never fixed.
-  **In production these 4 are currently saved by Granicus's own
-  subdomain-per-customer URL convention** (confirmed live-verified against
-  `tests/test_granicus.py`'s new
-  `test_extract_metadata_jurisdiction_bleed_regressions_via_subdomain_fallback`)
-  — `extract_jurisdiction_chain()`'s Census-validated subdomain tier
-  catches what the text tiers miss, since e.g. `sarasota.granicus.com`
-  validates "Sarasota" directly. That's real coverage, not nothing, but
-  it's incidental (works because Granicus subdomains usually *are* the
-  city name) rather than a fix to the trim heuristic itself — any Granicus
-  customer whose subdomain doesn't match the city name would still bleed.
-  No fix attempted this pass, same "verify against more real examples
-  before guessing a rule" call the original bug entry already made for
-  the capitalization-only PrimeGov approach — an ALL-CAPS-word signal
-  looks like a plausible next step (none of the confirmed legitimate long
-  names in the original entry — Lexington-Fayette Urban County Government,
-  Capital Metropolitan Transportation Authority, etc. — contain ALL-CAPS
-  words) but wasn't added without a way to re-verify it against the
-  73-case trim-reachable bucket the existing gate was tuned against
-  (`baseline_validation.csv`, no longer available in any session's
-  scratchpad).
-
-- **[NEEDS-AUDIT] Fountain Valley clip 607 shows a wrong title and jurisdiction today —
-  real, confirmed, not yet root-caused. Found 2026-08-15 in the same
-  `/coverage` scan.** This is the same Granicus clip already extensively
-  documented elsewhere in this file and `BACKLOG_DONE.md` for its garbled/
-  Portuguese-misdetected transcript
-  (`fountainvalley.granicus.com/MediaPlayer.php?clip_id=607`, "View
-  original source" link confirmed live from
-  [/m/city-of-fountain-valley-city-council-meeting-jun-16th-2026](https://redtaperecordings.com/m/city-of-fountain-valley-city-council-meeting-jun-16th-2026)),
-  but the title/jurisdiction mismatch itself has never been flagged
-  before. Live today the page displays title "COMMUNITY REDEVELOPMENT
-  AGENCY - SPECIAL MEETING," jurisdiction "Ft. Myers, FL.," date
-  "2025-08-11" — none of which match the URL slug (which encodes
-  "city-of-fountain-valley-city-council-meeting-jun-16th-2026"). Checked
-  the actual live Granicus source page via `curl` before writing this up:
-  its real `<title>` today is the clean "City Council Meeting - Jun 16th,
-  2026" (matching the slug), and a full-text search of that page's raw
-  HTML for "Ft. Myers" or "Community Redevelopment Agency" finds nothing
-  — whatever produced the stored title/jurisdiction isn't visible on the
-  source page as it exists now. The transcript content itself does read
-  as genuine Fountain Valley material (a real Orange County Power
-  Authority presentation to the city council). **Root cause not
-  determined this pass** — candidates not yet distinguished: a stale
-  resolve from before the source page's title changed, some kind of
-  cross-page data contamination (compare the Dublin/Yountville
-  version-promotion bugs already fixed and documented in
-  `BACKLOG_DONE.md`, a different bug class but the same general area of
-  code), or something else entirely. Worth a real investigation, not a
-  guessed fix — flagging as a genuine "how did this happen" question.
+  signal in the discarded tail**~~ **Fixed 2026-08-17 as part of the
+  broader Canadian-data + Title-Case-bleed pass — see `BACKLOG_DONE.md`'s
+  "Jurisdiction-bleed, confirmed cross-platform" entry for the
+  `_MIN_BLEED_WORD_RUN = 4` signal and its calibration evidence.**
+  Directly re-verified against the two examples named here: Sarasota
+  (`"City of Sarasota Legacy Business PLEDGE OF"`) now repairs correctly
+  to `"City of Sarasota, FL"`. Castle Rock (`"Town of Castle Rock
+  Authorizing"`) does NOT — its discarded tail is only 1 word
+  ("Authorizing"), below the new threshold, so it falls into the
+  single-word-tail gap now tracked as its own live entry above (search
+  "single-word-tail gap" in this file). Punta Gorda/Castle Pines weren't
+  re-tested directly this pass (their exact raw strings weren't recorded
+  in this entry), but Castle Pines was already confirmed fixed via the
+  pre-existing lowercase signal (see `test_finalize_jurisdiction_fills_a_state_the_bled_original_never_could`
+  in `tests/test_jurisdiction_enrich.py`), and Punta Gorda's tail shape
+  ("Punta Gorda ..." off a Granicus body-regex bleed) matches the same
+  pattern the new signal was built and verified against.
 
 - **[JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a real, useful
   place to spot resolver bugs by eyeballing outliers — confirmed by
@@ -880,6 +1404,39 @@ anything) to build against it.
   examples if this recurs, rather than adding a domain override per
   incident indefinitely.
 
+  ~~**A fourth real case did show up, 2026-08-18** — user-shared
+  `bedfordoh.primegov.com/Portal/Meeting?meetingTemplateId=518` (real
+  video/captions both resolve correctly: YouTube embed, 1346 real
+  auto-caption segments; only `jurisdiction` is wrong). Confirmed live:
+  `jurisdiction` comes back `"County of Cuyahoga, OH"` instead of `"City
+  of Bedford, OH"`.~~ **Fixed 2026-08-21 — see `BACKLOG_DONE.md`'s
+  "PrimeGov Bedford/Cuyahoga" entry.** A new, narrowly-scoped
+  `_COUNCIL_HEADER_RE` tier (tried before `_JURISDICTION_RE`) matches the
+  bare "{Name} City/Town/Village Council" header shape and now wins over
+  the adjacent "County of Cuyahoga" letterhead cell. This closes the
+  specific letterhead-adjacency failure shape below, not the whole class
+  of SLC/OKC/Thousand-Oaks-style false positive (a genuine body-prose
+  mention winning by unscoped first-match, unrelated to a letterhead) --
+  that broader structural gap is still open, see this entry's own opening
+  paragraph above.
+
+  Root cause, fetched and checked directly: the page's
+  letterhead is a small header table with "Bedford City Council" and
+  "County of Cuyahoga" in adjacent cells (identical styling, both near
+  the top) — but `_JURISDICTION_RE` only matches the literal `"(city|
+  county|town) of ..."` shape, so "Bedford City Council" (no "of") never
+  matches while "County of Cuyahoga" does, and wins via unscoped
+  first-match same as the OKC/Thousand Oaks/SLC cases. The real, correct
+  "City of Bedford" text does exist on the page (an ordinance title
+  further down in the agenda body) but sits after the false-positive
+  county match, so position-based tie-breaking still doesn't separate
+  them. **New failure shape worth noting**: unlike SLC/Holladay (a false
+  positive buried in unrelated body prose), this one's false positive is
+  *also* structurally a header/letterhead mention — just the wrong
+  entity within it (the parent county, not the specific city) — so a
+  "prefer the first header-shaped match" heuristic would not have fixed
+  this case even if one existed.
+
   ~~**Separately: PrimeGov never backfilled `title` from the page itself
   when YouTube's own extraction is empty**~~ **Fixed 2026-08-13 — full
   detail in `BACKLOG_DONE.md`.** Confirmed live on a real LA City
@@ -890,6 +1447,65 @@ anything) to build against it.
   came through with no title at all whenever yt-dlp is blocked (the
   documented Render-IP gap), even though jurisdiction/date already had
   their own page-based fallbacks.
+
+- ~~**[JUST-DO-IT] eScribe now has a real, confirmed positive caption
+  example — but its jurisdiction chain-extraction picks the wrong
+  government for two-tier (regional + constituent-town) sites.**~~
+  **Fixed 2026-08-21 — see `BACKLOG_DONE.md`'s "jurisdiction-bleed,
+  gate-blindness recovery" entry.** `finalize_jurisdiction()` now
+  cross-checks its top-level literal-match branch (not just
+  `_trim_repair()`) against a validated subdomain-derived candidate, and
+  `scripts/build_jurisdiction_data.py` now includes Ontario's real
+  Durham/Peel/Waterloo regional municipalities (the StatsCan
+  completeness gap this bug's own root cause depended on — see the
+  "StatsCan/Census table completeness gap" entry above, now partially
+  closed for these 3 confirmed-in-production customers). Together these
+  make the `peelregion` subdomain resolve to "Peel Region, ON" and
+  override the constituent-town "Town of Caledon" text match.
+  User-shared 2026-08-18:
+  `pub-peelregion.escribemeetings.com/Meeting.aspx?Id=c129beef-a3cf-49ae-827d-27c6b3a547a5&Agenda=Agenda&lang=English`
+  (Peel Region, ON "Regional Council" meeting). Resolves with real video
+  (iSiLIVE, `cdn1.isilive.ca`) **and 1101 real caption segments, zero
+  warnings** — this closes the "no eScribe example with populated
+  captions has ever been found" gap called out in `CLAUDE.md`/
+  `BACKLOG.md` (CivicClerk's own version of that same gap is separately
+  still unconfirmed either way, not addressed by this). Meeting `Id` is
+  an opaque GUID (`c129beef-...`), not a sequential/guessable number like
+  Granicus's `clip_id` or CivicClerk's `event_id` — no way to enumerate
+  more eScribe meetings by incrementing an ID; discovery would need each
+  customer's own calendar/index page. One incidental correlation that
+  might help elsewhere: the iSiLIVE `data-client_id` embed attribute
+  matched the eScribe subdomain label exactly (`peelregion` for both).
+
+  Real bug found alongside it: `jurisdiction` comes back `"Town of
+  Caledon, ON"` instead of `"Regional Municipality of Peel"`/"Peel
+  Region". Root cause, fetched and checked directly: Peel Region's
+  agenda covers infrastructure/committee items located within its three
+  constituent lower-tier municipalities (Caledon, Brampton, Mississauga),
+  so "Town of Caledon" appears validly and repeatedly in item text and
+  in a clerk-signature line near the top of the page — `_stoprule_extract`/
+  `_capitalization_walk_extract` (the shared chain in `app/utils/
+  jurisdiction_enrich.py`, tried in that order by `extract_jurisdiction_
+  chain()`) finds and validates it first, so the chain returns immediately
+  and never reaches its own tier-3 subdomain fallback
+  (`_jurisdiction_from_subdomain`), which *would* have correctly produced
+  "Peel Region" from the `peelregion` subdomain alone (confirmed by
+  reading `_jurisdiction_from_subdomain()`'s own wordninja-split logic
+  against that label). Structurally the same "first validated candidate
+  wins, positional order isn't a reliable signal" problem already
+  documented for PrimeGov's `_JURISDICTION_RE` above, but on a different
+  code path (the shared chain, not PrimeGov's own regex) and a distinct
+  new failure shape: here the false-positive candidate is a real,
+  legitimately-*mentioned* jurisdiction (a constituent town), just not
+  the meeting's *own* jurisdiction (its regional parent) — not stray
+  body prose or a copy-pasted address like the chain's other documented
+  false positives. Fixed 2026-08-21 (see strikethrough above) by
+  extending `finalize_jurisdiction()`'s existing subdomain cross-check
+  (previously only applied inside `_trim_repair()`, added 2026-08-19 for
+  the Courtenay/Victorville cases) to its top-level literal-match branch
+  too, plus adding the 3 confirmed-in-production Ontario regional
+  municipalities the cross-check's own subdomain candidate needed to
+  validate at all.
 
 - ~~**`find_platform_link()`'s fallback delegation could self-loop into
   real infinite recursion**~~ **Fixed 2026-08-12 — full detail in
@@ -947,6 +1563,13 @@ anything) to build against it.
     extracted frames, which is a real new decision (this app hosts no
     images today). Re-check Search Console once YouTube-backed pages
     are re-crawled to confirm the critical flag actually clears there.
+    **Update 2026-08-21, from a real Search Console "Videos" enhancement
+    report screenshot**: "No thumbnail URL provided" is now down to just
+    1 video site-wide — but this is NOT confirmation the mp4/m3u8 gap
+    above is closed (it isn't; `archive/utils/video_thumbnail.py` still
+    only handles YouTube-backed pages, unchanged since the 2026-08-14
+    fix). The same report shows a much larger, likely-explanatory issue
+    instead — see the new entry immediately below.
   - ~~`uploadDate` missing a timezone~~ **Fixed 2026-08-14 — full detail
     in `BACKLOG_DONE.md`'s "Wave 1" entry.** Now emits
     `date + "T00:00:00Z"`. **Still open**: the separate "invalid
@@ -960,14 +1583,65 @@ anything) to build against it.
     now sets each item's `end` to the next item's `start`, matching
     Granicus/IQM2's convention, instead of always equaling `start`.
 
+- **[JUST-DO-IT] Search Console "Video isn't on a watch page" (947 videos
+  and growing, from 23 in an earlier screenshot the same session) —
+  root-caused via real example URLs Ryan pulled from the report plus
+  direct code inspection, 2026-08-21. Fix shipped same day — see
+  `BACKLOG_DONE.md`.** All 10 real example URLs Search Console gave (San
+  Carlos CA/IQM2 mp4, Calvert County MD & Cedar Rapids IA/Granicus-Swagit
+  m3u8, Redlands CA & Riverview MI & Hopkins MN (Edina)/Cablecast m3u8,
+  Greenbelt MD & Hartford City IN/Azure CDN mp4, Peterborough ON/
+  isilive.ca m3u8, Leon Valley TX/Cablecast m3u8) were **every one
+  non-YouTube** — confirmed this is the same population as the mp4/m3u8
+  `thumbnailUrl` gap above, not a scattered issue, and explains that
+  entry's near-zero thumbnail count as a downstream symptom (Google
+  doesn't get far enough to check `thumbnailUrl` on a video it's already
+  excluded here).
+
+  **Real root cause, confirmed in code**:
+  [archive/templates/meeting_page.html:274](archive/templates/meeting_page.html#L274)
+  used to render every non-YouTube/non-viebit video as a bare
+  `<video id="meetingVideo" controls playsinline preload="auto"></video>`
+  — no `src` attribute, no `<source>` child, in the server-rendered HTML
+  Googlebot first parses. The real URL only existed in the page's JSON-LD
+  `contentUrl` (line 65) until JavaScript ran. And when it did
+  ([archive/static/meeting_page.js:51-57](archive/static/meeting_page.js#L51-L57)):
+  for `.m3u8` sources, `hls.attachMedia(video)` uses Media Source
+  Extensions, which sets the real DOM `video.src` to an opaque `blob:`
+  URL — never the real, fetchable m3u8 URL at all, in *any* browser
+  (7 of the 10 examples are this case). For direct `.mp4` (3 of 10,
+  IQM2/Azure CDN), `video.src = videoUrl` did eventually set the real
+  URL, but only after JS executed — the initial HTML still shipped with
+  no src. Either way, there was no reliable, server-rendered `<video
+  src>`/`<source src>` for Google to match against the JSON-LD
+  `contentUrl` and confirm the page genuinely hosts that video — exactly
+  what "watch page" verification needs. (YouTube pages don't hit this:
+  Google can verify those independently against its own already-indexed
+  YouTube watch page, regardless of how the iframe is populated.)
+
+  **Fix shipped 2026-08-21**: `meeting_page.html` now renders the real
+  URL server-side too — a `<source src="{{ page.video_url }}"
+  type="application/vnd.apple.mpegurl">` for `.m3u8`, and `src="{{
+  page.video_url }}"` directly on the `<video>` tag for `.mp4` —
+  matching `contentUrl`, while `meeting_page.js`'s existing hls.js/`.src`
+  logic is untouched for actual playback (`<source>` and a later
+  `.src`/`hls.attachMedia()` call coexist fine — the browser just uses
+  whichever the JS ends up wiring up). **Not yet confirmed on a re-crawl**
+  — Search Console needs to re-index affected pages before the flag
+  count can be checked; that's the real verification, not just the code
+  landing.
+
 - ~~**[DONE?] `sitemap.xml` includes `generic_fallback` pages that the page template
   itself `noindex`es**~~ **Fixed 2026-08-17 — full detail in
   `BACKLOG_DONE.md`'s "Sitemap no longer lists noindexed
   `generic_fallback` pages" entry.** The separate "Page indexed without
-  content" reason from the same 2026-08-17 alert batch is NOT explained by
-  this — still open, see `CLAUDE_BACKLOG.md`'s 2026-08-17 entry for that
-  one and for a third reason ("Page with redirect", alert received
-  2026-08-16) that hasn't been investigated yet.
+  content" reason from the same 2026-08-17 alert batch is not explained
+  by this fix, but is likely resolved separately by PR #136's empty-page
+  exclusion (also shipped 2026-08-17, see `BACKLOG_DONE.md`'s "Empty
+  ('zero-value') meeting pages" entry) — not confirmed, needs a Search
+  Console re-crawl to clear; see `CLAUDE_BACKLOG.md`'s 2026-08-17 entry
+  for the updated detail, and for the third reason ("Page with redirect",
+  alert received 2026-08-16) that's still genuinely uninvestigated.
 
 - **YouTube-backed meetings' transcripts run through
   `scripts/fetch_youtube_transcripts.py` on a daily `launchd` schedule
@@ -1250,56 +1924,6 @@ that added this reorg, for which ones are new).
   investigated further" turned out to be exactly the missing piece —
   joined against the AJAX agenda outline's own item ids, it's now the
   adapter's real timestamped `agenda_items` mechanism.
-
-### Live but broken
-
-- **[JUST-DO-IT] Both auto-transcription feed workflows (`feed-tier3-transcription.yml`,
-  `feed-granicus-transcription.yml`) have likely never successfully
-  self-advanced their queue files, ever — every scheduled run's commit
-  is rejected by the branch ruleset, silently, since before either
-  workflow was even written.** Found via a real GitHub Actions failure
-  notification email (`RTR-Claude` Gmail label), not a guess: opened the
-  actual failed run
-  (https://github.com/mroconnell/rtr-deeplink/actions/runs/32035051794)
-  and its job logs directly. The script itself succeeds (12 real URLs
-  resolved and POSTed to `/internal/ingest`, several `[OK]`), but the
-  final "commit updated queue state" step fails every time:
-  ```
-  remote: error: GH013: Repository rule violations found for refs/heads/main.
-  remote: - Changes must be made through a pull request.
-  remote: - Required status check "test" is expected.
-  ! [remote rejected] main -> main (push declined due to repository rule violations)
-  ```
-  Root cause: both workflows still `git push` their queue-advancement
-  commit straight to `main` (with `[skip ci]`), a pattern that predates
-  the branch ruleset requiring PRs + a passing `test` check
-  (`BACKLOG_DONE.md`'s "Branch ruleset on `main`" entry, **added
-  2026-08-14**) — but both workflows' own docstrings date their queues to
-  **2026-08-15/16**, i.e. *after* the ruleset existed. Nobody updated the
-  push step when writing these newer workflows, so as far as can be told
-  the automated advancement path has never once worked in production.
-  **Real, confirmed impact**: every commit from `scripts/
-  tier3_auto_transcription_queue.txt`'s and `scripts/
-  granicus_auto_transcription_queue.txt`'s git history
-  (`git log -- <file>`) traces to a real merged PR (#59, #64, #67, #70,
-  #105 as of this writing) — none from the workflow's own bot commit.
-  `origin/main`'s tier-3 queue is 1191 lines right now (post-PR #105,
-  merged today) and the run above logged "1179 remaining after this
-  run," meaning it fed the same front-of-queue 12 URLs it (and every
-  prior run) already tried, and will keep re-trying only those same 12
-  every 6 hours until a human manually edits the file via a PR — the
-  ~1179 behind them are never reached by the automated drip at all,
-  defeating the mechanism's whole purpose. Two fix directions, a real
-  tradeoff rather than an obvious pick: (1) have the workflow open a PR
-  and auto-merge instead of pushing directly — the ruleset requires 0
-  approvals per that same `BACKLOG_DONE.md` entry, so this could still be
-  fully unattended, just slower (waits on the `test` check); or (2) add
-  `github-actions[bot]` as a scoped bypass actor on the ruleset, keeping
-  the direct-push pattern but narrowing what it protects against. Worth
-  fixing soon regardless of which direction — the log's duplicate-URL
-  reprocessing (`tbdhu`, `mississauga` both appear twice in the same
-  single run's output above) is a live symptom of the queue never
-  actually shrinking.
 
 ### Needs a human decision
 
@@ -2478,6 +3102,110 @@ that added this reorg, for which ones are new).
     artifact worth guessing a general dedup rule from a single example.
     **Deliberately not a bug to fix** — no code change made.
 
+- **[LATER] Castus has zero support anywhere in the resolver — first real
+  signal it exists in the wild, from the `rtr-business/research`
+  government-first coverage-map crawl (2026-08-18).** Not in
+  `detect_platform()` (`app/platforms/base.py`), no adapter file, not in
+  `generic_fallback.py`'s curated-pointer list — genuinely unhandled, not
+  just unbuilt. 1 hit (`castus`) out of a 200-row national-ish sample of
+  `.gov` city/county homepages (`dotgov_probe.py`'s fingerprint list,
+  extrapolated in `discover_from_dotgov.sh`'s `coverage_map.csv`) — too
+  small an n to size the opportunity yet (the full ~9,766-row run this
+  checkpoint fed into will give a real count), but confirms Castus is a
+  real, in-use PEG/government-access video platform worth a first look
+  once a real customer URL is in hand, the same "test against a real live
+  URL first" rule this file's own working conventions require for any
+  new adapter. **A real customer URL is now in hand** (2026-08-21, via
+  the destinyhosted.com enumeration — see BACKLOG_DONE.md): destinyhosted
+  tenant id=24568 links to
+  `https://cloud.castus.tv/vod/comm7tv/video/6a83b3f9d94c83000226f83d?page=HOME`
+  — jurisdiction not independently confirmed (destinyhosted's own
+  `/{code}docs/` folder-name convention suggests `bilmt`, but that wasn't
+  cross-checked against real page text, so treat as unconfirmed). Not
+  investigated further this session — still the first real lead to build
+  an adapter against, not a build.
+
+- **[LATER] Two more video platforms with zero support anywhere in the
+  resolver, first sighted 2026-08-21 via the same destinyhosted.com
+  enumeration, now population-sized via Wayback CDX (see
+  BACKLOG_DONE.md)** — neither in `detect_platform()`, no adapter file,
+  not in `generic_fallback.py`'s curated-pointer list:
+  - **`open.media` may not need its own adapter at all** — confirmed live
+    that Goodyear, AZ's page (`goodyearaz.open.media/sessions/346555`)
+    directly iframes `public.destinyhosted.com/agenda_publish.cfm?
+    id=46639` (the same tenant already in the destinyhosted table) for
+    its agenda, and its own video is a YouTube id in the old
+    `youtube.com/v/{id}` embed shape — which `YouTubeAssetFinder`'s
+    `_VIDEO_ID_RE` now recognizes (fixed same day, see BACKLOG_DONE.md),
+    so generic_fallback's existing tier-1 YouTube detection may already
+    resolve open.media pages with no dedicated code at all. Not yet
+    confirmed whether every open.media tenant pairs a YouTube embed with
+    a destinyhosted (or other) agenda backend the same way, or whether
+    some host their own video directly — worth checking a few more of
+    the 10 real tenant subdomains found via CDX (`arapahoe`, `cortez`,
+    `eugene`, `larimer`, `litchfield-park`, `pitkincounty`,
+    `santabarbaraca`, `surpriseaz`, `townofgeorgetown`, plus the
+    confirmed `goodyearaz`) before assuming this generalizes.
+  - SuiteOne Media — **131 distinct tenant subdomains found via CDX**,
+    a real recurring signal per this file's own "collect edge-case URLs"
+    convention, and a meaningfully larger population than several
+    platforms that already have dedicated adapters. A large fraction are
+    **court AV systems, not city-council meetings** — clear from naming
+    (`azscottsdaleccrt1`–`9`, `chandlerazmcrt1`–`7`,
+    `coloradospringsmcrtdiv1`–`5`, `pinalcoazsupcrt1`–`16`); real
+    city/county meeting tenants also present: `lorainoh` (id shape
+    `/event/?id=N`, confirmed live with real video), `pacificgroveca`
+    (same shape, confirmed), `mcallentx`, `southbendin`, `tuscaloosaal`,
+    `prescottaz`, `richlandwa`, `camaswa`, `holladayut`, `laytonut`,
+    `stmarysga`. A second, separate id space exists on the same domain:
+    `/event/GetAgendaFile/{title}?aid=N` serves agenda PDFs directly
+    (confirmed on `tuscaloosaal`, `holladayut`, `stmarysga`,
+    `pacificgroveca`) — likely a real, easy jurisdiction/agenda-metadata
+    source alongside whatever the video adapter turns out to need.
+
+  Real customer URLs are in hand for both. No adapter built this
+  session; worth a first real look before committing further (per this
+  file's own working conventions: test against the real URL first) —
+  SuiteOne Media's 131-tenant population, even after subtracting the
+  court-system tenants, looks like the stronger candidate of the two.
+
+- **[LATER] Vimeo's real-world prevalence among small local governments is
+  now quantified for the first time — worth deciding if the existing
+  pointer-only handling is enough (2026-08-18).** Not an "add support"
+  gap the way Castus is: Vimeo is already recognized, but only via
+  `generic_fallback.py`'s curated pointer-link detector
+  (`_VIMEO_VIDEO_LINK_RE`, numeric video-id and `showcase/` links only) —
+  not in `detect_platform()`'s dispatch table, and with no Vimeo-native
+  caption/transcript extraction (unlike Granicus/Swagit/etc., which parse
+  the platform's own caption format). The same 200-row dotgov coverage-map
+  checkpoint found 6/200 Vimeo fingerprint hits — extrapolated (not
+  confirmed) to roughly 290 jurisdictions nationally at that rate, which
+  would make Vimeo a meaningfully larger population than several platforms
+  that already have dedicated adapters. Worth revisiting once the full
+  ~9,766-row run gives a real national count: if it holds up, decide
+  whether generic_fallback's pointer-only handling is sufficient at that
+  scale or whether native Vimeo caption support (if Vimeo's oEmbed/API
+  exposes captions — unconfirmed either way, no adapter work has looked at
+  this) is worth building.
+
+- **[LATER] Direct-to-YouTube may be the single largest video source among
+  small US local governments, ahead of Granicus — a resolver-prioritization
+  signal, not a code change by itself (2026-08-18).** Same 200-row dotgov
+  coverage-map checkpoint: `youtu.be` (11) + `youtube.com/embed` (7) = 18
+  hits, against Granicus's 14 — YouTube already ahead of the single most
+  common dedicated meeting-video vendor, in a sample skewed toward small
+  rural counties (Alabama/Alaska-heavy — the checkpoint's alphabetical
+  input ordering, since fixed for the full run; see this session's
+  `DOTGOV_DISCOVERY.md` update). If the full run confirms this nationally,
+  it means this project's own "Tier 2" platforms (those that delegate to
+  YouTube rather than hosting video themselves — see `CDX_QUERIES.md`'s
+  PrimeGov/CivicWeb sections, which already use this term) may be the
+  *primary* channel for small-government video, not a fallback behind the
+  dedicated-vendor platforms this project has prioritized adapter work for
+  so far. Worth weighing against `CDX_QUERIES.md`'s existing CDX
+  enumeration backlog once the full run's real number lands, not acted on
+  from this sample alone.
+
 ## Archive roadmap
 
 - **[IMPROVEMENT-ROUND] Design reference for the cassette-reel button animation, flagged
@@ -3026,45 +3754,6 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     `ryan@how-to-adu.com` — these are operator-facing ops digests, not
     site-facing addresses, so probably out of scope for this ask, but
     flagging since they're the same "which Ryan address" question.
-- **[JUST-DO-IT] Lifecycle email bugs found by the user 2026-08-11 — three of the four
-  fixed 2026-08-11, see BACKLOG_DONE.md for the full root-cause detail on
-  each.** The fourth, "People are talking about…" (saved-search alert
-  emails, `marketing/LIFECYCLE_EMAILS.md`'s #5), was always a real new
-  feature rather than a bug in this batch — see the "Email alerts for
-  saved searches" entry directly below, which is the same feature. That
-  doc's own "Digest variant of #5" (batching multiple alerts into one
-  email) is flagged there too as later-still: Resend has no built-in
-  batching, so a digest needs its own accumulation + scheduled-or-
-  event-driven send logic, not just copy.
-- **[IMPROVEMENT-ROUND] Email alerts for saved searches — confirmed 2026-08-09 as the most
-  concrete "worth paying for" feature identified so far.** Depends on
-  accounts and search both existing first (search already live; accounts
-  is not). This is what turns a one-time lookup into something a
-  journalist keeps coming back to for an ongoing beat — it converts
-  passive search into active monitoring, the actual job-to-be-done for
-  someone covering the same story across dozens of jurisdictions over
-  time. Also directly benefits from the crawler re-prioritization below
-  (more corpus = more useful alerts). **As of the expanded accounts scope
-  above (2026-08-10), this is no longer a separate build** — it's the
-  `notify_by_email` toggle on `NoteSubscription`, phase 2 of that plan,
-  alongside the equivalent in-profile `notify_in_profile` toggle the
-  user also asked for. Kept as its own bullet here since it's still the
-  concrete "worth paying for" signal that justifies building that phase
-  at all, not because it's architecturally separate anymore. **Copy
-  already approved**: this is `marketing/LIFECYCLE_EMAILS.md`'s #5,
-  "People are talking about…" — subject `Somebody said "[keyword]"`,
-  quotes the matching transcript line, deep-links straight to it. When
-  this actually gets built: needs real match-detection (event-driven off
-  meeting ingestion/transcription, reusing the same filter logic
-  `/meetings` already runs, rather than a new polling job — keeps this
-  app's "no background job queue" stance intact) and a per-alert
-  one-click unsubscribe token (the doc's copy shows both a "[manage]" and
-  an "[unsubscribe from this alert]" link, distinct from the existing
-  full-list `/unsubscribe`). The doc's own "digest variant" (batch
-  multiple alerts into one email instead of one-per-match) is flagged
-  there as later still — Resend has no built-in batching/digest feature,
-  so that needs its own accumulation logic on top of whatever ships
-  first.
 - **[IMPROVEMENT-ROUND] Proactive transcription crawler — re-prioritized 2026-08-09 to
   precede accounts/billing, then explicitly held back again 2026-08-10
   ("not yet — keep prioritizing bugs/gaps").** The reasoning below for
@@ -3097,77 +3786,6 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   hypothetical one) means unmetered batch access could get expensive
   fast. Rate-limiting or account-gating this is worth deciding before
   shipping it, not after.
-- **[IMPROVEMENT-ROUND] Coverage page — a public, sortable/filterable table of every
-  jurisdiction/platform combination successfully resolved so far.**
-  **Update 2026-08-13: the "Coming soon placeholder, still `noindex`'d"
-  framing below is stale and should not be trusted** — `/coverage`
-  (`archive/main.py:647-655`, `archive/templates/coverage.html`) has been a
-  real, indexable page (no `noindex` anywhere on it, confirmed by grep)
-  since it was actually built in commit `741ca52`, and got a real UX pass
-  today: multiple real example meetings shown per platform (not just 1;
-  Granicus shows 5), the example meeting itself is the link (previously
-  the platform name was), the stale "Cablecast (Detroit, MI)" label is
-  gone now that Charlotte, NC is a confirmed second customer, and the
-  intro/footer copy was rewritten with SEO and LLM-discoverability in
-  mind (see `CLAUDE_BACKLOG.md`'s "SEO / LLM-discoverability" section for
-  further, not-yet-built ideas in this direction). `sitemap.xml` was also
-  fixed the same day to include `/coverage` itself, plus `/`, `/about`,
-  `/meetings` (previously only `/m/{slug}` pages were listed).
-  **What's still genuinely unbuilt, though — the real gap this entry is
-  actually about**: today's page groups by platform with a handful of
-  example meetings each, not a full sortable/filterable table with one
-  row per jurisdiction and the specific per-jurisdiction columns described
-  below (agenda-embedded, instant-transcript-from-source vs.
-  audio-transcript-possible, a two-column provider split, outcome bucket,
-  last-verified date). The spec below is still the live, open ask.
-
-  **Concrete column spec from the user, 2026-08-11** — one row per
-  successfully-added city/jurisdiction, with columns:
-  - Video embeds (yes/no)
-  - Agenda embedded (yes/no)
-  - Instant transcript from the source itself (yes/no) — i.e. the
-    platform's own captions, not this app's transcription
-  - Transcript from audio possible (yes/no) — i.e. the on-demand
-    Whisper transcription path (see "On-demand transcription" below)
-  - **Provider, split into two columns, not one** — e.g. "Detail page:
-    Granicus; Video: Granicus," "Detail page: Swagit; Video: YouTube,"
-    "Detail page: Custom; Video: Vimeo." This directly reflects a real,
-    already-documented fact about this codebase (see `CLAUDE.md`'s
-    "when a platform turns out to be a wrapper around another" bullet):
-    Legistar/CivicPlus both delegate to Granicus for video, and PrimeGov
-    embeds a YouTube video — so "platform" isn't actually one value per
-    meeting today, and a single "platform" column (the original spec
-    below) would hide that real, useful distinction. Maps onto
-    `detect_platform()` (detail-page platform) vs. the resolved
-    `video_format`/video source (video platform) — worth checking
-    against the existing `source_url` delegation quirk noted in
-    `CLAUDE.md` (Legistar/CivicPlus delegation ends up with the
-    *delegated* platform's URL as `source_url`) since that same
-    delegation shapes what "detail page" even means for those rows.
-
-  (Minor ambiguity to resolve when building, not blocking the write-up:
-  the user's phrasing was "a column for each city" — read here as "a row
-  per city, with the columns above," since a literal column-per-city
-  table would be unusably wide at any real scale; worth a quick confirm
-  before building.)
-
-  **Original spec, still relevant, folds in above:** also include an
-  example meeting URL per row, an outcome bucket (real transcript /
-  agenda-only / blank / garbled / wrong-language / no-video, per
-  `app/db/outcomes.py`'s existing `classify_outcome()`), and a
-  last-verified date. Directly addresses a real gap: today, a user only
-  learns whether their city is supported by pasting a URL and seeing what
-  happens — costly for someone checking many jurisdictions one at a
-  time. Also doubles as a trust/credibility signal ("look how much we
-  already cover") and light SEO surface area — exactly the kind of page
-  other people link to and cite (worth removing the current `noindex`
-  once the real table replaces the placeholder). Mostly a front-end
-  exposure task, not new backend work — `/admin/stats` already tracks
-  resolve outcomes by platform and quality bucket (see "Caching and
-  reporting" in README.md); this needs a *public* (non-admin) read path
-  into that same data, a rule for picking a representative example URL
-  per jurisdiction/platform pair (e.g. most recent successful resolve),
-  and the sort/filter UI itself.
 - ~~**Smaller, near-term polish request (2026-08-15) for the "Every place
   we've covered" table that already shipped**~~ **Fixed 2026-08-16, wave
   2 item 9 — full detail in `BACKLOG_DONE.md`.** Distinct from the bigger
@@ -3200,175 +3818,19 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 - **[IMPROVEMENT-ROUND] Video highlight clips + algorithmic feed** — distant future. Flagged
   tension: this app's "never host video, only embed" principle directly
   conflicts with hosting/serving clip segments.
-- **[IMPROVEMENT-ROUND] Search: move to a materialized/indexed column — now confirmed live in
-  production as an OOM crash, not just a future scaling concern.** Built
-  2026-08-08 (see [BACKLOG_DONE.md](BACKLOG_DONE.md)): `/meetings` search
-  (title, jurisdiction, agenda text, transcript text — exact and
-  fuzzy/typo-tolerant modes, see `archive/utils/search.py`) currently
-  works by reading each candidate meeting's already-stored JSON and
-  matching in Python at query time, deliberately, to avoid two things: a
-  schema change (adding a column to the already-live `MeetingPage`/
-  `TranscriptVersion` tables — no longer blocked on migration tooling
-  itself now that Alembic's adopted, see BACKLOG_DONE.md, but still a
-  real production schema change to run deliberately) and a Postgres-only
-  extension (trigram search needs `pg_trgm`, which the local SQLite dev
-  fallback has no equivalent for — would make dev and prod behave
-  differently for the same query, which this codebase avoids on
-  principle elsewhere too).
-
-  **Confirmed hit in production 2026-08-17**: user reported a 502 on
-  `https://redtaperecordings.com/meetings?q=flock`. Plain `/meetings`
-  (no `q`) loaded fine, isolating it to the keyword-search path.
-  Sentry (added the day before, see WO-7 / commit `444cec6`) showed two
-  `Instance failed: xhv2g — Ran out of memory (used over 512MB)` events
-  at 7:10-7:11 AM the same day. Root cause in `archive/db/crud.py`'s
-  `list_pages()`: with a keyword and no other filters, the SQL query
-  matches every `MeetingPage` row, and the function then loads *every*
-  `TranscriptVersion.segments` JSON blob for *every version* of *every*
-  one of those pages into memory in one shot (`crud.py:1046-1054`,
-  `transcript_text_by_page`) before any matching happens — no per-page
-  streaming, no early exit once `page_size` results are found, no cap on
-  how much transcript JSON gets materialized at once. Multi-hour meeting
-  transcripts are large (thousands of timestamped segments each), and
-  this loads all versions of all meetings regardless of relevance, which
-  was apparently enough real transcript volume by 2026-08-17 to blow a
-  512MB instance. So the "fine at today's scale (dozens of meetings)"
-  assumption below was already wrong in production by the time it was
-  actually tested with a real, popular query term — not just a
-  hypothetical hundreds/thousands-scale concern. Not yet fixed; no code
-  changed as part of this investigation (read-only session). Cheapest
-  interim mitigation, short of the real fix below: fetch/scan transcript
-  segments in per-page batches with an early exit once `page_size`
-  matches are found, instead of materializing the whole archive's
-  transcript JSON up front.
-
-  **The materialized column shipped later the same day** — PRs #116
-  (schema + GIN-trigram migration), #123 (one-time backfill, run by Ryan
-  on the Render shell: 1,219 rows), #124 (`list_pages()` rewired to
-  pre-filter in SQL via `_keyword_conditions_postgres()` against
-  `MeetingPage.search_corpus`) — plus hotfix #127 (`deferred=True` on the
-  column, after the freshly-backfilled corpus started riding along on
-  every plain `select(MeetingPage)` and OOM-crashed the *browse* page —
-  see `BACKLOG_DONE.md`'s incident entries for both that and the
-  migration-ordering outage from #116's deploy). **Result, measured live
-  after #127 (2026-08-17 ~10:15 PT)**: browse is fixed for real — plain
-  `/meetings` 37s→502 before, **0.6s** after; `?page=3` **0.4s**. But
-  keyword search only went from *crashing* to *slow*: `?q=flock` 23.5s
-  (~100 matches), `?q=budget` **35s** (~900 of 1,219 meetings match — 45
-  result pages). No longer 502s, so not an outage, but far outside
-  anything a visitor will wait for.
-
-  **Step 1 shipped 2026-08-17 (same day, ~2h after the numbers above) —
-  exact-mode search is now SQL-authoritative and O(page_size) in memory:**
-  full detail in `BACKLOG_DONE.md`'s "Search Step 1: SQL-authoritative
-  `list_pages()`" entry. Short version: `ILIKE '%term%'` on
-  `search_corpus` is *provably the same predicate* as `matches()`'s
-  exact mode (same `build_corpus()` over the same four fields, lowercased
-  on both sides), so the Python re-check over freshly-loaded transcript
-  JSON was pure overhead — dropped. `has_agenda` moved into SQL, LIMIT/
-  OFFSET + COUNT(*) pagination, default-version segments loaded only for
-  the returned page's snippets (preserving the "never show a demoted
-  version's text" rule), fuzzy words checked in Python over *streamed*
-  corpus text (~5ms/doc measured, a few seconds archive-wide, off by
-  default and UI-labeled "slower"). Also fixed: the worker's
-  transcription-completion path never refreshed `search_corpus`, so
-  freshly Whisper-transcribed meetings were silently unsearchable on
-  prod. Verified against a real Postgres 16 + pg_trgm container with the
-  full migration chain (GIN Bitmap Index Scan confirmed via EXPLAIN for
-  the exact operator SQLAlchemy emits).
-
-  **Step 1 live result was only half the win — and the follow-up (#131,
-  same day) is what makes the SQL itself fast:** after #129 deployed,
-  search no longer crashed (fuzzy and `"public comment"` 503→200,
-  counts/snippets correct) but exact search on common terms was *still*
-  21–33s — now provably inside Postgres, on the predicate itself. Rare
-  trigrams (`quokka`) 0.7s vs common ones ~25s regardless of match
-  count: the trigram GIN can't be selective for trigrams every 300KB
-  transcript contains, so every row is rechecked by scanning its whole
-  document, twice (page query + separate COUNT). Reproduced on a real
-  postgres:16 with 1,219 × 300KB lowercase docs + the GIN index (numbers
-  in `BACKLOG_DONE.md`): the two cheap fixes shipped as #131 — **(a)
-  `LIKE` instead of `ILIKE`** (the corpus is lowercased at write time and
-  `parse_query()` lowercases terms, so identical semantics; ILIKE was
-  case-folding every full document per row via locale — 7.7s→1.75s,
-  same gap with the index disabled), and **(b) one query with `count(*)
-  OVER ()`** instead of a separate COUNT (halves the scans). Combined
-  bench: 15.4s→1.76s (8.8×). Two findings recorded, not fixed: the
-  planner **doesn't even use the GIN index** for these — the heap is
-  tiny because the corpora are TOASTed, so the cost model sees "31
-  pages" and seq-scans, blind to detoast cost (irrelevant for common
-  terms, where the index can't help anyway; means rare terms pay a full
-  scan they needn't); and the same bench's stored `tsvector` column
-  answered `@@ 'budget'` in **0.00s** (count) / **0.10s** (ranked page)
-  / 0.15s (phrase) — i.e. Step 2a below isn't just ranking, it's the
-  only path to sub-second on common terms; trigram GIN is structurally
-  the wrong index for "does this huge doc contain this common word".
-
-  **Step 2 — still open, two independent halves, both need one schema
-  migration each and so should wait for WO-10's deploy-time migration
-  mechanism (see the reliability-audit section) after today's two
-  seam incidents:**
-
-  - **2a. Relevance ranking + stemming via Postgres full-text search.**
-    Step 1 makes search fast, but results are still ordered
-    `created_at DESC` — a search for "flock" shows the *newest* meeting
-    that mentions it, not the meeting most *about* it, and "budget"
-    won't match "budgets"/"budgeting". Design: a `tsvector` **generated
-    column** over `search_corpus` (`GENERATED ALWAYS AS
-    (to_tsvector('english', search_corpus)) STORED` — Postgres computes
-    it, so **no backfill script and no ingest change**, the two seams
-    that bit today), a GIN index on it, `websearch_to_tsquery()` for the
-    query (natively understands the exact `"quoted phrase"` /
-    `-exclusion` syntax `parse_query()` already accepts),
-    `ts_rank_cd()` for ordering, `ts_headline()` for snippets (only for
-    the 20 returned rows — it's slow on 100KB+ documents, so never for
-    the whole result set). Trigram stays for fuzzy. Real costs to weigh:
-    (1) a genuine dev/prod divergence — SQLite's FTS5 is a different
-    dialect, so either the tsvector path is Postgres-only with the ILIKE
-    path as SQLite fallback (a real branch, unlike Step 1's dialect-
-    agnostic code), or the test suite gains a Postgres container
-    (`tests/test_list_pages_search_postgres.py` and the new
-    `tests/test_list_pages_sql_authoritative.py` already run clean
-    against `docker run postgres:16` + `alembic upgrade head`, so the
-    harness half exists — it's a CI decision, not a build); (2) tsvector
-    has a 1MB size cap and 16,383-position cap per lexeme — the longest
-    multi-hour transcripts (60k+ words) are worth checking against those
-    limits before committing, not assumed fine; (3) `english` stemming
-    on Spanish-language transcripts (a real, confirmed minority — see the
-    Chula Vista / Fountain Valley entries) degrades to no-stemming, not
-    wrong results, but worth a `simple` vs per-language config decision.
-  - **2b. Fuzzy search via a trigram-indexed vocabulary table.** Fuzzy
-    is correct and no longer crashes after Step 1, but it's inherently
-    O(archive) CPU in Python (tokenize every corpus, ~4ms each) because
-    `matches()`'s bounded Levenshtein against real corpus words has no
-    recall-safe SQL equivalent over whole documents — `word_similarity()`
-    on a 130KB doc is either useless (the recall-safe 0.15 threshold PR
-    #124 used lets everything through) or lossy (anything selective drops
-    genuine 2-edit typos on 6-letter words: "budget"→"bodgat" scores 0.14
-    — worked out from the trigram sets, see `_keyword_conditions()`'s
-    docstring). The classic fix: a `search_vocabulary(word, page_ids or
-    per-page rows)` table of distinct corpus words — *short strings*,
-    where trigram similarity is fast, index-friendly, and accurate —
-    fuzzy-match the *query term* against the vocabulary (`word <-> term`
-    / `similarity(word, term)`), take the small set of real words within
-    edit distance (optionally re-checked with the *exact same* Python
-    Levenshtein to keep today's semantics byte-for-byte), then
-    exact-ILIKE those expanded words against `search_corpus` — which is
-    the already-fast Step 1 path. Needs the table + a populate step
-    (ingest-time from `compute_search_corpus()`'s tokens, plus a one-time
-    backfill) — same "column shipped before backfill/defer" seam class as
-    today, so plan the deploy order explicitly. Lower priority than 2a:
-    fuzzy is opt-in and a few seconds; ranking affects every search.
-- **[IMPROVEMENT-ROUND] Search bar has no `OR` support.** `-exclude`/`-"phrase"` and no-op
-  `+`/`&`/`AND` shipped 2026-08-11 (see BACKLOG_DONE.md) — this entry now
-  covers only the one operator still genuinely missing. `_parse_query()`
-  (`archive/utils/search.py`) returns flat phrase/word lists that all get
-  ANDed together with no concept of grouping — supporting `a OR b` (let
-  alone mixed precedence like `a OR b AND c`) needs a real expression
-  tree, not just a new token type. Worth deciding whether full
-  boolean-expression parsing is actually needed, or whether `-exclude`
-  plus no-op `+`/`AND`/`&` already covers most of the practical value a
-  journalist would want, at a fraction of the parser complexity.
+- **[IMPROVEMENT-ROUND] Tune `_VOCAB_SIMILARITY_THRESHOLD` (`archive/db/crud.py`,
+  currently 0.3, pg_trgm's own default) against real production fuzzy-search
+  query logs — low priority, not a correctness issue.** Search Step 2b
+  (see `BACKLOG_DONE.md`'s search entry) uses this threshold purely as a
+  *candidate generator* for `search_vocabulary`'s trigram lookup — every
+  candidate it turns up still gets re-verified against the exact
+  Levenshtein check `matches()` uses, so a threshold that's too loose or
+  too tight only costs extra/missed *candidate* checks, never a wrong
+  final answer. Never tuned against real data; worth revisiting once
+  there's a real corpus of production fuzzy queries to measure against
+  (same class of follow-up as the earlier, now-superseded
+  `_FUZZY_WORD_SIMILARITY_THRESHOLD` from PR #124, before Step 2b
+  replaced that approach).
 - **[IMPROVEMENT-ROUND] Audit per-adapter coverage of `meeting_body`, then be strategic about
   extending it — low priority, no urgency.** `meeting_pages.meeting_body`
   ([archive/db/models.py:47](archive/db/models.py:47), `Text`, nullable)
@@ -3428,6 +3890,260 @@ The resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   catch today.
 
 ## On-demand transcription — real gaps left open
+
+- **`list_transcription_backlog_candidates()` still does a real N+1 query
+  pattern, found 2026-08-21 while building the daily-report summary
+  query.** Unlike `find_auto_transcription_candidate()` (rewritten
+  2026-08-17 to a SQL `_good_default_transcript_exists()` predicate after
+  its old Python-scan shape was confirmed the #1 consumer of production
+  DB time — see BACKLOG_DONE.md), `list_transcription_backlog_
+  candidates()` (`archive/db/crud.py`) still does `SELECT * FROM
+  meeting_pages`, then a separate `_has_good_transcript()` +
+  `_in_auto_transcription_cooldown()` DB round trip *per page* in a
+  Python loop — its own docstring already says so ("Full Python-side
+  scan over every page, same 'fine at today's scale, revisit at real
+  scale' reasoning"). Each individual query is cheap
+  (`_has_good_transcript()` only selects `content_hash`/
+  `transcript_warnings`, never `segments`), so this isn't the
+  102MB-JSON-load class of incident the search/candidate-sweep entries
+  above describe — but it's still O(n) round trips, and `GET
+  /internal/transcription-backlog` (the route built on this function)
+  now gets hit **hourly** by `scripts/bulk_queue_transcription_backlog.py`'s
+  own scheduled workflow (added the same day, see the entry below) where
+  previously only a human ran `scripts/transcribe_backlog_locally.py`
+  occasionally. Not fixed here — `crud.get_transcription_queue_summary()`
+  (added the same day, for the daily report) needed only a *count*, not
+  the full candidate list, so it reuses the fast
+  `_good_default_transcript_exists()` predicate directly rather than
+  inheriting this function's slower shape. Worth rewriting
+  `list_transcription_backlog_candidates()` the same way
+  `find_auto_transcription_candidate()` was, if hourly production load
+  ever makes this a real, measured problem (check `pg_stat_statements`
+  the same way the 2026-08-17 fix was diagnosed, don't assume).
+
+- **Worker daily activity report, added 2026-08-21.** `GET /internal/
+  send-worker-daily-report` (Archive service) emails a 24h digest
+  (chunks completed, jobs finished, segments transcribed) plus a current-
+  queue snapshot (active jobs, remaining chunks, meetings with no
+  transcript, tier-3 queue remaining) — see README.md's matching entry
+  for the full design and why it needed one new table
+  (`WorkerReportSnapshot`, a single overwritten row) rather than a Render
+  log-parsing script: `chunks_completed` has no per-chunk timestamp
+  anywhere in the schema, so a real 24h delta needs *some* stored
+  reference point, and diffing against a DB snapshot avoids introducing
+  a brand-new Render API key + log-pagination dependency this repo
+  doesn't otherwise have, for a number that's already implicit in
+  existing columns. Triggered by `.github/workflows/
+  worker-daily-report.yml`, a plain `curl` ping — same "GitHub Actions
+  never touches Resend credentials directly" pattern
+  `/admin/send-search-alerts` already established, not a new script with
+  its own copy of `RESEND_API_KEY`.
+
+  **First real manual trigger (same day) found a real bug the test suite
+  couldn't catch**: `crud.get_transcription_queue_summary()`'s
+  `segments_added_last_24h` query used `jsonb_array_length()`, but
+  `TranscriptVersion.segments` is a plain SQLAlchemy `JSON` column
+  (Postgres `json`, not `jsonb`) — a real 500 in production,
+  `UndefinedFunctionError: function jsonb_array_length(json) does not
+  exist`. Fixed to `json_array_length()`. This specific branch is
+  Postgres-only and dialect-gated to `None` on SQLite by design, so
+  nothing in `tests/test_worker_daily_report.py` (SQLite fixture DB)
+  could have caught it — the mistake only surfaced by actually curling
+  the route against real production, confirming this file's own "verify
+  against a real case, don't guess" convention applies to reporting
+  endpoints too, not just adapters.
+
+  **Live-verified working end to end after the fix, 2026-08-21, same
+  day**: real manual trigger (`workflow_dispatch`) against production
+  returned `{"sent": true, "summary": {"active_jobs": 1,
+  "remaining_chunks_in_active_jobs": 1,
+  "cumulative_chunks_completed_all_time": 2986,
+  "cumulative_jobs_completed_all_time": 281, "jobs_completed_last_24h":
+  34, "segments_added_last_24h": 90441, "backlog_no_transcript": 638,
+  "tier3_queue_remaining": 1630}}` — a real Resend send, real numbers,
+  `json_array_length` computing correctly. First scheduled run is
+  23:40 UTC tonight; this manual trigger already exercised the exact
+  same code path, so that run is expected to succeed too, not a new
+  unknown.
+
+- **Second transcription worker added for backlog catch-up, 2026-08-21 —
+  residual auto-gen TOCTOU gap now recorded, not fixed at the DB layer.**
+  `render.yaml` now defines a second `type: worker` service
+  (`rtr-transcription-worker-2`) alongside the original, to work down the
+  ~1600+ archived-but-untranscribed meeting backlog faster. It's a real,
+  distinct service block (not `numInstances` on the original) specifically
+  because Render gives every `numInstances` replica of one service block
+  IDENTICAL env vars, and this pair needs to differ in exactly one:
+  `AUTO_TRANSCRIPTION_REQUESTER_EMAIL` is deliberately left unset on the
+  new service.
+
+  **Why that one omission matters.** `claim_next_chunk()`
+  (`archive/db/crud.py`) already uses `FOR UPDATE SKIP LOCKED` and is
+  genuinely safe for any number of concurrent worker processes — confirmed
+  by reading its own docstring, no code change needed there. The real,
+  separate race lives in idle-time auto-generation:
+  `maybe_generate_auto_job()` → `find_auto_transcription_candidate()` (a
+  plain, unlocked SELECT) → `create_transcription_job()`'s own separate,
+  unlocked "does an active job already exist for this page" check-then-
+  insert, no unique constraint or row lock guarding it. Two worker
+  processes both idle at the same moment — which happens routinely once
+  the queue trickles down to empty — and both configured with a real
+  `AUTO_TRANSCRIPTION_REQUESTER_EMAIL` could both pass that check for the
+  same candidate page before either commits, creating two duplicate
+  low-priority jobs. Confirmed downstream cost: `report_chunk_result()`'s
+  completion path creates a new `TranscriptVersion` with no content-hash
+  dedup against a same-source in-flight duplicate (unlike `/internal/
+  ingest`'s push path, which does dedupe by hash) — real wasted compute
+  and two completion emails, though `promote_transcript_version()` still
+  cleanly settles on one final default version, so it's wasteful, not
+  data-corrupting.
+
+  **This is avoided by construction here, not fixed at the DB layer**:
+  leaving `AUTO_TRANSCRIPTION_REQUESTER_EMAIL` unset on the second worker
+  means its own `maybe_generate_auto_job()` always short-circuits
+  (`worker/main.py`, `if not AUTO_TRANSCRIPTION_REQUESTER_EMAIL: return
+  False`) and never reaches `create_transcription_job()` — the race is
+  structurally impossible on this specific pair. **A future third
+  auto-gen-enabled worker (or setting that var on this second one) would
+  reintroduce it immediately** — the real fix, if this pattern needs to
+  scale past two workers, is a unique partial index / row lock in
+  `create_transcription_job()`'s existing-job check, not another
+  env-var-omission trick. Not built now since it's not needed at N=2 with
+  this specific split.
+
+  **Bulk backlog concurrency**: `scripts/bulk_queue_transcription_
+  backlog.py` (new) pulls candidates from the existing `GET /internal/
+  transcription-backlog` and creates up to 8 `TranscriptionJob` rows per
+  run via `POST /internal/transcription/create-job` at the newly-exposed
+  `priority=PRIORITY_LOW` (that field was added to
+  `TranscriptionCreateJobRequest` — previously only `worker/main.py`'s own
+  direct in-process call could ever use that tier). 8, not closer to
+  `MAX_CONCURRENT_TRANSCRIPTION_JOBS=15`, deliberately leaves ~7 slots free
+  so a real live visitor's own transcription request never hits
+  `too_many_active_jobs` during the catch-up window, and LOW priority
+  means any such real request still jumps the queue ahead of already-queued
+  backlog jobs at the very next claim, regardless of how full the batch is.
+  **Live-verified 2026-08-21, same day**: a manual run against production
+  created 4 brand-new jobs (482/483/484/485) and correctly deduped a 5th
+  candidate onto an already-in-progress job (476) instead of duplicating
+  it; watching both workers' real Render logs directly confirmed the
+  no-collision design end to end — worker-2 claimed job 476's chunk 4,
+  hit a real (unrelated) ffmpeg timeout, released the claim, and worker-1
+  picked up the same chunk 3 seconds later and completed it; worker-2 then
+  picked up newly-created job 482 once the manual push landed. Two
+  distinct `job_id`s `in_progress` at once, confirmed live, not just in
+  theory.
+
+  **Runs hourly now, not manually**: `.github/workflows/bulk-queue-
+  transcription-backlog.yml` (added 2026-08-21, same day) — the first
+  manual run above also confirmed worker-2 sits genuinely idle for
+  multi-minute stretches between whenever someone happens to re-run this
+  by hand, which defeats the point of having a second worker. Hourly is
+  safe because of the same two properties noted above:
+  `create_transcription_job()`'s server-side dedup (a page with an
+  already-active job is a no-op, not a duplicate) and the
+  `too_many_active_jobs` early-stop, so this can't pile up an
+  ever-growing queue between runs. New repo secret:
+  `AUTO_TRANSCRIPTION_REQUESTER_EMAIL` (Settings → Secrets and variables
+  → Actions), same address as the Render-side env var of the same name.
+  Tied to the backlog catch-up window this second worker exists for —
+  revisit the cadence (or disable the workflow) once this backlog figure
+  is worked down.
+
+- **Tier-3 feed rate raised to match real two-worker throughput,
+  2026-08-21 — real measurements, not a guess.** Real scope, checked
+  live: 644 meetings on the site have no transcript
+  (`/meetings?has_transcript=false`, paged through in full), 562 of
+  those are currently eligible candidates (447 HLS, 91 direct MP4, 20
+  YouTube — only ~3.6% blocked on the separate residential-IP caption
+  path, 3 MP3), and a separate 1,630-URL tier-3 *discovery* queue
+  (`scripts/tier3_auto_transcription_queue.txt`) hadn't even reached the
+  Archive yet. At the old feed rate (12 pages/6h = 48/day,
+  `feed_tier3_auto_transcription.py`), draining that 1,630-entry queue
+  would've taken **~34 days** just to get the pages *into* the Archive —
+  regardless of how fast either worker could transcribe, since a page
+  isn't a transcription candidate until it's a real `MeetingPage` row.
+  Meanwhile real production measurements the same day showed each
+  worker processing a real 900s chunk in ~180-200s (**~5x realtime**,
+  ~10x combined for both), and a real 25-page sample of this exact queue
+  averaged ~70 minutes/meeting at an 88% feasibility rate — so the old
+  feed rate was the actual bottleneck, not worker capacity, by roughly
+  4-5x. Raised `BATCH_SIZE` 12 → 48 (192/day) in
+  `feed_tier3_auto_transcription.py` — sized to roughly match, not
+  wildly exceed, the two workers' real combined throughput; see that
+  script's own docstring for the full math. Estimated result: ~8.5 days
+  to feed the full 1,630-entry queue at the new rate, with the two
+  workers keeping pace with it rather than idling on a starved queue —
+  call it **~9-10 days for the whole combined backlog** (644 already-live
+  + 1,630 tier-3) at current throughput, not the ~34+ days the old
+  mismatch implied. Real quality caveat carried over from the "tiny"
+  model findings above still applies to all of this — quantity isn't the
+  only axis that matters here, and speed doesn't change the existing
+  quality tradeoffs already documented. Revisit if either side's real
+  throughput changes materially (worker plan/model-size/count change, or
+  this platform mix's real average duration turning out different at a
+  larger sample size).
+
+- ~~**[JUST-DO-IT] `find_auto_transcription_candidate()` streams the
+  entire transcript corpus through the DB every 5 idle minutes — an N+1
+  that loads full `segments` JSON per page.**~~ **Fixed 2026-08-17 (same
+  day it was found) — full detail in `BACKLOG_DONE.md`'s "Worker
+  auto-transcription candidate sweep" entry.** Short version: `pg_stat_
+  statements` showed `_has_good_transcript()`'s full-entity select
+  (segments JSON included) as the **#1 consumer of production DB time**
+  (218,480 calls, 47 min); the sweep now runs as one `NOT EXISTS`
+  candidate query over `content_hash`/`transcript_warnings` (never
+  `segments`) plus one status/updated_at history query, then the
+  unchanged cooldown rule in Python — verified on real Postgres as a
+  Hash Anti Join touching 8 buffers where it used to move 102MB.
+  `_has_good_transcript()` and `_in_auto_transcription_cooldown()` (which
+  was also dragging `TranscriptionJob.partial_segments` along) are fixed
+  for their other callers too. **What this fix does NOT claim**: that the
+  sweep was the search-latency contention — see the search entry; the
+  `pg_stat_statements` answer there is that the app's own LIKE scans
+  average 16.5s each on this I/O-starved DB, so removing the sweep helps
+  the DB generally but is not the search fix.
+  **Related, same `pg_stat_statements` read — a house-rule finding, not
+  a code bug:** four one-off, hand-written analytics queries (`mp.`/`tv.`
+  aliases, one with `AVG(jsonb_array_length(tv.segments::jsonb))`, one
+  `SELECT mp.slug, mp.jurisdiction, tv.segments … JOIN`) each ran
+  **50–62 seconds** against production — full scans of every `segments`
+  blob on a `shared_buffers = 64MB` server whose TOAST reads run at
+  ~3MB/s cold. Each is a minute of saturated I/O during which live
+  `/meetings` search crawls for real users. They aren't from app code
+  (SQLAlchemy never emits those aliases) — they're interactive sessions
+  exploring prod data. Source, as far as it could be traced (2026-08-17
+  evening): the "empty pages" peer session (PR #136) confirmed it never
+  opened a prod DB connection (curl + scratch SQLite only); the "Q&A
+  Prod" session confirmed *it* never ran raw SQL either — the auto-mode
+  permission classifier blocked its `psql` attempt and it used the app's
+  `/internal/*` endpoints instead — **but one of its spawned background
+  sub-agents had been told to "sample real archived rows" without raw
+  SQL being explicitly forbidden, and sub-agents evidently aren't held to
+  the same `psql` gate the top-level session hit.** That's the systemic
+  gap, not the specific query: a top-level permission block doesn't
+  propagate to sub-agents' instructions unless the spawning prompt says
+  so. All three of that session's agents have since been given an
+  explicit "never run raw SQL/psql against prod" correction.
+  `pg_stat_statements` itself has no timestamps or client identity to
+  pin it further. Best remaining lead (relayed second-hand by the Q&A
+  session, unverified): a since-ended peer session named "Whisper
+  instructions" had described "skimming ~780 real scraped-caption
+  transcripts in the archive DB for quality" as prep for a Whisper
+  prompt-eval harness — a close match for both the
+  `AVG(jsonb_array_length(tv.segments::jsonb))`-by-platform shape and
+  the segments-by-slug pulls. **Rule worth adding to `CLAUDE.md`, right
+  next to the existing `.env`-grep incident bullet (same "a shell command
+  with real consequences" class)**: never run a full-`segments`/full-
+  corpus scan against the production DB from an interactive session —
+  sample with `LIMIT`, aggregate over `pg_column_size()` instead of the
+  values, use `cast(segments AS text) <> '[]'`-style predicates for
+  emptiness (what #136's in-app code correctly does), or use the
+  PITR/restore path (`BACKLOG_DONE.md`'s PITR entry) for real analysis.
+  And the corollary that actually closes the gap: **any prompt that
+  spawns a sub-agent with prod access must restate the rule
+  explicitly** — a permission block the parent hit does not carry into
+  the child's instructions.
 
 - **[LATER] Hallucinated-transcript detection (`detect_hallucination_warnings()`,
   added 2026-08-16 alongside the phase-cancellation fix — see
@@ -4021,6 +4737,431 @@ one item below is resolved as a result.
   `app/reporting.py`'s private `send_report_email()`, which is scoped to
   the resolver service. Not started — this is a scoped feature request,
   not yet designed in full or built.
+
+- **`detect_language_from_texts()` samples only the first 2000 characters
+  of the merged transcript, so a bad start-of-meeting stretch can mislabel
+  the whole page's language even when the rest is confidently English —
+  confirmed live 2026-08-17/18 on two real pages from
+  `scripts/transcribe_backlog_locally.py`'s local-Whisper batches.**
+  `/m/meeting-00bbd1` (Lincoln City, OR): only chunk 1 of 5 came back
+  low-confidence on Whisper's own per-chunk language guess (`cy` at 63%);
+  chunks 2-5 were confident `en` (99-100%). `/m/meeting-d09fc0` (Moraine
+  City, OH): the reverse pattern -- chunk 1 was confident `en` (100%), but
+  chunks 2-8 (a genuinely very quiet ~1.8h recording, repeated
+  "suspiciously quiet" ffmpeg warnings, several chunks under 30 segments
+  for 15 minutes of audio) kept guessing `cy` at low confidence. Both
+  pages still ended up with the whole meeting's `transcript_language`
+  field set to `cy` (Welsh) in the final ingest. Root cause, confirmed by
+  reading the code (not guessed): the per-chunk language values logged
+  during transcription are Whisper's own internal guesses and are never
+  used for the page-level language -- `transcribe_meeting()`
+  (`scripts/transcribe_backlog_locally.py`) instead calls
+  `detect_language_from_texts()` (`app/utils/vtt_parser.py`) on the full
+  merged-and-sorted segment text, which joins every segment's text and
+  hard-truncates to `[:2000]` characters before running `langdetect` on
+  that sample alone -- there is no chunk-level voting or weighting
+  anywhere in the pipeline. Since segments are sorted by start time, the
+  first ~2000 characters are dominated by whatever is at the start of the
+  meeting, so a bad opening stretch (dead air/music before the meeting is
+  gaveled in, an invocation or proclamation genuinely in another
+  language, or just a quiet/noisy chunk Whisper hallucinates
+  foreign-looking text from) can single-handedly decide the label for a
+  multi-hour, overwhelmingly-English meeting. This matches a real,
+  recurring pattern in these sources per the user directly (2026-08-18):
+  short (2-3 min) foreign-language stretches (proclamations, individual
+  speakers) and dead-air/music (meeting start, or a recess in 4+ hour
+  meetings) that Whisper isn't designed to handle well, embedded inside
+  meetings that are otherwise clearly one language throughout. Worth
+  fixing with a real per-chunk-text vote (or a length-weighted one) rather
+  than "first 2000 characters of whatever comes first" -- `vtt_parser.py`'s
+  function is shared with the scraped-caption adapters too, so check
+  whether they have the same 2000-char-of-whichever-track-sorts-first
+  exposure before changing it, not just the Whisper path.
+
+- **[JUST-DO-IT] `detect_hallucination_warnings()`'s repetition check is
+  diluted against total meeting length, so it structurally can't catch a
+  real hallucination loop shorter than ~50% of a long meeting, no matter
+  how blatant -- confirmed root cause (read the code, not guessed) plus
+  six live, currently-undetected examples across five different meetings
+  from this session's local-Whisper batches, on top of the already-fixed
+  Port Coquitlam case (`BACKLOG_DONE.md`) this detector exists to catch.**
+  None of the pages below show a hallucination warning; all were pushed
+  live as normal, clean transcripts.
+
+  **Root cause, confirmed by reading `worker/segment_utils.py`.**
+  `_repetition_run_ratio()` finds the single longest run of consecutive
+  near-duplicate segments (via `SequenceMatcher(...).ratio() >= 0.85`,
+  which *does* handle minor text variation, not just byte-identical
+  repeats -- an earlier draft of this entry wrongly assumed otherwise)
+  and divides by the **total segment count of the entire meeting**, then
+  flags only if that ratio is `>= 0.5`. That works fine for a short
+  meeting where a loop dominates most of it (Port Coquitlam: 2 chunks,
+  ~1572s total) -- but for any longer meeting, a loop has to eat *half the
+  entire recording* to ever trip the threshold. A blatant, obviously-fake
+  loop that's short relative to a multi-hour meeting mathematically
+  cannot cross 0.5 no matter how repetitive it is locally. Confirmed
+  numerically against three of the cases below: Moraine City's 93-cue
+  Welsh loop is 38.6% of its (short, 241-cue) meeting -- close, but still
+  under threshold; Cumberland County's 41-cue `"340,000,"` loop is only
+  3.2% of its 1,291-cue meeting; Haines City's 7-cue *exact-repeat* loop
+  (would trivially pass the 0.85 near-duplicate check on its own) is a
+  mere 1.3% of its 525-cue meeting. The near-duplicate matching genuinely
+  works -- the global-length dilution is what's actually broken.
+
+  - **Hermosa Beach, CA** (`hermosa-beach-ca-2026-02-03-city-council`) --
+    the worst case, two back-to-back loops. **`00:02:30` ->
+    `01:30:00`** ([deep link](https://redtaperecordings.com/m/hermosa-beach-ca-2026-02-03-city-council?t=150))
+    of 121 cues rotating between two differently-*length* phrasings of
+    `"Local government meeting. Common terms..."` (their low
+    cross-phrasing `SequenceMatcher` ratio, ~0.45, means this specific
+    sub-loop evades even the near-duplicate check, not just the length
+    dilution), immediately followed by **`01:00:30` -> `01:15:03`**
+    of 176 consecutive cues reading just `"Music"` (Whisper's own
+    non-speech tag, degenerately repeated once every ~5 seconds instead
+    of emitted once) -- both inside the same bad stretch, before the real
+    meeting abruptly starts at
+    [`?t=5400`](https://redtaperecordings.com/m/hermosa-beach-ca-2026-02-03-city-council?t=5400)
+    ("Good evening, everyone. And I called to order this February 3rd,
+    2026 regular meeting..."). `language=en` and zero
+    `transcript_warnings`, despite ~87 of this 6.14h meeting's first 90
+    minutes being fabricated.
+  - **Moraine City, OH** (`meeting-d09fc0`) -- roughly **`00:46:30` ->
+    `01:46:21`** ([deep link](https://redtaperecordings.com/m/meeting-d09fc0?t=2790),
+    real content resumes at
+    [`?t=6381`](https://redtaperecordings.com/m/meeting-d09fc0?t=6381))
+    of a genuinely very quiet ~1.8h recording (repeated "suspiciously
+    quiet" ffmpeg warnings across nearly every chunk, some down to
+    **-75dB** -- worse than Port Coquitlam's confirmed-broken -44/-45dB)
+    is fabricated Welsh-language text with zero connection to an Ohio
+    city council meeting -- `"Y Llywodraeth Cymru"` ("The Welsh
+    Government"), 98 occurrences total (93 of them one single unbroken
+    run, 40.7% of the page's 241 cues), plus nonsense Welsh sentences and
+    repeated isolated numbers (`"19."` x6 around `00:15:52`-`01:04:58`,
+    a possibly-related weaker instance of the same failure). This
+    directly explains the page's `transcript_language="cy"` mislabeling
+    filed above under the `detect_language_from_texts()` entry -- here
+    the language tag is actually *consistent* with a large fraction of
+    the transcript's real (fabricated) content, not just an unlucky
+    2000-character sample. Real content resumes cleanly at `01:46:21`.
+  - **North Kingstown School Committee, RI** (`meeting-89d6b1`) --
+    confirmed, not just a suspected mic-check: **`00:01:00` ->
+    `00:15:06`**, 80 consecutive cues of `"Test, test."` /
+    `"Test, test, test."` at a mechanically uniform ~10-second cadence
+    with **zero** real speech interspersed for the entire span (100%
+    local density) -- a real AV check would have pauses, adjustments,
+    someone else talking; this doesn't. 38% of the meeting's 210 total
+    cues. Real roll call starts immediately after, at `00:15:00`.
+  - **Cumberland County, NJ**
+    (`cumberland-county-nj-2020-01-28-board-of-county-commissioners-regular-board-meet`)
+    -- `"340,000,"` repeated exactly once per second for 41 straight
+    seconds, `00:53:21` -> `00:54:02`, 100% local density, only 3.2% of
+    the meeting's 1,291 total cues.
+  - **Haines City, FL** (`meeting-16157c`) -- `"You're in the process."`,
+    byte-identical, 7 times in 16 seconds (`00:09:42` -> `00:09:58`),
+    100% density -- the cleanest possible case for the near-duplicate
+    check (would trivially score 1.0), and it *still* wasn't flagged,
+    purely because 7/525 total cues is nowhere near 50%. The clearest
+    single proof that the global-ratio design, not the matching logic, is
+    the actual bug.
+  - **Lincoln City, OR** (`meeting-00bbd1`, previously only flagged above
+    for its `language=cy` mislabeling) -- also has real fabricated
+    content, just a smaller dose: a `"Yn ymwneud?"` ("relating to?")
+    cluster around `00:09:02`-`00:09:30`, plus an isolated fabricated
+    Welsh sentence at `00:10:21`. Confirms the language mislabeling
+    there wasn't purely a sampling-bad-luck metadata issue -- there's a
+    real, if minor, garbled patch underneath it too.
+  - **Vacaville, CA** (`vacaville-ca-2026-06-09-regular-meeting-of-the-city-council`,
+    version 1287) -- found live 2026-08-19, shipped to the public site
+    *after* the fix above was already prototyped/validated but still
+    unmerged: `00:00`-`06:29` is real dead air/pre-meeting silence (the
+    meeting doesn't actually start until "I do believe the vice mayor is
+    attempting to be online tonight..." at `06:33`), but the stored
+    transcript instead has "In this video, I will show you how to make
+    a new video." looped 5x (`00:58`-`01:33`), then a run of bare digits
+    (`"5." "6." "5."` ..., `03:42`-`04:34`), then a run of decimals
+    (`"1.3x." "1.4x."` ..., `05:36`-`06:00`) -- the app's own
+    `detect_hallucination_warnings()` correctly flagged it
+    (`already_flagged` would be true), so the *detection* side is
+    working; this is purely evidence the *prevention* fix (`vad_filter=
+    True`) still isn't deployed. `git show HEAD:worker/transcription_engine.py`
+    confirms zero mentions of `vad_filter` in the last-committed
+    version -- the fix genuinely only exists in the uncommitted working
+    tree, not "was live at some point and regressed." Traced while
+    investigating an unrelated on-demand-transcription request (job 256,
+    Redwood City CA, `jlevine@hlcsmc.org` -- see `BACKLOG_DONE.md`'s
+    2026-08-19 entry) whose own chunk 1 is a plausible but *not yet
+    confirmed* third instance of the same pattern (that meeting's
+    original pre-fix chunk-1 content was never pulled from
+    `transcription_jobs.partial_segments` to check).
+
+  **Fix direction**: the near-duplicate matching (`SequenceMatcher` at
+  0.85) is the right primitive and doesn't need to change. What needs to
+  change is scoring a *sliding window* (or absolute run length in
+  seconds/cues, not just a ratio against the whole meeting) rather than
+  one global fraction -- so a short, obviously-looping stretch inside a
+  long meeting can trip it independent of how long the rest of the
+  meeting is.
+
+  **False-positive caution for whoever picks this up**: a cruder first
+  pass at this same scan (raw repeat count over the whole meeting, not
+  contiguous-run clustering) also flagged `"thank you"`, `"okay"`,
+  `"yes"`, and `"here"` recurring dozens of times each in several *other*
+  meetings from this session. Re-checked with actual clustering: those
+  don't show the same signature as the six cases above (100% local
+  density, zero real content interspersed) -- e.g. Halifax's 28 "thank
+  you"s are ~29 seconds apart on average (consistent with a chair
+  thanking distinct public commenters over a real 13-minute comment
+  period), and short 5-7x roll-call bursts of "yes"/"here" a few seconds
+  apart are consistent with distinct real speakers answering a roll call
+  in turn. Not proof either way without listening to the audio, but a
+  materially different pattern from the six confirmed cases -- any fix
+  should be validated against both sets (catch the six, don't flag
+  ordinary meetings) before shipping.
+
+  **Fix approach prototyped and empirically validated 2026-08-18 --
+  root cause is upstream of this detector, not a smarter detector.**
+  Rather than only improving `detect_hallucination_warnings()` after the
+  fact, the real fix is stopping Whisper from hallucinating on dead
+  audio in the first place: enable faster-whisper's built-in VAD
+  (`vad_filter=True`, Silero VAD under the hood -- a real
+  speech-vs-non-speech classifier, not a volume threshold, so it also
+  catches loud-but-non-speech audio like a musical intro, not just
+  literal silence) in `worker/transcription_engine.py`'s
+  `FasterWhisperEngine._transcribe_sync()`. Confirmed on the exact
+  Hermosa Beach clip behind the "Music" loop above: old settings
+  reproduce the fabricated `"Local government meeting. Common terms..."`
+  text directly; with `vad_filter=True` it correctly returns **zero
+  segments** instead (and ~7x faster, since it skips decoding
+  non-speech instead of attempting it). Same clean result on a
+  Moraine-City-zone clip: old settings burned 141s decoding nothing;
+  new settings took 1s to reach the same (correct) empty conclusion.
+
+  **A second, real bug was found *by* this same validation, independent
+  of the fix above** -- worth its own record since it would have been a
+  regression if shipped blind: `vad_filter=True` alone can merge two
+  genuinely separate real speech bursts, on either side of a real VAD-
+  skipped silent stretch, into one output segment -- keeping correct
+  *text* but assigning a wildly wrong *timestamp range* (the first
+  word's start to the last word's end, silent gap included). Reproduced
+  on North Kingstown RI's `meeting-89d6b1` chunk 1: one segment came
+  back as `[66.8s-735.9s]` (an 11-minute span) for what's actually two
+  distinct real utterances -- a lone word ("So") at 67.5s, then real
+  content resuming at 732.8s -- confirmed independent of every other
+  setting tried (`condition_on_previous_text` True or False, custom or
+  default `vad_parameters`: identical bug every time). Given this app's
+  entire product is deep-linking to an exact timestamp, a wrong segment
+  boundary is arguably worse than a missing one. **Fix**: also enable
+  `word_timestamps=True`, then re-split any segment wherever two
+  consecutive words have a gap larger than ~2s, using the real
+  surrounding word timestamps instead of trusting the model's own
+  reported `segment.start`/`segment.end`. Validated on the same North
+  Kingstown chunk: correctly split the broken 668-second segment into
+  `[67.5-67.9] "So"` and `[732.8-736.2] "folks, just a quick
+  reminder..."`, and caught several *other* smaller instances of the
+  same bug in the same chunk (25s and 83s hidden gaps) that weren't
+  otherwise obvious -- longest segment after the fix: 7.2s, versus 668s
+  before it.
+
+  Full validated combination: `vad_filter=True` + `word_timestamps=True`
+  + gap-based re-splitting (new code, not a library flag) +
+  `condition_on_previous_text=False` (kept as defense-in-depth for
+  within-chunk cascading per faster-whisper's own docstring, though
+  confirmed *not* the cause of the timestamp bug above -- reproduces
+  identically either way). Regression-checked clean against Buffalo,
+  NY's already-good transcript (352 sane, correctly-ordered segments,
+  same coherent content start-to-finish) and North Kingstown's real
+  content once past the fixed boundary (roll call, Pledge of Allegiance,
+  etc., all intact). Not yet wired into production
+  `worker/transcription_engine.py` or `scripts/
+  transcribe_backlog_locally.py` -- next step once Port Coquitlam's raw
+  (unfixed-audio, no left-channel retry) case finishes validating too.
+
+  **Two alternative approaches were considered and parked, not
+  rejected** -- allowed back if the above ever proves insufficient on a
+  case it doesn't handle:
+  - Skip trusting faster-whisper's internal VAD-region stitching
+    entirely: call Silero's `get_speech_timestamps()` directly, decode
+    each real speech region as its own separate clip, and place each
+    one using this app's own already-trusted `shift_segments()`
+    chunk-offset math (`worker/segment_utils.py`) instead of the
+    library's internal remapping. More control, more new code to
+    maintain.
+  - Physically strip non-speech out of the audio ourselves before
+    Whisper ever sees it (e.g. `ffmpeg silenceremove`), with fully
+    manual bookkeeping of what got cut so timestamps can be shifted back
+    correctly by hand. The most manual of the three, full control, but
+    the most new surface area for a first-party timestamp bug --
+    parked in favor of leaning on the library's already-tested
+    `word_timestamps` machinery instead, now that the gap-split fix
+    above is confirmed to work.
+
+## ~~`GET /internal/transcription/hallucination-candidates` returns 502~~
+
+**Fixed 2026-08-21** — diagnosis (same unbounded-full-scan shape as
+`find_auto_transcription_candidate` before its 2026-08-17 rewrite)
+confirmed by code review; fixed with a data-shaped split (small
+already-flagged set pulled in full, big not-yet-flagged population
+bounded by `limit`/keyset `after_id` pagination) rather than a pure SQL
+predicate, since this endpoint's whole job is running
+`detect_hallucination_warnings()` itself. Full root-cause writeup, the
+NULL-`transcript_warnings` bug caught while fixing it, and test
+verification detail in `BACKLOG_DONE.md`.
+
+## `scripts/transcribe_backlog_locally.py`'s "no usable audio/video source on re-resolve" skip has no retry -- confirmed a real, live meeting can get wrongly skipped by one transient failure (2026-08-18)
+
+**Confirmed live, 4/4 tested, not a hypothetical.** During this session's
+tier-3-queue local-Whisper batches, four meetings were logged as skipped
+with `"no usable audio/video source on re-resolve"`: Diamond Bar, CA;
+Genesee County, MI; Sullivan County, NY (all `iqm2`); and Brookhaven, NY
+(`civicclerk`, a slightly different failure -- `ffmpeg extraction failed`
+after a successful resolve, i.e. the same class of problem one step
+later in the pipeline). Re-running `finder.resolve()` against the exact
+same URLs, unchanged, minutes later: **all four succeeded immediately**,
+zero warnings, real `video_url`s -- and for Diamond Bar, CA specifically
+(which already had a real archived page from before this batch even
+ran, `city-of-diamond-bar-ca-2020-06-02-city-council-regular-meeting`),
+the stored `video_url` from that earlier successful resolve is still
+live and reachable today (confirmed via a direct `HEAD` request: `200
+OK`, 300MB, real `Content-Length`) -- meaning the video was never gone
+at any point; the pipeline just happened to hit one slow/flaky moment
+against that specific government server during the batch run and gave
+up permanently instead of retrying.
+
+**Why this is worse than an ordinary flaky-network bug for this
+specific script**: `scripts/transcribe_backlog_locally.py`'s `process_
+one()` treats every `transcribe_meeting()` failure identically (skip
+and move on to the next candidate) whether the underlying cause is
+"genuinely no video exists" or "the request timed out once." Diamond
+Bar, CA is the sharpest case: a page that had *already* been live on
+the site with a real video before this session touched it got a
+transcript-attach attempt today, hit one bad moment, and is now
+recorded as unresolvable -- even though nothing about the source
+actually changed. A page that already passed the bar to exist on the
+site is *more* suspicious to skip permanently on one failure, not less.
+
+**Fix direction**: add a single retry (with a short backoff) around the
+`finder.resolve()` / `extract_chunk_audio()` calls in `transcribe_
+meeting()` before concluding a candidate is genuinely infeasible --
+mirroring the retry-on-transient-failure pattern `_request_json()`
+already uses for the archive-side HTTP calls in this same script, just
+extended to the resolve/extraction side too, which currently has none.
+Worth checking whether `worker/main.py`'s own idle-time auto-
+transcription path has the same one-shot-no-retry gap, since it likely
+shares similar resolve/extract call shape.
+
+**A fifth case, same day, isolated further**: a 10-meeting `new.swagit.
+com`-heavy batch hit `ffmpeg extraction failed on chunk 1/1` on 4/10
+(Odessa/Midland/Cedar Hill TX, Grand Rapids MI) after a 120s timeout
+each. Retried all 4 immediately after: 3 succeeded on the very next
+attempt. Odessa specifically failed *twice* before succeeding on a
+third try, which ruled out one theory worth recording — it's not that
+the exact `ffmpeg` command is broken for this host: a manual `ffmpeg`
+invocation, byte-for-byte identical to `extract_chunk_audio()`'s own
+(`-headers ... -ss 0 -i <url> -t 900 -vn -ac 1 -ar 16000 -c:a libmp3lame
+-b:a 32k`) run standalone against the exact URL that had just failed
+inside the script, completed in ~12s both times it was tried. So the
+video/host/command are all fine; whatever caused the in-script hang to
+120s is specific to running under the script's actual asyncio/subprocess
+context, not the source. Consistent with (not proof of) a resource
+buildup across a long sequential batch in one process rather than a
+purely random network blip — worth keeping in mind if the fix above
+ends up being "add a retry" rather than "find and fix the root cause,"
+since a retry would paper over this either way.
+
+**Two more cases, 2026-08-19, one of which weakens the "just retry"
+assumption above.** Plainfield, NJ (`iqm2`) hit the exact `"no usable
+audio/video source on re-resolve"` skip during a 10-meeting tier-3
+batch, despite a `--dry-run` earlier the same session confirming a real
+video/95min duration for the identical URL — a 6th confirmed instance
+of the same transient pattern, consistent with the fix direction above.
+**Brookhaven, NY (`civicclerk`) is the concerning one**: retried twice,
+back-to-back, immediately after the first failure (not just once, and
+not with any delay) — both retries failed identically, same `ffmpeg
+timed out extracting ... @ 0s` on chunk 1/2, same CDN host
+(`cpmedia.azureedge.net`), same ~120s timeout. Unlike every other case
+in this entry, one retry did not recover it. Doesn't disprove the
+"add a retry" fix direction above (a single retry is still very likely
+worth it given the other 5 cases), but does mean that fix alone won't
+be sufficient for every case — Brookhaven either needs more than one
+retry, a longer per-attempt timeout, or has a genuinely slower/more
+rate-limited CDN than the other hosts seen so far. Not re-attempted a
+third time this session; worth a fresh look (and worth checking whether
+it's this specific media file or `cpmedia.azureedge.net` generally)
+before assuming it's simply "still transient, just unlucky twice."
+
+## `tier3_auto_transcription_queue.txt` has at least one genuinely truncated URL, not just dead/never-formed ones (found 2026-08-19)
+
+While hand-picking real candidates for a local-Whisper batch, Orinda,
+CA's queue entry (line 8) turned out to be cut off mid-query-string:
+`http://orindaca.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2665&Me`
+— confirmed via `od -c` that the line genuinely ends `...&Me\n` in the
+file itself, not a display artifact. Distinct from the "URLs that look
+like they were never actually formed" pattern the user separately
+flagged for some iqm2/ClerkBase dead-list rows earlier this session
+(those were absent a real ID/params entirely, not a well-formed URL cut
+short mid-token) — this one clearly had the rest of a real query string
+and lost it. Single confirmed instance so far; worth a broader scan of
+the queue file for other lines that look implausibly short for their
+platform's usual URL shape before assuming it's isolated.
+
+## Some Swagit meetings have no single "whole meeting" video file — pre-split into per-agenda-item clips instead (found 2026-08-18, real fix landed for a related bug, this part still open)
+
+**Confirmed live, not assumed.** While fixing a real bug in
+`app/platforms/swagit.py` (see `BACKLOG_DONE.md`'s 2026-08-18 entry —
+a dead legacy `player.src()` fallback URL was winning over the real
+video data on some pages), a deeper structural fact surfaced: Yolo
+County, CA's clip 324107 (and likely many other Swagit meetings with a
+populated agenda) isn't stored as one continuous recording at all. The
+page's real jwplayer `playlist: [...]` JSON has **12 separate entries**,
+one per agenda item (`" 9:00 A.M. CALL TO ORDER"`, `"CONSENT AGENDA"`,
+... `"CLOSED SESSION"`), each with its own distinct
+`archive-stream.granicus.com/.../{date}-{id}.360.mp4/playlist.m3u8`
+file. The bug fix above correctly picks a *real* file now instead of a
+dead one, but for a chaptered meeting like this it's only the *first*
+agenda item's own short clip -- confirmed live: resolved duration for
+this meeting came back as 2.1 minutes, not the real multi-hour meeting
+length. Verified this isn't a one-off: re-ran the same fixed resolver
+against all 43 URLs that had been hitting the dead-fallback bug -- 14
+resolved to a normal, plausible single-file duration (11 landed in the
+5-45min "short" range, 3 came back >45min), but the other **29** came
+back suspiciously short (many under a minute, one at flat 0.0 minutes),
+consistent with the same first-chapter-only pattern.
+
+**Not yet answered, needs real investigation before coding a fix**:
+does Swagit still serve a true full-session file anywhere for these
+customers (a different field/URL this session didn't find, possibly
+alongside the chaptered playlist -- worth checking whether the now-dead
+`player.src()`/`hls_path` fallback was *itself* originally meant to be
+that whole-meeting stream, since the current chaptered `playlist` looks
+like a newer addition it now loses to only because the old one is
+broken, not because it was always meant to win), or whether "pre-split
+into per-agenda-item clips, no single full recording" is simply how
+some Swagit customers' pages have always worked. If it's the latter,
+this app's whole per-chunk transcription/duration-probing pipeline
+(built around "one video_url, one continuous duration") would need a
+real design decision for this platform: concatenate all N clips into
+one virtual timeline before chunking (extra complexity, but keeps the
+rest of the pipeline unchanged), or treat each agenda-item clip as its
+own independently-transcribed unit and stitch the resulting segments
+back together using the clips' own real seq/title ordering (Swagit
+already provides that structure for free, arguably a cleaner fit than
+faking one continuous file).
+
+**Which URLs are affected**: the 29 still-short ones out of the 43-URL
+list already gathered this session (`alamoareampo`, `applevalleymn`,
+`baytowntx`, `belfastme`, `breaca`, `conejovalleyusdca`,
+`coronadousdca`, `delvalleisdtx`, `greenburghny`, `houstonisdtx`,
+`jacksonms`, `jupiterfl`, `lagov`, `lubbockisdtx`, `mahwahnj`,
+`missouricitytx`, `mobilityauthority`, `nassaucountysd`,
+`newportricheyfl`, `olatheks`, `pelhampublicschoolsny`, `planotx`,
+`princegeorgebc`, `sandovalcountynm`, `sedonaaz`, `siouxcityschools`,
+`wallercountytx`, `whiteplainsny`, `yolocountyca` -- all
+`{customer}.new.swagit.com/videos/{id}`), but likely a much broader
+set across Swagit generally, not just these 43 -- these just happen to
+be the ones that were already flagged dead by an unrelated bug and got
+a second look. Worth a fresh, broader live audit of Swagit meetings
+with populated agendas generally once the design question above is
+answered, not just this specific 29.
 
 ## Deprioritized ideas — allowed back if we wish (parked 2026-08-15)
 

@@ -42,45 +42,168 @@ consequence if unfixed, and rough fix effort — never just a description
 with no sizing. Genuine open questions the Routine couldn't resolve
 itself go in the entry as questions, not silently guessed at further.
 
-No entries yet — this file was created alongside the Routine itself,
-after retroactively marking every `rtr-claude`-labeled email that
-existed as of 2026-08-17 as already-processed (they were reviewed
-manually in the session that built this Routine; their findings already
-live in `BACKLOG.md`/`CLAUDE_BACKLOG.md` directly, not here). The first
-real entries will appear after the Routine's first scheduled run against
-genuinely new mail.
-
 ---
 
-## 2026-08-17 (second pass)
+## Open item
 
-**Note on this run**: the retroactive "mark everything already-processed"
-step described above did not actually take — this run's own search for
-`label:rtr-claude -label:rtr-claude-processed` still returned all 34
-threads that existed as of today, none carrying the
-`rtr-claude-processed` label. All 34 were reviewed. Most turned out to
-already be covered: out of scope (`how-to-adu.com` alerts), purely
-informational (account sign-ins, GA/Search-Console property
-confirmations, daily transcript-count reports), UptimeRobot `TEST:`
-notifications, or duplicates of work already merged same-day in PR #114
-("Claude Code on the web setup... two confirmed bugs") — that PR
-independently found and logged directly to `BACKLOG.md` the exact same
-two bugs this run's own investigation had also traced (both feed
-auto-transcription workflows failing every run because their queue-state
-commit gets rejected by the `main` branch ruleset; `sitemap.xml`
-including pages this app deliberately `noindex`s). Not re-added here to
-avoid duplicating `BACKLOG.md`.
+**Gmail OAuth reauthorization — two runs running as of 2026-08-18, still
+not fixed.** The 2026-08-17 run's `label_thread` calls failed partway
+through with "requires re-authorization" (token expired); the 2026-08-18
+run's calls failed immediately for the same reason (one call also came
+back "Denied by user"), and Ryan confirmed live mid-run to skip
+relabeling entirely rather than keep retrying a broken write path.
+Read-only calls (`search_threads`/`get_message`) worked fine both runs —
+only `label_thread` (write) failed, so whatever grants Gmail write scope
+specifically needs to actually stick, not just a general reauth. Until
+this is fixed, `label:rtr-claude -label:rtr-claude-processed` will keep
+returning the same growing backlog of already-reviewed threads (34 as of
+2026-08-17, 68 as of 2026-08-18) for every run to re-review from scratch.
+Needs Ryan to reauthorize the Gmail connector before the next scheduled
+run.
 
-**This run could not apply the `rtr-claude-processed` label to any of the
-34 threads it reviewed** — the Gmail connection's OAuth token expired
-partway through labeling (all label calls failed with "requires
-re-authorization"). **Still not fixed as of this note** — reauthorizing
-the Gmail connector needs to actually take before the next run, or it
-will re-review the same 34 threads again. This is the one open item this
-section still exists to track; the two genuinely-new Search Console
-findings this run produced ("Page indexed without content," "Page with
-redirect") were promoted into `CLAUDE_BACKLOG.md`'s existing 2026-08-16/17
-Search Console entry same-day (with this run's own additional
-investigation folded in — a concrete named thin-page candidate for the
-first, application code ruled out via a real grep for the second) and
-removed from here per this file's own promotion convention.
+Every finding from both the 2026-08-17 and 2026-08-18 runs has been
+promoted into `BACKLOG.md`/`CLAUDE_BACKLOG.md` per this file's own
+promotion convention above and removed from here.
+
+## 2026-08-19
+
+Reviewed all 26 threads currently under `label:rtr-claude` (the
+`-label:rtr-claude-processed` exclusion in the search query is unreliable
+per the open item above — Gmail only excludes a thread if *every*
+message in it carries the processed label, so a thread with one
+processed message and one new one still comes back; this run reviewed
+the full 26 and relied on dedup against `BACKLOG.md`/`CLAUDE_BACKLOG.md`/
+this file to avoid repeat write-ups, per Step 2's instructions). Two
+already-tracked items confirmed still duplicate (no new entry): the
+2026-08-12 Search Console "Videos structured data" alert (matches
+`CLAUDE_BACKLOG.md`'s existing Search Console section), and Sentry
+issue PYTHON-FASTAPI-A's 2026-08-18 16:29 UTC recurrence ("RuntimeError:
+Response content shorter than Content-Length") — same issue ID already
+covered by `BACKLOG.md`'s "[HUMAN] Archive service instability,
+2026-08-17" entry. Also confirmed stale/already-resolved: both "Feed
+tier 3" and "Feed Granicus auto-transcription queue" GitHub Actions
+failures from 2026-08-18 (5 separate emails) — checked current run
+history via the GitHub API directly: both workflows failed consistently
+through 2026-08-18 18:53-19:15 UTC, then started succeeding continuously
+from PR #176 ("Switch auto-transcription queue-advance workflows to
+QUEUE_ADVANCE_PAT") onward (2026-08-18 21:47 UTC) through the most
+recent runs as of this review (2026-08-19 13:05/13:30 UTC, both green)
+— already fixed, no new entry needed.
+
+Three new findings:
+
+The Aurora adapter-canary regression and the Archive reverse-proxy
+streaming crash (both **Confirmed**) were promoted into `BACKLOG.md`'s
+"Bugs" section 2026-08-21 — see that file for full write-ups. The third
+(the `rtr-deeplink-archive` health-check timeout below) was promoted into
+`BACKLOG.md`'s "Reliability/ops audit" `[HUMAN]` list 2026-08-21, folded
+together with its 2026-08-20 recurrence (see that run's own finding below)
+— see that file for the full write-up.
+
+One item deliberately left uninvestigated as likely test/dev noise, not
+written up as a finding, but flagged here since it's not obviously
+nothing either: two near-identical "Transcription job 1 failed" emails
+(2026-08-19 12:51:08/12:51:09 UTC, one second apart) with clearly
+synthetic-looking data (`job_id: 1`, meeting titled "Some Meeting" /
+"(untitled)", `requester: requester@example.com` / `r@example.com`,
+`source_url: (unknown)`), landing in the same ~24h window as a
+"deploy failed for rtr-deeplink-staging" email (2026-08-19 02:28 UTC,
+commit "Advance tier 3 auto-transcription queue (#190)") and a "Server
+failure detected on test-redtaperecordings: Exited with status 3"
+email (2026-08-18 17:46 UTC). `rtr-deeplink-staging` is documented in
+`render.yaml` as intentionally disposable/free-tier and outside the
+tracked Blueprint; `test-redtaperecordings` isn't in `render.yaml` at
+all. Reads like manual testing against a non-production service, not a
+real incident, but this run has no way to confirm that vs. a real bug
+surfacing only on staging — flagging rather than guessing further.
+
+## 2026-08-20
+
+Reviewed the 16 threads under `label:rtr-claude -label:rtr-claude-processed`
+(same Gmail thread-labeling quirk as the 2026-08-19 run means this list
+still mixes genuinely-new messages into partly-processed threads — handled
+the same way, by reading full thread bodies and relying on dedup rather than
+trusting the label alone). Skipped without write-up: two GitHub Actions
+"PR run failed: Test" emails, both for individual feature branches (PrimeGov
+fix #206, admin delete-by-slug endpoint), not `main` or a scheduled workflow
+— normal dev-iteration noise per Step 2's rule. Skipped as purely
+informational: a saved-search "affordable housing" digest, the
+`ryan@ally.redtaperecordings.com` daily report (6 reports run, 0 new users),
+and a "YouTube transcripts: 2 added" activity digest whose 3 failures are
+all `TranscriptsDisabled` — a known, already-documented YouTube limitation
+(see `CLAUDE.md`'s yt-dlp bullet), not a bug. Skipped as already known/
+intentional: the "free Render database expires soon" notice for
+`rtr-deeplink-staging-db` — `render.yaml`'s databases section already
+documents this exact 9/9/2026 expiration as deliberate, disposable,
+out-of-Blueprint infrastructure, not a gap to fix. Skipped as duplicates of
+already-tracked items (no new entry): another "Server failure detected on
+test-redtaperecordings" email (2026-08-19 18:17:43 UTC, "Exited with status
+3") — same already-flagged likely-test-noise pattern as the 2026-08-19
+section above, no new signal; and another "Server failure detected on
+rtr-deeplink-archive: HTTP health check failed (timed out after 5 seconds)"
+email — this is the *exact same* 2026-08-19 13:17:28 UTC occurrence
+already noted in this run's own 2026-08-19 section above, not a new one
+(same timestamp, same text). Repeated
+"deploy failed for rtr-deeplink-staging" emails (2026-08-19 14:07 for the
+prior day's own doc-only triage PR #195, and 2026-08-20 04:07 for PR #206)
+are folded into the first finding below rather than written up separately.
+
+Two new findings, both since promoted and removed from here: the Render
+account-wide build-pipeline spend-limit hit (confirmed resolved by Ryan
+directly, 2026-08-20 — no BACKLOG.md entry needed since it was closed the
+same day, no residual action) and the Sentry PYTHON-FASTAPI-R
+corrupt-audio-chunk worker bug (promoted into `BACKLOG.md`'s "Bugs"
+section 2026-08-21 — see that file for the full write-up).
+
+## 2026-08-21
+
+Reviewed the 18 threads under `label:rtr-claude` (same thread-labeling
+quirk as prior runs — `-label:rtr-claude-processed` still isn't reliable,
+so this run read full bodies and relied on dedup rather than trusting the
+label). Skipped without write-up: six GitHub Actions "PR run failed: Test"
+emails, all for individual feature branches (second transcription worker,
+stale-garbled-warnings clear, Town Hall Streams adapter, transcript-quality
+audit endpoint, on-demand-transcription retry/backoff, faster-whisper
+vad_filter), not `main` or a scheduled workflow — normal dev-iteration
+noise per Step 2's rule. Skipped as duplicates of already-tracked items (no
+new entry): another "deploy failed for rtr-deeplink-staging" email
+(2026-08-20 15:23, commit "Cablecast:...") — same already-flagged
+untracked/disposable-staging noise pattern as prior runs; another "Server
+failure detected on test-redtaperecordings" email (2026-08-20 20:23:54
+UTC, "Exited with status 3") — same already-flagged likely-test-noise
+pattern; the "⚠️ YouTube transcript fetch failed" `IpBlocked` alert
+(2026-08-20 16:02, video `OQ4V0B5rdwg`) — this is the *exact* alert
+`BACKLOG_DONE.md`'s "YouTube transcript fetch `IpBlocked` alert: confirmed
+expected/self-clearing... [Done 2026-08-20]" entry already investigated
+and closed (same video ID); and the Search Console "No thumbnail URL
+provided" video-indexing alert (2026-08-20 23:13, one affected video, a
+Cablecast m3u8 URL) — duplicates the already-tracked mp4/m3u8-thumbnail
+gap (`BACKLOG.md`'s SEO Tier 1 residual / `CLAUDE_BACKLOG.md`'s "Social
+share previews"); Ryan already replied to this thread himself with the
+affected-video example, so no action needed from this Routine either way.
+Also treated as duplicates rather than new findings, since both match an
+already-documented root cause precisely: Sentry issue PYTHON-FASTAPI-T
+("TimeoutError... ffprobe unavailable or timed out",
+`archive-stream.granicus.com/.../fountainvalley_237a7820...`, 2026-08-21
+04:32 UTC) is the *same* Fountain Valley Granicus asset `BACKLOG.md`'s
+existing "Root cause nailed down precisely" entry (the `media_probe.py`
+ffprobe/120s-timeout writeup, ~line 120) already root-caused as a Granicus
+gateway-timeout/cold-storage-rehydration issue "not fixable from this
+app's side by retrying faster"; and transcription job-failure emails for
+job 410 (City of San Diego, `sandiego.granicus.com/player/clip/9386`) and
+job 413 (San Diego County, `sdcounty.granicus.com/player/clip/3926`), both
+"ffmpeg timed out after 120s (source likely slow or rate-limited)" — the
+exact error string that same BACKLOG.md entry already documents and
+explains, just two new real-world recurrences on different Granicus
+customers, not a new bug.
+
+Two other 2026-08-21 findings from this run — the "Unclosed connector"
+Sentry cluster root cause and the "Events structured data issues" Search
+Console alert — were fixed directly the same day they were reviewed, so
+they never sat in `BACKLOG.md` as open items; the full write-up for both
+is in `BACKLOG_DONE.md`'s 2026-08-21 "Five bundled easy-win fixes" entry.
+One further finding — a second real occurrence of the Render "HTTP health
+check failed" alert on `rtr-deeplink-archive` (2026-08-20 21:38:36 UTC,
+~32 hours after the 2026-08-19 occurrence above) — was folded together
+with that first occurrence and promoted into `BACKLOG.md`'s
+"Reliability/ops audit" `[HUMAN]` list 2026-08-21.

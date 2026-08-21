@@ -164,7 +164,11 @@ def _worth_pushing(row: MeetingResolution) -> bool:
     if row.transcript_found:
         return True
     payload = row.resolved_payload or {}
-    return bool(payload.get("agenda_items"))
+    # video_url included alongside agenda_items -- a video-only resolve (no
+    # transcript/agenda yet) is still real content worth an Archive page;
+    # see BACKLOG_DONE.md for the same gate bug found and fixed in
+    # app/main.py's push gates and scripts/bulk_ingest.py.
+    return bool(payload.get("agenda_items") or payload.get("video_url"))
 
 
 async def get_pending_archive_pushes(

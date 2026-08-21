@@ -18,7 +18,17 @@ Four tables:
     states (e.g. "Washington County" exists in 30+ states; "Detroit" is a
     real city in MI, OR, AL, *and* TX). A bare name lookup only ever
     resolves when the name is unique nationally; an ambiguous name
-    returns None rather than guessing.
+    returns None rather than guessing. places.csv also carries 5,028 real
+    Canadian census subdivisions (city/town/township-level governments,
+    added 2026-08-17 -- BACKLOG.md's "Jurisdiction-bleed, confirmed
+    cross-platform" entry), sourced from Statistics Canada's own Standard
+    Geographical Classification, merged into the SAME file/table rather
+    than a separate one -- see scripts/build_jurisdiction_data.py's
+    build_canada_places() for the source URL and why one merged table.
+    Confirmed real US/Canada name collisions exist ("St. Paul" -- both a
+    real Minnesota city and a real Alberta town) and correctly resolve to
+    `None` via the same ambiguity-safety as any other collision, no new
+    code needed for that.
   - zcta_county.csv / zcta_place.csv: which county/place(s) a ZIP
     (technically a ZCTA, the Census's ZIP proxy) overlaps, with the real
     overlap area (AREALAND_PART) for tie-breaking -- 30% of ZCTAs
@@ -76,6 +86,36 @@ _GOVERNMENT_TYPE_RE = re.compile(
     r"\s+(?:metropolitan government|metro government|unified government|consolidated government)$",
     re.IGNORECASE,
 )
+
+# Query-side counterpart to `_GOVERNMENT_TYPE_RE` above -- a real archived
+# page names a consolidated government in a shorter, less formal shape
+# than Census's own canonical "(balance)" row does, so a query needs its
+# own, more tolerant strip rather than reusing `_GOVERNMENT_TYPE_RE`
+# as-is. Confirmed real 2026-08-17 via the bleed-backfill-candidates
+# audit: a real archived jurisdiction reads "Louisville / Jefferson
+# County Metro" -- bare "Metro", no "Government" -- against the stored
+# key "louisville/jefferson county" (see `_normalize_name()` above for
+# how that key was produced from the Census row). Deliberately strips
+# only a BARE trailing government-type word (the same four roots
+# `_GOVERNMENT_TYPE_RE` knows, "government" now optional), not a general
+# pattern -- this is still the same closed, 8-row-nationally category,
+# just tolerating one more real-world spelling of it.
+_QUERY_GOVERNMENT_TYPE_RE = re.compile(
+    r"\s+(?:metropolitan|metro|unified|consolidated)(?:\s+government)?$",
+    re.IGNORECASE,
+)
+# Collapses a spaced slash ("Louisville / Jefferson County") to the
+# unspaced form the Census key uses ("Louisville/Jefferson County") --
+# Louisville/Jefferson is the only one of the 8 real consolidated-
+# government rows that uses "/" as its name separator at all (the rest
+# use "-"), so this only ever matters for that one real category, but
+# the normalization itself (collapsing incidental whitespace around a
+# slash) is safe generally.
+_SLASH_SPACING_RE = re.compile(r"\s*/\s*")
+
+
+def _normalize_slash_spacing(name: str) -> str:
+    return _SLASH_SPACING_RE.sub("/", name)
 
 
 def _normalize_name(name: str) -> str:
@@ -218,6 +258,41 @@ def lookup_city_state(name: str) -> Optional[str]:
     return None
 
 
+def is_literal_known_place(name: str) -> bool:
+    """True only when `name`, taken exactly as typed (just lowercased --
+    no leading/trailing generic-type-word stripping at all), is a real
+    known US place or county name. Deliberately narrower than
+    `lookup_city_state()`/`lookup_county_state()` (and the internal
+    `_table_lookup()` this module's own validation/repair machinery
+    uses everywhere else), both of which also accept a SECONDARY match
+    via a trailing-type-word strip (see `_normalize_candidates()`) --
+    that secondary path is exactly what makes "Bedford City" coincidentally
+    "validate" (only "Bedford" is real; "City" merely stripped away as a
+    trailing generic type word), which is fine for state-filling but wrong
+    for a caller that needs to know whether a trailing "City"/"Town"/
+    etc.-shaped word is genuinely PART of the proper name (Oklahoma City,
+    Carson City, Jersey City, Rapid City) or just a separable type suffix
+    (Bedford City, Thousand Oaks City) sitting next to it in the source
+    text.
+
+    Built for `app/platforms/primegov.py`'s "{Name} City/Town/Village
+    Council" header extraction (2026-08-21, BACKLOG.md's Bedford/Cuyahoga
+    entry) -- confirmed live on bedfordoh.primegov.com and
+    okc.primegov.com/toaks.primegov.com's own real inner `<title>` tags
+    (see that adapter's own module comment): a bare regex capturing "the
+    words before Council" can't itself tell whether the last of those
+    words is part of the city's real name or just the letterhead's own
+    "City Council" phrasing, and guessing wrong in either direction is a
+    real, confirmed failure mode (stripping "City" off "Oklahoma City"
+    leaves "Oklahoma", which coincidentally collides with a real but
+    totally unrelated place, "Oklahoma borough, PA" -- see
+    `_normalize_candidates()`'s own docstring for that exact historical
+    bug). This function lets a caller check the un-stripped form on its
+    own merits first, before ever falling back to the stripped one."""
+    key = name.strip().lower()
+    return key in _PLACE_STATES or key in _COUNTY_STATES
+
+
 def lookup_county_by_zip(zip_code: str) -> Optional[Tuple[str, str]]:
     """(county_name, state) for the real county with the largest overlap
     with this ZIP -- picked via AREALAND_PART, since ~30% of real ZCTAs
@@ -297,6 +372,17 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     "detroit-vod.cablecast.tv": KnownJurisdiction("Detroit", "city", "MI"),
     "reflect-detroit-vod.cablecast.tv": KnownJurisdiction("Detroit", "city", "MI"),
     "charlotte.cablecast.tv": KnownJurisdiction("Charlotte", "city", "NC"),
+    # Broomfield's Cablecast site branding is just "Channel 8" with an
+    # empty pageDescription -- no "City of"/"County of" phrase anywhere
+    # for cablecast.py's own regex extraction to find (confirmed live
+    # 2026-08-19, see BACKLOG.md). Real signals on the same site object
+    # instead: host "broomfieldco.cablecast.tv", email
+    # media-communications@broomfield.org, logo filename "Broomfield CO
+    # Logo Tag.png". Broomfield is a consolidated city-county in CO;
+    # "county" matches the page's own "County of Broomfield" phrasing
+    # used elsewhere on the same site (e.g. Granicus's confirmed
+    # jurisdiction text for other CO consolidated city-counties).
+    "broomfieldco.cablecast.tv": KnownJurisdiction("Broomfield", "county", "CO"),
     # "Minneapolis" is also a real, if much smaller, city in Kansas --
     # confirmed via app/utils/jurisdiction_data -- so a bare name lookup
     # alone would stay ambiguous for this real, confirmed LIMS customer.
@@ -442,6 +528,67 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     # meeting-body TYPE the way Granicus/CivicClerk do, so this is
     # registered as "county" directly rather than inferred per-resolve.
     "netapps.ocfl.net": KnownJurisdiction("Orange", "county", "FL"),
+    # --- 2026-08-21 batch: added alongside the `_fill_missing_state()`
+    # fix in `finalize_jurisdiction()`'s "already validated" branch above
+    # (BACKLOG.md's "16 real pairs of a jurisdiction appearing twice"
+    # entry). Each entry below is grounded in real evidence found while
+    # investigating that entry's 16 examples, not a guess -- see each
+    # comment for the specific confirmation. Several of these are NOT the
+    # state the original bare/suffixed "duplicate" pairing assumed
+    # (Cook County, Frederick County, Glendale, Washington County) --
+    # the bare row turned out to be a genuinely different, unrelated real
+    # jurisdiction that happened to share an ambiguous name with an
+    # already-archived suffixed one, not a duplicate of it. Registering
+    # the correct state here fixes both: future re-resolves of that exact
+    # domain, and (via the existing `/internal/jurisdiction/backfill-apply`
+    # endpoint, which already re-runs `finalize_jurisdiction()` against
+    # each row's own stored `source_url_normalized`) the already-published
+    # row -- no new backfill mechanism needed.
+    #
+    # Jacksonville/Memphis/Nassau County/Redmond/Bakersfield/Dublin/Albany:
+    # confirmed by finding a SECOND already-archived page on the exact
+    # same customer domain (Jacksonville, Memphis, Nassau County) or an
+    # exact/near-exact domain match (Redmond, Bakersfield, Dublin: same
+    # netloc; Albany: same "albanyca" customer slug, one on Granicus one
+    # on PrimeGov) whose OWN stored jurisdiction already carries the real
+    # state -- about as strong a real-data confirmation as this registry
+    # gets, short of an "authoritative" override.
+    "jaxcityc.granicus.com": KnownJurisdiction("Jacksonville", "city", "FL"),
+    "memphis.granicus.com": KnownJurisdiction("Memphis", "city", "TN"),
+    "nassaufl.granicus.com": KnownJurisdiction("Nassau", "county", "FL"),
+    "redmondor.portal.civicclerk.com": KnownJurisdiction("Redmond", "city", "OR"),
+    "pub-bakersfield.escribemeetings.com": KnownJurisdiction(
+        "Bakersfield", "city", "CA"
+    ),
+    "dublin.granicus.com": KnownJurisdiction("Dublin", "city", "CA"),
+    "albanyca.granicus.com": KnownJurisdiction("Albany", "city", "CA"),
+    # Harris County, TX: the bare page's own real Granicus clip page
+    # (confirmed live) is titled for "...Metropolitan Transit Authority"
+    # committees -- METRO, the real, well-known Metropolitan Transit
+    # Authority of Harris County, Texas. "Harris County" is only
+    # nationally ambiguous between GA and TX, and no real evidence ties a
+    # METRO transit authority to Harris County, GA.
+    "ridemetro.granicus.com": KnownJurisdiction("Harris", "county", "TX"),
+    # Washington County, OR (NOT VA, despite the original pairing's
+    # assumption): confirmed live -- this exact domain's own page
+    # literally renders `<div id="mottotext">Oregon</div>` right next to
+    # its own "Washington County" branding.
+    "washingtoncounty.civicweb.net": KnownJurisdiction("Washington", "county", "OR"),
+    # Cook County, MN (NOT IL): confirmed via this domain's own customer
+    # slug, "cocookmn" -- "Co[unty of] Cook, MN" -- a real, if much
+    # smaller, Minnesota county (seat: Grand Marais), genuinely distinct
+    # from the Chicago-area Cook County, IL already archived under a
+    # different domain.
+    "cocookmn.civicweb.net": KnownJurisdiction("Cook", "county", "MN"),
+    # Frederick County, VA (NOT MD): confirmed via this domain's own
+    # customer slug, "fcva" -- "F[rederick] C[ounty], VA" -- genuinely
+    # distinct from Frederick County, MD already archived under a
+    # different (`frederick.granicus.com`) domain.
+    "fcva.granicus.com": KnownJurisdiction("Frederick", "county", "VA"),
+    # Glendale, AZ (NOT CA): confirmed via this domain's own customer
+    # slug, "glendale-az" -- genuinely distinct from Glendale, CA already
+    # archived under a different (PrimeGov) domain.
+    "glendale-az.granicus.com": KnownJurisdiction("Glendale", "city", "AZ"),
 }
 
 
@@ -572,6 +719,24 @@ def enrich_jurisdiction_text(
 
 _COUNTY_TYPE_HINT_RE = re.compile(r"\b(?:county|parish|borough)\b", re.IGNORECASE)
 _STATE_SUFFIX_RE = re.compile(r",\s*([A-Za-z]{2})\.?\s*$")
+# Leading-date bleed (2026-08-18, confirmed live: "6/16/25 Bellefonte
+# Borough", "8/6/25 State College Borough") -- a bleed DIRECTION
+# `_trim_repair()` below has zero handling for, since it only ever trims
+# from the right. Narrow and specific enough (M/D/YY date shape) to run
+# unconditionally as a preprocessing step: no real jurisdiction name starts
+# with a bare date, so this is a no-op on every string that doesn't have
+# this exact bleed.
+_LEADING_DATE_RE = re.compile(r"^\d{1,2}/\d{1,2}/\d{2,4}\s*[-–]?\s*")
+# Glued file-extension bleed (2026-08-18, confirmed live: "Township of
+# Brock.pdf Pulled from Council Information Index..." -- a Canadian
+# eScribe/CivicWeb agenda page listing an attachment filename inline, no
+# space before the extension). `_trim_repair()` cuts on whitespace tokens,
+# so ".pdf" glued directly onto "Brock" means no cut ever lands on a clean
+# "Brock" -- inserting a space before the extension lets the EXISTING
+# trim-repair/_looks_like_bleed() logic handle the rest unchanged. Same
+# no-op-when-absent reasoning as the date regex above: no real jurisdiction
+# name contains a bare recognized office-document extension.
+_GLUED_EXTENSION_RE = re.compile(r"(?<=[a-zA-Z])\.(pdf|docx?|xlsx?|pptx?)\b")
 # Bare government-type words -- if an attempted split leaves nothing but
 # one of these as the "body," it isn't a real entity name, just the
 # ordinary "Type of Name" shape (e.g. "City of Boston") that should never
@@ -684,7 +849,32 @@ def _table_lookup(name: str) -> Optional[Tuple[str, List[str]]]:
     named "York". Also tries an abbreviation-expanded form
     (`_expand_abbreviations()`), a "Saint"->"St."-contracted form
     (`_contract_saints()`), and an ʻokina/apostrophe-stripped form
-    (`_strip_okina()`) when the raw name doesn't match as-is."""
+    (`_strip_okina()`) when the raw name doesn't match as-is.
+
+    Thin wrapper around `_table_lookup_strength()` that drops the
+    strength flag -- every caller except `_trim_repair()` only needs the
+    plain validity answer."""
+    hit = _table_lookup_strength(name)
+    return (hit[0], hit[1]) if hit else None
+
+
+def _table_lookup_strength(name: str) -> Optional[Tuple[str, List[str], bool]]:
+    """Same as `_table_lookup()`, plus a third element: whether the match
+    came from `name`'s own literal text (as typed, or with only a
+    deterministic leading "City of "/"County of "/etc. removed) rather
+    than a secondary, coincidental normalization -- a trailing generic
+    type-word strip, an abbreviation expansion, a "Saint"->"St."
+    contraction, or an ʻokina strip. `_trim_repair()` uses this
+    distinction to tell a genuine, literal place-name match (safe to stop
+    the search on) apart from a match that only exists because a
+    trailing word happened to look like a type word (not safe to stop
+    on, since it may be incidental -- see `_trim_repair()`'s own comment
+    for the real "East Providence City" case this exists for: the
+    literal text "East Providence City" isn't a real place, it only
+    "matches" via the secondary trailing-"City"-stripped candidate
+    "East Providence", which is coincidental here since "City" is really
+    the start of "City Council" in the surrounding sentence, not part of
+    the entity name)."""
     name = name.strip().rstrip(".,;:")
     if not name:
         return None
@@ -699,7 +889,15 @@ def _table_lookup(name: str) -> Optional[Tuple[str, List[str]]]:
         if county_first
         else [("place", _PLACE_STATES), ("county", _COUNTY_STATES)]
     ) + [("subdivision", _SUBDIVISION_STATES)]
-    candidates = list(_normalize_candidates(name))
+    base_candidates = _normalize_candidates(name)
+    # Only the FIRST base candidate is the literal/deterministic form --
+    # `_normalize_candidates()` puts the as-is (or leading-type-stripped)
+    # form first and only appends a second, trailing-type-stripped
+    # candidate as a fallback (see its own docstring). Everything past
+    # index 0 here, plus every abbreviation/saint/okina candidate below,
+    # is a secondary/heuristic candidate.
+    primary_candidate = base_candidates[0] if base_candidates else None
+    candidates = list(base_candidates)
     expanded = _expand_abbreviations(name)
     if expanded != name:
         candidates.extend(_normalize_candidates(expanded))
@@ -709,31 +907,249 @@ def _table_lookup(name: str) -> Optional[Tuple[str, List[str]]]:
     de_okina = _strip_okina(name)
     if de_okina != name:
         candidates.extend(_normalize_candidates(de_okina))
+    # Consolidated city-county government spellings ("Louisville /
+    # Jefferson County Metro" -> the Census key's own "louisville/
+    # jefferson county") -- see `_QUERY_GOVERNMENT_TYPE_RE`'s comment.
+    # Tried as a combination (slash collapsed AND government-type word
+    # stripped) as well as each alone, since a real page may only need
+    # one of the two.
+    slash_normalized = _normalize_slash_spacing(name)
+    gov_stripped = _QUERY_GOVERNMENT_TYPE_RE.sub("", name)
+    combined = _QUERY_GOVERNMENT_TYPE_RE.sub("", slash_normalized)
+    for variant in (slash_normalized, gov_stripped, combined):
+        if variant != name:
+            candidates.extend(_normalize_candidates(variant))
     for candidate in candidates:
         for label, table in tables:
             if candidate in table:
-                return label, sorted(set(table[candidate]))
+                return (
+                    label,
+                    sorted(set(table[candidate])),
+                    candidate == primary_candidate,
+                )
     return None
 
 
 _ROMAN_NUMERAL_RE = re.compile(r"\b[IVXLC]{2,6}\.?\b")
 
+# Residual gap fix, 2026-08-17 (BACKLOG.md's "Jurisdiction-bleed, confirmed
+# cross-platform" entry): a discarded tail that's pure Title-Case/ALL-CAPS
+# prose (e.g. "Legacy Business PLEDGE OF PUBLIC", "City Commission Regular
+# Meeting AGENDA Thursday") has zero lowercase/digit/roman-numeral signal,
+# so it used to slide past every check above undetected -- confirmed live
+# on 7 real Granicus/eScribe bleed cases (Sarasota, Hollywood, Hampton,
+# Gainesville, Kelowna, Delta, New Westminster -- see that entry). By the
+# time this constant is even consulted, every word in `tail` already
+# starts uppercase (any lowercase-initial word already returned True
+# above), so "N-or-more consecutive Title-Case/ALL-CAPS words" collapses
+# to a plain word-count check on the whole tail.
+#
+# 4 is not a guess: it's the exact gap between the shortest confirmed real
+# bleed tail (4 words -- Sarasota's "Legacy Business PLEDGE OF", Hampton's
+# "Zoning Ordinance Regarding Standa") and the longest real tail that must
+# NOT trigger a trim (3 words -- "Washington School District" off "Lake"
+# and "Area Headquarters Authority" off "Bay", both real legitimately-long
+# names already covered by
+# test_finalize_jurisdiction_never_trims_a_legitimately_long_real_name()/
+# test_extract_jurisdiction_chain_rejects_a_capitalization_walk_false_positive(),
+# both re-verified against this exact constant before it was picked).
+# Known, honestly-flagged residual gap this threshold does NOT close on its
+# own: a handful of confirmed real bleed cases have a tail of only 1-2
+# words (Brampton's "Meeting", Castle Rock's "Authorizing") -- too short to
+# distinguish from a legitimate short suffix with this signal alone. Two of
+# these ("Meeting", and Peterborough's "Attachments") are now closed via
+# `_KNOWN_JUNK_TAIL_WORDS` below instead -- a closed, curated stoplist
+# rather than lowering this threshold (confirmed by direct testing that
+# lowering it would also wrongly trim real long names, e.g. "Lake
+# Washington School District" -> "Lake"). Anything not on that stoplist
+# (Castle Rock's "Authorizing" included) stays unrepaired rather than
+# risking the false-positive side (see BACKLOG.md for the honest
+# accounting of what's still open).
+_MIN_BLEED_WORD_RUN = 4
+
+# Residual gap fix #2, 2026-08-17 (same investigation as
+# `_MIN_BLEED_WORD_RUN` above, found via the bleed-backfill-candidates
+# audit): the word-count tier is one-sided -- it only has NEGATIVE
+# evidence for bleed, nothing that tells a real, long government-entity
+# name apart from real bleed prose that's coincidentally also all
+# Title-Case/ALL-CAPS. Confirmed real, live case this breaks: "St. Johns
+# River Water Management District, FL" -- "St. Johns" validates as a real
+# place, and its tail "River Water Management District" (4 words) is
+# indistinguishable BY SHAPE ALONE from "Legacy Business PLEDGE OF
+# PUBLIC" -- both are 4+ Title-Case/ALL-CAPS words. This adds positive
+# evidence: does the tail's own ending look like a real government-body
+# or special-district TYPE, rather than agenda/sentence prose?
+#
+# Every entry below is grounded in a real, already-archived jurisdiction
+# name (via this app's own live data, not invented) -- see
+# `_ends_with_known_entity_suffix()`'s docstring for the specific real
+# examples behind each one.
+#
+# Deliberately biased toward OVER-protecting, not under-protecting, per
+# the explicit call on this: a plain trailing-word check like this can
+# occasionally spare a genuine bleed tail that happens to end in one of
+# these words (leaving a bit of extra, cosmetic noise on the meeting-BODY
+# portion of the name), but that's a strictly smaller mistake than the
+# alternative -- trimming through to a shorter, wrong CITY. No real case
+# in the 652-row bleed-backfill-candidates corpus was found where this
+# list wrongly protects a genuine bleed tail (every currently-correct
+# trim's discarded tail ends in an agenda/prose word, not one of these --
+# see tests).
+_ENTITY_TYPE_SUFFIX_WORDS = {
+    # District: St. Johns River Water Management District (the case this
+    # was built for), Sioux City Community School District, Travis
+    # Central Appraisal District, Lake Washington School District.
+    "district",
+    # Authority: Bay Area Headquarters Authority, Capital Metropolitan
+    # Transportation Authority, Albuquerque Bernalillo County Water
+    # Utility Authority.
+    "authority",
+    # Commission: Washington Suburban Sanitary Commission, Metropolitan
+    # Airports Commission.
+    "commission",
+    # Government: Lexington-Fayette Urban County Government.
+    "government",
+    # Schools/School: Pelham Public Schools, Cecil County Public Schools
+    # ("Schools"); Lake Washington School District ("School", also
+    # covered by "district" above).
+    "schools",
+    "school",
+    # Transit: VIA Metropolitan Transit.
+    "transit",
+    # Utility: Albuquerque Bernalillo County Water Utility Authority
+    # (also covered by "authority", kept as its own entry since a page
+    # could plausibly truncate right after "Utility").
+    "utility",
+    # ISD/USD/CISD: a real, common Texas/California independent/unified
+    # school-district acronym, confirmed repeatedly in this app's own
+    # live archive -- Birdville/Carroll/Dallas/Del Valle/Frisco/Garland/
+    # Round Rock/Lake Travis/Richardson/Plano ISD (all TX), Bonita/Conejo
+    # Valley/Yorba Linda USD (all CA), Lamar CISD (TX). Bare "SD"/"FD"/
+    # "PD" deliberately excluded -- no confirmed real archived example of
+    # any of those as a trailing acronym was found (only a false-positive
+    # risk: "White Rock, SD" is South Dakota's state abbreviation, not a
+    # school-district acronym), so adding them would be guessing rather
+    # than grounding in real data, the one thing this whole fix is
+    # built not to do.
+    "isd",
+    "usd",
+    "cisd",
+}
+# Two-word committee-name endings -- confirmed real in this app's own
+# archive (Guelph's "Committee of Adjustment", Kenora's "Committee of
+# the Whole", both currently correctly protected already, but only via
+# the lowercase-word signal catching their "of"/"the"). Listed here too
+# as defense for the ALL-CAPS spelling of either ("COMMITTEE OF
+# ADJUSTMENT"/"COMMITTEE OF THE WHOLE") which would otherwise have zero
+# negative bleed signal left to catch it -- not yet observed in ALL-CAPS
+# form for these two specifically, but the same lowercase-signal blind
+# spot `_MIN_BLEED_WORD_RUN` itself exists to close for ordinary prose
+# bleed, applied here defensively rather than waiting for an incident.
+_ENTITY_TYPE_SUFFIX_PHRASES = (
+    "committee of adjustment",
+    "committee of the whole",
+)
+
+
+def _ends_with_known_entity_suffix(tail: str) -> bool:
+    """True when `tail` (a candidate trim-discard, already confirmed to
+    be all Title-Case/ALL-CAPS with no lowercase/digit/roman-numeral
+    signal by the time this is consulted -- see `_looks_like_bleed()`)
+    itself ENDS WITH a real government-body/special-district type word or
+    phrase, rather than merely containing one anywhere. End-anchored on
+    purpose: real confirmed bleed can legitimately contain one of these
+    words mid-tail without the tail actually being a real entity-type
+    name -- e.g. Kenora's real bleed case "Committee of the Whole Agenda
+    Thursday" contains "Committee" but correctly ends in "Agenda
+    Thursday", so a "contains" check would have wrongly protected it. An
+    "ends with" check does not."""
+    words = tail.split()
+    if not words:
+        return False
+    lowered = " ".join(w.strip(".,;:").lower() for w in words)
+    if any(lowered.endswith(phrase) for phrase in _ENTITY_TYPE_SUFFIX_PHRASES):
+        return True
+    last = words[-1].strip(".,;:").lower()
+    return last in _ENTITY_TYPE_SUFFIX_WORDS
+
+
+# Residual gap fix #3, 2026-08-18: a closed, curated stoplist of confirmed
+# single trailing junk words -- the inverse of `_ENTITY_TYPE_SUFFIX_WORDS`
+# above (that one PROTECTS a short tail from being trimmed; this one
+# AUTHORIZES trimming a short tail that `_MIN_BLEED_WORD_RUN`'s word-count
+# signal alone can't distinguish from a legitimate short suffix -- see its
+# own comment on this exact gap). Every entry here is grounded in a real,
+# confirmed-live bleed example, not guessed: "Peterborough Attachments" and
+# "Brampton Meeting" (both found live on /coverage, 2026-08-18). Only ever
+# fires on an EXACT match to a word already proven junk in real data, so
+# unlike a general 1-2-word-tail rule (already rejected by
+# `_MIN_BLEED_WORD_RUN`'s own comment -- it would also wrongly trim real
+# long names down to a single word) it can't make that same mistake.
+_KNOWN_JUNK_TAIL_WORDS = {"attachments", "meeting"}
+
 
 def _looks_like_bleed(tail: str) -> bool:
     """Sanity check on text a trim would discard: does it look like
     sentence/agenda bleed (lowercase prose, roman-numeral list markers,
-    digits) rather than part of a real longer name? Confirmed against the
-    2026-08-15 audit's full "repaired_by_trim" bucket (73 cases): every
-    one of the 16 cases this signal flags was a correct repair, and every
-    one of the 57 it left alone was a real, legitimately long name (e.g.
-    "Bay Area Headquarters Authority") that a bare trim would have
-    mangled -- so this gate is required, not optional, for the trim below
-    to be safe."""
+    digits, or an unusually long run of Title-Case/ALL-CAPS words with no
+    real government-entity-type ending) rather than part of a real
+    longer name? Confirmed against the 2026-08-15 audit's full
+    "repaired_by_trim" bucket (73 cases): every one of the 16 cases the
+    original (pre-2026-08-17) signals flagged was a correct repair, and
+    every one of the 57 they left alone was a real, legitimately long
+    name (e.g. "Bay Area Headquarters Authority") that a bare trim would
+    have mangled -- so this gate is required, not optional, for the trim
+    below to be safe. The word-count tier added 2026-08-17
+    (`_MIN_BLEED_WORD_RUN`) is calibrated the same way, against real
+    confirmed Title-Case/ALL-CAPS bleed tails and the real
+    legitimately-long names that must stay untouched -- see that
+    constant's own comment for the exact evidence. The entity-type-suffix
+    check added later the same day (`_ends_with_known_entity_suffix()`)
+    is the positive-evidence counterpart to the word-count tier -- see
+    its own and `_ENTITY_TYPE_SUFFIX_WORDS`'s comments for why and the
+    real data behind it."""
     if _ROMAN_NUMERAL_RE.search(tail):
         return True
     if re.search(r"\d", tail):
         return True
-    return any(w[0].islower() for w in tail.split() if w)
+    words = tail.split()
+    if not words:
+        return False
+    # Real bug fixed 2026-08-19 (BACKLOG.md's jurisdiction-misattribution
+    # entry): a discarded tail that STARTS with "of" is never bleed --
+    # confirmed live via "The Village of Douglas, Michigan" (Douglas, MI's
+    # own real self-branding; Michigan officially designates it a Village,
+    # not a City) getting wrongly repaired to "The Village", a real but
+    # totally unrelated Oklahoma City suburb literally named "The
+    # Village". The cut landed right before "of Douglas, Michigan", and
+    # the plain lowercase-initial-word signal below treated that "of" as
+    # proof of agenda-prose bleed. "of" is never ordinary prose in this
+    # module's own vocabulary -- it is the one structural connector every
+    # OTHER jurisdiction-naming mechanism here already keys off of
+    # (`_LEADING_TYPE_RE`, `_split_entity_prefix()`, `_STOPRULE_TRIGGER_RE`,
+    # `_CHAIN_TAG_JURISDICTION_RE` all treat "<Type> of <Name>" as a real
+    # entity-naming pattern, never text to discard). A tail immediately
+    # starting with "of" means the untrimmed text reads "<candidate> of
+    # <continuation>" -- exactly the shape of a real, longer government
+    # name ("Village of X", "Housing Authority of the County of Y"), not
+    # bleed. Declining here (returning False) means `_trim_repair()` gives
+    # up on this cut rather than accepting a coincidental short match --
+    # the same conservative, "leave it unverified rather than mangle it"
+    # outcome already established for a literal match with a non-bleed
+    # tail elsewhere in this function (see East Bay/Richmond Hill in
+    # tests/test_jurisdiction_enrich.py). No real confirmed case needs
+    # this same exception for "the"/"and" -- kept narrow, grounded only in
+    # the one real case found, per this repo's own "ground fixes in real
+    # confirmed data" convention.
+    if words[0].strip(".,;:").lower() == "of":
+        return False
+    if any(w[0].islower() for w in words if w):
+        return True
+    if len(words) < _MIN_BLEED_WORD_RUN:
+        if len(words) == 1 and words[0].strip(".,;:").lower() in _KNOWN_JUNK_TAIL_WORDS:
+            return True
+        return False
+    return not _ends_with_known_entity_suffix(tail)
 
 
 def _trim_repair(name: str) -> Optional[Tuple[str, str]]:
@@ -742,15 +1158,71 @@ def _trim_repair(name: str) -> Optional[Tuple[str, str]]:
     like bleed (`_looks_like_bleed()`) -- never applied bare, since most
     of the audit's trim-reachable names were legitimate long entities a
     blind trim would have destroyed. Returns (repaired_name, table) or
-    None."""
+    None.
+
+    Stops at the FIRST (longest) prefix whose match is a genuine, literal
+    match -- not a secondary/heuristic one (see `_table_lookup_strength()`)
+    -- and decides right there: accepts it if its tail looks like bleed,
+    otherwise gives up without trimming rather than falling through to a
+    shorter, more-likely-spurious prefix. A prefix that only validates
+    via a secondary/heuristic candidate (trailing generic-type-word
+    strip, abbreviation expansion, etc.) does NOT stop the search on its
+    own when its tail doesn't look like bleed -- that match may be
+    coincidental, so scanning continues to shorter cuts looking for
+    either a literal match or a heuristic match with a genuinely
+    bleed-shaped tail.
+
+    Real bug fixed 2026-08-17, found via the bleed-backfill-candidates
+    audit: with the old "keep scanning shorter cuts regardless" behavior,
+    "Richmond Hill Single Source Award" correctly rejected the cut=2
+    prefix "Richmond Hill" (a real, LITERAL place-name match, tail
+    "Single Source Award" is only 3 words, not bleed) but then kept
+    going to cut=1 "Richmond" (also a literal match, tail "Hill Single
+    Source Award" is 4 words -> bleed=True) and wrongly repaired to
+    "Richmond" -- destroying "Richmond Hill", a real, different place.
+    Same shape broke "East Bay Regional Park District, CA": cut=2 "East
+    Bay" is a literal match, correctly rejected (tail "Regional Park
+    District", 3 words, not bleed), then cut=1 "East" (a real OH
+    township) wrongly fired, mangling a real, legitimately-long entity
+    name. Both are literal matches, so stopping the search at the first
+    one is correct and safe.
+
+    The literal-vs-heuristic distinction matters for a real case that a
+    blind "stop at any hit" would have broken: "East Providence City
+    Council Live Stream". Its longest hit, cut=3 "East Providence City",
+    only validates via the secondary trailing-"City"-stripped candidate
+    "East Providence" (the literal text "east providence city" isn't a
+    table key) -- "City" here is really the start of "City Council" in
+    the surrounding text, not part of the entity name. Its tail ("Council
+    Live Stream", 3 words) isn't bleed-shaped, so a blind stop-at-any-hit
+    fix would give up entirely and leave the whole bled string alone.
+    Since this hit is heuristic, not literal, the search instead keeps
+    going to cut=2 "East Providence" -- a literal match whose tail ("City
+    Council Live Stream", 4 words) IS bleed -- and correctly repairs to
+    "East Providence".
+
+    Net effect: strictly less aggressive than the pre-2026-08-17 code,
+    never more -- every case the old code correctly repaired still hits
+    either a literal match or the same longest bleed-tail heuristic match
+    it always found, so nothing already-correct regresses (verified
+    against the real bleed-backfill-candidates corpus, see tests +
+    BACKLOG.md)."""
     tokens = name.split()
     for cut in range(len(tokens) - 1, 0, -1):
         prefix = " ".join(tokens[:cut]).rstrip(".,;:")
         if not prefix:
             continue
-        hit = _table_lookup(prefix)
-        if hit and _looks_like_bleed(" ".join(tokens[cut:])):
-            return prefix, hit[0]
+        hit = _table_lookup_strength(prefix)
+        if not hit:
+            continue
+        table, states, is_primary = hit
+        if _looks_like_bleed(" ".join(tokens[cut:])):
+            return prefix, table
+        if is_primary:
+            return None
+        # Heuristic (non-literal) match with a non-bleed tail: may be
+        # coincidental (see docstring's East Providence example) -- keep
+        # scanning shorter cuts instead of stopping here.
     return None
 
 
@@ -840,6 +1312,41 @@ def finalize_jurisdiction(
     mechanisms that DO change the value, and BACKLOG.md's "Census-table
     baseline validation" entry for the real data (649 archived rows) this
     design was built and tuned against.
+
+    Cross-checked against a validated subdomain-derived candidate since
+    2026-08-21 (BACKLOG.md's jurisdiction-bleed entries), the same idea
+    `extract_jurisdiction_chain()` already applies to its own per-tier
+    candidates (see that function's own docstring), just moved one level
+    down so a caller that invokes THIS function directly on already-
+    stored text -- `archive/db/crud.py`'s backfill/reprocessing passes,
+    not just a fresh chain-based resolve -- gets the same protection.
+    Two distinct real, confirmed-live failure shapes this closes:
+
+    1. `_trim_repair()` can confidently trim a bled raw value down to a
+       real, but WRONG, place when the discarded tail happens to mention
+       a different real city -- confirmed live on Shelburne, ON's stored
+       "Brantford regarding Professional Activity" (eScribe subdomain
+       `pub-shelburne...`), which trims to "Brantford" (a real Ontario
+       town, just not THIS meeting's) before this fix.
+    2. A raw value can validate directly (no repair needed at all) as a
+       real place that's genuinely mentioned on the page, but isn't the
+       meeting's OWN jurisdiction -- confirmed live on Peel Region, ON's
+       "Town of Caledon" (eScribe subdomain `pub-peelregion...`): Caledon
+       is a real constituent lower-tier town inside the Peel Region
+       agenda, validates outright, and used to be returned as-is before
+       ever reaching the subdomain's own correct "Peel Region" identity.
+
+    In both cases, when a validated subdomain-derived candidate exists
+    (see `_validated_subdomain_extract_from_netloc()`) and disagrees with
+    the text-derived name (`_base_name_key()`, the same identity
+    comparison the chain's own cross-check uses), the subdomain's own
+    validated identity wins outright -- it's an independent, per-customer
+    signal (the domain the customer itself registered), not just another
+    guess at parsing the same page text that produced the wrong answer in
+    the first place. When they agree (the overwhelmingly common case) or
+    no subdomain hint validates at all (most non-eScribe/Granicus pages,
+    or an eScribe regional-tier customer not yet in the place tables --
+    see BACKLOG.md's StatsCan completeness gap), this is a pure no-op.
     """
     known = lookup_by_domain(netloc) if netloc else None
 
@@ -850,6 +1357,22 @@ def finalize_jurisdiction(
         if known:
             return JurisdictionResult(f"{known.name}, {known.state}", None, "fallback")
         return JurisdictionResult(raw_jurisdiction, None, "blank")
+
+    subdomain_hint = (
+        _validated_subdomain_extract_from_netloc(netloc) if netloc else None
+    )
+    subdomain_hint_key = _base_name_key(subdomain_hint) if subdomain_hint else None
+
+    # Preprocessing: strip noise shapes _trim_repair() below can't reach
+    # (a leading date only trims from the right; a glued file extension
+    # never lands on a whitespace cut point) -- see both regexes' own
+    # comments above. Guard the date-strip specifically: only take it if
+    # something real is left, so a bare date-only string doesn't collapse
+    # to empty.
+    date_stripped = _LEADING_DATE_RE.sub("", raw_jurisdiction).strip()
+    if date_stripped:
+        raw_jurisdiction = date_stripped
+    raw_jurisdiction = _GLUED_EXTENSION_RE.sub(r" .\1", raw_jurisdiction)
 
     # Already has a state suffix from a prior enrichment step -- validate
     # the name portion only, state stays as already resolved.
@@ -862,11 +1385,48 @@ def finalize_jurisdiction(
     suffix = f", {state_match.group(1).upper()}" if state_match else ""
 
     if _table_lookup(base):
-        return JurisdictionResult(raw_jurisdiction, None, "validated")
+        if subdomain_hint_key and _base_name_key(base) != subdomain_hint_key:
+            return JurisdictionResult(
+                f"{subdomain_hint}{_fill_missing_state(subdomain_hint, suffix, netloc)}",
+                None,
+                "repaired",
+            )
+        # Real bug found 2026-08-21 via a /coverage sort-adjacency scan
+        # (BACKLOG.md's "16 real pairs of a jurisdiction appearing twice"
+        # entry): unlike the `_trim_repair()`/`_split_entity_prefix()`
+        # branches below, this fast path used to return `raw_jurisdiction`
+        # completely unchanged whenever the bare name ALREADY validates
+        # against the place/county table -- including when that
+        # validation is only nationally-ambiguous (e.g. "Albany" matches
+        # 14 different states' worth of real places), so no state was
+        # ever attempted here even though `_fill_missing_state()` was
+        # right there and already used by every other repair path. That
+        # silently produced two different stored jurisdiction strings for
+        # the same real government -- one adapter/extraction happened to
+        # find a state suffix in the raw text ("Dublin, CA"), another
+        # extraction of the exact same customer's site
+        # (`dublin.granicus.com`, confirmed live) didn't, and the second
+        # one got permanently stuck bare ("Dublin") since this branch
+        # never gave `resolve_state()` a chance to try. `_fill_missing_state()`
+        # is a safe no-op call here: it only ever adds a suffix when
+        # `resolve_state()` confidently resolves one (an unambiguous
+        # name-only match, or -- the common case for these bare rows -- a
+        # confirmed `netloc` registry entry), and returns "" (no change)
+        # for a genuinely ambiguous name with no netloc evidence, so an
+        # already-correct bare "unverified"-shaped case can't regress.
+        return JurisdictionResult(
+            f"{base}{_fill_missing_state(base, suffix, netloc)}"
+            if not suffix
+            else raw_jurisdiction,
+            None,
+            "validated",
+        )
 
     trimmed = _trim_repair(base)
     if trimmed:
         repaired_name, _table = trimmed
+        if subdomain_hint_key and _base_name_key(repaired_name) != subdomain_hint_key:
+            repaired_name = subdomain_hint
         return JurisdictionResult(
             f"{repaired_name}{_fill_missing_state(repaired_name, suffix, netloc)}",
             None,
@@ -992,6 +1552,31 @@ _STATE_ABBREVIATIONS_LOWER = {
     "dc",
 }
 
+# Canadian province/territory codes, kept as their own set rather than
+# folded into `_STATE_ABBREVIATIONS_LOWER` above (no collisions between the
+# two -- verified) so it's clear at a glance this one exists specifically
+# for `_validated_label_extract()`'s eScribe use, added 2026-08-18 alongside
+# that function gaining a Canadian-serving caller. Real gap this closes:
+# without it, "beaumontab" (Beaumont, AB) and "mackenziebc" (Mackenzie, BC)
+# both fail to validate purely because the trailing province code is never
+# stripped, even though the underlying place name is already a real,
+# already-validated single-word table entry.
+_PROVINCE_ABBREVIATIONS_LOWER = {
+    "ab",
+    "bc",
+    "mb",
+    "nb",
+    "nl",
+    "ns",
+    "on",
+    "pe",
+    "qc",
+    "sk",
+    "nt",
+    "nu",
+    "yt",
+}
+
 
 def _stoprule_extract(page_text: str) -> Optional[str]:
     """ "City/County/Town of X" walk over rendered page text that stops at
@@ -1055,25 +1640,47 @@ def _capitalization_walk_extract(html: str) -> Optional[str]:
     return f"{match.group(1).capitalize()} of {' '.join(kept)}"
 
 
-def _validated_subdomain_extract(url: str) -> Optional[str]:
-    """Bare (no state suffix) subdomain-derived name, validated against
-    the Census tables before ever being offered as a candidate -- unlike
-    the shipped wordninja-humanize fallback (Granicus's
-    `_humanize_subdomain()`), this declines instead of guessing when
-    nothing validates (416 table-valid / 0 garbage of 649 in the
-    tournament, vs. 408 valid / 229 garbage for the shipped
-    wordninja-always approach). Tried unsplit first -- fixes Galesburg:
-    wordninja's own split ("Gales Burg") never validates, while the raw
-    label does -- and only falls back to a wordninja split when the raw
-    label itself doesn't validate. State is deliberately left to the
-    caller's `enrich_jurisdiction_text()` pass, which already has
-    domain/ZIP disambiguation this function doesn't need to duplicate."""
-    host = urlparse(url).netloc.lower()
-    parts = host.split(".")
-    if len(parts) <= 2 or parts[0] == "www":
-        return None
-    label = parts[0]
+def _validated_label_extract(label: str) -> Optional[str]:
+    """Bare (no state suffix) name derived from a subdomain LABEL (already
+    stripped of any platform-specific prefix, e.g. eScribe's "pub-"),
+    validated against the Census/StatsCan tables before ever being offered
+    as a candidate -- declines instead of guessing when nothing validates
+    (416 table-valid / 0 garbage of 649 in the original tournament, vs. 408
+    valid / 229 garbage for a bare wordninja-always approach). Three tiers,
+    tried in order, first hit wins:
 
+    1. The raw label unsplit (and a digit-stripped variant) -- fixes
+       Galesburg: wordninja's own split ("Gales Burg") never validates,
+       while the raw label does.
+    2. A wordninja split, with a trailing US-state or Canadian-province
+       code stripped and a leading "city"/"county"/"town"/"of" connector
+       word stripped, tried SPACED first (join with spaces -- catches
+       genuinely multi-word names like "Grand Valley", "Boulder County")
+       then GLUED as a fallback (join with no spaces -- catches names
+       wordninja over-splits into dictionary fragments that only validate
+       once reassembled, e.g. "townofbonnyville" -> town/of/bonny/ville ->
+       strip "town"/"of" -> spaced "Bonny Ville" doesn't validate, glued
+       "Bonnyville" does). Spaced MUST be tried before glued, not the
+       reverse: confirmed live against every real Granicus subdomain in
+       production, glued-first wrongly turns "cityofnorthport" into
+       "Northport" (a real but WRONG place -- a coincidental match) instead
+       of the correct spaced "North Port"; same failure mode on
+       "oakridgetn" -> wrongly "Oakridge" instead of correct "Oak Ridge".
+    3. Neither tier 2 candidate is accepted below 3 total letters -- a real
+       gap found adding the province-code list above: "citynmb" wordninja-
+       splits to ['city','n','mb'], and after stripping the leading "city"
+       and trailing province code "mb", the sole leftover word "n" was
+       found to validate against `places.csv` (a single-letter row that's
+       almost certainly a data artifact, not a real place) -- confirmed
+       live, 2026-08-18. No real municipality is meaningfully named 1-2
+       letters, so this floor is a safe, general guard rather than a
+       one-off patch for that specific label.
+
+    State/province is deliberately left to the caller's own
+    `enrich_jurisdiction_text()` pass (URL callers) or its own suffix
+    handling (label callers, e.g. `EscribeAssetFinder._jurisdiction_from_
+    subdomain()`), which already has domain/ZIP disambiguation this
+    function doesn't need to duplicate."""
     for candidate in (label, label.rstrip("0123456789")):
         if _table_lookup(candidate):
             return candidate.title()
@@ -1085,14 +1692,67 @@ def _validated_subdomain_extract(url: str) -> Optional[str]:
     words = wordninja.split(label)
     if not words:
         return None
-    if len(words) > 1 and words[-1].lower() in _STATE_ABBREVIATIONS_LOWER:
+    trailing = words[-1].lower()
+    if len(words) > 1 and (
+        trailing in _STATE_ABBREVIATIONS_LOWER
+        or trailing in _PROVINCE_ABBREVIATIONS_LOWER
+    ):
         words = words[:-1]
-    while len(words) > 1 and words[0].lower() in ("city", "county", "town", "of"):
+    # "pub" joined this strip list 2026-08-19 (BACKLOG.md's jurisdiction-
+    # misattribution entry): eScribe's own real, confirmed subdomain
+    # convention is "pub-{city}.escribemeetings.com" (see
+    # `EscribeAssetFinder`'s own `_SUBDOMAIN_RE` module comment), so the
+    # raw label handed to this function is "pub-{city}" (or, after
+    # `_validated_subdomain_extract()`'s host split, "pub-{city}" as
+    # parts[0]) -- e.g. wordninja splits "pub-courtenay" to
+    # ['pub','courtenay']. Without stripping "pub" here, this generic
+    # (platform-agnostic) validator can never resolve ANY eScribe
+    # subdomain on its own, which matters beyond eScribe's own dedicated
+    # `_jurisdiction_from_subdomain()` fallback (which already strips
+    # "pub-" via its own regex): `extract_jurisdiction_chain()`'s
+    # subdomain tier and its cross-check against a text-mined candidate
+    # (see that function's own comment) both call this same generic path,
+    # and had no way to independently confirm an eScribe page's real
+    # identity before this fix.
+    while len(words) > 1 and words[0].lower() in (
+        "city",
+        "county",
+        "town",
+        "of",
+        "pub",
+    ):
         words = words[1:]
     if not words:
         return None
-    name = " ".join(w.capitalize() for w in words)
-    return name if _table_lookup(name) else None
+    spaced = " ".join(w.capitalize() for w in words)
+    if len(spaced.replace(" ", "")) >= 3 and _table_lookup(spaced):
+        return spaced
+    glued = "".join(words).capitalize()
+    return glued if len(glued) >= 3 and _table_lookup(glued) else None
+
+
+def _validated_subdomain_extract_from_netloc(netloc: str) -> Optional[str]:
+    """Same logic as `_validated_subdomain_extract()` below, but taking an
+    already-parsed netloc directly rather than a full URL -- split out
+    2026-08-21 (BACKLOG.md's jurisdiction-bleed entries: "trim-repair can
+    turn a bled value into a confidently WRONG real city" and "eScribe's
+    chain picks the wrong government for a two-tier regional site") so
+    `finalize_jurisdiction()` can compute the same subdomain-derived
+    cross-check candidate it already has `netloc` for, without
+    constructing a throwaway URL just to re-parse it back apart."""
+    host = netloc.lower()
+    parts = host.split(".")
+    if len(parts) <= 2 or parts[0] == "www":
+        return None
+    return _validated_label_extract(parts[0])
+
+
+def _validated_subdomain_extract(url: str) -> Optional[str]:
+    """URL-taking wrapper around `_validated_label_extract()` -- parses the
+    subdomain label out of `url` (declining on a bare domain or a "www"
+    subdomain, same as before) and delegates. See that function's own
+    docstring for the actual validation logic."""
+    return _validated_subdomain_extract_from_netloc(urlparse(url).netloc)
 
 
 def validated_subdomain_extract(url: str) -> Optional[str]:
@@ -1103,6 +1763,34 @@ def validated_subdomain_extract(url: str) -> Optional[str]:
     "sfwmd" -> "S Fw, MD", see BACKLOG.md) instead of declining when
     nothing validates against the Census tables."""
     return _validated_subdomain_extract(url)
+
+
+def validated_label_extract(label: str) -> Optional[str]:
+    """Public wrapper around `_validated_label_extract()` for callers that
+    already have a bare subdomain label rather than a full URL -- e.g.
+    `EscribeAssetFinder._jurisdiction_from_subdomain()`, which extracts its
+    own label via `_SUBDOMAIN_RE` (eScribe's "pub-{label}" convention) and
+    would otherwise have to round-trip through a synthetic URL just to
+    reuse `validated_subdomain_extract()`."""
+    return _validated_label_extract(label)
+
+
+def _base_name_key(jurisdiction: str) -> str:
+    """Bare, normalized identity key for a finished jurisdiction string --
+    state suffix stripped, then normalized down to its bare proper name
+    (leading "City of "/etc. removed, or a trailing generic type word
+    removed when present) -- used by `extract_jurisdiction_chain()` to
+    compare a text-mined candidate's resolved identity against a
+    URL-derived subdomain hint's identity, ignoring formatting
+    differences ("City of Hercules, CA" vs. "Hercules", "San Bernardino
+    County" vs. "San Bernardino"). Uses the LAST (most-stripped) candidate
+    `_normalize_candidates()` returns, not the first -- unlike
+    `_table_lookup_strength()`'s literal-vs-heuristic distinction (which
+    cares whether a match came from the exact typed text), this is a pure
+    identity comparison, so the bare-est form is the right one to key on."""
+    base = _STATE_SUFFIX_RE.sub("", jurisdiction).strip().rstrip(".,;:")
+    candidates = _normalize_candidates(base)
+    return candidates[-1] if candidates else base.lower()
 
 
 def extract_jurisdiction_chain(*, page_text: str, html: str, url: str) -> Optional[str]:
@@ -1142,12 +1830,41 @@ def extract_jurisdiction_chain(*, page_text: str, html: str, url: str) -> Option
     (for gating) and again at the caller's own ingest-time call, so
     registry coverage is still applied, just not duplicated as a
     dedicated tier.
+
+    Cross-checked against a validated URL/subdomain hint since 2026-08-19
+    (BACKLOG.md's jurisdiction-misattribution entry): the "must validate"
+    gate above only catches a candidate that's outright garbage (the
+    Broward MPO case), not one that cleanly validates as a real, DIFFERENT
+    place than the page's own true jurisdiction -- confirmed live via two
+    separate real cases, both a stoprule/capitalization-walk match on a
+    genuine but unrelated "City/County of X" mention elsewhere on the page
+    (a correspondence item, cross-jurisdictional reference, or boilerplate
+    mention), not the page's own identity: "Courtenay (BC) misattributed
+    to Burlington" (Burlington is a real, validating place in 17
+    states/provinces -- ambiguous, but still "known" enough to pass the
+    validation gate) and "Victorville misattributed to San Bernardino
+    County" (both real, validating California entities). When the URL's
+    own subdomain independently and unambiguously validates to a real
+    place/county -- the same trustworthy identity signal the subdomain
+    tier below already relies on for its own answer -- a text-mined
+    candidate that names a demonstrably DIFFERENT place is discarded
+    instead of accepted, falling through to try the next tier and
+    ultimately reaching the subdomain tier's own (correct) answer rather
+    than a coincidentally-validating wrong one. A candidate that AGREES
+    with the subdomain hint (the overwhelmingly common case -- e.g.
+    hercules.granicus.com's own "City of Hercules" text) is unaffected;
+    so is every case with no subdomain hint available at all (most
+    Swagit/CivicClerk/generic_fallback pages), which is why this doesn't
+    touch the tournament-tuned recall for those.
     """
     netloc = urlparse(url).netloc
-    for extractor in (
-        lambda: _stoprule_extract(page_text),
-        lambda: _capitalization_walk_extract(html),
-        lambda: _validated_subdomain_extract(url),
+    subdomain_hint = _validated_subdomain_extract(url)
+    subdomain_hint_key = _base_name_key(subdomain_hint) if subdomain_hint else None
+
+    for tier, extractor in (
+        ("text", lambda: _stoprule_extract(page_text)),
+        ("text", lambda: _capitalization_walk_extract(html)),
+        ("subdomain", lambda: subdomain_hint),
     ):
         candidate = extractor()
         if not candidate:
@@ -1156,6 +1873,13 @@ def extract_jurisdiction_chain(*, page_text: str, html: str, url: str) -> Option
             candidate, netloc=netloc, page_text=page_text
         )
         result = finalize_jurisdiction(enriched, netloc=netloc)
-        if result.confidence in ("validated", "repaired", "authoritative"):
-            return result.jurisdiction
+        if result.confidence not in ("validated", "repaired", "authoritative"):
+            continue
+        if (
+            tier == "text"
+            and subdomain_hint_key
+            and _base_name_key(result.jurisdiction) != subdomain_hint_key
+        ):
+            continue
+        return result.jurisdiction
     return None

@@ -321,9 +321,17 @@ def test_table_lookup_recognizes_a_spelled_out_saint():
     # city", confirmed via a direct grep -- 148 real "St. " rows, zero
     # "Saint " rows), the opposite direction from "Ft. Worth"/"Mt.
     # Vernon" above, which the table stores spelled out.
+    #
+    # "AB" joined this list 2026-08-17 when the real Canadian data table
+    # was added (BACKLOG.md's "Jurisdiction-bleed, confirmed cross-
+    # platform" entry) -- St. Paul, Alberta is a real, confirmed Canadian
+    # town, genuinely name-ambiguous with the 11 US states below now that
+    # both live in the same table. Exactly the kind of real US/Canada
+    # collision that entry predicted would "extend for free" from the
+    # existing ambiguity-safety, not a bug in this fix.
     assert je._table_lookup("Saint Paul") == (
         "place",
-        ["AK", "AR", "IA", "IN", "KS", "MN", "MO", "NE", "OR", "TX", "VA"],
+        ["AB", "AK", "AR", "IA", "IN", "KS", "MN", "MO", "NE", "OR", "TX", "VA"],
     )
     assert je.finalize_jurisdiction("City of Saint Paul, MN").confidence == "validated"
 
@@ -367,6 +375,78 @@ def test_finalize_jurisdiction_repairs_trailing_bleed():
     assert result.jurisdiction == "City of Hercules, CA"
     assert result.meeting_body is None
     assert result.confidence == "repaired"
+
+
+def test_finalize_jurisdiction_fills_missing_state_when_base_name_already_validates():
+    # Real bug, found 2026-08-21 (BACKLOG.md's "16 real pairs of a
+    # jurisdiction appearing twice" entry): a bare name that already
+    # validates against the place/county table (even ambiguously, e.g.
+    # "Albany" matches 14 different real states) used to be returned
+    # completely unchanged, since only the `_trim_repair()`/
+    # `_split_entity_prefix()` branches called `_fill_missing_state()` --
+    # this fast "validated" path never did. Confirmed live: the exact
+    # same real customer domain (`dublin.granicus.com`) produced both a
+    # correctly state-suffixed "Dublin, CA" page and a permanently bare
+    # "Dublin" page, purely because one extraction happened to find a
+    # comma-state in the raw text and the other didn't.
+    #
+    # No netloc -> stays ambiguous, no guess (same safety
+    # `_fill_missing_state()`/`resolve_state()` already guarantee
+    # elsewhere -- "Albany" alone is genuinely ambiguous nationally).
+    result = je.finalize_jurisdiction("Albany", netloc=None)
+    assert result.jurisdiction == "Albany"
+    assert result.confidence == "validated"
+
+    # A netloc that resolves unambiguously via the domain registry DOES
+    # now get the state filled in -- this is the real fix.
+    result = je.finalize_jurisdiction("Dublin", netloc="dublin.granicus.com")
+    assert result.jurisdiction == "Dublin, CA"
+    assert result.confidence == "validated"
+
+    # Already has a state suffix -- unaffected, same as before (this
+    # fast path's other branch never called `_fill_missing_state()` and
+    # still doesn't).
+    result = je.finalize_jurisdiction("Dublin, OH", netloc="dublin.granicus.com")
+    assert result.jurisdiction == "Dublin, OH"
+    assert result.confidence == "validated"
+
+
+def test_finalize_jurisdiction_domain_registry_resolves_distinct_same_name_counties():
+    # Real finding from the same 2026-08-21 investigation: several of the
+    # 16 "duplicate" pairs turned out NOT to be duplicates at all -- the
+    # bare row was a genuinely different, unrelated real jurisdiction
+    # that happened to share an ambiguous name with an already-archived
+    # suffixed one. Confirmed live via each domain's own real page
+    # content/customer slug (see jurisdiction_enrich.py's registry
+    # comments for the specific evidence): Washington County's own page
+    # literally renders `<div id="mottotext">Oregon</div>`, not Virginia;
+    # Cook County's customer slug is "cocookmn" (Minnesota), not
+    # Illinois; Frederick County's is "fcva" (Virginia), not Maryland;
+    # Glendale's is "glendale-az" (Arizona), not California.
+    assert (
+        je.finalize_jurisdiction(
+            "Washington County", netloc="washingtoncounty.civicweb.net"
+        ).jurisdiction
+        == "Washington County, OR"
+    )
+    assert (
+        je.finalize_jurisdiction(
+            "Cook County", netloc="cocookmn.civicweb.net"
+        ).jurisdiction
+        == "Cook County, MN"
+    )
+    assert (
+        je.finalize_jurisdiction(
+            "Frederick County", netloc="fcva.granicus.com"
+        ).jurisdiction
+        == "Frederick County, VA"
+    )
+    assert (
+        je.finalize_jurisdiction(
+            "Glendale", netloc="glendale-az.granicus.com"
+        ).jurisdiction
+        == "Glendale, AZ"
+    )
 
 
 def test_finalize_jurisdiction_preserves_state_suffix_through_a_repair():
@@ -592,3 +672,731 @@ def test_extract_jurisdiction_chain_declines_rather_than_guesses():
         url="https://totallymadeupgarbage999.example.com/clip/1",
     )
     assert result is None
+
+
+# --- Canadian data + Title-Case/ALL-CAPS bleed fix (2026-08-17,
+# BACKLOG.md's "Jurisdiction-bleed, confirmed cross-platform" entry) ---
+# Every raw string below is real, taken verbatim from that entry's
+# confirmed-live table (source URLs there), not invented -- same
+# "synthetic only for a narrower edge case, real facts always" convention
+# as the rest of this suite.
+
+
+def test_lookup_city_state_resolves_real_canadian_cities():
+    # scripts/build_jurisdiction_data.py's build_canada_places() merges
+    # real Statistics Canada Standard Geographical Classification (SGC)
+    # 2021 census-subdivision rows into the SAME places.csv the US data
+    # already lives in -- confirmed by reading _load_name_state_table()
+    # directly that it's fully data-agnostic, no code change needed
+    # there. 5,028 real Canadian rows added this way (see build script's
+    # own output/comment).
+    assert je.lookup_city_state("Guelph") == "ON"
+    assert je.lookup_city_state("Thunder Bay") == "ON"
+    assert je.lookup_city_state("Lethbridge") == "AB"
+    assert je.lookup_city_state("Kelowna") == "BC"
+    assert je.lookup_city_state("New Westminster") == "BC"
+    assert je.lookup_city_state("Oshawa") == "ON"
+    assert je.lookup_city_state("Mississauga") == "ON"
+
+
+def test_lookup_city_state_delta_stays_ambiguous_across_countries():
+    # Real, confirmed collision the merge makes possible: "Delta" is a
+    # real BC city AND a real US place (Delta, CO/IA/MO/UT and more) --
+    # the existing ambiguity-safety (only resolve a bare name when it
+    # maps to exactly one state) extends for free to a genuine US/Canada
+    # collision once both live in the same table, per BACKLOG.md -- no
+    # new ambiguity-handling code was needed for this.
+    assert je.lookup_city_state("Delta") is None
+
+
+def test_finalize_jurisdiction_repairs_real_canadian_bleed_cases():
+    # Real raw values, all confirmed live on *.escribemeetings.com --
+    # BACKLOG.md's "Jurisdiction-bleed, confirmed cross-platform" entry.
+    # Before the Canadian data table existed, none of these validated
+    # against any table at all, so `_trim_repair()` never even got to
+    # call `_looks_like_bleed()` -- they fell straight through to
+    # "unverified" unchanged, the same bucket a real correct Canadian
+    # name lands in, since the system couldn't tell the two apart.
+    result = je.finalize_jurisdiction(
+        "Mississauga as being part of the Treaty and Traditional Territory "
+        "of the Mississaugas of the Credit First Nation"
+    )
+    assert result.jurisdiction == "Mississauga, ON"
+    assert result.confidence == "repaired"
+
+    result = je.finalize_jurisdiction(
+        "Oshawa is situated on lands within the traditional and treaty "
+        "territory of the Michi Saagiig and Chippewa Anishinaabeg and the "
+        "signatories of the Williams Treaties"
+    )
+    assert result.jurisdiction == "Oshawa, ON"
+    assert result.confidence == "repaired"
+
+    result = je.finalize_jurisdiction(
+        "New Westminster. Recommendation THAT the goal of zero traffic "
+        "fatalities and serious injuries"
+    )
+    assert result.jurisdiction == "New Westminster, BC"
+    assert result.confidence == "repaired"
+
+    result = je.finalize_jurisdiction(
+        "Guelph now hold a meeting that is closed to the public"
+    )
+    assert result.jurisdiction == "Guelph, ON"
+    assert result.confidence == "repaired"
+
+    result = je.finalize_jurisdiction(
+        "Thunder Bay be approved in accordance with Table"
+    )
+    assert result.jurisdiction == "Thunder Bay, ON"
+    assert result.confidence == "repaired"
+
+    result = je.finalize_jurisdiction(
+        "Lethbridge currently utilizes Standing Policy Committees"
+    )
+    assert result.jurisdiction == "Lethbridge, AB"
+    assert result.confidence == "repaired"
+
+
+def test_finalize_jurisdiction_peterborough_resolves_with_the_real_data_added_tonight():
+    # The one case BACKLOG.md flagged as unexplained -- re-checked
+    # directly against the real (if BACKLOG.md-truncated) raw string, not
+    # guessed. Turns out this one already repaired (state-less) even
+    # BEFORE tonight's fixes: "Peterborough" happens to already collide
+    # with a real US place, Peterborough town NH -- but only in the
+    # county-*subdivision* table (New England towns are often COUSUB, not
+    # an incorporated Census "place"), which `_table_lookup()` (used for
+    # trim validation) checks but `lookup_city_state()` (used for
+    # state-filling) does not. So this session could not reproduce
+    # BACKLOG.md's "still not trimmed" claim against current code --
+    # most likely explanation is the already-archived page's stored
+    # value simply predates whatever earlier fix made this validate, and
+    # was never reprocessed (reprocessing already-archived pages is out
+    # of scope here, same as this session's other data-quality fixes).
+    # What tonight's Canadian-data fix specifically adds: an actual
+    # province now resolves too, since "Peterborough" is a real ON place
+    # unambiguously once it's the only *place*-table (not
+    # subdivision-table) entry -- the NH collision lives in a table
+    # lookup_city_state() never consults, so it doesn't block this.
+    raw = (
+        "Peterborough is committed to making meetings accessible for "
+        "people of all abilities"
+    )
+    result = je.finalize_jurisdiction(
+        raw, netloc="pub-peterborough.escribemeetings.com"
+    )
+    assert result.jurisdiction == "Peterborough, ON"
+    assert result.confidence == "repaired"
+
+
+def test_finalize_jurisdiction_repairs_title_case_bleed_with_no_lowercase_signal():
+    # Real raw values -- the Title-Case/ALL-CAPS blind spot BACKLOG.md
+    # flagged as a residual gap from an earlier fix: every word in the
+    # discarded tail starts uppercase (no lowercase-initial word, no
+    # digit, no roman numeral), so the pre-2026-08-17 signals all missed
+    # these. _MIN_BLEED_WORD_RUN's own comment in jurisdiction_enrich.py
+    # has the full calibration evidence for the threshold.
+    result = je.finalize_jurisdiction(
+        "Sarasota Legacy Business PLEDGE OF PUBLIC", netloc="sarasota.granicus.com"
+    )
+    assert result.jurisdiction == "Sarasota, FL"
+    assert result.confidence == "repaired"
+
+    result = je.finalize_jurisdiction(
+        "Hollywood Be Awarded As A Subrecipient O", netloc="hollywoodfl.granicus.com"
+    )
+    assert (
+        result.jurisdiction == "Hollywood"
+    )  # ambiguous (FL/AL/SC) -- no guessed state
+    assert result.confidence == "repaired"
+
+    result = je.finalize_jurisdiction(
+        "Hampton Zoning Ordinance Regarding Standa", netloc="hampton.granicus.com"
+    )
+    assert result.jurisdiction == "Hampton"  # ambiguous across many states -- no guess
+    assert result.confidence == "repaired"
+
+    result = je.finalize_jurisdiction(
+        "Kelowna Regular Council Meeting AGENDA Monday",
+        netloc="kelownapublishing.escribemeetings.com",
+    )
+    assert result.jurisdiction == "Kelowna, BC"
+    assert result.confidence == "repaired"
+
+    result = je.finalize_jurisdiction(
+        "Delta Housing Accelerator Fund Initiatives Summary.pdf Recommendation",
+        netloc="pub-delta.escribemeetings.com",
+    )
+    assert result.jurisdiction == "Delta"  # ambiguous, real BC city AND real US places
+    assert result.confidence == "repaired"
+
+
+def test_finalize_jurisdiction_title_case_fix_does_not_over_trigger_on_real_long_names():
+    # Real, confirmed-long entity names BACKLOG.md names explicitly as
+    # must-not-trim. Three ("Lake Washington School District", "Bay Area
+    # Headquarters Authority", "Capital Metropolitan Transportation
+    # Authority") have a shortest validating prefix ("Lake"/"Bay"/
+    # "Capital") whose discarded tail is exactly 3 words -- one word
+    # short of _MIN_BLEED_WORD_RUN, which is exactly the real boundary
+    # that constant was picked against, not a coincidence. The fourth
+    # ("Lexington-Fayette Urban County Government") trims to a different
+    # valid prefix ("Lexington-Fayette Urban", matching the Census
+    # table's own "Lexington-Fayette urban county" key) with a 1-word
+    # tail ("Government") -- also below the threshold, so it's left
+    # whole too, same outcome via a different cut point.
+    for name in (
+        "Capital Metropolitan Transportation Authority",
+        "Lake Washington School District",
+        "Bay Area Headquarters Authority",
+        "Lexington-Fayette Urban County Government",
+    ):
+        result = je.finalize_jurisdiction(name)
+        assert result.jurisdiction == name
+        assert result.confidence == "unverified"
+
+
+def test_extract_jurisdiction_chain_still_rejects_the_broward_false_positive():
+    # Real regression guard for the word-run fix specifically: "That'S
+    # Identified" is only 2 words, below _MIN_BLEED_WORD_RUN -- confirms
+    # the new signal doesn't accidentally start accepting the exact false
+    # positive
+    # test_extract_jurisdiction_chain_rejects_a_capitalization_walk_false_positive()
+    # above was built to reject.
+    page_text = (
+        "ALSO, THE S. MIDDLE RIVER MOBILITY PROJECT IN THE CITY OF FORT LAUDERDALE THAT'S "
+        "IDENTIFIED. Next item on the agenda."
+    )
+    html = f"<html><body><p>{page_text}</p></body></html>"
+    result = je.extract_jurisdiction_chain(
+        page_text="no trigger for the stop rule here",
+        html=html,
+        url="https://browardmpo.new.swagit.com/videos/1",
+    )
+    assert result is None
+
+
+def test_finalize_jurisdiction_single_word_bleed_tails_remain_a_known_residual_gap():
+    # "Town of Castle Rock Authorizing": still an open gap, 2026-08-18.
+    # Its discarded tail is only 1 word ("Authorizing"), below
+    # _MIN_BLEED_WORD_RUN, and "authorizing" isn't on the closed
+    # `_KNOWN_JUNK_TAIL_WORDS` stoplist (2026-08-18 fix #4) since no real
+    # confirmed-live example has grounded it there yet -- there isn't
+    # enough signal in a single capitalized word to tell real bleed apart
+    # from a legitimate short suffix without risking exactly the
+    # over-trim
+    # test_finalize_jurisdiction_title_case_fix_does_not_over_trigger_on_real_long_names()
+    # above guards against, so it's documented honestly as an open gap in
+    # BACKLOG.md rather than silently left.
+    result = je.finalize_jurisdiction("Town of Castle Rock Authorizing")
+    assert result.jurisdiction == "Town of Castle Rock Authorizing"
+    assert result.confidence == "unverified"
+
+
+def test_finalize_jurisdiction_known_junk_tail_words_are_repaired():
+    # Real, confirmed-live raw values (2026-08-18, found live on
+    # /coverage) that fix #4's closed `_KNOWN_JUNK_TAIL_WORDS` stoplist
+    # newly repairs -- their discarded tail is only 1 word ("Meeting",
+    # "Attachments"), below _MIN_BLEED_WORD_RUN, but both words are
+    # grounded in a real confirmed example so the stoplist authorizes the
+    # trim anyway (see that constant's own docstring for why this is safe
+    # where a general short-tail rule wouldn't be).
+    result = je.finalize_jurisdiction(
+        "Brampton Meeting", netloc="pub-brampton.escribemeetings.com"
+    )
+    assert result.jurisdiction == "Brampton, ON"
+    assert result.confidence == "repaired"
+
+    result = je.finalize_jurisdiction(
+        "Peterborough Attachments", netloc="pub-peterborough.escribemeetings.com"
+    )
+    assert result.jurisdiction == "Peterborough, ON"
+    assert result.confidence == "repaired"
+
+
+# --- Second-pass fixes, 2026-08-17: `_trim_repair()` no longer falls
+# through past a literal-matching prefix, a real consolidated-government
+# formatting gap, and a positive-evidence entity-type-suffix allowlist
+# (see jurisdiction_enrich.py's own comments on `_trim_repair()`,
+# `_QUERY_GOVERNMENT_TYPE_RE`, and `_ENTITY_TYPE_SUFFIX_WORDS` for the
+# full reasoning). All real, confirmed via the production
+# GET /internal/jurisdiction/bleed-backfill-candidates audit, not
+# invented -- see BACKLOG.md's "Jurisdiction-bleed, confirmed
+# cross-platform" entry.
+
+
+def test_trim_repair_does_not_fall_through_past_a_literal_match_richmond_hill():
+    # Real false positive introduced by the first bleed-signal fix: the
+    # old "keep scanning shorter cuts" behavior correctly rejected the
+    # longest valid prefix "Richmond Hill" (a real, different place;
+    # tail "Single Source Award" is only 3 words, not bleed) but then
+    # kept going to the shorter "Richmond" (tail "Hill Single Source
+    # Award" is 4 words -> looked like bleed) and wrongly repaired to
+    # "Richmond" -- destroying "Richmond Hill". Must now stay whole.
+    result = je.finalize_jurisdiction("Richmond Hill Single Source Award")
+    assert result.jurisdiction == "Richmond Hill Single Source Award"
+    assert result.confidence == "unverified"
+
+
+def test_trim_repair_does_not_fall_through_past_a_literal_match_east_bay():
+    # Same shape as Richmond Hill above: "East Bay" (real place, tail
+    # "Regional Park District" not bleed) used to be skipped past in
+    # favor of the shorter "East" (a real OH township), mangling a real,
+    # legitimately-long agency name.
+    result = je.finalize_jurisdiction("East Bay Regional Park District, CA")
+    assert result.jurisdiction == "East Bay Regional Park District, CA"
+    assert result.confidence == "unverified"
+
+
+def test_trim_repair_still_finds_a_shorter_repair_past_a_heuristic_only_match():
+    # The literal-vs-heuristic distinction the two fixes above rely on
+    # must not become too conservative: "East Providence City" only
+    # "validates" via the secondary trailing-"City"-stripped candidate
+    # "East Providence" (the literal text "east providence city" isn't a
+    # real table key -- "City" here is really the start of "City
+    # Council" in the surrounding text, not part of the entity name), so
+    # its non-bleed 3-word tail must NOT stop the search the way a
+    # literal match would. Scanning should continue to the shorter,
+    # literal match "East Providence" (tail "City Council Live Stream",
+    # 4 words -> bleed), and repair to that.
+    result = je.finalize_jurisdiction("East Providence City Council Live Stream")
+    assert result.jurisdiction == "East Providence, RI"
+    assert result.confidence == "repaired"
+
+
+def test_finalize_jurisdiction_resolves_a_real_consolidated_government_page_spelling():
+    # Real raw jurisdiction text from an already-archived page: "Metro"
+    # (bare, no "Government") and spaces around the slash, neither of
+    # which the stored Census key ("louisville/jefferson county",
+    # produced from "Louisville/Jefferson County metro government
+    # (balance)") matched before this fix. Must resolve as a validated
+    # consolidated-government name, not get destructively trimmed to a
+    # bare, nationally-ambiguous "Louisville".
+    result = je.finalize_jurisdiction("Louisville / Jefferson County Metro")
+    assert result.jurisdiction == "Louisville / Jefferson County Metro"
+    assert result.confidence == "validated"
+
+    # Control case: Nashville-Davidson's own real archived spelling
+    # already matched before this fix (it strips down to "nashville-
+    # davidson" via the ordinary trailing-"County"-word strip, no slash
+    # or bare-"Metro" involved) -- confirms the new consolidated-
+    # government candidate tier doesn't change already-correct behavior.
+    result = je.finalize_jurisdiction("Nashville-Davidson County, TN")
+    assert result.jurisdiction == "Nashville-Davidson County, TN"
+    assert result.confidence == "validated"
+
+
+def test_finalize_jurisdiction_protects_a_real_special_district_entity_suffix():
+    # Real, confirmed residual gap as of the first bleed-signal fix: the
+    # longest real prefix ("St. Johns", a real place) has a tail ("River
+    # Water Management District") that's already 4 Title-Case words --
+    # indistinguishable BY SHAPE ALONE from real bleed like "Legacy
+    # Business PLEDGE OF PUBLIC". The entity-type-suffix allowlist adds
+    # positive evidence (the tail ends in a real government-entity-type
+    # word, "District") so this now correctly stays whole instead of
+    # being destructively trimmed to "St. Johns, FL" (losing the real
+    # water-management-district identity).
+    result = je.finalize_jurisdiction("St. Johns River Water Management District, FL")
+    assert result.jurisdiction == "St. Johns River Water Management District, FL"
+    assert result.confidence == "unverified"
+
+
+def test_finalize_jurisdiction_protects_a_real_water_utility_authority():
+    # Found while verifying the fix above, not explicitly reported: this
+    # real agency name (already cited in BACKLOG_DONE.md's audit as a
+    # "real, correct, legitimately-long agency name") was ALSO being
+    # wrongly trimmed to "Albuquerque, NM" by the shipped word-run-only
+    # signal -- confirmed via the real bleed-backfill-candidates audit,
+    # not previously covered by any test. "Albuquerque" is the only
+    # valid prefix (literal match), and its tail "Bernalillo County
+    # Water Utility Authority" (5 words) ends in "Authority" -- now
+    # protected.
+    result = je.finalize_jurisdiction(
+        "Albuquerque Bernalillo County Water Utility Authority"
+    )
+    assert (
+        result.jurisdiction == "Albuquerque Bernalillo County Water Utility Authority"
+    )
+    assert result.confidence == "unverified"
+
+
+def test_finalize_jurisdiction_entity_suffix_allowlist_does_not_protect_real_bleed():
+    # The entity-type-suffix allowlist is end-anchored, not "contains" --
+    # real bleed can legitimately contain one of the protected words
+    # (e.g. "Committee") without actually ENDING in a protected word or
+    # phrase. Kenora's real, already-correct repair must keep working:
+    # its tail "Committee of the Whole Agenda Thursday" contains
+    # "Committee" but ends in "Agenda Thursday", which isn't protected
+    # (and also independently trips the plain lowercase-word bleed
+    # signal via "of"/"the").
+    result = je.finalize_jurisdiction("Kenora Committee of the Whole Agenda Thursday")
+    assert result.jurisdiction == "Kenora, ON"
+    assert result.confidence == "repaired"
+
+    # Guelph's real "Committee of Adjustment" bleed case, same shape --
+    # both cases are already caught by the lowercase-word signal (the
+    # "of" in each tail) before the entity-suffix allowlist is even
+    # consulted, but asserted directly here since both phrases are also
+    # explicitly listed in `_ENTITY_TYPE_SUFFIX_PHRASES` for the ALL-CAPS
+    # case (not yet observed live) -- this confirms the mixed-case
+    # spelling these were actually found in still repairs correctly.
+    result = je.finalize_jurisdiction("Guelph Committee of Adjustment")
+    assert result.jurisdiction == "Guelph, ON"
+    assert result.confidence == "repaired"
+
+
+def test_ends_with_known_entity_suffix_is_end_anchored_not_contains():
+    # Direct unit test of the helper itself: a protected word appearing
+    # mid-tail (not at the end) must not count -- this is the exact
+    # distinction that keeps Kenora's real bleed case (above) from being
+    # wrongly protected just because "Committee" appears somewhere in
+    # the discarded text.
+    assert je._ends_with_known_entity_suffix("Water Management District") is True
+    assert je._ends_with_known_entity_suffix("District Meeting Agenda") is False
+    assert je._ends_with_known_entity_suffix("Committee of the Whole") is True
+    assert (
+        je._ends_with_known_entity_suffix("Committee of the Whole Agenda Thursday")
+        is False
+    )
+
+
+# --- Jurisdiction misattribution, confirmed 2026-08-19 (BACKLOG.md's
+# "Jurisdiction misattribution" entry) -- 4 real instances found via
+# incidental spot-checking, all real, verifiable places even where the
+# exact originating URL could not be recovered this session. Root-caused
+# to TWO separate bugs, not one, verified by tracing the actual code path
+# each case would hit (not assumed from the failure shape alone, per the
+# investigation's own explicit ask):
+#
+# 1. `_trim_repair()`'s `_looks_like_bleed()` treated a discarded tail
+#    starting with "of" as proof of agenda-prose bleed -- but "of" is the
+#    one structural connector this whole module's OTHER mechanisms already
+#    treat as real jurisdiction-naming syntax, not prose. Explains
+#    Douglas, MI (see below); does NOT explain Courtenay/Burlington or
+#    Victorville/San Bernardino County, which have zero token overlap
+#    with their wrong values -- no trim of a single string can turn
+#    "Courtenay" into "Burlington".
+# 2. `extract_jurisdiction_chain()`'s stoprule/capitalization-walk tiers
+#    accept the FIRST "City/County/Town of X" match anywhere in page
+#    text/HTML, with no check that it's the page's OWN identity rather
+#    than an unrelated mention elsewhere (a correspondence item, a
+#    cross-jurisdictional reference, boilerplate). The existing "must
+#    validate" gate (built for the Broward MPO/Fort Lauderdale case,
+#    tested above) only catches outright-garbage candidates, not a clean,
+#    validating WRONG place. Explains Courtenay/Burlington and
+#    Victorville/San Bernardino County.
+#
+# Tulare County/Visalia (the 4th backlog case) could not be confirmed
+# fixed this session -- see the honest residual-gap test at the bottom of
+# this section for why.
+
+
+def test_finalize_jurisdiction_repairs_douglas_mi_not_the_village_ok():
+    # Root cause #1, `_looks_like_bleed()`'s "of" fix. Douglas, MI is a
+    # real Michigan VILLAGE (not a City -- confirmed, Allegan County), so
+    # a page carrying its real, correct self-branding "The Village of
+    # Douglas, Michigan" verbatim used to get destructively repaired down
+    # to "The Village" -- a real, but totally unrelated, Oklahoma City
+    # suburb literally named "The Village" (confirmed: `_table_lookup
+    # ("The Village") == ("place", ["OK"])`). The cut landed right before
+    # "of Douglas, Michigan", and the old code treated that "of" as bleed
+    # evidence. Correct behavior here is NOT a guessed repair -- "Village"
+    # genuinely isn't in any type-word table this module validates city/
+    # county names against, so this must stay "unverified", not get
+    # silently mangled into a real-but-wrong different state.
+    result = je.finalize_jurisdiction("The Village of Douglas, Michigan")
+    assert result.jurisdiction == "The Village of Douglas, Michigan"
+    assert result.confidence == "unverified"
+
+    # Control: without the leading "The", `_LEADING_TYPE_RE` already
+    # strips "Village of " directly during `_table_lookup(base)`'s own
+    # candidate generation, so this never even reached `_trim_repair()`'s
+    # buggy path -- confirms the fix didn't just get lucky on the "The"
+    # form specifically. Also stays "unverified": "Douglas, Michigan"
+    # (with the comma) isn't a table key on its own, and "Douglas" alone
+    # is a real, ambiguous US city/county-seat name (not resolved without
+    # more evidence than this module has here).
+    result = je.finalize_jurisdiction("Village of Douglas, Michigan")
+    assert result.jurisdiction == "Village of Douglas, Michigan"
+    assert result.confidence == "unverified"
+
+
+def test_looks_like_bleed_does_not_treat_a_leading_of_as_bleed():
+    # Direct unit test of the helper itself -- the exact signal
+    # `test_finalize_jurisdiction_repairs_douglas_mi_not_the_village_ok()`
+    # above depends on. A tail starting with anything else lowercase is
+    # still bleed, same as before; only a tail that starts with "of"
+    # specifically is now excluded.
+    assert je._looks_like_bleed("of Douglas, Michigan") is False
+    assert je._looks_like_bleed("to accept and expend the amount of") is True
+    assert je._looks_like_bleed("from Council Information Index") is True
+
+
+def test_extract_jurisdiction_chain_courtenay_bc_not_burlington():
+    # Root cause #2. Real eScribe subdomain (pub-courtenay.escribemeetings.com,
+    # confirmed live 2026-08-19 -- fetched directly, see BACKLOG_DONE.md's
+    # write-up for this entry). The page text below is synthetic (a real
+    # Courtenay meeting page fetched live this session carried no "City/
+    # County of X" phrase at all -- just a bare venue address, "CVRD Civic
+    # Room, 770 Harmston Ave, Courtenay", so the exact real page that
+    # produced this misattribution could not be recovered), but reuses two
+    # real, confirmed facts: Courtenay, BC is this domain's real, correct
+    # jurisdiction, and "Burlington" is a real, validating place name
+    # (17 real matches across US states and ON, per
+    # `_table_lookup("Burlington")`) that a real page could plausibly
+    # mention in an unrelated correspondence item. Before the fix, the
+    # stoprule tier accepted "City of Burlington" outright since it
+    # validates; now it's cross-checked against the domain's own real
+    # subdomain identity ("Courtenay") and rejected, falling through to
+    # the (correct) subdomain tier.
+    page_text = (
+        "Regular Council Meeting Agenda. Correspondence received from the "
+        "City of Burlington regarding regional transportation funding. "
+        "Item 4.2 Report."
+    )
+    html = f"<html><body><p>{page_text}</p></body></html>"
+    result = je.extract_jurisdiction_chain(
+        page_text=page_text,
+        html=html,
+        url="https://pub-courtenay.escribemeetings.com/Meeting.aspx?Id=1",
+    )
+    # Ambiguous (BC AND a real North Dakota place both named Courtenay,
+    # confirmed via `_table_lookup("Courtenay") == ("place", ["BC",
+    # "ND"])`) -- correctly returned bare, no guessed province, same
+    # "decline rather than guess" policy this module uses everywhere else.
+    assert result == "Courtenay"
+
+
+def test_extract_jurisdiction_chain_victorville_not_san_bernardino_county():
+    # Root cause #2, second confirmed instance. victorville.granicus.com
+    # is a real, live Granicus tenant (confirmed live 2026-08-19, and
+    # already queued for real ingest -- see
+    # scripts/granicus_auto_transcription_queue.txt). Victorville is a
+    # real CA city IN San Bernardino County, so a real page easily carries
+    # both real, correctly-spelled names -- the bug was purely about which
+    # one gets accepted as the meeting's own jurisdiction, not either name
+    # being fake. Page text is synthetic (the real page that produced this
+    # misattribution could not be recovered), reusing the real,
+    # subdomain-confirmed relationship.
+    page_text = (
+        "This channel is provided in partnership with the County of San "
+        "Bernardino transportation authority. City of Victorville City "
+        "Council Regular Meeting."
+    )
+    html = f"<html><body><p>{page_text}</p></body></html>"
+    result = je.extract_jurisdiction_chain(
+        page_text=page_text,
+        html=html,
+        url="https://victorville.granicus.com/player/clip/2022",
+    )
+    assert result == "Victorville, CA"
+
+
+def test_extract_jurisdiction_chain_agreeing_candidate_is_unaffected():
+    # Control for the cross-check fix above: when the text-mined
+    # candidate AGREES with the URL's own subdomain identity (the
+    # overwhelmingly common real case), the cross-check must be a pure
+    # no-op -- this is really just re-confirming
+    # test_extract_jurisdiction_chain_stoprule_repairs_a_real_bleed_case()
+    # (hercules.granicus.com) still passes with the new code path
+    # threaded through, stated explicitly here as its own regression
+    # guard.
+    page_text = "Welcome. Meeting of the City of Hercules. XIV. PUBLIC COMMUNICATIONS XV. ADJOURNMENT"
+    result = je.extract_jurisdiction_chain(
+        page_text=page_text,
+        html=f"<html>{page_text}</html>",
+        url="https://hercules.granicus.com/player/clip/1306",
+    )
+    assert result == "City of Hercules, CA"
+
+
+def test_extract_jurisdiction_chain_no_subdomain_hint_is_unaffected():
+    # Control: when the URL carries no validating subdomain hint at all
+    # (most Swagit/CivicClerk/generic_fallback pages -- the majority of
+    # this chain's real traffic), the cross-check has nothing to compare
+    # against and must not suppress an otherwise-good candidate. Confirms
+    # the fix's blast radius is limited to pages that DO have a
+    # corroborating subdomain signal, not a blanket new restriction.
+    html = "<table><td>OKLAHOMA CITY</td><td>FORMAL AGENDA</td></table> City of Oklahoma City<br>more"
+    result = je.extract_jurisdiction_chain(
+        page_text="no trigger here", html=html, url="https://example.com/clip/1"
+    )
+    assert result == "City of Oklahoma City, OK"
+
+
+def test_base_name_key_normalizes_formatting_differences_for_comparison():
+    # Direct unit test of the cross-check's comparison helper: it must
+    # treat "City of Hercules, CA" and "Hercules" as the same identity
+    # (state suffix + leading type word stripped), and "San Bernardino
+    # County" and "Victorville" as genuinely different identities.
+    assert je._base_name_key("City of Hercules, CA") == je._base_name_key("Hercules")
+    assert je._base_name_key("San Bernardino County") == "san bernardino"
+    assert je._base_name_key("San Bernardino County") != je._base_name_key(
+        "Victorville"
+    )
+
+
+def test_tulare_county_visalia_remains_an_unconfirmed_residual_gap():
+    # The 4th BACKLOG.md case, "Tulare County misattributed to Visalia"
+    # (Visalia is Tulare County's real, correct county seat) -- honestly
+    # NOT confirmed fixed this session. Unlike Courtenay and Victorville
+    # above, no real, live, validating subdomain for Tulare County's own
+    # meeting hosting could be found (tularecounty.granicus.com,
+    # tulare.granicus.com, tularecounty.civicweb.net, and
+    # tularecounty.swagit.com were all checked live 2026-08-19 and are
+    # either dead or not real Tulare County tenants), so there is no
+    # confirmed real URL to build a real regression test against, and
+    # `extract_jurisdiction_chain()`'s cross-check fix above only engages
+    # when a validating subdomain hint exists to compare against. Even a
+    # plausible synthetic "tularecounty.granicus.com" doesn't validate:
+    # `wordninja.split("tularecounty")` mis-segments to
+    # ['tul','are','county'] rather than ['tulare','county'] (confirmed
+    # live), a separate, narrower wordninja dictionary gap, not something
+    # this fix addresses. Documented here, not silently dropped, so a
+    # later session with the real originating URL can pick this up --
+    # left as its own narrower BACKLOG.md entry.
+    import wordninja
+
+    assert wordninja.split("tularecounty") == ["tul", "are", "county"]
+    assert (
+        je._validated_subdomain_extract(
+            "https://tularecounty.granicus.com/player/clip/1"
+        )
+        is None
+    )
+
+
+# --- Bugs #1 and #3, fixed 2026-08-21: `finalize_jurisdiction()` now
+# cross-checks BOTH its top-level literal-match branch and its
+# `_trim_repair()` branch against a validated subdomain-derived candidate,
+# not just `extract_jurisdiction_chain()`'s own per-tier candidates (that
+# cross-check, added 2026-08-19 for Courtenay/Victorville above, only ever
+# ran on candidates the chain itself produced -- a caller that invokes
+# `finalize_jurisdiction()` directly on already-stored text, e.g.
+# `archive/db/crud.py`'s backfill/reprocessing passes, got no such
+# protection at all). See that function's own updated docstring for the
+# full reasoning; both real cases below are root-caused and described in
+# BACKLOG_DONE.md's "jurisdiction-bleed" entries.
+
+
+def test_finalize_jurisdiction_trim_repair_prefers_subdomain_over_wrong_real_city():
+    # Bug #1, real confirmed-live case: Shelburne, ON's raw stored value
+    # ("Brantford regarding Professional Activity", real eScribe subdomain
+    # pub-shelburne.escribemeetings.com) used to trim-repair confidently to
+    # "Brantford" -- a real Ontario town, just not Shelburne's -- since
+    # "regarding" is bleed-shaped (lowercase-initial word) and "Brantford"
+    # validates on its own. The subdomain's own validated identity
+    # ("Shelburne") now wins outright since it disagrees with the trim.
+    # No province suffix: "Shelburne" is genuinely ambiguous (both a real
+    # Nova Scotia town and a real Ontario town validate), so this
+    # correctly declines to guess a state -- same "decline rather than
+    # guess" policy as `test_extract_jurisdiction_chain_courtenay_bc_not_burlington()`
+    # above.
+    result = je.finalize_jurisdiction(
+        "Brantford regarding Professional Activity",
+        netloc="pub-shelburne.escribemeetings.com",
+    )
+    assert result.jurisdiction == "Shelburne"
+    assert result.confidence == "repaired"
+
+
+def test_finalize_jurisdiction_trim_repair_agrees_with_subdomain_is_unaffected():
+    # Control for the fix above: Peterborough's OWN real eScribe subdomain
+    # (pub-peterborough.escribemeetings.com) trims the exact same
+    # "Peterborough Attachments" shape down to "Peterborough" -- here the
+    # subdomain-derived candidate AGREES with the trim result, so the
+    # cross-check is a pure no-op and this must still repair exactly as
+    # `test_finalize_jurisdiction_known_junk_tail_words_are_repaired()`
+    # (tested before this fix existed) already established.
+    result = je.finalize_jurisdiction(
+        "Peterborough Attachments", netloc="pub-peterborough.escribemeetings.com"
+    )
+    assert result.jurisdiction == "Peterborough, ON"
+    assert result.confidence == "repaired"
+
+
+def test_finalize_jurisdiction_trim_repair_protects_uxbridge_from_peterborough_bleed():
+    # Same real bled text as Peterborough's own case above ("Peterborough
+    # Attachments"), but on a DIFFERENT real eScribe customer's domain
+    # (Uxbridge, ON) -- this is the exact scenario BACKLOG_DONE.md's
+    # original bug writeup warned was only "incidentally" safe (Uxbridge's
+    # real tail happened to be short enough to dodge the word-run
+    # threshold): if the tail had been long enough to trigger the trim, it
+    # "would have confidently repaired to Peterborough the same way" --
+    # i.e. a real but WRONG city, same shape as Shelburne/Brantford. With
+    # the subdomain cross-check now in place, even a hypothetical
+    # long-enough bleed tail can't do that: the domain's own validated
+    # identity ("Uxbridge") wins over the coincidentally-real trim result.
+    result = je.finalize_jurisdiction(
+        "Peterborough Attachments", netloc="pub-uxbridge.escribemeetings.com"
+    )
+    assert result.jurisdiction == "Uxbridge, ON"
+    assert result.confidence == "repaired"
+
+
+def test_finalize_jurisdiction_top_level_match_prefers_subdomain_for_two_tier_region():
+    # Bug #3, real confirmed-live case: Peel Region, ON
+    # (pub-peelregion.escribemeetings.com, a real "Regional Council"
+    # meeting with 1101 real caption segments -- eScribe's first-ever
+    # confirmed populated-caption example) has a real agenda mentioning
+    # "Town of Caledon" (a real, validating constituent lower-tier town)
+    # repeatedly -- that text VALIDATES DIRECTLY (no trim/repair needed at
+    # all), so it used to be accepted at finalize_jurisdiction()'s
+    # top-level literal-match branch before ever reaching a subdomain
+    # cross-check. Now that the top-level branch is cross-checked too,
+    # the subdomain's own validated identity ("Peel Region", now resolvable
+    # since scripts/build_jurisdiction_data.py added Ontario's real
+    # Durham/Peel/Waterloo regional municipalities -- see BACKLOG_DONE.md)
+    # wins over the constituent-town mention.
+    result = je.finalize_jurisdiction(
+        "Town of Caledon, ON", netloc="pub-peelregion.escribemeetings.com"
+    )
+    assert result.jurisdiction == "Peel Region, ON"
+    assert result.confidence == "repaired"
+
+
+def test_finalize_jurisdiction_top_level_match_agrees_with_subdomain_is_unaffected():
+    # Control: Caledon's OWN real eScribe subdomain (Caledon is a real
+    # eScribe/iSiLIVE customer in its own right -- see BACKLOG_DONE.md's
+    # eScribe caption-fix entry) agrees with its own "Town of Caledon"
+    # text, so the cross-check must be a pure no-op here.
+    result = je.finalize_jurisdiction(
+        "Town of Caledon, ON", netloc="pub-caledon.escribemeetings.com"
+    )
+    assert result.jurisdiction == "Town of Caledon, ON"
+    assert result.confidence == "validated"
+
+
+def test_extract_jurisdiction_chain_peel_region_not_caledon():
+    # End-to-end version of the top-level cross-check test above, through
+    # the real chain a live eScribe resolve actually calls
+    # (app/platforms/escribe.py's own `_extract_metadata()`). Page text is
+    # synthetic (trimmed to the one real, confirmed shape: "Town of
+    # Caledon" appearing in Peel Region's own agenda body, see
+    # BACKLOG.md/BACKLOG_DONE.md for the real page's full description) --
+    # reuses the real, confirmed subdomain/jurisdiction relationship, not
+    # an invented one.
+    page_text = (
+        "Regional Council Agenda. Report from the Town of Caledon "
+        "regarding regional infrastructure funding. Item 5.2."
+    )
+    html = f"<html><body><p>{page_text}</p></body></html>"
+    result = je.extract_jurisdiction_chain(
+        page_text=page_text,
+        html=html,
+        url="https://pub-peelregion.escribemeetings.com/Meeting.aspx?Id=1",
+    )
+    assert result == "Peel Region, ON"
+
+
+def test_validated_label_extract_resolves_ontario_regional_municipalities():
+    # Direct unit test of the new curated data
+    # (scripts/build_jurisdiction_data.py's
+    # build_canada_regional_municipalities()) -- confirms all 3 real,
+    # confirmed-in-production customers (BACKLOG.md's StatsCan
+    # completeness-gap entry: a full sweep of all 176 real eScribe + 253
+    # real Granicus subdomains found Durham/Peel/Waterloo regional
+    # municipalities among them) now resolve via the real wordninja-split
+    # subdomain shape.
+    assert je.validated_label_extract("pub-peelregion") == "Peel Region"
+    assert je.validated_label_extract("pub-durhamregion") == "Durham Region"
+    assert je.validated_label_extract("pub-waterlooregion") == "Waterloo Region"

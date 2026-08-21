@@ -15,6 +15,7 @@ def register_all_finders() -> None:
     from .champds import ChampDSAssetFinder
     from .clerkbase import ClerkBaseAssetFinder
     from .civicclerk import CivicClerkAssetFinder
+    from .destinyhosted import DestinyHostedAssetFinder
     from .civicweb import CivicWebAssetFinder
     from .civicplus import CivicPlusAssetFinder
     from .escribe import EscribeAssetFinder
@@ -29,11 +30,13 @@ def register_all_finders() -> None:
     from .slc import SlcAssetFinder
     from .swagit import SwagitAssetFinder
     from .telvue import TelvueAssetFinder
+    from .townhallstreams import TownHallStreamsAssetFinder
     from .viebit import ViebitAssetFinder
     from .youtube import YouTubeAssetFinder
 
     register(GranicusAssetFinder())
     register(CivicClerkAssetFinder())
+    register(DestinyHostedAssetFinder())
     register(SwagitAssetFinder())
     register(EscribeAssetFinder())
     register(CaliforniaLegislatureAssetFinder())
@@ -53,6 +56,7 @@ def register_all_finders() -> None:
     register(SeattleChannelAssetFinder())
     register(TelvueAssetFinder())
     register(HylandAssetFinder())
+    register(TownHallStreamsAssetFinder())
     # Registered under "unknown" -- the exact string detect_platform()
     # already returns for anything unmatched -- so get_finder("unknown")
     # finds this instead of raising UnsupportedPlatformError. Keep this

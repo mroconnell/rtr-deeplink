@@ -227,7 +227,7 @@ async def process_next_chunk(engine: TranscriptionEngine) -> bool:
 
     with tempfile.TemporaryDirectory(prefix="rtr_transcribe_") as tmpdir:
         audio_path = Path(tmpdir) / f"chunk_{chunk_index}.mp3"
-        extracted = await extract_chunk_audio(
+        extracted, extraction_error = await extract_chunk_audio(
             media_url,
             start=start,
             duration=duration,
@@ -236,14 +236,19 @@ async def process_next_chunk(engine: TranscriptionEngine) -> bool:
         )
         if not extracted:
             logger.warning(
-                "Job %s: ffmpeg extraction failed for chunk %s/%s (will retry on next poll)",
+                "Job %s: ffmpeg extraction failed for chunk %s/%s (%s) (will retry on next poll)",
                 job_id,
                 chunk_index + 1,
                 total_chunks,
+                extraction_error,
             )
-            await crud.report_chunk_result(
-                job_id, success=False, error="ffmpeg extraction failed"
+            failure_result = await crud.report_chunk_result(
+                job_id,
+                success=False,
+                chunk_index=chunk_index,
+                error=extraction_error or "ffmpeg extraction failed",
             )
+            await _handle_job_failure_result(job_id, failure_result)
             return True
 
         try:
@@ -255,7 +260,10 @@ async def process_next_chunk(engine: TranscriptionEngine) -> bool:
                 chunk_index + 1,
                 total_chunks,
             )
-            await crud.report_chunk_result(job_id, success=False, error=str(e))
+            failure_result = await crud.report_chunk_result(
+                job_id, success=False, chunk_index=chunk_index, error=str(e)
+            )
+            await _handle_job_failure_result(job_id, failure_result)
             return True
 
     shifted = shift_segments(raw_segments, start)
@@ -296,15 +304,41 @@ async def process_next_chunk(engine: TranscriptionEngine) -> bool:
             result.get("transcript_version_id"),
         )
         await _send_completion_email(job_id)
-    elif result.get("status") == "failed":
-        logger.info(
-            "Job %s gave up after %s consecutive chunk failures",
-            job_id,
-            result.get("consecutive_chunk_failures"),
-        )
-        await _send_failure_email(job_id)
+    # A success=True report_chunk_result() call can only ever return
+    # "completed" or "in_progress" -- a "failed"/"retry_scheduled" status
+    # only comes back from the success=False call sites above, handled by
+    # _handle_job_failure_result() there. No branch for it needed here.
 
     return True
+
+
+async def _handle_job_failure_result(job_id: int, result: dict) -> None:
+    """Real gap closed 2026-08-19: this is the only place a chunk failure's
+    outcome (from either success=False report_chunk_result() call site
+    above) was ever inspected -- previously neither call site looked at
+    what it got back, so a job reaching "failed" never triggered
+    _send_failure_email() at all despite that function existing and being
+    tested in isolation (see BACKLOG.md). Now also handles
+    "retry_scheduled" (crud.report_chunk_result()'s escalating-backoff
+    retry for real user-priority jobs) -- logged, not emailed, since a
+    scheduled retry isn't a final outcome yet.
+    """
+    status = result.get("status")
+    if status == "retry_scheduled":
+        logger.info(
+            "Job %s: chunk failure budget exhausted, scheduled retry #%s for %s",
+            job_id,
+            result.get("retry_count"),
+            result.get("next_retry_at"),
+        )
+    elif status == "failed":
+        logger.info(
+            "Job %s gave up for good after %s retr%s",
+            job_id,
+            result.get("retry_count", 0),
+            "y" if result.get("retry_count") == 1 else "ies",
+        )
+        await _send_failure_email(job_id)
 
 
 async def _send_completion_email(job_id: int) -> None:
@@ -371,6 +405,30 @@ async def _send_failure_email(job_id: int) -> None:
         "accepted" if sent else "FAILED (see prior log line)",
     )
 
+    # Separate operator-facing alert with the real diagnostics (job id,
+    # source URL, requester, chunk progress, retry history) the branded
+    # requester-facing email above deliberately doesn't carry -- real gap
+    # flagged 2026-08-19 after job 256 (Redwood City, CA) failed with no
+    # one noticing until asked directly. See BACKLOG.md.
+    admin_sent = await email_utils.send_admin_job_failure_alert(
+        job_id=job_id,
+        requester_email=status["requester_email"],
+        meeting_title=status.get("meeting_page_title") or "(untitled)",
+        page_url=page_url,
+        source_url=status.get("source_url"),
+        chunks_completed=status.get("chunks_completed"),
+        total_chunks=status.get("total_chunks"),
+        retry_count=status.get("retry_count", 0),
+        error_message=status.get("error_message"),
+        failure_history=status.get("failure_history") or [],
+        created_at=status.get("created_at"),
+    )
+    logger.info(
+        "Job %s: admin failure alert to Resend %s",
+        job_id,
+        "accepted" if admin_sent else "FAILED or not configured (see prior log line)",
+    )
+
 
 async def run_forever() -> None:
     register_all_finders()
@@ -397,11 +455,17 @@ async def run_forever() -> None:
                     empty_polls,
                 )
 
-            # process_next_chunk() returning False means claim_next_chunk()
-            # found no queued/in_progress job at all -- with only ever one
-            # worker process (see claim_next_chunk()'s own docstring), that
-            # already IS "the queue is completely empty", not just "nothing
-            # claimable right now". Gated separately by
+            # process_next_chunk() returning False means *this* worker's
+            # own claim_next_chunk() call found nothing claimable right
+            # now -- with a second worker process now possible (see
+            # render.yaml's rtr-transcription-worker-2), that's no longer
+            # proof the queue is globally empty, just that nothing was
+            # available to this process at this instant (the other worker
+            # could be mid-claim on the last row, or claim something a
+            # moment later). claim_next_chunk()'s SKIP LOCKED already makes
+            # an auto-generation check firing here harmless even if that
+            # happens -- create_transcription_job() only ever adds a job,
+            # it never steps on one already in flight. Gated separately by
             # AUTO_GENERATION_CHECK_INTERVAL_SECONDS so this doesn't run on
             # every single empty poll.
             now = time.monotonic()

@@ -85,6 +85,50 @@ async def test_resolve_no_video_returns_warning_not_crash():
     assert any("no video found" in w.lower() for w in result.video_warnings)
 
 
+async def test_resolve_falls_back_to_known_org_token_jurisdiction():
+    # Real case, confirmed 2026-08-18: this org token's real title is a
+    # bare "City Council Meeting 11-27-23" (no city-name prefix at all,
+    # same shape as the Fitchburg bug above) -- _guess_jurisdiction() and
+    # enrich_jurisdiction_text() both correctly return None, so the only
+    # way to land on the real jurisdiction is the per-org-token map
+    # (_KNOWN_ORG_TOKEN_JURISDICTIONS), built from real corroborating
+    # evidence found on the same org token's other playlist entries (see
+    # that map's own comment in app/platforms/telvue.py) -- not a guess.
+    # HTML shape below is synthetic (hand-built, not fetched), but reuses
+    # the real Player.setupData['playlist'] JSON structure the Ashland
+    # fixture above already confirms, and the org token/jurisdiction pair
+    # itself is the real, confirmed one.
+    url = "https://videoplayer.telvue.com/player/cT30AQ_xtOBQF0oJM2gIVCDX9kjgfWZb/playlists/8520/media/838708"
+    html = (
+        "<html><head><title>City Council Meeting 11-27-23</title></head><body>"
+        "<script>Player.setupData['playlist'] = ["
+        '{"title": "City Council Meeting 11-27-23", "file": null, "tracks": []}'
+        "];</script></body></html>"
+    )
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await TelvueAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "Everett, MA"
+
+
+async def test_resolve_unknown_org_token_has_no_jurisdiction():
+    url = "https://videoplayer.telvue.com/player/someOtherOrgToken123/media/1"
+    html = (
+        "<html><head><title>City Council Meeting 1-1-24</title></head><body>"
+        "<script>Player.setupData['playlist'] = ["
+        '{"title": "City Council Meeting 1-1-24", "file": null, "tracks": []}'
+        "];</script></body></html>"
+    )
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await TelvueAssetFinder().resolve(url)
+
+    assert result.jurisdiction is None
+
+
 async def test_split_title_date_handles_missing_date():
     title, date = TelvueAssetFinder._split_title_date("Untitled Meeting")
     assert title == "Untitled Meeting"
@@ -107,6 +151,18 @@ async def test_guess_jurisdiction_matches_known_body_suffixes():
     assert TelvueAssetFinder._guess_jurisdiction("Medford City Council") == "Medford"
     assert TelvueAssetFinder._guess_jurisdiction("Board of Water Commissioners") is None
     assert TelvueAssetFinder._guess_jurisdiction(None) is None
+
+
+def test_guess_jurisdiction_handles_select_board():
+    # Real bug, confirmed live 2026-08-18: Natick, MA's real title has no
+    # dash-separated date ("Natick Select Board June 10, 2026"), so
+    # _guess_jurisdiction() runs against the whole string -- the bare
+    # "Board" alternative matched first and produced "Natick Select"
+    # instead of "Natick".
+    assert (
+        TelvueAssetFinder._guess_jurisdiction("Natick Select Board June 10, 2026")
+        == "Natick"
+    )
 
 
 def test_guess_jurisdiction_rejects_generic_placeholder_words():

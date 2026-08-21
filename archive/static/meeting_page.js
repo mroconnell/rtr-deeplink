@@ -143,10 +143,31 @@ async function initYouTubeVideo(embedUrl) {
 // silently showing/copying a stale position. Explicit seeks (a
 // transcript-line click) still work fully either way. Mirrors
 // app/static/player.js's identical option.
+// GA event names + params here deliberately mirror app/static/player.js's
+// (the resolver's ephemeral /meeting page) exactly, so one GA report covers
+// both surfaces. Added to the Archive 2026-08-17: until then the permanent
+// /m/* pages -- 1,200+ of them, where sitemap/search/shared-link traffic
+// actually lands -- emitted zero custom events, so a week of real visitors
+// showed only page_view/scroll and "does anyone use the deep links" was
+// unanswerable in principle (BACKLOG.md's audit "user validation" lead;
+// GA for 2026-08-17 with Ryan filtered out: page_view, session_start,
+// first_visit, scroll, user_engagement, nothing else). No extra params:
+// GA attaches page_location to every event, which already separates
+// /m/* from the resolver's /meeting?..., and the WO-9 low-cardinality
+// rule says don't add what isn't needed. save_meeting is the one event
+// the resolver doesn't have (saving needs a permanent page).
+//
+// Coverage note: `video_play` comes from the adapter's 'play' event, which
+// the native <video> and YouTube adapters both emit; the Viebit iframe
+// adapter can't (no cross-frame API -- see createViebitAdapter), so NYC
+// Council pages report seeks/copies but never plays. applyDeepLink() does
+// not auto-play, so a play event is a real press, not a warm-up.
 function wireSharedControls(adapter, { liveTracking = true } = {}) {
   const linkToCurrentLabel = document.getElementById('linkToCurrentLabel');
   const linkBtn = document.getElementById('linkToCurrentBtn');
   const noTranscriptLinkBtn = document.getElementById('noTranscriptLinkBtn');
+
+  adapter.addEventListener('play', () => trackEvent('video_play'));
 
   if (!liveTracking) {
     if (linkBtn) linkBtn.hidden = true;
@@ -170,6 +191,7 @@ function wireSharedControls(adapter, { liveTracking = true } = {}) {
       const t = adapter.currentTime;
       const segId = findActiveSegment(t) || null;
       updateUrlParams({ t, line: segId });
+      trackEvent('copy_link_to_time');
       try {
         await navigator.clipboard.writeText(window.location.href);
         if (toast) {
@@ -191,6 +213,7 @@ function wireSharedControls(adapter, { liveTracking = true } = {}) {
       const t = adapter.currentTime;
       const segId = findActiveSegment(t) || null;
       updateUrlParams({ t, line: segId });
+      trackEvent('copy_link_to_time');
       try {
         await navigator.clipboard.writeText(window.location.href);
         label.textContent = 'Copied!';
@@ -254,6 +277,7 @@ function wireSeekAndCopyClicks() {
       if (activeVideoAdapter) activeVideoAdapter.currentTime = start;
       const segId = a.closest('.transcript-segment')?.id;
       updateUrlParams({ t: start, line: segId && /^seg-\d+$/.test(segId) ? segId : null });
+      trackEvent('transcript_seek');
     });
   });
 
@@ -262,6 +286,7 @@ function wireSeekAndCopyClicks() {
       e.preventDefault();
       const start = Number(btn.dataset.start || '0');
       updateUrlParams({ t: start, line: btn.dataset.line || null });
+      trackEvent('copy_link_to_time');
       try {
         await navigator.clipboard.writeText(window.location.href);
         btn.classList.add('copied');
@@ -556,7 +581,13 @@ function wireSaveMeetingButton() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ slug: btn.dataset.slug }),
         });
-        if (res.ok) applyState(!saved);
+        if (res.ok) {
+          applyState(!saved);
+          // Fired only on a confirmed server-side flip, so the count means
+          // real saves, not clicks. `action` is a two-value enum (WO-9
+          // low-cardinality rule); no slug -- page_location already has it.
+          trackEvent('save_meeting', { action: saved ? 'unsave' : 'save' });
+        }
         // A 401 (session expired mid-visit) or any other failure leaves the
         // controls exactly as they were -- no misleading state flip on failure.
       } catch (err) {

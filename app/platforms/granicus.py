@@ -364,10 +364,17 @@ class GranicusAssetFinder(AssetFinder):
 
     @staticmethod
     def _extract_clip_id(page_url: str) -> Optional[str]:
-        """Pull the numeric clip id out of any of Granicus's URL shapes:
-        path-based /player/clip/{id}, path-based /videos/{id}/, or
-        query-based ?clip_id={id} (MediaPlayer.php). Must be called with the
-        post-redirect URL -- see _fetch_page's docstring.
+        """Pull the numeric clip id out of any of Granicus's three
+        *archived-clip* URL shapes: path-based /player/clip/{id},
+        path-based /videos/{id}/, or query-based ?clip_id={id}
+        (MediaPlayer.php). Must be called with the post-redirect URL --
+        see _fetch_page's docstring.
+
+        Deliberately does NOT also match the fourth known shape,
+        ?event_id={id} (MediaPlayer.php, redirecting to /player/event/{id})
+        -- see _extract_event_id() below for why that id is a genuinely
+        different, non-interchangeable namespace and must never be
+        returned from here.
         """
         if "granicus.com/player/clip/" in page_url:
             return page_url.split("/player/clip/")[1].split("?")[0].split("/")[0]
@@ -375,6 +382,76 @@ class GranicusAssetFinder(AssetFinder):
             return page_url.split("/videos/")[1].split("/")[0]
         query = parse_qs(urlparse(page_url).query)
         return query.get("clip_id", [None])[0]
+
+    @staticmethod
+    def _extract_event_id(page_url: str) -> Optional[str]:
+        """Pull the numeric event id out of Granicus's fourth URL shape --
+        query-based ?event_id={id} (MediaPlayer.php), which 302-redirects
+        to path-based /player/event/{id}?redirect=true. Confirmed live
+        2026-08-21 across 4 real cities discovered via PrimeGov's own
+        video delegation (Calabasas CA, Elk Grove CA, Emeryville CA --
+        real Granicus subdomain "emeryville.granicus.com", NOT
+        "emeryvilleca.granicus.com" as the PrimeGov tenant name would
+        suggest; that subdomain 404s -- and Nassau County FL, real
+        Granicus subdomain "nassaufl.granicus.com"), one directly fetched
+        (both plain HTTP and, for Calabasas, a real rendered-browser
+        check) per tenant, plus 11 more historical event_id examples
+        (15 total) surfaced from the same 4 tenants' own PrimeGov
+        ListArchivedMeetings history.
+
+        Deliberately kept as a fully separate id namespace from clip_id,
+        never merged into it or passed to any clip_id-shaped endpoint
+        (video URL guess, AgendaViewer.php, MinutesViewer.php, the
+        /videos/{id}/player fallback) -- confirmed real and necessary,
+        not a hypothetical caution: every one of the 15 confirmed
+        examples above has an event_id far outside that same tenant's
+        real clip_id range (e.g. Calabasas event_id=1525 vs. real
+        clip_ids in the 7000s-8000s), so treating them as
+        interchangeable risks either a wasted request or -- worse -- a
+        coincidental collision with a real, unrelated clip_id on the
+        same tenant, silently producing a wrong meeting's video.
+
+        Every one of the 15 confirmed examples also corresponds, per
+        PrimeGov's own ListArchivedMeetings API, to a meeting with
+        streamCompleted=False and mediaManagerClipPubliclyAvailable=False
+        -- i.e. genuinely not yet archived, not merely a shape this
+        scanner failed to detect. Confirmed by fetching the real
+        post-redirect /player/event/{id} page directly (all 4 tenants,
+        both via plain HTTP and a real rendered-browser check on
+        Calabasas): no video-player library is even loaded, no video
+        element or media URL of any kind appears anywhere in the page,
+        and the page's own static, server-rendered
+        `<div id="player-error">` reads "The event you selected is not
+        currently in progress." -- see _extract_live_status_message(),
+        which surfaces that exact real message as the video warning
+        instead of guessing at a nonexistent video.
+        """
+        if "granicus.com/player/event/" in page_url:
+            return page_url.split("/player/event/")[1].split("?")[0].split("/")[0]
+        query = parse_qs(urlparse(page_url).query)
+        return query.get("event_id", [None])[0]
+
+    @staticmethod
+    def _extract_live_status_message(soup: BeautifulSoup) -> Optional[str]:
+        """Granicus's /player/event/{id} page (the event_id URL shape --
+        see _extract_event_id()) renders a real, specific, server-side
+        status message in a static `#player-error` div when there's no
+        video to show -- confirmed verbatim identical across 4 real
+        cities (Calabasas CA, Elk Grove CA, Emeryville CA, Nassau County
+        FL, 2026-08-21): "The event you selected is not currently in
+        progress." Surfaced directly as the video warning when present
+        (see resolve()) since it's Granicus's own accurate explanation,
+        more honest than a generic "no playable video found" that implies
+        we merely failed to find one that exists. Not limited to the
+        event_id case specifically -- if this div shows up on any other
+        Granicus page shape, its message is equally real and worth
+        surfacing the same way.
+        """
+        el = soup.select_one("#player-error")
+        if not el:
+            return None
+        text = el.get_text(" ", strip=True)
+        return text or None
 
     def _extract_media_urls(self, html: str, page_url: str) -> List[str]:
         """Find media asset URLs on the page: Granicus's own guessed-VTT-path
@@ -446,6 +523,11 @@ class GranicusAssetFinder(AssetFinder):
             metadata = self._extract_metadata(soup, final_url, html)
             media_urls = self._extract_media_urls(html, final_url)
             clip_id = self._extract_clip_id(final_url)
+            # Only looked up when there's no real clip_id -- a meeting
+            # that hasn't been streamed/archived yet (see
+            # _extract_event_id's docstring). Never treated as
+            # interchangeable with clip_id anywhere below.
+            event_id = None if clip_id else self._extract_event_id(final_url)
 
             # The RSS channel title (constant per view_id, distinct from each
             # meeting's own often-poor-quality title -- confirmed real
@@ -514,7 +596,15 @@ class GranicusAssetFinder(AssetFinder):
                     session, domain, clip_id
                 )
             if not video_url:
-                video_warnings.append("No playable video found on this page.")
+                # Prefer Granicus's own real, specific explanation when the
+                # page has one (confirmed real on every event_id case --
+                # see _extract_live_status_message()) over the generic
+                # message, which implies a video exists somewhere we
+                # merely failed to find.
+                video_warnings.append(
+                    self._extract_live_status_message(soup)
+                    or "No playable video found on this page."
+                )
 
             # No longer .vtt-only: media_type() now classifies a wider set
             # of caption-shaped extensions as "subtitle" (see
@@ -712,7 +802,30 @@ class GranicusAssetFinder(AssetFinder):
             return ResolvedMeeting(
                 platform=self.platform_name,
                 source_url=url,
-                external_id=f"granicus:{clip_id}" if clip_id else None,
+                # Namespaced by host, not just the bare clip_id -- Granicus
+                # is multi-tenant and every customer numbers clips from near
+                # 1 independently, so two different cities routinely share
+                # the same clip_id. Real bug, confirmed live 2026-08-18: an
+                # unnamespaced external_id let _find_existing_page()
+                # (archive/db/crud.py) match e.g. "granicus:453" across 3
+                # unrelated counties and silently overwrite each other's
+                # title/date/jurisdiction on one shared row. See BACKLOG.md.
+                external_id=(
+                    f"granicus:{urlparse(final_url).netloc}:{clip_id}"
+                    if clip_id
+                    # "event:" infix keeps this permanently distinct
+                    # from a real clip_id-based id above (always a
+                    # bare number) -- event_id and clip_id are
+                    # separate number spaces on the same tenant (see
+                    # _extract_event_id's docstring), so this must
+                    # never collide with or be mistaken for a real
+                    # archived clip's external_id.
+                    else (
+                        f"granicus:{urlparse(final_url).netloc}:event:{event_id}"
+                        if event_id
+                        else None
+                    )
+                ),
                 transcript_language=transcript_language,
                 title=metadata["title"],
                 date=metadata["date"],

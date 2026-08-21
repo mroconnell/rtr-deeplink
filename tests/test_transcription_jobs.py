@@ -143,6 +143,43 @@ async def test_claim_next_chunk_prefers_higher_priority_over_older_job():
     await _drain_job(old_job["job_id"], old_job["total_chunks"])
 
 
+def test_claim_next_chunk_locks_for_update_skip_locked_on_postgres_only():
+    # Real fix, 2026-08-20: claim_next_chunk() used to be a plain
+    # SELECT-then-UPDATE, safe for exactly one worker process (its own
+    # docstring said so) but with a real TOCTOU window if a second
+    # process ever called it concurrently -- both could read the same
+    # row before either committed its claim. Multi-worker concurrency is
+    # now the whole point (see BACKLOG.md's "Render worker plan sizing"
+    # follow-up), so the claim query must take FOR UPDATE SKIP LOCKED so
+    # two concurrent transactions lock, not double-claim, the same row.
+    # No live Postgres available to this suite (SQLite-only, see
+    # tests/conftest.py), so this pins the compiled SQL shape instead --
+    # same pattern as test_auto_candidate_and_cooldown_queries_never_
+    # touch_transcript_json() above. SQLite doesn't support SKIP LOCKED
+    # at all (matches _fts_available()'s dialect gate), so the gate is
+    # required, not just an optimization.
+    from sqlalchemy import select
+    from sqlalchemy.dialects import postgresql
+
+    from archive.db.models import TranscriptionJob
+
+    base_stmt = (
+        select(TranscriptionJob)
+        .order_by(TranscriptionJob.priority.desc(), TranscriptionJob.created_at.asc())
+        .limit(1)
+    )
+
+    locked_sql = str(
+        base_stmt.with_for_update(skip_locked=True).compile(
+            dialect=postgresql.dialect()
+        )
+    )
+    assert "FOR UPDATE SKIP LOCKED" in locked_sql, locked_sql
+
+    unlocked_sql = str(base_stmt.compile(dialect=postgresql.dialect()))
+    assert "FOR UPDATE" not in unlocked_sql, unlocked_sql
+
+
 async def test_confirm_unknown_token_returns_none():
     assert await crud.confirm_transcription_job("definitely-not-a-real-token") is None
 
@@ -595,6 +632,180 @@ async def test_list_hallucination_candidate_transcript_versions_filters_correctl
     assert local_row["job_id"] is None
 
 
+async def test_hallucination_candidates_limit_bounds_unflagged_scan_not_flagged():
+    # Regression test for the 2026-08-21 502 fix (BACKLOG_DONE.md): the
+    # previous version of list_hallucination_candidate_transcript_versions()
+    # pulled every source=="transcribed" row's full `segments` in one
+    # unbounded query. The rewrite bounds only the NOT-yet-flagged
+    # population (limit/after_id) since that's the big, actively-growing
+    # side -- the small already-flagged population is still returned in
+    # full regardless of `limit`, since it's cheap and never grows fast
+    # (see the function's own docstring). This exercises both halves of
+    # that claim against the real DB, not just by reading the SQL.
+    anchor_url = "https://example.granicus.com/player/clip/tj-halluc-page-anchor"
+    anchor_result = await crud.ingest_resolution(
+        {
+            "platform": "granicus",
+            "source_url": anchor_url,
+            "external_id": "granicus:tj-halluc-page-anchor",
+            "title": "T",
+            "date": "2026-01-01",
+            "jurisdiction": "City of Test",
+            "video_url": "https://example.com/v.m3u8",
+            "video_format": "m3u8",
+            "segments": [{"start": 0.0, "end": 1.0, "text": "anchor", "speaker": None}],
+            "agenda_items": [],
+            "transcript_language": "en",
+            "transcript_warnings": [],
+            "source": "transcribed",
+        },
+        anchor_url,
+    )
+    after_id = anchor_result["version_id"]  # everything below is created after this
+
+    hallucinated_segments = [
+        {
+            "start": 0.0,
+            "end": 30.0,
+            "text": "Public comment, motion, second, aye, nay, abstain,",
+            "speaker": None,
+        },
+    ] + [
+        {
+            "start": 240.0 + i * 10,
+            "end": 250.0 + i * 10,
+            "text": "So, we are going to take a look at what we are going to do.",
+            "speaker": None,
+        }
+        for i in range(44)
+    ]
+
+    unflagged_ids = []
+    for n in range(3):
+        url = f"https://example.granicus.com/player/clip/tj-halluc-page-{n}"
+        result = await crud.ingest_resolution(
+            {
+                "platform": "granicus",
+                "source_url": url,
+                "external_id": f"granicus:tj-halluc-page-{n}",
+                "title": "T",
+                "date": "2026-01-01",
+                "jurisdiction": "City of Test",
+                "video_url": "https://example.com/v.m3u8",
+                "video_format": "m3u8",
+                "segments": hallucinated_segments,
+                "agenda_items": [],
+                "transcript_language": "en",
+                "transcript_warnings": [],  # not yet flagged
+                "source": "transcribed",
+            },
+            url,
+        )
+        unflagged_ids.append(result["version_id"])
+
+    flagged_url = "https://example.granicus.com/player/clip/tj-halluc-page-flagged"
+    flagged_job = await crud.create_transcription_job(
+        payload=_payload("granicus:tj-halluc-page-flagged", flagged_url),
+        input_url_normalized=flagged_url,
+        requester_email="halluc-page-flagged@example.com",
+        media_url="https://example.com/v.m3u8",
+        media_kind="video",
+        probed_duration_seconds=900,
+        chunk_size_seconds=900,
+        skip_confirmation=True,
+    )
+    claim = await crud.claim_next_chunk()
+    assert claim["job_id"] == flagged_job["job_id"]
+    flagged_result = await crud.report_chunk_result(
+        flagged_job["job_id"], success=True, shifted_segments=hallucinated_segments
+    )
+    flagged_id = flagged_result["transcript_version_id"]  # already carries the marker
+
+    # First page: limit=2 over the unflagged population -- only the two
+    # lowest unflagged version_ids should appear, but the flagged one
+    # (much cheaper, unbounded) should appear on every page regardless.
+    page1 = await crud.list_hallucination_candidate_transcript_versions(
+        limit=2, after_id=after_id
+    )
+    page1_ids = {row["version_id"] for row in page1}
+    assert page1_ids == {unflagged_ids[0], unflagged_ids[1], flagged_id}
+
+    # Second page, keyset-paginated from the first page's max unflagged id:
+    # the third unflagged row now appears; the flagged one still does too.
+    page2 = await crud.list_hallucination_candidate_transcript_versions(
+        limit=2, after_id=unflagged_ids[1]
+    )
+    page2_ids = {row["version_id"] for row in page2}
+    assert page2_ids == {unflagged_ids[2], flagged_id}
+
+
+async def test_hallucination_candidates_null_transcript_warnings_still_scanned():
+    # Regression test: transcript_warnings is a nullable column
+    # (archive/db/models.py), and `NULL LIKE '...'` (and its negation) is
+    # SQL NULL, not False -- a naive `~cast(...).like(...)` predicate for
+    # "not yet flagged" would silently drop every NULL-warnings row out of
+    # WHERE entirely, meaning a real hallucinated transcript with no
+    # transcript_warnings value at all (plausible for older rows) would
+    # never be scanned, let alone surfaced. Exercised here by writing NULL
+    # directly (ingest_resolution/report_chunk_result both coerce a
+    # missing value to [] rather than None, so this state has to be
+    # constructed directly against the same test DB to reproduce it).
+    from archive.db.engine import async_session
+    from archive.db.models import TranscriptVersion
+    from sqlalchemy import update
+
+    url = "https://example.granicus.com/player/clip/tj-halluc-null-warnings"
+    hallucinated_segments = [
+        {
+            "start": 0.0,
+            "end": 30.0,
+            "text": "Public comment, motion, second, aye, nay, abstain,",
+            "speaker": None,
+        },
+    ] + [
+        {
+            "start": 240.0 + i * 10,
+            "end": 250.0 + i * 10,
+            "text": "So, we are going to take a look at what we are going to do.",
+            "speaker": None,
+        }
+        for i in range(44)
+    ]
+    result = await crud.ingest_resolution(
+        {
+            "platform": "granicus",
+            "source_url": url,
+            "external_id": "granicus:tj-halluc-null-warnings",
+            "title": "T",
+            "date": "2026-01-01",
+            "jurisdiction": "City of Test",
+            "video_url": "https://example.com/v.m3u8",
+            "video_format": "m3u8",
+            "segments": hallucinated_segments,
+            "agenda_items": [],
+            "transcript_language": "en",
+            "transcript_warnings": [],
+            "source": "transcribed",
+        },
+        url,
+    )
+    version_id = result["version_id"]
+
+    async with async_session() as session:
+        await session.execute(
+            update(TranscriptVersion)
+            .where(TranscriptVersion.id == version_id)
+            .values(transcript_warnings=None)
+        )
+        await session.commit()
+
+    audited = await crud.list_hallucination_candidate_transcript_versions()
+    audited_version_ids = {row["version_id"] for row in audited}
+    assert version_id in audited_version_ids
+    row = next(r for r in audited if r["version_id"] == version_id)
+    assert row["already_flagged"] is False
+
+
 async def test_completed_job_detects_language_from_transcribed_text():
     # Real gap closed alongside the search-language fix earlier this
     # session (see BACKLOG_DONE.md): a transcribed version used to always
@@ -753,7 +964,14 @@ async def test_completed_job_does_not_flag_a_real_clean_transcript():
     assert transcribed["transcript_warnings"] == []
 
 
-async def test_chunk_failures_fail_the_job_after_budget_exhausted():
+async def test_chunk_failures_schedule_a_retry_for_priority_medium_job():
+    # Real behavior change 2026-08-19 (see BACKLOG.md/BACKLOG_DONE.md): a
+    # real user-submitted job (default priority == PRIORITY_MEDIUM) used to
+    # fail outright the moment MAX_CONSECUTIVE_CHUNK_FAILURES was hit.
+    # After a real case (job 256, Redwood City CA) died on one slow/
+    # rate-limited chunk and a later manual re-run of the exact same
+    # source succeeded outright, it no longer fails immediately -- it gets
+    # rescheduled with a growing backoff instead (crud.MAX_JOB_RETRIES).
     url = "https://example.granicus.com/player/clip/tj-6"
     job = await crud.create_transcription_job(
         payload=_payload("granicus:tj-6", url),
@@ -772,14 +990,160 @@ async def test_chunk_failures_fail_the_job_after_budget_exhausted():
         claim = await crud.claim_next_chunk()
         assert claim["job_id"] == job["job_id"]
         result = await crud.report_chunk_result(
-            claim["job_id"], success=False, error="ffmpeg exploded"
+            claim["job_id"],
+            success=False,
+            chunk_index=claim["chunk_index"],
+            error="ffmpeg exploded",
         )
 
+    assert result["status"] == "retry_scheduled"
+    assert result["retry_count"] == 1
+    assert result["next_retry_at"] is not None
+
+    status = await crud.get_transcription_job_status(job["job_id"])
+    assert status["status"] == "retry_scheduled"
+    assert status["retry_count"] == 1
+    # Every chunk failure recorded, with the chunk index that failed --
+    # error_message alone (overwritten each time) couldn't tell this
+    # apart from a job that failed the same way once.
+    assert len(status["failure_history"]) == crud.MAX_CONSECUTIVE_CHUNK_FAILURES
+    assert [e["chunk_index"] for e in status["failure_history"]] == [0, 0, 0]
+    assert all(e["error"] == "ffmpeg exploded" for e in status["failure_history"])
+
+    # Not claimable yet -- next_retry_at is in the future.
+    assert await crud.claim_next_chunk() is None
+
+
+async def test_retry_scheduled_job_is_claimed_once_next_retry_at_passes():
+    from datetime import datetime, timedelta, timezone
+
+    from archive.db.engine import async_session
+    from archive.db.models import TranscriptionJob
+
+    url = "https://example.granicus.com/player/clip/tj-retry-claim"
+    job = await crud.create_transcription_job(
+        payload=_payload("granicus:tj-retry-claim", url),
+        input_url_normalized=url,
+        requester_email="retry-claim@example.com",
+        media_url="https://example.com/v.m3u8",
+        media_kind="video",
+        probed_duration_seconds=900,
+        chunk_size_seconds=900,
+        skip_confirmation=True,
+    )
+    for i in range(crud.MAX_CONSECUTIVE_CHUNK_FAILURES):
+        claim = await crud.claim_next_chunk()
+        result = await crud.report_chunk_result(
+            claim["job_id"],
+            success=False,
+            chunk_index=claim["chunk_index"],
+            error="boom",
+        )
+    assert result["status"] == "retry_scheduled"
+    assert await crud.claim_next_chunk() is None  # still in the future
+
+    async with async_session() as session:
+        row = await session.get(TranscriptionJob, job["job_id"])
+        row.next_retry_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+        await session.commit()
+
+    claim = await crud.claim_next_chunk()
+    assert claim is not None and claim["job_id"] == job["job_id"]
+    # chunks_completed was never advanced by the failed attempts -- resumes
+    # at chunk 0, not wherever it happened to fail.
+    assert claim["chunk_index"] == 0
+
+    status = await crud.get_transcription_job_status(job["job_id"])
+    assert status["status"] == "in_progress"
+
+    await crud.report_chunk_result(job["job_id"], success=True, shifted_segments=[])
+
+
+async def test_duplicate_request_during_retry_scheduled_returns_existing_job():
+    # A job waiting out its retry backoff is still "an active request for
+    # this page" -- a fresh submit in that window must not race it with a
+    # second job for the same page.
+    url = "https://example.granicus.com/player/clip/tj-retry-duplicate"
+    payload = _payload("granicus:tj-retry-duplicate", url)
+    job = await crud.create_transcription_job(
+        payload=payload,
+        input_url_normalized=url,
+        requester_email="first@example.com",
+        media_url="https://example.com/v.m3u8",
+        media_kind="video",
+        probed_duration_seconds=900,
+        chunk_size_seconds=900,
+        skip_confirmation=True,
+    )
+    result = None
+    for i in range(crud.MAX_CONSECUTIVE_CHUNK_FAILURES):
+        claim = await crud.claim_next_chunk()
+        result = await crud.report_chunk_result(
+            claim["job_id"],
+            success=False,
+            chunk_index=claim["chunk_index"],
+            error="boom",
+        )
+    assert result["status"] == "retry_scheduled"
+
+    again = await crud.create_transcription_job(
+        payload=payload,
+        input_url_normalized=url,
+        requester_email="second@example.com",
+        media_url="https://example.com/v.m3u8",
+        media_kind="video",
+        probed_duration_seconds=900,
+        chunk_size_seconds=900,
+        skip_confirmation=True,
+    )
+    assert again["job_id"] == job["job_id"]
+    assert again["status"] == "retry_scheduled"
+
+
+async def test_job_truly_fails_after_retry_budget_exhausted():
+    from datetime import datetime, timedelta, timezone
+
+    from archive.db.engine import async_session
+    from archive.db.models import TranscriptionJob
+
+    url = "https://example.granicus.com/player/clip/tj-retry-exhausted"
+    job = await crud.create_transcription_job(
+        payload=_payload("granicus:tj-retry-exhausted", url),
+        input_url_normalized=url,
+        requester_email="exhausted@example.com",
+        media_url="https://example.com/v.m3u8",
+        media_kind="video",
+        probed_duration_seconds=900,
+        chunk_size_seconds=900,
+        skip_confirmation=True,
+    )
+
+    result = None
+    for retry_round in range(crud.MAX_JOB_RETRIES + 1):
+        for i in range(crud.MAX_CONSECUTIVE_CHUNK_FAILURES):
+            claim = await crud.claim_next_chunk()
+            if claim is None:
+                # Backoff window not elapsed yet -- force it open, same as
+                # test_retry_scheduled_job_is_claimed_once_next_retry_at_passes.
+                async with async_session() as session:
+                    row = await session.get(TranscriptionJob, job["job_id"])
+                    row.next_retry_at = datetime.now(timezone.utc) - timedelta(
+                        seconds=1
+                    )
+                    await session.commit()
+                claim = await crud.claim_next_chunk()
+            assert claim["job_id"] == job["job_id"]
+            result = await crud.report_chunk_result(
+                claim["job_id"],
+                success=False,
+                chunk_index=claim["chunk_index"],
+                error="still exploding",
+            )
+
     assert result["status"] == "failed"
+    assert result["retry_count"] == crud.MAX_JOB_RETRIES
     status = await crud.get_transcription_job_status(job["job_id"])
     assert status["status"] == "failed"
-
-    # a failed job no longer shows up to claim_next_chunk
     assert await crud.claim_next_chunk() is None
 
 
@@ -1044,3 +1408,89 @@ async def test_in_auto_transcription_cooldown_escalates_with_consecutive_failure
     assert (
         in_cooldown is True
     )  # 2 consecutive failures => 2-day cooldown, 36h in is still inside it
+
+
+def test_auto_candidate_and_cooldown_queries_never_touch_transcript_json():
+    # 2026-08-17: pg_stat_statements showed the old find_auto_transcription_
+    # candidate() (per-page _has_good_transcript() selecting the whole
+    # TranscriptVersion incl. segments) as the #1 consumer of prod DB time
+    # -- 218,480 calls, 47 min, all 102MB of transcript JSON every 5 idle
+    # minutes. Pin at the SQL level that neither the good-transcript
+    # predicate nor the cooldown query names a JSON blob column.
+    from sqlalchemy import select
+    from sqlalchemy.dialects import postgresql
+
+    from archive.db.models import MeetingPage, TranscriptionJob
+
+    sql = str(
+        select(MeetingPage.id)
+        .where(~crud._good_default_transcript_exists())
+        .compile(dialect=postgresql.dialect())
+    )
+    assert "segments" not in sql, sql
+    assert "content_hash" in sql and "transcript_warnings" in sql
+    # The cooldown history query shape (status/updated_at only).
+    cooldown_sql = str(
+        select(TranscriptionJob.status, TranscriptionJob.updated_at).compile(
+            dialect=postgresql.dialect()
+        )
+    )
+    assert "partial_segments" not in cooldown_sql
+
+
+async def test_has_good_transcript_treats_garbled_and_hallucinated_as_not_good():
+    # The SQL predicate and the per-page helper must agree: a default
+    # version carrying either quality marker in transcript_warnings is NOT
+    # a good transcript, so the page stays an auto-transcription candidate.
+    from archive.db.engine import async_session
+    from archive.db.models import MeetingPage
+    from sqlalchemy import select
+
+    async def _page_with_warning(eid: str, warning: str):
+        url = f"https://example.granicus.com/player/clip/{eid}"
+        await crud.ingest_resolution(
+            {
+                "platform": "granicus",
+                "source_url": url,
+                "external_id": f"granicus:{eid}",
+                "title": "T",
+                "date": "2026-01-01",
+                "jurisdiction": f"City of {eid}",
+                "video_url": "https://example.com/v.m3u8",
+                "video_format": "m3u8",
+                "segments": [{"start": 0, "end": 1, "text": "words words words"}],
+                "agenda_items": [],
+                "transcript_language": "en",
+                "transcript_warnings": [warning] if warning else [],
+            },
+            url,
+        )
+        return (await crud.lookup_page_for_url(url))["slug"]
+
+    garbled = await _page_with_warning(
+        "auto-garbled", "This transcript looks garbled at the source."
+    )
+    halluc = await _page_with_warning(
+        "auto-halluc",
+        "Parts of this transcript may have been hallucinated by the transcription model.",
+    )
+    clean = await _page_with_warning("auto-clean", "")
+
+    async with async_session() as session:
+        rows = (
+            await session.execute(
+                select(MeetingPage.slug, crud._good_default_transcript_exists()).where(
+                    MeetingPage.slug.in_([garbled, halluc, clean])
+                )
+            )
+        ).all()
+        by_slug = {slug: bool(good) for slug, good in rows}
+        assert by_slug == {garbled: False, halluc: False, clean: True}
+        # ...and the per-page helper agrees, row for row.
+        for slug, expected in by_slug.items():
+            page_id = (
+                await session.execute(
+                    select(MeetingPage.id).where(MeetingPage.slug == slug)
+                )
+            ).scalar_one()
+            assert await crud._has_good_transcript(session, page_id) is expected, slug

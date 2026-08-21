@@ -9,13 +9,20 @@
 {% block meta %}
   {% set description = (page.title or "A public meeting") ~ (page.jurisdiction and (" in " ~ (page.jurisdiction|jurisdiction_display)) or "") ~ (page.date and (" on " ~ page.date) or "") ~ ", with video and transcript." %}
   <meta name="description" content="{{ description }}">
-  {% if page.platform == "unknown" %}
+  {% if page.platform == "unknown" or page_is_empty %}
   {#- generic_fallback.py registers under platform_name = "unknown" -- the
      only adapter that does, and the widest-open path in the trust &
      safety backlog section (no domain restriction, best-effort scan of
      any page). noindex stops search-engine amplification of the
      least-verified content without blocking or gating anything -- see
-     BACKLOG.md. #}
+     BACKLOG.md.
+     page_is_empty (no video, no agenda, no transcript -- see the /m/
+     route in archive/main.py and crud._is_empty_page_condition()): the
+     page still serves, so shared links keep working, but it's excluded
+     from /meetings, the sitemap and the feed, and noindexed here so
+     Google isn't handed a title-only shell ("Page indexed without
+     content"). Both signals flip back on their own once a recheck fills
+     the page in. #}
   <meta name="robots" content="noindex">
   {% endif %}
   {% if public_base_url %}
@@ -136,10 +143,12 @@
     },
     {% endif -%}
     {% if public_base_url -%}
-    "url": {{ (public_base_url ~ "/m/" ~ page.slug)|tojson }}
-    {%- else -%}
+    "url": {{ (public_base_url ~ "/m/" ~ page.slug)|tojson }},
+    {% endif -%}
+    {% if thumbnail_url -%}
+    "image": {{ thumbnail_url|tojson }},
+    {% endif -%}
     "description": {{ description|tojson }}
-    {%- endif %}
   }
   </script>
   {#- Deliberately not "eventStatus"/"eventAttendanceMode"/"offers" --
@@ -220,8 +229,20 @@
         {%- if page.meeting_body %}{{ page.meeting_body }}{% if page.jurisdiction %} &middot; {% endif %}{% endif -%}
         {%- if page.jurisdiction %}{{ page.jurisdiction|jurisdiction_display }}{% endif -%}
         {%- if page.date %}{% if page.jurisdiction or page.meeting_body %} &middot; {% endif %}{{ page.date }}{% endif -%}
+        {%- if hub_slug %} &middot; <a href="/j/{{ hub_slug }}">More {{ page.jurisdiction|jurisdiction_display }} meetings</a>{% endif -%}
         {%- if state_slug %} &middot; <a href="/state/{{ state_slug }}">More {{ state_name }} meetings</a>{% endif -%}
       </p>
+      {#- Date-status notice (archive/utils/date_status.py): a page with
+         no video/captions yet isn't broken if the meeting hasn't happened
+         or just happened -- say so, and point at "Refresh this page"
+         (which re-resolves the source on demand) rather than leaving the
+         visitor to guess. Only rendered when the status is set, so
+         ordinary pages are untouched. #}
+      {% if date_status == "upcoming" %}
+      <p class="date-status-notice date-status-upcoming" role="note"><span class="date-status-pill" title="This meeting hasn't happened yet, so we can't have video or a transcript for it yet">Upcoming</span> This meeting hasn't happened yet{% if page.date %} (scheduled {{ page.date }}){% endif %}. Video and a transcript will appear here once the source publishes them{% if page.source_url %} &mdash; use &ldquo;Refresh this page&rdquo; below to check{% endif %}.</p>
+      {% elif date_status == "recent" %}
+      <p class="date-status-notice date-status-recent" role="note"><span class="date-status-pill" title="Recent meetings sometimes don't have final video or captions from the source yet">Recent</span> This meeting was held recently{% if page.date %} ({{ page.date }}){% endif %}. Governments often publish video and captions days to weeks afterward{% if page.source_url %} &mdash; use &ldquo;Refresh this page&rdquo; below to check for them{% endif %}.</p>
+      {% endif %}
       {% if page.source_url %}
       <p class="source-link"><a href="{{ page.source_url }}" target="_blank" rel="noopener noreferrer">View original source &rarr;</a></p>
       {% endif %}
@@ -251,8 +272,23 @@
           <div id="youtubePlayerContainer" class="youtube-player-container"></div>
           {% elif page.video_format == "viebit" %}
           <iframe id="viebitFrame" class="viebit-player-container" allow="autoplay; fullscreen" allowfullscreen title="Meeting video"></iframe>
+          {% elif page.video_format == "m3u8" %}
+          {#- Real src/source server-rendered here, not left to JS alone --
+             found 2026-08-21 (BACKLOG.md) that Google's Search Console
+             flags these pages as "Video isn't on a watch page" because
+             the <video> tag used to ship with no src at all: hls.js
+             (meeting_page.js) attaches media via MediaSource, which sets
+             the DOM video.src to an opaque blob: URL that never matches
+             the real URL in this page's own VideoObject.contentUrl above.
+             A real <source> here doesn't change playback (hls.js still
+             attaches on top for browsers that need it; Safari's native
+             HLS support uses this directly) -- it just gives crawlers a
+             real, matching URL to find without needing JS to run first. #}
+          <video id="meetingVideo" controls playsinline preload="auto">
+            <source src="{{ page.video_url }}" type="application/vnd.apple.mpegurl">
+          </video>
           {% else %}
-          <video id="meetingVideo" controls playsinline preload="auto"></video>
+          <video id="meetingVideo" controls playsinline preload="auto" src="{{ page.video_url }}"></video>
           {% endif %}
         </div>
         {% if page.agenda_items or (active_version and active_version.segments) %}
@@ -377,7 +413,7 @@
         </div>
         {% else %}
         <div class="transcript-segment" id="agenda-{{ loop.index0 }}" data-start="{{ item.start }}">
-          <a href="#agenda-{{ loop.index0 }}" class="segment-timestamp" data-start="{{ item.start }}">[{{ "%d:%02d"|format(item.start // 60, item.start % 60) }}]</a>
+          <a href="#agenda-{{ loop.index0 }}" class="segment-timestamp" data-start="{{ item.start }}">[{{ item.start|segment_time }}]</a>
           <button class="segment-link-btn" data-start="{{ item.start }}" title="Copy link to this item" aria-label="Copy link to this item"><svg width="17" height="17" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M7.5 10.5a2.5 2.5 0 0 0 3.54 0l2-2a2.5 2.5 0 0 0-3.54-3.54l-.71.71" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M10.5 7.5a2.5 2.5 0 0 0-3.54 0l-2 2a2.5 2.5 0 0 0 3.54 3.54l.71-.71" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
           <span class="segment-text">{{ item.text }}</span>
         </div>
@@ -440,7 +476,7 @@
       <div class="transcript-list">
         {% for seg in active_version.segments %}
         <div class="transcript-segment" id="seg-{{ loop.index0 }}" data-start="{{ seg.start }}">
-          <a href="#seg-{{ loop.index0 }}" class="segment-timestamp" data-start="{{ seg.start }}">[{{ "%d:%02d"|format(seg.start // 60, seg.start % 60) }}]</a>
+          <a href="#seg-{{ loop.index0 }}" class="segment-timestamp" data-start="{{ seg.start }}">[{{ seg.start|segment_time }}]</a>
           <button class="segment-link-btn" data-start="{{ seg.start }}" data-line="seg-{{ loop.index0 }}" title="Copy link to this line" aria-label="Copy link to this line"><svg width="17" height="17" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M7.5 10.5a2.5 2.5 0 0 0 3.54 0l2-2a2.5 2.5 0 0 0-3.54-3.54l-.71.71" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M10.5 7.5a2.5 2.5 0 0 0-3.54 0l-2 2a2.5 2.5 0 0 0 3.54 3.54l.71-.71" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
           <span class="segment-text">{{ seg.text }}</span>
         </div>

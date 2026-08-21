@@ -31,12 +31,32 @@ Granicus queue entry would.
 Run via GitHub Actions (.github/workflows/feed-tier3-transcription.yml)
 every 6 hours, cron-offset from feed-granicus-transcription.yml's ":13"
 so the two don't land in the same minute (same reasoning as daily-report.
-yml / send-search-alerts.yml's offset). Batch size reuses Granicus's
-12/6h pacing as a starting default -- NOT independently derived from this
-queue's actual median video length the way Granicus's was (see
-SOURCING_QUEUE.md's "Cadence decided" note); worth revisiting once real
-per-platform duration data exists for this mix (escribe/iqm2/civicclerk/
-etc., see video_hosting_catalog_combined.csv in rtr-business/research/).
+yml / send-search-alerts.yml's offset).
+
+**Batch size raised 12 -> 48, 2026-08-21 -- now derived from real,
+measured worker throughput, not a borrowed Granicus default.** The
+original 12/6h (48/day) figure was explicitly a placeholder ("NOT
+independently derived from this queue's actual median video length...
+worth revisiting once real per-platform duration data exists" -- see
+BACKLOG.md's "Second transcription worker" entry for the fuller
+reasoning). With a second transcription worker now live
+(rtr-transcription-worker-2, render.yaml) and real production
+measurements in hand -- two workers combined process roughly 10x
+real-time audio (each ~5x realtime on a real completed 900s chunk,
+2026-08-21), and a real 25-page sample of this exact queue averaged
+~70 minutes/meeting at an 88% feasibility rate -- the old 48/day feed
+rate was the actual bottleneck (this queue's 1600+ entries would take
+~34 days to even reach the Archive at that pace, regardless of how fast
+either worker could transcribe). 48/6h (192/day) is sized to roughly
+match the two workers' real combined throughput instead of trickle-
+feeding them faster than they could ever use, while still spreading
+across the many distinct government-site domains this queue already
+covers (no single-domain hammering risk from a bigger batch -- see
+REQUEST_DELAY_SECONDS' own per-request pacing, unchanged). Revisit again
+if either side's real throughput changes materially (a worker
+plan/model-size change, a worker count change, or this platform mix's
+real average duration turning out different at a larger sample size than
+the 25-page one this was sized from).
 """
 
 import asyncio
@@ -63,7 +83,7 @@ from app.utils.url_normalize import normalize_url  # noqa: E402
 from scripts.bulk_ingest import _ingest, REQUEST_DELAY_SECONDS  # noqa: E402
 
 QUEUE_FILE = REPO_ROOT / "scripts" / "tier3_auto_transcription_queue.txt"
-BATCH_SIZE = 12
+BATCH_SIZE = 48
 
 
 async def _push_if_has_video(session: aiohttp.ClientSession, url: str) -> str:

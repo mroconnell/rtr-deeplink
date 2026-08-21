@@ -20,6 +20,18 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Dispatched directly (not via push/pull_request) by
+  # feed-tier3-transcription.yml / feed-granicus-transcription.yml's
+  # queue-advancement step: PRs/branches created with the default
+  # GITHUB_TOKEN don't trigger pull_request-triggered workflows (GitHub's
+  # own loop-prevention for that token), so a queue-advance PR would
+  # never get a "test" check on its own. workflow_dispatch is explicitly
+  # exempt from that prevention, so those workflows dispatch this one
+  # directly on the queue-advance branch; the resulting check run still
+  # satisfies the branch ruleset's required "test" status check, since
+  # required checks are matched by head SHA + job context ("test"), not
+  # by which event produced the run. See those workflows' own comments.
+  workflow_dispatch: {}
 
 jobs:
   test:
@@ -64,6 +76,28 @@ jobs:
       # failure on this workflow's first real run. `python -m pytest`
       # adds cwd to sys.path[0] the same way local dev invocations do.
       - run: python -m pytest
+
+      # WO-10 (2026-08-17): the archive's models and its Alembic migrations
+      # must agree, because production schema is now Alembic-only --
+      # render.yaml's preDeployCommand runs `alembic upgrade head` before
+      # each build goes live, and archive/db/engine.py's create_all() is a
+      # no-op on Postgres. A model column added without a migration used
+      # to be silently papered over by create_all(); now it would 500 in
+      # prod. This catches it at PR time: build a fresh SQLite purely from
+      # the migration chain, then `alembic check` diffs the models against
+      # it and fails on any pending "add" operation. Blocking. (Runs on
+      # SQLite deliberately: the Postgres-only objects the migrations add
+      # -- pg_trgm index, the generated search_tsv column + its GIN index
+      # -- are dialect-guarded in the migrations and unmapped on the
+      # models, so both sides omit them here and the check is exact.
+      # Verified clean 2026-08-17 before this step was added.)
+      - name: alembic check (archive models == migrations)
+        working-directory: archive
+        env:
+          DATABASE_URL: sqlite+aiosqlite:///./ci_alembic_check.db
+        run: |
+          alembic upgrade head
+          alembic check
 
       - uses: actions/setup-node@v4
         with:

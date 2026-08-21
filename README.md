@@ -560,7 +560,14 @@ existed.
 server-rendered index of every permanent page (`crud.list_pages()`,
 20/page) with a search box and jurisdiction/date-range/has-transcript/
 has-agenda filters — all plain GET params, so results are
-shareable/bookmarkable URLs with no JS required. `GET /sitemap.xml` and
+shareable/bookmarkable URLs with no JS required. Empty pages (no video,
+no agenda, no transcript) are excluded from the default browse, the
+sitemap and the feed at query time — not deleted, and still shown under
+an explicit `has_transcript=false` filter (that's how gaps get found) —
+and rows/pages carry an "Upcoming"/"Recent" pill when the meeting
+hasn't happened yet or happened within the last 30 days without a
+transcript (`archive/utils/date_status.py`; see `BACKLOG_DONE.md`'s
+2026-08-17 entry). `GET /sitemap.xml` and
 `GET /robots.txt` (the latter lives on the resolver, not proxied, since
 `robots.txt` has to be at the domain root) give search engines an actual
 crawl path to `/m/{slug}` pages, which previously had none —
@@ -586,6 +593,32 @@ path works without a positive example" convention — the thing being
 shown here is "does a real page exist," not "is this code path
 exercised," which are different claims.
 
+`/coverage` also has a per-government-body table ("Every place we've
+covered", `crud.get_jurisdiction_coverage()`) below the per-platform one,
+sorted alphabetically for Ctrl+F discoverability ("only software
+engineers think platform first"), and — added 2026-08-17 — a fuller
+**"Full jurisdiction detail table"** (`crud.get_full_jurisdiction_coverage()`),
+one sortable/filterable row per successfully-archived jurisdiction with:
+video-embeds / agenda-embedded / instant-transcript-from-source /
+transcript-from-audio-possible (yes/no each — the last is derived from
+`video_format != "youtube"`, mirroring `app/main.py`'s own
+`_unreadable_media_message()` reasoning that a YouTube-hosted video is
+structurally unprobeable by ffprobe, not a live check), a two-column
+"Detail page" vs. "Video" provider split (recovers PrimeGov/CivicWeb/
+LIMS/SLC/ClerkBase's real identity from `source_url_normalized` even
+though `MeetingPage.platform` says "youtube" for all of them — see this
+file's "when a platform turns out to be a wrapper around another" note in
+CLAUDE.md for the Legistar/CivicPlus case this *can't* recover, since
+their delegation overwrites `source_url` with the delegated platform's
+own URL), an outcome bucket (mirrors `app/db/outcomes.py`'s
+`classify_outcome()`), and a last-verified date. Sorting reuses
+`archive/static/coverage.js`'s existing client-side pattern (now
+generalized to any `table.sortable-table`); filtering is plain
+client-side JS (dropdowns + a jurisdiction search box + yes/no checkbox
+filters) — the whole roster is ~870 rows in production as of 2026-08-17,
+small enough to render server-side in one page load and filter/sort
+entirely in the browser, same reasoning the sort code already relied on.
+
 **`GET /state/{slug}` (per-state landing pages, added 2026-08-17)** —
 server-rendered, indexable SEO pages ("California public meeting videos &
 transcripts", `/state/california`), proxied like `/coverage`. Each lists
@@ -609,33 +642,82 @@ limitation. A state with zero indexable meetings 404s rather than
 rendering an empty shell, and every `/m/{slug}` page whose jurisdiction
 has a state now links "More {State} meetings" to its state page.
 
-**Search** covers title, jurisdiction, agenda item text, and the default
-transcript version's segment text — not just title/jurisdiction like the
-original v1. Two modes, chosen by an "exact"/"fuzzy" checkbox in the UI
-(`fuzzy=true` query param), exact by default:
-- **Exact** (default, faster): a plain case-insensitive substring match
-  against everything above, concatenated. No per-word computation, so
-  this is the cheap path a search that doesn't need typo tolerance should
-  use.
-- **Fuzzy**: tokenizes that same text into words and matches each query
-  term against real transcript words within a small edit-distance
-  (typo tolerance) — so a query for "traffic" still finds a transcript
-  that says "trafic" or "traffiq" (real transcription errors, not
-  hypothetical), where exact substring search would silently miss it.
+**`GET /j/{slug}` (per-government hub pages, added 2026-08-17)** — one
+landing page per jurisdiction ("Napa, CA public meeting videos &
+transcripts", `/j/napa-ca`), proxied like `/state/*`. Grouped by
+`jurisdiction_hub_slug()` (`archive/utils/jurisdiction_format.py`) — the
+slug of the *display* form, so raw-string variants of one government
+("City of Napa, CA" / "Napa, CA" / casing) consolidate into a single hub
+while real distinctions ("County of Napa, CA", "City and County of San
+Francisco, CA") stay separate; the state-page tables group by the same
+slug and link each government to its hub. Each hub lists every archived
+meeting for that government newest-first with transcript badges, a
+meeting-body breakdown ("City Council (30) · Planning Commission (12)"
+from `meeting_body`), date range, a `BreadcrumbList` (Home › State ›
+Jurisdiction) and breadcrumb nav, and links to `/state/{slug}` and the
+pre-filtered `/meetings?jurisdiction=` search; every `/m/{slug}` page
+links "More {Jurisdiction} meetings" to its hub. **Thin-content
+threshold**: the archive is wide and shallow (measured 2026-08-17: 574
+stateful jurisdictions, 439 with exactly one meeting), so every hub
+*renders* but only hubs with ≥ `crud.JURISDICTION_HUB_MIN_INDEXABLE` (2)
+meetings are indexable and listed in `sitemap.xml` (real lastmod);
+below that the page carries `noindex` and a "know of another?" note.
+Evaluated live per request — a singleton hub becomes indexable by
+itself when its second meeting lands. Backed by
+`crud.get_jurisdiction_hub_data()` / `crud.list_indexable_hub_entries()`
+(one `GROUP BY jurisdiction` over indexable, non-empty pages; no schema
+change). Same `platform == "unknown"` / empty-page exclusions as the
+sitemap and state pages.
 
-Both modes run entirely in Python, at query time, over whatever
-`list_pages()`'s own DB query already returned — see `archive/utils/
-search.py` and the docstring on `list_pages()` for the full reasoning.
-Deliberately **not** what this eventually needs at real scale: a
-materialized/indexed search column (e.g. Postgres trigram search over a
-`tsvector`-style column, populated at ingest time) instead of scanning
-every candidate meeting's JSON on every search request. Fine today at a
-few dozen meetings; tracked as a real follow-up (not a hypothetical one)
-in `BACKLOG.md`, including what populating that column would look like
-without adding a job queue (piggybacking on the ingest write that's
-already backgrounded via FastAPI's `BackgroundTasks`, not blocking
-`/api/resolve`'s response — see "Push, after resolving" above) and what a
-one-time backfill for already-archived meetings would need.
+**Search** covers title, jurisdiction, agenda item text, and *every*
+transcript version's segment text (so a demoted version's text still
+counts toward a match, though the listing's badge and snippet reflect the
+default version). All of that is materialized at ingest into one
+lowercased `meeting_pages.search_corpus` column (`compute_search_corpus()`
+in `archive/utils/search.py`, refreshed by `crud._refresh_search_corpus()`
+on every ingest and when a Whisper transcription completes), and every
+filter runs in SQL with `LIMIT/OFFSET` + a windowed count — see
+`list_pages()`'s docstring. Query syntax: bare words are ANDed,
+`"quoted phrase"` requires adjacency, `-word` / `-"phrase"` excludes.
+Three code paths, chosen per request:
+- **Full-text (Postgres, once Alembic revision `c1d2e3f4a5b6` has been
+  applied)** — the default in production: `search_tsv @@
+  websearch_to_tsquery('english', q)` against a `GENERATED` tsvector
+  column with a GIN index, answered from the index without reading the
+  corpus, so a common word costs the same as a rare one. Adds stemming
+  (budget/budgets/budgeting), stopword removal and `OR`. Word match, not
+  substring. `?sort=relevance` ("Sort by relevance" checkbox) orders by
+  `ts_rank_cd`; the default stays newest-first. `list_pages()`
+  feature-detects the column (`crud._fts_available()`) and falls back to
+  the next path when it's absent, so code and migration can deploy in
+  either order.
+- **Exact substring (SQLite in dev/CI, or Postgres before that
+  migration)**: `search_corpus LIKE '%term%'` — byte-for-byte the
+  predicate `archive/utils/search.py`'s `matches()` computes, GIN-trigram
+  indexed on Postgres (revision `bf4f54a11e5f`).
+- **Fuzzy** (`fuzzy=true`, "Fuzzy search (…slower)" checkbox): each query
+  word must be within a small edit distance of a real word in the
+  meeting's text — so "traffic" still finds a transcript that says
+  "trafic" or "traffiq" (real transcription errors). On Postgres with
+  `search_vocabulary` present (revision `c684908ce5ff`), this is
+  SQL-authoritative too: each word longer than 4 chars is trigram-matched
+  against that small, GIN-indexed table of distinct real words
+  (`crud._vocab_candidate_stmt()`), every candidate re-verified with the
+  same bounded-Levenshtein check for exact semantic parity, and the
+  confirmed words checked against `search_corpus` via the substring path
+  above — no full-archive scan. `list_pages()` feature-detects the table
+  (`crud._vocab_available()`) the same way it does `search_tsv`, falling
+  back to a Python-streamed scan over `search_corpus` text (SQLite dev/CI,
+  or Postgres before that migration) otherwise. Still opt-in and slower
+  than exact/full-text search — common short words can still take a few
+  seconds since several individually-common real-word matches may need
+  checking — but no longer scales with total archive size.
+
+`BACKLOG_DONE.md`'s "Search: move to a materialized/indexed column — full
+saga, closed" entry has the complete history, from the 2026-08-17 day
+this went from a Python scan over transcript JSON (which OOM-crashed the
+Archive on common terms) through exact-mode, full-text, and fuzzy all
+becoming SQL-backed.
 
 ## On-demand transcription
 
@@ -656,7 +738,14 @@ Archive web services already handle per request. Neither of those is a
 place to run something that might take hours, so a third, persistent
 service (`worker/`, a Render Background Worker — the first paid, always-on
 piece of infrastructure this project has needed) exists just to grind
-through transcription jobs in the background.
+through transcription jobs in the background. A second, identically-
+configured replica (`rtr-transcription-worker-2` in `render.yaml`) can run
+alongside it during a backlog catch-up window — real, distinct Render
+services rather than `numInstances` scaling on one, since the two need to
+differ in exactly one env var; see that file's own comment on the second
+service block for why, and `claim_next_chunk()`'s docstring
+(`archive/db/crud.py`) for why job/chunk claiming is already safe for any
+number of concurrent worker processes.
 
 **The flow, end to end:**
 1. **Feasibility check** (`POST /api/transcription/check-feasibility`,
@@ -803,6 +892,73 @@ pushed successfully, and the AI TRANSCRIPT disclaimer + real timestamped
 segments (starting "We're live." at 0:00, ending with real adjournment/
 motion dialogue) are live on the actual public page. The meeting no
 longer appears in a follow-up `/internal/transcription-backlog` call.
+
+**Giving both cloud workers real concurrent work, added 2026-08-21.**
+`worker/`'s own idle-time auto-generation (`maybe_generate_auto_job()`)
+only ever keeps ~1 job in flight at a time — it's only invoked once the
+entire active job table is empty. A single job's chunks are inherently
+serial (`claim_next_chunk()` claims one job's next chunk at a time), so a
+second worker (`rtr-transcription-worker-2`, see "Why this needs a third
+service" above) only gets real parallel throughput once ≥2 different jobs
+are queued at once. `scripts/bulk_queue_transcription_backlog.py` closes
+that gap: it pulls several candidates from the same
+`GET /internal/transcription-backlog` endpoint the script above uses and
+creates several real `TranscriptionJob` rows at once via
+`POST /internal/transcription/create-job`, at the low-priority tier that
+route now exposes (`priority`, added to `TranscriptionCreateJobRequest` —
+previously only `worker/main.py`'s own in-process auto-generation call
+could use `PRIORITY_LOW`).
+
+```bash
+python scripts/bulk_queue_transcription_backlog.py --dry-run
+python scripts/bulk_queue_transcription_backlog.py
+python scripts/bulk_queue_transcription_backlog.py --limit 4
+```
+
+Batch size defaults to 8, deliberately well under `archive/db/crud.py`'s
+global `MAX_CONCURRENT_TRANSCRIPTION_JOBS = 15` (shared across every
+priority tier) — leaves real headroom so a live visitor's own
+transcription request never hits `too_many_active_jobs` during a catch-up
+run, and `PRIORITY_LOW` means a real request still jumps the queue ahead
+of whatever this script queued at the very next claim, regardless of how
+full the batch is. `clerk_verified=True` on each created job (this script
+holds `ARCHIVE_INGEST_TOKEN`, the same trusted-internal-caller position
+the resolver itself is in after its own real Clerk check) skips the
+confirmation-email step entirely — without it, a job would sit at
+`pending_confirmation` until someone clicked a link, defeating the
+purpose. Runs hourly via `.github/workflows/bulk-queue-transcription-
+backlog.yml` (also safe to run by hand any time — server-side dedup and
+the `too_many_active_jobs` early-stop are what make hourly safe, see the
+script's own module docstring) — tied to the backlog catch-up window this
+second worker exists for, and `BACKLOG.md` for the residual auto-
+generation race this pairs with.
+
+**Daily activity report, added 2026-08-21.** `GET /internal/send-worker-
+daily-report` (Archive service, token-gated like every other
+`/internal/*` route) composes and emails a plain-text-style HTML digest —
+chunks completed, jobs finished, and (Postgres only) segments transcribed
+in the last 24 hours, plus a snapshot of what's still ahead: active jobs,
+remaining chunks in those jobs, meetings on the site with no transcript,
+and how many URLs are still sitting in the tier-3 discovery queue
+(`scripts/tier3_auto_transcription_queue.txt`, read directly off disk —
+this service's own deploy already checks out the whole repo). Triggered
+daily by `.github/workflows/worker-daily-report.yml`, which is a plain
+`curl` ping — same pattern `/admin/send-search-alerts` already
+established: GitHub Actions never touches `RESEND_API_KEY` or
+`DATABASE_URL` directly, it just pings an already-running Render service
+that already holds those credentials, rather than a new script
+duplicating them as fresh GitHub secrets.
+
+The 24h chunk-completion figure needs a real reference point to diff
+against, since `TranscriptionJob.chunks_completed` has no per-chunk
+timestamp anywhere in the schema — `WorkerReportSnapshot`
+(`archive/db/models.py`, one row, overwritten on every send) holds
+exactly that: the cumulative all-time totals as of the last report. The
+first-ever send has nothing to diff against and reports "n/a (first
+report)" for that one figure rather than a misleading number.
+`GET /internal/transcription-queue-stats` exposes the same live summary
+read-only (no snapshot advance), for anything else that wants it later
+(a dashboard, say) without needing to trigger a real email.
 
 ## Accounts (Clerk)
 
@@ -1074,11 +1230,12 @@ platform share the same page/API structure. Detection lives in
 | Granicus | `granicus.py` | Regex-scan the page HTML for `.m3u8`/`.mp4` URLs (shared `media_scan.py` helper) | Guessed `/videos/{id}/captions.vtt` path + scanned `.vtt` URLs; language verified from actual cue content (not the untrustworthy `srclang` label); RSS channel title (`ViewPublisherRSS.php`) used for reliable jurisdiction/title. Agenda items (`AgendaViewer.php`'s chapter markers) are fetched independently of transcript availability into their own `agenda_items` field, when that customer has Granicus's native agenda index turned on (not universal — some customers redirect it to their own site instead, surfaced as a plain link instead). Date fallback chain: page text (excluding a "previous meeting" reference, a real confirmed false-positive trap) → RSS item date → Granicus's own published Minutes document (`MinutesViewer.php`, plain HTTP-fetchable, real date at the top) → document-link-filename guess |
 | CivicClerk | `civicclerk.py` | Public REST API (`<subdomain>.api.civicclerk.com`) — the portal page itself is a client-rendered SPA with nothing to scrape | `closedCaptionTracks`/`closedCaptionUrl` when populated — real format is **SRT**, not VTT (confirmed live); language verified from actual cue content, same distrust-the-label approach as Granicus. The API's `eventBookmarks` (agenda-item timestamps) are fetched independently into `agenda_items` |
 | Swagit | `swagit.py` | jwplayer JSON blob embedded in the page (shares Granicus's CDN infra, but a different page shape) | `.playerControl[data-ts]` agenda-item markers fetched independently into `agenda_items` |
-| eScribe | `escribe.py` | `<div id="isi_player" data-client_id data-stream_name>` when present — video integration varies entirely by city, "no video" is a normal outcome here | iSiLIVE captions, keyed by language suffix in the filename (`{file}.vtt`, `{file}.fr.vtt`, ...). Real per-item agenda timestamps from an embedded `video.Bookmarks` JS array, when present — not every item gets one, so items without a match are omitted rather than guessed. `jurisdiction` falls back to the `pub-{city}.escribemeetings.com` subdomain when the page body has no "City of X" phrase |
+| eScribe | `escribe.py` | `<div id="isi_player" data-client_id data-stream_name>` when present — video integration varies entirely by city, "no video" is a normal outcome here | iSiLIVE captions, keyed by language suffix in the filename (`{file}.vtt`, `{file}.fr.vtt`, ...). Real per-item agenda timestamps from an embedded `video.Bookmarks` JS array, when present — not every item gets one, so items without a match are omitted rather than guessed. `jurisdiction` falls back to the `pub-{city}.escribemeetings.com` subdomain when the page body has no "City of X" phrase — validated against the same Census/StatsCan tables Granicus uses (`jurisdiction_enrich.validated_label_extract()`) before being accepted, declining rather than guessing when nothing validates (gated 2026-08-18; previously an ungated wordninja-split guess, see BACKLOG_DONE.md) |
 | California Legislature | `ca_legislature.py` | Self-hosted (`stream.{assembly,senate}.ca.gov`), not a vendor platform | Self-hosted `.vtt` at a matching filename; genuinely high quality when present |
 | Legistar | `legistar.py` | Doesn't host video — finds the embedded/redirected link to a platform above (usually Granicus) and delegates via `resolve_via_platform()`. If its own `a.videolink` pattern finds nothing, falls back to a broader link scan (`base.find_platform_link()`, shared with the generic fallback below) before giving up — confirmed live on Baltimore's instance, whose real recording is a plain attachments-table link to YouTube, not the usual pattern | Whatever the delegated platform provides |
 | CivicPlus | `civicplus.py` | Same delegation pattern as Legistar, from AgendaCenter listing rows | Whatever the delegated platform provides |
-| PrimeGov | `primegov.py` | Doesn't host video — the video id is a plain JS variable (`var videoUrl = "..."`) directly in the page HTML; delegates to YouTube, preserving the original PrimeGov URL as `source_url` (unlike the Legistar/CivicPlus delegation pattern) | Whatever YouTube provides |
+| Destiny AgendaQuick | `destinyhosted.py` | Confirmed live 2026-08-21 across 61 real `destinyhosted.com` tenants (enumerated via Wayback CDX — see BACKLOG_DONE.md) to be a pure agenda/minutes CMS, not a video host — delegates to `GenericFallbackAssetFinder`'s own tiers unchanged (a thin wrapper, not a redundant parser), only claiming the `"destinyhosted"` platform identity itself when nothing deeper resolves. Registered as its own platform (rather than left as `"unknown"`) specifically so `base.find_platform_link()` follows a `destinyhosted.com` link found on some *other* wrapper's page as a real one-more-hop delegation target — confirmed necessary live: Roswell, NM runs CivicPlus's AgendaCenter self-hosted on its own domain rather than `*.civicplus.com` (so `detect_platform()`'s civicplus check never fires) and links straight to a `destinyhosted.com` backend. 18/61 sampled tenants have a real, confirmed Swagit video link — via a formal built-in AgendaQuick↔Swagit integration, `onclick="swagitPlay('https://...')"` rather than a plain href — some others use YouTube/Granicus/Cablecast-Castus/other vendors, several have none this month (a real per-tenant negative, not a gap) | Whatever the delegated platform provides |
+| PrimeGov | `primegov.py` | Doesn't host video itself. Prefers a plain JS variable (`var videoUrl = "..."`) directly in the page HTML when present, delegating to YouTube — but some tenants' real video is actually hosted on Swagit or Granicus instead, with no trace of it in the page HTML at all (confirmed live 2026-08-19, see BACKLOG_DONE.md). When no YouTube id is on the page, falls back to the tenant's own `GET /api/v2/PublicPortal/ListArchivedMeetings?year={YYYY}` API, matching the page's `meetingTemplateId` against `documentList[].templateId` to find that meeting's real `videoUrl`, then delegates to whichever adapter matches. Every delegation path preserves the original PrimeGov URL as `source_url` (unlike the Legistar/CivicPlus delegation pattern) | Whatever the delegated platform (YouTube, Swagit, or Granicus) provides |
 | YouTube | `youtube.py` | No direct video file URL exists (unlike every platform above) — playback is an embedded iframe + the YouTube IFrame Player API, not the native `<video>`/hls.js pathway. Handles a direct `youtube.com`/`youtu.be` URL too, not just PrimeGov delegation | yt-dlp (plain HTTP requests to YouTube's caption endpoints are blocked — see BACKLOG.md); prefers a manual/CC track over auto-generated only when its coverage is comparable, since a manual track can start well into the video and skip pre-meeting dead air |
 | Viebit | `viebit.py` | Reached via Legistar delegation (confirmed so far only under NYC Council's instance) — a `var pageConfig = {...}` JS object embedded in plain HTML gives a real HLS `master.m3u8` URL, no JS execution needed for discovery. **Playback is an iframe embed** (`/embed/vod?v={id}&t={seconds}`), not the native `<video>`/hls.js pathway every other platform above uses — confirmed live 2026-08-12 that the raw `master.m3u8` 403s from a CDN-level Referer/Origin check, and that no `postMessage`-reachable seek API exists in Viebit's own player bundle (`lgx-videojs-plugins-*.js`/`vod-embedded-*.js`, pulled and read directly). `t=` is read by the iframe only at load time, so "seeking" after playback has started means reloading the iframe with a new `t=` — `wireSharedControls(adapter, { liveTracking: false })` degrades live-position-dependent UI (playhead tracking, "currently playing" highlight, play/pause control) honestly instead of faking it, a deliberate, user-confirmed tradeoff | Real, populated VTT captions from the same `pageConfig`; two-line rolling-caption shape, collapsed by the existing `dedupe_rollup_cues()` (built for YouTube, confirmed to also handle this shape correctly) |
 | Minneapolis LIMS | `lims.py` | **The one adapter that isn't plain `aiohttp`** — both the agenda page and its `/MeetingYoutubeVideo/{id}` JSON endpoint return a genuine Cloudflare JS challenge to a normal HTTP request, so this uses `headless_browser.py`'s real (headless) Chromium fetch instead. Delegates to YouTube for the video itself | Whatever YouTube provides, via delegation. Real per-agenda-item timestamps from the JSON endpoint's `SerializedVideoTimestamps` tree — genuinely richer than most platforms above, since most don't have real per-item start times at all |
@@ -1092,6 +1249,7 @@ platform share the same page/API structure. Detection lives in
 | TelVue | `telvue.py` | Confirmed live 2026-08-16 against a real Ashland, OR Planning Commission meeting on `videoplayer.telvue.com` (also reachable via a `peg.tv` shortlink, a plain HTTP redirect to the same page — no separate platform). Everything needed is a plain JSON `Player.setupData['playlist']` array embedded in the static HTML, no JS execution needed — a real `file:` HLS URL plus a `tracks:` list | Real captions confirmed present and high-quality on the one sample checked — WebVTT with `<v Speaker N>` voice tags, stripped by a TelVue-specific regex (`parse_vtt()` doesn't strip these on its own). A separate `chapters.vtt` track gives real start/end agenda-item ranges |
 | Seattle Channel (seattlechannel.org) | `seattlechannel.py` | Confirmed live 2026-08-14 against two independent real meetings, scoped narrowly to the `/videos?videoid={id}` URL shape (the older feed-style index page and a bare `/videos` with no id are deliberately left to `generic_fallback.py`). The primary video's JW Player instance is always the fixed element id `vidPlayer` — HTML is sliced to that specific block, bounded by the following `.on('complete', ...)` call, so an unrelated "related video" embedded further down the same page is never picked up by mistake | Real SRT captions, plus real per-item `data-seek` timestamps from `<a class="seekItem">` elements, turned into `agenda_items` |
 | Hyland "OnBase Agenda Online" | `hyland.py` | Confirmed live 2026-08-16 across 26 real customer domains, spanning two distinct real UI versions of the same vendor product. Version A's separate `/Meetings/ViewMeetingAgenda` endpoint and Version B's `/Documents/ViewAgenda` endpoint (a converted-Word-document render) are both plain server-rendered HTML, no JS execution needed — `resolve()` tries Version A first and falls back to Version B only when that yields nothing. Falls back to `YouTubeAssetFinder` delegation when no direct JW Player media file is found (one real customer's page uses a YouTube embed instead) | Real timestamped `agenda_items` on customers with video: each version's own agenda outline embeds a `loadAgendaItem({id})` link per item, joined against the main page's inline `itemEventPoints` video-seek-offset map on that same id. No caption/transcript track of any kind has been found on any JW-Player-backed customer — only the YouTube-delegated one has a real transcript |
+| Town Hall Streams (townhallstreams.com) | `townhallstreams.py` | Confirmed live 2026-08-20 against 7 real towns — a plain `jwplayer(...).setup({file: "..."})` call in static HTML embeds a directly-fetchable HLS URL (no Referer/Origin gating, confirmed via direct `curl`), no JS execution needed. The page itself carries no jurisdiction/title/date text at all — everything comes from the video URL's own path, `mp4:{town_slug}/{date}_{numeric_id}_{Meeting_Title}.mp4`. Jurisdiction is routed through the shared, Census-validated `jurisdiction_enrich.validated_label_extract()` (never a by-eye slug decode — 2 of 7 real slugs carry zero state information at all, see BACKLOG_DONE.md), with a `wordninja`-split check of the slug's own trailing token for a real state abbreviation, falling back to a Census unambiguous-name lookup | A real `get_transcriptions` AJAX endpoint exists but returned empty on all 7 real meetings checked — treated as best-effort/unconfirmed per this repo's convention: a genuinely non-empty response is surfaced as a `transcript_warnings` entry (not silently dropped, and not guess-parsed) since no real positive example has been found yet to build an actual parser against |
 
 **Every URL `detect_platform()` doesn't recognize** goes to
 `generic_fallback.py`'s `GenericFallbackAssetFinder`, registered under
@@ -1103,9 +1261,13 @@ order: (1–2) an embedded YouTube video in any confirmed shape — a
 URL-shaped id (raw or HTML-entity-escaped, youtube-nocookie included),
 or a bare `videoId = '...'` JS assignment gated on the page actually
 loading the IFrame Player API (Tarrant County's real shape) — delegated
-to `YouTubeAssetFinder`; (3) a plain link to any OTHER platform this app
-fully supports, delegated to that adapter's own `resolve()` (Austin, TX
-→ Swagit, confirmed live 2026-08-10); (4) a directly playable media URL
+to `YouTubeAssetFinder`; (3) a link to any OTHER platform this app fully
+supports, delegated to that adapter's own `resolve()` — either a plain
+`<a href>`/`<iframe src>` (Austin, TX → Swagit, confirmed live
+2026-08-10) or an `onclick="someFunc('https://...')"` JS-modal link with
+no real href at all (`base.find_platform_link()` checks both — see
+`destinyhosted.py`'s table row below for the confirmed real example);
+(4) a directly playable media URL
 via `media_scan.py`'s shared scanner (which handles query-stringed
 m3u8s, HTML-entity-escaped URLs, JW Player `file:` config keys, and
 protocol-relative/relative paths — the Sacramento/Seattle shapes);
@@ -1323,7 +1485,7 @@ archive/
   main.py                 FastAPI app: /internal/lookup, /internal/ingest,
                            /internal/transcription/* (all token-gated),
                            /m/{slug}, /m/{slug}/transcript.{txt,srt},
-                           /meetings, /coverage, /state/{slug},
+                           /meetings, /coverage, /state/{slug}, /j/{slug},
                            /sitemap.xml, /feed.xml,
                            /api/health, /account/saved, and the token-gated
                            /internal/account/* routes -- see "Accounts
@@ -1339,9 +1501,14 @@ archive/
     crud.py                  identity matching/dedup, slug generation,
                            content-hash version dedup, list_pages()
                            (paginated + filtered, backs /meetings),
-                           get_platform_coverage() (backs /coverage),
+                           get_platform_coverage()/get_jurisdiction_coverage()/
+                           get_full_jurisdiction_coverage() (all back
+                           /coverage's three sections),
                            get_state_coverage_index()/get_state_page_data()
                            (back /state/{slug} + /coverage's state links),
+                           get_jurisdiction_hub_data()/
+                           list_indexable_hub_entries() (back /j/{slug} +
+                           its sitemap entries),
                            list_all_page_slugs() (backs /sitemap.xml),
                            list_recent_pages_for_feed() (backs /feed.xml),
                            the TranscriptionJob lifecycle (create/claim/
@@ -1415,11 +1582,14 @@ shared_static/
 
 `worker/` is a third, independent service (own `requirements.txt`, own
 Docker-based deploy — see "On-demand transcription" above) for processing
-transcription jobs. Unlike the resolver/Archive split, it deliberately
-imports from both of the other two: `archive.db`/`archive.utils.email`
-directly (it *is* Archive backend logic, just in a process shape the
-Archive's own web dyno can't offer) and `app.platforms` (read-only, to
-re-resolve a fresh media URL before each chunk).
+transcription jobs — it can run as more than one Render service from this
+same codebase (`rtr-transcription-worker` / `rtr-transcription-worker-2`
+in `render.yaml`) sharing one job queue, see that file's own comment.
+Unlike the resolver/Archive split, it deliberately imports from both of
+the other two: `archive.db`/`archive.utils.email` directly (it *is*
+Archive backend logic, just in a process shape the Archive's own web dyno
+can't offer) and `app.platforms` (read-only, to re-resolve a fresh media
+URL before each chunk).
 
 ```
 worker/

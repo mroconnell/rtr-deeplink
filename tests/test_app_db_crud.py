@@ -89,13 +89,32 @@ async def test_pending_pushes_excludes_content_free_resolutions():
 
 async def test_pending_pushes_includes_agenda_only_resolutions():
     # No transcript, but real agenda_items -- still worth pushing (same
-    # "segments or agenda_items" gate /api/resolve itself uses).
+    # "segments or agenda_items or video_url" gate /api/resolve itself uses).
     resolution_id = await _log(
         "agenda-only",
         transcript_found=False,
         resolved_payload={
             "segments": [],
             "agenda_items": [{"start": 0, "end": 0, "text": "Call to order"}],
+        },
+    )
+    pending = await crud.get_pending_archive_pushes(min_age_minutes=0)
+    assert resolution_id in [p["resolution_id"] for p in pending]
+
+
+async def test_pending_pushes_includes_video_only_resolutions():
+    # No transcript, no agenda_items, but a real video_url -- still worth
+    # pushing. Regression test for a real bug (BACKLOG_DONE.md): several
+    # adapters (Cablecast, ChampDS, PrimeGov's YouTube-delegated path) can
+    # resolve a real video with segments/agenda_items/agenda_link all empty,
+    # and this gate previously dropped those resolutions silently.
+    resolution_id = await _log(
+        "video-only",
+        transcript_found=False,
+        resolved_payload={
+            "segments": [],
+            "agenda_items": [],
+            "video_url": "https://example.cablecast.tv/videos/1234",
         },
     )
     pending = await crud.get_pending_archive_pushes(min_age_minutes=0)

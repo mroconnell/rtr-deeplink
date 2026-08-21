@@ -164,13 +164,85 @@ async def test_resolve_show_not_found_in_page_reports_no_video():
     url = "http://detroit-vod.cablecast.tv/internetchannel/show/999999999?site=1"
     html = load_fixture("cablecast", "detroit_show_15323.html")
 
-    routes = {url: FakeResponse(status=200, text=html, url=url)}
+    # The requested show isn't in the direct-fetch page, so resolve() also
+    # tries the site root as a fallback (see the newer-template/WAF note in
+    # cablecast.py) -- also mocked here, with the same fixture, since it
+    # genuinely doesn't contain showId 999999999 either.
+    root_url = "http://detroit-vod.cablecast.tv/"
+    routes = {
+        url: FakeResponse(status=200, text=html, url=url),
+        root_url: FakeResponse(status=200, text=html, url=root_url),
+    }
 
     with mock_session(routes):
         result = await CablecastAssetFinder().resolve(url)
 
     assert result.video_url is None
     assert result.video_warnings == ["No video found for this meeting."]
+
+
+async def test_resolve_newer_template_show_url_falls_back_to_root():
+    # Real gap found 2026-08-18 re-checking a research pass's Cablecast
+    # "miss" list against this adapter: a newer Cablecast portal template
+    # (confirmed live on satellitebeach.cablecast.tv) drops the
+    # "/internetchannel" prefix -- real show pages live at bare
+    # "/show/{id}" -- and that specific path is behind an AWS WAF JS
+    # challenge for non-browser requests (this fixture is the real
+    # response: 202, a `challenge.js`/`awsWafCookieDomainList` page, no
+    # usable content -- this adapter never tries to solve it). The site's
+    # own root page is NOT WAF-protected and its `window.__remixContext`
+    # already embeds the full show catalog (this fixture has 287 real
+    # shows spanning 2019-2026), so resolve() falls back to it. Also
+    # exercises the real `showId` type mismatch found alongside this:
+    # it's a `str` ("535") on this template vs. an `int` on Detroit/
+    # Charlotte's older one -- `_find_show()` compares both sides as
+    # strings specifically so this doesn't silently fail to match.
+    url = "https://satellitebeach.cablecast.tv/show/535"
+    direct_url = "http://satellitebeach.cablecast.tv/show/535"
+    root_url = "http://satellitebeach.cablecast.tv/"
+    challenge_html = load_fixture("cablecast", "satellitebeach_waf_challenge.html")
+    root_html = load_fixture("cablecast", "satellitebeach_root.html")
+
+    routes = {
+        direct_url: FakeResponse(status=202, text=challenge_html, url=direct_url),
+        root_url: FakeResponse(status=200, text=root_html, url=root_url),
+    }
+
+    with mock_session(routes):
+        result = await CablecastAssetFinder().resolve(url)
+
+    assert result.title == "City Council Workshop 08-05-2026"
+    assert result.date == "2026-08-05"
+    assert result.video_url == (
+        "https://satellitebeach.cablecast.tv/vod/"
+        "535-City-Council-Workshop-08-05-2026-v2/vod.m3u8"
+    )
+    # This show's own vodTranscripts entry is real in the page data, but
+    # the actual transcript file 403s on direct fetch (confirmed live
+    # 2026-08-18, independent of this adapter fix) -- no positive example
+    # of a fetchable transcript on this newer template exists yet, same
+    # "don't claim a caption path works without a positive example"
+    # convention as CivicClerk/eScribe.
+    assert result.segments == []
+
+
+def test_extract_show_id_recognizes_newer_template_bare_show_path():
+    assert (
+        CablecastAssetFinder._extract_show_id(
+            "https://satellitebeach.cablecast.tv/show/535"
+        )
+        == 535
+    )
+
+
+def test_find_show_matches_string_showid_against_int_lookup():
+    # Real type mismatch found 2026-08-18 (see
+    # test_resolve_newer_template_show_url_falls_back_to_root): the
+    # payload's showId is a str on the newer template.
+    obj = {"showId": "535", "title": "String-keyed show"}
+    assert CablecastAssetFinder._find_show(obj, 535) == obj
+    assert CablecastAssetFinder._find_show({"showId": 535}, 535) == {"showId": 535}
+    assert CablecastAssetFinder._find_show({"showId": "12"}, 535) is None
 
 
 def test_extract_show_id():
@@ -258,6 +330,20 @@ def test_extract_jurisdiction_returns_none_when_neither_field_matches():
         "pageDescription": "Watch local government meetings here.",
     }
     assert CablecastAssetFinder._extract_jurisdiction(site, _UNKNOWN_DOMAIN_URL) is None
+
+
+def test_extract_jurisdiction_falls_back_to_known_domain_when_branding_is_generic():
+    # Real gap confirmed live 2026-08-19: Broomfield, CO's Cablecast site
+    # has no "City of"/"County of" phrase anywhere -- title is just
+    # "Channel 8" and pageDescription is empty. Falls back to the
+    # confirmed-domain registry (same one Detroit/Charlotte use) instead
+    # of dropping jurisdiction entirely.
+    site = {"title": "Channel 8", "pageDescription": ""}
+    broomfield_url = "http://broomfieldco.cablecast.tv/internetchannel/show/1674?site=1"
+    assert (
+        CablecastAssetFinder._extract_jurisdiction(site, broomfield_url)
+        == "Broomfield, CO"
+    )
 
 
 def test_extract_jurisdiction_omits_state_for_an_unconfirmed_city():

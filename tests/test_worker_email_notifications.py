@@ -106,8 +106,14 @@ async def test_send_failure_email_sends_with_meeting_title_and_page_url(monkeypa
         captured["page_url"] = page_url
         return True
 
+    async def _fake_admin_send(**kwargs):
+        return True
+
     monkeypatch.setattr(
         worker.main.email_utils, "send_transcription_failed_email", _fake_send
+    )
+    monkeypatch.setattr(
+        worker.main.email_utils, "send_admin_job_failure_alert", _fake_admin_send
     )
 
     await worker.main._send_failure_email(1)
@@ -135,9 +141,70 @@ async def test_send_failure_email_falls_back_to_generic_title(monkeypatch):
         captured["meeting_title"] = meeting_title
         return True
 
+    async def _fake_admin_send(**kwargs):
+        return True
+
     monkeypatch.setattr(
         worker.main.email_utils, "send_transcription_failed_email", _fake_send
+    )
+    monkeypatch.setattr(
+        worker.main.email_utils, "send_admin_job_failure_alert", _fake_admin_send
     )
 
     await worker.main._send_failure_email(1)
     assert captured["meeting_title"] == "your meeting"
+
+
+async def test_send_failure_email_also_sends_admin_alert_with_diagnostics(monkeypatch):
+    # Real gap closed 2026-08-19: the requester-facing "sorry, try again"
+    # email carries no diagnostics an operator could act on -- this checks
+    # the separate admin alert gets the real job id, source URL, chunk
+    # progress, and retry history, not just a repeat of the branded copy.
+    async def _status(job_id):
+        return {
+            "meeting_page_slug": "some-meeting",
+            "meeting_page_title": "Some Meeting",
+            "requester_email": "requester@example.com",
+            "error_message": "ffmpeg exited 1: timed out",
+            "source_url": "https://example.granicus.com/player/clip/1",
+            "chunks_completed": 1,
+            "total_chunks": 27,
+            "retry_count": 3,
+            "failure_history": [
+                {
+                    "chunk_index": 1,
+                    "error": "ffmpeg timed out",
+                    "at": "2026-08-18T18:10:00+00:00",
+                }
+            ],
+            "created_at": "2026-08-18T18:03:48+00:00",
+        }
+
+    monkeypatch.setattr(worker.main.crud, "get_transcription_job_status", _status)
+    monkeypatch.setenv("PUBLIC_BASE_URL", "https://redtaperecordings.com")
+
+    async def _fake_send(to, *, meeting_title, page_url):
+        return True
+
+    captured = {}
+
+    async def _fake_admin_send(**kwargs):
+        captured.update(kwargs)
+        return True
+
+    monkeypatch.setattr(
+        worker.main.email_utils, "send_transcription_failed_email", _fake_send
+    )
+    monkeypatch.setattr(
+        worker.main.email_utils, "send_admin_job_failure_alert", _fake_admin_send
+    )
+
+    await worker.main._send_failure_email(42)
+    assert captured["job_id"] == 42
+    assert captured["requester_email"] == "requester@example.com"
+    assert captured["source_url"] == "https://example.granicus.com/player/clip/1"
+    assert captured["chunks_completed"] == 1
+    assert captured["total_chunks"] == 27
+    assert captured["retry_count"] == 3
+    assert captured["failure_history"][0]["chunk_index"] == 1
+    assert captured["page_url"] == "https://redtaperecordings.com/m/some-meeting"

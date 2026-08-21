@@ -57,6 +57,21 @@ services:
     # limiting on /api/resolve, see app/main.py) reflects the real caller
     # instead of Render's own edge-proxy IP. Render's proxy is trusted
     # infra here, not an arbitrary client that could spoof the header.
+    # No preDeployCommand here YET, deliberately (WO-10, 2026-08-17): the
+    # resolver's own Alembic history (app/alembic/, 2 revisions) has never
+    # been stamped in production -- its schema was created by
+    # create_all() and hand-fixed once (see app/alembic/README.md's
+    # "One-time step"). Automating `alembic upgrade head` on an unstamped
+    # DB would try to run the baseline CREATE TABLEs against tables that
+    # already exist and fail the deploy on its first run (the brief's
+    # explicit "step 3 before step 2 will fail" warning). The one-time
+    # step is: on this service's Render shell, `cd app && alembic current`
+    # (expect empty), confirm the real columns match head via GET
+    # /admin/stats or /internal/schema-info, then `alembic stamp head`.
+    # After that, add the same line the archive service has:
+    #   preDeployCommand: cd app && alembic upgrade head
+    # and gate app/db/engine.py's create_all() to non-Postgres the way
+    # archive/db/engine.py now is. Tracked in BACKLOG.md.
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips='*'
     healthCheckPath: /api/health
     # ffprobe availability confirmed live 2026-08-08: a real POST to
@@ -156,6 +171,27 @@ services:
         - CLAUDE_BACKLOG.md
         - CLAUDE_INBOX_TRIAGE.md
     buildCommand: pip install -r archive/requirements.txt
+    # WO-10 (AUDIT_EXECUTION_BRIEF.md, landed 2026-08-17): the schema
+    # migration runs BEFORE the new build starts serving. Render runs
+    # preDeployCommand after the build and before the instance is
+    # switched live; if it fails, the deploy is cancelled and the previous
+    # build keeps running -- exactly the ordering guarantee this repo was
+    # missing (four incidents: 2026-08-09/10/13, and the 2026-08-17
+    # UndefinedColumnError outage from a model column deploying ~13
+    # minutes ahead of its ALTER TABLE, see BACKLOG_DONE.md). Idempotent:
+    # "already at head" is a fast no-op, so it costs nothing on the
+    # doc/CSS-only deploys that make up most pushes. Runs in this
+    # service's own env (DATABASE_URL, the archive DB), from the repo
+    # root, with alembic from archive/requirements.txt. Precondition
+    # (verified before adding this): archive's alembic_version was at
+    # head in prod (Ryan ran `alembic upgrade head` twice on 2026-08-17),
+    # and `alembic check` against a fresh `upgrade head` DB reports no
+    # missing model tables/columns -- CI now re-checks that on every PR.
+    # archive/db/engine.py's create_all() is a no-op on Postgres since
+    # the same change, so Alembic is the *only* thing that touches this
+    # schema in production. The worker (below) shares this DB and does
+    # NOT run migrations -- one owner, no concurrent-upgrade race.
+    preDeployCommand: cd archive && alembic upgrade head
     startCommand: uvicorn archive.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
     envVars:
@@ -264,11 +300,84 @@ services:
       - key: AUTO_TRANSCRIPTION_REQUESTER_EMAIL
         sync: false  # optional -- idle-time auto-generation (worker/main.py) is silently disabled when unset; set to receive its completion-email activity digest
 
+  # Second replica of the transcription worker above -- added 2026-08-21
+  # to work down the ~1600+-meeting untranscribed backlog faster during a
+  # bounded catch-up window (see BACKLOG.md's matching entry). A real,
+  # distinct `type: worker` service, not `numInstances` on
+  # rtr-transcription-worker -- Render's numInstances gives every replica
+  # of one service block IDENTICAL env vars, and this one needs to differ
+  # in exactly one: AUTO_TRANSCRIPTION_REQUESTER_EMAIL is deliberately
+  # left UNSET below.
+  #
+  # Why that specific omission matters: claim_next_chunk()'s FOR UPDATE
+  # SKIP LOCKED (archive/db/crud.py) already makes chunk-claiming safe for
+  # any number of concurrent worker processes -- that's not what this
+  # avoids. What it avoids is a SEPARATE, unguarded race in idle-time
+  # auto-generation: maybe_generate_auto_job() -> find_auto_transcription_
+  # candidate() (a plain, unlocked SELECT) -> create_transcription_job()
+  # (its own separate, unlocked "does a job already exist for this page"
+  # check-then-insert) -- two worker processes both idle at the same
+  # moment (routine, once the queue drains) and both configured with a
+  # real AUTO_TRANSCRIPTION_REQUESTER_EMAIL could both pass that check for
+  # the same candidate page before either commits, creating two duplicate
+  # low-priority jobs (real wasted compute, two completion emails -- see
+  # BACKLOG.md). Leaving this var unset here means this replica's own
+  # maybe_generate_auto_job() always short-circuits (worker/main.py, `if
+  # not AUTO_TRANSCRIPTION_REQUESTER_EMAIL: return False`) and never
+  # reaches create_transcription_job() at all -- the race is structurally
+  # impossible on this pair, not just mitigated. It's still pure
+  # chunk-processing capacity: claim_next_chunk()/report_chunk_result()
+  # are unaffected and already safe (see rtr-transcription-worker's own
+  # comment above, and claim_next_chunk()'s own docstring).
+  #
+  # Every other env var below MUST match rtr-transcription-worker's
+  # corresponding value exactly (same DB, same outbound email identity,
+  # same public base URL) -- set by hand in Render's dashboard for THIS
+  # service too; sync: false vars are never copied between services by a
+  # Blueprint sync. Meant to be temporary, for the backlog catch-up window
+  # -- revisit (scale back down to one worker) once BACKLOG.md's ~1600+
+  # figure is worked down; see that file's matching entry.
+  - type: worker
+    name: rtr-transcription-worker-2
+    runtime: docker
+    dockerfilePath: worker/Dockerfile
+    dockerContext: .
+    # See rtr-deeplink's matching buildFilter comment above -- same reason.
+    buildFilter:
+      ignoredPaths:
+        - BACKLOG.md
+        - BACKLOG_DONE.md
+        - CLAUDE_BACKLOG.md
+        - CLAUDE_INBOX_TRIAGE.md
+    plan: standard
+    envVars:
+      - key: DATABASE_URL
+        sync: false  # MUST be the exact same value as rtr-deeplink-archive's / rtr-transcription-worker's DATABASE_URL -- not a separate database
+      - key: EXPECTED_DB_HOST
+        value: dpg-d9r06nqjobas739hlc8g-a
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_AUDIENCE_ID
+        sync: false
+      - key: RESEND_FROM_ADDRESS
+        sync: false
+      - key: RESEND_REPLY_TO_ADDRESS
+        sync: false
+      - key: HF_TOKEN
+        sync: false  # optional -- see rtr-transcription-worker's matching comment
+      # AUTO_TRANSCRIPTION_REQUESTER_EMAIL is deliberately NOT set here --
+      # see the block comment above. Left out of the list entirely (not
+      # present with an empty value) so this replica's idle-time
+      # auto-generation path never activates.
+
 databases:
   # WO-4 (AUDIT_EXECUTION_BRIEF.md, 2026-08-16): brings the one paid,
   # persistent-data resource into tracked config -- confirmed live via
-  # Render's dashboard 2026-08-17 (Basic-256mb, 256MB RAM/0.1 CPU/1GB
-  # storage, Oregon, PostgreSQL 18, hostname dpg-d9r06nqjobas739hlc8g-a --
+  # Render's dashboard 2026-08-17 (then Basic-256mb, 256MB RAM/0.1 CPU/1GB
+  # storage -- raised to basic-1gb later that day, see the plan comment
+  # below; Oregon, PostgreSQL 18, hostname dpg-d9r06nqjobas739hlc8g-a --
   # matches EXPECTED_DB_HOST above). Render's Blueprint sync adopts an
   # existing database by exact `name:` match, the same mechanism already
   # proven safe for the three services above -- this is the first time
@@ -280,8 +389,25 @@ databases:
   # free-tier and intentionally disposable (expires 9/9/2026, per the
   # Prerequisites table above). A future reader: that's not an oversight
   # to "fix," don't add it.
+  #
+  # plan: basic-1gb (was basic-256mb until 2026-08-17). Raised on real
+  # evidence, not guesswork -- don't "optimize" it back down without
+  # re-reading this. This one server hosts two logical databases:
+  # rtr_archive (218MB -- every meeting page + transcript) and
+  # rtr_deeplink_db (22MB, the resolver's). On the 256MB plan Postgres
+  # had shared_buffers = 64MB, so the 77MB search corpus and 117MB of
+  # transcript JSON could never stay cached: pg_stat_statements showed the
+  # Archive's own /meetings keyword scans averaging 16.5s each (max 46s)
+  # under real load vs 4.7s for the identical query run in isolation, and
+  # cold TOAST reads at ~3MB/s -- pure I/O starvation, which no query
+  # tuning fixed (#129/#131 tried). 1GB RAM => ~256MB shared_buffers plus
+  # OS page cache, enough for the whole 218MB working set to stay
+  # resident. Full detail: BACKLOG_DONE.md's "Search Step 1" entry and
+  # BACKLOG.md's search entry (2026-08-17). Verify after the Blueprint
+  # sync applies: `SHOW shared_buffers;` from the archive shell should
+  # read ~256MB, not 64MB.
   - name: rtr-deeplink-db
     databaseName: rtr_deeplink_db
-    plan: basic-256mb
+    plan: basic-1gb
     region: oregon
     postgresMajorVersion: "18"

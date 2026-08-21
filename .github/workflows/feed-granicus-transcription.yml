@@ -44,8 +44,12 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
+      actions: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.QUEUE_ADVANCE_PAT }}
 
       - uses: actions/setup-python@v5
         with:
@@ -60,11 +64,81 @@ jobs:
           ARCHIVE_INGEST_TOKEN: ${{ secrets.ARCHIVE_INGEST_TOKEN }}
         run: python scripts/feed_granicus_auto_transcription.py
 
-      - name: Commit updated queue state
+      # Was a direct `git push` to main -- broken since the 2026-08-14
+      # branch ruleset (requires a PR + passing "test" check, blocks
+      # direct pushes; see BACKLOG_DONE.md). Every run's push was being
+      # silently rejected (GH013), so the queue never actually advanced.
+      # Fixed by routing through a PR instead. `allow_auto_merge` is off
+      # for this repo (confirmed via `gh api repos/.../rtr-deeplink`), so
+      # rather than flip that repo setting, this waits for the "test"
+      # check itself and merges directly once it's green.
+      #
+      # Auth here is QUEUE_ADVANCE_PAT (a fine-grained PAT scoped to this
+      # repo only, Contents + Pull requests read/write, expires
+      # 2026-10-17 -- see BACKLOG_DONE.md), not the default GITHUB_TOKEN.
+      # Reason: a GITHUB_TOKEN-authored PR's author_association comes back
+      # "CONTRIBUTOR" on this public repo, so its real pull_request-
+      # triggered test.yml run sits stuck in action_required pending
+      # manual approval, and the main ruleset's required "test" check only
+      # ever credits that genuine pull_request-triggered run -- not the
+      # workflow_dispatch stand-in this step used to dispatch as a
+      # workaround (confirmed live, 2026-08-18: two passing, correctly
+      # PR-linked workflow_dispatch test check-runs were still rejected
+      # with "the base branch policy prohibits the merge" until a human
+      # manually approved the stuck run). A PAT-authored PR carries
+      # author_association OWNER instead and never hits that gate --
+      # confirmed live 2026-08-18 (PR #177 on the tier-3 workflow: opened
+      # as OWNER, its natural pull_request-triggered test.yml run fired
+      # immediately with no approval needed, passed, and `gh pr merge
+      # --squash` succeeded on the first try). The workflow_dispatch
+      # dispatch-and-poll fallback (added in PR #144, run-selection-fixed
+      # in PR #172) is removed here as a result -- it's no longer needed,
+      # and QUEUE_ADVANCE_PAT doesn't have the `actions: write` scope it
+      # requires anyway (confirmed live: dispatching it with this PAT
+      # returns "HTTP 403: Resource not accessible by personal access
+      # token"). `gh pr checks --watch` waits for the natural check
+      # instead.
+      - name: Advance queue via PR
+        env:
+          GH_TOKEN: ${{ secrets.QUEUE_ADVANCE_PAT }}
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add scripts/granicus_auto_transcription_queue.txt
-          git diff --cached --quiet && echo "No queue change to commit." && exit 0
-          git commit -m "Advance Granicus auto-transcription queue [skip ci]"
-          git push
+          if git diff --cached --quiet; then
+            echo "No queue change to commit."
+            exit 0
+          fi
+
+          BRANCH="queue-advance/granicus-${{ github.run_id }}"
+          git checkout -b "$BRANCH"
+          git commit -m "Advance Granicus auto-transcription queue"
+          git push -u origin "$BRANCH"
+
+          PR_URL=$(gh pr create \
+            --title "Advance Granicus auto-transcription queue" \
+            --body "Automated queue advancement from the Granicus feed workflow (run ${{ github.run_id }}). Per-URL outcomes: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --base main \
+            --head "$BRANCH")
+          echo "Opened $PR_URL"
+
+          # `gh pr checks --watch` errors immediately with "no checks
+          # reported" if called before the pull_request-triggered
+          # test.yml run has registered at all, rather than waiting for
+          # one to appear -- confirmed live, 2026-08-18: hit this exact
+          # race right after simplifying this step (PR #178), stranding
+          # PR #179 on the tier-3 workflow. So wait for at least one
+          # check to exist first.
+          echo "Waiting for the pull_request-triggered test.yml check to register..."
+          for i in $(seq 1 12); do
+            COUNT=$(gh pr checks "$BRANCH" --json name --jq 'length' 2>/dev/null || echo 0)
+            if [ "$COUNT" != "0" ]; then
+              break
+            fi
+            sleep 5
+          done
+
+          gh pr checks "$BRANCH" --watch --fail-fast
+
+          gh pr merge "$BRANCH" --squash --delete-branch

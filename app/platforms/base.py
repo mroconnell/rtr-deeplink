@@ -1,3 +1,4 @@
+import re
 from abc import ABC, abstractmethod
 from typing import FrozenSet, List, Optional, Tuple, TypedDict
 from urllib.parse import parse_qs, urljoin, urlparse
@@ -88,6 +89,18 @@ def detect_platform(url: str) -> str:
         return "swagit"
     if "escribemeetings.com" in netloc:
         return "escribe"
+    if "destinyhosted.com" in netloc:
+        # Destiny Software's "AgendaQuick" -- confirmed live 2026-08-21 to
+        # be a pure agenda/minutes CMS across 61 real tenants, not a
+        # video host of its own (see destinyhosted.py's own docstring and
+        # BACKLOG_DONE.md for the full enumeration). Registered as a
+        # distinct platform (not left as "unknown") so find_platform_link()
+        # follows a destinyhosted.com link found on some OTHER wrapper's
+        # page as a real one-more-hop delegation target, rather than
+        # skipping it -- confirmed necessary live: Roswell, NM's CivicPlus
+        # AgendaCenter, self-hosted on roswell-nm.gov rather than
+        # *.civicplus.com, links straight to a destinyhosted.com URL.
+        return "destinyhosted"
     if "civicweb.net" in netloc:
         # iCompass/CivicWeb (a Diligent brand) -- confirmed live 2026-08-12
         # to be a YouTube-delegating platform, not a video host of its own
@@ -133,13 +146,32 @@ def detect_platform(url: str) -> str:
         # slc.gov domain, since most of that site is ordinary city-
         # government content this app has no reason to try to resolve.
         return "slc"
-    if "cablecast.tv" in netloc and "/internetchannel/show/" in path:
+    _cablecast_bare_show_id = (
+        path[len("/show/") :].split("/")[0] if path.startswith("/show/") else ""
+    )
+    if "cablecast.tv" in netloc and (
+        "/internetchannel/show/" in path or _cablecast_bare_show_id.isdigit()
+    ):
         # Detroit, MI's Cablecast video portal -- confirmed live
         # 2026-08-12, see cablecast.py's own module docstring for why
-        # this is scoped to this specific URL shape (a Remix.js portal
-        # template) rather than any *.cablecast.tv domain -- Charlotte,
+        # this is scoped to specific URL shapes (Remix.js portal
+        # templates) rather than any *.cablecast.tv domain -- Charlotte,
         # NC's confirmed Cablecast site uses a visibly different template
-        # this adapter doesn't handle.
+        # this adapter doesn't handle. The bare "/show/{id}" form (no
+        # "/internetchannel" prefix) is a newer template variant, added
+        # 2026-08-18 after confirming live that this routing check was
+        # the reason `cablecast.py`'s own already-correct handling for it
+        # (root-page fallback + string-normalized showId, see that
+        # module's docstring) was unreachable through the real
+        # detect_platform() -> get_finder() -> resolve() path every
+        # production caller actually uses -- a fix verified only by
+        # calling the finder directly bypasses this exact gap, which is
+        # what happened here until this was caught by re-testing through
+        # the real pipeline. Still scoped to a `/show/{id}` path
+        # specifically, not the whole domain, so the other confirmed
+        # out-of-scope templates (a login-gated FrontDoor.aspx ASP.NET
+        # portal, a fully client-rendered SPA with no embedded state)
+        # remain correctly unclaimed.
         return "cablecast"
     if "clerkshq.com" in netloc:
         # ClerkBase ("ClerkHQ") -- confirmed live 2026-08-14 against one
@@ -194,6 +226,13 @@ def detect_platform(url: str) -> str:
         # see hyland.py's own module docstring for the rest of the
         # investigation.
         return "hyland"
+    if "townhallstreams.com" in netloc:
+        # A small, real, multi-town government video vendor -- confirmed
+        # live 2026-08-19/20 across 7 real towns, found by accident (not
+        # this repo's usual enumeration methods) -- see
+        # townhallstreams.py's own module docstring and BACKLOG.md for the
+        # investigation.
+        return "townhallstreams"
     return "unknown"
 
 
@@ -224,6 +263,13 @@ async def resolve_via_platform(url: str) -> ResolvedMeeting:
 
 
 _DELEGATABLE_LINK_TAGS = ("a", "iframe", "video", "source")
+
+# First single/double-quoted string argument of a JS function call, e.g.
+# `someFunc('https://...')` or `someFunc("https://...", 2)` -- matches
+# legistar.py's own narrower `(?:window\.open|OpenTelerikWindow)\('...'`
+# but without hardcoding a function name, since this is a shared helper
+# used by more than one onclick-modal shape (see find_platform_link()).
+_ONCLICK_URL_RE = re.compile(r"""\(\s*['"]([^'"]+)""")
 
 
 def find_platform_link(
@@ -263,18 +309,54 @@ def find_platform_link(
     Columbus, OH Legistar meeting with no video link at all). Skipping any
     candidate that resolves to the same URL as `page_url` closes this at
     the root, for every caller, independent of what they pass as `exclude`.
+
+    Same root problem, one level less exact: a candidate on a *different*
+    page of the same platform as `page_url` itself -- e.g. a destinyhosted.
+    com agenda page's own pagination/print/month-nav links, which are
+    also destinyhosted.com URLs and (since destinyhosted.com became its
+    own registered platform, not "unknown") would otherwise match before
+    the real onclick video link further down the DOM is ever reached.
+    Confirmed live 2026-08-21: this silently broke every destinyhosted
+    resolve the moment destinyhosted.com stopped being "unknown", exactly
+    the class of bug the exact-URL check above already exists to prevent.
+    Skipping any candidate whose own detected platform equals `page_url`'s
+    closes this the same general way, for every caller -- a same-platform
+    link is internal navigation, never a real delegation target.
     """
     soup = BeautifulSoup(html, "html.parser")
     page_url_no_fragment = urlparse(page_url)._replace(fragment="").geturl()
+    own_platform = detect_platform(page_url)
     for tag in soup.find_all(_DELEGATABLE_LINK_TAGS):
-        value = tag.get("href") or tag.get("src")
-        if not value:
-            continue
-        candidate = urljoin(page_url, value.strip())
-        if urlparse(candidate)._replace(fragment="").geturl() == page_url_no_fragment:
-            continue
-        platform = detect_platform(candidate)
-        if platform == "unknown" or platform in exclude:
-            continue
-        return candidate, platform
+        values = []
+        href_or_src = tag.get("href") or tag.get("src")
+        if href_or_src:
+            values.append(href_or_src.strip())
+        # A real, recurring shape beyond Legistar's own window.open()/
+        # OpenTelerikWindow() onclick handling (legistar.py's own
+        # _find_video_links()): a plain `href="#"` paired with
+        # `onclick="someFunc('https://...')"` that never appears as a
+        # literal href/src at all -- confirmed live 2026-08-21 on Destiny
+        # AgendaQuick (destinyhosted.com)'s `onclick="swagitPlay('https://
+        # {tenant}.swagit.com/videos/{id}#{fragment}')"` video links. Tried
+        # as an additional candidate per tag (not a replacement), so an
+        # href="#" that fails the same-page check below still gets a
+        # chance via onclick instead of being skipped outright.
+        onclick = tag.get("onclick")
+        if onclick:
+            match = _ONCLICK_URL_RE.search(onclick)
+            if match:
+                values.append(match.group(1).strip())
+        for value in values:
+            if not value:
+                continue
+            candidate = urljoin(page_url, value)
+            if (
+                urlparse(candidate)._replace(fragment="").geturl()
+                == page_url_no_fragment
+            ):
+                continue
+            platform = detect_platform(candidate)
+            if platform == "unknown" or platform in exclude or platform == own_platform:
+                continue
+            return candidate, platform
     return None

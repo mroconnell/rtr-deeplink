@@ -86,9 +86,9 @@ class MeetingPage(Base):
     # scripts/backfill_search_corpus.py sweep. GIN-trigram-indexed on
     # Postgres by the migration that adds this column, but not via an
     # ORM-level `index=True` here -- see that migration for why. See
-    # BACKLOG.md's "Search: move to a materialized/indexed column" entry
-    # for why this exists and archive/db/crud.py's list_pages() for how
-    # it's queried.
+    # BACKLOG_DONE.md's "Search: move to a materialized/indexed column --
+    # full saga, closed" entry for why this exists and
+    # archive/db/crud.py's list_pages() for how it's queried.
     #
     # deferred=True is load-bearing, not an optimization: this column
     # holds every meeting's *entire* transcript text, and every
@@ -211,10 +211,23 @@ class TranscriptionJob(Base):
         String(64), nullable=True, index=True
     )
 
-    # "pending_confirmation" -> "queued" -> "in_progress" -> "completed" | "failed"
+    # "pending_confirmation" -> "queued" -> "in_progress" ->
+    #     "completed" | "retry_scheduled" -> ... -> "completed" | "failed"
     # A requester already in the Resend audience skips straight to
     # "queued" (see archive/utils/email.py's check_audience_membership) --
     # "pending_confirmation" only applies to a first-time email address.
+    # "retry_scheduled" is a real chunk-processing budget exhaustion
+    # (MAX_CONSECUTIVE_CHUNK_FAILURES) for a real user-priority job that
+    # hasn't used up its retry budget yet (crud.MAX_JOB_RETRIES) -- see
+    # crud.report_chunk_result()'s escalating-backoff retry, added
+    # 2026-08-19 after a real user-submitted job (Redwood City, CA) died
+    # on a single slow/rate-limited chunk and a later manual re-run of the
+    # exact same source succeeded outright, confirming the failure wasn't
+    # the source being genuinely broken. claim_next_chunk() also claims a
+    # "retry_scheduled" job once next_retry_at has passed. A PRIORITY_LOW
+    # auto-generated job never enters this state -- it keeps the older
+    # immediate-"failed" behavior, since it already has its own separate
+    # page-level escalating cooldown (AUTO_TRANSCRIPTION_BASE_COOLDOWN).
     status: Mapped[str] = mapped_column(
         String(24), nullable=False, default="pending_confirmation", index=True
     )
@@ -258,7 +271,35 @@ class TranscriptionJob(Base):
     consecutive_chunk_failures: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0
     )
+    # Last failure's message only -- kept for backward-compatible display
+    # (e.g. _job_dict()'s existing "error_message" field). failure_history
+    # below is the real per-attempt record; this is redundant with its
+    # last entry but cheap to keep as the simple single-value case.
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # Every chunk failure across this job's whole life (survives a retry
+    # reset of consecutive_chunk_failures), each entry
+    # {"chunk_index": int, "error": str, "at": iso8601 str} -- added
+    # 2026-08-19 because error_message alone (overwritten on every
+    # failure, and previously a fixed "ffmpeg extraction failed" string
+    # with no real detail -- see media_probe.extract_chunk_audio()) made
+    # it impossible to tell "this job failed the same way three times" from
+    # "three different real problems" after the fact. Not JOIN-queried
+    # anywhere, so a plain JSON column (matching partial_segments'
+    # precedent above) rather than a separate table.
+    failure_history: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    # How many times this job has been rescheduled after exhausting
+    # MAX_CONSECUTIVE_CHUNK_FAILURES -- see crud.MAX_JOB_RETRIES. Only
+    # ever incremented for a PRIORITY_MEDIUM+ (real user-submitted) job;
+    # stays 0 for a PRIORITY_LOW auto-job, which fails immediately instead.
+    retry_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    # Set (status="retry_scheduled") when a retry is pending, cleared back
+    # to NULL the moment claim_next_chunk() actually claims it. NULL in
+    # every other status.
+    next_retry_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     transcript_version_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("transcript_versions.id"), nullable=True
@@ -352,5 +393,70 @@ class SavedItem(Base):
     )
 
     created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class SearchVocabulary(Base):
+    """Distinct real words seen anywhere in the archive's search_corpus,
+    globally deduped -- no page association, unlike MeetingPage/
+    TranscriptVersion's FK-linked shape. See archive/db/crud.py's
+    _fuzzy_keyword_conditions_via_vocabulary() for why none is needed:
+    this table only ever answers "which real words anywhere in the
+    archive are close to this typo'd query term" -- the separate,
+    already-fast search_corpus LIKE check (Step 1) decides whether a
+    specific page actually contains one of those words.
+
+    Populated by crud._refresh_search_corpus() (the same single choke
+    point that recomputes search_corpus itself) via
+    crud._upsert_vocabulary_words(), ON CONFLICT DO NOTHING since many
+    pages share common words. Cross-dialect like MeetingPage.search_corpus
+    (unlike search_tsv's deliberately-unmapped, Postgres-only,
+    generated-column shape) because populating it needs a real
+    application-level write path, not something Postgres can compute on
+    its own -- so it exists on SQLite too via create_all(), keeping the
+    write path dialect-agnostic and unit-testable without a live
+    Postgres. Only ever *queried* on Postgres though (GIN-trigram indexed
+    by this table's own migration) -- see crud._vocab_available(); fuzzy
+    search stays fully Python-streamed on SQLite dev/CI, same as before
+    this table existed.
+    """
+
+    __tablename__ = "search_vocabulary"
+
+    word: Mapped[str] = mapped_column(String(255), primary_key=True)
+
+
+class WorkerReportSnapshot(Base):
+    """Single-row cumulative snapshot backing the worker daily activity
+    report (archive/main.py's `GET /internal/send-worker-daily-report`,
+    scripts/... none -- this route is the only writer/reader). Always
+    exactly one row (id=1 by convention, enforced by the route always
+    updating that row rather than inserting a new one) -- overwritten on
+    every report send, never appended to, so this table is a snapshot,
+    not a log.
+
+    Why this exists: `TranscriptionJob.chunks_completed` is already a
+    real, monotonically-increasing per-job counter (never decremented --
+    see `report_chunk_result()`), so `SUM(chunks_completed)` across every
+    job, ever, is a genuine all-time cumulative total with zero schema
+    change needed for that part. But there's no per-chunk timestamp
+    anywhere in this schema, so answering "how many chunks completed in
+    the last 24h" needs *some* stored reference point to diff the current
+    cumulative total against -- this table holds exactly that reference
+    point (the totals as of the last report), nothing else. Cheaper and
+    simpler than a real per-chunk event-log table for a single daily
+    number, and avoids the alternative of parsing Render's own worker
+    logs (a new external API dependency this repo doesn't otherwise have)
+    just to reconstruct a count that's already implicit in existing
+    columns.
+    """
+
+    __tablename__ = "worker_report_snapshots"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    cumulative_chunks_completed: Mapped[int] = mapped_column(Integer, nullable=False)
+    cumulative_jobs_completed: Mapped[int] = mapped_column(Integer, nullable=False)
+    recorded_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

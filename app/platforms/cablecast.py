@@ -74,6 +74,31 @@ TARGET_LANGUAGE = "en"
 # multi-tenant product and a still-unconfirmed customer could genuinely
 # use a different portal template -- just not Charlotte.
 _SHOW_ID_RE = re.compile(r"/internetchannel/show/(\d+)")
+
+# A newer Cablecast portal template drops the "/internetchannel" prefix
+# entirely -- confirmed live 2026-08-18 on satellitebeach.cablecast.tv,
+# found while re-checking a research pass's "miss" list of ~211 Cablecast
+# customer subdomains against this adapter. That site's real show pages
+# live at bare "/show/{id}" (no "/internetchannel"); the *old*-style
+# "/internetchannel/show/{id}" path 404s outright on this template. Two
+# real complications, not just a URL-shape change:
+#   1. "/show/{id}" itself is behind an AWS WAF JS challenge for
+#      non-browser requests (confirmed: a plain GET gets a 202 with an
+#      empty body and an `awsWafCookieDomainList`/challenge.js page, not
+#      real content) -- this adapter does not attempt to solve or bypass
+#      that challenge (out of scope/prohibited); it never even tries that
+#      URL directly.
+#   2. The site's ROOT page ("/") is NOT behind that WAF challenge, and
+#      its own `window.__remixContext` already embeds a large "related
+#      shows" catalog -- confirmed real on satellitebeach: 287 real shows
+#      spanning 2019-08-24, most with populated `vodUrl`, several with
+#      real `vodTranscripts` -- more than enough to find any given show by
+#      id without ever touching the blocked path. So `resolve()` falls
+#      back to fetching root and searching *that* page's remix data
+#      whenever the direct fetch doesn't yield the requested show (see
+#      `_ROOT_FALLBACK` handling below) -- covers both this WAF case and
+#      an old-style URL simply 404ing on a migrated customer.
+_SHOW_ID_SHORT_RE = re.compile(r"^/show/(\d+)")
 _REMIX_CONTEXT_RE = re.compile(
     r"window\.__remixContext\s*=\s*(\{.*?\});</script>", re.DOTALL
 )
@@ -128,16 +153,28 @@ class CablecastAssetFinder(AssetFinder):
             )
 
         fetch_url = self._force_http(url)
-        async with aiohttp.ClientSession() as session:
-            async with session.get(
-                fetch_url, timeout=aiohttp.ClientTimeout(total=30)
-            ) as response:
-                response.raise_for_status()
-                html = await response.text()
+        html = await self._fetch_html(fetch_url)
 
-        remix_data = self._extract_remix_context(html)
+        remix_data = self._extract_remix_context(html) if html else None
         show = self._find_show(remix_data, show_id) if remix_data else None
         site = self._find_site(remix_data) if remix_data else None
+
+        if not show:
+            # See the module-level note above `_SHOW_ID_SHORT_RE`: retry
+            # against the site root, which isn't WAF-protected and embeds
+            # its own real show catalog, rather than giving up after one
+            # blocked/404'd fetch of the specific show path.
+            parsed = urlparse(fetch_url)
+            root_url = f"{parsed.scheme}://{parsed.netloc}/"
+            if root_url != fetch_url:
+                root_html = await self._fetch_html(root_url)
+                root_remix = (
+                    self._extract_remix_context(root_html) if root_html else None
+                )
+                if root_remix:
+                    show = self._find_show(root_remix, show_id)
+                    site = site or self._find_site(root_remix)
+
         jurisdiction = self._extract_jurisdiction(site, url) if site else None
 
         if not show or not show.get("vodUrl"):
@@ -216,13 +253,46 @@ class CablecastAssetFinder(AssetFinder):
 
     @staticmethod
     def _extract_show_id(url: str) -> Optional[int]:
-        match = _SHOW_ID_RE.search(urlparse(url).path)
+        path = urlparse(url).path
+        match = _SHOW_ID_RE.search(path) or _SHOW_ID_SHORT_RE.search(path)
         return int(match.group(1)) if match else None
 
     @staticmethod
     def _force_http(url: str) -> str:
         parsed = urlparse(url)
         return parsed._replace(scheme="http").geturl()
+
+    @staticmethod
+    async def _fetch_html(url: str) -> Optional[str]:
+        """Same "fetch and return None on any failure" shape as
+        champds.py's `_fetch_json()` -- covers a genuine 404 (an
+        old-style URL on a migrated customer), a WAF challenge response
+        (see the `_SHOW_ID_SHORT_RE` module note), and an outright
+        network failure alike, so `resolve()`'s root-fallback logic can
+        treat all three the same way instead of one of them raising.
+
+        Real gap found 2026-08-18 running this against a large batch of
+        real hosts: a slow/unresponsive host's `aiohttp.ClientTimeout`
+        raises `TimeoutError` (Python 3.11+ makes `asyncio.TimeoutError`
+        an alias of the builtin), which is NOT a subclass of
+        `aiohttp.ClientError` -- the one exception type this used to
+        catch. A single slow host used to escape this function's own
+        documented "return None on any failure" contract and propagate
+        all the way up, taking down an `asyncio.gather()`-based batch
+        caller with it (confirmed live: one timeout among ~200 real
+        hosts aborted the whole run). Caught explicitly now, alongside
+        `aiohttp.ClientError`.
+        """
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    url, timeout=aiohttp.ClientTimeout(total=30)
+                ) as response:
+                    if response.status >= 400:
+                        return None
+                    return await response.text()
+        except (aiohttp.ClientError, TimeoutError):
+            return None
 
     @staticmethod
     def _extract_remix_context(html: str) -> Optional[dict]:
@@ -236,8 +306,14 @@ class CablecastAssetFinder(AssetFinder):
 
     @staticmethod
     def _find_show(obj, show_id: int) -> Optional[dict]:
+        """`showId` is an `int` in the payload on old-template customers
+        (Detroit, Charlotte, villageofuniversitypark -- all confirmed
+        live) but a `str` on the newer template (confirmed live on
+        satellitebeach, e.g. `"showId": "540"`) -- compared as strings on
+        both sides so neither template silently fails to match.
+        """
         if isinstance(obj, dict):
-            if obj.get("showId") == show_id:
+            if "showId" in obj and str(obj.get("showId")) == str(show_id):
                 return obj
             for value in obj.values():
                 found = CablecastAssetFinder._find_show(value, show_id)
@@ -290,6 +366,15 @@ class CablecastAssetFinder(AssetFinder):
                     page_text=page_description,
                 )
                 return f"{city}, {state}" if state else city
+        # Some customers' Cablecast branding (title/pageDescription) is
+        # generic ("Channel 8") with no "City of"/"County of" phrase
+        # anywhere for the regex above to find -- confirmed live on
+        # Broomfield, CO 2026-08-19, same class of gap Detroit/Charlotte
+        # already hit. Falls back to the known-domain table (same pattern
+        # as lims.py/hyland.py) rather than dropping jurisdiction entirely.
+        known = jurisdiction_enrich.lookup_by_domain(urlparse(url).netloc)
+        if known:
+            return f"{known.name}, {known.state}"
         return None
 
     @staticmethod

@@ -25,9 +25,9 @@ def upgrade() -> None:
     The GIN trigram index (and the pg_trgm extension it needs) are
     Postgres-only -- dialect-guarded so this migration still runs cleanly
     against a local SQLite dev DB, which just gets the plain column with
-    no index. See BACKLOG.md's "Search: move to a materialized/indexed
-    column" entry and archive/db/crud.py's list_pages() for how this
-    column is populated and queried.
+    no index. See BACKLOG_DONE.md's "Search: move to a materialized/
+    indexed column -- full saga, closed" entry and archive/db/crud.py's
+    list_pages() for how this column is populated and queried.
     """
     op.add_column("meeting_pages", sa.Column("search_corpus", sa.Text(), nullable=True))
     bind = op.get_bind()

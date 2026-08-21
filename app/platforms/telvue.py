@@ -54,10 +54,43 @@ TARGET_LANGUAGE = "en"
 # some other adapters already have.
 _TITLE_DATE_RE = re.compile(r"^(.*?)\s*-\s*([A-Za-z]+ \d{1,2},? \d{4})$")
 _BODY_SUFFIX_RE = re.compile(
-    r"^(.*?)\s+(City Council|Council|Planning Commission|Commission|Board|Committee|Authority|District)\b",
+    # "Select Board" must precede the bare "Board" alternative -- real case,
+    # confirmed live 2026-08-18: "Natick Select Board June 10, 2026" (no
+    # dash-separated date, so _guess_jurisdiction() sees the whole string)
+    # matched bare "Board" first, capturing "Natick Select" as the
+    # jurisdiction instead of "Natick". Listed first so the regex's
+    # leftmost-match search locks onto the two-word suffix starting one
+    # word earlier, not because alternation order breaks ties at the same
+    # position (it doesn't -- position is what matters here).
+    r"^(.*?)\s+(City Council|Council|Planning Commission|Commission|Select Board|Board|Committee|Authority|District)\b",
     re.I,
 )
 _VOICE_TAG_RE = re.compile(r"<[^>]+>")
+_ORG_TOKEN_RE = re.compile(r"/player/([^/]+)/")
+
+# Per-customer jurisdiction map, the "later" this file's own module
+# comment above anticipated -- built one confirmed entry at a time as a
+# title-only guess proves ambiguous/wrong, never guessed speculatively.
+#
+# cT30AQ_xtOBQF0oJM2gIVCDX9kjgfWZb: originally guessed "likely Scranton,
+# PA" (BACKLOG.md, "ECTV" -> "Electric City Television" nickname match,
+# no direct linking .gov page). Corrected 2026-08-18: the same org token's
+# playlist also contains "ECTV Channel 3 Public Access Programs" (exact
+# match to Everett, MA's own public-access channel -- cityofeverett.com
+# describes it as "Public Comcast (Channel 3)... Government Comcast
+# (Channel 22)") and "Community Meeting on Stadium Development" (matches
+# the real, well-documented 2025 Everett, MA Kraft Group/New England
+# Revolution soccer-stadium community meetings) -- "ECTV" was an acronym
+# collision with Scranton's unrelated "Electric City Television", not the
+# same organization.
+_KNOWN_ORG_TOKEN_JURISDICTIONS = {
+    "cT30AQ_xtOBQF0oJM2gIVCDX9kjgfWZb": "Everett, MA",
+}
+
+
+def _org_token_from_url(url: str) -> Optional[str]:
+    match = _ORG_TOKEN_RE.search(url)
+    return match.group(1) if match else None
 
 
 class TelvueAssetFinder(AssetFinder):
@@ -98,6 +131,10 @@ class TelvueAssetFinder(AssetFinder):
             jurisdiction = jurisdiction_enrich.enrich_jurisdiction_text(
                 jurisdiction, netloc=None, page_text=html
             )
+            if not jurisdiction:
+                org_token = _org_token_from_url(final_url)
+                if org_token:
+                    jurisdiction = _KNOWN_ORG_TOKEN_JURISDICTIONS.get(org_token)
 
             video_url = entry.get("file")
             video_format = "m3u8" if video_url and ".m3u8" in video_url else None
