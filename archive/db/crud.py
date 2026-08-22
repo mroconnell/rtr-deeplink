@@ -2676,9 +2676,17 @@ async def find_new_matches_for_saved_search(
     return result["pages"]
 
 
-# Platforms that host video directly (or, for Viebit/Cablecast, are
-# reached by delegation but ARE the real host) -- ordered to match
-# README.md's "Supported platforms" table. Deliberately excludes
+# The shared, multi-tenant vendor platforms -- one row each on /coverage,
+# roughly ordered to match README.md's "Supported platforms" table. Most
+# host video directly (or, for Viebit/Cablecast, are reached by
+# delegation but ARE the real host); a few (hyland, destinyhosted,
+# open_media) are agenda/CMS front-ends that hand video off elsewhere but
+# still deserve their own row, because they're the page a visitor
+# actually pastes and -- unlike the routers below -- a real archived page
+# can still be attributed back to them. The line this dict draws against
+# CUSTOM_PLATFORMS is "one product many jurisdictions buy" vs. "a bespoke
+# scraper this app wrote for one government", NOT "hosts video" vs.
+# "doesn't". Deliberately excludes
 # Legistar/CivicPlus/PrimeGov/CivicWeb: those are calendar-tool detection
 # routers that delegate to one of the platforms below via
 # resolve_via_platform() (or, for CivicWeb, a direct YouTubeAssetFinder
@@ -2701,6 +2709,19 @@ async def find_new_matches_for_saved_search(
 # genuine direct rows, not YouTube-delegation lookalikes. clerkbase is
 # the opposite case -- see CUSTOM_PLATFORMS below, it's deliberately not
 # here.
+#
+# WO-35, 2026-08-21: four platforms that shipped 2026-08-19..21
+# (destinyhosted #244, suiteone #263, castus #264, open_media #265) were
+# missing from BOTH this dict and CUSTOM_PLATFORMS, so their rows hit
+# get_platform_coverage()'s if/elif chain with no matching branch and
+# vanished from /coverage entirely -- confirmed live on the production
+# page (zero headings for all four) before this fix. That's the exact
+# gap BACKLOG.md's own "[JUST-DO-IT] /coverage's 'By platform' section
+# should list more platforms" entry described for the *previous* six
+# (champds/iqm2/clerkbase/seattle_channel/telvue/hyland), recreated. The
+# durable fix is tests/test_coverage_platform_registry.py, which now
+# fails CI when a registered platform has no /coverage decision at all --
+# same shape as WO-26's adapter-canary coverage test.
 DIRECT_PLATFORMS: dict[str, str] = {
     "granicus": "Granicus",
     "civicclerk": "CivicClerk",
@@ -2714,6 +2735,35 @@ DIRECT_PLATFORMS: dict[str, str] = {
     "telvue": "TelVue",
     "hyland": "Hyland OnBase Agenda Online",
     "townhallstreams": "Town Hall Streams",
+    # Destiny Software's AgendaQuick (public.destinyhosted.com) -- an
+    # agenda/minutes CMS across 61 confirmed real tenants, not a video
+    # host, so it looks at first glance like the Legistar/CivicPlus
+    # routers excluded above. It isn't, and the difference is worth being
+    # precise about: destinyhosted.py delegates to
+    # GenericFallbackAssetFinder and only reassigns
+    # `resolved.platform = "destinyhosted"` when the delegate came back
+    # "unknown" -- i.e. when nothing deeper was found and this page IS
+    # the terminal identity. A generic-fallback resolve can still carry
+    # real agenda_items/media from the AgendaQuick page itself, so those
+    # rows are pushable and really do land labeled "destinyhosted"
+    # (unlike legistar/civicplus, whose own label only ever appears on
+    # never-pushed error returns). Same shape as hyland above.
+    "destinyhosted": "Destiny AgendaQuick",
+    # open.media -- a real shared vendor across 7 confirmed tenants, but
+    # a YouTube-delegating one: openmedia.py hands off to
+    # YouTubeAssetFinder.resolve_video_id() and never reassigns
+    # `resolved.platform` afterwards (confirmed by reading resolve() end
+    # to end -- it sets title/jurisdiction/external_id/agenda_link only),
+    # so a real ingested open.media page's MeetingPage.platform is
+    # "youtube", exactly like lims/slc/clerkbase. It's listed HERE rather
+    # than under CUSTOM_PLATFORMS because it's one product many
+    # jurisdictions buy, not a bespoke single-city scraper -- the row is
+    # populated via _entry_platform_from_source_url() below instead of by
+    # a platform-name match, which is why that helper and
+    # _YOUTUBE_DELEGATING_PLATFORMS are no longer custom-only.
+    "open_media": "open.media",
+    "castus": "Castus",
+    "suiteone": "SuiteOne Media",
     # Not a civic-video vendor like everything else in this dict -- Vimeo
     # is a general-purpose video host that a real, confirmed set of small
     # local governments use directly as their meeting-video platform
@@ -2759,13 +2809,88 @@ CUSTOM_PLATFORMS: dict[str, str] = {
     "chicago_elms": "Chicago City Clerk (ELMS)",
 }
 
+# Registered platforms (app/platforms/__init__.py's
+# register_all_finders()) that deliberately get NO /coverage row, each
+# with the real reason -- the direct analogue of scripts/adapter_canary.py's
+# CANARY_EXCLUSIONS, and the other half of the WO-35 guard.
+#
+# tests/test_coverage_platform_registry.py asserts every registered
+# platform appears in exactly one of DIRECT_PLATFORMS, CUSTOM_PLATFORMS,
+# or this dict -- so a new adapter that forgets /coverage fails CI at PR
+# time instead of silently vanishing from the page, which is what
+# happened to destinyhosted/suiteone/castus/open_media (and, before them,
+# to champds/iqm2/clerkbase/seattle_channel/telvue/hyland). Adding a
+# platform means making a real decision here, not defaulting to silence.
+COVERAGE_EXCLUSIONS: dict[str, str] = {
+    "legistar": (
+        "Calendar/agenda router: legistar.py delegates via "
+        "resolve_via_platform() and the delegated finder's own "
+        "ResolvedMeeting is returned as-is, so a successfully-ingested "
+        "page's MeetingPage.platform is 'granicus'/'youtube'/etc., never "
+        "'legistar'. Its own label appears only on error-path returns, "
+        "which are never pushed (a push requires real segments or "
+        "agenda_items) -- a row here could never have a real example. "
+        "coverage.html's 'What about Platform XYZ?' section explains "
+        "this to visitors in prose instead."
+    ),
+    "civicplus": (
+        "Same calendar/agenda-router shape as legistar above -- "
+        "delegates to Granicus via resolve_via_platform(), keeps none of "
+        "its own platform identity on any pushable result. Named in "
+        "coverage.html's 'What about Platform XYZ?' prose."
+    ),
+    "primegov": (
+        "Same shape, delegating to YouTube via "
+        "YouTubeAssetFinder.resolve_video_id() rather than "
+        "resolve_via_platform(). Its source_url IS preserved, so "
+        "_wrapper_detail_label() can still name it in the full "
+        "jurisdiction table's 'Detail page' column -- but the 'By "
+        "platform' section deliberately doesn't give it a row, since "
+        "that section exists to show which video platforms are "
+        "supported, and PrimeGov meetings appear there under YouTube's "
+        "own deliberate exclusion below. Named in 'What about Platform "
+        "XYZ?' prose."
+    ),
+    "civicweb": (
+        "Same as primegov -- a YouTube-delegating calendar tool, named "
+        "in 'What about Platform XYZ?' prose and recoverable in the "
+        "'Detail page' column via _wrapper_detail_label()."
+    ),
+    "youtube": (
+        "Deliberate product decision, not an oversight: a viewer already "
+        "gets a good deep-linkable transcript straight from YouTube for a "
+        "directly-pasted YouTube URL, so this page steers people toward "
+        "pasting the government page that embeds it instead. See the "
+        "'What about YouTube?' section in coverage.html, and "
+        "test_coverage_page_excludes_youtube_as_its_own_row."
+    ),
+    "unknown": (
+        "generic_fallback.py's registered platform_name -- the literal "
+        "string detect_platform() returns for an unrecognized host, not "
+        "a platform anyone could look for on this page. Rows land in the "
+        "full jurisdiction table as 'Custom/Generic' (with the raw video "
+        "host shown where one was found) via _platform_split(); a 'By "
+        "platform' row for it would be meaningless."
+    ),
+}
+
 # YouTube is deliberately never its own /coverage row -- a viewer already
 # gets a good deep-linkable transcript straight from YouTube itself for
 # a directly-pasted YouTube URL, so this page steers people toward
 # pasting the government page that embeds/links it instead (a Granicus/
 # Swagit/etc. page, or one of the CUSTOM_PLATFORMS above) wherever one
-# exists. See coverage.html's own footer note.
-_YOUTUBE_DELEGATING_CUSTOM_PLATFORMS = frozenset({"lims", "slc", "clerkbase"})
+# exists. See coverage.html's own footer note, and COVERAGE_EXCLUSIONS
+# above.
+
+# Coverage keys whose real archived rows are stored with
+# MeetingPage.platform == "youtube" (their adapter delegates to
+# YouTubeAssetFinder and doesn't reassign `platform` afterwards), and so
+# have to be recovered from source_url_normalized instead. Three of the
+# four are CUSTOM_PLATFORMS entries; open_media (added WO-35) is a
+# DIRECT_PLATFORMS one -- hence the name change from
+# _YOUTUBE_DELEGATING_CUSTOM_PLATFORMS, this was never really a
+# custom-only property.
+_YOUTUBE_DELEGATING_PLATFORMS = frozenset({"lims", "slc", "clerkbase", "open_media"})
 
 # How many example rows to show per platform on /coverage. Granicus gets
 # more because it's this app's most common platform by a wide margin (see
@@ -2809,13 +2934,14 @@ def _select_examples(examples: list[dict], count: int) -> list[dict]:
 
 def _entry_platform_from_source_url(source_url_normalized: str) -> Optional[str]:
     """Minimal, deliberately duplicated subset of app/platforms/base.py's
-    detect_platform() -- just enough to recognize the three YouTube-
-    delegating custom scrapers (see CUSTOM_PLATFORMS above) from a page's
-    own source_url_normalized. archive/ deliberately doesn't import from
+    detect_platform() -- just enough to recognize the YouTube-delegating
+    platforms that still need their own /coverage row (see
+    _YOUTUBE_DELEGATING_PLATFORMS above) from a page's own
+    source_url_normalized. archive/ deliberately doesn't import from
     app/ (see README's project structure notes on this directory's other
     deliberately-duplicated utils, e.g. url_normalize.py/language.py) --
-    this stays scoped to exactly the three cases get_platform_coverage()
-    needs, not a general URL classifier.
+    this stays scoped to exactly the cases get_platform_coverage() needs,
+    not a general URL classifier.
     """
     netloc = urlparse(source_url_normalized).netloc.lower()
     path = urlparse(source_url_normalized).path.lower()
@@ -2825,6 +2951,12 @@ def _entry_platform_from_source_url(source_url_normalized: str) -> Optional[str]
         return "slc"
     if "clerkshq.com" in netloc:
         return "clerkbase"
+    # Same check app/platforms/base.py's detect_platform() uses for this
+    # platform, kept character-for-character: every real tenant is a
+    # `{tenant}.open.media` subdomain (7 confirmed live -- see README's
+    # platform table).
+    if netloc.endswith("open.media"):
+        return "open_media"
     return None
 
 
@@ -2895,7 +3027,7 @@ async def get_platform_coverage() -> dict:
             by_key.setdefault(platform, []).append(example)
         elif platform == "youtube":
             entry = _entry_platform_from_source_url(source_url)
-            if entry in _YOUTUBE_DELEGATING_CUSTOM_PLATFORMS:
+            if entry in _YOUTUBE_DELEGATING_PLATFORMS:
                 by_key.setdefault(entry, []).append(example)
             # else: a raw pasted YouTube link, or a Legistar/CivicPlus/
             # PrimeGov/CivicWeb/best-effort page that happened to
@@ -2990,9 +3122,9 @@ async def get_jurisdiction_coverage() -> list[dict]:
 
 # Domains recovering a YouTube-delegating wrapper platform's own real
 # identity from a page's source_url_normalized -- superset of
-# _entry_platform_from_source_url() above (which only recognizes lims/slc/
-# clerkbase, the three CUSTOM_PLATFORMS entries with their own /coverage
-# row). PrimeGov and CivicWeb are added here too: real, confirmed-live
+# _entry_platform_from_source_url() above (which only recognizes the
+# platforms with their own /coverage row: lims/slc/clerkbase, plus
+# open_media as of WO-35). PrimeGov and CivicWeb are added here too: real, confirmed-live
 # wrapper platforms (README's "Supported platforms" table) that preserve
 # their own source_url on delegation the same way lims/slc/clerkbase do
 # (see primegov.py/civicweb.py's own docstrings), but that don't have a
@@ -3009,6 +3141,8 @@ def _wrapper_detail_label(source_url_normalized: str) -> Optional[str]:
         return "Salt Lake City meeting recaps"
     if "clerkshq.com" in netloc:
         return "ClerkBase (clerkshq.com)"
+    if netloc.endswith("open.media"):
+        return "open.media"
     if netloc.endswith("primegov.com"):
         return "PrimeGov"
     if netloc.endswith("civicweb.net"):
@@ -3017,6 +3151,17 @@ def _wrapper_detail_label(source_url_normalized: str) -> Optional[str]:
 
 
 _PLATFORM_LABELS: dict[str, str] = {**DIRECT_PLATFORMS, **CUSTOM_PLATFORMS}
+
+# ResolvedMeeting.video_format values whose `video_url` is an iframe
+# *embed page*, not a fetchable media file -- so on-demand Whisper can
+# never run against them no matter what, and /coverage's "Audio
+# transcript possible" column must say no. See the full reasoning at the
+# one use site in get_full_jurisdiction_coverage() below. Keep this in
+# sync with any new adapter that stores an embed URL as `video_url`:
+# tests/test_coverage_platform_registry.py asserts the set stays
+# non-empty and correctly typed, but only a human reading a new adapter
+# can decide whether its format belongs here.
+_IFRAME_EMBED_VIDEO_FORMATS: frozenset[str] = frozenset({"youtube", "vimeo", "viebit"})
 
 
 def _platform_split(
@@ -3385,12 +3530,30 @@ async def get_full_jurisdiction_coverage() -> list[dict]:
                 # (added 2026-08-21, WO-29) is the same shape for the
                 # same reason: a player.vimeo.com iframe page, with the
                 # real media behind a signed config that 403s every
-                # non-browser client. A live ffprobe check per row here
-                # would be far too expensive for a full coverage table;
-                # this is the same structural approximation the resolver
-                # itself already relies on.
+                # non-browser client. "viebit" (added 2026-08-21, WO-35 --
+                # the WO-29 residual BACKLOG.md flagged as "cheap and
+                # safe to fix") completes the set: viebit.py stores
+                # `video_url` as the platform's own `/embed/vod?v={id}`
+                # embed page, deliberately rebuilt as that path on every
+                # resolve so the frontend can iframe it (see that
+                # adapter's docstring on `video_format="viebit"` and
+                # reload-based seeking). The BACKLOG entry wondered
+                # whether Viebit's underlying `master.m3u8` might be
+                # probeable after all; that question doesn't apply here,
+                # because the stored `video_url` is never that stream --
+                # it's an HTML page, so ffprobe can't read it regardless
+                # of the CDN's Referer check. Every other real
+                # `video_format` this app stores (mp4/m3u8/mp3/wav --
+                # confirmed by grepping every adapter's `video_format=`
+                # assignment) is a genuine fetchable media URL, so this
+                # exclusion list is complete as of today.
+                #
+                # A live ffprobe check per row here would be far too
+                # expensive for a full coverage table; this is the same
+                # structural approximation the resolver itself already
+                # relies on.
                 "audio_transcript_possible": video_url is not None
-                and video_format not in ("youtube", "vimeo"),
+                and video_format not in _IFRAME_EMBED_VIDEO_FORMATS,
                 "detail_platform": detail_label,
                 "video_platform": video_label,
                 "outcome": outcome,

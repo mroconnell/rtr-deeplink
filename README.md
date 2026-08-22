@@ -126,6 +126,17 @@ has neither.
 python scripts/adapter_canary.py   # real network calls, ~1 min
 ```
 
+Adding a platform adapter has a **second** registry obligation of the
+same shape (WO-35, 2026-08-21): every platform `register_all_finders()`
+registers must also appear in `archive/db/crud.py`'s `DIRECT_PLATFORMS`,
+`CUSTOM_PLATFORMS`, or `COVERAGE_EXCLUSIONS` — otherwise its rows fall
+through `get_platform_coverage()`'s `if`/`elif` chain with no matching
+branch and vanish from `/coverage` silently, with no error at all.
+`tests/test_coverage_platform_registry.py` fails the build if one has no
+decision, and (like `CANARY_EXCLUSIONS`) requires every exclusion to
+state its reason. Four adapters shipped without this between 2026-08-19
+and 2026-08-21 — see BACKLOG_DONE.md.
+
 `shared_static/deep_link.js` (the `t`/`line`/`version` deep-link contract
 both `app/static/player.js` and `archive/static/meeting_page.js` depend
 on) has its own separate JS suite, since it's the one piece of this repo
@@ -685,8 +696,12 @@ one exists.
 
 **`GET /coverage`** (proxied like `/meetings`, replacing a 2026-08-10
 placeholder) is a public, per-platform table — one row per real,
-distinct video-hosting platform (`archive/db/crud.py`'s
-`get_platform_coverage()` + `PLATFORM_LABELS`), each linking to a real
+distinct meeting platform (`archive/db/crud.py`'s
+`get_platform_coverage()` + `DIRECT_PLATFORMS`/`CUSTOM_PLATFORMS`; the
+line those two dicts draw is "one product many jurisdictions buy" vs. "a
+bespoke scraper this app wrote for one government", *not* "hosts video"
+vs. "doesn't" — Hyland, Destiny AgendaQuick and open.media are all
+agenda/CMS front-ends with their own row), each linking to a real
 `/m/{slug}` permanent page as proof when one exists, with the same
 rubber-stamp "Transcript" badge `/meetings` uses. Deliberately excludes
 calendar-tool detection routers that only ever delegate (Legistar,
@@ -709,11 +724,14 @@ engineers think platform first"), and — added 2026-08-17 — a fuller
 one sortable/filterable row per successfully-archived jurisdiction with:
 video-embeds / agenda-embedded / instant-transcript-from-source /
 transcript-from-audio-possible (yes/no each — the last is derived from
-`video_format != "youtube"`, mirroring `app/main.py`'s own
-`_unreadable_media_message()` reasoning that a YouTube-hosted video is
-structurally unprobeable by ffprobe, not a live check), a two-column
+`video_format not in _IFRAME_EMBED_VIDEO_FORMATS`
+(`youtube`/`vimeo`/`viebit`), mirroring `app/main.py`'s own
+`_unreadable_media_message()` reasoning that an iframe-embed page is
+structurally unprobeable by ffprobe, not a live check; every other
+stored `video_format` — mp4/m3u8/mp3/wav — is a genuine fetchable media
+URL), a two-column
 "Detail page" vs. "Video" provider split (recovers PrimeGov/CivicWeb/
-LIMS/SLC/ClerkBase's real identity from `source_url_normalized` even
+LIMS/SLC/ClerkBase/open.media's real identity from `source_url_normalized` even
 though `MeetingPage.platform` says "youtube" for all of them — see this
 file's "when a platform turns out to be a wrapper around another" note in
 CLAUDE.md for the Legistar/CivicPlus case this *can't* recover, since

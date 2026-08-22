@@ -2018,7 +2018,13 @@ unusually wide, and the missing auto-scroll toggle on archived pages~~
   `CANADIAN_PROVINCE_ABBRS` set, shared with the "Browse by state" fix's
   new table.
 
-- **[JUST-DO-IT] `/coverage`'s "By platform" section should list more platforms.**
+~~**[JUST-DO-IT] `/coverage`'s "By platform" section should list more platforms.**~~
+  **Done 2026-08-21 (WO-35)** — including the four *newer* adapters
+  (destinyhosted/suiteone/castus/open_media) that recreated the same gap
+  after the six below were fixed, plus a CI guard so it can't happen a
+  third time. Full writeup in `BACKLOG_DONE.md`. Original entry, now
+  partly stale, kept below for context:
+
   `DIRECT_PLATFORMS`/`CUSTOM_PLATFORMS` in `archive/db/crud.py` don't
   reflect the full current adapter registry
   (`app/platforms/__init__.py`'s `register_all_finders()`) — confirmed by
@@ -2241,7 +2247,12 @@ that added this reorg, for which ones are new).
   one shared field would then pay for itself more than once.
 
 - **Viebit has the same two structural mislabels Vimeo just got fixed for
-  — noticed in passing during WO-29, not touched (2026-08-21).** Viebit's
+  — half fixed 2026-08-21 (WO-35): (2) below is done, (1) is still open.**
+  Only the `VideoObject` JSON-LD half remains — the `/coverage`
+  `audio_transcript_possible` half is fixed and verified (writeup in
+  `BACKLOG_DONE.md`, which also answers the "is `master.m3u8` probeable?"
+  question this entry raised: it doesn't matter, the stored `video_url`
+  is never that stream). Original text follows. Viebit's
   `video_url` is an iframe embed page (`/embed/vod?v={id}&t=`), exactly
   like YouTube's and Vimeo's, but two places still treat it as a real
   media file: (1) `archive/templates/meeting_page.html`'s `VideoObject`

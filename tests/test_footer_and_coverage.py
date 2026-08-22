@@ -204,6 +204,174 @@ async def test_raw_youtube_paste_does_not_show_up_anywhere_on_coverage():
     assert "Some Raw YouTube Meeting" not in all_titles
 
 
+# --- WO-35 regressions, 2026-08-21. All four adapters below shipped
+# 2026-08-19..21 and were confirmed missing from the live production
+# /coverage page (zero rows each) before this fix: they set their own
+# platform_name, produce real pushable rows, and appeared in neither
+# DIRECT_PLATFORMS nor CUSTOM_PLATFORMS, so get_platform_coverage()'s
+# if/elif chain matched no branch and dropped them silently. The
+# structural guard against a fifth recurrence lives in
+# tests/test_coverage_platform_registry.py; these four pin the specific
+# rows. Payload shapes mirror each adapter's real success return
+# (verified by reading its resolve() -- see the per-test notes).
+
+
+async def test_suiteone_meeting_shows_up_on_coverage():
+    # suiteone.py returns platform="suiteone", video_format="mp4" with a
+    # direct, unauthenticated S3 mp4 -- a genuinely direct host.
+    payload = {
+        "platform": "suiteone",
+        "source_url": "https://coveragetestut.suiteonemedia.com/event/?id=90001",
+        "external_id": "coverage-suiteone-1",
+        "title": "Coverage SuiteOne Test Meeting",
+        "date": "2026-01-01",
+        "jurisdiction": "Coverage Suiteone Test, UT",
+        "video_url": "https://example.com/v.mp4",
+        "video_format": "mp4",
+        "segments": [{"start": 0, "end": 1, "text": "hello"}],
+        "agenda_items": [],
+        "transcript_language": "en",
+        "transcript_warnings": [],
+    }
+    await crud.ingest_resolution(
+        payload, "https://coveragetestut.suiteonemedia.com/event/?id=90001"
+    )
+
+    coverage = await crud.get_platform_coverage()
+    row = next(r for r in coverage["direct"] if r["platform"] == "suiteone")
+    assert row["example"] is not None
+    assert row["page_count"] >= 1
+
+
+async def test_castus_meeting_shows_up_on_coverage():
+    # castus.py returns platform="castus", video_format="m3u8" pointing at
+    # its own global CloudFront CDN -- also a genuinely direct host.
+    payload = {
+        "platform": "castus",
+        "source_url": "https://cloud.castus.tv/vod/coveragetest/video/90002",
+        "external_id": "coverage-castus-1",
+        "title": "Coverage Castus Test Meeting",
+        "date": "2026-01-01",
+        "jurisdiction": "Coverage Castus Test, MT",
+        "video_url": "https://example.com/out.m3u8",
+        "video_format": "m3u8",
+        "segments": [{"start": 0, "end": 1, "text": "hello"}],
+        "agenda_items": [],
+        "transcript_language": "en",
+        "transcript_warnings": [],
+    }
+    await crud.ingest_resolution(
+        payload, "https://cloud.castus.tv/vod/coveragetest/video/90002"
+    )
+
+    coverage = await crud.get_platform_coverage()
+    row = next(r for r in coverage["direct"] if r["platform"] == "castus")
+    assert row["example"] is not None
+    assert row["page_count"] >= 1
+
+
+async def test_open_media_meeting_shows_up_despite_youtube_platform():
+    # The same shape as the LIMS test above, and the reason open_media
+    # couldn't just be added to DIRECT_PLATFORMS and left there:
+    # openmedia.py delegates to YouTubeAssetFinder.resolve_video_id() and
+    # never reassigns `resolved.platform` afterwards (confirmed by reading
+    # its resolve() end to end -- it only sets title/jurisdiction/
+    # external_id/agenda_link), so a real ingested open.media page is
+    # stored as platform="youtube" with its own open.media source_url.
+    # Attribution therefore has to come from source_url, which is what
+    # _entry_platform_from_source_url()'s new open.media branch does.
+    payload = {
+        "platform": "youtube",
+        "source_url": "https://coveragetest.open.media/sessions/90003/city-council",
+        "external_id": "coverage-openmedia-1",
+        "title": "Coverage open.media Test Meeting",
+        "date": "2026-01-01",
+        "jurisdiction": "Coverage Openmedia Test, OR",
+        "video_url": "https://example.com/embed/v3",
+        "video_format": "youtube",
+        "segments": [{"start": 0, "end": 1, "text": "hello"}],
+        "agenda_items": [],
+        "transcript_language": "en",
+        "transcript_warnings": [],
+    }
+    await crud.ingest_resolution(
+        payload, "https://coveragetest.open.media/sessions/90003/city-council"
+    )
+
+    coverage = await crud.get_platform_coverage()
+    row = next(r for r in coverage["direct"] if r["platform"] == "open_media")
+    assert row["example"] is not None
+    assert row["page_count"] >= 1
+
+
+async def test_destinyhosted_agenda_only_meeting_shows_up_on_coverage():
+    # destinyhosted.py delegates to GenericFallbackAssetFinder and only
+    # claims platform="destinyhosted" when the delegate came back
+    # "unknown" -- i.e. when this AgendaQuick page IS the terminal
+    # identity. That's a real pushable shape (most tenants are
+    # agenda-only, per its own docstring and README's platform table), so
+    # agenda_items are populated here and segments aren't.
+    payload = {
+        "platform": "destinyhosted",
+        "source_url": "https://public.destinyhosted.com/agenda_publish.cfm?id=90004",
+        "external_id": "coverage-destinyhosted-1",
+        "title": "Coverage DestinyHosted Test Meeting",
+        "date": "2026-01-01",
+        "jurisdiction": "Coverage Destiny Test, TX",
+        "video_url": None,
+        "video_format": None,
+        "segments": [],
+        "agenda_items": [{"start": 0, "end": 1, "text": "Item 1"}],
+        "transcript_language": None,
+        "transcript_warnings": [],
+    }
+    await crud.ingest_resolution(
+        payload, "https://public.destinyhosted.com/agenda_publish.cfm?id=90004"
+    )
+
+    coverage = await crud.get_platform_coverage()
+    row = next(r for r in coverage["direct"] if r["platform"] == "destinyhosted")
+    assert row["example"] is not None
+    assert row["page_count"] >= 1
+
+
+async def test_full_jurisdiction_coverage_viebit_cannot_be_audio_transcribed():
+    # WO-35 / the WO-29 residual BACKLOG.md flagged as "cheap and safe to
+    # fix". Real shape: viebit.py stores `video_url` as the platform's own
+    # /embed/vod?v={id} iframe page (deliberately rebuilt as that path on
+    # every resolve, see its docstring) with video_format="viebit" -- an
+    # HTML page, not a media file, so ffprobe can never read it and
+    # on-demand Whisper can never run. Before this fix /coverage claimed
+    # the opposite for every Viebit row; confirmed live on the production
+    # page 2026-08-21, where the one real Viebit jurisdiction (New York
+    # City) showed a checkmark in the "Audio transcript possible" column.
+    payload = {
+        "platform": "viebit",
+        "source_url": "https://coveragetest.viebit.com/vod/?v=COV-90005",
+        "external_id": "coverage-viebit-1",
+        "title": "Coverage Viebit Test Meeting",
+        "date": "2026-01-01",
+        "jurisdiction": "Coverage Viebit Test, NY",
+        "video_url": "https://coveragetest.viebit.com/embed/vod?v=COV-90005",
+        "video_format": "viebit",
+        "segments": [{"start": 0, "end": 1, "text": "hello"}],
+        "agenda_items": [],
+        "transcript_language": "en",
+        "transcript_warnings": [],
+    }
+    await crud.ingest_resolution(
+        payload, "https://coveragetest.viebit.com/vod/?v=COV-90005"
+    )
+
+    rows = await crud.get_full_jurisdiction_coverage()
+    row = next(r for r in rows if r["jurisdiction"] == "Coverage Viebit Test, NY")
+    assert row["video_embeds"] is True
+    assert row["instant_transcript"] is True
+    # The whole point: a real, playable video and a real transcript, but
+    # still no fetchable media file to run Whisper against.
+    assert row["audio_transcript_possible"] is False
+
+
 async def test_get_jurisdiction_coverage_lists_a_real_ingested_meeting():
     payload = {
         "platform": "granicus",
