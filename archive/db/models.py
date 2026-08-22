@@ -119,6 +119,38 @@ class MeetingPage(Base):
         Boolean, nullable=False, server_default=false(), deferred=True
     )
 
+    # When a human last marked this page as reviewed in the low-trust
+    # audit queue (GET /internal/low-trust-pages), NULL until someone
+    # does. Added 2026-08-21 (WO-38) because that endpoint shipped as a
+    # stateless JSON dump: re-reading it meant re-triaging all 474
+    # production rows from scratch every time, the same failure mode the
+    # Gmail triage Routine had before WO-33 gave it a ledger.
+    #
+    # A timestamp, not a boolean, for two reasons. It answers "when was
+    # this last looked at?" -- which is what makes a stale review
+    # detectable if a page is later re-ingested with different content --
+    # and NULL is then the only "never reviewed" state, so the
+    # ?unreviewed=true filter is a plain IS NULL with no third case.
+    #
+    # Deliberately NOT a filter on anything user-facing, exactly like
+    # best_effort above: reviewing a page changes nothing about what the
+    # site shows. The production queue is overwhelmingly pages whose
+    # jurisdiction couldn't be determined -- real, live, publicly-indexed
+    # meetings with real video -- not suspected spoofs, so "unreviewed"
+    # must never come to mean "hide it".
+    #
+    # Same three deploy-safety choices as best_effort, for the same
+    # reason (CLAUDE.md's Alembic bullet):
+    #   * nullable with no server_default and no Python-side `default=`
+    #     -- an ORM insert never names the column, so ingest keeps
+    #     working against a database whose migration hasn't run yet.
+    #   * deferred=True -- keeps it out of every plain
+    #     `select(MeetingPage)`; the only readers select it explicitly.
+    #   * crud._reviewed_at_available() gates every read and write.
+    reviewed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True, deferred=True
+    )
+
     # Precomputed, lowercased title+jurisdiction+agenda+all-transcript-
     # versions text (archive/utils/search.py's compute_search_corpus()) --
     # written by crud.ingest_resolution() on every ingest. Nullable because
