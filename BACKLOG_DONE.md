@@ -6,6 +6,195 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## WO-35: `/coverage` silently dropped four platforms that shipped the same week — plus a CI guard so it can't happen a fourth time [Done 2026-08-21]
+
+Promotes and closes `BACKLOG.md`'s "[JUST-DO-IT] `/coverage`'s 'By
+platform' section should list more platforms", and the `/coverage` half
+of its "Viebit has the same two structural mislabels Vimeo just got fixed
+for" entry.
+
+### The bug, and why it kept happening
+
+`archive/db/crud.py`'s `get_platform_coverage()` buckets each archived
+page with an `if platform in DIRECT_PLATFORMS / elif platform ==
+"youtube" / elif platform in CUSTOM_PLATFORMS` chain. **A platform in
+neither dict matches no branch at all** — no error, no empty row, no
+warning. It just isn't on the page.
+
+That already happened once, to six adapters (champds, iqm2, clerkbase,
+seattle_channel, telvue, hyland — the struck `BACKLOG.md` entry this
+promotes). Those were fixed. Then it happened *again*, to four more,
+within two days:
+
+| Platform | PR | `platform_name` | Real shape |
+|---|---|---|---|
+| `destinyhosted` | #244 | `"destinyhosted"` | Agenda CMS; delegates to `GenericFallbackAssetFinder`, keeps its own label only when the delegate returned `"unknown"` |
+| `suiteone` | #263 | `"suiteone"` | Direct, unauthenticated S3 mp4 |
+| `castus` | #264 | `"castus"` | Direct CloudFront HLS |
+| `open_media` | #265 | `"open_media"` | Delegates to YouTube; **stored as `platform="youtube"`** |
+
+**Confirmed live on production before the fix** (redtaperecordings.com/coverage,
+2026-08-21): the "By platform" section had 13 `<h3>` headings under
+"Direct" and 6 under "Custom" — none of them any of the four. The full
+jurisdiction detail table (1,495 rows) likewise had zero rows attributed
+to any of them.
+
+Three of four adapter PRs forgetting the same downstream file is a
+process gap, not four independent mistakes. That's the same shape WO-26
+found for the adapter canary (destinyhosted, suiteone and open_media had
+all shipped with no `CANARY_URLS` entry either — literally the same three
+PRs), which is why the durable half of this work mirrors WO-26's fix
+rather than just adding four dict entries.
+
+### Where each of the four actually belongs
+
+Reading each adapter end to end (rather than sorting them by name)
+showed the two sets don't mean quite what their names suggest.
+The real distinction `DIRECT_PLATFORMS` vs `CUSTOM_PLATFORMS` draws is
+**"one product many jurisdictions buy" vs. "a bespoke scraper this app
+wrote for one government"** — not "hosts video" vs. "doesn't"
+(`hyland` was already a counterexample: an agenda CMS in `DIRECT_PLATFORMS`).
+The dict's header comment was updated to say so.
+
+All four are shared multi-tenant vendors, so all four went into
+`DIRECT_PLATFORMS` — but for two different mechanical reasons:
+
+- **`suiteone` ("SuiteOne Media"), `castus` ("Castus")** — genuinely
+  direct hosts, `platform=self.platform_name` on every success return
+  (`video_format="mp4"` / `"m3u8"`). Matched by platform name, nothing
+  special needed.
+- **`destinyhosted` ("Destiny AgendaQuick")** — looks at first glance
+  like the Legistar/CivicPlus routers that are *correctly* excluded, and
+  isn't. `destinyhosted.py` only reassigns `resolved.platform =
+  "destinyhosted"` when the delegate came back `"unknown"` — i.e. when
+  this AgendaQuick page IS the terminal identity. A generic-fallback
+  resolve can still carry real `agenda_items` from the page itself, so
+  those rows are pushable and really do land labeled `"destinyhosted"`.
+  (Legistar/CivicPlus's own labels only ever appear on never-pushed error
+  returns — that's the whole difference.) Same shape as `hyland`.
+- **`open_media` ("open.media")** — the interesting one. `openmedia.py`
+  hands off to `YouTubeAssetFinder.resolve_video_id()` and **never
+  reassigns `resolved.platform` afterwards** (confirmed by reading
+  `resolve()` end to end: it sets only title/jurisdiction/external_id/
+  agenda_link). So a real ingested open.media page is stored as
+  `platform="youtube"` with its own `open.media` `source_url` — exactly
+  the lims/slc/clerkbase shape. Adding it to `DIRECT_PLATFORMS` alone
+  would have produced a permanently exampleless row. Attribution has to
+  come from the URL, so `_entry_platform_from_source_url()` gained an
+  `open.media` branch (character-for-character the same
+  `netloc.endswith("open.media")` check `app/platforms/base.py`'s
+  `detect_platform()` uses), and `_YOUTUBE_DELEGATING_CUSTOM_PLATFORMS`
+  was renamed `_YOUTUBE_DELEGATING_PLATFORMS` — it was never really a
+  custom-only property, it just happened that all three prior members
+  were `CUSTOM_PLATFORMS` entries. `_wrapper_detail_label()` gained the
+  matching entry so the jurisdiction table's "Detail page" column reads
+  "open.media" where the "Video platform" column reads "YouTube".
+
+### The Viebit column (the WO-29 residual)
+
+`get_full_jurisdiction_coverage()` computed
+`audio_transcript_possible = video_url is not None and video_format not
+in ("youtube", "vimeo")`, so **every Viebit row claimed on-demand Whisper
+was possible**. Confirmed live: the one real Viebit jurisdiction on
+production (New York City, NY) showed a ✓ in that column.
+
+It isn't. `viebit.py` stores `video_url` as the platform's own
+`/embed/vod?v={id}` **iframe embed page**, deliberately rebuilt as that
+path on every resolve so the frontend can iframe it with reload-based
+seeking (see that adapter's docstring on `video_format="viebit"`). It's
+an HTML page, so `ffprobe` can never read it.
+
+That also **answers the open question the backlog entry raised** — "worth
+confirming first whether a Viebit `master.m3u8` really is unprobeable
+from this app, since `viebit.py`'s docstring says the raw stream 403s on
+a CDN Referer check." It doesn't matter either way: the stored
+`video_url` is never that stream, so the column would be wrong even if
+the m3u8 were perfectly probeable.
+
+The literal tuple was replaced with a named `_IFRAME_EMBED_VIDEO_FORMATS
+= {"youtube", "vimeo", "viebit"}`. **That set is now complete**, checked
+rather than assumed: grepping every `video_format=` assignment across
+`app/platforms/` yields exactly `youtube`, `vimeo`, `viebit`, `mp4`,
+`m3u8`, `mp3`, `wav` — every value outside the first three is a genuine
+fetchable media URL. No other adapter has this problem today.
+
+The *other* half of that Viebit entry — `meeting_page.html`'s
+`VideoObject` JSON-LD putting a Viebit embed under `contentUrl` rather
+than `embedUrl` — is deliberately still open in `BACKLOG.md`, unchanged:
+it changes how live pages present themselves to Google and deserves its
+own Search Console check rather than riding along here.
+
+### The durable fix
+
+`tests/test_coverage_platform_registry.py`, modelled directly on WO-26's
+`tests/test_adapter_canary.py`:
+
+- `COVERAGE_EXCLUSIONS` in `archive/db/crud.py` — the direct analogue of
+  `scripts/adapter_canary.py`'s `CANARY_EXCLUSIONS`. Six entries
+  (`legistar`, `civicplus`, `primegov`, `civicweb`, `youtube`,
+  `unknown`), each with the real reason it can never have a row, spelled
+  out rather than implied.
+- `test_every_registered_platform_has_a_coverage_decision` — every key in
+  `base._REGISTRY` after `register_all_finders()` must be in exactly one
+  of `DIRECT_PLATFORMS` / `CUSTOM_PLATFORMS` / `COVERAGE_EXCLUSIONS`.
+- `test_every_coverage_exclusion_states_a_reason` — the assertion that
+  makes the exclusion set honest rather than a mute list, copied
+  deliberately from WO-26.
+- Plus: coverage keys must be real registered `platform_name`s (catches
+  a prettier-label typo that would "cover" nothing), no platform both
+  shown and excluded, `_YOUTUBE_DELEGATING_PLATFORMS` ⊆ the two shown
+  dicts, and `_IFRAME_EMBED_VIDEO_FORMATS` pinned.
+
+**Verified the guard actually bites**, twice: deleting `"suiteone"` (and
+separately `"castus"`) from `DIRECT_PLATFORMS` fails
+`test_every_registered_platform_has_a_coverage_decision` with
+`AssertionError: Platform(s) ['suiteone'] are registered in
+register_all_finders() but have no /coverage decision…`.
+
+One real false positive found while writing it, worth knowing about:
+`base._REGISTRY` is process-global and `tests/test_base.py` registers a
+throwaway `"fake_test_platform"` finder into it without cleaning up, so
+the naive `set(base._REGISTRY)` read passed in isolation and failed in a
+full-suite run. `_registered_platforms()` therefore snapshots, clears,
+re-registers, reads, and restores. **`tests/test_adapter_canary.py`'s own
+`_registered_platforms()` has the same latent vulnerability** — it only
+passes today because `test_adapter_canary.py` sorts before
+`test_base.py`. Not touched here (a green test in another WO's file),
+but it's a real trap for the next person who adds a third registry-based
+guard.
+
+### Verification
+
+Live production page read in a real browser before the fix (the counts
+and the Viebit ✓ above). After: the Archive run locally against a
+**scratch SQLite file with `DATABASE_URL` set explicitly** (per
+`CLAUDE.md`'s worktree-`.env`-inheritance footgun), seeded with one
+real-shaped row per affected platform — Holladay UT (suiteone), Billings
+MT (castus), Eugene OR (open.media, stored as `platform="youtube"`), The
+Woodlands Township TX (destinyhosted, agenda-only), New York City NY
+(viebit), and Simi Valley CA (granicus) as a control that *should* still
+claim audio transcription. Confirmed in-browser:
+
+- All four new `<h3>` headings render, each with its real example row.
+- Jurisdiction table: `Castus | Castus`, `open.media | YouTube` (the
+  wrapper split works), `SuiteOne Media | SuiteOne Media`, `Destiny
+  AgendaQuick | Destiny AgendaQuick` (outcome "No video", agenda ✓).
+- "Audio transcript possible": `–` for New York City (Viebit), `✓` for
+  Billings / Holladay / Simi Valley — the column is corrected, not
+  uniformly switched off.
+
+Full `pytest` green (1,318 passed, 15 skipped), `ruff format` / `ruff
+check` clean.
+
+### Note on the original entry's staleness
+
+`BACKLOG.md`'s entry described the registry as having "22 finders total"
+and named six missing adapters. Both numbers are stale — the registry has
+29 finders now, and champds/iqm2/clerkbase/seattle_channel/telvue/hyland
+were all added since. That staleness is exactly the point: the entry was
+right about the *mechanism* and went out of date about the *instances*,
+because nothing enforced it. The struck entry in `BACKLOG.md` says so
+rather than being silently deleted.
 ## The low-trust queue gets a memory: `reviewed_at`, `?unreviewed=true`, `?reason=`, and a targeted mark-reviewed write (WO-38) [Done 2026-08-21]
 
 Closes the "**The queue is a JSON endpoint, not a workflow**" residual
