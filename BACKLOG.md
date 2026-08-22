@@ -487,20 +487,35 @@ convenient.
   campaign, not a bot — but `/m/*` pages have almost no human traffic at
   all.** Read live 2026-08-22. Supersedes the 2026-08-17 partial check.
 
-  **(b) The Aug 10–16 daily split of `submit_meeting_url`, answered.**
-  184 events total: **5, 6, 64, 67, 27, 14, 1** (Aug 10→16). Baseline
-  ~5/day, a **10× spike on Aug 12–13**, then decay to 1 by Aug 16.
-  Evenly-spaced would have meant a bot on the form; this is the
-  opposite shape — a step change followed by textbook decay, i.e. **the
-  outreach landing.**
-  **One thing would still overturn that reading**, and it hasn't been
-  checked: 131 events over two days is also consistent with *one*
-  person (or one scripted bulk test) submitting in a burst. Adding
-  **Total users** as a second metric to that same Explore table
-  separates "60 people submitted one URL each" from "one session
-  submitted 60" and is a ~10-second change. Until it's run, "the
-  campaign worked" is the better-supported reading, not a confirmed
-  one.
+  **(b) The Aug 10–16 daily split of `submit_meeting_url`, answered —
+  and it is neither of the two options the question offered.** 184
+  events total: **5, 6, 64, 67, 27, 14, 1** (Aug 10→16). Baseline
+  ~5/day, a **10× spike on Aug 12–13**, then decay to 1 by Aug 16. The
+  entry framed this as "evenly-spaced = a bot on the form; clustered on
+  outreach days = the campaign working," and the shape is emphatically
+  clustered — **but Ryan identified it directly (2026-08-22): that was
+  him entering meeting URLs by hand, before the bulk-ingestion tooling
+  existed.** Not a bot, and not the campaign. **Operator activity.**
+
+  **That correction is worth more than the original question.** It means
+  the 2026-08-17 read — "`submit_meeting_url` 185/week … funnel looks
+  healthy" — was measuring the operator, not users, and the "healthy
+  funnel" conclusion drawn from it does not hold. Combined with (a)
+  below, **both** signals that looked like product usage turn out to be
+  internal: ~184 submissions that were Ryan typing, and ~14 `/m/` page
+  views of which at least some are test fixtures. The honest current
+  state is **effectively zero external user traffic**, which is a
+  perfectly reasonable place to be for a product at this stage but is
+  very different from what the metrics appeared to say.
+
+  **Concrete follow-up this argues for:** configure GA's **internal
+  traffic filter** (Admin → Data Streams → Configure tag settings →
+  Define internal traffic, then activate the `internal` filter in Admin
+  → Data Settings → Data Filters) so operator activity is excluded from
+  — or at least separable in — every future read. Without it, every
+  metric on this property is a mix of operator and user activity with no
+  way to tell them apart after the fact, and this is the second time
+  that has produced a wrong conclusion from real data.
 
   **(a) The four `/m/*` events: none present, and the denominator is
   why.** Filtering `Page path and screen class` contains `/m/` over the
