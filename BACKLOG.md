@@ -63,19 +63,19 @@ Standing decisions — do NOT re-raise  (12)
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
   Sacramento County's doubled meeting title is not a bug to fix
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (7)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (8)
   [JUST-DO-IT] `[EASY]` `is_extractable()` excludes only YouTube, so
   [JUST-DO-IT] `[EASY]` A Viebit meeting's "can't transcribe this"
   [JUST-DO-IT] `[EASY]` `scripts/backtest_fallback.py`'s `sebastopol`
   [JUST-DO-IT] `[EASY]` "We think the video is here: [No video
   [JUST-DO-IT] `[EASY]` `rtr-business/BUSINESS_OVERVIEW.md` still says
+  [JUST-DO-IT] Remove WO-8's `?token=` admin fallback — its
   [JUST-DO-IT] `[EASY]` The saved-search alert subject line
   [JUST-DO-IT] Every byte the public site serves is billed twice:
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (13)
-  Confirmations nobody has actually watched happen  (4)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (12)
+  Confirmations nobody has actually watched happen  (3)
     [HUMAN] Render's health-check gate has never blocked a deploy —
-    [HUMAN] Confirm both admin cron workflows run green against the
     [HUMAN] `[LOGIN]` Confirm a real Render deploy installed cleanly off
     [NEEDS-AUDIT] P3 / GA: the `submit_meeting_url` spike was the
   Production actions only Ryan should take  (4)
@@ -412,6 +412,28 @@ so that work reads together.
   not done here since business-workspace edits stay separate per
   `CLAUDE.md`.
 
+- **[JUST-DO-IT] Remove WO-8's `?token=` admin fallback — its
+  precondition is now confirmed.** WO-8 moved both admin crons to an
+  `Authorization: Bearer` header (Render's request logs don't mask a
+  token in a URL, GitHub's do), leaving the query param working so the
+  change couldn't break them. **Confirmed 2026-08-22 via `gh run
+  list`**: `daily-report.yml` and `send-search-alerts.yml` each have
+  **8 consecutive `success` runs, 2026-08-14 → 08-21**, and both send
+  *only* the Bearer header (`daily-report.yml:44`,
+  `send-search-alerts.yml:40`). `grep -rn "token=" .github/workflows/`
+  returns nothing. Scope is `app/main.py` alone —
+  `archive/main.py`'s `_token_ok()` is already header-only — covering
+  `_admin_token_ok()` plus `token: str = ""` on 10 `/admin/*` routes.
+  **Two traps, both confirmed by reading the code:** (1)
+  `app/main.py:1439`'s `confirm_transcription()` has an identically-named
+  `token: str = ""` that is the *emailed confirmation-link* token, not
+  admin auth — 11 hits for that signature, 10 are admin, this is the
+  eleventh, leave it; (2) **removing the param makes every `/admin/*`
+  page unopenable in a browser**, since an address bar can't set a
+  header — a real capability loss if Ryan eyeballs `/admin/log` or
+  `/admin/stats` that way, and a decision he should make rather than
+  discover. Options if so: keep the fallback on read-only GETs, put the
+  admin pages behind Clerk, or accept curl-only.
 - **[JUST-DO-IT] `[EASY]` The saved-search alert subject line
   double-quotes any phrase or boolean search.** Found 2026-08-22 while
   confirming P5 against the real inbox. `archive/utils/email.py`'s
@@ -502,10 +524,6 @@ convenient.
   check the Events tab before rolling back and record whether Render
   caught it. Kept here only so nobody re-runs the same passive check
   expecting a different answer.
-- **[HUMAN] Confirm both admin cron workflows run green against the
-  deployed `Authorization: Bearer` header-auth change**, then remove
-  WO-8's query-param fallback in a follow-up PR — the fallback stays
-  live until a real cron run is confirmed.
 - **[HUMAN] `[LOGIN]` Confirm a real Render deploy installed cleanly off
   the new pinned lockfiles** (WO-11) — verified locally in an isolated
   venv per service, but the actual Render build hasn't been watched
