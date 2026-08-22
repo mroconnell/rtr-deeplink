@@ -151,13 +151,54 @@ def test_repo_ledger_file_exists_and_parses():
     ledger.read_ledger(real)
 
 
+def _build_triggering_paths(service: dict) -> list:
+    """The paths that would cause `service` to rebuild, per Render's
+    buildFilter semantics: an allow-list of `paths` globs, minus anything
+    matched by `ignoredPaths` (which takes precedence -- see Render's
+    monorepo docs and render.yaml's own comments)."""
+    bf = service.get("buildFilter") or {}
+    return bf.get("paths") or []
+
+
+def _would_trigger(path: str, service: dict) -> bool:
+    for pattern in _build_triggering_paths(service):
+        if pattern.endswith("/**"):
+            if path.startswith(pattern[:-2]):
+                return True
+        elif pattern == path:
+            return True
+    return False
+
+
 def test_ledger_is_excluded_from_render_build_filters():
     # Constraint 4 of WO-33: the Routine auto-merges its own commits with
     # no human in the loop, so a file it writes daily MUST NOT be able to
-    # trigger a production redeploy. Every service that already excludes
-    # CLAUDE_INBOX_TRIAGE.md must exclude the ledger too.
-    render_yaml = (ledger.REPO_ROOT / "render.yaml").read_text()
-    assert render_yaml.count("CLAUDE_INBOX_TRIAGE.md") == render_yaml.count(
-        ledger.LEDGER_PATH.name
-    )
-    assert render_yaml.count(ledger.LEDGER_PATH.name) >= 3
+    # trigger a production redeploy.
+    #
+    # Rewritten 2026-08-22 (WO-44). This used to count occurrences of each
+    # filename in render.yaml's `ignoredPaths` deny-lists and assert the
+    # two counts matched. That mechanism disappeared when the four
+    # buildFilters became `paths` ALLOW-lists -- neither file is named in
+    # render.yaml at all any more, which is a *stronger* guarantee (they
+    # cannot trigger a build because nothing outside the allow-lists can)
+    # but scored as zero == zero under the old assertion, i.e. it would
+    # have passed for the wrong reason even if the allow-lists were
+    # wrong. So assert the actual invariant instead: for every service,
+    # neither file is matched by that service's build-triggering paths.
+    import yaml
+
+    render_yaml = yaml.safe_load((ledger.REPO_ROOT / "render.yaml").read_text())
+    services = render_yaml["services"]
+    assert len(services) >= 3, "expected the resolver, archive and worker(s)"
+
+    routine_written = ["CLAUDE_INBOX_TRIAGE.md", ledger.LEDGER_PATH.name]
+    for service in services:
+        assert _build_triggering_paths(service), (
+            f"{service['name']} has no buildFilter.paths -- every push would "
+            f"rebuild it, including the Routine's unattended daily commits"
+        )
+        for path in routine_written:
+            assert not _would_trigger(path, service), (
+                f"{path} is written unattended by the daily inbox-triage "
+                f"Routine but would trigger a rebuild of {service['name']}"
+            )

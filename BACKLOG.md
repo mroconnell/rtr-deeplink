@@ -136,10 +136,11 @@ Platform & jurisdiction coverage  (27)
     [LATER] YouTube-backed meetings' transcripts run through
     [IMPROVEMENT-ROUND] Four platforms account for ~78% of the 470 real
 
-Reliability, ops & cost  (12)
-  `[JUST-DO-IT]` Running out of Render *pipeline minutes* silently…  (2)
-    `[JUST-DO-IT]` Source `_tier3_queue_remaining()` from the database
-    `[LATER]` Path-scope each service's `buildFilter` to the directories
+Reliability, ops & cost  (13)
+  `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (2)
+    `[JUST-DO-IT]` `[EASY]` Source `_tier3_queue_remaining()` from the
+    `[LATER]` Tighten the two workers to their real import surface.
+  `[JUST-DO-IT]` Docker layer caching silently freezes the workers'…
   Media-source reliability  (2)
     `[NEEDS-AUDIT]` Some old/archived Granicus clips' `chunklist.m3u8`…
     `[NEEDS-AUDIT]` A single job still makes N consecutive same-host…
@@ -1800,58 +1801,81 @@ from a live check), but the Legistar calendar itself is still untried.
 
 ## Reliability, ops & cost
 
-### `[JUST-DO-IT]` Running out of Render *pipeline minutes* silently blocked deploys on every service — mostly fixed 2026-08-22
+### `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice, two residuals left
 
-On **2026-08-19 13:23 PT** all three web/worker services refused the same
-auto-deploy of `8af3276` (PR #199) with **"Your workspace has run out of
-pipeline minutes."** The commit timestamp matches to the second, so this
-was the auto-deploy being refused, not a build failing on merit. The next
-commit landed 18:51 PT, so the blackout ran roughly **five and a half
-hours, during which every merge to `main` silently did not reach
-production** — no alert, no failed CI, no visible symptom. Every "the fix
-is deployed" assumption in this repo rests on merge≈deploy, and for those
-hours it wasn't true. `BACKLOG_DONE.md`'s WO-7 (Sentry/uptime/
-failure-visible cron) covers *runtime* failures thoroughly and does not
-cover this at all.
+Running out of pipeline minutes silently blocked every deploy for ~5.5
+hours on 2026-08-19 — no alert, no failed CI, merge≈deploy just quietly
+stopped being true. Two rounds of `buildFilter` work have since cut build
+volume. **Full investigation, all measurements, and a correction to this
+entry's own earlier arithmetic are in `BACKLOG_DONE.md`** under the
+matching `[Done 2026-08-22]` entry.
 
-**Root cause measured, not guessed:** **43 commits in the 14 days to
-2026-08-22 changed nothing but an auto-transcription queue file** — **17
-granicus-only, 26 tier3-only**, typically a 12-line deletion — each
-rebuilding **all four** services. ~170 builds for data-only commits.
+**Where it stands:** `render.yaml`'s four `buildFilter` blocks are now
+**allow-lists** (`paths`) rather than deny-lists of docs — measured
+**1,211 → 926 builds per fortnight (24%)**, on top of the earlier
+queue-file fix's 31%.
 
-**Fixed 2026-08-22** by adding both
-`scripts/*_auto_transcription_queue.txt` files to `render.yaml`'s
-`buildFilter.ignoredPaths`, **with one deliberate exception**:
-`rtr-deeplink-archive` omits the **tier-3** file, because it is the one
-service that reads it at runtime (`archive/main.py`'s
-`_TIER3_QUEUE_FILE` / `_tier3_queue_remaining()` line-counts the file on
-disk for the ops report). Ignoring it there would freeze that number at
-whatever the last real deploy shipped, with nothing to signal the stat
-had gone stale. This is the first time the four `ignoredPaths` lists are
-*not* identical; both the top-of-file comment and the block itself now
-say so.
+**Watch this before 08-27/28.** Ryan's goal is to downgrade the workspace
+again once build volume is efficient enough. **812 / 1,000 was cumulative
+against the raised cap**, projecting ~1,145 by month end. Two caveats on
+the numbers above: they are build *counts*, and Render bills build
+*minutes* — nobody has read per-service durations off the dashboard yet —
+and a saving only lands on pushes that touch one service's tree, so it
+decays as PRs get broader.
 
-**Effect: ~146 of ~172 builds per fortnight removed (~85%).** The
-residual is the 26 tier3-only commits still rebuilding the Archive alone.
+**Two residuals:**
+- **`[JUST-DO-IT]` `[EASY]` Source `_tier3_queue_remaining()` from the
+  database** rather than line-counting a tracked file. It is the sole
+  reason `scripts/tier3_auto_transcription_queue.txt` sits in the
+  Archive's allow-list; removing it restores all four lists to lockstep
+  and kills an ops metric whose freshness silently depends on deploy
+  cadence.
+- **`[LATER]` Tighten the two workers to their real import surface.**
+  Scoping them to the four subtrees `worker/main.py` actually imports
+  takes each ~243 → ~200 builds/fortnight. **Deliberately declined
+  2026-08-22:** it makes a build trigger depend on an import graph, so
+  the first new `from app.… import …` added without a matching
+  `render.yaml` edit leaves both workers silently running stale code.
+  Only worth doing with a CI guard asserting the two stay in sync.
 
-**Ryan confirmed 2026-08-22** the workspace was upgraded on 08-19 to
-restore pipeline minutes — so the meter didn't reset, the *cap* rose, and
-**812 / 1,000** was cumulative against the new cap, projecting ~1,145 by
-month end (over again ~08-27/28). The same upgrade explains the bandwidth
-allowance reading 25 GB against the 08-18 alert's 5 GB. **Ryan's stated
-goal is to downgrade again** once build volume is efficient enough, so
-the number to watch is whether this change bends the curve before 08-27.
+### `[JUST-DO-IT]` Docker layer caching silently freezes the workers' *deliberately unpinned* `yt-dlp` and `faster-whisper`
 
-**Two follow-ups, both optional:**
-- **`[JUST-DO-IT]` Source `_tier3_queue_remaining()` from the database**
-  rather than line-counting a tracked file. Removes the last exception,
-  restores all four lists to lockstep, takes the remaining 26
-  rebuilds/fortnight to zero, and kills a fragile pattern — an ops
-  metric whose freshness silently depends on deploy cadence.
-- **`[LATER]` Path-scope each service's `buildFilter` to the directories
-  it actually ships.** A resolver-only change currently rebuilds both
-  transcription workers. Bigger win than the queue files, entirely
-  unexamined.
+Found 2026-08-22 while measuring build volume; **not yet confirmed
+against a running worker** — see "how to confirm" below before acting.
+
+`worker/requirements.txt` leaves `yt-dlp` and `faster-whisper` unpinned
+on purpose (WO-11), and CLAUDE.md is explicit about why: YouTube actively
+blocks plain caption fetches, and yt-dlp only works around that because
+it is continuously maintained. The intent is that the workers track it.
+
+**Why that intent probably isn't being honoured:** Render caches all
+intermediate Docker layers by default (confirmed in Render's own Docker
+docs). `worker/Dockerfile` runs `COPY worker/requirements.txt` and then
+`RUN pip install -r worker/requirements.txt` — so that install layer is
+keyed on the *file's contents*, not on what PyPI currently serves. As
+long as `requirements.txt` is untouched, the layer is reused and pip
+never re-runs. The unpinning then does nothing in production: both
+workers stay on whatever version was current the last time that file
+changed, which is exactly the failure mode the unpinning was meant to
+avoid, and it fails silently — a stale yt-dlp shows up as YouTube
+resolves degrading, not as a build error.
+
+**How to confirm (do this first):** exec into a running worker and
+compare `pip show yt-dlp` against PyPI's current release, and check
+`git log -1 --format=%cd -- worker/requirements.txt` for how long that
+layer has been reusable. If the versions match, this entry is wrong and
+should be deleted.
+
+**If confirmed, the fix is small** — the usual options are a cache-bust
+`ARG`, a `--no-cache-dir` reinstall of just those two in a later layer,
+or moving both into their own `RUN` below the `COPY` lines. Don't reach
+for pinning them: that reverses a deliberate decision (WO-11).
+
+**Note this is orthogonal to the allow-list work above.** Layer caching
+is also what makes the workers' frequent rebuilds cheap — `ffmpeg` and
+the pip install both sit above the `COPY` lines, so an `app/**`-triggered
+rebuild only re-runs three cheap COPY layers. The caching is doing its
+job; this is just one place where it does it too well.
 
 ### Media-source reliability
 

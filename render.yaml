@@ -13,47 +13,44 @@ services:
     name: rtr-deeplink
     runtime: python
     plan: starter
-    # Skips a Blueprint-sync redeploy when a push touches ONLY these
-    # backlog/triage docs -- added 2026-08-17 alongside the daily Gmail
-    # inbox-triage Routine (CLAUDE_INBOX_TRIAGE.md), which auto-merges its
-    # own PRs and has no reason to ever redeploy this service. Render's
-    # buildFilter only suppresses a deploy when every changed path in the
-    # push matches ignoredPaths -- a commit that also touches real code
-    # still deploys normally, so this is safe for any doc-only push, not
-    # just the Routine's.
-    # CLAUDE_INBOX_TRIAGE_SEEN.txt (added 2026-08-21, WO-33) is the
-    # Routine's processed-message-ID ledger, which replaced its Gmail
-    # `rtr-claude-processed` label; the Routine now commits to it on
-    # EVERY run, so it has to be listed here.
-    # The two scripts/*_auto_transcription_queue.txt files (added
-    # 2026-08-22) are the real build-volume driver, not the docs: 43
-    # commits in the 14 days to 2026-08-22 changed NOTHING but a queue
-    # file (17 granicus-only, 26 tier3-only), each rebuilding all four
-    # services -- ~170 builds of pure waste, and the direct cause of the
-    # workspace running out of pipeline minutes on 2026-08-19, which
-    # silently blocked deploys everywhere for ~5.5 hours.
-    # These lists were previously identical across all four services and
-    # are now DELIBERATELY NOT: rtr-deeplink-archive omits the tier-3
-    # file because it is the one service that reads it at runtime (see
-    # the note in that block). Everything else stays in lockstep -- add
-    # new doc-only paths to all four.
-    # ACCOUNTS_PLAN.md / AUDIT_BRIEF.md / FEED_CITIES.md /
-    # TRUST_THREAT_MODEL.md (added 2026-08-22, WO-41) are the four long
-    # roadmap writeups split out of BACKLOG.md when its TOC-based reading
-    # protocol landed -- same content, same reason to be ignored here.
+    # Build filter, reworked 2026-08-22 (WO-44) from a deny-list of docs
+    # into an ALLOW-list of the paths this service actually ships.
+    #
+    # Why the inversion: the deny-list only suppressed a build when EVERY
+    # changed path in a push matched ignoredPaths, so it caught doc-only
+    # and queue-only pushes and nothing else. Measured against
+    # origin/main over the 14 days to 2026-08-22 -- 441 pushes to `main`,
+    # four services, 1,768 builds if nothing were filtered -- it removed
+    # 557 (31%), NOT the ~85% an earlier version of BACKLOG.md's
+    # pipeline-minutes entry claimed (that figure treated the queue-file
+    # commits as the entire build volume; corrected in the same PR).
+    # Meanwhile the deny-list kept growing: tests/, .github/, README.md,
+    # CLAUDE.md and every new top-level *.md still triggered four builds
+    # apiece, and each addition was a thing someone had to remember.
+    # An allow-list inverts the default -- anything not named here does
+    # not build this service, so a new doc, a new test tree or a new CI
+    # workflow costs nothing without anyone having to maintain a list.
+    #
+    # Measured effect for this service: 295 -> 165 builds per fortnight.
+    #
+    # `ignoredPaths` survives only to carry `**/*.md`, which takes
+    # precedence over `paths` (per Render's monorepo docs) -- that is
+    # what stops app/**'s own markdown from rebuilding a service whose
+    # behaviour it cannot change.
+    #
+    # shared_static/ is mounted by this service directly (app/main.py's
+    # StaticFiles mount) and separately by the Archive, so it belongs in
+    # both allow-lists. This service does NOT need archive/**: it reaches
+    # the Archive over HTTP via _proxy_to_archive() (app/main.py), never
+    # off disk.
     buildFilter:
+      paths:
+        - app/**
+        - shared_static/**
+        - requirements.txt
+        - render.yaml
       ignoredPaths:
-        - BACKLOG.md
-        - BACKLOG_DONE.md
-        - CLAUDE_BACKLOG.md
-        - CLAUDE_INBOX_TRIAGE.md
-        - CLAUDE_INBOX_TRIAGE_SEEN.txt
-        - ACCOUNTS_PLAN.md
-        - AUDIT_BRIEF.md
-        - FEED_CITIES.md
-        - TRUST_THREAT_MODEL.md
-        - scripts/granicus_auto_transcription_queue.txt
-        - scripts/tier3_auto_transcription_queue.txt
+        - "**/*.md"
     # Real incident, 2026-08-09, two real failures in sequence, not one:
     # (1) the ORIGINAL `playwright install --with-deps chromium` build
     # step left a real user seeing `BrowserType.launch: Executable
@@ -196,28 +193,35 @@ services:
                    # 15min idle (~30-60s cold start), a real risk to
                    # crawl/index health for these public, potentially-
                    # indexed /m/* pages.
-    # See rtr-deeplink's matching buildFilter comment above -- same reason.
+    # Allow-list -- see rtr-deeplink's block above for the full reasoning
+    # (WO-44, 2026-08-22). Measured effect here: 326 -> 275 builds per
+    # fortnight, well short of the resolver's 295 -> 165, and app/** is
+    # why: this service is NOT self-contained. It imports
+    # app.platforms.media_probe (main.py's binary_versions, and
+    # utils/video_thumbnail.py) and app.utils.jurisdiction_enrich
+    # (db/crud.py), so every resolver-side change rebuilds the Archive
+    # too. That is real dependency, not waste -- do not "tidy" app/** out
+    # of this list without re-checking those three imports first.
+    #
+    # scripts/tier3_auto_transcription_queue.txt is listed HERE and on no
+    # other service. That is the same exception this block always had,
+    # inverted: under the old deny-list it was the one list that OMITTED
+    # the file, and under an allow-list it is the one list that NAMES it.
+    # Reason is unchanged -- this is the only service that reads it at
+    # runtime (main.py's _TIER3_QUEUE_FILE / _tier3_queue_remaining()
+    # line-counts it on disk for the ops report), so it has to rebuild
+    # when the file changes or that number silently freezes at whatever
+    # the last real deploy shipped. Removing it needs the count sourced
+    # from the database first; see BACKLOG.md's pipeline-minutes entry.
     buildFilter:
+      paths:
+        - archive/**
+        - app/**
+        - shared_static/**
+        - scripts/tier3_auto_transcription_queue.txt
+        - render.yaml
       ignoredPaths:
-        - BACKLOG.md
-        - BACKLOG_DONE.md
-        - CLAUDE_BACKLOG.md
-        - CLAUDE_INBOX_TRIAGE.md
-        - CLAUDE_INBOX_TRIAGE_SEEN.txt
-        - ACCOUNTS_PLAN.md
-        - AUDIT_BRIEF.md
-        - FEED_CITIES.md
-        - TRUST_THREAT_MODEL.md
-        - scripts/granicus_auto_transcription_queue.txt
-        # NOTE: tier3_auto_transcription_queue.txt is deliberately NOT
-        # ignored here, unlike on the other three services. THIS service
-        # reads it at runtime -- archive/main.py's _TIER3_QUEUE_FILE /
-        # _tier3_queue_remaining() line-counts the file on disk for the
-        # ops report. Ignoring it here would freeze that number at
-        # whatever the last real deploy shipped, with nothing to show
-        # the stat had gone stale. Removing this exception requires
-        # sourcing that count from the database first; see BACKLOG.md's
-        # pipeline-minutes entry.
+        - "**/*.md"
     buildCommand: pip install -r archive/requirements.txt
     # WO-10 (AUDIT_EXECUTION_BRIEF.md, landed 2026-08-17): the schema
     # migration runs BEFORE the new build starts serving. Render runs
@@ -340,20 +344,36 @@ services:
     runtime: docker
     dockerfilePath: worker/Dockerfile
     dockerContext: .
-    # See rtr-deeplink's matching buildFilter comment above -- same reason.
+    # Allow-list -- see rtr-deeplink's block above for the reasoning
+    # (WO-44, 2026-08-22). Measured effect: 295 -> 243 builds per
+    # fortnight, the smallest saving of the four services, deliberately.
+    #
+    # app/** and archive/** are here because worker/Dockerfile COPYs both
+    # wholesale and worker/main.py imports app.platforms, app.utils.retry,
+    # archive.db.crud and archive.utils.email directly. app/platforms/ and
+    # archive/db/ are also the two most-churned trees in the repo, which
+    # is exactly why this service rebuilds so often -- real dependency on
+    # code that really changes, not waste.
+    #
+    # Scoping this to only the four subtrees worker/main.py imports would
+    # reach ~200/fortnight, and was DECLINED 2026-08-22: it makes a build
+    # trigger depend on an import graph, so the first `from app.utils.x
+    # import y` added here without a matching render.yaml edit leaves both
+    # workers silently running stale code. Read BACKLOG.md's
+    # pipeline-minutes entry before revisiting that.
+    #
+    # This does NOT govern whether ffmpeg/faster-whisper reinstall on a
+    # rebuild -- Render caches Docker layers by default and the Dockerfile
+    # already orders both above its COPY lines, so a rebuild triggered by
+    # app/** re-runs only the three cheap COPY layers.
     buildFilter:
+      paths:
+        - app/**
+        - archive/**
+        - worker/**
+        - render.yaml
       ignoredPaths:
-        - BACKLOG.md
-        - BACKLOG_DONE.md
-        - CLAUDE_BACKLOG.md
-        - CLAUDE_INBOX_TRIAGE.md
-        - CLAUDE_INBOX_TRIAGE_SEEN.txt
-        - ACCOUNTS_PLAN.md
-        - AUDIT_BRIEF.md
-        - FEED_CITIES.md
-        - TRUST_THREAT_MODEL.md
-        - scripts/granicus_auto_transcription_queue.txt
-        - scripts/tier3_auto_transcription_queue.txt
+        - "**/*.md"
     # `starter` (512MB) OOM-crashed twice in real production, 2026-08-08 --
     # once loading the original "small" model default, and again (after
     # switching to "tiny") on a real 900s meeting chunk (~1421MB measured,
@@ -427,20 +447,19 @@ services:
     runtime: docker
     dockerfilePath: worker/Dockerfile
     dockerContext: .
-    # See rtr-deeplink's matching buildFilter comment above -- same reason.
+    # Allow-list, identical to rtr-transcription-worker's above and it
+    # must stay identical -- these two blocks build the same image from
+    # the same Dockerfile and the same context, so any path that rebuilds
+    # one has to rebuild the other. See that block for the reasoning
+    # (WO-44, 2026-08-22).
     buildFilter:
+      paths:
+        - app/**
+        - archive/**
+        - worker/**
+        - render.yaml
       ignoredPaths:
-        - BACKLOG.md
-        - BACKLOG_DONE.md
-        - CLAUDE_BACKLOG.md
-        - CLAUDE_INBOX_TRIAGE.md
-        - CLAUDE_INBOX_TRIAGE_SEEN.txt
-        - ACCOUNTS_PLAN.md
-        - AUDIT_BRIEF.md
-        - FEED_CITIES.md
-        - TRUST_THREAT_MODEL.md
-        - scripts/granicus_auto_transcription_queue.txt
-        - scripts/tier3_auto_transcription_queue.txt
+        - "**/*.md"
     plan: standard
     envVars:
       - key: DATABASE_URL

@@ -6,6 +6,101 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Render `buildFilter`s reworked from doc deny-lists into per-service allow-lists — and the previous entry's own "~85%" was wrong by 3x (WO-44) [Done 2026-08-22]
+
+Ryan asked whether pipeline minutes are mostly consumed by rebuilding and
+deploying, and whether marking more files as non-triggering would save
+any. Yes to the first; the second turned out to be the *smaller* of two
+levers, and checking it surfaced an error in this file's predecessor
+entry.
+
+**Correction first.** The earlier entry claimed the 2026-08-22 queue-file
+fix removed "**~146 of ~172 builds per fortnight (~85%)**". That figure
+treated the queue-only commits as if they were the entire build volume.
+Re-measured against `origin/main` (441 first-parent pushes in the 14 days
+to 2026-08-22, four services):
+
+| | builds / 14 days |
+|---|---|
+| no filters at all | 1,768 |
+| after the queue-file fix (the "85%" state) | 1,211 |
+
+**Real reduction: 557 builds, 31%.** Worth having, not 85%. Recorded
+because the difference is decision-relevant: at 85% the problem reads as
+solved, at 31% it plainly isn't.
+
+**What the deny-list couldn't do.** `ignoredPaths` only suppresses a
+build when *every* changed path in a push matches, so it caught doc-only
+and queue-only pushes and nothing else. 182 of the 441 pushes shipped
+nothing to any service, but only 147 were caught — the gap was mostly
+`tests/`, the single most-touched tree in the repo and on zero
+ignore-lists, plus `.github/`, `README.md`, `CLAUDE.md` and every new
+top-level `*.md`. Each of those cost four builds and each new one had to
+be remembered by hand.
+
+**Fix: invert the default.** All four blocks now use `paths` allow-lists
+(Render supports both keys; `ignoredPaths` takes precedence over `paths`,
+per its monorepo docs). A single `ignoredPaths: ["**/*.md"]` survives to
+keep markdown *inside* an allowed tree from triggering. Anything not
+named simply doesn't build that service, so future docs and test trees
+cost nothing with no list to maintain.
+
+| service | before | after | saved |
+|---|---|---|---|
+| rtr-deeplink | 295 | 165 | 130 |
+| rtr-deeplink-archive | 326 | 275 | 51 |
+| rtr-transcription-worker | 295 | 243 | 52 |
+| rtr-transcription-worker-2 | 295 | 243 | 52 |
+| **total** | **1,211** | **926** | **285 (24%)** |
+
+**Two dependency facts that cost two rounds of wrong numbers**, both
+worth keeping because both are counter-intuitive from the directory
+layout:
+
+1. **The Archive is not self-contained.** It imports
+   `app.platforms.media_probe` (`archive/main.py`'s `binary_versions`,
+   `archive/utils/video_thumbnail.py`) and `app.utils.jurisdiction_enrich`
+   (`archive/db/crud.py`). So `app/**` has to be in its allow-list, and
+   that is why its saving is 51 rather than the ~170 first projected.
+   The **resolver**, by contrast, genuinely does *not* need `archive/**`
+   — it reaches the Archive over HTTP via `_proxy_to_archive()`, never
+   off disk, despite serving `/m/*`, `/meetings` and `/archive-static/*`.
+2. **The workers depend on the two most-churned trees in the repo.**
+   `worker/Dockerfile` COPYs `app` and `archive` wholesale and
+   `worker/main.py` imports `app.platforms`, `app.utils.retry`,
+   `archive.db.crud`, `archive.utils.email`. Their frequent rebuilds are
+   real dependency, not waste — which is the opposite of how it looks
+   from `worker/` having only ~20 file-touches in the same fortnight.
+
+**Declined deliberately: scoping the workers to their import surface**
+(`app/platforms/`, `app/utils/`, `archive/db/`, `archive/utils/`,
+`worker/`), which measured 243 → 200 builds each. It makes a *build
+trigger* depend on an *import graph*: the first `from app.utils.x import
+y` added without a matching `render.yaml` edit leaves both workers
+silently running stale code, in a repo with a documented history of
+things deploying out of order. Ryan chose the COPY-faithful scope with
+the risk laid out. Revisit only behind a CI guard that asserts the two
+stay in sync.
+
+**The tier-3 exception inverted rather than disappeared.**
+`scripts/tier3_auto_transcription_queue.txt` used to be the one file the
+Archive's ignore-list *omitted*; it is now the one file the Archive's
+allow-list *names*. Same reason either way — `_tier3_queue_remaining()`
+line-counts it on disk for the ops report, so the Archive must rebuild
+when it changes or the number silently freezes.
+
+**Not measured, and it is what's actually billed:** build *minutes*.
+Everything above is build *counts*. The four services' builds are not
+equal — the workers are Docker, the resolver additionally runs
+`playwright install chromium` — so the minute-weighted saving could be
+materially better or worse than 24%. Render's per-service build durations
+would settle it; nobody has read them.
+
+**Spun out as its own live entry:** Docker layer caching means the
+workers' deliberately-unpinned `yt-dlp`/`faster-whisper` are probably
+frozen at whatever was current when `worker/requirements.txt` last
+changed. See `BACKLOG.md`.
+
 ## Tier-3 feed rate lowered back to 12/6h — and the real constraint turned out to be a dead job-creation driver, not worker speed [Done 2026-08-22]
 
 Supersedes "Tier-3 feed rate raised to match real two-worker throughput
