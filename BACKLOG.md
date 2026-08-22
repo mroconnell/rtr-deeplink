@@ -63,7 +63,8 @@ Standing decisions — do NOT re-raise  (12)
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
   Sacramento County's doubled meeting title is not a bug to fix
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (5)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (6)
+  [JUST-DO-IT] A bulk re-resolve gets this IP blocked by YouTube, and
   [JUST-DO-IT] `[EASY]` `is_extractable()` excludes only YouTube, so
   [JUST-DO-IT] `[EASY]` A Viebit meeting's "can't transcribe this"
   [JUST-DO-IT] `[EASY]` `scripts/backtest_fallback.py`'s `sebastopol`
@@ -82,7 +83,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
     [HUMAN] `[LOGIN]` Render "HTTP health check failed" on
     [HUMAN] `[LOGIN]` Render account bandwidth limit reached — real,
     [HUMAN] `[LOGIN]` Archive service instability, 2026-08-17
-    [HUMAN] 26 already-live pages still serve duplicated roll-up
+    [HUMAN] `[WAIT]` 10 YouTube-backed pages still hold roll-up
     [HUMAN] `[WAIT]` Meeting-card backfill sweep — finished 2026-08-22
     [HUMAN] Stray demo-shaped tables found in `rtr_deeplink_db` during
   Decisions about already-live content  (4)
@@ -358,6 +359,49 @@ Small, self-contained, no open design question. Jurisdiction-extraction
 items that also qualify live under **Platform & jurisdiction coverage**
 so that work reads together.
 
+- **[JUST-DO-IT] A bulk re-resolve gets this IP blocked by YouTube, and
+  the script's circuit breaker doesn't notice (measured twice,
+  2026-08-22).** The first corpus-scale
+  `dedupe_rollup_transcripts.py --apply` split perfectly by platform:
+
+  ```
+  failed:  youtube 10   (every one HTTP 429: Too Many Requests)
+  applied: granicus 11, civicclerk 2, escribe 1   (zero 429s)
+  ```
+
+  **The obvious reading — "too fast, so pace it" — was tested and is
+  wrong.** A retry at `--resolve-delay 60`, starting after ~9 minutes of
+  no YouTube traffic at all, failed **identically on all 10**, and the
+  *first* request of that run 429'd cold. So this is not a per-request
+  rate limit that slower pacing walks around; the burst earns a
+  sustained block on the IP that outlives at least ten minutes of
+  idling. Duration unknown — nobody has measured when it clears.
+
+  **The settled part of the fix — the circuit breaker.**
+  `sweep()` tracks `consecutive_errors` against
+  `MAX_CONSECUTIVE_ERRORS = 5`, but only increments it in the `except`
+  branch, i.e. for **Archive**-call exceptions. A resolve failure comes
+  back as `result["ok"] is False` and never touches the counter, so the
+  breaker cannot trip on the exact failure that matters. Across the two
+  runs the script marched through **20 requests against an endpoint that
+  was already refusing every one** — which plausibly extends the block it
+  is failing against. Fix: count resolve failures toward the breaker,
+  and treat a 429 specifically as "abort the run now", not "log and
+  continue". Applies to any bulk re-resolve, not just this script —
+  `backfill_archived_pages.py` has the identical shape.
+
+  **The unsettled part**: whether a *first* pass paced slowly enough
+  avoids the block at all. Untested — by the time pacing was tried the
+  block already existed, so that measurement is still owed. Worth
+  knowing before designing around it that `CLAUDE.md` flags YouTube
+  caption fetching as the one dependency actively trying to block
+  scraping, and that this has only ever been measured from a residential
+  IP, never Render's.
+
+  Do not re-run the YouTube half today; give the block real time
+  (hours, not minutes) and re-measure before assuming anything.
+
+
 - **[JUST-DO-IT] `[EASY]` `is_extractable()` excludes only YouTube, so
   thumbnail extraction points ffmpeg at Vimeo and Viebit *HTML pages*
   (found 2026-08-22 while fixing the Viebit JSON-LD mislabel, PR #303).**
@@ -498,27 +542,45 @@ convenient.
   `render.yaml` on `main` today confirms a later attempt succeeded.
   **Open question for Ryan**: worth a look at Render's memory graph for
   14:00-17:00 UTC that day.
-- **[HUMAN] 26 already-live pages still serve duplicated roll-up
-  transcripts — the script is built and the dry-run is done; only the
-  `--apply` run is left (2026-08-22, #310).** A read-only dry run probed
-  1,377 candidates in ~7 minutes and found **26 affected pages** (12
-  granicus, 10 youtube, 2 civicclerk, 2 escribe) holding 16.3M stored
-  characters that become 2.7M — 83.6% duplication. Zero probe failures.
-  Ryan runs the apply himself, same pattern as
-  `backfill_meeting_cards.py`:
+- **[HUMAN] `[WAIT]` 10 YouTube-backed pages still hold roll-up
+  duplication — the apply ran 2026-08-22 and rate-limited on exactly
+  those.** 14 of 25 rewritten and verified live; **every non-YouTube
+  page succeeded** (11 granicus, 2 civicclerk, 1 escribe) and **every
+  YouTube-backed page failed** with `HTTP Error 429: Too Many Requests`,
+  a perfect split. Nothing was written for the 10 — they failed at the
+  resolve step, before any push, so their transcripts are untouched.
+  Root cause in its own entry under **Ship next**, and it is *not*
+  simple rate limiting: **a retry at `--resolve-delay 60` after nine
+  idle minutes failed identically on all 10**, first request included.
+  The IP is blocked, not throttled, so pacing alone will not clear it.
+  Wait hours, not minutes, then retry — and note the state file records
+  a failure as `done`, so a plain re-run **skips** them:
+  `--reset-state` re-attempts everything (the 14 already-clean pages are
+  then refused harmlessly by the gates), or name the outstanding pages
+  with repeated `--slug`. The
+  outstanding 10 are 8 of the borderline `»` band plus Santa Clara and
+  Hawaiian Gardens — i.e. almost exactly the less-certain population,
+  which is worth knowing before reading their results.
 
-  ```bash
-  python scripts/dedupe_rollup_transcripts.py --report-file scripts/rollup_dedupe_report.json
-  python scripts/dedupe_rollup_transcripts.py --apply --from-report scripts/rollup_dedupe_report.json
-  ```
+  **Separately, `hpsb` was refused by the safety gate, correctly** —
+  "fresh resolve produced no segments". `pub-hpsb.escribemeetings.com`
+  now returns no captions for that meeting, so the gate declined to
+  overwrite a real transcript with an empty one rather than treating a
+  vanished source as an improvement. Its low detector score was never
+  the `»` bug. Whether those captions are gone permanently or the
+  meeting was re-published is unanswered; a second look decides whether
+  this is a dead source or a transient.
 
-  Review the 26 findings between the two commands. **Read the confidence
-  bands first** — 10 of the 26 are the lower-confidence YouTube
-  double-emission cluster described in its own entry under **Open
-  bugs**, not the Granicus ticker shape; `--min-ratio 0.40` restricts
-  the run to the confident band if that's preferred. A read-only
-  rehearsal of the apply gate on Tacoma already passed (`fresh still
-  roll-up? False`, `GATE -> ok=True`).
+  **What landed, verified live in the browser** (Tacoma and Marco
+  Island, the latter being the lowest retention ratio at 0.066 and so
+  the riskiest): picker reads "English (de-duplicated)" against
+  "English (sourced)", the third-party disclaimer renders, the AI
+  disclaimer correctly does not, and old versions remain reachable
+  (Marco Island's v369 alongside the new v1944). One thing checked
+  rather than assumed: Marco Island's transcript opens with `?` marks,
+  which are in the *original source captions* and were themselves
+  rolling up (`?` -> `? ?` -> `? ? ?`); the fix collapsed them correctly
+  and real content starts at 0:39.
 
 - **[HUMAN] `[WAIT]` Meeting-card backfill sweep — finished 2026-08-22
   02:04, two follow-ups left.** Ran to completion via `scripts/
