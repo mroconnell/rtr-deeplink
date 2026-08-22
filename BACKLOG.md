@@ -146,11 +146,10 @@ Reliability, ops & cost  (9)
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
-Trust, safety & data quality  (8)
+Trust, safety & data quality  (7)
   `[LATER]` `best_effort` residuals: no backfill for pre-2026-08-21…
   `[IMPROVEMENT-ROUND]` The low-trust queue is really a…
-  Social auto-posting residuals  (3)
-    [HUMAN] Facet clickability not yet explicitly confirmed.
+  Social auto-posting residuals  (2)
     [LATER] The Mastodon client has still made zero real posts
     [IMPROVEMENT-ROUND] Only page *creation* triggers a post —
   `[HUMAN]` Fake/spoofed "government" content — real gaps,…  (3)
@@ -1800,13 +1799,6 @@ Bluesky auto-posting went live 2026-08-21 — a real prod resolve created
 a page and the account made its first real post, confirmed by Ryan (full
 build in `BACKLOG_DONE.md`). Three residuals:
 
-- **[HUMAN] Facet clickability not yet explicitly confirmed.** The first
-  post landed, but whether the `/m/{slug}` permalink renders as a
-  *clickable* link (vs. plain text) is a distinct check on the facet
-  byte-offset math in `_post_to_bluesky()` — Bluesky does no
-  autolinking, so a wrong offset fails silently as dead text. One glance
-  at the live post settles it; can't be checked from a Claude Code
-  sandbox (`bsky.social` is egress-blocked there).
 - **[LATER] The Mastodon client has still made zero real posts** — no
   account exists. Stays flagged schema-verified-but-not-content-verified
   until an account + token exist and one real post is watched, same bar

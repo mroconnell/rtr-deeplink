@@ -776,6 +776,54 @@ again on the logs tab before it was spotted. Retention was never the
 problem (14 days are available); the range was just pointing at the
 wrong hour. Enter `06:12:00`, not `00:06:12`.
 
+## Bluesky facet byte-offset math is correct — 21/21 posts, verified programmatically [Done 2026-08-22]
+
+The open question was whether `_post_to_bluesky()`'s facet byte-offset
+arithmetic actually produces a *clickable* `/m/{slug}` permalink.
+Bluesky does no autolinking, so a wrong offset fails silently as dead
+plain text — the post still lands, it just becomes useless.
+
+**Confirmed twice, by different means.**
+
+1. **Visually (Ryan, live):** the permalinks render blue and tappable,
+   and following one lands on the real page
+   (`/m/solano-county-ca-2026-08-04-board-of-supervisors-on-2026-08-04-9-00-am`).
+2. **Programmatically, which is the stronger check** — via the public
+   AT Protocol appview, no auth required:
+
+   ```
+   curl "https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed\
+   ?actor=did:plc:tb2cmjmhtllk6ljxa65oyd7f&limit=100"
+   ```
+
+   **21 of 21 posts carry a `app.bsky.richtext.facet#link` feature**, and
+   for every one the text slice named by the facet's
+   `byteStart`/`byteEnd` is **byte-identical to the facet's `uri`**. That
+   is the exact property the offset math has to satisfy, checked against
+   every post rather than one.
+
+**Two incidental notes:**
+- The truncation visible in the Bluesky client
+  (`redtaperecordings.com/m/solano-cou…`) is **purely client-side
+  rendering**. The stored record's display text is the full URL — there
+  is no truncation bug to chase.
+- The account's entire history is **21 posts spanning 2026-08-21
+  20:22:55Z → 2026-08-22 12:59:28Z**, i.e. auto-posting began ~17 hours
+  before this check, at roughly 30 posts/day. Small enough that the
+  "only page *creation* triggers a post" residual (still open in
+  `BACKLOG.md`) hasn't yet had a chance to matter.
+
+**Method note that retires a stale constraint:** the entry said this
+"can't be checked from a Claude Code sandbox (`bsky.social` is
+egress-blocked there)." That's true of `bsky.social`, but
+**`public.api.bsky.app` is reachable** and serves the full post records
+including facets without authentication. Any future Bluesky content
+check — post text, facets, engagement counts, posting cadence — can be
+done directly rather than by asking Ryan to look. `resolveHandle` maps
+the handle to the DID (`com.atproto.identity.resolveHandle`); note that
+`com.atproto.repo.listRecords` returns `MethodNotImplemented` on that
+host, so use `app.bsky.feed.getAuthorFeed`.
+
 ## P5: the `send-search-alerts` cron really does send real emails [Done 2026-08-22]
 
 The workflow had reported success daily since 2026-08-13, but nobody had
