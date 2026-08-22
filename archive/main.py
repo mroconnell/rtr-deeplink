@@ -149,12 +149,23 @@ templates.env.filters["warnings_html"] = lambda warnings: Markup(
     render_warnings_html(warnings or [])
 )
 templates.env.filters["language_name"] = language_display_name
-# "scraped" is our internal TranscriptVersion.source value (see
-# archive/db/models.py) -- never shown verbatim to a reader, who has no
-# reason to know or care that it means "downloaded from the source site's
-# own captions" versus AI-transcribed.
-templates.env.filters["source_label"] = lambda source: (
-    "sourced" if source == "scraped" else source
+# TranscriptVersion.source values are internal tokens -- never shown
+# verbatim to a reader, who has no reason to know or care that "scraped"
+# means "downloaded from the source site's own captions" versus
+# AI-transcribed. Every value a reader can reach needs an entry here;
+# anything unmapped falls through to its raw token, which is a bug, not a
+# design (see BACKLOG.md's version-picker entry).
+_SOURCE_LABELS = {
+    "scraped": "sourced",
+    # 2026-08-22: the same source captions with roll-up duplication
+    # removed (scripts/dedupe_rollup_transcripts.py). Labeled distinctly
+    # so the version picker can tell two same-language versions of the
+    # same meeting apart -- "English (sourced)" vs.
+    # "English (de-duplicated)" -- which language+source alone could not.
+    "deduped": "de-duplicated",
+}
+templates.env.filters["source_label"] = lambda source: _SOURCE_LABELS.get(
+    source, source
 )
 templates.env.filters["jurisdiction_display"] = format_jurisdiction_display
 templates.env.filters["youtube_thumbnail_url"] = youtube_thumbnail_url

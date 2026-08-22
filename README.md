@@ -1610,13 +1610,20 @@ stores the *delegated* finder's name — and to pages archived before
 `GET /m/{slug}/transcript.srt` export and scored with the same
 `_looks_like_rollup()` detector the fix gates on.
 
-The first real dry run against production (2026-08-22) took ~7 minutes:
-2,389 pages → 1,377 candidates → **26 still holding roll-up duplication**,
-981 clean, 370 with no transcript, 0 probe failures. Those 26 hold 16.3M
-stored characters that become 2.7M — 83.6% of the text on them is
-duplication. Twelve are Granicus, ten YouTube, two CivicClerk, two eScribe.
+The dry run against production (2026-08-22) takes ~7 minutes:
+2,389 pages → 1,163 candidates → **25 still holding roll-up duplication**,
+976 clean, 162 with no transcript, 0 probe failures. Those 25 hold 13.8M
+stored characters that become 2.5M — 81.9% of the text on them is
+duplication. Eleven are Granicus, ten YouTube, two CivicClerk, two eScribe.
 Jacksonville FL (`jaxcityc.granicus.com`, CLAUDE.md's named negative
 control) came back clean on all eight of its archived pages.
+
+An earlier run the same day reported 1,377 candidates and 26 findings.
+The difference is not drift: `crud.list_all_page_urls()` only started
+returning `created_at` when that change deployed, so until then the
+`--created-before` bound was inert and 214 pages archived *after* WO-34
+shipped were probed and cleared rather than excluded up front. The
+smaller numbers are the accurate ones.
 
 **Writes go through the normal ingest path**, with a promote after: a
 fresh push does *not* become the page's default when the current default
@@ -1625,16 +1632,23 @@ is exactly a roll-up page, so ingest alone would file the fixed transcript
 where nobody sees it. Four gates sit between a detection and a write —
 the stored transcript must flag, the fresh resolve must *not* flag, the
 result must be smaller than the stored one but above `--min-retained`
-(default 0.05, against a real measured minimum of 0.066 across those 26
+(default 0.05, against a real measured minimum of 0.066 across those
 pages), and the page's own export is re-read afterwards and must come back
 clean. Nothing is deleted: the old version stays reachable at
-`/m/{slug}?version=<old id>`.
+`/m/{slug}?version=<old id>`, and the rewritten one is stored with
+`source="deduped"` rather than the ingest default `"scraped"`, so the
+version picker can tell them apart — "English (de-duplicated)" against
+"English (sourced)", which language and source alone could not do for two
+versions of one meeting. That value is a real provenance flag as well as
+a label: only `"transcribed"` means AI-generated, and every other source
+gets `meeting_page.html`'s third-party disclaimer through a `{% else %}`
+fallback (see `TranscriptVersion.source`'s own docstring).
 
 The dry run splits findings by the detector's score. WO-34's 18-file
 calibration measured real roll-up tracks at ≥ 0.401 and real non-roll-up
 ones at ≤ 0.048 with nothing between; at corpus scale that gap is not
 empty, and what sits in it is a coherent cluster rather than noise — 10 of
-the 26 score 0.202–0.244 and every one is a YouTube auto-caption track
+the 25 score 0.202–0.244 and every one is a YouTube auto-caption track
 behind a CivicWeb or Municode portal emitting each speaker-change line as
 both `>>` and `»`, retaining ~0.80 of its characters against ~0.07–0.12
 for the Granicus ticker shape. Both bands are rewritten by default —

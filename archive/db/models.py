@@ -274,6 +274,23 @@ class TranscriptVersion(Base):
     )
 
     language: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
+    # Deliberately doing two jobs at once, recorded here so it isn't
+    # rediscovered as an accident: `source` is both real *provenance* and
+    # the version picker's user-visible *label* (rendered through
+    # archive/main.py's _SOURCE_LABELS as "English (sourced)" /
+    # "English (de-duplicated)" / "English (transcribed)"). The user's
+    # explicit call, 2026-08-22, over adding a separate label column and
+    # the migration that needs.
+    #
+    # Two consequences worth knowing before adding a value here:
+    #   1. Add it to _SOURCE_LABELS, or the raw token leaks to a reader.
+    #   2. Only "transcribed" means AI-generated. Everything else is
+    #      third-party source content and gets meeting_page.html's
+    #      non-AI disclaimer via that template's `{% else %}` fallback --
+    #      which is why that branch is a fallback and not an allowlist.
+    #
+    # Plain String(20), no enum or CHECK, so a new value needs no
+    # migration -- but it does need both of the above.
     source: Mapped[str] = mapped_column(String(20), nullable=False, default="scraped")
     is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 

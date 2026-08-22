@@ -200,6 +200,12 @@ WO34_SHIP_DATE = "2026-08-21"
 # truncated-resolve tripwire, not a tuned threshold, and lowering it further
 # only weakens it. Anything at or above 1.0 is also refused: a dedupe can
 # only ever remove text.
+# TranscriptVersion.source for the rewritten version. A real provenance
+# value *and* the version picker's display token -- see this module's
+# push in rewrite_one() for why the ingest default "scraped" is wrong
+# here, and archive/main.py's _SOURCE_LABELS for how it renders.
+DEDUPED_SOURCE = "deduped"
+
 DEFAULT_MIN_RETAINED = 0.05
 
 # The detector's own gate, restated here only so `--min-ratio` has a
@@ -983,7 +989,21 @@ async def rewrite_page(
     if not ok:
         return {"ok": False, "detail": f"refused: {reason}", "refused": True}
 
-    response = await push_ingest(session, resolved.model_dump(), url)
+    # source="deduped", not the ingest default "scraped": the text is the
+    # source's own captions with roll-up duplication removed, and the
+    # version picker's option label is language + source, so two
+    # same-language "scraped" versions of one meeting would render as two
+    # identical "English (sourced)" entries a reader cannot choose
+    # between. See archive/main.py's _SOURCE_LABELS and
+    # archive/db/models.py's TranscriptVersion.source docstring.
+    #
+    # It also keeps ingest's content-hash dedup (crud.ingest_resolution(),
+    # which scopes dedup to the same `source`) working per-source, so
+    # re-running --apply on an already-fixed page recognises the existing
+    # deduped version instead of stacking a third one.
+    payload = resolved.model_dump()
+    payload["source"] = DEDUPED_SOURCE
+    response = await push_ingest(session, payload, url)
     version_id = response.get("version_id")
     pushed_slug = response.get("slug") or slug
     if version_id is None:
