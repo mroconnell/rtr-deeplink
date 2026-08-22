@@ -517,21 +517,54 @@ convenient.
   way to tell them apart after the fact, and this is the second time
   that has produced a wrong conclusion from real data.
 
-  **(a) The four `/m/*` events: none present, and the denominator is
-  why.** Filtering `Page path and screen class` contains `/m/` over the
-  last 30 days returns **22 events in total** — only `page_view` and
-  `first_visit`. Zero `video_play`, `transcript_seek`,
-  `copy_link_to_time`, `save_meeting`. **But that zero is not
-  evidence of broken instrumentation**: ~14 human page views across
-  **1,200+ permanent pages in a month** is far too little traffic to
-  expect a play or a seek, and at least two of the ten pages that did
-  get views are test fixtures
-  (`/m/testville-ca-2026-08-17-hour-rollover-test-meeting`,
-  `/m/city-of-jacksonville-fl-meeting-cancelled-malformed-date-demo-meeting`).
-  The honest reading is **"nobody is visiting the deep-link pages yet,"**
-  not "the events are broken" — the 08-17 fix remains neither confirmed
-  nor refuted by this data, and it can only be settled in-browser
-  (see the separate verification note below once run).
+  **(a) The four `/m/*` events fire nowhere, because GA is not loaded on
+  Archive pages at all. Root-caused in-browser 2026-08-22.** GA reports
+  **22 events total** on `/m/*` paths over 30 days — only `page_view`
+  and `first_visit`, zero `video_play`/`transcript_seek`/
+  `copy_link_to_time`/`save_meeting`. That first read as "too little
+  traffic to expect a play." **It isn't a traffic problem — the events
+  are physically incapable of firing:**
+  - Loading a real production page
+    (`/m/san-carlos-ca-2017-11-13-city-council-regular-meeting`) and
+    reading its served HTML shows **`window.trackEvent = function()
+    {};`** — an explicit no-op — with **no `googletagmanager` script and
+    no `G-…` measurement ID anywhere in the document**. Not
+    tracker-blocking: this is the origin's own markup.
+  - `archive/templates/base.html:8` gates the GA snippet on
+    `{% if GA_MEASUREMENT_ID %}`, and line 18 emits the no-op stub when
+    it's unset. So every `trackEvent()` call `meeting_page.js` makes is
+    discarded.
+  - **`render.yaml` declares `GA_MEASUREMENT_ID` only in the
+    `rtr-deeplink` (resolver) service block, line 144. The
+    `rtr-deeplink-archive` block never declares it.** That is the whole
+    bug: the 2026-08-17 work correctly added the event calls, but the
+    service that serves `/m/*` has no measurement ID, so the template
+    takes the no-op branch.
+
+  **Why the tests didn't catch it, and this is the reusable part:** the
+  five jsdom tests covering the boot path stub `trackEvent` themselves,
+  so they verify the *call sites* and can never exercise the *template
+  gate* that decides whether `trackEvent` does anything. A green suite
+  and a live page disagreed, exactly the case this repo's "verify
+  in-browser, not just via the API" rule exists for.
+
+  **Fix**: add `GA_MEASUREMENT_ID` (`sync: false`) to the
+  `rtr-deeplink-archive` service block in `render.yaml` and set the
+  value in that service's Render dashboard — the same value the resolver
+  already uses, since it's one GA property. Requires a real deploy to
+  take effect (`sync: false` vars need the value set dashboard-side).
+  **Verify after** by reloading any `/m/` page and confirming
+  `typeof window.gtag === 'function'` rather than by waiting on GA,
+  which lags.
+
+  **One residual nobody should paper over:** if GA never loads on `/m/*`
+  pages, the 22 `page_view`/`first_visit` events GA *does* attribute to
+  `/m/` paths have no confirmed source. Checked and ruled out: nothing
+  in `app/static/`, `archive/static/` or either template calls
+  `history.pushState`/`replaceState`, so client-side URL rewriting on a
+  GA-enabled resolver page isn't the explanation. Worth resolving when
+  the fix lands — if those 22 disappear or change character afterwards,
+  that itself identifies where they were coming from.
 
   **The finding that matters most, and it comes from joining GA to the
   Render logs.** The Archive's logs show a *heavy, systematic crawl* of
