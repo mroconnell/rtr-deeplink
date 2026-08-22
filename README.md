@@ -96,7 +96,11 @@ this project's unpinned `aiohttp>=3.9` resolves to today. Also covers
 functions, no DB or mocking needed — `tests/test_archive_search.py`) and
 `worker/segment_utils.py` + `app/platforms/media_probe.py`'s duration-
 plausibility check the same way (`tests/test_worker_segment_utils.py`,
-`tests/test_media_probe.py`).
+`tests/test_media_probe.py`) — that first file also carries the
+hallucination detector's coverage, backed by real Archive transcript
+excerpts under `tests/fixtures/hallucination_runs/` (see its own
+`README.md`): six real hallucination loops that must be flagged, and real
+decoder stutters and roll calls that must not be.
 `tests/test_transcription_failure_analysis.py` is the same pure-function
 shape and is deliberately kept that way: it exercises
 `crud.summarize_failure_rows()` (the chunk-failure diagnostic behind
@@ -132,6 +136,17 @@ has neither.
 ```bash
 python scripts/adapter_canary.py   # real network calls, ~1 min
 ```
+
+Adding a platform adapter has a **second** registry obligation of the
+same shape (WO-35, 2026-08-21): every platform `register_all_finders()`
+registers must also appear in `archive/db/crud.py`'s `DIRECT_PLATFORMS`,
+`CUSTOM_PLATFORMS`, or `COVERAGE_EXCLUSIONS` — otherwise its rows fall
+through `get_platform_coverage()`'s `if`/`elif` chain with no matching
+branch and vanish from `/coverage` silently, with no error at all.
+`tests/test_coverage_platform_registry.py` fails the build if one has no
+decision, and (like `CANARY_EXCLUSIONS`) requires every exclusion to
+state its reason. Four adapters shipped without this between 2026-08-19
+and 2026-08-21 — see BACKLOG_DONE.md.
 
 `shared_static/deep_link.js` (the `t`/`line`/`version` deep-link contract
 both `app/static/player.js` and `archive/static/meeting_page.js` depend
@@ -596,17 +611,58 @@ covers the fallback results that delegate to YouTube and therefore
 report `platform = "youtube"`), or a `jurisdiction_confidence` of
 `unverified`/`blank`. Each row carries a `reasons` list saying which of
 the three caught it, plus slug, title, platform, jurisdiction, source
-URL and creation date; `?limit=`/`?offset=` paginate and `total` is the
-full match count. Exists because the resolve → Archive → public page →
-social announcement path is fully automatic end to end, with nothing
-that could otherwise answer "what has this published that nobody
-looked at?" It's read-only and changes nothing: these pages stay live,
-indexed, and in the sitemap by design (see `BACKLOG.md`) — the
+URL, creation date and `reviewed_at`; `?limit=`/`?offset=` paginate and
+`total` is the full match count. Exists because the resolve → Archive →
+public page → social announcement path is fully automatic end to end,
+with nothing that could otherwise answer "what has this published that
+nobody looked at?" It's read-only and changes nothing: these pages stay
+live, indexed, and in the sitemap by design (see `BACKLOG.md`) — the
 `best_effort` flag's one enforcement effect is that social auto-posting
 refuses to announce them.
 
+**What's actually in the queue, measured** (first-ever production call,
+2026-08-21): 474 rows — 470 `unverified_jurisdiction`, 7
+`unknown_platform` (3 overlapping), and **zero** `best_effort`. So in
+practice this reads as a *data-quality* queue — meetings whose
+jurisdiction couldn't be determined, on real live pages with real video
+— and as a trust/spoofing queue only prospectively. `best_effort` can't
+be backfilled onto rows archived before its column existed, so it only
+starts appearing on pages ingested from 2026-08-21 onward.
+
+Two filters make that volume workable (added 2026-08-21, WO-38); both
+are optional and an unfiltered call returns exactly what it always did:
+
+- `?unreviewed=true` — only rows nobody has marked reviewed yet
+  (`reviewed_at IS NULL`).
+- `?reason=unknown_platform|best_effort|unverified_jurisdiction` — one
+  reason at a time, which matters given the skew above: the 4 rows that
+  aren't `unverified_jurisdiction` are otherwise invisible in practice.
+  An unrecognised value is a 400, not a silently-unfiltered result.
+
+**Marking pages reviewed**: `POST
+/internal/low-trust-pages/mark-reviewed?ids=1,2,3` (same token gate)
+stamps `meeting_pages.reviewed_at` on exactly the ids given and nothing
+else — it does not hide, de-index, edit or delete anything, and the
+public page is served exactly as before. `ids` is required and there is
+deliberately no "mark everything" mode. Idempotent: an id already in the
+requested state comes back under `already_reviewed` with its original
+timestamp untouched, and an unknown id under `missing_ids` rather than
+failing the batch. `?dry_run=true` is the default (returns the exact
+diff it *would* write); `?unreview=true` clears the stamp back to NULL,
+the undo for a mis-pasted id list.
+
 ```bash
-curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" "$ARCHIVE_BASE_URL/internal/low-trust-pages?limit=50"
+# newest unreviewed rows
+curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" \
+  "$ARCHIVE_BASE_URL/internal/low-trust-pages?limit=50&unreviewed=true"
+
+# the handful flagged for something other than a missing jurisdiction
+curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" \
+  "$ARCHIVE_BASE_URL/internal/low-trust-pages?reason=unknown_platform"
+
+# mark three of them reviewed (drop dry_run=false to preview first)
+curl -X POST -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" \
+  "$ARCHIVE_BASE_URL/internal/low-trust-pages/mark-reviewed?ids=2215,2201,2200&dry_run=false"
 ```
 
 **Diagnosing transcription chunk failures**: `GET
@@ -684,8 +740,12 @@ one exists.
 
 **`GET /coverage`** (proxied like `/meetings`, replacing a 2026-08-10
 placeholder) is a public, per-platform table — one row per real,
-distinct video-hosting platform (`archive/db/crud.py`'s
-`get_platform_coverage()` + `PLATFORM_LABELS`), each linking to a real
+distinct meeting platform (`archive/db/crud.py`'s
+`get_platform_coverage()` + `DIRECT_PLATFORMS`/`CUSTOM_PLATFORMS`; the
+line those two dicts draw is "one product many jurisdictions buy" vs. "a
+bespoke scraper this app wrote for one government", *not* "hosts video"
+vs. "doesn't" — Hyland, Destiny AgendaQuick and open.media are all
+agenda/CMS front-ends with their own row), each linking to a real
 `/m/{slug}` permanent page as proof when one exists, with the same
 rubber-stamp "Transcript" badge `/meetings` uses. Deliberately excludes
 calendar-tool detection routers that only ever delegate (Legistar,
@@ -708,11 +768,14 @@ engineers think platform first"), and — added 2026-08-17 — a fuller
 one sortable/filterable row per successfully-archived jurisdiction with:
 video-embeds / agenda-embedded / instant-transcript-from-source /
 transcript-from-audio-possible (yes/no each — the last is derived from
-`video_format != "youtube"`, mirroring `app/main.py`'s own
-`_unreadable_media_message()` reasoning that a YouTube-hosted video is
-structurally unprobeable by ffprobe, not a live check), a two-column
+`video_format not in _IFRAME_EMBED_VIDEO_FORMATS`
+(`youtube`/`vimeo`/`viebit`), mirroring `app/main.py`'s own
+`_unreadable_media_message()` reasoning that an iframe-embed page is
+structurally unprobeable by ffprobe, not a live check; every other
+stored `video_format` — mp4/m3u8/mp3/wav — is a genuine fetchable media
+URL), a two-column
 "Detail page" vs. "Video" provider split (recovers PrimeGov/CivicWeb/
-LIMS/SLC/ClerkBase's real identity from `source_url_normalized` even
+LIMS/SLC/ClerkBase/open.media's real identity from `source_url_normalized` even
 though `MeetingPage.platform` says "youtube" for all of them — see this
 file's "when a platform turns out to be a wrapper around another" note in
 CLAUDE.md for the Legistar/CivicPlus case this *can't* recover, since
