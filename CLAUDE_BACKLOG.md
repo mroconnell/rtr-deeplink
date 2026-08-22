@@ -622,3 +622,50 @@ site-wide for `redtaperecordings.com`:
   which URLs are actually affected before guessing further — flagging
   this one as a genuine question for the user rather than a hypothesis,
   since there isn't yet enough signal to reason from.
+
+## Mobile UX — auto-scroll default, sticky elements (2026-08-22)
+
+Raised by the user alongside the transcript-search regression (see
+`BACKLOG_DONE.md`'s matching entry), explicitly as "no hard opinions,
+gather data or research" rather than a build request. Current, real state
+of both, checked directly against the code rather than assumed:
+
+- **Auto-scroll default.** `autoScrollEnabled` (`shared_static/deep_link.js`)
+  defaults to `true` on every platform — there's no per-platform override
+  anywhere in `app/platforms/` or the toggle wiring
+  (`app/static/player.js`'s `toggleAutoScrollBtn` handler just flips a
+  single shared boolean). So "should some/all platforms default it off" is
+  really "should the one global default change," not a per-adapter
+  question — there's no existing mechanism to vary it by platform, and
+  nothing platform-specific (caption density, typical meeting length) is
+  wired to it today.
+- **Sticky elements on mobile.** Already partial, not all-or-nothing.
+  Below the 900px breakpoint (`app/static/style.css`'s
+  `@media (min-width: 900px)` split), only the small share/copy-link
+  toolbar above the video (`.toolbar`, `position: sticky; top: 0`) stays
+  put — added deliberately (see that rule's own comment) because a real
+  live-review complaint was "auto-scroll keeps carrying the page down, and
+  scrolling back up to turn it off is annoying." The video itself, the
+  auto-scroll toggle + "Go to time" row (`.video-subtoolbar`), and the
+  transcript/agenda search box are all **not** sticky on mobile today —
+  they scroll away normally. (Desktop, ≥900px, is different again: the
+  *entire* left column — toolbar, video, report/transcribe buttons — is
+  one sticky unit via `#videoColumn`, which is why `.toolbar`'s own sticky
+  is turned back off there, per that rule's comment, to avoid nested
+  sticky contexts fighting each other.)
+- **No usage data exists yet for either question.** `trackEvent()` calls
+  today cover `video_play`, `copy_link_to_time`, `transcript_seek`, and
+  `resolve_result` (`app/static/player.js`) — nothing fires when a reader
+  toggles auto-scroll off, nothing records transcript/agenda search usage,
+  and no event carries a mobile-vs-desktop split beyond whatever GA infers
+  from user-agent. So there's no existing signal to decide either
+  question from — the user's own "we need to gather data" instinct is
+  right, not just cautious. Cheapest concrete first step, if this becomes
+  a real project rather than a discussion: add a `trackEvent('auto_scroll_toggle',
+  {enabled, ...})` call to the existing toggle handler and a
+  `trackEvent('transcript_search_used', {viewport})`-style call the first
+  time either search box gets a non-empty query per page load — both are
+  small, additive, and would start producing real numbers (how often
+  people turn auto-scroll off, whether that skews mobile, whether search
+  gets used at all on phones) well before any layout change is worth
+  committing to.
