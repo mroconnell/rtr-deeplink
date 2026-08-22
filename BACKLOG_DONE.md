@@ -6,6 +6,56 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## WO-10 fully closed: resolver gets `preDeployCommand` too — and the "never stamped in prod" blocker turned out never to have existed [Done 2026-08-21]
+
+Closes the last open half of the WO-10 outage class (the one that
+produced four real incidents: 2026-08-09/10/13 and the 2026-08-17
+`UndefinedColumnError` outage). Both services now have the same
+guarantee: CI's `alembic check` blocks a schema change with no migration
+*before* merge, and `preDeployCommand` runs migrations before the new
+build serves traffic.
+
+**The part worth remembering isn't the config line — it's how the
+blocker evaporated.** For ~11 days `BACKLOG.md`, `CLAUDE.md`,
+`render.yaml`'s comment and `AUDIT_EXECUTION_BRIEF.md` all asserted that
+`app/`'s Alembic history had never been stamped in production, and that a
+one-time manual `alembic stamp` on the Render shell was the gate. WO-24
+(PR #269) built `GET /admin/schema-info` specifically to check that claim
+before anyone acted on it. Its first real call against production:
+
+```
+alembic_version:                  a9207c0eb761   # already at head
+schema_matches_models:            true
+mismatched_tables:                []
+jurisdiction_confidence present:  true
+```
+
+Already stamped, at head, with the real column present. Someone had
+stamped it and never recorded it. `/admin/stats` returning 200
+independently ruled out the silent-degradation scenario the entry warned
+about (`crud.log_resolution()` failing invisibly inside `safe()` since
+2026-08-15) — that never happened either.
+
+Two things nearly went wrong on the strength of a doc nobody could check:
+this session and a prior one both queued up a Render shell session to run
+a stamp that was unnecessary, against a history whose real state was
+unknown — and the docs' own recipe (`alembic stamp head`, written
+2026-08-10 when the baseline *was* head) would have been actively wrong
+after `a9207c0eb761` landed 08-15, the same shape as the 2026-08-09
+Archive incident.
+
+**Transferable rule, now in `CLAUDE.md`: when a doc asserts a fact about
+production that nothing in the repo can verify, build the read-only thing
+that answers it before acting on the assertion.** The endpoint cost about
+an hour. The shell session it made unnecessary was the risky part.
+
+Also landed in this PR: `CLAUDE_INBOX_TRIAGE.md`'s Gmail item rewritten
+as a standing decision (write scope declined — the Routine stays
+read-only, with a repo-side message-ID ledger as the real fix), and
+`BACKLOG.md`'s `ALERT_WEBHOOK_URL` item rewritten as declined rather than
+open (Ryan doesn't use Slack/Discord; GitHub's own failed-workflow email
+already reaches him).
+
 ## Meeting card images: real ffmpeg frame extraction for mp4/m3u8 pages, and Clip `endOffset` for shared-timestamp runs (WO-28) [Done 2026-08-21]
 
 Closes the two remaining findings from the same real Google Search
