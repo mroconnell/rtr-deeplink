@@ -644,6 +644,69 @@ the code?*" habit exists.
   Canada"/" (Canada)" whenever the trailing suffix is a recognized
   Canadian province code, in the same `jurisdiction_display` filter path
   — needs a `CANADIAN_PROVINCE_ABBRS` set shared with the fix above.
+## Render bandwidth: the "limit reached" alert's premise is stale, and the real finding is structural [Done 2026-08-22]
+
+`BACKLOG.md` carried this as **"Render account bandwidth limit reached —
+real, current cost exposure"**, on the inbox-triage Routine's 2026-08-18
+reading: a **5 GB/month** allowance that hit "Approaching" (>70%) on
+2026-08-17 12:13 UTC and "Reached" (100%) on 2026-08-18 12:17 UTC, with
+uncapped $15/100GB overage. **Checked live in the dashboard 2026-08-22 —
+the cost alarm does not hold, and the interesting finding is a different
+one.**
+
+**The numbers, read off Workspace → Billing → Monthly Included Usage:**
+
+| Metric | Value |
+| --- | --- |
+| Included bandwidth | **25 GB** (not 5 GB) |
+| Used this month | **14.54 GB** (~58%) |
+| — HTTP Responses | 12.46 GB |
+| — Service-Initiated | 2.08 GB |
+| — WebSocket Responses | 0 MB |
+| — **Service-Initiated (Private Link)** | **0 MB** |
+
+At 14.54 GB on day 22 of a 31-day month the run-rate is ~20.5 GB, i.e.
+**inside the 25 GB allowance with room to spare — no overage is being
+billed.** Either the workspace tier changed since 2026-08-18 (the
+`starter`→`standard` Archive upgrade the same week is the obvious
+candidate) or the 5 GB figure was wrong to begin with; the dashboard
+doesn't say which, and it no longer matters for the decision.
+
+**The real finding, which the original entry guessed at and got right.**
+It asked whether this was organic traffic "or a proxy/redirect loop." It
+is neither exactly, but much closer to the second: **the resolver
+proxies essentially the entire public site to the Archive over the
+public internet, so every byte is billed twice.**
+`app/main.py:1527-1593` routes `/m/*`, `/meetings`, `/coverage`,
+`/state/*`, `/j/*`, `/archive-static/*`, `/sitemap.xml` and `/feed.xml`
+through `_proxy_to_archive()`. Two dashboard facts confirm the hop takes
+the billed path rather than Render's free private network:
+
+1. `ARCHIVE_BASE_URL` is an `https://…onrender.com` URL — the public
+   hostname (shape confirmed by Ryan; value not read).
+2. **Private Link bandwidth is `0 MB`** — nothing in the workspace uses
+   private networking at all, so there is no chance the hop is quietly
+   taking it.
+
+So of the 12.46 GB of HTTP Responses, roughly half is plausibly the
+Archive answering the resolver rather than anyone answering a user.
+**Inferred, not measured** — Render's breakdown is by category, not by
+service, so a per-service split would be needed to state it as fact.
+
+**Left as a live `[JUST-DO-IT]` in `BACKLOG.md`** ("Every byte the
+public site serves is billed twice"), with the two preconditions that
+have to be checked before flipping the env var — region parity, and
+cookie/`If-None-Match` forwarding for the Clerk-authenticated proxied
+routes.
+
+**Process note worth keeping:** an automated alert's *stated limit* is
+not a fact about the account. This entry sat for four days as "real,
+current cost exposure" on a 5 GB premise that was off by 5×, and the
+urgency framing came entirely from that number. Same lesson as the
+resolver-Alembic "never stamped in prod" claim in `CLAUDE.md`: when a
+doc asserts a production fact nothing in the repo can verify, go read
+the actual value before acting on it.
+
 ## Archive memory graph, 2026-08-17: the OOM preceded the schema errors, and caused them [Done 2026-08-22]
 
 Closes part (a) of `BACKLOG.md`'s "Archive service instability,

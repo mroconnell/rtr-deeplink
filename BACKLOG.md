@@ -63,23 +63,23 @@ Standing decisions — do NOT re-raise  (12)
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
   Sacramento County's doubled meeting title is not a bug to fix
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (5)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (6)
   [JUST-DO-IT] `[EASY]` `is_extractable()` excludes only YouTube, so
   [JUST-DO-IT] `[EASY]` A Viebit meeting's "can't transcribe this"
   [JUST-DO-IT] `[EASY]` `scripts/backtest_fallback.py`'s `sebastopol`
   [JUST-DO-IT] `[EASY]` "We think the video is here: [No video
   [JUST-DO-IT] `[EASY]` `rtr-business/BUSINESS_OVERVIEW.md` still says
+  [JUST-DO-IT] Every byte the public site serves is billed twice:
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (16)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (15)
   Confirmations nobody has actually watched happen  (5)
     [HUMAN] `[LOGIN]` Confirm Render's health-check gate actually fails
     [HUMAN] Confirm both admin cron workflows run green against the
     [HUMAN] `[LOGIN]` Confirm a real Render deploy installed cleanly off
     [HUMAN] `[LOGIN]` `[WAIT]` P3: confirm GA is actually receiving
     [HUMAN] `[LOGIN]` P5: confirm a real `send-search-alerts` cron run
-  Production actions only Ryan should take  (6)
+  Production actions only Ryan should take  (5)
     [HUMAN] `[LOGIN]` Render "HTTP health check failed" on
-    [HUMAN] `[LOGIN]` Render account bandwidth limit reached — real,
     [HUMAN] `[LOGIN]` Archive service instability, 2026-08-17 —
     [HUMAN] 26 already-live pages still serve duplicated roll-up
     [HUMAN] `[WAIT]` Meeting-card backfill sweep — finished 2026-08-22
@@ -411,6 +411,38 @@ so that work reads together.
   not done here since business-workspace edits stay separate per
   `CLAUDE.md`.
 
+- **[JUST-DO-IT] Every byte the public site serves is billed twice:
+  the resolver proxies to the Archive over its *public* URL.**
+  `app/main.py:1527-1593` proxies essentially the whole public site —
+  `/m/*`, `/meetings`, `/coverage`, `/state/*`, `/j/*`,
+  `/archive-static/*`, `/sitemap.xml`, `/feed.xml` — through
+  `_proxy_to_archive()`. **Confirmed 2026-08-22 from the Render
+  dashboard**: `ARCHIVE_BASE_URL` is an `https://…onrender.com` URL
+  (public path, not private networking), and the workspace's
+  **"Service-Initiated (Private Link)" bandwidth is `0 MB`** — nothing
+  in the account uses private networking at all. So each proxied page
+  view is billed as *two* egress events: Archive→resolver, then
+  resolver→user. With "HTTP Responses" at **12.46 GB** for the month,
+  the plausible reading is ~6 GB of real user traffic and ~6 GB of pure
+  internal duplication, though the dashboard's own breakdown is by
+  *category*, not by service, so that split is inferred rather than
+  measured (a per-service breakdown would confirm it outright).
+  **Fix**: point `ARCHIVE_BASE_URL` at Render's internal/private address
+  for `rtr-deeplink-archive` instead of the public hostname. **Verify
+  two things first**, neither yet confirmed: (1) both web services are
+  in the same region — `render.yaml` sets `region: oregon` only on the
+  database (line 462), so the services' region is the *default*, not an
+  asserted one; (2) the proxy still passes `cookie` and conditional
+  `If-None-Match` headers correctly over the internal address, since
+  `/meetings`, `/coverage`, `/state/*` and `/account/saved` all forward
+  the user's cookie for Clerk auth. Roll back by restoring the public
+  URL if anything 502s — it's a single env-var change, no code deploy.
+  **Not urgent on cost grounds** (see the corrected numbers in
+  `BACKLOG_DONE.md`'s "Render bandwidth" entry — the account is at
+  14.54 GB of a **25 GB** allowance, not the 5 GB the original alert
+  implied), but it is free money and halves the blast radius of any
+  future traffic spike.
+
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
 Nothing here is blocked on engineering. Most are one dashboard login or
@@ -467,17 +499,6 @@ convenient.
   with no matching root cause identified yet. Two occurrences ~32h apart
   is mild evidence of a pattern, not proof. Worth a quick check of the
   Archive's Render logs/memory graph around both timestamps.
-- **[HUMAN] `[LOGIN]` Render account bandwidth limit reached — real,
-  current cost exposure, found by the inbox-triage Routine's 2026-08-18
-  run.** Render's Hobby-plan 5GB/month bandwidth (shared across all
-  three services) hit "Approaching" (>70%) 2026-08-17 12:13 UTC, then
-  "Reached" (100%) 2026-08-18 12:17 UTC — ~30% of a month's allowance in
-  ~24 hours. Overage auto-bills at $15/100GB, uncapped, resets monthly.
-  **Open question for Ryan**: expected (real traffic growth from the
-  first-10 outreach/clips campaign) or something to check (a
-  proxy/redirect loop, or the Archive serving full video bytes through
-  its proxy rather than just embedding)? Render's dashboard bandwidth
-  breakdown answers this in under a minute but needs the actual login.
 - **[HUMAN] `[LOGIN]` Archive service instability, 2026-08-17 —
   part (a) answered 2026-08-22, part (b) still open.** Sentry showed a
   cluster (unclosed connections, a proxy `TimeoutError`, a
