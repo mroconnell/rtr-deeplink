@@ -1,15 +1,3 @@
-https://hanovercounty.granicus.com/player/clip/339?view_id=9
-https://harrisonburg-va.granicus.com/player/clip/1234?view_id=4
-https://hawthorne-ca.granicus.com/player/clip/561?view_id=2
-https://hays.granicus.com/player/clip/201?view_id=2
-https://hayward.granicus.com/player/clip/2157
-https://haywoodcountync.granicus.com/player/clip/284
-https://henryga.granicus.com/player/clip/1408?view_id=2
-https://hernandocountyfl.granicus.com/player/clip/2097?view_id=1
-https://hernandoschools.granicus.com/player/clip/398
-https://herndon.granicus.com/player/clip/2652
-https://hesperia.granicus.com/player/clip/2606?view_id=2
-https://hoke.granicus.com/player/clip/254?view_id=1
 https://hooksett.granicus.com/player/clip/2833?view_id=2
 https://hopkinsmn.granicus.com/player/clip/984?view_id=2
 https://horrycountyschools.granicus.com/player/clip/134?view_id=2
