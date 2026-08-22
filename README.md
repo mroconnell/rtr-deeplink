@@ -1658,7 +1658,18 @@ tentative UI on the meeting page (`app/static/player.js`): a full-width
 here: `<link>`" lines instead of a declarative warning box, and a manual
 timestamp-entry box in place of the live playhead-tracking reader other
 platforms get (deep-link reliability isn't confirmed here, so there's no
-adapter-driven "current time" to honestly display).
+adapter-driven "current time" to honestly display). The **video** line
+specifically is only rendered when there's no playable video to show
+(`renderBestEffortVideoPointer()`, WO-42, 2026-08-22): a real
+`video_url` means the embedded player right below it is already the
+answer, and that URL is always a machine artifact rather than a page a
+human would open — a Vimeo/YouTube embed shell or a raw CDN media file
+(all three confirmed live). The link a reader actually wants, the city's
+own page, is the "View original source" line above it, which
+`_try_delegate_to_known_platform()` deliberately resets back to the city
+page after delegating. The two informative variants stay: the tier-5
+`video_link` pointer, and a plain "[No video found]" when nothing turned
+up at all.
 
 Since 2026-08-21 that flag also survives the push to the Archive
 (`meeting_pages.best_effort`), where it does two things: it disqualifies

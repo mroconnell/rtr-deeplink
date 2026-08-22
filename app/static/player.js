@@ -1253,29 +1253,7 @@ async function init() {
     `<p>${escapeHtml(formatJurisdictionDisplay(data.jurisdiction) || '')}${data.date ? ' &middot; ' + escapeHtml(data.date) : ''}</p>`;
 
   if (bestEffort) {
-    // Plain, tentative "here's what we think we found" line instead of a
-    // declarative warning box -- nothing here is confirmed on a platform
-    // we don't actually support, so the framing shouldn't imply otherwise.
-    if (data.video_url || !data.video_link) {
-      renderSourceGuess('videoSourceGuess', 'We think the video is here: ', data.video_url, '[No video found]');
-    } else {
-      // A pointer to where the video probably lives, when nothing playable
-      // was found -- two confidence tiers with distinct copy (the user's
-      // own framing, 2026-08-14): a recognized video host gets a
-      // confident line, a loose video-shaped guess gets a cautionary one.
-      // Never fed to initVideo() -- a page URL in the player breaks the
-      // native <video> path silently.
-      let host = '';
-      try { host = new URL(data.video_link).hostname.replace(/^www\./, ''); } catch (e) { /* leave blank */ }
-      const suffix = data.video_link_recognized
-        ? ` — we recognize ${host} as a regular video host, but can't embed it here yet.`
-        : ` — but we don't recognize ${host} as a supported video host, so proceed with caution.`;
-      const el = document.getElementById('videoLinkGuess');
-      el.innerHTML = escapeHtml('We think the video is here: ')
-        + `<a href="${escapeHtml(data.video_link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(data.video_link)}</a>`
-        + escapeHtml(suffix);
-      el.hidden = false;
-    }
+    renderBestEffortVideoPointer(data);
   } else {
     // #videoError (inside #videoSection, below the player) is where this
     // rendered when a video exists -- kept exactly as-is for that case. But
@@ -1328,6 +1306,59 @@ async function init() {
   }
 
   initVideo(data.video_url, data.video_format);
+}
+
+// The best-effort page's video line: a plain, tentative "here's what we
+// think we found" instead of a declarative warning box -- nothing here is
+// confirmed on a platform we don't actually support, so the framing
+// shouldn't imply otherwise. Three real outcomes, in the order the backend
+// produces them (generic_fallback.py's video tiers):
+//
+//   1. A real playable video (`video_url`) -> render NOTHING here. The
+//      player itself is already the answer, and #videoSourceGuess sits
+//      directly ABOVE #videoSection in meeting.html, so a "we think the
+//      video is here: <url>" line just pushed the working player down the
+//      page to restate it. Worse, that URL is never a page a human would
+//      want: every real case is a machine artifact -- a Vimeo embed shell
+//      (`player.vimeo.com/video/1152708575?h=db9859a2aa`, Sebastopol CA),
+//      a YouTube embed shell (`youtube.com/embed/Awrb74sMXyM`, Tarrant
+//      County TX), or a raw CDN media file
+//      (`otv.ocfl.net/.../BCC071626AA.mp4`, Orange County FL). All three
+//      confirmed live 2026-08-22 (WO-42). The link a reader actually wants
+//      -- the city's own page -- is already rendered above as "View
+//      original source", from `data.source_url`, which
+//      generic_fallback.py's `_try_delegate_to_known_platform()`
+//      deliberately resets back to the city page after delegating.
+//   2. Nothing playable, but a pointer to where the video probably lives
+//      (`video_link`) -> the two-tier pointer below. This one genuinely
+//      carries information the page has nowhere else, and its URL IS a
+//      human page (confirmed live on Birmingham MI:
+//      `vimeo.com/showcase/11598114/embed`).
+//   3. Neither -> the honest "[No video found]" line.
+function renderBestEffortVideoPointer(data) {
+  // Case 1 -- see above. Deliberately not `renderSourceGuess(...)`: the
+  // absence of a line is the fix, not a shorter line.
+  if (data.video_url) return;
+
+  if (data.video_link) {
+    // Two confidence tiers with distinct copy (the user's own framing,
+    // 2026-08-14): a recognized video host gets a confident line, a loose
+    // video-shaped guess gets a cautionary one. Never fed to initVideo()
+    // -- a page URL in the player breaks the native <video> path silently.
+    let host = '';
+    try { host = new URL(data.video_link).hostname.replace(/^www\./, ''); } catch (e) { /* leave blank */ }
+    const suffix = data.video_link_recognized
+      ? ` — we recognize ${host} as a regular video host, but can't embed it here yet.`
+      : ` — but we don't recognize ${host} as a supported video host, so proceed with caution.`;
+    const el = document.getElementById('videoLinkGuess');
+    el.innerHTML = escapeHtml('We think the video is here: ')
+      + `<a href="${escapeHtml(data.video_link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(data.video_link)}</a>`
+      + escapeHtml(suffix);
+    el.hidden = false;
+    return;
+  }
+
+  renderSourceGuess('videoSourceGuess', 'We think the video is here: ', null, '[No video found]');
 }
 
 // Renders "<label><a>url</a>" or "<label>[fallback]" into #<id> -- the
