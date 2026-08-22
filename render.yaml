@@ -164,7 +164,7 @@ services:
                    # decisions) after `starter` OOM-crashed in production
                    # (Sentry: "Ran out of memory (used over 512MB)",
                    # 7:10-7:11 AM) on a /meetings?q=flock keyword search --
-                   # see BACKLOG.md's "Search: move to a materialized/
+                   # see BACKLOG_DONE.md's "Search: move to a materialized/
                    # indexed column" entry for the root cause
                    # (list_pages() loading every TranscriptVersion.segments
                    # blob for every meeting into memory on any keyword
@@ -266,8 +266,10 @@ services:
       # Social auto-posting (archive/utils/social.py) -- all optional; a
       # network with its pair unset is silently disabled, all unset means
       # the feature is inert. See archive/.env.example and README's
-      # "Social auto-posting" section. NOT yet live-verified against a
-      # real account -- see BACKLOG.md before assuming a post went out.
+      # "Social auto-posting" section. Bluesky confirmed live-verified
+      # 2026-08-21 (PR #267, a real prod resolve -> a real post) -- see
+      # BACKLOG.md's social-residuals entry for what's still unconfirmed
+      # (facet clickability, Mastodon has made zero real posts yet).
       - key: BLUESKY_HANDLE
         sync: false
       - key: BLUESKY_APP_PASSWORD
@@ -299,8 +301,8 @@ services:
     # `starter` (512MB) OOM-crashed twice in real production, 2026-08-08 --
     # once loading the original "small" model default, and again (after
     # switching to "tiny") on a real 900s meeting chunk (~1421MB measured,
-    # see BACKLOG.md's "Render worker plan sizing" entry for the full real
-    # memory curve). `standard` (2GB) gives real, measured margin for that
+    # see BACKLOG_DONE.md's "Render worker plan sizing" entry for the full
+    # real memory curve). `standard` (2GB) gives real, measured margin for that
     # same 900s/"tiny" combination -- not a guess this time.
     plan: standard
     envVars:
