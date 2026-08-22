@@ -63,13 +63,14 @@ Standing decisions — do NOT re-raise  (12)
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
   Sacramento County's doubled meeting title is not a bug to fix
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (9)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (10)
   [JUST-DO-IT] A bulk re-resolve gets this IP blocked by YouTube, and
   [JUST-DO-IT] `[EASY]` `is_extractable()` excludes only YouTube, so
   [JUST-DO-IT] `[EASY]` A Viebit meeting's "can't transcribe this"
   [JUST-DO-IT] `[EASY]` `scripts/backtest_fallback.py`'s `sebastopol`
   [JUST-DO-IT] `[EASY]` "We think the video is here: [No video
   [JUST-DO-IT] `[EASY]` `rtr-business/BUSINESS_OVERVIEW.md` still says
+  [JUST-DO-IT] `[EASY]` Two archived pages have slugs frozen from a
   [JUST-DO-IT] Remove WO-8's `?token=` admin fallback — its
   [JUST-DO-IT] `[EASY]` The saved-search alert subject line
   [JUST-DO-IT] Every byte the public site serves is billed twice:
@@ -457,6 +458,39 @@ so that work reads together.
   not done here since business-workspace edits stay separate per
   `CLAUDE.md`.
 
+- **[JUST-DO-IT] `[EASY]` Two archived pages have slugs frozen from a
+  vendor's boilerplate page title, not the meeting's.** Found 2026-08-22
+  while URL-inspecting for Search Console.
+  **`/m/welcome-to-clerkbase`** is a perfectly real meeting — the page
+  serves `February 7, 2022 - Regular Village Council Meeting — Yellow
+  Springs, OH (2022-02-07)`, HTTP 200, no `noindex`. Its *title* is
+  right; only the permanent slug is wrong, taken from ClerkBase's
+  default page title at first resolve. A later re-resolve fixed the
+  title, but the slug is immutable, so the canonical URL is
+  meaningless and unshareable. Search Console reports it **"URL is not
+  on Google"** — plausibly related, since the slug is the strongest
+  text signal in the URL, though not proven.
+  **Scope is genuinely small, and that's measured, not assumed**: a
+  scan of the live `sitemap.xml` (2,383 `/m/` URLs) found exactly
+  **two** boilerplate-shaped slugs — this one and
+  `granicus-digital-communications-summit-2017-04-13-granicus-digital-communication`.
+  The second is a different problem worth noting separately: a
+  **Granicus vendor marketing event, not a government meeting**, which
+  belongs with the vendor-demo exclusions under **Trust, safety & data
+  quality** rather than being re-slugged.
+  **Fix**: re-slug the Yellow Springs page from its corrected title and
+  serve a redirect from the old slug. **Weigh first** — permalinks are
+  meant to be permanent, and `/m/` URLs are posted to Bluesky and
+  emailed in alerts. In this case the page is unindexed, has no GA
+  traffic, and predates auto-posting, so nothing points at the old slug;
+  confirm that before generalising the approach to any future case.
+  **Not worth building slug regeneration for two pages** — do these by
+  hand.
+  **Incidental, not a defect:** 257 of the 2,383 slugs contain no
+  ISO-format date, but spot-checking shows nearly all carry a date in
+  another shape (`6-16-25-bellefonte-borough…`, `apr-02-2020-…`), so
+  this is slug-format inconsistency rather than missing data. Noted only
+  so a future scan doesn't re-flag it as a bug.
 - **[JUST-DO-IT] Remove WO-8's `?token=` admin fallback — its
   precondition is now confirmed.** WO-8 moved both admin crons to an
   `Authorization: Bearer` header (Render's request logs don't mask a
@@ -1715,9 +1749,24 @@ audio or video source was found`. That's where the volume actually is.
   server-rendered match for Google to confirm against `contentUrl`.
   **Fix**: `meeting_page.html` now renders the real URL server-side too
   (a `<source>` for `.m3u8`, `src=` directly for `.mp4`), matching
-  `contentUrl`, while the existing JS playback logic is untouched. **Not
-  yet confirmed on a re-crawl** — Search Console needs to re-index
-  before the flag count can be checked.
+  `contentUrl`, while the existing JS playback logic is untouched.
+  **Re-checked 2026-08-22, one day after the fix: still exactly 947,
+  trend still rising, and `Validation: Not Started`.** An *unchanged*
+  count a day later is uninformative, not negative evidence — Search
+  Console's video-indexing report lags well behind a fix, and the
+  identical figure suggests the report simply hasn't refreshed.
+  **The actionable part is that `Validation: Not Started`**: nobody has
+  asked Google to re-verify, so the wait is currently passive and
+  open-ended. Opening the "Video isn't on a watch page" issue in Search
+  Console and clicking **VALIDATE FIX** makes Google recrawl the
+  affected URLs and report progress, which both shortens the wait and
+  turns "did it work?" into something with a status rather than a
+  number to keep re-reading. Do that before treating the count as
+  meaningful either way.
+  **Also on that report:** the only other row is **"No thumbnail URL
+  provided" — 1 video, flat.** That is a reassuring number given 973
+  cards were stored by the WO-37 backfill; whatever it is, it's a
+  single page, not a systemic gap.
 
 ### `/coverage` as a QA surface
 
