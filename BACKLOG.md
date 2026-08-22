@@ -63,12 +63,10 @@ Standing decisions — do NOT re-raise  (12)
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
   Sacramento County's doubled meeting title is not a bug to fix
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (8)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (6)
   [JUST-DO-IT] Every Archive page ingested before WO-34 (2026-08-21)
   [JUST-DO-IT] `[EASY]` `generic_fallback.py`'s "we think the video is
   [JUST-DO-IT] `[EASY]` `/coverage`'s "Every place we've covered"
-  [JUST-DO-IT] "Browse by state" (PR #122) has no "Canada" entry —
-  [JUST-DO-IT] `[EASY]` Canadian province abbreviations look like
   [JUST-DO-IT] `[EASY]` `rtr-business/BUSINESS_OVERVIEW.md` still says
   [JUST-DO-IT] `[EASY]` Meeting-card backfill can only say a page
   `[JUST-DO-IT]` `[EASY]` `transcribe_backlog_locally.py` gives up on a…
@@ -382,22 +380,6 @@ so that work reads together.
   horizontal scroll.** Fix: narrow the "Example meeting"/"Transcript"
   columns in `archive/templates/coverage.html`'s `.coverage-table`
   styling, shrink the `#` column.
-
-- **[JUST-DO-IT] "Browse by state" (PR #122) has no "Canada" entry —
-  structurally, not just missing data.** The whole feature
-  (`archive/utils/jurisdiction_format.py`'s state tables,
-  `get_state_coverage_index()`, `/state/{slug}`) is hardcoded US-only.
-  Real Canadian jurisdictions exist (Airdrie AB, Amherstburg ON) but
-  never appear in any "Browse by state" grouping. Needs a parallel
-  13-province/territory table and a "Canada" grouping, most naturally a
-  second `get_*_coverage_index()`-style function.
-
-- **[JUST-DO-IT] `[EASY]` Canadian province abbreviations look like
-  typos to US readers everywhere a state abbreviation renders
-  sitewide.** Same root cause as "Browse by state" above. Fix: append ",
-  Canada"/" (Canada)" whenever the trailing suffix is a recognized
-  Canadian province code, in the same `jurisdiction_display` filter path
-  — needs a `CANADIAN_PROVINCE_ABBRS` set shared with the fix above.
 
 - **[JUST-DO-IT] `[EASY]` `rtr-business/BUSINESS_OVERVIEW.md` still says
   saved-search alert emails are "not built yet"** — stale; shipped
@@ -1275,12 +1257,28 @@ audio or video source was found`. That's where the volume actually is.
   timestamp) is **fixed** 2026-08-21 by using the next *distinct* start
   as the end. **[HUMAN] Still to confirm**: a Search Console re-crawl
   actually clearing the critical `thumbnailUrl` flag (re-run URL
-  Inspection on the San Carlos page once recrawled) and whether any
-  *real* production row ever held a malformed date value — `GET
-  /internal/date-format-audit` (token-gated) answers this in one call;
-  `by_shape.unparseable > 0` means real malformed rows exist and names
-  them, all-zero means the flag should clear from the template fix
-  alone. Close this out once the audit has actually been run.
+  Inspection on the San Carlos page once recrawled). **The
+  malformed-row half of this is now answered and closed — no adapter to
+  chase.** `GET /internal/date-format-audit` was actually run against
+  production 2026-08-22 and came back all-zero on both non-ISO buckets:
+
+  ```json
+  {"total_pages": 2389,
+   "by_shape": {"null": 226, "iso_date": 2163,
+                "parseable_non_iso": 0, "unparseable": 0},
+   "suspect_rows": [], "suspect_rows_truncated": false}
+  ```
+
+  So **no real production row has ever held a malformed date value** —
+  2,163 of 2,389 pages store a clean `YYYY-MM-DD`, the remaining 226
+  store `null` (which the template already omits rather than emitting,
+  per WO-27), and `suspect_rows` is empty. Per the endpoint's own
+  docstring, all-zero means no stored value can be producing the
+  "invalid datetime value" flag and it should clear on recrawl from the
+  template fix alone. **What remains here is only the `[HUMAN]`
+  `[LOGIN]` `[WAIT]` recrawl confirmation** — re-run URL Inspection on
+  the San Carlos page once Google has recrawled, and confirm the
+  critical `thumbnailUrl` flag clears. Nothing to build.
 
 - **[JUST-DO-IT] `[WAIT]` Search Console "Video isn't on a watch page"
   (947 videos and growing) — root-caused 2026-08-21, fix shipped same

@@ -6,6 +6,69 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Canada support on `/coverage` and in `jurisdiction_display` — both entries were stale-done [Done 2026-08-17, closed out 2026-08-22]
+
+**Never actually open.** Both entries below sat in `Ship next` until a
+2026-08-22 verify-and-close pass; the feature had already shipped
+2026-08-17 as **PR #140** ("Canada: province grouping on /coverage +
+jurisdiction display suffix", merged 2026-08-17T21:16:17Z), touching
+`archive/utils/jurisdiction_format.py`, `archive/db/crud.py`,
+`archive/templates/coverage.html`, `tests/test_jurisdiction_format.py`
+and `tests/test_state_pages.py`. Nobody moved the entries when it
+landed. This is the same doc-drift class `AUDIT_BRIEF.md` already flags,
+and the reason CLAUDE.md's "step zero is *is this actually still open in
+the code?*" habit exists.
+
+**What shipped, and where to find it:**
+
+- `CA_PROVINCE_NAME_TO_ABBR` and `is_canadian_abbr()` in
+  `archive/utils/jurisdiction_format.py` — the parallel province table
+  the first entry asked for, plus the shared abbreviation set the second
+  entry called `CANADIAN_PROVINCE_ABBRS`.
+- `"Browse by province (Canada)"` in `archive/templates/coverage.html`,
+  driven off a `country == "CA"` partition of the same coverage-index
+  rows rather than a second `get_*_coverage_index()` function (a
+  simpler shape than the entry proposed, same result).
+- `/state/{slug}` wired for provinces.
+- The display suffix resolved to **`" (Canada)"`, not `", Canada"`** —
+  the two options the second entry offered. `is_canadian_abbr()`'s
+  docstring carries the reasoning for the choice.
+
+**Confirmed live on production 2026-08-22** (`/coverage` on
+`rtr-deeplink-archive.onrender.com`), not inferred from the diff:
+
+- The `Browse by province (Canada)` heading renders, with 10 province
+  links — Alberta, British Columbia, Manitoba, New Brunswick,
+  Newfoundland and Labrador, Northwest Territories, Nova Scotia,
+  Ontario, Quebec, Saskatchewan — each pointing at a real
+  `/state/{slug}`.
+- The suffix renders sitewide: `Airdrie, AB (Canada)`,
+  `Amherstburg, ON (Canada)`, `Atikokan, ON (Canada)`,
+  `Brampton, ON (Canada)`, `Brant, ON (Canada)`. Both jurisdictions the
+  first entry named as real-but-invisible (Airdrie AB, Amherstburg ON)
+  are now visible and grouped.
+- `/state/ontario` returns `<h1>Ontario public meetings</h1>` and lists
+  **52** Ontario jurisdictions, so the province route is populated, not
+  just linked.
+
+**The two entries, verbatim as they stood in `Ship next`:**
+
+- **[JUST-DO-IT] "Browse by state" (PR #122) has no "Canada" entry —
+  structurally, not just missing data.** The whole feature
+  (`archive/utils/jurisdiction_format.py`'s state tables,
+  `get_state_coverage_index()`, `/state/{slug}`) is hardcoded US-only.
+  Real Canadian jurisdictions exist (Airdrie AB, Amherstburg ON) but
+  never appear in any "Browse by state" grouping. Needs a parallel
+  13-province/territory table and a "Canada" grouping, most naturally a
+  second `get_*_coverage_index()`-style function.
+
+- **[JUST-DO-IT] `[EASY]` Canadian province abbreviations look like
+  typos to US readers everywhere a state abbreviation renders
+  sitewide.** Same root cause as "Browse by state" above. Fix: append ",
+  Canada"/" (Canada)" whenever the trailing suffix is a recognized
+  Canadian province code, in the same `jurisdiction_display` filter path
+  — needs a `CANADIAN_PROVINCE_ABBRS` set shared with the fix above.
+
 ## The registry-based CI guards read a polluted global registry [Done 2026-08-22]
 
 `tests/test_adapter_canary.py`'s `_registered_platforms()` called
