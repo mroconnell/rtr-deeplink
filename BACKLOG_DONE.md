@@ -705,9 +705,13 @@ already an explicit standing decision in `BACKLOG.md` ("Do NOT raise
 `media_probe.py`'s `_SUBPROCESS_TIMEOUT_SECONDS`") — expected, accepted,
 fast-fail-by-design behaviour, not a regression.
 
-**One residual, filed separately:** `PYTHON-FASTAPI-X` is still live and
-has now recurred in a *later* release than the one it was first
-attributed to — see `CLAUDE_INBOX_TRIAGE.md`'s entry for it.
+**No residual.** The one loose thread this check raised —
+`PYTHON-FASTAPI-X` showing a last-seen release (`0e5da5fb`) that
+postdated its reported occurrence by 94 seconds — was chased the same
+day and closed: 4 events in a single 8-minute burst during one sweep
+run, already fixed by PR #286 twenty-two minutes after the alert fired.
+Full timeline in this file's WO-37 entry, under "The endpoint's own
+production 500".
 
 ## The registry-based CI guards read a polluted global registry [Done 2026-08-22]
 
@@ -2475,6 +2479,62 @@ covers the endpoint's `offset` relationally against the full candidate
 list, and `slugs` for order, the still-applied thumbnail filter, unknown
 slugs and the 50-slug cap. All offline — the suite's network-free property
 (conftest's `_no_real_card_extraction`) is untouched.
+
+### The endpoint's own production 500, and why Sentry `PYTHON-FASTAPI-X` is this and not a mystery (PR #286)
+
+The first bounded `--apply` run against production crashed the endpoint
+four times. Root cause, fixed by `e83f8c5` (PR #286): the apply loop
+assigned `extract_and_store()`'s `Optional[float]` return to a local
+named **`offset`**, shadowing the endpoint's *own* `offset` query
+parameter. `extract_and_store()` returns `None` on any failed
+extraction, so a batch whose **last** page failed left `offset` as
+`None`, and the response's `max(0, offset)` raised
+`TypeError: '>' not supported between instances of 'NoneType' and
+'int'`. Failures are the *normal* case here (government CDNs time out
+constantly) and the paged mode had the identical bug, so any real sweep
+was guaranteed to hit it. Fix renames the local to `extracted_at`, with
+a comment at the site saying why that name is deliberate; two apply-path
+regression tests added, both confirmed failing against the pre-fix code.
+Every pre-existing test for this endpoint had only ever exercised
+`dry_run=true` — which is exactly how the bug shipped.
+
+**This is Sentry `PYTHON-FASTAPI-X`**, and the connection is worth
+recording because it was missed once already:
+`CLAUDE_INBOX_TRIAGE.md`'s 2026-08-22 run filed it as "one new finding,
+not previously tracked anywhere" with an **"Unconfirmed" trigger** and an
+open question for Ryan, concluding it was "not worth doing blind until
+the trigger is understood." It was in fact already fixed **22 minutes
+after the alert fired**, in a PR that names the cause in its own commit
+message. Confirmed from the dashboard 2026-08-22 (4 events, last seen
+01:34 UTC) against `git log`:
+
+| UTC (2026-08-22) | Event |
+| --- | --- |
+| 01:22:19 | `981555f` (WO-37) deploys — introduces the endpoint |
+| 01:26:17 | First `PYTHON-FASTAPI-X` occurrence, release `981555fa` |
+| 01:27:51 | `0e5da5f` (WO-34) committed |
+| **01:32:10** | **`e83f8c5` (PR #286) — the fix** |
+| 01:34 | Last of 4 occurrences, release `0e5da5fb` |
+
+All four land in one 8-minute window inside that single sweep run, and
+**none after the fix deployed** — matching the commit message's own
+"caught by the first bounded --apply run against production." The
+apparent contradiction that first raised the flag (a last-seen release,
+`0e5da5fb`, committed 94 seconds *after* the reported occurrence) was
+simply a later event in the same burst, on a release that deployed
+mid-burst.
+
+**Two process lessons, both cheap:**
+
+1. **Sentry's dashboard renders timestamps in UTC, not the viewer's
+   local time**, unless a timezone is set in account settings. This
+   directly caused the confusion above — a "1:34 AM" that looked wrong
+   next to a "14 hours ago" was correct, just not Pacific.
+2. **Before filing a Sentry issue as an untracked mystery, grep `git
+   log` for the crash site across the surrounding hours.** A single
+   `git log --oneline --grep` on the endpoint name would have surfaced
+   PR #286 immediately and saved the entire "unconfirmed trigger"
+   investigation.
 
 ## WO-10 fully closed: resolver gets `preDeployCommand` too — and the "never stamped in prod" blocker turned out never to have existed [Done 2026-08-21]
 
