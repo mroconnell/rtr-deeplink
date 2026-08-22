@@ -6,6 +6,404 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Ship-next wave, 2026-08-22: five entries shipped in parallel [Done 2026-08-22]
+
+Run as one wave of parallel worktree agents with a conductor serializing
+every backlog move. Each item's own PR is linked below; each agent
+verified against real live URLs per `CLAUDE.md` and none touched a
+backlog file or production data.
+
+Three findings from this wave are worth carrying forward regardless of
+the individual items:
+
+1. **Two entries were stale-done before the wave started** (both Canada
+   entries, see their own done-entry above) and **two more entries were
+   factually wrong about their own subject** (the tier-3 queue's Orinda
+   attribution, and the fallback-pointer entry naming the wrong file).
+   "Is this actually still open, and is what it says true?" is worth a
+   grep before starting any entry, not just a reading.
+2. **Parallel agents each grepped for a free WO number and all saw 41**,
+   because none had merged yet. Three claimed WO-42. Assign work-order
+   numbers centrally when running a wave, not per-agent.
+3. Twice, a "small" entry turned out to be **the visible corner of a
+   structural bug** — a half-fix that looked stale (#309) and a
+   1,403-line data-corruption class from one confirmed line (#308).
+
+---
+
+### 1. `transcribe_backlog_locally.py` gave up after one transient failure — retry, partial-progress checkpoint, and the `ibavformat` mystery solved (#306)
+
+**Retry**: a new shared `app/utils/retry.py` (`retry_async` +
+`backoff_delay`) rather than a third copy of `_request_json()`'s
+arithmetic. It reuses that helper's *discipline*, not just its numbers:
+permanent failures fail on the first attempt with no delay, via
+`permanent_exceptions` (raising shape) and a `retryable_failure`
+predicate (returning shape — `extract_chunk_audio()` → `(False,
+reason)`, `probe_duration()` → `None`). Lives under `app/utils/` so the
+worker and the script both import it without `app/` depending on
+`worker/`. `finder.resolve()`, `probe_duration()` and
+`extract_chunk_audio()` now get `MEDIA_ATTEMPTS` tries with ~5-15s first
+backoff; `UnsupportedPlatformError` and `ffmpeg not found on PATH` stay
+one-shot. `MEDIA_ATTEMPTS = 2` is a named constant whose comment records
+that this is **explicitly not claimed sufficient** — Brookhaven NY
+failed two identical back-to-back retries and Odessa needed a third.
+
+**Partial-progress checkpoint**: a failing chunk now checkpoints the
+already-transcribed chunks to `local_transcription_backups/partial/` and
+the next run resumes from there. The checkpoint is **refused** if
+`--chunk-seconds`, chunk count, or source duration changed — wrong
+offsets would poison the deep links, which are the whole product.
+Cleared on completion; `--no-resume` opts out; a `BaseException`
+(Ctrl-C) checkpoints then re-raises. The load-bearing case was
+`pub-3ce.escribemeetings.com` — 50 of 55 chunks transcribed, failed at
+51, and the whole ~44-minute run was discarded.
+
+**`worker/main.py` did have the gap, in exactly one place.**
+`maybe_generate_auto_job()`'s feasibility check was one-shot, so a
+transient resolve/probe failure wrote a real `failed` `TranscriptionJob`
+row, which `_cooldown_active()` counts — pushing a *healthy* page out by
+a day, doubling to 30. Same retry applied. Its **chunk path did not have
+the gap and is untouched**: `MAX_CONSECUTIVE_CHUNK_FAILURES = 3`,
+job-level retries for user-priority jobs, and `partial_segments` already
+persisted per job.
+
+**The `ffmpeg exited 196: ibavformat 62.12.102 / 62.12.102` mystery —
+solved, and it was not truncation in this repo.** Nothing here cuts
+stderr; ffmpeg prints its *version banner* to stderr first. Reproduced
+live with real ffmpeg 8.1.2 (whose `libavformat 62. 12.102 / 62. 12.102`
+line matches that string exactly): a failing extraction wrote 1,101
+bytes of stderr, ~630 of it banner, so `[-500:]` spent half its budget
+on the banner and started mid-word — which is why a *version string*
+surfaced as the error. New `_stderr_tail()` in `media_probe.py` drops
+banner lines before tailing; verified against the real captured stderr,
+the reported error goes from a truncated `libavformat` line to the four
+real `HTTP error 404` lines. Also recorded: **exit 196 = 256 - 60 =
+`ETIMEDOUT` on macOS** — a network timeout, not a corrupt file. ffmpeg
+command lines unchanged.
+
+Live: real ffmpeg against a real 404 on `cpmedia.azureedge.net`
+(Brookhaven's CDN host) to capture the real stderr shape, and a real
+re-resolve + `ffprobe` of Tacoma WA through the new retry wrapper (1,168
+segments, 8,170.9s, first attempt). Not exercised live: a multi-hour
+transcription, and a transient failure caught in the act — that is what
+the fakes stand in for. Tests 1432 → 1452.
+
+*One measurement caveat recorded by the agent*: a full-suite re-run
+appeared to fail 29 tests, which was leftover SQLite state from reusing
+the same `DATABASE_URL` file across runs, not the change. Fresh DB file
+→ green. Worth knowing before trusting a second consecutive run.
+
+**The entry as it stood:**
+
+### `[JUST-DO-IT]` `[EASY]` `transcribe_backlog_locally.py` gives up on a live meeting after one transient failure
+
+**Promoted out of `[NEEDS-AUDIT]` 2026-08-22 — Ryan's call.** Ten-plus
+confirmed instances across three sessions, all the same shape, and the
+fix is settled: **a single retry with backoff around `finder.resolve()`
+and `extract_chunk_audio()` in `transcribe_meeting()`** (mirroring
+`_request_json()`'s existing retry on the archive-side HTTP calls in the
+same script), **plus a partial-progress save** so a late failure doesn't
+discard the chunks already transcribed. Check whether
+`worker/main.py`'s idle-time auto-transcription path has the same
+one-shot-no-retry gap.
+
+`process_one()` treats every `transcribe_meeting()` failure identically
+— skip, move on — whether the cause is "genuinely no video" or "timed
+out once", and discards all prior progress on any single-chunk failure
+(no partial-meeting save, see `transcribe_meeting()`'s own docstring).
+
+**The confirmed cases**, in the order they were found:
+
+- **4/4, all recovered on an unchanged re-run minutes later**: Diamond
+  Bar CA, Genesee County MI, Sullivan County NY (all iqm2) and
+  Brookhaven NY (civicclerk). Diamond Bar is the sharpest: its stored
+  `video_url` from an earlier successful resolve is still live and
+  reachable today, so the video was never gone — a page already live
+  with a real video is now recorded as permanently unresolvable.
+- **4/10 of a `new.swagit.com` batch** hit `ffmpeg extraction failed`
+  after a 120s timeout; 3 of 4 succeeded on immediate retry (Odessa
+  needed a third). A byte-for-byte-identical manual `ffmpeg` against the
+  exact failed URL finished in ~12s both times — so the video, host and
+  command are fine; the hang is specific to the script's own
+  asyncio/subprocess context. Consistent with (not proof of) resource
+  buildup across a long sequential batch rather than network flakiness,
+  which a retry would paper over either way.
+- **2026-08-19**: Plainfield NJ (iqm2) skipped despite a `--dry-run`
+  minutes earlier confirming a real video.
+- **2026-08-21/22, a 20-meeting tier-3 batch**: Piqua OH (civicclerk)
+  hit the familiar `ffmpeg timed out after 120s` on chunk 1/14, and two
+  `escribemeetings.com` URLs (`pub-abbotsford`, `pub-acwtownship`)
+  failed the *resolve* step with a bare `TimeoutError` — eScribe was not
+  previously represented here. None re-attempted.
+- **The case that makes the partial-progress save load-bearing**:
+  `pub-3ce.escribemeetings.com`, a genuinely long meeting (55 15-minute
+  chunks, ~13.75 hours), transcribed **50 chunks successfully** before
+  failing on chunk 51/55 with `ffmpeg exited 196: ibavformat 62.12.102 /
+  62.12.102`. One transient failure at 91% complete cost the entire
+  ~44-minute run, not just the bad chunk. That error string is worth its
+  own second look — a truncated ffmpeg version banner surfacing *as* the
+  error suggests the real stderr is being cut off somewhere in
+  `media_probe.py`/`extract_chunk_audio()`.
+
+**Known limit of one retry — Brookhaven NY.** On a later attempt two
+immediate back-to-back retries both failed identically (same `ffmpeg
+timed out ... @ 0s`, same CDN host `cpmedia.azureedge.net`). That
+doesn't argue against the retry — the other cases still justify it — but
+it won't be sufficient for every case; Brookhaven needs more than one
+retry, a longer timeout, or has a genuinely slower/rate-limited CDN.
+Worth a fresh look (and worth checking whether it's this specific media
+file or `cpmedia.azureedge.net` generally) before assuming it's simply
+"still transient, just unlucky twice."
+
+---
+
+### 2. Meeting-card backfill can now say *why* a page failed (WO-42, #305)
+
+`extract_and_store()` returns a `FrameOutcome(offset, reason, skipped)`
+NamedTuple instead of `Optional[int]` — same `(x, reason)` shape as
+`media_probe.extract_frame()`, so it still unpacks naturally. Threaded
+into `POST /internal/thumbnails/backfill`'s per-result response and into
+`scripts/backfill_meeting_cards.py`'s output. Its never-on-the-render-
+path property is untouched: every caller is still a BackgroundTask or
+the sweep.
+
+**The design decision that mattered: `skipped` is kept strictly apart
+from failure** — a skip (in-flight duplicate, the 6h `_failed_at`
+cooldown, a full queue) means nothing was attempted against the source.
+That exposed **a real latent bug in the sweep**, not just a reporting
+gap: it recorded skips in `meeting_card_backfill_state.json` as
+permanently stuck, blacklisting pages nothing had ever been tried
+against — on the strength of a cooldown dict that dies with the dyno.
+Skips are now never recorded and get retried next run. This was only
+findable *because* the reason field existed; before it, a skip and a
+failure were both a bare `null` offset.
+
+**Bucketing is necessary, not tidy.** A raw reason carries ~300 chars of
+ffmpeg stderr including the media URL and a per-run memory address, so
+counting raw would have turned 179 failures into 179 groups of one.
+`reason_bucket()` groups them; reasons are persisted so a resumed run
+reports the same grouping; unrecognised reasons keep their own first
+line rather than falling into an "other" bucket. Backward compatible
+with an older Archive (no fields → `(no reason reported -- Archive
+predates WO-42)`).
+
+The ffmpeg 403/404/5xx/connection-refused fixture strings are **real
+output**, captured by pointing real ffmpeg 8.1.2 at a local server
+returning each status. That surfaced two facts that would otherwise have
+been guessed wrong: ffmpeg names the status **twice** in two phrasings
+(`HTTP error 403 Forbidden` *and* `Server returned 403 Forbidden (access
+denied)`), and collapses 5xx to a literal `5XX` with no specific code.
+`reason_bucket()` matches either; both are asserted.
+
+Reason strings a sweep can now emit — passed through from
+`extract_frame()`: `ffmpeg not found on PATH`, `ffmpeg timed out after
+45s`, `ffmpeg could not be started: {OSError}`, `ffmpeg exited {code}:
+{last 300 chars of stderr}`, `ffmpeg reported success but wrote no frame
+(offset past end?)`. Produced by `extract_and_store()` itself: three
+`skipped: …` constants, `storage rejected the frame (…)`, `extraction
+raised {ExcType}: {message}`, and a defensive `extraction failed without
+reporting a reason`.
+
+No schema change, no migration. **No production sweep was run.** Tests
+1432 → 1457. `README.md` corrected — it said the per-page reason "is in
+the Archive's own logs".
+
+**The entry as it stood:**
+
+- **[JUST-DO-IT] `[EASY]` Meeting-card backfill can only say a page
+  failed, never why — confirmed live 2026-08-21 by the first production
+  sweep.** `archive/utils/video_thumbnail.py`'s `extract_and_store()`
+  calls `media_probe.extract_frame()`, which already returns `(ok,
+  reason)` — the reason gets logged then discarded; every failure path
+  returns bare `None`. Flagged as deliberately-deferred in
+  `BACKLOG_DONE.md`'s WO-37 entry, "worth plumbing through only if a
+  real sweep's failure set proves the host grouping isn't enough" — that
+  trigger is met: the sweep finished 2026-08-22 at 973/1,152 (~84%),
+  leaving **179 failed slugs with no recorded reason** (see the
+  `[HUMAN]` sweep entry below). Small fix: thread the string through
+  `extract_and_store()`'s return value and into the backfill endpoint's
+  per-result response. Worth doing before the 179 are retried, so that
+  run is diagnosable.
+
+---
+
+### 3. `/coverage`'s 4-column table stopped forcing horizontal scroll — and the previous fix turned out to be half a fix (#309)
+
+The styling lives in `archive/static/style.css`, not `coverage.html` as
+the entry assumed. Fix: `table-layout: fixed` on `#coverageTable` with
+explicit per-column widths, plus two phone-width tiers (≤575.98px,
+≤399.98px).
+
+**Why the entry looked stale but wasn't.** PR #135 (2026-08-17) had
+already capped the title/transcript columns with `max-width` +
+ellipsis — so a reader checking the file would find the fix already
+there. But **under `table-layout: auto`, a `max-width` on a
+`white-space: nowrap` cell also acts as a floor**: the column settles at
+exactly 14rem and can never shrink below it. Desktop was fixed; the
+narrow case was untouched.
+
+**Second gotcha, caught only by measuring**: fixed layout takes column
+widths from the **first row only** — the `<thead>` row. `coverage.html`
+puts `.coverage-title-col`/`.coverage-transcript-col` on the `<td>`s
+alone, so setting `width` through those classes did measurably
+*nothing* (both columns came out 183px, an even split of the leftover).
+The widths had to move to `th:nth-child(n)`.
+
+Measured before/after at 375px: before, the table was 489px
+(31/123/224/111) inside a 327px container — 162px of horizontal scroll,
+with the Transcript column at x 402-513, entirely outside the visible
+24-351 strip; reproduced identically on the live
+`redtaperecordings.com/coverage`. After: at 320/375/768/1280px the table
+fits exactly, `documentElement.scrollWidth === clientWidth` throughout,
+and the desktop title column is *wider* than before (254px vs. the old
+224px cap).
+
+`#fullCoverageTable` verified untouched — still `table-layout: auto`,
+still scrolling inside its own `.table-responsive`. Scoping is by id, so
+`/state/{slug}`'s `.coverage-table` is unaffected too.
+
+Two secondary defects surfaced mid-verification and were fixed in the
+same PR: clipping headers under fixed layout also ate the `::after` sort
+arrow (the only cue the columns are sortable), and "Government" is a
+single unbreakable word wider than its column at phone sizes.
+Click-to-sort re-confirmed working.
+
+**Known scope boundary, deliberately not filed as a bug:**
+`/state/{slug}`'s table shares `.coverage-table` but carries none of the
+column classes, so it never had this bug — and is not covered by this
+fix either. It was not exercised in the browser.
+
+**The entry as it stood:**
+
+- **[JUST-DO-IT] `[EASY]` `/coverage`'s "Every place we've covered"
+  table is too narrow — the Transcript column gets cut off, forcing
+  horizontal scroll.** Fix: narrow the "Example meeting"/"Transcript"
+  columns in `archive/templates/coverage.html`'s `.coverage-table`
+  styling, shrink the `#` column.
+
+---
+
+### 4. The best-effort "we think the video is here" line is dropped when a real video plays (WO-43, #307)
+
+**The entry named the wrong file.** The user-facing string is emitted in
+`app/static/player.js`, not `generic_fallback.py`.
+
+Of the entry's two options, **(b) drop the line** was chosen, and not as
+a cop-out — **(a) had nothing to substitute in**:
+
+1. The line renders *directly above the working player*
+   (`#videoSourceGuess` precedes `#videoSection` in
+   `app/templates/meeting.html:15`). On Sebastopol it wrapped to two
+   lines and pushed the playing Vimeo embed down the page in order to
+   restate it.
+2. **No human-facing URL exists to show.** Resolved live, all three real
+   shapes are machine artifacts: a Vimeo embed shell, a YouTube embed
+   shell (`youtube.com/embed/{id}` — never prettier, just less obviously
+   wrong), and a raw CDN `.mp4`. There is no nicer version of
+   `otv.ocfl.net/otv/BCC2026/BCC071626/BCC071626AA.mp4`. (a) would mean
+   threading a new field through `ResolvedMeeting` and every delegation
+   hop to print a URL that in one of three cases cannot exist.
+3. **The "link out to the source page" value already exists one line
+   up.** The meta block renders `View original source ↗` from
+   `data.source_url`, and `_try_delegate_to_known_platform()`
+   deliberately resets `source_url` back to the *city's own page*. (a)'s
+   claimed benefit is already delivered by a better line.
+
+The branch was extracted out of `init()` into
+`renderBestEffortVideoPointer(data)` with three explicit cases — the old
+`data.video_url || !data.video_link` resolved the both-set case by
+accident. Six of the seven new jsdom tests use real live-captured
+`/api/resolve` payloads; the seventh is commented as synthetic per
+`CLAUDE.md`.
+
+Verified in-browser across six real pages, including two **negative
+controls that must not change**: Birmingham MI (tier-5 pointer) and Palm
+Beach County FL (nothing found) render identically, as does Jacksonville
+FL (Granicus, not best-effort, 2,177 segments). The three affected pages
+— Sebastopol CA (Vimeo), Tarrant County TX (YouTube), Orange County FL
+(media scan) — lost the line with the player untouched.
+
+`README.md`'s best-effort UI paragraph and `generic_fallback.py`'s class
+docstring both claimed the line renders unconditionally; both corrected.
+`base.py:285` and `vimeo.py:13` describe the *tier-5 pointer*, which
+still exists, and are correctly unchanged. `npm test` 34 → 41.
+
+**The entry as it stood:**
+
+- **[JUST-DO-IT] `[EASY]` `generic_fallback.py`'s "we think the video is
+  here" line shows the raw embed URL, which is sometimes ugly
+  (2026-08-21, WO-29).** E.g. Sebastopol CA's page shows a bare Vimeo
+  player URL rather than the human `vimeo.com/{id}` one — pre-existing
+  behavior for every delegated best-effort result, just newly visible
+  now that Vimeo delegations exist. Fix: either show the delegated
+  adapter's own human-facing URL, or drop the pointer line when a real
+  playable `video_url` was found.
+
+---
+
+### 5. The tier-3 queue held 52 damaged URLs, not one — and the entry's own attribution was wrong (#308)
+
+**1,403 lines scanned → 52 bad (3.7%) → 43 repaired, 9 removed → 1,390
+lines.** By platform: IQM2 28 (19 repaired / 9 removed), Swagit 7/7/0,
+CivicClerk 6/5/1, ClerksHQ 4/4/0, eScribe 4/2/2, CivicWeb 1/1/0,
+PrimeGov 1/1/0, ChampDS 1/0/1. Cablecast, TownHallStreams, Legistar and
+Granicus were clean.
+
+**The entry's Orinda attribution was wrong** — verified directly against
+the file. Line 8 is a *complete* iqm2 URL ending `&Mode=Video`; Orinda's
+eScribe row is line 888 and is intact. The line genuinely ending `&Me`
+is 1044, `cityga.iqm2.com` — itself a truncation of `brookhavencityga`.
+
+**Root cause found, and it is not the feeder script.**
+`feed_tier3_auto_transcription.py` is clean (it only pops from the head
+and rewrites the remainder). The damage came in with **the Wayback/CDX
+sweep appended in PR #185**: those URLs were scraped out of *rendered
+page text*, so they carry exactly what text-wrapping does to a long URL
+— query strings cut mid-parameter (`…&Me`, `…&MediaPositi`,
+`…&CssClas`), **hostnames chopped off the front** (`cacityca.iqm2.com`
+for `santamonicacityca.iqm2.com`), soft hyphens injected mid-token
+(`santamon-icacityca`), and HTML/escape leftovers (`&amp`, `&quot;`,
+`%5C`, `%0A`, `%0D`, zero-width joiners).
+
+**Why it stayed invisible for months** — the fact worth remembering:
+IQM2, Swagit and CivicClerk all **wildcard their DNS**, so a chopped
+hostname still answers. IQM2 serves a generic "Accela Meeting Portal"
+page — an identical 4,562-byte body — for *any* unknown tenant. So a
+mangled row resolved to *something*, yielded no video, and looked
+exactly like a meeting that had aged out. A DNS check finds nothing;
+that 4,562-byte fingerprint was the discriminator.
+
+Truncated hostnames are also invisible to structural URL checks, so a
+purely syntactic scan would have missed **15 of the 52**. Each was
+re-identified by matching the fragment as a verbatim suffix of a real
+tenant and confirming the meeting id resolved there. Every repair was
+verified **twice** — a live fetch returning real meeting content, then a
+real `finder.resolve()` through this repo's own adapters: **43/43
+resolve with correct titles**.
+
+**Guard**: `tests/test_transcription_queue_files.py` (22 tests) fails
+the build on this whole class of damage in *both* queue files — dangling
+`?`/`&`, `&amp`/`&quot` leftovers, percent-encoded control characters,
+query strings cut mid-parameter, doubled slashes, duplicates, and
+per-platform id shape for IQM2/eScribe/CivicClerk. Shape-only by design:
+it asserts nothing about liveness, which needs the network and changes
+underneath. The Granicus queue file passes unmodified.
+
+**A trap avoided, worth recording**: Swagit has a legitimate date-based
+URL form (`/videos/05192021-1054/59/`, 3 rows) that resolves fine — a
+naive "numeric id only" rule would have deleted real meetings.
+
+**The entry as it stood:**
+
+### `tier3_auto_transcription_queue.txt` holds at least one genuinely truncated URL `[NEEDS-AUDIT]`
+
+Orinda, CA's queue entry (line 8) is cut off mid-query-string —
+confirmed via `od -c` the line genuinely ends `...&Me\n` in the file
+itself. Distinct from the separately-flagged iqm2/ClerkBase dead-list
+rows (those never had a real ID/params at all) — this one had the rest
+of a real query string and lost it. Single confirmed instance; worth a
+broader scan of the queue file for other implausibly-short lines.
+
 ## Viebit's `VideoObject` JSON-LD said `contentUrl` for an iframe embed page — plus a CI guard against the drift that caused it [Done 2026-08-22]
 
 The second of the entry's "two structural mislabels". The first half
@@ -1892,7 +2290,12 @@ CDN just as hard as one that succeeded.
 (`ffmpeg timed out after 45s`, `Server returned 404`) is logged
 Archive-side by `extract_and_store()` and the script points there. Worth
 plumbing through only if the host grouping turns out not to be enough
-once a real sweep's failure set exists.
+once a real sweep's failure set exists. **[Closed 2026-08-22, WO-42 /
+#305]** — the trigger was met (the sweep left 179 undiagnosable
+failures) and the reason is now threaded all the way through to the
+script's output. See this file's Ship-next-wave entry, item 2; plumbing
+it also exposed a real latent bug, the sweep recording *skips* as
+permanently stuck.
 
 Tests: `tests/test_backfill_meeting_cards.py` drives the sweep against a
 fake in-memory Archive that reproduces the two real queue behaviours

@@ -389,6 +389,21 @@ under everything else. This repo extracts and fixes just that part.
   any write occurred), but the failure mode if forgotten is a worktree
   session silently reading — or writing test data into — a real shared
   database it has no business touching.
+  **`DATABASE_URL` is not the only var with this shape — two more were
+  confirmed live 2026-08-22 while verifying UI work from worktrees.**
+  (1) **`ARCHIVE_BASE_URL` cwd-walks the same way**: a locally-run
+  resolver picked up the *production* Archive from the shared `.env`,
+  which short-circuited `/api/resolve` into an archive redirect, so the
+  resolver's own page never rendered and the "before" measurements were
+  silently meaningless. Set it explicitly alongside `DATABASE_URL`
+  whenever you run the resolver to look at a page. (2) **Running
+  `archive.main:app` standalone serves no stylesheet at all** —
+  `base.html` links `/archive-static/style.css`, which only exists when
+  the resolver proxies — so an unstyled local page will happily give you
+  confident, wrong CSS measurements. Mount it in a scratchpad wrapper
+  (no repo change) and re-measure; local then matches production
+  exactly. Both cost a full round of bad measurements before being
+  noticed, and neither fails loudly.
 - **Never `grep`/`cat`/`Read` a gitignored file (`.env`, credentials,
   anything matching `.gitignore`) with a pattern broad enough that a
   secret's plaintext value could end up echoed into the conversation.**
