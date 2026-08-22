@@ -6,6 +6,756 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Moved out of BACKLOG.md by the WO-39 restructure [Done 2026-08-21]
+
+Six real writeups that had no existing entry here, plus two small
+closed-out confirmations. They were sitting in `BACKLOG.md` describing
+work that is finished — build logs for shipped infrastructure, a closed
+research investigation, and the shipped half of a feature whose open
+phases stay live. Moved verbatim, per this file's own "kept verbatim, not
+summarized" rule; residuals that are genuinely still open were split back
+out as live `BACKLOG.md` entries rather than travelling here with them.
+
+### Worker Render plan sizing, and `"tiny"`'s real quality against actual meeting audio [Done 2026-08-08 / 2026-08-16]
+
+Resolved for real 2026-08-08 after two live OOM crashes, then re-opened
+and closed again 2026-08-16 when the follow-on Napa investigation turned
+out to have nothing to fix. The live residual this left behind — a real
+`"base"`-at-900s memory measurement, never taken — is noted at the end.
+
+On-demand transcription was built 2026-08-08 — see this file's own
+2026-08-08 build entry for the full build/verification detail. First real deploy attempt (also 2026-08-08)
+immediately crash-looped on a missing `pydantic` dependency in
+`worker/requirements.txt` — fixed, and see that same file's follow-up
+entry for the methodology lesson (a shared local dev venv can hide a
+missing-package bug that only surfaces once a service is actually
+deployed with its own real, isolated dependency set). Confirmed by that
+same deploy: `worker/Dockerfile` **does** build successfully on Render —
+one item below is resolved as a result.
+
+**~~ffmpeg/ffprobe availability on the resolver service is
+unverified.~~ Confirmed live 2026-08-08.** A real `POST` to
+`/api/transcription/check-feasibility` against a live Granicus URL
+returned `{"ok": true, "duration_seconds": 27073.36, ...}` — the plain
+`runtime: python` Render buildpack already has `ffprobe` on `PATH`, no
+`runtime: docker` switch needed after all.
+
+**~~Render worker plan sizing is a guess.~~ Resolved for real 2026-08-08,
+after two live crashes, not one.** First real deploy OOM-killed on
+`plan: starter` (512MB) loading the original `"small"` model default.
+Switched to `"tiny"`, sized from local measurement -- but that
+measurement was only against a ~9-second synthetic clip (~382MB), and
+the **second** real deploy OOM-killed too, on a genuine 900-second
+(15-minute) real meeting chunk. Real lesson, not just a bigger number:
+`faster-whisper`'s memory usage scales substantially with audio
+*duration*, not just model size -- a short-clip measurement was
+actively misleading. Real curve, measured directly against real
+Fountain Valley clip 607 audio, `"tiny"` model, one duration per
+process:
+
+| duration | peak RSS |
+|---|---|
+| 0s (imports only, no model) | ~67MB |
+| ~9s (synthetic) | ~382MB |
+| 60s | ~454MB |
+| 180s | ~615MB |
+| 300s | ~814MB |
+| 900s (the real chunk size that crashed) | ~1421MB |
+
+Even 60s only clears 512MB by ~58MB -- too thin to trust, and shrinking
+further toward "safe" starts costing a full adapter re-resolve (RSS
+feed, agenda viewer, etc.) every ~30-45 seconds of audio, which is both
+slow and a real risk of getting rate-limited by the government source
+for hammering it that often. **Resolution: upgraded the worker's Render
+plan to Standard (2GB RAM, $25/mo)**, not shrinking chunks further --
+`900s` chunks at ~1421MB fit that with real (~600MB) margin, confirmed
+by the measurement above, not another guess. `TRANSCRIPTION_CHUNK_SIZE_
+SECONDS` (`app/main.py`) never needed to change once the plan did.
+
+**`"tiny"`'s real quality against actual meeting audio: assessed
+2026-08-08, real errors found, not just "approximate but fine."** Job 1
+(Cupertino, 2 chunks) completed successfully end-to-end and was mostly
+accurate on substance (real terms like "Form 8038-G" came through
+correctly), but a full read-through of the transcript found two
+distinct real problems, not hypothetical ones:
+- **A meaning-changing mistranscription**, not just noise: `"Okay, so
+  that, that is this meeting, this meeting is a joke."` at 25:28 --
+  almost certainly "this meeting is adjourned," misheard as "a joke."
+  Puts a fabricated sentence in a real named official's mouth on a
+  permanent public page — a real reputational-risk failure mode, not
+  just lower search-match quality.
+- **A hallucination loop**: `"If it doesn't jump."` repeated five times
+  in a row at 22:34-22:43 — a known Whisper failure mode where the
+  model free-associates on quiet/unclear audio instead of stopping,
+  not a real utterance at all.
+
+Two fixes made in response (2026-08-08): (1) a visible disclaimer now
+renders on any `source="transcribed"` version (`archive/templates/
+meeting_page.html`) — previously **no UI anywhere distinguished a
+self-transcribed version from a real scraped caption**, so a
+hallucinated sentence like the one above read exactly as authoritative
+as an official caption; (2) `worker/transcription_engine.py` now passes
+a short government-meeting-vocabulary `initial_prompt` to
+`faster-whisper` (explicitly includes "adjourned"), aimed at exactly
+this failure mode. Neither fix is a guarantee — worth re-checking
+quality on the next real job now that the prompt's in place, same as
+this check was itself the first real one. `"base"`'s real memory curve
+at realistic chunk durations
+(as opposed to the same misleadingly-short 9s clip that under-predicted
+`"tiny"`'s real cost) is still unmeasured -- deliberately not attempted
+in the same pass as the plan upgrade, to change one variable at a time
+after two live crashes. Worth a real `"base"`-at-900s measurement as
+its own follow-up once `"tiny"` is confirmed working end-to-end on the
+new plan, not stacked on top of an unconfirmed fix.
+
+**A second, distinct manifestation of the same hallucination failure
+mode found live 2026-08-12** (County of Napa, Board of Supervisors
+2026-06-02:
+[/m/county-of-napa-2026-06-02-board-of-supervisors-on-2026-06-02-9-00-am-final-suppl](https://redtaperecordings.com/m/county-of-napa-2026-06-02-board-of-supervisors-on-2026-06-02-9-00-am-final-suppl)),
+reported by the user as "meeting is in English but the transcript is in
+Spanish." Read through the actual segments: the meeting genuinely is in
+English throughout (real content from ~9:02 onward, e.g. a whole LGBTQ+
+Pride Month proclamation, transcribes correctly) — the `en (transcribed)`
+label itself is correct, langdetect isn't the bug here. The real defect
+sits earlier, 0:00–8:57: the transcript reads as a long stretch of
+"Testing one, two, three." repeated ~17 times, then several lines of
+fabricated Spanish-*looking* text with no real-world referent —
+`"donde es el de dependimiento no es todo eso es un futuro en la
+secuencia de una sección"`, `"¿Como se no le pumping? ¿Se puede ser un
+mal."` **Initially assumed (wrongly) to be Whisper free-associating over
+dead air/a mic test — corrected by the user 2026-08-12, who confirmed
+people are actually speaking real content throughout that whole
+stretch, i.e. this is ~0% transcription accuracy against real speech,
+not a quiet-audio hallucination loop.** That reopens the root-cause
+question rather than closing it: two real, untested possibilities, not
+one confirmed one —
+(1) genuinely poor source audio for this stretch specifically (heavy
+noise/echo/crosstalk/low mic gain) that the `"tiny"` model can't get a
+usable signal from even though real speech is present, or
+(2) an extraction bug: `extract_chunk_audio()`
+([app/platforms/media_probe.py](app/platforms/media_probe.py)) pulling
+the wrong audio stream/offset/a corrupted segment for this specific
+chunk, so what Whisper actually receives for 0:00–8:57 doesn't
+faithfully represent the real speech happening in the source recording
+at all. **Neither is confirmed** — telling them apart needs someone to
+actually listen to the extracted chunk audio itself (not just read the
+transcript output, which is all that's been checked so far) against the
+real meeting recording for that same time range. The `vad_filter`
+fix proposed in the original write-up of this entry assumed silence and
+is likely the wrong fix if it's actually (1) or (2) — VAD only skips
+non-speech spans, so it wouldn't touch a chunk with continuous real
+speech in it. Don't build a fix here until the audio itself has been
+checked. Same "verify against a
+real example" convention as everywhere else in this file.
+
+**Update 2026-08-12: user has now listened to it directly — very clear
+audio, no noise/echo/crosstalk.** That rules out hypothesis (1)
+(genuinely poor source audio the model can't parse) and points at (2),
+an extraction bug specific to this chunk — though note the user listened
+to the source recording itself, not the transient chunk audio file
+`extract_chunk_audio()` actually hands to Whisper (deleted after
+processing, inside `worker/main.py`'s `tempfile.TemporaryDirectory`
+block — nothing to inspect after the fact today). Since the source is
+confirmed clean, the next real step if anyone picks this up is to
+reproduce one real chunk locally (same `extract_chunk_audio()` call,
+same 0:00–900s range, same real source URL) and actually listen to *that
+file* before it gets deleted — if it's also clean, the bug is in
+faster-whisper's handling of this chunk (parameters, first-chunk
+cold-start behavior, `MEETING_VOCABULARY_PROMPT` biasing it toward a
+wrong track somehow); if it's already corrupted/garbled/wrong-content at
+that point, the bug is in extraction (wrong stream, bad seek offset,
+transcoding artifact), not in Whisper at all.
+
+**Update 2026-08-12: reproduced directly, root cause is now a real,
+well-evidenced extraction bug, not a Whisper problem.** Ran the exact
+production media URL (`archive-stream.granicus.com/OnDemand/.../
+napa_10ae7709-....mp4/playlist.m3u8`, pulled from the live page's own
+embedded video URL) through the same `extract_chunk_audio()` ffmpeg
+invocation the worker uses, then transcribed the result with the same
+`faster-whisper` "tiny" model/prompt/`beam_size` `worker/
+transcription_engine.py` uses — this reproduced the *exact* reported
+symptom locally: "Testing one, two, three" (and the Spanish-sounding
+gibberish after it) from 0:00 through ~508s, then a clean, correct
+transition into the real Pride Month proclamation content around
+555–570s, matching the "~9:02" real-content start already reported live.
+Three concrete findings rule out both original hypotheses and point at a
+specific new one:
+- **Not silence/quiet audio**: `ffmpeg`'s `volumedetect` on the 0–508s
+  "bad" region measured `mean_volume: -32.3 dB`, essentially identical
+  to the confirmed-real-speech 570–600s region's `-31.3 dB` — real
+  audio energy is present throughout, not silence a VAD filter would
+  have caught.
+- **`ffmpeg` itself warns during extraction**, independent of `-ss`
+  placement (reproduced identically with `-ss` before *and* after
+  `-i`, ruling out a bad seek offset specifically): `"Queue input is
+  backward in time"` / `"Application provided invalid, non
+  monotonically increasing dts to muxer"`, repeated dozens of times —
+  real evidence the underlying HLS segments this specific
+  `archive-stream.granicus.com` "OnDemand" VOD serves have
+  non-monotonic/overlapping timestamps, not that `extract_chunk_audio()`
+  is asking for the wrong offset.
+- **The hallucinated phrase repeats at suspiciously mechanical ~30-second
+  intervals** (0, 30, 60, 90, ... 480s — confirmed via local
+  re-transcription, not eyeballed) — real organic speech doesn't repeat
+  identically on a metronome; this is much more consistent with
+  something in the HLS segment sequence itself looping or duplicating a
+  short real segment (plausibly a genuine pre-broadcast mic-check
+  recording — "Vamos a hacer una prueba... Testing one, two, three" is
+  real, meaningful audio content, not noise) than with either a clean
+  signal or true silence.
+
+**Closed 2026-08-16.** Both the proposed ffmpeg fix and the underlying
+bug were tested for real, and there was never anything to fix in
+`extract_chunk_audio()` at all — full three-check writeup in this file's
+own "Napa VOD "Testing 123" hallucination" entry, which supersedes the
+2026-08-16 update this entry used to carry inline.
+
+### Worker daily activity report — build log [Done 2026-08-21]
+
+**Worker daily activity report, added 2026-08-21.** `GET /internal/
+send-worker-daily-report` (Archive service) emails a 24h digest
+(chunks completed, jobs finished, segments transcribed) plus a current-
+queue snapshot (active jobs, remaining chunks, meetings with no
+transcript, tier-3 queue remaining) — see README.md's matching entry
+for the full design and why it needed one new table
+(`WorkerReportSnapshot`, a single overwritten row) rather than a Render
+log-parsing script: `chunks_completed` has no per-chunk timestamp
+anywhere in the schema, so a real 24h delta needs *some* stored
+reference point, and diffing against a DB snapshot avoids introducing
+a brand-new Render API key + log-pagination dependency this repo
+doesn't otherwise have, for a number that's already implicit in
+existing columns. Triggered by `.github/workflows/
+worker-daily-report.yml`, a plain `curl` ping — same "GitHub Actions
+never touches Resend credentials directly" pattern
+`/admin/send-search-alerts` already established, not a new script with
+its own copy of `RESEND_API_KEY`.
+
+**First real manual trigger (same day) found a real bug the test suite
+couldn't catch**: `crud.get_transcription_queue_summary()`'s
+`segments_added_last_24h` query used `jsonb_array_length()`, but
+`TranscriptVersion.segments` is a plain SQLAlchemy `JSON` column
+(Postgres `json`, not `jsonb`) — a real 500 in production,
+`UndefinedFunctionError: function jsonb_array_length(json) does not
+exist`. Fixed to `json_array_length()`. This specific branch is
+Postgres-only and dialect-gated to `None` on SQLite by design, so
+nothing in `tests/test_worker_daily_report.py` (SQLite fixture DB)
+could have caught it — the mistake only surfaced by actually curling
+the route against real production, confirming this file's own "verify
+against a real case, don't guess" convention applies to reporting
+endpoints too, not just adapters.
+
+**Live-verified working end to end after the fix, 2026-08-21, same
+day**: real manual trigger (`workflow_dispatch`) against production
+returned `{"sent": true, "summary": {"active_jobs": 1,
+"remaining_chunks_in_active_jobs": 1,
+"cumulative_chunks_completed_all_time": 2986,
+"cumulative_jobs_completed_all_time": 281, "jobs_completed_last_24h":
+34, "segments_added_last_24h": 90441, "backlog_no_transcript": 638,
+"tier3_queue_remaining": 1630}}` — a real Resend send, real numbers,
+`json_array_length` computing correctly. First scheduled run is
+23:40 UTC tonight; this manual trigger already exercised the exact
+same code path, so that run is expected to succeed too, not a new
+unknown.
+
+### Second transcription worker, and the hourly bulk-queue driver — build log [Done 2026-08-21]
+
+The residual this left open — a real auto-generation TOCTOU race that
+returns the moment a third auto-gen-enabled worker exists — is recorded
+in `render.yaml`'s own comment on the second service block and in
+`CLAUDE.md`'s matching bullet.
+
+**Second transcription worker added for backlog catch-up, 2026-08-21 —
+residual auto-gen TOCTOU gap now recorded, not fixed at the DB layer.**
+`render.yaml` now defines a second `type: worker` service
+(`rtr-transcription-worker-2`) alongside the original, to work down the
+~1600+ archived-but-untranscribed meeting backlog faster. It's a real,
+distinct service block (not `numInstances` on the original) specifically
+because Render gives every `numInstances` replica of one service block
+IDENTICAL env vars, and this pair needs to differ in exactly one:
+`AUTO_TRANSCRIPTION_REQUESTER_EMAIL` is deliberately left unset on the
+new service.
+
+**Why that one omission matters.** `claim_next_chunk()`
+(`archive/db/crud.py`) already uses `FOR UPDATE SKIP LOCKED` and is
+genuinely safe for any number of concurrent worker processes — confirmed
+by reading its own docstring, no code change needed there. The real,
+separate race lives in idle-time auto-generation:
+`maybe_generate_auto_job()` → `find_auto_transcription_candidate()` (a
+plain, unlocked SELECT) → `create_transcription_job()`'s own separate,
+unlocked "does an active job already exist for this page" check-then-
+insert, no unique constraint or row lock guarding it. Two worker
+processes both idle at the same moment — which happens routinely once
+the queue trickles down to empty — and both configured with a real
+`AUTO_TRANSCRIPTION_REQUESTER_EMAIL` could both pass that check for the
+same candidate page before either commits, creating two duplicate
+low-priority jobs. Confirmed downstream cost: `report_chunk_result()`'s
+completion path creates a new `TranscriptVersion` with no content-hash
+dedup against a same-source in-flight duplicate (unlike `/internal/
+ingest`'s push path, which does dedupe by hash) — real wasted compute
+and two completion emails, though `promote_transcript_version()` still
+cleanly settles on one final default version, so it's wasteful, not
+data-corrupting.
+
+**This is avoided by construction here, not fixed at the DB layer**:
+leaving `AUTO_TRANSCRIPTION_REQUESTER_EMAIL` unset on the second worker
+means its own `maybe_generate_auto_job()` always short-circuits
+(`worker/main.py`, `if not AUTO_TRANSCRIPTION_REQUESTER_EMAIL: return
+False`) and never reaches `create_transcription_job()` — the race is
+structurally impossible on this specific pair. **A future third
+auto-gen-enabled worker (or setting that var on this second one) would
+reintroduce it immediately** — the real fix, if this pattern needs to
+scale past two workers, is a unique partial index / row lock in
+`create_transcription_job()`'s existing-job check, not another
+env-var-omission trick. Not built now since it's not needed at N=2 with
+this specific split.
+
+**Bulk backlog concurrency**: `scripts/bulk_queue_transcription_
+backlog.py` (new) pulls candidates from the existing `GET /internal/
+transcription-backlog` and creates up to 8 `TranscriptionJob` rows per
+run via `POST /internal/transcription/create-job` at the newly-exposed
+`priority=PRIORITY_LOW` (that field was added to
+`TranscriptionCreateJobRequest` — previously only `worker/main.py`'s own
+direct in-process call could ever use that tier). 8, not closer to
+`MAX_CONCURRENT_TRANSCRIPTION_JOBS=15`, deliberately leaves ~7 slots free
+so a real live visitor's own transcription request never hits
+`too_many_active_jobs` during the catch-up window, and LOW priority
+means any such real request still jumps the queue ahead of already-queued
+backlog jobs at the very next claim, regardless of how full the batch is.
+**Live-verified 2026-08-21, same day**: a manual run against production
+created 4 brand-new jobs (482/483/484/485) and correctly deduped a 5th
+candidate onto an already-in-progress job (476) instead of duplicating
+it; watching both workers' real Render logs directly confirmed the
+no-collision design end to end — worker-2 claimed job 476's chunk 4,
+hit a real (unrelated) ffmpeg timeout, released the claim, and worker-1
+picked up the same chunk 3 seconds later and completed it; worker-2 then
+picked up newly-created job 482 once the manual push landed. Two
+distinct `job_id`s `in_progress` at once, confirmed live, not just in
+theory.
+
+**Runs hourly now, not manually**: `.github/workflows/bulk-queue-
+transcription-backlog.yml` (added 2026-08-21, same day) — the first
+manual run above also confirmed worker-2 sits genuinely idle for
+multi-minute stretches between whenever someone happens to re-run this
+by hand, which defeats the point of having a second worker. Hourly is
+safe because of the same two properties noted above:
+`create_transcription_job()`'s server-side dedup (a page with an
+already-active job is a no-op, not a duplicate) and the
+`too_many_active_jobs` early-stop, so this can't pile up an
+ever-growing queue between runs. New repo secret:
+`AUTO_TRANSCRIPTION_REQUESTER_EMAIL` (Settings → Secrets and variables
+→ Actions), same address as the Render-side env var of the same name.
+Tied to the backlog catch-up window this second worker exists for —
+revisit the cadence (or disable the workflow) once this backlog figure
+is worked down.
+
+### Tier-3 feed rate raised to match real two-worker throughput [Done 2026-08-21]
+
+**Tier-3 feed rate raised to match real two-worker throughput,
+2026-08-21 — real measurements, not a guess.** Real scope, checked
+live: 644 meetings on the site have no transcript
+(`/meetings?has_transcript=false`, paged through in full), 562 of
+those are currently eligible candidates (447 HLS, 91 direct MP4, 20
+YouTube — only ~3.6% blocked on the separate residential-IP caption
+path, 3 MP3), and a separate 1,630-URL tier-3 *discovery* queue
+(`scripts/tier3_auto_transcription_queue.txt`) hadn't even reached the
+Archive yet. At the old feed rate (12 pages/6h = 48/day,
+`feed_tier3_auto_transcription.py`), draining that 1,630-entry queue
+would've taken **~34 days** just to get the pages *into* the Archive —
+regardless of how fast either worker could transcribe, since a page
+isn't a transcription candidate until it's a real `MeetingPage` row.
+Meanwhile real production measurements the same day showed each
+worker processing a real 900s chunk in ~180-200s (**~5x realtime**,
+~10x combined for both), and a real 25-page sample of this exact queue
+averaged ~70 minutes/meeting at an 88% feasibility rate — so the old
+feed rate was the actual bottleneck, not worker capacity, by roughly
+4-5x. Raised `BATCH_SIZE` 12 → 48 (192/day) in
+`feed_tier3_auto_transcription.py` — sized to roughly match, not
+wildly exceed, the two workers' real combined throughput; see that
+script's own docstring for the full math. Estimated result: ~8.5 days
+to feed the full 1,630-entry queue at the new rate, with the two
+workers keeping pace with it rather than idling on a starved queue —
+call it **~9-10 days for the whole combined backlog** (644 already-live
++ 1,630 tier-3) at current throughput, not the ~34+ days the old
+mismatch implied. Real quality caveat carried over from the "tiny"
+model findings above still applies to all of this — quantity isn't the
+only axis that matters here, and speed doesn't change the existing
+quality tradeoffs already documented. Revisit if either side's real
+throughput changes materially (worker plan/model-size/count change, or
+this platform mix's real average duration turning out different at a
+larger sample size).
+
+### Accounts phase 1 — the Clerk pivot, the build, and the superseded original auth design [Done 2026-08-11]
+
+Phases 2-6 are genuinely open and stay in `BACKLOG.md`, along with the
+one real compliance gap phase 1 left behind (the `user.deleted` →
+`saved_items` purge has never been fired end to end). What moves here is
+the shipped history: why Clerk instead of a hand-rolled magic-link
+system, what phase 1's scope actually was, the production cutover, the
+second-round UI pass, and the original design the pivot superseded.
+
+**Accounts + token billing — scoping started 2026-08-10, per the
+user's explicit go-ahead ("start scoping," not "start building").
+Phase 1 build actually started the same day, on a dedicated branch
+(`accounts-clerk-phase1`) — see below.** Needed for paid features
+(already alluded to in adapter warning messages) and as a
+prerequisite for email alerts below.
+
+**Auth pivot, same day: Clerk, not a hand-rolled internal auth
+system.** The paragraph below (passwordless magic-link + a
+self-issued `AccountSession` cookie) was the original design and is
+now **superseded** — the user explicitly weighed the tradeoff
+("I'm kind of leaning away from becoming a security expert") and
+chose a third-party auth provider instead. Real reasons, not just
+preference: Clerk gives prebuilt login UI, session handling, and
+built-in account-deletion flows for free; it keeps user email/PII
+entirely off this app's own database (a real privacy-posture
+improvement — the new `SavedItem` table is keyed only by Clerk's
+opaque user id, never an email); and its session JWT can be verified
+**locally by both services independently** (no shared signing secret
+to manage, no internal HTTP round-trip needed to check "is this
+visitor logged in" on the hot-path pages), which turned out to be a
+*simpler* fit for this app's two-separate-databases architecture than
+the original self-issued-cookie design, not just a safer one. Stripe
+(for billing, phase 5 below) and Resend (email) are unchanged.
+
+**Phase 1 scope, decided via direct questions, unchanged by the Clerk
+pivot:** accounts + saving meetings/searches to your own account
+only — no public profile pages, no visibility toggles, no posts/
+reposts, no subscriptions/notifications, no billing yet. Account
+creation auto-subscribes to the existing Resend newsletter audience
+(via a `user.created` Clerk webhook). A **non-goal, explicitly
+designed and tested for**: nothing existing is gated behind login —
+every route works identically for an anonymous visitor; the only
+changes are purely additive "Save this meeting"/"Save this search"
+buttons that appear if (and only if) a real session is present.
+
+New table: `SavedItem` (`clerk_user_id`, `item_type` —
+`saved_meeting`/`saved_search` — `meeting_page_id` nullable FK,
+`search_params` nullable JSON, `created_at`) in `archive/db/models.py`
+— stays in Archive's DB (not `app/db`) since it needs a real
+same-database FK to `MeetingPage.id`. No `Account`/`AccountSession`
+tables at all anymore — Clerk owns that state entirely.
+
+**Status as of 2026-08-11: merged to `main` and live in production**
+(PR #5), on a real Clerk **production** instance (custom-domain DNS
+verified in Namecheap, Google OAuth credentials configured) rather
+than the development instance staging used. Getting production
+actually working surfaced three real bugs, all found via live
+production debugging and now fixed — see BACKLOG_DONE.md's
+"Clerk production cutover" entry for the full incident writeup
+(base64 padding, a CSS specificity bug, and a malformed
+`CLERK_JWT_KEY`). All routes/tables/webhook/frontend wiring built,
+413 tests passing. Live-verified end to end on production with the
+user's own real account: sign-up (both Google OAuth and email-code),
+session verification, and `/account/saved` correctly showing saved
+items instead of the signed-out prompt. A follow-up UI polish pass
+(nav, button sizing/prominence, `/account/saved` layout, a bookmark
+icon next to the meeting title) landed the same day as the merge,
+live-verified locally first.
+
+**Second round, same day: a large backlog-cleanup pass surfaced
+several more real UI/UX bugs and a sign-in/sign-out redirect saga**
+(nav "Sign in"/"Get Updates" flash-on-load, saved-search filter
+display, meeting-row title wrap, a source-transcript disclaimer with
+a pop/glow pointer, and — after three rounds of Clerk's own
+documented redirect options proved unreliable live — a client-side
+forced-return safety net in `shared_static/clerk_nav.js`, plus
+dropping the transcribe-form's inline sign-in shortcut entirely per
+the user's call once that saga made clear it wasn't worth the
+complexity there specifically). See BACKLOG_DONE.md for the full
+detail on each. 425 tests passing.
+
+**Original design below, kept for its still-valid parts.** The auth-
+mechanism paragraph immediately following this one is superseded (see
+above); the `Note`/`NoteSubscription` social-layer design, the phased
+plan, and the open questions still describe the real plan for phases
+2+ once phase 1 ships.
+
+~~**Proposed auth mechanism: passwordless, email-only — not round 1's
+Google OAuth/JWT.** `archive/utils/email.py` already has a working,
+live-verified confirm-by-email pattern (`send_confirmation_email()` +
+`TranscriptionJob.confirmation_token`, built for on-demand
+transcription) — accounts should extend this exact mechanism (a magic
+link, one-time token, no password ever stored) rather than
+introducing a second, heavier auth system. Matches `CLAUDE.md`'s own
+framing of round 1's real mistake: building full auth/accounts before
+validating the core feature, not that accounts themselves were wrong
+— the fix isn't "build auth more carefully," it's "build the smallest
+auth that actually works," and this app already has proof that
+pattern works (Resend audience-membership skip-confirmation is
+already live and confirmed working end-to-end). Session: a signed,
+httponly cookie holding an opaque session id checked against a new
+`AccountSession` row — no JWT needed, since this is one service
+issuing and checking its own sessions, not a distributed multi-service
+handoff.~~ Superseded by the Clerk pivot above.
+
+### Census-table baseline validation of all 649 archived jurisdictions [Done 2026-08-15 through 2026-08-16]
+
+Every finding from this audit is now closed except one — the
+mid-word-truncation signal it proposed is still unbuilt, and stays live
+in `BACKLOG.md` under "Jurisdiction extraction & backfill" with the
+headline numbers and the "trim must always be gated on bleed signals"
+rule intact. Everything below is the closed-out per-bullet history.
+
+**Census-table baseline validation of all 649 archived jurisdictions
+(2026-08-15, workstream 1 of `JURISDICTION_METADATA_PLAN.md`) — new
+confirmed findings beyond the two adapter bugs below.** Numbers: 510
+valid as-is, 73 reachable by longest-valid-prefix trim, 44 not in
+table, 22 blank. The trim bucket splits cleanly on a tail-sanity check
+(lowercase prose/roman numerals/digits in the discarded tail): 16 true
+bleed cases (every one a correct repair — Hercules, Boston, Fort
+Worth...) vs 57 legitimate long entities where trimming would *destroy*
+a correct name ("Lake Washington School District" → "Lake", "Bay Area
+Headquarters Authority" → "Bay") — so trim must always be gated on
+bleed signals, never applied bare. Three bleed cases the current
+signals miss (Sarasota/Hollywood/Hampton — Title-Case/ALL-CAPS bleed);
+a mid-word-truncation signal (tails ending "the Tex", "servic",
+"Standa" — the regex's own 40-char cap cutting words in half) would
+catch all three. Specific new bugs found, each verified against the
+data, all unfixed:
+- ~~**Granicus's wordninja subdomain-humanization fallback produces
+  confident garbage on acronym subdomains**~~ **Fixed 2026-08-16, wave
+  2 item 8 — full detail in `BACKLOG_DONE.md`.** (~15 archived rows):
+  "Ride Uta" (rideuta), "La Usd" (lausd), "Ccs F" (ccsf), "Pcb Gov"
+  (pcbgov), and the best one: **"S Fw, MD" from `sfwmd`** — the South
+  Florida Water Management District's trailing "md" misread as a
+  Maryland state suffix. `_humanize_subdomain()` now declines (rather
+  than guessing) via the new public
+  `jurisdiction_enrich.validated_subdomain_extract()`, which checks the
+  raw unsplit subdomain against the Census tables first and validates
+  wordninja's split output after. Not yet re-resolved against the
+  ~15 already-archived rows above (this fix only changes future
+  resolves) — worth a bulk re-check same as the other stale-archive
+  cases in this file. A second, distinct failure mode in the same
+  fallback (user's correction 2026-08-15) is fixed by the same change:
+  **"Gales Burg" from `galesburg`** — not an acronym at all, but
+  wordninja *over-splitting* a real one-word city name that validates
+  against the Census table untouched ("galesburg" is literally already
+  a valid places.csv key, Galesburg IL/MI/ND) — the new raw-label-first
+  check catches this too.
+  **Two more real confirmed examples, found 2026-08-15 scanning all 501
+  rows of the live `/coverage` "Every place we've covered" table for
+  outliers (see the new entry below on that table being a real, useful
+  QA surface):** `psrc2.granicus.com/player/clip/1001` → jurisdiction
+  "Psr C 2" (Puget Sound Regional Council — a real acronym-named
+  regional agency, not a Census place, same shape as `sfwmd`/`rideuta`
+  above) and `loswegok12.granicus.com/player/clip/903` → "L Oswego K
+  12" (Lake Oswego School District, OR — same class as the already-
+  flagged "townships/school districts aren't in the places table"
+  gap above, compounded by the acronym-humanization bug here).
+- **Two pages store a literal date as the jurisdiction** ("July 21,
+  2026", "August 11, 2026") — source adapter not yet traced. **Checked
+  2026-08-16 (WO-16): no longer reproducible.** A fresh full scan of
+  production `/coverage` (843 rows, up from 649 at the original audit —
+  fetched live via `curl`, not guessed) found zero jurisdiction values
+  matching a plain "Month Day, Year" shape, and neither exact date
+  string appears anywhere in the page. Most likely explanation: these
+  were Granicus/eScribe bleed cases the same shape as the ones WO-14
+  fixed (a "City of X" match running on into unrelated agenda date
+  text), incidentally closed by that fix or a peer session's parallel
+  work rather than independently root-caused here. Not claiming this as
+  a verified fix — the original two URLs were never recorded and
+  `baseline_validation.csv` no longer exists in any session's
+  scratchpad, so there's no way to confirm *why* they're gone, only
+  that they are. Worth watching for a recurrence next time this kind of
+  scan is run, not reopening speculatively now.
+- ~~**`app/utils/jurisdiction_data/places.csv` is missing every Census
+  "(balance)" consolidated city**~~ **Fixed 2026-08-15 — full detail in
+  `BACKLOG_DONE.md`.**
+- ~~**"Saint"↔"St." normalization gap**~~ **Fixed 2026-08-16 —
+  `app/utils/jurisdiction_enrich.py`'s `_table_lookup()` now also tries
+  a `_contract_saints()` candidate ("Saint"/"Sainte" → "St."/"Ste.",
+  the reverse of the existing `_expand_abbreviations()`, needed because
+  a direct grep confirmed the Census table stores this one family
+  abbreviated — 148 real "St. " rows, zero "Saint " rows — unlike
+  Fort/Mount/North/South/East/West, all stored spelled out) and a
+  `_strip_okina()` candidate (Hawaiian ʻokina/apostrophe variants —
+  "Kauai County" in-table vs "Kauaʻi County" on pages). New tests in
+  `tests/test_jurisdiction_enrich.py`.
+- ~~**Townships/county-subdivisions aren't in the places table at
+  all**~~ **Fixed 2026-08-16 (WO-16) — full detail in
+  `BACKLOG_DONE.md`, including a real new collision this surfaced**
+  (a genuine, obscure "Oshawa Township, MN" now shares a name with the
+  much-better-known Oshawa, ON — a real, if narrow, structural
+  limitation of the whole validate-against-Census-tables approach,
+  documented rather than fixed since it doesn't actually corrupt the
+  stored jurisdiction text, only its internal confidence tag — see the
+  `BACKLOG_DONE.md` entry for why).
+- **One Canadian jurisdiction** (Elliot Lake, ON — eScribe) — the
+  tables are US-only by construction. **Checked 2026-08-16 (WO-16): no
+  live bug found.** Directly tested `finalize_jurisdiction()` against
+  "Elliot Lake"/"Elliot Lake, ON" shapes — both correctly grade
+  `"unverified"` (kept as-given, not rejected, not force-fit to a wrong
+  US state) and `enrich_jurisdiction_text()` doesn't attempt a
+  wrong-country ZIP/domain lookup either. `"unverified"` is
+  `JurisdictionResult`'s own documented correct category for "a real
+  entity type no national table covers" (school districts, MPOs, and —
+  per this finding — non-US jurisdictions generally), and
+  `jurisdiction_confidence` is explicitly a diagnostic-only field with
+  zero UI surface (`JURISDICTION_METADATA_PLAN.md`), so there's no
+  user-visible symptom to fix. The "exemption flag" this bullet
+  originally asked for would matter for a future re-run of the
+  Census-baseline *validation audit script* specifically (so Elliot
+  Lake doesn't inflate its "not in table" count) — that script itself
+  no longer exists in any session's scratchpad to extend, so left as a
+  note for whoever rebuilds it next, not a runtime code change.
+- **Validation caught one subtly wrong stored name**: "Bainbridge, WA"
+  — the real WA city is Bainbridge *Island*; plain "Bainbridge" only
+  exists in GA/IN/NY/OH, so the table's state-mismatch flag was
+  correct, not noise.
+
+Full per-row detail: `baseline_validation.csv` in this session's
+scratchpad; regenerate any time via the script logged in
+`JURISDICTION_METADATA_PLAN.md`'s workstream 1.
+
+### Wayne County, MI's Akamai block — root-caused, then closed by the headless escalation [Done 2026-08-14]
+
+Kept because the root-cause detail is more specific than the
+generic-fallback rebuild entry's one-line summary of it ("a block-family
+status (Wayne County's real Akamai 403)"), and because the "is this
+Akamai reacting to fingerprint or to origin IP" distinction is the kind
+of thing that gets rediscovered from scratch.
+
+**Wayne County, MI's own meeting-listing site
+(`waynecountymi.gov`) — user-reported 2026-08-13, root cause confirmed
+to be a fetch-level block, not a parsing gap.** Real example:
+[waynecountymi.gov/.../Wayne-County-Commission-January-8-2026](https://www.waynecountymi.gov/Government/Elected-Officials/Commission/Committees/Full-Commission-Meetings/2026/Wayne-County-Commission-January-8-2026)
+(calendar/listing page:
+[.../Full-Commission-Meetings](https://www.waynecountymi.gov/Government/Elected-Officials/Commission/Committees/Full-Commission-Meetings)).
+Prod currently shows a bare "Meeting" — no title, no jurisdiction, no
+video, no agenda — even though, per the user, the page has all of it:
+a plain "Video" link to `youtu.be/RFwXrAzkXR8`, an agenda PDF, and a
+header reading "Wayne County Commission - January 8, 2026" that the
+URL slug also spells out.
+
+**Confirmed via a real browser (`mcp__Claude_Browser__*`) that every
+one of those is real, static, server-rendered content** — no JS
+needed to see it: `<title>Wayne County Commission - January 8, 2026 -
+Wayne County, Michigan</title>`, a plain `<a href="https://youtu.be/
+RFwXrAzkXR8">Video</a>`, and a plain `<a href=".../agenda2026-0108.pdf">
+Agenda2026-0108.pdf</a>`. This is exactly the shape
+`generic_fallback.py`'s priority-1 path (a plain linked YouTube video)
+and `_find_agenda_link()` (a same-page `<a>` whose text contains
+"agenda") are already built to catch — so the empty prod result isn't
+a missing-pattern gap like the Sebastopol/Tarrant entries above.
+
+**Root cause instead: the site's own edge/WAF blocks the fetch itself.**
+A plain `curl` with the same Chrome `User-Agent`
+`generic_fallback.py` already sends returned a 403 with a literal
+Akamai `Access Denied` / `errors.edgesuite.net` body (~550 bytes, no
+page content at all) — and `resolve()`'s `response.raise_for_status()`
+(`generic_fallback.py:149`) turns that straight into a raised
+exception, caught generically in `app/main.py`'s `/api/resolve`
+handler (`except Exception as e:` around line 358) and surfaced as an
+empty best-effort result with nothing populated — matching the "bare
+'Meeting', no video, no jx, no agenda" symptom exactly. A real browser
+(real TLS/JS/cookie behavior) gets through fine; a plain server-side
+`aiohttp`/`curl` request does not. Not the same failure mode as the
+YouTube-caption-fetch IP block noted elsewhere in this file (that one
+is Render's cloud IP specifically vs. a residential one); this looks
+like Akamai Bot Manager reacting to the request's fingerprint rather
+than its origin IP, though that's not independently confirmed here.
+
+Not fixed this pass — logged per this repo's "new bugs/gaps found
+while working go in BACKLOG.md" convention. If this turns out to
+affect other government sites (Akamai is a common CDN/WAF for larger
+county/state sites), a shared retry-via-headless-browser fallback for
+a confirmed-blocked fetch would fix all of them at once rather than
+a Wayne-County-specific patch — but only one example exists so far,
+so not worth generalizing yet.
+
+**Ruled out, not the same root cause as the Sebastopol UA fix below**:
+re-checked live 2026-08-13 after bumping `generic_fallback.py`'s UA to
+a modern Chrome string (see `BACKLOG_DONE.md`) — this page is still
+fully blocked with the new UA too, confirming Akamai's block here isn't
+simply reacting to the old Chrome/91 string the way Sebastopol's WAF
+was. A deeper fingerprint check (TLS/JA3, cookies, JS challenge) or a
+genuinely different WAF product, not yet isolated.
+
+**Update 2026-08-14: the headless-browser escalation this entry asked
+for is now built AND enabled in prod.** Full detail in
+`BACKLOG_DONE.md`'s rebuild entry: a block-family status (this page's
+real Akamai 403 was the trigger it was built against) escalates to one
+real-Chromium fetch, whose rendered HTML re-runs the same diagnosis.
+Verified locally flag-on against this exact live page (resolves fully:
+real youtu.be video + agenda PDF + real title). The operational
+precondition — playwright actually working on Render — was then
+verified for real the same day (a fresh, never-archived Minneapolis
+LIMS meeting, `MarkedAgenda/COW/6144`, resolved fully through
+production; LIMS has no non-browser path, so that's direct proof —
+closing `render.yaml`'s open build question from the 2026-08-09
+incidents), and `GENERIC_FALLBACK_HEADLESS=1` was committed to
+`render.yaml`'s resolver env block (a literal value, not a secret).
+
+### Two small confirmations closed out on 2026-08-08 [Done 2026-08-08]
+
+**~~Resend's contact-lookup-by-email endpoint is unverified.~~ Confirmed
+live 2026-08-08.** A real request from an existing newsletter subscriber
+(`mroconnell@gmail.com`) correctly skipped the confirm-by-email step and
+went straight to `queued` — proof `archive/utils/email.py`'s
+`check_audience_membership()` and Resend's `GET /audiences/{id}/
+contacts/{email}` endpoint shape both work as written, not just
+degrading safely on failure.
+
+**~~Completion email's "share this" ask has no real "support us" CTA
+behind it~~ — moot as of 2026-08-11: the ask itself is gone.** The
+completion email's copy was fully rewritten that day to match
+`marketing/LIFECYCLE_EMAILS.md`'s approved "Your transcript's ready"
+copy (see `BACKLOG.md`'s "Lifecycle-triggered transactional emails" entry),
+which doesn't include a forward/share line at all. If a real "support
+us" ask gets built later (once accounts/billing exist — see `BACKLOG.md`'s
+"Accounts + token billing" entry), it'd need to be added back as new copy against that
+doc's now-current version, not restored as it was.
+
+### A non-default `TranscriptVersion` is findable in this site's own search, and pickable in the UI [Done 2026-08-08 / 2026-08-12]
+
+The remaining half — a demoted version's text still being invisible to
+*external* search — stays live in `BACKLOG.md` under "Roadmap &
+strategy".
+
+**~~A non-default `TranscriptVersion` is invisible to internal
+search~~ — fixed 2026-08-08.** Confirmed by reading the actual code,
+prompted by asking whether a scraped caption and an AI transcript
+could both be shown/found once a meeting has both. The version-picker
+UI already existed for *viewing* both (`archive/templates/
+meeting_page.html`'s `.version-picker`, a `?version=` link list, not JS
+tabs — `promote_transcript_version()` never deletes the version it
+demotes), but `archive/db/crud.py`'s `list_pages()` (the `/meetings`
+search backing) used to join `TranscriptVersion` filtered to
+`is_default.is_(True)` only, so a demoted version's text was never
+matched by a keyword search. Fixed: `list_pages()` now runs a second
+query (only when a keyword search is active, same as before) pulling
+*every* version's segments per candidate page, and matches against the
+concatenation of all of them — still one result row per page, not one
+per version, since a viewer searching `/meetings` wants to find the
+meeting, not pick a version from search results. The display-facing
+columns (language/has_transcript badge) are unchanged, still sourced
+from the default version only. Verified with a new test
+(`tests/test_list_pages_search.py`, real DB: ingest a version with a
+unique keyword, promote a second version over it demoting the first,
+confirm `list_pages(keyword=...)` still finds the page). Full suite
+green (116 tests).
+
+**The UX half shipped 2026-08-12, per the user's own simpler call —
+the SEO/external-search half is explicitly still open, by choice.**
+The user re-requested a real placement/interaction change (a picker
+near the Download Text/SRT links, not a separate block above the whole
+transcript section) and, when offered the bigger all-versions-in-DOM
+JS-tabs redesign originally proposed here, explicitly opted out of it:
+alternate versions don't need to be independently searchable, and
+don't need to track playback live without a reload. What shipped
+instead: `.version-picker` is now a `<select>` dropdown (a macro,
+`version_picker()`, in `meeting_page.html`) positioned inline with the
+Download line, submitting a plain GET form to `?version={id}` — the
+same full-page-reload-per-version mechanism as the old link list, just
+restyled and repositioned, so `data-version-id`/deep-link
+time-tracking against the newly active version work unchanged (no
+changes needed to `shared_static/deep_link.js` at all). Verified live:
+seeded a real two-version test page, confirmed the dropdown shows both
+versions, selecting the non-default one reloads to `?version=2` with
+that version's own segments, download links, and `data-version-id` all
+updating together. Full suite green (440 tests).
+
 ## WO-34: roll-up caption duplication fixed across every adapter, and whole-transcript language voting [Done 2026-08-21]
 
 Two fixes, bundled because both live in `app/utils/vtt_parser.py`.

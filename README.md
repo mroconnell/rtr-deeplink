@@ -976,8 +976,8 @@ worker can afford.** `worker/`'s `faster-whisper` model size is forced
 down to `"tiny"` by Render's 2GB worker plan (real OOM crashes on
 `"small"`, not a quality choice — see `worker/transcription_engine.py`'s
 own docstring), and `"tiny"`'s real accuracy against actual meeting audio
-has two confirmed failure modes documented in `BACKLOG.md`'s "On-demand
-transcription" section (a meaning-changing mistranscription, and a
+has two confirmed failure modes documented in `BACKLOG_DONE.md`'s "Worker
+Render plan sizing" entry (a meaning-changing mistranscription, and a
 near-total transcription failure on a real stretch of English speech). A
 local Mac isn't under that ceiling, so `scripts/transcribe_backlog_
 locally.py` works the archived-but-untranscribed backlog
@@ -1161,13 +1161,15 @@ below for real dollar/compute figures), and email confirmation (a one-click
 click-through the first time) is the intentional middle path between
 "fully open" and "requires a real account" — real friction against abuse
 without putting a login wall in front of the app's single costliest
-feature. See `BACKLOG.md`'s "Accounts + token billing" section for the
-broader account/billing thinking this sits alongside.
+feature. See `BACKLOG.md`'s "Accounts + token billing — phases 2-6" entry
+(under "Roadmap & strategy") for the broader account/billing thinking
+this sits alongside.
 
-One real, open UX gap while we're at it: the "Save this meeting"/"Save
-this search" buttons render for every visitor regardless of sign-in
-status. An anonymous click today just silently no-ops (a 401 the frontend
-doesn't surface) rather than prompting sign-in — see `BACKLOG.md`.
+(This paragraph used to flag an open UX gap — the "Save this meeting"/
+"Save this search" buttons rendering for signed-out visitors. That
+premise was investigated 2026-08-13 and turned out to be **false**: both
+templates have gated on `{% if active_account %}` since the first
+accounts commits. Corrected here 2026-08-21; see `BACKLOG_DONE.md`.)
 
 **Why Clerk, not a hand-rolled session system.** The user explicitly chose
 a third-party auth provider over building/maintaining login, sessions, and
@@ -1711,8 +1713,8 @@ city-YouTube-channel fallback, see the Legistar row above**, along with
 the same pattern on Philadelphia, Baltimore and Albuquerque —
 Chicago ELMS's now-unblocked API
 samples, new unsupported vendors like Cablecast/IQM2/CivicWeb, etc.)
-were folded into `BACKLOG.md`'s "Platform coverage — open questions"
-section at the same time, which is the actual durable record to check
+were folded into `BACKLOG.md`'s "Platform & jurisdiction coverage" and
+"Dormant" sections at the same time, which are the durable record to check
 before starting adapter work. Four of that survey's items (Cablecast/
 Detroit, Aurora, CivicWeb, Viebit) were picked up and actually shipped
 2026-08-12 — see the "Supported platforms" table above for what's real

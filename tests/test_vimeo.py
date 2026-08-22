@@ -13,7 +13,15 @@ the full investigation:
 - `oembed_chicago_1210310337.json` -- the video behind Chicago ELMS's own
   2026-07-16 Budget Committee meeting, reached via a showcase URL.
 - `showcase_crrma.html` -- one of El Paso, TX's 13 per-body showcases
-  (Camino Real Regional Mobility Authority).
+  (Camino Real Regional Mobility Authority). **Secret-scan note**: this
+  fixture contains two copies of a JWT, because Vimeo's own page embeds
+  one. It is NOT a credential of ours and never was -- decoded, its claims
+  are `scopes: "public"`, `user_id: None`, `team_user_id: None`, Vimeo's
+  own `app_id` 58479, and `exp` 1787356800 (2026-08-22), so it is an
+  anonymous public-scope token that has since expired. Recorded here so
+  nobody has to re-derive it during a future secret scan; leave it in
+  place, since the fixture is a real unmodified capture and editing it
+  would break that guarantee.
 - `channel_coscouncil.html` -- Salisbury, NC's channel listing page.
 
 What is NOT tested here, deliberately, because it does not work: caption

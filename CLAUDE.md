@@ -19,7 +19,8 @@ phase-1 accounts work only started once the core resolve/transcript/
 Archive features were already built, tested, and live, and even then
 stayed deliberately narrow (accounts + saved items only, via Clerk rather
 than a hand-rolled session system, holding zero user PII in this app's
-own database). See `BACKLOG.md`'s "Accounts + token billing" section for
+own database). See `BACKLOG.md`'s "Accounts + token billing — phases 2-6"
+entry (under "Roadmap & strategy") for
 what's still ahead (profiles, saved-search alert emails, billing) and
 `BACKLOG_DONE.md`'s "Clerk production cutover" entry for the real
 incidents hit switching from a Clerk development instance to production —
@@ -112,6 +113,18 @@ under everything else. This repo extracts and fixes just that part.
   item left behind a real residual gap (a follow-up not yet built, an
   edge case still unfixed), split that part back out as its own live
   entry in `BACKLOG.md`, cross-linking to `BACKLOG_DONE.md` for context.
+  **`BACKLOG.md`'s sections are ordered by actionability, not by
+  subsystem (WO-39, 2026-08-21)** — read that file's own header before
+  filing into it; it carries the routing rule for which section a new
+  entry belongs in. The subsystem buckets it replaced (`Bugs`, `Platform
+  coverage`, `Archive roadmap`, `On-demand transcription`) failed
+  measurably: four sections held ~79% of a 5,400-line file, mixed open
+  bugs with finished work, and hid three real user-visible bugs near the
+  bottom until an audit went looking. **Its `Standing decisions` section
+  is the one to read before "fixing" anything** — it collects decisions
+  already made *against* doing something (declined alerting, filters
+  deliberately not widened, overrides to leave alone), which used to sit
+  scattered at depths of 500-4,900 lines and got rediscovered repeatedly.
 - **A PR that ships a feature must update every doc that named it as
   unbuilt, and the PR description must list which.** `README.md`,
   `BACKLOG.md`, and this file all describe real, current gaps — a PR that
@@ -386,7 +399,7 @@ depending on anything else.
 strategy, research, and marketing for Red Tape Recordings are worked on in
 `~/Documents/rtr-business` (its own CLAUDE.md, task backlog, and topic
 folders, plus a linked Claude.ai Project). Product *roadmap* items still
-live here in `BACKLOG.md`'s "Archive roadmap" section, next to the
+live here in `BACKLOG.md`'s "Roadmap & strategy" section, next to the
 constraints that shape them — that workspace reads them rather than
 duplicating them. Keep code work in this repo and business work there; don't
 let either drift into the other.

@@ -240,8 +240,10 @@ Two new findings, both since promoted and removed from here: the Render
 account-wide build-pipeline spend-limit hit (confirmed resolved by Ryan
 directly, 2026-08-20 — no BACKLOG.md entry needed since it was closed the
 same day, no residual action) and the Sentry PYTHON-FASTAPI-R
-corrupt-audio-chunk worker bug (promoted into `BACKLOG.md`'s "Bugs"
-section 2026-08-21 — see that file for the full write-up).
+corrupt-audio-chunk worker bug (promoted into `BACKLOG.md` 2026-08-21,
+then fixed the same day as WO-25 — full write-up in `BACKLOG_DONE.md`;
+its one residual, a tail-truncated chunk still passing the decodability
+guard, is live under `BACKLOG.md`'s "Open bugs" section).
 
 ## 2026-08-21
 
