@@ -768,10 +768,13 @@ pre-fix workload reached ~85% of even the 2 GB limit, i.e. ~15%
 headroom. Post-fix baseline is ~7-10%, so the headroom is real *now*,
 but it comes from the fix, not from the plan.
 
-**Method note:** the narrow 3-hour range originally asked for returned
-an empty graph; widening to the whole day is what produced readable
-data. Worth doing by default on Render's metrics tab rather than
-concluding the data isn't retained.
+**Method note, corrected:** the narrow range first tried returned an
+empty graph, which briefly looked like a retention limit. It wasn't —
+**Render's custom range field is `HH:MM:SS`**, and `6:12 AM` entered as
+`00:06:12` parses as six minutes past midnight. The same slip happened
+again on the logs tab before it was spotted. Retention was never the
+problem (14 days are available); the range was just pointing at the
+wrong hour. Enter `06:12:00`, not `00:06:12`.
 
 ## Sentry: a real raised exception does land in the dashboard — all three services confirmed [Done 2026-08-22]
 
