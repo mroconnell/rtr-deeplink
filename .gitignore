@@ -8,3 +8,4 @@ venv/
 node_modules/
 .claude/settings.local.json
 local_transcription_backups/
+scripts/meeting_card_backfill_state.json

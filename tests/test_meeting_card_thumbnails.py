@@ -360,6 +360,32 @@ async def test_backfill_lists_only_extractable_pages_without_a_default():
     assert not any(s.endswith("youtube-card-test") for s in slugs)
 
 
+async def test_backfill_offset_pages_past_the_head_of_the_queue():
+    # WO-37: an extraction that fails stores nothing, so the page stays a
+    # candidate forever at the newest-first head. Without `offset` a
+    # fixed-`limit` sweep would re-attempt the same stuck pages on every
+    # call and never reach another one. Asserted relationally (the whole
+    # list vs. the same list from an offset) rather than against absolute
+    # positions, because this suite's SQLite file is shared across test
+    # modules and other tests add candidate pages of their own.
+    for i in range(3):
+        await _make_m3u8_page(f"card-backfill-offset-{i}")
+
+    def _slugs(offset: int) -> list:
+        response = archive_client.post(
+            f"/internal/thumbnails/backfill?limit=500&offset={offset}",
+            headers={"Authorization": "Bearer test-token"},
+        )
+        assert response.status_code == 200
+        assert response.json()["offset"] == offset
+        return [c["slug"] for c in response.json()["candidates"]]
+
+    everything = _slugs(0)
+    assert len(everything) >= 3
+    assert _slugs(2) == everything[2:]
+    assert _slugs(len(everything)) == []
+
+
 def test_backfill_is_token_gated():
     # 404 rather than 401/403, same posture as every other /internal/* route.
     assert archive_client.post("/internal/thumbnails/backfill").status_code == 404

@@ -1355,14 +1355,54 @@ since validators and scrapers fetch it. At most 2 extractions run at
 once, a failing source is retried at most once every 6 hours, and none of
 that can delay a response.
 
+**Warming the pages nobody has viewed.** New pages warm at ingest and old
+ones warm on first view — which leaves every page nobody has loaded since
+2026-08-21 imageless indefinitely. A real dry run that day measured that
+backlog at **1705 pages** (59% `archive-stream.granicus.com`, then
+iSiLIVE, IQM2 and CivicPlus). `scripts/backfill_meeting_cards.py` sweeps
+them:
+
+```bash
+python scripts/backfill_meeting_cards.py                  # read-only survey: how many, which hosts, how long
+python scripts/backfill_meeting_cards.py --apply          # the real sweep, resumable
+python scripts/backfill_meeting_cards.py --apply --max-batches 3   # a bounded first run
+```
+
+It drives `POST /internal/thumbnails/backfill` in small batches, pausing
+between them, and is safe to Ctrl-C and re-run. Two different things make
+that true, and the second is the whole reason the script exists:
+
+* A page that gets a frame **leaves the queue**
+  (`crud.list_pages_missing_default_thumbnail()` filters on "has no
+  default thumbnail"), so a restart never redoes finished work.
+* A page whose extraction **fails** leaves no trace, so it stays a
+  candidate forever — and since the queue is newest-first, failures pile
+  up at its head until a fixed-`limit` caller can never reach a new page
+  again. Hence the endpoint's `offset` parameter and the script's local
+  record of known-stuck slugs (`scripts/meeting_card_backfill_state.json`,
+  gitignored): each round it re-reads the real head of the queue and
+  steps over the leading run of slugs it already knows are stuck. Delete
+  that file to give every stuck page another chance — a CDN timeout is
+  often transient.
+
+Per batch it reports attempted/stored/failed, the failing slugs grouped
+by media host, and an ETA recomputed from observed throughput; the
+per-page *reason* for a failure is in the Archive's own logs
+(`video_thumbnail`: `No card frame for page ...`). The raw endpoint is
+still there for a one-off:
+
 ```bash
 # Warm default frames for already-archived pages (dry_run defaults true)
 curl -X POST -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" \
-     "$ARCHIVE_BASE_URL/internal/thumbnails/backfill?limit=10&dry_run=false"
+     "$ARCHIVE_BASE_URL/internal/thumbnails/backfill?limit=10&offset=0&dry_run=false"
 ```
 
-**`ffmpeg` availability**: `GET /api/health` on the Archive now reports
-`media_tools` (the real `ffmpeg`/`ffprobe` versions on PATH, or `null`).
+**`ffmpeg` availability — answered, 2026-08-21**: `ffmpeg 5.1.9` and
+`ffprobe` are both really present on the Archive service, confirmed by a
+live `GET /api/health` against production. The resolver-side extraction
+fallback WO-28 documented in case they weren't is therefore not needed
+and was never built. `GET /api/health` reports `media_tools` (the real
+`ffmpeg`/`ffprobe` versions on PATH, or `null`).
 It's informational and never fails the check — Render gates deploys on
 this endpoint, and a service that serves every page but can't generate
 new thumbnails is healthy; those pages simply carry no `og:image`, which

@@ -1492,6 +1492,7 @@ async def meeting_card_image(
 @app.post("/internal/thumbnails/backfill")
 async def internal_thumbnails_backfill(
     limit: int = 10,
+    offset: int = 0,
     dry_run: bool = True,
     authorization: Optional[str] = Header(None),
 ):
@@ -1505,14 +1506,26 @@ async def internal_thumbnails_backfill(
     hand with a small `limit`, not something on a request path.
     dry_run defaults true, matching this file's read-only-first
     convention (see /internal/jurisdiction/backfill-apply).
+
+    `offset` pages past the head of the queue. It exists because a page
+    whose extraction fails keeps no record of that failure in the
+    database, so it stays a candidate forever and (newest-first) sits at
+    the front of every subsequent call -- enough of them and a fixed
+    `limit` sweep never reaches another new page. See
+    crud.list_pages_missing_default_thumbnail() and
+    scripts/backfill_meeting_cards.py, which drives this endpoint over
+    the whole archive and re-measures that stuck prefix each round.
     """
     if not _token_ok(authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
-    candidates = await crud.list_pages_missing_default_thumbnail(limit=max(1, limit))
+    candidates = await crud.list_pages_missing_default_thumbnail(
+        limit=max(1, limit), offset=max(0, offset)
+    )
     if dry_run:
         return {
             "dry_run": True,
+            "offset": max(0, offset),
             "candidates": [
                 {"slug": c["slug"], "video_url": c["video_url"]} for c in candidates
             ],
@@ -1525,9 +1538,21 @@ async def internal_thumbnails_backfill(
             video_url=candidate["video_url"],
             source_page_url=candidate["source_url"] or candidate["video_url"],
         )
-        results.append({"slug": candidate["slug"], "offset_seconds": offset})
+        results.append(
+            {
+                "slug": candidate["slug"],
+                # Carried through so a caller can group failures by media
+                # host without a second lookup -- the single most useful
+                # signal when a sweep starts failing (one CDN rate-
+                # limiting is a very different problem from scattered
+                # dead links).
+                "video_url": candidate["video_url"],
+                "offset_seconds": offset,
+            }
+        )
     return {
         "dry_run": False,
+        "offset": max(0, offset),
         "attempted": len(results),
         "stored": sum(1 for r in results if r["offset_seconds"] is not None),
         "results": results,

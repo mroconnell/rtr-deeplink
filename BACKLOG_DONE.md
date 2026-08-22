@@ -6,6 +6,122 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Meeting-card backfill driver: `ffmpeg` on the Archive confirmed, and the 1705-page card backlog made sweepable (WO-37) [Done 2026-08-21]
+
+Closes both halves of WO-28's `[HUMAN]` residual: whether `ffmpeg` is
+really on the Archive service, and how the already-archived pages that
+nobody has viewed ever get an `og:image`.
+
+### Half one: ffmpeg is there. The fallback architecture is not needed.
+
+`GET https://rtr-deeplink-archive.onrender.com/api/health` reports
+`media_tools: {"ffmpeg": "ffmpeg version 5.1.9-...", "ffprobe": "..."}`.
+The WO-28 entry laid out a fallback for `"ffmpeg": null` — extract
+resolver-side, ship the bytes with the ingest payload — and that is now
+formally unnecessary and was not built. The end-to-end path is confirmed
+too: a cold archived page has no `og:image`, and after one page view the
+lazy extraction runs and `/m/{slug}/card.jpg` returns a real ~57KB JPEG
+with `og:image` and `twitter:card = summary_large_image` present.
+
+### Half two: the backlog is 1705 pages, not ~1200
+
+Measured, not estimated — a real read-only dry run against production on
+2026-08-21. By media host:
+
+| Pages | Host |
+| --- | --- |
+| 1011 | `archive-stream.granicus.com` |
+| 188 | `cdn1.isilive.ca` (eScribe) |
+| 160 | `mediahttp.iqm2.com` |
+| 154 | `cpmedia.azureedge.net` (CivicPlus) |
+| 18 | `play.champds.com` |
+| ~170 | a long tail of per-city `*.cablecast.tv`, CloudFront, TelVue |
+
+### The bug this would have hit, and why `offset` had to exist
+
+The obvious implementation — call
+`POST /internal/thumbnails/backfill?limit=25&dry_run=false` in a loop, as
+the WO-28 entry suggested — **stalls permanently**, and it took reading
+`crud.list_pages_missing_default_thumbnail()` to see it rather than
+assuming it worked:
+
+* A page that gets a frame stored *leaves* the candidate set (the query
+  filters on "has no default thumbnail"), so successes never repeat.
+  That is what makes resumption nearly free.
+* A page whose extraction **fails** stores nothing at all. The only
+  record of the failure is `video_thumbnail._failed_at`, an in-process
+  dict with a 6-hour cooldown that dies with the dyno. So a failed page
+  stays a candidate forever, and because the queue is `created_at desc`
+  and a sweep walks newest-to-oldest, failures accumulate as a
+  *contiguous prefix* of every later response. Once enough of them fill
+  one `limit` window, every subsequent call returns the same stuck pages
+  and no new page is ever reached again. On a corpus that is 59%
+  Granicus — the platform whose `ffmpeg timed out` failures this repo
+  already documents as routine — that is a matter of when, not if.
+* Nor is re-attempting a failure cheap: `extract_and_store()` runs
+  `probe_duration()` *before* it checks the cooldown, so each retry costs
+  a fresh `ffprobe` (up to a 120s timeout) against a source that is
+  already known unreachable.
+
+So `POST /internal/thumbnails/backfill` gained an `offset` parameter
+(and `crud.list_pages_missing_default_thumbnail()` an `offset` argument,
+plus `MeetingPage.id.desc()` as an ordering tiebreaker so paging is
+stable when a bulk ingest gives many rows the same `created_at`). The
+real (non-dry-run) response now also echoes each page's `video_url`, so
+a caller can group failures by media host without a second lookup.
+
+### The driver: `scripts/backfill_meeting_cards.py`
+
+Dry-run by default (`--apply` opts in), same posture as the endpoint and
+as `scripts/backfill_jurisdiction_bleed.py`. Paced (`--sleep`, default
+10s between batches) and small-batched (`--batch-size`, default 5),
+because the endpoint extracts **sequentially** — its loop is one
+`await extract_and_store()` per candidate, so a batch costs the *sum* of
+its pages, ~4s each when a source behaves (WO-28's measured 3.1s ffprobe
++ 0.8s ffmpeg) and up to 165s when one doesn't.
+
+The resume mechanism is the interesting part, and it **measures rather
+than counts**. Each round the script re-reads the real head of the queue
+with a cheap `dry_run` call and skips only the *leading* run of slugs it
+already knows are stuck (`leading_known_failures()`), which is complete
+because previously-attempted pages necessarily form a contiguous prefix.
+A blind cursor would have been wrong in both directions: a stuck page
+that later succeeds (someone viewed it, a CDN came back) leaves the
+queue and would have made the cursor skip real work, and a page ingested
+mid-sweep joins at the top. Known-stuck slugs persist to a gitignored
+`scripts/meeting_card_backfill_state.json`, keyed to the Archive base URL
+they came from, so a restart doesn't re-`ffprobe` the same dead sources;
+deleting the file gives every stuck page another chance, which is worth
+doing once, days later.
+
+Operator output is built for the half-failed 2am case: per batch,
+attempted/stored/failed plus each failing slug and its media host; an ETA
+recomputed from *observed* throughput rather than a guessed per-page
+cost; and a closing summary naming the frontier offset it stopped at, the
+stuck-page count by host, and the exact fact that re-running the same
+command resumes. Three consecutive batch-level HTTP failures stop the run
+rather than hammering the Archive. One deliberate guard: if advancing the
+cursor doesn't change the observed head, the script concludes the Archive
+is ignoring `offset` (i.e. it is running a build older than this PR —
+FastAPI silently drops unknown query params) and aborts with that
+message instead of looping.
+
+**Known residual, small:** the endpoint reports a stored offset or
+`null` per slug, not *why* an extraction failed — the real reason
+(`ffmpeg timed out after 45s`, `Server returned 404`) is logged
+Archive-side by `extract_and_store()` and the script points there. Worth
+plumbing through only if the host grouping turns out not to be enough
+once a real sweep's failure set exists.
+
+Tests: `tests/test_backfill_meeting_cards.py` drives the sweep against a
+fake in-memory Archive that reproduces the two real queue behaviours
+(successes leave, failures stay), covering the no-stall path, resume
+across runs, `--max-batches`, mid-run state persistence, the give-up
+path, and the ignores-`offset` guard; `tests/test_meeting_card_thumbnails.py`
+covers the endpoint's `offset` relationally against the
+full candidate list. All offline — the suite's network-free property
+(conftest's `_no_real_card_extraction`) is untouched.
+
 ## WO-10 fully closed: resolver gets `preDeployCommand` too — and the "never stamped in prod" blocker turned out never to have existed [Done 2026-08-21]
 
 Closes the last open half of the WO-10 outage class (the one that

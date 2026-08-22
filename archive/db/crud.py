@@ -5086,7 +5086,9 @@ async def store_thumbnail(
         return True
 
 
-async def list_pages_missing_default_thumbnail(limit: int = 25) -> list[dict]:
+async def list_pages_missing_default_thumbnail(
+    limit: int = 25, offset: int = 0
+) -> list[dict]:
     """Pages with a real, extractable video and no default frame stored
     yet -- the work queue for POST /internal/thumbnails/backfill.
 
@@ -5095,6 +5097,19 @@ async def list_pages_missing_default_thumbnail(limit: int = 25) -> list[dict]:
     excluded in SQL (they already have a free i.ytimg.com thumbnail and
     their video_url is an embed URL ffmpeg cannot read) rather than
     fetched and filtered in Python.
+
+    `offset` exists for one specific reason (WO-37): a page whose
+    extraction *fails* never gets a default frame, so it stays in this
+    result set forever -- and since the ordering is newest-first and a
+    sweep works newest-to-oldest, those failures pile up as a contiguous
+    prefix. Without a way to page past them, a driver calling this
+    repeatedly with a fixed `limit` stalls completely the moment the
+    accumulated failures fill a whole window. Not a keyset cursor on
+    purpose: successful pages *leave* the set as they are extracted, so
+    the window slides on its own and the only thing an offset ever has
+    to skip is that stuck prefix -- which the caller re-measures against
+    real slugs each round rather than counting blind (see
+    scripts/backfill_meeting_cards.py's `leading_known_failures()`).
     """
     async with async_session() as session:
         if not await _thumbnails_available(session):
@@ -5125,8 +5140,9 @@ async def list_pages_missing_default_thumbnail(limit: int = 25) -> list[dict]:
                     ),
                     ~has_default,
                 )
-                .order_by(MeetingPage.created_at.desc())
+                .order_by(MeetingPage.created_at.desc(), MeetingPage.id.desc())
                 .limit(limit)
+                .offset(max(0, offset))
             )
         ).all()
         return [
