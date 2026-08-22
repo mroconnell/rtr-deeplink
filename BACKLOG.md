@@ -133,7 +133,7 @@ Platform & jurisdiction coverage  (26)
 
 Reliability, ops & cost  (9)
   `[HUMAN]` `[LOGIN]` Running out of Render *pipeline minutes* silently…
-  Media-source reliability  (2)
+  Media-source reliability### Media-source reliability  (2)
     `[NEEDS-AUDIT]` Some old/archived Granicus clips' `chunklist.m3u8`…
     `[NEEDS-AUDIT]` A single job still makes N consecutive same-host…
   Transcription queue & workers  (2)
@@ -1352,27 +1352,56 @@ all.
 **Current standing is not comfortable**: Workspace → Billing shows
 **812 / 1,000 pipeline minutes** used as of 2026-08-22.
 
-**Open question for Ryan, and the numbers don't reconcile without it:**
-if the workspace ran *out* (1,000/1,000) on 08-19, it cannot also be at
-812 on 08-22 unless the meter reset or the plan changed. Two candidates,
-and they imply very different burn rates:
-- **The billing cycle reset** around 08-19/20 — in which case 812
-  minutes in ~3 days is a ~8,000 min/month pace, i.e. this will
-  re-block deploys within days.
-- **The workspace tier changed** — which would also explain the
-  bandwidth allowance appearing as 25 GB when the 2026-08-18 alert
-  described 5 GB (see `BACKLOG_DONE.md`'s "Render bandwidth" entry).
-  Did you upgrade the workspace on/around 08-19?
+**Reconciled 2026-08-22 — Ryan confirmed the workspace was upgraded that
+day specifically to get pipeline minutes back.** So the meter didn't
+reset; the *cap* went up, and **812 / 1,000** is cumulative usage
+against the new cap. Straight-lining 812 minutes over 22 days of a
+31-day month projects **~1,145 minutes by month end — over the cap
+again, around 08-27/28.** The same upgrade explains the bandwidth
+allowance reading 25 GB when the 2026-08-18 alert described 5 GB (see
+`BACKLOG_DONE.md`'s "Render bandwidth" entry). Ryan's stated preference
+is to **downgrade again once build volume is efficient enough**, so the
+efficiency fix below is the actual goal, not the cap.
 
-Until that's settled the burn rate is unknown, so the useful action
-isn't a code change — it's **checking whether pipeline minutes are on
-track to run out again before the cycle ends**, and if so either raising
-the cap via "Manage spend on pipeline minutes" or cutting build volume
-(the auto-transcription queue PRs merge very frequently and each one
-triggers three builds; `render.yaml`'s `buildFilter.ignoredPaths`
-already exists for exactly this reason and may be worth widening).
+**The dominant driver, measured:** **43 commits since 2026-08-08 (14
+days, ~3/day) changed *nothing but* an auto-transcription queue file** —
+`scripts/granicus_auto_transcription_queue.txt` or
+`scripts/tier3_auto_transcription_queue.txt`, typically a 12-line
+deletion. Each one triggers a build on **all four** Render services.
+That's ~170 builds in two weeks for data-only commits, and none of the
+four services' `buildFilter.ignoredPaths` lists either file.
 
-### Media-source reliability
+**Why this isn't a one-line fix, and the trap to avoid:** the two files
+are *not* equivalent.
+- **`granicus_auto_transcription_queue.txt` is read only by
+  `scripts/feed_granicus_auto_transcription.py`**, which runs in GitHub
+  Actions, never on Render. **Safe to add to `ignoredPaths` on all four
+  services today.**
+- **`tier3_auto_transcription_queue.txt` is read at runtime by the
+  Archive** — `archive/main.py:438`'s `_TIER3_QUEUE_FILE` /
+  `_tier3_queue_remaining()`, which line-counts the file on disk for an
+  ops-report field, with a comment explaining it relies on the build
+  checking out the whole repo. Adding it to the Archive's
+  `ignoredPaths` would silently freeze that number at whatever the last
+  real deploy shipped — a stale stat nobody would notice. Safe on the
+  resolver and both workers; **not** on the Archive.
+
+**The cleaner fix, one step further:** `_tier3_queue_remaining()` is a
+line count standing in for "how many URLs are still queued." If that
+number came from the database instead of a tracked file, the Archive
+would no longer need the file at runtime at all, **both** queue files
+could be ignored across all four services, and `render.yaml`'s existing
+"keep this list identical across all four services" convention would
+stay intact rather than needing a per-service exception. Worth pricing
+that before taking the partial fix.
+
+**Also worth checking before assuming builds are the whole story:** four
+services rebuild on *every* non-ignored commit regardless of which
+service the change touches — a resolver-only change still rebuilds both
+transcription workers. Path-scoping each service's `buildFilter` to the
+directories it actually ships would cut more than the queue files do.
+
+### Media-source reliability### Media-source reliability
 
 #### `[NEEDS-AUDIT]` Some old/archived Granicus clips' `chunklist.m3u8` genuinely times out at Granicus's own origin (real 504, not a rate limit)
 
