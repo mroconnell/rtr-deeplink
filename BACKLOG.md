@@ -157,7 +157,7 @@ Trust, safety & data quality  (8)
     [HUMAN] `[BIG]` Fake/spoofed "government" pages and
     [NEEDS-AUDIT] Second real instance of the Fountain Valley-shaped
 
-Roadmap & strategy `[IMPROVEMENT-ROUND]`  (19)
+Roadmap & strategy `[IMPROVEMENT-ROUND]`  (21)
   `[IMPROVEMENT-ROUND]` `[BIG]` App-wide audit — see…
   Product direction & open strategic questions  (1)
     [IMPROVEMENT-ROUND] `[BIG]` "Feed cities" — should this app ever
@@ -170,10 +170,12 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (19)
     [IMPROVEMENT-ROUND] A generated, branded share card would beat a raw
     [IMPROVEMENT-ROUND] PDF agenda links are never rendered inline or
     [IMPROVEMENT-ROUND] Design reference for the cassette-reel button
-  Search & metadata quality  (4)
+  Search & metadata quality  (6)
     [IMPROVEMENT-ROUND] Tune `_VOCAB_SIMILARITY_THRESHOLD`
     [IMPROVEMENT-ROUND] Audit per-adapter coverage of `meeting_body`,
     [IMPROVEMENT-ROUND] Once `meeting_body` has real, strategic coverage
+    [IMPROVEMENT-ROUND] Transcript version picker: real option labels,
+    [IMPROVEMENT-ROUND] `[EASY]` The internal `TranscriptVersion.source`
     [IMPROVEMENT-ROUND] A demoted `TranscriptVersion`'s text is still
   Transcription quality & cost  (2)
     [IMPROVEMENT-ROUND] Per-meeting `initial_prompt` seeded with real
@@ -1627,6 +1629,71 @@ real work on shipped code rather than a plan.
   jurisdiction/agenda/transcript text but has no `meeting_body`-aware
   filter or facet. Low value until coverage is broad enough to actually
   narrow a real result set.
+- **[IMPROVEMENT-ROUND] Transcript version picker: real option labels,
+  and no analytics on it at all (2026-08-22, user's call to defer).**
+  Two halves, both deliberately split out of the `source="deduped"` work
+  (see `BACKLOG_DONE.md`) rather than built with it.
+
+  **(1) Labels.** `meeting_page.html`'s picker renders each option as
+  `{{ v.language|language_name }} ({{ v.source|source_label }})`, which
+  distinguishes versions only by language and provenance. That was
+  built for the real case it shipped against — Spanish captions vs. an
+  English AI transcript. `source="deduped"` buys one more axis, but two
+  versions sharing a language *and* a source still render identically.
+  Ryan's call 2026-08-22: the UI is "fine enough" for now, ship the
+  transcripts first. A date is the cheapest real fix (`TranscriptVersion`
+  already carries a timestamp, no schema change); a free-text label
+  column would read better and needs a migration.
+
+  **(2) No analytics.** Confirmed by grep 2026-08-22: the picker has
+  **zero** `trackEvent` calls, so there is no evidence about whether it
+  is ever seen or used. Three events worth having, in the house
+  `verb_noun` + small-params style (`video_play`, `save_meeting
+  {action}`, `resolve_result {status, platform}`):
+  - `transcript_version_available { count, active_source }` on load when
+    the picker renders. Answers "does anyone even see this?" — today it
+    only renders when `page.versions|length > 1`, a small population.
+  - `transcript_version_change { count, from_source, to_source }` on
+    selection.
+  - `transcript_version_viewed { is_default }` on load, read off the
+    `?version=` query param — a reliable denominator, since the picker
+    does a full page reload and a `change` event can be lost racing
+    navigation.
+
+  **Where the calls go — decided 2026-08-22, favouring reliability over
+  tidiness.** The `change` event fires **inline in the template**,
+  immediately before the existing `onchange="this.form.submit()"`, and
+  **the submit stays inline**: navigation must never depend on an
+  external JS file having loaded, and `window.trackEvent` is defined
+  synchronously in `base.html`'s `<head>` (with a no-op stub when
+  `GA_MEASUREMENT_ID` is unset), so an inline call is always safe. The
+  two *observational* load-time events go in `meeting_page.js` with the
+  other `trackEvent` calls — nothing user-facing waits on them. Leave
+  the `<noscript>` submit button alone; it is the no-JS path.
+
+  **Read the numbers with this caveat**, which is why it is written here
+  rather than discovered later: while both options render as
+  "English (sourced)", a low `transcript_version_change` rate means
+  readers could not tell the options apart, **not** that they don't want
+  alternate transcripts. Worth emitting a `label_ambiguous` param when
+  two options render identically, so that population can be segmented
+  out. Landing the events *before* the next batch of deduped versions
+  also gives a clean before/after on the availability count.
+
+- **[IMPROVEMENT-ROUND] `[EASY]` The internal `TranscriptVersion.source`
+  token is still the word "scraped" (raised 2026-08-22).** Ryan's
+  reaction on seeing it: "we should never say scraped — always sourced."
+  **No reader has ever seen it** — confirmed by grep the same day: every
+  template use of `.source` is a logic comparison, and the only render
+  path is `main.py`'s `source_label` filter, which has always mapped it
+  to "sourced". So this is a naming cleanup, not a user-facing bug. The
+  reason it wasn't done in the same pass: renaming the stored value is
+  an `UPDATE` over every `transcript_versions` row plus ~20 code sites,
+  which is exactly the migration the user ruled out for that PR. Do it
+  as its own change, with the data update and the code sites in one
+  deploy, or not at all — a half-renamed corpus is worse than either
+  end state.
+
 - **[IMPROVEMENT-ROUND] A demoted `TranscriptVersion`'s text is still
   invisible to external search.** The in-app half (this site's own
   `/meetings` search matches every version) and the UX half (a version

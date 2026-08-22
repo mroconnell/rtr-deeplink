@@ -3864,7 +3864,12 @@ async def get_full_jurisdiction_coverage() -> list[dict]:
         select(any_scraped_version.id)
         .where(
             any_scraped_version.meeting_page_id == MeetingPage.id,
-            any_scraped_version.source == "scraped",
+            # Not `== "scraped"`: any non-AI source counts as a real
+            # source-provided transcript, so a page whose only version was
+            # re-labeled (e.g. "deduped", 2026-08-22) keeps counting here.
+            # Same allowlist-to-fallback fix as meeting_page.html's
+            # disclaimer branch.
+            any_scraped_version.source != "transcribed",
             any_scraped_version.content_hash != _EMPTY_CONTENT_HASH,
         )
         .correlate(MeetingPage)
