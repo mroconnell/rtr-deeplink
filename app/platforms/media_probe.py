@@ -24,6 +24,7 @@ CivicClerk/eScribe/CA Legislature enforce anything similar.
 import asyncio
 import json
 import logging
+import re
 from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
@@ -31,6 +32,49 @@ from urllib.parse import urlparse
 logger = logging.getLogger("rtr_deeplink.media_probe")
 
 _SUBPROCESS_TIMEOUT_SECONDS = 120
+
+# ffmpeg prints its version banner -- version line, `built with`,
+# `configuration:`, and one line per lib -- to *stderr* before it does
+# anything, and none of it says a word about why a run failed. Real,
+# confirmed cost (BACKLOG.md): a chunk failure on a real 55-chunk
+# escribemeetings.com meeting was reported as
+# `ffmpeg exited 196: ibavformat 62.12.102 / 62.12.102` -- a truncated
+# version-banner line surfacing *as* the error, with the actual cause
+# pushed out of the window. Reproduced here 2026-08-22 with the real
+# ffmpeg on this machine (8.1.2, whose `libavformat 62. 12.102 / 62.
+# 12.102` line matches that string exactly): a failing extraction wrote
+# 1,101 bytes of stderr, of which ~630 were banner, so a `[-500:]` tail
+# spent nearly half its budget on it and started mid-word.
+#
+# So: drop banner lines before taking the tail. The tail (not the head) is
+# still the right end to keep -- ffmpeg's real diagnosis is its last few
+# lines ("HTTP error 404 ...", "Error opening input: Server returned 404
+# Not Found") -- there just shouldn't be a version listing competing for
+# the space.
+#
+# Worth recording alongside it, since it makes these reports readable:
+# **ffmpeg exit 196 is a network timeout on macOS.** ffmpeg returns
+# `-errno` for a failed input, truncated to a byte -- 256 - 196 = 60, and
+# errno 60 on Darwin is ETIMEDOUT ("Operation timed out"). Same class of
+# transient failure as the explicit 120s subprocess timeout below, just
+# reported by ffmpeg itself instead of by asyncio.
+_FFMPEG_BANNER_LINE = re.compile(
+    r"^\s*(?:ffmpeg|ffprobe) version |^\s*built with |^\s*configuration: |"
+    r"^\s*lib(?:avutil|avcodec|avformat|avdevice|avfilter|swscale|swresample|postproc)\s+\d"
+)
+
+
+def _stderr_tail(stderr: bytes, limit: int) -> str:
+    """The last `limit` characters of ffmpeg/ffprobe stderr that actually
+    carry information -- see _FFMPEG_BANNER_LINE's comment above for why
+    the banner is stripped first."""
+    lines = [
+        line
+        for line in stderr.decode(errors="replace").splitlines()
+        if line.strip() and not _FFMPEG_BANNER_LINE.match(line)
+    ]
+    return "\n".join(lines)[-limit:].strip()
+
 
 # Below this, a "meeting" is almost certainly the wrong asset (a preview
 # clip, a trailer, a misidentified short recording) rather than a real
@@ -193,7 +237,7 @@ async def _mean_volume_db(path: Path) -> tuple[bool, Optional[float]]:
             "ffmpeg could not decode %s (exit %s): %s",
             path,
             returncode,
-            stderr.decode(errors="replace")[-500:].strip(),
+            _stderr_tail(stderr, 500),
         )
         return False, None
 
@@ -326,7 +370,7 @@ async def extract_chunk_audio(
         )
 
     if returncode != 0:
-        stderr_tail = stderr.decode(errors="replace")[-500:].strip()
+        stderr_tail = _stderr_tail(stderr, 500)
         logger.warning(
             "ffmpeg extraction failed (%s) for %s @ %ss: %s",
             returncode,
@@ -421,7 +465,7 @@ async def extract_chunk_audio(
                 returncode2,
                 media_url,
                 start,
-                stderr2.decode(errors="replace")[:500],
+                _stderr_tail(stderr2, 500),
             )
     return True, None
 
@@ -507,7 +551,7 @@ async def extract_frame(
         return False, f"ffmpeg could not be started: {exc}"
 
     if returncode != 0:
-        stderr_tail = stderr.decode(errors="replace")[-300:].strip()
+        stderr_tail = _stderr_tail(stderr, 300)
         logger.warning(
             "ffmpeg frame extraction failed (%s) for %s @ %ss: %s",
             returncode,

@@ -120,6 +120,12 @@ because that matcher's whole risk is picking the *wrong* real meeting,
 which only real titles can exercise; two of its cases have
 independently-known right answers (BACKLOG.md's recorded Phoenix pairing,
 and a Baltimore meeting where the city itself attached the video).
+`tests/test_retry_async.py` covers `app/utils/retry.py`, the one shared
+backoff policy `scripts/transcribe_backlog_locally.py` and
+`worker/main.py` both use around their live-source calls — a
+counting fake rather than a real site, because "fails once, then succeeds
+unchanged" is exactly the behavior under test and no real government
+source can be asked to do that on cue.
 
 The suite is deliberately network-free, which leaves one thing it can't
 catch: a government site quietly changing structure under a working
@@ -1053,6 +1059,31 @@ python scripts/transcribe_backlog_locally.py --url "https://..."  # one specific
   explicitly rather than passing silently. See `tests/test_transcribe_
   backlog_locally.py` for retry/gap-detection coverage against a real
   local HTTP server (not a mocked session).
+- **One transient failure no longer costs a whole meeting** (2026-08-22,
+  after ten-plus confirmed cases across three sessions — see
+  `BACKLOG_DONE.md`). The three calls that reach a live government source
+  — `finder.resolve()`, `probe_duration()`, `extract_chunk_audio()` — now
+  retry with backoff through the shared `app/utils/retry.py` policy
+  instead of recording a meeting as unusable on the first failure: four
+  meetings marked permanently unresolvable all succeeded on an unchanged
+  re-run minutes later, and 3 of 4 failed `new.swagit.com` extractions
+  cleared on an immediate retry. Genuinely permanent failures (an
+  unregistered platform, `ffmpeg` missing from PATH) still fail on the
+  first attempt with no delay, the same discipline the Archive-API retry
+  applies to a 4xx. And a chunk that still fails **checkpoints the chunks
+  already transcribed** to `local_transcription_backups/partial/`, so the
+  next run resumes from there rather than starting over — a real 55-chunk
+  meeting previously discarded 50 finished chunks (~44 minutes of Whisper
+  compute) after failing on chunk 51. `--no-resume` ignores a checkpoint;
+  one is refused automatically if `--chunk-seconds` or the source's
+  duration has changed since it was written. **`MEDIA_ATTEMPTS` is 2 (one
+  retry) and deliberately a tunable constant, not a claim that one retry
+  is always enough** — one confirmed case (Brookhaven NY) failed two
+  identical back-to-back retries. `worker/main.py`'s idle-time
+  auto-generation got the same treatment for its own feasibility check;
+  its chunk-processing path never had the gap (see "On-demand
+  transcription" above — chunk failures already get three tries plus
+  job-level retries, and partial segments are persisted per job).
 
 Live-verified 2026-08-16 against a real backlog meeting (Welland/Elgin
 County, ON — `welland-2026-01-27-county-council-meeting`, a real 783-second

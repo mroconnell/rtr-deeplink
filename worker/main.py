@@ -54,6 +54,7 @@ from app.platforms.media_probe import (
     is_plausible_meeting_duration,
     probe_duration,
 )
+from app.utils.retry import retry_async
 from archive.db import crud
 from archive.utils import email as email_utils
 from worker.segment_utils import (
@@ -111,6 +112,33 @@ AUTO_TRANSCRIPTION_REQUESTER_EMAIL = os.environ.get(
     "AUTO_TRANSCRIPTION_REQUESTER_EMAIL", ""
 )
 
+# Retry/backoff for maybe_generate_auto_job()'s live feasibility check --
+# the one place in this process that had the same one-shot-no-retry gap
+# scripts/transcribe_backlog_locally.py had (BACKLOG.md's entry on that
+# script; checked here as part of the same fix, 2026-08-22).
+#
+# Why this path specifically and not the chunk-processing path below: a
+# chunk failure already gets three tries (crud.MAX_CONSECUTIVE_CHUNK_
+# FAILURES) plus job-level retries for user-priority jobs, and everything
+# transcribed so far is already persisted in TranscriptionJob.
+# partial_segments -- the worker never discards finished chunks. The
+# feasibility check had neither: one transient resolve/probe failure wrote
+# a real `failed` TranscriptionJob row via
+# create_failed_auto_transcription_job(), which is what
+# _cooldown_active() counts, so a single flaky moment pushed that page a
+# full day out (doubling per consecutive failure, up to 30 days) even
+# though nothing was wrong with it.
+#
+# Same MEDIA_ATTEMPTS=2 default and short backoff as the local script, for
+# the same reason and with the same honest limit (one retry demonstrably
+# isn't enough for every real case -- see that script's own constant
+# comment). Sleeping a few seconds here is free: this only ever runs when
+# this worker found nothing claimable, gated behind
+# AUTO_GENERATION_CHECK_INTERVAL_SECONDS.
+AUTO_GENERATION_ATTEMPTS = 2
+AUTO_GENERATION_RETRY_BASE_DELAY_SECONDS = 10.0
+AUTO_GENERATION_RETRY_MAX_DELAY_SECONDS = 60.0
+
 
 def _auto_media_kind(video_format) -> str:
     return "audio" if (video_format or "") in ("mp3", "wav") else "video"
@@ -149,16 +177,41 @@ async def maybe_generate_auto_job() -> bool:
 
     try:
         finder = get_finder(platform)
-        result = await finder.resolve(source_url)
+        # get_finder() stays outside the retry on purpose: an unregistered
+        # platform is a permanent answer, and its failure message shape
+        # ("Re-resolve failed: ...") is unchanged from before this retry
+        # existed.
+        result = await retry_async(
+            lambda: finder.resolve(source_url),
+            label=f"auto-generation re-resolve of {source_url}",
+            attempts=AUTO_GENERATION_ATTEMPTS,
+            base_delay=AUTO_GENERATION_RETRY_BASE_DELAY_SECONDS,
+            max_delay=AUTO_GENERATION_RETRY_MAX_DELAY_SECONDS,
+            logger=logger,
+            permanent_exceptions=(UnsupportedPlatformError,),
+        )
     except Exception as e:
         await _fail(f"Re-resolve failed: {e}")
         return True
 
     if not result.video_url:
+        # A resolve that succeeded and found no media is a real answer
+        # about this page, not a transient failure -- recorded immediately,
+        # no retry, exactly as before.
         await _fail("No usable audio or video source was found.")
         return True
 
-    duration = await probe_duration(result.video_url, source_page_url=source_url)
+    duration = await retry_async(
+        lambda: probe_duration(result.video_url, source_page_url=source_url),
+        label=f"auto-generation ffprobe of {result.video_url}",
+        attempts=AUTO_GENERATION_ATTEMPTS,
+        base_delay=AUTO_GENERATION_RETRY_BASE_DELAY_SECONDS,
+        max_delay=AUTO_GENERATION_RETRY_MAX_DELAY_SECONDS,
+        logger=logger,
+        # probe_duration() never raises -- None covers every failure,
+        # including the 120s subprocess timeout this retry is aimed at.
+        retryable_failure=lambda d: None if d is not None else "ffprobe read nothing",
+    )
     if duration is None:
         await _fail("Found a media source but couldn't read it.")
         return True
