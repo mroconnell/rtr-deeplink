@@ -85,7 +85,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (10)
     [NEEDS-AUDIT] P3 / GA: the `submit_meeting_url` spike was the
   Production actions only Ryan should take  (4)
     [HUMAN] `[LOGIN]` Archive service instability, 2026-08-17 —
-    [HUMAN] 26 already-live pages still serve duplicated roll-up
+    [HUMAN] `[WAIT]` Roll-up dedupe `--apply` is done for everything
     [HUMAN] `[WAIT]` Meeting-card backfill sweep — finished 2026-08-22
     [HUMAN] Stray Archive-shaped tables in `rtr_deeplink_db` — root
   Decisions about already-live content  (2)
@@ -891,28 +891,26 @@ convenient.
   filtered to 2026-08-17 late afternoon PT, to see what the failure
   actually was. Cheap to fold into the health-check-gate Events check
   above, since that's the same tab.
-- **[HUMAN] 26 already-live pages still serve duplicated roll-up
-  transcripts — the script is built and the dry-run is done; only the
-  `--apply` run is left (2026-08-22, #310).** A read-only dry run probed
-  1,377 candidates in ~7 minutes and found **26 affected pages** (12
-  granicus, 10 youtube, 2 civicclerk, 2 escribe) holding 16.3M stored
-  characters that become 2.7M — 83.6% duplication. Zero probe failures.
-  Ryan runs the apply himself, same pattern as
-  `backfill_meeting_cards.py`:
-
-  ```bash
-  python scripts/dedupe_rollup_transcripts.py --report-file scripts/rollup_dedupe_report.json
-  python scripts/dedupe_rollup_transcripts.py --apply --from-report scripts/rollup_dedupe_report.json
-  ```
-
-  Review the 26 findings between the two commands. **Read the confidence
-  bands first** — 10 of the 26 are the lower-confidence YouTube
-  double-emission cluster described in its own entry under **Open
-  bugs**, not the Granicus ticker shape; `--min-ratio 0.40` restricts
-  the run to the confident band if that's preferred. A read-only
-  rehearsal of the apply gate on Tacoma already passed (`fresh still
-  roll-up? False`, `GATE -> ok=True`).
-
+- **[HUMAN] `[WAIT]` Roll-up dedupe `--apply` is done for everything
+  reachable — 10 YouTube pages remain, blocked by a sustained IP block.**
+  Ryan ran the apply 2026-08-22: **14 pages rewritten, all non-YouTube,
+  verified live.** The **10 YouTube** pages could not be re-resolved
+  because YouTube is serving a sustained block to the running host —
+  the same class of dependency `CLAUDE.md` already singles out (plain
+  HTTP caption fetches return 200 OK with 0 bytes; only yt-dlp works,
+  and only while it keeps up with YouTube's changes). **Nothing to fix
+  in this repo**: retry from a different IP, or wait the block out, then
+  re-run `--apply --from-report` for the remaining slugs.
+  **One number to reconcile before calling this fully done** — worth a
+  glance at `scripts/rollup_dedupe_report.json` rather than assuming:
+  the dry run found **26** affected pages (12 granicus, 10 youtube, 2
+  civicclerk, 2 escribe = 16 non-YouTube), and the apply reports **14
+  rewritten of 25** with 10 YouTube blocked. 14 + 10 = 24, so against
+  either total (25 or 26) **one to two pages are unaccounted for** —
+  most likely pages whose gate re-check found them already clean on
+  fresh data (the rehearsal's `fresh still roll-up? False` path), which
+  would be correct behaviour, but that is a guess until the report is
+  read.
 - **[HUMAN] `[WAIT]` Meeting-card backfill sweep — finished 2026-08-22
   02:04, two follow-ups left.** Ran to completion via `scripts/
   backfill_meeting_cards.py --apply`: **973 stored / 1,152 attempted
