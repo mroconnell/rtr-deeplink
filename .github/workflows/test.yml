@@ -117,6 +117,24 @@ jobs:
           alembic upgrade head
           alembic check
 
+      # BACKLOG.md's TOC is generated (WO-41, 2026-08-22). CLAUDE.md's
+      # reading protocol tells a session to read *only* that block at
+      # startup and grep a quoted fragment for the detail, so a stale TOC
+      # doesn't just look untidy -- it hides entries from every session
+      # that follows the protocol, which is the exact failure the
+      # restructure existed to fix. Regenerate and diff: same shape as the
+      # `alembic check` steps above (a committed artifact that must agree
+      # with its source), and blocking for the same reason.
+      #
+      # tests/test_backlog_toc.py already asserts the committed TOC is
+      # current, which catches an edit to BACKLOG.md. This step is the
+      # other half: it also catches a change to the *generator* that would
+      # produce different output than what's committed.
+      - name: BACKLOG.md TOC is current
+        run: |
+          python3 scripts/build_backlog_toc.py
+          git diff --exit-code BACKLOG.md
+
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
