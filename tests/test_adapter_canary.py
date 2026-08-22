@@ -15,9 +15,9 @@ exclusion). That one needs no fakes or network either -- it only compares
 two in-process sets.
 """
 
-from app.platforms import base, register_all_finders
 from app.platforms.base import CalendarPageError
 from app.platforms.models import ResolvedMeeting
+from conftest import registered_platforms
 from scripts.adapter_canary import (
     CANARY_EXCLUSIONS,
     CANARY_URLS,
@@ -26,18 +26,6 @@ from scripts.adapter_canary import (
     has_real_content,
     run_canary,
 )
-
-
-def _registered_platforms() -> set[str]:
-    # base._REGISTRY read directly on purpose: its keys *are* the
-    # `AssetFinder.platform_name` values `get_finder()` resolves against,
-    # which is exactly what CANARY_URLS has to be keyed by. Deriving the
-    # list any other way (parsing __init__.py, listing app/platforms/*.py)
-    # could drift from what's actually registered, which is the whole
-    # thing this test exists to prevent. register_all_finders() is safe to
-    # call repeatedly -- register() just overwrites the same keys.
-    register_all_finders()
-    return set(base._REGISTRY)
 
 
 def test_every_registered_platform_is_canaried_or_explicitly_excluded():
@@ -53,7 +41,7 @@ def test_every_registered_platform_is_canaried_or_explicitly_excluded():
     exist -- never a guessed URL, which would just become a daily false
     alarm (see scripts/adapter_canary.py's own comments).
     """
-    uncovered = _registered_platforms() - set(CANARY_URLS) - set(CANARY_EXCLUSIONS)
+    uncovered = registered_platforms() - set(CANARY_URLS) - set(CANARY_EXCLUSIONS)
 
     assert not uncovered, (
         f"Platform(s) {sorted(uncovered)} are registered in "
@@ -71,7 +59,7 @@ def test_canary_keys_are_real_registered_platform_names():
     # non-obvious ("aurora_tv", "seattle_channel", "unknown"), and this
     # also catches a platform being renamed or dropped out from under a
     # stale canary entry.
-    registered = _registered_platforms()
+    registered = registered_platforms()
 
     assert not set(CANARY_URLS) - registered
     assert not set(CANARY_EXCLUSIONS) - registered

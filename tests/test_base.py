@@ -1,5 +1,6 @@
 import pytest
 
+from app.platforms import base
 from app.platforms.base import (
     UnsupportedPlatformError,
     detect_platform,
@@ -67,7 +68,19 @@ def test_register_and_get_finder_roundtrip():
 
     finder = FakeFinder()
     register(finder)
-    assert get_finder("fake_test_platform") is finder
+    try:
+        assert get_finder("fake_test_platform") is finder
+    finally:
+        # base._REGISTRY is process-global and register() has no
+        # unregister, so without this the fake leaks into every later
+        # read of the registry in the same pytest process -- which is
+        # exactly what the registry-coverage guard in
+        # tests/test_adapter_canary.py reads. That guard defends itself
+        # (conftest.registered_platforms() snapshots and rebuilds the
+        # registry), but leaving the pollution in place would still make
+        # any future naive read of _REGISTRY wrong in a way that only
+        # shows up as a collection-order-dependent failure.
+        base._REGISTRY.pop("fake_test_platform", None)
 
 
 def test_find_platform_link_finds_a_swagit_link_in_a_plain_a_tag():

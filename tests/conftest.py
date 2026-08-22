@@ -95,3 +95,38 @@ def load_fixture(*parts: str) -> str:
 
 def load_fixture_bytes(*parts: str) -> bytes:
     return (FIXTURES_DIR.joinpath(*parts)).read_bytes()
+
+
+def registered_platforms() -> set[str]:
+    """The platform names `register_all_finders()` actually registers.
+
+    Reads `base._REGISTRY` directly on purpose: its keys *are* the
+    `AssetFinder.platform_name` values `get_finder()` resolves against,
+    which is exactly what a coverage guard (scripts/adapter_canary.py's
+    CANARY_URLS, and any later registry-based check) has to be keyed by.
+    Deriving the list any other way (parsing __init__.py, listing
+    app/platforms/*.py) could drift from what's actually registered,
+    which is the whole thing those guards exist to prevent.
+
+    The clear/restore dance is the load-bearing part. `_REGISTRY` is
+    process-global and `register()` never removes anything, so a test
+    that registers a throwaway finder (tests/test_base.py's
+    "fake_test_platform") leaks it into every later read of the registry
+    in the same pytest process. Reading the registry naively passed only
+    because test_adapter_canary.py happens to sort before test_base.py
+    -- an accident that adding, renaming, or randomizing the order of a
+    test file would silently turn into a failure. Snapshotting, clearing,
+    re-registering and then re-applying the snapshot gives the real
+    answer regardless of collection order, while leaving the registry
+    exactly as it was found (snapshot applied last, so a
+    monkeypatched-in finder survives too).
+    """
+    from app.platforms import base, register_all_finders
+
+    snapshot = dict(base._REGISTRY)
+    base._REGISTRY.clear()
+    try:
+        register_all_finders()
+        return set(base._REGISTRY)
+    finally:
+        base._REGISTRY.update(snapshot)
