@@ -80,7 +80,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (16)
   Production actions only Ryan should take  (6)
     [HUMAN] `[LOGIN]` Render "HTTP health check failed" on
     [HUMAN] `[LOGIN]` Render account bandwidth limit reached — real,
-    [HUMAN] `[LOGIN]` Archive service instability, 2026-08-17
+    [HUMAN] `[LOGIN]` Archive service instability, 2026-08-17 —
     [HUMAN] 26 already-live pages still serve duplicated roll-up
     [HUMAN] `[WAIT]` Meeting-card backfill sweep — finished 2026-08-22
     [HUMAN] Stray demo-shaped tables found in `rtr_deeplink_db` during
@@ -478,21 +478,23 @@ convenient.
   proxy/redirect loop, or the Archive serving full video bytes through
   its proxy rather than just embedding)? Render's dashboard bandwidth
   breakdown answers this in under a minute but needs the actual login.
-- **[HUMAN] `[LOGIN]` Archive service instability, 2026-08-17
-  ~14:10-22:04 UTC — mostly already-explained, two pieces aren't.**
-  Sentry showed a cluster (unclosed connections, a proxy `TimeoutError`,
-  a `RuntimeError` on Render's own health probe, a DB-shutdown error),
+- **[HUMAN] `[LOGIN]` Archive service instability, 2026-08-17 —
+  part (a) answered 2026-08-22, part (b) still open.** Sentry showed a
+  cluster (unclosed connections, a proxy `TimeoutError`, a
+  `RuntimeError` on Render's own health probe, a DB-shutdown error),
   most of it explained by `BACKLOG_DONE.md`'s already-documented WO-10
   outage that evening (PR #116's model column deploying ~13 minutes
-  ahead of its `ALTER TABLE`). **Two things aren't accounted for**: (a)
-  four separate memory-limit restart emails fired 14:10–17:08 UTC, the
-  first nearly 2.5 hours **before** the first schema-read error (16:26
-  UTC) — an OOM-driven trigger *preceding* the cascade is a real,
-  unexplained possibility; (b) WO-10's own fix deploy (PR #156) itself
-  failed to deploy at 23:54:28 UTC the same evening, though
-  `render.yaml` on `main` today confirms a later attempt succeeded.
-  **Open question for Ryan**: worth a look at Render's memory graph for
-  14:00-17:00 UTC that day.
+  ahead of its `ALTER TABLE`). **(a) Resolved — the OOM did precede the
+  schema errors, and it caused them.** See `BACKLOG_DONE.md`'s "Archive
+  memory graph, 2026-08-17" entry for the read of Render's own graph.
+  **(b) Still open, needs the Events tab, not the metrics tab:** WO-10's
+  own fix deploy (PR #156) failed to deploy at 23:54:28 UTC =
+  **16:54 PT** the same evening, though `render.yaml` on `main` today
+  confirms a later attempt succeeded. The memory graph says nothing
+  about a failed *build*; this needs `rtr-deeplink-archive` → **Events**,
+  filtered to 2026-08-17 late afternoon PT, to see what the failure
+  actually was. Cheap to fold into the health-check-gate Events check
+  above, since that's the same tab.
 - **[HUMAN] 26 already-live pages still serve duplicated roll-up
   transcripts — the script is built and the dry-run is done; only the
   `--apply` run is left (2026-08-22, #310).** A read-only dry run probed
