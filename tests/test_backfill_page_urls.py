@@ -42,6 +42,26 @@ async def test_list_all_page_urls_includes_a_real_page():
     assert match[0]["slug"]
 
 
+async def test_list_all_page_urls_carries_the_ingest_date():
+    """Added 2026-08-22 for scripts/dedupe_rollup_transcripts.py, whose whole
+    affected population is "archived before WO-34 shipped" -- without a real
+    ingest date the only bound left is platform, and that is 1,377 of the
+    Archive's 2,389 pages. Asserted as a real ISO-8601 string because the
+    consumer compares it lexicographically against a date literal."""
+    url = "https://example.granicus.com/player/clip/backfill-created-at"
+    await crud.ingest_resolution(_payload("backfill:created-at", url), url)
+
+    pages = await crud.list_all_page_urls()
+    match = [p for p in pages if p["source_url_normalized"] == url][0]
+    assert match["created_at"]
+    # "YYYY-MM-DDT..." -- the shape select_candidates()'s string comparison
+    # against "2026-08-21" depends on.
+    assert match["created_at"][4] == "-" and match["created_at"][10] == "T"
+    from datetime import datetime
+
+    datetime.fromisoformat(match["created_at"])
+
+
 async def test_list_all_page_urls_includes_every_platform_not_just_youtube():
     # Unlike the transcript-wanted queue (YouTube-only, a different real
     # gap), this backfill sweep exists to fix any adapter's stale data --

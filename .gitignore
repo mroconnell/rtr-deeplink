@@ -10,3 +10,9 @@ node_modules/
 .claude/launch.json
 local_transcription_backups/
 scripts/meeting_card_backfill_state.json
+# scripts/dedupe_rollup_transcripts.py's run artifacts: the dry run's
+# findings (large -- it carries a before/after excerpt per affected page)
+# and the resume state. Both are point-in-time records of one operator's
+# run against production, not repo content.
+scripts/rollup_dedupe_report.json
+scripts/rollup_dedupe_state.json

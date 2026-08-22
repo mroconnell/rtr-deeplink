@@ -1542,6 +1542,61 @@ this endpoint, and a service that serves every page but can't generate
 new thumbnails is healthy; those pages simply carry no `og:image`, which
 is exactly where they were before this feature.
 
+### Rewriting pre-WO-34 transcripts
+
+`dedupe_rollup_cues()` (see "Caption format handling" below) shipped
+2026-08-21 and runs on every *fresh* resolve, but nothing re-checks a
+stored `TranscriptVersion` — so every page ingested before that date
+still serves the duplicated roll-up text it was archived with.
+`scripts/dedupe_rollup_transcripts.py` closes that half:
+
+```bash
+python scripts/dedupe_rollup_transcripts.py                   # read-only: which pages, with before/after excerpts
+python scripts/dedupe_rollup_transcripts.py --slug some-slug  # spot-check one page
+python scripts/dedupe_rollup_transcripts.py --apply --from-report scripts/rollup_dedupe_report.json
+```
+
+**It never scans the corpus.** No SQL, and no call that aggregates over
+`segments` server-side. `GET /internal/pages/all-urls` (one query over
+`meeting_pages` only, no join to transcripts) gives the page list; that
+list is narrowed client-side to the four platforms WO-34 confirmed serve
+roll-up — Granicus, CivicClerk, eScribe, YouTube, which also covers
+Legistar/CivicPlus/PrimeGov/Chicago-ELMS pages since `MeetingPage.platform`
+stores the *delegated* finder's name — and to pages archived before
+2026-08-21. Each survivor is then probed one at a time via its own public
+`GET /m/{slug}/transcript.srt` export and scored with the same
+`_looks_like_rollup()` detector the fix gates on.
+
+The first real dry run against production (2026-08-22) took ~7 minutes:
+2,389 pages → 1,377 candidates → **26 still holding roll-up duplication**,
+981 clean, 370 with no transcript, 0 probe failures. Those 26 hold 16.3M
+stored characters that become 2.7M — 83.6% of the text on them is
+duplication. Twelve are Granicus, ten YouTube, two CivicClerk, two eScribe.
+Jacksonville FL (`jaxcityc.granicus.com`, CLAUDE.md's named negative
+control) came back clean on all eight of its archived pages.
+
+**Writes go through the normal ingest path**, with a promote after: a
+fresh push does *not* become the page's default when the current default
+already has segments and a language (`crud._is_real_improvement()`), which
+is exactly a roll-up page, so ingest alone would file the fixed transcript
+where nobody sees it. Four gates sit between a detection and a write —
+the stored transcript must flag, the fresh resolve must *not* flag, the
+result must be smaller than the stored one but above `--min-retained`
+(default 0.05, against a real measured minimum of 0.066 across those 26
+pages), and the page's own export is re-read afterwards and must come back
+clean. Nothing is deleted: the old version stays reachable at
+`/m/{slug}?version=<old id>`.
+
+The dry run splits findings by the detector's score. WO-34's 18-file
+calibration measured real roll-up tracks at ≥ 0.401 and real non-roll-up
+ones at ≤ 0.048 with nothing between; at corpus scale that gap is not
+empty, and what sits in it is a coherent cluster rather than noise — 10 of
+the 26 score 0.202–0.244 and every one is a YouTube auto-caption track
+behind a CivicWeb or Municode portal emitting each speaker-change line as
+both `>>` and `»`, retaining ~0.80 of its characters against ~0.07–0.12
+for the Granicus ticker shape. Both bands are rewritten by default —
+`--min-ratio 0.40` restricts a run to the confident one.
+
 ## Supported platforms
 
 Most local governments don't build their own video/meeting-minutes
@@ -1685,7 +1740,15 @@ YouTube and Viebit were fine. Four real cue shapes are handled, each
 confirmed against a live-fetched file and kept as a fixture; a track that
 doesn't look roll-up is returned untouched, which is what makes it safe to
 run from a shared dispatch. eScribe parses VTT directly rather than
-through this dispatch, so it calls `dedupe_rollup_cues()` itself. VTT and SRT are real, structurally-parsed formats, confirmed
+through this dispatch, so it calls `dedupe_rollup_cues()` itself.
+
+**That fix is resolve-time only, so already-archived pages need a
+sweep.** Nothing re-checks a stored `TranscriptVersion` on its own, so
+every page ingested before 2026-08-21 still serves the text it was stored
+with. `scripts/dedupe_rollup_transcripts.py` finds those pages and
+rewrites them — see "Rewriting pre-WO-34 transcripts" below.
+
+VTT and SRT are real, structurally-parsed formats, confirmed
 against real samples on multiple platforms. TTML/DFXP/ITT also get a real
 structured parser, but — unlike VTT/SRT — that's verified against the
 W3C spec only, not any real captured sample (see `BACKLOG.md`). SBV/SUB/
