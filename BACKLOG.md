@@ -76,7 +76,7 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (11)
   [JUST-DO-IT] `[EASY]` The saved-search alert subject line
   [JUST-DO-IT] Every byte the public site serves is billed twice:
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (12)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (10)
   Confirmations nobody has actually watched happen  (3)
     [HUMAN] Render's health-check gate has never blocked a deploy —
     [HUMAN] `[LOGIN]` Confirm a real Render deploy installed cleanly off
@@ -86,10 +86,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (12)
     [HUMAN] 26 already-live pages still serve duplicated roll-up
     [HUMAN] `[WAIT]` Meeting-card backfill sweep — finished 2026-08-22
     [HUMAN] Stray Archive-shaped tables in `rtr_deeplink_db` — root
-  Decisions about already-live content  (4)
-    [HUMAN] 4 already-live default transcripts are real, confirmed
-    [HUMAN] 118 already-live transcriptions are real candidates for the
-    [HUMAN] The WO-36 fix surfaces a much larger already-live
+  Decisions about already-live content  (2)
+    [JUST-DO-IT] `[BIG]` Repair the three already-live transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
   Product calls  (1)
     [HUMAN] `legistar.py`'s `_try_fallback_video_link()` still prefers
@@ -843,47 +841,63 @@ convenient.
 
 ### Decisions about already-live content
 
-- **[HUMAN] 4 already-live default transcripts are real, confirmed
-  candidates for the phase-cancellation hallucination bug fixed
-  2026-08-16 (or a related symptom) — a real, open decision, not code.**
-  See `BACKLOG_DONE.md`'s matching entry for the full
-  `GET /internal/transcription/hallucination-candidates` writeup (5 total
-  candidates found; the 5th, Port Coquitlam BC, was already
-  re-transcribed and promoted). The remaining 4, still `is_default=True`,
-  each spot-checked live and confirmed real (not heuristic
-  false-positives): `revised-long-beach-ca-2026-08-04-...` (14+
-  consecutive bare `"."` segments at the start), `san-diego-county-ca-
-  2026-06-24-board-of-supervisors` (same `"."`-loop symptom),
-  `meeting-38ca49` / Sacramento County (classic Whisper stock-phrase
-  hallucination on quiet audio at the start, then recovers), and
-  `kitchener-2026-05-05-heritage-kitchener-committee` (Welsh, garbled
-  throughout with a ~500-char repeated-`w` run and a repetition loop).
-  Deciding what (if anything) to re-transcribe is the user's call.
-- **[HUMAN] 118 already-live transcriptions are real candidates for the
-  seam-duplication bug fixed 2026-08-16 — a real, open decision, not
-  code.** Full root-cause/fix writeup in `BACKLOG_DONE.md`. The fix stops
-  future multi-chunk transcriptions from duplicating seams but doesn't
-  touch what's already live, deliberately. `GET /internal/transcription/
-  completed-multichunk` (token-gated) returns the current list any time.
-  Two open sub-questions: (1) re-transcribe all 118, a prioritized
-  subset, or none until reported; (2) this list only covers cloud-worker
-  jobs — `scripts/transcribe_backlog_locally.py`'s separate local-Mac
-  runs (which never touch `transcription_jobs`) are a second,
-  currently-uncounted population also affected.
-- **[HUMAN] The WO-36 fix surfaces a much larger already-live
-  hallucination backlog — a real, open decision, not code.**
-  `GET /internal/transcription/hallucination-candidates` re-scores stored
-  segments, so pre-fix pages get re-scored on next call. Measured: of 304
-  real `source=="transcribed"` transcripts, **74 (24%) contain a
-  repetition loop the new rule flags**, pushed with no warning at the
-  time — every one hand-inspected was a genuine degenerate loop, not a
-  false positive (common shapes: a "Thank you."/"you" loop across a
-  recess, a fixed-cadence single-word tile, the `initial_prompt`
-  vocabulary itself leaking back out as text). Same class of decision as
-  the 4-candidate entry above, much bigger — deciding what's worth
-  re-transcribing (vs. warning in place, vs. leaving) is the user's call.
-  The prevention half is already live; this is a pre-2026-08-18 backlog,
-  not an ongoing rate.
+- **[JUST-DO-IT] `[BIG]` Repair the three already-live transcript-defect
+  populations *in stored segments*, don't bulk re-transcribe — decided
+  by Ryan 2026-08-22.** This supersedes three separate `[HUMAN]`
+  entries that each asked "re-transcribe all / a subset / on report
+  only". **That framing was wrong**, and the reasoning is worth keeping
+  because it applies to any future defect of this kind:
+
+  - **Seam duplication (118 candidates) was a *stitching* bug, not a
+    transcription bug.** The individual chunks were correct; the worker
+    joined them wrong. Everything needed to repair it is already in the
+    stored segments. Re-running Whisper would spend the app's single
+    most expensive operation to reproduce chunks that were never wrong.
+  - **Repetition loops (74, i.e. 24% of 304 real `source=="transcribed"`
+    transcripts) come from the *audio* — silence, music, a recess.**
+    Re-running the same model on the same audio reproduces the same
+    loop. WO-36's detector already knows exactly where each run is;
+    collapsing it in stored segments is the fix.
+  - **Only the 4 confirmed hallucinated defaults need a real re-run**,
+    and only one of them fully: **Kitchener** is garbage end-to-end and
+    should be re-transcribed with a **forced `en` language hint** — its
+    real defect was language misdetection, which WO-34's whole-transcript
+    language voting now prevents going forward. The other three just
+    need the bad stretch **trimmed** (Sacramento, for instance, recovers
+    cleanly at ~6:30).
+
+  **The cost check that settles it**: bulk re-transcribing ~190 meetings
+  at a typical 2-4 hours each is **500+ hours of audio** through the
+  worker — days of wall-clock on the $25/mo instance — to produce output
+  that would be mostly identical to what's already stored.
+
+  **The work, in order:**
+  1. **A stored-segment repair script for seam-dup + loops**, in the
+     same shape `scripts/dedupe_rollup_transcripts.py` just established:
+     dry-run report → confidence bands → Ryan runs `--apply`. No
+     compute, no source fetch.
+  2. **Re-transcribe Kitchener only** (local script, forced English);
+     trim the other three.
+  3. **Re-transcription on report** for anything the repair can't fix.
+  4. **Extend the repair to the uncounted local-batch population by
+     scanning stored segments, not job records.** This is the part the
+     old framing couldn't reach at all:
+     `scripts/transcribe_backlog_locally.py`'s local-Mac runs never
+     touch `transcription_jobs`, so any job-record-based list misses
+     them by construction. Scanning segments makes that population
+     visible for free.
+
+  **Knock-on:** this makes the reader-facing low-confidence flag
+  (currently in `CLAUDE_BACKLOG.md`) *less* urgent — the visible damage
+  gets **repaired** rather than labelled. Worth re-reading that idea
+  after the repair lands rather than building it first.
+
+  Source detail for all three populations — the confirmed 4 with their
+  individual symptoms, the 118-candidate endpoint
+  (`GET /internal/transcription/completed-multichunk`), and the 74/304
+  measurement — is preserved in `BACKLOG_DONE.md`'s matching WO-36 and
+  seam-duplication entries.
+
 - **[HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
   been fired end to end.** The code path exists
   (`archive_client.delete_account_data()` → bearer-gated
