@@ -6,6 +6,59 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## The registry-based CI guards read a polluted global registry [Done 2026-08-22]
+
+`tests/test_adapter_canary.py`'s `_registered_platforms()` called
+`register_all_finders()` and then read `app.platforms.base._REGISTRY`
+straight through. `_REGISTRY` is process-global and `register()` has no
+unregister, so `tests/test_base.py`'s
+`test_register_and_get_finder_roundtrip` — which registers a throwaway
+finder with `platform_name = "fake_test_platform"` — leaked that key into
+every later read of the registry in the same pytest process.
+
+**It passed only because `test_adapter_canary.py` sorts before
+`test_base.py`.** Confirmed, not theorized: with the fix reverted,
+running the two files in the other order
+(`pytest tests/test_base.py tests/test_adapter_canary.py`) fails with
+
+```
+AssertionError: Platform(s) ['fake_test_platform'] are registered in
+register_all_finders() but have no adapter-canary decision.
+```
+
+Adding a test file, renaming one, or installing `pytest-randomly` would
+have turned an accident of alphabetical collection order into a real CI
+failure on a PR that had nothing to do with either file. WO-35 hit the
+live version of this same hazard while writing
+`tests/test_coverage_platform_registry.py` (see that entry below: "a real
+false positive found while writing this") and worked around it locally,
+in a comment that explicitly called the leak "someone else's problem."
+This closes it at the source and de-duplicates the workaround.
+
+**Fixed in two independent layers, each verified to be sufficient on its
+own:**
+
+1. `tests/conftest.py` now owns a shared `registered_platforms()` helper
+   that snapshots `_REGISTRY`, clears it, calls `register_all_finders()`,
+   reads the keys, and re-applies the snapshot in a `finally` (snapshot
+   applied last, so a test-registered or monkeypatched finder survives
+   the call unchanged). Both `test_adapter_canary.py` and
+   `test_coverage_platform_registry.py` now import it instead of carrying
+   a copy each. It lives in `conftest.py` because there are already two
+   registry-based guards and a third is plausible — the whole point of
+   reading `_REGISTRY` directly is that it can't drift from what
+   `get_finder()` actually resolves, which is a property more than one
+   coverage test wants.
+2. `tests/test_base.py` now pops `"fake_test_platform"` in a `finally`,
+   so nothing leaks into the global registry in the first place.
+
+Verified with the fix reverted one layer at a time: the helper alone
+passes in the polluting order, the `test_base.py` cleanup alone passes in
+the polluting order, and both together pass. Separately confirmed the
+guard still does its job rather than being neutered — temporarily
+deleting `castus` from `CANARY_URLS` fails with `assert not {'castus'}`.
+Full suite green.
+
 ## Moved out of BACKLOG.md by the WO-39 restructure [Done 2026-08-21]
 
 Six real writeups that had no existing entry here, plus two small

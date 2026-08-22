@@ -24,7 +24,6 @@ than another round of manual fixes.
 No network, no database, no fixtures: this only compares in-process sets.
 """
 
-from app.platforms import base, register_all_finders
 from archive.db.crud import (
     COVERAGE_EXCLUSIONS,
     CUSTOM_PLATFORMS,
@@ -33,37 +32,15 @@ from archive.db.crud import (
     _YOUTUBE_DELEGATING_PLATFORMS,
 )
 
-
-def _registered_platforms() -> set[str]:
-    # base._REGISTRY read directly, for exactly the reason
-    # test_adapter_canary.py gives: its keys *are* the
-    # `AssetFinder.platform_name` values `get_finder()` resolves against,
-    # and are the same strings that end up stored as
-    # `MeetingPage.platform` on a real ingested page -- which is what
-    # get_platform_coverage() branches on. Deriving the list any other way
-    # (parsing __init__.py, globbing app/platforms/*.py) could drift from
-    # what's actually registered, which is the whole thing this test
-    # exists to prevent.
-    #
-    # Read out of a *temporarily emptied* registry rather than the live
-    # one, though: `base._REGISTRY` is process-global and other tests
-    # register throwaway finders into it without cleaning up (e.g.
-    # tests/test_base.py's "fake_test_platform"), which made this
-    # assertion fail in a full-suite run while passing in isolation --
-    # a real false positive found while writing this. Restoring the
-    # previous contents afterwards keeps that leak someone else's
-    # problem, not a new one this file creates.
-    # register_all_finders() is safe to call repeatedly -- register()
-    # just overwrites the same keys.
-    saved = dict(base._REGISTRY)
-    base._REGISTRY.clear()
-    try:
-        register_all_finders()
-        return set(base._REGISTRY)
-    finally:
-        base._REGISTRY.clear()
-        base._REGISTRY.update(saved)
-        register_all_finders()
+# The snapshot/clear/restore reasoning this file originally spelled out
+# inline now lives on the shared helper in tests/conftest.py, which
+# tests/test_adapter_canary.py reads too -- the "keeps that leak someone
+# else's problem" note below is no longer accurate, because
+# tests/test_base.py now cleans up its own throwaway finder. Keeping the
+# helper anyway: it makes any registry-based guard correct regardless of
+# collection order, rather than relying on every future test that
+# registers a fake remembering to unregister it.
+from conftest import registered_platforms as _registered_platforms
 
 
 def test_every_registered_platform_has_a_coverage_decision():
