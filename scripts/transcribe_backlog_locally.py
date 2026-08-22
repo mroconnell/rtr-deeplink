@@ -70,6 +70,17 @@ the worker's own reliability boundary too, not just this script, so it
 wasn't touched here on a guess. --chunk-seconds is exposed if a larger
 value is ever verified safe against a real slow source.
 
+**One transient failure no longer costs a whole meeting (2026-08-22).**
+Every call that reaches a live government source -- finder.resolve(),
+probe_duration(), extract_chunk_audio() -- retries with backoff (see
+MEDIA_ATTEMPTS below and app/utils/retry.py), and a chunk that still fails
+checkpoints the chunks already transcribed so the next run resumes instead
+of starting over (--no-resume opts out). Ten-plus real cases across three
+sessions drove this, including four meetings recorded as permanently
+unresolvable that all succeeded on an unchanged re-run minutes later, and
+one 55-chunk meeting that discarded 50 finished chunks after failing on
+chunk 51. See transcribe_meeting()'s own docstring and BACKLOG.md.
+
 Usage (from the repo root, with the venv active):
     python scripts/transcribe_backlog_locally.py --dry-run
     python scripts/transcribe_backlog_locally.py --limit 3
@@ -95,6 +106,7 @@ this script's other imports).
 
 import argparse
 import asyncio
+import hashlib
 import json
 import logging
 import os
@@ -103,9 +115,9 @@ import subprocess
 import sys
 import tempfile
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import aiohttp
 from dotenv import load_dotenv
@@ -119,6 +131,7 @@ from app.platforms.media_probe import (
     is_plausible_meeting_duration,
     probe_duration,
 )  # noqa: E402
+from app.utils.retry import retry_async  # noqa: E402
 from app.utils.url_normalize import normalize_url  # noqa: E402
 from app.utils.vtt_parser import detect_language_from_texts  # noqa: E402
 from worker.segment_utils import (  # noqa: E402
@@ -207,6 +220,38 @@ MAX_RETRIES = 6
 RETRY_BASE_DELAY_SECONDS = 5.0
 RETRY_MAX_DELAY_SECONDS = 90.0
 
+# --- Retry/backoff for the *live media* calls (a different target) ---------
+# The constants above cover this script's calls to our own Archive API. These
+# cover the two calls that go out to a real government source instead:
+# finder.resolve() (and the probe_duration() that immediately follows it) and
+# extract_chunk_audio(). Same policy shape, via the shared helper in
+# app/utils/retry.py -- see its docstring for why the "which failures are
+# retryable" discipline is the part being reused, not the arithmetic.
+#
+# Ten-plus confirmed real cases motivated this (BACKLOG.md's own entry has
+# them all); the two that shape these numbers:
+#   * 4/4 meetings recorded as permanently unresolvable -- Diamond Bar CA,
+#     Genesee County MI, Sullivan County NY, Brookhaven NY -- all succeeded
+#     on an unchanged re-run minutes later, and Diamond Bar's stored
+#     video_url was still live and reachable the whole time. And 3 of 4
+#     failed `new.swagit.com` extractions succeeded on an *immediate* retry,
+#     with a manual ffmpeg against the exact same URL finishing in ~12s both
+#     times -- i.e. the hang was in this script's own long sequential run,
+#     not the source.
+#   * The honest limit, also confirmed: Odessa needed a *third* attempt, and
+#     Brookhaven NY later failed two immediate back-to-back retries
+#     identically (same `ffmpeg timed out ... @ 0s`, same CDN host
+#     cpmedia.azureedge.net). MEDIA_ATTEMPTS=2 is the settled default, not a
+#     claim that one retry is enough for every case -- it's a named constant
+#     specifically so it's tunable when a run says otherwise.
+# Short backoff on purpose (~5-15s for the first retry, given the 0.5-1.5x
+# jitter): the failures above cleared in seconds-to-minutes, and unlike the
+# Archive-API retries this one sits inside a per-meeting budget an operator
+# is watching.
+MEDIA_ATTEMPTS = 2
+MEDIA_RETRY_BASE_DELAY_SECONDS = 10.0
+MEDIA_RETRY_MAX_DELAY_SECONDS = 60.0
+
 # How big a gap between wall-clock time and processing time counts as "the
 # machine probably slept or lost network," not just "this chunk took a
 # while" -- see _note_if_suspended()'s own docstring below for why the
@@ -222,6 +267,15 @@ SUSPEND_GAP_THRESHOLD_SECONDS = 120.0
 FAILED_INGEST_DIR = (
     Path(__file__).resolve().parent.parent / "local_transcription_backups"
 )
+
+# Where a *partially* transcribed meeting is checkpointed when a chunk fails
+# after earlier chunks already succeeded -- see _save_partial_progress().
+# Under FAILED_INGEST_DIR (same gitignored local-scratch tree) but its own
+# subdirectory, because the two hold genuinely different things: a file in
+# FAILED_INGEST_DIR is a *finished* transcript that only failed to push and
+# can be re-pushed with a plain curl, while one of these is an *unfinished*
+# meeting that this script picks back up on the next run.
+PARTIAL_PROGRESS_DIR = FAILED_INGEST_DIR / "partial"
 
 
 class _RetryableHTTPError(Exception):
@@ -345,6 +399,146 @@ def _save_local_backup(payload: dict, slug: str) -> Path:
     return path
 
 
+def _partial_progress_path(source_url: str) -> Path:
+    """Deterministic per-meeting checkpoint filename. Keyed by a hash of the
+    source URL rather than the slug: the --url path has no real slug (it
+    passes the normalized URL through as one), and a URL can contain
+    anything a filename can't."""
+    digest = hashlib.sha1(source_url.encode("utf-8")).hexdigest()[:16]
+    return PARTIAL_PROGRESS_DIR / f"partial_{digest}.json"
+
+
+def _save_partial_progress(
+    source_url: str,
+    *,
+    segments: list,
+    chunks_done: int,
+    total_chunks: int,
+    chunk_size_seconds: int,
+    duration: float,
+    reason: str,
+) -> Path:
+    """Checkpoints the chunks transcribed so far when a meeting fails
+    partway through, so the next run resumes instead of starting over.
+
+    The real case this exists for (BACKLOG.md): a
+    `pub-3ce.escribemeetings.com` meeting of 55 chunks (~13.75 hours)
+    transcribed **50 chunks successfully**, then failed on chunk 51/55 --
+    and the entire ~44-minute run was discarded, not just the bad chunk.
+    Whisper compute is by far the most expensive thing this script does;
+    one transient ffmpeg failure at 91% complete should cost the failed
+    chunk, not the other fifty.
+
+    Segments are stored already shifted to whole-meeting-relative times
+    (see transcribe_meeting()), so a resume just continues appending. The
+    `chunk_size_seconds`/`total_chunks`/`duration` fields are recorded
+    specifically so _load_partial_progress() can refuse a checkpoint that
+    no longer describes the same meeting -- a re-run with a different
+    --chunk-seconds, or a source whose real duration changed, must start
+    over rather than splice mismatched offsets together.
+    """
+    PARTIAL_PROGRESS_DIR.mkdir(parents=True, exist_ok=True)
+    path = _partial_progress_path(source_url)
+    path.write_text(
+        json.dumps(
+            {
+                "source_url": source_url,
+                "chunk_size_seconds": chunk_size_seconds,
+                "total_chunks": total_chunks,
+                "duration": duration,
+                "chunks_done": chunks_done,
+                "failed_on_chunk": chunks_done + 1,
+                "reason": reason,
+                "saved_at": datetime.now(timezone.utc).isoformat(),
+                "segments": segments,
+            },
+            indent=2,
+        )
+    )
+    return path
+
+
+def _load_partial_progress(
+    source_url: str,
+    *,
+    chunk_size_seconds: int,
+    total_chunks: int,
+    duration: float,
+) -> Tuple[int, list]:
+    """`(chunks_already_done, their_segments)` from a previous run's
+    checkpoint, or `(0, [])` if there isn't a usable one.
+
+    Refuses (and says so) any checkpoint whose recorded chunking doesn't
+    match this run's: a different --chunk-seconds, a different total chunk
+    count, or a source duration that has moved by more than a second all
+    mean the stored segment offsets no longer line up with the chunks about
+    to be transcribed. Starting over is cheap compared to publishing a
+    transcript with spliced, wrong timestamps -- the deep links are the
+    whole product.
+    """
+    path = _partial_progress_path(source_url)
+    if not path.exists():
+        return 0, []
+    try:
+        saved = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        logger.warning("Ignoring an unreadable partial-progress file at %s", path)
+        return 0, []
+
+    mismatch = None
+    if saved.get("chunk_size_seconds") != chunk_size_seconds:
+        mismatch = "a different --chunk-seconds"
+    elif saved.get("total_chunks") != total_chunks:
+        mismatch = "a different total chunk count"
+    elif abs(float(saved.get("duration") or 0) - duration) > 1.0:
+        mismatch = "a different source duration"
+    if mismatch:
+        logger.info(
+            "Ignoring the partial-progress file at %s (%s) -- transcribing this "
+            "meeting from the start instead",
+            path,
+            mismatch,
+        )
+        return 0, []
+
+    chunks_done = int(saved.get("chunks_done") or 0)
+    segments = saved.get("segments") or []
+    if chunks_done <= 0 or not segments or chunks_done >= total_chunks:
+        return 0, []
+    return chunks_done, segments
+
+
+def _clear_partial_progress(source_url: str) -> None:
+    """Drops a meeting's checkpoint once it finishes -- otherwise a stale
+    file would sit in the local scratch tree forever, and (worse) a later
+    re-transcription of the same URL via --url would silently resume from
+    it instead of transcribing fresh."""
+    _partial_progress_path(source_url).unlink(missing_ok=True)
+
+
+def _retryable_extraction_failure(outcome: tuple) -> Optional[str]:
+    """What counts as a retryable `extract_chunk_audio()` failure -- the
+    same "don't paper over a permanently-broken target" discipline
+    _request_json() applies to a 4xx (see app/utils/retry.py's docstring).
+
+    Retryable: a 120s timeout, a non-zero ffmpeg exit, an empty or
+    undecodable output file -- every confirmed real case so far has been
+    one of these, and 3 of 4 real `new.swagit.com` failures cleared on an
+    immediate retry.
+
+    Not retryable: ffmpeg missing from PATH. That's a broken machine, not a
+    flaky CDN, and it would fail identically for every chunk of every
+    meeting -- waiting 15 seconds to confirm that wastes an unattended
+    run's time exactly the way retrying a bad token would.
+    """
+    extracted, error = outcome
+    if extracted:
+        return None
+    if error and "not found on PATH" in error:
+        return None
+    return error or "ffmpeg extraction failed"
+
+
 def _base_url() -> str:
     return os.environ.get("ARCHIVE_BASE_URL", "").rstrip("/")
 
@@ -456,7 +650,12 @@ async def _promote(session: aiohttp.ClientSession, slug: str, version_id: int) -
 
 
 async def transcribe_meeting(
-    engine, source_url: str, platform: str, *, chunk_size_seconds: int
+    engine,
+    source_url: str,
+    platform: str,
+    *,
+    chunk_size_seconds: int,
+    resume: bool = True,
 ) -> dict:
     """Re-resolves `source_url` fresh (HLS/signed URLs can go stale, same
     reasoning as worker/main.py's own re-resolve-before-each-chunk), probes
@@ -466,13 +665,34 @@ async def transcribe_meeting(
     running list via that module's merge_chunk_segments(), which drops a
     real seam-duplicate at the chunk boundary if one is detected -- see
     its own docstring), collecting every chunk's segments into one
-    full-meeting-relative list. No DB job/checkpoint
-    involved -- this whole function either finishes a meeting in one
-    process lifetime or doesn't; a crash mid-meeting just means re-running
-    this script tries that meeting again from scratch next time (this
-    queue isn't drained by marking anything in-progress), which is fine
-    for a manually-invoked local batch tool with no concurrent worker
-    fighting over the same row.
+    full-meeting-relative list.
+
+    **Two kinds of resilience, both added 2026-08-22 after ten-plus
+    confirmed real cases** (BACKLOG.md's own entry, and MEDIA_ATTEMPTS'
+    comment above, have the specifics):
+
+    * Each of the three calls that reaches a live government source --
+      finder.resolve(), probe_duration(), extract_chunk_audio() -- gets
+      MEDIA_ATTEMPTS tries with backoff via app/utils/retry.py, rather than
+      recording a meeting as unusable on one transient failure. Genuinely
+      permanent failures (an unregistered platform, ffmpeg missing from
+      PATH) still fail on the first attempt with no delay -- retrying them
+      would just make an unattended run slower at reaching the same answer.
+    * A chunk that still fails after those retries **checkpoints the chunks
+      already transcribed** to PARTIAL_PROGRESS_DIR (see
+      _save_partial_progress()) instead of discarding them, and `resume`
+      (default True, `--no-resume` turns it off) picks that checkpoint back
+      up on the next run. This replaces the previous behavior, documented
+      here until this change: "this whole function either finishes a
+      meeting in one process lifetime or doesn't; a crash mid-meeting just
+      means re-running this script tries that meeting again from scratch."
+      That was fine in principle and expensive in practice -- one real
+      55-chunk meeting lost 50 finished chunks (~44 minutes of Whisper
+      compute) to a single failure on chunk 51.
+
+    Still no DB job/checkpoint involved: the checkpoint is a local file, and
+    this script continues to leave `transcription_jobs` alone entirely (see
+    the module docstring).
 
     Returns {"ok": True, "segments": [...], "language": ..., "video_url":
     ..., "video_format": ..., "platform": ..., "external_id": ...} on
@@ -488,17 +708,43 @@ async def transcribe_meeting(
         return {"ok": False, "reason": f"unsupported platform: {e}"}
 
     try:
-        result = await finder.resolve(source_url)
+        result = await retry_async(
+            lambda: finder.resolve(source_url),
+            label=f"re-resolve of {source_url}",
+            attempts=MEDIA_ATTEMPTS,
+            base_delay=MEDIA_RETRY_BASE_DELAY_SECONDS,
+            max_delay=MEDIA_RETRY_MAX_DELAY_SECONDS,
+            logger=logger,
+            # A platform with no registered finder can't start working
+            # mid-run; anything else (a bare TimeoutError from eScribe, a
+            # connection reset) is exactly the shape that cleared on an
+            # unchanged re-run minutes later.
+            permanent_exceptions=(UnsupportedPlatformError,),
+        )
     except Exception as e:
         return {
             "ok": False,
-            "reason": f"re-resolve failed: {type(e).__name__}: {str(e)[:200]}",
+            "reason": f"re-resolve failed after {MEDIA_ATTEMPTS} attempt(s): "
+            f"{type(e).__name__}: {str(e)[:200]}",
         }
 
     if not result.video_url:
+        # A resolve that *succeeded* and found no video is a real answer
+        # about this meeting, not a transient failure -- no retry.
         return {"ok": False, "reason": "no usable audio/video source on re-resolve"}
 
-    duration = await probe_duration(result.video_url, source_page_url=source_url)
+    duration = await retry_async(
+        lambda: probe_duration(result.video_url, source_page_url=source_url),
+        label=f"ffprobe of {result.video_url}",
+        attempts=MEDIA_ATTEMPTS,
+        base_delay=MEDIA_RETRY_BASE_DELAY_SECONDS,
+        max_delay=MEDIA_RETRY_MAX_DELAY_SECONDS,
+        logger=logger,
+        # probe_duration() never raises -- it returns None for every
+        # failure, including the 120s subprocess timeout that is the whole
+        # reason this retry exists.
+        retryable_failure=lambda d: None if d is not None else "ffprobe read nothing",
+    )
     if duration is None:
         return {
             "ok": False,
@@ -512,56 +758,131 @@ async def transcribe_meeting(
 
     total_chunks = chunk_count(duration, chunk_size_seconds)
     all_segments: list = []
-    with tempfile.TemporaryDirectory(prefix="rtr_local_transcribe_") as tmpdir:
-        for idx in range(total_chunks):
-            chunk_wall_start = time.time()
-            chunk_mono_start = time.monotonic()
-            start = chunk_start(idx, chunk_size_seconds)
-            dur = chunk_duration(idx, chunk_size_seconds, duration)
-            audio_path = Path(tmpdir) / f"chunk_{idx}.mp3"
-            extracted, extraction_error = await extract_chunk_audio(
-                result.video_url,
-                start=start,
-                duration=dur,
-                source_page_url=source_url,
-                out_path=audio_path,
-            )
-            if not extracted:
-                return {
-                    "ok": False,
-                    "reason": f"ffmpeg extraction failed on chunk {idx + 1}/{total_chunks}"
-                    + (f": {extraction_error}" if extraction_error else ""),
-                }
-
-            raw_segments = await engine.transcribe_chunk(audio_path)
-            # merge_chunk_segments() (not a plain .extend()) -- HLS sources
-            # can restate the previous chunk's last sentence at the head of
-            # this one (extract_chunk_audio()'s fast seek lands on the
-            # nearest preceding HLS segment boundary, not the exact
-            # requested second; confirmed live 2026-08-16 against this same
-            # backlog, Boulder County CO -- see worker/segment_utils.py's
-            # "Seam-duplication dedup" note and BACKLOG_DONE.md).
-            before = len(all_segments)
-            all_segments = merge_chunk_segments(
-                all_segments, shift_segments(raw_segments, start)
-            )
-            dropped = before + len(raw_segments) - len(all_segments)
-            audio_path.unlink(missing_ok=True)
-            dedup_note = (
-                f", dropped {dropped} seam-duplicate segment(s)" if dropped else ""
-            )
+    first_chunk = 0
+    if resume:
+        first_chunk, all_segments = _load_partial_progress(
+            source_url,
+            chunk_size_seconds=chunk_size_seconds,
+            total_chunks=total_chunks,
+            duration=duration,
+        )
+        if first_chunk:
             logger.info(
-                "    chunk %d/%d transcribed (%d segments%s)",
-                idx + 1,
+                "    resuming from a previous run's checkpoint: %d/%d chunk(s) "
+                "already transcribed (%d segments), starting at chunk %d",
+                first_chunk,
                 total_chunks,
-                len(raw_segments),
-                dedup_note,
+                len(all_segments),
+                first_chunk + 1,
             )
-            _note_if_suspended(
-                chunk_wall_start,
-                chunk_mono_start,
-                f"chunk {idx + 1}/{total_chunks} of {source_url}",
-            )
+
+    def _checkpoint(reason: str) -> str:
+        """Saves what's been transcribed so far (reading `chunks_done`/
+        `all_segments` as they stand at call time) and returns a note for
+        the caller-facing reason string. No checkpoint (and no note) when
+        nothing has actually been transcribed yet -- an empty file would
+        just be litter the next run has to ignore."""
+        if not all_segments or chunks_done <= 0:
+            return ""
+        path = _save_partial_progress(
+            source_url,
+            segments=all_segments,
+            chunks_done=chunks_done,
+            total_chunks=total_chunks,
+            chunk_size_seconds=chunk_size_seconds,
+            duration=duration,
+            reason=reason,
+        )
+        logger.warning(
+            "    saved %d/%d already-transcribed chunk(s) (%d segments) to %s -- "
+            "re-running this script picks up from chunk %d instead of starting over",
+            chunks_done,
+            total_chunks,
+            len(all_segments),
+            path,
+            chunks_done + 1,
+        )
+        return (
+            f" -- kept {chunks_done}/{total_chunks} already-transcribed chunk(s) "
+            f"in {path}, a re-run resumes from there"
+        )
+
+    chunks_done = first_chunk
+    with tempfile.TemporaryDirectory(prefix="rtr_local_transcribe_") as tmpdir:
+        try:
+            for idx in range(first_chunk, total_chunks):
+                chunk_wall_start = time.time()
+                chunk_mono_start = time.monotonic()
+                start = chunk_start(idx, chunk_size_seconds)
+                dur = chunk_duration(idx, chunk_size_seconds, duration)
+                audio_path = Path(tmpdir) / f"chunk_{idx}.mp3"
+                extracted, extraction_error = await retry_async(
+                    lambda: extract_chunk_audio(
+                        result.video_url,
+                        start=start,
+                        duration=dur,
+                        source_page_url=source_url,
+                        out_path=audio_path,
+                    ),
+                    label=f"chunk {idx + 1}/{total_chunks} extraction for {source_url}",
+                    attempts=MEDIA_ATTEMPTS,
+                    base_delay=MEDIA_RETRY_BASE_DELAY_SECONDS,
+                    max_delay=MEDIA_RETRY_MAX_DELAY_SECONDS,
+                    logger=logger,
+                    retryable_failure=_retryable_extraction_failure,
+                )
+                if not extracted:
+                    reason = (
+                        f"ffmpeg extraction failed on chunk {idx + 1}/{total_chunks}"
+                        + (f": {extraction_error}" if extraction_error else "")
+                    )
+                    return {"ok": False, "reason": reason + _checkpoint(reason)}
+
+                raw_segments = await engine.transcribe_chunk(audio_path)
+                # merge_chunk_segments() (not a plain .extend()) -- HLS sources
+                # can restate the previous chunk's last sentence at the head of
+                # this one (extract_chunk_audio()'s fast seek lands on the
+                # nearest preceding HLS segment boundary, not the exact
+                # requested second; confirmed live 2026-08-16 against this same
+                # backlog, Boulder County CO -- see worker/segment_utils.py's
+                # "Seam-duplication dedup" note and BACKLOG_DONE.md).
+                before = len(all_segments)
+                all_segments = merge_chunk_segments(
+                    all_segments, shift_segments(raw_segments, start)
+                )
+                chunks_done = idx + 1
+                dropped = before + len(raw_segments) - len(all_segments)
+                audio_path.unlink(missing_ok=True)
+                dedup_note = (
+                    f", dropped {dropped} seam-duplicate segment(s)" if dropped else ""
+                )
+                logger.info(
+                    "    chunk %d/%d transcribed (%d segments%s)",
+                    idx + 1,
+                    total_chunks,
+                    len(raw_segments),
+                    dedup_note,
+                )
+                _note_if_suspended(
+                    chunk_wall_start,
+                    chunk_mono_start,
+                    f"chunk {idx + 1}/{total_chunks} of {source_url}",
+                )
+        except BaseException as e:
+            # Deliberately BaseException, not Exception: a Ctrl-C or an
+            # asyncio cancellation three hours into an overnight run is
+            # exactly as expensive to discard as a failed chunk is, and the
+            # checkpoint costs nothing on the way out. Re-raised unchanged
+            # -- this only saves the work, it never swallows the failure
+            # (main()'s own per-meeting except still records it, and a real
+            # interrupt still stops the run).
+            _checkpoint(f"{type(e).__name__}: {str(e)[:200]}")
+            raise
+
+    # Every chunk is done -- drop any checkpoint from an earlier partial run
+    # of this same meeting, so it can't be resumed from later (a --url
+    # re-transcription of an already-finished page must start fresh).
+    _clear_partial_progress(source_url)
 
     if not all_segments:
         return {"ok": False, "reason": "transcription produced no usable segments"}
@@ -598,6 +919,7 @@ async def process_one(
     dry_run: bool,
     chunk_size_seconds: int,
     promote: bool = False,
+    resume: bool = True,
 ) -> dict:
     """Returns {"slug", "status": "ingested"|"skipped"|"failed", "detail"}.
 
@@ -636,6 +958,7 @@ async def process_one(
         page["source_url_normalized"],
         page["platform"],
         chunk_size_seconds=chunk_size_seconds,
+        resume=resume,
     )
     if not result["ok"]:
         return {"slug": slug, "status": "skipped", "detail": result["reason"]}
@@ -747,6 +1070,18 @@ async def main() -> None:
         "won't fire on its own (see _promote()'s own docstring). Skipped only if the push produced "
         "no segments at all.",
     )
+    parser.add_argument(
+        "--no-resume",
+        action="store_true",
+        help="Ignore any partial-progress checkpoint left by an earlier run and transcribe every "
+        "meeting from chunk 1. By default a meeting that failed partway through (see "
+        "transcribe_meeting()) resumes from the chunks it already finished, which is the whole "
+        "point of the checkpoint -- one real 55-chunk meeting lost 50 finished chunks to a single "
+        "failure on chunk 51. Use this when you suspect the saved chunks themselves are bad (e.g. "
+        "they were transcribed with a smaller --model-size, or before a transcription-quality fix "
+        "shipped), since the checkpoint only validates the chunking, not the model that produced "
+        "the text.",
+    )
     args = parser.parse_args()
 
     if not _base_url():
@@ -767,13 +1102,14 @@ async def main() -> None:
     # Python source.
     logger.info(
         "Run started: model_size=%s (%s), limit=%s, dry_run=%s, chunk_seconds=%s, "
-        "promote=%s, target=%s",
+        "promote=%s, resume=%s, target=%s",
         model_size,
         "explicit --model-size" if args.model_size else "auto-picked from local RAM",
         args.limit if args.limit is not None else "(none -- full backlog)",
         args.dry_run,
         args.chunk_seconds,
         args.promote,
+        not args.no_resume,
         args.url or "(oldest-first backlog queue)",
     )
 
@@ -861,6 +1197,7 @@ async def main() -> None:
                     dry_run=args.dry_run,
                     chunk_size_seconds=args.chunk_seconds,
                     promote=args.promote,
+                    resume=not args.no_resume,
                 )
             except Exception as e:
                 result = {

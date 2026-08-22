@@ -10,6 +10,56 @@ from app.platforms.media_probe import (
 )
 
 
+# --- _stderr_tail(): the version banner must not crowd out the error -----
+#
+# Real, live-captured stderr (2026-08-22): the exact extraction command
+# extract_chunk_audio() runs, pointed at a real 404 on cpmedia.azureedge.net
+# -- the same CDN host as the Brookhaven NY failures in BACKLOG.md -- under
+# real ffmpeg 8.1.2. 1,101 bytes total, of which the first ~630 are the
+# version banner, which is how a chunk failure came to be reported as
+# `ffmpeg exited 196: ibavformat 62.12.102 / 62.12.102`: a `[-500:]` tail
+# landed mid-word inside the banner's libavformat line. Only the addresses
+# in the ffmpeg log prefixes are shortened here, for line width; nothing
+# else is edited.
+_REAL_BANNER_HEAVY_STDERR = b"""ffmpeg version 8.1.2 Copyright (c) 2000-2026 the FFmpeg developers
+  built with Apple clang version 21.0.0 (clang-2100.0.123.102)
+  configuration: --prefix=/opt/homebrew/Cellar/ffmpeg/8.1.2_1 --enable-shared --enable-pthreads --enable-gpl --enable-libmp3lame --enable-openssl
+  libavutil      60. 26.102 / 60. 26.102
+  libavcodec     62. 28.102 / 62. 28.102
+  libavformat    62. 12.102 / 62. 12.102
+  libavdevice    62.  3.102 / 62.  3.102
+  libavfilter    11. 14.102 / 11. 14.102
+  libswscale      9.  5.102 /  9.  5.102
+  libswresample   6.  3.102 /  6.  3.102
+[https @ 0x953003520] HTTP error 404 The specified resource does not exist.
+[in#0 @ 0x952c20000] Error opening input: Server returned 404 Not Found
+Error opening input file https://cpmedia.azureedge.net/nonexistent-thing.mp4.
+Error opening input files: Server returned 404 Not Found
+"""
+
+
+def test_stderr_tail_drops_the_version_banner_and_keeps_the_real_error():
+    tail = media_probe._stderr_tail(_REAL_BANNER_HEAVY_STDERR, 500)
+    assert tail.startswith("[https @ ")
+    assert "HTTP error 404" in tail
+    assert tail.endswith("Error opening input files: Server returned 404 Not Found")
+    # The whole point: no banner line survives, so none of the 500-character
+    # budget is spent on one -- and the reported error can't begin mid-word
+    # inside `libavformat` the way the real pub-3ce failure's did.
+    assert "libavformat" not in tail
+    assert "ffmpeg version" not in tail
+    assert "configuration:" not in tail
+
+
+def test_stderr_tail_still_truncates_from_the_end():
+    """ffmpeg's real diagnosis is its *last* lines, so a genuinely long
+    stderr must keep the end, not the beginning."""
+    long_stderr = ("\n".join(f"line {i}" for i in range(500))).encode()
+    tail = media_probe._stderr_tail(long_stderr, 40)
+    assert len(tail) <= 40
+    assert tail.endswith("line 499")
+
+
 def test_plausible_duration_bounds():
     assert not is_plausible_meeting_duration(60)  # 1 min, too short
     assert is_plausible_meeting_duration(30 * 60)  # 30 min, plausible
