@@ -49,7 +49,7 @@ verbatim prefix of a real line further down, so any entry opens with
 
 ```text
 
-Standing decisions — do NOT re-raise  (12)
+Standing decisions — do NOT re-raise  (13)
   Do NOT widen `noindex` / the sitemap filter / the `/j/*` hub filter…
   `ALERT_WEBHOOK_URL` — declined 2026-08-21
   The inbox-triage Routine holds no Gmail write scope — don't propose…
@@ -61,15 +61,17 @@ Standing decisions — do NOT re-raise  (12)
   Do NOT spread a transcription job's within-job pulls across hosts
   Do NOT raise `media_probe.py`'s `_SUBPROCESS_TIMEOUT_SECONDS` to…
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
+  Legistar's delegated-platform *title* winning over the page's body…
   Sacramento County's doubled meeting title is not a bug to fix
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (11)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (12)
   [JUST-DO-IT] `[EASY]` `is_extractable()` excludes only YouTube, so
   [JUST-DO-IT] `[EASY]` A Viebit meeting's "can't transcribe this"
   [JUST-DO-IT] `[EASY]` `scripts/backtest_fallback.py`'s `sebastopol`
   [JUST-DO-IT] `[EASY]` "We think the video is here: [No video
   [JUST-DO-IT] `[EASY]` `rtr-business/BUSINESS_OVERVIEW.md` still says
   [JUST-DO-IT] Google declines to index the *hub* pages, not the
+  [JUST-DO-IT] Give `meeting_body` an adapter-supplied path — it has
   [JUST-DO-IT] `[EASY]` `feed.xml` is being crawled and index-judged;
   [JUST-DO-IT] `[EASY]` Two archived pages have slugs frozen from a
   [JUST-DO-IT] Remove WO-8's `?token=` admin fallback — its
@@ -89,8 +91,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (10)
   Decisions about already-live content  (2)
     [JUST-DO-IT] `[BIG]` Repair the three already-live transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
-  Product calls  (1)
-    [HUMAN] `legistar.py`'s `_try_fallback_video_link()` still prefers
+  Product calls
 
 Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (7)
   [NEEDS-AUDIT] Render "HTTP health check failed" on
@@ -345,6 +346,21 @@ Hit live on Spokane WA while building the Vimeo adapter (WO-29). The
 adapter ships video-only rather than going near it. Same rule applies to
 any future platform that gates behind one.
 
+### Legistar's delegated-platform *title* winning over the page's body name is correct as built
+
+Decided 2026-08-22. `legistar.py`'s `_try_fallback_video_link()` prefers
+the delegated platform's title unless
+`_looks_like_raw_filename()` rejects it — deliberately unlike date and
+jurisdiction, which prefer the Legistar page. Baltimore rendering as a
+CharmTV YouTube title is the intended behaviour, not the bug it looked
+like: a channel name plus date carries more for a reader than a bare
+body name, and the raw-filename escape hatch already handles the case
+where the delegated title is worse (NYC/Viebit's `.mp4` filenames).
+**The real gap this surfaced is a different one** — the Legistar page's
+*body name* is genuinely valuable, it just belongs in `meeting_body`
+rather than in the title. See the `meeting_body` entry under **Ship
+next**. Don't re-open the title question.
+
 ### Sacramento County's doubled meeting title is not a bug to fix
 
 `"Board Of Supervisors Board Of Supervisors Meeting"` is real text
@@ -466,6 +482,29 @@ so that work reads together.
   the baseline to beat, not the raw count, since the raw count moves
   with corpus growth.
 
+- **[JUST-DO-IT] Give `meeting_body` an adapter-supplied path — it has
+  none today.** Decided 2026-08-22, out of the Legistar title question
+  (now a **Standing decision**: the delegated title winning is correct).
+  The government body's own name *is* worth capturing; it just belongs
+  in `meeting_body`, not in the title.
+  **Confirmed by reading the code, not assumed:** `meeting_body` exists
+  only as an Archive column (`archive/db/models.py:65`) and is populated
+  from exactly one source — `jx_result.meeting_body`
+  (`archive/db/crud.py:450`, `:496`), the entity name split off a
+  leading prefix by jurisdiction extraction. **`grep -rln "meeting_body"
+  app/platforms/*.py` returns nothing**: no adapter supplies it, and
+  `ResolvedMeeting` has no such field.
+  **The work**: add `meeting_body` to `ResolvedMeeting`; have an
+  adapter-supplied value take **precedence over** the entity-prefix
+  split (which stays as the fallback for adapters that don't set it);
+  populate it in `legistar.py` on **all** paths, including the
+  delegated-video path where the title comes from elsewhere. **Granicus
+  follows as the second adapter** — its RSS carries a real body name.
+  **Note the ordering benefit**: this is also the precondition for the
+  existing `[IMPROVEMENT-ROUND]` entries on auditing per-adapter
+  `meeting_body` coverage and on using `meeting_body` in search
+  facets — both are currently reasoning about a field that only
+  jurisdiction extraction ever writes.
 - **[JUST-DO-IT] `[EASY]` `feed.xml` is being crawled and index-judged;
   it should be `noindex`.** Three `feed.xml?jurisdiction=…` URLs appear
   in the "Crawled – currently not indexed" list even though
@@ -910,18 +949,6 @@ convenient.
   story.
 
 ### Product calls
-
-- **[HUMAN] `legistar.py`'s `_try_fallback_video_link()` still prefers
-  the delegated platform's *title* over the Legistar page's own body
-  name** — unlike date and jurisdiction, which now prefer the page
-  outright. Found 2026-08-21 alongside the WO-30 date bug: Baltimore's
-  real hearing renders as CharmTV's YouTube title (with a redundant
-  embedded date) rather than Legistar's own body name. Not obviously a
-  bug — the existing `_looks_like_raw_filename()` heuristic exists
-  precisely because a delegated title is sometimes *better* (NYC/Viebit's
-  is a raw `.mp4` filename), and a channel name + date is arguably more
-  informative than a bare body name. Needs a product call on which reads
-  better, not a code fix decided in isolation.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
 
