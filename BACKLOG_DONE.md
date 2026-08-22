@@ -19052,3 +19052,237 @@ filters on anything but `source` and the warning-marker presence) and
 against the repetition-loop/non-Latin-script shapes the fixture tests
 above already cover, but a real post-deploy call against the live Archive
 service is the next step to fully close this out.
+
+## Google Search Console hub-page indexing audit — root-caused, fix scoped, nothing built yet [Investigated 2026-08-22]
+
+See `BACKLOG.md`'s "Google declines to index the hub pages" entry under
+**Ship next** for the decision this produced (real transcript snippets
++ meeting-card thumbnails on hub pages) and what's still queued to
+build. This entry is the measurement behind that decision.
+
+Search Console → Indexing → Pages showed **294 "Discovered – currently
+not indexed"** and **291 "Crawled – currently not indexed"**, both
+rising — ~585 URLs, against only 5 deliberate `noindex` and 3 redirects
+(flat, fine). The open question was *why*.
+
+**Answered by categorising the first 250 of the "Crawled" set against
+the live `sitemap.xml`:**
+
+| Type | In sitemap | % of sitemap | % of non-indexed | Over-rep |
+| --- | --- | --- | --- | --- |
+| `/j/` jurisdiction hubs | 438 | 15.2% | **54.4%** | **3.6×** |
+| `/state/` pages | 59 | 2.0% | **6.4%** | **3.1×** |
+| `/m/` meeting pages | 2,383 | 82.6% | 38.0% | **0.5×** |
+| `feed.xml?jurisdiction=` | 0 | 0% | 1.2% | link-discovered |
+
+Crawl-budget exhaustion or low domain authority would suppress indexing
+roughly *proportionally* across page types. Instead Google is
+selectively declining the hub pages while `/m/` meeting pages index
+*better* than their share — confirming thin, templated, near-duplicate
+hub content as the cause. A `/j/` page that is a bare list of links to
+meetings, differing from 437 sibling pages only by the place name, is
+close to the textbook case for "Crawled – currently not indexed".
+
+**A meeting-count threshold does NOT separate flagged from unflagged —
+measured on both page types, and it kills the obvious fix.** Tested
+against Search Console's full 291-row export, not a sample.
+
+`/state/` — all 59 pages fetched, meeting counts compared:
+
+| | n | min | median | max |
+| --- | --- | --- | --- | --- |
+| Flagged | 17 | 1 | **13** | 35 |
+| Not flagged | 42 | 1 | **8** | 425 |
+
+Flagged pages have *more* meetings. Eight of the ten single-meeting
+states are fine; only North Dakota and Northwest Territories are
+flagged. Illinois (35 meetings) is flagged while Utah (18), Michigan
+(20) and Wisconsin (25) are not, and every one of the largest —
+California 425, Texas 249, Florida 142 — is unflagged.
+
+`/j/` — 146 flagged hubs plus a 160-hub random control, meetings shown
+per page:
+
+| | n | min | median | p75 | max | mean |
+| --- | --- | --- | --- | --- | --- | --- |
+| Flagged | 146 | 2 | **2** | 3 | 47 | 3.4 |
+| Not flagged | 160 | 2 | **2** | 2 | 11 | 2.2 |
+
+The distributions are the same — 92 of 146 flagged hubs show two
+meetings, and so do 140 of 160 unflagged ones. What separation exists
+runs the *wrong* way (flagged pages are slightly larger). Modelled
+thresholds make the cost brutal:
+
+| threshold | flagged caught | currently-fine pages suppressed |
+| --- | --- | --- |
+| ≥3 | 63% | **88%** |
+| ≥4 | 83% | **96%** |
+| ≥5 | 89% | **99%** |
+
+So gating on volume is ruled out by measurement: any threshold strong
+enough to catch the flagged pages suppresses essentially the entire hub
+surface. The more useful finding underneath it: the median hub shows
+**two meetings whether Google indexed it or not** — the hubs are
+uniformly thin, which is why volume can't discriminate and is the
+direct argument for the content fix (raising the floor for all 438
+hubs, not hiding a subset).
+
+**Two honest limits on the numbers.** (1) The `/j/` figure counts
+`href="/m/"` occurrences on the rendered page, which may include links
+outside the meeting list — treat the absolute counts as a proxy; the
+*comparison* between groups is what carries the result, and both groups
+were measured identically. (2) This covers the 291 "Crawled – currently
+not indexed" URLs; the 294 "Discovered" ones are a different bucket and
+weren't exported, so "not flagged" here means "not in the Crawled
+list."
+
+**Scale**: 136 distinct `/j/` pages appear in the 250-URL sample of the
+291-URL list — a large fraction of all 438 jurisdiction hubs are
+affected, not a tail.
+
+## Render "HTTP health check failed" on the Archive — log analysis behind the candidate diagnosis [Investigated 2026-08-22]
+
+See `BACKLOG.md`'s matching entry under **Open bugs** for the still-open
+fix. This is the log analysis behind it.
+
+**Confirmed from the Archive's application logs in both windows
+(2026-08-19 13:17:28 UTC, 2026-08-20 21:38:36 UTC):**
+- A real instance restart each time — `Instance srv-d9ras3ijnfac73f9ps5g
+  -qv7ln restarted` (08-19) and `…-7nlhh restarted` (08-20).
+- **The shutdown is graceful, not a kill**: `Shutting down` → `Waiting
+  for application shutdown.` → `Application shutdown complete.` →
+  `Finished server process`. An OOM kill is `SIGKILL` and produces none
+  of that; this is `SIGTERM`, handled cleanly.
+- **Zero errors.** No traceback, no OOM line, no 5xx. `/api/health`
+  returns `200 OK` continuously right up to the shutdown.
+- Traffic in both windows is a **systematic crawl**, not human
+  browsing: sequential `/m/{slug}` pages, then `/j/{hub}` pages, then
+  `/meetings?jurisdiction=…` **and** `/feed.xml?jurisdiction=…` for the
+  same jurisdictions, `/meetings?page=2,3,36`, and **both**
+  `transcript.txt` and `transcript.srt` for the same meeting
+  back-to-back.
+- In the 08-20 window, two expensive internal endpoints were called
+  from an external IP immediately before the shutdown:
+  `/internal/transcript-quality-audit?list_outcomes=…` and
+  `/internal/transcription/hallucination-candidates`.
+
+**The candidate diagnosis, consistent with all of the above.** The
+graceful shutdown is the *consequence*, not the cause: Render restarts
+an instance whose health check fails, and does so with `SIGTERM`. So the
+question is only why `/api/health` stopped answering in time, and three
+things stack: (1) the Archive runs a single uvicorn process (no
+`--workers`), so one slow query stalls every other request including the
+health probe; (2) `/api/health` itself runs a `SELECT count(*)` sequential
+scan on every probe, and Render probes relentlessly — `/api/health`
+lines outnumber all real traffic roughly 30:1 in these logs; (3) load
+was genuinely high in both windows (a full-site crawl, plus, on 08-20,
+two internal audit endpoints whose cost is already a known concern
+elsewhere in `BACKLOG.md`).
+
+**Two incidental findings from the same logs**, both feeding other
+entries: every non-probe request arrives from one upstream IP
+(`74.220.48.160` on 08-19, `74.220.48.190` on 08-20, same /24) — real end
+users don't share an IP; the resolver proxying the whole public site
+does, independent support for the double-billing entry under **Ship
+next**. And the crawler pulls both `transcript.txt` and `transcript.srt`
+per meeting plus a per-jurisdiction `feed.xml` and `/meetings` page —
+the largest payloads the site serves, every one currently billed twice,
+a plausible large share of the month's 12.46 GB of HTTP responses.
+
+## GA `submit_meeting_url` spike root-caused as operator activity, not the campaign or a bot [Investigated 2026-08-22]
+
+See `BACKLOG.md`'s matching entry under **Needs a human** for the
+internal-traffic-filter action this produced.
+
+**The Aug 10–16 daily split of `submit_meeting_url`, answered — and
+neither of the two options the original entry offered.** 184 events
+total: **5, 6, 64, 67, 27, 14, 1** (Aug 10→16). Baseline ~5/day, a **10×
+spike on Aug 12–13**, then decay to 1 by Aug 16. The entry framed this as
+"evenly-spaced = a bot on the form; clustered on outreach days = the
+campaign working," and the shape is emphatically clustered — but Ryan
+identified it directly (2026-08-22): that was him entering meeting URLs
+by hand, before the bulk-ingestion tooling existed. Not a bot, not the
+campaign. Operator activity.
+
+That correction is worth more than the original question: it means the
+2026-08-17 read ("submit_meeting_url 185/week … funnel looks healthy")
+was measuring the operator, not users, and the "healthy funnel"
+conclusion drawn from it doesn't hold. Combined with the separate GA
+firing-gap finding (below), both signals that looked like product usage
+turned out to be internal: ~184 submissions that were Ryan typing, and
+~14 `/m/` page views of which at least some are test fixtures.
+
+**The four `/m/*` events were firing nowhere — fixed and verified
+2026-08-22.** `render.yaml` declared `GA_MEASUREMENT_ID` only on the
+resolver, so `archive/templates/base.html` took its no-op branch and
+every `trackEvent()` call `meeting_page.js` made was discarded. Ryan set
+the value on `rtr-deeplink-archive`; confirmed in-browser (real `gtag`,
+`G-4V42BWY8EJ` present, and clicking the page's own share control fired
+`copy_link_to_time`). The key is now declared in `render.yaml` too, so a
+blueprint-only rebuild can't regress to the stub.
+
+**Still open — the 22 events with no confirmed source.** GA attributes
+22 `page_view`/`first_visit` events on `/m/` paths to a period when GA
+demonstrably wasn't loaded there. Ruled out: nothing in `app/static/`,
+`archive/static/` or either template calls `history.pushState`/
+`replaceState`, so client-side URL rewriting on a GA-enabled resolver
+page isn't it. Now cheap to settle: with the fix live, watch whether
+those 22 change character. If they vanish or shift shape, that
+identifies the source; if they persist unchanged, something else is
+reporting `/m/` paths and is worth finding.
+
+**The finding that joins GA to the Render logs.** The Archive's logs
+show a heavy, systematic crawl of `/m/`, `/j/`,
+`/meetings?jurisdiction=`, `/feed.xml?jurisdiction=` and both
+`transcript.txt` and `transcript.srt` per meeting. GA shows ~14 human
+views in the same period. Crawlers don't execute JS, so they generate no
+GA events — meaning essentially all of the month's 12.46 GB of HTTP
+responses is crawler traffic, and every byte of it is currently billed
+twice through the resolver→Archive public proxy (see the
+double-billing entry under **Ship next**, and the Render health-check
+entry under **Open bugs**, which independently confirms the same crawl
+from server logs). It also raises a question nobody's asked: whether
+`transcript.txt`/`transcript.srt` should be crawlable at all — not
+covered by the existing `noindex`/sitemap standing decision, which is
+about *indexing* `/m/` and `/j/` pages, a different question from
+letting crawlers pull both full-transcript formats for every meeting.
+
+## Stray Archive-shaped tables in `rtr_deeplink_db` — root cause found [Investigated 2026-08-22]
+
+See `BACKLOG.md`'s matching entry under **Needs a human** for the
+cleanup action this produced.
+
+**What put them there — a local Archive run pointed at the resolver's
+database.** On 2026-08-12 every guard that would now prevent this was
+still absent, and each landed *after* that date:
+- `archive/db/engine.py`'s `init_models()` called `create_all()`
+  **unconditionally, including on Postgres**, until `6e722be` (WO-10 /
+  PR #156, **2026-08-17 16:53 PT**) gated it to SQLite. So on 08-12,
+  starting the Archive against *any* Postgres would create its whole
+  table set there.
+- The `EXPECTED_DB_HOST` assertion that now catches a mis-pointed
+  `DATABASE_URL` landed in `a006062` (WO-4, **2026-08-17 05:53 PT**) —
+  also after.
+- And `CLAUDE.md` already documents the mechanism that supplies the
+  wrong URL silently: `load_dotenv()` is called with no explicit path,
+  so it cwd-walks up and finds the shared checkout's `.env` — meaning an
+  Archive process started without an explicit `DATABASE_URL` connects to
+  whatever that `.env` names, which in this checkout is
+  `rtr_deeplink_db`.
+
+That resolves the entry's own original puzzle — "the demo data postdates
+both services adopting Alembic, so *leftover from before the split*
+doesn't cleanly fit." It isn't leftover from the split; it's a local run
+five days before the gate existed. **Circumstantial supporting detail,
+not proof**: `66fa9ac` (2026-08-13) added a bulk backfill sweep over
+archived-page data — exactly the kind of work that involves running
+`archive.main:app` locally the day before.
+
+**Why this now argues for cleanup rather than leaving it.** The original
+entry's caution was right when the cause was unknown, but the tables'
+*continued existence* is itself the remaining hazard: `create_all()` no
+longer creates tables on Postgres, so a future mis-pointed local Archive
+run would now fail loudly on missing tables — except in
+`rtr_deeplink_db`, where the tables already exist and the write would
+silently succeed. Dropping them restores fail-loudly behaviour for the
+one database where it's currently absent.
