@@ -1746,7 +1746,7 @@ through this dispatch, so it calls `dedupe_rollup_cues()` itself.
 sweep.** Nothing re-checks a stored `TranscriptVersion` on its own, so
 every page ingested before 2026-08-21 still serves the text it was stored
 with. `scripts/dedupe_rollup_transcripts.py` finds those pages and
-rewrites them — see "Rewriting pre-WO-34 transcripts" below.
+rewrites them — see "Rewriting pre-WO-34 transcripts" above.
 
 VTT and SRT are real, structurally-parsed formats, confirmed
 against real samples on multiple platforms. TTML/DFXP/ITT also get a real
