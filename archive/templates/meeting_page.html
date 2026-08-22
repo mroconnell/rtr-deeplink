@@ -37,14 +37,25 @@
   <meta property="og:title" content="{{ page.title or 'Meeting' }}">
   <meta property="og:description" content="{{ description }}">
   <meta property="og:type" content="video.other">
-  {#- YouTube-backed pages get a free, predictable thumbnail from
-     i.ytimg.com (see archive/utils/video_thumbnail.py) -- reused for
-     both og:image (link-unfurl cards) and VideoObject.thumbnailUrl
-     below, since they're the same underlying gap (BACKLOG.md's Google
-     Search Console entry + CLAUDE_BACKLOG.md's og:image note). Direct
-     mp4/m3u8 pages still have no thumbnail -- that needs real ffmpeg
-     frame extraction, still tracked as the remaining slice. #}
-  {% set thumbnail_url = page.video_url|youtube_thumbnail_url %}
+  {#- One thumbnail value, two sources, reused for og:image (link-unfurl
+     cards), VideoObject.thumbnailUrl and Event.image below -- they're all
+     the same underlying gap (BACKLOG.md's Google Search Console entry,
+     where a missing thumbnailUrl was the page's ONLY critical issue as of
+     a real 2026-08-21 URL Inspection).
+       * YouTube-backed pages: the free, predictable i.ytimg.com URL.
+       * Everything else (mp4/m3u8 -- the majority of the Archive): a real
+         frame extracted from the meeting's own video by ffmpeg and served
+         from /m/{slug}/card.jpg. `card_available` is only true once a
+         frame is actually stored (see archive/main.py's /m/ route) --
+         emitting a card URL that would 404 is worse than emitting none,
+         since Google's validator and every social scraper fetch it.
+       * `card_t` carries the visitor's own ?t= straight through, so a
+         shared deep link's card shows the moment that was shared. The
+         "+20s so the frame lands inside the content" lead lives in the
+         card route, not here.
+     Absolute (public_base_url) for the same reason as canonical/og:url:
+     a relative og:image is not reliably resolved by every scraper. #}
+  {% set thumbnail_url = page.video_url|youtube_thumbnail_url or (public_base_url and card_available and (public_base_url ~ "/m/" ~ page.slug ~ "/card.jpg" ~ ("?t=" ~ card_t if card_t else ""))) or none %}
   {% if thumbnail_url %}
   <meta property="og:image" content="{{ thumbnail_url }}">
   {% endif %}
@@ -64,10 +75,12 @@
      contentUrl is used for a direct playable file (mp4/m3u8, this app's
      normal case); embedUrl is used for YouTube instead, since that
      video_url is an iframe-embed URL, not a raw media file, and
-     schema.org distinguishes the two. thumbnailUrl (YouTube-backed
-     pages only, see above) is what Google's validator flags as blocking
-     rich-result eligibility when absent, so non-YouTube pages remain
-     valid-but-ineligible until the ffmpeg slice exists. #}
+     schema.org distinguishes the two. thumbnailUrl is what Google's
+     validator flags as blocking rich-result eligibility when absent --
+     now populated for extractable mp4/m3u8 pages too, not just YouTube
+     ones (see the thumbnail_url block above). A page still legitimately
+     has none while its first frame is being extracted, or when its source
+     media is unreachable. #}
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -118,7 +131,7 @@
        own unreliable_timestamps guard below (blocks have separate
        scopes, so the expression is duplicated -- keep the two in sync);
        and no items means no key at all rather than an empty array. #}
-    {% set clip_items = page.agenda_items or [] -%}
+    {% set clip_items = page.agenda_items|clip_entries -%}
     {% set clips_unreliable = clip_items|length > 1 and (clip_items|map(attribute='start')|unique|list|length == 1) -%}
     {% if public_base_url and clip_items and not clips_unreliable -%}
     "hasPart": [
@@ -131,11 +144,17 @@
            item text -- a schema.org name must never carry markup. The
            adapter-side root cause is tracked in BACKLOG.md. #}
         "name": {{ item.text|striptags|truncate(100)|tojson }},
-        "startOffset": {{ item.start|int }},
-        {% if item.end and item.end > item.start -%}
-        "endOffset": {{ item.end|int }},
+        "startOffset": {{ item.start }},
+        {#- clip_entries() (archive/utils/clips.py) resolves each end:
+           the item's own when it's real, else the next DISTINCT start --
+           which is what cleared 12 "Missing field endOffset" warnings on
+           the real San Carlos page, where one consent-calendar block gave
+           twelve consecutive items the same 982s timestamp. None only for
+           a genuinely open-ended final item. #}
+        {% if item.end is not none -%}
+        "endOffset": {{ item.end }},
         {% endif -%}
-        "url": {{ (public_base_url ~ "/m/" ~ page.slug ~ "?t=" ~ (item.start|int))|tojson }}
+        "url": {{ (public_base_url ~ "/m/" ~ page.slug ~ "?t=" ~ item.start)|tojson }}
       }{{ "," if not loop.last }}
       {% endfor -%}
     ],

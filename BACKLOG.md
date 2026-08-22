@@ -470,24 +470,30 @@ else; do whenever convenient, no particular order.
   dashboard.** `SENTRY_DSN` is live and set on all three services, but
   nobody has forced a real exception and watched it land in Sentry's UI
   — WO-7's own stated acceptance criterion, never run.
-- **[HUMAN] `ALERT_WEBHOOK_URL` repo secret** (Slack/Discord incoming webhook,
-  shared by all three cron workflows: daily-report, send-search-alerts,
-  adapter-canary) — optional, still unset. Without it, a workflow failure
-  still surfaces via GitHub's own failed-scheduled-workflow email, so
-  this is a nice-to-have, not a real gap. **One concrete missed alert on
-  file now, though** (checked 2026-08-21 while doing WO-26): the adapter
-  canary's only failure in its visible run history — run 32155218602,
-  2026-08-18 — logged `19/20 platforms OK` / `FAIL aurora: resolve
-  returned no real content`, then `##[warning]Adapter canary failed and
-  ALERT_WEBHOOK_URL isn't set`. Nothing sent anywhere. It passed again on
-  08-19 with no code change, so it was almost certainly a transient
-  auroratv.org blip rather than an adapter regression — but nobody looked
-  at the time, which is exactly the outcome the webhook exists to prevent:
-  the one real signal the canary has ever produced went to nobody, and the
-  "was it transient or real?" question could only be answered three days
-  late, from logs. That turns this from an abstract nice-to-have into a
-  known, already-realized gap — still `[HUMAN]`-only, since the secret
-  can't be set from a Claude Code session.
+- **`ALERT_WEBHOOK_URL` repo secret — DECLINED 2026-08-21, deliberately.
+  Don't re-raise this as an open gap.** Ryan's call, stated directly: he
+  doesn't use Slack or Discord, so a webhook that posts into a channel
+  nobody watches adds nothing over GitHub's own failed-scheduled-workflow
+  email, which already reaches him. The `if: failure()` step in all three
+  cron workflows (daily-report, send-search-alerts, adapter-canary) stays
+  as-is — it no-ops with a `::warning::` when the secret is unset, which
+  is the intended behavior, not a defect.
+
+  Recorded because the evidence for it looks stronger than it is, and a
+  future session will likely rediscover it and want to "fix" it: the
+  adapter canary's only failure in its visible run history (run
+  32155218602, 2026-08-18) logged `19/20 platforms OK` / `FAIL aurora:
+  resolve returned no real content`, then `##[warning]Adapter canary
+  failed and ALERT_WEBHOOK_URL isn't set`. It passed again 08-19 with no
+  code change — a transient auroratv.org blip. Note what actually
+  happened there: GitHub's email *did* fire, and the failure *was*
+  diagnosable from logs afterward. The webhook would have changed the
+  delivery channel, not the outcome.
+
+  **If email alerting is ever genuinely wanted**, the honest answer is
+  it'd mean wiring Resend credentials into GitHub Actions purely to
+  duplicate a notification GitHub already sends — not worth it. Revisit
+  only if Ryan starts using a chat tool day-to-day.
 - **[HUMAN] Confirm Render's health-check gate actually fails a deploy** when
   `/api/health` (resolver or Archive) reports unhealthy (WO-6) — the 503
   logic is unit-tested, but nobody has watched a real Render deploy
@@ -1055,53 +1061,50 @@ anything) to build against it.
   the way archive's is, and a second CI `alembic check` step with
   `working-directory: app` (verified passing locally — the models' only
   post-baseline column, `jurisdiction_confidence`, is covered by
-  `a9207c0eb761`). The `render.yaml` `preDeployCommand` is written but
-  **must not merge before the stamp below** — see that PR's separate,
-  clearly-marked commit.
+  `a9207c0eb761`).
 
-  **What's still open — [HUMAN] one shell step, Ryan-gated:** `app/`'s
-  Alembic history (`app/alembic/`, 2 revisions) has still never been
-  stamped in production, so `preDeployCommand: cd app && alembic upgrade
-  head` would fail on its first run (baseline `CREATE TABLE`s against
-  tables that already exist — the brief's "step 3 before step 2"
-  warning). **The precise runbook is now in `app/alembic/README.md`
-  ("The runbook") — follow it rather than a one-line recipe**, because
-  the answer genuinely branches. Two corrections to what this entry
-  previously said:
+  **CLOSED 2026-08-21 — and the blocker turned out not to exist.** This
+  entry spent ~11 days asserting that `app/`'s Alembic history "has never
+  been stamped in production," making a one-time manual `alembic stamp`
+  on the Render shell the gate for `preDeployCommand`. The first real
+  call to the brand-new `GET /admin/schema-info` disproved it outright:
 
-  - **Stamp the literal revision `a9207c0eb761`, never `head`.** This
-    entry (and `render.yaml`'s comment) used to say `alembic stamp
-    head`, correct when written 2026-08-10 because the baseline *was*
-    head — then `a9207c0eb761` landed 08-15 and silently invalidated it.
-    Stamping `head` now would claim production has
-    `jurisdiction_confidence` whether or not it does: the exact shape of
-    the 2026-08-09 Archive incident (`archive/alembic/README.md`, "'head'
-    isn't a fixed name").
-  - **Don't "expect empty" from `alembic current`** — a 2026-08-11
-    `information_schema` query (`BACKLOG_DONE.md`) found an
-    `alembic_version` table already present on the resolver's Postgres.
-    Whether it holds a row is unknown. Read the real output.
+  ```
+  alembic_version: a9207c0eb761      # already at head
+  schema_matches_models: true
+  mismatched_tables: []
+  jurisdiction_confidence present:  true
+  ```
 
-  **First thing to curl, and how to read it:** `GET /admin/schema-info`
-  with the admin token answers both unknowns at once — whether
-  `actual_columns.meeting_resolutions` contains `jurisdiction_confidence`,
-  and what `alembic_version` really holds. **If that column turns out to
-  be missing, that's a live silent-degradation bug, not a migration
-  chore:** `crud.log_resolution()` sets it on every insert and
-  `app/main.py` only ever calls it through `safe()`, which swallows the
-  exception — so every reporting-log row (and the resolve cache reading
-  off that table) would have been failing to write since 2026-08-15,
-  invisibly, and `/admin/stats` would be 503ing too (`get_stats()` does
-  `select(MeetingResolution)`, full entity). A cleanly-responding
-  `/admin/stats` is decent evidence the column *is* there; the endpoint
-  is the direct confirmation.
+  Production was already stamped, at head, with the real column present.
+  Somebody stamped it and never wrote it down. `/admin/stats` returning
+  200 independently confirms the silent-degradation scenario this entry
+  warned about (`crud.log_resolution()` failing invisibly inside `safe()`
+  since 2026-08-15) **did not happen**.
 
-  Until the stamp happens, an altered resolver table still needs a
-  hand-run migration — but note a new resolver *table* no longer appears
-  on its own now that `create_all()` is Postgres-gated. Also still true:
-  `scripts/backfill_search_corpus.py`-style one-time backfills remain
-  manual — prefer generated columns (the `search_tsv` pattern) so
-  there's nothing to backfill.
+  So `preDeployCommand: cd app && alembic upgrade head` was safe all
+  along and is now merged for the resolver service — both services now
+  have the full WO-10 guarantee (CI `alembic check` blocks a missing
+  migration before merge; migrations run before the new build serves).
+
+  **The transferable lesson, worth more than the Alembic detail:** this
+  doc asserted a fact about production that nothing in the repo could
+  verify, and two separate sessions came close to opening a Render shell
+  to run a destructive-ish command on that premise. A single read-only
+  endpoint answered it in one `curl`. **When a doc claims something about
+  production state, build the thing that can check it before acting on
+  the claim.** The endpoint cost about an hour; the shell session it
+  replaced was the risky part.
+
+  **If this history ever does need stamping**, name the literal revision
+  (`a9207c0eb761` today), never `head` — `head` was the baseline when
+  older docs said "stamp head", `a9207c0eb761` landed 08-15, and that
+  silently turned the advice into the 2026-08-09 Archive incident's exact
+  shape. `app/alembic/README.md`'s runbook has the decision table.
+
+  Still true, unrelated to the above: `scripts/backfill_search_corpus.py`-style
+  one-time backfills remain manual — prefer generated columns (the
+  `search_tsv` pattern) so there's nothing to backfill.
 
 - **[HUMAN] Search Console "Page indexed without content" (alert 2026-08-17)
   is still genuinely unexplained — and specifically NOT explained by
@@ -1695,32 +1698,67 @@ anything) to build against it.
   through to the generic failure message. Both now check `res.status ===
   429` explicitly first and show real rate-limit copy instead.
 
+- **[HUMAN] Confirm `ffmpeg` really is on the Archive service, and warm
+  the ~1200 existing pages' meeting cards (WO-28 residual, 2026-08-21).**
+  Card extraction runs Archive-side, which is where the page, the DB and
+  the route are — but the Archive is a plain `runtime: python` service
+  that shelled out to no binary at all until this shipped. The
+  *assumption* is that Render's python buildpack ships `ffmpeg` there
+  just as it was confirmed to ship `ffprobe` on the resolver
+  (render.yaml's 2026-08-08 note); that is a reasonable inference, not a
+  verified fact. One command settles it after deploy:
+
+  ```bash
+  curl "$ARCHIVE_BASE_URL/api/health"   # -> {"status":"ok","media_tools":{"ffmpeg":"...","ffprobe":"..."}}
+  ```
+
+  * `"ffmpeg": null` means the fallback architecture is needed: extract
+    resolver-side (where the binary is confirmed) and ship the bytes with
+    the ingest payload. Nothing is broken in the meantime — those pages
+    just keep rendering with no `og:image`, exactly where they were
+    before WO-28.
+  * A real version string means the path works, and the second half
+    applies: new pages warm at ingest and older ones warm on first view,
+    but the ~1200 already archived are best warmed deliberately —
+    `POST /internal/thumbnails/backfill?limit=25&dry_run=false`, run
+    repeatedly (small batches on purpose: each item is one `ffprobe` plus
+    one `ffmpeg` against a government CDN).
+
+- **[IMPROVEMENT-ROUND] A generated, branded share card would beat a raw
+  video frame (WO-28 residual).** The extracted frame is a real, large
+  improvement over no image at all, but it carries no jurisdiction, no
+  meeting title, and no Red Tape Recordings identity — a reader scrolling
+  Bluesky sees an anonymous council dais. The stronger unit is a
+  composited card (frame as background, jurisdiction + title + date +
+  logo overlaid), which is also what `CLAUDE_BACKLOG.md`'s "Quote-clip
+  sharing" idea would need. Deliberately not built here: it needs an
+  image-compositing library (Pillow, or ffmpeg's `drawtext` with a
+  bundled font) that this repo does not currently have, and font
+  rendering/wrapping quality is a real design problem rather than a small
+  addition. The storage, route, cache headers and targeting all carry
+  over unchanged if it happens.
+
 - **[IMPROVEMENT-ROUND] Google Search Console flagged 3 "Videos" structured-data issues
   site-wide (alert received 2026-08-12)**: missing `thumbnailUrl`
   (critical — blocks video rich-result eligibility), plus `uploadDate`
   reported as both an invalid datetime value and missing a timezone
   (non-critical). Both trace to the same `VideoObject` JSON-LD block in
   [meeting_page.html:37-66](archive/templates/meeting_page.html:37-66):
-  - ~~`thumbnailUrl` is omitted entirely~~ **Partially fixed 2026-08-14
-    — full detail in `BACKLOG_DONE.md`'s "VideoObject.thumbnailUrl +
-    Clip key moments" entry.** YouTube-backed pages (the free,
-    predictable `i.ytimg.com` slice) now emit `thumbnailUrl` plus
-    `og:image`/`twitter:card`, and pages with real agenda timestamps
-    also gained `Clip` "key moments" markup in the same pass. **Still
-    open**: direct mp4/m3u8 pages — the majority of the Archive — still
-    have no thumbnail; that needs real `ffmpeg` frame extraction (not a
-    new dependency category, `ffprobe` is already in the
-    transcription-feasibility pipeline) and somewhere to host the
-    extracted frames, which is a real new decision (this app hosts no
-    images today). Re-check Search Console once YouTube-backed pages
-    are re-crawled to confirm the critical flag actually clears there.
-    **Update 2026-08-21, from a real Search Console "Videos" enhancement
-    report screenshot**: "No thumbnail URL provided" is now down to just
-    1 video site-wide — but this is NOT confirmation the mp4/m3u8 gap
-    above is closed (it isn't; `archive/utils/video_thumbnail.py` still
-    only handles YouTube-backed pages, unchanged since the 2026-08-14
-    fix). The same report shows a much larger, likely-explanatory issue
-    instead — see the new entry immediately below.
+  - ~~`thumbnailUrl` is omitted entirely~~ **Fixed in two passes —
+    full detail in `BACKLOG_DONE.md`.** 2026-08-14 ("VideoObject.
+    thumbnailUrl + Clip key moments"): YouTube-backed pages emit
+    `thumbnailUrl` plus `og:image`/`twitter:card` from the free,
+    predictable `i.ytimg.com` URL, and pages with real agenda timestamps
+    gained `Clip` "key moments" markup in the same pass. 2026-08-21
+    (WO-28, "Meeting card images"): direct mp4/m3u8 pages — the majority
+    of the Archive — now get a real `ffmpeg`-extracted frame from the
+    meeting's own video, stored in a new `meeting_page_thumbnails` table
+    and served from `GET /m/{slug}/card.jpg`, targeted at the shared
+    `?t=` moment when there is one. **[HUMAN] Still to confirm**: a
+    Search Console re-crawl actually clearing the critical flag. Nothing
+    in this repo can verify that — re-run URL Inspection on the San
+    Carlos page (the one whose 2026-08-21 inspection reported this as
+    its *only* critical issue) once it has been recrawled.
   - ~~`uploadDate` missing a timezone~~ **Fixed 2026-08-14 — full detail
     in `BACKLOG_DONE.md`'s "Wave 1" entry.** Now emits
     `date + "T00:00:00Z"`.
@@ -1754,6 +1792,16 @@ anything) to build against it.
     `BACKLOG_DONE.md`'s "Wave 1" entry.** LIMS's `_flatten_timestamps()`
     now sets each item's `end` to the next item's `start`, matching
     Granicus/IQM2's convention, instead of always equaling `start`.
+  - ~~12 more `Missing field endOffset` warnings on the real San Carlos
+    IQM2 page (2026-08-21 URL Inspection)~~ **Fixed 2026-08-21 (WO-28) —
+    full detail in `BACKLOG_DONE.md`.** A different root cause from the
+    LIMS one above: IQM2 gave a whole consent-calendar block a single
+    timestamp, so twelve consecutive items all carry `start == 982` with
+    `end == start`. `archive/utils/clips.py`'s `clip_entries()` now uses
+    the next *distinct* start (1056) as the end for a run like that —
+    which is both warning-free and more accurate, since those items
+    genuinely do span 982→1056 collectively. Verified on the real
+    payload: 12 missing → 1 (the genuinely open-ended final item).
 
 - **[JUST-DO-IT] Search Console "Video isn't on a watch page" (947 videos
   and growing, from 23 in an earlier screenshot the same session) —

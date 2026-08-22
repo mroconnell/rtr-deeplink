@@ -42,24 +42,112 @@ consequence if unfixed, and rough fix effort — never just a description
 with no sizing. Genuine open questions the Routine couldn't resolve
 itself go in the entry as questions, not silently guessed at further.
 
+## Dedupe protocol (how a run knows what it's already triaged)
+
+Built 2026-08-21 (WO-33). **The `rtr-claude-processed` Gmail label is
+dead — don't query it, don't try to apply it.** The Routine holds no
+Gmail write scope and never will (see "Open item" below for the
+decision), and the label was thread-level anyway, so a thread with one
+processed and one new message came back regardless. What replaces it:
+
+- **`CLAUDE_INBOX_TRIAGE_SEEN.txt`** (repo root, beside this file) — an
+  append-only ledger of Gmail **message** IDs already triaged, one per
+  line as `<message-date>\t<message-id>`. The Routine commits it in the
+  same PR it already opens each run.
+- **`scripts/inbox_triage_ledger.py`** — reads/writes it. Read that
+  file's docstring for the full reasoning behind each design choice.
+
+The three steps a run takes, in order:
+
+1. **Search with a lookback window, not a label exclusion.** Query
+   `label:rtr-claude newer_than:30d`. The window is deliberately much
+   wider than the daily run interval: mail arrives out of order, and a
+   narrow "since the last run" filter would silently drop a
+   late-delivered alert — the worst failure mode for a monitoring job,
+   because it fails closed with nobody noticing. Re-seeing an old
+   message is nearly free now, so the window is cheap.
+2. **Filter the candidates through the ledger before reading bodies.**
+   Collect the message IDs in scope (`get_thread`/`get_message` expose
+   per-message IDs — use those, never the thread ID), then:
+
+   ```
+   printf '%s\n' <ids...> | python scripts/inbox_triage_ledger.py filter
+   ```
+
+   It prints only the IDs not already in the ledger. Review exactly
+   those. Everything it filtered out was triaged on an earlier run and
+   needs no second look — that's the whole point, and it's what stops
+   a run from re-reading a backlog that was 68 threads by 2026-08-18.
+   Dedup against `BACKLOG.md`/`CLAUDE_BACKLOG.md`/this file is still
+   worth doing on top, for the different case the ledger can't cover:
+   a genuinely-new alert about an already-tracked problem.
+3. **Record what was reviewed, then prune, then commit.** Record every
+   ID the run actually looked at — including ones skipped as noise or
+   as duplicates, since "reviewed and deliberately not written up" is
+   exactly the outcome that must not be re-derived tomorrow. Pass each
+   message's own date when it's known:
+
+   ```
+   printf '%s\t%s\n' <id> <YYYY-MM-DD> ... | \
+       python scripts/inbox_triage_ledger.py record
+   python scripts/inbox_triage_ledger.py prune
+   ```
+
+   `record` only ever appends (that merges cleanly against a concurrent
+   session; a full-file rewrite wouldn't). `prune` drops entries older
+   than the 30-day window plus a 7-day grace margin, so the file stays
+   bounded — the grace exists so an entry can't be pruned right at the
+   edge and then handed straight back by the next run's search.
+   Commit the ledger in the run's PR alongside this file. A run that
+   found nothing worth writing up still commits the ledger.
+
+If a message needs re-reviewing later, delete its line from the ledger
+by hand — that's the intended escape hatch, and the next run will pick
+it up again as long as it's still inside the search window.
+
 ---
 
 ## Open item
 
-**Gmail OAuth reauthorization — two runs running as of 2026-08-18, still
-not fixed.** The 2026-08-17 run's `label_thread` calls failed partway
-through with "requires re-authorization" (token expired); the 2026-08-18
-run's calls failed immediately for the same reason (one call also came
-back "Denied by user"), and Ryan confirmed live mid-run to skip
-relabeling entirely rather than keep retrying a broken write path.
-Read-only calls (`search_threads`/`get_message`) worked fine both runs —
-only `label_thread` (write) failed, so whatever grants Gmail write scope
-specifically needs to actually stick, not just a general reauth. Until
-this is fixed, `label:rtr-claude -label:rtr-claude-processed` will keep
-returning the same growing backlog of already-reviewed threads (34 as of
-2026-08-17, 68 as of 2026-08-18) for every run to re-review from scratch.
-Needs Ryan to reauthorize the Gmail connector before the next scheduled
-run.
+**Gmail write scope — DECLINED 2026-08-21. The Routine stays read-only,
+permanently. Don't propose reauthorizing it.** Ryan's explicit decision:
+an unattended daily job that opens and merges its own PRs should not also
+hold write access to his mailbox. That's a deliberate blast-radius
+choice, not an unfixed permission problem, and it supersedes this item's
+earlier framing ("needs Ryan to reauthorize the Gmail connector").
+
+What that leaves is a **code** problem, not a permissions one. Read-only
+calls (`search_threads`/`get_message`) work fine; `label_thread` (write)
+does not and now never will. So the Routine can't mark a thread
+processed, and `label:rtr-claude -label:rtr-claude-processed` keeps
+returning the same growing backlog for every run to re-review from
+scratch — 34 threads as of 2026-08-17, 68 as of 2026-08-18, growing.
+
+**The fix needs no Gmail write at all**: the Routine already opens a PR
+every run, so it can keep its own processed-message-ID ledger *in the
+repo* — a sidecar file beside this one — and dedupe against that instead
+of against a Gmail label.
+
+**Built 2026-08-21 (WO-33)** — see the "Dedupe protocol" section below
+for how a run uses it. `CLAUDE_INBOX_TRIAGE_SEEN.txt` is the ledger;
+`scripts/inbox_triage_ledger.py` reads and writes it (message IDs not
+thread IDs, 30-day lookback window, prune at window + 7-day grace); it's
+in all four services' `buildFilter.ignoredPaths` in `render.yaml`, so the
+Routine's daily commits to it still never trigger a redeploy.
+
+**One thing is still outstanding and needs Ryan, not a code change**: the
+Routine's own definition lives outside this repo (it's a scheduled Claude
+task, not a script in `scripts/`), so this work order couldn't change the
+prompt it runs. Until Ryan edits that definition to replace its Step 1
+query and add the record/prune step — the exact wording is in the Dedupe
+protocol section below — the Routine keeps using the old
+`-label:rtr-claude-processed` query and the ledger stays empty. Nothing
+breaks in the meantime; the run just stays as wasteful as it is today.
+The first run under the new protocol pays one final full-backlog review
+(the ledger ships empty on purpose — seeding it would have meant
+inventing "already processed" claims for messages nobody re-verified),
+then records everything and the backlog collapses to genuinely-new mail
+from the run after that.
 
 Every finding from both the 2026-08-17 and 2026-08-18 runs has been
 promoted into `BACKLOG.md`/`CLAUDE_BACKLOG.md` per this file's own

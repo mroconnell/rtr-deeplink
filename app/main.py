@@ -1465,7 +1465,10 @@ async def meeting_redirect(request: Request, url: str = ""):
 
 
 async def _proxy_to_archive(
-    internal_path: str, query_string: str, cookie_header: Optional[str] = None
+    internal_path: str,
+    query_string: str,
+    cookie_header: Optional[str] = None,
+    extra_headers: Optional[dict] = None,
 ) -> Response:
     """Reverse-proxies a GET request to the Archive service so its permanent
     pages are reachable at redtaperecordings.com/m/{slug} instead of a
@@ -1482,7 +1485,7 @@ async def _proxy_to_archive(
     """
     try:
         session, response = await archive_client.proxy_get(
-            internal_path, query_string, cookie_header
+            internal_path, query_string, cookie_header, extra_headers
         )
     except Exception:
         logger.exception("Archive proxy request failed for %s", internal_path)
@@ -1523,8 +1526,18 @@ async def _proxy_to_archive(
 
 @app.get("/m/{path:path}")
 async def archive_meeting_page(path: str, request: Request):
+    # If-None-Match is forwarded because /m/{slug}/card.jpg (WO-28) serves
+    # a real ETag -- without this, a conditional refetch (which Googlebot
+    # and every social scraper make) could never be answered 304 through
+    # the public domain, and the full image would re-stream through both
+    # services every time. Harmless for the HTML pages this same route
+    # serves: they emit no ETag, so the header simply never matches.
+    conditional = request.headers.get("if-none-match")
     return await _proxy_to_archive(
-        f"m/{path}", str(request.query_params), request.headers.get("cookie")
+        f"m/{path}",
+        str(request.query_params),
+        request.headers.get("cookie"),
+        {"If-None-Match": conditional} if conditional else None,
     )
 
 
