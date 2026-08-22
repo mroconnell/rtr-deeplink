@@ -1,7 +1,7 @@
 'use strict';
 
 // The best-effort meeting page's "We think the video is here" line
-// (app/static/player.js's renderBestEffortVideoPointer). WO-42, 2026-08-22.
+// (app/static/player.js's renderBestEffortVideoPointer). WO-43, 2026-08-22.
 //
 // Before this fix, a best-effort result that HAD a real playable video still
 // printed "We think the video is here: <video_url>" directly above the
@@ -136,7 +136,7 @@ describe('best-effort video pointer line', () => {
     assert.equal(lines.linkGuessHidden, true);
   });
 
-  // --- The two branches WO-42 must leave exactly as they were.
+  // --- The two branches WO-43 must leave exactly as they were.
 
   test('tier 5 pointer (Birmingham MI) still renders, unchanged', async () => {
     // Real: https://www.bhamgov.org/about_birmingham/city_government/watch_a_city_meeting.php

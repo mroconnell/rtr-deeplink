@@ -1660,7 +1660,7 @@ timestamp-entry box in place of the live playhead-tracking reader other
 platforms get (deep-link reliability isn't confirmed here, so there's no
 adapter-driven "current time" to honestly display). The **video** line
 specifically is only rendered when there's no playable video to show
-(`renderBestEffortVideoPointer()`, WO-42, 2026-08-22): a real
+(`renderBestEffortVideoPointer()`, WO-43, 2026-08-22): a real
 `video_url` means the embedded player right below it is already the
 answer, and that URL is always a machine artifact rather than a page a
 human would open — a Vimeo/YouTube embed shell or a raw CDN media file

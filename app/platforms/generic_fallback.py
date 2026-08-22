@@ -304,7 +304,7 @@ class GenericFallbackAssetFinder(AssetFinder):
     The *video* half of that "we think the video is here" line is only
     rendered when this adapter found nothing playable -- i.e. the tier-5
     `video_link` pointer, or the honest "[No video found]" when even that
-    came back empty (WO-42, 2026-08-22, see
+    came back empty (WO-43, 2026-08-22, see
     `player.js:renderBestEffortVideoPointer()`). When `video_url` IS set,
     the embedded player directly below the line is already the answer,
     and the URL that line used to print is never a page a human would

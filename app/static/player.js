@@ -1324,7 +1324,7 @@ async function init() {
 //      a YouTube embed shell (`youtube.com/embed/Awrb74sMXyM`, Tarrant
 //      County TX), or a raw CDN media file
 //      (`otv.ocfl.net/.../BCC071626AA.mp4`, Orange County FL). All three
-//      confirmed live 2026-08-22 (WO-42). The link a reader actually wants
+//      confirmed live 2026-08-22 (WO-43). The link a reader actually wants
 //      -- the city's own page -- is already rendered above as "View
 //      original source", from `data.source_url`, which
 //      generic_fallback.py's `_try_delegate_to_known_platform()`
