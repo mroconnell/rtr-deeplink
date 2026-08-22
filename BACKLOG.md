@@ -559,20 +559,24 @@ so that work reads together.
   jurisdiction hubs are affected, not a tail.
 
   **Ryan's own read was right and is the fix**: give the hub pages
-  something unique to say. Concretely, in rough order of
-  effort-to-value:
-  1. **Surface real transcript snippets** — a few genuine quotes from
-     that jurisdiction's recent meetings is unique text no other page
-     has, drawn from data already stored. Strongest signal per unit of
-     work, and genuinely useful to a reader.
-  2. **A most-discussed / most-recent summary** — real counts, date
-     ranges, meeting-body names, the jurisdiction's platform. All
-     already in the DB.
-  3. **Unique copy per jurisdiction** (population, county, state
-     context) — the `jurisdiction_enrich` tables already carry some of
-     this.
-  4. **Images** — the meeting-card thumbnails from WO-37 exist for 973
-     pages and would give hubs real visual content.
+  something unique to say. **Decided 2026-08-22 — build these two:**
+  1. **Real transcript snippets per jurisdiction** *(chosen)*. A few
+     genuine quotes from that place's recent meetings is unique text no
+     other page has, drawn from data already stored, and useful to a
+     reader rather than SEO filler. Strongest signal per unit of work.
+     `archive/utils/search.py`'s `find_matching_segment()` already does
+     the quote extraction the alert emails use — reuse it rather than
+     growing a second extractor.
+  2. **Meeting-card thumbnails as page imagery** *(chosen)*. WO-37
+     already stored **973** cards, so this is mostly a rendering job.
+     It adds no unique *text*, which is what Google is judging here, so
+     it supports (1) rather than substituting for it — and it makes the
+     hubs shareable, which `/m/` pages already are and hubs aren't.
+
+  Not chosen for now, kept for the record: per-jurisdiction summary
+  stats (counts / date range / bodies / platform — real but templated),
+  and `jurisdiction_enrich`-sourced context copy (population, county —
+  partly boilerplate-shaped, uneven coverage).
 
   **Measure before and after**: the 3.6× over-representation figure is
   the baseline to beat, not the raw count, since the raw count moves
@@ -607,9 +611,16 @@ so that work reads together.
   **`feed.xml` appears zero times in `sitemap.xml`** — Google found them
   by following links, spent crawl on them, and then declined them, which
   is the correct outcome reached the expensive way. RSS feeds are not
-  meant to be indexable pages. **Fix**: serve `X-Robots-Tag: noindex` on
-  the feed route (it's proxied via `app/main.py`'s `archive_feed`, so it
-  can be set either side), and/or `Disallow: /feed.xml` in `robots.txt`.
+  meant to be indexable pages. **Decided 2026-08-22: `X-Robots-Tag:
+  noindex` on the feed route — not a `robots.txt` `Disallow`.** The
+  distinction is load-bearing: `Disallow` blocks the fetch entirely,
+  which would also stop Google following the links *inside* the feed,
+  and that is a live discovery path for new meeting pages. `noindex`
+  keeps the discovery while taking the feed itself out of the index. The
+  header can be set either side since the route is proxied via
+  `app/main.py`'s `archive_feed`; setting it Archive-side also covers
+  direct hits. **The full 291-row export confirms the scale**: 4
+  `feed.xml` URLs, all `?jurisdiction=`-parameterised.
   **Check first** whether any feed reader or integration relies on the
   current headers, and note this is *not* the `noindex` widening the
   **Standing decisions** section rules out — that decision is about
