@@ -30,6 +30,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
 from backfill_meeting_cards import (  # noqa: E402
     GRANICUS_PACING_KEY,
+    REASON_UNREPORTED,
     State,
     build_parser,
     cooldown_seconds,
@@ -41,7 +42,52 @@ from backfill_meeting_cards import (  # noqa: E402
     pacing_key,
     plan_batch,
     projected_seconds,
+    reason_bucket,
     sweep,
+)
+
+# Real ffmpeg output, not invented. Captured 2026-08-22 by pointing real
+# ffmpeg (8.1.2) at a local HTTP server returning each status, which is
+# the only way to get these strings without hitting a government CDN --
+# the same live/synthetic split tests/test_meeting_card_thumbnails.py's
+# WO-42 section documents, and the same statuses this repo has already
+# seen for real from Granicus (tests/conftest.py's
+# _no_real_card_extraction notes a real "Server returned 404"). ffmpeg
+# names the status twice in two phrasings, and extract_frame() only keeps
+# the last 300 characters of stderr, so which phrasing survives depends
+# on how long the media URL is -- reason_bucket() therefore matches
+# either, and these fixtures keep both present.
+REAL_FFMPEG_403 = (
+    "ffmpeg exited 8: [http @ 0x9f0c0c400] HTTP error 403 Forbidden\n"
+    "[in#0 @ 0x9f0c20000] Error opening input: Server returned 403 Forbidden "
+    "(access denied)\n"
+    "Error opening input file https://archive-stream.granicus.com/x/y.m3u8.\n"
+    "Error opening input files: Server returned 403 Forbidden (access denied)"
+)
+REAL_FFMPEG_404 = (
+    "ffmpeg exited 8: [http @ 0x76740c000] HTTP error 404 Not Found\n"
+    "[in#0 @ 0x766804000] Error opening input: Server returned 404 Not Found\n"
+    "Error opening input file https://archive-media.granicus.com/a.mp4.\n"
+    "Error opening input files: Server returned 404 Not Found"
+)
+REAL_FFMPEG_5XX = (
+    "ffmpeg exited 8: [http @ 0x814c0c400] HTTP error 500 Internal Server Error\n"
+    "[in#0 @ 0x814808000] Error opening input: Server returned 5XX Server Error reply\n"
+    "Error opening input files: Server returned 5XX Server Error reply"
+)
+REAL_FFMPEG_CONNECTION_REFUSED = (
+    "ffmpeg exited 195: [tcp @ 0xc3f018080] Connection to tcp://10.0.0.1:443 failed: "
+    "Connection refused\n"
+    "[in#0 @ 0xc3ec1c000] Error opening input: Connection refused\n"
+    "Error opening input files: Connection refused"
+)
+
+# What the Archive really reports for the two commonest outcomes, used as
+# FakeArchive's defaults so a test that doesn't care still exercises a
+# realistic string rather than a placeholder.
+DEFAULT_FAIL_REASON = "ffmpeg timed out after 45s"  # extract_frame()'s own literal
+DEFAULT_SKIP_REASON = (
+    "skipped: cooling down after an earlier failure (retried after 6h)"
 )
 
 # The real production shape, measured 2026-08-21 -- used wherever a test
@@ -294,6 +340,99 @@ def test_eta_needs_real_observed_throughput():
     assert estimate_remaining(elapsed_seconds=60, done=10, remaining=100) == "10m00s"
 
 
+# --- why a page failed (WO-42) -------------------------------------------
+
+
+def test_http_status_survives_either_ffmpeg_phrasing():
+    # The signal an operator actually wants out of the 179-failure set:
+    # 403 (rate-limited or hotlink-protected) and 404 (the recording is
+    # gone) call for completely different responses, and before this both
+    # arrived as `offset_seconds: null`.
+    assert reason_bucket(REAL_FFMPEG_403) == "ffmpeg: HTTP 403 from the media host"
+    assert reason_bucket(REAL_FFMPEG_404) == "ffmpeg: HTTP 404 from the media host"
+    # 5xx is the case where the two phrasings genuinely disagree, and
+    # this is real observed behaviour rather than a design choice: ffmpeg
+    # logs "HTTP error 500 Internal Server Error" but then collapses it to
+    # the literal "Server returned 5XX Server Error reply". With the whole
+    # tail present the specific code wins, which is the better answer...
+    assert reason_bucket(REAL_FFMPEG_5XX) == "ffmpeg: HTTP 500 from the media host"
+    # ...and when only the collapsed line survives extract_frame()'s
+    # 300-character truncation, "5XX" is still a bucket rather than an
+    # unrecognised string. Hence the pattern accepts it instead of
+    # requiring three digits.
+    truncated = REAL_FFMPEG_5XX.split("\n", 1)[1]
+    assert reason_bucket(truncated) == "ffmpeg: HTTP 5XX from the media host"
+
+
+def test_the_reasons_worth_counting_collapse_to_one_bucket_each():
+    # Each of these carries a per-page tail -- the media URL, a per-run
+    # memory address, a timeout figure -- so grouping raw would turn 179
+    # failures into 179 groups of one, useless at precisely the moment
+    # the grouping is wanted.
+    assert reason_bucket("ffmpeg timed out after 45s") == "ffmpeg timed out"
+    assert reason_bucket(REAL_FFMPEG_CONNECTION_REFUSED) == "ffmpeg: connection refused"
+    assert (
+        reason_bucket("ffmpeg reported success but wrote no frame (offset past end?)")
+        == "ffmpeg wrote no frame (offset past end?)"
+    )
+    assert reason_bucket("ffmpeg not found on PATH") == "ffmpeg not found on PATH"
+    assert (
+        reason_bucket("ffmpeg could not be started: [Errno 12] Cannot allocate memory")
+        == "ffmpeg could not be started"
+    )
+    assert (
+        reason_bucket("extraction raised RuntimeError: subprocess vanished")
+        == "extraction raised RuntimeError"
+    )
+
+
+def test_two_pages_failing_the_same_way_land_in_one_bucket():
+    # The property the whole grouping rests on: same failure, different
+    # page. These two differ in media URL and in ffmpeg's per-run memory
+    # address, which is exactly what has to be discarded.
+    other_404 = REAL_FFMPEG_404.replace("0x76740c000", "0xff1234000").replace(
+        "archive-media.granicus.com/a.mp4", "reflect-vod-salem.cablecast.tv/b.mp4"
+    )
+    assert reason_bucket(other_404) == reason_bucket(REAL_FFMPEG_404)
+
+
+def test_skips_bucket_separately_from_failures():
+    # A skip must never be counted as a source problem. The cooldown
+    # string is stable enough to keep whole; the queue-full one carries a
+    # live depth, so only its stable prefix survives.
+    assert reason_bucket(DEFAULT_SKIP_REASON) == DEFAULT_SKIP_REASON
+    assert (
+        reason_bucket("skipped: extraction queue full (40 in flight)")
+        == "skipped: extraction queue full"
+    )
+    assert (
+        reason_bucket("skipped: extraction queue full (7 in flight)")
+        == "skipped: extraction queue full"
+    )
+    assert reason_bucket(DEFAULT_SKIP_REASON) != reason_bucket(
+        "ffmpeg timed out after 45s"
+    )
+
+
+def test_an_older_archive_buckets_as_unreported_rather_than_crashing():
+    # This script is routinely pointed at a deployed Archive it did not
+    # ship with, and a build older than WO-42 sends no `reason` at all.
+    assert reason_bucket(None) == REASON_UNREPORTED
+    assert reason_bucket("") == REASON_UNREPORTED
+
+
+def test_an_unrecognised_reason_keeps_its_own_first_line():
+    # No "other" bucket on purpose: a failure mode nobody has seen yet
+    # should show up as itself, not vanish into a catch-all -- that is the
+    # same mistake as the bare `None` this change removes, one level up.
+    assert reason_bucket("something nobody has seen yet") == (
+        "something nobody has seen yet"
+    )
+    assert reason_bucket("first line\nsecond line") == "first line"
+    long_reason = "z" * 500
+    assert reason_bucket(long_reason) == "z" * 80
+
+
 # --- argument handling ---------------------------------------------------
 
 
@@ -380,12 +519,38 @@ class FakeArchive:
     the slug is in `always_fail`; a success removes the page from the
     queue (a stored default frame drops it out of the SQL filter), a
     failure leaves it exactly where it was.
+
+    `always_skip` is the third real outcome (WO-42): the Archive returns
+    a result with `skipped: true` having attempted nothing at all. It
+    looks like a failure from the outside -- same null `offset_seconds`,
+    same page left in the queue -- and the whole point of the flag is
+    that the sweep must not treat it like one.
     """
 
-    def __init__(self, candidates, always_fail=(), ignores_slugs=False):
+    def __init__(
+        self,
+        candidates,
+        always_fail=(),
+        ignores_slugs=False,
+        always_skip=(),
+        fail_reason=DEFAULT_FAIL_REASON,
+        skip_reason=DEFAULT_SKIP_REASON,
+        omits_reason=False,
+    ):
         self.queue = list(candidates)
         self.always_fail = set(always_fail)
         self.ignores_slugs = ignores_slugs
+        # Slugs the Archive declines without attempting anything -- its
+        # in-process failure cooldown, an in-flight duplicate, or a full
+        # queue (WO-42). Distinct from always_fail on purpose: a skip is
+        # not evidence the source is bad.
+        self.always_skip = set(always_skip)
+        self.fail_reason = fail_reason
+        self.skip_reason = skip_reason
+        # An Archive deployed before WO-42: no `reason`, no `skipped`.
+        # The script is routinely pointed at a build it did not ship
+        # with, so this has to stay a legible outcome, not a crash.
+        self.omits_reason = omits_reason
         self.extraction_attempts = []
         self.batches = []
 
@@ -403,24 +568,25 @@ class FakeArchive:
         by_slug = {c["slug"]: c for c in self.queue}
         results = []
         for slug in chosen:
-            self.extraction_attempts.append(slug)
-            if slug in self.always_fail:
-                results.append(
-                    {
-                        "slug": slug,
-                        "video_url": by_slug[slug]["video_url"],
-                        "offset_seconds": None,
-                    }
+            entry = {"slug": slug, "video_url": by_slug[slug]["video_url"]}
+            if slug in self.always_skip:
+                # No extraction attempt is recorded: that is what a skip
+                # *is*. The page stays in the queue, exactly as a failure
+                # does, so a later run can try it for real.
+                entry.update(offset_seconds=None, reason=self.skip_reason, skipped=True)
+            elif slug in self.always_fail:
+                self.extraction_attempts.append(slug)
+                entry.update(
+                    offset_seconds=None, reason=self.fail_reason, skipped=False
                 )
             else:
-                results.append(
-                    {
-                        "slug": slug,
-                        "video_url": by_slug[slug]["video_url"],
-                        "offset_seconds": 900,
-                    }
-                )
+                self.extraction_attempts.append(slug)
+                entry.update(offset_seconds=900, reason=None, skipped=False)
                 self.queue = [c for c in self.queue if c["slug"] != slug]
+            if self.omits_reason:
+                entry.pop("reason", None)
+                entry.pop("skipped", None)
+            results.append(entry)
         return {"dry_run": False, "results": results}
 
 
@@ -591,3 +757,101 @@ async def test_an_archive_that_ignores_slugs_is_detected_not_obeyed(tmp_path, wi
 
     assert await sweep(None, args=_args("--batch-size", "2"), state=state) == 1
     assert len(archive.batches) == 1
+
+
+# --- the sweep's failure detail (WO-42) ----------------------------------
+
+
+async def test_a_failure_records_its_reason_and_bucket(tmp_path, wired):
+    # The whole point: after a sweep, "179 slugs failed" becomes "179
+    # slugs failed, here is what each one said and here is the count by
+    # kind". Persisted, so it survives the Ctrl-C this script is built to
+    # tolerate.
+    path = tmp_path / "s.json"
+    archive = wired(
+        FakeArchive(
+            _candidates({"granicus.com": 2, "iqm2.com": 1}),
+            always_fail={"granicus-0", "granicus-1"},
+            fail_reason=REAL_FFMPEG_404,
+        )
+    )
+    state = State(path, "https://archive.example")
+
+    assert await sweep(None, args=_args("--batch-size", "2"), state=state) == 0
+    assert set(state.failed) == {"granicus-0", "granicus-1"}
+    for slug in ("granicus-0", "granicus-1"):
+        assert state.failed[slug]["reason"] == REAL_FFMPEG_404
+        assert state.failed[slug]["reason_bucket"] == (
+            "ffmpeg: HTTP 404 from the media host"
+        )
+    # And it round-trips, so a resumed run reports the same grouping
+    # rather than a blank one.
+    reloaded = State.load(path, "https://archive.example")
+    assert Counter(entry["reason_bucket"] for entry in reloaded.failed.values()) == {
+        "ffmpeg: HTTP 404 from the media host": 2
+    }
+    assert archive.queue and all(c["slug"] != "iqm2-0" for c in archive.queue)
+
+
+async def test_a_skipped_page_is_never_recorded_as_stuck(tmp_path, wired):
+    # A skip means the Archive attempted nothing (its cooldown, an
+    # in-flight duplicate, a full queue). Recording it in `failed` would
+    # blacklist a page from every later run's plan on the strength of no
+    # evidence at all -- and the cooldown that produced it dies with the
+    # dyno, so the "evidence" is gone by the next deploy anyway.
+    archive = wired(
+        FakeArchive(
+            _candidates({"granicus.com": 2, "iqm2.com": 1}),
+            always_skip={"granicus-0"},
+            always_fail={"granicus-1"},
+        )
+    )
+    state = State(tmp_path / "s.json", "https://archive.example")
+
+    assert await sweep(None, args=_args("--batch-size", "3"), state=state) == 0
+    # Only the page that was really attempted and really failed.
+    assert set(state.failed) == {"granicus-1"}
+    # The skipped page is still a candidate, so a later run gets to try
+    # it for real.
+    assert any(c["slug"] == "granicus-0" for c in archive.queue)
+    # And it never cost an extraction.
+    assert "granicus-0" not in archive.extraction_attempts
+
+
+async def test_a_skipped_page_is_retried_on_the_next_run(tmp_path, wired):
+    # The consequence of the rule above, end to end: a page skipped once
+    # must come back. Two sweeps against the same state file, with the
+    # skip lifted in between -- the second one stores it.
+    path = tmp_path / "s.json"
+    archive = wired(
+        FakeArchive(_candidates({"granicus.com": 1}), always_skip={"granicus-0"})
+    )
+    state = State(path, "https://archive.example")
+    assert await sweep(None, args=_args(), state=state) == 0
+    assert state.failed == {}
+
+    archive.always_skip.clear()
+    resumed = State.load(path, "https://archive.example")
+    assert await sweep(None, args=_args(), state=resumed) == 0
+    assert archive.queue == []
+    assert archive.extraction_attempts == ["granicus-0"]
+
+
+async def test_an_archive_without_reasons_still_sweeps(tmp_path, wired):
+    # Pointed at a build older than WO-42: no `reason`, no `skipped`. The
+    # sweep must behave exactly as it did before (every null offset is a
+    # failure), and say plainly that the reason is unavailable rather
+    # than inventing one.
+    wired(
+        FakeArchive(
+            _candidates({"granicus.com": 2}),
+            always_fail={"granicus-0"},
+            omits_reason=True,
+        )
+    )
+    state = State(tmp_path / "s.json", "https://archive.example")
+
+    assert await sweep(None, args=_args("--batch-size", "2"), state=state) == 0
+    assert set(state.failed) == {"granicus-0"}
+    assert state.failed["granicus-0"]["reason"] is None
+    assert state.failed["granicus-0"]["reason_bucket"] == REASON_UNREPORTED
