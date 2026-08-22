@@ -610,11 +610,47 @@ def _cooldown_lookup(args) -> Callable[[str], float]:
     return _for
 
 
+def _restrict_to_slugs(candidates: list[dict], args) -> list[dict]:
+    """Narrow the surveyed backlog to --slugs-file, if given.
+
+    Filters the *survey* rather than asking the Archive for those slugs
+    directly, on purpose: a slug that already got a card since the file
+    was written simply is not in the survey any more, so it is dropped
+    instead of being re-extracted. Names that match nothing are reported
+    rather than silently ignored -- a typo in a hand-built list should
+    not look like a clean run over zero pages.
+    """
+    if not getattr(args, "slugs_file", None):
+        return candidates
+    wanted = {
+        line.strip()
+        for line in args.slugs_file.read_text().splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    }
+    kept = [c for c in candidates if c["slug"] in wanted]
+    missing = wanted - {c["slug"] for c in kept}
+    logger.info(
+        "--slugs-file %s: %d name(s) requested, %d still need a card.",
+        args.slugs_file,
+        len(wanted),
+        len(kept),
+    )
+    if missing:
+        logger.info(
+            "  %d requested slug(s) are not in the backlog (already carded, "
+            "or not a candidate): %s%s",
+            len(missing),
+            ", ".join(sorted(missing)[:5]),
+            " ..." if len(missing) > 5 else "",
+        )
+    return kept
+
+
 async def survey(session: aiohttp.ClientSession, *, args) -> list[dict]:
     """Read-only: the real backlog, what it's made of, and what a real run
     would cost."""
     logger.info("Surveying %s ...", _base_url())
-    candidates = await survey_candidates(session)
+    candidates = _restrict_to_slugs(await survey_candidates(session), args)
     total = len(candidates)
     logger.info("%s page(s) have an extractable video and no card yet.", total)
     if not total:
@@ -668,7 +704,7 @@ async def survey(session: aiohttp.ClientSession, *, args) -> list[dict]:
 async def sweep(session: aiohttp.ClientSession, *, args, state: State) -> int:
     """The real sweep. Returns a process exit code."""
     cooldown_for = _cooldown_lookup(args)
-    candidates = await survey_candidates(session)
+    candidates = _restrict_to_slugs(await survey_candidates(session), args)
     pending = [
         c for c in interleave_by_host(candidates) if c["slug"] not in state.failed
     ]
@@ -990,6 +1026,16 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=DEFAULT_STATE_FILE,
         help=f"Where the known-stuck slugs are remembered (default {DEFAULT_STATE_FILE}).",
+    )
+    parser.add_argument(
+        "--slugs-file",
+        type=Path,
+        default=None,
+        help="Attempt only the slugs listed in this file, one per line "
+        "(blank lines and '#' comments ignored). Still surveyed, paced "
+        "and state-tracked exactly like a full run -- this narrows WHICH "
+        "pages, never how hard they are hit. For re-testing one platform "
+        "after a fix without touching the rest of the backlog.",
     )
     parser.add_argument(
         "--reset-state",

@@ -23,6 +23,7 @@ import json
 import sys
 from collections import Counter
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -30,6 +31,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
 from backfill_meeting_cards import (  # noqa: E402
     GRANICUS_PACING_KEY,
+    _restrict_to_slugs,
     REASON_UNREPORTED,
     State,
     build_parser,
@@ -905,3 +907,55 @@ def test_no_frame_reason_still_reports_the_offset_used():
     # (600), a successful one gives duration-300. Both produced the same
     # string before, so nobody could tell which had happened.
     assert "@ 600s" in "ffmpeg exited 0 but wrote no frame @ 600s (no stderr)"
+
+
+# --- --slugs-file --------------------------------------------------------
+#
+# Added 2026-08-22 to re-test one platform after a fix without touching
+# the rest of the backlog: the sweep that day left ~104 Cablecast pages
+# failing the same way, and re-running all 303 to retest them would have
+# hammered every other government CDN for nothing.
+
+
+def _slug_args(slugs_file):
+    return SimpleNamespace(slugs_file=slugs_file)
+
+
+def test_slugs_file_absent_leaves_the_backlog_alone():
+    rows = [{"slug": "a"}, {"slug": "b"}]
+    assert _restrict_to_slugs(rows, _slug_args(None)) == rows
+
+
+def test_slugs_file_narrows_to_the_named_pages(tmp_path):
+    f = tmp_path / "slugs.txt"
+    f.write_text("b\nc\n")
+    rows = [{"slug": "a"}, {"slug": "b"}, {"slug": "c"}]
+    assert [r["slug"] for r in _restrict_to_slugs(rows, _slug_args(f))] == ["b", "c"]
+
+
+def test_slugs_file_ignores_blanks_and_comments(tmp_path):
+    f = tmp_path / "slugs.txt"
+    f.write_text("# cablecast re-run\n\n  b  \n\n# trailing note\n")
+    rows = [{"slug": "a"}, {"slug": "b"}]
+    assert [r["slug"] for r in _restrict_to_slugs(rows, _slug_args(f))] == ["b"]
+
+
+def test_a_slug_that_got_carded_since_is_dropped_not_re_extracted(tmp_path):
+    # The reason this filters the survey instead of asking the Archive
+    # for the named slugs: a page that picked up a card in the meantime
+    # is simply absent from the survey, so it falls out for free rather
+    # than being pointlessly re-extracted.
+    f = tmp_path / "slugs.txt"
+    f.write_text("a\nb\n")
+    rows = [{"slug": "b"}]  # "a" already has a card
+    assert [r["slug"] for r in _restrict_to_slugs(rows, _slug_args(f))] == ["b"]
+
+
+def test_a_name_matching_nothing_does_not_silently_vanish(tmp_path, caplog):
+    # A typo in a hand-built list must not look like a clean run over
+    # zero pages.
+    f = tmp_path / "slugs.txt"
+    f.write_text("typo-slug\n")
+    with caplog.at_level("INFO"):
+        assert _restrict_to_slugs([{"slug": "real"}], _slug_args(f)) == []
+    assert "not in the backlog" in caplog.text
