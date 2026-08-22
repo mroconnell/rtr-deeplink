@@ -918,6 +918,16 @@ async def list_all_page_urls() -> list[dict]:
                 "title": page.title,
                 "platform": page.platform,
                 "source_url_normalized": page.source_url_normalized,
+                # Added 2026-08-22 for scripts/dedupe_rollup_transcripts.py,
+                # whose whole affected population is "archived before WO-34
+                # shipped" -- a page first archived after that date was
+                # necessarily parsed with dedupe_rollup_cues() already in
+                # place, so an ingest-date bound is what keeps that sweep's
+                # candidate set from being every page on four platforms.
+                # Free here (no extra query, no segments blob touched) and
+                # purely additive for the existing consumer, which reads
+                # slug/platform/source_url_normalized only.
+                "created_at": page.created_at.isoformat() if page.created_at else None,
             }
             for page in pages
         ]
