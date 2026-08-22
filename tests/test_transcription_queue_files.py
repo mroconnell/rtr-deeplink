@@ -50,8 +50,14 @@ SCRAPE_ARTIFACTS = {
 
 # Query keys that legitimately appear with no `=` at all in real rows.
 VALUELESS_OK = {
-    "Frame", "MediaPosition", "CssClass", "Agenda", "path", "Print",
-    "Search", "Options",
+    "Frame",
+    "MediaPosition",
+    "CssClass",
+    "Agenda",
+    "path",
+    "Print",
+    "Search",
+    "Options",
 }
 
 
