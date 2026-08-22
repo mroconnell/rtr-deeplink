@@ -23,6 +23,7 @@ import json
 import sys
 from collections import Counter
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -30,6 +31,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
 from backfill_meeting_cards import (  # noqa: E402
     GRANICUS_PACING_KEY,
+    _restrict_to_slugs,
     REASON_UNREPORTED,
     State,
     build_parser,
@@ -372,8 +374,8 @@ def test_the_reasons_worth_counting_collapse_to_one_bucket_each():
     assert reason_bucket("ffmpeg timed out after 45s") == "ffmpeg timed out"
     assert reason_bucket(REAL_FFMPEG_CONNECTION_REFUSED) == "ffmpeg: connection refused"
     assert (
-        reason_bucket("ffmpeg reported success but wrote no frame (offset past end?)")
-        == "ffmpeg wrote no frame (offset past end?)"
+        reason_bucket("ffmpeg exited 0 but wrote no frame @ 5407s (no stderr)")
+        == "ffmpeg wrote no frame, no stderr"
     )
     assert reason_bucket("ffmpeg not found on PATH") == "ffmpeg not found on PATH"
     assert (
@@ -855,3 +857,105 @@ async def test_an_archive_without_reasons_still_sweeps(tmp_path, wired):
     assert set(state.failed) == {"granicus-0"}
     assert state.failed["granicus-0"]["reason"] is None
     assert state.failed["granicus-0"]["reason_bucket"] == REASON_UNREPORTED
+
+
+# --- exit-0/no-frame now carries ffmpeg's own words --------------------
+#
+# 2026-08-22: extract_frame()'s exit-0 branch used to assert
+# "(offset past end?)" and discard stderr. The guess was measured false
+# (four Cablecast pages that failed this way on the Archive each
+# extracted a real JPEG locally at the identical offset), and discarding
+# stderr meant 68 failures in a single sweep had already explained
+# themselves and the explanation was deleted. The reason now carries the
+# offset and the stderr tail, so these buckets have to prefer the
+# underlying cause over the bare marker.
+
+
+def test_no_frame_bucket_prefers_the_http_status_the_stderr_reveals():
+    # The regression this guards: "wrote no frame" was a _MARKERS entry,
+    # and _MARKERS is checked before the HTTP-status regex -- so a 403
+    # that the new stderr tail had just revealed would be buried under a
+    # generic label at exactly the moment it became visible.
+    reason = (
+        "ffmpeg exited 0 but wrote no frame @ 5407s: [https @ 0x5] "
+        "HTTP error 403 Forbidden"
+    )
+    assert reason_bucket(reason) == "ffmpeg wrote no frame (HTTP 403)"
+
+
+def test_no_frame_bucket_keeps_404_distinct_from_403():
+    a = "ffmpeg exited 0 but wrote no frame @ 100s: HTTP error 404 Not Found"
+    b = "ffmpeg exited 0 but wrote no frame @ 100s: HTTP error 403 Forbidden"
+    assert reason_bucket(a) != reason_bucket(b)
+
+
+def test_no_frame_bucket_falls_back_when_stderr_says_nothing_useful():
+    reason = "ffmpeg exited 0 but wrote no frame @ 5407s: frame= 0 fps=0.0 q=0.0"
+    assert reason_bucket(reason) == "ffmpeg wrote no frame despite exit 0"
+
+
+def test_no_frame_bucket_marks_a_genuinely_silent_run():
+    # Distinguishable on purpose: "ffmpeg said nothing" is a different
+    # investigation from "ffmpeg complained and we have the complaint".
+    reason = "ffmpeg exited 0 but wrote no frame @ 600s (no stderr)"
+    assert reason_bucket(reason) == "ffmpeg wrote no frame, no stderr"
+
+
+def test_no_frame_reason_still_reports_the_offset_used():
+    # The offset settles a question the old message could not: a failed
+    # probe_duration() falls back to UNKNOWN_DURATION_OFFSET_SECONDS
+    # (600), a successful one gives duration-300. Both produced the same
+    # string before, so nobody could tell which had happened.
+    assert "@ 600s" in "ffmpeg exited 0 but wrote no frame @ 600s (no stderr)"
+
+
+# --- --slugs-file --------------------------------------------------------
+#
+# Added 2026-08-22 to re-test one platform after a fix without touching
+# the rest of the backlog: the sweep that day left ~104 Cablecast pages
+# failing the same way, and re-running all 303 to retest them would have
+# hammered every other government CDN for nothing.
+
+
+def _slug_args(slugs_file):
+    return SimpleNamespace(slugs_file=slugs_file)
+
+
+def test_slugs_file_absent_leaves_the_backlog_alone():
+    rows = [{"slug": "a"}, {"slug": "b"}]
+    assert _restrict_to_slugs(rows, _slug_args(None)) == rows
+
+
+def test_slugs_file_narrows_to_the_named_pages(tmp_path):
+    f = tmp_path / "slugs.txt"
+    f.write_text("b\nc\n")
+    rows = [{"slug": "a"}, {"slug": "b"}, {"slug": "c"}]
+    assert [r["slug"] for r in _restrict_to_slugs(rows, _slug_args(f))] == ["b", "c"]
+
+
+def test_slugs_file_ignores_blanks_and_comments(tmp_path):
+    f = tmp_path / "slugs.txt"
+    f.write_text("# cablecast re-run\n\n  b  \n\n# trailing note\n")
+    rows = [{"slug": "a"}, {"slug": "b"}]
+    assert [r["slug"] for r in _restrict_to_slugs(rows, _slug_args(f))] == ["b"]
+
+
+def test_a_slug_that_got_carded_since_is_dropped_not_re_extracted(tmp_path):
+    # The reason this filters the survey instead of asking the Archive
+    # for the named slugs: a page that picked up a card in the meantime
+    # is simply absent from the survey, so it falls out for free rather
+    # than being pointlessly re-extracted.
+    f = tmp_path / "slugs.txt"
+    f.write_text("a\nb\n")
+    rows = [{"slug": "b"}]  # "a" already has a card
+    assert [r["slug"] for r in _restrict_to_slugs(rows, _slug_args(f))] == ["b"]
+
+
+def test_a_name_matching_nothing_does_not_silently_vanish(tmp_path, caplog):
+    # A typo in a hand-built list must not look like a clean run over
+    # zero pages.
+    f = tmp_path / "slugs.txt"
+    f.write_text("typo-slug\n")
+    with caplog.at_level("INFO"):
+        assert _restrict_to_slugs([{"slug": "real"}], _slug_args(f)) == []
+    assert "not in the backlog" in caplog.text

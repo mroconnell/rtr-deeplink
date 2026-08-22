@@ -534,6 +534,16 @@ async def extract_frame(
             _FRAME_JPEG_QUALITY,
             "-an",
             "-sn",
+            # `-update 1` is the documented-correct way to write ONE image
+            # to a fixed filename; without it the image2 muxer expects a
+            # sequence pattern like %03d. ffmpeg 8.x warns and writes the
+            # file anyway, but the Archive runs 5.1.9 (confirmed via
+            # /api/health's media_tools block, 2026-08-22) and older
+            # builds are not guaranteed to. Harmless either way, and it
+            # removes one candidate explanation for the exit-0/no-file
+            # case below.
+            "-update",
+            "1",
             "-f",
             "image2",
             str(out_path),
@@ -560,13 +570,30 @@ async def extract_frame(
             stderr_tail,
         )
         return False, f"ffmpeg exited {returncode}: {stderr_tail}"
-    # A seek past the end of the stream is the one real failure ffmpeg
-    # reports as success: it exits 0 having written nothing at all. That
-    # is a normal outcome here (an offset derived from a duration the
-    # source lies about, or a `?t=` deep link past the end), so it has to
-    # be caught by looking at the file, not the exit code -- the same
+    # ffmpeg can exit 0 having written nothing at all, so this has to be
+    # caught by looking at the file rather than the exit code -- the same
     # "exit code alone is not proof the output is usable" lesson
     # extract_chunk_audio() above learned from a real Sentry occurrence.
+    #
+    # This used to report "(offset past end?)" and throw `stderr` away.
+    # Both were wrong. The guess was measured false on 2026-08-22: four
+    # Cablecast pages that failed this way on the Archive each extracted a
+    # real JPEG locally at the exact same offset, so the offset was fine.
+    # And discarding stderr meant 68 failures in one sweep had already
+    # explained themselves and we deleted the explanation -- the nonzero
+    # branch above keeps its tail, this one did not. So: state only what
+    # is actually known (exit 0, no file, at this offset) and hand back
+    # ffmpeg's own complaint.
     if not (out_path.exists() and out_path.stat().st_size > 0):
-        return False, "ffmpeg reported success but wrote no frame (offset past end?)"
+        stderr_tail = _stderr_tail(stderr, 300)
+        logger.warning(
+            "ffmpeg wrote no frame despite exit 0 for %s @ %ss: %s",
+            media_url,
+            offset,
+            stderr_tail,
+        )
+        return False, (
+            f"ffmpeg exited 0 but wrote no frame @ {int(max(0, offset))}s"
+            + (f": {stderr_tail}" if stderr_tail else " (no stderr)")
+        )
     return True, None

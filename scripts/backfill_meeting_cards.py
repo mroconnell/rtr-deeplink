@@ -256,7 +256,6 @@ _MARKERS: tuple[tuple[str, str], ...] = (
     ("ffmpeg not found on PATH", "ffmpeg not found on PATH"),
     ("ffmpeg could not be started", "ffmpeg could not be started"),
     ("timed out after", "ffmpeg timed out"),
-    ("wrote no frame", "ffmpeg wrote no frame (offset past end?)"),
     ("Connection refused", "ffmpeg: connection refused"),
     ("Invalid data found", "ffmpeg: invalid data (input not decodable)"),
     ("storage rejected the frame", "storage rejected the frame"),
@@ -283,6 +282,21 @@ def reason_bucket(reason: Optional[str]) -> str:
     if not reason:
         return REASON_UNREPORTED
     first_line = reason.splitlines()[0].strip() if reason.strip() else reason
+    # Handled before _MARKERS on purpose. This reason now carries a tail
+    # of ffmpeg's own stderr (2026-08-22), and that tail is the whole
+    # point of it -- a plain "wrote no frame" marker match would run
+    # before the HTTP-status check below and bury a 403/404 that the
+    # stderr had just revealed. So the underlying cause wins the label
+    # when there is one, and the bare form is only the fallback.
+    if "wrote no frame" in reason:
+        status = _HTTP_STATUS_RE.search(reason)
+        if status:
+            return f"ffmpeg wrote no frame (HTTP {status.group(1)})"
+        if "Invalid data found" in reason:
+            return "ffmpeg wrote no frame (invalid data)"
+        if "no stderr" in reason:
+            return "ffmpeg wrote no frame, no stderr"
+        return "ffmpeg wrote no frame despite exit 0"
     for marker, label in _MARKERS:
         if marker in reason:
             return label
@@ -596,11 +610,47 @@ def _cooldown_lookup(args) -> Callable[[str], float]:
     return _for
 
 
+def _restrict_to_slugs(candidates: list[dict], args) -> list[dict]:
+    """Narrow the surveyed backlog to --slugs-file, if given.
+
+    Filters the *survey* rather than asking the Archive for those slugs
+    directly, on purpose: a slug that already got a card since the file
+    was written simply is not in the survey any more, so it is dropped
+    instead of being re-extracted. Names that match nothing are reported
+    rather than silently ignored -- a typo in a hand-built list should
+    not look like a clean run over zero pages.
+    """
+    if not getattr(args, "slugs_file", None):
+        return candidates
+    wanted = {
+        line.strip()
+        for line in args.slugs_file.read_text().splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    }
+    kept = [c for c in candidates if c["slug"] in wanted]
+    missing = wanted - {c["slug"] for c in kept}
+    logger.info(
+        "--slugs-file %s: %d name(s) requested, %d still need a card.",
+        args.slugs_file,
+        len(wanted),
+        len(kept),
+    )
+    if missing:
+        logger.info(
+            "  %d requested slug(s) are not in the backlog (already carded, "
+            "or not a candidate): %s%s",
+            len(missing),
+            ", ".join(sorted(missing)[:5]),
+            " ..." if len(missing) > 5 else "",
+        )
+    return kept
+
+
 async def survey(session: aiohttp.ClientSession, *, args) -> list[dict]:
     """Read-only: the real backlog, what it's made of, and what a real run
     would cost."""
     logger.info("Surveying %s ...", _base_url())
-    candidates = await survey_candidates(session)
+    candidates = _restrict_to_slugs(await survey_candidates(session), args)
     total = len(candidates)
     logger.info("%s page(s) have an extractable video and no card yet.", total)
     if not total:
@@ -654,7 +704,7 @@ async def survey(session: aiohttp.ClientSession, *, args) -> list[dict]:
 async def sweep(session: aiohttp.ClientSession, *, args, state: State) -> int:
     """The real sweep. Returns a process exit code."""
     cooldown_for = _cooldown_lookup(args)
-    candidates = await survey_candidates(session)
+    candidates = _restrict_to_slugs(await survey_candidates(session), args)
     pending = [
         c for c in interleave_by_host(candidates) if c["slug"] not in state.failed
     ]
@@ -976,6 +1026,16 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=DEFAULT_STATE_FILE,
         help=f"Where the known-stuck slugs are remembered (default {DEFAULT_STATE_FILE}).",
+    )
+    parser.add_argument(
+        "--slugs-file",
+        type=Path,
+        default=None,
+        help="Attempt only the slugs listed in this file, one per line "
+        "(blank lines and '#' comments ignored). Still surveyed, paced "
+        "and state-tracked exactly like a full run -- this narrows WHICH "
+        "pages, never how hard they are hit. For re-testing one platform "
+        "after a fix without touching the rest of the backlog.",
     )
     parser.add_argument(
         "--reset-state",
