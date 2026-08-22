@@ -776,6 +776,54 @@ again on the logs tab before it was spotted. Retention was never the
 problem (14 days are available); the range was just pointing at the
 wrong hour. Enter `06:12:00`, not `00:06:12`.
 
+## P5: the `send-search-alerts` cron really does send real emails [Done 2026-08-22]
+
+The workflow had reported success daily since 2026-08-13, but nobody had
+opened an inbox to confirm an actual email existed. **Confirmed by
+searching the real mailbox 2026-08-22** — they arrive **daily, around
+23:47–23:50 UTC**, from `ryan@ally.redtaperecordings.com`, with real
+personalised content (`Hi Ryan,`), a real matched meeting, its
+jurisdiction and date, and a quoted transcript snippet. Eight
+consecutive days verified:
+
+| Date (UTC) | Subject |
+| --- | --- |
+| 08-21 23:50 | `Somebody said ""Neighborhood character" or "Character of the neighborhood"" (+12 more)` |
+| 08-20 23:51 | `Somebody said ""affordable housing"" (+13 more)` |
+| 08-19 23:48 | `Somebody said ""affordable housing"" (+38 more)` |
+| 08-18 23:49 | `Somebody said ""affordable housing"" (+11 more)` |
+| 08-17 23:48 | `Somebody said ""data center"" (+30 more)` |
+| 08-16 23:47 | `Somebody said ""data center"" (+61 more)` |
+| 08-15 23:47 | `Somebody said ""data center"" (+124 more)` |
+| 08-14 23:49 | `Somebody said ""data center"" (+6 more)` |
+
+So the whole P5 chain is real: cron fires, `run_search_alerts()` finds
+new matches, `compose_search_alert_digest()` renders them, Resend
+delivers, and the digest genuinely bundles many matches into one email
+rather than sending one per match — the explicit design decision in
+`archive/search_alerts.py` is working as intended in production.
+
+**Two things this surfaced that the check wasn't looking for:**
+
+1. **A real copy bug in the subject line** — the doubled quotes visible
+   in every phrase-search row above. Root-caused to
+   `archive/utils/email.py`'s `_digest_subject()` and filed as its own
+   `[JUST-DO-IT]` entry in `BACKLOG.md`.
+2. **Every one of these went to `ryan@how-to-adu.com`** — i.e. to the
+   operator's own saved searches. Nothing here demonstrates a *user*
+   receiving an alert, because there don't appear to be external users
+   with saved searches yet. That's consistent with the same day's GA
+   finding (~14 human `/m/*` page views in 30 days, and the
+   `submit_meeting_url` spike being Ryan's own manual entry) and it's
+   the honest scope of what "P5 confirmed" means: the machinery works
+   end to end; it has not yet been exercised by anyone outside the
+   project.
+
+**Method note:** this was answered by searching the mailbox directly
+rather than asking Ryan to hunt for one email — the subject shape came
+from reading `_digest_subject()` first, which is what made the search
+query precise enough to find them among 201 loosely-matching threads.
+
 ## Sentry: a real raised exception does land in the dashboard — all three services confirmed [Done 2026-08-22]
 
 WO-7's own acceptance criterion, left unrun since 2026-08-16: `SENTRY_DSN`
