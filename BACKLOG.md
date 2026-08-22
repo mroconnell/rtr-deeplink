@@ -64,7 +64,8 @@ Standing decisions — do NOT re-raise  (13)
   Legistar's delegated-platform *title* winning over the page's body…
   Sacramento County's doubled meeting title is not a bug to fix
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (13)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (14)
+  [JUST-DO-IT] `[BIG]` ffmpeg 5.1.9 on the Archive cannot seek into
   [JUST-DO-IT] A bulk re-resolve gets this IP blocked by YouTube, and
   [JUST-DO-IT] `[EASY]` `is_extractable()` excludes only YouTube, so
   [JUST-DO-IT] `[EASY]` A Viebit meeting's "can't transcribe this"
@@ -79,15 +80,16 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (13)
   [JUST-DO-IT] `[EASY]` The saved-search alert subject line
   [JUST-DO-IT] Every byte the public site serves is billed twice:
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (10)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (11)
   Confirmations nobody has actually watched happen  (3)
     [HUMAN] Render's health-check gate has never blocked a deploy —
     [HUMAN] `[LOGIN]` Confirm a real Render deploy installed cleanly off
     [NEEDS-AUDIT] P3 / GA: the `submit_meeting_url` spike was the
-  Production actions only Ryan should take  (4)
+  Production actions only Ryan should take  (5)
     [HUMAN] `[LOGIN]` Archive service instability, 2026-08-17 —
     [HUMAN] `[WAIT]` 10 YouTube-backed pages still hold roll-up
-    [HUMAN] `[WAIT]` Meeting-card backfill sweep — finished 2026-08-22
+    [HUMAN] Meeting-card backfill: both follow-ups are done, and the
+    [HUMAN] 19 audio-only meetings can never have a card — but 4 of them
     [HUMAN] Stray Archive-shaped tables in `rtr_deeplink_db` — root
   Decisions about already-live content  (2)
     [JUST-DO-IT] `[BIG]` Repair the three already-live transcript-defect
@@ -377,6 +379,45 @@ guessing a general dedup rule from one example.
 Small, self-contained, no open design question. Jurisdiction-extraction
 items that also qualify live under **Platform & jurisdiction coverage**
 so that work reads together.
+
+- **[JUST-DO-IT] `[BIG]` ffmpeg 5.1.9 on the Archive cannot seek into
+  Cablecast VOD playlists — 107 pages, root-caused 2026-08-22.** The
+  single largest recoverable group in the card backlog, and the assets
+  are fine.
+
+  **Measured, twice.** The sweep left 107 Cablecast pages failing with
+  `ffmpeg exited 0 but wrote no frame`. A dedicated re-run of exactly
+  those 107 (after #322 made the reason carry ffmpeg's own stderr):
+  **107 attempted, 0 stored, 106 the same failure, 1 HTTP 503.** Every
+  one silent — `frame= 0 fps=0.0 ... video:0kB audio:0kB`, and **zero
+  of the 107 contained any HTTP error at all**. ffmpeg opens the input,
+  seeks, and reads nothing, without complaining.
+
+  **Two things this rules out.** `probe_duration()` is *not* failing:
+  the offsets span **97 distinct values** (101s … 11530s) and **not one
+  is 600**, the `UNKNOWN_DURATION_OFFSET_SECONDS` fallback — so the
+  duration probe succeeds on every page and the offset is real. And it
+  is not the assets: four of these pages (champaign 5407s, detroit
+  1448s, wheat-ridge 5895s, st-tammany 6148s) each produced a real JPEG
+  **locally at the identical offset**, with and without the production
+  `-headers`.
+
+  **The difference is the ffmpeg build.** `/api/health`'s `media_tools`
+  block reports the Archive on **5.1.9-0+deb12u1**; the local runs that
+  succeed are **8.1.2**. Everything points at 5.1.9's HLS demuxer
+  failing to fetch segments after an input-side `-ss` on Cablecast's
+  playlists.
+
+  `-update 1` was added in #322 as a candidate explanation and is
+  **ruled out** — it is deployed and these still fail identically.
+
+  **Fix, in cost order**: (a) fall back to an output-side `-ss` (after
+  `-i`) when the input-side seek yields no frame — slower, but only ever
+  runs on the failure path, so it is self-limiting; (b) upgrade the
+  Archive's ffmpeg off Debian 12's 5.1.9. Verification case: any of the
+  four above, whose expected frame sizes are recorded in
+  `BACKLOG_DONE.md`. The 107 slugs are re-runnable in one pass with
+  `--slugs-file` (added #322).
 
 - **[JUST-DO-IT] A bulk re-resolve gets this IP blocked by YouTube, and
   the script's circuit breaker doesn't notice (measured twice,
@@ -962,27 +1003,59 @@ convenient.
   rolling up (`?` -> `? ?` -> `? ? ?`); the fix collapsed them correctly
   and real content starts at 0:39.
 
-- **[HUMAN] `[WAIT]` Meeting-card backfill sweep — finished 2026-08-22
-  02:04, two follow-ups left.** Ran to completion via `scripts/
-  backfill_meeting_cards.py --apply`: **973 stored / 1,152 attempted
-  (~84% success)**, with the **179 failed slugs** recorded in
-  `scripts/meeting_card_backfill_state.json`. (It also caught a real
-  production 500 on its first bounded run — a shadowed `offset`
-  variable, fixed same day, PR #286, with regression tests. Full build
-  detail in `BACKLOG_DONE.md`.) Nothing is running now; what's left:
-  **(1)** ~~the failure-reason plumbing~~ — **done 2026-08-22 (WO-42,
-  #305)**: `extract_and_store()` now returns a reason, the backfill
-  endpoint reports it per slug, and the script groups stuck pages by
-  bucketed reason as well as by host. That PR also fixed a real latent
-  bug this retry would otherwise have hit — the sweep was recording
-  *skips* (in-flight, cooldown, queue-full) as permanently stuck, so
-  some of the 179 may never have been attempted at all. **(2)** retry
-  the 179 by deleting
-  `scripts/meeting_card_backfill_state.json` a few days later and
-  re-running — failed slugs are skipped only because that file records
-  them, so deleting it gives them another chance. Do (1) before (2) if
-  possible, so the retry produces diagnosable failures rather than
-  another opaque count.
+- **[HUMAN] Meeting-card backfill: both follow-ups are done, and the
+  retry premise turned out to be wrong (closed out 2026-08-22).** The
+  original sweep stored **973 / 1,152 (~84%)**, leaving 179 failed slugs
+  with no recorded reason. Both follow-ups have now run:
+
+  **(1) Failure-reason plumbing — done** (WO-42, #305).
+  `extract_and_store()` returns a reason, the endpoint reports it per
+  slug, and the script buckets by reason as well as host. It also fixed
+  a real latent bug the retry would have hit: the sweep recorded *skips*
+  (in-flight, cooldown, queue-full) as permanently stuck.
+
+  **(2) The retry — run 2026-08-22, 1h50m, 117 stored / 301 attempted
+  (39%).** But the interesting number is the diff against the original
+  179: **3 recovered, 176 still stuck, 8 newly stuck.** These are not
+  transient CDN flakes that a later retry clears — they are persistent,
+  and one bug is 60% of them. The "delete the state file and try again
+  in a few days" advice this entry used to carry is **retired**: it was
+  tested and bought 3 pages out of 179. The 117 stored were almost all
+  pages never attempted before (the Archive went 973 → 1,090 cards).
+
+  Final failure profile, 184 stuck:
+
+  ```
+  109  wrote no frame (107 of them Cablecast)   22  HTTP 404
+   21  timed out                                19  audio-only source
+   10  HTTP 403                                  3  other
+  ```
+
+  By host: `mediahttp.iqm2.com` 28, `play.champds.com` 17,
+  `archive-stream.granicus.com` 6, `cpmedia.azureedge.net` 6, then a
+  long tail of small Cablecast tenants at 3-4 each. **Cablecast is 60%
+  of the failures but never tops the host list** — it is spread across
+  ~35 tenants, which is precisely the shape host-grouping alone hides
+  and the reason the per-reason plumbing was worth building.
+
+  Two residuals split out below: the Cablecast HLS-seek defect, and the
+  audio-only pages.
+
+- **[HUMAN] 19 audio-only meetings can never have a card — but 4 of them
+  have no transcript either (found 2026-08-22).** Thumbnail extraction
+  needs a *video* stream; transcription only needs audio. These
+  recordings are audio-only (some literally `.mp3` URLs on
+  `cpmedia.azureedge.net`, others audio inside a video container on
+  Granicus/IQM2 — invisible to any URL or `video_format` check, only
+  detectable by probing), so they will fail thumbnail extraction on
+  every sweep forever while being perfectly good transcription sources.
+  **Confirmed**: of the 7 URL-detectable ones, 3 already serve real
+  transcripts. Two actions, neither urgent: teach `is_extractable()` a
+  no-video-stream case so they stop being retried (needs a probe, so it
+  belongs at extraction time, not in the candidate query), and push the
+  4 untranscribed ones — `wawona-ca-2023-08-11`, `layton-ut-2025-02-20`,
+  `newport-or-2024-05-15`, `kaysville-ut-2023-04-28` — toward the
+  transcription queue.
 - **[HUMAN] Stray Archive-shaped tables in `rtr_deeplink_db` — root
   cause established 2026-08-22; only the cleanup decision is left.** The
   resolver's `rtr_deeplink_db` (real data: 355 rows) also holds a full
