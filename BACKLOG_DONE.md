@@ -6,6 +6,108 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Pre-WO-34 roll-up transcripts: a re-resolve script, a corpus-wide dry run, and a second defect shape found [Done 2026-08-22]
+
+`scripts/dedupe_rollup_transcripts.py` — built, dry-run, and reported;
+`--apply` is `store_true` and deliberately left for Ryan, same pattern
+as `backfill_meeting_cards.py`. PR #310. The **residual** (the 26 pages
+still awaiting that run) and the **calibration finding** are split back
+out as live entries in `BACKLOG.md`.
+
+**Candidate selection uses no SQL at all**, and no call that aggregates
+or filters over `segments` server-side — the standing decision against
+full-corpus production scans was the binding constraint on the design.
+Three narrowing stages:
+
+1. `GET /internal/pages/all-urls` — one query over `meeting_pages` only,
+   no join to `transcript_versions`. The same call
+   `backfill_archived_pages.py` already makes.
+2. Two bounds applied **client-side**: platform ∈ {granicus, civicclerk,
+   escribe, youtube} (WO-34's four — filtering on the *stored* platform
+   also covers Legistar/CivicPlus/PrimeGov/Chicago-ELMS, since the row
+   records the delegated finder's name), and `created_at < 2026-08-21`.
+   Both are deliberately **supersets**: a pre-cutoff page re-resolved
+   since stays a candidate and gets cleared by stage 3, and a page with
+   a missing `created_at` is *kept*, never dropped.
+3. Per-page detection via each page's own public
+   `GET /m/{slug}/transcript.srt` export — one indexed single-row read
+   each, sequential, `--probe-delay` apart, hard-capped by `--limit`,
+   scored with `_looks_like_rollup()` itself.
+
+Host-grouping was considered as a fourth stage and **rejected on
+measurement**: the 1,377 candidates span 1,010 distinct source hosts,
+792 of them with a single page — a 27% saving in exchange for a whole
+class of false negatives.
+
+**Dry run: 1,377 probed in ~7 min → 26 affected, 981 clean, 370 with no
+transcript, 0 probe failures.** The 26 hold 16.3M stored characters that
+become 2.7M (83.6% duplication): 12 granicus, 10 youtube, 2 civicclerk,
+2 escribe.
+
+**Verification case — Tacoma**, `ratio 0.965`, 21,240 segments /
+859,278 chars → 1,168 / 100,246 (0.117 retained), matching WO-34's own
+measurement to the segment:
+
+```
+BEFORE                                    AFTER
+JUST A SECOND.                            JUST A SECOND.
+>>                                        >> Councilmember Hines: WE WILL GET
+>> Councilmember                             EVERYONE SWORN IN SO WE CAN BEGIN
+>> Councilmember Hines:                      OUR COUNCIL MEETING HERE THIS EVENING.
+>> Councilmember Hines: WE               >> HELLO EVERYONE.
+>> Councilmember Hines: WE WILL          THANK YOU FOR JOINING US THIS EVENING.
+>> Councilmember Hines: WE WILL GET      HOW ABOUT NOW?
+```
+
+A **read-only rehearsal of the `--apply` gate** was run on Tacoma (real
+re-resolve, no push): 1,168 segments / 100,246 chars, `fresh still
+roll-up? False`, `GATE -> ok=True` — identical to the preview.
+`--apply` itself was never run, not once.
+
+**Negative control held.** Jacksonville FL clip 7447 is archived
+(`city-of-jacksonville-florida-2026-08-03-neighborhoods-community-
+services-public`) and was **not flagged**; it and all 8 archived
+`jaxcityc.granicus.com` pages came back clean, and the raw caption file
+scores 0.020. Antioch CA (CivicClerk, 275K→135K) and Essex County ON
+(eScribe, 297K→230K) were both flagged with exactly WO-34's numbers.
+Philadelphia's YouTube video isn't archived, so it is covered by fixture
+only.
+
+**A real bug caught during verification**: `base.py`'s finder registry
+is empty until `register_all_finders()` runs, and only `app/main.py`
+normally calls it — so without an explicit call every page failed with
+`No asset finder for platform 'granicus'`. Fixed, with a regression test
+that empties the registry first. Worth knowing for any future script
+that resolves outside the app.
+
+`crud.list_all_page_urls()` now also returns `created_at` — additive, an
+existing column, **no schema change and no migration**. `README.md`
+gained a "Rewriting pre-WO-34 transcripts" operator section, plus a
+correction to "Caption format handling", which described the WO-34 fix
+without noting that already-archived pages were left untouched.
+
+Tests 1432 → 1483 (51 new), replaying the four real WO-34 caption shapes
+plus the negative control through the exact production path
+(`parse_vtt`/`parse_srt` → `to_srt` → `parse_stored_srt` →
+`looks_affected`). New fixture
+`tests/fixtures/granicus/jacksonville_clip7447_captions.vtt`, fetched
+live 2026-08-22.
+
+**The entry as it stood:**
+
+- **[JUST-DO-IT] Every Archive page ingested before WO-34 (2026-08-21)
+  still holds the duplicated roll-up transcript it was stored with — the
+  fix is resolve-time only.** `dedupe_rollup_cues()` runs on every fresh
+  resolve, but existing `TranscriptVersion` rows are untouched — e.g.
+  `/m/city-of-tacoma-wa-2026-01-06-city-council-on-2026-01-06-5-00-pm`
+  still serves the duplicated text (confirmed live 2026-08-21). Needs a
+  re-resolve script that walks affected pages and writes the new
+  transcript back — deliberately out of WO-34's scope since it's a
+  write-path job against real public pages, not a parser change. The
+  same roll-up detector the fix added (`_looks_like_rollup()` in
+  `app/utils/vtt_parser.py`) can scope *which* pages first. See
+  `BACKLOG_DONE.md`'s WO-34 entry for the fixed output.
+
 ## Ship-next wave, 2026-08-22: five entries shipped in parallel [Done 2026-08-22]
 
 Run as one wave of parallel worktree agents with a conductor serializing
