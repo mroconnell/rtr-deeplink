@@ -63,21 +63,21 @@ Standing decisions — do NOT re-raise  (12)
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
   Sacramento County's doubled meeting title is not a bug to fix
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (6)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (7)
   [JUST-DO-IT] `[EASY]` `is_extractable()` excludes only YouTube, so
   [JUST-DO-IT] `[EASY]` A Viebit meeting's "can't transcribe this"
   [JUST-DO-IT] `[EASY]` `scripts/backtest_fallback.py`'s `sebastopol`
   [JUST-DO-IT] `[EASY]` "We think the video is here: [No video
   [JUST-DO-IT] `[EASY]` `rtr-business/BUSINESS_OVERVIEW.md` still says
+  [JUST-DO-IT] `[EASY]` The saved-search alert subject line
   [JUST-DO-IT] Every byte the public site serves is billed twice:
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (14)
-  Confirmations nobody has actually watched happen  (5)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (13)
+  Confirmations nobody has actually watched happen  (4)
     [HUMAN] Render's health-check gate has never blocked a deploy —
     [HUMAN] Confirm both admin cron workflows run green against the
     [HUMAN] `[LOGIN]` Confirm a real Render deploy installed cleanly off
     [NEEDS-AUDIT] P3 / GA: the `submit_meeting_url` spike was the
-    [HUMAN] `[LOGIN]` P5: confirm a real `send-search-alerts` cron run
   Production actions only Ryan should take  (4)
     [HUMAN] `[LOGIN]` Archive service instability, 2026-08-17 —
     [HUMAN] 26 already-live pages still serve duplicated roll-up
@@ -412,6 +412,33 @@ so that work reads together.
   not done here since business-workspace edits stay separate per
   `CLAUDE.md`.
 
+- **[JUST-DO-IT] `[EASY]` The saved-search alert subject line
+  double-quotes any phrase or boolean search.** Found 2026-08-22 while
+  confirming P5 against the real inbox. `archive/utils/email.py`'s
+  `_digest_subject()` builds `f'Somebody said "{keywords[0]}"'`, adding
+  one pair of quotes — but a *phrase* search is stored with its own
+  quotes as part of the keyword, so real subjects that shipped read:
+
+  > `Somebody said ""affordable housing"" (+13 more)`
+  > `Somebody said ""Neighborhood character" or "Character of the neighborhood"" (+12 more)`
+
+  Both are real production emails (2026-08-20 and 2026-08-21). Plain
+  single-word searches are unaffected, which is presumably why it
+  survived — every `data center` digest reads correctly. **Fix**: don't
+  re-quote a keyword that is already quoted (strip a matched leading/
+  trailing `"` pair before interpolating, or use typographic quotes so
+  the nesting is at least visually distinct). **Note before touching
+  it**: that function's docstring records the copy as *deliberately
+  provisional* — `marketing/LIFECYCLE_EMAILS.md`'s approved subject was
+  written for a single match and the digest shape hasn't had a copy pass
+  yet — so fix the doubling narrowly rather than rewriting the line, or
+  do it as part of that copy pass.
+  **Second, smaller oddity in the same function, not confirmed as
+  wrong:** `extra = total_matches - 1` counts matches across *every*
+  group, while the subject names only `keywords[0]` — so with several
+  saved searches, "+N more" silently includes matches belonging to
+  different searches. That may well be the intent for a digest; worth a
+  decision rather than a fix.
 - **[JUST-DO-IT] Every byte the public site serves is billed twice:
   the resolver proxies to the Archive over its *public* URL.**
   `app/main.py:1527-1593` proxies essentially the whole public site —
@@ -582,10 +609,6 @@ convenient.
   decision (that one is about *indexing* `/m/` and `/j/` pages, a
   different question from letting crawlers pull both full-transcript
   formats for every meeting).
-- **[HUMAN] `[LOGIN]` P5: confirm a real `send-search-alerts` cron run
-  actually sent a real email** to a real saved search — the workflow
-  reports success daily, but nobody's checked an inbox for the actual
-  email.
 
 ### Production actions only Ryan should take
 
