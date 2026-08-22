@@ -297,3 +297,107 @@ check failed" alert on `rtr-deeplink-archive` (2026-08-20 21:38:36 UTC,
 ~32 hours after the 2026-08-19 occurrence above) — was folded together
 with that first occurrence and promoted into `BACKLOG.md`'s
 "Reliability/ops audit" `[HUMAN]` list 2026-08-21.
+
+## 2026-08-22
+
+**First run under the new ledger-based dedupe protocol (WO-33)** — see
+this file's "Dedupe protocol" section and its "Open item" note above,
+which predicted exactly this: the Routine's own scheduled prompt hadn't
+been switched over to `scripts/inbox_triage_ledger.py` until now, so
+every run since 2026-08-21 kept re-reviewing the full un-deduped
+`label:rtr-claude` backlog via the dead `-label:rtr-claude-processed`
+exclusion. This run used the real ledger for the first time:
+`CLAUDE_INBOX_TRIAGE_SEEN.txt` held zero real entries (only its header
+comments — never populated before today), so all 34 messages under
+`label:rtr-claude newer_than:30d` came back as "unseen." That's expected
+for this transition, not a sign the ledger is broken — confirmed by
+checking `git log` on the ledger file (only ever touched by the commit
+that created it) and cross-referencing every one of today's 34 candidates
+against the 2026-08-19/20/21 sections below, which had in fact already
+reviewed nearly all of them under the old protocol. All 34 message IDs
+recorded in the ledger at the end of this run — the run after this one
+should see only genuinely new mail.
+
+Cross-referencing today's 34 candidates against the existing dated
+sections above (rather than re-investigating from scratch): 12 GitHub
+Actions "PR run failed: Test" emails, all for individual feature branches
+(social auto-posting, PrimeGov jurisdiction fix, bare/state-suffixed
+jurisdiction fix, Swagit `/events/{id}` fix, Granicus `event_id` URL
+recognition, Destiny AgendaQuick support, plus 6 that were already
+reviewed and skipped in the 2026-08-21 section above), none for `main` or
+a scheduled workflow — normal dev-iteration noise, no write-up needed.
+Duplicates of already-tracked/already-closed items, no new entry: 3 more
+"deploy failed for rtr-deeplink-staging" emails (commits "Fix Search...",
+"Fix /coverage...", "Advance...") — same disposable/untracked-staging
+noise pattern as prior runs; 2 more "Server failure detected on
+test-redtaperecordings" emails (2026-08-20 20:23:54 and 2026-08-22
+02:14:05 UTC) — same likely-test/dev-noise pattern flagged and left
+unconfirmed in the 2026-08-19 section (this is now its 5th occurrence
+across runs — still no way to confirm test noise vs. a real bug that
+only surfaces on this untracked service, still flagging rather than
+guessing further); the "No thumbnail URL provided" Search Console alert
+(2026-08-20 23:13) and the `OQ4V0B5rdwg` YouTube `IpBlocked` alert
+(2026-08-20 16:02) — both exact repeats of items the 2026-08-21 section
+already closed as duplicates; a *new* YouTube `IpBlocked` alert on a
+different video (`uNDJRR3ywVo`, 2026-08-21 16:00) — same general
+self-clearing `IpBlocked` root cause `BACKLOG_DONE.md`'s
+"YouTube transcript fetch `IpBlocked` alert" entry already documents
+(the block isn't video-specific), not a new bug; the Search Console
+"Events structured data issues" alert (2026-08-21 07:46) and both Sentry
+"Unclosed connector" issues (PYTHON-FASTAPI-S and -V) — all three already
+fixed the same day per `BACKLOG_DONE.md`'s "Five bundled easy-win fixes"
+entry; Sentry PYTHON-FASTAPI-T and transcription job failures 410/413 —
+same already-documented Granicus ffmpeg-120s-timeout root cause as the
+2026-08-21 section describes; and the two customer-facing "We hit a snag
+on your transcript" emails — the same job 410/413 failures under a
+different (user-facing) template, not new information.
+
+One additional duplicate worth calling out explicitly since it's a new
+issue ID: **Sentry PYTHON-FASTAPI-W** (`ProgrammingError:
+UndefinedFunctionError: function jsonb_array_length(json) does not
+exist`, `/internal/send-worker-daily-report`, 2026-08-21 16:54 UTC) and
+the matching **GitHub Actions "Send worker daily report" failure on
+`main`** (run 32505309404, same timestamp) are the *same* incident —
+**Confirmed** via the actual job log (`curl` to
+`/internal/send-worker-daily-report` returned a real 500) and via
+`archive/db/crud.py`'s current `get_transcription_queue_summary()`,
+which already documents this exact `UndefinedFunctionError` in its own
+docstring and now calls `json_array_length()` (not `jsonb_array_length`).
+Root cause and fix are already fully written up in `BACKLOG_DONE.md`
+(the `TranscriptVersion.segments` column is Postgres `json`, not
+`jsonb`) — fixed by commit `981555f` at 2026-08-21 18:22:19 -07:00, about
+1.5 hours after this alert fired. No new entry needed; this is a resolved
+duplicate, surfaced only because it was a genuinely new Sentry issue ID.
+
+**One new finding, not previously tracked anywhere:**
+
+**Sentry PYTHON-FASTAPI-X — `TypeError: '>' not supported between
+instances of 'NoneType' and 'int'` in `POST /internal/thumbnails/backfill`**
+(`archive/main.py`, the `"offset": max(0, offset)` lines — currently
+around lines 1686 and 1722, shifted from the alert's line 1713 by later
+commits). **Confirmed** crash site: the Sentry event's `sentry:release`
+tag (`981555fa3c23bacc6427cf6f5847d46118002887`) matches exactly the
+WO-37 commit that introduced the endpoint's `offset: int = 0` query
+parameter, and the single occurrence (2026-08-22 01:26:17 UTC) landed
+~4 minutes after that commit deployed (2026-08-21 18:22:19 -07:00 =
+2026-08-22 01:22:19 UTC) — so this is live in currently-deployed code,
+not a stale/pre-fix trace. **Unconfirmed** trigger: grepped every caller
+of this endpoint in the repo — `scripts/backfill_meeting_cards.py`'s
+`survey_candidates()` and `run_batch()` (the only documented callers,
+added by that same WO-37 commit) never send an `offset` query parameter
+at all, and FastAPI's `offset: int = 0` annotation should validate/coerce
+any supplied value before the function body runs, never handing it a
+bare `None`. Nothing in this repo's code explains how a live `None`
+reached `max(0, offset)`. Open question for Ryan: was this a one-off
+manual/ad-hoc request right after deploying WO-37 (e.g. a hand-typed curl
+or client that explicitly sent a JSON/text `null` for `offset`) — if so
+it's likely dead already, since the automated sweep driver never
+triggers it; if it recurs from the automated driver itself, that would
+be a different and more urgent story worth re-opening. **Impact**: one
+occurrence so far, operator-only endpoint (token-gated, `dry_run`
+defaults `true`), zero user-facing exposure, no data lost (this handler
+does no writes before the crash site). **Fix effort**: small regardless
+of the trigger — guard the value (`offset = offset or 0`) or use
+`Query(0, ge=0)` before it reaches `max()` — but not worth doing blind
+until the trigger is understood, since a guard without knowing the cause
+risks silently hiding a real caller bug instead of fixing it.
