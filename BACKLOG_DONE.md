@@ -644,6 +644,72 @@ the code?*" habit exists.
   Canada"/" (Canada)" whenever the trailing suffix is a recognized
   Canadian province code, in the same `jurisdiction_display` filter path
   — needs a `CANADIAN_PROVINCE_ABBRS` set shared with the fix above.
+## Archive memory graph, 2026-08-17: the OOM preceded the schema errors, and caused them [Done 2026-08-22]
+
+Closes part (a) of `BACKLOG.md`'s "Archive service instability,
+2026-08-17" entry, which had stood as "an OOM-driven trigger *preceding*
+the cascade is a real, unexplained possibility." **It preceded it, and
+the relationship is causal rather than coincidental.** Part (b) of that
+entry (PR #156's own failed deploy at 16:54 PT) is untouched by this and
+stays open — a memory graph says nothing about a failed build.
+
+**The documentary half, already in this repo but never connected.**
+`render.yaml:170` records the `starter`→`standard` upgrade after an OOM
+"7:10-7:11 AM"; the instability entry records four memory-limit restart
+emails at 14:10–17:08 UTC. **07:10 PT = 14:10 UTC — the same event, in
+two timezones.** This file's "Search: move to a materialized/indexed
+column" entry root-causes it: `list_pages()` loaded every
+`TranscriptVersion.segments` blob into memory on any keyword search, hit
+live via `/meetings?q=flock`. That OOM is what triggered the emergency
+materialized-column work, shipped the same day as **PR #116** — and PR
+#116 is precisely the deploy whose model column landed ~13 minutes ahead
+of its `ALTER TABLE`, producing the first schema-read error at 16:26 UTC
+(09:26 PT). So the chain is: **unbounded search memory → OOM →
+emergency fix → rushed deploy → schema outage.** One causal sequence,
+not two unrelated failures sharing an afternoon.
+
+**Render's own memory graph confirms it** (read live 2026-08-22, whole
+day, `rtr-deeplink-archive` — identifiable by `Limit 2 GB`, i.e.
+`standard`; the resolver is `starter`/512 MB). Percentages below are
+read off the chart, so treat them as approximate:
+
+- Flat ~7-10% (≈150-200 MB) from midnight to ~06:15 PT.
+- Instance churn begins ~06:15-07:15 PT, then excursions: **~62%
+  (≈1.25 GB) around 07:15**, **~74% (≈1.5 GB) around 08:10-08:30**.
+- A second, higher cluster **09:40-10:10 PT: ~52%, ~85% (≈1.7 GB),
+  ~55%** — straddling the 09:26 PT first schema error.
+- **Flat ~7-15% for the remaining ~11 hours**, through to 21:42 PT.
+- Many colour changes across 06:15-10:15 (each colour a new container),
+  consistent with the four restart emails.
+
+**Three things follow from that shape:**
+
+1. **The timing question is settled.** Excursions start ~07:15 PT,
+   roughly **2¼ hours before** the 09:26 PT schema error, exactly as the
+   restart emails implied.
+2. **On `starter` these were unsurvivable, which is why the upgrade was
+   forced.** Peaks of 1.25-1.7 GB are **2.4×-3.3× the old 512 MB
+   limit** — every one of those requests was a guaranteed OOM kill on
+   the old plan. (Suggestive but not asserted: the graph draws a dashed
+   horizontal marker at ~25% across the morning, and 512 MB is exactly
+   25% of 2 GB.)
+3. **The materialized-column fix demonstrably worked.** After ~10:15 PT
+   there is not one excursion in eleven hours, against a pre-fix
+   morning that produced six. That's the strongest available evidence
+   the fix addressed the real cause and not a symptom.
+
+**Still true, and worth not misreading:** `render.yaml`'s comment that
+`standard` "buys headroom while that's fixed properly; it doesn't fix
+the underlying unbounded memory use" was accurate when written — the
+pre-fix workload reached ~85% of even the 2 GB limit, i.e. ~15%
+headroom. Post-fix baseline is ~7-10%, so the headroom is real *now*,
+but it comes from the fix, not from the plan.
+
+**Method note:** the narrow 3-hour range originally asked for returned
+an empty graph; widening to the whole day is what produced readable
+data. Worth doing by default on Render's metrics tab rather than
+concluding the data isn't retained.
+
 ## Sentry: a real raised exception does land in the dashboard — all three services confirmed [Done 2026-08-22]
 
 WO-7's own acceptance criterion, left unrun since 2026-08-16: `SENTRY_DSN`
