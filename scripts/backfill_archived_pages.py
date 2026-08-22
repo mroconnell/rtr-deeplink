@@ -96,6 +96,7 @@ async def main() -> None:
     from app import archive_client
     from app.main import _recheck_archived_page
     from app.platforms.base import detect_platform
+    from app.utils.rate_limit import looks_rate_limited
 
     pages = await archive_client.list_all_page_urls()
     if pages is None:
@@ -121,6 +122,16 @@ async def main() -> None:
 
     changed = 0
     failed = 0
+    # This script had no circuit breaker at all until 2026-08-22. Its
+    # sibling scripts/dedupe_rollup_transcripts.py had one whose
+    # threshold was only checked on one of two failure paths, and a real
+    # run sent ten consecutive requests into a live 429 block because of
+    # it. Same driver shape here -- many re-resolves against a handful of
+    # hosts -- so the same protection applies, plus the hair-trigger
+    # rate-limit stop: a 429 means the far end is refusing this caller,
+    # so continuing both cannot succeed and plausibly extends the block.
+    MAX_CONSECUTIVE_FAILURES = 5
+    consecutive_failures = 0
     for i, page in enumerate(pages, 1):
         slug = page["slug"]
         url = page["source_url_normalized"]
@@ -144,16 +155,35 @@ async def main() -> None:
 
         if "error" in result:
             failed += 1
+            consecutive_failures += 1
+            detail = f"{result['error']}: {str(result.get('message', ''))[:150]}"
             print(
-                f"[{i}/{len(pages)}] {slug}: FAILED ({result['error']}: {str(result.get('message', ''))[:150]})"
+                f"[{i}/{len(pages)}] {slug}: FAILED ({detail}) "
+                f"[{consecutive_failures}/{MAX_CONSECUTIVE_FAILURES} consecutive]"
             )
+            if looks_rate_limited(detail):
+                print(
+                    "\nStopping: that looks like a rate limit or block, not "
+                    "a broken page. Every further request is both certain to "
+                    "fail and likely to extend it. Wait hours, not minutes, "
+                    "then re-run."
+                )
+                break
+            if consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
+                print(
+                    f"\nStopping after {consecutive_failures} consecutive "
+                    "failures -- something systemic is wrong, not one bad page."
+                )
+                break
         elif result["pushed"]:
+            consecutive_failures = 0
             changed += 1
             verb = "would push" if args.dry_run else "pushed"
             print(
                 f"[{i}/{len(pages)}] {slug}: {verb} -- jurisdiction={result['jurisdiction']!r}"
             )
         else:
+            consecutive_failures = 0
             print(f"[{i}/{len(pages)}] {slug}: no real content found, skipped")
 
         if i < len(pages):

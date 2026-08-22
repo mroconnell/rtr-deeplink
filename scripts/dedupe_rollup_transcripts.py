@@ -172,6 +172,7 @@ from dotenv import load_dotenv
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
+from app.utils.rate_limit import looks_rate_limited
 from app.utils.vtt_parser import (  # noqa: E402
     _is_rollup_pair,
     _looks_like_rollup,
@@ -1038,6 +1039,36 @@ async def rewrite_page(
     }
 
 
+def _should_abort(consecutive_errors: int, failure: object) -> bool:
+    """Whether to stop the whole run after a failure.
+
+    Two independent reasons, and the rate-limit one is deliberately
+    hair-trigger: a 429 says the *far end* is refusing this caller, so
+    every further request is both certain to fail and plausibly extending
+    the block. Measured 2026-08-22 -- ten consecutive 429s on
+    YouTube-backed pages, then a retry ten minutes later at 60s spacing
+    that failed on its first request. Waiting for the generic
+    MAX_CONSECUTIVE_ERRORS threshold would send four more requests into
+    a wall for nothing.
+    """
+    if looks_rate_limited(failure):
+        logger.error(
+            "  Stopping: that looks like a rate limit or block, not a "
+            "broken page. Every further request is both certain to fail "
+            "and likely to extend it. Wait hours, not minutes, then "
+            "re-run the same command to resume."
+        )
+        return True
+    if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
+        logger.error(
+            "Giving up after %d consecutive failures. Nothing is "
+            "lost -- re-run the same command to resume.",
+            consecutive_errors,
+        )
+        return True
+    return False
+
+
 async def sweep(session: aiohttp.ClientSession, *, args, state: State) -> int:
     """The real run. Returns a process exit code."""
     findings = await load_findings(session, args=args)
@@ -1093,12 +1124,7 @@ async def sweep(session: aiohttp.ClientSession, *, args, state: State) -> int:
                     MAX_CONSECUTIVE_ERRORS,
                     str(e)[:300],
                 )
-                if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
-                    logger.error(
-                        "Giving up after %d consecutive failures. Nothing is "
-                        "lost -- re-run the same command to resume.",
-                        consecutive_errors,
-                    )
+                if _should_abort(consecutive_errors, e):
                     return 1
                 continue
 
@@ -1116,7 +1142,20 @@ async def sweep(session: aiohttp.ClientSession, *, args, state: State) -> int:
                 consecutive_errors += 1
                 failed += 1
                 state.record_failure(slug, result["detail"])
-                logger.warning("  failed: %s", result["detail"])
+                logger.warning(
+                    "  failed (%d/%d consecutive): %s",
+                    consecutive_errors,
+                    MAX_CONSECUTIVE_ERRORS,
+                    result["detail"],
+                )
+                state.save()
+                # The bug this fixes (2026-08-22): the counter above was
+                # already being incremented here, but the threshold was
+                # only ever *checked* in the except branch, so a run of
+                # resolve failures climbed forever and never tripped the
+                # breaker. Ten consecutive 429s marched straight through.
+                if _should_abort(consecutive_errors, result["detail"]):
+                    return 1
             state.save()
 
             if args.resolve_delay > 0 and index < len(pending):

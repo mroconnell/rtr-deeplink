@@ -45,6 +45,7 @@ from ..utils.search import (
     tokenize,
 )
 from ..utils.slugify import build_base_slug, random_suffix
+from ..utils.video_formats import IFRAME_EMBED_VIDEO_FORMATS
 from ..utils.transcription_quality import detect_hallucination_warnings
 from ..utils.url_normalize import normalize_url
 from .engine import async_session
@@ -3572,7 +3573,9 @@ _PLATFORM_LABELS: dict[str, str] = {**DIRECT_PLATFORMS, **CUSTOM_PLATFORMS}
 # tests/test_coverage_platform_registry.py asserts the set stays
 # non-empty and correctly typed, but only a human reading a new adapter
 # can decide whether its format belongs here.
-_IFRAME_EMBED_VIDEO_FORMATS: frozenset[str] = frozenset({"youtube", "vimeo", "viebit"})
+# Re-exported from archive/utils/video_formats.py so existing callers
+# and tests keep working; that module is the single definition.
+_IFRAME_EMBED_VIDEO_FORMATS = IFRAME_EMBED_VIDEO_FORMATS
 
 
 def _platform_split(
@@ -5898,10 +5901,14 @@ async def list_pages_missing_default_thumbnail(
     yet -- the work queue for POST /internal/thumbnails/backfill.
 
     Newest first, because a page that was archived recently is the one
-    most likely to be shared or crawled next. YouTube-backed pages are
-    excluded in SQL (they already have a free i.ytimg.com thumbnail and
-    their video_url is an embed URL ffmpeg cannot read) rather than
-    fetched and filtered in Python.
+    most likely to be shared or crawled next. Every iframe-embed platform
+    (IFRAME_EMBED_VIDEO_FORMATS: youtube, vimeo, viebit) is excluded in
+    SQL rather than fetched and filtered in Python -- their `video_url`
+    is a player *page*, not media, so ffmpeg can only ever fail on them.
+    Was YouTube-only until 2026-08-22, which meant vimeo and viebit rows
+    were handed to the sweep and produced failures that could never
+    succeed; mirrors video_thumbnail.is_extractable(), and both now read
+    the same constant.
 
     Two ways to select rows, and the *filter* above always applies to
     both -- a page that already has a default frame is never returned,
@@ -5944,7 +5951,13 @@ async def list_pages_missing_default_thumbnail(
             MeetingPage.video_url != "",
             or_(
                 MeetingPage.video_format.is_(None),
-                MeetingPage.video_format != "youtube",
+                # Not just "youtube": vimeo and viebit also store an
+                # iframe embed *page* as video_url, so selecting them
+                # here pointed ffmpeg at HTML and produced failures that
+                # could never succeed -- polluting the sweep's failure
+                # set. Mirrors video_thumbnail.is_extractable(); both now
+                # read the same constant.
+                MeetingPage.video_format.notin_(sorted(IFRAME_EMBED_VIDEO_FORMATS)),
             ),
             ~has_default,
         )

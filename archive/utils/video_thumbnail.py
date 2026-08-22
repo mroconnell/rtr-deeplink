@@ -34,6 +34,8 @@ import tempfile
 from pathlib import Path
 from typing import NamedTuple, Optional
 
+from .video_formats import is_iframe_embed_format
+
 logger = logging.getLogger("rtr_archive.video_thumbnail")
 
 # Same 11-char video-id shape app/platforms/youtube.py matches, plus the
@@ -130,14 +132,26 @@ def target_offset_seconds(
 
 def is_extractable(video_url: Optional[str], video_format: Optional[str]) -> bool:
     """True when there is a real media file ffmpeg could open. False for a
-    page with no video, and for YouTube-backed pages -- their stored
-    `video_url` is an iframe-embed URL, not media, and they already have
-    a free i.ytimg.com thumbnail anyway (the same structural reasoning
-    app/main.py's _unreadable_media_message() uses to say a
-    YouTube-hosted meeting can't be self-transcribed)."""
+    page with no video, and for every iframe-embed platform -- their
+    stored `video_url` is a player *page*, not media (the same structural
+    reasoning app/main.py's _unreadable_media_message() uses to say such a
+    meeting can't be self-transcribed).
+
+    Gated on IFRAME_EMBED_VIDEO_FORMATS rather than "youtube" alone since
+    2026-08-22. The YouTube-only form was written when YouTube was the
+    only embed platform and never revisited when vimeo.py (WO-29) and
+    viebit.py landed, so this returned True for both -- verified live --
+    and ffmpeg was handed an HTML page. That can only ever fail, and each
+    failure landed in the meeting-card sweep's failure set, which is
+    exactly what WO-42's per-page failure reasons exist to make readable.
+
+    The URL-shape check stays as a second line of defence: a page whose
+    video_format was never set (or set wrong) but whose URL is plainly a
+    YouTube link is still not extractable.
+    """
     if not video_url:
         return False
-    if video_format == "youtube" or _YOUTUBE_ID_RE.search(video_url):
+    if is_iframe_embed_format(video_format) or _YOUTUBE_ID_RE.search(video_url):
         return False
     return True
 
