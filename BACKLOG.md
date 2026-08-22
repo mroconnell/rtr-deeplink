@@ -2312,10 +2312,25 @@ real work on shipped code rather than a plan.
   still different**: cadence is daily not 6-hourly; no explicit
   "failed in last 48h" or "total meetings on site" count; recipient is
   whatever `AUTO_TRANSCRIPTION_REQUESTER_EMAIL` is set to, not a
-  resolved answer to the three-way "which Ryan address" question (a
-  *third* distinct address in play, alongside `DAILY_REPORT_EMAIL_TO`'s
-  `ryan@how-to-adu.com` default and the `ally@` consolidation target —
-  worth confirming which address before building further).
+  resolved answer to the "which Ryan address" question — **resolved
+  2026-08-22: `ally@redtaperecordings.com`.** All operator/ops reporting
+  consolidates there. Three addresses were in play
+  (`AUTO_TRANSCRIPTION_REQUESTER_EMAIL`, `DAILY_REPORT_EMAIL_TO`'s
+  `ryan@how-to-adu.com` default, and the requested
+  `ryan@redtaperecordings.com`); `ally@redtaperecordings.com` is the
+  answer for all of them.
+  **Two things to get right when applying it.** (1) It's set per-service
+  in the Render dashboard, so changing it means touching
+  `AUTO_TRANSCRIPTION_REQUESTER_EMAIL` on **both**
+  `rtr-transcription-worker` and `rtr-transcription-worker-2` — and
+  those two services differ in *exactly* that variable by design (see
+  `render.yaml`'s comment on the second block), so confirm the change
+  doesn't collapse the distinction they exist to maintain. (2)
+  **`ryan@ally.redtaperecordings.com` is the Resend *sending*
+  subdomain**, not this recipient — they look nearly identical in a
+  config diff and mixing them up would silently break either delivery or
+  reporting. Confirm `ally@redtaperecordings.com` receives mail before
+  switching anything over.
 
   **Real design question worth deciding before building further**:
   `TranscriptionJob` has only `created_at` — no `completed_at`/
