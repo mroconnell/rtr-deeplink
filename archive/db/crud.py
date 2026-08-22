@@ -16,6 +16,7 @@ from sqlalchemy import (
     or_,
     select,
     text,
+    update,
 )
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import aliased
@@ -317,40 +318,61 @@ async def _ensure_alias(session, url_normalized: str, meeting_page_id: int) -> N
 
 _BEST_EFFORT_CHECK_TTL = timedelta(seconds=60)
 _best_effort_state: dict[str, Any] = {"available": None, "checked_at": None}
+_reviewed_at_state: dict[str, Any] = {"available": None, "checked_at": None}
 
 
-async def _best_effort_available(session) -> bool:
-    """True when meeting_pages.best_effort really exists on the connected
-    database.
+async def _meeting_pages_column_available(session, column: str, state: dict) -> bool:
+    """True when `meeting_pages.<column>` really exists on the connected
+    database. Shared body for the ordinary-column feature-detects below.
 
     Inverted relative to _fts_available() on the SQLite branch, and
     deliberately so: search_tsv is a Postgres-only generated column that
-    SQLite can never have, whereas best_effort is an ordinary
-    cross-dialect column that dev/CI's SQLite gets from create_all() built
-    straight off today's model -- so on SQLite it is always present by
-    construction and there's nothing to detect. Only Postgres, where the
-    schema is migration-driven and can genuinely lag the code by one
-    deploy, needs the information_schema lookup. Cached for
+    SQLite can never have, whereas these are ordinary cross-dialect
+    columns that dev/CI's SQLite gets from create_all() built straight off
+    today's model -- so on SQLite they are always present by construction
+    and there's nothing to detect. Only Postgres, where the schema is
+    migration-driven and can genuinely lag the code by one deploy, needs
+    the information_schema lookup. Cached per-column for
     _BEST_EFFORT_CHECK_TTL so running the migration against a live service
-    flips this on within a minute with no restart.
+    flips it on within a minute with no restart.
     """
     if session.bind.dialect.name != "postgresql":
         return True
     now = datetime.now(timezone.utc)
-    checked_at = _best_effort_state["checked_at"]
+    checked_at = state["checked_at"]
     if checked_at is not None and now - checked_at < _BEST_EFFORT_CHECK_TTL:
-        return bool(_best_effort_state["available"])
+        return bool(state["available"])
     row = (
         await session.execute(
             text(
                 "SELECT 1 FROM information_schema.columns "
-                "WHERE table_name = 'meeting_pages' AND column_name = 'best_effort'"
-            )
+                "WHERE table_name = 'meeting_pages' AND column_name = :column"
+            ),
+            {"column": column},
         )
     ).first()
-    _best_effort_state["available"] = row is not None
-    _best_effort_state["checked_at"] = now
-    return bool(_best_effort_state["available"])
+    state["available"] = row is not None
+    state["checked_at"] = now
+    return bool(state["available"])
+
+
+async def _best_effort_available(session) -> bool:
+    """True when meeting_pages.best_effort really exists (2026-08-21,
+    WO-21). See MeetingPage.best_effort's comment for the two other halves
+    of the deploy safety this gate is one third of."""
+    return await _meeting_pages_column_available(
+        session, "best_effort", _best_effort_state
+    )
+
+
+async def _reviewed_at_available(session) -> bool:
+    """True when meeting_pages.reviewed_at really exists (2026-08-21,
+    WO-38). Same gate, one migration later: list_low_trust_pages()'s read
+    and mark_low_trust_pages_reviewed()'s write both go through it, so
+    that code and its migration are safe to deploy in either order."""
+    return await _meeting_pages_column_available(
+        session, "reviewed_at", _reviewed_at_state
+    )
 
 
 async def _unique_slug(session, base: str) -> str:
@@ -1183,6 +1205,407 @@ async def get_and_advance_worker_report_snapshot(
         return previous_dict
 
 
+# ---------------------------------------------------------------------------
+# Transcription failure analysis (WO-40)
+# ---------------------------------------------------------------------------
+
+# The two shapes of failure that keep getting conflated in the incident
+# record, and that call for opposite mitigations:
+#
+#   * Rate limiting -- the host throttles us because we asked too much,
+#     too fast. Spreading requests across different hosts helps.
+#   * Cold storage / rehydration -- a Granicus archive clip that hasn't
+#     been touched in a long time isn't warm on the CDN yet, so the
+#     FIRST pull times out while later ones (against a now-warm asset)
+#     succeed. A real confirmed case: a King County clip failed for
+#     ~a day, then succeeded untouched with no code change (BACKLOG.md).
+#     Here, clustering HELPS -- chunk 0 warms the asset for chunks 1..N.
+#
+# Nothing in the schema labels a failure as one or the other, but two
+# stored signals discriminate between them without new instrumentation:
+#
+#   1. WHERE in the job the failure landed. TranscriptionJob.failure_
+#      history already records a real `chunk_index` per failed attempt
+#      (added 2026-08-19). A failure on chunk 0 is cold-storage-shaped:
+#      nothing had been pulled from that asset yet, so no rate limit
+#      could plausibly have accumulated. A failure on chunk 15 after 14
+#      successes is rate-limit-shaped: the only thing that changed
+#      between chunk 0 and chunk 15 is how much we'd already asked for.
+#   2. WHICH host actually served the media. This is deliberately keyed
+#      on `media_url`'s host, not the page's -- on Granicus every tenant
+#      has its own `{tenant}.granicus.com` page subdomain, but the media
+#      itself comes off a small number of SHARED CDN hosts
+#      (archive-video/archive-stream/archive-media.granicus.com). The
+#      rate-limiting party is the CDN, not the tenant, so grouping by
+#      page host would report ~300 distinct "hosts" that are really one.
+#      Both groupings are returned so that difference is visible rather
+#      than assumed.
+#
+# Read-only, side-effect free, and a full Python-side scan over
+# TranscriptionJob -- same "fine at today's scale" reasoning as
+# list_transcription_backlog_candidates() above (a few hundred rows,
+# operator-invoked, not a hot request path). It never selects
+# partial_segments, which is the only large column here.
+
+_FFMPEG_TIMEOUT_MARKER = "ffmpeg timed out"
+
+# Two failures against the same host inside this window count as
+# "clustered". An hour is deliberately loose: a single chunk can take
+# minutes, so a genuine throttle-driven burst of failures across
+# concurrent workers still lands well inside it, while genuinely
+# unrelated failures against the same host days apart do not.
+FAILURE_CLUSTER_WINDOW = timedelta(hours=1)
+
+
+def _failure_host_of(url: Optional[str]) -> str:
+    if not url:
+        return "(none)"
+    try:
+        return (urlparse(url).hostname or "(unparseable)").lower()
+    except ValueError:
+        return "(unparseable)"
+
+
+def _max_failures_in_window(timestamps: list[datetime]) -> int:
+    """Largest number of failures for one host falling inside any single
+    FAILURE_CLUSTER_WINDOW-wide sliding window. A plain two-pointer scan
+    over sorted timestamps -- this is the "do failures burst, or are they
+    scattered singletons?" question, and a burst is what rate limiting
+    looks like."""
+    if not timestamps:
+        return 0
+    ordered = sorted(timestamps)
+    best = 1
+    start = 0
+    for end in range(len(ordered)):
+        while ordered[end] - ordered[start] > FAILURE_CLUSTER_WINDOW:
+            start += 1
+        best = max(best, end - start + 1)
+    return best
+
+
+def _parse_failure_at(raw: Any) -> Optional[datetime]:
+    if not isinstance(raw, str):
+        return None
+    try:
+        parsed = datetime.fromisoformat(raw)
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+
+
+# Two failures this close together are plausibly the same underlying
+# episode. Deliberately much tighter than FAILURE_CLUSTER_WINDOW: this is
+# asking "were these two failures contending with each other", not "did
+# this host have a bad afternoon".
+FAILURE_PAIR_WINDOW = timedelta(minutes=10)
+
+
+def _failure_pair_shape(rows, cutoff: Optional[datetime]) -> dict:
+    """Classifies every pair of failures falling within FAILURE_PAIR_WINDOW
+    of each other by how related the two are.
+
+    This is the direct, falsifiable test of the "workers claim consecutive
+    jobs from the same host and hammer it" theory. That theory predicts
+    failures should pile up across *different jobs* against the *same
+    host* at nearly the same time. If instead nearly every close pair is
+    within a single job, the clustering that actually hurts is happening
+    inside one job's own chunk loop -- which no amount of queue reordering
+    can reach, since a worker holds a job through all its chunks
+    (claim_next_chunk() claims a whole job, not a chunk, despite its name).
+    """
+    events: list[tuple[datetime, str, str, int]] = []
+    for row in rows:
+        host = _failure_host_of(row.source_url_normalized)
+        domain = ".".join(host.split(".")[-2:])
+        for entry in row.failure_history or []:
+            if not isinstance(entry, dict):
+                continue
+            at = _parse_failure_at(entry.get("at"))
+            if at is None or (cutoff is not None and at < cutoff):
+                continue
+            events.append((at, host, domain, row.id))
+    events.sort(key=lambda e: e[0])
+
+    counts = {
+        "same_job": 0,
+        "same_host_different_job": 0,
+        "same_domain_different_host": 0,
+        "unrelated_hosts": 0,
+    }
+    for i, first in enumerate(events):
+        for second in events[i + 1 :]:
+            if second[0] - first[0] > FAILURE_PAIR_WINDOW:
+                break
+            if first[3] == second[3]:
+                counts["same_job"] += 1
+            elif first[1] == second[1]:
+                counts["same_host_different_job"] += 1
+            elif first[2] == second[2]:
+                counts["same_domain_different_host"] += 1
+            else:
+                counts["unrelated_hosts"] += 1
+    return counts
+
+
+async def get_transcription_failure_analysis(days: Optional[int] = None) -> dict:
+    """Groups every recorded chunk failure by media host, by page host, and
+    by position-within-job, so "are we being rate limited, or is this cold
+    storage?" is answered from real stored data rather than argued from
+    first principles. See the module comment above this function for what
+    each signal actually discriminates.
+
+    `days` optionally restricts to failures recorded within the last N
+    days (by the failure_history entry's own `at` timestamp, not the job's
+    created_at -- a job created weeks ago can fail today via the
+    retry_scheduled path). Omitted means all-time.
+    """
+    cutoff = (
+        datetime.now(timezone.utc) - timedelta(days=days) if days is not None else None
+    )
+
+    async with async_session() as session:
+        rows = (
+            await session.execute(
+                select(
+                    TranscriptionJob.id,
+                    TranscriptionJob.media_url,
+                    TranscriptionJob.total_chunks,
+                    TranscriptionJob.status,
+                    TranscriptionJob.priority,
+                    TranscriptionJob.failure_history,
+                    MeetingPage.source_url_normalized,
+                    MeetingPage.platform,
+                ).join(MeetingPage, MeetingPage.id == TranscriptionJob.meeting_page_id)
+            )
+        ).all()
+
+    return summarize_failure_rows(rows, cutoff=cutoff, days=days)
+
+
+def summarize_failure_rows(rows, *, cutoff: Optional[datetime], days: Optional[int]):
+    """The whole diagnostic, as a pure function over already-fetched rows.
+
+    Split out from the query deliberately: this is the part with real
+    reasoning in it (the attempt-normalization especially, which is what
+    keeps a reader from misreading raw counts), and keeping it
+    DB-free means it can be tested directly against constructed rows
+    instead of against whatever jobs happen to be in the shared test
+    database -- which several other test modules also write failures into,
+    making any whole-table assertion order-dependent.
+
+    `rows` is any iterable of objects exposing the attributes selected in
+    get_transcription_failure_analysis() above.
+    """
+    by_media_host: dict[str, dict] = {}
+    by_page_host: dict[str, dict] = {}
+    by_platform: dict[str, dict] = {}
+    position_buckets = {
+        "chunk_0_first_pull": 0,
+        "chunk_1_to_2": 0,
+        "chunk_3_plus": 0,
+        "unknown_chunk_index": 0,
+    }
+    # Only meaningful for a multi-chunk job: "did this job get anywhere
+    # before it failed?" A first-chunk failure on a 1-chunk job can't
+    # distinguish the two hypotheses at all, so it's counted separately.
+    single_chunk_failures = 0
+    multi_chunk_first_failures = 0
+    multi_chunk_later_failures = 0
+    total_failures = 0
+    jobs_with_failures = 0
+    ffmpeg_timeout_failures = 0
+    failure_times_by_media_host: dict[str, list[datetime]] = {}
+    # RAW FAILURE COUNTS BY POSITION ARE ACTIVELY MISLEADING, and the
+    # normalization below is the whole reason this function is worth
+    # having. A job has exactly one chunk 0 but many later chunks, so
+    # "75% of failures happened after the first chunk" is what you see
+    # even when the first chunk is by far the most failure-prone
+    # position -- that is precisely the wrong read (it looks like an
+    # accumulating rate limit) and it is the read the raw buckets above
+    # invite. Dividing by the number of times each chunk index was
+    # actually ATTEMPTED is what makes positions comparable:
+    #
+    #   rising with chunk index  -> accumulating rate limit
+    #   spike at 0, flat after   -> cold storage / rehydration
+    #   flat and high throughout -> a source that is simply slow
+    #                               relative to the fixed ffmpeg timeout
+    #
+    # Attempts are derived, not stored: a job with total_chunks == N
+    # attempts every index 0..N-1 at least once (the worker walks them
+    # in order and a job only finishes by reaching the end), so N is a
+    # sound lower bound on attempts per index for the jobs counted here.
+    # Ratios can therefore exceed 1.0 -- an index that failed several
+    # times before succeeding -- which is meaningful, not a bug.
+    attempts_by_index: dict[int, int] = {}
+    failures_by_index: dict[int, int] = {}
+    attempts_by_decile: dict[int, int] = {}
+    failures_by_decile: dict[int, int] = {}
+
+    for row in rows:
+        history = row.failure_history or []
+        if not history:
+            continue
+
+        media_host = _failure_host_of(row.media_url)
+        page_host = _failure_host_of(row.source_url_normalized)
+        platform = row.platform or "(unknown)"
+        counted_this_job = False
+
+        for entry in history:
+            if not isinstance(entry, dict):
+                continue
+            at = _parse_failure_at(entry.get("at"))
+            if cutoff is not None and (at is None or at < cutoff):
+                continue
+
+            total_failures += 1
+            if not counted_this_job:
+                jobs_with_failures += 1
+                counted_this_job = True
+                # Attempt denominators, counted once per job rather than
+                # once per failure -- see the comment above the
+                # attempts_by_* declarations for why this normalization
+                # is the point of the whole function.
+                for idx in range(row.total_chunks or 0):
+                    attempts_by_index[idx] = attempts_by_index.get(idx, 0) + 1
+                    dec = min(9, (10 * idx) // (row.total_chunks or 1))
+                    attempts_by_decile[dec] = attempts_by_decile.get(dec, 0) + 1
+
+            error = entry.get("error") or ""
+            is_timeout = _FFMPEG_TIMEOUT_MARKER in error
+            if is_timeout:
+                ffmpeg_timeout_failures += 1
+
+            chunk_index = entry.get("chunk_index")
+            if isinstance(chunk_index, int):
+                failures_by_index[chunk_index] = (
+                    failures_by_index.get(chunk_index, 0) + 1
+                )
+                dec = min(9, (10 * chunk_index) // (row.total_chunks or 1))
+                failures_by_decile[dec] = failures_by_decile.get(dec, 0) + 1
+            if not isinstance(chunk_index, int):
+                position_buckets["unknown_chunk_index"] += 1
+            elif chunk_index == 0:
+                position_buckets["chunk_0_first_pull"] += 1
+            elif chunk_index <= 2:
+                position_buckets["chunk_1_to_2"] += 1
+            else:
+                position_buckets["chunk_3_plus"] += 1
+
+            if (row.total_chunks or 0) <= 1:
+                single_chunk_failures += 1
+            elif isinstance(chunk_index, int) and chunk_index == 0:
+                multi_chunk_first_failures += 1
+            elif isinstance(chunk_index, int):
+                multi_chunk_later_failures += 1
+
+            for bucket, key in (
+                (by_media_host, media_host),
+                (by_page_host, page_host),
+                (by_platform, platform),
+            ):
+                stats = bucket.setdefault(
+                    key,
+                    {
+                        "failures": 0,
+                        "ffmpeg_timeouts": 0,
+                        "first_chunk_failures": 0,
+                        "later_chunk_failures": 0,
+                        "job_ids": set(),
+                    },
+                )
+                stats["failures"] += 1
+                stats["job_ids"].add(row.id)
+                if is_timeout:
+                    stats["ffmpeg_timeouts"] += 1
+                if isinstance(chunk_index, int):
+                    if chunk_index == 0:
+                        stats["first_chunk_failures"] += 1
+                    else:
+                        stats["later_chunk_failures"] += 1
+
+            if at is not None:
+                failure_times_by_media_host.setdefault(media_host, []).append(at)
+
+    def _finalize(bucket: dict[str, dict], with_windows: bool) -> list[dict]:
+        out = []
+        for key, stats in bucket.items():
+            entry = {
+                "host": key,
+                "failures": stats["failures"],
+                "ffmpeg_timeouts": stats["ffmpeg_timeouts"],
+                "first_chunk_failures": stats["first_chunk_failures"],
+                "later_chunk_failures": stats["later_chunk_failures"],
+                "distinct_jobs": len(stats["job_ids"]),
+            }
+            if with_windows:
+                entry["max_failures_in_1h_window"] = _max_failures_in_window(
+                    failure_times_by_media_host.get(key, [])
+                )
+            out.append(entry)
+        return sorted(out, key=lambda e: -e["failures"])
+
+    positioned = multi_chunk_first_failures + multi_chunk_later_failures
+    return {
+        "window_days": days,
+        "total_failures": total_failures,
+        "jobs_with_failures": jobs_with_failures,
+        "ffmpeg_timeout_failures": ffmpeg_timeout_failures,
+        # Raw counts. Read failure_rate_by_chunk_index below INSTEAD of
+        # these when asking "where in a job do failures happen" -- these
+        # are dominated by how many chunks exist at each position, not by
+        # how failure-prone each position is. Kept because they're the
+        # honest raw material the rates are computed from.
+        "failure_position": position_buckets,
+        "multi_chunk_jobs": {
+            "first_chunk_failures": multi_chunk_first_failures,
+            "later_chunk_failures": multi_chunk_later_failures,
+            "first_chunk_share": (
+                round(multi_chunk_first_failures / positioned, 3)
+                if positioned
+                else None
+            ),
+        },
+        # THE diagnostic. Failures per actual attempt at each chunk index,
+        # and the same thing bucketed by decile of job length so jobs of
+        # different lengths are comparable. See the comment above
+        # attempts_by_index for how to read the shape.
+        "failure_rate_by_chunk_index": [
+            {
+                "chunk_index": idx,
+                "attempts": attempts_by_index[idx],
+                "failures": failures_by_index.get(idx, 0),
+                "failures_per_attempt": round(
+                    failures_by_index.get(idx, 0) / attempts_by_index[idx], 3
+                ),
+            }
+            for idx in sorted(attempts_by_index)
+        ],
+        "failure_rate_by_decile": [
+            {
+                "decile": dec,
+                "attempts": attempts_by_decile[dec],
+                "failures": failures_by_decile.get(dec, 0),
+                "failures_per_attempt": round(
+                    failures_by_decile.get(dec, 0) / attempts_by_decile[dec], 3
+                ),
+            }
+            for dec in sorted(attempts_by_decile)
+        ],
+        "single_chunk_job_failures": single_chunk_failures,
+        "by_media_host": _finalize(by_media_host, with_windows=True),
+        "by_page_host": _finalize(by_page_host, with_windows=False),
+        "by_platform": _finalize(by_platform, with_windows=False),
+        # Directly tests the "workers grab consecutive jobs from the same
+        # host and hammer it" hypothesis: that predicts a large
+        # same_host_different_job bucket. Measured 2026-08-21 against
+        # real production data, this bucket was exactly 0 -- see
+        # BACKLOG_DONE.md's WO-40 entry.
+        "concurrency_pairs_within_10min": _failure_pair_shape(rows, cutoff),
+    }
+
+
 async def list_completed_multichunk_transcription_jobs() -> list[dict]:
     """Every completed TranscriptionJob with total_chunks > 1 -- i.e. every
     on-demand transcription that actually went through the real per-chunk
@@ -1429,9 +1852,25 @@ _LOW_TRUST_CONFIDENCES = ("unverified", "blank")
 _LOW_TRUST_DEFAULT_LIMIT = 200
 _LOW_TRUST_MAX_LIMIT = 1000
 
+# The `reason` strings list_low_trust_pages() reports per row, and the
+# only values its `reason=` filter accepts. Kept as one tuple so the
+# filter can never drift from what the rows actually say.
+_LOW_TRUST_REASONS = ("unknown_platform", "best_effort", "unverified_jurisdiction")
+
+# Upper bound on how many ids one mark-reviewed call may touch. Not a
+# performance limit (it's a single UPDATE) -- it's the ceiling on how
+# much damage one mis-pasted request can do to production rows, and it
+# sits comfortably above _LOW_TRUST_MAX_LIMIT/2 so a reviewer working a
+# realistic page of the queue never hits it.
+_MARK_REVIEWED_MAX_IDS = 1000
+
 
 async def list_low_trust_pages(
-    *, limit: int = _LOW_TRUST_DEFAULT_LIMIT, offset: int = 0
+    *,
+    limit: int = _LOW_TRUST_DEFAULT_LIMIT,
+    offset: int = 0,
+    unreviewed: bool = False,
+    reason: Optional[str] = None,
 ) -> dict:
     """Read-only audit list backing GET /internal/low-trust-pages
     (archive/main.py) -- every archived page whose provenance was never
@@ -1469,20 +1908,76 @@ async def list_low_trust_pages(
     rows can be stale): the low-trust set is a standing slice of the whole
     archive, not a one-off backfill batch, so it can be large. `total` is
     the full match count regardless of the page returned.
+
+    **What this queue actually holds, measured (2026-08-21, WO-38).** The
+    first real production call returned 474 rows, and the breakdown is
+    not what the trust threat model expected: 470 are
+    `unverified_jurisdiction`, 7 are `unknown_platform` (3 of those
+    overlapping), and *zero* are `best_effort`. So today this is
+    overwhelmingly a **data-quality** queue -- "we could not determine
+    this meeting's jurisdiction" -- and a trust queue only prospectively.
+    Two reasons for that, both expected rather than broken: best_effort
+    cannot be backfilled onto rows archived before its column existed
+    (see the d4e5f6a7b8c9 migration), so it only appears on pages
+    ingested from 2026-08-21 onward; and genuinely spoofed government
+    content has never actually been observed, whereas a missing
+    jurisdiction is routine. A reviewer opening this expecting spoofing
+    will be confused, which is why it's written down here.
+
+    Those 474 rows are real, live, publicly-indexed pages with real video
+    (472 of 474 had `has_video`), not junk -- nothing here should ever be
+    read as "hide or delete these".
+
+    Two filters, both narrowing the same base query and both optional so
+    an unfiltered call returns exactly what it always did:
+
+    * `unreviewed=True` -- only rows nobody has marked reviewed
+      (`reviewed_at IS NULL`, see mark_low_trust_pages_reviewed()). This
+      is what turns a 474-row dump into a workable queue: without it,
+      re-reading the endpoint means re-triaging everything from scratch
+      every time.
+    * `reason` -- one of _LOW_TRUST_REASONS, restricting the OR to that
+      single condition. Worth having precisely *because* of the
+      measured skew above: with 470 of 474 rows sharing one reason, the
+      4 pages that are low-trust for a different reason are invisible in
+      practice without it.
+
+    Raises ValueError on an unrecognised `reason` rather than silently
+    ignoring it -- a typo'd filter that quietly returns the unfiltered
+    474 rows would read as "nothing was filtered out", which is the
+    wrong conclusion.
     """
     limit = max(1, min(int(limit), _LOW_TRUST_MAX_LIMIT))
     offset = max(0, int(offset))
+    if reason is not None and reason not in _LOW_TRUST_REASONS:
+        raise ValueError(f"unknown reason {reason!r}")
 
     async with async_session() as session:
         best_effort_available = await _best_effort_available(session)
+        reviewed_at_available = await _reviewed_at_available(session)
 
-        conditions = [
-            MeetingPage.platform == "unknown",
-            MeetingPage.jurisdiction_confidence.in_(_LOW_TRUST_CONFIDENCES),
-        ]
-        if best_effort_available:
+        conditions = []
+        if reason in (None, "unknown_platform"):
+            conditions.append(MeetingPage.platform == "unknown")
+        if reason in (None, "unverified_jurisdiction"):
+            conditions.append(
+                MeetingPage.jurisdiction_confidence.in_(_LOW_TRUST_CONFIDENCES)
+            )
+        if best_effort_available and reason in (None, "best_effort"):
             conditions.append(MeetingPage.best_effort.is_(True))
-        where = or_(*conditions)
+        # Only reachable as ?reason=best_effort during the one-deploy
+        # window where that column doesn't exist yet: an empty OR() is
+        # SQL-invalid, and "match nothing" is the honest answer -- with
+        # no column, no row can carry the flag.
+        where = or_(*conditions) if conditions else false()
+        if unreviewed and reviewed_at_available:
+            where = and_(where, MeetingPage.reviewed_at.is_(None))
+        # When the column doesn't exist yet, `unreviewed=True` is a
+        # deliberate no-op rather than an error, and that's not a
+        # fail-open: nothing can have been marked reviewed without a
+        # column to record it in, so every row genuinely IS unreviewed.
+        # `reviewed_at_column_available` below tells a caller which case
+        # they're in.
 
         total = (
             await session.execute(
@@ -1503,6 +1998,8 @@ async def list_low_trust_pages(
         ]
         if best_effort_available:
             columns.append(MeetingPage.best_effort)
+        if reviewed_at_available:
+            columns.append(MeetingPage.reviewed_at)
 
         rows = (
             await session.execute(
@@ -1523,6 +2020,9 @@ async def list_low_trust_pages(
                 bool(values[MeetingPage.best_effort])
                 if best_effort_available
                 else False
+            )
+            reviewed_at = (
+                values[MeetingPage.reviewed_at] if reviewed_at_available else None
             )
             confidence = values[MeetingPage.jurisdiction_confidence]
             platform = values[MeetingPage.platform]
@@ -1547,6 +2047,7 @@ async def list_low_trust_pages(
                     "has_video": bool(values[MeetingPage.video_url]),
                     "created_at": created_at.isoformat() if created_at else None,
                     "reasons": reasons,
+                    "reviewed_at": (reviewed_at.isoformat() if reviewed_at else None),
                 }
             )
 
@@ -1554,6 +2055,8 @@ async def list_low_trust_pages(
             "total": total,
             "limit": limit,
             "offset": offset,
+            "unreviewed": unreviewed,
+            "reason": reason,
             # False only in the one-deploy window where this code is live
             # but its migration hasn't run yet -- in which case the
             # best_effort half of the query is simply absent and every
@@ -1561,7 +2064,131 @@ async def list_low_trust_pages(
             # so a caller can tell "no best_effort pages" apart from "the
             # column isn't there yet."
             "best_effort_column_available": best_effort_available,
+            # Same one-deploy window, one migration later. False means
+            # every row reports reviewed_at=null and `unreviewed=true`
+            # filtered nothing -- which is accurate, not a silent failure
+            # (no column, nothing reviewable), but a caller should know.
+            "reviewed_at_column_available": reviewed_at_available,
             "pages": pages,
+        }
+
+
+async def mark_low_trust_pages_reviewed(
+    *,
+    ids: Set[int],
+    dry_run: bool = True,
+    unreview: bool = False,
+) -> dict:
+    """Write counterpart to list_low_trust_pages() above: stamps (or
+    clears) MeetingPage.reviewed_at on specific pages, so the audit queue
+    stops re-presenting rows a human has already worked through.
+
+    **Explicitly id-driven, with no "mark everything" mode.** Structured
+    after apply_jurisdiction_bleed_backfill()'s only_ids handling (WO-22,
+    the established pattern here for a targeted bulk write) but stricter:
+    there, ids narrow a set the endpoint recomputed itself, so omitting
+    them means "all candidates"; here an empty/absent id set means
+    nothing at all is written. Marking 474 rows reviewed in one
+    unconsidered call would destroy exactly the signal this column
+    exists to create, and there is no recovering "which of these had a
+    human actually looked at?" afterwards. Capped at
+    _MARK_REVIEWED_MAX_IDS per call for the same reason.
+
+    **Idempotent by construction.** An id that is already stamped is
+    reported as `already_reviewed` and its existing timestamp is left
+    alone -- re-running the same call is a no-op, never a re-dating. An
+    id matching no row is reported in `missing_ids` rather than failing
+    the batch, so one stale id out of fifty doesn't block the other
+    forty-nine.
+
+    `unreview=True` clears the stamp back to NULL instead (and reports
+    already-NULL rows as `already_reviewed`, i.e. already in the
+    requested state). It exists because this writes production rows from
+    a hand-pasted id list: without an undo, a mis-pasted batch could only
+    be repaired with direct DATABASE_URL access, which is precisely what
+    the /internal/* endpoints exist to avoid needing.
+
+    dry_run=True is the default, matching every other write endpoint here
+    (see apply_jurisdiction_bleed_backfill()): it computes and returns
+    exactly what it *would* change without touching anything.
+
+    Touches only the `reviewed_at` column, and nothing user-facing
+    depends on it -- reviewing a page does not hide it, de-index it, or
+    remove it from any hub. See MeetingPage.reviewed_at's comment.
+    """
+    ids = {int(i) for i in ids}
+    if not ids:
+        raise ValueError("ids is required and must contain at least one id")
+    if len(ids) > _MARK_REVIEWED_MAX_IDS:
+        raise ValueError(f"at most {_MARK_REVIEWED_MAX_IDS} ids per call")
+
+    async with async_session() as session:
+        if not await _reviewed_at_available(session):
+            # A write, unlike the read above, cannot degrade honestly --
+            # "marked reviewed" that recorded nothing would be worse than
+            # an error. The caller (archive/main.py) turns this into a
+            # 503; retrying after the migration runs succeeds.
+            return {
+                "reviewed_at_column_available": False,
+                "dry_run": dry_run,
+                "unreview": unreview,
+                "requested": sorted(ids),
+                "updated": 0,
+                "changed": [],
+                "already_reviewed": [],
+                "missing_ids": [],
+            }
+
+        rows = (
+            await session.execute(
+                select(
+                    MeetingPage.id,
+                    MeetingPage.slug,
+                    MeetingPage.reviewed_at,
+                ).where(MeetingPage.id.in_(ids))
+            )
+        ).all()
+
+        found = {row[0] for row in rows}
+        changed = []
+        already = []
+        for page_id, slug, reviewed_at in rows:
+            entry = {
+                "meeting_page_id": page_id,
+                "slug": slug,
+                "reviewed_at_before": (
+                    reviewed_at.isoformat() if reviewed_at else None
+                ),
+            }
+            # "Already in the requested state" -- stamped when marking,
+            # clear when unmarking. Either way, nothing to write.
+            if (reviewed_at is None) == unreview:
+                already.append(entry)
+            else:
+                changed.append(entry)
+
+        stamp = None if unreview else datetime.now(timezone.utc)
+        for entry in changed:
+            entry["reviewed_at_after"] = stamp.isoformat() if stamp else None
+
+        if changed and not dry_run:
+            await session.execute(
+                update(MeetingPage)
+                .where(MeetingPage.id.in_([e["meeting_page_id"] for e in changed]))
+                .values(reviewed_at=stamp)
+            )
+            await session.commit()
+
+        return {
+            "reviewed_at_column_available": True,
+            "dry_run": dry_run,
+            "unreview": unreview,
+            "requested": sorted(ids),
+            "updated": len(changed) if not dry_run else 0,
+            "would_update": len(changed),
+            "changed": sorted(changed, key=lambda e: e["meeting_page_id"]),
+            "already_reviewed": sorted(already, key=lambda e: e["meeting_page_id"]),
+            "missing_ids": sorted(ids - found),
         }
 
 
@@ -2450,9 +3077,17 @@ async def find_new_matches_for_saved_search(
     return result["pages"]
 
 
-# Platforms that host video directly (or, for Viebit/Cablecast, are
-# reached by delegation but ARE the real host) -- ordered to match
-# README.md's "Supported platforms" table. Deliberately excludes
+# The shared, multi-tenant vendor platforms -- one row each on /coverage,
+# roughly ordered to match README.md's "Supported platforms" table. Most
+# host video directly (or, for Viebit/Cablecast, are reached by
+# delegation but ARE the real host); a few (hyland, destinyhosted,
+# open_media) are agenda/CMS front-ends that hand video off elsewhere but
+# still deserve their own row, because they're the page a visitor
+# actually pastes and -- unlike the routers below -- a real archived page
+# can still be attributed back to them. The line this dict draws against
+# CUSTOM_PLATFORMS is "one product many jurisdictions buy" vs. "a bespoke
+# scraper this app wrote for one government", NOT "hosts video" vs.
+# "doesn't". Deliberately excludes
 # Legistar/CivicPlus/PrimeGov/CivicWeb: those are calendar-tool detection
 # routers that delegate to one of the platforms below via
 # resolve_via_platform() (or, for CivicWeb, a direct YouTubeAssetFinder
@@ -2475,6 +3110,19 @@ async def find_new_matches_for_saved_search(
 # genuine direct rows, not YouTube-delegation lookalikes. clerkbase is
 # the opposite case -- see CUSTOM_PLATFORMS below, it's deliberately not
 # here.
+#
+# WO-35, 2026-08-21: four platforms that shipped 2026-08-19..21
+# (destinyhosted #244, suiteone #263, castus #264, open_media #265) were
+# missing from BOTH this dict and CUSTOM_PLATFORMS, so their rows hit
+# get_platform_coverage()'s if/elif chain with no matching branch and
+# vanished from /coverage entirely -- confirmed live on the production
+# page (zero headings for all four) before this fix. That's the exact
+# gap BACKLOG.md's own "[JUST-DO-IT] /coverage's 'By platform' section
+# should list more platforms" entry described for the *previous* six
+# (champds/iqm2/clerkbase/seattle_channel/telvue/hyland), recreated. The
+# durable fix is tests/test_coverage_platform_registry.py, which now
+# fails CI when a registered platform has no /coverage decision at all --
+# same shape as WO-26's adapter-canary coverage test.
 DIRECT_PLATFORMS: dict[str, str] = {
     "granicus": "Granicus",
     "civicclerk": "CivicClerk",
@@ -2488,6 +3136,35 @@ DIRECT_PLATFORMS: dict[str, str] = {
     "telvue": "TelVue",
     "hyland": "Hyland OnBase Agenda Online",
     "townhallstreams": "Town Hall Streams",
+    # Destiny Software's AgendaQuick (public.destinyhosted.com) -- an
+    # agenda/minutes CMS across 61 confirmed real tenants, not a video
+    # host, so it looks at first glance like the Legistar/CivicPlus
+    # routers excluded above. It isn't, and the difference is worth being
+    # precise about: destinyhosted.py delegates to
+    # GenericFallbackAssetFinder and only reassigns
+    # `resolved.platform = "destinyhosted"` when the delegate came back
+    # "unknown" -- i.e. when nothing deeper was found and this page IS
+    # the terminal identity. A generic-fallback resolve can still carry
+    # real agenda_items/media from the AgendaQuick page itself, so those
+    # rows are pushable and really do land labeled "destinyhosted"
+    # (unlike legistar/civicplus, whose own label only ever appears on
+    # never-pushed error returns). Same shape as hyland above.
+    "destinyhosted": "Destiny AgendaQuick",
+    # open.media -- a real shared vendor across 7 confirmed tenants, but
+    # a YouTube-delegating one: openmedia.py hands off to
+    # YouTubeAssetFinder.resolve_video_id() and never reassigns
+    # `resolved.platform` afterwards (confirmed by reading resolve() end
+    # to end -- it sets title/jurisdiction/external_id/agenda_link only),
+    # so a real ingested open.media page's MeetingPage.platform is
+    # "youtube", exactly like lims/slc/clerkbase. It's listed HERE rather
+    # than under CUSTOM_PLATFORMS because it's one product many
+    # jurisdictions buy, not a bespoke single-city scraper -- the row is
+    # populated via _entry_platform_from_source_url() below instead of by
+    # a platform-name match, which is why that helper and
+    # _YOUTUBE_DELEGATING_PLATFORMS are no longer custom-only.
+    "open_media": "open.media",
+    "castus": "Castus",
+    "suiteone": "SuiteOne Media",
     # Not a civic-video vendor like everything else in this dict -- Vimeo
     # is a general-purpose video host that a real, confirmed set of small
     # local governments use directly as their meeting-video platform
@@ -2533,13 +3210,88 @@ CUSTOM_PLATFORMS: dict[str, str] = {
     "chicago_elms": "Chicago City Clerk (ELMS)",
 }
 
+# Registered platforms (app/platforms/__init__.py's
+# register_all_finders()) that deliberately get NO /coverage row, each
+# with the real reason -- the direct analogue of scripts/adapter_canary.py's
+# CANARY_EXCLUSIONS, and the other half of the WO-35 guard.
+#
+# tests/test_coverage_platform_registry.py asserts every registered
+# platform appears in exactly one of DIRECT_PLATFORMS, CUSTOM_PLATFORMS,
+# or this dict -- so a new adapter that forgets /coverage fails CI at PR
+# time instead of silently vanishing from the page, which is what
+# happened to destinyhosted/suiteone/castus/open_media (and, before them,
+# to champds/iqm2/clerkbase/seattle_channel/telvue/hyland). Adding a
+# platform means making a real decision here, not defaulting to silence.
+COVERAGE_EXCLUSIONS: dict[str, str] = {
+    "legistar": (
+        "Calendar/agenda router: legistar.py delegates via "
+        "resolve_via_platform() and the delegated finder's own "
+        "ResolvedMeeting is returned as-is, so a successfully-ingested "
+        "page's MeetingPage.platform is 'granicus'/'youtube'/etc., never "
+        "'legistar'. Its own label appears only on error-path returns, "
+        "which are never pushed (a push requires real segments or "
+        "agenda_items) -- a row here could never have a real example. "
+        "coverage.html's 'What about Platform XYZ?' section explains "
+        "this to visitors in prose instead."
+    ),
+    "civicplus": (
+        "Same calendar/agenda-router shape as legistar above -- "
+        "delegates to Granicus via resolve_via_platform(), keeps none of "
+        "its own platform identity on any pushable result. Named in "
+        "coverage.html's 'What about Platform XYZ?' prose."
+    ),
+    "primegov": (
+        "Same shape, delegating to YouTube via "
+        "YouTubeAssetFinder.resolve_video_id() rather than "
+        "resolve_via_platform(). Its source_url IS preserved, so "
+        "_wrapper_detail_label() can still name it in the full "
+        "jurisdiction table's 'Detail page' column -- but the 'By "
+        "platform' section deliberately doesn't give it a row, since "
+        "that section exists to show which video platforms are "
+        "supported, and PrimeGov meetings appear there under YouTube's "
+        "own deliberate exclusion below. Named in 'What about Platform "
+        "XYZ?' prose."
+    ),
+    "civicweb": (
+        "Same as primegov -- a YouTube-delegating calendar tool, named "
+        "in 'What about Platform XYZ?' prose and recoverable in the "
+        "'Detail page' column via _wrapper_detail_label()."
+    ),
+    "youtube": (
+        "Deliberate product decision, not an oversight: a viewer already "
+        "gets a good deep-linkable transcript straight from YouTube for a "
+        "directly-pasted YouTube URL, so this page steers people toward "
+        "pasting the government page that embeds it instead. See the "
+        "'What about YouTube?' section in coverage.html, and "
+        "test_coverage_page_excludes_youtube_as_its_own_row."
+    ),
+    "unknown": (
+        "generic_fallback.py's registered platform_name -- the literal "
+        "string detect_platform() returns for an unrecognized host, not "
+        "a platform anyone could look for on this page. Rows land in the "
+        "full jurisdiction table as 'Custom/Generic' (with the raw video "
+        "host shown where one was found) via _platform_split(); a 'By "
+        "platform' row for it would be meaningless."
+    ),
+}
+
 # YouTube is deliberately never its own /coverage row -- a viewer already
 # gets a good deep-linkable transcript straight from YouTube itself for
 # a directly-pasted YouTube URL, so this page steers people toward
 # pasting the government page that embeds/links it instead (a Granicus/
 # Swagit/etc. page, or one of the CUSTOM_PLATFORMS above) wherever one
-# exists. See coverage.html's own footer note.
-_YOUTUBE_DELEGATING_CUSTOM_PLATFORMS = frozenset({"lims", "slc", "clerkbase"})
+# exists. See coverage.html's own footer note, and COVERAGE_EXCLUSIONS
+# above.
+
+# Coverage keys whose real archived rows are stored with
+# MeetingPage.platform == "youtube" (their adapter delegates to
+# YouTubeAssetFinder and doesn't reassign `platform` afterwards), and so
+# have to be recovered from source_url_normalized instead. Three of the
+# four are CUSTOM_PLATFORMS entries; open_media (added WO-35) is a
+# DIRECT_PLATFORMS one -- hence the name change from
+# _YOUTUBE_DELEGATING_CUSTOM_PLATFORMS, this was never really a
+# custom-only property.
+_YOUTUBE_DELEGATING_PLATFORMS = frozenset({"lims", "slc", "clerkbase", "open_media"})
 
 # How many example rows to show per platform on /coverage. Granicus gets
 # more because it's this app's most common platform by a wide margin (see
@@ -2583,13 +3335,14 @@ def _select_examples(examples: list[dict], count: int) -> list[dict]:
 
 def _entry_platform_from_source_url(source_url_normalized: str) -> Optional[str]:
     """Minimal, deliberately duplicated subset of app/platforms/base.py's
-    detect_platform() -- just enough to recognize the three YouTube-
-    delegating custom scrapers (see CUSTOM_PLATFORMS above) from a page's
-    own source_url_normalized. archive/ deliberately doesn't import from
+    detect_platform() -- just enough to recognize the YouTube-delegating
+    platforms that still need their own /coverage row (see
+    _YOUTUBE_DELEGATING_PLATFORMS above) from a page's own
+    source_url_normalized. archive/ deliberately doesn't import from
     app/ (see README's project structure notes on this directory's other
     deliberately-duplicated utils, e.g. url_normalize.py/language.py) --
-    this stays scoped to exactly the three cases get_platform_coverage()
-    needs, not a general URL classifier.
+    this stays scoped to exactly the cases get_platform_coverage() needs,
+    not a general URL classifier.
     """
     netloc = urlparse(source_url_normalized).netloc.lower()
     path = urlparse(source_url_normalized).path.lower()
@@ -2599,6 +3352,12 @@ def _entry_platform_from_source_url(source_url_normalized: str) -> Optional[str]
         return "slc"
     if "clerkshq.com" in netloc:
         return "clerkbase"
+    # Same check app/platforms/base.py's detect_platform() uses for this
+    # platform, kept character-for-character: every real tenant is a
+    # `{tenant}.open.media` subdomain (7 confirmed live -- see README's
+    # platform table).
+    if netloc.endswith("open.media"):
+        return "open_media"
     return None
 
 
@@ -2669,7 +3428,7 @@ async def get_platform_coverage() -> dict:
             by_key.setdefault(platform, []).append(example)
         elif platform == "youtube":
             entry = _entry_platform_from_source_url(source_url)
-            if entry in _YOUTUBE_DELEGATING_CUSTOM_PLATFORMS:
+            if entry in _YOUTUBE_DELEGATING_PLATFORMS:
                 by_key.setdefault(entry, []).append(example)
             # else: a raw pasted YouTube link, or a Legistar/CivicPlus/
             # PrimeGov/CivicWeb/best-effort page that happened to
@@ -2764,9 +3523,9 @@ async def get_jurisdiction_coverage() -> list[dict]:
 
 # Domains recovering a YouTube-delegating wrapper platform's own real
 # identity from a page's source_url_normalized -- superset of
-# _entry_platform_from_source_url() above (which only recognizes lims/slc/
-# clerkbase, the three CUSTOM_PLATFORMS entries with their own /coverage
-# row). PrimeGov and CivicWeb are added here too: real, confirmed-live
+# _entry_platform_from_source_url() above (which only recognizes the
+# platforms with their own /coverage row: lims/slc/clerkbase, plus
+# open_media as of WO-35). PrimeGov and CivicWeb are added here too: real, confirmed-live
 # wrapper platforms (README's "Supported platforms" table) that preserve
 # their own source_url on delegation the same way lims/slc/clerkbase do
 # (see primegov.py/civicweb.py's own docstrings), but that don't have a
@@ -2783,6 +3542,8 @@ def _wrapper_detail_label(source_url_normalized: str) -> Optional[str]:
         return "Salt Lake City meeting recaps"
     if "clerkshq.com" in netloc:
         return "ClerkBase (clerkshq.com)"
+    if netloc.endswith("open.media"):
+        return "open.media"
     if netloc.endswith("primegov.com"):
         return "PrimeGov"
     if netloc.endswith("civicweb.net"):
@@ -2791,6 +3552,17 @@ def _wrapper_detail_label(source_url_normalized: str) -> Optional[str]:
 
 
 _PLATFORM_LABELS: dict[str, str] = {**DIRECT_PLATFORMS, **CUSTOM_PLATFORMS}
+
+# ResolvedMeeting.video_format values whose `video_url` is an iframe
+# *embed page*, not a fetchable media file -- so on-demand Whisper can
+# never run against them no matter what, and /coverage's "Audio
+# transcript possible" column must say no. See the full reasoning at the
+# one use site in get_full_jurisdiction_coverage() below. Keep this in
+# sync with any new adapter that stores an embed URL as `video_url`:
+# tests/test_coverage_platform_registry.py asserts the set stays
+# non-empty and correctly typed, but only a human reading a new adapter
+# can decide whether its format belongs here.
+_IFRAME_EMBED_VIDEO_FORMATS: frozenset[str] = frozenset({"youtube", "vimeo", "viebit"})
 
 
 def _platform_split(
@@ -3159,12 +3931,30 @@ async def get_full_jurisdiction_coverage() -> list[dict]:
                 # (added 2026-08-21, WO-29) is the same shape for the
                 # same reason: a player.vimeo.com iframe page, with the
                 # real media behind a signed config that 403s every
-                # non-browser client. A live ffprobe check per row here
-                # would be far too expensive for a full coverage table;
-                # this is the same structural approximation the resolver
-                # itself already relies on.
+                # non-browser client. "viebit" (added 2026-08-21, WO-35 --
+                # the WO-29 residual BACKLOG.md flagged as "cheap and
+                # safe to fix") completes the set: viebit.py stores
+                # `video_url` as the platform's own `/embed/vod?v={id}`
+                # embed page, deliberately rebuilt as that path on every
+                # resolve so the frontend can iframe it (see that
+                # adapter's docstring on `video_format="viebit"` and
+                # reload-based seeking). The BACKLOG entry wondered
+                # whether Viebit's underlying `master.m3u8` might be
+                # probeable after all; that question doesn't apply here,
+                # because the stored `video_url` is never that stream --
+                # it's an HTML page, so ffprobe can't read it regardless
+                # of the CDN's Referer check. Every other real
+                # `video_format` this app stores (mp4/m3u8/mp3/wav --
+                # confirmed by grepping every adapter's `video_format=`
+                # assignment) is a genuine fetchable media URL, so this
+                # exclusion list is complete as of today.
+                #
+                # A live ffprobe check per row here would be far too
+                # expensive for a full coverage table; this is the same
+                # structural approximation the resolver itself already
+                # relies on.
                 "audio_transcript_possible": video_url is not None
-                and video_format not in ("youtube", "vimeo"),
+                and video_format not in _IFRAME_EMBED_VIDEO_FORMATS,
                 "detail_platform": detail_label,
                 "video_platform": video_label,
                 "outcome": outcome,
