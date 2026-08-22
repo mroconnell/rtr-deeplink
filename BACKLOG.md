@@ -307,6 +307,24 @@ so that work reads together.
   that file — not done here since business-workspace edits are kept
   separate from code-repo sessions per `CLAUDE.md`.
 
+- **[JUST-DO-IT] Meeting-card backfill can only say a page failed, never
+  why — real gap, confirmed live 2026-08-21 by the first production
+  sweep.** `archive/utils/video_thumbnail.py`'s `extract_and_store()`
+  calls `media_probe.extract_frame()`, which already returns
+  `(ok, reason)` — the reason gets logged (`ffmpeg timed out after 45s`,
+  `Server returned 404`, ...) and then discarded; every failure path
+  returns bare `None`. `POST /internal/thumbnails/backfill`'s response
+  schema has no field for it, so `scripts/backfill_meeting_cards.py` can
+  only group failures by media host and point operators at the Archive's
+  own server logs — flagged as a known, deliberately-deferred residual in
+  `BACKLOG_DONE.md`'s WO-37 entry, "worth plumbing through only if a real
+  sweep's failure set proves the host grouping isn't enough." That
+  trigger is now met: the live sweep started 2026-08-21 is running at
+  roughly 70% success on first-touch pages, and nothing in the response
+  says why the other 30% failed. Small fix — thread the string through
+  `extract_and_store()`'s return value and into the endpoint's per-result
+  response object; the driver already has a place to print it.
+
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
 Nothing here is blocked on engineering. Most are one dashboard login or
@@ -432,14 +450,23 @@ anything else; do whenever convenient, no particular order.
   look at Render's memory graph for the Archive around 14:00-17:00 UTC on
   2026-08-17 to check whether OOM genuinely preceded/triggered the
   schema-read cascade, or whether the timing is coincidental.
-- **[HUMAN] Run the meeting-card backfill sweep.** WO-37 (2026-08-21)
-  confirmed `ffmpeg 5.1.9` really is on the Archive and built
-  `scripts/backfill_meeting_cards.py --apply`, which sweeps the ~1700
-  card-less pages interleaved across media hosts and paced per host (30s
-  between Granicus pulls) so it adds no sustained load to the CDN the
-  transcription workers are already timing out against — a ~8h20m run.
-  Full build detail in `BACKLOG_DONE.md`. **Left for a human: actually
-  running it.**
+- **[HUMAN] Meeting-card backfill sweep — running, not yet done, real
+  numbers so far.** Started 2026-08-21 ~18:37 PT via `scripts/
+  backfill_meeting_cards.py --apply`, detached (`nohup`), log at
+  `/private/tmp/claude-501/.../scratchpad/card_backfill.log` for whoever
+  next checks this box. The first bounded 3-batch run caught a real
+  production 500 (a shadowed `offset` variable — any batch whose last
+  page failed to extract crashed the response; fixed same day, PR #286,
+  with regression tests confirmed to fail against the pre-fix code).
+  Since the real run started: **457 stored / 605 attempted (~76%
+  success)**, ~1,000 pages left, ETA a few more hours from start. Safe to
+  Ctrl-C and re-run — extracted pages leave the queue, failed slugs are
+  recorded in `scripts/meeting_card_backfill_state.json` so they're
+  skipped rather than re-probed (delete that file once, days later, to
+  give them another chance — a CDN timeout is often transient). The
+  ~24% failure rate is exactly what the new entry above (thread the
+  failure `reason` through) exists to make diagnosable instead of a
+  mystery. Full build detail in `BACKLOG_DONE.md`.
 - **[HUMAN] Stray demo-shaped tables found in `rtr_deeplink_db` during
   the PITR test-restore verification (2026-08-17).**
   Confirmed live 2026-08-17 during the WO-4 PITR test-restore verification
@@ -972,46 +999,35 @@ confirmed).
   re-resolve script that writes to already-public pages.
 
 - **[JUST-DO-IT] Bare/state-suffixed jurisdiction duplicates: root cause
-  fixed and 12 of 16 examples resolved 2026-08-21 (see BACKLOG_DONE.md's
-  matching entry for the full investigation) — the production backfill
-  itself is still unrun, plus two residuals below.** (1) **Backfill audit
-  run against production 2026-08-21 — the write step
-  (`POST .../backfill-apply?dry_run=false`) was deliberately NOT run,
-  because the candidate set wasn't uniformly safe.** `GET /internal/
-  jurisdiction/bleed-backfill-candidates` returned 635 candidates (not
-  the ~13 expected), but **635 is NOT the write blast radius — 83 is**:
-  the GET audit reports a row whose string *or* confidence tier would
-  change, while `apply_jurisdiction_bleed_backfill()` skips any row whose
-  string is unchanged (`archive/db/crud.py`, the `if result.jurisdiction
-  == jurisdiction: continue` guard), so the 552 confidence-only diffs
-  (identical jurisdiction text, `current_confidence: None` → a real
-  confidence value, a field that didn't exist yet when those rows were
-  written) are never written by this endpoint at all. Of the 83 real
-  text changes, 68 are simple, clearly-safe state-suffix appends (e.g.
-  "Dublin" → "Dublin, CA", "Airdrie" → "Airdrie, AB") — the remaining 15
-  are what held the run back, including two confirmed-wrong repairs
-  (`page_id 250` "Alameda County, CA" → "Bart, CA"; `page_id 1108`
-  "Modesto, CA" → "Agenda, CA"). **Both of those are fixed in code as of
-  2026-08-21 (WO-22 — state-consistency guard + generic-subdomain
-  stoplist, see BACKLOG_DONE.md), and `backfill-apply` now takes
-  `only_ids`/`exclude_ids` so a verified subset can be applied on its
-  own.** Two things still to do here, in order: **(a)** re-run the GET
-  audit after WO-22 deploys and re-check what's left of those 15 —
-  specifically the consolidated-city-county cases that silently drop the
-  state suffix instead of adding one (`Jefferson County` → `Louisville`,
-  `Davidson County` → `Nashville`, `Louisville / Jefferson County Metro`
-  → `Louisville`), inconsistent with `Nashville-Davidson County, TN` →
-  `Nashville, TN` right above them getting a proper suffix; those were
-  never diagnosed and WO-22 did not address them. **(b)** then actually
-  run the write step, `only_ids`-filtered to the rows confirmed safe.
-  (`page_id 279`, "City of New Port Richey, FL" → "Clearwater, FL", was
-  the third suspect and is now **confirmed CORRECT, not a wrong
-  reassignment** — verified live: the page is City of Clearwater FL's own
-  Council Work Session on `clearwater.granicus.com` clip 5244, and "New
-  Port Richey" appears on it exactly once, inside agenda item 4.1, an
-  interlocal gas-franchise agreement with that city. Same shape as the
-  Peel Region/Caledon case. It's a repair to apply, not one to hold
-  back.) (2) **3 of the original 16 examples (Ashland, Milton, San Jose)
+  fixed 2026-08-21, production write step run the same day — 76 rows
+  applied, 3 correctly held back, one residual left.** (See
+  `BACKLOG_DONE.md`'s matching entry for the full WO-22 investigation.)
+  Sequence, all completed: **(1)** re-ran `GET /internal/jurisdiction/
+  bleed-backfill-candidates` after WO-22's state-consistency guard +
+  generic-subdomain stoplist deployed — confirmed both prior known-bad
+  repairs (`page_id 250` "Alameda County, CA" → "Bart, CA"; `page_id
+  1108` "Modesto, CA" → "Agenda, CA") no longer appear in the candidate
+  set at all. **(2)** `page_id 279` ("City of New Port Richey, FL" →
+  "Clearwater, FL"), the third original suspect, is **confirmed CORRECT
+  — verified live**: the page is City of Clearwater FL's own Council Work
+  Session (`clearwater.granicus.com` clip 5244), and "New Port Richey"
+  appears on it exactly once, inside agenda item 4.1, an interlocal
+  gas-franchise agreement with that city. Same shape as the Peel
+  Region/Caledon case — a repair to apply, not one to hold back.
+  **(3)** Ran `POST .../backfill-apply?dry_run=false&only_ids=…`,
+  filtered to every real text change **except** three consolidated
+  city-county rows that silently drop the state suffix instead of adding
+  one (`Jefferson County` → `Louisville`, `Davidson County` → `Nashville`,
+  `Louisville / Jefferson County Metro` → `Louisville` — inconsistent
+  with `Nashville-Davidson County, TN` → `Nashville, TN` getting a proper
+  suffix; never diagnosed, WO-22 did not address them, promoted to its
+  own live entry directly below). Dry run confirmed 76 applied / 3
+  skipped-by-filter before the real write; applied for real: **76 rows**
+  written (Dublin → Dublin, CA; Memphis normalizations; Clearwater; the
+  Metchosin repair; and more), post-apply re-audit confirmed exactly the
+  3 held-back rows remain candidates and nothing else; spot-checked the
+  public Dublin page showing "Dublin, CA" live. **Only remaining part of
+  this entry**: 3 of the original 16 examples (Ashland, Milton, San Jose)
   still have no
   confirmed real state** — each was checked live (their real source page
   and, where relevant, its channel-root page) and none carries reliable
@@ -1021,6 +1037,18 @@ confirmed).
   Canada customer base. Needs either a positive text match found some
   other way, or a second confirmed example before a domain registry
   entry can be added without guessing.
+
+- **[NEEDS-AUDIT] Consolidated city-county repairs silently drop the
+  state suffix instead of adding one — held back from the 2026-08-21
+  backfill write, never diagnosed.** Three real candidates:
+  `Jefferson County` → `Louisville`, `Davidson County` → `Nashville`,
+  `Louisville / Jefferson County Metro` → `Louisville`. Inconsistent with
+  the adjacent `Nashville-Davidson County, TN` → `Nashville, TN` case,
+  which gets a correct state suffix through the same code path — so
+  something about these three specifically is losing the state rather
+  than validating one. Not yet root-caused; needs the same live-source
+  investigation the Clearwater case above got before either applying or
+  discarding them.
 
 - **[NEEDS-AUDIT] Jurisdiction-bleed fix's single-word-tail gap, narrowed
   2026-08-18: "Brampton Meeting" and "Peterborough Attachments" are now
@@ -1535,6 +1563,22 @@ confirmed).
     pursuing this angle themselves; `bulk_ingest.py`-style manual
     pushes can carry whatever comes back.
 
+- **[IMPROVEMENT-ROUND] Four platforms account for ~78% of the 470 real
+  live pages with no jurisdiction — a per-platform jurisdiction-extraction
+  gap, not scattered noise.** Surfaced by WO-38's `/internal/
+  low-trust-pages` call against production 2026-08-21 (see the "low-trust
+  queue is really a jurisdiction-quality queue" entry above for the
+  queue-mechanics half of this finding). Per-platform breakdown of the
+  474 total (full numbers in `BACKLOG_DONE.md`'s WO-38 entry): **eScribe
+  117, Cablecast 104, YouTube 78, Swagit 72** — 371 of 474 rows on just
+  these four, versus Granicus 34, IQM2 33, CivicClerk 24, unknown 7,
+  ChampDS 4, TelVue 1. Worth a dedicated investigation on those four
+  specifically (why does jurisdiction extraction fail this often on
+  exactly these adapters, and is it one shared root cause per platform or
+  scattered per-tenant gaps) rather than treating each row as a one-off.
+  Not investigated further here — this is a sizing finding, not a
+  diagnosis.
+
 ## Reliability, ops & cost
 
 ### Media-source reliability
@@ -1696,6 +1740,34 @@ audio or video source was found`. That is where the volume actually is.
   `find_auto_transcription_candidate()` was, if hourly production load
   ever makes this a real, measured problem (check `pg_stat_statements`
   the same way the 2026-08-17 fix was diagnosed, don't assume).
+
+- **[LATER] Second transcription worker's auto-generation TOCTOU race —
+  avoided by construction at N=2, not fixed at the DB layer** (dropped
+  from this file during the 2026-08-21 reorg; restored here since
+  `CLAUDE.md` and `render.yaml` both still point at it by name).
+  `render.yaml` defines `rtr-transcription-worker-2` as its own distinct
+  service block specifically because a `numInstances` replica gets
+  IDENTICAL env vars, and this pair needs to differ in exactly one:
+  `AUTO_TRANSCRIPTION_REQUESTER_EMAIL` is deliberately left unset on the
+  second worker. `claim_next_chunk()` is genuinely race-safe for any
+  number of workers (`FOR UPDATE SKIP LOCKED`) — the real gap is
+  idle-time auto-generation: `maybe_generate_auto_job()` →
+  `find_auto_transcription_candidate()` (a plain unlocked SELECT) →
+  `create_transcription_job()`'s own unlocked check-then-insert, no
+  unique constraint or row lock. Two workers both idle at once — routine
+  once the queue trickles to empty — both configured with a real
+  `AUTO_TRANSCRIPTION_REQUESTER_EMAIL` could both pass the check for the
+  same page before either commits: two duplicate low-priority jobs, real
+  wasted compute plus two completion emails (`promote_transcript_version()`
+  still cleanly settles on one final version, so it's wasteful, not
+  data-corrupting). Leaving the env var unset on worker-2 makes
+  `maybe_generate_auto_job()` short-circuit before ever reaching the
+  unsafe path — the race is structurally impossible on this specific
+  pair, not solved. **A third auto-gen-enabled worker (or setting that
+  var on this second one) reintroduces it immediately.** The real fix, if
+  this needs to scale past two workers, is a unique partial index / row
+  lock in `create_transcription_job()`'s existing-job check — not another
+  env-var-omission trick. Full build log in `BACKLOG_DONE.md`.
 
 ### Search Console, structured data & SEO plumbing
 
@@ -1943,8 +2015,12 @@ WO-38 (2026-08-21) gave `GET /internal/low-trust-pages` a memory —
 `reviewed_at`, `?unreviewed=true`, `?reason=`, and a token-gated
 mark-reviewed endpoint (see `BACKLOG_DONE.md`). Calling it against
 production for the first time also settled what's *in* it: 474 rows, of
-which **470 are `unverified_jurisdiction`, 7 `unknown_platform`, and
-zero `best_effort`**. Three residuals follow from that:
+which **470 are `unverified_jurisdiction`, 7 `unknown_platform` (3 of
+those overlapping — reasons aren't mutually exclusive), and zero
+`best_effort`**. Three residuals follow from that (a fourth, the
+per-platform breakdown behind that 470, is promoted to its own entry
+under "Platform & jurisdiction coverage" below, since it's actionable
+coverage work, not queue mechanics):
 
 - **It's a data-quality queue, not a trust queue, today.** Those 470
   rows are real live pages with real video whose jurisdiction couldn't
@@ -2951,7 +3027,26 @@ generation required to be useful. Not yet built or scoped further.
   every 6 hours, to `ryan@redtaperecordings.com`, with 6 metrics** —
   queued worker jobs, failed jobs in the last 48h, succeeded jobs in the
   last 48h, total meetings on site, meetings with a transcript, meetings
-  without one. Note this is a **third** distinct "Ryan" address in play
+  without one.
+
+  **Partially superseded 2026-08-21 — a real, shipped, *daily* worker
+  report now exists** (PRs #257-#259, `GET /internal/send-worker-daily-
+  report`, triggered by `.github/workflows/worker-daily-report.yml`; full
+  build log in `BACKLOG_DONE.md`). It lives on the Archive side exactly
+  as this entry's "where this probably belongs" section below predicted,
+  and covers overlapping ground: chunks/jobs completed in the last 24h,
+  segments added, active jobs, remaining chunks, no-transcript backlog
+  count, tier-3-queue-remaining. **What's genuinely still different, not
+  covered by the shipped report**: cadence is daily, not 6-hourly; there's
+  no explicit "failed in the last 48h" count or "total meetings on site"
+  count; and the recipient is whatever `AUTO_TRANSCRIPTION_REQUESTER_EMAIL`
+  is set to on the reporting call, not a resolved answer to the
+  three-way "which Ryan address" question below. Read the rest of this
+  entry as "what's left," not "what to build from scratch" — the
+  aggregator half of the "confirmed no equivalent stats aggregator
+  exists" claim a few paragraphs down is now stale too.
+
+  Note this is a **third** distinct "Ryan" address in play
   (see the "consolidate on `ally@redtaperecordings.com`" entry in
   Archive roadmap below): `DAILY_REPORT_EMAIL_TO`'s current default is
   `ryan@how-to-adu.com`, the consolidation target is `ally@`, and now
@@ -2978,11 +3073,13 @@ generation required to be useful. Not yet built or scoped further.
   `worker/main.py`'s own claim query
   `TranscriptionJob.status.in_(("queued", "in_progress"))` for the
   "queued" count) and `MeetingPage`/`TranscriptVersion` for the meeting/
-  transcript counts. Confirmed no equivalent stats aggregator exists yet
-  on the Archive side (`archive/db/crud.py` has no `get_stats()`-shaped
-  function at all, unlike `app/db/crud.py`'s resolver-side one) — this
-  would be new query code, not a wire-up of something already built,
-  unlike most of this session's other easy-win items.
+  transcript counts. ~~Confirmed no equivalent stats aggregator exists yet
+  on the Archive side~~ **stale as of 2026-08-21 — see the correction at
+  the top of this entry.** `archive/db/crud.py`'s
+  `get_transcription_queue_summary()` now exists (built the same day for
+  the shipped daily report) and is a real aggregator over exactly the
+  `TranscriptionJob`/`MeetingPage` data this paragraph describes; it just
+  doesn't emit all 6 of the metrics this request originally asked for.
 
   **Real design question worth deciding before building, not guessed
   at**: `TranscriptionJob` has only a `created_at` timestamp
