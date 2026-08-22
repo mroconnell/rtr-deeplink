@@ -519,6 +519,41 @@ so that work reads together.
   the place name, is close to the textbook case for "Crawled – currently
   not indexed".
 
+  **A meeting-count threshold does NOT separate flagged from unflagged —
+  measured 2026-08-22, and it kills the obvious fix.** The natural move
+  is "only expose a hub with ≥N meetings." All 59 `/state/` pages were
+  fetched and their meeting counts compared against the flagged sample:
+
+  | | n | min | median | max |
+  | --- | --- | --- | --- | --- |
+  | **Flagged** (in sample) | 16 | 1 | **13** | 35 |
+  | **Not in sample** | 43 | 1 | **8** | 425 |
+
+  **The flagged pages have *more* meetings than the unflagged ones.**
+  Ten states have exactly one meeting and **eight of those ten are
+  fine**; only North Dakota and Northwest Territories are flagged.
+  Illinois (35 meetings, 22 governments) is flagged while Utah (18),
+  Michigan (20) and Wisconsin (25) are not. Every one of the largest —
+  California 425, Texas 249, Florida 142, Ontario 74 — is unflagged.
+  Modelled thresholds confirm it: **≥5 would suppress 18 pages and catch
+  only 4 of the 16 flagged**; catching all 16 needs ≥40, which would
+  suppress 51 of 59 pages, including California. **So content *volume*
+  is not what Google is judging** — a threshold would delist pages that
+  are indexing fine and still miss most of the problem.
+
+  **Honest limit on that comparison, which matters before acting on it**:
+  the flagged set is the first **250 of the 291** "Crawled – currently
+  not indexed" URLs, and says nothing about the **294** "Discovered"
+  ones. So "not in sample" is not the same as "indexed" — a page could
+  be flagged in the 41 unsampled rows or in the Discovered list. The
+  direction of the result is safe (flagged pages are not systematically
+  smaller), but any threshold should be validated against the **full**
+  flagged list before shipping, not this sample.
+
+  **What this leaves**: the fix is unique per-page content, as decided
+  above — not a visibility filter. Volume-based gating is specifically
+  ruled out by this measurement.
+
   **Scale worth stating plainly**: 136 distinct `/j/` pages appear in a
   250-URL sample of a 291-URL list — so a large fraction of all 438
   jurisdiction hubs are affected, not a tail.
