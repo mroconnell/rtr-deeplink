@@ -1691,7 +1691,16 @@ async def internal_thumbnails_backfill(
 
     results = []
     for candidate in candidates:
-        offset = await video_thumbnail.extract_and_store(
+        # Deliberately NOT named `offset`: that's this endpoint's own query
+        # parameter, and shadowing it here was a real 500 in production
+        # (2026-08-21, caught by the first bounded --apply run of
+        # scripts/backfill_meeting_cards.py). extract_and_store() returns
+        # Optional[float] -- None whenever an extraction fails -- so a batch
+        # whose LAST page failed left `offset` as None and the response's
+        # `max(0, offset)` raised TypeError. Failures are the normal case
+        # here, not the exception (government CDNs time out constantly), and
+        # the paged mode had the same bug, so any sweep would have hit it.
+        extracted_at = await video_thumbnail.extract_and_store(
             page_id=candidate["id"],
             video_url=candidate["video_url"],
             source_page_url=candidate["source_url"] or candidate["video_url"],
@@ -1705,7 +1714,7 @@ async def internal_thumbnails_backfill(
                 # limiting is a very different problem from scattered
                 # dead links).
                 "video_url": candidate["video_url"],
-                "offset_seconds": offset,
+                "offset_seconds": extracted_at,
             }
         )
     return {

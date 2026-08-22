@@ -451,3 +451,71 @@ def test_backfill_caps_how_many_slugs_one_call_may_name():
 def test_backfill_is_token_gated():
     # 404 rather than 401/403, same posture as every other /internal/* route.
     assert archive_client.post("/internal/thumbnails/backfill").status_code == 404
+
+
+async def test_backfill_apply_survives_a_failing_last_page(monkeypatch):
+    # Regression, real production 500 on 2026-08-21: the apply loop
+    # assigned extract_and_store()'s result to `offset`, shadowing the
+    # endpoint's own query parameter of that name. extract_and_store()
+    # returns None whenever an extraction fails, so a batch whose LAST
+    # page failed left `offset` as None and the response's
+    # `max(0, offset)` raised TypeError -> 500.
+    #
+    # This is the normal case, not an edge case: these extractions pull
+    # from live government CDNs that time out constantly (WO-40 measured
+    # 113 real ffmpeg timeouts across production jobs), so a batch ending
+    # in a failure is routine. Every pre-existing slugs test asserted on
+    # `candidates`, i.e. dry_run only -- nothing exercised the apply path
+    # at all, which is how this reached production.
+    #
+    # extract_and_store is patched rather than run: what's under test is
+    # the endpoint's own bookkeeping, and the suite is deliberately
+    # network-free (see this module's docstring).
+    ok = await _make_m3u8_page("card-backfill-apply-ok")
+    doomed = await _make_m3u8_page("card-backfill-apply-doomed")
+
+    async def _fake_extract(*, page_id, video_url, source_page_url):
+        # Succeeds for the first page, fails for the one asked for last.
+        return 900.0 if page_id == ok["page_id"] else None
+
+    monkeypatch.setattr(
+        archive.main.video_thumbnail, "extract_and_store", _fake_extract
+    )
+
+    response = archive_client.post(
+        f"/internal/thumbnails/backfill?dry_run=false"
+        f"&slugs={ok['slug']}&slugs={doomed['slug']}",
+        headers={"Authorization": "Bearer test-token"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["attempted"] == 2
+    assert body["stored"] == 1
+    assert [r["offset_seconds"] for r in body["results"]] == [900.0, None]
+    # The echoed offset must still be the query parameter, not a leaked
+    # extraction result.
+    assert body["offset"] == 0
+
+
+async def test_backfill_apply_survives_every_page_failing(monkeypatch):
+    # The shape the real sweep hit hardest: once the in-process failure
+    # cooldown kicks in, extract_and_store() returns None immediately for
+    # every page in the batch, so batches 2 and 3 of the first real run
+    # 500'd in ~2s each rather than after doing any work.
+    page = await _make_m3u8_page("card-backfill-apply-all-fail")
+
+    async def _always_fails(*, page_id, video_url, source_page_url):
+        return None
+
+    monkeypatch.setattr(
+        archive.main.video_thumbnail, "extract_and_store", _always_fails
+    )
+
+    response = archive_client.post(
+        f"/internal/thumbnails/backfill?dry_run=false&slugs={page['slug']}",
+        headers={"Authorization": "Bearer test-token"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["stored"] == 0
