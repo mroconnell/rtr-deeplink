@@ -6,6 +6,73 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Transcript-search box missing entirely on agenda-only meetings [Done 2026-08-22]
+
+Real, user-reported regression: the in-page "find" feature (the
+`#transcriptSearch` box, mirrors browser Ctrl+F — highlight/cycle matches,
+"N/M" count) was wired up in `setupTranscriptSearch()`
+(`app/static/player.js`) only inside the `if (segments.length)` branch of
+the data-loading code. That branch is real-per-line-transcript-only. Any
+meeting that instead shows an agenda-only fallback (`renderAgenda()` —
+CivicClerk, eScribe without captions, or any other adapter that resolves
+agenda chapter markers but no transcript segments) never got a search box
+at all, and since it's rendered on `#agendaSection`/`#agendaList` (a
+separate DOM subtree from `#transcriptSection`/`#transcriptList`), there
+was no fallback path either. This mattered most on phones/tablets per the
+user's own framing — no browser Ctrl+F equivalent there, so the in-app
+search box is the only way to jump to a keyword in a long agenda.
+
+Fixed by generalizing the search wiring instead of special-casing agenda
+on top of it: `setupListSearch({inputId, countId, prevId, nextId,
+listContainerId, idPrefix, getItems})` replaces the old
+`setupTranscriptSearch()` body, taking per-instance closured match state
+(previously two module-level globals, `searchMatches`/`searchMatchIndex`,
+which would have collided the moment a second search box existed
+alongside the first — a meeting can show both agenda and transcript
+together in the `bestEffort` case). `setupTranscriptSearch()` and the new
+`setupAgendaSearch()` are now both thin callers of that shared function.
+A parallel search box (`#agendaSearch`, same markup/CSS class as the
+transcript one) was added to `app/templates/meeting.html`'s
+`#agendaSection`, wired up whenever `agenda_items` is non-empty (including
+the "unreliable timestamps, not clickable" agenda case — search doesn't
+need click-to-seek to be useful, it's still real text to scan). A new
+module-level `agendaItems` (alongside the existing shared `segments`
+global from `deep_link.js`) gives the agenda search instance something to
+read.
+
+**Verified**, since this repo's `tests_js/` suite has no existing coverage
+of `player.js`'s search feature at all (only `deep_link.js` and GA event
+wiring are covered there): started the resolver locally
+(`uvicorn app.main:app`) and drove real Playwright sessions against
+`/meeting?url=...` with `/api/resolve` intercepted (`page.route`) to
+return two hand-built payloads shaped like real resolver output — one
+`segments`-only (like Granicus/Swagit), one `agenda_items`-only with a
+`transcript_warnings` message and empty `segments` (like CivicClerk) —
+at both a desktop (1280×900) and a mobile (390×844) viewport. Confirmed
+in both viewports: the segments case shows `#transcriptSearch` visible /
+`#agendaSearch` hidden and searching "budget" returns `1/2` with both
+matches highlighted; the agenda-only case shows the reverse —
+`#agendaSearch` visible / `#transcriptSearch` hidden — and searching
+"budget" against agenda item text returns `1/1`, highlighted, on an
+actual mobile-width screenshot.
+
+That same testing pass also turned up (and fixed) an unrelated, smaller
+pre-existing bug found incidentally: `.transcript-language-picker` in
+`app/static/style.css` set `display: flex` with no `[hidden]` guard,
+which (author styles beat the UA stylesheet regardless of source order)
+overrode the `hidden` attribute `setupTranscriptLanguagePicker()` sets
+when there's only one transcript track — so the "Language: [ ]" picker
+showed up on every meeting with a transcript, even single-language ones
+with nothing to switch between. Confirmed visible-before/hidden-after via
+the same Playwright harness. Fixed with a one-line
+`.transcript-language-picker[hidden] { display: none; }` override; no JS
+change needed.
+
+Full Python (`pytest`, 1424 passed / 16 skipped, pre-existing) and JS
+(`npm test`, 34/34) suites re-run clean after both fixes — neither touched
+by either change, but re-run anyway per this file's own testing
+convention around `player.js` edits.
+
 ## Moved out of BACKLOG.md by the WO-39 restructure [Done 2026-08-21]
 
 Six real writeups that had no existing entry here, plus two small

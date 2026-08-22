@@ -11,6 +11,12 @@ const sourceUrl = document.body.dataset.sourceUrl;
 // picker can switch `segments` client-side with no second /api/resolve call.
 let transcriptTracks = [];
 
+// Agenda items (chapter markers), kept alongside the shared `segments`
+// global (declared in deep_link.js) so the agenda search box below has
+// something to search over -- agenda-only meetings never populate `segments`
+// at all.
+let agendaItems = [];
+
 // Every other platform hands us a direct m3u8/mp4 URL playable in a plain
 // <video>. YouTube doesn't -- playback needs an embedded iframe + the
 // YouTube IFrame Player API instead, a structurally different control
@@ -248,30 +254,36 @@ function renderAgenda(items) {
   });
 }
 
-let searchMatches = [];
-let searchMatchIndex = -1;
-let transcriptSearchWired = false;
-
 // Mirrors browser Ctrl+F: highlights every match, cycles through them with
-// Enter/Shift+Enter or the prev/next buttons, shows a "N/M" count.
-function setupTranscriptSearch() {
-  const input = document.getElementById('transcriptSearchInput');
-  const countEl = document.getElementById('transcriptSearchCount');
-  const prevBtn = document.getElementById('transcriptSearchPrev');
-  const nextBtn = document.getElementById('transcriptSearchNext');
-  if (!input || transcriptSearchWired) return;
-  transcriptSearchWired = true;
+// Enter/Shift+Enter or the prev/next buttons, shows a "N/M" count. Shared
+// by both the transcript list and the agenda list -- a meeting can show
+// either one alone or both together (see the bestEffort branch below), and
+// search previously only ever got wired up for the segments/transcript
+// case, so agenda-only meetings (CivicClerk, eScribe without captions,
+// etc.) silently lost the find feature entirely. Each call gets its own
+// closured match state so the two instances (when both sections are
+// present) don't stomp on each other.
+function setupListSearch({ inputId, countId, prevId, nextId, listContainerId, idPrefix, getItems }) {
+  const input = document.getElementById(inputId);
+  const countEl = document.getElementById(countId);
+  const prevBtn = document.getElementById(prevId);
+  const nextBtn = document.getElementById(nextId);
+  if (!input || input.dataset.searchWired) return;
+  input.dataset.searchWired = '1';
+
+  let matches = [];
+  let matchIndex = -1;
 
   function updateCount() {
     if (!input.value.trim()) { countEl.textContent = ''; return; }
-    countEl.textContent = searchMatches.length ? `${searchMatchIndex + 1}/${searchMatches.length}` : '0 matches';
+    countEl.textContent = matches.length ? `${matchIndex + 1}/${matches.length}` : '0 matches';
   }
 
   function goToMatch(idx) {
-    if (!searchMatches.length) return;
-    document.querySelectorAll('.search-match.current').forEach((el) => el.classList.remove('current'));
-    searchMatchIndex = ((idx % searchMatches.length) + searchMatches.length) % searchMatches.length;
-    const el = document.getElementById(searchMatches[searchMatchIndex]);
+    if (!matches.length) return;
+    document.querySelectorAll(`#${listContainerId} .search-match.current`).forEach((el) => el.classList.remove('current'));
+    matchIndex = ((idx % matches.length) + matches.length) % matches.length;
+    const el = document.getElementById(matches[matchIndex]);
     if (el) {
       el.classList.add('current');
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -281,13 +293,13 @@ function setupTranscriptSearch() {
 
   function runSearch() {
     const query = input.value.trim();
-    searchMatches = [];
-    searchMatchIndex = -1;
+    matches = [];
+    matchIndex = -1;
 
-    segments.forEach((seg, index) => {
-      const el = document.querySelector(`#seg-${index} .segment-text`);
+    getItems().forEach((item, index) => {
+      const el = document.querySelector(`#${idPrefix}-${index} .segment-text`);
       if (!el) return;
-      const text = seg.text || '';
+      const text = item.text || '';
       if (!query) {
         el.textContent = text;
         return;
@@ -299,9 +311,9 @@ function setupTranscriptSearch() {
       let idx;
       while ((idx = lower.indexOf(q, pos)) !== -1) {
         html += escapeHtml(text.slice(pos, idx));
-        const matchId = `search-match-${searchMatches.length}`;
+        const matchId = `${idPrefix}-search-match-${matches.length}`;
         html += `<mark id="${matchId}" class="search-match">${escapeHtml(text.slice(idx, idx + q.length))}</mark>`;
-        searchMatches.push(matchId);
+        matches.push(matchId);
         pos = idx + q.length;
       }
       html += escapeHtml(text.slice(pos));
@@ -309,17 +321,41 @@ function setupTranscriptSearch() {
     });
 
     updateCount();
-    if (searchMatches.length) goToMatch(0);
+    if (matches.length) goToMatch(0);
   }
 
   input.addEventListener('input', runSearch);
   input.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter') return;
     e.preventDefault();
-    if (searchMatches.length) goToMatch(searchMatchIndex + (e.shiftKey ? -1 : 1));
+    if (matches.length) goToMatch(matchIndex + (e.shiftKey ? -1 : 1));
   });
-  prevBtn.addEventListener('click', () => goToMatch(searchMatchIndex - 1));
-  nextBtn.addEventListener('click', () => goToMatch(searchMatchIndex + 1));
+  prevBtn.addEventListener('click', () => goToMatch(matchIndex - 1));
+  nextBtn.addEventListener('click', () => goToMatch(matchIndex + 1));
+}
+
+function setupTranscriptSearch() {
+  setupListSearch({
+    inputId: 'transcriptSearchInput',
+    countId: 'transcriptSearchCount',
+    prevId: 'transcriptSearchPrev',
+    nextId: 'transcriptSearchNext',
+    listContainerId: 'transcriptList',
+    idPrefix: 'seg',
+    getItems: () => segments,
+  });
+}
+
+function setupAgendaSearch() {
+  setupListSearch({
+    inputId: 'agendaSearchInput',
+    countId: 'agendaSearchCount',
+    prevId: 'agendaSearchPrev',
+    nextId: 'agendaSearchNext',
+    listContainerId: 'agendaList',
+    idPrefix: 'agenda',
+    getItems: () => agendaItems,
+  });
 }
 
 // Mirrors archive/utils/transcript_export.py's to_srt()/to_txt() -- this
@@ -1293,7 +1329,7 @@ async function init() {
     }
   }
 
-  const agendaItems = data.agenda_items || [];
+  agendaItems = data.agenda_items || [];
   if (bestEffort) {
     // Always shown for a best-effort result, even with nothing found --
     // an honest "[No agenda found]" beats silently omitting the heading.
@@ -1304,6 +1340,10 @@ async function init() {
     document.getElementById('agendaSection').hidden = false;
     renderAgenda(agendaItems);
   }
+  // Search only makes sense once there's something in the agenda list --
+  // a bestEffort "[No agenda found]" heading has nothing to search.
+  document.getElementById('agendaSearch').hidden = !agendaItems.length;
+  if (agendaItems.length) setupAgendaSearch();
 
   const transcriptWarnings = data.transcript_warnings || [];
   segments = data.segments || [];

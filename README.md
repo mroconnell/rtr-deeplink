@@ -1749,7 +1749,10 @@ What you can actually do once a meeting page has loaded:
   line (visible on hover, or ambiently on the current line while paused)
   copies a link to that line without disturbing playback.
 - **Search**: mirrors browser Ctrl+F — highlights every match, "N/M" count,
-  cycles with prev/next or Enter/Shift+Enter.
+  cycles with prev/next or Enter/Shift+Enter. A separate instance covers
+  each of the transcript and agenda lists independently, so it's available
+  whichever one (or both) a given meeting actually shows — important on
+  phones/tablets, where there's no OS-level Ctrl+F to fall back on.
 - **Manual timestamp entry**: a "Go to time" box in the toolbar (accepts
   `H:MM:SS`, `M:SS`, or plain seconds) — works even with no transcript,
   since deep-linking is the point even when there's nothing to click.
