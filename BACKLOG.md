@@ -63,15 +63,13 @@ Standing decisions — do NOT re-raise  (12)
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
   Sacramento County's doubled meeting title is not a bug to fix
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (8)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (6)
   [JUST-DO-IT] Every Archive page ingested before WO-34 (2026-08-21)
-  [JUST-DO-IT] `[EASY]` `generic_fallback.py`'s "we think the video is
-  [JUST-DO-IT] `[EASY]` `/coverage`'s "Every place we've covered"
   [JUST-DO-IT] `[EASY]` `is_extractable()` excludes only YouTube, so
   [JUST-DO-IT] `[EASY]` A Viebit meeting's "can't transcribe this"
+  [JUST-DO-IT] `[EASY]` `scripts/backtest_fallback.py`'s `sebastopol`
+  [JUST-DO-IT] `[EASY]` "We think the video is here: [No video
   [JUST-DO-IT] `[EASY]` `rtr-business/BUSINESS_OVERVIEW.md` still says
-  [JUST-DO-IT] `[EASY]` Meeting-card backfill can only say a page
-  `[JUST-DO-IT]` `[EASY]` `transcribe_backlog_locally.py` gives up on a…
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (16)
   Confirmations nobody has actually watched happen  (6)
@@ -95,13 +93,14 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (16)
   Product calls  (1)
     [HUMAN] `legistar.py`'s `_try_fallback_video_link()` still prefers
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (4)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (5)
   [NEEDS-AUDIT] A chunk truncated only at its *tail* still passes the
   [NEEDS-AUDIT] `_sentence_case()` capitalises after every `\n`, so a
-  `tier3_auto_transcription_queue.txt` holds at least one genuinely…
+  The retry papers over an unexplained asyncio/subprocess hang, and…
+  28 well-formed IQM2 queue rows point at retired tenants…
   Some Swagit meetings have no single "whole meeting" video file…
 
-Platform & jurisdiction coverage  (25)
+Platform & jurisdiction coverage  (26)
   The 50 largest US cities — per-tenant status `[NEEDS-AUDIT]`
   Jurisdiction extraction & backfill  (15)
     [JUST-DO-IT] The originally-reported eScribe bled-subdomain rows
@@ -119,9 +118,10 @@ Platform & jurisdiction coverage  (25)
     [NEEDS-AUDIT] Tulare County/Visalia jurisdiction misattribution —
     [LATER] Domain guesser matched a same-named US state's real portal
     [LATER] ~25 smaller consolidated city-county governments still need
-  Adapter & platform gaps  (9)
+  Adapter & platform gaps  (10)
     [NEEDS-AUDIT] Vimeo captions and on-demand Whisper audio are the
     [NEEDS-AUDIT] Chicago ELMS's 473 real agenda items have nowhere
+    [JUST-DO-IT] `vimeo.com/showcase/{id}/embed` isn't claimed by
     [JUST-DO-IT] Residual gaps left behind by WO-30's city-YouTube-
     [LATER] `[EASY]` PrimeGov's own better date/title still isn't
     [LATER] `[EXAMPLE]` Town Hall Streams: real transcript endpoint
@@ -182,7 +182,7 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (19)
     [IMPROVEMENT-ROUND] Audit every user-facing email address and
     [IMPROVEMENT-ROUND] Recurring operator email report every 6 hours to
 
-Dormant — needs a real example first `[LATER]`  (27)
+Dormant — needs a real example first `[LATER]`  (28)
   Captions — formats and sources with no confirmed positive example  (7)
     [LATER] CivicClerk's own version of the "no populated-captions
     [LATER] ChampDS real captions confirmed to exist for at least one
@@ -191,7 +191,7 @@ Dormant — needs a real example first `[LATER]`  (27)
     [LATER] SCC/STL captions are detected but not readable at all
     [LATER] Row-level CC/SRT files in Legistar/CivicPlus calendar
     [LATER] YouTube/PrimeGov: non-English captions untested
-  Per-tenant and per-adapter cases waiting on a second example  (10)
+  Per-tenant and per-adapter cases waiting on a second example  (11)
     [LATER] `riversidecountyca.iqm2.com` stays `platform="unknown"`
     [LATER] IQM2 — Riverside County CA's title/jurisdiction extraction
     [LATER] `generic_fallback.py`'s YouTube-embed branch had no
@@ -201,6 +201,7 @@ Dormant — needs a real example first `[LATER]`  (27)
     [LATER] Baltimore's Legistar instance — how often does a meeting
     [LATER] Headless-browser adapters (Minneapolis LIMS, SLC meeting
     [LATER] Stale archived transcripts have no automated refresh path —
+    [LATER] `[EXAMPLE]` Perry GA's eScribe host
     [LATER] Swagit custom-domain embeds unverified
   Platform discovery & enumeration — leads not yet chased  (10)
     [LATER] TelVue host enumeration — partially done 2026-08-16 via
@@ -367,21 +368,6 @@ so that work reads together.
   `app/utils/vtt_parser.py`) can scope *which* pages first. See
   `BACKLOG_DONE.md`'s WO-34 entry for the fixed output.
 
-- **[JUST-DO-IT] `[EASY]` `generic_fallback.py`'s "we think the video is
-  here" line shows the raw embed URL, which is sometimes ugly
-  (2026-08-21, WO-29).** E.g. Sebastopol CA's page shows a bare Vimeo
-  player URL rather than the human `vimeo.com/{id}` one — pre-existing
-  behavior for every delegated best-effort result, just newly visible
-  now that Vimeo delegations exist. Fix: either show the delegated
-  adapter's own human-facing URL, or drop the pointer line when a real
-  playable `video_url` was found.
-
-- **[JUST-DO-IT] `[EASY]` `/coverage`'s "Every place we've covered"
-  table is too narrow — the Transcript column gets cut off, forcing
-  horizontal scroll.** Fix: narrow the "Example meeting"/"Transcript"
-  columns in `archive/templates/coverage.html`'s `.coverage-table`
-  styling, shrink the `#` column.
-
 - **[JUST-DO-IT] `[EASY]` `is_extractable()` excludes only YouTube, so
   thumbnail extraction points ffmpeg at Vimeo and Viebit *HTML pages*
   (found 2026-08-22 while fixing the Viebit JSON-LD mislabel, PR #303).**
@@ -412,87 +398,29 @@ so that work reads together.
   `viebit` its own branch alongside the other two iframe-embed
   platforms.
 
+- **[JUST-DO-IT] `[EASY]` `scripts/backtest_fallback.py`'s `sebastopol`
+  row is stale post-WO-29 and makes the script exit nonzero on a
+  *working* case (found 2026-08-22, WO-43 / #307).** The row still
+  expects `"video": "video_link"`, but that page has delegated to a
+  playable Vimeo video since 2026-08-21. The script exits nonzero on any
+  FAIL row, so the backtest currently reports failure for a case that is
+  in fact fixed — which is the worst shape for a regression tool to be
+  in. Fix: update the expectation to the real current behavior.
+
+- **[JUST-DO-IT] `[EASY]` "We think the video is here: [No video
+  found]" reads as one broken sentence (confirmed live 2026-08-22).**
+  Pre-existing; left alone as out of scope by WO-43 (#307), which only
+  removed the line for pages that *do* have a playable video. When
+  nothing was found at all, the label and the fallback still concatenate
+  into copy that reads like a bug. Fix: give the no-video case its own
+  sentence rather than reusing the pointer label.
+
 - **[JUST-DO-IT] `[EASY]` `rtr-business/BUSINESS_OVERVIEW.md` still says
   saved-search alert emails are "not built yet"** — stale; shipped
   2026-08-13 (PR #30) and runs daily. `README.md`'s copy was already
   corrected 2026-08-16. One-line fix next time anyone's in that file —
   not done here since business-workspace edits stay separate per
   `CLAUDE.md`.
-
-- **[JUST-DO-IT] `[EASY]` Meeting-card backfill can only say a page
-  failed, never why — confirmed live 2026-08-21 by the first production
-  sweep.** `archive/utils/video_thumbnail.py`'s `extract_and_store()`
-  calls `media_probe.extract_frame()`, which already returns `(ok,
-  reason)` — the reason gets logged then discarded; every failure path
-  returns bare `None`. Flagged as deliberately-deferred in
-  `BACKLOG_DONE.md`'s WO-37 entry, "worth plumbing through only if a
-  real sweep's failure set proves the host grouping isn't enough" — that
-  trigger is met: the sweep finished 2026-08-22 at 973/1,152 (~84%),
-  leaving **179 failed slugs with no recorded reason** (see the
-  `[HUMAN]` sweep entry below). Small fix: thread the string through
-  `extract_and_store()`'s return value and into the backfill endpoint's
-  per-result response. Worth doing before the 179 are retried, so that
-  run is diagnosable.
-
-### `[JUST-DO-IT]` `[EASY]` `transcribe_backlog_locally.py` gives up on a live meeting after one transient failure
-
-**Promoted out of `[NEEDS-AUDIT]` 2026-08-22 — Ryan's call.** Ten-plus
-confirmed instances across three sessions, all the same shape, and the
-fix is settled: **a single retry with backoff around `finder.resolve()`
-and `extract_chunk_audio()` in `transcribe_meeting()`** (mirroring
-`_request_json()`'s existing retry on the archive-side HTTP calls in the
-same script), **plus a partial-progress save** so a late failure doesn't
-discard the chunks already transcribed. Check whether
-`worker/main.py`'s idle-time auto-transcription path has the same
-one-shot-no-retry gap.
-
-`process_one()` treats every `transcribe_meeting()` failure identically
-— skip, move on — whether the cause is "genuinely no video" or "timed
-out once", and discards all prior progress on any single-chunk failure
-(no partial-meeting save, see `transcribe_meeting()`'s own docstring).
-
-**The confirmed cases**, in the order they were found:
-
-- **4/4, all recovered on an unchanged re-run minutes later**: Diamond
-  Bar CA, Genesee County MI, Sullivan County NY (all iqm2) and
-  Brookhaven NY (civicclerk). Diamond Bar is the sharpest: its stored
-  `video_url` from an earlier successful resolve is still live and
-  reachable today, so the video was never gone — a page already live
-  with a real video is now recorded as permanently unresolvable.
-- **4/10 of a `new.swagit.com` batch** hit `ffmpeg extraction failed`
-  after a 120s timeout; 3 of 4 succeeded on immediate retry (Odessa
-  needed a third). A byte-for-byte-identical manual `ffmpeg` against the
-  exact failed URL finished in ~12s both times — so the video, host and
-  command are fine; the hang is specific to the script's own
-  asyncio/subprocess context. Consistent with (not proof of) resource
-  buildup across a long sequential batch rather than network flakiness,
-  which a retry would paper over either way.
-- **2026-08-19**: Plainfield NJ (iqm2) skipped despite a `--dry-run`
-  minutes earlier confirming a real video.
-- **2026-08-21/22, a 20-meeting tier-3 batch**: Piqua OH (civicclerk)
-  hit the familiar `ffmpeg timed out after 120s` on chunk 1/14, and two
-  `escribemeetings.com` URLs (`pub-abbotsford`, `pub-acwtownship`)
-  failed the *resolve* step with a bare `TimeoutError` — eScribe was not
-  previously represented here. None re-attempted.
-- **The case that makes the partial-progress save load-bearing**:
-  `pub-3ce.escribemeetings.com`, a genuinely long meeting (55 15-minute
-  chunks, ~13.75 hours), transcribed **50 chunks successfully** before
-  failing on chunk 51/55 with `ffmpeg exited 196: ibavformat 62.12.102 /
-  62.12.102`. One transient failure at 91% complete cost the entire
-  ~44-minute run, not just the bad chunk. That error string is worth its
-  own second look — a truncated ffmpeg version banner surfacing *as* the
-  error suggests the real stderr is being cut off somewhere in
-  `media_probe.py`/`extract_chunk_audio()`.
-
-**Known limit of one retry — Brookhaven NY.** On a later attempt two
-immediate back-to-back retries both failed identically (same `ffmpeg
-timed out ... @ 0s`, same CDN host `cpmedia.azureedge.net`). That
-doesn't argue against the retry — the other cases still justify it — but
-it won't be sufficient for every case; Brookhaven needs more than one
-retry, a longer timeout, or has a genuinely slower/rate-limited CDN.
-Worth a fresh look (and worth checking whether it's this specific media
-file or `cpmedia.azureedge.net` generally) before assuming it's simply
-"still transient, just unlucky twice."
 
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
@@ -588,10 +516,14 @@ convenient.
   production 500 on its first bounded run — a shadowed `offset`
   variable, fixed same day, PR #286, with regression tests. Full build
   detail in `BACKLOG_DONE.md`.) Nothing is running now; what's left:
-  **(1)** the failure-reason plumbing, which is its own entry under
-  **Ship next** above — until it lands there is no way to tell what the
-  179 have in common beyond the host grouping, which is exactly the
-  trigger that entry was waiting on; **(2)** retry the 179 by deleting
+  **(1)** ~~the failure-reason plumbing~~ — **done 2026-08-22 (WO-42,
+  #305)**: `extract_and_store()` now returns a reason, the backfill
+  endpoint reports it per slug, and the script groups stuck pages by
+  bucketed reason as well as by host. That PR also fixed a real latent
+  bug this retry would otherwise have hit — the sweep was recording
+  *skips* (in-flight, cooldown, queue-full) as permanently stuck, so
+  some of the 179 may never have been attempted at all. **(2)** retry
+  the 179 by deleting
   `scripts/meeting_card_backfill_state.json` a few days later and
   re-running — failed slugs are skipped only because that file records
   them, so deleting it gives them another chance. Do (1) before (2) if
@@ -710,14 +642,49 @@ coverage** instead.
   line wrap, not a sentence boundary), but that changes output for every
   de-shouted track and needs its own pass with its own samples.
 
-### `tier3_auto_transcription_queue.txt` holds at least one genuinely truncated URL `[NEEDS-AUDIT]`
+### The retry papers over an unexplained asyncio/subprocess hang, and Brookhaven's CDN is still unexplained `[NEEDS-AUDIT]`
 
-Orinda, CA's queue entry (line 8) is cut off mid-query-string —
-confirmed via `od -c` the line genuinely ends `...&Me\n` in the file
-itself. Distinct from the separately-flagged iqm2/ClerkBase dead-list
-rows (those never had a real ID/params at all) — this one had the rest
-of a real query string and lost it. Single confirmed instance; worth a
-broader scan of the queue file for other implausibly-short lines.
+**Split out of the `transcribe_backlog_locally.py` retry work
+(2026-08-22, #305/#306 — see `BACKLOG_DONE.md`).** The retry that
+shipped is justified by ten confirmed cases and fixes the symptom, but
+it deliberately does not explain two things, and both are still open:
+
+1. **A byte-for-byte-identical manual `ffmpeg` finished in ~12s while
+   the script's own asyncio/subprocess context hung the full 120s on the
+   exact same URL** — measured twice. The video, host and command are
+   all fine, so the hang is specific to how the script runs it. The
+   standing theory is resource buildup across a long sequential batch
+   rather than network flakiness; **that theory is untested**, and the
+   retry papers over it by design. Worth instrumenting a long batch
+   before assuming a retry is the whole answer.
+2. **Brookhaven NY still fails every time.** Two immediate back-to-back
+   retries both failed identically (same `ffmpeg timed out ... @ 0s`,
+   same CDN host `cpmedia.azureedge.net`). Not yet answered: is it that
+   specific media file, or `cpmedia.azureedge.net` generally? One
+   confirmed data point since: real ffmpeg against that host returns a
+   real 404 for the captured case. `MEDIA_ATTEMPTS` is a named constant
+   precisely so this can be tuned once the answer is known.
+
+### 28 well-formed IQM2 queue rows point at retired tenants `[NEEDS-AUDIT]` `[WAIT]`
+
+**Split out of the tier-3 queue repair (2026-08-22, #308 — see
+`BACKLOG_DONE.md`).** Distinct from the 52 *truncated* rows that PR
+fixed: these URLs are structurally correct and the tenant is simply gone
+(the Accela/IQM2 sunset). Deliberately **left in place** — a single
+probe cannot distinguish a retired tenant from a transient outage, and
+16% of the IQM2 block is too much to drop on one measurement. Note this
+is exactly the population that wildcard DNS makes hard to judge: a dead
+IQM2 tenant still answers, with the generic 4,562-byte "Accela Meeting
+Portal" body.
+
+**Needs a repeat probe on a different day before anything is removed.**
+The tenants: `losangelescountyca`, `santaclaracountyca`, `northbrookil`,
+`mchenrycountyil`, `sheboygancountywi`, `renocitynv`, `slcgov`,
+`portagecountyoh`, `gilroyca`, `hanfordca`, `pekinil`, `psrcwa`,
+`tehamacountyca`, `vilascountywi`, `woodbuffalocn`, `adelantoca`,
+`brentwoodca`, `carolinabeachtownnc`, `ccgov`, `countygov`,
+`currituckcountync`, `doverny`, `farmingtoncitymi`, `hilliardoh`,
+`hyattsvillecitymd`, `ledyardct`, `pec`, `shawneecityks`.
 
 ### Some Swagit meetings have no single "whole meeting" video file `[NEEDS-AUDIT]`
 
@@ -1041,6 +1008,18 @@ from a live check), but the Legistar calendar itself is still untried.
   `ResolvedMeeting`, a matching Archive column + migration, and template
   work — a real, scoped follow-up, deliberately not smuggled into WO-29.
   Worth checking whether any other platform has the same shape first.
+
+- **[JUST-DO-IT] `vimeo.com/showcase/{id}/embed` isn't claimed by
+  `detect_platform()`, so a real Vimeo listing falls to the best-effort
+  pointer (found live 2026-08-22, WO-43 / #307).** `is_vimeo_listing()`
+  matches `/showcase/{id}` but not the `/embed` suffix. Confirmed case:
+  Birmingham MI
+  (`bhamgov.org/about_birmingham/city_government/watch_a_city_meeting.php`
+  → `vimeo.com/showcase/11598114/embed`) gets the tier-5 pointer instead
+  of Vimeo's `calendar_page` pick-list. Narrow fix: accept the optional
+  `/embed` suffix in that matcher. Worth checking whether the same
+  suffix appears on the non-showcase Vimeo shapes before widening
+  further.
 
 - **[JUST-DO-IT] Residual gaps left behind by WO-30's city-YouTube-
   channel fallback (2026-08-21) — three real ones, none blocking.**
@@ -1978,6 +1957,15 @@ means somebody found the example, not that somebody decided to guess.
   script will never re-fetch it. Worth deciding whether the queue should
   also surface low-quality-flagged pages, and/or whether recheck should
   trigger this script's path for one page on demand.
+
+- **[LATER] `[EXAMPLE]` Perry GA's eScribe host
+  (`pub-perryga.escribemeetings.com`) no longer resolves — DNS/
+  connection failure, confirmed 2026-08-22 (WO-43 / #307).** It is cited
+  in `escribe.py:52,137` as *the* confirmed real beneficiary of the
+  backstop pointer tier, so that citation now has no live URL behind it.
+  The code isn't wrong; the evidence for it has gone dead. Needs a
+  replacement real eScribe example that exercises the same backstop
+  tier, after which the citation should be updated to name it.
 
 - **[LATER] Swagit custom-domain embeds unverified** (e.g.
   `dublin.ca.gov/swagit-video-player?video_id=...`). `detect_platform`
