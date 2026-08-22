@@ -6,6 +6,420 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## WO-10 fully closed: resolver gets `preDeployCommand` too — and the "never stamped in prod" blocker turned out never to have existed [Done 2026-08-21]
+
+Closes the last open half of the WO-10 outage class (the one that
+produced four real incidents: 2026-08-09/10/13 and the 2026-08-17
+`UndefinedColumnError` outage). Both services now have the same
+guarantee: CI's `alembic check` blocks a schema change with no migration
+*before* merge, and `preDeployCommand` runs migrations before the new
+build serves traffic.
+
+**The part worth remembering isn't the config line — it's how the
+blocker evaporated.** For ~11 days `BACKLOG.md`, `CLAUDE.md`,
+`render.yaml`'s comment and `AUDIT_EXECUTION_BRIEF.md` all asserted that
+`app/`'s Alembic history had never been stamped in production, and that a
+one-time manual `alembic stamp` on the Render shell was the gate. WO-24
+(PR #269) built `GET /admin/schema-info` specifically to check that claim
+before anyone acted on it. Its first real call against production:
+
+```
+alembic_version:                  a9207c0eb761   # already at head
+schema_matches_models:            true
+mismatched_tables:                []
+jurisdiction_confidence present:  true
+```
+
+Already stamped, at head, with the real column present. Someone had
+stamped it and never recorded it. `/admin/stats` returning 200
+independently ruled out the silent-degradation scenario the entry warned
+about (`crud.log_resolution()` failing invisibly inside `safe()` since
+2026-08-15) — that never happened either.
+
+Two things nearly went wrong on the strength of a doc nobody could check:
+this session and a prior one both queued up a Render shell session to run
+a stamp that was unnecessary, against a history whose real state was
+unknown — and the docs' own recipe (`alembic stamp head`, written
+2026-08-10 when the baseline *was* head) would have been actively wrong
+after `a9207c0eb761` landed 08-15, the same shape as the 2026-08-09
+Archive incident.
+
+**Transferable rule, now in `CLAUDE.md`: when a doc asserts a fact about
+production that nothing in the repo can verify, build the read-only thing
+that answers it before acting on the assertion.** The endpoint cost about
+an hour. The shell session it made unnecessary was the risky part.
+
+Also landed in this PR: `CLAUDE_INBOX_TRIAGE.md`'s Gmail item rewritten
+as a standing decision (write scope declined — the Routine stays
+read-only, with a repo-side message-ID ledger as the real fix), and
+`BACKLOG.md`'s `ALERT_WEBHOOK_URL` item rewritten as declined rather than
+open (Ryan doesn't use Slack/Discord; GitHub's own failed-workflow email
+already reaches him).
+
+## Meeting card images: real ffmpeg frame extraction for mp4/m3u8 pages, and Clip `endOffset` for shared-timestamp runs (WO-28) [Done 2026-08-21]
+
+Closes the two remaining findings from the same real Google Search
+Console URL Inspection Ryan ran on
+`https://redtaperecordings.com/m/san-carlos-ca-2017-11-13-city-council-regular-meeting`
+that day: **1 critical issue** (`Missing field "thumbnailUrl"` — by then
+the page's *only* critical issue, the "Video isn't on a watch page"
+problem having been confirmed fixed in the same report) and **12
+non-critical** `Missing field "endOffset" (optional)` warnings on Clip
+entries. Both halves are the residuals split out of the 2026-08-14
+"VideoObject.thumbnailUrl + Clip key moments" entry below.
+
+### Is ffmpeg available on the Archive? Yes — and now provable in one curl
+
+This was a genuine unknown, not a documented fact, so it was settled
+before any design was locked. Prior state: `render.yaml` records a
+confirmed-live 2026-08-08 `ffprobe` check on the **resolver**;
+`worker/Dockerfile` installs ffmpeg explicitly; the **Archive** is a
+plain `runtime: python` service that shelled out to no binary at all.
+
+`GET /api/health` on the Archive now reports a `media_tools` block
+(`app/platforms/media_probe.py`'s `binary_versions()`) — the real first
+line of `ffmpeg -version`/`ffprobe -version`, or `null` for a binary
+that isn't on PATH. Deliberately informational: Render gates deploys on
+that endpoint, and a service that serves every page but can't generate
+new thumbnails is healthy, so a missing binary must not fail it.
+
+**Extraction runs Archive-side**, which is where the page, the database
+and the route already are. The assumption behind that choice, stated
+plainly: Render's `runtime: python` buildpack is the *same* buildpack
+that was confirmed to ship `ffprobe` on the resolver, so `ffmpeg` should
+be present here too. If the deployed `/api/health` comes back with
+`"ffmpeg": null`, nothing breaks — pages simply keep rendering with no
+`og:image`, exactly where they were before this shipped — and the
+documented fallback is to extract resolver-side (where the binary is
+confirmed) and ship the bytes with the ingest payload. That residual is
+logged in `BACKLOG.md` rather than pre-built against a hypothesis.
+
+Locally, `binary_versions()` reported ffmpeg/ffprobe 8.1.2 and every
+extraction below is real output from it.
+
+### Which frame — three tiers, Ryan's own targeting design
+
+`archive/utils/video_thumbnail.py`'s `target_offset_seconds()`, a pure,
+total, directly-tested function:
+
+1. **`?t=N` → the frame at `N + 20s`.** A share link points at the moment
+   someone cared about; 20 seconds later lands *inside* the content
+   rather than on the transition into it.
+2. **No timestamp → `duration - 300s`.** The reasoning is specific to
+   this content and it is correct: meetings routinely open with several
+   minutes of dead air behind a static placeholder card, so an
+   early-offset frame is frequently a literal blank slate. Confirmed
+   incidentally during the browser check — the San Carlos player at 0:00
+   shows exactly such a placeholder ("City Council Meeting / November 13,
+   2017" over a static agenda list).
+3. **Too short, or no duration → halfway**, and a fixed 600s when
+   `ffprobe` returned nothing at all, since "halfway" isn't computable
+   without a duration.
+
+Timestamps are floored into 20s buckets before extraction, so an
+unbounded public `?t=` space collapses to a handful of real ffmpeg runs.
+20 rather than a rounder 30 for an exact reason: `bucket(t + 20)` always
+lands in `(t, t + 20]`, i.e. never *before* the moment that was shared.
+
+**All three tiers verified against real video**, not asserted:
+
+| Tier | Offset | Result |
+| --- | --- | --- |
+| `?t=982` (real consent-calendar timestamp) | 1000s | Frame whose on-screen overlay reads **"7. CONSENT CALENDAR"** — the exact item that timestamp points at |
+| default, San Carlos IQM2 mp4 (`ffprobe`: 15681.87s) | 15381s | Frame reading **"9. PUBLIC HEARING"**, a councilmember mid-sentence |
+| default, Alameda County Granicus **HLS** (18839s) | 18539s | 1280x720, 54KB, real dais shot |
+
+The Alameda case is the load-bearing one for headers: its media lives on
+`archive-stream.granicus.com`, the exact CDN whose bare requests returned
+403 in the Fountain Valley incident. `realistic_headers(source_page_url)`
+clears it, as it does for the transcription pipeline.
+
+### Cost, and why input-side `-ss`
+
+`-ss` goes **before** `-i` (fast, input-side seeking). Measured in this
+repo: ~1.6MB read to reach the 900s mark on a real HLS source, versus
+~31.7MB for accurate output-side seeking, which decodes everything up to
+the target. Fast seeking can land up to ~36s early on HLS; that is
+irrelevant here, since all three tiers mean "somewhere in this stretch of
+the meeting," never a specific frame. Real timings on the San Carlos mp4:
+3.1s for the `ffprobe` duration call, then 0.7-0.9s per frame. Real
+sizes: 30KB (640x480 source), 54KB (1280x720 source).
+
+### Where the bytes live: Postgres, not a new vendor
+
+Verified absent before choosing (all four): object storage, persistent
+disk, any image library, any image column anywhere in the repo. New
+`meeting_page_thumbnails` table (Alembic `e5f6a7b8c9d0`, branched off the
+real head `d4e5f6a7b8c9`), keyed `(meeting_page_id, offset_seconds)` with
+a unique constraint that doubles as the per-timestamp cache; JPEG bytes
+in a `deferred=True` `LargeBinary` column so no `/meetings`, sitemap, hub
+or `/m/{slug}` query can drag image data into memory (the shape of the
+2026-08-17 OOM crash). ~1200 pages × one ~30-55KB frame is not enough
+volume to justify a vendor. `MAX_FRAMES_PER_PAGE` (12) bounds what a
+crawl over distinct `?t=` values can store.
+
+`crud._thumbnails_available()` feature-detects the table on Postgres the
+same way `_best_effort_available()` does a column, so code and migration
+are safe to deploy in either order even though
+`render.yaml`'s `preDeployCommand` normally closes that window.
+
+### Never on the render path, and it degrades rather than failing
+
+A subprocess that can take 45-120s cannot live where today's pure
+`youtube_thumbnail_url()` filter did. So:
+
+* Page renders and ingests only *queue* work (`BackgroundTasks`). New
+  pages warm at ingest; older ones warm the first time anyone loads them;
+  `POST /internal/thumbnails/backfill` (token-gated, `dry_run` defaults
+  true) sweeps the rest, since nothing else would reach the ~1200 already
+  archived.
+* `GET /m/{slug}/card.jpg?t=N` degrades: exact per-timestamp frame →
+  stored default frame → 404, queueing the precise extraction on a miss.
+  **Verified live**: the first `?t=982` fetch returned the default
+  15381s frame (`X-Card-Offset-Seconds: 15381`) and queued the work; six
+  seconds later the same URL returned the 1000s frame. A social
+  scraper's fetch timeout is a few seconds and a Granicus stall is
+  routinely much longer, so serving a slightly-wrong real frame now beats
+  a correct one that arrives after the scraper gave up.
+* A page only advertises `og:image`/`thumbnailUrl` once a frame is
+  actually stored (`crud.has_thumbnail()`, one cheap indexed existence
+  check, no bytes loaded). A card URL that would 404 is worse than none —
+  Google's validator and every scraper fetch it.
+* At most 2 extractions run concurrently; an in-flight set collapses
+  duplicate requests for the same `(page, offset)` to one ffmpeg run; a
+  failing source is retried at most once every 6 hours. Granicus
+  timeouts are routine here, not exceptional.
+* `ETag` (stored, so a conditional GET never loads the bytes) +
+  `Cache-Control: public, max-age=86400, stale-while-revalidate=604800`.
+  Verified: `If-None-Match` returns a real 304 with an empty body.
+
+### Task 2: the 12 `endOffset` warnings
+
+Real data, read off the production page's own JSON-LD: 25 Clips, 14
+distinct start offsets, **12 missing `endOffset`** — one consent-calendar
+block where IQM2 gave twelve consecutive items the same 982s timestamp,
+so each item's `end` equalled its `start` and the template's
+`{% if item.end and item.end > item.start %}` guard dropped the field.
+Only the last item in the run escaped, because the next distinct item
+finally advanced the clock to 1056.
+
+`archive/utils/clips.py`'s `clip_entries()` resolves each end as: the
+item's own, when it's genuinely after its start (the accurate normal
+case — a real 100-200s item followed by a gap must still end at 200);
+else the next **distinct** start anywhere later in the list; else None.
+Those twelve consent items genuinely do span 982→1056 collectively, which
+is exactly what the last one already claimed alone — so this is more
+accurate, not merely quieter. **Verified end to end on the real payload:
+12 missing → 1**, the remaining one being the genuinely open-ended final
+item of the meeting, where emitting anything would be inventing data.
+
+**Why a Python helper rather than more Jinja** (the WO asked for the
+call to be justified): the template already builds `clip_items` inline,
+so leaving it there looked smaller. It loses on both counts that matter
+— the computation is a look-ahead over a list, which Jinja can express
+only via `loop.index`-plus-slice contortions in the middle of hand-built
+JSON that is already the fiddliest markup in the file, and a template
+expression can't be unit-tested directly. The `clips_unreliable` guard
+deliberately stayed in the template: it's a duplicate of the visible
+agenda section's own check and the two are meant to be read side by side.
+
+### Test-suite side effect worth knowing about
+
+Starlette's `TestClient` runs `BackgroundTasks` **synchronously**, so the
+moment `/m/{slug}` started queueing extractions, the existing
+structured-data tests began shelling out to ffprobe/ffmpeg against
+`archive-media.granicus.com` for real (confirmed: a genuine "Server
+returned 404" from the CDN). An autouse fixture in `tests/conftest.py`
+patches `extract_and_store` to a no-op, restoring the suite's deliberate
+network-free property — full-suite runtime dropped from ~22s back to
+~12s. `tests/test_meeting_card_thumbnails.py` covers the tiers, the
+route, the degrade chain, the 304 and the storage invariants; ffmpeg
+itself was verified live rather than in-suite, per this repo's convention.
+
+**Docs updated in this PR**: `README.md` (new "Meeting card images"
+section, plus the project-structure listing and the `/m/{slug}/card.jpg`
+route), `BACKLOG.md` (both bullets of the Search Console entry closed out,
+two residuals split back out as live entries), `BACKLOG_DONE.md` (this
+entry), `CLAUDE_BACKLOG.md` (the two places that described mp4/m3u8 pages
+as thumbnail-less pending ffmpeg).
+
+## Vimeo playback built, plus a Vimeo adapter and Chicago's City Clerk ELMS (WO-29) [Done 2026-08-21]
+
+Closes the single largest *unbuilt* platform item in this file: Vimeo
+playback. Vimeo was recognized before this — but only as a dead end.
+`generic_fallback.py`'s `_VIMEO_VIDEO_LINK_RE` could say "we think the
+video is here: `<link>`" and stop, because `detect_platform()` had no
+Vimeo case and `app/static/player.js`'s `initVideo()` had no Vimeo
+branch (only `youtube`, `viebit`, `m3u8`, and native `<video>`).
+
+**Eight separately-confirmed real jurisdictions were blocked on that one
+gap**, in three distinct URL shapes — Chicago IL (ELMS, showcase shape),
+Salisbury NC / Rockland ME / Spokane WA / Corvallis OR / Wilson NC
+(channel shape), Sebastopol CA (`vimeo.com/{id}/{privacy-hash}`), and El
+Paso TX (13 enumerated per-body showcases). Chicago and El Paso are both
+on this file's own "50 largest US cities" gap list. The 200-row dotgov
+coverage-map sample's 6/200 Vimeo fingerprint hits — extrapolated, still
+explicitly unconfirmed, to roughly 290 jurisdictions nationally — is the
+order-of-magnitude reason this was worth building rather than leaving as
+a pointer.
+
+### The question this hinged on, and the real answer
+
+Whether Vimeo's Player SDK actually works against a **showcase** embed
+specifically was an open assumption, not a known fact — no prior work in
+this repo had checked it, and the degraded Viebit precedent (a real
+player bundle pulled and read, provably no postMessage-reachable seek
+API at all) meant "it ships a documented SDK" was not enough to go on.
+
+**Checked in a real browser first, before any code was written.** A
+throwaway page loading `player.vimeo.com/api/player.js` against Chicago's
+real 2026-07-16 Budget Committee video
+(`player.vimeo.com/video/1210310337`, reached from a showcase URL):
+
+- `ready()` resolved
+- `getDuration()` → **19958** (5h32m — the real meeting length)
+- `setCurrentTime(125)` → resolved at 125; `getCurrentTime()` → 125
+- `play()` resolved, and real `play` / `timeupdate` events fired with
+  advancing `seconds` values
+- `getTextTracks()` → `[]` (no captions on this Chicago video, matching
+  its empty `transcriptLink`)
+
+Re-run against Salisbury NC's channel-hosted meeting
+(`vimeo.com/1212025580`): identical, plus `getTextTracks()` reporting a
+real populated `"English (auto-generated)"` track. **A showcase embed
+behaves exactly like an ordinary one.**
+
+**So this shipped with full `wireSharedControls(adapter)` — liveTracking
+ON**, not Viebit's `{ liveTracking: false }` degraded mode. One real
+fidelity note baked into the adapter: Vimeo's `getCurrentTime()` is a
+Promise, while every shared control here reads `adapter.currentTime`
+synchronously, so `createVimeoAdapter()` keeps a cached position
+refreshed from the player's own `timeupdate`/`seeked` events (~4/sec
+during playback). That's a real live position, unlike the Viebit
+adapter's "last thing we told it to do" — which is exactly why this one
+is safe to wire with tracking on.
+
+### What shipped
+
+- **`app/platforms/vimeo.py`** — parses all six real URL shapes
+  (`/{id}`, `/{id}/{hash}`, `/channels/{c}/{id}`,
+  `/showcase/{s}?video={id}`, `/showcase/{s}/video/{id}`,
+  `player.vimeo.com/video/{id}?h=`), builds the embed URL (carrying the
+  privacy hash, without which Sebastopol's player refuses to load), and
+  gets real metadata from **Vimeo's public oEmbed endpoint** —
+  `vimeo.com/api/oembed.json?url=...`, unauthenticated, plain-`aiohttp`
+  fetchable, confirmed live to return real `title`/`duration`/
+  `upload_date`/`author_name` for every shape including the
+  privacy-hashed one. (It rejects a showcase URL outright — 404 — so the
+  adapter always normalizes to `vimeo.com/{id}` first.)
+- **Listing pages become a real pick-list, not a failure.** Both
+  `/showcase/{id}` and `/channels/{name}` are plain 200s whose raw HTML
+  embeds a real JSON-LD `ItemList` of `VideoObject`s (name + url/embedUrl
+  + uploadDate) — parsed into `CalendarPageError` candidates. Verified in
+  a real browser: pasting `vimeo.com/channels/coscouncil` renders 12 real
+  Salisbury meetings with correct titles and dates, and clicking one
+  resolves and plays it. **This directly corrects a claim elsewhere in
+  BACKLOG.md** that "`vimeo.com/showcase/{id}` pages are JS-rendered
+  (`curl` returns only the showcase's own title, no individual video
+  data)" — that was true of the *visible* markup, but the structured blob
+  is server-rendered and was never checked.
+- **`app/platforms/chicago_elms.py`** — the public, unauthenticated
+  `api.chicityclerkelms.chicago.gov/meeting-agenda/{GUID}` API this file
+  already had fully traced. Delegates video to `vimeo.py` while keeping
+  the original ELMS URL as `source_url` and re-asserting
+  `platform = "chicago_elms"` (so `/coverage` and `/admin/stats` show a
+  real Chicago row rather than folding into generic Vimeo), and overrides
+  metadata with ELMS's own far better `body`/`date`/jurisdiction.
+- **Frontend, both surfaces**: a Vimeo branch in `initVideo()` in
+  `app/static/player.js` AND `archive/static/meeting_page.js`, plus a
+  container in `app/templates/meeting.html` and
+  `archive/templates/meeting_page.html`. The iframe is built in JS rather
+  than server-rendered, specifically so Vimeo's documented `#t={n}s`
+  fragment is part of the very first `src` the browser loads — the same
+  reasoning `buildYouTubePlayerVars()` folds `start` in for, and a direct
+  response to the real 2026-08-10 LIMS deep-link race.
+- **Honest transcription copy**: `_unreadable_media_message()` gains a
+  Vimeo branch, and the Archive's `/coverage`
+  `audio_transcript_possible` column now excludes `vimeo` alongside
+  `youtube` for the same structural reason. The Archive's `VideoObject`
+  JSON-LD puts a Vimeo URL under `embedUrl`, not `contentUrl` — it's an
+  iframe page, and claiming otherwise is a claim Google can check.
+- **Canary + tests**: real live-verified `CANARY_URLS` entries for both
+  platforms (both confirmed passing live), and fixture-backed suites
+  (`tests/test_vimeo.py`, `tests/test_chicago_elms.py`, 38 tests) built
+  from unmodified real captures in `tests/fixtures/vimeo/` and
+  `tests/fixtures/chicago_elms/`.
+
+### Sebastopol fell out for free, exactly as predicted
+
+This file predicted that once Vimeo playback existed,
+`generic_fallback.py`'s existing `_try_delegate_to_known_platform()`
+would pick up Sebastopol CA's WordPress events page "for free, no
+page-specific work needed." Confirmed live: it now resolves with a real
+playable video plus the page's own agenda PDF, and
+`tests/test_generic_fallback.py`'s old pointer-asserting test was
+rewritten to assert the delegation instead.
+
+`detect_platform()`'s Vimeo case is deliberately **not** a bare
+`"vimeo.com" in netloc` check, unlike every vendor-domain case around
+it: vimeo.com is a general-purpose host, so a city site's
+`vimeo.com/cityname` footer link is a real false-positive class (the
+same one that makes `"youtube"` an excluded platform in that same
+delegation scan). Only shapes carrying a real video id, plus the two
+listing shapes, are claimed. Confirmed live that
+`vimeo.com/rocklandmaine` still classifies as `unknown`.
+
+### In-browser verification (CLAUDE.md's explicit requirement)
+
+Both services run locally against **scratch SQLite files with
+`DATABASE_URL` set explicitly** (the documented worktree/`.env`
+footgun). Driven with `mcp__Claude_Browser__*`, not just read as JSON:
+
+- Chicago ELMS `/meeting?url=...` — real chamber video plays; "Go to
+  time" `1:23:45` moved the real player to `getCurrentTime() === 5025`
+  and updated the URL to `&t=5025`; the "Share video at ..." label
+  tracked live to `1:23:52` during playback and `video-at-rest` cleared
+  on the real `play` event.
+- Deep link on a cold load — `&t=3600` produced
+  `src="...#t=3600s"` and `getCurrentTime() === 3600`.
+- `vimeo.com/channels/coscouncil` — the calendar pick-list renders 12
+  real meetings; clicking one loads and plays it.
+- Sebastopol's real city page with `&t=900` — real player, cued to 900.
+- The permanent Archive page (through the resolver's `/m/*` proxy) with
+  `?t=2400` — player cued to 40:00, and clicking a `[1:23:45]` agenda
+  item seeked the real player to 5025 and updated URL + label.
+- `POST /api/transcription/check-feasibility` returns the new honest
+  Vimeo message rather than the generic "couldn't read it."
+
+### What deliberately did NOT ship, and why
+
+**Captions.** Real populated English WebVTT exists on at least one of
+these meetings — Salisbury NC's, confirmed via a real browser through a
+signed `captions.vimeo.com/captions/{id}.vtt?expires=...&sig=...` URL.
+It is not server-fetchable: that URL only appears in
+`player.vimeo.com/video/{id}/config`, which returns **403** to every
+non-browser client, and `vimeo.com/{id}` sometimes serves a real
+Cloudflare "Verify you are human" challenge (hit live on Spokane) that
+this app must never attempt to auto-solve. Per this repo's "don't claim
+a caption path works without a positive example" rule, the adapter is
+video-only and says so in a `transcript_warnings` line that also tells
+the viewer the player's own CC button still works.
+
+**On-demand Whisper transcription is the same blocker, not a second
+one** — it needs a real probeable media file, which lives behind that
+identical signed config. Both remain open in BACKLOG.md as one item.
+
+**Chicago's agenda item text.** `agenda.groups[].items[]` is genuinely
+rich — 473 real items on the confirmed City Council sample, with matter
+titles, actions and vote types — but carries **no time offsets of any
+kind**. Unlike LIMS/Hyland/IQM2 there is nothing to join against a video
+position, so `agenda_items` stays empty rather than shipping 473 rows
+that all seek to 0:00; the real Agenda PDF goes in `agenda_link`
+instead. `tests/test_chicago_elms.py` asserts this directly against the
+real fixture. Surfacing that text as untimestamped agenda *text* needs a
+new `ResolvedMeeting` field plus an Archive schema change — split out as
+its own live entry in BACKLOG.md rather than smuggled in here.
+
 ## Legistar cities whose real video only exists on their own YouTube channel: Phoenix, Philadelphia, Baltimore, Albuquerque (WO-30) [Done 2026-08-21]
 
 Closes the `[HUMAN]` Phoenix entry from `BACKLOG.md` (kept verbatim at the

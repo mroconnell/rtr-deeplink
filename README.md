@@ -1298,6 +1298,76 @@ clickable.
 > watched, same as any schema-verified-but-not-content-verified path
 > in this repo; see `BACKLOG.md` for the open residuals.
 
+## Meeting card images (`og:image` / `thumbnailUrl`)
+
+Every meeting page needs one image: search engines require a
+`VideoObject.thumbnailUrl` before a video is eligible for a rich result
+at all, and Bluesky/Mastodon (see "Social auto-posting" above) build
+their link cards from `og:image`. YouTube-backed pages had one from
+2026-08-14 (a free, predictable `i.ytimg.com` URL). Every *other* page —
+direct mp4/m3u8, the majority of the Archive — got a real one on
+2026-08-21: a frame pulled out of the meeting's own video with `ffmpeg`.
+
+**Which frame** (`archive/utils/video_thumbnail.py`'s
+`target_offset_seconds()`), in priority order:
+
+1. **The shared moment, plus 20 seconds.** When the URL carries `?t=N` —
+   someone shared that exact moment — the card shows the frame at
+   `N + 20s`, landing *inside* the relevant content rather than on the
+   transition into it. Verified against the real San Carlos meeting:
+   `?t=982` produces a frame whose on-screen overlay reads
+   "7. CONSENT CALENDAR", the item that timestamp points at.
+2. **Otherwise, 300 seconds before the end.** Meetings routinely open
+   with several minutes of dead air behind a static "meeting will begin
+   shortly" placeholder, so an early-offset frame is frequently a literal
+   blank slate; near the end there is reliably a real chamber with real
+   people in it. Needs a duration, which comes from `ffprobe`
+   (`probe_duration()`).
+3. **Otherwise halfway through**, when the video is too short for (2) to
+   mean anything — or a fixed 600s when `ffprobe` couldn't report a
+   duration at all, since "halfway" isn't computable without one.
+
+**Where the bytes live**: a `meeting_page_thumbnails` table, keyed
+`(meeting_page_id, offset_seconds)`, one row per extracted frame with the
+JPEG stored directly (`archive/db/models.py`). This repo has no object
+storage, no persistent disk and no image library, and ~1200 pages × one
+~30-55KB frame is not enough volume to justify adding a vendor. The
+unique constraint doubles as the cache: a per-timestamp card is extracted
+once and every later fetch is one indexed row read. `MAX_FRAMES_PER_PAGE`
+(12) bounds what a crawl over many distinct `?t=` values can store, and
+timestamps are quantized into 20s buckets before extraction for the same
+reason.
+
+**Serving**: `GET /m/{slug}/card.jpg?t=N` (proxied like `/m/*`) with
+`Cache-Control` and a stored `ETag`, so a conditional refetch — which
+Googlebot and every social scraper do — costs a 304 without ever loading
+the image bytes. YouTube-backed pages 302 to their `i.ytimg.com`
+thumbnail, so one card URL shape covers every page.
+
+**Extraction never touches the render path.** A page render only *queues*
+work (FastAPI `BackgroundTasks`) — new pages warm at ingest, older ones
+the first time anyone loads them. The card route degrades in order: the
+exact per-timestamp frame → the page's stored default frame → 404, and a
+miss queues the precise extraction so the *next* fetch is exact. A page
+only advertises `og:image`/`thumbnailUrl` once a frame is actually stored
+(`crud.has_thumbnail()`) — a card URL that would 404 is worse than none,
+since validators and scrapers fetch it. At most 2 extractions run at
+once, a failing source is retried at most once every 6 hours, and none of
+that can delay a response.
+
+```bash
+# Warm default frames for already-archived pages (dry_run defaults true)
+curl -X POST -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" \
+     "$ARCHIVE_BASE_URL/internal/thumbnails/backfill?limit=10&dry_run=false"
+```
+
+**`ffmpeg` availability**: `GET /api/health` on the Archive now reports
+`media_tools` (the real `ffmpeg`/`ffprobe` versions on PATH, or `null`).
+It's informational and never fails the check — Render gates deploys on
+this endpoint, and a service that serves every page but can't generate
+new thumbnails is healthy; those pages simply carry no `og:image`, which
+is exactly where they were before this feature.
+
 ## Supported platforms
 
 Most local governments don't build their own video/meeting-minutes
@@ -1337,6 +1407,8 @@ platform share the same page/API structure. Detection lives in
 | open.media (`{tenant}.open.media`) | `openmedia.py` | Confirmed live 2026-08-21 across 7 real tenants (Goodyear AZ, Eugene OR, Cortez CO, Santa Barbara CA, Surprise AZ, Georgetown CO, Pitkin County CO) — a YouTube-delegating platform, doesn't host video itself. Requires a modern desktop Chrome User-Agent (a bare/default UA 403s — same class of bot-check gap as `generic_fallback.py`'s own cityofsebastopol.gov fix). The visible player iframe is injected client-side and invisible to a plain fetch, but every tenant checked also carries a real `<meta property="og:video">` tag in the raw, un-rendered HTML pointing at the same video (`youtube.com/v/{id}` or `youtube.com/live/{id}`) — already a shape `YouTubeAssetFinder`'s own regex recognizes, so no headless-browser fetch is needed. Delegates to `YouTubeAssetFinder.resolve_video_id()`, original open.media URL preserved as `source_url` (the PrimeGov/CivicWeb pattern) | Whatever YouTube provides. Title comes from the page's own `og:title` (plain meeting title, no date suffix, independent of whether yt-dlp itself is blocked) rather than YouTube's metadata. Jurisdiction comes from the pre-pipe half of `<title>` ("{Jurisdiction} \| {Meeting title}" — the reverse order from `generic_fallback.py`'s own CRRMA-shaped title parsing, so that shared helper isn't reused here), falling back to the tenant subdomain itself (run through the same Census-validated `jurisdiction_enrich.validated_subdomain_extract()` eScribe/Granicus use) when the tenant has never customized its `<title>` away from the vendor's own default — confirmed real and live on Cortez, CO. Agenda comes from a `<iframe id="document">` present on every tenant checked — either a direct link to another already-registered platform (Goodyear links straight to a destinyhosted.com AgendaQuick page) or this tenant's own pdf.js viewer wrapping a direct S3-hosted PDF as its `?file=` query param (Eugene/Cortez/Santa Barbara/Surprise), unwrapped to the raw PDF URL |
 | Castus (cloud.castus.tv) | `castus.py` | Confirmed live 2026-08-21 (WO-19) against one real customer (Billings, MT's "comm7tv" channel). The static page is a pure JS-redirect shell into a client-rendered React SPA — no headless browser needed, though: the SPA's own webpack bundles were fetched once and read directly, surfacing a plain, unauthenticated `POST .../upload/info {"file": videoId}` API that returns everything needed for one video (title/duration/readiness flags/an embedded `agenda` array) from a global endpoint shared by every tenant, plus a global CloudFront CDN (`outputs/{id}/Default/HLS/out.m3u8`) for the HLS video itself. Also solves the tenant-slug → internal-channel-id mapping this platform's first investigation pass had flagged as unsolved (see `castus.py`'s own module docstring for the endpoint, unused by this adapter but documented for a future per-tenant feature) | Real, populated AWS-Transcribe-style VTT (`captions/{videoId}.vtt` on the same CDN) with per-word confidence/speaker inline tags — `parse_vtt()`'s existing generic tag-stripping already handles this shape with no Castus-specific code. Real per-item `agenda_items` come from `/upload/info`'s own embedded `agenda` array (a separate `api.castus.tv/ccs/v1/agenda/{id}` endpoint returns the same data independently but isn't called, to save a request). Jurisdiction is cross-checked by fetching whichever destinyhosted.com page an agenda item's own hyperlinks point at (Destiny Software's AgendaQuick — real "City of Billings" text confirmed live), with a small known-tenant map filling in the state where the page's own ZIP isn't a real Census-covered ZCTA; falls back to a best-effort tenant-slug parse otherwise (unconfirmed against any real second example) |
 | SuiteOne Media (suiteonemedia.com) | `suiteone.py` | Confirmed live 2026-08-21 across 6 real tenants (`pacificgroveca`, `lorainoh` from a prior investigation, plus `tuscaloosaal`, `camaswa`, `holladayut`, `stmarysga` newly confirmed live this session; 5 other CDX-derived leads — `mcallentx`, `southbendin`, `prescottaz`, `richlandwa`, `laytonut` — 404 and aren't registered). A plain, static-HTML JW Player setup embeds a direct, unauthenticated S3 mp4 (`var src = '...'` — genuinely empty when a meeting has no recording yet, confirmed on a real St Marys, GA event, not a parse failure). Jurisdiction reuses `jurisdiction_enrich.validated_label_extract_with_state()` directly plus the same wordninja-last-token state check `townhallstreams.py` established. The 2 tenants that originally couldn't resolve at all (`stmarysga`, `camaswa` — wordninja mis-splits their trailing state letters into a non-word chunk) were fixed 2026-08-21 in the shared module itself, not here: its new tier-5 strip removes a trailing state/province code from the raw label *before* wordninja sees it, and this adapter asks that module for the code it stripped rather than re-deriving it (the raw trailing letters aren't trustworthy on their own — "tacoma" ends in a real state code too). Both now resolve correctly ("St Marys, GA", "Camas, WA") — see `suiteone.py`'s own module docstring and BACKLOG_DONE.md | Real, populated WebVTT at a JW Player `tracks[].file` URL (`/Event/GetCaptions/?eventId={id}`, no file extension — parsed directly as VTT rather than through the usual extension-sniffed dispatch) — confirmed on 2 of the 6 tenants (Pacific Grove CA, Holladay UT); omitted entirely (not an empty array) when a meeting has none. A separate `/event/GetAgendaFile/Agenda?aid={N}` PDF embed, confirmed on 3 of 6 sampled events, is surfaced as `agenda_link` |
+| Vimeo | `vimeo.py` | Not a civic-video vendor — a general-purpose host that a real, confirmed set of small local governments use directly, built 2026-08-21 (WO-29) against 8 named jurisdictions. **Playback is an iframe + Vimeo's own Player SDK**, not the native `<video>`/hls.js pathway: no direct media file URL exists (see captions column). Unlike Viebit's iframe, this one gets the *full* `wireSharedControls()` treatment with live playhead tracking, because Vimeo's postMessage API was verified live against a real **showcase** embed before any code was written (`ready`/`getDuration`/`setCurrentTime`/`getCurrentTime`/`play`/`timeupdate` all real) rather than assumed. Metadata comes from Vimeo's public, unauthenticated **oEmbed** endpoint (`vimeo.com/api/oembed.json`), which a plain `aiohttp` GET can reach; it rejects showcase URLs, so every shape is normalized to `vimeo.com/{id}` first. Six real URL shapes handled, including the privacy-hashed `vimeo.com/{id}/{hash}` (the hash must ride along on the embed URL or the player refuses). `detect_platform()` deliberately does **not** claim the bare domain — a city's `vimeo.com/cityname` footer link is a real false-positive class — only shapes with a real video id plus the two listing shapes | **No captions, and that's a wall, not an omission.** Real populated English WebVTT does exist on some meetings (confirmed via a real browser on Salisbury NC) but only behind a signed `captions.vimeo.com/...?expires=&sig=` URL that appears solely inside `player.vimeo.com/video/{id}/config` — which returns **403** to every non-browser client. The same signed response holds the only real media file, so on-demand Whisper audio is blocked by the identical wall, not a second one (see BACKLOG.md). A `transcript_warnings` line says so and points at the player's own CC button. `/showcase/{id}` and `/channels/{name}` listing pages return a real `calendar_page` pick-list instead, parsed from a server-rendered JSON-LD `ItemList` (a bare `vimeo.com/{username}` page genuinely is client-rendered and is left to `generic_fallback.py`). Jurisdiction comes from the oEmbed account name run through the shared Census-validated check, which usually and correctly declines |
+| Chicago City Clerk ELMS | `chicago_elms.py` | Confirmed live 2026-08-21 (WO-29) against 5 real meetings spanning 2020–2026. A single-city platform, not a vendor product. The meeting page's raw HTML has **zero** mention of its video — it's injected client-side — so everything comes from the public, unauthenticated `api.chicityclerkelms.chicago.gov/meeting-agenda/{meetingId}` JSON API (`meetingId` is a GUID off the portal URL). `videoLink` is a real Vimeo URL in both showcase styles; delegates to `vimeo.py` while keeping the ELMS URL as `source_url` and re-asserting its own `platform` (the PrimeGov/CivicWeb pattern, plus an attribution fix so `/coverage` shows a real Chicago row) | Agenda **link** only. `transcriptLink` is in the API schema but empty on all 5 real samples; a populated one would be surfaced as a warning, never guess-parsed. **`agenda.groups[].items[]` is rich (473 real items on one sample: matter title, action taken, vote type) but carries no timestamps at all**, so `agenda_items` is deliberately left empty rather than fabricating offsets — Chicago pages have a working agenda PDF link but no clickable agenda items, unlike LIMS/Hyland/IQM2. Tracked as a real gap in BACKLOG.md |
 
 **Every URL `detect_platform()` doesn't recognize** goes to
 `generic_fallback.py`'s `GenericFallbackAssetFinder`, registered under
@@ -1364,7 +1436,13 @@ with two confidence tiers of copy: a curated known video host (Vimeo
 video/showcase links) gets "we recognize {host} as a regular video
 host", a looser video-shaped guess (a "Video"-texted anchor, a non-junk
 third-party player iframe) gets "we don't recognize {host}... so
-proceed with caution". Captions come from their own candidate chain
+proceed with caution". Note that as of 2026-08-21 (WO-29) a Vimeo link
+usually never reaches this tier at all — Vimeo is a fully supported
+platform now, so tier 3 above delegates to its real adapter and produces
+an actually playable video instead (confirmed live on Sebastopol, CA).
+The curated tier survives for the Vimeo shapes `detect_platform()`
+deliberately doesn't claim, and as the pattern for whatever unsupported
+video host shows up next. Captions come from their own candidate chain
 (`<track>` elements, plain caption-file `<a href>`s, JW `tracks:`
 entries, scan results); metadata from a breadth of confirmed-real
 shapes (title-tag separators, og:title, h1 assembly, `video_date`
@@ -1584,6 +1662,8 @@ archive/
   main.py                 FastAPI app: /internal/lookup, /internal/ingest,
                            /internal/transcription/* (all token-gated),
                            /m/{slug}, /m/{slug}/transcript.{txt,srt},
+                           /m/{slug}/card.jpg (see "Meeting card images"
+                           above),
                            /meetings, /coverage, /state/{slug}, /j/{slug},
                            /sitemap.xml, /feed.xml,
                            /api/health, /account/saved, and the token-gated
@@ -1596,7 +1676,9 @@ archive/
     models.py               MeetingPage, TranscriptVersion,
                            MeetingPageUrlAlias, TranscriptionJob (see "On-
                            demand transcription" above), SavedItem (see
-                           "Accounts (Clerk)" above)
+                           "Accounts (Clerk)" above),
+                           MeetingPageThumbnail (extracted video frames,
+                           see "Meeting card images" above)
     crud.py                  identity matching/dedup, slug generation,
                            content-hash version dedup, list_pages()
                            (paginated + filtered, backs /meetings),
@@ -1640,6 +1722,14 @@ archive/
     clerk_auth.py             deliberate duplicate of
                            app/utils/clerk_auth.py -- see "Accounts
                            (Clerk)" above
+    video_thumbnail.py       which frame a meeting card shows and the
+                           background extraction that produces it, plus
+                           the free i.ytimg.com URL for YouTube-backed
+                           pages -- see "Meeting card images" above
+    clips.py                  schema.org Clip entries out of stored
+                           agenda_items, including the endOffset
+                           resolution for a run of items sharing one
+                           source timestamp
   templates/
     meeting_page.html        SSR permanent page + transcript-version
                            picker (real content on first byte, for

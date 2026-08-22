@@ -7,7 +7,9 @@ the exact string detect_platform() returns for anything unmatched.
 import pytest
 import yt_dlp
 
+from app.platforms.base import register
 from app.platforms.generic_fallback import GenericFallbackAssetFinder
+from app.platforms.vimeo import VimeoAssetFinder
 from app.platforms.youtube import YouTubeAssetFinder
 from app.utils import url_guard
 
@@ -803,30 +805,78 @@ async def test_resolve_wayne_fixture_picks_video_link_not_channel_link(monkeypat
 SEBASTOPOL_EVENT_URL = (
     "https://www.cityofsebastopol.gov/events/city-council-meeting-january-6-2026/"
 )
+# Vimeo's real, live-confirmed oEmbed response for the video that page
+# links to (fields trimmed to the ones vimeo.py actually reads) -- see
+# test_vimeo.py for the full-fidelity fixtures.
+SEBASTOPOL_OEMBED_URL = (
+    "https://vimeo.com/api/oembed.json?url="
+    "https%3A%2F%2Fvimeo.com%2F1152708575%2Fdb9859a2aa"
+)
+SEBASTOPOL_OEMBED_JSON = (
+    '{"title": "EDITED - City Council Meeting - January 6, 2026", '
+    '"duration": 8304, "upload_date": "2026-01-08 18:39:52", '
+    '"video_id": 1152708575, "author_name": "City of Sebastopol"}'
+)
 
 
-async def test_resolve_surfaces_vimeo_pointer_as_recognized_video_link():
+@pytest.fixture
+def _register_vimeo():
+    """Tier 3 delegation goes through `base.get_finder()`, which only
+    knows about platforms someone has registered -- same explicit,
+    per-test registration the Legistar/CivicPlus/PrimeGov delegation
+    tests use, rather than relying on another test file happening to
+    have called `register_all_finders()` first."""
+    register(VimeoAssetFinder())
+
+
+async def test_resolve_delegates_sebastopol_vimeo_link_to_the_vimeo_adapter(
+    _register_vimeo,
+):
     # Sebastopol's real shape: the video is a plain <a href> to a Vimeo
-    # page (numeric id + privacy hash, &#038; numeric entity in the query)
-    # nothing can play -- must surface as a recognized-host pointer, and
-    # NEVER enter video_url (a page URL there breaks the native player).
+    # page (numeric id + privacy hash, &#038; numeric entity in the
+    # query), server-rendered rather than injected client-side.
+    #
+    # This used to be a dead-end tier-5 "we think the video is here"
+    # pointer, because nothing in this app could play a Vimeo video.
+    # WO-29 (2026-08-21) built real Vimeo playback, so `vimeo` is now a
+    # platform `detect_platform()` recognizes -- which means tier 3
+    # (delegate to a link to any fully-supported platform) catches this
+    # page first, exactly as BACKLOG.md predicted it would ("would likely
+    # pick this one up for free, no page-specific work needed").
+    #
+    # The oEmbed route is mocked with Vimeo's own real response shape for
+    # this exact video, confirmed live 2026-08-21 -- the suite stays
+    # network-free.
     html = load_fixture("generic_fallback", "sebastopol_event_page.html")
     routes = {
         SEBASTOPOL_EVENT_URL: FakeResponse(
             status=200, text=html, url=SEBASTOPOL_EVENT_URL
-        )
+        ),
+        SEBASTOPOL_OEMBED_URL: FakeResponse(
+            status=200, text=SEBASTOPOL_OEMBED_JSON, url=SEBASTOPOL_OEMBED_URL
+        ),
     }
 
     with mock_session(routes):
         result = await GenericFallbackAssetFinder().resolve(SEBASTOPOL_EVENT_URL)
 
-    assert result.video_url is None
-    assert result.video_link == "https://vimeo.com/1152708575/db9859a2aa?fl=sm&fe=ec"
-    assert result.video_link_recognized is True
-    assert any("can't play it here yet" in w for w in result.video_warnings)
-    # Metadata unaffected by the pointer path.
-    assert result.title == "City Council Meeting January 6, 2026"
-    assert result.jurisdiction == "City of Sebastopol, California"
+    # A real, playable embed now -- never the raw page URL, which would
+    # still break the player.
+    assert result.video_url == "https://player.vimeo.com/video/1152708575?h=db9859a2aa"
+    assert result.video_format == "vimeo"
+    assert result.video_link is None
+    # Delegation keeps the city's own page as the source and the
+    # best-effort framing -- generic_fallback's standing behavior for
+    # every delegated platform. (The real live page also contributes its
+    # own agenda PDF through this same path, confirmed live 2026-08-21;
+    # this fixture is a trimmed capture that doesn't carry one.)
+    assert result.source_url == SEBASTOPOL_EVENT_URL
+    assert result.best_effort is True
+    # Metadata comes from the delegated adapter, same as every other
+    # delegation (Swagit/Granicus) -- Vimeo's real video title and the
+    # meeting date parsed out of it.
+    assert result.title == "EDITED - City Council Meeting - January 6, 2026"
+    assert result.date == "2026-01-06"
 
 
 def test_video_pointer_ignores_vimeo_channel_links():
@@ -871,11 +921,19 @@ def test_video_pointer_iframe_tier_skips_junk_hosts():
 
 
 async def test_resolve_prefers_playable_video_over_pointer():
-    # The pointer is tier 5 -- a page with BOTH a playable m3u8 and a
-    # vimeo link must play the m3u8 and leave the pointer empty.
+    # The pointer is tier 5 -- a page with BOTH a playable m3u8 and an
+    # unrecognized video-shaped link must play the m3u8 and leave the
+    # pointer empty.
+    #
+    # This deliberately does NOT use a vimeo.com link any more: as of
+    # WO-29 (2026-08-21) Vimeo is a fully-supported platform, so a Vimeo
+    # link is caught two tiers earlier by the delegation tier, which is
+    # correct and is what the Sebastopol test above now asserts. Using
+    # one here would test tier 3, not the tier-4-beats-tier-5 ordering
+    # this test exists for.
     html = (
         '<video src="https://cdn.city.gov/videos/meeting.m3u8"></video>'
-        '<a href="https://vimeo.com/123456789">Watch</a>'
+        '<a href="https://player.example-vendor.com/embed/456">Watch</a>'
     )
     routes = {PAGE_URL: FakeResponse(status=200, text=html, url=PAGE_URL)}
 

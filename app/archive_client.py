@@ -336,7 +336,12 @@ async def delete_account_data(clerk_user_id: str) -> Optional[dict]:
         return None
 
 
-async def proxy_get(path: str, query_string: str, cookie_header: Optional[str] = None):
+async def proxy_get(
+    path: str,
+    query_string: str,
+    cookie_header: Optional[str] = None,
+    extra_headers: Optional[dict] = None,
+):
     """Forward a GET request to the Archive service and return the raw
     aiohttp response (caller streams it back to the client). Raises on
     connection failure/timeout -- app/main.py's proxy routes decide how to
@@ -348,6 +353,14 @@ async def proxy_get(path: str, query_string: str, cookie_header: Optional[str] =
     only the handful of call sites that render auth-aware content pass
     one (see app/main.py's proxy routes); static assets/sitemap/feed don't
     need it and don't send it.
+
+    extra_headers exists for conditional requests: /m/{slug}/card.jpg
+    (WO-28) is the first proxied route that returns a real ETag, and
+    without forwarding the client's If-None-Match the Archive can never
+    answer 304 through the public domain -- every Googlebot/social-scraper
+    refetch would re-stream the full image through two services. Kept as
+    an explicit opt-in per call site rather than a blanket
+    forward-everything, matching how cookie_header is already handled.
     """
     base = _base_url()
     if not base:
@@ -357,10 +370,12 @@ async def proxy_get(path: str, query_string: str, cookie_header: Optional[str] =
     if query_string:
         url = f"{url}?{query_string}"
 
-    headers = {"Cookie": cookie_header} if cookie_header else None
+    headers = dict(extra_headers or {})
+    if cookie_header:
+        headers["Cookie"] = cookie_header
     session = aiohttp.ClientSession(timeout=PROXY_TIMEOUT)
     try:
-        response = await session.get(url, headers=headers)
+        response = await session.get(url, headers=headers or None)
     except Exception:
         # session.get() itself can raise (timeout, connection reset, DNS
         # failure) before headers ever come back -- if we don't close the

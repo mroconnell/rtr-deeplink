@@ -161,9 +161,17 @@ here.
   Philadelphia's channel titles use numeric dates with a two-digit year
   ("Committee on Finance 06-4-25") and split long meetings across
   "(Part 1)/(Part 2)" videos -- both handled, see `BACKLOG_DONE.md`.
-- **El Paso, TX** (`elpasotexas.gov/videos`) -- each government body gets
+- ~~**El Paso, TX** (`elpasotexas.gov/videos`) -- each government body gets
   its own Vimeo landing page rather than one consistent embed pattern;
-  no adapter attempted yet.
+  no adapter attempted yet.~~ **Mostly closed 2026-08-21 (WO-29)**: all
+  13 of El Paso's per-body Vimeo showcases now resolve (a pick-list of
+  that body's real meetings, each playable and deep-linkable). What's
+  still missing is an adapter for the `elpasotexas.gov/videos` index
+  itself, so a user has to paste a specific showcase rather than the
+  city's own page -- see the fuller El Paso entry later in this file.
+  **Chicago, IL is fully closed by the same PR** (new
+  `app/platforms/chicago_elms.py`; it was tracked in its own entry, now
+  in `BACKLOG_DONE.md`, rather than as a row here).
 - **Portland, OR** (`portland.gov/council/agenda/...`) -- not supported,
   needs real adapter work against Portland's own agenda-page structure.
 - **Tucson, AZ** ("Mayor and Council," Hyland-hosted at
@@ -473,24 +481,30 @@ else; do whenever convenient, no particular order.
   dashboard.** `SENTRY_DSN` is live and set on all three services, but
   nobody has forced a real exception and watched it land in Sentry's UI
   — WO-7's own stated acceptance criterion, never run.
-- **[HUMAN] `ALERT_WEBHOOK_URL` repo secret** (Slack/Discord incoming webhook,
-  shared by all three cron workflows: daily-report, send-search-alerts,
-  adapter-canary) — optional, still unset. Without it, a workflow failure
-  still surfaces via GitHub's own failed-scheduled-workflow email, so
-  this is a nice-to-have, not a real gap. **One concrete missed alert on
-  file now, though** (checked 2026-08-21 while doing WO-26): the adapter
-  canary's only failure in its visible run history — run 32155218602,
-  2026-08-18 — logged `19/20 platforms OK` / `FAIL aurora: resolve
-  returned no real content`, then `##[warning]Adapter canary failed and
-  ALERT_WEBHOOK_URL isn't set`. Nothing sent anywhere. It passed again on
-  08-19 with no code change, so it was almost certainly a transient
-  auroratv.org blip rather than an adapter regression — but nobody looked
-  at the time, which is exactly the outcome the webhook exists to prevent:
-  the one real signal the canary has ever produced went to nobody, and the
-  "was it transient or real?" question could only be answered three days
-  late, from logs. That turns this from an abstract nice-to-have into a
-  known, already-realized gap — still `[HUMAN]`-only, since the secret
-  can't be set from a Claude Code session.
+- **`ALERT_WEBHOOK_URL` repo secret — DECLINED 2026-08-21, deliberately.
+  Don't re-raise this as an open gap.** Ryan's call, stated directly: he
+  doesn't use Slack or Discord, so a webhook that posts into a channel
+  nobody watches adds nothing over GitHub's own failed-scheduled-workflow
+  email, which already reaches him. The `if: failure()` step in all three
+  cron workflows (daily-report, send-search-alerts, adapter-canary) stays
+  as-is — it no-ops with a `::warning::` when the secret is unset, which
+  is the intended behavior, not a defect.
+
+  Recorded because the evidence for it looks stronger than it is, and a
+  future session will likely rediscover it and want to "fix" it: the
+  adapter canary's only failure in its visible run history (run
+  32155218602, 2026-08-18) logged `19/20 platforms OK` / `FAIL aurora:
+  resolve returned no real content`, then `##[warning]Adapter canary
+  failed and ALERT_WEBHOOK_URL isn't set`. It passed again 08-19 with no
+  code change — a transient auroratv.org blip. Note what actually
+  happened there: GitHub's email *did* fire, and the failure *was*
+  diagnosable from logs afterward. The webhook would have changed the
+  delivery channel, not the outcome.
+
+  **If email alerting is ever genuinely wanted**, the honest answer is
+  it'd mean wiring Resend credentials into GitHub Actions purely to
+  duplicate a notification GitHub already sends — not worth it. Revisit
+  only if Ryan starts using a chat tool day-to-day.
 - **[HUMAN] Confirm Render's health-check gate actually fails a deploy** when
   `/api/health` (resolver or Archive) reports unhealthy (WO-6) — the 503
   logic is unit-tested, but nobody has watched a real Render deploy
@@ -1058,53 +1072,50 @@ anything) to build against it.
   the way archive's is, and a second CI `alembic check` step with
   `working-directory: app` (verified passing locally — the models' only
   post-baseline column, `jurisdiction_confidence`, is covered by
-  `a9207c0eb761`). The `render.yaml` `preDeployCommand` is written but
-  **must not merge before the stamp below** — see that PR's separate,
-  clearly-marked commit.
+  `a9207c0eb761`).
 
-  **What's still open — [HUMAN] one shell step, Ryan-gated:** `app/`'s
-  Alembic history (`app/alembic/`, 2 revisions) has still never been
-  stamped in production, so `preDeployCommand: cd app && alembic upgrade
-  head` would fail on its first run (baseline `CREATE TABLE`s against
-  tables that already exist — the brief's "step 3 before step 2"
-  warning). **The precise runbook is now in `app/alembic/README.md`
-  ("The runbook") — follow it rather than a one-line recipe**, because
-  the answer genuinely branches. Two corrections to what this entry
-  previously said:
+  **CLOSED 2026-08-21 — and the blocker turned out not to exist.** This
+  entry spent ~11 days asserting that `app/`'s Alembic history "has never
+  been stamped in production," making a one-time manual `alembic stamp`
+  on the Render shell the gate for `preDeployCommand`. The first real
+  call to the brand-new `GET /admin/schema-info` disproved it outright:
 
-  - **Stamp the literal revision `a9207c0eb761`, never `head`.** This
-    entry (and `render.yaml`'s comment) used to say `alembic stamp
-    head`, correct when written 2026-08-10 because the baseline *was*
-    head — then `a9207c0eb761` landed 08-15 and silently invalidated it.
-    Stamping `head` now would claim production has
-    `jurisdiction_confidence` whether or not it does: the exact shape of
-    the 2026-08-09 Archive incident (`archive/alembic/README.md`, "'head'
-    isn't a fixed name").
-  - **Don't "expect empty" from `alembic current`** — a 2026-08-11
-    `information_schema` query (`BACKLOG_DONE.md`) found an
-    `alembic_version` table already present on the resolver's Postgres.
-    Whether it holds a row is unknown. Read the real output.
+  ```
+  alembic_version: a9207c0eb761      # already at head
+  schema_matches_models: true
+  mismatched_tables: []
+  jurisdiction_confidence present:  true
+  ```
 
-  **First thing to curl, and how to read it:** `GET /admin/schema-info`
-  with the admin token answers both unknowns at once — whether
-  `actual_columns.meeting_resolutions` contains `jurisdiction_confidence`,
-  and what `alembic_version` really holds. **If that column turns out to
-  be missing, that's a live silent-degradation bug, not a migration
-  chore:** `crud.log_resolution()` sets it on every insert and
-  `app/main.py` only ever calls it through `safe()`, which swallows the
-  exception — so every reporting-log row (and the resolve cache reading
-  off that table) would have been failing to write since 2026-08-15,
-  invisibly, and `/admin/stats` would be 503ing too (`get_stats()` does
-  `select(MeetingResolution)`, full entity). A cleanly-responding
-  `/admin/stats` is decent evidence the column *is* there; the endpoint
-  is the direct confirmation.
+  Production was already stamped, at head, with the real column present.
+  Somebody stamped it and never wrote it down. `/admin/stats` returning
+  200 independently confirms the silent-degradation scenario this entry
+  warned about (`crud.log_resolution()` failing invisibly inside `safe()`
+  since 2026-08-15) **did not happen**.
 
-  Until the stamp happens, an altered resolver table still needs a
-  hand-run migration — but note a new resolver *table* no longer appears
-  on its own now that `create_all()` is Postgres-gated. Also still true:
-  `scripts/backfill_search_corpus.py`-style one-time backfills remain
-  manual — prefer generated columns (the `search_tsv` pattern) so
-  there's nothing to backfill.
+  So `preDeployCommand: cd app && alembic upgrade head` was safe all
+  along and is now merged for the resolver service — both services now
+  have the full WO-10 guarantee (CI `alembic check` blocks a missing
+  migration before merge; migrations run before the new build serves).
+
+  **The transferable lesson, worth more than the Alembic detail:** this
+  doc asserted a fact about production that nothing in the repo could
+  verify, and two separate sessions came close to opening a Render shell
+  to run a destructive-ish command on that premise. A single read-only
+  endpoint answered it in one `curl`. **When a doc claims something about
+  production state, build the thing that can check it before acting on
+  the claim.** The endpoint cost about an hour; the shell session it
+  replaced was the risky part.
+
+  **If this history ever does need stamping**, name the literal revision
+  (`a9207c0eb761` today), never `head` — `head` was the baseline when
+  older docs said "stamp head", `a9207c0eb761` landed 08-15, and that
+  silently turned the advice into the 2026-08-09 Archive incident's exact
+  shape. `app/alembic/README.md`'s runbook has the decision table.
+
+  Still true, unrelated to the above: `scripts/backfill_search_corpus.py`-style
+  one-time backfills remain manual — prefer generated columns (the
+  `search_tsv` pattern) so there's nothing to backfill.
 
 - **[HUMAN] Search Console "Page indexed without content" (alert 2026-08-17)
   is still genuinely unexplained — and specifically NOT explained by
@@ -1698,32 +1709,67 @@ anything) to build against it.
   through to the generic failure message. Both now check `res.status ===
   429` explicitly first and show real rate-limit copy instead.
 
+- **[HUMAN] Confirm `ffmpeg` really is on the Archive service, and warm
+  the ~1200 existing pages' meeting cards (WO-28 residual, 2026-08-21).**
+  Card extraction runs Archive-side, which is where the page, the DB and
+  the route are — but the Archive is a plain `runtime: python` service
+  that shelled out to no binary at all until this shipped. The
+  *assumption* is that Render's python buildpack ships `ffmpeg` there
+  just as it was confirmed to ship `ffprobe` on the resolver
+  (render.yaml's 2026-08-08 note); that is a reasonable inference, not a
+  verified fact. One command settles it after deploy:
+
+  ```bash
+  curl "$ARCHIVE_BASE_URL/api/health"   # -> {"status":"ok","media_tools":{"ffmpeg":"...","ffprobe":"..."}}
+  ```
+
+  * `"ffmpeg": null` means the fallback architecture is needed: extract
+    resolver-side (where the binary is confirmed) and ship the bytes with
+    the ingest payload. Nothing is broken in the meantime — those pages
+    just keep rendering with no `og:image`, exactly where they were
+    before WO-28.
+  * A real version string means the path works, and the second half
+    applies: new pages warm at ingest and older ones warm on first view,
+    but the ~1200 already archived are best warmed deliberately —
+    `POST /internal/thumbnails/backfill?limit=25&dry_run=false`, run
+    repeatedly (small batches on purpose: each item is one `ffprobe` plus
+    one `ffmpeg` against a government CDN).
+
+- **[IMPROVEMENT-ROUND] A generated, branded share card would beat a raw
+  video frame (WO-28 residual).** The extracted frame is a real, large
+  improvement over no image at all, but it carries no jurisdiction, no
+  meeting title, and no Red Tape Recordings identity — a reader scrolling
+  Bluesky sees an anonymous council dais. The stronger unit is a
+  composited card (frame as background, jurisdiction + title + date +
+  logo overlaid), which is also what `CLAUDE_BACKLOG.md`'s "Quote-clip
+  sharing" idea would need. Deliberately not built here: it needs an
+  image-compositing library (Pillow, or ffmpeg's `drawtext` with a
+  bundled font) that this repo does not currently have, and font
+  rendering/wrapping quality is a real design problem rather than a small
+  addition. The storage, route, cache headers and targeting all carry
+  over unchanged if it happens.
+
 - **[IMPROVEMENT-ROUND] Google Search Console flagged 3 "Videos" structured-data issues
   site-wide (alert received 2026-08-12)**: missing `thumbnailUrl`
   (critical — blocks video rich-result eligibility), plus `uploadDate`
   reported as both an invalid datetime value and missing a timezone
   (non-critical). Both trace to the same `VideoObject` JSON-LD block in
   [meeting_page.html:37-66](archive/templates/meeting_page.html:37-66):
-  - ~~`thumbnailUrl` is omitted entirely~~ **Partially fixed 2026-08-14
-    — full detail in `BACKLOG_DONE.md`'s "VideoObject.thumbnailUrl +
-    Clip key moments" entry.** YouTube-backed pages (the free,
-    predictable `i.ytimg.com` slice) now emit `thumbnailUrl` plus
-    `og:image`/`twitter:card`, and pages with real agenda timestamps
-    also gained `Clip` "key moments" markup in the same pass. **Still
-    open**: direct mp4/m3u8 pages — the majority of the Archive — still
-    have no thumbnail; that needs real `ffmpeg` frame extraction (not a
-    new dependency category, `ffprobe` is already in the
-    transcription-feasibility pipeline) and somewhere to host the
-    extracted frames, which is a real new decision (this app hosts no
-    images today). Re-check Search Console once YouTube-backed pages
-    are re-crawled to confirm the critical flag actually clears there.
-    **Update 2026-08-21, from a real Search Console "Videos" enhancement
-    report screenshot**: "No thumbnail URL provided" is now down to just
-    1 video site-wide — but this is NOT confirmation the mp4/m3u8 gap
-    above is closed (it isn't; `archive/utils/video_thumbnail.py` still
-    only handles YouTube-backed pages, unchanged since the 2026-08-14
-    fix). The same report shows a much larger, likely-explanatory issue
-    instead — see the new entry immediately below.
+  - ~~`thumbnailUrl` is omitted entirely~~ **Fixed in two passes —
+    full detail in `BACKLOG_DONE.md`.** 2026-08-14 ("VideoObject.
+    thumbnailUrl + Clip key moments"): YouTube-backed pages emit
+    `thumbnailUrl` plus `og:image`/`twitter:card` from the free,
+    predictable `i.ytimg.com` URL, and pages with real agenda timestamps
+    gained `Clip` "key moments" markup in the same pass. 2026-08-21
+    (WO-28, "Meeting card images"): direct mp4/m3u8 pages — the majority
+    of the Archive — now get a real `ffmpeg`-extracted frame from the
+    meeting's own video, stored in a new `meeting_page_thumbnails` table
+    and served from `GET /m/{slug}/card.jpg`, targeted at the shared
+    `?t=` moment when there is one. **[HUMAN] Still to confirm**: a
+    Search Console re-crawl actually clearing the critical flag. Nothing
+    in this repo can verify that — re-run URL Inspection on the San
+    Carlos page (the one whose 2026-08-21 inspection reported this as
+    its *only* critical issue) once it has been recrawled.
   - ~~`uploadDate` missing a timezone~~ **Fixed 2026-08-14 — full detail
     in `BACKLOG_DONE.md`'s "Wave 1" entry.** Now emits
     `date + "T00:00:00Z"`.
@@ -1757,6 +1803,16 @@ anything) to build against it.
     `BACKLOG_DONE.md`'s "Wave 1" entry.** LIMS's `_flatten_timestamps()`
     now sets each item's `end` to the next item's `start`, matching
     Granicus/IQM2's convention, instead of always equaling `start`.
+  - ~~12 more `Missing field endOffset` warnings on the real San Carlos
+    IQM2 page (2026-08-21 URL Inspection)~~ **Fixed 2026-08-21 (WO-28) —
+    full detail in `BACKLOG_DONE.md`.** A different root cause from the
+    LIMS one above: IQM2 gave a whole consent-calendar block a single
+    timestamp, so twelve consecutive items all carry `start == 982` with
+    `end == start`. `archive/utils/clips.py`'s `clip_entries()` now uses
+    the next *distinct* start (1056) as the end for a run like that —
+    which is both warning-free and more accurate, since those items
+    genuinely do span 982→1056 collectively. Verified on the real
+    payload: 12 missing → 1 (the genuinely open-ended final item).
 
 - **[JUST-DO-IT] Search Console "Video isn't on a watch page" (947 videos
   and growing, from 23 in an earlier screenshot the same session) —
@@ -2102,152 +2158,114 @@ that added this reorg, for which ones are new).
 
 ### Needs a human decision
 
-- **[HUMAN] Chicago's City Clerk ELMS (`chicityclerkelms.chicago.gov`) is a real,
-  strong dedicated-adapter candidate — found 2026-08-10 while confirming
-  the generic fallback correctly caught it (it did, as an "unsupported
-  gate," per user testing).** The video (a real Vimeo link) never showed
-  up because the page injects it client-side from a separate API call
-  (`data.videoLink`) — the raw server HTML has zero mention of "vimeo,"
-  confirmed directly (a real curl of the meeting page, then grepping for
-  the string, found nothing; the JS embedding it references
-  `data.videoLink.forEach(...)`). Traced the real API the JS calls:
-  `https://api.chicityclerkelms.chicago.gov/meeting-agenda/{meetingId}`
-  — a genuine public, unauthenticated, no-headless-browser-needed JSON
-  endpoint (confirmed live via plain `curl`, real response), returning:
-  `videoLink` (the real Vimeo URL), `agenda.groups[].items[]` (real
-  structured items — matter title, action taken, vote type — but **no
-  timestamps**, so still not clickable-to-a-moment agenda_items the way
-  LIMS's are), `files[]` (real PDF attachments including a real
-  "Agenda"-typed one), `date`, `body` (jurisdiction), `attendance`.
+- ~~**[HUMAN] Chicago's City Clerk ELMS (`chicityclerkelms.chicago.gov`)
+  is a real, strong dedicated-adapter candidate**~~ **Built 2026-08-21
+  (WO-29) — full detail, including the whole Vimeo-playback
+  investigation it was blocked behind, in `BACKLOG_DONE.md`.** New
+  `app/platforms/chicago_elms.py` + `app/platforms/vimeo.py`, both
+  registered, both canaried, both fixture-backed. Chicago meetings now
+  resolve with a real embedded, seekable, deep-linkable video plus real
+  title/date/jurisdiction and the meeting's own agenda PDF.
 
-  **Real, two-part reason this isn't a quick fix**: (1) building
-  `chicago_elms.py` itself is straightforward (a plain `aiohttp` GET
-  against that API, same shape as LIMS's JSON-endpoint step, no
-  Cloudflare/headless-browser complication found so far); but (2) this
-  app has **zero existing Vimeo playback support** — no adapter, and no
-  frontend logic for it at all. YouTube's iframe-embed + Player API
-  integration was itself a real, distinct piece of work (see
-  `app/static/player.js`'s `initYouTubeVideo()`); Vimeo would need its
-  own equivalent (Vimeo's own Player SDK/iframe embed — a showcase URL
-  like `vimeo.com/showcase/citycouncil?video={id}` is not a raw file any
-  more than a YouTube link is). Building the adapter without the
-  playback piece would just produce a `video_url` nothing can actually
-  embed. Whether Vimeo captions are even fetchable at all is also
-  unconfirmed — no positive example checked yet, same "don't claim a
-  caption path works without a positive example" convention as every
-  other adapter here.
+  **Three real residual gaps split back out below rather than marked
+  done in place**: Vimeo captions + on-demand-audio (one blocker, not
+  two), Chicago's untimestamped agenda item text, and Vimeo's usually-
+  absent jurisdiction.
 
-  **Update 2026-08-11 (Wave 2 survey): the API/data half is now fully
-  unblocked with three fresh confirmed real examples**, meetingId
-  confirmed to be a GUID (not a plain integer as the shape above might
-  imply) — `?meetingId=9DB35AFF-9811-ED11-82E3-001DD80682F6` (2020-09-09
-  City Council), `?meetingId=DCB45AFF-9811-ED11-82E3-001DD80682F6`
-  (2021-10-14 City Council), `?meetingId=0852FF86-2DF4-ED11-A7C6-001DD806AE67`
-  (2023-05-15 City Council) — all three confirmed via the real API to
-  have a populated `videoLink` (Vimeo). **`transcriptLink` is present in
-  the API schema but empty on all three samples** — still no positive
-  caption example *from Chicago's own ELMS API* for this platform,
-  consistent with the "don't claim a caption path works without a
-  positive example" note above. Part (2), Vimeo playback support, is
-  unchanged and still the real blocker.
+- **Vimeo captions and on-demand Whisper audio are the same single
+  blocker, and it is still unsolved (residual of WO-29, 2026-08-21 — see
+  `BACKLOG_DONE.md` for the full context).** Real, populated English
+  WebVTT genuinely exists on at least one of these meetings — Salisbury
+  NC's real 7/21/2026 council meeting (`vimeo.com/1212025580`),
+  confirmed via a real browser, served from a signed
+  `captions.vimeo.com/captions/{id}.vtt?expires=...&sig=...` URL. It is
+  not reachable server-side: that URL appears only inside
+  `player.vimeo.com/video/{id}/config`, which returns a plain **403** to
+  every non-browser client, and the same signed response is the only
+  place the real progressive media file lives — which is why "fetch
+  captions" and "extract audio for Whisper" are one problem, not two.
+  `vimeo.com/{id}` also sometimes serves a real Cloudflare "Verify you
+  are human" challenge (hit live on Spokane WA), which this app must
+  never attempt to auto-solve. So the shipped Vimeo adapter is
+  deliberately video-only, with a `transcript_warnings` line that says
+  so and points the viewer at the player's own CC button. The plausible
+  unlock is the same real-headless-browser approach `headless_browser.py`
+  already built for Minneapolis LIMS/SLC (render the player, capture the
+  signed URL it requests) — untried here, and not guaranteed to work
+  every time if the Cloudflare challenge is probabilistic. Note the
+  Player SDK's `getTextTracks()` *does* report a real track list from the
+  browser (confirmed live on Salisbury) and a `cuechange` event exists,
+  but neither yields a whole transcript without playing the entire video
+  — not a shortcut around this.
 
-  **Update 2026-08-11 (part 2): "are Vimeo captions fetchable at all"
-  is now answered — yes, confirmed live — via a different city, not
-  Chicago's own ELMS instance.** Chicago is also not a one-off: at least
-  four other real US city council channels host meeting video directly
-  on Vimeo, confirmed live via `vimeo.com/{account}` channel pages —
-  **Salisbury, NC** (`vimeo.com/channels/coscouncil`), **Rockland, ME**
-  (`vimeo.com/rocklandmaine`), **Spokane, WA**
-  (`vimeo.com/spokanecitycouncil`), **Corvallis, OR**
-  (`vimeo.com/cityofcorvallis`), and **Wilson, NC** (`vimeo.com/wilsonnc`)
-  — so a general Vimeo playback+caption adapter would have more than one
-  beneficiary. Salisbury's real 7/21/2026 meeting
-  (`vimeo.com/1212025580`) has a live "CC/subtitles" toggle in the
-  player; toggling it (confirmed via real browser, not a plain HTTP
-  client — see below) triggers a request to a signed
-  `captions.vimeo.com/captions/{id}.vtt?expires=...&sig=...` URL that
-  returns **real, populated, correctly-timed English WEBVTT** — genuine
-  per-cue dialogue ("I'll go ahead and call the special meeting to order
-  on July 21st, 2026...."), not placeholder or blank content.
+- **Chicago ELMS's 473 real agenda items have nowhere honest to go
+  (residual of WO-29, 2026-08-21).** `agenda.groups[].items[]` from
+  Chicago's own API is genuinely rich — matter title, matter type,
+  record number, action taken, vote type — and carries **no time offsets
+  of any kind**, confirmed directly against the real fixture (there's a
+  test asserting it). Unlike LIMS/Hyland/IQM2 there's nothing to join
+  against a video position, so populating `agenda_items` would mean
+  inventing timestamps and shipping 473 rows that all seek to 0:00. The
+  adapter surfaces the real agenda PDF as `agenda_link` instead, so
+  Chicago pages have a working agenda *link* but no clickable agenda
+  *items*. Making that item text visible would need a new
+  untimestamped-agenda-text field on `ResolvedMeeting`, a matching
+  Archive column + Alembic migration, and template work on both
+  surfaces — a real, scoped follow-up, deliberately not smuggled into
+  WO-29. Worth checking first whether any other already-supported
+  platform has the same shape (rich agenda text, zero timestamps), since
+  one shared field would then pay for itself more than once.
 
-  **Real caveat this surfaces**: that signed caption URL is only
-  discoverable through the player's own client-side config — a plain
-  `aiohttp`/WebFetch request to `player.vimeo.com/video/{id}/config`
-  (where that URL would normally be found) returns a **403**, and
-  `vimeo.com/{id}` itself sometimes serves a real Cloudflare "Verify you
-  are human" checkbox challenge (hit live on the Spokane sample this
-  same check) — this app must never attempt to auto-solve that. So
-  fetching Vimeo captions server-side, whenever a real example is
-  eventually built against, likely needs the same real-headless-browser
-  approach `headless_browser.py` already built for Minneapolis LIMS/SLC
-  (a real Chromium render to let the player load and capture the signed
-  URL it requests), not a plain HTTP client the way Granicus/Swagit/
-  CivicClerk captions are fetched today — and even then, may not work
-  100% of the time if the Cloudflare challenge is probabilistic rather
-  than consistent. Unconfirmed whether Chicago's own ELMS-embedded Vimeo
-  player behaves the same way as these channels' pages, or whether the
-  showcase-embed shape it uses (`vimeo.com/showcase/.../video/...`)
-  differs.
+- **Viebit has the same two structural mislabels Vimeo just got fixed for
+  — noticed in passing during WO-29, not touched (2026-08-21).** Viebit's
+  `video_url` is an iframe embed page (`/embed/vod?v={id}&t=`), exactly
+  like YouTube's and Vimeo's, but two places still treat it as a real
+  media file: (1) `archive/templates/meeting_page.html`'s `VideoObject`
+  JSON-LD puts it under `contentUrl` rather than `embedUrl` (WO-29
+  changed the condition to `video_format in ("youtube", "vimeo")`;
+  `viebit` deliberately wasn't added, since that would change how
+  existing live pages present themselves to Google and deserves its own
+  check against Search Console rather than riding along), and (2)
+  `archive/db/crud.py`'s `audio_transcript_possible` column on
+  `/coverage` excludes `youtube` and now `vimeo`, but still claims
+  on-demand Whisper is possible for a Viebit row. Neither is a new
+  regression — both predate WO-29 — and (2) at least is cheap and safe to
+  fix. Worth confirming first whether a Viebit `master.m3u8` really is
+  unprobeable from this app: `viebit.py`'s own docstring says the raw
+  stream 403s on a CDN Referer/Origin check, which would make the column
+  wrong today.
 
-  **Update 2026-08-12: a real Chicago-native showcase-shaped example is
-  now in hand, exactly the case flagged as unconfirmed just above** —
-  user tried
-  [chicityclerkelms.chicago.gov/Meeting/?meetingId=B2E99313-3D76-F111-AB0C-001DD80BE073](https://chicityclerkelms.chicago.gov/Meeting/?meetingId=B2E99313-3D76-F111-AB0C-001DD80BE073)
-  directly, expecting the resolver to find, embed, caption, and offer
-  AI-transcription on its Vimeo video. Confirmed via the same real API:
-  `videoLink: ["https://vimeo.com/showcase/8925576?video=1210310337"]`
-  — real "Committee on Budget and Government Operations" meeting,
-  2026-07-16, `transcriptLink` empty (`[""]`) same as every other sample
-  so far. This *is* the `vimeo.com/showcase/.../video/...` shape the
-  entry above hadn't tested yet — but only the data side; whether its
-  caption-fetching (signed URL + possible Cloudflare challenge) behaves
-  the same as the channel-page samples above is **still unconfirmed**,
-  same real-browser check needed, not attempted in this pass.
+- **`generic_fallback.py`'s best-effort "we think the video is here"
+  line shows the raw embed URL, which is now sometimes an ugly one
+  (2026-08-21, WO-29).** On Sebastopol CA's page the line renders as "We
+  think the video is here: `https://player.vimeo.com/video/1152708575?h=db9859a2aa`"
+  — a bare player page, technically correct and clickable but not the
+  human `vimeo.com/{id}` URL a visitor would expect, and visually noisy
+  next to the working embedded player right below it. Pre-existing
+  behavior for every delegated best-effort result (a Swagit delegation
+  shows its Swagit URL the same way), just newly visible now that Vimeo
+  delegations exist. Confirmed live in-browser. Small fix, deliberately
+  not bundled into WO-29: either show the delegated adapter's own
+  human-facing URL, or drop the pointer line entirely when a real
+  playable `video_url` was found.
 
-  **Clarifying the user's third ask ("use it for... AI transcription
-  requests") — this is not a separate blocker from the captions one,
-  it's the same one.** On-demand Whisper transcription needs a real
-  probeable audio/video *file* URL (what `probe_duration()`/
-  `extract_chunk_audio()` work against for every other platform), and
-  Vimeo doesn't expose that any more directly than it exposes captions —
-  both live behind the same signed `player.vimeo.com/video/{id}/config`
-  response the entry above already found returns a plain **403** to a
-  non-browser request. So "embed the video" (needs a new Vimeo
-  player/iframe integration, `app/static/player.js` has none today) and
-  "captions + AI-transcription audio" (both need getting past the same
-  signed-config/Cloudflare wall) are two separate pieces of work, not
-  three — worth keeping that framing when this eventually gets built,
-  so the audio-extraction piece isn't accidentally re-investigated as if
-  it were a new, unrelated problem.
+- **A Vimeo-hosted meeting usually resolves with no jurisdiction at all
+  (residual of WO-29, 2026-08-21).** oEmbed's `author_name` is a Vimeo
+  *account* name, not a place — real values range from "City of
+  Sebastopol" (validates fine) through "CitySalisburyNC" /
+  "cityofcorvallis" (glued) to "COC", which is Chicago's and is
+  meaningless out of context. `vimeo.py` runs it through the shared
+  Census-validated `validated_label_extract()`, which correctly declines
+  rather than guessing — so most Vimeo-direct resolves carry
+  `jurisdiction = None`, which keeps those pages out of `/state/{slug}`
+  and `/j/{slug}` hubs. Wrappers that know their own jurisdiction
+  (Chicago ELMS sets "Chicago, IL"; Sebastopol's real city page is
+  reached through `generic_fallback.py`) are unaffected. The likely fix
+  is a glued-label pass like the one `suiteone.py`/`townhallstreams.py`
+  already share (wordninja split + trailing-state-code strip), applied to
+  the account name — not attempted this pass, and worth doing only
+  against several real account names at once, not one.
 
-  **Fourth confirmed example, same day**:
-  [?meetingId=DF5C52EA-0D6B-F111-A823-001DD8019941](https://chicityclerkelms.chicago.gov/Meeting/?meetingId=DF5C52EA-0D6B-F111-A823-001DD8019941)
-  → `videoLink: ["https://vimeo.com/showcase/citycouncil?video=1209979957"]`
-  — full "City Council" body this time (not a committee), and notably
-  the showcase identifier is a human slug (`citycouncil`) rather than
-  the numeric one (`8925576`) from the Budget committee example above —
-  confirms the `vimeo.com/showcase/{slug-or-id}?video={id}` shape holds
-  across different showcase-ID styles, not just one body's own naming.
-
-  **Update 2026-08-13: a fifth real example, and a third distinct URL
-  shape — user-confirmed at
-  [cityofsebastopol.gov/events/city-council-meeting-january-6-2026/](https://www.cityofsebastopol.gov/events/city-council-meeting-january-6-2026/).**
-  A plain top-level `vimeo.com/{id}/{privacy-hash}?fl=sm&fe=ec` link
-  (`https://vimeo.com/1152708575/db9859a2aa?fl=sm&fe=ec`) — different
-  from both the channel-page shape (Salisbury/Rockland/Spokane/
-  Corvallis/Wilson) and the showcase shape (Chicago ELMS). This is a
-  WordPress city-events page hit through `generic_fallback.py`, not a
-  dedicated adapter, and unlike Chicago's client-injected `videoLink`,
-  the Vimeo link here is server-rendered as a plain `<a href>` (confirmed
-  via WebFetch of the raw page) — so once general Vimeo playback support
-  exists, `generic_fallback.py`'s existing "any known-platform link on
-  the page" scan (`_try_delegate_to_known_platform()`) would likely pick
-  this one up for free, no page-specific work needed. Whether this
-  specific privacy-hash'd URL shape has a fetchable signed caption URL
-  the same way the channel-page samples did is unconfirmed — no
-  real-browser check attempted yet for this one. Same underlying blocker
-  as the rest of this entry: no Vimeo playback/caption support exists in
-  this app today.
 
 - ~~**[HUMAN] Phoenix's Legistar instance (`phoenix.legistar.com`) --
   root cause now confirmed structural, not one ambiguous sample**~~
@@ -2617,6 +2635,11 @@ that added this reorg, for which ones are new).
   in-browser.** Actual Vimeo *playback* (embedding + captions) is still
   the separate, bigger gap tracked in the Vimeo entry above — the
   pointer is the honest middle ground until that exists.
+  **Closed 2026-08-21 (WO-29): real Vimeo playback now exists, and this
+  page resolves through `_try_delegate_to_known_platform()` with a real
+  embedded, seekable video plus the page's own agenda PDF — exactly the
+  "for free, no page-specific work needed" outcome predicted here.
+  Live-verified in-browser, `?t=` deep link included.**
 
   **Re-checked live 2026-08-14 after a user report that jurisdiction
   "still doesn't grab" here — doesn't reproduce.** Live-replayed this
@@ -2681,16 +2704,33 @@ that added this reorg, for which ones are new).
   not a reverse-lookup of the Vimeo URL itself) looks like the more
   promising general pattern than reverse image/embed search.
 
-  **Still blocked on the same foundational gap already flagged for
-  Chicago ELMS above**: this app has zero Vimeo playback support today
-  (no adapter, no frontend player integration) — building real support
-  for any of this needs that piece regardless of how the specific video
-  gets found. A per-showcase video list (real titles/dates per meeting)
-  wasn't confirmed either — `vimeo.com/showcase/{id}` pages are
-  JS-rendered (confirmed: `curl` returns only the showcase's own title,
-  no individual video data), so listing real per-meeting entries would
-  need either Vimeo's own API or a headless-browser fetch, not yet
-  checked which.
+  ~~**Still blocked on the same foundational gap already flagged for
+  Chicago ELMS above**: this app has zero Vimeo playback support today~~
+  **Unblocked 2026-08-21 (WO-29) — see `BACKLOG_DONE.md`.** Every one of
+  El Paso's 13 showcases now resolves: pasting `vimeo.com/showcase/crrma`
+  returns a real pick-list of that body's meetings, and picking one plays
+  it with working deep links.
+
+  **Two corrections to what this entry claimed, both found by actually
+  checking rather than re-reading it**: (1) `vimeo.com/showcase/{id}`
+  pages are **not** JS-rendered in the way that mattered — the *visible*
+  markup is, but the raw HTML embeds a real, server-rendered JSON-LD
+  `ItemList` of `VideoObject`s carrying each meeting's real name, URL and
+  upload date. That's exactly the per-showcase video list this entry said
+  "wasn't confirmed" and would need Vimeo's own API or a headless-browser
+  fetch to get; it needs neither, just a plain `curl` and a JSON-LD read.
+  (2) The same is true of channel pages (`vimeo.com/channels/{name}`),
+  confirmed live on Salisbury NC. A bare *user* page
+  (`vimeo.com/rocklandmaine`) genuinely IS client-rendered with zero video
+  ids in the raw HTML — that part is real, and is why the adapter
+  deliberately doesn't claim that shape.
+
+  **Residual, still real**: `www.elpasotexas.gov/videos/` — the plain
+  server-rendered index linking out to all 13 showcases — has no adapter
+  of its own, so pasting *that* URL still lands in `generic_fallback.py`
+  rather than producing a "pick a body, then pick a meeting" flow; a user
+  has to know to paste a specific showcase. Low priority now that the
+  showcases themselves work, but it's the honest remaining edge here.
 
 - **[LATER] Legistar's own MeetingDetail.aspx page carries real metadata that
   `LegistarAssetFinder` never scrapes at all — confirmed live 2026-08-12
@@ -3346,24 +3386,23 @@ that added this reorg, for which ones are new).
   destinyhosted-linked agenda) is found — check the sample sheet or a
   fresh dotgov/CDX pass first.
 
-- **[LATER] Vimeo's real-world prevalence among small local governments is
-  now quantified for the first time — worth deciding if the existing
-  pointer-only handling is enough (2026-08-18).** Not an "add support"
-  gap the way Castus is: Vimeo is already recognized, but only via
-  `generic_fallback.py`'s curated pointer-link detector
-  (`_VIMEO_VIDEO_LINK_RE`, numeric video-id and `showcase/` links only) —
-  not in `detect_platform()`'s dispatch table, and with no Vimeo-native
-  caption/transcript extraction (unlike Granicus/Swagit/etc., which parse
-  the platform's own caption format). The same 200-row dotgov coverage-map
-  checkpoint found 6/200 Vimeo fingerprint hits — extrapolated (not
-  confirmed) to roughly 290 jurisdictions nationally at that rate, which
-  would make Vimeo a meaningfully larger population than several platforms
-  that already have dedicated adapters. Worth revisiting once the full
-  ~9,766-row run gives a real national count: if it holds up, decide
-  whether generic_fallback's pointer-only handling is sufficient at that
-  scale or whether native Vimeo caption support (if Vimeo's oEmbed/API
-  exposes captions — unconfirmed either way, no adapter work has looked at
-  this) is worth building.
+- ~~**[LATER] Vimeo's real-world prevalence among small local governments
+  is now quantified for the first time — worth deciding if the existing
+  pointer-only handling is enough (2026-08-18)**~~ **Decided and built
+  2026-08-21 (WO-29) — full detail in `BACKLOG_DONE.md`.** The answer was
+  no: pointer-only wasn't enough. Vimeo is now a real platform in
+  `detect_platform()` with its own adapter (`app/platforms/vimeo.py`) and
+  real frontend playback on both surfaces. The sizing signal that
+  justified it stands unchanged and still unconfirmed — 6/200 Vimeo
+  fingerprint hits in the dotgov coverage-map sample, extrapolated to
+  roughly 290 jurisdictions nationally — and is still worth replacing
+  with a real count once the full ~9,766-row run lands, now as a
+  measure of how much this adapter is worth rather than whether to build
+  it. **The one part of the original question that came back "no": Vimeo's
+  oEmbed does NOT expose captions** (it returns title/duration/
+  upload_date/author only), and nothing else reachable by a plain HTTP
+  client does either — see the separate captions/audio entry above for
+  the real wall and what might get past it.
 
 - **[LATER] Direct-to-YouTube may be the single largest video source among
   small US local governments, ahead of Granicus — a resolver-prioritization

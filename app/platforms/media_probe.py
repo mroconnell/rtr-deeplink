@@ -59,7 +59,12 @@ def realistic_headers(source_page_url: str) -> str:
     return f"User-Agent: {_DESKTOP_USER_AGENT}\r\nReferer: {origin}/\r\n"
 
 
-async def _run(*args: str) -> tuple[int, bytes, bytes]:
+async def _run(*args: str, timeout: Optional[float] = None) -> tuple[int, bytes, bytes]:
+    """`timeout` defaults to _SUBPROCESS_TIMEOUT_SECONDS (120s, sized for
+    pulling a real multi-minute audio chunk off a slow government CDN).
+    Callers doing something much smaller can pass their own -- see
+    extract_frame(), which grabs a single JPEG and has no business
+    holding a subprocess for two minutes."""
     proc = await asyncio.create_subprocess_exec(
         *args,
         stdin=asyncio.subprocess.DEVNULL,
@@ -68,13 +73,42 @@ async def _run(*args: str) -> tuple[int, bytes, bytes]:
     )
     try:
         stdout, stderr = await asyncio.wait_for(
-            proc.communicate(), timeout=_SUBPROCESS_TIMEOUT_SECONDS
+            proc.communicate(), timeout=timeout or _SUBPROCESS_TIMEOUT_SECONDS
         )
     except asyncio.TimeoutError:
         proc.kill()
         await proc.wait()
         raise
     return proc.returncode, stdout, stderr
+
+
+async def binary_versions() -> dict[str, Optional[str]]:
+    """`{"ffmpeg": "<first line of -version>" | None, "ffprobe": ...}` --
+    None meaning "not on PATH here".
+
+    Exists because "is ffmpeg actually installed on service X?" was a real
+    open question this repo could only answer for one of its three
+    services: render.yaml records a confirmed-live 2026-08-08 ffprobe
+    check on the *resolver*, and worker/Dockerfile installs ffmpeg
+    explicitly, but the Archive is a plain `runtime: python` service that
+    shelled out to no binary at all until the meeting-card frames landed.
+    Wired into the Archive's GET /api/health (archive/main.py) so one
+    curl against the deployed service settles it, rather than needing a
+    Render shell or an inference from "same buildpack, probably".
+    """
+    out: dict[str, Optional[str]] = {}
+    for binary in ("ffmpeg", "ffprobe"):
+        try:
+            returncode, stdout, _stderr = await _run(binary, "-version", timeout=10)
+        except (FileNotFoundError, asyncio.TimeoutError, OSError):
+            out[binary] = None
+            continue
+        if returncode != 0:
+            out[binary] = None
+            continue
+        first_line = stdout.decode(errors="replace").splitlines()[:1]
+        out[binary] = first_line[0].strip() if first_line else "present"
+    return out
 
 
 async def probe_duration(media_url: str, *, source_page_url: str) -> Optional[float]:
@@ -389,4 +423,106 @@ async def extract_chunk_audio(
                 start,
                 stderr2.decode(errors="replace")[:500],
             )
+    return True, None
+
+
+# A meeting-card frame is a social/OG image, not a still anyone studies:
+# 1280px wide is the largest size Twitter/Bluesky/Mastodon/Google actually
+# use for a large summary card, and JPEG quality 4 keeps a real 1280x720
+# council-chamber frame around 60-120KB -- small enough to live as bytes
+# in Postgres (see archive/db/models.py's MeetingPageThumbnail) without a
+# vendor object store.
+_FRAME_MAX_WIDTH = 1280
+_FRAME_JPEG_QUALITY = "4"
+# Deliberately far below _SUBPROCESS_TIMEOUT_SECONDS' 120s. With
+# input-side `-ss` this reads ~1-2MB before it has a frame; anything
+# still running at 45s is a stalled/rate-limited CDN, and the caller
+# (a background warm task behind a semaphore) is better off giving the
+# slot back than holding it for two minutes. Granicus timeouts are
+# routine here, not exceptional -- see BACKLOG.md.
+_FRAME_TIMEOUT_SECONDS = 45
+
+
+async def extract_frame(
+    media_url: str,
+    *,
+    offset: float,
+    source_page_url: str,
+    out_path: Path,
+) -> tuple[bool, Optional[str]]:
+    """Grab a single JPEG frame at `offset` seconds. Returns (True, None)
+    on success or (False, reason) on any failure -- never raises, since
+    every caller is a best-effort thumbnail warm whose correct response
+    to failure is "this page has no card yet," not an error.
+
+    **`-ss` before `-i` (input-side/fast seeking), deliberately.** Measured
+    in this repo against a real HLS source: reaching the 900s mark costs
+    ~1.6MB read input-side versus ~31.7MB for accurate output-side
+    seeking, because output-side decodes everything up to the target.
+    Fast seeking can land up to ~36s early on HLS (it snaps to the
+    nearest segment/keyframe), which is irrelevant for a thumbnail --
+    the targeting tiers in archive/utils/video_thumbnail.py are all
+    "somewhere in this stretch of the meeting," never a specific frame.
+
+    Same `-headers` treatment as every other function here: a bare
+    request to archive-stream.granicus.com returns 403 where a
+    browser-shaped one succeeds (see this module's own docstring).
+    """
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        returncode, _stdout, stderr = await _run(
+            "ffmpeg",
+            "-y",
+            "-headers",
+            realistic_headers(source_page_url),
+            "-ss",
+            str(max(0, int(offset))),
+            "-i",
+            media_url,
+            "-frames:v",
+            "1",
+            # Downscale wide sources, never upscale a small one: `-2`
+            # keeps the height even (required by the JPEG encoder's
+            # chroma subsampling) and preserves the aspect ratio.
+            "-vf",
+            f"scale='min({_FRAME_MAX_WIDTH},iw)':-2",
+            "-q:v",
+            _FRAME_JPEG_QUALITY,
+            "-an",
+            "-sn",
+            "-f",
+            "image2",
+            str(out_path),
+            timeout=_FRAME_TIMEOUT_SECONDS,
+        )
+    except FileNotFoundError:
+        logger.warning("ffmpeg not found extracting a frame from %s", media_url)
+        return False, "ffmpeg not found on PATH"
+    except asyncio.TimeoutError:
+        logger.warning(
+            "ffmpeg timed out extracting a frame from %s @ %ss", media_url, offset
+        )
+        return False, f"ffmpeg timed out after {_FRAME_TIMEOUT_SECONDS}s"
+    except OSError as exc:
+        return False, f"ffmpeg could not be started: {exc}"
+
+    if returncode != 0:
+        stderr_tail = stderr.decode(errors="replace")[-300:].strip()
+        logger.warning(
+            "ffmpeg frame extraction failed (%s) for %s @ %ss: %s",
+            returncode,
+            media_url,
+            offset,
+            stderr_tail,
+        )
+        return False, f"ffmpeg exited {returncode}: {stderr_tail}"
+    # A seek past the end of the stream is the one real failure ffmpeg
+    # reports as success: it exits 0 having written nothing at all. That
+    # is a normal outcome here (an offset derived from a duration the
+    # source lies about, or a `?t=` deep link past the end), so it has to
+    # be caught by looking at the file, not the exit code -- the same
+    # "exit code alone is not proof the output is usable" lesson
+    # extract_chunk_audio() above learned from a real Sentry occurrence.
+    if not (out_path.exists() and out_path.stat().st_size > 0):
+        return False, "ffmpeg reported success but wrote no frame (offset past end?)"
     return True, None

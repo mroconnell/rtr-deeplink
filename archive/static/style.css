@@ -494,6 +494,15 @@ video { width: 100%; height: 100%; display: block; }
   height: 100% !important;
 }
 
+/* Vimeo reuses .youtube-player-container's positioning/sizing (also a
+   <div> holding an iframe -- see meeting_page.js's initVimeoVideo() for
+   why that iframe is built in JS rather than server-rendered); this only
+   adds the border reset a hand-built iframe needs and YT.Player's own
+   generated one doesn't. */
+.vimeo-player-container iframe {
+  border: none;
+}
+
 /* Viebit's embed page is iframed directly (see viebit.py's module
    docstring) -- this element IS the iframe, unlike
    .youtube-player-container above, so the sizing rule applies straight

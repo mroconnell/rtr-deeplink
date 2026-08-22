@@ -44,7 +44,18 @@ def test_app_health_returns_503_when_db_unreachable(monkeypatch):
 def test_archive_health_ok_when_db_reachable():
     response = archive_client_.get("/api/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+    body = response.json()
+    assert body["status"] == "ok"
+    # media_tools (WO-28) reports whether ffmpeg/ffprobe are really on
+    # PATH *in this service* -- the Archive shells out to ffmpeg for
+    # meeting-card frames now, and nothing previously confirmed either
+    # binary was present here (render.yaml's confirmed-live check covers
+    # the resolver; worker/Dockerfile installs it explicitly for the
+    # worker). Both keys are always present; either value may legitimately
+    # be None, including on a dev machine without ffmpeg -- a missing
+    # binary must never fail this endpoint, since Render gates deploys on
+    # it and a service that merely can't make new thumbnails is healthy.
+    assert set(body["media_tools"]) == {"ffmpeg", "ffprobe"}
 
 
 def test_archive_health_returns_503_when_db_unreachable(monkeypatch):

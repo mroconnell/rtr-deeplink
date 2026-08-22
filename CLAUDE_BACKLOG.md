@@ -37,12 +37,16 @@ items).
   though: that tag shipped *inside* the thumbnail guard, so every
   non-YouTube page emitted none at all~~ — **fixed 2026-08-21 (WO-27),
   see `BACKLOG_DONE.md`**; every page now emits a card
-  (`summary_large_image` with an image, `summary` without). **Still
-  open, the original idea's real remainder**: mp4/m3u8
-  pages (the majority) still have no *image* to put on that card, and a
+  (`summary_large_image` with an image, `summary` without). ~~mp4/m3u8
+  pages (the majority) still have no *image* to put on that card~~ —
+  **shipped 2026-08-21 (WO-28)**: they now get a real `ffmpeg`-extracted
+  frame from the meeting's own video, targeted at the shared `?t=`
+  moment when there is one (see `BACKLOG_DONE.md`'s "Meeting card images"
+  entry). **Still open, the original idea's real remainder**: a
   *generated* branded share-card (jurisdiction + meeting title + maybe a
-  quoted transcript line) would beat a raw video frame even where the
-  thumbnail now exists — overlaps with "Quote-clip sharing" below.
+  quoted transcript line) would beat a raw video frame even now that one
+  exists — overlaps with "Quote-clip sharing" below, and promoted into
+  `BACKLOG.md` as a live entry.
 - **Quote-clip sharing.** Let a user select a transcript excerpt and
   generate a shareable image/card of that quote + timestamp + a link back
   to that exact moment — a much stronger viral unit than a bare link, and
@@ -329,8 +333,10 @@ built 2026-08-14~~ (per this file's convention: moved out once accepted —
 full build/verification detail in `BACKLOG_DONE.md`'s
 "VideoObject.thumbnailUrl + Clip key moments" entry). The residual —
 mp4/m3u8 pages still thumbnail-less pending real `ffmpeg` frame
-extraction — is tracked in `BACKLOG.md`'s Google Search Console entry,
-not here.
+extraction — was closed 2026-08-21 by WO-28 (`BACKLOG_DONE.md`'s
+"Meeting card images" entry); what's left of it in `BACKLOG.md`'s Google
+Search Console entry is a Search Console re-crawl confirmation, not
+unbuilt work.
 
 ~~**ISO-8601 timezone on `uploadDate`.**~~ Built 2026-08-14 alongside the
 other Wave 1 fixes — full detail in `BACKLOG_DONE.md`.

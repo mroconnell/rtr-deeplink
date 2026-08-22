@@ -1,17 +1,40 @@
-"""YouTube thumbnail derivation for meeting pages.
+"""Meeting-page thumbnails: the free YouTube one, and real ffmpeg frame
+extraction for everything else.
 
-YouTube-backed pages are the one video source with a free, predictable
-thumbnail (i.ytimg.com serves hqdefault.jpg for every video -- no API
-call, no image generation). That makes them the cheapest first slice of
-the missing-thumbnailUrl gap flagged by Google Search Console (see
-BACKLOG.md's "Videos structured-data issues" entry -- a missing
-thumbnailUrl blocks video rich-result eligibility outright). Direct
-mp4/m3u8 sources would need real ffmpeg frame extraction and are
-deliberately not handled here yet.
+**Two sources, in that order.** YouTube-backed pages have a free,
+predictable thumbnail (i.ytimg.com serves hqdefault.jpg for every video
+-- no API call, no extraction), and their stored `video_url` is an
+iframe-embed URL ffmpeg could not read anyway, so they keep using it.
+Every other page -- direct mp4/m3u8, i.e. the majority of the Archive --
+now gets a real frame pulled out of its own video by ffmpeg and stored as
+bytes (see archive/db/models.py's MeetingPageThumbnail), served by
+GET /m/{slug}/card.jpg.
+
+**Why this matters twice over.** A missing `thumbnailUrl` blocks video
+rich-result eligibility outright, and on 2026-08-21 a real Google Search
+Console URL Inspection of
+/m/san-carlos-ca-2017-11-13-city-council-regular-meeting reported it as
+the page's *only* remaining critical issue. Separately,
+archive/utils/social.py auto-posts new pages to Bluesky and Mastodon, and
+both build their link cards from OpenGraph tags -- so `og:image` coverage
+is now real social reach, not only SEO.
+
+**Which frame.** See target_offset_seconds() below -- the tiers exist
+because "a few seconds in" is the one obviously wrong answer for this
+content: government meeting recordings routinely open with several
+minutes of dead air behind a static placeholder card, so an early frame
+is frequently a literal blank slate.
 """
 
+import asyncio
+import hashlib
+import logging
 import re
+import tempfile
+from pathlib import Path
 from typing import Optional
+
+logger = logging.getLogger("rtr_archive.video_thumbnail")
 
 # Same 11-char video-id shape app/platforms/youtube.py matches, plus the
 # /embed/ URL youtube.py itself builds as MeetingPage.video_url.
@@ -36,3 +59,231 @@ def youtube_thumbnail_url(video_url: Optional[str]) -> Optional[str]:
     if not match:
         return None
     return f"https://i.ytimg.com/vi/{match.group(1)}/hqdefault.jpg"
+
+
+# --- Which frame to grab -------------------------------------------------
+
+# How far *after* a shared `?t=` to grab the frame. A share link points at
+# the moment someone cared about; the frame reads better a beat later,
+# inside the relevant content, rather than on the transition into it (a
+# gavel, a name being read, a slide still changing).
+TIMESTAMP_LEAD_SECONDS = 20
+# How far before the END of the video the default (no-timestamp) frame is
+# taken from. Ryan's call, and the reasoning is specific to this content:
+# meetings routinely open behind a static "meeting will begin shortly"
+# placeholder for several minutes, so any early offset is often a literal
+# blank slate, whereas near the end there is reliably a real chamber with
+# real people in it.
+TAIL_LEAD_SECONDS = 300
+# Below this, "300s before the end" stops meaning "near the end of a long
+# meeting" and starts meaning "somewhere near the beginning" (or a
+# negative offset outright), so the halfway tier takes over.
+MIN_DURATION_FOR_TAIL_SECONDS = 600
+# Used only when ffprobe could not tell us a duration at all (unreachable
+# source, a stream that reports none). "Halfway" is not computable without
+# one, so this is the honest floor: 10 minutes in, past the placeholder
+# dead air the tail rule exists to avoid, and safely inside any recording
+# long enough to be a real meeting (media_probe.MIN_PLAUSIBLE_MEETING_
+# SECONDS is 5 minutes).
+UNKNOWN_DURATION_OFFSET_SECONDS = 600
+# `?t=` comes from a public URL, so its distinct values are unbounded --
+# and each distinct resolved offset is one stored row and one ffmpeg run.
+# Quantizing the timestamp tier to 20s buckets collapses a crawl over many
+# near-identical deep links into a handful of real extractions. 20 rather
+# than a rounder 30 for an exact reason: bucket(t + 20) always lands in
+# (t, t + 20], i.e. never *before* the moment that was shared, which a
+# coarser bucket would sometimes do.
+OFFSET_BUCKET_SECONDS = 20
+
+
+def target_offset_seconds(
+    *, timestamp: Optional[int] = None, duration: Optional[float] = None
+) -> int:
+    """Which second of the video the card frame should come from.
+
+    Three tiers, in priority order:
+
+    1. **A shared timestamp wins.** `?t=N` on the share URL means someone
+       chose that moment, so the card shows `N + TIMESTAMP_LEAD_SECONDS`
+       (bucketed -- see OFFSET_BUCKET_SECONDS).
+    2. **Otherwise, near the end**: `duration - TAIL_LEAD_SECONDS`, for
+       the dead-air reason in TAIL_LEAD_SECONDS' comment.
+    3. **Otherwise halfway**, when the video is too short for (2) to mean
+       anything -- or a fixed UNKNOWN_DURATION_OFFSET_SECONDS when there
+       is no duration at all, since "halfway" is not a computable answer
+       without one.
+
+    Pure and total: always returns a non-negative int, never probes,
+    never raises. Frame-accuracy is irrelevant to all three tiers, which
+    is what lets the extractor use ffmpeg's fast input-side `-ss` (see
+    media_probe.extract_frame()).
+    """
+    if timestamp is not None and timestamp >= 0:
+        raw = int(timestamp) + TIMESTAMP_LEAD_SECONDS
+        return (raw // OFFSET_BUCKET_SECONDS) * OFFSET_BUCKET_SECONDS
+    if duration is not None and duration >= MIN_DURATION_FOR_TAIL_SECONDS:
+        return int(duration) - TAIL_LEAD_SECONDS
+    if duration is not None and duration > 0:
+        return int(duration // 2)
+    return UNKNOWN_DURATION_OFFSET_SECONDS
+
+
+def is_extractable(video_url: Optional[str], video_format: Optional[str]) -> bool:
+    """True when there is a real media file ffmpeg could open. False for a
+    page with no video, and for YouTube-backed pages -- their stored
+    `video_url` is an iframe-embed URL, not media, and they already have
+    a free i.ytimg.com thumbnail anyway (the same structural reasoning
+    app/main.py's _unreadable_media_message() uses to say a
+    YouTube-hosted meeting can't be self-transcribed)."""
+    if not video_url:
+        return False
+    if video_format == "youtube" or _YOUTUBE_ID_RE.search(video_url):
+        return False
+    return True
+
+
+# --- Extraction, off the render path ------------------------------------
+
+# Every extraction shells out to ffmpeg and pulls real bytes off a
+# government CDN. Two independent limits keep a crawl over the whole
+# archive from turning into a stampede on a single Render instance:
+# at most _MAX_CONCURRENT_EXTRACTIONS running at once, and at most
+# _MAX_QUEUED_EXTRACTIONS claimed-but-unfinished overall (beyond which
+# new requests are simply dropped -- a page without a card yet is a
+# normal, self-healing state, not an error worth queueing for).
+_MAX_CONCURRENT_EXTRACTIONS = 2
+_MAX_QUEUED_EXTRACTIONS = 40
+_extraction_semaphore: Optional[asyncio.Semaphore] = None
+# (page_id, offset) pairs currently claimed by a running task -- so N
+# simultaneous requests for the same uncached card cost one ffmpeg run,
+# not N.
+_inflight: set[tuple[int, int]] = set()
+# (page_id, offset) -> loop time of the last failure. A source that 403s,
+# times out, or has been taken down would otherwise be retried on every
+# single page render, forever.
+_failed_at: dict[tuple[int, int], float] = {}
+_FAILURE_COOLDOWN_SECONDS = 6 * 60 * 60
+# Hard ceiling on stored frames per page, so an adversarial (or merely
+# enthusiastic) crawl over many distinct `?t=` values can't grow one
+# page's storage without bound. Past this, per-timestamp requests fall
+# back to the page's default frame.
+MAX_FRAMES_PER_PAGE = 12
+
+
+def _semaphore() -> asyncio.Semaphore:
+    """Created lazily rather than at import: a module-level
+    asyncio.Semaphore binds to whatever loop is current when it is
+    constructed, and this module is imported by archive.main at import
+    time -- before uvicorn's loop exists."""
+    global _extraction_semaphore
+    if _extraction_semaphore is None:
+        _extraction_semaphore = asyncio.Semaphore(_MAX_CONCURRENT_EXTRACTIONS)
+    return _extraction_semaphore
+
+
+def _now() -> float:
+    return asyncio.get_running_loop().time()
+
+
+def _cooling_down(key: tuple[int, int]) -> bool:
+    failed_at = _failed_at.get(key)
+    if failed_at is None:
+        return False
+    if _now() - failed_at < _FAILURE_COOLDOWN_SECONDS:
+        return True
+    _failed_at.pop(key, None)
+    return False
+
+
+async def extract_and_store(
+    *,
+    page_id: int,
+    video_url: str,
+    source_page_url: str,
+    timestamp: Optional[int] = None,
+) -> Optional[int]:
+    """Grab one frame for `page_id` and store it. Returns the resolved
+    offset on success, None on any failure or skip.
+
+    **Never called from the template render path**, and that constraint
+    is the whole shape of this function: it can run ffprobe *and* ffmpeg
+    against a government CDN where a timeout is a routine outcome, not an
+    exceptional one (see BACKLOG.md). Every caller is a FastAPI
+    BackgroundTask (archive/main.py's ingest, meeting-page and card
+    routes) or the /internal/thumbnails/backfill sweep -- all of which
+    have already returned a response to the client by the time this runs.
+
+    With no `timestamp` this produces the page's *default* frame (tier 2
+    or 3), which needs the video's real duration and therefore one
+    ffprobe call. With a `timestamp` no probe is needed at all -- tier 1
+    is pure arithmetic on the shared offset, and an offset past the end
+    of the video simply fails the extraction and degrades to the already-
+    stored default frame, which is cheaper than probing up front to avoid.
+    """
+    from app.platforms import media_probe
+
+    from ..db import crud
+
+    if timestamp is None:
+        duration = await media_probe.probe_duration(
+            video_url, source_page_url=source_page_url
+        )
+        offset = target_offset_seconds(duration=duration)
+    else:
+        offset = target_offset_seconds(timestamp=timestamp)
+
+    key = (page_id, offset)
+    if key in _inflight or _cooling_down(key):
+        return None
+    if len(_inflight) >= _MAX_QUEUED_EXTRACTIONS:
+        logger.warning(
+            "Thumbnail extraction queue full (%s in flight) -- skipping page %s @ %ss",
+            len(_inflight),
+            page_id,
+            offset,
+        )
+        return None
+    _inflight.add(key)
+    try:
+        async with _semaphore():
+            # Re-check inside the semaphore: a task can wait here a while,
+            # and a concurrent request (or the ingest warm) may have
+            # stored this exact frame in the meantime.
+            if await crud.get_thumbnail_meta(page_id, offset_seconds=offset):
+                return offset
+            with tempfile.TemporaryDirectory(prefix="rtr-card-") as tmpdir:
+                out_path = Path(tmpdir) / "card.jpg"
+                ok, reason = await media_probe.extract_frame(
+                    video_url,
+                    offset=offset,
+                    source_page_url=source_page_url,
+                    out_path=out_path,
+                )
+                if not ok:
+                    logger.info(
+                        "No card frame for page %s @ %ss: %s", page_id, offset, reason
+                    )
+                    _failed_at[key] = _now()
+                    return None
+                data = out_path.read_bytes()
+        stored = await crud.store_thumbnail(
+            page_id,
+            offset_seconds=offset,
+            image_bytes=data,
+            etag=hashlib.sha256(data).hexdigest(),
+            is_default=timestamp is None,
+        )
+        if not stored:
+            return None
+        logger.info(
+            "Stored card frame for page %s @ %ss (%s bytes)", page_id, offset, len(data)
+        )
+        return offset
+    except Exception:
+        # A thumbnail is decoration. Nothing here may ever escape into a
+        # BackgroundTask and take down a request's response cycle.
+        logger.exception("Card frame extraction blew up for page %s", page_id)
+        _failed_at[key] = _now()
+        return None
+    finally:
+        _inflight.discard(key)
