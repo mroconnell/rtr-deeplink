@@ -1,8 +1,11 @@
 import re
 
+from langdetect import detect as _detect_language
+
 from app.utils.vtt_parser import (
     decode_vtt_bytes,
     dedupe_rollup_cues,
+    detect_language_from_texts,
     is_likely_garbled,
     normalize_speaker_change_marker,
     parse_captions_by_extension,
@@ -652,3 +655,269 @@ def test_parse_captions_by_extension_query_string_does_not_break_extension_detec
     vtt = "WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nHi."
     cues, text = parse_captions_by_extension("https://x.com/a.vtt?token=abc123", vtt)
     assert cues and text is None
+
+
+def test_dedupe_rollup_cues_real_tacoma_granicus_rollup_fixture():
+    # Real Granicus captions.vtt for Tacoma WA city council 2026-01-06
+    # (cityoftacoma.granicus.com/videos/7460/captions.vtt, fetched live
+    # 2026-08-21) -- the exact meeting BACKLOG.md named as the worst live
+    # instance of this bug. The full file is 21,240 cues / 1.5MB; this
+    # fixture is two verbatim excerpts of it (00:00:05-00:00:14 and
+    # 01:12:11-01:12:17), untouched apart from the cues in between being
+    # dropped, which is why the second excerpt's timestamps jump.
+    #
+    # Granicus's shape is NOT YouTube's: a single fixed-width (~63 char)
+    # ticker line that grows word-by-word and then drops words off the
+    # *front*. The old whole-string prefix test handles the growth and then
+    # fails at every front-drop -- which is where ">> Councilmember Hines: "
+    # disappears mid-run below, and why the live page showed 13 successive
+    # segments each re-printing the whole sentence so far.
+    content = load_fixture("granicus", "tacoma_clip7460_captions.vtt")
+    cues = parse_vtt(content)
+    assert len(cues) == 45
+
+    segments = dedupe_rollup_cues(cues)
+    assert segments == [
+        {"start": 5.907, "end": 6.474, "text": "JUST A SECOND."},
+        {
+            "start": 6.474,
+            "end": 11.279,
+            "text": (
+                ">> Councilmember Hines: WE WILL GET EVERYONE SWORN IN SO WE "
+                "CAN BEGIN OUR COUNCIL MEETING HERE THIS EVENING."
+            ),
+        },
+        {"start": 11.279, "end": 13.546, "text": ">> HELLO EVERYONE."},
+        {"start": 13.748, "end": 14.249, "text": "THANK YOU"},
+        {
+            "start": 4331.328,
+            "end": 4331.595,
+            "text": "QUESTIONS OR COMMENTS FROM THE COUNCIL?",
+        },
+        # The source emits a transient scrolled window ("HAVE ONE.") and then
+        # reverts to the fuller one on the very next cue -- a real ticker is
+        # not strictly monotone. Matching against a rolling tail of the
+        # reconstructed text absorbs that; matching only against the previous
+        # cue re-duplicates it.
+        {
+            "start": 4331.595,
+            "end": 4333.931,
+            "text": ">> Councilmember Sadalge: I HAVE ONE.",
+        },
+        {
+            "start": 4333.931,
+            "end": 4335.9,
+            "text": ">> Mayor Ibsen: COUNCILMEMBER SADALGE?",
+        },
+        {"start": 4335.9, "end": 4337.1, "text": "11 I JUST"},
+    ]
+
+    # No segment repeats another's text, and none of them is a growing
+    # prefix of the next -- the two shapes the live bug produced.
+    texts = [s["text"] for s in segments]
+    assert len(texts) == len(set(texts))
+    assert not any(b.startswith(a) for a, b in zip(texts, texts[1:]))
+
+    # Segment granularity matters here specifically because this is a
+    # deep-link product: an unbounded "extend the open segment's end time"
+    # merge would have collapsed the whole 8-second opening run into one
+    # segment, so every timestamp on the page would point at the top of a
+    # blob. Longest segment on the *full* 2h16m file is 250 chars / 28.3s,
+    # median 65 chars / 4.8s.
+    assert max(len(s["text"]) for s in segments) < 240
+    assert all(s["end"] >= s["start"] for s in segments)
+
+
+def test_dedupe_rollup_cues_leaves_real_non_rollup_track_untouched():
+    # Real Peel Region ON eScribe/iSiLIVE captions (already in the suite as
+    # that adapter's populated-captions fixture) -- ordinary
+    # one-cue-per-line captions, not roll-up. dedupe_rollup_cues() is now
+    # called from the shared parse_captions_by_extension() dispatch and from
+    # escribe.py, so "does nothing to a normal track" is load-bearing, not
+    # incidental. Measured across 15 real caption files from 6 platforms,
+    # the adjacent-pair overlap ratio the gate keys on is <= 0.007 on every
+    # non-roll-up track and >= 0.495 on every roll-up one.
+    cues = parse_vtt(load_fixture("escribe", "peel_region_captions.vtt"))
+    assert len(cues) == 20
+    assert dedupe_rollup_cues(cues) == cues
+
+
+def test_dedupe_rollup_cues_real_civicclerk_two_line_rollup_fixture():
+    # Real CivicClerk captions.srt for Antioch CA city council 2026-03-10
+    # (cpmedia.azureedge.net/antiochca/ClosedCaption/..., reached by
+    # re-resolving the live antiochca.portal.civicclerk.com/event/18/media
+    # page 2026-08-21) -- the CivicClerk instance BACKLOG.md named. Full file
+    # is 5,481 cues / 482KB and collapses 275KB of cue text down to 135KB;
+    # this fixture is a verbatim 60-cue excerpt of it.
+    #
+    # Third real roll-up shape, and the one that motivates case-folded
+    # comparison: the previous line is promoted to the top of a two-line cue
+    # with no blank-line alternation, and because the track is ALL CAPS,
+    # parse_vtt's de-shouting re-cases it -- capitalising after every "\n".
+    # So the *same words* read "Councilmember to move number" as one cue's
+    # second line and "councilmember to move number" as the next cue's
+    # first. Case-sensitive matching drops this track's measured roll-up
+    # ratio from 0.451 to 0.111, i.e. under the detection gate entirely.
+    content = load_fixture("civicclerk", "antiochca_event18_captions.srt")
+    cues = parse_srt(content)
+    assert len(cues) == 60
+    assert cues[0]["text"] == "I would like to have a\nCouncilmember to move number"
+    assert (
+        cues[1]["text"]
+        == "councilmember to move number\nFive to number 10, I know these"
+    )
+
+    segments = dedupe_rollup_cues(cues)
+    assert [s["text"] for s in segments][:6] == [
+        "I would like to have a",
+        "Councilmember to move number",
+        "Five to number 10, I know these",
+        "Meetings usually go long so I",
+        "Just wanted to get that moved",
+        "Up.",
+    ]
+    # 60 cues carry 120 caption lines, every one of which appears twice in
+    # the source; the reconstruction emits each exactly once.
+    assert len(segments) == 61
+    joined = " ".join(s["text"] for s in segments)
+    assert (
+        "Councilmember to move number councilmember to move number"
+        not in joined.lower()
+    )
+
+
+def test_dedupe_rollup_cues_real_youtube_autocaption_fixture():
+    # Real YouTube auto-caption track for Philadelphia City Council's
+    # "Committee on Education" 08-06-26 (video 5LZqoNDRMYk, fetched via
+    # yt-dlp 2026-08-21). Full track is 13,111 cues / 2.1MB; this is a
+    # verbatim 12-cue excerpt spanning 00:01:30-00:01:41.
+    #
+    # Two things it pins at once. (1) The classic growing shape this
+    # function was originally written for still collapses correctly.
+    # (2) The speaker-marker fold: normalize_speaker_change_marker() only
+    # rewrites "&gt;&gt;" anchored at the *start* of a cue, so YouTube's own
+    # source produces "» We can't hear you..." in one cue and ">> We can't
+    # hear you..." in the next for the same speech. Without folding the two
+    # spellings together, every speaker change re-emits its whole first line
+    # a second time.
+    content = load_fixture("youtube", "phila_education_5LZqoNDRMYk_captions.vtt")
+    cues = parse_vtt(content)
+    assert len(cues) == 12
+    assert cues[4]["text"].startswith("» We can't hear you.")
+    assert "\n[music] the mic." in cues[5]["text"]
+
+    segments = dedupe_rollup_cues(cues)
+    assert [s["text"] for s in segments] == [
+        "are present will communicate your",
+        "present by saying I.",
+        ">> We can't hear you. You got to speak to",
+        "[music] the mic. Please cut the mic on.",
+        ">> Vice Chair Anthony Phillips",
+        ">> present.",
+        ">> Members, Council Member Esquila,",
+    ]
+
+
+def test_dedupe_rollup_cues_real_escribe_single_word_rollup_fixture():
+    # Real eScribe/iSiLIVE captions.vtt for Essex County ON council
+    # 2025-12-03 (video.isilive.ca/countyofessex/..., reached by re-resolving
+    # the live coe-pub.escribemeetings.com meeting page 2026-08-21) -- the
+    # eScribe instance BACKLOG.md named. Full file is 11,627 cues / 746KB and
+    # collapses 298KB of cue text down to 231KB; this is a verbatim 18-cue
+    # excerpt.
+    #
+    # Fourth real roll-up shape, and the one that sets the detection floor:
+    # this source previews only the *next* line's first word, often as a
+    # standalone stub cue of its own, so the overlap between adjacent lines
+    # is a single word. A two-shared-words rule scores this track 0.155 --
+    # below the gate, i.e. the bug stays unfixed -- against 0.401 for the
+    # one-word-of-4+-characters rule the code actually uses.
+    content = load_fixture("escribe", "essexcounty_rcc_20251203_captions.vtt")
+    cues = parse_vtt(content)
+    assert len(cues) == 18
+
+    segments = dedupe_rollup_cues(cues)
+    assert [s["text"] for s in segments] == [
+        "I would like to call the december third 2025 essex county",
+        "council meeting to order.",
+        "council is gathered this morning",
+        "to deliberate the 2026 budget.",
+        "we will invite everyone to join",
+        "council and administration as",
+        "we take this time for a moment of",
+        # The stub cue "   REFLECTION" is followed by "REFLECTION." -- same
+        # word, and the punctuated spelling is the one that survives.
+        "reflection.",
+        "that will lead into the playing",
+        "of our national anthem.",
+        "[o canada playing, instrumental]",
+    ]
+
+
+def test_parse_captions_by_extension_dedupes_rollup_captions():
+    # The wiring itself: Granicus/CivicClerk/Swagit/CA-Legislature/Aurora/
+    # Seattle Channel/generic-fallback all reach captions through this one
+    # dispatch, which is why fixing dedupe per-adapter is what left them
+    # broken while YouTube and Viebit were fine.
+    content = load_fixture("granicus", "tacoma_clip7460_captions.vtt")
+    cues, fallback_text = parse_captions_by_extension(
+        "https://cityoftacoma.granicus.com/videos/7460/captions.vtt", content
+    )
+    assert fallback_text is None
+    assert len(cues) == 8
+    assert cues[1]["text"].endswith("BEGIN OUR COUNCIL MEETING HERE THIS EVENING.")
+
+
+def test_detect_language_votes_across_whole_transcript_not_just_head():
+    # Synthetic *composition* of two real transcripts, not invented text:
+    # the head is the real Simi Valley Spanish caption track (Granicus clip
+    # 2840) and the body is the real Tacoma English one, standing in for the
+    # recurring real pattern BACKLOG.md documents -- a short non-English or
+    # dead-air opening stretch (an invocation, a proclamation, music before
+    # the gavel) inside an otherwise clearly-English multi-hour meeting.
+    # What is *not* synthetic is the failure: two real live pages,
+    # /m/meeting-00bbd1 (Lincoln City OR) and /m/meeting-d09fc0 (Moraine
+    # City OH), were both labelled Welsh ('cy') this way. Those two pages
+    # can't be used as fixtures directly -- the mislabel was produced by a
+    # borderline langdetect call on their opening chunk, and langdetect is
+    # now seeded, so the exact wrong answer isn't reproducible from the
+    # stored text. This composition reproduces the *mechanism* instead, and
+    # pins it with the head-only assertion below.
+    spanish = [
+        c["text"]
+        for c in parse_vtt(load_fixture("granicus", "simivalley_clip2840_captions.vtt"))
+    ]
+    english = [
+        c["text"]
+        for c in parse_vtt(load_fixture("granicus", "tacoma_clip7460_captions.vtt"))
+    ] * 40
+    texts = spanish[:60] + english
+
+    # The old implementation's exact sample: first 2000 chars of the join.
+    # It really would have called this whole transcript Spanish.
+    assert _detect_language(" ".join(texts)[:2000]) == "es"
+    # The length-weighted vote across the whole thing gets it right.
+    assert detect_language_from_texts(texts) == "en"
+
+
+def test_detect_language_still_returns_es_for_a_genuinely_spanish_transcript():
+    # The Simi Valley guard the WO-34 language change must not break: real
+    # Spanish content on a track the page labels srclang="en".
+    texts = [
+        c["text"]
+        for c in parse_vtt(load_fixture("granicus", "simivalley_clip2840_captions.vtt"))
+    ]
+    assert detect_language_from_texts(texts) == "es"
+
+
+def test_detect_language_short_transcript_is_unchanged_single_sample():
+    # Under _LANG_CHUNK_CHARS there is exactly one chunk, so short/scraped
+    # tracks behave exactly as they did before the vote was added.
+    texts = [
+        c["text"]
+        for c in parse_vtt(load_fixture("escribe", "peel_region_captions.vtt"))
+    ]
+    assert sum(len(t) for t in texts) < 2000
+    assert detect_language_from_texts(texts) == "en"
+    assert detect_language_from_texts(["hi"]) is None
+    assert detect_language_from_texts([]) is None
