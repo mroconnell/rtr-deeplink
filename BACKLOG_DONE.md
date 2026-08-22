@@ -6,6 +6,165 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## WO-40: measured the transcription chunk-failure pattern before reordering the queue — the round-robin hypothesis is falsified, and no reprioritization was built [Done 2026-08-21]
+
+**The proposal was: workers claim consecutive jobs from the same host,
+hammer it, and get rate-limited — so interleave the queue by host using
+the existing `TranscriptionJob.priority` column instead of letting
+`created_at ASC` cluster them.** A good hypothesis, and cheap to build
+(no schema change; `priority` already exists). It was measured first
+anyway, and the measurement killed it. **Nothing was reprioritized and
+no queue-ordering code was written.** What shipped is the measurement:
+`GET /internal/transcription-failure-analysis` (token-gated like every
+`/internal/*` route) plus `crud.summarize_failure_rows()`.
+
+**No new instrumentation was needed** — `TranscriptionJob.failure_history`
+has recorded a real per-attempt `{chunk_index, error, at}` since
+2026-08-19. This was a query, not a build.
+
+### The real numbers (all 514 production jobs, 2026-08-21)
+
+| | |
+|---|---|
+| jobs total | 514 (295 completed, 218 failed, 1 in progress) |
+| jobs with ≥1 recorded chunk failure | **19** |
+| recorded chunk failures | 113, **100% `ffmpeg timed out after 120s`** |
+| window those failures span | 32.2 hours |
+| of the 19 affected jobs | **17 completed anyway**, 2 failed |
+
+**First finding, and it reframes the whole problem: the 218 "failed" jobs
+are almost entirely not timeouts at all.** Only 2 of them have any
+`failure_history`. Their real terminal causes:
+
+| count | `error_message` |
+|---|---|
+| 129 | No usable audio or video source was found. |
+| 19 | Media duration doesn't look like a full meeting recording. |
+| 17 | ffmpeg extraction failed |
+| 17 | Found a media source but couldn't read it. |
+| ~28 | `Re-resolve failed: Could not find a YouTube video ID in …` |
+| **2** | **ffmpeg timed out after 120s** |
+
+So ffmpeg timeouts are loud in the logs but account for **2 of 218**
+terminal failures. The retry budget (`MAX_CONSECUTIVE_CHUNK_FAILURES` +
+`MAX_JOB_RETRIES`) is absorbing them, which is exactly what it was added
+for on 2026-08-19. Whatever is worth fixing next, it is `No usable audio
+or video source was found` (129), not this.
+
+### Failure position: the opposite of a rate limit
+
+Raw counts say 75% of failures happened after the first chunk, which
+reads as an accumulating rate limit. **That read is wrong, and the trap
+is a base-rate one**: a job has exactly one chunk 0 but many later
+chunks, so later chunks win on raw count no matter how failure-prone
+position 0 is. Normalized by how many times each index was actually
+attempted:
+
+| chunk index | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| failures/attempt | **1.47** | 0.58 | 0.47 | 0.35 | 0.44 | 0.44 | 0.47 | 0.36 | 0.42 | 0.33 | 0.25 | 0.30 | 0.10 |
+
+By decile of job length (so different-length jobs are comparable):
+`1.03, 0.40, 0.41, 0.33, 0.32, 0.37, 0.37, 0.41, 0.20, 0.11`.
+
+**Chunk 0 is 3-4x more failure-prone than any later position, and the
+rate is flat-to-declining afterward.** An accumulating rate limit
+predicts the opposite. This is the cold-storage/rehydration signature —
+and it independently confirms, at population scale, the root cause this
+file's sibling entry in `BACKLOG.md` had already nailed down live with
+`ffprobe` the same day ("Some old/archived Granicus clips' `chunklist.m3u8`
+genuinely times out at Granicus's own origin (real 504, not a rate
+limit)"). Two of the jobs in this data set are literally the two clips
+that entry reproduced by hand: **job 507 = Fountain Valley clip 607**
+and **job 433 = King County clip 11547**.
+
+### The hypothesis's own prediction, tested directly and returning zero
+
+The theory predicts failures piling up across *different jobs* on the
+*same host* at nearly the same time. Every pair of failures within 10
+minutes of each other, classified:
+
+| relationship | pairs |
+|---|---|
+| same job | **111** |
+| **same host, different job** | **0** |
+| same domain (e.g. two Granicus tenants), different host | 17 |
+| unrelated hosts | 10 |
+
+**Zero.** Not one pair. The densest 1-hour window anywhere in the
+Granicus data is 13 failures — all from a single job, on a single host
+(507, Fountain Valley). Only 3 of 15 affected hosts have failures on more
+than one job at all. Failures are overwhelmingly *within* one job's own
+chunk loop, which is precisely the region queue reordering cannot reach:
+`claim_next_chunk()` claims a whole **job** despite its name, and the
+worker then holds it through every chunk.
+
+### Two real populations, neither one a rate limit
+
+Per-job, the share of that job's own chunks that failed at least once
+splits cleanly in two:
+
+- **Cold-start** — repeated chunk-0 failures, everything after fine:
+  job 434 (1/28 chunks, 6 failures all on chunk 0), job 413 (1/28),
+  job 410 (1/14), job 395 (1/13), job 384 (2/23), job 412 (2/18).
+- **Persistently slow source** — most chunks fail, uniformly throughout:
+  job 411 (10/11 = 91%), job 507 (26/31 = 84%), job 476 (5/6 = 83%),
+  job 414 (3/4 = 75%), job 516 (10/14), job 385 (9/13), job 515 (13/21).
+
+The second population is a **third** shape neither hypothesis named: not
+cold storage, not an accumulating limit — a source that is simply slow
+relative to a *fixed* 120s ffmpeg timeout, so every chunk sits near the
+edge and failures scatter evenly. Job 507 failed on 26 distinct chunk
+indices out of 31 and still completed.
+
+### Why the round-robin was not built
+
+Interleaving the queue by host addresses cross-job, same-host clustering.
+Measured: that bucket is 0. It would also actively work *against* the
+dominant cold-storage mechanism, where within-job clustering is the thing
+that helps — chunk 0 warms the asset for chunks 1..N. Building it would
+have spent real complexity on a pattern the data says does not exist, and
+mildly worked against the one that does.
+
+The design work isn't wasted, just unbought: `priority` still needs no
+schema change, and if a future measurement ever shows a non-zero
+`same_host_different_job` bucket, the endpoint that would show it is now
+deployed.
+
+### What shipped
+
+- `GET /internal/transcription-failure-analysis?days=N` — groups failures
+  by media host, page host, platform and position-within-job; reports
+  `failure_rate_by_chunk_index` / `failure_rate_by_decile` (attempt-
+  normalized), 1-hour burst windows per host, and
+  `concurrency_pairs_within_10min` (the hypothesis test above).
+- Grouping is keyed on **`media_url`'s host, not the page's** — Granicus
+  serves ~300 distinct `{tenant}.granicus.com` page hosts off a handful
+  of shared `archive-video`/`archive-stream`/`archive-media.granicus.com`
+  media hosts. The rate-limiting party would be the CDN, not the tenant;
+  grouping by page host would report ~300 "hosts" that are really one.
+  Both groupings are returned so the difference is visible, not assumed.
+- `crud.summarize_failure_rows()` is split out as a pure function over
+  already-fetched rows, so `tests/test_transcription_failure_analysis.py`
+  (13 tests) can exercise the diagnostic without touching the shared test
+  database — several other test modules write real failures into it,
+  which would make any whole-table assertion order-dependent.
+- The tests deliberately include a **constructed** cross-job same-host
+  case that the detector *does* catch. Without it, production's real zero
+  would be indistinguishable from a broken detector.
+- No Alembic migration (verified: `alembic upgrade head` + `alembic check`
+  against a fresh migration-built SQLite reports "No new upgrade
+  operations detected"). Read-only, no schema change.
+
+### Method note worth keeping
+
+The endpoint reports raw position counts *and* attempt-normalized rates,
+with a comment saying to read the rates. That is deliberate: the raw
+counts genuinely misled this investigation for a while ("75% of failures
+are later-chunk" looks like a rate limit and is compatible with the exact
+opposite), and a future reader will hit the same trap unless the
+correction ships next to the number.
+
 ## WO-10 fully closed: resolver gets `preDeployCommand` too — and the "never stamped in prod" blocker turned out never to have existed [Done 2026-08-21]
 
 Closes the last open half of the WO-10 outage class (the one that

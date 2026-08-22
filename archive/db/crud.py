@@ -1183,6 +1183,407 @@ async def get_and_advance_worker_report_snapshot(
         return previous_dict
 
 
+# ---------------------------------------------------------------------------
+# Transcription failure analysis (WO-40)
+# ---------------------------------------------------------------------------
+
+# The two shapes of failure that keep getting conflated in the incident
+# record, and that call for opposite mitigations:
+#
+#   * Rate limiting -- the host throttles us because we asked too much,
+#     too fast. Spreading requests across different hosts helps.
+#   * Cold storage / rehydration -- a Granicus archive clip that hasn't
+#     been touched in a long time isn't warm on the CDN yet, so the
+#     FIRST pull times out while later ones (against a now-warm asset)
+#     succeed. A real confirmed case: a King County clip failed for
+#     ~a day, then succeeded untouched with no code change (BACKLOG.md).
+#     Here, clustering HELPS -- chunk 0 warms the asset for chunks 1..N.
+#
+# Nothing in the schema labels a failure as one or the other, but two
+# stored signals discriminate between them without new instrumentation:
+#
+#   1. WHERE in the job the failure landed. TranscriptionJob.failure_
+#      history already records a real `chunk_index` per failed attempt
+#      (added 2026-08-19). A failure on chunk 0 is cold-storage-shaped:
+#      nothing had been pulled from that asset yet, so no rate limit
+#      could plausibly have accumulated. A failure on chunk 15 after 14
+#      successes is rate-limit-shaped: the only thing that changed
+#      between chunk 0 and chunk 15 is how much we'd already asked for.
+#   2. WHICH host actually served the media. This is deliberately keyed
+#      on `media_url`'s host, not the page's -- on Granicus every tenant
+#      has its own `{tenant}.granicus.com` page subdomain, but the media
+#      itself comes off a small number of SHARED CDN hosts
+#      (archive-video/archive-stream/archive-media.granicus.com). The
+#      rate-limiting party is the CDN, not the tenant, so grouping by
+#      page host would report ~300 distinct "hosts" that are really one.
+#      Both groupings are returned so that difference is visible rather
+#      than assumed.
+#
+# Read-only, side-effect free, and a full Python-side scan over
+# TranscriptionJob -- same "fine at today's scale" reasoning as
+# list_transcription_backlog_candidates() above (a few hundred rows,
+# operator-invoked, not a hot request path). It never selects
+# partial_segments, which is the only large column here.
+
+_FFMPEG_TIMEOUT_MARKER = "ffmpeg timed out"
+
+# Two failures against the same host inside this window count as
+# "clustered". An hour is deliberately loose: a single chunk can take
+# minutes, so a genuine throttle-driven burst of failures across
+# concurrent workers still lands well inside it, while genuinely
+# unrelated failures against the same host days apart do not.
+FAILURE_CLUSTER_WINDOW = timedelta(hours=1)
+
+
+def _failure_host_of(url: Optional[str]) -> str:
+    if not url:
+        return "(none)"
+    try:
+        return (urlparse(url).hostname or "(unparseable)").lower()
+    except ValueError:
+        return "(unparseable)"
+
+
+def _max_failures_in_window(timestamps: list[datetime]) -> int:
+    """Largest number of failures for one host falling inside any single
+    FAILURE_CLUSTER_WINDOW-wide sliding window. A plain two-pointer scan
+    over sorted timestamps -- this is the "do failures burst, or are they
+    scattered singletons?" question, and a burst is what rate limiting
+    looks like."""
+    if not timestamps:
+        return 0
+    ordered = sorted(timestamps)
+    best = 1
+    start = 0
+    for end in range(len(ordered)):
+        while ordered[end] - ordered[start] > FAILURE_CLUSTER_WINDOW:
+            start += 1
+        best = max(best, end - start + 1)
+    return best
+
+
+def _parse_failure_at(raw: Any) -> Optional[datetime]:
+    if not isinstance(raw, str):
+        return None
+    try:
+        parsed = datetime.fromisoformat(raw)
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+
+
+# Two failures this close together are plausibly the same underlying
+# episode. Deliberately much tighter than FAILURE_CLUSTER_WINDOW: this is
+# asking "were these two failures contending with each other", not "did
+# this host have a bad afternoon".
+FAILURE_PAIR_WINDOW = timedelta(minutes=10)
+
+
+def _failure_pair_shape(rows, cutoff: Optional[datetime]) -> dict:
+    """Classifies every pair of failures falling within FAILURE_PAIR_WINDOW
+    of each other by how related the two are.
+
+    This is the direct, falsifiable test of the "workers claim consecutive
+    jobs from the same host and hammer it" theory. That theory predicts
+    failures should pile up across *different jobs* against the *same
+    host* at nearly the same time. If instead nearly every close pair is
+    within a single job, the clustering that actually hurts is happening
+    inside one job's own chunk loop -- which no amount of queue reordering
+    can reach, since a worker holds a job through all its chunks
+    (claim_next_chunk() claims a whole job, not a chunk, despite its name).
+    """
+    events: list[tuple[datetime, str, str, int]] = []
+    for row in rows:
+        host = _failure_host_of(row.source_url_normalized)
+        domain = ".".join(host.split(".")[-2:])
+        for entry in row.failure_history or []:
+            if not isinstance(entry, dict):
+                continue
+            at = _parse_failure_at(entry.get("at"))
+            if at is None or (cutoff is not None and at < cutoff):
+                continue
+            events.append((at, host, domain, row.id))
+    events.sort(key=lambda e: e[0])
+
+    counts = {
+        "same_job": 0,
+        "same_host_different_job": 0,
+        "same_domain_different_host": 0,
+        "unrelated_hosts": 0,
+    }
+    for i, first in enumerate(events):
+        for second in events[i + 1 :]:
+            if second[0] - first[0] > FAILURE_PAIR_WINDOW:
+                break
+            if first[3] == second[3]:
+                counts["same_job"] += 1
+            elif first[1] == second[1]:
+                counts["same_host_different_job"] += 1
+            elif first[2] == second[2]:
+                counts["same_domain_different_host"] += 1
+            else:
+                counts["unrelated_hosts"] += 1
+    return counts
+
+
+async def get_transcription_failure_analysis(days: Optional[int] = None) -> dict:
+    """Groups every recorded chunk failure by media host, by page host, and
+    by position-within-job, so "are we being rate limited, or is this cold
+    storage?" is answered from real stored data rather than argued from
+    first principles. See the module comment above this function for what
+    each signal actually discriminates.
+
+    `days` optionally restricts to failures recorded within the last N
+    days (by the failure_history entry's own `at` timestamp, not the job's
+    created_at -- a job created weeks ago can fail today via the
+    retry_scheduled path). Omitted means all-time.
+    """
+    cutoff = (
+        datetime.now(timezone.utc) - timedelta(days=days) if days is not None else None
+    )
+
+    async with async_session() as session:
+        rows = (
+            await session.execute(
+                select(
+                    TranscriptionJob.id,
+                    TranscriptionJob.media_url,
+                    TranscriptionJob.total_chunks,
+                    TranscriptionJob.status,
+                    TranscriptionJob.priority,
+                    TranscriptionJob.failure_history,
+                    MeetingPage.source_url_normalized,
+                    MeetingPage.platform,
+                ).join(MeetingPage, MeetingPage.id == TranscriptionJob.meeting_page_id)
+            )
+        ).all()
+
+    return summarize_failure_rows(rows, cutoff=cutoff, days=days)
+
+
+def summarize_failure_rows(rows, *, cutoff: Optional[datetime], days: Optional[int]):
+    """The whole diagnostic, as a pure function over already-fetched rows.
+
+    Split out from the query deliberately: this is the part with real
+    reasoning in it (the attempt-normalization especially, which is what
+    keeps a reader from misreading raw counts), and keeping it
+    DB-free means it can be tested directly against constructed rows
+    instead of against whatever jobs happen to be in the shared test
+    database -- which several other test modules also write failures into,
+    making any whole-table assertion order-dependent.
+
+    `rows` is any iterable of objects exposing the attributes selected in
+    get_transcription_failure_analysis() above.
+    """
+    by_media_host: dict[str, dict] = {}
+    by_page_host: dict[str, dict] = {}
+    by_platform: dict[str, dict] = {}
+    position_buckets = {
+        "chunk_0_first_pull": 0,
+        "chunk_1_to_2": 0,
+        "chunk_3_plus": 0,
+        "unknown_chunk_index": 0,
+    }
+    # Only meaningful for a multi-chunk job: "did this job get anywhere
+    # before it failed?" A first-chunk failure on a 1-chunk job can't
+    # distinguish the two hypotheses at all, so it's counted separately.
+    single_chunk_failures = 0
+    multi_chunk_first_failures = 0
+    multi_chunk_later_failures = 0
+    total_failures = 0
+    jobs_with_failures = 0
+    ffmpeg_timeout_failures = 0
+    failure_times_by_media_host: dict[str, list[datetime]] = {}
+    # RAW FAILURE COUNTS BY POSITION ARE ACTIVELY MISLEADING, and the
+    # normalization below is the whole reason this function is worth
+    # having. A job has exactly one chunk 0 but many later chunks, so
+    # "75% of failures happened after the first chunk" is what you see
+    # even when the first chunk is by far the most failure-prone
+    # position -- that is precisely the wrong read (it looks like an
+    # accumulating rate limit) and it is the read the raw buckets above
+    # invite. Dividing by the number of times each chunk index was
+    # actually ATTEMPTED is what makes positions comparable:
+    #
+    #   rising with chunk index  -> accumulating rate limit
+    #   spike at 0, flat after   -> cold storage / rehydration
+    #   flat and high throughout -> a source that is simply slow
+    #                               relative to the fixed ffmpeg timeout
+    #
+    # Attempts are derived, not stored: a job with total_chunks == N
+    # attempts every index 0..N-1 at least once (the worker walks them
+    # in order and a job only finishes by reaching the end), so N is a
+    # sound lower bound on attempts per index for the jobs counted here.
+    # Ratios can therefore exceed 1.0 -- an index that failed several
+    # times before succeeding -- which is meaningful, not a bug.
+    attempts_by_index: dict[int, int] = {}
+    failures_by_index: dict[int, int] = {}
+    attempts_by_decile: dict[int, int] = {}
+    failures_by_decile: dict[int, int] = {}
+
+    for row in rows:
+        history = row.failure_history or []
+        if not history:
+            continue
+
+        media_host = _failure_host_of(row.media_url)
+        page_host = _failure_host_of(row.source_url_normalized)
+        platform = row.platform or "(unknown)"
+        counted_this_job = False
+
+        for entry in history:
+            if not isinstance(entry, dict):
+                continue
+            at = _parse_failure_at(entry.get("at"))
+            if cutoff is not None and (at is None or at < cutoff):
+                continue
+
+            total_failures += 1
+            if not counted_this_job:
+                jobs_with_failures += 1
+                counted_this_job = True
+                # Attempt denominators, counted once per job rather than
+                # once per failure -- see the comment above the
+                # attempts_by_* declarations for why this normalization
+                # is the point of the whole function.
+                for idx in range(row.total_chunks or 0):
+                    attempts_by_index[idx] = attempts_by_index.get(idx, 0) + 1
+                    dec = min(9, (10 * idx) // (row.total_chunks or 1))
+                    attempts_by_decile[dec] = attempts_by_decile.get(dec, 0) + 1
+
+            error = entry.get("error") or ""
+            is_timeout = _FFMPEG_TIMEOUT_MARKER in error
+            if is_timeout:
+                ffmpeg_timeout_failures += 1
+
+            chunk_index = entry.get("chunk_index")
+            if isinstance(chunk_index, int):
+                failures_by_index[chunk_index] = (
+                    failures_by_index.get(chunk_index, 0) + 1
+                )
+                dec = min(9, (10 * chunk_index) // (row.total_chunks or 1))
+                failures_by_decile[dec] = failures_by_decile.get(dec, 0) + 1
+            if not isinstance(chunk_index, int):
+                position_buckets["unknown_chunk_index"] += 1
+            elif chunk_index == 0:
+                position_buckets["chunk_0_first_pull"] += 1
+            elif chunk_index <= 2:
+                position_buckets["chunk_1_to_2"] += 1
+            else:
+                position_buckets["chunk_3_plus"] += 1
+
+            if (row.total_chunks or 0) <= 1:
+                single_chunk_failures += 1
+            elif isinstance(chunk_index, int) and chunk_index == 0:
+                multi_chunk_first_failures += 1
+            elif isinstance(chunk_index, int):
+                multi_chunk_later_failures += 1
+
+            for bucket, key in (
+                (by_media_host, media_host),
+                (by_page_host, page_host),
+                (by_platform, platform),
+            ):
+                stats = bucket.setdefault(
+                    key,
+                    {
+                        "failures": 0,
+                        "ffmpeg_timeouts": 0,
+                        "first_chunk_failures": 0,
+                        "later_chunk_failures": 0,
+                        "job_ids": set(),
+                    },
+                )
+                stats["failures"] += 1
+                stats["job_ids"].add(row.id)
+                if is_timeout:
+                    stats["ffmpeg_timeouts"] += 1
+                if isinstance(chunk_index, int):
+                    if chunk_index == 0:
+                        stats["first_chunk_failures"] += 1
+                    else:
+                        stats["later_chunk_failures"] += 1
+
+            if at is not None:
+                failure_times_by_media_host.setdefault(media_host, []).append(at)
+
+    def _finalize(bucket: dict[str, dict], with_windows: bool) -> list[dict]:
+        out = []
+        for key, stats in bucket.items():
+            entry = {
+                "host": key,
+                "failures": stats["failures"],
+                "ffmpeg_timeouts": stats["ffmpeg_timeouts"],
+                "first_chunk_failures": stats["first_chunk_failures"],
+                "later_chunk_failures": stats["later_chunk_failures"],
+                "distinct_jobs": len(stats["job_ids"]),
+            }
+            if with_windows:
+                entry["max_failures_in_1h_window"] = _max_failures_in_window(
+                    failure_times_by_media_host.get(key, [])
+                )
+            out.append(entry)
+        return sorted(out, key=lambda e: -e["failures"])
+
+    positioned = multi_chunk_first_failures + multi_chunk_later_failures
+    return {
+        "window_days": days,
+        "total_failures": total_failures,
+        "jobs_with_failures": jobs_with_failures,
+        "ffmpeg_timeout_failures": ffmpeg_timeout_failures,
+        # Raw counts. Read failure_rate_by_chunk_index below INSTEAD of
+        # these when asking "where in a job do failures happen" -- these
+        # are dominated by how many chunks exist at each position, not by
+        # how failure-prone each position is. Kept because they're the
+        # honest raw material the rates are computed from.
+        "failure_position": position_buckets,
+        "multi_chunk_jobs": {
+            "first_chunk_failures": multi_chunk_first_failures,
+            "later_chunk_failures": multi_chunk_later_failures,
+            "first_chunk_share": (
+                round(multi_chunk_first_failures / positioned, 3)
+                if positioned
+                else None
+            ),
+        },
+        # THE diagnostic. Failures per actual attempt at each chunk index,
+        # and the same thing bucketed by decile of job length so jobs of
+        # different lengths are comparable. See the comment above
+        # attempts_by_index for how to read the shape.
+        "failure_rate_by_chunk_index": [
+            {
+                "chunk_index": idx,
+                "attempts": attempts_by_index[idx],
+                "failures": failures_by_index.get(idx, 0),
+                "failures_per_attempt": round(
+                    failures_by_index.get(idx, 0) / attempts_by_index[idx], 3
+                ),
+            }
+            for idx in sorted(attempts_by_index)
+        ],
+        "failure_rate_by_decile": [
+            {
+                "decile": dec,
+                "attempts": attempts_by_decile[dec],
+                "failures": failures_by_decile.get(dec, 0),
+                "failures_per_attempt": round(
+                    failures_by_decile.get(dec, 0) / attempts_by_decile[dec], 3
+                ),
+            }
+            for dec in sorted(attempts_by_decile)
+        ],
+        "single_chunk_job_failures": single_chunk_failures,
+        "by_media_host": _finalize(by_media_host, with_windows=True),
+        "by_page_host": _finalize(by_page_host, with_windows=False),
+        "by_platform": _finalize(by_platform, with_windows=False),
+        # Directly tests the "workers grab consecutive jobs from the same
+        # host and hammer it" hypothesis: that predicts a large
+        # same_host_different_job bucket. Measured 2026-08-21 against
+        # real production data, this bucket was exactly 0 -- see
+        # BACKLOG_DONE.md's WO-40 entry.
+        "concurrency_pairs_within_10min": _failure_pair_shape(rows, cutoff),
+    }
+
+
 async def list_completed_multichunk_transcription_jobs() -> list[dict]:
     """Every completed TranscriptionJob with total_chunks > 1 -- i.e. every
     on-demand transcription that actually went through the real per-chunk

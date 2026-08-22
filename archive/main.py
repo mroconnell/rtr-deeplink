@@ -474,6 +474,34 @@ async def internal_transcription_queue_stats(
     return summary
 
 
+@app.get("/internal/transcription-failure-analysis")
+async def internal_transcription_failure_analysis(
+    days: Optional[int] = None, authorization: Optional[str] = Header(None)
+):
+    """Groups every recorded chunk failure by media host, page host and
+    position-within-job, so the recurring "workers keep hitting `ffmpeg
+    timed out after 120s`" question gets answered from real stored data
+    instead of from a plausible-sounding theory.
+
+    No new instrumentation was needed for this: TranscriptionJob.
+    failure_history has recorded a real per-attempt `chunk_index` since
+    2026-08-19, which is what makes the two conflated failure modes
+    separable -- see crud.get_transcription_failure_analysis()'s own
+    docstring and the block comment above it for exactly what each
+    grouping discriminates, and why media host (a shared Granicus CDN)
+    is the grouping that matters rather than page host (~300 distinct
+    per-tenant subdomains that are really one party).
+
+    Read-only and side-effect free, like /internal/transcription-queue-
+    stats above. `?days=N` restricts to recent failures; omitted is
+    all-time.
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    return await crud.get_transcription_failure_analysis(days=days)
+
+
 @app.get("/internal/send-worker-daily-report")
 async def internal_send_worker_daily_report(
     to: str, authorization: Optional[str] = Header(None)
