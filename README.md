@@ -96,7 +96,11 @@ this project's unpinned `aiohttp>=3.9` resolves to today. Also covers
 functions, no DB or mocking needed — `tests/test_archive_search.py`) and
 `worker/segment_utils.py` + `app/platforms/media_probe.py`'s duration-
 plausibility check the same way (`tests/test_worker_segment_utils.py`,
-`tests/test_media_probe.py`). `tests/test_transcription_jobs.py` is a
+`tests/test_media_probe.py`) — that first file also carries the
+hallucination detector's coverage, backed by real Archive transcript
+excerpts under `tests/fixtures/hallucination_runs/` (see its own
+`README.md`): six real hallucination loops that must be flagged, and real
+decoder stutters and roll calls that must not be. `tests/test_transcription_jobs.py` is a
 different shape — real integration tests against an isolated SQLite file
 (set up once per test session by `tests/conftest.py`, not mocked), since
 the transcription job lifecycle is genuinely DB-state-machine logic

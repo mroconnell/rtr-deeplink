@@ -1,0 +1,435 @@
+1
+01:04:50,000 --> 01:04:51,000
+15.
+
+2
+01:04:51,000 --> 01:04:52,000
+16.
+
+3
+01:04:52,000 --> 01:04:53,000
+17.
+
+4
+01:04:53,000 --> 01:04:54,000
+17.
+
+5
+01:04:54,000 --> 01:04:55,000
+18.
+
+6
+01:04:55,000 --> 01:04:56,000
+19.
+
+7
+01:04:56,000 --> 01:04:57,000
+19.
+
+8
+01:04:57,000 --> 01:04:58,000
+19.
+
+9
+01:15:00,000 --> 01:15:02,000
+Y Llywodraeth Cymru.
+
+10
+01:15:30,000 --> 01:15:50,000
+Y Llywodraeth Cymru.
+
+11
+01:16:00,000 --> 01:16:10,000
+Y Llywodraeth Cymru.
+
+12
+01:16:10,000 --> 01:16:20,000
+Y Llywodraeth Cymru.
+
+13
+01:16:20,000 --> 01:16:30,000
+Y Llywodraeth Cymru.
+
+14
+01:16:30,000 --> 01:16:40,000
+Y Llywodraeth Cymru.
+
+15
+01:16:40,000 --> 01:16:50,000
+Y Llywodraeth Cymru.
+
+16
+01:16:50,000 --> 01:17:00,000
+Y Llywodraeth Cymru.
+
+17
+01:17:00,000 --> 01:17:08,000
+Y Llywodraeth Cymru.
+
+18
+01:17:08,000 --> 01:17:18,000
+Y Llywodraeth Cymru.
+
+19
+01:17:18,000 --> 01:17:28,000
+Y Llywodraeth Cymru.
+
+20
+01:17:28,000 --> 01:17:36,000
+Y Llywodraeth Cymru.
+
+21
+01:17:36,000 --> 01:17:46,000
+Y Llywodraeth Cymru.
+
+22
+01:17:46,000 --> 01:17:56,000
+Y Llywodraeth Cymru.
+
+23
+01:17:56,000 --> 01:18:04,000
+Y Llywodraeth Cymru.
+
+24
+01:18:04,000 --> 01:18:14,000
+Y Llywodraeth Cymru.
+
+25
+01:18:14,000 --> 01:18:24,000
+Y Llywodraeth Cymru.
+
+26
+01:18:24,000 --> 01:18:32,000
+Y Llywodraeth Cymru.
+
+27
+01:18:32,000 --> 01:18:42,000
+Y Llywodraeth Cymru.
+
+28
+01:18:42,000 --> 01:18:52,000
+Y Llywodraeth Cymru.
+
+29
+01:18:52,000 --> 01:19:00,000
+Y Llywodraeth Cymru.
+
+30
+01:19:00,000 --> 01:19:10,000
+Y Llywodraeth Cymru.
+
+31
+01:19:10,000 --> 01:19:20,000
+Y Llywodraeth Cymru.
+
+32
+01:19:20,000 --> 01:19:28,000
+Y Llywodraeth Cymru.
+
+33
+01:19:28,000 --> 01:19:38,000
+Y Llywodraeth Cymru.
+
+34
+01:19:38,000 --> 01:19:48,000
+Y Llywodraeth Cymru.
+
+35
+01:19:48,000 --> 01:19:56,000
+Y Llywodraeth Cymru.
+
+36
+01:19:56,000 --> 01:20:06,000
+Y Llywodraeth Cymru.
+
+37
+01:20:06,000 --> 01:20:16,000
+Y Llywodraeth Cymru.
+
+38
+01:20:16,000 --> 01:20:24,000
+Y Llywodraeth Cymru.
+
+39
+01:20:24,000 --> 01:20:34,000
+Y Llywodraeth Cymru.
+
+40
+01:20:34,000 --> 01:20:44,000
+Y Llywodraeth Cymru.
+
+41
+01:20:44,000 --> 01:20:52,000
+Y Llywodraeth Cymru.
+
+42
+01:20:52,000 --> 01:21:02,000
+Y Llywodraeth Cymru.
+
+43
+01:21:02,000 --> 01:21:12,000
+Y Llywodraeth Cymru.
+
+44
+01:21:12,000 --> 01:21:20,000
+Y Llywodraeth Cymru.
+
+45
+01:21:20,000 --> 01:21:30,000
+Y Llywodraeth Cymru.
+
+46
+01:21:30,000 --> 01:21:40,000
+Y Llywodraeth Cymru.
+
+47
+01:21:40,000 --> 01:21:48,000
+Y Llywodraeth Cymru.
+
+48
+01:21:48,000 --> 01:21:58,000
+Y Llywodraeth Cymru.
+
+49
+01:21:58,000 --> 01:22:08,000
+Y Llywodraeth Cymru.
+
+50
+01:22:08,000 --> 01:22:16,000
+Y Llywodraeth Cymru.
+
+51
+01:22:16,000 --> 01:22:26,000
+Y Llywodraeth Cymru.
+
+52
+01:22:26,000 --> 01:22:36,000
+Y Llywodraeth Cymru.
+
+53
+01:22:36,000 --> 01:22:44,000
+Y Llywodraeth Cymru.
+
+54
+01:22:44,000 --> 01:22:54,000
+Y Llywodraeth Cymru.
+
+55
+01:22:54,000 --> 01:23:04,000
+Y Llywodraeth Cymru.
+
+56
+01:23:04,000 --> 01:23:12,000
+Y Llywodraeth Cymru.
+
+57
+01:23:12,000 --> 01:23:22,000
+Y Llywodraeth Cymru.
+
+58
+01:23:22,000 --> 01:23:32,000
+Y Llywodraeth Cymru.
+
+59
+01:23:32,000 --> 01:23:40,000
+Y Llywodraeth Cymru.
+
+60
+01:23:40,000 --> 01:23:50,000
+Y Llywodraeth Cymru.
+
+61
+01:23:50,000 --> 01:24:00,000
+Y Llywodraeth Cymru.
+
+62
+01:24:00,000 --> 01:24:08,000
+Y Llywodraeth Cymru.
+
+63
+01:24:08,000 --> 01:24:18,000
+Y Llywodraeth Cymru.
+
+64
+01:24:18,000 --> 01:24:28,000
+Y Llywodraeth Cymru.
+
+65
+01:24:28,000 --> 01:24:36,000
+Y Llywodraeth Cymru.
+
+66
+01:24:36,000 --> 01:24:46,000
+Y Llywodraeth Cymru.
+
+67
+01:24:46,000 --> 01:24:56,000
+Y Llywodraeth Cymru.
+
+68
+01:24:56,000 --> 01:25:04,000
+Y Llywodraeth Cymru.
+
+69
+01:25:04,000 --> 01:25:14,000
+Y Llywodraeth Cymru.
+
+70
+01:25:14,000 --> 01:25:24,000
+Y Llywodraeth Cymru.
+
+71
+01:25:24,000 --> 01:25:32,000
+Y Llywodraeth Cymru.
+
+72
+01:25:32,000 --> 01:25:42,000
+Y Llywodraeth Cymru.
+
+73
+01:25:42,000 --> 01:25:52,000
+Y Llywodraeth Cymru.
+
+74
+01:25:52,000 --> 01:26:00,000
+Y Llywodraeth Cymru.
+
+75
+01:26:00,000 --> 01:26:10,000
+Y Llywodraeth Cymru.
+
+76
+01:26:10,000 --> 01:26:20,000
+Y Llywodraeth Cymru.
+
+77
+01:26:20,000 --> 01:26:28,000
+Y Llywodraeth Cymru.
+
+78
+01:26:28,000 --> 01:26:38,000
+Y Llywodraeth Cymru.
+
+79
+01:26:38,000 --> 01:26:48,000
+Y Llywodraeth Cymru.
+
+80
+01:26:48,000 --> 01:26:56,000
+Y Llywodraeth Cymru.
+
+81
+01:26:56,000 --> 01:27:06,000
+Y Llywodraeth Cymru.
+
+82
+01:27:06,000 --> 01:27:16,000
+Y Llywodraeth Cymru.
+
+83
+01:27:16,000 --> 01:27:24,000
+Y Llywodraeth Cymru.
+
+84
+01:27:24,000 --> 01:27:34,000
+Y Llywodraeth Cymru.
+
+85
+01:27:34,000 --> 01:27:44,000
+Y Llywodraeth Cymru.
+
+86
+01:27:44,000 --> 01:27:52,000
+Y Llywodraeth Cymru.
+
+87
+01:27:52,000 --> 01:28:02,000
+Y Llywodraeth Cymru.
+
+88
+01:28:02,000 --> 01:28:12,000
+Y Llywodraeth Cymru.
+
+89
+01:28:12,000 --> 01:28:22,000
+Y Llywodraeth Cymru.
+
+90
+01:28:22,000 --> 01:28:32,000
+Y Llywodraeth Cymru.
+
+91
+01:28:32,000 --> 01:28:40,000
+Y Llywodraeth Cymru.
+
+92
+01:28:40,000 --> 01:28:50,000
+Y Llywodraeth Cymru.
+
+93
+01:28:50,000 --> 01:29:00,000
+Y Llywodraeth Cymru.
+
+94
+01:29:00,000 --> 01:29:08,000
+Y Llywodraeth Cymru.
+
+95
+01:29:08,000 --> 01:29:18,000
+Y Llywodraeth Cymru.
+
+96
+01:29:18,000 --> 01:29:28,000
+Y Llywodraeth Cymru.
+
+97
+01:29:28,000 --> 01:29:36,000
+Y Llywodraeth Cymru.
+
+98
+01:29:36,000 --> 01:29:46,000
+Y Llywodraeth Cymru.
+
+99
+01:29:46,000 --> 01:29:56,000
+Y Llywodraeth Cymru.
+
+100
+01:29:56,000 --> 01:30:04,000
+Y Llywodraeth Cymru.
+
+101
+01:31:00,000 --> 01:31:02,000
+Y Llywodraeth Cymru.
+
+102
+01:45:30,000 --> 01:45:41,000
+Erodiwch pob ganddo ar gyllidellol o'r cwmhyn, ganddo ar gyllidellol, a dwi'n hiwyddi'r cyllides.
+
+103
+01:45:41,000 --> 01:45:51,000
+A ganddo gan yw'r cyllidellol, dwi'n hwnnw'n cymhwm ac i'r cyllidellol o'r cyllidellol.
+
+104
+01:45:51,000 --> 01:45:56,000
+Rwyf yn cael ei wneud o'r argofod.
+
+105
+01:45:56,000 --> 01:45:58,000
+Mae'r cyfrifysgol o'r pwynt.
+
+106
+01:46:01,000 --> 01:46:03,000
+Rwy'n cael ei wneud o'r...
+
+107
+01:46:04,000 --> 01:46:06,000
+Nid yw i.
+
+108
+01:46:21,000 --> 01:46:35,600
+Is there an item to add to the December 8 regular meeting agenda, somebody will need to make a motion?
+
+109
+01:46:35,600 --> 01:46:42,440
+I'll make a motion that we make the adjustments we discussed in effective fashion to the table of organizations.

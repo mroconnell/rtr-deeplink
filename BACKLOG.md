@@ -4994,222 +4994,47 @@ one item below is resolved as a result.
   whether they have the same 2000-char-of-whichever-track-sorts-first
   exposure before changing it, not just the Whisper path.
 
-- **[JUST-DO-IT] `detect_hallucination_warnings()`'s repetition check is
-  diluted against total meeting length, so it structurally can't catch a
-  real hallucination loop shorter than ~50% of a long meeting, no matter
-  how blatant -- confirmed root cause (read the code, not guessed) plus
-  six live, currently-undetected examples across five different meetings
-  from this session's local-Whisper batches, on top of the already-fixed
-  Port Coquitlam case (`BACKLOG_DONE.md`) this detector exists to catch.**
-  None of the pages below show a hallucination warning; all were pushed
-  live as normal, clean transcripts.
+- ~~**[JUST-DO-IT] `detect_hallucination_warnings()`'s repetition check is
+  diluted against total meeting length**~~ — **fixed 2026-08-21 (WO-36)**,
+  full writeup (new rule, the 304-transcript corpus it was measured
+  against, and three corrections to the original entry — including that
+  Halifax was *not* the false positive it was filed as) in
+  [BACKLOG_DONE.md](BACKLOG_DONE.md). Two residuals split back out below.
 
-  **Root cause, confirmed by reading `worker/segment_utils.py`.**
-  `_repetition_run_ratio()` finds the single longest run of consecutive
-  near-duplicate segments (via `SequenceMatcher(...).ratio() >= 0.85`,
-  which *does* handle minor text variation, not just byte-identical
-  repeats -- an earlier draft of this entry wrongly assumed otherwise)
-  and divides by the **total segment count of the entire meeting**, then
-  flags only if that ratio is `>= 0.5`. That works fine for a short
-  meeting where a loop dominates most of it (Port Coquitlam: 2 chunks,
-  ~1572s total) -- but for any longer meeting, a loop has to eat *half the
-  entire recording* to ever trip the threshold. A blatant, obviously-fake
-  loop that's short relative to a multi-hour meeting mathematically
-  cannot cross 0.5 no matter how repetitive it is locally. Confirmed
-  numerically against three of the cases below: Moraine City's 93-cue
-  Welsh loop is 38.6% of its (short, 241-cue) meeting -- close, but still
-  under threshold; Cumberland County's 41-cue `"340,000,"` loop is only
-  3.2% of its 1,291-cue meeting; Haines City's 7-cue *exact-repeat* loop
-  (would trivially pass the 0.85 near-duplicate check on its own) is a
-  mere 1.3% of its 525-cue meeting. The near-duplicate matching genuinely
-  works -- the global-length dilution is what's actually broken.
+- **[HUMAN] The WO-36 fix makes `GET /internal/transcription/
+  hallucination-candidates` surface a much larger already-live backlog —
+  a real user-facing decision, not code.** That endpoint re-runs
+  `detect_hallucination_warnings()` against *stored* segments, so pages
+  pushed before the fix get re-scored the next time it's called. Measured
+  while building the fix: of 304 real `source=="transcribed"` transcripts
+  pulled from the live Archive, **74 (24%) contain a repetition loop the
+  new rule flags** and were pushed with no warning. Every one hand-
+  inspected was a genuine degenerate loop, not a false positive — the
+  common shapes are a `"Thank you."` / `"you"` loop across a recess
+  (Airdrie, Halifax NS, SCRD, Steamboat Springs, ~20 more), a fixed-cadence
+  single-word tile (`"second."` x41, `"of."` x42, `"five."` x45), and the
+  `initial_prompt` vocabulary itself leaking back out as text (Calgary's
+  `"local government meeting."` x31). Same class of decision as the
+  4-candidate `[HUMAN]` entry above, just much bigger: deciding what's
+  worth re-transcribing (versus warning in place, or leaving) is the
+  user's call. Note the prevention half is already live, so this is a
+  backlog of pre-2026-08-18 transcriptions, not an ongoing rate.
 
-  - **Hermosa Beach, CA** (`hermosa-beach-ca-2026-02-03-city-council`) --
-    the worst case, two back-to-back loops. **`00:02:30` ->
-    `01:30:00`** ([deep link](https://redtaperecordings.com/m/hermosa-beach-ca-2026-02-03-city-council?t=150))
-    of 121 cues rotating between two differently-*length* phrasings of
-    `"Local government meeting. Common terms..."` (their low
-    cross-phrasing `SequenceMatcher` ratio, ~0.45, means this specific
-    sub-loop evades even the near-duplicate check, not just the length
-    dilution), immediately followed by **`01:00:30` -> `01:15:03`**
-    of 176 consecutive cues reading just `"Music"` (Whisper's own
-    non-speech tag, degenerately repeated once every ~5 seconds instead
-    of emitted once) -- both inside the same bad stretch, before the real
-    meeting abruptly starts at
-    [`?t=5400`](https://redtaperecordings.com/m/hermosa-beach-ca-2026-02-03-city-council?t=5400)
-    ("Good evening, everyone. And I called to order this February 3rd,
-    2026 regular meeting..."). `language=en` and zero
-    `transcript_warnings`, despite ~87 of this 6.14h meeting's first 90
-    minutes being fabricated.
-  - **Moraine City, OH** (`meeting-d09fc0`) -- roughly **`00:46:30` ->
-    `01:46:21`** ([deep link](https://redtaperecordings.com/m/meeting-d09fc0?t=2790),
-    real content resumes at
-    [`?t=6381`](https://redtaperecordings.com/m/meeting-d09fc0?t=6381))
-    of a genuinely very quiet ~1.8h recording (repeated "suspiciously
-    quiet" ffmpeg warnings across nearly every chunk, some down to
-    **-75dB** -- worse than Port Coquitlam's confirmed-broken -44/-45dB)
-    is fabricated Welsh-language text with zero connection to an Ohio
-    city council meeting -- `"Y Llywodraeth Cymru"` ("The Welsh
-    Government"), 98 occurrences total (93 of them one single unbroken
-    run, 40.7% of the page's 241 cues), plus nonsense Welsh sentences and
-    repeated isolated numbers (`"19."` x6 around `00:15:52`-`01:04:58`,
-    a possibly-related weaker instance of the same failure). This
-    directly explains the page's `transcript_language="cy"` mislabeling
-    filed above under the `detect_language_from_texts()` entry -- here
-    the language tag is actually *consistent* with a large fraction of
-    the transcript's real (fabricated) content, not just an unlucky
-    2000-character sample. Real content resumes cleanly at `01:46:21`.
-  - **North Kingstown School Committee, RI** (`meeting-89d6b1`) --
-    confirmed, not just a suspected mic-check: **`00:01:00` ->
-    `00:15:06`**, 80 consecutive cues of `"Test, test."` /
-    `"Test, test, test."` at a mechanically uniform ~10-second cadence
-    with **zero** real speech interspersed for the entire span (100%
-    local density) -- a real AV check would have pauses, adjustments,
-    someone else talking; this doesn't. 38% of the meeting's 210 total
-    cues. Real roll call starts immediately after, at `00:15:00`.
-  - **Cumberland County, NJ**
-    (`cumberland-county-nj-2020-01-28-board-of-county-commissioners-regular-board-meet`)
-    -- `"340,000,"` repeated exactly once per second for 41 straight
-    seconds, `00:53:21` -> `00:54:02`, 100% local density, only 3.2% of
-    the meeting's 1,291 total cues.
-  - **Haines City, FL** (`meeting-16157c`) -- `"You're in the process."`,
-    byte-identical, 7 times in 16 seconds (`00:09:42` -> `00:09:58`),
-    100% density -- the cleanest possible case for the near-duplicate
-    check (would trivially score 1.0), and it *still* wasn't flagged,
-    purely because 7/525 total cues is nowhere near 50%. The clearest
-    single proof that the global-ratio design, not the matching logic, is
-    the actual bug.
-  - **Lincoln City, OR** (`meeting-00bbd1`, previously only flagged above
-    for its `language=cy` mislabeling) -- also has real fabricated
-    content, just a smaller dose: a `"Yn ymwneud?"` ("relating to?")
-    cluster around `00:09:02`-`00:09:30`, plus an isolated fabricated
-    Welsh sentence at `00:10:21`. Confirms the language mislabeling
-    there wasn't purely a sampling-bad-luck metadata issue -- there's a
-    real, if minor, garbled patch underneath it too.
-  - **Vacaville, CA** (`vacaville-ca-2026-06-09-regular-meeting-of-the-city-council`,
-    version 1287) -- found live 2026-08-19, shipped to the public site
-    *after* the fix above was already prototyped/validated but still
-    unmerged: `00:00`-`06:29` is real dead air/pre-meeting silence (the
-    meeting doesn't actually start until "I do believe the vice mayor is
-    attempting to be online tonight..." at `06:33`), but the stored
-    transcript instead has "In this video, I will show you how to make
-    a new video." looped 5x (`00:58`-`01:33`), then a run of bare digits
-    (`"5." "6." "5."` ..., `03:42`-`04:34`), then a run of decimals
-    (`"1.3x." "1.4x."` ..., `05:36`-`06:00`) -- the app's own
-    `detect_hallucination_warnings()` correctly flagged it
-    (`already_flagged` would be true), so the *detection* side is
-    working; this is purely evidence the *prevention* fix (`vad_filter=
-    True`) still isn't deployed. `git show HEAD:worker/transcription_engine.py`
-    confirms zero mentions of `vad_filter` in the last-committed
-    version -- the fix genuinely only exists in the uncommitted working
-    tree, not "was live at some point and regressed." Traced while
-    investigating an unrelated on-demand-transcription request (job 256,
-    Redwood City CA, `jlevine@hlcsmc.org` -- see `BACKLOG_DONE.md`'s
-    2026-08-19 entry) whose own chunk 1 is a plausible but *not yet
-    confirmed* third instance of the same pattern (that meeting's
-    original pre-fix chunk-1 content was never pulled from
-    `transcription_jobs.partial_segments` to check).
-
-  **Fix direction**: the near-duplicate matching (`SequenceMatcher` at
-  0.85) is the right primitive and doesn't need to change. What needs to
-  change is scoring a *sliding window* (or absolute run length in
-  seconds/cues, not just a ratio against the whole meeting) rather than
-  one global fraction -- so a short, obviously-looping stretch inside a
-  long meeting can trip it independent of how long the rest of the
-  meeting is.
-
-  **False-positive caution for whoever picks this up**: a cruder first
-  pass at this same scan (raw repeat count over the whole meeting, not
-  contiguous-run clustering) also flagged `"thank you"`, `"okay"`,
-  `"yes"`, and `"here"` recurring dozens of times each in several *other*
-  meetings from this session. Re-checked with actual clustering: those
-  don't show the same signature as the six cases above (100% local
-  density, zero real content interspersed) -- e.g. Halifax's 28 "thank
-  you"s are ~29 seconds apart on average (consistent with a chair
-  thanking distinct public commenters over a real 13-minute comment
-  period), and short 5-7x roll-call bursts of "yes"/"here" a few seconds
-  apart are consistent with distinct real speakers answering a roll call
-  in turn. Not proof either way without listening to the audio, but a
-  materially different pattern from the six confirmed cases -- any fix
-  should be validated against both sets (catch the six, don't flag
-  ordinary meetings) before shipping.
-
-  **Fix approach prototyped and empirically validated 2026-08-18 --
-  root cause is upstream of this detector, not a smarter detector.**
-  Rather than only improving `detect_hallucination_warnings()` after the
-  fact, the real fix is stopping Whisper from hallucinating on dead
-  audio in the first place: enable faster-whisper's built-in VAD
-  (`vad_filter=True`, Silero VAD under the hood -- a real
-  speech-vs-non-speech classifier, not a volume threshold, so it also
-  catches loud-but-non-speech audio like a musical intro, not just
-  literal silence) in `worker/transcription_engine.py`'s
-  `FasterWhisperEngine._transcribe_sync()`. Confirmed on the exact
-  Hermosa Beach clip behind the "Music" loop above: old settings
-  reproduce the fabricated `"Local government meeting. Common terms..."`
-  text directly; with `vad_filter=True` it correctly returns **zero
-  segments** instead (and ~7x faster, since it skips decoding
-  non-speech instead of attempting it). Same clean result on a
-  Moraine-City-zone clip: old settings burned 141s decoding nothing;
-  new settings took 1s to reach the same (correct) empty conclusion.
-
-  **A second, real bug was found *by* this same validation, independent
-  of the fix above** -- worth its own record since it would have been a
-  regression if shipped blind: `vad_filter=True` alone can merge two
-  genuinely separate real speech bursts, on either side of a real VAD-
-  skipped silent stretch, into one output segment -- keeping correct
-  *text* but assigning a wildly wrong *timestamp range* (the first
-  word's start to the last word's end, silent gap included). Reproduced
-  on North Kingstown RI's `meeting-89d6b1` chunk 1: one segment came
-  back as `[66.8s-735.9s]` (an 11-minute span) for what's actually two
-  distinct real utterances -- a lone word ("So") at 67.5s, then real
-  content resuming at 732.8s -- confirmed independent of every other
-  setting tried (`condition_on_previous_text` True or False, custom or
-  default `vad_parameters`: identical bug every time). Given this app's
-  entire product is deep-linking to an exact timestamp, a wrong segment
-  boundary is arguably worse than a missing one. **Fix**: also enable
-  `word_timestamps=True`, then re-split any segment wherever two
-  consecutive words have a gap larger than ~2s, using the real
-  surrounding word timestamps instead of trusting the model's own
-  reported `segment.start`/`segment.end`. Validated on the same North
-  Kingstown chunk: correctly split the broken 668-second segment into
-  `[67.5-67.9] "So"` and `[732.8-736.2] "folks, just a quick
-  reminder..."`, and caught several *other* smaller instances of the
-  same bug in the same chunk (25s and 83s hidden gaps) that weren't
-  otherwise obvious -- longest segment after the fix: 7.2s, versus 668s
-  before it.
-
-  Full validated combination: `vad_filter=True` + `word_timestamps=True`
-  + gap-based re-splitting (new code, not a library flag) +
-  `condition_on_previous_text=False` (kept as defense-in-depth for
-  within-chunk cascading per faster-whisper's own docstring, though
-  confirmed *not* the cause of the timestamp bug above -- reproduces
-  identically either way). Regression-checked clean against Buffalo,
-  NY's already-good transcript (352 sane, correctly-ordered segments,
-  same coherent content start-to-finish) and North Kingstown's real
-  content once past the fixed boundary (roll call, Pledge of Allegiance,
-  etc., all intact). Not yet wired into production
-  `worker/transcription_engine.py` or `scripts/
-  transcribe_backlog_locally.py` -- next step once Port Coquitlam's raw
-  (unfixed-audio, no left-channel retry) case finishes validating too.
-
-  **Two alternative approaches were considered and parked, not
-  rejected** -- allowed back if the above ever proves insufficient on a
-  case it doesn't handle:
-  - Skip trusting faster-whisper's internal VAD-region stitching
-    entirely: call Silero's `get_speech_timestamps()` directly, decode
-    each real speech region as its own separate clip, and place each
-    one using this app's own already-trusted `shift_segments()`
-    chunk-offset math (`worker/segment_utils.py`) instead of the
-    library's internal remapping. More control, more new code to
-    maintain.
-  - Physically strip non-speech out of the audio ourselves before
-    Whisper ever sees it (e.g. `ffmpeg silenceremove`), with fully
-    manual bookkeeping of what got cut so timestamps can be shifted back
-    correctly by hand. The most manual of the three, full control, but
-    the most new surface area for a first-party timestamp bug --
-    parked in favor of leaning on the library's already-tested
-    `word_timestamps` machinery instead, now that the gap-split fix
-    above is confirmed to work.
+- **[LATER] A *sparse* loop of 5-11 cues is still missed** — the residual
+  gap between WO-36's two rules. The tiled rule needs coverage `>= 0.9`,
+  the absolute rule needs `>= 12` cues, so e.g. 8 repeats of `"Thank you."`
+  spread across four minutes of dead air with real silence between them
+  falls through both. Deliberate, not an oversight: the 304-transcript
+  corpus had no example of that shape, and closing it would mean lowering
+  the absolute threshold into the 8-9 range where real decoder stutters
+  live (Blackford County IN's `"mo."` x8, Creve Coeur MO's `"it's mine."`
+  x9 — both real speech, both must stay clean). Worth revisiting only with
+  a real example in hand; a cadence-regularity signal (the real loops sit
+  at exact 1.000/2.000/10.000/30.000s intervals, real speech doesn't) is
+  the most promising next discriminator if one turns up. See
+  [BACKLOG_DONE.md](BACKLOG_DONE.md)'s WO-36 entry for the measurements.
+  The separate semantic-nonsense limit is unchanged and still tracked in
+  its own `[LATER]` entry above.
 
 ## ~~`GET /internal/transcription/hallucination-candidates` returns 502~~
 

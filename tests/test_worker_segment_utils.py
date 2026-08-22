@@ -1,4 +1,14 @@
+import re
+from pathlib import Path
+
+import pytest
+
 from worker.segment_utils import (
+    _HALLUCINATION_ABSOLUTE_RUN_LENGTH,
+    _HALLUCINATION_REPETITION_RUN_RATIO_THRESHOLD,
+    _HALLUCINATION_TILED_RUN_LENGTH,
+    _has_hallucinated_repetition_run,
+    _longest_repetition_run,
     chunk_count,
     chunk_duration,
     chunk_start,
@@ -430,3 +440,176 @@ def test_detect_hallucination_warnings_does_not_claim_to_catch_semantic_nonsense
     # structural heuristic -- this test exists so that limitation is
     # explicit and intentional, not silently assumed to be covered.
     assert detect_hallucination_warnings(_REAL_QUOTED_NONSENSE_ENGLISH) == []
+
+
+# --- Repetition dilution (WO-36) ---------------------------------------------
+#
+# The repetition check used to divide the longest near-duplicate run by the
+# *whole meeting's* segment count and flag at >= 0.5, so a real, blatant
+# hallucination loop inside a long meeting mathematically could not be
+# caught. Fixtures below are real fetched Archive transcript exports, sliced
+# to the loop plus real surrounding cues -- see
+# tests/fixtures/hallucination_runs/README.md for provenance.
+
+_HALLUCINATION_FIXTURES = Path(__file__).parent / "fixtures" / "hallucination_runs"
+
+_SRT_TIMING_RE = re.compile(
+    r"(\d+):(\d+):(\d+)[,.](\d+)\s*-->\s*(\d+):(\d+):(\d+)[,.](\d+)"
+)
+
+
+def _load_srt_fixture(name: str) -> list:
+    blocks = re.split(
+        r"\n\s*\n", (_HALLUCINATION_FIXTURES / name).read_text(encoding="utf-8").strip()
+    )
+    segments = []
+    for block in blocks:
+        lines = [line for line in block.splitlines() if line.strip()]
+        if len(lines) < 3:
+            continue
+        match = _SRT_TIMING_RE.match(lines[1])
+        assert match, lines[1]
+        h1, m1, s1, ms1, h2, m2, s2, ms2 = (int(g) for g in match.groups())
+        segments.append(
+            {
+                "start": h1 * 3600 + m1 * 60 + s1 + ms1 / 1000,
+                "end": h2 * 3600 + m2 * 60 + s2 + ms2 / 1000,
+                "text": " ".join(lines[2:]),
+            }
+        )
+    assert segments, name
+    return segments
+
+
+# (fixture, longest run, that meeting's real total cue count). The run/total
+# figures were measured against the full live exports, not these excerpts --
+# every one is far below the old 0.5 threshold, which is the bug.
+_REAL_UNDETECTED_LOOPS = [
+    ("loop_hermosa_beach_ca.srt", 176, 3764),
+    ("loop_moraine_city_oh.srt", 93, 241),
+    ("loop_north_kingstown_ri.srt", 80, 210),
+    ("loop_cumberland_county_nj.srt", 41, 1291),
+    ("loop_haines_city_fl.srt", 6, 525),
+    ("loop_lincoln_city_or.srt", 8, 637),
+]
+
+
+@pytest.mark.parametrize("name,run_length,meeting_cues", _REAL_UNDETECTED_LOOPS)
+def test_old_whole_meeting_ratio_could_not_have_caught_these(
+    name, run_length, meeting_cues
+):
+    # The regression itself, stated as arithmetic on the real meetings' real
+    # cue counts: none of the six could ever reach 0.5, no matter how blatant
+    # the loop, because the divisor was the entire meeting.
+    assert run_length / meeting_cues < _HALLUCINATION_REPETITION_RUN_RATIO_THRESHOLD
+
+
+@pytest.mark.parametrize("name,run_length,meeting_cues", _REAL_UNDETECTED_LOOPS)
+def test_detect_hallucination_warnings_flags_real_local_loops(
+    name, run_length, meeting_cues
+):
+    segments = _load_srt_fixture(name)
+    assert _longest_repetition_run(segments) == run_length
+    assert detect_hallucination_warnings(segments)
+
+
+# Real speech from real meetings that must stay clean. The first three are
+# genuine decoder stutters -- words that really were said, then duplicated,
+# with real pauses left between the cues -- and the last two are real roll
+# calls. Note two of the stutters have runs of 8 and 9, longer than Haines
+# City's flagged 6: run length alone cannot separate these, which is why the
+# short-run rule also requires the run to tile its own span.
+_REAL_CLEAN_REPETITION_FIXTURES = [
+    "stutter_troy_nh.srt",
+    "stutter_creve_coeur_mo.srt",
+    "stutter_blackford_county_in.srt",
+    "rollcall_coweta_county_ga.srt",
+    "rollcall_bentonville_ar.srt",
+]
+
+
+@pytest.mark.parametrize("name", _REAL_CLEAN_REPETITION_FIXTURES)
+def test_detect_hallucination_warnings_ignores_real_repetition(name):
+    assert detect_hallucination_warnings(_load_srt_fixture(name)) == []
+
+
+def test_halifax_recess_is_a_real_loop_not_the_false_positive_backlog_claimed():
+    # BACKLOG.md's false-positive caution named Halifax's 28 repeated "thank
+    # you"s as legitimate -- "a chair thanking distinct public commenters over
+    # a real 13-minute comment period". Pulling the real export disproved that
+    # (WO-36): the 28 cues are consecutive with no other content between them,
+    # on an exact 30.000s cadence, and the cue immediately before them is the
+    # chair announcing a dinner recess. This test pins the evidence so the
+    # claim doesn't get re-adopted.
+    segments = _load_srt_fixture("recess_halifax_ns.srt")
+    assert "enjoy your meal" in segments[7]["text"].lower()
+    assert {seg["text"].strip().lower() for seg in segments[8:36]} == {"thank you."}
+    cadence = {
+        round(b["start"] - a["start"], 3)
+        for a, b in zip(segments[8:36], segments[9:36])
+    }
+    assert cadence == {30.0}
+    assert detect_hallucination_warnings(segments)
+
+
+def test_tiled_short_run_needs_both_length_and_gapless_timing():
+    # Synthetic, deliberately: it isolates the two halves of the short-run
+    # rule one at a time, which no single real transcript does. The shape (one
+    # repeated line every 2.0s) is taken from the real Haines City fixture
+    # above -- that is where the cadence and the phrasing come from; only the
+    # coverage and the run length are varied here.
+    text = "You're in the process."
+    tiled = [
+        {"start": 2.0 * i, "end": 2.0 * i + 2.0, "text": text}
+        for i in range(_HALLUCINATION_TILED_RUN_LENGTH)
+    ]
+    assert _has_hallucinated_repetition_run(tiled)
+
+    # Same run length, same span, but each cue is a short utterance with real
+    # silence after it -- the real-stutter shape, which must not flag.
+    sparse = [
+        {"start": 2.0 * i, "end": 2.0 * i + 0.3, "text": text}
+        for i in range(_HALLUCINATION_TILED_RUN_LENGTH)
+    ]
+    assert not _has_hallucinated_repetition_run(sparse)
+
+    # Gapless, but one cue short of the minimum run length.
+    assert not _has_hallucinated_repetition_run(
+        tiled[: _HALLUCINATION_TILED_RUN_LENGTH - 1]
+    )
+
+
+def test_long_run_flags_even_when_sparse_and_untimed():
+    # Synthetic: the Halifax fixture above is the real instance of a long
+    # sparse run, and this covers the degenerate variant of it -- segments
+    # carrying no usable timings at all, where coverage is unknowable and only
+    # run length is left to reason from. Not yet seen in real worker output
+    # (every real path fills start/end), so this pins the intended fallback
+    # rather than a confirmed case.
+    untimed = [
+        {"text": "Thank you."} for _ in range(_HALLUCINATION_ABSOLUTE_RUN_LENGTH)
+    ]
+    assert _has_hallucinated_repetition_run(untimed)
+    assert not _has_hallucinated_repetition_run(
+        untimed[: _HALLUCINATION_ABSOLUTE_RUN_LENGTH - 1]
+    )
+
+
+@pytest.mark.parametrize(
+    "name",
+    [name for name, _run, _total in _REAL_UNDETECTED_LOOPS]
+    + _REAL_CLEAN_REPETITION_FIXTURES
+    + ["recess_halifax_ns.srt"],
+)
+def test_archive_duplicate_agrees_with_worker_on_every_real_fixture(name):
+    # archive/utils/transcription_quality.py is a deliberate hand-synced copy
+    # of this logic (see its own docstring for why the Archive must not depend
+    # on worker/). Nothing enforced that they stayed identical; a hand-synced
+    # duplicate that silently drifts is the whole risk of the pattern, so pin
+    # it against every real fixture rather than trusting the convention.
+    from archive.utils.transcription_quality import (
+        detect_hallucination_warnings as archive_detect,
+    )
+
+    segments = _load_srt_fixture(name)
+    assert archive_detect(segments) == detect_hallucination_warnings(segments)
