@@ -22,8 +22,9 @@ neither dict matches no branch at all** — no error, no empty row, no
 warning. It just isn't on the page.
 
 That already happened once, to six adapters (champds, iqm2, clerkbase,
-seattle_channel, telvue, hyland — the original backlog entry above). Those
-were fixed. Then it happened *again*, to four more, within two days:
+seattle_channel, telvue, hyland — the struck `BACKLOG.md` entry this
+promotes). Those were fixed. Then it happened *again*, to four more,
+within two days:
 
 | Platform | PR | `platform_name` | Real shape |
 |---|---|---|---|
@@ -47,8 +48,8 @@ rather than just adding four dict entries.
 
 ### Where each of the four actually belongs
 
-The brief said not to dump all four in one set, and reading each adapter
-end to end showed the two sets don't mean quite what their names suggest.
+Reading each adapter end to end (rather than sorting them by name)
+showed the two sets don't mean quite what their names suggest.
 The real distinction `DIRECT_PLATFORMS` vs `CUSTOM_PLATFORMS` draws is
 **"one product many jurisdictions buy" vs. "a bespoke scraper this app
 wrote for one government"** — not "hosts video" vs. "doesn't"
