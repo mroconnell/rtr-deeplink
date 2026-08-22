@@ -6,6 +6,93 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Tier-3 feed rate lowered back to 12/6h — and the real constraint turned out to be a dead job-creation driver, not worker speed [Done 2026-08-22]
+
+Supersedes "Tier-3 feed rate raised to match real two-worker throughput
+[Done 2026-08-21]" below. Ryan noticed the site had gained hundreds of
+meetings overnight while jurisdictions-with-transcripts had only moved
+60-90, and asked whether that was real and whether the tier-3 inflow
+could be slowed. Both halves were real, and chasing the *why* turned up
+something bigger than the rate.
+
+**Measured live, 2026-08-22** (`/internal/transcription-queue-stats`,
+`/internal/transcription-failure-analysis?days=2`, the public
+`/coverage` and `/meetings` pages, and the GitHub Actions run logs for
+`bulk-queue-transcription-backlog.yml`):
+
+| | |
+|---|---|
+| Archived meetings | 2,403 |
+| Jurisdictions listed on `/coverage` | 1,577 |
+| …with a transcript | 1,099 |
+| …with none at all | 478 (30%) |
+| Pages with no good transcript | 781 (33%) |
+| Cloud jobs completed, last 24h | 35 |
+| Tier-3 queue not yet fed | 1,317 |
+| Active transcription jobs | 1 (cap is 15) |
+
+**The arithmetic.** `BATCH_SIZE = 48` (192/day) plus
+`feed_granicus_auto_transcription.py`'s 12/6h (48/day) pushed ~240
+URLs/day, ≈210 of which became live pages at this queue's ~88%
+feasibility rate. Real transcript production is ~35 cloud jobs/day plus
+the 15-25/day local Whisper batches — ~55-60 — which is exactly the
+60-90 Ryan observed. Net: **roughly +150 transcript-less public pages
+per day.**
+
+**The real finding: the hourly top-up driver has been creating zero
+jobs.** `bulk-queue-transcription-backlog.yml` exists to keep both
+workers supplied with independent work. Five runs sampled across
+2026-08-21T18:59Z → 2026-08-22T19:39Z each logged **"0 created, 8
+skipped, capped=False (of 8 candidates)"**, and in every sampled run
+**all 8 candidates were `archive-stream.granicus.com` HLS URLs failing
+with "ffprobe couldn't read the media"** — the already-root-caused
+Granicus origin 504 (see BACKLOG.md's "Some old/archived Granicus
+clips' `chunklist.m3u8` genuinely times out at Granicus's own origin").
+So for at least 25 hours the driver produced nothing, and the 35
+jobs/day came entirely from `worker/main.py`'s own idle-time
+`maybe_generate_auto_job()` trickle. `active_jobs: 1` against a cap of
+15 is the corroborating signal: the workers were **idle, not slow**.
+Feeding pages faster could not have helped — the constraint sits at job
+*creation*, downstream of the feed script.
+
+**Why the 2026-08-21 sizing missed, precisely.** That entry's ~10x
+realtime figure was measured on one clean chunk, and — the actual error
+— it assumed the workers would be *busy*. Nothing checked whether they
+were. `/internal/transcription-queue-stats` already existed and would
+have shown `active_jobs: 1` for the asking; it was never curled before
+or after the raise. The generalizable lesson is this repo's own
+recurring one: a capacity estimate is not a throughput measurement, and
+when a read-only endpoint that would falsify it already exists, curl it.
+
+**The tempting wrong answer, ruled out.** ffmpeg-timeout retry churn is
+real — 106 timeout failures across 18 jobs in two days — but it is a
+~4% throughput tax, not a 6x one: 106 × 120s ≈ 3.5 hours against ~96
+worker-hours available over the same window. That is consistent with the
+existing finding that timeouts account for only 2 of 218 terminal job
+failures. It is not the explanation for the shortfall and should not be
+funded as if it were.
+
+**What changed here.** `BATCH_SIZE` 48 → 12 in
+`scripts/feed_tier3_auto_transcription.py`, with its module docstring
+and `.github/workflows/feed-tier3-transcription.yml`'s header comment
+rewritten to carry the measurements above. No cron change (`43 */6 * * *`
+stays), no code path touched, so the new rate takes effect at the first
+firing after merge with no deploy.
+
+**Deliberately not done, per Ryan's call:** the 781 already-live
+transcript-less pages stay exactly as they are — indexed, in
+`sitemap.xml`, in `feed.xml` — and drain as the workers catch up. A
+tier-3 page carries a real `video_url`, so it does not match
+`_is_empty_page_condition()` (`archive/db/crud.py`) and is not thin by
+the archive's current definition. Gating video-only pages was considered
+and declined for this change: it is a product call about ~780 live
+pages, not a rate question.
+
+**Two residuals left open in BACKLOG.md** under "Transcription queue &
+workers": the dead top-up driver (the one worth fixing), and the fact
+that even at 12/6h the combined inflow is ~96/day against ~55-60 of
+output, so the untranscribed count keeps growing, ~4x slower.
+
 ## Pre-WO-34 roll-up transcripts: a re-resolve script, a corpus-wide dry run, and a second defect shape found [Done 2026-08-22]
 
 `scripts/dedupe_rollup_transcripts.py` — built, dry-run, and reported;
@@ -1337,6 +1424,11 @@ revisit the cadence (or disable the workflow) once this backlog figure
 is worked down.
 
 ### Tier-3 feed rate raised to match real two-worker throughput [Done 2026-08-21]
+
+**Superseded 2026-08-22** — reverted to 12/6h; the throughput
+figure this entry sized 48 from was never achieved in production.
+See "Tier-3 feed rate lowered back to 12/6h" at the top of this
+file before acting on anything below.
 
 **Tier-3 feed rate raised to match real two-worker throughput,
 2026-08-21 — real measurements, not a guess.** Real scope, checked

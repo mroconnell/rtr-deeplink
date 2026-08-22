@@ -134,14 +134,16 @@ Platform & jurisdiction coverage  (27)
     [LATER] YouTube-backed meetings' transcripts run through
     [IMPROVEMENT-ROUND] Four platforms account for ~78% of the 470 real
 
-Reliability, ops & cost  (10)
+Reliability, ops & cost  (12)
   `[JUST-DO-IT]` Running out of Render *pipeline minutes* silently…  (2)
     `[JUST-DO-IT]` Source `_tier3_queue_remaining()` from the database
     `[LATER]` Path-scope each service's `buildFilter` to the directories
-  Media-source reliability### Media-source reliability  (2)
+  Media-source reliability  (2)
     `[NEEDS-AUDIT]` Some old/archived Granicus clips' `chunklist.m3u8`…
     `[NEEDS-AUDIT]` A single job still makes N consecutive same-host…
-  Transcription queue & workers  (2)
+  Transcription queue & workers  (4)
+    [NEEDS-AUDIT] The hourly transcription top-up driver has been
+    [NEEDS-AUDIT] Even after the 2026-08-22 rate cut, inflow still
     [LATER] `list_transcription_backlog_candidates()` still does a real
     [LATER] Second transcription worker's auto-generation TOCTOU race —
   Search Console, structured data & SEO plumbing  (3)
@@ -1806,7 +1808,7 @@ the number to watch is whether this change bends the curve before 08-27.
   transcription workers. Bigger win than the queue files, entirely
   unexamined.
 
-### Media-source reliability### Media-source reliability
+### Media-source reliability
 
 #### `[NEEDS-AUDIT]` Some old/archived Granicus clips' `chunklist.m3u8` genuinely times out at Granicus's own origin (real 504, not a rate limit)
 
@@ -1883,7 +1885,68 @@ behind automated `PRIORITY_LOW` backlog work.
 loud but small — **2 of 218** terminal job failures. 129 are `No usable
 audio or video source was found`. That's where the volume actually is.
 
+A second measurement, 2026-08-22, says the same thing about *throughput*
+rather than terminal failures: 106 timeout failures across 18 jobs in
+two days is ~3.5 hours of retry (106 × 120s) against ~96 worker-hours
+available over the same window — about **4%**. So timeouts are not what
+caps real output at ~35 jobs/day either; see "The hourly transcription
+top-up driver has been creating zero jobs" under **Transcription queue
+& workers**, which is.
+
 ### Transcription queue & workers
+
+- **[NEEDS-AUDIT] The hourly transcription top-up driver has been
+  creating zero jobs — measured 2026-08-22, at least 25 hours of it.**
+  `bulk-queue-transcription-backlog.yml` exists to keep both cloud
+  workers supplied. Five runs sampled across 2026-08-21T18:59Z →
+  2026-08-22T19:39Z each logged **"0 created, 8 skipped, capped=False
+  (of 8 candidates)"**, and in every sampled run all 8 candidates were
+  `archive-stream.granicus.com` HLS URLs failing "ffprobe couldn't read
+  the media" — the known Granicus origin 504 (see "Some old/archived
+  Granicus clips' `chunklist.m3u8` genuinely times out at Granicus's own
+  origin" above). Corroborated by `active_jobs: 1` against the script's
+  own cap of 15: **the workers are idle, not slow**, and the ~35
+  jobs/day being completed come entirely from `worker/main.py`'s own
+  idle-time `maybe_generate_auto_job()` trickle. This is the single
+  highest-leverage thing in this section — it is the reason the archive
+  gains pages ~4x faster than it transcribes them, and it costs real
+  paid worker time sitting idle.
+  Likely mechanism, **not yet confirmed**:
+  `list_transcription_backlog_candidates()` is oldest-archived-first,
+  and the oldest slice of the backlog is a dense band of Granicus
+  archive clips with this exact failure, so the driver grinds through
+  them 8 an hour and never reaches probeable candidates. The candidate
+  list did advance between runs (alphabetically, `cathedralcity…` →
+  `chesapeake…`), so it is not stuck on a fixed 8 — what has not been
+  checked is whether `_in_auto_transcription_cooldown()` can ever apply
+  here at all, given the skip happens client-side in the script before
+  any `TranscriptionJob` row exists to record a failure against. Check
+  that before designing a fix. Plausible directions, in rough order of
+  cheapness: skip `archive-stream.granicus.com` candidates whose probe
+  has already failed N times; interleave the candidate order by media
+  host so one bad host cannot monopolize a batch; or raise `BATCH_SIZE`
+  so a run that skips 8 still tries others. Do **not** reach for
+  `_SUBPROCESS_TIMEOUT_SECONDS` — **Standing decisions** rules that out,
+  and the 504 arrives at 4-6 minutes regardless.
+
+- **[NEEDS-AUDIT] Even after the 2026-08-22 rate cut, inflow still
+  exceeds transcription output.** The tier-3 feed went 48/6h → 12/6h
+  that day (48/day; full measurements in `BACKLOG_DONE.md`'s "Tier-3
+  feed rate lowered back to 12/6h"), but
+  `feed_granicus_auto_transcription.py` contributes another 12/6h, so
+  combined inflow is **~96/day** against measured output of **~55-60/day**
+  (35 cloud jobs + 15-25 local Whisper). The untranscribed count — 781
+  of 2,403 pages, 478 of 1,577 jurisdictions with none at all, both
+  measured 2026-08-22 — therefore still grows, roughly 4x slower than
+  before. Dials, in order of honesty: (1) **fix the dead top-up driver
+  above** — that raises real output rather than lowering supply, and is
+  the only one of these that actually helps; (2) drop tier-3 to 6/6h
+  (24/day) to balance inflow against output outright, at the cost of
+  ~55 days rather than ~27 to drain the remaining 1,317-entry queue;
+  (3) reduce the Granicus feed the same way. Lowering supply is a
+  holding action; do not repeat it a third time without first re-curling
+  `/internal/transcription-queue-stats` to check whether output has
+  moved.
 
 - **[LATER] `list_transcription_backlog_candidates()` still does a real
   N+1 query pattern, found 2026-08-21.** Unlike

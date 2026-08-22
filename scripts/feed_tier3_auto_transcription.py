@@ -33,30 +33,53 @@ every 6 hours, cron-offset from feed-granicus-transcription.yml's ":13"
 so the two don't land in the same minute (same reasoning as daily-report.
 yml / send-search-alerts.yml's offset).
 
-**Batch size raised 12 -> 48, 2026-08-21 -- now derived from real,
-measured worker throughput, not a borrowed Granicus default.** The
-original 12/6h (48/day) figure was explicitly a placeholder ("NOT
-independently derived from this queue's actual median video length...
-worth revisiting once real per-platform duration data exists" -- see
-BACKLOG.md's "Second transcription worker" entry for the fuller
-reasoning). With a second transcription worker now live
-(rtr-transcription-worker-2, render.yaml) and real production
-measurements in hand -- two workers combined process roughly 10x
-real-time audio (each ~5x realtime on a real completed 900s chunk,
-2026-08-21), and a real 25-page sample of this exact queue averaged
-~70 minutes/meeting at an 88% feasibility rate -- the old 48/day feed
-rate was the actual bottleneck (this queue's 1600+ entries would take
-~34 days to even reach the Archive at that pace, regardless of how fast
-either worker could transcribe). 48/6h (192/day) is sized to roughly
-match the two workers' real combined throughput instead of trickle-
-feeding them faster than they could ever use, while still spreading
-across the many distinct government-site domains this queue already
-covers (no single-domain hammering risk from a bigger batch -- see
-REQUEST_DELAY_SECONDS' own per-request pacing, unchanged). Revisit again
-if either side's real throughput changes materially (a worker
-plan/model-size change, a worker count change, or this platform mix's
-real average duration turning out different at a larger sample size than
-the 25-page one this was sized from).
+**Batch size lowered 48 -> 12 again, 2026-08-22 -- the 48 was sized
+from a throughput figure production never actually reached.** The
+2026-08-21 raise (see BACKLOG_DONE.md's "Tier-3 feed rate raised to
+match real two-worker throughput") derived 192/day from "each worker
+~5x realtime on a real completed 900s chunk, ~10x combined", implying
+roughly 200 meetings/day. Measured the next day, real output was **35
+completed jobs in 24h** (/internal/transcription-queue-stats) -- about
+6x under the estimate. Against that, this script at 48/6h plus
+feed_granicus_auto_transcription.py's 12/6h pushed ~240 URLs/day, ~210
+of which became live pages at this queue's ~88% feasibility rate, so the
+site gained transcript-less pages at roughly +150/day (781 of 2,403
+archived pages had no good transcript; 478 of 1,577 jurisdictions had
+none at all).
+
+**The shortfall is idle workers, not slow ones -- check this before
+ever re-raising the rate.** `active_jobs` was **1** against
+bulk_queue_transcription_backlog.py's cap of 15 when this was measured.
+The hourly top-up workflow that is supposed to keep both workers fed had
+created **zero jobs for at least 25 hours**: five runs sampled between
+2026-08-21T18:59Z and 2026-08-22T19:39Z each logged "0 created, 8
+skipped (of 8 candidates)", and in every run all 8 candidates were
+`archive-stream.granicus.com` HLS URLs failing with "ffprobe couldn't
+read the media" -- the already-root-caused Granicus origin 504 (see
+BACKLOG.md's "Some old/archived Granicus clips' `chunklist.m3u8`
+genuinely times out at Granicus's own origin"). The 35 jobs/day were
+coming entirely from worker/main.py's own idle-time
+maybe_generate_auto_job() trickle. So feeding faster could not have
+helped: the constraint sits at job *creation*, downstream of this
+script.
+
+Worth stating plainly because it is the tempting wrong answer: the
+ffmpeg-timeout retry rate is **not** the explanation. It is real (106
+timeout failures across 18 jobs in two days,
+/internal/transcription-failure-analysis?days=2) but small as a
+throughput tax -- 106 x 120s is ~3.5 hours against ~96 worker-hours
+available over the same window, ~4%, consistent with the existing
+finding that timeouts account for only 2 of 218 terminal job failures.
+
+12/6h (48/day) restores the pre-2026-08-21 rate. It does not close the
+gap on its own -- the Granicus feed contributes another 48/day against
+~55-60/day of real output (35 cloud + 15-25 local Whisper) -- see
+BACKLOG.md's entry under "Transcription queue & workers" for the
+remaining dials and for the top-up-driver bug that deserves the effort
+first. Per-request pacing is unchanged either way
+(REQUEST_DELAY_SECONDS), and this queue still spans many distinct
+government-site domains, so batch size was never a single-domain
+hammering question.
 """
 
 import asyncio
@@ -83,7 +106,7 @@ from app.utils.url_normalize import normalize_url  # noqa: E402
 from scripts.bulk_ingest import _ingest, REQUEST_DELAY_SECONDS  # noqa: E402
 
 QUEUE_FILE = REPO_ROOT / "scripts" / "tier3_auto_transcription_queue.txt"
-BATCH_SIZE = 48
+BATCH_SIZE = 12
 
 
 async def _push_if_has_video(session: aiohttp.ClientSession, url: str) -> str:
