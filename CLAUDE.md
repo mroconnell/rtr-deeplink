@@ -125,6 +125,39 @@ under everything else. This repo extracts and fixes just that part.
   `[WAIT]` blocked on a recrawl or another external event. They're
   discretionary — add one only where the entry itself already establishes
   it, never as a guess.
+- **A backlog entry is a lead, not a spec — verify its claims against
+  the code and live data before building from it.** Entries are written
+  at the moment a problem is *found*, often before it's fully understood,
+  and the code moves underneath them. A parallel wave on 2026-08-22 hit
+  this five times in one run: **three entries were wrong about their own
+  subject** — one named the wrong file, one cited a line number as
+  "confirmed via `od -c`" that was wrong anyway, one had a count off by
+  **50×** — and **two more described work that was already done**. The
+  same day, a separate session found an inbox-triage entry proposing an
+  investigation into a bug that had been fixed 22 minutes after the alert
+  fired (Sentry `PYTHON-FASTAPI-X` / PR #286), and a "real, current cost
+  exposure" entry whose stated 5 GB limit was actually 25 GB. **So:
+  before acting on an entry, re-derive its central claim** — open the
+  file it names, re-run the count, `git log --grep` the crash site or
+  symptom for a fix that already landed, and check the live value behind
+  any production assertion. This costs a minute and it is the difference
+  between fixing something and fixing nothing. It does not mean
+  distrusting the entries — their *reasoning* is usually the most
+  valuable thing in the repo — it means the specifics decay and the
+  reasoning doesn't. Correct the entry as part of the same pass, so the
+  next reader inherits the corrected version rather than repeating the
+  check.
+- **WO numbers: `grep -oE 'WO-[0-9]+' *.md | sort -t- -k2 -n | tail -1`
+  against `origin/main`, then take max + 1 — never count + 1.** The
+  sequence has real gaps, so counting existing numbers produces a
+  collision every time. **Under a parallel wave this isn't sufficient
+  either**: the grep only sees *merged* work, so two agents working
+  concurrently both read the same max and both claim the same number.
+  When more than one session is running, **the conductor assigns WO
+  numbers centrally** and agents use the number they're given rather
+  than deriving one. Same root cause as the multi-session working-tree
+  rule below — concurrent sessions can't infer shared state from a
+  snapshot of it.
 - **New bugs/gaps found while working go in `BACKLOG.md`**, not just
   mentioned in conversation — it's the durable record. `BACKLOG.md` holds
   only live/open items, kept short on purpose; once an item is actually
