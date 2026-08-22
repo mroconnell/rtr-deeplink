@@ -1,4 +1,4 @@
-# Feeds 48 "tier 3" pages every 6 hours into the worker's existing
+# Feeds 12 "tier 3" pages every 6 hours into the worker's existing
 # auto-transcription idle-time mechanism (worker/main.py's
 # maybe_generate_auto_job(), see BACKLOG_DONE.md's 2026-08-09 entry) --
 # same pattern as feed-granicus-transcription.yml, for a different
@@ -19,16 +19,23 @@
 # rtr-business/research/video_hosting_catalog_combined.csv for the full
 # per-URL data this queue was built from.
 #
-# Batch size (48/6h = 192/day) raised 2026-08-21 from the original
-# 12/6h -- sized to roughly match the two transcription workers' real
-# combined throughput (~10x realtime) now that a second one exists
-# (rtr-transcription-worker-2, render.yaml), instead of the old rate
-# being the actual bottleneck ahead of either worker -- see
-# feed_tier3_auto_transcription.py's own docstring for the real
-# measurements this was sized from. Cron minute (:43) deliberately
-# offset from the Granicus job's :13 so the two scheduled jobs don't
-# land in the same minute (same reasoning as daily-report.yml /
-# send-search-alerts.yml's offset).
+# Batch size (12/6h = 48/day) lowered back 2026-08-22, reverting the
+# 2026-08-21 raise to 48/6h. That raise was sized from a "~10x realtime
+# combined" worker estimate production never reached -- real output
+# measured 2026-08-22 was 35 completed jobs in 24h against ~240 URLs/day
+# of combined tier-3 + Granicus inflow, so the site was gaining
+# transcript-less pages at roughly +150/day. The constraint turned out
+# to sit downstream of this workflow entirely: the workers were idle
+# (active_jobs 1 against a cap of 15) because
+# bulk-queue-transcription-backlog.yml had created zero jobs for 25+
+# hours, every candidate an unprobeable archive-stream.granicus.com URL.
+# Feeding faster could not have helped. Full measurements are in
+# feed_tier3_auto_transcription.py's own docstring -- read them before
+# re-raising this, and check active_jobs first.
+#
+# Cron minute (:43) is deliberately offset from the Granicus job's
+# :13 so the two scheduled jobs don't land in the same minute (same
+# reasoning as daily-report.yml / send-search-alerts.yml's offset).
 #
 # Requires the same two repo secrets feed-granicus-transcription.yml
 # already uses (Settings -> Secrets and variables -> Actions):
