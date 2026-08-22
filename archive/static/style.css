@@ -1308,6 +1308,127 @@ mark.search-match.current { background: #f97316; color: #fff; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* ...except that `max-width` alone was only half a fix, and the half it
+   missed is the one the original report was about. Under the default
+   `table-layout: auto`, a max-width on a `white-space: nowrap` cell also
+   acts as a *floor*: the column settles at exactly 14rem and can never
+   shrink below it. Measured in-browser 2026-08-22 against a locally
+   seeded copy of this page: at a 375px viewport #coverageTable still
+   rendered 489px wide (31 + 123 + 224 + 111) inside its 327px
+   .table-responsive container, and the whole Transcript column sat at
+   x 402-513 -- entirely outside the visible 24-351 strip. Confirmed the
+   same way on the live page. So the table still forced horizontal
+   scroll and still hid the Transcript column, exactly as reported.
+
+   `table-layout: fixed` is what actually holds it: declared widths are
+   honored as given, the table can never grow past `width: 100%` of its
+   container, and anything too long ellipsises instead of pushing the
+   table wider. Deliberately scoped by **id** to #coverageTable, not to
+   the shared .coverage-table class -- #fullCoverageTable below it has
+   11 columns that genuinely need more room than this page's 640px prose
+   column gives, and keeps its own .table-responsive horizontal scroll
+   rather than being squashed to fit. /state/{slug}'s table shares the
+   .coverage-table class too and is likewise untouched.
+
+   Column budget, widest to narrowest: Transcript is sized to the real
+   .transcript-badge (~103px + cell padding), the row number to four
+   digits (the live table is past 1,500 rows), Government to a fixed
+   share, and "Example meeting" takes whatever is left -- it's the one
+   column that degrades gracefully, since the full title is still in the
+   link's title="" tooltip and on the /m/{slug} page.
+
+   The widths have to be declared on the **header** cells: under fixed
+   layout a column's width comes from the first row only, and the first
+   row here is the <thead> row. coverage.html puts .coverage-title-col /
+   .coverage-transcript-col on the <td>s alone (they carry the ellipsis
+   behavior), so sizing through those classes silently does nothing --
+   measured: with `width: 7rem` set that way, Transcript and Example
+   meeting both came out 183px, i.e. an even split of the leftover, as
+   if no width had been given at all. Hence nth-child on the th. */
+#coverageTable {
+  table-layout: fixed;
+  width: 100%;
+}
+#coverageTable thead th:nth-child(1) { /* # */
+  width: 3rem;
+}
+#coverageTable thead th:nth-child(2) { /* Government */
+  width: 30%;
+}
+/* Column 3, "Example meeting", is deliberately left auto -- it absorbs
+   whatever the other three don't use. */
+#coverageTable thead th:nth-child(4) { /* Transcript */
+  width: 7rem;
+}
+#coverageTable .row-number-col {
+  max-width: none;
+  padding-right: 0.4rem;
+}
+#coverageTable .coverage-title-col,
+#coverageTable .coverage-transcript-col {
+  max-width: none;
+}
+/* Headers are `white-space: nowrap` (see th.sortable-col below), which
+   under fixed layout stops widening the column and starts spilling over
+   the next one instead. Let them wrap here rather than clip: clipping
+   also ate the ::after sort arrow, which is the only visible cue that
+   these columns are sortable at all (confirmed in-browser at 375px --
+   the headers read "Govern...", "Example...", "Transcri..." with no
+   arrows). overflow stays hidden as a backstop for a header longer than
+   its column even after wrapping. */
+#coverageTable th.sortable-col {
+  white-space: normal;
+}
+#coverageTable th {
+  overflow: hidden;
+}
+/* Phone widths: the badge and the two text columns all have to fit in
+   ~330px, so trade a little badge size back for title room. */
+@media (max-width: 575.98px) {
+  #coverageTable thead th:nth-child(1) {
+    width: 2.5rem;
+  }
+  #coverageTable thead th:nth-child(2) {
+    width: 32%;
+  }
+  #coverageTable thead th:nth-child(4) {
+    width: 5.75rem;
+  }
+  #coverageTable .row-number-col {
+    padding-right: 0.25rem;
+    font-size: 0.7rem;
+  }
+  #coverageTable .transcript-badge {
+    font-size: 0.55rem;
+    padding: 0.15em 0.35em;
+  }
+  /* "Government" is a single unbreakable word wider than its column at
+     the default header size, so wrapping alone can't save it -- without
+     this it renders clipped to "Governme" with its sort arrow cut off. */
+  #coverageTable thead th {
+    font-size: 0.75rem;
+  }
+}
+/* Smallest real phones (iPhone SE-class, 320px): 0.75rem still isn't
+   small enough for "Government" to clear its column -- measured
+   clipping at 320px without this tier. */
+@media (max-width: 399.98px) {
+  #coverageTable thead th {
+    font-size: 0.68rem;
+  }
+  #coverageTable thead th:nth-child(2) {
+    width: 32%;
+  }
+  #coverageTable thead th:nth-child(4) {
+    width: 5.25rem;
+  }
+  #coverageTable .transcript-badge {
+    font-size: 0.5rem;
+  }
+  #coverageTable th.sortable-col::after {
+    margin-left: 0.2em;
+  }
+}
 /* Bootstrap 5.3's own table-striped overlay (rgba(0,0,0,.05)) applied
    directly to the frozen column too, since its own explicit background
    above would otherwise sit flat/unstriped while every other column in
