@@ -71,9 +71,8 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (6)
   [JUST-DO-IT] `[EASY]` "We think the video is here: [No video
   [JUST-DO-IT] `[EASY]` `rtr-business/BUSINESS_OVERVIEW.md` still says
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
-  Confirmations nobody has actually watched happen  (6)
-    [HUMAN] `[LOGIN]` Sentry: confirm a real raised exception actually
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (16)
+  Confirmations nobody has actually watched happen  (5)
     [HUMAN] `[LOGIN]` Confirm Render's health-check gate actually fails
     [HUMAN] Confirm both admin cron workflows run green against the
     [HUMAN] `[LOGIN]` Confirm a real Render deploy installed cleanly off
@@ -471,10 +470,6 @@ code-complete and merged (full detail in `BACKLOG_DONE.md`'s "Reliability/
 ops audit execution" entry). None blocks anything else; do whenever
 convenient.
 
-- **[HUMAN] `[LOGIN]` Sentry: confirm a real raised exception actually
-  appears in the dashboard.** `SENTRY_DSN` is live on all three
-  services, but nobody has forced a real exception and watched it land
-  (WO-7's own acceptance criterion, never run).
 - **[HUMAN] `[LOGIN]` Confirm Render's health-check gate actually fails
   a deploy** when `/api/health` reports unhealthy (WO-6) — the 503 logic
   is unit-tested, but no real Render deploy has been watched getting

@@ -401,3 +401,44 @@ of the trigger — guard the value (`offset = offset or 0`) or use
 `Query(0, ge=0)` before it reaches `max()` — but not worth doing blind
 until the trigger is understood, since a guard without knowing the cause
 risks silently hiding a real caller bug instead of fixing it.
+
+**Update 2026-08-22 (live dashboard check, Ryan).** The issue's own
+header now reads **"Last seen 14 hours ago in release
+`0e5da5fba548`"** — a *different* release than the `981555fa…` the alert
+email carried, and the arithmetic does not resolve cleanly either way:
+
+- Check performed at 2026-08-22 15:45 UTC, so "14 hours ago" ≈
+  **01:45 UTC**, with rounding plausibly covering 01:15–02:15.
+- The originally-reported occurrence was **01:26:17 UTC**, release
+  `981555fa` (WO-37, committed 2026-08-21 18:22:19 -07:00 =
+  2026-08-22 01:22:19 UTC).
+- `0e5da5fb` (WO-34, PR #285) was committed **01:27:51 UTC** — 94
+  seconds *after* the reported occurrence, and later still once its
+  build finished deploying.
+
+So an event tagged with release `0e5da5fb` **cannot** be the 01:26:17
+occurrence; it has to be a **later, second occurrence**, landing after
+WO-34 deployed. The alternative — that "14hr ago" is just a rounded
+render of the original 01:26:17 event and the release tag is being
+displayed inconsistently — is not ruled out by the data in hand, but
+requires Sentry to be mislabelling the release, which nothing else here
+suggests.
+
+**Why this is worth settling and not assuming:** this entry already
+states the decision rule — a one-off from a hand-typed ad-hoc request is
+"likely dead already", whereas recurrence "from the automated driver
+itself … would be a different and more urgent story worth re-opening."
+A genuine second occurrence in a later release is exactly that
+more-urgent case, and would also mean the "single occurrence" and
+"Unconfirmed trigger" framing above is stale.
+
+**The two-field check that settles it** (issue page, no login beyond
+Sentry): the issue's **event count** (1 vs 2+) and the **exact
+last-seen timestamp** (hover the "14hr ago" label for the full UTC
+value). If count is 1 and the timestamp is 01:26:17, this is a display
+artefact and the original one-off reading stands. If count is 2+ or the
+timestamp is later than ~01:30, re-open per the rule above and fix the
+guard (`Query(0, ge=0)`) rather than waiting further on the trigger.
+**Not yet run** — flagged during the 2026-08-22 `[HUMAN]`/`[LOGIN]`
+sweep, deliberately left as a question rather than resolved by
+assumption.
