@@ -19,8 +19,12 @@ Two kinds of test here, deliberately kept apart:
   break this suite's deliberate network-free property.
 """
 
+import pytest
+
 import archive.main
+from app.platforms import media_probe
 from archive.db import crud
+from archive.utils import video_thumbnail
 from archive.utils.clips import clip_entries
 from archive.utils.video_thumbnail import (
     TIMESTAMP_LEAD_SECONDS,
@@ -28,6 +32,12 @@ from archive.utils.video_thumbnail import (
     is_extractable,
     target_offset_seconds,
 )
+
+# Bound at import time, before conftest's autouse `_no_real_card_extraction`
+# fixture replaces the module attribute: the tests below are the only ones
+# in the suite that exercise the real extract_and_store(), and they do it
+# with media_probe patched so nothing reaches a CDN either way.
+from archive.utils.video_thumbnail import extract_and_store as real_extract_and_store
 from fastapi.testclient import TestClient
 
 archive_client = TestClient(archive.main.app)
@@ -456,10 +466,10 @@ def test_backfill_is_token_gated():
 async def test_backfill_apply_survives_a_failing_last_page(monkeypatch):
     # Regression, real production 500 on 2026-08-21: the apply loop
     # assigned extract_and_store()'s result to `offset`, shadowing the
-    # endpoint's own query parameter of that name. extract_and_store()
-    # returns None whenever an extraction fails, so a batch whose LAST
-    # page failed left `offset` as None and the response's
-    # `max(0, offset)` raised TypeError -> 500.
+    # endpoint's own query parameter of that name. Its FrameOutcome.offset
+    # is None whenever an extraction fails, so a batch whose LAST page
+    # failed left `offset` as None and the response's `max(0, offset)`
+    # raised TypeError -> 500.
     #
     # This is the normal case, not an edge case: these extractions pull
     # from live government CDNs that time out constantly (WO-40 measured
@@ -476,7 +486,9 @@ async def test_backfill_apply_survives_a_failing_last_page(monkeypatch):
 
     async def _fake_extract(*, page_id, video_url, source_page_url):
         # Succeeds for the first page, fails for the one asked for last.
-        return 900.0 if page_id == ok["page_id"] else None
+        if page_id == ok["page_id"]:
+            return video_thumbnail.FrameOutcome(900.0)
+        return video_thumbnail.FrameOutcome(None, "ffmpeg timed out after 45s")
 
     monkeypatch.setattr(
         archive.main.video_thumbnail, "extract_and_store", _fake_extract
@@ -506,7 +518,11 @@ async def test_backfill_apply_survives_every_page_failing(monkeypatch):
     page = await _make_m3u8_page("card-backfill-apply-all-fail")
 
     async def _always_fails(*, page_id, video_url, source_page_url):
-        return None
+        return video_thumbnail.FrameOutcome(
+            None,
+            "skipped: cooling down after an earlier failure (retried after 6h)",
+            True,
+        )
 
     monkeypatch.setattr(
         archive.main.video_thumbnail, "extract_and_store", _always_fails
@@ -519,3 +535,366 @@ async def test_backfill_apply_survives_every_page_failing(monkeypatch):
 
     assert response.status_code == 200
     assert response.json()["stored"] == 0
+
+
+# --- why a frame is missing (WO-42) --------------------------------------
+#
+# Until this, every failure path in extract_and_store() returned a bare
+# None and the reason media_probe.extract_frame() had already computed was
+# logged and thrown away. Not a hypothetical gap: the first real
+# production sweep finished 2026-08-22 at 973/1152 pages and left 179
+# failed slugs whose only recorded signal was their media host.
+#
+# These are SYNTHETIC in one respect only -- ffmpeg is not run, the same
+# way every other route/storage test in this module stands ffmpeg down --
+# but the reason strings are not invented. Each is either a literal from
+# media_probe.extract_frame()'s own source or real ffmpeg stderr, captured
+# 2026-08-22 by pointing real ffmpeg (8.1.2) at a local HTTP server
+# returning each status. Production runs ffmpeg 5.1.9 (the version
+# /api/health reports on the Archive service), so the exit codes below are
+# the locally-observed ones rather than a claim about the deployed build;
+# what the bucketing depends on is the *message* text, and this repo has
+# already observed a real "Server returned 404" from a real Granicus CDN
+# (see tests/conftest.py's _no_real_card_extraction). Still unconfirmed:
+# which of these reasons the 179 real failures will actually turn out to
+# be -- that is the question this change exists to make answerable, not
+# one it answers.
+
+# Real ffmpeg 8.1.2 output, verbatim, for HTTP 403 and 404 -- the shape
+# extract_frame() keeps the last 300 characters of. Note it names the
+# status twice, in two different phrasings; both are why
+# scripts/backfill_meeting_cards.py matches either.
+REAL_FFMPEG_403_STDERR_TAIL = (
+    "[http @ 0x9f0c0c400] HTTP error 403 Forbidden\n"
+    "[in#0 @ 0x9f0c20000] Error opening input: Server returned 403 Forbidden "
+    "(access denied)\n"
+    "Error opening input file https://archive-stream.granicus.com/x/y.m3u8.\n"
+    "Error opening input files: Server returned 403 Forbidden (access denied)"
+)
+REAL_FFMPEG_404_STDERR_TAIL = (
+    "[http @ 0x76740c000] HTTP error 404 Not Found\n"
+    "[in#0 @ 0x766804000] Error opening input: Server returned 404 Not Found\n"
+    "Error opening input file https://archive-media.granicus.com/a.mp4.\n"
+    "Error opening input files: Server returned 404 Not Found"
+)
+
+# Every distinct reason extract_frame() can hand back, one per branch of
+# its source. A `?t=` timestamp is used throughout so no ffprobe is
+# involved at all (tier 1 is pure arithmetic), which keeps these tests to
+# the one subprocess boundary they are about.
+EXTRACT_FRAME_REASONS = [
+    "ffmpeg not found on PATH",
+    "ffmpeg timed out after 45s",
+    "ffmpeg could not be started: [Errno 12] Cannot allocate memory",
+    f"ffmpeg exited 8: {REAL_FFMPEG_403_STDERR_TAIL}",
+    f"ffmpeg exited 8: {REAL_FFMPEG_404_STDERR_TAIL}",
+    "ffmpeg reported success but wrote no frame (offset past end?)",
+]
+
+_GRANICUS_M3U8 = "https://archive-stream.granicus.com/x/y.m3u8"
+_GRANICUS_PAGE = "https://example.granicus.com/player/clip/1"
+
+
+@pytest.fixture
+def clean_extraction_state():
+    """extract_and_store()'s two module-level dicts are process-wide by
+    design (they exist to stop a crawl re-probing a dead source on every
+    render), so a test that seeds either must not leak it into the next
+    one."""
+    video_thumbnail._failed_at.clear()
+    video_thumbnail._inflight.clear()
+    yield
+    video_thumbnail._failed_at.clear()
+    video_thumbnail._inflight.clear()
+
+
+def _extract_frame_returning(result, *, calls=None):
+    async def _fake(media_url, *, offset, source_page_url, out_path):
+        if calls is not None:
+            calls.append((media_url, offset))
+        return result
+
+    return _fake
+
+
+async def _writes_a_frame(media_url, *, offset, source_page_url, out_path):
+    out_path.write_bytes(_TINY_JPEG)
+    return True, None
+
+
+@pytest.mark.parametrize("reason", EXTRACT_FRAME_REASONS)
+async def test_every_extract_frame_reason_reaches_the_caller(
+    monkeypatch, clean_extraction_state, reason
+):
+    monkeypatch.setattr(
+        media_probe, "extract_frame", _extract_frame_returning((False, reason))
+    )
+
+    outcome = await real_extract_and_store(
+        page_id=910001,
+        video_url=_GRANICUS_M3U8,
+        source_page_url=_GRANICUS_PAGE,
+        timestamp=982,
+    )
+
+    assert outcome.offset is None
+    assert outcome.stored is False
+    # Verbatim, not summarised: the ffmpeg stderr tail is the whole point
+    # -- it carries the CDN's own status line.
+    assert outcome.reason == reason
+    # A real attempt was made against the source. That is what separates
+    # this from the skips below, and what makes it worth blacklisting.
+    assert outcome.skipped is False
+
+
+async def test_a_failure_without_a_reason_still_says_something(
+    monkeypatch, clean_extraction_state
+):
+    # Defensive: extract_frame() always supplies a reason today, so this
+    # is the one branch here with no real occurrence behind it. It exists
+    # because the bare `None` it guards against is exactly the
+    # undiagnosable state this change removes -- a future (False, None)
+    # must not quietly restore it.
+    monkeypatch.setattr(
+        media_probe, "extract_frame", _extract_frame_returning((False, None))
+    )
+
+    outcome = await real_extract_and_store(
+        page_id=910002,
+        video_url=_GRANICUS_M3U8,
+        source_page_url=_GRANICUS_PAGE,
+        timestamp=982,
+    )
+    assert outcome.reason == video_thumbnail.UNREPORTED_FAILURE
+    assert outcome.skipped is False
+
+
+async def test_the_cooldown_is_reported_as_a_skip_not_a_failure(
+    monkeypatch, clean_extraction_state
+):
+    # The distinction that matters operationally. A cooldown hit means the
+    # Archive did *no work at all* on this page -- it declined, on the
+    # strength of an earlier failure it remembers in-process. A sweep that
+    # recorded that the way it records a real failure would blacklist a
+    # page nothing was attempted against, and (because the cooldown dict
+    # dies with the dyno) would do so on the strength of a fact that no
+    # longer exists after the next deploy.
+    calls = []
+    monkeypatch.setattr(
+        media_probe,
+        "extract_frame",
+        _extract_frame_returning((False, "ffmpeg timed out after 45s"), calls=calls),
+    )
+    kwargs = dict(
+        page_id=910003,
+        video_url=_GRANICUS_M3U8,
+        source_page_url=_GRANICUS_PAGE,
+        timestamp=982,
+    )
+
+    first = await real_extract_and_store(**kwargs)
+    assert first.skipped is False
+    assert first.reason == "ffmpeg timed out after 45s"
+
+    second = await real_extract_and_store(**kwargs)
+    assert second.offset is None
+    assert second.skipped is True
+    assert "cooling down" in second.reason
+    # And the cooldown really did its job: ffmpeg ran once, not twice.
+    assert len(calls) == 1
+    # The two reasons must not be confusable -- a caller decides whether
+    # to blacklist the page on exactly this difference.
+    assert second.reason != first.reason
+
+
+async def test_an_in_flight_duplicate_is_reported_as_a_skip(
+    monkeypatch, clean_extraction_state
+):
+    # N simultaneous requests for the same uncached card cost one ffmpeg
+    # run; the other N-1 return here. Nothing was attempted, so it is a
+    # skip.
+    calls = []
+    monkeypatch.setattr(
+        media_probe,
+        "extract_frame",
+        _extract_frame_returning((True, None), calls=calls),
+    )
+    video_thumbnail._inflight.add((910004, target_offset_seconds(timestamp=982)))
+
+    outcome = await real_extract_and_store(
+        page_id=910004,
+        video_url=_GRANICUS_M3U8,
+        source_page_url=_GRANICUS_PAGE,
+        timestamp=982,
+    )
+
+    assert outcome == video_thumbnail.FrameOutcome(
+        None, video_thumbnail.SKIP_IN_FLIGHT, True
+    )
+    assert calls == []
+
+
+async def test_a_full_queue_is_reported_as_a_skip_with_its_depth(
+    monkeypatch, clean_extraction_state
+):
+    calls = []
+    monkeypatch.setattr(
+        media_probe,
+        "extract_frame",
+        _extract_frame_returning((True, None), calls=calls),
+    )
+    for i in range(video_thumbnail._MAX_QUEUED_EXTRACTIONS):
+        video_thumbnail._inflight.add((920000 + i, 60))
+
+    outcome = await real_extract_and_store(
+        page_id=910005,
+        video_url=_GRANICUS_M3U8,
+        source_page_url=_GRANICUS_PAGE,
+        timestamp=982,
+    )
+
+    assert outcome.skipped is True
+    assert outcome.reason.startswith(video_thumbnail.SKIP_QUEUE_FULL)
+    # The depth is in the string because "the queue was full" and "the
+    # queue was full at 40" are different operator signals.
+    assert str(video_thumbnail._MAX_QUEUED_EXTRACTIONS) in outcome.reason
+    assert calls == []
+
+
+async def test_a_rejected_store_is_reported_as_a_failure(
+    monkeypatch, clean_extraction_state
+):
+    # store_thumbnail() returns False (never raises) when the page is at
+    # MAX_FRAMES_PER_PAGE, when a concurrent writer won, or when the table
+    # isn't there. ffmpeg succeeded, so this is not a source problem --
+    # and before WO-42 it was indistinguishable from one.
+    monkeypatch.setattr(media_probe, "extract_frame", _writes_a_frame)
+
+    async def _rejects(*_args, **_kwargs):
+        return False
+
+    monkeypatch.setattr(crud, "store_thumbnail", _rejects)
+
+    outcome = await real_extract_and_store(
+        page_id=910006,
+        video_url=_GRANICUS_M3U8,
+        source_page_url=_GRANICUS_PAGE,
+        timestamp=982,
+    )
+
+    assert outcome.offset is None
+    assert outcome.skipped is False
+    assert outcome.reason == video_thumbnail.STORE_REJECTED
+
+
+async def test_an_unexpected_exception_is_reported_not_swallowed(
+    monkeypatch, clean_extraction_state
+):
+    # The catch-all exists because a thumbnail is decoration and nothing
+    # here may escape into a BackgroundTask. It must stay total -- and now
+    # also say what happened.
+    async def _blows_up(media_url, *, offset, source_page_url, out_path):
+        raise RuntimeError("ffprobe subprocess vanished")
+
+    monkeypatch.setattr(media_probe, "extract_frame", _blows_up)
+
+    outcome = await real_extract_and_store(
+        page_id=910007,
+        video_url=_GRANICUS_M3U8,
+        source_page_url=_GRANICUS_PAGE,
+        timestamp=982,
+    )
+
+    assert outcome.offset is None
+    assert outcome.skipped is False
+    assert outcome.reason.startswith("extraction raised RuntimeError")
+    assert "ffprobe subprocess vanished" in outcome.reason
+
+
+async def test_a_stored_frame_reports_its_offset_and_no_reason(
+    monkeypatch, clean_extraction_state
+):
+    page = await _make_m3u8_page("card-outcome-success")
+    monkeypatch.setattr(media_probe, "extract_frame", _writes_a_frame)
+
+    outcome = await real_extract_and_store(
+        page_id=page["page_id"],
+        video_url="https://archive-media.granicus.com/OnDemand/x/x.m3u8",
+        source_page_url=_GRANICUS_PAGE,
+        timestamp=982,
+    )
+
+    assert outcome.offset == target_offset_seconds(timestamp=982)
+    assert outcome.stored is True
+    assert outcome.reason is None
+    assert outcome.skipped is False
+
+
+async def test_backfill_response_carries_the_reason_and_the_skip_flag(monkeypatch):
+    # The endpoint half of the same gap: a sweep reads this response, and
+    # `offset_seconds: null` on its own is what made the real 179-failure
+    # set undiagnosable.
+    stored_page = await _make_m3u8_page("card-backfill-reason-stored")
+    failed_page = await _make_m3u8_page("card-backfill-reason-failed")
+    skipped_page = await _make_m3u8_page("card-backfill-reason-skipped")
+    failure_reason = f"ffmpeg exited 8: {REAL_FFMPEG_404_STDERR_TAIL}"
+
+    async def _fake_extract(*, page_id, video_url, source_page_url):
+        if page_id == stored_page["page_id"]:
+            return video_thumbnail.FrameOutcome(15381)
+        if page_id == failed_page["page_id"]:
+            return video_thumbnail.FrameOutcome(None, failure_reason)
+        return video_thumbnail.FrameOutcome(
+            None, f"{video_thumbnail.SKIP_QUEUE_FULL} (40 in flight)", True
+        )
+
+    monkeypatch.setattr(
+        archive.main.video_thumbnail, "extract_and_store", _fake_extract
+    )
+
+    response = archive_client.post(
+        "/internal/thumbnails/backfill?dry_run=false"
+        f"&slugs={stored_page['slug']}"
+        f"&slugs={failed_page['slug']}"
+        f"&slugs={skipped_page['slug']}",
+        headers={"Authorization": "Bearer test-token"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["attempted"] == 3
+    assert body["stored"] == 1
+    # A skip is counted apart from a failure at the top level too, so an
+    # operator can tell "the Archive declined 40 pages" from "40 sources
+    # are unreachable" without reading every result.
+    assert body["skipped"] == 1
+
+    by_slug = {r["slug"]: r for r in body["results"]}
+    assert by_slug[stored_page["slug"]]["offset_seconds"] == 15381
+    assert by_slug[stored_page["slug"]]["reason"] is None
+    assert by_slug[stored_page["slug"]]["skipped"] is False
+
+    assert by_slug[failed_page["slug"]]["offset_seconds"] is None
+    assert by_slug[failed_page["slug"]]["reason"] == failure_reason
+    assert by_slug[failed_page["slug"]]["skipped"] is False
+
+    assert by_slug[skipped_page["slug"]]["offset_seconds"] is None
+    assert by_slug[skipped_page["slug"]]["skipped"] is True
+    # video_url is still echoed alongside the reason -- host grouping did
+    # not stop being useful, it stopped being the only thing available.
+    assert by_slug[failed_page["slug"]]["video_url"]
+
+
+def test_dry_run_still_reports_only_candidates():
+    # The reason/skipped fields belong to a real attempt. A dry run makes
+    # none, so it must not start implying it did.
+    response = archive_client.post(
+        "/internal/thumbnails/backfill?limit=1",
+        headers={"Authorization": "Bearer test-token"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["dry_run"] is True
+    assert "results" not in body
+    for candidate in body["candidates"]:
+        assert set(candidate) == {"slug", "video_url"}

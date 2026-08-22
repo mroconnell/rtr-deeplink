@@ -1515,11 +1515,23 @@ Two different things make resumption work:
   fresh `ffprobe` every time. Delete that file to give every stuck page
   another chance — a CDN timeout is often transient.
 
-Per batch it reports attempted/stored/failed, which lanes it touched, the
-failing slugs grouped by media host, and an ETA recomputed from observed
-throughput; the per-page *reason* for a failure is in the Archive's own
-logs (`video_thumbnail`: `No card frame for page ...`). The raw endpoint
-is still there for a one-off:
+Per batch it reports attempted/stored/failed/skipped, which lanes it
+touched, each failing slug with its media host **and ffmpeg's own reason**
+for the miss, and an ETA recomputed from observed throughput. The closing
+summary groups the stuck pages twice — by media host, and by reason (with
+one real example per group) — because those answer different questions:
+the host says *which* CDN is unhappy, the reason says whether it is a rate
+limit, a dead link, or an offset past the end of the video. Reasons are
+bucketed rather than counted raw, since each carries a 300-character tail
+of ffmpeg stderr including the media URL.
+
+A result marked `skipped` is kept strictly apart from a failure: it means
+the Archive attempted nothing at all (the frame was already in flight,
+inside its 6h failure cooldown, or the extraction queue was full), so
+those slugs are never written to the local stuck-page file and get
+retried on the next run. The raw endpoint is still there for a one-off,
+and its non-dry-run results carry `offset_seconds`, `reason` and
+`skipped` per slug:
 
 ```bash
 # Warm default frames for already-archived pages (dry_run defaults true)

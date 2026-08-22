@@ -32,7 +32,7 @@ import logging
 import re
 import tempfile
 from pathlib import Path
-from typing import Optional
+from typing import NamedTuple, Optional
 
 logger = logging.getLogger("rtr_archive.video_thumbnail")
 
@@ -195,15 +195,78 @@ def _cooling_down(key: tuple[int, int]) -> bool:
     return False
 
 
+class FrameOutcome(NamedTuple):
+    """What one extract_and_store() call did, and -- when it produced no
+    frame -- why (WO-42).
+
+    A plain `(offset, reason)` tuple in the same shape as
+    media_probe.extract_frame()'s own `(ok, reason)`, so the reason it
+    already computes stops being logged-and-discarded and reaches the
+    operator running a sweep. Before this, every failure path here
+    returned a bare `None` and the only record of *why* was an Archive
+    log line nobody correlates with a slug -- which is precisely what
+    made the first production sweep's 179 failures undiagnosable (see
+    BACKLOG_DONE.md's WO-37 residual).
+
+    Three states, and `skipped` is what separates the two that look
+    alike from the outside:
+
+    * **stored** -- `offset` is the second the frame came from, `reason`
+      is None.
+    * **failed** -- `offset` is None, `reason` says what went wrong
+      (usually straight from `extract_frame()`: an ffmpeg timeout, a
+      non-zero exit with the CDN's own error in the stderr tail, ...).
+      Something was really attempted against the source.
+    * **skipped** -- `offset` is None, `skipped` is True, and *no work
+      was done at all*: the frame is already being extracted by another
+      task, this (page, offset) is inside its failure cooldown, or the
+      process-wide queue is full. A caller must not treat these as
+      evidence the source is bad -- scripts/backfill_meeting_cards.py
+      would otherwise permanently blacklist a page it never tried.
+
+    Being a tuple, `stored_offset, reason = await extract_and_store(...)`
+    still reads naturally; `skipped` has a default so the two-field form
+    is enough to construct either of the first two states.
+    """
+
+    offset: Optional[int]
+    reason: Optional[str] = None
+    skipped: bool = False
+
+    @property
+    def stored(self) -> bool:
+        return self.offset is not None
+
+
+# The exact reason strings this module produces on its own (everything
+# else is passed through verbatim from media_probe.extract_frame()).
+# Named constants rather than inline literals because two other places
+# match on them: the backfill endpoint's response and
+# scripts/backfill_meeting_cards.py's reason bucketing.
+SKIP_IN_FLIGHT = "skipped: an extraction for this frame is already in flight"
+SKIP_QUEUE_FULL = "skipped: extraction queue full"
+STORE_REJECTED = (
+    "storage rejected the frame (already stored, per-page frame cap, "
+    "or no thumbnails table)"
+)
+UNREPORTED_FAILURE = "extraction failed without reporting a reason"
+
+
+def _skip_cooldown_reason() -> str:
+    hours = _FAILURE_COOLDOWN_SECONDS // 3600
+    return f"skipped: cooling down after an earlier failure (retried after {hours}h)"
+
+
 async def extract_and_store(
     *,
     page_id: int,
     video_url: str,
     source_page_url: str,
     timestamp: Optional[int] = None,
-) -> Optional[int]:
-    """Grab one frame for `page_id` and store it. Returns the resolved
-    offset on success, None on any failure or skip.
+) -> FrameOutcome:
+    """Grab one frame for `page_id` and store it. Returns a FrameOutcome:
+    the resolved offset on success, or a reason string on any failure or
+    skip (see FrameOutcome for how those two differ and why it matters).
 
     **Never called from the template render path**, and that constraint
     is the whole shape of this function: it can run ffprobe *and* ffmpeg
@@ -233,8 +296,10 @@ async def extract_and_store(
         offset = target_offset_seconds(timestamp=timestamp)
 
     key = (page_id, offset)
-    if key in _inflight or _cooling_down(key):
-        return None
+    if key in _inflight:
+        return FrameOutcome(None, SKIP_IN_FLIGHT, skipped=True)
+    if _cooling_down(key):
+        return FrameOutcome(None, _skip_cooldown_reason(), skipped=True)
     if len(_inflight) >= _MAX_QUEUED_EXTRACTIONS:
         logger.warning(
             "Thumbnail extraction queue full (%s in flight) -- skipping page %s @ %ss",
@@ -242,7 +307,9 @@ async def extract_and_store(
             page_id,
             offset,
         )
-        return None
+        return FrameOutcome(
+            None, f"{SKIP_QUEUE_FULL} ({len(_inflight)} in flight)", skipped=True
+        )
     _inflight.add(key)
     try:
         async with _semaphore():
@@ -250,7 +317,7 @@ async def extract_and_store(
             # and a concurrent request (or the ingest warm) may have
             # stored this exact frame in the meantime.
             if await crud.get_thumbnail_meta(page_id, offset_seconds=offset):
-                return offset
+                return FrameOutcome(offset)
             with tempfile.TemporaryDirectory(prefix="rtr-card-") as tmpdir:
                 out_path = Path(tmpdir) / "card.jpg"
                 ok, reason = await media_probe.extract_frame(
@@ -264,7 +331,11 @@ async def extract_and_store(
                         "No card frame for page %s @ %ss: %s", page_id, offset, reason
                     )
                     _failed_at[key] = _now()
-                    return None
+                    # extract_frame() always supplies a reason today; the
+                    # fallback keeps a future (False, None) from turning
+                    # back into the bare, undiagnosable None this whole
+                    # change exists to remove.
+                    return FrameOutcome(None, reason or UNREPORTED_FAILURE)
                 data = out_path.read_bytes()
         stored = await crud.store_thumbnail(
             page_id,
@@ -274,16 +345,16 @@ async def extract_and_store(
             is_default=timestamp is None,
         )
         if not stored:
-            return None
+            return FrameOutcome(None, STORE_REJECTED)
         logger.info(
             "Stored card frame for page %s @ %ss (%s bytes)", page_id, offset, len(data)
         )
-        return offset
-    except Exception:
+        return FrameOutcome(offset)
+    except Exception as exc:
         # A thumbnail is decoration. Nothing here may ever escape into a
         # BackgroundTask and take down a request's response cycle.
         logger.exception("Card frame extraction blew up for page %s", page_id)
         _failed_at[key] = _now()
-        return None
+        return FrameOutcome(None, f"extraction raised {type(exc).__name__}: {exc}")
     finally:
         _inflight.discard(key)

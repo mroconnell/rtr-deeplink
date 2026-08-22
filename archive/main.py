@@ -1016,6 +1016,12 @@ def _schedule_card_warm(
     ffmpeg could even open here" can't drift between them -- and so the
     template render path's version of this is provably a queue-and-return,
     never a subprocess.
+
+    extract_and_store()'s FrameOutcome (WO-42) is discarded here by
+    construction: a BackgroundTask has no caller left to return it to,
+    and the failure reason is already logged Archive-side. It is the
+    backfill sweep below -- the one caller that awaits the result -- that
+    the outcome exists for.
     """
     if not page_id or not video_thumbnail.is_extractable(video_url, video_format):
         return
@@ -1636,6 +1642,13 @@ async def internal_thumbnails_backfill(
     dry_run defaults true, matching this file's read-only-first
     convention (see /internal/jurisdiction/backfill-apply).
 
+    Each non-dry-run result carries `offset_seconds` (null when no frame
+    was produced), `reason` (why, when there is none) and `skipped` --
+    see video_thumbnail.FrameOutcome. `skipped` marks the cases where
+    nothing was attempted against the source at all (an in-flight
+    duplicate, the 6h per-frame failure cooldown, a full queue), which a
+    caller must not mistake for a page whose video is unreachable.
+
     `offset` pages past the head of the queue. It exists because a page
     whose extraction fails keeps no record of that failure in the
     database, so it stays a candidate forever and (newest-first) sits at
@@ -1694,13 +1707,14 @@ async def internal_thumbnails_backfill(
         # Deliberately NOT named `offset`: that's this endpoint's own query
         # parameter, and shadowing it here was a real 500 in production
         # (2026-08-21, caught by the first bounded --apply run of
-        # scripts/backfill_meeting_cards.py). extract_and_store() returns
-        # Optional[float] -- None whenever an extraction fails -- so a batch
-        # whose LAST page failed left `offset` as None and the response's
-        # `max(0, offset)` raised TypeError. Failures are the normal case
-        # here, not the exception (government CDNs time out constantly), and
-        # the paged mode had the same bug, so any sweep would have hit it.
-        extracted_at = await video_thumbnail.extract_and_store(
+        # scripts/backfill_meeting_cards.py). extract_and_store()'s
+        # FrameOutcome.offset is None whenever an extraction fails -- so a
+        # batch whose LAST page failed left `offset` as None and the
+        # response's `max(0, offset)` raised TypeError. Failures are the
+        # normal case here, not the exception (government CDNs time out
+        # constantly), and the paged mode had the same bug, so any sweep
+        # would have hit it.
+        outcome = await video_thumbnail.extract_and_store(
             page_id=candidate["id"],
             video_url=candidate["video_url"],
             source_page_url=candidate["source_url"] or candidate["video_url"],
@@ -1714,7 +1728,18 @@ async def internal_thumbnails_backfill(
                 # limiting is a very different problem from scattered
                 # dead links).
                 "video_url": candidate["video_url"],
-                "offset_seconds": extracted_at,
+                "offset_seconds": outcome.offset,
+                # WO-42. Until this, a sweep's only per-slug signal was
+                # `offset_seconds: null` and the real reason lived in an
+                # Archive log line nobody correlates back to a slug --
+                # which is exactly why the first production sweep's 179
+                # failures came back undiagnosable. `skipped` is not
+                # cosmetic: a skip means nothing was attempted against
+                # the source (cooldown, in-flight, queue full), so a
+                # caller must not record it as a dead page the way it
+                # records a real failure.
+                "reason": outcome.reason,
+                "skipped": outcome.skipped,
             }
         )
     return {
@@ -1722,6 +1747,7 @@ async def internal_thumbnails_backfill(
         "offset": max(0, offset),
         "attempted": len(results),
         "stored": sum(1 for r in results if r["offset_seconds"] is not None),
+        "skipped": sum(1 for r in results if r["skipped"]),
         "results": results,
     }
 

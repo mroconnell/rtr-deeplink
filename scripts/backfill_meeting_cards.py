@@ -61,13 +61,31 @@ matters for cost, not just tidiness: `extract_and_store()` runs
 `probe_duration()` *before* it checks that cooldown, so re-attempting a
 dead source costs a fresh `ffprobe` (up to a 120s timeout) every time.
 
-Failure detail: the endpoint reports a stored offset or `null` per slug,
-not *why* an extraction failed -- that reason (`ffmpeg timed out after
-45s`, `Server returned 404`, ...) is logged Archive-side by
-`video_thumbnail.extract_and_store()`. This script therefore groups
-failures by media host, which is the signal that actually matters at 2am
-(one CDN rate-limiting everything is a different problem from scattered
-dead links), and points at the Archive logs for the rest.
+**Failure detail (WO-42).** The endpoint now reports *why* each page
+produced no frame, not just that it didn't: `reason` (straight from
+ffmpeg where that is the cause -- `ffmpeg timed out after 45s`, a
+non-zero exit with the CDN's own `Server returned 404` in the stderr
+tail) and `skipped`. This closes the residual WO-37 left open on
+purpose, and the trigger it named was met: the first production sweep
+finished 2026-08-22 at 973/1152 pages, leaving 179 failures whose only
+grouping was by media host -- enough to see *which* CDN was unhappy,
+never enough to see whether that was a rate limit, a dead link, or an
+offset past the end of the video.
+
+Both groupings are printed, since they answer different questions: by
+host, and by `reason_bucket()` with one real example per bucket.
+Bucketing is necessary rather than tidy -- a raw reason carries 300
+characters of ffmpeg stderr including the media URL, so counting them
+unbucketed turns 179 failures into 179 groups of one.
+
+`skipped` is kept strictly apart from failure everywhere below. A skip
+means the Archive attempted nothing at all (the frame was already in
+flight, inside its 6h failure cooldown, or the queue was full), so those
+slugs are *not* written to the state file -- recording one would
+blacklist a page that was never tried. Against an Archive older than
+WO-42 both fields are simply absent and every failure buckets as
+`(no reason reported ...)`, which is a legible outcome rather than a
+crash.
 
 Usage (from the repo root, with the venv active, ARCHIVE_BASE_URL/
 ARCHIVE_INGEST_TOKEN set in .env):
@@ -94,6 +112,7 @@ import json
 import logging
 import math
 import os
+import re
 import sys
 import time
 from collections import Counter, OrderedDict
@@ -209,6 +228,91 @@ def cooldown_seconds(
     key: str, *, default_seconds: float, granicus_seconds: float
 ) -> float:
     return granicus_seconds if key == GRANICUS_PACING_KEY else default_seconds
+
+
+# --- why a page failed (pure, unit-tested) -------------------------------
+
+# What an Archive older than WO-42 reports: `offset_seconds: null` and
+# nothing else. Kept as a real bucket rather than crashing, because this
+# script is routinely pointed at a deployed Archive it did not ship with.
+REASON_UNREPORTED = "(no reason reported -- Archive predates WO-42)"
+# ffmpeg puts the media host's status on stderr twice, in two shapes:
+# `[http @ ...] HTTP error 403 Forbidden` and `Error opening input:
+# Server returned 403 Forbidden (access denied)`. Both are matched
+# because extract_frame() only keeps the last 300 characters of stderr,
+# and which of the two survives that window depends on how long the
+# media URL is. Verified against real ffmpeg 8.1.2 (2026-08-22) driven
+# at a local server returning each status -- 5xx really does come back
+# as the literal `5XX`, with no specific code, which is why the pattern
+# accepts it.
+_HTTP_STATUS_RE = re.compile(r"(?:HTTP error|Server returned)\s+(\d{3}|5XX)")
+_EXIT_CODE_RE = re.compile(r"^ffmpeg exited (-?\d+)")
+# Deliberately matched by substring rather than imported from
+# archive.utils.video_thumbnail: this script drives a *remote* Archive
+# over HTTP, which may be running a different build than the checkout it
+# is launched from, so the strings are wire format, not a shared symbol.
+_MARKERS: tuple[tuple[str, str], ...] = (
+    ("skipped: extraction queue full", "skipped: extraction queue full"),
+    ("ffmpeg not found on PATH", "ffmpeg not found on PATH"),
+    ("ffmpeg could not be started", "ffmpeg could not be started"),
+    ("timed out after", "ffmpeg timed out"),
+    ("wrote no frame", "ffmpeg wrote no frame (offset past end?)"),
+    ("Connection refused", "ffmpeg: connection refused"),
+    ("Invalid data found", "ffmpeg: invalid data (input not decodable)"),
+    ("storage rejected the frame", "storage rejected the frame"),
+)
+
+
+def reason_bucket(reason: Optional[str]) -> str:
+    """Collapse one page's failure reason to a stable label worth
+    counting.
+
+    The reasons themselves carry a 300-character tail of ffmpeg's stderr,
+    complete with the media URL and a per-run memory address, so grouping
+    on them raw turns 179 failures into 179 groups of one -- useless at
+    exactly the moment the grouping is wanted. This keeps the part that
+    is the same across pages ("HTTP 403", "timed out") and drops the part
+    that never is. The full reason is still logged per page and stored
+    per slug in the state file; this only drives the counts.
+
+    Never raises and never returns an empty string -- an unrecognised
+    reason keeps its own first line, truncated, rather than being binned
+    as "other", so a new failure mode shows up as itself instead of
+    disappearing into a catch-all.
+    """
+    if not reason:
+        return REASON_UNREPORTED
+    first_line = reason.splitlines()[0].strip() if reason.strip() else reason
+    for marker, label in _MARKERS:
+        if marker in reason:
+            return label
+    status = _HTTP_STATUS_RE.search(reason)
+    if status:
+        return f"ffmpeg: HTTP {status.group(1)} from the media host"
+    if reason.startswith("skipped:"):
+        return first_line
+    if reason.startswith("extraction raised "):
+        # "extraction raised TimeoutError: ..." -> the exception type.
+        return "extraction raised " + reason.split(" ", 2)[2].split(":", 1)[0]
+    exited = _EXIT_CODE_RE.match(reason)
+    if exited:
+        return f"ffmpeg exited {exited.group(1)} (see the full reason)"
+    return first_line[:80]
+
+
+# How much of a raw reason a per-page log line carries. Long enough for
+# ffmpeg's own error sentence, short enough that a batch of five failures
+# is still readable at a glance.
+_REASON_LOG_CHARS = 200
+
+
+def _short_reason(reason: Optional[str]) -> str:
+    if not reason:
+        return REASON_UNREPORTED
+    collapsed = " ".join(reason.split())
+    if len(collapsed) <= _REASON_LOG_CHARS:
+        return collapsed
+    return collapsed[:_REASON_LOG_CHARS] + " ..."
 
 
 def host_breakdown(candidates: list[dict]) -> Counter:
@@ -414,12 +518,25 @@ class State:
         except OSError as e:
             logger.warning("Could not write state file %s: %s", self.path, e)
 
-    def record_failure(self, slug: str, video_url: Optional[str]) -> None:
+    def record_failure(
+        self, slug: str, video_url: Optional[str], reason: Optional[str] = None
+    ) -> None:
+        """Remember a page whose extraction was really attempted and
+        failed. **Never call this for a *skipped* page** -- a skip means
+        the Archive did no work at all (see FrameOutcome), so recording
+        it here would blacklist a page that was never tried.
+
+        Both the raw reason and its bucket are kept: the bucket is what
+        the closing report counts, the raw reason is what someone reads
+        when one page is worth chasing individually.
+        """
         entry = self.failed.setdefault(
             slug, {"video_url": video_url, "attempts": 0, "host": media_host(video_url)}
         )
         entry["attempts"] = int(entry.get("attempts", 0)) + 1
         entry["last_seen"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+        entry["reason"] = reason
+        entry["reason_bucket"] = reason_bucket(reason)
 
     def record_success(self, slug: str) -> None:
         # A slug that failed on an earlier run and succeeded now must stop
@@ -555,6 +672,7 @@ async def sweep(session: aiohttp.ClientSession, *, args, state: State) -> int:
     batches_run = 0
     stored_run = 0
     attempted_run = 0
+    skipped_run = 0
     consecutive_errors = 0
 
     try:
@@ -638,18 +756,29 @@ async def sweep(session: aiohttp.ClientSession, *, args, state: State) -> int:
                 return 1
 
             by_slug = {item["slug"]: item for item in batch}
-            stored, failed = [], []
+            stored, failed, skipped = [], [], []
             for entry in results:
                 slug = entry.get("slug")
                 video_url = entry.get("video_url") or by_slug.get(slug, {}).get(
                     "video_url"
                 )
-                if entry.get("offset_seconds") is None:
-                    failed.append((slug, video_url))
-                    state.record_failure(slug, video_url)
-                else:
+                reason = entry.get("reason")
+                if entry.get("offset_seconds") is not None:
                     stored.append(slug)
                     state.record_success(slug)
+                elif entry.get("skipped"):
+                    # Nothing was attempted against the source (WO-42):
+                    # the Archive had this frame in flight, inside its 6h
+                    # failure cooldown, or its queue was full. Left out of
+                    # `state.failed` on purpose -- a skip is no evidence
+                    # the page is stuck, and blacklisting it here would
+                    # keep a perfectly good page out of every later plan.
+                    # It stays in the Archive's candidate queue, so the
+                    # next run's survey picks it up again.
+                    skipped.append((slug, video_url, reason))
+                else:
+                    failed.append((slug, video_url, reason))
+                    state.record_failure(slug, video_url, reason)
 
             # A requested slug the Archive didn't return got a card some
             # other way between the survey and now (a real visitor loaded
@@ -659,24 +788,34 @@ async def sweep(session: aiohttp.ClientSession, *, args, state: State) -> int:
             pending = [item for item in pending if item["slug"] not in set(requested)]
             attempted_run += len(results)
             stored_run += len(stored)
+            skipped_run += len(skipped)
             state.attempted_total += len(results)
             state.stored_total += len(stored)
             state.save()
 
             logger.info(
-                "  attempted %s, stored %s, failed %s%s in %s",
+                "  attempted %s, stored %s, failed %s%s%s in %s",
                 len(results),
                 len(stored),
                 len(failed),
+                f", skipped {len(skipped)}" if skipped else "",
                 f", {len(already_done)} already done" if already_done else "",
                 format_duration(time.monotonic() - batch_started),
             )
-            for slug, video_url in failed:
+            for slug, video_url, reason in failed:
                 logger.warning(
-                    "  no frame: %s (%s) -- reason is in the Archive's own logs "
-                    "(video_thumbnail: 'No card frame for page ...')",
+                    "  no frame: %s (%s) -- %s",
                     slug,
                     media_host(video_url),
+                    _short_reason(reason),
+                )
+            for slug, video_url, reason in skipped:
+                logger.info(
+                    "  not attempted: %s (%s) -- %s; it stays in the queue for "
+                    "a later run",
+                    slug,
+                    media_host(video_url),
+                    _short_reason(reason),
                 )
 
             eta = estimate_remaining(
@@ -708,6 +847,7 @@ async def sweep(session: aiohttp.ClientSession, *, args, state: State) -> int:
             batches_run=batches_run,
             stored_run=stored_run,
             attempted_run=attempted_run,
+            skipped_run=skipped_run,
             pending=len(pending),
         )
     return 0
@@ -720,15 +860,18 @@ def _final_report(
     batches_run: int,
     stored_run: int,
     attempted_run: int,
+    skipped_run: int,
     pending: int,
 ) -> None:
     logger.info("--- run summary ---")
     logger.info(
-        "%s batch(es), %s attempted, %s stored, %s failed, %s elapsed.",
+        "%s batch(es), %s attempted, %s stored, %s failed, %s not attempted "
+        "(skipped Archive-side), %s elapsed.",
         batches_run,
         attempted_run,
         stored_run,
-        attempted_run - stored_run,
+        attempted_run - stored_run - skipped_run,
+        skipped_run,
         format_duration(time.monotonic() - started),
     )
     logger.info(
@@ -740,11 +883,38 @@ def _final_report(
         state.path,
     )
     if state.failed:
+        # Two groupings, because they answer different questions and the
+        # first sweep (2026-08-22: 973/1152, 179 failures) could only ever
+        # answer the host one. "Which CDN is unhappy" is the host column;
+        # "is this a rate limit, a dead link, or an offset past the end of
+        # the video" is the reason column, and only the second says what
+        # to *do* about it.
         logger.info("Stuck pages by media host:")
         for host, count in Counter(
             entry.get("host") or "(none)" for entry in state.failed.values()
         ).most_common(10):
             logger.info("  %6d  %s", count, host)
+        logger.info("Stuck pages by reason:")
+        buckets = Counter(
+            entry.get("reason_bucket") or reason_bucket(entry.get("reason"))
+            for entry in state.failed.values()
+        )
+        # One real example per bucket: the bucket says what kind of
+        # failure it is, the example carries the media URL and ffmpeg's
+        # own words for whoever chases it.
+        example_for: dict[str, str] = {}
+        for slug, entry in state.failed.items():
+            bucket = entry.get("reason_bucket") or reason_bucket(entry.get("reason"))
+            example_for.setdefault(bucket, slug)
+        for bucket, count in buckets.most_common(10):
+            logger.info("  %6d  %s", count, bucket)
+            example_slug = example_for.get(bucket)
+            if example_slug:
+                logger.info(
+                    "          e.g. %s -- %s",
+                    example_slug,
+                    _short_reason(state.failed[example_slug].get("reason")),
+                )
         logger.info(
             "Delete %s to give every stuck page another chance (worth doing "
             "once, days later -- a CDN timeout is often transient).",

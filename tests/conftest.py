@@ -83,7 +83,13 @@ def _no_real_card_extraction(monkeypatch):
     from archive.utils import video_thumbnail
 
     async def _skip(**_kwargs):
-        return None
+        # Returns the real FrameOutcome shape (WO-42), skipped=True: this
+        # stand-in genuinely attempts nothing, which is precisely what
+        # `skipped` means, and returning the real type keeps a caller
+        # that reads `.offset`/`.reason` working under the patch.
+        return video_thumbnail.FrameOutcome(
+            None, "skipped: card extraction is disabled in the test suite", True
+        )
 
     monkeypatch.setattr(video_thumbnail, "extract_and_store", _skip)
 
