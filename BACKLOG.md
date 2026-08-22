@@ -134,8 +134,10 @@ Platform & jurisdiction coverage  (27)
     [LATER] YouTube-backed meetings' transcripts run through
     [IMPROVEMENT-ROUND] Four platforms account for ~78% of the 470 real
 
-Reliability, ops & cost  (9)
-  `[HUMAN]` `[LOGIN]` Running out of Render *pipeline minutes* silently…
+Reliability, ops & cost  (10)
+  `[JUST-DO-IT]` Running out of Render *pipeline minutes* silently…  (2)
+    `[JUST-DO-IT]` Source `_tier3_queue_remaining()` from the database
+    `[LATER]` Path-scope each service's `buildFilter` to the directories
   Media-source reliability### Media-source reliability  (2)
     `[NEEDS-AUDIT]` Some old/archived Granicus clips' `chunklist.m3u8`…
     `[NEEDS-AUDIT]` A single job still makes N consecutive same-host…
@@ -1678,85 +1680,58 @@ from a live check), but the Legistar calendar itself is still untried.
 
 ## Reliability, ops & cost
 
-### `[HUMAN]` `[LOGIN]` Running out of Render *pipeline minutes* silently blocks deploys on every service at once — it already happened
+### `[JUST-DO-IT]` Running out of Render *pipeline minutes* silently blocked deploys on every service — mostly fixed 2026-08-22
 
-Found 2026-08-22 while checking the Events tabs for something else, and
-not previously recorded anywhere. On **2026-08-19 13:23 PT** all three
-services — `rtr-deeplink`, `rtr-deeplink-archive`,
-`rtr-transcription-worker` — refused the same auto-deploy of `8af3276`
-(PR #199) with:
+On **2026-08-19 13:23 PT** all three web/worker services refused the same
+auto-deploy of `8af3276` (PR #199) with **"Your workspace has run out of
+pipeline minutes."** The commit timestamp matches to the second, so this
+was the auto-deploy being refused, not a build failing on merit. The next
+commit landed 18:51 PT, so the blackout ran roughly **five and a half
+hours, during which every merge to `main` silently did not reach
+production** — no alert, no failed CI, no visible symptom. Every "the fix
+is deployed" assumption in this repo rests on merge≈deploy, and for those
+hours it wasn't true. `BACKLOG_DONE.md`'s WO-7 (Sentry/uptime/
+failure-visible cron) covers *runtime* failures thoroughly and does not
+cover this at all.
 
-> Build blocked for 8af3276 … **Your workspace has run out of pipeline
-> minutes.**
+**Root cause measured, not guessed:** **43 commits in the 14 days to
+2026-08-22 changed nothing but an auto-transcription queue file** — **17
+granicus-only, 26 tier3-only**, typically a 12-line deletion — each
+rebuilding **all four** services. ~170 builds for data-only commits.
 
-The commit timestamp (`2026-08-19T13:23:29-07:00`) matches the block to
-the second, so this was the auto-deploy firing and being refused, not a
-build that failed on its own merits. The next commit landed 18:51 PT and
-appears to have deployed normally, so the blackout window was roughly
-**five and a half hours** — during which every merge to `main` silently
-did not reach production.
+**Fixed 2026-08-22** by adding both
+`scripts/*_auto_transcription_queue.txt` files to `render.yaml`'s
+`buildFilter.ignoredPaths`, **with one deliberate exception**:
+`rtr-deeplink-archive` omits the **tier-3** file, because it is the one
+service that reads it at runtime (`archive/main.py`'s
+`_TIER3_QUEUE_FILE` / `_tier3_queue_remaining()` line-counts the file on
+disk for the ops report). Ignoring it there would freeze that number at
+whatever the last real deploy shipped, with nothing to signal the stat
+had gone stale. This is the first time the four `ignoredPaths` lists are
+*not* identical; both the top-of-file comment and the block itself now
+say so.
 
-**Why this matters more than the bandwidth alert it was found next to:**
-this is a quota that *actually* got exhausted and *actually* stopped
-deploys, with **no alert, no failed CI, and no visible symptom** — the
-PR merges green, and the running services just keep serving older code.
-Every doc-drift and "the fix is deployed" assumption in this repo
-depends on merge≈deploy, and for those five hours it wasn't true.
-Compare `BACKLOG_DONE.md`'s WO-7 (Sentry/uptime/failure-visible cron),
-which covers *runtime* failures thoroughly and doesn't cover this at
-all.
+**Effect: ~146 of ~172 builds per fortnight removed (~85%).** The
+residual is the 26 tier3-only commits still rebuilding the Archive alone.
 
-**Current standing is not comfortable**: Workspace → Billing shows
-**812 / 1,000 pipeline minutes** used as of 2026-08-22.
+**Ryan confirmed 2026-08-22** the workspace was upgraded on 08-19 to
+restore pipeline minutes — so the meter didn't reset, the *cap* rose, and
+**812 / 1,000** was cumulative against the new cap, projecting ~1,145 by
+month end (over again ~08-27/28). The same upgrade explains the bandwidth
+allowance reading 25 GB against the 08-18 alert's 5 GB. **Ryan's stated
+goal is to downgrade again** once build volume is efficient enough, so
+the number to watch is whether this change bends the curve before 08-27.
 
-**Reconciled 2026-08-22 — Ryan confirmed the workspace was upgraded that
-day specifically to get pipeline minutes back.** So the meter didn't
-reset; the *cap* went up, and **812 / 1,000** is cumulative usage
-against the new cap. Straight-lining 812 minutes over 22 days of a
-31-day month projects **~1,145 minutes by month end — over the cap
-again, around 08-27/28.** The same upgrade explains the bandwidth
-allowance reading 25 GB when the 2026-08-18 alert described 5 GB (see
-`BACKLOG_DONE.md`'s "Render bandwidth" entry). Ryan's stated preference
-is to **downgrade again once build volume is efficient enough**, so the
-efficiency fix below is the actual goal, not the cap.
-
-**The dominant driver, measured:** **43 commits since 2026-08-08 (14
-days, ~3/day) changed *nothing but* an auto-transcription queue file** —
-`scripts/granicus_auto_transcription_queue.txt` or
-`scripts/tier3_auto_transcription_queue.txt`, typically a 12-line
-deletion. Each one triggers a build on **all four** Render services.
-That's ~170 builds in two weeks for data-only commits, and none of the
-four services' `buildFilter.ignoredPaths` lists either file.
-
-**Why this isn't a one-line fix, and the trap to avoid:** the two files
-are *not* equivalent.
-- **`granicus_auto_transcription_queue.txt` is read only by
-  `scripts/feed_granicus_auto_transcription.py`**, which runs in GitHub
-  Actions, never on Render. **Safe to add to `ignoredPaths` on all four
-  services today.**
-- **`tier3_auto_transcription_queue.txt` is read at runtime by the
-  Archive** — `archive/main.py:438`'s `_TIER3_QUEUE_FILE` /
-  `_tier3_queue_remaining()`, which line-counts the file on disk for an
-  ops-report field, with a comment explaining it relies on the build
-  checking out the whole repo. Adding it to the Archive's
-  `ignoredPaths` would silently freeze that number at whatever the last
-  real deploy shipped — a stale stat nobody would notice. Safe on the
-  resolver and both workers; **not** on the Archive.
-
-**The cleaner fix, one step further:** `_tier3_queue_remaining()` is a
-line count standing in for "how many URLs are still queued." If that
-number came from the database instead of a tracked file, the Archive
-would no longer need the file at runtime at all, **both** queue files
-could be ignored across all four services, and `render.yaml`'s existing
-"keep this list identical across all four services" convention would
-stay intact rather than needing a per-service exception. Worth pricing
-that before taking the partial fix.
-
-**Also worth checking before assuming builds are the whole story:** four
-services rebuild on *every* non-ignored commit regardless of which
-service the change touches — a resolver-only change still rebuilds both
-transcription workers. Path-scoping each service's `buildFilter` to the
-directories it actually ships would cut more than the queue files do.
+**Two follow-ups, both optional:**
+- **`[JUST-DO-IT]` Source `_tier3_queue_remaining()` from the database**
+  rather than line-counting a tracked file. Removes the last exception,
+  restores all four lists to lockstep, takes the remaining 26
+  rebuilds/fortnight to zero, and kills a fragile pattern — an ops
+  metric whose freshness silently depends on deploy cadence.
+- **`[LATER]` Path-scope each service's `buildFilter` to the directories
+  it actually ships.** A resolver-only change currently rebuilds both
+  transcription workers. Bigger win than the queue files, entirely
+  unexamined.
 
 ### Media-source reliability### Media-source reliability
 
