@@ -386,6 +386,68 @@ async def test_backfill_offset_pages_past_the_head_of_the_queue():
     assert _slugs(len(everything)) == []
 
 
+async def test_backfill_by_slugs_returns_exactly_those_pages_in_order():
+    # WO-37: the real sweep names the pages it wants so it can interleave
+    # across media hosts and rate-limit one CDN (Granicus, 59% of the
+    # backlog and the same host the transcription workers already time
+    # out against) independently of the others. Order matters -- it is
+    # the whole point of choosing.
+    first = await _make_m3u8_page("card-backfill-slug-a")
+    second = await _make_m3u8_page("card-backfill-slug-b")
+
+    response = archive_client.post(
+        f"/internal/thumbnails/backfill?slugs={second['slug']}&slugs={first['slug']}",
+        headers={"Authorization": "Bearer test-token"},
+    )
+    assert response.status_code == 200
+    assert [c["slug"] for c in response.json()["candidates"]] == [
+        second["slug"],
+        first["slug"],
+    ]
+
+
+async def test_backfill_by_slugs_still_filters_out_a_page_that_has_a_frame():
+    # Naming a slug must not be able to force a duplicate extraction --
+    # the "no default thumbnail yet" filter applies either way.
+    warmed = await _make_m3u8_page("card-backfill-slug-warmed")
+    await crud.store_thumbnail(
+        warmed["page_id"],
+        offset_seconds=900,
+        image_bytes=_TINY_JPEG,
+        etag="2" * 64,
+        is_default=True,
+    )
+    cold = await _make_m3u8_page("card-backfill-slug-cold")
+
+    response = archive_client.post(
+        f"/internal/thumbnails/backfill?slugs={warmed['slug']}&slugs={cold['slug']}",
+        headers={"Authorization": "Bearer test-token"},
+    )
+    assert [c["slug"] for c in response.json()["candidates"]] == [cold["slug"]]
+
+
+def test_backfill_by_slugs_ignores_an_unknown_slug():
+    response = archive_client.post(
+        "/internal/thumbnails/backfill?slugs=no-such-page-anywhere",
+        headers={"Authorization": "Bearer test-token"},
+    )
+    assert response.status_code == 200
+    assert response.json()["candidates"] == []
+
+
+def test_backfill_caps_how_many_slugs_one_call_may_name():
+    # The endpoint extracts inline, so a caller asking for hundreds at
+    # once is asking for a timeout, not a faster sweep.
+    query = "&".join(
+        f"slugs=page-{i}" for i in range(archive.main.MAX_BACKFILL_SLUGS + 1)
+    )
+    response = archive_client.post(
+        f"/internal/thumbnails/backfill?{query}",
+        headers={"Authorization": "Bearer test-token"},
+    )
+    assert response.status_code == 400
+
+
 def test_backfill_is_token_gated():
     # 404 rather than 401/403, same posture as every other /internal/* route.
     assert archive_client.post("/internal/thumbnails/backfill").status_code == 404

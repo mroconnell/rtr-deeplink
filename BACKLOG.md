@@ -1714,8 +1714,11 @@ anything) to build against it.
   **Both halves resolved 2026-08-21 (WO-37) — full detail in
   `BACKLOG_DONE.md`.** `ffmpeg 5.1.9` really is on the Archive (live
   `/api/health`), so the resolver-side fallback architecture this entry
-  described is not needed and was not built; the real backlog is 1705
-  pages, and `scripts/backfill_meeting_cards.py --apply` sweeps them.
+  described is not needed and was not built; the real backlog is ~1700
+  pages, and `scripts/backfill_meeting_cards.py --apply` sweeps them —
+  interleaved across media hosts and paced per host (30s between Granicus
+  pulls) so it adds no sustained load to the CDN the transcription
+  workers are already timing out against, which makes it a ~8h20m run.
   **Left for a human: actually running it.**
 
 - **[IMPROVEMENT-ROUND] A generated, branded share card would beat a raw
