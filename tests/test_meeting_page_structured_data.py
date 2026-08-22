@@ -476,3 +476,104 @@ async def test_date_format_audit_buckets_by_shape():
     # short response naming only what's actually suspect.
     assert "2026-02-02" not in by_stored
     assert None not in by_stored
+
+
+# --- embedUrl vs. contentUrl (schema.org's own distinction) --------------
+#
+# BACKLOG.md's "Viebit has the same two structural mislabels Vimeo just got
+# fixed for" entry. `contentUrl` promises a directly fetchable media file;
+# `embedUrl` promises a player page meant to be iframed. Every adapter whose
+# `video_url` is the latter must land on the `embedUrl` side, or the page
+# makes a claim Google can check and find false.
+#
+# The URL shapes below are the real ones this app builds, not invented:
+# youtube.py's `youtube.com/embed/{11-char id}`, vimeo.py's
+# `player.vimeo.com/video/{id}` (the real Salisbury NC id from
+# tests/test_vimeo.py), viebit.py's `{origin}/embed/vod?v={id}` (the exact
+# URL tests/test_viebit.py pins against the real NYC Council fixture).
+# Synthetic pages, same as the rest of this module -- what's under test is
+# template branching, not adapter parsing.
+_EMBED_URL_BY_FORMAT: dict[str, str] = {
+    "youtube": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    "vimeo": "https://player.vimeo.com/video/1212025580",
+    "viebit": "https://councilnyc.viebit.com/embed/vod?v=hFWIQkuFLuWGb0mw",
+}
+
+
+async def test_every_iframe_embed_format_emits_embedurl_not_contenturl():
+    # Driven off crud._IFRAME_EMBED_VIDEO_FORMATS rather than a literal
+    # list, on purpose: that constant and meeting_page.html's JSON-LD
+    # branch encode the same predicate ("video_url is an embed page, not a
+    # fetchable media file") in two places, and they drifted apart once
+    # already -- WO-35 added "viebit" to the constant while the template
+    # kept labeling Viebit pages `contentUrl`. Adding a fourth format to
+    # the constant without touching the template now fails here.
+    from archive.db.crud import _IFRAME_EMBED_VIDEO_FORMATS
+
+    assert set(_EMBED_URL_BY_FORMAT) == set(_IFRAME_EMBED_VIDEO_FORMATS), (
+        "a new iframe-embed video_format needs a real embed URL shape here "
+        "and a matching branch in meeting_page.html's VideoObject JSON-LD"
+    )
+
+    for video_format in sorted(_IFRAME_EMBED_VIDEO_FORMATS):
+        embed_url = _EMBED_URL_BY_FORMAT[video_format]
+        slug = await _make_page(
+            f"sd-embedurl-{video_format}",
+            platform=video_format,
+            video_url=embed_url,
+            video_format=video_format,
+        )
+        data = _get_json_ld(archive_client.get(f"/m/{slug}").text)
+        assert data["embedUrl"] == embed_url, video_format
+        assert "contentUrl" not in data, video_format
+
+
+async def test_viebit_page_changes_only_the_url_key(monkeypatch):
+    # The narrow claim of the fix: a Viebit page's VideoObject is what it
+    # always was except that the one URL key is now `embedUrl` instead of
+    # `contentUrl` -- same URL value, same name/uploadDate/hasPart, and the
+    # JSON still parses (which _get_json_ld's json.loads doubles as).
+    monkeypatch.setitem(
+        archive.main.templates.env.globals, "public_base_url", "https://example.org"
+    )
+    embed_url = "https://councilnyc.viebit.com/embed/vod?v=hFWIQkuFLuWGb0mw"
+    slug = await _make_page(
+        "sd-viebit-shape",
+        platform="viebit",
+        video_url=embed_url,
+        video_format="viebit",
+        agenda_items=[
+            {"start": 0.0, "end": 60.0, "text": "Call to Order"},
+            {"start": 60.0, "end": 120.0, "text": "Public Comment"},
+        ],
+    )
+
+    data = _get_json_ld(archive_client.get(f"/m/{slug}").text)
+    assert data["@type"] == "VideoObject"
+    assert data["embedUrl"] == embed_url
+    assert "contentUrl" not in data
+    assert data["name"] == "Structured Data Test Meeting"
+    assert data["uploadDate"] == "2026-01-01T00:00:00Z"
+    assert [c["name"] for c in data["hasPart"]] == ["Call to Order", "Public Comment"]
+    # Viebit's video_url is an HTML player page, so there is no media file
+    # to extract a frame from -- the page legitimately has no thumbnail.
+    assert "thumbnailUrl" not in data
+
+
+async def test_direct_media_formats_still_use_contenturl():
+    # The negative control: the fix must not touch the app's normal case.
+    # mp4/m3u8 video_urls really are fetchable media files, so `contentUrl`
+    # is the honest key for them and `embedUrl` must not appear.
+    for video_format, video_url in (
+        ("m3u8", "https://archive-media.granicus.com/OnDemand/c/c.m3u8"),
+        ("mp4", "https://media.example.gov/council/2026-01-01.mp4"),
+    ):
+        slug = await _make_page(
+            f"sd-contenturl-{video_format}",
+            platform="granicus",
+            video_url=video_url,
+            video_format=video_format,
+        )
+        data = _get_json_ld(archive_client.get(f"/m/{slug}").text)
+        assert data["contentUrl"] == video_url, video_format
+        assert "embedUrl" not in data, video_format
