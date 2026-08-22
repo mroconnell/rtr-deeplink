@@ -588,7 +588,7 @@ EXTRACT_FRAME_REASONS = [
     "ffmpeg could not be started: [Errno 12] Cannot allocate memory",
     f"ffmpeg exited 8: {REAL_FFMPEG_403_STDERR_TAIL}",
     f"ffmpeg exited 8: {REAL_FFMPEG_404_STDERR_TAIL}",
-    "ffmpeg reported success but wrote no frame (offset past end?)",
+    "ffmpeg exited 0 but wrote no frame @ 600s (no stderr)",
 ]
 
 _GRANICUS_M3U8 = "https://archive-stream.granicus.com/x/y.m3u8"
