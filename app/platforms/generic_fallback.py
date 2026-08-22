@@ -301,6 +301,22 @@ class GenericFallbackAssetFinder(AssetFinder):
     here the way it is on a supported platform, so there's no adapter-
     driven "current time" to honestly display).
 
+    The *video* half of that "we think the video is here" line is only
+    rendered when this adapter found nothing playable -- i.e. the tier-5
+    `video_link` pointer, or the honest "[No video found]" when even that
+    came back empty (WO-43, 2026-08-22, see
+    `player.js:renderBestEffortVideoPointer()`). When `video_url` IS set,
+    the embedded player directly below the line is already the answer,
+    and the URL that line used to print is never a page a human would
+    open: it is whatever the winning tier produced -- a Vimeo embed
+    shell (tier 3, Sebastopol CA), a YouTube embed shell (tiers 1-2,
+    Tarrant County TX), or a raw CDN media file (tier 4, Orange County
+    FL), all three confirmed live. Note that `_try_delegate_to_known_
+    platform()` resetting `source_url` back to the city's own page (see
+    below) is what makes dropping the line safe: the meta block's "View
+    original source" link already points at the page a reader would
+    actually want.
+
     Real, deliberate architecture note: this makes the `unsupported_
     platform` error branch in `app/main.py`'s `/api/resolve` (and its
     matching `unsupported_platform` outcome bucket in `app/db/
