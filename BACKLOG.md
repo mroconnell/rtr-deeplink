@@ -103,9 +103,10 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (7)
   28 well-formed IQM2 queue rows point at retired tenants…
   Some Swagit meetings have no single "whole meeting" video file…
 
-Platform & jurisdiction coverage  (26)
+Platform & jurisdiction coverage  (27)
   The 50 largest US cities — per-tenant status `[NEEDS-AUDIT]`
-  Jurisdiction extraction & backfill  (15)
+  Jurisdiction extraction & backfill  (16)
+    [JUST-DO-IT] A land acknowledgement became a jurisdiction, and it
     [JUST-DO-IT] The originally-reported eScribe bled-subdomain rows
     [JUST-DO-IT] Bare/state-suffixed jurisdiction duplicates: root cause
     [NEEDS-AUDIT] Consolidated city-county repairs silently drop the
@@ -1139,6 +1140,33 @@ the real calendar; the Archive's 2 old Viebit clips under a
 from a live check), but the Legistar calendar itself is still untried.
 
 ### Jurisdiction extraction & backfill
+
+- **[JUST-DO-IT] A land acknowledgement became a jurisdiction, and it
+  has a live public URL.** Found 2026-08-22 in Search Console's
+  non-indexed URL list — this is a real page Google crawled:
+
+  `/j/oshawa-is-situated-on-lands-within-the-traditional-and-treaty-territory-of-the-michi-saagiig-and-chippewa-anishinaabeg-and-the-signatories-of-the-williams-treaties`
+
+  The correct jurisdiction is **Oshawa, ON**. The extractor took the
+  land-acknowledgement paragraph that follows the city name on the
+  source page and used the whole thing. Distinct from the existing
+  bled-subdomain and single-word-tail entries below: those truncate or
+  merge a *name*, this swallows a **sentence**, so a length ceiling or a
+  "stop at the first sentence boundary" guard would catch it where the
+  existing name-shaped heuristics don't.
+  **Worse than a cosmetic slug**: a `/j/` hub is a real indexable page
+  and the meetings filed under it are grouped by this string, so Oshawa's
+  meetings are not discoverable under "Oshawa". Two more from the same
+  list share the shape at smaller scale —
+  **`/j/cambridge-council-meeting-agenda-meeting`** (a *meeting title*
+  captured as the jurisdiction) and **`/j/snoqualmie-washington-meetings`**
+  (a trailing `-meetings` suffix bled in, which also appears in three
+  `/m/` slugs, e.g.
+  `/m/snoqualmie-washington-meetings-city-council-regular-meeting`).
+  **Check whether an acknowledgement-shaped capture exists elsewhere**
+  before fixing — Canadian municipal sites carry these routinely, so
+  Oshawa is unlikely to be the only one, and the fix should be validated
+  against however many there are rather than this single row.
 
 - **[JUST-DO-IT] The originally-reported eScribe bled-subdomain rows
   (Bonnyville AB, Grand Valley ON, Point Edward ON, Boulder County CO,
