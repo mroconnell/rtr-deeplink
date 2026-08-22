@@ -425,9 +425,22 @@ so that work reads together.
 - **[JUST-DO-IT] `[EASY]` `rtr-business/BUSINESS_OVERVIEW.md` still says
   saved-search alert emails are "not built yet"** — stale; shipped
   2026-08-13 (PR #30) and runs daily. `README.md`'s copy was already
-  corrected 2026-08-16. One-line fix next time anyone's in that file —
-  not done here since business-workspace edits stay separate per
-  `CLAUDE.md`.
+  corrected 2026-08-16. **Now confirmed at the strongest possible level
+  (2026-08-22)**: P5's inbox check found **eight consecutive days of
+  real digests** actually delivered, 08-14 → 08-21, arriving daily
+  ~23:47–23:50 UTC with real matched meetings and quoted transcript
+  snippets — see `BACKLOG_DONE.md`'s P5 entry. There is no remaining
+  ambiguity about whether the feature is built; the line is simply
+  wrong.
+  **Deliberately not fixed from this repo** — business-workspace edits
+  stay separate per `CLAUDE.md`, and that separation is worth more than
+  saving one line of typing. Fix it from an `~/Documents/rtr-business`
+  session or by hand. **Worth a wider pass while in there**: a doc that
+  was wrong about a shipped feature for nine days probably isn't wrong
+  about only one line, and the same day's audit found this exact
+  failure shape three times over in this repo's own docs (a Sentry issue
+  already fixed, a bandwidth limit off by 5×, a Bluesky check believed
+  impossible from a sandbox).
 
 - **[JUST-DO-IT] Google declines to index the *hub* pages, not the
   meeting pages — audit resolved 2026-08-22, and the fix is content,
