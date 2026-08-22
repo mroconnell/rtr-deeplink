@@ -7,5 +7,6 @@ venv/
 *.db
 node_modules/
 .claude/settings.local.json
+.claude/launch.json
 local_transcription_backups/
 scripts/meeting_card_backfill_state.json
