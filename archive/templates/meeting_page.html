@@ -73,9 +73,10 @@
   {% if page.video_url %}
   {#- schema.org VideoObject for search-engine rich-result eligibility.
      contentUrl is used for a direct playable file (mp4/m3u8, this app's
-     normal case); embedUrl is used for YouTube instead, since that
-     video_url is an iframe-embed URL, not a raw media file, and
-     schema.org distinguishes the two. thumbnailUrl is what Google's
+     normal case); embedUrl is used for the iframe-embed platforms
+     (YouTube/Vimeo/Viebit) instead, since their video_url is an
+     iframe-embed URL, not a raw media file, and schema.org
+     distinguishes the two. thumbnailUrl is what Google's
      validator flags as blocking rich-result eligibility when absent --
      now populated for extractable mp4/m3u8 pages too, not just YouTube
      ones (see the thumbnail_url block above). A page still legitimately
@@ -87,11 +88,19 @@
     "@type": "VideoObject",
     "name": {{ (page.title or "Meeting")|tojson }},
     "description": {{ description|tojson }},
-    {#- "vimeo" belongs on the embedUrl side for the same reason
-       "youtube" does: vimeo.py stores a player.vimeo.com/video/{id}
-       iframe page, never a real media file, so calling it contentUrl
-       would be a claim Google can check and find false. #}
-    {% if page.video_format in ("youtube", "vimeo") -%}
+    {#- "vimeo" and "viebit" belong on the embedUrl side for the same
+       reason "youtube" does: vimeo.py stores a player.vimeo.com/video/{id}
+       iframe page and viebit.py stores a {origin}/embed/vod?v={id} iframe
+       page (deliberately rebuilt as that path on every resolve -- see
+       that adapter's docstring), never a real media file, so calling
+       either one contentUrl would be a claim Google can check and find
+       false. This tuple must stay equal to crud.py's
+       _IFRAME_EMBED_VIDEO_FORMATS -- same predicate ("video_url is an
+       embed page, not a fetchable media file"), two use sites, and they
+       drifted apart once already (WO-35 added "viebit" there and not
+       here). tests/test_meeting_page_structured_data.py iterates that
+       constant and fails if this branch stops agreeing with it. #}
+    {% if page.video_format in ("youtube", "vimeo", "viebit") -%}
     "embedUrl": {{ page.video_url|tojson }},
     {% else -%}
     "contentUrl": {{ page.video_url|tojson }},
