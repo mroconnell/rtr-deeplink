@@ -731,6 +731,36 @@ third time this session; worth a fresh look (and worth checking whether
 it's this specific media file or `cpmedia.azureedge.net` generally)
 before assuming it's simply "still transient, just unlucky twice."
 
+**Four more cases, 2026-08-21/22, from a 20-meeting tier-3 local-Whisper
+batch — including the first case where the transient failure hit deep
+into an already-mostly-successful run, not on the first chunk.** Piqua,
+OH (`civicclerk`) hit the familiar `ffmpeg timed out after 120s` on
+chunk 1/14, same as every prior `ffmpeg`-timeout case above — not
+re-tried this session, filed here rather than re-attempted, consistent
+with the existing pattern. More notable: `pub-3ce.escribemeetings.com`
+(a real, very long meeting — 55 15-minute chunks, ~13.75 hours of
+source audio) transcribed **50 chunks successfully** before failing on
+chunk 51/55 with `ffmpeg exited 196: ibavformat 62.12.102 / 62.12.102`
+— a garbled, truncated-looking error message in its own right (worth a
+second look at whatever's producing that string in
+`media_probe.py`/`extract_chunk_audio()`, since a real ffmpeg version
+banner leaking into an error string suggests the *real* stderr got cut
+off before the message this script logged). Since `process_one()`
+discards all prior progress on any single-chunk failure (no
+partial-meeting save, see `transcribe_meeting()`'s own docstring), this
+one transient failure at 91% complete cost the entire ~44-minute run for
+this meeting, not just the one bad chunk — a sharper version of the
+"a page that already exists is more suspicious to skip permanently on
+one failure, not less" point made above, now with "and the closer you
+are to done, the more expensive giving up is" added to it. Two more
+`escribemeetings.com` URLs in the same batch (`pub-abbotsford`,
+`pub-acwtownship`) failed the *resolve* step itself with a bare
+`TimeoutError` (no further detail in the exception) — consistent with
+the existing pattern of transient resolve failures above, just now on a
+platform (eScribe) not previously represented in this entry's case
+list. Not re-attempted this session; worth checking on retry the same
+way the other cases were.
+
 ### `tier3_auto_transcription_queue.txt` holds at least one genuinely truncated URL `[NEEDS-AUDIT]`
 
 While hand-picking real candidates for a local-Whisper batch, Orinda,
