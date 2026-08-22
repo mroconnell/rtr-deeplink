@@ -6,6 +6,82 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Viebit's `VideoObject` JSON-LD said `contentUrl` for an iframe embed page — plus a CI guard against the drift that caused it [Done 2026-08-22]
+
+The second of the entry's "two structural mislabels". The first half
+(`/coverage`'s `audio_transcript_possible`) was already fixed by WO-35;
+this closes the `VideoObject` half and the entry with it.
+
+**Premise checked before editing, not assumed.** `app/platforms/
+viebit.py`'s `_build_embed_url()` *always* rebuilds `video_url` as
+`{origin}/embed/vod?v={id}` on every resolve, regardless of where the
+redirect chain landed — its docstring explains why (only that path is
+confirmed to have no `X-Frame-Options` restriction), and
+`tests/test_viebit.py` pins that exact shape against the real NYC
+Council fixture. So the stored URL really is an iframe player page and
+`contentUrl` really was a claim Google could check and find false.
+
+The entry's parenthetical — "worth confirming first whether a Viebit
+`master.m3u8` really is unprobeable" — turned out **not to bear on this
+at all**: the stored `video_url` is never that stream, so the CDN
+Referer/Origin check is irrelevant to what the JSON-LD should say. Noted
+because the entry made it sound like a prerequisite.
+
+**The real root cause was drift between two copies of one predicate.**
+`archive/db/crud.py:3565`'s `_IFRAME_EMBED_VIDEO_FORMATS` already read
+`frozenset({"youtube", "vimeo", "viebit"})` — WO-35 added `viebit`
+there — while `meeting_page.html`'s JSON-LD branch still read
+`("youtube", "vimeo")`. Same predicate ("video_url is an embed page, not
+a fetchable media file"), two use sites, silently disagreeing.
+
+**Fix**: the template tuple becomes `("youtube", "vimeo", "viebit")`,
+both surrounding comments corrected (the outer one still said "embedUrl
+is used for YouTube"), and a new test
+`test_every_iframe_embed_format_emits_embedurl_not_contenturl` iterates
+`_IFRAME_EMBED_VIDEO_FORMATS` rather than a literal list — so adding a
+fourth embed format without touching the template now fails CI. The
+guard was proved to bite by temporarily reverting the tuple (both new
+tests failed), then restoring it.
+
+**Call-site sweep**: `meeting_page.html:103` is the *only*
+`contentUrl`/`embedUrl` site in the codebase. Player wiring
+(`meeting_page.html:213/335`, `archive/static/meeting_page.js:769`,
+`app/static/player.js:582`) already had real `viebit` branches. No
+sitemap or feed involvement.
+
+**Verified in a real browser**, on a local SQLite database with
+`DATABASE_URL` set explicitly on the command line (never prod): five
+seeded rows, one per format. The Viebit page's only change —
+
+```
+-  "contentUrl": "https://councilnyc.viebit.com/embed/vod?v=hFWIQkuFLuWGb0mw",
++  "embedUrl":   "https://councilnyc.viebit.com/embed/vod?v=hFWIQkuFLuWGb0mw",
+```
+
+— with `name`, `description`, `url`, `uploadDate`, `inLanguage`,
+`duration`, `hasPart` (2 Clips) and `publisher` all identical, both
+`ld+json` blocks still parsing, and `#viebitFrame` still rendering.
+After the change: viebit/youtube/vimeo emit `embedUrl` and no
+`contentUrl`; m3u8/mp4 emit `contentUrl` and no `embedUrl`.
+
+Tests 1432 → 1435 passed, 15 skipped. `ruff check` / `ruff format
+--check` clean. PR #303.
+
+**The entry as it stood:**
+
+- **[JUST-DO-IT] Viebit has the same two structural mislabels Vimeo just
+  got fixed for — half fixed 2026-08-21 (WO-35), the `/coverage`
+  `audio_transcript_possible` half; the `VideoObject` JSON-LD half is
+  still open.** Viebit's `video_url` is an iframe embed page, exactly
+  like YouTube's/Vimeo's, but `meeting_page.html`'s JSON-LD still puts it
+  under `contentUrl` rather than `embedUrl` — WO-29 changed the
+  condition to `video_format in ("youtube", "vimeo")` and deliberately
+  didn't add `viebit`, since that changes how existing live pages present
+  to Google and deserves its own Search Console check. Worth confirming
+  first whether a Viebit `master.m3u8` really is unprobeable from this
+  app (the adapter's own docstring says the raw stream 403s on a
+  CDN Referer/Origin check).
+
 ## Canada support on `/coverage` and in `jurisdiction_display` — both entries were stale-done [Done 2026-08-17, closed out 2026-08-22]
 
 **Never actually open.** Both entries below sat in `Ship next` until a

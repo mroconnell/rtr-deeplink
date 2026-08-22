@@ -63,10 +63,12 @@ Standing decisions — do NOT re-raise  (12)
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
   Sacramento County's doubled meeting title is not a bug to fix
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (6)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (8)
   [JUST-DO-IT] Every Archive page ingested before WO-34 (2026-08-21)
   [JUST-DO-IT] `[EASY]` `generic_fallback.py`'s "we think the video is
   [JUST-DO-IT] `[EASY]` `/coverage`'s "Every place we've covered"
+  [JUST-DO-IT] `[EASY]` `is_extractable()` excludes only YouTube, so
+  [JUST-DO-IT] `[EASY]` A Viebit meeting's "can't transcribe this"
   [JUST-DO-IT] `[EASY]` `rtr-business/BUSINESS_OVERVIEW.md` still says
   [JUST-DO-IT] `[EASY]` Meeting-card backfill can only say a page
   `[JUST-DO-IT]` `[EASY]` `transcribe_backlog_locally.py` gives up on a…
@@ -128,18 +130,17 @@ Platform & jurisdiction coverage  (25)
     [LATER] YouTube-backed meetings' transcripts run through
     [IMPROVEMENT-ROUND] Four platforms account for ~78% of the 470 real
 
-Reliability, ops & cost  (9)
+Reliability, ops & cost  (8)
   Media-source reliability  (2)
     `[NEEDS-AUDIT]` Some old/archived Granicus clips' `chunklist.m3u8`…
     `[NEEDS-AUDIT]` A single job still makes N consecutive same-host…
   Transcription queue & workers  (2)
     [LATER] `list_transcription_backlog_candidates()` still does a real
     [LATER] Second transcription worker's auto-generation TOCTOU race —
-  Search Console, structured data & SEO plumbing  (4)
+  Search Console, structured data & SEO plumbing  (3)
     [HUMAN] `[LOGIN]` `[WAIT]` Search Console "Page indexed without
     [IMPROVEMENT-ROUND] `[LOGIN]` `[WAIT]` Google Search Console flagged
     [JUST-DO-IT] `[WAIT]` Search Console "Video isn't on a watch page"
-    [JUST-DO-IT] Viebit has the same two structural mislabels Vimeo just
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
@@ -380,6 +381,36 @@ so that work reads together.
   horizontal scroll.** Fix: narrow the "Example meeting"/"Transcript"
   columns in `archive/templates/coverage.html`'s `.coverage-table`
   styling, shrink the `#` column.
+
+- **[JUST-DO-IT] `[EASY]` `is_extractable()` excludes only YouTube, so
+  thumbnail extraction points ffmpeg at Vimeo and Viebit *HTML pages*
+  (found 2026-08-22 while fixing the Viebit JSON-LD mislabel, PR #303).**
+  `archive/utils/video_thumbnail.py:131`'s `is_extractable()` returns
+  `False` for `video_format == "youtube"` (or a YouTube-ish URL) and
+  `True` for everything else — but Vimeo and Viebit store an iframe
+  *embed page* as `video_url`, not a media file, exactly like YouTube
+  does. **Verified live**: it returns `True` for both. The SQL filter at
+  `archive/db/crud.py:5931` has the same shape (`video_format !=
+  "youtube"`). Harm is wasted ffmpeg runs against an HTML page, not bad
+  data — but it pollutes the meeting-card backfill's failure set, which
+  is precisely what the 179-failure diagnosis work is trying to read.
+  Fix: gate both on `crud._IFRAME_EMBED_VIDEO_FORMATS` (already
+  `frozenset({"youtube", "vimeo", "viebit"})`) rather than a
+  YouTube-only literal — same one-predicate-two-copies drift that caused
+  the JSON-LD bug, so consolidating is the actual fix, not just adding
+  two strings. Pre-dates Viebit; affects Vimeo equally. See
+  `BACKLOG_DONE.md`'s Viebit JSON-LD entry.
+
+- **[JUST-DO-IT] `[EASY]` A Viebit meeting's "can't transcribe this"
+  message reads as transient when the limit is permanent and structural
+  (found 2026-08-22, same pass as above).** `app/main.py:1263`'s
+  `_unreadable_media_message()` special-cases `youtube` and `vimeo` with
+  a real structural explanation, but `viebit` falls through to the
+  generic "may be unavailable" — which tells a user to try again later
+  for something that will never work. That is the exact bug class the
+  function's own comment block describes for LIMS/PrimeGov. Fix: give
+  `viebit` its own branch alongside the other two iframe-embed
+  platforms.
 
 - **[JUST-DO-IT] `[EASY]` `rtr-business/BUSINESS_OVERVIEW.md` still says
   saved-search alert emails are "not built yet"** — stale; shipped
@@ -1298,19 +1329,6 @@ audio or video source was found`. That's where the volume actually is.
   `contentUrl`, while the existing JS playback logic is untouched. **Not
   yet confirmed on a re-crawl** — Search Console needs to re-index
   before the flag count can be checked.
-
-- **[JUST-DO-IT] Viebit has the same two structural mislabels Vimeo just
-  got fixed for — half fixed 2026-08-21 (WO-35), the `/coverage`
-  `audio_transcript_possible` half; the `VideoObject` JSON-LD half is
-  still open.** Viebit's `video_url` is an iframe embed page, exactly
-  like YouTube's/Vimeo's, but `meeting_page.html`'s JSON-LD still puts it
-  under `contentUrl` rather than `embedUrl` — WO-29 changed the
-  condition to `video_format in ("youtube", "vimeo")` and deliberately
-  didn't add `viebit`, since that changes how existing live pages present
-  to Google and deserves its own Search Console check. Worth confirming
-  first whether a Viebit `master.m3u8` really is unprobeable from this
-  app (the adapter's own docstring says the raw stream 403s on a
-  CDN Referer/Origin check).
 
 ### `/coverage` as a QA surface
 
