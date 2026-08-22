@@ -673,6 +673,8 @@ async def internal_jurisdiction_bleed_backfill_candidates(
 async def internal_low_trust_pages(
     limit: int = 200,
     offset: int = 0,
+    unreviewed: bool = False,
+    reason: Optional[str] = None,
     authorization: Optional[str] = Header(None),
 ):
     """Read-only review queue: every archived page whose provenance was
@@ -698,11 +700,101 @@ async def internal_low_trust_pages(
     pages are legitimate small cities that happened to resolve via the
     fallback, and pulling them out of Google would cost real reach for no
     proportionate trust gain.
+
+    **What's really in here, measured 2026-08-21 (WO-38).** The first
+    production call returned 474 rows: 470 `unverified_jurisdiction`, 7
+    `unknown_platform`, 0 `best_effort`. So in practice this is a
+    *data-quality* queue -- meetings whose jurisdiction couldn't be
+    determined -- and a trust queue only prospectively; see
+    crud.list_low_trust_pages()'s docstring for why, and don't come to
+    this expecting spoofed content.
+
+    `?unreviewed=true` (WO-38) hides rows already stamped via
+    POST /internal/low-trust-pages/mark-reviewed below -- without it, 474
+    rows have to be re-triaged from scratch on every read.
+    `?reason=unknown_platform|best_effort|unverified_jurisdiction`
+    narrows to one reason, which matters given the skew above: the 4 rows
+    that aren't `unverified_jurisdiction` are otherwise invisible. Both
+    are optional and an unfiltered call returns exactly what it always
+    did.
     """
     if not _token_ok(authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
-    return await crud.list_low_trust_pages(limit=limit, offset=offset)
+    try:
+        return await crud.list_low_trust_pages(
+            limit=limit, offset=offset, unreviewed=unreviewed, reason=reason
+        )
+    except ValueError:
+        return JSONResponse(
+            {"detail": "reason must be one of " + ", ".join(crud._LOW_TRUST_REASONS)},
+            status_code=400,
+        )
+
+
+@app.post("/internal/low-trust-pages/mark-reviewed")
+async def internal_low_trust_pages_mark_reviewed(
+    ids: Optional[str] = None,
+    dry_run: bool = True,
+    unreview: bool = False,
+    authorization: Optional[str] = Header(None),
+):
+    """Write counterpart to GET /internal/low-trust-pages above: records
+    that a human has actually looked at specific pages, so the queue
+    shrinks as it's worked instead of re-presenting all 474 rows forever
+    (WO-38). Stamps `meeting_pages.reviewed_at` and nothing else -- it
+    does not hide, de-index, edit or delete anything, and a reviewed page
+    is served to the public exactly as before.
+
+    `ids` is REQUIRED, comma-separated `meeting_page_id`s (the same ids
+    the GET above returns), same parse as
+    /internal/jurisdiction/backfill-apply's only_ids. There is
+    deliberately no "mark everything" mode: on the backfill endpoint the
+    ids narrow a candidate set the server recomputed itself, so omitting
+    them safely means "all candidates" -- here, omitting them would mean
+    declaring 474 unexamined pages reviewed in one keystroke and
+    permanently destroying the distinction this column exists to record.
+
+    Idempotent: an id already in the requested state comes back under
+    `already_reviewed` with its original timestamp untouched, and an id
+    matching no row comes back under `missing_ids` instead of failing the
+    whole batch. `dry_run` defaults to true (this repo's read-only-first
+    convention, see /internal/schema-info); pass `?dry_run=false` to
+    commit. `?unreview=true` clears the stamp back to NULL -- the undo
+    for a mis-pasted id list, which otherwise would need direct database
+    access to repair.
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    try:
+        parsed = _parse_id_filter(ids)
+    except ValueError:
+        return JSONResponse(
+            {"detail": "ids must be comma-separated integers"}, status_code=400
+        )
+
+    try:
+        result = await crud.mark_low_trust_pages_reviewed(
+            ids=parsed or set(), dry_run=dry_run, unreview=unreview
+        )
+    except ValueError as exc:
+        return JSONResponse({"detail": str(exc)}, status_code=400)
+
+    if not result["reviewed_at_column_available"]:
+        # The one-deploy window where this build is live but its
+        # migration hasn't run. The read endpoint degrades honestly; a
+        # write can't, so say so loudly rather than reporting a success
+        # that recorded nothing.
+        return JSONResponse(
+            {
+                "detail": "meeting_pages.reviewed_at does not exist yet; "
+                "run the Alembic migration and retry",
+                **result,
+            },
+            status_code=503,
+        )
+    return result
 
 
 @app.post("/internal/jurisdiction/backfill-apply")

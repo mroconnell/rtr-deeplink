@@ -5,12 +5,15 @@ investigation detail behind each fix — lives in
 [BACKLOG_DONE.md](BACKLOG_DONE.md); items below link back to it for context
 where relevant.
 
-## `best_effort` residuals: no backfill for pre-2026-08-21 pages, the flag never clears itself, and the low-trust queue has no UI
+## `best_effort` residuals: no backfill for pre-2026-08-21 pages, and the flag never clears itself
 
 WO-21 (2026-08-21) plumbed `ResolvedMeeting.best_effort` through to the
 Archive — a real `meeting_pages.best_effort` column, a provenance gate on
 social auto-posting, and `GET /internal/low-trust-pages` — see
-`BACKLOG_DONE.md`'s entry for the full build. Four real residuals:
+`BACKLOG_DONE.md`'s entry for the full build. Three real residuals (a
+fourth, "the queue is a JSON endpoint, not a workflow", was closed the
+same day by WO-38 — `reviewed_at`, `?unreviewed=true`, `?reason=`, and a
+mark-reviewed endpoint; see `BACKLOG_DONE.md`):
 
 - **Every page archived before 2026-08-21 has `best_effort = false`,
   and no backfill is possible.** Not an oversight and not a script
@@ -33,11 +36,6 @@ social auto-posting, and `GET /internal/low-trust-pages` — see
   flag, so the review queue needs pruning by hand rather than draining
   itself. Fixing this properly means distinguishing a full resolve from a
   partial push at the ingest boundary, which nothing does today.
-- **The queue is a JSON endpoint, not a workflow.** There's no way to
-  mark a page reviewed/approved, so re-reading it means re-triaging the
-  same rows. That's the natural next slice if the queue turns out to be
-  used at all; a `reviewed_at` column plus a `?unreviewed=true` filter
-  would be the cheap version.
 - **`jurisdiction_confidence IS NULL` is not counted as low-trust.** The
   endpoint matches `"unverified"`/`"blank"` only. Pages archived before
   the column existed (pre-2026-08-15) have NULL, which means "we never
@@ -57,6 +55,32 @@ adapter, and pulling them out of Google would cost real reach for no
 proportionate trust gain. Widening any of those three to include
 `best_effort` would reverse a decision that was made deliberately, with
 the tradeoff understood.
+
+## The low-trust queue is really a jurisdiction-quality queue, and reviewing a row doesn't repair it
+
+WO-38 (2026-08-21) gave `GET /internal/low-trust-pages` a memory —
+`reviewed_at`, `?unreviewed=true`, `?reason=`, and a token-gated
+mark-reviewed endpoint (see `BACKLOG_DONE.md`). Calling it against
+production for the first time also settled what's *in* it: 474 rows, of
+which **470 are `unverified_jurisdiction`, 7 `unknown_platform`, and
+zero `best_effort`**. Three residuals follow from that:
+
+- **It's a data-quality queue, not a trust queue, today.** Those 470
+  rows are real live pages with real video whose jurisdiction couldn't
+  be determined — not suspected spoofs. Marking one reviewed records
+  that a human looked; it does not fix the missing jurisdiction, and
+  there's no repair path from the queue (the nearest thing is
+  `POST /internal/jurisdiction/backfill-apply`, which recomputes from
+  stored inputs and so can't help a row those inputs never resolved).
+  A "review → correct the jurisdiction" write is the obvious next slice
+  and was deliberately not built here.
+- **A review doesn't expire when the page changes.** `reviewed_at`
+  survives a later re-ingest, so a page reviewed today and re-resolved
+  tomorrow with different content still reads as reviewed. Comparing
+  `reviewed_at` against `updated_at` would surface those; nothing does.
+- **Still curl-only.** No UI, by choice at this volume — 474 rows is
+  workable from a terminal with `?reason=` + `?unreviewed=true`. Revisit
+  if someone other than Ryan ever works the queue.
 
 ## Social auto-posting residuals: facet-clickability spot-check, Mastodon client still unverified, upgrade-triggered posts never announce
 
