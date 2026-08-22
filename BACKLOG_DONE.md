@@ -6,6 +6,212 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## WO-34: roll-up caption duplication fixed across every adapter, and whole-transcript language voting [Done 2026-08-21]
+
+Two fixes, bundled because both live in `app/utils/vtt_parser.py`.
+
+### 1. Roll-up ("scrolling ticker") caption duplication
+
+**The bug.** `dedupe_rollup_cues()` existed but was imported by exactly
+two adapters, `youtube.py` and `viebit.py`. Granicus, CivicClerk and
+eScribe all serve roll-up captions from real cities and had no dedupe at
+all, so their transcripts were near-unreadable and every deep link landed
+on a fragment. Real production output, `/m/city-of-tacoma-wa-2026-01-06-
+city-council-on-2026-01-06-5-00-pm/transcript.txt`:
+
+```
+[0:06] >> Councilmember Hines: WE WILL
+[0:07] >> Councilmember Hines: WE WILL GET
+[0:07] >> Councilmember Hines: WE WILL GET EVERYONE
+[0:08] GET EVERYONE SWORN IN SO WE CAN BEGIN OUR COUNCIL MEETING
+```
+
+**This was not a wire-through.** The existing implementation was wrong in
+four separate ways for these sources, each found by fetching the real
+caption file rather than reasoning about it. All four caption files below
+were fetched live 2026-08-21 and trimmed into fixtures.
+
+*(a) The whole-string prefix test breaks when the speaker prefix drops
+mid-run.* Granicus's real shape (Tacoma WA clip 7460,
+`cityoftacoma.granicus.com/videos/7460/captions.vtt`, 21,240 cues,
+1.5MB) is a single fixed-width ~63-character ticker line that grows
+word-by-word and then drops words off the **front** to make room:
+
+```
+>> Councilmember Hines: WE WILL GET EVERYONE SWORN IN SO WE CAN
+GET EVERYONE SWORN IN SO WE CAN
+GET EVERYONE SWORN IN SO WE CAN BEGIN
+```
+
+`line.startswith(prev_line)` handles the growth and then fails at every
+cue after the front-drop. Replaced with a **word-level overlap** against a
+rolling 40-word tail of the text reconstructed so far. Rolling, not
+just-the-previous-line, because a real ticker is not monotone: Tacoma's own
+track emits a transient scrolled window (`HAVE ONE.`) and reverts to the
+fuller one (`>> Councilmember Sadalge: I HAVE ONE.`) on the very next cue.
+
+*(b) `result[-1]["end"] = cue["end"]` merged a whole run into one blob.*
+This is a deep-link product, so that made timestamps useless. Segments now
+close at sentence-final punctuation, with a 240-character cap as the
+fallback for a stretch with no punctuation at all. On the full Tacoma file:
+21,240 cues → 1,168 segments, median 4.8s / 65 chars, longest 250 chars /
+28.3s. Also `end = max(end, start)`: 1,338 of Tacoma's cues have an end
+that precedes their start, which an unguarded merge turns into a
+negative-length segment.
+
+*(c) Taking only each cue's last line misses two of the four real shapes.*
+Found by re-resolving the CivicClerk meeting `BACKLOG.md` named — Antioch
+CA event 18, `cpmedia.azureedge.net/antiochca/ClosedCaption/....srt`, 5,481
+cues. It promotes the previous line to the top of a two-line cue with **no
+blank-line alternation**, so consecutive last-lines never overlap and the
+track scored as non-roll-up. The unit is now one caption *line*, not one
+cue. (A cue's non-last line still can't stretch the previous segment's end
+time — that span belongs to the newer line below it.)
+
+*(d) Comparison has to be case-folded, and `»` has to fold to `>>`.* Not
+cosmetic: two normalizations that already run inside `parse_vtt()`
+re-spell the same words between one cue and the next.
+`_sentence_case()` (ALL-CAPS de-shouting) capitalises after every `\n`, so
+Antioch reads `Councilmember to move number` as one cue's second line and
+`councilmember to move number` as the next cue's first — case-sensitive
+matching drops that track's measured roll-up ratio from 0.451 to **0.111,
+i.e. under the detection gate, bug unfixed**. And
+`normalize_speaker_change_marker()` only rewrites `&gt;&gt;` anchored at
+the *start* of a cue, so YouTube's own source yields `» We can't hear
+you...` in one cue and `>> We can't hear you...` in the next; without the
+fold, every speaker change re-emits its whole first line.
+
+**A fourth real shape, and the detection floor.** Re-resolving the eScribe
+meeting `BACKLOG.md` named (Essex County ON 2025-12-03,
+`video.isilive.ca/countyofessex/....vtt`, 11,627 cues, 746KB) turned up a
+shape that previews only the *next* line's first word, often as a
+standalone stub cue:
+
+```
+I WOULD LIKE TO CALL THE   DECEMBER
+DECEMBER THIRD 2025 ESSEX COUNTY
+   COUNCIL
+COUNCIL MEETING TO ORDER.
+```
+
+The overlap is a single word. A "two shared words" detection rule scores
+this track 0.155 — under the gate. Dropping the floor entirely and
+accepting any one-word overlap goes wrong the other way: Fountain Valley's
+garbled two-character junk fragments (`b8`, `c8`) then score 0.352 and get
+treated as roll-up. The rule that works is **one shared word of at least 4
+characters**. eScribe also re-emits sentence-final words with and without
+punctuation (`   REFLECTION` then `REFLECTION.`), so folding ignores
+trailing punctuation and the more complete spelling wins.
+
+**The gate is what makes the wiring safe.** Because roll-up is a property
+of how a *city* captions its meetings, not of which platform hosts the
+video, the call went into the shared `parse_captions_by_extension()`
+dispatch (Granicus, CivicClerk, Swagit, CA Legislature, Aurora, Seattle
+Channel, generic fallback) plus `escribe.py`, which parses VTT directly.
+`dedupe_rollup_cues()` returns a non-roll-up track unchanged. Measured
+across 18 real caption files from 7 platforms, the adjacent-line overlap
+ratio is **≤ 0.048 on every non-roll-up track** (worst: Fountain Valley's
+garbled noise) and **≥ 0.401 on every roll-up one**, so the 0.20 threshold
+has real margin on both sides — same shape of calibration as
+`is_likely_garbled()`'s 6%.
+
+**Measured effect on real files** (cue text → reconstructed transcript):
+
+| source | cues | segments | chars |
+| --- | --- | --- | --- |
+| Tacoma WA (Granicus) | 21,240 | 1,168 | 859K → 100K |
+| Essex County ON (eScribe) | 11,627 | 5,175 | 298K → 231K |
+| Antioch CA (CivicClerk) | 5,481 | 5,482 | 275K → 135K |
+| Philadelphia (YouTube auto) | 13,111 | 6,509 | 693K → 230K |
+| NYC Council (Viebit) | 1,748 | 875 | 47K → 24K |
+| Jacksonville FL (Granicus, not roll-up) | 2,177 | 2,177 | unchanged |
+
+**No regression to the two adapters that already used it.** Viebit's real
+NYC Council track is byte-for-byte identical to the old implementation
+except one segment, where the old prefix test had left `typical capital of
+process` / `process where we engaged with` duplicated. YouTube was checked
+against a real 13,111-cue auto-caption track fetched via yt-dlp
+(Philadelphia City Council "Committee on Education" 08-06-26, video
+`5LZqoNDRMYk`); every difference from the old implementation is a deletion
+of duplicated text, and median segment duration is unchanged at 2.2s.
+
+**Verified live, not just in tests.** Fresh resolves through a local
+resolver (with `ARCHIVE_BASE_URL` explicitly cleared, or `/api/resolve`
+just redirects to the already-stored Archive page) plus in-browser checks
+of the rendered meeting page for Tacoma, Antioch and Essex, including
+click-to-seek on a transcript line.
+
+New fixtures, all verbatim excerpts of real fetched files:
+`tests/fixtures/granicus/tacoma_clip7460_captions.vtt`,
+`tests/fixtures/civicclerk/antiochca_event18_captions.srt`,
+`tests/fixtures/escribe/essexcounty_rcc_20251203_captions.vtt`,
+`tests/fixtures/youtube/phila_education_5LZqoNDRMYk_captions.vtt`.
+
+**Two stale sub-bullets corrected while in there.** The same `BACKLOG.md`
+entry also claimed WebVTT `NOTE`-block absorption and inline voice-tag
+stripping were unfixed; both were already fixed in `parse_vtt()`. So was
+the separate `is_likely_garbled()` "only samples the first 4000
+characters" entry — that one has multi-offset sampling now. Exactly the
+doc-drift the "App-wide audit" entry flags as real rather than
+hypothetical.
+
+**Residuals split back out as live `BACKLOG.md` entries:** already-stored
+Archive transcripts stay duplicated until re-resolved (this fix is
+resolve-time only), and `_sentence_case()`'s `\n`-capitalisation still
+produces mid-sentence capitals on de-shouted two-line tracks.
+
+### 2. `detect_language_from_texts()` sampled only the first 2000 characters
+
+**The bug.** `sample = " ".join(texts)[:2000]`. Segments reach that
+function sorted by start time, so "first 2000 characters" always meant
+"the start of the meeting" — exactly where dead air, music before the
+gavel, and non-English invocations live. Two real live pages,
+`/m/meeting-00bbd1` (Lincoln City OR) and `/m/meeting-d09fc0` (Moraine
+City OH), were both labelled Welsh (`cy`) off a quiet opening chunk while
+the rest of each meeting was confidently English.
+
+**The fix.** Chunk the whole transcript on word boundaries at ~2000
+characters, thin to at most 40 chunks *evenly spaced across the
+transcript* (not truncated to its head), run langdetect on each, and take
+the winner weighted by how much text each chunk contributes. Under 2000
+characters there is exactly one chunk, so short and scraped tracks behave
+bit-for-bit as before. Cost on the three largest real transcripts to hand:
+177-347ms, against seconds of network I/O in the resolve that calls it.
+
+Guard cases, all on real fixtures: the Simi Valley Spanish track (clip
+2840) still returns `es`, unanimously across all 8 of its chunks; the real
+Peel Region eScribe track (1.1KB) still returns `en` through the
+single-chunk path.
+
+**langdetect is now seeded (`DetectorFactory.seed = 0`).** It samples
+n-grams at random and its own README says results vary without a seed.
+That was survivable when detection was one call on one decisive sample,
+but a vote across many chunks turns a garbled transcript into a coin flip
+per chunk: measured on the real Fountain Valley clip 607 fixture, an
+unseeded vote returned `en` 36 times, `pt` 3 and `ca` 1 over 40 runs of
+identical input. Seeding also means the same transcript always gets the
+same label, which is what a cache-and-republish pipeline wants.
+
+`archive/utils/language.py` — the deliberate duplicate the Archive keeps so
+it doesn't depend on `app/` — got the same change. That copy is actually
+where both `cy` pages came through, since they were locally-transcribed
+backlog meetings ingested via `report_chunk_result()`. `escribe.py`'s
+private `_detect_cue_language()`, a third copy carrying the same `[:2000]`
+bug, now just calls the shared function.
+
+**One test assertion deliberately changed rather than quietly edited.**
+`test_resolve_falls_back_to_player_page_for_video_when_mediaplayer_has_none`
+(`tests/test_granicus.py`) asserted `transcript_language == "pt"` plus a
+"captions appear to be in 'pt'" warning for Fountain Valley CA. That was
+langdetect's answer to the first 2000 characters of that meeting's garbled
+noise; the whole-transcript vote splits pt 3,742 / en 4,452 / sl 2,504
+characters and lands on `en`. Fountain Valley is an English-language
+council, so `pt` was simply wrong, and dropping a language-mismatch warning
+for a meeting whose only real problem is garbled captions is the better
+user-facing outcome. The garbled warning still fires and is still asserted;
+the test now also asserts the language-mismatch warning is *absent*, and
+carries a comment explaining the change.
+
 ## WO-35: `/coverage` silently dropped four platforms that shipped the same week — plus a CI guard so it can't happen a fourth time [Done 2026-08-21]
 
 Promotes and closes `BACKLOG.md`'s "[JUST-DO-IT] `/coverage`'s 'By

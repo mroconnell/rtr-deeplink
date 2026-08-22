@@ -78,6 +78,25 @@ under everything else. This repo extracts and fixes just that part.
   Salisbury NC (`vimeo.com/1212025580`, real captions visible in the
   player), Chicago IL (`chicityclerkelms.chicago.gov/Meeting/?meetingId=
   DF5C52EA-0D6B-F111-A823-001DD8019941`).
+- **The same rule applies to a *caption-shape* fix, not just a new
+  adapter — and one platform's real file is not enough.** WO-34
+  (2026-08-21) fixed roll-up ("scrolling ticker") caption duplication,
+  which had been shipped for YouTube alone. Every one of the other three
+  platforms that serve it turned out to have a structurally different cue
+  shape, and each one broke a rule that looked correct against the files
+  already in hand: Granicus drops words off the *front* of the window,
+  CivicClerk promotes the previous line inside the same cue, eScribe
+  overlaps by a single word. Fixing it against fewer real files would
+  have produced a fix that silently did nothing on the others — twice the
+  detection heuristic scored a genuinely-broken real track *under* the
+  threshold. Add these to the sample sheet: Tacoma WA
+  (`cityoftacoma.granicus.com/player/clip/7460`), Antioch CA
+  (`antiochca.portal.civicclerk.com/event/18/media`), Essex County ON
+  (`coe-pub.escribemeetings.com/Meeting.aspx?Id=eb32e746-242f-4443-804a-fbdeeefc7eeb`),
+  Philadelphia (YouTube `5LZqoNDRMYk`). Jacksonville FL
+  (`jaxcityc.granicus.com/player/clip/7447`) is the useful negative
+  control — same platform, ordinary non-roll-up captions that must come
+  through untouched.
 - **Verify in-browser, not just via the API.** UI changes especially need
   an actual `mcp__Claude_Browser__*` check — several real bugs (duplicate
   chapter markers, a metadata-extraction ordering bug, a deep-link

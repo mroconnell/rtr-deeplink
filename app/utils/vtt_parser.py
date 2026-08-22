@@ -3,7 +3,17 @@ import re
 import xml.etree.ElementTree as ET
 from typing import Iterable, List, Dict, Any, Optional
 
-from langdetect import detect as _detect_language, LangDetectException
+from langdetect import DetectorFactory, detect as _detect_language, LangDetectException
+
+# langdetect samples n-grams at random and is non-deterministic unless seeded
+# (its own README says so). That was survivable while detection was a single
+# call on one decisive sample, but detect_language_from_texts() now votes
+# across many chunks, and on a genuinely garbled transcript the individual
+# chunks are each a coin flip -- measured on the real Fountain Valley clip
+# 607 fixture, an unseeded vote came back 'en' 36 times, 'pt' 3 and 'ca' 1
+# over 40 runs of identical input. Seeding makes the same transcript always
+# get the same label, which is what a cache-and-republish pipeline needs.
+DetectorFactory.seed = 0
 
 
 def decode_vtt_bytes(raw: bytes) -> str:
@@ -289,13 +299,21 @@ def parse_captions_by_extension(url: str, content: str):
     empty/None for a format this can't extract anything from at all
     (binary formats like .scc/.stl -- caller should fall back to linking
     the URL directly rather than trying to display "content").
+
+    Structured cues go through dedupe_rollup_cues() here rather than in each
+    adapter: roll-up captioning is a property of how a *city* captions its
+    meetings, not of which platform hosts the video, so wiring it per-adapter
+    is what left Granicus/CivicClerk/eScribe serving visibly duplicated
+    transcripts while YouTube and Viebit were fine (see BACKLOG_DONE.md,
+    WO-34). That function no-ops on a non-roll-up track, so this is safe for
+    the ordinary one-cue-per-line captions most sources here emit.
     """
     ext = url.lower().split("?")[0].rsplit(".", 1)[-1]
     parser = STRUCTURED_CAPTION_PARSERS.get(ext)
     if parser:
         cues = parser(content)
         if cues:
-            return cues, None
+            return dedupe_rollup_cues(cues), None
     elif ext == "xml":
         # A bare ".xml" extension doesn't say which schema -- some vendors
         # export real TTML/DFXP with a plain .xml extension rather than
@@ -305,7 +323,7 @@ def parse_captions_by_extension(url: str, content: str):
         # falling through to the generic text fallback below.
         cues = parse_ttml(content)
         if cues:
-            return cues, None
+            return dedupe_rollup_cues(cues), None
     if ext in TEXT_FALLBACK_CAPTION_EXTENSIONS:
         text = strip_unknown_caption_markup(content)
         return None, (text or None)
@@ -314,54 +332,302 @@ def parse_captions_by_extension(url: str, content: str):
 
 _TAG_RE = re.compile(r"<[^>]+>")
 
+# --- Roll-up ("scrolling ticker") caption reconstruction -------------------
+#
+# Four independently-real cue shapes produce the same user-visible defect
+# (duplicated, near-unreadable transcript text, every deep link landing on a
+# fragment), so one function handles all of them. Every number below was
+# measured on a real fetched caption file -- see dedupe_rollup_cues's
+# docstring for which.
+#
+#  * A track is treated as roll-up only if a real fraction of its adjacent
+#    caption *lines* overlap, where "overlap" means at least one shared word
+#    of at least _ROLLUP_MIN_OVERLAP_CHARS characters. Measured across 18
+#    real caption files from 7 platforms, that ratio is <= 0.048 on every
+#    non-roll-up track (the worst being Fountain Valley's garbled noise) and
+#    >= 0.401 on every roll-up one, so the 0.20 threshold sits with real
+#    margin on both sides of the gap (same shape of calibration as
+#    is_likely_garbled's 6%). The gate is what makes this safe to call from
+#    the shared parse_captions_by_extension() dispatch, where most real
+#    tracks are ordinary captions that must not be reshaped at all.
+#  * The character floor is doing real work in both directions. Requiring
+#    *two* shared words instead would be tidier but misses eScribe's shape
+#    entirely: the real Essex County ON track previews only the next line's
+#    first word ('...CALL THE   DECEMBER' / 'DECEMBER THIRD 2025 ESSEX
+#    COUNTY'), which scores 0.155 on a two-word rule -- under the gate --
+#    against 0.401 on this one. Dropping the floor and accepting any
+#    one-word overlap goes wrong the other way: Fountain Valley's garbled
+#    two-character junk fragments ('b8', 'c8') then score 0.352 and get
+#    treated as roll-up.
+#  * The unit is one caption *line*, not one cue. Two of the four real
+#    shapes put the previous line and the new line in the same cue, and a
+#    cue-level comparison misses the overlap entirely between them.
+#  * Merging compares the incoming line against a rolling tail of the text
+#    reconstructed so far, at word level, rather than doing a whole-string
+#    prefix test. A prefix test is what YouTube's shape happens to need, but
+#    it breaks on Granicus's: there the window is a fixed ~63-char ticker
+#    that drops words off the *front* as it scrolls, so a repeated speaker
+#    label ('>> Councilmember Hines: ') disappears mid-run and every cue
+#    after that point fails the prefix comparison and starts a bogus new
+#    segment carrying duplicated text.
+#  * _ROLLUP_CONTEXT_WORDS looks further back than just the previous line,
+#    because a real ticker is not strictly monotone: Tacoma's own track emits
+#    a transient scrolled window ('HAVE ONE.') and then reverts to the fuller
+#    one ('>> Councilmember Sadalge: I HAVE ONE.') on the very next cue.
+#  * Comparison is case-folded, and '»' folds to '>>'. Not cosmetic: two
+#    normalizations that already ran inside parse_vtt() re-spell the *same*
+#    words between one cue and the next. _sentence_case() (the ALL-CAPS
+#    de-shouting) capitalises after every '\n', so a line reads 'Good evening
+#    everyone and' as cue N's second line and 'good evening everyone and' as
+#    cue N+1's first; and normalize_speaker_change_marker() only rewrites a
+#    '&gt;&gt;' anchored at the start of a cue, so the same speaker marker is
+#    '»' in one cue and '>>' in the next. Case-sensitive comparison drops the
+#    real Antioch CivicClerk track's roll-up ratio from 0.451 to 0.111 --
+#    under the gate, i.e. the bug silently stays unfixed.
+_ROLLUP_MIN_OVERLAP_CHARS = 4
+_ROLLUP_MIN_PAIRS = 2
+_ROLLUP_PAIR_RATIO_MIN = 0.20
+_ROLLUP_CONTEXT_WORDS = 40
+# Segment boundaries. This is a deep-link product: merging a whole roll-up
+# run into one segment (what an unbounded "extend the last segment's end
+# time" merge does) would make every timestamp on the page point at the top
+# of a 30+ second blob. Sentence-final punctuation is the natural boundary
+# and the one these sources actually emit; the char cap is the fallback for
+# a stretch with no punctuation at all. Measured on the real full Tacoma
+# track: 21,240 cues -> 1,168 segments, median 4.8s / 65 chars, longest
+# 250 chars / 28.3s.
+_ROLLUP_MAX_SEGMENT_CHARS = 240
+_ROLLUP_SENTENCE_END_RE = re.compile(r"[.!?][\"')\]]*$")
+
+
+def _rollup_lines(cues: List[Dict[str, Any]]) -> List[tuple]:
+    """(cue, line, is_last_line_of_cue) for every non-blank line, tags stripped.
+
+    is_last_line_of_cue matters for timing only: in a two-line roll-up cue
+    the first line is text the viewer has already seen, so it must not
+    stretch the previous segment's end time over the new cue's span.
+    """
+    out = []
+    for cue in cues:
+        text = _TAG_RE.sub("", cue.get("text", ""))
+        parts = [part.strip() for part in text.split("\n") if part.strip()]
+        for index, part in enumerate(parts):
+            out.append((cue, part, index == len(parts) - 1))
+    return out
+
+
+# Trailing punctuation is stripped before comparing, because a real roll-up
+# source re-emits the same word with and without it. eScribe's stub cues do
+# this constantly ("   REFLECTION" then "REFLECTION."), and without the strip
+# every sentence-final word comes out twice.
+_FOLD_TRAILING_PUNCTUATION = ".,;:!?\"')]"
+
+
+def _fold_words(words: List[str]) -> List[str]:
+    return [
+        word.casefold().replace("»", ">>").rstrip(_FOLD_TRAILING_PUNCTUATION)
+        for word in words
+    ]
+
+
+def _word_overlap(context: List[str], words: List[str]) -> int:
+    """Longest k where context's last k words equal words' first k words."""
+    folded_context = _fold_words(context)
+    folded_words = _fold_words(words)
+    for k in range(min(len(folded_context), len(folded_words)), 0, -1):
+        if folded_context[-k:] == folded_words[:k]:
+            return k
+    return 0
+
+
+def _is_rollup_pair(previous: List[str], words: List[str]) -> bool:
+    """Does `words` re-say enough of `previous`'s tail to be a roll-up repeat?
+
+    Deliberately stricter than the merge test below, which accepts any
+    overlap at all once a track is already known to be roll-up. This one has
+    to tell roll-up apart from ordinary captions and from garbled noise --
+    see the character-floor bullet in the comment block above.
+    """
+    overlap = _word_overlap(previous, words)
+    if not overlap:
+        return False
+    return len(" ".join(words[:overlap])) >= _ROLLUP_MIN_OVERLAP_CHARS
+
+
+def _looks_like_rollup(lines: List[tuple]) -> bool:
+    previous: Optional[List[str]] = None
+    pairs = hits = 0
+    for _cue, line, _is_last in lines:
+        words = line.split()
+        if previous is not None:
+            pairs += 1
+            if _is_rollup_pair(previous, words):
+                hits += 1
+        previous = words
+    if pairs < _ROLLUP_MIN_PAIRS:
+        return False
+    return (hits / pairs) >= _ROLLUP_PAIR_RATIO_MIN
+
 
 def dedupe_rollup_cues(cues: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Collapse YouTube auto-caption "roll-up" cues into real segments.
+    """Reconstruct real segments from "roll-up" (scrolling) caption cues.
 
-    YouTube's auto-generated VTT (confirmed live, a real LA City Council
-    meeting via yt-dlp) doesn't give each line its own cue -- every cue
-    repeats the previous settled line as line 1 and grows the *next* line
-    word-by-word as line 2 (each word individually timestamped via <c>
-    tags), so treating each cue as its own segment produces massive
-    overlapping duplicate text. Confirmed structure from a real sample:
+    Roll-up captioning doesn't give each line of speech its own cue -- it
+    re-emits a growing/scrolling *window* over the same speech again and
+    again, so treating each cue as a segment produces massively duplicated
+    text. Four real shapes, all confirmed against live fetched files:
 
-        00:00:01.199 --> 00:00:03.750
-        <blank>
-        most<...>permanent<...>supportive<...>housing<...>takes
+    1. YouTube auto-captions (real Philadelphia City Council "Committee on
+       Education" 08-06-26, 13,111 cues, fetched via yt-dlp) repeat the
+       previous settled line as line 1 and grow the next line word-by-word
+       as line 2, each word individually timestamped via <c> tags:
 
-        00:00:03.750 --> 00:00:03.760
-        most permanent supportive housing takes
-        <blank>
+           00:00:01.199 --> 00:00:03.750
+           <blank>
+           most<...>permanent<...>supportive<...>housing<...>takes
 
-        00:00:03.760 --> 00:00:05.749
-        most permanent supportive housing takes
-        five<...>to<...>seven<...>years
+           00:00:03.750 --> 00:00:03.760
+           most permanent supportive housing takes
+           <blank>
 
-    This takes each cue's last non-blank line (stripped of <c> tags), and
-    merges it into the running segment whenever it's a growing/settling
-    version of the previous line (one is a prefix of the other) rather
-    than appending a new one -- otherwise it starts a new segment.
-    Verified against a real 4035-cue/570KB sample: collapses to 2004
-    segments with no visible duplication and coherent reconstructed text.
+           00:00:03.760 --> 00:00:05.749
+           most permanent supportive housing takes
+           five<...>to<...>seven<...>years
+
+    2. Granicus live captions (real Tacoma WA city council 2026-01-06, clip
+       7460, 21,240 cues -- the meeting BACKLOG.md named) emit a single
+       fixed-width (~63 char) ticker line that grows word-by-word and then
+       drops words off the *front* to make room, so a repeated speaker label
+       vanishes mid-run:
+
+           >> Councilmember Hines: WE WILL GET EVERYONE SWORN IN SO WE CAN
+           GET EVERYONE SWORN IN SO WE CAN
+           GET EVERYONE SWORN IN SO WE CAN BEGIN
+
+    3. CivicClerk (real Antioch CA council 2026-03-10, event 18, 5,481 SRT
+       cues -- also named in BACKLOG.md) promote the previous line to the
+       top of a two-line cue, with no blank-line alternation:
+
+           >> Mayor Bernal:   ALL RIGHT,
+           GOOD EVENING EVERYONE AND
+
+           GOOD EVENING EVERYONE AND
+           WELCOME TO OUR REGULAR CITY
+
+    4. eScribe/iSiLIVE (real Essex County ON council 2025-12-03, 11,627
+       cues -- also named in BACKLOG.md) preview only the *next* line's
+       first word at the end of the current one, sometimes as a standalone
+       stub cue of its own, so the overlap is a single word:
+
+           I WOULD LIKE TO CALL THE   DECEMBER
+           DECEMBER THIRD 2025 ESSEX COUNTY
+              COUNCIL
+           COUNCIL MEETING TO ORDER.
+
+    Real measured effect: Tacoma 21,240 cues -> 1,168 segments (859KB of
+    duplicated cue text down to 100KB); Antioch 275KB -> 135KB; Essex 298KB ->
+    216KB; Philadelphia 242KB -> 230KB. Viebit's NYC Council track is
+    byte-for-byte unchanged from the previous implementation.
+
+    Non-roll-up tracks are returned unchanged (tags stripped) rather than
+    reshaped -- see _looks_like_rollup and the ratios in the comment block
+    above it.
     """
+    lines = _rollup_lines(cues)
+    if not lines:
+        return []
+
+    if not _looks_like_rollup(lines):
+        return [
+            {
+                "start": cue["start"],
+                "end": cue["end"],
+                "text": _TAG_RE.sub("", cue["text"]),
+            }
+            for cue in cues
+        ]
+
     result: List[Dict[str, Any]] = []
-    prev_line = ""
-    for cue in cues:
-        text = _TAG_RE.sub("", cue["text"])
-        lines = [part.strip() for part in text.split("\n") if part.strip()]
-        line = lines[-1] if lines else ""
-        if not line:
+    open_segment: Optional[Dict[str, Any]] = None
+    context: List[str] = []
+
+    def close_segment() -> None:
+        nonlocal open_segment
+        if open_segment is None:
+            return
+        # Real Granicus tracks contain cues whose end precedes their start
+        # (1,338 of Tacoma's 21,240) -- don't let one produce a
+        # negative-length segment.
+        open_segment["end"] = max(open_segment["end"], open_segment["start"])
+        result.append(open_segment)
+        open_segment = None
+
+    def upgrade_tail(segment: Optional[Dict[str, Any]], words: List[str]) -> None:
+        """Keep the more complete spelling when a line only re-says the tail.
+
+        Folded comparison ignores trailing punctuation, so "REFLECTION." and
+        the stub "   REFLECTION" before it match as the same word -- but the
+        punctuated one is the real end of the sentence and is what should
+        survive into the transcript.
+        """
+        if segment is None or not words:
+            return
+        tail = segment["words"][-len(words) :]
+        if len(tail) != len(words) or _fold_words(tail) != _fold_words(words):
+            return
+        if len(" ".join(words)) > len(" ".join(tail)):
+            segment["words"][-len(words) :] = list(words)
+
+    for cue, line, is_last_line in lines:
+        words = line.split()
+        overlap = _word_overlap(context, words)
+        fresh = words[overlap:]
+        context = (context + fresh)[-_ROLLUP_CONTEXT_WORDS:]
+
+        if not fresh:
+            # The window re-settled without adding anything. Extend whatever
+            # segment that speech already belongs to rather than emitting a
+            # duplicate of it -- but only from the cue's *last* line, since
+            # an earlier line is text the viewer already saw and its cue's
+            # span belongs to the newer line below it.
+            target = (
+                open_segment
+                if open_segment is not None
+                else (result[-1] if result else None)
+            )
+            if target is not None:
+                if is_last_line:
+                    target["end"] = max(target["end"], cue["end"])
+                upgrade_tail(target, words)
+                if open_segment is not None and _ROLLUP_SENTENCE_END_RE.search(
+                    " ".join(open_segment["words"])
+                ):
+                    close_segment()
             continue
 
-        if result and (line.startswith(prev_line) or prev_line.startswith(line)):
-            result[-1]["end"] = cue["end"]
-            if len(line) > len(prev_line):
-                result[-1]["text"] = line
-                prev_line = line
-        else:
-            result.append({"start": cue["start"], "end": cue["end"], "text": line})
-            prev_line = line
+        if overlap == 0:
+            close_segment()
 
+        if open_segment is None:
+            open_segment = {
+                "start": cue["start"],
+                "end": cue["end"],
+                "words": list(fresh),
+            }
+        else:
+            open_segment["words"].extend(fresh)
+            open_segment["end"] = max(open_segment["end"], cue["end"])
+
+        text_so_far = " ".join(open_segment["words"])
+        if (
+            _ROLLUP_SENTENCE_END_RE.search(text_so_far)
+            or len(text_so_far) >= _ROLLUP_MAX_SEGMENT_CHARS
+        ):
+            close_segment()
+
+    close_segment()
+    for segment in result:
+        segment["text"] = " ".join(segment.pop("words"))
     return result
 
 
@@ -546,6 +812,39 @@ def is_likely_garbled(cues: List[Dict[str, Any]]) -> bool:
     return (junk / len(alpha_words)) > _GARBLED_JUNK_RATIO_MAX
 
 
+_LANG_MIN_SAMPLE_CHARS = 20
+# Roughly the old whole-transcript sample size, reused as the per-chunk size
+# so a short track's behaviour is bit-for-bit what it was before this change
+# (one chunk, one langdetect call). Capped at 40 chunks, chosen evenly across
+# the transcript rather than truncated to its head: that keeps the cost of a
+# multi-hour meeting bounded while still sampling the whole thing end to end.
+# Measured on the three largest real transcripts to hand: 177-347ms, the
+# worst being Essex County's 231KB one -- against seconds of network I/O in
+# the resolve that calls this.
+_LANG_CHUNK_CHARS = 2000
+_LANG_MAX_CHUNKS = 40
+
+
+def _language_sample_chunks(text: str) -> List[str]:
+    """Split on word boundaries into ~_LANG_CHUNK_CHARS chunks, then thin to
+    at most _LANG_MAX_CHUNKS evenly spaced across the whole transcript."""
+    chunks: List[str] = []
+    current: List[str] = []
+    size = 0
+    for word in text.split():
+        current.append(word)
+        size += len(word) + 1
+        if size >= _LANG_CHUNK_CHARS:
+            chunks.append(" ".join(current))
+            current, size = [], 0
+    if current:
+        chunks.append(" ".join(current))
+    if len(chunks) > _LANG_MAX_CHUNKS:
+        step = len(chunks) / _LANG_MAX_CHUNKS
+        chunks = [chunks[int(i * step)] for i in range(_LANG_MAX_CHUNKS)]
+    return chunks
+
+
 def detect_language_from_texts(texts: Iterable[str]) -> Optional[str]:
     """Best-effort language detection from real transcript content -- never
     trust a source-provided language label (a Granicus track labeled
@@ -556,14 +855,43 @@ def detect_language_from_texts(texts: Iterable[str]) -> Optional[str]:
     listing for real English transcripts on both surfaced the gap -- see
     BACKLOG_DONE.md). Requires at least 20 non-whitespace characters before
     attempting detection, since langdetect guesses wildly on tiny samples.
+
+    Votes across the *whole* transcript, weighted by how much text each
+    chunk contributes, rather than reading the first 2000 characters and
+    stopping (WO-34). That head-only sample let a bad opening stretch decide
+    a whole multi-hour meeting's label: two real live pages,
+    /m/meeting-00bbd1 (Lincoln City OR) and /m/meeting-d09fc0 (Moraine City
+    OH), were both labelled Welsh ('cy') off a quiet/low-confidence opening
+    chunk while the rest of each meeting was confidently English. Since
+    segments reach here sorted by start time, "first 2000 characters" always
+    means "the start of the meeting" -- exactly where dead air, music before
+    the gavel, and non-English invocations/proclamations live.
+
+    A genuinely non-English transcript still resolves correctly, because the
+    vote is over real text volume, not chunk count: the real Simi Valley
+    Spanish track (clip 2840) votes 'es' unanimously across all 8 of its
+    chunks. A genuinely short one is unaffected by construction -- under
+    _LANG_CHUNK_CHARS there is exactly one chunk and this is the old
+    single-sample behaviour.
     """
-    sample = " ".join(t for t in texts if t)[:2000]
-    if len(sample.strip()) < 20:
+    sample = " ".join(t for t in texts if t)
+    if len(sample.strip()) < _LANG_MIN_SAMPLE_CHARS:
         return None
-    try:
-        return _detect_language(sample)
-    except LangDetectException:
+
+    weights: Dict[str, int] = {}
+    for chunk in _language_sample_chunks(sample):
+        if len(chunk.strip()) < _LANG_MIN_SAMPLE_CHARS:
+            continue
+        try:
+            code = _detect_language(chunk)
+        except LangDetectException:
+            continue
+        weights[code] = weights.get(code, 0) + len(chunk)
+    if not weights:
         return None
+    # max() over insertion order keeps ties resolved by first appearance
+    # rather than by dict/hash ordering.
+    return max(weights, key=lambda code: weights[code])
 
 
 def _parse_timestamp(timestamp: str) -> float:

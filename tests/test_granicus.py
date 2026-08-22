@@ -286,11 +286,23 @@ async def test_resolve_falls_back_to_player_page_for_video_when_mediaplayer_has_
     # only exists on Granicus's newer /videos/{id}/player page for the
     # same clip. Also incidentally the real sample CLAUDE.md already flags
     # for garbled/mislabeled captions -- real WEBVTT structure, but the
-    # cue text itself is garbage at the source, and langdetect calls it
-    # 'pt' on that noise. Both fixed together since they're the same
-    # meeting: this pins the video fallback; the garbled/pt warnings
-    # assertions guard against that separate, already-correct behavior
-    # regressing silently.
+    # cue text itself is garbage at the source. Both fixed together since
+    # they're the same meeting: this pins the video fallback; the garbled
+    # warning assertion guards that separate, already-correct behavior
+    # against regressing silently.
+    #
+    # DELIBERATE ASSERTION CHANGE (WO-34, 2026-08-21): this used to assert
+    # transcript_language == "pt" plus a "captions appear to be in 'pt'"
+    # warning. That was langdetect's answer to the *first 2000 characters*
+    # of this noise, and detect_language_from_texts() no longer works that
+    # way -- it votes over the whole transcript, which on this file splits
+    # pt 3742 / en 4452 / sl 2504 chars and lands on 'en'. Not a regression
+    # being papered over: Fountain Valley CA is an English-language council,
+    # so 'pt' was simply wrong, and dropping the language-mismatch warning
+    # for a meeting whose only real problem is garbled captions is the
+    # better user-facing outcome. The label on pure noise is meaningless
+    # either way; what this test should pin is that the garbled warning
+    # still fires, which it does.
     url = "https://fountainvalley.granicus.com/MediaPlayer.php?clip_id=607"
     html = load_fixture("granicus", "fountainvalley_clip607_mediaplayer.html")
     player_html = load_fixture("granicus", "fountainvalley_clip607_player.html")
@@ -319,9 +331,9 @@ async def test_resolve_falls_back_to_player_page_for_video_when_mediaplayer_has_
     assert result.video_format == "m3u8"
     assert result.video_warnings == []
     assert len(result.segments) == 146
-    assert result.transcript_language == "pt"
+    assert result.transcript_language == "en"
     assert any("garbled" in w.lower() for w in result.transcript_warnings)
-    assert any("'pt'" in w for w in result.transcript_warnings)
+    assert not any("appear to be in" in w for w in result.transcript_warnings)
 
 
 async def test_resolve_real_meeting_with_spanish_captions():

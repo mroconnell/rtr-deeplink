@@ -6,14 +6,19 @@ from urllib.parse import quote, urlparse
 
 import aiohttp
 from bs4 import BeautifulSoup
-from langdetect import detect as detect_language, LangDetectException
 
 from .base import AssetFinder
 from .generic_fallback import scan_page_for_video_evidence
 from .models import ResolvedMeeting, TranscriptSegment
 from .youtube import YouTubeAssetFinder
 from ..utils import jurisdiction_enrich
-from ..utils.vtt_parser import parse_vtt, is_likely_garbled, decode_vtt_bytes
+from ..utils.vtt_parser import (
+    decode_vtt_bytes,
+    dedupe_rollup_cues,
+    detect_language_from_texts,
+    is_likely_garbled,
+    parse_vtt,
+)
 
 TARGET_LANGUAGE = "en"
 # eScribe/iSiLIVE encodes caption language in the filename itself, unlike
@@ -267,18 +272,21 @@ class EscribeAssetFinder(AssetFinder):
         except Exception:
             return None
         content = decode_vtt_bytes(raw)
-        cues = parse_vtt(content)
+        # eScribe is one of the three platforms BACKLOG.md named as serving
+        # roll-up ("scrolling ticker") captions with no dedupe wired in
+        # (WO-34) -- unlike Granicus/CivicClerk it parses VTT directly
+        # instead of going through parse_captions_by_extension(), so it
+        # needs the call here. No-ops on a non-roll-up track, which is what
+        # every eScribe fixture in tests/fixtures/escribe/ actually is.
+        cues = dedupe_rollup_cues(parse_vtt(content))
         return cues or None
 
     @staticmethod
     def _detect_cue_language(cues) -> Optional[str]:
-        sample = " ".join(c["text"] for c in cues if c.get("text"))[:2000]
-        if len(sample.strip()) < 20:
-            return None
-        try:
-            return detect_language(sample)
-        except LangDetectException:
-            return None
+        # Was a private copy of detect_language_from_texts() carrying the
+        # same head-only `[:2000]` sampling bug (WO-34); now just the shared
+        # implementation, which votes across the whole transcript.
+        return detect_language_from_texts(c.get("text") for c in cues)
 
     @staticmethod
     def _extract_metadata(soup: BeautifulSoup, url: str, html: str):

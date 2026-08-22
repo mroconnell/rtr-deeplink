@@ -1278,85 +1278,50 @@ anything) to build against it.
   2026-08-17 to check whether OOM genuinely preceded/triggered the
   schema-read cascade, or whether the timing is coincidental.
 
-- **[JUST-DO-IT] `is_likely_garbled()` only samples the transcript's first 4000
-  characters, so a transcript that starts clean and degrades later is
-  invisible to it — found 2026-08-16 via a DB skim for transcript-quality
-  examples, root cause confirmed by reading the source directly.** Real
-  case: Cincinnati OH Budget & Finance Committee, 2023-02-13
-  (`cincinnati-oh-2023-02-13-budget-and-finance-committee-on-2023-02-13-1-00-pm`,
-  Granicus). The stored transcript (98,449 chars total) is clean prose
-  through roughly char 5,500, then degrades into raw binary-looking
-  garbage (`*eqt*eqt*eq*eqt*eqt*eqaeq(T*zq4m fs~d= 8 yx2z2"BCMvf;jv6...`)
-  for a long stretch after that. `is_likely_garbled()`
-  ([app/utils/vtt_parser.py:462](app/utils/vtt_parser.py#L462)) takes
-  `sample = " ".join(...)[:4000]` — a hardcoded prefix, not a spread
-  sample across the transcript — so this specific row's corruption starts
-  just past the sampling window and the heuristic never sees it.
-  `transcript_warnings` on this row is empty, consistent with the
-  heuristic silently passing it. Calibrated originally against Alexandria
-  VA (garbled from very early on, see `BACKLOG_DONE.md`'s 2026-08-06
-  entry) — that case likely happened to be garbled within the first 4000
-  chars, which is probably why this gap wasn't caught at the time.
-  Possible fix direction (untested): sample from multiple offsets across
-  the transcript, not just the start — but worth checking whether other
-  archived rows have the same "clean prefix, garbled tail" shape before
-  picking a specific sampling strategy.
+- ~~`is_likely_garbled()` only samples the transcript's first 4000
+  characters~~ — **[Done 2026-08-19]** already fixed in place
+  (multi-offset sampling); this entry was stale. Full writeup moved to
+  `BACKLOG_DONE.md`.
 
-- **[JUST-DO-IT] `app/utils/vtt_parser.py`'s `parse_vtt()` has (at least) two separate
+- ~~`app/utils/vtt_parser.py`'s `parse_vtt()` has (at least) two separate
   real content-corruption gaps, plus one existing fix that's wired to the
-  wrong adapters — all found 2026-08-16 via the same DB skim, all
-  root-caused by reading the parser source directly against real stored
-  output (not yet independently re-fetched from the live source VTT
-  byte-for-byte, so treat the *symptom* as confirmed and the *fix
-  direction* as a strong lead rather than a sure thing):**
-  - **WebVTT `NOTE` (comment/metadata) blocks aren't recognized at all,
-    so their text gets silently absorbed into whatever cue is open at
-    that point.** Real example: Tavares FL CivicClerk BCC meeting,
-    2024-06-11 (`tavares-fl-2024-06-11-bcc-regular-board-meeting`) —
-    stored segments alternate real spoken text with literal metadata
-    lines like `NOTE Confidence: 0.962116034285714`, e.g. "Good morning
-    and welcome to the June 11th, NOTE Confidence: 0.962116034285714
-    2024 meeting of the Board NOTE Confidence: 0.962116034285714 of
-    County Commissioners." `parse_vtt()`
-    ([app/utils/vtt_parser.py:34](app/utils/vtt_parser.py#L34)) only
-    special-cases blank lines, `WEBVTT`, timestamp lines, and (as of a
-    2026 fix) a cue-identifier lookahead — nothing checks for a line
-    starting with `NOTE`, so per the WebVTT spec these comment blocks
-    fall straight into the "append as cue text" branch.
-  - **Inline WebVTT voice tags (`<v.Male.spk3 Speaker2>` etc.) are never
-    stripped**, and can visibly mangle words when a tag lands mid-word
-    across the source's line wrapping. Real example: a platform=`unknown`
-    meeting (`meeting-7ac1da`, an Orange County FL budget presentation,
-    parsed via `app/platforms/generic_fallback.py`, which also goes
-    through `parse_vtt()` for `.vtt` content) — stored text includes raw
-    `<v.Male.spk3 Speaker2>` tags inline, and what's very likely a real
-    person's name comes out mangled as "misbranded rigors." `parse_vtt()`
-    itself does no tag-stripping at all; the only tag-stripping in this
-    file (`_TAG_RE`/`_MARKUP_TAG_RE`) lives in `dedupe_rollup_cues()` and
-    `strip_unknown_caption_markup()`, neither of which runs on this path.
-  - **A "growing/rollup caption" duplication artifact appears on multiple
-    non-YouTube adapters, and the fix for exactly this pattern already
-    exists but isn't wired to them.** `dedupe_rollup_cues()`
-    ([app/utils/vtt_parser.py:291](app/utils/vtt_parser.py#L291)) was
-    built for YouTube's growing-caption cue structure and is called only
-    from `app/platforms/youtube.py` and `app/platforms/viebit.py` — never
-    from `granicus.py`, `civicclerk.py`, or `escribe.py`, confirmed by
-    grep. Real examples of the same symptom class on those un-wired
-    adapters: Tacoma WA council meeting (Granicus,
-    `city-of-tacoma-wa-2026-01-06-city-council-on-2026-01-06-5-00-pm` —
-    `">> Councilmember Hines: >> Councilmember Hines: WE >> Councilmember
-    Hines: WE WILL >> Councilmember Hines: WE WILL GET..."`), two DC
-    Judiciary & Public Safety Committee hearings (Granicus, 2026), a
-    CivicClerk meeting (`2026-03-10-city-council-meeting`), and an
-    eScribe meeting (Essex County,
-    `2025-12-03-county-of-essex-2026-advocacy-priorities-essex-county-council-regular`).
-    Worth checking whether `dedupe_rollup_cues()`'s generic
-    prefix-growing logic actually handles these adapters' cue shape
-    correctly before wiring it in blind — its docstring and worked
-    example are YouTube-specific, and these sources include a repeated
-    role-label prefix (`>> Councilmember Hines:`) that YouTube's pattern
-    doesn't have, so the fix may need adjusting rather than a direct
-    wire-through.
+  wrong adapters~~ — **[Done, WO-34 2026-08-21]** all three sub-bullets are
+  fixed (`NOTE`-block absorption and inline voice-tag stripping were already
+  fixed and this entry was stale about them; roll-up dedupe is now wired to
+  Granicus/CivicClerk/eScribe and everything else behind
+  `parse_captions_by_extension()`). Full writeup in `BACKLOG_DONE.md`.
+  Residual, split out as its own live entry below: already-stored Archive
+  transcripts stay duplicated until re-resolved.
+
+- **[JUST-DO-IT] Every Archive page ingested before WO-34 (2026-08-21) still
+  holds the duplicated roll-up transcript it was stored with — the fix is
+  resolve-time only.** `dedupe_rollup_cues()` now runs on every fresh
+  resolve, but `TranscriptVersion` rows already in the Archive are
+  untouched, so e.g.
+  `/m/city-of-tacoma-wa-2026-01-06-city-council-on-2026-01-06-5-00-pm`
+  still serves the `">> Councilmember Hines: WE >> Councilmember Hines: WE
+  WILL ..."` text (confirmed live 2026-08-21, after the fix was verified
+  working on a fresh resolve of the same meeting). Needs a re-resolve
+  script that walks affected pages and writes the new transcript back —
+  deliberately out of WO-34's scope because it's a write-path job against
+  real public pages, not a parser change. Worth scoping *which* pages
+  first: the same roll-up detector this fix added
+  (`_looks_like_rollup()` in `app/utils/vtt_parser.py`) can be run against
+  stored segments to count them rather than guessing. See
+  `BACKLOG_DONE.md`'s WO-34 entry for what the fixed output looks like.
+
+- **`_sentence_case()` capitalises after every `\n`, so a de-shouted
+  two-line roll-up track comes out with mid-sentence capitals** — real
+  example, Antioch CA CivicClerk 2026-03-10 after WO-34: "good evening
+  everyone and Welcome to our regular city Council meeting of march the
+  10th, 2026." Pre-existing and unchanged by WO-34 (the same casing is on
+  the live page today, just doubled up), and the roll-up fix deliberately
+  did *not* try to repair it: lowercasing a line-initial capital would be
+  a guess that destroys real proper nouns, and the ALL-CAPS de-shouting has
+  already flattened those anyway ("antioch", "leon"). The honest fix is
+  probably in `_sentence_case()` itself — a `\n` inside a caption cue is a
+  line wrap, not a sentence boundary — but that changes output for every
+  de-shouted track, so it needs its own pass with its own real samples.
 
 - **[JUST-DO-IT] Second real instance of the Fountain Valley-shaped garbled/wrong-
   language pattern (see `BACKLOG_DONE.md`), found 2026-08-16 via the same
@@ -5023,45 +4988,10 @@ one item below is resolved as a result.
   the resolver service. Not started — this is a scoped feature request,
   not yet designed in full or built.
 
-- **`detect_language_from_texts()` samples only the first 2000 characters
-  of the merged transcript, so a bad start-of-meeting stretch can mislabel
-  the whole page's language even when the rest is confidently English —
-  confirmed live 2026-08-17/18 on two real pages from
-  `scripts/transcribe_backlog_locally.py`'s local-Whisper batches.**
-  `/m/meeting-00bbd1` (Lincoln City, OR): only chunk 1 of 5 came back
-  low-confidence on Whisper's own per-chunk language guess (`cy` at 63%);
-  chunks 2-5 were confident `en` (99-100%). `/m/meeting-d09fc0` (Moraine
-  City, OH): the reverse pattern -- chunk 1 was confident `en` (100%), but
-  chunks 2-8 (a genuinely very quiet ~1.8h recording, repeated
-  "suspiciously quiet" ffmpeg warnings, several chunks under 30 segments
-  for 15 minutes of audio) kept guessing `cy` at low confidence. Both
-  pages still ended up with the whole meeting's `transcript_language`
-  field set to `cy` (Welsh) in the final ingest. Root cause, confirmed by
-  reading the code (not guessed): the per-chunk language values logged
-  during transcription are Whisper's own internal guesses and are never
-  used for the page-level language -- `transcribe_meeting()`
-  (`scripts/transcribe_backlog_locally.py`) instead calls
-  `detect_language_from_texts()` (`app/utils/vtt_parser.py`) on the full
-  merged-and-sorted segment text, which joins every segment's text and
-  hard-truncates to `[:2000]` characters before running `langdetect` on
-  that sample alone -- there is no chunk-level voting or weighting
-  anywhere in the pipeline. Since segments are sorted by start time, the
-  first ~2000 characters are dominated by whatever is at the start of the
-  meeting, so a bad opening stretch (dead air/music before the meeting is
-  gaveled in, an invocation or proclamation genuinely in another
-  language, or just a quiet/noisy chunk Whisper hallucinates
-  foreign-looking text from) can single-handedly decide the label for a
-  multi-hour, overwhelmingly-English meeting. This matches a real,
-  recurring pattern in these sources per the user directly (2026-08-18):
-  short (2-3 min) foreign-language stretches (proclamations, individual
-  speakers) and dead-air/music (meeting start, or a recess in 4+ hour
-  meetings) that Whisper isn't designed to handle well, embedded inside
-  meetings that are otherwise clearly one language throughout. Worth
-  fixing with a real per-chunk-text vote (or a length-weighted one) rather
-  than "first 2000 characters of whatever comes first" -- `vtt_parser.py`'s
-  function is shared with the scraped-caption adapters too, so check
-  whether they have the same 2000-char-of-whichever-track-sorts-first
-  exposure before changing it, not just the Whisper path.
+- ~~`detect_language_from_texts()` samples only the first 2000 characters
+  of the merged transcript~~ — **[Done, WO-34 2026-08-21]** replaced with a
+  length-weighted vote over the whole transcript, plus a seeded langdetect.
+  Full writeup in `BACKLOG_DONE.md`.
 
 - ~~**[JUST-DO-IT] `detect_hallucination_warnings()`'s repetition check is
   diluted against total meeting length**~~ — **fixed 2026-08-21 (WO-36)**,
