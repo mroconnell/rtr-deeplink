@@ -63,13 +63,14 @@ Standing decisions — do NOT re-raise  (12)
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
   Sacramento County's doubled meeting title is not a bug to fix
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (10)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (11)
   [JUST-DO-IT] A bulk re-resolve gets this IP blocked by YouTube, and
   [JUST-DO-IT] `[EASY]` `is_extractable()` excludes only YouTube, so
   [JUST-DO-IT] `[EASY]` A Viebit meeting's "can't transcribe this"
   [JUST-DO-IT] `[EASY]` `scripts/backtest_fallback.py`'s `sebastopol`
   [JUST-DO-IT] `[EASY]` "We think the video is here: [No video
   [JUST-DO-IT] `[EASY]` `rtr-business/BUSINESS_OVERVIEW.md` still says
+  [NEEDS-AUDIT] Google has crawled or discovered ~585 `/m/` pages and
   [JUST-DO-IT] `[EASY]` Two archived pages have slugs frozen from a
   [JUST-DO-IT] Remove WO-8's `?token=` admin fallback — its
   [JUST-DO-IT] `[EASY]` The saved-search alert subject line
@@ -457,6 +458,65 @@ so that work reads together.
   corrected 2026-08-16. One-line fix next time anyone's in that file —
   not done here since business-workspace edits stay separate per
   `CLAUDE.md`.
+
+- **[NEEDS-AUDIT] Google has crawled or discovered ~585 `/m/` pages and
+  declined to index them — ~25% of the archive, and both trends are
+  rising.** Read from Search Console → Indexing → Pages, 2026-08-22:
+
+  | Reason | Source | Pages | Trend |
+  | --- | --- | --- | --- |
+  | Excluded by `noindex` tag | Website | 5 | flat |
+  | Page with redirect | Website | 3 | flat |
+  | **Discovered – currently not indexed** | Google systems | **294** | **rising** |
+  | **Crawled – currently not indexed** | Google systems | **291** | **rising** |
+
+  **The two `Website`-sourced rows are genuinely fine** and need no
+  action — 5 deliberate `noindex` pages (consistent with the standing
+  decision not to widen that filter) and 3 redirects, both flat and both
+  the site doing what it was told.
+
+  **The two `Google systems` rows are a different thing and shouldn't be
+  filed as "valid".** They aren't a setting we chose; they're Google's
+  own judgement. *Discovered – currently not indexed* means Google knows
+  the URL and hasn't spent the crawl on it. *Crawled – currently not
+  indexed* means Google fetched the page and **decided not to index it**
+  — a quality/duplication judgement. Together that's **585 of the
+  sitemap's 2,383 `/m/` URLs (~25%)**, both climbing. Given the same
+  day's GA finding (~14 human page views in 30 days, i.e. search *is*
+  the only realistic discovery channel), a quarter of the corpus being
+  ineligible for search is a material product problem, not a footnote.
+
+  **Three candidate explanations, none yet tested** — this is filed as
+  `[NEEDS-AUDIT]` deliberately rather than pretending the cause is
+  known:
+  1. **Thin or duplicate-looking content.** Every `/m/` page shares a
+     near-identical shell, and the agenda-only / no-transcript pages are
+     genuinely sparse. That is exactly what *Crawled – currently not
+     indexed* usually means. **Testable**: cross-reference the flagged
+     URLs against `app/db/outcomes.py`'s `agenda_fallback` bucket — if
+     the flagged set skews heavily to agenda-only pages, that's the
+     answer and it argues for `noindex` on that subset rather than
+     against.
+  2. **Site responsiveness suppressing crawl rate.** The Archive runs a
+     **single uvicorn process** with an **O(n) `/api/health`** probed
+     ~30× more often than real traffic, and has had two health-check
+     timeouts in four days (see the health-check entry under **Open
+     bugs**). Slow or flaky responses reduce how much Google crawls,
+     which is the classic cause of *Discovered – currently not indexed*
+     rising. **This is a hypothesis with a plausible mechanism, not a
+     diagnosis** — but it means the health-check fix may have SEO value
+     well beyond stopping restarts.
+  3. **Domain age/authority.** A new domain with 2,383 pages simply
+     doesn't get them all indexed quickly. If so the numbers improve on
+     their own and nothing should be built. **Distinguishing this from
+     (1) and (2) is the point of the audit** — the trend direction over
+     the next few weeks separates them, since (3) resolves upward while
+     (1) and (2) do not.
+
+  **Cheapest first step**: open each of the two rows and read the
+  example URLs. If they cluster (all agenda-only, all one platform, all
+  one date range) that names the cause immediately; if they look
+  arbitrary, (3) gains a lot of weight.
 
 - **[JUST-DO-IT] `[EASY]` Two archived pages have slugs frozen from a
   vendor's boilerplate page title, not the meeting's.** Found 2026-08-22
