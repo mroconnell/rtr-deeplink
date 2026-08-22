@@ -74,7 +74,7 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (7)
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (15)
   Confirmations nobody has actually watched happen  (5)
-    [HUMAN] `[LOGIN]` Confirm Render's health-check gate actually fails
+    [HUMAN] Render's health-check gate has never blocked a deploy —
     [HUMAN] Confirm both admin cron workflows run green against the
     [HUMAN] `[LOGIN]` Confirm a real Render deploy installed cleanly off
     [HUMAN] `[LOGIN]` `[WAIT]` P3: confirm GA is actually receiving
@@ -131,7 +131,8 @@ Platform & jurisdiction coverage  (26)
     [LATER] YouTube-backed meetings' transcripts run through
     [IMPROVEMENT-ROUND] Four platforms account for ~78% of the 470 real
 
-Reliability, ops & cost  (8)
+Reliability, ops & cost  (9)
+  `[HUMAN]` `[LOGIN]` Running out of Render *pipeline minutes* silently…
   Media-source reliability  (2)
     `[NEEDS-AUDIT]` Some old/archived Granicus clips' `chunklist.m3u8`…
     `[NEEDS-AUDIT]` A single job still makes N consecutive same-host…
@@ -502,10 +503,24 @@ code-complete and merged (full detail in `BACKLOG_DONE.md`'s "Reliability/
 ops audit execution" entry). None blocks anything else; do whenever
 convenient.
 
-- **[HUMAN] `[LOGIN]` Confirm Render's health-check gate actually fails
-  a deploy** when `/api/health` reports unhealthy (WO-6) — the 503 logic
-  is unit-tested, but no real Render deploy has been watched getting
-  blocked by it.
+- **[HUMAN] Render's health-check gate has never blocked a deploy —
+  checked 2026-08-22, and not worth forcing.** WO-6's 503 logic is
+  unit-tested; the open question was whether a real Render deploy has
+  ever been stopped by it. **Answer: no.** The Events tabs for
+  `rtr-deeplink`, `rtr-deeplink-archive` and `rtr-transcription-worker`
+  show no deploy blocked with health-check wording — the only failed
+  deploys are the 2026-08-19 pipeline-minutes blocks (own entry under
+  **Reliability, ops & cost**). **That's ambiguous evidence and should
+  be read as such**: it is equally consistent with "the gate works and
+  no unhealthy build was ever shipped" and with "the gate is miswired
+  and would never fire." Distinguishing them means deliberately
+  deploying a build whose `/api/health` reports unhealthy, which costs a
+  real outage window on a live public site to prove a config line.
+  **Recommendation: leave it unproven.** The cheap opportunity is
+  opportunistic — next time a deploy genuinely breaks `/api/health`,
+  check the Events tab before rolling back and record whether Render
+  caught it. Kept here only so nobody re-runs the same passive check
+  expecting a different answer.
 - **[HUMAN] Confirm both admin cron workflows run green against the
   deployed `Authorization: Bearer` header-auth change**, then remove
   WO-8's query-param fallback in a follow-up PR — the fallback stays
@@ -1236,6 +1251,57 @@ from a live check), but the Legistar calendar itself is still untried.
   sizing finding, not a diagnosis.
 
 ## Reliability, ops & cost
+
+### `[HUMAN]` `[LOGIN]` Running out of Render *pipeline minutes* silently blocks deploys on every service at once — it already happened
+
+Found 2026-08-22 while checking the Events tabs for something else, and
+not previously recorded anywhere. On **2026-08-19 13:23 PT** all three
+services — `rtr-deeplink`, `rtr-deeplink-archive`,
+`rtr-transcription-worker` — refused the same auto-deploy of `8af3276`
+(PR #199) with:
+
+> Build blocked for 8af3276 … **Your workspace has run out of pipeline
+> minutes.**
+
+The commit timestamp (`2026-08-19T13:23:29-07:00`) matches the block to
+the second, so this was the auto-deploy firing and being refused, not a
+build that failed on its own merits. The next commit landed 18:51 PT and
+appears to have deployed normally, so the blackout window was roughly
+**five and a half hours** — during which every merge to `main` silently
+did not reach production.
+
+**Why this matters more than the bandwidth alert it was found next to:**
+this is a quota that *actually* got exhausted and *actually* stopped
+deploys, with **no alert, no failed CI, and no visible symptom** — the
+PR merges green, and the running services just keep serving older code.
+Every doc-drift and "the fix is deployed" assumption in this repo
+depends on merge≈deploy, and for those five hours it wasn't true.
+Compare `BACKLOG_DONE.md`'s WO-7 (Sentry/uptime/failure-visible cron),
+which covers *runtime* failures thoroughly and doesn't cover this at
+all.
+
+**Current standing is not comfortable**: Workspace → Billing shows
+**812 / 1,000 pipeline minutes** used as of 2026-08-22.
+
+**Open question for Ryan, and the numbers don't reconcile without it:**
+if the workspace ran *out* (1,000/1,000) on 08-19, it cannot also be at
+812 on 08-22 unless the meter reset or the plan changed. Two candidates,
+and they imply very different burn rates:
+- **The billing cycle reset** around 08-19/20 — in which case 812
+  minutes in ~3 days is a ~8,000 min/month pace, i.e. this will
+  re-block deploys within days.
+- **The workspace tier changed** — which would also explain the
+  bandwidth allowance appearing as 25 GB when the 2026-08-18 alert
+  described 5 GB (see `BACKLOG_DONE.md`'s "Render bandwidth" entry).
+  Did you upgrade the workspace on/around 08-19?
+
+Until that's settled the burn rate is unknown, so the useful action
+isn't a code change — it's **checking whether pipeline minutes are on
+track to run out again before the cycle ends**, and if so either raising
+the cap via "Manage spend on pipeline minutes" or cutting build volume
+(the auto-transcription queue PRs merge very frequently and each one
+triggers three builds; `render.yaml`'s `buildFilter.ignoredPaths`
+already exists for exactly this reason and may be worth widening).
 
 ### Media-source reliability
 
