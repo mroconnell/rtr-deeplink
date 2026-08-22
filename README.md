@@ -100,7 +100,14 @@ plausibility check the same way (`tests/test_worker_segment_utils.py`,
 hallucination detector's coverage, backed by real Archive transcript
 excerpts under `tests/fixtures/hallucination_runs/` (see its own
 `README.md`): six real hallucination loops that must be flagged, and real
-decoder stutters and roll calls that must not be. `tests/test_transcription_jobs.py` is a
+decoder stutters and roll calls that must not be.
+`tests/test_transcription_failure_analysis.py` is the same pure-function
+shape and is deliberately kept that way: it exercises
+`crud.summarize_failure_rows()` (the chunk-failure diagnostic behind
+`/internal/transcription-failure-analysis`) against constructed rows
+rather than the shared test database, which several other modules write
+real failures into — any whole-table assertion there would be
+order-dependent. `tests/test_transcription_jobs.py` is a
 different shape — real integration tests against an isolated SQLite file
 (set up once per test session by `tests/conftest.py`, not mocked), since
 the transcription job lifecycle is genuinely DB-state-machine logic
@@ -656,6 +663,39 @@ curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" \
 # mark three of them reviewed (drop dry_run=false to preview first)
 curl -X POST -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" \
   "$ARCHIVE_BASE_URL/internal/low-trust-pages/mark-reviewed?ids=2215,2201,2200&dry_run=false"
+```
+
+**Diagnosing transcription chunk failures**: `GET
+/internal/transcription-failure-analysis?days=N` (token-gated the same
+way, reachable only at the Archive service's own base URL) groups every
+recorded chunk failure by media host, page host, platform, and
+position-within-job. It needs no new instrumentation —
+`TranscriptionJob.failure_history` has stored a real per-attempt
+`{chunk_index, error, at}` since 2026-08-19 — so this is a query over
+data that already exists.
+
+Two things about how to read it, both load-bearing:
+
+- **Read `failure_rate_by_chunk_index` / `failure_rate_by_decile`, not
+  the raw `failure_position` counts.** A job has exactly one chunk 0 but
+  many later chunks, so raw counts always make later chunks look
+  dominant. Normalized per attempt, the shape is diagnostic: rising with
+  chunk index means an accumulating rate limit, a spike at chunk 0 means
+  cold storage/rehydration, flat-and-high throughout means a source
+  that's simply slow against the fixed 120s ffmpeg timeout.
+- **Grouping is keyed on the media URL's host, not the page's.** Granicus
+  serves ~300 distinct `{tenant}.granicus.com` page hosts off a handful
+  of shared `archive-video`/`archive-stream`/`archive-media.granicus.com`
+  media hosts — the throttling party would be the CDN, not the tenant.
+  Both groupings are returned so the difference stays visible.
+
+`concurrency_pairs_within_10min` directly tests whether workers are
+contending for one host across different jobs. Measured across all 514
+production jobs on 2026-08-21 that bucket was **0**, which is what ruled
+out reordering the queue by host — see `BACKLOG_DONE.md`'s WO-40 entry.
+
+```bash
+curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" "$ARCHIVE_BASE_URL/internal/transcription-failure-analysis"
 ```
 
 **Redirect hits are logged too** — `status="archive_redirect"` — so

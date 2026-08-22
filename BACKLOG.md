@@ -327,6 +327,54 @@ worth raising `_SUBPROCESS_TIMEOUT_SECONDS` to match Granicus's own
 slot for minutes on every genuinely-dead asset, trading a fast, clear
 failure for a slow, identical one.
 
+## A single job still makes N consecutive same-host pulls, and the 120s ffmpeg timeout is fixed — the residual after WO-40 measured the failure pattern (2026-08-21)
+
+WO-40 tested the "workers hammer one host across consecutive jobs, so
+round-robin the queue by host" theory against all 514 production jobs and
+**falsified it** — `same_host_different_job` failure pairs within 10
+minutes: **0**; chunk 0 is 3-4x more failure-prone per attempt than any
+later chunk (an accumulating rate limit predicts the opposite). No queue
+reprioritization was built. Full numbers, method and the
+`GET /internal/transcription-failure-analysis` endpoint that produced
+them: `BACKLOG_DONE.md`.
+
+**What that deliberately did not address**, and is genuinely open: a
+21-chunk meeting is still 21 consecutive pulls from one host inside one
+job, because `claim_next_chunk()` claims a whole *job* (despite its name)
+and the worker holds it through every chunk. Queue ordering cannot reach
+inside a job.
+
+**Do not "fix" this by spreading within-job pulls.** The measured data
+says the two real mechanisms both argue against it:
+- *Cold storage / rehydration* (the dominant shape, and independently
+  confirmed live via `ffprobe` — see the Granicus `chunklist.m3u8` 504
+  entry above): within-job clustering **helps**, since chunk 0 warms the
+  asset for chunks 1..N. Spreading would hurt.
+- *Persistently slow source* (job 507 failed 26 of 31 chunks and still
+  completed; job 411, 10 of 11): pacing changes nothing — every chunk
+  sits near the fixed 120s limit regardless of when it's requested.
+
+**The real open question is the timeout, not the ordering.**
+`media_probe.py`'s `_SUBPROCESS_TIMEOUT_SECONDS` is a flat 120s for every
+source. Two things worth considering, neither yet evidenced enough to
+build:
+1. Detect the slow-source shape early — a job whose first few chunks all
+   need retries is going to need them throughout — and either widen that
+   job's own timeout or defer it, rather than grinding 26 retries through
+   the same worker slot.
+2. Distinguish a real 5XX-after-a-long-hang from an ordinary
+   connection-level timeout in logging, so this pattern stops being
+   rediscovered from scratch (already noted in the Granicus entry above).
+
+Note the priority framing that motivated the original idea still holds
+and is worth preserving in anything built here: a real user-submitted
+`PRIORITY_MEDIUM` job must never be starved behind automated
+`PRIORITY_LOW` backlog work.
+
+**Sizing caution before spending anything here**: ffmpeg timeouts are
+loud but small — **2 of 218** terminal job failures. 129 are `No usable
+audio or video source was found`. That is where the volume actually is.
+
 ## ~~[HIGH PRIORITY] Swagit adapter serves a wrong, bogus video for `/events/{id}` URLs~~
 
 **Fixed 2026-08-21** — root cause found: `/events/{id}` is a genuinely
