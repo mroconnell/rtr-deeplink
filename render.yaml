@@ -276,6 +276,21 @@ services:
         sync: false
       - key: PUBLIC_BASE_URL
         sync: false
+      # GA_MEASUREMENT_ID was live on the resolver but NOT declared here
+      # for six days after archive/static/meeting_page.js started firing
+      # events -- so every /m/* page shipped base.html's no-op
+      # `window.trackEvent = function() {};` branch and silently discarded
+      # video_play / transcript_seek / copy_link_to_time / save_meeting.
+      # Confirmed live 2026-08-22 by reading a real page's HTML: no gtag
+      # script, no G-* id. Set dashboard-side that day and verified end to
+      # end (clicking the page's own share control fired
+      # copy_link_to_time). Declared here so a service rebuilt from this
+      # blueprint alone can't regress to the stub -- which would show up
+      # as GA quietly returning to zero events, with nothing failing.
+      # Same value as rtr-deeplink's copy above: one GA property, two
+      # services.
+      - key: GA_MEASUREMENT_ID
+        sync: false
       - key: RESEND_API_KEY
         sync: false
       - key: RESEND_AUDIENCE_ID

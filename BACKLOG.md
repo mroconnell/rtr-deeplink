@@ -880,54 +880,26 @@ convenient.
   way to tell them apart after the fact, and this is the second time
   that has produced a wrong conclusion from real data.
 
-  **(a) The four `/m/*` events fire nowhere, because GA is not loaded on
-  Archive pages at all. Root-caused in-browser 2026-08-22.** GA reports
-  **22 events total** on `/m/*` paths over 30 days — only `page_view`
-  and `first_visit`, zero `video_play`/`transcript_seek`/
-  `copy_link_to_time`/`save_meeting`. That first read as "too little
-  traffic to expect a play." **It isn't a traffic problem — the events
-  are physically incapable of firing:**
-  - Loading a real production page
-    (`/m/san-carlos-ca-2017-11-13-city-council-regular-meeting`) and
-    reading its served HTML shows **`window.trackEvent = function()
-    {};`** — an explicit no-op — with **no `googletagmanager` script and
-    no `G-…` measurement ID anywhere in the document**. Not
-    tracker-blocking: this is the origin's own markup.
-  - `archive/templates/base.html:8` gates the GA snippet on
-    `{% if GA_MEASUREMENT_ID %}`, and line 18 emits the no-op stub when
-    it's unset. So every `trackEvent()` call `meeting_page.js` makes is
-    discarded.
-  - **`render.yaml` declares `GA_MEASUREMENT_ID` only in the
-    `rtr-deeplink` (resolver) service block, line 144. The
-    `rtr-deeplink-archive` block never declares it.** That is the whole
-    bug: the 2026-08-17 work correctly added the event calls, but the
-    service that serves `/m/*` has no measurement ID, so the template
-    takes the no-op branch.
+  **(a) The four `/m/*` events were firing nowhere — fixed and verified
+  2026-08-22.** `render.yaml` declared `GA_MEASUREMENT_ID` only on the
+  resolver, so `archive/templates/base.html` took its no-op branch and
+  every `trackEvent()` call `meeting_page.js` made was discarded. Ryan
+  set the value on `rtr-deeplink-archive`; confirmed in-browser (real
+  `gtag`, `G-4V42BWY8EJ` present, and clicking the page's own share
+  control fired `copy_link_to_time`). The key is now declared in
+  `render.yaml` too, so a blueprint-only rebuild can't regress to the
+  stub. **Full investigation, and why a green jsdom suite missed it, in
+  `BACKLOG_DONE.md`'s "GA events on `/m/*` pages" entry.**
 
-  **Why the tests didn't catch it, and this is the reusable part:** the
-  five jsdom tests covering the boot path stub `trackEvent` themselves,
-  so they verify the *call sites* and can never exercise the *template
-  gate* that decides whether `trackEvent` does anything. A green suite
-  and a live page disagreed, exactly the case this repo's "verify
-  in-browser, not just via the API" rule exists for.
-
-  **Fix**: add `GA_MEASUREMENT_ID` (`sync: false`) to the
-  `rtr-deeplink-archive` service block in `render.yaml` and set the
-  value in that service's Render dashboard — the same value the resolver
-  already uses, since it's one GA property. Requires a real deploy to
-  take effect (`sync: false` vars need the value set dashboard-side).
-  **Verify after** by reloading any `/m/` page and confirming
-  `typeof window.gtag === 'function'` rather than by waiting on GA,
-  which lags.
-
-  **One residual nobody should paper over:** if GA never loads on `/m/*`
-  pages, the 22 `page_view`/`first_visit` events GA *does* attribute to
-  `/m/` paths have no confirmed source. Checked and ruled out: nothing
-  in `app/static/`, `archive/static/` or either template calls
-  `history.pushState`/`replaceState`, so client-side URL rewriting on a
-  GA-enabled resolver page isn't the explanation. Worth resolving when
-  the fix lands — if those 22 disappear or change character afterwards,
-  that itself identifies where they were coming from.
+  **Still open — the 22 events with no confirmed source.** GA attributes
+  22 `page_view`/`first_visit` events on `/m/` paths to a period when GA
+  demonstrably wasn't loaded there. Ruled out: nothing in `app/static/`,
+  `archive/static/` or either template calls `history.pushState` /
+  `replaceState`, so client-side URL rewriting on a GA-enabled resolver
+  page isn't it. **Now cheap to settle**: with the fix live, watch
+  whether those 22 change character. If they vanish or shift shape, that
+  identifies the source; if they persist unchanged, something else is
+  reporting `/m/` paths and is worth finding.
 
   **The finding that matters most, and it comes from joining GA to the
   Render logs.** The Archive's logs show a *heavy, systematic crawl* of
