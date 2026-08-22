@@ -76,7 +76,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (14)
     [HUMAN] Render's health-check gate has never blocked a deploy —
     [HUMAN] Confirm both admin cron workflows run green against the
     [HUMAN] `[LOGIN]` Confirm a real Render deploy installed cleanly off
-    [HUMAN] `[LOGIN]` `[WAIT]` P3: confirm GA is actually receiving
+    [NEEDS-AUDIT] P3 / GA: the `submit_meeting_url` spike was the
     [HUMAN] `[LOGIN]` P5: confirm a real `send-search-alerts` cron run
   Production actions only Ryan should take  (4)
     [HUMAN] `[LOGIN]` Archive service instability, 2026-08-17 —
@@ -483,22 +483,57 @@ convenient.
   the new pinned lockfiles** (WO-11) — verified locally in an isolated
   venv per service, but the actual Render build hasn't been watched
   since.
-- **[HUMAN] `[LOGIN]` `[WAIT]` P3: confirm GA is actually receiving
-  `submit_meeting_url`/
-  `copy_link_to_time`/`resolve_result`/`video_play`/`transcript_seek`
-  events** in the GA dashboard. **Partly confirmed 2026-08-17**:
-  `submit_meeting_url` (185/week), `resolve_result`, `copy_link_to_time`
-  all arrive, funnel looks healthy. Bigger finding: the Archive's 1,200+
-  permanent `/m/*` pages — where sitemap/search/shared-link traffic
-  lands — emitted **no custom events at all**, only the resolver's
-  ephemeral `/meeting` page did. **Fixed same day**:
-  `archive/static/meeting_page.js` now fires the same four events plus
-  `save_meeting`; 5 jsdom tests cover the boot path; verified
-  in-browser. What's left: watch the next week's GA for those events on
-  `/m/*` paths — the first real answer to "does anyone use the deep
-  links." Also worth a look: the Aug 10–16 daily split of
-  `submit_meeting_url` (185 vs 1 on Aug 17) — evenly-spaced = a bot on
-  the form; clustered on outreach days = the campaign working.
+- **[NEEDS-AUDIT] P3 / GA: the `submit_meeting_url` spike was the
+  campaign, not a bot — but `/m/*` pages have almost no human traffic at
+  all.** Read live 2026-08-22. Supersedes the 2026-08-17 partial check.
+
+  **(b) The Aug 10–16 daily split of `submit_meeting_url`, answered.**
+  184 events total: **5, 6, 64, 67, 27, 14, 1** (Aug 10→16). Baseline
+  ~5/day, a **10× spike on Aug 12–13**, then decay to 1 by Aug 16.
+  Evenly-spaced would have meant a bot on the form; this is the
+  opposite shape — a step change followed by textbook decay, i.e. **the
+  outreach landing.**
+  **One thing would still overturn that reading**, and it hasn't been
+  checked: 131 events over two days is also consistent with *one*
+  person (or one scripted bulk test) submitting in a burst. Adding
+  **Total users** as a second metric to that same Explore table
+  separates "60 people submitted one URL each" from "one session
+  submitted 60" and is a ~10-second change. Until it's run, "the
+  campaign worked" is the better-supported reading, not a confirmed
+  one.
+
+  **(a) The four `/m/*` events: none present, and the denominator is
+  why.** Filtering `Page path and screen class` contains `/m/` over the
+  last 30 days returns **22 events in total** — only `page_view` and
+  `first_visit`. Zero `video_play`, `transcript_seek`,
+  `copy_link_to_time`, `save_meeting`. **But that zero is not
+  evidence of broken instrumentation**: ~14 human page views across
+  **1,200+ permanent pages in a month** is far too little traffic to
+  expect a play or a seek, and at least two of the ten pages that did
+  get views are test fixtures
+  (`/m/testville-ca-2026-08-17-hour-rollover-test-meeting`,
+  `/m/city-of-jacksonville-fl-meeting-cancelled-malformed-date-demo-meeting`).
+  The honest reading is **"nobody is visiting the deep-link pages yet,"**
+  not "the events are broken" — the 08-17 fix remains neither confirmed
+  nor refuted by this data, and it can only be settled in-browser
+  (see the separate verification note below once run).
+
+  **The finding that matters most, and it comes from joining GA to the
+  Render logs.** The Archive's logs show a *heavy, systematic crawl* of
+  `/m/`, `/j/`, `/meetings?jurisdiction=`, `/feed.xml?jurisdiction=` and
+  **both** `transcript.txt` and `transcript.srt` per meeting. GA shows
+  ~14 human views in the same period. Crawlers don't execute JS, so
+  they generate no GA events — which means **essentially all of the
+  month's 12.46 GB of HTTP responses is crawler traffic, and every byte
+  of it is currently billed twice** through the resolver→Archive public
+  proxy. That materially strengthens the private-networking entry under
+  **Ship next**: it isn't trimming the cost of serving users, it's
+  removing pure waste. It also raises a question nobody has asked —
+  whether `transcript.txt`/`transcript.srt` should be crawlable at all,
+  which is **not** covered by the existing `noindex`/sitemap standing
+  decision (that one is about *indexing* `/m/` and `/j/` pages, a
+  different question from letting crawlers pull both full-transcript
+  formats for every meeting).
 - **[HUMAN] `[LOGIN]` P5: confirm a real `send-search-alerts` cron run
   actually sent a real email** to a real saved search — the workflow
   reports success daily, but nobody's checked an inbox for the actual
