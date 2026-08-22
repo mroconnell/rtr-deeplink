@@ -644,6 +644,70 @@ the code?*" habit exists.
   Canada"/" (Canada)" whenever the trailing suffix is a recognized
   Canadian province code, in the same `jurisdiction_display` filter path
   — needs a `CANADIAN_PROVINCE_ABBRS` set shared with the fix above.
+## Sentry: a real raised exception does land in the dashboard — all three services confirmed [Done 2026-08-22]
+
+WO-7's own acceptance criterion, left unrun since 2026-08-16: `SENTRY_DSN`
+was live on all three services, but nobody had watched a real exception
+arrive. **Checked in the dashboard 2026-08-22 (Ryan, live) — confirmed,
+and confirmed for each service separately**, which is the part that had
+never been established:
+
+- **Resolver (`rtr-deeplink`)** — `PYTHON-FASTAPI-Q`,
+  `aiohttp.ClientPayloadError` raised unhandled out of `app/main.py`'s
+  `_proxy_to_archive()` → `body_iterator()`, 2026-08-18 21:11 UTC
+  (already written up in this file's "response body started streaming"
+  entry). Unhandled ASGI capture, resolver-side code.
+- **Archive (`rtr-deeplink-archive`)** — `PYTHON-FASTAPI-X`,
+  `TypeError: '>' not supported between instances of 'NoneType' and
+  'int'`. Tags read live: `handled: no`, `mechanism: starlette`,
+  `environment: production`, `url:
+  https://rtr-deeplink-archive.onrender.com/internal/thumbnails/backfill`,
+  `server_name: srv-d9ras3ijnfac73f9ps5g-…`. This is the strongest single
+  data point — a genuinely unhandled exception, caught by the ASGI
+  auto-instrumentation `_init_sentry()` exists to attach, not by a
+  logging call.
+- **Worker** — a separate event with `logger: rtr_worker`, `mechanism:
+  logging`, `handled: yes`, `server_name: srv-d9rluvqfngtc73dmrbug-…`.
+  Confirms the *other* half of WO-7's design intent: the SDK's default
+  logging integration reporting existing `logger.error()`/
+  `logger.exception()` call sites with no per-call-site changes.
+
+**No test exception was forced, deliberately.** `SENTRY_DSN` lives only
+in the three Render dashboards (not in local `.env`), so an event can't
+be sent from a dev machine; and forcing a 500 in production would have
+meant either probing for a crashing input or POSTing to a real write
+endpoint. Six real captured issues (`PYTHON-FASTAPI-Q/R/T/V/W/X`) plus
+the `starter`-plan OOM are better evidence than a synthetic `raise`
+would have been. **If a forced event is ever genuinely needed, that's the
+constraint to design around** — it needs either a deployed debug route
+behind the admin token, or the DSN handed over deliberately; don't reach
+for a prod 500.
+
+**Two structural facts worth keeping**, both learned from this check:
+
+1. **All three services report into a single Sentry project
+   (`python-fastapi`)** — there is no per-service project split. So
+   service attribution is only ever available from the `server_name`,
+   `url`, and `logger` tags on an individual event, never from the
+   project selector.
+2. **`logger` does not identify a service.** `rtr_deeplink.media_probe`
+   (`app/platforms/media_probe.py:31`) is imported by `app/`, `archive/`,
+   and `worker/` alike, so its events can originate anywhere. Combined
+   with the already-documented caveat that Sentry's `transaction` tag is
+   arbitrary/misleading here (see the `PYTHON-FASTAPI-V` note in this
+   file), `server_name` and `url` are the only trustworthy attribution
+   tags.
+
+**Seen in passing, no action:** `PYTHON-FASTAPI-T` (`TimeoutError`,
+`rtr_deeplink.media_probe`) was firing 27 minutes before the check. That
+is the known Granicus `chunklist.m3u8` 504-at-the-CloudFront-edge case,
+already an explicit standing decision in `BACKLOG.md` ("Do NOT raise
+`media_probe.py`'s `_SUBPROCESS_TIMEOUT_SECONDS`") — expected, accepted,
+fast-fail-by-design behaviour, not a regression.
+
+**One residual, filed separately:** `PYTHON-FASTAPI-X` is still live and
+has now recurred in a *later* release than the one it was first
+attributed to — see `CLAUDE_INBOX_TRIAGE.md`'s entry for it.
 
 ## The registry-based CI guards read a polluted global registry [Done 2026-08-22]
 
