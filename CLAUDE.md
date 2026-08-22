@@ -68,7 +68,16 @@ under everything else. This repo extracts and fixes just that part.
   meeting, iSiLIVE video) resolves with 1101 real caption segments, zero
   warnings — add it to the sample sheet alongside the row above.
   CivicClerk's own version of the same gap is still real and unconfirmed
-  either way, not addressed by this.
+  either way, not addressed by this. Vimeo (added 2026-08-21, WO-29) is
+  a deliberate, documented exception to "find a real caption sample
+  first": its video half was built against 8 real jurisdictions, but
+  captions genuinely cannot be fetched server-side at all — the signed
+  config that holds them 403s every non-browser client — so that adapter
+  ships video-only and says so, rather than waiting on a sample that a
+  plain HTTP client will never be able to reach. Good starting samples:
+  Salisbury NC (`vimeo.com/1212025580`, real captions visible in the
+  player), Chicago IL (`chicityclerkelms.chicago.gov/Meeting/?meetingId=
+  DF5C52EA-0D6B-F111-A823-001DD8019941`).
 - **Verify in-browser, not just via the API.** UI changes especially need
   an actual `mcp__Claude_Browser__*` check — several real bugs (duplicate
   chapter markers, a metadata-extraction ordering bug, a deep-link
@@ -165,9 +174,9 @@ under everything else. This repo extracts and fixes just that part.
   from a plausible-but-unconfirmed one, the same distinction the bullet
   above draws for data paths generally.
 - **When a platform turns out to be a wrapper around another** (confirmed
-  so far: Legistar and CivicPlus both just link out to Granicus, and
-  PrimeGov embeds a YouTube video), delegate rather than writing a
-  redundant native parser — usually via `resolve_via_platform()` in
+  so far: Legistar and CivicPlus both just link out to Granicus, PrimeGov
+  embeds a YouTube video, and Chicago's City Clerk ELMS embeds a Vimeo
+  one), delegate rather than writing a redundant native parser — usually via `resolve_via_platform()` in
   `base.py`, though PrimeGov calls `YouTubeAssetFinder.resolve_video_id()`
   directly instead so it can pass the *original* PrimeGov URL through as
   `source_url` (Legistar/CivicPlus's delegation ends up with the

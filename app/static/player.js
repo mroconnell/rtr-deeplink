@@ -577,6 +577,8 @@ function initVideo(videoUrl, videoFormat) {
 
   if (videoFormat === 'youtube') {
     initYouTubeVideo(videoUrl);
+  } else if (videoFormat === 'vimeo') {
+    initVimeoVideo(videoUrl);
   } else if (videoFormat === 'viebit') {
     initViebitVideo(videoUrl);
   } else {
@@ -772,6 +774,145 @@ async function initYouTubeVideo(embedUrl) {
       },
     },
   });
+}
+
+// --- Vimeo (Chicago ELMS delegates here too, and generic_fallback.py
+// picks up any city page that just links out to a Vimeo video) -- like
+// YouTube, no direct media file URL exists (see vimeo.py's module
+// docstring: player.vimeo.com/video/{id}/config 403s to anything but the
+// player itself), so playback is an iframe + Vimeo's own Player SDK.
+//
+// This is deliberately the *full* integration (`wireSharedControls` with
+// liveTracking left on), not the degraded Viebit shape below. That
+// distinction was checked, not assumed: Viebit runs degraded because its
+// real player bundle was pulled and read and provably has no
+// postMessage-reachable seek API at all, whereas Vimeo's postMessage API
+// was confirmed live 2026-08-21 against a real *showcase*-embedded
+// government meeting (Chicago's 2026-07-16 Budget Committee,
+// player.vimeo.com/video/1210310337) -- `ready()`, `getDuration()`
+// (19958s, the real meeting length), `setCurrentTime(125)`,
+// `getCurrentTime()` and real `play`/`timeupdate` events all worked, and
+// again on Salisbury NC's channel-hosted meeting. A showcase embed
+// behaves exactly like an ordinary one.
+let _vimeoSdkLoadPromise = null;
+
+function loadVimeoPlayerSdk() {
+  if (window.Vimeo && window.Vimeo.Player) return Promise.resolve();
+  if (_vimeoSdkLoadPromise) return _vimeoSdkLoadPromise;
+  _vimeoSdkLoadPromise = new Promise((resolve, reject) => {
+    const tag = document.createElement('script');
+    tag.src = 'https://player.vimeo.com/api/player.js';
+    tag.onload = () => resolve();
+    tag.onerror = () => reject(new Error('Vimeo Player SDK failed to load'));
+    document.head.appendChild(tag);
+  });
+  return _vimeoSdkLoadPromise;
+}
+
+// vimeo.py always builds video_url as player.vimeo.com/video/{id}, with
+// `?h={privacy-hash}` when the video needs one (Sebastopol CA's real
+// shape). Validated here rather than trusted so a malformed/unexpected
+// URL shows the same honest "couldn't load" message every other branch
+// does, instead of silently rendering a broken iframe.
+function isVimeoEmbedUrl(embedUrl) {
+  return /^https:\/\/player\.vimeo\.com\/video\/\d+(?:\?|$)/.test(embedUrl || '');
+}
+
+// Folds the deep-link time into the iframe URL itself as Vimeo's own
+// documented `#t={n}s` fragment, for exactly the reason
+// buildYouTubePlayerVars() folds it in as `start` (see deep_link.js): a
+// seek issued right after the player becomes ready, before any buffering
+// or user interaction, is the unreliable case. applyDeepLink() still
+// runs below regardless -- needed for the line-only case and for
+// highlighting the matching transcript row.
+function buildVimeoEmbedUrl(embedUrl) {
+  const deepLinkTime = getDeepLinkTime();
+  if (deepLinkTime === null) return embedUrl;
+  return `${embedUrl}#t=${Math.max(0, Math.floor(deepLinkTime))}s`;
+}
+
+// Vimeo's getCurrentTime() is a Promise, but every shared control here
+// (the "Share video at" label, "Copy link to this moment", the active
+// transcript line) reads `adapter.currentTime` synchronously. So the
+// adapter keeps its own cached position, refreshed from the player's own
+// real `timeupdate`/`seeked` events (~4/sec during playback) -- a real
+// live position, unlike the Viebit adapter's "last thing we told it to
+// do", which is why this one is safe to wire with liveTracking on.
+function createVimeoAdapter(player) {
+  const listeners = { play: [], pause: [], timeupdate: [] };
+  const fire = (name) => listeners[name].forEach((fn) => fn());
+  let lastKnownTime = 0;
+
+  const track = (data) => {
+    if (data && typeof data.seconds === 'number') lastKnownTime = data.seconds;
+  };
+  player.on('play', () => fire('play'));
+  player.on('pause', () => fire('pause'));
+  player.on('ended', () => fire('pause'));
+  player.on('timeupdate', (data) => { track(data); fire('timeupdate'); });
+  player.on('seeked', (data) => { track(data); fire('timeupdate'); });
+
+  return {
+    get currentTime() { return lastKnownTime; },
+    set currentTime(t) {
+      lastKnownTime = Math.max(0, t);
+      // Rejections here are ordinary (a seek issued before the video's
+      // metadata is ready), not errors worth surfacing -- the `#t=`
+      // fragment above already covers the initial deep-link case.
+      player.setCurrentTime(lastKnownTime).catch(() => {});
+    },
+    play: () => player.play().catch(() => {}),
+    pause: () => player.pause().catch(() => {}),
+    addEventListener: (evt, handler) => { if (listeners[evt]) listeners[evt].push(handler); },
+  };
+}
+
+async function initVimeoVideo(embedUrl) {
+  const container = document.getElementById('vimeoPlayerContainer');
+  const errorEl = document.getElementById('videoError');
+  if (!isVimeoEmbedUrl(embedUrl) || !container) {
+    errorEl.textContent = 'Could not load this Vimeo video.';
+    errorEl.hidden = false;
+    return;
+  }
+
+  document.getElementById('meetingVideo').hidden = true;
+  document.getElementById('bigPlayButton').hidden = true;
+  container.hidden = false;
+
+  try {
+    await loadVimeoPlayerSdk();
+  } catch (e) {
+    errorEl.textContent = 'Video failed to load; source link only.';
+    errorEl.hidden = false;
+    return;
+  }
+
+  // The iframe is built here rather than left to the SDK's own
+  // `{ url: ... }` constructor so the `#t=` fragment above is guaranteed
+  // to survive into the real src -- the SDK re-derives its own embed URL
+  // from oEmbed otherwise.
+  const iframe = document.createElement('iframe');
+  iframe.src = buildVimeoEmbedUrl(embedUrl);
+  iframe.setAttribute('allow', 'autoplay; fullscreen; picture-in-picture');
+  iframe.setAttribute('allowfullscreen', '');
+  iframe.setAttribute('title', 'Meeting video');
+  container.replaceChildren(iframe);
+
+  let player;
+  try {
+    player = new Vimeo.Player(iframe);
+    await player.ready();
+  } catch (e) {
+    errorEl.textContent = 'Video failed to load; source link only.';
+    errorEl.hidden = false;
+    return;
+  }
+
+  const adapter = createVimeoAdapter(player);
+  activeVideoAdapter = adapter;
+  wireSharedControls(adapter);
+  applyDeepLink(adapter);
 }
 
 // Viebit (NYC Council, via Legistar delegation) -- iframe-embedded, not
