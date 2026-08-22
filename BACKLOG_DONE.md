@@ -581,6 +581,184 @@ are later-chunk" looks like a rate limit and is compatible with the exact
 opposite), and a future reader will hit the same trap unless the
 correction ships next to the number.
 
+## Meeting-card backfill driver: `ffmpeg` on the Archive confirmed, and the ~1700-page card backlog made sweepable without fighting the transcription workers (WO-37) [Done 2026-08-21]
+
+Closes both halves of WO-28's `[HUMAN]` residual: whether `ffmpeg` is
+really on the Archive service, and how the already-archived pages that
+nobody has viewed ever get an `og:image`.
+
+### Half one: ffmpeg is there. The fallback architecture is not needed.
+
+`GET https://rtr-deeplink-archive.onrender.com/api/health` reports
+`media_tools: {"ffmpeg": "ffmpeg version 5.1.9-...", "ffprobe": "..."}`.
+The WO-28 entry laid out a fallback for `"ffmpeg": null` — extract
+resolver-side, ship the bytes with the ingest payload — and that is now
+formally unnecessary and was not built. The end-to-end path is confirmed
+too: a cold archived page has no `og:image`, and after one page view the
+lazy extraction runs and `/m/{slug}/card.jpg` returns a real ~57KB JPEG
+with `og:image` and `twitter:card = summary_large_image` present.
+
+### Half two: the backlog is ~1700 pages, not ~1200
+
+Measured, not estimated — two real read-only dry runs against production
+on 2026-08-21 reported 1705 and, 25 minutes later, 1665: the lazy
+on-view warm is quietly working through them as crawlers and visitors
+land, which is itself confirmation the WO-28 path is live. By pacing lane
+(the second run):
+
+| Pages | Lane | Real hosts |
+| --- | --- | --- |
+| 996 | `granicus.com` | `archive-stream`, `archive-video` |
+| 181 | `isilive.ca` | eScribe |
+| 155 | `iqm2.com` | |
+| 148 | `azureedge.net` | CivicPlus |
+| 135 | `cablecast.tv` | ~100 distinct per-city subdomains |
+| 18 | `champds.com` | |
+| ~30 | tail | CloudFront, TelVue/Akamai, townhallstreams, `viebit`, two `.gov` hosts, one bare IP, one unparseable URL |
+
+### Two ways the obvious implementation goes wrong
+
+**One: a fixed-`limit` loop stalls permanently.** The WO-28 entry
+suggested calling
+`POST /internal/thumbnails/backfill?limit=25&dry_run=false` on repeat. It
+took reading `crud.list_pages_missing_default_thumbnail()` to see why
+that never finishes:
+
+* A page that gets a frame stored *leaves* the candidate set (the query
+  filters on "has no default thumbnail"), so successes never repeat.
+  That is what makes resumption nearly free.
+* A page whose extraction **fails** stores nothing at all. The only
+  record of the failure is `video_thumbnail._failed_at`, an in-process
+  dict with a 6-hour cooldown that dies with the dyno. So a failed page
+  stays a candidate forever, and because the queue is `created_at desc`
+  and a sweep walks newest-to-oldest, failures accumulate as a
+  *contiguous prefix* of every later response. Once enough of them fill
+  one `limit` window, every subsequent call returns the same stuck pages
+  and no new page is ever reached again.
+* Nor is re-attempting a failure cheap: `extract_and_store()` runs
+  `probe_duration()` *before* it checks the cooldown, so each retry costs
+  a fresh `ffprobe` (up to a 120s timeout) against a source that is
+  already known unreachable.
+
+**Two, and this is the one that actually shaped the design: sweeping
+newest-first would fight the transcription workers.** 996 of the pages
+(60%) are on `archive-stream.granicus.com` — the same host the workers
+pull from continuously, and already fail against with `ffmpeg timed out
+after 120s (source likely slow or rate-limited)` (see this file's and
+BACKLOG.md's Granicus entries). The workers are never quiet, so a
+newest-first sweep would spend most of an unbroken run adding load to
+exactly the host that is already the weak point. Ryan's call, verbatim:
+*"the workers will never be quiet, so round robin and pace the granicus
+pulls from each other longer if you need to."*
+
+### What the endpoint gained
+
+Two parameters, and the second is the load-bearing one:
+
+* `offset`, which pages past the stuck prefix problem above (with
+  `MeetingPage.id.desc()` added as an ordering tiebreaker, so the window
+  is stable when a bulk ingest gives many rows the same `created_at`).
+* `slugs`, which names exact pages and ignores `limit`/`offset`. This is
+  what lets a caller decide the *order* work happens in rather than
+  accepting newest-first — without it, client-side host interleaving is
+  impossible, because the server picks the pages. Capped at
+  `MAX_BACKFILL_SLUGS` (50) since the endpoint extracts inline, and the
+  "already has a default frame" filter still applies, so naming a slug
+  can never force a duplicate extraction. Results come back in the order
+  asked for.
+
+The non-dry-run response also echoes each page's `video_url`, so a caller
+can group failures by media host without a second lookup.
+
+### The driver: `scripts/backfill_meeting_cards.py`
+
+Dry-run by default (`--apply` opts in), same posture as the endpoint and
+as `scripts/backfill_jurisdiction_bleed.py`. Small-batched
+(`--batch-size`, default 5) because the endpoint extracts
+**sequentially** — its loop is one `await extract_and_store()` per
+candidate, so a batch costs the *sum* of its pages, ~4s each when a
+source behaves (WO-28's measured 3.1s ffprobe + 0.8s ffmpeg) and up to
+165s when one doesn't.
+
+**Proportional interleaving, not round-robin** (`interleave_by_host()`).
+The whole backlog is planned up front and reordered so host `h` with `n`
+of `N` pages gets its `i`-th page at position `(i + 0.5) * N / n`. Plain
+round-robin was considered and rejected: it drains the small hosts first
+and then degenerates into precisely the unbroken Granicus tail this
+exists to prevent — with a 60% share, the last ~700 pages would have been
+pure Granicus. Proportional placement keeps Granicus at ~60% of the first
+tenth *and* ~60% of the last tenth (asserted in the tests against the
+real production host mix), which also means the other hosts' work stays
+available to fill Granicus's cooldown gaps right to the end.
+
+**Per-host cooldowns**, 10s by default and 30s for Granicus
+(`--host-cooldown` / `--granicus-cooldown`). A single global `--sleep`
+would punish every host for one host's limits. Enforced at batch
+composition, since the endpoint extracts a batch back-to-back with no
+pacing of its own: **at most one page per host per batch**, and a host
+only enters a batch once its cooldown has elapsed. The pacing key is the
+registrable-ish domain rather than the full hostname (`pacing_key()`), so
+the ~135 per-city `*.cablecast.tv` subdomains are one provider's lane
+instead of 135 free passes, and `archive-stream`/`archive-video.
+granicus.com` share one budget.
+
+That makes the run paced by its largest lane: 996 Granicus pages at one
+per 30s is **~8h20m**, measured by the real dry run, with the other ~670
+pages fitting inside that window for free. Deliberate, and Ryan's
+explicit trade — a slower sweep that leaves the workers alone beats a
+fast one that fights them.
+
+**Resumption** is a fresh survey plus a local record of what is stuck.
+Because successes leave the candidate set, a restart's survey already
+excludes finished work; known-stuck slugs persist to a gitignored
+`scripts/meeting_card_backfill_state.json`, keyed to the Archive base URL
+they came from, so a resumed run doesn't re-`ffprobe` the same dead
+sources. Deleting that file gives every stuck page another chance, worth
+doing once, days later. Note what this replaced: an earlier revision of
+this work drove the endpoint by `offset` and re-measured the stuck prefix
+each round (`leading_known_failures()`). Planning client-side made that
+unnecessary — a failed page simply isn't in the next plan — so the cursor
+logic is gone. **The pre-deploy guard it carried is not**: it moved from
+"advancing the cursor didn't change the head" to "the Archive returned
+pages we didn't ask for", which detects the same condition (an Archive
+older than this PR, since FastAPI silently drops unknown query params)
+and is strictly stronger, because it verifies the server did what was
+asked rather than only that paging works. Without it a stale Archive
+would silently turn a carefully paced sweep back into an unpaced
+newest-first one.
+
+Operator output is built for the half-failed 2am case: per batch,
+attempted/stored/failed and which lanes it touched, plus each failing
+slug with its media host; an ETA recomputed from *observed* throughput
+rather than a guessed per-page cost; explicit "all remaining pages are
+cooling down — waiting Nm" lines so a quiet stretch is never mistaken for
+a hang; and a closing summary with how much of the plan went unattempted,
+the stuck-page count by host, and the exact fact that re-running the same
+command resumes. Three consecutive batch-level HTTP failures stop the run
+rather than hammering the Archive — and a failed batch still starts its
+lanes' cooldowns, since a request that timed out mid-extraction hit the
+CDN just as hard as one that succeeded.
+
+**Known residual, small:** the endpoint reports a stored offset or
+`null` per slug, not *why* an extraction failed — the real reason
+(`ffmpeg timed out after 45s`, `Server returned 404`) is logged
+Archive-side by `extract_and_store()` and the script points there. Worth
+plumbing through only if the host grouping turns out not to be enough
+once a real sweep's failure set exists.
+
+Tests: `tests/test_backfill_meeting_cards.py` drives the sweep against a
+fake in-memory Archive that reproduces the two real queue behaviours
+(successes leave, failures stay), covering the no-stall path, resume
+across runs, `--max-batches`, mid-run state persistence, the give-up
+path, and the ignores-`slugs` guard. The interleaving is asserted against
+the real production host mix, and the pacing through the pure
+`plan_batch()` with a synthetic clock rather than by letting a test
+really sleep for 30 seconds. `tests/test_meeting_card_thumbnails.py`
+covers the endpoint's `offset` relationally against the full candidate
+list, and `slugs` for order, the still-applied thumbnail filter, unknown
+slugs and the 50-slug cap. All offline — the suite's network-free property
+(conftest's `_no_real_card_extraction`) is untouched.
+
 ## WO-10 fully closed: resolver gets `preDeployCommand` too — and the "never stamped in prod" blocker turned out never to have existed [Done 2026-08-21]
 
 Closes the last open half of the WO-10 outage class (the one that

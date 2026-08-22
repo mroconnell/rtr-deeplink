@@ -1781,31 +1781,17 @@ anything) to build against it.
   through to the generic failure message. Both now check `res.status ===
   429` explicitly first and show real rate-limit copy instead.
 
-- **[HUMAN] Confirm `ffmpeg` really is on the Archive service, and warm
-  the ~1200 existing pages' meeting cards (WO-28 residual, 2026-08-21).**
-  Card extraction runs Archive-side, which is where the page, the DB and
-  the route are — but the Archive is a plain `runtime: python` service
-  that shelled out to no binary at all until this shipped. The
-  *assumption* is that Render's python buildpack ships `ffmpeg` there
-  just as it was confirmed to ship `ffprobe` on the resolver
-  (render.yaml's 2026-08-08 note); that is a reasonable inference, not a
-  verified fact. One command settles it after deploy:
-
-  ```bash
-  curl "$ARCHIVE_BASE_URL/api/health"   # -> {"status":"ok","media_tools":{"ffmpeg":"...","ffprobe":"..."}}
-  ```
-
-  * `"ffmpeg": null` means the fallback architecture is needed: extract
-    resolver-side (where the binary is confirmed) and ship the bytes with
-    the ingest payload. Nothing is broken in the meantime — those pages
-    just keep rendering with no `og:image`, exactly where they were
-    before WO-28.
-  * A real version string means the path works, and the second half
-    applies: new pages warm at ingest and older ones warm on first view,
-    but the ~1200 already archived are best warmed deliberately —
-    `POST /internal/thumbnails/backfill?limit=25&dry_run=false`, run
-    repeatedly (small batches on purpose: each item is one `ffprobe` plus
-    one `ffmpeg` against a government CDN).
+- ~~**[HUMAN] Confirm `ffmpeg` really is on the Archive service, and warm
+  the ~1200 existing pages' meeting cards (WO-28 residual, 2026-08-21).**~~
+  **Both halves resolved 2026-08-21 (WO-37) — full detail in
+  `BACKLOG_DONE.md`.** `ffmpeg 5.1.9` really is on the Archive (live
+  `/api/health`), so the resolver-side fallback architecture this entry
+  described is not needed and was not built; the real backlog is ~1700
+  pages, and `scripts/backfill_meeting_cards.py --apply` sweeps them —
+  interleaved across media hosts and paced per host (30s between Granicus
+  pulls) so it adds no sustained load to the CDN the transcription
+  workers are already timing out against, which makes it a ~8h20m run.
+  **Left for a human: actually running it.**
 
 - **[IMPROVEMENT-ROUND] A generated, branded share card would beat a raw
   video frame (WO-28 residual).** The extracted frame is a real, large

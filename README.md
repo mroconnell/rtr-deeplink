@@ -1458,14 +1458,83 @@ since validators and scrapers fetch it. At most 2 extractions run at
 once, a failing source is retried at most once every 6 hours, and none of
 that can delay a response.
 
+**Warming the pages nobody has viewed.** New pages warm at ingest and old
+ones warm on first view — which leaves every page nobody has loaded since
+2026-08-21 imageless indefinitely. Real dry runs that day measured that
+backlog at ~1700 pages. `scripts/backfill_meeting_cards.py` sweeps them:
+
+```bash
+python scripts/backfill_meeting_cards.py                  # read-only survey: how many, which hosts, how long
+python scripts/backfill_meeting_cards.py --apply          # the real sweep, resumable
+python scripts/backfill_meeting_cards.py --apply --max-batches 3   # a bounded first run
+```
+
+**It is paced to stay out of the transcription workers' way, and that is
+what sets its wall clock.** 996 of those pages (60%) are on
+`archive-stream.granicus.com` — the same host the workers pull from
+continuously and already hit `ffmpeg timed out after 120s (source likely
+slow or rate-limited)` against. So the script does two things instead of
+walking the queue newest-first:
+
+* **Proportional interleaving.** The backlog is planned up front and
+  reordered so each host's pages are spread evenly across the *whole*
+  run (host `h` with `n` of `N` pages gets its `i`-th page at
+  `(i + 0.5) * N / n`). Plain round-robin would drain the small hosts
+  first and leave the tail as one unbroken Granicus run — exactly the
+  pattern this avoids.
+* **Per-host cooldowns** — `--host-cooldown` (default 10s) and
+  `--granicus-cooldown` (default 30s). Enforced when a batch is composed,
+  since the endpoint extracts a batch back-to-back with no pacing of its
+  own: at most one page per host per batch, and only once that host's
+  cooldown has elapsed. The pacing key is the registrable domain, so ~100
+  per-city `*.cablecast.tv` subdomains share one lane and the two
+  `*.granicus.com` media hosts share one budget.
+
+At 996 Granicus pages and one per 30s that is a **~8h20m** run, with the
+other ~670 pages fitting inside the same window. Deliberate: a slower
+sweep that leaves the workers alone beats a fast one that fights them.
+Raise `--granicus-cooldown` to go gentler still.
+
+The script drives `POST /internal/thumbnails/backfill`, naming the exact
+pages it wants via that endpoint's `slugs` parameter (which is what makes
+client-side ordering possible at all), and is safe to Ctrl-C and re-run.
+Two different things make resumption work:
+
+* A page that gets a frame **leaves the queue**
+  (`crud.list_pages_missing_default_thumbnail()` filters on "has no
+  default thumbnail"), so a restart's survey already excludes finished
+  work.
+* A page whose extraction **fails** leaves no trace in the database, so
+  the script remembers those locally
+  (`scripts/meeting_card_backfill_state.json`, gitignored) and leaves
+  them out of the next plan. That matters for cost, not tidiness:
+  `extract_and_store()` runs `probe_duration()` *before* it checks its
+  in-process failure cooldown, so re-attempting a dead source costs a
+  fresh `ffprobe` every time. Delete that file to give every stuck page
+  another chance — a CDN timeout is often transient.
+
+Per batch it reports attempted/stored/failed, which lanes it touched, the
+failing slugs grouped by media host, and an ETA recomputed from observed
+throughput; the per-page *reason* for a failure is in the Archive's own
+logs (`video_thumbnail`: `No card frame for page ...`). The raw endpoint
+is still there for a one-off:
+
 ```bash
 # Warm default frames for already-archived pages (dry_run defaults true)
 curl -X POST -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" \
      "$ARCHIVE_BASE_URL/internal/thumbnails/backfill?limit=10&dry_run=false"
+
+# ...or name exact pages (ignores limit/offset, max 50 per call)
+curl -X POST -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" \
+     "$ARCHIVE_BASE_URL/internal/thumbnails/backfill?slugs=some-slug&slugs=another&dry_run=false"
 ```
 
-**`ffmpeg` availability**: `GET /api/health` on the Archive now reports
-`media_tools` (the real `ffmpeg`/`ffprobe` versions on PATH, or `null`).
+**`ffmpeg` availability — answered, 2026-08-21**: `ffmpeg 5.1.9` and
+`ffprobe` are both really present on the Archive service, confirmed by a
+live `GET /api/health` against production. The resolver-side extraction
+fallback WO-28 documented in case they weren't is therefore not needed
+and was never built. `GET /api/health` reports `media_tools` (the real
+`ffmpeg`/`ffprobe` versions on PATH, or `null`).
 It's informational and never fails the check — Render gates deploys on
 this endpoint, and a service that serves every page but can't generate
 new thumbnails is healthy; those pages simply carry no `og:image`, which

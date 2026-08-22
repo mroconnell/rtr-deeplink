@@ -2,7 +2,7 @@ import hashlib
 import math
 import secrets
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional, Set
+from typing import Any, Optional, Sequence, Set
 from urllib.parse import urlparse
 
 from sqlalchemy import (
@@ -5876,7 +5876,9 @@ async def store_thumbnail(
         return True
 
 
-async def list_pages_missing_default_thumbnail(limit: int = 25) -> list[dict]:
+async def list_pages_missing_default_thumbnail(
+    limit: int = 25, offset: int = 0, slugs: Optional[Sequence[str]] = None
+) -> list[dict]:
     """Pages with a real, extractable video and no default frame stored
     yet -- the work queue for POST /internal/thumbnails/backfill.
 
@@ -5885,7 +5887,26 @@ async def list_pages_missing_default_thumbnail(limit: int = 25) -> list[dict]:
     excluded in SQL (they already have a free i.ytimg.com thumbnail and
     their video_url is an embed URL ffmpeg cannot read) rather than
     fetched and filtered in Python.
+
+    Two ways to select rows, and the *filter* above always applies to
+    both -- a page that already has a default frame is never returned,
+    however it was asked for:
+
+    * `limit`/`offset` page through the queue newest-first. `offset`
+      exists because a page whose extraction *fails* never gets a
+      default frame, so it stays in this result set forever, and since a
+      sweep works newest-to-oldest those failures pile up as a
+      contiguous prefix; without a way to page past them a caller with a
+      fixed `limit` stalls the moment they fill a whole window.
+    * `slugs` names exact pages instead, ignoring `limit`/`offset`. That
+      is what lets a caller choose the *order* work happens in rather
+      than accepting newest-first -- specifically, to interleave across
+      media hosts and rate-limit one CDN independently of the others
+      (see scripts/backfill_meeting_cards.py, and BACKLOG.md's Granicus
+      timeout entries for why that host in particular needs it).
     """
+    if slugs is not None and not slugs:
+        return []
     async with async_session() as session:
         if not await _thumbnails_available(session):
             return []
@@ -5897,28 +5918,33 @@ async def list_pages_missing_default_thumbnail(limit: int = 25) -> list[dict]:
             )
             .exists()
         )
-        rows = (
-            await session.execute(
-                select(
-                    MeetingPage.id,
-                    MeetingPage.slug,
-                    MeetingPage.video_url,
-                    MeetingPage.video_format,
-                    MeetingPage.source_url_normalized,
-                )
-                .where(
-                    MeetingPage.video_url.isnot(None),
-                    MeetingPage.video_url != "",
-                    or_(
-                        MeetingPage.video_format.is_(None),
-                        MeetingPage.video_format != "youtube",
-                    ),
-                    ~has_default,
-                )
-                .order_by(MeetingPage.created_at.desc())
+        stmt = select(
+            MeetingPage.id,
+            MeetingPage.slug,
+            MeetingPage.video_url,
+            MeetingPage.video_format,
+            MeetingPage.source_url_normalized,
+        ).where(
+            MeetingPage.video_url.isnot(None),
+            MeetingPage.video_url != "",
+            or_(
+                MeetingPage.video_format.is_(None),
+                MeetingPage.video_format != "youtube",
+            ),
+            ~has_default,
+        )
+        if slugs is not None:
+            stmt = stmt.where(MeetingPage.slug.in_(list(slugs)))
+        else:
+            # id.desc() is a tiebreaker, not decoration: a bulk ingest
+            # gives many rows the same created_at, and without it the
+            # offset window above is not stable between calls.
+            stmt = (
+                stmt.order_by(MeetingPage.created_at.desc(), MeetingPage.id.desc())
                 .limit(limit)
+                .offset(max(0, offset))
             )
-        ).all()
+        rows = (await session.execute(stmt)).all()
         return [
             {
                 "id": r[0],

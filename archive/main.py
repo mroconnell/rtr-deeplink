@@ -8,7 +8,7 @@ from typing import List, Optional, Set
 from urllib.parse import quote
 
 from dotenv import load_dotenv
-from fastapi import BackgroundTasks, FastAPI, Header, Request
+from fastapi import BackgroundTasks, FastAPI, Header, Query, Request
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -1609,9 +1609,19 @@ async def meeting_card_image(
     )
 
 
+# Ceiling on `slugs` below. Sized against what this endpoint actually
+# does: one ffprobe plus one ffmpeg per page, sequentially, inside the
+# request. A stubborn source can burn 165s of that on its own, so even a
+# few dozen is a long-held connection -- the real sweep uses batches of a
+# handful and this is only the outer guard rail.
+MAX_BACKFILL_SLUGS = 50
+
+
 @app.post("/internal/thumbnails/backfill")
 async def internal_thumbnails_backfill(
     limit: int = 10,
+    offset: int = 0,
+    slugs: Optional[list[str]] = Query(None),
     dry_run: bool = True,
     authorization: Optional[str] = Header(None),
 ):
@@ -1625,14 +1635,55 @@ async def internal_thumbnails_backfill(
     hand with a small `limit`, not something on a request path.
     dry_run defaults true, matching this file's read-only-first
     convention (see /internal/jurisdiction/backfill-apply).
+
+    `offset` pages past the head of the queue. It exists because a page
+    whose extraction fails keeps no record of that failure in the
+    database, so it stays a candidate forever and (newest-first) sits at
+    the front of every subsequent call -- enough of them and a fixed
+    `limit` sweep never reaches another new page.
+
+    `slugs` names exact pages instead, ignoring `limit`/`offset`, and is
+    what a real sweep uses. Extraction pulls bytes off a live government
+    CDN, and one of them -- `archive-stream.granicus.com`, 59% of the
+    backlog measured 2026-08-21 -- is the same host the transcription
+    workers are already hitting `ffmpeg timed out after 120s` against.
+    Letting the caller choose the pages is what lets it interleave across
+    hosts and pace each one separately, instead of walking newest-first
+    straight into a thousand consecutive Granicus requests. Capped at
+    MAX_BACKFILL_SLUGS per call: this endpoint runs its work inline, so
+    asking for hundreds at once is asking for a timeout, not a faster
+    sweep. The "already has a default frame" filter applies to a named
+    slug exactly as it does to a paged one, so naming a slug can never
+    force a duplicate extraction. See
+    crud.list_pages_missing_default_thumbnail() and
+    scripts/backfill_meeting_cards.py, which drives this endpoint over
+    the whole archive.
     """
     if not _token_ok(authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
-    candidates = await crud.list_pages_missing_default_thumbnail(limit=max(1, limit))
+    if slugs is not None and len(slugs) > MAX_BACKFILL_SLUGS:
+        return JSONResponse(
+            {
+                "detail": f"At most {MAX_BACKFILL_SLUGS} slugs per call "
+                f"({len(slugs)} requested)."
+            },
+            status_code=400,
+        )
+
+    candidates = await crud.list_pages_missing_default_thumbnail(
+        limit=max(1, limit), offset=max(0, offset), slugs=slugs
+    )
+    if slugs is not None:
+        # Preserve the caller's order: the query returns rows in whatever
+        # order the database likes, and for a paced sweep the order asked
+        # for is the entire point.
+        by_slug = {c["slug"]: c for c in candidates}
+        candidates = [by_slug[s] for s in slugs if s in by_slug]
     if dry_run:
         return {
             "dry_run": True,
+            "offset": max(0, offset),
             "candidates": [
                 {"slug": c["slug"], "video_url": c["video_url"]} for c in candidates
             ],
@@ -1645,9 +1696,21 @@ async def internal_thumbnails_backfill(
             video_url=candidate["video_url"],
             source_page_url=candidate["source_url"] or candidate["video_url"],
         )
-        results.append({"slug": candidate["slug"], "offset_seconds": offset})
+        results.append(
+            {
+                "slug": candidate["slug"],
+                # Carried through so a caller can group failures by media
+                # host without a second lookup -- the single most useful
+                # signal when a sweep starts failing (one CDN rate-
+                # limiting is a very different problem from scattered
+                # dead links).
+                "video_url": candidate["video_url"],
+                "offset_seconds": offset,
+            }
+        )
     return {
         "dry_run": False,
+        "offset": max(0, offset),
         "attempted": len(results),
         "stored": sum(1 for r in results if r["offset_seconds"] is not None),
         "results": results,
