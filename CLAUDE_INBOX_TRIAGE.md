@@ -128,7 +128,7 @@ every run, so it can keep its own processed-message-ID ledger *in the
 repo* — a sidecar file beside this one — and dedupe against that instead
 of against a Gmail label.
 
-**Built 2026-08-21 (WO-33)** — see the "Dedupe protocol" section below
+**Built 2026-08-21 (WO-33)** — see the "Dedupe protocol" section above
 for how a run uses it. `CLAUDE_INBOX_TRIAGE_SEEN.txt` is the ledger;
 `scripts/inbox_triage_ledger.py` reads and writes it (message IDs not
 thread IDs, 30-day lookback window, prune at window + 7-day grace); it's
