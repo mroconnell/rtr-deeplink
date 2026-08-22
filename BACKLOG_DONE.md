@@ -313,6 +313,115 @@ Residuals split back out into `BACKLOG.md` per convention (reviewing a
 row doesn't repair its jurisdiction; `reviewed_at` doesn't expire when a
 page is re-ingested; still curl-only).
 
+## Hallucination repetition check no longer diluted against whole-meeting length (WO-36) [Done 2026-08-21]
+
+Promoted from `BACKLOG.md`'s `[JUST-DO-IT]` entry of the same name. That
+entry's root cause was correct and its six live examples all reproduced
+against the real live exports; what changed is how the threshold is
+scored, plus three factual corrections to the entry itself (below).
+
+**The bug.** `_repetition_run_ratio()` divided the longest run of
+consecutive near-duplicate segments by the *entire meeting's* segment
+count and flagged at `>= 0.5`. A loop therefore had to eat half the whole
+recording to trip it, so a blatant local loop inside a long meeting was
+mathematically uncatchable. All six live cases confirmed against real
+`GET /m/<slug>/transcript.srt` exports pulled 2026-08-21:
+
+| meeting | run | of total cues | old ratio |
+| --- | --- | --- | --- |
+| Hermosa Beach, CA (`hermosa-beach-ca-2026-02-03-city-council`) | 176 x `"Music"` | 3764 | 0.047 |
+| Moraine City, OH (`meeting-d09fc0`, version 1175) | 93 x `"Y Llywodraeth Cymru."` | 241 | 0.386 |
+| North Kingstown, RI (`meeting-89d6b1`) | 80 x `"Test, test."` | 210 | 0.381 |
+| Cumberland County, NJ | 41 x `"340,000,"` | 1291 | 0.032 |
+| Haines City, FL (`meeting-16157c`) | 6 x `"You're in the process."` | 525 | 0.011 |
+| Lincoln City, OR (`meeting-00bbd1`, version 1169) | 8 x `"Yn ymwneud?"` | 637 | 0.013 |
+
+**How the new rule was chosen.** 304 real Whisper-transcribed transcripts
+were pulled from the live Archive (`/meetings?has_transcript=true` paged
+through, filtered to `source=="transcribed"` by the AI disclaimer the
+`.txt` export prepends) alongside the six known-bad ones, and every
+contiguous near-duplicate run in all 310 was clustered and hand-inspected.
+Run length alone does **not** separate the two populations: the smallest
+real hallucination (Haines City) is 6 cues, while real decoder stutters on
+real speech reach 8 and 9 (Blackford County IN's `"mo."` x8, Creve Coeur
+MO's `"it's mine."` x9). What does separate them is *coverage* — how much
+of the run's own wall-clock span its cues actually occupy:
+
+- Hallucinated tiled block: coverage ~1.0. Whisper tiles a continuous
+  stretch of dead audio with one fabricated cue laid end-to-end, no
+  silence anywhere in it (Haines City: exactly 2.000s per cue for 12s;
+  San Carlos CA: exactly 1.000s per cue x10).
+- Real stutter: coverage 0.08-0.51. Real words really said, then
+  duplicated, with the real pauses between them left intact (Troy NH 0.51,
+  Creve Coeur 0.23, Blackford County 0.08).
+
+So the check is now two rules against every *local* run, with no reference
+to total meeting length:
+
+1. **Tiled block** — run `>= 6` cues, spanning `>= 10s`, with coverage
+   `>= 0.9`. Catches Haines City and Lincoln City. The 10-second floor is
+   what keeps a fast back-to-back roll call out; the longest genuinely-real
+   contiguous near-duplicate run found anywhere in the 304-transcript
+   corpus was 4 (`"aye."` / `"yes."` bursts, all under 4 seconds).
+2. **Long sparse run** — run `>= 12` cues, regardless of timing. Catches a
+   loop laid across a recess with real silence between each cue, where
+   coverage is low but the count alone is impossible for real speech
+   (Halifax NS, below). 12 is ~3x the longest real run measured, and no run
+   between 5 and 11 anywhere in the corpus turned out to be real speech.
+
+The old whole-meeting ratio is kept, at the same 0.5, purely as a backstop
+for a transcript too short for either rule to apply. It is no longer the
+primary signal. The `SequenceMatcher` near-duplicate matching at 0.85 is
+untouched — the original entry was right that it was never the broken part.
+
+**Result: all six flagged; the real must-not-flag set stays clean.** Both
+`worker/segment_utils.py` and its hand-synced duplicate
+`archive/utils/transcription_quality.py` were changed together, and a new
+parity test pins them against every fixture (nothing enforced that before).
+
+**Three corrections to the original entry.**
+
+1. **Halifax was not a false positive.** The entry's false-positive
+   caution described Halifax's 28 repeated `"thank you"`s as legitimate —
+   "a chair thanking distinct public commenters over a real 13-minute
+   comment period". The real export says otherwise: the 28 cues are
+   *consecutive*, with no other content between them, at an exact
+   30.000-second cadence, and the cue immediately before them is the chair
+   saying "we'll resume at 6 p.m. for the appeal here... enjoy your meal."
+   It is Whisper hallucinating across a dinner recess — a textbook
+   quiet-audio `"Thank you."` loop, and a true positive. Pinned by
+   `test_halifax_recess_is_a_real_loop_not_the_false_positive_backlog_claimed`.
+   The rest of the caution held up: the roll-call `"yes"`/`"here"` bursts
+   really are non-contiguous once clustered, and never exceed 4 in a row.
+2. **The prevention half was already live, not "uncommitted".** The entry
+   said `vad_filter=True` "genuinely only exists in the uncommitted working
+   tree" and was "not yet wired into production". Stale as of this fix:
+   `worker/transcription_engine.py` carries `vad_filter=True`,
+   `word_timestamps=True` and `condition_on_previous_text=False` on the
+   real `_transcribe_sync()` call, plus the gap-based re-split
+   (`_split_segment_on_word_gaps()`, `_WORD_GAP_SPLIT_SECONDS = 2.0`) the
+   entry specified. All committed and in `main`.
+3. **Two of the six live pages have since been re-transcribed.** Moraine
+   City and Lincoln City's current default versions no longer contain the
+   loop (Moraine went from 241 cues to 56 — the VAD fix correctly emitting
+   nothing across the dead stretch). Their original hallucinated `cy`
+   transcripts are still reachable as `?version=1175` / `?version=1169`,
+   which is what the fixtures are pinned to. Also, Haines City's run is 6
+   cues over 12s, not the 7 over 16s the entry recorded.
+
+**Tests.** `tests/fixtures/hallucination_runs/` holds real fetched excerpts
+(the loop plus 8 real cues of context either side, cue text and timings
+untouched) — see that directory's `README.md` for per-file provenance. The
+six loops, three real stutters, two real roll calls, and Halifax are all
+covered, plus a test asserting the arithmetic that the old ratio could
+never have caught any of the six. Two small synthetic tests isolate the
+two halves of the tiled rule and the untimed-segments fallback; both are
+commented as synthetic with what they do and don't stand for.
+
+Residuals split back out into `BACKLOG.md` rather than closed silently: the
+already-live backlog exposure this now surfaces, and the 5-11-cue sparse
+loop the two rules deliberately leave uncovered.
+
 ## WO-10 fully closed: resolver gets `preDeployCommand` too — and the "never stamped in prod" blocker turned out never to have existed [Done 2026-08-21]
 
 Closes the last open half of the WO-10 outage class (the one that
