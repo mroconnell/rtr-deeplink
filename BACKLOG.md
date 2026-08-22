@@ -873,10 +873,24 @@ convenient.
   **except in `rtr_deeplink_db`, where the tables already exist and the
   write would silently succeed.** Dropping them restores fail-loudly
   behaviour for the one database where it's currently absent.
-  **Still Ryan's call and still a destructive production action**:
-  confirm the 4 rows are demo data and not referenced by anything,
-  take a backup/PITR marker first, then drop the Archive-shaped tables
-  from `rtr_deeplink_db` only — never from `rtr_archive`.
+  **Decided 2026-08-22: drop them, with a backup first.** Ryan runs it;
+  this is a destructive production action and stays a `[HUMAN]` item
+  until it's done. Order of operations:
+  1. **Take a PITR marker / backup of `rtr_deeplink_db`** before
+     touching anything.
+  2. **Confirm the 4 rows are the demo data** and that nothing
+     references those tables — `app/db/models.py` defines none of these
+     names, so no resolver code path should, but confirm against the
+     live table list rather than the model file alone.
+  3. **Drop the Archive-shaped tables from `rtr_deeplink_db` only.**
+     **Never `rtr_archive`** — that holds the real corpus and has the
+     identical table names, which is precisely what makes this
+     dangerous. Double-check the connection target immediately before
+     executing, not just when opening the session.
+  **Afterwards, the fail-loudly property is restored**: with
+  `create_all()` gated to SQLite, a future mis-pointed local Archive run
+  will error on missing tables everywhere, instead of silently writing
+  into the one database where they still exist.
 
 ### Decisions about already-live content
 
