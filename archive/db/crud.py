@@ -16,6 +16,7 @@ from sqlalchemy import (
     or_,
     select,
     text,
+    update,
 )
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import aliased
@@ -317,40 +318,61 @@ async def _ensure_alias(session, url_normalized: str, meeting_page_id: int) -> N
 
 _BEST_EFFORT_CHECK_TTL = timedelta(seconds=60)
 _best_effort_state: dict[str, Any] = {"available": None, "checked_at": None}
+_reviewed_at_state: dict[str, Any] = {"available": None, "checked_at": None}
 
 
-async def _best_effort_available(session) -> bool:
-    """True when meeting_pages.best_effort really exists on the connected
-    database.
+async def _meeting_pages_column_available(session, column: str, state: dict) -> bool:
+    """True when `meeting_pages.<column>` really exists on the connected
+    database. Shared body for the ordinary-column feature-detects below.
 
     Inverted relative to _fts_available() on the SQLite branch, and
     deliberately so: search_tsv is a Postgres-only generated column that
-    SQLite can never have, whereas best_effort is an ordinary
-    cross-dialect column that dev/CI's SQLite gets from create_all() built
-    straight off today's model -- so on SQLite it is always present by
-    construction and there's nothing to detect. Only Postgres, where the
-    schema is migration-driven and can genuinely lag the code by one
-    deploy, needs the information_schema lookup. Cached for
+    SQLite can never have, whereas these are ordinary cross-dialect
+    columns that dev/CI's SQLite gets from create_all() built straight off
+    today's model -- so on SQLite they are always present by construction
+    and there's nothing to detect. Only Postgres, where the schema is
+    migration-driven and can genuinely lag the code by one deploy, needs
+    the information_schema lookup. Cached per-column for
     _BEST_EFFORT_CHECK_TTL so running the migration against a live service
-    flips this on within a minute with no restart.
+    flips it on within a minute with no restart.
     """
     if session.bind.dialect.name != "postgresql":
         return True
     now = datetime.now(timezone.utc)
-    checked_at = _best_effort_state["checked_at"]
+    checked_at = state["checked_at"]
     if checked_at is not None and now - checked_at < _BEST_EFFORT_CHECK_TTL:
-        return bool(_best_effort_state["available"])
+        return bool(state["available"])
     row = (
         await session.execute(
             text(
                 "SELECT 1 FROM information_schema.columns "
-                "WHERE table_name = 'meeting_pages' AND column_name = 'best_effort'"
-            )
+                "WHERE table_name = 'meeting_pages' AND column_name = :column"
+            ),
+            {"column": column},
         )
     ).first()
-    _best_effort_state["available"] = row is not None
-    _best_effort_state["checked_at"] = now
-    return bool(_best_effort_state["available"])
+    state["available"] = row is not None
+    state["checked_at"] = now
+    return bool(state["available"])
+
+
+async def _best_effort_available(session) -> bool:
+    """True when meeting_pages.best_effort really exists (2026-08-21,
+    WO-21). See MeetingPage.best_effort's comment for the two other halves
+    of the deploy safety this gate is one third of."""
+    return await _meeting_pages_column_available(
+        session, "best_effort", _best_effort_state
+    )
+
+
+async def _reviewed_at_available(session) -> bool:
+    """True when meeting_pages.reviewed_at really exists (2026-08-21,
+    WO-38). Same gate, one migration later: list_low_trust_pages()'s read
+    and mark_low_trust_pages_reviewed()'s write both go through it, so
+    that code and its migration are safe to deploy in either order."""
+    return await _meeting_pages_column_available(
+        session, "reviewed_at", _reviewed_at_state
+    )
 
 
 async def _unique_slug(session, base: str) -> str:
@@ -1429,9 +1451,25 @@ _LOW_TRUST_CONFIDENCES = ("unverified", "blank")
 _LOW_TRUST_DEFAULT_LIMIT = 200
 _LOW_TRUST_MAX_LIMIT = 1000
 
+# The `reason` strings list_low_trust_pages() reports per row, and the
+# only values its `reason=` filter accepts. Kept as one tuple so the
+# filter can never drift from what the rows actually say.
+_LOW_TRUST_REASONS = ("unknown_platform", "best_effort", "unverified_jurisdiction")
+
+# Upper bound on how many ids one mark-reviewed call may touch. Not a
+# performance limit (it's a single UPDATE) -- it's the ceiling on how
+# much damage one mis-pasted request can do to production rows, and it
+# sits comfortably above _LOW_TRUST_MAX_LIMIT/2 so a reviewer working a
+# realistic page of the queue never hits it.
+_MARK_REVIEWED_MAX_IDS = 1000
+
 
 async def list_low_trust_pages(
-    *, limit: int = _LOW_TRUST_DEFAULT_LIMIT, offset: int = 0
+    *,
+    limit: int = _LOW_TRUST_DEFAULT_LIMIT,
+    offset: int = 0,
+    unreviewed: bool = False,
+    reason: Optional[str] = None,
 ) -> dict:
     """Read-only audit list backing GET /internal/low-trust-pages
     (archive/main.py) -- every archived page whose provenance was never
@@ -1469,20 +1507,76 @@ async def list_low_trust_pages(
     rows can be stale): the low-trust set is a standing slice of the whole
     archive, not a one-off backfill batch, so it can be large. `total` is
     the full match count regardless of the page returned.
+
+    **What this queue actually holds, measured (2026-08-21, WO-38).** The
+    first real production call returned 474 rows, and the breakdown is
+    not what the trust threat model expected: 470 are
+    `unverified_jurisdiction`, 7 are `unknown_platform` (3 of those
+    overlapping), and *zero* are `best_effort`. So today this is
+    overwhelmingly a **data-quality** queue -- "we could not determine
+    this meeting's jurisdiction" -- and a trust queue only prospectively.
+    Two reasons for that, both expected rather than broken: best_effort
+    cannot be backfilled onto rows archived before its column existed
+    (see the d4e5f6a7b8c9 migration), so it only appears on pages
+    ingested from 2026-08-21 onward; and genuinely spoofed government
+    content has never actually been observed, whereas a missing
+    jurisdiction is routine. A reviewer opening this expecting spoofing
+    will be confused, which is why it's written down here.
+
+    Those 474 rows are real, live, publicly-indexed pages with real video
+    (472 of 474 had `has_video`), not junk -- nothing here should ever be
+    read as "hide or delete these".
+
+    Two filters, both narrowing the same base query and both optional so
+    an unfiltered call returns exactly what it always did:
+
+    * `unreviewed=True` -- only rows nobody has marked reviewed
+      (`reviewed_at IS NULL`, see mark_low_trust_pages_reviewed()). This
+      is what turns a 474-row dump into a workable queue: without it,
+      re-reading the endpoint means re-triaging everything from scratch
+      every time.
+    * `reason` -- one of _LOW_TRUST_REASONS, restricting the OR to that
+      single condition. Worth having precisely *because* of the
+      measured skew above: with 470 of 474 rows sharing one reason, the
+      4 pages that are low-trust for a different reason are invisible in
+      practice without it.
+
+    Raises ValueError on an unrecognised `reason` rather than silently
+    ignoring it -- a typo'd filter that quietly returns the unfiltered
+    474 rows would read as "nothing was filtered out", which is the
+    wrong conclusion.
     """
     limit = max(1, min(int(limit), _LOW_TRUST_MAX_LIMIT))
     offset = max(0, int(offset))
+    if reason is not None and reason not in _LOW_TRUST_REASONS:
+        raise ValueError(f"unknown reason {reason!r}")
 
     async with async_session() as session:
         best_effort_available = await _best_effort_available(session)
+        reviewed_at_available = await _reviewed_at_available(session)
 
-        conditions = [
-            MeetingPage.platform == "unknown",
-            MeetingPage.jurisdiction_confidence.in_(_LOW_TRUST_CONFIDENCES),
-        ]
-        if best_effort_available:
+        conditions = []
+        if reason in (None, "unknown_platform"):
+            conditions.append(MeetingPage.platform == "unknown")
+        if reason in (None, "unverified_jurisdiction"):
+            conditions.append(
+                MeetingPage.jurisdiction_confidence.in_(_LOW_TRUST_CONFIDENCES)
+            )
+        if best_effort_available and reason in (None, "best_effort"):
             conditions.append(MeetingPage.best_effort.is_(True))
-        where = or_(*conditions)
+        # Only reachable as ?reason=best_effort during the one-deploy
+        # window where that column doesn't exist yet: an empty OR() is
+        # SQL-invalid, and "match nothing" is the honest answer -- with
+        # no column, no row can carry the flag.
+        where = or_(*conditions) if conditions else false()
+        if unreviewed and reviewed_at_available:
+            where = and_(where, MeetingPage.reviewed_at.is_(None))
+        # When the column doesn't exist yet, `unreviewed=True` is a
+        # deliberate no-op rather than an error, and that's not a
+        # fail-open: nothing can have been marked reviewed without a
+        # column to record it in, so every row genuinely IS unreviewed.
+        # `reviewed_at_column_available` below tells a caller which case
+        # they're in.
 
         total = (
             await session.execute(
@@ -1503,6 +1597,8 @@ async def list_low_trust_pages(
         ]
         if best_effort_available:
             columns.append(MeetingPage.best_effort)
+        if reviewed_at_available:
+            columns.append(MeetingPage.reviewed_at)
 
         rows = (
             await session.execute(
@@ -1523,6 +1619,9 @@ async def list_low_trust_pages(
                 bool(values[MeetingPage.best_effort])
                 if best_effort_available
                 else False
+            )
+            reviewed_at = (
+                values[MeetingPage.reviewed_at] if reviewed_at_available else None
             )
             confidence = values[MeetingPage.jurisdiction_confidence]
             platform = values[MeetingPage.platform]
@@ -1547,6 +1646,7 @@ async def list_low_trust_pages(
                     "has_video": bool(values[MeetingPage.video_url]),
                     "created_at": created_at.isoformat() if created_at else None,
                     "reasons": reasons,
+                    "reviewed_at": (reviewed_at.isoformat() if reviewed_at else None),
                 }
             )
 
@@ -1554,6 +1654,8 @@ async def list_low_trust_pages(
             "total": total,
             "limit": limit,
             "offset": offset,
+            "unreviewed": unreviewed,
+            "reason": reason,
             # False only in the one-deploy window where this code is live
             # but its migration hasn't run yet -- in which case the
             # best_effort half of the query is simply absent and every
@@ -1561,7 +1663,131 @@ async def list_low_trust_pages(
             # so a caller can tell "no best_effort pages" apart from "the
             # column isn't there yet."
             "best_effort_column_available": best_effort_available,
+            # Same one-deploy window, one migration later. False means
+            # every row reports reviewed_at=null and `unreviewed=true`
+            # filtered nothing -- which is accurate, not a silent failure
+            # (no column, nothing reviewable), but a caller should know.
+            "reviewed_at_column_available": reviewed_at_available,
             "pages": pages,
+        }
+
+
+async def mark_low_trust_pages_reviewed(
+    *,
+    ids: Set[int],
+    dry_run: bool = True,
+    unreview: bool = False,
+) -> dict:
+    """Write counterpart to list_low_trust_pages() above: stamps (or
+    clears) MeetingPage.reviewed_at on specific pages, so the audit queue
+    stops re-presenting rows a human has already worked through.
+
+    **Explicitly id-driven, with no "mark everything" mode.** Structured
+    after apply_jurisdiction_bleed_backfill()'s only_ids handling (WO-22,
+    the established pattern here for a targeted bulk write) but stricter:
+    there, ids narrow a set the endpoint recomputed itself, so omitting
+    them means "all candidates"; here an empty/absent id set means
+    nothing at all is written. Marking 474 rows reviewed in one
+    unconsidered call would destroy exactly the signal this column
+    exists to create, and there is no recovering "which of these had a
+    human actually looked at?" afterwards. Capped at
+    _MARK_REVIEWED_MAX_IDS per call for the same reason.
+
+    **Idempotent by construction.** An id that is already stamped is
+    reported as `already_reviewed` and its existing timestamp is left
+    alone -- re-running the same call is a no-op, never a re-dating. An
+    id matching no row is reported in `missing_ids` rather than failing
+    the batch, so one stale id out of fifty doesn't block the other
+    forty-nine.
+
+    `unreview=True` clears the stamp back to NULL instead (and reports
+    already-NULL rows as `already_reviewed`, i.e. already in the
+    requested state). It exists because this writes production rows from
+    a hand-pasted id list: without an undo, a mis-pasted batch could only
+    be repaired with direct DATABASE_URL access, which is precisely what
+    the /internal/* endpoints exist to avoid needing.
+
+    dry_run=True is the default, matching every other write endpoint here
+    (see apply_jurisdiction_bleed_backfill()): it computes and returns
+    exactly what it *would* change without touching anything.
+
+    Touches only the `reviewed_at` column, and nothing user-facing
+    depends on it -- reviewing a page does not hide it, de-index it, or
+    remove it from any hub. See MeetingPage.reviewed_at's comment.
+    """
+    ids = {int(i) for i in ids}
+    if not ids:
+        raise ValueError("ids is required and must contain at least one id")
+    if len(ids) > _MARK_REVIEWED_MAX_IDS:
+        raise ValueError(f"at most {_MARK_REVIEWED_MAX_IDS} ids per call")
+
+    async with async_session() as session:
+        if not await _reviewed_at_available(session):
+            # A write, unlike the read above, cannot degrade honestly --
+            # "marked reviewed" that recorded nothing would be worse than
+            # an error. The caller (archive/main.py) turns this into a
+            # 503; retrying after the migration runs succeeds.
+            return {
+                "reviewed_at_column_available": False,
+                "dry_run": dry_run,
+                "unreview": unreview,
+                "requested": sorted(ids),
+                "updated": 0,
+                "changed": [],
+                "already_reviewed": [],
+                "missing_ids": [],
+            }
+
+        rows = (
+            await session.execute(
+                select(
+                    MeetingPage.id,
+                    MeetingPage.slug,
+                    MeetingPage.reviewed_at,
+                ).where(MeetingPage.id.in_(ids))
+            )
+        ).all()
+
+        found = {row[0] for row in rows}
+        changed = []
+        already = []
+        for page_id, slug, reviewed_at in rows:
+            entry = {
+                "meeting_page_id": page_id,
+                "slug": slug,
+                "reviewed_at_before": (
+                    reviewed_at.isoformat() if reviewed_at else None
+                ),
+            }
+            # "Already in the requested state" -- stamped when marking,
+            # clear when unmarking. Either way, nothing to write.
+            if (reviewed_at is None) == unreview:
+                already.append(entry)
+            else:
+                changed.append(entry)
+
+        stamp = None if unreview else datetime.now(timezone.utc)
+        for entry in changed:
+            entry["reviewed_at_after"] = stamp.isoformat() if stamp else None
+
+        if changed and not dry_run:
+            await session.execute(
+                update(MeetingPage)
+                .where(MeetingPage.id.in_([e["meeting_page_id"] for e in changed]))
+                .values(reviewed_at=stamp)
+            )
+            await session.commit()
+
+        return {
+            "reviewed_at_column_available": True,
+            "dry_run": dry_run,
+            "unreview": unreview,
+            "requested": sorted(ids),
+            "updated": len(changed) if not dry_run else 0,
+            "would_update": len(changed),
+            "changed": sorted(changed, key=lambda e: e["meeting_page_id"]),
+            "already_reviewed": sorted(already, key=lambda e: e["meeting_page_id"]),
+            "missing_ids": sorted(ids - found),
         }
 
 

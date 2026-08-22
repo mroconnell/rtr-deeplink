@@ -589,17 +589,58 @@ covers the fallback results that delegate to YouTube and therefore
 report `platform = "youtube"`), or a `jurisdiction_confidence` of
 `unverified`/`blank`. Each row carries a `reasons` list saying which of
 the three caught it, plus slug, title, platform, jurisdiction, source
-URL and creation date; `?limit=`/`?offset=` paginate and `total` is the
-full match count. Exists because the resolve → Archive → public page →
-social announcement path is fully automatic end to end, with nothing
-that could otherwise answer "what has this published that nobody
-looked at?" It's read-only and changes nothing: these pages stay live,
-indexed, and in the sitemap by design (see `BACKLOG.md`) — the
+URL, creation date and `reviewed_at`; `?limit=`/`?offset=` paginate and
+`total` is the full match count. Exists because the resolve → Archive →
+public page → social announcement path is fully automatic end to end,
+with nothing that could otherwise answer "what has this published that
+nobody looked at?" It's read-only and changes nothing: these pages stay
+live, indexed, and in the sitemap by design (see `BACKLOG.md`) — the
 `best_effort` flag's one enforcement effect is that social auto-posting
 refuses to announce them.
 
+**What's actually in the queue, measured** (first-ever production call,
+2026-08-21): 474 rows — 470 `unverified_jurisdiction`, 7
+`unknown_platform` (3 overlapping), and **zero** `best_effort`. So in
+practice this reads as a *data-quality* queue — meetings whose
+jurisdiction couldn't be determined, on real live pages with real video
+— and as a trust/spoofing queue only prospectively. `best_effort` can't
+be backfilled onto rows archived before its column existed, so it only
+starts appearing on pages ingested from 2026-08-21 onward.
+
+Two filters make that volume workable (added 2026-08-21, WO-38); both
+are optional and an unfiltered call returns exactly what it always did:
+
+- `?unreviewed=true` — only rows nobody has marked reviewed yet
+  (`reviewed_at IS NULL`).
+- `?reason=unknown_platform|best_effort|unverified_jurisdiction` — one
+  reason at a time, which matters given the skew above: the 4 rows that
+  aren't `unverified_jurisdiction` are otherwise invisible in practice.
+  An unrecognised value is a 400, not a silently-unfiltered result.
+
+**Marking pages reviewed**: `POST
+/internal/low-trust-pages/mark-reviewed?ids=1,2,3` (same token gate)
+stamps `meeting_pages.reviewed_at` on exactly the ids given and nothing
+else — it does not hide, de-index, edit or delete anything, and the
+public page is served exactly as before. `ids` is required and there is
+deliberately no "mark everything" mode. Idempotent: an id already in the
+requested state comes back under `already_reviewed` with its original
+timestamp untouched, and an unknown id under `missing_ids` rather than
+failing the batch. `?dry_run=true` is the default (returns the exact
+diff it *would* write); `?unreview=true` clears the stamp back to NULL,
+the undo for a mis-pasted id list.
+
 ```bash
-curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" "$ARCHIVE_BASE_URL/internal/low-trust-pages?limit=50"
+# newest unreviewed rows
+curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" \
+  "$ARCHIVE_BASE_URL/internal/low-trust-pages?limit=50&unreviewed=true"
+
+# the handful flagged for something other than a missing jurisdiction
+curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" \
+  "$ARCHIVE_BASE_URL/internal/low-trust-pages?reason=unknown_platform"
+
+# mark three of them reviewed (drop dry_run=false to preview first)
+curl -X POST -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" \
+  "$ARCHIVE_BASE_URL/internal/low-trust-pages/mark-reviewed?ids=2215,2201,2200&dry_run=false"
 ```
 
 **Redirect hits are logged too** — `status="archive_redirect"` — so

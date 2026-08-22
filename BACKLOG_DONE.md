@@ -6,6 +6,124 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## The low-trust queue gets a memory: `reviewed_at`, `?unreviewed=true`, `?reason=`, and a targeted mark-reviewed write (WO-38) [Done 2026-08-21]
+
+Closes the "**The queue is a JSON endpoint, not a workflow**" residual
+from the `best_effort` entry below. `GET /internal/low-trust-pages`
+shipped earlier the same day (WO-21) with no notion of having been
+looked at, so re-reading it meant re-triaging every row from scratch —
+the same failure mode the Gmail triage Routine had before WO-33 gave it
+a ledger.
+
+**Measured production reality first, because nobody had ever called the
+endpoint.** It shipped and was merged without a single live invocation,
+so before building a workflow on top of it the first thing this work
+order did was call it. Result:
+
+```
+total: 474            best_effort_column_available: true
+reasons:   470  unverified_jurisdiction
+             7  unknown_platform     (3 of them overlapping)
+             0  best_effort
+platforms: escribe 117, cablecast 104, youtube 78, swagit 72, granicus 34,
+           iqm2 33, civicclerk 24, unknown 7, champds 4, telvue 1
+confidence: unverified 307, blank 163, NULL 4
+has_video: 472 of 474      created_at span: 2026-08-13 → 2026-08-21
+```
+
+Two things that changes:
+
+1. **The queue is real and large enough to justify the work** — 474 rows
+   is well past the point where "read the JSON and remember what you
+   looked at" works.
+2. **It is not the queue the trust threat model imagined.** It's
+   overwhelmingly "we could not determine this meeting's jurisdiction",
+   not "this might be spoofed government content" — a *data-quality*
+   queue today and a trust queue only prospectively. That's expected
+   rather than broken: `best_effort` can't be backfilled onto rows
+   archived before its column existed (see the entry below), so it only
+   starts appearing on pages ingested from 2026-08-21 onward, and
+   genuine spoofing has never actually been observed while a missing
+   jurisdiction is routine. Written into the endpoint's docstring, the
+   crud docstring and README so a future reader triaging 474 rows
+   expecting spoofs isn't confused. Also worth stating plainly: those
+   are live, publicly-indexed pages with real video (472 of 474), not
+   junk — nothing here should ever be read as "hide or delete them".
+
+**What was built.**
+
+- `meeting_pages.reviewed_at` (`archive/db/models.py`) plus migration
+  `f6a7b8c9d0e1`, branched off the real then-current head `e5f6a7b8c9d0`
+  (the chain moved twice that day; verified with `alembic heads` rather
+  than trusting the work order's guess). A nullable timestamp, not a
+  boolean: it answers "when was this last looked at", which is what
+  makes a stale review detectable at all, and NULL is then the only
+  "never reviewed" state so the filter is a plain `IS NULL` with no
+  third case.
+- `?unreviewed=true` and `?reason=unknown_platform|best_effort|
+  unverified_jurisdiction` on the GET. Both optional; an unfiltered call
+  returns exactly what it returned before, keys included. The `reason`
+  filter wasn't in the original ask and was added because of the
+  measurement above: with 470 of 474 rows sharing one reason, the four
+  pages flagged for a *different* reason are invisible in practice
+  without it. An unrecognised `reason` is a 400, deliberately — a
+  silently-ignored typo would return the full 474 rows and read as
+  "nothing matched the filter", the exact wrong conclusion.
+- `POST /internal/low-trust-pages/mark-reviewed`, modelled on WO-22's
+  `only_ids` handling on `/internal/jurisdiction/backfill-apply` but
+  **stricter in one specific way**: there, ids narrow a candidate set
+  the server recomputed itself, so omitting them safely means "all
+  candidates". Here `ids` is required and an idless call is a 400.
+  Marking 474 unexamined pages reviewed in one keystroke would
+  permanently destroy the only signal this column exists to create, and
+  there's no recovering "which of these did a human actually look at?"
+  afterwards. Capped at 1000 ids per call for the same reason.
+  Idempotent by construction (an already-stamped id is reported under
+  `already_reviewed` with its original timestamp untouched — a re-run
+  never re-dates), tolerant of stale ids (`missing_ids`, rather than
+  failing the batch), `dry_run=true` by default like every other write
+  endpoint here, and `?unreview=true` clears the stamp back to NULL.
+  The undo exists because this writes production rows from a
+  hand-pasted id list: without it, a mis-pasted batch could only be
+  repaired with direct `DATABASE_URL` access, which is the exact thing
+  `/internal/*` exists to avoid needing.
+
+**Deploy-order safety, per CLAUDE.md's Alembic rule.** Same three-part
+shape as `best_effort`: nullable with no default of any kind (so no
+INSERT ever names the column), `deferred=True` (so no plain
+`select(MeetingPage)` does either), and a `crud._reviewed_at_available()`
+feature-detect gating every read and write. The two feature-detects now
+share one `_meeting_pages_column_available()` body rather than being a
+third byte-for-byte copy of `_fts_available()`'s caching/TTL/dialect
+logic.
+
+The read and the write deliberately degrade *differently* in that
+window, and the asymmetry is the point. The read treats
+`?unreviewed=true` as a no-op and reports
+`reviewed_at_column_available: false` — which is accurate rather than
+fail-open, since with no column nothing can have been marked reviewed,
+so every row genuinely is unreviewed. The write refuses with a 503:
+reporting "marked reviewed" while recording nothing would be strictly
+worse than an error, and the caller can simply retry once the migration
+lands.
+
+**Verification.** Full `pytest` green (1320 passed, 15 skipped); `ruff
+format`/`ruff check` clean; `alembic upgrade head` + `alembic check`
+against a fresh migration-built SQLite (what CI runs) reported "No new
+upgrade operations detected", and `downgrade -1` → re-`upgrade head` →
+`check` was re-run clean. 14 new tests in
+`tests/test_low_trust_pages.py`, including both pre-migration branches —
+synthetic in the same narrow way WO-21's already was and flagged as
+such: SQLite gets the column from `create_all()` off today's model and
+so can never genuinely lack it, meaning the detect is forced False
+rather than a column-less database being constructed. What that *does*
+exercise for real is that neither the SELECT nor the WHERE ever names
+the column when the gate is off.
+
+Residuals split back out into `BACKLOG.md` per convention (reviewing a
+row doesn't repair its jurisdiction; `reviewed_at` doesn't expire when a
+page is re-ingested; still curl-only).
+
 ## WO-10 fully closed: resolver gets `preDeployCommand` too — and the "never stamped in prod" blocker turned out never to have existed [Done 2026-08-21]
 
 Closes the last open half of the WO-10 outage class (the one that
