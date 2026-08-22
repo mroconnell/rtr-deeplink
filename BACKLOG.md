@@ -520,35 +520,62 @@ so that work reads together.
   not indexed".
 
   **A meeting-count threshold does NOT separate flagged from unflagged —
-  measured 2026-08-22, and it kills the obvious fix.** The natural move
-  is "only expose a hub with ≥N meetings." All 59 `/state/` pages were
-  fetched and their meeting counts compared against the flagged sample:
+  measured on both page types 2026-08-22, and it kills the obvious fix.**
+  The natural move is "only expose a hub with ≥N meetings." It was tested
+  properly, against Search Console's **full 291-row export** (not a
+  sample), and it fails on both `/state/` and `/j/`.
+
+  **`/state/` — all 59 pages fetched, meeting counts compared:**
 
   | | n | min | median | max |
   | --- | --- | --- | --- | --- |
-  | **Flagged** (in sample) | 16 | 1 | **13** | 35 |
-  | **Not in sample** | 43 | 1 | **8** | 425 |
+  | **Flagged** | 17 | 1 | **13** | 35 |
+  | **Not flagged** | 42 | 1 | **8** | 425 |
 
-  **The flagged pages have *more* meetings than the unflagged ones.**
-  Ten states have exactly one meeting and **eight of those ten are
-  fine**; only North Dakota and Northwest Territories are flagged.
-  Illinois (35 meetings, 22 governments) is flagged while Utah (18),
-  Michigan (20) and Wisconsin (25) are not. Every one of the largest —
-  California 425, Texas 249, Florida 142, Ontario 74 — is unflagged.
-  Modelled thresholds confirm it: **≥5 would suppress 18 pages and catch
-  only 4 of the 16 flagged**; catching all 16 needs ≥40, which would
-  suppress 51 of 59 pages, including California. **So content *volume*
-  is not what Google is judging** — a threshold would delist pages that
-  are indexing fine and still miss most of the problem.
+  The flagged pages have *more* meetings. Eight of the ten single-meeting
+  states are fine; only North Dakota and Northwest Territories are
+  flagged. Illinois (35 meetings) is flagged while Utah (18), Michigan
+  (20) and Wisconsin (25) are not, and every one of the largest —
+  California 425, Texas 249, Florida 142 — is unflagged.
 
-  **Honest limit on that comparison, which matters before acting on it**:
-  the flagged set is the first **250 of the 291** "Crawled – currently
-  not indexed" URLs, and says nothing about the **294** "Discovered"
-  ones. So "not in sample" is not the same as "indexed" — a page could
-  be flagged in the 41 unsampled rows or in the Discovered list. The
-  direction of the result is safe (flagged pages are not systematically
-  smaller), but any threshold should be validated against the **full**
-  flagged list before shipping, not this sample.
+  **`/j/` — 146 flagged hubs plus a 160-hub random control, meetings
+  shown per page:**
+
+  | | n | min | median | p75 | max | mean |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | **Flagged** | 146 | 2 | **2** | 3 | 47 | 3.4 |
+  | **Not flagged** | 160 | 2 | **2** | 2 | 11 | 2.2 |
+
+  **The distributions are the same.** 92 of 146 flagged hubs show two
+  meetings — and so do 140 of 160 unflagged ones. What separation exists
+  runs the *wrong* way (flagged pages are slightly larger). Modelled
+  thresholds make the cost brutal:
+
+  | threshold | flagged caught | currently-fine pages suppressed |
+  | --- | --- | --- |
+  | ≥3 | 63% | **88%** |
+  | ≥4 | 83% | **96%** |
+  | ≥5 | 89% | **99%** |
+
+  **So gating on volume is ruled out by measurement, not opinion.** Any
+  threshold strong enough to catch the flagged pages suppresses
+  essentially the entire hub surface.
+
+  **The more useful finding underneath it**: the median hub shows **two
+  meetings whether Google indexed it or not** — the hubs are
+  *uniformly* thin. That is why volume can't discriminate, and it's a
+  direct argument for the content fix above: raising the floor for all
+  438 hubs is the lever, not hiding a subset. Whatever Google is
+  actually judging, it isn't how many meetings a hub lists.
+
+  **Two honest limits on the numbers.** (1) The `/j/` figure counts
+  `href="/m/"` occurrences on the rendered page, which may include links
+  outside the meeting list, so treat the absolute counts as a proxy —
+  the *comparison* between groups is what carries the result, and both
+  groups were measured identically. (2) This covers the 291 "Crawled –
+  currently not indexed" URLs; the **294 "Discovered"** ones are a
+  different bucket and were not exported, so "not flagged" here means
+  "not in the Crawled list."
 
   **What this leaves**: the fix is unique per-page content, as decided
   above — not a visibility filter. Volume-based gating is specifically
