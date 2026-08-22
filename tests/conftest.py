@@ -57,6 +57,37 @@ async def _archive_db_schema():
     await init_app_models()
 
 
+@pytest.fixture(autouse=True)
+def _no_real_card_extraction(monkeypatch):
+    """Keeps meeting-card frame extraction (WO-28) from making real
+    network calls during the suite.
+
+    Necessary, not defensive. `GET /m/{slug}` and `POST /internal/ingest`
+    both queue an extraction via FastAPI's BackgroundTasks when a page has
+    no card yet -- and Starlette's TestClient runs background tasks
+    synchronously, so without this the existing structured-data tests
+    quietly started shelling out to ffprobe/ffmpeg against
+    archive-media.granicus.com (confirmed: a real "Server returned 404"
+    from the CDN, in a suite whose deliberate network-free property is
+    what scripts/adapter_canary.py exists to complement -- see README's
+    "Running tests").
+
+    Patched at the module attribute rather than behind a new env flag, so
+    production code carries no test-only branch: archive/main.py's
+    _schedule_card_warm() looks the function up on the module at call
+    time. Tests that need real frames in the database store bytes through
+    crud.store_thumbnail() directly (tests/test_meeting_card_thumbnails.py);
+    ffmpeg's own behavior was verified live against a real government mp4
+    instead -- see BACKLOG_DONE.md.
+    """
+    from archive.utils import video_thumbnail
+
+    async def _skip(**_kwargs):
+        return None
+
+    monkeypatch.setattr(video_thumbnail, "extract_and_store", _skip)
+
+
 def load_fixture(*parts: str) -> str:
     """Read a text fixture file relative to tests/fixtures/."""
     return (FIXTURES_DIR.joinpath(*parts)).read_text(encoding="utf-8")

@@ -206,6 +206,19 @@ services:
     # NOT run migrations -- one owner, no concurrent-upgrade race.
     preDeployCommand: cd archive && alembic upgrade head
     startCommand: uvicorn archive.main:app --host 0.0.0.0 --port $PORT
+    # This service started shelling out to ffmpeg on 2026-08-21 (WO-28,
+    # meeting-card frame extraction) -- the first binary it has ever
+    # needed. Its availability here is UNVERIFIED as of that change: the
+    # confirmed-live ffprobe check in the rtr-deeplink block above was
+    # against the *resolver*, and worker/Dockerfile installs ffmpeg
+    # explicitly for the worker. The assumption is that this same
+    # `runtime: python` buildpack ships it here too. GET /api/health now
+    # reports a `media_tools` block with the real ffmpeg/ffprobe versions
+    # (or null), so `curl $ARCHIVE_BASE_URL/api/health` settles it after
+    # deploy -- deliberately informational, since Render gates deploys on
+    # this endpoint and a service that can't make new thumbnails is still
+    # healthy (pages just carry no og:image). See BACKLOG.md for the
+    # fallback if it turns out to be absent.
     healthCheckPath: /api/health
     envVars:
       - key: PYTHON_VERSION

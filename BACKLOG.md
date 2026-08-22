@@ -1690,32 +1690,67 @@ anything) to build against it.
   through to the generic failure message. Both now check `res.status ===
   429` explicitly first and show real rate-limit copy instead.
 
+- **[HUMAN] Confirm `ffmpeg` really is on the Archive service, and warm
+  the ~1200 existing pages' meeting cards (WO-28 residual, 2026-08-21).**
+  Card extraction runs Archive-side, which is where the page, the DB and
+  the route are — but the Archive is a plain `runtime: python` service
+  that shelled out to no binary at all until this shipped. The
+  *assumption* is that Render's python buildpack ships `ffmpeg` there
+  just as it was confirmed to ship `ffprobe` on the resolver
+  (render.yaml's 2026-08-08 note); that is a reasonable inference, not a
+  verified fact. One command settles it after deploy:
+
+  ```bash
+  curl "$ARCHIVE_BASE_URL/api/health"   # -> {"status":"ok","media_tools":{"ffmpeg":"...","ffprobe":"..."}}
+  ```
+
+  * `"ffmpeg": null` means the fallback architecture is needed: extract
+    resolver-side (where the binary is confirmed) and ship the bytes with
+    the ingest payload. Nothing is broken in the meantime — those pages
+    just keep rendering with no `og:image`, exactly where they were
+    before WO-28.
+  * A real version string means the path works, and the second half
+    applies: new pages warm at ingest and older ones warm on first view,
+    but the ~1200 already archived are best warmed deliberately —
+    `POST /internal/thumbnails/backfill?limit=25&dry_run=false`, run
+    repeatedly (small batches on purpose: each item is one `ffprobe` plus
+    one `ffmpeg` against a government CDN).
+
+- **[IMPROVEMENT-ROUND] A generated, branded share card would beat a raw
+  video frame (WO-28 residual).** The extracted frame is a real, large
+  improvement over no image at all, but it carries no jurisdiction, no
+  meeting title, and no Red Tape Recordings identity — a reader scrolling
+  Bluesky sees an anonymous council dais. The stronger unit is a
+  composited card (frame as background, jurisdiction + title + date +
+  logo overlaid), which is also what `CLAUDE_BACKLOG.md`'s "Quote-clip
+  sharing" idea would need. Deliberately not built here: it needs an
+  image-compositing library (Pillow, or ffmpeg's `drawtext` with a
+  bundled font) that this repo does not currently have, and font
+  rendering/wrapping quality is a real design problem rather than a small
+  addition. The storage, route, cache headers and targeting all carry
+  over unchanged if it happens.
+
 - **[IMPROVEMENT-ROUND] Google Search Console flagged 3 "Videos" structured-data issues
   site-wide (alert received 2026-08-12)**: missing `thumbnailUrl`
   (critical — blocks video rich-result eligibility), plus `uploadDate`
   reported as both an invalid datetime value and missing a timezone
   (non-critical). Both trace to the same `VideoObject` JSON-LD block in
   [meeting_page.html:37-66](archive/templates/meeting_page.html:37-66):
-  - ~~`thumbnailUrl` is omitted entirely~~ **Partially fixed 2026-08-14
-    — full detail in `BACKLOG_DONE.md`'s "VideoObject.thumbnailUrl +
-    Clip key moments" entry.** YouTube-backed pages (the free,
-    predictable `i.ytimg.com` slice) now emit `thumbnailUrl` plus
-    `og:image`/`twitter:card`, and pages with real agenda timestamps
-    also gained `Clip` "key moments" markup in the same pass. **Still
-    open**: direct mp4/m3u8 pages — the majority of the Archive — still
-    have no thumbnail; that needs real `ffmpeg` frame extraction (not a
-    new dependency category, `ffprobe` is already in the
-    transcription-feasibility pipeline) and somewhere to host the
-    extracted frames, which is a real new decision (this app hosts no
-    images today). Re-check Search Console once YouTube-backed pages
-    are re-crawled to confirm the critical flag actually clears there.
-    **Update 2026-08-21, from a real Search Console "Videos" enhancement
-    report screenshot**: "No thumbnail URL provided" is now down to just
-    1 video site-wide — but this is NOT confirmation the mp4/m3u8 gap
-    above is closed (it isn't; `archive/utils/video_thumbnail.py` still
-    only handles YouTube-backed pages, unchanged since the 2026-08-14
-    fix). The same report shows a much larger, likely-explanatory issue
-    instead — see the new entry immediately below.
+  - ~~`thumbnailUrl` is omitted entirely~~ **Fixed in two passes —
+    full detail in `BACKLOG_DONE.md`.** 2026-08-14 ("VideoObject.
+    thumbnailUrl + Clip key moments"): YouTube-backed pages emit
+    `thumbnailUrl` plus `og:image`/`twitter:card` from the free,
+    predictable `i.ytimg.com` URL, and pages with real agenda timestamps
+    gained `Clip` "key moments" markup in the same pass. 2026-08-21
+    (WO-28, "Meeting card images"): direct mp4/m3u8 pages — the majority
+    of the Archive — now get a real `ffmpeg`-extracted frame from the
+    meeting's own video, stored in a new `meeting_page_thumbnails` table
+    and served from `GET /m/{slug}/card.jpg`, targeted at the shared
+    `?t=` moment when there is one. **[HUMAN] Still to confirm**: a
+    Search Console re-crawl actually clearing the critical flag. Nothing
+    in this repo can verify that — re-run URL Inspection on the San
+    Carlos page (the one whose 2026-08-21 inspection reported this as
+    its *only* critical issue) once it has been recrawled.
   - ~~`uploadDate` missing a timezone~~ **Fixed 2026-08-14 — full detail
     in `BACKLOG_DONE.md`'s "Wave 1" entry.** Now emits
     `date + "T00:00:00Z"`.
@@ -1749,6 +1784,16 @@ anything) to build against it.
     `BACKLOG_DONE.md`'s "Wave 1" entry.** LIMS's `_flatten_timestamps()`
     now sets each item's `end` to the next item's `start`, matching
     Granicus/IQM2's convention, instead of always equaling `start`.
+  - ~~12 more `Missing field endOffset` warnings on the real San Carlos
+    IQM2 page (2026-08-21 URL Inspection)~~ **Fixed 2026-08-21 (WO-28) —
+    full detail in `BACKLOG_DONE.md`.** A different root cause from the
+    LIMS one above: IQM2 gave a whole consent-calendar block a single
+    timestamp, so twelve consecutive items all carry `start == 982` with
+    `end == start`. `archive/utils/clips.py`'s `clip_entries()` now uses
+    the next *distinct* start (1056) as the end for a run like that —
+    which is both warning-free and more accurate, since those items
+    genuinely do span 982→1056 collectively. Verified on the real
+    payload: 12 missing → 1 (the genuinely open-ended final item).
 
 - **[JUST-DO-IT] Search Console "Video isn't on a watch page" (947 videos
   and growing, from 23 in an earlier screenshot the same session) —

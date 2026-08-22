@@ -177,7 +177,15 @@ async def test_no_clips_without_public_base_url(monkeypatch):
     assert "url" not in data
 
 
-async def test_m3u8_page_has_no_thumbnail_but_valid_json(monkeypatch):
+async def test_m3u8_page_has_no_thumbnail_until_a_frame_is_extracted(monkeypatch):
+    # Rewritten for WO-28 (2026-08-21): this test used to encode "m3u8
+    # pages never have a thumbnail" as the expected end state. That's no
+    # longer true -- they get a real extracted frame -- but the
+    # *imageless* state is still real and still has to render correctly,
+    # because it's what every page looks like between being archived and
+    # its first frame landing, and permanently for a page whose source
+    # media is unreachable. See the companion test below for the
+    # after-extraction half.
     monkeypatch.setitem(
         archive.main.templates.env.globals, "public_base_url", "https://example.org"
     )
@@ -205,6 +213,100 @@ async def test_m3u8_page_has_no_thumbnail_but_valid_json(monkeypatch):
     # majority of the Archive -- shipped none at all. "summary", not
     # "summary_large_image", since there's no image to make large.
     assert '<meta name="twitter:card" content="summary">' in response.text
+
+
+async def test_m3u8_page_advertises_its_card_once_a_frame_exists(monkeypatch):
+    # The WO-28 half: an extracted frame turns the same page into a
+    # thumbnail-bearing, large-image-card page. og:image, the VideoObject
+    # thumbnailUrl (the ONLY critical issue a real 2026-08-21 Search
+    # Console URL Inspection reported on the San Carlos page) and the
+    # Event image all point at the one card URL.
+    monkeypatch.setitem(
+        archive.main.templates.env.globals, "public_base_url", "https://example.org"
+    )
+    slug = await _make_page(
+        "sd-m3u8-with-card",
+        platform="granicus",
+        video_url="https://archive-media.granicus.com/OnDemand/y/y.m3u8",
+        video_format="m3u8",
+    )
+    page = await crud.get_page_by_slug(slug)
+    await crud.store_thumbnail(
+        page["id"],
+        offset_seconds=15381,
+        image_bytes=b"\xff\xd8\xff\xd9",
+        etag="9" * 64,
+        is_default=True,
+    )
+
+    response = archive_client.get(f"/m/{slug}")
+    expected = f"https://example.org/m/{slug}/card.jpg"
+    data = _get_json_ld(response.text)
+    assert data["thumbnailUrl"] == expected
+    assert f'<meta property="og:image" content="{expected}">' in response.text
+    assert '<meta name="twitter:card" content="summary_large_image">' in response.text
+    # Event JSON-LD (the second ld+json block) gets the same image.
+    assert response.text.count(expected) >= 3
+
+
+async def test_card_url_carries_the_visitors_own_timestamp(monkeypatch):
+    # A shared deep link's card should show the moment that was shared,
+    # so ?t= passes straight through to the card URL. The "+20s so the
+    # frame lands inside the content rather than on the transition into
+    # it" lead is applied by the card route, not baked into the markup --
+    # which keeps the advertised URL identical to the link that was
+    # shared.
+    monkeypatch.setitem(
+        archive.main.templates.env.globals, "public_base_url", "https://example.org"
+    )
+    slug = await _make_page(
+        "sd-m3u8-card-t",
+        platform="granicus",
+        video_url="https://archive-media.granicus.com/OnDemand/z/z.m3u8",
+        video_format="m3u8",
+    )
+    page = await crud.get_page_by_slug(slug)
+    await crud.store_thumbnail(
+        page["id"],
+        offset_seconds=15381,
+        image_bytes=b"\xff\xd8\xff\xd9",
+        etag="8" * 64,
+        is_default=True,
+    )
+
+    response = archive_client.get(f"/m/{slug}?t=982")
+    assert (
+        f'<meta property="og:image" content="https://example.org/m/{slug}/card.jpg?t=982">'
+        in response.text
+    )
+    # A nonsense/negative timestamp is ignored rather than propagated.
+    plain = archive_client.get(f"/m/{slug}?t=-5")
+    assert (
+        f'<meta property="og:image" content="https://example.org/m/{slug}/card.jpg">'
+        in plain.text
+    )
+
+
+async def test_shared_start_run_gets_end_offsets(monkeypatch):
+    # The real San Carlos consent-calendar block, rendered end to end:
+    # twelve items sharing one IQM2 timestamp used to emit twelve
+    # "Missing field endOffset" warnings. See archive/utils/clips.py.
+    monkeypatch.setitem(
+        archive.main.templates.env.globals, "public_base_url", "https://example.org"
+    )
+    slug = await _make_page(
+        "sd-consent-run",
+        agenda_items=[
+            {"start": 982.0, "end": 982.0, "text": f"Consent item {i}"}
+            for i in range(12)
+        ]
+        + [{"start": 1056.0, "end": 1400.0, "text": "Public Hearing"}],
+    )
+
+    clips = _get_json_ld(archive_client.get(f"/m/{slug}").text)["hasPart"]
+    assert len(clips) == 13
+    assert all(clip["endOffset"] == 1056 for clip in clips[:12])
+    assert clips[12]["endOffset"] == 1400
 
 
 async def test_twitter_card_summary_when_no_image_at_all():
