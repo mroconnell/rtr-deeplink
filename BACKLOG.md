@@ -379,15 +379,17 @@ so that work reads together.
 
   **The settled part of the fix — the circuit breaker.**
   `sweep()` tracks `consecutive_errors` against
-  `MAX_CONSECUTIVE_ERRORS = 5`, but only increments it in the `except`
-  branch, i.e. for **Archive**-call exceptions. A resolve failure comes
-  back as `result["ok"] is False` and never touches the counter, so the
-  breaker cannot trip on the exact failure that matters. Across the two
+  `MAX_CONSECUTIVE_ERRORS = 5`. It *did* increment the counter on the
+  resolve-failure path — the narrower truth, corrected on re-reading the
+  code: the **threshold was only ever checked inside the `except`
+  branch**, which a resolve failure never reaches. So the count climbed
+  and was never tested, and the breaker could not trip on the exact
+  failure that matters. Across the two
   runs the script marched through **20 requests against an endpoint that
   was already refusing every one** — which plausibly extends the block it
-  is failing against. Fix: count resolve failures toward the breaker,
-  and treat a 429 specifically as "abort the run now", not "log and
-  continue". Applies to any bulk re-resolve, not just this script —
+  is failing against. **Fixed 2026-08-22**: both failure paths now route through one
+  `_should_abort()` helper, and a rate-limit signal aborts on the *first*
+  occurrence rather than waiting for the count. Applies to any bulk re-resolve, not just this script —
   `backfill_archived_pages.py` has the identical shape.
 
   **The unsettled part**: whether a *first* pass paced slowly enough
