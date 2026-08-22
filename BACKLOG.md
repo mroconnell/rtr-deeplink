@@ -49,7 +49,7 @@ verbatim prefix of a real line further down, so any entry opens with
 
 ```text
 
-Standing decisions — do NOT re-raise  (12)
+Standing decisions — do NOT re-raise  (13)
   Do NOT widen `noindex` / the sitemap filter / the `/j/*` hub filter…
   `ALERT_WEBHOOK_URL` — declined 2026-08-21
   The inbox-triage Routine holds no Gmail write scope — don't propose…
@@ -61,40 +61,41 @@ Standing decisions — do NOT re-raise  (12)
   Do NOT spread a transcription job's within-job pulls across hosts
   Do NOT raise `media_probe.py`'s `_SUBPROCESS_TIMEOUT_SECONDS` to…
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
+  Legistar's delegated-platform *title* winning over the page's body…
   Sacramento County's doubled meeting title is not a bug to fix
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (6)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (13)
   [JUST-DO-IT] A bulk re-resolve gets this IP blocked by YouTube, and
   [JUST-DO-IT] `[EASY]` `is_extractable()` excludes only YouTube, so
   [JUST-DO-IT] `[EASY]` A Viebit meeting's "can't transcribe this"
   [JUST-DO-IT] `[EASY]` `scripts/backtest_fallback.py`'s `sebastopol`
   [JUST-DO-IT] `[EASY]` "We think the video is here: [No video
   [JUST-DO-IT] `[EASY]` `rtr-business/BUSINESS_OVERVIEW.md` still says
+  [JUST-DO-IT] Google declines to index the *hub* pages, not the
+  [JUST-DO-IT] Give `meeting_body` an adapter-supplied path — it has
+  [JUST-DO-IT] `[EASY]` `feed.xml` is being crawled and index-judged;
+  [JUST-DO-IT] `[EASY]` Two archived pages have slugs frozen from a
+  [JUST-DO-IT] Remove WO-8's `?token=` admin fallback — its
+  [JUST-DO-IT] `[EASY]` The saved-search alert subject line
+  [JUST-DO-IT] Every byte the public site serves is billed twice:
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
-  Confirmations nobody has actually watched happen  (6)
-    [HUMAN] `[LOGIN]` Sentry: confirm a real raised exception actually
-    [HUMAN] `[LOGIN]` Confirm Render's health-check gate actually fails
-    [HUMAN] Confirm both admin cron workflows run green against the
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (10)
+  Confirmations nobody has actually watched happen  (3)
+    [HUMAN] Render's health-check gate has never blocked a deploy —
     [HUMAN] `[LOGIN]` Confirm a real Render deploy installed cleanly off
-    [HUMAN] `[LOGIN]` `[WAIT]` P3: confirm GA is actually receiving
-    [HUMAN] `[LOGIN]` P5: confirm a real `send-search-alerts` cron run
-  Production actions only Ryan should take  (6)
-    [HUMAN] `[LOGIN]` Render "HTTP health check failed" on
-    [HUMAN] `[LOGIN]` Render account bandwidth limit reached — real,
-    [HUMAN] `[LOGIN]` Archive service instability, 2026-08-17
+    [NEEDS-AUDIT] P3 / GA: the `submit_meeting_url` spike was the
+  Production actions only Ryan should take  (4)
+    [HUMAN] `[LOGIN]` Archive service instability, 2026-08-17 —
     [HUMAN] `[WAIT]` 10 YouTube-backed pages still hold roll-up
     [HUMAN] `[WAIT]` Meeting-card backfill sweep — finished 2026-08-22
-    [HUMAN] Stray demo-shaped tables found in `rtr_deeplink_db` during
-  Decisions about already-live content  (4)
-    [HUMAN] 4 already-live default transcripts are real, confirmed
-    [HUMAN] 118 already-live transcriptions are real candidates for the
-    [HUMAN] The WO-36 fix surfaces a much larger already-live
+    [HUMAN] Stray Archive-shaped tables in `rtr_deeplink_db` — root
+  Decisions about already-live content  (2)
+    [JUST-DO-IT] `[BIG]` Repair the three already-live transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
-  Product calls  (1)
-    [HUMAN] `legistar.py`'s `_try_fallback_video_link()` still prefers
+  Product calls
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (6)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (7)
+  [NEEDS-AUDIT] Render "HTTP health check failed" on
   [NEEDS-AUDIT] A chunk truncated only at its *tail* still passes the
   [NEEDS-AUDIT] `_sentence_case()` capitalises after every `\n`, so a
   WO-34's roll-up calibration gap is real at corpus scale — a second,…
@@ -102,9 +103,10 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (6)
   28 well-formed IQM2 queue rows point at retired tenants…
   Some Swagit meetings have no single "whole meeting" video file…
 
-Platform & jurisdiction coverage  (26)
+Platform & jurisdiction coverage  (27)
   The 50 largest US cities — per-tenant status `[NEEDS-AUDIT]`
-  Jurisdiction extraction & backfill  (15)
+  Jurisdiction extraction & backfill  (16)
+    [JUST-DO-IT] A land acknowledgement became a jurisdiction, and it
     [JUST-DO-IT] The originally-reported eScribe bled-subdomain rows
     [JUST-DO-IT] Bare/state-suffixed jurisdiction duplicates: root cause
     [NEEDS-AUDIT] Consolidated city-county repairs silently drop the
@@ -132,8 +134,11 @@ Platform & jurisdiction coverage  (26)
     [LATER] YouTube-backed meetings' transcripts run through
     [IMPROVEMENT-ROUND] Four platforms account for ~78% of the 470 real
 
-Reliability, ops & cost  (8)
-  Media-source reliability  (2)
+Reliability, ops & cost  (10)
+  `[JUST-DO-IT]` Running out of Render *pipeline minutes* silently…  (2)
+    `[JUST-DO-IT]` Source `_tier3_queue_remaining()` from the database
+    `[LATER]` Path-scope each service's `buildFilter` to the directories
+  Media-source reliability### Media-source reliability  (2)
     `[NEEDS-AUDIT]` Some old/archived Granicus clips' `chunklist.m3u8`…
     `[NEEDS-AUDIT]` A single job still makes N consecutive same-host…
   Transcription queue & workers  (2)
@@ -146,11 +151,10 @@ Reliability, ops & cost  (8)
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
-Trust, safety & data quality  (8)
+Trust, safety & data quality  (7)
   `[LATER]` `best_effort` residuals: no backfill for pre-2026-08-21…
   `[IMPROVEMENT-ROUND]` The low-trust queue is really a…
-  Social auto-posting residuals  (3)
-    [HUMAN] Facet clickability not yet explicitly confirmed.
+  Social auto-posting residuals  (2)
     [LATER] The Mastodon client has still made zero real posts
     [IMPROVEMENT-ROUND] Only page *creation* triggers a post —
   `[HUMAN]` Fake/spoofed "government" content — real gaps,…  (3)
@@ -345,6 +349,21 @@ Hit live on Spokane WA while building the Vimeo adapter (WO-29). The
 adapter ships video-only rather than going near it. Same rule applies to
 any future platform that gates behind one.
 
+### Legistar's delegated-platform *title* winning over the page's body name is correct as built
+
+Decided 2026-08-22. `legistar.py`'s `_try_fallback_video_link()` prefers
+the delegated platform's title unless
+`_looks_like_raw_filename()` rejects it — deliberately unlike date and
+jurisdiction, which prefer the Legistar page. Baltimore rendering as a
+CharmTV YouTube title is the intended behaviour, not the bug it looked
+like: a channel name plus date carries more for a reader than a bare
+body name, and the raw-filename escape hatch already handles the case
+where the delegated title is worse (NYC/Viebit's `.mp4` filenames).
+**The real gap this surfaced is a different one** — the Legistar page's
+*body name* is genuinely valuable, it just belongs in `meeting_body`
+rather than in the title. See the `meeting_body` entry under **Ship
+next**. Don't re-open the title question.
+
 ### Sacramento County's doubled meeting title is not a bug to fix
 
 `"Board Of Supervisors Board Of Supervisors Meeting"` is real text
@@ -454,9 +473,300 @@ so that work reads together.
 - **[JUST-DO-IT] `[EASY]` `rtr-business/BUSINESS_OVERVIEW.md` still says
   saved-search alert emails are "not built yet"** — stale; shipped
   2026-08-13 (PR #30) and runs daily. `README.md`'s copy was already
-  corrected 2026-08-16. One-line fix next time anyone's in that file —
-  not done here since business-workspace edits stay separate per
-  `CLAUDE.md`.
+  corrected 2026-08-16. **Now confirmed at the strongest possible level
+  (2026-08-22)**: P5's inbox check found **eight consecutive days of
+  real digests** actually delivered, 08-14 → 08-21, arriving daily
+  ~23:47–23:50 UTC with real matched meetings and quoted transcript
+  snippets — see `BACKLOG_DONE.md`'s P5 entry. There is no remaining
+  ambiguity about whether the feature is built; the line is simply
+  wrong.
+  **Deliberately not fixed from this repo** — business-workspace edits
+  stay separate per `CLAUDE.md`, and that separation is worth more than
+  saving one line of typing. Fix it from an `~/Documents/rtr-business`
+  session or by hand. **Worth a wider pass while in there**: a doc that
+  was wrong about a shipped feature for nine days probably isn't wrong
+  about only one line, and the same day's audit found this exact
+  failure shape three times over in this repo's own docs (a Sentry issue
+  already fixed, a bandwidth limit off by 5×, a Bluesky check believed
+  impossible from a sandbox).
+
+- **[JUST-DO-IT] Google declines to index the *hub* pages, not the
+  meeting pages — audit resolved 2026-08-22, and the fix is content,
+  not plumbing.** Search Console → Indexing → Pages showed **294
+  "Discovered – currently not indexed"** and **291 "Crawled – currently
+  not indexed"**, both rising — ~585 URLs, with only 5 deliberate
+  `noindex` and 3 redirects alongside (those two are fine and flat).
+  The open question was *why*. **Answered by categorising the first 250
+  of the "Crawled" set against the live `sitemap.xml`:**
+
+  | Type | In sitemap | % of sitemap | % of non-indexed | Over-rep |
+  | --- | --- | --- | --- | --- |
+  | `/j/` jurisdiction hubs | 438 | 15.2% | **54.4%** | **3.6×** |
+  | `/state/` pages | 59 | 2.0% | **6.4%** | **3.1×** |
+  | `/m/` meeting pages | 2,383 | 82.6% | 38.0% | **0.5×** |
+  | `feed.xml?jurisdiction=` | **0** | 0% | 1.2% | link-discovered |
+
+  **This is the whole finding.** Crawl-budget exhaustion or low domain
+  authority would suppress indexing roughly *proportionally* across page
+  types. Instead Google is **selectively declining the hub pages** —
+  `/j/` at 3.6× its share, `/state/` at 3.1× — while `/m/` meeting pages
+  are **under**-represented at 0.5×, i.e. they index *better* than their
+  share of the site. That rules out the two hypotheses this entry was
+  filed with (site responsiveness suppressing crawl rate; plain domain
+  age) as the *primary* cause, and confirms the third: **thin,
+  templated, near-duplicate hub pages.** A `/j/` page that is a bare
+  list of links to meetings, differing from 437 sibling pages only by
+  the place name, is close to the textbook case for "Crawled – currently
+  not indexed".
+
+  **A meeting-count threshold does NOT separate flagged from unflagged —
+  measured on both page types 2026-08-22, and it kills the obvious fix.**
+  The natural move is "only expose a hub with ≥N meetings." It was tested
+  properly, against Search Console's **full 291-row export** (not a
+  sample), and it fails on both `/state/` and `/j/`.
+
+  **`/state/` — all 59 pages fetched, meeting counts compared:**
+
+  | | n | min | median | max |
+  | --- | --- | --- | --- | --- |
+  | **Flagged** | 17 | 1 | **13** | 35 |
+  | **Not flagged** | 42 | 1 | **8** | 425 |
+
+  The flagged pages have *more* meetings. Eight of the ten single-meeting
+  states are fine; only North Dakota and Northwest Territories are
+  flagged. Illinois (35 meetings) is flagged while Utah (18), Michigan
+  (20) and Wisconsin (25) are not, and every one of the largest —
+  California 425, Texas 249, Florida 142 — is unflagged.
+
+  **`/j/` — 146 flagged hubs plus a 160-hub random control, meetings
+  shown per page:**
+
+  | | n | min | median | p75 | max | mean |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | **Flagged** | 146 | 2 | **2** | 3 | 47 | 3.4 |
+  | **Not flagged** | 160 | 2 | **2** | 2 | 11 | 2.2 |
+
+  **The distributions are the same.** 92 of 146 flagged hubs show two
+  meetings — and so do 140 of 160 unflagged ones. What separation exists
+  runs the *wrong* way (flagged pages are slightly larger). Modelled
+  thresholds make the cost brutal:
+
+  | threshold | flagged caught | currently-fine pages suppressed |
+  | --- | --- | --- |
+  | ≥3 | 63% | **88%** |
+  | ≥4 | 83% | **96%** |
+  | ≥5 | 89% | **99%** |
+
+  **So gating on volume is ruled out by measurement, not opinion.** Any
+  threshold strong enough to catch the flagged pages suppresses
+  essentially the entire hub surface.
+
+  **The more useful finding underneath it**: the median hub shows **two
+  meetings whether Google indexed it or not** — the hubs are
+  *uniformly* thin. That is why volume can't discriminate, and it's a
+  direct argument for the content fix above: raising the floor for all
+  438 hubs is the lever, not hiding a subset. Whatever Google is
+  actually judging, it isn't how many meetings a hub lists.
+
+  **Two honest limits on the numbers.** (1) The `/j/` figure counts
+  `href="/m/"` occurrences on the rendered page, which may include links
+  outside the meeting list, so treat the absolute counts as a proxy —
+  the *comparison* between groups is what carries the result, and both
+  groups were measured identically. (2) This covers the 291 "Crawled –
+  currently not indexed" URLs; the **294 "Discovered"** ones are a
+  different bucket and were not exported, so "not flagged" here means
+  "not in the Crawled list."
+
+  **What this leaves**: the fix is unique per-page content, as decided
+  above — not a visibility filter. Volume-based gating is specifically
+  ruled out by this measurement.
+
+  **Scale worth stating plainly**: 136 distinct `/j/` pages appear in a
+  250-URL sample of a 291-URL list — so a large fraction of all 438
+  jurisdiction hubs are affected, not a tail.
+
+  **Ryan's own read was right and is the fix**: give the hub pages
+  something unique to say. **Decided 2026-08-22 — build these two:**
+  1. **Real transcript snippets per jurisdiction** *(chosen)*. A few
+     genuine quotes from that place's recent meetings is unique text no
+     other page has, drawn from data already stored, and useful to a
+     reader rather than SEO filler. Strongest signal per unit of work.
+     `archive/utils/search.py`'s `find_matching_segment()` already does
+     the quote extraction the alert emails use — reuse it rather than
+     growing a second extractor.
+  2. **Meeting-card thumbnails as page imagery** *(chosen)*. WO-37
+     already stored **973** cards, so this is mostly a rendering job.
+     It adds no unique *text*, which is what Google is judging here, so
+     it supports (1) rather than substituting for it — and it makes the
+     hubs shareable, which `/m/` pages already are and hubs aren't.
+
+  Not chosen for now, kept for the record: per-jurisdiction summary
+  stats (counts / date range / bodies / platform — real but templated),
+  and `jurisdiction_enrich`-sourced context copy (population, county —
+  partly boilerplate-shaped, uneven coverage).
+
+  **Measure before and after**: the 3.6× over-representation figure is
+  the baseline to beat, not the raw count, since the raw count moves
+  with corpus growth.
+
+- **[JUST-DO-IT] Give `meeting_body` an adapter-supplied path — it has
+  none today.** Decided 2026-08-22, out of the Legistar title question
+  (now a **Standing decision**: the delegated title winning is correct).
+  The government body's own name *is* worth capturing; it just belongs
+  in `meeting_body`, not in the title.
+  **Confirmed by reading the code, not assumed:** `meeting_body` exists
+  only as an Archive column (`archive/db/models.py:65`) and is populated
+  from exactly one source — `jx_result.meeting_body`
+  (`archive/db/crud.py:450`, `:496`), the entity name split off a
+  leading prefix by jurisdiction extraction. **`grep -rln "meeting_body"
+  app/platforms/*.py` returns nothing**: no adapter supplies it, and
+  `ResolvedMeeting` has no such field.
+  **The work**: add `meeting_body` to `ResolvedMeeting`; have an
+  adapter-supplied value take **precedence over** the entity-prefix
+  split (which stays as the fallback for adapters that don't set it);
+  populate it in `legistar.py` on **all** paths, including the
+  delegated-video path where the title comes from elsewhere. **Granicus
+  follows as the second adapter** — its RSS carries a real body name.
+  **Note the ordering benefit**: this is also the precondition for the
+  existing `[IMPROVEMENT-ROUND]` entries on auditing per-adapter
+  `meeting_body` coverage and on using `meeting_body` in search
+  facets — both are currently reasoning about a field that only
+  jurisdiction extraction ever writes.
+- **[JUST-DO-IT] `[EASY]` `feed.xml` is being crawled and index-judged;
+  it should be `noindex`.** Three `feed.xml?jurisdiction=…` URLs appear
+  in the "Crawled – currently not indexed" list even though
+  **`feed.xml` appears zero times in `sitemap.xml`** — Google found them
+  by following links, spent crawl on them, and then declined them, which
+  is the correct outcome reached the expensive way. RSS feeds are not
+  meant to be indexable pages. **Decided 2026-08-22: `X-Robots-Tag:
+  noindex` on the feed route — not a `robots.txt` `Disallow`.** The
+  distinction is load-bearing: `Disallow` blocks the fetch entirely,
+  which would also stop Google following the links *inside* the feed,
+  and that is a live discovery path for new meeting pages. `noindex`
+  keeps the discovery while taking the feed itself out of the index. The
+  header can be set either side since the route is proxied via
+  `app/main.py`'s `archive_feed`; setting it Archive-side also covers
+  direct hits. **The full 291-row export confirms the scale**: 4
+  `feed.xml` URLs, all `?jurisdiction=`-parameterised.
+  **Check first** whether any feed reader or integration relies on the
+  current headers, and note this is *not* the `noindex` widening the
+  **Standing decisions** section rules out — that decision is about
+  `/m/` and `/j/` *pages*; a machine-readable feed is a different
+  question and was never in its scope.
+
+- **[JUST-DO-IT] `[EASY]` Two archived pages have slugs frozen from a
+  vendor's boilerplate page title, not the meeting's.** Found 2026-08-22
+  while URL-inspecting for Search Console.
+  **`/m/welcome-to-clerkbase`** is a perfectly real meeting — the page
+  serves `February 7, 2022 - Regular Village Council Meeting — Yellow
+  Springs, OH (2022-02-07)`, HTTP 200, no `noindex`. Its *title* is
+  right; only the permanent slug is wrong, taken from ClerkBase's
+  default page title at first resolve. A later re-resolve fixed the
+  title, but the slug is immutable, so the canonical URL is
+  meaningless and unshareable. Search Console reports it **"URL is not
+  on Google"** — plausibly related, since the slug is the strongest
+  text signal in the URL, though not proven.
+  **Scope is genuinely small, and that's measured, not assumed**: a
+  scan of the live `sitemap.xml` (2,383 `/m/` URLs) found exactly
+  **two** boilerplate-shaped slugs — this one and
+  `granicus-digital-communications-summit-2017-04-13-granicus-digital-communication`.
+  The second is a different problem worth noting separately: a
+  **Granicus vendor marketing event, not a government meeting**, which
+  belongs with the vendor-demo exclusions under **Trust, safety & data
+  quality** rather than being re-slugged.
+  **Fix**: re-slug the Yellow Springs page from its corrected title and
+  serve a redirect from the old slug. **Weigh first** — permalinks are
+  meant to be permanent, and `/m/` URLs are posted to Bluesky and
+  emailed in alerts. In this case the page is unindexed, has no GA
+  traffic, and predates auto-posting, so nothing points at the old slug;
+  confirm that before generalising the approach to any future case.
+  **Not worth building slug regeneration for two pages** — do these by
+  hand.
+  **Incidental, not a defect:** 257 of the 2,383 slugs contain no
+  ISO-format date, but spot-checking shows nearly all carry a date in
+  another shape (`6-16-25-bellefonte-borough…`, `apr-02-2020-…`), so
+  this is slug-format inconsistency rather than missing data. Noted only
+  so a future scan doesn't re-flag it as a bug.
+- **[JUST-DO-IT] Remove WO-8's `?token=` admin fallback — its
+  precondition is now confirmed.** WO-8 moved both admin crons to an
+  `Authorization: Bearer` header (Render's request logs don't mask a
+  token in a URL, GitHub's do), leaving the query param working so the
+  change couldn't break them. **Confirmed 2026-08-22 via `gh run
+  list`**: `daily-report.yml` and `send-search-alerts.yml` each have
+  **8 consecutive `success` runs, 2026-08-14 → 08-21**, and both send
+  *only* the Bearer header (`daily-report.yml:44`,
+  `send-search-alerts.yml:40`). `grep -rn "token=" .github/workflows/`
+  returns nothing. Scope is `app/main.py` alone —
+  `archive/main.py`'s `_token_ok()` is already header-only — covering
+  `_admin_token_ok()` plus `token: str = ""` on 10 `/admin/*` routes.
+  **Two traps, both confirmed by reading the code:** (1)
+  `app/main.py:1439`'s `confirm_transcription()` has an identically-named
+  `token: str = ""` that is the *emailed confirmation-link* token, not
+  admin auth — 11 hits for that signature, 10 are admin, this is the
+  eleventh, leave it; (2) **removing the param makes every `/admin/*`
+  page unopenable in a browser**, since an address bar can't set a
+  header — a real capability loss if Ryan eyeballs `/admin/log` or
+  `/admin/stats` that way, and a decision he should make rather than
+  discover. Options if so: keep the fallback on read-only GETs, put the
+  admin pages behind Clerk, or accept curl-only.
+- **[JUST-DO-IT] `[EASY]` The saved-search alert subject line
+  double-quotes any phrase or boolean search.** Found 2026-08-22 while
+  confirming P5 against the real inbox. `archive/utils/email.py`'s
+  `_digest_subject()` builds `f'Somebody said "{keywords[0]}"'`, adding
+  one pair of quotes — but a *phrase* search is stored with its own
+  quotes as part of the keyword, so real subjects that shipped read:
+
+  > `Somebody said ""affordable housing"" (+13 more)`
+  > `Somebody said ""Neighborhood character" or "Character of the neighborhood"" (+12 more)`
+
+  Both are real production emails (2026-08-20 and 2026-08-21). Plain
+  single-word searches are unaffected, which is presumably why it
+  survived — every `data center` digest reads correctly. **Fix**: don't
+  re-quote a keyword that is already quoted (strip a matched leading/
+  trailing `"` pair before interpolating, or use typographic quotes so
+  the nesting is at least visually distinct). **Note before touching
+  it**: that function's docstring records the copy as *deliberately
+  provisional* — `marketing/LIFECYCLE_EMAILS.md`'s approved subject was
+  written for a single match and the digest shape hasn't had a copy pass
+  yet — so fix the doubling narrowly rather than rewriting the line, or
+  do it as part of that copy pass.
+  **Second, smaller oddity in the same function, not confirmed as
+  wrong:** `extra = total_matches - 1` counts matches across *every*
+  group, while the subject names only `keywords[0]` — so with several
+  saved searches, "+N more" silently includes matches belonging to
+  different searches. That may well be the intent for a digest; worth a
+  decision rather than a fix.
+- **[JUST-DO-IT] Every byte the public site serves is billed twice:
+  the resolver proxies to the Archive over its *public* URL.**
+  `app/main.py:1527-1593` proxies essentially the whole public site —
+  `/m/*`, `/meetings`, `/coverage`, `/state/*`, `/j/*`,
+  `/archive-static/*`, `/sitemap.xml`, `/feed.xml` — through
+  `_proxy_to_archive()`. **Confirmed 2026-08-22 from the Render
+  dashboard**: `ARCHIVE_BASE_URL` is an `https://…onrender.com` URL
+  (public path, not private networking), and the workspace's
+  **"Service-Initiated (Private Link)" bandwidth is `0 MB`** — nothing
+  in the account uses private networking at all. So each proxied page
+  view is billed as *two* egress events: Archive→resolver, then
+  resolver→user. With "HTTP Responses" at **12.46 GB** for the month,
+  the plausible reading is ~6 GB of real user traffic and ~6 GB of pure
+  internal duplication, though the dashboard's own breakdown is by
+  *category*, not by service, so that split is inferred rather than
+  measured (a per-service breakdown would confirm it outright).
+  **Fix**: point `ARCHIVE_BASE_URL` at Render's internal/private address
+  for `rtr-deeplink-archive` instead of the public hostname. **Verify
+  two things first**, neither yet confirmed: (1) both web services are
+  in the same region — `render.yaml` sets `region: oregon` only on the
+  database (line 462), so the services' region is the *default*, not an
+  asserted one; (2) the proxy still passes `cookie` and conditional
+  `If-None-Match` headers correctly over the internal address, since
+  `/meetings`, `/coverage`, `/state/*` and `/account/saved` all forward
+  the user's cookie for Clerk auth. Roll back by restoring the public
+  URL if anything 502s — it's a single env-var change, no code deploy.
+  **Not urgent on cost grounds** (see the corrected numbers in
+  `BACKLOG_DONE.md`'s "Render bandwidth" entry — the account is at
+  14.54 GB of a **25 GB** allowance, not the 5 GB the original alert
+  implied), but it is free money and halves the blast radius of any
+  future traffic spike.
 
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
@@ -471,79 +781,147 @@ code-complete and merged (full detail in `BACKLOG_DONE.md`'s "Reliability/
 ops audit execution" entry). None blocks anything else; do whenever
 convenient.
 
-- **[HUMAN] `[LOGIN]` Sentry: confirm a real raised exception actually
-  appears in the dashboard.** `SENTRY_DSN` is live on all three
-  services, but nobody has forced a real exception and watched it land
-  (WO-7's own acceptance criterion, never run).
-- **[HUMAN] `[LOGIN]` Confirm Render's health-check gate actually fails
-  a deploy** when `/api/health` reports unhealthy (WO-6) — the 503 logic
-  is unit-tested, but no real Render deploy has been watched getting
-  blocked by it.
-- **[HUMAN] Confirm both admin cron workflows run green against the
-  deployed `Authorization: Bearer` header-auth change**, then remove
-  WO-8's query-param fallback in a follow-up PR — the fallback stays
-  live until a real cron run is confirmed.
+- **[HUMAN] Render's health-check gate has never blocked a deploy —
+  checked 2026-08-22, and not worth forcing.** WO-6's 503 logic is
+  unit-tested; the open question was whether a real Render deploy has
+  ever been stopped by it. **Answer: no.** The Events tabs for
+  `rtr-deeplink`, `rtr-deeplink-archive` and `rtr-transcription-worker`
+  show no deploy blocked with health-check wording — the only failed
+  deploys are the 2026-08-19 pipeline-minutes blocks (own entry under
+  **Reliability, ops & cost**). **That's ambiguous evidence and should
+  be read as such**: it is equally consistent with "the gate works and
+  no unhealthy build was ever shipped" and with "the gate is miswired
+  and would never fire." Distinguishing them means deliberately
+  deploying a build whose `/api/health` reports unhealthy, which costs a
+  real outage window on a live public site to prove a config line.
+  **Recommendation: leave it unproven.** The cheap opportunity is
+  opportunistic — next time a deploy genuinely breaks `/api/health`,
+  check the Events tab before rolling back and record whether Render
+  caught it. Kept here only so nobody re-runs the same passive check
+  expecting a different answer.
 - **[HUMAN] `[LOGIN]` Confirm a real Render deploy installed cleanly off
   the new pinned lockfiles** (WO-11) — verified locally in an isolated
   venv per service, but the actual Render build hasn't been watched
   since.
-- **[HUMAN] `[LOGIN]` `[WAIT]` P3: confirm GA is actually receiving
-  `submit_meeting_url`/
-  `copy_link_to_time`/`resolve_result`/`video_play`/`transcript_seek`
-  events** in the GA dashboard. **Partly confirmed 2026-08-17**:
-  `submit_meeting_url` (185/week), `resolve_result`, `copy_link_to_time`
-  all arrive, funnel looks healthy. Bigger finding: the Archive's 1,200+
-  permanent `/m/*` pages — where sitemap/search/shared-link traffic
-  lands — emitted **no custom events at all**, only the resolver's
-  ephemeral `/meeting` page did. **Fixed same day**:
-  `archive/static/meeting_page.js` now fires the same four events plus
-  `save_meeting`; 5 jsdom tests cover the boot path; verified
-  in-browser. What's left: watch the next week's GA for those events on
-  `/m/*` paths — the first real answer to "does anyone use the deep
-  links." Also worth a look: the Aug 10–16 daily split of
-  `submit_meeting_url` (185 vs 1 on Aug 17) — evenly-spaced = a bot on
-  the form; clustered on outreach days = the campaign working.
-- **[HUMAN] `[LOGIN]` P5: confirm a real `send-search-alerts` cron run
-  actually sent a real email** to a real saved search — the workflow
-  reports success daily, but nobody's checked an inbox for the actual
-  email.
+- **[NEEDS-AUDIT] P3 / GA: the `submit_meeting_url` spike was the
+  campaign, not a bot — but `/m/*` pages have almost no human traffic at
+  all.** Read live 2026-08-22. Supersedes the 2026-08-17 partial check.
+
+  **(b) The Aug 10–16 daily split of `submit_meeting_url`, answered —
+  and it is neither of the two options the question offered.** 184
+  events total: **5, 6, 64, 67, 27, 14, 1** (Aug 10→16). Baseline
+  ~5/day, a **10× spike on Aug 12–13**, then decay to 1 by Aug 16. The
+  entry framed this as "evenly-spaced = a bot on the form; clustered on
+  outreach days = the campaign working," and the shape is emphatically
+  clustered — **but Ryan identified it directly (2026-08-22): that was
+  him entering meeting URLs by hand, before the bulk-ingestion tooling
+  existed.** Not a bot, and not the campaign. **Operator activity.**
+
+  **That correction is worth more than the original question.** It means
+  the 2026-08-17 read — "`submit_meeting_url` 185/week … funnel looks
+  healthy" — was measuring the operator, not users, and the "healthy
+  funnel" conclusion drawn from it does not hold. Combined with (a)
+  below, **both** signals that looked like product usage turn out to be
+  internal: ~184 submissions that were Ryan typing, and ~14 `/m/` page
+  views of which at least some are test fixtures. The honest current
+  state is **effectively zero external user traffic**, which is a
+  perfectly reasonable place to be for a product at this stage but is
+  very different from what the metrics appeared to say.
+
+  **Concrete follow-up this argues for:** configure GA's **internal
+  traffic filter** (Admin → Data Streams → Configure tag settings →
+  Define internal traffic, then activate the `internal` filter in Admin
+  → Data Settings → Data Filters) so operator activity is excluded from
+  — or at least separable in — every future read. Without it, every
+  metric on this property is a mix of operator and user activity with no
+  way to tell them apart after the fact, and this is the second time
+  that has produced a wrong conclusion from real data.
+
+  **(a) The four `/m/*` events fire nowhere, because GA is not loaded on
+  Archive pages at all. Root-caused in-browser 2026-08-22.** GA reports
+  **22 events total** on `/m/*` paths over 30 days — only `page_view`
+  and `first_visit`, zero `video_play`/`transcript_seek`/
+  `copy_link_to_time`/`save_meeting`. That first read as "too little
+  traffic to expect a play." **It isn't a traffic problem — the events
+  are physically incapable of firing:**
+  - Loading a real production page
+    (`/m/san-carlos-ca-2017-11-13-city-council-regular-meeting`) and
+    reading its served HTML shows **`window.trackEvent = function()
+    {};`** — an explicit no-op — with **no `googletagmanager` script and
+    no `G-…` measurement ID anywhere in the document**. Not
+    tracker-blocking: this is the origin's own markup.
+  - `archive/templates/base.html:8` gates the GA snippet on
+    `{% if GA_MEASUREMENT_ID %}`, and line 18 emits the no-op stub when
+    it's unset. So every `trackEvent()` call `meeting_page.js` makes is
+    discarded.
+  - **`render.yaml` declares `GA_MEASUREMENT_ID` only in the
+    `rtr-deeplink` (resolver) service block, line 144. The
+    `rtr-deeplink-archive` block never declares it.** That is the whole
+    bug: the 2026-08-17 work correctly added the event calls, but the
+    service that serves `/m/*` has no measurement ID, so the template
+    takes the no-op branch.
+
+  **Why the tests didn't catch it, and this is the reusable part:** the
+  five jsdom tests covering the boot path stub `trackEvent` themselves,
+  so they verify the *call sites* and can never exercise the *template
+  gate* that decides whether `trackEvent` does anything. A green suite
+  and a live page disagreed, exactly the case this repo's "verify
+  in-browser, not just via the API" rule exists for.
+
+  **Fix**: add `GA_MEASUREMENT_ID` (`sync: false`) to the
+  `rtr-deeplink-archive` service block in `render.yaml` and set the
+  value in that service's Render dashboard — the same value the resolver
+  already uses, since it's one GA property. Requires a real deploy to
+  take effect (`sync: false` vars need the value set dashboard-side).
+  **Verify after** by reloading any `/m/` page and confirming
+  `typeof window.gtag === 'function'` rather than by waiting on GA,
+  which lags.
+
+  **One residual nobody should paper over:** if GA never loads on `/m/*`
+  pages, the 22 `page_view`/`first_visit` events GA *does* attribute to
+  `/m/` paths have no confirmed source. Checked and ruled out: nothing
+  in `app/static/`, `archive/static/` or either template calls
+  `history.pushState`/`replaceState`, so client-side URL rewriting on a
+  GA-enabled resolver page isn't the explanation. Worth resolving when
+  the fix lands — if those 22 disappear or change character afterwards,
+  that itself identifies where they were coming from.
+
+  **The finding that matters most, and it comes from joining GA to the
+  Render logs.** The Archive's logs show a *heavy, systematic crawl* of
+  `/m/`, `/j/`, `/meetings?jurisdiction=`, `/feed.xml?jurisdiction=` and
+  **both** `transcript.txt` and `transcript.srt` per meeting. GA shows
+  ~14 human views in the same period. Crawlers don't execute JS, so
+  they generate no GA events — which means **essentially all of the
+  month's 12.46 GB of HTTP responses is crawler traffic, and every byte
+  of it is currently billed twice** through the resolver→Archive public
+  proxy. That materially strengthens the private-networking entry under
+  **Ship next**: it isn't trimming the cost of serving users, it's
+  removing pure waste. It also raises a question nobody has asked —
+  whether `transcript.txt`/`transcript.srt` should be crawlable at all,
+  which is **not** covered by the existing `noindex`/sitemap standing
+  decision (that one is about *indexing* `/m/` and `/j/` pages, a
+  different question from letting crawlers pull both full-transcript
+  formats for every meeting).
 
 ### Production actions only Ryan should take
 
-- **[HUMAN] `[LOGIN]` Render "HTTP health check failed" on
-  `rtr-deeplink-archive` has recurred twice — 2026-08-19 13:17:28 UTC
-  and 2026-08-20 21:38:36 UTC, ~32h apart — promoted from
-  `CLAUDE_INBOX_TRIAGE.md`.** Distinct from the already-diagnosed
-  2026-08-17 instability cluster below — a plain health-check timeout
-  with no matching root cause identified yet. Two occurrences ~32h apart
-  is mild evidence of a pattern, not proof. Worth a quick check of the
-  Archive's Render logs/memory graph around both timestamps.
-- **[HUMAN] `[LOGIN]` Render account bandwidth limit reached — real,
-  current cost exposure, found by the inbox-triage Routine's 2026-08-18
-  run.** Render's Hobby-plan 5GB/month bandwidth (shared across all
-  three services) hit "Approaching" (>70%) 2026-08-17 12:13 UTC, then
-  "Reached" (100%) 2026-08-18 12:17 UTC — ~30% of a month's allowance in
-  ~24 hours. Overage auto-bills at $15/100GB, uncapped, resets monthly.
-  **Open question for Ryan**: expected (real traffic growth from the
-  first-10 outreach/clips campaign) or something to check (a
-  proxy/redirect loop, or the Archive serving full video bytes through
-  its proxy rather than just embedding)? Render's dashboard bandwidth
-  breakdown answers this in under a minute but needs the actual login.
-- **[HUMAN] `[LOGIN]` Archive service instability, 2026-08-17
-  ~14:10-22:04 UTC — mostly already-explained, two pieces aren't.**
-  Sentry showed a cluster (unclosed connections, a proxy `TimeoutError`,
-  a `RuntimeError` on Render's own health probe, a DB-shutdown error),
+- **[HUMAN] `[LOGIN]` Archive service instability, 2026-08-17 —
+  part (a) answered 2026-08-22, part (b) still open.** Sentry showed a
+  cluster (unclosed connections, a proxy `TimeoutError`, a
+  `RuntimeError` on Render's own health probe, a DB-shutdown error),
   most of it explained by `BACKLOG_DONE.md`'s already-documented WO-10
   outage that evening (PR #116's model column deploying ~13 minutes
-  ahead of its `ALTER TABLE`). **Two things aren't accounted for**: (a)
-  four separate memory-limit restart emails fired 14:10–17:08 UTC, the
-  first nearly 2.5 hours **before** the first schema-read error (16:26
-  UTC) — an OOM-driven trigger *preceding* the cascade is a real,
-  unexplained possibility; (b) WO-10's own fix deploy (PR #156) itself
-  failed to deploy at 23:54:28 UTC the same evening, though
-  `render.yaml` on `main` today confirms a later attempt succeeded.
-  **Open question for Ryan**: worth a look at Render's memory graph for
-  14:00-17:00 UTC that day.
+  ahead of its `ALTER TABLE`). **(a) Resolved — the OOM did precede the
+  schema errors, and it caused them.** See `BACKLOG_DONE.md`'s "Archive
+  memory graph, 2026-08-17" entry for the read of Render's own graph.
+  **(b) Still open, needs the Events tab, not the metrics tab:** WO-10's
+  own fix deploy (PR #156) failed to deploy at 23:54:28 UTC =
+  **16:54 PT** the same evening, though `render.yaml` on `main` today
+  confirms a later attempt succeeded. The memory graph says nothing
+  about a failed *build*; this needs `rtr-deeplink-archive` → **Events**,
+  filtered to 2026-08-17 late afternoon PT, to see what the failure
+  actually was. Cheap to fold into the health-check-gate Events check
+  above, since that's the same tab.
 - **[HUMAN] `[WAIT]` 10 YouTube-backed pages still hold roll-up
   duplication — the apply ran 2026-08-22 and rate-limited on exactly
   those.** 14 of 25 rewritten and verified live; **every non-YouTube
@@ -605,64 +983,126 @@ convenient.
   them, so deleting it gives them another chance. Do (1) before (2) if
   possible, so the retry produces diagnosable failures rather than
   another opaque count.
-- **[HUMAN] Stray demo-shaped tables found in `rtr_deeplink_db` during
-  the 2026-08-17 PITR test-restore verification.** The resolver's
-  `rtr_deeplink_db` (real data: 355 rows) *also* contains a full set of
-  Archive-shaped tables (`meeting_pages`, `transcript_versions`, etc.)
-  holding only 4 old demo rows dated 2026-08-12 — entirely separate from
-  the real Archive data in `rtr_archive`. Nothing in
-  `app/db/models.py` defines these table names, so nothing in the
-  resolver's live code should touch them. Root cause not established —
-  worth checking `rtr_deeplink_db`'s own `alembic_version` history and
-  git blame around when `archive/db` was split from a shared database.
-  Timing is odd: the demo data postdates both services adopting Alembic,
-  so "leftover from before the split" doesn't cleanly fit. **Not urgent,
-  not touched** — any cleanup is a real, destructive production action
-  and should only be done by Ryan after the root cause is understood.
+- **[HUMAN] Stray Archive-shaped tables in `rtr_deeplink_db` — root
+  cause established 2026-08-22; only the cleanup decision is left.** The
+  resolver's `rtr_deeplink_db` (real data: 355 rows) also holds a full
+  set of Archive-shaped tables (`meeting_pages`, `transcript_versions`,
+  …) containing 4 demo rows dated **2026-08-12**, entirely separate from
+  the real Archive data in `rtr_archive`. Nothing in `app/db/models.py`
+  defines those names, so no resolver code touches them.
+
+  **What put them there — a local Archive run pointed at the resolver's
+  database.** On 2026-08-12 every guard that would now prevent this was
+  still absent, and each landed *after* that date:
+  - `archive/db/engine.py`'s `init_models()` called `create_all()`
+    **unconditionally, including on Postgres**, until `6e722be`
+    (WO-10 / PR #156, **2026-08-17 16:53 PT**) gated it to SQLite. So on
+    08-12, starting the Archive against *any* Postgres would create its
+    whole table set there.
+  - The `EXPECTED_DB_HOST` assertion that now catches a mis-pointed
+    `DATABASE_URL` landed in `a006062` (WO-4, **2026-08-17 05:53 PT**) —
+    also after.
+  - And `CLAUDE.md` already documents the mechanism that supplies the
+    wrong URL silently: `load_dotenv()` is called with no explicit path,
+    so it **cwd-walks up and finds the shared checkout's `.env`** —
+    meaning an Archive process started without an explicit
+    `DATABASE_URL` connects to whatever that `.env` names, which in this
+    checkout is `rtr_deeplink_db`.
+
+  That resolves the entry's own puzzle — "the demo data postdates both
+  services adopting Alembic, so *leftover from before the split* doesn't
+  cleanly fit." It isn't leftover from the split; it's a local run five
+  days before the gate existed. **Circumstantial supporting detail, not
+  proof**: `66fa9ac` (2026-08-13) added a bulk backfill sweep over
+  archived-page data — exactly the kind of work that involves running
+  `archive.main:app` locally the day before.
+
+  **Why this now argues for cleanup rather than leaving it.** The
+  original entry's caution was right when the cause was unknown, but the
+  tables' *continued existence* is itself the remaining hazard:
+  `create_all()` no longer creates tables on Postgres, so a future
+  mis-pointed local Archive run would fail loudly on missing tables —
+  **except in `rtr_deeplink_db`, where the tables already exist and the
+  write would silently succeed.** Dropping them restores fail-loudly
+  behaviour for the one database where it's currently absent.
+  **Decided 2026-08-22: drop them, with a backup first.** Ryan runs it;
+  this is a destructive production action and stays a `[HUMAN]` item
+  until it's done. Order of operations:
+  1. **Take a PITR marker / backup of `rtr_deeplink_db`** before
+     touching anything.
+  2. **Confirm the 4 rows are the demo data** and that nothing
+     references those tables — `app/db/models.py` defines none of these
+     names, so no resolver code path should, but confirm against the
+     live table list rather than the model file alone.
+  3. **Drop the Archive-shaped tables from `rtr_deeplink_db` only.**
+     **Never `rtr_archive`** — that holds the real corpus and has the
+     identical table names, which is precisely what makes this
+     dangerous. Double-check the connection target immediately before
+     executing, not just when opening the session.
+  **Afterwards, the fail-loudly property is restored**: with
+  `create_all()` gated to SQLite, a future mis-pointed local Archive run
+  will error on missing tables everywhere, instead of silently writing
+  into the one database where they still exist.
 
 ### Decisions about already-live content
 
-- **[HUMAN] 4 already-live default transcripts are real, confirmed
-  candidates for the phase-cancellation hallucination bug fixed
-  2026-08-16 (or a related symptom) — a real, open decision, not code.**
-  See `BACKLOG_DONE.md`'s matching entry for the full
-  `GET /internal/transcription/hallucination-candidates` writeup (5 total
-  candidates found; the 5th, Port Coquitlam BC, was already
-  re-transcribed and promoted). The remaining 4, still `is_default=True`,
-  each spot-checked live and confirmed real (not heuristic
-  false-positives): `revised-long-beach-ca-2026-08-04-...` (14+
-  consecutive bare `"."` segments at the start), `san-diego-county-ca-
-  2026-06-24-board-of-supervisors` (same `"."`-loop symptom),
-  `meeting-38ca49` / Sacramento County (classic Whisper stock-phrase
-  hallucination on quiet audio at the start, then recovers), and
-  `kitchener-2026-05-05-heritage-kitchener-committee` (Welsh, garbled
-  throughout with a ~500-char repeated-`w` run and a repetition loop).
-  Deciding what (if anything) to re-transcribe is the user's call.
-- **[HUMAN] 118 already-live transcriptions are real candidates for the
-  seam-duplication bug fixed 2026-08-16 — a real, open decision, not
-  code.** Full root-cause/fix writeup in `BACKLOG_DONE.md`. The fix stops
-  future multi-chunk transcriptions from duplicating seams but doesn't
-  touch what's already live, deliberately. `GET /internal/transcription/
-  completed-multichunk` (token-gated) returns the current list any time.
-  Two open sub-questions: (1) re-transcribe all 118, a prioritized
-  subset, or none until reported; (2) this list only covers cloud-worker
-  jobs — `scripts/transcribe_backlog_locally.py`'s separate local-Mac
-  runs (which never touch `transcription_jobs`) are a second,
-  currently-uncounted population also affected.
-- **[HUMAN] The WO-36 fix surfaces a much larger already-live
-  hallucination backlog — a real, open decision, not code.**
-  `GET /internal/transcription/hallucination-candidates` re-scores stored
-  segments, so pre-fix pages get re-scored on next call. Measured: of 304
-  real `source=="transcribed"` transcripts, **74 (24%) contain a
-  repetition loop the new rule flags**, pushed with no warning at the
-  time — every one hand-inspected was a genuine degenerate loop, not a
-  false positive (common shapes: a "Thank you."/"you" loop across a
-  recess, a fixed-cadence single-word tile, the `initial_prompt`
-  vocabulary itself leaking back out as text). Same class of decision as
-  the 4-candidate entry above, much bigger — deciding what's worth
-  re-transcribing (vs. warning in place, vs. leaving) is the user's call.
-  The prevention half is already live; this is a pre-2026-08-18 backlog,
-  not an ongoing rate.
+- **[JUST-DO-IT] `[BIG]` Repair the three already-live transcript-defect
+  populations *in stored segments*, don't bulk re-transcribe — decided
+  by Ryan 2026-08-22.** This supersedes three separate `[HUMAN]`
+  entries that each asked "re-transcribe all / a subset / on report
+  only". **That framing was wrong**, and the reasoning is worth keeping
+  because it applies to any future defect of this kind:
+
+  - **Seam duplication (118 candidates) was a *stitching* bug, not a
+    transcription bug.** The individual chunks were correct; the worker
+    joined them wrong. Everything needed to repair it is already in the
+    stored segments. Re-running Whisper would spend the app's single
+    most expensive operation to reproduce chunks that were never wrong.
+  - **Repetition loops (74, i.e. 24% of 304 real `source=="transcribed"`
+    transcripts) come from the *audio* — silence, music, a recess.**
+    Re-running the same model on the same audio reproduces the same
+    loop. WO-36's detector already knows exactly where each run is;
+    collapsing it in stored segments is the fix.
+  - **Only the 4 confirmed hallucinated defaults need a real re-run**,
+    and only one of them fully: **Kitchener** is garbage end-to-end and
+    should be re-transcribed with a **forced `en` language hint** — its
+    real defect was language misdetection, which WO-34's whole-transcript
+    language voting now prevents going forward. The other three just
+    need the bad stretch **trimmed** (Sacramento, for instance, recovers
+    cleanly at ~6:30).
+
+  **The cost check that settles it**: bulk re-transcribing ~190 meetings
+  at a typical 2-4 hours each is **500+ hours of audio** through the
+  worker — days of wall-clock on the $25/mo instance — to produce output
+  that would be mostly identical to what's already stored.
+
+  **The work, in order:**
+  1. **A stored-segment repair script for seam-dup + loops**, in the
+     same shape `scripts/dedupe_rollup_transcripts.py` just established:
+     dry-run report → confidence bands → Ryan runs `--apply`. No
+     compute, no source fetch.
+  2. **Re-transcribe Kitchener only** (local script, forced English);
+     trim the other three.
+  3. **Re-transcription on report** for anything the repair can't fix.
+  4. **Extend the repair to the uncounted local-batch population by
+     scanning stored segments, not job records.** This is the part the
+     old framing couldn't reach at all:
+     `scripts/transcribe_backlog_locally.py`'s local-Mac runs never
+     touch `transcription_jobs`, so any job-record-based list misses
+     them by construction. Scanning segments makes that population
+     visible for free.
+
+  **Knock-on:** this makes the reader-facing low-confidence flag
+  (currently in `CLAUDE_BACKLOG.md`) *less* urgent — the visible damage
+  gets **repaired** rather than labelled. Worth re-reading that idea
+  after the repair lands rather than building it first.
+
+  Source detail for all three populations — the confirmed 4 with their
+  individual symptoms, the 118-candidate endpoint
+  (`GET /internal/transcription/completed-multichunk`), and the 74/304
+  measurement — is preserved in `BACKLOG_DONE.md`'s matching WO-36 and
+  seam-duplication entries.
+
 - **[HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
   been fired end to end.** The code path exists
   (`archive_client.delete_account_data()` → bearer-gated
@@ -676,23 +1116,90 @@ convenient.
 
 ### Product calls
 
-- **[HUMAN] `legistar.py`'s `_try_fallback_video_link()` still prefers
-  the delegated platform's *title* over the Legistar page's own body
-  name** — unlike date and jurisdiction, which now prefer the page
-  outright. Found 2026-08-21 alongside the WO-30 date bug: Baltimore's
-  real hearing renders as CharmTV's YouTube title (with a redundant
-  embedded date) rather than Legistar's own body name. Not obviously a
-  bug — the existing `_looks_like_raw_filename()` heuristic exists
-  precisely because a delegated title is sometimes *better* (NYC/Viebit's
-  is a raw `.mp4` filename), and a channel name + date is arguably more
-  informative than a bare body name. Needs a product call on which reads
-  better, not a code fix decided in isolation.
-
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
 
 Reproduced against real data, but the fix is a genuine open question.
 Jurisdiction-extraction bugs live under **Platform & jurisdiction
 coverage** instead.
+
+- **[NEEDS-AUDIT] Render "HTTP health check failed" on
+  `rtr-deeplink-archive` (2026-08-19 13:17:28 UTC, 2026-08-20 21:38:36
+  UTC) — logs read 2026-08-22, root cause now has a real candidate.**
+  Promoted from `CLAUDE_INBOX_TRIAGE.md`; distinct from the 2026-08-17
+  instability cluster, which was memory. **This is not that.**
+
+  **Confirmed from the Archive's application logs in both windows:**
+  - A real instance restart each time — `Instance
+    srv-d9ras3ijnfac73f9ps5g-qv7ln restarted` (08-19) and
+    `…-7nlhh restarted` (08-20).
+  - **The shutdown is graceful, not a kill**: `Shutting down` →
+    `Waiting for application shutdown.` → `Application shutdown
+    complete.` → `Finished server process`. An OOM kill is `SIGKILL`
+    and produces none of that. This is `SIGTERM`, handled cleanly.
+  - **Zero errors.** No traceback, no OOM line, no 5xx. `/api/health`
+    returns `200 OK` continuously right up to the shutdown.
+  - Traffic in both windows is a **systematic crawl**, not human
+    browsing: sequential `/m/{slug}` pages, then `/j/{hub}` pages, then
+    `/meetings?jurisdiction=…` **and** `/feed.xml?jurisdiction=…` for
+    the same jurisdictions, `/meetings?page=2,3,36`, and **both
+    `transcript.txt` and `transcript.srt`** for the same meeting
+    back-to-back.
+  - In the 08-20 window, two expensive internal endpoints were called
+    from an external IP **immediately before the shutdown**:
+    `/internal/transcript-quality-audit?list_outcomes=…` and
+    `/internal/transcription/hallucination-candidates`.
+
+  **The candidate diagnosis, and it is consistent with all of the
+  above.** The graceful shutdown is the *consequence*, not the cause:
+  Render restarts an instance whose health check fails, and it does so
+  with `SIGTERM`. So the question is only why `/api/health` stopped
+  answering in time, and three things stack:
+  1. **The Archive runs a single uvicorn process** — `render.yaml`'s
+     `startCommand` is `uvicorn archive.main:app --host 0.0.0.0 --port
+     $PORT`, with no `--workers`. One event loop serves everything, so
+     any slow query stalls every other request including the health
+     probe.
+  2. **`/api/health` itself is O(n).** `archive/main.py`'s `health()`
+     runs `select(func.count()).select_from(MeetingPage)` on **every
+     probe** — a `SELECT count(*)` sequential scan over a table now
+     1,200+ rows and growing with every ingest. And Render probes
+     relentlessly: `/api/health` lines outnumber all real traffic by
+     roughly **30:1** in these logs.
+  3. **Load was genuinely high in both windows** — a full-site crawl,
+     plus (08-20) two internal audit endpoints whose cost is already a
+     known concern elsewhere in this file.
+
+  **What is NOT yet established, and shouldn't be asserted:** the pasted
+  logs carry no timestamps, so the probe *rate* is inferred from line
+  density rather than measured, and nothing times the count query in
+  production. This is a strong hypothesis, not a diagnosis.
+
+  **Fix shape, if it holds.** The health check's expense is the cheapest
+  thing to remove and the fix must preserve its documented intent —
+  its docstring records that during the 2026-08-09 incident a bare
+  `SELECT 1` would still have reported "ok" while every real query
+  failed, so it counts rows deliberately, to catch a missing or
+  misnamed table. **`select(MeetingPage.id).limit(1)` keeps exactly that
+  property** (still fails on a missing/misnamed table, still can't
+  report "ok" when the DB is unreachable) at O(1) instead of O(n).
+  Separately worth considering: `--workers 2` so one slow request
+  can't starve the probe.
+
+  **Two incidental findings from the same logs**, both feeding other
+  entries:
+  - **Every non-probe request arrives from one upstream IP**
+    (`74.220.48.160` on 08-19, `74.220.48.190` on 08-20 — same /24).
+    Real end users don't share an IP; the resolver proxying the whole
+    public site does. Independent support for the double-billing entry
+    under **Ship next**.
+  - **The crawler pulls both `transcript.txt` and `transcript.srt` per
+    meeting, plus a per-jurisdiction `feed.xml` and `/meetings` page.**
+    Those are the largest payloads the site serves, and every one of
+    them is currently billed twice. That is a plausible large share of
+    the month's 12.46 GB of HTTP responses, and it argues the
+    private-networking fix is worth more than the raw byte count first
+    suggested.
+
 
 - **[NEEDS-AUDIT] A chunk truncated only at its *tail* still passes the
   decodability guard — confirmed with real ffmpeg 2026-08-21.** The
@@ -872,6 +1379,33 @@ the real calendar; the Archive's 2 old Viebit clips under a
 from a live check), but the Legistar calendar itself is still untried.
 
 ### Jurisdiction extraction & backfill
+
+- **[JUST-DO-IT] A land acknowledgement became a jurisdiction, and it
+  has a live public URL.** Found 2026-08-22 in Search Console's
+  non-indexed URL list — this is a real page Google crawled:
+
+  `/j/oshawa-is-situated-on-lands-within-the-traditional-and-treaty-territory-of-the-michi-saagiig-and-chippewa-anishinaabeg-and-the-signatories-of-the-williams-treaties`
+
+  The correct jurisdiction is **Oshawa, ON**. The extractor took the
+  land-acknowledgement paragraph that follows the city name on the
+  source page and used the whole thing. Distinct from the existing
+  bled-subdomain and single-word-tail entries below: those truncate or
+  merge a *name*, this swallows a **sentence**, so a length ceiling or a
+  "stop at the first sentence boundary" guard would catch it where the
+  existing name-shaped heuristics don't.
+  **Worse than a cosmetic slug**: a `/j/` hub is a real indexable page
+  and the meetings filed under it are grouped by this string, so Oshawa's
+  meetings are not discoverable under "Oshawa". Two more from the same
+  list share the shape at smaller scale —
+  **`/j/cambridge-council-meeting-agenda-meeting`** (a *meeting title*
+  captured as the jurisdiction) and **`/j/snoqualmie-washington-meetings`**
+  (a trailing `-meetings` suffix bled in, which also appears in three
+  `/m/` slugs, e.g.
+  `/m/snoqualmie-washington-meetings-city-council-regular-meeting`).
+  **Check whether an acknowledgement-shaped capture exists elsewhere**
+  before fixing — Canadian municipal sites carry these routinely, so
+  Oshawa is unlikely to be the only one, and the fix should be validated
+  against however many there are rather than this single row.
 
 - **[JUST-DO-IT] The originally-reported eScribe bled-subdomain rows
   (Bonnyville AB, Grand Valley ON, Point Edward ON, Boulder County CO,
@@ -1219,7 +1753,60 @@ from a live check), but the Legistar calendar itself is still untried.
 
 ## Reliability, ops & cost
 
-### Media-source reliability
+### `[JUST-DO-IT]` Running out of Render *pipeline minutes* silently blocked deploys on every service — mostly fixed 2026-08-22
+
+On **2026-08-19 13:23 PT** all three web/worker services refused the same
+auto-deploy of `8af3276` (PR #199) with **"Your workspace has run out of
+pipeline minutes."** The commit timestamp matches to the second, so this
+was the auto-deploy being refused, not a build failing on merit. The next
+commit landed 18:51 PT, so the blackout ran roughly **five and a half
+hours, during which every merge to `main` silently did not reach
+production** — no alert, no failed CI, no visible symptom. Every "the fix
+is deployed" assumption in this repo rests on merge≈deploy, and for those
+hours it wasn't true. `BACKLOG_DONE.md`'s WO-7 (Sentry/uptime/
+failure-visible cron) covers *runtime* failures thoroughly and does not
+cover this at all.
+
+**Root cause measured, not guessed:** **43 commits in the 14 days to
+2026-08-22 changed nothing but an auto-transcription queue file** — **17
+granicus-only, 26 tier3-only**, typically a 12-line deletion — each
+rebuilding **all four** services. ~170 builds for data-only commits.
+
+**Fixed 2026-08-22** by adding both
+`scripts/*_auto_transcription_queue.txt` files to `render.yaml`'s
+`buildFilter.ignoredPaths`, **with one deliberate exception**:
+`rtr-deeplink-archive` omits the **tier-3** file, because it is the one
+service that reads it at runtime (`archive/main.py`'s
+`_TIER3_QUEUE_FILE` / `_tier3_queue_remaining()` line-counts the file on
+disk for the ops report). Ignoring it there would freeze that number at
+whatever the last real deploy shipped, with nothing to signal the stat
+had gone stale. This is the first time the four `ignoredPaths` lists are
+*not* identical; both the top-of-file comment and the block itself now
+say so.
+
+**Effect: ~146 of ~172 builds per fortnight removed (~85%).** The
+residual is the 26 tier3-only commits still rebuilding the Archive alone.
+
+**Ryan confirmed 2026-08-22** the workspace was upgraded on 08-19 to
+restore pipeline minutes — so the meter didn't reset, the *cap* rose, and
+**812 / 1,000** was cumulative against the new cap, projecting ~1,145 by
+month end (over again ~08-27/28). The same upgrade explains the bandwidth
+allowance reading 25 GB against the 08-18 alert's 5 GB. **Ryan's stated
+goal is to downgrade again** once build volume is efficient enough, so
+the number to watch is whether this change bends the curve before 08-27.
+
+**Two follow-ups, both optional:**
+- **`[JUST-DO-IT]` Source `_tier3_queue_remaining()` from the database**
+  rather than line-counting a tracked file. Removes the last exception,
+  restores all four lists to lockstep, takes the remaining 26
+  rebuilds/fortnight to zero, and kills a fragile pattern — an ops
+  metric whose freshness silently depends on deploy cadence.
+- **`[LATER]` Path-scope each service's `buildFilter` to the directories
+  it actually ships.** A resolver-only change currently rebuilds both
+  transcription workers. Bigger win than the queue files, entirely
+  unexamined.
+
+### Media-source reliability### Media-source reliability
 
 #### `[NEEDS-AUDIT]` Some old/archived Granicus clips' `chunklist.m3u8` genuinely times out at Granicus's own origin (real 504, not a rate limit)
 
@@ -1408,9 +1995,24 @@ audio or video source was found`. That's where the volume actually is.
   server-rendered match for Google to confirm against `contentUrl`.
   **Fix**: `meeting_page.html` now renders the real URL server-side too
   (a `<source>` for `.m3u8`, `src=` directly for `.mp4`), matching
-  `contentUrl`, while the existing JS playback logic is untouched. **Not
-  yet confirmed on a re-crawl** — Search Console needs to re-index
-  before the flag count can be checked.
+  `contentUrl`, while the existing JS playback logic is untouched.
+  **Re-checked 2026-08-22, one day after the fix: still exactly 947,
+  trend still rising, and `Validation: Not Started`.** An *unchanged*
+  count a day later is uninformative, not negative evidence — Search
+  Console's video-indexing report lags well behind a fix, and the
+  identical figure suggests the report simply hasn't refreshed.
+  **The actionable part is that `Validation: Not Started`**: nobody has
+  asked Google to re-verify, so the wait is currently passive and
+  open-ended. Opening the "Video isn't on a watch page" issue in Search
+  Console and clicking **VALIDATE FIX** makes Google recrawl the
+  affected URLs and report progress, which both shortens the wait and
+  turns "did it work?" into something with a status rather than a
+  number to keep re-reading. Do that before treating the count as
+  meaningful either way.
+  **Also on that report:** the only other row is **"No thumbnail URL
+  provided" — 1 video, flat.** That is a reassuring number given 973
+  cards were stored by the WO-37 backfill; whatever it is, it's a
+  single page, not a systemic gap.
 
 ### `/coverage` as a QA surface
 
@@ -1492,13 +2094,6 @@ Bluesky auto-posting went live 2026-08-21 — a real prod resolve created
 a page and the account made its first real post, confirmed by Ryan (full
 build in `BACKLOG_DONE.md`). Three residuals:
 
-- **[HUMAN] Facet clickability not yet explicitly confirmed.** The first
-  post landed, but whether the `/m/{slug}` permalink renders as a
-  *clickable* link (vs. plain text) is a distinct check on the facet
-  byte-offset math in `_post_to_bluesky()` — Bluesky does no
-  autolinking, so a wrong offset fails silently as dead text. One glance
-  at the live post settles it; can't be checked from a Claude Code
-  sandbox (`bsky.social` is egress-blocked there).
 - **[LATER] The Mastodon client has still made zero real posts** — no
   account exists. Stays flagged schema-verified-but-not-content-verified
   until an account + token exist and one real post is watched, same bar
@@ -1856,10 +2451,25 @@ real work on shipped code rather than a plan.
   still different**: cadence is daily not 6-hourly; no explicit
   "failed in last 48h" or "total meetings on site" count; recipient is
   whatever `AUTO_TRANSCRIPTION_REQUESTER_EMAIL` is set to, not a
-  resolved answer to the three-way "which Ryan address" question (a
-  *third* distinct address in play, alongside `DAILY_REPORT_EMAIL_TO`'s
-  `ryan@how-to-adu.com` default and the `ally@` consolidation target —
-  worth confirming which address before building further).
+  resolved answer to the "which Ryan address" question — **resolved
+  2026-08-22: `ally@redtaperecordings.com`.** All operator/ops reporting
+  consolidates there. Three addresses were in play
+  (`AUTO_TRANSCRIPTION_REQUESTER_EMAIL`, `DAILY_REPORT_EMAIL_TO`'s
+  `ryan@how-to-adu.com` default, and the requested
+  `ryan@redtaperecordings.com`); `ally@redtaperecordings.com` is the
+  answer for all of them.
+  **Two things to get right when applying it.** (1) It's set per-service
+  in the Render dashboard, so changing it means touching
+  `AUTO_TRANSCRIPTION_REQUESTER_EMAIL` on **both**
+  `rtr-transcription-worker` and `rtr-transcription-worker-2` — and
+  those two services differ in *exactly* that variable by design (see
+  `render.yaml`'s comment on the second block), so confirm the change
+  doesn't collapse the distinction they exist to maintain. (2)
+  **`ryan@ally.redtaperecordings.com` is the Resend *sending*
+  subdomain**, not this recipient — they look nearly identical in a
+  config diff and mixing them up would silently break either delivery or
+  reporting. Confirm `ally@redtaperecordings.com` receives mail before
+  switching anything over.
 
   **Real design question worth deciding before building further**:
   `TranscriptionJob` has only `created_at` — no `completed_at`/

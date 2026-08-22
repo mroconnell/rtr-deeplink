@@ -644,6 +644,302 @@ the code?*" habit exists.
   Canada"/" (Canada)" whenever the trailing suffix is a recognized
   Canadian province code, in the same `jurisdiction_display` filter path
   — needs a `CANADIAN_PROVINCE_ABBRS` set shared with the fix above.
+## Render bandwidth: the "limit reached" alert's premise is stale, and the real finding is structural [Done 2026-08-22]
+
+`BACKLOG.md` carried this as **"Render account bandwidth limit reached —
+real, current cost exposure"**, on the inbox-triage Routine's 2026-08-18
+reading: a **5 GB/month** allowance that hit "Approaching" (>70%) on
+2026-08-17 12:13 UTC and "Reached" (100%) on 2026-08-18 12:17 UTC, with
+uncapped $15/100GB overage. **Checked live in the dashboard 2026-08-22 —
+the cost alarm does not hold, and the interesting finding is a different
+one.**
+
+**The numbers, read off Workspace → Billing → Monthly Included Usage:**
+
+| Metric | Value |
+| --- | --- |
+| Included bandwidth | **25 GB** (not 5 GB) |
+| Used this month | **14.54 GB** (~58%) |
+| — HTTP Responses | 12.46 GB |
+| — Service-Initiated | 2.08 GB |
+| — WebSocket Responses | 0 MB |
+| — **Service-Initiated (Private Link)** | **0 MB** |
+
+At 14.54 GB on day 22 of a 31-day month the run-rate is ~20.5 GB, i.e.
+**inside the 25 GB allowance with room to spare — no overage is being
+billed.** Either the workspace tier changed since 2026-08-18 (the
+`starter`→`standard` Archive upgrade the same week is the obvious
+candidate) or the 5 GB figure was wrong to begin with; the dashboard
+doesn't say which, and it no longer matters for the decision.
+
+**The real finding, which the original entry guessed at and got right.**
+It asked whether this was organic traffic "or a proxy/redirect loop." It
+is neither exactly, but much closer to the second: **the resolver
+proxies essentially the entire public site to the Archive over the
+public internet, so every byte is billed twice.**
+`app/main.py:1527-1593` routes `/m/*`, `/meetings`, `/coverage`,
+`/state/*`, `/j/*`, `/archive-static/*`, `/sitemap.xml` and `/feed.xml`
+through `_proxy_to_archive()`. Two dashboard facts confirm the hop takes
+the billed path rather than Render's free private network:
+
+1. `ARCHIVE_BASE_URL` is an `https://…onrender.com` URL — the public
+   hostname (shape confirmed by Ryan; value not read).
+2. **Private Link bandwidth is `0 MB`** — nothing in the workspace uses
+   private networking at all, so there is no chance the hop is quietly
+   taking it.
+
+So of the 12.46 GB of HTTP Responses, roughly half is plausibly the
+Archive answering the resolver rather than anyone answering a user.
+**Inferred, not measured** — Render's breakdown is by category, not by
+service, so a per-service split would be needed to state it as fact.
+
+**Left as a live `[JUST-DO-IT]` in `BACKLOG.md`** ("Every byte the
+public site serves is billed twice"), with the two preconditions that
+have to be checked before flipping the env var — region parity, and
+cookie/`If-None-Match` forwarding for the Clerk-authenticated proxied
+routes.
+
+**Process note worth keeping:** an automated alert's *stated limit* is
+not a fact about the account. This entry sat for four days as "real,
+current cost exposure" on a 5 GB premise that was off by 5×, and the
+urgency framing came entirely from that number. Same lesson as the
+resolver-Alembic "never stamped in prod" claim in `CLAUDE.md`: when a
+doc asserts a production fact nothing in the repo can verify, go read
+the actual value before acting on it.
+
+## Archive memory graph, 2026-08-17: the OOM preceded the schema errors, and caused them [Done 2026-08-22]
+
+Closes part (a) of `BACKLOG.md`'s "Archive service instability,
+2026-08-17" entry, which had stood as "an OOM-driven trigger *preceding*
+the cascade is a real, unexplained possibility." **It preceded it, and
+the relationship is causal rather than coincidental.** Part (b) of that
+entry (PR #156's own failed deploy at 16:54 PT) is untouched by this and
+stays open — a memory graph says nothing about a failed build.
+
+**The documentary half, already in this repo but never connected.**
+`render.yaml:170` records the `starter`→`standard` upgrade after an OOM
+"7:10-7:11 AM"; the instability entry records four memory-limit restart
+emails at 14:10–17:08 UTC. **07:10 PT = 14:10 UTC — the same event, in
+two timezones.** This file's "Search: move to a materialized/indexed
+column" entry root-causes it: `list_pages()` loaded every
+`TranscriptVersion.segments` blob into memory on any keyword search, hit
+live via `/meetings?q=flock`. That OOM is what triggered the emergency
+materialized-column work, shipped the same day as **PR #116** — and PR
+#116 is precisely the deploy whose model column landed ~13 minutes ahead
+of its `ALTER TABLE`, producing the first schema-read error at 16:26 UTC
+(09:26 PT). So the chain is: **unbounded search memory → OOM →
+emergency fix → rushed deploy → schema outage.** One causal sequence,
+not two unrelated failures sharing an afternoon.
+
+**Render's own memory graph confirms it** (read live 2026-08-22, whole
+day, `rtr-deeplink-archive` — identifiable by `Limit 2 GB`, i.e.
+`standard`; the resolver is `starter`/512 MB). Percentages below are
+read off the chart, so treat them as approximate:
+
+- Flat ~7-10% (≈150-200 MB) from midnight to ~06:15 PT.
+- Instance churn begins ~06:15-07:15 PT, then excursions: **~62%
+  (≈1.25 GB) around 07:15**, **~74% (≈1.5 GB) around 08:10-08:30**.
+- A second, higher cluster **09:40-10:10 PT: ~52%, ~85% (≈1.7 GB),
+  ~55%** — straddling the 09:26 PT first schema error.
+- **Flat ~7-15% for the remaining ~11 hours**, through to 21:42 PT.
+- Many colour changes across 06:15-10:15 (each colour a new container),
+  consistent with the four restart emails.
+
+**Three things follow from that shape:**
+
+1. **The timing question is settled.** Excursions start ~07:15 PT,
+   roughly **2¼ hours before** the 09:26 PT schema error, exactly as the
+   restart emails implied.
+2. **On `starter` these were unsurvivable, which is why the upgrade was
+   forced.** Peaks of 1.25-1.7 GB are **2.4×-3.3× the old 512 MB
+   limit** — every one of those requests was a guaranteed OOM kill on
+   the old plan. (Suggestive but not asserted: the graph draws a dashed
+   horizontal marker at ~25% across the morning, and 512 MB is exactly
+   25% of 2 GB.)
+3. **The materialized-column fix demonstrably worked.** After ~10:15 PT
+   there is not one excursion in eleven hours, against a pre-fix
+   morning that produced six. That's the strongest available evidence
+   the fix addressed the real cause and not a symptom.
+
+**Still true, and worth not misreading:** `render.yaml`'s comment that
+`standard` "buys headroom while that's fixed properly; it doesn't fix
+the underlying unbounded memory use" was accurate when written — the
+pre-fix workload reached ~85% of even the 2 GB limit, i.e. ~15%
+headroom. Post-fix baseline is ~7-10%, so the headroom is real *now*,
+but it comes from the fix, not from the plan.
+
+**Method note, corrected:** the narrow range first tried returned an
+empty graph, which briefly looked like a retention limit. It wasn't —
+**Render's custom range field is `HH:MM:SS`**, and `6:12 AM` entered as
+`00:06:12` parses as six minutes past midnight. The same slip happened
+again on the logs tab before it was spotted. Retention was never the
+problem (14 days are available); the range was just pointing at the
+wrong hour. Enter `06:12:00`, not `00:06:12`.
+
+## Bluesky facet byte-offset math is correct — 21/21 posts, verified programmatically [Done 2026-08-22]
+
+The open question was whether `_post_to_bluesky()`'s facet byte-offset
+arithmetic actually produces a *clickable* `/m/{slug}` permalink.
+Bluesky does no autolinking, so a wrong offset fails silently as dead
+plain text — the post still lands, it just becomes useless.
+
+**Confirmed twice, by different means.**
+
+1. **Visually (Ryan, live):** the permalinks render blue and tappable,
+   and following one lands on the real page
+   (`/m/solano-county-ca-2026-08-04-board-of-supervisors-on-2026-08-04-9-00-am`).
+2. **Programmatically, which is the stronger check** — via the public
+   AT Protocol appview, no auth required:
+
+   ```
+   curl "https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed\
+   ?actor=did:plc:tb2cmjmhtllk6ljxa65oyd7f&limit=100"
+   ```
+
+   **21 of 21 posts carry a `app.bsky.richtext.facet#link` feature**, and
+   for every one the text slice named by the facet's
+   `byteStart`/`byteEnd` is **byte-identical to the facet's `uri`**. That
+   is the exact property the offset math has to satisfy, checked against
+   every post rather than one.
+
+**Two incidental notes:**
+- The truncation visible in the Bluesky client
+  (`redtaperecordings.com/m/solano-cou…`) is **purely client-side
+  rendering**. The stored record's display text is the full URL — there
+  is no truncation bug to chase.
+- The account's entire history is **21 posts spanning 2026-08-21
+  20:22:55Z → 2026-08-22 12:59:28Z**, i.e. auto-posting began ~17 hours
+  before this check, at roughly 30 posts/day. Small enough that the
+  "only page *creation* triggers a post" residual (still open in
+  `BACKLOG.md`) hasn't yet had a chance to matter.
+
+**Method note that retires a stale constraint:** the entry said this
+"can't be checked from a Claude Code sandbox (`bsky.social` is
+egress-blocked there)." That's true of `bsky.social`, but
+**`public.api.bsky.app` is reachable** and serves the full post records
+including facets without authentication. Any future Bluesky content
+check — post text, facets, engagement counts, posting cadence — can be
+done directly rather than by asking Ryan to look. `resolveHandle` maps
+the handle to the DID (`com.atproto.identity.resolveHandle`); note that
+`com.atproto.repo.listRecords` returns `MethodNotImplemented` on that
+host, so use `app.bsky.feed.getAuthorFeed`.
+
+## P5: the `send-search-alerts` cron really does send real emails [Done 2026-08-22]
+
+The workflow had reported success daily since 2026-08-13, but nobody had
+opened an inbox to confirm an actual email existed. **Confirmed by
+searching the real mailbox 2026-08-22** — they arrive **daily, around
+23:47–23:50 UTC**, from `ryan@ally.redtaperecordings.com`, with real
+personalised content (`Hi Ryan,`), a real matched meeting, its
+jurisdiction and date, and a quoted transcript snippet. Eight
+consecutive days verified:
+
+| Date (UTC) | Subject |
+| --- | --- |
+| 08-21 23:50 | `Somebody said ""Neighborhood character" or "Character of the neighborhood"" (+12 more)` |
+| 08-20 23:51 | `Somebody said ""affordable housing"" (+13 more)` |
+| 08-19 23:48 | `Somebody said ""affordable housing"" (+38 more)` |
+| 08-18 23:49 | `Somebody said ""affordable housing"" (+11 more)` |
+| 08-17 23:48 | `Somebody said ""data center"" (+30 more)` |
+| 08-16 23:47 | `Somebody said ""data center"" (+61 more)` |
+| 08-15 23:47 | `Somebody said ""data center"" (+124 more)` |
+| 08-14 23:49 | `Somebody said ""data center"" (+6 more)` |
+
+So the whole P5 chain is real: cron fires, `run_search_alerts()` finds
+new matches, `compose_search_alert_digest()` renders them, Resend
+delivers, and the digest genuinely bundles many matches into one email
+rather than sending one per match — the explicit design decision in
+`archive/search_alerts.py` is working as intended in production.
+
+**Two things this surfaced that the check wasn't looking for:**
+
+1. **A real copy bug in the subject line** — the doubled quotes visible
+   in every phrase-search row above. Root-caused to
+   `archive/utils/email.py`'s `_digest_subject()` and filed as its own
+   `[JUST-DO-IT]` entry in `BACKLOG.md`.
+2. **Every one of these went to `ryan@how-to-adu.com`** — i.e. to the
+   operator's own saved searches. Nothing here demonstrates a *user*
+   receiving an alert, because there don't appear to be external users
+   with saved searches yet. That's consistent with the same day's GA
+   finding (~14 human `/m/*` page views in 30 days, and the
+   `submit_meeting_url` spike being Ryan's own manual entry) and it's
+   the honest scope of what "P5 confirmed" means: the machinery works
+   end to end; it has not yet been exercised by anyone outside the
+   project.
+
+**Method note:** this was answered by searching the mailbox directly
+rather than asking Ryan to hunt for one email — the subject shape came
+from reading `_digest_subject()` first, which is what made the search
+query precise enough to find them among 201 loosely-matching threads.
+
+## Sentry: a real raised exception does land in the dashboard — all three services confirmed [Done 2026-08-22]
+
+WO-7's own acceptance criterion, left unrun since 2026-08-16: `SENTRY_DSN`
+was live on all three services, but nobody had watched a real exception
+arrive. **Checked in the dashboard 2026-08-22 (Ryan, live) — confirmed,
+and confirmed for each service separately**, which is the part that had
+never been established:
+
+- **Resolver (`rtr-deeplink`)** — `PYTHON-FASTAPI-Q`,
+  `aiohttp.ClientPayloadError` raised unhandled out of `app/main.py`'s
+  `_proxy_to_archive()` → `body_iterator()`, 2026-08-18 21:11 UTC
+  (already written up in this file's "response body started streaming"
+  entry). Unhandled ASGI capture, resolver-side code.
+- **Archive (`rtr-deeplink-archive`)** — `PYTHON-FASTAPI-X`,
+  `TypeError: '>' not supported between instances of 'NoneType' and
+  'int'`. Tags read live: `handled: no`, `mechanism: starlette`,
+  `environment: production`, `url:
+  https://rtr-deeplink-archive.onrender.com/internal/thumbnails/backfill`,
+  `server_name: srv-d9ras3ijnfac73f9ps5g-…`. This is the strongest single
+  data point — a genuinely unhandled exception, caught by the ASGI
+  auto-instrumentation `_init_sentry()` exists to attach, not by a
+  logging call.
+- **Worker** — a separate event with `logger: rtr_worker`, `mechanism:
+  logging`, `handled: yes`, `server_name: srv-d9rluvqfngtc73dmrbug-…`.
+  Confirms the *other* half of WO-7's design intent: the SDK's default
+  logging integration reporting existing `logger.error()`/
+  `logger.exception()` call sites with no per-call-site changes.
+
+**No test exception was forced, deliberately.** `SENTRY_DSN` lives only
+in the three Render dashboards (not in local `.env`), so an event can't
+be sent from a dev machine; and forcing a 500 in production would have
+meant either probing for a crashing input or POSTing to a real write
+endpoint. Six real captured issues (`PYTHON-FASTAPI-Q/R/T/V/W/X`) plus
+the `starter`-plan OOM are better evidence than a synthetic `raise`
+would have been. **If a forced event is ever genuinely needed, that's the
+constraint to design around** — it needs either a deployed debug route
+behind the admin token, or the DSN handed over deliberately; don't reach
+for a prod 500.
+
+**Two structural facts worth keeping**, both learned from this check:
+
+1. **All three services report into a single Sentry project
+   (`python-fastapi`)** — there is no per-service project split. So
+   service attribution is only ever available from the `server_name`,
+   `url`, and `logger` tags on an individual event, never from the
+   project selector.
+2. **`logger` does not identify a service.** `rtr_deeplink.media_probe`
+   (`app/platforms/media_probe.py:31`) is imported by `app/`, `archive/`,
+   and `worker/` alike, so its events can originate anywhere. Combined
+   with the already-documented caveat that Sentry's `transaction` tag is
+   arbitrary/misleading here (see the `PYTHON-FASTAPI-V` note in this
+   file), `server_name` and `url` are the only trustworthy attribution
+   tags.
+
+**Seen in passing, no action:** `PYTHON-FASTAPI-T` (`TimeoutError`,
+`rtr_deeplink.media_probe`) was firing 27 minutes before the check. That
+is the known Granicus `chunklist.m3u8` 504-at-the-CloudFront-edge case,
+already an explicit standing decision in `BACKLOG.md` ("Do NOT raise
+`media_probe.py`'s `_SUBPROCESS_TIMEOUT_SECONDS`") — expected, accepted,
+fast-fail-by-design behaviour, not a regression.
+
+**No residual.** The one loose thread this check raised —
+`PYTHON-FASTAPI-X` showing a last-seen release (`0e5da5fb`) that
+postdated its reported occurrence by 94 seconds — was chased the same
+day and closed: 4 events in a single 8-minute burst during one sweep
+run, already fixed by PR #286 twenty-two minutes after the alert fired.
+Full timeline in this file's WO-37 entry, under "The endpoint's own
+production 500".
 
 ## The registry-based CI guards read a polluted global registry [Done 2026-08-22]
 
@@ -2411,6 +2707,62 @@ covers the endpoint's `offset` relationally against the full candidate
 list, and `slugs` for order, the still-applied thumbnail filter, unknown
 slugs and the 50-slug cap. All offline — the suite's network-free property
 (conftest's `_no_real_card_extraction`) is untouched.
+
+### The endpoint's own production 500, and why Sentry `PYTHON-FASTAPI-X` is this and not a mystery (PR #286)
+
+The first bounded `--apply` run against production crashed the endpoint
+four times. Root cause, fixed by `e83f8c5` (PR #286): the apply loop
+assigned `extract_and_store()`'s `Optional[float]` return to a local
+named **`offset`**, shadowing the endpoint's *own* `offset` query
+parameter. `extract_and_store()` returns `None` on any failed
+extraction, so a batch whose **last** page failed left `offset` as
+`None`, and the response's `max(0, offset)` raised
+`TypeError: '>' not supported between instances of 'NoneType' and
+'int'`. Failures are the *normal* case here (government CDNs time out
+constantly) and the paged mode had the identical bug, so any real sweep
+was guaranteed to hit it. Fix renames the local to `extracted_at`, with
+a comment at the site saying why that name is deliberate; two apply-path
+regression tests added, both confirmed failing against the pre-fix code.
+Every pre-existing test for this endpoint had only ever exercised
+`dry_run=true` — which is exactly how the bug shipped.
+
+**This is Sentry `PYTHON-FASTAPI-X`**, and the connection is worth
+recording because it was missed once already:
+`CLAUDE_INBOX_TRIAGE.md`'s 2026-08-22 run filed it as "one new finding,
+not previously tracked anywhere" with an **"Unconfirmed" trigger** and an
+open question for Ryan, concluding it was "not worth doing blind until
+the trigger is understood." It was in fact already fixed **22 minutes
+after the alert fired**, in a PR that names the cause in its own commit
+message. Confirmed from the dashboard 2026-08-22 (4 events, last seen
+01:34 UTC) against `git log`:
+
+| UTC (2026-08-22) | Event |
+| --- | --- |
+| 01:22:19 | `981555f` (WO-37) deploys — introduces the endpoint |
+| 01:26:17 | First `PYTHON-FASTAPI-X` occurrence, release `981555fa` |
+| 01:27:51 | `0e5da5f` (WO-34) committed |
+| **01:32:10** | **`e83f8c5` (PR #286) — the fix** |
+| 01:34 | Last of 4 occurrences, release `0e5da5fb` |
+
+All four land in one 8-minute window inside that single sweep run, and
+**none after the fix deployed** — matching the commit message's own
+"caught by the first bounded --apply run against production." The
+apparent contradiction that first raised the flag (a last-seen release,
+`0e5da5fb`, committed 94 seconds *after* the reported occurrence) was
+simply a later event in the same burst, on a release that deployed
+mid-burst.
+
+**Two process lessons, both cheap:**
+
+1. **Sentry's dashboard renders timestamps in UTC, not the viewer's
+   local time**, unless a timezone is set in account settings. This
+   directly caused the confusion above — a "1:34 AM" that looked wrong
+   next to a "14 hours ago" was correct, just not Pacific.
+2. **Before filing a Sentry issue as an untracked mystery, grep `git
+   log` for the crash site across the surrounding hours.** A single
+   `git log --oneline --grep` on the endpoint name would have surfaced
+   PR #286 immediately and saved the entire "unconfirmed trigger"
+   investigation.
 
 ## WO-10 fully closed: resolver gets `preDeployCommand` too — and the "never stamped in prod" blocker turned out never to have existed [Done 2026-08-21]
 

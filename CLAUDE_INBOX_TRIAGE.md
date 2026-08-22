@@ -369,35 +369,18 @@ Root cause and fix are already fully written up in `BACKLOG_DONE.md`
 1.5 hours after this alert fired. No new entry needed; this is a resolved
 duplicate, surfaced only because it was a genuinely new Sentry issue ID.
 
-**One new finding, not previously tracked anywhere:**
+**One new finding — investigated and closed 2026-08-22, no promotion needed:**
 
-**Sentry PYTHON-FASTAPI-X — `TypeError: '>' not supported between
-instances of 'NoneType' and 'int'` in `POST /internal/thumbnails/backfill`**
-(`archive/main.py`, the `"offset": max(0, offset)` lines — currently
-around lines 1686 and 1722, shifted from the alert's line 1713 by later
-commits). **Confirmed** crash site: the Sentry event's `sentry:release`
-tag (`981555fa3c23bacc6427cf6f5847d46118002887`) matches exactly the
-WO-37 commit that introduced the endpoint's `offset: int = 0` query
-parameter, and the single occurrence (2026-08-22 01:26:17 UTC) landed
-~4 minutes after that commit deployed (2026-08-21 18:22:19 -07:00 =
-2026-08-22 01:22:19 UTC) — so this is live in currently-deployed code,
-not a stale/pre-fix trace. **Unconfirmed** trigger: grepped every caller
-of this endpoint in the repo — `scripts/backfill_meeting_cards.py`'s
-`survey_candidates()` and `run_batch()` (the only documented callers,
-added by that same WO-37 commit) never send an `offset` query parameter
-at all, and FastAPI's `offset: int = 0` annotation should validate/coerce
-any supplied value before the function body runs, never handing it a
-bare `None`. Nothing in this repo's code explains how a live `None`
-reached `max(0, offset)`. Open question for Ryan: was this a one-off
-manual/ad-hoc request right after deploying WO-37 (e.g. a hand-typed curl
-or client that explicitly sent a JSON/text `null` for `offset`) — if so
-it's likely dead already, since the automated sweep driver never
-triggers it; if it recurs from the automated driver itself, that would
-be a different and more urgent story worth re-opening. **Impact**: one
-occurrence so far, operator-only endpoint (token-gated, `dry_run`
-defaults `true`), zero user-facing exposure, no data lost (this handler
-does no writes before the crash site). **Fix effort**: small regardless
-of the trigger — guard the value (`offset = offset or 0`) or use
-`Query(0, ge=0)` before it reaches `max()` — but not worth doing blind
-until the trigger is understood, since a guard without knowing the cause
-risks silently hiding a real caller bug instead of fixing it.
+**Sentry `PYTHON-FASTAPI-X`** (`TypeError: '>' not supported between
+instances of 'NoneType' and 'int'` in `POST
+/internal/thumbnails/backfill`) was filed by that run as "not previously
+tracked anywhere," with an unconfirmed trigger and an open question for
+Ryan. **It was already fixed** — by `e83f8c5` (PR #286), committed
+2026-08-22 01:32:10 UTC, **22 minutes after the alert fired**, with the
+cause (a local named `offset` shadowing the endpoint's own query
+parameter) named in its own commit message. Confirmed against the live
+dashboard: 4 events, all inside one 8-minute window during the first
+bounded `--apply` sweep run, none after the fix deployed. Full timeline,
+root cause and the two process lessons are now in `BACKLOG_DONE.md`'s
+WO-37 entry, under "The endpoint's own production 500". Nothing to
+promote.

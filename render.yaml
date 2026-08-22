@@ -24,8 +24,19 @@ services:
     # CLAUDE_INBOX_TRIAGE_SEEN.txt (added 2026-08-21, WO-33) is the
     # Routine's processed-message-ID ledger, which replaced its Gmail
     # `rtr-claude-processed` label; the Routine now commits to it on
-    # EVERY run, so it has to be listed here -- keep this list identical
-    # across all four services below.
+    # EVERY run, so it has to be listed here.
+    # The two scripts/*_auto_transcription_queue.txt files (added
+    # 2026-08-22) are the real build-volume driver, not the docs: 43
+    # commits in the 14 days to 2026-08-22 changed NOTHING but a queue
+    # file (17 granicus-only, 26 tier3-only), each rebuilding all four
+    # services -- ~170 builds of pure waste, and the direct cause of the
+    # workspace running out of pipeline minutes on 2026-08-19, which
+    # silently blocked deploys everywhere for ~5.5 hours.
+    # These lists were previously identical across all four services and
+    # are now DELIBERATELY NOT: rtr-deeplink-archive omits the tier-3
+    # file because it is the one service that reads it at runtime (see
+    # the note in that block). Everything else stays in lockstep -- add
+    # new doc-only paths to all four.
     # ACCOUNTS_PLAN.md / AUDIT_BRIEF.md / FEED_CITIES.md /
     # TRUST_THREAT_MODEL.md (added 2026-08-22, WO-41) are the four long
     # roadmap writeups split out of BACKLOG.md when its TOC-based reading
@@ -41,6 +52,8 @@ services:
         - AUDIT_BRIEF.md
         - FEED_CITIES.md
         - TRUST_THREAT_MODEL.md
+        - scripts/granicus_auto_transcription_queue.txt
+        - scripts/tier3_auto_transcription_queue.txt
     # Real incident, 2026-08-09, two real failures in sequence, not one:
     # (1) the ORIGINAL `playwright install --with-deps chromium` build
     # step left a real user seeing `BrowserType.launch: Executable
@@ -195,6 +208,16 @@ services:
         - AUDIT_BRIEF.md
         - FEED_CITIES.md
         - TRUST_THREAT_MODEL.md
+        - scripts/granicus_auto_transcription_queue.txt
+        # NOTE: tier3_auto_transcription_queue.txt is deliberately NOT
+        # ignored here, unlike on the other three services. THIS service
+        # reads it at runtime -- archive/main.py's _TIER3_QUEUE_FILE /
+        # _tier3_queue_remaining() line-counts the file on disk for the
+        # ops report. Ignoring it here would freeze that number at
+        # whatever the last real deploy shipped, with nothing to show
+        # the stat had gone stale. Removing this exception requires
+        # sourcing that count from the database first; see BACKLOG.md's
+        # pipeline-minutes entry.
     buildCommand: pip install -r archive/requirements.txt
     # WO-10 (AUDIT_EXECUTION_BRIEF.md, landed 2026-08-17): the schema
     # migration runs BEFORE the new build starts serving. Render runs
@@ -314,6 +337,8 @@ services:
         - AUDIT_BRIEF.md
         - FEED_CITIES.md
         - TRUST_THREAT_MODEL.md
+        - scripts/granicus_auto_transcription_queue.txt
+        - scripts/tier3_auto_transcription_queue.txt
     # `starter` (512MB) OOM-crashed twice in real production, 2026-08-08 --
     # once loading the original "small" model default, and again (after
     # switching to "tiny") on a real 900s meeting chunk (~1421MB measured,
@@ -399,6 +424,8 @@ services:
         - AUDIT_BRIEF.md
         - FEED_CITIES.md
         - TRUST_THREAT_MODEL.md
+        - scripts/granicus_auto_transcription_queue.txt
+        - scripts/tier3_auto_transcription_queue.txt
     plan: standard
     envVars:
       - key: DATABASE_URL
