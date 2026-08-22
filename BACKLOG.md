@@ -85,7 +85,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (12)
     [HUMAN] `[LOGIN]` Archive service instability, 2026-08-17 —
     [HUMAN] 26 already-live pages still serve duplicated roll-up
     [HUMAN] `[WAIT]` Meeting-card backfill sweep — finished 2026-08-22
-    [HUMAN] Stray demo-shaped tables found in `rtr_deeplink_db` during
+    [HUMAN] Stray Archive-shaped tables in `rtr_deeplink_db` — root
   Decisions about already-live content  (4)
     [HUMAN] 4 already-live default transcripts are real, confirmed
     [HUMAN] 118 already-live transcriptions are real candidates for the
@@ -794,20 +794,52 @@ convenient.
   them, so deleting it gives them another chance. Do (1) before (2) if
   possible, so the retry produces diagnosable failures rather than
   another opaque count.
-- **[HUMAN] Stray demo-shaped tables found in `rtr_deeplink_db` during
-  the 2026-08-17 PITR test-restore verification.** The resolver's
-  `rtr_deeplink_db` (real data: 355 rows) *also* contains a full set of
-  Archive-shaped tables (`meeting_pages`, `transcript_versions`, etc.)
-  holding only 4 old demo rows dated 2026-08-12 — entirely separate from
-  the real Archive data in `rtr_archive`. Nothing in
-  `app/db/models.py` defines these table names, so nothing in the
-  resolver's live code should touch them. Root cause not established —
-  worth checking `rtr_deeplink_db`'s own `alembic_version` history and
-  git blame around when `archive/db` was split from a shared database.
-  Timing is odd: the demo data postdates both services adopting Alembic,
-  so "leftover from before the split" doesn't cleanly fit. **Not urgent,
-  not touched** — any cleanup is a real, destructive production action
-  and should only be done by Ryan after the root cause is understood.
+- **[HUMAN] Stray Archive-shaped tables in `rtr_deeplink_db` — root
+  cause established 2026-08-22; only the cleanup decision is left.** The
+  resolver's `rtr_deeplink_db` (real data: 355 rows) also holds a full
+  set of Archive-shaped tables (`meeting_pages`, `transcript_versions`,
+  …) containing 4 demo rows dated **2026-08-12**, entirely separate from
+  the real Archive data in `rtr_archive`. Nothing in `app/db/models.py`
+  defines those names, so no resolver code touches them.
+
+  **What put them there — a local Archive run pointed at the resolver's
+  database.** On 2026-08-12 every guard that would now prevent this was
+  still absent, and each landed *after* that date:
+  - `archive/db/engine.py`'s `init_models()` called `create_all()`
+    **unconditionally, including on Postgres**, until `6e722be`
+    (WO-10 / PR #156, **2026-08-17 16:53 PT**) gated it to SQLite. So on
+    08-12, starting the Archive against *any* Postgres would create its
+    whole table set there.
+  - The `EXPECTED_DB_HOST` assertion that now catches a mis-pointed
+    `DATABASE_URL` landed in `a006062` (WO-4, **2026-08-17 05:53 PT**) —
+    also after.
+  - And `CLAUDE.md` already documents the mechanism that supplies the
+    wrong URL silently: `load_dotenv()` is called with no explicit path,
+    so it **cwd-walks up and finds the shared checkout's `.env`** —
+    meaning an Archive process started without an explicit
+    `DATABASE_URL` connects to whatever that `.env` names, which in this
+    checkout is `rtr_deeplink_db`.
+
+  That resolves the entry's own puzzle — "the demo data postdates both
+  services adopting Alembic, so *leftover from before the split* doesn't
+  cleanly fit." It isn't leftover from the split; it's a local run five
+  days before the gate existed. **Circumstantial supporting detail, not
+  proof**: `66fa9ac` (2026-08-13) added a bulk backfill sweep over
+  archived-page data — exactly the kind of work that involves running
+  `archive.main:app` locally the day before.
+
+  **Why this now argues for cleanup rather than leaving it.** The
+  original entry's caution was right when the cause was unknown, but the
+  tables' *continued existence* is itself the remaining hazard:
+  `create_all()` no longer creates tables on Postgres, so a future
+  mis-pointed local Archive run would fail loudly on missing tables —
+  **except in `rtr_deeplink_db`, where the tables already exist and the
+  write would silently succeed.** Dropping them restores fail-loudly
+  behaviour for the one database where it's currently absent.
+  **Still Ryan's call and still a destructive production action**:
+  confirm the 4 rows are demo data and not referenced by anything,
+  take a backup/PITR marker first, then drop the Archive-shaped tables
+  from `rtr_deeplink_db` only — never from `rtr_archive`.
 
 ### Decisions about already-live content
 
