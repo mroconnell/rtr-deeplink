@@ -19,9 +19,9 @@ phase-1 accounts work only started once the core resolve/transcript/
 Archive features were already built, tested, and live, and even then
 stayed deliberately narrow (accounts + saved items only, via Clerk rather
 than a hand-rolled session system, holding zero user PII in this app's
-own database). See `BACKLOG.md`'s "Accounts + token billing — phases 2-6"
-entry (under "Roadmap & strategy") for
-what's still ahead (profiles, saved-search alert emails, billing) and
+own database). See `ACCOUNTS_PLAN.md` for what's still ahead (profiles,
+saved-search alert emails, billing) — split out of `BACKLOG.md`
+2026-08-22, which keeps a stub entry under "Roadmap & strategy" — and
 `BACKLOG_DONE.md`'s "Clerk production cutover" entry for the real
 incidents hit switching from a Clerk development instance to production —
 worth reading before ever touching Clerk env vars/DNS again.
@@ -103,6 +103,28 @@ under everything else. This repo extracts and fixes just that part.
   chapter markers, a metadata-extraction ordering bug, a deep-link
   seek-priority bug) were only caught by looking at the rendered page or
   driving it, not by reading JSON responses.
+- **Never read `BACKLOG.md` end to end — read its TOC block, then grep
+  (WO-41, 2026-08-22).** The file opens with a generated
+  `<!-- TOC-START -->`…`<!-- TOC-END -->` block listing every section
+  with an entry count and every entry by title. **At session start, read
+  only that block.** Each TOC line is a verbatim prefix of a real line
+  further down, so pulling up one entry is
+  `grep -n -F "<the quoted fragment>" BACKLOG.md` and reading from there;
+  a whole section is `sed -n '/^## Ship next/,/^## Needs a human/p'`.
+  Reading the whole file is the failure mode this replaced, not a
+  thorough version of it — at 4,300 lines nobody did, which is how three
+  real user-visible bugs went unread (see the actionability-ordering note
+  below; the 2026-08-21 reorder and the 2026-08-22 compaction to ~2,300
+  lines were the first two steps, this is the third). **After any edit to
+  `BACKLOG.md`, rerun `python3 scripts/build_backlog_toc.py`** — CI
+  regenerates and diffs it, so a stale TOC fails the build. Entry titles
+  also carry optional secondary effort tags alongside the primary one,
+  which is what makes the TOC skimmable for "what can I actually do right
+  now": `[EASY]` small code change, `[BIG]` major lift, `[EXAMPLE]` needs
+  a real live sample first, `[LOGIN]` needs a dashboard only Ryan has,
+  `[WAIT]` blocked on a recrawl or another external event. They're
+  discretionary — add one only where the entry itself already establishes
+  it, never as a guess.
 - **New bugs/gaps found while working go in `BACKLOG.md`**, not just
   mentioned in conversation — it's the durable record. `BACKLOG.md` holds
   only live/open items, kept short on purpose; once an item is actually
@@ -130,8 +152,8 @@ under everything else. This repo extracts and fixes just that part.
   `BACKLOG.md`, and this file all describe real, current gaps — a PR that
   closes one of those gaps but leaves the doc still describing it as
   future/unbuilt work recreates exactly the kind of doc-drift this repo's
-  own "App-wide audit" backlog entry already flagged as a real, confirmed
-  problem (see this file's pytest-suite bullet above for one concrete
+  own `AUDIT_BRIEF.md` (the "App-wide audit" brief) already flagged as a
+  real, confirmed problem (see this file's pytest-suite bullet above for one concrete
   instance of it), not a hypothetical one.
 - **`CLAUDE_BACKLOG.md` is a separate, unreviewed suggestions list**,
   distinct from `BACKLOG.md`. When asked to brainstorm improvements/
@@ -243,7 +265,7 @@ under everything else. This repo extracts and fixes just that part.
   README's "Running tests" section for the current, authoritative list —
   this file previously claimed eScribe/PrimeGov/YouTube had zero coverage;
   that was stale as of this correction and is exactly the kind of doc-drift
-  this repo's own "App-wide audit" backlog entry flags as a real, confirmed
+  this repo's own `AUDIT_BRIEF.md` flags as a real, confirmed
   problem, not a hypothetical one). It doesn't replace live-testing a new
   adapter or a genuinely new real-world case (see the first bullet above)
   — it exists to catch a *previously-covered* case silently regressing
