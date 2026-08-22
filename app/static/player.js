@@ -123,10 +123,12 @@ function setupTranscriptLanguagePicker(primaryLanguage, primarySegments, alterna
     renderTranscript(segments);
     // Old matches belong to the DOM this just replaced; let the user
     // re-search rather than showing a stale count against the new track.
-    const searchInput = document.getElementById('transcriptSearchInput');
-    const searchCount = document.getElementById('transcriptSearchCount');
+    const searchInput = document.getElementById('pageSearchInput');
+    const searchCount = document.getElementById('pageSearchCount');
     if (searchInput) searchInput.value = '';
     if (searchCount) searchCount.textContent = '';
+    pageSearchMatches = [];
+    pageSearchMatchIndex = -1;
   };
 }
 
@@ -254,36 +256,62 @@ function renderAgenda(items) {
   });
 }
 
-// Mirrors browser Ctrl+F: highlights every match, cycles through them with
-// Enter/Shift+Enter or the prev/next buttons, shows a "N/M" count. Shared
-// by both the transcript list and the agenda list -- a meeting can show
-// either one alone or both together (see the bestEffort branch below), and
-// search previously only ever got wired up for the segments/transcript
-// case, so agenda-only meetings (CivicClerk, eScribe without captions,
-// etc.) silently lost the find feature entirely. Each call gets its own
-// closured match state so the two instances (when both sections are
-// present) don't stomp on each other.
-function setupListSearch({ inputId, countId, prevId, nextId, listContainerId, idPrefix, getItems }) {
-  const input = document.getElementById(inputId);
-  const countEl = document.getElementById(countId);
-  const prevBtn = document.getElementById(prevId);
-  const nextBtn = document.getElementById(nextId);
-  if (!input || input.dataset.searchWired) return;
-  input.dataset.searchWired = '1';
+// Mirrors browser Ctrl+F for real: ONE search box for the whole page,
+// highlighting every match across both the agenda list and the transcript
+// list -- whichever of them a meeting actually shows, or both together
+// (see the bestEffort branch below) -- and cycling through all of them in
+// the order they appear on the page (agenda first, then transcript, same
+// as the DOM order in meeting.html), not one independent search per
+// section. An earlier version of this wired up a separate search box per
+// section; real Ctrl+F doesn't ask which part of the page you meant, so
+// neither should this.
+let pageSearchMatches = [];
+let pageSearchMatchIndex = -1;
+let pageSearchWired = false;
 
-  let matches = [];
-  let matchIndex = -1;
+function highlightSearchMatches(idPrefix, items, query) {
+  items.forEach((item, index) => {
+    const el = document.querySelector(`#${idPrefix}-${index} .segment-text`);
+    if (!el) return;
+    const text = item.text || '';
+    if (!query) {
+      el.textContent = text;
+      return;
+    }
+    const lower = text.toLowerCase();
+    let html = '';
+    let pos = 0;
+    let idx;
+    while ((idx = lower.indexOf(query, pos)) !== -1) {
+      html += escapeHtml(text.slice(pos, idx));
+      const matchId = `${idPrefix}-search-match-${pageSearchMatches.length}`;
+      html += `<mark id="${matchId}" class="search-match">${escapeHtml(text.slice(idx, idx + query.length))}</mark>`;
+      pageSearchMatches.push(matchId);
+      pos = idx + query.length;
+    }
+    html += escapeHtml(text.slice(pos));
+    el.innerHTML = html;
+  });
+}
+
+function setupPageSearch() {
+  const input = document.getElementById('pageSearchInput');
+  const countEl = document.getElementById('pageSearchCount');
+  const prevBtn = document.getElementById('pageSearchPrev');
+  const nextBtn = document.getElementById('pageSearchNext');
+  if (!input || pageSearchWired) return;
+  pageSearchWired = true;
 
   function updateCount() {
     if (!input.value.trim()) { countEl.textContent = ''; return; }
-    countEl.textContent = matches.length ? `${matchIndex + 1}/${matches.length}` : '0 matches';
+    countEl.textContent = pageSearchMatches.length ? `${pageSearchMatchIndex + 1}/${pageSearchMatches.length}` : '0 matches';
   }
 
   function goToMatch(idx) {
-    if (!matches.length) return;
-    document.querySelectorAll(`#${listContainerId} .search-match.current`).forEach((el) => el.classList.remove('current'));
-    matchIndex = ((idx % matches.length) + matches.length) % matches.length;
-    const el = document.getElementById(matches[matchIndex]);
+    if (!pageSearchMatches.length) return;
+    document.querySelectorAll('.search-match.current').forEach((el) => el.classList.remove('current'));
+    pageSearchMatchIndex = ((idx % pageSearchMatches.length) + pageSearchMatches.length) % pageSearchMatches.length;
+    const el = document.getElementById(pageSearchMatches[pageSearchMatchIndex]);
     if (el) {
       el.classList.add('current');
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -292,70 +320,28 @@ function setupListSearch({ inputId, countId, prevId, nextId, listContainerId, id
   }
 
   function runSearch() {
-    const query = input.value.trim();
-    matches = [];
-    matchIndex = -1;
+    const query = input.value.trim().toLowerCase();
+    pageSearchMatches = [];
+    pageSearchMatchIndex = -1;
 
-    getItems().forEach((item, index) => {
-      const el = document.querySelector(`#${idPrefix}-${index} .segment-text`);
-      if (!el) return;
-      const text = item.text || '';
-      if (!query) {
-        el.textContent = text;
-        return;
-      }
-      const lower = text.toLowerCase();
-      const q = query.toLowerCase();
-      let html = '';
-      let pos = 0;
-      let idx;
-      while ((idx = lower.indexOf(q, pos)) !== -1) {
-        html += escapeHtml(text.slice(pos, idx));
-        const matchId = `${idPrefix}-search-match-${matches.length}`;
-        html += `<mark id="${matchId}" class="search-match">${escapeHtml(text.slice(idx, idx + q.length))}</mark>`;
-        matches.push(matchId);
-        pos = idx + q.length;
-      }
-      html += escapeHtml(text.slice(pos));
-      el.innerHTML = html;
-    });
+    // Agenda first, then transcript -- matches the order the two sections
+    // actually appear in meeting.html, so prev/next cycles top-to-bottom
+    // the way real Ctrl+F would.
+    highlightSearchMatches('agenda', agendaItems, query);
+    highlightSearchMatches('seg', segments, query);
 
     updateCount();
-    if (matches.length) goToMatch(0);
+    if (pageSearchMatches.length) goToMatch(0);
   }
 
   input.addEventListener('input', runSearch);
   input.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter') return;
     e.preventDefault();
-    if (matches.length) goToMatch(matchIndex + (e.shiftKey ? -1 : 1));
+    if (pageSearchMatches.length) goToMatch(pageSearchMatchIndex + (e.shiftKey ? -1 : 1));
   });
-  prevBtn.addEventListener('click', () => goToMatch(matchIndex - 1));
-  nextBtn.addEventListener('click', () => goToMatch(matchIndex + 1));
-}
-
-function setupTranscriptSearch() {
-  setupListSearch({
-    inputId: 'transcriptSearchInput',
-    countId: 'transcriptSearchCount',
-    prevId: 'transcriptSearchPrev',
-    nextId: 'transcriptSearchNext',
-    listContainerId: 'transcriptList',
-    idPrefix: 'seg',
-    getItems: () => segments,
-  });
-}
-
-function setupAgendaSearch() {
-  setupListSearch({
-    inputId: 'agendaSearchInput',
-    countId: 'agendaSearchCount',
-    prevId: 'agendaSearchPrev',
-    nextId: 'agendaSearchNext',
-    listContainerId: 'agendaList',
-    idPrefix: 'agenda',
-    getItems: () => agendaItems,
-  });
+  prevBtn.addEventListener('click', () => goToMatch(pageSearchMatchIndex - 1));
+  nextBtn.addEventListener('click', () => goToMatch(pageSearchMatchIndex + 1));
 }
 
 // Mirrors archive/utils/transcript_export.py's to_srt()/to_txt() -- this
@@ -1340,10 +1326,6 @@ async function init() {
     document.getElementById('agendaSection').hidden = false;
     renderAgenda(agendaItems);
   }
-  // Search only makes sense once there's something in the agenda list --
-  // a bestEffort "[No agenda found]" heading has nothing to search.
-  document.getElementById('agendaSearch').hidden = !agendaItems.length;
-  if (agendaItems.length) setupAgendaSearch();
 
   const transcriptWarnings = data.transcript_warnings || [];
   segments = data.segments || [];
@@ -1352,7 +1334,6 @@ async function init() {
     renderWarnings(document.getElementById('transcriptWarnings'), transcriptWarnings);
     setupTranscriptLanguagePicker(data.transcript_language, segments, data.alternate_transcripts || []);
     renderTranscript(segments);
-    setupTranscriptSearch();
   } else if (transcriptWarnings.length) {
     document.getElementById('transcriptMissing').hidden = false;
     if (bestEffort) {
@@ -1365,6 +1346,22 @@ async function init() {
     } else {
       renderWarnings(document.getElementById('transcriptMissingWarnings'), transcriptWarnings);
     }
+  }
+
+  // Search covers both lists at once -- shown whenever either has
+  // something in it, hidden only when there's truly nothing on the page
+  // to search (no agenda AND no transcript, e.g. a bare best-effort result
+  // with neither found, or the transcript-missing/no-agenda case).
+  const hasSearchableContent = agendaItems.length > 0 || segments.length > 0;
+  document.getElementById('pageSearch').hidden = !hasSearchableContent;
+  if (hasSearchableContent) {
+    const input = document.getElementById('pageSearchInput');
+    input.placeholder = agendaItems.length && segments.length
+      ? 'Search transcript & agenda…'
+      : agendaItems.length
+        ? 'Search agenda…'
+        : 'Search transcript…';
+    setupPageSearch();
   }
 
   initVideo(data.video_url, data.video_format);

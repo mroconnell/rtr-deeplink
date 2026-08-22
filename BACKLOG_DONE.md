@@ -8,69 +8,98 @@ changelog of task titles.
 
 ## Transcript-search box missing entirely on agenda-only meetings [Done 2026-08-22]
 
-Real, user-reported regression: the in-page "find" feature (the
-`#transcriptSearch` box, mirrors browser Ctrl+F — highlight/cycle matches,
-"N/M" count) was wired up in `setupTranscriptSearch()`
-(`app/static/player.js`) only inside the `if (segments.length)` branch of
-the data-loading code. That branch is real-per-line-transcript-only. Any
-meeting that instead shows an agenda-only fallback (`renderAgenda()` —
-CivicClerk, eScribe without captions, or any other adapter that resolves
-agenda chapter markers but no transcript segments) never got a search box
-at all, and since it's rendered on `#agendaSection`/`#agendaList` (a
-separate DOM subtree from `#transcriptSection`/`#transcriptList`), there
-was no fallback path either. This mattered most on phones/tablets per the
-user's own framing — no browser Ctrl+F equivalent there, so the in-app
-search box is the only way to jump to a keyword in a long agenda.
+Real, user-reported regression: the in-page "find" feature (mirrors
+browser Ctrl+F — highlight/cycle matches, "N/M" count) was wired up in
+`setupTranscriptSearch()` (`app/static/player.js`) only inside the `if
+(segments.length)` branch of the data-loading code. That branch is
+real-per-line-transcript-only. Any meeting that instead shows an
+agenda-only fallback (`renderAgenda()` — CivicClerk, eScribe without
+captions, or any other adapter that resolves agenda chapter markers but
+no transcript segments) never got a search box at all, and since it's
+rendered on `#agendaSection`/`#agendaList` (a separate DOM subtree from
+`#transcriptSection`/`#transcriptList`), there was no fallback path
+either. This mattered most on phones/tablets per the user's own framing —
+no browser Ctrl+F equivalent there, so the in-app search box is the only
+way to jump to a keyword in a long agenda.
 
-Fixed by generalizing the search wiring instead of special-casing agenda
-on top of it: `setupListSearch({inputId, countId, prevId, nextId,
-listContainerId, idPrefix, getItems})` replaces the old
-`setupTranscriptSearch()` body, taking per-instance closured match state
-(previously two module-level globals, `searchMatches`/`searchMatchIndex`,
-which would have collided the moment a second search box existed
-alongside the first — a meeting can show both agenda and transcript
-together in the `bestEffort` case). `setupTranscriptSearch()` and the new
-`setupAgendaSearch()` are now both thin callers of that shared function.
-A parallel search box (`#agendaSearch`, same markup/CSS class as the
-transcript one) was added to `app/templates/meeting.html`'s
-`#agendaSection`, wired up whenever `agenda_items` is non-empty (including
-the "unreliable timestamps, not clickable" agenda case — search doesn't
-need click-to-seek to be useful, it's still real text to scan). A new
-module-level `agendaItems` (alongside the existing shared `segments`
-global from `deep_link.js`) gives the agenda search instance something to
-read.
+**First pass (superseded same day):** generalized the search wiring into
+a `setupListSearch()` helper and gave the agenda list its own independent
+search box (`#agendaSearch`, alongside the existing `#transcriptSearch`)
+so each list had working search. The user immediately flagged this as
+wrong on review — real Ctrl+F searches an entire page at once, not one
+box per section, and two visibly separate "Search…" inputs stacked on
+the page read as a bug in themselves, not a feature.
+
+**Final design:** one search box (`#pageSearch`, `setupPageSearch()` in
+`app/static/player.js`) shared by the whole `#transcriptColumn`, placed
+above both the agenda and transcript sections in
+`app/templates/meeting.html`. `runSearch()` highlights matches across
+both lists in a single combined pass — agenda items first, then
+transcript segments, matching their actual top-to-bottom order in the
+DOM — so prev/next cycles through every match on the page in reading
+order regardless of which list each one is in. Shown whenever either list
+has real content (`agendaItems.length || segments.length`), hidden only
+when the page truly has nothing to search (e.g. a best-effort result with
+neither an agenda nor a transcript). The placeholder text adapts to what's
+actually on the page ("Search transcript & agenda…" / "Search agenda…" /
+"Search transcript…") rather than always claiming both. A module-level
+`agendaItems` (alongside the existing shared `segments` global from
+`deep_link.js`) gives the search pass something to read for the agenda
+half.
+
+**A second, more consequential bug surfaced only once the box became
+freestanding.** `.transcript-search` (`app/static/style.css`) sets
+`display: flex` with no `[hidden]` guard — while the search box lived
+nested inside `#agendaSection`/`#transcriptSection`, an ancestor's own
+`hidden` attribute (display:none) hid the whole subtree regardless, so
+this never showed up. The instant the search box became a standalone
+sibling with its *own* `hidden` toggle, that toggle stopped having any
+visual effect at all (author CSS always wins over the UA `[hidden]`
+stylesheet rule, regardless of selector specificity) — the box would have
+stayed visible on every meeting, including ones with neither an agenda
+nor a transcript to search. Caught by the same Playwright harness
+described below, not by inspection — a real live check against a
+"neither" payload is what actually showed `searchVisible: True` when it
+should have been `False`. Fixed the same way as the pre-existing
+`.transcript-language-picker` bug below: `.transcript-search[hidden] {
+display: none; }`.
+
+That same testing pass also turned up (and fixed) an unrelated, smaller
+pre-existing bug found incidentally: `.transcript-language-picker` in
+`app/static/style.css` had the identical `display: flex`-with-no-`[hidden]`-
+guard shape, which overrode the `hidden` attribute
+`setupTranscriptLanguagePicker()` sets when there's only one transcript
+track — so the "Language: [ ]" picker showed up on every meeting with a
+transcript, even single-language ones with nothing to switch between.
+Fixed with the matching `.transcript-language-picker[hidden] { display:
+none; }` override; no JS change needed. Both fixes together suggest this
+CSS file's `[hidden]`-guard gap could plausibly recur on other
+conditionally-shown elements added later — worth a quick grep of
+`app/static/style.css` for other classes toggled via `.hidden = ...`/`hidden`
+attribute in `player.js` without a matching `[hidden]` override, next
+time this file gets touched.
 
 **Verified**, since this repo's `tests_js/` suite has no existing coverage
 of `player.js`'s search feature at all (only `deep_link.js` and GA event
 wiring are covered there): started the resolver locally
 (`uvicorn app.main:app`) and drove real Playwright sessions against
 `/meeting?url=...` with `/api/resolve` intercepted (`page.route`) to
-return two hand-built payloads shaped like real resolver output — one
-`segments`-only (like Granicus/Swagit), one `agenda_items`-only with a
-`transcript_warnings` message and empty `segments` (like CivicClerk) —
-at both a desktop (1280×900) and a mobile (390×844) viewport. Confirmed
-in both viewports: the segments case shows `#transcriptSearch` visible /
-`#agendaSearch` hidden and searching "budget" returns `1/2` with both
-matches highlighted; the agenda-only case shows the reverse —
-`#agendaSearch` visible / `#transcriptSearch` hidden — and searching
-"budget" against agenda item text returns `1/1`, highlighted, on an
-actual mobile-width screenshot.
-
-That same testing pass also turned up (and fixed) an unrelated, smaller
-pre-existing bug found incidentally: `.transcript-language-picker` in
-`app/static/style.css` set `display: flex` with no `[hidden]` guard,
-which (author styles beat the UA stylesheet regardless of source order)
-overrode the `hidden` attribute `setupTranscriptLanguagePicker()` sets
-when there's only one transcript track — so the "Language: [ ]" picker
-showed up on every meeting with a transcript, even single-language ones
-with nothing to switch between. Confirmed visible-before/hidden-after via
-the same Playwright harness. Fixed with a one-line
-`.transcript-language-picker[hidden] { display: none; }` override; no JS
-change needed.
+return four hand-built payloads shaped like real resolver output —
+segments-only (like Granicus/Swagit), agenda-only with a
+`transcript_warnings` message and empty `segments` (like CivicClerk), both
+together, and neither — at a mobile (390×844) viewport. Confirmed: search
+box visible with the correct adaptive placeholder in all three
+content-bearing cases and hidden in the "neither" case; searching
+"budget" against the combined-list case returns all 3 real matches across
+both lists (`1/3`), and clicking "next" moves the current match from the
+agenda's match (`agenda-search-match-0`) to the transcript's first match
+(`seg-search-match-1`) — confirmed via a real screenshot showing the
+agenda's "Budget" and the transcript's first "budget" both highlighted,
+with the transcript occurrence marked current after advancing.
 
 Full Python (`pytest`, 1424 passed / 16 skipped, pre-existing) and JS
-(`npm test`, 34/34) suites re-run clean after both fixes — neither touched
-by either change, but re-run anyway per this file's own testing
+(`npm test`, 34/34) suites re-run clean after all changes — none of them
+touched by this feature, but re-run anyway per this file's own testing
 convention around `player.js` edits.
 
 ## Moved out of BACKLOG.md by the WO-39 restructure [Done 2026-08-21]

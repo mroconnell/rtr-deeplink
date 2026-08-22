@@ -92,16 +92,21 @@
     </div>
 
     <div id="transcriptColumn">
+      {#- One search box for the whole column, not one per section -- it
+         searches whichever of the agenda/transcript lists below are
+         actually present (either or both), the same way browser Ctrl+F
+         searches a whole page at once rather than one box per section. #}
+      <div id="pageSearch" class="transcript-search" hidden>
+        <input id="pageSearchInput" type="text" placeholder="Search&hellip;" aria-label="Search transcript and agenda">
+        <span id="pageSearchCount" class="transcript-search-count"></span>
+        <button id="pageSearchPrev" type="button" class="btn btn-sm btn-outline-secondary" title="Previous match" aria-label="Previous match">&#9650;</button>
+        <button id="pageSearchNext" type="button" class="btn btn-sm btn-outline-secondary" title="Next match" aria-label="Next match">&#9660;</button>
+      </div>
+
       <div id="agendaSection" class="agenda-section" hidden>
         <h2>Agenda</h2>
         <div id="agendaWarnings" class="warnings" hidden></div>
         <p id="agendaGuess" class="source-guess" hidden></p>
-        <div id="agendaSearch" class="transcript-search" hidden>
-          <input id="agendaSearchInput" type="text" placeholder="Search agenda&hellip;" aria-label="Search agenda">
-          <span id="agendaSearchCount" class="transcript-search-count"></span>
-          <button id="agendaSearchPrev" type="button" class="btn btn-sm btn-outline-secondary" title="Previous match" aria-label="Previous match">&#9650;</button>
-          <button id="agendaSearchNext" type="button" class="btn btn-sm btn-outline-secondary" title="Next match" aria-label="Next match">&#9660;</button>
-        </div>
         <div id="agendaList" class="transcript-list"></div>
       </div>
 
@@ -119,12 +124,6 @@
           </span>
         </div>
         <div id="transcriptWarnings" class="warnings"></div>
-        <div id="transcriptSearch" class="transcript-search">
-          <input id="transcriptSearchInput" type="text" placeholder="Search transcript&hellip;" aria-label="Search transcript">
-          <span id="transcriptSearchCount" class="transcript-search-count"></span>
-          <button id="transcriptSearchPrev" type="button" class="btn btn-sm btn-outline-secondary" title="Previous match" aria-label="Previous match">&#9650;</button>
-          <button id="transcriptSearchNext" type="button" class="btn btn-sm btn-outline-secondary" title="Next match" aria-label="Next match">&#9660;</button>
-        </div>
         <div id="transcriptList" class="transcript-list"></div>
       </div>
       <div id="transcriptMissing" class="transcript-section" hidden>
