@@ -98,6 +98,17 @@ CANARY_URLS: dict[str, str] = {
     "granicus": "https://simivalley.granicus.com/player/clip/2840",
     "hyland": "https://mccobagenda.databankcloud.com/AgendaOnline/Meetings/ViewMeeting?id=4694&doctype=3",
     "iqm2": "https://sccgov.iqm2.com/citizens/Detail_Meeting.aspx?ID=17601",
+    # Charlotte, NC -- the ordinary Legistar->Granicus delegation. Note
+    # this does NOT exercise WO-30's city-YouTube-channel fallback
+    # (app/platforms/youtube_channel.py), which only runs on the four
+    # registered instances and only when a page has no video link at all.
+    # That path introduced no new registered platform_name (it resolves as
+    # "legistar" -> "youtube" like every other delegation), so the
+    # coverage test below is satisfied without a new key -- but it is
+    # genuinely unmonitored here. See BACKLOG.md's WO-30 residual-gaps
+    # entry: the real fix is letting this dict hold more than one URL per
+    # platform, a per-tenant gap that applies to every multi-tenant
+    # adapter in it, not a second legistar-shaped key.
     "legistar": (
         "https://charlottenc.legistar.com/MeetingDetail.aspx?ID=1365278"
         "&GUID=E6E474AC-A2A9-4CE4-BCF0-5B118522E3BE&Options=info|"

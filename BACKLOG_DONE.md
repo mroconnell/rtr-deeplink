@@ -6,6 +6,228 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Legistar cities whose real video only exists on their own YouTube channel: Phoenix, Philadelphia, Baltimore, Albuquerque (WO-30) [Done 2026-08-21]
+
+Closes the `[HUMAN]` Phoenix entry from `BACKLOG.md` (kept verbatim at the
+bottom of this section) plus that file's Philadelphia and Baltimore
+entries in the "50 largest US cities" list. The decision that entry was
+waiting on -- how a channel gets configured per city -- went the way the
+user suggested: **a curated, human-verified dict in code**, keyed on the
+Legistar netloc, same precedent as `jurisdiction_enrich._KNOWN_DOMAINS`.
+Not a DB table (a new resolver table means `create_all()` behavior on
+Postgres, the pattern behind four documented incidents, and the
+resolver's `create_all()` is a no-op on Postgres now anyway) and not a
+config file (no precedent; `jurisdiction_data/`'s CSVs are bulk Census
+tables, not curated per-tenant facts).
+
+**What shipped.** `app/platforms/youtube_channel.py`, plus a last-resort
+`_try_known_channel_video()` hook in `legistar.py` that runs *only* after
+both existing paths (`_find_video_links()`'s `a.videolink` pattern and
+`_try_fallback_video_link()`'s broader link scan) have found nothing. It
+enumerates the city's known channel with yt-dlp's flat listing and
+matches locally; it never uses `ytsearch:`, because letting YouTube's
+relevance ranking decide which video is a government's meeting is exactly
+the guess this repo doesn't make.
+
+**All four cities confirmed working end-to-end against real live URLs**
+(the real `LegistarAssetFinder().resolve()`, not a replay):
+
+| City | Real meeting | Result |
+| --- | --- | --- |
+| Phoenix | `phoenix.legistar.com` LEGID=2651, City Council Formal Meeting, 2026-07-01 | `srjuXI5vGuw`, **4,916** caption segments -- the exact pairing BACKLOG.md recorded as the motivating example |
+| Philadelphia | `phila.legistar.com` ID=1309240, Committee on Finance, 2025-06-04 | `AMC6xiiJazk`, **5,877** segments |
+| Baltimore | `baltimore.legistar.com` LEGID=5267, Board of Estimates, 2026-08-05 | `q3s3PKW7NYc`, **3,603** segments |
+| Albuquerque | `cabq.legistar.com` LEGID=3152, Land Use/Planning/Zoning Committee, 2026-06-10 | `r3yOkniCcUQ`, **1,120** segments |
+
+Each keeps Legistar's own title, date, jurisdiction and agenda link, and
+carries a `video_warning` naming the channel and the matched video title,
+since the meeting page never linked it.
+
+**Two real corrections to the original survey entries, both found by
+checking rather than assuming:**
+
+1. **Albuquerque is only *partly* video-less.** `cabq.legistar.com`'s full
+   City Council meetings really do carry a
+   `Video.aspx?Mode=Granicus&ID1=...` link and resolve through the
+   ordinary Legistar->Granicus path, untouched by any of this (verified
+   live: LEGID=3143 still resolves as `granicus`, 11,960 segments). It's
+   the *committee* meetings -- Land Use/Planning/Zoning, Finance &
+   Government Operations, Intergovernmental Legislative Relations -- that
+   render "Not Available". The original entry described the whole instance
+   as video-less.
+2. **Albuquerque's meetings are not on the channel the obvious search
+   finds.** "One Albuquerque Media (GOV-TV)" (`UCdpRwD5FA0g3ynJWxGk7BVQ`)
+   has **zero** meeting recordings in its first 400 uploads, checked
+   directly. The meetings are on a separate "GOV TV - Boards & Commission
+   Meetings" channel (`UCEqpcP42AmnpJPyuOy1jASQ`), found by reading
+   `channel_id` off a real meeting video rather than by trusting the
+   search result. Every channel id in the registry was earned that way.
+
+**Five real constraints found while building, all live-measured -- these
+are the things a future session would otherwise rediscover the hard way:**
+
+1. **A flat channel listing carries no dates at all.** With
+   `extract_flat: "in_playlist"`, `timestamp` / `release_timestamp` /
+   `upload_date` are `None` on every entry, on all four channels. The only
+   per-entry date without a separate per-video extraction is the one the
+   city typed into the title -- which, on all four channels, is always
+   there. That is why the matcher parses dates out of titles.
+2. **yt-dlp's channel extraction is not lazy.** `extract_info()` on a
+   channel tab materializes the entire channel before returning (34s, and
+   a plain `list`, for Philadelphia's) -- iterating and breaking early
+   saves nothing, so `playlistend` is load-bearing rather than an
+   optimization. Set to 400/tab (~6s), TTL-cached 30 minutes per channel.
+3. **Meetings can be on either channel tab, and it differs per city.**
+   Phoenix's are past livestreams under `/streams` only -- its `/videos`
+   tab's 25 most recent entries contain no meetings at all. Baltimore's
+   are plain uploads under `/videos`. Philadelphia and Albuquerque have
+   real meetings on both. Both tabs are always enumerated and merged.
+4. **Publication lag is real and is not bounded by a day.** Philadelphia's
+   "Committee on Finance 06-4-25" was uploaded 2025-06-10, six days after
+   its meeting; "Committee on Rules 6/3/2026" seven days after; Baltimore
+   posted its 2026-08-05 hearing on 2026-08-17. A +/-1 day check against
+   `upload_date` would have rejected confirmed-correct matches, so the
+   second date check is one-sided: a recording published more than a day
+   *before* the meeting cannot be that meeting, and there is no honest
+   upper bound. (`release_date`, present only on live-streamed videos, did
+   match the meeting date exactly on every sample.)
+5. **No yt-dlp blocking observed.** A channel listing is a heavier,
+   differently-shaped call than `youtube.py`'s single-video fetch and was
+   a plausible new block surface given the 2026-08-09 Render IP incident.
+   Nothing was blocked: ~1.4s per 100 entries, no captcha, no consent
+   interstitial, no 429, using the same `player_client:
+   ["android","ios","tv","web"]` workaround `_extract_info()` already
+   carries. **That was a residential IP, not Render's** -- if this fails
+   in production while working locally, that asymmetry is the first thing
+   to check. `find_channel_match()` degrades to `None` (today's "no video
+   found") rather than raising, so a block costs coverage, not uptime.
+
+**The matcher, and why it's shaped the way it is.** A wrong match
+publishes some other meeting's video under a real government's name --
+worse than the "no video found" it replaces -- so every rule below was
+either forced by real data or tightened after real data broke it:
+
+* **Exact date match, not the +/-1 day WO-30 specified.** With a one-day
+  window, Baltimore's real 2026-06-01 "Baltimore City Council" meeting
+  matched "City Council Hearing: FY2027 Live Baltimore; June 2, 2026" -- a
+  different hearing whose title happens to contain the body's own words.
+  Across ~40 real matches on all four channels every correct one was
+  same-day, so the slack bought nothing and cost a wrong attribution. The
+  day of tolerance moved to the publication-date check, where the drift
+  actually is.
+* **Every significant body token must appear in the video title**
+  (containment, since the video title is nearly always a superset). Two
+  token classes, both evidence-driven: `"session"` is generic because
+  Phoenix publishes one Legistar body, "City Council Policy Session", as
+  both "... Policy Session - May 19, 2026" and "... Policy Meeting -
+  June 9, 2026"; `"committee"`/`"subcommittee"` are *soft* (they count
+  toward the specificity floor but needn't appear on the video side)
+  because Baltimore's "Public Health & Environment Committee" is published
+  as "City Council Hearing: Public Health & Environment", while
+  Philadelphia's "Committee on Finance" would drop below the floor
+  entirely if the word were discarded outright.
+* **At least two significant body tokens.** "President" is a real
+  Albuquerque body name; one common word is too weak a signal to attribute
+  a recording with.
+* **Decline on ambiguity**, with exactly one non-guess: Philadelphia
+  splits long meetings across "(Part 1)/(Part 2)/(Part 3)" videos, and
+  when the tied candidates are identical apart from that marker they are
+  one meeting in pieces, so taking part 1 picks a place in an ordering
+  rather than choosing between meetings.
+
+**How the matcher was checked, beyond "the titles look right".** Two cases
+have independently-known right answers, and it agrees with both: the
+Phoenix pairing BACKLOG.md already recorded, and -- the stronger one --
+Baltimore's 2026-08-05 Public Health & Environment hearing, where
+Baltimore itself attached `youtu.be/sfIH-uqHpNI` to the meeting page.
+That day also has a Board of Estimates meeting with its own video, so the
+matcher had to separate two real same-day bodies and pick the one the city
+picked. It did. Philadelphia's 2025-06-04 does the same three ways
+(Finance / Rules / Committee of the Whole). Run in bulk against the real
+Legistar API and counted, not eyeballed: **Phoenix 16 of 25 events**
+(2026-05-01..2026-07-31; the 9 declines are all "General Information
+Packet" rows, a document-only body with no meeting to record),
+**Baltimore 29 of 53** (2026-05-01..2026-08-20), **Albuquerque 24 of the
+53 events that have no Legistar video** (2026-01-01..2026-08-20; a
+further 19 events on that instance already carry a Granicus link and
+never reach this code). Every match was read individually; one wrong
+match turned up in the whole exercise, the Baltimore FY2027 one above,
+and tightening the date rule removed it.
+
+**A separate real bug found and fixed in the same pass.**
+`_try_fallback_video_link()`'s `resolved.date = resolved.date or
+page_info["date"]` silently published YouTube's *upload* date as the
+meeting date whenever a Legistar page carried its own YouTube link --
+Baltimore's real 2026-08-05 hearing rendered as 2026-08-17. Narrowed fix:
+the Legistar page's own date wins outright for a YouTube delegation
+specifically, since that date is an upload date by construction; other
+delegated platforms carry a real meeting date and are left alone. The
+title half of the same question is deliberately *not* fixed -- see
+`BACKLOG.md` for why it needs a product call, not a code change.
+
+**`best_effort` deliberately stays False.** It renders as "This government
+website isn't supported yet, so we're going to try our best" (player.js),
+which would be false -- Legistar is fully supported and the page parsed
+cleanly; it's specifically the *video* that came from elsewhere. It would
+also mis-route `main.py`'s `_unreadable_media_message()` into telling a
+visitor their Legistar URL is "hosted on YouTube", which that function's
+own comment already calls out as confusing. A `video_warning` is the
+correctly-scoped signal and renders next to the player, where the claim
+applies.
+
+**Tests.** `tests/test_youtube_channel.py` runs the matcher against real,
+live-captured channel listings saved as JSON under
+`tests/fixtures/youtube_channel/` (the actual flat listings yt-dlp
+returned on 2026-08-21) -- including regression tests for the
+FY2027-Baltimore false positive and the Philadelphia part-split.
+`tests/test_legistar.py` covers the wiring: that it runs only after the
+page's own link fails, that it never pre-empts a link the page does carry,
+that it doesn't run for an unregistered instance, and that a decline
+leaves the pre-existing message byte-identical. No new registered
+platform, so `scripts/adapter_canary.py` needs no change -- see
+`BACKLOG.md` for the per-tenant canary gap that leaves.
+
+---
+
+**Original `BACKLOG.md` entry, kept verbatim:**
+
+- **[HUMAN] Phoenix's Legistar instance (`phoenix.legistar.com`) — root cause
+  now confirmed structural, not one ambiguous sample.** Domain routing
+  itself is confirmed correct (`phoenix.legistar.com` matches
+  `_is_legistar_domain()`, so `LegistarAssetFinder` claims it as
+  intended, not a routing bug). Original check (2026-08-10,
+  `MeetingDetail.aspx?ID=1425831...`) found a `videolink` anchor with no
+  `onclick` at all, `data-running-text="In progress"` despite being over
+  a month stale — ambiguous at the time. **A 2026-08-11 Wave 2 survey
+  resolved the ambiguity: 18 real Phoenix Legistar meetings checked
+  (Formal Meetings, Policy Sessions, a Subcommittee), spanning
+  2020–2026, every single one server-renders
+  `class="audioDownloadNotAvailableLink"` / "Not Available" for video —
+  and the original ID=1425831 URL now 410 Gones entirely.** This is
+  Phoenix-wide, not one meeting's quirk. The real recordings exist and
+  are public — just never linked from Legistar's own page — on Phoenix's
+  own YouTube channel instead (e.g. `youtube.com/watch?v=srjuXI5vGuw`,
+  confirmed live, "Phoenix City Council Formal Meeting July 1, 2026",
+  matching the same meeting ID=1425831 was for). **Independently, the
+  same symptom — Legistar video column always empty, real recording
+  only on a separate city YouTube channel — was also found on
+  Philadelphia (`phila.legistar.com`) and Albuquerque
+  (`cabq.legistar.com`'s "GOV TV" channel)** during the same survey, so
+  this may be a general "Legistar city with a non-Granicus video vendor"
+  case worth handling once, not three separate one-offs. **The fix is
+  not a Legistar parser change** (there is nothing in the page to parse
+  differently — the video link genuinely isn't there) **but a
+  YouTube-channel search/match fallback** for Legistar cities where the
+  video link is absent: given a known channel + the meeting's date/title,
+  find the matching upload. Needs a product decision on how that channel
+  gets configured per city (hardcoded per the size/political-importance
+  of Phoenix specifically, per the user's own suggestion, vs. a general
+  mechanism) before writing it. Also worth noting while checking:
+  Legistar's own adapter never attempts agenda-item parsing at all (by
+  design, it only ever delegates to the underlying video platform for
+  that), so a Legistar page never showing agenda items is expected
+  behavior, not a second bug to chase.
+
 ## Worker could hand whisper a chunk `extract_chunk_audio()` called successful but that was actually corrupt (Sentry PYTHON-FASTAPI-R) [Done 2026-08-21]
 
 Original entry, kept verbatim below the fix (WO-25) so the traced

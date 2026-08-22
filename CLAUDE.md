@@ -167,7 +167,20 @@ under everything else. This repo extracts and fixes just that part.
   works around that because it's under continuous maintenance chasing
   YouTube's changes. Left unpinned in `requirements.txt` on purpose. If
   YouTube/PrimeGov resolves start failing, check for a yt-dlp update
-  before assuming it's a bug in this repo's code.
+  before assuming it's a bug in this repo's code. **As of 2026-08-21
+  (WO-30) there's a second, heavier yt-dlp call surface**: flat *channel
+  listings* (`app/platforms/youtube_channel.py`, for the four Legistar
+  cities whose recordings only exist on their own YouTube channel).
+  Nothing was blocked when it was built, but it's a plausible separate
+  block target from the single-video fetch, and it was only ever measured
+  from a residential IP, never from Render's — if it starts failing in
+  production while working locally, that asymmetry is the first thing to
+  check, not the matching logic. Two real, live-measured facts worth
+  knowing before touching it: a flat listing returns **no dates at all**
+  (every date field is `None`, which is why the matcher parses dates out
+  of video titles), and channel extraction is **not lazy** — it
+  materializes the whole channel before returning, so `playlistend` is
+  load-bearing, not an optimization.
 - **A pytest suite exists now (`tests/`, see README's "Running tests")** —
   run it (`pytest`) before/after touching `app/utils/vtt_parser.py`,
   `app/platforms/media_scan.py`, `app/platforms/base.py`, or any platform
