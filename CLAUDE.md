@@ -158,6 +158,28 @@ under everything else. This repo extracts and fixes just that part.
   than deriving one. Same root cause as the multi-session working-tree
   rule below — concurrent sessions can't infer shared state from a
   snapshot of it.
+- **An open backlog entry carries the *conclusion*; the investigation
+  that produced it goes in `BACKLOG_DONE.md`.** `BACKLOG.md` is read
+  before deciding what to build, so an entry earns its length only with
+  what a builder needs: what's wrong, what to do, what to watch out for.
+  The reasoning is genuinely valuable — that's why this repo keeps it —
+  but its home is `BACKLOG_DONE.md`, with the live entry pointing there
+  in one line. **A `Ship next` item should rarely need 50 lines.** If the
+  evidence really is that long, split it: put the investigation in
+  `BACKLOG_DONE.md` under a `[Investigated YYYY-MM-DD]` marker (not
+  `[Done]` — nothing shipped), and leave the live entry saying what to
+  build and why it's worth building.
+  **This is measured, not a style preference.** WO-41's compaction took
+  `BACKLOG.md` to **2,227** lines on the morning of 2026-08-22. By that
+  afternoon it stood at **2,399** on `main`, and a single session of
+  real findings took it to **3,009 — +610 in one PR**, with the
+  `Ship next` section alone going **105 → 396 lines**. That is roughly a
+  third of the morning's compaction eaten back in a day, by entries
+  whose *content* was fine and whose findings were worth keeping. That is exactly how the file reached 4,300 lines
+  before, and no amount of care about individual entries prevents it,
+  because each one looks justified on its own. The TOC protocol above
+  makes a long file survivable to *navigate*; it does nothing about a
+  long file being slow to *decide* from.
 - **New bugs/gaps found while working go in `BACKLOG.md`**, not just
   mentioned in conversation — it's the durable record. `BACKLOG.md` holds
   only live/open items, kept short on purpose; once an item is actually
