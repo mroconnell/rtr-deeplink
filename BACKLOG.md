@@ -147,16 +147,20 @@ an adapter gap -- see its own entry in `BACKLOG_DONE.md`, not repeated
 here.
 
 **Genuinely unsupported site shapes (real adapter work, not a quirk):**
-- **Phoenix, AZ** -- Legistar meeting detail pages
-  (`phoenix.legistar.com/MeetingDetail.aspx?ID=...`) always report video
-  as "unavailable," but the real video exists on a separate, apparently
-  unlinked YouTube channel (confirmed real example: the July 1, 2026
-  meeting's actual recording is `https://www.youtube.com/watch?v=srjuXI5vGuw`).
-  Given the city's size/prominence, may be worth a hardcoded per-tenant
-  YouTube-channel mapping rather than waiting on a general fix.
-- **Philadelphia, PA** -- same shape as Phoenix: Legistar reports no
-  video; the real recording is on YouTube but not linked from the
-  Legistar page.
+- ~~**Phoenix, AZ** -- Legistar meeting detail pages always report video
+  as "unavailable," but the real video exists on a separate, unlinked
+  YouTube channel~~ **Built 2026-08-21 (WO-30) -- full detail in
+  `BACKLOG_DONE.md`.** The user's own suggested shape (a hardcoded
+  per-tenant YouTube-channel mapping) is exactly what shipped:
+  `app/platforms/youtube_channel.py`'s curated netloc->channel dict plus
+  a name+exact-date matcher. The real July 1, 2026 meeting now resolves
+  to `youtube.com/watch?v=srjuXI5vGuw` with 4,916 real caption segments.
+- ~~**Philadelphia, PA** -- same shape as Phoenix~~ **Built 2026-08-21
+  (WO-30), same fix.** Confirmed live: `phila.legistar.com`'s 2025-06-04
+  Committee on Finance now resolves with 5,877 caption segments. Note
+  Philadelphia's channel titles use numeric dates with a two-digit year
+  ("Committee on Finance 06-4-25") and split long meetings across
+  "(Part 1)/(Part 2)" videos -- both handled, see `BACKLOG_DONE.md`.
 - ~~**El Paso, TX** (`elpasotexas.gov/videos`) -- each government body gets
   its own Vimeo landing page rather than one consistent embed pattern;
   no adapter attempted yet.~~ **Mostly closed 2026-08-21 (WO-29)**: all
@@ -194,9 +198,16 @@ here.
   matched back to the right meeting.
 - **Virginia Beach, VA** (`onboardgov.virginiabeach.gov`) -- user's own
   note: "difficult challenge," not yet triaged.
-- **Baltimore, MD** -- Legistar; user-confirmed only a handful of
+- ~~**Baltimore, MD** -- Legistar; user-confirmed only a handful of
   meetings have video actually attached, most real video is on YouTube
-  instead and not linked from Legistar.
+  instead and not linked from Legistar.~~ **Built 2026-08-21 (WO-30),
+  the same city-YouTube-channel fallback as Phoenix/Philadelphia above.**
+  The user's observation was exactly right and is now measured: across 53
+  real Legistar events 2026-05-01..2026-08-20 (none of which Legistar
+  itself gives a video for), 29 now match a real CharmTV recording. The handful that
+  *do* carry their own "Recording" link keep using it, untouched -- which
+  is also what let the matcher be checked against Baltimore's own answer
+  (see `BACKLOG_DONE.md`).
 - **Kansas City, MO** -- Granicus/Legistar, already partially working per
   the user, but oddly only the Transportation Infrastructure and
   Operations Committee is coming through; other committees' meetings
@@ -2256,42 +2267,67 @@ that added this reorg, for which ones are new).
   against several real account names at once, not one.
 
 
-- **[HUMAN] Phoenix's Legistar instance (`phoenix.legistar.com`) — root cause
-  now confirmed structural, not one ambiguous sample.** Domain routing
-  itself is confirmed correct (`phoenix.legistar.com` matches
-  `_is_legistar_domain()`, so `LegistarAssetFinder` claims it as
-  intended, not a routing bug). Original check (2026-08-10,
-  `MeetingDetail.aspx?ID=1425831...`) found a `videolink` anchor with no
-  `onclick` at all, `data-running-text="In progress"` despite being over
-  a month stale — ambiguous at the time. **A 2026-08-11 Wave 2 survey
-  resolved the ambiguity: 18 real Phoenix Legistar meetings checked
-  (Formal Meetings, Policy Sessions, a Subcommittee), spanning
-  2020–2026, every single one server-renders
-  `class="audioDownloadNotAvailableLink"` / "Not Available" for video —
-  and the original ID=1425831 URL now 410 Gones entirely.** This is
-  Phoenix-wide, not one meeting's quirk. The real recordings exist and
-  are public — just never linked from Legistar's own page — on Phoenix's
-  own YouTube channel instead (e.g. `youtube.com/watch?v=srjuXI5vGuw`,
-  confirmed live, "Phoenix City Council Formal Meeting July 1, 2026",
-  matching the same meeting ID=1425831 was for). **Independently, the
-  same symptom — Legistar video column always empty, real recording
-  only on a separate city YouTube channel — was also found on
-  Philadelphia (`phila.legistar.com`) and Albuquerque
-  (`cabq.legistar.com`'s "GOV TV" channel)** during the same survey, so
-  this may be a general "Legistar city with a non-Granicus video vendor"
-  case worth handling once, not three separate one-offs. **The fix is
-  not a Legistar parser change** (there is nothing in the page to parse
-  differently — the video link genuinely isn't there) **but a
-  YouTube-channel search/match fallback** for Legistar cities where the
-  video link is absent: given a known channel + the meeting's date/title,
-  find the matching upload. Needs a product decision on how that channel
-  gets configured per city (hardcoded per the size/political-importance
-  of Phoenix specifically, per the user's own suggestion, vs. a general
-  mechanism) before writing it. Also worth noting while checking:
-  Legistar's own adapter never attempts agenda-item parsing at all (by
-  design, it only ever delegates to the underlying video platform for
-  that), so a Legistar page never showing agenda items is expected
-  behavior, not a second bug to chase.
+- ~~**[HUMAN] Phoenix's Legistar instance (`phoenix.legistar.com`) --
+  root cause now confirmed structural, not one ambiguous sample**~~
+  **Built 2026-08-21 (WO-30) -- full detail, including the survey
+  reasoning preserved verbatim, in `BACKLOG_DONE.md`.** The product
+  decision this entry was waiting on (hardcoded per-tenant channel vs.
+  a general mechanism) went the way the user suggested: a curated,
+  human-verified `netloc -> YouTube channel id` dict in code
+  (`app/platforms/youtube_channel.py`), same precedent as
+  `jurisdiction_enrich._KNOWN_DOMAINS`. Phoenix, Philadelphia,
+  Baltimore and Albuquerque's committee meetings all resolve now.
+
+- **[JUST-DO-IT] Residual gaps left behind by WO-30's city-YouTube-channel
+  fallback (2026-08-21) -- three real ones, each measured, none blocking.**
+  Split out per this repo's own "if a completed item left a residual gap,
+  make it its own live entry" convention; see `BACKLOG_DONE.md` for the
+  build itself.
+  1. **The channel listing only goes back ~400 entries per tab**, because
+     yt-dlp's channel extraction is *not* lazy -- `extract_info()` returns
+     a fully-materialized list, so `playlistend` is the only way to bound
+     the call (measured: 34s for one full Philadelphia channel vs ~6s for
+     400 entries). On Philadelphia's channel, the busiest of the four,
+     400 entries reaches roughly 2025-06; a real 2024-06-05 Committee on
+     Finance meeting was confirmed to fall outside it and decline. Older
+     meetings therefore still show "No video link found." Fixable by
+     caching listings in the DB and paginating deeper over time, or by
+     using a per-body playlist where a city publishes one -- neither
+     attempted.
+  2. **A city that posts the same meeting twice declines.** Real case:
+     Philadelphia's 2026-08-06 Committee on Education exists both as a
+     `/streams` archive and a `/videos` re-upload, and nothing in either
+     title says which is canonical, so `_pick()` declines. Same for
+     Baltimore's 2026-06-17 "Board of Estimates Meeting" vs "Post Board of
+     Estimates". Declining is the correct posture as built, but a real
+     rule (prefer the longest? prefer the `/streams` original?) would
+     recover a handful of meetings per city -- needs more real examples
+     before committing to one.
+  3. **No adapter-canary coverage for this path specifically.**
+     `scripts/adapter_canary.py` is one URL per registered platform, and
+     this rides on `legistar` (no new `platform_name`), so
+     `tests/test_adapter_canary.py`'s coverage assertion passes untouched
+     -- but a break in the channel matcher would only surface if the
+     single Charlotte, NC canary URL happened to exercise it, and it
+     doesn't. The honest fix is letting `CANARY_URLS` hold more than one
+     URL per platform (a real per-tenant coverage gap that predates this
+     work and applies to every multi-tenant adapter here), not bolting a
+     second `legistar`-ish key onto the current dict shape.
+
+- **[LATER] `legistar.py`'s `_try_fallback_video_link()` still prefers the
+  delegated platform's *title* over the Legistar page's own body name --
+  unlike its date and jurisdiction, both of which the page now wins
+  outright.** Found live 2026-08-21 alongside the date bug fixed in WO-30
+  (see `BACKLOG_DONE.md`): Baltimore's real 2026-08-05 Public Health &
+  Environment hearing renders as "City Council Hearing: Public Health &
+  Environment; August 5, 2026" -- CharmTV's YouTube title, complete with a
+  redundant embedded date -- rather than Legistar's own "Public Health &
+  Environment Committee". Not obviously a bug: the existing
+  `_looks_like_raw_filename()` heuristic exists precisely because a
+  delegated platform's title is sometimes *better* (NYC/Viebit's is a raw
+  `.mp4` filename), and a channel name plus a date is arguably more
+  informative than a bare body name. Needs a product call on which reads
+  better on the meeting page, not a code fix decided in isolation.
 
 ### Dormant / needs a real example
 
@@ -2777,6 +2813,21 @@ that added this reorg, for which ones are new).
   know too, before investing in a fancier fallback (e.g. a CharmTV-
   channel search, the same class of fix already flagged for Phoenix/
   Philadelphia/Albuquerque above).
+
+  **Update 2026-08-21 (WO-30): the "fancier fallback" this entry was
+  weighing got built, and it answers the practical half of the question
+  without answering the curiosity half.** `app/platforms/youtube_channel.py`
+  now matches Baltimore meetings against CharmTV's own channel
+  (`@TV25BCOCC`, earned by reading `channel_id` off the one known-good
+  `youtu.be/XFaAY2G_cl0` link this entry cites) -- measured across 53
+  real Legistar events 2026-05-01..2026-08-20, 29 now resolve to a real
+  recording. **The original question is still genuinely open and now
+  lower-stakes**: attachment really is inconsistent rather than following
+  a body/era rule (the 2026-08-05 Public Health & Environment hearing
+  carries its own link while the same day's Board of Estimates doesn't,
+  same era, both full standing bodies), and the `Departments.aspx` walk
+  suggested above was never done. Worth finishing only if someone wants
+  the *why*; the coverage cost of not knowing is now largely paid.
 
 - **[LATER] Headless-browser adapters (Minneapolis LIMS, SLC meeting recaps) —
   built and shipped 2026-08-09, see BACKLOG_DONE.md for the full build.

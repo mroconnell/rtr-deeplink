@@ -15,6 +15,7 @@ from .base import (
 )
 from .models import ResolvedMeeting
 from .youtube import YouTubeAssetFinder
+from . import youtube_channel
 from ..utils import jurisdiction_enrich
 
 # Confirmed live (2026-08-09) on two real NYC MeetingDetail.aspx pages: the
@@ -70,6 +71,17 @@ class LegistarAssetFinder(AssetFinder):
     problem on a non-Legistar page (a real YouTube link anywhere on the
     page first, then `base.find_platform_link()` for any other already-
     supported platform), reused rather than duplicated.
+
+    If that finds nothing either, `_try_known_channel_video()` (added
+    2026-08-21, WO-30) is the last resort -- for the four confirmed
+    instances (Phoenix, Philadelphia, Baltimore, Albuquerque) where there
+    is genuinely nothing on the page to parse because the city publishes
+    its recordings only to its own YouTube channel. It matches the
+    meeting's own name and date against a curated, human-verified channel
+    listing; see `youtube_channel.py` for the matching rules and the real
+    evidence behind them, and note that a wrong match there would be
+    worse than no video at all, which is why every uncertain case
+    declines.
     """
 
     platform_name = "legistar"
@@ -97,6 +109,11 @@ class LegistarAssetFinder(AssetFinder):
                 if fallback:
                     fallback.source_url = url
                     return fallback
+                channel_match = await self._try_known_channel_video(
+                    soup, final_url, url
+                )
+                if channel_match:
+                    return channel_match
                 return ResolvedMeeting(
                     platform=self.platform_name,
                     source_url=url,
@@ -201,8 +218,99 @@ class LegistarAssetFinder(AssetFinder):
             # answer to "what jurisdiction is this" -- Legistar's own page
             # is the more authoritative source whenever it has one.
             resolved.jurisdiction = page_info["jurisdiction"] or resolved.jurisdiction
-            resolved.date = resolved.date or page_info["date"]
+            # Real bug found live 2026-08-21 while building WO-30: for a
+            # YouTube delegation specifically, `resolved.date` is the
+            # video's *upload* date, not the meeting date, so
+            # "keep what's already there" quietly published the wrong one
+            # -- Baltimore's real 2026-08-05 Public Health & Environment
+            # hearing (the one meeting on that instance that does carry
+            # its own Recording link) rendered as 2026-08-17, the day
+            # CharmTV got around to posting it. Publication lag is
+            # confirmed to run up to a week on real uploads (see
+            # youtube_channel.video_date_is_plausible), so the Legistar
+            # page's own date wins outright here. Narrowed to the YouTube
+            # case on purpose: the other platforms this method can
+            # delegate to via find_platform_link() carry a real meeting
+            # date of their own, and none has been observed getting it
+            # wrong.
+            if resolved.platform == YouTubeAssetFinder.platform_name:
+                resolved.date = page_info["date"] or resolved.date
+            else:
+                resolved.date = resolved.date or page_info["date"]
             resolved.agenda_link = resolved.agenda_link or page_info.get("agenda_link")
+        return resolved
+
+    @staticmethod
+    async def _try_known_channel_video(
+        soup: BeautifulSoup, page_url: str, source_url: str
+    ) -> Optional[ResolvedMeeting]:
+        """Last resort, for the four confirmed Legistar instances whose
+        video column is structurally empty while the real recordings sit
+        unlinked on the city's own YouTube channel (WO-30, 2026-08-21 --
+        Phoenix, Philadelphia, Baltimore, and Albuquerque's committee
+        meetings; see `youtube_channel.py` for the evidence behind each).
+
+        Runs only after `_try_fallback_video_link()` has already found
+        nothing, so a tenant that *does* attach its own recording (a real
+        minority of Baltimore meetings) keeps using that link and never
+        reaches here -- which is also what makes those meetings usable as
+        ground truth for the matcher, since the city's own answer is
+        known.
+
+        Every uncertain path returns None, landing back on the honest "No
+        video link found on this Legistar page." this has always shown.
+        """
+        page_info = LegistarAssetFinder._extract_page_meeting_info(soup, page_url)
+        if not page_info:
+            return None
+        netloc = urlparse(page_url).netloc
+        if not youtube_channel.has_channel_fallback(netloc):
+            return None
+        match = await youtube_channel.find_channel_match(
+            netloc, page_info["title"], page_info["date"]
+        )
+        if not match:
+            return None
+
+        resolved = await YouTubeAssetFinder.resolve_video_id(
+            match.video_id, source_url=source_url
+        )
+        if not youtube_channel.video_date_is_plausible(
+            page_info["date"], resolved.date
+        ):
+            return None
+
+        # Legistar's own page wins outright on all four fields, not just
+        # as a fallback for an empty one -- the same posture (and the same
+        # real reason) as `_try_fallback_video_link()` above: a YouTube
+        # `uploader` is a channel name ("CharmTV Citizens' Hub"), not a
+        # jurisdiction, and a YouTube date is the *upload* date, which is
+        # confirmed to run up to a week after the meeting on real
+        # Philadelphia uploads. Here the page is authoritative for the
+        # date too, unlike that method's `resolved.date or ...`.
+        resolved.title = page_info["title"]
+        resolved.jurisdiction = page_info["jurisdiction"] or resolved.jurisdiction
+        resolved.date = page_info["date"]
+        resolved.agenda_link = resolved.agenda_link or page_info.get("agenda_link")
+
+        # Provenance, said plainly and up front. Deliberately NOT
+        # `best_effort=True`: that flag means "this government website
+        # isn't supported yet, so we're going to try our best" in the
+        # frontend's own copy (player.js), which would be a false
+        # statement here -- Legistar is fully supported, and this page
+        # parsed cleanly; it's specifically the *video* that came from
+        # somewhere else. Setting it would also mis-route
+        # `_unreadable_media_message()` in main.py into claiming the
+        # visitor's Legistar URL is "hosted on YouTube". A video_warning
+        # is the honest, correctly-scoped signal, and renders right next
+        # to the player where the claim actually applies.
+        resolved.video_warnings.insert(
+            0,
+            "This meeting page has no video on it. We matched this recording from "
+            f"{match.channel_name}'s own YouTube channel by meeting name and date "
+            f'("{match.video_title}") — it is not linked from the meeting page '
+            "itself, so double-check it is the meeting you expected.",
+        )
         return resolved
 
     @staticmethod

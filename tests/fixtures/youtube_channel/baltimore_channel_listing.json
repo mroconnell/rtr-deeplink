@@ -1,0 +1,595 @@
+{
+ "channel_id": "UCasQyO1K4yMq3Hi_0RQ0jfA",
+ "channel_name": "CharmTV Citizens' Hub",
+ "netloc": "baltimore.legistar.com",
+ "entries": [
+  {
+   "id": "iIstgXKRly8",
+   "title": "Board of Estimates Meeting; August 19, 2026",
+   "duration": 12920,
+   "live_status": null
+  },
+  {
+   "id": "7bDf06yFfrI",
+   "title": "Board of Municipal & Zoning Appeals Hearing; August 2026",
+   "duration": 4550,
+   "live_status": null
+  },
+  {
+   "id": "znPvjXwPySM",
+   "title": "City Council Hearing:Housing & Economic Development Committee August 18, 2026",
+   "duration": 5030,
+   "live_status": null
+  },
+  {
+   "id": "sfIH-uqHpNI",
+   "title": "City Council Hearing: Public Health & Environment; August 5, 2026",
+   "duration": 8195,
+   "live_status": null
+  },
+  {
+   "id": "QOFCcjVnrCQ",
+   "title": "Bocek Recreation Center Ribbon Cutting; August 10, 2026",
+   "duration": 1835,
+   "live_status": null
+  },
+  {
+   "id": "zBNBkjUVtXU",
+   "title": "Parkwood Ribbon Cutting Ceremony; August 7, 2026",
+   "duration": 2690,
+   "live_status": null
+  },
+  {
+   "id": "4E1-_bYubwA",
+   "title": "Frederick Douglass High School & Briscoe Academy Ribbon Cutting; August 6, 2026",
+   "duration": 5015,
+   "live_status": null
+  },
+  {
+   "id": "pcogrcBjc-E",
+   "title": "Board of Liquor License Hearing; August 6, 2026",
+   "duration": 7035,
+   "live_status": null
+  },
+  {
+   "id": "q3s3PKW7NYc",
+   "title": "Board of Estimates Meeting, August 5, 2026",
+   "duration": 7415,
+   "live_status": null
+  },
+  {
+   "id": "hMSBbMhM030",
+   "title": "Board of Municipal & Zoning Appeals Hearing; August 4, 2026",
+   "duration": 9875,
+   "live_status": null
+  },
+  {
+   "id": "DHcfc9Dq7Fs",
+   "title": "Mayor's Press Availability; August 5, 2026",
+   "duration": 1030,
+   "live_status": null
+  },
+  {
+   "id": "rsM47aE4Q2A",
+   "title": "National Farmers Market Week 2026; August 2, 2026",
+   "duration": 2250,
+   "live_status": null
+  },
+  {
+   "id": "3i0XB6_lMeI",
+   "title": "Multi Agency Swearing-in Ceremony; August 3, 2026",
+   "duration": 2175,
+   "live_status": null
+  },
+  {
+   "id": "dqHvbrXOVkk",
+   "title": "City Council Hearing: Public Health & Environment Committee; July 29, 2026",
+   "duration": 3160,
+   "live_status": null
+  },
+  {
+   "id": "jLDgTUpvgsI",
+   "title": "Gun Lock Distribution July 28, 2026",
+   "duration": 1760,
+   "live_status": null
+  },
+  {
+   "id": "auZjOrBNlcA",
+   "title": "Safe Streets McElderry Park 365 Presser July 27, 2026",
+   "duration": 1976,
+   "live_status": null
+  },
+  {
+   "id": "6tKJNm9Fc4Y",
+   "title": "Board of Finance Meeting; July 27, 2026",
+   "duration": 4405,
+   "live_status": null
+  },
+  {
+   "id": "nw_ZMiWDJKs",
+   "title": "YAP GVRS Brunch; July 25, 2026",
+   "duration": 4015,
+   "live_status": null
+  },
+  {
+   "id": "TK--wxEe7aE",
+   "title": "City Council Hearing: Education, Youth, and Older Adults Committee; July 23, 2026",
+   "duration": 10960,
+   "live_status": null
+  },
+  {
+   "id": "HiLnfgtFt6A",
+   "title": "Board of Liquor License Hearing; July 23, 2026",
+   "duration": 5155,
+   "live_status": null
+  },
+  {
+   "id": "rRO2UYNIfAM",
+   "title": "Jack & Jill of America National Convention; July 22, 2026",
+   "duration": 270,
+   "live_status": null
+  },
+  {
+   "id": "AmTgcoHMfoo",
+   "title": "Board of Municipal & Zoning Appeals Hearing; July 22, 2026",
+   "duration": 5850,
+   "live_status": null
+  },
+  {
+   "id": "EPe3fPj8pCA",
+   "title": "City Council Hearing: Public Health & Environment Committee; July 22, 2026",
+   "duration": 3730,
+   "live_status": null
+  },
+  {
+   "id": "0F3WWZPkXWU",
+   "title": "Charm City Live 2026; July 21, 2026",
+   "duration": 610,
+   "live_status": null
+  },
+  {
+   "id": "SOxET2j2uLE",
+   "title": "Mayor's Press Availability; July 15, 2026",
+   "duration": 1005,
+   "live_status": null
+  },
+  {
+   "id": "uGENbNECNN8",
+   "title": "Board of Estimates Meeting, July 15, 2026",
+   "duration": 880,
+   "live_status": null
+  },
+  {
+   "id": "PoLlAl7K-N4",
+   "title": "City Council Meeting; July 13, 2026",
+   "duration": 6000,
+   "live_status": null
+  },
+  {
+   "id": "ZnIUBFfGM9M",
+   "title": "Board of Liquor License Hearing; July 9, 2026",
+   "duration": 1625,
+   "live_status": null
+  },
+  {
+   "id": "1Sfkd-6VA3g",
+   "title": "City Council Hearing: Land Use & Transportation; July 9, 2026",
+   "duration": 2630,
+   "live_status": null
+  },
+  {
+   "id": "V4O29vQMt8U",
+   "title": "City Council Hearing: Labor & Workforce Committee; July 8, 2026",
+   "duration": 2185,
+   "live_status": null
+  },
+  {
+   "id": "9olUjOgGUwo",
+   "title": "Board of Municipal & Zoning Appeals Hearing; July 7, 2026",
+   "duration": 1180,
+   "live_status": null
+  },
+  {
+   "id": "Kr7BtogPA4w",
+   "title": "City Council Hearing: Land Use & Transportation Committee; July 2, 2026",
+   "duration": 4860,
+   "live_status": null
+  },
+  {
+   "id": "buQ2n3lNWaY",
+   "title": "Board of Estimates Meeting; July 1, 2026",
+   "duration": 5460,
+   "live_status": null
+  },
+  {
+   "id": "pN1DN-T1tIE",
+   "title": "Nathaniel McFadden Play and Learn Park Ribbon Cutting June 22, 2026",
+   "duration": 3905,
+   "live_status": null
+  },
+  {
+   "id": "HRv5i8WQY8I",
+   "title": "BPD Takedown Presser June 25, 2026",
+   "duration": 1635,
+   "live_status": null
+  },
+  {
+   "id": "lbcQXlUDSH8",
+   "title": "Caribbean Festival Presser June 24, 2026",
+   "duration": 1020,
+   "live_status": null
+  },
+  {
+   "id": "IZXrhKMq7EE",
+   "title": "City Council Special Meeting; June 24, 2026",
+   "duration": 1525,
+   "live_status": null
+  },
+  {
+   "id": "l45IqOgN5Sk",
+   "title": "Big Splash & Greater Model Pool Ribbon Cutting;  June 17, 2026",
+   "duration": 1635,
+   "live_status": null
+  },
+  {
+   "id": "J9ACs2ONE0M",
+   "title": "Special Board of Estimates Meeting; June 24, 2026",
+   "duration": 900,
+   "live_status": null
+  },
+  {
+   "id": "iRn6IMCqc7Y",
+   "title": "Ciity Council Meeting; June 22, 2026",
+   "duration": 2485,
+   "live_status": null
+  },
+  {
+   "id": "1LXgMzNpUgg",
+   "title": "Board of Liquor License Hearing; June 18, 2026",
+   "duration": 7311,
+   "live_status": null
+  },
+  {
+   "id": "ljuC5wCBvzM",
+   "title": "Board of Municipal & Zoning Appeals Hearing; June 16, 2026",
+   "duration": 3061,
+   "live_status": null
+  },
+  {
+   "id": "Z3hqUCd1Gtk",
+   "title": "Post Board of Estimates; June 17, 2026",
+   "duration": 1050,
+   "live_status": null
+  },
+  {
+   "id": "q04gWH2cdE0",
+   "title": "City Council Hearing : Budget & Appropriations Committee; June 17, 2026",
+   "duration": 265,
+   "live_status": null
+  },
+  {
+   "id": "yqWll74nN6I",
+   "title": "Charter Review Special Committee Hearing; June 17, 2026",
+   "duration": 1820,
+   "live_status": null
+  },
+  {
+   "id": "hwC5v0oQTrU",
+   "title": "Board of Estimates Meeting; June 17, 2026",
+   "duration": 3545,
+   "live_status": null
+  },
+  {
+   "id": "ZOyNpw-mtS8",
+   "title": "City Council Hearing: Housing & Economic Development; June 16, 2026",
+   "duration": 5240,
+   "live_status": null
+  },
+  {
+   "id": "I9BPGPs60Dk",
+   "title": "Baltimore Together: A Summit on Violence Prevention; June 16, 2026",
+   "duration": 980,
+   "live_status": null
+  },
+  {
+   "id": "KIMAh-6U-bU",
+   "title": "Bill Signing For Bill #25-0114 Smoke Shops;  June 16, 2026",
+   "duration": 1380,
+   "live_status": null
+  },
+  {
+   "id": "pJFAZb-5KYQ",
+   "title": "City Council Meeting; June 15, 2026",
+   "duration": 4870,
+   "live_status": null
+  },
+  {
+   "id": "zgBwo6NUvtc",
+   "title": "Board of Finance Meeting; June 15, 2026",
+   "duration": 1852,
+   "live_status": null
+  },
+  {
+   "id": "0tQQE5Pb3Z8",
+   "title": "Charter Review Special Committee; June 10, 2026",
+   "duration": 9290,
+   "live_status": null
+  },
+  {
+   "id": "df4LeCsLk8s",
+   "title": "June 6, 2026; 6th Annual Safe Summer Kickoff",
+   "duration": 1010,
+   "live_status": null
+  },
+  {
+   "id": "2kZkDaZaMfA",
+   "title": "City Council Meeting; June 8, 2026",
+   "duration": 5025,
+   "live_status": null
+  },
+  {
+   "id": "SZ_IsnC8G4A",
+   "title": "City Council Hearing Budget & Appropriations; June 8, 2026",
+   "duration": 2399,
+   "live_status": null
+  },
+  {
+   "id": "flsWujbl2Tk",
+   "title": "City Council Hearing: FY2027 Courts; June 8, 2026",
+   "duration": 1090,
+   "live_status": null
+  },
+  {
+   "id": "cmCyHF62O_Q",
+   "title": "Board of Liquor License Hearing; June 4, 2026",
+   "duration": 5035,
+   "live_status": null
+  },
+  {
+   "id": "M8PocoFhACw",
+   "title": "City Council Hearing: FY2027 MONSE; June 3, 2026",
+   "duration": 5550,
+   "live_status": null
+  },
+  {
+   "id": "S_XAVF4asu0",
+   "title": "City Council Hearing: FY2027 State's Attorney's Office; June 3, 2026",
+   "duration": 5125,
+   "live_status": null
+  },
+  {
+   "id": "Ctqf73pKTqg",
+   "title": "City Council Hearing: FY2027 Sheriff's Department; June 3, 2026",
+   "duration": 2970,
+   "live_status": null
+  },
+  {
+   "id": "3pDtDQXac2A",
+   "title": "Baltimore City Joint Apprenticeship Program 10 Year Graduation; May 27, 2026",
+   "duration": 1370,
+   "live_status": null
+  },
+  {
+   "id": "qvneRnwGp0I",
+   "title": "City Council Hearing: FY2027 BCIT/BDE; June 3, 2026",
+   "duration": 2065,
+   "live_status": null
+  },
+  {
+   "id": "HhlFX7Gq9sk",
+   "title": "City Council Hearing: FY2027 MOPI; June 3, 20206",
+   "duration": 2220,
+   "live_status": null
+  },
+  {
+   "id": "M8_MOitDWv4",
+   "title": "City Council Hearing: FY2027 CREATE Baltimore/MOACE; June 3, 2026",
+   "duration": 2795,
+   "live_status": null
+  },
+  {
+   "id": "9ohAsOTiDZk",
+   "title": "City Council Hearing: FY2027 OECR; June 3, 2026",
+   "duration": 3140,
+   "live_status": null
+  },
+  {
+   "id": "V-VbehkF9e8",
+   "title": "City Council Hearing: FY2027 ECB; June 3, 2026",
+   "duration": 1530,
+   "live_status": null
+  },
+  {
+   "id": "YuMFGzx2lOo",
+   "title": "City Council Hearing: FY2027 MOED: June 3, 2026",
+   "duration": 3690,
+   "live_status": null
+  },
+  {
+   "id": "gp9sEPwsQzA",
+   "title": "City Council Hearing: FY2027 Planning; June 3, 2026",
+   "duration": 5845,
+   "live_status": null
+  },
+  {
+   "id": "fx2F5DaEWUo",
+   "title": "Board of Estimates Meeting; June 3, 2026",
+   "duration": 6370,
+   "live_status": null
+  },
+  {
+   "id": "bm7wnWXDEKM",
+   "title": "City Council Hearing: FY2027 BPD; June 2, 2026",
+   "duration": 10905,
+   "live_status": null
+  },
+  {
+   "id": "xVmK6flDslI",
+   "title": "City Council Hearing: FY2027 DHCD; June 2, 2026",
+   "duration": 8865,
+   "live_status": null
+  },
+  {
+   "id": "xTPWABuffaQ",
+   "title": "City Council Hearing: FY2027 Live Baltimore; June 2, 2026",
+   "duration": 1075,
+   "live_status": null
+  },
+  {
+   "id": "K8BV76795rk",
+   "title": "City Council Hearing: FY2027 DCPBL; June 2, 2026",
+   "duration": 1895,
+   "live_status": null
+  },
+  {
+   "id": "2VspaZqSUBU",
+   "title": "City Council Hearing: FY2027 MOSMBAD; June 2, 2026",
+   "duration": 3320,
+   "live_status": null
+  },
+  {
+   "id": "KCyqj_np2bk",
+   "title": "City Council Hearing: FY2027 DHR OLC; June 2, 2026",
+   "duration": 5385,
+   "live_status": null
+  },
+  {
+   "id": "77fbY6Ql3_w",
+   "title": "City Council Hearing: FY2027 MOCFS; June 2, 2026",
+   "duration": 5480,
+   "live_status": null
+  },
+  {
+   "id": "m2vA9J4fVvM",
+   "title": "City Council Hearing: FY2027 BCPSS; June 1, 2026",
+   "duration": 9995,
+   "live_status": null
+  },
+  {
+   "id": "TzEyDErPRT0",
+   "title": "City Council Hearing: FY2027 EPFL; June 1, 2026",
+   "duration": 1825,
+   "live_status": null
+  },
+  {
+   "id": "Z_wtKQU4xes",
+   "title": "City Council Hearing: FY2027 DOT: June 1, 2026",
+   "duration": 10650,
+   "live_status": null
+  },
+  {
+   "id": "VbmNYYeK3n8",
+   "title": "City Council Hearing: FY2027 MOHS; June 1, 2026",
+   "duration": 5265,
+   "live_status": null
+  },
+  {
+   "id": "1kBrsjm93h8",
+   "title": "City Council Hearing: FY2027 BCRP; June 1, 2026",
+   "duration": 9640,
+   "live_status": null
+  },
+  {
+   "id": "NwAOQRlwgok",
+   "title": "City Council Hearing: FY2027 OIG; May 29, 2026",
+   "duration": 2320,
+   "live_status": null
+  },
+  {
+   "id": "J5hpJOsjxIA",
+   "title": "City Council Hearing: FY2027 MOOAAA; May 29, 2026",
+   "duration": 2725,
+   "live_status": null
+  },
+  {
+   "id": "z7zSlXBN7h0",
+   "title": "City Council Hearing: FY2027 Health; May 29, 2026",
+   "duration": 6550,
+   "live_status": null
+  },
+  {
+   "id": "fHJXMDEW-3U",
+   "title": "City Council Hearing: FY2027 Comptroller; May 29, 2026",
+   "duration": 2071,
+   "live_status": null
+  },
+  {
+   "id": "y9_mPGqb-Z0",
+   "title": "City Council Hearing: FY2027 CharmTV; May 29, 2026",
+   "duration": 950,
+   "live_status": null
+  },
+  {
+   "id": "u0tInNHbkEQ",
+   "title": "City Council Hearing: FY2027 PABC; May 29, 2026",
+   "duration": 1025,
+   "live_status": null
+  },
+  {
+   "id": "HkOezMc8S_Y",
+   "title": "City Council Hearing: FY2027 BCC; May 29, 2026",
+   "duration": 1055,
+   "live_status": null
+  },
+  {
+   "id": "r0Zxe4QTd_0",
+   "title": "City Council Hearing: FY2027 Visit Balt; May 29, 2026",
+   "duration": 1603,
+   "live_status": null
+  },
+  {
+   "id": "c7gpllqX0MQ",
+   "title": "City Council Hearing: FY2027 BMZA; May 28, 2026",
+   "duration": 2770,
+   "live_status": null
+  },
+  {
+   "id": "EO9klIX8AVE",
+   "title": "CharmTV Citizens' Hub Live Stream",
+   "duration": 903,
+   "live_status": "was_live"
+  },
+  {
+   "id": "ASWCXa4hrn0",
+   "title": "CharmTV-Live Stream",
+   "duration": 90,
+   "live_status": "was_live"
+  },
+  {
+   "id": "7O2XKNpWWJ8",
+   "title": "CharmTV-Live Stream",
+   "duration": 42898,
+   "live_status": "was_live"
+  },
+  {
+   "id": "iLUizBIbwUs",
+   "title": "CharmTV-Live Stream",
+   "duration": 15579,
+   "live_status": "was_live"
+  },
+  {
+   "id": "2YKs7J9ssaw",
+   "title": "CharmTV-Live Stream",
+   "duration": 1722,
+   "live_status": "was_live"
+  },
+  {
+   "id": "PYS_n1l62HE",
+   "title": "CharmTV-Live Stream",
+   "duration": 63,
+   "live_status": "was_live"
+  },
+  {
+   "id": "j9n9jRIy-x8",
+   "title": "CharmTV-Live Stream",
+   "duration": 263,
+   "live_status": "was_live"
+  },
+  {
+   "id": "hWGyFqMcHSc",
+   "title": "CharmTV Citizens' Hub Live Stream",
+   "duration": 20,
+   "live_status": "was_live"
+  }
+ ]
+}

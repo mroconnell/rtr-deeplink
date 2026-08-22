@@ -5,6 +5,7 @@ from app.platforms.granicus import GranicusAssetFinder
 from app.platforms.legistar import LegistarAssetFinder
 from app.platforms.viebit import ViebitAssetFinder
 from app.platforms.youtube import YouTubeAssetFinder
+from app.platforms import youtube_channel
 
 from aiohttp_mock import FakeResponse, mock_session
 from conftest import load_fixture
@@ -600,3 +601,200 @@ async def test_no_video_link_with_only_a_same_page_skip_link_does_not_recurse():
 
     assert result.platform == "legistar"
     assert result.video_warnings == ["No video link found on this Legistar page."]
+
+
+# --------------------------------------------------------------------
+# WO-30: the city-YouTube-channel fallback, for the four confirmed
+# Legistar instances whose video column is structurally empty. The
+# matching rules themselves are covered against real captured channel
+# listings in tests/test_youtube_channel.py -- these tests cover the
+# *wiring*: when it runs, what it overrides, and what it says about where
+# the video came from.
+# --------------------------------------------------------------------
+
+# Synthetic page HTML, in this file's established style -- but every fact
+# in it is real and independently verifiable: this is the exact <title>
+# phoenix.legistar.com serves for that real meeting (fetched live
+# 2026-08-21), and the "Not Available" anchor with no onclick at all is
+# the real markup that instance renders in place of a video link on every
+# meeting ever checked there.
+_PHOENIX_HTML = (
+    "<html><head><title>City of Phoenix - Meeting of City Council Formal "
+    "Meeting on 7/1/2026 at 10:00 AM</title></head><body>"
+    '<a class="videolink" id="ctl00_ContentPlaceHolder1_hypVideo" '
+    'style="color:Gray;">Not Available</a>'
+    "</body></html>"
+)
+_PHOENIX_URL = "https://phoenix.legistar.com/MeetingDetail.aspx?ID=1425831"
+
+# Real entries, in the shape yt-dlp's flat channel listing returns them.
+# Both are genuine videos on Phoenix's own channel.
+_PHOENIX_LISTING = [
+    {
+        "id": "srjuXI5vGuw",
+        "title": "Phoenix City Council Formal Meeting July 1, 2026",
+        "duration": 10753,
+        "live_status": "was_live",
+    },
+    {
+        "id": "at8qFIkVIjk",
+        "title": "Reading of The Declaration of Independence",
+        "duration": 2016,
+        "live_status": "was_live",
+    },
+]
+
+
+def _stub_channel(monkeypatch, entries):
+    monkeypatch.setattr(
+        youtube_channel, "_list_channel", lambda channel_id: list(entries)
+    )
+
+
+def _stub_youtube(monkeypatch):
+    def _fake_extract_info(video_id):
+        return {
+            "title": "Phoenix City Council Formal Meeting July 1, 2026",
+            "uploader": "CityofPhoenixAZ",
+            # Real values for this video: the livestream ran on the
+            # meeting date, the VOD finished processing the next day.
+            "upload_date": "20260702",
+            "release_date": "20260701",
+        }
+
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _fake_extract_info)
+
+
+async def test_channel_fallback_finds_phoenixs_unlinked_recording(monkeypatch):
+    # The exact pair BACKLOG.md recorded as the motivating example: a real
+    # Phoenix meeting whose Legistar page says "Not Available", and the
+    # real recording that only exists on the city's own YouTube channel.
+    _stub_channel(monkeypatch, _PHOENIX_LISTING)
+    _stub_youtube(monkeypatch)
+    routes = {
+        _PHOENIX_URL: FakeResponse(status=200, text=_PHOENIX_HTML, url=_PHOENIX_URL)
+    }
+
+    with mock_session(routes):
+        result = await LegistarAssetFinder().resolve(_PHOENIX_URL)
+
+    assert result.platform == "youtube"
+    assert result.video_url == "https://www.youtube.com/embed/srjuXI5vGuw"
+    assert result.source_url == _PHOENIX_URL
+    # Legistar's own page is authoritative for all three, over YouTube's
+    # channel-name uploader and its upload date.
+    assert result.title == "City Council Formal Meeting"
+    assert result.date == "2026-07-01"
+    assert result.jurisdiction == "City of Phoenix"
+
+
+async def test_channel_fallback_says_where_the_video_came_from(monkeypatch):
+    # Provenance has to be visible: a reader must be able to tell "we
+    # matched this from the city's YouTube channel" apart from "the
+    # meeting page linked this". Deliberately a video_warning and NOT
+    # best_effort -- that flag renders as "this government website isn't
+    # supported yet" (player.js), which would be false here, and would
+    # also mis-route main.py's _unreadable_media_message().
+    _stub_channel(monkeypatch, _PHOENIX_LISTING)
+    _stub_youtube(monkeypatch)
+    routes = {
+        _PHOENIX_URL: FakeResponse(status=200, text=_PHOENIX_HTML, url=_PHOENIX_URL)
+    }
+
+    with mock_session(routes):
+        result = await LegistarAssetFinder().resolve(_PHOENIX_URL)
+
+    assert result.best_effort is False
+    warning = result.video_warnings[0]
+    assert "CityofPhoenixAZ" in warning
+    assert "Phoenix City Council Formal Meeting July 1, 2026" in warning
+    assert "not linked from the meeting page" in warning
+
+
+async def test_channel_fallback_declines_rather_than_matching_the_wrong_video(
+    monkeypatch,
+):
+    # Same real channel, same real date, but the only candidate that day
+    # is a different event entirely. Declining leaves exactly the
+    # pre-existing honest message -- no regression, and no wrong
+    # attribution, which is the outcome that actually matters here.
+    _stub_channel(
+        monkeypatch,
+        [
+            {
+                "id": "at8qFIkVIjk",
+                "title": "Reading of The Declaration of Independence July 1, 2026",
+                "duration": 2016,
+                "live_status": "was_live",
+            }
+        ],
+    )
+    _stub_youtube(monkeypatch)
+    routes = {
+        _PHOENIX_URL: FakeResponse(status=200, text=_PHOENIX_HTML, url=_PHOENIX_URL)
+    }
+
+    with mock_session(routes):
+        result = await LegistarAssetFinder().resolve(_PHOENIX_URL)
+
+    assert result.platform == "legistar"
+    assert result.video_url is None
+    assert result.video_warnings == ["No video link found on this Legistar page."]
+
+
+async def test_channel_fallback_does_not_run_for_an_unregistered_instance(monkeypatch):
+    # Every other Legistar tenant keeps its existing behavior exactly --
+    # the registry is a short, human-verified list, not a heuristic, so
+    # nothing should even reach the network here.
+    url = "https://charlottenc.legistar.com/MeetingDetail.aspx?ID=1"
+    html = _PHOENIX_HTML.replace("City of Phoenix", "City of Charlotte")
+
+    def _boom(channel_id):  # pragma: no cover - must never be called
+        raise AssertionError("channel listing should not be fetched here")
+
+    monkeypatch.setattr(youtube_channel, "_list_channel", _boom)
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await LegistarAssetFinder().resolve(url)
+
+    assert result.platform == "legistar"
+    assert result.video_warnings == ["No video link found on this Legistar page."]
+
+
+async def test_channel_fallback_never_pre_empts_a_link_the_page_does_carry(monkeypatch):
+    # Baltimore is in the registry, but a minority of its meetings really
+    # do carry their own "Recording" link -- those must keep using the
+    # city's own answer (_try_fallback_video_link), never the matcher.
+    url = "https://baltimore.legistar.com/MeetingDetail.aspx?ID=1"
+    html = (
+        "<html><head><title>City of Baltimore - Meeting of Public Health &amp; "
+        "Environment Committee on 8/5/2026 at 10:00 AM</title></head><body>"
+        '<a href="https://youtu.be/sfIH-uqHpNI">Recording</a></body></html>'
+    )
+
+    def _boom(channel_id):  # pragma: no cover - must never be called
+        raise AssertionError("the page's own link should win over the matcher")
+
+    monkeypatch.setattr(youtube_channel, "_list_channel", _boom)
+
+    def _fake_extract_info(video_id):
+        return {
+            "title": "City Council Hearing: Public Health & Environment; August 5, 2026",
+            "uploader": "CharmTV Citizens' Hub",
+            # Real: CharmTV posted this recording on 2026-08-17, twelve
+            # days after the meeting (confirmed live 2026-08-21).
+            "upload_date": "20260817",
+        }
+
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _fake_extract_info)
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await LegistarAssetFinder().resolve(url)
+
+    assert result.video_url == "https://www.youtube.com/embed/sfIH-uqHpNI"
+    # Real bug found and fixed in the same pass: this used to render as
+    # 2026-08-17, YouTube's upload date, because the fallback path only
+    # filled in the page's own date when the delegated one was empty.
+    assert result.date == "2026-08-05"

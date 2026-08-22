@@ -1,0 +1,1153 @@
+{
+ "channel_id": "UC9bXJCRFPLxMhT22nZ7t8XA",
+ "channel_name": "Philadelphia City Council",
+ "netloc": "phila.legistar.com",
+ "entries": [
+  {
+   "id": "5LZqoNDRMYk",
+   "title": "Committee on Education 08-06-26",
+   "duration": 16089,
+   "live_status": null
+  },
+  {
+   "id": "Lcz3QqVscTg",
+   "title": "Committee on Legislative Oversight 06-05-26",
+   "duration": 13405,
+   "live_status": null
+  },
+  {
+   "id": "adveNx5gyhI",
+   "title": "Stated Meeting of Philadelphia City Council 6-11-26",
+   "duration": 14547,
+   "live_status": null
+  },
+  {
+   "id": "kfQRfJ1TerE",
+   "title": "Committee on Transportation and Public Utilities 6-2-26",
+   "duration": 8985,
+   "live_status": null
+  },
+  {
+   "id": "L7cjqbgtwo8",
+   "title": "Committee on Rules 6/3/2026",
+   "duration": 6762,
+   "live_status": null
+  },
+  {
+   "id": "sRqm4uTo3oQ",
+   "title": "Committee on Public Health and Human Services 06-08-26",
+   "duration": 9548,
+   "live_status": null
+  },
+  {
+   "id": "XBzVsUmB52U",
+   "title": "Committee on Streets and Services 06-1-26",
+   "duration": 4272,
+   "live_status": null
+  },
+  {
+   "id": "20jO3UCUB4o",
+   "title": "Committee on Public Health and Human Services 06-1-26",
+   "duration": 4075,
+   "live_status": null
+  },
+  {
+   "id": "ycqtbG8HRxE",
+   "title": "Committee on Public Property and Public Works 06-01-26",
+   "duration": 4052,
+   "live_status": null
+  },
+  {
+   "id": "pdBdY8ohffw",
+   "title": "Committee on Finance 06-03-26 (Part 1)",
+   "duration": 12796,
+   "live_status": null
+  },
+  {
+   "id": "mmWQSAu_bg0",
+   "title": "Committee of the Whole 06-04-26",
+   "duration": 1898,
+   "live_status": null
+  },
+  {
+   "id": "_d3rCHOC7mU",
+   "title": "Committee on Finance 06-03-26 (Part 2)",
+   "duration": 66,
+   "live_status": null
+  },
+  {
+   "id": "92s0RWmL94A",
+   "title": "Committee on Finance 06-04-26",
+   "duration": 303,
+   "live_status": null
+  },
+  {
+   "id": "VRFwGZkDpCY",
+   "title": "Committee on Finance 06-03-26 (Part 3)",
+   "duration": 206,
+   "live_status": null
+  },
+  {
+   "id": "CqbIT3VxsNQ",
+   "title": "Committee of the Whole 06-03-26 (Part 1)",
+   "duration": 533,
+   "live_status": null
+  },
+  {
+   "id": "Otq7VbruKxQ",
+   "title": "Committee of the Whole 06-03-26 (Part 2)",
+   "duration": 155,
+   "live_status": null
+  },
+  {
+   "id": "ejGWMFJhMZE",
+   "title": "Stated Meeting Of Philadelphia City Council 6-05-26",
+   "duration": 12025,
+   "live_status": null
+  },
+  {
+   "id": "lohbjhYHN1I",
+   "title": "Stated Meeting of Philadelphia City Council 5-28-26",
+   "duration": 13734,
+   "live_status": null
+  },
+  {
+   "id": "uZK2H4EBCp0",
+   "title": "Committee on Licenses and Inspections 5-27-26",
+   "duration": 3956,
+   "live_status": null
+  },
+  {
+   "id": "vs5fkwFYu2w",
+   "title": "Committee on Law and Government 5-27-26",
+   "duration": 8090,
+   "live_status": null
+  },
+  {
+   "id": "wcsC51RR-mQ",
+   "title": "Committee on Commerce & Economic Development 5/21/2026",
+   "duration": 11791,
+   "live_status": null
+  },
+  {
+   "id": "4mQ8-6dCNjw",
+   "title": "Committee on Finance (5-13-26)",
+   "duration": 8178,
+   "live_status": null
+  },
+  {
+   "id": "nzgiEED7fbk",
+   "title": "Committee on Rules (5-13-26)",
+   "duration": 2530,
+   "live_status": null
+  },
+  {
+   "id": "Marwxy9owKk",
+   "title": "Committee on Rules (5-15-26)",
+   "duration": 564,
+   "live_status": null
+  },
+  {
+   "id": "B2Ttbv7f8Js",
+   "title": "Stated Meeting Of Philadelphia City Council 5-14-26",
+   "duration": 11106,
+   "live_status": null
+  },
+  {
+   "id": "LCcUkQfnZOY",
+   "title": "Joint Committees on Legislative Oversight and Transportation & Public Utilities (5-12-26)",
+   "duration": 12308,
+   "live_status": null
+  },
+  {
+   "id": "BF8tgi3S9ak",
+   "title": "Joint Committees on Labor and Civil Service & Transportation and Public Utilities (5-12-26)",
+   "duration": 8380,
+   "live_status": null
+  },
+  {
+   "id": "qc2jmV3Bdfk",
+   "title": "Committee on Parks, Recreation and Cultural Affairs 05-11-26",
+   "duration": 2452,
+   "live_status": null
+  },
+  {
+   "id": "sCY6LOwY-II",
+   "title": "Committee of the Whole: Budget Hearing 05-06-2026 (Morning)",
+   "duration": 8991,
+   "live_status": null
+  },
+  {
+   "id": "8ywnM2LaKls",
+   "title": "Committee of the Whole: Budget Hearing 05-06-2026 (Afternoon)",
+   "duration": 5541,
+   "live_status": null
+  },
+  {
+   "id": "AFWSe574EUs",
+   "title": "Your City, Your Budget - FY27 Budget Town Hall Meetings  - May 5, 2026",
+   "duration": 9760,
+   "live_status": null
+  },
+  {
+   "id": "K24DVWruymw",
+   "title": "Your City, Your Budget - FY27 Budget Town Hall Meetings  - April 30, 2026",
+   "duration": 4396,
+   "live_status": null
+  },
+  {
+   "id": "nIHfGiOmoCA",
+   "title": "Committee of the Whole: Budget Hearing 05-05-2026 (Morning)",
+   "duration": 5942,
+   "live_status": null
+  },
+  {
+   "id": "LN-ulpP33sw",
+   "title": "Committee of the Whole: Budget Hearing 05-05-2026 (Afternoon)",
+   "duration": 9818,
+   "live_status": null
+  },
+  {
+   "id": "wbdpYov98oU",
+   "title": "Stated Meeting Of Philadelphia City Council 5-07-26",
+   "duration": 12561,
+   "live_status": null
+  },
+  {
+   "id": "o9GYVY5m0dE",
+   "title": "Committee of the Whole: Budget Hearing 05-04-2026 (Morning)",
+   "duration": 9219,
+   "live_status": null
+  },
+  {
+   "id": "jeQQ94b8nOI",
+   "title": "Committee of the Whole: Budget Hearing 05-05-2026 (Afternoon)",
+   "duration": 9818,
+   "live_status": null
+  },
+  {
+   "id": "MgXMWHZe2ec",
+   "title": "Committee of the Whole: Budget Hearing 05-04-2026 (Afternoon)",
+   "duration": 8239,
+   "live_status": null
+  },
+  {
+   "id": "3rO0pYcWagE",
+   "title": "Committee of the Whole: Budget Hearing 04-29-2026 (Morning)",
+   "duration": 11273,
+   "live_status": null
+  },
+  {
+   "id": "TXv_bytmo4g",
+   "title": "Committee of the Whole: Budget Hearing 05-05-2026 (Morning)",
+   "duration": 5942,
+   "live_status": null
+  },
+  {
+   "id": "iurVVfNXg28",
+   "title": "Joint Committees on Legislative Oversight & Parks and Recreation 05-01-26",
+   "duration": 9736,
+   "live_status": null
+  },
+  {
+   "id": "fvqR88K_FVw",
+   "title": "Stated Meeting Of Philadelphia City Council 4-30-26",
+   "duration": 16029,
+   "live_status": null
+  },
+  {
+   "id": "TG-wXIsWp1o",
+   "title": "Your City, Your Budget - FY27 Budget Town Hall Meetings  - April 28, 2026",
+   "duration": 6676,
+   "live_status": null
+  },
+  {
+   "id": "j-ali3d1nAA",
+   "title": "Committee of the Whole: Budget Hearing 04-28-2026 (Morning)",
+   "duration": 9124,
+   "live_status": null
+  },
+  {
+   "id": "NWnfYWlPIA4",
+   "title": "Your City, Your Budget - FY27 Budget Town Hall Meetings  - April 21, 2026",
+   "duration": 5585,
+   "live_status": null
+  },
+  {
+   "id": "9aCUgKT9Mag",
+   "title": "Your City, Your Budget - FY27 Budget Town Hall Meetings  - April 7, 2026",
+   "duration": 2976,
+   "live_status": null
+  },
+  {
+   "id": "BxFVp8n9x7s",
+   "title": "Committee of the Whole: Budget Hearing 04-29-2026 (Afternoon)",
+   "duration": 3866,
+   "live_status": null
+  },
+  {
+   "id": "xlMaVBN4g-c",
+   "title": "Committee of the Whole: Budget Hearing 04-28-2026 (Afternoon)",
+   "duration": 7222,
+   "live_status": null
+  },
+  {
+   "id": "E_M-TQkQou0",
+   "title": "Committee on Streets and Services 04-27-26",
+   "duration": 4225,
+   "live_status": null
+  },
+  {
+   "id": "14l2i1nGcOI",
+   "title": "Joint Committees on Public Health & Human Services and Children & Youth 04-24-26",
+   "duration": 14421,
+   "live_status": null
+  },
+  {
+   "id": "OvT38CqwVVk",
+   "title": "Committee on Public Property and Public Works 04-27-26",
+   "duration": 1607,
+   "live_status": null
+  },
+  {
+   "id": "P3tUAFyyEEo",
+   "title": "Committee on Transportation and Public Utilities 04-23-26",
+   "duration": 1933,
+   "live_status": null
+  },
+  {
+   "id": "ZW9ROvBWwSM",
+   "title": "Stated Meeting Of Philadelphia City Council 4-23-26",
+   "duration": 11527,
+   "live_status": null
+  },
+  {
+   "id": "tADuWdrs6do",
+   "title": "Committee of the Whole: Budget Hearing 04-22-2026 (Morning)",
+   "duration": 14920,
+   "live_status": null
+  },
+  {
+   "id": "-hsBrpyrgKY",
+   "title": "Committee of the Whole: Budget Hearing 04-22-2026 (Afternoon)",
+   "duration": 8880,
+   "live_status": null
+  },
+  {
+   "id": "38hu64D07fk",
+   "title": "Committee of the Whole: Budget Hearing 04-21-2026 (Afternoon)",
+   "duration": 6258,
+   "live_status": null
+  },
+  {
+   "id": "OT2l0KRUTa4",
+   "title": "Committee of the Whole: Budget Hearing 04-21-2026 (Morning)",
+   "duration": 9766,
+   "live_status": null
+  },
+  {
+   "id": "qufmUCrzRI0",
+   "title": "Committee of the Whole: Budget Hearing 04-20-2026 (Afternoon)",
+   "duration": 6461,
+   "live_status": null
+  },
+  {
+   "id": "6yE_J2x-R7c",
+   "title": "Committee of the Whole: Budget Hearing 04-20-2026 (Morning)",
+   "duration": 8188,
+   "live_status": null
+  },
+  {
+   "id": "Y4l3LHKrVqA",
+   "title": "Committee on Appropriations 04-20-2026",
+   "duration": 593,
+   "live_status": null
+  },
+  {
+   "id": "6dVfYqjU__0",
+   "title": "Committee on Appropriations 04-16-2026 (1 of 2)",
+   "duration": 413,
+   "live_status": null
+  },
+  {
+   "id": "WDsSON6mgTs",
+   "title": "Committee on Appropriations 04-16-2026 (2 of 2)",
+   "duration": 185,
+   "live_status": null
+  },
+  {
+   "id": "jHVTEDwCBhE",
+   "title": "Stated Meeting Of Philadelphia City Council 4-16-26",
+   "duration": 8778,
+   "live_status": null
+  },
+  {
+   "id": "noM9x8Fmxeo",
+   "title": "Committee of the Whole: Budget Hearing 04-16-2026 (Afternoon)",
+   "duration": 10065,
+   "live_status": null
+  },
+  {
+   "id": "rhXxpeBhxkA",
+   "title": "Committee of the Whole: Budget Hearing 04-15-2026 (Morning)",
+   "duration": 6711,
+   "live_status": null
+  },
+  {
+   "id": "QWmNa7ZxRx0",
+   "title": "Committee of the Whole: Budget Hearing 04-14-2026 (Afternoon)",
+   "duration": 5318,
+   "live_status": null
+  },
+  {
+   "id": "QAgtNG6aAUA",
+   "title": "Committee of the Whole: Budget Hearing 04-14-2026 (Morning)",
+   "duration": 11609,
+   "live_status": null
+  },
+  {
+   "id": "hiMRnr7FiKY",
+   "title": "Committee of the Whole 4-13-26 (Afternoon)",
+   "duration": 7153,
+   "live_status": null
+  },
+  {
+   "id": "9YZiZ1gYcV8",
+   "title": "Committee of the Whole 4-13-26",
+   "duration": 10999,
+   "live_status": null
+  },
+  {
+   "id": "uiQkh1FgvLE",
+   "title": "Stated Meeting Of Philadelphia City Council 4-9-26",
+   "duration": 12124,
+   "live_status": null
+  },
+  {
+   "id": "UEcpN8WStKE",
+   "title": "Committee of the Whole: Budget Hearing 04-8-2026 (Afternoon)",
+   "duration": 5822,
+   "live_status": null
+  },
+  {
+   "id": "e1ZIIIv3a0I",
+   "title": "Committee of the Whole: Budget Hearing 04-8-2026 (Morning)",
+   "duration": 9487,
+   "live_status": null
+  },
+  {
+   "id": "ex2lGKOStEA",
+   "title": "Committee of the Whole: Budget Hearing 04-7-2026 (Afternoon)",
+   "duration": 7730,
+   "live_status": null
+  },
+  {
+   "id": "-EpQ7JupGRM",
+   "title": "Committee of the Whole: Budget Hearing 04-7-2026 (Morning)",
+   "duration": 7950,
+   "live_status": null
+  },
+  {
+   "id": "o-bL_tcQ4gU",
+   "title": "Committee of Law and Government 04-6-26",
+   "duration": 526,
+   "live_status": null
+  },
+  {
+   "id": "kvzL5ow45Lo",
+   "title": "Committee of the Whole: Budget Hearing 04-1-2026 (Afternoon)",
+   "duration": 9501,
+   "live_status": null
+  },
+  {
+   "id": "psZ9tyw-rks",
+   "title": "Committee of the Whole: Budget Hearing 04-1-2026 (Morning)",
+   "duration": 8614,
+   "live_status": null
+  },
+  {
+   "id": "suSBzNr_vpc",
+   "title": "Committee of the Whole: Budget Hearing 03-31-2026 (Afternoon)",
+   "duration": 7872,
+   "live_status": null
+  },
+  {
+   "id": "NoLXRj12WD4",
+   "title": "Committee of the Whole: Budget Hearing 03-31-2026 (Morning)",
+   "duration": 7968,
+   "live_status": null
+  },
+  {
+   "id": "rRXVFE3SW_0",
+   "title": "Economic Opportunity Review Committee 03-30-2026",
+   "duration": 3494,
+   "live_status": null
+  },
+  {
+   "id": "k5wuFW8Rido",
+   "title": "Stated Meeting Of Philadelphia City Council 3-26-26",
+   "duration": 9103,
+   "live_status": null
+  },
+  {
+   "id": "RDvgUt9VHTE",
+   "title": "Committee of the Whole: Budget Hearing 03-25-2026 (Afternoon)",
+   "duration": 4669,
+   "live_status": null
+  },
+  {
+   "id": "zqpNPYvB5Ik",
+   "title": "Committee of the Whole: Budget Hearing 03-25-2026 (Morning)",
+   "duration": 6136,
+   "live_status": null
+  },
+  {
+   "id": "MlXwkmzBoj0",
+   "title": "Committee of the Whole: Budget Hearing 03-24-2026 (Afternoon)",
+   "duration": 7512,
+   "live_status": null
+  },
+  {
+   "id": "9nxnSBgvGdw",
+   "title": "Committee of the Whole: Budget Hearing 03-24-2026 Morning",
+   "duration": 12532,
+   "live_status": null
+  },
+  {
+   "id": "psnZ2ShUAfU",
+   "title": "Stated Meeting Of Philadelphia City Council 3-19-26",
+   "duration": 11123,
+   "live_status": null
+  },
+  {
+   "id": "HcwtiWXh7GY",
+   "title": "Committee on Commerce and Economic Development 03-18-26",
+   "duration": 11911,
+   "live_status": null
+  },
+  {
+   "id": "OUpaNdEj_mE",
+   "title": "Committee on Streets and Services 03-16-2026",
+   "duration": 2374,
+   "live_status": null
+  },
+  {
+   "id": "r2-0jysyqY0",
+   "title": "Committee on Labor and Civil Service 03-16-26",
+   "duration": 5131,
+   "live_status": null
+  },
+  {
+   "id": "-KsxCzhCiNM",
+   "title": "Stated Meeting Of Philadelphia City Council 3-12-26",
+   "duration": 15128,
+   "live_status": null
+  },
+  {
+   "id": "cEl0lqMtUOs",
+   "title": "Veterans Advisory Committee 03-11-26",
+   "duration": 3087,
+   "live_status": null
+  },
+  {
+   "id": "iSJF8oOwW7s",
+   "title": "Committee on Rules 3-10-26",
+   "duration": 1280,
+   "live_status": null
+  },
+  {
+   "id": "P4H_-TPV_OI",
+   "title": "Committee on Finance 3-09-26",
+   "duration": 7084,
+   "live_status": null
+  },
+  {
+   "id": "7OhI_dWyauA",
+   "title": "Stated Meeting Of Philadelphia City Council 3-5-26",
+   "duration": 11285,
+   "live_status": null
+  },
+  {
+   "id": "Rpal8vKLAQM",
+   "title": "Committee on Housing, Neighborhood Development and The Homeless 3-4-2026",
+   "duration": 11007,
+   "live_status": null
+  },
+  {
+   "id": "aXmR7MXXjF4",
+   "title": "Committee on Finance 3-03-26",
+   "duration": 5228,
+   "live_status": null
+  },
+  {
+   "id": "tbWOzWSdK34",
+   "title": "Committee on Public Health and Human Services 3-02-2026",
+   "duration": 12396,
+   "live_status": null
+  },
+  {
+   "id": "qmaipV453jk",
+   "title": "Stated Meeting Of Philadelphia City Council 2-26-26",
+   "duration": 11388,
+   "live_status": null
+  },
+  {
+   "id": "ukQ4-K1jnXo",
+   "title": "Committee on Public Safety 02-25-26",
+   "duration": 14130,
+   "live_status": null
+  },
+  {
+   "id": "gftU0tnyPsQ",
+   "title": "Stated Meeting Of Philadelphia City Council 2-19-26",
+   "duration": 9917,
+   "live_status": null
+  },
+  {
+   "id": "OsOTe6dqnDU",
+   "title": "Committee on Public Safety 02-18-26",
+   "duration": 10427,
+   "live_status": null
+  },
+  {
+   "id": "tkQrBpiPzv8",
+   "title": "Committee of the Whole 2-17-26",
+   "duration": 26039,
+   "live_status": null
+  },
+  {
+   "id": "plid4PNBQgk",
+   "title": "Stated Meeting Of Philadelphia City Council 2-12-26",
+   "duration": 7252,
+   "live_status": null
+  },
+  {
+   "id": "UxjCrp2Is78",
+   "title": "Committee of Law and Government 02-9-26",
+   "duration": 11361,
+   "live_status": null
+  },
+  {
+   "id": "b9SneBBwdds",
+   "title": "Stated Meeting Of Philadelphia City Council 2-05-26",
+   "duration": 10215,
+   "live_status": null
+  },
+  {
+   "id": "JMGx_N6IQbI",
+   "title": "Committee on Licenses and Inspections 02-4-2026",
+   "duration": 5057,
+   "live_status": null
+  },
+  {
+   "id": "0Kn9QYpILb0",
+   "title": "Committee on Rules 2-03-26",
+   "duration": 5883,
+   "live_status": null
+  },
+  {
+   "id": "pCmC3pOL-co",
+   "title": "Stated Meeting Of Philadelphia City Council 1-29-26",
+   "duration": 10729,
+   "live_status": null
+  },
+  {
+   "id": "W0koF3JNVBw",
+   "title": "Stated Meeting Of Philadelphia City Council 1-22-26",
+   "duration": 12849,
+   "live_status": null
+  },
+  {
+   "id": "TIij5dNgnyA",
+   "title": "Stated Meeting Of Philadelphia City Council 12-11-25",
+   "duration": 16643,
+   "live_status": null
+  },
+  {
+   "id": "hy0RFWFEfXA",
+   "title": "Committee on Public Property and Public Works 12-11-25",
+   "duration": 285,
+   "live_status": null
+  },
+  {
+   "id": "xnOHXJ39KaA",
+   "title": "Committee on Appropriations 12-11-2025",
+   "duration": 261,
+   "live_status": null
+  },
+  {
+   "id": "CprzDUKVLkw",
+   "title": "Veterans Advisory Committee 12-10-25",
+   "duration": 5371,
+   "live_status": null
+  },
+  {
+   "id": "6adUCqVT1S8",
+   "title": "Committee on Fiscal Stability and Intergovernmental Cooperation 12-10-2025",
+   "duration": 11109,
+   "live_status": null
+  },
+  {
+   "id": "37PsfD4Pb9g",
+   "title": "Committee on Public Safety 12-09-25",
+   "duration": 21374,
+   "live_status": null
+  },
+  {
+   "id": "b2tXBwwynkY",
+   "title": "Committee on Appropriations 12-9-2025",
+   "duration": 154,
+   "live_status": null
+  },
+  {
+   "id": "EK5ZFs4_12M",
+   "title": "Committee on Public Health and Human Services 12-08-2025",
+   "duration": 7591,
+   "live_status": null
+  },
+  {
+   "id": "QhBcph7tZZI",
+   "title": "Economic Opportunity Review Committee 12-8-2025",
+   "duration": 2893,
+   "live_status": null
+  },
+  {
+   "id": "jl3--LbCaxo",
+   "title": "Stated Meeting Of Philadelphia City Council 12-04-25",
+   "duration": 11329,
+   "live_status": null
+  },
+  {
+   "id": "WKi5WCPxp-o",
+   "title": "Committee on Finance 12-03-25",
+   "duration": 7054,
+   "live_status": null
+  },
+  {
+   "id": "1WKWHj5Ogkk",
+   "title": "Committee on Rules 12-03-25",
+   "duration": 1876,
+   "live_status": null
+  },
+  {
+   "id": "IbJfN4SEYWA",
+   "title": "Committee of the Whole 12-2-25",
+   "duration": 8997,
+   "live_status": null
+  },
+  {
+   "id": "-PmPs_3sNk0",
+   "title": "Committee on Streets and Services 12-2-2025",
+   "duration": 7626,
+   "live_status": null
+  },
+  {
+   "id": "uN2lcII_L44",
+   "title": "Committee on Appropriations 12-1-2025",
+   "duration": 3351,
+   "live_status": null
+  },
+  {
+   "id": "IoU6jk1E9T8",
+   "title": "Committee on Public Property and Public Works 12-1-25",
+   "duration": 7480,
+   "live_status": null
+  },
+  {
+   "id": "ZXwsKnZZuEI",
+   "title": "Committee on Licenses and Inspections 11-24-2025",
+   "duration": 3485,
+   "live_status": null
+  },
+  {
+   "id": "1YJWD-2Yqck",
+   "title": "Committee on Streets and Services 11-24-2025",
+   "duration": 2686,
+   "live_status": null
+  },
+  {
+   "id": "E_rET1SZEQY",
+   "title": "Stated Meeting Of Philadelphia City Council 11-20-25",
+   "duration": 11868,
+   "live_status": null
+  },
+  {
+   "id": "Z-CSfiA1MkM",
+   "title": "Committee of Law and Government 11-19-25",
+   "duration": 4696,
+   "live_status": null
+  },
+  {
+   "id": "VKJM_xHbBO0",
+   "title": "Committee on Labor and Civil Service 11-19-25",
+   "duration": 3605,
+   "live_status": null
+  },
+  {
+   "id": "ezhQ9iEqquI",
+   "title": "Committee of the Whole 11-18-25",
+   "duration": 16475,
+   "live_status": null
+  },
+  {
+   "id": "jznk8bARW6s",
+   "title": "Committee on the Environment 11-17-25",
+   "duration": 14847,
+   "live_status": null
+  },
+  {
+   "id": "v2y26ypNEKI",
+   "title": "Stated Meeting of Philadelphia City Council 11-13-25",
+   "duration": 9918,
+   "live_status": null
+  },
+  {
+   "id": "aoigov55Wdg",
+   "title": "Committee on Rules 11-12-25",
+   "duration": 3325,
+   "live_status": null
+  },
+  {
+   "id": "nJmCdGGF7vc",
+   "title": "Committee of the Whole 11-12-25",
+   "duration": 15963,
+   "live_status": null
+  },
+  {
+   "id": "8-zAKqk6WhA",
+   "title": "Committee on Public Health and Human Services 11-10-2025",
+   "duration": 6747,
+   "live_status": null
+  },
+  {
+   "id": "d8x-MkNfssk",
+   "title": "Committee on Commerce and Economic Development 11-5-25",
+   "duration": 5366,
+   "live_status": null
+  },
+  {
+   "id": "B_qtdpZ4xak",
+   "title": "Committee on Public Health and Human Services 11-5-2025",
+   "duration": 16032,
+   "live_status": null
+  },
+  {
+   "id": "4zo8T2AAnM8",
+   "title": "Stated Meeting Of Philadelphia City Council 10-30-25",
+   "duration": 8376,
+   "live_status": null
+  },
+  {
+   "id": "LdShbO19RY8",
+   "title": "Joint Committees on Children & Youth and Technology & Information Services 10-29-2025",
+   "duration": 12654,
+   "live_status": null
+  },
+  {
+   "id": "S7jertsNGW0",
+   "title": "Joint Committees on Streets & Services and Transportation & Public Utilities 10-28-2025",
+   "duration": 9893,
+   "live_status": null
+  },
+  {
+   "id": "zRHEnkkI384",
+   "title": "Committee on Streets and Services 10-28-2025",
+   "duration": 2175,
+   "live_status": null
+  },
+  {
+   "id": "BiwAMVy0ERk",
+   "title": "Committee on Labor and Civil Service 10-27-25",
+   "duration": 15205,
+   "live_status": null
+  },
+  {
+   "id": "k5ulIMN8J3c",
+   "title": "Committee on Commerce and Economic Development 10-15-25",
+   "duration": 6898,
+   "live_status": null
+  },
+  {
+   "id": "kBl_OFvKajk",
+   "title": "Committee on Technology and Information Services 10-15-2025",
+   "duration": 11087,
+   "live_status": null
+  },
+  {
+   "id": "sehj2hg62rQ",
+   "title": "Stated Meeting Of Philadelphia City Council 10-23-25",
+   "duration": 9391,
+   "live_status": null
+  },
+  {
+   "id": "UIRGuyGA0nU",
+   "title": "Committee on Rules 10-21-25",
+   "duration": 8532,
+   "live_status": null
+  },
+  {
+   "id": "CRME_GiREp0",
+   "title": "Committee on Licenses and Inspections 10-20-2025",
+   "duration": 7115,
+   "live_status": null
+  },
+  {
+   "id": "LAj_CcrbVFg",
+   "title": "Committee on Transportation and Public Utilities 10-16-25",
+   "duration": 7808,
+   "live_status": null
+  },
+  {
+   "id": "3HY84fTUj08",
+   "title": "Stated Meeting Of Philadelphia City Council 10-16-25",
+   "duration": 13903,
+   "live_status": null
+  },
+  {
+   "id": "twFdQJvxw50",
+   "title": "Stated Meeting Of Philadelphia City Council 10-09-25",
+   "duration": 12368,
+   "live_status": null
+  },
+  {
+   "id": "hoNiSZVNs9M",
+   "title": "Committee on People with Disabilities and Special Needs 10-07-2025",
+   "duration": 13106,
+   "live_status": null
+  },
+  {
+   "id": "x_fnJ1HA-_Y",
+   "title": "Committee on Rules 10-07-25",
+   "duration": 1434,
+   "live_status": null
+  },
+  {
+   "id": "ZMscOhVv2S4",
+   "title": "Committee on Licenses and Inspections 10-06-2025",
+   "duration": 1261,
+   "live_status": null
+  },
+  {
+   "id": "W0ipQMTVeIM",
+   "title": "Committee on Streets and Services Part 2 9-29-2025",
+   "duration": 8263,
+   "live_status": null
+  },
+  {
+   "id": "6AZ5leeM-cs",
+   "title": "Committee on Public Health and Human Services 9-30-2025",
+   "duration": 12211,
+   "live_status": null
+  },
+  {
+   "id": "Pt2osNctusw",
+   "title": "Committee on Streets and Services 9-29-2025",
+   "duration": 6684,
+   "live_status": null
+  },
+  {
+   "id": "WA65wG_xvuE",
+   "title": "Stated Meeting Of Philadelphia City Council 09-25-25",
+   "duration": 11152,
+   "live_status": null
+  },
+  {
+   "id": "N32FDhKcHJ0",
+   "title": "Stated Meeting Of Philadelphia City Council 09-18-25",
+   "duration": 9074,
+   "live_status": null
+  },
+  {
+   "id": "jjc79-V09KQ",
+   "title": "Special Committee on Kensington 09-16-25",
+   "duration": 13550,
+   "live_status": null
+  },
+  {
+   "id": "TeQw9ehUke8",
+   "title": "Stated Meeting Of Philadelphia City Council 09-11-25",
+   "duration": 12340,
+   "live_status": null
+  },
+  {
+   "id": "dWwI8-xE9sY",
+   "title": "Economic Opportunity Review Committee 6-16-2025",
+   "duration": 4639,
+   "live_status": null
+  },
+  {
+   "id": "5bMhom_CqMI",
+   "title": "Committee on Streets and Services 12-5-2023",
+   "duration": 6569,
+   "live_status": null
+  },
+  {
+   "id": "Mx1OQKi0zfc",
+   "title": "Veterans Advisory Committee 06-11-25",
+   "duration": 4321,
+   "live_status": null
+  },
+  {
+   "id": "DxdJ8Epp5io",
+   "title": "Stated Meeting Of Philadelphia City Council 06-12-25",
+   "duration": 13334,
+   "live_status": null
+  },
+  {
+   "id": "M-M368L66Mg",
+   "title": "Committee on Rules 06-12-25",
+   "duration": 660,
+   "live_status": null
+  },
+  {
+   "id": "9L_cBOL46tk",
+   "title": "Joint Committees on Labor and Civil Service & Parks, Recreation, and Cultural Affairs",
+   "duration": 6641,
+   "live_status": null
+  },
+  {
+   "id": "9cN9ZjV-vEY",
+   "title": "Committee on Housing, Neighborhood Development and The Homeless 6-3-2025",
+   "duration": 13300,
+   "live_status": null
+  },
+  {
+   "id": "-9zp6P4B5lk",
+   "title": "Committee on Public Health and Human Services Morning 6-6-2025",
+   "duration": 10563,
+   "live_status": null
+  },
+  {
+   "id": "CNSzJfs4Whg",
+   "title": "Committee on Public Health and Human Services Afternoon 6-6-2025",
+   "duration": 1630,
+   "live_status": null
+  },
+  {
+   "id": "MJ6Myg-TgOs",
+   "title": "Committee on Rules 06-04-25",
+   "duration": 4791,
+   "live_status": null
+  },
+  {
+   "id": "AMC6xiiJazk",
+   "title": "Committee on Finance 06-4-25",
+   "duration": 14397,
+   "live_status": null
+  },
+  {
+   "id": "RotwiJxxMQc",
+   "title": "Committee of the Whole 6-4-25",
+   "duration": 1015,
+   "live_status": null
+  },
+  {
+   "id": "dLEvCpZ6BUY",
+   "title": "Stated Meeting Of Philadelphia City Council 06-05-25 Morning",
+   "duration": 11901,
+   "live_status": null
+  },
+  {
+   "id": "aiCR2kg6JRQ",
+   "title": "Stated Meeting Of Philadelphia City Council 06-05-25 Afternoon",
+   "duration": 1581,
+   "live_status": null
+  },
+  {
+   "id": "4weuBZfDf4g",
+   "title": "Committee on Finance 06-5-25",
+   "duration": 2072,
+   "live_status": null
+  },
+  {
+   "id": "biHSLKmnCww",
+   "title": "Committee on Rules 06-05-25",
+   "duration": 693,
+   "live_status": null
+  },
+  {
+   "id": "DSlB4Hvo25g",
+   "title": "Committee of the Whole 6-5-25",
+   "duration": 590,
+   "live_status": null
+  },
+  {
+   "id": "cjBmwHQI_8E",
+   "title": "Committee on Public Safety 06-02-25",
+   "duration": 10531,
+   "live_status": null
+  },
+  {
+   "id": "qV5rE3dFB5s",
+   "title": "Your City, Your Budget - FY26 Budget Town Hall Meetings - May 27, 2025",
+   "duration": 5888,
+   "live_status": null
+  },
+  {
+   "id": "I7PWWSu5GsY",
+   "title": "Committee on Parks, Recreation and Cultural Affairs 05-29-25",
+   "duration": 2096,
+   "live_status": null
+  },
+  {
+   "id": "X3oNEX1mUwM",
+   "title": "Committee on Public Property and Public Works 05-30-25",
+   "duration": 1048,
+   "live_status": null
+  },
+  {
+   "id": "zWxbTqk1Vlo",
+   "title": "Stated Meeting of Philadelphia City Council 05-29-2025",
+   "duration": 13635,
+   "live_status": null
+  },
+  {
+   "id": "pF5youqIUaE",
+   "title": "Your City, Your Budget - FY26 Budget Town Hall Meetings  - May 1, 2025",
+   "duration": 6585,
+   "live_status": null
+  },
+  {
+   "id": "pf_XA8UMSZc",
+   "title": "Special Committee on Kensington 5-27-2025",
+   "duration": 12663,
+   "live_status": null
+  },
+  {
+   "id": "HghExROmReo",
+   "title": "Committee on Housing, Neighborhood Development and The Homeless 5-27-2025",
+   "duration": 9172,
+   "live_status": null
+  },
+  {
+   "id": "qFgef4AG_PA",
+   "title": "Committee on Transportation and Public Utilities 05-21-25",
+   "duration": 10912,
+   "live_status": null
+  },
+  {
+   "id": "1dhWUOHxtKk",
+   "title": "Committee on Rules 05-21-25",
+   "duration": 3267,
+   "live_status": null
+  },
+  {
+   "id": "SHRWC2Iq6AM",
+   "title": "Committee on Public Property and Public Works 5-20-2025",
+   "duration": 4741,
+   "live_status": null
+  },
+  {
+   "id": "YNYZV8NHink",
+   "title": "Special Committee on Kensington 5-16-2025",
+   "duration": 13260,
+   "live_status": null
+  },
+  {
+   "id": "UIL3tpBcfFY",
+   "title": "Philadelphia City Council Committee on Education 8-6-26",
+   "duration": 15007,
+   "live_status": "was_live"
+  }
+ ]
+}
