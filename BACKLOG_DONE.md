@@ -959,6 +959,57 @@ rather than asking Ryan to hunt for one email — the subject shape came
 from reading `_digest_subject()` first, which is what made the search
 query precise enough to find them among 201 loosely-matching threads.
 
+## GA events on `/m/*` pages: the Archive never had a measurement ID [Done 2026-08-22]
+
+The four custom events (`video_play`, `transcript_seek`,
+`copy_link_to_time`, `save_meeting`) were added to
+`archive/static/meeting_page.js` on 2026-08-17 and returned **zero** in
+GA for the following five days. That first read as a traffic problem —
+22 events total on all `/m/*` paths in 30 days is far too little to
+expect a play. **It wasn't traffic. The events were physically incapable
+of firing.**
+
+**Root cause.** `archive/templates/base.html:8` gates the GA snippet on
+`{% if GA_MEASUREMENT_ID %}` and line 18 emits `window.trackEvent =
+function() {};` — an explicit no-op — when it's unset. `render.yaml`
+declared `GA_MEASUREMENT_ID` only in the `rtr-deeplink` (resolver)
+block; the `rtr-deeplink-archive` block never declared it. So the
+service that actually serves `/m/*` had no measurement ID, took the
+no-op branch, and silently discarded every call.
+
+**How it was found — in-browser, not from event counts.** Loading a real
+production page
+(`/m/san-carlos-ca-2017-11-13-city-council-regular-meeting`) and reading
+its served HTML showed the no-op stub, no `googletagmanager` script, and
+no `G-…` id anywhere in the document. That rules out tracker-blocking:
+it is the origin's own markup. Reading event counts alone could never
+have distinguished "broken" from "nobody visited".
+
+**Why a green test suite missed it — the reusable part.** Five jsdom
+tests cover the boot path, and they **stub `trackEvent` themselves**. So
+they verify the *call sites* and can never exercise the *template gate*
+that decides whether `trackEvent` does anything. A passing suite and a
+live page disagreed, which is exactly the case this repo's "verify
+in-browser, not just via the API" convention exists for. Any future test
+of an analytics/feature-flag call site has the same hole unless it also
+asserts on rendered HTML.
+
+**Fixed and verified.** Ryan set the value on `rtr-deeplink-archive` and
+redeployed. Confirmed live the same day: `typeof window.gtag ===
+"function"`, `window.trackEvent` is the real implementation
+(`function(name, params) { gtag('event', name, params || {}); }`),
+`G-4V42BWY8EJ` present, `googletagmanager.com/gtag/js` loading — and
+**end to end**, wrapping `gtag` and clicking the page's own "Share video
+at 0:00" control fired `copy_link_to_time`.
+
+**Then declared in `render.yaml`.** The value is `sync: false`
+(dashboard-set), but the *key* now appears in the
+`rtr-deeplink-archive` block, so a service rebuilt from the blueprint
+alone cannot silently revert to the stub. That failure mode is
+particularly nasty because nothing errors — GA just quietly returns to
+zero events, which is indistinguishable from having no visitors. Not
+added to either worker: they serve no HTML.
+
 ## Sentry: a real raised exception does land in the dashboard — all three services confirmed [Done 2026-08-22]
 
 WO-7's own acceptance criterion, left unrun since 2026-08-16: `SENTRY_DSN`
