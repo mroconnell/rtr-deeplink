@@ -72,15 +72,14 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (7)
   [JUST-DO-IT] `[EASY]` `rtr-business/BUSINESS_OVERVIEW.md` still says
   [JUST-DO-IT] Every byte the public site serves is billed twice:
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (15)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (14)
   Confirmations nobody has actually watched happen  (5)
     [HUMAN] Render's health-check gate has never blocked a deploy —
     [HUMAN] Confirm both admin cron workflows run green against the
     [HUMAN] `[LOGIN]` Confirm a real Render deploy installed cleanly off
     [HUMAN] `[LOGIN]` `[WAIT]` P3: confirm GA is actually receiving
     [HUMAN] `[LOGIN]` P5: confirm a real `send-search-alerts` cron run
-  Production actions only Ryan should take  (5)
-    [NEEDS-AUDIT] Render "HTTP health check failed" on
+  Production actions only Ryan should take  (4)
     [HUMAN] `[LOGIN]` Archive service instability, 2026-08-17 —
     [HUMAN] `[WAIT]` 10 YouTube-backed pages still hold roll-up
     [HUMAN] `[WAIT]` Meeting-card backfill sweep — finished 2026-08-22
@@ -93,7 +92,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (15)
   Product calls  (1)
     [HUMAN] `legistar.py`'s `_try_fallback_video_link()` still prefers
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (6)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (7)
+  [NEEDS-AUDIT] Render "HTTP health check failed" on
   [NEEDS-AUDIT] A chunk truncated only at its *tail* still passes the
   [NEEDS-AUDIT] `_sentence_case()` capitalises after every `\n`, so a
   WO-34's roll-up calibration gap is real at corpus scale — a second,…
@@ -552,83 +552,6 @@ convenient.
 
 ### Production actions only Ryan should take
 
-- **[NEEDS-AUDIT] Render "HTTP health check failed" on
-  `rtr-deeplink-archive` (2026-08-19 13:17:28 UTC, 2026-08-20 21:38:36
-  UTC) — logs read 2026-08-22, root cause now has a real candidate.**
-  Promoted from `CLAUDE_INBOX_TRIAGE.md`; distinct from the 2026-08-17
-  instability cluster, which was memory. **This is not that.**
-
-  **Confirmed from the Archive's application logs in both windows:**
-  - A real instance restart each time — `Instance
-    srv-d9ras3ijnfac73f9ps5g-qv7ln restarted` (08-19) and
-    `…-7nlhh restarted` (08-20).
-  - **The shutdown is graceful, not a kill**: `Shutting down` →
-    `Waiting for application shutdown.` → `Application shutdown
-    complete.` → `Finished server process`. An OOM kill is `SIGKILL`
-    and produces none of that. This is `SIGTERM`, handled cleanly.
-  - **Zero errors.** No traceback, no OOM line, no 5xx. `/api/health`
-    returns `200 OK` continuously right up to the shutdown.
-  - Traffic in both windows is a **systematic crawl**, not human
-    browsing: sequential `/m/{slug}` pages, then `/j/{hub}` pages, then
-    `/meetings?jurisdiction=…` **and** `/feed.xml?jurisdiction=…` for
-    the same jurisdictions, `/meetings?page=2,3,36`, and **both
-    `transcript.txt` and `transcript.srt`** for the same meeting
-    back-to-back.
-  - In the 08-20 window, two expensive internal endpoints were called
-    from an external IP **immediately before the shutdown**:
-    `/internal/transcript-quality-audit?list_outcomes=…` and
-    `/internal/transcription/hallucination-candidates`.
-
-  **The candidate diagnosis, and it is consistent with all of the
-  above.** The graceful shutdown is the *consequence*, not the cause:
-  Render restarts an instance whose health check fails, and it does so
-  with `SIGTERM`. So the question is only why `/api/health` stopped
-  answering in time, and three things stack:
-  1. **The Archive runs a single uvicorn process** — `render.yaml`'s
-     `startCommand` is `uvicorn archive.main:app --host 0.0.0.0 --port
-     $PORT`, with no `--workers`. One event loop serves everything, so
-     any slow query stalls every other request including the health
-     probe.
-  2. **`/api/health` itself is O(n).** `archive/main.py`'s `health()`
-     runs `select(func.count()).select_from(MeetingPage)` on **every
-     probe** — a `SELECT count(*)` sequential scan over a table now
-     1,200+ rows and growing with every ingest. And Render probes
-     relentlessly: `/api/health` lines outnumber all real traffic by
-     roughly **30:1** in these logs.
-  3. **Load was genuinely high in both windows** — a full-site crawl,
-     plus (08-20) two internal audit endpoints whose cost is already a
-     known concern elsewhere in this file.
-
-  **What is NOT yet established, and shouldn't be asserted:** the pasted
-  logs carry no timestamps, so the probe *rate* is inferred from line
-  density rather than measured, and nothing times the count query in
-  production. This is a strong hypothesis, not a diagnosis.
-
-  **Fix shape, if it holds.** The health check's expense is the cheapest
-  thing to remove and the fix must preserve its documented intent —
-  its docstring records that during the 2026-08-09 incident a bare
-  `SELECT 1` would still have reported "ok" while every real query
-  failed, so it counts rows deliberately, to catch a missing or
-  misnamed table. **`select(MeetingPage.id).limit(1)` keeps exactly that
-  property** (still fails on a missing/misnamed table, still can't
-  report "ok" when the DB is unreachable) at O(1) instead of O(n).
-  Separately worth considering: `--workers 2` so one slow request
-  can't starve the probe.
-
-  **Two incidental findings from the same logs**, both feeding other
-  entries:
-  - **Every non-probe request arrives from one upstream IP**
-    (`74.220.48.160` on 08-19, `74.220.48.190` on 08-20 — same /24).
-    Real end users don't share an IP; the resolver proxying the whole
-    public site does. Independent support for the double-billing entry
-    under **Ship next**.
-  - **The crawler pulls both `transcript.txt` and `transcript.srt` per
-    meeting, plus a per-jurisdiction `feed.xml` and `/meetings` page.**
-    Those are the largest payloads the site serves, and every one of
-    them is currently billed twice. That is a plausible large share of
-    the month's 12.46 GB of HTTP responses, and it argues the
-    private-networking fix is worth more than the raw byte count first
-    suggested.
 - **[HUMAN] `[LOGIN]` Archive service instability, 2026-08-17 —
   part (a) answered 2026-08-22, part (b) still open.** Sentry showed a
   cluster (unclosed connections, a proxy `TimeoutError`, a
@@ -795,6 +718,85 @@ convenient.
 Reproduced against real data, but the fix is a genuine open question.
 Jurisdiction-extraction bugs live under **Platform & jurisdiction
 coverage** instead.
+
+- **[NEEDS-AUDIT] Render "HTTP health check failed" on
+  `rtr-deeplink-archive` (2026-08-19 13:17:28 UTC, 2026-08-20 21:38:36
+  UTC) — logs read 2026-08-22, root cause now has a real candidate.**
+  Promoted from `CLAUDE_INBOX_TRIAGE.md`; distinct from the 2026-08-17
+  instability cluster, which was memory. **This is not that.**
+
+  **Confirmed from the Archive's application logs in both windows:**
+  - A real instance restart each time — `Instance
+    srv-d9ras3ijnfac73f9ps5g-qv7ln restarted` (08-19) and
+    `…-7nlhh restarted` (08-20).
+  - **The shutdown is graceful, not a kill**: `Shutting down` →
+    `Waiting for application shutdown.` → `Application shutdown
+    complete.` → `Finished server process`. An OOM kill is `SIGKILL`
+    and produces none of that. This is `SIGTERM`, handled cleanly.
+  - **Zero errors.** No traceback, no OOM line, no 5xx. `/api/health`
+    returns `200 OK` continuously right up to the shutdown.
+  - Traffic in both windows is a **systematic crawl**, not human
+    browsing: sequential `/m/{slug}` pages, then `/j/{hub}` pages, then
+    `/meetings?jurisdiction=…` **and** `/feed.xml?jurisdiction=…` for
+    the same jurisdictions, `/meetings?page=2,3,36`, and **both
+    `transcript.txt` and `transcript.srt`** for the same meeting
+    back-to-back.
+  - In the 08-20 window, two expensive internal endpoints were called
+    from an external IP **immediately before the shutdown**:
+    `/internal/transcript-quality-audit?list_outcomes=…` and
+    `/internal/transcription/hallucination-candidates`.
+
+  **The candidate diagnosis, and it is consistent with all of the
+  above.** The graceful shutdown is the *consequence*, not the cause:
+  Render restarts an instance whose health check fails, and it does so
+  with `SIGTERM`. So the question is only why `/api/health` stopped
+  answering in time, and three things stack:
+  1. **The Archive runs a single uvicorn process** — `render.yaml`'s
+     `startCommand` is `uvicorn archive.main:app --host 0.0.0.0 --port
+     $PORT`, with no `--workers`. One event loop serves everything, so
+     any slow query stalls every other request including the health
+     probe.
+  2. **`/api/health` itself is O(n).** `archive/main.py`'s `health()`
+     runs `select(func.count()).select_from(MeetingPage)` on **every
+     probe** — a `SELECT count(*)` sequential scan over a table now
+     1,200+ rows and growing with every ingest. And Render probes
+     relentlessly: `/api/health` lines outnumber all real traffic by
+     roughly **30:1** in these logs.
+  3. **Load was genuinely high in both windows** — a full-site crawl,
+     plus (08-20) two internal audit endpoints whose cost is already a
+     known concern elsewhere in this file.
+
+  **What is NOT yet established, and shouldn't be asserted:** the pasted
+  logs carry no timestamps, so the probe *rate* is inferred from line
+  density rather than measured, and nothing times the count query in
+  production. This is a strong hypothesis, not a diagnosis.
+
+  **Fix shape, if it holds.** The health check's expense is the cheapest
+  thing to remove and the fix must preserve its documented intent —
+  its docstring records that during the 2026-08-09 incident a bare
+  `SELECT 1` would still have reported "ok" while every real query
+  failed, so it counts rows deliberately, to catch a missing or
+  misnamed table. **`select(MeetingPage.id).limit(1)` keeps exactly that
+  property** (still fails on a missing/misnamed table, still can't
+  report "ok" when the DB is unreachable) at O(1) instead of O(n).
+  Separately worth considering: `--workers 2` so one slow request
+  can't starve the probe.
+
+  **Two incidental findings from the same logs**, both feeding other
+  entries:
+  - **Every non-probe request arrives from one upstream IP**
+    (`74.220.48.160` on 08-19, `74.220.48.190` on 08-20 — same /24).
+    Real end users don't share an IP; the resolver proxying the whole
+    public site does. Independent support for the double-billing entry
+    under **Ship next**.
+  - **The crawler pulls both `transcript.txt` and `transcript.srt` per
+    meeting, plus a per-jurisdiction `feed.xml` and `/meetings` page.**
+    Those are the largest payloads the site serves, and every one of
+    them is currently billed twice. That is a plausible large share of
+    the month's 12.46 GB of HTTP responses, and it argues the
+    private-networking fix is worth more than the raw byte count first
+    suggested.
+
 
 - **[NEEDS-AUDIT] A chunk truncated only at its *tail* still passes the
   decodability guard — confirmed with real ffmpeg 2026-08-21.** The
