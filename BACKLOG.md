@@ -63,15 +63,14 @@ Standing decisions — do NOT re-raise  (12)
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
   Sacramento County's doubled meeting title is not a bug to fix
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (6)
-  [JUST-DO-IT] Every Archive page ingested before WO-34 (2026-08-21)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (5)
   [JUST-DO-IT] `[EASY]` `is_extractable()` excludes only YouTube, so
   [JUST-DO-IT] `[EASY]` A Viebit meeting's "can't transcribe this"
   [JUST-DO-IT] `[EASY]` `scripts/backtest_fallback.py`'s `sebastopol`
   [JUST-DO-IT] `[EASY]` "We think the video is here: [No video
   [JUST-DO-IT] `[EASY]` `rtr-business/BUSINESS_OVERVIEW.md` still says
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (16)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
   Confirmations nobody has actually watched happen  (6)
     [HUMAN] `[LOGIN]` Sentry: confirm a real raised exception actually
     [HUMAN] `[LOGIN]` Confirm Render's health-check gate actually fails
@@ -79,10 +78,11 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (16)
     [HUMAN] `[LOGIN]` Confirm a real Render deploy installed cleanly off
     [HUMAN] `[LOGIN]` `[WAIT]` P3: confirm GA is actually receiving
     [HUMAN] `[LOGIN]` P5: confirm a real `send-search-alerts` cron run
-  Production actions only Ryan should take  (5)
+  Production actions only Ryan should take  (6)
     [HUMAN] `[LOGIN]` Render "HTTP health check failed" on
     [HUMAN] `[LOGIN]` Render account bandwidth limit reached — real,
     [HUMAN] `[LOGIN]` Archive service instability, 2026-08-17
+    [HUMAN] 26 already-live pages still serve duplicated roll-up
     [HUMAN] `[WAIT]` Meeting-card backfill sweep — finished 2026-08-22
     [HUMAN] Stray demo-shaped tables found in `rtr_deeplink_db` during
   Decisions about already-live content  (4)
@@ -93,9 +93,10 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (16)
   Product calls  (1)
     [HUMAN] `legistar.py`'s `_try_fallback_video_link()` still prefers
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (5)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (6)
   [NEEDS-AUDIT] A chunk truncated only at its *tail* still passes the
   [NEEDS-AUDIT] `_sentence_case()` capitalises after every `\n`, so a
+  WO-34's roll-up calibration gap is real at corpus scale — a second,…
   The retry papers over an unexplained asyncio/subprocess hang, and…
   28 well-formed IQM2 queue rows point at retired tenants…
   Some Swagit meetings have no single "whole meeting" video file…
@@ -355,19 +356,6 @@ Small, self-contained, no open design question. Jurisdiction-extraction
 items that also qualify live under **Platform & jurisdiction coverage**
 so that work reads together.
 
-- **[JUST-DO-IT] Every Archive page ingested before WO-34 (2026-08-21)
-  still holds the duplicated roll-up transcript it was stored with — the
-  fix is resolve-time only.** `dedupe_rollup_cues()` runs on every fresh
-  resolve, but existing `TranscriptVersion` rows are untouched — e.g.
-  `/m/city-of-tacoma-wa-2026-01-06-city-council-on-2026-01-06-5-00-pm`
-  still serves the duplicated text (confirmed live 2026-08-21). Needs a
-  re-resolve script that walks affected pages and writes the new
-  transcript back — deliberately out of WO-34's scope since it's a
-  write-path job against real public pages, not a parser change. The
-  same roll-up detector the fix added (`_looks_like_rollup()` in
-  `app/utils/vtt_parser.py`) can scope *which* pages first. See
-  `BACKLOG_DONE.md`'s WO-34 entry for the fixed output.
-
 - **[JUST-DO-IT] `[EASY]` `is_extractable()` excludes only YouTube, so
   thumbnail extraction points ffmpeg at Vimeo and Viebit *HTML pages*
   (found 2026-08-22 while fixing the Viebit JSON-LD mislabel, PR #303).**
@@ -508,6 +496,28 @@ convenient.
   `render.yaml` on `main` today confirms a later attempt succeeded.
   **Open question for Ryan**: worth a look at Render's memory graph for
   14:00-17:00 UTC that day.
+- **[HUMAN] 26 already-live pages still serve duplicated roll-up
+  transcripts — the script is built and the dry-run is done; only the
+  `--apply` run is left (2026-08-22, #310).** A read-only dry run probed
+  1,377 candidates in ~7 minutes and found **26 affected pages** (12
+  granicus, 10 youtube, 2 civicclerk, 2 escribe) holding 16.3M stored
+  characters that become 2.7M — 83.6% duplication. Zero probe failures.
+  Ryan runs the apply himself, same pattern as
+  `backfill_meeting_cards.py`:
+
+  ```bash
+  python scripts/dedupe_rollup_transcripts.py --report-file scripts/rollup_dedupe_report.json
+  python scripts/dedupe_rollup_transcripts.py --apply --from-report scripts/rollup_dedupe_report.json
+  ```
+
+  Review the 26 findings between the two commands. **Read the confidence
+  bands first** — 10 of the 26 are the lower-confidence YouTube
+  double-emission cluster described in its own entry under **Open
+  bugs**, not the Granicus ticker shape; `--min-ratio 0.40` restricts
+  the run to the confident band if that's preferred. A read-only
+  rehearsal of the apply gate on Tacoma already passed (`fresh still
+  roll-up? False`, `GATE -> ok=True`).
+
 - **[HUMAN] `[WAIT]` Meeting-card backfill sweep — finished 2026-08-22
   02:04, two follow-ups left.** Ran to completion via `scripts/
   backfill_meeting_cards.py --apply`: **973 stored / 1,152 attempted
@@ -641,6 +651,33 @@ coverage** instead.
   probably in `_sentence_case()` itself (a `\n` inside a caption cue is a
   line wrap, not a sentence boundary), but that changes output for every
   de-shouted track and needs its own pass with its own samples.
+
+### WO-34's roll-up calibration gap is real at corpus scale — a second, smaller defect shape sits below the threshold `[NEEDS-AUDIT]`
+
+**Found by the corpus-wide dry run, 2026-08-22 (#310 — see
+`BACKLOG_DONE.md`).** WO-34 documented a calibration gap in
+`_looks_like_rollup()` and left it open because no real example sat in
+it. It is no longer empty: **10 of the 26 affected pages score
+0.202-0.244**, below WO-34's 0.401 roll-up floor.
+
+They are a **coherent cluster, not noise**: every one is a YouTube
+auto-caption track behind CivicWeb/Municode that emits each
+speaker-change line *twice*, once as `>>` and once as `»` — the fold
+case `vtt_parser.py`'s own comment block already names. They retain
+~0.80 of characters, against ~0.07-0.12 for the Granicus ticker shape,
+so this is a **real but structurally different and much smaller
+defect**, and treating both with one threshold is what hides it.
+
+Not settled: whether `_looks_like_rollup()` should be widened to score
+this shape confidently, or whether the `>>`/`»` double-emission deserves
+its own detector and its own dedupe path. The dry-run report splits the
+bands and both rewrite by default, with `--min-ratio 0.40` restricting
+to the confident band — a workaround, not an answer.
+
+**One measured constant worth not breaking**: `--min-retained`'s real
+observed floor is **0.066** (Delray Beach FL, Marco Island FL), not
+Tacoma's 0.117. The 0.05 default has a small but genuine margin. Don't
+lower it.
 
 ### The retry papers over an unexplained asyncio/subprocess hang, and Brookhaven's CDN is still unexplained `[NEEDS-AUDIT]`
 
