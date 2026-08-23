@@ -4367,6 +4367,18 @@ def _featured_entry(
     clicked); with no topic it is the meeting's default highlight, and
     the *rarest* topics in it get marked (see
     `_rank_topics_by_rarity()`)."""
+    # An untitled page renders as a card headed "Untitled meeting", which
+    # is fine in a dense list but reads as broken as a *featured* card on
+    # an indexed page -- and featuring is optional, so decline rather than
+    # publish a placeholder. Real case (2026-08-23): nine PrimeGov pages
+    # ingested on one bad day carried no title and one reached
+    # /state/california as a featured card. Deliberately a render-time
+    # guard, not a fix: the underlying rows still want re-resolving (see
+    # BACKLOG.md), and this just stops the gap being user-visible while
+    # they wait.
+    if not (page.get("title") or "").strip():
+        return None
+
     if topic_slug:
         moment = (highlight.get("topic_moments") or {}).get(topic_slug)
         if not moment:

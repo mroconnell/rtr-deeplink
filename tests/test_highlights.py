@@ -592,3 +592,26 @@ def test_rarity_ranking_is_deterministic_without_counts():
     assert crud._rank_topics_by_rarity(slugs, None) == crud._rank_topics_by_rarity(
         slugs, {}
     )
+
+
+def test_untitled_pages_are_never_featured():
+    """A featured card headed "Untitled meeting" reads as broken on an
+    indexed page, and featuring is optional -- so decline rather than
+    publish a placeholder.
+
+    Real case: nine PrimeGov pages ingested on one bad day (2026-08-20)
+    carried no title, and one reached `/state/california` as a featured
+    card. The rows still want re-resolving; this guard just stops the gap
+    being user-visible while they wait.
+    """
+    pages = [_page(1, "m1"), _page(2, "m2")]
+    pages[0]["title"] = None
+    pages[1]["title"] = "Real Council Meeting"
+    highlights = {1: _highlight(["cannabis"]), 2: _highlight(["homelessness"])}
+
+    featured = crud._build_featured(pages, highlights, None, 4)
+    assert [entry["slug"] for entry in featured] == ["m2"]
+
+    # Blank/whitespace-only counts as untitled too.
+    pages[0]["title"] = "   "
+    assert len(crud._build_featured(pages, highlights, None, 4)) == 1
