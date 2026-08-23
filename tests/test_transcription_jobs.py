@@ -1552,3 +1552,95 @@ async def test_has_good_transcript_treats_granicus_36k_truncation_as_not_good():
                 )
             ).scalar_one()
             assert await crud._has_good_transcript(session, page_id) is expected, slug
+
+
+# --- WO-45: a completed job is a cooldown, not a free pass -----------------
+#
+# _cooldown_active() is pure by design (see its docstring), so these drive it
+# directly with the (status, updated_at) tuples both callers build, rather
+# than staging five real jobs in the DB.
+#
+# The real occurrence these pin: jobs 732-736 on 2026-08-23 were five
+# separate COMPLETED jobs, 5/5 chunks each, on the identical page
+# (st-louis-park-high-school-wind-ensemble-concert) inside 17 minutes,
+# producing TranscriptVersions 2058-2062. The page is a music concert, so an
+# empty transcript is the correct final answer -- but an empty transcript
+# never satisfies _has_good_transcript(), so the page stayed in the candidate
+# pool, and a "completed" newest job applied no cooldown at all. There was no
+# test covering the completed-newest case before this one, which is how it
+# shipped.
+
+
+def test_cooldown_active_treats_a_completed_newest_job_as_cooldown():
+    from datetime import datetime, timedelta, timezone
+
+    from archive.db import crud as _crud
+
+    now = datetime.now(timezone.utc)
+    jobs = [("completed", now - timedelta(minutes=5))]
+    assert _crud._cooldown_active(jobs, now) is True
+
+
+def test_cooldown_active_releases_a_completed_page_after_the_max_cooldown():
+    """The page must still come back eventually -- a government source's own
+    captions really can catch up later, which is why these pages stay
+    candidates at all. Monthly, not every idle poll."""
+    from datetime import datetime, timedelta, timezone
+
+    from archive.db import crud as _crud
+
+    now = datetime.now(timezone.utc)
+    just_inside = [("completed", now - _crud.AUTO_TRANSCRIPTION_MAX_COOLDOWN)]
+    assert _crud._cooldown_active(just_inside, now) is False
+
+    well_past = [
+        ("completed", now - _crud.AUTO_TRANSCRIPTION_MAX_COOLDOWN - timedelta(days=1))
+    ]
+    assert _crud._cooldown_active(well_past, now) is False
+
+
+def test_cooldown_active_still_ignores_failures_older_than_a_completed_job():
+    """Pre-existing behaviour that must survive: a failure streak *before* a
+    completed job is stale history, not part of the current streak. Here the
+    completed job is what sets the cooldown, and the two older failures must
+    not escalate it."""
+    from datetime import datetime, timedelta, timezone
+
+    from archive.db import crud as _crud
+
+    now = datetime.now(timezone.utc)
+    jobs = [
+        ("completed", now - _crud.AUTO_TRANSCRIPTION_MAX_COOLDOWN - timedelta(days=1)),
+        ("failed", now - timedelta(days=400)),
+        ("failed", now - timedelta(days=401)),
+    ]
+    assert _crud._cooldown_active(jobs, now) is False
+
+
+def test_cooldown_active_still_escalates_on_consecutive_failures():
+    """Negative control: the failure path this function existed for is
+    untouched -- 2 consecutive failures is a 2-day cooldown."""
+    from datetime import datetime, timedelta, timezone
+
+    from archive.db import crud as _crud
+
+    now = datetime.now(timezone.utc)
+    jobs = [
+        ("failed", now - timedelta(hours=36)),
+        ("failed", now - timedelta(hours=48)),
+    ]
+    assert _crud._cooldown_active(jobs, now) is True
+
+    jobs_past = [
+        ("failed", now - timedelta(hours=60)),
+        ("failed", now - timedelta(hours=72)),
+    ]
+    assert _crud._cooldown_active(jobs_past, now) is False
+
+
+def test_cooldown_active_is_false_with_no_job_history():
+    from datetime import datetime, timezone
+
+    from archive.db import crud as _crud
+
+    assert _crud._cooldown_active([], datetime.now(timezone.utc)) is False

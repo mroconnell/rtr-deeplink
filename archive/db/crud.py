@@ -4806,12 +4806,38 @@ def _cooldown_active(jobs_newest_first: list[tuple], now: datetime) -> bool:
     """The escalating-backoff decision on a page's TranscriptionJob history
     -- `jobs_newest_first` is [(status, updated_at), ...] ordered by
     created_at DESC. Counts *consecutive* failures walking back from the
-    most recent job, stopping at the first non-"failed" one (a "completed"
-    job means this page already has what it needs; an older failure before
-    a completed one is stale history, not part of the current streak).
-    Pure so find_auto_transcription_candidate() can evaluate it over a
-    batch it fetched in one query, and _in_auto_transcription_cooldown()
-    over a single page."""
+    most recent job, stopping at the first non-"failed" one (an older
+    failure before a completed one is stale history, not part of the
+    current streak). Pure so find_auto_transcription_candidate() can
+    evaluate it over a batch it fetched in one query, and
+    _in_auto_transcription_cooldown() over a single page.
+
+    **A newest job of "completed" is also a cooldown, not a free pass
+    (WO-45, 2026-08-23).** This used to return False there, on the
+    reasoning that "a completed job means this page already has what it
+    needs" -- but both callers only ever reach this function for a page
+    that does NOT have a good transcript, so a page whose transcription
+    genuinely succeeded and simply found no speech was re-picked
+    immediately, forever. Real occurrence: five separate completed jobs,
+    5/5 chunks each, on the identical page in 17 minutes (jobs 732-736,
+    st-louis-park-high-school-wind-ensemble-concert -- a music concert,
+    so an empty transcript is the correct and final answer), producing
+    TranscriptVersions 2058-2062 and leaving the public page still
+    reading "No transcript". /internal/transcript-quality-audit put 448
+    pages in the `blank_transcript` bucket, i.e. that is the size of the
+    population this could loop on.
+
+    Deliberately narrow: this changes only how often such a page is
+    RETRIED, not whether its transcript counts as good. A blank page
+    still reads as needing a transcript everywhere else, and still comes
+    back around on the max cooldown -- a government source's own captions
+    really can catch up later, which is the whole reason these pages stay
+    candidates at all. It just does so monthly instead of every idle
+    poll.
+    """
+    if jobs_newest_first and jobs_newest_first[0][0] == "completed":
+        return now < _aware(jobs_newest_first[0][1]) + AUTO_TRANSCRIPTION_MAX_COOLDOWN
+
     consecutive_failures = 0
     most_recent_failed_at = None
     for status, updated_at in jobs_newest_first:

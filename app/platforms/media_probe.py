@@ -271,6 +271,129 @@ async def _mean_volume_db(path: Path) -> tuple[bool, Optional[float]]:
 _SUSPICIOUSLY_QUIET_MEAN_VOLUME_DB = -38.0
 
 
+# Real, confirmed ffmpeg bug (WO-45, 2026-08-23): on an HLS master
+# playlist whose audio is a SEPARATE fMP4 rendition addressed by
+# `#EXT-X-MAP` + `#EXT-X-BYTERANGE` (Cablecast's newer "store-N"
+# packaging -- `#EXT-X-MEDIA:TYPE=AUDIO,URI="1080p_audio.m3u8"`), an
+# input-side `-ss` lands ffmpeg somewhere it then reads nothing from.
+# It still exits 0 and writes a ~224-byte file with no decodable audio
+# frame in it. Measured against a real failing production source
+# (job 692, portagemi.cablecast.tv/internetchannel/show/304), running
+# this module's own argv:
+#
+#   ffmpeg        -ss 0        -ss 900         -ss 1800
+#   5.1.9  (Archive)  225B bad     225B bad        --
+#   7.1.5  (workers)  3.6MB ok     224B bad        224B bad
+#   8.1.2             3.6MB ok     3.6MB ok        --
+#
+# 7.1.5 is what the workers actually run today, and it matches
+# production exactly: chunk 0 (which needs no seek) always succeeds and
+# every later chunk fails, three times, until the job's consecutive-
+# failure budget is spent. 33+ jobs died this way on 2026-08-23 alone.
+#
+# Only ffmpeg 8.x fixes it, and Debian trixie ships 7.1.5 with nothing
+# newer in trixie-backports -- so this is not something a base-image
+# bump can currently resolve (an earlier version of BACKLOG.md's
+# thumbnail entry proposed exactly that; it would not have worked).
+#
+# What DOES work, measured on 7.1.5 against the same source: moving
+# `-ss` to AFTER `-i` (output-side seek). It decodes and discards
+# everything up to the target rather than seeking, so it costs real
+# time -- ~22s to reach 3600s, i.e. roughly 164x realtime -- but it
+# produces a correct, decodable chunk. At that rate the existing 120s
+# _SUBPROCESS_TIMEOUT_SECONDS covers a skip of ~5 hours before the
+# retry simply times out and we report the original failure, which
+# makes this self-limiting rather than something needing its own budget
+# (and BACKLOG.md has a standing decision against raising that timeout).
+#
+# Two cheaper alternatives were tested on the same source and rejected:
+# pointing ffmpeg at the audio rendition playlist directly still yields
+# 224 bytes, and `-noaccurate_seek` still yields 224 bytes. Pointing it
+# at the underlying `1080p_audio.mp4` *does* work and is fast (4s at
+# 900s), but requires walking master -> audio rendition -> EXT-X-MAP to
+# discover that filename, which is specific to how Cablecast packages
+# its VOD. The output-side retry is packaging-agnostic and costs
+# nothing on the happy path, so it wins.
+async def _extract_chunk_once(
+    media_url: str,
+    *,
+    start: float,
+    duration: float,
+    source_page_url: str,
+    out_path: Path,
+    output_side_seek: bool = False,
+) -> tuple[bool, Optional[str], bool]:
+    """One audio-chunk extraction attempt. Returns
+    (ok, reason, worth_seek_retry).
+
+    `output_side_seek` moves `-ss` after `-i`; see the block comment
+    above for why that is the fallback and what it costs.
+
+    `worth_seek_retry` marks a failure whose shape is consistent with a
+    broken seek (a non-zero exit, or an exit-0 file that's empty), as
+    opposed to one where retrying differently is pointless -- a missing
+    binary, or a timeout that already spent the whole budget. The
+    caller adds one more such case that only it can see: an exit-0,
+    non-empty file that turns out to be undecodable, which is the exact
+    shape this bug produces.
+    """
+    seek_before = () if output_side_seek else ("-ss", str(start))
+    seek_after = ("-ss", str(start)) if output_side_seek else ()
+    try:
+        returncode, _stdout, stderr = await _run(
+            "ffmpeg",
+            "-y",
+            "-headers",
+            realistic_headers(source_page_url),
+            *seek_before,
+            "-i",
+            media_url,
+            *seek_after,
+            "-t",
+            str(duration),
+            "-vn",
+            "-ac",
+            "1",
+            "-ar",
+            "16000",
+            "-c:a",
+            "libmp3lame",
+            "-b:a",
+            "32k",
+            str(out_path),
+        )
+    except FileNotFoundError:
+        logger.exception("ffmpeg not found extracting %s @ %ss", media_url, start)
+        return False, "ffmpeg not found on PATH", False
+    except asyncio.TimeoutError:
+        logger.exception("ffmpeg timed out extracting %s @ %ss", media_url, start)
+        return (
+            False,
+            f"ffmpeg timed out after {_SUBPROCESS_TIMEOUT_SECONDS}s (source likely slow or rate-limited)",
+            False,
+        )
+
+    if returncode != 0:
+        stderr_tail = _stderr_tail(stderr, 500)
+        logger.warning(
+            "ffmpeg extraction failed (%s) for %s @ %ss: %s",
+            returncode,
+            media_url,
+            start,
+            stderr_tail,
+        )
+        return (
+            False,
+            f"ffmpeg exited {returncode}: {stderr_tail}"
+            if stderr_tail
+            else f"ffmpeg exited {returncode}",
+            True,
+        )
+    if not (out_path.exists() and out_path.stat().st_size > 0):
+        return False, "ffmpeg reported success but produced no audio output", True
+    return True, None, False
+
+
 async def extract_chunk_audio(
     media_url: str,
     *,
@@ -319,6 +442,17 @@ async def extract_chunk_audio(
     mean_volume), and PyAV opens those too, so this catches
     "not playable at all," not "shorter than requested."
 
+    **A failed seek gets one output-side-seek retry before giving up
+    (WO-45).** The extraction below is a fast input-side `-ss`, which on
+    some real HLS packagings returns an exit-0 file with nothing
+    decodable in it -- so a failure whose shape fits that (non-zero
+    exit, empty output, or the undecodable case above) is retried once
+    with `-ss` moved after `-i`, at any `start > 0`. See
+    _extract_chunk_once()'s own block comment for the measured evidence,
+    what it costs, and the cheaper alternatives that were tested and
+    don't work. The retry only ever runs on the failure path; a
+    successful extraction is exactly as cheap as it was before.
+
     A stereo source whose left/right channels are (near-)phase-inverted
     is a real, confirmed failure mode of the plain `-ac 1` downmix below
     (see `_SUSPICIOUSLY_QUIET_MEAN_VOLUME_DB`'s own comment for the full
@@ -336,71 +470,74 @@ async def extract_chunk_audio(
     phase-inversion artifact this can actually fix).
     """
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        returncode, _stdout, stderr = await _run(
-            "ffmpeg",
-            "-y",
-            "-headers",
-            realistic_headers(source_page_url),
-            "-ss",
-            str(start),
-            "-i",
-            media_url,
-            "-t",
-            str(duration),
-            "-vn",
-            "-ac",
-            "1",
-            "-ar",
-            "16000",
-            "-c:a",
-            "libmp3lame",
-            "-b:a",
-            "32k",
-            str(out_path),
-        )
-    except FileNotFoundError:
-        logger.exception("ffmpeg not found extracting %s @ %ss", media_url, start)
-        return False, "ffmpeg not found on PATH"
-    except asyncio.TimeoutError:
-        logger.exception("ffmpeg timed out extracting %s @ %ss", media_url, start)
-        return (
-            False,
-            f"ffmpeg timed out after {_SUBPROCESS_TIMEOUT_SECONDS}s (source likely slow or rate-limited)",
-        )
 
-    if returncode != 0:
-        stderr_tail = _stderr_tail(stderr, 500)
-        logger.warning(
-            "ffmpeg extraction failed (%s) for %s @ %ss: %s",
-            returncode,
-            media_url,
-            start,
-            stderr_tail,
-        )
-        return (
-            False,
-            f"ffmpeg exited {returncode}: {stderr_tail}"
-            if stderr_tail
-            else f"ffmpeg exited {returncode}",
-        )
-    if not (out_path.exists() and out_path.stat().st_size > 0):
-        return False, "ffmpeg reported success but produced no audio output"
+    ok, reason, worth_seek_retry = await _extract_chunk_once(
+        media_url,
+        start=start,
+        duration=duration,
+        source_page_url=source_page_url,
+        out_path=out_path,
+    )
+    decodable, mean_volume = (False, None)
+    if ok:
+        decodable, mean_volume = await _mean_volume_db(out_path)
+        if not decodable:
+            # The signature of the WO-45 seek bug: exit 0, a real file on
+            # disk, nothing decodable in it.
+            reason = (
+                "ffmpeg reported success but the output file isn't decodable "
+                "(likely truncated/corrupt)"
+            )
+            logger.warning(
+                "Chunk audio at %ss for %s exists (%s bytes) but isn't decodable -- "
+                "retrying with an output-side seek before giving up",
+                start,
+                media_url,
+                out_path.stat().st_size,
+            )
+            ok, worth_seek_retry = False, True
 
-    decodable, mean_volume = await _mean_volume_db(out_path)
-    if not decodable:
-        logger.warning(
-            "Chunk audio at %ss for %s exists (%s bytes) but isn't decodable -- "
-            "reporting a retryable chunk failure rather than handing it to whisper",
-            start,
+    # `start > 0` because at 0 there is no seek to get wrong -- the
+    # fallback would be an identical, slower run of the same command.
+    if not ok and worth_seek_retry and start > 0:
+        retry_ok, retry_reason, _ = await _extract_chunk_once(
             media_url,
-            out_path.stat().st_size,
+            start=start,
+            duration=duration,
+            source_page_url=source_page_url,
+            out_path=out_path,
+            output_side_seek=True,
         )
-        return (
-            False,
-            "ffmpeg reported success but the output file isn't decodable "
-            "(likely truncated/corrupt)",
-        )
+        retry_decodable = False
+        if retry_ok:
+            retry_decodable, retry_volume = await _mean_volume_db(out_path)
+        if retry_ok and retry_decodable:
+            logger.info(
+                "Chunk audio at %ss for %s recovered by an output-side seek after the "
+                "input-side seek returned %s -- see media_probe.py's WO-45 note",
+                start,
+                media_url,
+                reason,
+            )
+            ok, reason, decodable, mean_volume = True, None, True, retry_volume
+        else:
+            # Deliberately keep the ORIGINAL reason, not the retry's. The
+            # first attempt is what the normal path does; the retry
+            # failing too (commonly by timing out on a long skip) is a
+            # detail of the recovery attempt, not a better description of
+            # what is wrong with this chunk.
+            logger.warning(
+                "Output-side-seek fallback for %s @ %ss did not recover the chunk (%s)",
+                media_url,
+                start,
+                retry_reason or "still undecodable",
+            )
+
+    if not ok:
+        # `reason` is always set on the failure path -- either by
+        # _extract_chunk_once() or by the undecodable branch above -- and
+        # a recovered retry resets it to None along with ok=True.
+        return False, reason
 
     if mean_volume is not None and mean_volume < _SUSPICIOUSLY_QUIET_MEAN_VOLUME_DB:
         logger.warning(

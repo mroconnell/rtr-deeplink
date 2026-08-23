@@ -49,7 +49,7 @@ verbatim prefix of a real line further down, so any entry opens with
 
 ```text
 
-Standing decisions — do NOT re-raise  (13)
+Standing decisions — do NOT re-raise  (14)
   Do NOT widen `noindex` / the sitemap filter / the `/j/*` hub filter…
   `ALERT_WEBHOOK_URL` — declined 2026-08-21
   The inbox-triage Routine holds no Gmail write scope — don't propose…
@@ -60,12 +60,12 @@ Standing decisions — do NOT re-raise  (13)
   Prefer a generated/computed column over "add a column, then backfill…
   Do NOT spread a transcription job's within-job pulls across hosts
   Do NOT raise `media_probe.py`'s `_SUBPROCESS_TIMEOUT_SECONDS` to…
+  Accept 107 imageless Cablecast pages until Debian ships ffmpeg 8.x
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
   Legistar's delegated-platform *title* winning over the page's body…
   Sacramento County's doubled meeting title is not a bug to fix
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (14)
-  [JUST-DO-IT] `[BIG]` ffmpeg 5.1.9 on the Archive cannot seek into
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (13)
   [JUST-DO-IT] A bulk re-resolve gets this IP blocked by YouTube, and
   [JUST-DO-IT] `[EASY]` `is_extractable()` excludes only YouTube, so
   [JUST-DO-IT] `[EASY]` A Viebit meeting's "can't transcribe this"
@@ -349,6 +349,38 @@ Root cause (a real 504 at Granicus's own CloudFront edge, not a rate
 limit) in the "Granicus `chunklist.m3u8`" entry under **Reliability,
 ops & cost**.
 
+### Accept 107 imageless Cablecast pages until Debian ships ffmpeg 8.x
+
+Decided 2026-08-23 (WO-45). These pages fail frame extraction with
+`ffmpeg exited 0 but wrote no frame`; the assets are fine and the cause
+is settled — the Archive's ffmpeg **5.1.9 cannot read a Cablecast fMP4
+VOD playlist through an input-side seek at any offset, `-ss 0`
+included**. Both candidate fallbacks were measured against real media
+and both are dead: output-side seek works but takes **109s** against
+`_FRAME_TIMEOUT_SECONDS = 45` (~8× realtime, and these offsets run to
+11,530s), and retrying at a near-start offset fails too (`-ss 0`/`5`/`30`
+all return exit 0, no file).
+
+So: **no frame fallback, and do not raise the frame budget** — the same
+`extract_and_store()` also warms cards on real page loads, and 107
+og:image-less pages is a smaller cost than a two-minute inline
+extraction on a visitor's request.
+
+**Re-open when, and only when, ffmpeg 8.x is available** to the Archive
+(`runtime: python`, Render's buildpack — not something this repo pins).
+8.1.2 handles these playlists correctly, confirmed. At that point this
+whole entry evaporates and the 107 slugs re-run in one pass with
+`scripts/backfill_meeting_cards.py --slugs-file`; expected frame sizes
+for four of them are recorded in `BACKLOG_DONE.md`.
+
+Two related facts worth not rediscovering: the *transcription* half of
+this same defect is fixed and shipped (an output-side retry, which fits
+the audio path's budget where it doesn't fit the frame path's), and the
+earlier prescription to "upgrade the Archive off Debian 12's 5.1.9" was
+**wrong** — Debian 13's 7.1.5 fails on the same media and
+`trixie-backports` carries nothing newer. Full evidence, version matrix
+and the alternatives tested: `BACKLOG_DONE.md`'s WO-45 entry.
+
 ### Never attempt to auto-solve a Cloudflare "Verify you are human" challenge
 
 Hit live on Spokane WA while building the Vimeo adapter (WO-29). The
@@ -384,44 +416,6 @@ Small, self-contained, no open design question. Jurisdiction-extraction
 items that also qualify live under **Platform & jurisdiction coverage**
 so that work reads together.
 
-- **[JUST-DO-IT] `[BIG]` ffmpeg 5.1.9 on the Archive cannot seek into
-  Cablecast VOD playlists — 107 pages, root-caused 2026-08-22.** The
-  single largest recoverable group in the card backlog, and the assets
-  are fine.
-
-  **Measured, twice.** The sweep left 107 Cablecast pages failing with
-  `ffmpeg exited 0 but wrote no frame`. A dedicated re-run of exactly
-  those 107 (after #322 made the reason carry ffmpeg's own stderr):
-  **107 attempted, 0 stored, 106 the same failure, 1 HTTP 503.** Every
-  one silent — `frame= 0 fps=0.0 ... video:0kB audio:0kB`, and **zero
-  of the 107 contained any HTTP error at all**. ffmpeg opens the input,
-  seeks, and reads nothing, without complaining.
-
-  **Two things this rules out.** `probe_duration()` is *not* failing:
-  the offsets span **97 distinct values** (101s … 11530s) and **not one
-  is 600**, the `UNKNOWN_DURATION_OFFSET_SECONDS` fallback — so the
-  duration probe succeeds on every page and the offset is real. And it
-  is not the assets: four of these pages (champaign 5407s, detroit
-  1448s, wheat-ridge 5895s, st-tammany 6148s) each produced a real JPEG
-  **locally at the identical offset**, with and without the production
-  `-headers`.
-
-  **The difference is the ffmpeg build.** `/api/health`'s `media_tools`
-  block reports the Archive on **5.1.9-0+deb12u1**; the local runs that
-  succeed are **8.1.2**. Everything points at 5.1.9's HLS demuxer
-  failing to fetch segments after an input-side `-ss` on Cablecast's
-  playlists.
-
-  `-update 1` was added in #322 as a candidate explanation and is
-  **ruled out** — it is deployed and these still fail identically.
-
-  **Fix, in cost order**: (a) fall back to an output-side `-ss` (after
-  `-i`) when the input-side seek yields no frame — slower, but only ever
-  runs on the failure path, so it is self-limiting; (b) upgrade the
-  Archive's ffmpeg off Debian 12's 5.1.9. Verification case: any of the
-  four above, whose expected frame sizes are recorded in
-  `BACKLOG_DONE.md`. The 107 slugs are re-runnable in one pass with
-  `--slugs-file` (added #322).
 
 - **[JUST-DO-IT] A bulk re-resolve gets this IP blocked by YouTube, and
   the script's circuit breaker doesn't notice (measured twice,
@@ -1185,6 +1179,25 @@ chunks transcribed before timing out) — not a clean block. All 7
 failing URLs, re-curled directly against `playapi.champds.com` ~7 hours
 later, returned real `200`s with real data, confirming the block (if
 that's what it was) already cleared.
+
+**Correction, 2026-08-23 (WO-45): the cloud worker does this too now.**
+That investigation's "`render logs --text champds` returned zero hits —
+the cloud worker has never touched these pages, so this is purely a
+local-batch phenomenon" is no longer true, which matters because fix 1
+below was scoped to the local script on that basis. Overnight
+2026-08-22/23 the cloud worker walked jobs 633-650 and hit
+`play.champds.com` **18 times across 5 jobs, all `ffmpeg timed out after
+120s`** (`GET /internal/transcription-failure-analysis?days=2`,
+`by_platform`), in one contiguous run of alphabetically-adjacent
+tenants — `atlantaga`, `auburnny`, `bellemeadetn`, `fonddulacwi`,
+`largofl`, `nolensvilletn`, `oakhilltn`, `portchesterny`, `surfsidefl`,
+`westportct`, `wilkesconc` — with 2 succeeding in the middle of it,
+exactly the mixed pattern the local batch showed. So the clustering is a
+property of the *queue's ordering*, not of `transcribe_backlog_locally.
+py`, and host-aware pacing belongs wherever candidates are ordered
+(`find_auto_transcription_candidate()` orders `created_at ASC`, which
+correlates with ingest order, which correlates with host) — not only in
+the local script.
 
 Two real, small fixes, not yet built:
 1. Host-aware pacing in `transcribe_backlog_locally.py` (and worth
