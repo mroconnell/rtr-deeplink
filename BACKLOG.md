@@ -105,7 +105,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (7)
   28 well-formed IQM2 queue rows point at retired tenants…
   Some Swagit meetings have no single "whole meeting" video file…
 
-Platform & jurisdiction coverage  (27)
+Platform & jurisdiction coverage  (28)
+  ChampDS resolves clustered and failed fast during a 2026-08-22…
   The 50 largest US cities — per-tenant status `[NEEDS-AUDIT]`
   Jurisdiction extraction & backfill  (16)
     [JUST-DO-IT] A land acknowledgement became a jurisdiction, and it
@@ -1169,6 +1170,22 @@ broader live audit once the design question is answered.
 Everything adapter-, tenant-, or jurisdiction-extraction-shaped, kept
 together on purpose. Tags are inline here rather than hoisted into the
 actionability sections above.
+
+### ChampDS resolves clustered and failed fast during a 2026-08-22 local-Whisper batch `[NEEDS-AUDIT]`
+
+7 of the last 12 `play.champds.com` URLs in a 25-meeting tier-3 batch
+failed in the same ~25-minute window (17:37-18:02 PDT), 6 of them
+instantly (~0.2-0.3s, i.e. before any real network wait, despite
+`transcribe_backlog_locally.py` now retrying transient failures —
+see `[Done 2026-08-22] #306` in `BACKLOG_DONE.md`) with "no usable
+audio/video source on re-resolve." One of the 7,
+`play.champds.com/atlantaga/event/1077`, was live-verified working with
+real captions on 2026-08-16 (see the "ChampDS real captions confirmed"
+entry below) and failed today with a *different* error (`ffprobe
+couldn't read the media`). Looks like a platform-wide or IP-level block
+hit mid-batch rather than N unrelated per-meeting problems, but not
+confirmed either way — worth a fresh resolve against a couple of these
+URLs on their own before assuming it's still happening.
 
 ### The 50 largest US cities — per-tenant status `[NEEDS-AUDIT]`
 
