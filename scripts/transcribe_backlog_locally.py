@@ -686,9 +686,7 @@ def _read_cpu_speed_limit() -> Optional[int]:
     cooldown alone rather than silently skipping pacing.
     """
     try:
-        output = subprocess.check_output(
-            ["pmset", "-g", "therm"], timeout=5, text=True
-        )
+        output = subprocess.check_output(["pmset", "-g", "therm"], timeout=5, text=True)
     except Exception:
         return None
     match = _CPU_SPEED_LIMIT_RE.search(output)
@@ -1284,7 +1282,9 @@ async def main() -> None:
 
     model_size = args.model_size or _pick_default_model_size()
     cpu_threads = (
-        args.cpu_threads if args.cpu_threads is not None else _pick_default_cpu_threads()
+        args.cpu_threads
+        if args.cpu_threads is not None
+        else _pick_default_cpu_threads()
     )
 
     # A real, plain-English "what is this run actually doing" line up front
@@ -1298,7 +1298,9 @@ async def main() -> None:
         model_size,
         "explicit --model-size" if args.model_size else "auto-picked from local RAM",
         cpu_threads,
-        "explicit --cpu-threads" if args.cpu_threads is not None else "auto-picked from local core count",
+        "explicit --cpu-threads"
+        if args.cpu_threads is not None
+        else "auto-picked from local core count",
         args.chunk_cooldown_seconds,
         args.limit if args.limit is not None else "(none -- full backlog)",
         args.dry_run,

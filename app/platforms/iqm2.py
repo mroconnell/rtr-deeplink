@@ -176,7 +176,9 @@ class IQM2AssetFinder(AssetFinder):
 
     @staticmethod
     def _extract_meeting_id(url: str) -> Optional[str]:
-        match = _MEETING_ID_PRIMARY_RE.search(url) or _MEETING_ID_FALLBACK_RE.search(url)
+        match = _MEETING_ID_PRIMARY_RE.search(url) or _MEETING_ID_FALLBACK_RE.search(
+            url
+        )
         return match.group(1) if match else None
 
     @staticmethod
