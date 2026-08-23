@@ -313,6 +313,22 @@ under everything else. This repo extracts and fixes just that part.
   of video titles), and channel extraction is **not lazy** — it
   materializes the whole channel before returning, so `playlistend` is
   load-bearing, not an optimization.
+- **We query sites politely — and "politely" means following a host's
+  house rules, not avoiding every technical measure they've put up.** A
+  realistic `Referer`/User-Agent so a naive hotlink check doesn't
+  false-positive us as a bot (Granicus), or yt-dlp's actively-maintained
+  handling of YouTube's caption-fetch shape (the bullet above): both are
+  compliance, not defiance — the host is asking for a request that looks
+  a certain way, not refusing to serve one, and we give it exactly that.
+  The line we don't cross is a host's *explicit* human-verification
+  gate — a Cloudflare "Verify you are human" challenge (hit live on
+  Spokane WA building the Vimeo adapter, WO-29; that adapter ships
+  video-only rather than going near it, see `BACKLOG.md`'s Standing
+  decisions) — because that's the host saying no automated client gets
+  through at all, not asking for a particular request shape. If a page
+  is gated behind one, degrade gracefully — skip it and surface a plain
+  warning to the *reader* on the page (the existing `transcript_warnings`
+  pattern), not just a dev-facing log line.
 - **A pytest suite exists now (`tests/`, see README's "Running tests")** —
   run it (`pytest`) before/after touching `app/utils/vtt_parser.py`,
   `app/platforms/media_scan.py`, `app/platforms/base.py`, or any platform
