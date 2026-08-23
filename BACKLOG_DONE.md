@@ -6,6 +6,172 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## An ffmpeg HLS-seek bug killed 33+ transcription jobs a day, and a blank transcript re-queued itself forever (WO-45) [Done 2026-08-23]
+
+Ryan reported that "at about 10:54 PM we started getting errors on what
+looks like every transcript run," and that it appeared to fix itself
+around 10:12 AM. Both readings were reasonable and both were wrong in
+ways that changed what got built.
+
+**It was never "every run", and it was three unrelated failures at
+once.** `GET /internal/transcription-queue-stats` reported **36 jobs
+completed and 152,771 segments added in the last 24h** while the emails
+were arriving. But sweeping `GET /internal/transcription/status/{id}`
+across jobs 620-731 gave **14 completed out of 81** — a real ~83%
+failure rate over that stretch, from three separate causes that only
+looked like one event because the queue orders candidates roughly
+alphabetically by host and walked a block of each in turn:
+
+| Cluster | Error | Scale |
+|---|---|---|
+| Cablecast | `ffmpeg reported success but the output file isn't decodable` | 33+ jobs, 99 failures / 2 days |
+| IQM2 | `No usable audio or video source was found.` | 20+ jobs |
+| ChampDS | `ffmpeg timed out after 120s` | 5 jobs, 18 failures |
+
+**IQM2 needed nothing — it was already fixed hours earlier.** Every one
+of those failures is a `Detail_LegiFile.aspx` URL carrying both `ID=`
+and `MeetingID=`: the exact bug `d52b5ff` fixed that morning. Re-resolved
+10 of the real failing URLs against current `main`: **10/10 returned real
+video**, `old_id`/`new_id` differing on every one (e.g. sccgov
+126983→16823). Job 737 (`roanokecountyva.iqm2.com/…/Detail_LegiFile.aspx`,
+a tenant named in that commit's own message) was `in_progress 4/19` in
+production while this was being written. Confirming that first is what
+kept it out of scope.
+
+**ChampDS was already filed** — see the 2026-08-22 entry above — with one
+correction owed to it, now made in `BACKLOG.md`: the cloud worker *does*
+hit this now, so host-aware pacing is not only a local-script concern.
+
+### The Cablecast bug
+
+`media_probe.extract_chunk_audio()` seeks input-side (`-ss` before `-i`).
+On a Cablecast VOD master playlist whose audio is a **separate fMP4
+rendition** (`#EXT-X-MEDIA:TYPE=AUDIO,URI="1080p_audio.m3u8"`, itself
+`#EXT-X-VERSION:7` addressed by `#EXT-X-MAP` + `#EXT-X-BYTERANGE` into a
+single `.mp4`), that seek lands ffmpeg somewhere it reads nothing from —
+and it still **exits 0 and writes a ~224-byte file**. WO-25's
+decodability guard caught it correctly and turned it into a retryable
+chunk failure; three retries at the same chunk then spent the job's
+consecutive-failure budget. Always chunk 1, because chunk 0 needs no seek
+and the job never survived to reach chunk 2.
+
+**Reproduced by hand**, running this repo's own argv against the real
+media of a real failing job (692, `portagemi.cablecast.tv/…/show/304`),
+in three real images:
+
+```
+ffmpeg              -ss 0            -ss 900          -ss 1800
+5.1.9  (bookworm)   225B  bad        225B  bad        --
+7.1.5  (trixie)     3,597,632B ok    224B  bad        224B  bad
+8.1.2  (sid)        3,600,513B ok    3,600,513B ok    --
+```
+
+7.1.5 matches production exactly. Which is itself the second finding:
+**`worker/Dockerfile` said `FROM python:3.12-slim`, unpinned**, and that
+floating tag had rolled bookworm→trixie with no commit in this repo,
+moving the worker's ffmpeg 5.1.9→7.1.5. Now pinned to
+`python:3.12-slim-trixie`.
+
+**Why some Cablecast tenants were fine.** Fetched and read the real
+manifests. Failing tenants (`portagemi`, `reflect-cctv-vod`) carry the
+separate fMP4 audio rendition above. Succeeding ones (`reflect-chabot`
+job 656, `city-slp-mn` jobs 732-736) are plain `#EXT-X-VERSION:3` muxed
+`.ts` segments with no audio rendition at all. That is the whole of the
+"it fixed itself at 10:12 AM": the queue had reached `city-slp-mn`.
+Nothing had been fixed.
+
+### The fix, and the three cheaper things that don't work
+
+`_extract_chunk_once()` factors out a single attempt;
+`extract_chunk_audio()` now retries **once** with `-ss` moved after `-i`
+whenever a failure's shape fits a broken seek (non-zero exit, empty
+output, or the undecodable case) and `start > 0`. It only ever runs on
+the failure path. Measured on 7.1.5 against the same real source:
+output-side seek to 900s → 3,600,512B in ~6s; to 3600s → 2,072,672B in
+**22s**, i.e. ~164× realtime, so the existing 120s
+`_SUBPROCESS_TIMEOUT_SECONDS` covers ~5 hours of skip before the retry
+simply times out and the original reason is reported. Self-limiting, and
+no need to touch a timeout `BACKLOG.md` has a standing decision against
+raising.
+
+Tested and rejected, all against the same real source: pointing ffmpeg at
+the **audio rendition playlist** directly still returns 224 bytes;
+**`-noaccurate_seek`** still returns 224 bytes; pointing it at the
+**underlying `1080p_audio.mp4`** does work and is fast (4s at 900s, 3s at
+3600s) but needs the master→rendition→`EXT-X-MAP` chain walked to find
+that filename, which is specific to how Cablecast packages VOD.
+
+**End-to-end verification** — the patched function, against job 692's
+real media, inside the pinned base image:
+
+```
+ffmpeg version 7.1.5-0+deb13u1
+chunk 0 (-ss 0):    ok=True  size=3597632  reason=None
+chunk 1 (-ss 900):  ok=True  size=3600512  reason=None
+chunk 2 (-ss 1800): ok=True  size=3600512  reason=None
+```
+
+with the fallback logging itself on chunks 1 and 2. Before the patch,
+chunk 1 is where every one of those 33 jobs died.
+
+### What this did NOT fix: the same defect's thumbnail half
+
+`BACKLOG.md` already carried a `[BIG]` entry for 107 Cablecast pages
+failing frame extraction with `ffmpeg exited 0 but wrote no frame` — the
+same defect on the Archive's 5.1.9. Its prescribed fix (a) was this same
+output-side fallback. **Measured before building it, and it does not
+fit**: output-side seek to 900s does produce a real 20,847-byte JPEG on
+5.1.9, but takes **109 seconds** against `_FRAME_TIMEOUT_SECONDS = 45`,
+at ~8× realtime, and the 107 recorded offsets run to 11,530s. The
+cheaper idea (retry at a near-start offset, since a card only needs a
+representative frame) was measured too and is dead: on 5.1.9, input-side
+`-ss 0`, `-ss 5` and `-ss 30` **all** return exit 0 with no file. So this
+is not "cannot seek", it is "cannot read this packaging input-side at
+all".
+
+**Ryan's call, made the same day: accept the imageless pages.** The
+alternative was a much larger frame budget on the operator-invoked
+backfill endpoint, rejected because the same `extract_and_store()` also
+warms cards on real page loads and would inherit it — 107 `og:image`-less
+pages is the smaller cost. That entry is therefore no longer an open
+item at all: it has been rewritten, compacted, and moved to
+`BACKLOG.md`'s **Standing decisions**, to be re-opened only when ffmpeg
+8.x becomes available to the Archive (`runtime: python`, Render's
+buildpack, so not something this repo pins). Its fix (b), "upgrade off
+Debian 12's 5.1.9", is recorded there as wrong — 7.1.5 fails too and
+`trixie-backports` has nothing newer.
+
+### Second bug, found in the same sweep: a blank transcript re-queues forever
+
+Jobs 732-736 are **five separate completed jobs, 5/5 chunks each, on the
+identical page** (`city-slp-mn.cablecast.tv/…/show/1984`,
+st-louis-park-high-school-wind-ensemble-concert) inside 17 minutes,
+producing `TranscriptVersion`s 2058-2062 — and the public page still
+reads "No transcript to click through".
+
+Mechanism, read out of `archive/db/crud.py`: `_has_good_transcript()`
+returns False when `content_hash == _EMPTY_CONTENT_HASH`, so a page whose
+transcription genuinely succeeded and found no speech (this one is a
+music concert — an empty transcript is the correct, final answer) stays
+in `find_auto_transcription_candidate()`'s pool; and `_cooldown_active()`
+broke its streak at the first non-`"failed"` job and returned False, so a
+*completed* newest job applied no cooldown at all. Re-picked every idle
+poll, forever. `GET /internal/transcript-quality-audit` puts **448 pages**
+in the `blank_transcript` bucket — the size of the population this could
+loop on.
+
+Fixed narrowly: a `"completed"` newest job now sets a cooldown of
+`AUTO_TRANSCRIPTION_MAX_COOLDOWN`. Nothing is reclassified as good — a
+blank page still reads as needing a transcript everywhere else, and still
+comes back around monthly, because a government source's own captions
+really can catch up later and that is why these pages stay candidates at
+all. Both call sites (`find_auto_transcription_candidate()` and
+`list_transcription_backlog_candidates()`) are auto/batch backlog paths;
+a real visitor's on-demand request does not consult this function, so
+nobody gets refused a transcript by it. There was **no test covering the
+completed-newest case** before this, which is how it shipped; there are
+five now.
+
 ## Thermal pacing for `scripts/transcribe_backlog_locally.py`, a real fresh-venv SSL gotcha found and fixed across 7 scripts, and IQM2's `Detail_LegiFile.aspx` URLs silently resolving the wrong meeting [Done 2026-08-21/23]
 
 Three related, independently-verified fixes from setting up local

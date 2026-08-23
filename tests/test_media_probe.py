@@ -220,3 +220,160 @@ async def test_mean_volume_db_matches_real_ffmpeg(tmp_path):
     truncated = tmp_path / "truncated.mp3"
     truncated.write_bytes(good.read_bytes()[:200])
     assert await _mean_volume_db(truncated) == (False, None)
+
+
+# --- WO-45: the output-side-seek fallback (2026-08-23) ----------------------
+#
+# SYNTHETIC in the same sense as the WO-25 tests above -- ffmpeg is faked --
+# but the branch is confirmed against a real production cluster, not
+# hypothesized. On 2026-08-23, 33+ transcription jobs died at chunk 1 with
+# "ffmpeg reported success but the output file isn't decodable", every one of
+# them a Cablecast tenant serving a separate fMP4 audio rendition. Reproduced
+# by hand against job 692's real media
+# (portagemi.cablecast.tv/internetchannel/show/304) inside the worker's own
+# base image: under ffmpeg 7.1.5 an input-side `-ss 900` writes a 224-byte
+# undecodable file and exits 0, while moving `-ss` after `-i` writes a valid
+# 3,600,512-byte chunk. See _extract_chunk_once()'s block comment for the
+# full version matrix and the alternatives that were tested and rejected.
+
+
+def _seek_is_input_side(args) -> bool:
+    """True when `-ss` precedes `-i` in an ffmpeg argv -- the fast,
+    input-side seek. This is the whole difference between the two attempts,
+    so the tests assert on it directly rather than on call ordering alone."""
+    args = list(args)
+    return args.index("-ss") < args.index("-i")
+
+
+def _fake_run_recording(out_path, *, attempts):
+    """Stand in for media_probe._run() across MULTIPLE extraction attempts.
+
+    `attempts` is a list of (extraction_bytes, volumedetect_result) consumed
+    in order, one per extraction call; every extraction reports exit 0 with a
+    non-empty file, which is exactly the shape of the real bug. The returned
+    `calls` list records each extraction's argv so a test can assert which
+    seek form was used.
+    """
+    calls: list[list] = []
+    state = {"i": 0}
+    pending_volumedetect = {"result": None}
+
+    async def _run(*args):
+        if "volumedetect" in args:
+            return pending_volumedetect["result"]
+        calls.append(list(args))
+        extraction_bytes, volumedetect_result = attempts[state["i"]]
+        state["i"] += 1
+        pending_volumedetect["result"] = volumedetect_result
+        out_path.write_bytes(extraction_bytes)
+        return 0, b"", b""
+
+    return _run, calls
+
+
+async def test_extract_chunk_audio_recovers_via_output_side_seek(tmp_path, monkeypatch):
+    """The production case: input-side seek returns an undecodable file, the
+    output-side retry returns a good one, and the chunk succeeds."""
+    out_path = tmp_path / "chunk_1.mp3"
+    _run, calls = _fake_run_recording(
+        out_path,
+        attempts=[
+            # Attempt 1 -- the 224-byte exit-0 file the real bug produces.
+            (b"\xff\xfb" + b"\x00" * 222, (183, b"", _REAL_UNDECODABLE_STDERR)),
+            # Attempt 2 -- output-side seek, a real decodable chunk.
+            (b"\xff\xfb" + b"\x00" * 4000, (0, b"", _REAL_VOLUMEDETECT_STDERR)),
+        ],
+    )
+    monkeypatch.setattr(media_probe, "_run", _run)
+
+    assert await extract_chunk_audio(
+        "https://portagemi.cablecast.tv/store-3/304-x-v2/vod.m3u8",
+        start=900.0,
+        duration=900.0,
+        source_page_url="http://portagemi.cablecast.tv/internetchannel/show/304",
+        out_path=out_path,
+    ) == (True, None)
+
+    assert len(calls) == 2
+    assert _seek_is_input_side(calls[0]) is True
+    assert _seek_is_input_side(calls[1]) is False
+    # The retry must still ask for the same window, not a different one.
+    assert "900.0" in calls[1]
+
+
+async def test_extract_chunk_audio_does_not_retry_the_first_chunk(
+    tmp_path, monkeypatch
+):
+    """At start=0 there is no seek to get wrong, so the fallback would just
+    be a slower rerun of the identical command. One attempt, then fail."""
+    out_path = tmp_path / "chunk_0.mp3"
+    _run, calls = _fake_run_recording(
+        out_path,
+        attempts=[(b"\xff\xfb" + b"\x00" * 222, (183, b"", _REAL_UNDECODABLE_STDERR))],
+    )
+    monkeypatch.setattr(media_probe, "_run", _run)
+
+    ok, reason = await extract_chunk_audio(
+        "https://portagemi.cablecast.tv/store-3/304-x-v2/vod.m3u8",
+        start=0.0,
+        duration=900.0,
+        source_page_url="http://portagemi.cablecast.tv/internetchannel/show/304",
+        out_path=out_path,
+    )
+
+    assert (ok, len(calls)) == (False, 1)
+    assert reason and "decodable" in reason
+
+
+async def test_extract_chunk_audio_keeps_the_original_reason_when_fallback_fails(
+    tmp_path, monkeypatch
+):
+    """A source that is genuinely broken (rather than merely unseekable by
+    this ffmpeg) must still report what the NORMAL path saw. The retry
+    failing too is a detail of the recovery attempt, not a better diagnosis
+    -- and reporting the retry's reason instead would make every such
+    failure look like whatever the fallback happened to hit."""
+    out_path = tmp_path / "chunk_1.mp3"
+    _run, calls = _fake_run_recording(
+        out_path,
+        attempts=[
+            (b"\xff\xfb" + b"\x00" * 222, (183, b"", _REAL_UNDECODABLE_STDERR)),
+            (b"\xff\xfb" + b"\x00" * 222, (183, b"", _REAL_UNDECODABLE_STDERR)),
+        ],
+    )
+    monkeypatch.setattr(media_probe, "_run", _run)
+
+    ok, reason = await extract_chunk_audio(
+        "https://example.org/meeting.m3u8",
+        start=1800.0,
+        duration=900.0,
+        source_page_url="https://example.org/meeting",
+        out_path=out_path,
+    )
+
+    assert (ok, len(calls)) == (False, 2)
+    assert reason and "decodable" in reason
+
+
+async def test_extract_chunk_audio_does_not_retry_a_missing_ffmpeg(
+    tmp_path, monkeypatch
+):
+    """A broken environment is not a seek problem -- retrying it differently
+    can only waste a second subprocess spawn and blame the source media."""
+    calls = []
+
+    async def _run(*args):
+        calls.append(list(args))
+        raise FileNotFoundError("ffmpeg")
+
+    monkeypatch.setattr(media_probe, "_run", _run)
+
+    ok, reason = await extract_chunk_audio(
+        "https://example.org/meeting.m3u8",
+        start=900.0,
+        duration=900.0,
+        source_page_url="https://example.org/meeting",
+        out_path=tmp_path / "chunk_1.mp3",
+    )
+
+    assert (ok, reason, len(calls)) == (False, "ffmpeg not found on PATH", 1)

@@ -405,40 +405,19 @@ progress notices on an already-tracked fix, not a new issue.
 **Three new findings, all Confirmed from real data (Gmail alert bodies,
 live GitHub Actions logs, and this repo's own code):**
 
-**1. Cablecast HLS jobs fail consistently at chunk index 1 (the 900s
-mark) with "ffmpeg reported success but the output file isn't decodable
-(likely truncated/corrupt)" — a real, reproducible cluster, not yet
-tracked anywhere.** 8 of today's 13 transcription-job-failure emails
-(job_ids 651-655, 683-685) are all Cablecast (`nashville.cablecast.tv`,
-`methuentv.cablecast.tv`, `leonvalleytx.cablecast.tv`,
-`capitalcityconnection.cablecast.tv` ×2, `buenapark.cablecast.tv` ×2,
-`cctv-vod.cablecast.tv`), spanning six distinct tenants with unrelated
-videos, all created 2026-08-23 04:19-12:47 UTC. Every single one fails
-on **chunk 1** specifically (never chunk 0 or later) after 3 retries,
-with the exact same decodability-guard rejection
-(`app/platforms/media_probe.py`'s WO-25 guard, confirmed working as
-designed — see its own docstring). `cablecast.py` confirms these are
-all HLS (`video_format="m3u8"`); `AUTO_TRANSCRIPTION_CHUNK_SIZE_SECONDS
-= 900` (`worker/main.py`) means chunk 1 always starts its fast
-input-side `ffmpeg -ss 900` seek at exactly the 15-minute mark. The
-consistency across six unrelated tenants and a fixed timestamp is a
-real signal of a structural HLS-seek issue specific to Cablecast, not
-random corruption — but the actual manifest-level cause (a
-discontinuity, an ad-break segment, a stitching quirk right around
-900s) is **not yet confirmed**: this sandbox's network egress is
-blocked for `cablecast.tv` hosts (confirmed via both `curl` through the
-proxy and `WebFetch`, both returned blocked/403), so nobody has yet
-pulled a real Cablecast HLS playlist to inspect what's actually at that
-offset. **Impact**: all 8 failing jobs' `requester` is
-`ryan@how-to-adu.com` — this looks like Ryan's own backlog-processing
-batch, not organic user submissions, so today's blast radius is queue
-throughput/backlog progress, not visible customer failures yet. But
-Cablecast is a supported, real platform (`app/platforms/cablecast.py`,
-`tests/test_cablecast.py`), so any Cablecast source over ~15 minutes
-will hit this. **Open question for whoever picks this up**: fetch a
-real Cablecast `.m3u8` (e.g. `nashville.cablecast.tv/show/14376`'s
-resolved video URL) from an unrestricted network and inspect the
-segment/discontinuity structure right around the 900s offset.
+**1. Cablecast HLS jobs failing at chunk index 1 — PROMOTED AND FIXED,
+2026-08-23 (WO-45).** This finding was right, and its open question
+("fetch a real Cablecast `.m3u8` from an unrestricted network and
+inspect the segment/discontinuity structure right around the 900s
+offset") has been answered from a machine that can reach those hosts.
+The manifest turned out to be a red herring — there is no discontinuity
+at 900s; the audio is a separate fMP4 rendition addressed by
+`#EXT-X-MAP` + `#EXT-X-BYTERANGE`, and ffmpeg 7.1.5 cannot input-side
+seek into it at any non-zero offset. Root cause, version matrix, the
+fix, and the three cheaper alternatives that don't work are in
+`BACKLOG_DONE.md`'s WO-45 entry; the thumbnail half of the same defect
+is now a live `[HUMAN]` entry in `BACKLOG.md`. Nothing left to promote
+here.
 
 **2. A ~64-minute cluster of Archive-proxy failures in production,
 2026-08-22 22:41-23:45 UTC, spanning four Sentry issue IDs and every

@@ -950,7 +950,11 @@ number of concurrent worker processes.
    backend logic, just running in a process shape the Archive's own web
    dyno can't offer), extract that chunk's audio with `ffmpeg` (re-
    resolving a fresh media URL first — HLS/signed URLs can go stale over
-   a long-running job), transcribe it with a self-hosted `faster-whisper`
+   a long-running job; a chunk whose fast input-side seek comes back
+   undecodable gets one retry with a slower output-side seek, which is
+   what makes Cablecast's fMP4 VOD work at all — see
+   `media_probe.py`'s `_extract_chunk_once()`), transcribe it with a
+   self-hosted `faster-whisper`
    model (loaded once at process startup, reused for every job), shift
    its timestamps from chunk-relative to full-meeting-relative seconds
    (`worker/segment_utils.py`'s `shift_segments()` — the same `{start,
@@ -1605,7 +1609,14 @@ curl -X POST -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" \
 `ffprobe` are both really present on the Archive service, confirmed by a
 live `GET /api/health` against production. The resolver-side extraction
 fallback WO-28 documented in case they weren't is therefore not needed
-and was never built. `GET /api/health` reports `media_tools` (the real
+and was never built. **Present is not the same as sufficient, though
+(WO-45, 2026-08-23)**: 5.1.9 cannot read a Cablecast fMP4 VOD playlist
+through an input-side seek *at any offset*, which is why 107 archived
+pages still have no card — see `BACKLOG.md`'s `[HUMAN]` entry. The
+services also run different ffmpeg versions and always have: the Archive
+is `runtime: python` (Render's buildpack, 5.1.9) while the transcription
+workers are `runtime: docker` off a now-pinned `python:3.12-slim-trixie`
+(7.1.5). Check `media_tools` for the service you actually mean. `GET /api/health` reports `media_tools` (the real
 `ffmpeg`/`ffprobe` versions on PATH, or `null`).
 It's informational and never fails the check — Render gates deploys on
 this endpoint, and a service that serves every page but can't generate

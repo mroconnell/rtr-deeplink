@@ -5,7 +5,23 @@
 # is the repo root (see render.yaml's `dockerContext: .`), not worker/ --
 # this needs app/ and archive/ alongside worker/ itself, since worker/main.py
 # imports both directly (see its module docstring for why).
-FROM python:3.12-slim
+# Pinned to an explicit Debian codename, not the floating `-slim` tag
+# (WO-45, 2026-08-23). The floating tag rolled bookworm -> trixie at some
+# point with no commit in this repo, which silently moved the ffmpeg this
+# worker runs from 5.1.9 to 7.1.5 -- a real behavioural change (see
+# app/platforms/media_probe.py's _extract_chunk_once() block comment for
+# the measured difference and the 33+ jobs it cost in a day). Pinning
+# makes the next such roll a reviewable commit instead of a surprise.
+#
+# Trixie is deliberately the right side of that roll to be on: bookworm's
+# 5.1.9 is strictly worse on the same media (it fails chunk 0 too, where
+# 7.1.5 at least gets that far). Only ffmpeg 8.x fixes the underlying
+# seek bug, and neither trixie nor trixie-backports carries it yet
+# (`apt-cache policy ffmpeg` -> candidate 7:7.1.5-0+deb13u1, no backports
+# entry, checked 2026-08-23) -- so revisit this pin when Debian ships 8.x,
+# at which point media_probe.py's output-side-seek fallback becomes dead
+# weight rather than load-bearing.
+FROM python:3.12-slim-trixie
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ffmpeg \
