@@ -712,30 +712,46 @@ async def _refresh_meeting_highlight(session, page: MeetingPage, all_segments) -
     a transcript and no highlight (or, worse, a highlight quoting a
     transcript that has since been replaced).
 
-    Non-fatal by construction. A highlight is page *decoration* -- the
-    state/hub pages render fine without one -- while this function runs
-    inside the ingest transaction, so letting a heuristic bug fail an
-    ingest would trade a missing snippet for a lost transcript. Any
-    exception is logged and swallowed; the backfill script picks the page
-    up later.
+    **Non-fatal by construction, including the database write.** A
+    highlight is page *decoration* -- the state/hub pages render fine
+    without one, and the backfill script picks up anything missing --
+    while this function runs inside the *ingest* transaction. Letting it
+    fail an ingest would trade a missing snippet for a lost transcript,
+    which is a strictly worse outcome.
+
+    That guarantee needs a SAVEPOINT, not just a `try`. On Postgres a
+    failed statement poisons the surrounding transaction until it is
+    rolled back, so catching the exception here and continuing would
+    still fail at the caller's `commit()` -- the transcript would be lost
+    anyway, just with a more confusing traceback. `begin_nested()` scopes
+    the damage: the savepoint rolls back, the outer ingest transaction
+    survives intact, and the page simply has no highlight until the next
+    ingest or backfill run.
     """
+    logger = logging.getLogger(__name__)
     try:
         payload = compute_highlight_payload(all_segments)
     except Exception:  # pragma: no cover - defensive, see docstring
-        logging.getLogger(__name__).exception(
-            "highlight computation failed for page id=%s", page.id
-        )
+        logger.exception("highlight computation failed for page id=%s", page.id)
         return
+
     highlight = payload["highlight"]
     if highlight is None:
         # Nothing quotable (empty/short/all-procedural transcript). Drop
         # any previous row rather than leaving a stale quote behind -- a
         # re-transcription that got *worse* must not keep showing the
         # old text as if it were current.
-        await session.execute(
-            delete(MeetingHighlight).where(MeetingHighlight.meeting_page_id == page.id)
-        )
+        try:
+            async with session.begin_nested():
+                await session.execute(
+                    delete(MeetingHighlight).where(
+                        MeetingHighlight.meeting_page_id == page.id
+                    )
+                )
+        except Exception:  # pragma: no cover - defensive, see docstring
+            logger.exception("highlight delete failed for page id=%s", page.id)
         return
+
     values = {
         "meeting_page_id": page.id,
         "start_seconds": highlight["start"],
@@ -750,12 +766,16 @@ async def _refresh_meeting_highlight(session, page: MeetingPage, all_segments) -
     else:
         from sqlalchemy.dialects.sqlite import insert as dialect_insert
     stmt = dialect_insert(MeetingHighlight).values(**values)
-    await session.execute(
-        stmt.on_conflict_do_update(
-            index_elements=[MeetingHighlight.meeting_page_id],
-            set_={k: v for k, v in values.items() if k != "meeting_page_id"},
-        )
-    )
+    try:
+        async with session.begin_nested():
+            await session.execute(
+                stmt.on_conflict_do_update(
+                    index_elements=[MeetingHighlight.meeting_page_id],
+                    set_={k: v for k, v in values.items() if k != "meeting_page_id"},
+                )
+            )
+    except Exception:  # pragma: no cover - defensive, see docstring
+        logger.exception("highlight write failed for page id=%s", page.id)
 
 
 async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) -> dict:
