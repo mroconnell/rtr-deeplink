@@ -483,3 +483,112 @@ CREATE TABLE meeting_highlights (
     computed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 )
 """
+
+
+# --- featured-set diversity ----------------------------------------------
+
+
+def _page(page_id, slug):
+    return {
+        "id": page_id,
+        "slug": slug,
+        "title": f"Meeting {page_id}",
+        "jurisdiction": "San Diego, CA",
+        "date": f"2026-08-{page_id:02d}",
+    }
+
+
+def _highlight(topics):
+    return {
+        "start": 60.0,
+        "text": "Residents raised concerns about this at length tonight.",
+        "topics": list(topics),
+        "topic_moments": {slug: {"start": 60.0, "text": "..."} for slug in topics},
+    }
+
+
+def test_featured_caps_how_many_cards_share_a_topic():
+    """One busy subject must not take over the page.
+
+    The real case: San Diego's hub showed six cards, two cannabis and two
+    housing, while a public comment delivered in character as Darth Vader
+    about flock camera surveillance sat in the same pool. Recency alone
+    had no way to prefer it.
+    """
+    pages = [_page(i, f"m{i}") for i in range(1, 7)]
+    highlights = {
+        1: _highlight(["cannabis"]),
+        2: _highlight(["cannabis"]),
+        3: _highlight(["cannabis"]),
+        4: _highlight(["cannabis"]),
+        5: _highlight(["surveillance-cameras"]),
+        6: _highlight(["homelessness"]),
+    }
+    featured = crud._build_featured(pages, highlights, None, 4)
+    marked = [entry["topics"] for entry in featured]
+    assert sum(1 for t in marked if "cannabis" in t) <= crud.MAX_FEATURED_PER_TOPIC
+    slugs = {slug for t in marked for slug in t}
+    assert "surveillance-cameras" in slugs
+
+
+def test_diversity_cap_never_shrinks_the_featured_set():
+    """A page whose meetings genuinely all share one topic still fills up
+    -- the cap reorders, it does not exclude."""
+    pages = [_page(i, f"m{i}") for i in range(1, 7)]
+    highlights = {i: _highlight(["cannabis"]) for i in range(1, 7)}
+    assert len(crud._build_featured(pages, highlights, None, 4)) == 4
+
+
+def test_untagged_cards_are_never_constrained():
+    # A card with no topics cannot cluster, and excluding it would bias
+    # the page toward topic-tagged meetings.
+    pages = [_page(i, f"m{i}") for i in range(1, 5)]
+    highlights = {i: _highlight([]) for i in range(1, 5)}
+    assert len(crud._build_featured(pages, highlights, None, 4)) == 4
+
+
+def test_selected_topic_view_is_not_diversity_capped():
+    # With ?topic= every card is about that topic by construction, so a
+    # cap would be self-defeating.
+    pages = [_page(i, f"m{i}") for i in range(1, 6)]
+    highlights = {i: _highlight(["cannabis"]) for i in range(1, 6)}
+    featured = crud._build_featured(pages, highlights, "cannabis", 5)
+    assert len(featured) == 5
+
+
+def test_rarest_topics_are_the_ones_marked():
+    """A quote about flock cameras must not have "playground" highlighted
+    three times while `flock` gets lost.
+
+    Real case: the Darth Vader snippet matched `libraries-parks` (via
+    "playground", 422 meetings archive-wide) alongside
+    `surveillance-cameras` (a handful). Rarity is the tiebreak because
+    the rare topic is what the reader came for.
+    """
+    counts = {"libraries-parks": 422, "surveillance-cameras": 6, "schools": 385}
+    ranked = crud._rank_topics_by_rarity(
+        ["libraries-parks", "surveillance-cameras", "schools"], counts
+    )
+    assert ranked[0] == "surveillance-cameras"
+
+    entry = crud._featured_entry(
+        _page(1, "m1"),
+        _highlight(["libraries-parks", "surveillance-cameras", "schools"]),
+        None,
+        counts,
+    )
+    assert len(entry["topics"]) <= crud.MAX_MARKED_TOPICS
+    assert "surveillance-cameras" in entry["topics"]
+    # The most common of the three is the one dropped: with only two
+    # marks available, "libraries-parks" (422 meetings) loses to
+    # "schools" (385), which loses to surveillance-cameras (6).
+    assert "libraries-parks" not in entry["topics"]
+
+
+def test_rarity_ranking_is_deterministic_without_counts():
+    # Stored highlights must render identically on every request, so ties
+    # (and a missing count map) fall back to curated TOPICS order.
+    slugs = ["schools", "cannabis", "data-centers"]
+    assert crud._rank_topics_by_rarity(slugs, None) == crud._rank_topics_by_rarity(
+        slugs, {}
+    )

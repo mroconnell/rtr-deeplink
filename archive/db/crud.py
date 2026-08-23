@@ -4290,6 +4290,25 @@ STATE_FEATURED_COUNT = 12
 # scannable and start being another wall of links. The curated list can
 # grow past this without the page getting noisier.
 MAX_TOPIC_CHIPS = 12
+# At most this many featured cards may share a topic, so one busy subject
+# can't take over the page (see _build_featured()). Never shrinks the
+# set -- skipped cards backfill any slots left over.
+MAX_FEATURED_PER_TOPIC = 2
+# Distinct topics marked per snippet in the default (no-topic) view.
+# Marking every match turned a quote about flock cameras into three
+# highlighted "playground"s, burying the word the reader came for.
+# One topic marked per snippet in the default (no-topic) view.
+#
+# Marking every match buried the point: the Darth Vader flock-camera
+# quote also matched `libraries-parks` on the word "playground", so it
+# rendered with `flock` highlighted twice and `playground` three times.
+# A rarity *ratio* guard was tried first and rejected by measurement --
+# rarity here is counted over the page's own pool, and in a six-meeting
+# hub pool both topics have a count of 1, so no ratio can separate them.
+# Marking the single best topic needs no archive-wide count query and is
+# what a reader wants anyway: with `?topic=` selected exactly that topic
+# is marked, and without one, the rarest/most newsworthy is.
+MAX_MARKED_TOPICS = 1
 MOST_ACTIVE_MIN_GOVERNMENTS = 8
 MOST_ACTIVE_WINDOW_DAYS = 90
 MOST_ACTIVE_COUNT = 6
@@ -4334,14 +4353,20 @@ async def _load_highlights(session, page_ids: Sequence[int]) -> dict[int, dict]:
     }
 
 
-def _featured_entry(page: dict, highlight: dict, topic_slug: Optional[str]):
+def _featured_entry(
+    page: dict,
+    highlight: dict,
+    topic_slug: Optional[str],
+    topic_counts: Optional[dict[str, int]] = None,
+):
     """One rendered featured-meeting card, or None when this page has
     nothing to show for the requested topic.
 
     With a topic selected the quote comes from that topic's stored
     moment (so the snippet actually contains the thing the reader
     clicked); with no topic it is the meeting's default highlight, and
-    whatever topics happen to appear in it get marked."""
+    the *rarest* topics in it get marked (see
+    `_rank_topics_by_rarity()`)."""
     if topic_slug:
         moment = (highlight.get("topic_moments") or {}).get(topic_slug)
         if not moment:
@@ -4349,7 +4374,7 @@ def _featured_entry(page: dict, highlight: dict, topic_slug: Optional[str]):
         start, text, marks = moment["start"], moment["text"], [topic_slug]
     else:
         start, text = highlight["start"], highlight["text"]
-        marks = highlight.get("topics") or []
+        marks = _marks_for(highlight.get("topics") or [], topic_counts)
     return {
         "_page_id": page["id"],
         "slug": page["slug"],
@@ -4384,25 +4409,110 @@ def _attach_thumbnails(featured: Sequence[dict], page_ids_with_cards: set) -> No
             )
 
 
+def _rank_topics_by_rarity(
+    slugs: Sequence[str], topic_counts: Optional[dict[str, int]]
+) -> list[str]:
+    """Topic slugs ordered rarest-first within this page's own pool.
+
+    Rarity is a decent proxy for newsworthiness: "property taxes" appears
+    in 450 archived meetings and "surveillance cameras" in a handful, so
+    when one snippet contains both, the surveillance mention is the one a
+    reader came for. Ties fall back to TOPICS order so the result is
+    deterministic (a stored highlight must render identically on every
+    request).
+    """
+    order = {topic.slug: index for index, topic in enumerate(TOPICS)}
+    counts = topic_counts or {}
+    return sorted(slugs, key=lambda slug: (counts.get(slug, 0), order.get(slug, 999)))
+
+
+def _marks_for(
+    slugs: Sequence[str], topic_counts: Optional[dict[str, int]]
+) -> list[str]:
+    """Which topics in a snippet actually get `<mark>`ed.
+
+    Rarest first (see `_rank_topics_by_rarity()`), capped at
+    MAX_MARKED_TOPICS -- see that constant for the real case behind the
+    cap, and for why a rarity-ratio filter was tried and rejected.
+
+    Note the tiebreak does real work here: within a small pool every
+    topic has a count of 1, so ranking falls through to curated TOPICS
+    order -- which is roughly newsworthiness-ordered, putting
+    `surveillance-cameras` ahead of `libraries-parks`.
+    """
+    return _rank_topics_by_rarity(slugs, topic_counts)[:MAX_MARKED_TOPICS]
+
+
 def _build_featured(
     pages: Sequence[dict],
     highlights: dict[int, dict],
     topic_slug: Optional[str],
     limit: int,
+    topic_counts: Optional[dict[str, int]] = None,
 ) -> list[dict]:
-    """Featured cards for the newest pages that have a usable highlight."""
-    featured: list[dict] = []
+    """Featured cards for the newest pages that have a usable highlight.
+
+    Date-ordered, but with a **topic diversity cap**: at most
+    `MAX_FEATURED_PER_TOPIC` cards may share a topic, so one busy subject
+    cannot take over the page. Real case that prompted this (San Diego's
+    hub, 2026-08-23): six cards, two of them cannabis and two housing,
+    while a public comment delivered *in character as Darth Vader* about
+    flock camera surveillance sat in the same pool. Recency alone had no
+    way to prefer the interesting one.
+
+    Two passes rather than a sort, so recency still drives the result:
+    pass one takes cards whose topics are not yet at the cap, pass two
+    backfills any remaining slots from what was skipped, in the original
+    date order. That means the cap never *shrinks* the featured set --
+    a page whose meetings genuinely all share one topic still fills up.
+
+    A card with no topics at all is never constrained: it cannot cluster,
+    and excluding it would quietly bias the page toward topic-tagged
+    meetings.
+    """
+    candidates: list[dict] = []
     for page in pages:
         highlight = highlights.get(page["id"])
         if not highlight:
             continue
-        entry = _featured_entry(page, highlight, topic_slug)
-        if entry is None:
-            continue
-        featured.append(entry)
+        entry = _featured_entry(page, highlight, topic_slug, topic_counts)
+        if entry is not None:
+            candidates.append(entry)
+
+    # With a topic explicitly selected every card is *about* that topic by
+    # construction, so a diversity cap would be self-defeating.
+    if topic_slug:
+        return candidates[:limit]
+
+    featured: list[dict] = []
+    skipped: list[dict] = []
+    used: dict[str, int] = {}
+    for entry in candidates:
         if len(featured) >= limit:
             break
+        topics = entry["topics"]
+        if topics and all(
+            used.get(slug, 0) >= MAX_FEATURED_PER_TOPIC for slug in topics
+        ):
+            skipped.append(entry)
+            continue
+        featured.append(entry)
+        for slug in topics:
+            used[slug] = used.get(slug, 0) + 1
+    if len(featured) < limit:
+        featured.extend(skipped[: limit - len(featured)])
     return featured
+
+
+def _pool_topic_counts(highlights: dict[int, dict]) -> dict[str, int]:
+    """topic slug -> how many meetings in this pool carry a moment for it.
+    Shared by the chips (which rank by it) and the featured cards (which
+    mark the rarest topics), so the two can never disagree."""
+    counts: dict[str, int] = {}
+    for highlight in highlights.values():
+        for slug in highlight.get("topic_moments") or {}:
+            counts[slug] = counts.get(slug, 0) + 1
+    return counts
 
 
 def _topic_chips(highlights: dict[int, dict], active_slug: Optional[str]) -> list[dict]:
@@ -4412,10 +4522,7 @@ def _topic_chips(highlights: dict[int, dict], active_slug: Optional[str]) -> lis
     A topic with no meetings behind it is omitted rather than rendered
     as an empty chip -- a chip that leads to "no results" is worse than
     no chip, both for a reader and for a crawler following it."""
-    counts: dict[str, int] = {}
-    for highlight in highlights.values():
-        for slug in highlight.get("topic_moments") or {}:
-            counts[slug] = counts.get(slug, 0) + 1
+    counts = _pool_topic_counts(highlights)
     chips = []
     for topic in TOPICS:
         count = counts.get(topic.slug, 0)
@@ -4583,12 +4690,17 @@ async def get_state_page_data(
         )
 
     active_slug = topic_slug if topic_slug in TOPICS_BY_SLUG else None
-    featured = _build_featured(pool, highlights, active_slug, STATE_FEATURED_COUNT)
+    topic_counts = _pool_topic_counts(highlights)
+    featured = _build_featured(
+        pool, highlights, active_slug, STATE_FEATURED_COUNT, topic_counts
+    )
     # A topic chip is only offered when it has meetings behind it, so an
     # empty featured set here means the pool changed under a cached chip
     # list; fall back to the untopiced set rather than an empty page.
     if active_slug and not featured:
-        featured = _build_featured(pool, highlights, None, STATE_FEATURED_COUNT)
+        featured = _build_featured(
+            pool, highlights, None, STATE_FEATURED_COUNT, topic_counts
+        )
         active_slug = None
     _attach_thumbnails(featured, carded)
 
@@ -4804,9 +4916,14 @@ async def get_jurisdiction_hub_data(
         carded = await pages_with_thumbnails(session, [p["id"] for p in pool])
 
     active_slug = topic_slug if topic_slug in TOPICS_BY_SLUG else None
-    featured = _build_featured(pool, highlights, active_slug, HUB_FEATURED_COUNT)
+    topic_counts = _pool_topic_counts(highlights)
+    featured = _build_featured(
+        pool, highlights, active_slug, HUB_FEATURED_COUNT, topic_counts
+    )
     if active_slug and not featured:
-        featured = _build_featured(pool, highlights, None, HUB_FEATURED_COUNT)
+        featured = _build_featured(
+            pool, highlights, None, HUB_FEATURED_COUNT, topic_counts
+        )
         active_slug = None
     _attach_thumbnails(featured, carded)
     body_counts: dict[str, int] = {}
