@@ -329,6 +329,20 @@ under everything else. This repo extracts and fixes just that part.
   is gated behind one, degrade gracefully — skip it and surface a plain
   warning to the *reader* on the page (the existing `transcript_warnings`
   pattern), not just a dev-facing log line.
+- **CI runs four gates, and `pytest` is the third — run all four before
+  pushing (learned the hard way, 2026-08-23).** `.github/workflows/
+  test.yml` runs, in order: `ruff check app/ archive/ worker/ scripts/
+  tests/`, `ruff format --check` on the same paths, `python -m pytest`,
+  and `alembic check` (twice — once with `working-directory: archive`,
+  once with `app`). A green local `pytest` says nothing about the first
+  two, and they run *first*, so a lint slip fails the build before a
+  single test executes. WO-46 burned a full CI round on exactly this:
+  one unused import and six files needing `ruff format`, with 1,640
+  tests passing locally the whole time. Run the same four commands
+  locally, and when `ruff format` reports files to reformat, **check
+  which files first** — formatting one you didn't touch drags an
+  unrelated diff into your PR, and under a parallel wave (see the
+  multi-session bullet below) possibly someone else's in-progress work.
 - **A pytest suite exists now (`tests/`, see README's "Running tests")** —
   run it (`pytest`) before/after touching `app/utils/vtt_parser.py`,
   `app/platforms/media_scan.py`, `app/platforms/base.py`, or any platform
