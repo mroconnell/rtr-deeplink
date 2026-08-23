@@ -4549,7 +4549,16 @@ def _topic_chips(highlights: dict[int, dict], active_slug: Optional[str]) -> lis
             }
         )
     chips.sort(key=lambda chip: (-chip["count"], chip["label"]))
-    chips = chips[:MAX_TOPIC_CHIPS]
+    # Pinned topics (archive/topics.py) keep their chip even when they
+    # rank below the cutoff -- they are surfaced for being newsworthy,
+    # not frequent. "Data centers" and "Flock cameras" are exactly the
+    # subjects a reader comes looking for and exactly the ones that lose
+    # a pure popularity contest to "property taxes". Still subject to the
+    # count > 0 rule above, so a state with none of either shows neither.
+    pinned = [chip for chip in chips if TOPICS_BY_SLUG[chip["slug"]].pinned]
+    rest = [chip for chip in chips if not TOPICS_BY_SLUG[chip["slug"]].pinned]
+    chips = (pinned + rest)[:MAX_TOPIC_CHIPS]
+    chips.sort(key=lambda chip: (-chip["count"], chip["label"]))
     # The selected topic always stays visible, even if it ranks below the
     # cut -- otherwise following a ?topic= link lands on a page whose own
     # chip row doesn't show what is currently selected.

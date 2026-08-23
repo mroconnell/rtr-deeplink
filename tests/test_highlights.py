@@ -228,8 +228,37 @@ def test_topic_slugs_are_unique_and_indexed():
 def test_topics_in_requires_word_boundaries():
     # "flock" must not fire on "flocking", and a curated phrase must not
     # match as a substring of a longer word.
-    assert "surveillance-cameras" not in topics_in("birds were flocking overhead")
-    assert "surveillance-cameras" in topics_in("the flock cameras")
+    assert "flock-cameras" not in topics_in("birds were flocking overhead")
+    assert "flock-cameras" in topics_in("the flock cameras")
+
+
+def test_flock_is_its_own_topic_but_still_reads_as_surveillance():
+    """Split out of `surveillance-cameras` 2026-08-23: Flock is a named
+    vendor residents show up to speak about by name, and burying it in a
+    generic chip hid what people actually search for.
+
+    A phrase naming both still tags both -- the split narrows the chip,
+    not the matching.
+    """
+    assert topics_in("the flock safety cameras") == [
+        "flock-cameras",
+        "surveillance-cameras",
+    ]
+    # Generic surveillance language must NOT be tagged as Flock.
+    assert "flock-cameras" not in topics_in(
+        "the facial recognition and license plate reader program"
+    )
+    # Transcription reliably produces "flocks" (confirmed live).
+    assert "flock-cameras" in topics_in("the flocks safety cameras")
+
+
+def test_pinned_topics_are_declared_and_real():
+    from archive.topics import TOPICS_BY_SLUG as BY_SLUG
+
+    pinned = {t.slug for t in TOPICS if t.pinned}
+    assert pinned == {"data-centers", "flock-cameras"}
+    for slug in pinned:
+        assert BY_SLUG[slug].patterns
 
 
 def test_procedural_text_matches_no_topics():
@@ -615,3 +644,47 @@ def test_untitled_pages_are_never_featured():
     # Blank/whitespace-only counts as untitled too.
     pages[0]["title"] = "   "
     assert len(crud._build_featured(pages, highlights, None, 4)) == 1
+
+
+def test_pinned_topics_keep_a_chip_below_the_count_cutoff():
+    """Newsworthy beats frequent for chip selection.
+
+    "Data centers" and "Flock cameras" are exactly the subjects a reader
+    comes looking for, and exactly the ones that lose a pure popularity
+    contest to "property taxes" — measured on the live California page,
+    where both fell below the top-12 cutoff.
+    """
+    # Every non-pinned topic given a huge count; the two pinned ones a
+    # tiny one, so a pure count sort would drop both.
+    highlights = {}
+    page_id = 0
+    for topic in TOPICS:
+        n = 1 if topic.pinned else 50
+        for _ in range(n):
+            page_id += 1
+            highlights[page_id] = {
+                "start": 0.0,
+                "text": "x",
+                "topics": [],
+                "topic_moments": {topic.slug: {"start": 0.0, "text": "x"}},
+            }
+    chips = crud._topic_chips(highlights, None)
+    slugs = {chip["slug"] for chip in chips}
+    assert len(chips) <= crud.MAX_TOPIC_CHIPS
+    assert "data-centers" in slugs
+    assert "flock-cameras" in slugs
+
+
+def test_pinned_topic_with_no_meetings_still_gets_no_chip():
+    # The count > 0 rule wins over pinning: a chip leading to an empty
+    # page is worse than no chip, in a state that simply has neither.
+    highlights = {
+        1: {
+            "start": 0.0,
+            "text": "x",
+            "topics": [],
+            "topic_moments": {"cannabis": {"start": 0.0, "text": "x"}},
+        }
+    }
+    slugs = {chip["slug"] for chip in crud._topic_chips(highlights, None)}
+    assert slugs == {"cannabis"}

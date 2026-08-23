@@ -43,6 +43,13 @@ class Topic(NamedTuple):
     slug: str
     label: str
     patterns: tuple[str, ...]
+    # Pinned topics always get a chip when they have at least one meeting
+    # behind them, even if they rank below the count cutoff. These are the
+    # subjects worth surfacing because they are *newsworthy*, not because
+    # they are frequent -- the frequent ones (property taxes, libraries)
+    # win on count anyway and need no help. Still never rendered at zero:
+    # a chip leading to an empty page is worse than no chip.
+    pinned: bool = False
 
 
 TOPICS: tuple[Topic, ...] = (
@@ -50,14 +57,45 @@ TOPICS: tuple[Topic, ...] = (
         "data-centers",
         "Data centers",
         ("data center", "data centers", "data centre", "hyperscale", "server farm"),
+        pinned=True,
+    ),
+    # Split out of surveillance-cameras 2026-08-23: Flock is a specific,
+    # named vendor that residents show up to speak about by name, and
+    # burying it inside a generic "surveillance cameras" chip hid the
+    # thing people actually search for. The bare "flock" pattern was
+    # checked against the real corpus before shipping -- 131 meetings
+    # mention it and all 14 stored highlights containing it are about the
+    # company, not birds -- so the obvious false positive does not happen
+    # here in practice. "flocks" is included because transcription
+    # reliably produces it ("the flocks safety cameras", confirmed live).
+    Topic(
+        "flock-cameras",
+        "Flock cameras",
+        (
+            "flock",
+            "flocks",
+            "flock safety",
+            "flock camera",
+            "flock cameras",
+            "flock system",
+            "flock contract",
+        ),
+        pinned=True,
     ),
     Topic(
         "surveillance-cameras",
         "Surveillance cameras",
         (
+            # Flock terms stay here as well as in the dedicated
+            # `flock-cameras` topic above: Flock *is* surveillance, a
+            # strict subset, so a reader clicking either chip should find
+            # these meetings. Topics deliberately overlap -- a meeting
+            # carries a moment per matching topic, and the split exists
+            # to give Flock its own findable chip, not to narrow what
+            # counts as surveillance.
             "flock",
+            "flocks",
             "flock safety",
-            "license plate reader",
             "license plate readers",
             "automated license plate",
             "surveillance camera",
@@ -295,13 +333,15 @@ TOPICS: tuple[Topic, ...] = (
 
 TOPICS_BY_SLUG: dict[str, Topic] = {t.slug: t for t in TOPICS}
 
+# v2 (2026-08-23): split `flock-cameras` out of `surveillance-cameras`.
+#
 # Bumped whenever the phrase lists above change in a way that should
 # invalidate every stored highlight (see MeetingHighlight.topics_version):
 # a meeting whose stored topic moments were computed under an older list
 # is recomputed by scripts/backfill_meeting_highlights.py rather than
 # silently keeping stale topic tags. Adding a whole new Topic row counts;
 # fixing a typo in a `label` does not.
-TOPICS_VERSION = 1
+TOPICS_VERSION = 2
 
 
 def _compile(topic: Topic) -> re.Pattern:

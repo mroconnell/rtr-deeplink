@@ -140,8 +140,12 @@
         </p>
 
         {% if most_active %}
-        <h2 class="state-section-heading">Most active {{ name }} governments</h2>
-        <p class="state-section-sub">Most meetings archived in the last {{ most_active_days }} days.</p>
+        <h2 class="state-section-heading">Most watched {{ name }} governments</h2>
+        {#- The ranking is by meetings *archived* here in the last 90 days,
+           which is the best available proxy until real per-jurisdiction
+           view data exists -- the subtitle says so plainly rather than
+           letting the heading imply a view count we don't track. -#}
+        <p class="state-section-sub">The governments we're archiving most right now &mdash; ranked by meetings added in the last {{ most_active_days }} days.</p>
         <ul class="most-active-list">
           {%- for row in most_active %}
           <li>
