@@ -904,10 +904,10 @@ Both surfaces now lead with:
   desktop; below them on mobile, where the results lead. Every `/j/`
   link stays in the initial HTML in both layouts.
 * **"Most watched governments"** (state pages, ≥8 governments) — ranked
-  by meetings *archived* in the last 90 days, which is the best proxy
-  available until real per-jurisdiction view data exists. The subtitle
-  states that basis plainly rather than letting the heading imply a view
-  count that isn't tracked.
+  by meetings *archived* in the last 90 days. "Watched" is meant
+  literally and in this site's own voice: Red Tape Recordings is the one
+  doing the watching. It claims no per-visitor view count (there isn't
+  one), and the subtitle keeps the basis explicit regardless.
 
 Snippets are **precomputed and stored** in `meeting_highlights`, not
 computed per request: the heuristic needs a meeting's segments, and a
