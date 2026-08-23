@@ -19654,3 +19654,132 @@ run would now fail loudly on missing tables — except in
 `rtr_deeplink_db`, where the tables already exist and the write would
 silently succeed. Dropping them restores fail-loudly behaviour for the
 one database where it's currently absent.
+
+## Standing decisions archive — narrow, single-incident calls (moved from `BACKLOG.md` 2026-08-23)
+
+Moved out of `BACKLOG.md`'s Standing decisions section because each of
+these settled one specific incident or a single product/ops judgment
+call — real, still-binding decisions, just not the kind a future session
+working on something unrelated needs to read up front. The durable,
+broadly-applicable principles (don't run unbounded scans against
+production, prefer generated columns with a table-size caveat, never
+auto-solve a human-verification challenge) stayed in `BACKLOG.md`.
+
+### Do NOT widen `noindex` / the sitemap filter / the `/j/*` hub filter to cover `best_effort`
+
+Left untouched on purpose — the user's own product call: unverified
+pages should be stopped from being amplified (the social gate) and kept
+auditable (the low-trust queue), but should stay indexed. Most
+`best_effort` pages are legitimate small cities that happened to resolve
+via fallback rather than a vendor adapter; pulling them out of Google
+would cost real reach for no proportionate trust gain.
+
+### `ALERT_WEBHOOK_URL` — declined 2026-08-21
+
+Ryan doesn't use Slack/Discord, so a webhook posting into a channel
+nobody watches adds nothing over GitHub's own failed-scheduled-workflow
+email, which already reaches him. The three cron workflows' `if:
+failure()` step stays as-is (no-ops with a `::warning::` when unset —
+intended, not a defect). The canary's one real failure (run 32155218602,
+2026-08-18, a transient auroratv.org blip) proved the point: GitHub's
+email fired and the failure was diagnosable from logs — a webhook would
+only have changed the delivery channel, not the outcome. If email
+alerting is ever genuinely wanted, wiring Resend into GitHub Actions to
+duplicate a notification GitHub already sends isn't worth it. Revisit
+only if Ryan starts using a chat tool day-to-day.
+
+### The inbox-triage Routine holds no Gmail write scope — don't propose reauthorizing it
+
+Ryan's explicit, permanent decision (WO-33, 2026-08-21): an unattended
+job that merges its own PRs shouldn't also be able to write to his
+mailbox. `label_thread` and the old `label:rtr-claude
+-label:rtr-claude-processed` query are gone for good, replaced by the
+repo-side `CLAUDE_INBOX_TRIAGE_SEEN.txt` ledger. Full reasoning in
+`CLAUDE.md`'s `CLAUDE_INBOX_TRIAGE.md` bullet.
+
+### On-demand transcription's email-only gate is a deliberate middle path
+
+Not a stepping-stone toward eventually requiring a full account —
+explicit user correction, 2026-08-12. Transcription is the app's single
+most cost-intensive feature by a wide margin (dollar/compute figures in
+this file's worker plan-sizing entry); email confirmation is real
+friction against abuse without forcing a login onto the costliest path.
+Keep it this way rather than treating it as an implicit TODO.
+
+### PrimeGov's private known-domain override stays until the enricher-side version replaces it
+
+`primegov.py`'s `resolve()` calls
+`jurisdiction_enrich.known_jurisdiction_display()` before its own
+`_extract_jurisdiction()` — added for the confirmed-misleading
+`slc.primegov.com` case. `JURISDICTION_METADATA_PLAN.md`'s settled
+design eventually moves the same lookup into the enricher itself, which
+will make PrimeGov's copy redundant. User's call: don't touch the
+working override during the testing phase; delete it only once the
+enricher-side version is built, tested, and confirmed to produce the
+identical result on the real SLC pages (the two Holladay-bug meetings
+are the regression cases to check).
+
+### Legistar's "Meeting Items" table — probably not worth pursuing
+
+A real per-item table (`File #`, `Agenda #`, `Type`, `Title`) with
+substantive text, but no per-item timestamp — only ordering — so it
+doesn't cleanly fit `agenda_items` (`List[TranscriptSegment]`, which
+expects real time offsets). User's call 2026-08-12: the real agenda
+document (`agenda_link`, shipped 2026-08-13) already covers "what was on
+the agenda" without inventing an untimed-items shape for one platform.
+Left here for context, not as an open TODO.
+
+### Accept 107 imageless Cablecast pages until Debian ships ffmpeg 8.x
+
+Decided 2026-08-23 (WO-45). These pages fail frame extraction with
+`ffmpeg exited 0 but wrote no frame`; the assets are fine and the cause
+is settled — the Archive's ffmpeg **5.1.9 cannot read a Cablecast fMP4
+VOD playlist through an input-side seek at any offset, `-ss 0`
+included**. Both candidate fallbacks were measured against real media
+and both are dead: output-side seek works but takes **109s** against
+`_FRAME_TIMEOUT_SECONDS = 45` (~8× realtime, and these offsets run to
+11,530s), and retrying at a near-start offset fails too (`-ss 0`/`5`/`30`
+all return exit 0, no file).
+
+So: **no frame fallback, and do not raise the frame budget** — the same
+`extract_and_store()` also warms cards on real page loads, and 107
+og:image-less pages is a smaller cost than a two-minute inline
+extraction on a visitor's request.
+
+**Re-open when, and only when, ffmpeg 8.x is available** to the Archive
+(`runtime: python`, Render's buildpack — not something this repo pins).
+8.1.2 handles these playlists correctly, confirmed. At that point this
+whole entry evaporates and the 107 slugs re-run in one pass with
+`scripts/backfill_meeting_cards.py --slugs-file`; expected frame sizes
+for four of them are recorded elsewhere in this file's WO-45 entry.
+
+Two related facts worth not rediscovering: the *transcription* half of
+this same defect is fixed and shipped (an output-side retry, which fits
+the audio path's budget where it doesn't fit the frame path's), and the
+earlier prescription to "upgrade the Archive off Debian 12's 5.1.9" was
+**wrong** — Debian 13's 7.1.5 fails on the same media and
+`trixie-backports` carries nothing newer. Full evidence, version matrix
+and the alternatives tested: this file's own WO-45 entry.
+
+### Legistar's delegated-platform *title* winning over the page's body name is correct as built
+
+Decided 2026-08-22. `legistar.py`'s `_try_fallback_video_link()` prefers
+the delegated platform's title unless
+`_looks_like_raw_filename()` rejects it — deliberately unlike date and
+jurisdiction, which prefer the Legistar page. Baltimore rendering as a
+CharmTV YouTube title is the intended behaviour, not the bug it looked
+like: a channel name plus date carries more for a reader than a bare
+body name, and the raw-filename escape hatch already handles the case
+where the delegated title is worse (NYC/Viebit's `.mp4` filenames). The
+real gap this surfaced is a different one — the Legistar page's *body
+name* is genuinely valuable, it just belongs in `meeting_body` rather
+than in the title. See `BACKLOG.md`'s `meeting_body` entry under **Ship
+next**. Don't re-open the title question.
+
+### Sacramento County's doubled meeting title is not a bug to fix
+
+`"Board Of Supervisors Board Of Supervisors Meeting"` is real text
+straight from the source page's own agenda-link `title` attribute,
+re-confirmed by a live re-resolve 2026-08-15 — plausibly a genuine
+`"{meeting type} {body name} MEETING"` template, not an artifact worth
+guessing a general dedup rule from one example.

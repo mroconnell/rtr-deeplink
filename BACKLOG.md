@@ -49,21 +49,10 @@ verbatim prefix of a real line further down, so any entry opens with
 
 ```text
 
-Standing decisions — do NOT re-raise  (14)
-  Do NOT widen `noindex` / the sitemap filter / the `/j/*` hub filter…
-  `ALERT_WEBHOOK_URL` — declined 2026-08-21
-  The inbox-triage Routine holds no Gmail write scope — don't propose…
-  On-demand transcription's email-only gate is a deliberate middle path
-  PrimeGov's private known-domain override stays until the…
-  Legistar's "Meeting Items" table — probably not worth pursuing
-  Never run a full-`segments` / full-corpus scan against the production…
+Standing decisions — do NOT re-raise  (3)
+  Never run an unbounded scan or bulk workload against the production…
   Prefer a generated/computed column over "add a column, then backfill…
-  Do NOT spread a transcription job's within-job pulls across hosts
-  Do NOT raise `media_probe.py`'s `_SUBPROCESS_TIMEOUT_SECONDS` to…
-  Accept 107 imageless Cablecast pages until Debian ships ffmpeg 8.x
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
-  Legistar's delegated-platform *title* winning over the page's body…
-  Sacramento County's doubled meeting title is not a bug to fix
 
 Ship next — root cause known, fix settled `[JUST-DO-IT]`  (13)
   [JUST-DO-IT] A bulk re-resolve gets this IP blocked by YouTube, and
@@ -239,176 +228,42 @@ Parked deliberately — allowed back `[PARK]`  (3)
 
 ## Standing decisions — do NOT re-raise
 
-Decisions already made *against* doing something, each reached with the
-tradeoff understood. **Read this section before "fixing" anything it
-names.**
+Durable calls worth carrying into any session, not narrow one-offs.
+**Single-incident decisions** — one adapter's domain override, one SEO
+judgment call, one ops-tooling choice — **live in `BACKLOG_DONE.md`'s
+Standing decisions archive** instead; check there before assuming
+something hasn't been decided.
 
-### Do NOT widen `noindex` / the sitemap filter / the `/j/*` hub filter to cover `best_effort`
+### Never run an unbounded scan or bulk workload against the production DB from an interactive session
 
-Left untouched on purpose — the user's own product call: unverified
-pages should be stopped from being amplified (the social gate) and kept
-auditable (the low-trust queue), but should stay indexed. Most
-`best_effort` pages are legitimate small cities that happened to resolve
-via fallback rather than a vendor adapter; pulling them out of Google
-would cost real reach for no proportionate trust gain.
+Found the hard way (2026-08-17): a handful of hand-written analytics
+queries scanning every `segments` blob each ran 50–62s against
+production, saturating I/O on a `shared_buffers = 64MB` server during
+live search traffic. The specific query shape isn't the point — any
+full-table scan, bulk read, or heavy analytics query run interactively
+against prod risks the same thing. Sample with `LIMIT`, aggregate over
+size rather than loading real values, or use the PITR/restore path
+(`BACKLOG_DONE.md`) for real analysis. Any prompt spawning a sub-agent
+with prod access must restate this explicitly — a permission block the
+parent hit doesn't carry into a child's instructions.
 
-### `ALERT_WEBHOOK_URL` — declined 2026-08-21
-
-Ryan doesn't use Slack/Discord, so a webhook posting into a channel
-nobody watches adds nothing over GitHub's own failed-scheduled-workflow
-email, which already reaches him. The three cron workflows' `if:
-failure()` step stays as-is (no-ops with a `::warning::` when unset —
-intended, not a defect). The canary's one real failure (run 32155218602,
-2026-08-18, a transient auroratv.org blip) proved the point: GitHub's
-email fired and the failure was diagnosable from logs — a webhook would
-only have changed the delivery channel, not the outcome. If email
-alerting is ever genuinely wanted, wiring Resend into GitHub Actions to
-duplicate a notification GitHub already sends isn't worth it. Revisit
-only if Ryan starts using a chat tool day-to-day.
-
-### The inbox-triage Routine holds no Gmail write scope — don't propose reauthorizing it
-
-Ryan's explicit, permanent decision (WO-33, 2026-08-21): an unattended
-job that merges its own PRs shouldn't also be able to write to his
-mailbox. `label_thread` and the old `label:rtr-claude
--label:rtr-claude-processed` query are gone for good, replaced by the
-repo-side `CLAUDE_INBOX_TRIAGE_SEEN.txt` ledger. Full reasoning in
-`CLAUDE.md`'s `CLAUDE_INBOX_TRIAGE.md` bullet.
-
-### On-demand transcription's email-only gate is a deliberate middle path
-
-Not a stepping-stone toward eventually requiring a full account —
-explicit user correction, 2026-08-12. Transcription is the app's single
-most cost-intensive feature by a wide margin (dollar/compute figures in
-`BACKLOG_DONE.md`'s worker plan-sizing entry); email confirmation is
-real friction against abuse without forcing a login onto the costliest
-path. Keep it this way rather than treating it as an implicit TODO.
-
-### PrimeGov's private known-domain override stays until the enricher-side version replaces it
-
-`primegov.py`'s `resolve()` calls
-`jurisdiction_enrich.known_jurisdiction_display()` before its own
-`_extract_jurisdiction()` — added for the confirmed-misleading
-`slc.primegov.com` case. `JURISDICTION_METADATA_PLAN.md`'s settled
-design eventually moves the same lookup into the enricher itself, which
-will make PrimeGov's copy redundant. User's call: don't touch the
-working override during the testing phase; delete it only once the
-enricher-side version is built, tested, and confirmed to produce the
-identical result on the real SLC pages (the two Holladay-bug meetings
-are the regression cases to check).
-
-### Legistar's "Meeting Items" table — probably not worth pursuing
-
-A real per-item table (`File #`, `Agenda #`, `Type`, `Title`) with
-substantive text, but no per-item timestamp — only ordering — so it
-doesn't cleanly fit `agenda_items` (`List[TranscriptSegment]`, which
-expects real time offsets). User's call 2026-08-12: the real agenda
-document (`agenda_link`, shipped 2026-08-13) already covers "what was on
-the agenda" without inventing an untimed-items shape for one platform.
-Left here for context, not as an open TODO.
-
-### Never run a full-`segments` / full-corpus scan against the production DB from an interactive session
-
-Found 2026-08-17 via `pg_stat_statements`: four hand-written analytics
-queries each ran 50–62 seconds against production — full scans of every
-`segments` blob on a `shared_buffers = 64MB` server, saturating I/O
-during live `/meetings` search. Traced (as far as possible) to a
-sub-agent told to "sample real archived rows" without an explicit
-no-raw-SQL instruction — a top-level permission block on `psql` doesn't
-propagate to a spawned sub-agent unless the spawning prompt says so.
-**Rule**: never run a full-`segments`/full-corpus scan against
-production from an interactive session — sample with `LIMIT`, aggregate
-over `pg_column_size()` instead of the values, use
-`cast(segments AS text) <> '[]'`-style predicates for emptiness, or use
-the PITR/restore path (`BACKLOG_DONE.md`) for real analysis. **Any
-prompt that spawns a sub-agent with prod access must restate this rule
-explicitly** — a permission block the parent hit does not carry into the
-child's instructions. (This is the sibling of `CLAUDE.md`'s `.env`-grep
-rule — same "a shell command with real consequences" class.)
-
-### Prefer a generated/computed column over "add a column, then backfill it"
+### Prefer a generated/computed column over "add a column, then backfill it" — but weigh table size first
 
 `scripts/backfill_search_corpus.py`-style one-time backfills remain
-manual — prefer generated columns (the `search_tsv` pattern) so there's
-nothing to backfill.
-
-### Do NOT spread a transcription job's within-job pulls across hosts
-
-WO-40 measured the failure pattern across all 514 production jobs and
-both real mechanisms argue *against* it — cold-storage rehydration means
-chunk 0 warms the asset for chunks 1..N, and a persistently-slow source
-doesn't care about pacing. Full numbers in the "A single job still makes
-N consecutive same-host pulls" entry under **Reliability, ops & cost**,
-and in `BACKLOG_DONE.md`'s WO-40 entry.
-
-### Do NOT raise `media_probe.py`'s `_SUBPROCESS_TIMEOUT_SECONDS` to match Granicus's ~4-6 minute gateway timeout
-
-Would tie up a worker chunk slot for minutes on every genuinely-dead
-archived asset, trading a fast clear failure for a slow identical one.
-Root cause (a real 504 at Granicus's own CloudFront edge, not a rate
-limit) in the "Granicus `chunklist.m3u8`" entry under **Reliability,
-ops & cost**.
-
-### Accept 107 imageless Cablecast pages until Debian ships ffmpeg 8.x
-
-Decided 2026-08-23 (WO-45). These pages fail frame extraction with
-`ffmpeg exited 0 but wrote no frame`; the assets are fine and the cause
-is settled — the Archive's ffmpeg **5.1.9 cannot read a Cablecast fMP4
-VOD playlist through an input-side seek at any offset, `-ss 0`
-included**. Both candidate fallbacks were measured against real media
-and both are dead: output-side seek works but takes **109s** against
-`_FRAME_TIMEOUT_SECONDS = 45` (~8× realtime, and these offsets run to
-11,530s), and retrying at a near-start offset fails too (`-ss 0`/`5`/`30`
-all return exit 0, no file).
-
-So: **no frame fallback, and do not raise the frame budget** — the same
-`extract_and_store()` also warms cards on real page loads, and 107
-og:image-less pages is a smaller cost than a two-minute inline
-extraction on a visitor's request.
-
-**Re-open when, and only when, ffmpeg 8.x is available** to the Archive
-(`runtime: python`, Render's buildpack — not something this repo pins).
-8.1.2 handles these playlists correctly, confirmed. At that point this
-whole entry evaporates and the 107 slugs re-run in one pass with
-`scripts/backfill_meeting_cards.py --slugs-file`; expected frame sizes
-for four of them are recorded in `BACKLOG_DONE.md`.
-
-Two related facts worth not rediscovering: the *transcription* half of
-this same defect is fixed and shipped (an output-side retry, which fits
-the audio path's budget where it doesn't fit the frame path's), and the
-earlier prescription to "upgrade the Archive off Debian 12's 5.1.9" was
-**wrong** — Debian 13's 7.1.5 fails on the same media and
-`trixie-backports` carries nothing newer. Full evidence, version matrix
-and the alternatives tested: `BACKLOG_DONE.md`'s WO-45 entry.
+manual; a generated column (the `search_tsv` pattern) needs none.
+**Caveat, not yet load-bearing but worth carrying forward**: a `STORED`
+generated column forces a blocking, synchronous table rewrite on
+`ALTER TABLE ADD COLUMN` — the same cost as a backfill, but un-batchable
+and un-resumable. Fine at today's table size; won't stay fine as tables
+grow. Check row count against realistic rewrite time before reaching for
+this pattern once a table is large.
 
 ### Never attempt to auto-solve a Cloudflare "Verify you are human" challenge
 
-Hit live on Spokane WA while building the Vimeo adapter (WO-29). The
-adapter ships video-only rather than going near it. Same rule applies to
-any future platform that gates behind one.
-
-### Legistar's delegated-platform *title* winning over the page's body name is correct as built
-
-Decided 2026-08-22. `legistar.py`'s `_try_fallback_video_link()` prefers
-the delegated platform's title unless
-`_looks_like_raw_filename()` rejects it — deliberately unlike date and
-jurisdiction, which prefer the Legistar page. Baltimore rendering as a
-CharmTV YouTube title is the intended behaviour, not the bug it looked
-like: a channel name plus date carries more for a reader than a bare
-body name, and the raw-filename escape hatch already handles the case
-where the delegated title is worse (NYC/Viebit's `.mp4` filenames).
-**The real gap this surfaced is a different one** — the Legistar page's
-*body name* is genuinely valuable, it just belongs in `meeting_body`
-rather than in the title. See the `meeting_body` entry under **Ship
-next**. Don't re-open the title question.
-
-### Sacramento County's doubled meeting title is not a bug to fix
-
-`"Board Of Supervisors Board Of Supervisors Meeting"` is real text
-straight from the source page's own agenda-link `title` attribute,
-re-confirmed by a live re-resolve 2026-08-15 — plausibly a genuine
-`"{meeting type} {body name} MEETING"` template, not an artifact worth
-guessing a general dedup rule from one example.
+General principle and good/bad examples now in `CLAUDE.md` — we query
+sites politely and don't defeat a host's own access controls. Hit live
+on Spokane WA building the Vimeo adapter (WO-29); that adapter ships
+video-only rather than going near it.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
@@ -572,7 +427,8 @@ so that work reads together.
 
 - **[JUST-DO-IT] Give `meeting_body` an adapter-supplied path — it has
   none today.** Decided 2026-08-22, out of the Legistar title question
-  (now a **Standing decision**: the delegated title winning is correct).
+  (now a **Standing decision** — see `BACKLOG_DONE.md`'s archive: the
+  delegated title winning is correct).
   The government body's own name *is* worth capturing; it just belongs
   in `meeting_body`, not in the title.
   **Confirmed by reading the code, not assumed:** `meeting_body` exists
@@ -611,9 +467,9 @@ so that work reads together.
   `feed.xml` URLs, all `?jurisdiction=`-parameterised.
   **Check first** whether any feed reader or integration relies on the
   current headers, and note this is *not* the `noindex` widening the
-  **Standing decisions** section rules out — that decision is about
-  `/m/` and `/j/` *pages*; a machine-readable feed is a different
-  question and was never in its scope.
+  `BACKLOG_DONE.md`'s Standing decisions archive rules out — that
+  decision is about `/m/` and `/j/` *pages*; a machine-readable feed is a
+  different question and was never in its scope.
 
 - **[JUST-DO-IT] `[EASY]` Two archived pages have slugs frozen from a
   vendor's boilerplate page title, not the meeting's.** Found 2026-08-22
@@ -1399,7 +1255,8 @@ from a live check), but the Legistar calendar itself is still untried.
 - **[JUST-DO-IT] PrimeGov's `_extract_jurisdiction()` still has no real
   structural fix for the SLC/Holladay false-positive — only patched for
   that one confirmed domain.** SLC's own bug is fixed via a known-domain
-  override (see **Standing decisions**), but an unscoped body-text search
+  override (see `BACKLOG_DONE.md`'s Standing decisions archive), but an
+  unscoped body-text search
   still can't structurally tell a genuine page header from an
   agenda-item mention (confirmed against OKC, Thousand Oaks, SLC — none
   separate cleanly by character position, and a bold-tag rule would fix
@@ -1715,9 +1572,14 @@ job; this is just one place where it does it too well.
 
 #### `[NEEDS-AUDIT]` Some old/archived Granicus clips' `chunklist.m3u8` genuinely times out at Granicus's own origin (real 504, not a rate limit)
 
-Root cause confirmed 2026-08-21. See also **Standing decisions** — do
-not raise `_SUBPROCESS_TIMEOUT_SECONDS` to match Granicus's own gateway
-timeout.
+Root cause confirmed 2026-08-21. **Current default: don't raise
+`_SUBPROCESS_TIMEOUT_SECONDS` to match Granicus's gateway timeout** —
+ties up a worker chunk slot for minutes on every genuinely-dead asset,
+trading a fast clear failure for a slow identical one. Not a settled
+Standing decision — the sizing note below (2/218 terminal failures, ~4%
+of worker-hours) says it isn't costing much either way today, but that's
+one measurement; worth re-checking rather than assuming permanently,
+especially as job volume grows.
 
 Reproduced directly with `ffprobe -v verbose` against Fountain Valley
 CA clip 607: with the app's own real request headers, `ffprobe`
@@ -1753,7 +1615,7 @@ hours, dead assets may never succeed; worth having the worker's logging
 distinguish a real 5XX-after-a-long-hang from an ordinary
 connection-level timeout so this pattern stops being rediscovered from
 scratch; not worth raising the timeout to match Granicus's own gateway
-timeout blindly (see **Standing decisions**).
+timeout blindly, per the current default noted above.
 
 #### `[NEEDS-AUDIT]` A single job still makes N consecutive same-host pulls, and the 120s ffmpeg timeout is fixed
 
@@ -1769,10 +1631,13 @@ was built. Full numbers and the `GET
 **What that deliberately didn't address**: a 21-chunk meeting is still
 21 consecutive pulls from one host inside one job, since
 `claim_next_chunk()` claims a whole *job* and the worker holds it
-through every chunk — queue ordering can't reach inside a job. **Do not
-"fix" this by spreading within-job pulls** — see **Standing decisions**;
-the measured data (cold-storage rehydration helps within-job clustering;
-a persistently-slow source doesn't care about pacing) argues against it.
+through every chunk — queue ordering can't reach inside a job. **Current
+default: don't spread within-job pulls.** WO-40's one measurement (514
+jobs) found both real mechanisms argue against it — cold-storage
+rehydration means chunk 0 warms the asset for chunks 1..N, and a
+persistently-slow source doesn't care about pacing. Not re-measured
+since; worth another pass with fresh data as job volume grows rather
+than treated as permanently settled.
 
 **The real open question is the timeout, not the ordering.**
 `_SUBPROCESS_TIMEOUT_SECONDS` is a flat 120s for every source. Worth
@@ -1829,8 +1694,9 @@ top-up driver has been creating zero jobs" under **Transcription queue
   has already failed N times; interleave the candidate order by media
   host so one bad host cannot monopolize a batch; or raise `BATCH_SIZE`
   so a run that skips 8 still tries others. Do **not** reach for
-  `_SUBPROCESS_TIMEOUT_SECONDS` — **Standing decisions** rules that out,
-  and the 504 arrives at 4-6 minutes regardless.
+  `_SUBPROCESS_TIMEOUT_SECONDS` — the current default (see the Granicus
+  `chunklist.m3u8` entry above) argues against it, and the 504 arrives at
+  4-6 minutes regardless.
 
 - **[NEEDS-AUDIT] Even after the 2026-08-22 rate cut, inflow still
   exceeds transcription output.** The tier-3 feed went 48/6h → 12/6h
@@ -2001,7 +1867,7 @@ top-up driver has been creating zero jobs" under **Transcription queue
 ### `[LATER]` `best_effort` residuals: no backfill for pre-2026-08-21 pages, and the flag never clears itself
 
 (The "explicitly NOT to be fixed" half of this entry now lives in
-**Standing decisions**.)
+`BACKLOG_DONE.md`'s Standing decisions archive.)
 
 WO-21 (2026-08-21) plumbed `ResolvedMeeting.best_effort` through to the
 Archive — a `meeting_pages.best_effort` column, a provenance gate on
