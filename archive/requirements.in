@@ -15,3 +15,14 @@ clerk-backend-api>=6.0
 # Error monitoring (2026-08-16, WO-7): no-op when SENTRY_DSN unset, same
 # degrade pattern as Clerk above -- see archive/main.py's _init_sentry().
 sentry-sdk>=2.0
+# Jurisdiction repair (2026-08-23, WO-47): the archive's ingest-time
+# finalize_jurisdiction() shares app/utils/jurisdiction_enrich.py with
+# the resolver, and every wordninja-backed tier in it (the validated
+# subdomain/label extractor, and WO-47's glued-label repair) degrades to
+# a silent decline when wordninja is missing -- discovered live when the
+# deployed /internal/jurisdiction/backfill-apply recomputed only 48 of
+# WO-47's 82 vetted candidates (all 34 missing ones were glued-label
+# repairs like "Bouldercounty"/"RochestercityMN"). Without this, the
+# archive service validates/repairs measurably less than the resolver
+# does on identical input. Pure-Python, no transitive deps.
+wordninja>=2.0
