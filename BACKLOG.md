@@ -94,7 +94,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (7)
   28 well-formed IQM2 queue rows point at retired tenants…
   Some Swagit meetings have no single "whole meeting" video file…
 
-Platform & jurisdiction coverage  (29)
+Platform & jurisdiction coverage  (30)
+  `[JUST-DO-IT]` `[EASY]` PrimeGov's YouTube delegation stores no…
   `[JUST-DO-IT]` ChampDS is a progressive MP4, and a 900s chunk can…
   The 50 largest US cities — per-tenant status `[NEEDS-AUDIT]`
   Jurisdiction extraction & backfill  (17)
@@ -1006,6 +1007,38 @@ broader live audit once the design question is answered.
 Everything adapter-, tenant-, or jurisdiction-extraction-shaped, kept
 together on purpose. Tags are inline here rather than hoisted into the
 actionability sections above.
+
+### `[JUST-DO-IT]` `[EASY]` PrimeGov's YouTube delegation stores no title, so pages render "Untitled meeting"
+
+Found 2026-08-23 while verifying the rebuilt state/hub pages: a featured
+card on `/state/california` was headed **"Untitled meeting"**, which is
+now user-visible on a public, indexed page rather than just ugly in the
+DB.
+
+**13 pages have a NULL/empty title; 11 of them have a highlight, so any
+of those can be featured.** Twelve are `platform='youtube'` and all
+twelve were created on **2026-08-20**. They split cleanly:
+
+- **Nine are PrimeGov→YouTube delegations** (`okc`, `lacity`, `slc`,
+  `lasvegas`.primegov.com) — ids 2032, 2033, 2038, 2041, 2042, 2043,
+  2044, 2045, 2046. This is the real bug. Per `CLAUDE.md`, PrimeGov is
+  the one wrapper that calls `YouTubeAssetFinder.resolve_video_id()`
+  directly instead of `resolve_via_platform()`, so it can keep the
+  original PrimeGov URL as `source_url` — the likely cause is that this
+  path never picks up the delegated video's title. **Verify that against
+  the code before building**: this is a lead, not a diagnosis, and the
+  ordering quirk is documented but the title path is not.
+- **Three are junk test pages** — ids 2034, 2035, 2036. `2034` is
+  `jNQXAC9IVRw`, i.e. *"Me at the zoo"*, the first video ever uploaded
+  to YouTube; `2035` is a playlist URL. All three have `jurisdiction =
+  NULL` too. Someone was exercising the resolver by hand that day.
+  These want deleting (there is a delete-pages endpoint), not fixing.
+
+Note the two halves need opposite treatment, so don't sweep them
+together. Also worth a guard either way: a page with no title probably
+shouldn't be *featured* at all — `_featured_entry()`
+(`archive/db/crud.py`) could skip an untitled page the same way it
+already skips one with no usable highlight.
 
 ### `[JUST-DO-IT]` ChampDS is a progressive MP4, and a 900s chunk can exceed the download budget outright
 
