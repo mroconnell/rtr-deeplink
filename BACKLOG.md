@@ -1170,17 +1170,45 @@ from a live check), but the Legistar calendar itself is still untried.
   **Pasorobles/El Paso De Robles** — eScribe `pub-pasorobles` rows
   stored the glued subdomain, and the Census row "El Paso de Robles
   (Paso Robles) city" was invisible to lookups until WO-47's
-  parenthetical-alt-name indexing. **Santa Clara County/County of Santa
-  Clara/The County of Santa Clara** — phrasing variants across
-  granicus/iqm2/primegov tenants (sccgov.iqm2.com's own title says "The
-  County of Santa Clara"); needs a display-normalization decision, not
-  an extraction fix. **The repairs are already mechanical**: WO-47's
+  parenthetical-alt-name indexing. **Santa Clara — do NOT bulk-consolidate on
+  the name; corrected 2026-08-23 after a live re-query, the earlier
+  description here was wrong.** This entry previously called it three
+  "phrasing variants ... needs a display-normalization decision". There
+  are **six** distinct stored strings and **two of them are genuinely
+  different governments**: `The County of Santa Clara, CA` (2),
+  `County of Santa Clara, CA` (1), `Santa Clara County, CA` (1) and
+  `County of Santa Clara Office` (1) are the county; **`City of Santa
+  Clara` is the city** and **`Santa Clara Valley Transportation
+  Authority` is the transit agency** — separate governments that must
+  stay on separate hubs. Merging on the substring would recreate exactly
+  the wrong-government class of bug WO-47 just fixed. Those last two
+  also lack the canonical `", ST"` suffix, so they are invisible to the
+  state pages entirely (a second, independent bug).
+  **Canonical form decided 2026-08-23: `Santa Clara County, CA`** for
+  the county rows only — consistent with every other county in the
+  archive (`Napa County, CA`, `Sonoma County, CA`, `Los Angeles County,
+  CA`). Reversible; a display-name choice, not a data-model one. **The repairs are already mechanical**: WO-47's
   branding-strip + glued-label + alt-name fixes make every non-Santa
   Clara row above a `POST /internal/jurisdiction/backfill-apply`
   candidate today (they were explicitly excluded from WO-47's applied
-  batch: ids 944, 1470, 977, 2194, 998, 1046, 1066). The follow-up PR
-  is: apply those ids, decide the Santa Clara canonical form, and
-  confirm each pair collapses to one hub on `/state/california`.
+  batch: ids 944, 1470, 977, 2194, 998, 1046, 1066). All seven were
+  re-queried live 2026-08-23 and still hold the bogus forms exactly as
+  described (`Arcata City, CA` x2, `Healdsburg City, CA` x2, `Redding
+  City, CA`, `Pasorobles, CA`, `El Paso De Robles, CA`) — the claim is
+  current, not stale.
+  **The follow-up PR is**: apply those seven ids, apply the Santa Clara
+  canonical form to the *county rows only*, give `City of Santa Clara`
+  and the VTA their `", CA"` suffixes, and confirm each pair collapses
+  to one hub on `/state/california` (`Arcata City` is still visibly
+  duplicated there today).
+  **Why the 2026-08-23 state/hub session that re-verified this did not
+  apply it**: the apply path is `POST /internal/jurisdiction/
+  backfill-apply`, which needs the admin token — and reading that out
+  of `.env` is the exact thing this repo has a standing rule against
+  (see `CLAUDE.md`; it has already caused one real token rotation).
+  Raw SQL instead would bypass `finalize_jurisdiction()`, the verified
+  single path these repairs are supposed to go through. So this needs a
+  session that has been handed the token, not a workaround.
 
 - **[NEEDS-AUDIT] 51 pre-existing recompute-backfill candidates were
   deliberately NOT applied in WO-47's write — several are confidently

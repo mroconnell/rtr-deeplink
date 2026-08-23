@@ -851,6 +851,26 @@ Both surfaces now lead with:
   word and an interleaved roll-up caption phrase; both were added
   against snippets this heuristic actually produced on a live page, and
   the real strings are frozen in `tests/test_highlights.py`.
+  Featured sets are date-ordered but carry a **topic diversity cap**
+  (`crud.MAX_FEATURED_PER_TOPIC`): at most two cards may share a topic,
+  so one busy subject cannot take over a page. The case that prompted it
+  — San Diego's hub showed two cannabis cards and two housing cards
+  while a public comment delivered *in character as Darth Vader* about
+  flock-camera surveillance sat unfeatured in the same pool; recency
+  alone had no way to prefer it. Implemented as two passes rather than a
+  sort, so the cap reorders without ever shrinking the set: a page whose
+  meetings genuinely all share one topic still fills up. Cards with no
+  topic are never constrained (they cannot cluster), and a `?topic=`
+  view is exempt (every card is about that topic by construction).
+  Exactly **one** topic is `<mark>`ed per snippet, the rarest on the
+  card — the same Darth Vader quote also matched `libraries-parks` on
+  the word "playground" and rendered with three highlighted
+  "playground"s burying the `flock` the reader came for. A rarity-*ratio*
+  filter was tried first and rejected by measurement: rarity is counted
+  over the page's own pool, and in a six-meeting hub pool both topics
+  have a count of 1, so no ratio can separate them. The tiebreak falls
+  through to curated `TOPICS` order, which is roughly
+  newsworthiness-ordered and does the real work at that scale.
 * **Topic chips** — curated subjects (`archive/topics.py`, edited by
   hand) that actually appear in the page's recent transcribed meetings,
   ranked by how many mention each, top 12 shown. Real `?topic=` links,
