@@ -328,6 +328,67 @@ under everything else. This repo extracts and fixes just that part.
   you fix a bug found via live testing, consider adding a fixture-backed
   regression test for it in the same pass, the way the Simi Valley
   Spanish-caption and blank-VTT cases already are.
+- **Setting up a fresh local venv from scratch (e.g. a new Mac with no
+  prior `.venv`) has two real, confirmed gotchas beyond what "Quick
+  start"/"Running tests" describe — both cost real time on 2026-08-21.**
+  (1) **Use the same Python minor version CI/render.yaml pin (3.12.x),
+  not whatever bare `python3`/`python3 -m venv` resolves to on a fresh
+  Homebrew install** — a brand-new Homebrew Python can be far ahead of
+  that pin (confirmed: 3.14 on a machine set up that day), and `faster-
+  whisper`'s `av` (PyAV) dependency has no prebuilt wheel for a Python
+  that new, forcing a from-source Cython build that fails outright
+  against it (`brew install python@3.12`, then `python3.12 -m venv .venv`
+  — not bare `python3`). (2) **Plain `pytest` doesn't add the repo root
+  to `sys.path`, so `import app.*`/`import archive.*` fails in every test
+  module** — `.github/workflows/test.yml` already runs `python -m
+  pytest` specifically to work around this (its own inline comment says
+  so); do the same locally, don't assume bare `pytest` matches CI.
+- **A fresh Homebrew-Python venv has an empty default SSL trust store —
+  any local script here that uses `aiohttp` needs `os.environ.setdefault
+  ("SSL_CERT_FILE", certifi.where())` to run *before* `import aiohttp`
+  specifically, not just before that script's first network call.**
+  Confirmed live 2026-08-21 (`ssl.create_default_context().cert_store_
+  stats()` reported zero loaded CA certs on a brand-new venv) — every
+  `aiohttp` call failed with `SSLCertVerificationError`, easy to mistake
+  for a real network/DNS problem. The ordering matters because `aiohttp/
+  connector.py` builds and caches its default `SSLContext` as a
+  **module-level statement**, evaluated the instant `import aiohttp`
+  runs, not lazily on first connection — setting the env var afterward,
+  even moments before the first real request, is already too late. Real
+  incident this caused: `scripts/feed_tier3_auto_transcription.py` got
+  this fix applied *after* its own `import aiohttp` line once, and since
+  that script advances (consumes) its queue file regardless of per-URL
+  outcome, a full batch of 48 URLs got silently dropped from the queue
+  without ever reaching Archive — recovered by hand from git history. See
+  `scripts/transcribe_backlog_locally.py`'s own module-level fix (right
+  before its `import aiohttp`) for the reference example to copy for any
+  new script; seven existing scripts already needed the same fix applied
+  — see BACKLOG_DONE.md's 2026-08-21 entry for the full list and recovery
+  writeup.
+- **`archive/db/crud.py` has a `transcript_warnings`-marker convention
+  that gates real functionality, not just reporting — a new quality
+  marker there needs updating in (at least) three places, not one.** A
+  marker constant (`_GARBLED_MARKER`/`_HALLUCINATION_MARKER`/
+  `_GRANICUS_TRUNCATION_MARKER`, the last added 2026-08-23) affects
+  whether a page counts as "has a good transcript" at all —
+  `_has_good_transcript()`/`find_auto_transcription_candidate()`/
+  `list_transcription_backlog_candidates()` all skip a page that has one,
+  meaning a warning-marked page **stays permanently un-re-transcribable**
+  until its marker is checked somewhere. Update: `_has_real_warning_free_
+  transcript()` (the shared Python check — deliberately factored out so
+  this is normally the only line that needs touching), `_good_default_
+  transcript_exists()` (a *separate* raw-SQL reimplementation of the same
+  check, used by the cloud worker's own candidate search — doesn't call
+  the Python helper, has to be updated by hand), and, if the new marker
+  deserves its own bucket rather than folding into an existing one,
+  `_classify_page_outcome()` + `_OUTCOME_LABELS`/`_OUTCOME_RANK` (the
+  `/internal/transcript-quality-audit` reporting — see the 2026-08-23
+  `truncated_transcript` bucket, kept separate from `garbled_transcript`
+  since "content missing" and "content wrong" are different problems for
+  a reader). `tests/test_transcription_jobs.py`'s `test_has_good_
+  transcript_treats_*_as_not_good` tests exist specifically to catch the
+  SQL predicate and the Python helper disagreeing — add a matching case
+  for any new marker.
 - **Every Archive schema change needs an Alembic migration — and that's
   all it needs (WO-10, landed 2026-08-17).** For `archive/`: write the
   migration in `archive/alembic/versions/` (see `archive/alembic/README.md`

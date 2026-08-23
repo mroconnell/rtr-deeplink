@@ -701,6 +701,14 @@ class GranicusAssetFinder(AssetFinder):
                         # presenting a truncated transcript as complete.
                         # First heuristic, not a full fix -- doesn't catch
                         # a cap at some other round number.
+                        #
+                        # Substring shared with archive/db/crud.py's own
+                        # _GRANICUS_TRUNCATION_MARKER -- added 2026-08-23
+                        # so a page stuck at this cap stays eligible for a
+                        # real re-transcription attempt (e.g. local Whisper
+                        # via scripts/transcribe_backlog_locally.py)
+                        # instead of silently counting as "good enough"
+                        # forever just because it has *a* transcript.
                         transcript_warnings.append(
                             "This transcript may be cut off — it hit exactly "
                             "36,000 lines, a known limit in Granicus's own "

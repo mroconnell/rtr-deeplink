@@ -57,8 +57,16 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
-import aiohttp
-from dotenv import load_dotenv
+import certifi
+
+# Must run before `import aiohttp` -- see scripts/transcribe_backlog_
+# locally.py's own longer comment on this same fix (confirmed live
+# 2026-08-21: a fresh Homebrew-Python venv has an empty default SSL trust
+# store, and aiohttp caches its default SSLContext at import time).
+os.environ.setdefault("SSL_CERT_FILE", certifi.where())
+
+import aiohttp  # noqa: E402
+from dotenv import load_dotenv  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 

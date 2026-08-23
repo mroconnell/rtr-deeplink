@@ -33,20 +33,31 @@ for the deployed Archive service, not the .env.example placeholders.
 
 import argparse
 import asyncio
+import os
 import sys
 from pathlib import Path
 from typing import List, Optional
 from urllib.parse import parse_qs, urlparse
 
-import aiohttp
-import yt_dlp
-from dotenv import load_dotenv
+import certifi
+
+# Must run before `import aiohttp` -- confirmed live 2026-08-21 (see
+# scripts/transcribe_backlog_locally.py's own longer comment on this same
+# fix for the full root cause): a fresh Homebrew-Python venv has an empty
+# default SSL trust store, and aiohttp/connector.py builds+caches its
+# default SSLContext as a module-level statement evaluated the instant
+# `import aiohttp` runs, not lazily on first connection -- so this has to
+# exist before that import line, not just before this script's own first
+# network call.
+os.environ.setdefault("SSL_CERT_FILE", certifi.where())
+
+import aiohttp  # noqa: E402
+import yt_dlp  # noqa: E402
+from dotenv import load_dotenv  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-load_dotenv()
-
-import os  # noqa: E402 -- after load_dotenv() so ARCHIVE_* are populated by the time _base_url()/_headers() below read them
+load_dotenv()  # ARCHIVE_* env vars are populated by the time _base_url()/_headers() below read them
 
 from app.platforms import register_all_finders  # noqa: E402
 from app.platforms.base import (

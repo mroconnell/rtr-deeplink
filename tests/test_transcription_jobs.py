@@ -1494,3 +1494,61 @@ async def test_has_good_transcript_treats_garbled_and_hallucinated_as_not_good()
                 )
             ).scalar_one()
             assert await crud._has_good_transcript(session, page_id) is expected, slug
+
+
+async def test_has_good_transcript_treats_granicus_36k_truncation_as_not_good():
+    # Added 2026-08-23 alongside _GRANICUS_TRUNCATION_MARKER -- same
+    # "SQL predicate and per-page helper must agree" shape as the
+    # garbled/hallucinated test above. Real warning wording from
+    # app/platforms/granicus.py's own 36,000-cue truncation heuristic, not
+    # invented text -- confirms a page stuck at that cap stays eligible
+    # for re-transcription instead of silently counting as done forever.
+    from archive.db.engine import async_session
+    from archive.db.models import MeetingPage
+    from sqlalchemy import select
+
+    async def _page_with_warning(eid: str, warning: str):
+        url = f"https://example.granicus.com/player/clip/{eid}"
+        await crud.ingest_resolution(
+            {
+                "platform": "granicus",
+                "source_url": url,
+                "external_id": f"granicus:{eid}",
+                "title": "T",
+                "date": "2026-01-01",
+                "jurisdiction": f"City of {eid}",
+                "video_url": "https://example.com/v.m3u8",
+                "video_format": "m3u8",
+                "segments": [{"start": 0, "end": 1, "text": "words words words"}],
+                "agenda_items": [],
+                "transcript_language": "en",
+                "transcript_warnings": [warning] if warning else [],
+            },
+            url,
+        )
+        return (await crud.lookup_page_for_url(url))["slug"]
+
+    truncated = await _page_with_warning(
+        "auto-truncated",
+        "This transcript may be cut off — it hit exactly 36,000 lines, "
+        "a known limit in Granicus's own captioning for very long meetings.",
+    )
+    clean = await _page_with_warning("auto-clean3", "")
+
+    async with async_session() as session:
+        rows = (
+            await session.execute(
+                select(MeetingPage.slug, crud._good_default_transcript_exists()).where(
+                    MeetingPage.slug.in_([truncated, clean])
+                )
+            )
+        ).all()
+        by_slug = {slug: bool(good) for slug, good in rows}
+        assert by_slug == {truncated: False, clean: True}
+        for slug, expected in by_slug.items():
+            page_id = (
+                await session.execute(
+                    select(MeetingPage.id).where(MeetingPage.slug == slug)
+                )
+            ).scalar_one()
+            assert await crud._has_good_transcript(session, page_id) is expected, slug
