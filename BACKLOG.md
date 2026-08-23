@@ -95,7 +95,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (7)
   Some Swagit meetings have no single "whole meeting" video file…
 
 Platform & jurisdiction coverage  (30)
-  `[JUST-DO-IT]` `[EASY]` PrimeGov's YouTube delegation stores no…
+  `[JUST-DO-IT]` `[EASY]` Nine PrimeGov pages and two real meetings…
   `[JUST-DO-IT]` ChampDS is a progressive MP4, and a 900s chunk can…
   The 50 largest US cities — per-tenant status `[NEEDS-AUDIT]`
   Jurisdiction extraction & backfill  (17)
@@ -1008,37 +1008,69 @@ Everything adapter-, tenant-, or jurisdiction-extraction-shaped, kept
 together on purpose. Tags are inline here rather than hoisted into the
 actionability sections above.
 
-### `[JUST-DO-IT]` `[EASY]` PrimeGov's YouTube delegation stores no title, so pages render "Untitled meeting"
+### `[JUST-DO-IT]` `[EASY]` Nine PrimeGov pages and two real meetings need re-resolving — **not** an adapter bug
 
-Found 2026-08-23 while verifying the rebuilt state/hub pages: a featured
-card on `/state/california` was headed **"Untitled meeting"**, which is
-now user-visible on a public, indexed page rather than just ugly in the
-DB.
+**This entry previously claimed a PrimeGov title-extraction bug and
+called three pages "junk test pages". Both claims were wrong; corrected
+2026-08-23 by testing against live URLs and reading the actual stored
+transcripts.** Left here as written because it is a clean example of the
+"an entry is a lead, not a spec" rule in `CLAUDE.md` — and of what
+checking costs versus what acting on it would have.
 
-**13 pages have a NULL/empty title; 11 of them have a highlight, so any
-of those can be featured.** Twelve are `platform='youtube'` and all
-twelve were created on **2026-08-20**. They split cleanly:
+**There is no adapter bug.** `PrimeGovAssetFinder` was tested live
+against four real tenant URLs (okc ×2, slc, lasvegas): `_extract_title()`
+returns a real title from the page's inner `<title>` for **every one**
+(e.g. `'City Council - 8/4/2026 1:30:00 PM'`), and a full `resolve()`
+returns complete metadata (`'Oklahoma City Council Meeting - August 4,
+2026'`, date, jurisdiction). The `if not resolved.title` fallback landed
+**2026-08-13** (PR #42), a week *before* these pages were created. The
+code works today.
 
-- **Nine are PrimeGov→YouTube delegations** (`okc`, `lacity`, `slc`,
-  `lasvegas`.primegov.com) — ids 2032, 2033, 2038, 2041, 2042, 2043,
-  2044, 2045, 2046. This is the real bug. Per `CLAUDE.md`, PrimeGov is
-  the one wrapper that calls `YouTubeAssetFinder.resolve_video_id()`
-  directly instead of `resolve_via_platform()`, so it can keep the
-  original PrimeGov URL as `source_url` — the likely cause is that this
-  path never picks up the delegated video's title. **Verify that against
-  the code before building**: this is a lead, not a diagnosis, and the
-  ordering quirk is documented but the title path is not.
-- **Three are junk test pages** — ids 2034, 2035, 2036. `2034` is
-  `jNQXAC9IVRw`, i.e. *"Me at the zoo"*, the first video ever uploaded
-  to YouTube; `2035` is a playlist URL. All three have `jurisdiction =
-  NULL` too. Someone was exercising the resolver by hand that day.
-  These want deleting (there is a delete-pages endpoint), not fixing.
+**It was a one-day event.** All 9 PrimeGov-sourced pages created
+2026-08-20 are untitled; **all 69 PrimeGov pages from every other day
+have titles.** So something was wrong on that date only (yt-dlp blocked
+from Render's IP *and* the page fallback also coming back empty is the
+most likely shape — that asymmetry between Render's IP and a residential
+one is already documented in `CLAUDE.md` for `youtube_channel.py`, and
+is not reproducible from a laptop). **Do not "fix" the adapter.**
 
-Note the two halves need opposite treatment, so don't sweep them
-together. Also worth a guard either way: a page with no title probably
-shouldn't be *featured* at all — `_featured_entry()`
-(`archive/db/crud.py`) could skip an untitled page the same way it
-already skips one with no usable highlight.
+**The fix is to re-resolve the affected rows**, which the working
+adapter will populate correctly: ids **2032, 2033, 2038, 2041, 2042,
+2043, 2044, 2045, 2046**.
+
+**Two more rows need metadata, and one needs deleting — check before
+acting, the three are not alike:**
+
+- **id 2034 — genuine junk, safe to delete.** `youtube:jNQXAC9IVRw` is
+  *"Me at the zoo"*, the first video ever uploaded to YouTube: 6
+  segments, **18 seconds**, about elephants. Saved by zero users.
+- **id 2035 — a REAL meeting, do not delete.** 5,999 segments, **3h50m**,
+  a real council/planning session ("parking standard that applies…",
+  "i would set the 38 retail as a baseline", "residents look at the park
+  and they want more picnic tables"). Ingested from a bare YouTube
+  *playlist* URL, so no jurisdiction could be extracted.
+- **id 2036 — also a REAL meeting, do not delete.** 7,535 segments,
+  **5h39m**, a **Columbus, OH** City Council session (density and unit
+  counts, "Clerk please call the role", "vice president Harden"). Its
+  opening seconds are garbled noise, which is what made it look like
+  junk from the first line alone.
+
+2035 and 2036 want jurisdiction/title attached (or re-ingesting from a
+proper source URL), **not** deletion — between them they hold **13,534
+real transcript segments**. Deleting on the strength of the earlier
+version of this entry would have destroyed both.
+
+**Already mitigated at render time**: `_featured_entry()`
+(`archive/db/crud.py`) now declines to feature an untitled page, so none
+of these can reach a public page as an "Untitled meeting" card while
+they wait. That is a guard, not the fix.
+
+**Applying any of this needs the admin token** (`ARCHIVE_INGEST_TOKEN`)
+— re-resolve via `scripts/bulk_ingest.py`, delete via
+`POST /internal/admin/delete-pages` (slug-based, `dry_run` defaults
+true). Run from the Archive service's Render shell, where the variable
+is already in the environment, so the value never has to be pasted
+anywhere: `curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" ...`.
 
 ### `[JUST-DO-IT]` ChampDS is a progressive MP4, and a 900s chunk can exceed the download budget outright
 
