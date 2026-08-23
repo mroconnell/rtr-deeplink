@@ -384,3 +384,148 @@ bounded `--apply` sweep run, none after the fix deployed. Full timeline,
 root cause and the two process lessons are now in `BACKLOG_DONE.md`'s
 WO-37 entry, under "The endpoint's own production 500". Nothing to
 promote.
+
+## 2026-08-23
+
+Reviewed 32 new messages under `label:rtr-claude newer_than:30d` (66
+candidates, 34 already in the ledger from prior runs). Skipped as
+purely informational, no write-up: the Sentry Weekly Report digest, a
+"YouTube transcripts: 16 added" activity digest, and one "PR run failed:
+Test" GitHub Actions email for an individual feature branch (Repair 52
+truncated/mangled URLs), not `main` or a scheduled workflow. Skipped as
+duplicates of already-flagged patterns, no new entry: another "Server
+failure detected on test-redtaperecordings" email (2026-08-23 06:49) —
+same untracked/likely-test-noise pattern flagged since the 2026-08-19
+section; three more "deploy failed for rtr-deeplink-staging" emails
+(2026-08-22 20:42/2026-08-23 02:35, commit "Lower the..."/"Advance
+tier...") — same disposable-staging pattern; and two "We're validating
+your Video indexing issue fixes" Search Console emails — informational
+progress notices on an already-tracked fix, not a new issue.
+
+**Three new findings, all Confirmed from real data (Gmail alert bodies,
+live GitHub Actions logs, and this repo's own code):**
+
+**1. Cablecast HLS jobs fail consistently at chunk index 1 (the 900s
+mark) with "ffmpeg reported success but the output file isn't decodable
+(likely truncated/corrupt)" — a real, reproducible cluster, not yet
+tracked anywhere.** 8 of today's 13 transcription-job-failure emails
+(job_ids 651-655, 683-685) are all Cablecast (`nashville.cablecast.tv`,
+`methuentv.cablecast.tv`, `leonvalleytx.cablecast.tv`,
+`capitalcityconnection.cablecast.tv` ×2, `buenapark.cablecast.tv` ×2,
+`cctv-vod.cablecast.tv`), spanning six distinct tenants with unrelated
+videos, all created 2026-08-23 04:19-12:47 UTC. Every single one fails
+on **chunk 1** specifically (never chunk 0 or later) after 3 retries,
+with the exact same decodability-guard rejection
+(`app/platforms/media_probe.py`'s WO-25 guard, confirmed working as
+designed — see its own docstring). `cablecast.py` confirms these are
+all HLS (`video_format="m3u8"`); `AUTO_TRANSCRIPTION_CHUNK_SIZE_SECONDS
+= 900` (`worker/main.py`) means chunk 1 always starts its fast
+input-side `ffmpeg -ss 900` seek at exactly the 15-minute mark. The
+consistency across six unrelated tenants and a fixed timestamp is a
+real signal of a structural HLS-seek issue specific to Cablecast, not
+random corruption — but the actual manifest-level cause (a
+discontinuity, an ad-break segment, a stitching quirk right around
+900s) is **not yet confirmed**: this sandbox's network egress is
+blocked for `cablecast.tv` hosts (confirmed via both `curl` through the
+proxy and `WebFetch`, both returned blocked/403), so nobody has yet
+pulled a real Cablecast HLS playlist to inspect what's actually at that
+offset. **Impact**: all 8 failing jobs' `requester` is
+`ryan@how-to-adu.com` — this looks like Ryan's own backlog-processing
+batch, not organic user submissions, so today's blast radius is queue
+throughput/backlog progress, not visible customer failures yet. But
+Cablecast is a supported, real platform (`app/platforms/cablecast.py`,
+`tests/test_cablecast.py`), so any Cablecast source over ~15 minutes
+will hit this. **Open question for whoever picks this up**: fetch a
+real Cablecast `.m3u8` (e.g. `nashville.cablecast.tv/show/14376`'s
+resolved video URL) from an unrestricted network and inspect the
+segment/discontinuity structure right around the 900s offset.
+
+**2. A ~64-minute cluster of Archive-proxy failures in production,
+2026-08-22 22:41-23:45 UTC, spanning four Sentry issue IDs and every
+kind of `app/archive_client.py`
+`proxy_get()` failure mode.** Two occurrences of `NonHttpUrlClientError:
+rtr-deeplink-archive:10000/coverage` and `.../static/style.css`
+(PYTHON-FASTAPI-Y, 22:41/22:46, `sentry:release b8635b35e0b1cc79ae1215
+4fd24523faa8d26cdd`) — `archive_client.py:378`'s `url = f"{base}/{path}"`
+only produces a schemeless URL like this if `ARCHIVE_BASE_URL` itself
+was set without an `http://`/`https://` prefix (it's `sync: false` in
+`render.yaml`, i.e. dashboard-managed, not derived). Then
+`ClientConnectorError: Cannot connect to host
+rtr-deeplink-archive.onrender.com:443` (PYTHON-FASTAPI-Z, 23:39) and
+`RuntimeError: File descriptor 20 is used by transport...`
+(PYTHON-FASTAPI-10, 23:45) — both at `sentry:release
+dc674ca8802095b459da65d49745f6eee32361ce`, which is commit `dc674ca`,
+**"Rework render.yaml buildFilters into per-service allow-lists (WO-44)
+(#327)", merged 2026-08-22 23:17:42 UTC** — confirmed via
+`list_commits`. That PR touches both `rtr-deeplink` and
+`rtr-deeplink-archive`'s build filters, so it's a plausible trigger for
+a real redeploy of the Archive service right in this window, which
+would explain the later connection-refused/fd-reuse errors as normal
+deploy-transition churn (old instance's connections closing while a new
+one starts) — this part is a strong, well-supported hypothesis, not a
+proven one, since this session has no Render dashboard/deploy-log
+access to confirm an Archive redeploy actually happened at 23:17-23:45.
+**What's genuinely unexplained**: the *first* two errors (the
+schemeless-URL ones) are at release `b8635b35`, which **predates** the
+WO-44 deploy — so whatever produced a bad `ARCHIVE_BASE_URL` was already
+wrong *before* that PR merged, not caused by it. Real impact: every
+kind of Archive-proxied route hit (`/meetings`, `/coverage`,
+`/archive-static/style.css`, `/m/{slug}/transcript.txt`) — i.e.
+basically every page that proxies through the Archive — so this was a
+real ~1-hour window of broken pages in production, now apparently
+self-resolved (no further occurrences of any of these four issue IDs in
+anything reviewed since). **Open question for Ryan**: was
+`ARCHIVE_BASE_URL` manually edited in the Render dashboard around
+2026-08-22 22:00-23:45 UTC? If so, worth double-checking its current
+value has a proper `http://`/`https://` scheme, since the schemeless
+form is a real, reproduced failure shape that will recur exactly the
+same way if it's ever set that way again.
+
+**3. Adapter health canary (scheduled workflow on `main`) failed
+2026-08-22, one real platform down: `destinyhosted`.** Confirmed via
+the actual run's logs (`mcp__github__get_job_logs`, run `32581540837`,
+triggered by commit `87eb883` = "Restructure BACKLOG.md..." — an
+unrelated docs-only commit, so the canary failure isn't from that
+commit's own changes): `Adapter health canary: 26/27 platforms OK
+FAIL destinyhosted: resolve returned no real content
+(https://public.destinyhosted.com/agenda_publish.cfm?id=96635&mt=ALL&
+get_month=8&get_year=2026&dsp=ag&seq=4147)`. This is the canary's
+Woodlands Township, TX URL — the one real confirmed case of
+`destinyhosted.py`'s onclick-delegation into a real Swagit video (see
+`scripts/adapter_canary.py`'s own comment on this URL). `check_platform()`
+(`scripts/adapter_canary.py:204-239`) means the resolve call didn't
+raise, it just came back with zero segments/agenda_items/video_url/
+agenda_link. **Root cause unconfirmed**: this sandbox's network egress
+is blocked for `destinyhosted.com` (confirmed via both `curl` and
+`WebFetch`), so nobody has re-fetched the canary URL to see current
+real content. Two plausible explanations neither confirmed nor ruled
+out: a real regression in `destinyhosted.py`'s Swagit delegation, or
+this specific hardcoded `id=96635&seq=4147` agenda item aging off the
+tenant's page as months roll over (the URL's `get_month=8&get_year=2026`
+already matches the run's own month, so it isn't simply pointing at a
+stale prior month). Only one occurrence so far (all 5 later canary-
+adjacent runs in the window aren't in scope — this was the only failing
+run under `label:rtr-claude`). Separately, not a failure but worth one
+line: the same run's `yt-dlp` calls hit "Sign in to confirm you're not
+a bot" 7 times across the run — the already-documented bot-detection
+noise (`CLAUDE.md`'s yt-dlp bullet) — but none of those caused a
+platform to fail (still 26/27 OK), so no new finding there.
+
+**One dedupe worth calling out explicitly**: 5 of today's 13
+transcription-job failures are all `play.champds.com` sources
+(job_ids 634, 639, 646, 648, 650) with `ffmpeg timed out after 120s
+(source likely slow or rate-limited)` — the same generic, already-
+understood "slow/rate-limited source" message `BACKLOG.md`'s existing
+Granicus ffprobe/120s-timeout entry documents as "not fixable from this
+app's side by retrying faster." This is the first time that exact
+worker-side ffmpeg-chunk-timeout pattern has been observed against
+`champds.com` specifically, but it's a different failure stage than
+`BACKLOG.md`'s existing `[JUST-DO-IT]` "ChampDS cluster was self-
+inflicted rate-limiting" entry, which is about `champds.py`'s
+`_fetch_json()` (the *resolve*/API step) and `transcribe_backlog_
+locally.py`'s host-aware pacing — today's failures are all in the
+worker's media-chunk-download step (`media_probe.py`), a later stage
+entirely. Not written up as a new finding since the error class itself
+is already documented and understood; flagging only because it's a new
+host hitting a known pattern, the same way the 2026-08-21 section
+flagged new Granicus recurrences without a new entry.
