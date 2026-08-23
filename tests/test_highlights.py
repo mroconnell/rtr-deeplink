@@ -17,6 +17,7 @@ adapter produces, and per this repo's convention each is commented with
 what it is standing in for.
 """
 
+from archive.db import crud
 from archive.topics import TOPICS, TOPICS_BY_SLUG, topics_in
 from archive.utils.gov_classify import AGENCY, CITY, COUNTY, SCHOOL, classify_government
 from archive.utils.highlights import (
@@ -403,3 +404,82 @@ def test_generic_data_mention_is_not_treated_as_substance():
         "estimate the consultant presented to this body."
     )
     assert score_window(substantive) > score_window(generic)
+
+
+# --- ingest-path safety ---------------------------------------------------
+
+
+async def test_highlight_write_failure_cannot_lose_a_transcript():
+    """A broken highlight write must not take the ingest down with it.
+
+    `_refresh_meeting_highlight()` runs inside the *ingest* transaction,
+    so an unguarded failure there would roll back the transcript too --
+    trading a missing snippet for a lost transcript. And on Postgres a
+    plain `try/except` is not enough: a failed statement poisons the
+    surrounding transaction until rollback, so the caller's `commit()`
+    would fail regardless. The SAVEPOINT is what makes the guarantee
+    real, and this test is what proves it.
+
+    Simulates the failure by dropping the table out from under the write
+    -- the same shape as the write failing for any other reason (a
+    migration not yet applied, a constraint violation, a bad value).
+    """
+    from sqlalchemy import select, text
+
+    from archive.db.engine import async_session
+    from archive.db.models import MeetingPage
+
+    async with async_session() as session:
+        page = MeetingPage(
+            slug="highlight-savepoint-probe",
+            platform="youtube",
+            external_id="highlight-savepoint-probe",
+            source_url_normalized="https://example.test/highlight-savepoint-probe",
+            title="Savepoint probe",
+            jurisdiction="Probeville, CA",
+        )
+        session.add(page)
+        await session.flush()
+        page_id = page.id
+
+        segments = [
+            {
+                "start": float(i * 5),
+                "end": float(i * 5 + 5),
+                "text": "Residents are deeply concerned that the data center "
+                "will raise electricity costs for families across this county "
+                "while the impact report was never shared with anyone.",
+            }
+            for i in range(30)
+        ]
+
+        await session.execute(text("DROP TABLE meeting_highlights"))
+        # Must not raise, and must leave the transaction usable.
+        await crud._refresh_meeting_highlight(session, page, [segments])
+        await session.commit()
+
+    # The page survived the failed highlight write -- the whole point.
+    async with async_session() as session:
+        found = (
+            await session.execute(
+                select(MeetingPage.id).where(MeetingPage.id == page_id)
+            )
+        ).scalar_one_or_none()
+        assert found == page_id
+        # Restore the table for any test that runs after this one (the
+        # fixture DB is shared across the file and not reset per test).
+        await session.execute(text(CREATE_MEETING_HIGHLIGHTS_SQL))
+        await session.commit()
+
+
+CREATE_MEETING_HIGHLIGHTS_SQL = """
+CREATE TABLE meeting_highlights (
+    meeting_page_id INTEGER NOT NULL PRIMARY KEY REFERENCES meeting_pages(id) ON DELETE CASCADE,
+    start_seconds FLOAT NOT NULL,
+    text TEXT NOT NULL,
+    topics JSON NOT NULL,
+    topic_moments JSON NOT NULL,
+    topics_version INTEGER NOT NULL,
+    computed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+)
+"""
