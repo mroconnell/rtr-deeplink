@@ -1434,11 +1434,52 @@ from a live check), but the Legistar calendar itself is still untried.
   department, "City of Lancaster Community Development Department").
   Both got authoritative `_KNOWN_DOMAINS` entries per the standing
   per-incident-override approach, and the three bad rows were repaired
-  via the recompute backfill. That's now FOUR confirmed domains hitting
-  the same structural gap — the "worth revisiting the structural
-  options" threshold is arguably met; a page-position/first-N-chars
-  scoping experiment against all four real domains' pages is the next
-  concrete step, rather than a fifth override.
+  via the recompute backfill.
+
+  **Now SIX confirmed domains, and two more shapes, found 2026-08-23
+  while re-ingesting the untitled PrimeGov pages. Both reproduce live
+  and deterministically** (probed directly, not inferred from stored
+  rows):
+
+  - **`lasvegas.primegov.com` — the name-tail has no stop condition.**
+    `_extract_jurisdiction()` returns
+    **`'City of Las Vegas Internet Address'`**. The source is a
+    boilerplate agenda *footer*:
+    `"City of Las Vegas Internet Address:\xa0www.lasvegasnevada.gov"`.
+    The `(?:City|County|Town) of X` match kept consuming capitalized
+    words past the real place name. This is a **different failure from
+    the other five** — they picked the wrong *phrase* on the page; this
+    one picked the right phrase and then over-ran its end. Note the
+    `\xa0` non-breaking space right after the colon, which is what a
+    naive "stop at the colon" fix has to survive.
+  - **`lacity.primegov.com` — same domain, opposite outcomes on two
+    pages.** Meeting 156963 returns `None` while 157675 returns a
+    correct `'City of Los Angeles, CA'`. Nothing distinguishes them
+    structurally: it depends purely on whether that meeting's agenda
+    body text happens to contain the phrase. This is the cleanest
+    demonstration yet that the body-text search isn't a fallback with a
+    gap — it's a coin flip per page.
+
+  **These two are also the argument against a sixth and seventh
+  override.** `slc` is in `_KNOWN_DOMAINS`; `lacity`, `lasvegas` and
+  `okc` are not (verified) — and OKC only *looks* fine because its
+  agenda text happens to cooperate. That's now SIX confirmed domains on
+  the same structural gap, so the "worth revisiting the structural
+  options" threshold is met, not merely arguable. Concrete next step
+  unchanged: a page-position/first-N-chars scoping experiment against
+  all six real domains' pages, plus a name-tail stop condition for the
+  Las Vegas shape. **Live-reproducible test URLs** for that experiment:
+  `lasvegas.primegov.com/Portal/Meeting?meetingTemplateId=43332`,
+  `lacity.primegov.com/Portal/Meeting?meetingTemplateId=156963` (None)
+  and `...=157675` (correct), `okc.primegov.com/Portal/Meeting?
+  meetingTemplateId=68482`.
+
+  **Two production rows carry these values right now** (written by the
+  2026-08-23 re-ingest, which correctly fixed their titles and re-applied
+  the pre-existing jurisdiction gap): page **2041** = `'City of Las
+  Vegas Internet Address'`, page **2033** = `NULL`. Repairing them is a
+  recompute-backfill candidate once the extraction fix lands — not
+  before, or the same wrong values get rewritten.
 
 - **[NEEDS-AUDIT] A Vimeo-hosted meeting usually resolves with no
   jurisdiction at all (residual of WO-29, 2026-08-21).** oEmbed's
