@@ -891,6 +891,44 @@ async def internal_jurisdiction_backfill_apply(
     )
 
 
+@app.post("/internal/pages/clear-future-dates")
+async def internal_pages_clear_future_dates(
+    dry_run: bool = True,
+    grace_days: int = 7,
+    only_ids: Optional[str] = None,
+    authorization: Optional[str] = Header(None),
+):
+    """Null out `date` on pages whose stored date lies more than
+    `grace_days` in the future -- the repair half of the Granicus
+    body-text future-date bug (see crud.clear_future_meeting_dates()'s
+    docstring for the three confirmed production rows and why a
+    re-ingest can't fix them: the refresh path's date update is
+    truthy-gated on purpose). Same posture as
+    /internal/jurisdiction/backfill-apply above: recompute-only (the
+    only possible write is date -> NULL on a row the recompute itself
+    flagged; no caller-supplied date is ever accepted), dry_run defaults
+    true, `only_ids` narrows which flagged rows may be written.
+    Near-future dates inside the grace window are reported but never
+    touched -- a genuinely-scheduled upcoming meeting's agenda page is
+    real (confirmed live: Sarasota County OnBase, Aug 25 meeting
+    resolved Aug 23).
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    try:
+        only = _parse_id_filter(only_ids)
+    except ValueError:
+        return JSONResponse(
+            {"detail": "only_ids must be comma-separated integers"},
+            status_code=400,
+        )
+
+    return await crud.clear_future_meeting_dates(
+        dry_run=dry_run, grace_days=grace_days, only_ids=only
+    )
+
+
 @app.get("/internal/lookup")
 async def internal_lookup(
     normalized_url: str, authorization: Optional[str] = Header(None)
@@ -926,6 +964,15 @@ class IngestRequest(BaseModel):
     title: Optional[str] = None
     date: Optional[str] = None
     jurisdiction: Optional[str] = None
+    # Mirrors ResolvedMeeting.meeting_body (app/platforms/models.py,
+    # 2026-08-23) -- an adapter-supplied governing body ("City Council",
+    # "Board of Supervisors"). Without this field here it would be
+    # silently dropped at the boundary, the exact failure shape
+    # video_warnings/agenda_link/best_effort below each document.
+    # crud._find_or_create_page() prefers it over the split-from-
+    # jurisdiction fallback and never lets a payload that omits it clear
+    # a stored value.
+    meeting_body: Optional[str] = None
     video_url: Optional[str] = None
     video_format: Optional[str] = None
     segments: List[TranscriptSegmentIn] = []
@@ -1059,6 +1106,10 @@ class ResolvedMeetingIn(BaseModel):
     title: Optional[str] = None
     date: Optional[str] = None
     jurisdiction: Optional[str] = None
+    # Same mirror as IngestRequest.meeting_body above, for the same
+    # boundary-drop reason -- this payload also reaches
+    # crud._find_or_create_page() (via create_transcription_job()).
+    meeting_body: Optional[str] = None
     video_url: Optional[str] = None
     video_format: Optional[str] = None
     segments: List[TranscriptSegmentIn] = []

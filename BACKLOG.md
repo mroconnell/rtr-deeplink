@@ -94,17 +94,18 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (7)
   28 well-formed IQM2 queue rows point at retired tenants…
   Some Swagit meetings have no single "whole meeting" video file…
 
-Platform & jurisdiction coverage  (28)
+Platform & jurisdiction coverage  (29)
   `[JUST-DO-IT]` ChampDS is a progressive MP4, and a 900s chunk can…
   The 50 largest US cities — per-tenant status `[NEEDS-AUDIT]`
-  Jurisdiction extraction & backfill  (16)
+  Jurisdiction extraction & backfill  (17)
     [JUST-DO-IT] A land acknowledgement became a jurisdiction, and it
-    [JUST-DO-IT] The originally-reported eScribe bled-subdomain rows
+    [JUST-DO-IT] Duplicate `/j/` hubs for one real government — root
+    [NEEDS-AUDIT] 51 pre-existing recompute-backfill candidates were
+    [JUST-DO-IT] `[EASY]` Glued eScribe-subdomain residuals after
     [JUST-DO-IT] Bare/state-suffixed jurisdiction duplicates: root cause
     [NEEDS-AUDIT] Consolidated city-county repairs silently drop the
     [NEEDS-AUDIT] Jurisdiction-bleed fix's single-word-tail gap,
     [NEEDS-AUDIT] StatsCan/Census table completeness gap, surfaced
-    [NEEDS-AUDIT] "RochestercityMN" root-caused, 2026-08-18 — a real
     [NEEDS-AUDIT] One likely truncation case found in the same sweep —
     [NEEDS-AUDIT] Swagit's jurisdiction extraction has no fallback at
     [JUST-DO-IT] PrimeGov's `_extract_jurisdiction()` still has no real
@@ -1157,18 +1158,82 @@ from a live check), but the Legistar calendar itself is still untried.
   Oshawa is unlikely to be the only one, and the fix should be validated
   against however many there are rather than this single row.
 
-- **[JUST-DO-IT] The originally-reported eScribe bled-subdomain rows
-  (Bonnyville AB, Grand Valley ON, Point Edward ON, Boulder County CO,
-  Beaumont AB, Mackenzie BC) are STILL wrong in the live archive today.**
-  The fix (`BACKLOG_DONE.md`'s "jurisdiction-bleed, third pass" entry)
-  only corrects future resolves. Unlike the trim-repair cases the
-  existing `POST /internal/jurisdiction/backfill-apply` can text-patch,
-  these rows have no recoverable signal once glued together —
-  "Townofbonnyville" needs an actual re-resolve
-  (`EscribeAssetFinder.resolve(url)` with the corrected subdomain logic,
-  then re-ingest), closer to `scripts/feed_granicus_auto_transcription.py`'s
-  re-feed pattern than to a text-only endpoint. Not built — a human
-  should confirm the approach before writing it.
+- **[JUST-DO-IT] Duplicate `/j/` hubs for one real government — root
+  causes now known (WO-47, 2026-08-23), row repairs deliberately
+  deferred to their own PR per Ryan.** The confirmed pairs and causes:
+  **Redding/Redding City, Healdsburg/Healdsburg City, Arcata/Arcata
+  City** — IQM2 tenant page-titles carry "{Name} City" as the
+  customer's own branding ("Video Outline - Redding City, California",
+  confirmed live in each tenant's real `<title>`), which validated only
+  via the trailing-type-word strip and stored the bogus " City" form
+  alongside the correct bare form from other platforms.
+  **Pasorobles/El Paso De Robles** — eScribe `pub-pasorobles` rows
+  stored the glued subdomain, and the Census row "El Paso de Robles
+  (Paso Robles) city" was invisible to lookups until WO-47's
+  parenthetical-alt-name indexing. **Santa Clara County/County of Santa
+  Clara/The County of Santa Clara** — phrasing variants across
+  granicus/iqm2/primegov tenants (sccgov.iqm2.com's own title says "The
+  County of Santa Clara"); needs a display-normalization decision, not
+  an extraction fix. **The repairs are already mechanical**: WO-47's
+  branding-strip + glued-label + alt-name fixes make every non-Santa
+  Clara row above a `POST /internal/jurisdiction/backfill-apply`
+  candidate today (they were explicitly excluded from WO-47's applied
+  batch: ids 944, 1470, 977, 2194, 998, 1046, 1066). The follow-up PR
+  is: apply those ids, decide the Santa Clara canonical form, and
+  confirm each pair collapses to one hub on `/state/california`.
+
+- **[NEEDS-AUDIT] 51 pre-existing recompute-backfill candidates were
+  deliberately NOT applied in WO-47's write — several are confidently
+  wrong, and a recurring shape needs a real fix before any bulk apply.**
+  WO-47 applied only the candidates its own code changes introduced
+  (plus 882, independently re-resolve-verified). The 51 that predate it
+  (they've accumulated since WO-22's "candidates dropped to 0" run as
+  code and data moved) split roughly into: (a) **wrong-direction
+  repairs** — e.g. `289` "Los Angeles County, CA" → "Culver City, CA",
+  `331` "City of South Miami, FL" → "Key West City, FL", `808` "City of
+  Woodstock" (Ontario) → "Oxford County, ME", `703`/`1151` "West
+  Chester, PA" (a real borough) → "Chester, PA", `1439` "City of the
+  Village, OK" → "Douglas, OK"; (b) **right-government,
+  wrong-form county repairs** — `713`/`1182` "Toledo, OH" → "Lucas, OH",
+  `705`/`1136` "Pensacola, FL" → "Escambia, FL", `1299` "Flemington,
+  NJ" → "Hunterdon, NJ", `1913`/`1914`/`2207` — the county is correct
+  but the repaired string drops the "County" word entirely (the
+  subdomain-override path has no county-typing; compare WO-47's
+  page-text county-retype, which only runs at resolve time); (c)
+  **plausibly correct but unverified** — Peel Region constituents
+  (`679`/`864`/`658`), Virginia Beach (`1604`/`1605`/`1271`),
+  county-seat cases (`711` Tavares→Lake County, `718` Faribault→Rice
+  County, `1766` Lovington→Lea County, `1646`, `1359`, `653`, `893`,
+  `1040`, `1056`, `2018`), `1649` Visalia→Tulare County (the exact
+  repair the separate Tulare County/Visalia entry below has been
+  waiting on — verifying and applying that one id likely closes that
+  entry too), and the long-standing held-back consolidated
+  city-county trio (`154`/`155`/`169`/`341`). Fixing (b) structurally —
+  give `_subdomain_override()`/trim the same "{name} County" typing the
+  chain's retype has — would convert most of (b) into safe candidates;
+  (a) needs per-row source-page verification before anything is
+  written. Run `GET /internal/jurisdiction/bleed-backfill-candidates`
+  for the current list; ids above are from WO-47's 2026-08-23 audit.
+
+- **[JUST-DO-IT] `[EASY]` Glued eScribe-subdomain residuals after
+  WO-47's glued-label repair (2026-08-23): only `Townofws` (page 693)
+  and the Beaumont AB pair (pages 1030/1053, bare "Beaumont"/"City of
+  Beaumont" — nationally ambiguous, so no state can be filled from text
+  alone) remain.** This entry previously claimed the whole original list
+  (Bonnyville, Grand Valley, Point Edward, Boulder County, Beaumont,
+  Mackenzie) was "STILL wrong" and that glued values could never be
+  text-patched — both claims were stale when re-checked against live
+  rows (the verify-before-acting rule): Bonnyville (890) was already
+  correct ("Town of Bonnyville, AB"), and WO-47's glued-label repair
+  tier in `finalize_jurisdiction()` (the same Census/StatsCan-validated
+  `_validated_label_extract_with_state()` the subdomain paths already
+  trust) text-patches the rest mechanically through the existing
+  `POST /internal/jurisdiction/backfill-apply` — Grand Valley, Point
+  Edward, Boulder County, and Mackenzie were all in WO-47's applied
+  batch (see `BACKLOG_DONE.md`). `Townofws` genuinely has no
+  recoverable signal (wordninja can't expand "ws"); the Beaumont pair
+  needs a real re-resolve (its subdomain is `pub-beaumontab`, and only
+  the resolve path sees the netloc's trailing province code).
 
 - **[JUST-DO-IT] Bare/state-suffixed jurisdiction duplicates: root cause
   fixed 2026-08-21, production write run the same day — 76 rows applied,
@@ -1212,8 +1277,15 @@ from a live check), but the Legistar calendar itself is still untried.
   2026-08-18: a handful of real, currently-correct eScribe customer
   names would decline to blank on a FUTURE re-resolve.** Confirmed via a
   full sweep of all 176 eScribe + 253 Granicus subdomains in production:
-  **Lloydminster** (AB/SK) and **Paso Robles** (CA) are unambiguous real
-  places missing from the table. Ontario's "regional municipality"
+  **Lloydminster** (AB/SK) is an unambiguous real place still missing
+  from the table. **Paso Robles closed 2026-08-23 (WO-47)**: the Census
+  gazetteer names it "El Paso de Robles (Paso Robles) city", and
+  `_load_name_state_table()` now indexes parenthetical alternate names
+  (junk parentheticals like "(Part)"/"(balance)" filtered), so both
+  "Paso Robles" and "El Paso de Robles" resolve to CA — the same fix
+  that corrected the two "City of Ventura, IA" misattributions ("San
+  Buenaventura (Ventura)" was equally invisible). Ontario's "regional
+  municipality"
   entities — **Durham / Peel / Region of Waterloo** — were partially
   fixed 2026-08-21 (`build_canada_regional_municipalities()` adds these
   3 confirmed-in-production customers, grounded in StatsCan's SGC 2021
@@ -1224,18 +1296,6 @@ from a live check), but the Legistar calendar itself is still untried.
   municipalities lost purely on a hyphen-formatting mismatch. Scope
   note: this can't retroactively fix an already-published page — only a
   future new meeting or explicit re-feed.
-
-- **[NEEDS-AUDIT] "RochestercityMN" root-caused, 2026-08-18 — a real
-  page-title data-quality quirk on ONE specific customer, not an adapter
-  bug.** `iqm2.py`'s `_TITLE_RE` captures the jurisdiction verbatim from
-  the page's own `<title>` tag, and Rochester MN's tenant
-  (`rochestercitymn.iqm2.com`) has "RochestercityMN" literally glued
-  together in its own page title at the source (confirmed by contrast
-  with Santa Clara County's correctly-spaced title on the same
-  platform). Only one example exists (IQM2's only other confirmed
-  customer) — not enough to design a general fix. If a second glued-title
-  IQM2 customer turns up, this is the same shape as eScribe's
-  glued-subdomain fix and could reuse `validated_label_extract()`.
 
 - **[NEEDS-AUDIT] One likely truncation case found in the same sweep —
   the opposite failure from bleed (losing real characters, not gaining
@@ -1272,11 +1332,20 @@ from a live check), but the Legistar calendar itself is still untried.
   still can't structurally tell a genuine page header from an
   agenda-item mention (confirmed against OKC, Thousand Oaks, SLC — none
   separate cleanly by character position, and a bold-tag rule would fix
-  OKC/SLC but miss Thousand Oaks's plain-prose header). A fourth
-  PrimeGov city with this shape and no confirmed domain would still hit
-  the bug. Worth revisiting the structural options against more real
-  examples if this recurs, rather than adding a domain override per
-  incident indefinitely.
+  OKC/SLC but miss Thousand Oaks's plain-prose header). **It DID recur —
+  twice — found 2026-08-23 via Google's crawl of /state/california
+  (WO-47)**: `ccta.primegov.com` (the Contra Costa Transportation
+  Authority — the search stored an agenda item, "City of Hercules GMP
+  Compliance Checklist", as the jurisdiction, and a second CCTA page as
+  "City of Richmond") and `cityoflancasterca.primegov.com` (stored a
+  department, "City of Lancaster Community Development Department").
+  Both got authoritative `_KNOWN_DOMAINS` entries per the standing
+  per-incident-override approach, and the three bad rows were repaired
+  via the recompute backfill. That's now FOUR confirmed domains hitting
+  the same structural gap — the "worth revisiting the structural
+  options" threshold is arguably met; a page-position/first-N-chars
+  scoping experiment against all four real domains' pages is the next
+  concrete step, rather than a fifth override.
 
 - **[NEEDS-AUDIT] A Vimeo-hosted meeting usually resolves with no
   jurisdiction at all (residual of WO-29, 2026-08-21).** oEmbed's

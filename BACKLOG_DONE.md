@@ -6,6 +6,163 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## WO-47: Jurisdiction data-quality pass — Azusa→Albemarle root cause, garbage names, future dates, Zoom-passcode titles [Done 2026-08-23]
+
+Started from Google's crawl of `/state/california`, which showed real
+production HTML with an Albemarle County VA meeting listed as Azusa CA's
+example, a cluster of garbage jurisdiction strings, a future-dated
+meeting, and a title carrying a live Zoom passcode. Every finding below
+was re-derived against the live DB and live source pages before any fix.
+
+**The headline misattribution (Azusa → `/m/albemarle-county-va-...`) was
+two stacked causes, one already fixed.** The crawled link itself was a
+fossil of the `granicus:1452` external-id collision (Albemarle VA + Azusa
+CA sharing clip number 1452) — root-caused, host-namespaced, and its 9
+corrupted rows deleted+re-ingested on 2026-08-18 (see that entry below);
+Google's crawl predated the fix. But the RE-INGESTED Albemarle row was
+itself wrong in a second, subtler way: stored as **"Albemarle, NC"** — a
+Virginia county's Board of Supervisors filed under an unrelated North
+Carolina city. Root cause: the page's only jurisdiction text
+("...Regular First Meeting for Albemarle County") lives in
+`<meta name="description">`; the chain's text tiers found nothing, the
+subdomain tier returned the bare label "Albemarle", and a bare name is
+typed as a *city* — which uniquely resolves to Albemarle, NC, while
+"Albemarle County" → VA sat unambiguously in the county table the whole
+time. Fix: `_county_retype_from_page_text()` in
+`app/utils/jurisdiction_enrich.py` — a subdomain-tier bare candidate is
+retyped "{Name} County" when the page's own text says so, vetoed by any
+"City of {Name}" phrasing (a city page may mention its same-named
+surrounding county), and only when the county name is a real table
+entry. Fixture-backed test on the real saved page
+(`tests/fixtures/granicus/albemarle_clip1452.html`); row 1320 repaired
+in production via re-resolve+re-ingest (`scripts/bulk_ingest.py`), now
+"Albemarle County, VA" / validated.
+
+**Same-class county-seat misattributions found while scanning for more
+(all confirmed live, all repaired via re-ingest with a new CivicClerk
+fix):** CivicClerk's `eventLocation.city` is the meeting *venue's*
+address city, which for a county government is the county seat — so
+St. Croix County WI was stored as "Hudson, WI" (row 2416), Churchill
+County NV as "Fallon, NV" (1283), Lincoln County OR as "Newport, OR"
+(1768), Fulton County IN as "Rochester, IN" (2149), Lancaster County SC
+as "Lancaster, SC" (2148). Fix in `app/platforms/civicclerk.py`
+(`_county_tenant_jurisdiction()`): the venue ZIP is mapped to its county
+via the existing Census ZCTA crosswalk, but only when an independent
+signal says the tenant is a county — a "{name}(co|county){st}" subdomain
+parse that must AGREE with the ZIP county (churchillconv / lincolncoor /
+fultoncoin / lancastercosc), or anchored county-body meeting phrasing
+("County Board of Supervisors", "Board of County Commissioners" — sccwi,
+whose subdomain encodes nothing). The double-agreement requirement is
+what keeps "chicoca"/"sanfranciscoca"-shaped city subdomains from ever
+matching. Tests use the real live API payloads (synthetic-with-real-facts
+convention).
+
+**"City of Ventura, IA" ×2 (rows 912/1917) — a gazetteer indexing gap,
+not an adapter bug.** Census names the CA city "San Buenaventura
+(Ventura) city" and Paso Robles "El Paso de Robles (Paso Robles) city";
+`_load_name_state_table()` never indexed parenthetical alternates, so
+"Ventura" resolved uniquely to tiny Ventura, IA and "Paso Robles" to
+nothing (the long-open StatsCan/Census completeness item). The loader
+now indexes both the outer and parenthetical forms (junk parentheticals
+— "(Part)"/"(balance)"/"(North Half)"/digits — filtered structurally).
+"Ventura" is now correctly ambiguous, and both real Ventura customers
+got authoritative `_KNOWN_DOMAINS` entries pinning them
+(ventura.primegov.com = County of Ventura per its own agenda header;
+cityofventura.granicus.com = City of Ventura per its own RSS channel
+title, both confirmed live). Rows repaired via recompute backfill.
+
+**Garbage-name repairs, each traced to its real source:**
+- IQM2 tenant `<title>`s are the customer's own branding, verbatim:
+  "Video Outline - MaderaCounty, CA" / "Arcata City, CA" / "Redding
+  City, California" / "Ringgold City, GA" / "Healdsburg City, CA" /
+  "RochestercityMN" (all six fetched live). This closed the old
+  "RochestercityMN root-caused — only one example, not enough to design
+  a general fix" entry exactly as it predicted: with six examples,
+  `finalize_jurisdiction()` gained (1) a de-camel candidate
+  ("MaderaCounty" → "Madera County"), (2) a glued-label repair tier
+  reusing `_validated_label_extract_with_state()`
+  ("RochestercityMN" → "Rochester, MN"; declines acronyms — "Cmsd"
+  stays untouched), and (3) a branding-suffix strip ("Arcata City" →
+  "Arcata") gated on `is_literal_known_place()` in both directions, so
+  real "X City" names (Redwood City, Foster City, Oklahoma City, Carson
+  City, Kansas City — all literal gazetteer keys) are never touched.
+  The old `test_finalize_jurisdiction_rochestercitymn_stays_unverified`
+  guard test now asserts the repair instead.
+- "Hercules Gmp Compliance Checklist, CA" / "Lancaster Community
+  Development Department, CA" / a second CCTA page stored as "City of
+  Richmond, CA": PrimeGov's unscoped body-text search again (4th and
+  5th confirmed domains) — authoritative registry entries for
+  `ccta.primegov.com` (Contra Costa Transportation Authority) and
+  `cityoflancasterca.primegov.com`; `known_jurisdiction_display()`
+  learned to render special-purpose entities and county-suffixed names
+  without the "City of"/"County of" prefix doubling
+  ("City of Salt Lake City, UT" unchanged).
+- "Cmsd, CA" = Costa Mesa Sanitary District (its own page's venue line
+  names it) — authoritative registry entry, type "district".
+- "Richmond C., CA" (pub-richmond, which is Richmond *California* —
+  richmond.ca.us on its own page) and "Watsonville City Council
+  Chambers, CA" (venue-name capture): both already fixed by adapter
+  changes that post-dated the rows; repaired by plain re-resolve.
+
+**Future dates (4 pages > today in production; 3 were bugs):** Granicus's
+body-text date fallback grabbed future dates out of agenda items —
+Mission Viejo 2026-11-03 ("Calling for a General Municipal Election on
+November 3, 2026", row 360), Tulsa 2026-12-31 ("current term expires
+December 31, 2026", row 139), Tarrant County College 2026-08-31
+("Consulting Services Through August 31, 2026", row 427). The 4th
+(Sarasota County 2026-08-25, hyland) is a genuinely-scheduled upcoming
+meeting's agenda page — correct, left alone. Fixes in
+`app/platforms/granicus.py`: the body scan (and only the body scan — a
+scheduled meeting's title/meta/RSS date may legitimately be future)
+skips future matches and keeps scanning, and the RSS item's structured
+`<gran:pubDateParts>` now beats a body-derived guess (Tulsa's feed had
+the real 2026-08-05 all along; previously RSS only filled a *missing*
+date). Tulsa repaired by re-ingest; Mission Viejo/Tarrant have no
+recoverable date anywhere, and since the refresh path's date update is
+truthy-gated (deliberately), a new recompute-style endpoint
+`POST /internal/pages/clear-future-dates` (dry-run-first, grace window
+for near-future scheduled meetings, only_ids) nulls them — a NULL date
+renders fine and is strictly more honest than a fabricated one.
+
+**Zoom-passcode titles (5 real Granicus rows, one carrying a live
+passcode into Google's crawl):** og:title is taken verbatim, and
+customers paste meeting-access boilerplate into it. New curated-marker
+strip (`_strip_meeting_access_tail()`): zoom.us URLs, "Zoom (Meeting)
+ID:", "Zoom Passcode:", "Meeting ID: {digits}", "Passcode:",
+"In-Person in/at", "Live stream via" — everything from the first marker
+on. Rows 231/408 (San Mateo County), 313 (Hercules), 1352 (Blount),
+2433 repaired by re-ingest; Hercules' stored title no longer contains
+the passcode.
+
+**meeting_body now flows from adapters** (per the WO-46 state/hub
+rebuild's `gov_classify` consumer): `ResolvedMeeting.meeting_body` +
+`IngestRequest`/`ResolvedMeetingIn` mirrors + crud pass-through
+(adapter value beats the finalize split; truthy-gated so partial
+pushers can't clear it). First producer: Granicus's RSS channel-title
+body, gated on the existing `GOVERNING_BODY_KEYWORDS` check.
+
+**Production changes applied 2026-08-23** (all verified by re-query):
+- 14 pages re-resolved + re-ingested via `scripts/bulk_ingest.py`
+  (ids 139, 231, 313, 408, 684, 781, 1283, 1320, 1352, 1768, 2148,
+  2149, 2416, 2433) — jurisdictions, dates, and titles as above; slugs
+  unchanged by design (old crawled garbage slugs remain as permanent
+  URLs, but every displayed field is now correct).
+- Recompute backfill (82 rows) + clear-future-dates (rows 360, 427) run
+  through the production internal endpoints immediately after this PR's
+  deploy — the endpoint recomputes with the deployed code, so it could
+  not run before merge. The 82 are exactly the candidates this PR's own
+  fixes introduce, EXCLUDING the Redding/Healdsburg/Arcata/Paso Robles
+  hub-consolidation rows (944, 1470, 977, 2194, 998, 1046, 1066 —
+  deferred to the dedicated hub-merge PR per Ryan) and excluding all 51
+  pre-existing candidates (several confidently wrong — see the new
+  NEEDS-AUDIT entry in BACKLOG.md).
+
+**Verification:** full suite green (1628 passed); new fixture-backed
+tests for every extraction fix (real Albemarle/Mission Viejo/Tulsa
+pages + trimmed real Tulsa RSS; real CivicClerk API payloads; the five
+real Zoom-tail titles; gazetteer alt-name lookups); live /state/
+california re-checked for Azusa (now links its own real meeting).
+
 ## ChampDS is a progressive MP4, and its timeouts are bandwidth, not throttling [Investigated 2026-08-23]
 
 Ryan asked what we can actually do for ChampDS, after WO-45 cleared the

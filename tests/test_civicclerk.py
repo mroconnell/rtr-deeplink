@@ -278,3 +278,83 @@ async def test_resolve_text_fallback_for_unstructured_caption_format():
 
     assert [s.text for s in result.segments] == ["Hello there."]
     assert any("plain text" in w for w in result.transcript_warnings)
+
+
+async def test_resolve_county_tenant_uses_county_not_venue_city():
+    # Synthetic payload built from the REAL St. Croix County, WI API
+    # response (sccwi.api.civicclerk.com/v1/Events/25, fetched live
+    # 2026-08-23): eventName "County Board of Supervisors",
+    # eventLocation city "Hudson" / zip "54016". eventLocation is the
+    # meeting VENUE's address, and Hudson is the county seat, so
+    # production filed St. Croix County's board meetings under the
+    # unrelated city government of Hudson, WI. The venue ZIP maps to
+    # St. Croix County via the Census ZCTA crosswalk (verified against
+    # the shipped zcta_county.csv), and the anchored county-body event
+    # name is what licenses using it.
+    url = "https://sccwi.portal.civicclerk.com/event/25/media"
+    event_json = (
+        '{"id": 25, "eventName": "County Board of Supervisors", '
+        '"eventDate": "2025-01-07T17:00:00Z", '
+        '"eventLocation": {"city": "Hudson", "state": "Wisconsin", "zipCode": "54016"}}'
+    )
+    media_json = '{"id": 25, "videoUrl": "https://cpmedia.azureedge.net/sccwi/a.mp4", "eventBookmarks": []}'
+
+    routes = {
+        "https://sccwi.api.civicclerk.com/v1/Events/25": FakeResponse(
+            status=200, text=event_json
+        ),
+        "https://sccwi.api.civicclerk.com/v1/EventsMedia/25": FakeResponse(
+            status=200, text=media_json
+        ),
+    }
+
+    with mock_session(routes):
+        result = await CivicClerkAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "St. Croix County, WI"
+
+
+async def test_resolve_county_subdomain_signal_needs_zip_agreement():
+    # Synthetic payloads from two more REAL tenants fetched live
+    # 2026-08-23: lincolncoor (Lincoln County, OR -- eventName "Board of
+    # Commissioners Meeting" carries no "County" word at all, so only
+    # the "{name}co{st}" subdomain parse identifies the county, gated on
+    # the venue ZIP 97365 mapping to the SAME county) and, as the
+    # negative control, a city tenant whose subdomain merely contains
+    # "co"+state-shaped letters must stay untouched ("sthelenaca" -- St.
+    # Helena, CA, a real production customer -- parses as "sthelena"+
+    # "ca"... which fails, and even a "...coca"-shaped city subdomain
+    # fails the ZIP-agreement check).
+    url = "https://lincolncoor.portal.civicclerk.com/event/1605/media"
+    event_json = (
+        '{"id": 1605, "eventName": "Board of Commissioners Meeting", '
+        '"eventDate": "2024-05-15T17:00:00Z", '
+        '"eventLocation": {"city": "Newport", "state": "Oregon", "zipCode": "97365"}}'
+    )
+    media_json = '{"id": 1605, "videoUrl": "https://cpmedia.azureedge.net/lincolncoor/a.mp4", "eventBookmarks": []}'
+
+    routes = {
+        "https://lincolncoor.api.civicclerk.com/v1/Events/1605": FakeResponse(
+            status=200, text=event_json
+        ),
+        "https://lincolncoor.api.civicclerk.com/v1/EventsMedia/1605": FakeResponse(
+            status=200, text=media_json
+        ),
+    }
+
+    with mock_session(routes):
+        result = await CivicClerkAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "Lincoln County, OR"
+
+    # Negative control, direct unit call: St. Helena CA's real venue ZIP
+    # 94574 maps to Napa County, but a plain city meeting shows neither
+    # county signal, so the venue city stands.
+    assert (
+        CivicClerkAssetFinder._county_tenant_jurisdiction(
+            "sthelenaca",
+            {"eventName": "City Council Special Meeting"},
+            {"city": "St. Helena", "state": "CA", "zipCode": "94574"},
+        )
+        is None
+    )

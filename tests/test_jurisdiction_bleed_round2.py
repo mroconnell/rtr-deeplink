@@ -147,16 +147,18 @@ def test_finalize_jurisdiction_strips_glued_file_extension_bleed():
     assert result.confidence == "repaired"
 
 
-# --- Out of scope, confirmed not attempted (see BACKLOG.md) ---
-
-
-def test_finalize_jurisdiction_rochestercitymn_stays_unverified():
-    # Confirmed root-caused (app/platforms/iqm2.py's _TITLE_RE captures
-    # this verbatim from Rochester, MN's own IQM2 page title -- a
-    # vendor/tenant data-quality quirk on that one customer, not a Python
-    # string-join bug) but explicitly NOT fixed this pass -- only one
-    # example exists, not enough real data to design a general fix. See
-    # BACKLOG.md's "RochestercityMN root-caused" entry.
+def test_finalize_jurisdiction_rochestercitymn_repairs_to_rochester_mn():
+    # This used to assert "stays unverified": the fix was deliberately
+    # deferred while only ONE glued-title IQM2 customer was known (see
+    # the old BACKLOG.md "RochestercityMN root-caused" entry, which
+    # predicted the fix becomes buildable the moment a second example
+    # appears). The 2026-08-23 data-quality pass found five more real
+    # IQM2 tenants with title-as-branding garbage ("MaderaCounty, CA",
+    # "Arcata City, CA", "Redding City, California", "Ringgold City, GA",
+    # "Healdsburg City, CA" -- all confirmed live in each tenant's own
+    # <title> tag), so finalize_jurisdiction() now runs a glued-label
+    # repair (the same Census-validated extractor the subdomain paths
+    # trust) plus a branding "X City" strip.
     result = je.finalize_jurisdiction("RochestercityMN")
-    assert result.jurisdiction == "RochestercityMN"
-    assert result.confidence == "unverified"
+    assert result.jurisdiction == "Rochester, MN"
+    assert result.confidence == "repaired"

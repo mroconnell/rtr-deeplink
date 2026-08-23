@@ -1531,3 +1531,126 @@ def test_validated_label_extract_strips_trailing_county_and_reattaches_it():
     assert wordninja.split("pitkincounty") == ["pit", "kin", "county"]
     assert je._table_lookup("Pitkin") == ("place", ["CO"])
     assert je.validated_label_extract("pitkincounty") == "Pitkin County"
+
+
+# --- Parenthetical alternate names in the Census gazetteer (2026-08-23) ---
+
+
+def test_parenthetical_alt_names_are_indexed():
+    # Real gazetteer rows, checked directly in places.csv: "San
+    # Buenaventura (Ventura) city,CA" and "El Paso de Robles (Paso
+    # Robles) city,CA". Before the alt-name indexing, "Ventura" resolved
+    # uniquely to the tiny Ventura, IA -- which is exactly what
+    # production stored for BOTH real California Ventura customers
+    # ("City of Ventura, IA") -- and "Paso Robles" resolved to nothing
+    # (BACKLOG.md's own StatsCan/Census completeness entry).
+    assert je.lookup_city_state("San Buenaventura") == "CA"
+    assert je.lookup_city_state("Paso Robles") == "CA"
+    assert je.lookup_city_state("El Paso de Robles") == "CA"
+    # "Ventura" is now correctly AMBIGUOUS (CA alt name + the real
+    # Ventura city, IA) rather than confidently wrong.
+    assert je.lookup_city_state("Ventura") is None
+    assert je.is_literal_known_place("Ventura")
+
+
+def test_parenthetical_junk_shapes_are_not_indexed():
+    # Census also writes "(Part)", "(balance)", "(North Half)" and
+    # numbered reserve fragments (all present in the shipped CSVs) --
+    # none of those parentheticals are names and none may become keys.
+    assert not je.is_literal_known_place("Part")
+    assert not je.is_literal_known_place("balance")
+    assert not je.is_literal_known_place("North Half")
+
+
+# --- Vendor-branding jurisdiction repairs (2026-08-23) ---
+#
+# Every garbage input below is a REAL stored production value found via
+# Google's crawl of /state/california, and every source title was
+# re-confirmed live in the tenant's own <title> tag the same day (e.g.
+# "Video Outline - MaderaCounty, CA", "Video Outline - Arcata City, CA").
+
+
+def test_finalize_repairs_glued_camelcase_county():
+    result = je.finalize_jurisdiction(
+        "MaderaCounty, CA", netloc="maderacountyca.iqm2.com"
+    )
+    assert result.jurisdiction == "Madera County, CA"
+    assert result.confidence == "repaired"
+
+
+def test_finalize_strips_branding_city_suffix():
+    for raw, netloc, expected in [
+        ("Arcata City, CA", "arcataca.iqm2.com", "Arcata, CA"),
+        ("Redding City, CA", "reddingcityca.iqm2.com", "Redding, CA"),
+        ("Healdsburg City, CA", "healdsburgca.iqm2.com", "Healdsburg, CA"),
+        ("Ringgold City, GA", "ringgoldcityga.iqm2.com", "Ringgold, GA"),
+    ]:
+        result = je.finalize_jurisdiction(raw, netloc=netloc)
+        assert result.jurisdiction == expected, raw
+        assert result.confidence == "repaired", raw
+
+
+def test_finalize_never_strips_real_city_suffixed_names():
+    # Real places whose names genuinely end in "City" (all literal
+    # gazetteer rows, checked in places.csv) must come through whole.
+    for raw in [
+        "Redwood City, CA",
+        "Foster City, CA",
+        "Oklahoma City, OK",
+        "Carson City, NV",
+        "Kansas City, MO",
+    ]:
+        result = je.finalize_jurisdiction(raw)
+        assert result.jurisdiction == raw
+        assert result.confidence == "validated"
+
+
+def test_finalize_declines_glued_repair_for_acronyms():
+    # "Cmsd" (Costa Mesa Sanitary District) must never be wordninja'd
+    # into a fake place -- without its registry entry the string would
+    # stay unverified; WITH the pub-cmsd domain entry it resolves to the
+    # district's real name (its own page's venue line names it,
+    # confirmed live 2026-08-23).
+    assert je.finalize_jurisdiction("Cmsd, CA").confidence == "unverified"
+    result = je.finalize_jurisdiction("Cmsd, CA", netloc="pub-cmsd.escribemeetings.com")
+    assert result.jurisdiction == "Costa Mesa Sanitary District, CA"
+    assert result.confidence == "authoritative"
+
+
+def test_county_retype_from_page_text():
+    # The Albemarle shape (albemarle.granicus.com, confirmed live
+    # 2026-08-23): subdomain label validates as the unrelated city of
+    # Albemarle, NC while the page's own text says "Albemarle County"
+    # (a real, unambiguous VA county).
+    assert (
+        je._county_retype_from_page_text(
+            "Albemarle", "... Regular First Meeting for Albemarle County"
+        )
+        == "Albemarle County"
+    )
+    # "City of {name}" on the page vetoes the retype -- a city page may
+    # legitimately mention its surrounding same-named county. "Fresno"
+    # is a real city inside the real Fresno County, per the tables.
+    assert (
+        je._county_retype_from_page_text(
+            "Fresno", "City of Fresno budget ... within Fresno County"
+        )
+        == "Fresno"
+    )
+    # No county phrasing at all: untouched.
+    assert je._county_retype_from_page_text("Albemarle", "no mention") == "Albemarle"
+
+
+def test_known_jurisdiction_display_special_entities_and_county_names():
+    # A special-purpose entity and a name already carrying its type word
+    # render as-is; a literal real name ending in its type word keeps
+    # its established "City of ..." prefix.
+    assert (
+        je.known_jurisdiction_display("ccta.primegov.com")
+        == "Contra Costa Transportation Authority, CA"
+    )
+    assert je.known_jurisdiction_display("ventura.primegov.com") == "Ventura County, CA"
+    assert (
+        je.known_jurisdiction_display("slc.primegov.com")
+        == "City of Salt Lake City, UT"
+    )
