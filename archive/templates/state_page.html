@@ -140,8 +140,13 @@
         </p>
 
         {% if most_active %}
-        <h2 class="state-section-heading">Most active {{ name }} governments</h2>
-        <p class="state-section-sub">Most meetings archived in the last {{ most_active_days }} days.</p>
+        <h2 class="state-section-heading">Most watched {{ name }} governments</h2>
+        {#- "Watched" is meant literally, in this site's own voice: Red
+           Tape Recordings is the one doing the watching, and the ranking
+           is how much of each government we've archived lately. It does
+           not claim a per-visitor view count (there isn't one) -- the
+           subtitle keeps the basis explicit either way. -#}
+        <p class="state-section-sub">Where we're watching most closely &mdash; ranked by meetings we've archived in the last {{ most_active_days }} days.</p>
         <ul class="most-active-list">
           {%- for row in most_active %}
           <li>

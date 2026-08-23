@@ -873,7 +873,21 @@ Both surfaces now lead with:
   newsworthiness-ordered and does the real work at that scale.
 * **Topic chips** — curated subjects (`archive/topics.py`, edited by
   hand) that actually appear in the page's recent transcribed meetings,
-  ranked by how many mention each, top 12 shown. Real `?topic=` links,
+  ranked by how many mention each, top 12 shown. A topic may be
+  **pinned** (`Topic.pinned`), which keeps its chip even below the
+  cutoff: `data-centers` and `flock-cameras` are surfaced for being
+  *newsworthy*, not frequent, and both measurably lose a pure popularity
+  contest to "property taxes" on the live California page. Pinning never
+  overrides the count > 0 rule — a state with neither shows neither,
+  since a chip leading to an empty page is worse than no chip.
+  Topics deliberately **overlap**: `flock-cameras` was split out of
+  `surveillance-cameras` (2026-08-23) so Flock — a named vendor
+  residents show up to speak about by name — has its own findable chip,
+  but Flock terms remain in `surveillance-cameras` too, because Flock
+  *is* surveillance and a reader clicking either chip should find those
+  meetings. The bare `flock` pattern was checked against the real corpus
+  before shipping: 131 meetings mention it and all 14 stored highlights
+  containing it are about the company, not birds. Real `?topic=` links,
   server-rendered, so a crawler follows them and each variant carries its
   own real snippets; the canonical stays the bare URL. Discovery is
   deliberately *not* unsupervised — an uncurated "trending terms" pass
@@ -889,8 +903,11 @@ Both surfaces now lead with:
   conservatively to city). A sticky sidebar beside the results on
   desktop; below them on mobile, where the results lead. Every `/j/`
   link stays in the initial HTML in both layouts.
-* **"Most active governments"** (state pages, ≥8 governments) — most
-  meetings archived in the last 90 days.
+* **"Most watched governments"** (state pages, ≥8 governments) — ranked
+  by meetings *archived* in the last 90 days. "Watched" is meant
+  literally and in this site's own voice: Red Tape Recordings is the one
+  doing the watching. It claims no per-visitor view count (there isn't
+  one), and the subtitle keeps the basis explicit regardless.
 
 Snippets are **precomputed and stored** in `meeting_highlights`, not
 computed per request: the heuristic needs a meeting's segments, and a
