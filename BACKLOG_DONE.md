@@ -6,6 +6,85 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## ChampDS is a progressive MP4, and its timeouts are bandwidth, not throttling [Investigated 2026-08-23]
+
+Ryan asked what we can actually do for ChampDS, after WO-45 cleared the
+Cablecast cluster sitting next to it in the same queue window. Nothing
+shipped from this — it is the measurement behind the rewritten
+`BACKLOG.md` entry, and it corrects half of the 2026-08-22 conclusion
+above.
+
+**Started from the three meetings that really failed**, not from the
+entry: jobs 646 / 648 / 650, all `ffmpeg timed out after 120s`. Resolved
+each live and probed it:
+
+```
+                                    resolve   ffprobe   duration
+play.champds.com/oakhilltn/event/50    0.3s    100.8s     6733s
+play.champds.com/wilkesconc/event/41   0.2s      0.8s     2841s
+play.champds.com/surfsidefl/event/423  0.3s     86.6s     7141s
+```
+
+Two ffprobes near 100s against a 120s budget was the first real signal —
+and the media URL was the second.
+
+**The finding: ChampDS is not HLS.** Every resolve returns
+`play.champds.com/DOWNLOAD-MEDIA/{customer}/eventmainmedia/{id}`, served
+by nginx as `application/octet-stream` with `Content-Disposition:
+attachment; filename=WilkesCoNC_41.mp4` — a plain progressive file. This
+had never been written down anywhere, and it is what makes ChampDS
+structurally more expensive than every other platform here: with no
+separate audio rendition and no segment granularity, a 900s chunk means
+downloading the full muxed video+audio bytes for those 900 seconds.
+`-vn` saves decode CPU, not bandwidth.
+
+**Ruled out: broken/absent range support.** `Accept-Ranges: bytes` on
+HEAD, and a ranged GET returns a real `206 Partial Content` with exactly
+the requested bytes. Seeking works; volume is the cost.
+
+**Ruled out: throttling — which is where the previous conclusion needs
+correcting.** Two back-to-back 20MB range reads on the same file:
+
+```
+attempt 1:  20,000,000 bytes  23.87s  =  838 KB/s
+attempt 2:  20,000,000 bytes  23.80s  =  840 KB/s
+```
+
+Identical, and every response carried `X-CDS-Cache-Status: MISS`, so
+nothing was being served warm. A steady, repeatable pipe is not what a
+per-IP limit looks like.
+
+**The arithmetic, from real `Content-Length`s:**
+
+```
+                        file    duration   bitrate   900s chunk   @840KB/s
+wilkesconc/41  (job 648) 672MB    2,841s   237KB/s      213MB        254s
+oakhilltn/50   (job 650) 502MB    6,733s    75KB/s       67MB         80s
+surfsidefl/423 (job 646) 427MB    7,141s    60KB/s       54MB         64s
+```
+
+Budget: 120s. **Wilkes County cannot be fetched in time at 900s per
+chunk** — 2.1× over, no retry policy fixes it. The other two fit on
+transfer alone, which means their failures are the *fixed* cost (the
+~90-100s origin latency the ffprobes exposed) landing on top of a 60-80s
+transfer. That is why the cluster looked intermittent: two of the three
+are borderline, one is impossible.
+
+**So the 2026-08-22 entry conflated two symptoms.** Its 0.2s
+instant-failure cases (`_fetch_json()` returning None on a fast non-200)
+are a genuinely different thing from `ffmpeg timed out after 120s`, and
+only the former still looks like a plausible rate limit. Both are now
+described separately in `BACKLOG.md`, with adaptive chunk sizing as the
+lead fix rather than host-aware pacing.
+
+**Honest limit on all of the above: measured from Ryan's Mac, never from
+Render.** The same residential-IP-vs-production asymmetry `CLAUDE.md`
+already flags for yt-dlp channel listings. If Render's egress is
+materially faster, oakhilltn and surfsidefl stop being marginal and only
+Wilkes-class bitrates stay broken — so the threshold for any adaptive
+chunk-size fix should be derived from a measurement taken on the worker,
+not from the 840 KB/s here.
+
 ## An ffmpeg HLS-seek bug killed 33+ transcription jobs a day, and a blank transcript re-queued itself forever (WO-45) [Done 2026-08-23]
 
 Ryan reported that "at about 10:54 PM we started getting errors on what

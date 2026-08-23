@@ -95,7 +95,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (7)
   Some Swagit meetings have no single "whole meeting" video file…
 
 Platform & jurisdiction coverage  (28)
-  `[JUST-DO-IT]` ChampDS cluster was self-inflicted rate-limiting, not…
+  `[JUST-DO-IT]` ChampDS is a progressive MP4, and a 900s chunk can…
   The 50 largest US cities — per-tenant status `[NEEDS-AUDIT]`
   Jurisdiction extraction & backfill  (16)
     [JUST-DO-IT] A land acknowledgement became a jurisdiction, and it
@@ -1021,51 +1021,78 @@ Everything adapter-, tenant-, or jurisdiction-extraction-shaped, kept
 together on purpose. Tags are inline here rather than hoisted into the
 actionability sections above.
 
-### `[JUST-DO-IT]` ChampDS cluster was self-inflicted rate-limiting, not a block — two concrete fixes
+### `[JUST-DO-IT]` ChampDS is a progressive MP4, and a 900s chunk can exceed the download budget outright
 
-Corrects an earlier version of this entry that read the same data as a
-possible platform-wide block. Full evidence: `BACKLOG_DONE.md`
-"ChampDS cluster root-caused" (2026-08-22). Short version: the tier-3
-queue file sorts roughly alphabetically, so a 25-meeting batch pop
-landed 12 `play.champds.com` URLs in a row; `transcribe_backlog_locally.
-py`'s `REQUEST_DELAY_SECONDS = 2.0` paces between meetings but isn't
-host-aware, so those 12 hit the same API back-to-back. 7 failed in a
-25-minute window, 2 succeeded outright, 2 partially succeeded (several
-chunks transcribed before timing out) — not a clean block. All 7
-failing URLs, re-curled directly against `playapi.champds.com` ~7 hours
-later, returned real `200`s with real data, confirming the block (if
-that's what it was) already cleared.
+Rewritten 2026-08-23 from live measurement, replacing a version that read
+every ChampDS failure as one thing ("self-inflicted rate-limiting"). There
+are **two different symptoms** here and only one of them looks like a rate
+limit. Full evidence: `BACKLOG_DONE.md`'s "ChampDS cluster root-caused"
+(2026-08-22) and "ChampDS is a progressive MP4" (2026-08-23).
 
-**Correction, 2026-08-23 (WO-45): the cloud worker does this too now.**
-That investigation's "`render logs --text champds` returned zero hits —
-the cloud worker has never touched these pages, so this is purely a
-local-batch phenomenon" is no longer true, which matters because fix 1
-below was scoped to the local script on that basis. Overnight
-2026-08-22/23 the cloud worker walked jobs 633-650 and hit
-`play.champds.com` **18 times across 5 jobs, all `ffmpeg timed out after
-120s`** (`GET /internal/transcription-failure-analysis?days=2`,
-`by_platform`), in one contiguous run of alphabetically-adjacent
-tenants — `atlantaga`, `auburnny`, `bellemeadetn`, `fonddulacwi`,
-`largofl`, `nolensvilletn`, `oakhilltn`, `portchesterny`, `surfsidefl`,
-`westportct`, `wilkesconc` — with 2 succeeding in the middle of it,
-exactly the mixed pattern the local batch showed. So the clustering is a
-property of the *queue's ordering*, not of `transcribe_backlog_locally.
-py`, and host-aware pacing belongs wherever candidates are ordered
-(`find_auto_transcription_candidate()` orders `created_at ASC`, which
-correlates with ingest order, which correlates with host) — not only in
-the local script.
+**Symptom A — `ffmpeg timed out after 120s`. Not a rate limit; a bitrate
+vs. chunk-size mismatch.** ChampDS serves a plain progressive MP4
+(`play.champds.com/DOWNLOAD-MEDIA/{customer}/eventmainmedia/{id}`, nginx,
+`application/octet-stream`), **not** HLS. That is the whole problem: with
+no separate audio rendition and no segment granularity, a chunk costs the
+full *muxed video+audio* bytes for its window — `-vn` saves CPU and not
+one byte of download. Range requests work fine (`Accept-Ranges: bytes`,
+ranged GET → 206), so seeking is not the issue; raw volume is. Measured
+against the three meetings that actually failed:
 
-Two real, small fixes, not yet built:
-1. Host-aware pacing in `transcribe_backlog_locally.py` (and worth
-   checking `feed_tier3_auto_transcription.py` too) — a longer delay
-   when consecutive queue entries share a host, not a flat 2s for every
-   meeting regardless of host.
-2. `champds.py`'s `_fetch_json()` collapses every failure mode (timeout,
-   non-200 status, connection error) into one `return None` / generic
-   warning — the real status code or exception type is never logged, so
-   a future cluster can't be told apart from a genuine block without
-   re-curling by hand like this investigation had to. Worth checking
-   other adapters for the same collapse pattern.
+```
+                        file    duration   bitrate   900s chunk   fetch @840KB/s
+wilkesconc/41  (job 648) 672MB    2,841s   237KB/s      213MB          254s
+oakhilltn/50   (job 650) 502MB    6,733s    75KB/s       67MB           80s
+surfsidefl/423 (job 646) 427MB    7,141s    60KB/s       54MB           64s
+```
+
+against a 120s `_SUBPROCESS_TIMEOUT_SECONDS`. **Wilkes County is a hard
+wall** — 2.1× over budget, unfixable by retrying. The other two fit on
+transfer alone, but `probe_duration()` on them took **100.8s and 86.6s**,
+so fixed origin cost alone nearly spends the budget before any audio
+moves. Throughput was flat and repeatable (two back-to-back 20MB range
+reads: 838 and 840 KB/s, every response `X-CDS-Cache-Status: MISS`) —
+**that is a steady pipe, not throttling.**
+
+**Symptom B — instant 0.2s failures with "Could not reach the ChampDS API
+for this meeting".** Untouched by the above and still unexplained; a fast
+non-200 from the JSON API really could be a per-IP limit. This is the half
+the 2026-08-22 rate-limiting conclusion legitimately covers.
+
+**Fixes, in cost order:**
+
+1. **Make the chunk size adaptive to media bitrate** — the real fix, and
+   not ChampDS-specific. `AUTO_TRANSCRIPTION_CHUNK_SIZE_SECONDS = 900`
+   (`worker/main.py`, mirrored in `app/main.py`) is a flat constant that
+   is fine for HLS and wrong for a progressive file. Both inputs are
+   already cheap to get: `Content-Length` from a HEAD, duration from
+   `probe_duration()`. At 237 KB/s, 300s chunks cost 71MB — comfortably
+   inside budget. Helps every progressive-MP4 source, not just ChampDS.
+2. **Status-code-aware logging in `champds.py`'s `_fetch_json()`** — it
+   collapses timeout / non-200 / connection error into one `return None`
+   and a generic warning, which is exactly why symptom B still needs a
+   manual re-curl to diagnose. Cheap, and it is what would have told these
+   two symptoms apart without this investigation. Worth checking other
+   adapters for the same collapse pattern.
+3. **Download-once-then-slice for progressive sources** `[BIG]` — removes
+   the per-chunk timeout cliff entirely, and for Wilkes is actually *fewer*
+   bytes (672MB once vs 4 × 213MB). Needs ~700MB of disk headroom on a 2GB
+   worker, so a real design change, not a tweak.
+
+**Deprioritised, with reasons:** host-aware pacing (the previously-filed
+fix 1) does not look like the lever for symptom A on this evidence — the
+pipe is steady, not throttled; it may still help symptom B. And **WO-45's
+output-side-seek fallback does nothing here** — a timeout deliberately
+returns `worth_seek_retry=False`, since retrying after already spending
+the full 120s just doubles the wall clock.
+
+**Caveat, and it matters: every throughput number above was measured from
+Ryan's Mac, never from Render.** Same asymmetry `CLAUDE.md` already flags
+for yt-dlp. If Render's egress is faster, the two borderline meetings
+resolve themselves and only Wilkes-class files stay broken — so
+**re-measure from the worker before sizing fix 1's threshold**, rather
+than hard-coding one derived from a residential connection.
+
 
 ### The 50 largest US cities — per-tenant status `[NEEDS-AUDIT]`
 
