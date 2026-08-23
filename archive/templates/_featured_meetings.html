@@ -1,0 +1,56 @@
+{#- Featured meetings: a real quote from each meeting's transcript,
+    deep-linked to the second it was said.
+
+    This is the unique, non-templated text these pages were missing --
+    Search Console measured Google declining hub pages at 3.1-3.6x their
+    sitemap share while indexing /m/ pages *better* than theirs, and the
+    diagnosis was thin templated content (see BACKLOG.md). A list of
+    meeting titles is templated; a resident explaining why they came to
+    a 9pm hearing is not.
+
+    Rendered server-side, in the initial HTML, with no JS involvement --
+    a crawler must see the quotes.
+
+    `featured` from crud._build_featured(); `show_jurisdiction` is false
+    on a jurisdiction hub, where every card is the same government. -#}
+{% if featured %}
+<div class="featured-meetings">
+  {%- for m in featured %}
+  <article class="featured-meeting">
+    {% if m.card_url %}
+    {#- The stored frame at the quoted moment (same ?t= as the deep
+       link), so the image matches the words. Lazy so a dozen cards
+       don't block the first paint; dimensions are fixed in CSS, and a
+       card only ever renders when crud.pages_with_thumbnails() has
+       confirmed the bytes exist. -#}
+    <a class="featured-thumb" href="{{ m.deep_link }}" tabindex="-1" aria-hidden="true">
+      <img src="{{ m.card_url }}" alt="" loading="lazy" decoding="async">
+    </a>
+    {% endif %}
+    <div class="featured-body">
+      <h3 class="featured-title">
+        <a href="/m/{{ m.slug }}">
+          {%- if show_jurisdiction and m.jurisdiction -%}
+            {{ m.jurisdiction|jurisdiction_display }}
+          {%- else -%}
+            {{ m.title or "Untitled meeting" }}
+          {%- endif -%}
+        </a>
+      </h3>
+      <p class="featured-where">
+        {%- if show_jurisdiction and m.jurisdiction %}{{ m.title or "Untitled meeting" }}{% endif -%}
+        {%- if m.date %}{% if show_jurisdiction and m.jurisdiction %} &middot; {% endif %}{{ m.date|meeting_date_html }}{% endif -%}
+      </p>
+      {#- |safe is sound here: highlight_html() HTML-escapes the
+         transcript text before inserting any <mark>, and the marks
+         themselves come from the curated topic list, never from user
+         input or transcript content. -#}
+      <blockquote class="featured-quote">{{ m.snippet_html|safe }}</blockquote>
+      <a class="featured-deeplink" href="{{ m.deep_link }}">
+        <span aria-hidden="true">&#9654;</span> Play from {{ m.timestamp_label }}
+      </a>
+    </div>
+  </article>
+  {%- endfor %}
+</div>
+{% endif %}

@@ -101,6 +101,14 @@ hallucination detector's coverage, backed by real Archive transcript
 excerpts under `tests/fixtures/hallucination_runs/` (see its own
 `README.md`): six real hallucination loops that must be flagged, and real
 decoder stutters and roll calls that must not be.
+`tests/test_highlights.py` covers the featured-snippet heuristic
+(`archive/utils/highlights.py`), the curated topic list, and the
+government-type classifier the same pure-function way. Its snippet cases
+are **frozen strings the heuristic actually produced against the live
+archive** on 2026-08-23 — both the good ones and the two garbled ones
+that reached a rendered page during in-browser verification and are why
+the coherence guards exist. Tuning the scoring without re-running those
+is how a fix for one meeting silently ruins twenty.
 `tests/test_transcription_failure_analysis.py` is the same pure-function
 shape and is deliberately kept that way: it exercises
 `crud.summarize_failure_rows()` (the chunk-failure diagnostic behind
@@ -802,7 +810,7 @@ that state's covered governments (same table shape as `/coverage`'s
 "Every place we've covered", grouped from the stored jurisdiction's
 canonical `", ST"` suffix via
 `archive/utils/jurisdiction_format.py`'s `state_abbr_from_jurisdiction()`)
-plus the 25 most recently archived meetings, with a self-referential
+plus **featured transcript snippets** (see below), with a self-referential
 canonical (deliberately unlike `/meetings`' filter-blind one) and a link
 to the pre-filtered `/meetings?jurisdiction={StateName}` search. Backed by
 `crud.get_state_page_data()` (anchored `LIKE '%, CA'` suffix match — not
@@ -818,6 +826,74 @@ limitation. A state with zero indexable meetings 404s rather than
 rendering an empty shell, and every `/m/{slug}` page whose jurisdiction
 has a state now links "More {State} meetings" to its state page.
 
+**Rebuilt 2026-08-23** around real quoted transcript text, because
+Search Console measured Google *selectively declining these two page
+types*: `/j/` hubs appeared at 3.6x and `/state/` at 3.1x their sitemap
+share among non-indexed URLs, while `/m/` meeting pages indexed better
+than theirs (0.5x). That ruled out crawl budget and domain age and left
+thin, templated, near-duplicate content — a list of meeting titles is
+templated; a resident explaining why they came to a 9pm hearing is not.
+Both surfaces now lead with:
+
+* **Featured meetings with real transcript snippets** — a genuine quote
+  from each meeting, deep-linked to the second it was said
+  (`/m/{slug}?t={start}`), transcribed meetings only. Picked by
+  `archive/utils/highlights.py`, which scores every candidate window of a
+  transcript against what a reader finds substantive: procedural
+  language (roll call, "motion", "all in favor", "you have three
+  minutes") is heavily negative, dollar figures and "residents"/
+  "concerned" are positive, a curated topic hit is the strongest signal,
+  the first 8%/last 3% of the meeting are skipped as ceremony, and
+  windows after a "public comment" marker get a bonus. Deterministic
+  arithmetic, not an LLM call — it runs for every meeting at ingest and
+  has to be explainable when a bad snippet reaches a public page. Two
+  coherence guards (`_repetition_penalty()`) reject a hammered content
+  word and an interleaved roll-up caption phrase; both were added
+  against snippets this heuristic actually produced on a live page, and
+  the real strings are frozen in `tests/test_highlights.py`.
+* **Topic chips** — curated subjects (`archive/topics.py`, edited by
+  hand) that actually appear in the page's recent transcribed meetings,
+  ranked by how many mention each, top 12 shown. Real `?topic=` links,
+  server-rendered, so a crawler follows them and each variant carries its
+  own real snippets; the canonical stays the bare URL. Discovery is
+  deliberately *not* unsupervised — an uncurated "trending terms" pass
+  over council transcripts surfaces `item`, `supervisor`, `motion`.
+* **Meeting-card thumbnails** at the quoted moment (`/m/{slug}/card.jpg
+  ?t=`), and `VideoObject` structured data for each featured meeting.
+  Both only where `crud.pages_with_thumbnails()` confirms a stored frame
+  — advertising a card URL that would 404 is worse than advertising none.
+* **Grouped government list** (state pages) — Counties & regions /
+  Cities & towns / School districts / Agencies & special districts, via
+  `archive/utils/gov_classify.py` (trusts `meeting_body` where it is
+  conclusive, falls back to the jurisdiction name, defaults
+  conservatively to city). A sticky sidebar beside the results on
+  desktop; below them on mobile, where the results lead. Every `/j/`
+  link stays in the initial HTML in both layouts.
+* **"Most active governments"** (state pages, ≥8 governments) — most
+  meetings archived in the last 90 days.
+
+Snippets are **precomputed and stored** in `meeting_highlights`, not
+computed per request: the heuristic needs a meeting's segments, and a
+long meeting's segment JSON is a six-figure-byte blob (San Diego's Board
+of Directors: 6,313 segments), so computing on demand would decode
+megabytes per render on the exact surface built *for* crawlers. Kept in
+sync from `crud._refresh_search_corpus()` — the same single choke point
+that already recomputes `search_corpus` and upserts `search_vocabulary`
+— so a highlight cannot go stale the way the pre-2026-08-17 corpus could.
+A page with nothing quotable simply has no row, and every consumer
+renders fine without one. `scripts/backfill_meeting_highlights.py` is
+the retroactive sweep and the way to re-run after a change to the
+heuristic (`--force`) or to `archive/topics.py` (which bumps
+`TOPICS_VERSION`, making stale rows self-identify).
+
+`search_queries` (added alongside) logs every `/meetings` keyword with
+**no user identity at all** — keyword, optional jurisdiction filter,
+result count, timestamp; no IP, user id, session, or user agent. It
+exists so the curated topic list can eventually be ranked by real demand
+rather than guesswork (`crud.top_search_keywords()`); nothing renders it
+yet. Written from a FastAPI background task, so a logging failure can
+never break a search.
+
 **`GET /j/{slug}` (per-government hub pages, added 2026-08-17)** — one
 landing page per jurisdiction ("Napa, CA public meeting videos &
 transcripts", `/j/napa-ca`), proxied like `/state/*`. Grouped by
@@ -829,8 +905,11 @@ Francisco, CA") stay separate; the state-page tables group by the same
 slug and link each government to its hub. Each hub lists every archived
 meeting for that government newest-first with transcript badges, a
 meeting-body breakdown ("City Council (30) · Planning Commission (12)"
-from `meeting_body`), date range, a `BreadcrumbList` (Home › State ›
-Jurisdiction) and breadcrumb nav, and links to `/state/{slug}` and the
+from `meeting_body`), date range, the same featured snippets and topic
+chips the state pages carry (6 cards rather than 12 — a hub is one
+government, so after a handful the full meeting list below serves the
+reader better), a `BreadcrumbList` (Home › State › Jurisdiction),
+`VideoObject` structured data and breadcrumb nav, and links to `/state/{slug}` and the
 pre-filtered `/meetings?jurisdiction=` search; every `/m/{slug}` page
 links "More {Jurisdiction} meetings" to its hub. **Thin-content
 threshold**: the archive is wide and shallow (measured 2026-08-17: 574

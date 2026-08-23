@@ -5,6 +5,7 @@ from sqlalchemy import (
     JSON,
     Boolean,
     DateTime,
+    Float,
     ForeignKey,
     Integer,
     LargeBinary,
@@ -622,4 +623,88 @@ class WorkerReportSnapshot(Base):
     cumulative_jobs_completed: Mapped[int] = mapped_column(Integer, nullable=False)
     recorded_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class MeetingHighlight(Base):
+    """One precomputed, quotable moment per meeting page (plus a moment
+    per curated topic present in it) -- what the state pages and
+    jurisdiction hubs render as real transcript snippets with deep links.
+
+    **Why stored rather than computed per request.** The heuristic in
+    `archive/utils/highlights.py` needs the meeting's *segments*, and a
+    long meeting's segment JSON is a six-figure-byte blob (San Diego's
+    Board of Directors: 6,313 segments). A state page features a dozen
+    meetings and a crawler walks every topic x state combination, so
+    computing on demand would decode multiple megabytes per render on the
+    exact surface being built *for* crawlers. Precomputing turns all of
+    that into one indexed row read.
+
+    Kept in sync from `crud._refresh_search_corpus()` -- the same single
+    choke point that already recomputes `MeetingPage.search_corpus` and
+    upserts `search_vocabulary`, for the same reason: every path that
+    creates a TranscriptVersion already calls it, so a highlight cannot
+    silently go stale the way the pre-2026-08-17 corpus did when a
+    Whisper transcript finished after the page's last ingest.
+
+    A page with no quotable transcript simply has no row here (the
+    heuristic returns None for an empty, too-short, or entirely
+    procedural transcript) -- every consumer treats a missing row as
+    "no snippet to show" and renders without one, so this table is
+    additive and nothing breaks if it is empty or lagging.
+    """
+
+    __tablename__ = "meeting_highlights"
+
+    meeting_page_id: Mapped[int] = mapped_column(
+        ForeignKey("meeting_pages.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    # Seconds into the meeting -- a real segment's own `start`, so
+    # /m/{slug}?t={int(start)} lands on the moment being quoted.
+    start_seconds: Mapped[float] = mapped_column(Float, nullable=False)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    # Topic slugs (archive/topics.py) present in `text` itself -- what the
+    # rendered snippet gets <mark>-highlighted for.
+    topics: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    # {topic_slug: {"start": float, "text": str}} -- the best moment for
+    # each topic anywhere in the meeting, not just inside `text`. This is
+    # what makes a ?topic= view a pure table read: no transcript load, no
+    # per-topic scan, at request time.
+    topic_moments: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    # archive/topics.py's TOPICS_VERSION at compute time. A stored row
+    # computed under an older phrase list is stale in a way nothing else
+    # can detect, so the backfill script re-runs those rather than
+    # leaving a meeting tagged for a topic whose definition has moved.
+    topics_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    computed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class SearchQuery(Base):
+    """Every keyword typed into `/meetings`, with no user identity at all.
+
+    Exists to answer one question the curated topic list in
+    `archive/topics.py` currently answers by guesswork: *what are people
+    actually looking for?* Round 1 of the topic chips ranks a hand-written
+    list by corpus hits; once this table has real volume, the same chips
+    can be ranked by real demand, and genuinely popular phrases missing
+    from the curated list become visible instead of invisible.
+
+    **Deliberately identity-free**: keyword, an optional jurisdiction
+    filter, the result count, and a timestamp. No IP, no user id, no
+    session, no user agent -- nothing that could turn a search log into a
+    record of what a named person was researching, which for a site about
+    scrutinizing local government is a meaningful thing not to hold.
+    """
+
+    __tablename__ = "search_queries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    keyword: Mapped[str] = mapped_column(String(200), nullable=False, index=True)
+    jurisdiction: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    result_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
     )

@@ -41,6 +41,7 @@ _init_sentry()
 
 from .db import crud
 from .db.engine import init_models
+from .topics import TOPICS
 from .utils import email as email_utils
 from .utils import social
 from .utils.clerk_auth import clerk_frontend_api_url, get_clerk_user_id
@@ -1806,6 +1807,7 @@ async def meeting_transcript_export(slug: str, ext: str, version: Optional[int] 
 @app.get("/meetings")
 async def meetings_index(
     request: Request,
+    background_tasks: BackgroundTasks,
     page: int = 1,
     q: Optional[str] = None,
     jurisdiction: Optional[str] = None,
@@ -1843,6 +1845,18 @@ async def meetings_index(
         fuzzy=fuzzy_bool,
         sort="relevance" if sort_relevance else "newest",
     )
+    # Record the keyword (and nothing about who typed it) so the curated
+    # topic list in archive/topics.py can eventually be ranked by real
+    # demand instead of guesswork -- see models.SearchQuery. Fire-and-
+    # forget: a logging failure must never break a search, and the write
+    # must never be on the response's critical path.
+    if q and q.strip():
+        background_tasks.add_task(
+            crud.record_search_query,
+            keyword=q.strip()[:200],
+            jurisdiction=jurisdiction,
+            result_count=result.get("total") or 0,
+        )
     return templates.TemplateResponse(
         request,
         "meeting_list.html",
@@ -1910,9 +1924,13 @@ async def coverage(request: Request):
 
 
 @app.get("/state/{state_slug}")
-async def state_page(request: Request, state_slug: str):
+async def state_page(request: Request, state_slug: str, topic: str = ""):
     abbr = STATE_SLUG_TO_ABBR.get(state_slug)
-    data = await crud.get_state_page_data(abbr) if abbr else None
+    # An unknown ?topic= is ignored rather than 404'd: the parameter only
+    # reorders which real meetings are featured, so a stale or
+    # hand-edited value should still render the page. get_state_page_data
+    # validates the slug against TOPICS_BY_SLUG itself.
+    data = await crud.get_state_page_data(abbr, topic_slug=topic or None) if abbr else None
     if data is None:
         # Unknown slug, or a real state with no indexable meetings yet --
         # same in-route 404 pattern as /m/{slug}.
@@ -1925,13 +1943,14 @@ async def state_page(request: Request, state_slug: str):
         {
             **data,
             "state_slug": state_slug,
+            "all_topics": TOPICS,
             "active_account": get_clerk_user_id(request),
         },
     )
 
 
 @app.get("/j/{hub_slug}")
-async def jurisdiction_page(request: Request, hub_slug: str):
+async def jurisdiction_page(request: Request, hub_slug: str, topic: str = ""):
     """Per-government hub: every archived meeting for one jurisdiction
     (see crud.get_jurisdiction_hub_data() -- grouped by
     jurisdiction_hub_slug(), so raw-string variants of one city land on one
@@ -1939,7 +1958,7 @@ async def jurisdiction_page(request: Request, hub_slug: str):
     in-route pattern as /m/{slug} and /state/{slug}. Below
     crud.JURISDICTION_HUB_MIN_INDEXABLE meetings the page renders with a
     noindex (thin-content posture) and stays out of sitemap.xml."""
-    data = await crud.get_jurisdiction_hub_data(hub_slug)
+    data = await crud.get_jurisdiction_hub_data(hub_slug, topic_slug=topic or None)
     if data is None:
         return templates.TemplateResponse(
             request, "not_found.html", {}, status_code=404

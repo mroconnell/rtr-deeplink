@@ -1,0 +1,22 @@
+{#- Topic chips: curated subjects (archive/topics.py) that actually
+    appear in this page's recent transcribed meetings, ranked by how many
+    meetings mention each. Real links to ?topic=, not JS filters, so a
+    crawler follows them and each variant renders server-side with its
+    own real snippets -- while the canonical stays the bare URL, so the
+    variants add crawlable text without competing for the same query.
+
+    `base_url` is the page's own path; `chips` and `active_topic` come
+    from crud._topic_chips(). -#}
+{% if chips %}
+<nav class="topic-chips" aria-label="Filter featured meetings by topic">
+  <span class="topic-chips-label">Being discussed:</span>
+  <a class="topic-chip{% if not active_topic %} topic-chip-active{% endif %}"
+     href="{{ base_url }}"{% if not active_topic %} aria-current="true"{% endif %}>All topics</a>
+  {%- for chip in chips %}
+  <a class="topic-chip{% if chip.selected %} topic-chip-active{% endif %}"
+     href="{{ base_url }}?topic={{ chip.slug }}"{% if chip.selected %} aria-current="true"{% endif %}>
+    {{ chip.label }} <span class="topic-chip-count">{{ chip.count }}</span>
+  </a>
+  {%- endfor %}
+</nav>
+{% endif %}

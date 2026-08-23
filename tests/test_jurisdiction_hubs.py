@@ -232,8 +232,16 @@ async def test_meeting_page_and_state_page_link_to_hub():
     )
     r2 = client.get("/state/california")
     assert 'href="/j/yountville-ca"' in r2.text
-    # ...and the state table shows the two raw variants as ONE row.
-    assert r2.text.count('href="/j/yountville-ca"') == 1
+    # ...and the state page's government list shows the two raw variants
+    # as ONE row. Scoped to that list rather than counting hub links
+    # across the whole page: since 2026-08-23 the page can legitimately
+    # link to the same hub more than once (the "Most active governments"
+    # section links to the busiest hubs, and a featured snippet's card
+    # links to its meeting's government), and a page-wide count would be
+    # asserting something this test never meant to -- the bug it guards
+    # against is a duplicate *row*, one per raw jurisdiction string.
+    gov_list = r2.text.split('class="state-gov-scroll"', 1)[-1]
+    assert gov_list.count('href="/j/yountville-ca"') == 1
 
 
 def test_resolver_proxies_hub_path():

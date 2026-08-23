@@ -19862,3 +19862,113 @@ straight from the source page's own agenda-link `title` attribute,
 re-confirmed by a live re-resolve 2026-08-15 — plausibly a genuine
 `"{meeting type} {body name} MEETING"` template, not an artifact worth
 guessing a general dedup rule from one example.
+
+## [Done 2026-08-23] State & jurisdiction hub pages rebuilt around real transcript snippets (WO-46)
+
+- **[JUST-DO-IT] Google declines to index the *hub* pages, not the
+  meeting pages — audit resolved 2026-08-22, the fix is content, not
+  plumbing.** Search Console showed ~585 non-indexed URLs (294
+  "Discovered", 291 "Crawled") concentrated on `/j/` and `/state/` hub
+  pages, rising. Categorizing the "Crawled" set against `sitemap.xml`
+  found Google **selectively declining hub pages** — `/j/` hubs at
+  3.6× their sitemap share among non-indexed URLs, `/state/` at 3.1×
+  — while `/m/` meeting pages index *better* than their share (0.5×).
+  That rules out crawl-budget exhaustion or domain age as the primary
+  cause (both would suppress roughly proportionally) and confirms thin,
+  templated, near-duplicate hub content instead: the median hub shows
+  **two meetings whether Google indexed it or not**. A meeting-count
+  threshold does **not** separate flagged from unflagged pages — tested
+  against the full 291-row export on both `/j/` and `/state/`, any
+  threshold strong enough to catch the flagged pages suppresses
+  essentially the whole hub surface, so volume-gating is ruled out by
+  measurement, not opinion. Full categorization table, the threshold
+  analysis, and both measurement caveats are in `BACKLOG_DONE.md`'s
+  matching `[Investigated 2026-08-22]` entry.
+
+  **Decided 2026-08-22 — build these two:**
+  1. **Real transcript snippets per jurisdiction** *(chosen)* — genuine
+     quotes from that place's recent meetings, drawn from data already
+     stored. Reuse `archive/utils/search.py`'s `find_matching_segment()`
+     (already does this for the alert emails) rather than growing a
+     second extractor. Strongest signal per unit of work.
+  2. **Meeting-card thumbnails as page imagery** *(chosen)* — WO-37
+     already stored 973 cards, so this is mostly a rendering job. Adds
+     no unique *text* (what Google is judging here), so it supports (1)
+     rather than substituting for it — and makes hubs shareable, which
+     `/m/` pages already are and hubs aren't.
+
+  Not chosen for now, kept for the record: per-jurisdiction summary
+  stats (counts/date range/bodies/platform — real but templated), and
+  `jurisdiction_enrich`-sourced context copy (population, county —
+  partly boilerplate, uneven coverage).
+
+  **Measure before and after** against the 3.6× over-representation
+  figure, not the raw non-indexed count, since the raw count moves with
+  corpus growth.
+
+  ---
+
+  **Built and shipped 2026-08-23.** Both chosen items landed, plus the
+  page restructure they needed to be worth anything.
+
+  **What shipped**
+  - `archive/utils/highlights.py` — picks the one quotable moment in a
+    meeting with no query to go on (which is what makes it different
+    from `search.py`'s `find_snippet`/`find_matching_segment`). Scores
+    every sentence-aligned ~220-char window: procedural language heavily
+    negative, civic substance positive, curated topic hits strongest,
+    first 8%/last 3% skipped, public-comment stretch bonused.
+  - `archive/topics.py` — 20 curated topics, hand-editable, with a
+    `TOPICS_VERSION` that makes stored rows self-identify as stale.
+  - `meeting_highlights` table + Alembic migration, kept in sync from
+    `crud._refresh_search_corpus()` (the existing choke point), with
+    `scripts/backfill_meeting_highlights.py` as the retroactive sweep.
+  - `archive/utils/gov_classify.py` + grouped government list; sticky
+    sidebar on desktop, below the results on mobile.
+  - Topic chips (`?topic=`, server-rendered, canonical stays bare),
+    "Most active governments", freshness line, meeting-card thumbnails
+    at the quoted moment, `CollectionPage`/`ItemList`/`VideoObject`/
+    `BreadcrumbList` structured data.
+  - `search_queries` — identity-free keyword logging, for ranking topics
+    by real demand in a later round.
+
+  **Two things worth knowing before touching this again**
+
+  1. **The heuristic was validated against live data before it was
+     built, and tuned against live data after.** A dry run over 24 real
+     California transcripts came first (this is what convinced anyone it
+     was worth building); a 40-transcript random sample confirmed 40/40
+     produced a usable highlight. Then in-browser verification of the
+     real page surfaced **two bad snippets the offline runs had not** —
+     a hammered content word (Mission Viejo, "personal data" five times)
+     and an interleaved roll-up caption (San Diego, "Five flock data
+     will" restated out of order). `_repetition_penalty()` exists
+     because of those two, and its thresholds were set by measuring good
+     and bad snippets *from the same render* — n-gram duplication was
+     tried first and **rejected as a discriminator by measurement**
+     (Monterey, a good snippet, scored higher than San Diego, a bad
+     one). All of those strings are frozen in `tests/test_highlights.py`.
+     After the fix, San Diego's slot surfaced the **Darth Vader public
+     comment** — the moment that had just gone viral in the press —
+     entirely on its own.
+  2. **Precomputing was not premature optimization.** The first backfill
+     run did not reach 100 pages in 10 minutes. Profiling found three
+     real causes: `_candidate_windows()` ran *twice* per meeting (once
+     per picker), the backtracking repeated-phrase collapse and the
+     all-caps scan ran on all ~26,000 windows instead of the handful
+     returned, and scoring ran 20 separate topic regexes per window
+     where one combined alternation answers the same question. Fixing
+     those took the three largest transcripts in the DB from 14.1s to
+     3.1s (4.5×), and a full 260-page backfill from hours to minutes.
+
+  **Verified**: full suite 1640 passed / 15 skipped; migration applies
+  clean and `alembic check` reports no drift; in-browser at desktop and
+  mobile against a local SQLite seeded with 260 real California meetings
+  copied from production (read-only) — two-pane layout, chips, `<mark>`
+  highlighting, `?topic=` filtering, JSON-LD parsing to a
+  `CollectionPage` with 12 `VideoObject`s, 12 working `?t=` deep links,
+  and the identity-free search log writing rows end-to-end.
+
+  **Docs updated in the same PR**: `README.md` (both page sections
+  rewritten, plus the test-coverage paragraph), `BACKLOG.md` (this entry
+  replaced with the measurement follow-up and two residual gaps).
