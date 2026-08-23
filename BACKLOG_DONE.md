@@ -6,6 +6,77 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## ChampDS cluster root-caused: self-inflicted rate-limiting, not a block [Investigated 2026-08-22]
+
+User asked for a broader pass over cloud-worker and local-batch
+transcription logs after a 25-meeting local-Whisper batch hit a cluster
+of `play.champds.com` failures at its tail. This entry is that
+investigation; the corrected, actionable conclusion lives in
+`BACKLOG.md`'s "Platform & jurisdiction coverage" ChampDS entry.
+
+**ffmpeg-timeout question (the other half of the ask) needed no new
+work** — `GET /internal/transcription-failure-analysis?days=7` (already
+built, see the "single job still makes N consecutive same-host pulls"
+entry above) showed 123/123 cloud-worker chunk failures in the last 7
+days were `ffmpeg timed out`, and 116 of those (94%) hit one host,
+`archive-stream.granicus.com` — already root-caused in this file's
+"Some old/archived Granicus clips' `chunklist.m3u8` genuinely times out"
+entry as a real 504-after-4-6-minute-hang at Granicus's own CloudFront
+edge for old/archived assets, not a rate limit, not fixable from our
+side. Nothing new here; the existing entry already covers it.
+
+**ChampDS, by contrast, was genuinely unexplained** and needed real
+investigation. `render logs --text champds` against both transcription
+workers (7-day window) returned zero hits — the cloud worker has never
+touched these specific pages, so this was purely a local-batch
+phenomenon, no cross-reference available from that side. Went straight
+to the three local batch logs instead:
+
+- Batch 1 (2026-08-21): 1 champds URL succeeded outright
+  (`auburnny/event/123`, 198s, ingested clean), 1 failed
+  (`chathamma/event/1065`, `ffprobe unavailable or timed out`).
+- Batch 2: no champds URLs in the pop.
+- Batch 3 (2026-08-22, 17:24-18:02 PDT): of 12 consecutive
+  `play.champds.com` URLs (queue file sorts roughly alphabetically, so a
+  25-entry pop landed all of them together), 6 failed *instantly*
+  (0.2-0.4s — too fast to be a real network wait, even across the retry
+  wrapper's 2 attempts) with "no usable audio/video source on
+  re-resolve"; 1 (`atlantaga/event/1077`, previously live-verified
+  working 2026-08-16) failed after 2 real ffprobe timeouts; 2
+  (`auburnny/event/445`, `bellemeadetn/event/227`) got partway through
+  extraction (1/6 and 2/4 chunks transcribed and checkpointed) before
+  ffmpeg started timing out; 1 (`chathamma/event/2639`) succeeded
+  outright, 710s, 716 segments.
+
+**Read `champds.py`'s `resolve()`/`_fetch_json()` to explain the 0.2s
+instant failures.** `_fetch_json()` does `if response.status != 200:
+return None` and `except Exception: return None` — any non-200 response
+collapses to the same generic "Could not reach the ChampDS API for this
+meeting" warning with no status code or exception type logged. A fast
+non-200 (403, 429, or similar) explains a 0.2s round trip far better
+than a timeout would (the function's own timeout is 20s).
+
+**Re-curled all 7 failing URLs directly against `playapi.champds.com`
+~7 hours later** (same customer/event pattern the adapter itself uses,
+real browser User-Agent): all 7 returned real `200 OK` with real JSON
+(spot-checked `dczoning/event/1147`'s body — real `MediaInfo` field, a
+real event title). Whatever was happening had already cleared.
+
+**Conclusion**: not a champds-side block. The queue file's alphabetical
+sort clustered 12 same-host resolves together, and
+`transcribe_backlog_locally.py`'s `REQUEST_DELAY_SECONDS = 2.0` paces
+between meetings without being host-aware, so those 12 hit
+`playapi.champds.com`/`play.champds.com`'s media CDN back-to-back with
+no extra spacing — a plausible, self-inflicted trigger for a short-lived
+per-IP rate limit that had already cleared by the time it was re-checked.
+Mixed results within the same cluster (2 clean successes, 2 partial
+successes, only some of the failures instant) are more consistent with
+an intermittent/short-lived limit than a hard block. Two concrete
+follow-ups filed in `BACKLOG.md`: host-aware pacing in the batch
+scripts, and status-code-aware logging in `champds.py`'s `_fetch_json()`
+(and possibly other adapters with the same collapse-to-None pattern) so
+a future cluster doesn't need a manual re-curl to diagnose.
+
 ## Render `buildFilter`s reworked from doc deny-lists into per-service allow-lists — and the previous entry's own "~85%" was wrong by 3x (WO-44) [Done 2026-08-22]
 
 Ryan asked whether pipeline minutes are mostly consumed by rebuilding and
