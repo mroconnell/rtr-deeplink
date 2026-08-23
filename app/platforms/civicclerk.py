@@ -18,6 +18,31 @@ from ..utils.vtt_parser import (
 
 TARGET_LANGUAGE = "en"
 
+# A county tenant's subdomain, when it encodes one at all, reads
+# "{countyname}(co|county){state-code}" -- all four real production
+# instances confirmed live 2026-08-23: churchillconv (Churchill County,
+# NV), lincolncoor (Lincoln County, OR), fultoncoin (Fulton County, IN),
+# lancastercosc (Lancaster County, SC). Never trusted alone: the parse
+# only wins when the meeting venue's own ZIP independently maps to the
+# SAME county via the Census ZCTA crosswalk (see
+# _county_tenant_jurisdiction()), which is what keeps a city subdomain
+# that merely contains "co{state}" letters (chicoca -> "chi"+co+ca,
+# sanfranciscoca -> "sanfrancis"+co+ca) from ever matching -- their ZIP
+# counties don't agree with the accidental name fragment.
+_COUNTY_SUBDOMAIN_RE = re.compile(r"^(?P<name>[a-z][a-z.\-]*?)(?:co|county)(?P<st>[a-z]{2})\d*$")
+
+# County-body meeting names, anchored at the start so "Joint Meeting
+# with County Board" (a city meeting that merely involves the county)
+# can never match. Both real shapes confirmed live: "County Board of
+# Supervisors" (sccwi -- St. Croix County, WI, whose subdomain encodes
+# nothing parseable), "Board of County Commissioners - ..."
+# (churchillconv).
+_COUNTY_BODY_EVENT_RE = re.compile(
+    r"^\s*(?:county\s+(?:board|council|commission)\b"
+    r"|board\s+of\s+county\s+commissioners\b)",
+    re.IGNORECASE,
+)
+
 
 class CivicClerkAssetFinder(AssetFinder):
     """Resolves video + transcript/chapters for a CivicClerk meeting page.
@@ -88,6 +113,17 @@ class CivicClerkAssetFinder(AssetFinder):
                 # to the same shared lookup every free-text adapter uses.
                 state = jurisdiction_enrich.lookup_city_state(city)
             jurisdiction = ", ".join(p for p in (city, state) if p) or None
+            # eventLocation is the meeting VENUE's address, not the
+            # government's name -- for a county tenant the venue city is
+            # the county seat, so the plain join above files a county
+            # government under an unrelated city. See
+            # _county_tenant_jurisdiction() for the four real production
+            # rows this produced and the two signals that correct it.
+            county_jurisdiction = self._county_tenant_jurisdiction(
+                subdomain, event, location
+            )
+            if county_jurisdiction:
+                jurisdiction = county_jurisdiction
             if not jurisdiction:
                 # eventLocation is sometimes entirely empty (city AND
                 # state both null, not just a missing state) -- confirmed
@@ -309,6 +345,56 @@ class CivicClerkAssetFinder(AssetFinder):
             video_warnings=video_warnings,
             transcript_warnings=transcript_warnings,
         )
+
+    @staticmethod
+    def _county_tenant_jurisdiction(
+        subdomain: str, event: dict, location: dict
+    ) -> Optional[str]:
+        """The county government's own "{Name} County, {ST}" when this
+        tenant is demonstrably a county, else None.
+
+        eventLocation is a street address for the meeting VENUE. For a
+        county government the venue sits in the county seat, so using
+        `location.city` as the jurisdiction files the county's meetings
+        under an unrelated city government -- four real production rows
+        confirmed live 2026-08-23: St. Croix County WI stored as
+        "Hudson, WI", Churchill County NV as "Fallon, NV", Lincoln
+        County OR as "Newport, OR", Fulton County IN as "Rochester, IN"
+        (each city is exactly that county's seat).
+
+        The county identity is recovered from the venue ZIP via the
+        Census ZCTA-county crosswalk, but only when a second,
+        independent signal says "this tenant is a county" at all:
+        either the subdomain encodes the same county
+        (`_COUNTY_SUBDOMAIN_RE` -- the ZIP county and the subdomain
+        name must AGREE, see that regex's comment for why neither
+        signal is trusted alone), or the meeting's own name is
+        anchored county-body phrasing (`_COUNTY_BODY_EVENT_RE`). A
+        plain city meeting matches neither and keeps today's behavior
+        untouched.
+        """
+        zip_code = (location.get("zipCode") or "").strip()[:5]
+        if not zip_code:
+            return None
+        zip_county = jurisdiction_enrich.lookup_county_by_zip(zip_code)
+        if not zip_county:
+            return None
+        county_name, county_state = zip_county
+        result = f"{county_name}, {county_state}"
+
+        m = _COUNTY_SUBDOMAIN_RE.match(subdomain)
+        if m and m.group("st").upper() == county_state:
+            county_key = re.sub(
+                r"[^a-z]", "", re.sub(r"(?i)\s+county$", "", county_name).lower()
+            )
+            subdomain_key = re.sub(r"[^a-z]", "", m.group("name"))
+            if county_key and county_key == subdomain_key:
+                return result
+
+        for field in ("eventName", "categoryName", "agendaName"):
+            if _COUNTY_BODY_EVENT_RE.match(event.get(field) or ""):
+                return result
+        return None
 
     @staticmethod
     async def _fetch_captions(session: aiohttp.ClientSession, caption_url: str):

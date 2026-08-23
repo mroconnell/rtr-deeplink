@@ -48,24 +48,16 @@ def _payload(
 
 async def _seed(external_id, meeting_body=None, **kwargs) -> str:
     url = f"https://example.com/hub-seed/{external_id}"
-    result = await crud.ingest_resolution(_payload(external_id, url, **kwargs), url)
+    payload = _payload(external_id, url, **kwargs)
     if meeting_body:
-        # meeting_body isn't a payload field -- ingest derives it via
-        # finalize_jurisdiction() (e.g. "Housing Authority of ...") -- so
-        # set it directly on the row, the way a real split would have.
-        from sqlalchemy import select
-
-        from archive.db.engine import async_session
-        from archive.db.models import MeetingPage
-
-        async with async_session() as session:
-            page = (
-                await session.execute(
-                    select(MeetingPage).where(MeetingPage.slug == result["slug"])
-                )
-            ).scalar_one()
-            page.meeting_body = meeting_body
-            await session.commit()
+        # meeting_body IS a payload field since 2026-08-23 (an adapter
+        # that names the governing body itself, e.g. Granicus's RSS
+        # channel title, sends it; crud prefers it over the
+        # finalize_jurisdiction() split) -- seeding through the payload
+        # exercises that pass-through on every hub test. This helper
+        # previously had to set the column directly post-ingest.
+        payload["meeting_body"] = meeting_body
+    result = await crud.ingest_resolution(payload, url)
     return result["slug"]
 
 

@@ -189,15 +189,43 @@ def _normalize_candidates(name: str) -> List[str]:
     return [as_is] if stripped == as_is else [as_is, stripped]
 
 
+# A Census/StatsCan name carrying a real alternate name in parentheses --
+# e.g. "San Buenaventura (Ventura) city,CA" and "El Paso de Robles (Paso
+# Robles) city,CA" (both confirmed by grepping places.csv directly,
+# 2026-08-23). Without indexing the alternate, "Ventura" only ever
+# matched the tiny Ventura, IA and "Paso Robles" matched nothing at all
+# -- the first produced two real production rows stored as "City of
+# Ventura, IA" for California's Ventura city/county (see BACKLOG_DONE.md,
+# jurisdiction data-quality pass), the second is BACKLOG.md's own
+# "Lloydminster/Paso Robles missing from the table" finding. NOT every
+# parenthetical is a name: Census also writes "(Part)", "(balance)",
+# "(North Half)" and numbered reserve fragments, which must not become
+# lookup keys -- filtered by `_PAREN_JUNK_RE` (a word filter plus any
+# digit) rather than a curated row list, since the junk shapes are
+# structural, not per-row.
+_PAREN_ALT_RE = re.compile(r"^(?P<outer>[^()]*\S)\s*\((?P<alt>[^()]+)\)(?P<tail>[^()]*)$")
+_PAREN_JUNK_RE = re.compile(r"\b(?:part|balance|half)\b|\d", re.IGNORECASE)
+
+
 def _load_name_state_table(filename: str) -> Dict[str, List[str]]:
     table: Dict[str, List[str]] = {}
     path = _DATA_DIR / filename
     if not path.exists():
         return table
+
+    def _add(key: str, state: str) -> None:
+        if key and state not in table.setdefault(key, []):
+            table[key].append(state)
+
     with open(path, encoding="utf-8") as f:
         for row in csv.DictReader(f):
-            key = _normalize_name(row["name"])
-            table.setdefault(key, []).append(row["state"])
+            _add(_normalize_name(row["name"]), row["state"])
+            if "(" in row["name"]:
+                m = _PAREN_ALT_RE.match(row["name"].strip())
+                if m and not _PAREN_JUNK_RE.search(m.group("alt")):
+                    tail = m.group("tail")
+                    _add(_normalize_name(f"{m.group('outer')}{tail}"), row["state"])
+                    _add(_normalize_name(f"{m.group('alt')}{tail}"), row["state"])
     return table
 
 
@@ -293,6 +321,31 @@ def is_literal_known_place(name: str) -> bool:
     return key in _PLACE_STATES or key in _COUNTY_STATES
 
 
+# Trailing "City"/"Town" as vendor branding rather than part of the real
+# name -- see the finalize_jurisdiction() fast-path comment for the real
+# IQM2 tenants this was built from. "County"/"Parish" are deliberately
+# NOT in this pattern: a county tenant's trailing "County" is the entity
+# type of what's actually being named ("Madera County" is the
+# government's real name), the same reasoning `_validated_label_extract_
+# with_state()`'s tier 4 already documents for Pitkin County.
+_BRANDING_TYPE_SUFFIX_RE = re.compile(r"^(?P<body>.+\S)\s+(?:City|Town)$")
+
+
+def _strip_branding_type_suffix(name: str) -> Optional[str]:
+    """The name with a bogus trailing "City"/"Town" removed, or None when
+    no safe strip exists. Safe means: the full name is NOT itself a
+    literal table key (so "Redwood City"/"Foster City"/"Oklahoma City"/
+    "Carson City" are never touched) while the stripped base IS one (so
+    the strip lands on a real place, never on a fragment)."""
+    m = _BRANDING_TYPE_SUFFIX_RE.match(name.strip())
+    if not m:
+        return None
+    if is_literal_known_place(name):
+        return None
+    body = m.group("body")
+    return body if is_literal_known_place(body) else None
+
+
 def lookup_county_by_zip(zip_code: str) -> Optional[Tuple[str, str]]:
     """(county_name, state) for the real county with the largest overlap
     with this ZIP -- picked via AREALAND_PART, since ~30% of real ZCTAs
@@ -340,7 +393,14 @@ def find_zip_addresses(text: str) -> List[Tuple[str, str, str]]:
 @dataclass(frozen=True)
 class KnownJurisdiction:
     name: str
-    type: str  # "city" or "county"
+    # "city" or "county" for ordinary governments (the only two values
+    # resolve_state() ever matches against); a special-purpose entity
+    # (transportation authority, sanitary district) uses a descriptive
+    # word ("authority", "district") instead -- it participates in
+    # domain overrides and display but never in city/county state
+    # resolution, and known_jurisdiction_display() renders it as
+    # "{name}, {state}" rather than "{Type} of {name}, {state}".
+    type: str
     # "fallback" (default): used only to fill a missing state, or to
     # supply a jurisdiction when the caller found none at all -- never
     # overrides a real extracted name, even a wrong one. "authoritative":
@@ -426,6 +486,58 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     # -- see known_jurisdiction_display() below.
     "slc.primegov.com": KnownJurisdiction(
         "Salt Lake City", "city", "UT", strength="authoritative"
+    ),
+    # Second and third confirmed instances of the same PrimeGov body-text
+    # false-positive shape (2026-08-23, found via Google's crawl of
+    # /state/california -- see BACKLOG.md's PrimeGov jurisdiction entry):
+    # ccta.primegov.com is the Contra Costa Transportation Authority
+    # (its own agenda header names it; the unscoped body-text search
+    # instead grabbed an agenda item's "City of Hercules GMP Compliance
+    # Checklist"), and cityoflancasterca.primegov.com is the City of
+    # Lancaster, CA (the search grabbed "City of Lancaster Community
+    # Development Department" -- a department, not a government). Both
+    # authoritative for the same reason SLC is: the domain is the more
+    # trustworthy signal than this platform's text extraction.
+    "ccta.primegov.com": KnownJurisdiction(
+        "Contra Costa Transportation Authority",
+        "authority",
+        "CA",
+        strength="authoritative",
+    ),
+    "cityoflancasterca.primegov.com": KnownJurisdiction(
+        "Lancaster", "city", "CA", strength="authoritative"
+    ),
+    # Ventura, CA x2 (2026-08-23): the Census gazetteer names the city
+    # "San Buenaventura (Ventura)", so before the parenthetical-alt-name
+    # indexing in _load_name_state_table() a bare "Ventura" lookup
+    # resolved uniquely to tiny Ventura, IA -- both these real customers'
+    # pages archived as "City of Ventura, IA". Now "Ventura" is
+    # (correctly) nationally ambiguous, so each confirmed real customer
+    # gets pinned here: ventura.primegov.com is the County of Ventura,
+    # CA (its own agenda header: "Board of Supervisors / Ventura County",
+    # confirmed live), cityofventura.granicus.com is the City of
+    # Ventura, CA (its own RSS channel title: "City of Ventura",
+    # confirmed live). Authoritative because the stored rows prove the
+    # text-derived answer on these domains is confidently wrong, not
+    # merely missing.
+    "ventura.primegov.com": KnownJurisdiction(
+        "Ventura County", "county", "CA", strength="authoritative"
+    ),
+    "cityofventura.granicus.com": KnownJurisdiction(
+        "Ventura", "city", "CA", strength="authoritative"
+    ),
+    # Costa Mesa Sanitary District (pub-cmsd.escribemeetings.com,
+    # 2026-08-23) -- the page's own venue line names it ("Costa Mesa
+    # Sanitary District - 290 Paularino Ave., Costa Mesa, CA 92626",
+    # confirmed live). A special district is in no Census table, so the
+    # eScribe adapter's Census-validated extraction correctly declines
+    # ("Cmsd" was the OLD stored garbage, from before that adapter's
+    # validation landed); this entry supplies the real name instead of
+    # leaving the page jurisdiction-less. Authoritative so the recompute
+    # backfill can also repair the existing "Cmsd, CA" row, which is
+    # confirmed wrong rather than merely unvalidated.
+    "pub-cmsd.escribemeetings.com": KnownJurisdiction(
+        "Costa Mesa Sanitary District", "district", "CA", strength="authoritative"
     ),
     # Hyland "OnBase Agenda Online" -- confirmed live 2026-08-16, none of
     # the 3 known customer domains carries reliable in-page jurisdiction
@@ -610,6 +722,20 @@ def known_jurisdiction_display(netloc: str) -> Optional[str]:
     known = lookup_by_domain(netloc)
     if not known:
         return None
+    # A special-purpose entity ("authority"/"district" -- see
+    # KnownJurisdiction.type) or a name that already carries its own type
+    # word as a suffix without being a literal gazetteer name ("Ventura
+    # County") renders as-is: "County of Ventura County" and "City of
+    # Contra Costa Transportation Authority" are exactly the doubled/
+    # mistyped shapes this guard exists to prevent. A literal real name
+    # that happens to end in its type word ("Salt Lake City") still gets
+    # the prefix -- "City of Salt Lake City, UT" is that government's
+    # own established display form here.
+    ends_with_type = re.search(rf"\b{known.type}$", known.name, re.IGNORECASE)
+    if known.type not in ("city", "county", "town") or (
+        ends_with_type and not is_literal_known_place(known.name)
+    ):
+        return f"{known.name}, {known.state}"
     return f"{known.type.capitalize()} of {known.name}, {known.state}"
 
 
@@ -1453,6 +1579,25 @@ def finalize_jurisdiction(
             override = _subdomain_override(subdomain_hint, suffix, netloc)
             if override:
                 return JurisdictionResult(override, None, "repaired")
+        # Vendor-branding "X City" that isn't the place's real name --
+        # "Arcata City"/"Redding City"/"Healdsburg City"/"Ringgold City"
+        # (IQM2 tenants' own page titles, confirmed live 2026-08-23; the
+        # real places are just "Arcata"/"Redding"/...). These "validate"
+        # only via `_normalize_candidates()`'s trailing-type-word strip,
+        # so the stored string keeps the bogus " City" and splits one
+        # real government across two /j/ hubs ("Arcata, CA" vs "Arcata
+        # City, CA" -- the duplicate-hub cluster found via Google's crawl
+        # of /state/california). `is_literal_known_place()` separates the
+        # two cases exactly: real "X City" names (Redwood City, Foster
+        # City, Oklahoma City) are literal table keys and stay whole;
+        # branding "X City" is not literal while its base is.
+        stripped = _strip_branding_type_suffix(base)
+        if stripped:
+            return JurisdictionResult(
+                f"{stripped}{_fill_missing_state(stripped, suffix, netloc)}",
+                None,
+                "repaired",
+            )
         # Real bug found 2026-08-21 via a /coverage sort-adjacency scan
         # (BACKLOG.md's "16 real pairs of a jurisdiction appearing twice"
         # entry): unlike the `_trim_repair()`/`_split_entity_prefix()`
@@ -1484,6 +1629,24 @@ def finalize_jurisdiction(
             "validated",
         )
 
+    # Glued CamelCase ("MaderaCounty" -- maderacountyca.iqm2.com's own
+    # page title, confirmed live 2026-08-23 alongside 5 more IQM2 tenants
+    # with the same title-as-branding shape) -- worth exactly one cheap
+    # candidate: split at every lower->Upper boundary and accept only if
+    # the spaced form is a real table key. A real name that already
+    # validates whole (McAllen, DeKalb, LaSalle) took the fast path above
+    # and never reaches here, so interior-capital real names can't be
+    # mangled by this.
+    decameled = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", base)
+    if decameled != base and _table_lookup(decameled):
+        stripped = _strip_branding_type_suffix(decameled)
+        repaired_name = stripped or decameled
+        return JurisdictionResult(
+            f"{repaired_name}{_fill_missing_state(repaired_name, suffix, netloc)}",
+            None,
+            "repaired",
+        )
+
     trimmed = _trim_repair(base)
     if trimmed:
         repaired_name, _table = trimmed
@@ -1510,6 +1673,29 @@ def finalize_jurisdiction(
         return JurisdictionResult(
             f"{jurisdiction_half}{final_suffix}", body, "repaired"
         )
+
+    # Fully-glued single token, possibly with a glued state code
+    # ("RochestercityMN" -- rochestercitymn.iqm2.com's own page title,
+    # confirmed live; BACKLOG.md's "RochestercityMN" entry predicted this
+    # fix would become buildable the moment a second glued-title IQM2
+    # customer appeared, and 2026-08-23's data-quality pass found five
+    # more). Reuses the same Census-validated label extractor every
+    # subdomain path already trusts -- it declines rather than guessing
+    # (acronyms like "Cmsd" come back None and fall through unchanged) --
+    # then strips vendor branding off the result the same way the fast
+    # path above does ("Rochester City" -> "Rochester").
+    if " " not in base and len(base) >= 6:
+        hit = _validated_label_extract_with_state(base.lower())
+        if hit:
+            glued_name, glued_state = hit
+            glued_name = _strip_branding_type_suffix(glued_name) or glued_name
+            glued_suffix = suffix or (f", {glued_state}" if glued_state else "")
+            return JurisdictionResult(
+                f"{glued_name}"
+                f"{glued_suffix or _fill_missing_state(glued_name, '', netloc)}",
+                None,
+                "repaired",
+            )
 
     if known:
         return JurisdictionResult(f"{known.name}, {known.state}", None, "fallback")
@@ -2005,6 +2191,52 @@ def _base_name_key(jurisdiction: str) -> str:
     return candidates[-1] if candidates else base.lower()
 
 
+def _county_retype_from_page_text(candidate: str, page_text: str) -> str:
+    """Retype a bare subdomain-derived name as a county when the page's
+    own text says it is one -- "{Name} County" or "County of {Name}" --
+    and no "City of {Name}" phrasing contradicts it.
+
+    Real, confirmed-live failure this closes (2026-08-23, found via
+    Google's crawl of /state/california): `albemarle.granicus.com`'s clip
+    pages carry "Albemarle County" in their own visible text (plus a
+    Board of Supervisors title and an albemarle.legistar1.com agenda
+    link), but the shared chain's subdomain tier hands back the bare
+    label "Albemarle", `enrich_jurisdiction_text()` types a bare name as
+    a CITY, and "Albemarle" the city uniquely resolves to... North
+    Carolina. Result: a real Virginia county government archived as
+    "Albemarle, NC", a different state's unrelated city. The county
+    table knows "Albemarle County" -> VA unambiguously the whole time.
+
+    Guards, in order:
+    - Only a bare candidate (no government-type word of its own) is ever
+      retyped -- a "City of X" stop-rule candidate is already typed and
+      never reaches here (this runs on the subdomain tier only).
+    - The page must actually contain county phrasing for THIS name.
+    - "City of {Name}" anywhere on the page vetoes the retype: a city
+      page can legitimately mention its surrounding same-named county
+      (e.g. a "Fresno" city page mentioning Fresno County), and when the
+      page names both, the text tiers above this one already had first
+      claim on the explicit "City of X" phrasing.
+    - "{Name} County" must itself be a real county name in the tables --
+      otherwise the retyped string couldn't validate and the tier's own
+      validation gate below would discard it anyway.
+    """
+    if _TYPE_HINT_RE.search(candidate) or _COUNTY_TYPE_HINT_RE.search(candidate):
+        return candidate
+    escaped = re.escape(candidate)
+    if not re.search(
+        rf"\b(?:County\s+of\s+{escaped}|{escaped}\s+County)\b", page_text
+    ):
+        return candidate
+    if re.search(rf"\bCity\s+of\s+{escaped}\b", page_text):
+        return candidate
+    retyped = f"{candidate} County"
+    for norm in _normalize_candidates(retyped):
+        if _COUNTY_STATES.get(norm):
+            return retyped
+    return candidate
+
+
 def extract_jurisdiction_chain(*, page_text: str, html: str, url: str) -> Optional[str]:
     """Shared fallback chain for adapters whose own primary extraction
     found nothing: stop-rule body regex -> capitalization-bounded walk ->
@@ -2081,6 +2313,8 @@ def extract_jurisdiction_chain(*, page_text: str, html: str, url: str) -> Option
         candidate = extractor()
         if not candidate:
             continue
+        if tier == "subdomain":
+            candidate = _county_retype_from_page_text(candidate, page_text)
         enriched = enrich_jurisdiction_text(
             candidate, netloc=netloc, page_text=page_text
         )

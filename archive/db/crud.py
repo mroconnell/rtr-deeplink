@@ -1,6 +1,7 @@
 import hashlib
 import logging
 import math
+import re
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional, Sequence, Set
@@ -468,7 +469,10 @@ async def _find_or_create_page(
             title=payload.get("title"),
             date=payload.get("date"),
             jurisdiction=jurisdiction,
-            meeting_body=jx_result.meeting_body,
+            # An adapter that names the governing body itself (Granicus's
+            # RSS channel title, 2026-08-23) beats the split-from-
+            # jurisdiction fallback finalize_jurisdiction() produces.
+            meeting_body=payload.get("meeting_body") or jx_result.meeting_body,
             jurisdiction_confidence=jx_result.confidence,
             video_url=payload.get("video_url"),
             video_format=payload.get("video_format"),
@@ -516,6 +520,13 @@ async def _find_or_create_page(
         if jurisdiction:
             page.meeting_body = jx_result.meeting_body
             page.jurisdiction_confidence = jx_result.confidence
+        # Truthy-gated like every other refresh field above: an adapter
+        # that names the governing body itself overrides both the stored
+        # value and the jurisdiction-split fallback just applied, but a
+        # payload that omits it (every partial transcript-only pusher)
+        # can never clear one.
+        if payload.get("meeting_body"):
+            page.meeting_body = payload["meeting_body"]
         page.video_url = payload.get("video_url") or page.video_url
         page.video_format = payload.get("video_format") or page.video_format
         if payload.get("agenda_items"):
@@ -2437,6 +2448,96 @@ async def apply_jurisdiction_bleed_backfill(
             "applied_count": len(changes),
             "skipped_by_filter": skipped_by_filter,
             "changes": changes,
+        }
+
+
+async def clear_future_meeting_dates(
+    *,
+    dry_run: bool = True,
+    grace_days: int = 7,
+    only_ids: Optional[Set[int]] = None,
+) -> dict:
+    """Null out MeetingPage.date on rows whose stored date lies further
+    than `grace_days` in the future -- same recompute-only,
+    dry-run-first shape as apply_jurisdiction_bleed_backfill() above
+    (never accepts a caller-supplied replacement date; the only write it
+    can ever perform is date -> NULL on a row the recompute itself
+    flagged).
+
+    Why this exists (2026-08-23, found via Google's crawl of
+    /state/california): Granicus's body-text date fallback used to store
+    a future date mined from arbitrary agenda text as the meeting's own
+    date -- confirmed on three real customers (Mission Viejo's
+    "General Municipal Election on November 3, 2026" item, Tulsa's
+    "term expires December 31, 2026", Tarrant County College's
+    "Services Through August 31, 2026"). The extraction is fixed (the
+    body scan now rejects future matches, and the RSS item date beats a
+    body guess -- see granicus.py), but a re-ingest can't repair the
+    stored rows: `page.date = payload.get("date") or page.date` is
+    truthy-gated on purpose, so an honest date=None re-resolve keeps the
+    wrong stored date forever. A NULL date renders fine everywhere
+    (date-less pages already exist) and is strictly more honest than a
+    fabricated future one.
+
+    `grace_days` keeps genuinely-scheduled near-future meetings intact:
+    a real agenda page can legitimately be published days ahead
+    (confirmed live: Sarasota County's OnBase agenda for an Aug 25
+    meeting, resolved Aug 23), but no real recorded meeting sits months
+    out. Rows inside the window are reported (as "kept_in_grace_window")
+    but never touched.
+    """
+    today = datetime.now(timezone.utc).date()
+    cutoff = (today + timedelta(days=max(0, grace_days))).isoformat()
+    async with async_session() as session:
+        rows = (
+            await session.execute(
+                select(
+                    MeetingPage.id,
+                    MeetingPage.slug,
+                    MeetingPage.date,
+                    MeetingPage.platform,
+                ).where(MeetingPage.date > today.isoformat())
+            )
+        ).all()
+
+        changes = []
+        kept_in_grace_window = []
+        skipped_by_filter = 0
+        for page_id, slug, date, platform in rows:
+            # The column is a string; the SQL `>` above is a lexical
+            # compare that a non-ISO value (e.g. a stray "Sept ..."
+            # shape, see /internal/date-format-audit) can satisfy
+            # spuriously. Only a clean ISO date is ever eligible.
+            if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date or ""):
+                continue
+            entry = {
+                "meeting_page_id": page_id,
+                "slug": slug,
+                "platform": platform,
+                "date": date,
+            }
+            if date <= cutoff:
+                kept_in_grace_window.append(entry)
+                continue
+            if only_ids is not None and page_id not in only_ids:
+                skipped_by_filter += 1
+                continue
+            changes.append(entry)
+
+        if not dry_run and changes:
+            for change in changes:
+                page = await session.get(MeetingPage, change["meeting_page_id"])
+                if page is not None:
+                    page.date = None
+            await session.commit()
+
+        return {
+            "dry_run": dry_run,
+            "cutoff": cutoff,
+            "cleared_count": len(changes),
+            "cleared": changes,
+            "kept_in_grace_window": kept_in_grace_window,
+            "skipped_by_filter": skipped_by_filter,
         }
 
 

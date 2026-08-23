@@ -38,6 +38,14 @@ class ResolvedMeeting(BaseModel):
     title: Optional[str] = None
     date: Optional[str] = None
     jurisdiction: Optional[str] = None
+    # The governing body this specific meeting belongs to ("City
+    # Council", "Board of Supervisors"), when the platform exposes it as
+    # its own field rather than only inside free text -- Granicus's RSS
+    # channel title is the first adapter source (2026-08-23). Flows to
+    # the Archive's MeetingPage.meeting_body column, where it beats the
+    # jurisdiction-string-split fallback finalize_jurisdiction()
+    # produces; None leaves that fallback in charge.
+    meeting_body: Optional[str] = None
     video_url: Optional[str] = (
         None  # m3u8/mp4 URL playable by hls.js/<video>, OR a youtube.com/embed/{id} URL
     )

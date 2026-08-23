@@ -767,3 +767,177 @@ def test_extract_metadata_jurisdiction_bleed_regressions_via_subdomain_fallback(
         assert "Authorizing" not in metadata["jurisdiction"]
         assert "PLEDGE" not in metadata["jurisdiction"]
         assert "Recreation" not in metadata["jurisdiction"]
+
+
+async def test_resolve_retypes_county_from_page_meta_description():
+    # Real Albemarle County, VA clip 1452 (fetched live 2026-08-23). The
+    # page's only jurisdiction text is "for Albemarle County" inside
+    # <meta name="description">; the subdomain label "albemarle" ALSO
+    # validates as the unrelated city of Albemarle, NC, which is exactly
+    # what production stored ("Albemarle, NC" -- a Virginia county's
+    # Board of Supervisors meeting filed under a North Carolina city).
+    # The chain's subdomain tier must retype the bare label as a county
+    # when the page's own text says so -- see
+    # jurisdiction_enrich._county_retype_from_page_text().
+    url = "https://albemarle.granicus.com/player/clip/1452"
+    html = load_fixture("granicus", "albemarle_clip1452.html")
+
+    routes = {
+        url: FakeResponse(status=200, text=html, url=url),
+        "https://albemarle.granicus.com/videos/1452/captions.vtt": FakeResponse(
+            status=404
+        ),
+        "https://albemarle.granicus.com/AgendaViewer.php?clip_id=1452&embedded=1": FakeResponse(
+            status=404
+        ),
+    }
+
+    with mock_session(routes):
+        result = await GranicusAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "Albemarle County, VA"
+    assert result.date == "2026-03-04"  # from the page's own title
+
+
+async def test_resolve_body_text_date_scan_rejects_future_dates():
+    # Real Mission Viejo, CA clip 2515 (fetched live 2026-08-23). The
+    # page carries no meeting date anywhere -- no meta, none in the
+    # title, no view_id for an RSS lookup -- but agenda item 16 reads
+    # "Calling for a General Municipal Election on November 3, 2026",
+    # and the body-text last-resort scan stored that future election
+    # date as the meeting's own date in production. A recorded clip's
+    # meeting date is never meaningfully in the future, so the body scan
+    # must skip future matches and come through honestly dateless.
+    url = "https://missionviejo.granicus.com/player/clip/2515"
+    html = load_fixture("granicus", "missionviejo_clip2515.html")
+
+    routes = {
+        url: FakeResponse(status=200, text=html, url=url),
+        "https://missionviejo.granicus.com/videos/2515/captions.vtt": FakeResponse(
+            status=404
+        ),
+        "https://missionviejo.granicus.com/AgendaViewer.php?clip_id=2515&embedded=1": FakeResponse(
+            status=404
+        ),
+        "https://missionviejo.granicus.com/MinutesViewer.php?clip_id=2515&embedded=1": FakeResponse(
+            status=404
+        ),
+    }
+
+    with mock_session(routes):
+        result = await GranicusAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "City of Mission Viejo, CA"
+    assert result.date is None
+
+
+async def test_resolve_prefers_rss_item_date_over_body_text_guess():
+    # Real Tulsa, OK clip 7694 (page and RSS feed both fetched live
+    # 2026-08-23; the RSS fixture is the real feed trimmed to the
+    # channel header plus clip 7694's own <item>). The page's body text
+    # contains "current term expires December 31, 2026" in an
+    # appointment agenda item, which production stored as the meeting
+    # date; the feed's <gran:pubDateParts yr='2026' mo='08' day='05'>
+    # has the real one. Structured RSS beats a body-text guess (and the
+    # future-date rejection independently discards 12/31 anyway -- this
+    # test pins the priority so a PAST wrong body date would also lose).
+    url = "https://tulsa-ok.granicus.com/player/clip/7694?redirect=true&view_id=4"
+    html = load_fixture("granicus", "tulsa_clip7694.html")
+    rss = load_fixture("granicus", "tulsa_view4_rss_clip7694.xml")
+
+    routes = {
+        url: FakeResponse(status=200, text=html, url=url),
+        "https://tulsa-ok.granicus.com/ViewPublisherRSS.php?view_id=4&mode=video": FakeResponse(
+            status=200, text=rss
+        ),
+        "https://tulsa-ok.granicus.com/videos/7694/captions.vtt": FakeResponse(
+            status=404
+        ),
+        "https://tulsa-ok.granicus.com/AgendaViewer.php?clip_id=7694&embedded=1": FakeResponse(
+            status=404
+        ),
+    }
+
+    with mock_session(routes):
+        result = await GranicusAssetFinder().resolve(url)
+
+    assert result.date == "2026-08-05"
+    assert result.jurisdiction == "City of Tulsa, OK"
+
+
+def test_strip_meeting_access_tail_real_titles():
+    # All five garbage tails are real production titles found 2026-08-23
+    # (see BACKLOG_DONE.md's jurisdiction/data-quality entry) -- one of
+    # them carried a live Zoom passcode into Google's crawl.
+    from app.platforms.granicus import _strip_meeting_access_tail
+
+    cases = [
+        (
+            "BOARD OF SUPERVISORS on 2026-08-11 9:00 AM - "
+            "https://smcgov.zoom.us/j/85158697628",
+            "BOARD OF SUPERVISORS on 2026-08-11 9:00 AM",
+        ),
+        (
+            "City Council on 2024-05-14 6:00 PM - CLOSED SESSION - 6:00 P.M., "
+            "REGULAR MEETING - 7:00 P.M.In-Person in Council Chambers or to "
+            "Listen only: Zoom ID: 853 6598 5956Zoom Passcode: 123456",
+            "City Council on 2024-05-14 6:00 PM - CLOSED SESSION - 6:00 P.M., "
+            "REGULAR MEETING - 7:00 P.M.",
+        ),
+        (
+            "Commission Workshop  on 2025-02-11 6:30 PM - Live stream via "
+            "https://zoom.us/join\nZoom Meeting ID:  870 2043 1217",
+            "Commission Workshop  on 2025-02-11 6:30 PM",
+        ),
+        (
+            "Committee of the Whole on 2024-04-02 1:30 PM - "
+            "Meeting ID: 895 1103 3332 Passcode: 193069",
+            "Committee of the Whole on 2024-04-02 1:30 PM",
+        ),
+        # Negative controls: ordinary titles must come through untouched.
+        ("Regular City Council Meeting", "Regular City Council Meeting"),
+        (
+            "Board of Supervisors on 2026-03-04 1:00 PM - Regular First Meeting",
+            "Board of Supervisors on 2026-03-04 1:00 PM - Regular First Meeting",
+        ),
+    ]
+    for raw, expected in cases:
+        assert _strip_meeting_access_tail(raw) == expected
+
+
+async def test_resolve_populates_meeting_body_from_rss_channel_title():
+    # Synthetic RSS reusing the exact confirmed channel-title schema
+    # ("{Jurisdiction}: {Body} (Videos Feed)" -- confirmed across 6 real
+    # cities 2026-08-06, see _fetch_channel_info's docstring; "City of
+    # San Diego: City Council Meetings" is that docstring's own real
+    # example). Synthetic because the real Tulsa fixture's channel body
+    # ("TGOV - Tulsa Government Access Television") legitimately carries
+    # no governing-body keyword and correctly produces meeting_body=None.
+    url = "https://sandiego.granicus.com/player/clip/99?view_id=3"
+    html = (
+        "<html><head><meta property='og:title' content='Budget Hearing on "
+        "2024-05-06 2:00 PM'/></head><body>City of San Diego</body></html>"
+    )
+    rss = (
+        "<rss><channel><title>City of San Diego: City Council Meetings "
+        "(Videos Feed)</title></channel></rss>"
+    )
+    routes = {
+        url: FakeResponse(status=200, text=html, url=url),
+        "https://sandiego.granicus.com/ViewPublisherRSS.php?view_id=3&mode=video": FakeResponse(
+            status=200, text=rss
+        ),
+        "https://sandiego.granicus.com/videos/99/captions.vtt": FakeResponse(
+            status=404
+        ),
+        "https://sandiego.granicus.com/videos/99/player": FakeResponse(status=404),
+        "https://sandiego.granicus.com/AgendaViewer.php?clip_id=99&embedded=1": FakeResponse(
+            status=404
+        ),
+    }
+
+    with mock_session(routes):
+        result = await GranicusAssetFinder().resolve(url)
+
+    assert result.meeting_body == "City Council Meetings"
+    assert result.jurisdiction == "City of San Diego, CA"

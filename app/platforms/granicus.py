@@ -1,7 +1,7 @@
 import asyncio
 import random
 import re
-from datetime import datetime
+from datetime import date as _date, datetime, timedelta
 from typing import List, Optional, Dict, Tuple
 from urllib.parse import urlparse, parse_qs
 
@@ -49,6 +49,37 @@ _PREVIOUS_MEETING_DATE_RE = re.compile(
 # worth appending to a page-scraped title that doesn't already name a body,
 # versus a generic/unhelpful channel label not worth adding as noise.
 GOVERNING_BODY_KEYWORDS = ("council", "commission", "board", "committee", "hearing")
+
+# Meeting-access boilerplate a customer pastes into the clip's own title:
+# Zoom join URLs, meeting IDs, passcodes, attend-in-person instructions.
+# All five markers are real, confirmed live in production titles on
+# 2026-08-23 (San Mateo County x2: trailing "https://smcgov.zoom.us/j/...";
+# Hercules: "...7:00 P.M.In-Person in Council Chambers or to Listen only:
+# Zoom ID: 853 6598 5956Zoom Passcode: ..." -- one title even carried a
+# live Zoom passcode into Google's crawl; Blount County: "Live stream via
+# https://zoom.us/join / Zoom Meeting ID: ..."; one unknown-jurisdiction
+# clip: "Meeting ID: 895 1103 3332 Passcode: 193069"). Everything from
+# the first marker on is dropped; the marker list is closed and curated
+# (the repo's stoplist idiom) rather than a general "looks like
+# instructions" guess, and a title that would become empty is left alone.
+_ACCESS_TAIL_RE = re.compile(
+    r"""[\s\-–—:,]*
+    (?:
+        (?:https?://)?[a-z0-9.\-]*zoom\.us/\S*
+      | zoom\s+(?:meeting\s+)?id\s*:
+      | zoom\s+passcode\s*:
+      | meeting\s+id\s*:\s*\d[\d\s]{4,}
+      | passcode\s*:\s*\S+
+      | in-?person\s+(?:in|at)\s
+      | live\s+stream\s+via\s
+    ).*$""",
+    re.IGNORECASE | re.VERBOSE | re.DOTALL,
+)
+
+
+def _strip_meeting_access_tail(title: str) -> str:
+    stripped = _ACCESS_TAIL_RE.sub("", title).strip(" \t\r\n-–—:,")
+    return stripped or title
 
 US_STATE_ABBREVIATIONS = {
     "al",
@@ -187,17 +218,34 @@ class GranicusAssetFinder(AssetFinder):
             or text_of("h1")
             or (soup.title.get_text(strip=True) if soup.title else None)
         )
+        if title:
+            title = _strip_meeting_access_tail(title)
 
         date = None
+        # Where the date came from matters downstream: resolve() lets the
+        # RSS item's structured date beat a "body"-sourced one (a guess
+        # mined from arbitrary agenda text) but never a "meta"/"title"
+        # one (the page's own statement about this meeting) -- see the
+        # Tulsa case in _parse_date_string()'s docstring, where the RSS
+        # feed had the real date all along and the body guess won.
+        date_source = None
         date_str = meta_content('meta[property="article:published_time"]')
         if date_str:
             date = self._parse_date_string(date_str)
+            date_source = "meta" if date else None
         if not date and title:
             date = self._parse_date_string(title)
+            date_source = "title" if date else None
         if not date:
             body_text = soup.get_text(" ", strip=True)[:2000]
             body_text = _PREVIOUS_MEETING_DATE_RE.sub("", body_text)
-            date = self._parse_date_string(body_text)
+            # +1 day of tolerance: "today" in the server's timezone can
+            # trail the customer's own local date for a same-day archive.
+            date = self._parse_date_string(
+                body_text,
+                max_date=(_date.today() + timedelta(days=1)).isoformat(),
+            )
+            date_source = "body" if date else None
 
         # "City of San Diego" in the page body is a more reliable jurisdiction
         # source than guessing from the subdomain -- confirmed present on
@@ -269,6 +317,7 @@ class GranicusAssetFinder(AssetFinder):
         return {
             "title": title[:500],
             "date": date,
+            "date_source": date_source,
             "jurisdiction": jurisdiction[:200],
             "page_text": page_text,
         }
@@ -302,7 +351,23 @@ class GranicusAssetFinder(AssetFinder):
         return f"{name}, {state_suffix}" if state_suffix else name
 
     @staticmethod
-    def _parse_date_string(text: str) -> Optional[str]:
+    def _parse_date_string(text: str, max_date: Optional[str] = None) -> Optional[str]:
+        """First parseable date in `text`, as YYYY-MM-DD. `max_date`
+        (YYYY-MM-DD, inclusive) skips any match after it and keeps
+        scanning -- used ONLY by the body-text last-resort scan in
+        `_extract_metadata()`: a date mined out of arbitrary agenda text
+        can legitimately be a *future* date that isn't the meeting's own
+        (confirmed live 2026-08-23 on three separate real customers:
+        Mission Viejo's "Calling for a General Municipal Election on
+        November 3, 2026" agenda item, Tulsa's "current term expires
+        December 31, 2026" appointment item, Tarrant County College's
+        "Consulting Services Through August 31, 2026" contract item --
+        every one stored as the meeting's date in production). A
+        recorded clip's own meeting date is never meaningfully in the
+        future, so for that one guessing path a future match is
+        evidence of a wrong match, not a future meeting. Title/meta/RSS
+        dates never pass max_date -- a legitimately-scheduled upcoming
+        meeting resolved early keeps its real future date there."""
         if not text:
             return None
         patterns = [
@@ -312,8 +377,7 @@ class GranicusAssetFinder(AssetFinder):
             r"(0?[1-9]|[12]\d|3[01]),? (20\d{2})\b",
         ]
         for pattern in patterns:
-            match = re.search(pattern, text, re.IGNORECASE)
-            if match:
+            for match in re.finditer(pattern, text, re.IGNORECASE):
                 for fmt in (
                     "%Y-%m-%d",
                     "%m-%d-%Y",
@@ -322,11 +386,14 @@ class GranicusAssetFinder(AssetFinder):
                     "%b %d, %Y",
                 ):
                     try:
-                        return datetime.strptime(match.group(0), fmt).strftime(
+                        parsed = datetime.strptime(match.group(0), fmt).strftime(
                             "%Y-%m-%d"
                         )
                     except ValueError:
                         continue
+                    if max_date and parsed > max_date:
+                        break  # this match is future junk; try the next match
+                    return parsed
         return None
 
     _DOCKET_DATE_RE = re.compile(r"_(\d{2})-(\d{2})-(\d{2})_")
@@ -558,7 +625,15 @@ class GranicusAssetFinder(AssetFinder):
                 page_text=metadata["page_text"],
                 placeholder="Unknown Jurisdiction",
             )
-            if not metadata["date"] and item_date:
+            # The RSS item's structured <gran:pubDateParts> is the feed's
+            # own record of when THIS clip's meeting happened -- it beats
+            # a date that was only ever guessed out of body text (see
+            # _extract_metadata()'s date_source and the Tulsa case in
+            # _parse_date_string()'s docstring), but never overrides the
+            # page's own meta/title statement of its date.
+            if item_date and (
+                not metadata["date"] or metadata.get("date_source") == "body"
+            ):
                 metadata["date"] = item_date
             if not metadata["date"] and clip_id:
                 # Real gap confirmed live 2026-08-10 (Memphis, TN clip
@@ -838,6 +913,15 @@ class GranicusAssetFinder(AssetFinder):
                 title=metadata["title"],
                 date=metadata["date"],
                 jurisdiction=metadata["jurisdiction"],
+                # The RSS channel title's second half ("{Jurisdiction}:
+                # {Body} (Videos Feed)") IS the governing body, when it
+                # names one -- same keyword gate the title-prefixing
+                # above already uses, so "New View"-style channel labels
+                # never land here. Feeds the Archive's meeting_body
+                # column, which classification (County / City / School
+                # district & agency) reads with the jurisdiction string
+                # as its fallback.
+                meeting_body=(channel_body if body_is_meaningful else None),
                 video_url=video_url,
                 video_format=video_format,
                 segments=segments,
