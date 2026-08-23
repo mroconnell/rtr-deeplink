@@ -49,7 +49,7 @@ from ..utils.search import (
 from ..utils.slugify import build_base_slug, random_suffix
 from ..utils.video_formats import IFRAME_EMBED_VIDEO_FORMATS
 from ..utils.highlights import compute_highlight_payload, display_text
-from ..topics import TOPICS, TOPICS_BY_SLUG, TOPICS_VERSION, topic_pattern
+from ..topics import TOPICS, TOPICS_BY_SLUG, TOPICS_VERSION
 from ..utils.gov_classify import GROUP_LABELS, GROUP_ORDER, classify_government
 from ..utils.highlights import highlight_html
 from ..utils.transcription_quality import detect_hallucination_warnings
@@ -722,9 +722,7 @@ async def _refresh_meeting_highlight(session, page: MeetingPage, all_segments) -
         # re-transcription that got *worse* must not keep showing the
         # old text as if it were current.
         await session.execute(
-            delete(MeetingHighlight).where(
-                MeetingHighlight.meeting_page_id == page.id
-            )
+            delete(MeetingHighlight).where(MeetingHighlight.meeting_page_id == page.id)
         )
         return
     values = {
@@ -4286,9 +4284,7 @@ def _build_featured(
     return featured
 
 
-def _topic_chips(
-    highlights: dict[int, dict], active_slug: Optional[str]
-) -> list[dict]:
+def _topic_chips(highlights: dict[int, dict], active_slug: Optional[str]) -> list[dict]:
     """Curated topics that actually appear in this pool, most-covered
     first, with the meeting count behind each one.
 
@@ -4297,7 +4293,7 @@ def _topic_chips(
     no chip, both for a reader and for a crawler following it."""
     counts: dict[str, int] = {}
     for highlight in highlights.values():
-        for slug in (highlight.get("topic_moments") or {}):
+        for slug in highlight.get("topic_moments") or {}:
             counts[slug] = counts.get(slug, 0) + 1
     chips = []
     for topic in TOPICS:
@@ -4412,8 +4408,7 @@ async def get_state_page_data(
             if state_abbr_from_jurisdiction(jurisdiction) != abbr:
                 continue
             has_transcript = (
-                version_id is not None
-                and _has_real_warning_free_transcript(warnings)
+                version_id is not None and _has_real_warning_free_transcript(warnings)
             )
             pages.append(
                 {
@@ -4522,7 +4517,9 @@ async def get_state_page_data(
         ),
         "most_active": most_active,
         "most_active_days": MOST_ACTIVE_WINDOW_DAYS,
-        "recently_added_count": sum(1 for p in pages if _within(p, FRESHNESS_WINDOW_DAYS)),
+        "recently_added_count": sum(
+            1 for p in pages if _within(p, FRESHNESS_WINDOW_DAYS)
+        ),
         "freshness_days": FRESHNESS_WINDOW_DAYS,
         "transcript_count": sum(1 for p in pages if p["has_transcript"]),
         # Biggest governments by meeting count, for the meta description:

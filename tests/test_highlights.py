@@ -239,7 +239,9 @@ def test_procedural_text_matches_no_topics():
 
 
 def test_highlight_html_escapes_before_marking():
-    out = highlight_html("The data center & <script>alert(1)</script>", ["data-centers"])
+    out = highlight_html(
+        "The data center & <script>alert(1)</script>", ["data-centers"]
+    )
     assert "<script>" not in out
     assert "&lt;script&gt;" in out
     assert "<mark>data center</mark>" in out

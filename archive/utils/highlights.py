@@ -422,7 +422,9 @@ def compute_highlight_payload(all_segments: Iterable[Any]) -> dict:
     highlight = pick_highlight(merged, _scored=scored)
     return {
         "highlight": highlight,
-        "topic_moments": pick_topic_moments(merged, _scored=scored) if highlight else {},
+        "topic_moments": pick_topic_moments(merged, _scored=scored)
+        if highlight
+        else {},
     }
 
 

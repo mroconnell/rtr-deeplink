@@ -1930,7 +1930,9 @@ async def state_page(request: Request, state_slug: str, topic: str = ""):
     # reorders which real meetings are featured, so a stale or
     # hand-edited value should still render the page. get_state_page_data
     # validates the slug against TOPICS_BY_SLUG itself.
-    data = await crud.get_state_page_data(abbr, topic_slug=topic or None) if abbr else None
+    data = (
+        await crud.get_state_page_data(abbr, topic_slug=topic or None) if abbr else None
+    )
     if data is None:
         # Unknown slug, or a real state with no indexable meetings yet --
         # same in-route 404 pattern as /m/{slug}.

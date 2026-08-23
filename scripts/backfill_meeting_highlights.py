@@ -103,9 +103,7 @@ async def main() -> None:
 
     if not args.force:
         page_ids = [
-            page_id
-            for page_id in page_ids
-            if existing.get(page_id) != TOPICS_VERSION
+            page_id for page_id in page_ids if existing.get(page_id) != TOPICS_VERSION
         ]
     if args.limit:
         page_ids = page_ids[: args.limit]
@@ -145,8 +143,10 @@ async def main() -> None:
                 if payload["highlight"]:
                     quote = payload["highlight"]["text"][:110]
                     topics = ",".join(payload["topic_moments"]) or "-"
-                    print(f"  [{page_id}] t={int(payload['highlight']['start'])}s "
-                          f"topics={topics}\n      {quote}")
+                    print(
+                        f"  [{page_id}] t={int(payload['highlight']['start'])}s "
+                        f"topics={topics}\n      {quote}"
+                    )
             else:
                 # Reuse the exact code path ingest uses, so a backfilled
                 # row and a freshly-ingested one can never disagree.
