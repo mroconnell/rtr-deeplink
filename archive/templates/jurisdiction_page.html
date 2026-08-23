@@ -19,6 +19,35 @@
   <meta property="og:title" content="{{ display }} public meeting videos & transcripts">
   <meta property="og:description" content="Watch and search {{ total_pages }} archived {{ display }} government meeting{{ 's' if total_pages != 1 else '' }} with transcripts and deep links to specific moments.">
   <meta property="og:type" content="website">
+  {% if public_base_url and featured %}
+  {#- ItemList of the hub's featured meetings as VideoObjects -- the same
+     structured data the state pages emit, and the reason a hub can earn
+     a video rich result rather than just a blue link. thumbnailUrl only
+     where a stored frame is confirmed (crud.pages_with_thumbnails()). -#}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    "itemListElement": [
+      {%- for m in featured %}
+      {
+        "@type": "ListItem",
+        "position": {{ loop.index }},
+        "item": {
+          "@type": "VideoObject",
+          "name": {{ (m.title or "Public meeting")|tojson }},
+          "description": {{ m.snippet_text|tojson }},
+          "url": {{ (public_base_url ~ m.deep_link)|tojson }},
+          {% if m.date %}"uploadDate": {{ m.date|tojson }},{% endif %}
+          {% if m.card_url %}"thumbnailUrl": {{ (public_base_url ~ m.card_url)|tojson }},{% endif %}
+          "transcript": {{ m.snippet_text|tojson }}
+        }
+      }{{ "," if not loop.last }}
+      {%- endfor %}
+    ]
+  }
+  </script>
+  {% endif %}
   {#- BreadcrumbList: Home > State > Jurisdiction (State omitted for a
      stateless jurisdiction). Cheap, real structured data -- Google
      renders it in the result and it states the hierarchy the state
@@ -62,6 +91,25 @@
     {% endif %}
     {% if not indexable %}
     <p class="hub-thin-note">Only {{ total_pages }} meeting{{ 's' if total_pages != 1 else '' }} archived so far for {{ display }}. Know of another? <a href="/">Paste its link</a> and it'll join this page.</p>
+    {% endif %}
+
+    {% with chips = topic_chips, base_url = "/j/" ~ slug %}
+      {% include "_topic_chips.html" %}
+    {% endwith %}
+
+    {% if featured %}
+    <h2 class="state-section-heading">
+      {% if active_topic_label %}{{ active_topic_label }} in {{ display }} meetings{% else %}Moments from {{ display }} meetings{% endif %}
+    </h2>
+    <p class="state-section-sub">
+      {%- if active_topic_label %}Quotes mentioning {{ active_topic_label|lower }}. <a href="/j/{{ slug }}">Show all topics</a>.
+      {%- else %}Real excerpts from the transcripts, each linked to the moment it was said.{% endif -%}
+    </p>
+    {#- show_jurisdiction is false here: every card on a hub is the same
+       government, so repeating its name on each would be noise. -#}
+    {% with show_jurisdiction = False %}
+      {% include "_featured_meetings.html" %}
+    {% endwith %}
     {% endif %}
 
     <h2>All archived {{ display }} meetings</h2>

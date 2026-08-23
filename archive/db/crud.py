@@ -1,4 +1,5 @@
 import hashlib
+import logging
 import math
 import secrets
 from datetime import datetime, timedelta, timezone
@@ -9,6 +10,7 @@ from sqlalchemy import (
     Text,
     and_,
     cast,
+    delete,
     exists,
     false,
     func,
@@ -46,14 +48,20 @@ from ..utils.search import (
 )
 from ..utils.slugify import build_base_slug, random_suffix
 from ..utils.video_formats import IFRAME_EMBED_VIDEO_FORMATS
+from ..utils.highlights import compute_highlight_payload, display_text
+from ..topics import TOPICS, TOPICS_BY_SLUG, TOPICS_VERSION
+from ..utils.gov_classify import GROUP_LABELS, GROUP_ORDER, classify_government
+from ..utils.highlights import highlight_html
 from ..utils.transcription_quality import detect_hallucination_warnings
 from ..utils.url_normalize import normalize_url
 from .engine import async_session
 from .models import (
+    MeetingHighlight,
     MeetingPage,
     MeetingPageThumbnail,
     MeetingPageUrlAlias,
     SavedItem,
+    SearchQuery,
     SearchVocabulary,
     SocialPost,
     TranscriptionJob,
@@ -680,6 +688,63 @@ async def _refresh_search_corpus(session, page: MeetingPage) -> None:
         page.title, page.jurisdiction, page.agenda_items, all_segments
     )
     await _upsert_vocabulary_words(session, tokenize(page.search_corpus))
+    await _refresh_meeting_highlight(session, page, all_segments)
+
+
+async def _refresh_meeting_highlight(session, page: MeetingPage, all_segments) -> None:
+    """Recompute this page's stored `meeting_highlights` row from the
+    segments `_refresh_search_corpus()` just gathered.
+
+    Same choke-point argument as the vocabulary upsert above, and folded
+    into the same call for the same reason: every path that creates a
+    TranscriptVersion already reaches here, so a page cannot end up with
+    a transcript and no highlight (or, worse, a highlight quoting a
+    transcript that has since been replaced).
+
+    Non-fatal by construction. A highlight is page *decoration* -- the
+    state/hub pages render fine without one -- while this function runs
+    inside the ingest transaction, so letting a heuristic bug fail an
+    ingest would trade a missing snippet for a lost transcript. Any
+    exception is logged and swallowed; the backfill script picks the page
+    up later.
+    """
+    try:
+        payload = compute_highlight_payload(all_segments)
+    except Exception:  # pragma: no cover - defensive, see docstring
+        logging.getLogger(__name__).exception(
+            "highlight computation failed for page id=%s", page.id
+        )
+        return
+    highlight = payload["highlight"]
+    if highlight is None:
+        # Nothing quotable (empty/short/all-procedural transcript). Drop
+        # any previous row rather than leaving a stale quote behind -- a
+        # re-transcription that got *worse* must not keep showing the
+        # old text as if it were current.
+        await session.execute(
+            delete(MeetingHighlight).where(MeetingHighlight.meeting_page_id == page.id)
+        )
+        return
+    values = {
+        "meeting_page_id": page.id,
+        "start_seconds": highlight["start"],
+        "text": highlight["text"],
+        "topics": highlight["topics"],
+        "topic_moments": payload["topic_moments"],
+        "topics_version": TOPICS_VERSION,
+        "computed_at": datetime.now(timezone.utc),
+    }
+    if session.bind.dialect.name == "postgresql":
+        from sqlalchemy.dialects.postgresql import insert as dialect_insert
+    else:
+        from sqlalchemy.dialects.sqlite import insert as dialect_insert
+    stmt = dialect_insert(MeetingHighlight).values(**values)
+    await session.execute(
+        stmt.on_conflict_do_update(
+            index_elements=[MeetingHighlight.meeting_page_id],
+            set_={k: v for k, v in values.items() if k != "meeting_page_id"},
+        )
+    )
 
 
 async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) -> dict:
@@ -4086,7 +4151,197 @@ async def get_state_coverage_index() -> list[dict]:
     return result
 
 
-async def get_state_page_data(abbr: str) -> Optional[dict]:
+# --- State/hub page highlights, topics and activity -----------------------
+#
+# How many recent transcribed meetings a state page scans for featured
+# snippets and topic counts. Deliberately a *recent* pool rather than the
+# whole state: "which subjects are live here right now" is the useful
+# question, and an all-time count would be dominated by whichever
+# jurisdictions happened to be bulk-ingested first. Also bounds the JSON
+# decoded per render -- topic_moments is small per row but 400+ rows of
+# it would not be.
+STATE_HIGHLIGHT_POOL = 150
+STATE_FEATURED_COUNT = 12
+# "Most active governments" is meaningless for a state with a handful of
+# governments (the list would just be the whole state, reordered), so the
+# section renders only above this threshold.
+# Chips are a way in, not an index: past a dozen they stop being
+# scannable and start being another wall of links. The curated list can
+# grow past this without the page getting noisier.
+MAX_TOPIC_CHIPS = 12
+MOST_ACTIVE_MIN_GOVERNMENTS = 8
+MOST_ACTIVE_WINDOW_DAYS = 90
+MOST_ACTIVE_COUNT = 6
+FRESHNESS_WINDOW_DAYS = 7
+
+
+def format_timestamp_label(seconds: float) -> str:
+    """`1:23:45` / `4:07` -- the deep link's target, shown next to a
+    snippet so a reader knows they are jumping into a long meeting rather
+    than starting it over."""
+    total = max(0, int(seconds or 0))
+    hours, remainder = divmod(total, 3600)
+    minutes, secs = divmod(remainder, 60)
+    if hours:
+        return f"{hours}:{minutes:02d}:{secs:02d}"
+    return f"{minutes}:{secs:02d}"
+
+
+async def _load_highlights(session, page_ids: Sequence[int]) -> dict[int, dict]:
+    """meeting_page_id -> stored highlight row, for the pages given."""
+    if not page_ids:
+        return {}
+    rows = (
+        await session.execute(
+            select(
+                MeetingHighlight.meeting_page_id,
+                MeetingHighlight.start_seconds,
+                MeetingHighlight.text,
+                MeetingHighlight.topics,
+                MeetingHighlight.topic_moments,
+            ).where(MeetingHighlight.meeting_page_id.in_(list(page_ids)))
+        )
+    ).all()
+    return {
+        page_id: {
+            "start": start,
+            "text": text,
+            "topics": topics or [],
+            "topic_moments": moments or {},
+        }
+        for page_id, start, text, topics, moments in rows
+    }
+
+
+def _featured_entry(page: dict, highlight: dict, topic_slug: Optional[str]):
+    """One rendered featured-meeting card, or None when this page has
+    nothing to show for the requested topic.
+
+    With a topic selected the quote comes from that topic's stored
+    moment (so the snippet actually contains the thing the reader
+    clicked); with no topic it is the meeting's default highlight, and
+    whatever topics happen to appear in it get marked."""
+    if topic_slug:
+        moment = (highlight.get("topic_moments") or {}).get(topic_slug)
+        if not moment:
+            return None
+        start, text, marks = moment["start"], moment["text"], [topic_slug]
+    else:
+        start, text = highlight["start"], highlight["text"]
+        marks = highlight.get("topics") or []
+    return {
+        "_page_id": page["id"],
+        "slug": page["slug"],
+        "title": page["title"],
+        "jurisdiction": page["jurisdiction"],
+        "hub_slug": jurisdiction_hub_slug(page["jurisdiction"]),
+        "date": page["date"],
+        "start_seconds": start,
+        "timestamp_label": format_timestamp_label(start),
+        # The whole point of the archive, on the hub page: a link into
+        # the exact second being quoted.
+        "deep_link": f"/m/{page['slug']}?t={int(start)}",
+        "snippet_html": highlight_html(text, marks),
+        # The same quote as plain text, for JSON-LD (which must not
+        # contain markup) and any non-HTML consumer.
+        "snippet_text": display_text(text),
+        "topics": marks,
+        # Filled in by _attach_thumbnails() once the bulk existence check
+        # has run -- never assumed.
+        "card_url": None,
+    }
+
+
+def _attach_thumbnails(featured: Sequence[dict], page_ids_with_cards: set) -> None:
+    """Point each featured card at its stored frame *at the quoted
+    moment* -- the card route takes the same `?t=` the deep link does, so
+    the image a reader sees is the one from the second being quoted."""
+    for entry in featured:
+        if entry["_page_id"] in page_ids_with_cards:
+            entry["card_url"] = (
+                f"/m/{entry['slug']}/card.jpg?t={int(entry['start_seconds'])}"
+            )
+
+
+def _build_featured(
+    pages: Sequence[dict],
+    highlights: dict[int, dict],
+    topic_slug: Optional[str],
+    limit: int,
+) -> list[dict]:
+    """Featured cards for the newest pages that have a usable highlight."""
+    featured: list[dict] = []
+    for page in pages:
+        highlight = highlights.get(page["id"])
+        if not highlight:
+            continue
+        entry = _featured_entry(page, highlight, topic_slug)
+        if entry is None:
+            continue
+        featured.append(entry)
+        if len(featured) >= limit:
+            break
+    return featured
+
+
+def _topic_chips(highlights: dict[int, dict], active_slug: Optional[str]) -> list[dict]:
+    """Curated topics that actually appear in this pool, most-covered
+    first, with the meeting count behind each one.
+
+    A topic with no meetings behind it is omitted rather than rendered
+    as an empty chip -- a chip that leads to "no results" is worse than
+    no chip, both for a reader and for a crawler following it."""
+    counts: dict[str, int] = {}
+    for highlight in highlights.values():
+        for slug in highlight.get("topic_moments") or {}:
+            counts[slug] = counts.get(slug, 0) + 1
+    chips = []
+    for topic in TOPICS:
+        count = counts.get(topic.slug, 0)
+        if not count:
+            continue
+        chips.append(
+            {
+                "slug": topic.slug,
+                "label": topic.label,
+                "count": count,
+                "selected": topic.slug == active_slug,
+            }
+        )
+    chips.sort(key=lambda chip: (-chip["count"], chip["label"]))
+    chips = chips[:MAX_TOPIC_CHIPS]
+    # The selected topic always stays visible, even if it ranks below the
+    # cut -- otherwise following a ?topic= link lands on a page whose own
+    # chip row doesn't show what is currently selected.
+    if active_slug and not any(chip["selected"] for chip in chips):
+        topic = TOPICS_BY_SLUG[active_slug]
+        chips.append(
+            {
+                "slug": topic.slug,
+                "label": topic.label,
+                "count": counts.get(active_slug, 0),
+                "selected": True,
+            }
+        )
+    return chips
+
+
+def _group_governments(jurisdictions: Sequence[dict]) -> list[dict]:
+    """The flat government list split into County / City / School /
+    Agency sections, empty sections dropped."""
+    buckets: dict[str, list[dict]] = {key: [] for key in GROUP_ORDER}
+    for row in jurisdictions:
+        buckets[row["gov_type"]].append(row)
+    return [
+        {"key": key, "label": GROUP_LABELS[key], "rows": buckets[key]}
+        for key in GROUP_ORDER
+        if buckets[key]
+    ]
+
+
+async def get_state_page_data(
+    abbr: str, topic_slug: Optional[str] = None
+) -> Optional[dict]:
     """Everything /state/{slug} renders, or None when the state/province
     has no indexable pages (the route 404s). `abbr` works for either a US
     state or a Canadian province/territory -- US_STATE_ABBR_TO_NAME
@@ -4094,20 +4349,30 @@ async def get_state_page_data(abbr: str) -> Optional[dict]:
     branch is needed here just to resolve a display name; a Canadian
     jurisdiction's own ", AB"-style suffix already carries a "(Canada)"
     display marker wherever it's rendered through the jurisdiction_display
-    filter (see format_jurisdiction_display()), so state_page.html itself
-    needed no template changes. Anchored suffix match on the stored
-    jurisdiction -- normalize_state_suffix() guarantees the canonical
-    ", CA" form at write time, so LIKE '%, CA' can't false-positive the
-    way list_pages()'s substring ilike would ("Decatur, GA" contains
-    "ca"). Same platform != "unknown" exclusion and default-version
-    transcript-badge join as get_jurisdiction_coverage() above."""
+    filter (see format_jurisdiction_display()). Anchored suffix match on
+    the stored jurisdiction -- normalize_state_suffix() guarantees the
+    canonical ", CA" form at write time, so LIKE '%, CA' can't
+    false-positive the way list_pages()'s substring ilike would
+    ("Decatur, GA" contains "ca"). Same platform != "unknown" exclusion
+    and default-version transcript-badge join as get_jurisdiction_coverage().
+
+    Beyond the coverage table this also returns what the page leads with:
+    featured meetings carrying **real transcript snippets** deep-linked
+    to the moment quoted, topic chips ranked over the recent pool, the
+    most active governments, and a freshness count. `topic_slug` (from
+    `?topic=`) swaps the featured set to that subject; an unknown slug is
+    treated as no topic by the caller.
+    """
     async with async_session() as session:
         stmt = (
             select(
+                MeetingPage.id,
                 MeetingPage.jurisdiction,
                 MeetingPage.slug,
                 MeetingPage.title,
                 MeetingPage.date,
+                MeetingPage.meeting_body,
+                MeetingPage.created_at,
                 TranscriptVersion.id,
                 TranscriptVersion.transcript_warnings,
             )
@@ -4125,27 +4390,47 @@ async def get_state_page_data(abbr: str) -> Optional[dict]:
         )
         rows = (await session.execute(stmt)).all()
 
-    pages = []
-    for jurisdiction, slug, title, date, version_id, warnings in rows:
-        # LIKE is case-insensitive on SQLite (dev/tests), so re-check the
-        # suffix exactly -- keeps dev and prod (case-sensitive Postgres
-        # LIKE) behaving identically.
-        if state_abbr_from_jurisdiction(jurisdiction) != abbr:
-            continue
-        has_transcript = version_id is not None and _has_real_warning_free_transcript(
-            warnings
-        )
-        pages.append(
-            {
-                "jurisdiction": jurisdiction,
-                "slug": slug,
-                "title": title,
-                "date": date,
-                "has_transcript": has_transcript,
-            }
-        )
-    if not pages:
-        return None
+        pages = []
+        for (
+            page_id,
+            jurisdiction,
+            slug,
+            title,
+            date,
+            meeting_body,
+            created_at,
+            version_id,
+            warnings,
+        ) in rows:
+            # LIKE is case-insensitive on SQLite (dev/tests), so re-check
+            # the suffix exactly -- keeps dev and prod (case-sensitive
+            # Postgres LIKE) behaving identically.
+            if state_abbr_from_jurisdiction(jurisdiction) != abbr:
+                continue
+            has_transcript = (
+                version_id is not None and _has_real_warning_free_transcript(warnings)
+            )
+            pages.append(
+                {
+                    "id": page_id,
+                    "jurisdiction": jurisdiction,
+                    "slug": slug,
+                    "title": title,
+                    "date": date,
+                    "meeting_body": meeting_body,
+                    "created_at": created_at,
+                    "has_transcript": has_transcript,
+                }
+            )
+        if not pages:
+            return None
+
+        by_date = sorted(pages, key=lambda p: p["date"] or "", reverse=True)
+        # Only transcribed meetings can be featured -- the snippet *is*
+        # the feature, so a meeting without one has nothing to show.
+        pool = [p for p in by_date if p["has_transcript"]][:STATE_HIGHLIGHT_POOL]
+        highlights = await _load_highlights(session, [p["id"] for p in pool])
+        carded = await pages_with_thumbnails(session, [p["id"] for p in pool])
 
     # Grouped by hub slug (jurisdiction_hub_slug(), i.e. the display form),
     # not the raw string -- since 2026-08-17 each row links to its /j/{slug}
@@ -4161,22 +4446,92 @@ async def get_state_page_data(abbr: str) -> Optional[dict]:
         by_hub, key=lambda s: by_hub[s][0]["jurisdiction"].casefold()
     ):
         examples = by_hub[hub_slug]
-        example = next((e for e in examples if e["has_transcript"]), examples[0])
+        # The linked example must belong to *this* government: pick the
+        # newest transcribed meeting, falling back to the newest at all.
+        ordered = sorted(examples, key=lambda e: e["date"] or "", reverse=True)
+        example = next((e for e in ordered if e["has_transcript"]), ordered[0])
+        body = next((e["meeting_body"] for e in examples if e["meeting_body"]), None)
         jurisdictions.append(
             {
                 "jurisdiction": examples[0]["jurisdiction"],
                 "hub_slug": hub_slug or None,
                 "example": example,
                 "page_count": len(examples),
+                "gov_type": classify_government(examples[0]["jurisdiction"], body),
             }
         )
 
-    recent_pages = sorted(pages, key=lambda p: p["date"] or "", reverse=True)[:25]
+    active_slug = topic_slug if topic_slug in TOPICS_BY_SLUG else None
+    featured = _build_featured(pool, highlights, active_slug, STATE_FEATURED_COUNT)
+    # A topic chip is only offered when it has meetings behind it, so an
+    # empty featured set here means the pool changed under a cached chip
+    # list; fall back to the untopiced set rather than an empty page.
+    if active_slug and not featured:
+        featured = _build_featured(pool, highlights, None, STATE_FEATURED_COUNT)
+        active_slug = None
+    _attach_thumbnails(featured, carded)
+
+    now = datetime.now(timezone.utc)
+
+    def _within(page: dict, days: int) -> bool:
+        created = page.get("created_at")
+        if created is None:
+            return False
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+        return (now - created) <= timedelta(days=days)
+
+    active_counts: dict[str, int] = {}
+    for p in pages:
+        if _within(p, MOST_ACTIVE_WINDOW_DAYS):
+            slug_key = jurisdiction_hub_slug(p["jurisdiction"]) or ""
+            active_counts[slug_key] = active_counts.get(slug_key, 0) + 1
+    most_active = []
+    if len(jurisdictions) >= MOST_ACTIVE_MIN_GOVERNMENTS:
+        for slug_key, count in sorted(
+            active_counts.items(), key=lambda kv: (-kv[1], kv[0])
+        )[:MOST_ACTIVE_COUNT]:
+            group = by_hub.get(slug_key)
+            if not group or not slug_key:
+                continue
+            most_active.append(
+                {
+                    "hub_slug": slug_key,
+                    "jurisdiction": group[0]["jurisdiction"],
+                    "recent_count": count,
+                    "total_count": len(group),
+                }
+            )
+
     return {
         "abbr": abbr,
         "name": US_STATE_ABBR_TO_NAME[abbr],
         "jurisdictions": jurisdictions,
-        "recent_pages": recent_pages,
+        "government_groups": _group_governments(jurisdictions),
+        "recent_pages": by_date[:25],
+        "featured": featured,
+        "topic_chips": _topic_chips(highlights, active_slug),
+        "active_topic": active_slug,
+        "active_topic_label": (
+            TOPICS_BY_SLUG[active_slug].label if active_slug else None
+        ),
+        "most_active": most_active,
+        "most_active_days": MOST_ACTIVE_WINDOW_DAYS,
+        "recently_added_count": sum(
+            1 for p in pages if _within(p, FRESHNESS_WINDOW_DAYS)
+        ),
+        "freshness_days": FRESHNESS_WINDOW_DAYS,
+        "transcript_count": sum(1 for p in pages if p["has_transcript"]),
+        # Biggest governments by meeting count, for the meta description:
+        # "San Diego, Napa and Long Beach" is what people actually search,
+        # and a description naming them beats one that names none. The
+        # ", CA" suffix is stripped because the description already says
+        # "California" -- repeating it three more times reads as machine
+        # output and burns characters Google may truncate.
+        "top_jurisdictions": [
+            format_jurisdiction_display(j["jurisdiction"]).rsplit(",", 1)[0].strip()
+            for j in sorted(jurisdictions, key=lambda j: -j["page_count"])[:3]
+        ],
         "total_pages": len(pages),
         "jurisdiction_count": len(jurisdictions),
     }
@@ -4203,6 +4558,11 @@ async def get_state_page_data(abbr: str) -> Optional[dict]:
 # lands -- the bulk-ingest scripts add depth over time and this tracks
 # it with no code change. One dial; 3 is the conservative alternative.
 JURISDICTION_HUB_MIN_INDEXABLE = 2
+
+# Fewer featured cards than a state page: a hub is one government, so
+# after a handful of snippets the reader is better served by the full
+# meeting list directly below them.
+HUB_FEATURED_COUNT = 6
 
 
 def _hub_base_conditions():
@@ -4253,7 +4613,9 @@ async def _hub_groups(session) -> dict[str, dict]:
     return groups
 
 
-async def get_jurisdiction_hub_data(slug: str) -> Optional[dict]:
+async def get_jurisdiction_hub_data(
+    slug: str, topic_slug: Optional[str] = None
+) -> Optional[dict]:
     """Everything /j/{slug} renders, or None when no indexable page maps to
     this slug (the route 404s). Every meeting for the hub's raw
     jurisdiction strings, newest first; counts, date range, transcript
@@ -4271,6 +4633,7 @@ async def get_jurisdiction_hub_data(slug: str) -> Optional[dict]:
             return None
         stmt = (
             select(
+                MeetingPage.id,
                 MeetingPage.slug,
                 MeetingPage.title,
                 MeetingPage.date,
@@ -4296,20 +4659,35 @@ async def get_jurisdiction_hub_data(slug: str) -> Optional[dict]:
         )
         rows = (await session.execute(stmt)).all()
 
-    pages = [
-        {
-            "slug": page_slug,
-            "title": title,
-            "date": date,
-            "jurisdiction": jurisdiction,
-            "meeting_body": meeting_body,
-            "has_transcript": version_id is not None
-            and _has_real_warning_free_transcript(warnings),
-        }
-        for page_slug, title, date, jurisdiction, meeting_body, version_id, warnings in rows
-    ]
-    if not pages:
-        return None
+        pages = [
+            {
+                "id": page_id,
+                "slug": page_slug,
+                "title": title,
+                "date": date,
+                "jurisdiction": jurisdiction,
+                "meeting_body": meeting_body,
+                "has_transcript": version_id is not None
+                and _has_real_warning_free_transcript(warnings),
+            }
+            for page_id, page_slug, title, date, jurisdiction, meeting_body, version_id, warnings in rows
+        ]
+        if not pages:
+            return None
+        # `pages` is already newest-first from the query's ORDER BY, so
+        # the transcribed subset is too. A hub is one government -- San
+        # Diego's 44 meetings is the current maximum -- so the whole
+        # transcribed set is the pool, no STATE_HIGHLIGHT_POOL cap needed.
+        pool = [p for p in pages if p["has_transcript"]]
+        highlights = await _load_highlights(session, [p["id"] for p in pool])
+        carded = await pages_with_thumbnails(session, [p["id"] for p in pool])
+
+    active_slug = topic_slug if topic_slug in TOPICS_BY_SLUG else None
+    featured = _build_featured(pool, highlights, active_slug, HUB_FEATURED_COUNT)
+    if active_slug and not featured:
+        featured = _build_featured(pool, highlights, None, HUB_FEATURED_COUNT)
+        active_slug = None
+    _attach_thumbnails(featured, carded)
     body_counts: dict[str, int] = {}
     for p in pages:
         if p["meeting_body"]:
@@ -4329,6 +4707,12 @@ async def get_jurisdiction_hub_data(slug: str) -> Optional[dict]:
         "state_abbr": abbr,
         "state_name": US_STATE_ABBR_TO_NAME.get(abbr) if abbr else None,
         "state_slug": state_slug_from_abbr(abbr) if abbr else None,
+        "featured": featured,
+        "topic_chips": _topic_chips(highlights, active_slug),
+        "active_topic": active_slug,
+        "active_topic_label": (
+            TOPICS_BY_SLUG[active_slug].label if active_slug else None
+        ),
         "indexable": len(pages) >= JURISDICTION_HUB_MIN_INDEXABLE,
         "min_indexable": JURISDICTION_HUB_MIN_INDEXABLE,
         # The raw strings, for the /meetings?jurisdiction= "search all" link
@@ -5836,6 +6220,77 @@ async def get_thumbnail_bytes(thumbnail_id: int) -> Optional[bytes]:
             )
         ).first()
         return row[0] if row else None
+
+
+async def record_search_query(
+    keyword: str, jurisdiction: Optional[str], result_count: int
+) -> None:
+    """Append one row to `search_queries`. Identity-free by design (see
+    models.SearchQuery) and non-fatal by design: it runs as a FastAPI
+    background task after the response is already on its way, so an
+    exception here can only cost a log line, never a search.
+    """
+    try:
+        async with async_session() as session:
+            session.add(
+                SearchQuery(
+                    keyword=keyword,
+                    jurisdiction=jurisdiction,
+                    result_count=result_count,
+                )
+            )
+            await session.commit()
+    except Exception:  # pragma: no cover - defensive, see docstring
+        logging.getLogger(__name__).exception("failed to record search query")
+
+
+async def top_search_keywords(days: int = 30, limit: int = 20) -> list[tuple[str, int]]:
+    """Most-typed keywords over the window, most-frequent first.
+
+    Nothing renders this yet -- it is the read side of SearchQuery, here
+    so the next round of topic-chip work has real demand data to rank
+    against rather than needing to add both the write and the read at
+    once. Deliberately lower-cased and grouped, since "Flock" and "flock"
+    are the same question.
+    """
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+    async with async_session() as session:
+        rows = (
+            await session.execute(
+                select(
+                    func.lower(SearchQuery.keyword).label("kw"),
+                    func.count().label("n"),
+                )
+                .where(SearchQuery.created_at >= since)
+                .group_by(func.lower(SearchQuery.keyword))
+                .order_by(func.count().desc())
+                .limit(limit)
+            )
+        ).all()
+    return [(row[0], row[1]) for row in rows]
+
+
+async def pages_with_thumbnails(session, page_ids: Sequence[int]) -> set[int]:
+    """The subset of `page_ids` that already have a stored frame -- the
+    bulk form of has_thumbnail(), for the state/hub pages that feature a
+    dozen meetings at once and would otherwise issue a dozen queries.
+
+    Same "never advertise a card URL that would 404" rule as
+    has_thumbnail(): callers use this to decide whether to emit an
+    <img> and a VideoObject.thumbnailUrl at all. Unlike /m/{slug}, a
+    missing frame here does *not* queue a warm -- a hub listing twelve
+    meetings would fire twelve ffmpeg jobs per crawl, and each of those
+    pages warms itself when it is actually visited."""
+    if not page_ids or not await _thumbnails_available(session):
+        return set()
+    rows = (
+        await session.execute(
+            select(MeetingPageThumbnail.meeting_page_id).where(
+                MeetingPageThumbnail.meeting_page_id.in_(list(page_ids))
+            )
+        )
+    ).all()
+    return {row[0] for row in rows}
 
 
 async def has_thumbnail(page_id: int) -> bool:

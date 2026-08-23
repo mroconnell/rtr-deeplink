@@ -1506,3 +1506,365 @@ thead .row-number-col { z-index: 2; background: var(--bg); }
 .hub-bodies { color: var(--fg-muted, #555); margin-top: -0.25rem; }
 .hub-body-count { opacity: 0.75; }
 .hub-thin-note { font-style: italic; }
+
+/* --- State pages & jurisdiction hubs: featured transcript snippets ------
+ *
+ * These two surfaces were rebuilt around real quoted transcript text
+ * (2026-08-23). Google was declining the hub pages specifically -- 3.1x
+ * (/state/) and 3.6x (/j/) their sitemap share among non-indexed URLs,
+ * while /m/ meeting pages indexed better than theirs -- and the measured
+ * diagnosis was thin, templated, near-duplicate content rather than any
+ * crawl-plumbing problem. See BACKLOG.md.
+ */
+
+/* The state page carries a two-pane layout, so it needs more room than
+ * .about-page's 640px prose measure. Only widened where the second pane
+ * actually appears -- below 992px this stays a single 640px column, the
+ * same as every other .about-page. */
+@media (min-width: 992px) {
+  main.state-page {
+    max-width: 1100px;
+  }
+}
+
+.state-freshness {
+  color: #5a6472;
+  font-size: 0.95rem;
+  margin-top: -0.35rem;
+}
+
+/* Topic chips ---------------------------------------------------------- */
+
+.topic-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  margin: 1.4rem 0 1.8rem;
+}
+
+/* On a phone a dozen wrapped chips push the actual results a full screen
+ * down, which defeats the point of leading with them. One horizontally
+ * scrollable row instead -- every chip stays a real link in the DOM (so
+ * a crawler still follows them all), it just doesn't consume the
+ * viewport. */
+@media (max-width: 767px) {
+  .topic-chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 0.25rem;
+    margin: 1rem 0 1.4rem;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .topic-chips::-webkit-scrollbar {
+    display: none;
+  }
+
+  .topic-chips-label {
+    display: none;
+  }
+
+  .topic-chip {
+    flex: 0 0 auto;
+  }
+}
+
+.topic-chips-label {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b7280;
+  margin-right: 0.2rem;
+}
+
+.topic-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.28rem 0.7rem;
+  border: 1px solid #d3d8de;
+  border-radius: 999px;
+  background: #fff;
+  color: #2c3e50;
+  font-size: 0.9rem;
+  text-decoration: none;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.topic-chip:hover,
+.topic-chip:focus-visible {
+  background: #eef2f6;
+  border-color: #9aa5b1;
+  text-decoration: none;
+}
+
+.topic-chip-active {
+  background: #2c3e50;
+  border-color: #2c3e50;
+  color: #fff;
+  font-weight: 600;
+}
+
+.topic-chip-active:hover,
+.topic-chip-active:focus-visible {
+  background: #22303e;
+  border-color: #22303e;
+  color: #fff;
+}
+
+.topic-chip-count {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+/* Two-pane layout ------------------------------------------------------ */
+
+.state-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2.5rem;
+  align-items: start;
+}
+
+/* Desktop only: the government list becomes a sticky sidebar that scrolls
+ * independently of the results. Below this width the single column shows
+ * the readable results first and the (source-order-later) list after --
+ * deliberately, since a 222-row alphabetical list is not what anyone
+ * wants at the top of a phone screen. */
+@media (min-width: 992px) {
+  .state-layout {
+    grid-template-columns: minmax(0, 1fr) 19rem;
+  }
+
+  .state-sidebar {
+    position: sticky;
+    top: 1rem;
+    max-height: calc(100vh - 2rem);
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+.state-section-heading {
+  margin-top: 0;
+}
+
+.state-main .state-section-heading:not(:first-child) {
+  margin-top: 2.5rem;
+}
+
+.state-section-sub {
+  color: #5a6472;
+  font-size: 0.95rem;
+  margin-top: -0.35rem;
+  margin-bottom: 1.5rem;
+}
+
+.state-main-links,
+.state-footer-links {
+  margin-top: 1.5rem;
+}
+
+.state-empty {
+  color: #5a6472;
+}
+
+/* Featured meeting cards ----------------------------------------------- */
+
+.featured-meetings {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.featured-meeting {
+  display: flex;
+  gap: 1rem;
+  padding: 1.1rem 1.2rem;
+  border: 1px solid #e3e7eb;
+  border-left: 3px solid #b03a2e;
+  border-radius: 6px;
+  background: #fff;
+}
+
+@media (max-width: 575px) {
+  .featured-meeting {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+}
+
+.featured-thumb {
+  flex: 0 0 auto;
+  display: block;
+  line-height: 0;
+}
+
+.featured-thumb img {
+  width: 148px;
+  height: 83px;
+  object-fit: cover;
+  border-radius: 4px;
+  background: #e9edf1;
+}
+
+@media (max-width: 575px) {
+  .featured-thumb img {
+    width: 100%;
+    height: 160px;
+  }
+}
+
+.featured-body {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.featured-title {
+  font-size: 1.05rem;
+  margin: 0 0 0.15rem;
+  line-height: 1.3;
+}
+
+.featured-where {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin: 0 0 0.6rem;
+}
+
+/* The quote is the point of the card: it gets the visual weight, and it
+ * is the only text on these pages that is unique to the meeting. */
+.featured-quote {
+  margin: 0 0 0.6rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: #1f2933;
+  border: 0;
+  padding: 0;
+}
+
+.featured-quote mark {
+  background: #fdf0b5;
+  padding: 0 0.12em;
+  border-radius: 2px;
+}
+
+.featured-deeplink {
+  display: inline-block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-decoration: none;
+}
+
+.featured-deeplink:hover,
+.featured-deeplink:focus-visible {
+  text-decoration: underline;
+}
+
+/* Most active governments ---------------------------------------------- */
+
+.most-active-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.4rem;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+}
+
+.most-active-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid #e3e7eb;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.most-active-count {
+  color: #6b7280;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Government list (sidebar on desktop, scroll pane on mobile) ----------- */
+
+.state-sidebar-heading {
+  font-size: 1.1rem;
+  margin: 0 0 0.3rem;
+}
+
+.state-sidebar-note {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin-bottom: 0.8rem;
+}
+
+/* Capped and independently scrollable in both layouts: on desktop it is
+ * the sticky sidebar's own pane, on mobile it keeps a long list from
+ * pushing the footer thousands of pixels down. Every link stays in the
+ * DOM either way -- these are the internal links to the /j/ hubs, which
+ * is part of what this page is for. */
+.state-gov-scroll {
+  overflow-y: auto;
+  max-height: 22rem;
+  border: 1px solid #e3e7eb;
+  border-radius: 6px;
+  padding: 0.75rem 0.9rem;
+  background: #fbfcfd;
+}
+
+@media (min-width: 992px) {
+  .state-gov-scroll {
+    max-height: none;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+}
+
+.state-gov-group + .state-gov-group {
+  margin-top: 1.1rem;
+}
+
+.state-gov-heading {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+  margin: 0 0 0.4rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.state-gov-count {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+}
+
+.state-gov-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.state-gov-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.16rem 0;
+  font-size: 0.92rem;
+  line-height: 1.35;
+}
+
+.state-gov-meetings {
+  color: #9aa5b1;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+}

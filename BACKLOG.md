@@ -61,7 +61,7 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (13)
   [JUST-DO-IT] `[EASY]` `scripts/backtest_fallback.py`'s `sebastopol`
   [JUST-DO-IT] `[EASY]` "We think the video is here: [No video
   [JUST-DO-IT] `[EASY]` `rtr-business/BUSINESS_OVERVIEW.md` still says
-  [JUST-DO-IT] Google declines to index the *hub* pages, not the
+  [NEEDS-AUDIT] `[WAIT]` Measure whether the state/hub rebuild moved
   [JUST-DO-IT] Give `meeting_body` an adapter-supplied path — it has
   [JUST-DO-IT] `[EASY]` `feed.xml` is being crawled and index-judged;
   [JUST-DO-IT] `[EASY]` Two archived pages have slugs frozen from a
@@ -384,46 +384,31 @@ so that work reads together.
   already fixed, a bandwidth limit off by 5×, a Bluesky check believed
   impossible from a sandbox).
 
-- **[JUST-DO-IT] Google declines to index the *hub* pages, not the
-  meeting pages — audit resolved 2026-08-22, the fix is content, not
-  plumbing.** Search Console showed ~585 non-indexed URLs (294
-  "Discovered", 291 "Crawled") concentrated on `/j/` and `/state/` hub
-  pages, rising. Categorizing the "Crawled" set against `sitemap.xml`
-  found Google **selectively declining hub pages** — `/j/` hubs at
-  3.6× their sitemap share among non-indexed URLs, `/state/` at 3.1×
-  — while `/m/` meeting pages index *better* than their share (0.5×).
-  That rules out crawl-budget exhaustion or domain age as the primary
-  cause (both would suppress roughly proportionally) and confirms thin,
-  templated, near-duplicate hub content instead: the median hub shows
-  **two meetings whether Google indexed it or not**. A meeting-count
-  threshold does **not** separate flagged from unflagged pages — tested
-  against the full 291-row export on both `/j/` and `/state/`, any
-  threshold strong enough to catch the flagged pages suppresses
-  essentially the whole hub surface, so volume-gating is ruled out by
-  measurement, not opinion. Full categorization table, the threshold
-  analysis, and both measurement caveats are in `BACKLOG_DONE.md`'s
-  matching `[Investigated 2026-08-22]` entry.
-
-  **Decided 2026-08-22 — build these two:**
-  1. **Real transcript snippets per jurisdiction** *(chosen)* — genuine
-     quotes from that place's recent meetings, drawn from data already
-     stored. Reuse `archive/utils/search.py`'s `find_matching_segment()`
-     (already does this for the alert emails) rather than growing a
-     second extractor. Strongest signal per unit of work.
-  2. **Meeting-card thumbnails as page imagery** *(chosen)* — WO-37
-     already stored 973 cards, so this is mostly a rendering job. Adds
-     no unique *text* (what Google is judging here), so it supports (1)
-     rather than substituting for it — and makes hubs shareable, which
-     `/m/` pages already are and hubs aren't.
-
-  Not chosen for now, kept for the record: per-jurisdiction summary
-  stats (counts/date range/bodies/platform — real but templated), and
-  `jurisdiction_enrich`-sourced context copy (population, county —
-  partly boilerplate, uneven coverage).
-
-  **Measure before and after** against the 3.6× over-representation
-  figure, not the raw non-indexed count, since the raw count moves with
-  corpus growth.
+- **[NEEDS-AUDIT] `[WAIT]` Measure whether the state/hub rebuild moved
+  Google's indexing verdict.** The rebuild shipped 2026-08-23 (see
+  `BACKLOG_DONE.md` for the full investigation, the decision, and what
+  was built). **Measure against the 3.6× (`/j/`) and 3.1× (`/state/`)
+  over-representation figures, not the raw non-indexed count** — the raw
+  count moves with corpus growth, so it cannot answer this on its own.
+  Needs a Search Console export at least a few weeks out; nothing to do
+  until then, and nothing to change in the code meanwhile.
+  Residual gaps deliberately left open by that work:
+  - **Garbled source transcripts still produce garbled snippets.** The
+    coherence guards catch a hammered content word and an interleaved
+    roll-up phrase, but a *fluently wrong* transcription (real live
+    example: Santa Rosa, CA — "brought for their concerns and need for
+    essential anti displacement home parks and aims of protections for
+    the mobile emergency concerns") has no repetition signal to detect
+    and reads as word salad. Detecting it needs a coherence model, not a
+    regex; attempting it with thresholds misfires on good snippets
+    (measured — see `tests/test_highlights.py`'s frozen cases). The
+    honest framing is that this is transcription quality surfacing, not
+    snippet selection failing.
+  - **Topic chips are ranked by corpus hits, not real demand.**
+    `search_queries` now logs every `/meetings` keyword
+    (identity-free) and `crud.top_search_keywords()` reads it, but
+    nothing ranks chips by it yet — there is no data until the table
+    fills. Revisit once it has real volume.
 
 - **[JUST-DO-IT] Give `meeting_body` an adapter-supplied path — it has
   none today.** Decided 2026-08-22, out of the Legistar title question

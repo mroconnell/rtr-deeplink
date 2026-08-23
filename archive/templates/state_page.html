@@ -1,10 +1,18 @@
 {% extends "base.html" %}
 {% block title %}{{ name }} public meeting videos & transcripts | Red Tape Recordings{% endblock %}
 {% block meta %}
-  <meta name="description" content="Archived public government meetings from {{ jurisdiction_count }} {{ name }} cities, counties, and agencies — {{ total_pages }} meeting{{ 's' if total_pages != 1 else '' }} with video and searchable transcripts.">
+  {#- Names the biggest governments outright: "San Diego, Napa and Long
+     Beach" is the shape people actually search, and a description that
+     names none of them competes for nothing. Counts come from the same
+     two variables the on-page lede uses, so the two can never drift. -#}
+  <meta name="description" content="{{ total_pages }} archived {{ name }} public meeting{{ 's' if total_pages != 1 else '' }} from {{ jurisdiction_count }} governments{% if top_jurisdictions %}, including {% if top_jurisdictions|length > 1 %}{{ top_jurisdictions[:-1]|join(', ') }} and {{ top_jurisdictions[-1] }}{% else %}{{ top_jurisdictions[0] }}{% endif %}{% endif %} — with video, searchable transcripts and deep links to any moment.">
   <link rel="alternate" type="application/rss+xml" title="Newly archived {{ name }} meetings" href="/feed.xml?jurisdiction={{ name|urlencode }}">
   {#- Self-referential canonical, deliberately unlike /meetings' filter-blind
-     one -- each state page is its own indexable SEO surface. #}
+     one -- each state page is its own indexable SEO surface. Note it stays
+     the *bare* state URL even under ?topic=: the topic views are real,
+     crawlable, server-rendered variants worth following for their
+     snippets, but they are alternate cuts of one page's content, not
+     separate pages competing for the same query. -#}
   {% if public_base_url %}
   <link rel="canonical" href="{{ public_base_url }}/state/{{ state_slug }}">
   <meta property="og:url" content="{{ public_base_url }}/state/{{ state_slug }}">
@@ -12,67 +20,164 @@
   <meta property="og:title" content="{{ name }} public meeting videos & transcripts">
   <meta property="og:description" content="Watch and search archived {{ name }} government meetings — city councils, county boards, and public agencies — with transcripts and deep links to specific moments.">
   <meta property="og:type" content="website">
+  {#- Structured data. BreadcrumbList states the Home > Coverage > State
+     hierarchy the site already forms (the hubs carry the fourth level).
+     The ItemList of VideoObjects is what can earn a video rich result:
+     every entry is a real archived meeting with a transcript, and
+     thumbnailUrl is emitted only for pages whose frame is confirmed
+     stored (crud.pages_with_thumbnails()) -- advertising a card URL that
+     would 404 is worse than advertising none, same rule /m/{slug}
+     follows for og:image. -#}
+  {% if public_base_url %}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "name": {{ (name ~ " public meetings")|tojson }},
+    "description": {{ ("Archived public meeting video and transcripts for " ~ jurisdiction_count ~ " " ~ name ~ " governments.")|tojson }},
+    "url": {{ (public_base_url ~ "/state/" ~ state_slug)|tojson }},
+    "breadcrumb": {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "Red Tape Recordings", "item": {{ (public_base_url ~ "/")|tojson }}},
+        {"@type": "ListItem", "position": 2, "name": "Coverage", "item": {{ (public_base_url ~ "/coverage")|tojson }}},
+        {"@type": "ListItem", "position": 3, "name": {{ name|tojson }}, "item": {{ (public_base_url ~ "/state/" ~ state_slug)|tojson }}}
+      ]
+    }{% if featured %},
+    "mainEntity": {
+      "@type": "ItemList",
+      "itemListElement": [
+        {%- for m in featured %}
+        {
+          "@type": "ListItem",
+          "position": {{ loop.index }},
+          "item": {
+            "@type": "VideoObject",
+            "name": {{ (m.title or "Public meeting")|tojson }},
+            "description": {{ m.snippet_text|tojson }},
+            "url": {{ (public_base_url ~ m.deep_link)|tojson }},
+            {% if m.date %}"uploadDate": {{ m.date|tojson }},{% endif %}
+            {% if m.card_url %}"thumbnailUrl": {{ (public_base_url ~ m.card_url)|tojson }},{% endif %}
+            "transcript": {{ m.snippet_text|tojson }}
+          }
+        }{{ "," if not loop.last }}
+        {%- endfor %}
+      ]
+    }{% endif %}
+  }
+  </script>
+  {% endif %}
 {% endblock %}
 {% block content %}
-  <main class="about-page">
+  <main class="about-page state-page">
+    <nav aria-label="Breadcrumb" class="hub-breadcrumb">
+      <a href="/">Home</a> &rsaquo; <a href="/coverage">Coverage</a> &rsaquo; <span>{{ name }}</span>
+    </nav>
     <h1>{{ name }} public meetings</h1>
     <p class="about-lede">Video, transcripts, and deep links for {{ total_pages }} archived public meeting{{ 's' if total_pages != 1 else '' }} from {{ jurisdiction_count }} {{ name }} government{{ 's' if jurisdiction_count != 1 else '' }} — city councils, county boards, and public agencies.</p>
-    <p>Don't see your city? <a href="/">Paste a meeting link</a> and see what comes back — if it's on a platform we already know, it'll just work.</p>
+    <p class="state-freshness">
+      {%- if transcript_count %}{{ transcript_count }} with a searchable transcript{% endif -%}
+      {%- if recently_added_count %}{% if transcript_count %} &middot; {% endif %}<strong>{{ recently_added_count }} added in the last {{ freshness_days }} days</strong>{% endif -%}
+    </p>
 
-    <h2>Governments covered in {{ name }}</h2>
-    <div class="table-responsive">
-      <table class="table table-sm table-striped align-middle coverage-table">
-        <thead>
-          <tr>
-            <th scope="col">Government</th>
-            <th scope="col">Meetings</th>
-            <th scope="col">Example meeting</th>
-            <th scope="col">Transcript</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for row in jurisdictions %}
-          <tr>
-            <td>{% if row.hub_slug %}<a href="/j/{{ row.hub_slug }}">{{ row.jurisdiction|jurisdiction_display }}</a>{% else %}{{ row.jurisdiction|jurisdiction_display }}{% endif %}</td>
-            <td>{{ row.page_count }}</td>
-            <td><a href="/m/{{ row.example.slug }}">{{ row.example.title or "Untitled meeting" }}</a></td>
-            <td>
-              {% if row.example.has_transcript %}
-              <span class="transcript-badge" title="A transcript is available for this meeting">&#10003; Transcript</span>
-              {% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+    {% with chips = topic_chips, base_url = "/state/" ~ state_slug %}
+      {% include "_topic_chips.html" %}
+    {% endwith %}
 
-    <h2 style="margin-top: 2.5rem;">Recently archived</h2>
-    <div class="meeting-list">
-      {% for m in recent_pages %}
-      <div class="calendar-candidate meeting-result-row">
-        <div class="calendar-candidate-main">
-          <a href="/m/{{ m.slug }}">{{ m.title or "Untitled meeting" }}</a>
-          <span class="calendar-candidate-date">
-            {%- if m.jurisdiction %}{{ m.jurisdiction|jurisdiction_display }}{% endif -%}
-            {#- Semantic <time> on the meeting date -- see meeting_date_html()
-               in archive/main.py. #}
-            {%- if m.date %} &middot; {{ m.date|meeting_date_html }}{% endif -%}
-          </span>
-        </div>
-        {% if m.has_transcript %}
-        <span class="transcript-badge" title="A transcript is available for this meeting">&#10003; Transcript</span>
+    {#- Two panes on desktop: the readable, varied results lead, with the
+       full government list as a sticky sidebar beside them. The sidebar
+       is *after* the main pane in source order, so on mobile (one column)
+       a reader gets the snippets first and the long list below, which is
+       the whole point -- at 222 governments an alphabetical wall is not
+       something anyone navigates on a phone. The list is never
+       JS-collapsed: every /j/ link stays in the initial HTML, since
+       internal links to the hubs are part of what this page is *for*. -#}
+    <div class="state-layout">
+      <div class="state-main">
+        <h2 class="state-section-heading">
+          {% if active_topic_label %}{{ active_topic_label }} in {{ name }} meetings{% elif featured %}Recent moments from {{ name }} meetings{% else %}Recently archived in {{ name }}{% endif %}
+        </h2>
+        {% if active_topic_label %}
+        <p class="state-section-sub">Quotes mentioning {{ active_topic_label|lower }}, from the most recent {{ name }} meetings we have transcripts for. <a href="/state/{{ state_slug }}">Show all topics</a>.</p>
         {% else %}
-        <span class="transcript-badge transcript-badge-placeholder" aria-hidden="true">&#10003; Transcript</span>
+        <p class="state-section-sub">
+          {%- if featured %}Real excerpts from the transcripts, each linked to the moment it was said.
+          {%- else %}The most recently archived {{ name }} meetings.{% endif -%}
+        </p>
+        {% endif %}
+
+        {% with show_jurisdiction = True %}
+          {% include "_featured_meetings.html" %}
+        {% endwith %}
+
+        {#- Fallback when nothing has a stored highlight yet: a state
+           whose meetings are all untranscribed, or one crawled before
+           scripts/backfill_meeting_highlights.py has reached it. Without
+           this the page would carry no links to any meeting at all --
+           the featured cards are normally the only ones, since the
+           sidebar deliberately lists governments rather than meetings. -#}
+        {% if not featured %}
+        <div class="meeting-list">
+          {% for m in recent_pages %}
+          <div class="calendar-candidate meeting-result-row">
+            <div class="calendar-candidate-main">
+              <a href="/m/{{ m.slug }}">{{ m.title or "Untitled meeting" }}</a>
+              <span class="calendar-candidate-date">
+                {%- if m.jurisdiction %}{{ m.jurisdiction|jurisdiction_display }}{% endif -%}
+                {%- if m.date %} &middot; {{ m.date|meeting_date_html }}{% endif -%}
+              </span>
+            </div>
+            {% if m.has_transcript %}
+            <span class="transcript-badge" title="A transcript is available for this meeting">&#10003; Transcript</span>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <p class="state-main-links">
+          <a href="/meetings?jurisdiction={{ name|urlencode }}">Search all {{ total_pages }} {{ name }} meetings &rarr;</a>
+        </p>
+
+        {% if most_active %}
+        <h2 class="state-section-heading">Most active {{ name }} governments</h2>
+        <p class="state-section-sub">Most meetings archived in the last {{ most_active_days }} days.</p>
+        <ul class="most-active-list">
+          {%- for row in most_active %}
+          <li>
+            <a href="/j/{{ row.hub_slug }}">{{ row.jurisdiction|jurisdiction_display }}</a>
+            <span class="most-active-count">{{ row.recent_count }} recent &middot; {{ row.total_count }} total</span>
+          </li>
+          {%- endfor %}
+        </ul>
         {% endif %}
       </div>
-      {% endfor %}
+
+      <aside class="state-sidebar" aria-label="Governments covered in {{ name }}">
+        <h2 class="state-sidebar-heading">{{ jurisdiction_count }} governments covered</h2>
+        <p class="state-sidebar-note">Don't see yours? <a href="/">Paste a meeting link</a> — if it's on a platform we know, it'll just work.</p>
+        <div class="state-gov-scroll">
+          {%- for group in government_groups %}
+          <section class="state-gov-group">
+            <h3 class="state-gov-heading">{{ group.label }} <span class="state-gov-count">{{ group.rows|length }}</span></h3>
+            <ul class="state-gov-list">
+              {%- for row in group.rows %}
+              <li>
+                {% if row.hub_slug %}<a href="/j/{{ row.hub_slug }}">{{ row.jurisdiction|jurisdiction_display }}</a>{% else %}{{ row.jurisdiction|jurisdiction_display }}{% endif %}
+                <span class="state-gov-meetings">{{ row.page_count }}</span>
+              </li>
+              {%- endfor %}
+            </ul>
+          </section>
+          {%- endfor %}
+        </div>
+      </aside>
     </div>
 
-    <p style="margin-top: 1.5rem;">
-      <a href="/meetings?jurisdiction={{ name|urlencode }}">Search all {{ total_pages }} {{ name }} meetings &rarr;</a>
-      &nbsp;&middot;&nbsp;
+    <p class="state-footer-links">
       <a href="/coverage">All coverage by state and platform</a>
+      &nbsp;&middot;&nbsp;
+      <a href="/feed.xml?jurisdiction={{ name|urlencode }}">RSS for new {{ name }} meetings</a>
     </p>
   </main>
 {% endblock %}
