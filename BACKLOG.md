@@ -106,7 +106,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (7)
   Some Swagit meetings have no single "whole meeting" video file…
 
 Platform & jurisdiction coverage  (28)
-  ChampDS resolves clustered and failed fast during a 2026-08-22…
+  `[JUST-DO-IT]` ChampDS cluster was self-inflicted rate-limiting, not…
   The 50 largest US cities — per-tenant status `[NEEDS-AUDIT]`
   Jurisdiction extraction & backfill  (16)
     [JUST-DO-IT] A land acknowledgement became a jurisdiction, and it
@@ -1171,21 +1171,32 @@ Everything adapter-, tenant-, or jurisdiction-extraction-shaped, kept
 together on purpose. Tags are inline here rather than hoisted into the
 actionability sections above.
 
-### ChampDS resolves clustered and failed fast during a 2026-08-22 local-Whisper batch `[NEEDS-AUDIT]`
+### `[JUST-DO-IT]` ChampDS cluster was self-inflicted rate-limiting, not a block — two concrete fixes
 
-7 of the last 12 `play.champds.com` URLs in a 25-meeting tier-3 batch
-failed in the same ~25-minute window (17:37-18:02 PDT), 6 of them
-instantly (~0.2-0.3s, i.e. before any real network wait, despite
-`transcribe_backlog_locally.py` now retrying transient failures —
-see `[Done 2026-08-22] #306` in `BACKLOG_DONE.md`) with "no usable
-audio/video source on re-resolve." One of the 7,
-`play.champds.com/atlantaga/event/1077`, was live-verified working with
-real captions on 2026-08-16 (see the "ChampDS real captions confirmed"
-entry below) and failed today with a *different* error (`ffprobe
-couldn't read the media`). Looks like a platform-wide or IP-level block
-hit mid-batch rather than N unrelated per-meeting problems, but not
-confirmed either way — worth a fresh resolve against a couple of these
-URLs on their own before assuming it's still happening.
+Corrects an earlier version of this entry that read the same data as a
+possible platform-wide block. Full evidence: `BACKLOG_DONE.md`
+"ChampDS cluster root-caused" (2026-08-22). Short version: the tier-3
+queue file sorts roughly alphabetically, so a 25-meeting batch pop
+landed 12 `play.champds.com` URLs in a row; `transcribe_backlog_locally.
+py`'s `REQUEST_DELAY_SECONDS = 2.0` paces between meetings but isn't
+host-aware, so those 12 hit the same API back-to-back. 7 failed in a
+25-minute window, 2 succeeded outright, 2 partially succeeded (several
+chunks transcribed before timing out) — not a clean block. All 7
+failing URLs, re-curled directly against `playapi.champds.com` ~7 hours
+later, returned real `200`s with real data, confirming the block (if
+that's what it was) already cleared.
+
+Two real, small fixes, not yet built:
+1. Host-aware pacing in `transcribe_backlog_locally.py` (and worth
+   checking `feed_tier3_auto_transcription.py` too) — a longer delay
+   when consecutive queue entries share a host, not a flat 2s for every
+   meeting regardless of host.
+2. `champds.py`'s `_fetch_json()` collapses every failure mode (timeout,
+   non-200 status, connection error) into one `return None` / generic
+   warning — the real status code or exception type is never logged, so
+   a future cluster can't be told apart from a genuine block without
+   re-curling by hand like this investigation had to. Worth checking
+   other adapters for the same collapse pattern.
 
 ### The 50 largest US cities — per-tenant status `[NEEDS-AUDIT]`
 
