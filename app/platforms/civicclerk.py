@@ -29,7 +29,9 @@ TARGET_LANGUAGE = "en"
 # that merely contains "co{state}" letters (chicoca -> "chi"+co+ca,
 # sanfranciscoca -> "sanfrancis"+co+ca) from ever matching -- their ZIP
 # counties don't agree with the accidental name fragment.
-_COUNTY_SUBDOMAIN_RE = re.compile(r"^(?P<name>[a-z][a-z.\-]*?)(?:co|county)(?P<st>[a-z]{2})\d*$")
+_COUNTY_SUBDOMAIN_RE = re.compile(
+    r"^(?P<name>[a-z][a-z.\-]*?)(?:co|county)(?P<st>[a-z]{2})\d*$"
+)
 
 # County-body meeting names, anchored at the start so "Joint Meeting
 # with County Board" (a city meeting that merely involves the county)

@@ -203,7 +203,9 @@ def _normalize_candidates(name: str) -> List[str]:
 # lookup keys -- filtered by `_PAREN_JUNK_RE` (a word filter plus any
 # digit) rather than a curated row list, since the junk shapes are
 # structural, not per-row.
-_PAREN_ALT_RE = re.compile(r"^(?P<outer>[^()]*\S)\s*\((?P<alt>[^()]+)\)(?P<tail>[^()]*)$")
+_PAREN_ALT_RE = re.compile(
+    r"^(?P<outer>[^()]*\S)\s*\((?P<alt>[^()]+)\)(?P<tail>[^()]*)$"
+)
 _PAREN_JUNK_RE = re.compile(r"\b(?:part|balance|half)\b|\d", re.IGNORECASE)
 
 
@@ -2224,9 +2226,7 @@ def _county_retype_from_page_text(candidate: str, page_text: str) -> str:
     if _TYPE_HINT_RE.search(candidate) or _COUNTY_TYPE_HINT_RE.search(candidate):
         return candidate
     escaped = re.escape(candidate)
-    if not re.search(
-        rf"\b(?:County\s+of\s+{escaped}|{escaped}\s+County)\b", page_text
-    ):
+    if not re.search(rf"\b(?:County\s+of\s+{escaped}|{escaped}\s+County)\b", page_text):
         return candidate
     if re.search(rf"\bCity\s+of\s+{escaped}\b", page_text):
         return candidate

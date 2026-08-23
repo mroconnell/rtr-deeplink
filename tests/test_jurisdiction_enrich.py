@@ -1612,9 +1612,7 @@ def test_finalize_declines_glued_repair_for_acronyms():
     # district's real name (its own page's venue line names it,
     # confirmed live 2026-08-23).
     assert je.finalize_jurisdiction("Cmsd, CA").confidence == "unverified"
-    result = je.finalize_jurisdiction(
-        "Cmsd, CA", netloc="pub-cmsd.escribemeetings.com"
-    )
+    result = je.finalize_jurisdiction("Cmsd, CA", netloc="pub-cmsd.escribemeetings.com")
     assert result.jurisdiction == "Costa Mesa Sanitary District, CA"
     assert result.confidence == "authoritative"
 
@@ -1653,5 +1651,6 @@ def test_known_jurisdiction_display_special_entities_and_county_names():
     )
     assert je.known_jurisdiction_display("ventura.primegov.com") == "Ventura County, CA"
     assert (
-        je.known_jurisdiction_display("slc.primegov.com") == "City of Salt Lake City, UT"
+        je.known_jurisdiction_display("slc.primegov.com")
+        == "City of Salt Lake City, UT"
     )

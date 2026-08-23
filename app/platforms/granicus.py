@@ -81,6 +81,7 @@ def _strip_meeting_access_tail(title: str) -> str:
     stripped = _ACCESS_TAIL_RE.sub("", title).strip(" \t\r\n-–—:,")
     return stripped or title
 
+
 US_STATE_ABBREVIATIONS = {
     "al",
     "ak",
