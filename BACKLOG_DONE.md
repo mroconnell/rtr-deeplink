@@ -6,6 +6,137 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Thermal pacing for `scripts/transcribe_backlog_locally.py`, a real fresh-venv SSL gotcha found and fixed across 7 scripts, and IQM2's `Detail_LegiFile.aspx` URLs silently resolving the wrong meeting [Done 2026-08-21/23]
+
+Three related, independently-verified fixes from setting up local
+transcription batches on a real machine for the first time (a 2012-era
+MacBook Pro, no prior `.venv`) and running one for several days.
+
+**1. Thermal pacing.** Nothing in this script throttled CPU usage before
+this — a genuinely long unattended batch (the whole point of running
+locally) can run the CPU at a sustained high clock for hours at a
+stretch, a real overheating risk on older/fanless hardware. Added
+`--cpu-threads N` (caps CTranslate2 to N CPU threads, default half the
+machine's real physical core count via `_pick_default_cpu_threads()`) and
+`--chunk-cooldown-seconds N` (rests N seconds after every ~900s chunk,
+`_thermal_pace()`) — the latter also polls macOS's own `CPU_Speed_Limit`
+(`pmset -g therm`, no sudo needed) after each cooldown and waits longer
+if the OS has already started throttling. Live-verified against a real
+~5.25-hour Albemarle, NC meeting at `--cpu-threads 2`: `CPU_Speed_Limit`
+stayed at 100% (no throttling) for the entire run. `caffeinate -s`
+recommended alongside it for a real multi-day run (prevents system sleep
+on AC power) — confirmed live that without it, a real overnight run
+genuinely slept mid-chunk once (~9 minutes lost); the script's own
+`_note_if_suspended()` detected and logged the gap correctly, but
+`caffeinate` avoids losing the time at all.
+
+**2. SSL_CERT_FILE / `import aiohttp` ordering.** A fresh `python3.12 -m
+venv .venv` (Homebrew-installed Python) has zero CA certs loaded by
+default — confirmed directly: `ssl.create_default_context().cert_store_
+stats()` reported `{'x509': 0, 'crl': 0, 'x509_ca': 0}`. Every `aiohttp`
+call in every local script failed with `SSLCertVerificationError`, easy
+to mistake for a real network/DNS outage. Standard fix (`os.environ.
+setdefault("SSL_CERT_FILE", certifi.where())`, `certifi` already a real
+transitive dependency via `sentry-sdk`) didn't work on the first attempt
+because it was placed *after* `import aiohttp` — root-caused by reading
+`aiohttp/connector.py` directly: `_SSL_CONTEXT_VERIFIED =
+_make_ssl_context(True)` is a **module-level statement**, evaluated the
+instant `import aiohttp` runs, not lazily on first connection. Moving the
+fix to before that import line resolved it. Real, confirmed cost of
+getting the ordering wrong once, live: `scripts/feed_tier3_auto_
+transcription.py`'s `main()` advances (rewrites) its own queue file
+unconditionally after each run regardless of individual URL outcomes, so
+a real batch of 48 URLs got popped off the front, every one failed on the
+SSL error, and none were pushed to Archive — recovered by computing the
+set difference between the file's last committed state and its
+post-failure state and prepending the 48 back in their original order.
+Applied the same fix to every script that imports `aiohttp`:
+`transcribe_backlog_locally.py`, `bulk_ingest.py`,
+`feed_tier3_auto_transcription.py`, `backfill_jurisdiction_bleed.py`,
+`retranscribe_first_chunk.py`, `fetch_youtube_transcripts.py`,
+`bulk_queue_transcription_backlog.py` — 7 files total.
+
+**3. IQM2 adapter: `Detail_LegiFile.aspx` URLs silently resolved the
+wrong meeting ID.** Found while triaging skip reasons from a real local
+batch run — a user-provided real video link for a Plainfield, NJ meeting
+the adapter had reported as having "no usable audio/video source"
+prompted checking whether that skip category was really dead sources, or
+fixable. Root cause: `app/platforms/iqm2.py`'s `_extract_meeting_id()`
+used a single regex, `[?&](?:ID|MeetingID)=(\d+)`, returning whichever of
+`ID=`/`MeetingID=` appeared first in the URL's query string — correct for
+the two page shapes this adapter was originally verified against
+(`Detail_Meeting.aspx?ID={id}`, `SplitView.aspx?...MeetingID={id}`, each
+carrying only one of the two params), wrong on a third real shape,
+`Detail_LegiFile.aspx` (a single legislative file/agenda item's own
+detail page), which carries BOTH params with genuinely different values
+— `ID` is the file's own id, `MeetingID` is the real meeting, and `ID`
+happens to appear first in the query string on every real example
+checked. Confirmed live on the real Plainfield URL (`ID=4641`,
+`MeetingID=1229`): the old regex extracted `4641`, building
+`SplitView.aspx?MeetingID=4641` — a real page, wrong meeting, empty
+`<!-- MEDIA URL: -->`. `MeetingID=1229` (correct) has real video. Checked
+every other `Detail_LegiFile.aspx` candidate skipped the same run for the
+identical shape: Genesee County MI, Prescott AZ, Roanoke County VA,
+Sullivan County NY, Teaneck NJ, and two CA water districts (WBMWD, WCWD)
+— all 8 hit the same bug. Fix: try `MeetingID=` first (correct whenever
+present, across all three shapes), fall back to bare `ID=` only when
+`MeetingID` is genuinely absent. Verified live post-fix: all 8 of 8 now
+resolve real video. Checked the raw tier-3 discovery queue for the same
+shape too: 123 `Detail_LegiFile.aspx` URLs there, but only 1 actually had
+the bug's parameter ordering (the other 122 already had `MeetingID`
+first, unaffected by luck of ordering) — this bug's real damage was
+mostly confined to already-live pages, not the raw discovery queue.
+
+**Also considered and dropped, not shipped:** a queue-reordering
+mitigation for a suspected Granicus rate-limit pattern (interleaving the
+tier-3 discovery queue by host), based on an early read of ~40 skip
+reasons clustering on Granicus. A separate, much larger investigation
+(514 production jobs, 113 chunk failures over 32.2h — see WO-40, #284)
+falsified this directly: same-host-different-job failure correlation
+within 10 minutes is 0; same-job correlation is 111. Failures live
+entirely within one job's own chunk loop, which queue reordering cannot
+reach — the real pattern (chunk 0 failing 3-4x more than later chunks)
+points to source-side cold-storage/rehydration, not rate-limiting. A
+retry-and-checkpoint mechanism for `transcribe_backlog_locally.py`
+covering the same "don't discard already-transcribed chunks on a later
+failure" problem was also independently built and shipped in the same
+window (#306, "Retry live-source calls and checkpoint partial
+transcriptions") — more thorough than an earlier draft of this fix
+(persistent, resumable checkpointing via `local_transcription_backups/
+partial/`, applied to `finder.resolve()`/`probe_duration()`/
+`extract_chunk_audio()` via a shared `app/utils/retry.py` policy, plus
+the matching fix in `worker/main.py`'s own feasibility check) — not
+duplicated here.
+
+## Granicus's 36,000-cue scraped-caption truncation warning wired into the "is this transcript good enough" gate [Done 2026-08-23]
+
+Raised directly by the user, drawing the connection to the local-Whisper
+partial-transcript work above: `app/platforms/granicus.py` has flagged a
+scraped transcript that hits exactly 36,000 VTT cues (a known Granicus-
+side truncation on very long meetings, confirmed live on 3 customers —
+College Park GA, Coral Gables FL, Marion County FL) since before this
+session, but that warning had never been wired into any "is this
+transcript actually good" check. A page stuck at that cap counted as
+permanently done — `_has_good_transcript()`/`find_auto_transcription_
+candidate()`/`list_transcription_backlog_candidates()` would never
+surface it again for a real re-transcription attempt, even though real
+content is genuinely missing past the cut-off.
+
+Added `_GRANICUS_TRUNCATION_MARKER` (`archive/db/crud.py`, matching the
+warning's own real substring) to every place `_GARBLED_MARKER`/
+`_HALLUCINATION_MARKER` already gate this: `_has_real_warning_free_
+transcript()` (the shared Python check) and `_good_default_transcript_
+exists()` (the separate raw-SQL reimplementation the cloud worker's
+candidate search uses). Also added a new `"truncated_transcript"` outcome
+bucket to `_classify_page_outcome()`/`_OUTCOME_LABELS`/`_OUTCOME_RANK`
+(the `/internal/transcript-quality-audit` reporting), kept distinct from
+`"garbled_transcript"` — the covered portion is real, correct government-
+provided caption content, not a hallucination, so it's a different
+problem worth telling apart in a report. New regression test in
+`tests/test_transcription_jobs.py` (`test_has_good_transcript_treats_
+granicus_36k_truncation_as_not_good`) confirms the SQL predicate and the
+Python helper agree, using the adapter's own real warning wording.
+
 ## ChampDS cluster root-caused: self-inflicted rate-limiting, not a block [Investigated 2026-08-22]
 
 User asked for a broader pass over cloud-worker and local-batch

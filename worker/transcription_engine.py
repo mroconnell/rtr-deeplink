@@ -153,12 +153,33 @@ class FasterWhisperEngine(TranscriptionEngine):
     the full validated case.
     """
 
-    def __init__(self, model_size: str = "tiny", compute_type: str = "int8"):
+    def __init__(
+        self,
+        model_size: str = "tiny",
+        compute_type: str = "int8",
+        cpu_threads: int = 0,
+    ):
         # Imported lazily so importing this module (e.g. from tests) never
         # requires the real model weights to be downloaded/available.
         from faster_whisper import WhisperModel
 
-        self._model = WhisperModel(model_size, device="cpu", compute_type=compute_type)
+        # cpu_threads=0 is CTranslate2's own "let it decide" sentinel (it
+        # sizes itself off the visible core count) -- the default here
+        # preserves worker/main.py's existing behavior exactly, since that
+        # caller never passes this. scripts/transcribe_backlog_locally.py
+        # is the one real caller that overrides it, to cap CPU utilization
+        # (and the heat that comes with it) on a real Mac running this for
+        # hours unattended -- see that script's own --cpu-threads docs for
+        # why. Not something worker/main.py's own Render deploy needs: a
+        # cloud worker has no fan/thermal concern, and 900s chunks already
+        # OOM-constrained model_size down to "tiny" there (see this class's
+        # own docstring) rather than needing a CPU-time constraint too.
+        self._model = WhisperModel(
+            model_size,
+            device="cpu",
+            compute_type=compute_type,
+            cpu_threads=cpu_threads,
+        )
 
     async def transcribe_chunk(self, audio_path: Path) -> List[Dict[str, Any]]:
         import asyncio

@@ -81,16 +81,26 @@ _GARBLED_MARKER = "looks garbled at the source"
 # eligibility, the /coverage and /meetings "✓ Transcript" badges), so every
 # call site below checks both markers, not just _GARBLED_MARKER alone.
 _HALLUCINATION_MARKER = "hallucinated by the transcription model"
+# Substring of app/platforms/granicus.py's own 36,000-cue scraped-caption
+# truncation warning -- added 2026-08-23 after confirming that warning had
+# never been wired into any "is this transcript good enough" check: a page
+# stuck at that cap counted as permanently "done" and could never become a
+# real re-transcription candidate, even though real content is genuinely
+# missing past the cut-off point -- the same reader-facing problem
+# _GARBLED_MARKER/_HALLUCINATION_MARKER exist to catch, just a different
+# root cause (a third-party vendor's own truncation, not our own
+# extraction/model failure).
+_GRANICUS_TRUNCATION_MARKER = "36,000 lines, a known limit"
 
 
 def _has_real_warning_free_transcript(warnings: Optional[list]) -> bool:
-    """True if none of `warnings` mark this version as garbled-at-source or
-    likely-hallucinated -- the shared "is this actually a good transcript"
-    check every call site below needs, factored out so a third quality
-    marker never again needs updating in four separate places."""
-    return not any(
-        _GARBLED_MARKER in w or _HALLUCINATION_MARKER in w for w in (warnings or [])
-    )
+    """True if none of `warnings` mark this version as garbled-at-source,
+    likely-hallucinated, or a truncated Granicus scraped caption -- the
+    shared "is this actually a good transcript" check every call site
+    below needs, factored out so a new quality marker never again needs
+    updating in four separate places."""
+    markers = (_GARBLED_MARKER, _HALLUCINATION_MARKER, _GRANICUS_TRUNCATION_MARKER)
+    return not any(marker in w for w in (warnings or []) for marker in markers)
 
 
 # sha256 of the empty string: what _content_hash() yields for a version
@@ -106,15 +116,16 @@ _EMPTY_CONTENT_HASH = _content_hash([])
 
 
 def _good_default_transcript_exists():
-    """SQL `EXISTS` for "this MeetingPage has a real, non-garbled default
-    transcript" -- the same decision _has_good_transcript() makes, as a
-    correlated subquery usable in a WHERE clause, and touching only
-    is_default / content_hash / transcript_warnings, never `segments`.
-    transcript_warnings is a small JSON list; the two quality markers are
-    plain ASCII substrings so a text-cast LIKE is exact on both Postgres
-    (json::text is the stored text verbatim) and SQLite. NULL warnings
-    means "no warnings", i.e. good -- guarded explicitly, since
-    `NOT (NULL LIKE ...)` is NULL and would silently drop those rows."""
+    """SQL `EXISTS` for "this MeetingPage has a real, non-garbled,
+    non-truncated default transcript" -- the same decision _has_good_
+    transcript() makes, as a correlated subquery usable in a WHERE clause,
+    and touching only is_default / content_hash / transcript_warnings,
+    never `segments`. transcript_warnings is a small JSON list; all three
+    quality markers are plain ASCII substrings so a text-cast LIKE is
+    exact on both Postgres (json::text is the stored text verbatim) and
+    SQLite. NULL warnings means "no warnings", i.e. good -- guarded
+    explicitly, since `NOT (NULL LIKE ...)` is NULL and would silently
+    drop those rows."""
     warnings_text = cast(TranscriptVersion.transcript_warnings, Text)
     return exists().where(
         TranscriptVersion.meeting_page_id == MeetingPage.id,
@@ -125,6 +136,7 @@ def _good_default_transcript_exists():
             and_(
                 ~warnings_text.like(f"%{_GARBLED_MARKER}%"),
                 ~warnings_text.like(f"%{_HALLUCINATION_MARKER}%"),
+                ~warnings_text.like(f"%{_GRANICUS_TRUNCATION_MARKER}%"),
             ),
         ),
     )
@@ -3633,20 +3645,33 @@ _OUTCOME_LABELS: dict[str, str] = {
     "blank_transcript": "Blank/no transcript",
     "agenda_fallback": "Agenda only",
     "garbled_transcript": "Garbled transcript",
+    # Added 2026-08-23 alongside _GRANICUS_TRUNCATION_MARKER -- its own
+    # bucket rather than folded into "garbled_transcript": the covered
+    # portion is real, correct content (a government-provided caption,
+    # not a hallucination), it just stops at Granicus's own 36,000-cue
+    # cap -- a different problem than garbled, worth telling apart in a
+    # report the same way agenda_fallback is kept distinct from
+    # blank_transcript.
+    "truncated_transcript": "Truncated transcript (Granicus cap)",
     "non_english_transcript": "Transcript (non-English)",
     "success": "Transcript (English)",
 }
 # Lower is better -- used to pick which of a jurisdiction's several pages
 # best represents it (same "prefer the most convincing real example"
 # intent as _select_examples() above, just scored on the fuller bucket
-# list instead of a single has_transcript bool).
+# list instead of a single has_transcript bool). truncated_transcript
+# ranks just above garbled_transcript -- most of a real transcript is
+# arguably more useful to a reader than one that's full-length but
+# possibly-hallucinated, though this ordering is a judgment call, not a
+# measured one.
 _OUTCOME_RANK: dict[str, int] = {
     "success": 0,
     "non_english_transcript": 1,
     "garbled_transcript": 2,
-    "agenda_fallback": 3,
-    "blank_transcript": 4,
-    "no_video": 5,
+    "truncated_transcript": 3,
+    "agenda_fallback": 4,
+    "blank_transcript": 5,
+    "no_video": 6,
 }
 
 
@@ -3669,6 +3694,10 @@ def _classify_page_outcome(
         for w in default_transcript_warnings
     ):
         return "garbled_transcript"
+    if default_transcript_warnings and any(
+        _GRANICUS_TRUNCATION_MARKER in w for w in default_transcript_warnings
+    ):
+        return "truncated_transcript"
     if default_transcript_language and default_transcript_language != "en":
         return "non_english_transcript"
     return "success"

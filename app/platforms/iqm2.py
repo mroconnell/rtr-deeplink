@@ -55,7 +55,34 @@ from ..utils import jurisdiction_enrich
 # meetings genuinely have no recording, or a real per-customer gap in this
 # adapter. Not yet checked against a real past Board of Supervisors
 # meeting specifically -- see BACKLOG.md.
-_MEETING_ID_RE = re.compile(r"[?&](?:ID|MeetingID)=(\d+)", re.IGNORECASE)
+# Real, confirmed bug (2026-08-23): a bare `[?&](?:ID|MeetingID)=(\d+)`
+# regex just returns whichever of the two params happens to appear first
+# in the URL's own query-string order -- fine for the two page shapes this
+# adapter was originally built against (Detail_Meeting.aspx?ID={id} and
+# SplitView.aspx?...MeetingID={id}, each carrying only ONE of the two
+# params, confirmed live against Atlanta/Santa Clara -- see module
+# docstring), but silently wrong on Detail_LegiFile.aspx URLs, a THIRD
+# real IQM2 page shape (a single legislative file/agenda item's own detail
+# page, e.g. `Detail_LegiFile.aspx?...&ID={file_id}&...&MeetingID=
+# {meeting_id}`) where `ID` and `MeetingID` are two genuinely different
+# numbers -- the file's own id, and the meeting it belongs to -- with `ID`
+# appearing first in the query string. Confirmed live against a real
+# Plainfield, NJ meeting during a 2026-08-23 backlog run: `Detail_LegiFile.
+# aspx?...&ID=4641&...&MeetingID=1229` was extracting meeting_id=4641 (the
+# LegiFile's own id), building `SplitView.aspx?...MeetingID=4641`, and
+# getting back an empty `<!-- MEDIA URL: -->` (a real page, just for the
+# wrong meeting) -- silently reported as "no usable audio/video source" on
+# a meeting that in fact had a real, populated video (`MeetingID=1229`
+# does return one). Confirmed the same shape (both params present, `ID`
+# first) across every other Detail_LegiFile.aspx candidate skipped that
+# same run (Genesee County MI, Prescott AZ, Roanoke County VA, Sullivan
+# County NY, Teaneck NJ, and two CA water districts) -- not a one-off.
+# Fix: try MeetingID first (the actually-correct identifier whenever it's
+# present at all, on any of the three page shapes), fall back to bare ID
+# only when MeetingID is genuinely absent (Detail_Meeting.aspx's own
+# confirmed shape).
+_MEETING_ID_PRIMARY_RE = re.compile(r"[?&]MeetingID=(\d+)", re.IGNORECASE)
+_MEETING_ID_FALLBACK_RE = re.compile(r"[?&]ID=(\d+)", re.IGNORECASE)
 # The literal "Web Outline" string is IQM2's own generic vendor branding
 # (confirmed identical across both real customers), not a per-city
 # variable -- a reliable fixed separator, unlike generic_fallback.py's
@@ -149,7 +176,7 @@ class IQM2AssetFinder(AssetFinder):
 
     @staticmethod
     def _extract_meeting_id(url: str) -> Optional[str]:
-        match = _MEETING_ID_RE.search(url)
+        match = _MEETING_ID_PRIMARY_RE.search(url) or _MEETING_ID_FALLBACK_RE.search(url)
         return match.group(1) if match else None
 
     @staticmethod

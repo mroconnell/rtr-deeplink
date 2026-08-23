@@ -995,6 +995,8 @@ python scripts/transcribe_backlog_locally.py --dry-run
 python scripts/transcribe_backlog_locally.py --limit 5
 python scripts/transcribe_backlog_locally.py --model-size medium --limit 1
 python scripts/transcribe_backlog_locally.py --url "https://..."  # one specific meeting, bypassing the queue
+# A real overnight/multi-day unattended batch (see "Thermal pacing" below):
+caffeinate -s python scripts/transcribe_backlog_locally.py --cpu-threads 2 --chunk-cooldown-seconds 30
 ```
 
 - **Model size is auto-picked from this Mac's real total RAM** (`"small"`
@@ -1084,6 +1086,31 @@ python scripts/transcribe_backlog_locally.py --url "https://..."  # one specific
   its chunk-processing path never had the gap (see "On-demand
   transcription" above — chunk failures already get three tries plus
   job-level retries, and partial segments are persisted per job).
+- **Thermal pacing, for a real multi-day unattended run on an older/
+  fanless Mac (added 2026-08-21).** Nothing above throttles CPU usage by
+  default — a genuinely long batch can run the CPU at a sustained high
+  clock for hours at a stretch otherwise, a real overheating risk on
+  hardware without much thermal headroom. Two independent knobs, meant to
+  be used together: `--cpu-threads N` caps CTranslate2 to N CPU threads
+  (default: half this machine's real physical core count); `--chunk-
+  cooldown-seconds N` rests N seconds after every ~900s chunk — a real
+  duty-cycle rest at the natural per-chunk boundary, not just between
+  meetings — and also polls macOS's own `CPU_Speed_Limit` (`pmset -g
+  therm`, no sudo needed) after each cooldown, waiting longer if the OS
+  has already started throttling. Live-verified against a real
+  ~5.25-hour meeting (Albemarle, NC) at `--cpu-threads 2`: `CPU_Speed_
+  Limit` stayed at 100% (no throttling) for the entire run. Wrap the
+  whole invocation in `caffeinate -s` (prevents *system* sleep on AC
+  power only) so a multi-day run survives the machine's own idle-sleep
+  timer.
+- **A fresh Homebrew-Python venv has an empty default SSL trust store,**
+  breaking every `aiohttp` call in this script (and six other local
+  scripts) with `SSLCertVerificationError` — easy to mistake for a real
+  network outage. Fixed by setting `SSL_CERT_FILE` from `certifi` before
+  `import aiohttp` specifically (not just before first use — aiohttp
+  caches its default `SSLContext` at import time). See `CLAUDE.md`'s
+  matching convention bullet for the full incident and why the ordering
+  matters.
 
 Live-verified 2026-08-16 against a real backlog meeting (Welland/Elgin
 County, ON — `welland-2026-01-27-county-council-meeting`, a real 783-second

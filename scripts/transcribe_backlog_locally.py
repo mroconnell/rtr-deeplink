@@ -91,6 +91,31 @@ Usage (from the repo root, with the venv active):
     # non-default version nothing points to. See --promote's own --help text.
     python scripts/transcribe_backlog_locally.py --url "https://example.com/meeting" --promote
 
+**Thermal pacing, for a real unattended run against a 1000+-meeting queue
+on an older/fanless Mac (2026-08-21).** Nothing above throttles CPU usage
+at all by default (fine for a --limit 1-3 spot check) -- a genuinely long
+batch can run the CPU at a sustained high clock for hours at a stretch
+otherwise, a real overheating risk on hardware without a lot of thermal
+headroom. Two independent knobs, meant to be used together:
+  --cpu-threads N        Caps CTranslate2 to N CPU threads (default: half
+                          this machine's real physical core count -- see
+                          _pick_default_cpu_threads()).
+  --chunk-cooldown-seconds N
+                          Sleeps N seconds after every ~900s chunk (see
+                          _thermal_pace()) -- a real rest built into the
+                          natural per-chunk boundary, not just between
+                          meetings. Also checks macOS's own CPU_Speed_Limit
+                          (`pmset -g therm`, no sudo needed) after each
+                          cooldown and waits longer if the OS has already
+                          started throttling -- see --thermal-poll-seconds.
+Live-verified against a real ~5.25-hour meeting (Albemarle, NC) at
+--cpu-threads 2: CPU_Speed_Limit stayed at 100% (no throttling) for the
+whole run. Also worth running the whole invocation under `caffeinate -s`
+(prevents sleep on AC power only -- matches this being plugged in for an
+overnight run) so a display/idle sleep doesn't stall a chunk mid-extraction:
+    python scripts/transcribe_backlog_locally.py --cpu-threads 2 --chunk-cooldown-seconds 30
+    caffeinate -s python scripts/transcribe_backlog_locally.py --cpu-threads 2 --chunk-cooldown-seconds 30
+
 Requires ARCHIVE_BASE_URL and ARCHIVE_INGEST_TOKEN in the repo's local
 .env (same as scripts/bulk_ingest.py / fetch_youtube_transcripts.py),
 ffmpeg/ffprobe on PATH (same as the resolver/worker services need --
@@ -111,6 +136,7 @@ import json
 import logging
 import os
 import random
+import re
 import subprocess
 import sys
 import tempfile
@@ -119,8 +145,21 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional, Tuple
 
-import aiohttp
-from dotenv import load_dotenv
+import certifi
+
+# Must run before `import aiohttp` -- confirmed live 2026-08-21: a fresh
+# Homebrew-Python venv has an empty default SSL trust store, and
+# aiohttp/connector.py builds+caches its default SSLContext as a
+# module-level statement, evaluated the instant `import aiohttp` runs, not
+# lazily on first connection -- so this has to exist before that import
+# line, not just before this script's own first network call. See
+# CLAUDE.md's matching convention bullet for the full incident writeup
+# (a real batch of 48 queue URLs got silently dropped the first time this
+# fix was applied after the import instead of before it).
+os.environ.setdefault("SSL_CERT_FILE", certifi.where())
+
+import aiohttp  # noqa: E402
+from dotenv import load_dotenv  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -590,6 +629,114 @@ def _pick_default_model_size() -> str:
     return "base"
 
 
+def _pick_default_cpu_threads() -> int:
+    """Picks a --cpu-threads default from this machine's real physical core
+    count, same "read the real machine, don't guess" approach as
+    _pick_default_model_size(). Reads `sysctl -n hw.physicalcpu`.
+
+    Defaults to half the physical cores (minimum 1) -- deliberately leaves
+    real headroom rather than letting CTranslate2's own default (0 -- "use
+    every visible core") peg the whole machine for however many hours a
+    1000+-meeting backlog run takes. This is the actual, direct lever on
+    how much heat this generates per unit time: fewer busy cores means a
+    lower sustained power draw, at the direct cost of a proportionally
+    slower transcription -- see --chunk-cooldown-seconds below for the
+    other half of the thermal-pacing story. Not independently measured
+    against a real multi-day run on every possible machine -- watch
+    Activity Monitor / fan noise / `pmset -g therm` on a first real run
+    and raise or lower via --cpu-threads if this default is wrong for the
+    machine it's actually running on.
+
+    Falls back to 2 (safe on anything from a dual-core machine up) if
+    hw.physicalcpu can't be read at all.
+    """
+    try:
+        physical = int(
+            subprocess.check_output(["sysctl", "-n", "hw.physicalcpu"], timeout=5)
+        )
+    except Exception:
+        return 2
+    return max(1, physical // 2)
+
+
+# Regex for CPU_Speed_Limit's line in `pmset -g therm` output, e.g.
+# "\tCPU_Speed_Limit \t= 100". macOS sets this below 100 once its own
+# thermal management has already decided to throttle the CPU -- a real,
+# no-sudo-required signal that this machine is currently running hot,
+# distinct from (and a backstop for) the fixed --chunk-cooldown-seconds
+# pacing below. See _read_cpu_speed_limit()'s own docstring.
+_CPU_SPEED_LIMIT_RE = re.compile(r"CPU_Speed_Limit\s*=\s*(\d+)")
+
+
+def _read_cpu_speed_limit() -> Optional[int]:
+    """Reads macOS's own current CPU_Speed_Limit (0-100) from `pmset -g
+    therm` -- the same figure Activity Monitor's "CPU" thermal indicator
+    and the Energy tab's "CPU may be throttled" state are driven by. 100
+    means unrestricted; anything lower means macOS has already decided to
+    slow the CPU down for thermal (or power) reasons.
+
+    This is a real, kernel-reported figure, not a heuristic -- no sudo
+    required (`powermetrics --samplers smc`, the only way to read an actual
+    die temperature, does need it, and isn't scriptable non-interactively
+    without a stored password this repo has no business holding).
+
+    Returns None (not 100) if `pmset` isn't available at all (non-macOS) or
+    its output doesn't parse -- callers treat None as "no thermal signal on
+    this machine," not "everything's fine," so they fall back to the fixed
+    cooldown alone rather than silently skipping pacing.
+    """
+    try:
+        output = subprocess.check_output(
+            ["pmset", "-g", "therm"], timeout=5, text=True
+        )
+    except Exception:
+        return None
+    match = _CPU_SPEED_LIMIT_RE.search(output)
+    return int(match.group(1)) if match else None
+
+
+async def _thermal_pace(
+    *, cooldown_seconds: float, poll_seconds: float, context: str
+) -> None:
+    """Rests the CPU between chunks of sustained Whisper work -- the actual
+    mechanism behind --chunk-cooldown-seconds / --thermal-poll-seconds.
+
+    Two layers, always both applied when cooldown_seconds > 0:
+      1. A fixed sleep (cooldown_seconds) after every chunk, unconditional
+         -- the primary defense, a real duty-cycle rest baked into the loop
+         rather than only reacting once the machine is already hot.
+      2. A CPU_Speed_Limit check (see _read_cpu_speed_limit()) after that
+         fixed sleep: if macOS itself is already throttling (limit < 100),
+         keeps sleeping in poll_seconds increments -- logging at most once
+         per check so an unattended overnight run stays legible without
+         spamming -- until it recovers to 100. This is a backstop, not the
+         primary mechanism: by the time macOS is visibly throttling, the
+         machine is already running hotter than intended.
+    Skips layer 2 entirely (only the fixed sleep applies) on a machine
+    where _read_cpu_speed_limit() returns None (non-macOS, or pmset
+    unavailable).
+    """
+    if cooldown_seconds <= 0:
+        return
+    await asyncio.sleep(cooldown_seconds)
+    speed_limit = _read_cpu_speed_limit()
+    if speed_limit is None or speed_limit >= 100:
+        return
+    logger.warning(
+        "macOS reports CPU_Speed_Limit=%d%% after %s -- this machine is already "
+        "being thermally throttled by the OS. Pausing in %.0fs increments until it "
+        "recovers to 100%% before starting more Whisper work (this is expected "
+        "behavior on a long run, not an error; no action needed).",
+        speed_limit,
+        context,
+        poll_seconds,
+    )
+    while speed_limit is not None and speed_limit < 100:
+        await asyncio.sleep(poll_seconds)
+        speed_limit = _read_cpu_speed_limit()
+    logger.info("CPU_Speed_Limit back to 100%% -- resuming after %s.", context)
+
+
 async def _get_candidates(
     session: aiohttp.ClientSession, limit: Optional[int]
 ) -> List[dict]:
@@ -656,6 +803,8 @@ async def transcribe_meeting(
     *,
     chunk_size_seconds: int,
     resume: bool = True,
+    chunk_cooldown_seconds: float = 0.0,
+    thermal_poll_seconds: float = 30.0,
 ) -> dict:
     """Re-resolves `source_url` fresh (HLS/signed URLs can go stale, same
     reasoning as worker/main.py's own re-resolve-before-each-chunk), probes
@@ -868,6 +1017,11 @@ async def transcribe_meeting(
                     chunk_mono_start,
                     f"chunk {idx + 1}/{total_chunks} of {source_url}",
                 )
+                await _thermal_pace(
+                    cooldown_seconds=chunk_cooldown_seconds,
+                    poll_seconds=thermal_poll_seconds,
+                    context=f"chunk {idx + 1}/{total_chunks} of {source_url}",
+                )
         except BaseException as e:
             # Deliberately BaseException, not Exception: a Ctrl-C or an
             # asyncio cancellation three hours into an overnight run is
@@ -920,6 +1074,8 @@ async def process_one(
     chunk_size_seconds: int,
     promote: bool = False,
     resume: bool = True,
+    chunk_cooldown_seconds: float = 0.0,
+    thermal_poll_seconds: float = 30.0,
 ) -> dict:
     """Returns {"slug", "status": "ingested"|"skipped"|"failed", "detail"}.
 
@@ -959,6 +1115,8 @@ async def process_one(
         page["platform"],
         chunk_size_seconds=chunk_size_seconds,
         resume=resume,
+        chunk_cooldown_seconds=chunk_cooldown_seconds,
+        thermal_poll_seconds=thermal_poll_seconds,
     )
     if not result["ok"]:
         return {"slug": slug, "status": "skipped", "detail": result["reason"]}
@@ -1082,6 +1240,37 @@ async def main() -> None:
         "shipped), since the checkpoint only validates the chunking, not the model that produced "
         "the text.",
     )
+    parser.add_argument(
+        "--cpu-threads",
+        type=int,
+        default=None,
+        help="Cap faster-whisper/CTranslate2 to this many CPU threads. Defaults to half this "
+        "Mac's real physical core count (minimum 1) -- see _pick_default_cpu_threads(). Fewer "
+        "threads means slower transcription but a lower sustained power draw / less heat, the "
+        "direct lever for running a long unattended batch without overheating an older machine. "
+        "Pass 0 to use CTranslate2's own default (every visible core -- the worker's own "
+        "behavior) if this machine has real thermal headroom to spare.",
+    )
+    parser.add_argument(
+        "--chunk-cooldown-seconds",
+        type=float,
+        default=0.0,
+        help="Rest this many seconds after every ~--chunk-seconds of Whisper work, before "
+        "starting the next chunk -- the thermal duty-cycle knob for a long unattended run on "
+        "older/fanless hardware. 0 (default) preserves the original back-to-back-chunks "
+        "behavior. Combined with a CPU_Speed_Limit check via `pmset -g therm`: if macOS is "
+        "already throttling after this sleep, the script waits longer (see "
+        "--thermal-poll-seconds) instead of piling more work onto an already-hot CPU.",
+    )
+    parser.add_argument(
+        "--thermal-poll-seconds",
+        type=float,
+        default=30.0,
+        help="When --chunk-cooldown-seconds is set and macOS reports CPU_Speed_Limit < 100 "
+        "(pmset -g therm) after a cooldown, re-check every this-many seconds until it recovers "
+        "to 100 before resuming (default 30). No effect if --chunk-cooldown-seconds is 0, or on "
+        "a non-Mac where pmset isn't available.",
+    )
     args = parser.parse_args()
 
     if not _base_url():
@@ -1094,6 +1283,9 @@ async def main() -> None:
         sys.exit(1)
 
     model_size = args.model_size or _pick_default_model_size()
+    cpu_threads = (
+        args.cpu_threads if args.cpu_threads is not None else _pick_default_cpu_threads()
+    )
 
     # A real, plain-English "what is this run actually doing" line up front
     # -- someone checking on an unattended overnight run should be able to
@@ -1101,10 +1293,13 @@ async def main() -> None:
     # meetings it's targeting) from the top of the log without reading
     # Python source.
     logger.info(
-        "Run started: model_size=%s (%s), limit=%s, dry_run=%s, chunk_seconds=%s, "
-        "promote=%s, resume=%s, target=%s",
+        "Run started: model_size=%s (%s), cpu_threads=%s (%s), chunk_cooldown_seconds=%s, "
+        "limit=%s, dry_run=%s, chunk_seconds=%s, promote=%s, resume=%s, target=%s",
         model_size,
         "explicit --model-size" if args.model_size else "auto-picked from local RAM",
+        cpu_threads,
+        "explicit --cpu-threads" if args.cpu_threads is not None else "auto-picked from local core count",
+        args.chunk_cooldown_seconds,
         args.limit if args.limit is not None else "(none -- full backlog)",
         args.dry_run,
         args.chunk_seconds,
@@ -1120,7 +1315,7 @@ async def main() -> None:
     )
     from worker.transcription_engine import FasterWhisperEngine
 
-    engine = FasterWhisperEngine(model_size=model_size)
+    engine = FasterWhisperEngine(model_size=model_size, cpu_threads=cpu_threads)
     logger.info("Model loaded.")
 
     async with aiohttp.ClientSession() as session:
@@ -1198,6 +1393,8 @@ async def main() -> None:
                     chunk_size_seconds=args.chunk_seconds,
                     promote=args.promote,
                     resume=not args.no_resume,
+                    chunk_cooldown_seconds=args.chunk_cooldown_seconds,
+                    thermal_poll_seconds=args.thermal_poll_seconds,
                 )
             except Exception as e:
                 result = {

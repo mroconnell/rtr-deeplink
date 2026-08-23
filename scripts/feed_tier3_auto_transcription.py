@@ -83,13 +83,27 @@ hammering question.
 """
 
 import asyncio
+import os
 import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
-from dotenv import load_dotenv
+import certifi  # noqa: E402
+
+# Must run before `import aiohttp` -- see scripts/transcribe_backlog_
+# locally.py's own longer comment on this same fix (confirmed live
+# 2026-08-21: a fresh Homebrew-Python venv has an empty default SSL trust
+# store, and aiohttp caches its default SSLContext at import time, not
+# lazily on first connection). Real incident: without this, every URL in a
+# real run failed with SSLCertVerificationError, and since this script
+# advances (consumes) the queue file regardless of per-URL outcome, that
+# batch was silently dropped from the queue without ever reaching Archive
+# -- recovered by hand from git history afterward. Don't remove this.
+os.environ.setdefault("SSL_CERT_FILE", certifi.where())
+
+from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv()
 

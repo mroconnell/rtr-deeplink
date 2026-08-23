@@ -209,6 +209,27 @@ def test_extract_meeting_id_matches_meetingid_param():
     assert IQM2AssetFinder._extract_meeting_id(url) == "4294"
 
 
+def test_extract_meeting_id_prefers_meetingid_over_id_on_legifile_urls():
+    # Real, confirmed live 2026-08-23 -- a Plainfield, NJ Detail_LegiFile.
+    # aspx URL from a real backlog run: ID=4641 is that legislative file's
+    # own id (a different, unrelated document), MeetingID=1229 is the real
+    # meeting it belongs to. Confirmed live that
+    # SplitView.aspx?...MeetingID=4641 returns an empty `MEDIA URL:`
+    # comment (a real page, wrong meeting -- no video) while
+    # MeetingID=1229 returns a real, populated one. Before this fix,
+    # _extract_meeting_id() returned "4641" (whichever param matched
+    # first in the query string, not the correct one), which is exactly
+    # why this real meeting was wrongly reported as having no video at
+    # all -- see _MEETING_ID_PRIMARY_RE's own comment for the fuller
+    # writeup and the 7 other real Detail_LegiFile candidates that hit
+    # the identical bug the same run.
+    url = (
+        "http://plainfieldcitynj.iqm2.com/Citizens/Detail_LegiFile.aspx"
+        "?CssClass=&Frame=&ID=4641&MediaPosition=&MeetingID=1229"
+    )
+    assert IQM2AssetFinder._extract_meeting_id(url) == "1229"
+
+
 def test_detect_platform_recognizes_both_real_confirmed_customers():
     assert detect_platform(ATLANTA_URL) == "iqm2"
     assert detect_platform(SCC_URL) == "iqm2"
