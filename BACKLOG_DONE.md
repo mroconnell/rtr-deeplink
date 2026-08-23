@@ -147,15 +147,30 @@ body, gated on the existing `GOVERNING_BODY_KEYWORDS` check.
   2149, 2416, 2433) — jurisdictions, dates, and titles as above; slugs
   unchanged by design (old crawled garbage slugs remain as permanent
   URLs, but every displayed field is now correct).
-- Recompute backfill (82 rows) + clear-future-dates (rows 360, 427) run
-  through the production internal endpoints immediately after this PR's
-  deploy — the endpoint recomputes with the deployed code, so it could
-  not run before merge. The 82 are exactly the candidates this PR's own
-  fixes introduce, EXCLUDING the Redding/Healdsburg/Arcata/Paso Robles
-  hub-consolidation rows (944, 1470, 977, 2194, 998, 1046, 1066 —
-  deferred to the dedicated hub-merge PR per Ryan) and excluding all 51
-  pre-existing candidates (several confidently wrong — see the new
-  NEEDS-AUDIT entry in BACKLOG.md).
+- Recompute backfill + clear-future-dates (rows 360, 427) run through
+  the production internal endpoints immediately after this PR's deploy
+  — the endpoint recomputes with the deployed code, so it could not run
+  before merge. The vetted set was 82 rows: exactly the candidates this
+  PR's own fixes introduce, EXCLUDING the Redding/Healdsburg/Arcata/
+  Paso Robles hub-consolidation rows (944, 1470, 977, 2194, 998, 1046,
+  1066 — deferred to the dedicated hub-merge PR per Ryan) and excluding
+  all 51 pre-existing candidates (several confidently wrong — see the
+  new NEEDS-AUDIT entry in BACKLOG.md).
+- **The endpoint run itself surfaced one more real finding**: the first
+  dry run recomputed only 48 of the 82 — every missing id was a
+  glued-label repair ("Bouldercounty", "RochestercityMN", ...).
+  Root cause: `archive/requirements.txt` never included **wordninja**,
+  so every wordninja-backed tier in the shared
+  `jurisdiction_enrich.py` (the validated subdomain/label extractor,
+  and this PR's glued-label tier) silently declines on the deployed
+  archive service — meaning the archive's ingest-time
+  finalize_jurisdiction() has validated/repaired measurably less than
+  the resolver's on identical input the whole time, invisibly, because
+  the `except ImportError` fallback is deliberate. Fixed in the
+  follow-up PR (wordninja added to archive/requirements.in/.txt); the
+  48 non-glued rows + both date rows were applied on the first deploy
+  (verified: dry-run count matched exactly, then the real write), and
+  the 34 glued rows applied after the wordninja deploy.
 
 **Verification:** full suite green (1628 passed); new fixture-backed
 tests for every extraction fix (real Albemarle/Mission Viejo/Tulsa

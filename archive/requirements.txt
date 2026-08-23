@@ -125,5 +125,7 @@ watchfiles==1.2.0
     # via uvicorn
 websockets==17.0.1
     # via uvicorn
+wordninja==2.0.0
+    # via -r requirements.in
 yarl==1.24.5
     # via aiohttp
