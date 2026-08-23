@@ -826,7 +826,11 @@ limitation. A state with zero indexable meetings 404s rather than
 rendering an empty shell, and every `/m/{slug}` page whose jurisdiction
 has a state now links "More {State} meetings" to its state page.
 
-**Rebuilt 2026-08-23** around real quoted transcript text, because
+**Rebuilt 2026-08-23** around real quoted transcript text. **See
+`STATE_HUB_PAGES.md` for the full reference** — how each piece works,
+why, what was tried and rejected with the measurements, a tuning table,
+how to verify a change, and the ranked future improvements. The summary:
+because
 Search Console measured Google *selectively declining these two page
 types*: `/j/` hubs appeared at 3.6x and `/state/` at 3.1x their sitemap
 share among non-indexed URLs, while `/m/` meeting pages indexed better

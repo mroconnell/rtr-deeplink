@@ -94,7 +94,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (7)
   28 well-formed IQM2 queue rows point at retired tenants…
   Some Swagit meetings have no single "whole meeting" video file…
 
-Platform & jurisdiction coverage  (30)
+Platform & jurisdiction coverage  (31)
+  [LATER] `[BIG]` Put the topic chips and the recent-moments feed on
   `[JUST-DO-IT]` `[EASY]` Nine PrimeGov pages and two real meetings…
   `[JUST-DO-IT]` ChampDS is a progressive MP4, and a 900s chunk can…
   The 50 largest US cities — per-tenant status `[NEEDS-AUDIT]`
@@ -387,9 +388,14 @@ so that work reads together.
   impossible from a sandbox).
 
 - **[NEEDS-AUDIT] `[WAIT]` Measure whether the state/hub rebuild moved
-  Google's indexing verdict.** The rebuild shipped 2026-08-23 (see
-  `BACKLOG_DONE.md` for the full investigation, the decision, and what
-  was built). **Measure against the 3.6× (`/j/`) and 3.1× (`/state/`)
+  Google's indexing verdict.** The rebuild shipped 2026-08-23.
+  **`STATE_HUB_PAGES.md` is the full reference** for how `/state/*` and
+  `/j/*` work, why each decision was made, what was tried and rejected
+  (with the measurements), a tuning table, how to verify a change, and
+  the ranked list of future improvements — **read it before changing
+  anything on these two surfaces**, rather than reverse-engineering the
+  reasoning from `crud.py`. `BACKLOG_DONE.md` keeps the original
+  investigation. **Measure against the 3.6× (`/j/`) and 3.1× (`/state/`)
   over-representation figures, not the raw non-indexed count** — the raw
   count moves with corpus growth, so it cannot answer this on its own.
   Needs a Search Console export at least a few weeks out; nothing to do
@@ -1007,6 +1013,23 @@ broader live audit once the design question is answered.
 Everything adapter-, tenant-, or jurisdiction-extraction-shaped, kept
 together on purpose. Tags are inline here rather than hoisted into the
 actionability sections above.
+
+- **[LATER] `[BIG]` Put the topic chips and the recent-moments feed on
+  the home page, under the lookup instructions.** Ryan's idea,
+  2026-08-23, after seeing the rebuilt state pages. The home page
+  currently explains a *tool* and shows nothing of the archive behind
+  it — a visitor with no URL to paste has nothing to do there — and
+  these are the only components on the site that are both unique and
+  skimmable.
+  **Design note lives in `STATE_HUB_PAGES.md` §9** ("Put the chips and
+  the moments feed on the home page"): the real question is a **service
+  boundary** (the home page is the resolver's, all this machinery is the
+  Archive's) with three ways across and their trade-offs, plus what
+  changes at national scale — the pool skews to whatever was
+  bulk-ingested last, 574 governments is not a sidebar, and caching
+  stops being optional on the busiest page. It also names the cheap
+  first step: national chips + moments feed only, no jurisdiction
+  column, behind a cache.
 
 ### `[JUST-DO-IT]` `[EASY]` Nine PrimeGov pages and two real meetings need re-resolving — **not** an adapter bug
 
