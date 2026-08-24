@@ -7063,6 +7063,51 @@ async def delete_meeting_pages_by_slug(slugs: list[str], *, dry_run: bool) -> di
         }
 
 
+async def reslug_page(slug: str, *, dry_run: bool) -> dict:
+    """One-off, by-hand slug correction for a page whose permanent slug was
+    frozen from vendor boilerplate rather than the meeting's own title/
+    date/jurisdiction (real case: /m/welcome-to-clerkbase, a real Yellow
+    Springs, OH meeting whose slug came from ClerkBase's default page
+    title at first resolve -- see BACKLOG_DONE.md).
+
+    Not a slug-regeneration sweep -- BACKLOG.md judged that not worth
+    building for two known cases. A human names exactly one existing
+    `slug` to fix; this recomputes the replacement from the page's
+    *current* jurisdiction/date/title via the same build_base_slug()/
+    _unique_slug() pair every fresh ingest already uses (_find_or_create_page
+    above), so the new slug matches the real format instead of being
+    hand-typed. `dry_run=True` (the default, matching this file's existing
+    read-only-first convention) reports the computed slug without writing
+    it.
+
+    Deliberately does not touch redirects -- the caller is expected to add
+    the old_slug -> new_slug mapping to archive/main.py's `_SLUG_REDIRECTS`
+    in the same change, since nothing here can safely rewrite source code.
+    """
+    async with async_session() as session:
+        page = (
+            await session.execute(select(MeetingPage).where(MeetingPage.slug == slug))
+        ).scalar_one_or_none()
+        if page is None:
+            return {"error": f"no page with slug {slug!r}", "dry_run": dry_run}
+
+        new_base = build_base_slug(
+            page.jurisdiction or "", page.date or "", page.title or ""
+        )
+        if dry_run:
+            return {
+                "old_slug": slug,
+                "new_slug_preview": new_base,
+                "title": page.title,
+                "dry_run": True,
+            }
+
+        new_slug = await _unique_slug(session, new_base)
+        page.slug = new_slug
+        await session.commit()
+        return {"old_slug": slug, "new_slug": new_slug, "dry_run": False}
+
+
 # --- Meeting card frames (WO-28) ----------------------------------------
 
 _THUMBNAILS_CHECK_TTL = timedelta(minutes=1)

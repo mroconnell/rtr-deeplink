@@ -95,6 +95,22 @@ def test_generic_fallback_embedded_youtube_gets_youtube_specific_message():
     )
 
 
+def test_viebit_gets_viebit_specific_message_not_generic():
+    # Same structural shape as Vimeo (iframe-embed video_url, real media
+    # 403s every non-browser fetch) -- previously fell through to the
+    # generic "may be unavailable" message, which reads as transient when
+    # the limitation is permanent and structural. See BACKLOG.md.
+    result = ResolvedMeeting(
+        platform="legistar",
+        source_url="https://legistar.council.nyc.gov/MeetingDetail.aspx?ID=1",
+        video_format="viebit",
+        video_url="https://vpv2.viebit.com/embed/vod?v=abc123",
+    )
+    message = _unreadable_media_message(result, requested_platform="legistar")
+    assert "hosted on Viebit" in message
+    assert "may be unavailable" not in message
+
+
 def test_non_youtube_platform_stays_generic():
     result = ResolvedMeeting(
         platform="granicus",

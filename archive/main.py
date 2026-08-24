@@ -1560,6 +1560,26 @@ async def internal_delete_pages(
     return await crud.delete_meeting_pages_by_slug(req.slugs, dry_run=dry_run)
 
 
+class ReslugPageRequest(BaseModel):
+    slug: str
+
+
+@app.post("/internal/admin/reslug-page")
+async def internal_reslug_page(
+    req: ReslugPageRequest,
+    dry_run: bool = True,
+    authorization: Optional[str] = Header(None),
+):
+    """One-off, by-hand slug correction -- see crud.reslug_page()'s own
+    docstring for the full reasoning. After a real (non-dry-run) call,
+    add the returned old_slug -> new_slug mapping to `_SLUG_REDIRECTS`
+    below in the same change and deploy, so the old permalink 301s
+    instead of 404ing."""
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    return await crud.reslug_page(req.slug, dry_run=dry_run)
+
+
 def _pick_active_version(page: dict, version: Optional[int]) -> Optional[dict]:
     versions = page["versions"]
     if not versions:
@@ -1571,6 +1591,14 @@ def _pick_active_version(page: dict, version: Optional[int]) -> Optional[dict]:
     return next((v for v in versions if v["is_default"]), versions[0])
 
 
+# Permanent 301s for the small number of pages hand-reslugged via
+# POST /internal/admin/reslug-page (see crud.reslug_page()'s docstring --
+# by-hand corrections for a slug frozen from vendor boilerplate rather
+# than the meeting's own title, not a general redirect system). Add an
+# entry here in the same change that performs the real rename.
+_SLUG_REDIRECTS: dict[str, str] = {}
+
+
 @app.get("/m/{slug}")
 async def meeting_page(
     request: Request,
@@ -1579,6 +1607,9 @@ async def meeting_page(
     version: Optional[int] = None,
     t: Optional[int] = None,
 ):
+    if slug in _SLUG_REDIRECTS:
+        return RedirectResponse(f"/m/{_SLUG_REDIRECTS[slug]}", status_code=301)
+
     page = await crud.get_page_by_slug(slug)
     if page is None:
         logger.warning(
@@ -2169,4 +2200,18 @@ async def feed(jurisdiction: Optional[str] = None):
         jurisdiction=jurisdiction,
         entries=entries,
     )
-    return Response(content=body, media_type="application/rss+xml")
+    # An RSS feed isn't meant to be an indexable page -- Search Console was
+    # crawling and index-judging it (declining it as "Crawled - currently
+    # not indexed") despite feed.xml never appearing in sitemap.xml.
+    # Deliberately X-Robots-Tag, not a robots.txt Disallow: a Disallow would
+    # also stop Google following the links *inside* the feed, which is a
+    # real discovery path for new meeting pages. noindex takes the feed
+    # itself out of the index while keeping that discovery intact. Covers
+    # a direct hit on this route; app/main.py's /feed.xml proxy passes
+    # response headers through unchanged, so this also covers the public
+    # feed.xml URL readers actually use.
+    return Response(
+        content=body,
+        media_type="application/rss+xml",
+        headers={"X-Robots-Tag": "noindex"},
+    )

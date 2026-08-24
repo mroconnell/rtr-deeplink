@@ -437,7 +437,16 @@ def _digest_subject(groups: list) -> str:
     total_matches = sum(len(g["matches"]) for g in groups)
     keywords = [g["keyword"] for g in groups if g.get("keyword")]
     if keywords:
-        subject = f'Somebody said "{keywords[0]}"'
+        # A phrase search is stored with its own quotes as part of the
+        # keyword (e.g. '"affordable housing"'), so re-wrapping it here
+        # doubled up: 'Somebody said ""affordable housing""'. Strip a
+        # matched leading/trailing pair before interpolating -- confirmed
+        # live in two real 2026-08-20/21 digests. Plain single-word
+        # searches (the common case) have no such pair and are unaffected.
+        keyword = keywords[0]
+        if len(keyword) >= 2 and keyword[0] == '"' and keyword[-1] == '"':
+            keyword = keyword[1:-1]
+        subject = f'Somebody said "{keyword}"'
         extra = total_matches - 1
         return f"{subject} (+{extra} more)" if extra > 0 else subject
     plural = total_matches != 1

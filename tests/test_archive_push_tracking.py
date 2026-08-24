@@ -110,7 +110,10 @@ def test_sweep_endpoint_rejects_missing_token():
 
 
 def test_sweep_endpoint_rejects_wrong_token():
-    response = client.get("/admin/sweep-pending-pushes", params={"token": "wrong"})
+    response = client.get(
+        "/admin/sweep-pending-pushes",
+        headers={"Authorization": "Bearer wrong"},
+    )
     assert response.status_code == 404
 
 
@@ -123,7 +126,8 @@ async def test_sweep_endpoint_retries_and_reports_pending_pushes(monkeypatch):
 
     resolution_id = await _log("endpoint")
     response = client.get(
-        "/admin/sweep-pending-pushes", params={"token": "test-admin-token"}
+        "/admin/sweep-pending-pushes",
+        headers={"Authorization": "Bearer test-admin-token"},
     )
     assert response.status_code == 200
     data = response.json()
