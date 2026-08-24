@@ -27,7 +27,10 @@ incidents hit switching from a Clerk development instance to production —
 worth reading before ever touching Clerk env vars/DNS again.
 
 **See `README.md` for architecture, the resolve flow, supported platforms,
-and frontend features.** This file covers conventions and context specific
+and frontend features**, and **`STATE_HUB_PAGES.md` before touching
+`/state/*` or `/j/*`** — it carries the design reasoning, the
+tried-and-rejected list with measurements, a tuning table, and the
+future-work ranking for those two surfaces. This file covers conventions and context specific
 to working on this codebase; don't duplicate README content here.
 
 ## Why this exists
@@ -550,6 +553,27 @@ under everything else. This repo extracts and fixes just that part.
   (no repo change) and re-measure; local then matches production
   exactly. Both cost a full round of bad measurements before being
   noticed, and neither fails loudly.
+- **Run any backfill or bulk sweep from the service's Render shell, not
+  from your laptop against the production `DATABASE_URL` (real mistake,
+  2026-08-23).** `BACKLOG.md`'s Standing decisions already say "never
+  run an unbounded scan or bulk workload against the production DB from
+  an interactive session" — this bullet exists because that section was
+  *read earlier the same day* and the mistake happened anyway, so the
+  rule belongs where the scripts are described too, not only there.
+  What it looked like: `scripts/backfill_meeting_highlights.py` run
+  locally after a `TOPICS_VERSION` bump pulled **every** `segments` blob
+  across the network (~1 GB), managed ~7 pages/minute — a **6-hour**
+  run — and held production read load the whole time. Run from the
+  Render shell it is local to the database, so the same sweep is minutes
+  and competes with nothing. Every backfill script in `scripts/` says
+  this in its own docstring; believe it. Two properties make stopping
+  safe when you notice mid-run, and both are worth preserving in any new
+  backfill: **commit per row** (killing leaves a consistent partial
+  state) and **skip already-current rows** (so a re-run resumes rather
+  than restarting). Locally is still fine against a *seeded local
+  SQLite* — that is how the state/hub pages were verified — just never
+  against the shared Postgres.
+
 - **Never `grep`/`cat`/`Read` a gitignored file (`.env`, credentials,
   anything matching `.gitignore`) with a pattern broad enough that a
   secret's plaintext value could end up echoed into the conversation.**
