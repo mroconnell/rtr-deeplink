@@ -100,7 +100,7 @@ Platform & jurisdiction coverage  (35)
   [LATER] `[BIG]` Put the topic chips and the recent-moments feed on
   `[JUST-DO-IT]` `[EASY]` Nine PrimeGov pages and two real meetings…
   `[JUST-DO-IT]` ChampDS is a progressive MP4, and a 900s chunk can…
-  `[JUST-DO-IT]` Santa Barbara's video lives on a different system from…
+  `[Done 2026-08-23]` Four archived pages pointed at agenda systems…
   `[NEEDS-AUDIT]` Duration alone cannot separate a very short real…
   The 50 largest US cities — per-tenant status `[NEEDS-AUDIT]`
   Jurisdiction extraction & backfill  (17)
@@ -1217,66 +1217,61 @@ resolve themselves and only Wilkes-class files stay broken — so
 than hard-coding one derived from a residential connection.
 
 
-### `[JUST-DO-IT]` Santa Barbara's video lives on a different system from its agendas — the archived pages point at the half with no video
+### `[Done 2026-08-23]` Four archived pages pointed at agenda systems with no video — three repointed, one has no recording anywhere
 
-Found 2026-08-23 (WO-46) by Ryan, reviewing a day of skipped pages. Both
-archived Santa Barbara council pages
-(`santa-barbara-ca-2026-08-11-regular-city-council-meeting` and
-`…-special-…`) were ingested from
-`docs.santabarbaraca.gov/OnBaseAgendaOnline/Meetings/ViewMeeting?...` — an
-OnBase **agenda** host with no video on it at all, so every transcription
-attempt correctly reports "No usable audio or video source was found."
+Kept here rather than moved to `BACKLOG_DONE.md` only until this PR
+merges; the investigation belongs there. Found 2026-08-23 (WO-46) by
+Ryan reviewing a day of skipped pages, then closed the same day.
 
-The video is real and is on OMP Network:
-`santabarbaraca.ompnetwork.org/sessions/346145` (regular) and `/346146`
-(special). **Confirmed live**: `openmedia.py` resolves both unchanged,
-returning a real title, jurisdiction ("City of Santa Barbara, CA"), date,
-and **1,787 real caption segments** on the regular meeting — these pages
-need no transcription at all, they already have captions.
+**The four, and what they turned out to be.** All were ingested from an
+`OnBaseAgendaOnline` *agenda* host, so "No usable audio or video source"
+was a correct answer about the URL we held, not a bug:
 
-Half of this is fixed: `ompnetwork.org` now routes to `open_media` in
-`base.py` (it previously fell through to `generic_fallback`, which finds
-the video but hits that adapter's documented title/jurisdiction swap bug).
-**What's left is the source mapping** — the archived pages still point at
-the agenda host.
+| archived page | video actually lives at | outcome |
+|---|---|---|
+| SB Regular 2026-08-11 (`docs…id=1184`) | OMP session 346145 | **repointed** — 5,361 cues live |
+| SB Special 2026-08-11 (`docs…id=1202`) | OMP session 346146 | **repointed** — 132 cues live |
+| Pittsburg CA 2025-04-07 (`onbaseweb…id=1253`) | CivicClerk `pittsburgca` event 1199 | **repointed** — 8,706 cues live |
+| SB Special 2023-10-17 (`records…id=941`) | OMP session 278459, **which has no video** | left as-is, correctly |
 
-**Scale, measured — this is small and per-tenant, not platform-wide.**
-An earlier draft of this entry guessed the "agendas on one vendor, video
-on another" shape was probably common. Checked it: of the 9 archived
-`OnBaseAgendaOnline` pages across 6 tenants, **3 of the 4 non-Santa-
-Barbara tenants resolve real video just fine** (Compton, Centennial,
-Hamilton County OH). Only Santa Barbara and Pittsburg CA return none. So
-roughly **3 pages out of 2,468** are affected, and OnBase Agenda Online
-is emphatically *not* an agenda-only platform.
+**How the mapping was found, because the obvious method fails.** The ids
+are not derivable (`1184→346145` is delta 344961; `1202→346146` is
+344944), and OMP is entirely client-rendered so nothing is enumerable
+from a plain HTTP client. **But every OMP session card links its agenda
+straight back to the OnBase URL it came from** — so the mapping is
+stated explicitly in OMP's own rendered HTML, and pairing session→OnBase
+id in document order gives an exact key with no date/title guessing.
+That is what confirmed `records…id=941 → session 278459`. Pittsburg was
+not on OMP at all (a bare 200 on `pittsburgca.open.media` is a
+catch-all — the body reads "No site identified…"); its city streaming
+page embeds `pittsburgca.portal.civicclerk.com`, and its own
+`…api.civicclerk.com/v1/Events` `$filter` on `startDateTime` found event
+1199 directly.
 
-**A URL rewrite will not work here, so don't reach for one.** The usual
-trick — take a known-good URL shape and rebuild the bad ones — needs a
-derivable relationship between the ids, and there isn't one:
+**How the repoint was done, and why it's safe.** `POST /internal/ingest`
+with the NEW source's resolved payload but the **OLD** URL as
+`input_url_normalized`. `crud._find_existing_page()` checks the alias
+table *before* `external_id`, so this updates the existing page in place
+— same slug, same public URL, `"created": false` on all three — rather
+than creating a duplicate. Same cross-host merge `legistar.py` and
+`primegov.py` already depend on.
 
-```
-OnBase id=1184 (Regular) -> OMP session 346145   delta 344961
-OnBase id=1202 (Special) -> OMP session 346146   delta 344944
-```
+**Two things to know before touching these pages again.** Their
+`source_url_normalized` still points at the OnBase agenda host (that
+path doesn't rewrite it, and the agenda genuinely is a real source), so
+a future auto re-resolve will keep finding no video there. That cannot
+regress the content — `page.video_url`/`agenda_items`/transcript updates
+are all truthy-gated, so a video-less resolve can't wipe them. It *can*
+flip `page.platform` back to `hyland`, which is unconditional. Cosmetic,
+but it is why these may show the wrong platform in `/coverage` later.
 
-Different deltas, no formula. The fallback (enumerate the OMP tenant and
-match on date+title) **cannot run from a plain HTTP client**: the whole
-OMP site is client-rendered. `/sessions`, `/?category=487` and a session
-page all return 200 with **zero** session links in the raw HTML, and
-every API path tried 404s under a realistic UA (the initial 403s were
-`openmedia.py`'s documented UA bot check, not a signal).
-
-**Rendered in a browser it works**, and the match key is sound —
-`(date, title)` is unique and lines up with our slugs exactly
-(`08/11/2026 Regular -> 346145`, `08/11/2026 Special -> 346146`). So the
-route is a **one-time browser-driven mapping pass for ~3 pages**, not a
-change to the unattended discovery script. Caveat for whoever runs it:
-only 10 sessions render initially and there is no pager, so it is
-infinite-scroll/load-more — a full history needs scrolling.
-
-**The generalizable part is the detection, not the repair**: "resolves
-with no video" is the signal, and it now surfaces daily in WO-46's
-failure digest. At this scale a hand-run pass is proportionate; teaching
-discovery about split agenda/video sources is not.
+**Not generalisable, deliberately.** Of the 9 archived
+`OnBaseAgendaOnline` pages across 6 tenants, the other 5 (Compton,
+Centennial, Hamilton County OH) resolve real video fine — OnBase Agenda
+Online is not an agenda-only platform, and this was ~4 pages out of
+2,468. The reusable part is the *detection*: "resolves with no video"
+now surfaces daily in WO-46's failure digest, which is how the next
+batch of these will be noticed without anyone reviewing pages by hand.
 
 ### `[NEEDS-AUDIT]` Duration alone cannot separate a very short real meeting from an ad
 
