@@ -442,6 +442,43 @@ async def internal_home_highlights(
     return data
 
 
+@app.get("/internal/topic-candidates")
+async def internal_topic_candidates(
+    days: int = 90,
+    limit: int = 40,
+    phrase: str = "",
+    authorization: Optional[str] = Header(None),
+):
+    """Candidate subjects for `archive/topics.py`, out of what people
+    actually searched for (WO-51).
+
+    Curation stays human -- this ranks and previews, it never adds a
+    topic. Two modes: without `phrase`, the ranked list of searched
+    phrases the curated set does not already cover, each with its
+    zero-result rate; with `?phrase=...`, what adding that phrase would
+    surface (a corpus count plus a few real meetings).
+
+    Deliberately internal and read-only. The reader-facing version of
+    this idea -- a "suggest a topic" form -- was considered and rejected:
+    `search_queries` already collects the same signal passively, at far
+    higher volume, and records what people looked for rather than what
+    they say they want. See STATE_HUB_PAGES.md section 9.
+
+    **Expect thin results for a while.** `search_queries` only started
+    filling 2026-08-23, so an empty list means "no data yet", not
+    "nothing worth adding".
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    if phrase:
+        return await crud.topic_candidate_preview(phrase)
+    return {
+        "window_days": days,
+        "candidates": await crud.topic_candidates(days=days, limit=limit),
+    }
+
+
 @app.get("/internal/transcript-wanted")
 async def internal_transcript_wanted(authorization: Optional[str] = Header(None)):
     """The "transcript wanted" queue: every archived YouTube-backed page

@@ -6,12 +6,39 @@
     variants add crawlable text without competing for the same query.
 
     `base_url` is the page's own path; `chips` and `active_topic` come
-    from crud._topic_chips(). -#}
+    from crud._topic_chips().
+
+    Optional, for a jurisdiction hub too thin to produce chips of its own
+    (WO-51): `chips_label` renames the row and `chips_show_all` drops the
+    "All topics" chip. Both default to the normal behaviour, so the
+    state, hub and home callers are unaffected. When a hub borrows its
+    state's chips they are labelled as the state's and point at
+    /state/{slug}?topic= -- saying "being discussed" about topics this
+    government has no meetings for would be a small lie, and linking them
+    hub-locally would guarantee an empty page. -#}
 {% if chips %}
+{%- if chips_label %}
+{#- A supplied label is load-bearing, so it renders as its own block
+   *above* the chips rather than as the inline span. The inline one is
+   display:none below 768px (it competes for room in the horizontal
+   scroll strip) -- fine when it reads "Being discussed:", and actively
+   misleading for a hub borrowing its state's chips, where hiding it
+   leaves a mobile reader seeing "Data centers 1" on a town that never
+   discussed data centers. Caught in the browser, 2026-08-24. -#}
+<p class="topic-chips-heading">{{ chips_label }}</p>
+{%- endif %}
 <nav class="topic-chips" aria-label="Filter featured meetings by topic">
+  {%- if not chips_label %}
   <span class="topic-chips-label">Being discussed:</span>
+  {%- endif %}
+  {#- `is not defined`, NOT `| default(true, true)`: that filter's
+     boolean form replaces any *falsy* value, so an explicit
+     chips_show_all=False would have been turned straight back into
+     True. Caught by test_inherited_chips_link_to_the_state_not_the_hub. -#}
+  {%- if chips_show_all is not defined or chips_show_all %}
   <a class="topic-chip{% if not active_topic %} topic-chip-active{% endif %}"
      href="{{ base_url }}"{% if not active_topic %} aria-current="true"{% endif %}>All topics</a>
+  {%- endif %}
   {%- for chip in chips %}
   <a class="topic-chip{% if chip.selected %} topic-chip-active{% endif %}"
      href="{{ base_url }}?topic={{ chip.slug }}"{% if chip.selected %} aria-current="true"{% endif %}>

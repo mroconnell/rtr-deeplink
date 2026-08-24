@@ -957,7 +957,12 @@ meeting-body breakdown ("City Council (30) · Planning Commission (12)"
 from `meeting_body`), date range, the same featured snippets and topic
 chips the state pages carry (6 cards rather than 12 — a hub is one
 government, so after a handful the full meeting list below serves the
-reader better; those 6 are also capped at
+reader better; a hub whose own pool is too thin to produce any chips
+borrows its **state's**, labelled "Being discussed across {State}:" and
+linking to `/state/{slug}?topic=` rather than to the hub, which has no
+meetings for those topics — that is the common case, not an edge one,
+since 439 of 574 stateful jurisdictions had exactly one meeting when
+last measured; those 6 cards are also capped at
 `MAX_FEATURED_PER_BODY` per `meeting_body` since a hub is one government
 with many bodies, deliberately *unlike* the state pages, where nearly
 every card would be a "City Council" — see `STATE_HUB_PAGES.md` §6), a
@@ -1654,6 +1659,28 @@ them survive the JSON hop.
 
 `?topic=` filters the feed, the same way it does on the state and hub
 pages; every variant canonicalizes to bare `/`.
+
+## Curating topics from real demand (`/internal/topic-candidates`)
+
+`archive/topics.py` is a hand-curated list, deliberately (unsupervised
+topic discovery is a declined idea — see `BACKLOG.md`'s Standing
+decisions). What it lacked was a way to decide *what to add*.
+`GET /internal/topic-candidates` (token-gated, read-only, WO-51) ranks
+phrases people actually typed into `/meetings` — out of the identity-free
+`search_queries` table — by frequency and **zero-result rate**, excluding
+anything the curated set already matches. `?phrase=...` previews what
+adding one would surface: a `search_corpus` count plus real sample
+meetings.
+
+**A reader-facing "suggest a topic" form was considered and rejected**:
+`search_queries` already collects the same signal passively, at far
+higher volume, and records what people looked for rather than what they
+say they want. Zero-result searches — the single best source of candidate
+topics — are captured there automatically. Curation stays human; this
+endpoint ranks and previews, it never adds a topic.
+
+Expect thin output for a while: the table only started filling
+2026-08-23.
 
 ## Meeting descriptions (`<meta name="description">` / `og:description`)
 
