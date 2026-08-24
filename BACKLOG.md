@@ -54,9 +54,8 @@ Standing decisions — do NOT re-raise  (3)
   Prefer a generated/computed column over "add a column, then backfill…
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (17)
-  [JUST-DO-IT] A transcription job that dies partway throws away every
-  [JUST-DO-IT] `[EASY]` Truncation is only ever detected at *exactly*
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (16)
+  [JUST-DO-IT] Nothing detects a transcript that simply ends early
   [JUST-DO-IT] `[EASY]` Nothing notices a dead worker pool — chunks
   [JUST-DO-IT] The worker's requirements can silently drift out of
   [JUST-DO-IT] A bulk re-resolve gets this IP blocked by YouTube, and
@@ -73,9 +72,8 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (17)
   [JUST-DO-IT] `[EASY]` The saved-search alert subject line
   [JUST-DO-IT] Every byte the public site serves is billed twice:
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (13)
-  Confirmations nobody has actually watched happen  (5)
-    [HUMAN] Run `scripts/scan_truncated_transcripts.py` on the Archive's
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (12)
+  Confirmations nobody has actually watched happen  (4)
     [HUMAN] Decide the /meetings result link order from real click data,
     [HUMAN] Render's health-check gate has never blocked a deploy —
     [HUMAN] `[LOGIN]` Confirm a real Render deploy installed cleanly off
@@ -91,7 +89,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (13)
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
   Product calls
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (7)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (8)
+  [NEEDS-AUDIT] Two pages have had a failed transcription job and
   [NEEDS-AUDIT] Render "HTTP health check failed" on
   [NEEDS-AUDIT] A chunk truncated only at its *tail* still passes the
   [NEEDS-AUDIT] `_sentence_case()` capitalises after every `\n`, so a
@@ -247,6 +246,30 @@ judgment call, one ops-tooling choice — **live in `BACKLOG_DONE.md`'s
 Standing decisions archive** instead; check there before assuming
 something hasn't been decided.
 
+- **Do NOT backfill partial transcripts onto historically-failed jobs
+  (measured 2026-08-24).** Publishing partials shipped that day
+  (`crud._publish_partial_transcript()`), and the obvious follow-up —
+  "there are ~10,000 segments sitting unpublished on old failed jobs,
+  write the backfill" — is wrong, twice over. The real numbers, from the
+  Archive's Render shell: **48 failed jobs holding segments, 44 distinct
+  pages, of which 33 already have a good transcript now.** Only 11 would
+  gain anything, and only 4 of those exceed 38% coverage.
+  Two reasons not to build it, either sufficient:
+  1. **Most of the population self-heals.** 42 of the 48 failed at
+     exactly chunk 1 — the WO-45 ffmpeg HLS-seek signature — and that
+     bug is fixed, so those pages are re-transcribable *end to end*. A
+     partial would mark them `truncated_transcript` and put a thin
+     transcript where a complete one is now achievable: strictly worse.
+  2. **The rest publish themselves on their next attempt.** A page that
+     keeps failing gets re-queued, fails again, and that *new* job's
+     partial is published by the shipped code. A backfill only ever
+     helps a page that will never be retried at all — which is a
+     different problem (see the `[NEEDS-AUDIT]` entry on jobs 20 and 47
+     never recovering) and wants fixing rather than papering over.
+  Re-run the numbers before re-raising this; both read-only scripts are
+  reproduced in `BACKLOG_DONE.md`'s entry for the partial-publishing
+  work.
+
 ### Never run an unbounded scan or bulk workload against the production DB from an interactive session
 
 Found the hard way (2026-08-17): a handful of hand-written analytics
@@ -285,41 +308,28 @@ items that also qualify live under **Platform & jurisdiction coverage**
 so that work reads together.
 
 
-- **[JUST-DO-IT] A transcription job that dies partway throws away every
-  finished chunk, from the reader's point of view (2026-08-24).**
-  `record_chunk_result()` only writes a `TranscriptVersion` once
-  `chunks_completed >= total_chunks`. A job that dies at 18 of 20 has
-  eighteen chunks of real, timestamped, already-shifted transcript sitting
-  in `TranscriptionJob.partial_segments` — and the page it belongs to
-  shows nothing at all, classifies as `blank_transcript`, and re-enters
-  the auto-transcription pool to redo work that is already done.
-  **Found by checking a premise, not by a report**: Ryan assumed the
-  `truncated_transcript` bucket ought to already cover "we only got some
-  of the chunks before the process failed" (2026-08-24). It does not, and
-  the reason is this — there is no transcript to mark. Worth building
-  because the cheapest version is small: publish `partial_segments` as a
-  non-default version (or a default one carrying a truncation warning, in
-  which case add the marker to `_TRUNCATION_MARKERS` in
-  `archive/db/crud.py` so the page stays eligible for a real retry rather
-  than looking finished). Watch out for the checkpoint semantics: a
-  chunk's segments are already full-meeting-relative, so a partial set is
-  a genuine transcript with a hole at the end, not a mis-timed one.
-
-- **[JUST-DO-IT] `[EASY]` Truncation is only ever detected at *exactly*
-  36,000 cues (2026-08-24).** `app/platforms/granicus.py`'s own comment
-  admits it: "First heuristic, not a full fix — doesn't catch a cap at
-  some other round number." Two known shapes escape it entirely, and both
-  present to a reader as an ordinary complete transcript:
-  a scraped caption file that simply ends early with no round-number
-  tell, and any cap at a different value on a platform nobody has
-  measured. Nothing anywhere compares a transcript's last segment against
-  the video's real duration, which is the general check —
-  `TranscriptionJob.probed_duration_seconds` already holds a real
-  ffprobe'd duration for every page that has ever had a job, so the
-  detector exists in pieces. Start by running
-  `scripts/scan_truncated_transcripts.py --min-count 20000` (see the
-  `[HUMAN]` entry below): a spike of pages sharing some *other* exact
-  count is the first evidence either way, and there is currently none.
+- **[JUST-DO-IT] Nothing detects a transcript that simply ends early
+  (2026-08-24).** The two detectable truncation forms are now both
+  handled — the Granicus 36,000-cue cap, and a transcription job that
+  died partway (both in `_TRUNCATION_MARKERS`). What is left is the form
+  nothing can see: a scraped caption file that stops before the meeting
+  did, with no round-number tell, which presents to a reader as an
+  ordinary complete transcript.
+  **This is now the *only* remaining form, which is why it is worth
+  building.** The whole-archive scan run on 2026-08-24 (see
+  `BACKLOG_DONE.md`) found the 36,000 cap effectively closed — one page,
+  already marked — and no evidence of a second cap at any count above
+  20,000, so the round-number heuristic has no more work to do.
+  The general check is comparing a transcript's last segment against the
+  video's real duration, and the pieces already exist:
+  `TranscriptionJob.probed_duration_seconds` holds a real ffprobe'd
+  duration for every page that has ever had a job, and
+  `crud._partial_transcription_warning()` already renders exactly this
+  shape of sentence from a (covered, total) pair. Watch out for the
+  obvious false positive — a meeting whose video runs long after the
+  gavel — so the threshold wants to be generous (tens of minutes short,
+  not seconds) and probably measured against real pages before being
+  turned on.
 
 - **[JUST-DO-IT] `[EASY]` Nothing notices a dead worker pool — chunks
   can sit flat for 9 hours while every dashboard reads "healthy"
@@ -697,23 +707,6 @@ of human step they need.
 
 ### Confirmations nobody has actually watched happen
 
-- **[HUMAN] Run `scripts/scan_truncated_transcripts.py` on the Archive's
-  Render shell — the read first, then the write (2026-08-24).** The
-  Granicus 36,000-cue truncation flag has only existed since 2026-08-23
-  and is applied *at ingest*, so every page archived before then that hit
-  the cap carries no warning: it reports as `success` on /coverage and is
-  permanently excluded from re-transcription. Nothing else in the
-  codebase looks at how many segments a stored transcript has, so the
-  size of this is unknown — Ryan's read (2026-08-24) is that "a few are
-  escaping our view", and that is a guess, not a measurement.
-  The first run is report-only by design and answers two things at once:
-  how many unmarked pages sit on exactly 36,000, and whether 36,000 is
-  even the only cap (see the `[JUST-DO-IT]` truncation-detection entry
-  above). Only then `--apply`, which appends the same warning the adapter
-  would have written and nothing else. Run it from the Render shell like
-  every backfill here — it is cheap (segment counts are computed in SQL,
-  no `segments` blob crosses the network) but it is still production.
-
 - **[HUMAN] Decide the /meetings result link order from real click data,
   not from taste (2026-08-24).** The row's headline now opens the matched
   second and "Play from 0:00" below it opens the whole meeting — Ryan's
@@ -999,6 +992,30 @@ convenient.
 Reproduced against real data, but the fix is a genuine open question.
 Jurisdiction-extraction bugs live under **Platform & jurisdiction
 coverage** instead.
+
+- **[NEEDS-AUDIT] Two pages have had a failed transcription job and
+  nothing else for months — are they still re-entering the queue at all?
+  (2026-08-24)** A page with no good transcript is supposed to stay an
+  auto-transcription candidate forever, subject only to
+  `_cooldown_active()`'s escalating backoff (1 day, doubling, capped at
+  30). Two rows say otherwise:
+  `/m/city-of-napa-2026-06-30-special-planning-commission` (**job 20**,
+  7/13 chunks) and
+  `/m/detroit-mi-2026-07-28-detroit-city-council-formal-session-07-28-2026`
+  (**job 47**, 1/21) still have no good transcript, while jobs in the
+  600-700s from the same survey have already recovered. Job ids that low
+  are months old; either they have been retried repeatedly and failed
+  silently every time, or they stopped qualifying as candidates and
+  nothing says so.
+  **Which of those it is, is the whole question**, and it matters beyond
+  these two rows: it is the difference between "the backoff is working
+  as designed" and "pages can fall out of the pool permanently and
+  nothing reports it". Start from their `TranscriptionJob` rows for the
+  page (is there anything after job 20/47?) and from
+  `find_auto_transcription_candidate()`'s own predicates against those
+  page ids. Found while measuring the partial-transcript backfill
+  question, which is where the survey output lives
+  (`BACKLOG_DONE.md`).
 
 - **[NEEDS-AUDIT] Render "HTTP health check failed" on
   `rtr-deeplink-archive` (2026-08-19, 2026-08-20) — a real candidate

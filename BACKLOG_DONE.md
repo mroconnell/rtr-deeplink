@@ -6,6 +6,185 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## A terminally-failed transcription job now publishes the chunks it finished [Done 2026-08-24]
+
+`record_chunk_result()` only wrote a `TranscriptVersion` once
+`chunks_completed >= total_chunks`, so a job that died at 18 of 20 left
+eighteen chunks of real, correctly-timed transcript stranded in
+`TranscriptionJob.partial_segments` — the page showed nothing, classified
+as `blank_transcript`, and re-entered the auto-transcription pool to redo
+work that was already done.
+
+**Found by checking a premise, not from a report.** Ryan assumed
+(2026-08-24) the `truncated_transcript` bucket already covered "we only
+got some of the chunks before the process failed". It did not, and the
+reason was this: there was no transcript to mark. His follow-up framed
+the case that made it worth building — someone who *asked* for a
+transcript, waited, and was emailed "failed" while eighteen chunks of
+their meeting sat transcribed-but-unreachable would rather have the
+eighteen.
+
+Built as `crud._publish_partial_transcript()`, called only on the
+terminal `failed` transition (never on `retry_scheduled`, where the same
+job resumes from `chunks_completed` and is expected to finish). Three
+properties make it safe rather than a new bug, each with its own test in
+`tests/test_partial_transcript_publishing.py`:
+
+1. **The version carries `_PARTIAL_TRANSCRIPTION_MARKER`.** One line in
+   `_TRUNCATION_MARKERS` routes it everywhere at once — reports as
+   `truncated_transcript`, earns no "has transcript" badge in search, and
+   the page stays an auto-transcription candidate rather than looking
+   finished forever.
+2. **The job stays `failed`.** Marking it `completed` would read as
+   tidier and would rebuild the infinite re-queue loop fixed for blank
+   transcripts the day before: `_cooldown_active()` counts consecutive
+   *failed* jobs, and that escalating backoff is the only brake on a page
+   that dies at the same chunk every time. Content-hash dedup sits on top,
+   so a retry that dies identically re-links the existing version instead
+   of stacking a second.
+3. **It only becomes the default if nothing better is there**
+   (`_has_good_transcript()`), so a partial Whisper run never displaces
+   real complete scraped captions — it stays reachable via `?version=`.
+
+Reader-facing copy is Ryan's, verbatim, rendered in the existing
+`transcript_warnings` box (verified in-browser): *"This transcript covers
+3 hours 12 minutes of a 3 hour 40 minute meeting — the transcription was
+interrupted before we could finish it. We'll try to finish it again."*
+
+The draft ended "again **soon**"; Ryan cut it before merge, correctly.
+The retry is real — the marker keeps the page in the auto-transcription
+pool — but `_cooldown_active()`'s backoff starts at a day and doubles per
+consecutive failure up to thirty, so "soon" stops being true on exactly
+the pages that fail most. **Printing the real delay instead was
+considered and rejected for the same reason, not for difficulty**: it is
+computable at publish time, but the warning is a *stored* string, written
+once and never revised, so any "in about a day" or "after August 25" is
+wrong from the second day on — and a stale date reads worse than no date.
+The only version that stays true would be computed at render time, which
+means a query on the meeting-page path for a sentence nobody is waiting
+on. Worth remembering as a shape: a promise about the future cannot live
+in a field that is only written once.
+
+Falls back to a coverage-free form when the probed duration is
+missing or not greater than what was transcribed, a wrong number being
+worse than no number. `_duration_words()` carries an `attributive` flag
+because English drops the plural in front of a noun ("a 3 hour 40 minute
+meeting").
+
+The requester's failure email changes with it, which is the point:
+with a partial published it becomes "Part of your transcript is ready"
+with a link to read it, rather than "We hit a snag on your transcript".
+
+**One test initially passed for the wrong reason**, worth recording since
+the shape recurs: `test_a_partial_never_displaces_an_existing_good_
+transcript` was asserting against a page that had no transcript to
+displace, because `create_transcription_job()` only finds-or-creates the
+`MeetingPage` (`_find_or_create_page`) and never writes
+`TranscriptVersion`s. Ingesting properly first made it fail; then the
+code made it pass.
+
+**Residual:** the one truncation form still undetectable — a scraped
+caption file that simply ends early with no round-number tell — stays
+live in `BACKLOG.md`.
+
+### The backfill that measurement talked us out of
+
+The obvious follow-up was to publish the partials already sitting on
+historically-failed jobs. Two read-only surveys on the Archive's Render
+shell settled it, and the second one corrected the first.
+
+**Survey 1 — how much is sitting there.** `status='failed'` with
+non-empty `partial_segments`, grouped by `chunks_completed/total_chunks`:
+**48 jobs, ~9,960 segments**, and the distribution was the finding:
+
+```
+1/2   7 jobs      1/9   2      2/4   1      3/8   1
+1/3   1           1/13  1      2/16  1      4/8   1
+1/4   4           1/14  2      3/4   1      7/13  1
+1/5   7           1/21  4
+1/6   4           1/22  2
+1/7   2           1/26  1
+1/8   3           1/27  1      1/41  1
+```
+
+**42 of 48 died at exactly chunk 1, across fifteen different
+`total_chunks` values.** That is the WO-45 ffmpeg HLS-seek signature
+exactly — chunk 0 needs no seek and succeeds, chunk 1 hits the broken
+seek — and it is independent confirmation of that root cause from data
+nobody had looked at while diagnosing it.
+
+**A framing error worth recording.** The first cut was "jobs with ≥2
+chunks done" — 6 of them — which undercounts, because a `1/2` job is
+*half a meeting*. On coverage fraction it is 11 jobs at ≥50%. Count the
+thing that matters to a reader, not the thing that is easy to filter on.
+
+**Survey 2 — does any of it still matter.** Survey 1 counted *jobs* and
+said nothing about the pages' current state. Joining to `MeetingPage`
+and the default `TranscriptVersion`, and classifying with the real gate
+(`_has_real_warning_free_transcript()`):
+
+```
+48 failed job(s) -> 44 distinct page(s)
+    33  HAS a good transcript now
+     8  no transcript at all
+     3  flagged (garbled/truncated)
+```
+
+**Three quarters had already recovered.** The remaining 11, best-first:
+75% `wilkes-county-nc-2021-11-02`, 54% `city-of-napa-2026-06-30`, 50%
+`belle-meade-tn-2026-06-16`, 38% `surfside-fl-2026-03-05`, then five at
+17-20% and two at 5%.
+
+**So: no backfill** (recorded as a Standing decision in `BACKLOG.md`).
+The population self-heals, and anything that does not recover publishes
+its own partial on its *next* failed attempt under the shipped code — a
+backfill only helps a page that will never be retried at all, which is a
+different problem and got its own `[NEEDS-AUDIT]` entry (jobs 20 and 47,
+months old, still nothing).
+
+Worth naming the concrete payoff: jobs **646 and 648** in that list are
+the two `play.champds.com` failures Ryan's original email on 2026-08-23
+was about, and ChampDS's root cause is still open. Their next attempt
+now leaves 75% of the Wilkes County meeting readable instead of nothing.
+
+## The hidden population of Granicus-capped transcripts does not exist — measured, not assumed [Investigated 2026-08-24]
+
+Nothing shipped; this records a measurement that closed a real open
+question. The 36,000-cue truncation flag is applied at ingest and only
+started existing 2026-08-23, so the concern (Ryan's, and reasonable) was
+that every page archived before then that hit the cap was invisibly
+stuck: reporting as `success` and permanently excluded from
+re-transcription. Nothing in the codebase looked at how many segments a
+stored transcript had, so nobody could say how many pages that was.
+
+`scripts/scan_truncated_transcripts.py` was written to answer it
+read-only first — segment counts computed in SQL (`json_array_length`),
+so no `segments` blob crosses the network and the whole-archive scan is
+one cheap query. Run on the `rtr-deeplink-archive` Render shell:
+
+```
+30,000+ segments:  1 page  — 36000, already marked
+20,000+ segments:  2 pages — 36000 (marked), 22490
+```
+
+**Zero unmarked pages at the cap**, so `--apply` was never run and had
+nothing to do. The 22,490 is a singleton, which is what a genuinely long
+meeting looks like — a cap shows up as *repetition*, many pages sharing
+one exact count. So `granicus.py`'s admitted blind spot ("doesn't catch a
+cap at some other round number") is costing nothing above 20,000 either.
+
+Two honest limits, both pointing the same way: the scan reads *default*
+versions only, so a page whose capped captions were already replaced by a
+successful re-transcription correctly drops out — consistent with the
+pipeline having simply done its job — and it says nothing below its
+`--min-count` threshold. The script stays in the repo for re-running
+either question later.
+
+**Consequence for the roadmap:** with both *detectable* truncation forms
+now handled, the duration-vs-coverage check is the only remaining one,
+which is why its `BACKLOG.md` entry was rewritten rather than left as
+filed.
+
 ## Both transcription workers dead for 9.3 hours on a missing `markupsafe`, and every health signal read "fine" [Done 2026-08-24]
 
 Noticed only because a routine status check compared

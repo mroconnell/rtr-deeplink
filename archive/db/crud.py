@@ -111,24 +111,31 @@ _HALLUCINATION_MARKER = "hallucinated by the transcription model"
 # root cause (a third-party vendor's own truncation, not our own
 # extraction/model failure).
 _GRANICUS_TRUNCATION_MARKER = "36,000 lines, a known limit"
-# Every warning substring that means "the transcript we have stops before
-# the meeting did". One entry today; it is a tuple rather than a bare
-# constant so a second detected form of truncation is a one-line addition
-# here instead of a new bucket (see _OUTCOME_LABELS' note below).
+# A transcription job that exhausted its retries partway through, whose
+# already-finished chunks are published rather than discarded (2026-08-24,
+# see _publish_partial_transcript()). Before that, such a job wrote no
+# TranscriptVersion at all: eighteen chunks of real, correctly-timed
+# transcript sat unreachable in TranscriptionJob.partial_segments while
+# the page it belonged to read as having nothing at all. A reader who
+# *asked* for a transcript and got "failed" would rather have the
+# eighteen.
+_PARTIAL_TRANSCRIPTION_MARKER = "the transcription was interrupted"
+
+# Every warning substring meaning "the transcript we have stops before the
+# meeting did". A tuple, so a newly-detected form of truncation is one
+# line here rather than a parallel bucket (see _OUTCOME_LABELS below).
+# Being listed here does two things at once: the page reports as
+# `truncated_transcript`, AND it stays eligible for a real transcription
+# attempt (_has_real_warning_free_transcript below). Wire a new marker
+# into one without the other and you get the worst available outcome --
+# a page that reports as a known problem and can never be fixed.
 #
-# Two truncation shapes are known to exist and are deliberately NOT here,
-# because neither is detectable from a stored warning today:
-#   * A scraped caption file that simply ends early with no round-number
-#     tell. Nothing compares a transcript's last segment against the
-#     video's real duration, so these read as ordinary transcripts. See
-#     BACKLOG.md.
-#   * A transcription job that dies partway through. That one produces no
-#     TranscriptVersion at all -- the version is only written once
-#     chunks_completed >= total_chunks (see record_chunk_result()), so a
-#     half-finished job leaves its work in TranscriptionJob.
-#     partial_segments and the page classifies as blank_transcript, not
-#     truncated. Nothing to fold in until partial publishing exists.
-_TRUNCATION_MARKERS = (_GRANICUS_TRUNCATION_MARKER,)
+# One truncation shape is known to exist and is deliberately NOT here,
+# because nothing can currently detect it: a scraped caption file that
+# simply ends early with no round-number tell. Nothing compares a
+# transcript's last segment against the video's real duration, so those
+# read as ordinary complete transcripts. See BACKLOG.md.
+_TRUNCATION_MARKERS = (_GRANICUS_TRUNCATION_MARKER, _PARTIAL_TRANSCRIPTION_MARKER)
 
 
 def _has_real_warning_free_transcript(warnings: Optional[list]) -> bool:
@@ -5661,6 +5668,156 @@ AUTO_TRANSCRIPTION_BASE_COOLDOWN = timedelta(days=1)
 AUTO_TRANSCRIPTION_MAX_COOLDOWN = timedelta(days=30)
 
 
+def _duration_words(seconds: float, *, attributive: bool = False) -> str:
+    """`"3 hours 40 minutes"`, or `"3 hour 40 minute"` when it is being
+    used as a compound adjective in front of a noun ("a 3 hour 40 minute
+    meeting"), where English drops the plural. Minutes only under an hour.
+
+    Rounds to the nearest minute and floors at 1: a reader told a
+    transcript covers "0 minutes" learns nothing, and this only ever runs
+    on a job that finished at least one real chunk.
+    """
+    total_minutes = max(1, round(max(0.0, seconds) / 60))
+    hours, minutes = divmod(total_minutes, 60)
+
+    def unit(value: int, word: str) -> str:
+        if attributive or value == 1:
+            return f"{value} {word}"
+        return f"{value} {word}s"
+
+    if not hours:
+        return unit(minutes, "minute")
+    if not minutes:
+        return unit(hours, "hour")
+    return f"{unit(hours, 'hour')} {unit(minutes, 'minute')}"
+
+
+def _partial_transcription_warning(
+    *, covered_seconds: float, total_seconds: Optional[float]
+) -> str:
+    """The reader-facing sentence on a transcript that stops early because
+    the transcription itself was interrupted (Ryan's wording, 2026-08-24).
+
+    Says *where* it stops rather than only that it does: a transcript that
+    ends with no explanation reads as broken, while one that names its own
+    coverage reads as honest. Falls back to the coverage-free form when
+    the probed duration is missing or implausible (not greater than what
+    we transcribed) -- a wrong number is worse than no number -- and the
+    marker substring is present either way, so the quality gates behave
+    identically for both forms.
+    """
+    # No time claim, deliberately (2026-08-24). The first draft ended
+    # "We'll try to finish it again soon." A retry genuinely is queued --
+    # the marker keeps this page in the auto-transcription pool -- but
+    # _cooldown_active()'s backoff starts at a day and doubles per
+    # consecutive failure up to thirty, so "soon" quietly stops being
+    # true on exactly the pages that fail most.
+    #
+    # Printing the real delay instead was considered and rejected for the
+    # same reason, not for difficulty: it is computable here, but this
+    # string is written once and never revised, so any "in about a day"
+    # or "after August 25" is wrong from the second day onward -- and a
+    # stale date reads worse than no date at all. The only version that
+    # stays true would be computed at render time, which is a query on
+    # the meeting-page path for a sentence nobody is waiting on.
+    tail = (
+        "the transcription was interrupted before we could finish it. "
+        "We'll try to finish it again."
+    )
+    if total_seconds and total_seconds > covered_seconds > 0:
+        return (
+            f"This transcript covers {_duration_words(covered_seconds)} of a "
+            f"{_duration_words(total_seconds, attributive=True)} meeting \u2014 {tail}"
+        )
+    return f"This transcript is incomplete \u2014 {tail}"
+
+
+async def _publish_partial_transcript(session, job) -> Optional[int]:
+    """Publish the chunks a terminally-failed job *did* finish, instead of
+    discarding them. Returns the version id, or None when there is nothing
+    worth publishing.
+
+    Called only on the terminal `failed` transition -- never on
+    `retry_scheduled`, where the same job is about to resume from
+    `chunks_completed` and finish properly.
+
+    Three things here are load-bearing, and each is what would otherwise
+    turn this feature into a bug:
+
+    1. **The version carries _PARTIAL_TRANSCRIPTION_MARKER.** That single
+       fact routes it correctly everywhere at once: it reports as
+       `truncated_transcript`, it does not earn the "has transcript"
+       badge in search, and the page stays an auto-transcription
+       candidate rather than looking finished forever.
+    2. **The job stays `failed`.** The caller sets that before calling
+       here, and this must not change it. `_cooldown_active()`'s
+       escalating backoff counts consecutive *failed* jobs, and that
+       backoff is the only thing stopping a page that reliably dies at
+       chunk 18 from republishing the same 18 chunks forever -- the exact
+       infinite re-queue shape fixed for blank transcripts on 2026-08-23.
+    3. **It only becomes the page's default if nothing better is there.**
+       A partial Whisper transcript must never displace a real, complete
+       scraped one; in that case it still lands as a non-default version,
+       reachable through the existing `?version=` picker.
+
+    Content-hash dedup sits on top of (2): a retry that dies at the same
+    chunk reproduces the same segments, and re-linking the existing
+    version beats stacking identical ones.
+    """
+    if not job.partial_segments:
+        return None
+
+    content_hash = _content_hash(job.partial_segments)
+    existing_id = (
+        await session.execute(
+            select(TranscriptVersion.id).where(
+                TranscriptVersion.meeting_page_id == job.meeting_page_id,
+                TranscriptVersion.content_hash == content_hash,
+            )
+        )
+    ).scalar_one_or_none()
+    if existing_id is not None:
+        job.transcript_version_id = existing_id
+        return existing_id
+
+    probed = float(job.probed_duration_seconds or 0)
+    covered_seconds = float(job.chunks_completed * job.chunk_size_seconds)
+    if probed:
+        covered_seconds = min(covered_seconds, probed)
+    warnings = [
+        _partial_transcription_warning(
+            covered_seconds=covered_seconds,
+            total_seconds=job.probed_duration_seconds,
+        ),
+        # A partial transcript can hallucinate exactly as readily as a
+        # complete one -- same check the finalize path runs below, for the
+        # same reason (see its own comment there).
+        *detect_hallucination_warnings(job.partial_segments),
+    ]
+    version = TranscriptVersion(
+        meeting_page_id=job.meeting_page_id,
+        language=detect_language_from_texts(s["text"] for s in job.partial_segments),
+        source="transcribed",
+        is_default=False,
+        segments=sorted(job.partial_segments, key=lambda s: s["start"]),
+        transcript_warnings=warnings,
+        content_hash=content_hash,
+    )
+    session.add(version)
+    await session.flush()  # assigns version.id
+
+    if not await _has_good_transcript(session, job.meeting_page_id):
+        await promote_transcript_version(session, job.meeting_page_id, version.id)
+        page = await session.get(MeetingPage, job.meeting_page_id)
+        if page is not None:
+            # Only worth refreshing when this actually became the default
+            # -- the search corpus is built from the default version.
+            await _refresh_search_corpus(session, page)
+
+    job.transcript_version_id = version.id
+    return version.id
+
+
 async def promote_transcript_version(session, page_id: int, version_id: int) -> None:
     """Make `version_id` the one /m/{slug} renders by default, demoting
     whichever version held that spot before -- never deletes anything, the
@@ -6261,7 +6418,10 @@ async def report_chunk_result(
     A PRIORITY_LOW auto-generated job, or a user job that's used up its
     retries, still goes straight to "failed" -- the terminal outcome
     worker/main.py's failure email (now actually reachable, see that
-    module's own note) fires on.
+    module's own note) fires on. **A terminal failure now publishes
+    whatever chunks did finish** (2026-08-24) rather than discarding
+    them -- see _publish_partial_transcript(), and note the job status
+    stays "failed", which that function depends on.
 
     `chunk_index` (optional, for the failure_history entry only -- callers
     written before 2026-08-19 that omit it still work, just with a null
@@ -6286,6 +6446,7 @@ async def report_chunk_result(
         job.claimed_at = None  # release the claim regardless of outcome
 
         if not success:
+            partial_version_id = None
             job.consecutive_chunk_failures += 1
             job.error_message = error
             job.failure_history = [
@@ -6311,6 +6472,13 @@ async def report_chunk_result(
                     job.consecutive_chunk_failures = 0  # fresh budget for the retry
                 else:
                     job.status = "failed"
+                    # Terminal, so the chunks this job did finish are all
+                    # anyone will ever get from it -- publish them rather
+                    # than leaving them stranded in partial_segments (see
+                    # _publish_partial_transcript()). Deliberately NOT on
+                    # the retry_scheduled branch above: that job resumes
+                    # from chunks_completed and is expected to finish.
+                    partial_version_id = await _publish_partial_transcript(session, job)
             await session.commit()
             return {
                 "status": job.status,
@@ -6319,6 +6487,11 @@ async def report_chunk_result(
                 "next_retry_at": job.next_retry_at.isoformat()
                 if job.next_retry_at
                 else None,
+                # Non-None only on a terminal failure that salvaged
+                # something -- worker/main.py's failure email uses it to
+                # tell the requester there is real transcript waiting for
+                # them instead of only that we failed.
+                "partial_transcript_version_id": partial_version_id,
             }
 
         job.consecutive_chunk_failures = 0
@@ -6406,6 +6579,18 @@ def _job_dict(job: TranscriptionJob, page: Optional[MeetingPage]) -> dict:
         "retry_count": job.retry_count,
         "failure_history": job.failure_history,
         "created_at": job.created_at.isoformat() if job.created_at else None,
+        # How much of the meeting this job actually transcribed, and how
+        # long the meeting is -- added 2026-08-24 so worker/main.py's
+        # failure email can tell a requester what they *did* get when a
+        # partial transcript was published (see
+        # _publish_partial_transcript()). Facts about the meeting's own
+        # video, nothing requester-specific, so no stripping needed on
+        # app/main.py's public status-poll proxy.
+        "probed_duration_seconds": job.probed_duration_seconds,
+        "transcribed_seconds": min(
+            float(job.chunks_completed * job.chunk_size_seconds),
+            float(job.probed_duration_seconds or 0) or float("inf"),
+        ),
     }
 
 

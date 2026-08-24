@@ -100,7 +100,7 @@ async def test_send_failure_email_sends_with_meeting_title_and_page_url(monkeypa
 
     captured = {}
 
-    async def _fake_send(to, *, meeting_title, page_url):
+    async def _fake_send(to, *, meeting_title, page_url, **kwargs):
         captured["to"] = to
         captured["meeting_title"] = meeting_title
         captured["page_url"] = page_url
@@ -124,6 +124,82 @@ async def test_send_failure_email_sends_with_meeting_title_and_page_url(monkeypa
     }
 
 
+async def test_failure_email_reports_the_partial_when_one_was_published(monkeypatch):
+    """A terminally-failed job that salvaged chunks
+    (crud._publish_partial_transcript()) has a transcript_version_id, and
+    the requester should be told what they *got* -- being emailed "we
+    failed" while three hours of their meeting sits transcribed on the
+    page is the outcome that change exists to remove."""
+
+    async def _status(job_id):
+        return {
+            "meeting_page_slug": "some-meeting",
+            "meeting_page_title": "Some Meeting",
+            "requester_email": "requester@example.com",
+            "transcript_version_id": 4242,
+            "transcribed_seconds": 11520.0,
+            "probed_duration_seconds": 13200.0,
+        }
+
+    monkeypatch.setattr(worker.main.crud, "get_transcription_job_status", _status)
+    monkeypatch.setenv("PUBLIC_BASE_URL", "https://redtaperecordings.com")
+
+    captured = {}
+
+    async def _fake_send(to, *, meeting_title, page_url, **kwargs):
+        captured.update(kwargs)
+        return True
+
+    async def _fake_admin_send(**kwargs):
+        return True
+
+    monkeypatch.setattr(
+        worker.main.email_utils, "send_transcription_failed_email", _fake_send
+    )
+    monkeypatch.setattr(
+        worker.main.email_utils, "send_admin_job_failure_alert", _fake_admin_send
+    )
+
+    await worker.main._send_failure_email(1)
+    assert captured["partial_coverage"] == "3 hours 12 minutes"
+
+
+async def test_failure_email_stays_a_plain_failure_when_nothing_was_saved(monkeypatch):
+    """A job that died on its first chunk publishes nothing, so the
+    original couldn't-do-it copy must still be what goes out."""
+
+    async def _status(job_id):
+        return {
+            "meeting_page_slug": "some-meeting",
+            "meeting_page_title": "Some Meeting",
+            "requester_email": "requester@example.com",
+            "transcript_version_id": None,
+            "transcribed_seconds": 0.0,
+        }
+
+    monkeypatch.setattr(worker.main.crud, "get_transcription_job_status", _status)
+    monkeypatch.setenv("PUBLIC_BASE_URL", "https://redtaperecordings.com")
+
+    captured = {}
+
+    async def _fake_send(to, *, meeting_title, page_url, **kwargs):
+        captured.update(kwargs)
+        return True
+
+    async def _fake_admin_send(**kwargs):
+        return True
+
+    monkeypatch.setattr(
+        worker.main.email_utils, "send_transcription_failed_email", _fake_send
+    )
+    monkeypatch.setattr(
+        worker.main.email_utils, "send_admin_job_failure_alert", _fake_admin_send
+    )
+
+    await worker.main._send_failure_email(1)
+    assert captured["partial_coverage"] is None
+
+
 async def test_send_failure_email_falls_back_to_generic_title(monkeypatch):
     async def _status(job_id):
         return {
@@ -137,7 +213,7 @@ async def test_send_failure_email_falls_back_to_generic_title(monkeypatch):
 
     captured = {}
 
-    async def _fake_send(to, *, meeting_title, page_url):
+    async def _fake_send(to, *, meeting_title, page_url, **kwargs):
         captured["meeting_title"] = meeting_title
         return True
 
@@ -183,7 +259,7 @@ async def test_send_failure_email_also_sends_admin_alert_with_diagnostics(monkey
     monkeypatch.setattr(worker.main.crud, "get_transcription_job_status", _status)
     monkeypatch.setenv("PUBLIC_BASE_URL", "https://redtaperecordings.com")
 
-    async def _fake_send(to, *, meeting_title, page_url):
+    async def _fake_send(to, *, meeting_title, page_url, **kwargs):
         return True
 
     captured = {}
