@@ -93,9 +93,21 @@
     <p class="hub-thin-note">Only {{ total_pages }} meeting{{ 's' if total_pages != 1 else '' }} archived so far for {{ display }}. Know of another? <a href="/">Paste its link</a> and it'll join this page.</p>
     {% endif %}
 
+    {#- When this hub had no chips of its own, `chips_inherited` is true
+       and these are its *state's* topics: labelled as such and pointing
+       at the state page, since this government has no meetings for them
+       (see crud.get_jurisdiction_hub_data()). -#}
+    {% if chips_inherited and state_slug %}
+    {% with chips = topic_chips, base_url = "/state/" ~ state_slug,
+            chips_label = "Being discussed across " ~ state_name ~ ":",
+            chips_show_all = False, active_topic = None %}
+      {% include "_topic_chips.html" %}
+    {% endwith %}
+    {% elif not chips_inherited %}
     {% with chips = topic_chips, base_url = "/j/" ~ slug %}
       {% include "_topic_chips.html" %}
     {% endwith %}
+    {% endif %}
 
     {% if featured %}
     <h2 class="state-section-heading">

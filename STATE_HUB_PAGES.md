@@ -534,13 +534,23 @@ Two halves, and both are already covered:
   Zero-result searches, the single best source of candidate topics, are
   already captured via `result_count`.
 
-**What is genuinely missing is the human decision workflow, not the
-input.** The useful build is an *internal* view that ranks candidate
-phrases out of `search_queries` (frequency, zero-result rate, not already
-a topic) and, for a chosen phrase, previews what adding it would surface
-— which is `topics_in()` plus a corpus count, not new machinery. That
-keeps curation human, which §5 argues for, without asking readers to fill
+**What was genuinely missing is the human decision workflow, not the
+input — and that is now built (WO-51, 2026-08-24).**
+`GET /internal/topic-candidates` ranks phrases out of `search_queries`
+by frequency and zero-result rate, excluding anything
+`any_topic_pattern()` already covers, and `?phrase=` previews what adding
+one would surface (a `search_corpus` count plus real sample meetings).
+Read-only, no new table, token-gated like every other `/internal/` route.
+Curation stays human, which §5 argues for, without asking readers to fill
 in anything.
+
+Verified live on a seeded corpus: searching "flock camera lawsuit" and
+"data center" produced **no** candidates (both already curated) while
+"zoning variance" surfaced with a 1.0 zero-result rate — which is the
+whole point, since the phrases worth curating are exactly the ones the
+curated set never had. **Expect thin output for a while**:
+`search_queries` only started filling 2026-08-23, so an empty list means
+"no data yet", not "nothing to add".
 
 **Ideas not yet built**, roughly by value:
 
@@ -558,8 +568,20 @@ in anything.
   load-bearing, not theoretical. The `<title>` already carries
   meeting/jurisdiction/date, which is what frees the description to spend
   its whole budget on the one line unique to the page.
-- **Let a hub inherit its state's chips** when its own pool is too thin
-  to produce any, so small hubs get a way in rather than nothing.
+- ~~**Let a hub inherit its state's chips**~~ — shipped WO-51,
+  2026-08-24. This is the *common* case, not an edge one: 439 of 574
+  stateful jurisdictions had exactly one meeting when last measured, so
+  most hubs produced no chips at all and offered a reader no way in.
+  Inherited chips are labelled **"Being discussed across {State}:"** and
+  point at `/state/{slug}?topic=`, never at the hub — the hub has no
+  meetings for those topics by construction, so a hub-local link would
+  land on a guaranteed-empty page, which is worse than showing nothing.
+  A browser check caught what tests could not: `.topic-chips-label` is
+  `display:none` below 768px (it competes for room in the horizontal
+  scroll strip), so on a phone the label vanished and left "Data centers
+  1" sitting on a town that never discussed data centers. The supplied
+  label now renders as its own block (`.topic-chips-heading`) that stays
+  visible at every width.
 - **Surface press coverage** beside a meeting: a small curated
   `press_mentions` table (headline, outlet, URL, meeting) rendered on
   `/m/`, `/j/` and state pages. Deferred 2026-08-23 because no outlet

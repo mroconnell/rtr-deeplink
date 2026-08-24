@@ -191,3 +191,22 @@
   text-decoration: underline;
 }
 
+
+/* A supplied chips label (a hub borrowing its state's chips, WO-51).
+ * Its own block above the chips, and it stays visible at every width --
+ * unlike .topic-chips-label, which is hidden below 768px to save room in
+ * the horizontal scroll strip. That is safe for a generic "Being
+ * discussed:" and unsafe here: this label is the only thing saying the
+ * topics belong to the state rather than to this government, so hiding
+ * it turns the row into a quiet misattribution. */
+.topic-chips-heading {
+  margin: 1.4rem 0 0.5rem;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b7280;
+}
+
+.topic-chips-heading + .topic-chips {
+  margin-top: 0;
+}

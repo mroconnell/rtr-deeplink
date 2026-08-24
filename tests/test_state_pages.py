@@ -120,9 +120,13 @@ def test_state_page_unknown_slug_404():
 
 
 def test_state_page_empty_state_404():
-    # No test seeds any ", WY" jurisdiction (checked by grep when this was
-    # written) -- a real state with zero indexable pages 404s rather than
-    # rendering an empty shell.
+    # Wyoming is *reserved* as the state no test seeds, so a real state
+    # with zero indexable pages 404s rather than rendering an empty
+    # shell. The fixture DB is shared and never reset, so seeding a ", WY"
+    # jurisdiction anywhere in the suite breaks this test and three others
+    # below -- and only in a full run, never in isolation (real
+    # occurrence, 2026-08-24, WO-51). If you need a throwaway state, use
+    # any other real abbreviation.
     response = client.get("/state/wyoming")
     assert response.status_code == 404
 

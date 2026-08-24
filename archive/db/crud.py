@@ -10,6 +10,7 @@ from urllib.parse import urlparse
 from sqlalchemy import (
     Text,
     and_,
+    case,
     cast,
     delete,
     exists,
@@ -55,7 +56,12 @@ from ..utils.search import (
 from ..utils.slugify import build_base_slug, random_suffix
 from ..utils.video_formats import IFRAME_EMBED_VIDEO_FORMATS
 from ..utils.highlights import compute_highlight_payload, display_text
-from ..topics import TOPICS, TOPICS_BY_SLUG, TOPICS_VERSION
+from ..topics import (
+    TOPICS,
+    TOPICS_BY_SLUG,
+    TOPICS_VERSION,
+    any_topic_pattern,
+)
 from ..utils.gov_classify import GROUP_LABELS, GROUP_ORDER, classify_government
 from ..utils.highlights import highlight_html
 from ..utils.transcription_quality import detect_hallucination_warnings
@@ -5264,6 +5270,42 @@ async def _hub_groups(session) -> dict[str, dict]:
     return groups
 
 
+async def _state_topic_chips(session, abbr: Optional[str]) -> list[dict]:
+    """Topic chips computed over the *state's* recent pool, for a hub
+    whose own pool is too thin to produce any.
+
+    Reads only `topic_moments` (never `segments`) for the state's newest
+    highlights, so this costs one indexed join and no blob decoding --
+    and it only runs on the hubs that would otherwise show nothing.
+    """
+    if not abbr:
+        return []
+    rows = (
+        await session.execute(
+            select(
+                MeetingHighlight.meeting_page_id,
+                MeetingHighlight.topic_moments,
+                MeetingPage.jurisdiction,
+            )
+            .join(MeetingPage, MeetingPage.id == MeetingHighlight.meeting_page_id)
+            .where(
+                MeetingPage.jurisdiction.like(f"%, {abbr}"),
+                MeetingPage.platform != "unknown",
+            )
+            .order_by(MeetingPage.date.desc(), MeetingPage.id.desc())
+            .limit(STATE_HIGHLIGHT_POOL)
+        )
+    ).all()
+    # LIKE is case-insensitive on SQLite (dev/tests), so re-check exactly
+    # -- same guard get_state_page_data() uses, for the same reason.
+    highlights = {
+        page_id: {"topic_moments": moments or {}}
+        for page_id, moments, jurisdiction in rows
+        if state_abbr_from_jurisdiction(jurisdiction) == abbr
+    }
+    return _topic_chips(highlights, None)
+
+
 async def get_jurisdiction_hub_data(
     slug: str, topic_slug: Optional[str] = None
 ) -> Optional[dict]:
@@ -5332,6 +5374,21 @@ async def get_jurisdiction_hub_data(
         pool = [p for p in pages if p["has_transcript"]]
         highlights = await _load_highlights(session, [p["id"] for p in pool])
         carded = await pages_with_thumbnails(session, [p["id"] for p in pool])
+        own_chips = _topic_chips(
+            highlights, topic_slug if topic_slug in TOPICS_BY_SLUG else None
+        )
+        # A hub with nothing of its own to show gets its state's chips
+        # instead. The archive is wide and shallow -- 439 of 574 stateful
+        # jurisdictions had exactly one meeting when that was last
+        # measured -- so "no chips at all" is the common case here rather
+        # than an edge one, and it leaves a reader with no way further in.
+        # They link to /state/{slug}?topic=, never to this hub: the hub
+        # has no meetings for those topics by construction, so a
+        # hub-local link would land on a guaranteed-empty page, which is
+        # worse than showing nothing.
+        inherited_chips = (
+            [] if own_chips else await _state_topic_chips(session, group["state_abbr"])
+        )
 
     active_slug = topic_slug if topic_slug in TOPICS_BY_SLUG else None
     topic_counts = _pool_topic_counts(highlights)
@@ -5374,7 +5431,10 @@ async def get_jurisdiction_hub_data(
         "state_name": US_STATE_ABBR_TO_NAME.get(abbr) if abbr else None,
         "state_slug": state_slug_from_abbr(abbr) if abbr else None,
         "featured": featured,
-        "topic_chips": _topic_chips(highlights, active_slug),
+        "topic_chips": own_chips or inherited_chips,
+        # Drives the honest label and link target in the template: these
+        # are the state's topics, not this government's.
+        "chips_inherited": bool(inherited_chips),
         "active_topic": active_slug,
         "active_topic_label": (
             TOPICS_BY_SLUG[active_slug].label if active_slug else None
@@ -6955,6 +7015,114 @@ async def get_highlight_text(page_id: int) -> Optional[str]:
                 )
             )
         ).scalar_one_or_none()
+
+
+async def topic_candidates(days: int = 90, limit: int = 40) -> list[dict]:
+    """Phrases people searched for that the curated topic list does not
+    cover, ranked by how much demand they represent.
+
+    **This is the human decision workflow, which is the half that was
+    actually missing** -- not a reader-facing "suggest a topic" form. A
+    form is a worse instrument for the same signal: far lower volume, and
+    it records what people *say* they want rather than what they actually
+    looked for. Zero-result searches, the single best source of candidate
+    topics, are already captured here via `result_count` and are the
+    reason `zero_result_rate` is reported per phrase -- a phrase people
+    keep searching and never find is either a topic worth curating or a
+    corpus gap worth filling, and both are worth a human's attention.
+
+    Excludes anything `archive/topics.py` already matches, so the list is
+    only ever things the curated set is missing. Read-only, and adds no
+    table: `search_queries` (identity-free by construction -- see its
+    model docstring) already holds everything.
+
+    Expect this to be thin at first; the table only started filling
+    2026-08-23. An empty list means "no data yet", not "nothing to add".
+    """
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+    covered = any_topic_pattern()
+    async with async_session() as session:
+        rows = (
+            await session.execute(
+                select(
+                    func.lower(SearchQuery.keyword).label("kw"),
+                    func.count().label("searches"),
+                    func.sum(case((SearchQuery.result_count == 0, 1), else_=0)).label(
+                        "zero_results"
+                    ),
+                )
+                .where(SearchQuery.created_at >= since)
+                .group_by(func.lower(SearchQuery.keyword))
+                .order_by(func.count().desc())
+                # Deliberately generous before filtering: the curated-set
+                # exclusion below removes most of the head, and the
+                # interesting candidates are exactly the ones that were
+                # never in it.
+                .limit(limit * 10)
+            )
+        ).all()
+
+    candidates = []
+    for keyword, searches, zero_results in rows:
+        phrase = (keyword or "").strip()
+        # A bare operator-only or single-character query is noise, not a
+        # topic.
+        if len(phrase) < 3 or covered.search(phrase):
+            continue
+        zero = int(zero_results or 0)
+        candidates.append(
+            {
+                "phrase": phrase,
+                "searches": int(searches),
+                "zero_result_searches": zero,
+                "zero_result_rate": round(zero / int(searches), 3),
+            }
+        )
+    return candidates[:limit]
+
+
+async def topic_candidate_preview(phrase: str, sample: int = 5) -> dict:
+    """What adding `phrase` to the curated list would actually surface:
+    how many archived meetings contain it, and a few titles.
+
+    Answers the question a human needs before curating, without new
+    machinery -- `search_corpus` is already the precomputed, indexed text
+    every keyword search runs against (see MeetingPage.search_corpus).
+    Matched as a plain lowercase substring, the same way Step 1 of
+    `list_pages()` does, so the count here is the count a reader would
+    get.
+    """
+    needle = (phrase or "").strip().lower()
+    if not needle:
+        return {"phrase": "", "meeting_count": 0, "sample": []}
+
+    async with async_session() as session:
+        condition = _corpus_contains(needle)
+        count = (
+            await session.execute(
+                select(func.count())
+                .select_from(MeetingPage)
+                .where(condition, MeetingPage.platform != "unknown")
+            )
+        ).scalar_one()
+        rows = (
+            await session.execute(
+                select(MeetingPage.slug, MeetingPage.title, MeetingPage.jurisdiction)
+                .where(condition, MeetingPage.platform != "unknown")
+                .order_by(MeetingPage.date.desc(), MeetingPage.id.desc())
+                .limit(sample)
+            )
+        ).all()
+
+    return {
+        "phrase": needle,
+        "meeting_count": int(count),
+        "already_curated": bool(any_topic_pattern().search(needle)),
+        "sample": [
+            {"slug": slug, "title": title, "jurisdiction": jurisdiction}
+            for slug, title, jurisdiction in rows
+        ],
+    }
 
 
 async def pages_with_thumbnails(session, page_ids: Sequence[int]) -> set[int]:

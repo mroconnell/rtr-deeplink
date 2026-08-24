@@ -6,6 +6,58 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Thin hubs inherit their state's topic chips, and an internal topic-candidate view (WO-51) [Done 2026-08-24]
+
+Two independent items, both from `STATE_HUB_PAGES.md` §9's ideas list
+(neither had a `BACKLOG.md` entry, so nothing to move out of it).
+
+**Hub chip inheritance.** A jurisdiction hub whose own pool produces no
+topic chips now borrows its state's. This is the *common* case, not an
+edge one — 439 of 574 stateful jurisdictions had exactly one meeting when
+last measured — so most hubs showed no chips at all and gave a reader no
+way further in. Inherited chips are labelled "Being discussed across
+{State}:" and link to `/state/{slug}?topic=`, **never to the hub**: it
+has no meetings for those topics by construction, so a hub-local link
+would land on a guaranteed-empty page, which is worse than showing
+nothing.
+
+Two defects found while building, both by looking at the page:
+
+- `.topic-chips-label` is `display:none` below 768px (it competes for
+  room in the horizontal scroll strip). Harmless for a generic "Being
+  discussed:", and a quiet misattribution here — on a phone the label
+  vanished and left "Data centers 1" sitting on a town that never
+  discussed data centers. A supplied label now renders as its own block
+  (`.topic-chips-heading`) that stays visible at every width.
+- Jinja's `default(x, true)` replaces any *falsy* value, so an explicit
+  `chips_show_all=False` was being turned straight back into `True` and
+  the meaningless "All topics" chip kept rendering. Now
+  `is not defined or ...`. Caught by the test asserting its absence.
+
+**`GET /internal/topic-candidates`.** Ranks phrases out of
+`search_queries` by frequency and zero-result rate, excluding anything
+`any_topic_pattern()` already covers; `?phrase=` previews what adding one
+would surface (a `search_corpus` count plus real sample meetings).
+Token-gated, read-only, no new table. Verified live: "flock camera
+lawsuit" and "data center" produced no candidates (already curated) while
+"zoning variance" surfaced at a 1.0 zero-result rate — which is the
+point, since the phrases worth curating are exactly the ones the curated
+set never had.
+
+A reader-facing "suggest a topic" form was considered and **rejected**:
+`search_queries` already collects the same signal passively, at far
+higher volume, and records what people looked for rather than what they
+say they want. Curation stays human — this ranks and previews, it never
+adds a topic. Expect thin output until the table fills (it started
+2026-08-23).
+
+**A test-suite trap worth knowing about.** `tests/test_state_pages.py`
+reserves Wyoming as the state no test seeds, so a real state with zero
+indexable pages can be asserted to 404. The fixture DB is shared and
+never reset, so seeding any `", WY"` jurisdiction breaks four of its
+tests — **and only in a full run, never in isolation**. Hit exactly that
+here. Both that test's comment and the new file now say so explicitly.
+
 ## Topic chips and the recent-moments feed on the home page (WO-50) [Done 2026-08-24]
 
 Ryan's idea, 2026-08-23, after seeing the rebuilt state pages. The home
