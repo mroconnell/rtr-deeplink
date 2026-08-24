@@ -447,10 +447,20 @@ async def _send_failure_email(job_id: int) -> None:
 
     base = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
     page_url = f"{base}/m/{status['meeting_page_slug']}"
+    # A terminally-failed job now publishes the chunks it did finish
+    # (crud._publish_partial_transcript()), so `transcript_version_id`
+    # being set on a *failed* job means there is real transcript waiting
+    # on the page. That flips the email from "we couldn't do it" to
+    # "here's what we got", which is the whole point of publishing the
+    # partial in the first place.
+    partial_coverage = None
+    if status.get("transcript_version_id") and status.get("transcribed_seconds"):
+        partial_coverage = crud._duration_words(status["transcribed_seconds"])
     sent = await email_utils.send_transcription_failed_email(
         status["requester_email"],
         meeting_title=status.get("meeting_page_title") or "your meeting",
         page_url=page_url,
+        partial_coverage=partial_coverage,
     )
     logger.info(
         "Job %s: failure email to Resend %s",

@@ -300,7 +300,12 @@ async def send_completion_email(
 
 
 async def send_transcription_failed_email(
-    to: str, *, meeting_title: str, page_url: str, first_name: Optional[str] = None
+    to: str,
+    *,
+    meeting_title: str,
+    page_url: str,
+    first_name: Optional[str] = None,
+    partial_coverage: Optional[str] = None,
 ) -> bool:
     """ "We couldn't cook this one" -- the sad-path twin to
     send_completion_email() above, per marketing/LIFECYCLE_EMAILS.md's
@@ -308,21 +313,47 @@ async def send_transcription_failed_email(
     RESEND_REPLY_TO_ADDRESS (Ryan's real inbox, same address every other
     send in this module already routes replies to) so failures get seen
     and can be followed up on personally, matching the doc's own note.
+
+    `partial_coverage` (e.g. "3 hours 12 minutes") turns this into a very
+    different email, and it is the one that made the whole partial-
+    publishing change worth building (2026-08-24): someone who asked for
+    a transcript, waited, and is sitting on eighteen of twenty finished
+    chunks should be told what they *got*, with a link to read it -- not
+    that we failed. Subject line changes too, because "we hit a snag"
+    over-reports a mostly-successful run. None keeps the original
+    couldn't-do-it copy verbatim.
     """
     base_url = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
     greeting_name = html.escape(first_name) if first_name else "there"
     title = html.escape(meeting_title)
+    p_lead = (
+        "margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;"
+        "font-size:15px;color:#2c3e50;"
+    )
     body_html = f"""\
 <p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:17px;color:#2c3e50;">Hi {greeting_name},</p>
-<p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#2c3e50;">We tried to pull a transcript for <strong>{title}</strong> and couldn't get it done this time. Usually that means the video URL moved, the stream came down, or the file was in a format we couldn't read yet.</p>
-<p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#2c3e50;">A couple of things worth trying: <a href="{page_url}" style="color:#3498db;">check that the link still plays</a>, or reply to this email with the page you found it on and we'll take a look.</p>
+"""
+    if partial_coverage:
+        coverage = html.escape(partial_coverage)
+        subject = "Part of your transcript is ready"
+        body_html += f"""\
+<p style="{p_lead}">We got partway through <strong>{title}</strong> before the transcription was interrupted \u2014 but the part we finished is real, and it is on the page now.</p>
+<p style="{p_lead}"><a href="{page_url}" style="color:#3498db;">Read the first {coverage} of the meeting</a>, every line clickable and linkable, same as any other transcript here.</p>
+<p style="{p_lead}">We will try to finish the rest automatically. If it still looks short in a few days, reply to this email and we will chase it down.</p>
+<p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#2c3e50;">Thank you for your patience, and for helping keep the record open.</p>
+"""
+    else:
+        subject = "We hit a snag on your transcript"
+        body_html += f"""\
+<p style="{p_lead}">We tried to pull a transcript for <strong>{title}</strong> and couldn't get it done this time. Usually that means the video URL moved, the stream came down, or the file was in a format we couldn't read yet.</p>
+<p style="{p_lead}">A couple of things worth trying: <a href="{page_url}" style="color:#3498db;">check that the link still plays</a>, or reply to this email with the page you found it on and we'll take a look.</p>
 <p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#2c3e50;">Sorry it wasn't ready. Thank you for your patience, and for helping keep the record open.</p>
 """
     body_html += _signoff_html(base_url)
     cc = os.environ.get("RESEND_REPLY_TO_ADDRESS", "")
     return await _send(
         to,
-        "We hit a snag on your transcript",
+        subject,
         _branded_wrapper(body_html, base_url),
         cc=cc,
     )

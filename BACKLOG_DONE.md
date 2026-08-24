@@ -6,6 +6,110 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## A terminally-failed transcription job now publishes the chunks it finished [Done 2026-08-24]
+
+`record_chunk_result()` only wrote a `TranscriptVersion` once
+`chunks_completed >= total_chunks`, so a job that died at 18 of 20 left
+eighteen chunks of real, correctly-timed transcript stranded in
+`TranscriptionJob.partial_segments` — the page showed nothing, classified
+as `blank_transcript`, and re-entered the auto-transcription pool to redo
+work that was already done.
+
+**Found by checking a premise, not from a report.** Ryan assumed
+(2026-08-24) the `truncated_transcript` bucket already covered "we only
+got some of the chunks before the process failed". It did not, and the
+reason was this: there was no transcript to mark. His follow-up framed
+the case that made it worth building — someone who *asked* for a
+transcript, waited, and was emailed "failed" while eighteen chunks of
+their meeting sat transcribed-but-unreachable would rather have the
+eighteen.
+
+Built as `crud._publish_partial_transcript()`, called only on the
+terminal `failed` transition (never on `retry_scheduled`, where the same
+job resumes from `chunks_completed` and is expected to finish). Three
+properties make it safe rather than a new bug, each with its own test in
+`tests/test_partial_transcript_publishing.py`:
+
+1. **The version carries `_PARTIAL_TRANSCRIPTION_MARKER`.** One line in
+   `_TRUNCATION_MARKERS` routes it everywhere at once — reports as
+   `truncated_transcript`, earns no "has transcript" badge in search, and
+   the page stays an auto-transcription candidate rather than looking
+   finished forever.
+2. **The job stays `failed`.** Marking it `completed` would read as
+   tidier and would rebuild the infinite re-queue loop fixed for blank
+   transcripts the day before: `_cooldown_active()` counts consecutive
+   *failed* jobs, and that escalating backoff is the only brake on a page
+   that dies at the same chunk every time. Content-hash dedup sits on top,
+   so a retry that dies identically re-links the existing version instead
+   of stacking a second.
+3. **It only becomes the default if nothing better is there**
+   (`_has_good_transcript()`), so a partial Whisper run never displaces
+   real complete scraped captions — it stays reachable via `?version=`.
+
+Reader-facing copy is Ryan's, verbatim, rendered in the existing
+`transcript_warnings` box (verified in-browser): *"This transcript covers
+3 hours 12 minutes of a 3 hour 40 minute meeting — the transcription was
+interrupted before we could finish it. We'll try to finish it again
+soon."* Falls back to a coverage-free form when the probed duration is
+missing or not greater than what was transcribed, a wrong number being
+worse than no number. `_duration_words()` carries an `attributive` flag
+because English drops the plural in front of a noun ("a 3 hour 40 minute
+meeting").
+
+The requester's failure email changes with it, which is the point:
+with a partial published it becomes "Part of your transcript is ready"
+with a link to read it, rather than "We hit a snag on your transcript".
+
+**One test initially passed for the wrong reason**, worth recording since
+the shape recurs: `test_a_partial_never_displaces_an_existing_good_
+transcript` was asserting against a page that had no transcript to
+displace, because `create_transcription_job()` only finds-or-creates the
+`MeetingPage` (`_find_or_create_page`) and never writes
+`TranscriptVersion`s. Ingesting properly first made it fail; then the
+code made it pass.
+
+**Residual:** the one truncation form still undetectable — a scraped
+caption file that simply ends early with no round-number tell — stays
+live in `BACKLOG.md`.
+
+## The hidden population of Granicus-capped transcripts does not exist — measured, not assumed [Investigated 2026-08-24]
+
+Nothing shipped; this records a measurement that closed a real open
+question. The 36,000-cue truncation flag is applied at ingest and only
+started existing 2026-08-23, so the concern (Ryan's, and reasonable) was
+that every page archived before then that hit the cap was invisibly
+stuck: reporting as `success` and permanently excluded from
+re-transcription. Nothing in the codebase looked at how many segments a
+stored transcript had, so nobody could say how many pages that was.
+
+`scripts/scan_truncated_transcripts.py` was written to answer it
+read-only first — segment counts computed in SQL (`json_array_length`),
+so no `segments` blob crosses the network and the whole-archive scan is
+one cheap query. Run on the `rtr-deeplink-archive` Render shell:
+
+```
+30,000+ segments:  1 page  — 36000, already marked
+20,000+ segments:  2 pages — 36000 (marked), 22490
+```
+
+**Zero unmarked pages at the cap**, so `--apply` was never run and had
+nothing to do. The 22,490 is a singleton, which is what a genuinely long
+meeting looks like — a cap shows up as *repetition*, many pages sharing
+one exact count. So `granicus.py`'s admitted blind spot ("doesn't catch a
+cap at some other round number") is costing nothing above 20,000 either.
+
+Two honest limits, both pointing the same way: the scan reads *default*
+versions only, so a page whose capped captions were already replaced by a
+successful re-transcription correctly drops out — consistent with the
+pipeline having simply done its job — and it says nothing below its
+`--min-count` threshold. The script stays in the repo for re-running
+either question later.
+
+**Consequence for the roadmap:** with both *detectable* truncation forms
+now handled, the duration-vs-coverage check is the only remaining one,
+which is why its `BACKLOG.md` entry was rewritten rather than left as
+filed.
+
 ## Both transcription workers dead for 9.3 hours on a missing `markupsafe`, and every health signal read "fine" [Done 2026-08-24]
 
 Noticed only because a routine status check compared
