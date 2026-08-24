@@ -57,6 +57,45 @@ indexable pages can be asserted to 404. The fixture DB is shared and
 never reset, so seeding any `", WY"` jurisdiction breaks four of its
 tests — **and only in a full run, never in isolation**. Hit exactly that
 here. Both that test's comment and the new file now say so explicitly.
+## A failed daily-report send silently consumed the day's snapshot (WO-52) [Done 2026-08-24]
+
+Found by tripping it: while checking that WO-46's new failure digest
+actually sends, the first call went out with an empty `to` (the local
+`.env` has no `AUTO_TRANSCRIPTION_REQUESTER_EMAIL`), Resend returned
+`422 validation_error`, and `sent` came back `False`. The retry 35
+seconds later succeeded — and reported **"Chunks completed 0"** against
+a true figure of ~488.
+
+**Cause.** `GET /internal/send-worker-daily-report` called
+`crud.get_and_advance_worker_report_snapshot()` — a single call that read
+the previous snapshot *and* overwrote it — **before** attempting the
+send. So the failed attempt advanced the reference point, and the
+successful one diffed against a snapshot written seconds earlier.
+
+**Why it was worth fixing rather than shrugging at.** The failure mode
+is a silently *wrong number*, not an obviously missing one. Nothing in
+the successful report hints that a previous attempt burned the delta, so
+a reader has no way to distinguish "the workers did nothing for 24h"
+from "an earlier send failed". `sent: False` is returned to the caller,
+but the daily trigger is a `curl` in a GitHub workflow whose failure
+would be equally quiet.
+
+**Fix.** Split `get_and_advance_worker_report_snapshot()` into
+`read_worker_report_snapshot()` (read-only) and
+`advance_worker_report_snapshot()` (write). The route reads first, sends,
+and advances only when `sent` is true. A failed send now leaves the
+snapshot untouched and the next attempt reports the real (longer) delta
+rather than zero.
+
+**Verification.** Three tests, and the two that matter were confirmed to
+**fail without the fix** (reverting the route to the old order turns them
+red, restoring it turns them green) — not just to pass with it. The third
+is a positive control that a successful send still advances, since a fix
+that simply stopped advancing would make every later report show a
+runaway delta. `tests/test_worker_daily_report.py`'s existing
+`test_get_and_advance_worker_report_snapshot_diffs_against_previous` was
+rewired to drive the split pair through a small `_read_then_advance()`
+helper, preserving exactly the sequence it was written to cover.
 
 ## Topic chips and the recent-moments feed on the home page (WO-50) [Done 2026-08-24]
 

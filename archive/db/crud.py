@@ -1293,32 +1293,54 @@ async def get_transcription_queue_summary() -> dict:
         }
 
 
-async def get_and_advance_worker_report_snapshot(
+def _snapshot_dict(row) -> Optional[dict]:
+    if row is None:
+        return None
+    return {
+        "cumulative_chunks_completed": row.cumulative_chunks_completed,
+        "cumulative_jobs_completed": row.cumulative_jobs_completed,
+        "recorded_at": row.recorded_at,
+    }
+
+
+async def read_worker_report_snapshot() -> Optional[dict]:
+    """The previous worker-report snapshot, or None the very first time
+    (see WorkerReportSnapshot's own docstring). Read-only -- see
+    advance_worker_report_snapshot() below for why the read and the write
+    are two calls rather than one."""
+    async with async_session() as session:
+        return _snapshot_dict(await session.get(WorkerReportSnapshot, 1))
+
+
+async def advance_worker_report_snapshot(
     *, cumulative_chunks_completed: int, cumulative_jobs_completed: int
-) -> Optional[dict]:
-    """Reads the previous worker-report snapshot (None the very first time
-    this ever runs -- see WorkerReportSnapshot's own docstring), then
-    overwrites it with the current cumulative totals -- single row, id=1
-    by convention, updated in place rather than appended to. Returns the
-    PREVIOUS snapshot (before overwriting) so the caller can diff
-    "current cumulative total" against "yesterday's cumulative total" for
-    a real 24h chunk-completion delta. Commits unconditionally (read and
-    write happen in the same call) -- there's only ever one caller
-    (the report-send route), so no risk of two callers racing to
-    advance this the same way claim_next_chunk() has to guard against.
+) -> None:
+    """Overwrite the snapshot with the current cumulative totals -- single
+    row, id=1 by convention, updated in place rather than appended to.
+
+    **Split out from the read on 2026-08-24 (WO-52), after a real
+    occurrence.** These used to be one `get_and_advance...()` call, and
+    the report route advanced the snapshot BEFORE attempting the send --
+    so a send that failed still consumed the day's reference point, and
+    the failure left no trace. Observed live 2026-08-23: a send failed on
+    an invalid recipient (Resend 422), and the very next report -- 35
+    seconds later, successful -- read "Chunks completed 0" against a true
+    figure of ~488, because it diffed against a snapshot the failed send
+    had already advanced.
+
+    That is worse than losing one email: the number is silently wrong
+    rather than obviously missing, and nothing in the successful report
+    hints that a previous attempt burned the delta. So the route now
+    reads first, sends, and only advances once the send actually
+    succeeded -- a failed send leaves the snapshot untouched, and the
+    next attempt reports the real (now longer) delta instead of zero.
+
+    Still commits unconditionally and still has one real caller, so the
+    original note holds: no two-caller race to guard against the way
+    claim_next_chunk() has to.
     """
     async with async_session() as session:
         previous = await session.get(WorkerReportSnapshot, 1)
-        previous_dict = (
-            {
-                "cumulative_chunks_completed": previous.cumulative_chunks_completed,
-                "cumulative_jobs_completed": previous.cumulative_jobs_completed,
-                "recorded_at": previous.recorded_at,
-            }
-            if previous is not None
-            else None
-        )
-
         if previous is not None:
             previous.cumulative_chunks_completed = cumulative_chunks_completed
             previous.cumulative_jobs_completed = cumulative_jobs_completed
@@ -1332,7 +1354,6 @@ async def get_and_advance_worker_report_snapshot(
                 )
             )
         await session.commit()
-        return previous_dict
 
 
 # ---------------------------------------------------------------------------
