@@ -26,7 +26,11 @@ from sqlalchemy.orm import aliased
 
 from app.utils.jurisdiction_enrich import finalize_jurisdiction
 
-from ..utils.date_status import iso_meeting_date, meeting_date_status
+from ..utils.date_status import (
+    iso_meeting_date,
+    meeting_date_html,
+    meeting_date_status,
+)
 from ..utils.jurisdiction_format import (
     US_STATE_ABBR_TO_NAME,
     format_jurisdiction_display,
@@ -4592,6 +4596,18 @@ def _featured_entry(
         "slug": page["slug"],
         "title": page["title"],
         "jurisdiction": page["jurisdiction"],
+        # Display forms rendered here rather than by Jinja filters, so
+        # the shared featured-card partial stays self-contained. It is
+        # included by BOTH services (shared_templates/, WO-50), and the
+        # resolver's Jinja environment has neither the
+        # jurisdiction_display nor the meeting_date_html filter -- a
+        # dependency on the host env's filters made the partial 500 the
+        # home page while every test still passed. These also survive the
+        # JSON hop to the resolver, which a Jinja filter could not.
+        "jurisdiction_display": format_jurisdiction_display(page["jurisdiction"]),
+        # Contains a <time> element: rendered with |safe, sound because
+        # Markup.format() escapes the stored date before interpolating.
+        "date_html": str(meeting_date_html(page.get("date"))),
         # Not rendered -- carried so _build_featured()'s body cap can see
         # it without re-reading the pool.
         "meeting_body": page.get("meeting_body"),
@@ -4838,6 +4854,122 @@ def _group_governments(jurisdictions: Sequence[dict]) -> list[dict]:
         for key in GROUP_ORDER
         if buckets[key]
     ]
+
+
+# --- Home page (the resolver renders it; this is the data behind it) ----
+
+# How many recent transcribed meetings the national feed picks from.
+# Same size as STATE_HIGHLIGHT_POOL, but the composition is different in
+# a way that matters: nationally these are simply the newest meetings
+# anywhere, so the pool skews hard toward whichever jurisdiction was
+# bulk-ingested most recently.
+HOME_HIGHLIGHT_POOL = 150
+# Fewer cards than a state page's 12. The home page's job is still the
+# lookup box at the top; the feed is evidence that the archive is real
+# and browsable, not the page's main event.
+HOME_FEATURED_COUNT = 6
+# One card per government, nationally. Without it the feed is six
+# meetings from whatever city was ingested last week -- which reads as a
+# site about one city. This is the cap that matters here; the per-topic
+# one alone does not fix it, since a single city's meetings routinely
+# span six different topics (measured on hubs, WO-49).
+MAX_FEATURED_PER_JURISDICTION = 1
+
+
+async def get_home_highlights(topic_slug: Optional[str] = None) -> dict:
+    """Topic chips, a national recent-moments feed, and the browse-by-
+    state list -- everything the resolver's home page renders below the
+    lookup box.
+
+    **Bounded in SQL, unlike get_state_page_data().** That function pulls
+    every page for one state and filters in Python, which is fine at a
+    state's scale and would be a corpus-wide scan here. This joins
+    `meeting_highlights` (so every row is featurable by construction) and
+    LIMITs, touching no `segments` blob at any point.
+
+    Undated meetings are excluded rather than sorted around: a "recent
+    moments" feed cannot honestly place a meeting with no date, and
+    dropping them also avoids depending on NULL ordering behaviour that
+    differs between Postgres and SQLite.
+
+    Returns a dict even when the archive is empty (empty chips/featured),
+    so the caller renders nothing rather than handling a None.
+    """
+    async with async_session() as session:
+        rows = (
+            await session.execute(
+                select(
+                    MeetingPage.id,
+                    MeetingPage.jurisdiction,
+                    MeetingPage.slug,
+                    MeetingPage.title,
+                    MeetingPage.date,
+                    MeetingPage.meeting_body,
+                )
+                .join(
+                    MeetingHighlight,
+                    MeetingHighlight.meeting_page_id == MeetingPage.id,
+                )
+                .where(
+                    MeetingPage.platform != "unknown",
+                    MeetingPage.jurisdiction.is_not(None),
+                    MeetingPage.date.is_not(None),
+                    MeetingPage.date != "",
+                    _good_default_transcript_exists(),
+                )
+                .order_by(MeetingPage.date.desc(), MeetingPage.id.desc())
+                .limit(HOME_HIGHLIGHT_POOL)
+            )
+        ).all()
+
+        pool = [
+            {
+                "id": page_id,
+                "jurisdiction": jurisdiction,
+                "slug": slug,
+                "title": title,
+                "date": date,
+                "meeting_body": meeting_body,
+            }
+            for page_id, jurisdiction, slug, title, date, meeting_body in rows
+        ]
+        highlights = await _load_highlights(session, [p["id"] for p in pool])
+        carded = await pages_with_thumbnails(session, [p["id"] for p in pool])
+
+    active_slug = topic_slug if topic_slug in TOPICS_BY_SLUG else None
+    topic_counts = _pool_topic_counts(highlights)
+    featured = _build_featured(
+        pool,
+        highlights,
+        active_slug,
+        HOME_FEATURED_COUNT,
+        topic_counts,
+        max_per_jurisdiction=MAX_FEATURED_PER_JURISDICTION,
+    )
+    # Same "never strand the reader on an empty page" fallback the state
+    # and hub pages use: a topic with nothing behind it falls back to the
+    # unfiltered feed rather than rendering a heading over nothing.
+    if active_slug and not featured:
+        featured = _build_featured(
+            pool,
+            highlights,
+            None,
+            HOME_FEATURED_COUNT,
+            topic_counts,
+            max_per_jurisdiction=MAX_FEATURED_PER_JURISDICTION,
+        )
+        active_slug = None
+    _attach_thumbnails(featured, carded)
+
+    return {
+        "topic_chips": _topic_chips(highlights, active_slug),
+        "active_topic": active_slug,
+        "featured": featured,
+        # 50-ish rows, not the 574-government list -- and every one is a
+        # link to a /state/{slug} page, which is where the indexing
+        # problem this whole rebuild addresses actually lives.
+        "states": await get_state_coverage_index(),
+    }
 
 
 async def get_state_page_data(

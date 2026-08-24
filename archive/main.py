@@ -1,6 +1,7 @@
 import logging
 import os
 import secrets
+import time
 from contextlib import asynccontextmanager
 from datetime import timezone
 from pathlib import Path
@@ -13,7 +14,7 @@ from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from markupsafe import Markup, escape
+from markupsafe import Markup
 from pydantic import BaseModel, field_validator
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -45,7 +46,11 @@ from .topics import TOPICS
 from .utils import email as email_utils
 from .utils import social
 from .utils.clerk_auth import clerk_frontend_api_url, get_clerk_user_id
-from .utils.date_status import iso_meeting_date, meeting_date_status
+from .utils.date_status import (
+    iso_meeting_date,
+    meeting_date_html,
+    meeting_date_status,
+)
 from .utils.highlights import meta_description
 from .utils.jurisdiction_format import (
     STATE_SLUG_TO_ABBR,
@@ -121,7 +126,16 @@ app.mount(
     StaticFiles(directory=APP_DIR.parent / "shared_static"),
     name="shared_static",
 )
-templates = Jinja2Templates(directory=APP_DIR / "templates")
+# Two roots: this service's own templates, then the repo-root
+# shared_templates/ holding the partials both services render
+# (topic chips + featured meeting cards -- the Archive's /state/ and
+# /j/ pages and the resolver's home page, WO-50). Same "one copy,
+# mounted by both" shape as shared_static/. Own templates first, so a
+# service can always shadow a shared partial by name if it ever needs
+# to diverge.
+templates = Jinja2Templates(
+    directory=[APP_DIR / "templates", APP_DIR.parent / "shared_templates"]
+)
 # Used only for <link rel="canonical">/OpenGraph tags -- the public domain
 # these pages are actually reached at (via the resolver's /m/* proxy), not
 # this service's own onrender.com URL. Empty locally, where there's no
@@ -192,26 +206,6 @@ templates.env.filters["segment_time"] = format_segment_time
 # "PT12M34S" for them, a different and much less obviously-valuable change.
 # See CLAUDE_BACKLOG.md's SEO Tier 3 entry.
 templates.env.filters["iso_date"] = iso_meeting_date
-
-
-def meeting_date_html(raw: Optional[str]) -> Markup:
-    """A visible meeting date wrapped in semantic `<time datetime="...">`
-    (2026-08-21, CLAUDE_BACKLOG.md's SEO/accessibility Tier 3 item -- this
-    codebase previously had no `<time>` markup anywhere), falling back to
-    the plain text when the stored date isn't parseable: a `datetime`
-    attribute that isn't a valid HTML date string is worse than no `<time>`
-    element at all.
-
-    One filter rather than an inline `{% if %}` repeated across the five
-    templates that render a meeting date, so the fallback branch can't
-    drift between them -- and so it's unit-testable directly. Markup.format
-    escapes its arguments, so an odd stored `date` string can't inject
-    markup through the visible half.
-    """
-    iso = iso_meeting_date(raw)
-    if not iso:
-        return Markup(escape(raw or ""))
-    return Markup('<time datetime="{}">{}</time>').format(iso, raw)
 
 
 templates.env.filters["meeting_date_html"] = meeting_date_html
@@ -406,6 +400,46 @@ async def internal_all_page_urls(authorization: Optional[str] = Header(None)):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
     return {"pages": await crud.list_all_page_urls()}
+
+
+# The home-page payload, cached in-process. This is the busiest page on
+# the domain and its content changes only when a new meeting is ingested,
+# so recomputing the national pool per request (or per crawler hit) buys
+# nothing. The resolver caches it again on its side; this second layer
+# exists because several resolver instances share one Archive, and
+# because a cold resolver cache must not turn into a corpus query.
+_HOME_CACHE: dict[str, tuple[float, dict]] = {}
+_HOME_CACHE_TTL_SECONDS = 300.0
+
+
+@app.get("/internal/home-highlights")
+async def internal_home_highlights(
+    topic: str = "", authorization: Optional[str] = Header(None)
+):
+    """Topic chips + the national recent-moments feed + the browse-by-
+    state list, for the resolver's home page (WO-50).
+
+    Lives here rather than the resolver reading the shared Postgres
+    directly: every piece of this (meeting_highlights, archive/topics.py,
+    _build_featured()) is the Archive's, and having app/ import Archive
+    models would make an Archive migration able to break the resolver.
+    The resolver already treats this service as optional everywhere else,
+    and app/archive_client.py's home_highlights() keeps that posture --
+    it returns None on any failure and the home page simply renders
+    without the section.
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    key = topic or ""
+    hit = _HOME_CACHE.get(key)
+    now = time.monotonic()
+    if hit and (now - hit[0]) < _HOME_CACHE_TTL_SECONDS:
+        return hit[1]
+
+    data = await crud.get_home_highlights(topic or None)
+    _HOME_CACHE[key] = (now, data)
+    return data
 
 
 @app.get("/internal/transcript-wanted")

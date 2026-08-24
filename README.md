@@ -1616,6 +1616,45 @@ clickable.
 > watched, same as any schema-verified-but-not-content-verified path
 > in this repo; see `BACKLOG.md` for the open residuals.
 
+## The home page (`/`)
+
+The lookup box, and below it **what the archive already holds** (WO-50,
+2026-08-24): topic chips, a national recent-moments feed of real
+transcript quotes each deep-linked to the second it was said, and a
+browse-by-state row. Before this the page explained a *tool* and showed
+nothing of the archive behind it, so a visitor arriving without a meeting
+URL to paste had nothing to do — on the highest-value page on the domain
+for indexing, which carried no unique text of its own.
+
+**It is rendered by the resolver but the data is the Archive's**, so the
+resolver fetches it server-side from `/internal/home-highlights` via
+`app/archive_client.py`'s `home_highlights()` — deliberately not by
+reading the shared Postgres, which would let an Archive migration break
+the resolver. Both sides cache (300s), the resolver caches *failures*
+too (30s), and `HOME_TIMEOUT` is a tighter 2s than the 5s lookup budget
+because what the wait buys is one optional section.
+
+**It degrades to nothing.** With the Archive unset, down, cold or slow,
+`home_highlights()` returns None and the page renders the lookup box
+alone — the resolver treats the Archive as optional everywhere else and
+this page is not an exception. That is the acceptance test for the
+feature, not an afterthought.
+
+The chips and cards are the same components the `/state/` and `/j/` pages
+render, shared as one copy rather than duplicated:
+`shared_templates/_topic_chips.html` and `_featured_meetings.html` (both
+Jinja loaders mount the repo-root `shared_templates/`), styled by
+`shared_static/highlights.css` (both services already mount
+`/shared-static`). **The shared partials use no Jinja filters on
+purpose** — only the Archive's environment registers
+`jurisdiction_display`/`meeting_date_html`, and depending on them 500'd
+the home page while the whole test suite stayed green; display strings
+are pre-rendered in `crud._featured_entry()` instead, which also lets
+them survive the JSON hop.
+
+`?topic=` filters the feed, the same way it does on the state and hub
+pages; every variant canonicalizes to bare `/`.
+
 ## Meeting descriptions (`<meta name="description">` / `og:description`)
 
 A `/m/{slug}` page's description is a **real quote from its own

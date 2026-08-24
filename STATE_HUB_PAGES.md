@@ -327,6 +327,11 @@ content, not separate pages competing for the same query.
 | `MAX_TOPIC_CHIPS` | 12 | `db/crud.py` |
 | `MAX_FEATURED_PER_TOPIC` | 2 | `db/crud.py` |
 | `MAX_FEATURED_PER_BODY` | 2 (hub only) | `db/crud.py` |
+| `MAX_FEATURED_PER_JURISDICTION` | 1 (home only) | `db/crud.py` |
+| `HOME_HIGHLIGHT_POOL` / `HOME_FEATURED_COUNT` | 150 / 6 | `db/crud.py` |
+| `_HOME_CACHE_TTL_SECONDS` (Archive) | 300 | `archive/main.py` |
+| `_HOME_HIGHLIGHTS_TTL_SECONDS` / `_FAILURE_TTL` | 300 / 30 | `app/main.py` |
+| `HOME_TIMEOUT` | 2s | `app/archive_client.py` |
 | `META_DESCRIPTION_CHARS` | 200 | `utils/highlights.py` |
 | `MAX_MARKED_TOPICS` | 1 | `db/crud.py` |
 | `MOST_ACTIVE_MIN_GOVERNMENTS` / `_WINDOW_DAYS` / `_COUNT` | 8 / 90 / 6 | `db/crud.py` |
@@ -388,69 +393,71 @@ threshold attempts misfire on good snippets, measured. The honest framing
 is that this is transcription quality surfacing, not snippet selection
 failing.
 
-### Put the chips and the moments feed on the home page
+### The chips and the moments feed are on the home page — built 2026-08-24 (WO-50)
 
-**Proposed 2026-08-23 by Ryan**, after seeing the rebuilt state pages:
-the "being discussed" chips, the recent-moments feed, and the column of
-jurisdictions, sitting on `/` directly below the instructions for the
-lookup field.
+**Proposed by Ryan 2026-08-23**, after seeing the rebuilt state pages.
+The home page explained a *tool* and showed nothing of the archive behind
+it — a visitor with no meeting URL to paste had nothing to do — on the
+highest-value page on the domain for indexing, which carried no unique
+text of its own. It now renders topic chips, a national recent-moments
+feed and a browse-by-state row below the lookup box.
 
-Worth taking seriously. The home page currently explains a *tool* and
-shows nothing of the archive behind it — a visitor who has no meeting URL
-to paste has nothing to do there. These three components are exactly what
-turns it into something you can browse, and they are the only content on
-the site that is both unique and skimmable. It is also the highest-value
-page on the domain for indexing.
+**The boundary went the way this section recommended**: an Archive
+endpoint (`/internal/home-highlights`) the resolver calls server-side via
+`app/archive_client.py`, which already returns `None` on any failure for
+every other call. The alternative — the resolver importing Archive models
+— would have made an Archive migration able to break the resolver, which
+is a different and much stronger coupling than the existing
+`crud.py → app.utils.jurisdiction_enrich` utility import.
 
-**The main design question is a service boundary, not a UI one.** The
-home page is rendered by the **resolver** (`app/main.py`'s `index()` →
-`app/templates/index.html`), while every piece of this machinery lives in
-the **archive** service — `meeting_highlights`, `archive/topics.py`,
-`crud._build_featured()`, and the two shared Jinja includes
-(`archive/templates/_topic_chips.html`,
-`archive/templates/_featured_meetings.html`). Three ways across, roughly
-in order of preference:
+**Degrading is the feature, and it is the acceptance test.** With the
+Archive stopped and the resolver's cache cold, `/` returns 200 in ~1.5 ms
+with the lookup box untouched and the section simply absent. Two things
+make that true and neither is obvious:
 
-1. **An Archive fragment/JSON endpoint the resolver calls server-side.**
-   Cleanest boundary and reuses the existing includes as-is, but adds a
-   network hop to the busiest page on the site. Would need a short
-   in-process cache on the resolver side, and a degrade-to-nothing path
-   so an Archive blip can never take the home page down — the resolver
-   already treats the Archive as optional everywhere else, and that
-   posture must not regress here.
-2. **Read the shared Postgres directly from the resolver.** Both services
-   point at the same database, so this is possible and avoids the hop. It
-   does mean `app/` importing Archive models; note the reverse import
-   already exists (`archive/db/crud.py` imports
-   `app.utils.jurisdiction_enrich`), so the boundary is already not
-   absolute — but that one is a pure utility module, and this would be a
-   schema dependency, which is a different thing.
-3. **Proxy a whole rendered fragment.** Simplest to ship, worst to
-   maintain; mentioned only so it is visibly considered and rejected.
+- **Failures are cached too** (30 s, vs 300 s for successes). Without it
+  a cold or down Archive means *every* home-page request pays the full
+  timeout to render the page it was always going to render.
+- **`HOME_TIMEOUT` is 2 s, not `LOOKUP_TIMEOUT`'s 5 s.** Measured against
+  a deliberately-hanging Archive, the 5 s budget made the home page take
+  **5.2 s**. What the wait buys here is one optional section, not a saved
+  live resolve, so the budget is smaller. A Render cold start is 30-60 s
+  and hopeless at either value, so the only case a longer budget rescues
+  is "alive but briefly slow".
 
-**Scope changes at national level**, and this is the part worth designing
-rather than assuming:
+**Scope at national level**, as this section predicted:
 
-- **The pool.** `STATE_HIGHLIGHT_POOL` (150) is per state. Nationally the
-  same query returns the newest 150 transcribed meetings overall, which
-  will skew toward whichever jurisdictions were bulk-ingested most
-  recently. The diversity cap (§6) helps but was tuned for a
-  single-state pool; a **per-jurisdiction** cap probably matters more
-  than the per-topic one here, or the feed becomes six Oklahoma City
-  meetings.
-- **The jurisdiction column.** 574 governments is not a sidebar. The
-  state-page grouping (County/City/School/Agency) does not reduce it
-  enough either. More likely: group **by state** and link to
-  `/state/{slug}`, which also makes the home page a real hub for the
-  state pages — an internal-linking win precisely where the indexing
-  problem in §1 lives.
-- **Caching is not optional.** This is the highest-traffic page; the
-  per-request work that is fine on a state page is not fine here.
+- **`max_per_jurisdiction` (1) is the cap that matters**, not the topic
+  one. The pool is the newest transcribed meetings *anywhere*, so it
+  skews to whatever was bulk-ingested last. Verified live: one city held
+  the three newest meetings and the first five cards were still five
+  different cities. The topic cap alone does not fix this — a single
+  city's meetings routinely span six topics (measured in WO-49).
+- **Browse-by-state, not 574 governments** — ~50 links, each to a
+  `/state/{slug}` page, pointing the site's most-linked page at exactly
+  the surface with the indexing problem.
+- **Cached on both sides.** The Archive caches the payload in-process
+  too, because several resolver instances share one Archive and a cold
+  resolver cache must not become a corpus query.
+- The query is **bounded in SQL** (joins `meeting_highlights`, LIMITs),
+  unlike `get_state_page_data()`, which pulls a whole state and filters
+  in Python — fine per state, a corpus scan nationally.
 
-**Cheap first step**: ship it as *national* chips plus a moments feed
-only, no jurisdiction column, behind a cache. That tests whether the
-format works on the home page before anyone designs the 574-government
-navigation problem.
+**One defect here was invisible to the entire test suite**, and it is the
+generalisable lesson. Sharing the Jinja partials across services (via a
+new repo-root `shared_templates/`, mounted by both loaders the way
+`shared_static/` already was) meant the partial silently depended on
+filters only the *Archive* registers — `jurisdiction_display`,
+`meeting_date_html`. The home page 500'd on first load while 1,693 tests
+passed. The fix makes the partial **filter-free**: `_featured_entry()`
+pre-renders the display strings, which also lets them survive the JSON
+hop. `tests/test_home_highlights.py` renders a realistic payload through
+the *resolver's* real environment, and was confirmed to fail when the
+filter dependency is put back.
+
+**`?topic=` works here as on the state pages** — real crawlable links,
+all canonicalizing to bare `/`, so variants add text without competing
+for the same query.
 
 ### Search results got the card treatment — built 2026-08-24 (WO-48)
 

@@ -15,6 +15,16 @@ logger = logging.getLogger("rtr_deeplink.archive")
 LOOKUP_TIMEOUT = aiohttp.ClientTimeout(total=5)
 PUSH_TIMEOUT = aiohttp.ClientTimeout(total=65)
 PROXY_TIMEOUT = aiohttp.ClientTimeout(total=65)
+# Tighter than LOOKUP_TIMEOUT, and deliberately so: what this buys is one
+# *optional* section on the busiest, most-indexed page on the site, so
+# the value of waiting is far lower than for lookup() (which can save a
+# whole live resolve). Measured against a deliberately-hanging Archive,
+# the 5s budget made the home page take 5.2s to render a page it was
+# always going to render without the section. The only case a longer
+# budget would rescue is "alive but briefly slow" -- a Render cold start
+# is 30-60s and hopeless at any of these values. app/main.py caches the
+# failure for 30s on top, so few requests pay even this.
+HOME_TIMEOUT = aiohttp.ClientTimeout(total=2)
 # Same reasoning as LOOKUP_TIMEOUT -- these three block a real user-facing
 # resolver request/response (not fired via BackgroundTasks), so they need
 # a bound that fails fast rather than making a viewer wait out a slow/cold
@@ -64,6 +74,37 @@ async def lookup(normalized_url: str) -> Optional[dict]:
             if response.status == 200:
                 return await response.json()
             return None
+
+
+async def home_highlights(topic: str = "") -> Optional[dict]:
+    """Topic chips + the national recent-moments feed + browse-by-state,
+    for the home page. None on any failure.
+
+    Same posture as lookup() above and the same reason, sharpened: this
+    blocks the busiest, most-indexed page on the domain, so it gets the
+    fast-fail budget rather than the generous one. A down, cold or slow
+    Archive must cost the home page one optional section and nothing
+    else -- never a 500, never a hang. app/main.py's index() renders the
+    section only when this returns a dict.
+    """
+    base = _base_url()
+    if not base:
+        return None
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                f"{base}/internal/home-highlights",
+                params={"topic": topic} if topic else None,
+                headers=_headers(),
+                timeout=HOME_TIMEOUT,
+            ) as response:
+                if response.status == 200:
+                    return await response.json()
+                return None
+    except Exception:
+        logger.warning("home highlights fetch failed", exc_info=True)
+        return None
 
 
 async def list_all_page_urls() -> Optional[list[dict]]:

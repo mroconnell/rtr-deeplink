@@ -94,9 +94,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (7)
   28 well-formed IQM2 queue rows point at retired tenants…
   Some Swagit meetings have no single "whole meeting" video file…
 
-Platform & jurisdiction coverage  (34)
+Platform & jurisdiction coverage  (33)
   `[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
-  [LATER] `[BIG]` Put the topic chips and the recent-moments feed on
   `[JUST-DO-IT]` `[EASY]` Nine PrimeGov pages and two real meetings…
   `[JUST-DO-IT]` ChampDS is a progressive MP4, and a 900s chunk can…
   `[Done 2026-08-23]` Four archived pages pointed at agenda systems…
@@ -1052,23 +1051,6 @@ actionability sections above.
   be recovered that way either. Nothing to build — this tenant's own
   server appears to be down, not a bug in this repo — worth a quick
   re-check before assuming it is still down if this URL comes up again.
-
-- **[LATER] `[BIG]` Put the topic chips and the recent-moments feed on
-  the home page, under the lookup instructions.** Ryan's idea,
-  2026-08-23, after seeing the rebuilt state pages. The home page
-  currently explains a *tool* and shows nothing of the archive behind
-  it — a visitor with no URL to paste has nothing to do there — and
-  these are the only components on the site that are both unique and
-  skimmable.
-  **Design note lives in `STATE_HUB_PAGES.md` §9** ("Put the chips and
-  the moments feed on the home page"): the real question is a **service
-  boundary** (the home page is the resolver's, all this machinery is the
-  Archive's) with three ways across and their trade-offs, plus what
-  changes at national scale — the pool skews to whatever was
-  bulk-ingested last, 574 governments is not a sidebar, and caching
-  stops being optional on the busiest page. It also names the cheap
-  first step: national chips + moments feed only, no jurisdiction
-  column, behind a cache.
 
 ### `[JUST-DO-IT]` `[EASY]` Nine PrimeGov pages and two real meetings need re-resolving — **not** an adapter bug
 

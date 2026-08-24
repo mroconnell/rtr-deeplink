@@ -849,3 +849,92 @@ mark.search-match.current { background: #f97316; color: #fff; }
   display: inline-block;
   margin-bottom: 1rem;
 }
+
+/* Home page highlights (WO-50) ----------------------------------------
+ *
+ * The chips and cards themselves live in shared_static/highlights.css --
+ * the same components the Archive's /state/ and /j/ pages render. Only
+ * the home page's own framing is here.
+ *
+ * Wider than .center-page's 640px on purpose: that width is tuned for
+ * one centered input and its instructions, and a feed of quote cards
+ * inside it reads as a narrow column of text. Left-aligned for the same
+ * reason -- centered body copy is fine for three lines of instructions
+ * and poor for a list of quotes. */
+.home-highlights {
+  max-width: 1000px;
+  margin: 0 auto 4rem;
+  padding: 0 1.5rem;
+  text-align: left;
+}
+
+.home-highlights h2 {
+  font-size: 1.5rem;
+  margin: 0 0 0.3rem;
+}
+
+.home-highlights-sub {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+}
+
+.home-highlights-more {
+  margin: 1.5rem 0 0;
+  font-weight: 600;
+}
+
+/* Browse by state: ~50 links, deliberately not the 574-government list a
+ * state page's sidebar carries. Multi-column so the whole set stays one
+ * scannable block instead of a long ladder, collapsing to fewer columns
+ * on narrow screens rather than scrolling sideways. */
+.home-states {
+  margin: 2.5rem 0 0;
+  border-top: 1px solid #e3e7eb;
+  padding-top: 1.5rem;
+}
+
+.home-states-heading {
+  font-size: 1.05rem;
+  margin: 0 0 0.75rem;
+}
+
+.home-states-country {
+  font-size: 0.9rem;
+  margin: 1rem 0 0.4rem;
+  color: #6b7280;
+}
+
+.home-states-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  columns: 4;
+  column-gap: 1.5rem;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 767px) {
+  .home-states-list { columns: 2; }
+}
+
+@media (max-width: 419px) {
+  .home-states-list { columns: 1; }
+}
+
+.home-states-list li {
+  break-inside: avoid;
+  padding: 0.12rem 0;
+}
+
+.home-states-count {
+  color: #6b7280;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The lookup box keeps its generous top margin when it is the only thing
+ * on the page, but 10vh above *and* a full feed below makes the fold do
+ * nothing. Tightened only when the feed is actually present. */
+.home-has-highlights .center-page {
+  margin-top: 6vh;
+  margin-bottom: 3rem;
+}

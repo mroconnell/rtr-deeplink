@@ -8,8 +8,12 @@ and captions days to weeks after the meeting (the same reality
 ARCHIVE_RECHECK_AFTER in app/main.py is built on). Labeling those pages
 honestly stops them looking broken and tells a visitor to check back.
 
-Pure and stdlib-only so it's trivially unit-testable with a pinned
-`today`; the callers pass real UTC "today". Meeting dates are stored as
+Pure (no I/O, no DB, no app imports) so it's trivially unit-testable
+with a pinned `today`; the callers pass real UTC "today". Stdlib apart
+from markupsafe, which meeting_date_html() below needs -- that function
+moved here from archive/main.py in WO-50 so `archive/db/crud.py` could
+pre-render a meeting's date for the shared featured-card partial without
+importing archive.main. Meeting dates are stored as
 local-to-the-meeting "YYYY-MM-DD" strings with no timezone, so comparing
 against a UTC date can be off by at most one calendar day around
 midnight -- acceptable for a soft label, not worth a timezone lookup.
@@ -17,6 +21,8 @@ midnight -- acceptable for a soft label, not worth a timezone lookup.
 
 from datetime import date, datetime, timedelta, timezone
 from typing import Optional
+
+from markupsafe import Markup, escape
 
 # How long after the meeting date a transcript-less page is still labeled
 # "Recent" (captions may still be on their way) rather than left as a
@@ -99,3 +105,23 @@ def meeting_date_status(
     if not has_transcript and (today - meeting_date) <= RECENT_MEETING_WINDOW:
         return RECENT
     return None
+
+
+def meeting_date_html(raw: Optional[str]) -> Markup:
+    """A visible meeting date wrapped in semantic `<time datetime="...">`
+    (2026-08-21, CLAUDE_BACKLOG.md's SEO/accessibility Tier 3 item -- this
+    codebase previously had no `<time>` markup anywhere), falling back to
+    the plain text when the stored date isn't parseable: a `datetime`
+    attribute that isn't a valid HTML date string is worse than no `<time>`
+    element at all.
+
+    One filter rather than an inline `{% if %}` repeated across the five
+    templates that render a meeting date, so the fallback branch can't
+    drift between them -- and so it's unit-testable directly. Markup.format
+    escapes its arguments, so an odd stored `date` string can't inject
+    markup through the visible half.
+    """
+    iso = iso_meeting_date(raw)
+    if not iso:
+        return Markup(escape(raw or ""))
+    return Markup('<time datetime="{}">{}</time>').format(iso, raw)

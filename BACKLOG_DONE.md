@@ -6,6 +6,59 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Topic chips and the recent-moments feed on the home page (WO-50) [Done 2026-08-24]
+
+Ryan's idea, 2026-08-23, after seeing the rebuilt state pages. The home
+page explained a *tool* and showed nothing of the archive behind it — a
+visitor with no meeting URL to paste had nothing to do — on the
+highest-value page on the domain for indexing, carrying no unique text of
+its own. It now renders topic chips, a national recent-moments feed and a
+browse-by-state row below the lookup box.
+
+**Boundary**: an Archive endpoint (`/internal/home-highlights`) the
+resolver calls server-side through `app/archive_client.py`, not the
+resolver reading the shared Postgres. The alternative would have let an
+Archive migration break the resolver — a much stronger coupling than the
+existing `crud.py → app.utils.jurisdiction_enrich` utility import.
+
+**Degrading is the feature.** Archive stopped, resolver cache cold: `/`
+returns 200 in ~1.5 ms, lookup box untouched, section absent. Two
+non-obvious things make that hold:
+
+- **Failures are cached** (30 s, vs 300 s for successes), or a cold/down
+  Archive makes *every* request pay the full timeout to render the page
+  it was always going to render.
+- **`HOME_TIMEOUT` is 2 s, not `LOOKUP_TIMEOUT`'s 5 s.** Measured against
+  a deliberately-hanging Archive, 5 s made the home page take **5.2 s**.
+  The wait buys one optional section here, not a saved live resolve.
+
+**One defect was invisible to the whole suite, and it is the lesson.**
+Sharing the Jinja partials across services (new repo-root
+`shared_templates/`, mounted by both loaders the way `shared_static/`
+already was) left the partial depending on filters only the *Archive*
+registers — `jurisdiction_display`, `meeting_date_html`. The home page
+500'd on first load while 1,693 tests passed. The fix makes the partial
+filter-free: `_featured_entry()` pre-renders the display strings, which
+also lets them survive the JSON hop. The regression test renders a
+realistic payload through the *resolver's* environment and was confirmed
+to fail when the dependency is put back. `meeting_date_html()` moved from
+`archive/main.py` to `archive/utils/date_status.py` so `crud.py` could
+call it without importing `archive.main`.
+
+**National scope** behaved as `STATE_HUB_PAGES.md` predicted:
+`max_per_jurisdiction` (1) is the cap that matters, not the topic one —
+verified live, one city held the three newest meetings and the first five
+cards were still five different cities. Browse-by-state (~50 links to
+`/state/{slug}`) rather than a 574-government sidebar, pointing the
+most-linked page at exactly the surface with the indexing problem. The
+query is bounded in SQL, unlike `get_state_page_data()`'s
+whole-state-then-filter-in-Python approach, which would be a corpus scan
+nationally. Cached on both sides, since several resolver instances share
+one Archive.
+
+`?topic=` works as on the state pages: real crawlable links, all
+canonicalizing to bare `/`. Full reasoning in `STATE_HUB_PAGES.md` §9.
+
 ## `/meetings` search results carry a deep link, timestamp and card (WO-48) [Done 2026-08-24]
 
 Search showed a matching quote and then left the reader to hunt for it
