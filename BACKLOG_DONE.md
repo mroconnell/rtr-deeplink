@@ -6,6 +6,59 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## `/meetings` search results carry a deep link, timestamp and card (WO-48) [Done 2026-08-24]
+
+Search showed a matching quote and then left the reader to hunt for it
+inside a three-hour video, on a site whose whole premise is deep-linking
+to the moment. Now every result whose match lands in a real transcript
+segment offers "&#9654; Play from 25:17" into that second, with the
+stored frame from that moment beside it. **The snippet stays
+query-matched** — a search result's job is showing *why this matched*, so
+only the deep link, timestamp and card were borrowed from the state/hub
+featured cards, never the selection.
+
+**The entry this closes was wrong about the cost, instructively so.** It
+named "the real constraint" as `find_matching_segment()` needing segments
+"which `list_pages()` deliberately doesn't load", warning the work would
+re-introduce per-render blob decoding on a paginated page. In fact
+`list_pages()` **already** loaded the default version's full `segments`
+for the current page of rows whenever a keyword was set —
+`find_snippet()` just joined them and threw the boundaries away. The
+timestamp was a free by-product of text the query paid for regardless.
+The false claim came from over-generalising `STATE_HUB_PAGES.md` §4,
+which argues about *hub* pages (no keyword, genuinely no segments loaded),
+to a page it never covered. Re-deriving it took one `grep` and turned a
+worry into a small change — the same "verify an entry's central claim
+before building from it" rule that CLAUDE.md already carries, landing on
+an entry written by the same session that wrote the rule.
+
+**Two defects only the browser caught**, neither visible in the JSON:
+
+- Quoting the matched cue alone made snippets *shorter* than before — a
+  caption cue runs 5-10 words. `SEARCH_CONTEXT_SEGMENTS` folds in the
+  neighbouring cues.
+- But neighbouring cues are not neighbouring *moments*. A sparse
+  transcript put "…then we will begin" (0:05) directly beside a sentence
+  spoken at 10:40, and joining them rendered a continuous-sounding quote
+  nobody ever said. `SEARCH_CONTEXT_MAX_GAP_SECONDS` stops the window at
+  a real gap. Fabricating a quote is a worse failure than a short one,
+  and on this site it is the one that matters most.
+
+**The fallback path is not an edge case** and is regression-tested: a
+quoted phrase split across a cue boundary ("data center" ending one
+caption and starting the next) matches the joined blob but no single
+segment, as does an agenda-only hit. Both still get a snippet, with no
+timestamp — exactly the row every result had before. Cards render only
+for keyword searches (the bare browse listing is untouched), only when
+`pages_with_thumbnails()` confirms stored bytes, and never warm a miss —
+a crawler paging results would otherwise fire a page's worth of ffmpeg
+jobs per request. No JSON-LD on `/meetings` on purpose: every filtered
+variant canonicalizes to the bare unfiltered URL, so structured data
+there would describe a page pointing its canonical elsewhere.
+
+Full reasoning in `STATE_HUB_PAGES.md` §9; tests in
+`tests/test_search_deep_links.py`.
+
 ## WO-47: Jurisdiction data-quality pass — Azusa→Albemarle root cause, garbage names, future dates, Zoom-passcode titles [Done 2026-08-23]
 
 Started from Google's crawl of `/state/california`, which showed real

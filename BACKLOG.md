@@ -94,9 +94,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (7)
   28 well-formed IQM2 queue rows point at retired tenants…
   Some Swagit meetings have no single "whole meeting" video file…
 
-Platform & jurisdiction coverage  (35)
+Platform & jurisdiction coverage  (34)
   `[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
-  [LATER] `[EASY]` Give `/meetings` search results the state-page card
   [LATER] `[BIG]` Put the topic chips and the recent-moments feed on
   `[JUST-DO-IT]` `[EASY]` Nine PrimeGov pages and two real meetings…
   `[JUST-DO-IT]` ChampDS is a progressive MP4, and a 900s chunk can…
@@ -192,7 +191,9 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (21)
     [IMPROVEMENT-ROUND] Audit every user-facing email address and
     [IMPROVEMENT-ROUND] Recurring operator email report every 6 hours to
 
-Dormant — needs a real example first `[LATER]`  (28)
+Dormant — needs a real example first `[LATER]`  (29)
+  Thumbnails  (1)
+    [LATER] `[EASY]` A page whose only stored frames are non-default
   Captions — formats and sources with no confirmed positive example  (7)
     [LATER] CivicClerk's own version of the "no populated-captions
     [LATER] ChampDS real captions confirmed to exist for at least one
@@ -1051,23 +1052,6 @@ actionability sections above.
   be recovered that way either. Nothing to build — this tenant's own
   server appears to be down, not a bug in this repo — worth a quick
   re-check before assuming it is still down if this URL comes up again.
-
-- **[LATER] `[EASY]` Give `/meetings` search results the state-page card
-  treatment — deep link, timestamp, video frame.** Search shows a
-  matching quote and then leaves the reader to hunt for it inside a
-  three-hour video, on a site whose whole premise is deep-linking to the
-  moment. `find_matching_segment()` already returns the matching
-  segment's own `start` (it was built for the alert emails);
-  `/meetings` just uses `find_snippet()`, which runs over a joined blob
-  and can't recover which segment matched.
-  **Keep the query-matched snippet** — a search result's job is showing
-  *why this matched*; borrow the deep link and the card, not the
-  selection. **The real constraint** is that `find_matching_segment()`
-  needs segments, which `list_pages()` deliberately doesn't load — doing
-  this naively re-introduces the per-render blob decoding
-  `meeting_highlights` exists to avoid. See `STATE_HUB_PAGES.md` §9
-  ("Give search results the state-page card treatment") for the two
-  candidate shapes.
 
 - **[LATER] `[BIG]` Put the topic chips and the recent-moments feed on
   the home page, under the lookup instructions.** Ryan's idea,
@@ -2698,6 +2682,27 @@ real work on shipped code rather than a plan.
 Long by design, and safe to skip. Nothing here can be built honestly
 until a real example turns up. An entry leaving this section usually
 means somebody found the example, not that somebody decided to guess.
+
+### Thumbnails
+
+- **[LATER] `[EASY]` A page whose only stored frames are non-default
+  would advertise a `card.jpg` that 404s — unconfirmed, one query
+  settles it.** `pages_with_thumbnails()` (the existence check the
+  state/hub cards and, since WO-48, `/meetings` results use before
+  emitting an `<img>`) returns a page if it has *any* thumbnail row. The
+  card route, on a `?t=` whose resolved offset has no row, falls back to
+  the page's **default** frame and 404s when there isn't one — and
+  `video_thumbnail.py`'s `is_default=timestamp is None` means a warm
+  triggered by a `?t=` request creates a *non-default* row. So a page
+  holding only non-default frames breaks the "never advertise a URL that
+  would 404" rule those call sites exist to keep.
+  **Probably unreachable**: ingest and every `/m/{slug}` render queue a
+  timestamp-less warm, which creates a default, so a page should always
+  get one first. Nobody has checked. The query is
+  `SELECT count(*) FROM meeting_pages p WHERE EXISTS (non-default row)
+  AND NOT EXISTS (is_default row)` — if it returns 0, delete this entry;
+  if not, the fix is for `pages_with_thumbnails()` to require a default
+  row rather than any row. Found while building WO-48, not caused by it.
 
 ### Captions — formats and sources with no confirmed positive example
 
