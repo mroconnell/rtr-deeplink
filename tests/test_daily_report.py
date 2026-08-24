@@ -130,7 +130,9 @@ def test_admin_daily_report_dry_run_returns_composed_email_without_sending(monke
     monkeypatch.setattr(reporting_module, "gather_metrics", fake_gather_metrics)
 
     response = resolver_client.get(
-        "/admin/daily-report", params={"token": "test-admin-token", "dry_run": "true"}
+        "/admin/daily-report",
+        params={"dry_run": "true"},
+        headers={"Authorization": "Bearer test-admin-token"},
     )
 
     assert response.status_code == 200
@@ -162,7 +164,9 @@ def test_admin_daily_report_returns_502_when_a_metric_failed(monkeypatch):
     monkeypatch.setattr(reporting_module, "gather_metrics", fake_gather_metrics)
 
     response = resolver_client.get(
-        "/admin/daily-report", params={"token": "test-admin-token", "dry_run": "true"}
+        "/admin/daily-report",
+        params={"dry_run": "true"},
+        headers={"Authorization": "Bearer test-admin-token"},
     )
 
     assert response.status_code == 502

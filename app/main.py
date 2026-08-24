@@ -1259,6 +1259,21 @@ _VIMEO_UNREADABLE_MEDIA_MESSAGE = (
 )
 
 
+# Viebit is the same structural shape as Vimeo above -- video_url is an
+# iframe-embed page (viebit.py's /embed/vod?v={id}), and the real media
+# behind it (an HLS master.m3u8) 403s every non-browser fetch even with
+# realistic headers (confirmed live, see viebit.py's module docstring) --
+# so ffprobe can never read it either. No "turn on captions" pointer like
+# Vimeo's: Viebit's own player bundle has no confirmed CC toggle, and this
+# app already scrapes Viebit's captions server-side into its own
+# transcript when they exist, so there's nothing extra to point at inside
+# the embedded player.
+_VIEBIT_UNREADABLE_MEDIA_MESSAGE = (
+    "This meeting's video is hosted on Viebit, which doesn't expose a readable video file for us "
+    "to transcribe here — but you can still jump to specific timestamps with the player above."
+)
+
+
 def _unreadable_media_message(result: ResolvedMeeting, requested_platform: str) -> str:
     # video_url for a YouTube result is an iframe-embed page
     # (youtube.com/embed/{id}), never a real media file -- ffprobe can
@@ -1277,6 +1292,8 @@ def _unreadable_media_message(result: ResolvedMeeting, requested_platform: str) 
     # other branded identity and the video genuinely is youtube.com.
     if result.video_format == "vimeo":
         return _VIMEO_UNREADABLE_MEDIA_MESSAGE
+    if result.video_format == "viebit":
+        return _VIEBIT_UNREADABLE_MEDIA_MESSAGE
     if result.video_format == "youtube" and (
         requested_platform == "youtube" or result.best_effort
     ):
@@ -1695,26 +1712,28 @@ async def subscribe(request: Request):
     return templates.TemplateResponse(request, "subscribe.html", {})
 
 
-def _admin_token_ok(token: str, authorization: Optional[str] = None) -> bool:
-    """`Authorization: Bearer` is preferred -- Render's request logs don't
-    mask a `?token=` query param the way GitHub Actions masks its own
-    secrets, so a token in the URL leaks into Render's logs on every call.
-    The `token` query param still works too, deliberately, so this isn't a
-    flag day for anything still calling the old way; remove that fallback
-    once both cron workflows have run green on header auth for a while."""
+def _admin_token_ok(authorization: Optional[str] = None) -> bool:
+    """`Authorization: Bearer`-only, matching archive/main.py's `_token_ok()`.
+    The `?token=` query-param fallback (WO-8) was kept only until both
+    admin cron workflows (daily-report.yml, send-search-alerts.yml) had
+    run green on header auth for a while -- confirmed 2026-08-22 via
+    `gh run list` (8/8 consecutive successes each, both header-only) and
+    removed 2026-08-24. A token in the URL leaks into Render's request
+    logs on every call, which the header form doesn't. Real cost of this:
+    an `/admin/*` page can no longer be opened from a browser address bar
+    (no way to set a header there) -- curl-only from here on, a
+    deliberate tradeoff, not an oversight."""
     expected = os.environ.get("ADMIN_STATS_TOKEN", "")
-    if not expected:
+    if not expected or not authorization or not authorization.startswith("Bearer "):
         return False
-    if authorization and authorization.startswith("Bearer "):
-        return secrets.compare_digest(authorization[len("Bearer ") :], expected)
-    return secrets.compare_digest(token, expected)
+    return secrets.compare_digest(authorization[len("Bearer ") :], expected)
 
 
 @app.get("/admin/stats")
-async def admin_stats(token: str = "", authorization: Optional[str] = Header(None)):
+async def admin_stats(authorization: Optional[str] = Header(None)):
     # 404, not 401/403 -- the route's existence shouldn't be distinguishable
     # from a typo'd URL to anyone without the token.
-    if not _admin_token_ok(token, authorization):
+    if not _admin_token_ok(authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
     stats = await safe(crud.get_stats)
@@ -1724,9 +1743,7 @@ async def admin_stats(token: str = "", authorization: Optional[str] = Header(Non
 
 
 @app.get("/admin/schema-info")
-async def admin_schema_info(
-    token: str = "", authorization: Optional[str] = Header(None)
-):
+async def admin_schema_info(authorization: Optional[str] = Header(None)):
     """Read-only DB introspection, so confirming this service's real
     production schema state doesn't require someone with DATABASE_URL
     access to run psql/alembic commands on Render's shell and paste the
@@ -1759,7 +1776,7 @@ async def admin_schema_info(
     deliberately not treated as a mismatch, since this service's models
     say nothing about them.
     """
-    if not _admin_token_ok(token, authorization):
+    if not _admin_token_ok(authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
     from sqlalchemy import inspect as sa_inspect, text
@@ -1803,7 +1820,7 @@ async def admin_schema_info(
 
 @app.get("/admin/daily-report")
 async def admin_daily_report(
-    token: str = "", dry_run: bool = False, authorization: Optional[str] = Header(None)
+    dry_run: bool = False, authorization: Optional[str] = Header(None)
 ):
     """Triggers the once-a-day operator digest (app/reporting.py) on
     demand -- called by the GitHub Actions cron workflow
@@ -1816,7 +1833,7 @@ async def admin_daily_report(
     RESEND_API_KEY access -- see app/reporting.py's own docstring for what
     the report actually contains.
     """
-    if not _admin_token_ok(token, authorization):
+    if not _admin_token_ok(authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
     to = os.environ.get("DAILY_REPORT_EMAIL_TO", "ryan@how-to-adu.com")
@@ -1852,7 +1869,7 @@ async def admin_daily_report(
 
 @app.get("/admin/send-search-alerts")
 async def admin_send_search_alerts(
-    token: str = "", dry_run: bool = False, authorization: Optional[str] = Header(None)
+    dry_run: bool = False, authorization: Optional[str] = Header(None)
 ):
     """Triggers the saved-search alert sweep (archive/search_alerts.py)
     on demand -- called by the GitHub Actions cron workflow
@@ -1863,7 +1880,7 @@ async def admin_send_search_alerts(
     -- all the real work (DB access, Clerk/Resend calls) happens on the
     Archive service, which owns SavedItem/MeetingPage.
     """
-    if not _admin_token_ok(token, authorization):
+    if not _admin_token_ok(authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
     result = await archive_client.send_search_alerts(dry_run=dry_run)
@@ -1874,12 +1891,11 @@ async def admin_send_search_alerts(
 
 @app.get("/admin/log")
 async def admin_log(
-    token: str = "",
     limit: int = 200,
     format: str = "json",
     authorization: Optional[str] = Header(None),
 ):
-    if not _admin_token_ok(token, authorization):
+    if not _admin_token_ok(authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
     rows = await safe(crud.list_resolutions, limit)
@@ -1909,9 +1925,9 @@ async def admin_log(
 
 @app.get("/admin/problem-reports")
 async def admin_problem_reports(
-    token: str = "", limit: int = 200, authorization: Optional[str] = Header(None)
+    limit: int = 200, authorization: Optional[str] = Header(None)
 ):
-    if not _admin_token_ok(token, authorization):
+    if not _admin_token_ok(authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
     rows = await safe(crud.list_problem_reports, limit)
@@ -1922,7 +1938,7 @@ async def admin_problem_reports(
 
 @app.get("/admin/recheck-archive-page")
 async def admin_recheck_archive_page(
-    token: str = "", url: str = "", authorization: Optional[str] = Header(None)
+    url: str = "", authorization: Optional[str] = Header(None)
 ):
     """On-demand version of the ARCHIVE_RECHECK_AFTER background recheck --
     for when a permanent page needs refreshing sooner than 30 days (e.g. an
@@ -1930,7 +1946,7 @@ async def admin_recheck_archive_page(
     its next stale-lookup hit). Synchronous, not a BackgroundTask -- the
     caller is explicitly waiting to see the outcome, unlike the passive
     recheck this reuses."""
-    if not _admin_token_ok(token, authorization):
+    if not _admin_token_ok(authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
     if not url:
         return JSONResponse(
@@ -1947,9 +1963,7 @@ async def admin_recheck_archive_page(
 
 
 @app.get("/admin/sweep-pending-pushes")
-async def admin_sweep_pending_pushes(
-    token: str = "", authorization: Optional[str] = Header(None)
-):
+async def admin_sweep_pending_pushes(authorization: Optional[str] = Header(None)):
     """On-demand version of the opportunistic push-retry sweep
     (_maybe_schedule_push_sweep, fired passively from /api/resolve) --
     for checking on or forcing the durable-push retry mechanism directly
@@ -1957,7 +1971,7 @@ async def admin_sweep_pending_pushes(
     a BackgroundTask, so the caller sees exactly what was found and
     retried. See BACKLOG_DONE.md's silent-push-loss entry for why this
     mechanism exists at all."""
-    if not _admin_token_ok(token, authorization):
+    if not _admin_token_ok(authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
     retried = await _sweep_pending_archive_pushes()
@@ -1976,7 +1990,6 @@ async def admin_sweep_pending_pushes(
 
 @app.get("/admin/promote-transcript-version")
 async def admin_promote_transcript_version(
-    token: str = "",
     url: str = "",
     version_id: Optional[int] = None,
     authorization: Optional[str] = Header(None),
@@ -1989,7 +2002,7 @@ async def admin_promote_transcript_version(
     manually_promote_transcript_version() and
     BACKLOG_DONE.md). Same url-lookup shape as
     /admin/correct-transcript-language above."""
-    if not _admin_token_ok(token, authorization):
+    if not _admin_token_ok(authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
     if not url or version_id is None:
         return JSONResponse(
@@ -2024,7 +2037,6 @@ async def admin_promote_transcript_version(
 
 @app.get("/admin/correct-transcript-language")
 async def admin_correct_transcript_language(
-    token: str = "",
     url: str = "",
     language: str = "",
     version_id: Optional[int] = None,
@@ -2038,7 +2050,7 @@ async def admin_correct_transcript_language(
     looks up the matching permanent page the same way a repeat paste
     would. Targets the page's current default transcript version unless a
     specific version_id is given."""
-    if not _admin_token_ok(token, authorization):
+    if not _admin_token_ok(authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
     if not url or not language:
         return JSONResponse(

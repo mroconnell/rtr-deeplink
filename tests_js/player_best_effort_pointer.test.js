@@ -202,7 +202,7 @@ describe('best-effort video pointer line', () => {
     });
     const lines = readLines(window);
     assert.equal(lines.sourceGuessHidden, false);
-    assert.equal(lines.sourceGuessText, 'We think the video is here: [No video found]');
+    assert.equal(lines.sourceGuessText, 'No video was found for this meeting.');
     assert.equal(lines.linkGuessHidden, true);
   });
 

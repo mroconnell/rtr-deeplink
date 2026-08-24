@@ -6,6 +6,151 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## WO-8's `?token=` admin fallback removed, and a reslug/delete-pages workflow built for two boilerplate-slug pages [Done 2026-08-24]
+
+**WO-8 removal.** `app/main.py`'s `_admin_token_ok()` is now
+`Authorization: Bearer`-only, matching `archive/main.py`'s `_token_ok()`
+(already header-only). Precondition was confirmed 2026-08-22: both admin
+cron workflows (`daily-report.yml`, `send-search-alerts.yml`) had 8/8
+consecutive `success` runs sending only the Bearer header, and
+`grep -rn "token=" .github/workflows/` returned nothing. Removed the
+`token: str = ""` parameter from all 10 `/admin/*` routes and the
+now-unused first positional arg from `_admin_token_ok()`; left
+`confirm_transcription()`'s identically-named `token` param alone (an
+emailed confirmation-link token, unrelated to admin auth — the trap the
+original entry flagged). Real cost, accepted rather than mitigated:
+`/admin/*` pages can no longer be opened from a browser address bar
+(curl-only from here on) — of the three options the entry raised (keep
+the fallback on read-only GETs, put admin pages behind Clerk, accept
+curl-only), curl-only was chosen as the simplest, since nothing about
+the existing usage pattern needs a browser-openable admin page today.
+Updated every test that authenticated via `?token=`
+(`tests/test_admin_token_auth.py`, `tests/test_admin_schema_info_endpoint.py`,
+`tests/test_archive_push_tracking.py`, `tests/test_daily_report.py`) to
+use the header instead, and flipped `test_admin_token_auth.py`'s and
+`test_admin_schema_info_endpoint.py`'s query-param tests to assert
+rejection now that the fallback is gone.
+
+**Reslug/delete-pages workflow for the two boilerplate-slug pages.** New
+`POST /internal/admin/reslug-page` (`archive/main.py` +
+`crud.reslug_page()`), dry-run-safe like the existing
+`/internal/admin/delete-pages` this mirrors. Not a slug-regeneration
+sweep (the original entry judged that not worth building for two known
+cases) — a human names one existing slug, and the new slug is recomputed
+from that page's *current* jurisdiction/date/title via the same
+`build_base_slug()`/`_unique_slug()` pair every fresh ingest already
+uses, rather than being hand-typed. `archive/main.py`'s new
+`_SLUG_REDIRECTS` dict (currently empty) is the matching redirect half,
+checked in `/m/{slug}` before the 404 lookup and 301ing to the new slug.
+Five new tests in `tests/test_reslug_page.py` cover the token gate, dry
+run (no write), a real rename (old slug 404s, new slug serves the same
+page), an unknown-slug error path, and the redirect mechanism itself.
+
+**Deliberately not yet run against production** — this PR ships the
+*tooling*, not the data change. `welcome-to-clerkbase` (a real Yellow
+Springs, OH meeting) still needs the actual dry-run → real-call →
+`_SLUG_REDIRECTS` entry → deploy sequence (see `BACKLOG.md`'s remaining
+entry for the exact commands); the Granicus vendor-demo page
+(`granicus-digital-communications-summit-2017-04-13-granicus-digital-communication`,
+not a real government meeting) still needs an actual
+`/internal/admin/delete-pages` call. Both need the production admin
+token, which this session deliberately did not read out of `.env` (see
+this file's own "Never grep secret files" pattern) — execution is a
+follow-up once deployed.
+
+**Verification**: `ruff check`, `ruff format --check`, `python -m
+pytest` (1,748 passed, 15 skipped), both `alembic check`s (no drift — no
+schema touched).
+
+## Wave 1 of five Ship-next entries: two real fixes, one already-shipped, one harness bug found along the way [Done 2026-08-24]
+
+Pulled from `BACKLOG.md`'s "Ship next" section as a batch of small,
+independent fixes. Two turned out not to be what the entry described —
+worth recording, since both are exactly the "verify a backlog entry's
+claims before building" failure mode this file's own header warns about.
+
+**1. `is_extractable()` Vimeo/Viebit gating — already fixed, stale entry.**
+The Ship-next entry described `archive/utils/video_thumbnail.py`'s
+`is_extractable()` and `archive/db/crud.py`'s SQL filter as still gated
+on `video_format == "youtube"` alone. `git log -S` shows this was already
+fixed 2026-08-22 by PR #318 (`904cdb6`, "Gate thumbnail extraction on
+every iframe-embed platform") — both now check
+`_IFRAME_EMBED_VIDEO_FORMATS`. No code change; the entry was removed
+without a fix.
+
+**2. Viebit's "can't transcribe this" message — real fix, shipped.**
+`app/main.py`'s `_unreadable_media_message()` special-cased `youtube` and
+`vimeo` with a real structural explanation but let `viebit` fall through
+to the generic "may be unavailable" message — which reads as transient
+for a permanent, structural limitation (same iframe-embed shape as
+Vimeo, just without a confirmed in-player CC toggle to point at, so the
+new `_VIEBIT_UNREADABLE_MEDIA_MESSAGE` doesn't claim one). New test:
+`tests/test_unreadable_media_message.py::test_viebit_gets_viebit_specific_message_not_generic`.
+
+**3. "We think the video is here: [No video found]" — real fix, shipped.**
+`app/static/player.js`'s `renderBestEffortVideoPointer()` reused the
+tier-2 pointer's "We think the video is here: " label for the tier-3
+"nothing found at all" case, producing one broken-sounding line. Now its
+own sentence: "No video was found for this meeting." Updated the
+existing jsdom regression
+(`tests_js/player_best_effort_pointer.test.js`, the Palm Beach County FL
+case) to match; full JS suite (41 tests) still green.
+
+**4. Saved-search digest subject double-quoting — real fix, shipped.**
+`archive/utils/email.py`'s `_digest_subject()` built
+`f'Somebody said "{keywords[0]}"'` unconditionally, but a phrase or
+boolean-OR search is stored with its own quotes already in the keyword
+string, producing real shipped subjects like
+`Somebody said ""affordable housing"" (+13 more)` (2026-08-20) and
+`Somebody said ""Neighborhood character" or "Character of the
+neighborhood"" (+12 more)` (2026-08-21). Fix: strip a matched
+leading/trailing `"` pair from the keyword before interpolating — narrow,
+per the function's own docstring note that the copy is still
+provisional. New `tests/test_digest_subject.py`, four cases including
+both real production subjects above, reconstructed correctly. The
+digest's separate "+N more" cross-group counting question (noted in the
+same investigation, not confirmed as a bug) stays open in `BACKLOG.md`.
+
+**5. `feed.xml` noindex — real fix, shipped.** `archive/main.py`'s
+`/feed.xml` route now sends `X-Robots-Tag: noindex` (not a `robots.txt`
+`Disallow`, deliberately — a `Disallow` would also stop Google following
+the links *inside* the feed, a real discovery path for new meeting
+pages). `app/main.py`'s proxy passes headers through unchanged
+(`filter_proxy_headers()` only strips hop-by-hop headers), so the public
+`/feed.xml` URL is covered too. New
+`tests/test_feed.py::test_feed_route_sends_noindex_header`.
+
+**The real find: `scripts/backtest_fallback.py` never called
+`register_all_finders()`.** The Ship-next entry for this file's stale
+`sebastopol` row said the row expected a `video_link` pointer when the
+page had actually started delegating to a playable Vimeo embed since
+2026-08-21 — a stale-expectation framing. Re-running the harness showed
+the *opposite*: it still reported the stale pointer as a live PASS.
+Root cause, found by instrumenting the delegation path directly: every
+row in this harness's corpus silently loses `_try_delegate_to_known_platform()`
+(`app/platforms/generic_fallback.py`), because `get_finder(platform)`
+raises `UnsupportedPlatformError` for *every* platform until
+`register_all_finders()` has run once — something `app/main.py`'s own
+FastAPI startup does implicitly by importing the app, but this
+standalone script never did. That exception is deliberately swallowed
+inside `_try_delegate_to_known_platform()` as "no delegation possible,"
+so every delegate-able row was silently downgraded to the generic
+media-scan tier and the harness had been giving a false PASS for the
+sebastopol row specifically (and silently under-testing delegation for
+every other row) for as long as the script existed. Fixed by adding the
+missing `register_all_finders()` call, then re-running the full
+non-headless corpus to confirm no other row's real behavior changed
+(16 PASS / 0 FAIL before the sebastopol fix, 17 PASS / 0 FAIL after) —
+only then was the `sebastopol` row's expectation updated, to the
+now-correctly-observed `video_format == "vimeo"` delegation the original
+entry described.
+
+**Verification**: `ruff check`, `ruff format --check`, `python -m
+pytest` (1,745 passed, 15 skipped), both `alembic check`s (archive +
+app, no drift — no schema touched), `npm test` (41 passed), and
+`python -m scripts.backtest_fallback` (17 PASS / 0 FAIL, full
+non-headless corpus).
+
 ## A terminally-failed transcription job now publishes the chunks it finished [Done 2026-08-24]
 
 `record_chunk_result()` only wrote a `TranscriptVersion` once

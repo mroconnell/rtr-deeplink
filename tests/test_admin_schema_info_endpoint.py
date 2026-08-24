@@ -34,12 +34,14 @@ def test_schema_info_rejects_wrong_token():
     assert response.status_code == 404
 
 
-def test_schema_info_accepts_query_param_token():
-    """_admin_token_ok() still honours ?token= alongside the preferred
-    Authorization header (see its own docstring) -- this route inherits
-    that, same as /admin/stats."""
+def test_schema_info_rejects_legacy_query_param_token():
+    """_admin_token_ok() is Authorization-header-only as of 2026-08-24
+    (see its own docstring) -- this route inherits that, same as
+    /admin/stats. The ?token= query-param fallback (WO-8) was removed
+    once both admin cron workflows had run green on header auth for a
+    while."""
     response = client.get("/admin/schema-info", params={"token": "test-admin-token"})
-    assert response.status_code == 200
+    assert response.status_code == 404
 
 
 def test_schema_info_reports_real_columns_matching_models():

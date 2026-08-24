@@ -1,12 +1,14 @@
-"""Tests for WO-8: admin routes now accept `Authorization: Bearer` in
-addition to the legacy `?token=` query param. Render's request logs don't
-mask a query param the way GitHub Actions masks its own secrets, so a
-token in the URL leaked into Render's logs on every cron call -- see
-AUDIT_EXECUTION_BRIEF.md's WO-8 entry. The query-param path is kept
-deliberately, so this isn't a flag day for anything still calling the old
-way; /admin/stats is used here as the representative route, matching how
-tests/test_404_handling.py already treats it as a network-free example of
-the shared _admin_token_ok gating every /admin/* route uses.
+"""Tests for admin route auth (`_admin_token_ok`) -- `Authorization: Bearer`
+only. The legacy `?token=` query-param fallback (WO-8) was removed
+2026-08-24: both cron workflows (daily-report.yml, send-search-alerts.yml)
+had run green on header auth for a week straight (8/8 consecutive
+successes each, confirmed via `gh run list`), so its one reason to exist
+-- not breaking anything still calling the old way -- no longer applied.
+A token in the URL leaked into Render's request logs on every call, which
+the header form doesn't. /admin/stats is used here as the representative
+route, matching how tests/test_404_handling.py already treats it as a
+network-free example of the shared _admin_token_ok gating every
+/admin/* route uses.
 """
 
 from fastapi.testclient import TestClient
@@ -35,38 +37,20 @@ def test_admin_stats_rejects_wrong_bearer_header():
     assert response.status_code == 404
 
 
-def test_admin_stats_still_accepts_legacy_query_param():
-    # Deliberately not removed yet -- both cron workflows need to run
-    # green on header auth first (see WO-8's own acceptance criteria).
+def test_admin_stats_no_longer_accepts_legacy_query_param():
+    # The whole point of removing the fallback: a correct token in the
+    # query string alone must no longer authenticate.
     response = resolver_client.get("/admin/stats", params={"token": "test-admin-token"})
-    assert response.status_code == 200
-
-
-def test_admin_stats_rejects_wrong_legacy_query_param():
-    response = resolver_client.get(
-        "/admin/stats", params={"token": "not-the-real-token"}
-    )
     assert response.status_code == 404
 
 
-def test_bearer_header_takes_priority_over_query_param():
-    # A correct header should authenticate even if a stale/wrong token is
-    # also present in the query string.
-    response = resolver_client.get(
-        "/admin/stats",
-        params={"token": "not-the-real-token"},
-        headers={"Authorization": "Bearer test-admin-token"},
-    )
-    assert response.status_code == 200
-
-
-def test_malformed_authorization_header_falls_back_to_query_param():
-    # A header present but not shaped like "Bearer <token>" shouldn't be
-    # treated as a hard rejection -- it should just fall through to
-    # whatever the query param says, same as no header at all.
+def test_malformed_authorization_header_is_rejected_even_with_query_param():
+    # A header present but not shaped like "Bearer <token>" is a hard
+    # rejection now -- there's no query-param fallback left to fall
+    # through to.
     response = resolver_client.get(
         "/admin/stats",
         params={"token": "test-admin-token"},
         headers={"Authorization": "test-admin-token"},
     )
-    assert response.status_code == 200
+    assert response.status_code == 404

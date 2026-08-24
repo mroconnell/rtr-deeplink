@@ -1334,7 +1334,7 @@ async function init() {
 //      carries information the page has nowhere else, and its URL IS a
 //      human page (confirmed live on Birmingham MI:
 //      `vimeo.com/showcase/11598114/embed`).
-//   3. Neither -> the honest "[No video found]" line.
+//   3. Neither -> the honest "No video was found for this meeting." line.
 function renderBestEffortVideoPointer(data) {
   // Case 1 -- see above. Deliberately not `renderSourceGuess(...)`: the
   // absence of a line is the fix, not a shorter line.
@@ -1358,7 +1358,14 @@ function renderBestEffortVideoPointer(data) {
     return;
   }
 
-  renderSourceGuess('videoSourceGuess', 'We think the video is here: ', null, '[No video found]');
+  // Case 3 -- deliberately its own sentence, not renderSourceGuess() with a
+  // '[No video found]' fallback: that reused the "We think the video is
+  // here: " label from case 2 and produced one broken-sounding line
+  // ("We think the video is here: [No video found]") -- there's nothing to
+  // point at here, so don't frame it as a pointer.
+  const el = document.getElementById('videoSourceGuess');
+  el.textContent = 'No video was found for this meeting.';
+  el.hidden = false;
 }
 
 // Renders "<label><a>url</a>" or "<label>[fallback]" into #<id> -- the

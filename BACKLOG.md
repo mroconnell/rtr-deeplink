@@ -54,22 +54,16 @@ Standing decisions — do NOT re-raise  (3)
   Prefer a generated/computed column over "add a column, then backfill…
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (16)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (10)
   [JUST-DO-IT] Nothing detects a transcript that simply ends early
   [JUST-DO-IT] `[EASY]` Nothing notices a dead worker pool — chunks
   [JUST-DO-IT] The worker's requirements can silently drift out of
   [JUST-DO-IT] A bulk re-resolve gets this IP blocked by YouTube, and
-  [JUST-DO-IT] `[EASY]` `is_extractable()` excludes only YouTube, so
-  [JUST-DO-IT] `[EASY]` A Viebit meeting's "can't transcribe this"
-  [JUST-DO-IT] `[EASY]` `scripts/backtest_fallback.py`'s `sebastopol`
-  [JUST-DO-IT] `[EASY]` "We think the video is here: [No video
   [JUST-DO-IT] `[EASY]` `rtr-business/BUSINESS_OVERVIEW.md` still says
   [NEEDS-AUDIT] `[WAIT]` Measure whether the state/hub rebuild moved
   [JUST-DO-IT] Give `meeting_body` an adapter-supplied path — it has
-  [JUST-DO-IT] `[EASY]` `feed.xml` is being crawled and index-judged;
-  [JUST-DO-IT] `[EASY]` Two archived pages have slugs frozen from a
-  [JUST-DO-IT] Remove WO-8's `?token=` admin fallback — its
-  [JUST-DO-IT] `[EASY]` The saved-search alert subject line
+  [JUST-DO-IT] `[WAIT]` Two archived pages have slugs frozen from a
+  [NEEDS-AUDIT] The saved-search digest subject's "+N more" count may
   [JUST-DO-IT] Every byte the public site serves is billed twice:
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (12)
@@ -441,53 +435,6 @@ so that work reads together.
   (hours, not minutes) and re-measure before assuming anything.
 
 
-- **[JUST-DO-IT] `[EASY]` `is_extractable()` excludes only YouTube, so
-  thumbnail extraction points ffmpeg at Vimeo and Viebit *HTML pages*
-  (found 2026-08-22 while fixing the Viebit JSON-LD mislabel, PR #303).**
-  `archive/utils/video_thumbnail.py:131`'s `is_extractable()` returns
-  `False` for `video_format == "youtube"` (or a YouTube-ish URL) and
-  `True` for everything else — but Vimeo and Viebit store an iframe
-  *embed page* as `video_url`, not a media file, exactly like YouTube
-  does. **Verified live**: it returns `True` for both. The SQL filter at
-  `archive/db/crud.py:5931` has the same shape (`video_format !=
-  "youtube"`). Harm is wasted ffmpeg runs against an HTML page, not bad
-  data — but it pollutes the meeting-card backfill's failure set, which
-  is precisely what the 179-failure diagnosis work is trying to read.
-  Fix: gate both on `crud._IFRAME_EMBED_VIDEO_FORMATS` (already
-  `frozenset({"youtube", "vimeo", "viebit"})`) rather than a
-  YouTube-only literal — same one-predicate-two-copies drift that caused
-  the JSON-LD bug, so consolidating is the actual fix, not just adding
-  two strings. Pre-dates Viebit; affects Vimeo equally. See
-  `BACKLOG_DONE.md`'s Viebit JSON-LD entry.
-
-- **[JUST-DO-IT] `[EASY]` A Viebit meeting's "can't transcribe this"
-  message reads as transient when the limit is permanent and structural
-  (found 2026-08-22, same pass as above).** `app/main.py:1263`'s
-  `_unreadable_media_message()` special-cases `youtube` and `vimeo` with
-  a real structural explanation, but `viebit` falls through to the
-  generic "may be unavailable" — which tells a user to try again later
-  for something that will never work. That is the exact bug class the
-  function's own comment block describes for LIMS/PrimeGov. Fix: give
-  `viebit` its own branch alongside the other two iframe-embed
-  platforms.
-
-- **[JUST-DO-IT] `[EASY]` `scripts/backtest_fallback.py`'s `sebastopol`
-  row is stale post-WO-29 and makes the script exit nonzero on a
-  *working* case (found 2026-08-22, WO-43 / #307).** The row still
-  expects `"video": "video_link"`, but that page has delegated to a
-  playable Vimeo video since 2026-08-21. The script exits nonzero on any
-  FAIL row, so the backtest currently reports failure for a case that is
-  in fact fixed — which is the worst shape for a regression tool to be
-  in. Fix: update the expectation to the real current behavior.
-
-- **[JUST-DO-IT] `[EASY]` "We think the video is here: [No video
-  found]" reads as one broken sentence (confirmed live 2026-08-22).**
-  Pre-existing; left alone as out of scope by WO-43 (#307), which only
-  removed the line for pages that *do* have a playable video. When
-  nothing was found at all, the label and the fallback still concatenate
-  into copy that reads like a bug. Fix: give the no-video case its own
-  sentence rather than reusing the pointer label.
-
 - **[JUST-DO-IT] `[EASY]` `rtr-business/BUSINESS_OVERVIEW.md` still says
   saved-search alert emails are "not built yet"** — stale; shipped
   2026-08-13 (PR #30) and runs daily. `README.md`'s copy was already
@@ -563,110 +510,42 @@ so that work reads together.
   `meeting_body` coverage and on using `meeting_body` in search
   facets — both are currently reasoning about a field that only
   jurisdiction extraction ever writes.
-- **[JUST-DO-IT] `[EASY]` `feed.xml` is being crawled and index-judged;
-  it should be `noindex`.** Three `feed.xml?jurisdiction=…` URLs appear
-  in the "Crawled – currently not indexed" list even though
-  **`feed.xml` appears zero times in `sitemap.xml`** — Google found them
-  by following links, spent crawl on them, and then declined them, which
-  is the correct outcome reached the expensive way. RSS feeds are not
-  meant to be indexable pages. **Decided 2026-08-22: `X-Robots-Tag:
-  noindex` on the feed route — not a `robots.txt` `Disallow`.** The
-  distinction is load-bearing: `Disallow` blocks the fetch entirely,
-  which would also stop Google following the links *inside* the feed,
-  and that is a live discovery path for new meeting pages. `noindex`
-  keeps the discovery while taking the feed itself out of the index. The
-  header can be set either side since the route is proxied via
-  `app/main.py`'s `archive_feed`; setting it Archive-side also covers
-  direct hits. **The full 291-row export confirms the scale**: 4
-  `feed.xml` URLs, all `?jurisdiction=`-parameterised.
-  **Check first** whether any feed reader or integration relies on the
-  current headers, and note this is *not* the `noindex` widening the
-  `BACKLOG_DONE.md`'s Standing decisions archive rules out — that
-  decision is about `/m/` and `/j/` *pages*; a machine-readable feed is a
-  different question and was never in its scope.
-
-- **[JUST-DO-IT] `[EASY]` Two archived pages have slugs frozen from a
-  vendor's boilerplate page title, not the meeting's.** Found 2026-08-22
-  while URL-inspecting for Search Console.
-  **`/m/welcome-to-clerkbase`** is a perfectly real meeting — the page
-  serves `February 7, 2022 - Regular Village Council Meeting — Yellow
-  Springs, OH (2022-02-07)`, HTTP 200, no `noindex`. Its *title* is
-  right; only the permanent slug is wrong, taken from ClerkBase's
-  default page title at first resolve. A later re-resolve fixed the
-  title, but the slug is immutable, so the canonical URL is
-  meaningless and unshareable. Search Console reports it **"URL is not
-  on Google"** — plausibly related, since the slug is the strongest
-  text signal in the URL, though not proven.
-  **Scope is genuinely small, and that's measured, not assumed**: a
-  scan of the live `sitemap.xml` (2,383 `/m/` URLs) found exactly
-  **two** boilerplate-shaped slugs — this one and
-  `granicus-digital-communications-summit-2017-04-13-granicus-digital-communication`.
-  The second is a different problem worth noting separately: a
-  **Granicus vendor marketing event, not a government meeting**, which
-  belongs with the vendor-demo exclusions under **Trust, safety & data
-  quality** rather than being re-slugged.
-  **Fix**: re-slug the Yellow Springs page from its corrected title and
-  serve a redirect from the old slug. **Weigh first** — permalinks are
-  meant to be permanent, and `/m/` URLs are posted to Bluesky and
-  emailed in alerts. In this case the page is unindexed, has no GA
-  traffic, and predates auto-posting, so nothing points at the old slug;
-  confirm that before generalising the approach to any future case.
-  **Not worth building slug regeneration for two pages** — do these by
-  hand.
-  **Incidental, not a defect:** 257 of the 2,383 slugs contain no
+- **[JUST-DO-IT] `[WAIT]` Two archived pages have slugs frozen from a
+  vendor's boilerplate page title, not the meeting's — fix built
+  2026-08-24, not yet run against production.** `POST
+  /internal/admin/reslug-page` (`archive/main.py` + `crud.reslug_page()`,
+  dry-run-safe, same pattern as the existing `/internal/admin/
+  delete-pages`) now exists for **`/m/welcome-to-clerkbase`** (a real
+  Yellow Springs, OH meeting whose slug was frozen from ClerkBase's
+  boilerplate page title at first resolve — see `BACKLOG_DONE.md` for
+  the original find). `archive/main.py`'s `_SLUG_REDIRECTS` dict is the
+  redirect half, currently empty. **Remaining steps, in order**: (1) `curl
+  -X POST .../internal/admin/reslug-page -d '{"slug":
+  "welcome-to-clerkbase"}'` with the admin Bearer token to preview the
+  computed new slug (dry_run defaults true); (2) re-run with
+  `?dry_run=false` to actually rename it; (3) add the returned
+  `{old_slug: new_slug}` pair to `_SLUG_REDIRECTS` and deploy so the old
+  permalink 301s instead of 404ing.
+  The second boilerplate-shaped slug found in the same 2026-08-22 scan
+  (`granicus-digital-communications-summit-2017-04-13-granicus-digital-communication`)
+  is a **Granicus vendor marketing event, not a government meeting** —
+  handled via the existing `/internal/admin/delete-pages` (dry_run
+  first), not re-slugged.
+  **Incidental, not a defect:** 257 of the 2,383 `/m/` slugs contain no
   ISO-format date, but spot-checking shows nearly all carry a date in
   another shape (`6-16-25-bellefonte-borough…`, `apr-02-2020-…`), so
   this is slug-format inconsistency rather than missing data. Noted only
   so a future scan doesn't re-flag it as a bug.
-- **[JUST-DO-IT] Remove WO-8's `?token=` admin fallback — its
-  precondition is now confirmed.** WO-8 moved both admin crons to an
-  `Authorization: Bearer` header (Render's request logs don't mask a
-  token in a URL, GitHub's do), leaving the query param working so the
-  change couldn't break them. **Confirmed 2026-08-22 via `gh run
-  list`**: `daily-report.yml` and `send-search-alerts.yml` each have
-  **8 consecutive `success` runs, 2026-08-14 → 08-21**, and both send
-  *only* the Bearer header (`daily-report.yml:44`,
-  `send-search-alerts.yml:40`). `grep -rn "token=" .github/workflows/`
-  returns nothing. Scope is `app/main.py` alone —
-  `archive/main.py`'s `_token_ok()` is already header-only — covering
-  `_admin_token_ok()` plus `token: str = ""` on 10 `/admin/*` routes.
-  **Two traps, both confirmed by reading the code:** (1)
-  `app/main.py:1439`'s `confirm_transcription()` has an identically-named
-  `token: str = ""` that is the *emailed confirmation-link* token, not
-  admin auth — 11 hits for that signature, 10 are admin, this is the
-  eleventh, leave it; (2) **removing the param makes every `/admin/*`
-  page unopenable in a browser**, since an address bar can't set a
-  header — a real capability loss if Ryan eyeballs `/admin/log` or
-  `/admin/stats` that way, and a decision he should make rather than
-  discover. Options if so: keep the fallback on read-only GETs, put the
-  admin pages behind Clerk, or accept curl-only.
-- **[JUST-DO-IT] `[EASY]` The saved-search alert subject line
-  double-quotes any phrase or boolean search.** Found 2026-08-22 while
-  confirming P5 against the real inbox. `archive/utils/email.py`'s
-  `_digest_subject()` builds `f'Somebody said "{keywords[0]}"'`, adding
-  one pair of quotes — but a *phrase* search is stored with its own
-  quotes as part of the keyword, so real subjects that shipped read:
-
-  > `Somebody said ""affordable housing"" (+13 more)`
-  > `Somebody said ""Neighborhood character" or "Character of the neighborhood"" (+12 more)`
-
-  Both are real production emails (2026-08-20 and 2026-08-21). Plain
-  single-word searches are unaffected, which is presumably why it
-  survived — every `data center` digest reads correctly. **Fix**: don't
-  re-quote a keyword that is already quoted (strip a matched leading/
-  trailing `"` pair before interpolating, or use typographic quotes so
-  the nesting is at least visually distinct). **Note before touching
-  it**: that function's docstring records the copy as *deliberately
-  provisional* — `marketing/LIFECYCLE_EMAILS.md`'s approved subject was
-  written for a single match and the digest shape hasn't had a copy pass
-  yet — so fix the doubling narrowly rather than rewriting the line, or
-  do it as part of that copy pass.
-  **Second, smaller oddity in the same function, not confirmed as
-  wrong:** `extra = total_matches - 1` counts matches across *every*
-  group, while the subject names only `keywords[0]` — so with several
-  saved searches, "+N more" silently includes matches belonging to
-  different searches. That may well be the intent for a digest; worth a
-  decision rather than a fix.
+- **[NEEDS-AUDIT] The saved-search digest subject's "+N more" count may
+  bundle matches across unrelated saved searches — not confirmed as
+  wrong, a product call.** Residual from the double-quoting fix below
+  (`archive/utils/email.py`'s `_digest_subject()`, fixed 2026-08-24 —
+  see `BACKLOG_DONE.md`): `extra = total_matches - 1` sums matches
+  across *every* group in the digest, while the subject names only
+  `keywords[0]` — so with several saved searches, "+N more" silently
+  includes matches belonging to a different search than the one named.
+  That may well be the intended digest framing; needs a decision, not
+  necessarily a fix.
 - **[JUST-DO-IT] Every byte the public site serves is billed twice:
   the resolver proxies to the Archive over its *public* URL.**
   `app/main.py:1527-1593` proxies essentially the whole public site —

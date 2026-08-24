@@ -103,8 +103,15 @@ CORPUS = [
         "url": "https://www.cityofsebastopol.gov/events/city-council-meeting-january-6-2026/",
         "requires_headless": False,
         "expect": {
-            "video": "video_link",
-            "video_link_contains": "vimeo.com/1152708575",
+            # Delegates to a real playable Vimeo embed via
+            # _try_delegate_to_known_platform() (a plain <a href> to
+            # vimeo.com/1152708575/{hash}) -- confirmed live 2026-08-24,
+            # not just a pointer. This only started passing once the
+            # harness itself was fixed to call register_all_finders();
+            # see that fix's comment above for why the pointer expectation
+            # below had gone stale without the page or adapter changing.
+            "video": "vimeo",
+            "video_url_contains": "player.vimeo.com/video/1152708575",
             "title_contains": "City Council Meeting",
             "jurisdiction_contains": "Sebastopol",
             "agenda_link": True,
@@ -271,7 +278,19 @@ async def main() -> None:
 
     # Deferred import, same reasoning as scripts/backfill_archived_pages.py:
     # load_dotenv() in __main__ must run before app modules read env vars.
+    from app.platforms import register_all_finders
     from app.platforms.generic_fallback import GenericFallbackAssetFinder
+
+    # Without this, GenericFallbackAssetFinder._try_delegate_to_known_platform()
+    # silently no-ops on every row: get_finder() raises UnsupportedPlatformError
+    # for every platform until register_all_finders() has run (app/main.py's
+    # own startup does this implicitly by importing the FastAPI app), and that
+    # exception is deliberately swallowed as "no delegation possible" -- so
+    # every delegate-able row was silently downgraded to the generic media-scan
+    # tier instead, and the sebastopol row's real playable-Vimeo-delegation
+    # result was silently invisible. Found 2026-08-24 investigating a stale
+    # BACKLOG.md entry about that exact row.
+    register_all_finders()
 
     rows = CORPUS
     if args.url_contains:
