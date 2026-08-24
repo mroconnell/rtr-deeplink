@@ -94,7 +94,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (7)
   28 well-formed IQM2 queue rows point at retired tenants…
   Some Swagit meetings have no single "whole meeting" video file…
 
-Platform & jurisdiction coverage  (31)
+Platform & jurisdiction coverage  (32)
+  [LATER] `[EASY]` Give `/meetings` search results the state-page card
   [LATER] `[BIG]` Put the topic chips and the recent-moments feed on
   `[JUST-DO-IT]` `[EASY]` Nine PrimeGov pages and two real meetings…
   `[JUST-DO-IT]` ChampDS is a progressive MP4, and a 900s chunk can…
@@ -1013,6 +1014,23 @@ broader live audit once the design question is answered.
 Everything adapter-, tenant-, or jurisdiction-extraction-shaped, kept
 together on purpose. Tags are inline here rather than hoisted into the
 actionability sections above.
+
+- **[LATER] `[EASY]` Give `/meetings` search results the state-page card
+  treatment — deep link, timestamp, video frame.** Search shows a
+  matching quote and then leaves the reader to hunt for it inside a
+  three-hour video, on a site whose whole premise is deep-linking to the
+  moment. `find_matching_segment()` already returns the matching
+  segment's own `start` (it was built for the alert emails);
+  `/meetings` just uses `find_snippet()`, which runs over a joined blob
+  and can't recover which segment matched.
+  **Keep the query-matched snippet** — a search result's job is showing
+  *why this matched*; borrow the deep link and the card, not the
+  selection. **The real constraint** is that `find_matching_segment()`
+  needs segments, which `list_pages()` deliberately doesn't load — doing
+  this naively re-introduces the per-render blob decoding
+  `meeting_highlights` exists to avoid. See `STATE_HUB_PAGES.md` §9
+  ("Give search results the state-page card treatment") for the two
+  candidate shapes.
 
 - **[LATER] `[BIG]` Put the topic chips and the recent-moments feed on
   the home page, under the lookup instructions.** Ryan's idea,

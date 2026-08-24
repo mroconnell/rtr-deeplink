@@ -435,6 +435,74 @@ only, no jurisdiction column, behind a cache. That tests whether the
 format works on the home page before anyone designs the 574-government
 navigation problem.
 
+### Give search results the state-page card treatment
+
+**The strongest of the "what next" items, and it came out of asking
+whether user-suggested topics would just be reinventing search
+(2026-08-23).** The answer turned out to be the reverse: search was not
+reinvented here, it was *out-designed*, and it should adopt the better
+presentation.
+
+What `/meetings` shows today versus a featured card:
+
+| | `/meetings` result | State/hub featured card |
+| --- | --- | --- |
+| Snippet | yes — query-matched (`find_snippet()`) | yes — heuristic-picked |
+| Deep link to the moment | **no** | yes |
+| Timestamp label | **no** | yes |
+| Video frame at that moment | **no** | yes |
+
+A search result shows a matching quote and then leaves the reader to
+hunt for it inside a three-hour video — on a site whose entire premise is
+deep-linking to the moment. That is the gap.
+
+**The machinery already exists.** `archive/utils/search.py`'s
+`find_matching_segment()` returns the matching segment's own `start`
+(built for the saved-search alert emails, which needed to link to the
+exact moment); `/meetings` just uses `find_snippet()`, which runs over a
+joined blob and so cannot recover which segment matched.
+`crud.pages_with_thumbnails()` and the `/m/{slug}/card.jpg?t=` route are
+likewise already there.
+
+**Keep the query-matched snippet.** Search should *not* switch to the
+heuristic pick: a search result's job is showing *why this matched*,
+which the query-matched excerpt does and a heuristic pick does not. The
+borrowing is the deep link, the timestamp, and the card — not the
+selection.
+
+Watch out for: `find_matching_segment()` needs the meeting's segments,
+which `list_pages()` deliberately does not load (§4's whole argument).
+Doing this naively re-introduces exactly the per-render blob decoding
+that `meeting_highlights` exists to avoid, on a paginated results page.
+Likely shapes: a stored per-page segment *offset index*, or accepting the
+cost only for the current page of results (~20 rows) and measuring it.
+
+### Topic suggestions from readers — mostly already solved
+
+**Proposed 2026-08-23; recorded here with the reasoning against, so it
+isn't rebuilt from scratch later.** The idea: let readers suggest a
+phrase for `archive/topics.py`, preview what it would surface, and have a
+human approve it per state.
+
+Two halves, and both are already covered:
+
+- **"Show the reader their topic in real time"** is `/meetings?q=...`.
+  That is search, and it already works.
+- **"Collect suggestions to decide what to curate"** is what
+  `search_queries` does (§9, added 2026-08-23) — *passively*. A form is a
+  worse instrument for the same signal: far lower volume, and it records
+  what people say they want rather than what they actually looked for.
+  Zero-result searches, the single best source of candidate topics, are
+  already captured via `result_count`.
+
+**What is genuinely missing is the human decision workflow, not the
+input.** The useful build is an *internal* view that ranks candidate
+phrases out of `search_queries` (frequency, zero-result rate, not already
+a topic) and, for a chosen phrase, previews what adding it would surface
+— which is `topics_in()` plus a corpus count, not new machinery. That
+keeps curation human, which §5 argues for, without asking readers to fill
+in anything.
+
 **Ideas not yet built**, roughly by value:
 
 - **Per-meeting-body diversity**, alongside per-topic — a hub whose
