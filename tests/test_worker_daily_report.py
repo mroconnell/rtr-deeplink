@@ -79,21 +79,34 @@ async def _drain(job_id: int) -> None:
             return
 
 
+async def _read_then_advance(*, cumulative_chunks_completed, cumulative_jobs_completed):
+    """The old combined get_and_advance...() behaviour, as the route used
+    it before WO-52 -- kept here so this test still exercises the same
+    read-then-write sequence now that crud exposes the two halves
+    separately."""
+    previous = await crud.read_worker_report_snapshot()
+    await crud.advance_worker_report_snapshot(
+        cumulative_chunks_completed=cumulative_chunks_completed,
+        cumulative_jobs_completed=cumulative_jobs_completed,
+    )
+    return previous
+
+
 async def test_get_and_advance_worker_report_snapshot_diffs_against_previous():
     await _delete_snapshot()
 
-    first_previous = await crud.get_and_advance_worker_report_snapshot(
+    first_previous = await _read_then_advance(
         cumulative_chunks_completed=100, cumulative_jobs_completed=5
     )
     assert first_previous is None
 
-    second_previous = await crud.get_and_advance_worker_report_snapshot(
+    second_previous = await _read_then_advance(
         cumulative_chunks_completed=150, cumulative_jobs_completed=7
     )
     assert second_previous["cumulative_chunks_completed"] == 100
     assert second_previous["cumulative_jobs_completed"] == 5
 
-    third_previous = await crud.get_and_advance_worker_report_snapshot(
+    third_previous = await _read_then_advance(
         cumulative_chunks_completed=200, cumulative_jobs_completed=9
     )
     assert third_previous["cumulative_chunks_completed"] == 150
@@ -365,3 +378,99 @@ def test_failure_digest_survives_a_page_with_no_title():
         ]
     )
     assert "some-slug" in out
+
+
+# --- WO-52: a failed send must not consume the day's snapshot -------------
+#
+# Real occurrence, 2026-08-23: a send failed on an invalid recipient (Resend
+# 422 -- an empty `to`), and the very next report 35 seconds later read
+# "Chunks completed 0" against a true figure of ~488, because the failed
+# attempt had already advanced the snapshot it diffed against. The number was
+# silently wrong rather than obviously missing, which is what makes this worth
+# a regression test rather than a one-line fix and a shrug.
+
+
+async def test_failed_send_leaves_the_snapshot_untouched(monkeypatch):
+    await _delete_snapshot()
+
+    # Seed a known snapshot so there is a real reference point to protect.
+    await crud.advance_worker_report_snapshot(
+        cumulative_chunks_completed=1000, cumulative_jobs_completed=100
+    )
+    before = await crud.read_worker_report_snapshot()
+
+    async def _fake_send_failing(to, *, summary, previous, failures=None):
+        return False
+
+    monkeypatch.setattr(
+        archive.main.email_utils, "send_worker_daily_report", _fake_send_failing
+    )
+    resp = client.get(
+        "/internal/send-worker-daily-report",
+        params={"to": "ops@example.com"},
+        headers=_HEADERS,
+    )
+    assert resp.status_code == 200
+    assert resp.json()["sent"] is False
+
+    after = await crud.read_worker_report_snapshot()
+    assert after["cumulative_chunks_completed"] == before["cumulative_chunks_completed"]
+    assert after["cumulative_jobs_completed"] == before["cumulative_jobs_completed"]
+    assert after["recorded_at"] == before["recorded_at"]
+
+
+async def test_successful_send_does_advance_the_snapshot(monkeypatch):
+    """Positive control: the fix must not stop the snapshot advancing on a
+    real send, or every report after it reports a runaway delta."""
+    await _delete_snapshot()
+    await crud.advance_worker_report_snapshot(
+        cumulative_chunks_completed=1000, cumulative_jobs_completed=100
+    )
+    before = await crud.read_worker_report_snapshot()
+
+    async def _fake_send_ok(to, *, summary, previous, failures=None):
+        return True
+
+    monkeypatch.setattr(
+        archive.main.email_utils, "send_worker_daily_report", _fake_send_ok
+    )
+    resp = client.get(
+        "/internal/send-worker-daily-report",
+        params={"to": "ops@example.com"},
+        headers=_HEADERS,
+    )
+    assert resp.json()["sent"] is True
+
+    after = await crud.read_worker_report_snapshot()
+    assert after["cumulative_chunks_completed"] != before["cumulative_chunks_completed"]
+
+
+async def test_the_delta_survives_a_failed_send_and_lands_on_the_next_one(monkeypatch):
+    """The point of the fix, end to end: after a failed send, the NEXT
+    report must still diff against the original reference point rather than
+    reporting zero. This is the exact shape of the live incident."""
+    await _delete_snapshot()
+    await crud.advance_worker_report_snapshot(
+        cumulative_chunks_completed=1000, cumulative_jobs_completed=100
+    )
+
+    seen = []
+
+    async def _fail_then_succeed(to, *, summary, previous, failures=None):
+        seen.append(previous)
+        return len(seen) > 1  # first call fails, second succeeds
+
+    monkeypatch.setattr(
+        archive.main.email_utils, "send_worker_daily_report", _fail_then_succeed
+    )
+    for _ in range(2):
+        client.get(
+            "/internal/send-worker-daily-report",
+            params={"to": "ops@example.com"},
+            headers=_HEADERS,
+        )
+
+    # Both attempts saw the SAME reference point -- pre-fix, the second would
+    # have diffed against what the first attempt wrote, yielding a zero delta.
+    assert seen[0]["cumulative_chunks_completed"] == 1000
+    assert seen[1]["cumulative_chunks_completed"] == 1000

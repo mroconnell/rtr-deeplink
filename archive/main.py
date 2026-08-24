@@ -592,7 +592,8 @@ async def internal_send_worker_daily_report(
 ):
     """Composes and sends the transcription-worker daily activity report
     (email_utils.send_worker_daily_report()), then advances the stored
-    snapshot (crud.get_and_advance_worker_report_snapshot()) so the NEXT
+    snapshot (crud.advance_worker_report_snapshot(), only when the send
+    actually succeeded -- WO-52) so the NEXT
     send's 24h delta is measured from this moment, not from whenever the
     snapshot was last touched. Triggered by .github/workflows/
     worker-daily-report.yml -- same "GitHub Actions just pings an
@@ -617,10 +618,7 @@ async def internal_send_worker_daily_report(
     summary = await crud.get_transcription_queue_summary()
     summary["tier3_queue_remaining"] = _tier3_queue_remaining()
 
-    previous = await crud.get_and_advance_worker_report_snapshot(
-        cumulative_chunks_completed=summary["cumulative_chunks_completed_all_time"],
-        cumulative_jobs_completed=summary["cumulative_jobs_completed_all_time"],
-    )
+    previous = await crud.read_worker_report_snapshot()
 
     sent = await email_utils.send_worker_daily_report(
         to,
@@ -631,6 +629,15 @@ async def internal_send_worker_daily_report(
         # send_worker_daily_report()'s own note on the None/[] distinction.
         failures=await crud.list_recent_transcription_failures(hours=24),
     )
+    # Advance ONLY on a real send (WO-52). Advancing first meant a failed
+    # send silently consumed the day's reference point and the next report
+    # read zero -- see advance_worker_report_snapshot()'s docstring for the
+    # live 2026-08-23 occurrence.
+    if sent:
+        await crud.advance_worker_report_snapshot(
+            cumulative_chunks_completed=summary["cumulative_chunks_completed_all_time"],
+            cumulative_jobs_completed=summary["cumulative_jobs_completed_all_time"],
+        )
     return {"sent": sent, "summary": summary}
 
 
