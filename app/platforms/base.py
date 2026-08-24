@@ -251,7 +251,26 @@ def detect_platform(url: str) -> str:
         # townhallstreams.py's own module docstring and BACKLOG.md for the
         # investigation.
         return "townhallstreams"
-    if netloc.endswith("open.media"):
+    if netloc.endswith("open.media") or netloc.endswith("ompnetwork.org"):
+        # `ompnetwork.org` is the same product on a second vendor domain,
+        # not a different platform -- added 2026-08-23 (WO-46) after Ryan
+        # found real Santa Barbara council meetings there while reviewing
+        # skipped pages. Confirmed live on both
+        # `santabarbaraca.ompnetwork.org/sessions/346145` and `/346146`:
+        # this adapter resolves them unchanged, returning a real title,
+        # jurisdiction ("City of Santa Barbara, CA"), date, and **1,787
+        # real caption segments** on the regular meeting -- so these pages
+        # need no transcription at all, they already have captions.
+        # Without this line they fall through to generic_fallback, which
+        # does find the video but hits exactly the title/jurisdiction
+        # swap bug described below.
+        #
+        # Note this does NOT by itself fix Santa Barbara's archived pages:
+        # those were ingested from `docs.santabarbaraca.gov/OnBaseAgenda
+        # Online`, an OnBase agenda host with no video on it at all. The
+        # video living on a separate system from the agenda is a
+        # jurisdiction-level source-mapping problem -- see BACKLOG.md.
+        #
         # open.media (OMP Network) -- confirmed live 2026-08-21 across 6
         # real tenant subdomains (goodyearaz, eugene, cortez,
         # santabarbaraca, surpriseaz, townofgeorgetown). Already resolved

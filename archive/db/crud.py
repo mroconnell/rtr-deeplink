@@ -1725,6 +1725,80 @@ def summarize_failure_rows(rows, *, cutoff: Optional[datetime], days: Optional[i
     }
 
 
+async def list_recent_transcription_failures(hours: int = 24) -> list[dict]:
+    """Every TranscriptionJob that reached "failed" in the last `hours`,
+    with the reason and the source URL that produced it -- the data behind
+    the failure section of archive/utils/email.py's
+    send_worker_daily_report().
+
+    **Why a digest and not a per-job email (WO-46, 2026-08-23).** A job
+    only ever emails Ryan if it got far enough to attempt a chunk:
+    worker/main.py's _send_failure_email() has exactly one call site, in
+    _handle_job_failure_result(), reachable only from the two
+    report_chunk_result(success=False) paths. Everything that dies earlier
+    -- a re-resolve finding no media, ffprobe failing, the
+    is_plausible_meeting_duration() gate -- goes through
+    create_failed_auto_transcription_job() instead, which never sends
+    anything. That is not a small blind spot: on 2026-08-23 the IQM2
+    cluster was ~20 jobs, the second largest of three that day, and
+    produced ZERO emails, while a handful of multi-chunk Cablecast jobs
+    emailed repeatedly. The inbox showed the smaller, noisier problem and
+    hid the bigger, quieter one. This function deliberately does not care
+    which path a failure took -- it reads the stored rows, so both classes
+    appear, and the per-job emails stay as they are.
+
+    `source_url` is the meeting page's own `source_url_normalized` rather
+    than the job's frozen media_url: the media_url is the thing that
+    failed, but the source page is the thing a human can actually open and
+    check, which is the whole point of putting it in the mail. Both are
+    cheap columns; neither touches `segments` or `partial_segments`.
+
+    Ordered newest-first and capped -- a genuinely bad day (the 2026-08-23
+    Cablecast cluster was 33 jobs) should produce a readable email, not a
+    thousand-row table. The count of what was dropped is reported
+    alongside, so a truncated digest never silently understates a bad day.
+    """
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+    async with async_session() as session:
+        rows = (
+            await session.execute(
+                select(
+                    TranscriptionJob.id,
+                    TranscriptionJob.status,
+                    TranscriptionJob.error_message,
+                    TranscriptionJob.chunks_completed,
+                    TranscriptionJob.total_chunks,
+                    TranscriptionJob.updated_at,
+                    MeetingPage.slug,
+                    MeetingPage.title,
+                    MeetingPage.platform,
+                    MeetingPage.source_url_normalized,
+                )
+                .join(MeetingPage, MeetingPage.id == TranscriptionJob.meeting_page_id)
+                .where(
+                    TranscriptionJob.status == "failed",
+                    TranscriptionJob.updated_at >= cutoff,
+                )
+                .order_by(TranscriptionJob.updated_at.desc())
+            )
+        ).all()
+
+    return [
+        {
+            "job_id": r[0],
+            "error_message": r[2] or "(no reason recorded)",
+            "chunks_completed": r[3],
+            "total_chunks": r[4],
+            "failed_at": r[5],
+            "slug": r[6],
+            "title": r[7],
+            "platform": r[8],
+            "source_url": r[9],
+        }
+        for r in rows
+    ]
+
+
 async def list_completed_multichunk_transcription_jobs() -> list[dict]:
     """Every completed TranscriptionJob with total_chunks > 1 -- i.e. every
     on-demand transcription that actually went through the real per-chunk

@@ -76,11 +76,35 @@ def _stderr_tail(stderr: bytes, limit: int) -> str:
     return "\n".join(lines)[-limit:].strip()
 
 
-# Below this, a "meeting" is almost certainly the wrong asset (a preview
-# clip, a trailer, a misidentified short recording) rather than a real
-# government meeting -- arbitrary/tunable, not derived from real data yet,
-# same honesty as ARCHIVE_RECHECK_AFTER's 30-day pick (see app/main.py).
-MIN_PLAUSIBLE_MEETING_SECONDS = 5 * 60
+# Below this, a "meeting" is more likely the wrong asset (a preview clip,
+# a trailer, an ad) than a real government meeting.
+#
+# **Lowered 300s -> 60s on 2026-08-23 (WO-46), and now derived from real
+# data** -- the previous value was explicitly flagged in this comment as
+# arbitrary, and Ryan's review of a day's skipped pages showed it was
+# rejecting real meetings wholesale. Every duration below is measured, and
+# the real/not-real judgement on each is his, not inferred:
+#
+#   REAL meetings this gate was rejecting at 300s:
+#     265s  blufftonin.portal.civicclerk.com/event/81   Board of Public Works
+#     177s  woodstockga.iqm2.com  MeetingID=1622        Mayor and Council
+#      86s  buttecoca.portal.civicclerk.com/event/140   Cemetery District
+#      53s  berkeleycountysc.iqm2.com MeetingID=4203    County Council special
+#   NOT meetings, correctly rejected:
+#      50s  gnat.cablecast.tv/.../13707                 an ad
+#      39s  cityofsantee.cablecast.tv/.../2096          a community event
+#
+# The old 300s floor rejected **all four** real meetings. 60s recovers
+# three of them and still rejects both confirmed non-meetings.
+#
+# **Honest limit, and the reason this isn't lowered further:** the two
+# classes genuinely overlap at the bottom -- a real 53s council meeting and
+# a 50s ad are three seconds apart, so no duration threshold can separate
+# them. Berkeley County stays skipped and that is a known, accepted miss,
+# not an oversight. Separating those would need a different signal
+# (meeting_body, agenda presence, the page's own framing), not a smaller
+# number here.
+MIN_PLAUSIBLE_MEETING_SECONDS = 60
 # Sanity ceiling against a garbage/looping stream reporting a nonsense
 # duration -- also arbitrary/tunable.
 MAX_PLAUSIBLE_MEETING_SECONDS = 14 * 3600

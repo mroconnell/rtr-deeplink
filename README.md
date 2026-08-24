@@ -1301,6 +1301,25 @@ established: GitHub Actions never touches `RESEND_API_KEY` or
 that already holds those credentials, rather than a new script
 duplicating them as fresh GitHub secrets.
 
+**The report also carries a failure digest, added 2026-08-23 (WO-46)** —
+every job that reached `failed` in the last 24 hours, grouped by reason,
+each row linking both the Archive page and the **source URL that actually
+failed**, with a `chunks n/N` marker (`0/1` means nothing was ever
+attempted). It exists because the per-job failure emails cover only half
+the failures: `worker/main.py`'s `_send_failure_email()` has exactly one
+call site, reachable only from the `report_chunk_result(success=False)`
+paths, so anything that dies earlier — a re-resolve finding no media,
+`ffprobe` failing, the `is_plausible_meeting_duration()` gate — is
+recorded in the database and **never emailed at all**. That is not a
+small blind spot: on 2026-08-23 an IQM2 cluster of ~20 jobs, the second
+largest of three that day, produced zero emails while a handful of
+multi-chunk Cablecast jobs emailed repeatedly. A clean day renders an
+explicit "None" line rather than dropping the section, and a bad day is
+capped at `MAX_FAILURES_LISTED` with the dropped count stated, so a
+truncated digest never understates it. See
+`crud.list_recent_transcription_failures()` and
+`email._render_failure_digest()`.
+
 The 24h chunk-completion figure needs a real reference point to diff
 against, since `TranscriptionJob.chunks_completed` has no per-chunk
 timestamp anywhere in the schema — `WorkerReportSnapshot`

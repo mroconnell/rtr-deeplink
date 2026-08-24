@@ -61,7 +61,13 @@ def test_stderr_tail_still_truncates_from_the_end():
 
 
 def test_plausible_duration_bounds():
-    assert not is_plausible_meeting_duration(60)  # 1 min, too short
+    # WO-46 (2026-08-23): the floor moved 300s -> 60s off real measured
+    # meetings Ryan confirmed were being skipped -- see
+    # MIN_PLAUSIBLE_MEETING_SECONDS' own comment for the full table.
+    assert not is_plausible_meeting_duration(50)  # a real gnat.cablecast ad
+    assert not is_plausible_meeting_duration(39)  # a real Santee community event
+    assert is_plausible_meeting_duration(86)  # a real Butte cemetery district mtg
+    assert is_plausible_meeting_duration(265)  # a real Bluffton IN meeting
     assert is_plausible_meeting_duration(30 * 60)  # 30 min, plausible
     assert is_plausible_meeting_duration(4 * 3600)  # 4 hours, plausible
     assert not is_plausible_meeting_duration(20 * 3600)  # 20 hours, implausible

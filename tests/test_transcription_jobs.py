@@ -1644,3 +1644,93 @@ def test_cooldown_active_is_false_with_no_job_history():
     from archive.db import crud as _crud
 
     assert _crud._cooldown_active([], datetime.now(timezone.utc)) is False
+
+
+# --- WO-46: crud.list_recent_transcription_failures() ----------------------
+
+
+async def test_list_recent_transcription_failures_covers_both_failure_classes():
+    """The whole point of the digest: a resolve-stage failure (which never
+    sends its own email) and a chunk-stage failure (which does) must both
+    appear, with the source URL a human can actually open."""
+    from datetime import datetime, timedelta, timezone
+
+    from archive.db.engine import async_session
+    from archive.db.models import MeetingPage, TranscriptionJob
+    from sqlalchemy import select
+
+    url = "https://example.cablecast.tv/internetchannel/show/wo46"
+    await crud.ingest_resolution(
+        {
+            "platform": "cablecast",
+            "source_url": url,
+            "external_id": "cablecast:wo46",
+            "title": "WO-46 Test Meeting",
+            "date": "2026-08-23",
+            "jurisdiction": "City of Test",
+            "video_url": "https://example.com/v.m3u8",
+            "video_format": "m3u8",
+            "segments": [],
+            "agenda_items": [],
+            "transcript_language": None,
+            "transcript_warnings": [],
+        },
+        url,
+    )
+    slug = (await crud.lookup_page_for_url(url))["slug"]
+
+    async with async_session() as session:
+        page = (
+            (await session.execute(select(MeetingPage).where(MeetingPage.slug == slug)))
+            .scalars()
+            .first()
+        )
+        for reason, done, total in (
+            ("No usable audio or video source was found.", 0, 1),
+            ("ffmpeg reported success but the output file isn't decodable", 1, 5),
+        ):
+            session.add(
+                TranscriptionJob(
+                    meeting_page_id=page.id,
+                    requester_email="auto@example.com",
+                    status="failed",
+                    error_message=reason,
+                    media_url="",
+                    media_kind="video",
+                    probed_duration_seconds=0,
+                    chunk_size_seconds=900,
+                    total_chunks=total,
+                    chunks_completed=done,
+                )
+            )
+        # An old failure, outside the window -- must not appear.
+        stale = TranscriptionJob(
+            meeting_page_id=page.id,
+            requester_email="auto@example.com",
+            status="failed",
+            error_message="ancient history",
+            media_url="",
+            media_kind="video",
+            probed_duration_seconds=0,
+            chunk_size_seconds=900,
+            total_chunks=1,
+            chunks_completed=0,
+        )
+        session.add(stale)
+        await session.commit()
+        stale.updated_at = datetime.now(timezone.utc) - timedelta(hours=48)
+        await session.commit()
+
+    rows = await crud.list_recent_transcription_failures(hours=24)
+    mine = [r for r in rows if r["slug"] == slug]
+    reasons = {r["error_message"] for r in mine}
+
+    assert "No usable audio or video source was found." in reasons
+    assert "ffmpeg reported success but the output file isn't decodable" in reasons
+    assert "ancient history" not in reasons  # outside the 24h window
+    assert all(r["source_url"] == url for r in mine)
+    # The chunk counter is what tells the two classes apart in the mail.
+    assert {(r["chunks_completed"], r["total_chunks"]) for r in mine} == {
+        (0, 1),
+        (1, 5),
+    }

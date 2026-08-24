@@ -94,12 +94,14 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (7)
   28 well-formed IQM2 queue rows point at retired tenants…
   Some Swagit meetings have no single "whole meeting" video file…
 
-Platform & jurisdiction coverage  (33)
+Platform & jurisdiction coverage  (35)
   `[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
   [LATER] `[EASY]` Give `/meetings` search results the state-page card
   [LATER] `[BIG]` Put the topic chips and the recent-moments feed on
   `[JUST-DO-IT]` `[EASY]` Nine PrimeGov pages and two real meetings…
   `[JUST-DO-IT]` ChampDS is a progressive MP4, and a 900s chunk can…
+  `[JUST-DO-IT]` Santa Barbara's video lives on a different system from…
+  `[NEEDS-AUDIT]` Duration alone cannot separate a very short real…
   The 50 largest US cities — per-tenant status `[NEEDS-AUDIT]`
   Jurisdiction extraction & backfill  (17)
     [JUST-DO-IT] A land acknowledgement became a jurisdiction, and it
@@ -1214,6 +1216,56 @@ resolve themselves and only Wilkes-class files stay broken — so
 **re-measure from the worker before sizing fix 1's threshold**, rather
 than hard-coding one derived from a residential connection.
 
+
+### `[JUST-DO-IT]` Santa Barbara's video lives on a different system from its agendas — the archived pages point at the half with no video
+
+Found 2026-08-23 (WO-46) by Ryan, reviewing a day of skipped pages. Both
+archived Santa Barbara council pages
+(`santa-barbara-ca-2026-08-11-regular-city-council-meeting` and
+`…-special-…`) were ingested from
+`docs.santabarbaraca.gov/OnBaseAgendaOnline/Meetings/ViewMeeting?...` — an
+OnBase **agenda** host with no video on it at all, so every transcription
+attempt correctly reports "No usable audio or video source was found."
+
+The video is real and is on OMP Network:
+`santabarbaraca.ompnetwork.org/sessions/346145` (regular) and `/346146`
+(special). **Confirmed live**: `openmedia.py` resolves both unchanged,
+returning a real title, jurisdiction ("City of Santa Barbara, CA"), date,
+and **1,787 real caption segments** on the regular meeting — these pages
+need no transcription at all, they already have captions.
+
+Half of this is fixed: `ompnetwork.org` now routes to `open_media` in
+`base.py` (it previously fell through to `generic_fallback`, which finds
+the video but hits that adapter's documented title/jurisdiction swap bug).
+**What's left is the source mapping** — the archived pages still point at
+the agenda host. Options: re-ingest these two from their OMP URLs, or
+teach the ingest path that this jurisdiction's video source differs from
+its agenda source. Worth checking how many other jurisdictions have the
+same split before picking; the generic shape ("agendas on one vendor,
+video on another") is likely not unique to Santa Barbara.
+
+### `[NEEDS-AUDIT]` Duration alone cannot separate a very short real meeting from an ad
+
+Recorded 2026-08-23 (WO-46) so the next person doesn't try to fix it by
+moving the number again. `MIN_PLAUSIBLE_MEETING_SECONDS` moved 300s → 60s
+off real measured data (see that constant's own comment for the full
+table). That recovered three of four confirmed-real short meetings, but
+the fourth is unreachable by any threshold:
+
+```
+ 53s  berkeleycountysc.iqm2.com MeetingID=4203   real County Council special mtg
+ 50s  gnat.cablecast.tv/.../13707                an ad
+```
+
+Three seconds apart, opposite answers. Berkeley County stays skipped and
+that is an accepted miss, not an oversight — **do not lower the floor
+further to catch it**, because 60s already sits just above a confirmed ad
+and below it the two classes are interleaved.
+
+Separating them needs a different signal, not a smaller number:
+`meeting_body`, whether the page carries a real agenda, or the page's own
+framing. Not worth building for one known case; worth revisiting if the
+daily failure digest (WO-46) shows this class is actually common.
 
 ### The 50 largest US cities — per-tenant status `[NEEDS-AUDIT]`
 

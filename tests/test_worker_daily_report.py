@@ -22,6 +22,7 @@ JOBS-sensitive tests elsewhere in the suite.
 
 import archive.main
 from archive.db import crud
+from archive.utils import email as email_utils
 from archive.db.engine import async_session
 from archive.db.models import WorkerReportSnapshot
 from fastapi.testclient import TestClient
@@ -172,8 +173,15 @@ async def test_send_worker_daily_report_route_sends_and_advances_snapshot(monkey
 
     calls = []
 
-    async def _fake_send(to, *, summary, previous):
-        calls.append({"to": to, "summary": summary, "previous": previous})
+    async def _fake_send(to, *, summary, previous, failures=None):
+        calls.append(
+            {
+                "to": to,
+                "summary": summary,
+                "previous": previous,
+                "failures": failures,
+            }
+        )
         return True
 
     monkeypatch.setattr(
@@ -190,6 +198,10 @@ async def test_send_worker_daily_report_route_sends_and_advances_snapshot(monkey
     assert len(calls) == 1
     assert calls[0]["to"] == "ops@example.com"
     assert calls[0]["previous"] is None  # snapshot was freshly deleted above
+    # WO-46: the route must always pass a real list, never omit it -- an
+    # omitted `failures` renders no section at all, which would make a
+    # clean day and a broken digest look identical in the mail.
+    assert isinstance(calls[0]["failures"], list)
 
     second = client.get(
         "/internal/send-worker-daily-report",
@@ -205,3 +217,151 @@ async def test_send_worker_daily_report_route_sends_and_advances_snapshot(monkey
         calls[1]["previous"]["cumulative_chunks_completed"]
         == calls[0]["summary"]["cumulative_chunks_completed_all_time"]
     )
+
+
+# --- WO-46: the failure digest (2026-08-23) --------------------------------
+#
+# The gap this closes is real and measured, not hypothetical. A job only
+# emails Ryan if it got far enough to attempt a chunk (worker/main.py's
+# _send_failure_email() has one call site, reachable only from the
+# report_chunk_result(success=False) paths). On 2026-08-23 the IQM2 cluster
+# was ~20 jobs -- the second largest of three that day -- and sent ZERO
+# emails, because every one died at re-resolve. The reasons below are the
+# real literals those jobs stored.
+
+_REAL_RESOLVE_STAGE_REASON = "No usable audio or video source was found."
+_REAL_DURATION_GATE_REASON = (
+    "Media duration doesn't look like a full meeting recording."
+)
+_REAL_CHUNK_STAGE_REASON = (
+    "ffmpeg reported success but the output file isn't decodable "
+    "(likely truncated/corrupt)"
+)
+
+
+def _failure(job_id, reason, *, slug, title, platform, source_url, done=0, total=1):
+    return {
+        "job_id": job_id,
+        "error_message": reason,
+        "chunks_completed": done,
+        "total_chunks": total,
+        "failed_at": None,
+        "slug": slug,
+        "title": title,
+        "platform": platform,
+        "source_url": source_url,
+    }
+
+
+def test_failure_digest_groups_by_reason_most_common_first(monkeypatch):
+    monkeypatch.setenv("PUBLIC_BASE_URL", "https://redtaperecordings.com")
+    # Real shapes from the 2026-08-23 sweep.
+    failures = [
+        _failure(
+            773,
+            _REAL_RESOLVE_STAGE_REASON,
+            slug="santa-barbara-ca-2026-08-11-regular-city-council-meeting",
+            title="Regular City Council Meeting",
+            platform="hyland",
+            source_url="https://docs.santabarbaraca.gov/OnBaseAgendaOnline/Meetings/ViewMeeting?doctype=1&id=1184",
+        ),
+        _failure(
+            781,
+            _REAL_DURATION_GATE_REASON,
+            slug="bluffton-in-2025-06-24-board-of-public-works-and-safety",
+            title="Board of Public Works and Safety",
+            platform="civicclerk",
+            source_url="https://blufftonin.portal.civicclerk.com/event/81/media",
+        ),
+        _failure(
+            783,
+            _REAL_DURATION_GATE_REASON,
+            slug="oroville-ca-2024-08-27-thompson-flat-cemetery-district-meeting",
+            title="Thompson Flat Cemetery District  Meeting",
+            platform="civicclerk",
+            source_url="https://buttecoca.portal.civicclerk.com/event/140/media",
+        ),
+    ]
+
+    out = email_utils._render_failure_digest(failures)
+
+    assert "Failures, last 24 hours (3)" in out
+    # The 2-job reason must be rendered before the 1-job reason.
+    assert out.index(_REAL_DURATION_GATE_REASON.replace("'", "&#x27;")) < out.index(
+        "No usable audio or video source"
+    )
+    # Every row carries BOTH the archive page and the real source URL --
+    # the source URL is the whole point: it's what a human can open.
+    assert "https://redtaperecordings.com/m/bluffton-in-2025-06-24" in out
+    assert "https://blufftonin.portal.civicclerk.com/event/81/media" in out
+    assert "https://docs.santabarbaraca.gov/OnBaseAgendaOnline" in out
+    # The chunk counter is what distinguishes a resolve-stage rejection
+    # (0/1, nothing attempted) from a real chunk failure.
+    assert "chunks 0/1" in out
+
+
+def test_failure_digest_includes_chunk_stage_failures_too(monkeypatch):
+    """Both classes belong in one digest. The per-job emails cover only the
+    chunk-stage half; this must not repeat that split."""
+    monkeypatch.setenv("PUBLIC_BASE_URL", "https://redtaperecordings.com")
+    out = email_utils._render_failure_digest(
+        [
+            _failure(
+                692,
+                _REAL_CHUNK_STAGE_REASON,
+                slug="2026-08-06-planning-commission-meeting-8-6-26",
+                title="Planning Commission Meeting 8-6-26",
+                platform="cablecast",
+                source_url="http://portagemi.cablecast.tv/internetchannel/show/304?site=1",
+            )
+        ]
+    )
+    assert "isn&#x27;t decodable" in out or "isn't decodable" in out
+    assert "chunks 0/1" in out
+
+
+def test_failure_digest_says_so_when_there_were_none():
+    """Silence must never be the only signal -- same reasoning as this
+    report sending daily even on a quiet day."""
+    out = email_utils._render_failure_digest([])
+    assert "Failures, last 24 hours" in out
+    assert "None" in out
+
+
+def test_failure_digest_truncates_a_bad_day_and_says_how_many_it_dropped():
+    """The 2026-08-23 Cablecast cluster was 33 jobs in one day. A digest
+    that silently shows the first N would understate exactly the day it
+    matters most."""
+    failures = [
+        _failure(
+            1000 + i,
+            _REAL_CHUNK_STAGE_REASON,
+            slug=f"page-{i}",
+            title=f"Meeting {i}",
+            platform="cablecast",
+            source_url=f"https://example.cablecast.tv/show/{i}",
+        )
+        for i in range(email_utils.MAX_FAILURES_LISTED + 7)
+    ]
+    out = email_utils._render_failure_digest(failures)
+    assert f"Failures, last 24 hours ({email_utils.MAX_FAILURES_LISTED + 7})" in out
+    assert "and 7 more not listed" in out
+
+
+def test_failure_digest_survives_a_page_with_no_title():
+    """A page ingested without a title is a real, confirmed shape in this
+    archive (see the PrimeGov untitled-page entry) -- it must not blank out
+    a whole row in the mail."""
+    out = email_utils._render_failure_digest(
+        [
+            _failure(
+                1,
+                _REAL_RESOLVE_STAGE_REASON,
+                slug="some-slug",
+                title=None,
+                platform="iqm2",
+                source_url="https://example.iqm2.com/Citizens/Detail_LegiFile.aspx?ID=1",
+            )
+        ]
+    )
+    assert "some-slug" in out
