@@ -757,6 +757,43 @@ mark.search-match.current { background: #f97316; color: #fff; }
   font-size: 0.85rem;
   line-height: 1.4;
 }
+/* Deep link into the matched moment, and the frame at that moment --
+   borrowed from the state/hub featured cards (.featured-deeplink /
+   .featured-thumb), which is where this treatment was designed. Its own
+   classes rather than reuse of those, for one reason: a featured card is
+   a standalone block with a 148x83 image, while /meetings keeps a compact
+   one-line-per-meeting rhythm (see .meeting-result-row above) that an
+   83px-tall image would swallow. Same shape, smaller, so a page of
+   twenty results still scans as a list. */
+.search-result-thumb {
+  flex: 0 0 auto;
+  display: block;
+  line-height: 0;
+}
+.search-result-thumb img {
+  width: 112px;
+  height: 63px;
+  object-fit: cover;
+  border-radius: 4px;
+  background: #e9edf1;
+}
+/* Below the badge's breakpoint the row is already tight; the image would
+   push the title into a sliver, so it goes rather than shrinking further. */
+@media (max-width: 575px) {
+  .search-result-thumb { display: none; }
+}
+.search-result-deeplink {
+  display: inline-block;
+  margin-top: 0.3rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-decoration: none;
+}
+.search-result-deeplink:hover,
+.search-result-deeplink:focus {
+  text-decoration: underline;
+}
 /* Replaces a raw language code ("· en") on /meetings results -- not
    intuitive at a glance, and language-specific anyway when the real
    question a viewer has is just "does this have a transcript." Quality-

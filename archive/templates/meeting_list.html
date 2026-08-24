@@ -99,6 +99,17 @@
     <div class="meeting-list">
       {% for m in pages %}
       <div class="calendar-candidate meeting-result-row">
+        {% if m.card_url %}
+        {#- The stored frame at the matched moment (same ?t= as the deep
+           link below), so the image shows the thing the quote is about.
+           Only ever emitted when crud.pages_with_thumbnails() confirmed
+           the bytes exist -- advertising a card URL that would 404 is
+           worse than showing none. Lazy: a page of results must not block
+           first paint on twenty images. -#}
+        <a class="search-result-thumb" href="{{ m.deep_link }}" tabindex="-1" aria-hidden="true">
+          <img src="{{ m.card_url }}" alt="" loading="lazy" decoding="async">
+        </a>
+        {% endif %}
         <div class="calendar-candidate-main">
           <a href="/m/{{ m.slug }}">{{ m.title or "Untitled meeting" }}</a>
           <span class="calendar-candidate-date">
@@ -116,6 +127,22 @@
           </span>
           {% if m.snippet %}
           <p class="search-snippet">{{ m.snippet | safe }}</p>
+          {% endif %}
+          {#- The whole premise of the site, finally on its own search
+             page: a link into the second the match was actually said,
+             rather than the top of a three-hour video. Absent (along with
+             the thumbnail above) whenever the match couldn't be tied to a
+             real transcript segment -- an agenda-only hit, or a quoted
+             phrase split across two caption cues -- in which case the row
+             renders exactly as it always did. See crud._result_snippet().
+             Deliberately no JSON-LD on this page: every filtered
+             /meetings variant canonicalizes to the bare unfiltered URL
+             (see the canonical tag above), so structured data here would
+             describe a page that points its canonical somewhere else. -#}
+          {% if m.deep_link %}
+          <a class="search-result-deeplink" href="{{ m.deep_link }}">
+            <span aria-hidden="true">&#9654;</span> Play from {{ m.timestamp_label }}
+          </a>
           {% endif %}
         </div>
         {% if m.has_transcript %}

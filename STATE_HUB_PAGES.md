@@ -435,47 +435,62 @@ only, no jurisdiction column, behind a cache. That tests whether the
 format works on the home page before anyone designs the 574-government
 navigation problem.
 
-### Give search results the state-page card treatment
+### Search results got the card treatment — built 2026-08-24 (WO-48)
 
-**The strongest of the "what next" items, and it came out of asking
-whether user-suggested topics would just be reinventing search
-(2026-08-23).** The answer turned out to be the reverse: search was not
-reinvented here, it was *out-designed*, and it should adopt the better
-presentation.
+**It came out of asking whether user-suggested topics would just be
+reinventing search (2026-08-23).** The answer turned out to be the
+reverse: search was not reinvented here, it was *out-designed*, and it
+has now adopted the better presentation.
 
-What `/meetings` shows today versus a featured card:
+What `/meetings` shows, before and after:
 
-| | `/meetings` result | State/hub featured card |
-| --- | --- | --- |
-| Snippet | yes — query-matched (`find_snippet()`) | yes — heuristic-picked |
-| Deep link to the moment | **no** | yes |
-| Timestamp label | **no** | yes |
-| Video frame at that moment | **no** | yes |
+| | before | now | featured card |
+| --- | --- | --- | --- |
+| Snippet | query-matched | query-matched *(unchanged)* | heuristic-picked |
+| Deep link to the moment | **no** | yes | yes |
+| Timestamp label | **no** | yes | yes |
+| Video frame at that moment | **no** | yes | yes |
 
-A search result shows a matching quote and then leaves the reader to
-hunt for it inside a three-hour video — on a site whose entire premise is
-deep-linking to the moment. That is the gap.
+**The snippet stayed query-matched, deliberately.** A search result's job
+is showing *why this matched*, which the query-matched excerpt does and a
+heuristic pick does not. What got borrowed is the deep link, the
+timestamp and the card — never the selection.
 
-**The machinery already exists.** `archive/utils/search.py`'s
-`find_matching_segment()` returns the matching segment's own `start`
-(built for the saved-search alert emails, which needed to link to the
-exact moment); `/meetings` just uses `find_snippet()`, which runs over a
-joined blob and so cannot recover which segment matched.
-`crud.pages_with_thumbnails()` and the `/m/{slug}/card.jpg?t=` route are
-likewise already there.
+**This was far cheaper than this section originally claimed, and the
+claim was wrong in an instructive way.** It used to warn that
+`find_matching_segment()` "needs the meeting's segments, which
+`list_pages()` deliberately does not load (§4's whole argument)", and
+that doing this would re-introduce per-render blob decoding on a
+paginated page. In fact `list_pages()` **already loaded** the default
+version's full `segments` for the current page of rows whenever a keyword
+was set — `find_snippet()` simply joined them and discarded the segment
+boundaries. The timestamp was a free by-product of text the query paid
+for regardless. §4's argument is about *hub* pages, which render without
+a keyword and genuinely load no segments; it was over-generalised to a
+page it never covered. Worth remembering as a shape: a doc's *reasoning*
+outlives its *specifics*, so re-derive the specific before building on it.
 
-**Keep the query-matched snippet.** Search should *not* switch to the
-heuristic pick: a search result's job is showing *why this matched*,
-which the query-matched excerpt does and a heuristic pick does not. The
-borrowing is the deep link, the timestamp, and the card — not the
-selection.
+**Two things only the browser caught**, neither visible in the JSON:
 
-Watch out for: `find_matching_segment()` needs the meeting's segments,
-which `list_pages()` deliberately does not load (§4's whole argument).
-Doing this naively re-introduces exactly the per-render blob decoding
-that `meeting_highlights` exists to avoid, on a paginated results page.
-Likely shapes: a stored per-page segment *offset index*, or accepting the
-cost only for the current page of results (~20 rows) and measuring it.
+- **A cue is not a sentence.** A caption cue runs 5–10 words, so quoting
+  the matched segment alone made snippets *shorter* than the old
+  blob-based ones — a regression traded for the deep link.
+  `SEARCH_CONTEXT_SEGMENTS` folds in the neighbouring cues.
+- **…but neighbouring cues are not neighbouring moments.** A sparse
+  transcript put "…then we will begin" (0:05) directly beside a sentence
+  spoken at 10:40, and joining them rendered a continuous-sounding quote
+  nobody ever said. `SEARCH_CONTEXT_MAX_GAP_SECONDS` stops the window at
+  a real gap. A misleading quote is a worse failure than a short one, and
+  on this site it is the failure that matters most.
+
+Cards are emitted only for keyword searches (the bare browse listing
+stays the compact one-line-per-meeting listing), only when
+`pages_with_thumbnails()` confirms stored bytes, and never warm a miss —
+a crawler paging through results would otherwise fire a page's worth of
+ffmpeg jobs per request. There is deliberately **no JSON-LD** on
+`/meetings`: every filtered variant canonicalizes to the bare unfiltered
+URL, so structured data there would describe a page pointing its
+canonical elsewhere.
 
 ### Topic suggestions from readers — mostly already solved
 

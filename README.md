@@ -737,7 +737,15 @@ existed.
 server-rendered index of every permanent page (`crud.list_pages()`,
 20/page) with a search box and jurisdiction/date-range/has-transcript/
 has-agenda filters — all plain GET params, so results are
-shareable/bookmarkable URLs with no JS required. Empty pages (no video,
+shareable/bookmarkable URLs with no JS required. A keyword search's
+results carry the same deep-link treatment as the state/hub featured
+cards (WO-48, 2026-08-24): each row whose match lands in a real
+transcript segment gets a "Play from 25:17" link into that second plus
+the stored frame from that moment, while the excerpt itself stays
+*query*-matched rather than switching to the heuristic pick — a result's
+job is showing why it matched. A match that can't be tied to one segment
+(an agenda-only hit, or a quoted phrase split across two caption cues)
+still gets its excerpt, just no timestamp. Empty pages (no video,
 no agenda, no transcript) are excluded from the default browse, the
 sitemap and the feed at query time — not deleted, and still shown under
 an explicit `has_transcript=false` filter (that's how gaps get found) —

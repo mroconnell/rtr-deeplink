@@ -42,6 +42,7 @@ from ..utils.search import (
     _fuzzy_threshold,
     _levenshtein,
     compute_search_corpus,
+    find_matching_segment,
     find_snippet,
     matches,
     parse_query,
@@ -3028,6 +3029,65 @@ def _is_empty_page_condition():
     )
 
 
+# How many neighbouring transcript segments to fold into a search
+# result's quote, either side of the one that actually matched.
+#
+# A caption cue is short -- routinely 5-10 words -- so quoting the matched
+# segment alone would make search snippets *shorter* than the ones
+# find_snippet() has always produced over the joined transcript blob.
+# That would be a real regression traded for the deep link, which isn't
+# the deal. One cue either side restores sentence-length context while
+# still keeping the match near the middle of what's shown.
+SEARCH_CONTEXT_SEGMENTS = 1
+
+# ...but only across a gap this small, in seconds.
+#
+# Caught in the browser, 2026-08-24, and the reason this constant exists
+# at all: neighbouring *cues* are not necessarily neighbouring *moments*.
+# A sparse transcript had "...then we will begin" at 0:05 sitting directly
+# beside "the applicant is proposing a data center" at 10:40, and joining
+# them produced a quote that read as one continuous sentence spanning ten
+# minutes of a meeting nobody said it in. Widening context is a
+# readability nicety; inventing a sentence out of two unrelated utterances
+# is a credibility problem, so the nicety yields. Real caption tracks are
+# dense enough that this only bites on gaps -- silence, a recess, an
+# agenda-derived sparse track -- which is exactly where it should.
+SEARCH_CONTEXT_MAX_GAP_SECONDS = 10.0
+
+
+def _adjacent(earlier: dict, later: dict) -> bool:
+    """Whether two consecutive segments are close enough in time to read
+    as continuous speech. Missing/unparseable timings count as adjacent --
+    the timings are advisory here, and dropping real context because a cue
+    lacks an `end` would be the worse error."""
+    try:
+        end = earlier.get("end")
+        start = later.get("start")
+        if end is None or start is None:
+            return True
+        return (float(start) - float(end)) <= SEARCH_CONTEXT_MAX_GAP_SECONDS
+    except (TypeError, ValueError):
+        return True
+
+
+def _context_window(segments: Sequence[dict], index: int) -> list:
+    """The matched segment plus up to SEARCH_CONTEXT_SEGMENTS temporally
+    adjacent neighbours either side -- see that constant for why adjacency
+    is checked rather than assumed. Stops at the first real gap, so the
+    quote never spans one."""
+    lo = index
+    for _ in range(SEARCH_CONTEXT_SEGMENTS):
+        if lo == 0 or not _adjacent(segments[lo - 1], segments[lo]):
+            break
+        lo -= 1
+    hi = index
+    for _ in range(SEARCH_CONTEXT_SEGMENTS):
+        if hi + 1 >= len(segments) or not _adjacent(segments[hi], segments[hi + 1]):
+            break
+        hi += 1
+    return list(segments[lo : hi + 1])
+
+
 async def list_pages(
     *,
     page: int = 1,
@@ -3102,7 +3162,10 @@ async def list_pages(
     `search_corpus`, which spans every version: a query that only matches
     an old, demoted version's text should still find the page, but never
     show an excerpt the page itself doesn't display (real bug fixed
-    2026-08-08). See find_snippet().
+    2026-08-08). See _result_snippet(), which also derives each result's
+    deep link from those same already-loaded segments -- the timestamp is
+    a free by-product of text this query pays for regardless, not a
+    second read.
 
     The keyword search covers *every* TranscriptVersion of a page (the
     corpus is computed over all of them, see compute_search_corpus()), so
@@ -3248,8 +3311,18 @@ async def list_pages(
                 total = (await session.execute(count_stmt)).scalar_one()
 
         # Snippet inputs for the returned rows only: the default version's
-        # segments (see the docstring for why not search_corpus).
+        # segments (see the docstring for why not search_corpus). These
+        # also carry the deep link -- a segment knows its own `start`,
+        # which is the whole reason a result can offer "play from 1:04:22"
+        # rather than dropping the reader at the top of a 3-hour video.
         default_segments_by_page: dict[int, list] = {}
+        # Which of these pages already have a stored frame. Only consulted
+        # for keyword searches (the bare browse listing shows no cards),
+        # and deliberately does NOT warm a miss the way /m/{slug} does --
+        # a crawler paging through results would otherwise fire a whole
+        # page's worth of ffmpeg jobs per request. See
+        # pages_with_thumbnails()'s own docstring.
+        carded: set = set()
         if keyword and page_rows:
             page_ids = [r[0] for r in page_rows]
             seg_rows = (
@@ -3263,18 +3336,67 @@ async def list_pages(
                 )
             ).all()
             default_segments_by_page = {pid: segs or [] for pid, segs in seg_rows}
+            carded = await pages_with_thumbnails(session, page_ids)
 
-    def _snippet_for(page_id: int, agenda_items: Optional[list]) -> Optional[str]:
+    def _result_snippet(page_id: int, slug: str, agenda_items: Optional[list]) -> dict:
+        """The quote for one search result, plus the deep link into the
+        moment it was said when that moment is knowable.
+
+        **The quote stays query-matched.** A search result's job is
+        showing *why this matched*, which the state/hub pages' heuristic
+        pick deliberately does not answer -- what those pages lend here is
+        the deep link, the timestamp and the card, never the selection.
+
+        Two paths, and the fallback is not a rare edge case:
+        find_matching_segment() works per segment, so a quoted phrase
+        split across a cue boundary ("data center" ending one caption and
+        starting the next) matches the joined blob but no single segment.
+        An agenda-only match lands here too. Both still get a snippet,
+        just no timestamp -- exactly the behaviour every result had before
+        deep links existed.
+        """
         # Deliberately excludes title/jurisdiction (see find_snippet()'s
         # docstring) since those already render directly above this in
         # meeting_list.html.
+        plain = {
+            "snippet": None,
+            "start_seconds": None,
+            "timestamp_label": None,
+            "deep_link": None,
+            "card_url": None,
+        }
         if not keyword:
-            return None
+            return plain
+
+        segments = default_segments_by_page.get(page_id, [])
+        match = find_matching_segment(keyword, segments, fuzzy)
+        if match is not None and match.get("start") is not None:
+            index = match["index"]
+            context = " ".join(
+                (seg.get("text") or "") for seg in _context_window(segments, index)
+            )
+            start = match["start"]
+            return {
+                # The widened context re-marked, falling back to the
+                # single segment's own quote if the term somehow doesn't
+                # survive the join (it always should -- belt and braces on
+                # a path that must never render an empty <blockquote>).
+                "snippet": find_snippet(keyword, [context], fuzzy)
+                or match["quote_html"],
+                "start_seconds": start,
+                "timestamp_label": format_timestamp_label(start),
+                "deep_link": f"/m/{slug}?t={int(start)}",
+                "card_url": (
+                    f"/m/{slug}/card.jpg?t={int(start)}" if page_id in carded else None
+                ),
+            }
+
         agenda_text = " ".join(item.get("text", "") for item in (agenda_items or []))
-        transcript_text = " ".join(
-            seg.get("text", "") for seg in default_segments_by_page.get(page_id, [])
-        )
-        return find_snippet(keyword, [transcript_text, agenda_text], fuzzy)
+        transcript_text = " ".join(seg.get("text", "") for seg in segments)
+        return {
+            **plain,
+            "snippet": find_snippet(keyword, [transcript_text, agenda_text], fuzzy),
+        }
 
     total_pages = max(1, (total + page_size - 1) // page_size)
     return {
@@ -3300,7 +3422,11 @@ async def list_pages(
                     and _has_real_warning_free_transcript(warnings)
                 ),
                 "has_agenda": bool(agenda_items),
-                "snippet": _snippet_for(page_id, agenda_items),
+                # snippet + start_seconds/timestamp_label/deep_link/card_url
+                # -- the last four are None whenever the match could not be
+                # tied to a real transcript segment, and meeting_list.html
+                # renders the row exactly as it always did in that case.
+                **_result_snippet(page_id, slug, agenda_items),
                 # "upcoming" / "recent" / None -- drives the date pill in
                 # meeting_list.html. Any version at all counts as "has a
                 # transcript" for this purpose (a garbled one is still
