@@ -4592,6 +4592,9 @@ def _featured_entry(
         "slug": page["slug"],
         "title": page["title"],
         "jurisdiction": page["jurisdiction"],
+        # Not rendered -- carried so _build_featured()'s body cap can see
+        # it without re-reading the pool.
+        "meeting_body": page.get("meeting_body"),
         "hub_slug": jurisdiction_hub_slug(page["jurisdiction"]),
         "date": page["date"],
         "start_seconds": start,
@@ -4661,26 +4664,49 @@ def _build_featured(
     topic_slug: Optional[str],
     limit: int,
     topic_counts: Optional[dict[str, int]] = None,
+    max_per_body: Optional[int] = None,
+    max_per_jurisdiction: Optional[int] = None,
 ) -> list[dict]:
     """Featured cards for the newest pages that have a usable highlight.
 
-    Date-ordered, but with a **topic diversity cap**: at most
-    `MAX_FEATURED_PER_TOPIC` cards may share a topic, so one busy subject
-    cannot take over the page. Real case that prompted this (San Diego's
-    hub, 2026-08-23): six cards, two of them cannabis and two housing,
-    while a public comment delivered *in character as Darth Vader* about
-    flock camera surveillance sat in the same pool. Recency alone had no
-    way to prefer the interesting one.
+    Date-ordered, but with **diversity caps**, so one busy subject (or
+    one busy committee) cannot take over the page. Real case that
+    prompted the topic cap (San Diego's hub, 2026-08-23): six cards, two
+    cannabis and two housing, while a public comment delivered *in
+    character as Darth Vader* about flock camera surveillance sat in the
+    same pool. Recency alone had no way to prefer the interesting one.
+
+    Three caps, and **which ones apply is a property of the surface, not
+    a default** -- they answer different questions and the wrong one
+    actively hurts:
+
+    - **topic** (`MAX_FEATURED_PER_TOPIC`), always on in the default
+      view. Skipped when a topic is explicitly selected, where every card
+      is about that topic by construction and capping is self-defeating.
+    - **meeting body** (`max_per_body`), for a *jurisdiction hub*. One
+      government, many bodies: six City Council cards where the Planning
+      Commission and the school board were also available is a worse
+      page. Deliberately NOT used on a state page, where a dozen cards
+      from a dozen different cities are nearly all "City Council" and
+      capping would exclude most of the state to manufacture variety
+      that means nothing.
+    - **jurisdiction** (`max_per_jurisdiction`), the mirror image: for
+      pools spanning many governments (a state page, and the national
+      feed) where the risk is six meetings from whichever city was
+      bulk-ingested last. Meaningless on a hub, where every card is the
+      same government.
 
     Two passes rather than a sort, so recency still drives the result:
-    pass one takes cards whose topics are not yet at the cap, pass two
-    backfills any remaining slots from what was skipped, in the original
-    date order. That means the cap never *shrinks* the featured set --
-    a page whose meetings genuinely all share one topic still fills up.
+    pass one takes cards not yet at any applicable cap, pass two
+    backfills remaining slots from what was skipped, in the original date
+    order. That means a cap never *shrinks* the featured set -- a page
+    whose meetings genuinely all share one topic (or one body) still
+    fills up.
 
-    A card with no topics at all is never constrained: it cannot cluster,
-    and excluding it would quietly bias the page toward topic-tagged
-    meetings.
+    A card with no topics at all is never constrained by the topic cap:
+    it cannot cluster, and excluding it would quietly bias the page
+    toward topic-tagged meetings. Same reasoning for a card with no
+    recorded meeting body or jurisdiction.
     """
     candidates: list[dict] = []
     for page in pages:
@@ -4691,26 +4717,52 @@ def _build_featured(
         if entry is not None:
             candidates.append(entry)
 
-    # With a topic explicitly selected every card is *about* that topic by
-    # construction, so a diversity cap would be self-defeating.
-    if topic_slug:
-        return candidates[:limit]
+    used_topic: dict[str, int] = {}
+    used_body: dict[str, int] = {}
+    used_jurisdiction: dict[str, int] = {}
+
+    def _at_cap(entry: dict) -> bool:
+        topics = entry["topics"]
+        if (
+            not topic_slug
+            and topics
+            and all(
+                used_topic.get(slug, 0) >= MAX_FEATURED_PER_TOPIC for slug in topics
+            )
+        ):
+            return True
+        body = (entry.get("meeting_body") or "").strip()
+        if max_per_body and body and used_body.get(body, 0) >= max_per_body:
+            return True
+        jurisdiction = (entry.get("jurisdiction") or "").strip()
+        if (
+            max_per_jurisdiction
+            and jurisdiction
+            and used_jurisdiction.get(jurisdiction, 0) >= max_per_jurisdiction
+        ):
+            return True
+        return False
+
+    def _record(entry: dict) -> None:
+        for slug in entry["topics"]:
+            used_topic[slug] = used_topic.get(slug, 0) + 1
+        body = (entry.get("meeting_body") or "").strip()
+        if body:
+            used_body[body] = used_body.get(body, 0) + 1
+        jurisdiction = (entry.get("jurisdiction") or "").strip()
+        if jurisdiction:
+            used_jurisdiction[jurisdiction] = used_jurisdiction.get(jurisdiction, 0) + 1
 
     featured: list[dict] = []
     skipped: list[dict] = []
-    used: dict[str, int] = {}
     for entry in candidates:
         if len(featured) >= limit:
             break
-        topics = entry["topics"]
-        if topics and all(
-            used.get(slug, 0) >= MAX_FEATURED_PER_TOPIC for slug in topics
-        ):
+        if _at_cap(entry):
             skipped.append(entry)
             continue
         featured.append(entry)
-        for slug in topics:
-            used[slug] = used.get(slug, 0) + 1
+        _record(entry)
     if len(featured) < limit:
         featured.extend(skipped[: limit - len(featured)])
     return featured
@@ -5017,6 +5069,19 @@ JURISDICTION_HUB_MIN_INDEXABLE = 2
 # after a handful of snippets the reader is better served by the full
 # meeting list directly below them.
 HUB_FEATURED_COUNT = 6
+# At most this many featured cards on a hub may come from the same
+# meeting body. A hub is one government, so its cards routinely all read
+# "City Council" while the Planning Commission, the school board and the
+# transit authority sit unshown in the same pool -- and a reader looking
+# for the body that actually decides their issue has no way in. Two, not
+# one: a council genuinely does meet most often, and forcing a single
+# card would misrepresent the hub as much as six would.
+#
+# Hub-only on purpose -- see _build_featured()'s docstring. On a state
+# page a dozen cards from a dozen cities are nearly all "City Council",
+# where the same cap would exclude most of the state to manufacture
+# variety that means nothing.
+MAX_FEATURED_PER_BODY = 2
 
 
 def _hub_base_conditions():
@@ -5139,11 +5204,21 @@ async def get_jurisdiction_hub_data(
     active_slug = topic_slug if topic_slug in TOPICS_BY_SLUG else None
     topic_counts = _pool_topic_counts(highlights)
     featured = _build_featured(
-        pool, highlights, active_slug, HUB_FEATURED_COUNT, topic_counts
+        pool,
+        highlights,
+        active_slug,
+        HUB_FEATURED_COUNT,
+        topic_counts,
+        max_per_body=MAX_FEATURED_PER_BODY,
     )
     if active_slug and not featured:
         featured = _build_featured(
-            pool, highlights, None, HUB_FEATURED_COUNT, topic_counts
+            pool,
+            highlights,
+            None,
+            HUB_FEATURED_COUNT,
+            topic_counts,
+            max_per_body=MAX_FEATURED_PER_BODY,
         )
         active_slug = None
     _attach_thumbnails(featured, carded)
@@ -6727,6 +6802,27 @@ async def top_search_keywords(days: int = 30, limit: int = 20) -> list[tuple[str
             )
         ).all()
     return [(row[0], row[1]) for row in rows]
+
+
+async def get_highlight_text(page_id: int) -> Optional[str]:
+    """This meeting's stored highlight quote, or None.
+
+    One indexed primary-key read (`meeting_highlights.meeting_page_id` is
+    the PK), kept as its own query rather than joined into
+    `get_page_by_slug()` -- that function has many callers and none of
+    the others want this. Returns None both when nothing was ever
+    computed and when the meeting had nothing quotable at all (808 of
+    2,362 pages at the 2026-08-23 backfill), so every caller needs a
+    fallback rather than treating a quote as guaranteed.
+    """
+    async with async_session() as session:
+        return (
+            await session.execute(
+                select(MeetingHighlight.text).where(
+                    MeetingHighlight.meeting_page_id == page_id
+                )
+            )
+        ).scalar_one_or_none()
 
 
 async def pages_with_thumbnails(session, page_ids: Sequence[int]) -> set[int]:

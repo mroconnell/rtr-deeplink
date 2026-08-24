@@ -957,7 +957,11 @@ meeting-body breakdown ("City Council (30) · Planning Commission (12)"
 from `meeting_body`), date range, the same featured snippets and topic
 chips the state pages carry (6 cards rather than 12 — a hub is one
 government, so after a handful the full meeting list below serves the
-reader better), a `BreadcrumbList` (Home › State › Jurisdiction),
+reader better; those 6 are also capped at
+`MAX_FEATURED_PER_BODY` per `meeting_body` since a hub is one government
+with many bodies, deliberately *unlike* the state pages, where nearly
+every card would be a "City Council" — see `STATE_HUB_PAGES.md` §6), a
+`BreadcrumbList` (Home › State › Jurisdiction),
 `VideoObject` structured data and breadcrumb nav, and links to `/state/{slug}` and the
 pre-filtered `/meetings?jurisdiction=` search; every `/m/{slug}` page
 links "More {Jurisdiction} meetings" to its hub. **Thin-content
@@ -1611,6 +1615,22 @@ clickable.
 > (no account exists yet) — treat it as best-effort until one is
 > watched, same as any schema-verified-but-not-content-verified path
 > in this repo; see `BACKLOG.md` for the open residuals.
+
+## Meeting descriptions (`<meta name="description">` / `og:description`)
+
+A `/m/{slug}` page's description is a **real quote from its own
+transcript** — the stored `meeting_highlights` row, trimmed on a word
+boundary by `meta_description()` (WO-49, 2026-08-24). Before that, all
+~2,400 pages shared one sentence shape ("A public meeting in X on Y,
+with video and transcript."), which is exactly the templated-thin
+content the state/hub rebuild was diagnosed with, on the page type
+Google already indexes best. The `<title>` carries
+meeting/jurisdiction/date, so the description spends its whole budget on
+the line unique to the page. Plain text by construction — meta content
+cannot carry markup, so this goes through `display_text()`, never
+`highlight_html()`. A meeting with nothing quotable keeps the generic
+sentence; that fallback is load-bearing, not theoretical (808 of 2,362
+pages had no usable highlight at the 2026-08-23 backfill).
 
 ## Meeting card images (`og:image` / `thumbnailUrl`)
 
