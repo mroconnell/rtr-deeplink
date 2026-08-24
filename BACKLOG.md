@@ -54,7 +54,9 @@ Standing decisions — do NOT re-raise  (3)
   Prefer a generated/computed column over "add a column, then backfill…
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (13)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (15)
+  [JUST-DO-IT] `[EASY]` Nothing notices a dead worker pool — chunks
+  [JUST-DO-IT] The worker's requirements can silently drift out of
   [JUST-DO-IT] A bulk re-resolve gets this IP blocked by YouTube, and
   [JUST-DO-IT] `[EASY]` `is_extractable()` excludes only YouTube, so
   [JUST-DO-IT] `[EASY]` A Viebit meeting's "can't transcribe this"
@@ -278,6 +280,71 @@ Small, self-contained, no open design question. Jurisdiction-extraction
 items that also qualify live under **Platform & jurisdiction coverage**
 so that work reads together.
 
+
+- **[JUST-DO-IT] `[EASY]` Nothing notices a dead worker pool — chunks
+  can sit flat for 9 hours while every dashboard reads "healthy"
+  (2026-08-24).** Both workers crash-looped for **9.3 hours** and not one
+  existing signal fired. Worth building the check that would have caught
+  it, because the failure is genuinely invisible otherwise:
+
+  - `/internal/transcription-queue-stats` read **10 active jobs, 95
+    chunks pending** — indistinguishable from a busy, correctly-paced
+    system.
+  - Jobs kept being *created* the whole time, so the queue looked alive.
+  - **No failure emails, and nothing in the WO-46 digest** — dead workers
+    produce no failures. Nothing ever got far enough to fail.
+  - The `/loop`-style re-queue script sitting at its concurrency cap
+    looks exactly like healthy pacing.
+
+  The one signal that separated the two:
+  **`cumulative_chunks_completed_all_time` did not move** (4028 at 03:07,
+  4028 at 12:23).
+
+  **Fix**: alert when `cumulative_chunks_completed_all_time` is flat
+  while `active_jobs > 0` over some window. The daily report
+  (`archive/utils/email.py`'s `send_worker_daily_report()`) *already
+  computes both numbers* and already diffs the cumulative figure against
+  `WorkerReportSnapshot` — it just never compares them to each other. A
+  "chunks completed: 0 while 10 jobs were active" line in that email
+  would have surfaced this at the next daily send; something faster
+  (UptimeRobot against a small endpoint) would have caught it in
+  minutes. Pick one deliberately — see `BACKLOG.md`'s Standing decisions
+  on `ALERT_WEBHOOK_URL`, declined 2026-08-21, before adding a new
+  alerting channel. Full incident writeup: `BACKLOG_DONE.md`.
+
+- **[JUST-DO-IT] The worker's requirements can silently drift out of
+  sync with its real import graph, and CI cannot see it (2026-08-24).**
+  Root cause of the 9.3-hour outage above. `worker/main.py` imports
+  `archive.db.crud`, which imports `archive/utils/date_status.py` at
+  **module scope** — a *presentation* module. WO-50 added
+  `from markupsafe import Markup, escape` there for the date pills, and
+  the worker (whose requirements are deliberately lean — *"No fastapi/
+  uvicorn/jinja2/slowapi here"*) had no `markupsafe`. It could not start.
+
+  **Why CI is blind to this by construction**: tests run in an
+  environment that has `markupsafe` (via `jinja2`, via the Archive's own
+  deps), so the import resolves fine everywhere except the one process
+  that matters. Nothing in the test suite exercises "can the worker's
+  declared dependency set actually import the worker."
+
+  **Fix, in cost order:**
+  1. **A CI guard** — walk the real import graph from `worker/main.py`
+     across `app/` and `archive/` and assert every third-party top-level
+     import is in `worker/requirements.txt`. This was written ad hoc
+     during the incident and worked (46 files; correctly found
+     `markupsafe` as the only genuine gap, and correctly did *not* flag
+     `playwright`, which sits in a `try/except` with a comment saying it
+     is deliberately absent). Needs that try/except tolerance to avoid a
+     false positive.
+  2. **Stop `crud.py` importing a presentation module at module scope** —
+     the actual fragility. Either move the display helpers out of
+     `date_status.py`, or import it lazily inside the functions that
+     need it. Until this changes, *any* HTML-shaped dependency added to
+     `date_status.py` becomes a hard worker dependency again.
+
+  Note the shipped hotfix (`markupsafe` in `worker/requirements.in`)
+  addresses neither — it fixes this one instance and leaves the
+  mechanism intact.
 
 - **[JUST-DO-IT] A bulk re-resolve gets this IP blocked by YouTube, and
   the script's circuit breaker doesn't notice (measured twice,

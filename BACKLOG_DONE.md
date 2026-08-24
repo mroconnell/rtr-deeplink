@@ -6,6 +6,77 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Both transcription workers dead for 9.3 hours on a missing `markupsafe`, and every health signal read "fine" [Done 2026-08-24]
+
+Noticed only because a routine status check compared
+`cumulative_chunks_completed_all_time` against its value from nine hours
+earlier and found it **identical: 4028 at 03:07 UTC, 4028 at 12:23**.
+Everything else looked healthy.
+
+**The crash**, identical on both workers, every ~5 minutes since
+03:04:26 UTC (the deploy that carried WO-50):
+
+```
+File "/srv/archive/db/crud.py", line 30, in <module>
+  from ..utils.date_status import (
+File "/srv/archive/utils/date_status.py", line 25, in <module>
+  from markupsafe import Markup, escape
+ModuleNotFoundError: No module named 'markupsafe'
+```
+
+**Cause.** WO-50 (`8597cf9`, #363) added a direct `markupsafe` import to
+`archive/utils/date_status.py` for the date pills. `archive/db/crud.py`
+has imported `date_status` at module scope since #136, and
+`worker/main.py` imports `archive.db.crud` — so a presentation-layer
+dependency became a hard runtime dependency of a process that serves no
+HTML. The Archive service was unaffected (it gets `markupsafe`
+transitively via `jinja2`); only the worker, whose requirements are
+deliberately lean, could not start.
+
+**Why nothing caught it — worth reading before trusting any of these
+signals again:**
+
+- `/internal/transcription-queue-stats` reported **10 active jobs, 95
+  remaining chunks**. That is what a busy, correctly-paced system looks
+  like. Jobs kept being *created* by the feed scripts throughout.
+- **Zero failure emails.** `_send_failure_email()` only fires from the
+  chunk-processing paths; a worker that cannot start never reaches them.
+- **Nothing in WO-46's new failure digest**, for the same reason — dead
+  workers generate no failures. The digest is a good instrument for the
+  wrong half of this problem.
+- **CI passed**, and could not have done otherwise: tests run in an
+  environment where `markupsafe` is installed, so the import resolves
+  everywhere except the one process that matters.
+- An in-flight re-queue loop sitting at its concurrency cap was read (by
+  this session, at 03:30) as "alive and paced correctly." A capped queue
+  and a dead worker pool present identically. **That misread cost hours**
+  — the lesson is that queue depth says nothing without a throughput
+  number beside it.
+
+**Fix shipped** (#370): `markupsafe` added to `worker/requirements.in`
+and `.txt`, with a comment explaining it is *not* a stray Jinja leftover
+— the file's own header says no Jinja is needed here, which is exactly
+what would make it look removable later.
+
+**Checked for further landmines rather than fixing only the reported
+one.** Walked the real import graph from `worker/main.py` — 46 files
+across `app/` and `archive/` — against `worker/requirements.txt`.
+`markupsafe` was the only genuine gap. `playwright` also appears
+undeclared but sits inside a `try/except` with a comment stating it is
+deliberately absent from the worker, so it degrades as designed. That
+walker is worth keeping as a CI guard — filed in `BACKLOG.md`.
+
+**Recovery.** Workers redeployed off `209bba2` at ~12:51 UTC and
+immediately resumed: zero crashes in subsequent logs, chunks moving
+again (4028 → 4031 within minutes), both workers claiming real work
+(job 796 chunk 1/6; job 797 chunk 4/14 — one of the re-queued IQM2
+pages). No data was lost: the queued jobs simply sat unclaimed and were
+picked up on restart.
+
+**Two follow-ups filed in `BACKLOG.md`** — a liveness check for "chunks
+flat while jobs active", and the import-boundary problem that made this
+possible. The hotfix addresses neither mechanism, only this instance.
+
 ## Thin hubs inherit their state's topic chips, and an internal topic-candidate view (WO-51) [Done 2026-08-24]
 
 Two independent items, both from `STATE_HUB_PAGES.md` §9's ideas list
