@@ -49,8 +49,23 @@ properties make it safe rather than a new bug, each with its own test in
 Reader-facing copy is Ryan's, verbatim, rendered in the existing
 `transcript_warnings` box (verified in-browser): *"This transcript covers
 3 hours 12 minutes of a 3 hour 40 minute meeting — the transcription was
-interrupted before we could finish it. We'll try to finish it again
-soon."* Falls back to a coverage-free form when the probed duration is
+interrupted before we could finish it. We'll try to finish it again."*
+
+The draft ended "again **soon**"; Ryan cut it before merge, correctly.
+The retry is real — the marker keeps the page in the auto-transcription
+pool — but `_cooldown_active()`'s backoff starts at a day and doubles per
+consecutive failure up to thirty, so "soon" stops being true on exactly
+the pages that fail most. **Printing the real delay instead was
+considered and rejected for the same reason, not for difficulty**: it is
+computable at publish time, but the warning is a *stored* string, written
+once and never revised, so any "in about a day" or "after August 25" is
+wrong from the second day on — and a stale date reads worse than no date.
+The only version that stays true would be computed at render time, which
+means a query on the meeting-page path for a sentence nobody is waiting
+on. Worth remembering as a shape: a promise about the future cannot live
+in a field that is only written once.
+
+Falls back to a coverage-free form when the probed duration is
 missing or not greater than what was transcribed, a wrong number being
 worse than no number. `_duration_words()` carries an `attributive` flag
 because English drops the plural in front of a noun ("a 3 hour 40 minute

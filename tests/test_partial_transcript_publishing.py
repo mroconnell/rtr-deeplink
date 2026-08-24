@@ -179,7 +179,10 @@ async def test_the_warning_names_its_own_coverage():
     assert warning == (
         "This transcript covers 30 minutes of a 45 minute meeting — "
         "the transcription was interrupted before we could finish it. "
-        "We'll try to finish it again soon."
+        # Deliberately no "soon" -- see the constant's own comment: the
+        # retry backoff reaches 30 days on exactly the pages that fail
+        # most, and this string is stored once and never revised.
+        "We'll try to finish it again."
     )
 
 

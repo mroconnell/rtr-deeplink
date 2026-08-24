@@ -5706,9 +5706,23 @@ def _partial_transcription_warning(
     marker substring is present either way, so the quality gates behave
     identically for both forms.
     """
+    # No time claim, deliberately (2026-08-24). The first draft ended
+    # "We'll try to finish it again soon." A retry genuinely is queued --
+    # the marker keeps this page in the auto-transcription pool -- but
+    # _cooldown_active()'s backoff starts at a day and doubles per
+    # consecutive failure up to thirty, so "soon" quietly stops being
+    # true on exactly the pages that fail most.
+    #
+    # Printing the real delay instead was considered and rejected for the
+    # same reason, not for difficulty: it is computable here, but this
+    # string is written once and never revised, so any "in about a day"
+    # or "after August 25" is wrong from the second day onward -- and a
+    # stale date reads worse than no date at all. The only version that
+    # stays true would be computed at render time, which is a query on
+    # the meeting-page path for a sentence nobody is waiting on.
     tail = (
         "the transcription was interrupted before we could finish it. "
-        "We'll try to finish it again soon."
+        "We'll try to finish it again."
     )
     if total_seconds and total_seconds > covered_seconds > 0:
         return (
