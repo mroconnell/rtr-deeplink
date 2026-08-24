@@ -26,6 +26,8 @@ idna==3.18
     # via yarl
 langdetect==1.0.9
     # via -r requirements.in
+markupsafe==3.0.3
+    # via -r requirements.in
 multidict==6.7.1
     # via
     #   aiohttp
