@@ -1237,13 +1237,49 @@ are all truthy-gated, so a video-less resolve can't wipe them. It *can*
 flip `page.platform` back to `hyland`, which is unconditional. Cosmetic,
 but it is why these may show the wrong platform in `/coverage` later.
 
-**Not generalisable, deliberately.** Of the 9 archived
-`OnBaseAgendaOnline` pages across 6 tenants, the other 5 (Compton,
-Centennial, Hamilton County OH) resolve real video fine — OnBase Agenda
-Online is not an agenda-only platform, and this was ~4 pages out of
-2,468. The reusable part is the *detection*: "resolves with no video"
-now surfaces daily in WO-46's failure digest, which is how the next
-batch of these will be noticed without anyone reviewing pages by hand.
+**Scale — corrected 2026-08-24, and the first count was wrong by ~4×.**
+The original version of this entry said "9 archived `OnBaseAgendaOnline`
+pages across 6 tenants … ~4 pages out of 2,468 … not generalisable."
+That came from grepping hostnames for `onbase`, which **misses most of
+the platform**: OnBase/Hyland tenants also live on `*.hylandcloud.com`,
+`*.databankcloud.com`, and plain custom domains with no vendor string at
+all (`egenda.scgov.net`, `agenda.modestogov.com`, `dms.missionviejo.gov`,
+`isearchmonterey.org`, `agendas.fitchburgwi.gov`, `isearchmonterey.org`).
+Matching on the `OnBaseAgendaOnline`/`agendaonline` **path** instead
+gives the real population:
+
+```
+31 pages across 25 tenants (of 2,482 archived pages)
+17 of the 31 resolve with NO video
+ 1 of the 31 has real captions (meetings.muni.org, 2,261 segments)
+```
+
+**What survives from the original read:** it genuinely is *per-tenant*,
+not a platform property — 14 of 31 resolve real video fine (Compton,
+Centennial, Hamilton County OH, Whittier, Steamboat Springs, Concord,
+Durango, Westerville, Gilbert…). OnBase Agenda Online is not an
+agenda-only system.
+
+**What does not survive:** "~4 pages, not generalisable." Seventeen
+video-less pages across ~15 tenants is a real class, and it is growing —
+three new tenants surfaced in the digest on 2026-08-23 alone
+(`egenda.scgov.net`, `meetings.muni.org`, `ecm.cityofsantacruz.com`).
+Four of the 17 are already accounted for (2 Santa Barbara repointed, 1
+with no recording anywhere, 1 Pittsburg repointed) and one is a
+future-dated meeting whose video simply does not exist yet, leaving
+**~12 genuinely open**, each needing its own "where does this
+jurisdiction actually put video" hunt — the method that worked is in
+this entry above.
+
+**Also worth knowing before anyone invests here:** video presence is not
+the same as *caption* presence. Exactly one of these 31 pages has real
+captions. So even repointing all 17 mostly buys pages that then need
+transcription, not pages that arrive with a transcript — unlike the
+Santa Barbara OMP case, which arrived with 1,787 cues.
+
+The reusable part is still the *detection*: "resolves with no video"
+surfaces daily in WO-46's failure digest, which is how the three new
+tenants were noticed within hours rather than by a hand audit.
 
 ### `[NEEDS-AUDIT]` Duration alone cannot separate a very short real meeting from an ad
 
