@@ -349,6 +349,42 @@ async def test_transcribe_meeting_retries_a_chunk_extraction_that_fails_once(
     assert engine.chunks_transcribed == 2
 
 
+async def test_transcribe_meeting_skips_a_youtube_delegated_resolve(local_media):
+    """Real, confirmed case (2026-08-23): ashlandcowi.portal.civicclerk.com
+    event 395 has a real Planning Committee meeting whose CivicClerk
+    externalMediaUrl is a youtu.be short link, which civicclerk.py
+    correctly delegates to YouTubeAssetFinder -- so the resolve comes back
+    with video_format="youtube" and a real youtube.com/embed/ video_url,
+    not empty. Before this test's fix, that fell through straight to
+    probe_duration() and failed with the opaque "ffprobe couldn't read the
+    media" -- ffprobe genuinely cannot read a YouTube embed page -- instead
+    of the clear, already-existing "needs fetch_youtube_transcripts.py"
+    message process_one()'s own pre-filter gives for the same situation
+    when it has stale video_format to work from (which --url mode never
+    does, and which this exact page's fresh video_format didn't match
+    either -- CivicClerk pages don't start out YouTube-flagged)."""
+
+    class _YouTubeDelegated:
+        async def resolve(self, url):
+            return ResolvedMeeting(
+                platform="civicclerk",
+                source_url=url,
+                video_url="https://www.youtube.com/embed/xOL1UiwcMG8",
+                video_format="youtube",
+            )
+
+    local_media.setattr(tbl, "get_finder", lambda platform: _YouTubeDelegated())
+
+    result = await tbl.transcribe_meeting(
+        _FakeEngine(),
+        "https://ashlandcowi.portal.civicclerk.com/event/395/media",
+        "civicclerk",
+        chunk_size_seconds=900,
+    )
+    assert result["ok"] is False
+    assert "YouTube-backed" in result["reason"]
+
+
 async def test_transcribe_meeting_does_not_retry_a_missing_ffmpeg(local_media):
     """ffmpeg absent from PATH is a broken machine, not a flaky CDN --
     retrying it only makes an unattended run slower at reaching the same

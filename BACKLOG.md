@@ -94,7 +94,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (7)
   28 well-formed IQM2 queue rows point at retired tenants…
   Some Swagit meetings have no single "whole meeting" video file…
 
-Platform & jurisdiction coverage  (32)
+Platform & jurisdiction coverage  (33)
+  `[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
   [LATER] `[EASY]` Give `/meetings` search results the state-page card
   [LATER] `[BIG]` Put the topic chips and the recent-moments feed on
   `[JUST-DO-IT]` `[EASY]` Nine PrimeGov pages and two real meetings…
@@ -1009,11 +1010,39 @@ results together using Swagit's own seq/title ordering. Likely a much
 broader set across Swagit generally, not just these 43 — worth a fresh,
 broader live audit once the design question is answered.
 
+**A second confirmed instance, 2026-08-23**: Apple Valley, MN
+(`applevalleymn.new.swagit.com/videos/11022016-1218`) hit this same
+pattern during a local-Whisper batch, skipped as an implausible-duration
+(156s) short clip. Ryan checked the real page directly: it genuinely is
+split into multiple shorter per-agenda-item videos, not a broken or
+missing recording — "there are multiple videos." Doesn't settle the
+"not yet answered" question above (still unconfirmed whether a combined
+full-session file exists anywhere for this customer), but does confirm
+the pattern is real on a second, unrelated Swagit tenant, not a Yolo
+County-only oddity. Ryan's own read on the fix direction: check for a
+combined long-video file first if one exists; if not, resolve each
+agenda-item video and either concatenate them into one transcript or
+feed them to the pipeline as pre-chunked units instead of one continuous
+duration — leaning toward the "treat each clip as its own unit" half of
+the design decision above over a virtual-timeline concatenation.
+
 ## Platform & jurisdiction coverage
 
 Everything adapter-, tenant-, or jurisdiction-extraction-shaped, kept
 together on purpose. Tags are inline here rather than hoisted into the
 actionability sections above.
+
+- **`[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
+  unreachable, jurisdiction unknown.** Skipped during a 2026-08-23
+  local-Whisper batch with "no usable audio/video source on re-resolve."
+  Confirmed directly (not just via the adapter): a plain `curl` times out
+  at the TCP level on both port 80 and 443 from this machine, DNS
+  resolves fine (152.10.10.157). Not a cablecast.tv-wide issue —
+  `barnstable.cablecast.tv` answered normally (200) in the same check. No
+  Wayback Machine snapshot exists for this URL, so the jurisdiction can't
+  be recovered that way either. Nothing to build — this tenant's own
+  server appears to be down, not a bug in this repo — worth a quick
+  re-check before assuming it is still down if this URL comes up again.
 
 - **[LATER] `[EASY]` Give `/meetings` search results the state-page card
   treatment — deep link, timestamp, video frame.** Search shows a
