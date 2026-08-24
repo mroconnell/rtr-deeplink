@@ -440,6 +440,34 @@ def display_text(text: str) -> str:
     return f"{prefix}{text}{suffix}"
 
 
+# How much of a highlight to put in a page's meta description. Google
+# renders roughly 155-160 characters and social cards less, but a longer
+# value is not penalised and the untruncated tail still counts for
+# relevance, so this errs slightly long rather than cutting a quote off
+# mid-thought at exactly the display limit.
+META_DESCRIPTION_CHARS = 200
+
+
+def meta_description(text: str) -> str:
+    """A stored highlight trimmed to meta-description length, cut on a
+    word boundary.
+
+    Plain text by construction -- meta/og content must not contain
+    markup, so this goes through display_text() (which only adds
+    ellipses) and never highlight_html() (which inserts <mark>).
+    """
+    quote = display_text(text)
+    if len(quote) <= META_DESCRIPTION_CHARS:
+        return quote
+    cut = quote[:META_DESCRIPTION_CHARS]
+    # Prefer the last word boundary, but never hand back a fragment so
+    # short it says nothing -- fall back to the hard cut instead.
+    space = cut.rfind(" ")
+    if space > META_DESCRIPTION_CHARS // 2:
+        cut = cut[:space]
+    return cut.rstrip(" ,;:-—") + "…"
+
+
 def highlight_html(text: str, topic_slugs: Iterable[str] = ()) -> str:
     """`text` as escaped HTML with each topic phrase wrapped in `<mark>`.
 

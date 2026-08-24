@@ -232,6 +232,21 @@ because transcription reliably produces it.
 
 ### Diversity cap
 
+**Which cap applies is a property of the surface (WO-49, 2026-08-24).**
+The three caps answer different questions and the wrong one actively
+hurts. A **hub** is one government with many bodies, so it caps per
+`meeting_body` (`MAX_FEATURED_PER_BODY`) — six City Council cards while
+the Planning Commission and the school board sit unshown is a worse page
+for someone looking for the body that decides their issue. Measured on a
+9-candidate pool: without it, 6 of 6 cards were City Council (**1**
+distinct body); with it, **4**. A **state page** must not use that cap —
+a dozen cards from a dozen cities are nearly all "City Council", so it
+would exclude most of the state to manufacture variety that means
+nothing; what a multi-government pool wants is `max_per_jurisdiction`,
+the mirror image. Note the topic cap does **not** substitute: in that
+same measurement each council meeting had a *different* topic, so topic
+diversity was satisfied while body diversity was at its worst.
+
 Featured sets are date-ordered but at most `MAX_FEATURED_PER_TOPIC` (2)
 cards may share a topic. The case that prompted it: San Diego's hub
 showed two cannabis cards and two housing cards while a public comment
@@ -311,6 +326,8 @@ content, not separate pages competing for the same query.
 | `STATE_FEATURED_COUNT` / `HUB_FEATURED_COUNT` | 12 / 6 | `db/crud.py` |
 | `MAX_TOPIC_CHIPS` | 12 | `db/crud.py` |
 | `MAX_FEATURED_PER_TOPIC` | 2 | `db/crud.py` |
+| `MAX_FEATURED_PER_BODY` | 2 (hub only) | `db/crud.py` |
+| `META_DESCRIPTION_CHARS` | 200 | `utils/highlights.py` |
 | `MAX_MARKED_TOPICS` | 1 | `db/crud.py` |
 | `MOST_ACTIVE_MIN_GOVERNMENTS` / `_WINDOW_DAYS` / `_COUNT` | 8 / 90 / 6 | `db/crud.py` |
 | `FRESHNESS_WINDOW_DAYS` | 7 | `db/crud.py` |
@@ -520,11 +537,20 @@ in anything.
 
 **Ideas not yet built**, roughly by value:
 
-- **Per-meeting-body diversity**, alongside per-topic — a hub whose
-  featured set is six City Council meetings could show the Planning
-  Commission and the school board instead.
-- **A snippet for the `og:description`** — these pages have real quotable
-  text now and still share as generic boilerplate.
+- ~~**Per-meeting-body diversity**, alongside per-topic~~ — shipped
+  WO-49, 2026-08-24; see the surface-specific cap note in §6.
+- ~~**A snippet for the `og:description`**~~ — shipped WO-49,
+  2026-08-24. Every `/m/` page previously carried the same sentence
+  shape ("A public meeting in X on Y, with video and transcript."), which
+  is the templated-thin content this whole rebuild was diagnosed with,
+  on the one page type Google was *already* indexing well. Now the stored
+  highlight fills it, trimmed on a word boundary by `meta_description()`
+  — plain text via `display_text()`, never `highlight_html()`, since meta
+  content cannot carry markup. A meeting with nothing quotable (808 of
+  2,362 at the backfill) keeps the generic sentence, so the fallback is
+  load-bearing, not theoretical. The `<title>` already carries
+  meeting/jurisdiction/date, which is what frees the description to spend
+  its whole budget on the one line unique to the page.
 - **Let a hub inherit its state's chips** when its own pool is too thin
   to produce any, so small hubs get a way in rather than nothing.
 - **Surface press coverage** beside a meeting: a small curated

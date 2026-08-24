@@ -12,7 +12,17 @@
      See iso_meeting_date()'s docstring (archive/utils/date_status.py) for
      the Search Console "invalid datetime value" flag this closes off. #}
   {% set iso_date = page.date|iso_date %}
-  {% set description = (page.title or "A public meeting") ~ (page.jurisdiction and (" in " ~ (page.jurisdiction|jurisdiction_display)) or "") ~ (page.date and (" on " ~ page.date) or "") ~ ", with video and transcript." %}
+  {#- A real quote from this meeting's own transcript when one was found,
+     else the generic sentence. Before WO-49 every one of ~2,400 pages
+     shared the same "A public meeting in X on Y, with video and
+     transcript." -- identical templated text, which is exactly the thin-
+     content shape Search Console was already declining hub pages over.
+     The <title> above carries the meeting/jurisdiction/date, so the
+     description is free to spend its whole budget on the one line that
+     is unique to this page. Plain text: meta content cannot carry
+     markup, so this comes from meta_description() (display_text +
+     trimming), never highlight_html(). -#}
+  {% set description = highlight_description or ((page.title or "A public meeting") ~ (page.jurisdiction and (" in " ~ (page.jurisdiction|jurisdiction_display)) or "") ~ (page.date and (" on " ~ page.date) or "") ~ ", with video and transcript.") %}
   <meta name="description" content="{{ description }}">
   {% if page.platform == "unknown" or page_is_empty %}
   {#- generic_fallback.py registers under platform_name = "unknown" -- the

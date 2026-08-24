@@ -46,6 +46,7 @@ from .utils import email as email_utils
 from .utils import social
 from .utils.clerk_auth import clerk_frontend_api_url, get_clerk_user_id
 from .utils.date_status import iso_meeting_date, meeting_date_status
+from .utils.highlights import meta_description
 from .utils.jurisdiction_format import (
     STATE_SLUG_TO_ABBR,
     US_STATE_ABBR_TO_NAME,
@@ -1543,6 +1544,15 @@ async def meeting_page(
     # themselves the first time anyone (or Googlebot) looks at them;
     # freshly ingested ones were already warmed at ingest.
     card_available = await crud.has_thumbnail(page["id"])
+    # The meta/og description. These pages hold real quotable text now,
+    # and were still sharing (and appearing in search results) as
+    # "A public meeting in X on Y, with video and transcript." -- the
+    # same sentence for all ~2,400 of them, which is the templated-thin
+    # shape the state/hub rebuild was diagnosed with. The stored
+    # highlight is the one line on the page unique to this meeting.
+    # None for a meeting with nothing quotable, where meeting_page.html
+    # keeps the generic sentence.
+    highlight_text = await crud.get_highlight_text(page["id"])
     if not card_available:
         _schedule_card_warm(
             background_tasks,
@@ -1595,6 +1605,10 @@ async def meeting_page(
             # link that was shared; the +20s lead lives in the card route.
             "card_available": card_available,
             "card_t": t if (t is not None and t >= 0) else None,
+            # Plain text, never markup -- meta content can't carry tags.
+            "highlight_description": (
+                meta_description(highlight_text) if highlight_text else None
+            ),
         },
     )
 
