@@ -89,7 +89,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (12)
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
   Product calls
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (7)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (8)
+  [NEEDS-AUDIT] Two pages have had a failed transcription job and
   [NEEDS-AUDIT] Render "HTTP health check failed" on
   [NEEDS-AUDIT] A chunk truncated only at its *tail* still passes the
   [NEEDS-AUDIT] `_sentence_case()` capitalises after every `\n`, so a
@@ -244,6 +245,30 @@ Durable calls worth carrying into any session, not narrow one-offs.
 judgment call, one ops-tooling choice — **live in `BACKLOG_DONE.md`'s
 Standing decisions archive** instead; check there before assuming
 something hasn't been decided.
+
+- **Do NOT backfill partial transcripts onto historically-failed jobs
+  (measured 2026-08-24).** Publishing partials shipped that day
+  (`crud._publish_partial_transcript()`), and the obvious follow-up —
+  "there are ~10,000 segments sitting unpublished on old failed jobs,
+  write the backfill" — is wrong, twice over. The real numbers, from the
+  Archive's Render shell: **48 failed jobs holding segments, 44 distinct
+  pages, of which 33 already have a good transcript now.** Only 11 would
+  gain anything, and only 4 of those exceed 38% coverage.
+  Two reasons not to build it, either sufficient:
+  1. **Most of the population self-heals.** 42 of the 48 failed at
+     exactly chunk 1 — the WO-45 ffmpeg HLS-seek signature — and that
+     bug is fixed, so those pages are re-transcribable *end to end*. A
+     partial would mark them `truncated_transcript` and put a thin
+     transcript where a complete one is now achievable: strictly worse.
+  2. **The rest publish themselves on their next attempt.** A page that
+     keeps failing gets re-queued, fails again, and that *new* job's
+     partial is published by the shipped code. A backfill only ever
+     helps a page that will never be retried at all — which is a
+     different problem (see the `[NEEDS-AUDIT]` entry on jobs 20 and 47
+     never recovering) and wants fixing rather than papering over.
+  Re-run the numbers before re-raising this; both read-only scripts are
+  reproduced in `BACKLOG_DONE.md`'s entry for the partial-publishing
+  work.
 
 ### Never run an unbounded scan or bulk workload against the production DB from an interactive session
 
@@ -967,6 +992,30 @@ convenient.
 Reproduced against real data, but the fix is a genuine open question.
 Jurisdiction-extraction bugs live under **Platform & jurisdiction
 coverage** instead.
+
+- **[NEEDS-AUDIT] Two pages have had a failed transcription job and
+  nothing else for months — are they still re-entering the queue at all?
+  (2026-08-24)** A page with no good transcript is supposed to stay an
+  auto-transcription candidate forever, subject only to
+  `_cooldown_active()`'s escalating backoff (1 day, doubling, capped at
+  30). Two rows say otherwise:
+  `/m/city-of-napa-2026-06-30-special-planning-commission` (**job 20**,
+  7/13 chunks) and
+  `/m/detroit-mi-2026-07-28-detroit-city-council-formal-session-07-28-2026`
+  (**job 47**, 1/21) still have no good transcript, while jobs in the
+  600-700s from the same survey have already recovered. Job ids that low
+  are months old; either they have been retried repeatedly and failed
+  silently every time, or they stopped qualifying as candidates and
+  nothing says so.
+  **Which of those it is, is the whole question**, and it matters beyond
+  these two rows: it is the difference between "the backoff is working
+  as designed" and "pages can fall out of the pool permanently and
+  nothing reports it". Start from their `TranscriptionJob` rows for the
+  page (is there anything after job 20/47?) and from
+  `find_auto_transcription_candidate()`'s own predicates against those
+  page ids. Found while measuring the partial-transcript backfill
+  question, which is where the survey output lives
+  (`BACKLOG_DONE.md`).
 
 - **[NEEDS-AUDIT] Render "HTTP health check failed" on
   `rtr-deeplink-archive` (2026-08-19, 2026-08-20) — a real candidate

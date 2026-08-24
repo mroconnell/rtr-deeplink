@@ -87,6 +87,66 @@ code made it pass.
 caption file that simply ends early with no round-number tell — stays
 live in `BACKLOG.md`.
 
+### The backfill that measurement talked us out of
+
+The obvious follow-up was to publish the partials already sitting on
+historically-failed jobs. Two read-only surveys on the Archive's Render
+shell settled it, and the second one corrected the first.
+
+**Survey 1 — how much is sitting there.** `status='failed'` with
+non-empty `partial_segments`, grouped by `chunks_completed/total_chunks`:
+**48 jobs, ~9,960 segments**, and the distribution was the finding:
+
+```
+1/2   7 jobs      1/9   2      2/4   1      3/8   1
+1/3   1           1/13  1      2/16  1      4/8   1
+1/4   4           1/14  2      3/4   1      7/13  1
+1/5   7           1/21  4
+1/6   4           1/22  2
+1/7   2           1/26  1
+1/8   3           1/27  1      1/41  1
+```
+
+**42 of 48 died at exactly chunk 1, across fifteen different
+`total_chunks` values.** That is the WO-45 ffmpeg HLS-seek signature
+exactly — chunk 0 needs no seek and succeeds, chunk 1 hits the broken
+seek — and it is independent confirmation of that root cause from data
+nobody had looked at while diagnosing it.
+
+**A framing error worth recording.** The first cut was "jobs with ≥2
+chunks done" — 6 of them — which undercounts, because a `1/2` job is
+*half a meeting*. On coverage fraction it is 11 jobs at ≥50%. Count the
+thing that matters to a reader, not the thing that is easy to filter on.
+
+**Survey 2 — does any of it still matter.** Survey 1 counted *jobs* and
+said nothing about the pages' current state. Joining to `MeetingPage`
+and the default `TranscriptVersion`, and classifying with the real gate
+(`_has_real_warning_free_transcript()`):
+
+```
+48 failed job(s) -> 44 distinct page(s)
+    33  HAS a good transcript now
+     8  no transcript at all
+     3  flagged (garbled/truncated)
+```
+
+**Three quarters had already recovered.** The remaining 11, best-first:
+75% `wilkes-county-nc-2021-11-02`, 54% `city-of-napa-2026-06-30`, 50%
+`belle-meade-tn-2026-06-16`, 38% `surfside-fl-2026-03-05`, then five at
+17-20% and two at 5%.
+
+**So: no backfill** (recorded as a Standing decision in `BACKLOG.md`).
+The population self-heals, and anything that does not recover publishes
+its own partial on its *next* failed attempt under the shipped code — a
+backfill only helps a page that will never be retried at all, which is a
+different problem and got its own `[NEEDS-AUDIT]` entry (jobs 20 and 47,
+months old, still nothing).
+
+Worth naming the concrete payoff: jobs **646 and 648** in that list are
+the two `play.champds.com` failures Ryan's original email on 2026-08-23
+was about, and ChampDS's root cause is still open. Their next attempt
+now leaves 75% of the Wilkes County meeting readable instead of nothing.
+
 ## The hidden population of Granicus-capped transcripts does not exist — measured, not assumed [Investigated 2026-08-24]
 
 Nothing shipped; this records a measurement that closed a real open
