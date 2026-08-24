@@ -12,7 +12,16 @@
     a crawler must see the quotes.
 
     `featured` from crud._build_featured(); `show_jurisdiction` is false
-    on a jurisdiction hub, where every card is the same government. -#}
+    on a jurisdiction hub, where every card is the same government.
+
+    **Deliberately uses no Jinja filters.** This partial is included by
+    both services (see shared_templates/ and the loader in each main.py),
+    and only the Archive's environment registers jurisdiction_display /
+    meeting_date_html -- depending on them 500'd the resolver's home page
+    while every test still passed (WO-50). Display strings are rendered
+    in crud._featured_entry() instead, which also lets them survive the
+    JSON hop to the resolver. `date_html` is |safe because Markup.format()
+    escaped the stored date before building its <time> element. -#}
 {% if featured %}
 <div class="featured-meetings">
   {%- for m in featured %}
@@ -31,7 +40,7 @@
       <h3 class="featured-title">
         <a href="/m/{{ m.slug }}">
           {%- if show_jurisdiction and m.jurisdiction -%}
-            {{ m.jurisdiction|jurisdiction_display }}
+            {{ m.jurisdiction_display }}
           {%- else -%}
             {{ m.title or "Untitled meeting" }}
           {%- endif -%}
@@ -39,7 +48,7 @@
       </h3>
       <p class="featured-where">
         {%- if show_jurisdiction and m.jurisdiction %}{{ m.title or "Untitled meeting" }}{% endif -%}
-        {%- if m.date %}{% if show_jurisdiction and m.jurisdiction %} &middot; {% endif %}{{ m.date|meeting_date_html }}{% endif -%}
+        {%- if m.date %}{% if show_jurisdiction and m.jurisdiction %} &middot; {% endif %}{{ m.date_html|safe }}{% endif -%}
       </p>
       {#- |safe is sound here: highlight_html() HTML-escapes the
          transcript text before inserting any <mark>, and the marks

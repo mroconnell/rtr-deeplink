@@ -47,6 +47,11 @@ services:
       paths:
         - app/**
         - shared_static/**
+        # Both web services render the partials in shared_templates/ (topic
+        # chips + featured meeting cards, WO-50). These are allow-lists, so
+        # omitting this would mean editing a shared partial deploys
+        # nothing -- silently, since the push itself succeeds.
+        - shared_templates/**
         - requirements.txt
         - render.yaml
       ignoredPaths:
@@ -218,6 +223,9 @@ services:
         - archive/**
         - app/**
         - shared_static/**
+        # See the resolver block above -- same shared partials, same
+        # allow-list trap.
+        - shared_templates/**
         - scripts/tier3_auto_transcription_queue.txt
         - render.yaml
       ignoredPaths:

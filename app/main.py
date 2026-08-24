@@ -164,7 +164,22 @@ app.mount(
     StaticFiles(directory=APP_DIR.parent / "shared_static"),
     name="shared_static",
 )
-templates = Jinja2Templates(directory=APP_DIR / "templates")
+# Two roots: this service's own templates, then the repo-root
+# shared_templates/ holding the partials both services render
+# (topic chips + featured meeting cards -- the Archive's /state/ and
+# /j/ pages and the resolver's home page, WO-50). Same "one copy,
+# mounted by both" shape as shared_static/. Own templates first, so a
+# service can always shadow a shared partial by name if it ever needs
+# to diverge.
+templates = Jinja2Templates(
+    directory=[APP_DIR / "templates", APP_DIR.parent / "shared_templates"]
+)
+# Same global the Archive exposes, for absolute canonical URLs. The
+# home page needs one because ?topic= makes real crawlable variants
+# of "/" that must all canonicalize back to it (WO-50).
+templates.env.globals["public_base_url"] = os.environ.get("PUBLIC_BASE_URL", "").rstrip(
+    "/"
+)
 templates.env.globals["GA_MEASUREMENT_ID"] = os.environ.get("GA_MEASUREMENT_ID", "")
 templates.env.globals["CLERK_PUBLISHABLE_KEY"] = os.environ.get(
     "CLERK_PUBLISHABLE_KEY", ""
@@ -1448,9 +1463,67 @@ async def confirm_transcription(request: Request, token: str = ""):
     )
 
 
+# Home-page payload cache. The Archive caches this too; this second
+# layer is what keeps a warm home page from making any network call at
+# all, which matters because this is the busiest page on the site and the
+# call sits in its critical path. Keyed by topic, tiny and bounded (one
+# entry per curated topic plus the default).
+_HOME_HIGHLIGHTS_CACHE: dict[str, tuple[float, Optional[dict]]] = {}
+_HOME_HIGHLIGHTS_TTL_SECONDS = 300.0
+# A failure is cached too, briefly. Without this a cold or down Archive
+# means every single home-page request pays the full timeout before
+# rendering the same page it would have rendered anyway.
+_HOME_HIGHLIGHTS_FAILURE_TTL_SECONDS = 30.0
+
+
+async def _home_highlights_cached(topic: str = "") -> Optional[dict]:
+    key = topic or ""
+    hit = _HOME_HIGHLIGHTS_CACHE.get(key)
+    now = time.monotonic()
+    if hit is not None:
+        age = now - hit[0]
+        ttl = (
+            _HOME_HIGHLIGHTS_TTL_SECONDS
+            if hit[1] is not None
+            else _HOME_HIGHLIGHTS_FAILURE_TTL_SECONDS
+        )
+        if age < ttl:
+            return hit[1]
+
+    data = await archive_client.home_highlights(topic)
+    _HOME_HIGHLIGHTS_CACHE[key] = (now, data)
+    return data
+
+
 @app.get("/")
-async def index(request: Request):
-    return templates.TemplateResponse(request, "index.html", {})
+async def index(request: Request, topic: str = ""):
+    """The home page: the lookup box, and below it what the archive
+    already holds -- topic chips, a national recent-moments feed, and a
+    browse-by-state row (WO-50).
+
+    Before this the page explained a *tool* and showed nothing of the
+    archive behind it, so a visitor arriving without a meeting URL to
+    paste had nothing to do and nothing to read. It is also the highest-
+    value page on the domain for indexing, and it carried no unique text.
+
+    `?topic=` filters the feed, same as on /state/ and /j/. Those
+    variants are real crawlable links but canonicalize to bare `/` (see
+    index.html), so they add text without competing for the same query.
+
+    **Degrades to nothing.** `_home_highlights_cached()` returns None
+    whenever the Archive is unset, down, cold or slow, and the template
+    renders the lookup box alone in that case -- the resolver treats the
+    Archive as optional everywhere else and this page must not be the
+    exception.
+    """
+    return templates.TemplateResponse(
+        request,
+        "index.html",
+        {
+            "highlights": await _home_highlights_cached(topic),
+            "active_topic": topic or None,
+        },
+    )
 
 
 @app.get("/meeting")

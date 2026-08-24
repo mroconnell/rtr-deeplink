@@ -2,7 +2,18 @@
 {% block title %}Red Tape Recordings{% endblock %}
 {% block meta %}
   <meta name="description" content="Paste the URL of a public government meeting recording and get back the video and its transcript, side by side, with a URL you can share that lands someone at that exact moment.">
+  {%- if public_base_url %}
+  {#- ?topic= produces real, crawlable variants of this page (the chips
+     below are links, deliberately, so a crawler follows them and each
+     variant renders its own real quotes server-side). They all
+     canonicalize here, same pattern the state pages use: the variants
+     add crawlable text without competing for the same query. -#}
+  <link rel="canonical" href="{{ public_base_url }}/">
+  {%- endif %}
 {% endblock %}
+{#- Tightens the lookup box's top margin only when the feed is actually
+   below it -- see .home-has-highlights in style.css. -#}
+{% block body_attrs %}{% if highlights and highlights.featured %} class="home-has-highlights"{% endif %}{% endblock %}
 {% block content %}
   <main class="center-page">
     <h1>Look up any public meeting</h1>
@@ -47,6 +58,58 @@
       <p class="example-url-note">A real Jacksonville, FL city council committee meeting &mdash; you&rsquo;ll get the video plus its full transcript, every line clickable and linkable.</p>
     </div>
   </main>
+  {#- What the archive already holds, below the lookup box (WO-50).
+      Before this the home page explained a *tool* and showed nothing of
+      the archive behind it, so a visitor arriving with no meeting URL to
+      paste had nothing to do -- on the highest-value page on the domain
+      for indexing, which also carried no unique text of its own.
+
+      `highlights` is None whenever the Archive is unset, down, cold or
+      slow (app/archive_client.py's home_highlights() returns None on any
+      failure, and app/main.py caches that). The page then renders the
+      lookup box alone, exactly as it did before. That degradation is the
+      point, not a fallback: the resolver treats the Archive as optional
+      everywhere else and this page must not be the exception. -#}
+  {% if highlights and highlights.featured %}
+  <section class="home-highlights" aria-labelledby="homeHighlightsHeading">
+    <h2 id="homeHighlightsHeading">What local government is actually talking about</h2>
+    <p class="subtitle home-highlights-sub">Real moments from meetings we have transcribed, each one linked to the second it was said.</p>
+
+    {% with chips = highlights.topic_chips, active_topic = highlights.active_topic, base_url = "/" %}
+      {% include "_topic_chips.html" %}
+    {% endwith %}
+
+    {#- show_jurisdiction: this feed spans the whole country, so which
+       government it was is the first thing a reader needs. -#}
+    {% with featured = highlights.featured, show_jurisdiction = True %}
+      {% include "_featured_meetings.html" %}
+    {% endwith %}
+
+    <p class="home-highlights-more"><a href="/meetings">Browse and search every archived meeting &rarr;</a></p>
+
+    {#- Browse by state, not the 574-government list a state-page sidebar
+       shows: ~50 links, each to a /state/{slug} page. That is deliberate
+       -- those pages are exactly where the indexing problem lives (see
+       STATE_HUB_PAGES.md), so pointing the site's most-linked page at
+       them is the cheapest internal-linking win available. -#}
+    {% if highlights.states %}
+    <nav class="home-states" aria-label="Browse meetings by state">
+      <h3 class="home-states-heading">Browse by state</h3>
+      {%- for country, label in [("US", "United States"), ("CA", "Canada")] %}
+      {%- set group = highlights.states | selectattr("country", "equalto", country) | list %}
+      {%- if group %}
+      {% if highlights.states | selectattr("country", "equalto", "CA") | list %}<h4 class="home-states-country">{{ label }}</h4>{% endif %}
+      <ul class="home-states-list">
+        {%- for st in group %}
+        <li><a href="/state/{{ st.slug }}">{{ st.name }}</a> <span class="home-states-count">{{ st.page_count }}</span></li>
+        {%- endfor %}
+      </ul>
+      {%- endif %}
+      {%- endfor %}
+    </nav>
+    {% endif %}
+  </section>
+  {% endif %}
 {% endblock %}
 {% block scripts %}
   <script>
