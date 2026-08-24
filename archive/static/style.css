@@ -782,6 +782,51 @@ mark.search-match.current { background: #f97316; color: #fff; }
 @media (max-width: 575px) {
   .search-result-thumb { display: none; }
 }
+/* A result's headline link: the meeting title, plus where the link
+ * actually lands ("\2014 \25b6 Play from 56:04").
+ *
+ * Flex rather than the plain block above, for a real bug caught
+ * in-browser on 2026-08-24 and invisible to every assertion in
+ * tests/test_search_result_row_markup.py: `.calendar-candidate-main a`
+ * truncates with an ellipsis, so on a long title the timestamp -- the
+ * whole reason this markup changed -- was clipped straight off the end
+ * of the row. Only the title may truncate; the timestamp is fixed-width
+ * and always survives. */
+.calendar-candidate-main a.result-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  overflow: hidden;
+  text-overflow: clip;
+}
+.result-title-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Lighter and smaller than the title it follows, so the meeting name
+ * still reads as the headline -- the timestamp says where the link
+ * lands, it isn't competing to be the label. */
+.result-title-jump {
+  flex: 0 0 auto;
+  font-weight: 500;
+  font-size: 0.85em;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+  white-space: nowrap;
+}
+/* Onto its own line rather than hidden: it is the only thing on the row
+ * saying the headline jumps to a timestamp, so a narrow screen should
+ * get less of it, not none of it. */
+@media (max-width: 420px) {
+  .calendar-candidate-main a.result-title { flex-wrap: wrap; }
+  .result-title-text { flex: 1 0 100%; }
+  /* The em dash joins two things on one line. Once the timestamp wraps
+     to its own line it is joining nothing, and a line starting "— play
+     from" reads as a fragment. */
+  .result-title-sep { display: none; }
+}
 .search-result-deeplink {
   display: inline-block;
   margin-top: 0.3rem;

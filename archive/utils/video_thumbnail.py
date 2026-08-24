@@ -69,7 +69,36 @@ def youtube_thumbnail_url(video_url: Optional[str]) -> Optional[str]:
 # the moment someone cared about; the frame reads better a beat later,
 # inside the relevant content, rather than on the transition into it (a
 # gavel, a name being read, a slide still changing).
-TIMESTAMP_LEAD_SECONDS = 20
+#
+# Raised 20 -> 30 on 2026-08-24, from a real card. A San Diego public
+# comment landed on the speaker while the camera was still refocusing
+# from the dais, and the reason is structural rather than bad luck: a
+# search snippet deliberately starts a beat *before* the interesting
+# line (see _context_window() in crud.py), and a chamber operator needs
+# a few seconds to find and focus a new speaker after they start
+# talking. Both push the same direction, so the lead has to clear both.
+#
+# Interacts with OFFSET_BUCKET_SECONDS below: the frame actually lands
+# in (t + LEAD - 20, t + LEAD], so 20 meant "0-20s after" (~10s on
+# average) and 30 means "10-30s after" (~20s). Any value >= the bucket
+# still guarantees the frame is never taken *before* the shared moment,
+# which is the property that matters.
+#
+# Applied uniformly rather than tuned per meeting on purpose: there is
+# no per-page override anywhere in this module, a card is derived from
+# `?t=` alone, and hand-shifting individual meetings would need storage,
+# an editing surface, and someone to look at every card. A single
+# constant is the only lever that scales -- if it is wrong it is wrong
+# everywhere at once, which is also the cheapest kind of wrong to fix.
+#
+# Changing it re-maps which bucket a given `?t=` resolves to, so already-
+# stored frames stop being the answer for those timestamps and get
+# re-extracted once each. That degrades safely -- the card route serves
+# the page's default frame and queues the precise one (see
+# meeting_card_image()) -- but a page already at MAX_FRAMES_PER_PAGE
+# simply keeps serving its default frame for new timestamps. Worth
+# knowing before treating this as a free dial.
+TIMESTAMP_LEAD_SECONDS = 30
 # How far before the END of the video the default (no-timestamp) frame is
 # taken from. Ryan's call, and the reasoning is specific to this content:
 # meetings routinely open behind a static "meeting will begin shortly"

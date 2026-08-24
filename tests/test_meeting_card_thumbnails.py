@@ -27,6 +27,7 @@ from archive.db import crud
 from archive.utils import video_thumbnail
 from archive.utils.clips import clip_entries
 from archive.utils.video_thumbnail import (
+    OFFSET_BUCKET_SECONDS,
     TIMESTAMP_LEAD_SECONDS,
     UNKNOWN_DURATION_OFFSET_SECONDS,
     is_extractable,
@@ -67,19 +68,33 @@ def test_timestamp_tier_lands_just_after_the_shared_moment():
     # into it. Confirmed visually against the real video: the frame at
     # 1000s shows "7. CONSENT CALENDAR" on the chamber's own overlay.
     assert target_offset_seconds(timestamp=982) == 1000
-    assert target_offset_seconds(timestamp=0) == TIMESTAMP_LEAD_SECONDS
+    # Not TIMESTAMP_LEAD_SECONDS itself: the lead (30s) is bucketed down
+    # to the 20s grid, so t=0 resolves to 20, not 30.
+    assert target_offset_seconds(timestamp=0) == 20
 
 
 def test_timestamp_bucketing_never_lands_before_the_shared_moment():
     # 20s buckets bound how many distinct frames a crawl over many
-    # near-identical deep links can create. The bucket size matches the
-    # lead exactly so that bucket(t + 20) always falls in (t, t + 20] --
-    # a coarser bucket would sometimes land *before* t, showing a card for
-    # a moment the sharer didn't pick.
+    # near-identical deep links can create. The lead is >= the bucket
+    # size, which is what guarantees bucket(t + lead) always falls in
+    # (t, t + lead] -- a lead *smaller* than the bucket would sometimes
+    # land before t, showing a card for a moment the sharer didn't pick.
+    assert TIMESTAMP_LEAD_SECONDS >= OFFSET_BUCKET_SECONDS
     for timestamp in range(0, 200):
         offset = target_offset_seconds(timestamp=timestamp)
         assert timestamp < offset <= timestamp + TIMESTAMP_LEAD_SECONDS
-        assert offset % 20 == 0
+        assert offset % OFFSET_BUCKET_SECONDS == 0
+
+
+def test_timestamp_lead_clears_a_camera_refocus():
+    # Raised 20 -> 30 on 2026-08-24 (see the constant's own comment): a
+    # search snippet starts a beat before the interesting line, and a
+    # chamber camera takes a few seconds to find a new speaker, so the
+    # frame has to clear both. The floor of the landing window -- not its
+    # ceiling -- is what that fix moved, and the floor is what a bucketed
+    # offset makes easy to regress by accident.
+    floor = min(target_offset_seconds(timestamp=t) - t for t in range(0, 200))
+    assert floor >= 10
 
 
 def test_timestamp_tier_beats_a_known_duration():

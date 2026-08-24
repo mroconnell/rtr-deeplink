@@ -54,7 +54,11 @@ Standing decisions — do NOT re-raise  (3)
   Prefer a generated/computed column over "add a column, then backfill…
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (13)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (17)
+  [JUST-DO-IT] A transcription job that dies partway throws away every
+  [JUST-DO-IT] `[EASY]` Truncation is only ever detected at *exactly*
+  [JUST-DO-IT] `[EASY]` Nothing notices a dead worker pool — chunks
+  [JUST-DO-IT] The worker's requirements can silently drift out of
   [JUST-DO-IT] A bulk re-resolve gets this IP blocked by YouTube, and
   [JUST-DO-IT] `[EASY]` `is_extractable()` excludes only YouTube, so
   [JUST-DO-IT] `[EASY]` A Viebit meeting's "can't transcribe this"
@@ -69,8 +73,10 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (13)
   [JUST-DO-IT] `[EASY]` The saved-search alert subject line
   [JUST-DO-IT] Every byte the public site serves is billed twice:
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (11)
-  Confirmations nobody has actually watched happen  (3)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (13)
+  Confirmations nobody has actually watched happen  (5)
+    [HUMAN] Run `scripts/scan_truncated_transcripts.py` on the Archive's
+    [HUMAN] Decide the /meetings result link order from real click data,
     [HUMAN] Render's health-check gate has never blocked a deploy —
     [HUMAN] `[LOGIN]` Confirm a real Render deploy installed cleanly off
     [HUMAN] Configure GA's internal traffic filter — the
@@ -278,6 +284,107 @@ Small, self-contained, no open design question. Jurisdiction-extraction
 items that also qualify live under **Platform & jurisdiction coverage**
 so that work reads together.
 
+
+- **[JUST-DO-IT] A transcription job that dies partway throws away every
+  finished chunk, from the reader's point of view (2026-08-24).**
+  `record_chunk_result()` only writes a `TranscriptVersion` once
+  `chunks_completed >= total_chunks`. A job that dies at 18 of 20 has
+  eighteen chunks of real, timestamped, already-shifted transcript sitting
+  in `TranscriptionJob.partial_segments` — and the page it belongs to
+  shows nothing at all, classifies as `blank_transcript`, and re-enters
+  the auto-transcription pool to redo work that is already done.
+  **Found by checking a premise, not by a report**: Ryan assumed the
+  `truncated_transcript` bucket ought to already cover "we only got some
+  of the chunks before the process failed" (2026-08-24). It does not, and
+  the reason is this — there is no transcript to mark. Worth building
+  because the cheapest version is small: publish `partial_segments` as a
+  non-default version (or a default one carrying a truncation warning, in
+  which case add the marker to `_TRUNCATION_MARKERS` in
+  `archive/db/crud.py` so the page stays eligible for a real retry rather
+  than looking finished). Watch out for the checkpoint semantics: a
+  chunk's segments are already full-meeting-relative, so a partial set is
+  a genuine transcript with a hole at the end, not a mis-timed one.
+
+- **[JUST-DO-IT] `[EASY]` Truncation is only ever detected at *exactly*
+  36,000 cues (2026-08-24).** `app/platforms/granicus.py`'s own comment
+  admits it: "First heuristic, not a full fix — doesn't catch a cap at
+  some other round number." Two known shapes escape it entirely, and both
+  present to a reader as an ordinary complete transcript:
+  a scraped caption file that simply ends early with no round-number
+  tell, and any cap at a different value on a platform nobody has
+  measured. Nothing anywhere compares a transcript's last segment against
+  the video's real duration, which is the general check —
+  `TranscriptionJob.probed_duration_seconds` already holds a real
+  ffprobe'd duration for every page that has ever had a job, so the
+  detector exists in pieces. Start by running
+  `scripts/scan_truncated_transcripts.py --min-count 20000` (see the
+  `[HUMAN]` entry below): a spike of pages sharing some *other* exact
+  count is the first evidence either way, and there is currently none.
+
+- **[JUST-DO-IT] `[EASY]` Nothing notices a dead worker pool — chunks
+  can sit flat for 9 hours while every dashboard reads "healthy"
+  (2026-08-24).** Both workers crash-looped for **9.3 hours** and not one
+  existing signal fired. Worth building the check that would have caught
+  it, because the failure is genuinely invisible otherwise:
+
+  - `/internal/transcription-queue-stats` read **10 active jobs, 95
+    chunks pending** — indistinguishable from a busy, correctly-paced
+    system.
+  - Jobs kept being *created* the whole time, so the queue looked alive.
+  - **No failure emails, and nothing in the WO-46 digest** — dead workers
+    produce no failures. Nothing ever got far enough to fail.
+  - The `/loop`-style re-queue script sitting at its concurrency cap
+    looks exactly like healthy pacing.
+
+  The one signal that separated the two:
+  **`cumulative_chunks_completed_all_time` did not move** (4028 at 03:07,
+  4028 at 12:23).
+
+  **Fix**: alert when `cumulative_chunks_completed_all_time` is flat
+  while `active_jobs > 0` over some window. The daily report
+  (`archive/utils/email.py`'s `send_worker_daily_report()`) *already
+  computes both numbers* and already diffs the cumulative figure against
+  `WorkerReportSnapshot` — it just never compares them to each other. A
+  "chunks completed: 0 while 10 jobs were active" line in that email
+  would have surfaced this at the next daily send; something faster
+  (UptimeRobot against a small endpoint) would have caught it in
+  minutes. Pick one deliberately — see `BACKLOG.md`'s Standing decisions
+  on `ALERT_WEBHOOK_URL`, declined 2026-08-21, before adding a new
+  alerting channel. Full incident writeup: `BACKLOG_DONE.md`.
+
+- **[JUST-DO-IT] The worker's requirements can silently drift out of
+  sync with its real import graph, and CI cannot see it (2026-08-24).**
+  Root cause of the 9.3-hour outage above. `worker/main.py` imports
+  `archive.db.crud`, which imports `archive/utils/date_status.py` at
+  **module scope** — a *presentation* module. WO-50 added
+  `from markupsafe import Markup, escape` there for the date pills, and
+  the worker (whose requirements are deliberately lean — *"No fastapi/
+  uvicorn/jinja2/slowapi here"*) had no `markupsafe`. It could not start.
+
+  **Why CI is blind to this by construction**: tests run in an
+  environment that has `markupsafe` (via `jinja2`, via the Archive's own
+  deps), so the import resolves fine everywhere except the one process
+  that matters. Nothing in the test suite exercises "can the worker's
+  declared dependency set actually import the worker."
+
+  **Fix, in cost order:**
+  1. **A CI guard** — walk the real import graph from `worker/main.py`
+     across `app/` and `archive/` and assert every third-party top-level
+     import is in `worker/requirements.txt`. This was written ad hoc
+     during the incident and worked (46 files; correctly found
+     `markupsafe` as the only genuine gap, and correctly did *not* flag
+     `playwright`, which sits in a `try/except` with a comment saying it
+     is deliberately absent). Needs that try/except tolerance to avoid a
+     false positive.
+  2. **Stop `crud.py` importing a presentation module at module scope** —
+     the actual fragility. Either move the display helpers out of
+     `date_status.py`, or import it lazily inside the functions that
+     need it. Until this changes, *any* HTML-shaped dependency added to
+     `date_status.py` becomes a hard worker dependency again.
+
+  Note the shipped hotfix (`markupsafe` in `worker/requirements.in`)
+  addresses neither — it fixes this one instance and leaves the
+  mechanism intact.
 
 - **[JUST-DO-IT] A bulk re-resolve gets this IP blocked by YouTube, and
   the script's circuit breaker doesn't notice (measured twice,
@@ -589,6 +696,39 @@ one deliberate production action away from closing. Grouped by what kind
 of human step they need.
 
 ### Confirmations nobody has actually watched happen
+
+- **[HUMAN] Run `scripts/scan_truncated_transcripts.py` on the Archive's
+  Render shell — the read first, then the write (2026-08-24).** The
+  Granicus 36,000-cue truncation flag has only existed since 2026-08-23
+  and is applied *at ingest*, so every page archived before then that hit
+  the cap carries no warning: it reports as `success` on /coverage and is
+  permanently excluded from re-transcription. Nothing else in the
+  codebase looks at how many segments a stored transcript has, so the
+  size of this is unknown — Ryan's read (2026-08-24) is that "a few are
+  escaping our view", and that is a guess, not a measurement.
+  The first run is report-only by design and answers two things at once:
+  how many unmarked pages sit on exactly 36,000, and whether 36,000 is
+  even the only cap (see the `[JUST-DO-IT]` truncation-detection entry
+  above). Only then `--apply`, which appends the same warning the adapter
+  would have written and nothing else. Run it from the Render shell like
+  every backfill here — it is cheap (segment counts are computed in SQL,
+  no `segments` blob crosses the network) but it is still production.
+
+- **[HUMAN] Decide the /meetings result link order from real click data,
+  not from taste (2026-08-24).** The row's headline now opens the matched
+  second and "Play from 0:00" below it opens the whole meeting — Ryan's
+  call, reasoning that someone who typed a topic wants the topic. It is a
+  good argument and it has no evidence behind it, so the same PR added a
+  GA4 `search_result_click` event carrying `link_type`
+  (`deep_link` / `meeting_page`) and `result_position`; before it, this
+  page emitted nothing at all and the question was unanswerable. Give it
+  enough traffic to be worth reading, then either leave it or flip it.
+  Two things to be careful of when reading it: a headline is a far bigger
+  click target than a small link three lines down, so a split in its
+  favour is partly just Fitts's law; and the featured cards on the home
+  and state pages deliberately did **not** get the same reversal (a
+  browsing reader has stated no intent), so those are not a control
+  group — they are a different question.
 
 Left open across `AUDIT_EXECUTION_BRIEF.md`'s Phase 1 and Waves 1-6, all
 code-complete and merged (full detail in `BACKLOG_DONE.md`'s "Reliability/

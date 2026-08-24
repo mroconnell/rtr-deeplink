@@ -111,6 +111,24 @@ _HALLUCINATION_MARKER = "hallucinated by the transcription model"
 # root cause (a third-party vendor's own truncation, not our own
 # extraction/model failure).
 _GRANICUS_TRUNCATION_MARKER = "36,000 lines, a known limit"
+# Every warning substring that means "the transcript we have stops before
+# the meeting did". One entry today; it is a tuple rather than a bare
+# constant so a second detected form of truncation is a one-line addition
+# here instead of a new bucket (see _OUTCOME_LABELS' note below).
+#
+# Two truncation shapes are known to exist and are deliberately NOT here,
+# because neither is detectable from a stored warning today:
+#   * A scraped caption file that simply ends early with no round-number
+#     tell. Nothing compares a transcript's last segment against the
+#     video's real duration, so these read as ordinary transcripts. See
+#     BACKLOG.md.
+#   * A transcription job that dies partway through. That one produces no
+#     TranscriptVersion at all -- the version is only written once
+#     chunks_completed >= total_chunks (see record_chunk_result()), so a
+#     half-finished job leaves its work in TranscriptionJob.
+#     partial_segments and the page classifies as blank_transcript, not
+#     truncated. Nothing to fold in until partial publishing exists.
+_TRUNCATION_MARKERS = (_GRANICUS_TRUNCATION_MARKER,)
 
 
 def _has_real_warning_free_transcript(warnings: Optional[list]) -> bool:
@@ -119,7 +137,7 @@ def _has_real_warning_free_transcript(warnings: Optional[list]) -> bool:
     shared "is this actually a good transcript" check every call site
     below needs, factored out so a new quality marker never again needs
     updating in four separate places."""
-    markers = (_GARBLED_MARKER, _HALLUCINATION_MARKER, _GRANICUS_TRUNCATION_MARKER)
+    markers = (_GARBLED_MARKER, _HALLUCINATION_MARKER, *_TRUNCATION_MARKERS)
     return not any(marker in w for w in (warnings or []) for marker in markers)
 
 
@@ -4065,11 +4083,17 @@ _OUTCOME_LABELS: dict[str, str] = {
     # Added 2026-08-23 alongside _GRANICUS_TRUNCATION_MARKER -- its own
     # bucket rather than folded into "garbled_transcript": the covered
     # portion is real, correct content (a government-provided caption,
-    # not a hallucination), it just stops at Granicus's own 36,000-cue
-    # cap -- a different problem than garbled, worth telling apart in a
-    # report the same way agenda_fallback is kept distinct from
-    # blank_transcript.
-    "truncated_transcript": "Truncated transcript (Granicus cap)",
+    # not a hallucination), it just stops early -- a different problem
+    # than garbled, worth telling apart in a report the same way
+    # agenda_fallback is kept distinct from blank_transcript.
+    #
+    # Label deliberately does NOT name Granicus (renamed 2026-08-24).
+    # The Granicus 36,000-cue cap is only the first *detected* form of
+    # truncation, not the only one that exists, and a platform-specific
+    # label invites a reader to assume a page in this bucket is a
+    # Granicus page. Add new forms by extending _TRUNCATION_MARKERS
+    # below rather than by minting a parallel bucket.
+    "truncated_transcript": "Truncated transcript",
     "non_english_transcript": "Transcript (non-English)",
     "success": "Transcript (English)",
 }
@@ -4112,7 +4136,9 @@ def _classify_page_outcome(
     ):
         return "garbled_transcript"
     if default_transcript_warnings and any(
-        _GRANICUS_TRUNCATION_MARKER in w for w in default_transcript_warnings
+        marker in w
+        for w in default_transcript_warnings
+        for marker in _TRUNCATION_MARKERS
     ):
         return "truncated_transcript"
     if default_transcript_language and default_transcript_language != "en":
