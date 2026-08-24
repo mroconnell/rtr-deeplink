@@ -76,6 +76,29 @@ def test_detect_platform_recognizes_open_media_domain():
     assert detect_platform(EUGENE_URL) == "open_media"
 
 
+def test_detect_platform_recognizes_the_ompnetwork_org_domain_too():
+    """Same product, second vendor domain (WO-46, 2026-08-23). Both URLs
+    are real Santa Barbara council meetings Ryan found while reviewing
+    skipped pages; the second was confirmed live to resolve through this
+    adapter with a real title, jurisdiction, date and 1,787 caption
+    segments. Before this, they fell through to generic_fallback, which
+    hits openmedia.py's documented title/jurisdiction swap bug."""
+    assert (
+        detect_platform(
+            "https://santabarbaraca.ompnetwork.org/sessions/346146/"
+            "special-city-council-meeting?category=487"
+        )
+        == "open_media"
+    )
+    assert (
+        detect_platform(
+            "https://santabarbaraca.ompnetwork.org/sessions/346145/"
+            "regular-city-council-meeting?category=487"
+        )
+        == "open_media"
+    )
+
+
 async def test_resolve_real_goodyear_meeting(monkeypatch):
     # Real, confirmed live 2026-08-21: the video is NOT present as a
     # server-rendered <iframe src="youtube.com/embed/..."> (the visible

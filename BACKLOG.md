@@ -94,12 +94,14 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (7)
   28 well-formed IQM2 queue rows point at retired tenants…
   Some Swagit meetings have no single "whole meeting" video file…
 
-Platform & jurisdiction coverage  (33)
+Platform & jurisdiction coverage  (35)
   `[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
   [LATER] `[EASY]` Give `/meetings` search results the state-page card
   [LATER] `[BIG]` Put the topic chips and the recent-moments feed on
   `[JUST-DO-IT]` `[EASY]` Nine PrimeGov pages and two real meetings…
   `[JUST-DO-IT]` ChampDS is a progressive MP4, and a 900s chunk can…
+  `[Done 2026-08-23]` Four archived pages pointed at agenda systems…
+  `[NEEDS-AUDIT]` Duration alone cannot separate a very short real…
   The 50 largest US cities — per-tenant status `[NEEDS-AUDIT]`
   Jurisdiction extraction & backfill  (17)
     [JUST-DO-IT] A land acknowledgement became a jurisdiction, and it
@@ -1220,6 +1222,85 @@ resolve themselves and only Wilkes-class files stay broken — so
 **re-measure from the worker before sizing fix 1's threshold**, rather
 than hard-coding one derived from a residential connection.
 
+
+### `[Done 2026-08-23]` Four archived pages pointed at agenda systems with no video — three repointed, one has no recording anywhere
+
+Kept here rather than moved to `BACKLOG_DONE.md` only until this PR
+merges; the investigation belongs there. Found 2026-08-23 (WO-46) by
+Ryan reviewing a day of skipped pages, then closed the same day.
+
+**The four, and what they turned out to be.** All were ingested from an
+`OnBaseAgendaOnline` *agenda* host, so "No usable audio or video source"
+was a correct answer about the URL we held, not a bug:
+
+| archived page | video actually lives at | outcome |
+|---|---|---|
+| SB Regular 2026-08-11 (`docs…id=1184`) | OMP session 346145 | **repointed** — 5,361 cues live |
+| SB Special 2026-08-11 (`docs…id=1202`) | OMP session 346146 | **repointed** — 132 cues live |
+| Pittsburg CA 2025-04-07 (`onbaseweb…id=1253`) | CivicClerk `pittsburgca` event 1199 | **repointed** — 8,706 cues live |
+| SB Special 2023-10-17 (`records…id=941`) | OMP session 278459, **which has no video** | left as-is, correctly |
+
+**How the mapping was found, because the obvious method fails.** The ids
+are not derivable (`1184→346145` is delta 344961; `1202→346146` is
+344944), and OMP is entirely client-rendered so nothing is enumerable
+from a plain HTTP client. **But every OMP session card links its agenda
+straight back to the OnBase URL it came from** — so the mapping is
+stated explicitly in OMP's own rendered HTML, and pairing session→OnBase
+id in document order gives an exact key with no date/title guessing.
+That is what confirmed `records…id=941 → session 278459`. Pittsburg was
+not on OMP at all (a bare 200 on `pittsburgca.open.media` is a
+catch-all — the body reads "No site identified…"); its city streaming
+page embeds `pittsburgca.portal.civicclerk.com`, and its own
+`…api.civicclerk.com/v1/Events` `$filter` on `startDateTime` found event
+1199 directly.
+
+**How the repoint was done, and why it's safe.** `POST /internal/ingest`
+with the NEW source's resolved payload but the **OLD** URL as
+`input_url_normalized`. `crud._find_existing_page()` checks the alias
+table *before* `external_id`, so this updates the existing page in place
+— same slug, same public URL, `"created": false` on all three — rather
+than creating a duplicate. Same cross-host merge `legistar.py` and
+`primegov.py` already depend on.
+
+**Two things to know before touching these pages again.** Their
+`source_url_normalized` still points at the OnBase agenda host (that
+path doesn't rewrite it, and the agenda genuinely is a real source), so
+a future auto re-resolve will keep finding no video there. That cannot
+regress the content — `page.video_url`/`agenda_items`/transcript updates
+are all truthy-gated, so a video-less resolve can't wipe them. It *can*
+flip `page.platform` back to `hyland`, which is unconditional. Cosmetic,
+but it is why these may show the wrong platform in `/coverage` later.
+
+**Not generalisable, deliberately.** Of the 9 archived
+`OnBaseAgendaOnline` pages across 6 tenants, the other 5 (Compton,
+Centennial, Hamilton County OH) resolve real video fine — OnBase Agenda
+Online is not an agenda-only platform, and this was ~4 pages out of
+2,468. The reusable part is the *detection*: "resolves with no video"
+now surfaces daily in WO-46's failure digest, which is how the next
+batch of these will be noticed without anyone reviewing pages by hand.
+
+### `[NEEDS-AUDIT]` Duration alone cannot separate a very short real meeting from an ad
+
+Recorded 2026-08-23 (WO-46) so the next person doesn't try to fix it by
+moving the number again. `MIN_PLAUSIBLE_MEETING_SECONDS` moved 300s → 60s
+off real measured data (see that constant's own comment for the full
+table). That recovered three of four confirmed-real short meetings, but
+the fourth is unreachable by any threshold:
+
+```
+ 53s  berkeleycountysc.iqm2.com MeetingID=4203   real County Council special mtg
+ 50s  gnat.cablecast.tv/.../13707                an ad
+```
+
+Three seconds apart, opposite answers. Berkeley County stays skipped and
+that is an accepted miss, not an oversight — **do not lower the floor
+further to catch it**, because 60s already sits just above a confirmed ad
+and below it the two classes are interleaved.
+
+Separating them needs a different signal, not a smaller number:
+`meeting_body`, whether the page carries a real agenda, or the page's own
+framing. Not worth building for one known case; worth revisiting if the
+daily failure digest (WO-46) shows this class is actually common.
 
 ### The 50 largest US cities — per-tenant status `[NEEDS-AUDIT]`
 

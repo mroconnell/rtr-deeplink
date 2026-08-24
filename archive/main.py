@@ -551,7 +551,13 @@ async def internal_send_worker_daily_report(
     )
 
     sent = await email_utils.send_worker_daily_report(
-        to, summary=summary, previous=previous
+        to,
+        summary=summary,
+        previous=previous,
+        # Explicitly passed (never omitted) so a clean day renders a real
+        # "none" line rather than silently dropping the section -- see
+        # send_worker_daily_report()'s own note on the None/[] distinction.
+        failures=await crud.list_recent_transcription_failures(hours=24),
     )
     return {"sent": sent, "summary": summary}
 

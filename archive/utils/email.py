@@ -569,8 +569,99 @@ async def send_youtube_transcript_failure(to: str, *, error_message: str) -> boo
     return await _send(to, "⚠️ YouTube transcript fetch failed", body)
 
 
+# A genuinely bad day should still produce a readable email. The
+# 2026-08-23 Cablecast cluster was 33 failures; a thousand-row table is
+# not a digest, and the dropped count below keeps a truncated one from
+# understating the day.
+MAX_FAILURES_LISTED = 40
+
+
+def _render_failure_digest(failures: list) -> str:
+    """The failure section of the daily worker report: every job that hit
+    "failed" in the last 24h, grouped by reason, each row linking both the
+    Archive page and the source URL that actually failed.
+
+    Grouped by reason rather than listed flat because that is how these
+    actually arrive -- one upstream cause producing a run of jobs (a
+    platform-wide seek bug, an adapter resolving the wrong meeting, a
+    plausibility gate firing on a batch of short clips). A flat
+    newest-first list buries that shape; the grouping surfaces it in the
+    subject-line glance.
+
+    Reasons are used verbatim as the group key. They come from a small
+    fixed set of literals the worker writes (see worker/main.py's _fail()
+    calls and media_probe.py's own reason strings), so this groups cleanly
+    without any parsing or normalisation -- and if a new reason string
+    appears, it simply becomes its own group rather than being silently
+    lumped in with an existing one.
+    """
+    if not failures:
+        return (
+            "<h2>Failures, last 24 hours</h2>"
+            '<p style="color:#2e7d32">None. Every job that finished, finished cleanly.</p>'
+        )
+
+    base_url = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
+    by_reason: dict = {}
+    for f in failures:
+        by_reason.setdefault(f["error_message"], []).append(f)
+
+    parts = [
+        f"<h2>Failures, last 24 hours ({len(failures)})</h2>",
+        '<p style="color:#666">Grouped by reason, most common first. '
+        "Includes failures that never send their own email — anything that "
+        "died before a chunk was attempted (no media found, unreadable "
+        "media, implausible duration) is invisible in your inbox otherwise."
+        "</p>",
+    ]
+    listed = 0
+    for reason, jobs in sorted(by_reason.items(), key=lambda kv: -len(kv[1])):
+        parts.append(
+            f'<h3 style="margin-bottom:4px">{html.escape(reason)} '
+            f'<span style="font-weight:normal;color:#666">({len(jobs)})</span></h3>'
+        )
+        parts.append('<ul style="margin-top:0">')
+        for j in jobs:
+            if listed >= MAX_FAILURES_LISTED:
+                break
+            listed += 1
+            title = html.escape(j.get("title") or j.get("slug") or "(untitled)")
+            page = (
+                f'<a href="{base_url}/m/{html.escape(j["slug"])}">{title}</a>'
+                if base_url and j.get("slug")
+                else title
+            )
+            src = html.escape(j.get("source_url") or "")
+            # The chunk counter is the fastest way to tell the two failure
+            # classes apart at a glance: 0/1 is a resolve-stage rejection
+            # (nothing was ever attempted), anything else got into real
+            # chunk processing.
+            progress = f"{j.get('chunks_completed')}/{j.get('total_chunks')}"
+            parts.append(
+                f"<li>{page} "
+                f'<span style="color:#666">[{html.escape(j.get("platform") or "?")}, '
+                f"chunks {progress}, job {j.get('job_id')}]</span><br>"
+                f'<a href="{src}" style="font-size:90%;color:#666">{src}</a></li>'
+            )
+        parts.append("</ul>")
+        if listed >= MAX_FAILURES_LISTED:
+            break
+
+    dropped = len(failures) - listed
+    if dropped > 0:
+        parts.append(
+            f'<p style="color:#666"><em>…and {dropped:,} more not listed '
+            f"(showing the first {MAX_FAILURES_LISTED}).</em></p>"
+        )
+    return "".join(parts)
+
+
 async def send_worker_daily_report(
-    to: str, *, summary: dict, previous: Optional[dict]
+    to: str,
+    *,
+    summary: dict,
+    previous: Optional[dict],
+    failures: Optional[list] = None,
 ) -> bool:
     """Daily activity digest for the transcription worker(s) -- see
     archive/main.py's GET /internal/send-worker-daily-report, triggered by
@@ -582,6 +673,14 @@ async def send_worker_daily_report(
     `chunks_completed_last_24h` is None (rendered as "n/a (first report)")
     only on the very first-ever send, when there's no previous snapshot to
     diff against -- every subsequent send has a real number.
+
+    `failures` (WO-46, 2026-08-23) is crud.list_recent_transcription_
+    failures()'s output, rendered by _render_failure_digest() above.
+    Defaults to None -- treated as "no failures section requested", which
+    keeps every existing caller and test working unchanged -- while an
+    explicit empty list renders a real "none, all clean" line. That
+    distinction matters: silence should never be the only signal, which is
+    the same reason this report sends daily even when nothing happened.
     """
     chunks_24h = (
         summary["cumulative_chunks_completed_all_time"]
@@ -612,4 +711,6 @@ async def send_worker_daily_report(
         f'<p style="color:#666">All-time cumulative: {summary["cumulative_chunks_completed_all_time"]:,} chunks, '
         f"{summary['cumulative_jobs_completed_all_time']:,} jobs completed.</p>"
     )
+    if failures is not None:
+        body += _render_failure_digest(failures)
     return await _send(to, "Transcription worker daily report", body)
