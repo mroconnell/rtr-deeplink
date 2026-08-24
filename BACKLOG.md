@@ -1019,12 +1019,18 @@ missing recording — "there are multiple videos." Doesn't settle the
 "not yet answered" question above (still unconfirmed whether a combined
 full-session file exists anywhere for this customer), but does confirm
 the pattern is real on a second, unrelated Swagit tenant, not a Yolo
-County-only oddity. Ryan's own read on the fix direction: check for a
-combined long-video file first if one exists; if not, resolve each
-agenda-item video and either concatenate them into one transcript or
-feed them to the pipeline as pre-chunked units instead of one continuous
-duration — leaning toward the "treat each clip as its own unit" half of
-the design decision above over a virtual-timeline concatenation.
+County-only oddity.
+
+**Fix direction, per Ryan**: the reader-facing output must always be
+one concatenated transcript for the whole meeting — never split across
+N separate per-clip pages/transcripts. Check for a combined long-video
+file first if one exists; if not, resolve each agenda-item video and
+transcribe it individually (using each clip as a natural pre-chunk
+boundary, rather than this app's own arbitrary 900s windows), then
+stitch the results into one meeting-relative transcript using Swagit's
+own seq/title ordering for offsets — the same shift-and-merge approach
+`worker/segment_utils.py` already uses across ordinary chunk boundaries,
+just with per-clip boundaries instead of per-900s ones.
 
 ## Platform & jurisdiction coverage
 
