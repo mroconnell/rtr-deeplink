@@ -508,3 +508,128 @@ entirely. Not written up as a new finding since the error class itself
 is already documented and understood; flagging only because it's a new
 host hitting a known pattern, the same way the 2026-08-21 section
 flagged new Granicus recurrences without a new entry.
+
+## 2026-08-24
+
+Reviewed 16 new messages under `label:rtr-claude newer_than:30d` (67
+candidates total across 51 threads, 51 already in the ledger from prior
+runs — including 4 older "deploy failed for rtr-deeplink-staging"
+messages from 2026-08-19/20 that hadn't made it into the ledger before
+now, first-time-seen artifacts of the pre-ledger transition, not new
+signal; recorded here as the same already-flagged disposable-staging
+pattern). Skipped without write-up: two more "PR run failed: Test"
+GitHub Actions emails, both for individual feature branches (Jurisdiction
+data quality WO-47, Rebuild state & hub pages WO-46), not `main` or a
+scheduled workflow; two more "deploy failed for rtr-deeplink-staging"
+emails (2026-08-23, commits "Trim Standing..."/"Pin Data..."), same
+disposable/untracked-staging pattern as every prior run; and Ryan's own
+sent reply in the "google chose different canonical url" thread — not a
+third-party alert, nothing for this Routine to review.
+
+**One duplicate resolved by timing, not by pattern-matching alone:**
+Transcription job 731 failed (Charlotte, NC — `charlotte.cablecast.tv`,
+chunk 1, "ffmpeg reported success but the output file isn't decodable
+(likely truncated/corrupt)") is the *exact* failure signature WO-45
+fixed (`BACKLOG_DONE.md`, commit `63f69b2`) — but job 731 was created
+2026-08-23T17:05:04Z and failed by 17:07:22Z, while the fix merged
+2026-08-23T18:26:34Z (`git show -s --format=%ci 63f69b2`). The job
+predates the fix by over an hour; not a regression, just a job caught by
+the bug before the patch landed. No new entry needed.
+
+**Two new findings, both Confirmed from real code/commit history, one
+Unconfirmed and dashboard-gated:**
+
+**1. Sentry `PYTHON-FASTAPI-12` — `ModuleNotFoundError: No module named
+'markupsafe'` crash-looped both transcription workers for ~9.3 hours,
+already fixed same day — investigated and closed, no promotion needed.**
+Confirmed via the Sentry traceback (`worker/main.py:58` →
+`archive/db/crud.py:30` → `archive/utils/date_status.py:25`) and the
+repo's own fix commit `209bba2` ("Hotfix: add markupsafe to
+worker/requirements — both workers dead ~9h (#370)", merged
+2026-08-24T05:50:34-07:00 = 12:50:34 UTC, already on `main` as of this
+run). Root cause per that commit's own message: WO-50 (`8597cf9`, #363)
+added a direct `markupsafe` import to `archive/utils/date_status.py` for
+the new date-pill feature; `archive/db/crud.py` has imported
+`date_status` at module scope since #136; `worker/main.py` imports
+`archive.db.crud`. The Archive web service already has `markupsafe`
+transitively via `jinja2`, but the worker's `requirements.txt` is
+separate and deliberately lean (no `jinja2` — it serves no HTML), so only
+the worker broke. **Real impact, per the fix commit's own measurement**:
+zero chunks completed for ~9.3 hours (`cumulative_chunks_completed_all_time`
+stuck at 4028 from 03:07 to 12:23 UTC), 10 active jobs and 95 pending
+chunks with nothing able to claim them. Fully fixed and verified (the
+commit confirms `markupsafe==3.0.3` imports cleanly in the worker's own
+base image) — flagging here only because `worker/requirements.in`'s new
+comment says "see BACKLOG.md" and neither `BACKLOG.md` nor
+`BACKLOG_DONE.md` currently mention it by name; the incident is otherwise
+completely and accurately documented in the commit message itself, so a
+promotion pass may want to add a one-line pointer to `BACKLOG_DONE.md`
+for searchability, but there is no open work here.
+
+**2. Sentry `PYTHON-FASTAPI-11` — Resend `422` "Invalid `to` field" on
+`/internal/send-worker-daily-report`, single occurrence, root cause
+plausible but not confirmed.** The alert (2026-08-24T02:18:57Z,
+`environment=production`, `browser=curl 8.7.1`) shows Resend rejecting
+the `to` field's format outright, not merely bouncing a valid-looking
+address — the same exact error text `BACKLOG_DONE.md`'s "A failed
+daily-report send silently consumed the day's snapshot (WO-52)" entry
+already documents from *local* testing that same day, where the cause
+was an empty `to` (an unset `AUTO_TRANSCRIPTION_REQUESTER_EMAIL` in
+local `.env`). This alert is against **production**
+(`url=https://rtr-deeplink-archive.onrender.com/internal/send-worker-daily-report`),
+not local — so if the same empty-string mechanism applies, it would mean
+the value reaching this route's `to` query param was empty or malformed
+in a real request. **Ruled out as the source**: the workflow's own
+scheduled trigger (`.github/workflows/worker-daily-report.yml`, cron
+`40 23 * * *`) — checked via `mcp__github__actions_list` — ran at
+2026-08-23T23:55:41Z and completed in 4 seconds with `conclusion:
+success`; the alert fired 2h23m later at 02:18:57Z, too large a gap to
+be that same run, and no other scheduled run exists in between. Note
+also that this route always returns HTTP 200 regardless of whether the
+Resend send actually succeeded (`return {"sent": sent, "summary":
+summary}`, `archive/main.py`), so a GitHub Actions "success" conclusion
+here would say nothing about whether the email itself went out even if
+the timing did line up — the true source of the 02:18:57Z call is
+unconfirmed. **Best-supported hypothesis, not proven**: this looks like
+a direct manual call against the production endpoint (matching
+`browser=curl`) made while verifying the WO-52 fix that same day, quite
+possibly a deliberate reproduction of the exact bug WO-52's own
+writeup describes reproducing — in which case this is expected test
+noise, not a live gap. **Open question for Ryan**: was
+`/internal/send-worker-daily-report` called directly (not via the
+GitHub Actions workflow) around 2026-08-24T02:19 UTC, and if so, was
+`to=` intentionally left blank to reproduce WO-52's bug? If not, the
+GitHub Actions repo secret `AUTO_TRANSCRIPTION_REQUESTER_EMAIL` (used by
+both this workflow and `bulk-queue-transcription-backlog.yml`) is worth
+checking directly, since Secrets values can't be read via the API to
+confirm from here. No further occurrences since, and the four other
+scheduled runs of this workflow (2026-08-21 through 2026-08-23) all
+completed successfully.
+
+**3. Two new Google Search Console "reasons preventing pages from being
+indexed" alerts, sitewide, no specific URLs given — Unconfirmed, dashboard-gated.**
+Two emails 53 seconds apart (2026-08-23T18:10:50Z / 18:11:43Z) list four
+distinct new reason categories across `redtaperecordings.com`: "Duplicate,
+Google chose different canonical than user" (both emails), "Soft 404"
+(both emails), "Alternate page with proper canonical tag" (second email
+only), and "Not found (404)" (second email only). Unlike prior Search
+Console alerts this Routine has triaged, these list no specific affected
+URLs or counts — the emails only name the reason categories and link to
+an auth-walled indexing report this Routine can't open. Checked the
+codebase for a plausible mechanism rather than guessing blind:
+`<link rel="canonical">` is emitted from five different Archive templates
+(`state_page.html`, `jurisdiction_page.html`, `meeting_list.html`,
+`meeting_page.html`, `coverage.html`), so a duplicate/soft-404/canonical
+signal could plausibly originate from any of the state/hub-page surfaces
+`STATE_HUB_PAGES.md` covers, from ordinary meeting pages, or from the
+recently-added home-page archive integration (WO-50, merged the same
+day these alerts fired) — no way to narrow further without the real
+affected-URL list. Not written up against a specific root cause since
+that would be guessing; this needs either Ryan opening the actual Search
+Console indexing report (the "Open indexing report" link in the email)
+to get real affected URLs, or a Search Console API integration this repo
+doesn't have. No existing `BACKLOG.md`/`BACKLOG_DONE.md`/`CLAUDE_BACKLOG.md`
+entry mentions "soft 404," "chose different canonical," or "alternate
+page with proper canonical" — genuinely new alert content, not a
+duplicate of the already-tracked "No thumbnail URL provided" video-
+indexing gap.
