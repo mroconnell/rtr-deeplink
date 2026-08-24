@@ -15,6 +15,17 @@ asyncpg>=0.29
 aiosqlite>=0.20
 python-dotenv>=1.0
 
+# NOT a leftover Jinja dependency, despite the "no jinja2 here" note above
+# -- archive/utils/date_status.py imports markupsafe directly (Markup/
+# escape) to build the date pills, and archive/db/crud.py imports
+# date_status at module scope, so `import archive.db.crud` pulls it in.
+# worker/main.py imports archive.db.crud, which makes this a hard runtime
+# dependency of a process that serves no HTML at all.
+#
+# Added 2026-08-24 after both workers crash-looped for ~9 hours on
+# `ModuleNotFoundError: No module named 'markupsafe'` -- see BACKLOG.md.
+markupsafe>=2.1
+
 # Error monitoring (2026-08-16, WO-7): no-op when SENTRY_DSN unset, same
 # degrade pattern used across this repo -- see worker/main.py's _init_sentry().
 sentry-sdk>=2.0
