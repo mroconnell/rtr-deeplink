@@ -880,6 +880,27 @@ async def transcribe_meeting(
         # about this meeting, not a transient failure -- no retry.
         return {"ok": False, "reason": "no usable audio/video source on re-resolve"}
 
+    if result.video_format == "youtube":
+        # Real, confirmed gap (2026-08-23): process_one()'s own pre-filter
+        # below only catches this using the *stale* video_format on the
+        # original candidate dict -- which --url mode leaves unset on
+        # purpose (see main()'s own comment) and which the backlog-list
+        # path can't guarantee still matches after this fresh re-resolve
+        # either. Without this check, a page whose video delegates to
+        # YouTube (e.g. CivicClerk's own externalMediaUrl-is-a-youtu.be-
+        # link delegation) falls straight through to probe_duration()
+        # below, where ffprobe can't read a youtube.com/embed/ page at
+        # all -- confirmed live on ashlandcowi event 395, which resolved
+        # video_format="youtube" correctly but then failed with the
+        # opaque "ffprobe couldn't read the media" rather than this clear
+        # message.
+        return {
+            "ok": False,
+            "reason": "YouTube-backed video -- needs fetch_youtube_transcripts.py's caption-fetch "
+            "path (or a future yt-dlp-audio fallback, see BACKLOG.md), not direct URL audio "
+            "extraction",
+        }
+
     duration = await retry_async(
         lambda: probe_duration(result.video_url, source_page_url=source_url),
         label=f"ffprobe of {result.video_url}",
@@ -1093,10 +1114,15 @@ async def process_one(
 
     # Cheap pre-filter before any real work: a YouTube-backed page's
     # video_url is a youtube.com/embed/{id} URL, not a direct-streamable
-    # one -- ffprobe/ffmpeg can't extract audio from it at all (this would
-    # just fail probe_duration() a few seconds later anyway, but skipping
-    # it up front avoids a wasted network round-trip and keeps this run's
-    # "skipped" reasons meaningful). See crud.list_transcription_backlog_
+    # one -- ffprobe/ffmpeg can't extract audio from it at all. Only an
+    # optimization now, not the sole defense -- it uses the *stale*
+    # video_format on this candidate dict (accurate for the normal
+    # backlog-list path, deliberately left unset for --url, see main()'s
+    # own comment), so it can skip a network round-trip when it already
+    # knows the answer, but transcribe_meeting() below re-checks against
+    # the fresh re-resolve's own video_format regardless -- see that
+    # check's own comment for the real incident (ashlandcowi event 395)
+    # this pre-filter alone didn't catch. See crud.list_transcription_backlog_
     # candidates()'s own docstring for why these are still returned by the
     # endpoint rather than filtered server-side.
     if (page.get("video_format") or "") == "youtube":
