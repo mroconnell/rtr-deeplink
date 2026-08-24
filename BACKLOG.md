@@ -1238,11 +1238,45 @@ Half of this is fixed: `ompnetwork.org` now routes to `open_media` in
 `base.py` (it previously fell through to `generic_fallback`, which finds
 the video but hits that adapter's documented title/jurisdiction swap bug).
 **What's left is the source mapping** — the archived pages still point at
-the agenda host. Options: re-ingest these two from their OMP URLs, or
-teach the ingest path that this jurisdiction's video source differs from
-its agenda source. Worth checking how many other jurisdictions have the
-same split before picking; the generic shape ("agendas on one vendor,
-video on another") is likely not unique to Santa Barbara.
+the agenda host.
+
+**Scale, measured — this is small and per-tenant, not platform-wide.**
+An earlier draft of this entry guessed the "agendas on one vendor, video
+on another" shape was probably common. Checked it: of the 9 archived
+`OnBaseAgendaOnline` pages across 6 tenants, **3 of the 4 non-Santa-
+Barbara tenants resolve real video just fine** (Compton, Centennial,
+Hamilton County OH). Only Santa Barbara and Pittsburg CA return none. So
+roughly **3 pages out of 2,468** are affected, and OnBase Agenda Online
+is emphatically *not* an agenda-only platform.
+
+**A URL rewrite will not work here, so don't reach for one.** The usual
+trick — take a known-good URL shape and rebuild the bad ones — needs a
+derivable relationship between the ids, and there isn't one:
+
+```
+OnBase id=1184 (Regular) -> OMP session 346145   delta 344961
+OnBase id=1202 (Special) -> OMP session 346146   delta 344944
+```
+
+Different deltas, no formula. The fallback (enumerate the OMP tenant and
+match on date+title) **cannot run from a plain HTTP client**: the whole
+OMP site is client-rendered. `/sessions`, `/?category=487` and a session
+page all return 200 with **zero** session links in the raw HTML, and
+every API path tried 404s under a realistic UA (the initial 403s were
+`openmedia.py`'s documented UA bot check, not a signal).
+
+**Rendered in a browser it works**, and the match key is sound —
+`(date, title)` is unique and lines up with our slugs exactly
+(`08/11/2026 Regular -> 346145`, `08/11/2026 Special -> 346146`). So the
+route is a **one-time browser-driven mapping pass for ~3 pages**, not a
+change to the unattended discovery script. Caveat for whoever runs it:
+only 10 sessions render initially and there is no pager, so it is
+infinite-scroll/load-more — a full history needs scrolling.
+
+**The generalizable part is the detection, not the repair**: "resolves
+with no video" is the signal, and it now surfaces daily in WO-46's
+failure digest. At this scale a hand-run pass is proportionate; teaching
+discovery about split agenda/video sources is not.
 
 ### `[NEEDS-AUDIT]` Duration alone cannot separate a very short real meeting from an ad
 
