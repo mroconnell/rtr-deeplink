@@ -172,6 +172,25 @@
   padding: 0;
 }
 
+/* The timestamp stamped on the front of a quote, on both the featured
+ * cards and /meetings results (archive/static/style.css loads this file
+ * too -- see each base.html). Defined once here rather than twice
+ * because the two surfaces must stay visually identical: the whole point
+ * of the element is that a reader learns "this number labels the quote"
+ * in one place and recognises it in the other.
+ *
+ * Tabular numerals so a column of 4:07 / 1:23:45 doesn't jitter, and
+ * deliberately not a link: the card already has two click targets and a
+ * third one on the same moment would only split the click data that
+ * tells us which of the two people actually want. */
+.snippet-time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: 0.85em;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
 .featured-quote mark {
   background: #fdf0b5;
   padding: 0 0.12em;

@@ -494,6 +494,58 @@ a keyword and genuinely load no segments; it was over-generalised to a
 page it never covered. Worth remembering as a shape: a doc's *reasoning*
 outlives its *specifics*, so re-derive the specific before building on it.
 
+### The two surfaces converged on one card shape — 2026-08-24
+
+A day after the table above, Ryan read both surfaces side by side and
+found they still disagreed in three places. All three are now settled the
+same way, and the reasoning is worth keeping because each looks like a
+style preference and none of them is.
+
+**1. A card's headline is the meeting, everywhere.** The featured card
+used to head itself with the *government* name wherever
+`show_jurisdiction` was set — home and state pages — while the identical
+card on a jurisdiction hub headed itself with the meeting title. So the
+two surfaces disagreed about what a card's headline even *is*, and a
+reader who clicked "San Diego, CA" expecting San Diego got a meeting.
+The government name keeps its place on the line below and now links to
+`/j/{hub_slug}`, which is what a reader was expecting of it all along —
+and on a state page that is real internal linking from a well-linked page
+to exactly the pages that need it. Note this trades a templated `<h3>`
+(a government name, repeated down the page) for a unique one, which is
+the same direction §1's whole argument runs.
+
+**2. The timestamp labels the quote, not just the link.** Both surfaces
+put "Play from 56:04" *below* the excerpt, with nothing tying the two
+together — a reader had no reason to think the link played the thing
+they had just read. The label now also sits at the front of the quote
+(`.snippet-time`, defined once in `shared_static/highlights.css` so the
+two surfaces cannot drift apart).
+
+**3. Only /meetings reverses its links — deliberately.** A result's
+headline now opens the matched second, and "Play from 0:00" underneath
+opens the whole meeting. The reader typed a topic to get there, so the
+top of a three-hour video is a worse answer to their stated intent than
+the second the topic came up. The featured cards did **not** get this: a
+reader browsing a state page has stated no intent, and the quote is a
+heuristic pick rather than an answer to a question they asked. Two
+guardrails on the search side: the row still carries exactly one plain
+link to the canonical `/m/{slug}` (the "Play from 0:00" one), and a
+result whose match could not be tied to a segment falls back to precisely
+the old row — plain headline, no second link duplicating it.
+
+Nothing here had click data behind it, so the same change added a GA4
+`search_result_click` event (`link_type`, `result_position`); this page
+emitted nothing before it, so the question was previously unanswerable.
+See `BACKLOG.md`'s `[HUMAN]` entry on reading it.
+
+**And the browser caught one more thing, again.** `.calendar-candidate-
+main a` truncates with an ellipsis, so on a long meeting title the
+timestamp — the entire point of the change — was clipped straight off the
+end of the row. Every markup assertion in
+`tests/test_search_result_row_markup.py` passed the whole time, because
+the element was present and correct and simply not visible. The headline
+is now a flex row where only the title may truncate.
+
 **Two things only the browser caught**, neither visible in the JSON:
 
 - **A cue is not a sentence.** A caption cue runs 5–10 words, so quoting

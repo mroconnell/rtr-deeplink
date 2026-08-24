@@ -102,6 +102,49 @@ def test_home_page_renders_archive_payload(monkeypatch):
     assert "/state/california" in body
 
 
+def test_featured_card_headline_is_the_meeting_not_the_government(monkeypatch):
+    """Aligned to /meetings on 2026-08-24. The headline used to be the
+    *government* name wherever show_jurisdiction was set (home + state
+    pages) while a jurisdiction hub headed the same card with the title,
+    so the two surfaces disagreed about what a card's headline is -- and
+    a reader reasonably expects "San Diego, CA" to lead to San Diego.
+    Now the title is always the headline, and the government name below
+    it links to its own hub (real internal linking from the site's
+    most-linked page, see STATE_HUB_PAGES.md)."""
+
+    async def _fake(topic=""):
+        return _payload()
+
+    monkeypatch.setattr(app.main.archive_client, "home_highlights", _fake)
+    body = app_client.get("/").text
+
+    assert (
+        '<a href="/m/city-of-san-diego-ca-2026-08-20-council">'
+        "City Council Regular Meeting</a>"
+    ) in body
+    assert '<a href="/j/san-diego-ca">San Diego, CA</a>' in body
+    # The timestamp labels the quote here too, same as on /meetings.
+    assert '<span class="snippet-time">15:00</span>' in body
+
+
+def test_featured_card_without_a_hub_still_names_the_government(monkeypatch):
+    """`hub_slug` is None for a page with no jurisdiction we can slug, so
+    the link is conditional on it -- never on `jurisdiction` alone, which
+    would emit `/j/None`."""
+    payload = _payload()
+    payload["featured"][0]["hub_slug"] = None
+
+    async def _fake(topic=""):
+        return payload
+
+    monkeypatch.setattr(app.main.archive_client, "home_highlights", _fake)
+    body = app_client.get("/").text
+
+    assert "San Diego, CA" in body
+    assert "/j/None" not in body
+    assert "/j/" not in body
+
+
 def test_home_page_survives_a_missing_archive(monkeypatch):
     """The acceptance test for this feature: the section disappears, the
     page does not."""

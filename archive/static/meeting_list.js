@@ -190,7 +190,45 @@ function wireSearchHelpIcon() {
   });
 }
 
+// Which of a result row's two links people actually use.
+//
+// Every result now offers the same meeting twice -- the headline jumps to
+// the matched moment, "Play from 0:00" opens the meeting from the top --
+// and that split was a judgment call (2026-08-24) with no data behind it.
+// Nothing on this page emitted an analytics event before, so there was no
+// way to find out whether it was the right one. This is the measurement.
+//
+// Delegated from the list container rather than bound per row: a page
+// holds up to 20 rows with 2 links each, and the list is re-rendered on
+// every paginated navigation. Fires on mousedown-then-click as well as
+// keyboard activation, since it listens for 'click' on the anchor itself,
+// and never preventDefault()s -- navigation is untouched whether or not
+// analytics is loaded (trackEvent is a no-op stub when it isn't; see
+// base.html).
+function wireResultLinkTracking() {
+  const list = document.querySelector('.meeting-list');
+  if (!list) return;
+
+  list.addEventListener('click', (e) => {
+    const link = e.target.closest('a[data-result-link]');
+    if (!link || !list.contains(link)) return;
+    window.trackEvent('search_result_click', {
+      // "deep_link" = the headline, into the matched second.
+      // "meeting_page" = the whole meeting from 0:00.
+      link_type: link.dataset.resultLink,
+      // Rank on the page, so "people only ever click result 1" is
+      // answerable too. 1-based to match how a person would say it.
+      result_position:
+        Array.prototype.indexOf.call(
+          list.children,
+          link.closest('.meeting-result-row'),
+        ) + 1,
+    });
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   wireSaveSearchButton();
   wireSearchHelpIcon();
+  wireResultLinkTracking();
 });

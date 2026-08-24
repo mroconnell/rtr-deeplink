@@ -111,7 +111,29 @@
         </a>
         {% endif %}
         <div class="calendar-candidate-main">
-          <a href="/m/{{ m.slug }}">{{ m.title or "Untitled meeting" }}</a>
+          {#- The row's headline link points at the *matched moment*, not
+             the top of the meeting, whenever the match could be tied to a
+             real segment (Ryan's call, 2026-08-24). The reader arrived
+             here by typing a topic, so "the top of a three-hour video" is
+             a worse answer to their stated intent than the second the
+             topic was actually discussed -- and before this the only
+             thing offering that second was a small link three lines down.
+             The timestamp rides inside the same anchor so the destination
+             is legible before the click. `/m/{{ m.slug }}` itself is
+             still linked, from "Play from 0:00" below -- deliberately, so
+             the row keeps one plain internal link to the canonical page
+             and a reader who wants the whole meeting still has it. -#}
+          <a class="result-title" href="{{ m.deep_link or '/m/' + m.slug }}"
+             {%- if m.deep_link %} data-result-link="deep_link"{% else %} data-result-link="meeting_page"{% endif %}>
+            {#- The title is the part that truncates; the timestamp must
+               not. Two spans rather than bare text so ellipsis applies to
+               one of them -- with the title inline, a long one clipped
+               the "Play from 56:04" clean off the end of the row (caught
+               in-browser, not by a test, which is why this markup looks
+               heavier than it reads). -#}
+            <span class="result-title-text">{{ m.title or "Untitled meeting" }}</span>
+            {%- if m.deep_link %}<span class="result-title-jump"><span class="result-title-sep" aria-hidden="true">&mdash;</span> <span aria-hidden="true">&#9654;</span> Play from {{ m.timestamp_label }}</span>{% endif -%}
+          </a>
           <span class="calendar-candidate-date">
             {%- if m.meeting_body %}{{ m.meeting_body }}{% if m.jurisdiction %} &middot; {% endif %}{% endif -%}
             {%- if m.jurisdiction %}{{ m.jurisdiction|jurisdiction_display }}{% endif -%}
@@ -126,22 +148,34 @@
             {%- if m.date_status == "recent" %} <span class="date-status-pill" title="Held within the last 30 days; captions may still be published by the source">Recent</span>{% endif -%}
           </span>
           {% if m.snippet %}
-          <p class="search-snippet">{{ m.snippet | safe }}</p>
+          {#- The timestamp label immediately before the quote, so it is
+             unambiguous that *this excerpt* is what "Play from 56:04"
+             plays -- the two used to sit three lines apart with nothing
+             tying them together. Absent (as the whole deep-link
+             treatment is) when the match couldn't be tied to a segment. -#}
+          <p class="search-snippet">
+            {%- if m.timestamp_label %}<span class="snippet-time">{{ m.timestamp_label }}</span> {% endif -%}
+            {{ m.snippet | safe }}
+          </p>
           {% endif %}
-          {#- The whole premise of the site, finally on its own search
-             page: a link into the second the match was actually said,
-             rather than the top of a three-hour video. Absent (along with
-             the thumbnail above) whenever the match couldn't be tied to a
-             real transcript segment -- an agenda-only hit, or a quoted
-             phrase split across two caption cues -- in which case the row
-             renders exactly as it always did. See crud._result_snippet().
+          {#- The escape hatch from the deep-linked headline above: the
+             plain meeting page, from 0:00, for a reader who wants the
+             whole thing rather than the matched moment. Absent (along
+             with the thumbnail and the timestamp) whenever the match
+             couldn't be tied to a real transcript segment -- an
+             agenda-only hit, or a quoted phrase split across two caption
+             cues -- in which case the headline link is already the plain
+             page and a second copy of it would be noise. See
+             crud._result_snippet().
              Deliberately no JSON-LD on this page: every filtered
              /meetings variant canonicalizes to the bare unfiltered URL
              (see the canonical tag above), so structured data here would
              describe a page that points its canonical somewhere else. -#}
           {% if m.deep_link %}
-          <a class="search-result-deeplink" href="{{ m.deep_link }}">
-            <span aria-hidden="true">&#9654;</span> Play from {{ m.timestamp_label }}
+          <a class="search-result-deeplink" href="/m/{{ m.slug }}"
+             data-result-link="meeting_page"
+             title="Open the meeting page and start from the beginning">
+            <span aria-hidden="true">&#9654;</span> Play from 0:00
           </a>
           {% endif %}
         </div>
