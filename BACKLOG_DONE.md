@@ -6,6 +6,47 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## WO-54's gate is broader than the problem it was built for [Done 2026-08-25, WO-58]
+
+WO-54 pulls a whole meeting's audio once instead of seeking per chunk,
+gated on "not HLS, more than one chunk". That gate was designed against
+ChampDS, which charges ~0.199 s/MB for every seek — but it catches **every
+progressive source**, and not all of them have that pathology.
+
+**IQM2 does not.** Measured 2026-08-25 on
+`MediaHTTP.IQM2.com/JohnsonCountyIA/3003_480.mp4` (450 MB):
+
+```
+offset       0 MB :  TTFB 0.049s
+offset      50 MB :  TTFB 2.839s
+offset     150 MB :  TTFB 1.365s   <- lower than at 50 MB
+```
+
+Non-monotonic, so that is ordinary network variance, not a linear scan.
+Seeks are effectively free there and per-chunk extraction works fine.
+
+**Why that mattered enough to fix the same night.** `_chunk_audio_via_
+cache()` had no fallback: if the whole-file pull failed, the chunk
+failed. So an IQM2 file too large to pull inside
+`_FULL_AUDIO_TIMEOUT_SECONDS` would turn a job that *used* to work into
+one that fails — across the **99 IQM2 pages** currently in a 603-page
+backlog. Modest probability (450 MB is ~112s at the measured ~4 MB/s, and
+even a six-hour meeting fits) and a loud failure rather than a silent
+one, but a regression introduced hours earlier by the same session.
+
+**The fix keeps the cheap gate and adds a retry**, rather than making the
+gate smarter. Detecting the seek pathology properly would need its own
+probe on every job; instead a failed whole-file pull falls back to
+per-chunk extraction. That turns "wrong guess" into "slower once" instead
+of "failed job", which is the right shape for a heuristic that is
+structural rather than measured.
+
+**Found by asking a question the work did not require.** Ryan asked
+whether the remaining IQM2 backlog would "resolve well" before queuing
+it. Answering that meant measuring IQM2's range behaviour — which had no
+bearing on the queuing decision itself, and turned up a live regression
+in something merged four hours earlier.
+
 ## Vimeo's playback-rate path confirmed live, one day after shipping unverified [Investigated 2026-08-25]
 
 Closes the `[LATER] [EXAMPLE]` residual WO-56 split out of itself. That
@@ -148,7 +189,7 @@ Both closed the same day. Vimeo was confirmed live — see the
 accepted as-is by Ryan and now sits in `BACKLOG.md`'s Standing
 decisions so it stops being re-filed as a bug. **Nothing from WO-56
 remains open.**
-## A working worker now keeps its own claim [Done 2026-08-25, WO-57]
+## A working worker now keeps its own claim [Done 2026-08-25, WO-58]
 
 `STALE_CLAIM_AFTER` (5 minutes) exists to recover a job from a worker
 that crashed mid-chunk. Nothing distinguished "crashed" from "still
