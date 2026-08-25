@@ -84,9 +84,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (12)
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
   Product calls
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (10)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (9)
   [NEEDS-AUDIT] 32 places across 23 adapters swallow an exception and
-  [NEEDS-AUDIT] A chunk that takes longer than `STALE_CLAIM_AFTER` can
   [NEEDS-AUDIT] Two pages have had a failed transcription job and
   [NEEDS-AUDIT] Render "HTTP health check failed" on
   [NEEDS-AUDIT] A chunk truncated only at its *tail* still passes the
@@ -919,33 +918,6 @@ coverage** instead.
   it at the call site, leave the reader-facing copy alone.
   Worth doing on the adapters that actually fail in production first —
   the daily digest names them.
-
-- **[NEEDS-AUDIT] A chunk that takes longer than `STALE_CLAIM_AFTER` can
-  be claimed twice, and both copies report success (2026-08-25).**
-  Pre-existing, not introduced by WO-54 — found while sizing that
-  change's download budget, which is why the budget is 180s and not
-  higher.
-  `claim_next_chunk()` treats a job as claimable when
-  `claimed_at < now - STALE_CLAIM_AFTER` (5 minutes), which exists to
-  recover from a worker that *crashed* mid-chunk. But nothing
-  distinguishes "crashed" from "still working". A worker whose chunk
-  legitimately runs past 5 minutes — a slow source plus transcription —
-  keeps going, while a second worker claims the same job, gets the same
-  `chunk_index` (it is derived from `chunks_completed`, which has not
-  advanced), and processes it too. Both then call
-  `report_chunk_result(success=True)`, which **appends** segments and
-  increments `chunks_completed`: the transcript gets that window twice
-  and the job skips a real chunk entirely.
-  Not yet observed in production, which is why this is `[NEEDS-AUDIT]`
-  rather than a bug report — but the failure is silent, so "not observed"
-  is weak evidence. **Check first**: whether any completed job has
-  `chunks_completed` equal to `total_chunks` while its segments contain a
-  duplicated window, and whether `failure_history` ever shows two
-  attempts at one index seconds apart on different workers.
-  The clean fix is a claim heartbeat — the worker bumps `claimed_at`
-  while it is genuinely working — which would also lift the ceiling on
-  how long a single chunk may take, currently the thing capping WO-54's
-  download budget.
 
 - **[NEEDS-AUDIT] Two pages have had a failed transcription job and
   nothing else for months — are they still re-entering the queue at all?
