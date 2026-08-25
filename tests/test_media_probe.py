@@ -1,5 +1,6 @@
 import shutil
 
+import asyncio
 import pytest
 
 from app.platforms import media_probe
@@ -305,6 +306,81 @@ async def test_extract_chunk_audio_recovers_via_output_side_seek(tmp_path, monke
     assert _seek_is_input_side(calls[1]) is False
     # The retry must still ask for the same window, not a different one.
     assert "900.0" in calls[1]
+
+
+async def test_input_side_timeout_still_gets_the_output_side_retry(
+    tmp_path, monkeypatch
+):
+    """WO-53, and the bug this whole test file's fallback existed to fix
+    but didn't reach: an input-side attempt that TIMES OUT is the same
+    "this approach cannot work on this source" signal as an undecodable
+    file, not a "we ran out of budget" signal.
+
+    Real case (job 863, cerritos.cablecast.tv/show/372). Measured on the
+    workers' own ffmpeg 7.1.5: input-side seek to 900s takes **1084s**
+    because it pulls the entire 1080p stream just to discard it with
+    `-vn`, so it always hits the 120s timeout -- while the output-side
+    seek that the fallback would have run finishes the same chunk in
+    ~13s. WO-45 classified a timeout as not-worth-retrying, so the
+    working path was never tried and the job died at chunk 1 every time.
+    """
+    out_path = tmp_path / "chunk_1.mp3"
+    calls: list[list] = []
+    pending_volumedetect = {"result": None}
+
+    async def _run(*args):
+        if "volumedetect" in args:
+            return pending_volumedetect["result"]
+        calls.append(list(args))
+        if _seek_is_input_side(args):
+            raise asyncio.TimeoutError
+        pending_volumedetect["result"] = (0, b"", _REAL_VOLUMEDETECT_STDERR)
+        out_path.write_bytes(b"\xff\xfb" + b"\x00" * 4000)
+        return 0, b"", b""
+
+    monkeypatch.setattr(media_probe, "_run", _run)
+
+    assert await extract_chunk_audio(
+        "https://cerritos.cablecast.tv/vod/372-x-v2/vod.m3u8",
+        start=900.0,
+        duration=900.0,
+        source_page_url="https://cerritos.cablecast.tv/show/372?site=1",
+        out_path=out_path,
+    ) == (True, None)
+
+    assert len(calls) == 2
+    assert _seek_is_input_side(calls[0]) is True
+    assert _seek_is_input_side(calls[1]) is False
+
+
+async def test_a_timeout_on_the_output_side_attempt_does_not_loop(
+    tmp_path, monkeypatch
+):
+    """The other half of WO-53's condition. If BOTH attempts time out the
+    source really is too slow, and re-running the identical output-side
+    command would burn another full budget for nothing. Exactly two
+    attempts, and the reported reason is the original one."""
+    out_path = tmp_path / "chunk_1.mp3"
+    calls: list[list] = []
+
+    async def _run(*args):
+        if "volumedetect" in args:
+            raise AssertionError("no file was ever produced to check")
+        calls.append(list(args))
+        raise asyncio.TimeoutError
+
+    monkeypatch.setattr(media_probe, "_run", _run)
+
+    ok, reason = await extract_chunk_audio(
+        "https://play.champds.com/DOWNLOAD-MEDIA/oakhilltn/eventmainmedia/50",
+        start=900.0,
+        duration=900.0,
+        source_page_url="https://play.champds.com/oakhilltn/event/50",
+        out_path=out_path,
+    )
+
+    assert (ok, len(calls)) == (False, 2)
+    assert reason and "timed out" in reason
 
 
 async def test_extract_chunk_audio_does_not_retry_the_first_chunk(
