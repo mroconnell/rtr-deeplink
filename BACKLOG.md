@@ -55,7 +55,8 @@ Standing decisions — do NOT re-raise  (4)
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
   The playback-speed chip is absent in native fullscreen, and that's…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (10)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (11)
+  [JUST-DO-IT] `[EASY]` Database storage cleanup — lower thumbnail…
   [JUST-DO-IT] Nothing detects a transcript that simply ends early
   [JUST-DO-IT] `[EASY]` Nothing notices a dead worker pool — chunks
   [JUST-DO-IT] The worker's requirements can silently drift out of
@@ -133,7 +134,7 @@ Platform & jurisdiction coverage  (33)
     [LATER] YouTube-backed meetings' transcripts run through
     [IMPROVEMENT-ROUND] Four platforms account for ~78% of the 470 real
 
-Reliability, ops & cost  (13)
+Reliability, ops & cost  (14)
   `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (2)
     `[JUST-DO-IT]` `[EASY]` Source `_tier3_queue_remaining()` from the
     `[LATER]` Tighten the two workers to their real import surface.
@@ -141,7 +142,8 @@ Reliability, ops & cost  (13)
   Media-source reliability  (2)
     `[NEEDS-AUDIT]` Some old/archived Granicus clips' `chunklist.m3u8`…
     `[NEEDS-AUDIT]` A single job still makes N consecutive same-host…
-  Transcription queue & workers  (4)
+  Transcription queue & workers  (5)
+    [NEEDS-AUDIT] WO-57's claim heartbeat has no cap, and transcription
     [NEEDS-AUDIT] The hourly transcription top-up driver has been
     [NEEDS-AUDIT] Even after the 2026-08-22 rate cut, inflow still
     [LATER] `list_transcription_backlog_candidates()` still does a real
@@ -317,6 +319,19 @@ Small, self-contained, no open design question. Jurisdiction-extraction
 items that also qualify live under **Platform & jurisdiction coverage**
 so that work reads together.
 
+- **[JUST-DO-IT] `[EASY]` Database storage cleanup — lower thumbnail frame cap and prune old frames (WO-60, 2026-08-25).** Render alert: rtr-deeplink-db exceeding 90% storage. Root cause: `meeting_page_thumbnails` stores up to 12 JPEG frames per page (30-120KB each), and with ~1200 pages in the archive that's 1.4GB+. Already fixed via three steps:
+  1. Lowered `MAX_FRAMES_PER_PAGE` from 12 to 3 (prevents future growth)
+  2. Created `scripts/cleanup_old_thumbnails.py` to delete old frames (keep 3 most recent per page, reclaims 300-500MB)
+  3. Run `VACUUM FULL ANALYZE` to return disk space to Postgres
+  
+  **What to do**: From Render shell (Archive service):
+  ```bash
+  cd /app
+  python scripts/cleanup_old_thumbnails.py --keep 3 --dry-run  # verify first
+  python scripts/cleanup_old_thumbnails.py --keep 3            # actually delete
+  psql -c 'VACUUM FULL ANALYZE;'                                # reclaim space
+  ```
+  See `STORAGE_CLEANUP_2026_08_25.md` for full runbook. No user-facing impact — default thumbnails unchanged, timestamp-specific frames fall back to default if deleted.
 
 - **[JUST-DO-IT] Nothing detects a transcript that simply ends early
   (2026-08-24).** The two detectable truncation forms are now both
@@ -2125,6 +2140,43 @@ top-up driver has been creating zero jobs" under **Transcription queue
 & workers**, which is.
 
 ### Transcription queue & workers
+
+- **[NEEDS-AUDIT] WO-57's claim heartbeat has no cap, and transcription
+  has no timeout — together they can pin a job `in_progress` forever
+  (found 2026-08-25 by reading the code; *not* observed firing).**
+  `_heartbeat_loop()` (`worker/main.py`) refreshes `claimed_at` every 60s
+  `while True:` until the surrounding block exits, and the block it wraps
+  ends in `engine.transcribe_chunk()` →
+  `asyncio.to_thread(self._transcribe_sync, ...)`
+  (`worker/transcription_engine.py:187`) with **no `wait_for` and no
+  timeout**. ffmpeg is bounded (2 × `_SUBPROCESS_TIMEOUT_SECONDS`);
+  faster-whisper is not. So if a transcription call ever wedges, the
+  heartbeat keeps the claim fresh indefinitely, `STALE_CLAIM_AFTER` never
+  fires, no worker reclaims the job, and it sits `in_progress` with no
+  error and no failure email.
+  **This is a residual of the fix, not a regression to undo.** Before
+  WO-57 the same wedge went stale after 5 minutes and got reclaimed —
+  which is exactly the duplicate-window/skipped-chunk corruption WO-57
+  shipped to stop (see `BACKLOG_DONE.md`). The trade was corruption →
+  stuckness. Stuckness is the better failure, but it is silent.
+  **Why the fix is not settled.** Two candidates, neither clean: (a) cap
+  the heartbeat's lifetime and let the claim go stale after N minutes —
+  simple, but hands back the exact corruption WO-57 fixed whenever a
+  chunk legitimately runs past N; (b) wrap transcription in
+  `asyncio.wait_for` — precise, but `to_thread` is not cancellable, so
+  the thread leaks and the model stays loaded.
+  **A cap needs a real ceiling on a legitimate chunk, and there is now
+  one measured**: job 911 (Detroit, 21 chunks off `probed_duration`
+  18445.511s) completed 7 chunks between 14:22 and 16:08 UTC — **~15 min
+  per chunk** on the production pool. That is 3× `STALE_CLAIM_AFTER` by
+  itself, which is why the heartbeat was needed at all. Any cap has to
+  clear 15 min by a wide margin.
+  **Detection is the cheaper half and probably comes first**: nothing
+  reports a job whose `chunks_completed` has not moved in far longer than
+  its own observed per-chunk pace. Pairs directly with `Ship next`'s
+  "Nothing notices a dead worker pool" — same blind spot. From the
+  outside a wedged job and a slow one are indistinguishable, which is the
+  actual problem.
 
 - **[NEEDS-AUDIT] The hourly transcription top-up driver has been
   creating zero jobs — measured 2026-08-22, at least 25 hours of it.**

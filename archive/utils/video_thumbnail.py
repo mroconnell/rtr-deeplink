@@ -210,7 +210,9 @@ _FAILURE_COOLDOWN_SECONDS = 6 * 60 * 60
 # enthusiastic) crawl over many distinct `?t=` values can't grow one
 # page's storage without bound. Past this, per-timestamp requests fall
 # back to the page's default frame.
-MAX_FRAMES_PER_PAGE = 12
+# Lowered 2026-08-25 (WO-60) from 12 to 3 to control database storage growth:
+# 1200 pages × 3 thumbnails × ~75KB average = ~270MB vs ~1.4GB at the old limit.
+MAX_FRAMES_PER_PAGE = 3
 
 
 def _semaphore() -> asyncio.Semaphore:
