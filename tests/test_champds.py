@@ -189,3 +189,105 @@ def test_extract_jurisdiction_leaves_unrecognized_shapes_unchanged():
         "Some Regional Authority", ATLANTA_URL
     )
     assert result == "Some Regional Authority"
+
+
+# --- why the API call failed, which used to be unrecoverable -------------
+#
+# Every failure path collapsed into a bare `return None` with no logging,
+# and the caller turned that into one fixed sentence. ChampDS's "symptom
+# B" -- instant 0.2s failures -- therefore survived two separate
+# investigations unexplained, because diagnosing it needed a manual
+# re-curl of the API afterwards. These tests pin the distinctions that
+# make it diagnosable from the logs alone.
+
+
+async def _reason_for(response) -> str:
+    """The `reason` _fetch_json() reports for one canned API response."""
+    import aiohttp
+
+    with mock_session({ATLANTA_API_URL: response}):
+        async with aiohttp.ClientSession() as session:
+            data, reason = await ChampDSAssetFinder._fetch_json(
+                session, ATLANTA_API_URL
+            )
+    assert data is None
+    return reason
+
+
+async def test_a_404_is_reported_as_a_404():
+    """The API answered and declined -- a meeting that no longer exists.
+    Nothing like a rate limit, and it used to be indistinguishable."""
+    reason = await _reason_for(FakeResponse(status=404, text="Event not found"))
+    assert "404" in reason
+    assert "Event not found" in reason
+
+
+async def test_a_rate_limit_is_distinguishable_from_everything_else():
+    """The hypothesis symptom B actually rests on. A 429 has to be
+    visible as a 429, or 'is ChampDS limiting us' stays unanswerable."""
+    reason = await _reason_for(FakeResponse(status=429, text="Too Many Requests"))
+    assert "429" in reason
+
+
+async def test_a_server_error_carries_its_body_snippet():
+    reason = await _reason_for(FakeResponse(status=503, text="upstream unavailable"))
+    assert "503" in reason and "upstream" in reason
+
+
+async def test_a_200_that_is_not_json_says_so():
+    """Confirmed-real risk here: the ChampDS API serves JSON as
+    `text/html`, so a login/error page would arrive as a perfectly good
+    200 and only fail at the parse. That must not read as 'unreachable'."""
+    reason = await _reason_for(FakeResponse(status=200, text="<html>nope</html>"))
+    assert "200" in reason
+    assert "not JSON" in reason
+
+
+async def test_a_timeout_is_reported_as_a_timeout():
+    """A timeout and an instant non-200 are the two symptoms that were
+    conflated in the first place -- 'we never got an answer' vs 'the API
+    answered and said no'."""
+    import asyncio
+
+    import aiohttp
+
+    class _TimeoutResponse(FakeResponse):
+        async def __aenter__(self):
+            raise asyncio.TimeoutError
+
+    with mock_session({ATLANTA_API_URL: _TimeoutResponse()}):
+        async with aiohttp.ClientSession() as session:
+            data, reason = await ChampDSAssetFinder._fetch_json(
+                session, ATLANTA_API_URL
+            )
+
+    assert data is None
+    assert "timed out" in reason
+
+
+async def test_a_successful_fetch_reports_no_reason():
+    import aiohttp
+
+    with mock_session({ATLANTA_API_URL: FakeResponse(status=200, text=ATLANTA_JSON)}):
+        async with aiohttp.ClientSession() as session:
+            data, reason = await ChampDSAssetFinder._fetch_json(
+                session, ATLANTA_API_URL
+            )
+
+    assert reason is None
+    assert data["Event"]["EventTitle"] == "Committee on Council Meeting"
+
+
+async def test_the_reader_facing_warning_stays_generic(caplog):
+    """A status code is not useful to someone looking for a meeting, so
+    the page copy is unchanged -- the diagnosis goes to the log, which is
+    where it was missing."""
+    with mock_session({ATLANTA_API_URL: FakeResponse(status=429, text="slow down")}):
+        with caplog.at_level("WARNING"):
+            result = await ChampDSAssetFinder().resolve(ATLANTA_URL)
+
+    assert result.video_warnings == [
+        "Could not reach the ChampDS API for this meeting."
+    ]
+    assert "429" in caplog.text
+    assert ATLANTA_API_URL in caplog.text

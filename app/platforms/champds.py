@@ -1,3 +1,5 @@
+import asyncio
+import logging
 import re
 from typing import Optional
 from urllib.parse import urlparse
@@ -22,6 +24,8 @@ from ..utils import jurisdiction_enrich
 # different host: play.champds.com -> playapi.champds.com (mirrors
 # cds.common.js's own client-side HOST-splicing logic).
 _EVENT_PATH_RE = re.compile(r"/([^/]+)/event/(\d+)")
+
+logger = logging.getLogger("rtr_deeplink.champds")
 
 
 class ChampDSAssetFinder(AssetFinder):
@@ -101,9 +105,16 @@ class ChampDSAssetFinder(AssetFinder):
         api_url = f"https://playapi.champds.com/{customer}/event/{event_id}"
 
         async with aiohttp.ClientSession(headers=self.headers) as session:
-            data = await self._fetch_json(session, api_url)
+            data, failure_reason = await self._fetch_json(session, api_url)
 
         if not data:
+            # The reader-facing sentence stays deliberately generic -- a
+            # status code is not useful to someone looking for a meeting.
+            # The log line is where the real cause goes, and it is the
+            # thing that was missing entirely.
+            logger.warning(
+                "ChampDS API fetch failed for %s -- %s", api_url, failure_reason
+            )
             return ResolvedMeeting(
                 platform=self.platform_name,
                 source_url=url,
@@ -200,13 +211,48 @@ class ChampDSAssetFinder(AssetFinder):
         return f"https://play.champds.com/ATT/{customer}/{location}/{name}"
 
     @staticmethod
-    async def _fetch_json(session: aiohttp.ClientSession, url: str) -> Optional[dict]:
+    async def _fetch_json(
+        session: aiohttp.ClientSession, url: str
+    ) -> tuple[Optional[dict], Optional[str]]:
+        """Returns (data, reason). `reason` is None on success and a short,
+        real diagnostic on every failure path.
+
+        **Why this exists.** Every failure used to collapse into a bare
+        `return None` with no logging at all, and the caller turned that
+        into one fixed sentence ("Could not reach the ChampDS API for this
+        meeting") regardless of cause. A 404 for a meeting that no longer
+        exists, a 429 from a per-IP limit, a connection reset, and a
+        malformed body were indistinguishable from outside the process --
+        so ChampDS's "symptom B" (instant 0.2s failures) sat unexplained
+        across two separate investigations because diagnosing it required
+        re-curling the API by hand afterwards. The distinction is cheap to
+        record and impossible to recover later.
+
+        Status is called out specifically because it is the one that
+        separates the interesting hypotheses: 4xx means the API answered
+        and declined, 5xx means it broke, and a timeout or client error
+        means we never got an answer at all. A rate limit looks like the
+        first; a blocked IP usually looks like the third.
+        """
         try:
             async with session.get(
                 url, timeout=aiohttp.ClientTimeout(total=20)
             ) as response:
                 if response.status != 200:
-                    return None
-                return await response.json(content_type=None)
-        except Exception:
-            return None
+                    # A short body snippet, because these APIs routinely
+                    # explain themselves in it and the status alone does
+                    # not distinguish "no such meeting" from "slow down".
+                    body = (await response.text())[:200].strip()
+                    return None, (
+                        f"HTTP {response.status}" + (f": {body}" if body else "")
+                    )
+                try:
+                    return await response.json(content_type=None), None
+                except Exception as e:
+                    return None, f"HTTP 200 but the body was not JSON ({e})"
+        except asyncio.TimeoutError:
+            return None, "timed out after 20s"
+        except aiohttp.ClientError as e:
+            return None, f"{type(e).__name__}: {e}"
+        except Exception as e:
+            return None, f"unexpected {type(e).__name__}: {e}"
