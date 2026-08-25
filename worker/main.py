@@ -16,9 +16,11 @@ docstring for the fuller dependency-direction reasoning.
 import asyncio
 import logging
 import os
+import shutil
 import tempfile
 import time
 from pathlib import Path
+from typing import Optional
 
 from dotenv import load_dotenv
 
@@ -51,8 +53,11 @@ from app.platforms import register_all_finders
 from app.platforms.base import UnsupportedPlatformError, get_finder
 from app.platforms.media_probe import (
     extract_chunk_audio,
+    extract_full_audio,
+    is_hls,
     is_plausible_meeting_duration,
     probe_duration,
+    slice_cached_audio,
 )
 from app.utils.retry import retry_async
 from archive.db import crud
@@ -234,6 +239,102 @@ async def maybe_generate_auto_job() -> bool:
     return True
 
 
+# --- Whole-meeting audio cache, for seek-hostile progressive sources ----
+
+# Where a job's once-downloaded audio lives between chunks. Deliberately
+# the worker's own local disk and NOT shared storage: it is a cache, not
+# state. Two workers can claim different chunks of the same job, so a
+# second worker simply finds no cache and downloads its own copy -- worst
+# case two downloads instead of one per chunk, which is still an order of
+# magnitude better than the per-chunk seeking this replaces. Nothing is
+# ever *correct* only because the cache was there.
+_AUDIO_CACHE_ROOT = Path(tempfile.gettempdir()) / "rtr_job_audio"
+
+
+def _job_audio_cache_path(job_id: int) -> Path:
+    return _AUDIO_CACHE_ROOT / f"job_{job_id}.mp3"
+
+
+def _clear_job_audio_cache(job_id: int) -> None:
+    """Drop a finished job's cached audio. Called on every terminal
+    outcome; a missed one costs disk, not correctness, and
+    _reset_audio_cache_root() sweeps those on the next restart."""
+    try:
+        _job_audio_cache_path(job_id).unlink(missing_ok=True)
+    except OSError:
+        logger.warning(
+            "Could not remove cached audio for job %s", job_id, exc_info=True
+        )
+
+
+def _reset_audio_cache_root() -> None:
+    """Wipe the cache directory at startup. A worker that crashed or was
+    redeployed mid-job leaves files nothing will ever ask for again, and
+    Render's disk is not large."""
+    try:
+        if _AUDIO_CACHE_ROOT.exists():
+            shutil.rmtree(_AUDIO_CACHE_ROOT, ignore_errors=True)
+        _AUDIO_CACHE_ROOT.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        logger.warning("Could not reset the job audio cache", exc_info=True)
+
+
+def _should_cache_whole_audio(media_url: str, total_chunks: int) -> bool:
+    """Whether to pull this job's audio once instead of per chunk.
+
+    Two conditions, and both are load-bearing:
+
+    * **Not HLS.** ffmpeg fetches only the segments covering a chunk's
+      window off a playlist, so per-chunk extraction is already minimal
+      there; pre-fetching everything would download the whole video
+      stream to save nothing.
+    * **More than one chunk.** With a single chunk there is nothing to
+      amortise -- the whole-file read and the chunk read are the same
+      read.
+
+    For a multi-chunk progressive file this is never worse on bytes (both
+    approaches move the whole file in total) and strictly better on
+    requests and on seek cost, which for ChampDS is nearly all of the
+    cost -- see media_probe.extract_full_audio()'s measurements.
+    """
+    return total_chunks > 1 and not is_hls(media_url)
+
+
+async def _chunk_audio_via_cache(
+    *,
+    job_id: int,
+    media_url: str,
+    source_url: str,
+    start: float,
+    duration: float,
+    out_path: Path,
+) -> tuple[bool, Optional[str]]:
+    """Slice this chunk out of the job's cached audio, downloading that
+    cache first if this worker does not have it yet."""
+    cached = _job_audio_cache_path(job_id)
+    if not cached.exists():
+        logger.info(
+            "Job %s: pulling whole-meeting audio once (seek-hostile source)", job_id
+        )
+        ok, reason = await extract_full_audio(
+            media_url, source_page_url=source_url, out_path=cached
+        )
+        if not ok:
+            # Leave nothing half-written behind for the next chunk to
+            # mistake for a good cache.
+            cached.unlink(missing_ok=True)
+            return False, reason
+        logger.info(
+            "Job %s: cached %s bytes of audio; every later chunk of this job "
+            "is now a local slice with no network at all",
+            job_id,
+            cached.stat().st_size,
+        )
+    return await slice_cached_audio(
+        cached, start=start, duration=duration, out_path=out_path
+    )
+
+
 async def process_next_chunk(engine: TranscriptionEngine) -> bool:
     """Claims and processes one chunk. Returns True if a chunk was claimed
     (regardless of whether it succeeded), False if there was nothing to do
@@ -280,13 +381,29 @@ async def process_next_chunk(engine: TranscriptionEngine) -> bool:
 
     with tempfile.TemporaryDirectory(prefix="rtr_transcribe_") as tmpdir:
         audio_path = Path(tmpdir) / f"chunk_{chunk_index}.mp3"
-        extracted, extraction_error = await extract_chunk_audio(
-            media_url,
-            start=start,
-            duration=duration,
-            source_page_url=source_url,
-            out_path=audio_path,
-        )
+        # A progressive multi-chunk source pays a server-side seek scan
+        # per chunk that grows with the offset (see
+        # media_probe.extract_full_audio()'s measurements), so the whole
+        # meeting's audio is pulled once and every chunk is then a local
+        # slice. HLS keeps the per-chunk path, where fetching is already
+        # minimal.
+        if _should_cache_whole_audio(media_url, total_chunks):
+            extracted, extraction_error = await _chunk_audio_via_cache(
+                job_id=job_id,
+                media_url=media_url,
+                source_url=source_url,
+                start=start,
+                duration=duration,
+                out_path=audio_path,
+            )
+        else:
+            extracted, extraction_error = await extract_chunk_audio(
+                media_url,
+                start=start,
+                duration=duration,
+                source_page_url=source_url,
+                out_path=audio_path,
+            )
         if not extracted:
             logger.warning(
                 "Job %s: ffmpeg extraction failed for chunk %s/%s (%s) (will retry on next poll)",
@@ -356,6 +473,7 @@ async def process_next_chunk(engine: TranscriptionEngine) -> bool:
             job_id,
             result.get("transcript_version_id"),
         )
+        _clear_job_audio_cache(job_id)
         await _send_completion_email(job_id)
     # A success=True report_chunk_result() call can only ever return
     # "completed" or "in_progress" -- a "failed"/"retry_scheduled" status
@@ -391,6 +509,11 @@ async def _handle_job_failure_result(job_id: int, result: dict) -> None:
             result.get("retry_count", 0),
             "y" if result.get("retry_count") == 1 else "ies",
         )
+        # Terminal, so nothing will ask for this job's cached audio again.
+        # Deliberately NOT cleared on "retry_scheduled" above: that job is
+        # coming back, and keeping the cache is exactly what makes the
+        # retry cheap.
+        _clear_job_audio_cache(job_id)
         await _send_failure_email(job_id)
 
 
@@ -495,6 +618,9 @@ async def _send_failure_email(job_id: int) -> None:
 
 async def run_forever() -> None:
     register_all_finders()
+    # A crash or redeploy mid-job leaves cached audio nothing will ever
+    # ask for again, and Render's ephemeral disk is not large.
+    _reset_audio_cache_root()
     logger.info("Loading transcription model (this can take a while on first run)...")
     engine = build_default_engine()
     logger.info("Model loaded. Entering poll loop.")

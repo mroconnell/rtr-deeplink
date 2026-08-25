@@ -6,6 +6,108 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## ChampDS charges for every seek, so we stopped seeking [Done 2026-08-25, WO-54]
+
+Symptom A of the ChampDS cluster — the `ffmpeg timed out after 120s`
+failures — root-caused and fixed. Symptom B (instant 0.2s JSON-API
+failures) is untouched and stays live in `BACKLOG.md`.
+
+### The measurement that decided everything
+
+A ranged GET against a ChampDS file costs almost nothing to *transfer*
+and almost everything to *start*. Time-to-first-byte grows linearly with
+the offset, measured on **two independent customers**:
+
+```
+offset        TTFB oakhilltn/50    TTFB largofl/240
+     0 MB          0.248s               0.196s
+    50 MB          9.819s              10.140s
+   250 MB         50.150s              49.768s
+   450 MB         89.426s              89.473s
+```
+
+**~0.199 s/MB on both**, with transfer of the 256 KB payload itself
+constant at ~0.17s. The server scans the file internally at ~5 MB/s
+before answering; actual transfer runs ~4 MB/s. Two customers agreeing to
+three significant figures makes this a platform property, not one file or
+one CDN node — which is what this repo's own convention demanded before
+building anything (`BACKLOG.md`'s earlier correction said exactly that).
+
+Compounding it: the **`moov` atom is at the tail** (first 64 bytes are
+`ftyp` / `wide` / `mdat`, no `moov`), so ffmpeg must reach the end of a
+502 MB file before it can seek at all.
+
+**Consequence: per-chunk seeking is O(N²) across a job.** Measured in the
+workers' own base image on oakhilltn/50 (502 MB, 6733s, 8 chunks), using
+the output-side path WO-53 had *just* added:
+
+```
+chunk @900s : 138s      chunk @4500s: 184s
+chunk @2700s: 162s      chunk @6300s: 200s
+```
+
+Every one over the 120s budget, growing linearly — roughly 1,330s of work
+across the job, all of it failing. **WO-53 did not rescue ChampDS**, which
+I had expected it might: it avoids the server-side scan by reading from
+byte 0, but it still has to pull and demux everything before the target.
+
+### The fix
+
+Ryan's framing, and it is simpler than the shared-storage design this was
+heading toward: grab it as one file, chunk it, transcribe the chunks.
+
+`media_probe.extract_full_audio()` pulls a whole meeting's audio in one
+sequential read (no `-ss` anywhere), and `slice_cached_audio()` cuts each
+chunk out of it locally with `-c copy` — no network, no seek, no
+re-encode. `worker/main.py` caches that file per job under
+`/tmp/rtr_job_audio/job_{id}.mp3`.
+
+**Three things make it safe:**
+
+1. **The gate is narrow.** Only non-HLS sources with more than one chunk
+   (`_should_cache_whole_audio()`). Using it for HLS would be actively
+   worse — ffmpeg fetches only the segments covering a chunk's window off
+   a playlist, so pre-fetching everything would download an entire video
+   stream to save nothing. Single-chunk jobs have nothing to amortise.
+2. **The cache is never load-bearing.** It is the worker's own local
+   disk, deliberately not shared storage. Two workers can claim different
+   chunks of the same job, and the second simply finds no cache and
+   downloads its own copy — worst case two downloads instead of one *per
+   chunk*. A missing cache is an ordinary path, not a failure.
+3. **A failed download deletes its own partial file**, so the next chunk
+   cannot mistake a truncated file for a good cache and transcribe
+   whatever landed. Tested explicitly.
+
+**Disk cost is far lower than the earlier entry assumed.** That entry
+rejected this design as needing "~700MB of disk headroom on a 2GB
+worker". That was sized against the *video* file; ffmpeg streams the
+input and writes only the audio, so a 112-minute meeting lands at ~27 MB
+of 32 kbps mono mp3. The objection does not apply.
+
+### The result
+
+One sequential pass on oakhilltn/50, in the workers' own base image:
+
+```
+single sequential pass:  199s total for all 8 chunks, 26 MB on disk
+per-chunk (output-side): ~1,330s, and every chunk over budget
+```
+
+**6.7x faster, and it is the difference between the job completing and
+the job being impossible.**
+
+**The download gets its own 240s budget**, not a raise of
+`_SUBPROCESS_TIMEOUT_SECONDS` (there is a standing decision against
+that, and this is a different operation with a different cost model).
+**Sizing it from the download alone was wrong, and the measurement caught
+it.** 672 MB (wilkesconc/41, the largest file seen) at ~4 MB/s ≈ 168s
+suggested 180s — but the real run took **199s**, because encoding nearly
+two hours of audio to mp3 is not free either. The first budget would have
+killed the very file it was sized for. 240s covers it with margin, and
+the binding constraint on going higher is `STALE_CLAIM_AFTER`, not ffmpeg
+— see the `[NEEDS-AUDIT]` hazard filed alongside this, whose heartbeat
+fix is what would lift the ceiling.
+
 ## The output-side seek fallback never fired on the failure that needed it most [Done 2026-08-25, WO-53]
 
 WO-45 (2026-08-23) added a fallback: when an input-side `-ss` fails in a
