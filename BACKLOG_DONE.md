@@ -6,6 +6,124 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Inbox-triage promotion pass: four fixes, two stale claims, one refuted finding (WO-57) [Done 2026-08-25]
+
+`CLAUDE_INBOX_TRIAGE.md` had six findings across its 2026-08-23/24/25
+sections that nobody had run the promotion step on. Per this repo's own
+"a backlog entry is a lead, not a spec" rule, each one's central claim was
+re-derived against real code and live data before anything was built. That
+step paid for itself twice over — a third of the findings did not survive
+it — so the verification table is the durable part of this entry, not the
+diffs.
+
+### What each finding turned out to be
+
+| Finding | What was checked | Verdict |
+|---|---|---|
+| 2026-08-23 #1 Cablecast HLS chunk 1 | The entry's own text | Already fixed as WO-45 |
+| 2026-08-23 #2 Schemeless `ARCHIVE_BASE_URL` | `app/archive_client.py` | **Real, untracked** — fixed here |
+| 2026-08-23 #3 `destinyhosted` canary failure | Live GitHub Actions run history | **Refuted** — transient |
+| 2026-08-24 #1 `markupsafe` worker outage | `BACKLOG.md` | Already promoted; the entry's claim was stale |
+| 2026-08-24 #2 Resend `422` invalid `to` | `archive/utils/email.py` | **Real, untracked** — fixed here |
+| 2026-08-24 #3 Search Console, 4 categories | Archive templates | Half expected by design; half needs the dashboard |
+| 2026-08-25 `rtr-deeplink-db` >90% storage | Whole repo | **Unanswerable from the repo** — built the read |
+
+**The refuted one is the most useful.** The `destinyhosted` canary failure
+(2026-08-22, run `32581540837`) was written up as a possible adapter
+regression with an open root-cause question, because the triaging session
+couldn't reach `destinyhosted.com` to check. The next two scheduled canary
+runs — `32648478422` (08-23) and `32746381314` (08-24) — both came back
+`success`. It was a transient. No adapter work was needed and none was
+done.
+
+**Two stale claims, corrected in place.** The `markupsafe` entry stated
+that neither backlog file mentioned the incident by name; `BACKLOG.md`
+carries it as a `[JUST-DO-IT]` entry with a fuller root-cause writeup than
+the triage entry had. And the Search Console entry treated all four new
+reason categories as potential defects; two of them are the direct,
+documented consequence of canonicalization choices the templates' own
+comments explain.
+
+### The four fixes
+
+**1. `GET /internal/db-size` (`archive/main.py`).** The 2026-08-25 storage
+alert could not be sized against anything: nothing in `app/`, `archive/`,
+`scripts/` or `worker/` had ever queried `pg_database_size`, and
+`render.yaml`'s `basic-1gb` comment is entirely a RAM argument that names
+no storage cap. Same lesson as `/internal/schema-info` — when a doc asserts
+a fact about production that nothing in the repo can verify, build the read
+that answers it, rather than acting on the assertion. Reports every
+database on the server (a catalog read, so it reaches `rtr_deeplink_db`
+too — the alert is about the shared server, not one logical database) plus
+the 15 largest relations by `pg_total_relation_size`, which includes TOAST:
+this service's transcript JSON is overwhelmingly TOASTed, so a table-only
+size would understate the biggest consumer by design. Raw bytes alongside
+`pg_size_pretty` so a later comparison is arithmetic, not string parsing.
+Dialect-guarded, so the SQLite test path reports `supported: false` rather
+than 500ing.
+
+**2. A schemeless `ARCHIVE_BASE_URL` is now a named failure, not an aiohttp
+one.** `_base_url()` did `os.environ.get(...).rstrip("/")` with no scheme
+check, and `proxy_get()` handed the result straight to aiohttp — which
+raises `NonHttpUrlClientError` from deep inside the request. That is
+exactly the 2026-08-22 production window (Sentry PYTHON-FASTAPI-Y,
+`rtr-deeplink-archive:10000/coverage`), once per proxied page view across
+`/coverage`, `/meetings` and `/archive-static/*`. The variable is
+`sync: false` in `render.yaml`, so nothing in the repo constrains its
+shape. Now: `configuration_problem()` reports a set-but-unusable value,
+`_base_url()` returns `""` for it (every caller already degrades correctly
+on `""` — a misconfigured Archive must never block a live resolve), and
+`app/main.py`'s lifespan logs it once at startup so it lands in the deploy
+log instead of being inferred from a pile of per-request failures days
+later. **This is live-relevant, not historical**: `BACKLOG.md`'s bandwidth
+entry proposes editing this exact variable to Render's internal address,
+which is one typo away from re-running the same outage. A test covers
+`http://host:port` specifically, so the internal form isn't mistaken for
+the malformed one.
+
+**3. No email send with an empty recipient.** `_send()` built
+`{"to": [to], ...}` unconditionally, so an empty string reached Resend as
+`"to": [""]` — rejected outright with 422 (Sentry PYTHON-FASTAPI-11,
+production, 2026-08-24). Guarded in `_send()` rather than at the four
+`send_*()` call sites, for the reason that function's own comment already
+gives about the unsubscribe footer: the guarantee should be structural.
+Separately, `/internal/send-worker-daily-report` now answers `400` for a
+blank `to` instead of `200 {"sent": false}`. That second half matters
+independently — the route returns 200 regardless of send success, which is
+precisely why the triage of this alert went looking for a failed GitHub
+Actions run and found only green ones.
+
+Whether the specific 02:18:57Z production call was a manual `curl` is
+still unknown and no longer worth chasing: the failure shape is real and
+reachable from the scheduled workflow any time the
+`AUTO_TRANSCRIPTION_REQUESTER_EMAIL` secret is blank.
+
+**4. One retry in the adapter canary.** `check_platform()` reported
+`ok: false` on the first failure of any kind, against 27 live third-party
+sites it doesn't control. The `destinyhosted` finding above is what that
+costs: a full triage investigation of a blip. Now retries once, after a
+short delay, on every failure shape — including the non-exception
+"resolve returned no real content" path, which is the one that actually
+happened; retrying only raised exceptions would have done nothing for it.
+A recovered flake still reports itself (`FLAKY <platform>: first attempt
+failed (...), retry passed`) rather than being silently absorbed, so a
+site that is *becoming* flaky stays distinguishable from one that is
+stable.
+
+### Verification
+
+All four CI gates in CI's own order: `ruff check` clean, `ruff format
+--check` clean (one file reformatted — `archive/main.py`, and only the
+lines added here, confirmed by the diffstat), **1790 passed / 16 skipped**,
+and both `alembic check`s clean after `alembic upgrade head` the way the
+workflow runs them. No schema change, so no migration. `BACKLOG.md`'s TOC
+regenerated and confirmed idempotent on a second run.
+
+The real production read of `/internal/db-size` is Ryan's to make — it
+needs `ARCHIVE_INGEST_TOKEN`, and this repo's standing decision is that
+production sweeps don't run from an interactive session. The command is in
+the `BACKLOG.md` entry.
+
 ## Vimeo's playback-rate path confirmed live, one day after shipping unverified [Investigated 2026-08-25]
 
 Closes the `[LATER] [EXAMPLE]` residual WO-56 split out of itself. That

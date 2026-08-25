@@ -67,13 +67,14 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (10)
   [NEEDS-AUDIT] The saved-search digest subject's "+N more" count may
   [JUST-DO-IT] Every byte the public site serves is billed twice:
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (12)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (13)
   Confirmations nobody has actually watched happen  (4)
     [HUMAN] Decide the /meetings result link order from real click data,
     [HUMAN] Render's health-check gate has never blocked a deploy —
     [HUMAN] `[LOGIN]` Confirm a real Render deploy installed cleanly off
     [HUMAN] Configure GA's internal traffic filter — the
-  Production actions only Ryan should take  (5)
+  Production actions only Ryan should take  (6)
+    [HUMAN] `[LOGIN]` `rtr-deeplink-db` is over 90% of its storage limit,
     [HUMAN] `[LOGIN]` Archive service instability, 2026-08-17 —
     [HUMAN] `[WAIT]` 10 YouTube-backed pages still hold roll-up
     [HUMAN] Meeting-card backfill: both follow-ups are done, and the
@@ -133,7 +134,7 @@ Platform & jurisdiction coverage  (33)
     [LATER] YouTube-backed meetings' transcripts run through
     [IMPROVEMENT-ROUND] Four platforms account for ~78% of the 470 real
 
-Reliability, ops & cost  (13)
+Reliability, ops & cost  (14)
   `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (2)
     `[JUST-DO-IT]` `[EASY]` Source `_tier3_queue_remaining()` from the
     `[LATER]` Tighten the two workers to their real import surface.
@@ -146,7 +147,8 @@ Reliability, ops & cost  (13)
     [NEEDS-AUDIT] Even after the 2026-08-22 rate cut, inflow still
     [LATER] `list_transcription_backlog_candidates()` still does a real
     [LATER] Second transcription worker's auto-generation TOCTOU race —
-  Search Console, structured data & SEO plumbing  (3)
+  Search Console, structured data & SEO plumbing  (4)
+    [HUMAN] `[LOGIN]` `[WAIT]` Four new "reasons preventing pages from
     [HUMAN] `[LOGIN]` `[WAIT]` Search Console "Page indexed without
     [IMPROVEMENT-ROUND] `[LOGIN]` `[WAIT]` Google Search Console flagged
     [JUST-DO-IT] `[WAIT]` Search Console "Video isn't on a watch page"
@@ -672,6 +674,30 @@ convenient.
   events on `/m/*` pages" entry.
 
 ### Production actions only Ryan should take
+
+- **[HUMAN] `[LOGIN]` `rtr-deeplink-db` is over 90% of its storage limit,
+  and the real numbers have never been read (alert 2026-08-24).** Render:
+  *"If you exceed your storage limit, your database will be suspended,
+  resulting in downtime."* One Postgres server hosts both `rtr_archive`
+  and `rtr_deeplink_db`, so a suspension is the whole site, resolver cache
+  and Archive content together — the most severe outage shape on this
+  list. **Nothing was sized**: `render.yaml`'s `basic-1gb` plan comment is
+  entirely a RAM/`shared_buffers` argument and names no storage cap, and
+  its 218MB/22MB figures are from 2026-08-17.
+  **Get the current number first — `GET /internal/db-size` (WO-57) now
+  answers this without a dashboard**: per-database bytes for every
+  database on the server plus the 15 largest relations.
+  ```
+  curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" \
+      "$ARCHIVE_BASE_URL/internal/db-size"
+  ```
+  **The likely driver is ordinary growth, not a leak**: the second
+  transcription worker landed 2026-08-21, and the 2026-08-25 daily report
+  shows **167,719 segments in 24 hours** — every one a row in
+  `rtr_archive`. **What only Ryan can do**: read the plan's real storage
+  allotment off the dashboard, compare, and raise it if needed (same lever
+  used for RAM on 2026-08-17). Worth doing proactively if throughput keeps
+  climbing — a suspension costs far more than the upgrade.
 
 - **[HUMAN] `[LOGIN]` Archive service instability, 2026-08-17 —
   part (a) answered 2026-08-22, part (b) still open.** Sentry showed a
@@ -2194,6 +2220,32 @@ top-up driver has been creating zero jobs" under **Transcription queue
   `BACKLOG_DONE.md`.
 
 ### Search Console, structured data & SEO plumbing
+
+- **[HUMAN] `[LOGIN]` `[WAIT]` Four new "reasons preventing pages from
+  being indexed" (alerts 2026-08-23, 53 seconds apart) — two are expected
+  by design, two might be real.** The emails name only reason categories,
+  no URLs or counts, and link to an auth-walled indexing report.
+  Read against the templates, they split cleanly:
+  - **"Alternate page with proper canonical tag"** and **"Duplicate,
+    Google chose different canonical than user"** are the *expected*
+    consequence of two deliberate, documented decisions:
+    `state_page.html:10-17` canonicalizes `?topic=` variants to the bare
+    state URL, and `meeting_list.html:8-11` canonicalizes every
+    `/meetings` filter variant to the bare one. Both templates say so in
+    their own comments. **Do not "fix" these** without deciding to reverse
+    those choices.
+  - **"Soft 404"** and **"Not found (404)"** are the only potential
+    defects. `/state/{slug}` and `/j/{slug}` both return a real 404 for an
+    unknown or non-indexable slug (`archive/main.py`, `not_found.html`),
+    so genuine 404s are expected for de-indexed slugs — see the frozen-slug
+    entry under "Needs a human". Soft 404 has no identified mechanism.
+
+  **Blocked on the affected-URL list**, which needs Search Console → the
+  "Open indexing report" link in the alert. Guessing a root cause from the
+  category names alone would be inventing one. Nothing else in
+  `BACKLOG.md`/`BACKLOG_DONE.md` mentions soft 404 or canonical selection —
+  this is not a duplicate of the "No thumbnail URL provided" video-indexing
+  gap below.
 
 - **[HUMAN] `[LOGIN]` `[WAIT]` Search Console "Page indexed without
   content" (alert 2026-08-17) is still genuinely unexplained — and

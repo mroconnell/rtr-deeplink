@@ -15,6 +15,8 @@ exclusion). That one needs no fakes or network either -- it only compares
 two in-process sets.
 """
 
+import pytest
+
 from app.platforms.base import CalendarPageError
 from app.platforms.models import ResolvedMeeting
 from conftest import registered_platforms
@@ -26,6 +28,15 @@ from scripts.adapter_canary import (
     has_real_content,
     run_canary,
 )
+
+
+@pytest.fixture(autouse=True)
+def _no_retry_delay(monkeypatch):
+    """check_platform() sleeps between its two attempts against a real
+    site. Every failing-path test below goes through that retry, so
+    without this the suite would spend real seconds sleeping for no
+    coverage."""
+    monkeypatch.setattr("scripts.adapter_canary._RETRY_DELAY_SECONDS", 0)
 
 
 def test_every_registered_platform_is_canaried_or_explicitly_excluded():
@@ -200,6 +211,101 @@ async def test_check_platform_fails_when_calendar_page_has_no_candidates(monkeyp
 
     assert result["ok"] is False
     assert result["reason"] == "calendar page returned zero candidates"
+
+
+class _FlakyFinder:
+    """Fails the first resolve() and succeeds on every one after it --
+    the shape of a real transient blip against a live third-party site."""
+
+    def __init__(self, result):
+        self._result = result
+        self.calls = 0
+
+    async def resolve(self, url):
+        self.calls += 1
+        if self.calls == 1:
+            raise RuntimeError("transient network blip")
+        return self._result
+
+
+async def test_check_platform_retries_once_and_reports_a_recovered_flake(monkeypatch):
+    # The real 2026-08-22 destinyhosted alert was this: one failure,
+    # green on the next two runs. A single retry absorbs it, but the run
+    # must still say it happened -- a site that is becoming flaky should
+    # not look identical to one that is stable.
+    finder = _FlakyFinder(
+        result=_meeting(segments=[{"start": 0, "end": 1, "text": "hi"}])
+    )
+    monkeypatch.setattr("scripts.adapter_canary.detect_platform", lambda url: "fake")
+    monkeypatch.setattr("scripts.adapter_canary.get_finder", lambda platform: finder)
+
+    result = await check_platform("fake", "https://example.com/1")
+
+    assert result["ok"] is True
+    assert result["recovered_after_retry"] is True
+    assert "transient network blip" in result["first_attempt_reason"]
+    assert finder.calls == 2
+
+
+async def test_check_platform_retries_the_no_real_content_path_too(monkeypatch):
+    # The observed real flake reported "resolve returned no real content",
+    # which is the non-exception path -- retrying only raised exceptions
+    # would have done nothing for the case that actually happened.
+    calls = []
+
+    class _EmptyThenReal:
+        async def resolve(self, url):
+            calls.append(url)
+            if len(calls) == 1:
+                return _meeting()
+            return _meeting(segments=[{"start": 0, "end": 1, "text": "hi"}])
+
+    monkeypatch.setattr("scripts.adapter_canary.detect_platform", lambda url: "fake")
+    monkeypatch.setattr(
+        "scripts.adapter_canary.get_finder", lambda platform: _EmptyThenReal()
+    )
+
+    result = await check_platform("fake", "https://example.com/1")
+
+    assert result["ok"] is True
+    assert result["recovered_after_retry"] is True
+    assert result["first_attempt_reason"] == "resolve returned no real content"
+    assert len(calls) == 2
+
+
+async def test_check_platform_still_fails_when_both_attempts_fail(monkeypatch):
+    # The retry must absorb a blip, not hide a genuinely broken adapter.
+    monkeypatch.setattr("scripts.adapter_canary.detect_platform", lambda url: "fake")
+    monkeypatch.setattr(
+        "scripts.adapter_canary.get_finder",
+        lambda platform: _FakeFinder(result=_meeting()),
+    )
+
+    result = await check_platform("fake", "https://example.com/1")
+
+    assert result["ok"] is False
+    assert result["reason"] == "resolve returned no real content"
+    assert result["recovered_after_retry"] is False
+
+
+def test_format_report_names_a_recovered_flake_without_failing_the_run():
+    report = format_report(
+        [
+            {
+                "platform": "destinyhosted",
+                "url": "https://example.com/1",
+                "ok": True,
+                "reason": None,
+                "first_attempt_reason": "resolve returned no real content",
+                "recovered_after_retry": True,
+            }
+        ]
+    )
+
+    assert "1/1 platforms OK" in report
+    assert "FAIL" not in report
+    assert "FLAKY destinyhosted" in report
+    assert "resolve returned no real content" in report
 
 
 async def test_run_canary_reports_each_platform_independently(monkeypatch):

@@ -137,6 +137,22 @@ async def _send(to: str, subject: str, html: str, *, cc: str = "") -> bool:
         )
         return False
 
+    # An empty recipient reaches Resend as `"to": [""]`, which it rejects
+    # outright with 422 "Invalid `to` field" -- a real production
+    # occurrence (Sentry PYTHON-FASTAPI-11, 2026-08-24, against
+    # /internal/send-worker-daily-report). Checked here rather than at the
+    # four send_*() call sites for the same reason the unsubscribe footer
+    # below is appended centrally: the guarantee should be structural, not
+    # dependent on remembering it at each new call site added later.
+    to = (to or "").strip()
+    if not to:
+        logger.error(
+            "Transactional email send attempted with no recipient (subject: %r) -- "
+            "not calling Resend, which rejects an empty `to` with a 422.",
+            subject,
+        )
+        return False
+
     # Appended centrally, once, here -- rather than at each of the four
     # send_*() call sites below -- so "every email this module sends gets
     # a real unsubscribe link" is guaranteed structurally, not dependent

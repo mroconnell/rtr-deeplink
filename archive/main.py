@@ -387,6 +387,106 @@ async def internal_schema_info(authorization: Optional[str] = Header(None)):
     }
 
 
+@app.get("/internal/db-size")
+async def internal_db_size(authorization: Optional[str] = Header(None)):
+    """Read-only storage report for the Postgres server this service is on,
+    so "how close is rtr-deeplink-db to its storage limit?" is answerable
+    without a Render dashboard login.
+
+    Built for the same reason /internal/schema-info above was, and it's
+    the same lesson: a 2026-08-24 Render alert said the database was over
+    90% of its storage limit, and nothing in this repo could size that
+    against anything. render.yaml's own plan comment (`basic-1gb`) is
+    entirely a RAM/shared_buffers argument and says nothing about the
+    storage allotment, so the only number anyone had was the alert's own
+    "more than 90%". When a doc asserts a fact about production that
+    nothing in the repo can verify, build the read that answers it.
+
+    Reports *every* database on the server, not just this one: the alert
+    is about the server's storage, and this single instance hosts both
+    rtr_archive (this service's) and rtr_deeplink_db (the resolver's).
+    That works cross-database because pg_database_size() is a catalog
+    read, not a query against the other database's contents.
+
+    Also reports the largest relations in the *current* database, so the
+    follow-up question -- what actually grew -- is answerable from the
+    same call rather than needing a second trip. Raw byte counts sit
+    alongside the pretty strings so a later comparison is arithmetic, not
+    string parsing.
+
+    Read-only and side-effect free. Never writes, never vacuums.
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    from sqlalchemy import text
+
+    from .db.engine import engine
+
+    # Same dialect guard as crud.py's Postgres-only helpers -- the local
+    # and test path is SQLite, which has none of these functions. Reported
+    # rather than raised, so hitting this locally says why instead of 500ing.
+    if engine.dialect.name != "postgresql":
+        return {
+            "dialect": engine.dialect.name,
+            "supported": False,
+            "detail": "Storage sizes are Postgres-only; this service is not on Postgres.",
+        }
+
+    async with engine.connect() as conn:
+        databases = [
+            {
+                "name": row[0],
+                "bytes": int(row[1]),
+                "pretty": row[2],
+            }
+            for row in (
+                await conn.execute(
+                    text(
+                        "SELECT datname, pg_database_size(datname), "
+                        "pg_size_pretty(pg_database_size(datname)) "
+                        "FROM pg_database WHERE datistemplate = false "
+                        "ORDER BY pg_database_size(datname) DESC"
+                    )
+                )
+            ).all()
+        ]
+        # pg_total_relation_size includes indexes and TOAST, which is the
+        # number that matters here -- the transcript JSON this service
+        # stores is overwhelmingly TOASTed, so a table-only size would
+        # understate the biggest consumer by design.
+        largest_relations = [
+            {
+                "relation": f"{row[0]}.{row[1]}",
+                "bytes": int(row[2]),
+                "pretty": row[3],
+            }
+            for row in (
+                await conn.execute(
+                    text(
+                        "SELECT schemaname, relname, "
+                        "pg_total_relation_size(relid), "
+                        "pg_size_pretty(pg_total_relation_size(relid)) "
+                        "FROM pg_catalog.pg_statio_user_tables "
+                        "ORDER BY pg_total_relation_size(relid) DESC LIMIT 15"
+                    )
+                )
+            ).all()
+        ]
+        current_database = (
+            await conn.execute(text("SELECT current_database()"))
+        ).scalar()
+
+    return {
+        "dialect": "postgresql",
+        "supported": True,
+        "current_database": current_database,
+        "server_total_bytes": sum(db["bytes"] for db in databases),
+        "databases": databases,
+        "largest_relations_in_current_database": largest_relations,
+    }
+
+
 @app.get("/internal/pages/all-urls")
 async def internal_all_page_urls(authorization: Optional[str] = Header(None)):
     """Every archived page's real source URL + platform -- the backfill
@@ -614,6 +714,17 @@ async def internal_send_worker_daily_report(
     """
     if not _token_ok(authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    # This route returns 200 whether or not the send succeeded (see the
+    # return below), so a caller that passes no recipient otherwise gets
+    # no signal at all -- which is exactly why the GitHub Actions run
+    # behind Sentry PYTHON-FASTAPI-11 showed green while Resend was
+    # rejecting the request. `to: str` alone doesn't catch it: FastAPI
+    # accepts `?to=` as a perfectly valid empty string.
+    if not to.strip():
+        return JSONResponse(
+            {"detail": "`to` is required and cannot be empty."}, status_code=400
+        )
 
     summary = await crud.get_transcription_queue_summary()
     summary["tier3_queue_remaining"] = _tier3_queue_remaining()

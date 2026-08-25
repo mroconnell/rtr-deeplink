@@ -184,3 +184,65 @@ def test_m_route_forwards_if_none_match_but_static_does_not(monkeypatch):
     # No header on the request -> nothing invented.
     assert captured[1] == ("m/some-slug", None)
     assert captured[2] == ("static/style.css", None)
+
+
+# --- a schemeless ARCHIVE_BASE_URL is a config error, not a request ------
+#
+# Third bug in the same proxy path, confirmed live 2026-08-22 (Sentry
+# PYTHON-FASTAPI-Y): ARCHIVE_BASE_URL was set to a bare `rtr-deeplink-
+# archive:10000`, and `proxy_get()` handed that straight to aiohttp, which
+# raised NonHttpUrlClientError from deep inside the request -- once per
+# proxied page view, across `/coverage`, `/meetings` and
+# `/archive-static/*`. The variable is `sync: false` in render.yaml
+# (dashboard-managed), so nothing in the repo constrains its shape.
+
+
+def test_base_url_rejects_a_value_with_no_scheme(monkeypatch):
+    monkeypatch.setenv("ARCHIVE_BASE_URL", "rtr-deeplink-archive:10000")
+
+    assert archive_client._base_url() == ""
+    problem = archive_client.configuration_problem()
+    assert problem is not None
+    assert "rtr-deeplink-archive:10000" in problem
+    assert "scheme" in problem
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "https://rtr-deeplink-archive.onrender.com",
+        "https://rtr-deeplink-archive.onrender.com/",
+        "http://rtr-deeplink-archive:10000",
+        "  https://rtr-deeplink-archive.onrender.com  ",
+    ],
+)
+def test_base_url_accepts_real_shapes_including_the_internal_address(
+    monkeypatch, value
+):
+    """The internal `http://host:port` form matters specifically: pointing
+    ARCHIVE_BASE_URL at Render's internal address is the next planned
+    change to this variable (BACKLOG.md's bandwidth entry), and it must
+    not be mistaken for the malformed shape above."""
+    monkeypatch.setenv("ARCHIVE_BASE_URL", value)
+
+    assert archive_client.configuration_problem() is None
+    assert archive_client._base_url() == value.strip().rstrip("/")
+
+
+def test_unset_base_url_is_a_valid_configuration_not_a_problem(monkeypatch):
+    """Local development with no Archive is legitimate, and every caller
+    in archive_client already degrades correctly on "" -- a misconfigured
+    Archive must never block a live resolve."""
+    monkeypatch.delenv("ARCHIVE_BASE_URL", raising=False)
+
+    assert archive_client.configuration_problem() is None
+    assert archive_client._base_url() == ""
+
+
+async def test_proxy_get_raises_a_named_error_for_a_schemeless_base_url(monkeypatch):
+    """The value of the fix: a named RuntimeError this repo raises itself,
+    rather than aiohttp's NonHttpUrlClientError from inside the request."""
+    monkeypatch.setenv("ARCHIVE_BASE_URL", "rtr-deeplink-archive:10000")
+
+    with pytest.raises(RuntimeError, match="ARCHIVE_BASE_URL"):
+        await archive_client.proxy_get("coverage", "")
