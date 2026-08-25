@@ -1,15 +1,3 @@
-https://pitkincounty.granicus.com/player/clip/627?view_id=2
-https://pittsburgh.granicus.com/player/clip/7524
-https://plainfieldil.granicus.com/player/clip/1672
-https://pleasanthill.granicus.com/player/clip/1655
-https://pompano.granicus.com/player/clip/2111?view_id=2
-https://portlandtx.granicus.com/player/clip/583
-https://portofcorpuschristi.granicus.com/player/clip/359
-https://portofla.granicus.com/player/clip/1693
-https://portofsandiego.granicus.com/player/clip/1604
-https://princegeorgescountymd.granicus.com/player/clip/5100?view_id=4
-https://pucnv.granicus.com/player/clip/1583?view_id=1
-https://pueblo.granicus.com/player/clip/884
 https://pusd.granicus.com/player/clip/890?view_id=15
 https://pvestates.granicus.com/player/clip/2016
 https://raleigh.granicus.com/player/clip/7884
