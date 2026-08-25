@@ -84,7 +84,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (12)
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
   Product calls
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (9)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (10)
+  [NEEDS-AUDIT] The chunk-failure budget only catches sources that fail
   [NEEDS-AUDIT] 32 places across 23 adapters swallow an exception and
   [NEEDS-AUDIT] Two pages have had a failed transcription job and
   [NEEDS-AUDIT] Render "HTTP health check failed" on
@@ -886,6 +887,30 @@ convenient.
 Reproduced against real data, but the fix is a genuine open question.
 Jurisdiction-extraction bugs live under **Platform & jurisdiction
 coverage** instead.
+
+- **[NEEDS-AUDIT] The chunk-failure budget only catches sources that fail
+  *consistently* — an intermittent one can hold a worker slot for hours
+  (2026-08-25).** `MAX_CONSECUTIVE_CHUNK_FAILURES` is 3, and
+  `report_chunk_result()` resets `consecutive_chunk_failures` to 0 on
+  every success. So a source that alternates — fail, fail, succeed, fail,
+  succeed — never reaches the budget and the job never dies.
+  **Observed live**, job 910 (`napacity.granicus.com/player/clip/3458`,
+  a Wowza `archive-stream` HLS): chunk 0 failed twice then succeeded,
+  chunk 1 failed then succeeded, chunk 2 failed — reaching 2/13 in
+  roughly 25 minutes, on track to occupy one of three job slots for
+  around two hours. Measured whole-pool throughput during that stretch
+  was **~11 chunks/hour against ~36 the day before**.
+  Note this is not the same as a job that fails: a slow grind produces a
+  real transcript eventually, so "kill it sooner" is not obviously right.
+  The question is whether a job whose *chunks* keep timing out should be
+  allowed to monopolise a slot, or be de-prioritised behind jobs making
+  clean progress. **Worth checking first** whether job 910 finished or
+  died, and what the pool's throughput did afterwards — one observation
+  during an unusual week is thin evidence for a scheduling change.
+  Related: WO-53 made a timeout eligible for the output-side seek retry,
+  which doubles the cost of a chunk that times out on *both* paths — a
+  good trade where the retry succeeds (Cerritos) and pure added expense
+  where it cannot (this).
 
 - **[NEEDS-AUDIT] 32 places across 23 adapters swallow an exception and
   return nothing, with no log line (surveyed 2026-08-25).** The same
@@ -1918,7 +1943,31 @@ matching `[Done 2026-08-22]` entry.
 **Where it stands:** `render.yaml`'s four `buildFilter` blocks are now
 **allow-lists** (`paths`) rather than deny-lists of docs — measured
 **1,211 → 926 builds per fortnight (24%)**, on top of the earlier
-queue-file fix's 31%.
+queue-file fix's 31%. **And it ran out again anyway on 2026-08-25**, for
+two reasons neither round of filtering could have caught:
+
+**1. The arithmetic only ever counted four services. There were six.**
+Every measurement in this entry and its `BACKLOG_DONE.md` twin says
+"four services" — but `rtr-deeplink-staging` and
+`rtr-deeplink-archive-staging` existed too, created in the dashboard and
+therefore **not in `render.yaml` at all**, which means they had **no
+`buildFilter`** and rebuilt on *every* push. Measured over the 24 hours
+to 2026-08-25: **21 commits to `main`, 13 of which built nothing but
+staging** — docs, backlog files, and the queue-advance workflows'
+own auto-merged PRs, all correctly skipped by the four production
+allow-lists and all fully paid for twice by staging. Rough tally: ~42
+staging builds against ≤32 production ones. The two services quietly
+undid a large share of both filtering rounds for weeks.
+**Ryan disabled their auto-deploy on 2026-08-25.** The durable lesson is
+the general one: **a service outside the blueprint has no build filter,
+and nothing in this repo will ever tell you it exists.**
+
+**2. Build volume scales with merge count, and nothing capped that.**
+Filtering reduces builds *per merge*; it does nothing about merging
+seven times in an evening (which this session did on 2026-08-25).
+Addressed by `autoDeploy: false` on all four services plus a CLAUDE.md
+convention on batching merges and asking for deploys — see WO-59 in
+`BACKLOG_DONE.md`.
 
 **Watch this before 08-27/28.** Ryan's goal is to downgrade the workspace
 again once build volume is efficient enough. **812 / 1,000 was cumulative
