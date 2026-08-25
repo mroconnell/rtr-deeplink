@@ -6,6 +6,70 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## The output-side seek fallback never fired on the failure that needed it most [Done 2026-08-25, WO-53]
+
+WO-45 (2026-08-23) added a fallback: when an input-side `-ss` fails in a
+way consistent with a broken seek, retry once with `-ss` after `-i`. It
+classified a **timeout** as *not* worth that retry, reasoning that a
+timeout has already spent the whole budget so trying again is pointless.
+
+That reasoning is wrong whenever the fallback has a different **cost
+structure** rather than being another roll of the same dice. Here it
+does, and the gap was costing whole jobs.
+
+**Real case: job 863, `cerritos.cablecast.tv/show/372`**, reported by
+Ryan from a failure email. Measured inside the workers' own base image
+(`python:3.12-slim-trixie`, ffmpeg 7.1.5), chunk 1 at offset 900s:
+
+```
+master playlist, input-side  -ss   1084s  ->    224 B   undecodable
+master playlist, output-side -ss     13s  ->  3.6 MB    mean_volume -25.5 dB
+audio rendition, input-side  -ss     73s  ->    224 B   undecodable
+audio rendition, output-side -ss     11s  ->  3.6 MB    mean_volume -25.5 dB
+```
+
+Input-side seeking on this packaging degenerates into pulling the entire
+1080p stream and discarding it with `-vn` — ~560 MB over the wire to
+produce 3.6 MB of mono 16 kHz mp3 — so it always blew the 120s timeout.
+The output-side path decodes and discards instead: **~80x faster**, and
+it was right there behind a flag that a timeout could never set. Fix is
+one condition: an input-side timeout now returns `worth_seek_retry=True`.
+A timeout on the *output*-side attempt still returns False, or the two
+would alternate burning full budgets.
+
+**Three wrong turns on the way, all worth recording.**
+
+1. **The obvious fix was the audio rendition, and it does not work.**
+   The master playlist declares `#EXT-X-MEDIA:TYPE=AUDIO`, so pointing
+   ffmpeg at that instead should avoid the video download entirely — and
+   locally it went 70s → 6s with byte-identical output. But local ffmpeg
+   is **8.1.2** and the workers run **7.1.5**; on 7.1.5 the audio
+   rendition returns the same 224-byte undecodable file. WO-45's original
+   note said exactly this and I had doubted it. **The version gap is the
+   single most repeatable trap in this module** — never accept a local
+   ffmpeg measurement for a seek question.
+2. **Once output-side is used, the audio rendition buys ~nothing** (11s
+   vs 13s), so the extra playlist parse it would need is not worth it.
+   The cheap fix and the fancy fix converge.
+3. **A broken test very nearly hid the answer.** The decodability check
+   ran `ffmpeg -v error … -af volumedetect`, but volumedetect logs at
+   *info* level, so `-v error` suppressed the line being grepped for and
+   every file — including good ones — reported `decodable=NO`. The
+   224-byte results stood on size alone; the 3.6 MB result looked like
+   another failure and was in fact the fix working. Check that a
+   measurement can report success before trusting it to report failure.
+
+**Timing interaction worth knowing**, now documented in the function's
+own docstring: two attempts can each hit `_SUBPROCESS_TIMEOUT_SECONDS`,
+capping one chunk's extraction at 240s, against `STALE_CLAIM_AFTER` of 5
+minutes — whose own comment calls 5 minutes "comfortably longer than a
+single chunk should ever legitimately take". Two timeouts back-to-back
+mean the chunk failed and no transcription follows, so that path fits.
+The path to watch is timeout → successful retry → Whisper.
+
+Regression tests in `tests/test_media_probe.py` were verified to fail
+against the pre-fix behaviour before being kept.
+
 ## WO-8's `?token=` admin fallback removed, and a reslug/delete-pages workflow built for two boilerplate-slug pages [Done 2026-08-24]
 
 **WO-8 removal.** `app/main.py`'s `_admin_token_ok()` is now

@@ -1185,6 +1185,32 @@ moves. Throughput was flat and repeatable (two back-to-back 20MB range
 reads: 838 and 840 KB/s, every response `X-CDS-Cache-Status: MISS`) —
 **that is a steady pipe, not throttling.**
 
+**Correction, 2026-08-25 — throughput is NOT flat across the file, and
+this changes fix 1's arithmetic.** Those two 840 KB/s reads were both
+near the *start*. Re-measured on `oakhilltn/50` (502MB), two independent
+runs agreeing:
+
+```
+bytes 0        – 4 MB    :  1.0s   4,080 KB/s
+bytes 250 MB   – 254 MB  : 50.5s       83 KB/s      (~49x slower)
+bytes 480 MB   – 484 MB  : >90s     timed out
+```
+
+So a ranged read costs *more the deeper into the file it starts*, badly.
+Compounding it: **the `moov` atom is at the tail**, confirmed by reading
+the first 64 bytes — `ftyp` / `wide` / `mdat` with no `moov` in front —
+so ffmpeg must reach the end of a 502MB file before it can seek at all,
+and that read runs at the slow end of the range above.
+
+**What this means for fix 1:** an adaptive chunk size computed from a
+flat ~840 KB/s will still fail on later chunks, because they do not get
+840 KB/s. Any sizing rule has to model bytes-per-second *as a function of
+offset*, or avoid deep seeks entirely. That pushes fix 2 (one sequential
+pass, many chunks out — e.g. ffmpeg's `-f segment` muxer reading from
+byte 0 once at 4 MB/s) from "alternative" to "probably the only shape
+that works here". Worth re-measuring on a second ChampDS customer before
+building either, since all of this is one host's behaviour.
+
 **Symptom B — instant 0.2s failures with "Could not reach the ChampDS API
 for this meeting".** Untouched by the above and still unexplained; a fast
 non-200 from the JSON API really could be a per-IP limit. This is the half

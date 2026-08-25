@@ -354,12 +354,27 @@ async def _extract_chunk_once(
     above for why that is the fallback and what it costs.
 
     `worth_seek_retry` marks a failure whose shape is consistent with a
-    broken seek (a non-zero exit, or an exit-0 file that's empty), as
-    opposed to one where retrying differently is pointless -- a missing
-    binary, or a timeout that already spent the whole budget. The
-    caller adds one more such case that only it can see: an exit-0,
-    non-empty file that turns out to be undecodable, which is the exact
-    shape this bug produces.
+    broken seek -- a non-zero exit, an exit-0 file that's empty, or an
+    input-side timeout (see that branch's own comment; it was excluded
+    until WO-53 and that exclusion was the whole bug) -- as opposed to
+    one where retrying differently really is pointless: a missing
+    binary, or a timeout on the output-side attempt itself. The caller
+    adds one more case that only it can see: an exit-0, non-empty file
+    that turns out to be undecodable, which is the exact shape the seek
+    bug produces.
+
+    **Worst-case wall time matters here**, because two attempts can now
+    each hit _SUBPROCESS_TIMEOUT_SECONDS. That caps one chunk's
+    extraction at 2 x 120s, and archive/db/crud.py's STALE_CLAIM_AFTER
+    (5 minutes) is what a chunk must finish inside before another worker
+    may reclaim the job -- its own comment calls 5 minutes "comfortably
+    longer than a single chunk should ever legitimately take". Two
+    timeouts back to back mean no transcription happens at all (the
+    chunk failed), so that path is 240s and fits. The path that does
+    both -- timeout, then a *successful* retry, then Whisper -- is the
+    one to watch: 120s + ~13s measured + transcription. If
+    _SUBPROCESS_TIMEOUT_SECONDS is ever raised (BACKLOG.md has a
+    standing decision against it), re-check this arithmetic first.
     """
     seek_before = () if output_side_seek else ("-ss", str(start))
     seek_after = ("-ss", str(start)) if output_side_seek else ()
@@ -394,7 +409,29 @@ async def _extract_chunk_once(
         return (
             False,
             f"ffmpeg timed out after {_SUBPROCESS_TIMEOUT_SECONDS}s (source likely slow or rate-limited)",
-            False,
+            # An input-side timeout IS worth the output-side retry (WO-53,
+            # 2026-08-25). WO-45 returned False here on the reasoning that
+            # a timeout has already spent the whole budget, so trying
+            # again is pointless. That is wrong whenever the fallback has
+            # a different *cost structure* rather than being another roll
+            # of the same dice -- and here it does. Measured on ffmpeg
+            # 7.1.5 against a real failing production source (job 863,
+            # cerritos.cablecast.tv/show/372, chunk 1 @ 900s):
+            #
+            #   master playlist, input-side  -ss   1084s  ->  224B, bad
+            #   master playlist, output-side -ss     13s  ->  3.6MB, good
+            #
+            # Input-side seeking on this packaging degenerates into
+            # pulling the whole 1080p stream and discarding it (`-vn`);
+            # output-side decodes and discards, which is ~80x faster here.
+            # So the timeout was not "we ran out of time", it was "this
+            # approach cannot work on this source" -- exactly the case the
+            # retry exists for, and it was the one shape excluded from it.
+            #
+            # Only on the input-side attempt. A timeout on the *output*-
+            # side attempt means genuinely too slow, and re-running the
+            # identical command would just burn another full budget.
+            not output_side_seek,
         )
 
     if returncode != 0:
