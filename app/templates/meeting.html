@@ -2,6 +2,10 @@
 {% block title %}Meeting | Red Tape Recordings{% endblock %}
 {% block head_extra %}
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.4.12/dist/hls.min.js"></script>
+  {#- Shared with the Archive's meeting page -- the speed control itself is
+     one shared module, so its styles are too. See
+     shared_static/playback_speed.js. -#}
+  <link rel="stylesheet" href="/shared-static/playback_speed.css">
 {% endblock %}
 {% block body_attrs %} data-source-url="{{ source_url }}"{% endblock %}
 {% block content %}
@@ -148,5 +152,8 @@
 {% endblock %}
 {% block scripts %}
   <script src="/shared-static/deep_link.js"></script>
+  {#- Before player.js: it reads PLAYBACK_RATE_LADDER when building an
+     adapter and calls initPlaybackSpeed() from wireSharedControls. -#}
+  <script src="/shared-static/playback_speed.js"></script>
   <script src="/static/player.js"></script>
 {% endblock %}

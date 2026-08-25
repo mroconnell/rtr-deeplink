@@ -6,6 +6,101 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Playback-speed control, built against four players with different ceilings [Done 2026-08-25, WO-56]
+
+Requested by Ryan out loud while dogfooding a 1h46m St. Helena meeting:
+"can I please get a button to play this video faster?" Filed as a
+`Ship next` entry the same day, built the next.
+
+### Where the button went, and why it isn't in the player's control bar
+
+A native `<video controls>` bar is browser shadow DOM — there is no
+supported way to add a control to it. That constraint is also the reason
+the feature was worth building at all: every player here already *has* a
+speed setting, and all of them hide it (Chrome behind an overflow menu,
+Safari behind a right-click, YouTube and Vimeo behind their own vendor
+menus). So the control is an overlay chip drawn in the top-right of
+`.video-wrapper`, which is already `position: relative` for the existing
+`.big-play-button`.
+
+### The ceilings are real and they differ per player
+
+Measured live 2026-08-24 before any code was written (the numbers that
+made this entry buildable rather than guesswork):
+
+```text
+native <video> (mp4, m3u8+hls.js)  1.5-16x accepted, preservesPitch:true
+youtube (IFrame API)               HARD CAP 2x
+vimeo (Player SDK)                 documented 0.5-2x  [still unverified]
+viebit (NYC Council)               impossible - no cross-frame API
+```
+
+So the offered rates come from the adapter (`speedRates`), not from one
+fixed list. YouTube's are *asked for* at runtime via
+`getAvailablePlaybackRates()` rather than hardcoded, because the ceiling
+is YouTube's to state and a hardcoded 3x there renders a button that
+silently does nothing. Viebit declares `null` and renders no chip at all,
+the same "hide rather than show something broken" reasoning that already
+governs its share button.
+
+### Two bugs that only a browser could have found
+
+Both were invisible to a code read, and both are why `CLAUDE.md`'s
+"verify in-browser, not just via the API" rule exists:
+
+1. **The menu rendered open on every page load.** `.speed-menu` carries
+   an author `display: flex`, and an author `display` beats the UA
+   stylesheet's `[hidden] { display: none }`. Fixed with an explicit
+   `.speed-menu[hidden]` rule, now pinned by a test.
+2. **2x, 2.5x and 3x were clipped off** — the three rates the feature
+   exists for. The resolver's video column is narrow and sticky, which
+   makes the frame short (169px measured), and `.video-wrapper` is
+   `overflow: hidden`. A seven-row menu anchored under the chip simply
+   ran off the bottom. Fixed by making `.speed-control` span the whole
+   frame (`inset: 0`, `pointer-events: none`) so the menu's percentage
+   `max-height` resolves against the video's box, plus a two-column grid
+   to halve its height. Verified at 114.3px in a 168.8px frame with
+   `scrolls: false` on both surfaces and at a 375px mobile viewport.
+
+### Written once, not twice
+
+The single most load-bearing decision. `archive/static/meeting_page.js`
+is a trimmed port of `app/static/player.js`, so a control written in both
+would have drifted. The UI lives in `shared_static/playback_speed.js` +
+`.css`, loaded by both from the existing `/shared-static/` mount (same
+pattern as `deep_link.js`/`highlights.css`); only the four small adapter
+contracts are per-file.
+
+A related robustness fix fell out of the existing test suite rather than
+review: `wireSharedControls()` calling `initPlaybackSpeed()` unguarded
+meant a failed load of `/shared-static/playback_speed.js` would throw and
+take transcript highlighting and deep links — the actual product — down
+with a nice-to-have. Both files now route through `speedLadder()` and
+`wirePlaybackSpeed()`, which degrade to "no chip, everything else fine".
+
+### Preference handling
+
+The rate is remembered across meetings (`localStorage`), because someone
+who watches council meetings at 2x wants 2x on the next one too. A
+remembered rate a player can't reach clamps down to its ceiling **without
+overwriting the stored value** — persisting the clamp would quietly
+ratchet a 3x preference down to 2x forever just because one YouTube page
+was opened in between. That guard has its own test.
+
+### Verified
+
+Ten new tests in `tests_js/playback_speed.test.js` (51 JS tests total,
+all passing), plus in-browser verification of both surfaces: the
+resolver at `/meeting?url=...` and a locally-ingested Archive page at
+`/m/...`, the latter through a scratchpad static-mount wrapper because a
+standalone Archive serves no `/archive-static/style.css` and would
+otherwise have given confidently wrong CSS measurements (`CLAUDE.md`
+documents this trap; it is real).
+
+Residuals split back out into `BACKLOG.md`: the chip is hidden during
+native fullscreen, and Vimeo's leg still has no confirmed positive
+example.
+
 ## ChampDS charges for every seek, so we stopped seeking [Done 2026-08-25, WO-54]
 
 Symptom A of the ChampDS cluster — the `ffmpeg timed out after 120s`

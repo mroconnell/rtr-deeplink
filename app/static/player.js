@@ -586,6 +586,19 @@ function initVideo(videoUrl, videoFormat) {
   }
 }
 
+// The speed control lives in /shared-static/playback_speed.js, loaded as a
+// separate <script>. These two helpers keep it strictly optional: if that
+// file fails to load, the page loses its speed chip and nothing else.
+// wireSharedControls() also drives transcript highlighting and deep links
+// -- the core of the product -- so it must not throw over a nice-to-have.
+function speedLadder() {
+  return typeof PLAYBACK_RATE_LADDER !== 'undefined' ? PLAYBACK_RATE_LADDER : [];
+}
+
+function wirePlaybackSpeed(adapter) {
+  if (typeof initPlaybackSpeed === 'function') initPlaybackSpeed(adapter);
+}
+
 function createNativeAdapter(videoEl) {
   return {
     get currentTime() { return videoEl.currentTime; },
@@ -593,6 +606,21 @@ function createNativeAdapter(videoEl) {
     play: () => videoEl.play(),
     pause: () => videoEl.pause(),
     addEventListener: (evt, handler) => videoEl.addEventListener(evt, handler),
+    // The only adapter with no vendor ceiling -- HTMLMediaElement.playbackRate
+    // took every rate from 1.5 to 16 when measured against a real archived
+    // page (2026-08-24), so the shared ladder applies unmodified. Anything
+    // above 3x is unusable for following speech, so the ladder stops there
+    // rather than at what the element would technically accept.
+    speedRates: speedLadder(),
+    get playbackRate() { return videoEl.playbackRate; },
+    set playbackRate(rate) {
+      videoEl.playbackRate = rate;
+      // Keeps voices intelligible instead of chipmunked. Standard and on
+      // by default in current browsers; set explicitly because it is the
+      // whole reason 2x is usable on a three-hour hearing, and a browser
+      // that defaults it off would silently ruin the feature.
+      if ('preservesPitch' in videoEl) videoEl.preservesPitch = true;
+    },
   };
 }
 
@@ -716,12 +744,29 @@ function createYouTubeAdapter(ytPlayer) {
     }
   });
 
+  // Asked of the player rather than hardcoded, because YouTube's ceiling
+  // is YouTube's to state: getAvailablePlaybackRates() returned
+  // [0.25,0.5,0.75,1,1.25,1.5,1.75,2] on a real meeting video when this
+  // was built (2026-08-24), and setPlaybackRate() silently ignores any
+  // value not on that list. So a hardcoded 3x here would render a button
+  // that does nothing. The intersection with our own ladder keeps the
+  // menu identical in shape to every other player's, just shorter.
+  // (The <video> inside YouTube's iframe does accept 3x, but it is
+  // cross-origin and unreachable from this page -- don't chase it.)
+  const availableRates = typeof ytPlayer.getAvailablePlaybackRates === 'function'
+    ? ytPlayer.getAvailablePlaybackRates()
+    : [1];
+  const speedRates = speedLadder().filter((r) => availableRates.indexOf(r) !== -1);
+
   return {
     get currentTime() { return ytPlayer.getCurrentTime(); },
     set currentTime(t) { ytPlayer.seekTo(t, true); },
     play: () => ytPlayer.playVideo(),
     pause: () => ytPlayer.pauseVideo(),
     addEventListener: (evt, handler) => { if (listeners[evt]) listeners[evt].push(handler); },
+    speedRates: speedRates.length > 1 ? speedRates : null,
+    get playbackRate() { return ytPlayer.getPlaybackRate(); },
+    set playbackRate(rate) { ytPlayer.setPlaybackRate(rate); },
   };
 }
 
@@ -842,6 +887,9 @@ function createVimeoAdapter(player) {
   const listeners = { play: [], pause: [], timeupdate: [] };
   const fire = (name) => listeners[name].forEach((fn) => fn());
   let lastKnownTime = 0;
+  // Cached for the same reason lastKnownTime is: the SDK's getters are
+  // promise-based, and the speed chip reads playbackRate synchronously.
+  let lastKnownRate = 1;
 
   const track = (data) => {
     if (data && typeof data.seconds === 'number') lastKnownTime = data.seconds;
@@ -864,6 +912,18 @@ function createVimeoAdapter(player) {
     play: () => player.play().catch(() => {}),
     pause: () => player.pause().catch(() => {}),
     addEventListener: (evt, handler) => { if (listeners[evt]) listeners[evt].push(handler); },
+    // Vimeo's SDK documents setPlaybackRate as 0.5-2, so the ladder is
+    // capped rather than queried -- unlike YouTube, the SDK exposes no
+    // "what rates do you support" call to ask. Rejections are swallowed
+    // the same way seeks are above: Vimeo rejects setPlaybackRate on some
+    // account tiers, and a thrown error mid-playback is worse than a chip
+    // that visibly didn't take.
+    speedRates: speedLadder().filter((r) => r <= 2),
+    get playbackRate() { return lastKnownRate; },
+    set playbackRate(rate) {
+      lastKnownRate = rate;
+      player.setPlaybackRate(rate).catch(() => {});
+    },
   };
 }
 
@@ -950,6 +1010,12 @@ function createViebitAdapter(iframeEl, baseEmbedUrl) {
     // (harmless, liveTracking:false skips the ones that would matter)
     // don't need their own Viebit-specific guard.
     addEventListener: () => {},
+    // Same root cause as play/pause above: no cross-frame API exists, so
+    // speed cannot be set at all. null (rather than a no-op setter) is
+    // what makes initPlaybackSpeed skip rendering the chip entirely --
+    // a visible control that silently does nothing would read as a bug,
+    // the same reasoning as the hidden share button above.
+    speedRates: null,
   };
 }
 
@@ -993,6 +1059,12 @@ function initViebitVideo(embedUrl) {
 // transcript-line click, "Go to time") still work fully either way,
 // since those only ever need a known target time, never a read.
 function wireSharedControls(adapter, { liveTracking = true } = {}) {
+  // Driven by the adapter's own declared capability, not by liveTracking:
+  // the two happen to coincide today (Viebit is the only adapter lacking
+  // both), but they are different questions, and an adapter that could
+  // set speed without exposing a live position shouldn't lose the chip.
+  wirePlaybackSpeed(adapter);
+
   // Gently suggests the current transcript line is deep-linkable (its
   // link icon shows without a hover) when paused -- suppressed during
   // playback so it doesn't flicker from line to line as the highlighted

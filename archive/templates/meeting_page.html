@@ -239,6 +239,11 @@
      SDK is already present, so this is a head start, not a dependency. #}
   <script src="https://player.vimeo.com/api/player.js"></script>
   {% endif %}
+  {#- Shared with the resolver's meeting page -- see
+     shared_static/playback_speed.js. Not gated on video_format: the
+     control renders itself only when the adapter declares speed support,
+     and this page has four possible players. -#}
+  <link rel="stylesheet" href="/shared-static/playback_speed.css">
 {% endblock %}
 {% block content %}
   {#- User request 2026-08-11 (re-requested independently after already
@@ -612,5 +617,8 @@
 {% endblock %}
 {% block scripts %}
   <script src="/shared-static/deep_link.js"></script>
+  {#- Before meeting_page.js: it reads PLAYBACK_RATE_LADDER when building
+     an adapter and calls initPlaybackSpeed() from wireSharedControls. -#}
+  <script src="/shared-static/playback_speed.js"></script>
   <script src="/archive-static/meeting_page.js"></script>
 {% endblock %}
