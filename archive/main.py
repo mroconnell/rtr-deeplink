@@ -846,6 +846,35 @@ async def internal_transcript_quality_audit(
     return await crud.get_transcript_quality_audit(list_outcomes=outcomes)
 
 
+@app.get("/internal/thin-page-audit")
+async def internal_thin_page_audit(
+    slugs: Optional[str] = None, authorization: Optional[str] = Header(None)
+):
+    """Read-only: which archived pages hold nothing a reader can use.
+
+    Ships alongside WO-58's Soft 404 fix so the size of that change is
+    measured rather than assumed -- the fix stops counting a bare
+    `agenda_link` as content, and this says how many live pages that
+    de-indexes and on which platforms. Same reasoning as
+    /internal/schema-info and /internal/db-size: answer it from production
+    instead of from an estimate.
+
+    `?slugs=a,b,c` restricts to named pages, so a specific Search Console
+    URL gets a straight answer rather than being inferred from a bucket
+    total -- e.g.
+    `?slugs=fairview-tn-2025-10-02-regular-meeting`, the page Google
+    actually flagged.
+
+    See crud.get_thin_page_audit() for the buckets and why `platform`
+    rides along on every thin row. Never modifies anything.
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    wanted = {s.strip() for s in slugs.split(",") if s.strip()} if slugs else None
+    return await crud.get_thin_page_audit(slugs=wanted)
+
+
 @app.get("/internal/date-format-audit")
 async def internal_date_format_audit(
     limit: int = 200,
@@ -1745,17 +1774,20 @@ async def meeting_page(
     state_abbr = state_abbr_from_jurisdiction(page["jurisdiction"])
 
     # Python twin of crud._is_empty_page_condition() (no video, no agenda
-    # items/link, no transcript version at all) -- the template noindexes
-    # such a page, matching its exclusion from /meetings, the sitemap and
-    # the feed. Kept in lockstep with the SQL predicate on purpose; a
+    # items, no transcript version at all) -- the template noindexes such a
+    # page, matching its exclusion from /meetings, the sitemap and the
+    # feed. Kept in lockstep with the SQL predicate on purpose; a
     # divergence would put a noindexed page back in the sitemap, the
     # exact Search Console contradiction the 2026-08-17 fix removed.
-    page_is_empty = not (
-        page["video_url"]
-        or page["agenda_items"]
-        or page["agenda_link"]
-        or page["versions"]
-    )
+    # tests/test_thin_page_predicate.py asserts the two agree, since
+    # nothing else can catch them drifting apart.
+    #
+    # agenda_link is NOT in this list (WO-58) -- it renders as one
+    # sentence pointing off-site and holds no content of its own, which
+    # made a page carrying only an agenda_link a real Google Soft 404
+    # while still being indexed and sitemapped. See the SQL predicate's
+    # docstring for the measurement.
+    page_is_empty = not (page["video_url"] or page["agenda_items"] or page["versions"])
 
     # One cheap indexed existence check, no image bytes loaded (see
     # crud.has_thumbnail()). When nothing is stored yet and the page has a

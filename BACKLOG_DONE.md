@@ -6,6 +6,125 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## A bare agenda link was never content: the Soft 404 fix, and the two pages it does not explain (WO-58) [Done 2026-08-25]
+
+WO-57 left "Soft 404" open, blocked on the affected-URL list. Ryan supplied
+three URLs **and pasted what each actually renders**. That second part is
+the entry: the code-only reasoning that preceded it was correct about the
+mechanism and would have been applied to all three pages, when it explains
+exactly one.
+
+| Page | What it renders | Verdict |
+|---|---|---|
+| `fairview-tn-2025-10-02-regular-meeting` | two apologies + one agenda link | **Thin — confirmed** |
+| `beaufort-board-of-education-academics-committee` | video **and** a long transcript | **Refuted** |
+| `city-of-carrollton-2022-10-25-city-council-on-2022-10-25-5-45-pm` | video **and** a long transcript | **Refuted** |
+
+**Why this needed a real look and not just the code.** The sandbox cannot
+reach `redtaperecordings.com` at all — the egress proxy answers 403 to
+CONNECT, via both `curl` and `WebFetch` — so nothing here could check the
+pages. The mechanism below is fully determined by the templates, which made
+it tempting to treat as sufficient. Two of the three pages show why it
+wasn't.
+
+### The confirmed cause
+
+`_is_empty_page_condition()` hid a page from browse/sitemap/feed/index only
+when it had no video, no agenda items, **no agenda link**, and no transcript
+version. But `agenda_link` renders as exactly one sentence
+(`meeting_page.html:496`):
+
+> We think we found an agenda here: `<url>`
+
+So the Fairview page served HTTP 200 whose entire body was a title, a
+byline, *"No video found for this ChampDS meeting."*, that one line, and
+*"No transcript available for this meeting."* — and it was indexed, in
+`sitemap.xml`, in `/meetings` and in the feed, purely because `agenda_link`
+was truthy. Google was right.
+
+Ryan's framing settled how to think about it: **the minimum characters on a
+real agenda should exceed the maximum characters of apology text.** Measured
+from the templates themselves:
+
+```
+ 42  "No video link found on this Legistar page."   (the real video_warnings line)
+ 41  "No transcript available for this meeting."
+ 34  "We think we found an agenda here: "
+---
+ 83  apology floor
+```
+
+An `agenda_link` contributes **zero** characters of content — it is a URL
+rendered as a pointer off-site — so such a page can never clear 83. Real
+`agenda_items` clear it easily. The fix is therefore a one-term removal, not
+a new threshold: `agenda_link` stops counting as content.
+
+### What shipped
+
+**1. `agenda_link` dropped from the content test, in both copies.** The rule
+is written twice — SQL (`crud._is_empty_page_condition()`, behind
+`/meetings`, `sitemap.xml`, `feed.xml`) and Python (`archive/main.py`'s
+`page_is_empty`, driving the template's `noindex`) — and the code comments
+already warned they must stay in lockstep, because a divergence puts a
+noindexed page back in the sitemap. Nothing enforced that. Now
+`test_sql_predicate_and_python_twin_agree_on_every_shape` does, across six
+content shapes, through their real surfaces (the listing for SQL, the
+rendered page for Python). **Verified non-vacuous**: reintroducing the old
+Python behaviour makes it fail.
+
+Every property the original predicate's docstring argues for is preserved —
+it stays a query-time predicate (no schema change, no migration, no stored
+flag), `/m/{slug}` keeps serving so shared links and `SavedItem` rows are
+untouched, thin pages stay findable under the explicit `has_transcript=false`
+gap filter, and a page becomes indexable again on its own the moment a
+recheck fills anything in.
+
+**2. `GET /internal/thin-page-audit`, shipped in the same pass** so the
+change is *sized* rather than assumed. Dropping `agenda_link` de-indexes
+real live pages and nothing could count them: eight adapters set that field,
+not just `generic_fallback` — `legistar`, `granicus`, `champds`, `hyland`,
+`suiteone`, `chicago_elms` and `openmedia` too, including the two largest
+platforms in the archive. Buckets every page as `empty` /
+`agenda_link_only` / `has_content`, reports the real agenda **character**
+counts against the 83-char floor rather than assuming the floor holds, and
+carries `platform` on every thin row — a `generic_fallback` agenda link is a
+guess, a Legistar one is usually a real document, and that is the
+distinction any future narrowing would use. `?slugs=` answers a specific
+Search Console URL directly.
+
+**3. One existing test inverted, on purpose.**
+`test_agenda_link_only_page_is_not_empty` asserted the old behaviour; it is
+now `..._is_empty` with the reasoning inline. A date-pill test that seeded
+its fixture with a bare `agenda_link` was switched to real agenda items —
+the pill was what it tested, not the emptiness rule.
+
+### The two pages this does not explain
+
+Beaufort and Carrollton have real video and real transcripts. Ruled out:
+the transcript is fully server-rendered (`meeting_page.html:522-590`, a real
+`{% for %}` over segments), so "Googlebot needed JS" is not the answer.
+What they share and Fairview does not: both Granicus, both with a **bare
+jurisdiction carrying no state**, and both transcripts visibly garbled —
+Beaufort renders the Pledge of Allegiance as *"the United States of
+Arizona"*. Two candidates, neither confirmed: a truncated 200 from
+`body_iterator()`'s cut-short-stream path (a known live failure, Sentry
+PYTHON-FASTAPI-Q, and the crawl dates sit beside the 2026-08-22 proxy
+cluster), or Google judging the content low-value. Left as a live
+`[NEEDS-AUDIT]` entry with the single check that separates them — URL
+Inspection's *View crawled page* — rather than a fix built on a guess.
+
+### Verification
+
+All four CI gates in CI's order: `ruff check` clean, `ruff format --check`
+clean (two files reformatted, both touched here), **1798 passed / 16
+skipped**, both `alembic check`s clean after `alembic upgrade head`. No
+schema change, so no migration. TOC regenerated and idempotent.
+
+The production numbers are Ryan's to read:
+`curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" "$ARCHIVE_BASE_URL/internal/thin-page-audit"`,
+and `?slugs=fairview-tn-2025-10-02-regular-meeting` for the direct answer on
+the page Google actually flagged.
+
 ## Inbox-triage promotion pass: four fixes, two stale claims, one refuted finding (WO-57) [Done 2026-08-25]
 
 `CLAUDE_INBOX_TRIAGE.md` had six findings across its 2026-08-23/24/25

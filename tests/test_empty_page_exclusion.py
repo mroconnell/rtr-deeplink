@@ -1,6 +1,7 @@
 """Coverage for the query-time "empty page" exclusion
 (archive/db/crud.py's _is_empty_page_condition(), 2026-08-17): a page with
-no video, no agenda items/link and no transcript is left out of the default
+no video, no agenda items and no transcript -- a bare agenda_link does not
+count as content, see WO-58 below -- is left out of the default
 /meetings browse, /sitemap.xml and /feed.xml, is noindexed on its own /m/
 page, but is still *served* and still shows up under an explicit
 has_transcript=false filter (that's how gaps get found). Also pins the
@@ -78,8 +79,31 @@ async def test_video_only_page_is_not_empty():
     assert slug in await _listing_slugs()
 
 
-async def test_agenda_link_only_page_is_not_empty():
+async def test_agenda_link_only_page_is_empty():
+    """Inverted 2026-08-25 (WO-58) -- it used to assert the opposite.
+
+    Google flagged /m/fairview-tn-2025-10-02-regular-meeting as a Soft
+    404, and the real page turned out to be exactly this shape: no video,
+    no transcript, and one "We think we found an agenda here" line. An
+    agenda_link is a URL rendered as a pointer off-site, not content the
+    page holds, so it can't clear the 83-character apology floor such a
+    page renders anyway (see crud._APOLOGY_FLOOR_CHARS).
+    """
     slug = await _seed("notempty:agendalink", agenda_link="https://example.com/a.pdf")
+    assert slug not in await _listing_slugs()
+    # Still findable through the explicit gap filter, like every other
+    # thin page -- that's how they get worked on.
+    assert slug in await _listing_slugs(has_transcript=False)
+
+
+async def test_agenda_link_alongside_real_content_stays_listed():
+    """The fix must not punish a page that has a real agenda *and* a
+    separate agenda document link -- a normal, valid resolve."""
+    slug = await _seed(
+        "notempty:agendalink-plus",
+        agenda_link="https://example.com/b.pdf",
+        agenda_items=[{"start": 0, "text": "Call to order"}],
+    )
     assert slug in await _listing_slugs()
 
 
@@ -155,7 +179,11 @@ async def test_upcoming_and_recent_pills_on_listing_and_page():
     upcoming = await _seed(
         "pill:upcoming",
         date=(today + timedelta(days=8)).isoformat(),
-        agenda_link="https://example.com/upcoming-agenda.pdf",
+        # Real agenda items, not a bare agenda_link: since WO-58 a
+        # link-only page is thin and drops out of the default listing
+        # this test reads from. The pill is what's under test here, not
+        # the emptiness rule.
+        agenda_items=[{"start": 0, "text": "Call to order"}],
     )
     recent = await _seed(
         "pill:recent",

@@ -31,9 +31,13 @@
      any page). noindex stops search-engine amplification of the
      least-verified content without blocking or gating anything -- see
      BACKLOG.md.
-     page_is_empty (no video, no agenda, no transcript -- see the /m/
-     route in archive/main.py and crud._is_empty_page_condition()): the
-     page still serves, so shared links keep working, but it's excluded
+     page_is_empty (no video, no agenda items, no transcript -- see the
+     /m/ route in archive/main.py and crud._is_empty_page_condition()).
+     A lone agenda_link does not count: it renders as the single
+     "We think we found an agenda here" line below, which is a pointer
+     off-site rather than content, and a page holding only that was a
+     confirmed Google Soft 404 (WO-58). The page still serves, so
+     shared links keep working, but it's excluded
      from /meetings, the sitemap and the feed, and noindexed here so
      Google isn't handed a title-only shell ("Page indexed without
      content"). Both signals flip back on their own once a recheck fills
