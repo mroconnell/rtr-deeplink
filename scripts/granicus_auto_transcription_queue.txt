@@ -1,15 +1,3 @@
-https://nwsccc-brooklynctr.granicus.com/player/clip/930
-https://nwsccc-brooklynpark.granicus.com/player/clip/2002
-https://nwsccc-maplegrove.granicus.com/player/clip/1545
-https://nwsccc-newhope.granicus.com/player/clip/894?view_id=4
-https://nwsccc-osseo.granicus.com/player/clip/1105?view_id=4
-https://nwsccc-plymouth.granicus.com/player/clip/1447
-https://nyecounty.granicus.com/player/clip/2041
-https://occompt.granicus.com/player/clip/605
-https://octa.granicus.com/player/clip/2924
-https://ojai.granicus.com/player/clip/1367?view_id=1
-https://olelo.granicus.com/player/clip/93823
-https://olympia.granicus.com/player/clip/2956?view_id=2
 https://onelakewood.granicus.com/player/clip/2843
 https://onslow.granicus.com/player/clip/1036?view_id=3
 https://oregon-city.granicus.com/player/clip/2438?view_id=5
