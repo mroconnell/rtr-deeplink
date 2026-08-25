@@ -54,7 +54,7 @@ Standing decisions — do NOT re-raise  (3)
   Prefer a generated/computed column over "add a column, then backfill…
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (10)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (11)
   [JUST-DO-IT] Nothing detects a transcript that simply ends early
   [JUST-DO-IT] `[EASY]` Nothing notices a dead worker pool — chunks
   [JUST-DO-IT] The worker's requirements can silently drift out of
@@ -65,6 +65,7 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (10)
   [JUST-DO-IT] `[WAIT]` Two archived pages have slugs frozen from a
   [NEEDS-AUDIT] The saved-search digest subject's "+N more" count may
   [JUST-DO-IT] Every byte the public site serves is billed twice:
+  [JUST-DO-IT] Playback-speed control — requested by Ryan from real
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (12)
   Confirmations nobody has actually watched happen  (4)
@@ -579,6 +580,61 @@ so that work reads together.
   14.54 GB of a **25 GB** allowance, not the 5 GB the original alert
   implied), but it is free money and halves the blast radius of any
   future traffic spike.
+
+- **[JUST-DO-IT] Playback-speed control — requested by Ryan from real
+  dogfooding, 2026-08-24.** Watching a 1h46m meeting at 1x is the
+  friction; a first-class speed button is the ask (1.5x/2x/2.5x/3x).
+  Nothing in `app/` or `archive/` sets `playbackRate` today — this is
+  genuinely unbuilt, not buried.
+
+  **The seam already exists.** Both player implementations share one
+  adapter contract — `{currentTime get/set, play, pause,
+  addEventListener}` — so this is "add `playbackRate` get/set to the
+  adapter shape, then one UI control that drives it," not per-player
+  UI work. **It lands in two files, not one**:
+  `app/static/player.js` (resolver, 4 adapters) and
+  `archive/static/meeting_page.js`, which is explicitly a *"trimmed
+  port of app/static/player.js's video-adapter logic"* — ship only the
+  first and the archive pages, which are the ones with real traffic,
+  silently keep no speed control.
+
+  **Per-adapter ceilings, measured live 2026-08-24 (not assumed):**
+
+  ```text
+  native <video> (mp4, m3u8+hls.js)  1.5–16x all accepted, preservesPitch:true
+  youtube (IFrame API)               HARD CAP 2x
+  vimeo (Player SDK)                 documented 0.5–2x  [UNVERIFIED from our embed]
+  viebit (NYC Council)               IMPOSSIBLE — no cross-frame API at all
+  ```
+
+  Native was confirmed on a real page
+  (`/m/st-helena-ca-2026-07-07-special-planning-commission-meeting`,
+  `data-video-format="mp4"`): every rate 1.5→16 accepted and
+  `preservesPitch` true, so voices stay intelligible rather than
+  chipmunked. YouTube's cap is its own API's answer —
+  `getAvailablePlaybackRates()` on a real meeting video (`5LZqoNDRMYk`)
+  returns `[0.25,0.5,0.75,1,1.25,1.5,1.75,2]`, and `setPlaybackRate()`
+  ignores anything off that list. The raw `<video>` inside YouTube's
+  iframe *does* accept 3x, but it is cross-origin and unreachable from
+  our page — don't design around it. Viebit's adapter is already a
+  documented no-op (`play: () => {}`, `addEventListener: () => {}`).
+
+  **So the 2.5x/3x half of the request is native-only, and that is
+  fine** — `video_format` mapping shows mp4/m3u8 covers aurora,
+  cablecast, castus, eScribe, IQM2, Seattle Channel, SuiteOne, TelVue,
+  Town Hall Streams plus Granicus/Swagit via `media_scan`, i.e. the
+  bulk of the corpus (10 of 10 sampled archive pages were mp4/m3u8).
+  YouTube/Vimeo/Viebit are the minority. **Offer the rates the active
+  adapter actually supports rather than showing a dead 3x button on a
+  YouTube page** — greying out beats lying.
+
+  **Two things worth knowing before building:** (1) the YouTube adapter
+  fakes `timeupdate` with a fixed `setInterval(..., 250)`
+  (`player.js:712`), so transcript-highlight granularity coarsens
+  proportionally with rate — 0.5s of video per tick at 2x. Segments are
+  multi-second, so this is a note, not a blocker. (2) Persist the choice
+  (`localStorage`) — a reader who wants 2x wants it on every meeting,
+  and re-picking per page is most of the friction the button removes.
 
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
