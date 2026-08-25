@@ -6,6 +6,117 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Granicus timeouts are a CDN cache-fill cost, not a slow host [Investigated 2026-08-25]
+
+`/internal/transcription-failure-analysis?days=3` reports **24 Granicus
+failures across 8 jobs, and all 24 are ffmpeg timeouts** — the only
+platform with a 100% timeout share. Measured the media host the same way
+ChampDS was measured (WO-54), and the answer is different from ChampDS's,
+so the fix is different too.
+
+**All Granicus tenants share one media host.** `cityoftacoma`,
+`jaxcityc`, `cityofmillvalley` and `napacity` all resolve to
+`archive-stream.granicus.com/OnDemand/_definst_/mp4:archive/…`. That is
+Wowza **on-demand repackaging**: the source MP4 is transmuxed to HLS at
+request time, fronted by CloudFront. This is the grouping
+`get_transcription_failure_analysis()`'s docstring already says matters
+(one media host, ~300 tenant subdomains).
+
+### The measurement that invalidated the previous three
+
+Every earlier Granicus number in this session was wrong, and all in the
+same way. Same asset, same offsets, second run immediately after the
+first:
+
+```
+                    1st run (cold)   2nd run (warm)
+cityoftacoma @900        237s             31s
+cityoftacoma @2700       180s             33s
+```
+
+**6–7× from nothing but prior access.** The "erratic host — 295s vs 30s"
+reading earlier the same day was an artifact of probing: 295s was Napa's
+cold first touch, 30s was Napa after being hammered by the preceding
+tests. The chunk-size ladder run before this one was confounded the same
+way — "non-overlapping offsets" does not fix it, because warming is not
+offset-local.
+
+**The methodological rule this produces: each asset yields exactly one
+valid cold sample, ever.** Probing destroys the thing being measured.
+Production always hits cold, so cold is the only number that counts. Any
+future measurement of this host needs **one fresh asset per data point**.
+
+### Cold cost, one asset per row (900s chunk, input-side seek, ffmpeg 7.1.5)
+
+```
+jaxcityc          @900/1800/2700/3600    261s 226s 219s 212s   all OVER 120s
+cityofmillvalley  @900/2700/4500/6300    164s 193s 182s 195s   all OVER 120s
+cityoftacoma 7460 @900/2700              237s 180s             OVER 120s
+cityoftacoma 7450-7453 (fresh, later)    108s                  fits
+```
+
+`cityofmillvalley` is worth noting: job 909 **completed** on that asset
+hours earlier, and it still measured 164–195s — so the CDN fill expires
+well inside a day. A tenant that succeeded once gets no lasting credit.
+
+### Chunk cost scales linearly with chunk duration
+
+Four *different* fresh assets, one per row, so nothing warms anything
+else — the design the earlier ladder lacked:
+
+```
+900s chunk (asset 7a8fade1)   108s   3600512B
+450s chunk (asset 314ba772)    61s   1799360B
+300s chunk (asset d5b9632e)    49s   1174544B
+150s chunk (asset 8d2d1783)    31s    600560B
+```
+
+Roughly 0.12 s per second of audio here. The worst cold rate measured
+anywhere was `jaxcityc` at 261s/900s = **0.29 s/s**. At that worst rate a
+300s chunk costs ~87s and still fits the 120s budget, while a 450s chunk
+costs ~130s and does not.
+
+### Why the ChampDS fix does not transfer
+
+A single sequential pass over a fresh asset (`-f segment`, all chunks at
+once — the WO-54 shape) on `cityoftacoma` clip/7455, 3600s, 4 chunks:
+
+```
+total 461s, rc=0, all four chunks decodable
+```
+
+461s for 3600s of audio is **0.128 s/s** — indistinguishable from a good
+cold per-chunk rate (0.12 s/s) and only ~2.3× better than the worst.
+ChampDS's equivalent was 199s vs ~1330s, a 6.7× win, because there the
+cost was O(N²) seeking through a tail-`moov` progressive file. Here the
+cost is per-segment CDN fill, and the total number of segments fetched is
+the same either way. `_should_cache_whole_audio()`'s HLS exclusion is
+therefore **correct as written**, for a better reason than the one in its
+docstring: not merely that bytes are already minimal, but that the
+dominant cost does not amortise.
+
+461s also exceeds `_FULL_AUDIO_TIMEOUT_SECONDS` (360s) for a *one-hour*
+meeting, so the whole-audio path could not take Granicus without raising
+that constant substantially.
+
+### What this explains
+
+`BACKLOG.md`'s open entry on job 910 (`napacity`) describes an
+"intermittent" source — chunk 0 failed twice then succeeded, chunk 1
+failed then succeeded — as unexplained. This is the explanation: the
+first attempt at an offset pays the cache fill and times out at 120s, the
+retry lands partly warmed, and a later attempt hits ~31s and passes. The
+intermittency is manufactured by the retry loop warming the CDN.
+
+### What is still unexplained
+
+Cold cost varies **2.5×** across assets and times — `cityoftacoma`
+clip/7460 measured 237s while clips 7450–7453 measured 108s an hour
+later, same tenant, similar durations. Tenant, source bitrate, time of
+day and origin load are all uncontrolled. So "a 900s chunk sometimes
+fits" is real, and any fix has to work at the *worst* observed rate, not
+the median.
+
 ## Deploys are manual now [Done 2026-08-25, WO-59]
 
 Render bills *pipeline minutes*, and the workspace ran out on 2026-08-25,

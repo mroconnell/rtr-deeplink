@@ -134,12 +134,13 @@ Platform & jurisdiction coverage  (33)
     [LATER] YouTube-backed meetings' transcripts run through
     [IMPROVEMENT-ROUND] Four platforms account for ~78% of the 470 real
 
-Reliability, ops & cost  (14)
+Reliability, ops & cost  (15)
   `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (2)
     `[JUST-DO-IT]` `[EASY]` Source `_tier3_queue_remaining()` from the
     `[LATER]` Tighten the two workers to their real import surface.
   `[JUST-DO-IT]` Docker layer caching silently freezes the workers'…
-  Media-source reliability  (2)
+  Media-source reliability  (3)
+    [JUST-DO-IT] Granicus chunks time out because a 900s chunk does not
     `[NEEDS-AUDIT]` Some old/archived Granicus clips' `chunklist.m3u8`…
     `[NEEDS-AUDIT]` A single job still makes N consecutive same-host…
   Transcription queue & workers  (5)
@@ -926,6 +927,18 @@ coverage** instead.
   which doubles the cost of a chunk that times out on *both* paths — a
   good trade where the retry succeeds (Cerritos) and pure added expense
   where it cannot (this).
+  **The "intermittent" behaviour is now explained (2026-08-25), and it
+  is not intermittency at all.** `archive-stream.granicus.com` is Wowza
+  on-demand repackaging behind CloudFront: the *first* fetch of an offset
+  pays a cache fill (measured 164–295s cold for a 900s chunk, against a
+  120s budget) and times out, while a re-fetch of that same offset costs
+  ~31s and passes. The retry loop is warming the CDN, which is why the
+  pattern reads as fail-fail-succeed. See `BACKLOG_DONE.md`'s "Granicus
+  timeouts are a CDN cache-fill cost" for the measurements, and the
+  `[JUST-DO-IT]` entry under **Reliability, ops & cost → Media-source
+  reliability** for the fix (a smaller chunk size for this host). That
+  fix should also settle the scheduling question this entry raises: a
+  chunk that fits the budget stops burning a slot on doomed attempts.
 
 - **[NEEDS-AUDIT] 32 places across 23 adapters swallow an exception and
   return nothing, with no log line (surveyed 2026-08-25).** The same
@@ -2047,6 +2060,34 @@ rebuild only re-runs three cheap COPY layers. The caching is doing its
 job; this is just one place where it does it too well.
 
 ### Media-source reliability
+
+- **[JUST-DO-IT] Granicus chunks time out because a 900s chunk does not
+  fit the 120s budget on a cold CDN — use a smaller chunk size for this
+  host (measured 2026-08-25).** All Granicus tenants share one media host
+  (`archive-stream.granicus.com/OnDemand/_definst_/mp4:…`, Wowza
+  on-demand repackaging behind CloudFront), and **24 of 24** Granicus
+  chunk failures in the last 3 days are ffmpeg timeouts — the only
+  platform at 100%.
+  **Cost scales linearly with chunk duration** (four fresh assets, one
+  per data point): 900s→108s, 450s→61s, 300s→49s, 150s→31s. The worst
+  cold rate measured anywhere was 0.29 s/s (`jaxcityc`), at which a
+  **300s chunk costs ~87s and fits**, a 450s chunk costs ~130s and does
+  not. So 300s is the size to pick, chosen against the worst observed
+  rate rather than the median — cold cost varies 2.5× across assets and
+  times for reasons still uncontrolled.
+  **Whisper time is unaffected**: transcription dominates a chunk
+  (~15 min of the ~15 min/chunk observed on job 911) and is proportional
+  to audio duration, so 3× the chunks is ~the same total work, just in
+  units that fit the budget.
+  **Do not reach for the ChampDS fix here.** A whole-audio sequential
+  pass measured 0.128 s/s vs 0.12 s/s for a good cold per-chunk — no real
+  win, because the cost is per-segment CDN fill rather than ChampDS's
+  O(N²) seek, and the same segments get fetched either way.
+  `_should_cache_whole_audio()`'s HLS exclusion is correct as written.
+  **Full measurements, the three earlier Granicus numbers this
+  invalidates, and the "one fresh asset per data point" rule that
+  probing this host requires are in `BACKLOG_DONE.md`** under
+  "Granicus timeouts are a CDN cache-fill cost".
 
 #### `[NEEDS-AUDIT]` Some old/archived Granicus clips' `chunklist.m3u8` genuinely times out at Granicus's own origin (real 504, not a rate limit)
 
