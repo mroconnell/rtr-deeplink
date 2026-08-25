@@ -49,10 +49,11 @@ verbatim prefix of a real line further down, so any entry opens with
 
 ```text
 
-Standing decisions — do NOT re-raise  (3)
+Standing decisions — do NOT re-raise  (4)
   Never run an unbounded scan or bulk workload against the production…
   Prefer a generated/computed column over "add a column, then backfill…
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
+  The playback-speed chip is absent in native fullscreen, and that's…
 
 Ship next — root cause known, fix settled `[JUST-DO-IT]`  (10)
   [JUST-DO-IT] Nothing detects a transcript that simply ends early
@@ -83,8 +84,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (12)
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
   Product calls
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (11)
-  [NEEDS-AUDIT] `[EASY]` The speed chip disappears in native
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (10)
   [NEEDS-AUDIT] 32 places across 23 adapters swallow an exception and
   [NEEDS-AUDIT] A chunk that takes longer than `STALE_CLAIM_AFTER` can
   [NEEDS-AUDIT] Two pages have had a failed transcription job and
@@ -297,6 +297,19 @@ General principle and good/bad examples now in `CLAUDE.md` — we query
 sites politely and don't defeat a host's own access controls. Hit live
 on Spokane WA building the Vimeo adapter (WO-29); that adapter ships
 video-only rather than going near it.
+
+### The playback-speed chip is absent in native fullscreen, and that's accepted
+
+Ryan's call, 2026-08-25 — don't file it as a bug. The chip is an overlay
+inside `.video-wrapper`, and the native fullscreen button expands the
+`<video>` **element**, so every sibling overlay (this chip and the older
+`.big-play-button` alike) is hidden for the duration. The rate already
+chosen stays applied and the browser's own speed menu still works there,
+so nothing is lost but discoverability. Restoring it would mean
+requesting fullscreen on the wrapper and therefore owning a fullscreen
+button rather than delegating to the native control bar — judged not
+worth that, not merely deprioritised. See `BACKLOG_DONE.md`'s WO-56
+entry for the control's design.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
@@ -874,20 +887,6 @@ convenient.
 Reproduced against real data, but the fix is a genuine open question.
 Jurisdiction-extraction bugs live under **Platform & jurisdiction
 coverage** instead.
-
-- **[NEEDS-AUDIT] `[EASY]` The speed chip disappears in native
-  fullscreen.** Shipped 2026-08-25 with WO-56 (see `BACKLOG_DONE.md`).
-  The chip is an overlay inside `.video-wrapper`, but the native
-  fullscreen button fullscreens the `<video>` **element**, not the
-  wrapper — so every sibling overlay, this chip and the existing
-  `.big-play-button` alike, is hidden for the duration. The rate already
-  set stays applied, and the browser's own speed menu still works there,
-  so this is a discoverability gap rather than a loss of function.
-  The fix is to request fullscreen on the wrapper instead of the element,
-  which means owning a fullscreen button rather than delegating to the
-  native control bar — not obviously worth it, hence NEEDS-AUDIT rather
-  than JUST-DO-IT. Confirm how often meetings are actually watched
-  fullscreen before building anything.
 
 - **[NEEDS-AUDIT] 32 places across 23 adapters swallow an exception and
   return nothing, with no log line (surveyed 2026-08-25).** The same
