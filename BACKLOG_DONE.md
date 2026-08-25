@@ -120,10 +120,33 @@ clean (two files reformatted, both touched here), **1798 passed / 16
 skipped**, both `alembic check`s clean after `alembic upgrade head`. No
 schema change, so no migration. TOC regenerated and idempotent.
 
-The production numbers are Ryan's to read:
-`curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" "$ARCHIVE_BASE_URL/internal/thin-page-audit"`,
-and `?slugs=fairview-tn-2025-10-02-regular-meeting` for the direct answer on
-the page Google actually flagged.
+### The measured result (run in production 2026-08-25, same day)
+
+```
+total_pages 2629 | empty 0 | agenda_link_only 16 | has_content 2613
+agenda_link_only_by_platform: hyland 14, champds 1, unknown 1
+```
+
+**16 pages, 0.6% of the archive** — small enough that no narrowing by
+platform was needed, which is exactly what shipping the audit alongside
+the fix was for. Fairview (the page Google flagged) is in the list, at
+`agenda_text_chars: 0`.
+
+Two things the number said that the fix didn't anticipate:
+
+* **`empty` is now 0.** The bucket that motivated the original 2026-08-17
+  predicate — 17 of ~1,200 pages then — is empty today. Every one of those
+  pages has since been filled in by a recheck, with no un-hide step. That
+  is the query-time-predicate design working exactly as its docstring
+  argued it would, confirmed rather than asserted for the first time.
+* **One adapter is 88% of the population.** `hyland` is 14 of 16, and on
+  Hyland an `agenda_link` specifically means agenda *parsing failed*
+  (`hyland.py:230-231` nulls it whenever items were found). So the fix is
+  more correct than the reasoning behind it claimed: it was not just
+  counting a bare link as content, it was counting a parse failure as
+  content. Filed as its own `[NEEDS-AUDIT]` entry in `BACKLOG.md` with the
+  one fetch that would settle it — fixing it would turn 14 content-free
+  pages into real agenda pages.
 
 ## Inbox-triage promotion pass: four fixes, two stale claims, one refuted finding (WO-61) [Done 2026-08-25]
 
