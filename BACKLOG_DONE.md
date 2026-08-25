@@ -6,6 +6,50 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Vimeo's playback-rate path confirmed live, one day after shipping unverified [Investigated 2026-08-25]
+
+Closes the `[LATER] [EXAMPLE]` residual WO-56 split out of itself. That
+entry was correct when written and wrong within a day, which is the point
+of recording it here rather than deleting it.
+
+**What was unproven.** WO-56 shipped speed control across four players.
+Three legs were measured first; Vimeo's was written from the Player SDK's
+documentation (`setPlaybackRate`, 0.5-2x) because the SDK exposes no
+capability query to ask at runtime the way YouTube's
+`getAvailablePlaybackRates()` can be asked. Nobody had watched a real
+Vimeo-backed meeting change speed, so by this repo's "don't claim a path
+works without a positive example" rule it went to `Dormant` rather than
+being quietly assumed good.
+
+**The measurement.** Sebastopol, CA — `/m/city-of-sebastopol-ca-2026-01-06-
+city-council-meeting-january-6-2026`, `player.vimeo.com/video/1152708575`,
+an ordinary account tier, in production:
+
+```text
+p.getPlaybackRate()      -> 2      (already set by our own adapter)
+p.setPlaybackRate(1.5)
+p.getPlaybackRate()      -> 1.5
+```
+
+Two things fall out of that first line, and it is the more useful of the
+two readings. The player was **already at 2x before the test touched
+it** — that is our adapter's own `set playbackRate` having taken effect,
+via the stored-preference path, clamped down from a 2.5x preference set
+on an mp4 page minutes earlier. So the leg was confirmed end to end
+(preference -> clamp -> SDK -> real player), not just at the SDK call.
+
+**What this does not settle.** The rejection path is still unobserved:
+`setPlaybackRate` is documented to reject on some account tiers, and the
+adapter swallows that (`.catch(() => {})`), so on such a tier the chip
+would update while playback did not. Sebastopol is not that tier. Also
+unchecked: whether Vimeo's own in-player "Speed" control and ours can
+end up disagreeing on screen. Neither is worth a live entry until
+someone hits one — the swallow is deliberate, and a thrown error
+mid-playback is worse.
+
+Found while assembling a cross-player test page for Ryan, not by going
+looking — which is the argument for building those pages at all.
+
 ## Playback-speed control, built against four players with different ceilings [Done 2026-08-25, WO-56]
 
 Requested by Ryan out loud while dogfooding a 1h46m St. Helena meeting:
@@ -31,7 +75,7 @@ made this entry buildable rather than guesswork):
 ```text
 native <video> (mp4, m3u8+hls.js)  1.5-16x accepted, preservesPitch:true
 youtube (IFrame API)               HARD CAP 2x
-vimeo (Player SDK)                 documented 0.5-2x  [still unverified]
+vimeo (Player SDK)                 documented 0.5-2x  [confirmed live 08-25]
 viebit (NYC Council)               impossible - no cross-frame API
 ```
 
@@ -98,8 +142,9 @@ otherwise have given confidently wrong CSS measurements (`CLAUDE.md`
 documents this trap; it is real).
 
 Residuals split back out into `BACKLOG.md`: the chip is hidden during
-native fullscreen, and Vimeo's leg still has no confirmed positive
-example.
+native fullscreen, and Vimeo's leg had no confirmed positive example.
+The Vimeo half closed the next day — see the `[Investigated 2026-08-25]`
+entry above; only the fullscreen gap is still live.
 
 ## ChampDS charges for every seek, so we stopped seeking [Done 2026-08-25, WO-54]
 
