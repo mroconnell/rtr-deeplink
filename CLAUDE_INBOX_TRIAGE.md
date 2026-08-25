@@ -633,3 +633,73 @@ entry mentions "soft 404," "chose different canonical," or "alternate
 page with proper canonical" — genuinely new alert content, not a
 duplicate of the already-tracked "No thumbnail URL provided" video-
 indexing gap.
+
+## 2026-08-25
+
+Reviewed 16 new messages under `label:rtr-claude newer_than:30d` (83
+candidates total, 82 already in the ledger from prior runs). Skipped as
+purely informational, no write-up: the transcription-worker daily report
+(30 failures/24h, all already-documented failure classes per below) and
+the "YouTube transcripts: none new today" digest (5 failures, all
+`TranscriptsDisabled` — the already-documented, expected YouTube
+no-captions-available case, not a bug). Skipped as duplicates of
+already-tracked patterns, no new entry: another "Some fixes failed for
+Video indexing issues" Search Console email — same already-tracked
+`[WAIT]` "Video isn't on a watch page" entry (`BACKLOG.md` line ~152/2259);
+another "Server failure detected on test-redtaperecordings" email
+(2026-08-25 09:35 UTC, "Exited with status 3") — 7th+ occurrence of the
+same likely-test-noise pattern flagged since 2026-08-19, still
+unconfirmed either way, still not worth re-flagging without new signal;
+and nine transcription-job-failure emails (jobs 845/847/851/852/854/860/
+863/877/884) plus their two customer-facing "We hit a snag on your
+transcript" duplicates — all `ffmpeg timed out after 120s` (ChampDS/
+Cablecast, jobs 845/847/851/852/854/860/863) or the sibling
+`extract_full_audio()` `full-audio download timed out after 240s`
+(`app/platforms/media_probe.py:562`, jobs 877/884) — both are the same
+already-documented "source is slow/cold-storage, not fixable by retrying
+faster" root cause `BACKLOG.md`'s Granicus ffprobe/120s-timeout entry
+established. Worth noting without a new entry (same convention as the
+2026-08-21/23 sections' "new host, known pattern" notes): jobs 877/884
+are the first-observed occurrence of the 240s full-audio-timeout path
+hitting **CivicClerk** specifically (`keizeror.portal.civicclerk.com`,
+`jacksoncomi.portal.civicclerk.com`) — a third confirmed host (after
+Granicus and ChampDS) for the same underlying slow-source pattern, not a
+new bug.
+
+**One new finding, Confirmed from the alert itself, root cause
+Unconfirmed/dashboard-gated:**
+
+**Render Postgres `rtr-deeplink-db` is over 90% of its storage limit —
+real risk of the database being suspended (site-wide downtime), not yet
+sized against a current-vs-limit number.** Alert 2026-08-24T15:27:42Z:
+"Your PostgreSQL database rtr-deeplink-db is using more than 90% of its
+available storage. If you exceed your storage limit, your database will
+be suspended, resulting in downtime." `render.yaml`'s own comment (dated
+2026-08-17, the day the plan was last raised to `basic-1gb`) records this
+single Postgres server hosting two logical databases — `rtr_archive`
+(218MB then) and `rtr_deeplink_db` (22MB then), ~240MB combined — with no
+documented storage-cap number for the `basic-1gb` plan itself, so how
+close 90%-used actually is to a hard ceiling can't be derived from the
+repo alone. **Real, credible growth driver already in evidence,
+independent of this alert**: WO-30-era work added a second transcription
+worker for backlog catch-up (`render.yaml`'s `rtr-transcription-worker-2`
+block, merged 2026-08-21), and today's own daily-report email shows
+167,719 segments transcribed in the last 24 hours alone — each one a row
+in `rtr_archive`'s `segments`/transcript tables — so a real, large,
+recently-accelerated write volume is a plausible and likely sufficient
+explanation on its own, not necessarily a leak or a bug. **Impact if
+unaddressed**: Render's own alert states the database gets suspended on
+exceeding the limit, which is full site downtime (both the resolver's
+`rtr_deeplink_db` cache and the Archive's `rtr_archive` content share
+this one server) — the most severe class of outage this Routine can
+surface. **Fix effort**: sizing needs a number this Routine can't see
+(current GB used vs. plan's actual storage cap) — Render's dashboard
+(the same page render.yaml's own comment already links for the RAM/CPU
+history) has that number and a one-click storage upgrade if needed;
+alternatively, if growth is expected to keep accelerating as more workers
+come online, proactively upgrading storage before the next transcription
+surge is cheaper than reacting to a suspension. **Open question for
+Ryan**: what does the Render dashboard show as current GB used / GB
+limit for `rtr-deeplink-db` right now, and does `basic-1gb`'s storage
+allotment need raising (same lever already used for RAM on 2026-08-17)
+given the second worker roughly doubled transcription throughput?
