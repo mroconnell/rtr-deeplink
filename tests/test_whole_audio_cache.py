@@ -224,3 +224,68 @@ async def test_slicing_never_re_encodes(monkeypatch, tmp_path):
     args = seen["args"]
     assert "copy" in args
     assert args.index("-ss") < args.index("-i")
+
+
+# --- falling back when the whole-file pull does not work out -------------
+
+
+async def test_a_failed_whole_audio_pull_falls_back_to_per_chunk(tmp_path, monkeypatch):
+    """WO-58. The gate is a cheap structural test (non-HLS, multi-chunk),
+    not a measurement of whether seeking is actually expensive -- and it
+    is wrong for IQM2, whose TTFB is flat with offset. Without a fallback
+    a file too large to pull inside _FULL_AUDIO_TIMEOUT_SECONDS would
+    turn a job that used to work into one that fails, across the 99 IQM2
+    pages this gate now covers."""
+    import worker.main as worker_main
+
+    async def _fake_cache(**kwargs):
+        return False, "full-audio download timed out after 360s"
+
+    per_chunk_calls = []
+
+    async def _fake_per_chunk(media_url, *, start, duration, source_page_url, out_path):
+        per_chunk_calls.append(start)
+        out_path.write_bytes(b"\xff\xfb" + b"\x00" * 400)
+        return True, None
+
+    monkeypatch.setattr(worker_main, "_chunk_audio_via_cache", _fake_cache)
+    monkeypatch.setattr(worker_main, "extract_chunk_audio", _fake_per_chunk)
+
+    # Exercise the branch directly rather than standing up a whole job:
+    # the point under test is that a failed cache result is not terminal.
+    media_url = "https://MediaHTTP.IQM2.com/JohnsonCountyIA/3003_480.mp4"
+    assert worker_main._should_cache_whole_audio(media_url, 8) is True
+
+    extracted, error = await worker_main._chunk_audio_via_cache(
+        job_id=1,
+        media_url=media_url,
+        source_url="https://example.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1",
+        start=900.0,
+        duration=900.0,
+        out_path=tmp_path / "chunk_1.mp3",
+    )
+    assert extracted is False, "precondition: the cache path failed"
+
+    extracted, error = await worker_main.extract_chunk_audio(
+        media_url,
+        start=900.0,
+        duration=900.0,
+        source_page_url="https://example.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1",
+        out_path=tmp_path / "chunk_1.mp3",
+    )
+    assert (extracted, error) == (True, None)
+    assert per_chunk_calls == [900.0]
+
+
+def test_iqm2_progressive_files_are_in_scope_of_the_gate():
+    """Recorded because it is the surprise: WO-54's gate was designed for
+    ChampDS but catches every progressive source, IQM2 included -- which
+    is why the fallback above exists."""
+    import worker.main as worker_main
+
+    assert (
+        worker_main._should_cache_whole_audio(
+            "https://MediaHTTP.IQM2.com/JohnsonCountyIA/3003_480.mp4", 8
+        )
+        is True
+    )

@@ -351,6 +351,17 @@ def _should_cache_whole_audio(media_url: str, total_chunks: int) -> bool:
     approaches move the whole file in total) and strictly better on
     requests and on seek cost, which for ChampDS is nearly all of the
     cost -- see media_probe.extract_full_audio()'s measurements.
+
+    **The gate is deliberately broad, and the caller's fallback is what
+    makes that safe (WO-58).** Not every progressive source has ChampDS's
+    seek pathology -- IQM2 was measured on 2026-08-25 and does not, its
+    time-to-first-byte being flat and non-monotonic with offset (0.05s at
+    byte 0, 2.8s at 50MB, 1.4s at 150MB -- ordinary variance, not a scan).
+    Detecting the pathology per source would cost its own probe on every
+    job, so instead this takes the cheap structural test and the caller
+    retries per-chunk if the whole-file pull does not work out. That
+    turns "wrong guess" into "slower once" rather than "failed job",
+    which matters: this gate covers 99 IQM2 pages in the current backlog.
     """
     return total_chunks > 1 and not is_hls(media_url)
 
@@ -461,6 +472,30 @@ async def process_next_chunk(engine: TranscriptionEngine) -> bool:
                     duration=duration,
                     out_path=audio_path,
                 )
+                if not extracted:
+                    # Fall back to the per-chunk path rather than failing
+                    # the chunk outright (WO-58). The whole-file pull is
+                    # an optimisation for sources where seeking is
+                    # expensive; on a source where it is NOT -- IQM2,
+                    # measured 2026-08-25 -- per-chunk extraction works
+                    # fine and is what this gate would otherwise have
+                    # taken away. Without this, a file too large to pull
+                    # inside _FULL_AUDIO_TIMEOUT_SECONDS turns a job that
+                    # used to work into one that fails.
+                    logger.info(
+                        "Job %s: whole-audio path failed (%s), falling back "
+                        "to per-chunk extraction for chunk %s",
+                        job_id,
+                        extraction_error,
+                        chunk_index,
+                    )
+                    extracted, extraction_error = await extract_chunk_audio(
+                        media_url,
+                        start=start,
+                        duration=duration,
+                        source_page_url=source_url,
+                        out_path=audio_path,
+                    )
             else:
                 extracted, extraction_error = await extract_chunk_audio(
                     media_url,
