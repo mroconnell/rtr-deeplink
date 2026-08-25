@@ -455,6 +455,164 @@ async def _extract_chunk_once(
     return True, None, False
 
 
+# --- Whole-file audio, for sources where seeking is the expensive part ---
+
+# One sequential read of a whole meeting, so it cannot use the per-chunk
+# budget. Deliberately NOT a bump of _SUBPROCESS_TIMEOUT_SECONDS
+# (BACKLOG.md has a standing decision against that, and this is a
+# different operation with a different cost model).
+#
+# Sized from an end-to-end measurement, and the first attempt at sizing it
+# was wrong in an instructive way. Reasoning from transfer alone -- the
+# largest ChampDS file seen is 672MB (wilkesconc/41) at a measured ~4MB/s,
+# so ~168s -- gave 180s. The real run took **199s** for oakhilltn/50
+# (502MB, 6733s), because the mp3 encode of nearly two hours of audio is
+# not free either. A budget derived from the download alone would have
+# killed the very file it was sized for.
+#
+# 240s covers that with real margin, and the binding constraint on going
+# higher is not ffmpeg: this runs inside a claim that must also transcribe
+# afterwards, and archive/db/crud.py's STALE_CLAIM_AFTER (5 minutes) is
+# when another worker may claim the same job. 240s + transcription still
+# fits, but not by much -- see BACKLOG.md's `[NEEDS-AUDIT]` entry on
+# double-claiming, whose heartbeat fix is what would lift this ceiling.
+#
+# Note this figure comes from Docker-on-a-Mac against a residential
+# connection; Render's egress is very likely faster, so the margin in
+# production should be wider than it looks here. Same measurement
+# asymmetry CLAUDE.md already flags for yt-dlp.
+_FULL_AUDIO_TIMEOUT_SECONDS = 240
+
+
+def is_hls(media_url: str) -> bool:
+    """True for an HLS playlist. HLS is exactly the case the whole-file
+    path must NOT be used for: ffmpeg fetches only the segments covering
+    a chunk's window off a playlist, so per-chunk extraction is already
+    minimal there, and pre-fetching everything would download the entire
+    video stream to save nothing."""
+    return urlparse(media_url).path.lower().endswith((".m3u8", ".m3u"))
+
+
+async def extract_full_audio(
+    media_url: str,
+    *,
+    source_page_url: str,
+    out_path: Path,
+) -> tuple[bool, Optional[str]]:
+    """Pull a whole meeting's audio in ONE sequential read, for a
+    progressive file where seeking -- not bandwidth -- is what costs.
+
+    **Why this exists.** ChampDS serves a single progressive MP4 and
+    charges for every seek: measured on two independent customers
+    (oakhilltn/50 and largofl/240, 2026-08-25), a ranged GET's cost is
+    almost entirely time-to-*first*-byte and it grows linearly with the
+    offset, at ~0.199 s/MB -- the server scans the file at ~5MB/s
+    internally before answering. Transfer itself is fine (~4MB/s).
+
+        offset        TTFB (oakhilltn / largofl)
+             0 MB     0.25s / 0.20s
+            50 MB     9.82s / 10.14s
+           250 MB    50.15s / 49.77s
+           450 MB    89.43s / 89.47s
+
+    So per-chunk seeking is O(N^2) across a job, and every chunk of a
+    long meeting eventually exceeds any per-chunk budget. Reading start
+    to finish once is O(N) and pays no scan at all. Measured on
+    oakhilltn/50 (502MB, 6733s, 8 chunks) in the workers' own base image:
+    the output-side path WO-53 falls back to still took 138s for chunk 1
+    and 162s for chunk 3, both over the 120s budget, and climbing.
+
+    This does NOT apply to HLS (see is_hls()), and the caller is expected
+    to check. `-vn` genuinely saves nothing on the wire for a muxed
+    progressive file -- the audio is interleaved with the video and both
+    have to come down -- so the win here is purely in not seeking.
+    """
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        returncode, _stdout, stderr = await _run(
+            "ffmpeg",
+            "-y",
+            "-headers",
+            realistic_headers(source_page_url),
+            "-i",
+            media_url,
+            "-vn",
+            "-ac",
+            "1",
+            "-ar",
+            "16000",
+            "-c:a",
+            "libmp3lame",
+            "-b:a",
+            "32k",
+            str(out_path),
+            timeout=_FULL_AUDIO_TIMEOUT_SECONDS,
+        )
+    except FileNotFoundError:
+        logger.exception("ffmpeg not found extracting full audio for %s", media_url)
+        return False, "ffmpeg not found on PATH"
+    except asyncio.TimeoutError:
+        logger.warning(
+            "Full-audio extraction timed out after %ss for %s",
+            _FULL_AUDIO_TIMEOUT_SECONDS,
+            media_url,
+        )
+        return (
+            False,
+            f"full-audio download timed out after {_FULL_AUDIO_TIMEOUT_SECONDS}s",
+        )
+
+    if returncode != 0:
+        tail = _stderr_tail(stderr, 500)
+        return False, f"full-audio ffmpeg exited {returncode}: {tail}" if tail else (
+            f"full-audio ffmpeg exited {returncode}"
+        )
+    if not (out_path.exists() and out_path.stat().st_size > 0):
+        return False, "full-audio ffmpeg reported success but wrote nothing"
+    return True, None
+
+
+async def slice_cached_audio(
+    cached_path: Path,
+    *,
+    start: float,
+    duration: float,
+    out_path: Path,
+) -> tuple[bool, Optional[str]]:
+    """Cut one chunk out of an already-downloaded audio file. Local disk
+    only -- no network, no seek penalty, and `-c copy` so there is no
+    re-encode either. Input-side `-ss` is correct and cheap here: the
+    pathology it triggers on remote HLS/progressive sources is entirely
+    about fetching, and this file is on disk.
+    """
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        returncode, _stdout, stderr = await _run(
+            "ffmpeg",
+            "-y",
+            "-ss",
+            str(start),
+            "-i",
+            str(cached_path),
+            "-t",
+            str(duration),
+            "-c",
+            "copy",
+            str(out_path),
+        )
+    except FileNotFoundError:
+        return False, "ffmpeg not found on PATH"
+    except asyncio.TimeoutError:
+        return False, "slicing cached audio timed out"
+
+    if returncode != 0:
+        tail = _stderr_tail(stderr, 500)
+        return False, f"slicing cached audio exited {returncode}: {tail}"
+    if not (out_path.exists() and out_path.stat().st_size > 0):
+        return False, "slicing cached audio produced no output"
+    return True, None
+
+
 async def extract_chunk_audio(
     media_url: str,
     *,

@@ -83,7 +83,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (12)
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
   Product calls
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (8)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (9)
+  [NEEDS-AUDIT] A chunk that takes longer than `STALE_CLAIM_AFTER` can
   [NEEDS-AUDIT] Two pages have had a failed transcription job and
   [NEEDS-AUDIT] Render "HTTP health check failed" on
   [NEEDS-AUDIT] A chunk truncated only at its *tail* still passes the
@@ -96,7 +97,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (8)
 Platform & jurisdiction coverage  (33)
   `[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
   `[JUST-DO-IT]` `[EASY]` Nine PrimeGov pages and two real meetings…
-  `[JUST-DO-IT]` ChampDS is a progressive MP4, and a 900s chunk can…
+  `[JUST-DO-IT]` ChampDS symptom B — instant 0.2s failures from the…
   `[Done 2026-08-23]` Four archived pages pointed at agenda systems…
   `[NEEDS-AUDIT]` Duration alone cannot separate a very short real…
   The 50 largest US cities — per-tenant status `[NEEDS-AUDIT]`
@@ -872,6 +873,33 @@ Reproduced against real data, but the fix is a genuine open question.
 Jurisdiction-extraction bugs live under **Platform & jurisdiction
 coverage** instead.
 
+- **[NEEDS-AUDIT] A chunk that takes longer than `STALE_CLAIM_AFTER` can
+  be claimed twice, and both copies report success (2026-08-25).**
+  Pre-existing, not introduced by WO-54 — found while sizing that
+  change's download budget, which is why the budget is 180s and not
+  higher.
+  `claim_next_chunk()` treats a job as claimable when
+  `claimed_at < now - STALE_CLAIM_AFTER` (5 minutes), which exists to
+  recover from a worker that *crashed* mid-chunk. But nothing
+  distinguishes "crashed" from "still working". A worker whose chunk
+  legitimately runs past 5 minutes — a slow source plus transcription —
+  keeps going, while a second worker claims the same job, gets the same
+  `chunk_index` (it is derived from `chunks_completed`, which has not
+  advanced), and processes it too. Both then call
+  `report_chunk_result(success=True)`, which **appends** segments and
+  increments `chunks_completed`: the transcript gets that window twice
+  and the job skips a real chunk entirely.
+  Not yet observed in production, which is why this is `[NEEDS-AUDIT]`
+  rather than a bug report — but the failure is silent, so "not observed"
+  is weak evidence. **Check first**: whether any completed job has
+  `chunks_completed` equal to `total_chunks` while its segments contain a
+  duplicated window, and whether `failure_history` ever shows two
+  attempts at one index seconds apart on different workers.
+  The clean fix is a claim heartbeat — the worker bumps `claimed_at`
+  while it is genuinely working — which would also lift the ceiling on
+  how long a single chunk may take, currently the thing capping WO-54's
+  download budget.
+
 - **[NEEDS-AUDIT] Two pages have had a failed transcription job and
   nothing else for months — are they still re-entering the queue at all?
   (2026-08-24)** A page with no good transcript is supposed to stay an
@@ -1152,104 +1180,27 @@ true). Run from the Archive service's Render shell, where the variable
 is already in the environment, so the value never has to be pasted
 anywhere: `curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" ...`.
 
-### `[JUST-DO-IT]` ChampDS is a progressive MP4, and a 900s chunk can exceed the download budget outright
+### `[JUST-DO-IT]` ChampDS symptom B — instant 0.2s failures from the JSON API
 
-Rewritten 2026-08-23 from live measurement, replacing a version that read
-every ChampDS failure as one thing ("self-inflicted rate-limiting"). There
-are **two different symptoms** here and only one of them looks like a rate
-limit. Full evidence: `BACKLOG_DONE.md`'s "ChampDS cluster root-caused"
-(2026-08-22) and "ChampDS is a progressive MP4" (2026-08-23).
-
-**Symptom A — `ffmpeg timed out after 120s`. Not a rate limit; a bitrate
-vs. chunk-size mismatch.** ChampDS serves a plain progressive MP4
-(`play.champds.com/DOWNLOAD-MEDIA/{customer}/eventmainmedia/{id}`, nginx,
-`application/octet-stream`), **not** HLS. That is the whole problem: with
-no separate audio rendition and no segment granularity, a chunk costs the
-full *muxed video+audio* bytes for its window — `-vn` saves CPU and not
-one byte of download. Range requests work fine (`Accept-Ranges: bytes`,
-ranged GET → 206), so seeking is not the issue; raw volume is. Measured
-against the three meetings that actually failed:
-
-```
-                        file    duration   bitrate   900s chunk   fetch @840KB/s
-wilkesconc/41  (job 648) 672MB    2,841s   237KB/s      213MB          254s
-oakhilltn/50   (job 650) 502MB    6,733s    75KB/s       67MB           80s
-surfsidefl/423 (job 646) 427MB    7,141s    60KB/s       54MB           64s
-```
-
-against a 120s `_SUBPROCESS_TIMEOUT_SECONDS`. **Wilkes County is a hard
-wall** — 2.1× over budget, unfixable by retrying. The other two fit on
-transfer alone, but `probe_duration()` on them took **100.8s and 86.6s**,
-so fixed origin cost alone nearly spends the budget before any audio
-moves. Throughput was flat and repeatable (two back-to-back 20MB range
-reads: 838 and 840 KB/s, every response `X-CDS-Cache-Status: MISS`) —
-**that is a steady pipe, not throttling.**
-
-**Correction, 2026-08-25 — throughput is NOT flat across the file, and
-this changes fix 1's arithmetic.** Those two 840 KB/s reads were both
-near the *start*. Re-measured on `oakhilltn/50` (502MB), two independent
-runs agreeing:
-
-```
-bytes 0        – 4 MB    :  1.0s   4,080 KB/s
-bytes 250 MB   – 254 MB  : 50.5s       83 KB/s      (~49x slower)
-bytes 480 MB   – 484 MB  : >90s     timed out
-```
-
-So a ranged read costs *more the deeper into the file it starts*, badly.
-Compounding it: **the `moov` atom is at the tail**, confirmed by reading
-the first 64 bytes — `ftyp` / `wide` / `mdat` with no `moov` in front —
-so ffmpeg must reach the end of a 502MB file before it can seek at all,
-and that read runs at the slow end of the range above.
-
-**What this means for fix 1:** an adaptive chunk size computed from a
-flat ~840 KB/s will still fail on later chunks, because they do not get
-840 KB/s. Any sizing rule has to model bytes-per-second *as a function of
-offset*, or avoid deep seeks entirely. That pushes fix 2 (one sequential
-pass, many chunks out — e.g. ffmpeg's `-f segment` muxer reading from
-byte 0 once at 4 MB/s) from "alternative" to "probably the only shape
-that works here". Worth re-measuring on a second ChampDS customer before
-building either, since all of this is one host's behaviour.
+**Symptom A (the `ffmpeg timed out after 120s` cluster) was fixed
+2026-08-25** by pulling a progressive source's whole audio once per job
+instead of seeking per chunk — full measurement, including the ChampDS
+seek-cost model that forced the design, in `BACKLOG_DONE.md`'s "ChampDS
+charges for every seek". This entry keeps only the half that is still
+open.
 
 **Symptom B — instant 0.2s failures with "Could not reach the ChampDS API
 for this meeting".** Untouched by the above and still unexplained; a fast
-non-200 from the JSON API really could be a per-IP limit. This is the half
-the 2026-08-22 rate-limiting conclusion legitimately covers.
+non-200 from the JSON API really could be a per-IP limit. This is the
+half the 2026-08-22 rate-limiting conclusion legitimately covers.
 
-**Fixes, in cost order:**
-
-1. **Make the chunk size adaptive to media bitrate** — the real fix, and
-   not ChampDS-specific. `AUTO_TRANSCRIPTION_CHUNK_SIZE_SECONDS = 900`
-   (`worker/main.py`, mirrored in `app/main.py`) is a flat constant that
-   is fine for HLS and wrong for a progressive file. Both inputs are
-   already cheap to get: `Content-Length` from a HEAD, duration from
-   `probe_duration()`. At 237 KB/s, 300s chunks cost 71MB — comfortably
-   inside budget. Helps every progressive-MP4 source, not just ChampDS.
-2. **Status-code-aware logging in `champds.py`'s `_fetch_json()`** — it
-   collapses timeout / non-200 / connection error into one `return None`
-   and a generic warning, which is exactly why symptom B still needs a
-   manual re-curl to diagnose. Cheap, and it is what would have told these
-   two symptoms apart without this investigation. Worth checking other
-   adapters for the same collapse pattern.
-3. **Download-once-then-slice for progressive sources** `[BIG]` — removes
-   the per-chunk timeout cliff entirely, and for Wilkes is actually *fewer*
-   bytes (672MB once vs 4 × 213MB). Needs ~700MB of disk headroom on a 2GB
-   worker, so a real design change, not a tweak.
-
-**Deprioritised, with reasons:** host-aware pacing (the previously-filed
-fix 1) does not look like the lever for symptom A on this evidence — the
-pipe is steady, not throttled; it may still help symptom B. And **WO-45's
-output-side-seek fallback does nothing here** — a timeout deliberately
-returns `worth_seek_retry=False`, since retrying after already spending
-the full 120s just doubles the wall clock.
-
-**Caveat, and it matters: every throughput number above was measured from
-Ryan's Mac, never from Render.** Same asymmetry `CLAUDE.md` already flags
-for yt-dlp. If Render's egress is faster, the two borderline meetings
-resolve themselves and only Wilkes-class files stay broken — so
-**re-measure from the worker before sizing fix 1's threshold**, rather
-than hard-coding one derived from a residential connection.
-
+**What to build, and it is small:** status-code-aware logging in
+`champds.py`'s `_fetch_json()`. It collapses timeout / non-200 /
+connection error into one `return None` and a generic warning, which is
+exactly why this still needs a manual re-curl to diagnose. It is also
+what would have told the two symptoms apart without the whole 2026-08-23
+investigation. Worth checking other adapters for the same collapse
+pattern while in there.
 
 ### `[Done 2026-08-23]` Four archived pages pointed at agenda systems with no video — three repointed, one has no recording anywhere
 
