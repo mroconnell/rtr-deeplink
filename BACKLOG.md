@@ -83,7 +83,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (12)
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
   Product calls
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (9)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (10)
+  [NEEDS-AUDIT] 32 places across 23 adapters swallow an exception and
   [NEEDS-AUDIT] A chunk that takes longer than `STALE_CLAIM_AFTER` can
   [NEEDS-AUDIT] Two pages have had a failed transcription job and
   [NEEDS-AUDIT] Render "HTTP health check failed" on
@@ -873,6 +874,38 @@ Reproduced against real data, but the fix is a genuine open question.
 Jurisdiction-extraction bugs live under **Platform & jurisdiction
 coverage** instead.
 
+- **[NEEDS-AUDIT] 32 places across 23 adapters swallow an exception and
+  return nothing, with no log line (surveyed 2026-08-25).** The same
+  pattern that made ChampDS's symptom B undiagnosable for two
+  investigations, and it is everywhere:
+  `except Exception: return None`, no logger call, caller turns it into a
+  generic user-facing warning. When any of these fire in production the
+  real cause is simply gone.
+  Surveyed with a crude heuristic (an `except Exception` whose next three
+  lines return/pass and mention no logger), so treat the list as a
+  starting point, not gospel — and note `champds.py`'s own two remaining
+  hits are false positives, since they now return a *reason* rather than
+  a bare None:
+
+  ```
+  aurora:157  ca_legislature:175  cablecast:391  chicago_elms:218
+  civicclerk:413,457  civicweb:150,173  escribe:272
+  generic_fallback:544,576,955  granicus:993,1047,1093  hyland:277
+  iqm2:240  legistar:202  openmedia:141  primegov:422
+  seattlechannel:175  suiteone:353,376  swagit:587,605  telvue:262
+  viebit:223  vimeo:462  youtube:307  youtube_channel:546
+  ```
+
+  **Not a mechanical sweep.** Some of these are correct as they stand —
+  an optional enrichment step that legitimately has nothing to say
+  should stay quiet, and turning all 32 into warnings would bury the
+  real ones. The judgment per site is "would a human debugging a failed
+  resolve want to know this happened?" See `champds.py`'s `_fetch_json()`
+  for the shape worth copying: return a reason alongside the value, log
+  it at the call site, leave the reader-facing copy alone.
+  Worth doing on the adapters that actually fail in production first —
+  the daily digest names them.
+
 - **[NEEDS-AUDIT] A chunk that takes longer than `STALE_CLAIM_AFTER` can
   be claimed twice, and both copies report success (2026-08-25).**
   Pre-existing, not introduced by WO-54 — found while sizing that
@@ -1194,13 +1227,21 @@ for this meeting".** Untouched by the above and still unexplained; a fast
 non-200 from the JSON API really could be a per-IP limit. This is the
 half the 2026-08-22 rate-limiting conclusion legitimately covers.
 
-**What to build, and it is small:** status-code-aware logging in
-`champds.py`'s `_fetch_json()`. It collapses timeout / non-200 /
-connection error into one `return None` and a generic warning, which is
-exactly why this still needs a manual re-curl to diagnose. It is also
-what would have told the two symptoms apart without the whole 2026-08-23
-investigation. Worth checking other adapters for the same collapse
-pattern while in there.
+**Instrumented 2026-08-25 — the next occurrence should explain itself.**
+`_fetch_json()` used to collapse timeout / non-200 / connection error /
+malformed body into a bare `return None` with *no logging at all*, which
+is why this survived two investigations: diagnosing it required
+re-curling the API by hand afterwards. It now returns a real reason and
+the caller logs it, so a 404 (meeting gone), a 429 (per-IP limit), a
+connection reset and a 200-that-is-not-JSON are all distinguishable from
+the logs alone. The reader-facing sentence is deliberately unchanged.
+
+**So there is nothing to build here until it fires again.** Next time a
+ChampDS resolve fails, grep the resolver logs for
+`ChampDS API fetch failed` and the answer will be in the line. If it
+turns out to be 429s, the fix is host-aware pacing (already deprioritised
+for symptom A on the evidence there, but this is the half it could
+genuinely fit).
 
 ### `[Done 2026-08-23]` Four archived pages pointed at agenda systems with no video — three repointed, one has no recording anywhere
 
