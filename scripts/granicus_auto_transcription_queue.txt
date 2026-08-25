@@ -1,15 +1,3 @@
-https://parker.granicus.com/player/clip/719
-https://parkridge.granicus.com/player/clip/2840
-https://pasadena.granicus.com/player/clip/8114
-https://pec.granicus.com/player/clip/537?view_id=1
-https://pensacola.granicus.com/player/clip/1940
-https://peoriail.granicus.com/player/clip/1043
-https://perris.granicus.com/player/clip/1725?view_id=4
-https://petaluma.granicus.com/player/clip/3810
-https://petersburg.granicus.com/player/clip/1464?view_id=2
-https://piedmont.granicus.com/player/clip/3113?view_id=9
-https://pinole.granicus.com/player/clip/2123?view_id=2
-https://pismobeach.granicus.com/player/clip/1667
 https://pitkincounty.granicus.com/player/clip/627?view_id=2
 https://pittsburgh.granicus.com/player/clip/7524
 https://plainfieldil.granicus.com/player/clip/1672
