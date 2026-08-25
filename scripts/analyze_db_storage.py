@@ -1,19 +1,30 @@
 #!/usr/bin/env python3
 """Analyze PostgreSQL database storage usage and identify optimization opportunities.
 
-Run this from the Render shell for production analysis:
-  render-shell
-  cd /app
+Postgres-only (uses pg_size_pretty/pg_column_size/pg_tables) -- run this
+from the Render shell for production analysis (repo root, venv active,
+DATABASE_URL set by the environment already):
   python scripts/analyze_db_storage.py
 """
 
 import asyncio
-from sqlalchemy import text
-from archive.db.engine import get_async_engine
+import sys
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
 async def main():
-    engine = get_async_engine()
+    load_dotenv()
+
+    # Imported after load_dotenv() -- archive.db.engine builds its engine
+    # from DATABASE_URL at import time. Same ordering as
+    # scripts/backfill_meeting_highlights.py.
+    from sqlalchemy import text
+
+    from archive.db.engine import engine
 
     async with engine.connect() as conn:
         print("=" * 80)
