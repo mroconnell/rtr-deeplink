@@ -6,6 +6,67 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Deploys are manual now [Done 2026-08-25, WO-59]
+
+Render bills *pipeline minutes*, and the workspace ran out on 2026-08-25,
+blocking every deploy. Second occurrence — the first was 2026-08-19, ~5.5
+hours — and both times the failure is silent: no alert, no failed CI,
+`merge ≈ deploy` just quietly stops being true.
+
+**Two rounds of `buildFilter` work had already cut build volume 31% then
+24%, and it ran out anyway.** The investigation into why found two things
+neither round could have caught.
+
+### The measurements only ever counted four services. There were six.
+
+`rtr-deeplink-staging` and `rtr-deeplink-archive-staging` were created in
+the dashboard, so they are **not in `render.yaml`** — which means they
+had **no `buildFilter`** and rebuilt on every push, including all the
+ones the four production allow-lists correctly skip.
+
+Measured over the 24 hours to 2026-08-25:
+
+```
+21 commits to main
+13 of them built ONLY staging  (docs, backlog, auto-merged queue PRs)
+ 8 built production services
+~42 staging builds vs <=32 production builds
+```
+
+Both staging services were failing to deploy at the time, so every one of
+those minutes bought nothing. Ryan disabled their auto-deploy the same
+day. **The durable lesson is the general one: a service outside the
+blueprint has no build filter, and nothing in this repo will ever tell
+you it exists.**
+
+### Build volume scales with merge count, and nothing capped that
+
+Filtering reduces builds *per merge*. It does nothing about merging seven
+times in one evening, which is what this session did on 2026-08-25 —
+each merge a defensible decision on its own, and collectively a spike
+nobody was measuring.
+
+### The fix, and what it costs
+
+`autoDeploy: false` on all four services, plus a CLAUDE.md convention
+("Deploys are manual") requiring an agent to surface undeployed work and
+ask for a deploy when it matters.
+
+**This deliberately recreates the hazard the 2026-08-19 incident was
+about** — production running older code than `main`. The bet is that
+*deliberate and visible* beats *silent*: the gap is now a known state
+somebody is accountable for reporting, rather than a surprise discovered
+hours later. If that bet stops paying, the fix is `autoDeploy: true`
+again, not a workaround.
+
+An integration branch was considered and rejected as the wrong tool for
+this: it would have needed the two queue-advance workflows and the
+inbox-triage Routine retargeted off `--base main`, and it would have cost
+per-commit rollback granularity and fast production feedback — the same
+day, job 911 confirmed WO-53 working within an hour of merging, which a
+batched branch would have delayed by days. `autoDeploy: false` gets the
+same build saving as one line of config.
+
 ## WO-54's gate is broader than the problem it was built for [Done 2026-08-25, WO-58]
 
 WO-54 pulls a whole meeting's audio once instead of seeking per chunk,

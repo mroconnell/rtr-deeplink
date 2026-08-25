@@ -558,6 +558,42 @@ under everything else. This repo extracts and fixes just that part.
   (no repo change) and re-measure; local then matches production
   exactly. Both cost a full round of bad measurements before being
   noticed, and neither fails loudly.
+- **Deploys are manual — merging ships nothing, so say so (WO-59,
+  2026-08-25).** All four services carry `autoDeploy: false` in
+  `render.yaml`. `main` moving does not move production, and **the gap
+  between them is now a normal state you are responsible for surfacing.**
+  The failure this guards against is real and has happened twice:
+  Render bills *pipeline minutes*, the workspace exhausted them on
+  2026-08-19 (~5.5 hours of silently blocked deploys) and again on
+  2026-08-25, after 21 commits landed on `main` in a single day. Two
+  rounds of `buildFilter` tuning cut build volume 31% then 24% and it
+  still ran out, because volume scales with *merge count* and nothing
+  capped that.
+  **What this asks of you, concretely:**
+  1. **Batch merges.** Landing seven PRs in an evening (2026-08-25, this
+     session) costs seven build waves for work that could ship in one.
+     Hold related PRs and merge them together unless something is
+     genuinely urgent.
+  2. **Say when merged work is undeployed.** After merging anything under
+     `app/`, `archive/`, `worker/`, `shared_static/`,
+     `shared_templates/`, `requirements.txt` or `render.yaml`, tell the
+     user plainly that it is on `main` but not live. Docs, `BACKLOG*.md`
+     and queue files never needed a deploy and still do not — do not
+     manufacture a deploy request for them.
+  3. **Ask for a deploy when it actually matters**, and say why in one
+     line: a fix the user is waiting to observe, anything that unblocks
+     queued work, anything that closes a live regression. "It would be
+     tidy" is not a reason. A deploy is the user's action — you cannot
+     trigger one — so the ask has to carry enough for them to decide.
+  4. **Never assume production is running `main`.** When diagnosing,
+     check what is actually deployed before reasoning from the code in
+     front of you. A stale-code hypothesis is now a legitimate first
+     suspect, not an exotic one.
+  **Migrations ride with the deploy, not the merge.** `preDeployCommand`
+  (`alembic upgrade head`) runs when a deploy runs, so "the migration
+  landed" and "the migration ran" are now separate events — code and
+  schema still move together, which is what matters.
+
 - **Run any backfill or bulk sweep from the service's Render shell, not
   from your laptop against the production `DATABASE_URL` (real mistake,
   2026-08-23).** `BACKLOG.md`'s Standing decisions already say "never

@@ -8,10 +8,44 @@
 # outside it. Keep every `plan:` below in sync with whatever's actually
 # been decided (in chat or in Render's dashboard) -- a plan change made
 # only in the dashboard WILL get silently undone by the next push.
+# --- Deploys are manual (2026-08-25, WO-59) -------------------------------
+#
+# All four services carry `autoDeploy: false`. Merging to `main` no longer
+# ships anything; a deploy is a separate, deliberate action.
+#
+# **Why.** Render bills *pipeline minutes*, and the workspace ran out on
+# 2026-08-25, silently blocking every deploy -- the second time (see
+# BACKLOG.md's pipeline-minutes entry; the first was 2026-08-19, ~5.5
+# hours). Two rounds of buildFilter work had already cut build volume 31%
+# then 24%, and it still ran out, because build volume scales with *merge
+# count* and nothing capped that. On the day it happened, 21 commits
+# landed on main in 24 hours.
+#
+# **The honest cost.** "Merge equals deploy" was a genuinely useful
+# property, and losing it recreates the exact hazard the 2026-08-19
+# incident was about: production quietly running older code than `main`.
+# The difference is that it is now *deliberate and visible* rather than a
+# surprise -- which is the whole bet. If that bet stops paying, the fix is
+# to put `autoDeploy: true` back, not to work around it.
+#
+# **What this means for an agent working here:** merging is no longer the
+# last step. See CLAUDE.md's "Deploys are manual" convention -- the short
+# version is that you must tell the user when merged work is sitting
+# undeployed, and ask for a deploy when it actually matters.
+#
+# **Migrations ride with the deploy, not the merge.** `preDeployCommand`
+# (alembic upgrade head) runs when a deploy runs. A merged migration does
+# nothing until then, which is safe -- code and schema still move
+# together -- but it does mean "the migration landed" and "the migration
+# ran" are now different events.
 services:
   - type: web
     name: rtr-deeplink
     runtime: python
+    # Deploys are MANUAL (2026-08-25, WO-59). `merge != deploy` here, on
+    # purpose -- see the block comment above `services:` for the full
+    # reasoning and for what an agent is expected to do about it.
+    autoDeploy: false
     plan: starter
     # Build filter, reworked 2026-08-22 (WO-44) from a deny-list of docs
     # into an ALLOW-list of the paths this service actually ships.
@@ -182,6 +216,10 @@ services:
   - type: web
     name: rtr-deeplink-archive
     runtime: python
+    # Deploys are MANUAL (2026-08-25, WO-59). `merge != deploy` here, on
+    # purpose -- see the block comment above `services:` for the full
+    # reasoning and for what an agent is expected to do about it.
+    autoDeploy: false
     plan: standard  # was starter (512MB) -- upgraded 2026-08-17 (see the
                    # top-of-file note on keeping this synced with real
                    # decisions) after `starter` OOM-crashed in production
@@ -350,6 +388,10 @@ services:
   - type: worker
     name: rtr-transcription-worker
     runtime: docker
+    # Deploys are MANUAL (2026-08-25, WO-59). `merge != deploy` here, on
+    # purpose -- see the block comment above `services:` for the full
+    # reasoning and for what an agent is expected to do about it.
+    autoDeploy: false
     dockerfilePath: worker/Dockerfile
     dockerContext: .
     # Allow-list -- see rtr-deeplink's block above for the reasoning
@@ -453,6 +495,10 @@ services:
   - type: worker
     name: rtr-transcription-worker-2
     runtime: docker
+    # Deploys are MANUAL (2026-08-25, WO-59). `merge != deploy` here, on
+    # purpose -- see the block comment above `services:` for the full
+    # reasoning and for what an agent is expected to do about it.
+    autoDeploy: false
     dockerfilePath: worker/Dockerfile
     dockerContext: .
     # Allow-list, identical to rtr-transcription-worker's above and it
