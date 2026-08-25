@@ -14,11 +14,13 @@ docstring for the fuller dependency-direction reasoning.
 """
 
 import asyncio
+import contextlib
 import logging
 import os
 import shutil
 import tempfile
 import time
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
 
@@ -239,6 +241,59 @@ async def maybe_generate_auto_job() -> bool:
     return True
 
 
+# --- Keeping a live claim alive ------------------------------------------
+
+# How often a working worker refreshes its claim. Well under
+# archive/db/crud.py's STALE_CLAIM_AFTER (5 minutes), so several
+# heartbeats have to be missed before another worker considers the job
+# abandoned -- one slow query or a brief hiccup must not hand the job to
+# somebody else while this process is still working on it.
+CLAIM_HEARTBEAT_SECONDS = 60
+
+
+async def _heartbeat_loop(job_id: int) -> None:
+    """Refresh this job's claim until cancelled. Never raises out: a
+    failed heartbeat is worth a log line, but it must not take down the
+    chunk that is otherwise going fine -- the worst case is the claim
+    going stale, which is a recoverable state the system already
+    handles."""
+    while True:
+        await asyncio.sleep(CLAIM_HEARTBEAT_SECONDS)
+        try:
+            if not await crud.heartbeat_claim(job_id):
+                logger.info(
+                    "Job %s: claim no longer in_progress, stopping heartbeat", job_id
+                )
+                return
+        except Exception:
+            logger.warning("Job %s: claim heartbeat failed", job_id, exc_info=True)
+
+
+@asynccontextmanager
+async def _keeping_claim_alive(job_id: int):
+    """Hold a job's claim for as long as this block genuinely runs.
+
+    Without this, a chunk slower than STALE_CLAIM_AFTER looked exactly
+    like a crashed worker: the other replica claimed the same job, derived
+    the same chunk_index from an unchanged chunks_completed, and both
+    reported success -- appending the same window twice and skipping a
+    real chunk, silently. See STALE_CLAIM_AFTER's own comment.
+
+    Safe to wrap the whole chunk in because neither half blocks the event
+    loop: extraction is subprocess I/O, and transcription goes through
+    asyncio.to_thread (worker/transcription_engine.py). A heartbeat that
+    could not actually fire during the slow part would be worse than
+    none, since it would look like protection while providing none.
+    """
+    task = asyncio.create_task(_heartbeat_loop(job_id))
+    try:
+        yield
+    finally:
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+
+
 # --- Whole-meeting audio cache, for seek-hostile progressive sources ----
 
 # Where a job's once-downloaded audio lives between chunks. Deliberately
@@ -379,62 +434,72 @@ async def process_next_chunk(engine: TranscriptionEngine) -> bool:
             exc_info=True,
         )
 
-    with tempfile.TemporaryDirectory(prefix="rtr_transcribe_") as tmpdir:
-        audio_path = Path(tmpdir) / f"chunk_{chunk_index}.mp3"
-        # A progressive multi-chunk source pays a server-side seek scan
-        # per chunk that grows with the offset (see
-        # media_probe.extract_full_audio()'s measurements), so the whole
-        # meeting's audio is pulled once and every chunk is then a local
-        # slice. HLS keeps the per-chunk path, where fetching is already
-        # minimal.
-        if _should_cache_whole_audio(media_url, total_chunks):
-            extracted, extraction_error = await _chunk_audio_via_cache(
-                job_id=job_id,
-                media_url=media_url,
-                source_url=source_url,
-                start=start,
-                duration=duration,
-                out_path=audio_path,
-            )
-        else:
-            extracted, extraction_error = await extract_chunk_audio(
-                media_url,
-                start=start,
-                duration=duration,
-                source_page_url=source_url,
-                out_path=audio_path,
-            )
-        if not extracted:
-            logger.warning(
-                "Job %s: ffmpeg extraction failed for chunk %s/%s (%s) (will retry on next poll)",
-                job_id,
-                chunk_index + 1,
-                total_chunks,
-                extraction_error,
-            )
-            failure_result = await crud.report_chunk_result(
-                job_id,
-                success=False,
-                chunk_index=chunk_index,
-                error=extraction_error or "ffmpeg extraction failed",
-            )
-            await _handle_job_failure_result(job_id, failure_result)
-            return True
+    # Both halves below can legitimately outlast STALE_CLAIM_AFTER on a
+    # slow source -- WO-54's whole-file pull alone gets its own 360s
+    # budget -- so the claim is refreshed for as long as this genuinely
+    # runs. Wraps extraction AND transcription: either can be the slow
+    # one, and a heartbeat covering only the first would be protection
+    # exactly where it is not needed.
+    async with _keeping_claim_alive(job_id):
+        # TemporaryDirectory is a *sync* context manager -- it has no
+        # __aenter__, so it cannot join the `async with` above. Nested
+        # deliberately rather than combined.
+        with tempfile.TemporaryDirectory(prefix="rtr_transcribe_") as tmpdir:
+            audio_path = Path(tmpdir) / f"chunk_{chunk_index}.mp3"
+            # A progressive multi-chunk source pays a server-side seek scan
+            # per chunk that grows with the offset (see
+            # media_probe.extract_full_audio()'s measurements), so the whole
+            # meeting's audio is pulled once and every chunk is then a local
+            # slice. HLS keeps the per-chunk path, where fetching is already
+            # minimal.
+            if _should_cache_whole_audio(media_url, total_chunks):
+                extracted, extraction_error = await _chunk_audio_via_cache(
+                    job_id=job_id,
+                    media_url=media_url,
+                    source_url=source_url,
+                    start=start,
+                    duration=duration,
+                    out_path=audio_path,
+                )
+            else:
+                extracted, extraction_error = await extract_chunk_audio(
+                    media_url,
+                    start=start,
+                    duration=duration,
+                    source_page_url=source_url,
+                    out_path=audio_path,
+                )
+            if not extracted:
+                logger.warning(
+                    "Job %s: ffmpeg extraction failed for chunk %s/%s (%s) (will retry on next poll)",
+                    job_id,
+                    chunk_index + 1,
+                    total_chunks,
+                    extraction_error,
+                )
+                failure_result = await crud.report_chunk_result(
+                    job_id,
+                    success=False,
+                    chunk_index=chunk_index,
+                    error=extraction_error or "ffmpeg extraction failed",
+                )
+                await _handle_job_failure_result(job_id, failure_result)
+                return True
 
-        try:
-            raw_segments = await engine.transcribe_chunk(audio_path)
-        except Exception as e:
-            logger.exception(
-                "Job %s: transcription failed for chunk %s/%s (will retry on next poll)",
-                job_id,
-                chunk_index + 1,
-                total_chunks,
-            )
-            failure_result = await crud.report_chunk_result(
-                job_id, success=False, chunk_index=chunk_index, error=str(e)
-            )
-            await _handle_job_failure_result(job_id, failure_result)
-            return True
+            try:
+                raw_segments = await engine.transcribe_chunk(audio_path)
+            except Exception as e:
+                logger.exception(
+                    "Job %s: transcription failed for chunk %s/%s (will retry on next poll)",
+                    job_id,
+                    chunk_index + 1,
+                    total_chunks,
+                )
+                failure_result = await crud.report_chunk_result(
+                    job_id, success=False, chunk_index=chunk_index, error=str(e)
+                )
+                await _handle_job_failure_result(job_id, failure_result)
+                return True
 
     shifted = shift_segments(raw_segments, start)
     # Detect a real seam-duplicate against what the previous chunk already

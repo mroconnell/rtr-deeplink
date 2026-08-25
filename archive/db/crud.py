@@ -5624,17 +5624,27 @@ PRIORITY_MEDIUM = 10  # every real user-submitted request today
 # Was 10 minutes; shortened live 2026-08-08 after a real OOM-crash-loop
 # meant the countdown kept resetting (each auto-restart re-claimed the
 # job, pushing "stale" 10 more minutes out every time) -- annoying to
-# wait out mid-debugging. 5 minutes is still comfortably longer than a
-# single chunk should ever legitimately take with the "tiny" model. This
-# is still purely crash detection, not a concurrent-worker guard -- that's
-# claim_next_chunk()'s own FOR UPDATE SKIP LOCKED below, which already
-# stops two worker processes (a second one is real now, see render.yaml's
-# rtr-transcription-worker-2) from double-claiming the same row. This
-# window only matters for a worker that crashes mid-chunk without ever
-# calling report_chunk_result() to release its claim -- after it elapses,
-# *some* worker (the other replica, or this one after a restart) can
-# reclaim the row; which worker that ends up being isn't what this timer
-# is about.
+# wait out mid-debugging. This is purely crash detection, not a
+# concurrent-worker guard -- that's claim_next_chunk()'s own FOR UPDATE
+# SKIP LOCKED below, which already stops two worker processes (a second
+# one is real now, see render.yaml's rtr-transcription-worker-2) from
+# double-claiming the same row.
+#
+# **It now means what it always claimed to mean (WO-57, 2026-08-25).**
+# It used to rest on "5 minutes is comfortably longer than a single chunk
+# should ever legitimately take" -- an assumption nothing enforced, and
+# one that a slow source could break silently. Nothing distinguished a
+# worker that had *crashed* from one still working, so a chunk running
+# past this window was reclaimed while its original worker kept going;
+# both then reported success, and report_chunk_result() APPENDS, so the
+# transcript got that window twice and the job skipped a real chunk.
+# Silent, and found by reasoning about the budget for WO-54 rather than
+# from a report.
+#
+# heartbeat_claim() below closes it: a live worker refreshes claimed_at
+# while it genuinely works, so reaching this window now means the worker
+# stopped, which is exactly the case this timer is for. A chunk may
+# legitimately take as long as it needs.
 STALE_CLAIM_AFTER = timedelta(minutes=5)
 MAX_CONSECUTIVE_CHUNK_FAILURES = 3
 
@@ -6389,6 +6399,38 @@ async def claim_next_chunk() -> Optional[dict]:
             # before it ever calls report_chunk_result().
             "partial_segments": job.partial_segments,
         }
+
+
+async def heartbeat_claim(job_id: int) -> bool:
+    """Refresh a claim's `claimed_at` so a chunk that is genuinely still
+    being worked on is never mistaken for a crashed worker's abandoned
+    row. Returns whether anything was updated.
+
+    This is what makes STALE_CLAIM_AFTER mean "the worker stopped"
+    instead of "this is taking a while" -- see that constant's own
+    comment for the double-claim bug it closes, and worker/main.py's
+    `_keeping_claim_alive()` for the caller that drives it.
+
+    Only touches a row still marked `in_progress`: a job that finished,
+    failed, or was rescheduled while a heartbeat was in flight must not
+    be dragged back into looking claimed. The return value lets the
+    caller notice that and stop, though it deliberately does not treat it
+    as an error -- losing a race with your own completion is normal.
+
+    Cheap by construction: one indexed UPDATE by primary key, no blob
+    columns touched, once a minute per in-flight job.
+    """
+    async with async_session() as session:
+        result = await session.execute(
+            update(TranscriptionJob)
+            .where(
+                TranscriptionJob.id == job_id,
+                TranscriptionJob.status == "in_progress",
+            )
+            .values(claimed_at=datetime.now(timezone.utc))
+        )
+        await session.commit()
+        return bool(result.rowcount)
 
 
 async def report_chunk_result(

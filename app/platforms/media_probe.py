@@ -470,18 +470,19 @@ async def _extract_chunk_once(
 # not free either. A budget derived from the download alone would have
 # killed the very file it was sized for.
 #
-# 240s covers that with real margin, and the binding constraint on going
-# higher is not ffmpeg: this runs inside a claim that must also transcribe
-# afterwards, and archive/db/crud.py's STALE_CLAIM_AFTER (5 minutes) is
-# when another worker may claim the same job. 240s + transcription still
-# fits, but not by much -- see BACKLOG.md's `[NEEDS-AUDIT]` entry on
-# double-claiming, whose heartbeat fix is what would lift this ceiling.
+# The ceiling used to be STALE_CLAIM_AFTER, not ffmpeg: this runs inside
+# a claim that must also transcribe afterwards, so a long download risked
+# the job being reclaimed mid-flight. **WO-57's claim heartbeat removed
+# that ceiling** -- a working worker now refreshes its own claim -- so
+# this is sized on the media instead. 360s covers the largest ChampDS
+# file seen (672MB, wilkesconc/41) with real margin at the measured
+# ~4MB/s, where 240s would have been marginal for it.
 #
 # Note this figure comes from Docker-on-a-Mac against a residential
 # connection; Render's egress is very likely faster, so the margin in
 # production should be wider than it looks here. Same measurement
 # asymmetry CLAUDE.md already flags for yt-dlp.
-_FULL_AUDIO_TIMEOUT_SECONDS = 240
+_FULL_AUDIO_TIMEOUT_SECONDS = 360
 
 
 def is_hls(media_url: str) -> bool:

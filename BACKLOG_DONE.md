@@ -148,6 +148,69 @@ Both closed the same day. Vimeo was confirmed live — see the
 accepted as-is by Ryan and now sits in `BACKLOG.md`'s Standing
 decisions so it stops being re-filed as a bug. **Nothing from WO-56
 remains open.**
+## A working worker now keeps its own claim [Done 2026-08-25, WO-57]
+
+`STALE_CLAIM_AFTER` (5 minutes) exists to recover a job from a worker
+that crashed mid-chunk. Nothing distinguished "crashed" from "still
+working", so it rested on an assumption nothing enforced — its own
+comment said 5 minutes is "comfortably longer than a single chunk should
+ever legitimately take". A slow source breaks that quietly:
+
+```
+worker A is still transcribing chunk 3
+worker B sees a stale claim and takes the job
+B derives chunk_index from chunks_completed — also 3
+both report success, and report_chunk_result() APPENDS
+```
+
+The transcript carries that window twice and the job skips a real chunk.
+**Silent** — no error, no failed job, just a subtly wrong transcript.
+
+**Found by reasoning, not from a report**, while sizing WO-54's
+whole-file download budget: that budget was capped at 240s purely because
+a longer chunk risked this. Which is the tell that it was worth fixing —
+it had already started distorting an unrelated design decision.
+
+### The fix
+
+`crud.heartbeat_claim()` bumps `claimed_at` for a row still marked
+`in_progress`; `worker/main.py`'s `_keeping_claim_alive()` runs it every
+60s for as long as a chunk genuinely runs. `STALE_CLAIM_AFTER` now means
+what it always claimed to mean: the worker stopped.
+
+**Three things that are easy to get wrong here, each with its own test:**
+
+1. **Crash recovery must survive.** The whole point of the staleness
+   window is that a dead worker's job comes back, and it would be easy to
+   break that while fixing the opposite case. A job that stops being
+   heartbeated is still reclaimed, at the same `chunk_index`.
+2. **The heartbeat must fire during the *slow* part.** Whisper is
+   CPU-bound; if it ran on the event loop, no heartbeat could fire during
+   exactly the stretch that needs one — protection that looks real and is
+   not. `FasterWhisperEngine.transcribe_chunk()` hands it to
+   `asyncio.to_thread`, and ffmpeg is subprocess I/O, so the loop stays
+   free. Pinned by a test that heartbeats across a real
+   `asyncio.to_thread` sleep.
+3. **A failed heartbeat must not fail the chunk.** The worst case of a
+   missed beat is a stale claim, which the system already recovers from;
+   crashing the chunk would turn a transient blip into a real failure.
+
+### It also lifted a ceiling
+
+`_FULL_AUDIO_TIMEOUT_SECONDS` (WO-54) was 240s only because of this bug.
+Now sized on the media instead: **360s**, which covers the largest
+ChampDS file seen (672MB, wilkesconc/41) at the measured ~4MB/s with real
+margin, where 240s would have been marginal for it. So Wilkes County —
+the one meeting WO-54 was expected to still fail on — has a genuine
+chance now.
+
+### A bug caught in the writing
+
+The first version combined the two context managers:
+`async with _keeping_claim_alive(...), tempfile.TemporaryDirectory(...)`.
+`TemporaryDirectory` is a **sync** context manager with no `__aenter__`,
+so that raises at runtime — and `ruff` passes it happily, because it is a
+type error, not a syntax one. Nested now, with a comment saying why.
 
 ## ChampDS charges for every seek, so we stopped seeking [Done 2026-08-25, WO-54]
 
