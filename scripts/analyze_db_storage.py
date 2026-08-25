@@ -8,7 +8,6 @@ Run this from the Render shell for production analysis:
 """
 
 import asyncio
-import os
 from sqlalchemy import text
 from archive.db.engine import get_async_engine
 
@@ -53,7 +52,9 @@ async def main():
         rows = result.fetchall()
         for schema, table, total_sz, table_sz, idx_sz in rows:
             print(f"\n{table}")
-            print(f"  Total:    {total_sz:>15}  (table: {table_sz}, indexes+TOAST: {idx_sz})")
+            print(
+                f"  Total:    {total_sz:>15}  (table: {table_sz}, indexes+TOAST: {idx_sz})"
+            )
 
         # 3. Detailed analysis of large tables
         print("\n" + "=" * 80)
@@ -165,8 +166,8 @@ async def main():
         row = result.fetchone()
         failed_count, payload_sz = row
         print(f"\n  Failed/unsupported resolutions: {failed_count:,} ({payload_sz})")
-        print(f"    Consider: Archive only pushes successful resolutions, so this is")
-        print(f"    resolver-only diagnostic data. Truncating old failures is safe.")
+        print("    Consider: Archive only pushes successful resolutions, so this is")
+        print("    resolver-only diagnostic data. Truncating old failures is safe.")
 
         # Stale transcription jobs
         result = await conn.execute(

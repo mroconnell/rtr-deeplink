@@ -47,9 +47,7 @@ async def main(keep_per_page: int = 3, dry_run: bool = False):
 
         excess_pages = result.fetchall()
         if not excess_pages:
-            logger.info(
-                f"✓ No pages with more than {keep_per_page} thumbnails found"
-            )
+            logger.info(f"✓ No pages with more than {keep_per_page} thumbnails found")
             return
 
         logger.info(
