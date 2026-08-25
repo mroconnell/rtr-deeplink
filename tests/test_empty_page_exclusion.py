@@ -1,7 +1,7 @@
 """Coverage for the query-time "empty page" exclusion
 (archive/db/crud.py's _is_empty_page_condition(), 2026-08-17): a page with
 no video, no agenda items and no transcript -- a bare agenda_link does not
-count as content, see WO-58 below -- is left out of the default
+count as content, see WO-62 below -- is left out of the default
 /meetings browse, /sitemap.xml and /feed.xml, is noindexed on its own /m/
 page, but is still *served* and still shows up under an explicit
 has_transcript=false filter (that's how gaps get found). Also pins the
@@ -80,7 +80,7 @@ async def test_video_only_page_is_not_empty():
 
 
 async def test_agenda_link_only_page_is_empty():
-    """Inverted 2026-08-25 (WO-58) -- it used to assert the opposite.
+    """Inverted 2026-08-25 (WO-62) -- it used to assert the opposite.
 
     Google flagged /m/fairview-tn-2025-10-02-regular-meeting as a Soft
     404, and the real page turned out to be exactly this shape: no video,
@@ -179,7 +179,7 @@ async def test_upcoming_and_recent_pills_on_listing_and_page():
     upcoming = await _seed(
         "pill:upcoming",
         date=(today + timedelta(days=8)).isoformat(),
-        # Real agenda items, not a bare agenda_link: since WO-58 a
+        # Real agenda items, not a bare agenda_link: since WO-62 a
         # link-only page is thin and drops out of the default listing
         # this test reads from. The pill is what's under test here, not
         # the emptiness rule.

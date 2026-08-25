@@ -402,11 +402,19 @@ async def internal_db_size(authorization: Optional[str] = Header(None)):
     "more than 90%". When a doc asserts a fact about production that
     nothing in the repo can verify, build the read that answers it.
 
+    Overlaps deliberately with scripts/analyze_db_storage.py (WO-60),
+    which answered the same 2026-08-24 alert from the Render shell and
+    found the real cause (meeting_page_thumbnails). Two differences keep
+    both worth having: that script reads
+    pg_database_size(current_database()), i.e. rtr_archive alone, and it
+    needs shell access. This route needs neither.
+
     Reports *every* database on the server, not just this one: the alert
     is about the server's storage, and this single instance hosts both
-    rtr_archive (this service's) and rtr_deeplink_db (the resolver's).
-    That works cross-database because pg_database_size() is a catalog
-    read, not a query against the other database's contents.
+    rtr_archive (this service's) and rtr_deeplink_db (the resolver's) --
+    a suspension takes down both. That works cross-database because
+    pg_database_size() is a catalog read, not a query against the other
+    database's contents.
 
     Also reports the largest relations in the *current* database, so the
     follow-up question -- what actually grew -- is answerable from the
@@ -852,7 +860,7 @@ async def internal_thin_page_audit(
 ):
     """Read-only: which archived pages hold nothing a reader can use.
 
-    Ships alongside WO-58's Soft 404 fix so the size of that change is
+    Ships alongside WO-62's Soft 404 fix so the size of that change is
     measured rather than assumed -- the fix stops counting a bare
     `agenda_link` as content, and this says how many live pages that
     de-indexes and on which platforms. Same reasoning as
@@ -1782,7 +1790,7 @@ async def meeting_page(
     # tests/test_thin_page_predicate.py asserts the two agree, since
     # nothing else can catch them drifting apart.
     #
-    # agenda_link is NOT in this list (WO-58) -- it renders as one
+    # agenda_link is NOT in this list (WO-62) -- it renders as one
     # sentence pointing off-site and holds no content of its own, which
     # made a page carrying only an agenda_link a real Google Soft 404
     # while still being indexed and sitemapped. See the SQL predicate's

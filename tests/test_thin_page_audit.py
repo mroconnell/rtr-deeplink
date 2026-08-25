@@ -1,4 +1,4 @@
-"""GET /internal/thin-page-audit (WO-58) and the SQL-vs-Python agreement
+"""GET /internal/thin-page-audit (WO-62) and the SQL-vs-Python agreement
 it exists to keep honest.
 
 Shipped alongside the Soft 404 fix so that change could be *sized* rather

@@ -6,9 +6,9 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
-## A bare agenda link was never content: the Soft 404 fix, and the two pages it does not explain (WO-58) [Done 2026-08-25]
+## A bare agenda link was never content: the Soft 404 fix, and the two pages it does not explain (WO-62) [Done 2026-08-25]
 
-WO-57 left "Soft 404" open, blocked on the affected-URL list. Ryan supplied
+WO-61 left "Soft 404" open, blocked on the affected-URL list. Ryan supplied
 three URLs **and pasted what each actually renders**. That second part is
 the entry: the code-only reasoning that preceded it was correct about the
 mechanism and would have been applied to all three pages, when it explains
@@ -125,7 +125,7 @@ The production numbers are Ryan's to read:
 and `?slugs=fairview-tn-2025-10-02-regular-meeting` for the direct answer on
 the page Google actually flagged.
 
-## Inbox-triage promotion pass: four fixes, two stale claims, one refuted finding (WO-57) [Done 2026-08-25]
+## Inbox-triage promotion pass: four fixes, two stale claims, one refuted finding (WO-61) [Done 2026-08-25]
 
 `CLAUDE_INBOX_TRIAGE.md` had six findings across its 2026-08-23/24/25
 sections that nobody had run the promotion step on. Per this repo's own
@@ -242,6 +242,218 @@ The real production read of `/internal/db-size` is Ryan's to make — it
 needs `ARCHIVE_INGEST_TOKEN`, and this repo's standing decision is that
 production sweeps don't run from an interactive session. The command is in
 the `BACKLOG.md` entry.
+## Granicus timeouts are a CDN cache-fill cost, not a slow host [Investigated 2026-08-25]
+
+`/internal/transcription-failure-analysis?days=3` reports **24 Granicus
+failures across 8 jobs, and all 24 are ffmpeg timeouts** — the only
+platform with a 100% timeout share. Measured the media host the same way
+ChampDS was measured (WO-54), and the answer is different from ChampDS's,
+so the fix is different too.
+
+**All Granicus tenants share one media host.** `cityoftacoma`,
+`jaxcityc`, `cityofmillvalley` and `napacity` all resolve to
+`archive-stream.granicus.com/OnDemand/_definst_/mp4:archive/…`. That is
+Wowza **on-demand repackaging**: the source MP4 is transmuxed to HLS at
+request time, fronted by CloudFront. This is the grouping
+`get_transcription_failure_analysis()`'s docstring already says matters
+(one media host, ~300 tenant subdomains).
+
+### The measurement that invalidated the previous three
+
+Every earlier Granicus number in this session was wrong, and all in the
+same way. Same asset, same offsets, second run immediately after the
+first:
+
+```
+                    1st run (cold)   2nd run (warm)
+cityoftacoma @900        237s             31s
+cityoftacoma @2700       180s             33s
+```
+
+**6–7× from nothing but prior access.** The "erratic host — 295s vs 30s"
+reading earlier the same day was an artifact of probing: 295s was Napa's
+cold first touch, 30s was Napa after being hammered by the preceding
+tests. The chunk-size ladder run before this one was confounded the same
+way — "non-overlapping offsets" does not fix it, because warming is not
+offset-local.
+
+**The methodological rule this produces: each asset yields exactly one
+valid cold sample, ever.** Probing destroys the thing being measured.
+Production always hits cold, so cold is the only number that counts. Any
+future measurement of this host needs **one fresh asset per data point**.
+
+### Cold cost, one asset per row (900s chunk, input-side seek, ffmpeg 7.1.5)
+
+```
+jaxcityc          @900/1800/2700/3600    261s 226s 219s 212s   all OVER 120s
+cityofmillvalley  @900/2700/4500/6300    164s 193s 182s 195s   all OVER 120s
+cityoftacoma 7460 @900/2700              237s 180s             OVER 120s
+cityoftacoma 7450-7453 (fresh, later)    108s                  fits
+```
+
+`cityofmillvalley` is worth noting: job 909 **completed** on that asset
+hours earlier, and it still measured 164–195s — so the CDN fill expires
+well inside a day. A tenant that succeeded once gets no lasting credit.
+
+### Chunk cost scales linearly with chunk duration
+
+Four *different* fresh assets, one per row, so nothing warms anything
+else — the design the earlier ladder lacked:
+
+```
+900s chunk (asset 7a8fade1)   108s   3600512B
+450s chunk (asset 314ba772)    61s   1799360B
+300s chunk (asset d5b9632e)    49s   1174544B
+150s chunk (asset 8d2d1783)    31s    600560B
+```
+
+Roughly 0.12 s per second of audio here. The worst cold rate measured
+anywhere was `jaxcityc` at 261s/900s = **0.29 s/s**. At that worst rate a
+300s chunk costs ~87s and still fits the 120s budget, while a 450s chunk
+costs ~130s and does not.
+
+### Why the ChampDS fix does not transfer
+
+A single sequential pass over a fresh asset (`-f segment`, all chunks at
+once — the WO-54 shape) on `cityoftacoma` clip/7455, 3600s, 4 chunks:
+
+```
+total 461s, rc=0, all four chunks decodable
+```
+
+461s for 3600s of audio is **0.128 s/s** — indistinguishable from a good
+cold per-chunk rate (0.12 s/s) and only ~2.3× better than the worst.
+ChampDS's equivalent was 199s vs ~1330s, a 6.7× win, because there the
+cost was O(N²) seeking through a tail-`moov` progressive file. Here the
+cost is per-segment CDN fill, and the total number of segments fetched is
+the same either way. `_should_cache_whole_audio()`'s HLS exclusion is
+therefore **correct as written**, for a better reason than the one in its
+docstring: not merely that bytes are already minimal, but that the
+dominant cost does not amortise.
+
+461s also exceeds `_FULL_AUDIO_TIMEOUT_SECONDS` (360s) for a *one-hour*
+meeting, so the whole-audio path could not take Granicus without raising
+that constant substantially.
+
+### What this explains
+
+`BACKLOG.md`'s open entry on job 910 (`napacity`) describes an
+"intermittent" source — chunk 0 failed twice then succeeded, chunk 1
+failed then succeeded — as unexplained. This is the explanation: the
+first attempt at an offset pays the cache fill and times out at 120s, the
+retry lands partly warmed, and a later attempt hits ~31s and passes. The
+intermittency is manufactured by the retry loop warming the CDN.
+
+### What is still unexplained
+
+Cold cost varies **2.5×** across assets and times — `cityoftacoma`
+clip/7460 measured 237s while clips 7450–7453 measured 108s an hour
+later, same tenant, similar durations. Tenant, source bitrate, time of
+day and origin load are all uncontrolled. So "a 900s chunk sometimes
+fits" is real, and any fix has to work at the *worst* observed rate, not
+the median.
+
+## Deploys are manual now [Done 2026-08-25, WO-59]
+
+Render bills *pipeline minutes*, and the workspace ran out on 2026-08-25,
+blocking every deploy. Second occurrence — the first was 2026-08-19, ~5.5
+hours — and both times the failure is silent: no alert, no failed CI,
+`merge ≈ deploy` just quietly stops being true.
+
+**Two rounds of `buildFilter` work had already cut build volume 31% then
+24%, and it ran out anyway.** The investigation into why found two things
+neither round could have caught.
+
+### The measurements only ever counted four services. There were six.
+
+`rtr-deeplink-staging` and `rtr-deeplink-archive-staging` were created in
+the dashboard, so they are **not in `render.yaml`** — which means they
+had **no `buildFilter`** and rebuilt on every push, including all the
+ones the four production allow-lists correctly skip.
+
+Measured over the 24 hours to 2026-08-25:
+
+```
+21 commits to main
+13 of them built ONLY staging  (docs, backlog, auto-merged queue PRs)
+ 8 built production services
+~42 staging builds vs <=32 production builds
+```
+
+Both staging services were failing to deploy at the time, so every one of
+those minutes bought nothing. Ryan disabled their auto-deploy the same
+day. **The durable lesson is the general one: a service outside the
+blueprint has no build filter, and nothing in this repo will ever tell
+you it exists.**
+
+### Build volume scales with merge count, and nothing capped that
+
+Filtering reduces builds *per merge*. It does nothing about merging seven
+times in one evening, which is what this session did on 2026-08-25 —
+each merge a defensible decision on its own, and collectively a spike
+nobody was measuring.
+
+### The fix, and what it costs
+
+`autoDeploy: false` on all four services, plus a CLAUDE.md convention
+("Deploys are manual") requiring an agent to surface undeployed work and
+ask for a deploy when it matters.
+
+**This deliberately recreates the hazard the 2026-08-19 incident was
+about** — production running older code than `main`. The bet is that
+*deliberate and visible* beats *silent*: the gap is now a known state
+somebody is accountable for reporting, rather than a surprise discovered
+hours later. If that bet stops paying, the fix is `autoDeploy: true`
+again, not a workaround.
+
+An integration branch was considered and rejected as the wrong tool for
+this: it would have needed the two queue-advance workflows and the
+inbox-triage Routine retargeted off `--base main`, and it would have cost
+per-commit rollback granularity and fast production feedback — the same
+day, job 911 confirmed WO-53 working within an hour of merging, which a
+batched branch would have delayed by days. `autoDeploy: false` gets the
+same build saving as one line of config.
+
+## WO-54's gate is broader than the problem it was built for [Done 2026-08-25, WO-58]
+
+WO-54 pulls a whole meeting's audio once instead of seeking per chunk,
+gated on "not HLS, more than one chunk". That gate was designed against
+ChampDS, which charges ~0.199 s/MB for every seek — but it catches **every
+progressive source**, and not all of them have that pathology.
+
+**IQM2 does not.** Measured 2026-08-25 on
+`MediaHTTP.IQM2.com/JohnsonCountyIA/3003_480.mp4` (450 MB):
+
+```
+offset       0 MB :  TTFB 0.049s
+offset      50 MB :  TTFB 2.839s
+offset     150 MB :  TTFB 1.365s   <- lower than at 50 MB
+```
+
+Non-monotonic, so that is ordinary network variance, not a linear scan.
+Seeks are effectively free there and per-chunk extraction works fine.
+
+**Why that mattered enough to fix the same night.** `_chunk_audio_via_
+cache()` had no fallback: if the whole-file pull failed, the chunk
+failed. So an IQM2 file too large to pull inside
+`_FULL_AUDIO_TIMEOUT_SECONDS` would turn a job that *used* to work into
+one that fails — across the **99 IQM2 pages** currently in a 603-page
+backlog. Modest probability (450 MB is ~112s at the measured ~4 MB/s, and
+even a six-hour meeting fits) and a loud failure rather than a silent
+one, but a regression introduced hours earlier by the same session.
+
+**The fix keeps the cheap gate and adds a retry**, rather than making the
+gate smarter. Detecting the seek pathology properly would need its own
+probe on every job; instead a failed whole-file pull falls back to
+per-chunk extraction. That turns "wrong guess" into "slower once" instead
+of "failed job", which is the right shape for a heuristic that is
+structural rather than measured.
+
+**Found by asking a question the work did not require.** Ryan asked
+whether the remaining IQM2 backlog would "resolve well" before queuing
+it. Answering that meant measuring IQM2's range behaviour — which had no
+bearing on the queuing decision itself, and turned up a live regression
+in something merged four hours earlier.
 
 ## Vimeo's playback-rate path confirmed live, one day after shipping unverified [Investigated 2026-08-25]
 
@@ -385,6 +597,69 @@ Both closed the same day. Vimeo was confirmed live — see the
 accepted as-is by Ryan and now sits in `BACKLOG.md`'s Standing
 decisions so it stops being re-filed as a bug. **Nothing from WO-56
 remains open.**
+## A working worker now keeps its own claim [Done 2026-08-25, WO-58]
+
+`STALE_CLAIM_AFTER` (5 minutes) exists to recover a job from a worker
+that crashed mid-chunk. Nothing distinguished "crashed" from "still
+working", so it rested on an assumption nothing enforced — its own
+comment said 5 minutes is "comfortably longer than a single chunk should
+ever legitimately take". A slow source breaks that quietly:
+
+```
+worker A is still transcribing chunk 3
+worker B sees a stale claim and takes the job
+B derives chunk_index from chunks_completed — also 3
+both report success, and report_chunk_result() APPENDS
+```
+
+The transcript carries that window twice and the job skips a real chunk.
+**Silent** — no error, no failed job, just a subtly wrong transcript.
+
+**Found by reasoning, not from a report**, while sizing WO-54's
+whole-file download budget: that budget was capped at 240s purely because
+a longer chunk risked this. Which is the tell that it was worth fixing —
+it had already started distorting an unrelated design decision.
+
+### The fix
+
+`crud.heartbeat_claim()` bumps `claimed_at` for a row still marked
+`in_progress`; `worker/main.py`'s `_keeping_claim_alive()` runs it every
+60s for as long as a chunk genuinely runs. `STALE_CLAIM_AFTER` now means
+what it always claimed to mean: the worker stopped.
+
+**Three things that are easy to get wrong here, each with its own test:**
+
+1. **Crash recovery must survive.** The whole point of the staleness
+   window is that a dead worker's job comes back, and it would be easy to
+   break that while fixing the opposite case. A job that stops being
+   heartbeated is still reclaimed, at the same `chunk_index`.
+2. **The heartbeat must fire during the *slow* part.** Whisper is
+   CPU-bound; if it ran on the event loop, no heartbeat could fire during
+   exactly the stretch that needs one — protection that looks real and is
+   not. `FasterWhisperEngine.transcribe_chunk()` hands it to
+   `asyncio.to_thread`, and ffmpeg is subprocess I/O, so the loop stays
+   free. Pinned by a test that heartbeats across a real
+   `asyncio.to_thread` sleep.
+3. **A failed heartbeat must not fail the chunk.** The worst case of a
+   missed beat is a stale claim, which the system already recovers from;
+   crashing the chunk would turn a transient blip into a real failure.
+
+### It also lifted a ceiling
+
+`_FULL_AUDIO_TIMEOUT_SECONDS` (WO-54) was 240s only because of this bug.
+Now sized on the media instead: **360s**, which covers the largest
+ChampDS file seen (672MB, wilkesconc/41) at the measured ~4MB/s with real
+margin, where 240s would have been marginal for it. So Wilkes County —
+the one meeting WO-54 was expected to still fail on — has a genuine
+chance now.
+
+### A bug caught in the writing
+
+The first version combined the two context managers:
+`async with _keeping_claim_alive(...), tempfile.TemporaryDirectory(...)`.
+`TemporaryDirectory` is a **sync** context manager with no `__aenter__`,
+so that raises at runtime — and `ruff` passes it happily, because it is a
+type error, not a syntax one. Nested now, with a comment saying why.
 
 ## ChampDS charges for every seek, so we stopped seeking [Done 2026-08-25, WO-54]
 

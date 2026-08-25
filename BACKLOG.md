@@ -55,7 +55,8 @@ Standing decisions — do NOT re-raise  (4)
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
   The playback-speed chip is absent in native fullscreen, and that's…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (11)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (12)
+  [JUST-DO-IT] `[EASY]` Database storage cleanup — lower thumbnail…
   [JUST-DO-IT] `[EASY]` "We think we found an agenda here" is hedged for
   [JUST-DO-IT] Nothing detects a transcript that simply ends early
   [JUST-DO-IT] `[EASY]` Nothing notices a dead worker pool — chunks
@@ -75,7 +76,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (13)
     [HUMAN] `[LOGIN]` Confirm a real Render deploy installed cleanly off
     [HUMAN] Configure GA's internal traffic filter — the
   Production actions only Ryan should take  (6)
-    [HUMAN] `[LOGIN]` `rtr-deeplink-db` is over 90% of its storage limit,
+    [HUMAN] `[LOGIN]` Two residuals from the storage alert WO-60 closed —
     [HUMAN] `[LOGIN]` Archive service instability, 2026-08-17 —
     [HUMAN] `[WAIT]` 10 YouTube-backed pages still hold roll-up
     [HUMAN] Meeting-card backfill: both follow-ups are done, and the
@@ -87,8 +88,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (13)
   Product calls
 
 Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (10)
+  [NEEDS-AUDIT] The chunk-failure budget only catches sources that fail
   [NEEDS-AUDIT] 32 places across 23 adapters swallow an exception and
-  [NEEDS-AUDIT] A chunk that takes longer than `STALE_CLAIM_AFTER` can
   [NEEDS-AUDIT] Two pages have had a failed transcription job and
   [NEEDS-AUDIT] Render "HTTP health check failed" on
   [NEEDS-AUDIT] A chunk truncated only at its *tail* still passes the
@@ -135,15 +136,17 @@ Platform & jurisdiction coverage  (33)
     [LATER] YouTube-backed meetings' transcripts run through
     [IMPROVEMENT-ROUND] Four platforms account for ~78% of the 470 real
 
-Reliability, ops & cost  (15)
+Reliability, ops & cost  (17)
   `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (2)
     `[JUST-DO-IT]` `[EASY]` Source `_tier3_queue_remaining()` from the
     `[LATER]` Tighten the two workers to their real import surface.
   `[JUST-DO-IT]` Docker layer caching silently freezes the workers'…
-  Media-source reliability  (2)
+  Media-source reliability  (3)
+    [JUST-DO-IT] Granicus chunks time out because a 900s chunk does not
     `[NEEDS-AUDIT]` Some old/archived Granicus clips' `chunklist.m3u8`…
     `[NEEDS-AUDIT]` A single job still makes N consecutive same-host…
-  Transcription queue & workers  (4)
+  Transcription queue & workers  (5)
+    [NEEDS-AUDIT] WO-57's claim heartbeat has no cap, and transcription
     [NEEDS-AUDIT] The hourly transcription top-up driver has been
     [NEEDS-AUDIT] Even after the 2026-08-22 rate cut, inflow still
     [LATER] `list_transcription_backlog_candidates()` still does a real
@@ -321,6 +324,19 @@ Small, self-contained, no open design question. Jurisdiction-extraction
 items that also qualify live under **Platform & jurisdiction coverage**
 so that work reads together.
 
+- **[JUST-DO-IT] `[EASY]` Database storage cleanup — lower thumbnail frame cap and prune old frames (WO-60, 2026-08-25).** Render alert: rtr-deeplink-db exceeding 90% storage. Root cause: `meeting_page_thumbnails` stores up to 12 JPEG frames per page (30-120KB each), and with ~1200 pages in the archive that's 1.4GB+. Already fixed via three steps:
+  1. Lowered `MAX_FRAMES_PER_PAGE` from 12 to 3 (prevents future growth)
+  2. Created `scripts/cleanup_old_thumbnails.py` to delete old frames (keep 3 most recent per page, reclaims 300-500MB)
+  3. Run `VACUUM FULL ANALYZE` to return disk space to Postgres
+  
+  **What to do**: From Render shell (Archive service):
+  ```bash
+  cd /app
+  python scripts/cleanup_old_thumbnails.py --keep 3 --dry-run  # verify first
+  python scripts/cleanup_old_thumbnails.py --keep 3            # actually delete
+  psql -c 'VACUUM FULL ANALYZE;'                                # reclaim space
+  ```
+  See `STORAGE_CLEANUP_2026_08_25.md` for full runbook. No user-facing impact — default thumbnails unchanged, timestamp-specific frames fall back to default if deleted.
 
 - **[JUST-DO-IT] `[EASY]` "We think we found an agenda here" is hedged for
   every adapter, including the seven that don't guess (2026-08-25).**
@@ -334,7 +350,7 @@ so that work reads together.
   page apologises for a link it is sure about. Fix: keep the hedge for
   `generic_fallback` (and `platform == "unknown"`), say something plain
   like "Agenda" for the rest, and correct the stale comment. Found while
-  fixing the Soft 404 (WO-58, `BACKLOG_DONE.md`).
+  fixing the Soft 404 (WO-62, `BACKLOG_DONE.md`).
 
 - **[JUST-DO-IT] Nothing detects a transcript that simply ends early
   (2026-08-24).** The two detectable truncation forms are now both
@@ -691,29 +707,28 @@ convenient.
 
 ### Production actions only Ryan should take
 
-- **[HUMAN] `[LOGIN]` `rtr-deeplink-db` is over 90% of its storage limit,
-  and the real numbers have never been read (alert 2026-08-24).** Render:
-  *"If you exceed your storage limit, your database will be suspended,
-  resulting in downtime."* One Postgres server hosts both `rtr_archive`
-  and `rtr_deeplink_db`, so a suspension is the whole site, resolver cache
-  and Archive content together — the most severe outage shape on this
-  list. **Nothing was sized**: `render.yaml`'s `basic-1gb` plan comment is
-  entirely a RAM/`shared_buffers` argument and names no storage cap, and
-  its 218MB/22MB figures are from 2026-08-17.
-  **Get the current number first — `GET /internal/db-size` (WO-57) now
-  answers this without a dashboard**: per-database bytes for every
-  database on the server plus the 15 largest relations.
-  ```
-  curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" \
-      "$ARCHIVE_BASE_URL/internal/db-size"
-  ```
-  **The likely driver is ordinary growth, not a leak**: the second
-  transcription worker landed 2026-08-21, and the 2026-08-25 daily report
-  shows **167,719 segments in 24 hours** — every one a row in
-  `rtr_archive`. **What only Ryan can do**: read the plan's real storage
-  allotment off the dashboard, compare, and raise it if needed (same lever
-  used for RAM on 2026-08-17). Worth doing proactively if throughput keeps
-  climbing — a suspension costs far more than the upgrade.
+- **[HUMAN] `[LOGIN]` Two residuals from the storage alert WO-60 closed —
+  the resolver's own database was never measured, and the plan's real
+  storage cap is still unknown (2026-08-25).** WO-60 (Ship next, above)
+  root-caused the 2026-08-24 ">90% storage" alert to
+  `meeting_page_thumbnails` and shipped the cap/cleanup. **Correction
+  worth keeping**: this entry previously guessed the driver was ordinary
+  segment growth (the second worker plus 167,719 segments in 24h). That
+  was wrong — it was 12 JPEG frames per page across ~1,200 pages. A
+  plausible cause sized from a real number still isn't a measured one.
+  What WO-60 does not cover:
+  - `scripts/analyze_db_storage.py` reads `pg_database_size(current_database())`,
+    i.e. `rtr_archive` only. **One Postgres server hosts `rtr_deeplink_db`
+    too**, and a suspension takes both down. `GET /internal/db-size`
+    (WO-61) reports every database on the server, and needs no shell:
+    ```
+    curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" "$ARCHIVE_BASE_URL/internal/db-size"
+    ```
+  - **The plan's storage allotment is still not written down anywhere.**
+    `render.yaml`'s `basic-1gb` comment is entirely a RAM/`shared_buffers`
+    argument. Until that number is read off the dashboard once and
+    recorded there, "90% of what?" stays unanswerable from the repo, and
+    the next alert costs the same investigation.
 
 - **[HUMAN] `[LOGIN]` Archive service instability, 2026-08-17 —
   part (a) answered 2026-08-22, part (b) still open.** Sentry showed a
@@ -930,6 +945,42 @@ Reproduced against real data, but the fix is a genuine open question.
 Jurisdiction-extraction bugs live under **Platform & jurisdiction
 coverage** instead.
 
+- **[NEEDS-AUDIT] The chunk-failure budget only catches sources that fail
+  *consistently* — an intermittent one can hold a worker slot for hours
+  (2026-08-25).** `MAX_CONSECUTIVE_CHUNK_FAILURES` is 3, and
+  `report_chunk_result()` resets `consecutive_chunk_failures` to 0 on
+  every success. So a source that alternates — fail, fail, succeed, fail,
+  succeed — never reaches the budget and the job never dies.
+  **Observed live**, job 910 (`napacity.granicus.com/player/clip/3458`,
+  a Wowza `archive-stream` HLS): chunk 0 failed twice then succeeded,
+  chunk 1 failed then succeeded, chunk 2 failed — reaching 2/13 in
+  roughly 25 minutes, on track to occupy one of three job slots for
+  around two hours. Measured whole-pool throughput during that stretch
+  was **~11 chunks/hour against ~36 the day before**.
+  Note this is not the same as a job that fails: a slow grind produces a
+  real transcript eventually, so "kill it sooner" is not obviously right.
+  The question is whether a job whose *chunks* keep timing out should be
+  allowed to monopolise a slot, or be de-prioritised behind jobs making
+  clean progress. **Worth checking first** whether job 910 finished or
+  died, and what the pool's throughput did afterwards — one observation
+  during an unusual week is thin evidence for a scheduling change.
+  Related: WO-53 made a timeout eligible for the output-side seek retry,
+  which doubles the cost of a chunk that times out on *both* paths — a
+  good trade where the retry succeeds (Cerritos) and pure added expense
+  where it cannot (this).
+  **The "intermittent" behaviour is now explained (2026-08-25), and it
+  is not intermittency at all.** `archive-stream.granicus.com` is Wowza
+  on-demand repackaging behind CloudFront: the *first* fetch of an offset
+  pays a cache fill (measured 164–295s cold for a 900s chunk, against a
+  120s budget) and times out, while a re-fetch of that same offset costs
+  ~31s and passes. The retry loop is warming the CDN, which is why the
+  pattern reads as fail-fail-succeed. See `BACKLOG_DONE.md`'s "Granicus
+  timeouts are a CDN cache-fill cost" for the measurements, and the
+  `[JUST-DO-IT]` entry under **Reliability, ops & cost → Media-source
+  reliability** for the fix (a smaller chunk size for this host). That
+  fix should also settle the scheduling question this entry raises: a
+  chunk that fits the budget stops burning a slot on doomed attempts.
+
 - **[NEEDS-AUDIT] 32 places across 23 adapters swallow an exception and
   return nothing, with no log line (surveyed 2026-08-25).** The same
   pattern that made ChampDS's symptom B undiagnosable for two
@@ -961,33 +1012,6 @@ coverage** instead.
   it at the call site, leave the reader-facing copy alone.
   Worth doing on the adapters that actually fail in production first —
   the daily digest names them.
-
-- **[NEEDS-AUDIT] A chunk that takes longer than `STALE_CLAIM_AFTER` can
-  be claimed twice, and both copies report success (2026-08-25).**
-  Pre-existing, not introduced by WO-54 — found while sizing that
-  change's download budget, which is why the budget is 180s and not
-  higher.
-  `claim_next_chunk()` treats a job as claimable when
-  `claimed_at < now - STALE_CLAIM_AFTER` (5 minutes), which exists to
-  recover from a worker that *crashed* mid-chunk. But nothing
-  distinguishes "crashed" from "still working". A worker whose chunk
-  legitimately runs past 5 minutes — a slow source plus transcription —
-  keeps going, while a second worker claims the same job, gets the same
-  `chunk_index` (it is derived from `chunks_completed`, which has not
-  advanced), and processes it too. Both then call
-  `report_chunk_result(success=True)`, which **appends** segments and
-  increments `chunks_completed`: the transcript gets that window twice
-  and the job skips a real chunk entirely.
-  Not yet observed in production, which is why this is `[NEEDS-AUDIT]`
-  rather than a bug report — but the failure is silent, so "not observed"
-  is weak evidence. **Check first**: whether any completed job has
-  `chunks_completed` equal to `total_chunks` while its segments contain a
-  duplicated window, and whether `failure_history` ever shows two
-  attempts at one index seconds apart on different workers.
-  The clean fix is a claim heartbeat — the worker bumps `claimed_at`
-  while it is genuinely working — which would also lift the ceiling on
-  how long a single chunk may take, currently the thing capping WO-54's
-  download budget.
 
 - **[NEEDS-AUDIT] Two pages have had a failed transcription job and
   nothing else for months — are they still re-entering the queue at all?
@@ -1988,7 +2012,31 @@ matching `[Done 2026-08-22]` entry.
 **Where it stands:** `render.yaml`'s four `buildFilter` blocks are now
 **allow-lists** (`paths`) rather than deny-lists of docs — measured
 **1,211 → 926 builds per fortnight (24%)**, on top of the earlier
-queue-file fix's 31%.
+queue-file fix's 31%. **And it ran out again anyway on 2026-08-25**, for
+two reasons neither round of filtering could have caught:
+
+**1. The arithmetic only ever counted four services. There were six.**
+Every measurement in this entry and its `BACKLOG_DONE.md` twin says
+"four services" — but `rtr-deeplink-staging` and
+`rtr-deeplink-archive-staging` existed too, created in the dashboard and
+therefore **not in `render.yaml` at all**, which means they had **no
+`buildFilter`** and rebuilt on *every* push. Measured over the 24 hours
+to 2026-08-25: **21 commits to `main`, 13 of which built nothing but
+staging** — docs, backlog files, and the queue-advance workflows'
+own auto-merged PRs, all correctly skipped by the four production
+allow-lists and all fully paid for twice by staging. Rough tally: ~42
+staging builds against ≤32 production ones. The two services quietly
+undid a large share of both filtering rounds for weeks.
+**Ryan disabled their auto-deploy on 2026-08-25.** The durable lesson is
+the general one: **a service outside the blueprint has no build filter,
+and nothing in this repo will ever tell you it exists.**
+
+**2. Build volume scales with merge count, and nothing capped that.**
+Filtering reduces builds *per merge*; it does nothing about merging
+seven times in an evening (which this session did on 2026-08-25).
+Addressed by `autoDeploy: false` on all four services plus a CLAUDE.md
+convention on batching merges and asking for deploys — see WO-59 in
+`BACKLOG_DONE.md`.
 
 **Watch this before 08-27/28.** Ryan's goal is to downgrade the workspace
 again once build volume is efficient enough. **812 / 1,000 was cumulative
@@ -2053,6 +2101,34 @@ rebuild only re-runs three cheap COPY layers. The caching is doing its
 job; this is just one place where it does it too well.
 
 ### Media-source reliability
+
+- **[JUST-DO-IT] Granicus chunks time out because a 900s chunk does not
+  fit the 120s budget on a cold CDN — use a smaller chunk size for this
+  host (measured 2026-08-25).** All Granicus tenants share one media host
+  (`archive-stream.granicus.com/OnDemand/_definst_/mp4:…`, Wowza
+  on-demand repackaging behind CloudFront), and **24 of 24** Granicus
+  chunk failures in the last 3 days are ffmpeg timeouts — the only
+  platform at 100%.
+  **Cost scales linearly with chunk duration** (four fresh assets, one
+  per data point): 900s→108s, 450s→61s, 300s→49s, 150s→31s. The worst
+  cold rate measured anywhere was 0.29 s/s (`jaxcityc`), at which a
+  **300s chunk costs ~87s and fits**, a 450s chunk costs ~130s and does
+  not. So 300s is the size to pick, chosen against the worst observed
+  rate rather than the median — cold cost varies 2.5× across assets and
+  times for reasons still uncontrolled.
+  **Whisper time is unaffected**: transcription dominates a chunk
+  (~15 min of the ~15 min/chunk observed on job 911) and is proportional
+  to audio duration, so 3× the chunks is ~the same total work, just in
+  units that fit the budget.
+  **Do not reach for the ChampDS fix here.** A whole-audio sequential
+  pass measured 0.128 s/s vs 0.12 s/s for a good cold per-chunk — no real
+  win, because the cost is per-segment CDN fill rather than ChampDS's
+  O(N²) seek, and the same segments get fetched either way.
+  `_should_cache_whole_audio()`'s HLS exclusion is correct as written.
+  **Full measurements, the three earlier Granicus numbers this
+  invalidates, and the "one fresh asset per data point" rule that
+  probing this host requires are in `BACKLOG_DONE.md`** under
+  "Granicus timeouts are a CDN cache-fill cost".
 
 #### `[NEEDS-AUDIT]` Some old/archived Granicus clips' `chunklist.m3u8` genuinely times out at Granicus's own origin (real 504, not a rate limit)
 
@@ -2146,6 +2222,43 @@ top-up driver has been creating zero jobs" under **Transcription queue
 & workers**, which is.
 
 ### Transcription queue & workers
+
+- **[NEEDS-AUDIT] WO-57's claim heartbeat has no cap, and transcription
+  has no timeout — together they can pin a job `in_progress` forever
+  (found 2026-08-25 by reading the code; *not* observed firing).**
+  `_heartbeat_loop()` (`worker/main.py`) refreshes `claimed_at` every 60s
+  `while True:` until the surrounding block exits, and the block it wraps
+  ends in `engine.transcribe_chunk()` →
+  `asyncio.to_thread(self._transcribe_sync, ...)`
+  (`worker/transcription_engine.py:187`) with **no `wait_for` and no
+  timeout**. ffmpeg is bounded (2 × `_SUBPROCESS_TIMEOUT_SECONDS`);
+  faster-whisper is not. So if a transcription call ever wedges, the
+  heartbeat keeps the claim fresh indefinitely, `STALE_CLAIM_AFTER` never
+  fires, no worker reclaims the job, and it sits `in_progress` with no
+  error and no failure email.
+  **This is a residual of the fix, not a regression to undo.** Before
+  WO-57 the same wedge went stale after 5 minutes and got reclaimed —
+  which is exactly the duplicate-window/skipped-chunk corruption WO-57
+  shipped to stop (see `BACKLOG_DONE.md`). The trade was corruption →
+  stuckness. Stuckness is the better failure, but it is silent.
+  **Why the fix is not settled.** Two candidates, neither clean: (a) cap
+  the heartbeat's lifetime and let the claim go stale after N minutes —
+  simple, but hands back the exact corruption WO-57 fixed whenever a
+  chunk legitimately runs past N; (b) wrap transcription in
+  `asyncio.wait_for` — precise, but `to_thread` is not cancellable, so
+  the thread leaks and the model stays loaded.
+  **A cap needs a real ceiling on a legitimate chunk, and there is now
+  one measured**: job 911 (Detroit, 21 chunks off `probed_duration`
+  18445.511s) completed 7 chunks between 14:22 and 16:08 UTC — **~15 min
+  per chunk** on the production pool. That is 3× `STALE_CLAIM_AFTER` by
+  itself, which is why the heartbeat was needed at all. Any cap has to
+  clear 15 min by a wide margin.
+  **Detection is the cheaper half and probably comes first**: nothing
+  reports a job whose `chunks_completed` has not moved in far longer than
+  its own observed per-chunk pace. Pairs directly with `Ship next`'s
+  "Nothing notices a dead worker pool" — same blind spot. From the
+  outside a wedged job and a slow one are indistinguishable, which is the
+  actual problem.
 
 - **[NEEDS-AUDIT] The hourly transcription top-up driver has been
   creating zero jobs — measured 2026-08-22, at least 25 hours of it.**
@@ -2280,7 +2393,7 @@ top-up driver has been creating zero jobs" under **Transcription queue
     their own comments. **Do not "fix" these** without deciding to reverse
     those choices.
   - **"Soft 404" — cause found and fixed for the one page that matched it
-    (WO-58).** `/m/fairview-tn-2025-10-02-regular-meeting` held only an
+    (WO-62).** `/m/fairview-tn-2025-10-02-regular-meeting` held only an
     `agenda_link`, which `_is_empty_page_condition()` counted as content,
     so a page whose whole body was two apologies and one outbound link was
     indexed and sitemapped. `agenda_link` no longer counts. The other two

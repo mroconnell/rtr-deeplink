@@ -402,7 +402,7 @@ tier...") — same disposable-staging pattern; and two "We're validating
 your Video indexing issue fixes" Search Console emails — informational
 progress notices on an already-tracked fix, not a new issue.
 
-**Three findings, all promoted 2026-08-25 (WO-57) and removed from here.**
+**Three findings, all promoted 2026-08-25 (WO-61) and removed from here.**
 One was already fixed (the Cablecast HLS chunk-1 cluster, WO-45), one was
 a real untracked code gap (the schemeless `ARCHIVE_BASE_URL` behind the
 Archive-proxy failure window — fixed), and one was **refuted**: the
@@ -459,7 +459,7 @@ fixed (`BACKLOG_DONE.md`, commit `63f69b2`) — but job 731 was created
 predates the fix by over an hour; not a regression, just a job caught by
 the bug before the patch landed. No new entry needed.
 
-**Three findings, all resolved 2026-08-25 (WO-57) and removed from here.**
+**Three findings, all resolved 2026-08-25 (WO-61) and removed from here.**
 
 - The **`markupsafe`** worker outage needed no promotion and no pointer:
   that entry's claim that neither backlog file mentions it by name was
@@ -515,7 +515,7 @@ hitting **CivicClerk** specifically (`keizeror.portal.civicclerk.com`,
 Granicus and ChampDS) for the same underlying slow-source pattern, not a
 new bug.
 
-**One finding, promoted 2026-08-25 (WO-57) into `BACKLOG.md`'s "Production
+**One finding, promoted 2026-08-25 (WO-61) into `BACKLOG.md`'s "Production
 actions only Ryan should take".** The `rtr-deeplink-db` storage alert was
 real and correctly sized as the most severe outage shape this Routine can
 surface — but its central open question ("what does the dashboard show as
