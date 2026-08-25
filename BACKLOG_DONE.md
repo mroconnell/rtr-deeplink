@@ -143,8 +143,11 @@ documents this trap; it is real).
 
 Residuals split back out into `BACKLOG.md`: the chip is hidden during
 native fullscreen, and Vimeo's leg had no confirmed positive example.
-The Vimeo half closed the next day — see the `[Investigated 2026-08-25]`
-entry above; only the fullscreen gap is still live.
+Both closed the same day. Vimeo was confirmed live — see the
+`[Investigated 2026-08-25]` entry above. The fullscreen gap was
+accepted as-is by Ryan and now sits in `BACKLOG.md`'s Standing
+decisions so it stops being re-filed as a bug. **Nothing from WO-56
+remains open.**
 
 ## ChampDS charges for every seek, so we stopped seeking [Done 2026-08-25, WO-54]
 
