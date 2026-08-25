@@ -6,6 +6,242 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## A bare agenda link was never content: the Soft 404 fix, and the two pages it does not explain (WO-62) [Done 2026-08-25]
+
+WO-61 left "Soft 404" open, blocked on the affected-URL list. Ryan supplied
+three URLs **and pasted what each actually renders**. That second part is
+the entry: the code-only reasoning that preceded it was correct about the
+mechanism and would have been applied to all three pages, when it explains
+exactly one.
+
+| Page | What it renders | Verdict |
+|---|---|---|
+| `fairview-tn-2025-10-02-regular-meeting` | two apologies + one agenda link | **Thin — confirmed** |
+| `beaufort-board-of-education-academics-committee` | video **and** a long transcript | **Refuted** |
+| `city-of-carrollton-2022-10-25-city-council-on-2022-10-25-5-45-pm` | video **and** a long transcript | **Refuted** |
+
+**Why this needed a real look and not just the code.** The sandbox cannot
+reach `redtaperecordings.com` at all — the egress proxy answers 403 to
+CONNECT, via both `curl` and `WebFetch` — so nothing here could check the
+pages. The mechanism below is fully determined by the templates, which made
+it tempting to treat as sufficient. Two of the three pages show why it
+wasn't.
+
+### The confirmed cause
+
+`_is_empty_page_condition()` hid a page from browse/sitemap/feed/index only
+when it had no video, no agenda items, **no agenda link**, and no transcript
+version. But `agenda_link` renders as exactly one sentence
+(`meeting_page.html:496`):
+
+> We think we found an agenda here: `<url>`
+
+So the Fairview page served HTTP 200 whose entire body was a title, a
+byline, *"No video found for this ChampDS meeting."*, that one line, and
+*"No transcript available for this meeting."* — and it was indexed, in
+`sitemap.xml`, in `/meetings` and in the feed, purely because `agenda_link`
+was truthy. Google was right.
+
+Ryan's framing settled how to think about it: **the minimum characters on a
+real agenda should exceed the maximum characters of apology text.** Measured
+from the templates themselves:
+
+```
+ 42  "No video link found on this Legistar page."   (the real video_warnings line)
+ 41  "No transcript available for this meeting."
+ 34  "We think we found an agenda here: "
+---
+ 83  apology floor
+```
+
+An `agenda_link` contributes **zero** characters of content — it is a URL
+rendered as a pointer off-site — so such a page can never clear 83. Real
+`agenda_items` clear it easily. The fix is therefore a one-term removal, not
+a new threshold: `agenda_link` stops counting as content.
+
+### What shipped
+
+**1. `agenda_link` dropped from the content test, in both copies.** The rule
+is written twice — SQL (`crud._is_empty_page_condition()`, behind
+`/meetings`, `sitemap.xml`, `feed.xml`) and Python (`archive/main.py`'s
+`page_is_empty`, driving the template's `noindex`) — and the code comments
+already warned they must stay in lockstep, because a divergence puts a
+noindexed page back in the sitemap. Nothing enforced that. Now
+`test_sql_predicate_and_python_twin_agree_on_every_shape` does, across six
+content shapes, through their real surfaces (the listing for SQL, the
+rendered page for Python). **Verified non-vacuous**: reintroducing the old
+Python behaviour makes it fail.
+
+Every property the original predicate's docstring argues for is preserved —
+it stays a query-time predicate (no schema change, no migration, no stored
+flag), `/m/{slug}` keeps serving so shared links and `SavedItem` rows are
+untouched, thin pages stay findable under the explicit `has_transcript=false`
+gap filter, and a page becomes indexable again on its own the moment a
+recheck fills anything in.
+
+**2. `GET /internal/thin-page-audit`, shipped in the same pass** so the
+change is *sized* rather than assumed. Dropping `agenda_link` de-indexes
+real live pages and nothing could count them: eight adapters set that field,
+not just `generic_fallback` — `legistar`, `granicus`, `champds`, `hyland`,
+`suiteone`, `chicago_elms` and `openmedia` too, including the two largest
+platforms in the archive. Buckets every page as `empty` /
+`agenda_link_only` / `has_content`, reports the real agenda **character**
+counts against the 83-char floor rather than assuming the floor holds, and
+carries `platform` on every thin row — a `generic_fallback` agenda link is a
+guess, a Legistar one is usually a real document, and that is the
+distinction any future narrowing would use. `?slugs=` answers a specific
+Search Console URL directly.
+
+**3. One existing test inverted, on purpose.**
+`test_agenda_link_only_page_is_not_empty` asserted the old behaviour; it is
+now `..._is_empty` with the reasoning inline. A date-pill test that seeded
+its fixture with a bare `agenda_link` was switched to real agenda items —
+the pill was what it tested, not the emptiness rule.
+
+### The two pages this does not explain
+
+Beaufort and Carrollton have real video and real transcripts. Ruled out:
+the transcript is fully server-rendered (`meeting_page.html:522-590`, a real
+`{% for %}` over segments), so "Googlebot needed JS" is not the answer.
+What they share and Fairview does not: both Granicus, both with a **bare
+jurisdiction carrying no state**, and both transcripts visibly garbled —
+Beaufort renders the Pledge of Allegiance as *"the United States of
+Arizona"*. Two candidates, neither confirmed: a truncated 200 from
+`body_iterator()`'s cut-short-stream path (a known live failure, Sentry
+PYTHON-FASTAPI-Q, and the crawl dates sit beside the 2026-08-22 proxy
+cluster), or Google judging the content low-value. Left as a live
+`[NEEDS-AUDIT]` entry with the single check that separates them — URL
+Inspection's *View crawled page* — rather than a fix built on a guess.
+
+### Verification
+
+All four CI gates in CI's order: `ruff check` clean, `ruff format --check`
+clean (two files reformatted, both touched here), **1798 passed / 16
+skipped**, both `alembic check`s clean after `alembic upgrade head`. No
+schema change, so no migration. TOC regenerated and idempotent.
+
+The production numbers are Ryan's to read:
+`curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" "$ARCHIVE_BASE_URL/internal/thin-page-audit"`,
+and `?slugs=fairview-tn-2025-10-02-regular-meeting` for the direct answer on
+the page Google actually flagged.
+
+## Inbox-triage promotion pass: four fixes, two stale claims, one refuted finding (WO-61) [Done 2026-08-25]
+
+`CLAUDE_INBOX_TRIAGE.md` had six findings across its 2026-08-23/24/25
+sections that nobody had run the promotion step on. Per this repo's own
+"a backlog entry is a lead, not a spec" rule, each one's central claim was
+re-derived against real code and live data before anything was built. That
+step paid for itself twice over — a third of the findings did not survive
+it — so the verification table is the durable part of this entry, not the
+diffs.
+
+### What each finding turned out to be
+
+| Finding | What was checked | Verdict |
+|---|---|---|
+| 2026-08-23 #1 Cablecast HLS chunk 1 | The entry's own text | Already fixed as WO-45 |
+| 2026-08-23 #2 Schemeless `ARCHIVE_BASE_URL` | `app/archive_client.py` | **Real, untracked** — fixed here |
+| 2026-08-23 #3 `destinyhosted` canary failure | Live GitHub Actions run history | **Refuted** — transient |
+| 2026-08-24 #1 `markupsafe` worker outage | `BACKLOG.md` | Already promoted; the entry's claim was stale |
+| 2026-08-24 #2 Resend `422` invalid `to` | `archive/utils/email.py` | **Real, untracked** — fixed here |
+| 2026-08-24 #3 Search Console, 4 categories | Archive templates | Half expected by design; half needs the dashboard |
+| 2026-08-25 `rtr-deeplink-db` >90% storage | Whole repo | **Unanswerable from the repo** — built the read |
+
+**The refuted one is the most useful.** The `destinyhosted` canary failure
+(2026-08-22, run `32581540837`) was written up as a possible adapter
+regression with an open root-cause question, because the triaging session
+couldn't reach `destinyhosted.com` to check. The next two scheduled canary
+runs — `32648478422` (08-23) and `32746381314` (08-24) — both came back
+`success`. It was a transient. No adapter work was needed and none was
+done.
+
+**Two stale claims, corrected in place.** The `markupsafe` entry stated
+that neither backlog file mentioned the incident by name; `BACKLOG.md`
+carries it as a `[JUST-DO-IT]` entry with a fuller root-cause writeup than
+the triage entry had. And the Search Console entry treated all four new
+reason categories as potential defects; two of them are the direct,
+documented consequence of canonicalization choices the templates' own
+comments explain.
+
+### The four fixes
+
+**1. `GET /internal/db-size` (`archive/main.py`).** The 2026-08-25 storage
+alert could not be sized against anything: nothing in `app/`, `archive/`,
+`scripts/` or `worker/` had ever queried `pg_database_size`, and
+`render.yaml`'s `basic-1gb` comment is entirely a RAM argument that names
+no storage cap. Same lesson as `/internal/schema-info` — when a doc asserts
+a fact about production that nothing in the repo can verify, build the read
+that answers it, rather than acting on the assertion. Reports every
+database on the server (a catalog read, so it reaches `rtr_deeplink_db`
+too — the alert is about the shared server, not one logical database) plus
+the 15 largest relations by `pg_total_relation_size`, which includes TOAST:
+this service's transcript JSON is overwhelmingly TOASTed, so a table-only
+size would understate the biggest consumer by design. Raw bytes alongside
+`pg_size_pretty` so a later comparison is arithmetic, not string parsing.
+Dialect-guarded, so the SQLite test path reports `supported: false` rather
+than 500ing.
+
+**2. A schemeless `ARCHIVE_BASE_URL` is now a named failure, not an aiohttp
+one.** `_base_url()` did `os.environ.get(...).rstrip("/")` with no scheme
+check, and `proxy_get()` handed the result straight to aiohttp — which
+raises `NonHttpUrlClientError` from deep inside the request. That is
+exactly the 2026-08-22 production window (Sentry PYTHON-FASTAPI-Y,
+`rtr-deeplink-archive:10000/coverage`), once per proxied page view across
+`/coverage`, `/meetings` and `/archive-static/*`. The variable is
+`sync: false` in `render.yaml`, so nothing in the repo constrains its
+shape. Now: `configuration_problem()` reports a set-but-unusable value,
+`_base_url()` returns `""` for it (every caller already degrades correctly
+on `""` — a misconfigured Archive must never block a live resolve), and
+`app/main.py`'s lifespan logs it once at startup so it lands in the deploy
+log instead of being inferred from a pile of per-request failures days
+later. **This is live-relevant, not historical**: `BACKLOG.md`'s bandwidth
+entry proposes editing this exact variable to Render's internal address,
+which is one typo away from re-running the same outage. A test covers
+`http://host:port` specifically, so the internal form isn't mistaken for
+the malformed one.
+
+**3. No email send with an empty recipient.** `_send()` built
+`{"to": [to], ...}` unconditionally, so an empty string reached Resend as
+`"to": [""]` — rejected outright with 422 (Sentry PYTHON-FASTAPI-11,
+production, 2026-08-24). Guarded in `_send()` rather than at the four
+`send_*()` call sites, for the reason that function's own comment already
+gives about the unsubscribe footer: the guarantee should be structural.
+Separately, `/internal/send-worker-daily-report` now answers `400` for a
+blank `to` instead of `200 {"sent": false}`. That second half matters
+independently — the route returns 200 regardless of send success, which is
+precisely why the triage of this alert went looking for a failed GitHub
+Actions run and found only green ones.
+
+Whether the specific 02:18:57Z production call was a manual `curl` is
+still unknown and no longer worth chasing: the failure shape is real and
+reachable from the scheduled workflow any time the
+`AUTO_TRANSCRIPTION_REQUESTER_EMAIL` secret is blank.
+
+**4. One retry in the adapter canary.** `check_platform()` reported
+`ok: false` on the first failure of any kind, against 27 live third-party
+sites it doesn't control. The `destinyhosted` finding above is what that
+costs: a full triage investigation of a blip. Now retries once, after a
+short delay, on every failure shape — including the non-exception
+"resolve returned no real content" path, which is the one that actually
+happened; retrying only raised exceptions would have done nothing for it.
+A recovered flake still reports itself (`FLAKY <platform>: first attempt
+failed (...), retry passed`) rather than being silently absorbed, so a
+site that is *becoming* flaky stays distinguishable from one that is
+stable.
+
+### Verification
+
+All four CI gates in CI's own order: `ruff check` clean, `ruff format
+--check` clean (one file reformatted — `archive/main.py`, and only the
+lines added here, confirmed by the diffstat), **1790 passed / 16 skipped**,
+and both `alembic check`s clean after `alembic upgrade head` the way the
+workflow runs them. No schema change, so no migration. `BACKLOG.md`'s TOC
+regenerated and confirmed idempotent on a second run.
+
+The real production read of `/internal/db-size` is Ryan's to make — it
+needs `ARCHIVE_INGEST_TOKEN`, and this repo's standing decision is that
+production sweeps don't run from an interactive session. The command is in
+the `BACKLOG.md` entry.
 ## Granicus timeouts are a CDN cache-fill cost, not a slow host [Investigated 2026-08-25]
 
 `/internal/transcription-failure-analysis?days=3` reports **24 Granicus

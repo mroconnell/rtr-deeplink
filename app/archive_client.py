@@ -45,8 +45,53 @@ _HOP_BY_HOP_HEADERS = {
 }
 
 
+# aiohttp raises NonHttpUrlClientError from deep inside the request when
+# handed a schemeless URL, which is what a real production window looked
+# like on 2026-08-22 (Sentry PYTHON-FASTAPI-Y:
+# `rtr-deeplink-archive:10000/coverage`, i.e. an ARCHIVE_BASE_URL set to a
+# bare host:port). ARCHIVE_BASE_URL is `sync: false` in render.yaml --
+# dashboard-managed, so nothing in this repo constrains its shape, and the
+# next planned change to it (pointing it at Render's internal address, see
+# BACKLOG.md's bandwidth entry) is exactly the edit that can reintroduce
+# the bad shape.
+_VALID_BASE_URL_SCHEMES = ("http://", "https://")
+
+
+def configuration_problem() -> Optional[str]:
+    """Why ARCHIVE_BASE_URL is unusable, or None when it's fine.
+
+    Only reports a value that is *set but wrong*. An unset variable is a
+    valid configuration here (local development with no Archive), and
+    every caller below already degrades correctly on it.
+
+    Called at resolver startup (app/main.py's lifespan) so a bad value
+    shows up once in the deploy log, rather than only as a per-request
+    failure on every proxied page.
+    """
+    raw = os.environ.get("ARCHIVE_BASE_URL", "").strip()
+    if raw and not raw.startswith(_VALID_BASE_URL_SCHEMES):
+        return (
+            f"ARCHIVE_BASE_URL is set to {raw!r}, which has no http:// or "
+            "https:// scheme. The Archive will be treated as unconfigured "
+            "and every proxied page will fail until it's fixed in Render's "
+            "dashboard."
+        )
+    return None
+
+
 def _base_url() -> str:
-    return os.environ.get("ARCHIVE_BASE_URL", "").rstrip("/")
+    """The Archive's base URL, or "" when it isn't usable.
+
+    A value set without an http:// or https:// scheme is treated as
+    *unusable* rather than passed through. Every caller in this module
+    already degrades correctly on "" -- a down or misconfigured Archive
+    must never block a live resolve -- so this converts an obscure
+    aiohttp error raised once per proxied page view into this module's
+    own explicit handling.
+    """
+    if configuration_problem():
+        return ""
+    return os.environ.get("ARCHIVE_BASE_URL", "").strip().rstrip("/")
 
 
 def _headers() -> dict:
@@ -405,7 +450,9 @@ async def proxy_get(
     """
     base = _base_url()
     if not base:
-        raise RuntimeError("ARCHIVE_BASE_URL is not configured")
+        # Covers both "unset" and "set to something unusable" -- see
+        # _base_url(), which logs the specific reason for the latter.
+        raise RuntimeError("ARCHIVE_BASE_URL is not configured or is not usable")
 
     url = f"{base}/{path}"
     if query_string:

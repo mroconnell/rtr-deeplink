@@ -88,6 +88,14 @@ async def lifespan(app: FastAPI):
         logger.exception(
             "Failed to initialize DB models at startup; continuing without persistence."
         )
+    # ARCHIVE_BASE_URL is dashboard-managed (`sync: false` in render.yaml),
+    # so a bad value can only ever be caught at runtime. Surfacing it here
+    # puts it in the deploy log once, instead of leaving it to be inferred
+    # from a pile of per-request proxy failures -- which is how the
+    # 2026-08-22 window was actually found, days later, via Sentry.
+    archive_misconfigured = archive_client.configuration_problem()
+    if archive_misconfigured:
+        logger.error(archive_misconfigured)
     try:
         # Launches (and, if needed, self-heals) the shared Chromium
         # instance Minneapolis LIMS/SLC's adapters use, once, at startup

@@ -55,8 +55,9 @@ Standing decisions — do NOT re-raise  (4)
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
   The playback-speed chip is absent in native fullscreen, and that's…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (11)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (12)
   [JUST-DO-IT] `[EASY]` Database storage cleanup — lower thumbnail…
+  [JUST-DO-IT] `[EASY]` "We think we found an agenda here" is hedged for
   [JUST-DO-IT] Nothing detects a transcript that simply ends early
   [JUST-DO-IT] `[EASY]` Nothing notices a dead worker pool — chunks
   [JUST-DO-IT] The worker's requirements can silently drift out of
@@ -68,13 +69,14 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (11)
   [NEEDS-AUDIT] The saved-search digest subject's "+N more" count may
   [JUST-DO-IT] Every byte the public site serves is billed twice:
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (12)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (13)
   Confirmations nobody has actually watched happen  (4)
     [HUMAN] Decide the /meetings result link order from real click data,
     [HUMAN] Render's health-check gate has never blocked a deploy —
     [HUMAN] `[LOGIN]` Confirm a real Render deploy installed cleanly off
     [HUMAN] Configure GA's internal traffic filter — the
-  Production actions only Ryan should take  (5)
+  Production actions only Ryan should take  (6)
+    [HUMAN] `[LOGIN]` Two residuals from the storage alert WO-60 closed —
     [HUMAN] `[LOGIN]` Archive service instability, 2026-08-17 —
     [HUMAN] `[WAIT]` 10 YouTube-backed pages still hold roll-up
     [HUMAN] Meeting-card backfill: both follow-ups are done, and the
@@ -134,7 +136,7 @@ Platform & jurisdiction coverage  (33)
     [LATER] YouTube-backed meetings' transcripts run through
     [IMPROVEMENT-ROUND] Four platforms account for ~78% of the 470 real
 
-Reliability, ops & cost  (15)
+Reliability, ops & cost  (17)
   `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (2)
     `[JUST-DO-IT]` `[EASY]` Source `_tier3_queue_remaining()` from the
     `[LATER]` Tighten the two workers to their real import surface.
@@ -149,7 +151,9 @@ Reliability, ops & cost  (15)
     [NEEDS-AUDIT] Even after the 2026-08-22 rate cut, inflow still
     [LATER] `list_transcription_backlog_candidates()` still does a real
     [LATER] Second transcription worker's auto-generation TOCTOU race —
-  Search Console, structured data & SEO plumbing  (3)
+  Search Console, structured data & SEO plumbing  (5)
+    [NEEDS-AUDIT] Two Soft 404 pages that are NOT thin — root cause
+    [HUMAN] `[LOGIN]` `[WAIT]` "Reasons preventing pages from being
     [HUMAN] `[LOGIN]` `[WAIT]` Search Console "Page indexed without
     [IMPROVEMENT-ROUND] `[LOGIN]` `[WAIT]` Google Search Console flagged
     [JUST-DO-IT] `[WAIT]` Search Console "Video isn't on a watch page"
@@ -333,6 +337,20 @@ so that work reads together.
   psql -c 'VACUUM FULL ANALYZE;'                                # reclaim space
   ```
   See `STORAGE_CLEANUP_2026_08_25.md` for full runbook. No user-facing impact — default thumbnails unchanged, timestamp-specific frames fall back to default if deleted.
+
+- **[JUST-DO-IT] `[EASY]` "We think we found an agenda here" is hedged for
+  every adapter, including the seven that don't guess (2026-08-25).**
+  `meeting_page.html:496` renders that line for any `agenda_link`, and its
+  own comment still describes the field as `generic_fallback`'s
+  best-effort "found a link that looks like the agenda" result. That was
+  true when it shipped 2026-08-10; **eight adapters set `agenda_link`
+  now** — `legistar`, `granicus`, `champds`, `hyland`, `suiteone`,
+  `chicago_elms` and `openmedia` as well — and for those it is usually the
+  real agenda document pulled straight off the source, not a guess. So the
+  page apologises for a link it is sure about. Fix: keep the hedge for
+  `generic_fallback` (and `platform == "unknown"`), say something plain
+  like "Agenda" for the rest, and correct the stale comment. Found while
+  fixing the Soft 404 (WO-62, `BACKLOG_DONE.md`).
 
 - **[JUST-DO-IT] Nothing detects a transcript that simply ends early
   (2026-08-24).** The two detectable truncation forms are now both
@@ -688,6 +706,29 @@ convenient.
   events on `/m/*` pages" entry.
 
 ### Production actions only Ryan should take
+
+- **[HUMAN] `[LOGIN]` Two residuals from the storage alert WO-60 closed —
+  the resolver's own database was never measured, and the plan's real
+  storage cap is still unknown (2026-08-25).** WO-60 (Ship next, above)
+  root-caused the 2026-08-24 ">90% storage" alert to
+  `meeting_page_thumbnails` and shipped the cap/cleanup. **Correction
+  worth keeping**: this entry previously guessed the driver was ordinary
+  segment growth (the second worker plus 167,719 segments in 24h). That
+  was wrong — it was 12 JPEG frames per page across ~1,200 pages. A
+  plausible cause sized from a real number still isn't a measured one.
+  What WO-60 does not cover:
+  - `scripts/analyze_db_storage.py` reads `pg_database_size(current_database())`,
+    i.e. `rtr_archive` only. **One Postgres server hosts `rtr_deeplink_db`
+    too**, and a suspension takes both down. `GET /internal/db-size`
+    (WO-61) reports every database on the server, and needs no shell:
+    ```
+    curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" "$ARCHIVE_BASE_URL/internal/db-size"
+    ```
+  - **The plan's storage allotment is still not written down anywhere.**
+    `render.yaml`'s `basic-1gb` comment is entirely a RAM/`shared_buffers`
+    argument. Until that number is read off the dashboard once and
+    recorded there, "90% of what?" stays unanswerable from the repo, and
+    the next alert costs the same investigation.
 
 - **[HUMAN] `[LOGIN]` Archive service instability, 2026-08-17 —
   part (a) answered 2026-08-22, part (b) still open.** Sentry showed a
@@ -2308,6 +2349,63 @@ top-up driver has been creating zero jobs" under **Transcription queue
   `BACKLOG_DONE.md`.
 
 ### Search Console, structured data & SEO plumbing
+
+- **[NEEDS-AUDIT] Two Soft 404 pages that are NOT thin — root cause
+  unknown (2026-08-25).** The Soft 404 category below is solved for one
+  of its three real URLs; these two are not, and the confirmed cause does
+  not explain them. Both **have real video and a long real transcript**
+  (Ryan pasted what they render):
+  `/m/beaufort-board-of-education-academics-committee` and
+  `/m/city-of-carrollton-2022-10-25-city-council-on-2022-10-25-5-45-pm`.
+  Ruled out already: the transcript is fully server-rendered
+  (`meeting_page.html:522-590`, a real `{% for %}` over segments), so
+  "Googlebot needed JS and gave up" is not it. What they share, unlike the
+  solved one: both are **Granicus** (the solved one is ChampDS), both have
+  a **bare jurisdiction with no state** ("Beaufort", "Carrollton" — no
+  "More `<State>` meetings" link), and **both transcripts are visibly
+  garbled** (Beaufort renders the Pledge of Allegiance as "the United
+  States of Arizona").
+  **Two candidates, neither confirmed:** (1) Googlebot received a
+  **truncated 200** — `_proxy_to_archive()`'s `body_iterator()` catches a
+  cut-short upstream stream and lets the generator end cleanly, but
+  `StreamingResponse` has already committed 200 by then, so a crawler gets
+  a broken page with a success status. Known live failure (Sentry
+  PYTHON-FASTAPI-Q) and the crawl dates (Aug 21-22) sit beside the
+  documented 2026-08-22 Archive-proxy cluster. (2) Google judged the
+  content low-value — a dead 2022 Granicus clip plus hallucinated
+  transcript text.
+  **`[LOGIN]` One check separates them**: Search Console → URL Inspection
+  → *View crawled page*. Truncated HTML means (1) and the fix is in the
+  proxy, not in indexing rules; the full page means (2) and the answer is
+  transcript quality. Don't build for either until that's read.
+
+- **[HUMAN] `[LOGIN]` `[WAIT]` "Reasons preventing pages from being
+  indexed" (alerts 2026-08-23) — three of four categories now settled.**
+  The emails named only categories, no URLs. Ryan supplied three real
+  Soft 404 URLs 2026-08-25, which resolved that category; the rest split
+  as follows:
+  - **"Alternate page with proper canonical tag"** and **"Duplicate,
+    Google chose different canonical than user"** are the *expected*
+    consequence of two deliberate, documented decisions:
+    `state_page.html:10-17` canonicalizes `?topic=` variants to the bare
+    state URL, and `meeting_list.html:8-11` canonicalizes every
+    `/meetings` filter variant to the bare one. Both templates say so in
+    their own comments. **Do not "fix" these** without deciding to reverse
+    those choices.
+  - **"Soft 404" — cause found and fixed for the one page that matched it
+    (WO-62).** `/m/fairview-tn-2025-10-02-regular-meeting` held only an
+    `agenda_link`, which `_is_empty_page_condition()` counted as content,
+    so a page whose whole body was two apologies and one outbound link was
+    indexed and sitemapped. `agenda_link` no longer counts. The other two
+    URLs are the `[NEEDS-AUDIT]` entry above. Full write-up in
+    `BACKLOG_DONE.md`.
+  - **"Not found (404)"** is the one category still with no URL list.
+    `/state/{slug}`, `/j/{slug}` and `/m/{slug}` all return a real 404 for
+    an unknown slug, so genuine 404s are expected after a de-index — but
+    note `_SLUG_REDIRECTS` (`archive/main.py`) is still **empty** and the
+    `welcome-to-clerkbase` reslug has never been run, so a frozen-slug
+    rename leaving a dangling permalink is a live candidate here (see that
+    entry under "Ship next").
 
 - **[HUMAN] `[LOGIN]` `[WAIT]` Search Console "Page indexed without
   content" (alert 2026-08-17) is still genuinely unexplained — and

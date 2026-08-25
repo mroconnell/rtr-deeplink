@@ -201,7 +201,21 @@ def has_real_content(result: ResolvedMeeting) -> bool:
     )
 
 
-async def check_platform(name: str, url: str) -> dict:
+# A canary run makes one request each to 27 live third-party sites it
+# does not control, so a transient failure somewhere in that set is
+# expected rather than exceptional -- and reporting the first one as a
+# real failure emails an alert that costs a full triage investigation.
+# That is not hypothetical: the 2026-08-22 `destinyhosted` failure was
+# investigated as a possible adapter regression and refuted only by the
+# next two runs coming back green.
+#
+# One retry, not a loop: the point is to absorb a blip, not to keep
+# hammering a site that is genuinely down, and one extra request to one
+# site stays well inside this repo's politeness posture.
+_RETRY_DELAY_SECONDS = 5.0
+
+
+async def _attempt_platform(name: str, url: str) -> dict:
     try:
         platform = detect_platform(url)
         finder = get_finder(platform)
@@ -239,6 +253,32 @@ async def check_platform(name: str, url: str) -> dict:
     return {"platform": name, "url": url, "ok": True, "reason": None}
 
 
+async def check_platform(name: str, url: str) -> dict:
+    """One platform's canary result, retried once before reporting failure.
+
+    Retries every failure shape, not just raised exceptions: the observed
+    real-world flake reported "resolve returned no real content", which is
+    the non-exception path.
+
+    A platform that failed once and then passed still says so in its
+    result (`recovered_after_retry`), so a site that is *becoming* flaky
+    stays distinguishable from one that is simply stable -- silence should
+    never be the only signal, the same reason the daily reports in this
+    repo send even when nothing happened.
+    """
+    result = await _attempt_platform(name, url)
+    if result["ok"]:
+        return result
+
+    await asyncio.sleep(_RETRY_DELAY_SECONDS)
+    retried = await _attempt_platform(name, url)
+    # The second attempt's reason is the one worth reporting -- it
+    # describes a failure that actually persisted.
+    retried["first_attempt_reason"] = result["reason"]
+    retried["recovered_after_retry"] = retried["ok"]
+    return retried
+
+
 async def run_canary(urls: dict[str, str]) -> list[dict]:
     # One request per distinct real-world site, not the same site hit
     # repeatedly -- concurrent is fine, no politeness concern like a
@@ -255,6 +295,12 @@ def format_report(results: list[dict]) -> str:
     ]
     for r in failed:
         lines.append(f"  FAIL {r['platform']}: {r['reason']} ({r['url']})")
+    for r in results:
+        if r.get("recovered_after_retry"):
+            lines.append(
+                f"  FLAKY {r['platform']}: first attempt failed "
+                f"({r['first_attempt_reason']}), retry passed ({r['url']})"
+            )
     return "\n".join(lines)
 
 

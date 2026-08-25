@@ -3045,9 +3045,26 @@ def _has_agenda_condition():
 
 
 def _is_empty_page_condition():
-    """SQL predicate for a "zero-value" page: no video, no agenda items, no
-    agenda link, and no TranscriptVersion of any kind. Such a page has
-    nothing a visitor can watch or read -- just a title/date shell.
+    """SQL predicate for a "zero-value" page: no video, no agenda items and
+    no TranscriptVersion of any kind. Such a page has nothing a visitor can
+    watch or read -- just a title/date shell.
+
+    `agenda_link` is deliberately NOT counted as content (2026-08-25, WO-62
+    -- it was, until Google flagged /m/fairview-tn-2025-10-02-regular-meeting
+    as a Soft 404 and Ryan pasted what it renders). It is a raw URL, not
+    text, and meeting_page.html turns it into exactly one sentence: "We
+    think we found an agenda here: <url>". A page holding only that serves
+    HTTP 200 whose entire body is a title, a byline, two apologies and one
+    outbound link -- and it was indexed, in sitemap.xml, in /meetings and in
+    the feed, because agenda_link was truthy.
+
+    The measurement behind the call, from the templates themselves: the
+    apology floor for such a page is 83 characters ("No video link found on
+    this Legistar page." 42 + "No transcript available for this meeting."
+    41), and an agenda_link contributes zero characters of page content, so
+    it can never clear that floor. Real agenda_items clear it easily. See
+    GET /internal/thin-page-audit for the live population and the real
+    character distribution behind any future tightening.
 
     Deliberately a *query-time* predicate, not a stored flag or a delete
     (Ryan's call, 2026-08-17 -- see CLAUDE_BACKLOG.md's "Archive
@@ -3079,7 +3096,6 @@ def _is_empty_page_condition():
     )
     return and_(
         or_(MeetingPage.video_url.is_(None), MeetingPage.video_url == ""),
-        or_(MeetingPage.agenda_link.is_(None), MeetingPage.agenda_link == ""),
         ~_has_agenda_condition(),
         ~has_any_version,
     )
@@ -4151,6 +4167,143 @@ def _classify_page_outcome(
     if default_transcript_language and default_transcript_language != "en":
         return "non_english_transcript"
     return "success"
+
+
+def _agenda_text_chars(agenda_items) -> int:
+    """Characters of real agenda text on a page, for sizing "is there
+    enough here to be worth indexing?" against a measured floor rather
+    than a guess.
+
+    Counts item titles/text only -- never timestamps or URLs, which are
+    navigation, not content. See get_thin_page_audit() for the floor this
+    is compared against.
+    """
+    if not isinstance(agenda_items, list):
+        return 0
+    total = 0
+    for item in agenda_items:
+        if isinstance(item, dict):
+            value = item.get("title") or item.get("text") or ""
+        else:
+            value = item
+        if isinstance(value, str):
+            total += len(value.strip())
+    return total
+
+
+# The boilerplate a page with no video and no transcript renders anyway,
+# measured from meeting_page.html itself:
+#
+#    42  "No video link found on this Legistar page."   (video_warnings)
+#    41  "No transcript available for this meeting."
+#   ---
+#    83  apology floor
+#
+# Ryan's framing (2026-08-25): the minimum characters on a real agenda
+# should exceed the maximum characters of apology text. An agenda_link
+# contributes zero characters of content -- it is a URL rendered as one
+# "We think we found an agenda here" pointer -- so a page holding only
+# that can never clear this, which is why _is_empty_page_condition() no
+# longer counts it. Reported by get_thin_page_audit() rather than
+# enforced as a threshold: nothing has yet measured whether trivially
+# short real agendas exist in production, and inventing a cutoff before
+# looking is exactly the guess this repo's conventions warn against.
+_APOLOGY_FLOOR_CHARS = 83
+
+
+async def get_thin_page_audit(slugs: Optional[set[str]] = None) -> dict:
+    """Which archived pages hold nothing a reader can use, and why.
+
+    Built 2026-08-25 (WO-62) to size the Soft 404 fix in the same pass
+    that shipped it, rather than de-indexing an unknown number of live
+    pages on a hunch. Google flagged /m/fairview-tn-2025-10-02-regular-
+    meeting as a Soft 404; it turned out to hold only an agenda_link,
+    which _is_empty_page_condition() used to count as content.
+
+    Buckets:
+      * "empty"            -- none of the four content signals. Already
+                              excluded from browse/sitemap/feed before
+                              WO-62; reported as a cross-check against the
+                              17-of-~1,200 figure recorded when that
+                              predicate was written.
+      * "agenda_link_only" -- an agenda_link and nothing else. The newly
+                              excluded set: exactly what WO-62 changed.
+      * "has_content"      -- counted only.
+
+    `platform` rides along on every thin row on purpose: a
+    generic_fallback agenda_link is a best-effort guess, while a
+    Legistar/Granicus one is usually a real agenda document. If this set
+    turns out to be large, that distinction is how it gets narrowed --
+    with real numbers rather than a second guess.
+
+    `slugs`, if given, restricts to those pages, so a specific Search
+    Console URL gets a straight answer instead of being inferred from a
+    bucket total.
+
+    Read-only. Reads only cheap columns, never TranscriptVersion.segments
+    -- see MeetingPage.search_corpus's docstring on why that matters at
+    this table's real production scale.
+    """
+    any_version = aliased(TranscriptVersion)
+    has_any_version = (
+        select(any_version.id)
+        .where(any_version.meeting_page_id == MeetingPage.id)
+        .correlate(MeetingPage)
+        .exists()
+    )
+
+    stmt = select(
+        MeetingPage.slug,
+        MeetingPage.platform,
+        MeetingPage.video_url,
+        MeetingPage.agenda_items,
+        MeetingPage.agenda_link,
+        has_any_version.label("has_version"),
+    )
+    if slugs:
+        stmt = stmt.where(MeetingPage.slug.in_(slugs))
+
+    async with async_session() as session:
+        rows = (await session.execute(stmt)).all()
+
+    counts = {"empty": 0, "agenda_link_only": 0, "has_content": 0}
+    thin_pages: list[dict] = []
+    for slug, platform, video_url, agenda_items, agenda_link, has_version in rows:
+        agenda_chars = _agenda_text_chars(agenda_items)
+        # Same three signals _is_empty_page_condition() now tests, in the
+        # same order. agenda_link is deliberately absent from this list.
+        has_content = bool(video_url) or agenda_chars > 0 or bool(has_version)
+
+        if has_content:
+            counts["has_content"] += 1
+            continue
+
+        bucket = "agenda_link_only" if agenda_link else "empty"
+        counts[bucket] += 1
+        thin_pages.append(
+            {
+                "slug": slug,
+                "platform": platform,
+                "bucket": bucket,
+                "agenda_link": agenda_link,
+                "agenda_text_chars": agenda_chars,
+            }
+        )
+
+    thin_pages.sort(key=lambda p: (p["bucket"], p["platform"] or "", p["slug"]))
+    by_platform: dict[str, int] = {}
+    for page in thin_pages:
+        if page["bucket"] == "agenda_link_only":
+            key = page["platform"] or "unknown"
+            by_platform[key] = by_platform.get(key, 0) + 1
+
+    return {
+        "total_pages": len(rows),
+        "apology_floor_chars": _APOLOGY_FLOOR_CHARS,
+        "counts": counts,
+        "agenda_link_only_by_platform": by_platform,
+        "thin_pages": thin_pages,
+    }
 
 
 async def get_transcript_quality_audit(

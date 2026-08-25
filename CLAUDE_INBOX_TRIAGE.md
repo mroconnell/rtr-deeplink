@@ -402,93 +402,16 @@ tier...") — same disposable-staging pattern; and two "We're validating
 your Video indexing issue fixes" Search Console emails — informational
 progress notices on an already-tracked fix, not a new issue.
 
-**Three new findings, all Confirmed from real data (Gmail alert bodies,
-live GitHub Actions logs, and this repo's own code):**
-
-**1. Cablecast HLS jobs failing at chunk index 1 — PROMOTED AND FIXED,
-2026-08-23 (WO-45).** This finding was right, and its open question
-("fetch a real Cablecast `.m3u8` from an unrestricted network and
-inspect the segment/discontinuity structure right around the 900s
-offset") has been answered from a machine that can reach those hosts.
-The manifest turned out to be a red herring — there is no discontinuity
-at 900s; the audio is a separate fMP4 rendition addressed by
-`#EXT-X-MAP` + `#EXT-X-BYTERANGE`, and ffmpeg 7.1.5 cannot input-side
-seek into it at any non-zero offset. Root cause, version matrix, the
-fix, and the three cheaper alternatives that don't work are in
-`BACKLOG_DONE.md`'s WO-45 entry; the thumbnail half of the same defect
-is now a live `[HUMAN]` entry in `BACKLOG.md`. Nothing left to promote
-here.
-
-**2. A ~64-minute cluster of Archive-proxy failures in production,
-2026-08-22 22:41-23:45 UTC, spanning four Sentry issue IDs and every
-kind of `app/archive_client.py`
-`proxy_get()` failure mode.** Two occurrences of `NonHttpUrlClientError:
-rtr-deeplink-archive:10000/coverage` and `.../static/style.css`
-(PYTHON-FASTAPI-Y, 22:41/22:46, `sentry:release b8635b35e0b1cc79ae1215
-4fd24523faa8d26cdd`) — `archive_client.py:378`'s `url = f"{base}/{path}"`
-only produces a schemeless URL like this if `ARCHIVE_BASE_URL` itself
-was set without an `http://`/`https://` prefix (it's `sync: false` in
-`render.yaml`, i.e. dashboard-managed, not derived). Then
-`ClientConnectorError: Cannot connect to host
-rtr-deeplink-archive.onrender.com:443` (PYTHON-FASTAPI-Z, 23:39) and
-`RuntimeError: File descriptor 20 is used by transport...`
-(PYTHON-FASTAPI-10, 23:45) — both at `sentry:release
-dc674ca8802095b459da65d49745f6eee32361ce`, which is commit `dc674ca`,
-**"Rework render.yaml buildFilters into per-service allow-lists (WO-44)
-(#327)", merged 2026-08-22 23:17:42 UTC** — confirmed via
-`list_commits`. That PR touches both `rtr-deeplink` and
-`rtr-deeplink-archive`'s build filters, so it's a plausible trigger for
-a real redeploy of the Archive service right in this window, which
-would explain the later connection-refused/fd-reuse errors as normal
-deploy-transition churn (old instance's connections closing while a new
-one starts) — this part is a strong, well-supported hypothesis, not a
-proven one, since this session has no Render dashboard/deploy-log
-access to confirm an Archive redeploy actually happened at 23:17-23:45.
-**What's genuinely unexplained**: the *first* two errors (the
-schemeless-URL ones) are at release `b8635b35`, which **predates** the
-WO-44 deploy — so whatever produced a bad `ARCHIVE_BASE_URL` was already
-wrong *before* that PR merged, not caused by it. Real impact: every
-kind of Archive-proxied route hit (`/meetings`, `/coverage`,
-`/archive-static/style.css`, `/m/{slug}/transcript.txt`) — i.e.
-basically every page that proxies through the Archive — so this was a
-real ~1-hour window of broken pages in production, now apparently
-self-resolved (no further occurrences of any of these four issue IDs in
-anything reviewed since). **Open question for Ryan**: was
-`ARCHIVE_BASE_URL` manually edited in the Render dashboard around
-2026-08-22 22:00-23:45 UTC? If so, worth double-checking its current
-value has a proper `http://`/`https://` scheme, since the schemeless
-form is a real, reproduced failure shape that will recur exactly the
-same way if it's ever set that way again.
-
-**3. Adapter health canary (scheduled workflow on `main`) failed
-2026-08-22, one real platform down: `destinyhosted`.** Confirmed via
-the actual run's logs (`mcp__github__get_job_logs`, run `32581540837`,
-triggered by commit `87eb883` = "Restructure BACKLOG.md..." — an
-unrelated docs-only commit, so the canary failure isn't from that
-commit's own changes): `Adapter health canary: 26/27 platforms OK
-FAIL destinyhosted: resolve returned no real content
-(https://public.destinyhosted.com/agenda_publish.cfm?id=96635&mt=ALL&
-get_month=8&get_year=2026&dsp=ag&seq=4147)`. This is the canary's
-Woodlands Township, TX URL — the one real confirmed case of
-`destinyhosted.py`'s onclick-delegation into a real Swagit video (see
-`scripts/adapter_canary.py`'s own comment on this URL). `check_platform()`
-(`scripts/adapter_canary.py:204-239`) means the resolve call didn't
-raise, it just came back with zero segments/agenda_items/video_url/
-agenda_link. **Root cause unconfirmed**: this sandbox's network egress
-is blocked for `destinyhosted.com` (confirmed via both `curl` and
-`WebFetch`), so nobody has re-fetched the canary URL to see current
-real content. Two plausible explanations neither confirmed nor ruled
-out: a real regression in `destinyhosted.py`'s Swagit delegation, or
-this specific hardcoded `id=96635&seq=4147` agenda item aging off the
-tenant's page as months roll over (the URL's `get_month=8&get_year=2026`
-already matches the run's own month, so it isn't simply pointing at a
-stale prior month). Only one occurrence so far (all 5 later canary-
-adjacent runs in the window aren't in scope — this was the only failing
-run under `label:rtr-claude`). Separately, not a failure but worth one
-line: the same run's `yt-dlp` calls hit "Sign in to confirm you're not
-a bot" 7 times across the run — the already-documented bot-detection
-noise (`CLAUDE.md`'s yt-dlp bullet) — but none of those caused a
-platform to fail (still 26/27 OK), so no new finding there.
+**Three findings, all promoted 2026-08-25 (WO-61) and removed from here.**
+One was already fixed (the Cablecast HLS chunk-1 cluster, WO-45), one was
+a real untracked code gap (the schemeless `ARCHIVE_BASE_URL` behind the
+Archive-proxy failure window — fixed), and one was **refuted**: the
+`destinyhosted` adapter-canary failure was written up as a possible
+regression with an unconfirmed root cause, but the next two scheduled
+canary runs (`32648478422` on 08-23, `32746381314` on 08-24) both came
+back green. It was a transient. That cost a full investigation, so the
+canary now retries once before reporting a failure. Full write-up in
+`BACKLOG_DONE.md`.
 
 **One dedupe worth calling out explicitly**: 5 of today's 13
 transcription-job failures are all `play.champds.com` sources
@@ -536,103 +459,29 @@ fixed (`BACKLOG_DONE.md`, commit `63f69b2`) — but job 731 was created
 predates the fix by over an hour; not a regression, just a job caught by
 the bug before the patch landed. No new entry needed.
 
-**Two new findings, both Confirmed from real code/commit history, one
-Unconfirmed and dashboard-gated:**
+**Three findings, all resolved 2026-08-25 (WO-61) and removed from here.**
 
-**1. Sentry `PYTHON-FASTAPI-12` — `ModuleNotFoundError: No module named
-'markupsafe'` crash-looped both transcription workers for ~9.3 hours,
-already fixed same day — investigated and closed, no promotion needed.**
-Confirmed via the Sentry traceback (`worker/main.py:58` →
-`archive/db/crud.py:30` → `archive/utils/date_status.py:25`) and the
-repo's own fix commit `209bba2` ("Hotfix: add markupsafe to
-worker/requirements — both workers dead ~9h (#370)", merged
-2026-08-24T05:50:34-07:00 = 12:50:34 UTC, already on `main` as of this
-run). Root cause per that commit's own message: WO-50 (`8597cf9`, #363)
-added a direct `markupsafe` import to `archive/utils/date_status.py` for
-the new date-pill feature; `archive/db/crud.py` has imported
-`date_status` at module scope since #136; `worker/main.py` imports
-`archive.db.crud`. The Archive web service already has `markupsafe`
-transitively via `jinja2`, but the worker's `requirements.txt` is
-separate and deliberately lean (no `jinja2` — it serves no HTML), so only
-the worker broke. **Real impact, per the fix commit's own measurement**:
-zero chunks completed for ~9.3 hours (`cumulative_chunks_completed_all_time`
-stuck at 4028 from 03:07 to 12:23 UTC), 10 active jobs and 95 pending
-chunks with nothing able to claim them. Fully fixed and verified (the
-commit confirms `markupsafe==3.0.3` imports cleanly in the worker's own
-base image) — flagging here only because `worker/requirements.in`'s new
-comment says "see BACKLOG.md" and neither `BACKLOG.md` nor
-`BACKLOG_DONE.md` currently mention it by name; the incident is otherwise
-completely and accurately documented in the commit message itself, so a
-promotion pass may want to add a one-line pointer to `BACKLOG_DONE.md`
-for searchability, but there is no open work here.
+- The **`markupsafe`** worker outage needed no promotion and no pointer:
+  that entry's claim that neither backlog file mentions it by name was
+  **stale**. `BACKLOG.md` already carries it as *"[JUST-DO-IT] The
+  worker's requirements can silently drift out of sync with its real
+  import graph"*, with a fuller root-cause writeup than the triage entry
+  had.
+- The **Resend `422`** was a real, untracked code gap and is **fixed** —
+  `_send()` no longer builds a payload with an empty recipient, and
+  `/internal/send-worker-daily-report` answers 400 rather than a 200 that
+  reports `{"sent": false}`. The open question about the 02:18:57Z
+  call's origin is moot: the failure shape was reachable from the
+  scheduled workflow regardless.
+- The **Search Console** alert was promoted into `BACKLOG.md` **narrowed,
+  not copied**. Two of its four reason categories ("Alternate page with
+  proper canonical tag", "Duplicate, Google chose different canonical")
+  are the expected consequence of canonicalization choices
+  `state_page.html` and `meeting_list.html` document in their own
+  comments — not defects. Only "Soft 404" and "Not found (404)" remain
+  open, and both still need the affected-URL list from the dashboard.
 
-**2. Sentry `PYTHON-FASTAPI-11` — Resend `422` "Invalid `to` field" on
-`/internal/send-worker-daily-report`, single occurrence, root cause
-plausible but not confirmed.** The alert (2026-08-24T02:18:57Z,
-`environment=production`, `browser=curl 8.7.1`) shows Resend rejecting
-the `to` field's format outright, not merely bouncing a valid-looking
-address — the same exact error text `BACKLOG_DONE.md`'s "A failed
-daily-report send silently consumed the day's snapshot (WO-52)" entry
-already documents from *local* testing that same day, where the cause
-was an empty `to` (an unset `AUTO_TRANSCRIPTION_REQUESTER_EMAIL` in
-local `.env`). This alert is against **production**
-(`url=https://rtr-deeplink-archive.onrender.com/internal/send-worker-daily-report`),
-not local — so if the same empty-string mechanism applies, it would mean
-the value reaching this route's `to` query param was empty or malformed
-in a real request. **Ruled out as the source**: the workflow's own
-scheduled trigger (`.github/workflows/worker-daily-report.yml`, cron
-`40 23 * * *`) — checked via `mcp__github__actions_list` — ran at
-2026-08-23T23:55:41Z and completed in 4 seconds with `conclusion:
-success`; the alert fired 2h23m later at 02:18:57Z, too large a gap to
-be that same run, and no other scheduled run exists in between. Note
-also that this route always returns HTTP 200 regardless of whether the
-Resend send actually succeeded (`return {"sent": sent, "summary":
-summary}`, `archive/main.py`), so a GitHub Actions "success" conclusion
-here would say nothing about whether the email itself went out even if
-the timing did line up — the true source of the 02:18:57Z call is
-unconfirmed. **Best-supported hypothesis, not proven**: this looks like
-a direct manual call against the production endpoint (matching
-`browser=curl`) made while verifying the WO-52 fix that same day, quite
-possibly a deliberate reproduction of the exact bug WO-52's own
-writeup describes reproducing — in which case this is expected test
-noise, not a live gap. **Open question for Ryan**: was
-`/internal/send-worker-daily-report` called directly (not via the
-GitHub Actions workflow) around 2026-08-24T02:19 UTC, and if so, was
-`to=` intentionally left blank to reproduce WO-52's bug? If not, the
-GitHub Actions repo secret `AUTO_TRANSCRIPTION_REQUESTER_EMAIL` (used by
-both this workflow and `bulk-queue-transcription-backlog.yml`) is worth
-checking directly, since Secrets values can't be read via the API to
-confirm from here. No further occurrences since, and the four other
-scheduled runs of this workflow (2026-08-21 through 2026-08-23) all
-completed successfully.
-
-**3. Two new Google Search Console "reasons preventing pages from being
-indexed" alerts, sitewide, no specific URLs given — Unconfirmed, dashboard-gated.**
-Two emails 53 seconds apart (2026-08-23T18:10:50Z / 18:11:43Z) list four
-distinct new reason categories across `redtaperecordings.com`: "Duplicate,
-Google chose different canonical than user" (both emails), "Soft 404"
-(both emails), "Alternate page with proper canonical tag" (second email
-only), and "Not found (404)" (second email only). Unlike prior Search
-Console alerts this Routine has triaged, these list no specific affected
-URLs or counts — the emails only name the reason categories and link to
-an auth-walled indexing report this Routine can't open. Checked the
-codebase for a plausible mechanism rather than guessing blind:
-`<link rel="canonical">` is emitted from five different Archive templates
-(`state_page.html`, `jurisdiction_page.html`, `meeting_list.html`,
-`meeting_page.html`, `coverage.html`), so a duplicate/soft-404/canonical
-signal could plausibly originate from any of the state/hub-page surfaces
-`STATE_HUB_PAGES.md` covers, from ordinary meeting pages, or from the
-recently-added home-page archive integration (WO-50, merged the same
-day these alerts fired) — no way to narrow further without the real
-affected-URL list. Not written up against a specific root cause since
-that would be guessing; this needs either Ryan opening the actual Search
-Console indexing report (the "Open indexing report" link in the email)
-to get real affected URLs, or a Search Console API integration this repo
-doesn't have. No existing `BACKLOG.md`/`BACKLOG_DONE.md`/`CLAUDE_BACKLOG.md`
-entry mentions "soft 404," "chose different canonical," or "alternate
-page with proper canonical" — genuinely new alert content, not a
-duplicate of the already-tracked "No thumbnail URL provided" video-
-indexing gap.
+Full write-up in `BACKLOG_DONE.md`.
 
 ## 2026-08-25
 
@@ -666,40 +515,12 @@ hitting **CivicClerk** specifically (`keizeror.portal.civicclerk.com`,
 Granicus and ChampDS) for the same underlying slow-source pattern, not a
 new bug.
 
-**One new finding, Confirmed from the alert itself, root cause
-Unconfirmed/dashboard-gated:**
-
-**Render Postgres `rtr-deeplink-db` is over 90% of its storage limit —
-real risk of the database being suspended (site-wide downtime), not yet
-sized against a current-vs-limit number.** Alert 2026-08-24T15:27:42Z:
-"Your PostgreSQL database rtr-deeplink-db is using more than 90% of its
-available storage. If you exceed your storage limit, your database will
-be suspended, resulting in downtime." `render.yaml`'s own comment (dated
-2026-08-17, the day the plan was last raised to `basic-1gb`) records this
-single Postgres server hosting two logical databases — `rtr_archive`
-(218MB then) and `rtr_deeplink_db` (22MB then), ~240MB combined — with no
-documented storage-cap number for the `basic-1gb` plan itself, so how
-close 90%-used actually is to a hard ceiling can't be derived from the
-repo alone. **Real, credible growth driver already in evidence,
-independent of this alert**: WO-30-era work added a second transcription
-worker for backlog catch-up (`render.yaml`'s `rtr-transcription-worker-2`
-block, merged 2026-08-21), and today's own daily-report email shows
-167,719 segments transcribed in the last 24 hours alone — each one a row
-in `rtr_archive`'s `segments`/transcript tables — so a real, large,
-recently-accelerated write volume is a plausible and likely sufficient
-explanation on its own, not necessarily a leak or a bug. **Impact if
-unaddressed**: Render's own alert states the database gets suspended on
-exceeding the limit, which is full site downtime (both the resolver's
-`rtr_deeplink_db` cache and the Archive's `rtr_archive` content share
-this one server) — the most severe class of outage this Routine can
-surface. **Fix effort**: sizing needs a number this Routine can't see
-(current GB used vs. plan's actual storage cap) — Render's dashboard
-(the same page render.yaml's own comment already links for the RAM/CPU
-history) has that number and a one-click storage upgrade if needed;
-alternatively, if growth is expected to keep accelerating as more workers
-come online, proactively upgrading storage before the next transcription
-surge is cheaper than reacting to a suspension. **Open question for
-Ryan**: what does the Render dashboard show as current GB used / GB
-limit for `rtr-deeplink-db` right now, and does `basic-1gb`'s storage
-allotment need raising (same lever already used for RAM on 2026-08-17)
-given the second worker roughly doubled transcription throughput?
+**One finding, promoted 2026-08-25 (WO-61) into `BACKLOG.md`'s "Production
+actions only Ryan should take".** The `rtr-deeplink-db` storage alert was
+real and correctly sized as the most severe outage shape this Routine can
+surface — but its central open question ("what does the dashboard show as
+current GB used / GB limit?") turned out to be unanswerable from the repo
+in a different way than assumed: nothing in `app/`, `archive/`, `scripts/`
+or `worker/` had ever queried `pg_database_size`. `GET /internal/db-size`
+now reports it, so the number no longer needs a dashboard login — only the
+plan's storage *cap* does. Full write-up in `BACKLOG_DONE.md`.
