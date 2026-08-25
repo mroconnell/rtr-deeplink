@@ -2140,6 +2140,21 @@ What you can actually do once a meeting page has loaded:
   and deep-link-on-load all work identically either way, since both are
   wrapped behind the same `{currentTime, play, pause, addEventListener}`
   adapter shape (`createNativeAdapter` / `createYouTubeAdapter`).
+- **Playback speed**: a chip in the top-right of the video frame opens
+  0.75x-3x. It is drawn by this app rather than delegated to the player's
+  own control bar because a native `<video>` bar is browser shadow DOM and
+  cannot be extended — which is also why the browsers' own speed settings
+  are buried in an overflow menu or a right-click and nobody finds them.
+  The offered rates come from the adapter, not a fixed list, because the
+  ceilings genuinely differ: a native `<video>` accepts the whole ladder
+  (pitch preserved, so voices stay intelligible), YouTube caps hard at 2x
+  and ignores any value off its own `getAvailablePlaybackRates()` list,
+  Vimeo's SDK documents 0.5-2x, and Viebit has no cross-frame API at all
+  so it renders no control rather than a dead one. The choice is
+  remembered across meetings (`localStorage`), clamping down when a player
+  can't reach it without overwriting the stored preference. Lives in
+  `shared_static/playback_speed.js` + `.css` — one module used by both the
+  resolver and the Archive, so the two surfaces cannot drift.
 - **Agenda**: a dedicated section (`renderAgenda()`), shown above the
   Transcript section whenever agenda/chapter-marker data was found,
   independent of whether a real transcript also exists. Reuses the

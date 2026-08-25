@@ -1,0 +1,124 @@
+/* Playback-speed control -- see shared_static/playback_speed.js for why
+   this is an overlay rather than a button in the player's own control
+   bar (short version: a native <video> control bar is browser shadow DOM
+   and cannot be extended).
+
+   Shared by both services, same as highlights.css, because the control
+   itself is shared. Colours are deliberately self-contained rather than
+   var()-driven: this sits on top of video, where the page's light
+   --bg/--fg tokens would be unreadable. It follows the existing
+   .big-play-button overlay instead, which already uses a translucent
+   black on this same surface. */
+
+/* Spans the whole frame rather than hugging the corner, so the menu's
+   percentage max-height below resolves against the VIDEO's box. The
+   resolver's video column is narrow and sticky, which makes the frame
+   short -- anchored to the chip instead, a 7-row menu overflowed the
+   bottom of .video-wrapper (overflow: hidden) and silently ate 2x, 2.5x
+   and 3x, the three rates people actually want. Caught in a browser on a
+   real page; a code read shows nothing.
+   pointer-events:none so this full-frame layer never swallows a click
+   meant for the video; the chip and menu opt back in individually. */
+.speed-control {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* Above the video/iframe and the .big-play-button overlay. */
+  z-index: 3;
+  font-family: 'Courier New', monospace;
+}
+
+.speed-chip {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  pointer-events: auto;
+  display: block;
+  min-width: 2.9rem;
+  padding: 0.28rem 0.5rem;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  backdrop-filter: blur(2px);
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.speed-chip:hover,
+.speed-chip:focus {
+  background: rgba(0, 0, 0, 0.78);
+  border-color: rgba(255, 255, 255, 0.7);
+}
+
+/* Only while the rate is not 1x -- see render() in playback_speed.js. */
+.speed-control.is-active .speed-chip {
+  background: rgba(52, 152, 219, 0.85);
+  border-color: #fff;
+}
+
+/* An author `display` rule beats the UA stylesheet's [hidden]{display:none},
+   so the menu needs its own hidden rule -- without this it renders open on
+   every page load (caught in-browser, not by reading the code). */
+.speed-menu[hidden] { display: none; }
+
+/* Two columns, not one: halves the menu's height so it fits inside a
+   short frame without scrolling. max-height is the belt-and-braces for
+   frames shorter still (a very narrow viewport) -- it scrolls rather
+   than clipping, which is the failure this whole block exists to fix. */
+.speed-menu {
+  position: absolute;
+  top: 2.5rem;
+  right: 0.6rem;
+  pointer-events: auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(3.1rem, 1fr));
+  gap: 0.08rem;
+  max-height: calc(100% - 3.1rem);
+  overflow-y: auto;
+  padding: 0.25rem;
+  background: rgba(18, 18, 18, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(3px);
+}
+
+.speed-option {
+  /* Rows are deliberately tight: seven rates in two columns have to clear
+     the frame height of the resolver's narrow, sticky video column
+     (measured at 169px there) without scrolling. */
+  padding: 0.17rem 0.6rem;
+  background: transparent;
+  color: #eee;
+  border: none;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 0.82rem;
+  text-align: right;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.speed-option:hover,
+.speed-option:focus {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+.speed-option.is-current {
+  color: #fff;
+  font-weight: bold;
+  background: rgba(52, 152, 219, 0.75);
+}
+
+/* The video column gets narrow on small screens; shrink the chip rather
+   than let it crowd the frame. */
+@media (max-width: 600px) {
+  .speed-chip { font-size: 0.78rem; min-width: 2.6rem; }
+  .speed-option { font-size: 0.78rem; padding: 0.24rem 0.5rem; }
+}

@@ -54,7 +54,7 @@ Standing decisions — do NOT re-raise  (3)
   Prefer a generated/computed column over "add a column, then backfill…
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (11)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (10)
   [JUST-DO-IT] Nothing detects a transcript that simply ends early
   [JUST-DO-IT] `[EASY]` Nothing notices a dead worker pool — chunks
   [JUST-DO-IT] The worker's requirements can silently drift out of
@@ -65,7 +65,6 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (11)
   [JUST-DO-IT] `[WAIT]` Two archived pages have slugs frozen from a
   [NEEDS-AUDIT] The saved-search digest subject's "+N more" count may
   [JUST-DO-IT] Every byte the public site serves is billed twice:
-  [JUST-DO-IT] Playback-speed control — requested by Ryan from real
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (12)
   Confirmations nobody has actually watched happen  (4)
@@ -84,7 +83,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (12)
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
   Product calls
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (10)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (11)
+  [NEEDS-AUDIT] `[EASY]` The speed chip disappears in native
   [NEEDS-AUDIT] 32 places across 23 adapters swallow an exception and
   [NEEDS-AUDIT] A chunk that takes longer than `STALE_CLAIM_AFTER` can
   [NEEDS-AUDIT] Two pages have had a failed transcription job and
@@ -192,8 +192,9 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (21)
     [IMPROVEMENT-ROUND] Audit every user-facing email address and
     [IMPROVEMENT-ROUND] Recurring operator email report every 6 hours to
 
-Dormant — needs a real example first `[LATER]`  (29)
-  Thumbnails  (1)
+Dormant — needs a real example first `[LATER]`  (30)
+  Thumbnails  (2)
+    [LATER] `[EXAMPLE]` Vimeo's playback-rate path has no confirmed
     [LATER] `[EASY]` A page whose only stored frames are non-default
   Captions — formats and sources with no confirmed positive example  (7)
     [LATER] CivicClerk's own version of the "no populated-captions
@@ -581,61 +582,6 @@ so that work reads together.
   implied), but it is free money and halves the blast radius of any
   future traffic spike.
 
-- **[JUST-DO-IT] Playback-speed control — requested by Ryan from real
-  dogfooding, 2026-08-24.** Watching a 1h46m meeting at 1x is the
-  friction; a first-class speed button is the ask (1.5x/2x/2.5x/3x).
-  Nothing in `app/` or `archive/` sets `playbackRate` today — this is
-  genuinely unbuilt, not buried.
-
-  **The seam already exists.** Both player implementations share one
-  adapter contract — `{currentTime get/set, play, pause,
-  addEventListener}` — so this is "add `playbackRate` get/set to the
-  adapter shape, then one UI control that drives it," not per-player
-  UI work. **It lands in two files, not one**:
-  `app/static/player.js` (resolver, 4 adapters) and
-  `archive/static/meeting_page.js`, which is explicitly a *"trimmed
-  port of app/static/player.js's video-adapter logic"* — ship only the
-  first and the archive pages, which are the ones with real traffic,
-  silently keep no speed control.
-
-  **Per-adapter ceilings, measured live 2026-08-24 (not assumed):**
-
-  ```text
-  native <video> (mp4, m3u8+hls.js)  1.5–16x all accepted, preservesPitch:true
-  youtube (IFrame API)               HARD CAP 2x
-  vimeo (Player SDK)                 documented 0.5–2x  [UNVERIFIED from our embed]
-  viebit (NYC Council)               IMPOSSIBLE — no cross-frame API at all
-  ```
-
-  Native was confirmed on a real page
-  (`/m/st-helena-ca-2026-07-07-special-planning-commission-meeting`,
-  `data-video-format="mp4"`): every rate 1.5→16 accepted and
-  `preservesPitch` true, so voices stay intelligible rather than
-  chipmunked. YouTube's cap is its own API's answer —
-  `getAvailablePlaybackRates()` on a real meeting video (`5LZqoNDRMYk`)
-  returns `[0.25,0.5,0.75,1,1.25,1.5,1.75,2]`, and `setPlaybackRate()`
-  ignores anything off that list. The raw `<video>` inside YouTube's
-  iframe *does* accept 3x, but it is cross-origin and unreachable from
-  our page — don't design around it. Viebit's adapter is already a
-  documented no-op (`play: () => {}`, `addEventListener: () => {}`).
-
-  **So the 2.5x/3x half of the request is native-only, and that is
-  fine** — `video_format` mapping shows mp4/m3u8 covers aurora,
-  cablecast, castus, eScribe, IQM2, Seattle Channel, SuiteOne, TelVue,
-  Town Hall Streams plus Granicus/Swagit via `media_scan`, i.e. the
-  bulk of the corpus (10 of 10 sampled archive pages were mp4/m3u8).
-  YouTube/Vimeo/Viebit are the minority. **Offer the rates the active
-  adapter actually supports rather than showing a dead 3x button on a
-  YouTube page** — greying out beats lying.
-
-  **Two things worth knowing before building:** (1) the YouTube adapter
-  fakes `timeupdate` with a fixed `setInterval(..., 250)`
-  (`player.js:712`), so transcript-highlight granularity coarsens
-  proportionally with rate — 0.5s of video per tick at 2x. Segments are
-  multi-second, so this is a note, not a blocker. (2) Persist the choice
-  (`localStorage`) — a reader who wants 2x wants it on every meeting,
-  and re-picking per page is most of the friction the button removes.
-
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
 Nothing here is blocked on engineering. Most are one dashboard login or
@@ -929,6 +875,20 @@ convenient.
 Reproduced against real data, but the fix is a genuine open question.
 Jurisdiction-extraction bugs live under **Platform & jurisdiction
 coverage** instead.
+
+- **[NEEDS-AUDIT] `[EASY]` The speed chip disappears in native
+  fullscreen.** Shipped 2026-08-25 with WO-56 (see `BACKLOG_DONE.md`).
+  The chip is an overlay inside `.video-wrapper`, but the native
+  fullscreen button fullscreens the `<video>` **element**, not the
+  wrapper — so every sibling overlay, this chip and the existing
+  `.big-play-button` alike, is hidden for the duration. The rate already
+  set stays applied, and the browser's own speed menu still works there,
+  so this is a discoverability gap rather than a loss of function.
+  The fix is to request fullscreen on the wrapper instead of the element,
+  which means owning a fullscreen button rather than delegating to the
+  native control bar — not obviously worth it, hence NEEDS-AUDIT rather
+  than JUST-DO-IT. Confirm how often meetings are actually watched
+  fullscreen before building anything.
 
 - **[NEEDS-AUDIT] 32 places across 23 adapters swallow an exception and
   return nothing, with no log line (surveyed 2026-08-25).** The same
@@ -2812,6 +2772,21 @@ until a real example turns up. An entry leaving this section usually
 means somebody found the example, not that somebody decided to guess.
 
 ### Thumbnails
+
+- **[LATER] `[EXAMPLE]` Vimeo's playback-rate path has no confirmed
+  positive example.** WO-56 (2026-08-25) shipped speed control across all
+  four players, but Vimeo's leg is the one written from documentation
+  rather than measurement: its Player SDK documents `setPlaybackRate` as
+  0.5-2x and exposes no capability query, so the ladder is capped by hand
+  where YouTube's is asked for at runtime. Nobody has watched a real
+  Vimeo-backed meeting page change speed. Two things a real check should
+  settle: whether the SDK rejects the call on some account tiers (the
+  rejection is swallowed, so the chip would update while playback did
+  not), and whether Vimeo's own in-player "Speed" control and ours end up
+  disagreeing on screen. Good starting samples are already in
+  `CLAUDE.md`: Salisbury NC (`vimeo.com/1212025580`) and Chicago's ELMS.
+  Same standard as every other "don't claim a path works without a
+  positive example" entry here.
 
 - **[LATER] `[EASY]` A page whose only stored frames are non-default
   would advertise a `card.jpg` that 404s — unconfirmed, one query

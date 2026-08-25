@@ -37,6 +37,19 @@ function updateNoTranscriptTime(adapter) {
   if (el) el.textContent = formatTime(adapter.currentTime);
 }
 
+// The speed control lives in /shared-static/playback_speed.js, loaded as a
+// separate <script>. These two helpers keep it strictly optional: if that
+// file fails to load, the page loses its speed chip and nothing else.
+// wireSharedControls() also drives transcript highlighting and deep links
+// -- the core of the product -- so it must not throw over a nice-to-have.
+function speedLadder() {
+  return typeof PLAYBACK_RATE_LADDER !== 'undefined' ? PLAYBACK_RATE_LADDER : [];
+}
+
+function wirePlaybackSpeed(adapter) {
+  if (typeof initPlaybackSpeed === 'function') initPlaybackSpeed(adapter);
+}
+
 function createNativeAdapter(videoEl) {
   return {
     get currentTime() { return videoEl.currentTime; },
@@ -44,6 +57,15 @@ function createNativeAdapter(videoEl) {
     play: () => videoEl.play(),
     pause: () => videoEl.pause(),
     addEventListener: (evt, handler) => videoEl.addEventListener(evt, handler),
+    // Speed contract -- see app/static/player.js's createNativeAdapter and
+    // shared_static/playback_speed.js for the reasoning. No vendor cap on
+    // this path, so the full shared ladder applies.
+    speedRates: speedLadder(),
+    get playbackRate() { return videoEl.playbackRate; },
+    set playbackRate(rate) {
+      videoEl.playbackRate = rate;
+      if ('preservesPitch' in videoEl) videoEl.preservesPitch = true;
+    },
   };
 }
 
@@ -98,12 +120,22 @@ function createYouTubeAdapter(ytPlayer) {
     }
   });
 
+  // Rates come from the player itself -- YouTube caps at 2x and ignores
+  // any value off its own list. See app/static/player.js's version.
+  const availableRates = typeof ytPlayer.getAvailablePlaybackRates === 'function'
+    ? ytPlayer.getAvailablePlaybackRates()
+    : [1];
+  const speedRates = speedLadder().filter((r) => availableRates.indexOf(r) !== -1);
+
   return {
     get currentTime() { return ytPlayer.getCurrentTime(); },
     set currentTime(t) { ytPlayer.seekTo(t, true); },
     play: () => ytPlayer.playVideo(),
     pause: () => ytPlayer.pauseVideo(),
     addEventListener: (evt, handler) => { if (listeners[evt]) listeners[evt].push(handler); },
+    speedRates: speedRates.length > 1 ? speedRates : null,
+    get playbackRate() { return ytPlayer.getPlaybackRate(); },
+    set playbackRate(rate) { ytPlayer.setPlaybackRate(rate); },
   };
 }
 
@@ -163,6 +195,12 @@ async function initYouTubeVideo(embedUrl) {
 // Council pages report seeks/copies but never plays. applyDeepLink() does
 // not auto-play, so a play event is a real press, not a warm-up.
 function wireSharedControls(adapter, { liveTracking = true } = {}) {
+  // Above the !liveTracking early return below on purpose: speed support
+  // is the adapter's own declared capability, a different question from
+  // whether its position can be read live. They coincide today (Viebit
+  // lacks both), but wiring speed off liveTracking would couple them.
+  wirePlaybackSpeed(adapter);
+
   const linkToCurrentLabel = document.getElementById('linkToCurrentLabel');
   const linkBtn = document.getElementById('linkToCurrentBtn');
   const noTranscriptLinkBtn = document.getElementById('noTranscriptLinkBtn');
@@ -260,6 +298,9 @@ function createVimeoAdapter(player) {
   const listeners = { play: [], pause: [], timeupdate: [] };
   const fire = (name) => listeners[name].forEach((fn) => fn());
   let lastKnownTime = 0;
+  // Cached because the SDK's getters are promise-based; the speed chip
+  // reads playbackRate synchronously.
+  let lastKnownRate = 1;
 
   const track = (data) => {
     if (data && typeof data.seconds === 'number') lastKnownTime = data.seconds;
@@ -279,6 +320,14 @@ function createVimeoAdapter(player) {
     play: () => player.play().catch(() => {}),
     pause: () => player.pause().catch(() => {}),
     addEventListener: (evt, handler) => { if (listeners[evt]) listeners[evt].push(handler); },
+    // Vimeo's SDK documents 0.5-2 and exposes no capability query, so the
+    // ladder is capped rather than asked for. See player.js's version.
+    speedRates: speedLadder().filter((r) => r <= 2),
+    get playbackRate() { return lastKnownRate; },
+    set playbackRate(rate) {
+      lastKnownRate = rate;
+      player.setPlaybackRate(rate).catch(() => {});
+    },
   };
 }
 
@@ -332,6 +381,9 @@ function createViebitAdapter(iframeEl, baseEmbedUrl) {
     play: () => {},
     pause: () => {},
     addEventListener: () => {},
+    // No cross-frame API, so speed can't be set either -- null makes
+    // initPlaybackSpeed skip the chip rather than render a dead one.
+    speedRates: null,
   };
 }
 

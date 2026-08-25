@@ -150,8 +150,13 @@ under everything else. This repo extracts and fixes just that part.
   reasoning doesn't. Correct the entry as part of the same pass, so the
   next reader inherits the corrected version rather than repeating the
   check.
-- **WO numbers: `grep -oE 'WO-[0-9]+' *.md | sort -t- -k2 -n | tail -1`
-  against `origin/main`, then take max + 1 — never count + 1.** The
+- **WO numbers: `git grep -ohE 'WO-[0-9]+' origin/main | sort -t- -k2 -n
+  | tail -1`, then take max + 1 — never count + 1.** Check commit titles
+  too (`git log origin/main --oneline | grep -oE 'WO-[0-9]+'`): the
+  earlier form of this rule grepped `*.md` only, and on 2026-08-25 that
+  returned WO-54 while WO-55 was already taken by a merged commit whose
+  number never landed in any file — a collision the "against
+  `origin/main`" part alone doesn't prevent. The
   sequence has real gaps, so counting existing numbers produces a
   collision every time. **Under a parallel wave this isn't sufficient
   either**: the grep only sees *merged* work, so two agents working
