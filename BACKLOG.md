@@ -192,9 +192,8 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (21)
     [IMPROVEMENT-ROUND] Audit every user-facing email address and
     [IMPROVEMENT-ROUND] Recurring operator email report every 6 hours to
 
-Dormant — needs a real example first `[LATER]`  (30)
-  Thumbnails  (2)
-    [LATER] `[EXAMPLE]` Vimeo's playback-rate path has no confirmed
+Dormant — needs a real example first `[LATER]`  (29)
+  Thumbnails  (1)
     [LATER] `[EASY]` A page whose only stored frames are non-default
   Captions — formats and sources with no confirmed positive example  (7)
     [LATER] CivicClerk's own version of the "no populated-captions
@@ -2772,21 +2771,6 @@ until a real example turns up. An entry leaving this section usually
 means somebody found the example, not that somebody decided to guess.
 
 ### Thumbnails
-
-- **[LATER] `[EXAMPLE]` Vimeo's playback-rate path has no confirmed
-  positive example.** WO-56 (2026-08-25) shipped speed control across all
-  four players, but Vimeo's leg is the one written from documentation
-  rather than measurement: its Player SDK documents `setPlaybackRate` as
-  0.5-2x and exposes no capability query, so the ladder is capped by hand
-  where YouTube's is asked for at runtime. Nobody has watched a real
-  Vimeo-backed meeting page change speed. Two things a real check should
-  settle: whether the SDK rejects the call on some account tiers (the
-  rejection is swallowed, so the chip would update while playback did
-  not), and whether Vimeo's own in-player "Speed" control and ours end up
-  disagreeing on screen. Good starting samples are already in
-  `CLAUDE.md`: Salisbury NC (`vimeo.com/1212025580`) and Chicago's ELMS.
-  Same standard as every other "don't claim a path works without a
-  positive example" entry here.
 
 - **[LATER] `[EASY]` A page whose only stored frames are non-default
   would advertise a `card.jpg` that 404s — unconfirmed, one query
