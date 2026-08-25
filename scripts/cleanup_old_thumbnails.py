@@ -4,17 +4,20 @@
 This reclaims storage after MAX_FRAMES_PER_PAGE has been lowered or to
 trim unbounded growth from high-traffic pages.
 
-Run from Render shell:
-  render-shell
-  cd /app
+Run from the Render shell (repo root, venv active, DATABASE_URL set by
+the environment already):
   python scripts/cleanup_old_thumbnails.py --keep 3
 """
 
-import asyncio
 import argparse
+import asyncio
 import logging
-from sqlalchemy import text
-from archive.db.engine import get_async_engine
+import sys
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -27,7 +30,14 @@ async def main(keep_per_page: int = 3, dry_run: bool = False):
         keep_per_page: How many thumbnails to keep per page (1-12)
         dry_run: If True, show what would be deleted without deleting
     """
-    engine = get_async_engine()
+    load_dotenv()
+
+    # Imported after load_dotenv() -- archive.db.engine builds its engine
+    # from DATABASE_URL at import time. Same ordering as
+    # scripts/backfill_meeting_highlights.py.
+    from sqlalchemy import text
+
+    from archive.db.engine import engine
 
     async with engine.begin() as conn:
         # Find pages with more than keep_per_page thumbnails
@@ -91,12 +101,17 @@ async def main(keep_per_page: int = 3, dry_run: bool = False):
                     WHERE meeting_page_id = :page_id
                     AND is_default = true
                     UNION ALL
-                    -- Keep: the most recent N non-default frames
-                    SELECT id FROM meeting_page_thumbnails
-                    WHERE meeting_page_id = :page_id
-                    AND is_default = false
-                    ORDER BY created_at DESC
-                    LIMIT :keep_minus_one
+                    -- Keep: the most recent N non-default frames.
+                    -- The ORDER BY/LIMIT has to live in its own wrapped
+                    -- subquery -- SQLite (and standard SQL generally)
+                    -- rejects an ORDER BY directly on a UNION ALL member.
+                    SELECT id FROM (
+                        SELECT id, created_at FROM meeting_page_thumbnails
+                        WHERE meeting_page_id = :page_id
+                        AND is_default = false
+                        ORDER BY created_at DESC
+                        LIMIT :keep_minus_one
+                    ) AS recent
                 );
                 """),
                 {"page_id": page_id, "keep_minus_one": keep_per_page - 1},
@@ -105,25 +120,36 @@ async def main(keep_per_page: int = 3, dry_run: bool = False):
             if deleted > 0:
                 logger.info(f"  Page {page_id}: deleted {deleted} thumbnails")
 
-        await conn.commit()
+        # No explicit commit here -- `engine.begin()` already wraps this
+        # whole block in one transaction and commits on clean exit; an
+        # explicit conn.commit() mid-block closes that transaction early
+        # and the next query on the same connection then raises
+        # InvalidRequestError (confirmed by actually running this against
+        # a seeded local SQLite database, not just read).
 
-        # Check final state
+        # Check final state -- byte_size is a plain int column (see
+        # MeetingPageThumbnail in archive/db/models.py), so the total is
+        # formatted in Python rather than via a Postgres-only
+        # pg_size_pretty/pg_column_size call, keeping this final report
+        # portable across the Postgres/SQLite dialects the rest of this
+        # script's DELETE logic already works on.
         result = await conn.execute(
             text("""
             SELECT
                 COUNT(DISTINCT meeting_page_id) as pages_with_thumbnails,
                 COUNT(*) as total_thumbnails,
-                pg_size_pretty(SUM(pg_column_size(image_bytes)::bigint)) as total_size
+                SUM(byte_size) as total_bytes
             FROM meeting_page_thumbnails;
             """)
         )
 
         final = result.fetchone()
+        total_bytes = final[2] or 0
         logger.info(
             f"\n✓ Cleanup complete:\n"
             f"  Pages with thumbnails: {final[0]:,}\n"
             f"  Total thumbnail rows: {final[1]:,}\n"
-            f"  Total size: {final[2]}"
+            f"  Total size: {total_bytes:,} bytes ({total_bytes / 1024 / 1024:.1f} MB)"
         )
 
 
