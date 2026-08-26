@@ -147,24 +147,26 @@ genuinely CMS-agnostic by design. No general fix for that path exists;
 worth remembering if a future best-effort ProudCity resolve looks
 suspiciously generic-titled.
 
-**Full tenant classification from both push rounds** (tier = segments
-found now / video found, no segments yet / video-shaped but empty, per
-this file's own established tier convention):
+**Full tenant classification from all three push rounds** (tier =
+segments found now / video found, no segments yet / video-shaped but
+empty, per this file's own established tier convention):
 
 | City | Result |
 |---|---|
-| Fairfax, Belvedere, San Rafael, Somerville, Santa Ana*, Delaware County IN, Montclair CA, Ela Township IL, Palmview TX*, Westhampton Beach NY | tier 1 — real transcript, pushed |
-| Miamisburg, Colma, Johnson City TX, Wilmington OH, Hellam Township PA, McKenzie County ND, Alvord TX | agenda-only — real, pushed, no video on the meeting checked |
+| Fairfax, Belvedere, San Rafael, Somerville, Delaware County IN, Montclair CA, Ela Township IL, Westhampton Beach NY | tier 1 — real transcript, pushed |
+| Miamisburg, Colma, Johnson City TX, Wilmington OH, Hellam Township PA, McKenzie County ND, Alvord TX, Cherry Township PA, Franklin Township NJ | agenda-only — real, pushed, no video on the meeting checked |
 | Carnation WA, Indian Hill OH, Munford TN, Princeton MA, Mount Pocono PA, Wendell MA | no real content on the meeting checked |
 | Rye Brook NY, Sonoma CA, Petaluma CA, Marin County CA | not real ProudCity-meetings tenants — real vendor is CivicWeb/PrimeGov |
-| Kettering OH, Bedford OH, Jarrell TX, Ruston WA, Cambridge Township PA, Bayside WI | no active `meeting` post type found |
+| Kettering OH, Bedford OH, Jarrell TX, Ruston WA, Cambridge Township PA, Bayside WI, Effingham IL, George West TX | no active `meeting` post type found |
 | Lafayette CA, Talent OR | Cloudflare-gated, domain unconfirmed |
-| Holyoke MA | hit a real YouTube 429 mid-round, push still pending a retry |
+| Holyoke MA | hit a real YouTube 429 twice (a retry after ~40 real minutes still failed) — push still pending, needs real hours per this repo's own established finding |
+| Santa Ana CA, Palmview TX | real tenants, domains registered, but no real meeting pushed yet — see the fabricated-demo-content incident above; their only checked history was the shared demo post |
 
-\* Santa Ana's and Palmview's *original* pushed rows were the fabricated
-demo content above — both deleted; neither has been re-pushed with a
-real meeting yet, since neither tenant's checked history had one. Their
-domains stay in `PROUDCITY_KNOWN_DOMAINS` — they're real tenants, just
+Not chased further: Charlotte TX and Brazos Valley COG (ambiguous —
+neither reads as a single confirmable city site) and Kalamazoo Charter
+Township MI (confirmed real `meeting` post type, but every entry
+checked across several pages was still future-dated at fetch time — no
+past meeting found to classify).
 without a real example ingested yet.
 
 **Addendum, same day — tenant enumeration round, real yield.** Three
