@@ -70,6 +70,8 @@ PROUDCITY_KNOWN_DOMAINS = frozenset(
         "www.hellamtownship.gov",
         "mckenziecountynd.gov",
         "alvordtx.gov",
+        "cherrytownship.com",
+        "franklin-twp.org",
     }
 )
 

@@ -3878,6 +3878,8 @@ def _entry_platform_from_source_url(source_url_normalized: str) -> Optional[str]
         "www.hellamtownship.gov",
         "mckenziecountynd.gov",
         "alvordtx.gov",
+        "cherrytownship.com",
+        "franklin-twp.org",
     }:
         return "proudcity"
     return None
