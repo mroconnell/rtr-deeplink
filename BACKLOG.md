@@ -88,7 +88,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (13)
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
   Product calls
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (10)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (11)
+  [NEEDS-AUDIT] svix 2.0.0 breaks Clerk webhook verification —
   [NEEDS-AUDIT] The chunk-failure budget only catches sources that fail
   [NEEDS-AUDIT] 32 places across 23 adapters swallow an exception and
   [NEEDS-AUDIT] Two pages have had a failed transcription job and
@@ -977,6 +978,27 @@ convenient.
 Reproduced against real data, but the fix is a genuine open question.
 Jurisdiction-extraction bugs live under **Platform & jurisdiction
 coverage** instead.
+
+- **[NEEDS-AUDIT] svix 2.0.0 breaks Clerk webhook verification —
+  `Webhook.verify()` returns `None` instead of the parsed event
+  (2026-08-26).** Dependabot PR #376 bumps `svix` 1.99.1 → 2.0.0; CI's
+  `tests/test_clerk_webhook.py` and `tests/test_lifecycle_emails.py` both
+  fail with `AttributeError: 'NoneType' object has no attribute 'get'`
+  at `app/main.py`'s `event.get("type", "")` — confirmed on real CI, not
+  a local fluke (the PR's `requirements.txt` also needed the usual
+  dropped-`yt-dlp`-line fix first, see `CLAUDE.md`'s yt-dlp bullet; that
+  part's unrelated and already fixed on the branch). Only usage in this
+  repo is `Webhook(signing_secret).verify(body, dict(request.headers))`
+  in `clerk_webhook()` — svix's 2.0.0 changelog doesn't call out
+  `Webhook.verify()` by name (its breaking changes are about the full
+  API client's `*Config`/`*ConfigPatch` types), so whether this is a
+  genuine behavior change, a return-type change (dict-like → something
+  `.get()`-incompatible), or a call-signature change hasn't been
+  determined yet — that's the open question. **Left PR #376 open,
+  unmerged** rather than guessing at a fix; do not merge until
+  `clerk_webhook()` is updated and this passes for real. If it's not
+  merged soon, `@dependabot recreate`/rebase will keep re-dropping the
+  yt-dlp line same as before — re-apply that fix again before re-testing.
 
 - **[NEEDS-AUDIT] The chunk-failure budget only catches sources that fail
   *consistently* — an intermittent one can hold a worker slot for hours
