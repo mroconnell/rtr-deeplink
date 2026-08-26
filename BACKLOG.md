@@ -55,7 +55,7 @@ Standing decisions — do NOT re-raise  (4)
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
   The playback-speed chip is absent in native fullscreen, and that's…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (12)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (13)
   [JUST-DO-IT] `[EASY]` Database storage cleanup — lower thumbnail…
   [JUST-DO-IT] `[EASY]` "We think we found an agenda here" is hedged for
   [JUST-DO-IT] Nothing detects a transcript that simply ends early
@@ -65,6 +65,7 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (12)
   [JUST-DO-IT] `[EASY]` `rtr-business/BUSINESS_OVERVIEW.md` still says
   [NEEDS-AUDIT] `[WAIT]` Measure whether the state/hub rebuild moved
   [JUST-DO-IT] Give `meeting_body` an adapter-supplied path — it has
+  [JUST-DO-IT] `[EASY]` Five more frozen-slug pages, a different shape
   [JUST-DO-IT] `[WAIT]` Two archived pages have slugs frozen from a
   [NEEDS-AUDIT] The saved-search digest subject's "+N more" count may
   [JUST-DO-IT] Every byte the public site serves is billed twice:
@@ -99,7 +100,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (10)
   28 well-formed IQM2 queue rows point at retired tenants…
   Some Swagit meetings have no single "whole meeting" video file…
 
-Platform & jurisdiction coverage  (34)
+Platform & jurisdiction coverage  (35)
   `[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
   `[JUST-DO-IT]` `[EASY]` Nine PrimeGov pages and two real meetings…
   `[JUST-DO-IT]` ChampDS symptom B — instant 0.2s failures from the…
@@ -124,7 +125,8 @@ Platform & jurisdiction coverage  (34)
     [NEEDS-AUDIT] Tulare County/Visalia jurisdiction misattribution —
     [LATER] Domain guesser matched a same-named US state's real portal
     [LATER] ~25 smaller consolidated city-county governments still need
-  Adapter & platform gaps  (11)
+  Adapter & platform gaps  (12)
+    [NEEDS-AUDIT] A real YouTube-backed meeting resolves as video-less
     [NEEDS-AUDIT] Brentwood eScribe resolves without video, but the
     [NEEDS-AUDIT] Vimeo captions and on-demand Whisper audio are the
     [NEEDS-AUDIT] Chicago ELMS's 473 real agenda items have nowhere
@@ -352,6 +354,15 @@ so that work reads together.
   `generic_fallback` (and `platform == "unknown"`), say something plain
   like "Agenda" for the rest, and correct the stale comment. Found while
   fixing the Soft 404 (WO-62, `BACKLOG_DONE.md`).
+  **Now visible on 14 real pages, not just hypothetical (2026-08-25).**
+  `ingest_resolution()` is truthy-gated (`page.agenda_link =
+  payload.get("agenda_link") or page.agenda_link`), so a re-ingest can
+  never *clear* a stored link. `hyland.py` nulls `agenda_link` once it has
+  real items, but the WO-63 sweep could only add — so those 14 pages now
+  render their real agenda **and** the "We think we found an agenda here"
+  line above it, pointing at the same document. Harmless, but it is the
+  clearest argument for doing this: the hedge is now demonstrably wrong on
+  live pages.
 
 - **[JUST-DO-IT] Nothing detects a transcript that simply ends early
   (2026-08-24).** The two detectable truncation forms are now both
@@ -561,6 +572,27 @@ so that work reads together.
   `meeting_body` coverage and on using `meeting_body` in search
   facets — both are currently reasoning about a field that only
   jurisdiction extraction ever writes.
+- **[JUST-DO-IT] `[EASY]` Five more frozen-slug pages, a different shape
+  from the two below — four are the literal fallback slug `meeting`
+  (2026-08-25).** Seen directly in the WO-63 Hyland sweep output:
+  `meeting`, `meeting-1e9bac`, `meeting-38ca49`, `meeting-ef5ba6`, plus
+  `2026-08-11-council-meeting` resolving with `jurisdiction=None`.
+  **Root cause is not a vendor's boilerplate title** (that's the entry
+  below) but `build_base_slug()` (`archive/utils/slugify.py:23-33`),
+  which returns the literal string `"meeting"` when jurisdiction, date
+  and title are *all* empty — then `_unique_slug()` appends a hex suffix
+  for each collision, which is where `-1e9bac` and friends come from.
+  **These pages have real metadata now**: the same sweep printed
+  `jurisdiction='Tucson, AZ'`, `'Maricopa County, AZ'` (×2) and
+  `'Sacramento County, CA'` for four of them. The slug is just frozen
+  from a first resolve that had nothing. So `/m/meeting-38ca49` is a live,
+  real Sacramento County meeting with an unreadable, unsearchable URL.
+  **Fix**: same `POST /internal/admin/reslug-page` + `_SLUG_REDIRECTS`
+  procedure as the entry below — dry-run first, then add each
+  `{old_slug: new_slug}` pair so the old permalink 301s rather than 404s.
+  The fifth (`jurisdiction=None`) needs its jurisdiction resolved first,
+  or a reslug just produces another dateless stub.
+
 - **[JUST-DO-IT] `[WAIT]` Two archived pages have slugs frozen from a
   vendor's boilerplate page title, not the meeting's — fix built
   2026-08-24, not yet run against production.** `POST
@@ -1395,6 +1427,14 @@ Centennial, Hamilton County OH, Whittier, Steamboat Springs, Concord,
 Durango, Westerville, Gilbert…). OnBase Agenda Online is not an
 agenda-only system.
 
+**Amended 2026-08-25 (WO-63):** these pages are no longer *content-free*,
+only video-free. The adapter used to discard a parsed agenda whenever
+there were no video timestamps to hang it on, so a video-less Hyland page
+held nothing at all; 14 of them were the archive's content-free
+population. They now carry their real agendas (Anchorage 34 items, Tucson
+27) and are indexable again. What is still open below is the missing
+*video*, which is a genuinely narrower problem than it was.
+
 **What does not survive:** "~4 pages, not generalisable." Seventeen
 video-less pages across ~15 tenants is a real class, and it is growing —
 three new tenants surfaced in the digest on 2026-08-23 alone
@@ -1864,6 +1904,29 @@ from a live check), but the Legistar calendar itself is still untried.
   several small Georgia ones.
 
 ### Adapter & platform gaps
+
+- **[NEEDS-AUDIT] A real YouTube-backed meeting resolves as video-less
+  because Render's IP is bot-blocked — seen live, twice (2026-08-25).**
+  Both WO-63 sweep runs printed, mid-resolve:
+  `ERROR: [youtube] 92SgT7nRbKw: Sign in to confirm you're not a bot.`
+  That is `hyland.py:187-196`'s YouTube delegation on
+  `anchorage-ak-2026-07-02-amats-technical-advisory-committee`:
+  `extract_video_id()` **did** find a real embed, so this page genuinely
+  has video — the vendor's `YoutubePlayer.cshtml` template, confirmed on a
+  real Anchorage meeting 2026-08-16. We just can't fetch it from Render.
+  **Why this is not the already-closed `IpBlocked` entry**
+  (`BACKLOG_DONE.md`, 2026-08-20): that one is the *transcript-fetch*
+  daily job, which aborts and self-clears. This is a **resolve-path**
+  failure with a different, worse consequence — the page is stored as
+  having no video at all, and nothing retries it. Exactly the residential-
+  vs-Render-IP asymmetry `CLAUDE.md`'s yt-dlp bullet says to suspect
+  first.
+  **Open questions**: how many archived pages are video-less for this
+  reason rather than genuinely lacking video (the delegation's failure
+  isn't recorded distinguishably today — it just yields no `video_url`);
+  and whether it is transient like the transcript-side block or sticky for
+  Render's egress. Cheapest first step: re-resolve that one page and see
+  whether `video_url` ever comes back.
 
 - **[NEEDS-AUDIT] Brentwood eScribe resolves without video, but the
   meeting page visibly has one (reported by Ryan 2026-08-26).**
