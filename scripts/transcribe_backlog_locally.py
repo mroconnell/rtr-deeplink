@@ -736,10 +736,34 @@ async def _thermal_pace(
 
 
 async def _get_candidates(
-    session: aiohttp.ClientSession, limit: Optional[int]
+    session: aiohttp.ClientSession, limit: Optional[int], *, newest_first: bool = False
 ) -> List[dict]:
+    """`/internal/transcription-backlog` itself only ever returns oldest-
+    first (crud.list_transcription_backlog_candidates()'s own ORDER BY,
+    no other option server-side) -- the same ordering the cloud workers'
+    own idle-time auto-generation (find_auto_transcription_candidate())
+    independently uses. With ~650 candidates and three independent
+    consumers (two cloud workers plus this script) all reaching for the
+    same end of the queue, a real overlap-in-progress risk exists: this
+    script and a worker both picking the same meeting at nearly the same
+    time, each transcribing it independently (wasted duplicate compute,
+    not a correctness bug -- see the module docstring's dedup-by-source
+    note -- but still real waste on a long run).
+
+    `newest_first`, added 2026-08-23 at the user's own suggestion:
+    deliberately reaches for the *opposite* end of the queue instead, so
+    a long local run and the cloud workers' own oldest-first sweep stay
+    mostly out of each other's way. No server-side "give me newest first"
+    option exists, so this fetches the FULL current backlog (limit=None
+    on the server call -- cheap at today's ~650-row scale, this script
+    already does an unbounded fetch by default whenever --limit itself
+    isn't passed) and slices the last `limit` entries off the end
+    client-side instead, then reverses that slice so processing still
+    proceeds newest-to-less-new within the selected batch, mirroring the
+    normal oldest-first mode's own left-to-right order.
+    """
     params = {}
-    if limit is not None:
+    if limit is not None and not newest_first:
         params["limit"] = str(limit)
     data = await _request_json(
         session,
@@ -750,7 +774,10 @@ async def _get_candidates(
         params=params,
         timeout=INGEST_TIMEOUT,
     )
-    return data.get("pages", [])
+    pages = data.get("pages", [])
+    if newest_first:
+        pages = list(reversed(pages[-limit:] if limit is not None else pages))
+    return pages
 
 
 async def _ingest(
@@ -1217,6 +1244,19 @@ async def main() -> None:
         "--limit", type=int, default=None, help="Process at most this many meetings"
     )
     parser.add_argument(
+        "--newest-first",
+        action="store_true",
+        help="Target the newest end of the backlog queue instead of the oldest. Both the two "
+        "cloud workers' own idle-time auto-generation and this script's default ordering reach "
+        "for the oldest candidates first -- with ~650 candidates and three independent "
+        "consumers, that's a real (if rare-per-meeting) risk of this script and a worker "
+        "transcribing the same meeting independently around the same time. This flag has this "
+        "script work the opposite end instead, so a long local run and the workers' own sweep "
+        "mostly stay out of each other's way. See _get_candidates()'s own docstring for the "
+        "mechanics (fetches the full current backlog and slices client-side -- no server-side "
+        "'newest first' option exists). Ignored when --url is set.",
+    )
+    parser.add_argument(
         "--url",
         default=None,
         help="Transcribe one specific meeting URL directly, bypassing the oldest-first backlog "
@@ -1320,7 +1360,7 @@ async def main() -> None:
     # Python source.
     logger.info(
         "Run started: model_size=%s (%s), cpu_threads=%s (%s), chunk_cooldown_seconds=%s, "
-        "limit=%s, dry_run=%s, chunk_seconds=%s, promote=%s, resume=%s, target=%s",
+        "limit=%s, newest_first=%s, dry_run=%s, chunk_seconds=%s, promote=%s, resume=%s, target=%s",
         model_size,
         "explicit --model-size" if args.model_size else "auto-picked from local RAM",
         cpu_threads,
@@ -1329,6 +1369,7 @@ async def main() -> None:
         else "auto-picked from local core count",
         args.chunk_cooldown_seconds,
         args.limit if args.limit is not None else "(none -- full backlog)",
+        args.newest_first,
         args.dry_run,
         args.chunk_seconds,
         args.promote,
@@ -1377,7 +1418,9 @@ async def main() -> None:
             # and losing it here means losing the whole run before it even
             # starts (the real incident this whole change responds to).
             try:
-                pages = await _get_candidates(session, args.limit)
+                pages = await _get_candidates(
+                    session, args.limit, newest_first=args.newest_first
+                )
             except Exception as e:
                 logger.error(
                     "Could not fetch the candidate list from %s, even after retrying: %s "
