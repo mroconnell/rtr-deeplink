@@ -157,8 +157,8 @@ empty, per this file's own established tier convention):
 | Miamisburg, Colma, Johnson City TX, Wilmington OH, Hellam Township PA, McKenzie County ND, Alvord TX, Cherry Township PA, Franklin Township NJ | agenda-only — real, pushed, no video on the meeting checked |
 | Carnation WA, Indian Hill OH, Munford TN, Princeton MA, Mount Pocono PA, Wendell MA | no real content on the meeting checked |
 | Rye Brook NY, Sonoma CA, Petaluma CA, Marin County CA | not real ProudCity-meetings tenants — real vendor is CivicWeb/PrimeGov |
-| Kettering OH, Bedford OH, Jarrell TX, Ruston WA, Cambridge Township PA, Bayside WI, Effingham IL, George West TX | no active `meeting` post type found |
-| Lafayette CA, Talent OR | Cloudflare-gated, domain unconfirmed |
+| Kettering OH, Bedford OH, Jarrell TX, Ruston WA, Cambridge Township PA, Bayside WI, Effingham IL, George West TX, Lafayette CA | no active `meeting` post type found |
+| Talent OR | genuinely Cloudflare-gated — resolved for good |
 | Holyoke MA | hit a real YouTube 429 twice (a retry after ~40 real minutes still failed) — push still pending, needs real hours per this repo's own established finding |
 | Santa Ana CA, Palmview TX | real tenants, domains registered, but no real meeting pushed yet — see the fabricated-demo-content incident above; their only checked history was the shared demo post |
 
@@ -167,6 +167,26 @@ neither reads as a single confirmable city site) and Kalamazoo Charter
 Township MI (confirmed real `meeting` post type, but every entry
 checked across several pages was still future-dated at fetch time — no
 past meeting found to classify).
+
+**Both remaining "Cloudflare-gated" entries resolved for good, 2026-08-26
+(same day) — applying `rtr-upcoming`'s header-negotiation finding
+settled each differently, worth recording precisely:**
+- **Lafayette, CA (`lovelafayette.org`) was never a ProudCity site.**
+  Its Akamai block needed the *full* Chrome header set verbatim (same
+  shape as `rtr-upcoming`'s own Portola Valley finding — Akamai
+  fingerprints the whole header set, not just the user-agent), which
+  did get past the block — but landed on a real, live Angular
+  application, not WordPress. The original web-search lead was simply
+  wrong about the platform. Moved to "no active `meeting` post type
+  found," not left as a reachability problem, since reachability was
+  never actually the issue.
+- **Talent, OR (`cityoftalent.org`) is genuinely Cloudflare-challenge-
+  gated** — a real "Just a moment..." JS interstitial, confirmed live,
+  not a header/UA check the honest-identity trick can get past. Per
+  this repo's own standing decision, never attempted to solve it. A
+  real, confirmed dead end on this specific domain, not an open
+  question — if Talent's real content is needed later, it needs a
+  different domain or platform, not a retried fetch here.
 without a real example ingested yet.
 
 **Addendum, same day — tenant enumeration round, real yield.** Three
