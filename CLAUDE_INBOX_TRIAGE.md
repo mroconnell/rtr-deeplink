@@ -526,67 +526,16 @@ whether the Render-shell cleanup steps (`cleanup_old_thumbnails.py` +
 measured via `GET /internal/db-size`, is unknown from this repo. No new
 entry — the existing `[HUMAN]` item already covers exactly this.
 
-**One new finding:**
-
-**[Unconfirmed] "Web Service rtr-deeplink exceeded its memory limit"
-(Render, 2026-08-26T01:13:58Z).** One instance of the main resolver
-service (`rtr-deeplink`, the `app/` FastAPI service — not Archive or the
-transcription worker) hit its memory limit and was auto-restarted by
-Render; brief unavailability during the restart, self-recovered, no
-follow-up alert since. Render's own email gives only the generic three
-possible causes (leak / traffic spike / undersized instance), and this
-is the *first* occurrence of this alert this Routine has seen — nothing
-in `BACKLOG.md`, `BACKLOG_DONE.md` or this file's prior sections
-mentions a memory issue on `rtr-deeplink` specifically.
-
-Investigated the code directly since Render's dashboard/metrics are
-auth-walled: `rtr-deeplink` (`app/main.py`) does not run any of the
-obviously memory-heavy work itself — `/meetings`, `/state/*`, `/j/*`,
-`/coverage` and `/account/saved` are all thin reverse-proxies to the
-Archive service (`_proxy_to_archive()`, `app/main.py:1565`) that stream
-the response via `response.content.iter_chunked(65536)` rather than
-buffering it, and the only worker-adjacent import in `app/main.py` is
-`probe_duration`/`is_plausible_meeting_duration` from
-`app/platforms/media_probe.py` — a bounded `ffprobe` subprocess call for
-duration metadata, not a full audio/video pull. No unbounded in-memory
-cache, no `list_pages()`-style "load every segments blob" pattern was
-found in `app/` (that specific pattern is what previously OOM'd the
-**Archive** service on 2026-08-17 — see `render.yaml`'s comment on
-`rtr-deeplink-archive`'s `plan: standard` line and
-`BACKLOG_DONE.md`'s "Search: move to a materialized/indexed column"
-entry).
-
-**What is a real, load-bearing fact, not speculation**: `rtr-deeplink`
-is the *only* one of this repo's four Render services still on
-`plan: starter` (512MB) — `rtr-deeplink-archive` and both transcription
-workers are all `plan: standard`, and archive's own upgrade
-(2026-08-17) was made for exactly this failure shape (`"Ran out of
-memory (used over 512MB)"`) on the smallest plan. That doesn't prove
-`rtr-deeplink` needs the same upgrade — a single restart from one
-instance, self-recovered, could just as easily be an ordinary traffic
-spike hitting the smallest available plan — but it means this alert
-landing on the one remaining `starter`-plan service is not a coincidence
-worth ignoring either.
-
-**Impact**: one brief service interruption (duration unknown — Render's
-email doesn't state how long the restart took) on the main public-facing
-resolver, 2026-08-26T01:13:58Z, auto-recovered. No user reports or
-follow-up alerts since. If this recurs or clusters, it's the same
-outage shape as the 2026-08-17 Archive OOM, just on the service that
-handles `/api/resolve` and the homepage directly. Fix effort if it does
-need the same treatment as Archive: trivial (`plan: starter` →
-`plan: standard` in `render.yaml`, one line, same pattern already used
-for the other three services) — the open question is whether it's
-warranted yet, not how to do it.
-
-**Open question for Ryan**: is this a one-off (worth ignoring unless it
-recurs), or has actual production memory/CPU usage on `rtr-deeplink`
-already been checked on the Render dashboard? This Routine has no way to
-see the service's real memory graph or confirm whether the restart
-correlates with a specific request pattern (e.g., several concurrent
-`/api/resolve` calls each spawning an `ffprobe` subprocess) — that needs
-either dashboard access or a follow-up investigation with log access
-this Routine doesn't have.
+**One finding, promoted 2026-08-26 into `BACKLOG.md`'s "Production
+actions only Ryan should take" and removed from here.** `rtr-deeplink`
+(the main resolver, `app/` — not Archive or the worker) hit its memory
+limit once and auto-restarted (2026-08-26T01:13:58Z); self-recovered, no
+follow-up alerts. Not urgent — a single occurrence, not a cluster — but
+worth a real entry since `rtr-deeplink` is the only one of the four
+Render services still on `plan: starter`, same failure shape Archive hit
+before its 2026-08-17 upgrade. See `BACKLOG.md` for the full write-up
+and the open question for Ryan (check the real memory graph; upgrade the
+plan only if it recurs).
 
 ## 2026-08-25
 
