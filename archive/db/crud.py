@@ -3648,6 +3648,18 @@ DIRECT_PLATFORMS: dict[str, str] = {
     "open_media": "open.media",
     "castus": "Castus",
     "suiteone": "SuiteOne Media",
+    # ProudCity (WordPress `wp-proud-meeting` plugin) -- same shape as
+    # open_media above: proudcity.py delegates to
+    # YouTubeAssetFinder.resolve_video_id() on the (common) video-found
+    # path and never reassigns `resolved.platform` there, so most real
+    # pushed rows carry platform="youtube", recovered via
+    # _entry_platform_from_source_url() (see _YOUTUBE_DELEGATING_PLATFORMS
+    # below). Unlike open_media, its own "proudcity" label CAN survive on
+    # a real pushed row -- the no-video/external-video-pointer path
+    # returns platform=self.platform_name directly, and that row is still
+    # pushable when real agenda_items (bookmarks) or an agenda_link exist
+    # even with no video. See proudcity.py's own module docstring.
+    "proudcity": "ProudCity",
     # Not a civic-video vendor like everything else in this dict -- Vimeo
     # is a general-purpose video host that a real, confirmed set of small
     # local governments use directly as their meeting-video platform
@@ -3774,7 +3786,9 @@ COVERAGE_EXCLUSIONS: dict[str, str] = {
 # DIRECT_PLATFORMS one -- hence the name change from
 # _YOUTUBE_DELEGATING_CUSTOM_PLATFORMS, this was never really a
 # custom-only property.
-_YOUTUBE_DELEGATING_PLATFORMS = frozenset({"lims", "slc", "clerkbase", "open_media"})
+_YOUTUBE_DELEGATING_PLATFORMS = frozenset(
+    {"lims", "slc", "clerkbase", "open_media", "proudcity"}
+)
 
 # How many example rows to show per platform on /coverage. Granicus gets
 # more because it's this app's most common platform by a wide margin (see
@@ -3841,6 +3855,21 @@ def _entry_platform_from_source_url(source_url_normalized: str) -> Optional[str]
     # platform table).
     if netloc.endswith("open.media"):
         return "open_media"
+    # Duplicated from app/platforms/proudcity.py's PROUDCITY_KNOWN_DOMAINS
+    # for the same reason as everything else in this function -- archive/
+    # doesn't import from app/. Keep these two lists in sync by hand when
+    # a new ProudCity tenant is confirmed and registered there.
+    if netloc in {
+        "townoffairfaxca.gov",
+        "www.cityofbelvedere.org",
+        "www.cityofsanrafael.org",
+        "www.somervillenj.org",
+        "www.holyoke.org",
+        "cityofmiamisburg.com",
+        "santa-ana.gov",
+        "www.colma.ca.gov",
+    }:
+        return "proudcity"
     return None
 
 
