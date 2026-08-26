@@ -102,7 +102,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (11)
   28 well-formed IQM2 queue rows point at retired tenants…
   Some Swagit meetings have no single "whole meeting" video file…
 
-Platform & jurisdiction coverage  (36)
+Platform & jurisdiction coverage  (37)
   `[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
   `[JUST-DO-IT]` `[EASY]` Nine PrimeGov pages and two real meetings…
   `[JUST-DO-IT]` ChampDS symptom B — instant 0.2s failures from the…
@@ -127,12 +127,13 @@ Platform & jurisdiction coverage  (36)
     [NEEDS-AUDIT] Tulare County/Visalia jurisdiction misattribution —
     [LATER] Domain guesser matched a same-named US state's real portal
     [LATER] ~25 smaller consolidated city-county governments still need
-  Adapter & platform gaps  (13)
+  Adapter & platform gaps  (14)
     [NEEDS-AUDIT] A real YouTube-backed meeting resolves as video-less
     [NEEDS-AUDIT] Brentwood eScribe resolves without video, but the
     [NEEDS-AUDIT] Vimeo captions and on-demand Whisper audio are the
     [NEEDS-AUDIT] Chicago ELMS's 473 real agenda items have nowhere
     [JUST-DO-IT] `[EASY]` `youtube_channel.py`'s flat channel listing has
+    [JUST-DO-IT] New platform: ProudCity — build `proudcity.py`, real
     [JUST-DO-IT] `vimeo.com/showcase/{id}/embed` isn't claimed by
     [JUST-DO-IT] Residual gaps left behind by WO-30's city-YouTube-
     [LATER] `[EASY]` PrimeGov's own better date/title still isn't
@@ -2061,6 +2062,35 @@ from a live check), but the Legistar calendar itself is still untried.
   title-parse as the fallback for anything older than 15 uploads back.
   Doesn't touch the separate, harder problem below (Render's IP getting
   YouTube-blocked) — this only fixes *dating* a video once one is found.
+
+- **[JUST-DO-IT] New platform: ProudCity — build `proudcity.py`, real
+  evidence already gathered end-to-end (2026-08-26).** Full investigation
+  in `BACKLOG_DONE.md` (same date) — source-verified against the actual
+  `wp-proud-meeting`/`wp-proud-theme` plugin code plus 5 live tenants
+  (Belvedere/Petaluma/Marin County/Fairfax/San Rafael, all CA), not
+  inferred. **What to build, in priority order**: (1) recognize the
+  `/meetings/{slug}` permalink + `wp-json/wp/v2/meetings` REST listing
+  as the platform signature and enumeration path — the REST API is
+  already validated in production for agenda discovery; (2) extract
+  `data-youtube-seek="{seconds}"` bookmark anchors into real
+  `agenda_items` — generic_fallback.py has no way to find these today,
+  confirmed live-dropped on a real Fairfax resolve; (3) pull the
+  `agenda`/`agenda_packet`/`minutes` postmeta rich text directly rather
+  than only the single best-effort PDF link. **Explicitly not the
+  point of this adapter**: video itself. It already resolves today via
+  `generic_fallback.py`'s existing YouTube-embed detection — confirmed
+  live via `/api/resolve` on a real Fairfax meeting, correct video +
+  jurisdiction, `best_effort: true`. The adapter's job is promoting that
+  out of best-effort and adding the structured data around it, not
+  finding the video. **Also explicitly not fixed by this**: transcripts
+  — every ProudCity meeting delegates to the same yt-dlp caption fetch
+  as every other YouTube-backed platform, and that exact Fairfax test
+  caught the Render IP block live, mid-session. Ships with the same gap
+  as the 184-jurisdiction note under **Reliability, ops & cost** until
+  that's separately resolved. Two open items before/while building:
+  Petaluma and Marin County are both Cloudflare-gated (unresolved, not
+  confirmed broken); `video_style === 'external'` is a second, plain-
+  link video field of unknown real prevalence.
 
 - **[JUST-DO-IT] `vimeo.com/showcase/{id}/embed` isn't claimed by
   `detect_platform()`, so a real Vimeo listing falls to the best-effort

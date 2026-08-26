@@ -6,6 +6,109 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## ProudCity — new platform, real evidence gathered end-to-end, nothing built yet [Investigated 2026-08-26]
+
+A new vendor (`proudcity.com`, WordPress-based government CMS,
+`github.com/proudcity/wp-proudcity` core) surfaced from a real Cablecast/
+CDX exploration conversation, then user-confirmed against 5 known real
+tenants: Belvedere, Petaluma, Marin County, Fairfax, San Rafael (all CA).
+Everything below is sourced — either the actual open-source plugin/theme
+code, or a live fetch against a real tenant — not inferred from marketing
+copy, per this file's own house rule.
+
+**What ProudCity actually is, confirmed from source.** The video/agenda
+feature is a separate plugin, `wp-proud-meeting`
+(`github.com/proudcity/wp-proud-meeting`), which registers a real
+WordPress `meeting` custom post type: fixed permalink slug `/meetings/
+{descriptive-slug}` (`'rewrite' => ['slug' => 'meetings', ...]` in
+`wp-proud-meeting.php` — hardcoded, not customizable per tenant, unlike
+each city's own *listing* page path, which varies: `/departments/
+meetings-agendas/` for Fairfax, `/city-council-meetings/` for San
+Rafael). `'show_in_rest' => true, 'rest_base' => 'meetings'` means every
+tenant exposes a real, standard, unauthenticated **`GET /wp-json/wp/v2/
+meetings`** — confirmed live on Belvedere/Fairfax/San Rafael, a complete
+per-tenant meeting listing with real dates, slugs, and permalinks. This
+is a materially better discovery mechanism than CDX/Wayback for this
+platform: CDX only has what got crawled, this has everything.
+
+**Agenda discovery: genuinely solved, already in production use
+(Ryan's own words).** Real per-meeting rich text (`agenda`/
+`agenda_packet`/`minutes` fields, stored as postmeta, rendered via
+`wpautop()`) plus an optional attached document, resolved via
+`wp_get_attachment_url()` — a real WP-Stateless (GCS-backed) media
+library URL, confirmed live: `storage.googleapis.com/proudcity/
+{tenant-slug}/{year}/{month}/{file}.pdf`. That bucket path is itself a
+real, tenant-labeled shared namespace, same shape as Hyland's
+`hylandcloud.com`/`databankcloud.com` apex domains — a CDX domain-wide
+scan of `storage.googleapis.com/proudcity` is a plausible way to find
+*more* tenants beyond the 5 known ones, untried this session.
+
+**Video: the individual page already half-resolves TODAY with zero new
+code — confirmed live, not assumed.** The public template
+(`wp-proud-theme/templates/content-single-meeting.php`, a *different*
+repo from the plugin — the plugin's own admin-side JS was a red herring
+for the front end) renders a plain, static, server-rendered `<iframe
+src="https://www.youtube.com/embed/<?php echo $video ?>...">` — no JS
+execution needed. `generic_fallback.py`'s `_find_youtube_video_id()`
+already matches this exact shape as its tier-1 case (`youtube.py`'s own
+`_VIDEO_ID_RE`, which every unknown-platform page already runs through).
+Proven, not inferred: `POST /api/resolve` against a real Fairfax URL
+(`townoffairfaxca.gov/meetings/town-council-meeting-august-5-2026/`)
+returned `platform: "youtube"`, the correct `video_url`, and even a
+correct `jurisdiction: "Town of Fairfax, CA"` and a best-effort
+`agenda_link` — all through the *existing* generic fallback, `best_effort:
+true`. Four real video ids cross-checked against YouTube's own oEmbed
+endpoint, all genuine and correctly titled: Fairfax `LerZN-sctuY`
+(Aug 5 2026 Town Council) and `dImo1WtbHNk` (Jul 1 2026), San Rafael
+`9jqdrH0cLm0` (Park & Rec, Aug 20 2026), Belvedere `_TE980C6tj8`
+(Jan 12 2026 Council).
+
+**So a dedicated adapter's real marginal value is narrower than "find
+the video" — it's three specific things generic_fallback structurally
+cannot do:**
+1. **`youtube_bookmarks` → real `agenda_items`.** The theme template
+   renders real per-item deep-link timestamps as static
+   `data-youtube-seek="{seconds}"` anchors next to a label — same shape
+   this app already extracts from Seattle Channel/LIMS — but
+   generic_fallback has no ProudCity-aware code to look for them, so
+   they're silently dropped today.
+2. **Promotion out of `best_effort`.** Same underlying data, but the
+   tentative "we're trying our best" UI and low-trust queue placement
+   go away once a real adapter (not the generic fallback) claims the
+   platform.
+3. **Tenant-wide enumeration via the REST API**, not one-URL-at-a-time
+   resolution — the actual lever for growing coverage across however
+   many real ProudCity tenants exist, not just the 5 already known.
+
+**What this does NOT improve, stated plainly**: transcripts. Every
+ProudCity meeting's caption fetch runs through the identical yt-dlp call
+every other YouTube-delegating platform uses, and the live `/api/
+resolve` test above caught it **actively blocked in real time**:
+`"YouTube is currently blocking automated caption requests from our
+server"` — the same Render-IP block already sized at 184 jurisdictions
+in the "bulk re-resolve gets this IP blocked by YouTube" entry under
+**Reliability, ops & cost**. Nothing about ProudCity's structure touches
+that wall; a `proudcity.py` adapter would ship with the exact same
+transcript gap every other YouTube-backed page has today.
+
+**Two real, live-confirmed caveats, not yet resolved:**
+- **Petaluma and Marin County are both Cloudflare-gated** — a direct
+  server-side fetch of either's `/wp-json/wp/v2/meetings` returns a real
+  "Attention Required" challenge page, not a clean 403/200. Same class
+  of gate this repo has a standing decision never to auto-solve (the
+  Vimeo/Spokane precedent). Reachability from these two specifically is
+  unresolved, not confirmed broken.
+- **`external_video` is a real second video field** (`video_style ===
+  'external'`) that renders as a plain outbound `<a href>` link, not an
+  embed — a "we think the video is here" pointer case, not a directly
+  playable URL. Unconfirmed how common this is vs. the native YouTube
+  field on any real tenant checked so far.
+
+**Not built**: no `proudcity.py` adapter exists yet. This entry is the
+full evidence trail; see `BACKLOG.md`'s live entry for what to build and
+why it clears this repo's "verify against a real live URL first" bar
+before starting.
+
 ## Hyland threw away 14 real agendas because the meetings had no video (WO-63) [Done 2026-08-25]
 
 Direct follow-on from WO-62's production audit, and a case where the
