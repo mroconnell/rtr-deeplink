@@ -1,15 +1,3 @@
-https://pusd.granicus.com/player/clip/890?view_id=15
-https://pvestates.granicus.com/player/clip/2016
-https://raleigh.granicus.com/player/clip/7884
-https://ravalli-mt.granicus.com/player/clip/2214
-https://rdale.granicus.com/player/clip/1387
-https://red-wing.granicus.com/player/clip/2563
-https://redmond.granicus.com/player/clip/3124?view_id=2
-https://redmond-or.granicus.com/player/clip/361?view_id=1
-https://redondo.granicus.com/player/clip/2100
-https://redwoodcity-ca.granicus.com/player/clip/3588
-https://richmond.granicus.com/player/clip/5976?view_id=28
-https://richmondva.granicus.com/player/clip/4930?view_id=1
 https://riovista-ca.granicus.com/player/clip/520?view_id=1
 https://rivertoncity.granicus.com/player/clip/223?view_id=1
 https://rockwall-tx.granicus.com/player/clip/1493
