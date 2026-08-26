@@ -55,8 +55,9 @@ Standing decisions — do NOT re-raise  (4)
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
   The playback-speed chip is absent in native fullscreen, and that's…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (12)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (13)
   [JUST-DO-IT] `[EASY]` Database storage cleanup — lower thumbnail…
+  [HUMAN] `[WAIT]` Re-resolve the 14 Hyland pages WO-63 fixed — the code
   [JUST-DO-IT] `[EASY]` "We think we found an agenda here" is hedged for
   [JUST-DO-IT] Nothing detects a transcript that simply ends early
   [JUST-DO-IT] `[EASY]` Nothing notices a dead worker pool — chunks
@@ -337,6 +338,19 @@ so that work reads together.
   psql -c 'VACUUM FULL ANALYZE;'                                # reclaim space
   ```
   See `STORAGE_CLEANUP_2026_08_25.md` for full runbook. No user-facing impact — default thumbnails unchanged, timestamp-specific frames fall back to default if deleted.
+
+- **[HUMAN] `[WAIT]` Re-resolve the 14 Hyland pages WO-63 fixed — the code
+  is fixed, the already-archived pages are not (2026-08-25).** WO-63
+  stopped `hyland.py` discarding a parsed agenda just because the meeting
+  had no video (full write-up in `BACKLOG_DONE.md`). But nothing
+  re-resolves an already-archived page on its own, so those 14 pages still
+  hold nothing and stay `noindex`ed until they are re-resolved — the same
+  general gap `scripts/backfill_archived_pages.py` exists for.
+  **What to run** (from the Render shell, per Standing decisions — not
+  from a laptop): re-resolve just the `hyland` platform pages, then
+  re-check with `GET /internal/thin-page-audit`, which should drop from 16
+  content-free pages to 2. Their agendas are real and sizeable: Anchorage
+  alone is 34 items, Tucson 27.
 
 - **[JUST-DO-IT] `[EASY]` "We think we found an agenda here" is hedged for
   every adapter, including the seven that don't guess (2026-08-25).**

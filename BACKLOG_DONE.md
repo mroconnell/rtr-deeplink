@@ -6,6 +6,86 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Hyland threw away 14 real agendas because the meetings had no video (WO-63) [Done 2026-08-25]
+
+Direct follow-on from WO-62's production audit, and a case where the
+measurement pointed at a cause nobody would have guessed from the code.
+
+**How it surfaced.** `GET /internal/thin-page-audit` reported 16
+content-free pages out of 2,629 — and 14 were `hyland`. One adapter, 88%
+of the population. That concentration is what made it worth chasing:
+16 pages is a rounding error, but "one adapter produces almost all of
+them" is a bug.
+
+**The first hypothesis was wrong, and worth recording.** The `BACKLOG.md`
+entry filed from that measurement said the item regexes (which key on a
+`loadAgendaItem(` JS call) must be missing a third Hyland agenda shape,
+and proposed fetching a real tenant page to find out. That was a
+reasonable read of the code and it was wrong. The regexes are fine. Two
+checks against fixtures already in this repo settled it in a minute:
+
+```
+tucson_view_meeting_agenda.html        A=27 items   B=27 items
+anchorage_view_agenda_document.html    A=0          B=34 items
+santabarbara_view_agenda_document.html A=0          B=18 items
+concord_view_agenda_document.html      A=0          B=23 items
+```
+
+Every one of those agendas parses. The items were being discarded
+**before the regex ever ran**.
+
+**The real cause**, `hyland.py`'s `_build_agenda_items()`:
+
+```python
+if not agenda_html or not event_points:
+    return []
+```
+
+`event_points` comes from `var itemEventPoints = {...}`, which is the
+**video seek map**. A meeting with no video has no seek map, so
+`event_points` is `{}` and the function returned `[]` on that basis
+alone — throwing away a fully-parsed agenda because there was nothing to
+seek into. Then `hyland.py:230-231` (`if agenda_items: agenda_link =
+None`) left the bare `agenda_link` in place, and the page ended up
+holding nothing but a pointer off-site. That is why every one of the 14
+had no video: the missing video *caused* the missing agenda.
+
+Worth noting the behaviour was known and deliberate — two existing tests
+asserted `agenda_items == []` for exactly this shape, and Santa Barbara's
+even said the items were dropped *"even though real item text exists in
+the document"*. What nobody had connected was the consequence: those
+pages then hold nothing at all, get indexed, and read as Soft 404s.
+
+**The fix.** Drop the `event_points` gate; when there is no seek map,
+still parse the items and emit them at `start=0`, in document order
+(which is agenda order). No template work was needed, because both
+renderers already have an explicit heuristic for this: more than one item
+sharing a start means "this source doesn't provide real per-item
+timestamps", so `meeting_page.html` renders a plain unlinked outline and
+says so in as many words, `player.js`'s `renderAgenda()` mirrors it, and
+the `Clip` "key moments" structured data guards on the same expression
+and correctly stays out. The timestamped path is untouched and still
+sorts by real seek position.
+
+One shape deliberately not covered: a single-item agenda, where
+`length > 1` makes those heuristics false and it renders as one clickable
+`[0:00]`. No real one-line agenda has been seen, and the alternative is a
+schema change to carry "untimed" explicitly.
+
+**Tests.** The two tests asserting the old behaviour are inverted with the
+reasoning inline. Three added: the Anchorage fixture (one of the 14 real
+pages) recovering all 34 items untimed; the timestamped path still winning
+when a real `itemEventPoints` map exists, with distinct sorted starts; and
+unparseable HTML still returning `[]`, so dropping the gate can't
+manufacture a fake agenda.
+
+**Verified**: ruff check + format clean, 1811 passed / 16 skipped, both
+alembic checks clean. No schema change.
+
+**Residual**: the code is fixed, the 14 already-archived pages are not —
+nothing re-resolves an archived page on its own. Live entry in
+`BACKLOG.md` with what to run.
+
 ## A bare agenda link was never content: the Soft 404 fix, and the two pages it does not explain (WO-62) [Done 2026-08-25]
 
 WO-61 left "Soft 404" open, blocked on the affected-URL list. Ryan supplied
@@ -120,10 +200,33 @@ clean (two files reformatted, both touched here), **1798 passed / 16
 skipped**, both `alembic check`s clean after `alembic upgrade head`. No
 schema change, so no migration. TOC regenerated and idempotent.
 
-The production numbers are Ryan's to read:
-`curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" "$ARCHIVE_BASE_URL/internal/thin-page-audit"`,
-and `?slugs=fairview-tn-2025-10-02-regular-meeting` for the direct answer on
-the page Google actually flagged.
+### The measured result (run in production 2026-08-25, same day)
+
+```
+total_pages 2629 | empty 0 | agenda_link_only 16 | has_content 2613
+agenda_link_only_by_platform: hyland 14, champds 1, unknown 1
+```
+
+**16 pages, 0.6% of the archive** — small enough that no narrowing by
+platform was needed, which is exactly what shipping the audit alongside
+the fix was for. Fairview (the page Google flagged) is in the list, at
+`agenda_text_chars: 0`.
+
+Two things the number said that the fix didn't anticipate:
+
+* **`empty` is now 0.** The bucket that motivated the original 2026-08-17
+  predicate — 17 of ~1,200 pages then — is empty today. Every one of those
+  pages has since been filled in by a recheck, with no un-hide step. That
+  is the query-time-predicate design working exactly as its docstring
+  argued it would, confirmed rather than asserted for the first time.
+* **One adapter is 88% of the population.** `hyland` is 14 of 16, and on
+  Hyland an `agenda_link` specifically means agenda *parsing failed*
+  (`hyland.py:230-231` nulls it whenever items were found). So the fix is
+  more correct than the reasoning behind it claimed: it was not just
+  counting a bare link as content, it was counting a parse failure as
+  content. Filed as its own `[NEEDS-AUDIT]` entry in `BACKLOG.md` with the
+  one fetch that would settle it — fixing it would turn 14 content-free
+  pages into real agenda pages.
 
 ## Inbox-triage promotion pass: four fixes, two stale claims, one refuted finding (WO-61) [Done 2026-08-25]
 
