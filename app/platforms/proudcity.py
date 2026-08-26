@@ -54,6 +54,22 @@ PROUDCITY_KNOWN_DOMAINS = frozenset(
         "cityofmiamisburg.com",
         "santa-ana.gov",
         "www.colma.ca.gov",
+        # Added the same day, second enumeration/push round -- real video
+        # confirmed and pushed:
+        "delawarecounty.in.gov",
+        "www.cityofmontclair.org",
+        "elatownship.gov",
+        "cityofpalmview.gov",
+        "www.westhamptonbeach.gov",
+        # Confirmed real (agenda content pushed) but no video found on the
+        # meeting checked -- included so a re-resolve gets the reliable
+        # jurisdiction/agenda_items treatment rather than generic_fallback's
+        # best-effort one, not because video is expected here.
+        "www.johnsoncitytx.org",
+        "wilmingtonohio.gov",
+        "www.hellamtownship.gov",
+        "mckenziecountynd.gov",
+        "alvordtx.gov",
     }
 )
 
