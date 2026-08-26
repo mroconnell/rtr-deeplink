@@ -2092,6 +2092,20 @@ from a live check), but the Legistar calendar itself is still untried.
   confirmed broken); `video_style === 'external'` is a second, plain-
   link video field of unknown real prevalence.
 
+  **Sequencing, decided 2026-08-26**: tenant *enumeration* (finding more
+  real ProudCity domains beyond the 5 known) doesn't need to wait for
+  this adapter — it's useful on its own (sizes the real opportunity, and
+  since these pages already best-effort-resolve via `generic_fallback.py`
+  today, running newly-found tenants through `/api/resolve` grows real
+  production coverage immediately, adapter or not). **Re-checking
+  already-archived/failed pages against this improvement does need to
+  wait** — before the adapter exists there's nothing new for a
+  previously-failed page to gain by re-resolving, since generic_fallback
+  already handles the video half. Once `proudcity.py` ships: sweep
+  `/internal/low-trust-pages` and any prior no-video/no-jurisdiction
+  ProudCity-shaped URLs for a real re-resolve, the same pattern
+  `refresh_archived_page`/the passive recheck cadence already uses.
+
 - **[JUST-DO-IT] `vimeo.com/showcase/{id}/embed` isn't claimed by
   `detect_platform()`, so a real Vimeo listing falls to the best-effort
   pointer (found live 2026-08-22, WO-43 / #307).** `is_vimeo_listing()`
