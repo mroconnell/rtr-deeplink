@@ -115,10 +115,57 @@ tenant does turn up later.
   playable URL. Unconfirmed how common this is vs. the native YouTube
   field on any real tenant checked so far.
 
-**Not built**: no `proudcity.py` adapter exists yet. This entry is the
-full evidence trail; see `BACKLOG.md`'s live entry for what to build and
-why it clears this repo's "verify against a real live URL first" bar
-before starting.
+**Update, 2026-08-26 (same day) — built, merged, and used for a real
+ingest round.** `app/platforms/proudcity.py` shipped (PR #425), followed
+by two enumeration+push rounds that found and classified 20+ real
+tenants beyond the original 5 — full per-tenant results below.
+
+**A real incident during that push round, found and fixed same-day: two
+fabricated pages briefly went live in production.** `/meetings/example-
+city-council-meeting/` turns out to be a shared WordPress seed/demo post
+every ProudCity install ships with and evidently never removes —
+confirmed on three unrelated tenants (Santa Ana CA, Palmview TX,
+Cambridge Township PA). Two of the three carry one of ProudCity's own
+marketing/demo YouTube videos rather than any real meeting — one literally
+titled "San Rafael + ProudCity," uploaded by ProudCity's own channel —
+and both were resolved and pushed as if real before the pattern was
+noticed (Cambridge's copy was checked afterward and correctly skipped).
+**Caught by an accident of ordering**, not a validation step that was
+supposed to catch it: Cambridge's demo video happened to reuse the exact
+same video id as Santa Ana's, which is what made it visibly wrong on
+inspection — a tenant with a *different* placeholder id would not have
+been caught this way. **Fixed two ways**: (1) `_DEMO_SLUG_RE` in
+`proudcity.py` now refuses this exact slug outright, before any fetch —
+covers every tenant in `PROUDCITY_KNOWN_DOMAINS`, real regression test
+added; (2) the two live fabricated pages were found via `/api/resolve`
+against the same URLs and removed with `POST /internal/admin/delete-
+pages` (dry-run confirmed both matches first). **Residual, not fully
+closed**: any ProudCity tenant *not* in `PROUDCITY_KNOWN_DOMAINS` still
+reaches this same trap through `generic_fallback.py`, which has no way
+to know about a ProudCity-specific slug and shouldn't be made to —
+genuinely CMS-agnostic by design. No general fix for that path exists;
+worth remembering if a future best-effort ProudCity resolve looks
+suspiciously generic-titled.
+
+**Full tenant classification from both push rounds** (tier = segments
+found now / video found, no segments yet / video-shaped but empty, per
+this file's own established tier convention):
+
+| City | Result |
+|---|---|
+| Fairfax, Belvedere, San Rafael, Somerville, Santa Ana*, Delaware County IN, Montclair CA, Ela Township IL, Palmview TX*, Westhampton Beach NY | tier 1 — real transcript, pushed |
+| Miamisburg, Colma, Johnson City TX, Wilmington OH, Hellam Township PA, McKenzie County ND, Alvord TX | agenda-only — real, pushed, no video on the meeting checked |
+| Carnation WA, Indian Hill OH, Munford TN, Princeton MA, Mount Pocono PA, Wendell MA | no real content on the meeting checked |
+| Rye Brook NY, Sonoma CA, Petaluma CA, Marin County CA | not real ProudCity-meetings tenants — real vendor is CivicWeb/PrimeGov |
+| Kettering OH, Bedford OH, Jarrell TX, Ruston WA, Cambridge Township PA, Bayside WI | no active `meeting` post type found |
+| Lafayette CA, Talent OR | Cloudflare-gated, domain unconfirmed |
+| Holyoke MA | hit a real YouTube 429 mid-round, push still pending a retry |
+
+\* Santa Ana's and Palmview's *original* pushed rows were the fabricated
+demo content above — both deleted; neither has been re-pushed with a
+real meeting yet, since neither tenant's checked history had one. Their
+domains stay in `PROUDCITY_KNOWN_DOMAINS` — they're real tenants, just
+without a real example ingested yet.
 
 **Addendum, same day — tenant enumeration round, real yield.** Three
 independent methods, cross-confirming each other:

@@ -143,3 +143,20 @@ async def test_resolve_external_video_is_a_pointer_not_a_playable_url(monkeypatc
     assert result.platform == "proudcity"
     assert result.video_url is None
     assert result.video_link == "https://example-video-host.com/watch/abc123"
+
+
+async def test_resolve_refuses_the_shared_demo_meeting_slug():
+    """Real incident, 2026-08-26: this exact slug is a shared WordPress
+    seed post on every ProudCity install, confirmed on three unrelated
+    tenants -- two accidentally real-ingested with one of ProudCity's own
+    marketing videos before this guard existed (see BACKLOG_DONE.md)."""
+    demo_url = "https://santa-ana.gov/meetings/example-city-council-meeting/"
+
+    # No route registered -- if the guard didn't fire first, this would
+    # raise inside mock_session for an unmocked URL, failing the test.
+    with mock_session({}):
+        result = await ProudCityAssetFinder().resolve(demo_url)
+
+    assert result.platform == "proudcity"
+    assert result.video_url is None
+    assert "demo" in result.video_warnings[0].lower()
