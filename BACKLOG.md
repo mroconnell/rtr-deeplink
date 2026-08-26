@@ -102,7 +102,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (11)
   28 well-formed IQM2 queue rows point at retired tenants…
   Some Swagit meetings have no single "whole meeting" video file…
 
-Platform & jurisdiction coverage  (35)
+Platform & jurisdiction coverage  (36)
   `[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
   `[JUST-DO-IT]` `[EASY]` Nine PrimeGov pages and two real meetings…
   `[JUST-DO-IT]` ChampDS symptom B — instant 0.2s failures from the…
@@ -127,11 +127,12 @@ Platform & jurisdiction coverage  (35)
     [NEEDS-AUDIT] Tulare County/Visalia jurisdiction misattribution —
     [LATER] Domain guesser matched a same-named US state's real portal
     [LATER] ~25 smaller consolidated city-county governments still need
-  Adapter & platform gaps  (12)
+  Adapter & platform gaps  (13)
     [NEEDS-AUDIT] A real YouTube-backed meeting resolves as video-less
     [NEEDS-AUDIT] Brentwood eScribe resolves without video, but the
     [NEEDS-AUDIT] Vimeo captions and on-demand Whisper audio are the
     [NEEDS-AUDIT] Chicago ELMS's 473 real agenda items have nowhere
+    [JUST-DO-IT] `[EASY]` `youtube_channel.py`'s flat channel listing has
     [JUST-DO-IT] `vimeo.com/showcase/{id}/embed` isn't claimed by
     [JUST-DO-IT] Residual gaps left behind by WO-30's city-YouTube-
     [LATER] `[EASY]` PrimeGov's own better date/title still isn't
@@ -204,7 +205,7 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (21)
     [IMPROVEMENT-ROUND] Audit every user-facing email address and
     [IMPROVEMENT-ROUND] Recurring operator email report every 6 hours to
 
-Dormant — needs a real example first `[LATER]`  (29)
+Dormant — needs a real example first `[LATER]`  (30)
   Thumbnails  (1)
     [LATER] `[EASY]` A page whose only stored frames are non-default
   Captions — formats and sources with no confirmed positive example  (7)
@@ -227,7 +228,7 @@ Dormant — needs a real example first `[LATER]`  (29)
     [LATER] Stale archived transcripts have no automated refresh path —
     [LATER] `[EXAMPLE]` Perry GA's eScribe host
     [LATER] Swagit custom-domain embeds unverified
-  Platform discovery & enumeration — leads not yet chased  (10)
+  Platform discovery & enumeration — leads not yet chased  (11)
     [LATER] TelVue host enumeration — partially done 2026-08-16 via
     [LATER] CivicPlus has zero currently-live, confirmed-real URLs
     [LATER] Collect custom-domain examples for popular platforms as
@@ -238,6 +239,7 @@ Dormant — needs a real example first `[LATER]`  (29)
     [LATER] Direct-to-YouTube may be the single largest video source
     [LATER] Hallucinated-transcript detection has two real, known
     [LATER] A *sparse* loop of 5-11 cues is still missed
+    [LATER] `[EXAMPLE]` Cablecast has a real, documented "RSS Schedule
 
 Parked deliberately — allowed back `[PARK]`  (3)
   [IMPROVEMENT-ROUND] School-district / special-entity jurisdiction
@@ -498,6 +500,19 @@ so that work reads together.
   Do not re-run the YouTube half today; give the block real time
   (hours, not minutes) and re-measure before assuming anything.
 
+  **Real scale correction, 2026-08-26**: this was scoped against one
+  script's 10 failures, but the actual blast radius is much bigger.
+  `/coverage`'s own live jurisdiction data puts **184** real
+  jurisdictions on `platform="YouTube"` today — not just the four
+  curated `youtube_channel.py` cities (Phoenix/Philadelphia/Baltimore/
+  Albuquerque), but every jurisdiction whose *final* resolved video
+  comes through `YouTubeAssetFinder`, including everything delegated
+  there from CivicWeb, PrimeGov, ClerkBase, and Minneapolis LIMS.
+  Captions for every one of those 184 go through the same yt-dlp call
+  this block hits — so a sustained IP block doesn't just stall a bulk
+  backfill script, it's a real single point of failure sitting behind
+  roughly a tenth of this app's jurisdiction coverage. Worth weighing
+  into how urgently the unsettled pacing question above gets answered.
 
 - **[JUST-DO-IT] `[EASY]` `rtr-business/BUSINESS_OVERVIEW.md` still says
   saved-search alert emails are "not built yet"** — stale; shipped
@@ -2024,6 +2039,29 @@ from a live check), but the Legistar calendar itself is still untried.
   work — a real, scoped follow-up, deliberately not smuggled into WO-29.
   Worth checking whether any other platform has the same shape first.
 
+- **[JUST-DO-IT] `[EASY]` `youtube_channel.py`'s flat channel listing has
+  no dates at all — YouTube's own public Atom feed does, confirmed live
+  2026-08-26.** `_list_channel()`/`_list_channel_tab()` go through
+  yt-dlp's flat extraction, which per this file's own long-standing note
+  returns every date field as `None` — the matcher falls back entirely
+  to parsing dates out of video titles. `https://www.youtube.com/feeds/
+  videos.xml?channel_id={id}` is a plain, unauthenticated GET (no
+  yt-dlp, no bot-check exposure) and was fetched live against Phoenix's
+  channel (`UCx7FQNzOFCbtExt_gRub9JQ`, one of the four curated
+  netloc→channel-id entries this file already uses): real `<published>`
+  timestamps on every entry, ISO 8601, e.g. "Memorial Towers Grand
+  Opening" → `2026-08-26T10:16:43+00:00`. **Capped at the 15 most recent
+  uploads per channel** — a real limit that rules it out as a backlog-
+  matching replacement for the full yt-dlp listing, but makes it a
+  cheap, reliable source for exactly the case that matters most: a real
+  video-id/title/date triple to enrich or corroborate a *recent* match
+  before falling back to title-parsing. Small, scoped fix: call the Atom
+  feed first (or in parallel) in the four-city fallback path and use its
+  `<published>` date when the video id matches, keeping the existing
+  title-parse as the fallback for anything older than 15 uploads back.
+  Doesn't touch the separate, harder problem below (Render's IP getting
+  YouTube-blocked) — this only fixes *dating* a video once one is found.
+
 - **[JUST-DO-IT] `vimeo.com/showcase/{id}/embed` isn't claimed by
   `detect_platform()`, so a real Vimeo listing falls to the best-effort
   pointer (found live 2026-08-22, WO-43 / #307).** `is_vimeo_listing()`
@@ -2812,6 +2850,74 @@ real work on shipped code rather than a plan.
   to have" to "the thing that makes the flagship search feature actually
   good." No new dependencies needed — a re-prioritization question, not
   a new build. Revisit once reliability work settles down.
+
+  **Addendum, 2026-08-26 — a narrower, lower-risk version worth
+  separating from the general crawler question above: poll a known
+  YouTube channel's Atom feed purely as a re-check trigger for a page
+  that already exists, never as a new discovery/matching path.** Came
+  out of an RSS/Atom exploration session (see the platform-coverage
+  entry's Granicus/Legistar RSS notes and the YouTube-Atom-date entry
+  under **Adapter & platform gaps**). The shape: `youtube_channel.py`
+  already carries a curated, human-verified `netloc→channel_id` map for
+  four cities whose Legistar page never gets a video link at all
+  (Phoenix, Philadelphia, Baltimore, Albuquerque). Their Atom feed
+  (`youtube.com/feeds/videos.xml?channel_id={id}`) is a plain,
+  unauthenticated GET — no yt-dlp, no bot-check surface — and a live
+  fetch against Phoenix's real feed confirmed real `<published>`
+  timestamps on every recent upload. A small scheduled script (not a
+  live worker — this app deliberately has none) could poll those four
+  feeds every so often and, on a new video whose date matches one of
+  that city's own known meeting pages, trigger a real re-resolve of
+  *that page's own original URL* — not the YouTube URL — so the
+  existing adapter chain (Legistar → city-YouTube-channel fallback)
+  does the actual attach exactly the way it does today on a manual
+  visit, just sooner.
+
+  **Why route the re-resolve through the existing page's own URL
+  instead of writing the Atom match's data directly onto it**: doing it
+  this way means the Atom feed is only ever a *scheduling* input — "check
+  this page again now" — and every actual claim about which video
+  belongs to which meeting still goes through the same adapter logic
+  this app already trusts, with all its existing confirmation/decline
+  behavior intact. Writing the Atom entry's title/date/video-id
+  straight onto the page would instead be a second, independent
+  matching path with its own confidence question — exactly the risk
+  `FEED_CITIES.md` already flags as unresolved for its bigger version of
+  this idea (synthesizing a page from two separate feeds with no
+  existing page to anchor to). This version sidesteps that risk
+  entirely by only ever re-triggering resolution on a page that already
+  exists, so it's a real, much narrower subset of that open question —
+  worth building on its own without waiting for `FEED_CITIES.md` to be
+  decided.
+
+  **On "switching" a meeting from Upcoming to Past — turns out there's
+  no switch to build.** `meeting_date_status()`
+  (`archive/utils/date_status.py`) already derives the "Upcoming"/
+  "Recent" pill purely by comparing the stored meeting date against
+  today at render time — there's no stored status field to flip, so a
+  meeting already reads as no-longer-upcoming the instant its date
+  passes, transcript or not (`UPCOMING` requires `meeting_date > today`,
+  full stop). What a proactive re-resolve actually needs to change is
+  narrower than "switch the state": just get `video_url`/the transcript
+  attached before the *next* visitor happens to trigger the existing
+  passive re-check (`ARCHIVE_RECHECK_AFTER_NO_TRANSCRIPT`, currently 1
+  hour — `app/main.py`). So the real win isn't a new state machine, it's
+  making an existing transcript-less page's *next* re-check happen on a
+  schedule tied to "the city just posted something," instead of waiting
+  on both the passive hourly cadence and a human visit lining up.
+
+  **What this doesn't fix**: the caption fetch itself still goes through
+  yt-dlp at resolve time, which is the exact path hitting the real,
+  currently-unresolved Render IP block (see the "bulk re-resolve gets
+  this IP blocked by YouTube" entry under **Reliability, ops & cost**,
+  now updated with real scale: 184 real jurisdictions' captions ride
+  through that same call). Polling the Atom feed changes *when* a
+  re-resolve is triggered, not what happens once it runs — a blocked IP
+  still fails the actual attach. Also scoped narrowly on purpose: only
+  four cities have a curated channel id today; broadening this beyond
+  the existing last-resort fallback list is a separate, real cost (see
+  the curated-map's own docstring for why it's a hand-verified map, not
+  a search).
 - **[IMPROVEMENT-ROUND] Batch lookup — accept multiple meeting URLs at
   once instead of one at a time.** Removes the main friction point for a
   journalist working many jurisdictions at once. Worth sequencing after
@@ -3609,6 +3715,48 @@ means somebody found the example, not that somebody decided to guess.
   at exact-second intervals, real speech doesn't) is the most promising
   next discriminator. See `BACKLOG_DONE.md`'s WO-36 entry for
   measurements.
+
+- **[LATER] `[EXAMPLE]` Cablecast has a real, documented "RSS Schedule
+  Output" product feature — checked against 15 of our 17 real live
+  tenants (2026-08-26), zero found.** Found via web search while
+  exploring RSS/Atom as an alternate discovery path (`cablecast.tv/
+  feature/rss-schedule-output`; structure corroborated by a third-party
+  integration doc): a real-time RSS feed of the program schedule, one
+  `<item>` per air date with `guid` (show ID), `title`, `pubDate` (GMT),
+  a `description` holding duration, and a `link` to the show page in the
+  format `.../Cablecast/Public/Show.aspx?ChannelID=1&ShowID={id}`. That
+  `link` shape is the **legacy ASP.NET "Cablecast Public Site"
+  template**, not the modern Remix.js template `cablecast.py` is built
+  against. **Correction to this entry's own first draft**: it originally
+  said "unconfirmed on either of our two live tenants," going only off
+  README's build-time count. The real number, pulled from `/coverage`'s
+  own live jurisdiction data the same day, is **17** (`charlotte`,
+  `concordca`, `coralvision` [`:8080`], `glendoraca`, `hctv`,
+  `leonvalleytx`, `cityofpontiac`, `rialtoca`, `riverviewmi`, `salem`,
+  `cityofsantee`, `city-slp-mn`, `virginiabeach`, `wilmington-nc`,
+  `winchendon`, plus Detroit's `reflect-detroit-vod` and one more not
+  re-identified — see README's Cablecast row, corrected the same day).
+  Direct live fetches of 15 of those 17 tenants' real show pages found
+  **no feed link on any of them** — no `<link rel="alternate"
+  type="application/rss+xml">`, nothing — across both the
+  `/internetchannel/show/{id}` and bare `/show/{id}` template families.
+  So this reads as a real negative now, not an inconclusive one: either
+  a legacy-template-only feature none of our current tenants run, or one
+  that needs per-install admin configuration most installs don't turn
+  on. Wayback/CDX lookups weren't reachable from this session to check
+  history. One unrelated thing surfaced while identifying these tenants,
+  worth its own look: the "Lake County Illinois" row in the source
+  data this was checked against lists Cablecast as its platform, but the
+  real page found via site search (`lake-county-illinois-2026-04-03-
+  technology-committee-april-3-2026`) resolves through
+  `lakecounty.legistar.com`, not a `cablecast.tv` domain — possibly a
+  different Lake County Cablecast meeting exists separately, or the
+  platform label on that row is stale; not chased further here. Even if
+  a live schedule-RSS example does turn up somewhere, note going in that
+  its `link` is a page pointer like Granicus's own RSS (see the
+  platform-coverage entry above) — not a direct video/caption file URL
+  — so at best it would speed up discovering *that a show aired*, not
+  skip the existing `window.__remixContext` scrape.
 
 ## Parked deliberately — allowed back `[PARK]`
 
