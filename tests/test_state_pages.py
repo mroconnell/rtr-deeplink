@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 import app.main
 import archive.main
 from archive.db import crud
+from archive.utils.jurisdiction_format import jurisdiction_hub_slug
 
 client = TestClient(archive.main.app)
 
@@ -320,3 +321,286 @@ async def test_sitemap_includes_state_pages():
     # does -- get_state_coverage_index()'s extra "country" field doesn't
     # change what sitemap.xml.jinja needs (just .slug/.last_updated).
     assert "/state/alberta</loc>" in response.text
+
+
+# --- /state/all-50 (national, 50-US-states-only hub, added 2026-08-26) ----
+#
+# Reuses _seed_all()'s existing rows rather than seeding its own: Napa/
+# Sacramento County (CA), Decatur (GA) cover "multiple states show up
+# together"; Coalinga (platform "unknown") and Calgary (a real Canadian
+# jurisdiction) are exactly the two exclusions this page's scope depends
+# on -- get_national_government_list()'s platform != "unknown" bar and its
+# US_50_STATE_ABBRS-only scope, respectively.
+
+
+async def test_crud_get_national_government_list_scopes_to_us_states():
+    await _seed_all()
+    rows = await crud.get_national_government_list()
+    hub_slugs = {r["hub_slug"] for r in rows}
+    assert "napa-ca" in hub_slugs
+    assert "sacramento-county-ca" in hub_slugs
+    assert "decatur-ga" in hub_slugs
+    # Canadian jurisdiction excluded -- this page is 50-US-states-only for
+    # its first cut (CLAUDE.md), Canada/territories are later work.
+    assert "calgary-ab" not in hub_slugs
+    # Not asserting on napa's exact example.slug: the shared fixture DB
+    # also holds a "City of Napa, CA" row seeded by another test, grouped
+    # under this same hub_slug (see test_crud_get_state_page_data_shape_
+    # and_counts's identical caveat above).
+    napa = next(r for r in rows if r["hub_slug"] == "napa-ca")
+    assert napa["gov_type"] == "city"
+    sacramento = next(r for r in rows if r["hub_slug"] == "sacramento-county-ca")
+    assert sacramento["gov_type"] == "county"
+
+
+async def test_crud_get_national_government_list_excludes_unknown_platform():
+    await _seed_all()
+    rows = await crud.get_national_government_list()
+    hub_slugs = {r["hub_slug"] for r in rows}
+    assert "coalinga-ca" not in hub_slugs
+
+
+async def test_crud_get_all50_page_data_bounded_pool_and_scope():
+    await _seed_all()
+    data = await crud.get_all50_page_data()
+    hub_slugs = {j["hub_slug"] for j in data["jurisdictions"]}
+    assert "napa-ca" in hub_slugs
+    assert "decatur-ga" in hub_slugs
+    assert "calgary-ab" not in hub_slugs
+    assert "coalinga-ca" not in hub_slugs
+    assert len(data["featured"]) <= crud.ALL50_FEATURED_COUNT
+    assert data["jurisdiction_count"] == len(data["jurisdictions"])
+    # Grouped list feeds straight into the shared _group_governments()
+    # output shape, same as get_state_page_data()'s.
+    group_keys = {g["key"] for g in data["government_groups"]}
+    assert group_keys <= {"county", "city", "school", "agency"}
+
+
+async def test_crud_get_all50_page_data_recent_pages_fallback_without_highlights(
+    monkeypatch,
+):
+    # Real bug caught in-browser: recent_pages was first derived from the
+    # highlight-joined pool, which is empty in exactly the case this
+    # fallback exists to cover (no MeetingHighlight rows yet) -- so the
+    # fallback rendered its heading over an empty list. It needs its own
+    # query, independent of MeetingHighlight. Forces the "nothing
+    # featured" branch via monkeypatch rather than asserting
+    # data["featured"] == [] directly -- the shared fixture DB may
+    # already hold a real MeetingHighlight for one of _seed_all()'s
+    # common city names from another test, which would make that
+    # assertion order-dependent (same shared-DB caveat as
+    # test_state_page_empty_state_404 above).
+    await _seed_all()
+    monkeypatch.setattr(crud, "_build_featured", lambda *a, **k: [])
+    data = await crud.get_all50_page_data()
+    assert data["featured"] == []
+    assert len(data["recent_pages"]) > 0
+    assert all("has_transcript" in p for p in data["recent_pages"])
+    hub_slugs = {jurisdiction_hub_slug(p["jurisdiction"]) for p in data["recent_pages"]}
+    assert "calgary-ab" not in hub_slugs
+    assert "coalinga-ca" not in hub_slugs
+
+
+def test_state_all50_page_renders():
+    response = client.get("/state/all-50")
+    assert response.status_code == 200
+    assert "Public meetings from all 50 states" in response.text
+
+
+async def test_state_all50_excludes_canada_and_unknown_platform():
+    slugs = await _seed_all()
+    response = client.get("/state/all-50")
+    assert response.status_code == 200
+    assert "/j/calgary-ab" not in response.text
+    assert slugs["calgary"] not in response.text
+    assert "Coalinga Generic Fallback Meeting" not in response.text
+
+
+async def test_state_all50_omits_search_all_and_rss_footer_links():
+    await _seed_all()
+    response = client.get("/state/all-50")
+    assert "Search all" not in response.text
+    assert "/feed.xml?jurisdiction=" not in response.text
+
+
+async def test_state_all50_most_watched_appears_before_recently_archived(monkeypatch):
+    # User feedback 2026-08-26: "most watched" reads better leading the
+    # page than trailing the recency feed. Deliberately only for this
+    # national page -- state_page.html's own per-state ordering is
+    # untouched. MOST_ACTIVE_MIN_GOVERNMENTS lowered to 1 so this test's
+    # own assertion doesn't depend on how many *other* tests have already
+    # pushed the shared DB's US-state government count over the real
+    # threshold (8) by the time this file runs -- true in a full suite
+    # run, not guaranteed in isolation.
+    monkeypatch.setattr(crud, "MOST_ACTIVE_MIN_GOVERNMENTS", 1)
+    await _seed_all()
+    response = client.get("/state/all-50")
+    text = response.text
+    most_watched_pos = text.index("Most watched governments")
+    # The recency heading has two non-topic-filtered variants depending on
+    # whether `featured` is empty (real, shared-DB-scale-dependent: many
+    # other tests may have already created MeetingHighlight rows for
+    # US-state jurisdictions by the time this runs) -- check whichever one
+    # actually rendered, not a specific hardcoded variant.
+    recency_variants = [
+        "Recently archived nationwide",
+        "Recent moments from across the country",
+    ]
+    recency_positions = [text.index(v) for v in recency_variants if v in text]
+    assert recency_positions, "neither recency heading variant rendered"
+    assert most_watched_pos < min(recency_positions)
+
+
+def test_state_all50_registered_before_dynamic_state_route():
+    # "all-50" isn't a real state slug -- if the dynamic /state/{state_slug}
+    # route matched first, this would just 404 through STATE_SLUG_TO_ABBR's
+    # miss path instead of rendering the real page.
+    paths = [getattr(route, "path", "") for route in archive.main.app.routes]
+    assert paths.index("/state/all-50") < paths.index("/state/{state_slug}")
+
+
+async def test_sitemap_includes_state_all50_not_coverage_detail():
+    response = client.get("/sitemap.xml")
+    assert "/state/all-50</loc>" in response.text
+    assert "/coverage/detail" not in response.text
+
+
+def test_resolver_proxies_coverage_detail_route():
+    assert any(
+        getattr(route, "path", "") == "/coverage/detail"
+        for route in app.main.app.routes
+    )
+
+
+def test_resolver_proxies_api_jurisdictions_route():
+    assert any(
+        getattr(route, "path", "") == "/api/jurisdictions"
+        for route in app.main.app.routes
+    )
+
+
+# --- /api/jurisdictions (lightweight search behind /coverage's search box)
+
+
+async def test_api_jurisdictions_search_returns_matches():
+    await _seed_all()
+    response = client.get("/api/jurisdictions", params={"q": "Napa"})
+    assert response.status_code == 200
+    matches = response.json()["matches"]
+    assert all(m["kind"] == "jurisdiction" for m in matches)
+    assert any(m["link"] == "/j/napa-ca" for m in matches)
+    assert any("Napa" in m["label"] for m in matches)
+
+
+async def test_api_jurisdictions_search_requires_min_length():
+    response = client.get("/api/jurisdictions", params={"q": "n"})
+    assert response.status_code == 200
+    assert response.json()["matches"] == []
+
+
+async def test_crud_search_jurisdictions_state_name_returns_state_result_first():
+    # A bare full state/province name is special-cased (real UI gap found
+    # 2026-08-26: searching "California" returned nothing useful before
+    # this -- stored jurisdictions hold "CA", not the full name, so a
+    # plain substring match mostly missed it) into a state-page link,
+    # followed by that state's own governments -- not just a jurisdiction-
+    # name substring match, which "California" would barely hit.
+    await _seed_all()
+    results = await crud.search_jurisdictions("California")
+    assert results[0] == {
+        "kind": "state",
+        "label": "California",
+        "link": "/state/california",
+    }
+    # Not asserting a specific jurisdiction (e.g. napa-ca) is among the
+    # results: the full suite seeds dozens of real CA jurisdictions, and
+    # the popularity-ranked, capped-at-25 result set is a real, shared-
+    # DB-scale-dependent slice of that -- see
+    # test_crud_search_jurisdictions_state_name_ranks_by_meeting_count
+    # below for the exact-ordering check, done with isolated data instead.
+    # This test only checks the state-branch's own structural shape.
+    assert len(results) > 1
+    for row in results[1:]:
+        assert row["kind"] == "jurisdiction"
+        assert row["link"].startswith("/j/")
+
+
+async def test_crud_search_jurisdictions_state_abbreviation_also_matches():
+    await _seed_all()
+    results = await crud.search_jurisdictions("AB")
+    assert results[0]["kind"] == "state"
+    assert results[0]["link"] == "/state/alberta"
+
+
+async def test_crud_search_jurisdictions_state_name_ranks_by_meeting_count():
+    # Real, controlled-count New Mexico cities -- not touched elsewhere in
+    # this shared-DB file -- so "most popular" has an unambiguous real
+    # answer to check, immune to whatever other tests have already seeded
+    # into the shared CA/GA/AB counts _seed_all() itself uses.
+    await _seed(
+        "granicus:nm-roswell-1",
+        jurisdiction="Roswell, NM",
+        title="Roswell City Council",
+    )
+    await _seed(
+        "granicus:nm-roswell-2",
+        jurisdiction="Roswell, NM",
+        title="Roswell Budget Workshop",
+    )
+    await _seed(
+        "granicus:nm-taos-1", jurisdiction="Taos, NM", title="Taos Town Council"
+    )
+
+    results = await crud.search_jurisdictions("New Mexico")
+    assert results[0] == {
+        "kind": "state",
+        "label": "New Mexico",
+        "link": "/state/new-mexico",
+    }
+    links_in_order = [r["link"] for r in results[1:]]
+    assert links_in_order.index("/j/roswell-nm") < links_in_order.index("/j/taos-nm")
+
+
+async def _seed_ambiguous_names():
+    """Two real, confirmed-ambiguous cases for search_jurisdictions():
+    San Diego is both a real city AND a real county in California (same
+    state, different government type), and Alexandria is a real city in
+    both Virginia (confirmed live as alexandria.granicus.com's default
+    jurisdiction, see tests/test_jurisdiction_enrich.py) and Louisiana
+    (real, the seat of Rapides Parish) -- same name, two different
+    states. jurisdiction_hub_slug()'s state suffix is what's supposed to
+    keep all four as distinct hubs rather than colliding into one."""
+    await _seed(
+        "granicus:ambiguous-san-diego-city",
+        jurisdiction="San Diego, CA",
+        title="San Diego City Council",
+    )
+    await _seed(
+        "granicus:ambiguous-san-diego-county",
+        jurisdiction="San Diego County, CA",
+        title="San Diego County Board of Supervisors",
+    )
+    await _seed(
+        "granicus:ambiguous-alexandria-va",
+        jurisdiction="Alexandria, VA",
+        title="Alexandria City Council",
+    )
+    await _seed(
+        "granicus:ambiguous-alexandria-la",
+        jurisdiction="Alexandria, LA",
+        title="Alexandria City Council",
+    )
+
+
+async def test_crud_search_jurisdictions_city_and_county_same_name_stay_distinct():
+    await _seed_ambiguous_names()
+    links = {r["link"] for r in await crud.search_jurisdictions("San Diego")}
+    assert "/j/san-diego-ca" in links
+    assert "/j/san-diego-county-ca" in links
+
+
+async def test_crud_search_jurisdictions_same_city_name_different_states_stay_distinct():
+    await _seed_ambiguous_names()
+    links = {r["link"] for r in await crud.search_jurisdictions("Alexandria")}
+    assert "/j/alexandria-va" in links
+    assert "/j/alexandria-la" in links

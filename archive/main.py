@@ -2222,6 +2222,26 @@ async def coverage(request: Request):
     coverage_rows = await crud.get_platform_coverage()
     jurisdictions = await crud.get_jurisdiction_coverage()
     states = await crud.get_state_coverage_index()
+    transcribed_count = await crud.count_transcribed_pages()
+    return templates.TemplateResponse(
+        request,
+        "coverage.html",
+        {
+            "coverage": coverage_rows,
+            "jurisdictions": jurisdictions,
+            "states": states,
+            "transcribed_count": transcribed_count,
+            "active_account": get_clerk_user_id(request),
+        },
+    )
+
+
+@app.get("/coverage/detail")
+async def coverage_detail(request: Request):
+    """The sortable/filterable "Full jurisdiction detail table," split out
+    of /coverage 2026-08-26 -- mostly a personal/power-user tool (see
+    CLAUDE.md), kept noindex and linked only from /coverage's "What about
+    Platform XYZ?" FAQ answer rather than rendered on the public page."""
     full_jurisdictions = await crud.get_full_jurisdiction_coverage()
     # Distinct filter-dropdown option lists, derived from the real rows
     # rather than DIRECT_PLATFORMS/CUSTOM_PLATFORMS directly -- this table
@@ -2240,17 +2260,43 @@ async def coverage(request: Request):
     )
     return templates.TemplateResponse(
         request,
-        "coverage.html",
+        "coverage_detail.html",
         {
-            "coverage": coverage_rows,
-            "jurisdictions": jurisdictions,
-            "states": states,
             "full_jurisdictions": full_jurisdictions,
             "detail_platform_options": detail_platform_options,
             "video_platform_options": video_platform_options,
             "outcome_options": outcome_options,
             "active_account": get_clerk_user_id(request),
         },
+    )
+
+
+@app.get("/api/jurisdictions")
+async def api_jurisdictions(q: str = ""):
+    """Public jurisdiction-name lookup behind /coverage's "Find your
+    government" search box. No auth -- same public-data posture as
+    /api/health, unlike the token-gated /internal/* routes. Each match
+    already carries its own `kind` ("state" or "jurisdiction")/`label`/
+    `link` from crud.search_jurisdictions() -- typing a full state name
+    returns a "state" match (linking to /state/{slug}) followed by that
+    state's most-covered governments, not just a plain substring match
+    against jurisdiction names."""
+    results = await crud.search_jurisdictions(q, limit=10)
+    return {"matches": results}
+
+
+@app.get("/state/all-50")
+async def state_all50(request: Request, topic: str = ""):
+    """A national, 50-US-states-only hub -- deliberately narrower than
+    "every jurisdiction" for a first cut (see CLAUDE.md). Registered
+    ahead of the dynamic /state/{state_slug} route below so this literal
+    path is matched first; "all-50" isn't a real state slug so it would
+    otherwise just fall through to that route's own 404."""
+    data = await crud.get_all50_page_data(topic_slug=topic or None)
+    return templates.TemplateResponse(
+        request,
+        "state_all50.html",
+        {**data, "active_account": get_clerk_user_id(request)},
     )
 
 
@@ -2308,7 +2354,7 @@ async def jurisdiction_page(request: Request, hub_slug: str, topic: str = ""):
 # excludes /account/saved, /alerts/unsubscribe, /meeting (already
 # robots.txt-disallowed as the ephemeral, unarchived resolver page), and
 # every /admin/* route -- none of those are public content.
-_SITEMAP_STATIC_PATHS = ["/", "/about", "/coverage", "/meetings"]
+_SITEMAP_STATIC_PATHS = ["/", "/about", "/coverage", "/meetings", "/state/all-50"]
 
 
 @app.get("/sitemap.xml")

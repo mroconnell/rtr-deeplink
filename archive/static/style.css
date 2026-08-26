@@ -1364,12 +1364,14 @@ mark.search-match.current { background: #f97316; color: #fff; }
   font-weight: 400;
   color: var(--muted);
   text-align: right;
-  padding-right: 0.75rem;
+  padding-right: 0.4rem;
   /* Only ever holds a small integer -- no reason to compete for space
-     with the title/transcript columns below, which actually need room. */
-  width: 2rem;
-  max-width: 2rem;
-  font-size: 0.8rem;
+     with the title/transcript columns below, which actually need room.
+     Tightened 2026-08-26 (user feedback: this column read as wider and
+     larger-font than a 1-4 digit number needs). */
+  width: 1.5rem;
+  max-width: 1.5rem;
+  font-size: 0.7rem;
 }
 /* "Example meeting" (title) and "Transcript" columns used to have no
    width constraint at all, so a long meeting title could stretch the
@@ -1432,7 +1434,7 @@ mark.search-match.current { background: #f97316; color: #fff; }
   width: 100%;
 }
 #coverageTable thead th:nth-child(1) { /* # */
-  width: 3rem;
+  width: 2.1rem;
 }
 #coverageTable thead th:nth-child(2) { /* Government */
   width: 30%;
@@ -1444,7 +1446,7 @@ mark.search-match.current { background: #f97316; color: #fff; }
 }
 #coverageTable .row-number-col {
   max-width: none;
-  padding-right: 0.4rem;
+  padding-right: 0.3rem;
 }
 #coverageTable .coverage-title-col,
 #coverageTable .coverage-transcript-col {
@@ -1468,7 +1470,7 @@ mark.search-match.current { background: #f97316; color: #fff; }
    ~330px, so trade a little badge size back for title room. */
 @media (max-width: 575.98px) {
   #coverageTable thead th:nth-child(1) {
-    width: 2.5rem;
+    width: 1.8rem;
   }
   #coverageTable thead th:nth-child(2) {
     width: 32%;
@@ -1477,8 +1479,8 @@ mark.search-match.current { background: #f97316; color: #fff; }
     width: 5.75rem;
   }
   #coverageTable .row-number-col {
-    padding-right: 0.25rem;
-    font-size: 0.7rem;
+    padding-right: 0.2rem;
+    font-size: 0.65rem;
   }
   #coverageTable .transcript-badge {
     font-size: 0.55rem;
@@ -1566,6 +1568,154 @@ thead .row-number-col { z-index: 2; background: var(--bg); }
   color: var(--muted);
   width: 1px;
   white-space: nowrap;
+}
+
+/* --- /coverage's receipts-table scroll pane --- */
+/* Capped-height scroll pane for the "Every place we've covered" table --
+   added so its real length (1,000+ rows) reads as obviously-more-below
+   rather than dictating the whole page's scroll length. The brand point
+   (see CLAUDE.md) is the flat, unpartitioned wall of evidence itself, not
+   an unbounded page -- same overflow-y: auto + max-height convention as
+   .state-gov-scroll below, just applied to a <table> instead of a <ul>,
+   which needs its own sticky-header rules (no existing table example to
+   copy from). */
+.coverage-scroll-pane {
+  position: relative;
+  max-height: 28rem;
+  overflow-y: auto;
+  border: 1px solid #e3e7eb;
+  border-radius: 6px;
+}
+/* Persistent, obviously-a-scrollbar track+thumb -- user feedback
+   2026-08-26: a default macOS/iOS overlay scrollbar only appears while
+   actively scrolling and is too thin to register as "there's a scrollbar
+   here" at a glance. Custom ::-webkit-scrollbar rules switch WebKit
+   (Chrome/Safari) out of overlay mode entirely and into an always-drawn
+   classic scrollbar, at roughly 2x a default thin one; scrollbar-width/
+   -color give Firefox the same always-visible, non-thin treatment. */
+.coverage-scroll-pane {
+  scrollbar-width: auto;
+  scrollbar-color: #9aa4af #eef1f4;
+}
+.coverage-scroll-pane::-webkit-scrollbar {
+  width: 14px;
+}
+.coverage-scroll-pane::-webkit-scrollbar-track {
+  background: #eef1f4;
+  border-radius: 6px;
+}
+.coverage-scroll-pane::-webkit-scrollbar-thumb {
+  background-color: #9aa4af;
+  border-radius: 7px;
+  border: 3px solid #eef1f4;
+}
+.coverage-scroll-pane::-webkit-scrollbar-thumb:hover {
+  background-color: #7a8492;
+}
+.coverage-scroll-pane #coverageTable thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--bg);
+}
+/* The row-number header cell is sticky on BOTH axes here (left, from
+   .row-number-col above, and top, from the rule just above) -- it needs
+   the highest z-index of the three so it stays above the other sticky-
+   top header cells scrolling under it horizontally AND the sticky-left
+   body cells scrolling under it vertically. */
+.coverage-scroll-pane #coverageTable thead .row-number-col {
+  z-index: 4;
+}
+.coverage-receipts-callout {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+.coverage-all-states-link {
+  font-size: 0.85rem;
+  font-weight: 400;
+  margin-left: 0.35rem;
+}
+.coverage-totals {
+  color: var(--muted);
+}
+/* A visible cue that there's more below the fold before a reader has
+   scrolled at all: a fade plus an explicit arrow label, pinned to the
+   pane's own bottom edge (sticky within .coverage-scroll-pane, not the
+   page). pointer-events: none so it never blocks clicking a row under it. */
+.coverage-scroll-more {
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--muted);
+  padding: 0.35rem 0;
+  background: linear-gradient(to bottom, transparent, var(--bg) 70%);
+  pointer-events: none;
+}
+
+/* --- /coverage's lightweight jurisdiction search --- */
+/* Server-backed (jurisdiction-search.js -> GET /api/jurisdictions) --
+   deliberately never ships the full roster to the client; that stays the
+   receipts table's job below. */
+.coverage-search-box {
+  position: relative;
+  max-width: 24rem;
+  margin: 0.5rem 0 1rem;
+}
+#jurisdictionSearch {
+  width: 100%;
+}
+.coverage-search-results {
+  list-style: none;
+  margin: 0.25rem 0 0;
+  padding: 0;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  background: var(--bg);
+  border: 1px solid #e3e7eb;
+  border-radius: 6px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+  max-height: 16rem;
+  overflow-y: auto;
+}
+.coverage-search-results li {
+  border-bottom: 1px solid #eef1f4;
+}
+.coverage-search-results li:last-child {
+  border-bottom: none;
+}
+.coverage-search-results a {
+  display: block;
+  padding: 0.5rem 0.75rem;
+  color: var(--fg);
+  text-decoration: none;
+}
+.coverage-search-results a:hover,
+.coverage-search-results a:focus-visible {
+  background: rgba(0, 0, 0, 0.04);
+}
+.coverage-search-empty {
+  padding: 0.5rem 0.75rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.coverage-search-result-state {
+  border-bottom: 1px solid #eef1f4;
+}
+.coverage-search-result-state a {
+  font-weight: 600;
+}
+.coverage-search-subheading {
+  padding: 0.4rem 0.75rem 0.15rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 /* "Browse by state" link list on /coverage -- compact flex-wrapped rows

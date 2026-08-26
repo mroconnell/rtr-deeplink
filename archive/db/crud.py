@@ -33,11 +33,13 @@ from ..utils.date_status import (
     meeting_date_status,
 )
 from ..utils.jurisdiction_format import (
+    US_50_STATE_ABBRS,
     US_STATE_ABBR_TO_NAME,
     format_jurisdiction_display,
     is_canadian_abbr,
     jurisdiction_hub_slug,
     jurisdiction_search_terms,
+    match_us_state_or_province,
     normalize_state_suffix,
     state_abbr_from_jurisdiction,
     state_slug_from_abbr,
@@ -3989,6 +3991,27 @@ async def get_jurisdiction_coverage() -> list[dict]:
     return result
 
 
+async def count_transcribed_pages() -> int:
+    """How many archived meetings (across every jurisdiction/platform,
+    same inclusive population as get_jurisdiction_coverage() above --
+    "did you cover my city" doesn't care which platform) have a real,
+    non-garbled default transcript. Backs the dynamic count line in
+    /coverage's lede. A single bounded SQL aggregate, not a Python loop
+    over every page -- same reasoning as get_all50_page_data()'s
+    transcript_count."""
+    async with async_session() as session:
+        return (
+            await session.execute(
+                select(func.count())
+                .select_from(MeetingPage)
+                .where(
+                    MeetingPage.jurisdiction.is_not(None),
+                    _good_default_transcript_exists(),
+                )
+            )
+        ).scalar_one()
+
+
 # --- get_full_jurisdiction_coverage() and its helpers -----------------------
 # BACKLOG.md's "Coverage page -- a public, sortable/filterable table" entry:
 # one row per successfully-archived jurisdiction (same population as
@@ -5386,6 +5409,467 @@ async def get_state_page_data(
         "total_pages": len(pages),
         "jurisdiction_count": len(jurisdictions),
     }
+
+
+# --- /state/all-50 (national hub, 50 US states only) ----------------------
+#
+# The counterpart to /coverage's flat, unpartitioned "receipts" table
+# (get_jurisdiction_coverage() above, which must stay alphabetical and
+# unfiltered by design -- see CLAUDE.md). This one groups by government
+# type and counts only the 50 US states: no DC, no Canada, no territories
+# -- a deliberately narrower scope than "every jurisdiction" for a first
+# cut (broader "all jurisdictions"/"all states + territories" pages are
+# later work).
+#
+# Deliberately NOT get_state_page_data() with its per-state WHERE simply
+# dropped: that function's own sibling get_home_highlights() already
+# documents why an unfiltered version of it would be a corpus-wide scan
+# (it pulls every matching MeetingPage row into Python, fine at one
+# state's scale, not at national scale). The pieces below are each
+# bounded in SQL instead.
+
+ALL50_HIGHLIGHT_POOL = HOME_HIGHLIGHT_POOL
+ALL50_FEATURED_COUNT = STATE_FEATURED_COUNT
+
+
+def _us50_jurisdiction_condition():
+    """OR'd anchored-suffix LIKE across the 50 US states -- same idiom
+    get_state_page_data() uses for one state's ", XX" suffix, just
+    unioned. Anchoring on the suffix (not a substring match on a state
+    *name*) avoids the same false-positive risk get_state_page_data()'s
+    own docstring warns about for a bare 2-letter abbreviation."""
+    return or_(
+        *(MeetingPage.jurisdiction.like(f"%, {abbr}") for abbr in US_50_STATE_ABBRS)
+    )
+
+
+async def get_national_government_list() -> list[dict]:
+    """Government list for /state/all-50: the same lightweight query
+    shape as get_jurisdiction_coverage() above (jurisdiction/slug/title/
+    transcript-flag only, no highlights/thumbnails -- already proven at
+    full-corpus scale on /coverage today), not get_state_page_data()'s
+    heavy per-row pipeline. Extends the select with meeting_body so
+    classify_government() can bucket results the way get_state_page_data()
+    does for one state.
+
+    Scoped to the 50 US states, and to platform != "unknown" --
+    get_state_page_data()'s indexable-page bar, stricter than
+    get_jurisdiction_coverage()'s deliberate inclusion of unknown-platform
+    rows (this feeds a "browse casually" list, not the receipts table).
+
+    Grouped by jurisdiction_hub_slug(), same as get_state_page_data(), so
+    raw-string variants of one government collapse into one row and the
+    result feeds straight into _group_governments() unchanged.
+    """
+    async with async_session() as session:
+        stmt = (
+            select(
+                MeetingPage.jurisdiction,
+                MeetingPage.slug,
+                MeetingPage.title,
+                MeetingPage.meeting_body,
+                TranscriptVersion.id,
+                TranscriptVersion.transcript_warnings,
+            )
+            .outerjoin(
+                TranscriptVersion,
+                and_(
+                    TranscriptVersion.meeting_page_id == MeetingPage.id,
+                    TranscriptVersion.is_default.is_(True),
+                ),
+            )
+            .where(
+                MeetingPage.jurisdiction.is_not(None),
+                MeetingPage.platform != "unknown",
+                _us50_jurisdiction_condition(),
+            )
+        )
+        rows = (await session.execute(stmt)).all()
+
+    by_hub: dict[str, list[dict]] = {}
+    for jurisdiction, slug, title, meeting_body, version_id, warnings in rows:
+        # Same SQLite case-insensitive-LIKE re-check get_state_page_data()
+        # does for its own single-abbr suffix match.
+        if state_abbr_from_jurisdiction(jurisdiction) not in US_50_STATE_ABBRS:
+            continue
+        has_transcript = version_id is not None and _has_real_warning_free_transcript(
+            warnings
+        )
+        by_hub.setdefault(jurisdiction_hub_slug(jurisdiction) or "", []).append(
+            {
+                "jurisdiction": jurisdiction,
+                "slug": slug,
+                "title": title,
+                "meeting_body": meeting_body,
+                "has_transcript": has_transcript,
+            }
+        )
+
+    result = []
+    for hub_slug in sorted(
+        by_hub, key=lambda s: by_hub[s][0]["jurisdiction"].casefold()
+    ):
+        examples = by_hub[hub_slug]
+        example = next((e for e in examples if e["has_transcript"]), examples[0])
+        body = next((e["meeting_body"] for e in examples if e["meeting_body"]), None)
+        result.append(
+            {
+                "jurisdiction": examples[0]["jurisdiction"],
+                "hub_slug": hub_slug or None,
+                "example": example,
+                "page_count": len(examples),
+                "gov_type": classify_government(examples[0]["jurisdiction"], body),
+            }
+        )
+    return result
+
+
+async def get_all50_page_data(topic_slug: Optional[str] = None) -> dict:
+    """The bounded, 50-US-states-only equivalent of get_state_page_data().
+    Three separately-bounded pieces, not one unbounded per-row fetch:
+
+    1. **Featured feed** -- same shape as get_home_highlights() (join
+       MeetingHighlight, ORDER BY date DESC LIMIT), scoped to the 50
+       states. Topic chips fall out of this same bounded pool for free,
+       via the existing _pool_topic_counts()/_topic_chips().
+    2. **Recent-activity window** (freshness count + most-active ranking)
+       -- the piece that would otherwise force an unbounded per-row scan.
+       Bounded by MOST_ACTIVE_WINDOW_DAYS (the wider of the two existing
+       windows): "how much has been archived in the last 90 days,
+       nationally" is a real, small bound, unlike "everything ever
+       archived". most_active groups by jurisdiction_hub_slug() in
+       Python, same correctness as the per-state version, just applied to
+       this pre-bounded window instead of the whole corpus.
+    3. **Government list** -- get_national_government_list() +
+       _group_governments(), no per-row highlight/thumbnail work.
+
+    `recent_pages` (the state page's "nothing has a highlight yet"
+    fallback) needs its own query, run only when `featured` actually ends
+    up empty -- it can't be derived from the highlight pool above, since
+    that pool is exactly what's missing in the case this fallback exists
+    to cover (a page with no MeetingHighlight row yet doesn't pass the
+    pool's own join). A small `LIMIT 25` query, no MeetingHighlight join,
+    kept out of the common case entirely.
+    """
+    async with async_session() as session:
+        highlight_rows = (
+            await session.execute(
+                select(
+                    MeetingPage.id,
+                    MeetingPage.jurisdiction,
+                    MeetingPage.slug,
+                    MeetingPage.title,
+                    MeetingPage.date,
+                    MeetingPage.meeting_body,
+                )
+                .join(
+                    MeetingHighlight,
+                    MeetingHighlight.meeting_page_id == MeetingPage.id,
+                )
+                .where(
+                    MeetingPage.platform != "unknown",
+                    MeetingPage.jurisdiction.is_not(None),
+                    MeetingPage.date.is_not(None),
+                    MeetingPage.date != "",
+                    _us50_jurisdiction_condition(),
+                    _good_default_transcript_exists(),
+                )
+                .order_by(MeetingPage.date.desc(), MeetingPage.id.desc())
+                .limit(ALL50_HIGHLIGHT_POOL)
+            )
+        ).all()
+        pool = [
+            {
+                "id": page_id,
+                "jurisdiction": jurisdiction,
+                "slug": slug,
+                "title": title,
+                "date": date,
+                "meeting_body": meeting_body,
+            }
+            for page_id, jurisdiction, slug, title, date, meeting_body in highlight_rows
+            if state_abbr_from_jurisdiction(jurisdiction) in US_50_STATE_ABBRS
+        ]
+        highlights = await _load_highlights(session, [p["id"] for p in pool])
+        carded = await pages_with_thumbnails(session, [p["id"] for p in pool])
+
+        window_cutoff = datetime.now(timezone.utc) - timedelta(
+            days=MOST_ACTIVE_WINDOW_DAYS
+        )
+        recent_rows = (
+            await session.execute(
+                select(MeetingPage.jurisdiction, MeetingPage.created_at).where(
+                    MeetingPage.jurisdiction.is_not(None),
+                    MeetingPage.platform != "unknown",
+                    MeetingPage.created_at.is_not(None),
+                    MeetingPage.created_at >= window_cutoff,
+                    _us50_jurisdiction_condition(),
+                )
+            )
+        ).all()
+
+        transcript_count = (
+            await session.execute(
+                select(func.count())
+                .select_from(MeetingPage)
+                .where(
+                    MeetingPage.jurisdiction.is_not(None),
+                    MeetingPage.platform != "unknown",
+                    _us50_jurisdiction_condition(),
+                    _good_default_transcript_exists(),
+                )
+            )
+        ).scalar_one()
+
+        active_slug = topic_slug if topic_slug in TOPICS_BY_SLUG else None
+        topic_counts = _pool_topic_counts(highlights)
+        featured = _build_featured(
+            pool,
+            highlights,
+            active_slug,
+            ALL50_FEATURED_COUNT,
+            topic_counts,
+            max_per_jurisdiction=MAX_FEATURED_PER_JURISDICTION,
+        )
+        if active_slug and not featured:
+            featured = _build_featured(
+                pool,
+                highlights,
+                None,
+                ALL50_FEATURED_COUNT,
+                topic_counts,
+                max_per_jurisdiction=MAX_FEATURED_PER_JURISDICTION,
+            )
+            active_slug = None
+        _attach_thumbnails(featured, carded)
+
+        recent_pages: list[dict] = []
+        if not featured:
+            fallback_rows = (
+                await session.execute(
+                    select(
+                        MeetingPage.jurisdiction,
+                        MeetingPage.slug,
+                        MeetingPage.title,
+                        MeetingPage.date,
+                        TranscriptVersion.id,
+                        TranscriptVersion.transcript_warnings,
+                    )
+                    .outerjoin(
+                        TranscriptVersion,
+                        and_(
+                            TranscriptVersion.meeting_page_id == MeetingPage.id,
+                            TranscriptVersion.is_default.is_(True),
+                        ),
+                    )
+                    .where(
+                        MeetingPage.platform != "unknown",
+                        MeetingPage.jurisdiction.is_not(None),
+                        MeetingPage.date.is_not(None),
+                        MeetingPage.date != "",
+                        _us50_jurisdiction_condition(),
+                    )
+                    .order_by(MeetingPage.date.desc())
+                    .limit(25)
+                )
+            ).all()
+            recent_pages = [
+                {
+                    "jurisdiction": jurisdiction,
+                    "slug": slug,
+                    "title": title,
+                    "date": date,
+                    "has_transcript": version_id is not None
+                    and _has_real_warning_free_transcript(warnings),
+                }
+                for jurisdiction, slug, title, date, version_id, warnings in fallback_rows
+                if state_abbr_from_jurisdiction(jurisdiction) in US_50_STATE_ABBRS
+            ]
+
+    now = datetime.now(timezone.utc)
+
+    def _within(created_at, days: int) -> bool:
+        if created_at is None:
+            return False
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+        return (now - created_at) <= timedelta(days=days)
+
+    recently_added_count = sum(
+        1 for _, created_at in recent_rows if _within(created_at, FRESHNESS_WINDOW_DAYS)
+    )
+    active_counts: dict[str, int] = {}
+    hub_examples: dict[str, str] = {}
+    for jurisdiction, created_at in recent_rows:
+        if not _within(created_at, MOST_ACTIVE_WINDOW_DAYS):
+            continue
+        slug_key = jurisdiction_hub_slug(jurisdiction) or ""
+        if not slug_key:
+            continue
+        active_counts[slug_key] = active_counts.get(slug_key, 0) + 1
+        hub_examples.setdefault(slug_key, jurisdiction)
+
+    jurisdictions = await get_national_government_list()
+    total_by_hub = {
+        j["hub_slug"]: j["page_count"] for j in jurisdictions if j["hub_slug"]
+    }
+
+    most_active = []
+    if len(jurisdictions) >= MOST_ACTIVE_MIN_GOVERNMENTS:
+        for slug_key, count in sorted(
+            active_counts.items(), key=lambda kv: (-kv[1], kv[0])
+        )[:MOST_ACTIVE_COUNT]:
+            most_active.append(
+                {
+                    "hub_slug": slug_key,
+                    "jurisdiction": hub_examples[slug_key],
+                    "recent_count": count,
+                    "total_count": total_by_hub.get(slug_key, count),
+                }
+            )
+
+    return {
+        "jurisdictions": jurisdictions,
+        "government_groups": _group_governments(jurisdictions),
+        "recent_pages": recent_pages,
+        "featured": featured,
+        "topic_chips": _topic_chips(highlights, active_slug),
+        "active_topic": active_slug,
+        "active_topic_label": (
+            TOPICS_BY_SLUG[active_slug].label if active_slug else None
+        ),
+        "most_active": most_active,
+        "most_active_days": MOST_ACTIVE_WINDOW_DAYS,
+        "recently_added_count": recently_added_count,
+        "freshness_days": FRESHNESS_WINDOW_DAYS,
+        "transcript_count": transcript_count,
+        "top_jurisdictions": [
+            format_jurisdiction_display(j["jurisdiction"]).rsplit(",", 1)[0].strip()
+            for j in sorted(jurisdictions, key=lambda j: -j["page_count"])[:3]
+        ],
+        "total_pages": sum(j["page_count"] for j in jurisdictions),
+        "jurisdiction_count": len(jurisdictions),
+    }
+
+
+# --- Jurisdiction search (lightweight, /api/jurisdictions) ----------------
+
+_JURISDICTION_SEARCH_MIN_LENGTH = 2
+_JURISDICTION_SEARCH_ROW_LIMIT = 200
+_JURISDICTION_SEARCH_MAX_RESULTS = 25
+
+
+async def _top_jurisdictions_in_state(abbr: str, limit: int) -> list[tuple[str, str]]:
+    """Real governments in one US state or Canadian province, grouped by
+    hub and ranked by how many archived meetings each has -- the "most
+    popular" list /coverage's search box shows under a state/province
+    name match. Bounded at state scale (one anchored-suffix fetch, same
+    as get_state_page_data()'s own per-state query, already proven fine
+    at that scale), not a corpus-wide scan."""
+    async with async_session() as session:
+        rows = (
+            await session.execute(
+                select(MeetingPage.jurisdiction).where(
+                    MeetingPage.jurisdiction.is_not(None),
+                    MeetingPage.jurisdiction.like(f"%, {abbr}"),
+                )
+            )
+        ).all()
+    counts: dict[str, int] = {}
+    examples: dict[str, str] = {}
+    for (jurisdiction,) in rows:
+        # Same SQLite case-insensitive-LIKE re-check as elsewhere.
+        if state_abbr_from_jurisdiction(jurisdiction) != abbr:
+            continue
+        hub_slug = jurisdiction_hub_slug(jurisdiction)
+        if not hub_slug:
+            continue
+        counts[hub_slug] = counts.get(hub_slug, 0) + 1
+        examples.setdefault(hub_slug, jurisdiction)
+    capped_limit = min(max(limit, 1), _JURISDICTION_SEARCH_MAX_RESULTS)
+    top = sorted(counts.items(), key=lambda kv: (-kv[1], examples[kv[0]].casefold()))[
+        :capped_limit
+    ]
+    return [(examples[hub_slug], hub_slug) for hub_slug, _ in top]
+
+
+async def search_jurisdictions(q: str, limit: int = 10) -> list[dict]:
+    """Bounded jurisdiction-name lookup for /coverage's search box
+    (GET /api/jurisdictions?q=). No existing precedent anywhere in this
+    codebase for a jurisdiction autocomplete endpoint.
+
+    A term that's exactly a recognized US state or Canadian province/
+    territory name or abbreviation (`match_us_state_or_province()`) gets
+    special-cased: typing "California" returns a `kind: "state"` entry
+    linking to `/state/california`, followed by that state's
+    most-covered governments (`_top_jurisdictions_in_state()`) -- a plain
+    substring match against jurisdiction *names* would mostly miss this,
+    since stored jurisdictions hold the abbreviation, not the full state
+    name (see `jurisdiction_search_terms()`'s own docstring on the same
+    gap for /meetings' filter).
+
+    Otherwise: reuses `jurisdiction_search_terms()`'s state-name-expansion
+    plus the exact ILIKE-substring idiom `list_pages()` already uses for
+    its own jurisdiction filter. No anchored-suffix guard is needed the
+    way `get_state_page_data()` needs one for a 2-letter abbreviation
+    match -- this is free-text substring search against a full
+    jurisdiction name, the same shape `list_pages()` already ships
+    without that guard. Grouped by `jurisdiction_hub_slug()` so a match
+    returns one row per real government with a working `/j/{slug}` link.
+    SQL-`LIMIT`-capped on the raw row fetch first (a live-typed box must
+    never risk scanning/returning the full jurisdiction roster), then
+    capped again on the grouped/deduped result at `limit` (itself capped
+    server-side regardless of what a caller requests).
+    """
+    q = (q or "").strip()
+    if len(q) < _JURISDICTION_SEARCH_MIN_LENGTH:
+        return []
+
+    state_abbr = match_us_state_or_province(q)
+    if state_abbr:
+        results: list[dict] = [
+            {
+                "kind": "state",
+                "label": US_STATE_ABBR_TO_NAME[state_abbr],
+                "link": f"/state/{state_slug_from_abbr(state_abbr)}",
+            }
+        ]
+        results.extend(
+            {"kind": "jurisdiction", "label": jurisdiction, "link": f"/j/{hub_slug}"}
+            for jurisdiction, hub_slug in await _top_jurisdictions_in_state(
+                state_abbr, limit
+            )
+        )
+        return results
+
+    terms = jurisdiction_search_terms(q)
+    async with async_session() as session:
+        rows = (
+            await session.execute(
+                select(MeetingPage.jurisdiction)
+                .where(
+                    MeetingPage.jurisdiction.is_not(None),
+                    or_(*(MeetingPage.jurisdiction.ilike(f"%{t}%") for t in terms)),
+                )
+                .distinct()
+                .limit(_JURISDICTION_SEARCH_ROW_LIMIT)
+            )
+        ).all()
+
+    seen: dict[str, str] = {}
+    for (jurisdiction,) in rows:
+        hub_slug = jurisdiction_hub_slug(jurisdiction)
+        if not hub_slug or hub_slug in seen:
+            continue
+        seen[hub_slug] = jurisdiction
+
+    capped_limit = min(max(limit, 1), _JURISDICTION_SEARCH_MAX_RESULTS)
+    return [
+        {"kind": "jurisdiction", "label": jurisdiction, "link": f"/j/{hub_slug}"}
+        for hub_slug, jurisdiction in sorted(
+            seen.items(), key=lambda kv: kv[1].casefold()
+        )[:capped_limit]
+    ]
 
 
 # --- Jurisdiction hub pages: /j/{slug} -----------------------------------
