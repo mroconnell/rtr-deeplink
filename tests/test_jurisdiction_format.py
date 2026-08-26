@@ -6,6 +6,7 @@ from archive.utils.jurisdiction_format import (
     format_jurisdiction_display,
     is_canadian_abbr,
     jurisdiction_search_terms,
+    match_us_state_or_province,
     normalize_state_suffix,
     state_abbr_from_jurisdiction,
     state_slug_from_abbr,
@@ -285,3 +286,21 @@ def test_jurisdiction_search_terms_leaves_non_full_name_terms_unchanged():
     assert jurisdiction_search_terms("Napa") == ["Napa"]
     assert jurisdiction_search_terms("CA") == ["CA"]
     assert jurisdiction_search_terms("Calgary") == ["Calgary"]
+
+
+def test_match_us_state_or_province_full_name():
+    assert match_us_state_or_province("California") == "CA"
+    assert match_us_state_or_province("  california  ") == "CA"
+    assert match_us_state_or_province("Alberta") == "AB"
+
+
+def test_match_us_state_or_province_abbreviation():
+    assert match_us_state_or_province("CA") == "CA"
+    assert match_us_state_or_province("ca") == "CA"
+    assert match_us_state_or_province("AB") == "AB"
+
+
+def test_match_us_state_or_province_none_for_city_name():
+    assert match_us_state_or_province("Napa") is None
+    assert match_us_state_or_province("Calgary") is None
+    assert match_us_state_or_province("") is None

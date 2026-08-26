@@ -56,6 +56,46 @@ def test_coverage_page_mentions_youtube_and_citymeetings_nyc():
     assert "Vikram Oberoi" in response.text
 
 
+def test_coverage_page_links_all_50_states():
+    response = archive_client_.get("/coverage")
+    assert 'href="/state/all-50"' in response.text
+
+
+def test_coverage_page_links_full_detail_table_from_by_platform_section():
+    response = archive_client_.get("/coverage")
+    assert response.text.count('href="/coverage/detail"') >= 1
+
+
+def test_coverage_page_renders_dynamic_totals():
+    response = archive_client_.get("/coverage")
+    assert "governments covered" in response.text
+    assert "meetings archived" in response.text
+    assert "with a real transcript" in response.text
+
+
+async def test_crud_count_transcribed_pages_matches_a_real_seeded_row():
+    payload = {
+        "platform": "granicus",
+        "source_url": "https://coverage-totals-http-test.granicus.com/player/clip/1",
+        "external_id": "coverage-totals-http-1",
+        "title": "Coverage Totals Test Meeting",
+        "date": "2026-01-01",
+        "jurisdiction": "Coverage Totals Test City, HTTP",
+        "video_url": "https://example.com/v.m3u8",
+        "video_format": "m3u8",
+        "segments": [{"start": 0, "end": 1, "text": "hello"}],
+        "agenda_items": [],
+        "transcript_language": "en",
+        "transcript_warnings": [],
+    }
+    before = await crud.count_transcribed_pages()
+    await crud.ingest_resolution(
+        payload, "https://coverage-totals-http-test.granicus.com/player/clip/1"
+    )
+    after = await crud.count_transcribed_pages()
+    assert after == before + 1
+
+
 def test_coverage_page_renders_example_with_transcript_badge(monkeypatch):
     # get_platform_coverage() itself is exercised for real below (against
     # the shared test DB, which other tests also write "granicus" rows
@@ -583,8 +623,20 @@ async def test_full_jurisdiction_coverage_agenda_only_outcome():
     assert row["audio_transcript_possible"] is True
 
 
-def test_coverage_page_renders_full_jurisdiction_table_headers():
+def test_coverage_page_no_longer_renders_full_jurisdiction_table():
+    # Split out to /coverage/detail 2026-08-26 (mobile-length rework, see
+    # CLAUDE.md) -- mostly a personal/power-user tool, linked from
+    # /coverage's "What about Platform XYZ?" FAQ answer rather than
+    # rendered on the public page.
     response = archive_client_.get("/coverage")
+    assert "Full jurisdiction detail table" not in response.text
+    assert 'id="fullCoverageTable"' not in response.text
+    assert "/coverage/detail" in response.text
+
+
+def test_coverage_detail_page_renders_full_jurisdiction_table_headers():
+    response = archive_client_.get("/coverage/detail")
+    assert response.status_code == 200
     assert "Full jurisdiction detail table" in response.text
     assert "Video embeds" in response.text
     assert "Agenda embedded" in response.text
@@ -594,7 +646,12 @@ def test_coverage_page_renders_full_jurisdiction_table_headers():
     assert 'id="fullCoverageTable"' in response.text
 
 
-async def test_coverage_page_renders_a_real_full_jurisdiction_row():
+def test_coverage_detail_page_is_noindex():
+    response = archive_client_.get("/coverage/detail")
+    assert 'name="robots" content="noindex"' in response.text
+
+
+async def test_coverage_detail_page_renders_a_real_full_jurisdiction_row():
     payload = {
         "platform": "granicus",
         "source_url": "https://coverage-full-http-test.granicus.com/player/clip/1",
@@ -613,7 +670,7 @@ async def test_coverage_page_renders_a_real_full_jurisdiction_row():
         payload, "https://coverage-full-http-test.granicus.com/player/clip/1"
     )
 
-    response = archive_client_.get("/coverage")
+    response = archive_client_.get("/coverage/detail")
     assert "Full Coverage Test City, HTTP" in response.text
     assert "Full Coverage HTTP Test Meeting" in response.text
 

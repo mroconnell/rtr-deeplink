@@ -785,31 +785,52 @@ exercised," which are different claims.
 `/coverage` also has a per-government-body table ("Every place we've
 covered", `crud.get_jurisdiction_coverage()`) below the per-platform one,
 sorted alphabetically for Ctrl+F discoverability ("only software
-engineers think platform first"), and — added 2026-08-17 — a fuller
-**"Full jurisdiction detail table"** (`crud.get_full_jurisdiction_coverage()`),
-one sortable/filterable row per successfully-archived jurisdiction with:
-video-embeds / agenda-embedded / instant-transcript-from-source /
-transcript-from-audio-possible (yes/no each — the last is derived from
-`video_format not in _IFRAME_EMBED_VIDEO_FORMATS`
-(`youtube`/`vimeo`/`viebit`), mirroring `app/main.py`'s own
-`_unreadable_media_message()` reasoning that an iframe-embed page is
-structurally unprobeable by ffprobe, not a live check; every other
-stored `video_format` — mp4/m3u8/mp3/wav — is a genuine fetchable media
-URL), a two-column
-"Detail page" vs. "Video" provider split (recovers PrimeGov/CivicWeb/
-LIMS/SLC/ClerkBase/open.media's real identity from `source_url_normalized` even
-though `MeetingPage.platform` says "youtube" for all of them — see this
-file's "when a platform turns out to be a wrapper around another" note in
+engineers think platform first").
+
+**Reworked 2026-08-26 for mobile length** (the page had grown to stack
+two ~1,600-row tables): the "Every place we've covered" table stays on
+`/coverage` and keeps its flat, unpartitioned alphabetical order on
+purpose — see CLAUDE.md's reasoning on why that ordering itself (a random
+small town sitting next to Los Angeles) is a deliberate brand choice, not
+just a sort default — but now renders inside a capped-height,
+visibly-scrollable pane with a sticky header row and an "All N
+jurisdictions supported so far…" callout above it, so its real length
+reads as obviously-more-below rather than dictating the page's own
+scroll length. A new lightweight, server-backed "Find your government"
+search box (`GET /api/jurisdictions?q=`, `crud.search_jurisdictions()`)
+sits above it — bounded on both the SQL fetch and the response size, and
+deliberately never ships the roster itself to the client, unlike the
+table below it.
+
+The fuller **"Full jurisdiction detail table"** (`crud.get_full_jurisdiction_coverage()`,
+added 2026-08-17), one sortable/filterable row per successfully-archived
+jurisdiction with: video-embeds / agenda-embedded /
+instant-transcript-from-source / transcript-from-audio-possible (yes/no
+each — the last is derived from `video_format not in
+_IFRAME_EMBED_VIDEO_FORMATS` (`youtube`/`vimeo`/`viebit`), mirroring
+`app/main.py`'s own `_unreadable_media_message()` reasoning that an
+iframe-embed page is structurally unprobeable by ffprobe, not a live
+check; every other stored `video_format` — mp4/m3u8/mp3/wav — is a
+genuine fetchable media URL), a two-column "Detail page" vs. "Video"
+provider split (recovers PrimeGov/CivicWeb/LIMS/SLC/ClerkBase/open.media's
+real identity from `source_url_normalized` even though
+`MeetingPage.platform` says "youtube" for all of them — see this file's
+"when a platform turns out to be a wrapper around another" note in
 CLAUDE.md for the Legistar/CivicPlus case this *can't* recover, since
 their delegation overwrites `source_url` with the delegated platform's
 own URL), an outcome bucket (mirrors `app/db/outcomes.py`'s
-`classify_outcome()`), and a last-verified date. Sorting reuses
-`archive/static/coverage.js`'s existing client-side pattern (now
-generalized to any `table.sortable-table`); filtering is plain
-client-side JS (dropdowns + a jurisdiction search box + yes/no checkbox
-filters) — the whole roster is ~870 rows in production as of 2026-08-17,
-small enough to render server-side in one page load and filter/sort
-entirely in the browser, same reasoning the sort code already relied on.
+`classify_outcome()`), and a last-verified date — **moved 2026-08-26 to
+its own page, `GET /coverage/detail`**, `noindex`'d and linked only from
+`/coverage`'s "What about Platform XYZ?" FAQ answer, since it turned out
+to be mostly a personal/power-user tool rather than something the public
+page needed to carry. Sorting reuses `archive/static/coverage.js`'s
+existing client-side pattern (now generalized to any `table.sortable-table`,
+shared unchanged by both `/coverage` and `/coverage/detail`); filtering
+is plain client-side JS (dropdowns + a jurisdiction search box + yes/no
+checkbox filters), unchanged by the move — the whole roster is ~1,600
+rows in production as of 2026-08-26, small enough to render server-side
+in one page load and filter/sort entirely in the browser, same reasoning
+the sort code already relied on.
 
 **`GET /state/{slug}` (per-state landing pages, added 2026-08-17)** —
 server-rendered, indexable SEO pages ("California public meeting videos &
@@ -833,6 +854,30 @@ state agencies, non-US) don't appear on any state page — a documented
 limitation. A state with zero indexable meetings 404s rather than
 rendering an empty shell, and every `/m/{slug}` page whose jurisdiction
 has a state now links "More {State} meetings" to its state page.
+
+**`GET /state/all-50` (added 2026-08-26)** — a national version of the
+same pattern, deliberately scoped to the 50 US states only for its first
+cut (no DC, no Canada/territories — broader "all jurisdictions"/"all
+states + territories" pages are later work). Reuses the featured-snippet
+feed, topic chips, "most watched governments," and the shared
+`_government_groups.html` sidebar partial (also now used by
+`/state/{slug}`) unchanged, but is **not** `get_state_page_data()` with
+its state filter simply dropped — that function pulls every matching page
+into Python unbounded, fine at one state's scale and a real corpus-wide
+scan at national scale (its own sibling `get_home_highlights()` already
+documents this). `crud.get_all50_page_data()` instead composes three
+separately-bounded pieces: a `LIMIT`-based highlight pool (same shape as
+`get_home_highlights()`, scoped to the 50 states), a recent-activity
+window bounded by `MOST_ACTIVE_WINDOW_DAYS` (90 days, not the whole
+history) for the freshness count and most-active ranking, and
+`crud.get_national_government_list()` (`get_jurisdiction_coverage()`'s
+already-proven-at-full-corpus-scale query shape, not
+`get_state_page_data()`'s heavy per-row one) for the government list.
+Drops the two footer links `/state/{slug}` has (a jurisdiction-scoped
+`/meetings` search and RSS feed) rather than pointing them at their
+unscoped equivalents — neither has an honest single value meaning "all 50
+states," and an unscoped `/meetings` link on this page could surface
+Canadian results, which would read as wrong.
 
 **Rebuilt 2026-08-23** around real quoted transcript text. **See
 `STATE_HUB_PAGES.md` for the full reference** — how each piece works,
@@ -2200,7 +2245,8 @@ app/
                            limited via slowapi), /api/report-problem,
                            /admin/*, /robots.txt, the /m/*,
                            /archive-static/*, /meetings, /account/saved,
-                           /coverage, /state/*, /sitemap.xml, /feed.xml
+                           /coverage, /coverage/detail, /state/*,
+                           /api/jurisdictions, /sitemap.xml, /feed.xml
                            Archive proxy routes,
                            /api/newsletter/signup, /unsubscribe, the
                            accounts routes (/api/account/*,
@@ -2268,8 +2314,10 @@ archive/
                            /m/{slug}, /m/{slug}/transcript.{txt,srt},
                            /m/{slug}/card.jpg (see "Meeting card images"
                            above),
-                           /meetings, /coverage, /state/{slug}, /j/{slug},
-                           /sitemap.xml, /feed.xml,
+                           /meetings, /coverage, /coverage/detail,
+                           /state/{slug}, /state/all-50, /j/{slug},
+                           /api/jurisdictions (public, backs /coverage's
+                           search box), /sitemap.xml, /feed.xml,
                            /api/health, /account/saved, and the token-gated
                            /internal/account/* routes -- see "Accounts
                            (Clerk)" above
@@ -2286,11 +2334,18 @@ archive/
     crud.py                  identity matching/dedup, slug generation,
                            content-hash version dedup, list_pages()
                            (paginated + filtered, backs /meetings),
-                           get_platform_coverage()/get_jurisdiction_coverage()/
-                           get_full_jurisdiction_coverage() (all back
-                           /coverage's three sections),
+                           get_platform_coverage()/get_jurisdiction_coverage()
+                           (back /coverage's sections),
+                           get_full_jurisdiction_coverage() (backs the
+                           split-out /coverage/detail),
+                           search_jurisdictions() (backs /api/jurisdictions),
                            get_state_coverage_index()/get_state_page_data()
                            (back /state/{slug} + /coverage's state links),
+                           get_national_government_list()/
+                           get_all50_page_data() (back /state/all-50 --
+                           see "/state/{slug}" above for why these are NOT
+                           get_state_page_data() with its state filter
+                           dropped),
                            get_jurisdiction_hub_data()/
                            list_indexable_hub_entries() (back /j/{slug} +
                            its sitemap entries),
@@ -2348,7 +2403,17 @@ archive/
     saved_items.html          "My Saved Items" page -- see "Accounts
                            (Clerk)" above
     coverage.html              per-platform table + real example page
-                           links, backs /coverage
+                           links, the alphabetical "receipts" table, and
+                           the jurisdiction search box, backs /coverage
+    coverage_detail.html      the sortable/filterable full jurisdiction
+                           detail table, split out 2026-08-26, noindex'd,
+                           backs /coverage/detail
+    state_page.html            per-state hub, backs /state/{slug}
+    state_all50.html           national (50-US-states-only) hub, added
+                           2026-08-26, backs /state/all-50
+    _government_groups.html   shared grouped-government-list partial,
+                           included by both state_page.html and
+                           state_all50.html
     sitemap.xml.jinja         sitemap.xml template
     feed.xml.jinja            feed.xml (RSS) template
   static/style.css          duplicated from app/static/style.css

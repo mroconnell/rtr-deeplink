@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}Public meetings from all 50 states | Red Tape Recordings{% endblock %}
+{% block meta %}
+  {#- Same "name the biggest governments outright" shape as state_page.html's
+     description -- see that template for the reasoning. No RSS alternate
+     link here: unlike a single state, there is no honest single
+     `?jurisdiction=` value that means "all 50 states" for /feed.xml to
+     filter on, so this page doesn't advertise one (see the footer below,
+     which drops the equivalent link for the same reason). -#}
+  <meta name="description" content="{{ total_pages }} archived public meeting{{ 's' if total_pages != 1 else '' }} from {{ jurisdiction_count }} governments across all 50 states{% if top_jurisdictions %}, including {% if top_jurisdictions|length > 1 %}{{ top_jurisdictions[:-1]|join(', ') }} and {{ top_jurisdictions[-1] }}{% else %}{{ top_jurisdictions[0] }}{% endif %}{% endif %} — with video, searchable transcripts and deep links to any moment.">
+  {#- Self-referential canonical, same reasoning as state_page.html's --
+     this is its own indexable SEO surface, and ?topic= views are
+     crawlable alternate cuts of it, not separate competing pages. -#}
+  {% if public_base_url %}
+  <link rel="canonical" href="{{ public_base_url }}/state/all-50">
+  <meta property="og:url" content="{{ public_base_url }}/state/all-50">
+  {% endif %}
+  <meta property="og:title" content="Public meetings from all 50 states">
+  <meta property="og:description" content="Watch and search archived U.S. government meetings — city councils, county boards, and public agencies — with transcripts and deep links to specific moments.">
+  <meta property="og:type" content="website">
+  {% if public_base_url %}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "name": "Public meetings from all 50 states",
+    "description": {{ ("Archived public meeting video and transcripts for " ~ jurisdiction_count ~ " governments across all 50 states.")|tojson }},
+    "url": {{ (public_base_url ~ "/state/all-50")|tojson }},
+    "breadcrumb": {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "Red Tape Recordings", "item": {{ (public_base_url ~ "/")|tojson }}},
+        {"@type": "ListItem", "position": 2, "name": "Coverage", "item": {{ (public_base_url ~ "/coverage")|tojson }}},
+        {"@type": "ListItem", "position": 3, "name": "All 50 States", "item": {{ (public_base_url ~ "/state/all-50")|tojson }}}
+      ]
+    }{% if featured %},
+    "mainEntity": {
+      "@type": "ItemList",
+      "itemListElement": [
+        {%- for m in featured %}
+        {
+          "@type": "ListItem",
+          "position": {{ loop.index }},
+          "item": {
+            "@type": "VideoObject",
+            "name": {{ (m.title or "Public meeting")|tojson }},
+            "description": {{ m.snippet_text|tojson }},
+            "url": {{ (public_base_url ~ m.deep_link)|tojson }},
+            {% if m.date %}"uploadDate": {{ m.date|tojson }},{% endif %}
+            {% if m.card_url %}"thumbnailUrl": {{ (public_base_url ~ m.card_url)|tojson }},{% endif %}
+            "transcript": {{ m.snippet_text|tojson }}
+          }
+        }{{ "," if not loop.last }}
+        {%- endfor %}
+      ]
+    }{% endif %}
+  }
+  </script>
+  {% endif %}
+{% endblock %}
+{% block content %}
+  <main class="about-page state-page">
+    <nav aria-label="Breadcrumb" class="hub-breadcrumb">
+      <a href="/">Home</a> &rsaquo; <a href="/coverage">Coverage</a> &rsaquo; <span>All 50 States</span>
+    </nav>
+    <h1>Public meetings from all 50 states</h1>
+    <p class="about-lede">Video, transcripts, and deep links for {{ total_pages }} archived public meeting{{ 's' if total_pages != 1 else '' }} from {{ jurisdiction_count }} government{{ 's' if jurisdiction_count != 1 else '' }} across all 50 states — city councils, county boards, and public agencies.</p>
+    <p class="state-freshness">
+      {%- if transcript_count %}{{ transcript_count }} with a searchable transcript{% endif -%}
+      {%- if recently_added_count %}{% if transcript_count %} &middot; {% endif %}<strong>{{ recently_added_count }} added in the last {{ freshness_days }} days</strong>{% endif -%}
+    </p>
+
+    <div class="state-layout">
+      <div class="state-main">
+        {#- User feedback 2026-08-26: "most watched" reads better leading
+           the page than trailing the recency feed -- moved above it here
+           (state_page.html's per-state ordering is unchanged; this is a
+           deliberate difference for the national page only). Topic chips
+           moved down with it, since they filter the recency feed below,
+           not this list. -#}
+        {% if most_active %}
+        <h2 class="state-section-heading">Most watched governments</h2>
+        <p class="state-section-sub">Where we're watching most closely &mdash; ranked by meetings we've archived in the last {{ most_active_days }} days.</p>
+        <ul class="most-active-list">
+          {%- for row in most_active %}
+          <li>
+            <a href="/j/{{ row.hub_slug }}">{{ row.jurisdiction|jurisdiction_display }}</a>
+            <span class="most-active-count">{{ row.recent_count }} recent &middot; {{ row.total_count }} total</span>
+          </li>
+          {%- endfor %}
+        </ul>
+        {% endif %}
+
+        {% with chips = topic_chips, base_url = "/state/all-50" %}
+          {% include "_topic_chips.html" %}
+        {% endwith %}
+
+        <h2 class="state-section-heading">
+          {% if active_topic_label %}{{ active_topic_label }} in meetings nationwide{% elif featured %}Recent moments from across the country{% else %}Recently archived nationwide{% endif %}
+        </h2>
+        {% if active_topic_label %}
+        <p class="state-section-sub">Quotes mentioning {{ active_topic_label|lower }}, from the most recent meetings nationwide we have transcripts for. <a href="/state/all-50">Show all topics</a>.</p>
+        {% else %}
+        <p class="state-section-sub">
+          {%- if featured %}Real excerpts from the transcripts, each linked to the moment it was said.
+          {%- else %}The most recently archived meetings nationwide.{% endif -%}
+        </p>
+        {% endif %}
+
+        {% with show_jurisdiction = True %}
+          {% include "_featured_meetings.html" %}
+        {% endwith %}
+
+        {% if not featured %}
+        <div class="meeting-list">
+          {% for m in recent_pages %}
+          <div class="calendar-candidate meeting-result-row">
+            <div class="calendar-candidate-main">
+              <a href="/m/{{ m.slug }}">{{ m.title or "Untitled meeting" }}</a>
+              <span class="calendar-candidate-date">
+                {%- if m.jurisdiction %}{{ m.jurisdiction|jurisdiction_display }}{% endif -%}
+                {%- if m.date %} &middot; {{ m.date|meeting_date_html }}{% endif -%}
+              </span>
+            </div>
+            {% if m.has_transcript %}
+            <span class="transcript-badge" title="A transcript is available for this meeting">&#10003; Transcript</span>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+
+      {% with sidebar_label = "across all 50 states" %}
+        {% include "_government_groups.html" %}
+      {% endwith %}
+    </div>
+
+    {#- No "Search all N meetings" / RSS footer links here (unlike
+       state_page.html): neither /meetings?jurisdiction= nor
+       /feed.xml?jurisdiction= has an honest value meaning "all 50
+       states" -- both do single-value substring matching against a
+       stored "City, ST" string, so pointing them at the unscoped
+       /meetings or /feed.xml would be subtly wrong (an unfiltered
+       /meetings link on a "50 states" page could surface Canadian
+       results). Omitted entirely per that reasoning. -#}
+    <p class="state-footer-links">
+      <a href="/coverage">All coverage by state and platform</a>
+    </p>
+  </main>
+{% endblock %}

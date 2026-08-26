@@ -108,6 +108,13 @@ _VALID_STATE_ABBRS = set(US_STATE_NAME_TO_ABBR.values()) | set(
     CA_PROVINCE_NAME_TO_ABBR.values()
 )
 
+# The 50 US states only -- no DC, no territories, no Canada. Backs
+# /state/all-50 (crud.py's get_national_government_list()/
+# get_all50_page_data()), which is deliberately scoped narrower than
+# "every US jurisdiction" for its first cut -- broader "all
+# jurisdictions"/"all states + territories" pages are later work.
+US_50_STATE_ABBRS = set(US_STATE_NAME_TO_ABBR.values()) - {"DC"}
+
 # "CA" -> "California". Inverted from the dict above rather than
 # hand-maintained; a naive .title() on "district of columbia" would yield
 # "District Of Columbia", hence the override. Combined with the Canadian
@@ -243,6 +250,27 @@ def jurisdiction_search_terms(term: str) -> list[str]:
     if abbr and abbr != stripped.upper():
         return [term, abbr]
     return [term]
+
+
+def match_us_state_or_province(term: str) -> Optional[str]:
+    """Exact-match `term` against a full US state or Canadian province/
+    territory name, or its 2-letter abbreviation -- returns the
+    abbreviation, or None for anything else (a city name, partial text,
+    etc.). Used by /coverage's search box (crud.search_jurisdictions())
+    to special-case typing "California" into a link to
+    /state/california plus that state's most-covered governments,
+    rather than only a plain substring match against jurisdiction names
+    (which "California" would mostly miss, since stored jurisdictions
+    hold the abbreviation -- see jurisdiction_search_terms() above)."""
+    stripped = term.strip()
+    abbr = US_STATE_NAME_TO_ABBR.get(stripped.lower()) or CA_PROVINCE_NAME_TO_ABBR.get(
+        stripped.lower()
+    )
+    if abbr:
+        return abbr
+    if stripped.upper() in _VALID_STATE_ABBRS:
+        return stripped.upper()
+    return None
 
 
 _DROPPED_DISPLAY_PREFIXES = ("The City of ", "City of ", "City ")

@@ -1,0 +1,25 @@
+{#- Shared by state_page.html and state_all50.html: the grouped
+   (County/City/School/Agency) government-list sidebar/scroll-pane.
+   Extracted 2026-08-26 so /state/all-50 doesn't duplicate this block.
+   Expects `government_groups` and `jurisdiction_count` in scope;
+   `sidebar_label` (optional) customizes the aria-label suffix, e.g. "in
+   California" vs "across all 50 states" -- omitted entirely when unset. -#}
+<aside class="state-sidebar" aria-label="Governments covered{% if sidebar_label %} {{ sidebar_label }}{% endif %}">
+  <h2 class="state-sidebar-heading">{{ jurisdiction_count }} governments covered</h2>
+  <p class="state-sidebar-note">Don't see yours? <a href="/">Paste a meeting link</a> — if it's on a platform we know, it'll just work.</p>
+  <div class="state-gov-scroll">
+    {%- for group in government_groups %}
+    <section class="state-gov-group">
+      <h3 class="state-gov-heading">{{ group.label }} <span class="state-gov-count">{{ group.rows|length }}</span></h3>
+      <ul class="state-gov-list">
+        {%- for row in group.rows %}
+        <li>
+          {% if row.hub_slug %}<a href="/j/{{ row.hub_slug }}">{{ row.jurisdiction|jurisdiction_display }}</a>{% else %}{{ row.jurisdiction|jurisdiction_display }}{% endif %}
+          <span class="state-gov-meetings">{{ row.page_count }}</span>
+        </li>
+        {%- endfor %}
+      </ul>
+    </section>
+    {%- endfor %}
+  </div>
+</aside>

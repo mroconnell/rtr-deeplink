@@ -158,25 +158,9 @@
         {% endif %}
       </div>
 
-      <aside class="state-sidebar" aria-label="Governments covered in {{ name }}">
-        <h2 class="state-sidebar-heading">{{ jurisdiction_count }} governments covered</h2>
-        <p class="state-sidebar-note">Don't see yours? <a href="/">Paste a meeting link</a> — if it's on a platform we know, it'll just work.</p>
-        <div class="state-gov-scroll">
-          {%- for group in government_groups %}
-          <section class="state-gov-group">
-            <h3 class="state-gov-heading">{{ group.label }} <span class="state-gov-count">{{ group.rows|length }}</span></h3>
-            <ul class="state-gov-list">
-              {%- for row in group.rows %}
-              <li>
-                {% if row.hub_slug %}<a href="/j/{{ row.hub_slug }}">{{ row.jurisdiction|jurisdiction_display }}</a>{% else %}{{ row.jurisdiction|jurisdiction_display }}{% endif %}
-                <span class="state-gov-meetings">{{ row.page_count }}</span>
-              </li>
-              {%- endfor %}
-            </ul>
-          </section>
-          {%- endfor %}
-        </div>
-      </aside>
+      {% with sidebar_label = "in " ~ name %}
+        {% include "_government_groups.html" %}
+      {% endwith %}
     </div>
 
     <p class="state-footer-links">

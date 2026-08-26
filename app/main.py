@@ -1665,6 +1665,20 @@ async def coverage(request: Request):
     )
 
 
+@app.get("/coverage/detail")
+async def coverage_detail(request: Request):
+    return await _proxy_to_archive(
+        "coverage/detail", str(request.query_params), request.headers.get("cookie")
+    )
+
+
+@app.get("/api/jurisdictions")
+async def api_jurisdictions(request: Request):
+    # Public data (the same lookup /coverage's search box hits) -- no
+    # cookie forwarded, unlike the page proxies above.
+    return await _proxy_to_archive("api/jurisdictions", str(request.query_params))
+
+
 @app.get("/state/{path:path}")
 async def archive_state_page(path: str, request: Request):
     return await _proxy_to_archive(
