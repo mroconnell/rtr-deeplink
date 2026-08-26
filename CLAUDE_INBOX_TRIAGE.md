@@ -483,6 +483,111 @@ the bug before the patch landed. No new entry needed.
 
 Full write-up in `BACKLOG_DONE.md`.
 
+## 2026-08-26
+
+Reviewed 7 new messages under `label:rtr-claude newer_than:30d` (all 7
+threads returned by the search were new — 91 already in the ledger from
+prior runs). Skipped as duplicates of already-tracked items, no new
+entry: another "Server failure detected on test-redtaperecordings" email
+(2026-08-26 11:09, "Exited with status 3") — same likely-test-noise
+pattern flagged since the 2026-08-19 section, still unconfirmed, no new
+signal; "deploy failed for rtr-deeplink-staging" (2026-08-25 14:40,
+commit "Fall back to per-chunk when the whole-audio pull fails (WO-58)")
+— same disposable/untracked-staging pattern as every prior run; "[Important]
+Build failed on your Render account" (2026-08-25 14:40, pipeline minute
+spend limit of $0.00 reached) — this is the *exact* 2026-08-25 pipeline-
+minute exhaustion `CLAUDE.md`'s own "Deploys are manual" bullet and
+`BACKLOG_DONE.md`'s "Deploys are manual now [Done 2026-08-25, WO-59]"
+entry already fully investigated and fixed same-day (batching-merges
+convention + `autoDeploy: false` on all four services); "Transcription
+job 910 failed: SPECIAL Planning Commission" (2026-08-25 15:35, gave up
+after 0 retries, `napacity.granicus.com/player/clip/3458`) — this is the
+exact job `BACKLOG.md`'s existing `[NEEDS-AUDIT]` "chunk-failure budget"
+entry (Open bugs section) already tracks by job ID and has since fully
+explained (Wowza/CloudFront cache-fill cost, not true intermittency) —
+this email is just that job's final give-up notice, no new information;
+"⚠️ YouTube transcript fetch failed" (2026-08-25 16:00, `IpBlocked`-style
+"An IP-level block means further requests would all fail too") — same
+already-documented self-clearing root cause as `BACKLOG_DONE.md`'s
+"YouTube transcript fetch `IpBlocked` alert" entry, no new video/finding
+attached to this one to investigate further. Also treated as a
+duplicate/continuation rather than a new finding: "Your database is
+nearing its storage limit" (`rtr-deeplink-db`, 2026-08-25 16:02:49 UTC) —
+this fired ~43 minutes *before* WO-60's fix (commit `8e32b56`, 2026-08-25
+16:45:17 UTC) even merged, so it's the same ongoing >90%-storage
+condition that produced the 2026-08-24 alert WO-60/WO-61 already
+root-caused and partly fixed (lowered `MAX_FRAMES_PER_PAGE`,
+`scripts/cleanup_old_thumbnails.py`), not a new incident. It doesn't
+resolve the still-open `[HUMAN]` residual already tracked in
+`BACKLOG.md` ("Two residuals from the storage alert WO-60 closed") —
+whether the Render-shell cleanup steps (`cleanup_old_thumbnails.py` +
+`VACUUM FULL`) were actually run, and the resolver's own database
+(`rtr_deeplink_db`, distinct from `rtr_archive`) still has never been
+measured via `GET /internal/db-size`, is unknown from this repo. No new
+entry — the existing `[HUMAN]` item already covers exactly this.
+
+**One new finding:**
+
+**[Unconfirmed] "Web Service rtr-deeplink exceeded its memory limit"
+(Render, 2026-08-26T01:13:58Z).** One instance of the main resolver
+service (`rtr-deeplink`, the `app/` FastAPI service — not Archive or the
+transcription worker) hit its memory limit and was auto-restarted by
+Render; brief unavailability during the restart, self-recovered, no
+follow-up alert since. Render's own email gives only the generic three
+possible causes (leak / traffic spike / undersized instance), and this
+is the *first* occurrence of this alert this Routine has seen — nothing
+in `BACKLOG.md`, `BACKLOG_DONE.md` or this file's prior sections
+mentions a memory issue on `rtr-deeplink` specifically.
+
+Investigated the code directly since Render's dashboard/metrics are
+auth-walled: `rtr-deeplink` (`app/main.py`) does not run any of the
+obviously memory-heavy work itself — `/meetings`, `/state/*`, `/j/*`,
+`/coverage` and `/account/saved` are all thin reverse-proxies to the
+Archive service (`_proxy_to_archive()`, `app/main.py:1565`) that stream
+the response via `response.content.iter_chunked(65536)` rather than
+buffering it, and the only worker-adjacent import in `app/main.py` is
+`probe_duration`/`is_plausible_meeting_duration` from
+`app/platforms/media_probe.py` — a bounded `ffprobe` subprocess call for
+duration metadata, not a full audio/video pull. No unbounded in-memory
+cache, no `list_pages()`-style "load every segments blob" pattern was
+found in `app/` (that specific pattern is what previously OOM'd the
+**Archive** service on 2026-08-17 — see `render.yaml`'s comment on
+`rtr-deeplink-archive`'s `plan: standard` line and
+`BACKLOG_DONE.md`'s "Search: move to a materialized/indexed column"
+entry).
+
+**What is a real, load-bearing fact, not speculation**: `rtr-deeplink`
+is the *only* one of this repo's four Render services still on
+`plan: starter` (512MB) — `rtr-deeplink-archive` and both transcription
+workers are all `plan: standard`, and archive's own upgrade
+(2026-08-17) was made for exactly this failure shape (`"Ran out of
+memory (used over 512MB)"`) on the smallest plan. That doesn't prove
+`rtr-deeplink` needs the same upgrade — a single restart from one
+instance, self-recovered, could just as easily be an ordinary traffic
+spike hitting the smallest available plan — but it means this alert
+landing on the one remaining `starter`-plan service is not a coincidence
+worth ignoring either.
+
+**Impact**: one brief service interruption (duration unknown — Render's
+email doesn't state how long the restart took) on the main public-facing
+resolver, 2026-08-26T01:13:58Z, auto-recovered. No user reports or
+follow-up alerts since. If this recurs or clusters, it's the same
+outage shape as the 2026-08-17 Archive OOM, just on the service that
+handles `/api/resolve` and the homepage directly. Fix effort if it does
+need the same treatment as Archive: trivial (`plan: starter` →
+`plan: standard` in `render.yaml`, one line, same pattern already used
+for the other three services) — the open question is whether it's
+warranted yet, not how to do it.
+
+**Open question for Ryan**: is this a one-off (worth ignoring unless it
+recurs), or has actual production memory/CPU usage on `rtr-deeplink`
+already been checked on the Render dashboard? This Routine has no way to
+see the service's real memory graph or confirm whether the restart
+correlates with a specific request pattern (e.g., several concurrent
+`/api/resolve` calls each spawning an `ffprobe` subprocess) — that needs
+either dashboard access or a follow-up investigation with log access
+this Routine doesn't have.
+
 ## 2026-08-25
 
 Reviewed 16 new messages under `label:rtr-claude newer_than:30d` (83
