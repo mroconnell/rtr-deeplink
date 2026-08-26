@@ -2924,10 +2924,24 @@ different: a first agenda appearing, and an amendment to one already seen.
 `rtr-upcoming` classifies exactly that (`initial` / `amendment` / `reissued` /
 `alternate`) and `created_after` cannot express it.
 
-**Known data-quality gap worth inheriting knowingly:** some PDFs extract with
-mangled ligatures — `parBcipate`, `DisabiliBes`, `submiLed` (`ti`→`B`,
-`tt`→`L`/`M`), measured at 7 of 286 stored versions. It matters for *search*,
-not just display: a query for "participate" will never match `parBcipate`.
+**Some PDFs extract mangled, and it costs SEARCH more than display** — a
+query for "participate" can never match `parBcipate`. Two distinct shapes,
+both real: **ligature loss** (`parBcipate`, `submiLed` — `ti`→`B`, `tt`→`L`/
+`M`, from a broken ToUnicode CMap) and **space loss** (`reportedRequest`,
+`firstBank`). `pdfplumber` reads all of them cleanly where `pypdf` does not
+(Cloverdale 19 mangled → 0, Colma 25 → 0, Oakley 94 → 0) at roughly **3x the
+time** — 54s against 16s on an 81 MB packet — so `rtr-upcoming` uses it as a
+*fallback* triggered only on detected damage, keeping whichever result
+measures better. Not everything that looks mangled is: Millbrae's 58
+`supportLists` come from the city exporting Word HTML to PDF with
+`<!--[if !supportLists]-->` rendered into the page, so there is nothing to
+repair.
+
+**And improving extraction must not itself read as an amendment.** Repairing
+a document already stored rewrites every affected block — that is our change,
+not the jurisdiction's, and alerting on it is the same false positive as the
+URL case. Exclude blocks whose old side carried mangled words and whose new
+side does not.
 
 ### `[IMPROVEMENT-ROUND]` `[BIG]` App-wide audit — see [AUDIT_BRIEF.md](AUDIT_BRIEF.md)
 
