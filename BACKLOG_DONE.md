@@ -82,9 +82,43 @@ manufacture a fake agenda.
 **Verified**: ruff check + format clean, 1811 passed / 16 skipped, both
 alembic checks clean. No schema change.
 
-**Residual**: the code is fixed, the 14 already-archived pages are not —
-nothing re-resolves an archived page on its own. Live entry in
-`BACKLOG.md` with what to run.
+**Residual — closed the same day.** The 14 archived pages were swept with
+`scripts/backfill_archived_pages.py --platform hyland --delay 3` from the
+resolver's Render shell. Result, straight from
+`GET /internal/thin-page-audit`:
+
+```
+before:  agenda_link_only 16   (hyland 14, champds 1, unknown 1)
+after:   agenda_link_only  2   (champds 1, unknown 1)
+has_content 2618 -> 2632       (+14, exactly the recovered pages)
+```
+
+`hyland` is gone from the breakdown entirely.
+
+**One process lesson, learned the expensive way.** The first sweep pushed
+all 30 Hyland pages and changed *nothing* — the audit still read 16. The
+cause was WO-59's world: `main` had the fix, production did not, because
+deploys are manual and the deploy that had run predated the merge. The
+sweep executes whatever is deployed, so it re-resolved every page with
+the old adapter and dutifully reported "30 updated, 0 failed".
+
+Nothing was harmed — every field in `ingest_resolution()` is truthy-gated
+(`page.video_url = payload.get("video_url") or page.video_url`), so a
+re-resolve that finds nothing can never erase what is stored — but a full
+round was wasted on it.
+
+**The check that settles it in one second**, worth running before any
+sweep whose whole point is that a fix has landed:
+
+```
+grep -c "<a string unique to the fix>" app/platforms/<adapter>.py
+```
+
+from the service's own shell. It reads the actually-deployed file, so
+unlike a dashboard glance or "I think I deployed it" it cannot be fooled
+by a deploy that never ran or landed before the merge. `0` meant old
+code; after a real deploy it read `1` and the same sweep worked
+immediately.
 
 ## A bare agenda link was never content: the Soft 404 fix, and the two pages it does not explain (WO-62) [Done 2026-08-25]
 
