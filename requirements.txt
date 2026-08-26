@@ -153,7 +153,7 @@ typing-inspection==0.4.4
     #   pydantic
 urllib3==2.7.0
     # via sentry-sdk
-uvicorn[standard]==0.52.3
+uvicorn[standard]==0.52.4
     # via -r requirements.in
 uvloop==0.22.1
     # via uvicorn
@@ -167,11 +167,3 @@ wrapt==2.3.0
     # via deprecated
 yarl==1.24.5
     # via aiohttp
-
-# Deliberately unpinned (WO-11, 2026-08-16) -- YouTube actively breaks
-# scrapers and yt-dlp only works because it chases them; pinning it is a
-# bug, not hygiene. See requirements.in's matching comment. Re-add this
-# line after every `pip-compile requirements.in` re-run -- pip-compile
-# doesn't know about it since it's excluded from requirements.in on
-# purpose.
-yt-dlp
