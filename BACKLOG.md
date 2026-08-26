@@ -133,7 +133,7 @@ Platform & jurisdiction coverage  (37)
     [NEEDS-AUDIT] Vimeo captions and on-demand Whisper audio are the
     [NEEDS-AUDIT] Chicago ELMS's 473 real agenda items have nowhere
     [JUST-DO-IT] `[EASY]` `youtube_channel.py`'s flat channel listing has
-    [JUST-DO-IT] New platform: ProudCity — build `proudcity.py`, real
+    [NEEDS-AUDIT] ProudCity residuals — the adapter shipped and pushed
     [JUST-DO-IT] `vimeo.com/showcase/{id}/embed` isn't claimed by
     [JUST-DO-IT] Residual gaps left behind by WO-30's city-YouTube-
     [LATER] `[EASY]` PrimeGov's own better date/title still isn't
@@ -2063,66 +2063,19 @@ from a live check), but the Legistar calendar itself is still untried.
   Doesn't touch the separate, harder problem below (Render's IP getting
   YouTube-blocked) — this only fixes *dating* a video once one is found.
 
-- **[JUST-DO-IT] New platform: ProudCity — build `proudcity.py`, real
-  evidence already gathered end-to-end (2026-08-26).** Full investigation
-  in `BACKLOG_DONE.md` (same date) — source-verified against the actual
-  `wp-proud-meeting`/`wp-proud-theme` plugin code plus 5 live tenants
-  (Belvedere/Petaluma/Marin County/Fairfax/San Rafael, all CA), not
-  inferred. **What to build, in priority order**: (1) recognize the
-  `/meetings/{slug}` permalink + `wp-json/wp/v2/meetings` REST listing
-  as the platform signature and enumeration path — the REST API is
-  already validated in production for agenda discovery; (2) extract
-  `data-youtube-seek="{seconds}"` bookmark anchors into real
-  `agenda_items` — generic_fallback.py has no way to find these today,
-  confirmed live-dropped on a real Fairfax resolve; (3) pull the
-  `agenda`/`agenda_packet`/`minutes` postmeta rich text directly rather
-  than only the single best-effort PDF link. **Explicitly not the
-  point of this adapter**: video itself. It already resolves today via
-  `generic_fallback.py`'s existing YouTube-embed detection — confirmed
-  live via `/api/resolve` on a real Fairfax meeting, correct video +
-  jurisdiction, `best_effort: true`. The adapter's job is promoting that
-  out of best-effort and adding the structured data around it, not
-  finding the video. **Also explicitly not fixed by this**: transcripts
-  — every ProudCity meeting delegates to the same yt-dlp caption fetch
-  as every other YouTube-backed platform, and that exact Fairfax test
-  caught the Render IP block live, mid-session. Ships with the same gap
-  as the 184-jurisdiction note under **Reliability, ops & cost** until
-  that's separately resolved. Two open items before/while building:
-  Petaluma and Marin County are both Cloudflare-gated (unresolved, not
-  confirmed broken); `video_style === 'external'` is a second, plain-
-  link video field of unknown real prevalence.
-
-  **Sequencing, decided 2026-08-26**: tenant *enumeration* (finding more
-  real ProudCity domains beyond the 5 known) doesn't need to wait for
-  this adapter — it's useful on its own (sizes the real opportunity, and
-  since these pages already best-effort-resolve via `generic_fallback.py`
-  today, running newly-found tenants through `/api/resolve` grows real
-  production coverage immediately, adapter or not). **Re-checking
-  already-archived/failed pages against this improvement does need to
-  wait** — before the adapter exists there's nothing new for a
-  previously-failed page to gain by re-resolving, since generic_fallback
-  already handles the video half. Once `proudcity.py` ships: sweep
-  `/internal/low-trust-pages` and any prior no-video/no-jurisdiction
-  ProudCity-shaped URLs for a real re-resolve, the same pattern
-  `refresh_archived_page`/the passive recheck cadence already uses.
-
-  **Enumeration round run the same day — real yield, full detail in
-  `BACKLOG_DONE.md`'s addendum on this entry.** Tenant count went from
-  5 known to **10 live-verified with a real, current `meeting` post
-  type** (added: Somerville NJ, Holyoke MA, Miamisburg OH, Santa Ana CA,
-  Colma CA), plus **~45 further real candidate slugs** not yet
-  individually checked, sourced from ProudCity's own GitHub issue
-  tracker (their live fleet-ops log, ~162 real deployments — flagged to
-  Ryan as apparently unintentionally public, not acted on further here)
-  and a Wayback CDX scan scoped to the `storage.googleapis.com/
-  proudcity` path prefix. **Real negative pattern worth carrying into
-  the adapter itself**: Rye Brook NY and Sonoma CA are both confirmed
-  ProudCity customers whose `meeting` post type is stale/unused — they
-  migrated real meeting management to a separate CivicWeb portal.
-  `proudcity.py` (or whatever enumerates these candidates) needs to
-  check the *meetings* endpoint's actual content, not just that a
-  domain is ProudCity, before trusting it as a source — general-CMS
-  detection and active-meetings detection are not the same signal here.
+- **[NEEDS-AUDIT] ProudCity residuals — the adapter shipped and pushed
+  ~18 real tenants (2026-08-26), three small things still open.** Full
+  build + two enumeration/push rounds + a real fabricated-content
+  incident (two demo pages accidentally pushed, caught and fixed same
+  day) are all in `BACKLOG_DONE.md`. What's left: (1) Holyoke MA's push
+  hit a real YouTube 429 mid-round and still needs a retry once real
+  time has passed; (2) Lafayette CA and Talent OR are Cloudflare-gated
+  and still domain-unconfirmed; (3) a handful of candidate slugs from
+  the enumeration round were never individually chased (Charlotte TX,
+  Brazos Valley COG, Franklin Township NJ, Effingham IL, George West TX
+  — none resolved on a first domain guess, not tried further). Low
+  priority — the adapter and known-domains list already cover the real
+  yield from this round.
 
 - **[JUST-DO-IT] `vimeo.com/showcase/{id}/embed` isn't claimed by
   `detect_platform()`, so a real Vimeo listing falls to the best-effort

@@ -105,6 +105,17 @@ _EXTERNAL_VIDEO_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Real, confirmed incident, 2026-08-26: `/meetings/example-city-council-
+# meeting/` is a shared WordPress seed/demo post every ProudCity install
+# ships with and evidently never removes -- confirmed on three unrelated
+# tenants (Santa Ana CA, Palmview TX, Cambridge Township PA), two of which
+# carry one of ProudCity's own marketing/demo YouTube videos
+# (uploader "ProudCity", one literally titled "San Rafael + ProudCity")
+# rather than any real meeting. Two real pages were accidentally ingested
+# from this before it was caught and deleted (BACKLOG_DONE.md). Never
+# treat this slug as a real meeting, regardless of what it resolves to.
+_DEMO_SLUG_RE = re.compile(r"/example-city-council-meeting/?(?:[?#]|$)")
+
 
 class ProudCityAssetFinder(AssetFinder):
     """ProudCity (WordPress `wp-proud-meeting` plugin). See module
@@ -113,6 +124,16 @@ class ProudCityAssetFinder(AssetFinder):
     platform_name = "proudcity"
 
     async def resolve(self, url: str) -> ResolvedMeeting:
+        if _DEMO_SLUG_RE.search(urlparse(url).path):
+            return ResolvedMeeting(
+                platform=self.platform_name,
+                source_url=url,
+                video_warnings=[
+                    "This is ProudCity's own shared demo meeting page, not a "
+                    "real one -- see proudcity.py's _DEMO_SLUG_RE."
+                ],
+            )
+
         async with aiohttp.ClientSession() as session:
             page_html = await self._fetch_text(session, url)
 
