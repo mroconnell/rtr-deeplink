@@ -59,6 +59,7 @@ def detect_platform(url: str) -> str:
     # (see its case below for why), and that parsing belongs with the
     # adapter, not copy-pasted here.
     from .vimeo import is_vimeo_host, is_vimeo_listing, parse_vimeo_video
+    from .proudcity import PROUDCITY_KNOWN_DOMAINS
 
     netloc = urlparse(url).netloc.lower()
     path = urlparse(url).path.lower()
@@ -322,6 +323,14 @@ def detect_platform(url: str) -> str:
         # suiteone.py's own module docstring for the real page structure
         # this was built against.
         return "suiteone"
+    if netloc in PROUDCITY_KNOWN_DOMAINS:
+        # ProudCity (WordPress `wp-proud-meeting` plugin) -- no shared apex
+        # domain across tenants (white-labeled onto each city's own
+        # .gov/.org domain, same problem Hyland had), so this is a
+        # curated, human-verified domain set rather than a general rule --
+        # see proudcity.py's own module docstring for the full evidence
+        # trail and BACKLOG_DONE.md's 2026-08-26 entry.
+        return "proudcity"
     return "unknown"
 
 

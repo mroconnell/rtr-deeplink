@@ -134,6 +134,10 @@ CANARY_URLS: dict[str, str] = {
         "city-council-work-session-july-15-2026"
     ),
     "primegov": "https://okc.primegov.com/Portal/Meeting?meetingTemplateId=68482",
+    # Town of Fairfax, CA -- the tenant this adapter was built and tested
+    # against (see proudcity.py's own module docstring, BACKLOG_DONE.md's
+    # 2026-08-26 entry). Real video, real jurisdiction, real agenda PDF.
+    "proudcity": "https://townoffairfaxca.gov/meetings/town-council-meeting-august-5-2026/",
     "seattle_channel": "https://www.seattlechannel.org/videos?videoid=x184865",
     "slc": "https://www.slc.gov/council/march-3-2026-meeting-recap/",
     # Holladay, UT -- the strongest of tests/test_suiteone.py's six
