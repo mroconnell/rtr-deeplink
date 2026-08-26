@@ -70,13 +70,14 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (13)
   [NEEDS-AUDIT] The saved-search digest subject's "+N more" count may
   [JUST-DO-IT] Every byte the public site serves is billed twice:
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (13)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (14)
   Confirmations nobody has actually watched happen  (4)
     [HUMAN] Decide the /meetings result link order from real click data,
     [HUMAN] Render's health-check gate has never blocked a deploy —
     [HUMAN] `[LOGIN]` Confirm a real Render deploy installed cleanly off
     [HUMAN] Configure GA's internal traffic filter — the
-  Production actions only Ryan should take  (6)
+  Production actions only Ryan should take  (7)
+    [HUMAN] `[LOGIN]` `rtr-deeplink` (the main resolver) hit its memory
     [HUMAN] `[LOGIN]` Two residuals from the storage alert WO-60 closed —
     [HUMAN] `[LOGIN]` Archive service instability, 2026-08-17 —
     [HUMAN] `[WAIT]` 10 YouTube-backed pages still hold roll-up
@@ -741,6 +742,35 @@ convenient.
 
 ### Production actions only Ryan should take
 
+- **[HUMAN] `[LOGIN]` `rtr-deeplink` (the main resolver) hit its memory
+  limit and auto-restarted once — first occurrence, not yet clustering
+  (2026-08-26T01:13:58Z).** From the daily inbox-triage Routine
+  (`CLAUDE_INBOX_TRIAGE.md`, promoted here). Render auto-restarted the
+  service; brief interruption, self-recovered, no user reports or
+  follow-up alerts since. Render's email gives only the generic three
+  possible causes (leak / traffic spike / undersized instance) and its
+  metrics/Events tabs are auth-walled, so this couldn't be confirmed
+  further from the repo.
+  Code review found nothing obviously memory-heavy in `app/main.py`:
+  `/meetings`, `/state/*`, `/j/*`, `/coverage`, `/account/saved` are thin
+  reverse-proxies to Archive (`_proxy_to_archive()`) that stream via
+  `response.content.iter_chunked(65536)` rather than buffering, and the
+  only worker-adjacent import is a bounded `ffprobe` duration probe
+  (`app/platforms/media_probe.py`) — no `list_pages()`-style
+  load-everything pattern like the one that OOM'd Archive on 2026-08-17.
+  **What is a real fact, not speculation**: `rtr-deeplink` is the *only*
+  one of the four Render services still on `plan: starter` (512MB) —
+  Archive and both transcription workers are already `plan: standard`,
+  and Archive's own upgrade was made for this exact failure shape
+  (`"Ran out of memory (used over 512MB)"`). That doesn't prove
+  `rtr-deeplink` needs the same upgrade from one self-recovered restart,
+  but it's not a coincidence-free signal either.
+  **Open question for Ryan**: check the Render dashboard's real memory
+  graph for `rtr-deeplink` — is this a one-off traffic spike, or does it
+  correlate with a request pattern (e.g. concurrent `/api/resolve` calls
+  each spawning an `ffprobe` subprocess)? If it recurs or clusters, the
+  fix is the same one-line change already used for the other three
+  services: `plan: starter` → `plan: standard` in `render.yaml`.
 - **[HUMAN] `[LOGIN]` Two residuals from the storage alert WO-60 closed —
   the resolver's own database was never measured, and the plan's real
   storage cap is still unknown (2026-08-25).** WO-60 (Ship next, above)
