@@ -3868,6 +3868,16 @@ def _entry_platform_from_source_url(source_url_normalized: str) -> Optional[str]
         "cityofmiamisburg.com",
         "santa-ana.gov",
         "www.colma.ca.gov",
+        "delawarecounty.in.gov",
+        "www.cityofmontclair.org",
+        "elatownship.gov",
+        "cityofpalmview.gov",
+        "www.westhamptonbeach.gov",
+        "www.johnsoncitytx.org",
+        "wilmingtonohio.gov",
+        "www.hellamtownship.gov",
+        "mckenziecountynd.gov",
+        "alvordtx.gov",
     }:
         return "proudcity"
     return None

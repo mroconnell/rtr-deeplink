@@ -91,13 +91,24 @@ in the "bulk re-resolve gets this IP blocked by YouTube" entry under
 that wall; a `proudcity.py` adapter would ship with the exact same
 transcript gap every other YouTube-backed page has today.
 
-**Two real, live-confirmed caveats, not yet resolved:**
-- **Petaluma and Marin County are both Cloudflare-gated** — a direct
-  server-side fetch of either's `/wp-json/wp/v2/meetings` returns a real
-  "Attention Required" challenge page, not a clean 403/200. Same class
-  of gate this repo has a standing decision never to auto-solve (the
-  Vimeo/Spokane precedent). Reachability from these two specifically is
-  unresolved, not confirmed broken.
+**Correction, 2026-08-26 (same day) — Petaluma and Marin County were never
+really ProudCity-meetings candidates in the first place.** The original
+draft of this entry called both Cloudflare-gated and left them
+unresolved. A sibling project (`~/Documents/rtr-upcoming`, a separate
+forward-looking-agendas tool with its own independently-built roster of
+Bay Area jurisdictions) settles it: both are on the roster with
+`platform=primegov` (`cityofpetaluma.primegov.com`/
+`marincounty.primegov.com`'s `ListUpcomingMeetings` API), not
+`wordpress`. Real vendor is PrimeGov for both — same "general ProudCity
+CMS, real meetings delegated to a dedicated agenda/video vendor" pattern
+already confirmed for Rye Brook NY and Sonoma CA (CivicWeb) elsewhere in
+this entry, not a reachability problem to solve. Worth knowing for next
+time: that same project's README documents a real, counterintuitive
+Cloudflare finding on Marin County's own domain specifically — an
+honest, clearly-non-browser UA gets 200, a Chrome-claiming UA gets 403
+(TLS fingerprint mismatch) — the opposite of the usual "look like a
+browser" heuristic, in case a genuinely Cloudflare-gated ProudCity
+tenant does turn up later.
 - **`external_video` is a real second video field** (`video_style ===
   'external'`) that renders as a plain outbound `<a href>` link, not an
   embed — a "we think the video is here" pointer case, not a directly
