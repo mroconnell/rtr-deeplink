@@ -236,7 +236,7 @@ requests==2.34.2
     #   pip-audit
 rich==15.0.0
     # via pip-audit
-ruff==0.16.3
+ruff==0.16.4
     # via -r requirements-dev.in
 sentry-sdk==2.68.0
     # via -r requirements.txt
@@ -319,17 +319,8 @@ yarl==1.24.5
     # via
     #   -r requirements.txt
     #   aiohttp
-# yt-dlp: deliberately re-unpinned by hand here even though pip-compile
-# resolved it to a specific version above -- it's pulled in transitively
-# via requirements.txt's own unpinned yt-dlp line, and pip-compile has no
-# way to know it should stay that way. See requirements.txt's matching
-# comment. Re-fix this line after every `pip-compile requirements-dev.in`
-# re-run.
-yt-dlp
-# youtube-transcript-api is deliberately unpinned too -- see
-# requirements-dev.in's matching comment. Not resolvable via pip-compile
-# at all since it's excluded from requirements-dev.in on purpose.
-youtube-transcript-api
+yt-dlp==2026.8.19
+    # via -r requirements.txt
 
 # The following packages are considered to be unsafe in a requirements file:
 # pip
