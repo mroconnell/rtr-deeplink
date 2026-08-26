@@ -57,7 +57,7 @@ Standing decisions — do NOT re-raise  (4)
 
 Ship next — root cause known, fix settled `[JUST-DO-IT]`  (13)
   [JUST-DO-IT] `[EASY]` Database storage cleanup — lower thumbnail…
-  [NEEDS-AUDIT] `[EXAMPLE]` Hyland is 14 of the 16 content-free pages in
+  [HUMAN] `[WAIT]` Re-resolve the 14 Hyland pages WO-63 fixed — the code
   [JUST-DO-IT] `[EASY]` "We think we found an agenda here" is hedged for
   [JUST-DO-IT] Nothing detects a transcript that simply ends early
   [JUST-DO-IT] `[EASY]` Nothing notices a dead worker pool — chunks
@@ -339,30 +339,18 @@ so that work reads together.
   ```
   See `STORAGE_CLEANUP_2026_08_25.md` for full runbook. No user-facing impact — default thumbnails unchanged, timestamp-specific frames fall back to default if deleted.
 
-- **[NEEDS-AUDIT] `[EXAMPLE]` Hyland is 14 of the 16 content-free pages in
-  the archive, and on Hyland an `agenda_link` means *agenda parsing
-  failed* (measured 2026-08-25).** `GET /internal/thin-page-audit` against
-  production: 16 `agenda_link_only` pages out of 2,629 — `hyland` 14,
-  `champds` 1, `unknown` 1. One adapter accounts for **88%** of them.
-  **Why that's a parse failure and not a thin-but-valid page**:
-  `hyland.py:230-231` nulls `agenda_link` whenever `agenda_items` is
-  non-empty, so the link only survives when `_build_agenda_items()`
-  returned nothing. Both item regexes (`_AGENDA_ITEM_RE`,
-  `_AGENDA_ITEM_NEW_RE`, `hyland.py:121-132`) key on a `loadAgendaItem(`
-  JS call, so any tenant whose agenda page doesn't use that shape yields
-  zero items. Each of these 14 pages also found no video, which is why
-  they end up holding nothing at all.
-  **Not yet known**: why the regex misses on these specific tenants — no
-  one has fetched one. Both URL shapes are represented, so it isn't a
-  single-variant bug: `meetings.muni.org` (Anchorage AK) is Version B
-  (`Documents/ViewAgenda`), while `dunwoodyga.hylandcloud.com` and
-  `agendas.fitchburgwi.gov` are Version A (`Meetings/ViewMeetingAgenda`).
-  **Next step, one fetch**: pull
-  `https://agendas.fitchburgwi.gov/OnBaseAgendaOnline/Meetings/ViewMeetingAgenda?meetingId=1535&type=1`
-  and grep for `loadAgendaItem(`. Present but unmatched is a regex bug;
-  absent is a third real Hyland agenda shape needing its own parser.
-  Fixing it turns 14 empty pages into real agenda pages — they are
-  currently `noindex`ed and out of browse/sitemap/feed (WO-62).
+- **[HUMAN] `[WAIT]` Re-resolve the 14 Hyland pages WO-63 fixed — the code
+  is fixed, the already-archived pages are not (2026-08-25).** WO-63
+  stopped `hyland.py` discarding a parsed agenda just because the meeting
+  had no video (full write-up in `BACKLOG_DONE.md`). But nothing
+  re-resolves an already-archived page on its own, so those 14 pages still
+  hold nothing and stay `noindex`ed until they are re-resolved — the same
+  general gap `scripts/backfill_archived_pages.py` exists for.
+  **What to run** (from the Render shell, per Standing decisions — not
+  from a laptop): re-resolve just the `hyland` platform pages, then
+  re-check with `GET /internal/thin-page-audit`, which should drop from 16
+  content-free pages to 2. Their agendas are real and sizeable: Anchorage
+  alone is 34 items, Tucson 27.
 
 - **[JUST-DO-IT] `[EASY]` "We think we found an agenda here" is hedged for
   every adapter, including the seven that don't guess (2026-08-25).**

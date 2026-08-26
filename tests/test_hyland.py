@@ -1,4 +1,8 @@
-from app.platforms.hyland import HylandAssetFinder
+from app.platforms.hyland import (
+    _AGENDA_ITEM_NEW_RE,
+    _AGENDA_ITEM_RE,
+    HylandAssetFinder,
+)
 from app.platforms.youtube import YouTubeAssetFinder
 
 from aiohttp_mock import FakeResponse, mock_session
@@ -59,12 +63,17 @@ async def test_resolve_tucson_no_video_ever_falls_back_to_agenda_link():
     assert result.video_url is None
     assert result.video_format is None
     assert result.video_warnings == ["No video found on this page."]
-    # No video means no itemEventPoints to join against -- agenda_items
-    # (a timestamped list) must stay empty; the real per-meeting agenda
-    # URL is offered instead, not the OnBase site root a generic scan
-    # would fall back to.
-    assert result.agenda_items == []
-    assert result.agenda_link == TUCSON_AGENDA_URL
+    # No video means no itemEventPoints, so nothing to join agenda items
+    # against for *timestamps* -- but the agenda itself is real and fully
+    # parseable, and until WO-63 all 27 items were discarded on that
+    # basis, leaving a page holding nothing at all. They now come back
+    # untimed (start=0), in document order, which is agenda order.
+    assert len(result.agenda_items) == 27
+    assert all(item.start == 0 for item in result.agenda_items)
+    assert all(item.text for item in result.agenda_items)
+    # Nulled once real items exist -- hyland.py's pre-existing rule
+    # against surfacing a redundant link to the document just parsed.
+    assert result.agenda_link is None
 
 
 async def test_resolve_maricopa_real_video_and_timestamped_agenda_items():
@@ -175,12 +184,80 @@ async def test_resolve_santabarbara_falls_back_to_version_b_document_endpoint():
     assert result.title == "Regular City Council Meeting"
     assert result.date == "2026-08-11"
     assert result.jurisdiction == "Santa Barbara, CA"
-    # This customer has no video at all (same as Tucson) -- no
-    # itemEventPoints on the main page, so no timestamps to join agenda
-    # items against even though real item text exists in the document.
+    # This customer has no video at all (same as Tucson), so the main page
+    # carries no itemEventPoints. That used to mean agenda_items == [] --
+    # this very test's old comment noted the items were discarded "even
+    # though real item text exists in the document", which is exactly the
+    # content WO-63 stopped throwing away. All 18 come back untimed
+    # (start=0), which both renderers already present as a plain unlinked
+    # outline.
     assert result.video_url is None
-    assert result.agenda_items == []
-    assert result.agenda_link == SANTABARBARA_AGENDA_B_URL
+    assert len(result.agenda_items) == 18
+    assert result.agenda_items[0].text == "REGULAR CITY COUNCIL MEETING - 2:00 P.M."
+    assert all(item.start == 0 for item in result.agenda_items)
+    # Nulled because the items now carry the content -- hyland.py's
+    # existing "don't surface a redundant link to the document we already
+    # parsed" rule, unchanged by WO-63.
+    assert result.agenda_link is None
+
+
+async def test_untimed_agenda_still_renders_as_a_real_agenda_not_an_empty_page():
+    """The shape WO-63 was built for, asserted directly on the helper.
+
+    Found by measuring, not by reading code: GET /internal/thin-page-audit
+    against production reported 16 content-free pages in the archive and
+    14 of them were Hyland. The cause was not a parsing failure --
+    _build_agenda_items() returned [] the moment `event_points` was empty,
+    before the regex ever ran, so a meeting with no video threw away a
+    perfectly good agenda and became a page holding nothing.
+
+    Anchorage is one of those 14 live pages; its real agenda document
+    fixture carries 34 items.
+    """
+    agenda_html = load_fixture("hyland", "anchorage_view_agenda_document.html")
+
+    items = HylandAssetFinder._build_agenda_items(agenda_html, {}, _AGENDA_ITEM_NEW_RE)
+
+    assert len(items) == 34
+    assert all(item.start == 0 and item.end == 0 for item in items)
+    assert all(item.text.strip() for item in items)
+    # More than one item sharing a start is precisely the signal both
+    # renderers key on to say "this source doesn't provide real per-item
+    # timestamps" and drop the clickable links -- so this shape lands in
+    # machinery that already exists rather than needing new template work.
+    assert len({item.start for item in items}) == 1
+
+
+async def test_real_timestamps_still_win_when_the_meeting_has_video():
+    """The untimed path must not cannibalise the timestamped one: with a
+    real itemEventPoints map, items keep their true seek positions and
+    stay sorted by them."""
+    agenda_html = load_fixture("hyland", "maricopa_view_meeting_agenda.html")
+    main_html = load_fixture("hyland", "maricopa_view_meeting.html")
+    event_points = HylandAssetFinder._parse_event_points(main_html)
+    assert event_points, "fixture must carry a real itemEventPoints map"
+
+    items = HylandAssetFinder._build_agenda_items(
+        agenda_html, event_points, _AGENDA_ITEM_RE
+    )
+
+    assert len(items) > 1
+    assert len({item.start for item in items}) > 1, "real timestamps, not all zero"
+    assert items == sorted(items, key=lambda i: i.start)
+
+
+async def test_agenda_with_no_parseable_items_is_still_empty():
+    """Dropping the event_points gate must not turn unparseable HTML into
+    a fake agenda -- the empty result has to survive for the case it was
+    actually right about."""
+    assert (
+        HylandAssetFinder._build_agenda_items(
+            "<html>no items</html>", {}, _AGENDA_ITEM_RE
+        )
+        == []
+    )
+    assert HylandAssetFinder._build_agenda_items(None, {}, _AGENDA_ITEM_RE) == []
+    assert HylandAssetFinder._build_agenda_items("", {}, _AGENDA_ITEM_NEW_RE) == []
 
 
 async def test_resolve_concord_version_b_multiline_item_text_not_truncated():

@@ -340,13 +340,50 @@ class HylandAssetFinder(AssetFinder):
     def _build_agenda_items(
         agenda_html: Optional[str], event_points: dict, item_re: re.Pattern
     ) -> List[TranscriptSegment]:
-        if not agenda_html or not event_points:
+        if not agenda_html:
             return []
+
+        parsed = [
+            (item_id, HylandAssetFinder._clean_item_text(raw_text))
+            for item_id, raw_text in item_re.findall(agenda_html)
+        ]
+        parsed = [(item_id, text) for item_id, text in parsed if text]
+        if not parsed:
+            return []
+
+        if not event_points:
+            # `itemEventPoints` is the *video* seek map, so a meeting with
+            # no video has none -- and this used to return [] on that
+            # basis alone, discarding a fully-parsed agenda because there
+            # was nothing to seek into (WO-63, 2026-08-25). Measured cost:
+            # 14 of the archive's 16 content-free pages were Hyland, and
+            # every one of them had a real agenda sitting right there.
+            # tests/fixtures/hyland/tucson_view_meeting_agenda.html alone
+            # holds 27 real items that were being thrown away.
+            #
+            # Emitted at start=0 rather than with invented timestamps.
+            # Both renderers already have an explicit heuristic for
+            # exactly this -- more than one item sharing a start means
+            # "this source doesn't provide real per-item timestamps", so
+            # meeting_page.html renders a plain unlinked outline, saying
+            # so in as many words, and the Clip "key moments" structured
+            # data guards on the same expression and stays out. Document
+            # order is agenda order, so no sort here (unlike the
+            # timestamped branch below, which sorts by seek position).
+            #
+            # A single-item agenda is the one shape this doesn't cover:
+            # `length > 1` makes those heuristics false, so it renders as
+            # one clickable [0:00]. Left alone deliberately -- a
+            # real one-line agenda has not been seen, and the alternative
+            # is a schema change to carry "untimed" explicitly.
+            return [
+                TranscriptSegment(start=0.0, end=0.0, text=text) for _, text in parsed
+            ]
+
         items = []
-        for item_id, raw_text in item_re.findall(agenda_html):
+        for item_id, text in parsed:
             start = event_points.get(item_id)
-            text = HylandAssetFinder._clean_item_text(raw_text)
-            if start is None or not text:
+            if start is None:
                 continue
             items.append((start, text))
         if not items:
