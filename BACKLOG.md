@@ -100,7 +100,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (10)
   28 well-formed IQM2 queue rows point at retired tenants…
   Some Swagit meetings have no single "whole meeting" video file…
 
-Platform & jurisdiction coverage  (33)
+Platform & jurisdiction coverage  (34)
   `[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
   `[JUST-DO-IT]` `[EASY]` Nine PrimeGov pages and two real meetings…
   `[JUST-DO-IT]` ChampDS symptom B — instant 0.2s failures from the…
@@ -125,7 +125,8 @@ Platform & jurisdiction coverage  (33)
     [NEEDS-AUDIT] Tulare County/Visalia jurisdiction misattribution —
     [LATER] Domain guesser matched a same-named US state's real portal
     [LATER] ~25 smaller consolidated city-county governments still need
-  Adapter & platform gaps  (10)
+  Adapter & platform gaps  (11)
+    [NEEDS-AUDIT] Brentwood eScribe resolves without video, but the
     [NEEDS-AUDIT] Vimeo captions and on-demand Whisper audio are the
     [NEEDS-AUDIT] Chicago ELMS's 473 real agenda items have nowhere
     [JUST-DO-IT] `vimeo.com/showcase/{id}/embed` isn't claimed by
@@ -1877,6 +1878,21 @@ from a live check), but the Legistar calendar itself is still untried.
   several small Georgia ones.
 
 ### Adapter & platform gaps
+
+- **[NEEDS-AUDIT] Brentwood eScribe resolves without video, but the
+  meeting page visibly has one (reported by Ryan 2026-08-26).**
+  `https://pub-brentwood.escribemeetings.com/Meeting.aspx?Id=6b76a99f-35c5-4346-9eaa-4cfadca3ad47&Agenda=Agenda&lang=English`
+  — user-confirmed video present in the browser; **not verified from a
+  session yet** (this sandbox's egress proxy blocks
+  `escribemeetings.com`, so nobody has fetched the real HTML).
+  **Where to look first**: `escribe.py:121-123` matches only
+  `#isi_player[data-client_id][data-stream_name]` or the
+  `[data-file_name]` variant. Two eScribe player shapes are confirmed so
+  far; a third would fall straight through to the `scan_for_media()`
+  fallback and then to no video. So the one thing to check is whether
+  Brentwood's page has an `#isi_player` div at all, and which `data-*`
+  attributes it carries. If there's no `#isi_player`, this is a new
+  player integration rather than a missing attribute.
 
 - **[NEEDS-AUDIT] Vimeo captions and on-demand Whisper audio are the
   same single blocker, and it is still unsolved (residual of WO-29).**
