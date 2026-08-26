@@ -70,19 +70,20 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (13)
   [NEEDS-AUDIT] The saved-search digest subject's "+N more" count may
   [JUST-DO-IT] Every byte the public site serves is billed twice:
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (13)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (14)
   Confirmations nobody has actually watched happen  (4)
     [HUMAN] Decide the /meetings result link order from real click data,
     [HUMAN] Render's health-check gate has never blocked a deploy —
     [HUMAN] `[LOGIN]` Confirm a real Render deploy installed cleanly off
     [HUMAN] Configure GA's internal traffic filter — the
-  Production actions only Ryan should take  (6)
+  Production actions only Ryan should take  (7)
     [HUMAN] `[LOGIN]` Two residuals from the storage alert WO-60 closed —
     [HUMAN] `[LOGIN]` Archive service instability, 2026-08-17 —
     [HUMAN] `[WAIT]` 10 YouTube-backed pages still hold roll-up
     [HUMAN] Meeting-card backfill: both follow-ups are done, and the
     [HUMAN] 19 audio-only meetings can never have a card — but 4 of them
     [HUMAN] Stray Archive-shaped tables in `rtr_deeplink_db` — root
+    [HUMAN] `rtr-deeplink` (the resolver itself) hit its memory limit and
   Decisions about already-live content  (2)
     [JUST-DO-IT] `[BIG]` Repair the three already-live transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
@@ -899,6 +900,43 @@ convenient.
      never `rtr_archive`, which has identical table names and the real
      corpus. Double-check the connection target immediately before
      executing, not just when opening the session.
+
+- **[HUMAN] `rtr-deeplink` (the resolver itself) hit its memory limit and
+  auto-restarted, 2026-08-26T01:13:58Z — one occurrence, self-recovered,
+  no code fix identified.** Promoted from `CLAUDE_INBOX_TRIAGE.md`,
+  re-verified 2026-08-26: Gmail shows exactly one message for this alert
+  (`label:rtr-claude "exceeded its memory limit" newer_than:7d` returns
+  one thread, no recurrence since), and `render.yaml` still has
+  `rtr-deeplink` (line 49) as the **only** one of the four services on
+  `plan: starter` (512MB) — `rtr-deeplink-archive` and both transcription
+  workers are all `plan: standard`. Archive's own `starter`→`standard`
+  upgrade (2026-08-17, `render.yaml:223`) was made for this exact failure
+  shape (`"Ran out of memory (used over 512MB)"`), so this is not a novel
+  pattern for this app.
+
+  Code review (Render's dashboard/metrics are auth-walled, so this is as
+  far as static review can go): `app/main.py`'s `/meetings`, `/state/*`,
+  `/j/*`, `/coverage` and `/account/saved` all reverse-proxy to Archive
+  via `_proxy_to_archive()` (`app/main.py:1565`) streaming with
+  `response.content.iter_chunked(65536)`, not buffering. The only
+  worker-adjacent import is `probe_duration`/`is_plausible_meeting_
+  duration` from `app/platforms/media_probe.py` — a bounded `ffprobe`
+  subprocess for duration metadata, not a full media pull. No
+  `list_pages()`-style "load every segments blob into memory" pattern
+  (the thing that actually OOM'd Archive on 2026-08-17) was found
+  anywhere in `app/`.
+
+  So there's no smoking-gun code path to fix here — the honest read is
+  "smallest plan on the fleet took one restart," which could be an
+  ordinary traffic spike or several concurrent `/api/resolve` calls each
+  spawning an `ffprobe` subprocess, not a leak. **Open question only
+  Ryan can answer**: has `rtr-deeplink`'s real memory graph on the
+  Render dashboard been checked, and does the restart correlate with a
+  specific request pattern? If it recurs or clusters, the fix is
+  trivial and already proven safe on Archive: `plan: starter` →
+  `plan: standard` in `render.yaml`, one line, same as the other three
+  services. Not worth doing preemptively on a single self-recovered
+  restart with zero follow-up alerts as of this review.
 
 ### Decisions about already-live content
 

@@ -6,6 +6,79 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Inbox-triage review, 2026-08-19 through 2026-08-26: one new [HUMAN] promotion, everything else already closed [Done 2026-08-26]
+
+Periodic promotion-review pass over `CLAUDE_INBOX_TRIAGE.md`'s
+2026-08-19 through 2026-08-26 dated sections (the ones not already
+covered by WO-61's 2026-08-25 pass, above). Same "a lead, not a spec"
+rule as WO-61 — every remaining claim was re-verified against real code,
+`render.yaml`, and Gmail before deciding what to do with it, not just
+re-read.
+
+**Headline: there was very little left to do.** Every dated section from
+2026-08-19 through 2026-08-25 turned out to be either fully promoted
+already (the two 2026-08-19 bugs and the Archive health-check timeout,
+promoted 2026-08-21; the 2026-08-20 Render spend-limit hit and Sentry
+PYTHON-FASTAPI-R, resolved same-day/next-day; everything from
+2026-08-23/24/25, promoted or fixed by WO-61 above) or narrative-only
+duplicates already explained inline (2026-08-21, 2026-08-22). None of
+that needed re-promotion — it was verified as already-landed and the
+now-redundant narrative was deleted from `CLAUDE_INBOX_TRIAGE.md`,
+leaving that file holding only what's still genuinely unresolved, per
+its own header.
+
+### The one new finding: promoted
+
+**`rtr-deeplink` (the resolver's own web service, not Archive) exceeded
+its memory limit and auto-restarted, 2026-08-26T01:13:58Z.** Re-verified
+before promoting: `label:rtr-claude "exceeded its memory limit"
+newer_than:7d` returns exactly one Gmail thread (no recurrence since),
+and `render.yaml` still has `rtr-deeplink` as the only one of the four
+services on `plan: starter` — Archive and both transcription workers are
+all `plan: standard`, Archive having been upgraded for this exact
+failure shape on 2026-08-17. Code review found no unbounded in-memory
+pattern in `app/` (the reverse-proxy routes stream via
+`iter_chunked(65536)`, and the only worker-adjacent call is a bounded
+`ffprobe` subprocess) — so there's nothing to fix in code, only a
+dashboard check and, if it recurs, a one-line plan upgrade. Promoted
+into `BACKLOG.md`'s "Needs a human → Production actions only Ryan should
+take", full write-up there.
+
+### The recurring `test-redtaperecordings` flag: consolidated, not resolved
+
+The likely-test-noise "Server failure detected on
+test-redtaperecordings" alert, first flagged 2026-08-19 as "deliberately
+left uninvestigated," had by this review recurred on **every single**
+triage run since (2026-08-18, 19, 20, 22, 23, 25, 26 — 7 occurrences),
+always the identical generic "Exited with status 3" message. Re-checked:
+`test-redtaperecordings` still doesn't appear anywhere in `render.yaml`
+or the rest of this repo, so there is no code fix available regardless
+of cause, and no dashboard access to check further. Rather than
+re-flagging the same unconfirmed pattern in an eighth, ninth, tenth
+dated section, it's now a single standing note in
+`CLAUDE_INBOX_TRIAGE.md` ("Standing open question:
+`test-redtaperecordings` server failures") that future runs can update
+in place instead of repeating. Still genuinely unresolved — needs Ryan
+to say what that service is, not a code change — so it stays in the
+triage file rather than being promoted or closed here.
+
+The 2026-08-19 synthetic-data transcription-job pattern flagged
+alongside it (`job_id: 1`, `requester@example.com`-shaped fake data) has
+**not recurred once** in the six subsequent runs. Treated as a one-off
+manual test, closed without further tracking.
+
+### Verification
+
+`grep -rn "test-redtaperecordings"` (repo-wide, excluding the triage
+file itself) — zero matches, confirming it's genuinely untracked infra.
+`render.yaml` line-checked for `plan:` on all four services. Gmail
+searched directly for recurrence of the memory-limit alert. `BACKLOG.md`
+and `BACKLOG_DONE.md` grepped for prior mentions of resolver memory
+issues (none — all existing OOM history is Archive-specific) before
+writing the promotion up as new. `python3 scripts/build_backlog_toc.py`
+re-run after the `BACKLOG.md` edit; diff limited to the new entry's TOC
+line and the section's updated count.
+
 ## Hyland threw away 14 real agendas because the meetings had no video (WO-63) [Done 2026-08-25]
 
 Direct follow-on from WO-62's production audit, and a case where the
