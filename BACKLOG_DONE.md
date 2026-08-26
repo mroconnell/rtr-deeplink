@@ -109,6 +109,77 @@ full evidence trail; see `BACKLOG.md`'s live entry for what to build and
 why it clears this repo's "verify against a real live URL first" bar
 before starting.
 
+**Addendum, same day — tenant enumeration round, real yield.** Three
+independent methods, cross-confirming each other:
+
+1. **Web search, natural-language (not `site:`/`inurl:` — this search
+   tool doesn't reliably honor those operators, same finding as the
+   Hyland sweep).** Two organic hits directly confirmed new real
+   tenants: a Somerville, NJ agenda PDF at `storage.googleapis.com/
+   proudcity/somervillenj/...`, and a Miamisburg, OH `/meetings/{slug}`
+   permalink straight in the search results. From there, 4 more real,
+   **live-confirmed** tenants (`GET /wp-json/wp/v2/meetings` returns real
+   current meetings): **Holyoke MA, Santa Ana CA** (its `www.santa-ana.org`
+   redirects to the real canonical `santa-ana.gov`), **Colma CA**. Two
+   real leads that turned out stale, worth recording as a distinct
+   pattern: **Rye Brook, NY** and **Sonoma, CA** are both confirmed
+   ProudCity customers whose `meeting` post type is either abandoned
+   (Rye Brook: real data, but nothing since 2019) or entirely unused
+   (Sonoma: 404, no meeting content type registered at all) — both now
+   run their actual meetings through a separate CivicWeb portal
+   (`ryebrook.civicweb.net`, `sonomacity.civicweb.net`). **Real,
+   general lesson**: ProudCity-as-general-CMS does not imply
+   ProudCity's-own-meetings-plugin is the live source — some tenants
+   layer a dedicated agenda/video vendor on top and let the native
+   module go stale, the same pattern already seen with Petaluma
+   (real ProudCity site, but real video traced to Granicus/PrimeGov).
+   Confirm the *meetings* endpoint specifically, not just that a site is
+   ProudCity, before trusting it as a source.
+2. **A real, apparently unintentionally-public source: ProudCity's own
+   GitHub issue tracker.** `github.com/proudcity/wp-proudcity`'s Issues
+   tab is not a curated bug list — it's their live Kubernetes/WordPress
+   fleet operations log (real issue content: "Fleet migration drift"
+   audits, a Gravity Forms DB-version sweep across "162 deployments in
+   `prod` and `test`", an orphaned-plugin-options cleanup that explicitly
+   named stored third-party migration credentials as something to purge).
+   Flagging this plainly rather than acting on it — worth Ryan knowing
+   this exists and deciding whether it's worth a heads-up to ProudCity;
+   not this session's call. For this project's narrower purpose, those
+   automated reports embed real `prod/{slug}`/`test/{slug}` site
+   identifiers directly in their tables. Filtered out obvious
+   non-tenant/topic-microsite/staging noise (`alpha*`, `*sandbox`,
+   `*staging`, `*clone`, `*old`, `*employees`, a `recovers`-branded
+   disaster-relief product line distinct from the main meetings CMS,
+   single-department microsites like `marindpwca`/`santaanazooca`) —
+   **~40 real candidate main-city slugs remain**, cross-confirming two
+   already-known tenants (`belvedereca`, `sanrafaelca`) and the
+   independently-found `carnationwa`/`baysidewi` below.
+3. **Wayback CDX, scoped to the `storage.googleapis.com/proudcity` path
+   prefix** (not a domain-wide scan — that host is shared GCS infra used
+   by unrelated tenants of Google's, so `matchType=prefix` on the
+   `/proudcity/` path specifically is the correct scope, same "index
+   seek, not index scan" lesson `CDX_QUERIES.md` already learned the
+   hard way on Granicus). One query, 20,000 rows returned (capped —
+   more exist, this run wasn't paginated further), yielding 13
+   tenant-shaped slugs after excluding bare-year upload paths, several
+   matching the issue-tracker list independently: `baysidewi`,
+   `bedfordoh`, `belmontnc`, `belvedereca` (known), `boroughofmountpoconopa`,
+   `carnationwa`, `alvordtx`, `chartertownshipofkalamazoomi`,
+   `cambridgetownshippa`, `cherrytownshippa`, `sanrafaelca` (known, low
+   count — only 1 crawled row).
+
+**Net real result**: 10 tenants directly live-verified with a real,
+current, active `meeting` post type (Belvedere, Fairfax, San Rafael,
+Petaluma†, Marin County†, Somerville NJ, Holyoke MA, Miamisburg OH,
+Santa Ana CA, Colma CA — † Cloudflare-gated, real per Ryan, not
+independently re-verified this session), 2 confirmed-but-stale
+(Rye Brook NY, Sonoma CA — do not treat as usable sources), and
+**~45 further real candidate slugs** (the issue-tracker ~40 plus the
+CDX scan's new names) not yet individually verified — the next step for
+any of them is the same cheap check used throughout this round:
+`GET {domain}/wp-json/wp/v2/meetings?per_page=1`, watching for the
+Rye Brook/Sonoma stale-or-unused shape as well as an outright miss.
+
 ## Hyland threw away 14 real agendas because the meetings had no video (WO-63) [Done 2026-08-25]
 
 Direct follow-on from WO-62's production audit, and a case where the

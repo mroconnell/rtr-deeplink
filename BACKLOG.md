@@ -2106,6 +2106,24 @@ from a live check), but the Legistar calendar itself is still untried.
   ProudCity-shaped URLs for a real re-resolve, the same pattern
   `refresh_archived_page`/the passive recheck cadence already uses.
 
+  **Enumeration round run the same day — real yield, full detail in
+  `BACKLOG_DONE.md`'s addendum on this entry.** Tenant count went from
+  5 known to **10 live-verified with a real, current `meeting` post
+  type** (added: Somerville NJ, Holyoke MA, Miamisburg OH, Santa Ana CA,
+  Colma CA), plus **~45 further real candidate slugs** not yet
+  individually checked, sourced from ProudCity's own GitHub issue
+  tracker (their live fleet-ops log, ~162 real deployments — flagged to
+  Ryan as apparently unintentionally public, not acted on further here)
+  and a Wayback CDX scan scoped to the `storage.googleapis.com/
+  proudcity` path prefix. **Real negative pattern worth carrying into
+  the adapter itself**: Rye Brook NY and Sonoma CA are both confirmed
+  ProudCity customers whose `meeting` post type is stale/unused — they
+  migrated real meeting management to a separate CivicWeb portal.
+  `proudcity.py` (or whatever enumerates these candidates) needs to
+  check the *meetings* endpoint's actual content, not just that a
+  domain is ProudCity, before trusting it as a source — general-CMS
+  detection and active-meetings detection are not the same signal here.
+
 - **[JUST-DO-IT] `vimeo.com/showcase/{id}/embed` isn't claimed by
   `detect_platform()`, so a real Vimeo listing falls to the best-effort
   pointer (found live 2026-08-22, WO-43 / #307).** `is_vimeo_listing()`
