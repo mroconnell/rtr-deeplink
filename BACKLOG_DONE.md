@@ -1,5 +1,62 @@
 # Backlog — done
 
+## ChampDS's whole-audio-cache fix ported from the cloud worker to the local script [Done 2026-08-27, WO-64]
+
+WO-54 (2026-08-25, see that entry below) fixed ChampDS's `ffmpeg timed out
+after 120s` failures for the cloud worker: instead of seeking per chunk
+(O(N²) across a job on a progressive MP4 whose `moov` atom sits at the
+tail), pull the whole meeting's audio once, sequentially, then slice
+chunks out of the local copy for free. That fix landed only in
+`worker/main.py` — `scripts/transcribe_backlog_locally.py` still called
+the old per-chunk `extract_chunk_audio()` exclusively.
+
+**The gap was real, not theoretical.** A same-day local run against 10
+oldest-backlog zero-transcript pages hit 5 ChampDS meetings in a row
+(Auburn NY, Belle Meade TN, Surfside FL, Wilkes County NC, Oak Hill TN),
+and all 5 failed with the identical symptom WO-54 already solved — about
+55 minutes lost to a fix that existed the whole time, just not here.
+
+**The fix.** `should_cache_whole_audio()` (the gating predicate,
+previously `worker/main.py`'s private `_should_cache_whole_audio()`)
+moved to `app/platforms/media_probe.py`, alongside `is_hls()`,
+`extract_full_audio()`, and `slice_cached_audio()` — the module both
+consumers already import from — so `worker/main.py` and
+`transcribe_backlog_locally.py` share one definition instead of risking
+two copies drifting apart. `worker/main.py`'s tests
+(`tests/test_whole_audio_cache.py`) updated to reference the moved,
+now-public name; behavior unchanged.
+
+`transcribe_meeting()` in the local script now runs the same gate before
+its chunk loop, caching the whole meeting's audio in the same per-meeting
+`tempfile.TemporaryDirectory` it already uses for chunk files, and
+falling back to per-chunk extraction on a failed pull — mirroring
+`worker/main.py`'s WO-58 fallback. One deliberate difference from the
+worker, and it matters: **a failed whole-audio pull is remembered for the
+rest of that meeting's chunks**, not retried on every remaining one. The
+worker re-checks the gate on every poll because a different worker
+process can claim each chunk, so a failed pull naturally gets retried by
+whichever process picks up the next chunk — expensive in theory but
+diffused across processes in practice. This script processes one meeting
+sequentially in one process, so retrying an already-failed whole-file
+pull on every remaining chunk would cost a full
+`_FULL_AUDIO_TIMEOUT_SECONDS` (360s) per chunk for a source that has
+already shown it will not download in one pass, with nothing to diffuse
+it across. Tracked as a local `whole_audio_cache_failed` flag inside
+`transcribe_meeting()`.
+
+New regression tests in `tests/test_transcribe_backlog_locally.py`:
+`test_transcribe_meeting_caches_whole_audio_once_for_champds` (one
+download, both chunks sliced locally, `extract_chunk_audio()` never
+called) and `test_transcribe_meeting_falls_back_to_per_chunk_after_a_
+failed_whole_audio_pull` (exactly one failed whole-audio attempt across
+the whole meeting, every chunk still transcribed via the per-chunk
+fallback).
+
+See CLAUDE.md's new standing rule (added alongside this entry) requiring
+either side of a cloud-worker/local-script transcription improvement to
+at least be logged as a candidate for the other side, so this specific
+gap does not reopen with the next transcription fix.
+
 ## A systemic backstop for the "vendor's own non-production content got ingested as real" failure shape [Done 2026-08-26]
 
 This exact incident shape has now happened twice on two unrelated
