@@ -56,6 +56,7 @@ from ..utils.search import (
     tokenize,
 )
 from ..utils.slugify import build_base_slug, random_suffix
+from ..utils.suspicious_source import suspicious_source_reason
 from ..utils.video_formats import IFRAME_EMBED_VIDEO_FORMATS
 from ..utils.highlights import compute_highlight_payload, display_text
 from ..topics import (
@@ -847,6 +848,23 @@ async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) 
     segments = payload.get("segments") or []
     agenda_items = payload.get("agenda_items") or []
     source = payload.get("source") or "scraped"
+
+    # Systemic backstop for a real, confirmed-twice failure shape (see
+    # suspicious_source.py's own module docstring): a vendor's own
+    # staging/UAT tenant or shared demo content getting ingested with
+    # full trust. Forces the existing low-trust-queue treatment rather
+    # than rejecting outright -- a false positive here costs one human
+    # review, a false negative ships fabricated content as if real.
+    suspicious_reason = suspicious_source_reason(
+        payload.get("source_url") or input_url_normalized
+    )
+    if suspicious_reason:
+        payload = {**payload, "best_effort": True}
+        logging.getLogger(__name__).warning(
+            "Suspicious source flagged for review (forced best_effort): %s -- %s",
+            input_url_normalized,
+            suspicious_reason,
+        )
 
     async with async_session() as session:
         page, page_created = await _find_or_create_page(

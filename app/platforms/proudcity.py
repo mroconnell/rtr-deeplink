@@ -116,6 +116,13 @@ _EXTERNAL_VIDEO_RE = re.compile(
 # rather than any real meeting. Two real pages were accidentally ingested
 # from this before it was caught and deleted (BACKLOG_DONE.md). Never
 # treat this slug as a real meeting, regardless of what it resolves to.
+#
+# A systemic backstop for this same failure shape now also exists at
+# ingest time (archive/utils/suspicious_source.py, wired into
+# crud.ingest_resolution()) -- this check stays here anyway since it's
+# strictly stronger (a known-zero-false-positive exact match refusing
+# the resolve outright, vs. the ingest-time backstop's lower-confidence
+# heuristic that only flags for review).
 _DEMO_SLUG_RE = re.compile(r"/example-city-council-meeting/?(?:[?#]|$)")
 
 
