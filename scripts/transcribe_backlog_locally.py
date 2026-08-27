@@ -1170,10 +1170,20 @@ async def process_one(
             "(or a future yt-dlp-audio fallback, see BACKLOG.md), not direct URL audio extraction",
         }
 
+    # detect_platform() fresh, not page["platform"] -- that field is whatever
+    # was true at original ingest time, and a domain added to an adapter's
+    # known-domains list *after* a page was ingested (real case, 2026-08-27:
+    # several ProudCity .gov domains ingested as "unknown" before #425-428
+    # added ProudCity support) leaves it stale forever. get_finder() on a
+    # stale "unknown" raises UnsupportedPlatformError, which reads identically
+    # to a genuinely-unsupported site -- silently hiding now-resolvable
+    # meetings from every unattended (non --url) run. main()'s --url path
+    # already does this fresh lookup; this brings the default candidate-list
+    # path in line with it.
     result = await transcribe_meeting(
         engine,
         page["source_url_normalized"],
-        page["platform"],
+        detect_platform(page["source_url_normalized"]),
         chunk_size_seconds=chunk_size_seconds,
         resume=resume,
         chunk_cooldown_seconds=chunk_cooldown_seconds,

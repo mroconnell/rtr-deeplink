@@ -385,6 +385,46 @@ async def test_transcribe_meeting_skips_a_youtube_delegated_resolve(local_media)
     assert "YouTube-backed" in result["reason"]
 
 
+async def test_process_one_detects_platform_fresh_not_from_stale_page_field(
+    local_media,
+):
+    """Real case, 2026-08-27: several ProudCity .gov pages (e.g.
+    wilmingtonohio.gov) were ingested with platform="unknown" before
+    #425-428 added ProudCity support, and that field on the candidate-list
+    row never gets updated after the fact. Before this fix, process_one()
+    passed that stale value straight to get_finder(), which raised
+    UnsupportedPlatformError and silently hid an otherwise-resolvable
+    meeting from every unattended run -- indistinguishable from a page on a
+    genuinely unsupported site. It must use a fresh detect_platform() call
+    on the real URL instead, the same classifier main()'s --url path
+    already uses."""
+    seen_platforms = []
+
+    class _Finder:
+        async def resolve(self, url):
+            seen_platforms.append("resolved")
+            return _resolved(video_url=None)
+
+    def _get_finder(platform):
+        seen_platforms.append(platform)
+        return _Finder()
+
+    local_media.setattr(tbl, "get_finder", _get_finder)
+
+    page = {
+        "slug": "wilmington-oh-council",
+        "platform": "unknown",  # stale -- must not be trusted
+        "source_url_normalized": "https://wilmingtonohio.gov/meetings/city-council-meeting-april-16-2026",
+        "video_url": None,
+        "video_format": None,
+    }
+
+    await tbl.process_one(
+        None, _FakeEngine(), page, dry_run=True, chunk_size_seconds=900
+    )
+    assert seen_platforms[0] == "proudcity"
+
+
 async def test_transcribe_meeting_does_not_retry_a_missing_ffmpeg(local_media):
     """ffmpeg absent from PATH is a broken machine, not a flaky CDN --
     retrying it only makes an unattended run slower at reaching the same
